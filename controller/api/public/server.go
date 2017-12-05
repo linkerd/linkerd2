@@ -1,0 +1,235 @@
+package public
+
+import (
+	"encoding/binary"
+	"io/ioutil"
+	"net/http"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	common "github.com/runconduit/conduit/controller/gen/common"
+	tapPb "github.com/runconduit/conduit/controller/gen/controller/tap"
+	telemPb "github.com/runconduit/conduit/controller/gen/controller/telemetry"
+	pb "github.com/runconduit/conduit/controller/gen/public"
+	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/proto"
+	"github.com/prometheus/client_golang/prometheus"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc/metadata"
+)
+
+type (
+	handler struct {
+		grpcServer pb.ApiServer
+	}
+
+	tapServer struct {
+		w   http.ResponseWriter
+		req *http.Request
+	}
+)
+
+const (
+	apiRoot             = "/" // Must be absolute (with a leading slash).
+	apiVersion          = "v1"
+	apiPrefix           = "api/" + apiVersion + "/" // Must be relative (without a leading slash).
+	jsonContentType     = "application/json"
+	protobufContentType = "application/octet-stream"
+)
+
+var (
+	jsonMarshaler   = jsonpb.Marshaler{EmitDefaults: true}
+	jsonUnmarshaler = jsonpb.Unmarshaler{}
+)
+
+func NewServer(addr string, telemetryClient telemPb.TelemetryClient, tapClient tapPb.TapClient) *http.Server {
+	var baseHandler http.Handler
+	counter := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "http_requests_total",
+			Help: "A counter for requests to the wrapped handler.",
+		},
+		[]string{"code", "method"},
+	)
+	prometheus.MustRegister(counter)
+
+	baseHandler = &handler{
+		grpcServer: newGrpcServer(telemetryClient, tapClient),
+	}
+	instrumentedHandler := promhttp.InstrumentHandlerCounter(counter, baseHandler)
+
+	return &http.Server{
+		Addr:    addr,
+		Handler: instrumentedHandler,
+	}
+}
+
+func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	// Validate request method
+	if req.Method != http.MethodPost {
+		http.Error(w, "POST required", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Validate request content type
+	switch req.Header.Get("Content-Type") {
+	case "", protobufContentType, jsonContentType:
+	default:
+		http.Error(w, "unsupported Content-Type", http.StatusUnsupportedMediaType)
+		return
+	}
+
+	// Serve request
+	switch req.URL.Path {
+	case apiRoot + apiPrefix + "Stat":
+		h.handleStat(w, req)
+	case apiRoot + apiPrefix + "Version":
+		h.handleVersion(w, req)
+	case apiRoot + apiPrefix + "ListPods":
+		h.handleListPods(w, req)
+	case apiRoot + apiPrefix + "Tap":
+		h.handleTap(w, req)
+	default:
+		http.NotFound(w, req)
+	}
+}
+
+func (h *handler) handleStat(w http.ResponseWriter, req *http.Request) {
+	var metricRequest pb.MetricRequest
+	err := serverUnmarshal(req, &metricRequest)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	rsp, err := h.grpcServer.Stat(req.Context(), &metricRequest)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = serverMarshal(w, req, rsp)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (h *handler) handleVersion(w http.ResponseWriter, req *http.Request) {
+	var emptyRequest pb.Empty
+	err := serverUnmarshal(req, &emptyRequest)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	rsp, err := h.grpcServer.Version(req.Context(), &emptyRequest)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = serverMarshal(w, req, rsp)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (h *handler) handleListPods(w http.ResponseWriter, req *http.Request) {
+	var emptyRequest pb.Empty
+	err := serverUnmarshal(req, &emptyRequest)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	rsp, err := h.grpcServer.ListPods(req.Context(), &emptyRequest)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = serverMarshal(w, req, rsp)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (h *handler) handleTap(w http.ResponseWriter, req *http.Request) {
+	var tapRequest pb.TapRequest
+	err := serverUnmarshal(req, &tapRequest)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if _, ok := w.(http.Flusher); !ok {
+		http.Error(w, "streaming not supported", http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Transfer-Encoding", "chunked")
+
+	server := tapServer{w: w, req: req}
+	err = h.grpcServer.Tap(&tapRequest, server)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func serverUnmarshal(req *http.Request, msg proto.Message) error {
+	switch req.Header.Get("Content-Type") {
+	case "", protobufContentType:
+		bytes, err := ioutil.ReadAll(req.Body)
+		if err != nil {
+			return err
+		}
+		return proto.Unmarshal(bytes, msg)
+	case jsonContentType:
+		return jsonUnmarshaler.Unmarshal(req.Body, msg)
+	}
+	return nil
+}
+
+func serverMarshal(w http.ResponseWriter, req *http.Request, msg proto.Message) error {
+	switch req.Header.Get("Content-Type") {
+	case "", protobufContentType:
+		bytes, err := proto.Marshal(msg)
+		if err != nil {
+			return err
+		}
+		byteSize := make([]byte, 4)
+		binary.LittleEndian.PutUint32(byteSize, uint32(len(bytes)))
+		_, err = w.Write(append(byteSize, bytes...))
+		return err
+	case jsonContentType:
+		str, err := jsonMarshaler.MarshalToString(msg)
+		if err != nil {
+			return err
+		}
+		_, err = w.Write(append([]byte(str), '\n'))
+		return err
+	}
+	return nil
+}
+
+func (s tapServer) Send(msg *common.TapEvent) error {
+	err := serverMarshal(s.w, s.req, msg)
+	if err != nil {
+		return err
+	}
+	s.w.(http.Flusher).Flush()
+	return nil
+}
+
+// satisfy the pb.Api_TapServer interface
+func (s tapServer) SetHeader(metadata.MD) error  { return nil }
+func (s tapServer) SendHeader(metadata.MD) error { return nil }
+func (s tapServer) SetTrailer(metadata.MD)       { return }
+func (s tapServer) Context() context.Context     { return s.req.Context() }
+func (s tapServer) SendMsg(interface{}) error    { return nil }
+func (s tapServer) RecvMsg(interface{}) error    { return nil }

@@ -1,0 +1,18 @@
+@import 'styles.css';
+
+.bar {
+  fill: #2F80ED;
+}
+
+.pod-distribution-chart {
+  font-size: 12px;
+
+  & .bar-chart-title {
+    margin-bottom: 8px;
+  }
+
+  & .bar-chart-tooltip {
+    min-height: 16px;
+    font-weight: var(--font-weight-bold);
+  }
+}

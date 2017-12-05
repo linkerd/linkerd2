@@ -1,0 +1,109 @@
+---
+dist: trusty
+sudo: false
+
+# We do not test pushes to branches, since they are redundant with the pull_request build
+# for each branch. Take that, Big CI!
+branches:
+  only:
+    - master
+
+stages:
+  - name: test
+  - name: docker-deploy
+    if: branch = master AND type != pull_request
+
+jobs:
+  include:
+
+    # Compile the application and run tests.
+    - stage: test
+
+      language: rust
+      rust: stable
+      cache:
+        cargo: true
+      script:
+        - cargo check
+        - cargo test
+
+    - language: go
+      go: 1.9
+      go_import_path: github.com/runconduit/conduit
+      cache:
+        directories:
+          - vendor
+      before_install:
+        - go get -u github.com/golang/dep/cmd/dep
+      install:
+        - dep ensure
+      script:
+        # TODO decide whether protoc should be committed or not. If so, we shouldn't do
+        # this or we should error if it dirties the repo.
+        - ./bin/protoc-go.sh
+        - go test ./...  --run "^(integration_test)"
+
+    # Push container images to Google Container Registry.
+    - stage: docker-deploy
+
+      language: generic
+      services:
+        - docker
+
+      cache:
+        directories:
+          - "$HOME/google-cloud-sdk/"
+
+      before_install:
+        - |
+          # Install docker.
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+          sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+          sudo apt-get update
+          sudo apt-get -y install docker-ce
+        - docker version
+
+        - |
+          # Install gcloud and kubectl.
+          dir="${CLOUDSDK_INSTALL_DIR:-${HOME}}/google-cloud-sdk"
+          export CLOUDSDK_CORE_DISABLE_PROMPTS=1
+          if [ -d "$dir/bin" ]; then
+              . "$dir/path.bash.inc"
+              gcloud components update
+          else
+              rm -rf "$dir"
+              curl https://sdk.cloud.google.com | bash
+              . "$dir/path.bash.inc"
+          fi
+          gcloud components install kubectl
+        - |
+          # Configure gcloud with a service account and a k8s context.
+          openssl aes-256-cbc \
+              -K "$encrypted_72832b647e2b_key" -iv "$encrypted_72832b647e2b_iv" \
+              -in .gcp.json.enc -out .gcp.json -d
+          gcloud auth activate-service-account --key-file .gcp.json
+          (. bin/_gcp.sh ; gcp_configure "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER")
+        - gcloud version
+        - kubectl version --short
+
+      before_script:
+        - gcloud docker --authorize-only
+        - bin/docker-pull-deps
+        - |
+          export CONDUIT_TAG=$(. bin/_tag.sh ; clean_head_root_tag)
+          echo "CONDUIT_TAG=${CONDUIT_TAG}"
+        - export PROXY_RELEASE=1 BUILD_DEBUG=1 DOCKER_TRACE=1
+
+      script:
+        - bin/docker-build $CONDUIT_TAG
+
+      after_success:
+        - bin/docker-push-deps
+        - bin/docker-push $CONDUIT_TAG
+        - bin/docker-retag-all $CONDUIT_TAG master && bin/docker-push master
+        - target/cli/linux/conduit install --version=$CONDUIT_TAG |tee conduit.yml
+        - kubectl -n conduit apply -f conduit.yml --prune --selector='conduit.io/plane=control'
+
+notifications:
+  email:
+    on_success: never

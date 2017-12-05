@@ -1,0 +1,109 @@
+syntax = "proto3";
+
+package conduit.proxy.telemetry;
+
+import "common/common.proto";
+
+/// Telemetry Service ///
+//
+// Reports request metadata.
+
+service Telemetry {
+  rpc Report(ReportRequest) returns (ReportResponse) {}
+}
+
+message ReportRequest {
+
+  Process process = 1;
+
+  enum Proxy {
+    INBOUND = 0;
+    OUTBOUND = 1;
+  }
+  Proxy proxy = 2;
+
+  repeated ServerTransport server_transports = 3;
+  repeated ClientTransport client_transports = 4;
+
+  repeated RequestScope requests = 5;
+}
+
+message Process {
+  string node = 1;
+  string scheduled_instance = 2;
+  string scheduled_namespace = 3;
+}
+
+message ServerTransport {
+  common.IPAddress source_ip = 1;
+  uint32 connects = 2;
+  repeated TransportSummary disconnects = 3;
+}
+
+message ClientTransport {
+  common.TcpAddress target_addr = 1;
+  uint32 connects = 2;
+  repeated TransportSummary disconnects = 3;
+}
+
+message TransportSummary {
+  uint64 duration_ms = 1;
+  uint64 bytes_sent = 2;
+}
+
+message RequestScope {
+  RequestCtx ctx = 1;
+  uint32 count = 2;
+  repeated ResponseScope responses = 3;
+}
+
+message RequestCtx {
+  common.IPAddress source_ip = 1;
+  common.TcpAddress target_addr = 2;
+  string authority = 3;
+  common.HttpMethod method = 4;
+  string path = 5;
+}
+
+// A latency value in tenths of a millisecond and a count of the times
+// that latency was observed.
+message Latency {
+    // Latency value in tenths of a millisecond.
+    uint32 latency = 1;
+    // Count of occurences of this latency value.
+    uint32 count = 2;
+}
+
+message ResponseScope {
+  ResponseCtx ctx = 1;
+  // Response latencies (time from request headers sent to response headers received),
+  // represented as an array of observed latency values with precision to 100µs and
+  // the number of times those values were observed, ordered by the latency value.
+  repeated Latency response_latencies = 2;
+  repeated EosScope ends = 3;
+}
+
+message ResponseCtx {
+  uint32 http_status_code = 1;
+}
+
+message EosScope {
+  EosCtx ctx = 1;
+  repeated StreamSummary streams = 2;
+}
+
+message EosCtx {
+  oneof end {
+    uint32 grpc_status_code = 1;
+    uint32 reset_error_code = 2;
+    bool other = 3; // Stream ended without reset and without grpc status code
+  }
+}
+
+message StreamSummary {
+  uint64 duration_ms = 1;
+  uint64 bytes_sent = 2;
+  uint32 frames_sent = 3;
+}
+
+message ReportResponse {}

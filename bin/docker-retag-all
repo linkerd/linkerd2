@@ -1,0 +1,19 @@
+#!/bin/sh
+
+set -eu
+
+if [ $# -ne 2 ]; then
+    echo "usage: $0 from-tag to-tag" >&2
+    exit 64
+fi
+from="${1}"
+to="${2}"
+
+. bin/_docker.sh
+
+docker_retag proxy        "$from" "$to"
+docker_retag proxy-init   "$from" "$to"
+docker_retag controller   "$from" "$to"
+docker_retag web          "$from" "$to"
+docker_retag cli          "$from" "$to"
+docker_retag cli-bin      "$from" "$to"

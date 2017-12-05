@@ -1,0 +1,28 @@
+.grid .tick, .x-axis .tick, .y-axis .tick, .axis-label {
+  opacity: 0.5;
+  font-size: 11px;
+}
+
+/* horizontal grid lines */
+.tick line {
+  stroke-width: 1px;
+  stroke: #777;
+}
+
+.y-axis-label {
+  text-anchor: middle;
+}
+
+/* hide the axis line */
+.x-axis path, .y-axis path {
+  stroke-width: 0;
+}
+
+circle.dot {
+  stroke-width: 2px;
+  opacity: 0.8;
+}
+
+.dot-label {
+  font-size: 11px;
+}

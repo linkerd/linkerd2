@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package conduit.controller.tap;
+
+import "common/common.proto";
+import "public/api.proto";
+
+service Tap {
+  rpc Tap(public.TapRequest) returns (stream common.TapEvent) {}
+}

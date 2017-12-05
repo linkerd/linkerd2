@@ -1,0 +1,64 @@
+@import 'styles.css';
+
+.list-container {
+  width: 100%;
+  float: right;
+  min-height: 50vh;
+/*  background-color: #ff6600;*/
+  background-image: url(./../img/sidebar-bg.png);
+  background-size: auto 100%;
+}
+
+.sidebar {
+  width: 100%;
+  padding: 0px 0px 0px 20%;
+  float: right;
+  background-color: #071E3C;
+  color: white;
+  height: 100vh;
+  min-height: 200vh;
+
+  & .sidebar-menu {
+    background: none;
+  }
+
+  & .sidebar-menu-item {
+    padding-left: 9px;
+    font-size: 18px;
+    font-weight: var(--font-weight-bold);
+    & a {
+      color: white;
+    }
+  }
+
+  & img {
+    height: 36px;
+  }
+
+  & .sidebar-headers {
+    margin: 27px 0px 27px 0px;
+  }
+
+  & .ant-menu-item-active, & .ant-menu:not(.ant-menu-horizontal) .ant-menu-item-selected {
+    background: #2D9CDB;
+  }
+
+  & .conduit-current-version {
+    border: none;
+    margin: 0;
+    padding: 0 0 0 9px;
+    position: fixed;
+    height: 40px;
+    width: 150px;
+    bottom: calc(var(--base-width));
+    color: white;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  & .conduit-version-check {
+    border: none;
+    margin: 0;
+    padding: 0;
+  }
+}

@@ -1,0 +1,14 @@
+#!/bin/sh
+
+# Builds our base runtime docker image.
+
+set -eu
+
+. bin/_docker.sh
+
+tag="${1:-2017-10-30.01}"
+
+docker_maybe_build . \
+    "$(docker_repo base)" \
+    "${tag}" \
+    Dockerfile-base

@@ -1,0 +1,32 @@
+@import 'styles.css';
+
+.summary-stat {
+  float: left;
+  width: 50%;
+}
+
+.deployments-list, .scatterplot {
+  padding-top: 30px;
+}
+
+.line-graph {
+  margin-top: var(--base-width);
+}
+
+.scatterplot-tooltip .chart-label {
+  float: left;
+}
+
+.scatterplot-tooltip .tooltip {
+  float: right;
+  color: black;
+  font-weight: bold;
+}
+
+& .border-container {
+  height: 151px; /* override height */
+}
+
+& .border-container-content {
+  height: 135px; /* override height */
+}

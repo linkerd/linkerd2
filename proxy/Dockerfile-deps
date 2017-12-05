@@ -1,0 +1,17 @@
+FROM rust:1.21.0
+WORKDIR /usr/src/conduit
+COPY codegen ./codegen
+COPY futures-mpsc-lossy ./futures-mpsc-lossy
+COPY tower-h2 ./tower-h2
+COPY tower-router ./tower-router
+COPY tower-grpc-examples ./tower-grpc-examples
+COPY tower-grpc-build ./tower-grpc-build
+COPY tower-grpc ./tower-grpc
+COPY Cargo.toml Cargo.lock ./
+COPY proto ./proto
+COPY proxy ./proxy
+
+# Cache as much as possible; but don't keep aroud the artifact or things might get
+# confusing.
+RUN cargo build -p conduit-proxy           && rm target/debug/conduit-proxy
+RUN cargo build -p conduit-proxy --release && rm target/release/conduit-proxy

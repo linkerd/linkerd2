@@ -1,0 +1,73 @@
+@import 'styles.css';
+
+.entity-health {
+  margin-bottom: 32px;
+
+  & .metric-title {
+    text-transform: uppercase;
+    font-weight: var(--font-weight-bold);
+  }
+
+  & .metric-value {
+    font-weight: var(--font-weight-extra-bold);
+  }
+
+  & .entity-title {
+    text-align: center;
+    border-radius: 4px;
+    padding: 0 var(--base-width);
+
+    &.health-good {
+      border: 2px solid #27AE60;
+    }
+    &.health-bad {
+      border: 2px solid #EB5757;
+    }
+    &.health-neutral {
+      border: 2px solid #108ee9;
+    }
+  }
+
+  & .adjacent-health {
+    /* override ant progress bar styles */
+    &.health-good {
+      & .ant-progress-bg {
+        background: #27AE60;
+      }
+    }
+    &.health-bad {
+      & .ant-progress-bg {
+        background: #EB5757;
+      }
+    }
+    &.health-neutral {
+      & .ant-progress-bg {
+        background: #108ee9;
+      }
+    }
+  }
+
+  & .entity-count {
+    height: 20px;
+  }
+
+  & .float-left {
+    float: left;
+  }
+  & .float-right {
+    float: right;
+  }
+
+  /* override ant for our custom component */
+  & .ant-progress.ant-progress-line {
+    margin-top: 4px;
+  }
+  & .ant-progress-show-info .ant-progress-outer {
+    margin-right: 0;
+    padding-right: 0;
+
+    & .ant-progress-bg {
+      border-radius: 0;
+    }
+  }
+}

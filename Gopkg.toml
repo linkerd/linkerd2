@@ -1,0 +1,25 @@
+required = ["github.com/golang/protobuf/protoc-gen-go"]
+
+[[constraint]]
+  name = "google.golang.org/grpc"
+  version = "1.7.0"
+
+[[constraint]]
+  name = "github.com/spf13/cobra"
+  revision = "7b2c5ac9fc04fc5efafb60700713d4fa609b777b" # cobra has no release tags at time of writing
+
+[[constraint]]
+  name = "k8s.io/client-go"
+  version = "2.0.0"
+
+[[constraint]]
+  name = "github.com/sirupsen/logrus"
+  version = "v1.0.3"
+
+[[constraint]]
+  name = "github.com/pkg/browser"
+  revision = "c90ca0c84f15f81c982e32665bffd8d7aac8f097" # browser has no release tags at time of writing
+
+[[constraint]]
+  name = "github.com/golang/protobuf"
+  revision = "1e59b77b52bf8e4b449a57e6f79f21226d571845" # protobuf has no release tags at time of writing

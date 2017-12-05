@@ -1,0 +1,32 @@
+#!/bin/sh
+
+set -eu
+
+. bin/_docker.sh
+. bin/_tag.sh
+
+if [ $# -eq 0 ]; then
+    tag="$(clean_head_root_tag)"
+elif [ $# -eq 1 ]; then
+    tag="${1:-}"
+else
+    echo "usage: $(basename $0) [tag]" >&2
+    exit 64
+fi
+
+docker_image() {
+    repo="$(docker_repo "$1")"
+    docker image ls \
+        --format "{{printf \"%-16s %-10s\" \"$1\" \"${2}\"}} {{.Size | printf \"%6s\"}}  {{.ID}}  {{.CreatedAt}}" \
+        "${repo}:${2}"
+}
+
+docker_image controller   "${tag}"
+docker_image proxy        "${tag}"
+docker_image proxy-init   "${tag}"
+docker_image web          "${tag}"
+docker_image cli          "${tag}"
+docker_image cli-bin      "${tag}"
+
+docker_image go-deps      "$(gopkg_sha)"
+docker_image proxy-deps   "$(cargo_sha)"

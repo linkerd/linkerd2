@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package conduit.controller.telemetry;
+
+import "public/api.proto";
+
+/// Telemetry Service ///
+//
+// Internal Telemetry Service read API
+
+service Telemetry {
+  rpc Query(QueryRequest) returns (QueryResponse) {}
+  rpc ListPods(ListPodsRequest) returns (public.ListPodsResponse) {}
+}
+
+message QueryRequest {
+  string query = 1;
+  int64 start_ms = 2;
+  int64 end_ms = 3;
+  string step = 4;
+}
+
+message QueryResponse {
+  repeated Sample metrics = 1;
+}
+
+message Sample {
+  repeated SampleValue values = 1;
+  map<string, string> labels = 2;
+}
+
+message SampleValue {
+  double value = 1;
+  int64 timestamp_ms = 2;
+}
+
+message ListPodsRequest {}

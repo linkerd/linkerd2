@@ -1,0 +1,17 @@
+{{ define "content" }}
+  <div class="main" id="main" data-release-version="{{.Data.ReleaseVersion}}" data-go-version="{{.Data.GoVersion}}" data-namespace="{{.Namespace}}" data-uuid="{{.UUID}}">
+    {{ if .Error }}
+      <p>Failed to call public API: {{ .ErrorMessage }}</p>
+    {{ end }}
+  </div>
+{{ end }}
+
+{{ define "script-tags" }}
+  {{with .Context}}
+    {{ if .WebpackDevServer}}
+      <script type="text/javascript" src="{{.WebpackDevServer}}/dist/index_bundle.js" async></script>
+    {{else}}
+      <script type="text/javascript" src="dist/index_bundle.js" async></script>
+    {{end}}
+  {{end}}
+{{end}}

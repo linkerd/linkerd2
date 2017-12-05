@@ -1,0 +1,14 @@
+# A base image including all vendored dependencies, for building go projects
+
+FROM golang:1.9.1
+
+# get dep
+RUN curl -fsSL -o /usr/local/bin/dep https://github.com/golang/dep/releases/download/v0.3.1/dep-linux-amd64 && chmod +x /usr/local/bin/dep
+
+# ensure all dependencies are vendored
+WORKDIR /go/src/github.com/runconduit/conduit
+COPY . .
+RUN dep ensure && dep prune
+
+# remove all of the non dep related files
+RUN find . -not -name 'Gopkg*' -not -path './vendor*' -delete

@@ -1,0 +1,23 @@
+#!/bin/sh
+
+set -eu
+
+. bin/_tag.sh
+
+if [ $# -eq 0 ]; then
+    tag="$(clean_head_root_tag)"
+elif [ $# -eq 1 ]; then
+    tag="${1:-}"
+else
+    echo "usage: $(basename $0) [tag]" >&2
+    exit 64
+fi
+
+. bin/_docker.sh
+
+docker_pull proxy        "${tag}"  || true
+docker_pull proxy-init   "${tag}"  || true
+docker_pull controller   "${tag}"  || true
+docker_pull web          "${tag}"  || true
+docker_pull cli          "${tag}"  || true
+docker_pull cli-bin      "${tag}"  || true

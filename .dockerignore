@@ -1,0 +1,15 @@
+.travis.yml
+.git
+**/.idea
+**/cmake-*
+**/CMakeLists.txt
+*.iml
+bin
+**/Dockerfile*
+Dockerfile*
+**/target
+target
+!target/docker-build
+web/app/node_modules
+web/app/dist
+vendor

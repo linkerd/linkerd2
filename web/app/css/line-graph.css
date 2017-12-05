@@ -1,0 +1,23 @@
+@import 'styles.css';
+@import 'scatterplot.css';
+
+.chart-line {
+  fill: none;
+  stroke-width: 2px;
+}
+
+.line {
+  stroke: steelblue;
+}
+
+.line-p50 {
+  stroke: var(--latency-p50);
+}
+
+.line-p95 {
+  stroke: var(--latency-p95);
+}
+
+.line-p99 {
+  stroke: var(--latency-p99);
+}

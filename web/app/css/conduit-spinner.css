@@ -1,0 +1,25 @@
+svg path {
+  stroke: #ff576b;
+  stroke-width: 1px;
+}
+
+@keyframes offset {
+  to {
+    stroke-dashoffset: 0px;
+  }
+}
+
+.conduit-mark {
+  animation: offset 7s linear forwards;
+  stroke-dasharray: 400px;
+  stroke-dashoffset: 400px;
+  animation-delay: 0s;
+  animation-iteration-count: infinite;
+}
+
+.spinner-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 75vh;
+}

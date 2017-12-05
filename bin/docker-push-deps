@@ -1,0 +1,10 @@
+#!/bin/sh
+
+set -eu
+
+. bin/_docker.sh
+. bin/_tag.sh
+
+docker_push base         2017-10-30.01
+docker_push go-deps      "$(gopkg_sha)"
+docker_push proxy-deps   "$(cargo_sha)"

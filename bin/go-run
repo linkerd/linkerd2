@@ -1,0 +1,12 @@
+#!/bin/sh
+
+set -eu
+
+if [ "$#" -eq 0 ]; then
+  echo "Usage: bin/go-run path/to/main [args]" >&2
+  exit 1
+fi
+
+go build -v -i -race -o .gorun ./"$1"
+shift
+exec ./.gorun "$@"

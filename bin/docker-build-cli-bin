@@ -1,0 +1,42 @@
+#!/bin/sh
+
+set -eu
+
+. bin/_docker.sh
+. bin/_tag.sh
+
+if [ $# -eq 0 ]; then
+    tag="$(clean_head_root_tag)"
+elif [ $# -eq 1 ]; then
+    tag="${1:-}"
+else
+    echo "usage: $(basename $0) [tag]" >&2
+    exit 64
+fi
+
+(
+    unset DOCKER_FORCE_BUILD
+    bin/docker-build-base
+    bin/docker-build-go-deps
+) >/dev/null
+
+IMG=$(docker_maybe_build . \
+    "$(docker_repo cli-bin)" \
+    "${tag}" \
+    cli/Dockerfile-bin)
+
+ID=$(docker create "$IMG")
+
+for OS in linux macos ; do
+    DIR="target/cli/${OS}"
+    mkdir -p "$DIR"
+
+    if docker cp "$ID:/out/conduit-${OS}" "$DIR/conduit" ; then
+        echo "$DIR/conduit"
+    else
+        docker rm "$ID" >/dev/null
+        exit 1
+    fi
+done
+
+docker rm "$ID" >/dev/null

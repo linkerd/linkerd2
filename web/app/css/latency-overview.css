@@ -1,0 +1,30 @@
+@import 'styles.css';
+
+.current-latency {
+  & .latency-metric {
+    float: left;
+    width: 197px;
+    height: 28px;
+    padding-left: 8px;
+    height: 100%;
+
+    & .latency-title {
+      font-size: 12px;
+    }
+
+    & .latency-value {
+      font-size: 16px;
+      font-weight: var(--font-weight-bold);
+    }
+  }
+
+  & .current-latency-P50 {
+    border-left: 4px solid var(--latency-p50);;
+  }
+  & .current-latency-P95 {
+    border-left: 4px solid var(--latency-p95);
+  }
+  & .current-latency-P99 {
+    border-left: 4px solid var(--latency-p99);
+  }
+}

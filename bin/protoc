@@ -1,0 +1,28 @@
+#!/bin/sh
+
+set -eu
+
+if [ "$(uname -s)" = "Darwin" ]; then
+  os=osx
+else
+  os=linux
+fi
+arch=$(uname -m)
+
+protocbin=.protoc
+protocversion=3.4.0
+protocurl="https://github.com/google/protobuf/releases/download/v${protocversion}/protoc-${protocversion}-${os}-${arch}.zip"
+
+if [ ! -f "$protocbin" ]; then
+  tmp=$(mktemp -d -t protoc.XXX)
+  (
+    cd $tmp
+    curl -L --silent --fail -o "$protocbin.zip" "$protocurl"
+    jar xf "$protocbin.zip"
+    chmod +x bin/protoc
+  )
+  mv "$tmp/bin/protoc" "$protocbin"
+  rm -rf "$tmp"
+fi
+
+./$protocbin "$@"

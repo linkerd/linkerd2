@@ -1,0 +1,10 @@
+[package]
+name = "tower-router"
+version = "0.1.0"
+authors = ["Carl Lerche <me@carllerche.com>"]
+publish = false
+
+[dependencies]
+futures = "0.1"
+ordermap = "0.2"
+tower = { git = "https://github.com/tower-rs/tower" }

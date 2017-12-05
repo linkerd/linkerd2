@@ -1,0 +1,15 @@
+# A base image for runtimes.
+#
+# This means that all Conduit containers share a common set of tools, and furthermore, they
+# are highly cacheable at runtime.
+
+FROM debian:jessie-slim
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        dnsutils \
+        iptables \
+        jq \
+        nghttp2 \
+    && rm -rf /var/lib/apt/lists/*

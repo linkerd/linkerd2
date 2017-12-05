@@ -1,0 +1,75 @@
+syntax = "proto3";
+
+package conduit.proxy.tap;
+
+import "common/common.proto";
+
+// A service exposed by proxy instances to setup
+service Tap {
+  rpc Observe(ObserveRequest) returns (stream common.TapEvent) {}
+}
+
+message ObserveRequest {
+  // Limits the number of event keys that will be returned by this tap.
+  uint32 limit  = 1;
+
+  // Encodes request-matching logic.
+  Match match = 2;
+
+  message Match {
+    message Seq {
+      repeated Match matches = 1;
+    }
+
+    oneof match {
+      Seq all = 1;
+      Seq any = 2;
+      Match not = 3;
+
+      Tcp source  = 4;
+      Tcp destination = 5;
+      Http http = 6;
+    }
+
+    message Tcp {
+      oneof match {
+        Netmask netmask = 1;
+
+        PortRange ports = 3;
+      }
+
+      message Netmask {
+        common.IPAddress ip = 1;
+
+        uint32 mask =2;
+      }
+
+      // If either a minimum or maximum is not specified, the range is considered to be
+      // over a discrete value.
+      message PortRange {
+        // Minimum matching port value (inclusive), if specified.
+        uint32 min = 1;
+
+        // Maximum matching port value (inclusive), if specified.
+        uint32 max = 2;
+      }
+    }
+
+    message Http {
+      oneof match {
+        common.Scheme     scheme    = 1;
+        common.HttpMethod method    = 3;
+        StringMatch       authority = 2;
+        StringMatch       path      = 4;
+        // TODO Header    header    = 4;
+      }
+
+      message StringMatch {
+        oneof match {
+          string exact  = 1;
+          string prefix = 2;
+        }
+      }
+    }
+  }
+}

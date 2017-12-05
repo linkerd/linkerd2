@@ -1,0 +1,40 @@
+@import 'styles.css';
+
+.deployment-detail {
+  & .upstream-downstream-list {
+    margin-bottom: 30px;
+  }
+
+  & .deployment-details {
+    &.border-container {
+      height: 276px; /* override height */
+    }
+    & .border-container-content {
+      height: 260px; /* override height */
+    }
+
+    & .metric {
+      padding: 15px 0;
+    }
+    & .metric:not(:last-child) {
+      border-bottom: 1px solid grey;
+    }
+  }
+
+  & .border-container {
+    height: 151px; /* override height */
+  }
+
+  & .border-container-content {
+    height: 135px; /* override height */
+
+    & .summary-container .metric-info {
+      float: left;
+    }
+
+    & .summary-container .metric-value {
+      float: right;
+    }
+  }
+
+}

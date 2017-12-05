@@ -1,0 +1,13 @@
+#!/bin/sh
+
+set -eu
+
+. bin/_docker.sh
+. bin/_tag.sh
+
+image=$(docker_maybe_build . \
+    "$(docker_repo go-deps)" \
+    "$(gopkg_sha)" \
+    Dockerfile-go-deps)
+
+echo "$image"

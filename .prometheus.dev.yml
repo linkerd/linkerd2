@@ -1,0 +1,33 @@
+# used in docker-compose configurations
+
+global:
+  scrape_interval:     10s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'web'
+    static_configs:
+      - targets: ['web:9994']
+
+  - job_name: 'public-api'
+    static_configs:
+      - targets: ['public-api:9995']
+
+  - job_name: 'proxy-api'
+    static_configs:
+      - targets: ['proxy-api:9996']
+
+  - job_name: 'telemetry'
+    static_configs:
+      - targets: ['telemetry:9997']
+
+  - job_name: 'tap'
+    static_configs:
+      - targets: ['tap:9998']
+
+  - job_name: 'destination'
+    static_configs:
+      - targets: ['destination:9999']

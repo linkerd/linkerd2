@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package conduit.proxy.destination;
+
+import "common/common.proto";
+
+/// Destination Service ///
+//
+// This is the service discovery API.  Given a destination, this returns a
+// weighted set of addresses and address metadata.  Can be implemented with DNS
+// or lookups against other service discovery backends.
+//
+// The controller is expected to send an Update every time there is a
+// change in service discovery.  The controller is also expected to send an 
+// update at least once every ADDRESS_UPDATE_INTERVAL to indicate that the 
+// controller is still healthy.  If no service discovery updates have taken
+// place, the controller can simply send an empty `add`.  The controller may
+// determine the value of ADDRESS_UPDATE_INTERVAL.
+
+service Destination {
+  // Given a destination, return all addresses in that destination as a long-
+  // running stream of updates.
+  rpc Get(common.Destination) returns (stream Update) {}
+}
+
+message Update {
+  oneof update {
+    WeightedAddrSet add = 1;
+    AddrSet remove = 2;
+  }
+}
+
+message AddrSet {
+  repeated common.TcpAddress addrs = 1;
+}
+
+message WeightedAddrSet {
+  repeated WeightedAddr addrs = 1;
+}
+
+message WeightedAddr {
+  common.TcpAddress addr = 1;
+  uint32 weight = 3; 
+}

@@ -1,0 +1,49 @@
+@import 'styles.css';
+
+.header-with-metric {
+  margin-top: 32px;
+
+  & .subsection-header {
+    float: left;
+  }
+  & .metric {
+    float: right;
+  }
+}
+
+.mesh-section .metric-large {
+  width: 131px;
+}
+
+.instructions {
+  font-size: 14px;
+  font-weight: var(--font-weight-bold);
+  padding: 8px 0;
+}
+
+.incomplete-mesh-message, .complete-mesh-message {
+  background-color: var(--messageblue);
+  color: white;
+  padding: var(--base-width);
+  font-size: 16;
+  font-weight: var(--font-weight-extra-bold);
+}
+
+/* styles for the StatusTable */
+td .status-dot {
+  float: left;
+  width: calc(2 * var(--base-width));
+  min-width: calc(2 * var(--base-width));
+  border-radius: 50%;
+  margin-right: var(--base-width);
+
+  &.status-dot-good {
+    background-color: #27AE60;
+  }
+  &.status-dot-bad {
+    background-color: #EB5757;
+  }
+  &.status-dot-neutral {
+    background-color: #E0E0E0;
+  }
+}

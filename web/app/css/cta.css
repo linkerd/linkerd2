@@ -1,0 +1,62 @@
+@import 'styles.css';
+@import 'font-awesome.min.css';
+
+.call-to-action {
+  padding: 16px 0;
+
+  & .action {
+    font-size: 14px;
+    font-weight: var(--font-weight-bold);
+    padding: 8px 0;
+  }
+
+  & .summary {
+    color: #27AE60;
+
+  }
+
+  & .action-steps div {
+    height: 41px;
+    line-height: 41px;
+    margin-bottom: 8px;
+  }
+
+  & .step-container {
+    border-radius: 42px;
+  }
+
+  & .step-container > div {
+    float: left;
+    text-align: center;
+  }
+
+  & .icon-container {
+    border-radius: 41px;
+    width: 37px;
+    background-color: white;
+  }
+
+  & .step-container .fa {
+    font-size: 2em;
+    line-height: 41px;
+  }
+
+  & .action-steps {
+    font-size: 14px;
+    font-weight: var(--font-weight-bold);
+
+    & .message {
+      color: white;
+      padding-left: 8px;
+    }
+
+    & .complete {
+      color: #27AE60;
+      background-color: #27AE60;
+    }
+    & .incomplete {
+      color: #828282;
+      background-color: #828282;
+    }
+  }
+}

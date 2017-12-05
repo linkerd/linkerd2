@@ -1,0 +1,26 @@
+#!/bin/sh
+
+set -eu
+
+. bin/_docker.sh
+. bin/_tag.sh
+
+if [ $# -eq 0 ]; then
+    tag="$(clean_head_root_tag)"
+elif [ $# -eq 1 ]; then
+    tag="${1:-}"
+else
+    echo "usage: $(basename $0) [tag]" >&2
+    exit 64
+fi
+
+(
+    unset DOCKER_FORCE_BUILD
+    bin/docker-build-base
+    bin/docker-build-go-deps
+) >/dev/null
+
+docker_maybe_build . \
+    "$(docker_repo web)" \
+    "${tag}" \
+    web/Dockerfile

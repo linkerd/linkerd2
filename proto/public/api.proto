@@ -1,0 +1,131 @@
+syntax = "proto3";
+
+package conduit.public;
+
+import "google/protobuf/duration.proto";
+
+import "common/common.proto";
+
+enum MetricName {
+  REQUEST_RATE = 0;
+  LATENCY = 1;
+  SUCCESS_RATE = 2;
+}
+
+enum TimeWindow {
+  TEN_SEC = 0;
+  ONE_MIN = 1;
+  TEN_MIN = 2;
+  ONE_HOUR = 3;
+}
+
+enum AggregationType {
+  TARGET_POD = 0;
+  TARGET_DEPLOY = 1;
+  SOURCE_POD = 2;
+  SOURCE_DEPLOY = 3;
+  MESH = 4;
+}
+
+enum HistogramLabel {
+  MIN = 0;
+  P50 = 1;
+  P95 = 2;
+  P99 = 3;
+  MAX = 4;
+}
+
+message HistogramValue {
+  HistogramLabel label = 1;
+  int64 value = 2;
+}
+
+message Histogram {
+  repeated HistogramValue values = 1;
+}
+
+message MetricValue {
+  oneof value {
+    int64 counter = 1;
+    double gauge = 2;
+    Histogram histogram = 3;
+  }
+}
+
+message MetricDatapoint {
+  MetricValue value = 1;
+  int64 timestamp_ms = 2;
+}
+
+message MetricSeries {
+  MetricName name = 1;
+  MetricMetadata metadata = 2;
+  repeated MetricDatapoint datapoints = 3;
+}
+
+message MetricMetadata {
+  string targetPod = 1;
+  string targetDeploy = 2;
+  string sourcePod = 3;
+  string sourceDeploy = 4;
+  string component = 5;
+}
+
+message MetricResponse {
+  repeated MetricSeries metrics = 1;
+}
+
+message MetricRequest {
+  repeated MetricName metrics = 1;
+  TimeWindow window = 2;
+  AggregationType groupBy = 3;
+  MetricMetadata filterBy = 4;
+  bool summarize = 5;
+}
+
+message Empty {}
+
+message VersionInfo {
+  string goVersion = 1;
+  string buildDate = 2;
+  string releaseVersion = 3;
+}
+
+message ListPodsResponse {
+  repeated Pod pods = 1;
+}
+
+message Pod {
+  string name = 1;
+  string podIP = 2;
+  string deployment = 3;
+  string status = 4;
+  bool added = 5; // true if this pod has a proxy sidecar (data plane)
+  google.protobuf.Duration sinceLastReport = 6;
+  string controllerNamespace = 7; // namespace of contoller this pod reports to
+  bool controlPlane = 8; // true if this pod is part of the control plane
+}
+
+message TapRequest {
+  oneof target {
+    string pod = 1;
+    string deployment = 2;
+  }
+  // validation of these fields happens on the server
+  float maxRps = 3;
+  uint32 toPort = 4;
+  string toIP = 5;
+  uint32 fromPort = 6;
+  string fromIP = 7;
+  string scheme = 8;
+  string method = 9;
+  string authority = 10;
+  string path = 11;
+}
+
+service Api {
+  rpc Stat(MetricRequest) returns (MetricResponse) {}
+  rpc Version(Empty) returns (VersionInfo) {}
+  rpc ListPods(Empty) returns (ListPodsResponse) {}
+  rpc Tap(TapRequest) returns (stream common.TapEvent) {}
+}

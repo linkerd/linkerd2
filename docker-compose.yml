@@ -1,0 +1,101 @@
+version: '3'
+
+services:
+  destination:
+    build:
+      context: .
+      dockerfile: controller/Dockerfile
+    ports:
+    - "8089:8089"
+    - "9999:9999"
+    volumes:
+    - ~/.kube/config:/kubeconfig:ro
+    command:
+    - destination
+    - -addr=:8089
+    - -metrics-addr=:9999
+    - -kubeconfig=/kubeconfig
+
+  tap:
+    build:
+      context: .
+      dockerfile: controller/Dockerfile
+    ports:
+    - "8088:8088"
+    - "9998:9998"
+    volumes:
+    - ~/.kube/config:/kubeconfig:ro
+    command:
+    - tap
+    - -addr=:8088
+    - -metrics-addr=:9998
+    - -kubeconfig=/kubeconfig
+
+  telemetry:
+    build:
+      context: .
+      dockerfile: controller/Dockerfile
+    ports:
+    - "8087:8087"
+    - "9997:9997"
+    volumes:
+    - ~/.kube/config:/kubeconfig:ro
+    command:
+    - telemetry
+    - -addr=:8087
+    - -metrics-addr=:9997
+    - -prometheus-url=http://prometheus:9090
+    - -kubeconfig=/kubeconfig
+
+  proxy-api:
+    build:
+      context: .
+      dockerfile: controller/Dockerfile
+    ports:
+    - "8086:8086"
+    - "9996:9996"
+    command:
+    - proxy-api
+    - -addr=:8086
+    - -metrics-addr=:9996
+    - -telemetry-addr=telemetry:8087
+    - -destination-addr=destination:8089
+
+  public-api:
+    build:
+      context: .
+      dockerfile: controller/Dockerfile
+    ports:
+    - "8085:8085"
+    - "9995:9995"
+    command:
+    - public-api
+    - -addr=:8085
+    - -metrics-addr=:9995
+    - -telemetry-addr=telemetry:8087
+    - -tap-addr=tap:8088
+
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    ports:
+    - "8084:8084"
+    - "9994:9994"
+    command:
+    - -addr=:8084
+    - -metrics-addr=:9994
+    - -api-addr=public-api:8085
+    - -static-dir=/dist
+    - -template-dir=/templates
+
+  prometheus:
+    image: prom/prometheus:v1.8.1
+    ports:
+    - 9090:9090
+    volumes:
+    - .prometheus.dev.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+    - -config.file=/etc/prometheus/prometheus.yml
+    - -storage.local.memory-chunks=500000
+    - -storage.local.retention=6h
