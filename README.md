@@ -10,12 +10,12 @@ TODO
 
 :balloon: Welcome to Conduit! :wave:
 
-Conduit is an ultralight service mesh for Kubernetes from the makers of [linkerd]. It
+Conduit is an ultralight service mesh for Kubernetes from the makers of [linkerd][l5d]. It
 features a native proxy, written in [Rust][rust], that boasts the performance of C without
 all the heartbleed.
 
 Conduit is **experimental**. Currently, it _only supports HTTP/2_ and is especially
-well-suited for [gRPC][grpc]). We have an aggressive [roadmap][roadmap] towards
+well-suited for [gRPC][grpc]. We have an aggressive [roadmap][roadmap] towards
 production-readiness.
 
 ## Code of Conduct
@@ -42,6 +42,7 @@ specific language governing permissions and limitations under the License.
 [coc]: https://github.com/linkerd/linkerd/wiki/Linkerd-code-of-conduct
 <!-- [examples]: https://github.com/runconduit/conduit-examples -->
 [grpc]: https://grpc.io/
+[l5d]: https://linkerd.io/
 [license-badge]: https://img.shields.io/github/license/linkerd/linkerd.svg
 [logo]: https://user-images.githubusercontent.com/240738/33589722-649152de-d92f-11e7-843a-b078ac889a39.png
 <!-- [releases]: https://github.com/runconduit/conduit -->
