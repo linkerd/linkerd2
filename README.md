@@ -8,7 +8,7 @@ TODO
 - discourse
 -->
 
-:balloon: Welcome to conduit! :wave:
+:balloon: Welcome to Conduit! :wave:
 
 Conduit is an ultralight service mesh for Kubernetes from the makers of [linkerd]. It
 features a native proxy, written in [Rust][rust], that boasts the performance of C without
