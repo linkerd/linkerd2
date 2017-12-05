@@ -355,7 +355,7 @@ type enhancedDaemonSet struct {
 
 func init() {
 	RootCmd.AddCommand(injectCmd)
-	injectCmd.PersistentFlags().StringVarP(&version, "conduit-version", "v", "latest", "tag to be used for conduit images")
+	injectCmd.PersistentFlags().StringVarP(&version, "conduit-version", "v", "v0.1.0", "tag to be used for conduit images")
 	injectCmd.PersistentFlags().StringVar(&initImage, "init-image", "gcr.io/runconduit/proxy-init", "Conduit init container image name")
 	injectCmd.PersistentFlags().StringVar(&proxyImage, "proxy-image", "gcr.io/runconduit/proxy", "Conduit proxy container image name")
 	injectCmd.PersistentFlags().StringVar(&imagePullPolicy, "image-pull-policy", "IfNotPresent", "Docker image pull policy")

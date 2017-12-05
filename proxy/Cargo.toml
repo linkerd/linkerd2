@@ -1,6 +1,6 @@
 [package]
 name = "conduit-proxy"
-version = "0.0.1"
+version = "0.1.0"
 authors = ["Oliver Gould <ver@buoyant.io>"]
 publish = false
 

@@ -7,15 +7,15 @@ import (
 	"testing"
 	"time"
 
-	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/golang/protobuf/proto"
+	pb "github.com/runconduit/conduit/controller/gen/public"
 )
 
 func TestClientUnmarshal(t *testing.T) {
 	versionInfo := pb.VersionInfo{
 		GoVersion:      "1.9.1",
 		BuildDate:      "2017.11.17",
-		ReleaseVersion: "0.0.1",
+		ReleaseVersion: "0.1.0",
 	}
 
 	var unmarshaled pb.VersionInfo
