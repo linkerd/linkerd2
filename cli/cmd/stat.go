@@ -36,6 +36,7 @@ var statCmd = &cobra.Command{
 Valid resource types include:
  * pods (aka pod, po)
  * deployments (aka deployment, deploy)
+ * paths (aka path, pa)
 
 The optional [TARGET] option can be either a name for a deployment or pod resource`,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -47,7 +48,7 @@ The optional [TARGET] option can be either a name for a deployment or pod resour
 			resourceType = args[0]
 			target = args[1]
 		default:
-			return errors.New("please specify a resource type: pods or deployments")
+			return errors.New("please specify a resource type: pods, deployments or paths")
 		}
 
 		switch resourceType {
@@ -55,6 +56,8 @@ The optional [TARGET] option can be either a name for a deployment or pod resour
 			return makeStatsRequest(pb.AggregationType_TARGET_POD)
 		case "deployments", "deployment", "deploy":
 			return makeStatsRequest(pb.AggregationType_TARGET_DEPLOY)
+		case "paths", "path", "pa":
+			return makeStatsRequest(pb.AggregationType_PATH)
 		default:
 			return errors.New("invalid resource type")
 		}
@@ -115,6 +118,8 @@ func displayStats(resp *pb.MetricResponse, w *tabwriter.Writer) {
 			name = metadata.TargetPod
 		} else if metadata.TargetDeploy != "" {
 			name = metadata.TargetDeploy
+		} else if metadata.Path != "" {
+			name = metadata.Path
 		}
 
 		if _, ok := stats[name]; !ok {
@@ -142,7 +147,7 @@ func displayStats(resp *pb.MetricResponse, w *tabwriter.Writer) {
 	for _, name := range sortedNames {
 		fmt.Fprintf(
 			w,
-			"%s\t%frps\t%f%%\t%dms\t%dms\n",
+			"%s\t%.2frps\t%.2f%%\t%dms\t%dms\n",
 			name,
 			stats[name].requestRate,
 			stats[name].successRate*100,
@@ -164,6 +169,9 @@ func buildMetricRequest(aggregationType pb.AggregationType) (*pb.MetricRequest, 
 	}
 	if target != "all" && aggregationType == pb.AggregationType_TARGET_DEPLOY {
 		filterBy.TargetDeploy = target
+	}
+	if target != "all" && aggregationType == pb.AggregationType_PATH {
+		filterBy.Path = target
 	}
 
 	return &pb.MetricRequest{

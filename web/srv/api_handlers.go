@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/runconduit/conduit/controller/api/util"
-	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/julienschmidt/httprouter"
+	"github.com/runconduit/conduit/controller/api/util"
+	pb "github.com/runconduit/conduit/controller/gen/public"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -123,6 +123,7 @@ func (h *handler) handleApiMetrics(w http.ResponseWriter, req *http.Request, p h
 		SourcePod:    req.FormValue("source_pod"),
 		SourceDeploy: req.FormValue("source_deploy"),
 		Component:    req.FormValue("component"),
+		Path:         req.FormValue("path"),
 	}
 
 	metrics, groupBy, window, err := validateMetricParams(metricNameParam, aggParam, timeWindowParam)
