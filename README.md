@@ -1,4 +1,4 @@
-![linkerd][logo]
+![conduit][logo]
 
 [![GitHub license][license-badge]](LICENSE)
 [![Slack Status][slack-badge]][slack]
