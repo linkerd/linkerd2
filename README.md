@@ -15,8 +15,10 @@ features a native proxy, written in [Rust][rust], that boasts the performance of
 all the heartbleed.
 
 Conduit is **experimental**. Currently, it _only supports HTTP/2_ and is especially
-well-suited for [gRPC][grpc]. We have an aggressive [roadmap][roadmap] towards
-production-readiness.
+well-suited for [gRPC][grpc]. Follow our progress towards production-readiness here and on
+[twitter][twitter].
+
+<!-- TODO add roadmap link -->
 
 ## Code of Conduct
 
@@ -47,5 +49,6 @@ specific language governing permissions and limitations under the License.
 [logo]: https://user-images.githubusercontent.com/240738/33589722-649152de-d92f-11e7-843a-b078ac889a39.png
 <!-- [releases]: https://github.com/runconduit/conduit -->
 [rust]: https://rust-lang.org/
+[twitter]: https://twitter.com/runconduit/
 [slack-badge]: http://slack.linkerd.io/badge.svg
 [slack]: http://slack.linkerd.io
