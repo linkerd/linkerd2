@@ -14,7 +14,7 @@ Conduit is an ultralight service mesh for Kubernetes from the makers of [linkerd
 features a native proxy, written in [Rust][rust], that boasts the performance of C without
 all the heartbleed.
 
-Conduit is **experimental**. Currently, it _only supports HTTP/_ and is especially
+Conduit is **experimental**. Currently, it _only supports HTTP/2_ and is especially
 well-suited for [gRPC][grpc]). We have an aggressive [roadmap][roadmap] towards
 production-readiness.
 
