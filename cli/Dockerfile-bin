@@ -1,5 +1,5 @@
 ## compile binaries
-FROM gcr.io/runconduit/go-deps:4cf1f22f as golang
+FROM gcr.io/runconduit/go-deps:e258aef9 as golang
 WORKDIR /go/src/github.com/runconduit/conduit
 COPY cli cli
 COPY controller controller

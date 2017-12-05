@@ -1,5 +1,5 @@
 ## compile proxy-init utility
-FROM gcr.io/runconduit/go-deps:4cf1f22f as golang
+FROM gcr.io/runconduit/go-deps:e258aef9 as golang
 WORKDIR /go/src/github.com/runconduit/conduit
 COPY ./proxy-init ./proxy-init
 RUN CGO_ENABLED=0 GOOS=linux go install -v -a -installsuffix cgo ./proxy-init/
