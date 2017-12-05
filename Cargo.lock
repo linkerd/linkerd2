@@ -105,7 +105,7 @@ dependencies = [
 
 [[package]]
 name = "conduit-proxy"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "abstract-ns 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "bytes 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",

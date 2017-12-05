@@ -389,7 +389,7 @@ func validate() error {
 
 func init() {
 	RootCmd.AddCommand(installCmd)
-	installCmd.PersistentFlags().StringVarP(&version, "version", "v", "latest", "Conduit version to install")
+	installCmd.PersistentFlags().StringVarP(&version, "version", "v", "v0.1.0", "Conduit version to install")
 	installCmd.PersistentFlags().StringVarP(&dockerRegistry, "registry", "r", "gcr.io/runconduit", "Docker registry to pull images from")
 	installCmd.PersistentFlags().UintVar(&controllerReplicas, "controller-replicas", 1, "replicas of the controller to deploy")
 	installCmd.PersistentFlags().UintVar(&webReplicas, "web-replicas", 1, "replicas of the web server to deploy")
