@@ -1,5 +1,10 @@
+use std::borrow::Borrow;
 use std::collections::HashMap;
+use std::default::Default;
+use std::hash::Hash;
+use std::{thread, ops};
 use std::sync::Arc;
+use std::time::Duration;
 
 use support::*;
 
@@ -9,7 +14,13 @@ pub fn new() -> Server {
 
 #[derive(Debug)]
 pub struct Server {
-    routes: HashMap<String, String>,
+    routes: HashMap<String, Endpoint>,
+}
+
+#[derive(Debug, Default)]
+pub struct Endpoint {
+    response: String,
+    extra_latency: Option<Duration>,
 }
 
 #[derive(Debug)]
@@ -85,6 +96,54 @@ impl Server {
     }
 }
 
+impl<'a, Q: ?Sized> ops::Index<&'a Q> for Server 
+where 
+    String: Borrow<Q>,
+    Q: Hash + Eq,
+{
+    type Output = Endpoint;
+    fn index(&self, index: &'a Q) -> &Self::Output {
+        self.routes.index(index)
+    }
+}
+
+impl<'a, Q: ?Sized> ops::IndexMut<&'a Q> for Server 
+where 
+    String: Borrow<Q>,
+    Q: Hash + Eq,
+{
+    fn index_mut(&mut self, index: &'a Q) -> &mut Self::Output {
+        self.routes.get_mut(index).unwrap()
+    }
+}
+
+impl<S> From<S> for Endpoint
+where String: From<S> {
+    fn from(s: S) -> Self {
+        Endpoint {
+            response: String::from(s),
+            ..Default::default()
+        }
+    }
+}
+
+impl Endpoint {
+    /// Add extra latency to this endpoint.
+    pub fn extra_latency(&mut self, dur: Duration) -> &mut Self {
+        self.extra_latency = Some(dur);
+        self
+    }
+
+    /// Set the response.
+    pub fn response<S>(&mut self, rsp: S) -> &mut Self 
+    where
+        String: From<S>
+    {
+        self.response = String::from(rsp);
+        self
+    }
+}
+
 type Response = http::Response<RspBody>;
 
 struct RspBody(Option<Bytes>);
@@ -116,7 +175,7 @@ impl Body for RspBody {
 }
 
 #[derive(Debug)]
-struct Svc(Arc<HashMap<String, String>>);
+struct Svc(Arc<HashMap<String, Endpoint>>);
 
 impl Service for Svc {
     type Request = Request<RecvBody>;
@@ -134,8 +193,11 @@ impl Service for Svc {
 
         let path = req.uri().path();
         let rsp = match self.0.get(path) {
-            Some(body) => {
-                let body = RspBody::new(body.as_bytes().into());
+            Some(&Endpoint { ref response, ref extra_latency }) => {
+                if let &Some(ref duration) = extra_latency {
+                    thread::sleep(*duration);
+                }
+                let body = RspBody::new(response.as_bytes().into());
                 rsp.status(200).body(body).unwrap()
             }
             None => {
@@ -149,7 +211,7 @@ impl Service for Svc {
 }
 
 #[derive(Debug)]
-struct NewSvc(Arc<HashMap<String, String>>);
+struct NewSvc(Arc<HashMap<String, Endpoint>>);
 impl NewService for NewSvc {
     type Request = Request<RecvBody>;
     type Response = Response;

@@ -1,18 +1,21 @@
-use std::{u32, u64};
 use std::net;
 use std::sync::Arc;
 use std::time::Duration;
+use std::{u32, u64};
 
 use http;
 use ordermap::OrderMap;
 
-use control::pb::common::{HttpMethod, TcpAddress};
+use ctx;
+use control::pb::common::{
+    TcpAddress,
+    HttpMethod,
+};
 use control::pb::proxy::telemetry::{
     eos_ctx,
     ClientTransport,
     EosCtx,
     EosScope,
-    Latency as PbLatency,
     ReportRequest,
     RequestCtx,
     RequestScope,
@@ -22,8 +25,10 @@ use control::pb::proxy::telemetry::{
     StreamSummary,
     TransportSummary,
 };
-use ctx;
-use telemetry::event::Event;
+use telemetry::event::{Event};
+
+mod latency;
+use self::latency::*;
 
 #[derive(Debug)]
 pub struct Metrics {
@@ -46,14 +51,6 @@ struct RequestStats {
     count: u32,
     responses: OrderMap<Option<http::StatusCode>, ResponseStats>,
 }
-
-/// A latency in tenths of a millisecond.
-#[derive(Debug, Default, Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Hash)]
-struct Latency(pub u32);
-
-/// A series of latency values and counts.
-#[derive(Debug, Default)]
-struct Latencies(pub OrderMap<Latency, u32>);
 
 #[derive(Debug, Default)]
 struct ResponseStats {
@@ -115,9 +112,9 @@ impl Metrics {
                 self.transport(transport)
                     .disconnects
                     .push(TransportSummary {
-                        duration_ms: dur_to_ms(close.duration),
-                        bytes_sent: 0,
-                    });
+                    duration_ms: dur_to_ms(close.duration),
+                    bytes_sent: 0,
+                });
             }
 
             Event::StreamRequestOpen(ref req) => {
@@ -134,7 +131,7 @@ impl Metrics {
                     .entry(End::Reset(fail.error.into()))
                     .or_insert_with(Default::default);
 
-                stats.latencies.add(fail.since_request_open);
+                stats.latencies += fail.since_request_open;
                 ends.push(EndStats {
                     // We never got a response, but we need to a count
                     // for this request + end, so a 0 EndStats is used.
@@ -148,8 +145,8 @@ impl Metrics {
             }
 
             Event::StreamResponseOpen(ref res, ref open) => {
-                self.response(res).latencies.add(open.since_request_open);
-            }
+                self.response(res).latencies += open.since_request_open;
+            },
             Event::StreamResponseFail(ref res, ref fail) => {
                 self.response_end(res, End::Reset(fail.error.into()))
                     .push(EndStats {
@@ -202,7 +199,7 @@ impl Metrics {
                     .or_insert_with(TransportStats::default)
             }
             ctx::transport::Ctx::Client(ref c) => self.destinations
-                .entry(c.remote)
+                    .entry(c.remote)
                 .or_insert_with(TransportStats::default),
         }
     }
@@ -265,11 +262,11 @@ impl Metrics {
                 responses.push(ResponseScope {
                     ctx: status_code.map(|code| {
                         ResponseCtx {
-                            http_status_code: u32::from(code.as_u16()),
+                        http_status_code: u32::from(code.as_u16()),
                         }
                     }),
                     ends: ends,
-                    response_latencies: res_stats.latencies.into(),
+                    response_latencies: (&res_stats.latencies).into(),
                 });
             }
 
@@ -303,59 +300,6 @@ impl Metrics {
     }
 }
 
-// ===== impl Latency =====
-
-const MS_TO_NS: u32 = 1_000_000;
-
-impl From<Duration> for Latency {
-    fn from(dur: Duration) -> Self {
-        // TODO: represent ms conversion at type level...
-        let as_ms = dur_to_ms(dur);
-
-        // checked conversion to u32.
-        let as_ms = if as_ms > u64::from(u32::MAX) {
-            None
-        } else {
-            Some(as_ms as u32)
-        };
-
-        // divide the duration as ms by ten to get the value in tenths of a ms.
-        let as_tenths = as_ms.and_then(|ms| ms.checked_div(10)).unwrap_or_else(|| {
-            debug!("{:?} too large to convert to tenths of a millisecond!", dur);
-            u32::MAX
-        });
-
-        Latency(as_tenths)
-    }
-}
-
-
-// ===== impl Latencies =====
-
-impl Latencies {
-    #[inline]
-    fn add<L: Into<Latency>>(&mut self, latency: L) {
-        let value = self.0.entry(latency.into()).or_insert(0);
-        *value += 1;
-    }
-}
-
-impl Into<Vec<PbLatency>> for Latencies {
-    fn into(mut self) -> Vec<PbLatency> {
-        // NOTE: `OrderMap.drain` means we can reuse the allocated memory --- can we
-        //      ensure we're not allocating a new OrderMap after covnerting to pb?
-        self.0
-            .drain(..)
-            .map(|(Latency(latency), count)| {
-                PbLatency {
-                    latency,
-                    count,
-                }
-            })
-            .collect()
-    }
-}
-
 fn dur_to_ms(dur: Duration) -> u64 {
     dur.as_secs()
         // note that this could just be saturating addition if we didn't want
@@ -369,41 +313,4 @@ fn dur_to_ms(dur: Duration) -> u64 {
             debug!("{:?} too large to convert to ms!", dur);
             u64::MAX
         })
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn latencies_incr() {
-        let mut latencies = Latencies::default();
-        assert!(latencies.0.is_empty());
-
-        latencies.add(Duration::from_secs(10));
-        assert_eq!(
-            latencies.0.get(&Latency::from(Duration::from_secs(10))),
-            Some(&1)
-        );
-
-        latencies.add(Duration::from_secs(15));
-        assert_eq!(
-            latencies.0.get(&Latency::from(Duration::from_secs(10))),
-            Some(&1)
-        );
-        assert_eq!(
-            latencies.0.get(&Latency::from(Duration::from_secs(15))),
-            Some(&1)
-        );
-
-        latencies.add(Duration::from_secs(10));
-        assert_eq!(
-            latencies.0.get(&Latency::from(Duration::from_secs(10))),
-            Some(&2)
-        );
-        assert_eq!(
-            latencies.0.get(&Latency::from(Duration::from_secs(15))),
-            Some(&1)
-        );
-    }
 }
