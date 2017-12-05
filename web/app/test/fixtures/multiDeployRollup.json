@@ -1,0 +1,263 @@
+{
+  "metrics": [
+    {
+      "name": "REQUEST_RATE",
+      "metadata": {
+        "targetPod": "",
+        "targetDeploy": "default/hello",
+        "sourcePod": "",
+        "sourceDeploy": "",
+        "component": "",
+        "path": ""
+      },
+      "datapoints": [
+        {
+          "value": {
+            "gauge": 225.615160934523212
+          },
+          "timestampMs": "1513279247987"
+        }
+      ]
+    },
+    {
+      "name": "REQUEST_RATE",
+      "metadata": {
+        "targetPod": "default/hello-12f3f-1e2aa",
+        "targetDeploy": "",
+        "sourcePod": "",
+        "sourceDeploy": "",
+        "component": "",
+        "path": ""
+      },
+      "datapoints": [
+        {
+          "value": {
+            "gauge": 102024.5121828938132955
+          },
+          "timestampMs": "1513279247987"
+        }
+      ]
+    },
+    {
+      "name": "REQUEST_RATE",
+      "metadata": {
+        "targetPod": "",
+        "targetDeploy": "",
+        "sourcePod": "",
+        "sourceDeploy": "",
+        "component": "mesh",
+        "path": ""
+      },
+      "datapoints": [
+        {
+          "value": {
+            "gauge": 104.913265817707811
+          },
+          "timestampMs": "1513279247987"
+        }
+      ]
+    },
+    {
+      "name": "REQUEST_RATE",
+      "metadata": {
+        "targetPod": "",
+        "targetDeploy": "",
+        "sourcePod": "",
+        "sourceDeploy": "",
+        "component": "",
+        "path": "/Get/Hello"
+      },
+      "datapoints": [
+        {
+          "value": {
+            "gauge": 7.821117015943046
+          },
+          "timestampMs": "1513279247987"
+        }
+      ]
+    },
+    {
+      "name": "SUCCESS_RATE",
+      "metadata": {
+        "targetPod": "",
+        "targetDeploy": "default/hello",
+        "sourcePod": "",
+        "sourceDeploy": "",
+        "component": "",
+        "path": ""
+      },
+      "datapoints": [
+        {
+          "value": {
+            "gauge": 0.3035714285714286
+          },
+          "timestampMs": "1513279248020"
+        }
+      ]
+    },
+    {
+      "name": "SUCCESS_RATE",
+      "metadata": {
+        "targetPod": "default/hello-12f3f-1e2aa",
+        "targetDeploy": "",
+        "sourcePod": "",
+        "sourceDeploy": "",
+        "component": "",
+        "path": ""
+      },
+      "datapoints": [
+        {
+          "value": {
+            "gauge": 0.9597142857142857
+          },
+          "timestampMs": "1513279248020"
+        }
+      ]
+    },
+    {
+      "name": "SUCCESS_RATE",
+      "metadata": {
+        "targetPod": "",
+        "targetDeploy": "",
+        "sourcePod": "",
+        "sourceDeploy": "",
+        "component": "mesh",
+        "path": ""
+      },
+      "datapoints": [
+        {
+          "value": {
+            "gauge": 0.99999333333333333
+          },
+          "timestampMs": "1513279248020"
+        }
+      ]
+    },
+    {
+      "name": "SUCCESS_RATE",
+      "metadata": {
+        "targetPod": "",
+        "targetDeploy": "",
+        "sourcePod": "",
+        "sourceDeploy": "",
+        "component": "",
+        "path": "/Get/Hello"
+      },
+      "datapoints": []
+    },
+    {
+      "name": "LATENCY",
+      "metadata": {
+        "targetPod": "",
+        "targetDeploy": "default/hello",
+        "sourcePod": "",
+        "sourceDeploy": "",
+        "component": "",
+        "path": ""
+      },
+      "datapoints": [
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "510"
+                },
+                {
+                  "label": "P95",
+                  "value": "951"
+                },
+                {
+                  "label": "P99",
+                  "value": "990"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513279248043"
+        }
+      ]
+    },
+    {
+      "name": "LATENCY",
+      "metadata": {
+        "targetPod": "default/hello-12f3f-1e2aa",
+        "targetDeploy": "",
+        "sourcePod": "",
+        "sourceDeploy": "",
+        "component": "",
+        "path": ""
+      },
+      "datapoints": []
+    },
+    {
+      "name": "LATENCY",
+      "metadata": {
+        "targetPod": "",
+        "targetDeploy": "",
+        "sourcePod": "",
+        "sourceDeploy": "",
+        "component": "mesh",
+        "path": ""
+      },
+      "datapoints": [
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "481"
+                },
+                {
+                  "label": "P95",
+                  "value": "946"
+                },
+                {
+                  "label": "P99",
+                  "value": "989"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513279248043"
+        }
+      ]
+    },
+    {
+      "name": "LATENCY",
+      "metadata": {
+        "targetPod": "",
+        "targetDeploy": "",
+        "sourcePod": "",
+        "sourceDeploy": "",
+        "component": "",
+        "path": "/Get/Hello"
+      },
+      "datapoints": [
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "555"
+                },
+                {
+                  "label": "P95",
+                  "value": "666"
+                },
+                {
+                  "label": "P99",
+                  "value": "777"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513279248043"
+        }
+      ]
+    }
+  ]
+}

@@ -88,7 +88,7 @@ export default class ServiceMesh extends React.Component {
 
     Promise.all([rollupRequest, timeseriesRequest, podsRequest])
       .then(([metrics, ts, pods]) => {
-        let m = _.compact(processRollupMetrics(metrics.metrics, "component"));
+        let m = processRollupMetrics(metrics.metrics, "component");
         let tsByComponent = processTimeseriesMetrics(ts.metrics, "component");
         let d = this.getDeploymentList(pods.pods);
         let c = this.processComponents(pods.pods);
