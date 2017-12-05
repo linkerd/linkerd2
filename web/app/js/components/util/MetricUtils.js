@@ -89,7 +89,7 @@ export const processMetrics = (rawMetrics, rawTs, targetEntity) => {
   return _.sortBy(metrics, "name");
 }
 
-export const emptyMetric = name => {
+export const emptyMetric = (name, added) => {
   return {
     name: name,
     timeseries: {
@@ -108,7 +108,7 @@ export const emptyMetric = name => {
       latency: 0
     },
     latency: 0,
-    added: false
+    added: added
   }
 }
 

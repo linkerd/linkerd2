@@ -137,7 +137,6 @@ export default class ServiceMesh extends React.Component {
   }
 
   processDeploys(pods) {
-    let ns = this.props.namespace + "/";
     return _(pods)
       .reject(p => _.isEmpty(p.deployment) || p.controlPlane)
       .groupBy("deployment")
@@ -155,10 +154,9 @@ export default class ServiceMesh extends React.Component {
   }
 
   processComponents(pods) {
-    let ns = this.props.namespace + "/";
     let podIndex = _(pods)
-      .filter(p => _.startsWith(p.deployment, ns))
-      .groupBy(p => _.replace(p.deployment, ns, ""))
+      .filter(p => p.controlPlane)
+      .groupBy(p => {return p.deployment.substring(p.deployment.indexOf('/')+1)})
       .value();
 
     return _(componentNames)
@@ -258,13 +256,13 @@ export default class ServiceMesh extends React.Component {
         {this.unaddedDeploymentCount() === 0 ?
           <div className="complete-mesh-message">
             All deployments have been added to the service mesh.
-          </div> 
-          : this.unaddedDeploymentCount() === 1 ? 
+          </div>
+          : this.unaddedDeploymentCount() === 1 ?
               <div className="incomplete-mesh-message">
-                1 deployment has not been added to the service mesh. 
+                1 deployment has not been added to the service mesh.
                 <div className="instructions">Add the remaining deployment to the deployment.yml file</div>
                 <div className="instructions">Then run <code>conduit inject deployment.yml | kubectl apply -f - </code> to add the deployment to the service mesh</div>
-              </div> 
+              </div>
           : <div className="incomplete-mesh-message">
               {this.unaddedDeploymentCount()} deployments have not been added to the service mesh.
               <div className="instructions">Add one or more deployments to the deployment.yml file</div>
