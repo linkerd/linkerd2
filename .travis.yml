@@ -78,10 +78,7 @@ jobs:
           gcloud components install kubectl
         - |
           # Configure gcloud with a service account and a k8s context.
-          openssl aes-256-cbc \
-              -K "$encrypted_72832b647e2b_key" -iv "$encrypted_72832b647e2b_iv" \
-              -in .gcp.json.enc -out .gcp.json -d
-          gcloud auth activate-service-account --key-file .gcp.json
+          openssl aes-256-cbc -K $encrypted_6af64675f81c_key -iv $encrypted_6af64675f81c_iv -in .gcp.json.enc -out .gcp.json -d
           (. bin/_gcp.sh ; gcp_configure "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER")
         - gcloud version
         - kubectl version --short
