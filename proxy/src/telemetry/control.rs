@@ -1,16 +1,16 @@
 use std::{fmt, io};
-use std::time::{Duration, Instant};
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use futures::{Async, Future, Poll, Stream};
 use futures_mpsc_lossy::Receiver;
 use tokio_core::reactor::{Handle, Timeout};
 
-use ctx;
 use super::event::Event;
-use super::tap::Taps;
 use super::metrics::Metrics;
+use super::tap::Taps;
 use control::pb::telemetry::ReportRequest;
+use ctx;
 
 /// A `Control` which has been configured but not initialized.
 #[derive(Debug)]
@@ -64,7 +64,7 @@ impl MakeControl {
     /// - `rx`: the `Receiver` side of the channel on which events are sent.
     /// - `flush_interval`: the maximum amount of time between sending reports to the
     ///   controller.
-    pub (super) fn new(
+    pub(super) fn new(
         rx: Receiver<Event>,
         flush_interval: Duration,
         process_ctx: &Arc<ctx::Process>,
@@ -138,7 +138,8 @@ impl Control {
     /// Reset the flush timeout.
     fn reset_timeout(&mut self) {
         trace!("flushing in {:?}", self.flush_interval);
-        self.flush_timeout.reset(Instant::now() + self.flush_interval);
+        self.flush_timeout
+            .reset(Instant::now() + self.flush_interval);
     }
 
     fn recv(&mut self) -> Async<Option<Event>> {
@@ -185,7 +186,9 @@ impl Stream for Control {
                 }
                 Async::Ready(None) => {
                     warn!("events finished");
-                    let report = self.metrics.take().map(|mut m| Self::generate_report(&mut m));
+                    let report = self.metrics
+                        .take()
+                        .map(|mut m| Self::generate_report(&mut m));
                     if report.is_none() {
                         return Ok(Async::Ready(None));
                     }
@@ -226,7 +229,10 @@ impl fmt::Debug for Control {
             .field("rx", &self.rx)
             .field("taps", &self.taps)
             .field("flush_interval", &self.flush_interval)
-            .field("flush_timeout", &format!("Timeout({:?})", &self.flush_interval))
+            .field(
+                "flush_timeout",
+                &format!("Timeout({:?})", &self.flush_interval),
+            )
             .finish()
     }
 }

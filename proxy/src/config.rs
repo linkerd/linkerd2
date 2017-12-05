@@ -1,7 +1,7 @@
 use std::env;
 use std::net::SocketAddr;
-use std::str::FromStr;
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::time::Duration;
 
 use url::{Host, HostAndPort, Url};
@@ -109,7 +109,7 @@ const ENV_RESOLV_CONF: &str = "CONDUIT_RESOLV_CONF";
 const DEFAULT_EVENT_BUFFER_CAPACITY: usize = 10_000; // FIXME
 const DEFAULT_METRICS_FLUSH_INTERVAL_SECS: u64 = 10;
 const DEFAULT_PRIVATE_LISTENER: &str = "tcp://127.0.0.1:4140";
-const DEFAULT_PUBLIC_LISTENER:  &str = "tcp://0.0.0.0:4143";
+const DEFAULT_PUBLIC_LISTENER: &str = "tcp://0.0.0.0:4143";
 const DEFAULT_CONTROL_LISTENER: &str = "tcp://0.0.0.0:4190";
 const DEFAULT_CONTROL_URL: &str = "tcp://proxy-api.conduit.svc.cluster.local:8086";
 const DEFAULT_RESOLV_CONF: &str = "/etc/resolv.conf";
@@ -123,16 +123,16 @@ impl Config {
             None => DEFAULT_EVENT_BUFFER_CAPACITY,
             Some(c) => match c.parse() {
                 Ok(c) => c,
-                Err(_) => return Err(Error::NotANumber(c))
-            }
+                Err(_) => return Err(Error::NotANumber(c)),
+            },
         };
 
         let metrics_flush_interval = match env::var(ENV_METRICS_FLUSH_INTERVAL_SECS).ok() {
             None => Duration::from_secs(DEFAULT_METRICS_FLUSH_INTERVAL_SECS),
             Some(c) => match c.parse() {
                 Ok(c) => Duration::from_secs(c),
-                Err(_) => return Err(Error::NotANumber(c))
-            }
+                Err(_) => return Err(Error::NotANumber(c)),
+            },
         };
 
         Ok(Config {
@@ -147,11 +147,13 @@ impl Config {
             },
             private_forward: Addr::from_env_opt(ENV_PRIVATE_FORWARD)?,
 
-            public_connect_timeout: env::var(ENV_PUBLIC_CONNECT_TIMEOUT).ok()
+            public_connect_timeout: env::var(ENV_PUBLIC_CONNECT_TIMEOUT)
+                .ok()
                 .and_then(|c| c.parse().ok())
                 .map(Duration::from_millis),
 
-            private_connect_timeout: env::var(ENV_PRIVATE_CONNECT_TIMEOUT).ok()
+            private_connect_timeout: env::var(ENV_PRIVATE_CONNECT_TIMEOUT)
+                .ok()
                 .and_then(|c| c.parse().ok())
                 .map(Duration::from_millis),
 
@@ -159,7 +161,10 @@ impl Config {
                 .unwrap_or_else(|_| DEFAULT_RESOLV_CONF.into())
                 .into(),
 
-            control_host_and_port: control_host_and_port_from_env(ENV_CONTROL_URL, DEFAULT_CONTROL_URL)?,
+            control_host_and_port: control_host_and_port_from_env(
+                ENV_CONTROL_URL,
+                DEFAULT_CONTROL_URL,
+            )?,
             event_buffer_capacity,
             metrics_flush_interval,
         })
@@ -177,8 +182,7 @@ impl Addr {
     }
 
     fn from_env_or(key: &str, default: &str) -> Result<Addr, Error> {
-        let s = env::var(key)
-            .unwrap_or_else(|_| default.into());
+        let s = env::var(key).unwrap_or_else(|_| default.into());
 
         s.parse()
     }
@@ -190,16 +194,20 @@ impl FromStr for Addr {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match Url::parse(s) {
             Err(_) => Err(Error::InvalidAddr),
-            Ok(u) => {
-                match u.scheme() {
-                    "tcp" => match u.with_default_port(|_| Err(())) {
-                        Ok(HostAndPort { host: Host::Ipv4(ip), port }) => Ok(Addr(SocketAddr::new(ip.into(), port))),
-                        Ok(HostAndPort { host: Host::Ipv6(ip), port }) => Ok(Addr(SocketAddr::new(ip.into(), port))),
-                        _ => Err(Error::InvalidAddr),
-                    },
+            Ok(u) => match u.scheme() {
+                "tcp" => match u.with_default_port(|_| Err(())) {
+                    Ok(HostAndPort {
+                        host: Host::Ipv4(ip),
+                        port,
+                    }) => Ok(Addr(SocketAddr::new(ip.into(), port))),
+                    Ok(HostAndPort {
+                        host: Host::Ipv6(ip),
+                        port,
+                    }) => Ok(Addr(SocketAddr::new(ip.into(), port))),
                     _ => Err(Error::InvalidAddr),
-                }
-            }
+                },
+                _ => Err(Error::InvalidAddr),
+            },
         }
     }
 }
@@ -212,21 +220,37 @@ impl From<Addr> for SocketAddr {
 
 fn control_host_and_port_from_env(key: &str, default: &str) -> Result<HostAndPort, Error> {
     let s = env::var(key).unwrap_or_else(|_| default.into());
-    let url = Url::parse(&s).map_err(|_| Error::ControlPlaneConfigError(s.clone(), UrlError::SyntaxError))?;
-    let host = url.host().ok_or_else(|| Error::ControlPlaneConfigError(s.clone(), UrlError::MissingHost))?
+    let url = Url::parse(&s).map_err(|_| {
+        Error::ControlPlaneConfigError(s.clone(), UrlError::SyntaxError)
+    })?;
+    let host = url.host()
+        .ok_or_else(|| {
+            Error::ControlPlaneConfigError(s.clone(), UrlError::MissingHost)
+        })?
         .to_owned();
     if url.scheme() != "tcp" {
-        return Err(Error::ControlPlaneConfigError(s.clone(), UrlError::UnsupportedScheme));
+        return Err(Error::ControlPlaneConfigError(
+            s.clone(),
+            UrlError::UnsupportedScheme,
+        ));
     }
-    let port = url.port().ok_or_else(|| Error::ControlPlaneConfigError(s.clone(), UrlError::MissingPort))?;
+    let port = url.port().ok_or_else(|| {
+        Error::ControlPlaneConfigError(s.clone(), UrlError::MissingPort)
+    })?;
     if url.path() != "/" {
-        return Err(Error::ControlPlaneConfigError(s.clone(), UrlError::PathNotAllowed));
+        return Err(Error::ControlPlaneConfigError(
+            s.clone(),
+            UrlError::PathNotAllowed,
+        ));
     }
     if url.fragment().is_some() {
-        return Err(Error::ControlPlaneConfigError(s.clone(), UrlError::FragmentNotAllowed));
+        return Err(Error::ControlPlaneConfigError(
+            s.clone(),
+            UrlError::FragmentNotAllowed,
+        ));
     }
     Ok(HostAndPort {
         host,
-        port
+        port,
     })
 }

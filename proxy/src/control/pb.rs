@@ -7,9 +7,9 @@ use std::sync::Arc;
 
 use http;
 
+use convert::*;
 use ctx;
 use telemetry::Event;
-use convert::*;
 
 // re-export proxy here since we dont care about the other dirs
 pub use self::proxy::*;
@@ -57,7 +57,7 @@ fn pb_response_end(
         source: Some((&ctx.server.remote).into()),
         target: Some((&ctx.client.remote).into()),
         event: Some(tap_event::Event::Http(tap_event::Http {
-            event: Some(tap_event::http::Event::ResponseEnd(end))
+            event: Some(tap_event::http::Event::ResponseEnd(end)),
         })),
     }
 }
@@ -73,7 +73,8 @@ impl fmt::Display for InvalidMethod {
 }
 
 impl Error for InvalidMethod {
-    #[inline] fn description(&self) -> &str {
+    #[inline]
+    fn description(&self) -> &str {
         "invalid http method"
     }
 }
@@ -88,7 +89,8 @@ impl fmt::Display for InvalidScheme {
 }
 
 impl Error for InvalidScheme {
-    #[inline] fn description(&self) -> &str {
+    #[inline]
+    fn description(&self) -> &str {
         "invalid http scheme"
     }
 }
@@ -103,7 +105,8 @@ impl fmt::Display for UnknownEvent {
 }
 
 impl Error for UnknownEvent {
-    #[inline] fn description(&self) -> &str {
+    #[inline]
+    fn description(&self) -> &str {
         "unknown tap event"
     }
 }
@@ -124,7 +127,8 @@ impl<'a> TryFrom<&'a Event> for common::TapEvent {
                     }),
                     method: Some((&ctx.method).into()),
                     scheme: ctx.uri.scheme().map(|s| s.into()),
-                    authority: ctx.uri.authority_part()
+                    authority: ctx.uri
+                        .authority_part()
                         .map(|a| a.as_str())
                         .unwrap_or_default()
                         .into(),
@@ -135,10 +139,10 @@ impl<'a> TryFrom<&'a Event> for common::TapEvent {
                     source: Some((&ctx.server.remote).into()),
                     target: Some((&ctx.client.remote).into()),
                     event: Some(tap_event::Event::Http(tap_event::Http {
-                        event: Some(tap_event::http::Event::RequestInit(init))
+                        event: Some(tap_event::http::Event::RequestInit(init)),
                     })),
                 }
-            },
+            }
 
             Event::StreamResponseOpen(ref ctx, ref rsp) => {
                 let init = tap_event::http::ResponseInit {
@@ -155,40 +159,30 @@ impl<'a> TryFrom<&'a Event> for common::TapEvent {
                     source: Some((&ctx.request.server.remote).into()),
                     target: Some((&ctx.request.client.remote).into()),
                     event: Some(tap_event::Event::Http(tap_event::Http {
-                        event: Some(tap_event::http::Event::ResponseInit(init))
+                        event: Some(tap_event::http::Event::ResponseInit(init)),
                     })),
                 }
             }
 
             Event::StreamRequestFail(ref ctx, ref fail) => {
-                pb_response_end(
-                    ctx,
-                    fail.since_request_open,
-                    None,
-                    0,
-                    0,
-                )
+                pb_response_end(ctx, fail.since_request_open, None, 0, 0)
             }
 
-            Event::StreamResponseEnd(ref ctx, ref end) => {
-                pb_response_end(
-                    &ctx.request,
-                    end.since_request_open,
-                    Some(end.since_response_open),
-                    end.bytes_sent,
-                    end.grpc_status.unwrap_or(0),
-                )
-            }
+            Event::StreamResponseEnd(ref ctx, ref end) => pb_response_end(
+                &ctx.request,
+                end.since_request_open,
+                Some(end.since_response_open),
+                end.bytes_sent,
+                end.grpc_status.unwrap_or(0),
+            ),
 
-            Event::StreamResponseFail(ref ctx, ref fail) => {
-                pb_response_end(
-                    &ctx.request,
-                    fail.since_request_open,
-                    Some(fail.since_response_open),
-                    fail.bytes_sent,
-                    0,
-                )
-            }
+            Event::StreamResponseFail(ref ctx, ref fail) => pb_response_end(
+                &ctx.request,
+                fail.since_request_open,
+                Some(fail.since_response_open),
+                fail.bytes_sent,
+                0,
+            ),
 
             _ => return Err(UnknownEvent),
         };
@@ -200,36 +194,34 @@ impl<'a> TryFrom<&'a Event> for common::TapEvent {
 impl<'a> TryFrom<&'a common::http_method::Type> for http::Method {
     type Err = InvalidMethod;
     fn try_from(m: &'a common::http_method::Type) -> Result<Self, Self::Err> {
-        use http::HttpTryFrom;
         use self::common::http_method::*;
+        use http::HttpTryFrom;
 
         match *m {
-            Type::Registered(reg) => {
-                if reg == Registered::Get.into() {
-                    Ok(http::Method::GET)
-                } else if reg == Registered::Post.into() {
-                    Ok(http::Method::POST)
-                } else if reg == Registered::Put.into() {
-                    Ok(http::Method::PUT)
-                } else if reg == Registered::Delete.into() {
-                    Ok(http::Method::DELETE)
-                } else if reg == Registered::Patch.into() {
-                    Ok(http::Method::PATCH)
-                } else if reg == Registered::Options.into() {
-                    Ok(http::Method::OPTIONS)
-                } else if reg == Registered::Connect.into() {
-                    Ok(http::Method::CONNECT)
-                } else if reg == Registered::Head.into() {
-                    Ok(http::Method::HEAD)
-                } else if reg == Registered::Trace.into() {
-                    Ok(http::Method::TRACE)
-                } else {
-                    Err(InvalidMethod)
-                }
+            Type::Registered(reg) => if reg == Registered::Get.into() {
+                Ok(http::Method::GET)
+            } else if reg == Registered::Post.into() {
+                Ok(http::Method::POST)
+            } else if reg == Registered::Put.into() {
+                Ok(http::Method::PUT)
+            } else if reg == Registered::Delete.into() {
+                Ok(http::Method::DELETE)
+            } else if reg == Registered::Patch.into() {
+                Ok(http::Method::PATCH)
+            } else if reg == Registered::Options.into() {
+                Ok(http::Method::OPTIONS)
+            } else if reg == Registered::Connect.into() {
+                Ok(http::Method::CONNECT)
+            } else if reg == Registered::Head.into() {
+                Ok(http::Method::HEAD)
+            } else if reg == Registered::Trace.into() {
+                Ok(http::Method::TRACE)
+            } else {
+                Err(InvalidMethod)
+            },
+            Type::Unregistered(ref m) => {
+                HttpTryFrom::try_from(m.as_str()).map_err(|_| InvalidMethod)
             }
-            Type::Unregistered(ref m) =>
-                HttpTryFrom::try_from(m.as_str())
-                    .map_err(|_| InvalidMethod),
         }
     }
 }
@@ -240,15 +232,13 @@ impl<'a> TryInto<String> for &'a common::scheme::Type {
         use self::common::scheme::*;
 
         match *self {
-            Type::Registered(reg) => {
-                if reg == Registered::Http.into() {
-                    Ok("http".into())
-                } else if reg == Registered::Https.into() {
-                    Ok("https".into())
-                } else {
-                    Err(InvalidScheme)
-                }
-            }
+            Type::Registered(reg) => if reg == Registered::Http.into() {
+                Ok("http".into())
+            } else if reg == Registered::Https.into() {
+                Ok("https".into())
+            } else {
+                Err(InvalidScheme)
+            },
             Type::Unregistered(ref s) => Ok(s.clone()),
         }
     }
@@ -275,7 +265,7 @@ impl<'a> From<&'a http::Method> for common::http_method::Type {
 impl<'a> From<&'a http::Method> for common::HttpMethod {
     fn from(m: &'a http::Method) -> Self {
         common::HttpMethod {
-            type_: Some(m.into())
+            type_: Some(m.into()),
         }
     }
 }
@@ -295,18 +285,18 @@ impl<'a> From<&'a str> for common::scheme::Type {
 impl<'a> From<&'a str> for common::Scheme {
     fn from(s: &'a str) -> Self {
         common::Scheme {
-            type_: Some(s.into())
+            type_: Some(s.into()),
         }
     }
 }
 
 // ===== impl common::IpAddress =====
 
-impl<T> From<T> for common::IpAddress 
-where 
-    common::ip_address::Ip: From<T>
+impl<T> From<T> for common::IpAddress
+where
+    common::ip_address::Ip: From<T>,
 {
-    #[inline] 
+    #[inline]
     fn from(ip: T) -> Self {
         Self {
             ip: Some(ip.into()),
@@ -317,14 +307,12 @@ where
 impl From<::std::net::IpAddr> for common::IpAddress {
     fn from(ip: ::std::net::IpAddr) -> Self {
         match ip {
-            ::std::net::IpAddr::V4(v4) =>
-                Self {
-                    ip: Some(v4.into()),
-                },
-            ::std::net::IpAddr::V6(v6) =>
-                Self {
-                    ip: Some(v6.into()),
-                },
+            ::std::net::IpAddr::V4(v4) => Self {
+                ip: Some(v4.into()),
+            },
+            ::std::net::IpAddr::V6(v6) => Self {
+                ip: Some(v6.into()),
+            },
         }
     }
 }
@@ -333,22 +321,14 @@ impl From<::std::net::IpAddr> for common::IpAddress {
 
 impl From<[u8; 16]> for common::IPv6 {
     fn from(octets: [u8; 16]) -> Self {
-        let first = (u64::from(octets[0]) << 56)
-            + (u64::from(octets[1]) << 48)
-            + (u64::from(octets[2]) << 40)
-            + (u64::from(octets[3]) << 32)
-            + (u64::from(octets[4]) << 24)
-            + (u64::from(octets[5]) << 16)
-            + (u64::from(octets[6]) << 8)
-            + u64::from(octets[7]);
-        let last = (u64::from(octets[8]) << 56)
-            + (u64::from(octets[9]) << 48)
-            + (u64::from(octets[10]) << 40)
-            + (u64::from(octets[11]) << 32)
-            + (u64::from(octets[12]) << 24)
-            + (u64::from(octets[13]) << 16)
-            + (u64::from(octets[14]) << 8)
-            + u64::from(octets[15]);
+        let first = (u64::from(octets[0]) << 56) + (u64::from(octets[1]) << 48)
+            + (u64::from(octets[2]) << 40) + (u64::from(octets[3]) << 32)
+            + (u64::from(octets[4]) << 24) + (u64::from(octets[5]) << 16)
+            + (u64::from(octets[6]) << 8) + u64::from(octets[7]);
+        let last = (u64::from(octets[8]) << 56) + (u64::from(octets[9]) << 48)
+            + (u64::from(octets[10]) << 40) + (u64::from(octets[11]) << 32)
+            + (u64::from(octets[12]) << 24) + (u64::from(octets[13]) << 16)
+            + (u64::from(octets[14]) << 8) + u64::from(octets[15]);
         Self {
             first,
             last,
@@ -357,7 +337,8 @@ impl From<[u8; 16]> for common::IPv6 {
 }
 
 impl From<::std::net::Ipv6Addr> for common::IPv6 {
-    #[inline] fn from(v6: ::std::net::Ipv6Addr) -> Self {
+    #[inline]
+    fn from(v6: ::std::net::Ipv6Addr) -> Self {
         Self::from(v6.octets())
     }
 }
@@ -382,25 +363,25 @@ impl<'a> From<&'a common::IPv6> for ::std::net::Ipv6Addr {
 impl From<[u8; 4]> for common::ip_address::Ip {
     fn from(octets: [u8; 4]) -> Self {
         common::ip_address::Ip::Ipv4(
-            u32::from(octets[0]) << 24 |
-            u32::from(octets[1]) << 16 |
-            u32::from(octets[2]) << 8 |
-            u32::from(octets[3])
+            u32::from(octets[0]) << 24 | u32::from(octets[1]) << 16 | u32::from(octets[2]) << 8
+                | u32::from(octets[3]),
         )
     }
 }
 
 impl From<::std::net::Ipv4Addr> for common::ip_address::Ip {
-    #[inline] fn from(v4: ::std::net::Ipv4Addr) -> Self {
+    #[inline]
+    fn from(v4: ::std::net::Ipv4Addr) -> Self {
         Self::from(v4.octets())
     }
 }
 
 impl<T> From<T> for common::ip_address::Ip
-where 
-    common::IPv6: From<T> 
+where
+    common::IPv6: From<T>,
 {
-    #[inline] fn from(t: T) -> Self {
+    #[inline]
+    fn from(t: T) -> Self {
         common::ip_address::Ip::Ipv6(common::IPv6::from(t))
     }
 }
@@ -429,5 +410,8 @@ fn pb_duration(d: &::std::time::Duration) -> ::prost_types::Duration {
         d.subsec_nanos() as i32
     };
 
-    ::prost_types::Duration { seconds, nanos }
+    ::prost_types::Duration {
+        seconds,
+        nanos,
+    }
 }

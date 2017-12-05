@@ -11,8 +11,7 @@ fn main() {
         Err(e) => {
             eprintln!("configuration error: {:#?}", e);
             process::exit(64)
-        },
+        }
     };
-    conduit_proxy::Main::new(config)
-        .run();
+    conduit_proxy::Main::new(config).run();
 }

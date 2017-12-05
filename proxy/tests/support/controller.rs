@@ -35,7 +35,8 @@ impl Controller {
     }
 
     pub fn destination(mut self, dest: &str, addr: SocketAddr) -> Self {
-        self.destinations.push((dest.into(), Some(destination_update(addr))));
+        self.destinations
+            .push((dest.into(), Some(destination_update(addr))));
         self
     }
 
@@ -68,7 +69,11 @@ struct Svc {
 }
 
 impl Svc {
-    fn route(&self, path: &str, body: RecvBodyStream) -> Box<Future<Item=Response, Error=h2::Error>> {
+    fn route(
+        &self,
+        path: &str,
+        body: RecvBodyStream,
+    ) -> Box<Future<Item = Response, Error = h2::Error>> {
         let mut rsp = http::Response::builder();
         rsp.version(http::Version::HTTP_2);
 
@@ -94,7 +99,7 @@ impl Svc {
                     let rsp = rsp.body(body).unwrap();
                     Ok(rsp)
                 }))
-            },
+            }
             TELEMETRY_REPORT => {
                 let mut reports = self.reports.clone();
                 Box::new(body.concat2().and_then(move |mut bytes| {
@@ -121,7 +126,7 @@ impl Service for Svc {
     type Request = Request<RecvBody>;
     type Response = Response;
     type Error = h2::Error;
-    type Future = Box<Future<Item=Response, Error=h2::Error>>;
+    type Future = Box<Future<Item = Response, Error = h2::Error>>;
 
     fn poll_ready(&mut self) -> Poll<(), Self::Error> {
         Ok(Async::Ready(()))
@@ -160,11 +165,7 @@ impl Body for GrpcBody {
 
     fn poll_data(&mut self) -> Poll<Option<Bytes>, self::h2::Error> {
         let data = self.message.split_off(0);
-        let data = if data.is_empty() {
-            None
-        } else {
-            Some(data)
-        };
+        let data = if data.is_empty() { None } else { Some(data) };
 
         Ok(Async::Ready(data))
     }
@@ -231,12 +232,11 @@ fn run(controller: Controller) -> Listening {
                 });
 
 
-            core.handle()
-                .spawn(
-                    serve
-                        .map(|_| ())
-                        .map_err(|e| println!("controller error: {}", e))
-                );
+            core.handle().spawn(
+                serve
+                    .map(|_| ())
+                    .map_err(|e| println!("controller error: {}", e)),
+            );
 
             core.run(rx).unwrap();
         })
@@ -251,32 +251,26 @@ fn run(controller: Controller) -> Listening {
 
 fn destination_update(addr: SocketAddr) -> pb::destination::Update {
     pb::destination::Update {
-        update: Some(
-            pb::destination::update::Update::Add(
-                pb::destination::WeightedAddrSet {
-                    addrs: vec![
-                        pb::destination::WeightedAddr {
-                            addr: Some(
-                                pb::common::TcpAddress {
-                                    ip: Some(ip_conv(addr.ip())),
-                                    port: u32::from(addr.port()),
-                                }
-                            ),
-                            weight: 0,
-                        }
-                    ],
-                }
-            )
-        ),
+        update: Some(pb::destination::update::Update::Add(
+            pb::destination::WeightedAddrSet {
+                addrs: vec![
+                    pb::destination::WeightedAddr {
+                        addr: Some(pb::common::TcpAddress {
+                            ip: Some(ip_conv(addr.ip())),
+                            port: u32::from(addr.port()),
+                        }),
+                        weight: 0,
+                    },
+                ],
+            },
+        )),
     }
 }
 
 fn ip_conv(ip: IpAddr) -> pb::common::IpAddress {
     match ip {
-        IpAddr::V4(v4) => {
-            pb::common::IpAddress {
-                ip: Some(pb::common::ip_address::Ip::Ipv4(v4.into())),
-            }
+        IpAddr::V4(v4) => pb::common::IpAddress {
+            ip: Some(pb::common::ip_address::Ip::Ipv4(v4.into())),
         },
         IpAddr::V6(v6) => {
             let (first, last) = octets_to_u64s(v6.octets());
@@ -291,21 +285,13 @@ fn ip_conv(ip: IpAddr) -> pb::common::IpAddress {
 }
 
 fn octets_to_u64s(octets: [u8; 16]) -> (u64, u64) {
-    let first = (u64::from(octets[0]) << 56)
-        + (u64::from(octets[1]) << 48)
-        + (u64::from(octets[2]) << 40)
-        + (u64::from(octets[3]) << 32)
-        + (u64::from(octets[4]) << 24)
-        + (u64::from(octets[5]) << 16)
-        + (u64::from(octets[6]) << 8)
-        + u64::from(octets[7]);
-    let last = (u64::from(octets[8]) << 56)
-        + (u64::from(octets[9]) << 48)
-        + (u64::from(octets[10]) << 40)
-        + (u64::from(octets[11]) << 32)
-        + (u64::from(octets[12]) << 24)
-        + (u64::from(octets[13]) << 16)
-        + (u64::from(octets[14]) << 8)
-        + u64::from(octets[15]);
+    let first = (u64::from(octets[0]) << 56) + (u64::from(octets[1]) << 48)
+        + (u64::from(octets[2]) << 40) + (u64::from(octets[3]) << 32)
+        + (u64::from(octets[4]) << 24) + (u64::from(octets[5]) << 16)
+        + (u64::from(octets[6]) << 8) + u64::from(octets[7]);
+    let last = (u64::from(octets[8]) << 56) + (u64::from(octets[9]) << 48)
+        + (u64::from(octets[10]) << 40) + (u64::from(octets[11]) << 32)
+        + (u64::from(octets[12]) << 24) + (u64::from(octets[13]) << 16)
+        + (u64::from(octets[14]) << 8) + u64::from(octets[15]);
     (first, last)
 }

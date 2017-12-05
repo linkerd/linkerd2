@@ -67,7 +67,7 @@ mod linux {
                 );
                 let port = sa.sin_port;
                 Ok(SocketAddr::V4(SocketAddrV4::new(ip, ntoh16(port))))
-            },
+            }
             libc::AF_INET6 => {
                 assert!(len as usize >= mem::size_of::<libc::sockaddr_in6>());
 
@@ -94,7 +94,7 @@ mod linux {
                 Ok(SocketAddr::V6(
                     SocketAddrV6::new(ip, ntoh16(port), flowinfo, scope_id),
                 ))
-            },
+            }
             _ => Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
                 "invalid argument",

@@ -39,7 +39,11 @@ impl Server {
                 let mut core = Core::new().unwrap();
                 let reactor = core.handle();
 
-                let h2 = tower_h2::Server::new(NewSvc(Arc::new(self.routes)), Default::default(), reactor.clone());
+                let h2 = tower_h2::Server::new(
+                    NewSvc(Arc::new(self.routes)),
+                    Default::default(),
+                    reactor.clone(),
+                );
 
                 let addr = ([127, 0, 0, 1], 0).into();
                 let bind = TcpListener::bind(&addr, &reactor).expect("bind");
@@ -60,12 +64,11 @@ impl Server {
                         Ok((h2, reactor))
                     });
 
-                core.handle()
-                    .spawn(
-                        serve
-                            .map(|_| ())
-                            .map_err(|e| println!("server error: {}", e))
-                    );
+                core.handle().spawn(
+                    serve
+                        .map(|_| ())
+                        .map_err(|e| println!("server error: {}", e)),
+                );
 
                 info!("running");
                 core.run(rx).unwrap();

@@ -43,7 +43,12 @@ pub struct Connecting<C: tokio_connect::Connect> {
 
 impl<T: AsyncRead + AsyncWrite> Transport<T> {
     /// Wraps a transport with telemetry and emits a transport open event.
-    pub(super) fn open(io: T, opened_at: Instant, handle: &super::Handle, ctx: Arc<ctx::transport::Ctx>) -> Self {
+    pub(super) fn open(
+        io: T,
+        opened_at: Instant,
+        handle: &super::Handle,
+        ctx: Arc<ctx::transport::Ctx>,
+    ) -> Self {
         let mut handle = handle.clone();
 
         handle.send(|| event::Event::TransportOpen(Arc::clone(&ctx)));
@@ -70,27 +75,43 @@ impl<T: AsyncRead + AsyncWrite> Transport<T> {
             Ok(v) => Ok(v),
             Err(e) => {
                 if e.kind() != io::ErrorKind::WouldBlock {
-                    if let Some(Inner { mut handle, ctx, opened_at }) = self.1.take() {
+                    if let Some(Inner {
+                        mut handle,
+                        ctx,
+                        opened_at,
+                    }) = self.1.take()
+                    {
                         handle.send(move || {
                             let duration = opened_at.elapsed();
-                            let ev = event::TransportClose { duration, clean: false };
+                            let ev = event::TransportClose {
+                                duration,
+                                clean: false,
+                            };
                             event::Event::TransportClose(ctx, ev)
                         });
                     }
                 }
 
                 Err(e)
-            },
+            }
         }
     }
 }
 
 impl<T> Drop for Transport<T> {
     fn drop(&mut self) {
-        if let Some(Inner { mut handle, ctx, opened_at }) = self.1.take() {
+        if let Some(Inner {
+            mut handle,
+            ctx,
+            opened_at,
+        }) = self.1.take()
+        {
             handle.send(move || {
                 let duration = opened_at.elapsed();
-                let ev = event::TransportClose { clean: true, duration };
+                let ev = event::TransportClose {
+                    clean: true,
+                    duration,
+                };
                 event::Event::TransportClose(ctx, ev)
             });
         }

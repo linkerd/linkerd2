@@ -1,7 +1,7 @@
 use std::io;
 use std::marker::PhantomData;
-use std::sync::Arc;
 use std::net::SocketAddr;
+use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
 use std::time::Duration;
 
@@ -65,14 +65,14 @@ impl<B> Bind<(), B> {
     pub fn with_connect_timeout(self, connect_timeout: Duration) -> Self {
         Self {
             connect_timeout,
-            .. self
+            ..self
         }
     }
 
     pub fn with_sensors(self, sensors: telemetry::Sensors) -> Self {
         Self {
             sensors,
-            .. self
+            ..self
         }
     }
 
@@ -87,7 +87,6 @@ impl<B> Bind<(), B> {
             _p: PhantomData,
         }
     }
-
 }
 
 impl<C: Clone, B> Clone for Bind<C, B> {
@@ -139,14 +138,14 @@ where
                 &self.executor,
             );
 
-            self.sensors.connect(c, &client_ctx )
+            self.sensors.connect(c, &client_ctx)
         };
 
         // Establishes an HTTP/2.0 connection
         let client = tower_h2::client::Client::new(
             connect,
             self.h2_builder.clone(),
-            ::logging::context_executor(("client", *addr), self.executor.clone())
+            ::logging::context_executor(("client", *addr), self.executor.clone()),
         );
 
         let h2_proxy = self.sensors.http(self.req_ids.clone(), client, &client_ctx);

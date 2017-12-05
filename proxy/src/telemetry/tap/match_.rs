@@ -1,5 +1,5 @@
-use std::net;
 use std::boxed::Box;
+use std::net;
 use std::sync::Arc;
 
 use http;
@@ -8,8 +8,8 @@ use ipnet::{Contains, Ipv4Net, Ipv6Net};
 use super::Event;
 use control::pb::common::ip_address;
 use control::pb::tap::observe_request;
-use ctx;
 use convert::*;
+use ctx;
 
 #[derive(Clone, Debug)]
 pub(super) enum Match {
@@ -40,7 +40,7 @@ pub(super) enum TcpMatch {
 #[derive(Clone, Debug)]
 pub(super) enum NetMatch {
     Net4(Ipv4Net),
-    Net6(Ipv6Net) ,
+    Net6(Ipv6Net),
 }
 
 #[derive(Clone, Debug)]
@@ -76,55 +76,44 @@ impl Match {
 
             Match::Not(ref not) => !not.matches(ev),
 
-            Match::Source(ref src) => {
-                match *ev {
-                    Event::StreamRequestOpen(ref req) | Event::StreamRequestFail(ref req, _) => {
-                        src.matches(&req.server.remote)
-                    },
-                    Event::StreamResponseOpen(ref rsp, _) |
-                    Event::StreamResponseFail(ref rsp, _) |
-                    Event::StreamResponseEnd(ref rsp, _) => {
-                        src.matches(&rsp.request.server.remote)
-                    },
-                    _ => false,
+            Match::Source(ref src) => match *ev {
+                Event::StreamRequestOpen(ref req) | Event::StreamRequestFail(ref req, _) => {
+                    src.matches(&req.server.remote)
                 }
-            }
+                Event::StreamResponseOpen(ref rsp, _) |
+                Event::StreamResponseFail(ref rsp, _) |
+                Event::StreamResponseEnd(ref rsp, _) => src.matches(&rsp.request.server.remote),
+                _ => false,
+            },
 
-            Match::Destination(ref dst) => {
-                match *ev {
-                    Event::StreamRequestOpen(ref req) | Event::StreamRequestFail(ref req, _) => {
-                        dst.matches(&req.client.remote)
-                    }
-                    Event::StreamResponseOpen(ref rsp, _) |
-                    Event::StreamResponseFail(ref rsp, _) |
-                    Event::StreamResponseEnd(ref rsp, _) => {
-                        dst.matches(&rsp.request.client.remote)
-                    }
-                    _ => false,
+            Match::Destination(ref dst) => match *ev {
+                Event::StreamRequestOpen(ref req) | Event::StreamRequestFail(ref req, _) => {
+                    dst.matches(&req.client.remote)
                 }
-            }
+                Event::StreamResponseOpen(ref rsp, _) |
+                Event::StreamResponseFail(ref rsp, _) |
+                Event::StreamResponseEnd(ref rsp, _) => dst.matches(&rsp.request.client.remote),
+                _ => false,
+            },
 
-            Match::Http(ref http) => {
-                match *ev {
-                    Event::StreamRequestOpen(ref req) |
-                    Event::StreamRequestFail(ref req, _) => {
-                        http.matches(req)
-                    }
-
-                    Event::StreamResponseOpen(ref rsp, _) |
-                    Event::StreamResponseFail(ref rsp, _) |
-                    Event::StreamResponseEnd(ref rsp, _) => {
-                        http.matches(&rsp.request)
-                    }
-
-                    _ => false,
+            Match::Http(ref http) => match *ev {
+                Event::StreamRequestOpen(ref req) | Event::StreamRequestFail(ref req, _) => {
+                    http.matches(req)
                 }
-            }
+
+                Event::StreamResponseOpen(ref rsp, _) |
+                Event::StreamResponseFail(ref rsp, _) |
+                Event::StreamResponseEnd(ref rsp, _) => http.matches(&rsp.request),
+
+                _ => false,
+            },
         }
     }
 
     pub(super) fn new(match_: &observe_request::Match) -> Result<Match, InvalidMatch> {
-        match_.match_.as_ref()
+        match_
+            .match_
+            .as_ref()
             .map(Match::try_from)
             .unwrap_or_else(|| Err(InvalidMatch::Empty))
     }
@@ -154,12 +143,10 @@ impl<'a> TryFrom<&'a observe_request::match_::Match> for Match {
 
             match_::Match::Any(ref seq) => Match::Any(Self::from_seq(seq)?),
 
-            match_::Match::Not(ref m) => {
-                match m.match_.as_ref() {
-                    Some(m) => Match::Not(Box::new(Self::try_from(m)?)),
-                    None => return Err(InvalidMatch::Empty),
-                }
-            }
+            match_::Match::Not(ref m) => match m.match_.as_ref() {
+                Some(m) => Match::Not(Box::new(Self::try_from(m)?)),
+                None => return Err(InvalidMatch::Empty),
+            },
 
             match_::Match::Source(ref src) => Match::Source(TcpMatch::try_from(src)?),
 
@@ -179,13 +166,9 @@ impl TcpMatch {
         match *self {
             // If either a minimum or maximum is not specified, the range is considered to
             // be over a discrete value.
-            TcpMatch::PortRange(min, max) => {
-                min <= addr.port() && addr.port() <= max
-            }
+            TcpMatch::PortRange(min, max) => min <= addr.port() && addr.port() <= max,
 
-            TcpMatch::Net(ref net) => {
-                net.matches(&addr.ip())
-            },
+            TcpMatch::Net(ref net) => net.matches(&addr.ip()),
         }
     }
 }
@@ -228,21 +211,16 @@ impl<'a> TryFrom<&'a observe_request::match_::Tcp> for TcpMatch {
 impl NetMatch {
     fn matches(&self, addr: &net::IpAddr) -> bool {
         match *self {
-            NetMatch::Net4(ref net) => {
-                match *addr {
-                    net::IpAddr::V6(_) => false,
-                    net::IpAddr::V4(ref addr) => net.contains(addr),
-                }
-            }
-            NetMatch::Net6(ref net) => {
-                match *addr {
-                    net::IpAddr::V4(_) => false,
-                    net::IpAddr::V6(ref addr) => net.contains(addr),
-                }
-            }
+            NetMatch::Net4(ref net) => match *addr {
+                net::IpAddr::V6(_) => false,
+                net::IpAddr::V4(ref addr) => net.contains(addr),
+            },
+            NetMatch::Net6(ref net) => match *addr {
+                net::IpAddr::V4(_) => false,
+                net::IpAddr::V6(ref addr) => net.contains(addr),
+            },
         }
     }
-
 }
 
 impl<'a> TryFrom<&'a observe_request::match_::tcp::Netmask> for NetMatch {
@@ -263,7 +241,8 @@ impl<'a> TryFrom<&'a observe_request::match_::tcp::Netmask> for NetMatch {
 
         let net = match *ip {
             ip_address::Ip::Ipv4(ref n) => {
-                let net = Ipv4Net::new((*n).into(), mask).map_err(|_| InvalidMatch::InvalidNetwork)?;
+                let net =
+                    Ipv4Net::new((*n).into(), mask).map_err(|_| InvalidMatch::InvalidNetwork)?;
                 NetMatch::Net4(net)
             }
             ip_address::Ip::Ipv6(ref ip6) => {
@@ -281,21 +260,14 @@ impl<'a> TryFrom<&'a observe_request::match_::tcp::Netmask> for NetMatch {
 impl HttpMatch {
     fn matches(&self, req: &Arc<ctx::http::Request>) -> bool {
         match *self {
-            HttpMatch::Scheme(ref m) => {
-                req.uri.scheme()
-                    .map(|s| *m == s)
-                    .unwrap_or(false)
-            }
+            HttpMatch::Scheme(ref m) => req.uri.scheme().map(|s| *m == s).unwrap_or(false),
 
-            HttpMatch::Method(ref m) => {
-                *m == req.method
-            }
+            HttpMatch::Method(ref m) => *m == req.method,
 
-            HttpMatch::Authority(ref m) => {
-                req.uri.authority_part()
-                    .map(|a| Self::matches_string(m, a.as_str()))
-                    .unwrap_or(false)
-            }
+            HttpMatch::Authority(ref m) => req.uri
+                .authority_part()
+                .map(|a| Self::matches_string(m, a.as_str()))
+                .unwrap_or(false),
 
             HttpMatch::Path(ref m) => Self::matches_string(m, req.uri.path()),
         }
@@ -303,7 +275,7 @@ impl HttpMatch {
 
     fn matches_string(
         string_match: &observe_request::match_::http::string_match::Match,
-        value: &str
+        value: &str,
     ) -> bool {
         use control::pb::proxy::tap::observe_request::match_::http::string_match::Match::*;
 
@@ -312,7 +284,6 @@ impl HttpMatch {
             Prefix(ref prefix) => value.starts_with(prefix),
         }
     }
-
 }
 
 impl<'a> TryFrom<&'a observe_request::match_::Http> for HttpMatch {
@@ -320,51 +291,45 @@ impl<'a> TryFrom<&'a observe_request::match_::Http> for HttpMatch {
     fn try_from(m: &'a observe_request::match_::Http) -> Result<Self, InvalidMatch> {
         use control::pb::proxy::tap::observe_request::match_::http::Match as Pb;
 
-        m.match_.as_ref()
+        m.match_
+            .as_ref()
             .ok_or_else(|| InvalidMatch::Empty)
-            .and_then(|m| {
-                match *m {
-                    Pb::Scheme(ref s) => {
-                        s.type_.as_ref()
-                            .ok_or_else(|| InvalidMatch::Empty)
-                            .and_then(|s| {
-                                s.try_into()
-                                    .map(HttpMatch::Scheme)
-                                    .map_err(|_|InvalidMatch::InvalidScheme)
-                            })
-                    }
+            .and_then(|m| match *m {
+                Pb::Scheme(ref s) => s.type_
+                    .as_ref()
+                    .ok_or_else(|| InvalidMatch::Empty)
+                    .and_then(|s| {
+                        s.try_into()
+                            .map(HttpMatch::Scheme)
+                            .map_err(|_| InvalidMatch::InvalidScheme)
+                    }),
 
-                    Pb::Method(ref m) => {
-                        m.type_.as_ref()
-                            .ok_or_else(|| InvalidMatch::Empty)
-                            .and_then(|m| {
-                                m.try_into()
-                                    .map(HttpMatch::Method)
-                                    .map_err(|_| InvalidMatch::InvalidHttpMethod)
-                            })
+                Pb::Method(ref m) => m.type_
+                    .as_ref()
+                    .ok_or_else(|| InvalidMatch::Empty)
+                    .and_then(|m| {
+                        m.try_into()
+                            .map(HttpMatch::Method)
+                            .map_err(|_| InvalidMatch::InvalidHttpMethod)
+                    }),
 
-                    }
+                Pb::Authority(ref a) => a.match_
+                    .as_ref()
+                    .ok_or_else(|| InvalidMatch::Empty)
+                    .map(|a| HttpMatch::Authority(a.clone())),
 
-                    Pb::Authority(ref a) => {
-                        a.match_.as_ref()
-                            .ok_or_else(|| InvalidMatch::Empty)
-                            .map(|a|HttpMatch::Authority(a.clone()))
-                    }
-
-                    Pb::Path(ref p) => {
-                        p.match_.as_ref()
-                            .ok_or_else(|| InvalidMatch::Empty)
-                            .map(|p| HttpMatch::Path(p.clone()))
-                    }
-                }
+                Pb::Path(ref p) => p.match_
+                    .as_ref()
+                    .ok_or_else(|| InvalidMatch::Empty)
+                    .map(|p| HttpMatch::Path(p.clone())),
             })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::net;
     use std::boxed::Box;
+    use std::net;
 
     use ipnet::{Contains, Ipv4Net, Ipv6Net};
     use quickcheck::*;
@@ -377,7 +342,7 @@ mod tests {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             ObserveRequest {
                 limit: g.gen(),
-                match_: Arbitrary::arbitrary(g)
+                match_: Arbitrary::arbitrary(g),
             }
         }
     }
@@ -385,7 +350,7 @@ mod tests {
     impl Arbitrary for observe_request::Match {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             observe_request::Match {
-                match_: Arbitrary::arbitrary(g)
+                match_: Arbitrary::arbitrary(g),
             }
         }
     }
@@ -399,7 +364,7 @@ mod tests {
                 3 => observe_request::match_::Match::Source(Arbitrary::arbitrary(g)),
                 4 => observe_request::match_::Match::Destination(Arbitrary::arbitrary(g)),
                 5 => observe_request::match_::Match::Http(Arbitrary::arbitrary(g)),
-                _ => unreachable!()
+                _ => unreachable!(),
             }
         }
     }
@@ -411,9 +376,12 @@ mod tests {
             }
         }
 
-        fn shrink(&self) -> Box<Iterator<Item=Self>> {
-            Box::new(self.matches.shrink()
-                .map(|matches| observe_request::match_::Seq { matches }))
+        fn shrink(&self) -> Box<Iterator<Item = Self>> {
+            Box::new(self.matches.shrink().map(|matches| {
+                observe_request::match_::Seq {
+                    matches,
+                }
+            }))
         }
     }
 
@@ -449,12 +417,15 @@ mod tests {
     impl Arbitrary for observe_request::match_::tcp::Netmask {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             let ip: Option<IpAddress> = Arbitrary::arbitrary(g);
-            let mask  = match ip.as_ref().and_then(|a| a.ip.as_ref()) {
+            let mask = match ip.as_ref().and_then(|a| a.ip.as_ref()) {
                 Some(&ip_address::Ip::Ipv4(_)) => g.gen::<u32>() % 32 + 1,
                 Some(&ip_address::Ip::Ipv6(_)) => g.gen::<u32>() % 128 + 1,
                 None => 0u32,
             };
-            observe_request::match_::tcp::Netmask { ip, mask }
+            observe_request::match_::tcp::Netmask {
+                ip,
+                mask,
+            }
         }
     }
 
@@ -475,7 +446,7 @@ mod tests {
                 1 => http::Match::Method(HttpMethod::arbitrary(g)),
                 2 => http::Match::Authority(http::StringMatch::arbitrary(g)),
                 3 => http::Match::Path(http::StringMatch::arbitrary(g)),
-                _ => unreachable!()
+                _ => unreachable!(),
             }
         }
     }
@@ -483,7 +454,7 @@ mod tests {
     impl Arbitrary for observe_request::match_::http::StringMatch {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             observe_request::match_::http::StringMatch {
-                match_: Arbitrary::arbitrary(g)
+                match_: Arbitrary::arbitrary(g),
             }
         }
     }
@@ -495,7 +466,7 @@ mod tests {
             match g.gen::<u32>() % 2 {
                 0 => string_match::Match::Exact(String::arbitrary(g)),
                 1 => string_match::Match::Prefix(String::arbitrary(g)),
-                _ => unreachable!()
+                _ => unreachable!(),
             }
         }
     }
@@ -503,7 +474,7 @@ mod tests {
     impl Arbitrary for IpAddress {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             IpAddress {
-                ip: Arbitrary::arbitrary(g)
+                ip: Arbitrary::arbitrary(g),
             }
         }
     }
@@ -530,7 +501,7 @@ mod tests {
     impl Arbitrary for HttpMethod {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             HttpMethod {
-                type_: Arbitrary::arbitrary(g)
+                type_: Arbitrary::arbitrary(g),
             }
         }
     }
@@ -547,7 +518,7 @@ mod tests {
     impl Arbitrary for Scheme {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             Scheme {
-                type_: Arbitrary::arbitrary(g)
+                type_: Arbitrary::arbitrary(g),
             }
         }
     }

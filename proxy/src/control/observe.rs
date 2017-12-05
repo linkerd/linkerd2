@@ -1,17 +1,17 @@
 use std::sync::{Arc, Mutex};
 
-use futures::{future, Stream, Poll};
+use futures::{future, Poll, Stream};
 use futures_mpsc_lossy;
 use ordermap::OrderMap;
 use tower_grpc::{self, Request, Response};
 use tower_grpc::codegen::server::grpc::ServerStreamingService;
 
 use control::pb::common::TapEvent;
-use control::pb::proxy::tap::{ObserveRequest};
+use control::pb::proxy::tap::ObserveRequest;
+use convert::*;
 use ctx;
 use telemetry::Event;
 use telemetry::tap::{Tap, Taps};
-use convert::*;
 
 #[derive(Clone, Debug)]
 pub struct Observe {
@@ -58,10 +58,14 @@ impl ServerStreamingService for Observe {
         }
 
         let (_, req) = req.into_http().into_parts();
-        let (tap, rx) = match req.match_.and_then(|m| Tap::new(&m, self.tap_capacity).ok()) {
+        let (tap, rx) = match req.match_
+            .and_then(|m| Tap::new(&m, self.tap_capacity).ok())
+        {
             Some(m) => m,
             None => {
-                return future::err(tower_grpc::Error::Grpc(tower_grpc::Status::INVALID_ARGUMENT));
+                return future::err(tower_grpc::Error::Grpc(
+                    tower_grpc::Status::INVALID_ARGUMENT,
+                ));
             }
         };
 

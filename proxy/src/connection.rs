@@ -23,7 +23,9 @@ pub struct Handshake {
 impl Connection {
     /// Establish a connection backed by the provided `io`.
     pub fn handshake(io: PlaintextSocket) -> Handshake {
-        Handshake { plaintext_socket: Some(io) }
+        Handshake {
+            plaintext_socket: Some(io),
+        }
     }
 }
 

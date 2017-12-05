@@ -54,8 +54,12 @@ impl Future for TcpStreamNewNoDelay {
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         let tcp = try_ready!(self.0.poll());
         if let Err(e) = tcp.set_nodelay(true) {
-            warn!("could not set TCP_NODELAY on {:?}/{:?}: {}",
-                    tcp.local_addr(), tcp.peer_addr(), e);
+            warn!(
+                "could not set TCP_NODELAY on {:?}/{:?}: {}",
+                tcp.local_addr(),
+                tcp.peer_addr(),
+                e
+            );
         }
         Ok(Async::Ready(tcp))
     }
@@ -90,7 +94,7 @@ impl LookupAddressAndConnect {
     pub fn new(
         host_and_port: url::HostAndPort,
         dns_resolver: dns::Resolver,
-        handle: &Handle
+        handle: &Handle,
     ) -> Self {
         Self {
             host_and_port,
@@ -109,8 +113,11 @@ impl tokio_connect::Connect for LookupAddressAndConnect {
         let port = self.host_and_port.port;
         let handle = self.handle.clone();
         let host = self.host_and_port.host.clone();
-        let c = self.dns_resolver.resolve_host(&self.host_and_port.host)
-            .map_err(|_| io::Error::new(io::ErrorKind::NotFound, "DNS resolution failed"))
+        let c = self.dns_resolver
+            .resolve_host(&self.host_and_port.host)
+            .map_err(|_| {
+                io::Error::new(io::ErrorKind::NotFound, "DNS resolution failed")
+            })
             .and_then(move |ip_addr: IpAddr| {
                 info!("DNS resolved {} to {}", host, ip_addr);
                 let addr = SocketAddr::from((ip_addr, port));
@@ -143,7 +150,11 @@ impl<C: tokio_connect::Connect> tokio_connect::Connect for TimeoutConnect<C> {
         let connect = self.connect.connect();
         let duration = self.timeout;
         let timeout = Timeout::new(duration, &self.handle).unwrap();
-        TimeoutConnectFuture { connect, duration, timeout }
+        TimeoutConnectFuture {
+            connect,
+            duration,
+            timeout,
+        }
     }
 }
 

@@ -92,7 +92,8 @@ impl<T> Sender<T> {
             }
         }
 
-        self.tx.unbounded_send(v)
+        self.tx
+            .unbounded_send(v)
             .map_err(|se| SendError::NoReceiver(se.into_inner()))
     }
 }
@@ -103,8 +104,7 @@ impl<T> Sink for Sender<T> {
     type SinkError = SendError<T>;
 
     fn start_send(&mut self, item: T) -> StartSend<Self::SinkItem, Self::SinkError> {
-        self.lossy_send(item)
-            .map(|_| AsyncSink::Ready)
+        self.lossy_send(item).map(|_| AsyncSink::Ready)
     }
 
     fn poll_complete(&mut self) -> Poll<(), Self::SinkError> {
@@ -136,8 +136,7 @@ impl<T> fmt::Debug for Sender<T> {
 impl<T> SendError<T> {
     pub fn into_inner(self) -> T {
         match self {
-            SendError::NoReceiver(v) |
-            SendError::Rejected(v) => v
+            SendError::NoReceiver(v) | SendError::Rejected(v) => v,
         }
     }
 }

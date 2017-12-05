@@ -21,19 +21,24 @@ pub struct ResponseFuture<T, E> {
 // ===== impl MapErr =====
 
 impl<T, E> MapErr<T, E>
-where T: Service<Error = E>,
-      E: Debug,
+where
+    T: Service<Error = E>,
+    E: Debug,
 {
     /// Crete a new `MapErr`
     pub fn new(inner: T) -> Self {
-        MapErr { inner, _p: PhantomData }
+        MapErr {
+            inner,
+            _p: PhantomData,
+        }
     }
 }
 
 impl<T, B, E> Service for MapErr<T, E>
-where T: Service<Response = http::Response<B>, Error = E>,
-      B: Default,
-      E: Debug,
+where
+    T: Service<Response = http::Response<B>, Error = E>,
+    B: Default,
+    E: Debug,
 {
     type Request = T::Request;
     type Response = T::Response;
@@ -48,30 +53,33 @@ where T: Service<Response = http::Response<B>, Error = E>,
 
     fn call(&mut self, request: Self::Request) -> Self::Future {
         let inner = self.inner.call(request);
-        ResponseFuture { inner, _p: PhantomData }
+        ResponseFuture {
+            inner,
+            _p: PhantomData,
+        }
     }
 }
 
 // ===== impl ResponseFuture =====
 
 impl<T, B, E> Future for ResponseFuture<T, E>
-where T: Future<Item = http::Response<B>, Error = E>,
-      B: Default,
-      E: Debug,
+where
+    T: Future<Item = http::Response<B>, Error = E>,
+    B: Default,
+    E: Debug,
 {
     type Item = T::Item;
     type Error = h2::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        self.inner.poll()
-            .or_else(|e| {
-                error!("turning h2 error into 500: {:?}", e);
-                let response = http::Response::builder()
-                    .status(500)
-                    .body(Default::default())
-                    .unwrap();
+        self.inner.poll().or_else(|e| {
+            error!("turning h2 error into 500: {:?}", e);
+            let response = http::Response::builder()
+                .status(500)
+                .body(Default::default())
+                .unwrap();
 
-                Ok(response.into())
-            })
+            Ok(response.into())
+        })
     }
 }

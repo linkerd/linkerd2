@@ -77,17 +77,14 @@ impl<N, A, B> NewHttp<N, A, B>
 where
     A: Body + 'static,
     B: Body + 'static,
-    N: NewService<
-        Request = http::Request<A>,
-        Response = http::Response<B>,
-        Error = client::Error>
-        + 'static
+    N: NewService<Request = http::Request<A>, Response = http::Response<B>, Error = client::Error>
+        + 'static,
 {
     pub(super) fn new(
         next_id: Arc<AtomicUsize>,
         new_service: N,
         handle: &super::Handle,
-        client_ctx: &Arc<ctx::transport::Client>
+        client_ctx: &Arc<ctx::transport::Client>,
     ) -> Self {
         Self {
             next_id,
@@ -103,11 +100,8 @@ impl<N, A, B> NewService for NewHttp<N, A, B>
 where
     A: Body + 'static,
     B: Body + 'static,
-    N: NewService<
-        Request = http::Request<A>,
-        Response = http::Response<B>,
-        Error = client::Error>
-        + 'static
+    N: NewService<Request = http::Request<A>, Response = http::Response<B>, Error = client::Error>
+        + 'static,
 {
     type Request = N::Request;
     type Response = http::Response<ResponseBody<B>>;
@@ -158,18 +152,15 @@ impl<S, A, B> Service for Http<S, A, B>
 where
     A: Body + 'static,
     B: Body + 'static,
-    S: Service<
-        Request = http::Request<A>,
-        Response = http::Response<B>,
-        Error = client::Error>
-        + 'static
+    S: Service<Request = http::Request<A>, Response = http::Response<B>, Error = client::Error>
+        + 'static,
 {
     type Request = S::Request;
     type Response = http::Response<ResponseBody<B>>;
     type Error = S::Error;
     type Future = Respond<S::Future, B>;
 
-    fn poll_ready(&mut self) -> Poll<(), Self::Error>  {
+    fn poll_ready(&mut self) -> Poll<(), Self::Error> {
         self.service.poll_ready()
     }
 
@@ -180,7 +171,8 @@ where
                 let id = self.next_id.fetch_add(1, Ordering::SeqCst);
                 let ctx = ctx::http::Request::new(&req, &ctx, &self.client_ctx, id);
 
-                self.handle.send(|| Event::StreamRequestOpen(Arc::clone(&ctx)));
+                self.handle
+                    .send(|| Event::StreamRequestOpen(Arc::clone(&ctx)));
 
                 Some(RespondInner {
                     ctx,
@@ -196,7 +188,7 @@ where
         Respond {
             future,
             inner,
-            _p: PhantomData
+            _p: PhantomData,
         }
     }
 }
@@ -206,7 +198,7 @@ where
 impl<F, B> Future for Respond<F, B>
 where
     F: Future<Item = http::Response<B>, Error = client::Error>,
-    B: Body + 'static
+    B: Body + 'static,
 {
     type Item = http::Response<ResponseBody<B>>;
     type Error = F::Error;
@@ -230,7 +222,7 @@ where
                             Arc::clone(&ctx),
                             event::StreamResponseOpen {
                                 since_request_open: request_open.elapsed(),
-                            }
+                            },
                         )
                     });
 
@@ -249,7 +241,7 @@ where
                                     since_response_open: Duration::default(),
                                     bytes_sent: 0,
                                     frames_sent: 0,
-                                }
+                                },
                             )
                         });
 
@@ -294,7 +286,7 @@ where
                                 event::StreamRequestFail {
                                     error,
                                     since_request_open: request_open.elapsed(),
-                                }
+                                },
                             )
                         });
                     }
@@ -341,21 +333,21 @@ impl<B> ResponseBody<B> {
                                     since_response_open: response_open.elapsed(),
                                     bytes_sent,
                                     frames_sent,
-                                }
+                                },
                             )
                         });
                     }
                 }
 
                 Err(e)
-            },
+            }
         }
     }
 }
 
 impl<B> Body for ResponseBody<B>
 where
-    B: Body + 'static
+    B: Body + 'static,
 {
     /// The body chunk type
     type Data = <B::Data as IntoBuf>::Buf;
@@ -406,7 +398,7 @@ where
                                 since_response_open: response_open.elapsed(),
                                 bytes_sent,
                                 frames_sent,
-                            }
+                            },
                         )
                     })
                 }

@@ -1,6 +1,6 @@
 use support::*;
 
-use self::futures::sync::{oneshot, mpsc};
+use self::futures::sync::{mpsc, oneshot};
 use self::tokio_core::net::TcpStream;
 use self::tower_h2::client::Error;
 
@@ -35,14 +35,14 @@ impl Client {
             .body(())
             .unwrap();
         let _ = self.tx.unbounded_send((req, tx));
-        rx
-            .map_err(|_| panic!("client request dropped"))
+        rx.map_err(|_| panic!("client request dropped"))
             .and_then(|res| {
                 let stream = RecvBodyStream(res.unwrap().into_parts().1);
                 stream.concat2()
-            }).map(|body| {
-                ::std::str::from_utf8(&body).unwrap().to_string()
-            }).wait().unwrap()
+            })
+            .map(|body| ::std::str::from_utf8(&body).unwrap().to_string())
+            .wait()
+            .unwrap()
     }
 }
 
@@ -56,17 +56,20 @@ fn run(addr: SocketAddr) -> Sender {
             let reactor = core.handle();
 
             let conn = Conn(addr, reactor.clone());
-            let h2 = tower_h2::Client::<Conn, Handle, ()>::new(conn, Default::default(), reactor.clone());
+            let h2 = tower_h2::Client::<Conn, Handle, ()>::new(
+                conn,
+                Default::default(),
+                reactor.clone(),
+            );
 
             let done = h2.new_service()
                 .map_err(move |err| println!("connect error ({:?}): {:?}", addr, err))
                 .and_then(move |mut h2| {
                     rx.for_each(move |(req, cb)| {
-                        let fut = h2.call(req)
-                            .then(|result| {
-                                let _ = cb.send(result);
-                                Ok(())
-                            });
+                        let fut = h2.call(req).then(|result| {
+                            let _ = cb.send(result);
+                            Ok(())
+                        });
                         reactor.spawn(fut);
                         Ok(())
                     })

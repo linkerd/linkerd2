@@ -74,8 +74,8 @@ mod tower_fn; // TODO: move to tower-fn
 use bind::Bind;
 use control::pb::proxy::tap;
 use inbound::Inbound;
-use outbound::Outbound;
 use map_err::MapErr;
+use outbound::Outbound;
 
 /// Runs a sidecar proxy.
 ///
@@ -99,13 +99,13 @@ pub struct Main {
 
 impl Main {
     pub fn new(config: config::Config) -> Self {
-
-        let control_listener =  StdTcpListener::bind(SocketAddr::from(config.control_listener.addr))
+        let control_listener = StdTcpListener::bind(SocketAddr::from(config.control_listener.addr))
             .expect("controller listener bind");
         let inbound_listener = StdTcpListener::bind(SocketAddr::from(config.public_listener.addr))
             .expect("public listener bind");
-        let outbound_listener = StdTcpListener::bind(SocketAddr::from(config.private_listener.addr))
-            .expect("private listener bind");
+        let outbound_listener = StdTcpListener::bind(
+            SocketAddr::from(config.private_listener.addr),
+        ).expect("private listener bind");
 
         Self {
             config,
@@ -134,7 +134,7 @@ impl Main {
 
     pub fn run_until<F>(self, shutdown_signal: F)
     where
-        F: Future<Item=(), Error=()>,
+        F: Future<Item = (), Error = ()>,
     {
         let Main {
             config,
@@ -146,10 +146,7 @@ impl Main {
         let control_host_and_port = config.control_host_and_port.clone();
 
         info!("using controller at {:?}", control_host_and_port);
-        info!(
-            "routing on {:?}",
-            outbound_listener.local_addr().unwrap(),
-        );
+        info!("routing on {:?}", outbound_listener.local_addr().unwrap(),);
         info!(
             "proxying on {:?} to {:?}",
             inbound_listener.local_addr().unwrap(),
@@ -170,8 +167,7 @@ impl Main {
 
         let dns_config = dns::Config::from_file(&config.resolv_conf_path);
 
-        let bind = Bind::new(executor.clone())
-            .with_sensors(sensors.clone());
+        let bind = Bind::new(executor.clone()).with_sensors(sensors.clone());
 
         // Setup the public listener. This will listen on a publicly accessible
         // address and listen for inbound connections that should be forwarded
@@ -179,7 +175,9 @@ impl Main {
         let inbound = {
             let ctx = ctx::Proxy::inbound(&process_ctx);
 
-            let timeout = config.private_connect_timeout.unwrap_or_else(|| Duration::from_millis(20));
+            let timeout = config
+                .private_connect_timeout
+                .unwrap_or_else(|| Duration::from_millis(20));
             let bind = bind.clone()
                 .with_connect_timeout(timeout)
                 .with_ctx(ctx.clone());
@@ -203,11 +201,9 @@ impl Main {
         let outbound = {
             let ctx = ctx::Proxy::outbound(&process_ctx);
 
-            let bind = config.public_connect_timeout
-                .map_or_else(
-                    || bind.clone(),
-                    |t| bind.clone().with_connect_timeout(t),
-                )
+            let bind = config
+                .public_connect_timeout
+                .map_or_else(|| bind.clone(), |t| bind.clone().with_connect_timeout(t))
                 .with_ctx(ctx.clone());
 
             let fut = serve(
@@ -233,36 +229,33 @@ impl Main {
 
                     let (taps, observe) = control::Observe::new(100);
 
-                    let new_service = tap::server::Tap::new_service()
-                        .observe(observe);
+                    let new_service = tap::server::Tap::new_service().observe(observe);
 
                     let server = serve_control(
                         control_listener,
                         h2::server::Builder::default(),
                         new_service,
-                        &executor
+                        &executor,
                     );
 
                     let telemetry = telemetry
                         .make_control(&taps, &executor)
                         .expect("bad news in telemetry town");
 
-                    let client = control_bg.bind(
-                        telemetry,
-                        control_host_and_port,
-                        dns_config,
-                        &executor
-                    );
+                    let client =
+                        control_bg.bind(telemetry, control_host_and_port, dns_config, &executor);
 
                     let fut = client.join(server.map_err(|_| {})).map(|_| {});
                     executor.spawn(::logging::context_future("controller-client", fut));
 
                     let shutdown = controller_shutdown_signal.then(|_| Ok::<(), ()>(()));
                     core.run(shutdown).expect("controller api");
-                }).expect("initialize controller api thread");
+                })
+                .expect("initialize controller api thread");
         }
 
-        let fut = inbound.join(outbound)
+        let fut = inbound
+            .join(outbound)
             .map(|_| ())
             .map_err(|err| error!("main error: {:?}", err));
 
@@ -288,12 +281,12 @@ where
         Response = http::Response<telemetry::sensor::http::ResponseBody<B>>,
         Error = E,
         RouteError = F,
-    > + 'static,
+    >
+        + 'static,
 {
     let listen_addr = listen.local_addr().expect("local addr");
 
-    let bind = TcpListener::from_listener(listen, &listen_addr, &executor)
-        .expect("bind");
+    let bind = TcpListener::from_listener(listen, &listen_addr, &executor).expect("bind");
 
     let router = Router::new(recognize);
     let stack = NewServiceFn::new(move || {
@@ -304,19 +297,28 @@ where
         MapErr::new(router)
     });
 
-    let server = Server::new(stack, h2_builder, ::logging::context_executor(("serve", listen_addr) , executor.clone()));
+    let server = Server::new(
+        stack,
+        h2_builder,
+        ::logging::context_executor(("serve", listen_addr), executor.clone()),
+    );
     let f = bind.incoming().fold(
         (server, proxy_ctx, sensors, executor),
         move |(server, proxy_ctx, sensors, executor), (socket, remote_addr)| {
             if let Err(e) = socket.set_nodelay(true) {
-                warn!("could not set TCP_NODELAY on {:?}/{:?}: {}",
-                     socket.local_addr(), socket.peer_addr(), e);
+                warn!(
+                    "could not set TCP_NODELAY on {:?}/{:?}: {}",
+                    socket.local_addr(),
+                    socket.peer_addr(),
+                    e
+                );
             }
 
             let opened_at = Instant::now();
             let orig_dst = transport::get_original_dst(&socket);
             let local_addr = socket.local_addr().unwrap_or(listen_addr);
-            let srv_ctx = ctx::transport::Server::new(&proxy_ctx, &local_addr, &remote_addr, &orig_dst);
+            let srv_ctx =
+                ctx::transport::Server::new(&proxy_ctx, &local_addr, &remote_addr, &orig_dst);
 
             connection::Connection::handshake(socket).map(move |session| {
                 let io = sensors.accept(session, opened_at, &srv_ctx);
@@ -345,22 +347,22 @@ fn serve_control<N, B>(
 ) -> Box<Future<Item = (), Error = io::Error> + 'static>
 where
     B: Body + 'static,
-    N: NewService<
-        Request = http::Request<RecvBody>,
-        Response = http::Response<B>,
-    > + 'static,
+    N: NewService<Request = http::Request<RecvBody>, Response = http::Response<B>> + 'static,
 {
     let listen_addr = listen.local_addr().expect("local addr");
-    let bind = TcpListener::from_listener(listen, &listen_addr, executor)
-        .expect("bind");
+    let bind = TcpListener::from_listener(listen, &listen_addr, executor).expect("bind");
 
     let server = Server::new(new_service, h2_builder, executor.clone());
     let f = bind.incoming().fold(
         (server, executor.clone()),
         move |(server, executor), (socket, _)| {
             if let Err(e) = socket.set_nodelay(true) {
-                warn!("could not set TCP_NODELAY on {:?}/{:?}: {}",
-                     socket.local_addr(), socket.peer_addr(), e);
+                warn!(
+                    "could not set TCP_NODELAY on {:?}/{:?}: {}",
+                    socket.local_addr(),
+                    socket.peer_addr(),
+                    e
+                );
             }
 
             connection::Connection::handshake(socket).map(move |session| {

@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 use std::time::{Duration, Instant};
 
 use bytes::Bytes;
-use futures::{Async, Future, future, Poll, Stream};
+use futures::{future, Async, Future, Poll, Stream};
 use h2;
 use http;
 use tokio_core::reactor::{Handle, Timeout};
@@ -59,15 +59,22 @@ impl Control {
 // ===== impl Background =====
 
 impl Background {
-    pub fn bind<S>(self, events: S, host_and_port: HostAndPort, dns_config: dns::Config, executor: &Handle) -> Box<Future<Item=(), Error=()>>
+    pub fn bind<S>(
+        self,
+        events: S,
+        host_and_port: HostAndPort,
+        dns_config: dns::Config,
+        executor: &Handle,
+    ) -> Box<Future<Item = (), Error = ()>>
     where
-        S: Stream<Item=ReportRequest, Error=()> + 'static,
+        S: Stream<Item = ReportRequest, Error = ()> + 'static,
     {
         // Build up the Controller Client Stack
         let mut client = {
             let ctx = ("controller-client", format!("{}", host_and_port));
             let scheme = http::uri::Scheme::from_shared(Bytes::from_static(b"http")).unwrap();
-            let authority = http::uri::Authority::from_shared(format!("{}", host_and_port).into()).unwrap();
+            let authority =
+                http::uri::Authority::from_shared(format!("{}", host_and_port).into()).unwrap();
 
             let dns_resolver = dns::Resolver::new(dns_config, executor);
             let connect = TimeoutConnect::new(
@@ -78,7 +85,7 @@ impl Background {
             let h2_client = tower_h2::client::Client::new(
                 connect,
                 h2::client::Builder::default(),
-                ::logging::context_executor(ctx, executor.clone())
+                ::logging::context_executor(ctx, executor.clone()),
             );
 
 
@@ -148,7 +155,7 @@ where
                 self.waiting = true;
                 self.timer.reset(Instant::now() + self.wait_dur);
                 Ok(Async::NotReady)
-            },
+            }
             ok => ok,
         }
     }
@@ -177,7 +184,7 @@ impl<S> AddOrigin<S> {
 
 impl<S, B> Service for AddOrigin<S>
 where
-    S: Service<Request=http::Request<B>>,
+    S: Service<Request = http::Request<B>>,
 {
     type Request = http::Request<B>;
     type Response = S::Response;
@@ -205,7 +212,7 @@ struct EnumService<S, B>(S, PhantomData<B>);
 
 impl<S, B> Service for EnumService<S, B>
 where
-    S: Service<Request=http::Request<GrpcEncodingBody>>,
+    S: Service<Request = http::Request<GrpcEncodingBody>>,
     B: Into<GrpcEncodingBody>,
 {
     type Request = http::Request<B>;
@@ -256,7 +263,6 @@ impl tower_h2::Body for GrpcEncodingBody {
             GrpcEncodingBody::DestinationGet(ref mut b) => b.poll_trailers(),
         }
     }
-
 }
 
 impl From<self::telemetry::ClientBody> for GrpcEncodingBody {

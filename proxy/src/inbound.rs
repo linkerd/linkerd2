@@ -32,29 +32,25 @@ type CtxtExec = ::logging::ContextualExecutor<(&'static str, SocketAddr), Handle
 // ===== impl Inbound =====
 
 impl<B> Inbound<B> {
-    pub fn new(
-        default_addr: Option<SocketAddr>,
-        bind: Bind<B>
-    ) -> Self {
+    pub fn new(default_addr: Option<SocketAddr>, bind: Bind<B>) -> Self {
         Self {
             default_addr,
-            bind
+            bind,
         }
     }
 
     fn same_addr(a0: &SocketAddr, a1: &SocketAddr) -> bool {
-        (a0.port() == a1.port()) &&
-        match (a0.ip(), a1.ip()) {
+        (a0.port() == a1.port()) && match (a0.ip(), a1.ip()) {
             (IpAddr::V6(a0), IpAddr::V4(a1)) => a0.to_ipv4() == Some(a1),
             (IpAddr::V4(a0), IpAddr::V6(a1)) => Some(a0) == a1.to_ipv4(),
-            (a0, a1) => (a0 == a1)
+            (a0, a1) => (a0 == a1),
         }
     }
 }
 
 impl<B> Recognize for Inbound<B>
 where
-    B: tower_h2::Body + 'static
+    B: tower_h2::Body + 'static,
 {
     type Request = http::Request<B>;
     type Response = http::Response<telemetry::sensor::http::ResponseBody<tower_h2::RecvBody>>;
@@ -66,11 +62,7 @@ where
     >;
     type Key = SocketAddr;
     type RouteError = ();
-    type Service = Buffer<Reconnect<telemetry::sensor::NewHttp<
-        Client<B>,
-        B,
-        tower_h2::RecvBody
-    >>>;
+    type Service = Buffer<Reconnect<telemetry::sensor::NewHttp<Client<B>, B, tower_h2::RecvBody>>>;
 
     fn recognize(&self, req: &Self::Request) -> Option<Self::Key> {
         let key = req.extensions()
@@ -82,8 +74,11 @@ where
                     Some(orig_dst) => {
                         // If the original destination is actually the listening socket,
                         // we don't want to create a loop.
-                        if Self::same_addr(&orig_dst, &ctx.local) { None }
-                        else { Some(orig_dst) }
+                        if Self::same_addr(&orig_dst, &ctx.local) {
+                            None
+                        } else {
+                            Some(orig_dst)
+                        }
                     }
                 }
             })
@@ -107,8 +102,7 @@ where
         // is not ideal.
         //
         // TODO: Don't use unbounded buffering.
-        Buffer::new(self.bind.bind_service(addr), self.bind.executor())
-            .map_err(|_| {})
+        Buffer::new(self.bind.bind_service(addr), self.bind.executor()).map_err(|_| {})
     }
 }
 
@@ -122,9 +116,9 @@ mod tests {
     use tokio_core::reactor::Core;
     use tower_router::Recognize;
 
+    use super::Inbound;
     use bind::Bind;
     use ctx;
-    use super::Inbound;
 
     fn new_inbound(default: Option<net::SocketAddr>, ctx: &Arc<ctx::Proxy>) -> Inbound<()> {
         let core = Core::new().unwrap();

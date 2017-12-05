@@ -1,22 +1,26 @@
 use futures::future::{self, FutureResult};
-use tower::{Service, NewService};
+use tower::{NewService, Service};
 
 pub struct NewServiceFn<T> {
     f: T,
 }
 
 impl<T, N> NewServiceFn<T>
-where T: Fn() -> N,
-      N: Service,
+where
+    T: Fn() -> N,
+    N: Service,
 {
     pub fn new(f: T) -> Self {
-        NewServiceFn { f }
+        NewServiceFn {
+            f,
+        }
     }
 }
 
 impl<T, N> NewService for NewServiceFn<T>
-where T: Fn() -> N,
-      N: Service,
+where
+    T: Fn() -> N,
+    N: Service,
 {
     type Request = N::Request;
     type Response = N::Response;

@@ -1,24 +1,20 @@
-use std::collections::hash_map::{Entry, HashMap};
 use std::collections::{HashSet, VecDeque};
+use std::collections::hash_map::{Entry, HashMap};
 use std::net::SocketAddr;
 
 use futures::{Async, Future, Poll, Stream};
 use futures::sync::mpsc;
 use http::uri::Authority;
 use tower::Service;
-use tower_discover::{Discover, Change};
+use tower_discover::{Change, Discover};
 use tower_grpc;
 
 use super::codec::Protobuf;
 use super::pb::common::{Destination, TcpAddress};
 use super::pb::proxy::destination::Update as PbUpdate;
+use super::pb::proxy::destination::client::Destination as DestinationSvc;
+use super::pb::proxy::destination::client::destination_methods::Get as GetRpc;
 use super::pb::proxy::destination::update::Update as PbUpdate2;
-use super::pb::proxy::destination::client::{
-    Destination as DestinationSvc
-};
-use super::pb::proxy::destination::client::destination_methods::{
-    Get as GetRpc
-};
 
 pub type ClientBody = ::tower_grpc::client::codec::EncodingBody<
     Protobuf<Destination, PbUpdate>,
@@ -44,16 +40,12 @@ pub struct Background {
     rx: mpsc::UnboundedReceiver<(Authority, mpsc::UnboundedSender<Update>)>,
 }
 
-type DiscoveryWatch<F> =
-    DestinationSet<
-        tower_grpc::client::Streaming<
-            tower_grpc::client::ResponseFuture<
-                Protobuf<Destination, PbUpdate>,
-                F,
-            >,
-            tower_grpc::client::codec::DecodingBody<Protobuf<Destination, PbUpdate>>,
-        >
-    >;
+type DiscoveryWatch<F> = DestinationSet<
+    tower_grpc::client::Streaming<
+        tower_grpc::client::ResponseFuture<Protobuf<Destination, PbUpdate>, F>,
+        tower_grpc::client::codec::DecodingBody<Protobuf<Destination, PbUpdate>>,
+    >,
+>;
 
 /// A future returned from `Background::work()`, doing the work of talking to
 /// the controller destination API.
@@ -97,9 +89,7 @@ pub trait Bind {
     type BindError;
 
     /// The discovered `Service` instance.
-    type Service: Service<Request = Self::Request,
-                         Response = Self::Response,
-                            Error = Self::Error>;
+    type Service: Service<Request = Self::Request, Response = Self::Response, Error = Self::Error>;
 
     /// Bind a socket address with a service.
     fn bind(&self, addr: &SocketAddr) -> Result<Self::Service, Self::BindError>;
@@ -111,11 +101,14 @@ pub trait Bind {
 /// on the controller thread.
 pub fn new() -> (Discovery, Background) {
     let (tx, rx) = mpsc::unbounded();
-    (Discovery {
-        tx,
-    }, Background {
-        rx,
-    })
+    (
+        Discovery {
+            tx,
+        },
+        Background {
+            rx,
+        },
+    )
 }
 
 // ==== impl Discovery =====
@@ -125,7 +118,9 @@ impl Discovery {
     pub fn resolve<B>(&self, authority: &Authority, bind: B) -> Watch<B> {
         trace!("resolve; authority={:?}", authority);
         let (tx, rx) = mpsc::unbounded();
-        self.tx.unbounded_send((authority.clone(), tx)).expect("unbounded can't fail");
+        self.tx
+            .unbounded_send((authority.clone(), tx))
+            .expect("unbounded can't fail");
 
         Watch {
             rx,
@@ -137,7 +132,8 @@ impl Discovery {
 // ==== impl Watch =====
 
 impl<B> Discover for Watch<B>
-where B: Bind,
+where
+    B: Bind,
 {
     type Key = SocketAddr;
     type Request = B::Request;
@@ -158,8 +154,7 @@ where B: Bind,
 
         match update {
             Update::Insert(addr) => {
-                let service = self.bind.bind(&addr)
-                    .map_err(|_| ())?;
+                let service = self.bind.bind(&addr).map_err(|_| ())?;
 
                 Ok(Async::Ready(Change::Insert(addr, service)))
             }
@@ -186,16 +181,16 @@ impl Background {
 
 impl<F> DiscoveryWork<F>
 where
-    F: Future<Item=::http::Response<::tower_h2::RecvBody>>,
+    F: Future<Item = ::http::Response<::tower_h2::RecvBody>>,
     F::Error: ::std::fmt::Debug,
 {
     pub fn poll_rpc<S>(&mut self, client: &mut S)
     where
         S: Service<
-            Request=::http::Request<ClientBody>,
-            Response=F::Item,
-            Error=F::Error,
-            Future=F,
+            Request = ::http::Request<ClientBody>,
+            Response = F::Item,
+            Error = F::Error,
+            Future = F,
         >,
     {
         // This loop is make sure any streams that were found disconnected
@@ -215,10 +210,10 @@ where
     fn poll_new_watches<S>(&mut self, mut client: &mut S)
     where
         S: Service<
-            Request=::http::Request<ClientBody>,
-            Response=F::Item,
-            Error=F::Error,
-            Future=F,
+            Request = ::http::Request<ClientBody>,
+            Response = F::Item,
+            Error = F::Error,
+            Future = F,
         >,
     {
         loop {
@@ -226,11 +221,11 @@ where
             match client.poll_ready() {
                 Ok(Async::Ready(())) => {
                     self.rpc_ready = true;
-                },
+                }
                 Ok(Async::NotReady) => {
                     self.rpc_ready = false;
                     break;
-                },
+                }
                 Err(err) => {
                     warn!("Destination.Get poll_ready error: {:?}", err);
                     self.rpc_ready = false;
@@ -252,7 +247,7 @@ where
                     match self.destinations.entry(auth) {
                         Entry::Occupied(mut occ) => {
                             occ.get_mut().tx = tx;
-                        },
+                        }
                         Entry::Vacant(vac) => {
                             let req = Destination {
                                 scheme: "k8s".into(),
@@ -267,11 +262,11 @@ where
                             });
                         }
                     }
-                },
+                }
                 Ok(Async::Ready(None)) => {
                     trace!("Discover tx is dropped, shutdown?");
                     return;
-                },
+                }
                 Ok(Async::NotReady) => break,
                 Err(_) => unreachable!("unbounded receiver doesn't error"),
             }
@@ -282,10 +277,10 @@ where
     fn poll_reconnect<S>(&mut self, client: &mut S) -> bool
     where
         S: Service<
-            Request=::http::Request<ClientBody>,
-            Response=F::Item,
-            Error=F::Error,
-            Future=F,
+            Request = ::http::Request<ClientBody>,
+            Response = F::Item,
+            Error = F::Error,
+            Future = F,
         >,
     {
         debug_assert!(self.rpc_ready);
@@ -316,40 +311,37 @@ where
             }
             let needs_reconnect = 'set: loop {
                 match set.rx.poll() {
-                    Ok(Async::Ready(Some(update))) => {
-                        match update.update {
-                            Some(PbUpdate2::Add(a_set)) => {
-                                for addr in a_set.addrs {
-                                    if let Some(addr) = addr.addr.and_then(pb_to_sock_addr) {
-                                        if set.addrs.insert(addr) {
-                                            trace!("update {:?} for {:?}", addr, auth);
-                                            let _ = set.tx.unbounded_send(Update::Insert(addr));
-                                        }
-                                    }
+                    Ok(Async::Ready(Some(update))) => match update.update {
+                        Some(PbUpdate2::Add(a_set)) => for addr in a_set.addrs {
+                            if let Some(addr) = addr.addr.and_then(pb_to_sock_addr) {
+                                if set.addrs.insert(addr) {
+                                    trace!("update {:?} for {:?}", addr, auth);
+                                    let _ = set.tx.unbounded_send(Update::Insert(addr));
                                 }
-                            },
-                            Some(PbUpdate2::Remove(r_set)) => {
-                                for addr in r_set.addrs {
-                                    if let Some(addr) = pb_to_sock_addr(addr) {
-                                        if set.addrs.remove(&addr) {
-                                            trace!("remove {:?} for {:?}", addr, auth);
-                                            let _ = set.tx.unbounded_send(Update::Remove(addr));
-                                        }
-                                    }
+                            }
+                        },
+                        Some(PbUpdate2::Remove(r_set)) => for addr in r_set.addrs {
+                            if let Some(addr) = pb_to_sock_addr(addr) {
+                                if set.addrs.remove(&addr) {
+                                    trace!("remove {:?} for {:?}", addr, auth);
+                                    let _ = set.tx.unbounded_send(Update::Remove(addr));
                                 }
-                            },
-                            None => (),
-                        }
+                            }
+                        },
+                        None => (),
                     },
                     Ok(Async::Ready(None)) => {
-                        trace!("Destination.Get stream ended for {:?}, must reconnect", auth);
+                        trace!(
+                            "Destination.Get stream ended for {:?}, must reconnect",
+                            auth
+                        );
                         break 'set true;
-                    },
+                    }
                     Ok(Async::NotReady) => break 'set false,
                     Err(err) => {
                         warn!("Destination.Get stream errored for {:?}: {:?}", auth, err);
                         break 'set true;
-                    },
+                    }
                 }
             };
             if needs_reconnect {
@@ -363,8 +355,9 @@ where
 // ===== impl Bind =====
 
 impl<F, S, E> Bind for F
-where F: Fn(&SocketAddr) -> Result<S, E>,
-      S: Service,
+where
+    F: Fn(&SocketAddr) -> Result<S, E>,
+    S: Service,
 {
     type Request = S::Request;
     type Response = S::Response;
@@ -378,8 +371,8 @@ where F: Fn(&SocketAddr) -> Result<S, E>,
 }
 
 fn pb_to_sock_addr(pb: TcpAddress) -> Option<SocketAddr> {
-    use std::net::{Ipv4Addr, Ipv6Addr};
     use super::pb::common::ip_address::Ip;
+    use std::net::{Ipv4Addr, Ipv6Addr};
     /*
     current structure is:
     TcpAddress {
@@ -401,7 +394,7 @@ fn pb_to_sock_addr(pb: TcpAddress) -> Option<SocketAddr> {
             Some(Ip::Ipv4(octets)) => {
                 let ipv4 = Ipv4Addr::from(octets);
                 Some(SocketAddr::from((ipv4, pb.port as u16)))
-            },
+            }
             Some(Ip::Ipv6(v6)) => {
                 let octets = [
                     (v6.first >> 56) as u8,
@@ -423,7 +416,7 @@ fn pb_to_sock_addr(pb: TcpAddress) -> Option<SocketAddr> {
                 ];
                 let ipv6 = Ipv6Addr::from(octets);
                 Some(SocketAddr::from((ipv6, pb.port as u16)))
-            },
+            }
             None => None,
         },
         None => None,

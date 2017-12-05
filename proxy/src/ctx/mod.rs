@@ -7,9 +7,9 @@
 //! As a rule, context types should implement `Clone + Send + Sync`. This allows them to
 //! be stored in `http::Extensions`, for instance. Furthermore, because these contexts
 //! will be sent to a telemetry processing thread, we want to avoid excessive cloning.
+use control::pb::proxy::telemetry as proto;
 use std::env;
 use std::sync::Arc;
-use control::pb::proxy::telemetry as proto;
 pub mod http;
 pub mod transport;
 
@@ -51,22 +51,21 @@ impl Process {
         Arc::new(Self {
             node: node.into(),
             scheduled_instance: instance.into(),
-            scheduled_namespace: ns.into()
+            scheduled_namespace: ns.into(),
         })
     }
 
     /// Construct a new `Process` from environment variables.
     pub fn from_env() -> Arc<Self> {
         fn get_var(key: &str) -> String {
-            env::var(key)
-                .unwrap_or_else(|why| {
-                    warn!(
-                        "Process::from_env(): Failed to get value of {} environment variable: {:?}",
-                        key,
-                        why
-                    );
-                    String::from("")
-                })
+            env::var(key).unwrap_or_else(|why| {
+                warn!(
+                    "Process::from_env(): Failed to get value of {} environment variable: {:?}",
+                    key,
+                    why
+                );
+                String::from("")
+            })
         }
 
         let node = get_var(::config::ENV_NODE_NAME);
@@ -103,7 +102,7 @@ impl Proxy {
     pub fn is_inbound(&self) -> bool {
         match *self {
             Proxy::Inbound(_) => true,
-            Proxy::Outbound(_) => false
+            Proxy::Outbound(_) => false,
         }
     }
 

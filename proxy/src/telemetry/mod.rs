@@ -13,7 +13,7 @@ mod metrics;
 pub mod sensor;
 pub mod tap;
 
-pub use self::control::{MakeControl, Control};
+pub use self::control::{Control, MakeControl};
 pub use self::event::Event;
 pub use self::sensor::Sensors;
 
@@ -39,10 +39,6 @@ pub fn new(
 ) -> (Sensors, MakeControl) {
     let (tx, rx) = futures_mpsc_lossy::channel(capacity);
     let s = Sensors::new(tx);
-    let c = MakeControl::new(
-        rx,
-        flush_interval,
-        process,
-    );
+    let c = MakeControl::new(rx, flush_interval, process);
     (s, c)
 }

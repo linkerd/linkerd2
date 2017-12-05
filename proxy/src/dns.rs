@@ -1,9 +1,9 @@
-use futures::prelude::*;
-use std::net::IpAddr;
-use domain;
-use ns_dns_tokio;
 use abstract_ns;
 use abstract_ns::HostResolve;
+use domain;
+use futures::prelude::*;
+use ns_dns_tokio;
+use std::net::IpAddr;
 use std::path::Path;
 use std::str::FromStr;
 use tokio_core::reactor::Handle;
@@ -40,7 +40,9 @@ impl Config {
 
 impl Resolver {
     pub fn new(config: Config, executor: &Handle) -> Self {
-        Resolver(ns_dns_tokio::DnsResolver::new_from_resolver(domain::resolv::Resolver::from_conf(executor, config.0)))
+        Resolver(ns_dns_tokio::DnsResolver::new_from_resolver(
+            domain::resolv::Resolver::from_conf(executor, config.0),
+        ))
     }
 
     pub fn resolve_host(&self, host: &url::Host) -> IpAddrFuture {
@@ -65,15 +67,12 @@ impl Future for IpAddrFuture {
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         match *self {
-            IpAddrFuture::DNS(ref mut inner) => {
-                match inner.poll() {
-                    Ok(Async::NotReady) => Ok(Async::NotReady),
-                    Ok(Async::Ready(ips)) =>
-                        ips.pick_one()
-                            .map(Async::Ready)
-                            .ok_or(Error::NoAddressesFound),
-                    Err(e) => Err(Error::ResolutionFailed(e)),
-                }
+            IpAddrFuture::DNS(ref mut inner) => match inner.poll() {
+                Ok(Async::NotReady) => Ok(Async::NotReady),
+                Ok(Async::Ready(ips)) => ips.pick_one()
+                    .map(Async::Ready)
+                    .ok_or(Error::NoAddressesFound),
+                Err(e) => Err(Error::ResolutionFailed(e)),
             },
             IpAddrFuture::Fixed(addr) => Ok(Async::Ready(addr)),
             IpAddrFuture::InvalidDNSName(ref name) => Err(Error::InvalidDNSName(name.clone())),

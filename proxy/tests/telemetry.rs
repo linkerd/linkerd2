@@ -9,9 +9,7 @@ fn inbound_sends_telemetry() {
     let _ = env_logger::init();
 
     info!("running test server");
-    let srv = server::new()
-        .route("/hey", "hello")
-        .run();
+    let srv = server::new().route("/hey", "hello").run();
 
     let mut ctrl = controller::new();
     let reports = ctrl.reports();

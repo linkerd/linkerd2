@@ -62,12 +62,16 @@ impl Taps {
 }
 
 impl Tap {
-    pub fn new(match_: &observe_request::Match, capacity: usize)
-        -> Result<(Tap, futures_mpsc_lossy::Receiver<Event>), InvalidMatch>
-    {
+    pub fn new(
+        match_: &observe_request::Match,
+        capacity: usize,
+    ) -> Result<(Tap, futures_mpsc_lossy::Receiver<Event>), InvalidMatch> {
         let (tx, rx) = futures_mpsc_lossy::channel(capacity);
         let match_ = Match::new(match_)?;
-        let tap = Tap { match_, tx };
+        let tap = Tap {
+            match_,
+            tx,
+        };
         Ok((tap, rx))
     }
 

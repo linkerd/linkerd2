@@ -15,7 +15,7 @@ use telemetry::event;
 pub mod http;
 mod transport;
 
-pub use self::http::{NewHttp, Http};
+pub use self::http::{Http, NewHttp};
 pub use self::transport::{Connect, Transport};
 
 /// Accepts events from sensors.
@@ -27,7 +27,10 @@ struct Handle(Option<Sender<event::Event>>);
 pub struct Sensors(Handle);
 
 impl Handle {
-    fn send<F>(&mut self, mk: F) where F: FnOnce()-> event::Event {
+    fn send<F>(&mut self, mk: F)
+    where
+        F: FnOnce() -> event::Event,
+    {
         if let Some(tx) = self.0.as_mut() {
             // We may want to capture timestamps here instead of on the consumer-side...  That
             // level of precision doesn't necessarily seem worth it yet.
@@ -51,8 +54,14 @@ impl Sensors {
         Sensors(Handle(None))
     }
 
-    pub fn accept<T>(&self, io: T, opened_at: Instant, ctx: &Arc<ctx::transport::Server>) -> Transport<T>
-    where T: AsyncRead + AsyncWrite
+    pub fn accept<T>(
+        &self,
+        io: T,
+        opened_at: Instant,
+        ctx: &Arc<ctx::transport::Server>,
+    ) -> Transport<T>
+    where
+        T: AsyncRead + AsyncWrite,
     {
         debug!("server connection open");
         let ctx = Arc::new(ctx::transport::Ctx::Server(Arc::clone(ctx)));
@@ -60,7 +69,8 @@ impl Sensors {
     }
 
     pub fn connect<C>(&self, connect: C, ctx: &Arc<ctx::transport::Client>) -> Connect<C>
-    where C: tokio_connect::Connect
+    where
+        C: tokio_connect::Connect,
     {
         Connect::new(connect, &self.0, ctx)
     }
@@ -69,15 +79,13 @@ impl Sensors {
         &self,
         next_id: Arc<AtomicUsize>,
         new_service: N,
-        client_ctx: &Arc<ctx::transport::Client>
+        client_ctx: &Arc<ctx::transport::Client>,
     ) -> NewHttp<N, A, B>
     where
         A: Body + 'static,
         B: Body + 'static,
-        N: NewService<
-            Request = Request<A>,
-            Response = Response<B>,
-            Error = client::Error> + 'static
+        N: NewService<Request = Request<A>, Response = Response<B>, Error = client::Error>
+            + 'static,
     {
         NewHttp::new(next_id, new_service, &self.0, client_ctx)
     }

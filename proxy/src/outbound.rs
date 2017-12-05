@@ -20,10 +20,10 @@ type Error = tower_buffer::Error<
     tower_balance::Error<
         tower_reconnect::Error<
             tower_h2::client::Error,
-            tower_h2::client::ConnectError<transport::TimeoutError<io::Error>>
+            tower_h2::client::ConnectError<transport::TimeoutError<io::Error>>,
         >,
         (),
-    >
+    >,
 >;
 
 pub struct Outbound<B> {
@@ -44,7 +44,7 @@ impl<B> Outbound<B> {
 
 impl<B> Recognize for Outbound<B>
 where
-    B: tower_h2::Body + 'static
+    B: tower_h2::Body + 'static,
 {
     type Request = http::Request<B>;
     type Response = http::Response<telemetry::sensor::http::ResponseBody<tower_h2::RecvBody>>;
@@ -66,9 +66,10 @@ where
     ///
     /// Buffering is currently unbounded and does not apply timeouts. This must be
     /// changed.
-    fn bind_service(&mut self, authority: &http::uri::Authority)
-        -> Result<Self::Service, Self::RouteError>
-    {
+    fn bind_service(
+        &mut self,
+        authority: &http::uri::Authority,
+    ) -> Result<Self::Service, Self::RouteError> {
         debug!("building outbound client to {:?}", authority);
 
         let resolve = self.discovery.resolve(authority, self.bind.clone());
@@ -79,7 +80,6 @@ where
         // which is not ideal.
         //
         // TODO: Don't use unbounded buffering.
-        Buffer::new(balance, self.bind.executor())
-            .map_err(|_| {})
+        Buffer::new(balance, self.bind.executor()).map_err(|_| {})
     }
 }

@@ -4,9 +4,9 @@ use std::fmt;
 use std::rc::Rc;
 
 use chrono::Utc;
-use futures::{Future, Poll};
-use futures::future::{Executor, ExecuteError};
 use env_logger::LogBuilder;
+use futures::{Future, Poll};
+use futures::future::{ExecuteError, Executor};
 use log::LogLevel;
 
 const ENV_LOG: &str = "CONDUIT_PROXY_LOG";
@@ -39,7 +39,6 @@ pub fn init() {
         .parse(&env::var(ENV_LOG).unwrap_or_default())
         .init()
         .expect("logger");
-
 }
 
 /// Execute a closure with a `Debug` item attached to allow log messages.
@@ -112,7 +111,7 @@ impl<T, E, F> Executor<F> for ContextualExecutor<T, E>
 where
     T: ::std::fmt::Debug + 'static,
     E: Executor<ContextualFuture<Rc<T>, F>>,
-    F: Future<Item=(), Error=()>,
+    F: Future<Item = (), Error = ()>,
 {
     fn execute(&self, future: F) -> Result<(), ExecuteError<F>> {
         let fut = context_future(self.context.clone(), future);

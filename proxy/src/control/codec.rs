@@ -50,13 +50,11 @@ impl<T: Message, U: Message + Default> Codec for Protobuf<T, U> {
         trace!("decode; bytes={}", buf.remaining());
 
         match Message::decode(buf) {
-            Ok(msg) => {
-                Ok(msg)
-            },
+            Ok(msg) => Ok(msg),
             Err(err) => {
                 debug!("decode error: {:?}", err);
                 Err(err)
-            },
+            }
         }
     }
 }
