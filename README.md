@@ -10,7 +10,7 @@ TODO
 
 :balloon: Welcome to Conduit! :wave:
 
-Conduit is an ultralight service mesh for Kubernetes from the makers of [linkerd][l5d]. It
+Conduit is an ultralight service mesh for Kubernetes from the makers of [Linkerd][l5d]. It
 features a native proxy, written in [Rust][rust], that boasts the performance of C without
 all the heartbleed.
 
