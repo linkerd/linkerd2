@@ -62,6 +62,8 @@ func GetAggregationType(aggregationType string) (pb.AggregationType, error) {
 		return pb.AggregationType_SOURCE_DEPLOY, nil
 	case "mesh":
 		return pb.AggregationType_MESH, nil
+	case "path":
+		return pb.AggregationType_PATH, nil
 	}
 	return pb.AggregationType_TARGET_POD, errors.New("invalid aggregation type " + aggregationType)
 }

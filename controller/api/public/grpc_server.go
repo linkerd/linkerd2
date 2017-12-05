@@ -44,6 +44,7 @@ const (
 	sourcePodLabel    = "source"
 	sourceDeployLabel = "source_deployment"
 	jobLabel          = "job"
+	pathLabel         = "path"
 )
 
 var (
@@ -66,6 +67,7 @@ var (
 		pb.AggregationType_SOURCE_POD:    sourcePodLabel,
 		pb.AggregationType_SOURCE_DEPLOY: sourceDeployLabel,
 		pb.AggregationType_MESH:          jobLabel,
+		pb.AggregationType_PATH:          pathLabel,
 	}
 
 	emptyMetadata = pb.MetricMetadata{}
@@ -368,6 +370,10 @@ func formatQuery(query string, req *pb.MetricRequest, sumBy string) (string, err
 			filterLabels = append(filterLabels, fmt.Sprintf("%s=\"%s\"", jobLabel, metadata.Component))
 			sumLabels = append(sumLabels, jobLabel)
 		}
+		if metadata.Path != "" {
+			filterLabels = append(filterLabels, fmt.Sprintf("%s=\"%s\"", pathLabel, metadata.Path))
+			sumLabels = append(sumLabels, pathLabel)
+		}
 	}
 
 	duration := defaultVectorRange
@@ -429,6 +435,7 @@ func extractMetadata(metric *telemPb.Sample) pb.MetricMetadata {
 		TargetDeploy: metric.Labels[targetDeployLabel],
 		SourcePod:    metric.Labels[sourcePodLabel],
 		SourceDeploy: metric.Labels[sourceDeployLabel],
+		Path:         metric.Labels[pathLabel],
 	}
 }
 
@@ -467,6 +474,10 @@ func processRequestRate(
 
 		datapoints := make([]*pb.MetricDatapoint, 0)
 		for _, value := range metric.Values {
+			if value.Value == 0 {
+				continue
+			}
+
 			datapoint := pb.MetricDatapoint{
 				Value: &pb.MetricValue{
 					Value: &pb.MetricValue_Gauge{Gauge: value.Value},
