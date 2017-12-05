@@ -42,6 +42,7 @@ specific language governing permissions and limitations under the License.
 [coc]: https://github.com/linkerd/linkerd/wiki/Linkerd-code-of-conduct
 <!-- [examples]: https://github.com/runconduit/conduit-examples -->
 [grpc]: https://grpc.io/
+[license-badge]: https://img.shields.io/github/license/linkerd/linkerd.svg
 [logo]: https://user-images.githubusercontent.com/240738/33589722-649152de-d92f-11e7-843a-b078ac889a39.png
 <!-- [releases]: https://github.com/runconduit/conduit -->
 [rust]: https://rust-lang.org/
