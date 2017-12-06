@@ -17,6 +17,7 @@ use tower_reconnect::Reconnect;
 use url::HostAndPort;
 
 use dns;
+use fully_qualified_authority::FullyQualifiedAuthority;
 use transport::LookupAddressAndConnect;
 use timeout::Timeout;
 
@@ -57,7 +58,7 @@ pub fn new() -> (Control, Background) {
 // ===== impl Control =====
 
 impl Control {
-    pub fn resolve<B>(&self, auth: &http::uri::Authority, bind: B) -> Watch<B> {
+    pub fn resolve<B>(&self, auth: &FullyQualifiedAuthority, bind: B) -> Watch<B> {
         self.disco.resolve(auth, bind)
     }
 }
