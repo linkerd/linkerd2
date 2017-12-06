@@ -107,35 +107,59 @@ func print(rsp pb.Api_TapClient) {
 			fmt.Println(err)
 			break
 		}
-		fmt.Printf("[%s -> %s]\n", util.AddressToString(event.GetSource()), util.AddressToString(event.GetTarget()))
+
+		flow := fmt.Sprintf("src=%s dst=%s",
+			util.AddressToString(event.GetSource()),
+			util.AddressToString(event.GetTarget()),
+		)
+
 		switch ev := event.GetHttp().Event.(type) {
 		case *common.TapEvent_Http_RequestInit_:
-			fmt.Printf("HTTP Request\n")
-			fmt.Printf("Stream ID: (%d, %d)\n", ev.RequestInit.Id.Base, ev.RequestInit.Id.Stream)
-			fmt.Printf("%s %s %s%s\n",
-				ev.RequestInit.Scheme.GetRegistered().String(),
+			fmt.Printf("req id=%d:%d %s :method=%s :authority=%s :path=%s\n",
+				ev.RequestInit.Id.Base,
+				ev.RequestInit.Id.Stream,
+				flow,
 				ev.RequestInit.Method.GetRegistered().String(),
 				ev.RequestInit.Authority,
 				ev.RequestInit.Path,
 			)
-			fmt.Println()
 		case *common.TapEvent_Http_ResponseInit_:
-			fmt.Printf("HTTP Response\n")
-			fmt.Printf("Stream ID: (%d, %d)\n", ev.ResponseInit.Id.Base, ev.ResponseInit.Id.Stream)
-			fmt.Printf("Status: %d\nLatency (us): %d\n",
+			fmt.Printf("rsp id=%d:%d %s :status=%d latency=%dµs\n",
+				ev.ResponseInit.Id.Base,
+				ev.ResponseInit.Id.Stream,
+				flow,
 				ev.ResponseInit.GetHttpStatus(),
 				ev.ResponseInit.GetSinceRequestInit().Nanos/1000,
 			)
-			fmt.Println()
 		case *common.TapEvent_Http_ResponseEnd_:
-			fmt.Printf("HTTP Response End\n")
-			fmt.Printf("Stream ID: (%d, %d)\n", ev.ResponseEnd.Id.Base, ev.ResponseEnd.Id.Stream)
-			fmt.Printf("Grpc-Status: %d\nDuration (us): %d\nBytes: %d\n",
-				ev.ResponseEnd.GetGrpcStatus(),
+			fmt.Printf("end id=%d:%d %s grpc-status=%s duration=%dµs response-length=%dB\n",
+				ev.ResponseEnd.Id.Base,
+				ev.ResponseEnd.Id.Stream,
+				flow,
+				grpcStatusName(ev.ResponseEnd.GetGrpcStatus()),
 				ev.ResponseEnd.GetSinceResponseInit().Nanos/1000,
 				ev.ResponseEnd.GetResponseBytes(),
 			)
-			fmt.Println()
 		}
+	}
+}
+
+func grpcStatusName(n uint32) string {
+	switch n {
+	case 0:
+		return "OK"
+	case 1:
+		return "CANCELED"
+	case 2:
+		return "UNKNOWN"
+	case 12:
+		return "UNIMPLEMENTED"
+	case 13:
+		return "INTERNAL"
+	case 14:
+		return "UNAVAILABLE"
+	// TODO ...
+	default:
+		return "???"
 	}
 }
