@@ -242,8 +242,13 @@ impl Main {
                         .make_control(&taps, &executor)
                         .expect("bad news in telemetry town");
 
-                    let client =
-                        control_bg.bind(telemetry, control_host_and_port, dns_config, &executor);
+                    let client = control_bg.bind(
+                        telemetry, 
+                        control_host_and_port, 
+                        dns_config,
+                        config.report_timeout,
+                        &executor
+                    );
 
                     let fut = client.join(server.map_err(|_| {})).map(|_| {});
                     executor.spawn(::logging::context_future("controller-client", fut));

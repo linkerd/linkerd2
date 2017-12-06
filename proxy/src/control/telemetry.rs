@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use futures::{Async, Future, Stream};
 use tower::Service;
@@ -25,6 +25,7 @@ type TelemetryStream<F> = tower_grpc::client::BodyFuture<
 pub struct Telemetry<T, F> {
     reports: T,
     in_flight: Option<(Instant, TelemetryStream<F>)>,
+    report_timeout: Duration,
 }
 
 impl<T, F> Telemetry<T, F>
@@ -34,10 +35,11 @@ where
     F: Future<Item = ::http::Response<::tower_h2::RecvBody>>,
     F::Error: ::std::fmt::Debug,
 {
-    pub fn new(reports: T) -> Self {
+    pub fn new(reports: T, report_timeout: Duration) -> Self {
         Telemetry {
             reports,
             in_flight: None,
+            report_timeout,
         }
     }
 
@@ -61,7 +63,15 @@ where
                 match fut.poll() {
                     Ok(Async::NotReady) => {
                         trace!("report in flight to controller for {:?}", t0.elapsed());
-                        self.in_flight = Some((t0, fut));
+                        self.in_flight = if elapsed >= self.report_timeout {
+                            // The timeout has elapsed –- set `self.in_flight` to `None`.
+                            // Dropping `fut` at the end of the `if let` will cancel the RPC.
+                            warn!("report timed out after {:?}", elapsed);
+                            None
+                        } else {
+                            // Otherwise, the timeout hasn't finished yet. Continue sending.
+                            Some((t0, fut))
+                        };
                     }
                     Ok(Async::Ready(_)) => {
                         trace!("report sent to controller in {:?}", t0.elapsed())
