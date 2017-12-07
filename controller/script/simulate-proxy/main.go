@@ -49,10 +49,10 @@ func randomLatencies(count uint32) (latencies []*pb.Latency) {
 	for i := uint32(0); i < count; i++ {
 
 		// The latency value with precision to 100µs.
-		latencyValue := uint32(rand.Int31n(int32(time.Second/(time.Millisecond * 10))))
+		latencyValue := uint32(rand.Int31n(int32(time.Second / (time.Millisecond * 10))))
 		latency := pb.Latency{
 			Latency: latencyValue,
-			Count: rand.Uint32(),
+			Count:   count,
 		}
 		latencies = append(latencies, &latency)
 	}
