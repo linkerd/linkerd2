@@ -48,7 +48,7 @@ The optional [TARGET] option can be either a name for a deployment or pod resour
 			resourceType = args[0]
 			target = args[1]
 		default:
-			return errors.New("please specify a resource type: pods or deployments")
+			return errors.New("please specify a resource type: pods, deployments or paths")
 		}
 
 		switch resourceType {
