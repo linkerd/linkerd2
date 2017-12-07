@@ -1,12 +1,29 @@
 import React from 'react';
 import * as d3 from 'd3';
 import { Link } from 'react-router-dom';
-import { Table, Tabs } from 'antd';
+import { Table, Tabs, Tooltip } from 'antd';
 import { toClassName, metricToFormatter } from './util/Utils.js';
 
 const getStatusDotCn = status => {
   return `status-dot-${status === "good" ? "green" : "grey"}`;
 }
+
+const statusDotExplanation = {
+  good: "has been added to the mesh",
+  neutral: "has not been added to the mesh"
+};
+
+const StatusDot = ({status}) => (
+  <Tooltip
+    placement="top"
+    title={`${status.name} ${statusDotExplanation[status.value]}`}
+  >
+    <div
+      className={`status-dot status-dot-${status.value}`}
+      key={status.name}
+    >&nbsp;</div>
+  </Tooltip>
+);
 
 const columns = {
   resourceName: (shouldLink, pathPrefix) => {
@@ -36,11 +53,7 @@ const columns = {
       render: statuses => {
         return _.map(statuses, status => {
           // TODO: handle case where there are too many dots for column
-          return <div
-            className={`status-dot status-dot-${status.value}`}
-            key={status.name}
-            title={status.name}
-          >&nbsp;</div>
+          return <StatusDot status={status} />
         });
       }
     }
