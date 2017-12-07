@@ -2,18 +2,18 @@ package public
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 
+	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/proto"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-
 	common "github.com/runconduit/conduit/controller/gen/common"
 	tapPb "github.com/runconduit/conduit/controller/gen/controller/tap"
 	telemPb "github.com/runconduit/conduit/controller/gen/controller/telemetry"
 	pb "github.com/runconduit/conduit/controller/gen/public"
-	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/proto"
-	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/metadata"
 )
@@ -35,6 +35,7 @@ const (
 	apiPrefix           = "api/" + apiVersion + "/" // Must be relative (without a leading slash).
 	jsonContentType     = "application/json"
 	protobufContentType = "application/octet-stream"
+	errorHeader         = "conduit-error"
 )
 
 var (
@@ -67,7 +68,7 @@ func NewServer(addr string, telemetryClient telemPb.TelemetryClient, tapClient t
 func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// Validate request method
 	if req.Method != http.MethodPost {
-		http.Error(w, "POST required", http.StatusMethodNotAllowed)
+		serverMarshalError(w, req, fmt.Errorf("POST required"), http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -75,7 +76,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	switch req.Header.Get("Content-Type") {
 	case "", protobufContentType, jsonContentType:
 	default:
-		http.Error(w, "unsupported Content-Type", http.StatusUnsupportedMediaType)
+		serverMarshalError(w, req, fmt.Errorf("unsupported Content-Type"), http.StatusUnsupportedMediaType)
 		return
 	}
 
@@ -98,19 +99,19 @@ func (h *handler) handleStat(w http.ResponseWriter, req *http.Request) {
 	var metricRequest pb.MetricRequest
 	err := serverUnmarshal(req, &metricRequest)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		serverMarshalError(w, req, err, http.StatusBadRequest)
 		return
 	}
 
 	rsp, err := h.grpcServer.Stat(req.Context(), &metricRequest)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverMarshalError(w, req, err, http.StatusInternalServerError)
 		return
 	}
 
 	err = serverMarshal(w, req, rsp)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverMarshalError(w, req, err, http.StatusInternalServerError)
 		return
 	}
 }
@@ -119,19 +120,19 @@ func (h *handler) handleVersion(w http.ResponseWriter, req *http.Request) {
 	var emptyRequest pb.Empty
 	err := serverUnmarshal(req, &emptyRequest)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		serverMarshalError(w, req, err, http.StatusBadRequest)
 		return
 	}
 
 	rsp, err := h.grpcServer.Version(req.Context(), &emptyRequest)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverMarshalError(w, req, err, http.StatusInternalServerError)
 		return
 	}
 
 	err = serverMarshal(w, req, rsp)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverMarshalError(w, req, err, http.StatusInternalServerError)
 		return
 	}
 }
@@ -140,19 +141,19 @@ func (h *handler) handleListPods(w http.ResponseWriter, req *http.Request) {
 	var emptyRequest pb.Empty
 	err := serverUnmarshal(req, &emptyRequest)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		serverMarshalError(w, req, err, http.StatusBadRequest)
 		return
 	}
 
 	rsp, err := h.grpcServer.ListPods(req.Context(), &emptyRequest)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverMarshalError(w, req, err, http.StatusInternalServerError)
 		return
 	}
 
 	err = serverMarshal(w, req, rsp)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverMarshalError(w, req, err, http.StatusInternalServerError)
 		return
 	}
 }
@@ -161,12 +162,12 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request) {
 	var tapRequest pb.TapRequest
 	err := serverUnmarshal(req, &tapRequest)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		serverMarshalError(w, req, err, http.StatusBadRequest)
 		return
 	}
 
 	if _, ok := w.(http.Flusher); !ok {
-		http.Error(w, "streaming not supported", http.StatusBadRequest)
+		serverMarshalError(w, req, fmt.Errorf("streaming not supported"), http.StatusBadRequest)
 		return
 	}
 
@@ -176,7 +177,7 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request) {
 	server := tapServer{w: w, req: req}
 	err = h.grpcServer.Tap(&tapRequest, server)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverMarshalError(w, req, err, http.StatusInternalServerError)
 		return
 	}
 }
@@ -206,6 +207,7 @@ func serverMarshal(w http.ResponseWriter, req *http.Request, msg proto.Message) 
 		binary.LittleEndian.PutUint32(byteSize, uint32(len(bytes)))
 		_, err = w.Write(append(byteSize, bytes...))
 		return err
+
 	case jsonContentType:
 		str, err := jsonMarshaler.MarshalToString(msg)
 		if err != nil {
@@ -214,7 +216,19 @@ func serverMarshal(w http.ResponseWriter, req *http.Request, msg proto.Message) 
 		_, err = w.Write(append([]byte(str), '\n'))
 		return err
 	}
+
 	return nil
+}
+
+func serverMarshalError(w http.ResponseWriter, req *http.Request, err error, code int) error {
+	switch req.Header.Get("Content-Type") {
+	case "", protobufContentType:
+		w.Header().Set(errorHeader, http.StatusText(code))
+	case jsonContentType:
+		w.WriteHeader(code)
+	}
+
+	return serverMarshal(w, req, &pb.ApiError{Error: err.Error()})
 }
 
 func (s tapServer) Send(msg *common.TapEvent) error {
