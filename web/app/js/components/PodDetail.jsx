@@ -83,11 +83,13 @@ export default class PodDetail extends React.Component {
   }
 
   renderSections() {
+    let currentSuccessRate = _.get(_.last(_.get(this.state.summaryMetrics, "SUCCESS_RATE", [])), "value");
     return [
       <HealthPane
         key="pod-health-pane"
         entity={this.state.pod}
         entityType="pod"
+        currentSr={currentSuccessRate}
         upstreamMetrics={this.state.upstreamMetrics}
         downstreamMetrics={this.state.downstreamMetrics}
       />,

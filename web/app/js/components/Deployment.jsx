@@ -122,11 +122,13 @@ export default class Deployment extends React.Component {
   }
 
   renderSections() {
+    let currentSuccessRate = _.get(_.last(_.get(this.state.summaryMetrics, "SUCCESS_RATE", [])), "value");
     return [
       <HealthPane
         key="deploy-health-pane"
         entity={this.state.deploy}
         entityType="deployment"
+        currentSr={currentSuccessRate}
         upstreamMetrics={this.state.upstreamMetrics}
         downstreamMetrics={this.state.downstreamMetrics}
       />,

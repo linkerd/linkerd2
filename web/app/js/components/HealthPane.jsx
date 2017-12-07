@@ -15,6 +15,8 @@ const TrafficIndicator = () => {
   );
 }
 
+const neutralSr = 0.5;
+
 export default class HealthPane extends React.Component {
   getRequestRate(metrics) {
     return _.sumBy(metrics, metric => {
@@ -41,8 +43,7 @@ export default class HealthPane extends React.Component {
   getHealthStats() {
     let inboundSr = this.getAvgSuccessRate(this.props.upstreamMetrics);
     let outboundSr = this.getAvgSuccessRate(this.props.downstreamMetrics);
-    // let sr = _.get(this.props.metrics, [0, 'rollup', 'successRate'], 0);
-    let sr = Math.random() // TODO: get actual metric
+    let sr = _.isUndefined(this.props.currentSr) ? neutralSr : this.props.currentSr;
 
     return {
       inbound: {
