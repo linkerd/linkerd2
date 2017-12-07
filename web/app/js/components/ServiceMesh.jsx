@@ -156,7 +156,7 @@ export default class ServiceMesh extends React.Component {
   processComponents(pods) {
     let podIndex = _(pods)
       .filter(p => p.controlPlane)
-      .groupBy(p => {return p.deployment.substring(p.deployment.indexOf('/')+1)})
+      .groupBy(p => _.last(_.split(p.deployment, "/")))
       .value();
 
     return _(componentNames)
