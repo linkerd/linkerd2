@@ -85,7 +85,6 @@ jobs:
           gcloud config set container/cluster "$GKE_CLUSTER"
         - |
           # Get a kubernetes context.
-          gcloud container clusters list |awk '{if (NR>1) {print $1}}'
           (set -x ; . bin/_gcp.sh ; get_k8s_ctx "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER")
         - gcloud version
         - kubectl version --short
