@@ -61,13 +61,19 @@ pub struct Addr(SocketAddr);
 /// Errors produced when loading a `Config` struct.
 #[derive(Clone, Debug)]
 pub enum Error {
-    InvalidAddr,
-    ControlPlaneConfigError(String, UrlError),
-    NotANumber(String),
     InvalidEnvVar {
         name: String,
-        value: String,
+        value: Option<String>,
+        parse_error: ParseError,
     },
+}
+
+#[derive(Clone, Debug)]
+pub enum ParseError {
+    NotANumber,
+    HostIsNotAnIpAddress,
+    NotUnicode,
+    UrlError(UrlError),
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -123,11 +129,11 @@ const DEFAULT_RESOLV_CONF: &str = "/etc/resolv.conf";
 impl Config {
     /// Load a `Config` by reading ENV variables.
     pub fn load_from_env() -> Result<Self, Error> {
-        let event_buffer_capacity = env_var_parse(ENV_EVENT_BUFFER_CAPACITY, str::parse)?
+        let event_buffer_capacity = env_var_parse(ENV_EVENT_BUFFER_CAPACITY, parse_number)?
             .unwrap_or(DEFAULT_EVENT_BUFFER_CAPACITY);
 
         let metrics_flush_interval = Duration::from_secs(
-            env_var_parse(ENV_METRICS_FLUSH_INTERVAL_SECS, str::parse)?
+            env_var_parse(ENV_METRICS_FLUSH_INTERVAL_SECS, parse_number)?
                 .unwrap_or(DEFAULT_METRICS_FLUSH_INTERVAL_SECS));
 
         Ok(Config {
@@ -145,20 +151,19 @@ impl Config {
             },
             private_forward: env_var_parse(ENV_PRIVATE_FORWARD, str::parse)?,
 
-            public_connect_timeout: env_var_parse(ENV_PUBLIC_CONNECT_TIMEOUT, str::parse)?
+            public_connect_timeout: env_var_parse(ENV_PUBLIC_CONNECT_TIMEOUT, parse_number)?
                 .map(Duration::from_millis),
 
-            private_connect_timeout: env_var_parse(ENV_PRIVATE_CONNECT_TIMEOUT, str::parse)?
+            private_connect_timeout: env_var_parse(ENV_PRIVATE_CONNECT_TIMEOUT, parse_number)?
                 .map(Duration::from_millis),
 
             resolv_conf_path: env_var(ENV_RESOLV_CONF)?
                 .unwrap_or(DEFAULT_RESOLV_CONF.into())
                 .into(),
 
-            control_host_and_port: control_host_and_port_from_env(
-                ENV_CONTROL_URL,
-                DEFAULT_CONTROL_URL,
-            )?,
+            control_host_and_port: env_var_parse(ENV_CONTROL_URL, parse_url)?
+                .unwrap_or_else(|| parse_url(DEFAULT_CONTROL_URL).unwrap()),
+
             event_buffer_capacity,
             metrics_flush_interval,
         })
@@ -168,25 +173,22 @@ impl Config {
 // ===== impl Addr =====
 
 impl FromStr for Addr {
-    type Err = Error;
+    type Err = ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match Url::parse(s) {
-            Err(_) => Err(Error::InvalidAddr),
-            Ok(u) => match u.scheme() {
-                "tcp" => match u.with_default_port(|_| Err(())) {
-                    Ok(HostAndPort {
-                        host: Host::Ipv4(ip),
-                        port,
-                    }) => Ok(Addr(SocketAddr::new(ip.into(), port))),
-                    Ok(HostAndPort {
-                        host: Host::Ipv6(ip),
-                        port,
-                    }) => Ok(Addr(SocketAddr::new(ip.into(), port))),
-                    _ => Err(Error::InvalidAddr),
-                },
-                _ => Err(Error::InvalidAddr),
-            },
+        match parse_url(s)? {
+            HostAndPort {
+                host: Host::Ipv4(ip),
+                port,
+            } => Ok(Addr(SocketAddr::new(ip.into(), port))),
+            HostAndPort {
+                host: Host::Ipv6(ip),
+                port,
+            } => Ok(Addr(SocketAddr::new(ip.into(), port))),
+            HostAndPort {
+                host: Host::Domain(_),
+                ..
+            } => Err(ParseError::HostIsNotAnIpAddress),
         }
     }
 }
@@ -197,36 +199,24 @@ impl From<Addr> for SocketAddr {
     }
 }
 
-fn control_host_and_port_from_env(key: &str, default: &str) -> Result<HostAndPort, Error> {
-    let s = env_var(key)?.unwrap_or_else(|| default.into());
-    let url = Url::parse(&s).map_err(|_| {
-        Error::ControlPlaneConfigError(s.clone(), UrlError::SyntaxError)
-    })?;
+fn parse_number<T>(s: &str) -> Result<T, ParseError> where T: FromStr {
+    s.parse().map_err(|_| ParseError::NotANumber)
+}
+
+fn parse_url(s: &str) -> Result<HostAndPort, ParseError> {
+    let url = Url::parse(&s).map_err(|_| ParseError::UrlError(UrlError::SyntaxError))?;
     let host = url.host()
-        .ok_or_else(|| {
-            Error::ControlPlaneConfigError(s.clone(), UrlError::MissingHost)
-        })?
+        .ok_or_else(|| ParseError::UrlError(UrlError::MissingHost))?
         .to_owned();
     if url.scheme() != "tcp" {
-        return Err(Error::ControlPlaneConfigError(
-            s.clone(),
-            UrlError::UnsupportedScheme,
-        ));
+        return Err(ParseError::UrlError(UrlError::UnsupportedScheme));
     }
-    let port = url.port().ok_or_else(|| {
-        Error::ControlPlaneConfigError(s.clone(), UrlError::MissingPort)
-    })?;
+    let port = url.port().ok_or_else(|| ParseError::UrlError(UrlError::MissingPort))?;
     if url.path() != "/" {
-        return Err(Error::ControlPlaneConfigError(
-            s.clone(),
-            UrlError::PathNotAllowed,
-        ));
+        return Err(ParseError::UrlError(UrlError::PathNotAllowed));
     }
     if url.fragment().is_some() {
-        return Err(Error::ControlPlaneConfigError(
-            s.clone(),
-            UrlError::FragmentNotAllowed,
-        ));
+        return Err(ParseError::UrlError(UrlError::FragmentNotAllowed));
     }
     Ok(HostAndPort {
         host,
@@ -240,19 +230,21 @@ fn env_var(name: &str) -> Result<Option<String>, Error> {
         Err(env::VarError::NotPresent) => Ok(None),
         Err(env::VarError::NotUnicode(_)) => Err(Error::InvalidEnvVar {
             name: name.to_owned(),
-            value: "<not unicode>".to_owned(),
+            value: None,
+            parse_error: ParseError::NotUnicode,
         }),
     }
 }
 
-fn env_var_parse<T, Parse, E>(name: &str, parse: Parse) -> Result<Option<T>, Error>
-    where Parse: FnOnce(&str) -> Result<T, E> {
+fn env_var_parse<T, Parse>(name: &str, parse: Parse) -> Result<Option<T>, Error>
+    where Parse: FnOnce(&str) -> Result<T, ParseError> {
     match env_var(name)? {
         Some(ref s) => {
-            let r = parse(s).map_err(|_| {
+            let r = parse(s).map_err(|parse_error| {
                 Error::InvalidEnvVar {
                     name: name.to_owned(),
-                    value: s.to_owned(),
+                    value: Some(s.to_owned()),
+                    parse_error,
                 }
             })?;
             Ok(Some(r))
