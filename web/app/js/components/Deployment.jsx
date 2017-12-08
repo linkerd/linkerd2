@@ -175,7 +175,7 @@ export default class Deployment extends React.Component {
   }
 
   renderContent() {
-  if (_.isEmpty(this.state.metrics)) {
+    if (_.isEmpty(this.state.metrics)) {
       return <div>No data</div>;
     } else {
       return this.renderSections();

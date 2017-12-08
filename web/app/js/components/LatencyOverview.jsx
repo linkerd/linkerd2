@@ -23,10 +23,10 @@ export default class MultiLineGraph extends React.Component {
   componentDidMount() {
     this.svg = d3.select("." + this.props.containerClassName)
       .append("svg")
-        .attr("width", this.state.svgWidth)
-        .attr("height", this.state.svgHeight)
+      .attr("width", this.state.svgWidth)
+      .attr("height", this.state.svgHeight)
       .append("g")
-        .attr("transform", "translate(" + this.state.margin.left + "," + this.state.margin.top + ")");
+      .attr("transform", "translate(" + this.state.margin.left + "," + this.state.margin.top + ")");
 
     this.xAxis = this.svg.append("g")
       .attr("class", "x-axis")
@@ -122,7 +122,7 @@ export default class MultiLineGraph extends React.Component {
       .duration(450)
       .attr("d", this.line(d.P95));
 
-      this.svg.select(".line-p99")
+    this.svg.select(".line-p99")
       .transition()
       .duration(450)
       .attr("d", this.line(d.P99));

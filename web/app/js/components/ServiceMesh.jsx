@@ -174,22 +174,22 @@ export default class ServiceMesh extends React.Component {
   renderControllerHealth() {
     return (
       <div className="mesh-section">
-      <div className="subsection-header">Control plane status</div>
+        <div className="subsection-header">Control plane status</div>
         <Row gutter={rowGutter}>
-        {
-          _.map(componentsToGraph, meshComponent => {
-            let data = _.cloneDeep(_.find(this.state.metrics, ["name", meshComponent]) || noData);
-            data.id = meshComponent;
-            data.name = componentNames[meshComponent];
-            return (<Col span={8} key={`col-${data.id}`}>
-              <DeploymentSummary
-                key={data.id}
-                lastUpdated={this.state.lastUpdated}
-                data={data}
-                noLink={true} />
-            </Col>);
-          })
-        }
+          {
+            _.map(componentsToGraph, meshComponent => {
+              let data = _.cloneDeep(_.find(this.state.metrics, ["name", meshComponent]) || noData);
+              data.id = meshComponent;
+              data.name = componentNames[meshComponent];
+              return (<Col span={8} key={`col-${data.id}`}>
+                <DeploymentSummary
+                  key={data.id}
+                  lastUpdated={this.state.lastUpdated}
+                  data={data}
+                  noLink={true} />
+              </Col>);
+            })
+          }
         </Row>
       </div>
     );
@@ -254,12 +254,12 @@ export default class ServiceMesh extends React.Component {
             All deployments have been added to the service mesh.
           </div>
           : this.unaddedDeploymentCount() === 1 ?
-              <div className="incomplete-mesh-message">
+            <div className="incomplete-mesh-message">
                 1 deployment has not been added to the service mesh.
-                <div className="instructions">Add the remaining deployment to the deployment.yml file</div>
-                <div className="instructions">Then run <code>conduit inject deployment.yml | kubectl apply -f - </code> to add the deployment to the service mesh</div>
-              </div>
-          : <div className="incomplete-mesh-message">
+              <div className="instructions">Add the remaining deployment to the deployment.yml file</div>
+              <div className="instructions">Then run <code>conduit inject deployment.yml | kubectl apply -f - </code> to add the deployment to the service mesh</div>
+            </div>
+            : <div className="incomplete-mesh-message">
               {this.unaddedDeploymentCount()} deployments have not been added to the service mesh.
               <div className="instructions">Add one or more deployments to the deployment.yml file</div>
               <div className="instructions">Then run <code>conduit inject deployment.yml | kubectl apply -f - </code> to add deploys to the service mesh</div>
@@ -299,14 +299,14 @@ export default class ServiceMesh extends React.Component {
     if (!this.state.loaded) {
       return <ConduitSpinner />;
     } else return (
-        <div className="page-content">
-          <div className="page-header">
-            <h1>Service mesh overview</h1>
-            {this.renderOverview()}
-            {this.renderControlPlane()}
-            {this.renderDataPlane()}
-          </div>
+      <div className="page-content">
+        <div className="page-header">
+          <h1>Service mesh overview</h1>
+          {this.renderOverview()}
+          {this.renderControlPlane()}
+          {this.renderDataPlane()}
         </div>
-      );
-    }
+      </div>
+    );
+  }
 }

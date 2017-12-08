@@ -26,9 +26,9 @@ const StatusDot = ({status, multilineDots, columnName}) => (
   <Tooltip
     placement="top"
     title={<div>
-        <div>{status.name}</div>
-        <div>{_.get(columnConfig, [columnName, "dotExplanation", status.value])}</div>
-      </div>}>
+      <div>{status.name}</div>
+      <div>{_.get(columnConfig, [columnName, "dotExplanation", status.value])}</div>
+    </div>}>
     <div
       className={`status-dot status-dot-${status.value} ${multilineDots ? 'dot-multiline': ''}`}
       key={status.name}>&nbsp;</div>

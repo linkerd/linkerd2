@@ -19,6 +19,7 @@
     "arrow-parens": [1, "as-needed"],
     "comma-dangle": [0], // babel removes dangling commas for us
     "eqeqeq": [2, "smart"],
+    "indent": [2, 2],
     "jsx-quotes": 1,
     "no-console": [1, { allow: ["warn", "error"] }], // minor offense
     "no-redeclare": [1], // minor offense

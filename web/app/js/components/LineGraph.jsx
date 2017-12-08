@@ -20,10 +20,10 @@ export default class LineGraph extends React.Component {
   componentDidMount() {
     this.svg = d3.select("." + this.props.containerClassName)
       .append("svg")
-        .attr("width", this.state.svgWidth)
-        .attr("height", this.state.svgHeight)
+      .attr("width", this.state.svgWidth)
+      .attr("height", this.state.svgHeight)
       .append("g")
-        .attr("transform", "translate(" + this.state.margin.left + "," + this.state.margin.top + ")");
+      .attr("transform", "translate(" + this.state.margin.left + "," + this.state.margin.top + ")");
     this.xAxis = this.svg.append("g")
       .attr("transform", "translate(0," + this.state.height + ")");
     this.yAxis = this.svg.append("g");
