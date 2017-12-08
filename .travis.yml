@@ -82,6 +82,7 @@ jobs:
           gcloud auth activate-service-account --key-file .gcp.json
         - |
           # gcloud and get a kubernetes context.
+          gcloud container clusters list |awk '{if (NR>1) {print $1}}'
           (set -x ; . bin/_gcp.sh ; gcp_configure "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER")
         - gcloud version
         - kubectl version --short
