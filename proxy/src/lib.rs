@@ -69,6 +69,7 @@ mod map_err;
 mod outbound;
 mod telemetry;
 mod transport;
+pub mod timeout;
 mod tower_fn; // TODO: move to tower-fn
 
 use bind::Bind;
