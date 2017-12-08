@@ -19,15 +19,11 @@ const neutralSr = 0.5;
 
 export default class HealthPane extends React.Component {
   getRequestRate(metrics) {
-    return _.sumBy(metrics, metric => {
-      return _.get(metric, ['rollup', 'requestRate']);
-    });
+    return _.sumBy(metrics, 'requestRate');
   }
 
   getAvgSuccessRate(metrics) {
-    return _.meanBy(metrics, metric => {
-      return _.get(metric, ['rollup', 'successRate']);
-    });
+    return _.meanBy(metrics, 'successRate');
   }
 
   getHealthClassName(successRate) {

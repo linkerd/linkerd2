@@ -73,7 +73,7 @@ export default class LineGraph extends React.Component {
   chartData() {
     let data = this.props.data;
     _.each(data, d => {
-      let p = new Percentage(d.rollup.requestRate, d.rollup.totalRequests);
+      let p = new Percentage(d.requestRate, d.totalRequests);
       d.shareOfRequests = p.get();
       d.pretty = p.prettyRate();
     });
@@ -83,7 +83,7 @@ export default class LineGraph extends React.Component {
   updateScales() {
     let data = this.chartData();
     this.xScale.domain(_.map(data, d => d.name));
-    this.yScale.domain([0, d3.max(data, d => d.rollup.requestRate)]);
+    this.yScale.domain([0, d3.max(data, d => d.requestRate)]);
   }
 
   initializeScales() {
@@ -105,14 +105,14 @@ export default class LineGraph extends React.Component {
       .attr("class", "bar")
       .attr("x", d => this.xScale(d.name))
       .attr("width", () =>  this.xScale.bandwidth())
-      .attr("y", d => this.yScale(d.rollup.requestRate))
-      .attr("height", d => this.state.height - this.yScale(d.rollup.requestRate))
+      .attr("y", d => this.yScale(d.requestRate))
+      .attr("height", d => this.state.height - this.yScale(d.requestRate))
       .on("mousemove", d => {
         this.tooltip
           .style("left", d3.event.pageX - 50 + "px")
           .style("top", d3.event.pageY - 70 + "px")
           .style("display", "inline-block") // show tooltip
-          .text(`${d.name}: ${metricToFormatter["REQUEST_RATE"](d.rollup.requestRate)} (${d.pretty} of total)`);
+          .text(`${d.name}: ${metricToFormatter["REQUEST_RATE"](d.requestRate)} (${d.pretty} of total)`);
       })
       .on("mouseout", () => this.tooltip.style("display", "none"));
 

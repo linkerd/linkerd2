@@ -26,13 +26,9 @@ const convertLatencyTs = rawTs => {
   return _.groupBy(latencies, 'label');
 };
 
-export const processMetrics = (rawMetrics, rawTs, targetEntity) => {
-  let byEntity = _.groupBy(rawMetrics, m => {
-    return m.metadata[targetEntity];
-  });
-
+export const processTimeseriesMetrics = (rawTs, targetEntity) => {
   let tsbyEntity = _.groupBy(rawTs, "metadata." + targetEntity);
-  let tsMap = _.reduce(tsbyEntity, (mem, metrics, entity) => {
+  return _.reduce(tsbyEntity, (mem, metrics, entity) => {
     mem[entity] = mem[entity] || {};
     _.each(metrics, metric => {
       if (metric.name !== "LATENCY") {
@@ -43,6 +39,12 @@ export const processMetrics = (rawMetrics, rawTs, targetEntity) => {
     });
     return mem;
   }, {});
+};
+
+export const processRollupMetrics = (rawMetrics, targetEntity) => {
+  let byEntity = _.groupBy(rawMetrics, m => {
+    return m.metadata[targetEntity];
+  });
 
   let metrics = _.map(byEntity, (data, entity) => {
     if (!entity) return;
@@ -61,25 +63,10 @@ export const processMetrics = (rawMetrics, rawTs, targetEntity) => {
       }
     });
 
-    let p99latency = _.get(latency, ["P99", 0, "value"]);
-
     return {
       name: entity,
-      timeseries: {
-        requestRate: _.get(tsMap, [entity, "REQUEST_RATE"], []),
-        successRate: _.get(tsMap, [entity, "SUCCESS_RATE"], []),
-        latency: _.get(tsMap, [entity, "LATENCY"], [])
-      },
-      rollup: {
-        requestRate: requestRate,
-        successRate: successRate,
-        latency: latency
-      },
-      scatterplot: {
-        label: entity,
-        success: successRate,
-        latency: p99latency
-      },
+      requestRate: requestRate,
+      successRate: successRate,
       latency: latency,
       added: true
     };
@@ -91,46 +78,9 @@ export const processMetrics = (rawMetrics, rawTs, targetEntity) => {
 export const emptyMetric = (name, added) => {
   return {
     name: name,
-    timeseries: {
-      requestRate: [],
-      successRate: [],
-      latency: []
-    },
-    rollup: {
-      requestRate: null,
-      successRate: null,
-      latency: null
-    },
-    scatterplot: {
-      label: name,
-      success: 0,
-      latency: 0
-    },
-    latency: 0,
+    requestRate: null,
+    successRate: null,
+    latency: null,
     added: added
   };
-};
-
-export const processTsWithLatencyBreakdown = rawMetrics => {
-  return _.reduce(rawMetrics, (mem, metric) => {
-    if (!metric.name) return mem;
-
-    mem[metric.name] = _.flatMap(metric.datapoints, d => {
-      if (!_.isEmpty(d.value.histogram)) {
-        return _.map(d.value.histogram.values, hist => {
-          return {
-            timestamp: d.timestampMs,
-            value: hist.value,
-            label: hist.label
-          };
-        });
-      } else {
-        return {
-          timestamp: d.timestampMs,
-          value: _.get(d, "value.gauge", 0)
-        };
-      }
-    });
-    return mem;
-  }, {});
 };
