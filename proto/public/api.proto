@@ -123,6 +123,10 @@ message TapRequest {
   string path = 11;
 }
 
+message ApiError {
+  string error = 1;
+}
+
 service Api {
   rpc Stat(MetricRequest) returns (MetricResponse) {}
   rpc Version(Empty) returns (VersionInfo) {}

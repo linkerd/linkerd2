@@ -4,16 +4,14 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"net/http"
-
 	"net/url"
 
-	"errors"
-
+	"github.com/golang/protobuf/proto"
 	common "github.com/runconduit/conduit/controller/gen/common"
 	pb "github.com/runconduit/conduit/controller/gen/public"
-	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -37,12 +35,12 @@ type (
 
 func NewClient(config *Config, transport http.RoundTripper) (pb.ApiClient, error) {
 	if !config.ServerURL.IsAbs() {
-		return nil, errors.New("server URL must be absolute")
+		return nil, fmt.Errorf("server URL must be absolute")
 	}
 
 	return &client{
 		serverURL: config.ServerURL.ResolveReference(&url.URL{Path: apiPrefix}),
-		client: &http.Client {
+		client: &http.Client{
 			Transport: transport,
 		},
 	}, nil
@@ -85,9 +83,11 @@ func (c *client) apiRequest(ctx context.Context, endpoint string, req proto.Mess
 	if err != nil {
 		return err
 	}
-
 	defer httpRsp.Body.Close()
-	return clientUnmarshal(bufio.NewReader(httpRsp.Body), rsp)
+
+	reader := bufio.NewReader(httpRsp.Body)
+	errorMsg := httpRsp.Header.Get(errorHeader)
+	return clientUnmarshal(reader, errorMsg, rsp)
 }
 
 func (c *client) post(ctx context.Context, endpoint string, req proto.Message) (*http.Response, error) {
@@ -110,7 +110,7 @@ func (c *client) post(ctx context.Context, endpoint string, req proto.Message) (
 	return c.client.Do(httpReq.WithContext(ctx))
 }
 
-func clientUnmarshal(r *bufio.Reader, msg proto.Message) error {
+func clientUnmarshal(r *bufio.Reader, errorMsg string, msg proto.Message) error {
 	byteSize := make([]byte, 4)
 	_, err := r.Read(byteSize)
 	if err != nil {
@@ -124,12 +124,21 @@ func clientUnmarshal(r *bufio.Reader, msg proto.Message) error {
 		return err
 	}
 
+	if errorMsg != "" {
+		var apiError pb.ApiError
+		err = proto.Unmarshal(bytes, &apiError)
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("%s: %s", errorMsg, apiError.Error)
+	}
+
 	return proto.Unmarshal(bytes, msg)
 }
 
 func (c tapClient) Recv() (*common.TapEvent, error) {
 	var msg common.TapEvent
-	err := clientUnmarshal(c.reader, &msg)
+	err := clientUnmarshal(c.reader, "", &msg)
 	return &msg, err
 }
 
