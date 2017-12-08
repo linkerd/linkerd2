@@ -70,6 +70,7 @@ impl Background {
         events: S,
         host_and_port: HostAndPort,
         dns_config: dns::Config,
+        report_timeout: Duration,
         executor: &Handle,
     ) -> Box<Future<Item = (), Error = ()>>
     where
@@ -102,7 +103,7 @@ impl Background {
         };
 
         let mut disco = self.disco.work();
-        let mut telemetry = Telemetry::new(events);
+        let mut telemetry = Telemetry::new(events, report_timeout, executor);
 
         let fut = future::poll_fn(move || {
             trace!("poll rpc services");

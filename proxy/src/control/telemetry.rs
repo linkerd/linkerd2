@@ -3,11 +3,13 @@ use std::time::{Duration, Instant};
 use futures::{Async, Future, Stream};
 use tower::Service;
 use tower_grpc;
+use tokio_core::reactor::Handle;
 
 use super::codec::Protobuf;
 use super::pb::proxy::telemetry::{ReportRequest, ReportResponse};
 use super::pb::proxy::telemetry::client::Telemetry as TelemetrySvc;
 use super::pb::proxy::telemetry::client::telemetry_methods::Report as ReportRpc;
+use ::timeout::{Timeout, TimeoutFuture};
 
 pub type ClientBody = tower_grpc::client::codec::EncodingBody<
     Protobuf<ReportRequest, ReportResponse>,
@@ -16,7 +18,7 @@ pub type ClientBody = tower_grpc::client::codec::EncodingBody<
 
 type TelemetryStream<F> = tower_grpc::client::BodyFuture<
     tower_grpc::client::Unary<
-        tower_grpc::client::ResponseFuture<Protobuf<ReportRequest, ReportResponse>, F>,
+        tower_grpc::client::ResponseFuture<Protobuf<ReportRequest, ReportResponse>, TimeoutFuture<F>>,
         Protobuf<ReportRequest, ReportResponse>,
     >,
 >;
@@ -26,6 +28,7 @@ pub struct Telemetry<T, F> {
     reports: T,
     in_flight: Option<(Instant, TelemetryStream<F>)>,
     report_timeout: Duration,
+    handle: Handle,
 }
 
 impl<T, F> Telemetry<T, F>
@@ -35,11 +38,12 @@ where
     F: Future<Item = ::http::Response<::tower_h2::RecvBody>>,
     F::Error: ::std::fmt::Debug,
 {
-    pub fn new(reports: T, report_timeout: Duration) -> Self {
+    pub fn new(reports: T, report_timeout: Duration, handle: &Handle) -> Self {
         Telemetry {
             reports,
             in_flight: None,
             report_timeout,
+            handle: handle.clone(),
         }
     }
 
@@ -52,6 +56,7 @@ where
             Future = F,
         >,
     {
+        let client = Timeout::new(client, self.report_timeout, &self.handle);
         let grpc = tower_grpc::Client::new(Protobuf::new(), client);
         let mut rpc = ReportRpc::new(grpc);
 
@@ -62,16 +67,9 @@ where
             if let Some((t0, mut fut)) = self.in_flight.take() {
                 match fut.poll() {
                     Ok(Async::NotReady) => {
+                        // TODO: can we just move this logging logic to `Timeout`?
                         trace!("report in flight to controller for {:?}", t0.elapsed());
-                        self.in_flight = if elapsed >= self.report_timeout {
-                            // The timeout has elapsed –- set `self.in_flight` to `None`.
-                            // Dropping `fut` at the end of the `if let` will cancel the RPC.
-                            warn!("report timed out after {:?}", elapsed);
-                            None
-                        } else {
-                            // Otherwise, the timeout hasn't finished yet. Continue sending.
-                            Some((t0, fut))
-                        };
+                        self.in_flight = Some((t0, fut))
                     }
                     Ok(Async::Ready(_)) => {
                         trace!("report sent to controller in {:?}", t0.elapsed())
