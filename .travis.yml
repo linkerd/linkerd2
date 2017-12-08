@@ -8,10 +8,9 @@ branches:
   only:
     - master
 
-# XXX
 stages:
   - name: test
-    if: branch = master AND type != pull_request
+    if: branch = master AND type != pull_request  # XXX
   - name: docker-deploy
 
 jobs:
@@ -78,10 +77,12 @@ jobs:
           fi
           gcloud components install kubectl
         - |
-          # Configure gcloud with a service account and a k8s context.
+          # Configure gcloud with a service account.
           openssl aes-256-cbc -K $encrypted_6af64675f81c_key -iv $encrypted_6af64675f81c_iv -in .gcp.json.enc -out .gcp.json -d
           gcloud auth activate-service-account --key-file .gcp.json
-          (. bin/_gcp.sh ; gcp_configure "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER")
+        - |
+          # gcloud and get a kubernetes context.
+          (set -x ; . bin/_gcp.sh ; gcp_configure "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER")
         - gcloud version
         - kubectl version --short
 
