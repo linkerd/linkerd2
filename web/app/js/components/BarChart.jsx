@@ -47,6 +47,7 @@ export default class LineGraph extends React.Component {
   componentDidMount() {
     this.svg = d3.select("." + this.props.containerClassName)
       .append("svg")
+        .attr("class", "bar-chart")
         .attr("width", this.state.svgWidth)
         .attr("height", this.state.svgHeight)
       .append("g")
@@ -56,6 +57,7 @@ export default class LineGraph extends React.Component {
         .append("div").attr("class", "tooltip");
 
     this.xAxis = this.svg.append("g")
+      .attr("class", "x-axis")
       .attr("transform", "translate(0," + this.state.height + ")");
 
     this.updateScales();
