@@ -1,5 +1,6 @@
 import _ from 'lodash';
 import { metricToFormatter } from './util/Utils.js';
+import Percentage from './util/Percentage.js';
 import React from 'react';
 import * as d3 from 'd3';
 import './../../css/bar-chart.css';
@@ -69,8 +70,18 @@ export default class LineGraph extends React.Component {
     };
   }
 
-  updateScales() {
+  chartData() {
     let data = this.props.data;
+    _.each(data, d => {
+      let p = new Percentage(d.rollup.requestRate, d.rollup.totalRequests);
+      d.shareOfRequests = p.get();
+      d.pretty = p.prettyRate();
+    });
+    return data;
+  }
+
+  updateScales() {
+    let data = this.chartData();
     this.xScale.domain(_.map(data, d => d.name));
     this.yScale.domain([0, d3.max(data, d => d.rollup.requestRate)]);
   }
@@ -84,10 +95,11 @@ export default class LineGraph extends React.Component {
   }
 
   renderGraph() {
+    let data = this.chartData();
     let barChart = this.svg.selectAll(".bar")
       .remove()
       .exit()
-      .data(this.props.data);
+      .data(data);
 
     barChart.enter().append("rect")
       .attr("class", "bar")
