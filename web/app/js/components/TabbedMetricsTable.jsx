@@ -1,10 +1,10 @@
-import React from 'react';
-import * as d3 from 'd3';
-import { Table, Tabs } from 'antd';
-import { Link } from 'react-router-dom';
+import _ from 'lodash';
 import LineGraph from './LineGraph.jsx';
-import { toClassName, metricToFormatter } from './util/Utils.js';
+import { Link } from 'react-router-dom';
 import Percentage from './util/Percentage.js';
+import React from 'react';
+import { metricToFormatter, toClassName } from './util/Utils.js';
+import { Table, Tabs } from 'antd';
 
 /*
   Table to display Success Rate, Requests and Latency in tabs.
@@ -23,7 +23,7 @@ const resourceInfo = {
   "downstream_pod": { title: "downstream pod", url: "/pod?pod=" },
   "deployment": { title: "deployment", url: "/deployment?deploy=" },
   "pod": { title: "pod", url: "/pod?pod=" }
-}
+};
 
 const columns = {
   resourceName: (resource, pathPrefix) => {
@@ -31,11 +31,11 @@ const columns = {
       title: resource.title,
       dataIndex: "name",
       key: "name",
-      render: (text,deploy) => {
+      render: (_text, deploy) => {
         return deploy.added ? <Link to={`${pathPrefix}${resource.url}${deploy.name}`}>{deploy.name}</Link> :
-               deploy.name
+               deploy.name;
       }
-    }
+    };
   },
   successRate: {
     title: "Success Rate",
@@ -94,7 +94,7 @@ const metricToColumns = {
     columns.latencyP95,
     columns.latencyP50
   ]
-}
+};
 
 export default class TabbedMetricsTable extends React.Component {
   getSparklineColumn(metricName) {
@@ -107,13 +107,12 @@ export default class TabbedMetricsTable extends React.Component {
         if (metricName === "latency") {
           tsData = _.get(d, ["timeseries", metricName, "P99"]);
         }
-        return <LineGraph
+        return (<LineGraph
           data={tsData}
           lastUpdated={this.props.lastUpdated}
           containerClassName={`spark-${toClassName(metricName)}-${toClassName(d.name)}-${toClassName(this.props.resource)}`}
           height={17}
-          width={170}
-        />
+          width={170} />);
       }
     };
   }
@@ -128,13 +127,12 @@ export default class TabbedMetricsTable extends React.Component {
     let totalRequestRate = _.sumBy(this.props.metrics, "rollup.requestRate");
     _.each(tableData, datum => datum.rollup.totalRequests = totalRequestRate);
 
-    return <Table
+    return (<Table
       dataSource={tableData}
       columns={columns}
       pagination={false}
       className="conduit-table"
-      rowKey={r => r.name}
-    />;
+      rowKey={r => r.name} />);
   }
 
   render() {
@@ -146,6 +144,6 @@ export default class TabbedMetricsTable extends React.Component {
           <Tabs.TabPane tab="Latency" key="tab-3">{this.renderTable("latency")}</Tabs.TabPane>
         </Tabs>
       </div>
-    )
+    );
   }
 }

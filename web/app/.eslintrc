@@ -1,0 +1,51 @@
+{
+  "plugins": [
+    "eslint-plugin-react", // https://github.com/yannickcr/eslint-plugin-react
+    "eslint-plugin-promise"
+  ],
+  "parser": "babel-eslint",
+  "parserOptions": {
+    "sourceType": "module",
+    "ecmaFeatures": {
+      "jsx": true
+    }
+  },
+  "env": {
+    "browser": true,
+    "es6": true
+  },
+  "extends" : ["eslint:recommended", "plugin:react/recommended"],
+  "rules": {
+    "arrow-parens": [1, "as-needed"],
+    "comma-dangle": [0], // babel removes dangling commas for us
+    "eqeqeq": [2, "smart"],
+    "jsx-quotes": 1,
+    "no-console": [1, { allow: ["warn", "error"] }], // minor offense
+    "no-redeclare": [1], // minor offense
+    "no-trailing-spaces": 1,
+    "no-unreachable": [1], // rule is not 100% accurate
+    "no-unused-vars": [1, { "args": "all", "argsIgnorePattern": "^_" }],
+    "no-var": 2,
+    "promise/catch-or-return": 2,
+    "promise/param-names": 1,
+    "react/display-name": 0, // minor offense
+    "react/forbid-prop-types": 1,
+    "react/jsx-closing-bracket-location": [1, { "nonEmpty": "after-props", "selfClosing": "after-props" }],
+    "react/jsx-curly-spacing": [1, "never", {"allowMultiline": false}],
+    "react/jsx-first-prop-new-line": [1, "multiline"],
+    "react/jsx-indent-props": [1, 2],
+    "react/jsx-tag-spacing": [1, { "beforeSelfClosing": "always" }],
+    "react/jsx-wrap-multilines": 1,
+    "react/no-did-mount-set-state": 1,
+    "react/no-did-update-set-state": 1,
+    "react/no-multi-comp": [1, { "ignoreStateless": true }],
+    "react/prefer-es6-class": 1,
+    "react/prop-types": 0, // TODO: enable prop type validation
+    "react/self-closing-comp": 1,
+    "react/sort-comp": 1,
+    "react/sort-prop-types": 1,
+    "semi": [2, "always"],
+    "sort-imports": [1, { ignoreCase: true, memberSyntaxSortOrder: ["single", "multiple", "all", "none"] }],
+    "strict": [1, "safe"]
+  }
+}

@@ -1,14 +1,14 @@
-import React from 'react';
 import _ from 'lodash';
-import 'whatwg-fetch';
-import { Row, Col } from 'antd';
+import CallToAction from './CallToAction.jsx';
 import ConduitSpinner from "./ConduitSpinner.jsx";
 import DeploymentSummary from './DeploymentSummary.jsx';
-import TabbedMetricsTable from './TabbedMetricsTable.jsx';
+import React from 'react';
 import { rowGutter } from './util/Utils.js';
-import { processMetrics, emptyMetric } from './util/MetricUtils.js';
-import CallToAction from './CallToAction.jsx';
-import styles from './../../css/deployments.css';
+import TabbedMetricsTable from './TabbedMetricsTable.jsx';
+import { Col, Row } from 'antd';
+import { emptyMetric, processMetrics } from './util/MetricUtils.js';
+import './../../css/deployments.css';
+import 'whatwg-fetch';
 
 export default class Deployments extends React.Component {
   constructor(props) {
@@ -38,7 +38,7 @@ export default class Deployments extends React.Component {
       .reject(p => _.isEmpty(p.deployment) || p.controlPlane)
       .groupBy('deployment')
       .map((componentPods, name) => {
-        return { name: name, added: _.every(componentPods, 'added') }
+        return {name: name, added: _.every(componentPods, 'added')};
       })
       .sortBy('name')
       .value();
@@ -47,8 +47,8 @@ export default class Deployments extends React.Component {
   combineDeploymentsWithMetrics(deploys, metrics) {
     let newMetrics = [];
     let groupedMetrics = _.groupBy(metrics, 'name');
-    _.each(deploys, (data) => {
-      newMetrics.push(_.get(groupedMetrics, [data.name, 0], emptyMetric(data.name, data.added)))
+    _.each(deploys, data => {
+      newMetrics.push(_.get(groupedMetrics, [data.name, 0], emptyMetric(data.name, data.added)));
     });
     return newMetrics;
   }
@@ -59,9 +59,9 @@ export default class Deployments extends React.Component {
     }
     this.setState({ pendingRequests: true });
 
-    let rollupPath = `${this.props.pathPrefix}/api/metrics?window=${this.state.metricsWindow}`
-    let timeseriesPath = `${rollupPath}&timeseries=true`
-    let podPath = `${this.props.pathPrefix}/api/pods`
+    let rollupPath = `${this.props.pathPrefix}/api/metrics?window=${this.state.metricsWindow}`;
+    let timeseriesPath = `${rollupPath}&timeseries=true`;
+    let podPath = `${this.props.pathPrefix}/api/pods`;
     let rollupRequest = fetch(rollupPath).then(r => r.json());
     let timeseriesRequest = fetch(timeseriesPath).then(r => r.json());
     let podRequest = fetch(podPath).then(r => r.json());
@@ -69,7 +69,7 @@ export default class Deployments extends React.Component {
     Promise.all([rollupRequest, timeseriesRequest, podRequest])
       .then(([metrics, ts, p]) => {
 
-        let po = this.processDeploys(p.pods)
+        let po = this.processDeploys(p.pods);
         let m = _.compact(processMetrics(metrics.metrics, ts.metrics, "targetDeploy"));
         let combinedMetrics = this.combineDeploymentsWithMetrics(po, m);
         this.setState({
@@ -97,14 +97,13 @@ export default class Deployments extends React.Component {
         <Row gutter={rowGutter}>
           {
             _.map(leastHealthyDeployments, deployment => {
-              return <Col span={8} key={`col-${deployment.name}`}>
+              return (<Col span={8} key={`col-${deployment.name}`}>
                 <DeploymentSummary
                   key={deployment.name}
                   lastUpdated={this.state.lastUpdated}
                   data={deployment}
-                  pathPrefix={this.props.pathPrefix}
-                />
-              </Col>
+                  pathPrefix={this.props.pathPrefix} />
+              </Col>);
             })
           }
         </Row>
@@ -113,8 +112,7 @@ export default class Deployments extends React.Component {
             resource="deployment"
             lastUpdated={this.state.lastUpdated}
             metrics={this.state.metrics}
-            pathPrefix={this.props.pathPrefix}
-          />
+            pathPrefix={this.props.pathPrefix} />
         </div>
       </div>
     );
@@ -123,7 +121,7 @@ export default class Deployments extends React.Component {
 
   render() {
     if (!this.state.loaded) {
-      return <ConduitSpinner />
+      return <ConduitSpinner />;
     } else return (
       <div className="page-content">
         <div className="page-header">

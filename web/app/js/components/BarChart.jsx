@@ -1,8 +1,8 @@
+import _ from 'lodash';
+import { metricToFormatter } from './util/Utils.js';
 import React from 'react';
 import * as d3 from 'd3';
-import Percentage from './util/Percentage.js';
-import { metricToFormatter } from './util/Utils.js';
-import styles from './../../css/bar-chart.css';
+import './../../css/bar-chart.css';
 
 const defaultSvgWidth = 595;
 const defaultSvgHeight = 150;
@@ -13,31 +13,6 @@ export default class LineGraph extends React.Component {
     super(props);
 
     this.state = this.getChartDimensions();
-  }
-
-  getChartDimensions() {
-    let svgWidth = this.props.width || defaultSvgWidth;
-    let svgHeight = this.props.height || defaultSvgHeight;
-
-    let width = svgWidth - margin.left - margin.right;
-    let height = svgHeight - margin.top - margin.bottom;
-
-    return {
-      svgWidth: svgWidth,
-      svgHeight: svgHeight,
-      width: width,
-      height: height,
-      margin: margin
-    }
-  }
-
-  shouldComponentUpdate(nextProps, nextState) {
-    if (nextProps.lastUpdated === this.props.lastUpdated) {
-      // control whether react re-renders the component
-      // only rerender if the input data has changed
-      return false;
-    }
-    return true;
   }
 
   componentWillMount() {
@@ -64,23 +39,38 @@ export default class LineGraph extends React.Component {
     this.renderGraph();
   }
 
+  shouldComponentUpdate(nextProps) {
+    if (nextProps.lastUpdated === this.props.lastUpdated) {
+      // control whether react re-renders the component
+      // only rerender if the input data has changed
+      return false;
+    }
+    return true;
+  }
+
   componentDidUpdate() {
     this.updateScales();
     this.renderGraph();
   }
 
-  chartData() {
-    let data = this.props.data;
-    let percentages = _.each(data, d => {
-      let p = new Percentage(d.rollup.requestRate, d.rollup.totalRequests);
-      d.shareOfRequests = p.get();
-      d.pretty = p.prettyRate();
-    });
-    return data;
+  getChartDimensions() {
+    let svgWidth = this.props.width || defaultSvgWidth;
+    let svgHeight = this.props.height || defaultSvgHeight;
+
+    let width = svgWidth - margin.left - margin.right;
+    let height = svgHeight - margin.top - margin.bottom;
+
+    return {
+      svgWidth: svgWidth,
+      svgHeight: svgHeight,
+      width: width,
+      height: height,
+      margin: margin
+    };
   }
 
   updateScales() {
-    let data = this.chartData();
+    let data = this.props.data;
     this.xScale.domain(_.map(data, d => d.name));
     this.yScale.domain([0, d3.max(data, d => d.rollup.requestRate)]);
   }
@@ -94,11 +84,10 @@ export default class LineGraph extends React.Component {
   }
 
   renderGraph() {
-    let data = this.chartData();
     let barChart = this.svg.selectAll(".bar")
       .remove()
       .exit()
-      .data(data)
+      .data(this.props.data);
 
     barChart.enter().append("rect")
       .attr("class", "bar")
