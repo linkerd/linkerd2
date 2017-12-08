@@ -8,29 +8,37 @@ const getStatusDotCn = status => {
   return `status-dot-${status === "good" ? "green" : "grey"}`;
 }
 
-const statusDotExplanation = {
+const columnConfig = {
   "Pod Status": {
-    good: "is up and running",
-    neutral: "has not been started"
+    width: 200,
+    wrapDotsAt: 7, // dots take up more than one line in the table; space them out
+    dotExplanation: {
+      good: "is up and running",
+      neutral: "has not been started"
+    }
   },
   "Proxy Status": {
-    good: "has been added to the mesh",
-    neutral: "has not been added to the mesh"
+    width: 250,
+    wrapDotsAt: 9,
+    dotExplanation: {
+      good: "has been added to the mesh",
+      neutral: "has not been added to the mesh"
+    }
   }
-};
+}
 
-const StatusDot = ({status, columnName}) => (
+const StatusDot = ({status, multilineDots, columnName}) => (
   <Tooltip
     placement="top"
     title={
       <div>
         <div>{status.name}</div>
-        <div>{_.get(statusDotExplanation, [columnName, status.value])}</div>
+        <div>{_.get(columnConfig, [columnName, "dotExplanation", status.value])}</div>
       </div>
     }
   >
     <div
-      className={`status-dot status-dot-${status.value}`}
+      className={`status-dot status-dot-${status.value} ${multilineDots ? 'dot-multiline': ''}`}
       key={status.name}
     >&nbsp;</div>
   </Tooltip>
@@ -61,11 +69,14 @@ const columns = {
       title: name,
       dataIndex: "statuses",
       key: "statuses",
+      width: columnConfig[name].width,
       render: statuses => {
+        let multilineDots = _.size(statuses) > columnConfig[name].wrapDotsAt;
+
         return _.map(statuses, (status, i) => {
-          // TODO: handle case where there are too many dots for column
           return <StatusDot
             status={status}
+            multilineDots={multilineDots}
             columnName={name}
             key={`${name}-pod-status-${i}`}
           />
