@@ -1,5 +1,7 @@
 use support::*;
 
+use support::conduit_proxy::convert::TryFrom;
+
 pub fn new() -> Proxy {
     Proxy::new()
 }
@@ -59,36 +61,27 @@ impl Proxy {
 }
 
 fn run(proxy: Proxy) -> Listening {
+    use self::conduit_proxy::config;
+
     let controller = proxy.controller.expect("proxy controller missing");
     let inbound = proxy.inbound;
     let outbound = proxy.outbound;
 
-    let mut config = conduit_proxy::config::Config::load_from_env().unwrap();
-
-    config.control_host_and_port = {
-        let control_url: url::Url = format!("tcp://{}", controller.addr).parse().unwrap();
-        url::HostAndPort {
-            host: control_url.host().unwrap().to_owned(),
-            port: control_url.port().unwrap(),
-        }
-    };
-
-    config.private_listener = conduit_proxy::config::Listener {
-        addr: "tcp://127.0.0.1:0".parse().unwrap(),
-    };
-
+    let mut env = config::TestEnv::new();
+    env.put(config::ENV_CONTROL_URL, format!("tcp://{}", controller.addr));
+    env.put(config::ENV_PRIVATE_LISTENER, "tcp://127.0.0.1:0".to_owned());
     if let Some(ref inbound) = inbound {
-        config.private_forward = format!("tcp://{}", inbound.addr).parse().ok();
+        env.put(config::ENV_PRIVATE_FORWARD, format!("tcp://{}", inbound.addr));
     }
+    env.put(config::ENV_PUBLIC_LISTENER, "tcp://127.0.0.1:0".to_owned());
+    env.put(config::ENV_CONTROL_LISTENER, "tcp://127.0.0.1:0".to_owned());
 
-    config.public_listener = conduit_proxy::config::Listener {
-        addr: "tcp://127.0.0.1:0".parse().unwrap(),
-    };
+    let mut config = config::Config::try_from(&env).unwrap();
 
-    config.control_listener = conduit_proxy::config::Listener {
-        addr: "tcp://127.0.0.1:0".parse().unwrap(),
-    };
-
+    // TODO: We currently can't use `config::ENV_METRICS_FLUSH_INTERVAL_SECS`
+    // because we need to be able to set the flush interval to a fraction of a
+    // second. We should change config::ENV_METRICS_FLUSH_INTERVAL_SECS so that
+    // it can support this.
     if let Some(dur) = proxy.metrics_flush_interval {
         config.metrics_flush_interval = dur;
     }

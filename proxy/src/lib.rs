@@ -60,7 +60,7 @@ mod bind;
 pub mod config;
 mod connection;
 pub mod control;
-mod convert;
+pub mod convert;
 mod ctx;
 mod dns;
 mod inbound;
