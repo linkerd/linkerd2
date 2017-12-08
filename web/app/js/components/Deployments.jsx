@@ -38,7 +38,7 @@ export default class Deployments extends React.Component {
       .reject(p => _.isEmpty(p.deployment) || p.controlPlane)
       .groupBy('deployment')
       .map((componentPods, name) => {
-        return {name: name, added: _.every(componentPods, 'added')};
+        return { name: name, added: _.every(componentPods, 'added') };
       })
       .sortBy('name')
       .value();
