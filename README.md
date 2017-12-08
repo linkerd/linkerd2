@@ -1,12 +1,8 @@
 ![conduit][logo]
 
+[![Build Status](https://travis-ci.org/runconduit/conduit.svg?branch=master)](https://travis-ci.org/runconduit/conduit)
 [![GitHub license][license-badge]](LICENSE)
 [![Slack Status][slack-badge]][slack]
-<!--
-TODO
-- travis CI
-- discourse
--->
 
 :balloon: Welcome to Conduit! :wave:
 
