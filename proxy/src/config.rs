@@ -139,15 +139,13 @@ impl Config {
 
         let metrics_flush_interval = Duration::from_secs(
             env_var_parse(ENV_METRICS_FLUSH_INTERVAL_SECS, parse_number)?
-                .unwrap_or(DEFAULT_METRICS_FLUSH_INTERVAL_SECS));
+                .unwrap_or(DEFAULT_METRICS_FLUSH_INTERVAL_SECS)
+        );
 
-        let report_timeout = match env::var(ENV_REPORT_TIMEOUT_SECS).ok() {
-            None => Duration::from_secs(DEFAULT_REPORT_TIMEOUT_SECS),
-            Some(c) => match c.parse() {
-                Ok(c) => Duration::from_secs(c),
-                Err(_) => return Err(Error::NotANumber(c))
-            }
-        };
+        let report_timeout = Duration::from_secs(
+            env_var_parse(ENV_REPORT_TIMEOUT_SECS, parse_number)?
+                .unwrap_or(DEFAULT_REPORT_TIMEOUT_SECS)
+        );
 
         Ok(Config {
             private_listener: Listener {
