@@ -9,14 +9,25 @@ const getStatusDotCn = status => {
 }
 
 const statusDotExplanation = {
-  good: "has been added to the mesh",
-  neutral: "has not been added to the mesh"
+  "Pod Status": {
+    good: "is up and running",
+    neutral: "has not been started"
+  },
+  "Proxy Status": {
+    good: "has been added to the mesh",
+    neutral: "has not been added to the mesh"
+  }
 };
 
-const StatusDot = ({status}) => (
+const StatusDot = ({status, columnName}) => (
   <Tooltip
     placement="top"
-    title={`${status.name} ${statusDotExplanation[status.value]}`}
+    title={
+      <div>
+        <div>{status.name}</div>
+        <div>{_.get(statusDotExplanation, [columnName, status.value])}</div>
+      </div>
+    }
   >
     <div
       className={`status-dot status-dot-${status.value}`}
@@ -51,9 +62,13 @@ const columns = {
       dataIndex: "statuses",
       key: "statuses",
       render: statuses => {
-        return _.map(statuses, status => {
+        return _.map(statuses, (status, i) => {
           // TODO: handle case where there are too many dots for column
-          return <StatusDot status={status} />
+          return <StatusDot
+            status={status}
+            columnName={name}
+            key={`${name}-pod-status-${i}`}
+          />
         });
       }
     }
