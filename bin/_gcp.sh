@@ -16,5 +16,5 @@ get_k8s_ctx() {
         fi
     done
 
-    gcloud container clusters get-credentials --log-http "$cluster"
+    gcloud container clusters get-credentials "$cluster"
 }
