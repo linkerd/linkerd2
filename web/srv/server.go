@@ -40,7 +40,6 @@ type (
 	}
 	appParams struct {
 		Data         *pb.VersionInfo
-		Namespace    string
 		UUID         string
 		Error        bool
 		ErrorMessage string
@@ -52,7 +51,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	s.router.ServeHTTP(w, req)
 }
 
-func NewServer(addr, templateDir, staticDir, namespace, uuid, webpackDevServer string, reload bool, apiClient pb.ApiClient) *http.Server {
+func NewServer(addr, templateDir, staticDir, uuid, webpackDevServer string, reload bool, apiClient pb.ApiClient) *http.Server {
 	counter := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "http_requests_total",
@@ -79,7 +78,6 @@ func NewServer(addr, templateDir, staticDir, namespace, uuid, webpackDevServer s
 		apiClient: apiClient,
 		render:    server.RenderTemplate,
 		serveFile: server.serveFile,
-		namespace: namespace,
 		uuid:      uuid,
 	}
 

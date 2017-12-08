@@ -16,13 +16,12 @@ type (
 		render    renderTemplate
 		serveFile serveFile
 		apiClient pb.ApiClient
-		namespace string
 		uuid      string
 	}
 )
 
 func (h *handler) handleIndex(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
-	params := appParams{Namespace: h.namespace, UUID: h.uuid}
+	params := appParams{UUID: h.uuid}
 
 	version, err := h.apiClient.Version(req.Context(), &pb.Empty{}) // TODO: remove and call /api/version from web app
 	if err != nil {

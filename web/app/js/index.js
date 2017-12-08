@@ -34,8 +34,8 @@ ReactDOM.render((
           <div className="main-content">
             <Switch>
               <Redirect exact from={`${pathPrefix}/`} to={`${pathPrefix}/servicemesh`} />
-              <Route path={`${pathPrefix}/servicemesh`} render={() => <ServiceMesh pathPrefix={pathPrefix} releaseVersion={appData.releaseVersion} namespace={appData.namespace} />} />
-              <Route path={`${pathPrefix}/deployments`} render={() => <Deployments pathPrefix={pathPrefix} namespace={appData.namespace}/>} />
+              <Route path={`${pathPrefix}/servicemesh`} render={() => <ServiceMesh pathPrefix={pathPrefix} releaseVersion={appData.releaseVersion} />} />
+              <Route path={`${pathPrefix}/deployments`} render={() => <Deployments pathPrefix={pathPrefix}/>} />
               <Route path={`${pathPrefix}/deployment`} render={(props) => <Deployment pathPrefix={pathPrefix} location={props.location}/>} />
               <Route path={`${pathPrefix}/pod`} render={(props) => <PodDetail pathPrefix={pathPrefix} location={props.location}/>} />
               <Route path={`${pathPrefix}/routes`} render={() => <Routes pathPrefix={pathPrefix}/>} />

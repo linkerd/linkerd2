@@ -34,25 +34,23 @@ export default class Deployments extends React.Component {
   }
 
   processDeploys(pods) {
-    let ns = this.props.namespace + '/';
     return _(pods)
-      .reject(p => _.isEmpty(p.deployment) || _.startsWith(p.deployment, ns))
-      .groupBy("deployment")
+      .reject(p => _.isEmpty(p.deployment) || p.controlPlane)
+      .groupBy('deployment')
       .map((componentPods, name) => {
-          return {name: name, added: _.every(componentPods, 'added')}
+        return { name: name, added: _.every(componentPods, 'added') }
       })
-      .groupBy("name")
+      .sortBy('name')
       .value();
   }
 
-  addOtherDeployments(deploys, metrics) {
+  combineDeploymentsWithMetrics(deploys, metrics) {
+    let newMetrics = [];
     let groupedMetrics = _.groupBy(metrics, 'name');
-    _.each(deploys, (data, name) => {
-      if (!groupedMetrics[name]) {
-        metrics.push(emptyMetric(name))
-      }
+    _.each(deploys, (data) => {
+      newMetrics.push(_.get(groupedMetrics, [data.name, 0], emptyMetric(data.name, data.added)))
     });
-    return metrics;
+    return newMetrics;
   }
 
   loadFromServer() {
@@ -73,10 +71,9 @@ export default class Deployments extends React.Component {
 
         let po = this.processDeploys(p.pods)
         let m = _.compact(processMetrics(metrics.metrics, ts.metrics, "targetDeploy"));
-        let newMetrics = this.addOtherDeployments(po, m);
-
+        let combinedMetrics = this.combineDeploymentsWithMetrics(po, m);
         this.setState({
-          metrics: newMetrics,
+          metrics: combinedMetrics,
           lastUpdated: Date.now(),
           pendingRequests: false,
           loaded: true
@@ -96,20 +93,20 @@ export default class Deployments extends React.Component {
     return (
       <div className="clearfix">
         <div className="subsection-header">Least-healthy deployments</div>
-        { _.isEmpty(this.state.metrics) ? <div className="no-data-msg">No data</div> : null }
+        {_.isEmpty(this.state.metrics) ? <div className="no-data-msg">No data</div> : null}
         <Row gutter={rowGutter}>
-        {
-          _.map(leastHealthyDeployments, deployment => {
-            return <Col span={8} key={`col-${deployment.name}`}>
-              <DeploymentSummary
-                key={deployment.name}
-                lastUpdated={this.state.lastUpdated}
-                data={deployment}
-                pathPrefix={this.props.pathPrefix}
-              />
-            </Col>
-          })
-        }
+          {
+            _.map(leastHealthyDeployments, deployment => {
+              return <Col span={8} key={`col-${deployment.name}`}>
+                <DeploymentSummary
+                  key={deployment.name}
+                  lastUpdated={this.state.lastUpdated}
+                  data={deployment}
+                  pathPrefix={this.props.pathPrefix}
+                />
+              </Col>
+            })
+          }
         </Row>
         <div className="deployments-list">
           <TabbedMetricsTable
