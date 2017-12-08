@@ -64,6 +64,10 @@ pub enum Error {
     InvalidAddr,
     ControlPlaneConfigError(String, UrlError),
     NotANumber(String),
+    InvalidEnvVar {
+        name: String,
+        value: String,
+    },
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -119,46 +123,36 @@ const DEFAULT_RESOLV_CONF: &str = "/etc/resolv.conf";
 impl Config {
     /// Load a `Config` by reading ENV variables.
     pub fn load_from_env() -> Result<Self, Error> {
-        let event_buffer_capacity = match env::var(ENV_EVENT_BUFFER_CAPACITY).ok() {
-            None => DEFAULT_EVENT_BUFFER_CAPACITY,
-            Some(c) => match c.parse() {
-                Ok(c) => c,
-                Err(_) => return Err(Error::NotANumber(c)),
-            },
-        };
+        let event_buffer_capacity = env_var_parse(ENV_EVENT_BUFFER_CAPACITY, str::parse)?
+            .unwrap_or(DEFAULT_EVENT_BUFFER_CAPACITY);
 
-        let metrics_flush_interval = match env::var(ENV_METRICS_FLUSH_INTERVAL_SECS).ok() {
-            None => Duration::from_secs(DEFAULT_METRICS_FLUSH_INTERVAL_SECS),
-            Some(c) => match c.parse() {
-                Ok(c) => Duration::from_secs(c),
-                Err(_) => return Err(Error::NotANumber(c)),
-            },
-        };
+        let metrics_flush_interval = Duration::from_secs(
+            env_var_parse(ENV_METRICS_FLUSH_INTERVAL_SECS, str::parse)?
+                .unwrap_or(DEFAULT_METRICS_FLUSH_INTERVAL_SECS));
 
         Ok(Config {
             private_listener: Listener {
-                addr: Addr::from_env_or(ENV_PRIVATE_LISTENER, DEFAULT_PRIVATE_LISTENER)?,
+                addr: env_var_parse(ENV_PRIVATE_LISTENER, str::parse)?
+                    .unwrap_or_else(|| Addr::from_str(DEFAULT_PRIVATE_LISTENER).unwrap()),
             },
             public_listener: Listener {
-                addr: Addr::from_env_or(ENV_PUBLIC_LISTENER, DEFAULT_PUBLIC_LISTENER)?,
+                addr: env_var_parse(ENV_PUBLIC_LISTENER, str::parse)?
+                    .unwrap_or_else(|| Addr::from_str(DEFAULT_PUBLIC_LISTENER).unwrap()),
             },
             control_listener: Listener {
-                addr: Addr::from_env_or(ENV_CONTROL_LISTENER, DEFAULT_CONTROL_LISTENER)?,
+                addr: env_var_parse(ENV_CONTROL_LISTENER, str::parse)?
+                    .unwrap_or_else(|| Addr::from_str(DEFAULT_CONTROL_LISTENER).unwrap()),
             },
-            private_forward: Addr::from_env_opt(ENV_PRIVATE_FORWARD)?,
+            private_forward: env_var_parse(ENV_PRIVATE_FORWARD, str::parse)?,
 
-            public_connect_timeout: env::var(ENV_PUBLIC_CONNECT_TIMEOUT)
-                .ok()
-                .and_then(|c| c.parse().ok())
+            public_connect_timeout: env_var_parse(ENV_PUBLIC_CONNECT_TIMEOUT, str::parse)?
                 .map(Duration::from_millis),
 
-            private_connect_timeout: env::var(ENV_PRIVATE_CONNECT_TIMEOUT)
-                .ok()
-                .and_then(|c| c.parse().ok())
+            private_connect_timeout: env_var_parse(ENV_PRIVATE_CONNECT_TIMEOUT, str::parse)?
                 .map(Duration::from_millis),
 
-            resolv_conf_path: env::var(ENV_RESOLV_CONF)
-                .unwrap_or_else(|_| DEFAULT_RESOLV_CONF.into())
+            resolv_conf_path: env_var(ENV_RESOLV_CONF)?
+                .unwrap_or(DEFAULT_RESOLV_CONF.into())
                 .into(),
 
             control_host_and_port: control_host_and_port_from_env(
@@ -172,21 +166,6 @@ impl Config {
 }
 
 // ===== impl Addr =====
-
-impl Addr {
-    fn from_env_opt(key: &str) -> Result<Option<Addr>, Error> {
-        match env::var(key) {
-            Ok(a) => a.parse().map(Some),
-            Err(_) => Ok(None),
-        }
-    }
-
-    fn from_env_or(key: &str, default: &str) -> Result<Addr, Error> {
-        let s = env::var(key).unwrap_or_else(|_| default.into());
-
-        s.parse()
-    }
-}
 
 impl FromStr for Addr {
     type Err = Error;
@@ -219,7 +198,7 @@ impl From<Addr> for SocketAddr {
 }
 
 fn control_host_and_port_from_env(key: &str, default: &str) -> Result<HostAndPort, Error> {
-    let s = env::var(key).unwrap_or_else(|_| default.into());
+    let s = env_var(key)?.unwrap_or_else(|| default.into());
     let url = Url::parse(&s).map_err(|_| {
         Error::ControlPlaneConfigError(s.clone(), UrlError::SyntaxError)
     })?;
@@ -253,4 +232,31 @@ fn control_host_and_port_from_env(key: &str, default: &str) -> Result<HostAndPor
         host,
         port,
     })
+}
+
+fn env_var(name: &str) -> Result<Option<String>, Error> {
+    match env::var(name) {
+        Ok(value) => Ok(Some(value)),
+        Err(env::VarError::NotPresent) => Ok(None),
+        Err(env::VarError::NotUnicode(_)) => Err(Error::InvalidEnvVar {
+            name: name.to_owned(),
+            value: "<not unicode>".to_owned(),
+        }),
+    }
+}
+
+fn env_var_parse<T, Parse, E>(name: &str, parse: Parse) -> Result<Option<T>, Error>
+    where Parse: FnOnce(&str) -> Result<T, E> {
+    match env_var(name)? {
+        Some(ref s) => {
+            let r = parse(s).map_err(|_| {
+                Error::InvalidEnvVar {
+                    name: name.to_owned(),
+                    value: s.to_owned(),
+                }
+            })?;
+            Ok(Some(r))
+        },
+        None => Ok(None),
+    }
 }
