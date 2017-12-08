@@ -83,11 +83,13 @@ export default class PodDetail extends React.Component {
   }
 
   renderSections() {
+    let currentSuccessRate = _.get(_.last(_.get(this.state.summaryMetrics, "SUCCESS_RATE", [])), "value");
     return [
       <HealthPane
         key="pod-health-pane"
         entity={this.state.pod}
         entityType="pod"
+        currentSr={currentSuccessRate}
         upstreamMetrics={this.state.upstreamMetrics}
         downstreamMetrics={this.state.downstreamMetrics}
       />,
@@ -123,8 +125,8 @@ export default class PodDetail extends React.Component {
         <div className="page-header">
           <div className="subsection-header">Pod detail</div>
           <h1>{this.state.pod}</h1>
-          {this.renderContent()}
         </div>
+        {this.renderContent()}
       </div>
     );
   }

@@ -1,12 +1,48 @@
 import React from 'react';
 import * as d3 from 'd3';
 import { Link } from 'react-router-dom';
-import { Table, Tabs } from 'antd';
+import { Table, Tabs, Tooltip } from 'antd';
 import { toClassName, metricToFormatter } from './util/Utils.js';
 
 const getStatusDotCn = status => {
   return `status-dot-${status === "good" ? "green" : "grey"}`;
 }
+
+const columnConfig = {
+  "Pod Status": {
+    width: 200,
+    wrapDotsAt: 7, // dots take up more than one line in the table; space them out
+    dotExplanation: {
+      good: "is up and running",
+      neutral: "has not been started"
+    }
+  },
+  "Proxy Status": {
+    width: 250,
+    wrapDotsAt: 9,
+    dotExplanation: {
+      good: "has been added to the mesh",
+      neutral: "has not been added to the mesh"
+    }
+  }
+}
+
+const StatusDot = ({status, multilineDots, columnName}) => (
+  <Tooltip
+    placement="top"
+    title={
+      <div>
+        <div>{status.name}</div>
+        <div>{_.get(columnConfig, [columnName, "dotExplanation", status.value])}</div>
+      </div>
+    }
+  >
+    <div
+      className={`status-dot status-dot-${status.value} ${multilineDots ? 'dot-multiline': ''}`}
+      key={status.name}
+    >&nbsp;</div>
+  </Tooltip>
+);
 
 const columns = {
   resourceName: (shouldLink, pathPrefix) => {
@@ -33,14 +69,17 @@ const columns = {
       title: name,
       dataIndex: "statuses",
       key: "statuses",
+      width: columnConfig[name].width,
       render: statuses => {
-        return _.map(statuses, status => {
-          // TODO: handle case where there are too many dots for column
-          return <div
-            className={`status-dot status-dot-${status.value}`}
-            key={status.name}
-            title={status.name}
-          >&nbsp;</div>
+        let multilineDots = _.size(statuses) > columnConfig[name].wrapDotsAt;
+
+        return _.map(statuses, (status, i) => {
+          return <StatusDot
+            status={status}
+            multilineDots={multilineDots}
+            columnName={name}
+            key={`${name}-pod-status-${i}`}
+          />
         });
       }
     }
