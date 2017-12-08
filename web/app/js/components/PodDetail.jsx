@@ -125,8 +125,8 @@ export default class PodDetail extends React.Component {
         <div className="page-header">
           <div className="subsection-header">Pod detail</div>
           <h1>{this.state.pod}</h1>
-          {this.renderContent()}
         </div>
+        {this.renderContent()}
       </div>
     );
   }

@@ -208,8 +208,8 @@ export default class Deployment extends React.Component {
         <div className="page-header">
           <div className="subsection-header">Deployment detail</div>
           <h1>{this.state.deploy}</h1>
-          {this.renderContent()}
         </div>
+        {this.renderContent()}
       </div>
     );
   }

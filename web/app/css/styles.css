@@ -61,6 +61,10 @@ h2, h3, h4, h5, h6 {
   margin-bottom: 30px;
 }
 
+.page-header .subsection-header {
+  margin-bottom: 0px;
+}
+
 .subsection-header {
   text-transform: uppercase;
   font-size: 14px;
