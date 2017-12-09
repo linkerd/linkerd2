@@ -43,12 +43,11 @@ extern crate url;
 use futures::*;
 
 use std::io;
-use std::net::{SocketAddr, TcpListener as StdTcpListener};
+use std::net::SocketAddr;
 use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use tokio_core::net::TcpListener;
 use tokio_core::reactor::{Core, Handle};
 use tower::NewService;
 use tower_fn::*;
@@ -73,6 +72,7 @@ pub mod timeout;
 mod tower_fn; // TODO: move to tower-fn
 
 use bind::Bind;
+use connection::BoundPort;
 use control::pb::proxy::tap;
 use inbound::Inbound;
 use map_err::MapErr;
@@ -93,22 +93,21 @@ use outbound::Outbound;
 pub struct Main {
     config: config::Config,
 
-    control_listener: StdTcpListener,
-    inbound_listener: StdTcpListener,
-    outbound_listener: StdTcpListener,
+    control_listener: BoundPort,
+    inbound_listener: BoundPort,
+    outbound_listener: BoundPort,
 }
 
 impl Main {
     pub fn new(config: config::Config) -> Self {
-        let control_listener = StdTcpListener::bind(SocketAddr::from(config.control_listener.addr))
-            .expect("controller listener bind");
-        let inbound_listener = StdTcpListener::bind(SocketAddr::from(config.public_listener.addr))
-            .expect("public listener bind");
-        let outbound_listener = StdTcpListener::bind(
-            SocketAddr::from(config.private_listener.addr),
-        ).expect("private listener bind");
 
-        Self {
+        let control_listener = BoundPort::new(config.control_listener.addr)
+            .expect("controller listener bind");
+        let inbound_listener = BoundPort::new(config.public_listener.addr)
+            .expect("public listener bind");
+        let outbound_listener = BoundPort::new(config.private_listener.addr)
+            .expect("private listener bind");
+        Main {
             config,
             control_listener,
             inbound_listener,
@@ -118,15 +117,15 @@ impl Main {
 
 
     pub fn control_addr(&self) -> SocketAddr {
-        self.control_listener.local_addr().expect("control_addr")
+        self.control_listener.local_addr()
     }
 
     pub fn inbound_addr(&self) -> SocketAddr {
-        self.inbound_listener.local_addr().expect("inbound_addr")
+        self.inbound_listener.local_addr()
     }
 
     pub fn outbound_addr(&self) -> SocketAddr {
-        self.outbound_listener.local_addr().expect("outbound_addr")
+        self.outbound_listener.local_addr()
     }
 
     pub fn run(self) {
@@ -149,10 +148,10 @@ impl Main {
         let control_host_and_port = config.control_host_and_port.clone();
 
         info!("using controller at {:?}", control_host_and_port);
-        info!("routing on {:?}", outbound_listener.local_addr().unwrap(),);
+        info!("routing on {:?}", outbound_listener.local_addr());
         info!(
             "proxying on {:?} to {:?}",
-            inbound_listener.local_addr().unwrap(),
+            inbound_listener.local_addr(),
             config.private_forward
         );
 
@@ -272,7 +271,7 @@ impl Main {
 }
 
 fn serve<R, B, E, F>(
-    listen: StdTcpListener,
+    bound_port: BoundPort,
     h2_builder: h2::server::Builder,
     recognize: R,
     proxy_ctx: Arc<ctx::Proxy>,
@@ -291,10 +290,6 @@ where
     >
         + 'static,
 {
-    let listen_addr = listen.local_addr().expect("local addr");
-
-    let bind = TcpListener::from_listener(listen, &listen_addr, &executor).expect("bind");
-
     let router = Router::new(recognize);
     let stack = NewServiceFn::new(move || {
         // Clone the router handle
@@ -304,12 +299,14 @@ where
         MapErr::new(router)
     });
 
+    let listen_addr = bound_port.local_addr();
     let server = Server::new(
         stack,
         h2_builder,
         ::logging::context_executor(("serve", listen_addr), executor.clone()),
     );
-    let f = bind.incoming().fold(
+    let incoming = bound_port.listen(&executor).expect("listen");
+    let f = incoming.fold(
         (server, proxy_ctx, sensors, executor),
         move |(server, proxy_ctx, sensors, executor), (socket, remote_addr)| {
             if let Err(e) = socket.set_nodelay(true) {
@@ -347,7 +344,7 @@ where
 }
 
 fn serve_control<N, B>(
-    listen: StdTcpListener,
+    bound_port: BoundPort,
     h2_builder: h2::server::Builder,
     new_service: N,
     executor: &Handle,
@@ -356,11 +353,9 @@ where
     B: Body + 'static,
     N: NewService<Request = http::Request<RecvBody>, Response = http::Response<B>> + 'static,
 {
-    let listen_addr = listen.local_addr().expect("local addr");
-    let bind = TcpListener::from_listener(listen, &listen_addr, executor).expect("bind");
-
     let server = Server::new(new_service, h2_builder, executor.clone());
-    let f = bind.incoming().fold(
+    let incoming = bound_port.listen(executor).expect("listen");
+    let f = incoming.fold(
         (server, executor.clone()),
         move |(server, executor), (socket, _)| {
             if let Err(e) = socket.set_nodelay(true) {
