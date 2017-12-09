@@ -21,7 +21,7 @@
     "eqeqeq": [2, "smart"],
     "indent": [2, 2],
     "jsx-quotes": 1,
-    "no-console": [1, { allow: ["warn", "error"] }], // minor offense
+    "no-console": [1, { "allow": ["warn", "error"] }], // minor offense
     "no-redeclare": [1], // minor offense
     "no-trailing-spaces": 1,
     "no-unreachable": [1], // rule is not 100% accurate
@@ -46,7 +46,7 @@
     "react/sort-comp": 1,
     "react/sort-prop-types": 1,
     "semi": [2, "always"],
-    "sort-imports": [1, { ignoreCase: true, memberSyntaxSortOrder: ["single", "multiple", "all", "none"] }],
+    "sort-imports": [1, { "ignoreCase": true, "memberSyntaxSortOrder": ["single", "multiple", "all", "none"] }],
     "strict": [1, "safe"]
   }
 }
