@@ -1,5 +1,5 @@
-import * as d3 from 'd3';
 import _ from 'lodash';
+import * as d3 from 'd3';
 
 /*
 * Display grid constants
@@ -17,7 +17,7 @@ export const metricToFormatter = {
   "REQUEST_RATE": m => _.isNil(m) ? "---" : styleNum(m, " RPS", true),
   "SUCCESS_RATE": m => _.isNil(m) ? "---" : successRateFormatter(m),
   "LATENCY": m => `${_.isNil(m) ? "---" : latencyFormatter(m)} ms`
-}
+};
 
 /*
 * Add commas to a number (converting it to a string in the process)
@@ -39,7 +39,7 @@ export function addCommas(nStr) {
 */
 export const roundNumber = (num, dec) => {
   return Math.round(num * Math.pow(10,dec)) / Math.pow(10,dec);
-}
+};
 
 /*
 * Shorten and style number
@@ -65,7 +65,7 @@ export const styleNum = (number, unit = "", truncate = true) => {
     number = roundNumber(number, 2);
     return addCommas(number) + unit;
   }
-}
+};
 
 /*
 * Convert a string to a valid css class name
@@ -73,4 +73,4 @@ export const styleNum = (number, unit = "", truncate = true) => {
 export const toClassName = name => {
   if (!name) return "";
   return _.lowerCase(name).replace(/[^a-zA-Z0-9]/g, "_");
-}
+};

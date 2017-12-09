@@ -1,8 +1,7 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import * as d3 from 'd3';
 import LineGraph from './LineGraph.jsx';
-import { toClassName, metricToFormatter } from './util/Utils.js';
+import { Link } from 'react-router-dom';
+import React from 'react';
+import { metricToFormatter, toClassName } from './util/Utils.js';
 
 export default class DeploymentSummary extends React.Component {
   title() {
@@ -23,8 +22,7 @@ export default class DeploymentSummary extends React.Component {
           <LineGraph
             data={this.props.data.timeseries.requestRate}
             lastUpdated={this.props.lastUpdated}
-            containerClassName={toClassName(this.props.data.name)}
-          />
+            containerClassName={toClassName(this.props.data.name)} />
 
           <div className="summary-stat">
             <div className="metric-title">Current requests</div>

@@ -1,8 +1,9 @@
-import React from 'react';
-import { Row, Col } from 'antd';
+import _ from 'lodash';
 import LatencyOverview from './LatencyOverview.jsx';
+import React from 'react';
+import { rowGutter } from './util/Utils.js';
 import StatPaneStat from './StatPaneStat.jsx';
-import { rowGutter, metricToFormatter } from './util/Utils.js';
+import { Col, Row } from 'antd';
 
 export default class StatPane extends React.Component {
   render() {
@@ -15,16 +16,14 @@ export default class StatPane extends React.Component {
               name="Current request rate"
               metric="REQUEST_RATE"
               lastUpdated={this.props.lastUpdated}
-              timeseries={_.get(this.props.summaryMetrics, "REQUEST_RATE", [])}
-            />
+              timeseries={_.get(this.props.summaryMetrics, "REQUEST_RATE", [])} />
           </Col>
           <Col span={8}>
             <StatPaneStat
               name="Current success rate"
               metric="SUCCESS_RATE"
               lastUpdated={this.props.lastUpdated}
-              timeseries={_.get(this.props.summaryMetrics, "SUCCESS_RATE", [])}
-            />
+              timeseries={_.get(this.props.summaryMetrics, "SUCCESS_RATE", [])} />
           </Col>
         </Row>
         <Row>
@@ -34,8 +33,7 @@ export default class StatPane extends React.Component {
                 data={latencyTs}
                 lastUpdated={this.props.lastUpdated}
                 showAxes={true}
-                containerClassName="latency-chart-container"
-              />
+                containerClassName="latency-chart-container" />
             </div>
           </Col>
         </Row>

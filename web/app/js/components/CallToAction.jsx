@@ -1,6 +1,6 @@
 import React from 'react';
-import { Row, Col } from 'antd';
-import styles from './../../css/cta.css';
+import { Col, Row } from 'antd';
+import './../../css/cta.css';
 
 export default class CallToAction extends React.Component {
   render() {
@@ -13,7 +13,7 @@ export default class CallToAction extends React.Component {
             <Col span={8}>
               <div className="step-container complete">
                 <div className="icon-container">
-                  <i className="fa fa-check-circle" aria-hidden="true"></i>
+                  <i className="fa fa-check-circle" aria-hidden="true" />
                 </div>
                 <div className="message"><p>Controller successfully installed</p></div>
               </div>
@@ -22,7 +22,7 @@ export default class CallToAction extends React.Component {
             <Col span={8}>
               <div className="step-container complete">
                 <div className="icon-container">
-                  <i className="fa fa-check-circle" aria-hidden="true"></i>
+                  <i className="fa fa-check-circle" aria-hidden="true" />
                 </div>
                 <div className="message">{this.props.numDeployments || 0} deployments detected</div>
               </div>
@@ -31,7 +31,7 @@ export default class CallToAction extends React.Component {
             <Col span={8}>
               <div className="step-container incomplete">
                 <div className="icon-container">
-                  <i className="fa fa-circle-o" aria-hidden="true"></i>
+                  <i className="fa fa-circle-o" aria-hidden="true" />
                 </div>
                 <div className="message">Connect your first deployment</div>
               </div>

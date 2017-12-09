@@ -1,19 +1,18 @@
 import _ from 'lodash';
 
-const counterAccessor = ["datapoints", 0, "value", "counter"];
 const gaugeAccessor = ["datapoints", 0, "value", "gauge"];
 const latencyAccessor = ["datapoints", 0, "value", "histogram", "values"];
 
-const convertTs = (rawTs) => {
+const convertTs = rawTs => {
   return _.map(rawTs, metric => {
     return {
       timestamp: metric.timestampMs,
       value: _.get(metric, "value.gauge")
-    }
+    };
   });
-}
+};
 
-const convertLatencyTs = (rawTs) => {
+const convertLatencyTs = rawTs => {
   let latencies = _.flatMap(rawTs, metric => {
     return _.map(_.get(metric, ["value", "histogram", "values"]), hist => {
       return {
@@ -25,7 +24,7 @@ const convertLatencyTs = (rawTs) => {
   });
   // this could be made more efficient by combining this with the map
   return _.groupBy(latencies, 'label');
-}
+};
 
 export const processMetrics = (rawMetrics, rawTs, targetEntity) => {
   let byEntity = _.groupBy(rawMetrics, m => {
@@ -83,11 +82,11 @@ export const processMetrics = (rawMetrics, rawTs, targetEntity) => {
       },
       latency: latency,
       added: true
-    }
+    };
   });
 
   return _.sortBy(metrics, "name");
-}
+};
 
 export const emptyMetric = (name, added) => {
   return {
@@ -109,8 +108,8 @@ export const emptyMetric = (name, added) => {
     },
     latency: 0,
     added: added
-  }
-}
+  };
+};
 
 export const processTsWithLatencyBreakdown = rawMetrics => {
   return _.reduce(rawMetrics, (mem, metric) => {
@@ -123,15 +122,15 @@ export const processTsWithLatencyBreakdown = rawMetrics => {
             timestamp: d.timestampMs,
             value: hist.value,
             label: hist.label
-          }
+          };
         });
       } else {
         return {
           timestamp: d.timestampMs,
           value: _.get(d, "value.gauge", 0)
-        }
+        };
       }
     });
     return mem;
   }, {});
-}
+};

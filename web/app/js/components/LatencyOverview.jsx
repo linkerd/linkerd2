@@ -1,8 +1,9 @@
+import _ from 'lodash';
+import { metricToFormatter } from './util/Utils.js';
 import React from 'react';
 import * as d3 from 'd3';
-import { metricToFormatter } from './util/Utils.js';
-import styles from './../../css/line-graph.css';
-import latencyStyles from './../../css/latency-overview.css';
+import './../../css/latency-overview.css';
+import './../../css/line-graph.css';
 
 const defaultSvgWidth = 900;
 const defaultSvgHeight = 350;
@@ -13,6 +14,44 @@ export default class MultiLineGraph extends React.Component {
     super(props);
 
     this.state = this.getChartDimensions();
+  }
+
+  componentWillMount() {
+    this.initializeScales();
+  }
+
+  componentDidMount() {
+    this.svg = d3.select("." + this.props.containerClassName)
+      .append("svg")
+      .attr("width", this.state.svgWidth)
+      .attr("height", this.state.svgHeight)
+      .append("g")
+      .attr("transform", "translate(" + this.state.margin.left + "," + this.state.margin.top + ")");
+
+    this.xAxis = this.svg.append("g")
+      .attr("class", "x-axis")
+      .attr("transform", "translate(0," + this.state.height + ")");
+
+    this.yAxis = this.svg.append("g")
+      .attr("class", "y-axis")
+      .attr("transform", "translate(" + this.state.width + ",0)");
+
+    this.updateScales();
+    this.initializeGraph();
+  }
+
+  shouldComponentUpdate(nextProps) {
+    if (nextProps.lastUpdated === this.props.lastUpdated) {
+      // control whether react re-renders the component
+      // only rerender if the input data has changed
+      return false;
+    }
+    return true;
+  }
+
+  componentDidUpdate() {
+    this.updateScales();
+    this.updateGraph();
   }
 
   getChartDimensions() {
@@ -28,45 +67,7 @@ export default class MultiLineGraph extends React.Component {
       width: width,
       height: height,
       margin: margin
-    }
-  }
-
-  shouldComponentUpdate(nextProps, nextState) {
-    if (nextProps.lastUpdated === this.props.lastUpdated) {
-      // control whether react re-renders the component
-      // only rerender if the input data has changed
-      return false;
-    }
-    return true;
-  }
-
-  componentWillMount() {
-    this.initializeScales();
-  }
-
-  componentDidMount() {
-    this.svg = d3.select("." + this.props.containerClassName)
-      .append("svg")
-        .attr("width", this.state.svgWidth)
-        .attr("height", this.state.svgHeight)
-      .append("g")
-        .attr("transform", "translate(" + this.state.margin.left + "," + this.state.margin.top + ")");
-
-    this.xAxis = this.svg.append("g")
-      .attr("class", "x-axis")
-      .attr("transform", "translate(0," + this.state.height + ")");
-
-    this.yAxis = this.svg.append("g")
-      .attr("class", "y-axis")
-      .attr("transform", "translate(" + this.state.width + ",0)");
-
-    this.updateScales();
-    this.initializeGraph();
-  }
-
-  componentDidUpdate() {
-    this.updateScales();
-    this.updateGraph();
+    };
   }
 
   updateScales() {
@@ -114,17 +115,17 @@ export default class MultiLineGraph extends React.Component {
     this.svg.select(".line-p50")
       .transition()
       .duration(450)
-      .attr("d", this.line(d.P50))
+      .attr("d", this.line(d.P50));
 
     this.svg.select(".line-p95")
       .transition()
       .duration(450)
-      .attr("d", this.line(d.P95))
+      .attr("d", this.line(d.P95));
 
-      this.svg.select(".line-p99")
+    this.svg.select(".line-p99")
       .transition()
       .duration(450)
-      .attr("d", this.line(d.P99))
+      .attr("d", this.line(d.P99));
 
     this.updateAxes();
   }
@@ -150,7 +151,7 @@ export default class MultiLineGraph extends React.Component {
           .attr("x", 4)
           .attr("dx", -10)
           .attr("dy", -4);
-      }
+      };
       this.yAxis.call(customYAxis);
     }
   }

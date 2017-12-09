@@ -1,8 +1,9 @@
-import React from 'react';
-import { Row, Col, Progress } from 'antd';
+import _ from 'lodash';
 import Metric from './Metric.jsx';
-import { rowGutter, metricToFormatter } from './util/Utils.js';
-import styles from './../../css/health-pane.css';
+import { metricToFormatter } from './util/Utils.js';
+import React from 'react';
+import { Col, Progress, Row } from 'antd';
+import './../../css/health-pane.css';
 
 const TrafficIndicator = () => {
   return (
@@ -10,10 +11,9 @@ const TrafficIndicator = () => {
       percent={100}
       status="active"
       strokeWidth={8}
-      format={p => null}
-    />
+      format={() => null} />
   );
-}
+};
 
 const neutralSr = 0.5;
 
@@ -27,7 +27,7 @@ export default class HealthPane extends React.Component {
   getAvgSuccessRate(metrics) {
     return _.meanBy(metrics, metric => {
       return _.get(metric, ['rollup', 'successRate']);
-    })
+    });
   }
 
   getHealthClassName(successRate) {
@@ -57,7 +57,7 @@ export default class HealthPane extends React.Component {
       current: {
         health: this.getHealthClassName(sr)
       }
-    }
+    };
   }
 
   render() {
@@ -70,7 +70,7 @@ export default class HealthPane extends React.Component {
           <Col span={8}>
             <Metric title="Inbound request rate" value={stats.inbound.requests} className="float-right" />
           </Col>
-          <Col span={8}></Col>
+          <Col span={8} />
           <Col span={8}>
             <Metric title="Outbound request rate" value={stats.outbound.requests} className="float-left" />
           </Col>
