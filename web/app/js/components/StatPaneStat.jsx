@@ -1,9 +1,7 @@
-import React from 'react';
 import _ from 'lodash';
-import { Link } from 'react-router-dom';
-import * as d3 from 'd3';
 import LineGraph from './LineGraph.jsx';
-import { toClassName, metricToFormatter } from './util/Utils.js';
+import React from 'react';
+import { metricToFormatter, toClassName } from './util/Utils.js';
 
 export default class StatPaneStat extends React.Component {
   render() {
@@ -25,8 +23,7 @@ export default class StatPaneStat extends React.Component {
           <LineGraph
             data={this.props.timeseries}
             lastUpdated={this.props.lastUpdated}
-            containerClassName={`stat-pane-stat-${toClassName(this.props.name)}`}
-          />
+            containerClassName={`stat-pane-stat-${toClassName(this.props.name)}`} />
         </div>
       </div>
     );

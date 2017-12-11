@@ -1,6 +1,6 @@
 import React from 'react';
 import * as d3 from 'd3';
-import styles from './../../css/line-graph.css';
+import './../../css/line-graph.css';
 
 const defaultSvgWidth = 238;
 const defaultSvgHeight = 72;
@@ -11,6 +11,39 @@ export default class LineGraph extends React.Component {
     super(props);
 
     this.state = this.getChartDimensions();
+  }
+
+  componentWillMount() {
+    this.initializeScales();
+  }
+
+  componentDidMount() {
+    this.svg = d3.select("." + this.props.containerClassName)
+      .append("svg")
+      .attr("width", this.state.svgWidth)
+      .attr("height", this.state.svgHeight)
+      .append("g")
+      .attr("transform", "translate(" + this.state.margin.left + "," + this.state.margin.top + ")");
+    this.xAxis = this.svg.append("g")
+      .attr("transform", "translate(0," + this.state.height + ")");
+    this.yAxis = this.svg.append("g");
+
+    this.updateScales();
+    this.initializeGraph();
+  }
+
+  shouldComponentUpdate(nextProps) {
+    if (nextProps.lastUpdated === this.props.lastUpdated) {
+      // control whether react re-renders the component
+      // only rerender if the input data has changed
+      return false;
+    }
+    return true;
+  }
+
+  componentDidUpdate() {
+    this.updateScales();
+    this.updateGraph();
   }
 
   getChartDimensions() {
@@ -26,40 +59,7 @@ export default class LineGraph extends React.Component {
       width: width,
       height: height,
       margin: margin
-    }
-  }
-
-  shouldComponentUpdate(nextProps, nextState) {
-    if (nextProps.lastUpdated === this.props.lastUpdated) {
-      // control whether react re-renders the component
-      // only rerender if the input data has changed
-      return false;
-    }
-    return true;
-  }
-
-  componentWillMount() {
-    this.initializeScales();
-  }
-
-  componentDidMount() {
-    this.svg = d3.select("." + this.props.containerClassName)
-      .append("svg")
-        .attr("width", this.state.svgWidth)
-        .attr("height", this.state.svgHeight)
-      .append("g")
-        .attr("transform", "translate(" + this.state.margin.left + "," + this.state.margin.top + ")");
-    this.xAxis = this.svg.append("g")
-      .attr("transform", "translate(0," + this.state.height + ")");
-    this.yAxis = this.svg.append("g");
-
-    this.updateScales();
-    this.initializeGraph();
-  }
-
-  componentDidUpdate() {
-    this.updateScales();
-    this.updateGraph();
+    };
   }
 
   updateScales() {
@@ -100,7 +100,7 @@ export default class LineGraph extends React.Component {
     this.svg.select(".line")
       .transition()
       .duration(450)
-      .attr("d", this.line(this.props.data))
+      .attr("d", this.line(this.props.data));
 
     this.updateAxes();
   }
@@ -117,7 +117,7 @@ export default class LineGraph extends React.Component {
 
   render() {
     return (
-      <div className={`line-graph ${this.props.containerClassName}`}></div>
+      <div className={`line-graph ${this.props.containerClassName}`} />
     );
   }
 }

@@ -23,7 +23,6 @@ func main() {
 	apiAddr := flag.String("api-addr", ":8085", "address of public api")
 	templateDir := flag.String("template-dir", "templates", "directory to search for template files")
 	staticDir := flag.String("static-dir", "app/dist", "directory to search for static files")
-	namespace := flag.String("namespace", "conduit", "namespace in which Conduit is installed")
 	uuid := flag.String("uuid", "", "unqiue Conduit install id")
 	reload := flag.Bool("reload", true, "reloading set to true or false")
 	logLevel := flag.String("log-level", "info", "log level, must be one of: panic, fatal, error, warn, info, debug")
@@ -58,7 +57,7 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	server := srv.NewServer(*addr, *templateDir, *staticDir, *namespace, *uuid, *webpackDevServer, *reload, client)
+	server := srv.NewServer(*addr, *templateDir, *staticDir, *uuid, *webpackDevServer, *reload, client)
 
 	go func() {
 		log.Info("starting HTTP server on", *addr)

@@ -1,7 +1,8 @@
+import _ from 'lodash';
 import React from 'react';
-import { Row, Col } from 'antd';
+import { rowGutter } from './util/Utils.js';
 import TabbedMetricsTable from './TabbedMetricsTable.jsx';
-import { rowGutter, metricToFormatter } from './util/Utils.js';
+import { Col, Row } from 'antd';
 
 export default class UpstreamDownstreamTables extends React.Component {
   render() {
@@ -18,8 +19,7 @@ export default class UpstreamDownstreamTables extends React.Component {
               resource={`upstream_${this.props.entity}`}
               lastUpdated={this.props.lastUpdated}
               metrics={this.props.upstreamMetrics}
-              pathPrefix={this.props.pathPrefix}
-            />
+              pathPrefix={this.props.pathPrefix} />
           </div>
           <div className="upstream-downstream-list">
             <div className="border-container border-neutral subsection-header">
@@ -31,8 +31,7 @@ export default class UpstreamDownstreamTables extends React.Component {
               resource={`downstream_${this.props.entity}`}
               lastUpdated={this.props.lastUpdated}
               metrics={this.props.downstreamMetrics}
-              pathPrefix={this.props.pathPrefix}
-            />
+              pathPrefix={this.props.pathPrefix} />
           </div>
         </Col>
       </Row>

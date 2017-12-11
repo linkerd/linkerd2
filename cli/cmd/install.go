@@ -210,7 +210,6 @@ spec:
         - "-static-dir=/dist"
         - "-template-dir=/templates"
         - "-uuid={{.UUID}}"
-        - "-namespace={{.Namespace}}"
 
 ### Prometheus ###
 ---

@@ -1,36 +1,39 @@
-import React from 'react';
 import _ from 'lodash';
-import { Table, Row, Col, Progress } from 'antd';
-import styles from './../../css/deployment.css';
 import BarChart from './BarChart.jsx';
-import Metric from './Metric.jsx';
-import HealthPane from './HealthPane.jsx';
-import StatPane from './StatPane.jsx';
-import UpstreamDownstream from './UpstreamDownstream.jsx';
-import TabbedMetricsTable from './TabbedMetricsTable.jsx';
-import { rowGutter, metricToFormatter } from './util/Utils.js';
-import { processMetrics, processTsWithLatencyBreakdown } from './util/MetricUtils.js';
 import ConduitSpinner from "./ConduitSpinner.jsx";
-
-const podColumns = [
-  {
-    title: "Pod name",
-    dataIndex: "podName",
-    key: "podName"
-  },
-  {
-    title: "Request rate",
-    dataIndex: "requestRate",
-    key: "requestRate",
-    className: "numeric"
-  }
-];
+import HealthPane from './HealthPane.jsx';
+import Metric from './Metric.jsx';
+import React from 'react';
+import { rowGutter } from './util/Utils.js';
+import StatPane from './StatPane.jsx';
+import TabbedMetricsTable from './TabbedMetricsTable.jsx';
+import UpstreamDownstream from './UpstreamDownstream.jsx';
+import { Col, Row } from 'antd';
+import { processMetrics, processTsWithLatencyBreakdown } from './util/MetricUtils.js';
+import './../../css/deployment.css';
+import 'whatwg-fetch';
 
 export default class Deployment extends React.Component {
   constructor(props) {
     super(props);
     this.loadFromServer = this.loadFromServer.bind(this);
     this.state = this.initialState(this.props.location);
+  }
+
+  componentDidMount() {
+    this.loadFromServer();
+    this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
+  }
+
+  componentWillReceiveProps(nextProps) {
+    window.scrollTo(0, 0);
+    this.setState(this.initialState(nextProps.location), () => {
+      this.loadFromServer();
+    });
+  }
+
+  componentWillUnmount() {
+    window.clearInterval(this.timerId);
   }
 
   initialState(location) {
@@ -50,22 +53,6 @@ export default class Deployment extends React.Component {
     };
   }
 
-  componentDidMount() {
-    this.loadFromServer();
-    this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
-  }
-
-  componentWillUnmount() {
-    window.clearInterval(this.timerId);
-  }
-
-  componentWillReceiveProps(nextProps) {
-    window.scrollTo(0, 0);
-    this.setState(this.initialState(nextProps.location), () => {
-      this.loadFromServer();
-    });
-  }
-
   loadFromServer() {
     if (this.state.pendingRequests) {
       return; // don't make more requests if the ones we sent haven't completed
@@ -76,9 +63,9 @@ export default class Deployment extends React.Component {
     let deployMetricsUrl = `${metricsUrl}&timeseries=true&target_deploy=${this.state.deploy}`;
     let podRollupUrl = `${metricsUrl}&aggregation=target_pod&target_deploy=${this.state.deploy}`;
     let podTimeseriesUrl = `${podRollupUrl}&timeseries=true`;
-    let upstreamRollupUrl = `${metricsUrl}&aggregation=source_deploy&target_deploy=${this.state.deploy}`
+    let upstreamRollupUrl = `${metricsUrl}&aggregation=source_deploy&target_deploy=${this.state.deploy}`;
     let upstreamTimeseriesUrl = `${upstreamRollupUrl}&timeseries=true`;
-    let downstreamRollupUrl = `${metricsUrl}&aggregation=target_deploy&source_deploy=${this.state.deploy}`
+    let downstreamRollupUrl = `${metricsUrl}&aggregation=target_deploy&source_deploy=${this.state.deploy}`;
     let downstreamTimeseriesUrl = `${downstreamRollupUrl}&timeseries=true`;
 
     let deployFetch = fetch(deployMetricsUrl).then(r => r.json());
@@ -108,7 +95,7 @@ export default class Deployment extends React.Component {
           pendingRequests: false,
           loaded: true
         });
-      }).catch(err => {
+      }).catch(() => {
         this.setState({ pendingRequests: false });
       });
   }
@@ -122,19 +109,19 @@ export default class Deployment extends React.Component {
   }
 
   renderSections() {
+    let currentSuccessRate = _.get(_.last(_.get(this.state.summaryMetrics, "SUCCESS_RATE", [])), "value");
     return [
       <HealthPane
         key="deploy-health-pane"
         entity={this.state.deploy}
         entityType="deployment"
+        currentSr={currentSuccessRate}
         upstreamMetrics={this.state.upstreamMetrics}
-        downstreamMetrics={this.state.downstreamMetrics}
-      />,
+        downstreamMetrics={this.state.downstreamMetrics} />,
       <StatPane
         key="stat-pane"
         lastUpdated={this.state.lastUpdated}
-        summaryMetrics={this.state.summaryMetrics}
-      />,
+        summaryMetrics={this.state.summaryMetrics} />,
       this.renderMidsection(),
       <UpstreamDownstream
         key="deploy-upstream-downstream"
@@ -142,8 +129,7 @@ export default class Deployment extends React.Component {
         lastUpdated={this.state.lastUpdated}
         upstreamMetrics={this.state.upstreamMetrics}
         downstreamMetrics={this.state.downstreamMetrics}
-        pathPrefix={this.props.pathPrefix}
-      />
+        pathPrefix={this.props.pathPrefix} />
     ];
   }
 
@@ -158,21 +144,19 @@ export default class Deployment extends React.Component {
             <div className="pod-distribution-chart">
               <div className="bar-chart-title">
                 <div>Request load by pod</div>
-                <div className="bar-chart-tooltip"></div>
+                <div className="bar-chart-tooltip" />
               </div>
               <BarChart
                 data={this.state.metrics}
                 lastUpdated={this.state.lastUpdated}
-                containerClassName="pod-distribution-chart"
-              />
+                containerClassName="pod-distribution-chart" />
             </div>
 
             <TabbedMetricsTable
               resource="pod"
               lastUpdated={this.state.lastUpdated}
               metrics={this.state.metrics}
-              pathPrefix={this.props.pathPrefix}
-            />
+              pathPrefix={this.props.pathPrefix} />
           </div>
         </Col>
 
@@ -191,7 +175,7 @@ export default class Deployment extends React.Component {
   }
 
   renderContent() {
-  if (_.isEmpty(this.state.metrics)) {
+    if (_.isEmpty(this.state.metrics)) {
       return <div>No data</div>;
     } else {
       return this.renderSections();
@@ -200,14 +184,14 @@ export default class Deployment extends React.Component {
 
   render() {
     if (!this.state.loaded) {
-      return <ConduitSpinner />
+      return <ConduitSpinner />;
     } else return (
       <div className="page-content deployment-detail">
         <div className="page-header">
           <div className="subsection-header">Deployment detail</div>
           <h1>{this.state.deploy}</h1>
-          {this.renderContent()}
         </div>
+        {this.renderContent()}
       </div>
     );
   }
