@@ -1,15 +1,33 @@
-import React from 'react';
 import _ from 'lodash';
+import ConduitSpinner from "./ConduitSpinner.jsx";
 import HealthPane from './HealthPane.jsx';
+import React from 'react';
 import StatPane from './StatPane.jsx';
 import UpstreamDownstream from './UpstreamDownstream.jsx';
 import { processMetrics, processTsWithLatencyBreakdown } from './util/MetricUtils.js';
-import ConduitSpinner from "./ConduitSpinner.jsx";
+import 'whatwg-fetch';
+
 export default class PodDetail extends React.Component {
   constructor(props) {
     super(props);
     this.loadFromServer = this.loadFromServer.bind(this);
     this.state = this.initialState(this.props.location);
+  }
+
+  componentDidMount() {
+    this.loadFromServer();
+    this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
+  }
+
+  componentWillReceiveProps(nextProps) {
+    window.scrollTo(0, 0);
+    this.setState(this.initialState(nextProps.location), () => {
+      this.loadFromServer();
+    });
+  }
+
+  componentWillUnmount() {
+    window.clearInterval(this.timerId);
   }
 
   initialState(location) {
@@ -28,22 +46,6 @@ export default class PodDetail extends React.Component {
     };
   }
 
-  componentDidMount() {
-    this.loadFromServer();
-    this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
-  }
-
-  componentWillUnmount() {
-    window.clearInterval(this.timerId);
-  }
-
-  componentWillReceiveProps(nextProps) {
-    window.scrollTo(0, 0);
-    this.setState(this.initialState(nextProps.location), () => {
-      this.loadFromServer();
-    });
-  }
-
   loadFromServer() {
     if (this.state.pendingRequests) {
       return; // don't make more requests if the ones we sent haven't completed
@@ -53,9 +55,9 @@ export default class PodDetail extends React.Component {
     let metricsUrl = `${this.props.pathPrefix}/api/metrics?window=${this.state.metricsWindow}` ;
     let podMetricsUrl = `${metricsUrl}&timeseries=true&target_pod=${this.state.pod}`;
 
-    let upstreamRollupUrl = `${metricsUrl}&aggregation=source_pod&target_pod=${this.state.pod}`
+    let upstreamRollupUrl = `${metricsUrl}&aggregation=source_pod&target_pod=${this.state.pod}`;
     let upstreamTimeseriesUrl = `${upstreamRollupUrl}&timeseries=true`;
-    let downstreamRollupUrl = `${metricsUrl}&aggregation=target_pod&source_pod=${this.state.pod}`
+    let downstreamRollupUrl = `${metricsUrl}&aggregation=target_pod&source_pod=${this.state.pod}`;
     let downstreamTimeseriesUrl = `${downstreamRollupUrl}&timeseries=true`;
 
     let podFetch = fetch(podMetricsUrl).then(r => r.json());
@@ -66,44 +68,45 @@ export default class PodDetail extends React.Component {
 
     Promise.all([podFetch, upstreamFetch, upstreamTsFetch, downstreamFetch, downstreamTsFetch])
       .then(([podMetrics, upstreamRollup, upsreamTimeseries, downstreamRollup, downstreamTimeseries]) => {
-      let podTimeseries = processTsWithLatencyBreakdown(podMetrics.metrics);
+        let podTimeseries = processTsWithLatencyBreakdown(podMetrics.metrics);
 
-      let upstreamMetrics = _.compact(processMetrics(upstreamRollup.metrics, upsreamTimeseries.metrics, "sourcePod"));
-      let downstreamMetrics = _.compact(processMetrics(downstreamRollup.metrics, downstreamTimeseries.metrics, "targetPod"));
+        let upstreamMetrics = _.compact(processMetrics(upstreamRollup.metrics, upsreamTimeseries.metrics, "sourcePod"));
+        let downstreamMetrics = _.compact(processMetrics(downstreamRollup.metrics, downstreamTimeseries.metrics, "targetPod"));
 
-      this.setState({
-        pendingRequests: false,
-        lastUpdated: Date.now(),
-        summaryMetrics: podTimeseries,
-        upstreamMetrics: upstreamMetrics,
-        downstreamMetrics: downstreamMetrics,
-        loaded: true
+        this.setState({
+          pendingRequests: false,
+          lastUpdated: Date.now(),
+          summaryMetrics: podTimeseries,
+          upstreamMetrics: upstreamMetrics,
+          downstreamMetrics: downstreamMetrics,
+          loaded: true
+        });
+      }).catch(() => {
+        this.setState({ pendingRequests: false });
       });
-    });
   }
 
   renderSections() {
+    let currentSuccessRate = _.get(_.last(_.get(this.state.summaryMetrics, "SUCCESS_RATE", [])), "value");
     return [
       <HealthPane
         key="pod-health-pane"
         entity={this.state.pod}
         entityType="pod"
+        currentSr={currentSuccessRate}
         upstreamMetrics={this.state.upstreamMetrics}
-        downstreamMetrics={this.state.downstreamMetrics}
-      />,
+        downstreamMetrics={this.state.downstreamMetrics} />,
       <StatPane
         key="pod-stat-pane"
         lastUpdated={this.state.lastUpdated}
-        summaryMetrics={this.state.summaryMetrics}
-      />,
+        summaryMetrics={this.state.summaryMetrics} />,
       <UpstreamDownstream
         key="pod-upstream-downstream"
         entity="pod"
         lastUpdated={this.state.lastUpdated}
         upstreamMetrics={this.state.upstreamMetrics}
         downstreamMetrics={this.state.downstreamMetrics}
-        pathPrefix={this.props.pathPrefix}
-      />
+        pathPrefix={this.props.pathPrefix} />
     ];
   }
 
@@ -117,14 +120,14 @@ export default class PodDetail extends React.Component {
 
   render() {
     if(!this.state.loaded){
-      return <ConduitSpinner />
+      return <ConduitSpinner />;
     } else return (
       <div className="page-content pod-detail">
         <div className="page-header">
           <div className="subsection-header">Pod detail</div>
           <h1>{this.state.pod}</h1>
-          {this.renderContent()}
         </div>
+        {this.renderContent()}
       </div>
     );
   }

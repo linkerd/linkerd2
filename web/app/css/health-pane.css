@@ -8,6 +8,10 @@
     font-weight: var(--font-weight-bold);
   }
 
+  & .float-right .metric-value {
+    float: right;
+  }
+
   & .metric-value {
     font-weight: var(--font-weight-extra-bold);
   }

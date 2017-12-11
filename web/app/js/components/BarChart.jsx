@@ -1,8 +1,9 @@
+import _ from 'lodash';
+import { metricToFormatter } from './util/Utils.js';
+import Percentage from './util/Percentage.js';
 import React from 'react';
 import * as d3 from 'd3';
-import Percentage from './util/Percentage.js';
-import { metricToFormatter } from './util/Utils.js';
-import styles from './../../css/bar-chart.css';
+import './../../css/bar-chart.css';
 
 const defaultSvgWidth = 595;
 const defaultSvgHeight = 150;
@@ -13,6 +14,44 @@ export default class LineGraph extends React.Component {
     super(props);
 
     this.state = this.getChartDimensions();
+  }
+
+  componentWillMount() {
+    this.initializeScales();
+  }
+
+  componentDidMount() {
+    this.svg = d3.select("." + this.props.containerClassName)
+      .append("svg")
+      .attr("class", "bar-chart")
+      .attr("width", this.state.svgWidth)
+      .attr("height", this.state.svgHeight)
+      .append("g")
+      .attr("transform", "translate(" + this.state.margin.left + "," + this.state.margin.top + ")");
+
+    this.tooltip = d3.select("." + this.props.containerClassName + " .bar-chart-tooltip")
+      .append("div").attr("class", "tooltip");
+
+    this.xAxis = this.svg.append("g")
+      .attr("class", "x-axis")
+      .attr("transform", "translate(0," + this.state.height + ")");
+
+    this.updateScales();
+    this.renderGraph();
+  }
+
+  shouldComponentUpdate(nextProps) {
+    if (nextProps.lastUpdated === this.props.lastUpdated) {
+      // control whether react re-renders the component
+      // only rerender if the input data has changed
+      return false;
+    }
+    return true;
+  }
+
+  componentDidUpdate() {
+    this.updateScales();
+    this.renderGraph();
   }
 
   getChartDimensions() {
@@ -28,48 +67,12 @@ export default class LineGraph extends React.Component {
       width: width,
       height: height,
       margin: margin
-    }
-  }
-
-  shouldComponentUpdate(nextProps, nextState) {
-    if (nextProps.lastUpdated === this.props.lastUpdated) {
-      // control whether react re-renders the component
-      // only rerender if the input data has changed
-      return false;
-    }
-    return true;
-  }
-
-  componentWillMount() {
-    this.initializeScales();
-  }
-
-  componentDidMount() {
-    this.svg = d3.select("." + this.props.containerClassName)
-      .append("svg")
-        .attr("width", this.state.svgWidth)
-        .attr("height", this.state.svgHeight)
-      .append("g")
-        .attr("transform", "translate(" + this.state.margin.left + "," + this.state.margin.top + ")");
-
-      this.tooltip = d3.select("." + this.props.containerClassName + " .bar-chart-tooltip")
-        .append("div").attr("class", "tooltip");
-
-    this.xAxis = this.svg.append("g")
-      .attr("transform", "translate(0," + this.state.height + ")");
-
-    this.updateScales();
-    this.renderGraph();
-  }
-
-  componentDidUpdate() {
-    this.updateScales();
-    this.renderGraph();
+    };
   }
 
   chartData() {
     let data = this.props.data;
-    let percentages = _.each(data, d => {
+    _.each(data, d => {
       let p = new Percentage(d.rollup.requestRate, d.rollup.totalRequests);
       d.shareOfRequests = p.get();
       d.pretty = p.prettyRate();
@@ -96,7 +99,7 @@ export default class LineGraph extends React.Component {
     let barChart = this.svg.selectAll(".bar")
       .remove()
       .exit()
-      .data(data)
+      .data(data);
 
     barChart.enter().append("rect")
       .attr("class", "bar")

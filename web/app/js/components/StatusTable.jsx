@@ -1,12 +1,39 @@
-import React from 'react';
-import * as d3 from 'd3';
+import _ from 'lodash';
 import { Link } from 'react-router-dom';
-import { Table, Tabs } from 'antd';
-import { toClassName, metricToFormatter } from './util/Utils.js';
+import React from 'react';
+import { Table, Tooltip } from 'antd';
 
-const getStatusDotCn = status => {
-  return `status-dot-${status === "good" ? "green" : "grey"}`;
-}
+const columnConfig = {
+  "Pod Status": {
+    width: 200,
+    wrapDotsAt: 7, // dots take up more than one line in the table; space them out
+    dotExplanation: {
+      good: "is up and running",
+      neutral: "has not been started"
+    }
+  },
+  "Proxy Status": {
+    width: 250,
+    wrapDotsAt: 9,
+    dotExplanation: {
+      good: "has been added to the mesh",
+      neutral: "has not been added to the mesh"
+    }
+  }
+};
+
+const StatusDot = ({status, multilineDots, columnName}) => (
+  <Tooltip
+    placement="top"
+    title={<div>
+      <div>{status.name}</div>
+      <div>{_.get(columnConfig, [columnName, "dotExplanation", status.value])}</div>
+    </div>}>
+    <div
+      className={`status-dot status-dot-${status.value} ${multilineDots ? 'dot-multiline': ''}`}
+      key={status.name}>&nbsp;</div>
+  </Tooltip>
+);
 
 const columns = {
   resourceName: (shouldLink, pathPrefix) => {
@@ -21,29 +48,31 @@ const columns = {
           return name;
         }
       }
-    }
+    };
   },
   pods: {
     title: "Pods",
     dataIndex: "numEntities",
     key: "numEntities"
   },
-  status: (name) => {
+  status: name => {
     return {
       title: name,
       dataIndex: "statuses",
       key: "statuses",
+      width: columnConfig[name].width,
       render: statuses => {
-        return _.map(statuses, status => {
-          // TODO: handle case where there are too many dots for column
-          return <div
-            className={`status-dot status-dot-${status.value}`}
-            key={status.name}
-            title={status.name}
-          >&nbsp;</div>
+        let multilineDots = _.size(statuses) > columnConfig[name].wrapDotsAt;
+
+        return _.map(statuses, (status, i) => {
+          return (<StatusDot
+            status={status}
+            multilineDots={multilineDots}
+            columnName={name}
+            key={`${name}-pod-status-${i}`} />);
         });
       }
-    }
+    };
   }
 };
 
@@ -54,7 +83,7 @@ export default class StatusTable extends React.Component {
         name: datum.name,
         statuses: datum.pods,
         numEntities: _.size(datum.pods)
-      }
+      };
     });
     return _.sortBy(tableData, 'name');
   }
@@ -67,12 +96,11 @@ export default class StatusTable extends React.Component {
     ];
     let tableData = this.getTableData();
 
-    return <Table
+    return (<Table
       dataSource={tableData}
       columns={tableCols}
       pagination={false}
       className="conduit-table"
-      rowKey={r => r.name}
-    />;
+      rowKey={r => r.name} />);
   }
 }

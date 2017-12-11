@@ -1,5 +1,5 @@
 {{ define "content" }}
-  <div class="main" id="main" data-release-version="{{.Data.ReleaseVersion}}" data-go-version="{{.Data.GoVersion}}" data-namespace="{{.Namespace}}" data-uuid="{{.UUID}}">
+  <div class="main" id="main" data-release-version="{{.Data.ReleaseVersion}}" data-go-version="{{.Data.GoVersion}}" data-uuid="{{.UUID}}">
     {{ if .Error }}
       <p>Failed to call public API: {{ .ErrorMessage }}</p>
     {{ end }}

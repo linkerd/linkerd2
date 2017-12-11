@@ -20,7 +20,7 @@ func TestClientUnmarshal(t *testing.T) {
 
 	var unmarshaled pb.VersionInfo
 	reader := bufferedReader(t, &versionInfo)
-	err := clientUnmarshal(reader, &unmarshaled)
+	err := clientUnmarshal(reader, "", &unmarshaled)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -47,13 +47,29 @@ func TestClientUnmarshalLargeMessage(t *testing.T) {
 
 	var unmarshaled pb.MetricSeries
 	reader := bufferedReader(t, &series)
-	err := clientUnmarshal(reader, &unmarshaled)
+	err := clientUnmarshal(reader, "", &unmarshaled)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
 	if len(unmarshaled.Datapoints) != 1000 {
 		t.Fatal("missing datapoints")
+	}
+}
+
+func TestClientUnmarshalApiErrorAsError(t *testing.T) {
+	apiError := pb.ApiError{Error: "an error occurred"}
+
+	var unmarshaled pb.VersionInfo
+	reader := bufferedReader(t, &apiError)
+	err := clientUnmarshal(reader, "Bad Request", &unmarshaled)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	expected := "Bad Request: an error occurred"
+	if err.Error() != expected {
+		t.Fatalf("mismatch, %s != %s", err.Error(), expected)
 	}
 }
 

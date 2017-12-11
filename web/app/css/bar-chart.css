@@ -1,7 +1,14 @@
 @import 'styles.css';
 
-.bar {
-  fill: #2F80ED;
+.bar-chart {
+  & .bar {
+    fill: #2F80ED;
+  }
+
+  & .x-axis path {
+    stroke: var(--coldgrey);
+    stroke-width: 1px;
+  }
 }
 
 .pod-distribution-chart {

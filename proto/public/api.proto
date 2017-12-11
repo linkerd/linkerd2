@@ -25,6 +25,7 @@ enum AggregationType {
   SOURCE_POD = 2;
   SOURCE_DEPLOY = 3;
   MESH = 4;
+  PATH = 5;
 }
 
 enum HistogramLabel {
@@ -69,6 +70,7 @@ message MetricMetadata {
   string sourcePod = 3;
   string sourceDeploy = 4;
   string component = 5;
+  string path = 6;
 }
 
 message MetricResponse {
@@ -121,6 +123,10 @@ message TapRequest {
   string method = 9;
   string authority = 10;
   string path = 11;
+}
+
+message ApiError {
+  string error = 1;
 }
 
 service Api {

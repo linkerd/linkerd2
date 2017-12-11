@@ -1,10 +1,10 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -36,6 +36,7 @@ var statCmd = &cobra.Command{
 Valid resource types include:
  * pods (aka pod, po)
  * deployments (aka deployment, deploy)
+ * paths (aka path, pa)
 
 The optional [TARGET] option can be either a name for a deployment or pod resource`,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -47,7 +48,7 @@ The optional [TARGET] option can be either a name for a deployment or pod resour
 			resourceType = args[0]
 			target = args[1]
 		default:
-			return errors.New("please specify a resource type: pods or deployments")
+			return errors.New("please specify a resource type: pods, deployments or paths")
 		}
 
 		switch resourceType {
@@ -55,6 +56,8 @@ The optional [TARGET] option can be either a name for a deployment or pod resour
 			return makeStatsRequest(pb.AggregationType_TARGET_POD)
 		case "deployments", "deployment", "deploy":
 			return makeStatsRequest(pb.AggregationType_TARGET_DEPLOY)
+		case "paths", "path", "pa":
+			return makeStatsRequest(pb.AggregationType_PATH)
 		default:
 			return errors.New("invalid resource type")
 		}
@@ -78,11 +81,17 @@ func makeStatsRequest(aggType pb.AggregationType) error {
 		return err
 	}
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, padding, ' ', 0)
+	var buffer bytes.Buffer
+	w := tabwriter.NewWriter(&buffer, 0, 0, padding, ' ', tabwriter.AlignRight)
 	displayStats(resp, w)
-
 	w.Flush()
-	return nil
+
+	// strip left padding on the first column
+	out := string(buffer.Bytes()[padding:])
+	out = strings.Replace(out, "\n"+strings.Repeat(" ", padding), "\n", -1)
+
+	_, err = fmt.Print(out)
+	return err
 }
 
 func sortStatsKeys(stats map[string]*row) []string {
@@ -95,13 +104,8 @@ func sortStatsKeys(stats map[string]*row) []string {
 }
 
 func displayStats(resp *pb.MetricResponse, w *tabwriter.Writer) {
-	fmt.Fprintln(w, strings.Join([]string{
-		"NAME",
-		"REQUEST_RATE",
-		"SUCCESS_RATE",
-		"P50_LATENCY",
-		"P99_LATENCY",
-	}, "\t"))
+	nameHeader := "NAME"
+	maxNameLength := len(nameHeader)
 
 	stats := make(map[string]*row)
 	for _, metric := range resp.Metrics {
@@ -115,6 +119,12 @@ func displayStats(resp *pb.MetricResponse, w *tabwriter.Writer) {
 			name = metadata.TargetPod
 		} else if metadata.TargetDeploy != "" {
 			name = metadata.TargetDeploy
+		} else if metadata.Path != "" {
+			name = metadata.Path
+		}
+
+		if len(name) > maxNameLength {
+			maxNameLength = len(name)
 		}
 
 		if _, ok := stats[name]; !ok {
@@ -138,12 +148,20 @@ func displayStats(resp *pb.MetricResponse, w *tabwriter.Writer) {
 		}
 	}
 
+	fmt.Fprintln(w, strings.Join([]string{
+		nameHeader + strings.Repeat(" ", maxNameLength-len(nameHeader)),
+		"REQUEST_RATE",
+		"SUCCESS_RATE",
+		"P50_LATENCY",
+		"P99_LATENCY\t", // trailing \t is required to format last column
+	}, "\t"))
+
 	sortedNames := sortStatsKeys(stats)
 	for _, name := range sortedNames {
 		fmt.Fprintf(
 			w,
-			"%s\t%frps\t%f%%\t%dms\t%dms\n",
-			name,
+			"%s\t%.1frps\t%.2f%%\t%dms\t%dms\t\n",
+			name+strings.Repeat(" ", maxNameLength-len(name)),
 			stats[name].requestRate,
 			stats[name].successRate*100,
 			stats[name].latencyP50,
@@ -164,6 +182,9 @@ func buildMetricRequest(aggregationType pb.AggregationType) (*pb.MetricRequest, 
 	}
 	if target != "all" && aggregationType == pb.AggregationType_TARGET_DEPLOY {
 		filterBy.TargetDeploy = target
+	}
+	if target != "all" && aggregationType == pb.AggregationType_PATH {
+		filterBy.Path = target
 	}
 
 	return &pb.MetricRequest{

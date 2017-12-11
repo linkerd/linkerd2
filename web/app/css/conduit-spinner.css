@@ -1,16 +1,13 @@
-svg path {
-  stroke: #ff576b;
-  stroke-width: 1px;
-}
 
-@keyframes offset {
+@keyframes conduitspinner {
   to {
     stroke-dashoffset: 0px;
   }
 }
 
 .conduit-mark {
-  animation: offset 7s linear forwards;
+  animation: conduitspinner 7s linear forwards;
+  fill: #eeeeee;
   stroke-dasharray: 400px;
   stroke-dashoffset: 400px;
   animation-delay: 0s;
@@ -22,4 +19,9 @@ svg path {
   align-items: center;
   justify-content: center;
   height: 75vh;
+
+  & svg path {
+    stroke: #ff576b;
+    stroke-width: 1px;
+  }
 }

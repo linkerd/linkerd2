@@ -37,6 +37,11 @@ td .status-dot {
   border-radius: 50%;
   margin-right: var(--base-width);
 
+  &.dot-multiline {
+    margin-top: calc(0.5 * var(--base-width));
+    margin-bottom: calc(0.5 * var(--base-width));
+  }
+
   &.status-dot-good {
     background-color: #27AE60;
   }
