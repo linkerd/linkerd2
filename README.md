@@ -1,6 +1,6 @@
 ![conduit][logo]
 
-[![Build Status][ci-badge][ci]
+[![Build Status][ci-badge]][ci]
 [![GitHub license][license-badge]](LICENSE)
 [![Slack Status][slack-badge]][slack]
 
