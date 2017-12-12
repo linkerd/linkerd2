@@ -19,7 +19,7 @@
   }
 
   & .bar-chart-tooltip {
-    min-height: 16px;
+    min-height: 32px;
     font-weight: var(--font-weight-bold);
   }
 }
