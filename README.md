@@ -1,12 +1,8 @@
 ![conduit][logo]
 
+[![Build Status][ci-badge]][ci]
 [![GitHub license][license-badge]](LICENSE)
 [![Slack Status][slack-badge]][slack]
-<!--
-TODO
-- travis CI
-- discourse
--->
 
 :balloon: Welcome to Conduit! :wave:
 
@@ -41,6 +37,8 @@ CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License.
 
 <!-- refs -->
+[ci]: https://travis-ci.org/runconduit/conduit
+[ci-badge]: https://travis-ci.org/runconduit/conduit.svg?branch=master
 [coc]: https://github.com/linkerd/linkerd/wiki/Linkerd-code-of-conduct
 <!-- [examples]: https://github.com/runconduit/conduit-examples -->
 [grpc]: https://grpc.io/
