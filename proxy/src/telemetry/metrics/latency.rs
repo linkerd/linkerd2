@@ -17,55 +17,62 @@ pub struct Latency(u32);
 
 /// Generalization of a histogram bucket counting observations of type `T`.
 trait Bucket<T: PartialOrd> {
+
     /// Returns `true` if a given `observation` falls into this `Bucket`.
     fn contains(&self, observation: &T) -> bool;
+
     /// Observe a value, incrementing this bucket if it `contains` that value.
-    /// 
+    ///
     /// # Returns
     /// - `true` if this `Bucket`'s count was incremented;
     /// - `false` otherwise.
     fn add(&mut self, observation: &T) -> bool;
+
 }
 
 /// A "leaf" bucket containing a single counter.
-/// 
+///
 /// # Type Parameters:
 /// - `T`: the type of observations counted by this bucket.
-/// - `C`: the type used for counting observed values. Bounded by `Copy`
-///        as it is placed in a `Cell`; defaults to `u32`.
+/// - `C`: the type used for counting observed values.
 #[derive(Debug, Clone)]
 struct LeafBucket<T, C = u32> {
+
     /// The upper bound of the range of values in this bucket.
     max: T,
+
     /// Count of observations falling into this bucket.
     count: C,
+
 }
 
 
 /// An array of [`Bucket`]s which can themselves be a bucket.
-/// 
+///
 /// [`Bucket`]: trait.Bucket.html
 #[derive(Debug, Clone)]
 struct Buckets<T: PartialOrd, B: Bucket<T>=LeafBucket<T>> {
+
     /// The upper bound of this `Bucket`.
-    /// 
+    ///
     /// This should be the highest `max` value of the buckets herein contained.
     max: T,
+
     /// The aforementioned `Bucket`s herein contained.
-    /// 
+    ///
     /// Currently, these must be in order.
-    // FIXME: number of buckets per bucket set is hardcoded, currently - 
+    // FIXME: number of buckets per bucket set is hardcoded, currently -
     //        we don't need a `Vec` here, since the number of buckets never
     //        grows, but Rust doesn't have variable-sized arrays. we could
     //        just have a `Box<[B]>` here, or take a slice, but the former
     //        allocates and the latter would introduce a lifetime bound
     //        on the `Buckets` (which might be okay).
-    buckets: [B; 5]
+    buckets: [B; 5],
+
 }
 
 impl<T> LeafBucket<T> {
     // Construct a new `LeafBucket` with the upper bound of `max`.
-    #[inline] 
     fn new<I: Into<T>>(max: I) -> Self {
         LeafBucket {
             max: max.into(),
@@ -76,8 +83,8 @@ impl<T> LeafBucket<T> {
 }
 
 impl<T> Bucket<T> for LeafBucket<T>
-where 
-    T: PartialOrd 
+where
+    T: PartialOrd
 {
     fn contains(&self, t: &T) -> bool {
         t <= &self.max
@@ -101,7 +108,7 @@ where
     T: PartialOrd,
     B: Bucket<T>,
 {
-    #[inline] 
+    #[inline]
     fn contains(&self, t: &T) -> bool {
         t <= &self.max
     }
@@ -115,12 +122,12 @@ where
     }
 }
 
-impl<T> Buckets<T, LeafBucket<T>> 
+impl<T> Buckets<T, LeafBucket<T>>
 where
     T: PartialOrd
 {
     /// Construct a set of five linear [`LeafBucket`]s with width `width`.
-    /// 
+    ///
     /// [`LeafBucket`]: struct.LeafBucket.html
     fn linear(width: u32) -> Self
     where T: From<u32> {
@@ -211,7 +218,7 @@ impl From<Duration> for Latency {
 }
 
 impl From<u32> for Latency {
-    #[inline] 
+    #[inline]
     fn from(value: u32) -> Self {
         Latency(value)
     }
@@ -238,7 +245,7 @@ impl Latencies {
 
 
 impl<I> ops::AddAssign<I> for Latencies
-where 
+where
     I: Into<Latency>
 {
     #[inline]
