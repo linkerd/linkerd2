@@ -6,7 +6,7 @@ import './../../css/sidebar.css';
 
 export default class Sidebar extends React.Component {
   render() {
-    let normalizedPath = window.location.pathname.replace(this.props.pathPrefix, "");
+    let normalizedPath = this.props.location.pathname.replace(this.props.pathPrefix, "");
 
     return (
       <div className="sidebar">
