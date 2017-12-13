@@ -39,7 +39,9 @@ export default class PodDetail extends React.Component {
       metricsWindow: "10m",
       pod: pod,
       upstreamMetrics: [],
+      upstreamTsByPod: {},
       downstreamMetrics: [],
+      downstreamTsByPod: {},
       podTs: {},
       pendingRequests: false,
       loaded: false

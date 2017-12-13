@@ -25,6 +25,7 @@ export default class Deployments extends React.Component {
       lastUpdated: 0,
       limitSparklineData: false,
       pendingRequests: false,
+      pendingTsRequests: false,
       loaded: false
     };
   }
@@ -78,24 +79,15 @@ export default class Deployments extends React.Component {
         let meshDeploys = _.compact(processRollupMetrics(rollup.metrics, "targetDeploy"));
         let combinedMetrics = this.addDeploysWithNoMetrics(poByDeploy, meshDeploys);
 
-        let limitSparklineData = _.size(meshDeploys) > maxTsToFetch;
-        this.loadTimeseriesFromServer(meshDeploys);
-
-        this.setState({
-          metrics: combinedMetrics,
-          limitSparklineData: limitSparklineData,
-          pendingRequests: false,
-          loaded: true
-        });
+        this.loadTimeseriesFromServer(meshDeploys, combinedMetrics);
       })
       .catch(() => {
         this.setState({ pendingRequests: false });
       });
   }
 
-  loadTimeseriesFromServer(currentMetrics, limitSparklineData) {
-    // load timeseries separate from main requests. a stopgap so that the
-    // deployments page can load when there are many deployments.
+  loadTimeseriesFromServer(meshDeployMetrics, combinedMetrics) {
+    let limitSparklineData = _.size(meshDeployMetrics) > maxTsToFetch;
     if (this.state.pendingTsRequests) {
       return;
     }
@@ -104,9 +96,17 @@ export default class Deployments extends React.Component {
     let rollupPath = `${this.props.pathPrefix}/api/metrics?window=${this.state.metricsWindow}`;
     let timeseriesPath = `${rollupPath}&timeseries=true`;
 
+    let updatedState = {
+      metrics: combinedMetrics,
+      limitSparklineData: limitSparklineData,
+      loaded: true,
+      pendingRequests: false,
+      pendingTsRequests: false
+    };
+
     if(limitSparklineData) {
       // don't fetch timeseries for every deploy
-      let leastHealthyDeployments = this.getLeastHealthyDeployments(currentMetrics);
+      let leastHealthyDeployments = this.getLeastHealthyDeployments(meshDeployMetrics);
 
       let tsPromises = _.map(leastHealthyDeployments, dep => {
         let tsPathForDeploy = `${timeseriesPath}&target_deploy=${dep.name}`;
@@ -119,11 +119,10 @@ export default class Deployments extends React.Component {
             return mem;
           }, []);
           let tsByDeploy = processTimeseriesMetrics(leastHealthyTs, "targetDeploy");
-          this.setState({
+          this.setState(_.merge({}, updatedState, {
             timeseriesByDeploy: tsByDeploy,
             lastUpdated: Date.now(),
-            pendingTsRequests: false
-          });
+          }));
         }).catch(() => {
           this.setState({ pendingTsRequests: false });
         });
@@ -133,11 +132,10 @@ export default class Deployments extends React.Component {
         .then(r => r.json())
         .then(ts => {
           let tsByDeploy = processTimeseriesMetrics(ts.metrics, "targetDeploy");
-          this.setState({
+          this.setState(_.merge({}, updatedState, {
             timeseriesByDeploy: tsByDeploy,
-            lastUpdated: Date.now(),
-            pendingTsRequests: false
-          });
+            lastUpdated: Date.now()
+          }));
         }).catch(() => {
           this.setState({ pendingTsRequests: false });
         });
