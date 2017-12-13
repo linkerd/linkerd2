@@ -25,7 +25,6 @@ export default class Deployments extends React.Component {
       lastUpdated: 0,
       limitSparklineData: false,
       pendingRequests: false,
-      pendingTsRequests: false,
       loaded: false
     };
   }
@@ -88,10 +87,6 @@ export default class Deployments extends React.Component {
 
   loadTimeseriesFromServer(meshDeployMetrics, combinedMetrics) {
     let limitSparklineData = _.size(meshDeployMetrics) > maxTsToFetch;
-    if (this.state.pendingTsRequests) {
-      return;
-    }
-    this.setState({ pendingTsRequests: true });
 
     let rollupPath = `${this.props.pathPrefix}/api/metrics?window=${this.state.metricsWindow}`;
     let timeseriesPath = `${rollupPath}&timeseries=true`;
@@ -100,8 +95,7 @@ export default class Deployments extends React.Component {
       metrics: combinedMetrics,
       limitSparklineData: limitSparklineData,
       loaded: true,
-      pendingRequests: false,
-      pendingTsRequests: false
+      pendingRequests: false
     };
 
     if(limitSparklineData) {
@@ -124,7 +118,7 @@ export default class Deployments extends React.Component {
             lastUpdated: Date.now(),
           }));
         }).catch(() => {
-          this.setState({ pendingTsRequests: false });
+          this.setState({ pendingRequests: false });
         });
     } else {
       // fetch timeseries for all deploys
@@ -137,7 +131,7 @@ export default class Deployments extends React.Component {
             lastUpdated: Date.now()
           }));
         }).catch(() => {
-          this.setState({ pendingTsRequests: false });
+          this.setState({ pendingRequests: false });
         });
     }
   }
