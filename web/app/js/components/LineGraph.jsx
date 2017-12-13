@@ -94,8 +94,10 @@ export default class LineGraph extends React.Component {
   }
 
   initializeGraph() {
-    this.loadingMessage
-      .text("Loading...");
+    if (_.isEmpty(this.props.data)) {
+      this.loadingMessage
+        .text("Loading...");
+    }
 
     this.svg.select("path").remove();
 
