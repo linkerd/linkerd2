@@ -32,8 +32,7 @@ export default class LineGraph extends React.Component {
     this.loadingMessage = this.svg
       .append("text")
       .attr("transform",
-        "translate(" + (this.state.width / 2 - 30) + "," + (this.state.height / 2) + ")")
-      .attr("class", "loading-message");
+        "translate(" + (this.state.width / 2 - 30) + "," + (this.state.height / 2) + ")");
 
     this.updateScales();
     this.initializeGraph();
@@ -95,8 +94,7 @@ export default class LineGraph extends React.Component {
 
   initializeGraph() {
     if (_.isEmpty(this.props.data)) {
-      this.loadingMessage
-        .text("Loading...");
+      this.loadingMessage.text("---");
     }
 
     this.svg.select("path").remove();
@@ -112,9 +110,7 @@ export default class LineGraph extends React.Component {
 
   updateGraph() {
     if (_.isEmpty(this.props.data)) {
-      this.loadingMessage
-        .text("---")
-        .style("opacity", 1);
+      this.loadingMessage.style("opacity", 1);
     } else {
       this.loadingMessage.style("opacity", 0);
     }

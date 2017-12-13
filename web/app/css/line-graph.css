@@ -21,10 +21,3 @@
 .line-p99 {
   stroke: var(--latency-p99);
 }
-
-.line-graph {
-  & .loading-message {
-    font-size: 12px;
-    fill: var(--coldgrey);
-  }
-}
