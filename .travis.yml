@@ -43,6 +43,21 @@ jobs:
         - ./bin/protoc-go.sh
         - go test ./...  --run "^(integration_test)"
 
+    - language: node_js
+      node_js:
+        - "8"
+      cache:
+        directories:
+          - web/app/node_modules
+      before_install:
+        - curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.3.2
+        - export PATH="$HOME/.yarn/bin:$PATH"
+      install:
+        - cd web/app && yarn && yarn webpack
+      script:
+        # TODO: start running karma tests
+        - echo "no tests"
+
     # Push container images to Google Container Registry.
     - stage: docker-deploy
 
