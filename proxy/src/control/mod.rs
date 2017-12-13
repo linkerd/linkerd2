@@ -5,14 +5,20 @@ use bytes::Bytes;
 use futures::{future, Async, Future, Poll, Stream};
 use h2;
 use http;
-use tokio_core::reactor::{Handle, Timeout};
+use tokio_core::reactor::{
+    Handle, 
+    // TODO: would rather just have Backoff in a separate file so this
+    //       renaming import is not necessary.
+    Timeout as ReactorTimeout
+};
 use tower::Service;
 use tower_h2;
 use tower_reconnect::Reconnect;
 use url::HostAndPort;
 
 use dns;
-use transport::{LookupAddressAndConnect, TimeoutConnect};
+use transport::LookupAddressAndConnect;
+use timeout::Timeout;
 
 mod codec;
 pub mod discovery;
@@ -64,6 +70,7 @@ impl Background {
         events: S,
         host_and_port: HostAndPort,
         dns_config: dns::Config,
+        report_timeout: Duration,
         executor: &Handle,
     ) -> Box<Future<Item = (), Error = ()>>
     where
@@ -77,11 +84,12 @@ impl Background {
                 http::uri::Authority::from_shared(format!("{}", host_and_port).into()).unwrap();
 
             let dns_resolver = dns::Resolver::new(dns_config, executor);
-            let connect = TimeoutConnect::new(
+            let connect = Timeout::new(
                 LookupAddressAndConnect::new(host_and_port, dns_resolver, executor),
                 Duration::from_secs(3),
                 executor,
             );
+
             let h2_client = tower_h2::client::Client::new(
                 connect,
                 h2::client::Builder::default(),
@@ -95,7 +103,7 @@ impl Background {
         };
 
         let mut disco = self.disco.work();
-        let mut telemetry = Telemetry::new(events);
+        let mut telemetry = Telemetry::new(events, report_timeout, executor);
 
         let fut = future::poll_fn(move || {
             trace!("poll rpc services");
@@ -114,7 +122,7 @@ impl Background {
 //TODO: move to tower-backoff
 struct Backoff<S> {
     inner: S,
-    timer: Timeout,
+    timer: ReactorTimeout,
     waiting: bool,
     wait_dur: Duration,
 }
@@ -123,7 +131,7 @@ impl<S> Backoff<S> {
     fn new(inner: S, wait_dur: Duration, handle: &Handle) -> Self {
         Backoff {
             inner,
-            timer: Timeout::new(wait_dur, handle).unwrap(),
+            timer: ReactorTimeout::new(wait_dur, handle).unwrap(),
             waiting: false,
             wait_dur,
         }
