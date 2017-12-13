@@ -18,21 +18,19 @@ well-suited for [gRPC][grpc]. Follow our progress towards production-readiness h
 
 ## Documentation
 
-View [Conduit docs][conduit-docs] for more a more comprehensive guide to getting started.
+View [Conduit docs][conduit-docs] for more a more comprehensive guide to getting started with Conduit.
 
 ___
 
 ## Getting started with Conduit
 
-### Install the Conduit CLI
-`curl https://run.conduit.io/install | sh `
+### Install the Conduit CLI `curl https://run.conduit.io/install | sh `
 
 ### Copy `/Users/username/.conduit/bin/conduit` into your PATH
 
 ### Run `conduit install | kubectl apply -f -` to install Conduit
 
-### Check to make sure you're running the latest version _(0.1.0)_ of Conduit:
-`conduit version`
+### Check to make sure you're running the latest version _(0.1.0)_ of Conduit: `conduit version`
 
 ### Open the local version the Conduit controller with `conduit dashboard`
 
