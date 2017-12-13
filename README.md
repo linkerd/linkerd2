@@ -30,10 +30,10 @@ getting started.
 
 3. Run `conduit install | kubectl apply -f -` to install Conduit
 
-4. Check to make sure you're running the latest version _(0.1.0)_ of Conduit
+4. Check to make sure you're running the [latest version][releases]of Conduit
 with `conduit version`
 
-5. Open the local version the Conduit controller with `conduit dashboard`
+5. Open a local version of the Conduit controller with `conduit dashboard`
 
 6. (Optional) To install a demo application for your Conduit instance, visit
 [this section on Conduit docs][conduit-demo]
@@ -71,7 +71,7 @@ specific language governing permissions and limitations under the License.
 [l5d]: https://linkerd.io/
 [license-badge]: https://img.shields.io/github/license/linkerd/linkerd.svg
 [logo]: https://user-images.githubusercontent.com/240738/33589722-649152de-d92f-11e7-843a-b078ac889a39.png
-<!-- [releases]: https://github.com/runconduit/conduit -->
+[releases]: https://github.com/runconduit/conduit/releases
 [rust]: https://rust-lang.org/
 [twitter]: https://twitter.com/runconduit/
 [slack-badge]: http://slack.linkerd.io/badge.svg
