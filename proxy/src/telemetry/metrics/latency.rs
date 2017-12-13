@@ -4,7 +4,6 @@ use control::pb::telemetry::{
 };
 
 use std::{ops, slice, u32};
-use std::cell::Cell;
 use std::default::Default;
 use std::time::Duration;
 
@@ -25,7 +24,7 @@ trait Bucket<T: PartialOrd> {
     /// # Returns
     /// - `true` if this `Bucket`'s count was incremented;
     /// - `false` otherwise.
-    fn add(&self, observation: &T) -> bool;
+    fn add(&mut self, observation: &T) -> bool;
 }
 
 /// A "leaf" bucket containing a single counter.
@@ -35,17 +34,11 @@ trait Bucket<T: PartialOrd> {
 /// - `C`: the type used for counting observed values. Bounded by `Copy`
 ///        as it is placed in a `Cell`; defaults to `u32`.
 #[derive(Debug, Clone)]
-struct LeafBucket<T, C: Copy = u32> {
+struct LeafBucket<T, C = u32> {
     /// The upper bound of the range of values in this bucket.
     max: T,
     /// Count of observations falling into this bucket.
-    /// 
-    /// `Cell` is used for interior mutability here, as it should be possible
-    /// to increment the count in a bucket without mutably locking the entire 
-    /// histogram structure containing this `LeafBucket`; as would be necessary to
-    /// change the _shape_ of the histogram.
-    // XXX should this be an atomic integer since it goes in a `Cell`?
-    count: Cell<C>,
+    count: C,
 }
 
 
@@ -61,30 +54,39 @@ struct Buckets<T: PartialOrd, B: Bucket<T>=LeafBucket<T>> {
     /// The aforementioned `Bucket`s herein contained.
     /// 
     /// Currently, these must be in order.
-    // FIXME: number of buckets per bucket set is hardcoded currently.
+    // FIXME: number of buckets per bucket set is hardcoded, currently - 
+    //        we don't need a `Vec` here, since the number of buckets never
+    //        grows, but Rust doesn't have variable-sized arrays. we could
+    //        just have a `Box<[B]>` here, or take a slice, but the former
+    //        allocates and the latter would introduce a lifetime bound
+    //        on the `Buckets` (which might be okay).
     buckets: [B; 5]
 }
 
 impl<T> LeafBucket<T> {
     // Construct a new `LeafBucket` with the upper bound of `max`.
-    #[inline] fn new<I: Into<T>>(max: I) -> Self {
+    #[inline] 
+    fn new<I: Into<T>>(max: I) -> Self {
         LeafBucket {
             max: max.into(),
-            count: Cell::new(0)
+            count: 0
         }
 
     }
 }
 
 impl<T> Bucket<T> for LeafBucket<T>
-where T: PartialOrd {
+where 
+    T: PartialOrd 
+{
     fn contains(&self, t: &T) -> bool {
         t <= &self.max
     }
 
-    fn add(&self, t: &T) -> bool {
+    fn add(&mut self, t: &T) -> bool {
         if self.contains(t) {
-            self.count.set(self.count.get().saturating_add(1));
+            // silently truncate if the count is over u32::MAX.
+            self.count = self.count.saturating_add(1);
             true
         } else {
             false
@@ -99,13 +101,14 @@ where
     T: PartialOrd,
     B: Bucket<T>,
 {
-    #[inline] fn contains(&self, t: &T) -> bool {
+    #[inline] 
+    fn contains(&self, t: &T) -> bool {
         t <= &self.max
     }
 
-    fn add(&self, t: &T) -> bool {
+    fn add(&mut self, t: &T) -> bool {
         // FIXME: this is assuming buckets is in order...
-        for ref bucket in &self.buckets[..] {
+        for ref mut bucket in &mut self.buckets[..] {
             if bucket.add(t) { return true; }
         }
         false
@@ -138,7 +141,7 @@ where
 
 impl<'a, T> IntoIterator for &'a Buckets<T>
 where
-    T: PartialOrd
+    T: PartialOrd,
 {
     type Item = &'a LeafBucket<T>;
     type IntoIter = slice::Iter<'a, LeafBucket<T>>;
@@ -206,14 +209,17 @@ impl From<Duration> for Latency {
         Latency(tenths_of_ms)
     }
 }
+
 impl From<u32> for Latency {
-    #[inline] fn from(value: u32) -> Self {
+    #[inline] 
+    fn from(value: u32) -> Self {
         Latency(value)
     }
 }
 
 impl Into<u32> for Latency {
-    #[inline] fn into(self) -> u32 {
+    #[inline]
+    fn into(self) -> u32 {
         self.0
     }
 }
@@ -224,7 +230,7 @@ impl Latencies {
 
     /// Add an observed `Latency` value to the histogram.
     #[inline]
-    pub fn add<I: Into<Latency>>(&self, i: I) {
+    pub fn add<I: Into<Latency>>(&mut self, i: I) {
         self.0.add(&i.into());
     }
 
@@ -268,7 +274,7 @@ impl<'a> From<&'a LeafBucket<Latency>> for LatencyProto {
     fn from(bucket: &'a LeafBucket<Latency>) -> Self {
         LatencyProto {
             latency: bucket.max.into(),
-            count: bucket.count.get(),
+            count: bucket.count,
         }
     }
 }

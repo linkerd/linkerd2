@@ -3,7 +3,6 @@ extern crate log;
 
 mod support;
 use self::support::*;
-use control::pb::telemetry::Latency;
 
 #[test]
 fn inbound_sends_telemetry() {
@@ -183,7 +182,7 @@ fn records_latency_statistics() {
     assert_eq!(res.response_latencies.len(), 25);
 
     for ref bucket in &res.response_latencies {
-        // 500 msw of extra latency should put us in the 500-10000
+        // 500 ms of extra latency should put us in the 500-10000
         // decimillisecond bucket.
         if bucket.latency == 10000 {
             assert_eq!(bucket.count, 1);

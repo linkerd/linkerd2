@@ -28,7 +28,7 @@ use control::pb::proxy::telemetry::{
 use telemetry::event::{Event};
 
 mod latency;
-use self::latency::*;
+use self::latency::{Latencies, MS_TO_NS};
 
 #[derive(Debug)]
 pub struct Metrics {
