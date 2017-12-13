@@ -19,6 +19,7 @@ export default class UpstreamDownstreamTables extends React.Component {
               resource={`upstream_${this.props.entity}`}
               lastUpdated={this.props.lastUpdated}
               metrics={this.props.upstreamMetrics}
+              timeseries={this.props.upstreamTsByEntity}
               pathPrefix={this.props.pathPrefix} />
           </div>
           <div className="upstream-downstream-list">
@@ -31,6 +32,7 @@ export default class UpstreamDownstreamTables extends React.Component {
               resource={`downstream_${this.props.entity}`}
               lastUpdated={this.props.lastUpdated}
               metrics={this.props.downstreamMetrics}
+              timeseries={this.props.downstreamTsByEntity}
               pathPrefix={this.props.pathPrefix} />
           </div>
         </Col>

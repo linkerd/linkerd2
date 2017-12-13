@@ -60,7 +60,7 @@ export default class ScatterPlot extends React.Component {
   }
 
   updateScales(data) {
-    this.xScale.domain(d3.extent(data, d => d.latency));
+    this.xScale.domain(d3.extent(data, d => _.get(d, ["latency", "P99", 0, "value"])));
     this.yScale.domain([0, 1]);
 
     this.updateAxes();
@@ -148,18 +148,18 @@ export default class ScatterPlot extends React.Component {
         .attr("class", "dot")
         .attr("r", circleRadius)
       .merge(this.scatterPlot) // newfangled d3 'update' selection
-        .attr("cx", d => this.xScale(d.latency))
-        .attr("cy", d => this.yScale(d.success))
-        .style("fill", d => successRateColorScale(d.success))
-        .style("stroke", d => successRateStrokeColorScale(d.success))
+        .attr("cx", d => this.xScale(_.get(d, ["latency", "P99", 0, "value"])))
+        .attr("cy", d => this.yScale(d.successRate))
+        .style("fill", d => successRateColorScale(d.successRate))
+        .style("stroke", d => successRateStrokeColorScale(d.successRate))
         .on("mousemove", d => {
-          let sr = metricToFormatter["SUCCESS_RATE"](d.success);
-          let latency = metricToFormatter["LATENCY"](d.latency);
+          let sr = metricToFormatter["SUCCESS_RATE"](d.successRate);
+          let latency = metricToFormatter["LATENCY"](_.get(d, ["latency", "P99", 0, "value"]));
           this.tooltip
             .style("left", d3.event.pageX - 50 + "px")
             .style("top", d3.event.pageY - 70 + "px")
             .style("display", "inline-block") // show tooltip
-            .text(`${d.label}: (${latency}, ${sr})`);
+            .text(`${d.name}: (${latency}, ${sr})`);
         })
         .on("mouseout", () => this.tooltip.style("display", "none"));
 
@@ -168,9 +168,9 @@ export default class ScatterPlot extends React.Component {
         .append("text")
         .attr("class", "dot-label")
       .merge(this.labels)
-        .text(d => d.label)
-        .attr("x", d => this.xScale(d.latency) - circleRadius)
-        .attr("y", d => this.yScale(d.success) - 2 * circleRadius)
+        .text(d => d.name)
+        .attr("x", d => this.xScale(_.get(d, ["latency", "P99", 0, "value"])) - circleRadius)
+        .attr("y", d => this.yScale(d.successRate) - 2 * circleRadius)
   }
 
   render() {
