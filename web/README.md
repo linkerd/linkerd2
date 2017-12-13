@@ -1,4 +1,4 @@
-# Boron Web UI
+# Conduit Dashboard
 
 This is a React app. It uses webpack to bundle assets, and postcss to transform css.
 
