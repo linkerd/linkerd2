@@ -26,6 +26,7 @@ var (
 	inboundPort                   uint
 	outboundPort                  uint
 	ignoreInboundPorts            []uint
+	ignoreOutboundPorts           []uint
 	proxyControlPort              uint
 	proxyAPIPort                  uint
 	conduitCreatedByAnnotation    = "conduit.io/created-by"
@@ -205,10 +206,15 @@ func injectDaemonSet(bytes []byte) (interface{}, error) {
  */
 func injectPodTemplateSpec(t *v1.PodTemplateSpec) enhancedPodTemplateSpec {
 	f := false
-	skipPorts := append(ignoreInboundPorts, proxyControlPort)
-	skipPortsStr := make([]string, len(skipPorts))
-	for i, p := range skipPorts {
-		skipPortsStr[i] = strconv.Itoa(int(p))
+	inboundSkipPorts := append(ignoreInboundPorts, proxyControlPort)
+	inboundSkipPortsStr := make([]string, len(inboundSkipPorts))
+	for i, p := range inboundSkipPorts {
+		inboundSkipPortsStr[i] = strconv.Itoa(int(p))
+	}
+
+	outboundSkipPortsStr := make([]string, len(ignoreOutboundPorts))
+	for i, p := range ignoreOutboundPorts {
+		outboundSkipPortsStr[i] = strconv.Itoa(int(p))
 	}
 
 	initContainer := v1.Container{
@@ -216,10 +222,11 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec) enhancedPodTemplateSpec {
 		Image:           fmt.Sprintf("%s:%s", initImage, version),
 		ImagePullPolicy: v1.PullPolicy(imagePullPolicy),
 		Args: []string{
-			"-p", fmt.Sprintf("%d", inboundPort),
-			"-o", fmt.Sprintf("%d", outboundPort),
-			"-i", fmt.Sprintf("%s", strings.Join(skipPortsStr, ",")),
-			"-u", fmt.Sprintf("%d", proxyUID),
+			"--incoming-proxy-port", fmt.Sprintf("%d", inboundPort),
+			"--outgoing-proxy-port", fmt.Sprintf("%d", outboundPort),
+			"--inbound-ports-to-ignore", fmt.Sprintf("%s", strings.Join(inboundSkipPortsStr, ",")),
+			"--outbound-ports-to-ignore", fmt.Sprintf("%s", strings.Join(outboundSkipPortsStr, ",")),
+			"--proxy-uid", fmt.Sprintf("%d", proxyUID),
 		},
 		SecurityContext: &v1.SecurityContext{
 			Capabilities: &v1.Capabilities{
@@ -363,6 +370,7 @@ func init() {
 	injectCmd.PersistentFlags().UintVar(&inboundPort, "inbound-port", 4143, "proxy port to use for inbound traffic")
 	injectCmd.PersistentFlags().UintVar(&outboundPort, "outbound-port", 4140, "proxy port to use for outbound traffic")
 	injectCmd.PersistentFlags().UintSliceVar(&ignoreInboundPorts, "skip-inbound-ports", nil, "ports that should skip the proxy and send directly to the applicaiton")
+	injectCmd.PersistentFlags().UintSliceVar(&ignoreOutboundPorts, "skip-outbound-ports", nil, "outbound ports that should skip the proxy")
 	injectCmd.PersistentFlags().UintVar(&proxyControlPort, "control-port", 4190, "proxy port to use for control")
 	injectCmd.PersistentFlags().UintVar(&proxyAPIPort, "api-port", 8086, "port where the Conduit controller is running")
 }
