@@ -19,6 +19,43 @@ apiVersion: v1
 metadata:
   name: {{.Namespace}}
 
+### Service Account ###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: conduit
+  namespace: conduit
+
+### RBAC ###
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: conduit
+rules:
+- apiGroups: ["extensions"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: [""]
+  resources: ["pods", "endpoints", "services"]
+  verbs: ["list", "get", "watch"]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: conduit
+  namespace: conduit
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: conduit
+subjects:
+- kind: ServiceAccount
+  name: conduit
+  namespace: conduit
+
 ### Controller ###
 ---
 kind: Service
@@ -81,6 +118,7 @@ spec:
       annotations:
         conduit.io/created-by: "{{.CliVersion}}"
     spec:
+      serviceAccount: conduit
       containers:
       - name: public-api
         ports:
