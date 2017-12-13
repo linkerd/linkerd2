@@ -40,8 +40,11 @@ pub struct Config {
     /// Event queue capacity.
     pub event_buffer_capacity: usize,
 
-    /// Interval after which to flush metrics
+    /// Interval after which to flush metrics.
     pub metrics_flush_interval: Duration,
+
+    /// Timeout after which to cancel telemetry reports.
+    pub report_timeout: Duration,
 }
 
 /// Configuration settings for binding a listener.
@@ -100,6 +103,7 @@ pub enum UrlError {
 // Environment variables to look at when loading the configuration
 const ENV_EVENT_BUFFER_CAPACITY: &str = "CONDUIT_PROXY_EVENT_BUFFER_CAPACITY";
 const ENV_METRICS_FLUSH_INTERVAL_SECS: &str = "CONDUIT_PROXY_METRICS_FLUSH_INTERVAL_SECS";
+const ENV_REPORT_TIMEOUT_SECS: &str = "CONDUIT_PROXY_REPORT_TIMEOUT_SECS";
 const ENV_PRIVATE_LISTENER: &str = "CONDUIT_PROXY_PRIVATE_LISTENER";
 const ENV_PRIVATE_FORWARD: &str = "CONDUIT_PROXY_PRIVATE_FORWARD";
 const ENV_PUBLIC_LISTENER: &str = "CONDUIT_PROXY_PUBLIC_LISTENER";
@@ -118,6 +122,7 @@ const ENV_RESOLV_CONF: &str = "CONDUIT_RESOLV_CONF";
 // Default values for various configuration fields
 const DEFAULT_EVENT_BUFFER_CAPACITY: usize = 10_000; // FIXME
 const DEFAULT_METRICS_FLUSH_INTERVAL_SECS: u64 = 10;
+const DEFAULT_REPORT_TIMEOUT_SECS: u64 = 10; // TODO: is this a reasonable default?
 const DEFAULT_PRIVATE_LISTENER: &str = "tcp://127.0.0.1:4140";
 const DEFAULT_PUBLIC_LISTENER: &str = "tcp://0.0.0.0:4143";
 const DEFAULT_CONTROL_LISTENER: &str = "tcp://0.0.0.0:4190";
@@ -134,7 +139,13 @@ impl Config {
 
         let metrics_flush_interval = Duration::from_secs(
             env_var_parse(ENV_METRICS_FLUSH_INTERVAL_SECS, parse_number)?
-                .unwrap_or(DEFAULT_METRICS_FLUSH_INTERVAL_SECS));
+                .unwrap_or(DEFAULT_METRICS_FLUSH_INTERVAL_SECS)
+        );
+
+        let report_timeout = Duration::from_secs(
+            env_var_parse(ENV_REPORT_TIMEOUT_SECS, parse_number)?
+                .unwrap_or(DEFAULT_REPORT_TIMEOUT_SECS)
+        );
 
         Ok(Config {
             private_listener: Listener {
@@ -166,6 +177,7 @@ impl Config {
 
             event_buffer_capacity,
             metrics_flush_interval,
+            report_timeout,
         })
     }
 }
