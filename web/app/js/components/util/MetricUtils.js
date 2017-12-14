@@ -42,12 +42,10 @@ export const processTimeseriesMetrics = (rawTs, targetEntity) => {
 };
 
 export const processRollupMetrics = (rawMetrics, targetEntity) => {
-  let byEntity = _.groupBy(rawMetrics, m => {
-    return m.metadata[targetEntity];
-  });
-
+  let byEntity = _.groupBy(rawMetrics, "metadata." + targetEntity);
   let metrics = _.map(byEntity, (data, entity) => {
     if (!entity) return;
+
     let requestRate = 0;
     let successRate = 0;
     let latency = {};
@@ -72,7 +70,7 @@ export const processRollupMetrics = (rawMetrics, targetEntity) => {
     };
   });
 
-  return _.sortBy(metrics, "name");
+  return _.compact(_.sortBy(metrics, "name"));
 };
 
 export const emptyMetric = (name, added) => {

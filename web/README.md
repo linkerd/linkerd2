@@ -36,3 +36,10 @@ To run unit tests:
 ```
 go test ./...
 ```
+
+### JS unit tests
+To run:
+```
+cd web/app
+yarn karma start
+```
