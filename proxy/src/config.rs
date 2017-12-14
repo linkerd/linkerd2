@@ -32,7 +32,7 @@ pub struct Config {
     pub public_connect_timeout: Option<Duration>,
 
     /// The maximum amount of time to wait for a connection to the private peer.
-    pub private_connect_timeout: Option<Duration>,
+    pub private_connect_timeout: Duration,
 
     /// The path to "/etc/resolv.conf"
     pub resolv_conf_path: PathBuf,
@@ -143,6 +143,7 @@ const DEFAULT_REPORT_TIMEOUT_SECS: u64 = 10; // TODO: is this a reasonable defau
 const DEFAULT_PRIVATE_LISTENER: &str = "tcp://127.0.0.1:4140";
 const DEFAULT_PUBLIC_LISTENER: &str = "tcp://0.0.0.0:4143";
 const DEFAULT_CONTROL_LISTENER: &str = "tcp://0.0.0.0:4190";
+const DEFAULT_PRIVATE_CONNECT_TIMEOUT_MS: u64 = 20;
 const DEFAULT_CONTROL_URL: &str = "tcp://proxy-api.conduit.svc.cluster.local:8086";
 const DEFAULT_RESOLV_CONF: &str = "/etc/resolv.conf";
 
@@ -186,7 +187,9 @@ impl<'a> TryFrom<&'a Strings> for Config {
             },
             private_forward: private_forward?,
             public_connect_timeout: public_connect_timeout?.map(Duration::from_millis),
-            private_connect_timeout: private_connect_timeout?.map(Duration::from_millis),
+            private_connect_timeout:
+                Duration::from_millis(private_connect_timeout?
+                                          .unwrap_or(DEFAULT_PRIVATE_CONNECT_TIMEOUT_MS)),
             resolv_conf_path: resolv_conf_path?
                 .unwrap_or(DEFAULT_RESOLV_CONF.into())
                 .into(),

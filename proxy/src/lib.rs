@@ -46,7 +46,7 @@ use std::io;
 use std::net::{SocketAddr, TcpListener as StdTcpListener};
 use std::sync::Arc;
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use tokio_core::net::TcpListener;
 use tokio_core::reactor::{Core, Handle};
@@ -177,11 +177,8 @@ impl Main {
         let inbound = {
             let ctx = ctx::Proxy::inbound(&process_ctx);
 
-            let timeout = config
-                .private_connect_timeout
-                .unwrap_or_else(|| Duration::from_millis(20));
             let bind = bind.clone()
-                .with_connect_timeout(timeout)
+                .with_connect_timeout(config.private_connect_timeout)
                 .with_ctx(ctx.clone());
 
             let default_addr = config.private_forward.map(|a| a.into());
@@ -245,8 +242,8 @@ impl Main {
                         .expect("bad news in telemetry town");
 
                     let client = control_bg.bind(
-                        telemetry, 
-                        control_host_and_port, 
+                        telemetry,
+                        control_host_and_port,
                         dns_config,
                         config.report_timeout,
                         &executor
