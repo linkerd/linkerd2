@@ -47,7 +47,7 @@ describe('Deployments', () => {
     });
   });
 
-  it('renders the deployments page if metrics are received', () => {
+  it('renders the deployments page if pod data is received', () => {
     fetchStub.returnsPromise().resolves({
       json: () => Promise.resolve({ metrics: [], pods: podFixtures.pods })
     });
