@@ -1,9 +1,20 @@
 use futures::*;
+use std;
 use std::io;
+use std::net::SocketAddr;
 use tokio_core;
+use tokio_core::net::{Incoming, TcpListener};
+use tokio_core::reactor::Handle;
 use tokio_io::{AsyncRead, AsyncWrite};
 
+use config::Addr;
+
 pub type PlaintextSocket = tokio_core::net::TcpStream;
+
+pub struct BoundPort {
+    inner: std::net::TcpListener,
+    local_addr: SocketAddr,
+}
 
 /// Abstracts a plaintext socket vs. a TLS decorated one.
 #[derive(Debug)]
@@ -16,6 +27,28 @@ pub enum Connection {
 /// Resolves to a connection ready to be used at the next layer.
 pub struct Handshake {
     plaintext_socket: Option<PlaintextSocket>,
+}
+
+// ===== impl BoundPort =====
+
+impl BoundPort {
+    pub fn new(addr: Addr) -> Result<Self, io::Error> {
+        let inner = std::net::TcpListener::bind(SocketAddr::from(addr))?;
+        let local_addr = inner.local_addr()?;
+        Ok(BoundPort {
+            inner,
+            local_addr,
+        })
+    }
+
+    pub fn local_addr(&self) -> SocketAddr {
+        self.local_addr
+    }
+
+    pub fn listen(self, executor: &Handle) -> Result<Incoming, io::Error> {
+        TcpListener::from_listener(self.inner, &self.local_addr, executor)
+            .map(|listener| listener.incoming())
+    }
 }
 
 // ===== impl Connection =====
