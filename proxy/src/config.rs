@@ -64,11 +64,7 @@ pub struct Addr(SocketAddr);
 /// Errors produced when loading a `Config` struct.
 #[derive(Clone, Debug)]
 pub enum Error {
-    InvalidEnvVar {
-        name: String,
-        value: Option<String>,
-        parse_error: ParseError,
-    },
+    InvalidEnvVar
 }
 
 #[derive(Clone, Debug)]
@@ -134,50 +130,50 @@ const DEFAULT_RESOLV_CONF: &str = "/etc/resolv.conf";
 impl Config {
     /// Load a `Config` by reading ENV variables.
     pub fn load_from_env() -> Result<Self, Error> {
-        let event_buffer_capacity = env_var_parse(ENV_EVENT_BUFFER_CAPACITY, parse_number)?
-            .unwrap_or(DEFAULT_EVENT_BUFFER_CAPACITY);
-
-        let metrics_flush_interval = Duration::from_secs(
-            env_var_parse(ENV_METRICS_FLUSH_INTERVAL_SECS, parse_number)?
-                .unwrap_or(DEFAULT_METRICS_FLUSH_INTERVAL_SECS)
-        );
-
-        let report_timeout = Duration::from_secs(
-            env_var_parse(ENV_REPORT_TIMEOUT_SECS, parse_number)?
-                .unwrap_or(DEFAULT_REPORT_TIMEOUT_SECS)
-        );
+        // Parse all the environment variables. `env_var` and `env_var_parse`
+        // will log any errors so defer returning any errors until all of them
+        // have been parsed.
+        let private_listener_addr = env_var_parse(ENV_PRIVATE_LISTENER, str::parse);
+        let public_listener_addr = env_var_parse(ENV_PUBLIC_LISTENER, str::parse);
+        let control_listener_addr = env_var_parse(ENV_CONTROL_LISTENER, str::parse);
+        let private_forward = env_var_parse(ENV_PRIVATE_FORWARD, str::parse);
+        let public_connect_timeout = env_var_parse(ENV_PUBLIC_CONNECT_TIMEOUT, parse_number);
+        let private_connect_timeout = env_var_parse(ENV_PRIVATE_CONNECT_TIMEOUT, parse_number);
+        let resolv_conf_path = env_var(ENV_RESOLV_CONF);
+        let control_host_and_port = env_var_parse(ENV_CONTROL_URL, parse_url);
+        let event_buffer_capacity = env_var_parse(ENV_EVENT_BUFFER_CAPACITY, parse_number);
+        let metrics_flush_interval_secs =
+            env_var_parse(ENV_METRICS_FLUSH_INTERVAL_SECS, parse_number);
+        let report_timeout = env_var_parse(ENV_REPORT_TIMEOUT_SECS, parse_number);
 
         Ok(Config {
             private_listener: Listener {
-                addr: env_var_parse(ENV_PRIVATE_LISTENER, str::parse)?
+                addr: private_listener_addr?
                     .unwrap_or_else(|| Addr::from_str(DEFAULT_PRIVATE_LISTENER).unwrap()),
             },
             public_listener: Listener {
-                addr: env_var_parse(ENV_PUBLIC_LISTENER, str::parse)?
+                addr: public_listener_addr?
                     .unwrap_or_else(|| Addr::from_str(DEFAULT_PUBLIC_LISTENER).unwrap()),
             },
             control_listener: Listener {
-                addr: env_var_parse(ENV_CONTROL_LISTENER, str::parse)?
+                addr: control_listener_addr?
                     .unwrap_or_else(|| Addr::from_str(DEFAULT_CONTROL_LISTENER).unwrap()),
             },
-            private_forward: env_var_parse(ENV_PRIVATE_FORWARD, str::parse)?,
-
-            public_connect_timeout: env_var_parse(ENV_PUBLIC_CONNECT_TIMEOUT, parse_number)?
-                .map(Duration::from_millis),
-
-            private_connect_timeout: env_var_parse(ENV_PRIVATE_CONNECT_TIMEOUT, parse_number)?
-                .map(Duration::from_millis),
-
-            resolv_conf_path: env_var(ENV_RESOLV_CONF)?
+            private_forward: private_forward?,
+            public_connect_timeout: public_connect_timeout?.map(Duration::from_millis),
+            private_connect_timeout: private_connect_timeout?.map(Duration::from_millis),
+            resolv_conf_path: resolv_conf_path?
                 .unwrap_or(DEFAULT_RESOLV_CONF.into())
                 .into(),
-
-            control_host_and_port: env_var_parse(ENV_CONTROL_URL, parse_url)?
+            control_host_and_port: control_host_and_port?
                 .unwrap_or_else(|| parse_url(DEFAULT_CONTROL_URL).unwrap()),
 
-            event_buffer_capacity,
-            metrics_flush_interval,
-            report_timeout,
+            event_buffer_capacity: event_buffer_capacity?.unwrap_or(DEFAULT_EVENT_BUFFER_CAPACITY),
+            metrics_flush_interval:
+                Duration::from_secs(metrics_flush_interval_secs?
+                                        .unwrap_or(DEFAULT_METRICS_FLUSH_INTERVAL_SECS)),
+            report_timeout:
+                Duration::from_secs(report_timeout?.unwrap_or(DEFAULT_REPORT_TIMEOUT_SECS)),
         })
     }
 }
@@ -240,11 +236,10 @@ fn env_var(name: &str) -> Result<Option<String>, Error> {
     match env::var(name) {
         Ok(value) => Ok(Some(value)),
         Err(env::VarError::NotPresent) => Ok(None),
-        Err(env::VarError::NotUnicode(_)) => Err(Error::InvalidEnvVar {
-            name: name.to_owned(),
-            value: None,
-            parse_error: ParseError::NotUnicode,
-        }),
+        Err(env::VarError::NotUnicode(_)) => {
+            error!("{} is not encoded in Unicode", name);
+            Err(Error::InvalidEnvVar)
+        }
     }
 }
 
@@ -253,11 +248,8 @@ fn env_var_parse<T, Parse>(name: &str, parse: Parse) -> Result<Option<T>, Error>
     match env_var(name)? {
         Some(ref s) => {
             let r = parse(s).map_err(|parse_error| {
-                Error::InvalidEnvVar {
-                    name: name.to_owned(),
-                    value: Some(s.to_owned()),
-                    parse_error,
-                }
+                error!("{} is not valid: {:?}", name, parse_error);
+                Error::InvalidEnvVar
             })?;
             Ok(Some(r))
         },
