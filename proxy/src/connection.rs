@@ -3,11 +3,12 @@ use std;
 use std::io;
 use std::net::SocketAddr;
 use tokio_core;
-use tokio_core::net::{Incoming, TcpListener};
+use tokio_core::net::TcpListener;
 use tokio_core::reactor::Handle;
 use tokio_io::{AsyncRead, AsyncWrite};
 
 use config::Addr;
+use transport;
 
 pub type PlaintextSocket = tokio_core::net::TcpStream;
 
@@ -20,13 +21,6 @@ pub struct BoundPort {
 #[derive(Debug)]
 pub enum Connection {
     Plain(PlaintextSocket),
-}
-
-/// A connection handshake.
-///
-/// Resolves to a connection ready to be used at the next layer.
-pub struct Handshake {
-    plaintext_socket: Option<PlaintextSocket>,
 }
 
 // ===== impl BoundPort =====
@@ -45,19 +39,62 @@ impl BoundPort {
         self.local_addr
     }
 
-    pub fn listen(self, executor: &Handle) -> Result<Incoming, io::Error> {
-        TcpListener::from_listener(self.inner, &self.local_addr, executor)
-            .map(|listener| listener.incoming())
+    // Listen for incoming connections and dispatch them to the handler `f`.
+    //
+    // This ensures that every incoming connection has the correct options set.
+    // In the future it will also ensure that the connection is upgraded with
+    // TLS when needed.
+    pub fn listen_and_fold<T, F, Fut>(self, executor: &Handle, initial: T, f: F)
+        -> Box<Future<Item = (), Error = io::Error> + 'static>
+        where
+        F: Fn(T, (Connection, SocketAddr)) -> Fut + 'static,
+        T: 'static,
+        Fut: IntoFuture<Item = T, Error = std::io::Error> + 'static {
+        let fut = TcpListener::from_listener(self.inner, &self.local_addr, &executor)
+            .expect("from_listener") // TODO: get rid of this `expect()`.
+            .incoming()
+            .fold(initial, move |b, (socket, remote_addr)| {
+                // TODO: On Linux and most other platforms it would be better
+                // to set the `TCP_NODELAY` option on the bound socket and
+                // then have the listening sockets inherit it. However, that
+                // doesn't work on all platforms and also the underlying
+                // libraries don't have the necessary API for that, so just
+                // do it here.
+                if let Err(e) = socket.set_nodelay(true) {
+                    warn!(
+                        "could not set TCP_NODELAY on {:?}/{:?}: {}",
+                        socket.local_addr(),
+                        socket.peer_addr(),
+                        e
+                    );
+                }
+                f(b, (Connection::Plain(socket), remote_addr))
+            });
+
+        Box::new(fut.map(|_| ()))
     }
 }
 
 // ===== impl Connection =====
 
 impl Connection {
-    /// Establish a connection backed by the provided `io`.
-    pub fn handshake(io: PlaintextSocket) -> Handshake {
-        Handshake {
-            plaintext_socket: Some(io),
+    pub fn original_dst_addr(&self) -> Option<SocketAddr> {
+        transport::get_original_dst(self.socket())
+    }
+
+    pub fn local_addr(&self) -> Result<SocketAddr, std::io::Error> {
+        self.socket().local_addr()
+    }
+
+    // This must never be made public so that in the future `Connection` can
+    // control access to the plaintext socket for TLS, to ensure no private
+    // data is accidentally writen to the socket and to ensure no unprotected
+    // data is read from the socket. Each piece of information needed about the
+    // underlying socket should be exposed by its own minimal accessor function
+    // as is done above.
+    fn socket(&self) -> &PlaintextSocket {
+        match self {
+            &Connection::Plain(ref socket) => socket
         }
     }
 }
@@ -101,17 +138,5 @@ impl AsyncWrite for Connection {
         match *self {
             Plain(ref mut t) => t.shutdown(),
         }
-    }
-}
-
-// ===== impl Handshake =====
-
-impl Future for Handshake {
-    type Item = Connection;
-    type Error = io::Error;
-
-    fn poll(&mut self) -> Poll<Self::Item, io::Error> {
-        let plaintext_socket = self.plaintext_socket.take().expect("poll after complete");
-        Ok(Connection::Plain(plaintext_socket).into())
     }
 }

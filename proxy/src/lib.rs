@@ -188,7 +188,7 @@ impl Main {
                 Inbound::new(default_addr, bind),
                 ctx,
                 sensors.clone(),
-                executor.clone(),
+                &executor,
             );
             ::logging::context_future("inbound", fut)
         };
@@ -210,7 +210,7 @@ impl Main {
                 Outbound::new(bind, control),
                 ctx,
                 sensors,
-                executor,
+                &executor,
             );
             ::logging::context_future("outbound", fut)
         };
@@ -273,7 +273,7 @@ fn serve<R, B, E, F>(
     recognize: R,
     proxy_ctx: Arc<ctx::Proxy>,
     sensors: telemetry::Sensors,
-    executor: Handle,
+    executor: &Handle,
 ) -> Box<Future<Item = (), Error = io::Error> + 'static>
 where
     B: Body + Default + 'static,
@@ -302,42 +302,29 @@ where
         h2_builder,
         ::logging::context_executor(("serve", listen_addr), executor.clone()),
     );
-    let incoming = bound_port.listen(&executor).expect("listen");
-    let f = incoming.fold(
-        (server, proxy_ctx, sensors, executor),
-        move |(server, proxy_ctx, sensors, executor), (socket, remote_addr)| {
-            if let Err(e) = socket.set_nodelay(true) {
-                warn!(
-                    "could not set TCP_NODELAY on {:?}/{:?}: {}",
-                    socket.local_addr(),
-                    socket.peer_addr(),
-                    e
-                );
-            }
-
+    bound_port.listen_and_fold(
+        executor,
+        (server, proxy_ctx, sensors, executor.clone()),
+        move |(server, proxy_ctx, sensors, executor), (connection, remote_addr)| {
             let opened_at = Instant::now();
-            let orig_dst = transport::get_original_dst(&socket);
-            let local_addr = socket.local_addr().unwrap_or(listen_addr);
+            let orig_dst = connection.original_dst_addr();
+            let local_addr = connection.local_addr().unwrap_or(listen_addr);
             let srv_ctx =
                 ctx::transport::Server::new(&proxy_ctx, &local_addr, &remote_addr, &orig_dst);
 
-            connection::Connection::handshake(socket).map(move |session| {
-                let io = sensors.accept(session, opened_at, &srv_ctx);
+            let io = sensors.accept(connection, opened_at, &srv_ctx);
 
-                // TODO session context
-                let set_ctx = move |request: &mut http::Request<()>| {
-                    request.extensions_mut().insert(Arc::clone(&srv_ctx));
-                };
+            // TODO session context
+            let set_ctx = move |request: &mut http::Request<()>| {
+                request.extensions_mut().insert(Arc::clone(&srv_ctx));
+            };
 
-                let s = server.serve_modified(io, set_ctx).map_err(|_| ());
-                executor.spawn(::logging::context_future(("serve", local_addr), s));
+            let s = server.serve_modified(io, set_ctx).map_err(|_| ());
+            executor.spawn(::logging::context_future(("serve", local_addr), s));
 
-                (server, proxy_ctx, sensors, executor)
-            })
+            future::ok((server, proxy_ctx, sensors, executor))
         },
-    );
-
-    Box::new(f.map(|_| {}))
+    )
 }
 
 fn serve_control<N, B>(
@@ -351,28 +338,15 @@ where
     N: NewService<Request = http::Request<RecvBody>, Response = http::Response<B>> + 'static,
 {
     let server = Server::new(new_service, h2_builder, executor.clone());
-    let incoming = bound_port.listen(executor).expect("listen");
-    let f = incoming.fold(
+    bound_port.listen_and_fold(
+        executor,
         (server, executor.clone()),
-        move |(server, executor), (socket, _)| {
-            if let Err(e) = socket.set_nodelay(true) {
-                warn!(
-                    "could not set TCP_NODELAY on {:?}/{:?}: {}",
-                    socket.local_addr(),
-                    socket.peer_addr(),
-                    e
-                );
-            }
+        move |(server, executor), (session, _)| {
+            let s = server.serve(session).map_err(|_| ());
 
-            connection::Connection::handshake(socket).map(move |session| {
-                let s = server.serve(session).map_err(|_| ());
+            executor.spawn(::logging::context_future("serve_control", s));
 
-                executor.spawn(::logging::context_future("serve_control", s));
-
-                (server, executor)
-            })
+            future::ok((server, executor))
         },
-    );
-
-    Box::new(f.map(|_| {}))
+    )
 }
