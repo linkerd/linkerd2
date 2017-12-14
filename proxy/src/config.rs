@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::env;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -5,6 +6,8 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use url::{Host, HostAndPort, Url};
+
+use convert::TryFrom;
 
 // TODO:
 //
@@ -96,14 +99,29 @@ pub enum UrlError {
     FragmentNotAllowed,
 }
 
+/// The strings used to build a configuration.
+pub trait Strings {
+    /// Retrieves the value for the key `key`.
+    ///
+    /// `key` must be one of the `ENV_` values below.
+    fn get(&self, key: &str) -> Result<Option<String>, Error>;
+}
+
+/// An implementation of `Strings` that reads the values from environment variables.
+pub struct Env;
+
+pub struct TestEnv {
+    values: HashMap<&'static str, String>
+}
+
 // Environment variables to look at when loading the configuration
 const ENV_EVENT_BUFFER_CAPACITY: &str = "CONDUIT_PROXY_EVENT_BUFFER_CAPACITY";
-const ENV_METRICS_FLUSH_INTERVAL_SECS: &str = "CONDUIT_PROXY_METRICS_FLUSH_INTERVAL_SECS";
+pub const ENV_METRICS_FLUSH_INTERVAL_SECS: &str = "CONDUIT_PROXY_METRICS_FLUSH_INTERVAL_SECS";
 const ENV_REPORT_TIMEOUT_SECS: &str = "CONDUIT_PROXY_REPORT_TIMEOUT_SECS";
-const ENV_PRIVATE_LISTENER: &str = "CONDUIT_PROXY_PRIVATE_LISTENER";
-const ENV_PRIVATE_FORWARD: &str = "CONDUIT_PROXY_PRIVATE_FORWARD";
-const ENV_PUBLIC_LISTENER: &str = "CONDUIT_PROXY_PUBLIC_LISTENER";
-const ENV_CONTROL_LISTENER: &str = "CONDUIT_PROXY_CONTROL_LISTENER";
+pub const ENV_PRIVATE_LISTENER: &str = "CONDUIT_PROXY_PRIVATE_LISTENER";
+pub const ENV_PRIVATE_FORWARD: &str = "CONDUIT_PROXY_PRIVATE_FORWARD";
+pub const ENV_PUBLIC_LISTENER: &str = "CONDUIT_PROXY_PUBLIC_LISTENER";
+pub const ENV_CONTROL_LISTENER: &str = "CONDUIT_PROXY_CONTROL_LISTENER";
 const ENV_PRIVATE_CONNECT_TIMEOUT: &str = "CONDUIT_PROXY_PRIVATE_CONNECT_TIMEOUT";
 const ENV_PUBLIC_CONNECT_TIMEOUT: &str = "CONDUIT_PROXY_PUBLIC_CONNECT_TIMEOUT";
 
@@ -112,7 +130,7 @@ pub const ENV_NODE_NAME: &str = "CONDUIT_PROXY_NODE_NAME";
 pub const ENV_POD_NAME: &str = "CONDUIT_PROXY_POD_NAME";
 pub const ENV_POD_NAMESPACE: &str = "CONDUIT_PROXY_POD_NAMESPACE";
 
-const ENV_CONTROL_URL: &str = "CONDUIT_PROXY_CONTROL_URL";
+pub const ENV_CONTROL_URL: &str = "CONDUIT_PROXY_CONTROL_URL";
 const ENV_RESOLV_CONF: &str = "CONDUIT_RESOLV_CONF";
 
 // Default values for various configuration fields
@@ -127,24 +145,25 @@ const DEFAULT_RESOLV_CONF: &str = "/etc/resolv.conf";
 
 // ===== impl Config =====
 
-impl Config {
+impl<'a> TryFrom<&'a Strings> for Config {
+    type Err = Error;
     /// Load a `Config` by reading ENV variables.
-    pub fn load_from_env() -> Result<Self, Error> {
+    fn try_from(strings: &Strings) -> Result<Self, Self::Err> {
         // Parse all the environment variables. `env_var` and `env_var_parse`
         // will log any errors so defer returning any errors until all of them
         // have been parsed.
-        let private_listener_addr = env_var_parse(ENV_PRIVATE_LISTENER, str::parse);
-        let public_listener_addr = env_var_parse(ENV_PUBLIC_LISTENER, str::parse);
-        let control_listener_addr = env_var_parse(ENV_CONTROL_LISTENER, str::parse);
-        let private_forward = env_var_parse(ENV_PRIVATE_FORWARD, str::parse);
-        let public_connect_timeout = env_var_parse(ENV_PUBLIC_CONNECT_TIMEOUT, parse_number);
-        let private_connect_timeout = env_var_parse(ENV_PRIVATE_CONNECT_TIMEOUT, parse_number);
-        let resolv_conf_path = env_var(ENV_RESOLV_CONF);
-        let control_host_and_port = env_var_parse(ENV_CONTROL_URL, parse_url);
-        let event_buffer_capacity = env_var_parse(ENV_EVENT_BUFFER_CAPACITY, parse_number);
+        let private_listener_addr = parse(strings, ENV_PRIVATE_LISTENER, str::parse);
+        let public_listener_addr = parse(strings, ENV_PUBLIC_LISTENER, str::parse);
+        let control_listener_addr = parse(strings, ENV_CONTROL_LISTENER, str::parse);
+        let private_forward = parse(strings, ENV_PRIVATE_FORWARD, str::parse);
+        let public_connect_timeout = parse(strings, ENV_PUBLIC_CONNECT_TIMEOUT, parse_number);
+        let private_connect_timeout = parse(strings, ENV_PRIVATE_CONNECT_TIMEOUT, parse_number);
+        let resolv_conf_path = strings.get(ENV_RESOLV_CONF);
+        let control_host_and_port = parse(strings, ENV_CONTROL_URL, parse_url);
+        let event_buffer_capacity = parse(strings, ENV_EVENT_BUFFER_CAPACITY, parse_number);
         let metrics_flush_interval_secs =
-            env_var_parse(ENV_METRICS_FLUSH_INTERVAL_SECS, parse_number);
-        let report_timeout = env_var_parse(ENV_REPORT_TIMEOUT_SECS, parse_number);
+            parse(strings, ENV_METRICS_FLUSH_INTERVAL_SECS, parse_number);
+        let report_timeout = parse(strings, ENV_REPORT_TIMEOUT_SECS, parse_number);
 
         Ok(Config {
             private_listener: Listener {
@@ -207,6 +226,43 @@ impl From<Addr> for SocketAddr {
     }
 }
 
+// ===== impl Env =====
+
+impl Strings for Env {
+    fn get(&self, key: &str) -> Result<Option<String>, Error> {
+        match env::var(key) {
+            Ok(value) => Ok(Some(value)),
+            Err(env::VarError::NotPresent) => Ok(None),
+            Err(env::VarError::NotUnicode(_)) => {
+                error!("{} is not encoded in Unicode", key);
+                Err(Error::InvalidEnvVar)
+            }
+        }
+    }
+}
+
+// ===== impl TestEnv =====
+
+impl TestEnv {
+    pub fn new() -> Self {
+        Self {
+            values: Default::default(),
+        }
+    }
+
+    pub fn put(&mut self, key: &'static str, value: String) {
+        self.values.insert(key, value);
+    }
+}
+
+impl Strings for TestEnv {
+    fn get(&self, key: &str) -> Result<Option<String>, Error> {
+        Ok(self.values.get(key).cloned())
+    }
+}
+
+// ===== Parsing =====
+
 fn parse_number<T>(s: &str) -> Result<T, ParseError> where T: FromStr {
     s.parse().map_err(|_| ParseError::NotANumber)
 }
@@ -232,20 +288,9 @@ fn parse_url(s: &str) -> Result<HostAndPort, ParseError> {
     })
 }
 
-fn env_var(name: &str) -> Result<Option<String>, Error> {
-    match env::var(name) {
-        Ok(value) => Ok(Some(value)),
-        Err(env::VarError::NotPresent) => Ok(None),
-        Err(env::VarError::NotUnicode(_)) => {
-            error!("{} is not encoded in Unicode", name);
-            Err(Error::InvalidEnvVar)
-        }
-    }
-}
-
-fn env_var_parse<T, Parse>(name: &str, parse: Parse) -> Result<Option<T>, Error>
+fn parse<T, Parse>(strings: &Strings, name: &str, parse: Parse) -> Result<Option<T>, Error>
     where Parse: FnOnce(&str) -> Result<T, ParseError> {
-    match env_var(name)? {
+    match strings.get(name)? {
         Some(ref s) => {
             let r = parse(s).map_err(|parse_error| {
                 error!("{} is not valid: {:?}", name, parse_error);
