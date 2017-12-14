@@ -9,7 +9,7 @@ import StatPane from './StatPane.jsx';
 import TabbedMetricsTable from './TabbedMetricsTable.jsx';
 import UpstreamDownstream from './UpstreamDownstream.jsx';
 import { Col, Row } from 'antd';
-import { processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
+import { processDeployments, processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
 import './../../css/deployment.css';
 import 'whatwg-fetch';
 
@@ -69,6 +69,7 @@ export default class Deployment extends React.Component {
     let upstreamTimeseriesUrl = `${upstreamRollupUrl}&timeseries=true`;
     let downstreamRollupUrl = `${metricsUrl}&aggregation=target_deploy&source_deploy=${this.state.deploy}`;
     let downstreamTimeseriesUrl = `${downstreamRollupUrl}&timeseries=true`;
+    let podListUrl = `${this.props.pathPrefix}/api/pods`;
 
     let deployFetch = fetch(deployMetricsUrl).then(r => r.json());
     let podFetch = fetch(podRollupUrl).then(r => r.json());
@@ -77,9 +78,10 @@ export default class Deployment extends React.Component {
     let upstreamTsFetch = fetch(upstreamTimeseriesUrl).then(r => r.json());
     let downstreamFetch = fetch(downstreamRollupUrl).then(r => r.json());
     let downstreamTsFetch = fetch(downstreamTimeseriesUrl).then(r => r.json());
+    let podListFetch = fetch(podListUrl).then(r => r.json());
 
-    Promise.all([deployFetch, podFetch, podTsFetch, upstreamFetch, upstreamTsFetch, downstreamFetch, downstreamTsFetch])
-      .then(([deployMetrics, podRollup, podTimeseries, upstreamRollup, upstreamTimeseries, downstreamRollup, downstreamTimeseries]) => {
+    Promise.all([deployFetch, podFetch, podTsFetch, upstreamFetch, upstreamTsFetch, downstreamFetch, downstreamTsFetch, podListFetch])
+      .then(([deployMetrics, podRollup, podTimeseries, upstreamRollup, upstreamTimeseries, downstreamRollup, downstreamTimeseries, podList]) => {
         let tsByDeploy = processTimeseriesMetrics(deployMetrics.metrics, "targetDeploy");
         let podMetrics = processRollupMetrics(podRollup.metrics, "targetPod");
         let podTs = processTimeseriesMetrics(podTimeseries.metrics, "targetPod");
@@ -89,12 +91,15 @@ export default class Deployment extends React.Component {
         let downstreamMetrics = processRollupMetrics(downstreamRollup.metrics, "targetDeploy");
         let downstreamTsByDeploy = processTimeseriesMetrics(downstreamTimeseries.metrics, "targetDeploy");
 
+        let deploy = _.find(processDeployments(podList.pods), ["name", this.state.deploy]);
+        console.log(deploy);
         let totalRequestRate = _.sumBy(podMetrics, "requestRate");
         _.each(podMetrics, datum => datum.totalRequests = totalRequestRate);
 
         this.setState({
           metrics: podMetrics,
           timeseriesByPod: podTs,
+          added: deploy.added,
           deployTs: _.get(tsByDeploy, this.state.deploy, {}),
           upstreamMetrics: upstreamMetrics,
           upstreamTsByDeploy: upstreamTsByDeploy,
@@ -188,12 +193,23 @@ export default class Deployment extends React.Component {
     );
   }
 
-  renderContent() {
-    if (_.isEmpty(this.state.metrics)) {
-      return <div>No data</div>;
+  renderDeploymentTitle() {
+    if (!this.state.added){
+      return (<div className="deployment-title">
+        <h1>{this.state.deploy}</h1>
+        <div className="status-badge unadded">UNADDED</div>
+      </div>);
     } else {
-      return this.renderSections();
+      return (
+        <div className="deployment-title">
+          <h1>{this.state.deploy}</h1>
+        </div>
+      );
     }
+  }
+
+  renderContent() {
+    return this.renderSections();
   }
 
   render() {
@@ -202,8 +218,14 @@ export default class Deployment extends React.Component {
     } else return (
       <div className="page-content deployment-detail">
         <div className="page-header">
-          <div className="subsection-header">Deployment detail</div>
-          <h1>{this.state.deploy}</h1>
+          <div className="subsection-header">Deployment detail
+          </div>
+          {this.renderDeploymentTitle()}
+          <div className={"incomplete-mesh-message"}>
+            {this.state.deploy} has not been added to the service mesh
+            <div className="instructions">Add the deployment to the deployment.yml file</div>
+            <div className="instructions">Then run <code>kubectl inject deployment.yml | kubectl apply -f - </code> to add the deployment to the service mesh</div>
+          </div>
         </div>
         {this.renderContent()}
       </div>

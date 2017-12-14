@@ -5,6 +5,32 @@
     margin-bottom: 30px;
   }
 
+  & .deployment-title {
+    margin: 6px 0;
+
+    & h1 {
+      display: inline-block;
+    }
+  }
+
+
+
+  & .status-badge {
+    display: inline-block;
+    border-radius: 50px;
+    padding: 4px 10px;
+    margin: 0px 12px;
+
+    &.added {
+      background: green;
+    }
+
+    &.unadded {
+      background: #BDBDBD;
+      color: white;
+    }
+  }
+
   & .deployment-details {
     &.border-container {
       height: 276px; /* override height */

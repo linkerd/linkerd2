@@ -26,6 +26,17 @@ const convertLatencyTs = rawTs => {
   return _.groupBy(latencies, 'label');
 };
 
+export const processDeployments = pods => {
+  return _(pods)
+    .reject(p => _.isEmpty(p.deployment) || p.controlPlane)
+    .groupBy('deployment')
+    .map((componentPods, name) => {
+      return { name: name, added: _.every(componentPods, 'added') };
+    })
+    .sortBy('name')
+    .value();
+};
+
 export const processTimeseriesMetrics = (rawTs, targetEntity) => {
   let tsbyEntity = _.groupBy(rawTs, "metadata." + targetEntity);
   return _.reduce(tsbyEntity, (mem, metrics, entity) => {

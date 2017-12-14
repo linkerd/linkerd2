@@ -27,8 +27,7 @@ const columns = {
       dataIndex: "name",
       key: "name",
       render: (_text, deploy) => {
-        return deploy.added ? <Link to={`${pathPrefix}${resource.url}${deploy.name}`}>{deploy.name}</Link> :
-          deploy.name;
+        <Link to={`${pathPrefix}${resource.url}${deploy.name}`}>{deploy.name}</Link>;
       }
     };
   },
