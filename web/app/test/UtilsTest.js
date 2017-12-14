@@ -1,7 +1,56 @@
 import { expect } from 'chai';
-import { metricToFormatter, toClassName } from '../js/components/util/Utils.js';
+import { metricToFormatter, styleNum, toClassName } from '../js/components/util/Utils.js';
+
+// introduce some binary floating point rounding errors, like ya do
+function float(num) {
+  return num * 0.1 * 10;
+}
 
 describe('Utils', () => {
+  describe('styleNum', () => {
+    it('properly formats numbers', () => {
+      let compare = (f, s) => expect(styleNum(float(f))).to.equal(s);
+      compare(          1,          "1"       );
+      compare(          2.20,       "2.2"     );
+      compare(          3,          "3"       );
+      compare(          4.4,        "4.4"     );
+      compare(          5.0000001,  "5"       );
+      compare(          7.6666667,  "7.67"    );
+      compare(        123.456,      "123.46"  );
+      compare(       1212.999999,   "1.2k"    );
+      compare(       5329.333333,   "5.3k"    );
+      compare(      16384.888,      "16.4k"   );
+      compare(     131042,          "131k"    );
+      compare(    1048576,          "1M"      );
+      compare(    2097152.1,        "2.1M"    );
+      compare(   16777216,          "16.8M"   );
+      compare(  536870912,          "536.9M"  );
+      compare( 1073741824,          "1.1G"    );
+      compare(68719476736,          "68.7G"   );
+    });
+
+    it('properly formats numbers with units and no truncation', () => {
+      let compare = (f, s) => expect(styleNum(float(f), " RPS", false)).to.equal(s);
+      compare(          1,          "1 RPS"               );
+      compare(          2.20,       "2.2 RPS"             );
+      compare(          3,          "3 RPS"               );
+      compare(          4.4,        "4.4 RPS"             );
+      compare(          5.0000001,  "5 RPS"               );
+      compare(          7.6666667,  "7.67 RPS"            );
+      compare(        123.456,      "123.46 RPS"          );
+      compare(       1212.999999,   "1,213 RPS"           );
+      compare(       5329.333333,   "5,329 RPS"           );
+      compare(      16384.888,      "16,385 RPS"          );
+      compare(     131042,          "131,042 RPS"         );
+      compare(    1048576,          "1,048,576 RPS"       );
+      compare(    2097152.1,        "2,097,152 RPS"       );
+      compare(   16777216,          "16,777,216 RPS"      );
+      compare(  536870912,          "536,870,912 RPS"     );
+      compare( 1073741824,          "1,073,741,824 RPS"   );
+      compare(68719476736,          "68,719,476,736 RPS"  );
+    });
+  });
+
   describe('Metric Formatters', () => {
     it('formats undefined input', () => {
       let undefinedMetric;
