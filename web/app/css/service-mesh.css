@@ -42,7 +42,7 @@ td .status-dot {
     background-color: var(--green);
   }
   &.status-dot-bad {
-    background-color: #EB5757;
+    background-color: var(--bad-red);
   }
   &.status-dot-neutral {
     background-color: #E0E0E0;
