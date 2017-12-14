@@ -81,12 +81,12 @@ export default class Deployment extends React.Component {
     Promise.all([deployFetch, podFetch, podTsFetch, upstreamFetch, upstreamTsFetch, downstreamFetch, downstreamTsFetch])
       .then(([deployMetrics, podRollup, podTimeseries, upstreamRollup, upstreamTimeseries, downstreamRollup, downstreamTimeseries]) => {
         let tsByDeploy = processTimeseriesMetrics(deployMetrics.metrics, "targetDeploy");
-        let podMetrics = _.compact(processRollupMetrics(podRollup.metrics, "targetPod"));
+        let podMetrics = processRollupMetrics(podRollup.metrics, "targetPod");
         let podTs = processTimeseriesMetrics(podTimeseries.metrics, "targetPod");
 
-        let upstreamMetrics = _.compact(processRollupMetrics(upstreamRollup.metrics, "sourceDeploy"));
+        let upstreamMetrics = processRollupMetrics(upstreamRollup.metrics, "sourceDeploy");
         let upstreamTsByDeploy = processTimeseriesMetrics(upstreamTimeseries.metrics, "sourceDeploy");
-        let downstreamMetrics = _.compact(processRollupMetrics(downstreamRollup.metrics, "targetDeploy"));
+        let downstreamMetrics = processRollupMetrics(downstreamRollup.metrics, "targetDeploy");
         let downstreamTsByDeploy = processTimeseriesMetrics(downstreamTimeseries.metrics, "targetDeploy");
 
         let totalRequestRate = _.sumBy(podMetrics, "requestRate");

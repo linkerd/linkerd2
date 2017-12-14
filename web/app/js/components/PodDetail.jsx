@@ -73,9 +73,9 @@ export default class PodDetail extends React.Component {
         let podTs = processTimeseriesMetrics(podMetrics.metrics, "targetPod");
         let podTimeseries = _.get(podTs, this.state.pod, {});
 
-        let upstreamMetrics = _.compact(processRollupMetrics(upstreamRollup.metrics, "sourcePod"));
+        let upstreamMetrics = processRollupMetrics(upstreamRollup.metrics, "sourcePod");
         let upstreamTsByPod = processTimeseriesMetrics(upstreamTimeseries.metrics, "sourcePod");
-        let downstreamMetrics = _.compact(processRollupMetrics(downstreamRollup.metrics, "targetPod"));
+        let downstreamMetrics = processRollupMetrics(downstreamRollup.metrics, "targetPod");
         let downstreamTsByPod = processTimeseriesMetrics(downstreamTimeseries.metrics, "targetPod");
 
         this.setState({

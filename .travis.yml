@@ -55,8 +55,7 @@ jobs:
       install:
         - cd web/app && yarn && yarn webpack
       script:
-        # TODO: start running karma tests
-        - echo "no tests"
+        - yarn karma start --single-run
 
     # Push container images to Google Container Registry.
     - stage: docker-deploy

@@ -1,0 +1,24 @@
+{
+  "pods": [
+    {
+      "name": "test/gen2-2742169793-6rkz8",
+      "podIP": "10.196.1.205",
+      "deployment": "test/gen2",
+      "status": "Failed",
+      "added": false,
+      "sinceLastReport": null,
+      "controllerNamespace": "",
+      "controlPlane": false
+    },
+    {
+      "name": "test/gen3-689289393-xz7xg",
+      "podIP": "10.196.1.206",
+      "deployment": "test/gen3",
+      "status": "Running",
+      "added": false,
+      "sinceLastReport": null,
+      "controllerNamespace": "",
+      "controlPlane": false
+    }
+  ]
+}
