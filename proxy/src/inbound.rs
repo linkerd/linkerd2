@@ -176,7 +176,7 @@ mod tests {
             local: net::SocketAddr,
             remote: net::SocketAddr
         ) -> bool {
-            let ctx = ctx::Proxy::inbound(&ctx::Process::new("test", "test", "test"));
+            let ctx = ctx::Proxy::inbound(&ctx::Process::test("test", "test", "test"));
 
             let inbound = new_inbound(None, &ctx);
 
@@ -198,7 +198,7 @@ mod tests {
             local: net::SocketAddr,
             remote: net::SocketAddr
         ) -> bool {
-            let ctx = ctx::Proxy::inbound(&ctx::Process::new("test", "test", "test"));
+            let ctx = ctx::Proxy::inbound(&ctx::Process::test("test", "test", "test"));
 
             let inbound = new_inbound(default, &ctx);
 
@@ -210,7 +210,7 @@ mod tests {
         }
 
         fn recognize_default_no_ctx(default: Option<net::SocketAddr>) -> bool {
-            let ctx = ctx::Proxy::inbound(&ctx::Process::new("test", "test", "test"));
+            let ctx = ctx::Proxy::inbound(&ctx::Process::test("test", "test", "test"));
 
             let inbound = new_inbound(default, &ctx);
 
@@ -224,7 +224,7 @@ mod tests {
             local: net::SocketAddr,
             remote: net::SocketAddr
         ) -> bool {
-            let ctx = ctx::Proxy::inbound(&ctx::Process::new("test", "test", "test"));
+            let ctx = ctx::Proxy::inbound(&ctx::Process::test("test", "test", "test"));
 
             let inbound = new_inbound(default, &ctx);
 

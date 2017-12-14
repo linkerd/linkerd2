@@ -137,6 +137,8 @@ impl Main {
     where
         F: Future<Item = (), Error = ()>,
     {
+        let process_ctx = ctx::Process::new(&self.config);
+
         let Main {
             config,
             control_listener,
@@ -154,7 +156,6 @@ impl Main {
             config.private_forward
         );
 
-        let process_ctx = ctx::Process::from_env();
         let (sensors, telemetry) = telemetry::new(
             &process_ctx,
             config.event_buffer_capacity,
