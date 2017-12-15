@@ -198,6 +198,11 @@ export default class Deployment extends React.Component {
       return (<div className="deployment-title">
         <h1>{this.state.deploy}</h1>
         <div className="status-badge unadded">UNADDED</div>
+        <div className={"incomplete-mesh-message"}>
+          {this.state.deploy} has not been added to the service mesh
+          <div className="instructions">Add the deployment to the deployment.yml file</div>
+          <div className="instructions">Then run <code>kubectl inject deployment.yml | kubectl apply -f - </code> to add the deployment to the service mesh</div>
+        </div>
       </div>);
     } else {
       return (
@@ -221,11 +226,6 @@ export default class Deployment extends React.Component {
           <div className="subsection-header">Deployment detail
           </div>
           {this.renderDeploymentTitle()}
-          <div className={"incomplete-mesh-message"}>
-            {this.state.deploy} has not been added to the service mesh
-            <div className="instructions">Add the deployment to the deployment.yml file</div>
-            <div className="instructions">Then run <code>kubectl inject deployment.yml | kubectl apply -f - </code> to add the deployment to the service mesh</div>
-          </div>
         </div>
         {this.renderContent()}
       </div>

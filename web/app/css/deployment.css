@@ -19,7 +19,7 @@
     display: inline-block;
     border-radius: 50px;
     padding: 4px 10px;
-    margin: 0px 12px;
+    margin: 6px 12px;
     font-size: small;
 
     &.added {
