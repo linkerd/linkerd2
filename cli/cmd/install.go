@@ -24,7 +24,7 @@ metadata:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: conduit
+  name: conduit-controller
   namespace: conduit
 
 ### RBAC ###
@@ -32,7 +32,7 @@ metadata:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: conduit
+  name: conduit-controller
 rules:
 - apiGroups: ["extensions"]
   resources: ["deployments", "replicasets"]
@@ -45,15 +45,15 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: conduit
+  name: conduit-controller
   namespace: conduit
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: conduit
+  name: conduit-controller
 subjects:
 - kind: ServiceAccount
-  name: conduit
+  name: conduit-controller
   namespace: conduit
 
 ### Controller ###
@@ -118,7 +118,7 @@ spec:
       annotations:
         conduit.io/created-by: "{{.CliVersion}}"
     spec:
-      serviceAccount: conduit
+      serviceAccount: conduit-controller
       containers:
       - name: public-api
         ports:
