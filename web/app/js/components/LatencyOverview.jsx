@@ -132,7 +132,7 @@ export default class MultiLineGraph extends React.Component {
 
   updateAxes() {
     // Same as ScatterPlot.jsx
-    if(this.props.showAxes) {
+    if (this.props.showAxes) {
       let xAxis = d3.axisBottom(this.xScale)
         .ticks(5)
         .tickSize(5);

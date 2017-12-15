@@ -22,6 +22,7 @@
     "eqeqeq": [2, "smart"],
     "indent": [2, 2],
     "jsx-quotes": 1,
+    "keyword-spacing": 1,
     "no-console": [1, { "allow": ["warn", "error"] }], // minor offense
     "no-redeclare": [1], // minor offense
     "no-trailing-spaces": 1,

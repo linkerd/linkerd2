@@ -124,7 +124,7 @@ export default class LineGraph extends React.Component {
   }
 
   updateAxes() {
-    if(this.props.showAxes) {
+    if (this.props.showAxes) {
       this.xAxis
         .call(d3.axisBottom(this.xScale)); // add x axis labels
 
