@@ -13,7 +13,7 @@
   "env": {
     "browser": true,
     "es6": true,
-    "mocha": true,
+    "mocha": true
   },
   "extends" : ["eslint:recommended", "plugin:react/recommended"],
   "rules": {
@@ -48,6 +48,8 @@
     "react/sort-prop-types": 1,
     "semi": [2, "always"],
     "sort-imports": [1, { "ignoreCase": true, "memberSyntaxSortOrder": ["single", "multiple", "all", "none"] }],
+    "space-before-blocks": [1, "always"],
+    "space-before-function-paren": [1, "never"],
     "strict": [1, "safe"]
   }
 }

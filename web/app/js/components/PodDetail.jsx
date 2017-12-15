@@ -128,7 +128,7 @@ export default class PodDetail extends React.Component {
   }
 
   render() {
-    if(!this.state.loaded){
+    if(!this.state.loaded) {
       return <ConduitSpinner />;
     } else return (
       <div className="page-content pod-detail">

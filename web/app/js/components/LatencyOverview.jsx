@@ -109,7 +109,7 @@ export default class MultiLineGraph extends React.Component {
     this.updateAxes();
   }
 
-  updateGraph(){
+  updateGraph() {
     let d = _.isEmpty(this.props.data) ? dataDefaults : this.props.data;
 
     this.svg.select(".line-p50")
