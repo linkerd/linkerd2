@@ -26,7 +26,10 @@ export default class HealthPane extends React.Component {
     return _.meanBy(metrics, 'successRate');
   }
 
-  getHealthClassName(successRate) {
+  getHealthClassName(successRate, deploymentAdded) {
+    if(!deploymentAdded){
+      return "health-unknown";
+    }
     if (successRate < 0.4) {
       return "health-bad";
     }
@@ -44,14 +47,14 @@ export default class HealthPane extends React.Component {
     return {
       inbound: {
         requests: metricToFormatter["REQUEST_RATE"](this.getRequestRate(this.props.upstreamMetrics)),
-        health: this.getHealthClassName(inboundSr)
+        health: this.getHealthClassName(inboundSr, this.props.deploymentAdded)
       },
       outbound: {
         requests: metricToFormatter["REQUEST_RATE"](this.getRequestRate(this.props.downstreamMetrics)),
-        health: this.getHealthClassName(outboundSr)
+        health: this.getHealthClassName(outboundSr, this.props.deploymentAdded)
       },
       current: {
-        health: this.getHealthClassName(sr)
+        health: this.getHealthClassName(sr, this.props.deploymentAdded)
       }
     };
   }

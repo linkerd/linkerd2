@@ -92,7 +92,6 @@ export default class Deployment extends React.Component {
         let downstreamTsByDeploy = processTimeseriesMetrics(downstreamTimeseries.metrics, "targetDeploy");
 
         let deploy = _.find(processDeployments(podList.pods), ["name", this.state.deploy]);
-        console.log(deploy);
         let totalRequestRate = _.sumBy(podMetrics, "requestRate");
         _.each(podMetrics, datum => datum.totalRequests = totalRequestRate);
 
@@ -133,7 +132,8 @@ export default class Deployment extends React.Component {
         entityType="deployment"
         currentSr={currentSuccessRate}
         upstreamMetrics={this.state.upstreamMetrics}
-        downstreamMetrics={this.state.downstreamMetrics} />,
+        downstreamMetrics={this.state.downstreamMetrics}
+        deploymentAdded={this.state.added} />,
       <StatPane
         key="stat-pane"
         lastUpdated={this.state.lastUpdated}

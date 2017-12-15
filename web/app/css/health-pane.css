@@ -30,6 +30,9 @@
     &.health-neutral {
       border: 2px solid #108ee9;
     }
+    &.health-unknown {
+      border: 2px solid #BDBDBD;
+    }
   }
 
   & .adjacent-health {
@@ -47,6 +50,11 @@
     &.health-neutral {
       & .ant-progress-bg {
         background: #108ee9;
+      }
+    }
+    &.health-unknown {
+      & .ant-progress-bg {
+        background: #BDBDBD;
       }
     }
   }
