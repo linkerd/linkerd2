@@ -3,7 +3,7 @@ use std;
 use std::io;
 use std::net::SocketAddr;
 use tokio_core;
-use tokio_core::net::TcpListener;
+use tokio_core::net::{TcpListener, TcpStreamNew};
 use tokio_core::reactor::Handle;
 use tokio_io::{AsyncRead, AsyncWrite};
 
@@ -17,7 +17,20 @@ pub struct BoundPort {
     local_addr: SocketAddr,
 }
 
+/// Initiates a client connection to the given address.
+pub fn connect(addr: &SocketAddr, executor: &Handle) -> Connecting {
+    Connecting(PlaintextSocket::connect(addr, executor))
+}
+
+/// A socket that is in the process of connecting.
+pub struct Connecting(TcpStreamNew);
+
 /// Abstracts a plaintext socket vs. a TLS decorated one.
+///
+/// A `Connection` has the `TCP_NODELAY` option set automatically. Also
+/// it strictly controls access to information about the underlying
+/// socket to reduce the chance of TLS protections being accidentally
+/// subverted.
 #[derive(Debug)]
 pub enum Connection {
     Plain(PlaintextSocket),
@@ -60,18 +73,24 @@ impl BoundPort {
                 // doesn't work on all platforms and also the underlying
                 // libraries don't have the necessary API for that, so just
                 // do it here.
-                if let Err(e) = socket.set_nodelay(true) {
-                    warn!(
-                        "could not set TCP_NODELAY on {:?}/{:?}: {}",
-                        socket.local_addr(),
-                        socket.peer_addr(),
-                        e
-                    );
-                }
+                set_nodelay_or_warn(&socket);
                 f(b, (Connection::Plain(socket), remote_addr))
             });
 
         Box::new(fut.map(|_| ()))
+    }
+}
+
+// ===== impl Connecting =====
+
+impl Future for Connecting {
+    type Item = Connection;
+    type Error = io::Error;
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        let socket = try_ready!(self.0.poll());
+        set_nodelay_or_warn(&socket);
+        Ok(Async::Ready(Connection::Plain(socket)))
     }
 }
 
@@ -138,5 +157,18 @@ impl AsyncWrite for Connection {
         match *self {
             Plain(ref mut t) => t.shutdown(),
         }
+    }
+}
+
+// Misc.
+
+fn set_nodelay_or_warn(socket: &PlaintextSocket) {
+    if let Err(e) = socket.set_nodelay(true) {
+        warn!(
+            "could not set TCP_NODELAY on {:?}/{:?}: {}",
+            socket.local_addr(),
+            socket.peer_addr(),
+            e
+        );
     }
 }
