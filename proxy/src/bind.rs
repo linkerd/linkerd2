@@ -15,6 +15,7 @@ use control;
 use ctx;
 use telemetry;
 use transport;
+use ::timeout::Timeout;
 
 const DEFAULT_TIMEOUT_MS: u64 = 300;
 
@@ -120,6 +121,7 @@ impl<C, B> Bind<C, B> {
     // pub fn sensors(&self) -> &telemetry::Sensors {
     //     &self.sensors
     // }
+
 }
 
 impl<B> Bind<Arc<ctx::Proxy>, B>
@@ -132,9 +134,9 @@ where
 
         // Map a socket address to an HTTP/2.0 connection.
         let connect = {
-            let c = transport::TimeoutConnect::new(
+            let c = Timeout::new(
                 transport::Connect::new(*addr, &self.executor),
-                self.connect_timeout,
+                self.connect_timeout, 
                 &self.executor,
             );
 

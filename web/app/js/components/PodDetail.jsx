@@ -4,7 +4,7 @@ import HealthPane from './HealthPane.jsx';
 import React from 'react';
 import StatPane from './StatPane.jsx';
 import UpstreamDownstream from './UpstreamDownstream.jsx';
-import { processMetrics, processTsWithLatencyBreakdown } from './util/MetricUtils.js';
+import { processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
 import 'whatwg-fetch';
 
 export default class PodDetail extends React.Component {
@@ -39,8 +39,10 @@ export default class PodDetail extends React.Component {
       metricsWindow: "10m",
       pod: pod,
       upstreamMetrics: [],
+      upstreamTsByPod: {},
       downstreamMetrics: [],
-      summaryMetrics: {},
+      downstreamTsByPod: {},
+      podTs: {},
       pendingRequests: false,
       loaded: false
     };
@@ -67,18 +69,23 @@ export default class PodDetail extends React.Component {
     let downstreamTsFetch = fetch(downstreamTimeseriesUrl).then(r => r.json());
 
     Promise.all([podFetch, upstreamFetch, upstreamTsFetch, downstreamFetch, downstreamTsFetch])
-      .then(([podMetrics, upstreamRollup, upsreamTimeseries, downstreamRollup, downstreamTimeseries]) => {
-        let podTimeseries = processTsWithLatencyBreakdown(podMetrics.metrics);
+      .then(([podMetrics, upstreamRollup, upstreamTimeseries, downstreamRollup, downstreamTimeseries]) => {
+        let podTs = processTimeseriesMetrics(podMetrics.metrics, "targetPod");
+        let podTimeseries = _.get(podTs, this.state.pod, {});
 
-        let upstreamMetrics = _.compact(processMetrics(upstreamRollup.metrics, upsreamTimeseries.metrics, "sourcePod"));
-        let downstreamMetrics = _.compact(processMetrics(downstreamRollup.metrics, downstreamTimeseries.metrics, "targetPod"));
+        let upstreamMetrics = processRollupMetrics(upstreamRollup.metrics, "sourcePod");
+        let upstreamTsByPod = processTimeseriesMetrics(upstreamTimeseries.metrics, "sourcePod");
+        let downstreamMetrics = processRollupMetrics(downstreamRollup.metrics, "targetPod");
+        let downstreamTsByPod = processTimeseriesMetrics(downstreamTimeseries.metrics, "targetPod");
 
         this.setState({
           pendingRequests: false,
           lastUpdated: Date.now(),
-          summaryMetrics: podTimeseries,
+          podTs: podTimeseries,
           upstreamMetrics: upstreamMetrics,
+          upstreamTsByPod: upstreamTsByPod,
           downstreamMetrics: downstreamMetrics,
+          downstreamTsByPod: downstreamTsByPod,
           loaded: true
         });
       }).catch(() => {
@@ -87,7 +94,7 @@ export default class PodDetail extends React.Component {
   }
 
   renderSections() {
-    let currentSuccessRate = _.get(_.last(_.get(this.state.summaryMetrics, "SUCCESS_RATE", [])), "value");
+    let currentSuccessRate = _.get(_.last(_.get(this.state.podTs, "SUCCESS_RATE", [])), "value");
     return [
       <HealthPane
         key="pod-health-pane"
@@ -99,19 +106,21 @@ export default class PodDetail extends React.Component {
       <StatPane
         key="pod-stat-pane"
         lastUpdated={this.state.lastUpdated}
-        summaryMetrics={this.state.summaryMetrics} />,
+        timeseries={this.state.podTs} />,
       <UpstreamDownstream
         key="pod-upstream-downstream"
         entity="pod"
         lastUpdated={this.state.lastUpdated}
         upstreamMetrics={this.state.upstreamMetrics}
+        upstreamTsByEntity={this.state.upstreamTsByPod}
         downstreamMetrics={this.state.downstreamMetrics}
+        downstreamTsByEntity={this.state.downstreamTsByPod}
         pathPrefix={this.props.pathPrefix} />
     ];
   }
 
   renderContent() {
-    if (_.isEmpty(this.state.summaryMetrics)) {
+    if (_.isEmpty(this.state.podTs)) {
       return <div>No data</div>;
     } else {
       return this.renderSections();

@@ -1,14 +1,14 @@
 use futures::{Async, Future, Poll};
 use tokio_connect;
 use tokio_core::net::{TcpStream, TcpStreamNew};
-use tokio_core::reactor::{Handle, Timeout};
+use tokio_core::reactor::Handle;
 use url;
 
 use std::io;
 use std::net::{IpAddr, SocketAddr};
-use std::time::Duration;
 
 use dns;
+use ::timeout;
 
 #[must_use = "futures do nothing unless polled"]
 pub struct TcpStreamNewNoDelay(TcpStreamNew);
@@ -26,24 +26,8 @@ pub struct LookupAddressAndConnect {
     handle: Handle,
 }
 
-#[derive(Debug, Clone)]
-pub struct TimeoutConnect<C> {
-    connect: C,
-    timeout: Duration,
-    handle: Handle,
-}
-
-pub struct TimeoutConnectFuture<F> {
-    connect: F,
-    duration: Duration,
-    timeout: Timeout,
-}
-
-#[derive(Debug)]
-pub enum TimeoutError<E> {
-    Timeout(Duration),
-    Connect(E),
-}
+pub type TimeoutConnect<C> = timeout::Timeout<C>;
+pub type TimeoutError<E> = timeout::TimeoutError<E>;
 
 // ===== impl TcpStreamNewNoDelay =====
 
@@ -125,52 +109,5 @@ impl tokio_connect::Connect for LookupAddressAndConnect {
                 TcpStreamNewNoDelay(TcpStream::connect(&addr, &handle))
             });
         Box::new(c)
-    }
-}
-
-// ===== impl TimeoutConnect =====
-
-impl<C: tokio_connect::Connect> TimeoutConnect<C> {
-    /// Returns a `Connect` to `addr` and `handle`.
-    pub fn new(connect: C, timeout: Duration, handle: &Handle) -> Self {
-        Self {
-            connect,
-            timeout,
-            handle: handle.clone(),
-        }
-    }
-}
-
-impl<C: tokio_connect::Connect> tokio_connect::Connect for TimeoutConnect<C> {
-    type Connected = C::Connected;
-    type Error = TimeoutError<C::Error>;
-    type Future = TimeoutConnectFuture<C::Future>;
-
-    fn connect(&self) -> Self::Future {
-        let connect = self.connect.connect();
-        let duration = self.timeout;
-        let timeout = Timeout::new(duration, &self.handle).unwrap();
-        TimeoutConnectFuture {
-            connect,
-            duration,
-            timeout,
-        }
-    }
-}
-
-impl<F: Future> Future for TimeoutConnectFuture<F> {
-    type Item = F::Item;
-    type Error = TimeoutError<F::Error>;
-
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        if let Async::Ready(tcp) = self.connect.poll().map_err(TimeoutError::Connect)? {
-            return Ok(Async::Ready(tcp));
-        }
-
-        if let Async::Ready(_) = self.timeout.poll().expect("timer failed") {
-            return Err(TimeoutError::Timeout(self.duration));
-        }
-
-        Ok(Async::NotReady)
     }
 }

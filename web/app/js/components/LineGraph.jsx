@@ -1,3 +1,4 @@
+import _ from 'lodash';
 import React from 'react';
 import * as d3 from 'd3';
 import './../../css/line-graph.css';
@@ -27,6 +28,11 @@ export default class LineGraph extends React.Component {
     this.xAxis = this.svg.append("g")
       .attr("transform", "translate(0," + this.state.height + ")");
     this.yAxis = this.svg.append("g");
+
+    this.loadingMessage = this.svg
+      .append("text")
+      .attr("transform",
+        "translate(" + (this.state.width / 2 - 30) + "," + (this.state.height / 2) + ")");
 
     this.updateScales();
     this.initializeGraph();
@@ -87,6 +93,12 @@ export default class LineGraph extends React.Component {
   }
 
   initializeGraph() {
+    if (_.isEmpty(this.props.data)) {
+      this.loadingMessage.text("---");
+    }
+
+    this.svg.select("path").remove();
+
     let lineChart = this.svg.append("path")
       .attr("class", "chart-line line");
 
@@ -96,7 +108,13 @@ export default class LineGraph extends React.Component {
     this.updateAxes();
   }
 
-  updateGraph(){
+  updateGraph() {
+    if (_.isEmpty(this.props.data)) {
+      this.loadingMessage.style("opacity", 1);
+    } else {
+      this.loadingMessage.style("opacity", 0);
+    }
+
     this.svg.select(".line")
       .transition()
       .duration(450)

@@ -8,6 +8,8 @@ import './../../css/bar-chart.css';
 const defaultSvgWidth = 595;
 const defaultSvgHeight = 150;
 const margin = { top: 0, right: 0, bottom: 20, left: 0 };
+const horizontalLabelLimit = 4; // number of bars beyond which to tilt axis labels
+const labelLimit = 40; // beyond this, stop labelling bars entirely
 
 export default class LineGraph extends React.Component {
   constructor(props) {
@@ -57,6 +59,19 @@ export default class LineGraph extends React.Component {
   getChartDimensions() {
     let svgWidth = this.props.width || defaultSvgWidth;
     let svgHeight = this.props.height || defaultSvgHeight;
+    let tiltLabels = false;
+    let hideLabels = false;
+
+    if (_.size(this.props.data) > horizontalLabelLimit) {
+      if(_.size(this.props.data) > labelLimit) {
+        // if there are way too many bars, don't label at all
+        hideLabels = true;
+      } else {
+        // if there are many bars, tilt x axis labels
+        margin.bottom += 100;
+        tiltLabels = true;
+      }
+    }
 
     let width = svgWidth - margin.left - margin.right;
     let height = svgHeight - margin.top - margin.bottom;
@@ -66,14 +81,16 @@ export default class LineGraph extends React.Component {
       svgHeight: svgHeight,
       width: width,
       height: height,
-      margin: margin
+      margin: margin,
+      tiltLabels: tiltLabels,
+      hideLabels: hideLabels
     };
   }
 
   chartData() {
     let data = this.props.data;
     _.each(data, d => {
-      let p = new Percentage(d.rollup.requestRate, d.rollup.totalRequests);
+      let p = new Percentage(d.requestRate, d.totalRequests);
       d.shareOfRequests = p.get();
       d.pretty = p.prettyRate();
     });
@@ -83,7 +100,7 @@ export default class LineGraph extends React.Component {
   updateScales() {
     let data = this.chartData();
     this.xScale.domain(_.map(data, d => d.name));
-    this.yScale.domain([0, d3.max(data, d => d.rollup.requestRate)]);
+    this.yScale.domain([0, d3.max(data, d => d.requestRate)]);
   }
 
   initializeScales() {
@@ -105,14 +122,14 @@ export default class LineGraph extends React.Component {
       .attr("class", "bar")
       .attr("x", d => this.xScale(d.name))
       .attr("width", () =>  this.xScale.bandwidth())
-      .attr("y", d => this.yScale(d.rollup.requestRate))
-      .attr("height", d => this.state.height - this.yScale(d.rollup.requestRate))
+      .attr("y", d => this.yScale(d.requestRate))
+      .attr("height", d => this.state.height - this.yScale(d.requestRate))
       .on("mousemove", d => {
         this.tooltip
           .style("left", d3.event.pageX - 50 + "px")
           .style("top", d3.event.pageY - 70 + "px")
           .style("display", "inline-block") // show tooltip
-          .text(`${d.name}: ${metricToFormatter["REQUEST_RATE"](d.rollup.requestRate)} (${d.pretty} of total)`);
+          .html(`${d.name}:<br /> ${metricToFormatter["REQUEST_RATE"](d.requestRate)} (${d.pretty} of total)`);
       })
       .on("mouseout", () => this.tooltip.style("display", "none"));
 
@@ -121,7 +138,23 @@ export default class LineGraph extends React.Component {
 
   updateAxes() {
     this.xAxis
-      .call(d3.axisBottom(this.xScale)); // add x axis labels
+      .call(d3.axisBottom(this.xScale)) // add x axis labels
+      .selectAll("text")
+      .attr("class", "tick-labels")
+      .attr("transform", () => this.state.tiltLabels ? "rotate(-65)" : "")
+      .style("text-anchor", () => this.state.tiltLabels ? "end" : "")
+      .text(d => {
+        if (this.state.hideLabels) {
+          return;
+        }
+
+        let displayText = d;
+        // truncate long label names
+        if (_.size(displayText) > 20) {
+          displayText = "..." + displayText.substring(displayText.length - 20);
+        }
+        return displayText;
+      });
   }
 
   render() {

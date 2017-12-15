@@ -3,11 +3,11 @@ import CallToAction from './CallToAction.jsx';
 import ConduitSpinner from "./ConduitSpinner.jsx";
 import DeploymentSummary from './DeploymentSummary.jsx';
 import Metric from './Metric.jsx';
-import { processMetrics } from './util/MetricUtils.js';
 import React from 'react';
 import { rowGutter } from './util/Utils.js';
 import StatusTable from './StatusTable.jsx';
 import { Col, Row, Table } from 'antd';
+import { processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
 import './../../css/service-mesh.css';
 import 'whatwg-fetch';
 
@@ -44,7 +44,6 @@ const componentDeploys = {
 };
 const componentsToGraph = ["proxy-api", "telemetry", "destination"];
 const noData = {
-  rollup: {},
   timeseries: { requestRate: [], successRate: [] }
 };
 
@@ -89,12 +88,14 @@ export default class ServiceMesh extends React.Component {
 
     Promise.all([rollupRequest, timeseriesRequest, podsRequest])
       .then(([metrics, ts, pods]) => {
-        let m = _.compact(processMetrics(metrics.metrics, ts.metrics, "component"));
-        let d = this.processDeploys(pods.pods);
+        let m = processRollupMetrics(metrics.metrics, "component");
+        let tsByComponent = processTimeseriesMetrics(ts.metrics, "component");
+        let d = this.getDeploymentList(pods.pods);
         let c = this.processComponents(pods.pods);
 
         this.setState({
           metrics: m,
+          timeseriesByComponent: tsByComponent,
           deploys: d,
           components: c,
           lastUpdated: Date.now(),
@@ -136,7 +137,7 @@ export default class ServiceMesh extends React.Component {
     ];
   }
 
-  processDeploys(pods) {
+  getDeploymentList(pods) {
     return _(pods)
       .reject(p => _.isEmpty(p.deployment) || p.controlPlane)
       .groupBy("deployment")
@@ -186,6 +187,7 @@ export default class ServiceMesh extends React.Component {
                   key={data.id}
                   lastUpdated={this.state.lastUpdated}
                   data={data}
+                  requestTs={_.get(this.state.timeseriesByComponent,[meshComponent, "REQUEST_RATE"], [])}
                   noLink={true} />
               </Col>);
             })

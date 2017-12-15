@@ -6,19 +6,24 @@ import React from 'react';
 import { rowGutter } from './util/Utils.js';
 import TabbedMetricsTable from './TabbedMetricsTable.jsx';
 import { Col, Row } from 'antd';
-import { emptyMetric, processMetrics } from './util/MetricUtils.js';
+import { emptyMetric, processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
 import './../../css/deployments.css';
 import 'whatwg-fetch';
 
+const maxTsToFetch = 15; // Beyond this, stop showing sparklines in table
 export default class Deployments extends React.Component {
   constructor(props) {
     super(props);
     this.loadFromServer = this.loadFromServer.bind(this);
+    this.loadTimeseriesFromServer = this.loadTimeseriesFromServer.bind(this);
+
     this.state = {
       metricsWindow: "10m",
       pollingInterval: 10000, // TODO: poll based on metricsWindow size
       metrics: [],
+      timeseriesByDeploy: {},
       lastUpdated: 0,
+      limitSparklineData: false,
       pendingRequests: false,
       loaded: false
     };
@@ -33,7 +38,7 @@ export default class Deployments extends React.Component {
     window.clearInterval(this.timerId);
   }
 
-  processDeploys(pods) {
+  getDeploymentList(pods) {
     return _(pods)
       .reject(p => _.isEmpty(p.deployment) || p.controlPlane)
       .groupBy('deployment')
@@ -44,11 +49,13 @@ export default class Deployments extends React.Component {
       .value();
   }
 
-  combineDeploymentsWithMetrics(deploys, metrics) {
+  addDeploysWithNoMetrics(deploys, metrics) {
+    // also display deployments which have not been added to the service mesh
+    // (and therefore have no associated metrics)
     let newMetrics = [];
-    let groupedMetrics = _.groupBy(metrics, 'name');
+    let metricsByName = _.groupBy(metrics, 'name');
     _.each(deploys, data => {
-      newMetrics.push(_.get(groupedMetrics, [data.name, 0], emptyMetric(data.name, data.added)));
+      newMetrics.push(_.get(metricsByName, [data.name, 0], emptyMetric(data.name, data.added)));
     });
     return newMetrics;
   }
@@ -60,35 +67,86 @@ export default class Deployments extends React.Component {
     this.setState({ pendingRequests: true });
 
     let rollupPath = `${this.props.pathPrefix}/api/metrics?window=${this.state.metricsWindow}`;
-    let timeseriesPath = `${rollupPath}&timeseries=true`;
     let podPath = `${this.props.pathPrefix}/api/pods`;
     let rollupRequest = fetch(rollupPath).then(r => r.json());
-    let timeseriesRequest = fetch(timeseriesPath).then(r => r.json());
+
     let podRequest = fetch(podPath).then(r => r.json());
 
-    Promise.all([rollupRequest, timeseriesRequest, podRequest])
-      .then(([metrics, ts, p]) => {
+    // expose serverPromise for testing
+    this.serverPromise = Promise.all([rollupRequest, podRequest])
+      .then(([rollup, p]) => {
+        let poByDeploy = this.getDeploymentList(p.pods);
+        let meshDeploys = processRollupMetrics(rollup.metrics, "targetDeploy");
+        let combinedMetrics = this.addDeploysWithNoMetrics(poByDeploy, meshDeploys);
 
-        let po = this.processDeploys(p.pods);
-        let m = _.compact(processMetrics(metrics.metrics, ts.metrics, "targetDeploy"));
-        let combinedMetrics = this.combineDeploymentsWithMetrics(po, m);
-        this.setState({
-          metrics: combinedMetrics,
-          lastUpdated: Date.now(),
-          pendingRequests: false,
-          loaded: true
-        });
-      }).catch(() => {
+        this.loadTimeseriesFromServer(meshDeploys, combinedMetrics);
+      })
+      .catch(() => {
         this.setState({ pendingRequests: false });
       });
   }
 
-  renderPageContents() {
-    let leastHealthyDeployments = _(this.state.metrics)
-      .reject(m => m.added === false)
-      .sortBy(m => m.rollup.successRate)
-      .take(3)
+  loadTimeseriesFromServer(meshDeployMetrics, combinedMetrics) {
+    let limitSparklineData = _.size(meshDeployMetrics) > maxTsToFetch;
+
+    let rollupPath = `${this.props.pathPrefix}/api/metrics?window=${this.state.metricsWindow}`;
+    let timeseriesPath = `${rollupPath}&timeseries=true`;
+
+    let updatedState = {
+      metrics: combinedMetrics,
+      limitSparklineData: limitSparklineData,
+      loaded: true,
+      pendingRequests: false
+    };
+
+    if(limitSparklineData) {
+      // don't fetch timeseries for every deploy
+      let leastHealthyDeployments = this.getLeastHealthyDeployments(meshDeployMetrics);
+
+      let tsPromises = _.map(leastHealthyDeployments, dep => {
+        let tsPathForDeploy = `${timeseriesPath}&target_deploy=${dep.name}`;
+        return fetch(tsPathForDeploy).then(r => r.json());
+      });
+      Promise.all(tsPromises)
+        .then(tsMetrics => {
+          let leastHealthyTs = _.reduce(tsMetrics, (mem, ea) => {
+            mem = mem.concat(ea.metrics);
+            return mem;
+          }, []);
+          let tsByDeploy = processTimeseriesMetrics(leastHealthyTs, "targetDeploy");
+          this.setState(_.merge({}, updatedState, {
+            timeseriesByDeploy: tsByDeploy,
+            lastUpdated: Date.now(),
+          }));
+        }).catch(() => {
+          this.setState({ pendingRequests: false });
+        });
+    } else {
+      // fetch timeseries for all deploys
+      fetch(timeseriesPath)
+        .then(r => r.json())
+        .then(ts => {
+          let tsByDeploy = processTimeseriesMetrics(ts.metrics, "targetDeploy");
+          this.setState(_.merge({}, updatedState, {
+            timeseriesByDeploy: tsByDeploy,
+            lastUpdated: Date.now()
+          }));
+        }).catch(() => {
+          this.setState({ pendingRequests: false });
+        });
+    }
+  }
+
+  getLeastHealthyDeployments(deployMetrics, limit = 3) {
+    return _(deployMetrics)
+      .filter('added')
+      .sortBy('successRate')
+      .take(limit)
       .value();
+  }
+
+  renderPageContents() {
+    let leastHealthyDeployments = this.getLeastHealthyDeployments(this.state.metrics);
 
     return (
       <div className="clearfix">
@@ -102,6 +160,7 @@ export default class Deployments extends React.Component {
                   key={deployment.name}
                   lastUpdated={this.state.lastUpdated}
                   data={deployment}
+                  requestTs={_.get(this.state.timeseriesByDeploy, [deployment.name, "REQUEST_RATE"], [])}
                   pathPrefix={this.props.pathPrefix} />
               </Col>);
             })
@@ -112,12 +171,13 @@ export default class Deployments extends React.Component {
             resource="deployment"
             lastUpdated={this.state.lastUpdated}
             metrics={this.state.metrics}
+            timeseries={this.state.timeseriesByDeploy}
+            hideSparklines={this.state.limitSparklineData}
             pathPrefix={this.props.pathPrefix} />
         </div>
       </div>
     );
   }
-
 
   render() {
     if (!this.state.loaded) {
@@ -126,12 +186,12 @@ export default class Deployments extends React.Component {
       <div className="page-content">
         <div className="page-header">
           <h1>All deployments</h1>
-          {_.isEmpty(this.state.metrics) ?
-            <CallToAction numDeployments={_.size(this.state.metrics)} /> :
-            null
-          }
         </div>
-        {!_.isEmpty(this.state.metrics) ? this.renderPageContents() : null}
+        {
+          _.isEmpty(this.state.metrics) ?
+            <CallToAction numDeployments={_.size(this.state.metrics)} /> :
+            this.renderPageContents()
+        }
       </div>
     );
   }
