@@ -1,17 +1,14 @@
-use futures::{Async, Future, Poll};
+use futures::Future;
 use tokio_connect;
-use tokio_core::net::{TcpStream, TcpStreamNew};
 use tokio_core::reactor::Handle;
 use url;
 
 use std::io;
 use std::net::{IpAddr, SocketAddr};
 
+use connection;
 use dns;
 use ::timeout;
-
-#[must_use = "futures do nothing unless polled"]
-pub struct TcpStreamNewNoDelay(TcpStreamNew);
 
 #[derive(Debug, Clone)]
 pub struct Connect {
@@ -29,26 +26,6 @@ pub struct LookupAddressAndConnect {
 pub type TimeoutConnect<C> = timeout::Timeout<C>;
 pub type TimeoutError<E> = timeout::TimeoutError<E>;
 
-// ===== impl TcpStreamNewNoDelay =====
-
-impl Future for TcpStreamNewNoDelay {
-    type Item = TcpStream;
-    type Error = io::Error;
-
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        let tcp = try_ready!(self.0.poll());
-        if let Err(e) = tcp.set_nodelay(true) {
-            warn!(
-                "could not set TCP_NODELAY on {:?}/{:?}: {}",
-                tcp.local_addr(),
-                tcp.peer_addr(),
-                e
-            );
-        }
-        Ok(Async::Ready(tcp))
-    }
-}
-
 // ===== impl Connect =====
 
 impl Connect {
@@ -62,13 +39,12 @@ impl Connect {
 }
 
 impl tokio_connect::Connect for Connect {
-    type Connected = TcpStream;
+    type Connected = connection::Connection;
     type Error = io::Error;
-    type Future = TcpStreamNewNoDelay;
+    type Future = connection::Connecting;
 
     fn connect(&self) -> Self::Future {
-        trace!("connect {}", self.addr);
-        TcpStreamNewNoDelay(TcpStream::connect(&self.addr, &self.handle))
+        connection::connect(&self.addr, &self.handle)
     }
 }
 
@@ -89,9 +65,9 @@ impl LookupAddressAndConnect {
 }
 
 impl tokio_connect::Connect for LookupAddressAndConnect {
-    type Connected = TcpStream;
+    type Connected = connection::Connection;
     type Error = io::Error;
-    type Future = Box<Future<Item = TcpStream, Error = io::Error>>;
+    type Future = Box<Future<Item = connection::Connection, Error = io::Error>>;
 
     fn connect(&self) -> Self::Future {
         let port = self.host_and_port.port;
@@ -106,7 +82,7 @@ impl tokio_connect::Connect for LookupAddressAndConnect {
                 info!("DNS resolved {} to {}", host, ip_addr);
                 let addr = SocketAddr::from((ip_addr, port));
                 trace!("connect {}", addr);
-                TcpStreamNewNoDelay(TcpStream::connect(&addr, &handle))
+                connection::connect(&addr, &handle)
             });
         Box::new(c)
     }
