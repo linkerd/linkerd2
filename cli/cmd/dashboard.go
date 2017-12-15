@@ -21,7 +21,10 @@ var dashboardCmd = &cobra.Command{
 			log.Fatalf("port must be positive, was %d", proxyPort)
 		}
 
-		kubectl := shell.MakeKubectl(shell.MakeUnixShell())
+		kubectl, err := shell.MakeKubectl(shell.MakeUnixShell())
+		if err != nil {
+			log.Fatalf("Failed to start kubectl: %v", err)
+		}
 
 		asyncProcessErr, err := kubectl.StartProxy(proxyPort)
 

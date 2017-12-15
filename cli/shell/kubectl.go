@@ -11,7 +11,7 @@ import (
 type Kubectl interface {
 	Version() ([3]int, error)
 	StartProxy(port int) (chan error, error)
-	UrlFor(namespace string, extraPathStartingWithSlash string) (string,error)
+	UrlFor(namespace string, extraPathStartingWithSlash string) (string, error)
 	ProxyPort() int
 }
 
@@ -26,6 +26,8 @@ const (
 	portWhenProxyNotRunning                   = -1
 	magicCharacterThatIndicatesProxyIsRunning = '\n'
 )
+
+var minimunKubectlVersionExpected = [3]int{1, 8, 4}
 
 func (kctl *kubectl) ProxyPort() int {
 	return kctl.proxyPort
@@ -44,7 +46,7 @@ func (kctl *kubectl) Version() ([3]int, error) {
 	}
 
 	justTheVersionString := strings.TrimPrefix(versionString, "Client Version: v")
-	justTheMajorMinorRevisionNumbers :=  strings.Split(justTheVersionString, "-")[0]
+	justTheMajorMinorRevisionNumbers := strings.Split(justTheVersionString, "-")[0]
 	split := strings.Split(justTheMajorMinorRevisionNumbers, ".")
 
 	if len(split) < 3 {
@@ -70,7 +72,7 @@ func (kctl *kubectl) StartProxy(port int) (chan error, error) {
 	}
 	output, errorReturnedByProcess := kctl.sh.AsyncStdout("kubectl", "proxy", "-p", strconv.Itoa(port))
 
-	kubectlOutput, err :=kctl.sh.WaitForCharacter(magicCharacterThatIndicatesProxyIsRunning, output, kubectlDefaultTimeout)
+	kubectlOutput, err := kctl.sh.WaitForCharacter(magicCharacterThatIndicatesProxyIsRunning, output, kubectlDefaultTimeout)
 
 	fmt.Println(kubectlOutput)
 	if err != nil {
@@ -81,7 +83,7 @@ func (kctl *kubectl) StartProxy(port int) (chan error, error) {
 	return errorReturnedByProcess, nil
 }
 
-func (kctl *kubectl) UrlFor(namespace string, extraPathStartingWithSlash string) (string,error) {
+func (kctl *kubectl) UrlFor(namespace string, extraPathStartingWithSlash string) (string, error) {
 	if kctl.ProxyPort() == portWhenProxyNotRunning {
 		return "", errors.New("proxy needs to be started before generating URLs")
 	}
@@ -90,9 +92,39 @@ func (kctl *kubectl) UrlFor(namespace string, extraPathStartingWithSlash string)
 	return url, nil
 }
 
-func MakeKubectl(shell Shell) Kubectl {
-	return &kubectl{
+func isCompatibleVersion(minimalRequirementVersion [3]int, actualVersion [3]int) bool {
+	if minimalRequirementVersion[0] < actualVersion[0] {
+		return true
+	}
+
+	if (minimalRequirementVersion[0] == actualVersion[0]) && minimalRequirementVersion[1] <= actualVersion[1] {
+		return true
+	}
+
+	if (minimalRequirementVersion[0] == actualVersion[0]) && (minimalRequirementVersion[1] == actualVersion[1]) && (minimalRequirementVersion[2] <= actualVersion[2]) {
+		return true
+	}
+
+	return false
+}
+
+func MakeKubectl(shell Shell) (Kubectl, error) {
+
+	kubectl := &kubectl{
 		sh:        shell,
 		proxyPort: portWhenProxyNotRunning,
 	}
+
+	actualVersion, err := kubectl.Version()
+
+	if err != nil {
+		return nil, err
+	}
+
+	if !isCompatibleVersion(minimunKubectlVersionExpected, actualVersion) {
+		return nil, errors.New(fmt.Sprintf("Kubectl is on version %v, but version %v or more recent is required", actualVersion, minimunKubectlVersionExpected))
+	}
+
+	return kubectl, nil
+
 }
