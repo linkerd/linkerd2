@@ -13,7 +13,7 @@
   "env": {
     "browser": true,
     "es6": true,
-    "mocha": true,
+    "mocha": true
   },
   "extends" : ["eslint:recommended", "plugin:react/recommended"],
   "rules": {
@@ -22,6 +22,7 @@
     "eqeqeq": [2, "smart"],
     "indent": [2, 2],
     "jsx-quotes": 1,
+    "keyword-spacing": 1,
     "no-console": [1, { "allow": ["warn", "error"] }], // minor offense
     "no-redeclare": [1], // minor offense
     "no-trailing-spaces": 1,
@@ -48,6 +49,8 @@
     "react/sort-prop-types": 1,
     "semi": [2, "always"],
     "sort-imports": [1, { "ignoreCase": true, "memberSyntaxSortOrder": ["single", "multiple", "all", "none"] }],
+    "space-before-blocks": [1, "always"],
+    "space-before-function-paren": [1, "never"],
     "strict": [1, "safe"]
   }
 }
