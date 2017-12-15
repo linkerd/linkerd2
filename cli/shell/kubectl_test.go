@@ -54,6 +54,7 @@ func TestKubectlVersion(t *testing.T) {
 			"Client Version: v1.8.4": {1, 8, 4},
 			"Client Version: v1.7.1": {1, 7, 1},
 			"Client Version: v0.0.1": {0, 0, 1},
+			"Client Version: v1.9.0-beta.2": {1,9,0},
 		}
 
 		shell := &mockShell{}

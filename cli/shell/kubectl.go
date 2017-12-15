@@ -43,9 +43,11 @@ func (kctl *kubectl) Version() ([3]int, error) {
 		return version, err
 	}
 
-	split := strings.Split(strings.TrimPrefix(versionString, "Client Version: v"), ".")
+	justTheVersionString := strings.TrimPrefix(versionString, "Client Version: v")
+	justTheMajorMinorRevisionNumbers :=  strings.Split(justTheVersionString, "-")[0]
+	split := strings.Split(justTheMajorMinorRevisionNumbers, ".")
 
-	if len(split) != 3 {
+	if len(split) < 3 {
 		return version, errors.New(fmt.Sprintf("Unknown Version string format from Kubectl: [%s] not enough segments: %s", versionString, split))
 	}
 
