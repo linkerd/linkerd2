@@ -99,7 +99,7 @@ export default class Deployments extends React.Component {
       pendingRequests: false
     };
 
-    if(limitSparklineData) {
+    if (limitSparklineData) {
       // don't fetch timeseries for every deploy
       let leastHealthyDeployments = this.getLeastHealthyDeployments(meshDeployMetrics);
 

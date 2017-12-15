@@ -63,7 +63,7 @@ export default class LineGraph extends React.Component {
     let hideLabels = false;
 
     if (_.size(this.props.data) > horizontalLabelLimit) {
-      if(_.size(this.props.data) > labelLimit) {
+      if (_.size(this.props.data) > labelLimit) {
         // if there are way too many bars, don't label at all
         hideLabels = true;
       } else {
