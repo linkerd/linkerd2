@@ -1,17 +1,15 @@
 package cmd
 
 import (
-	"bufio"
 	"fmt"
 	"log"
-	"os/exec"
-
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
+	"github.com/runconduit/conduit/cli/shell"
 )
 
 var (
-	proxyPort int32 = -1
+	proxyPort = -1
 )
 
 var dashboardCmd = &cobra.Command{
@@ -23,39 +21,32 @@ var dashboardCmd = &cobra.Command{
 			log.Fatalf("port must be positive, was %d", proxyPort)
 		}
 
-		portArg := fmt.Sprintf("--port=%d", proxyPort)
+		kubectl := shell.MakeKubectl(shell.MakeUnixShell())
 
-		kubectl := exec.Command("kubectl", "proxy", portArg)
-		kubeCtlStdOut, err := kubectl.StdoutPipe()
+		asyncProcessErr, err := kubectl.StartProxy(proxyPort)
+
 		if err != nil {
-			log.Fatalf("Failed to set up pipe for kubectl output: %v", err)
+			log.Fatalf("Failed to start kubectl proxy: %v", err)
 		}
 
-		fmt.Printf("Running `kubectl proxy %s`\n", portArg)
+		url, err := kubectl.UrlFor(controlPlaneNamespace, "/services/web:http/proxy/")
 
-		go func() {
-			// Wait for `kubectl proxy` to output one line, which indicates that the proxy has been set up.
-			kubeCtlStdOutLines := bufio.NewReader(kubeCtlStdOut)
-			firstLine, err := kubeCtlStdOutLines.ReadString('\n')
-			if err != nil {
-				log.Fatalf("Failed to read output from kubectl proxy: %v", err)
-			}
-			fmt.Printf("%s", firstLine)
-
-			// Use "127.0.0.1" instead of "localhost" in case "localhost" resolves to "[::1]" (IPv6) or another
-			// unexpected address.
-			url := fmt.Sprintf("http://127.0.0.1:%d/api/v1/namespaces/%s/services/web:http/proxy/", proxyPort, controlPlaneNamespace)
-
-			fmt.Printf("Opening %v in the default browser\n", url)
-			err = browser.OpenURL(url)
-			if err != nil {
-				log.Fatalf("failed to open URL %s in the default browser: %v", url, err)
-			}
-		}()
-
-		err = kubectl.Run()
 		if err != nil {
-			log.Fatalf("Failed to run %v: %v", kubectl, err)
+			log.Fatalf("Failed to generate URL for dashboard: %v", err)
+		}
+
+		fmt.Printf("Opening [%s] in the default browser\n", url)
+		err = browser.OpenURL(url)
+
+		if err != nil {
+			log.Fatalf("failed to open URL %s in the default browser: %v", url, err)
+		}
+
+		select {
+		case err = <-asyncProcessErr:
+			if err != nil {
+				log.Fatalf("Error starting proxy via kubectl: %v", err)
+			}
 		}
 
 		return nil
@@ -69,5 +60,5 @@ func init() {
 	// This is identical to what `kubectl proxy --help` reports, except
 	// `kubectl proxy` allows `--port=0` to indicate a random port; That's
 	// inconvenient to support so it isn't supported.
-	dashboardCmd.PersistentFlags().Int32VarP(&proxyPort, "port", "p", 8001, "The port on which to run the proxy, which must not be 0.")
+	dashboardCmd.PersistentFlags().IntVarP(&proxyPort, "port", "p", 8001, "The port on which to run the proxy, which must not be 0.")
 }

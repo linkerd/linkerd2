@@ -11,7 +11,7 @@ import (
 
 type Shell interface {
 	CombinedOutput(name string, arg ...string) (string, error)
-	AsyncStdout(name string, arg ...string) (*bufio.Reader, error)
+	AsyncStdout(name string, arg ...string) (*bufio.Reader, chan error)
 	WaitForCharacter(charToWaitFor byte, output *bufio.Reader, timeout time.Duration) (string, error)
 }
 
@@ -27,14 +27,17 @@ func (sh *unixShell) CombinedOutput(name string, arg ...string) (string, error) 
 	return string(bytes), nil
 }
 
-func (sh *unixShell) AsyncStdout(name string, arg ...string) (*bufio.Reader, error) {
+func (sh *unixShell) AsyncStdout(name string, arg ...string) (*bufio.Reader, chan error) {
+	errorReturnedByProcess := make(chan error, 1)
 	command := exec.Command(name, arg...)
 	stdout, err := command.StdoutPipe()
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("Error executing command in an asynx way: %v", err))
+		errorReturnedByProcess <- errors.New(fmt.Sprintf("Error executing command in an async way: %v", err))
+		return nil, errorReturnedByProcess
 	}
-	go func() { command.Run() }()
-	return bufio.NewReader(stdout), nil
+
+	go func(e chan error) { e <- command.Run() }(errorReturnedByProcess)
+	return bufio.NewReader(stdout), errorReturnedByProcess
 }
 
 func (sh *unixShell) WaitForCharacter(charToWaitFor byte, outputReader *bufio.Reader, timeout time.Duration) (string, error) {
@@ -45,7 +48,7 @@ func (sh *unixShell) WaitForCharacter(charToWaitFor byte, outputReader *bufio.Re
 		outputString, err := outputReader.ReadString(charToWaitFor)
 		if err != nil {
 			if err == io.EOF {
-				e <- errors.New(fmt.Sprintf("Reasched end of stream while waiting fdor character [%c] in output [%s] of command: %v", charToWaitFor, outputString, err))
+				e <- errors.New(fmt.Sprintf("Reached end of stream while waiting for character [%c] in output [%s] of command: %v", charToWaitFor, outputString, err))
 			} else {
 				e <- errors.New(fmt.Sprintf("Error while reading output from command: %v", err))
 			}

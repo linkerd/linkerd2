@@ -33,11 +33,8 @@ func TestCombinedOutput(t *testing.T) {
 func TestAsyncStdout(t *testing.T) {
 	t.Run("Executes command and returns result without error if return code 0", func(t *testing.T) {
 		expectedOutput := "expected"
-		output, err := MakeUnixShell().AsyncStdout("echo", expectedOutput)
+		output, asyncError := MakeUnixShell().AsyncStdout("echo", expectedOutput)
 
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
 
 		outputBytes, err := ioutil.ReadAll(output)
 		if err != nil {
@@ -47,28 +44,36 @@ func TestAsyncStdout(t *testing.T) {
 		if strings.TrimSpace(string(outputBytes)) != expectedOutput {
 			t.Fatalf("Expecting command output to be [%s], got [%s]", expectedOutput, output)
 		}
+
+		select {
+		case e := <-asyncError:
+			if e != nil {
+				t.Fatalf("Unexpected error from the async process: %v", err)
+			}
+		}
 	})
 
 	t.Run("Executes command and returns result and error if did not find expected character", func(t *testing.T) {
-		_, err := MakeUnixShell().AsyncStdout("command-that-doesnt", "--exist")
-
-		if err == nil {
-			t.Fatalf("Expecting error, got nothing")
+		out, asyncError := MakeUnixShell().AsyncStdout("command-that-doesnt", "--exist")
+		select {
+		case err := <-asyncError:
+			if err == nil {
+				outputBytes, _ := ioutil.ReadAll(out)
+				t.Fatalf("Expecting error, got nothing. Output: [%s]", string(outputBytes))
+			}
 		}
 	})
 }
+
 func TestWaitForCharacter(t *testing.T) {
 
 	t.Run("Executes command and returns result without error if return code 0", func(t *testing.T) {
 		shell := MakeUnixShell()
 		expectedOutput := "expected>"
-		output, err := shell.AsyncStdout("echo", expectedOutput)
+		output, asyncError := shell.AsyncStdout("echo", expectedOutput)
 
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
 
-		outputString, err := shell.WaitForCharacter('>', output, 100 * time.Millisecond)
+		outputString, err := shell.WaitForCharacter('>', output, 100*time.Millisecond)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -76,20 +81,27 @@ func TestWaitForCharacter(t *testing.T) {
 		if strings.TrimSpace(outputString) != expectedOutput {
 			t.Fatalf("Expecting command output to be [%s], got [%s]", expectedOutput, output)
 		}
+		select {
+		case e := <-asyncError:
+			if e != nil {
+				t.Fatalf("Unexpected error from the async process: %v", err)
+			}
+		}
 	})
 
 	t.Run("Executes command and returns timeout error if expected character never shows up in output", func(t *testing.T) {
 		shell := MakeUnixShell()
-		output, err := shell.AsyncStdout("tail", "-f", "/dev/random")
+		output, asyncError := shell.AsyncStdout("tail", "-f", "/dev/random")
 
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
-
-		outputString, err := shell.WaitForCharacter('!', output, 100 * time.Millisecond)
+		outputString, err := shell.WaitForCharacter('!', output, 100*time.Millisecond)
 		if err != nil {
 			t.Fatalf("Expecting error, got nothing. output was [%s]", outputString)
 		}
-
+		select {
+		case e := <-asyncError:
+			if e != nil {
+				t.Fatalf("Unexpected error from the async process: %v", err)
+			}
+		}
 	})
 }

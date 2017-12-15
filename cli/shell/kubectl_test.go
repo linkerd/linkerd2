@@ -27,11 +27,12 @@ func (sh *mockShell) CombinedOutput(name string, arg ...string) (string, error) 
 	return sh.outputToReturn, sh.errToReturn
 }
 
-func (sh *mockShell) AsyncStdout(name string, arg ...string) (*bufio.Reader, error) {
+func (sh *mockShell) AsyncStdout(name string, arg ...string) (*bufio.Reader, chan error) {
 	sh.lastNameCalled = name
 	sh.lastArgsCalled = arg
-
-	return bufio.NewReader(strings.NewReader(sh.outputToReturn)), sh.errToReturn
+	e := make(chan error, 1)
+	e <- sh.errToReturn
+	return bufio.NewReader(strings.NewReader(sh.outputToReturn)), e
 }
 
 func (sh *mockShell) WaitForCharacter(charToWaitFor byte, outputReader *bufio.Reader, timeout time.Duration) (string, error) {
@@ -99,13 +100,13 @@ func TestKubectlProxy(t *testing.T) {
 		shell.outputToReturn = fmt.Sprintf("Starting to serve on 127.0.0.1:8001%c", magicCharacterThatIndicatesProxyIsRunning)
 		kctl := MakeKubectl(shell)
 
-		err := kctl.StartProxy()
+		_, err := kctl.StartProxy(kubectlDefaultProxyPort)
 
 		if err != nil {
 			t.Fatalf("Unexpected error starting proxy: %v", err)
 		}
 
-		if kctl.ProxyPort != kubectlDefaultProxyPort {
+		if kctl.ProxyPort() != kubectlDefaultProxyPort {
 			t.Fatalf("Expecting proxy to be running on [%d] but it's on [%d]", kubectlDefaultProxyPort, kctl.ProxyPort)
 		}
 
@@ -119,19 +120,19 @@ func TestKubectlProxy(t *testing.T) {
 		shell.outputToReturn = fmt.Sprintf("Starting to serve on 127.0.0.1:8001%c", magicCharacterThatIndicatesProxyIsRunning)
 		kctl := MakeKubectl(shell)
 
-		err := kctl.StartProxy()
+		_, err := kctl.StartProxy(kubectlDefaultProxyPort)
 
 		if err != nil {
 			t.Fatalf("Unexpected error starting proxy: %v", err)
 		}
 
-		err = kctl.StartProxy()
+		_, err = kctl.StartProxy(kubectlDefaultProxyPort)
 
 		if err == nil {
 			t.Fatalf("Expected error trying to start proxy again, got nothing")
 		}
 
-		if kctl.ProxyPort != kubectlDefaultProxyPort {
+		if kctl.ProxyPort() != kubectlDefaultProxyPort {
 			t.Fatalf("Expected proxy to keep running on port [%d] but got [%d]", kubectlDefaultProxyPort, kctl.ProxyPort)
 		}
 	})
@@ -141,7 +142,7 @@ func TestKubectlProxy(t *testing.T) {
 		shell.errToReturn = errors.New("F1213 17:30:50.272013   39247 proxy.go:153] listen tcp 127.0.0.1:8001: bind: address already in use")
 		kctl := MakeKubectl(shell)
 
-		err := kctl.StartProxy()
+		_, err := kctl.StartProxy(kubectlDefaultProxyPort)
 
 		if err == nil {
 			t.Fatalf("Expected error trying to start proxy again, got nothing")
@@ -153,7 +154,7 @@ func TestKubectlProxy(t *testing.T) {
 		shell.outputToReturn = "ANY STRING THAT DOEST CONTAIN THE MAGIC CHARACTER WE ARE LOOKING FOR"
 		kctl := MakeKubectl(shell)
 
-		err := kctl.StartProxy()
+		_, err := kctl.StartProxy(kubectlDefaultProxyPort)
 
 		if err == nil {
 			t.Fatalf("Expected error trying to start proxy again, got nothing")
@@ -167,7 +168,7 @@ func TestUrlFor(t *testing.T) {
 		shell.outputToReturn = fmt.Sprintf("Starting to serve on 127.0.0.1:8001%c", magicCharacterThatIndicatesProxyIsRunning)
 		kctl := MakeKubectl(shell)
 
-		err := kctl.StartProxy()
+		_, err := kctl.StartProxy(kubectlDefaultProxyPort)
 		if err != nil {
 			t.Fatalf("Unexpected error starting proxy: %v", err)
 		}
@@ -186,7 +187,7 @@ func TestUrlFor(t *testing.T) {
 		}
 	})
 
-	t.Run("Returns error if proxy isn'' running", func(t *testing.T) {
+	t.Run("Returns error if proxy isn't running", func(t *testing.T) {
 		shell := &mockShell{}
 		shell.outputToReturn = fmt.Sprintf("Starting to serve on 127.0.0.1:8001%c", magicCharacterThatIndicatesProxyIsRunning)
 		kctl := MakeKubectl(shell)

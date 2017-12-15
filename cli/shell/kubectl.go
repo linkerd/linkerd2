@@ -8,9 +8,16 @@ import (
 	"time"
 )
 
+type Kubectl interface {
+	Version() ([3]int, error)
+	StartProxy(port int) (chan error, error)
+	UrlFor(namespace string, extraPathStartingWithSlash string) (string,error)
+	ProxyPort() int
+}
+
 type kubectl struct {
 	sh        Shell
-	ProxyPort int
+	proxyPort int
 }
 
 const (
@@ -19,6 +26,10 @@ const (
 	portWhenProxyNotRunning                   = -1
 	magicCharacterThatIndicatesProxyIsRunning = '\n'
 )
+
+func (kctl *kubectl) ProxyPort() int {
+	return kctl.proxyPort
+}
 
 func (kctl *kubectl) Version() ([3]int, error) {
 	var version [3]int
@@ -49,38 +60,37 @@ func (kctl *kubectl) Version() ([3]int, error) {
 	return version, nil
 }
 
-func (kctl *kubectl) StartProxy() error {
-	if kctl.ProxyPort != portWhenProxyNotRunning {
-		return errors.New(fmt.Sprintf("Kubectl proxy already running on port [%d]", kctl.ProxyPort))
+func (kctl *kubectl) StartProxy(port int) (chan error, error) {
+	fmt.Printf("Running `kubectl proxy %d`\n", port)
+
+	if kctl.ProxyPort() != portWhenProxyNotRunning {
+		return nil, errors.New(fmt.Sprintf("Kubectl proxy already running on port [%d]", kctl.ProxyPort))
 	}
-	output, err := kctl.sh.AsyncStdout("kubectl", "proxy", "-p", strconv.Itoa(kubectlDefaultProxyPort))
-	if err != nil {
-		return errors.New(fmt.Sprintf("Error starting proxy: %v", err))
-	}
+	output, errorReturnedByProcess := kctl.sh.AsyncStdout("kubectl", "proxy", "-p", strconv.Itoa(port))
 
 	kubectlOutput, err :=kctl.sh.WaitForCharacter(magicCharacterThatIndicatesProxyIsRunning, output, kubectlDefaultTimeout)
 
 	fmt.Println(kubectlOutput)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error waiting for kubectl to start the proxy. kubetl returned [%s], error: %v", kubectlOutput, err))
+		return nil, errors.New(fmt.Sprintf("Error waiting for kubectl to start the proxy. kubetl returned [%s], error: %v", kubectlOutput, err))
 	}
 
-	kctl.ProxyPort = kubectlDefaultProxyPort
-	return err
+	kctl.proxyPort = kubectlDefaultProxyPort
+	return errorReturnedByProcess, nil
 }
 
 func (kctl *kubectl) UrlFor(namespace string, extraPathStartingWithSlash string) (string,error) {
-	if kctl.ProxyPort == portWhenProxyNotRunning {
+	if kctl.ProxyPort() == portWhenProxyNotRunning {
 		return "", errors.New("proxy needs to be started before generating URLs")
 	}
 
-	url := fmt.Sprintf("http://%s:%d/api/v1/namespaces/%s%s", "127.0.0.1", kctl.ProxyPort, namespace, extraPathStartingWithSlash)
+	url := fmt.Sprintf("http://%s:%d/api/v1/namespaces/%s%s", "127.0.0.1", kctl.ProxyPort(), namespace, extraPathStartingWithSlash)
 	return url, nil
 }
 
-func MakeKubectl(shell Shell) *kubectl {
+func MakeKubectl(shell Shell) Kubectl {
 	return &kubectl{
 		sh:        shell,
-		ProxyPort: portWhenProxyNotRunning,
+		proxyPort: portWhenProxyNotRunning,
 	}
 }
