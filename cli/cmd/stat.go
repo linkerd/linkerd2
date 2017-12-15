@@ -39,7 +39,7 @@ Valid resource types include:
  * paths (aka path, pa)
 
 The optional [TARGET] option can be either a name for a deployment or pod resource`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: exitSilentlyOnError(func(cmd *cobra.Command, args []string) error {
 		var resourceType string
 		switch len(args) {
 		case 1:
@@ -63,7 +63,7 @@ The optional [TARGET] option can be either a name for a deployment or pod resour
 		}
 
 		return nil
-	},
+	}),
 }
 
 func makeStatsRequest(aggType pb.AggregationType) error {

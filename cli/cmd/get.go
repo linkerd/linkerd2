@@ -16,7 +16,7 @@ var getCmd = &cobra.Command{
 
 Valid resource types include:
  * pods (aka pod, po)`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: exitSilentlyOnError(func(cmd *cobra.Command, args []string) error {
 		switch len(args) {
 		case 1:
 			resourceType := args[0]
@@ -43,7 +43,7 @@ Valid resource types include:
 		default:
 			return errors.New("please specify a resource type")
 		}
-	},
+	}),
 }
 
 func init() {
