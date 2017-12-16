@@ -9,7 +9,7 @@ import StatPane from './StatPane.jsx';
 import TabbedMetricsTable from './TabbedMetricsTable.jsx';
 import UpstreamDownstream from './UpstreamDownstream.jsx';
 import { Col, Row } from 'antd';
-import { processDeployments, processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
+import { getPodsByDeployment, processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
 import './../../css/deployment.css';
 import 'whatwg-fetch';
 
@@ -91,7 +91,11 @@ export default class Deployment extends React.Component {
         let downstreamMetrics = processRollupMetrics(downstreamRollup.metrics, "targetDeploy");
         let downstreamTsByDeploy = processTimeseriesMetrics(downstreamTimeseries.metrics, "targetDeploy");
 
-        let deploy = _.find(processDeployments(podList.pods), ["name", this.state.deploy]);
+        let deploy = _.find(getPodsByDeployment(podList.pods,
+          (componentPods, name) => {
+            return { name: name, added: _.every(componentPods, 'added') };
+          }),
+        ["name", this.state.deploy]);
         let totalRequestRate = _.sumBy(podMetrics, "requestRate");
         _.each(podMetrics, datum => datum.totalRequests = totalRequestRate);
 
