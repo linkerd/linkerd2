@@ -10,7 +10,7 @@ import (
 
 type Shell interface {
 	CombinedOutput(name string, arg ...string) (string, error)
-	AsyncStdout(name string, arg ...string) (*bufio.Reader, chan error)
+	AsyncStdout(potentialErrorFromAsyncProcess chan error, name string, arg ...string) (*bufio.Reader, error)
 	WaitForCharacter(charToWaitFor byte, output *bufio.Reader, timeout time.Duration) (string, error)
 }
 
@@ -26,17 +26,16 @@ func (sh *unixShell) CombinedOutput(name string, arg ...string) (string, error) 
 	return string(bytes), nil
 }
 
-func (sh *unixShell) AsyncStdout(name string, arg ...string) (*bufio.Reader, chan error) {
+func (sh *unixShell) AsyncStdout(potentialErrorFromAsyncProcess chan error, name string, arg ...string) (*bufio.Reader, error) {
 	errorReturnedByProcess := make(chan error, 1)
 	command := exec.Command(name, arg...)
 	stdout, err := command.StdoutPipe()
 	if err != nil {
-		errorReturnedByProcess <- fmt.Errorf("Error executing command in an async way: %v", err)
-		return nil, errorReturnedByProcess
+		return nil, fmt.Errorf("Error executing command in an async way: %v", err)
 	}
 
 	go func(e chan error) { e <- command.Run() }(errorReturnedByProcess)
-	return bufio.NewReader(stdout), errorReturnedByProcess
+	return bufio.NewReader(stdout), nil
 }
 
 func (sh *unixShell) WaitForCharacter(charToWaitFor byte, outputReader *bufio.Reader, timeout time.Duration) (string, error) {

@@ -10,7 +10,7 @@ import (
 
 type Kubectl interface {
 	Version() ([3]int, error)
-	StartProxy(port int) (chan error, error)
+	StartProxy(potentialErrorWhenStartingProxy chan error, port int) error
 	UrlFor(namespace string, extraPathStartingWithSlash string) (string, error)
 	ProxyPort() int
 }
@@ -64,23 +64,24 @@ func (kctl *kubectl) Version() ([3]int, error) {
 	return version, nil
 }
 
-func (kctl *kubectl) StartProxy(port int) (chan error, error) {
+func (kctl *kubectl) StartProxy(potentialErrorWhenStartingProxy chan error, port int) error {
 	fmt.Printf("Running `kubectl proxy %d`\n", port)
 
 	if kctl.ProxyPort() != portWhenProxyNotRunning {
-		return nil, fmt.Errorf("Kubectl proxy already running on port [%d]", kctl.ProxyPort)
+		return fmt.Errorf("Kubectl proxy already running on port [%d]", kctl.ProxyPort)
 	}
-	output, errorReturnedByProcess := kctl.sh.AsyncStdout("kubectl", "proxy", "-p", strconv.Itoa(port))
+
+	output, err := kctl.sh.AsyncStdout(potentialErrorWhenStartingProxy, "kubectl", "proxy", "-p", strconv.Itoa(port))
 
 	kubectlOutput, err := kctl.sh.WaitForCharacter(magicCharacterThatIndicatesProxyIsRunning, output, kubectlDefaultTimeout)
 
 	fmt.Println(kubectlOutput)
 	if err != nil {
-		return nil, fmt.Errorf("Error waiting for kubectl to start the proxy. kubetl returned [%s], error: %v", kubectlOutput, err)
+		return fmt.Errorf("Error waiting for kubectl to start the proxy. kubetl returned [%s], error: %v", kubectlOutput, err)
 	}
 
 	kctl.proxyPort = kubectlDefaultProxyPort
-	return errorReturnedByProcess, nil
+	return nil
 }
 
 func (kctl *kubectl) UrlFor(namespace string, extraPathStartingWithSlash string) (string, error) {

@@ -26,7 +26,9 @@ var dashboardCmd = &cobra.Command{
 			log.Fatalf("Failed to start kubectl: %v", err)
 		}
 
-		asyncProcessErr, err := kubectl.StartProxy(proxyPort)
+		asyncProcessErr := make(chan error, 1)
+
+		err = kubectl.StartProxy(asyncProcessErr, proxyPort)
 
 		if err != nil {
 			log.Fatalf("Failed to start kubectl proxy: %v", err)
@@ -51,7 +53,7 @@ var dashboardCmd = &cobra.Command{
 				log.Fatalf("Error starting proxy via kubectl: %v", err)
 			}
 		}
-
+		close(asyncProcessErr)
 		return nil
 	},
 }
