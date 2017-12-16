@@ -207,6 +207,7 @@ export default class ServiceMesh extends React.Component {
 
         <StatusTable
           data={this.state.components}
+          shouldLink={false}
           statusColumnTitle="Pod Status" />
       </div>
     );

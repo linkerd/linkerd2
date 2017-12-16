@@ -42,7 +42,11 @@ const columns = {
       dataIndex: "name",
       key: "name",
       render: (name, record) => {
-        return <Link to={`${pathPrefix}/deployment?deploy=${name}`}>{name}</Link>;
+        if (shouldLink && _.some(record.statuses, o => o.value === 'good' || o.value === 'neutral')) {
+          return <Link to={`${pathPrefix}/deployment?deploy=${name}`}>{name}</Link>;
+        } else {
+          return name;
+        }
       }
     };
   },

@@ -5,11 +5,11 @@ import React from 'react';
 import { Col, Progress, Row } from 'antd';
 import './../../css/health-pane.css';
 
-const TrafficIndicator = () => {
+const TrafficIndicator = props => {
   return (
     <Progress
       percent={100}
-      status="active"
+      status={props.animate ? "active" : "success"}
       strokeWidth={8}
       format={() => null} />
   );
@@ -27,7 +27,7 @@ export default class HealthPane extends React.Component {
   }
 
   getHealthClassName(successRate, deploymentAdded) {
-    if(!deploymentAdded){
+    if (!deploymentAdded) {
       return "health-unknown";
     }
     if (successRate < 0.4) {
@@ -79,7 +79,7 @@ export default class HealthPane extends React.Component {
           <Col span={8}>
             <div className="entity-count">&laquo; {_.size(this.props.upstreamMetrics)} {this.props.entityType}s</div>
             <div className={`adjacent-health ${stats.inbound.health}`}>
-              <TrafficIndicator />
+              <TrafficIndicator animate={this.props.deploymentAdded} />
             </div>
           </Col>
           <Col span={8}>

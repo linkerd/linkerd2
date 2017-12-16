@@ -11,6 +11,10 @@
     & h1 {
       display: inline-block;
     }
+
+    & .unadded-message {
+      display: inline;
+    }
   }
 
 
@@ -22,12 +26,8 @@
     margin: 6px 12px;
     font-size: small;
 
-    &.added {
-      background: green;
-    }
-
     &.unadded {
-      background: #BDBDBD;
+      background: var(--status-gray);
       color: white;
     }
   }
