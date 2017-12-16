@@ -38,7 +38,7 @@ func (kctl *kubectl) Version() ([3]int, error) {
 	bytes, err := kctl.sh.CombinedOutput("kubectl", "version", "--client", "--short")
 	versionString := string(bytes)
 	if err != nil {
-		return [3]int{}, errors.New(fmt.Sprintf("Error running kubectl Version. Output: %s Error: %v", versionString, err))
+		return [3]int{}, fmt.Errorf("Error running kubectl Version. Output: %s Error: %v", versionString, err)
 	}
 
 	if err != nil {
@@ -50,13 +50,13 @@ func (kctl *kubectl) Version() ([3]int, error) {
 	split := strings.Split(justTheMajorMinorRevisionNumbers, ".")
 
 	if len(split) < 3 {
-		return version, errors.New(fmt.Sprintf("Unknown Version string format from Kubectl: [%s] not enough segments: %s", versionString, split))
+		return version, fmt.Errorf("Unknown Version string format from Kubectl: [%s] not enough segments: %s", versionString, split)
 	}
 
 	for i, segment := range split {
 		v, err := strconv.Atoi(strings.TrimSpace(segment))
 		if err != nil {
-			return version, errors.New(fmt.Sprintf("Unknown Version string format from Kubectl: [%s], not an integer: [%s]", versionString, segment))
+			return version, fmt.Errorf("Unknown Version string format from Kubectl: [%s], not an integer: [%s]", versionString, segment)
 		}
 		version[i] = v
 	}
@@ -68,7 +68,7 @@ func (kctl *kubectl) StartProxy(port int) (chan error, error) {
 	fmt.Printf("Running `kubectl proxy %d`\n", port)
 
 	if kctl.ProxyPort() != portWhenProxyNotRunning {
-		return nil, errors.New(fmt.Sprintf("Kubectl proxy already running on port [%d]", kctl.ProxyPort))
+		return nil, fmt.Errorf("Kubectl proxy already running on port [%d]", kctl.ProxyPort)
 	}
 	output, errorReturnedByProcess := kctl.sh.AsyncStdout("kubectl", "proxy", "-p", strconv.Itoa(port))
 
@@ -76,7 +76,7 @@ func (kctl *kubectl) StartProxy(port int) (chan error, error) {
 
 	fmt.Println(kubectlOutput)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("Error waiting for kubectl to start the proxy. kubetl returned [%s], error: %v", kubectlOutput, err))
+		return nil, fmt.Errorf("Error waiting for kubectl to start the proxy. kubetl returned [%s], error: %v", kubectlOutput, err)
 	}
 
 	kctl.proxyPort = kubectlDefaultProxyPort
@@ -122,7 +122,7 @@ func MakeKubectl(shell Shell) (Kubectl, error) {
 	}
 
 	if !isCompatibleVersion(minimunKubectlVersionExpected, actualVersion) {
-		return nil, errors.New(fmt.Sprintf("Kubectl is on version %v, but version %v or more recent is required", actualVersion, minimunKubectlVersionExpected))
+		return nil, fmt.Errorf("Kubectl is on version %v, but version %v or more recent is required", actualVersion, minimunKubectlVersionExpected)
 	}
 
 	return kubectl, nil

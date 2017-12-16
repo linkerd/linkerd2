@@ -81,7 +81,7 @@ func newApiClient() (pb.ApiClient, error) {
 		}
 		serverURLBase, err := url.Parse(kubeConfig.Host)
 		if err != nil {
-			return nil, errors.New(fmt.Sprintf("invalid host in kubernetes config: %s", kubeConfig.Host))
+			return nil, fmt.Errorf("invalid host in kubernetes config: %s", kubeConfig.Host))
 		}
 		proxyURLRef := url.URL{
 			Path: fmt.Sprintf("api/v1/namespaces/%s/services/http:api:http/proxy/", controlPlaneNamespace),
