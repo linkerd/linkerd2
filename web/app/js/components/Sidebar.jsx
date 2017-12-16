@@ -25,7 +25,7 @@ export default class Sidebar extends React.Component {
               <Link to={`${this.props.pathPrefix}/routes`}>Routes</Link>
             </Menu.Item>
             <Menu.Item className="sidebar-menu-item" key="/docs">
-              <Link to={`${this.props.pathPrefix}/docs`}>Docs</Link>
+              <Link to="https://conduit.io/docs/" target="_blank">Documentation</Link>
             </Menu.Item>
           </Menu>
           <div className="conduit-current-version">

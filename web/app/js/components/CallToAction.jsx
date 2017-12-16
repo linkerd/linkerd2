@@ -6,7 +6,7 @@ export default class CallToAction extends React.Component {
   render() {
     return (
       <div className="call-to-action">
-        <div className="action summary">The service mesh was successfully installed</div>
+        <div className="action summary">The service mesh was successfully installed!</div>
 
         <div className="action-steps">
           <Row gutter={0}>
@@ -39,8 +39,8 @@ export default class CallToAction extends React.Component {
           </Row>
         </div>
 
-        <div className="action">Add one or more deployments to the deployment.yml file</div>
-        <div className="action">Then run <code>conduit inject deployment.yml | kubectl apply -f - </code> to add deploys to the service mesh</div>
+        <div className="action">Next, add one or more deployments to the deployment.yml file</div>
+        <div className="action">Then run <code>conduit inject deployment.yml | kubectl apply -f -</code> to add deploys to the service mesh</div>
       </div>
     );
   }
