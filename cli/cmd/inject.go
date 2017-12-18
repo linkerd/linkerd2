@@ -204,6 +204,10 @@ func injectDaemonSet(bytes []byte) (interface{}, error) {
  * and init-container injected.
  */
 func injectPodTemplateSpec(t *v1.PodTemplateSpec) enhancedPodTemplateSpec {
+	// TODO: Set the zone correctly. Currently we assume "cluster.local" in a
+	// few places but that doesn't seem like a valid assumption.
+	const zone = "cluster.local"
+
 	f := false
 	skipPorts := append(ignoreInboundPorts, proxyControlPort)
 	skipPortsStr := make([]string, len(skipPorts))
@@ -246,7 +250,7 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec) enhancedPodTemplateSpec {
 			v1.EnvVar{Name: "CONDUIT_PROXY_LOG", Value: "trace,h2=debug,mio=info,tokio_core=info"},
 			v1.EnvVar{
 				Name:  "CONDUIT_PROXY_CONTROL_URL",
-				Value: fmt.Sprintf("tcp://proxy-api.%s.svc.cluster.local:%d", controlPlaneNamespace, proxyAPIPort),
+				Value: fmt.Sprintf("tcp://proxy-api.%s.svc.%s:%d", controlPlaneNamespace, zone, proxyAPIPort),
 			},
 			v1.EnvVar{Name: "CONDUIT_PROXY_CONTROL_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", proxyControlPort)},
 			v1.EnvVar{Name: "CONDUIT_PROXY_PRIVATE_LISTENER", Value: fmt.Sprintf("tcp://127.0.0.1:%d", outboundPort)},
@@ -262,6 +266,11 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec) enhancedPodTemplateSpec {
 			v1.EnvVar{
 				Name:      "CONDUIT_PROXY_POD_NAMESPACE",
 				ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
+			},
+			// TODO: Configure this correctly. Currently
+			v1.EnvVar{
+				Name:      "CONDUIT_PROXY_POD_ZONE",
+				Value:     zone,
 			},
 			v1.EnvVar{
 				Name:      "CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN",

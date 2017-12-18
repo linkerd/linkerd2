@@ -143,6 +143,7 @@ spec:
         image: {{.ControllerImage}}
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
+        - "-kubernetes-dns-zone={{.Zone}}"
         - "destination"
         - "-addr=:8089"
         - "-metrics-addr=:9999"
@@ -354,6 +355,7 @@ data:
 
 type installConfig struct {
 	Namespace          string
+	Zone               string
 	ControllerImage    string
 	WebImage           string
 	PrometheusImage    string
@@ -379,6 +381,10 @@ var installCmd = &cobra.Command{
 	Short: "Output Kubernetes configs to install Conduit",
 	Long:  "Output Kubernetes configs to install Conduit.",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// TODO: Set the zone correctly. Currently we assume "cluster.local" in
+		// a few places but that doesn't seem like a valid assumption.
+		const zone = "cluster.local"
+
 		if err := validate(); err != nil {
 			log.Fatal(err.Error())
 		}
@@ -388,6 +394,7 @@ var installCmd = &cobra.Command{
 		}
 		template.Execute(os.Stdout, installConfig{
 			Namespace:          controlPlaneNamespace,
+			Zone:               zone,
 			ControllerImage:    fmt.Sprintf("%s/controller:%s", dockerRegistry, version),
 			WebImage:           fmt.Sprintf("%s/web:%s", dockerRegistry, version),
 			PrometheusImage:    "prom/prometheus:v1.8.1",
