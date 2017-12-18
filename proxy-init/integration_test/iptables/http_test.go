@@ -114,8 +114,13 @@ func TestPodWithSomePortsIgnored(t *testing.T) {
 	t.Run("doesnt redirect when through port that is ignored", func(t *testing.T) {
 		marksParallelIfConfigured(t)
 		response := expectSuccessfulGetRequestTo(t, podIgnoredSomePortsIp, ignoredContainerPort)
+
+		if response == "proxy" {
+			t.Fatalf("Expected connection through ignored port to directly hit service, but hit [%s]", response)
+		}
+
 		if !strings.Contains(response, ignoredContainerPort) {
-			t.Fatalf("Expected iptables to ignore connection to %s, got back %s", ignoredContainerPort, response)
+			t.Fatalf("Expected to be able to connect to %s without redirects, but got back %s", ignoredContainerPort, response)
 		}
 	})
 }
@@ -144,8 +149,8 @@ func TestPodMakesOutboundConnection(t *testing.T) {
 
 	t.Run("connecting to another pod from proxy container does not get redirected to proxy", func(t *testing.T) {
 		marksParallelIfConfigured(t)
-		targetPodIp := podWithNoRulesIp
 		targetPodName := podWithNoRulesName
+		targetPodIp := podWithNoRulesIp
 
 		response := makeCallFromContainerToAnother(t, proxyPodIp, proxyContainerPort, targetPodIp, notTheProxyContainerPort)
 

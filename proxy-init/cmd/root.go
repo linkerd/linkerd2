@@ -43,7 +43,7 @@ func init() {
 	RootCmd.PersistentFlags().IntVarP(&outgoingProxyPort, "outgoing-proxy-port", "o", -1, "Port to redirect outgoing traffic")
 	RootCmd.PersistentFlags().BoolVar(&simulateOnly, "simulate", false, "Don't execute any command, just print what would be executed")
 	RootCmd.PersistentFlags().IntSliceVarP(&portsToRedirect, "ports-to-redirect", "r", make([]int, 0), "Port to redirect to proxy, if no port is specified then ALL ports are redirected")
-	RootCmd.PersistentFlags().IntSliceVar(&inboundPortsToIgnore, "inbound-ports-to-ignore", make([]int, 0), "Inound ports to ignore and not redirect to proxy. This has higher precedence than any other parameters.")
+	RootCmd.PersistentFlags().IntSliceVar(&inboundPortsToIgnore, "inbound-ports-to-ignore", make([]int, 0), "Inbound ports to ignore and not redirect to proxy. This has higher precedence than any other parameters.")
 	RootCmd.PersistentFlags().IntSliceVar(&outboundPortsToIgnore, "outbound-ports-to-ignore", make([]int, 0), "Outbound ports to ignore and not redirect to proxy. This has higher precedence than any other parameters.")
 	RootCmd.PersistentFlags().IntVarP(&proxyUserId, "proxy-uid", "u", -1, "User ID that the proxy is running under. Any traffic coming from this user will be ignored to avoid infinite redirection loops.")
 }
