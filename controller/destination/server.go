@@ -87,16 +87,16 @@ func (s *server) Get(dest *common.Destination, stream pb.Destination_GetServer) 
 		}
 	}
 	// service.namespace.svc.cluster.local
-	domains := strings.Split(host, ".")
+	hostLabels := strings.Split(host, ".")
 
-	if len(domains) < 2 {
+	if len(hostLabels) < 2 {
 		err := fmt.Errorf("not a service: %s", host)
 		log.Error(err)
 		return err
 	}
 
-	service := domains[0]
-	namespace := domains[1]
+	service := hostLabels[0]
+	namespace := hostLabels[1]
 
 	id := namespace + "/" + service
 
