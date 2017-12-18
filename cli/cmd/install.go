@@ -19,43 +19,6 @@ apiVersion: v1
 metadata:
   name: {{.Namespace}}
 
-### Service Account ###
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: conduit-controller
-  namespace: conduit
-
-### RBAC ###
----
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1beta1
-metadata:
-  name: conduit-controller
-rules:
-- apiGroups: ["extensions"]
-  resources: ["deployments", "replicasets"]
-  verbs: ["list", "get", "watch"]
-- apiGroups: [""]
-  resources: ["pods", "endpoints", "services"]
-  verbs: ["list", "get", "watch"]
-
----
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1beta1
-metadata:
-  name: conduit-controller
-  namespace: conduit
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: conduit-controller
-subjects:
-- kind: ServiceAccount
-  name: conduit-controller
-  namespace: conduit
-
 ### Controller ###
 ---
 kind: Service
@@ -118,7 +81,6 @@ spec:
       annotations:
         conduit.io/created-by: "{{.CliVersion}}"
     spec:
-      serviceAccount: conduit-controller
       containers:
       - name: public-api
         ports:
@@ -413,7 +375,7 @@ func validate() error {
 		return fmt.Errorf("%s is not a valid namespace", controlPlaneNamespace)
 	}
 	if !alphaNumDashDot.MatchString(version) {
-		return fmt.Errorf("%s is not a valid version", version)
+		return fmt.Errorf("%s is not a valid verison", version)
 	}
 	if !alphaNumDashDotSlash.MatchString(dockerRegistry) {
 		return fmt.Errorf("%s is not a valid Docker registry", dockerRegistry)

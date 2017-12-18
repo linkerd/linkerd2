@@ -34,7 +34,7 @@ var tapCmd = &cobra.Command{
 Valid targets include:
  * Pods (default/hello-world-h4fb2)
  * Deployments (default/hello-world)`,
-	Run: exitSilentlyOnError(func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		switch len(args) {
 		case 2:
 			resourceType := strings.ToLower(args[0])
@@ -81,7 +81,7 @@ Valid targets include:
 		default:
 			return errors.New("please specify a target")
 		}
-	}),
+	},
 }
 
 func init() {

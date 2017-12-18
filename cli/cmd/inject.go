@@ -43,7 +43,7 @@ var injectCmd = &cobra.Command{
 You can use a config file from stdin by using the '-' argument
 with 'conduit inject'. e.g. curl http://url.to/yml | conduit inject -
 	`,
-	Run: exitSilentlyOnError(func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, args []string) error {
 
 		if len(args) < 1 {
 			return fmt.Errorf("please specify a deployment file")
@@ -102,7 +102,7 @@ with 'conduit inject'. e.g. curl http://url.to/yml | conduit inject -
 			fmt.Println("---")
 		}
 		return nil
-	}),
+	},
 }
 
 /* Given a byte slice representing a deployment, unmarshal the deployment and
