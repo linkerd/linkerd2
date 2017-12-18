@@ -86,7 +86,7 @@ export default class ServiceMesh extends React.Component {
     let timeseriesRequest = fetch(timeseriesPath).then(r => r.json());
     let podsRequest = fetch(podsPath).then(r => r.json());
 
-    Promise.all([rollupRequest, timeseriesRequest, podsRequest])
+    this.serverPromise = Promise.all([rollupRequest, timeseriesRequest, podsRequest])
       .then(([metrics, ts, pods]) => {
         let m = processRollupMetrics(metrics.metrics, "component");
         let tsByComponent = processTimeseriesMetrics(ts.metrics, "component");
@@ -108,13 +108,13 @@ export default class ServiceMesh extends React.Component {
   }
 
   addedDeploymentCount() {
-    return _.size(_.find(this.state.deploys, d => {
+    return _.size(_.filter(this.state.deploys, d => {
       return _.every(d.pods, ["value", "good"]);
     }));
   }
 
   unaddedDeploymentCount() {
-    return _.size(this.state.deploys) - this.addedDeploymentCount();
+    return this.deployCount() - this.addedDeploymentCount();
   }
 
   proxyCount() {
@@ -125,6 +125,10 @@ export default class ServiceMesh extends React.Component {
 
   componentCount() {
     return _.size(this.state.components);
+  }
+
+  deployCount() {
+    return _.size(this.state.deploys);
   }
 
   getServiceMeshDetails() {
@@ -218,7 +222,7 @@ export default class ServiceMesh extends React.Component {
         <div className="clearfix header-with-metric">
           <div className="subsection-header">Data plane</div>
           <Metric title="Proxies" value={this.proxyCount()} className="metric-large" />
-          <Metric title="Deployments" value={_.size(this.state.deploys)} className="metric-large" />
+          <Metric title="Deployments" value={this.deployCount()} className="metric-large" />
         </div>
 
         <StatusTable
@@ -249,26 +253,37 @@ export default class ServiceMesh extends React.Component {
   }
 
   renderAddDeploymentsMessage() {
-    return (
-      <div className="mesh-message">
-        {this.unaddedDeploymentCount() === 0 ?
+    let instructions = (<div className="instructions">Add one or more deployments to the deployment.yml file <br /><br />
+                        Then run <code>conduit inject deployment.yml | kubectl apply -f - </code> to add deploys to the service mesh</div>);
+
+    if (this.deployCount() === 0) {
+      return (
+        <div className="incomplete-mesh-message">
+          No deployments detected. {instructions}
+        </div>
+      );
+    } else {
+      switch (this.unaddedDeploymentCount()) {
+      case 0:
+        return (
           <div className="complete-mesh-message">
-            All deployments have been added to the service mesh.
+              All deployments have been added to the service mesh.
           </div>
-          : this.unaddedDeploymentCount() === 1 ?
-            <div className="incomplete-mesh-message">
-                1 deployment has not been added to the service mesh.
-              <div className="instructions">Add the remaining deployment to the deployment.yml file</div>
-              <div className="instructions">Then run <code>conduit inject deployment.yml | kubectl apply -f - </code> to add the deployment to the service mesh</div>
-            </div>
-            : <div className="incomplete-mesh-message">
-              {this.unaddedDeploymentCount()} deployments have not been added to the service mesh.
-              <div className="instructions">Next, add one or more deployments to the deployment.yml file</div>
-              <div className="instructions">Then run <code>conduit inject deployment.yml | kubectl apply -f -</code> to add deploys to the service mesh</div>
-            </div>
-        }
-      </div>
-    );
+        );
+      case 1:
+        return (
+          <div className="incomplete-mesh-message">
+              1 deployment has not been added to the service mesh. {instructions}
+          </div>
+        );
+      default:
+        return (
+          <div className="incomplete-mesh-message">
+            {this.unaddedDeploymentCount()} deployments have not been added to the service mesh. {instructions}
+          </div>
+        );
+      }
+    }
   }
 
   renderControlPlane() {
@@ -291,7 +306,7 @@ export default class ServiceMesh extends React.Component {
 
   renderOverview() {
     if (this.proxyCount() === 0) {
-      return <CallToAction numDeployments={_.size(this.state.metrics)} />;
+      return <CallToAction numDeployments={this.deployCount()} />;
     } else {
       return this.renderControllerHealth();
     }
