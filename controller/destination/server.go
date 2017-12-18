@@ -12,11 +12,13 @@ import (
 	"github.com/runconduit/conduit/controller/util"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"reflect"
 )
 
 type (
 	server struct {
-		endpoints *k8s.EndpointsWatcher
+		k8sDNSZoneLabels []string
+		endpoints        *k8s.EndpointsWatcher
 	}
 )
 
@@ -30,7 +32,7 @@ type (
 //
 // Addresses for the given destination are fetched from the Kubernetes Endpoints
 // API.
-func NewServer(addr, kubeconfig string, done chan struct{}) (*grpc.Server, net.Listener, error) {
+func NewServer(addr, kubeconfig string, k8sDNSZone string, done chan struct{}) (*grpc.Server, net.Listener, error) {
 	clientSet, err := k8s.NewClientSet(kubeconfig)
 	if err != nil {
 		return nil, nil, err
@@ -42,9 +44,7 @@ func NewServer(addr, kubeconfig string, done chan struct{}) (*grpc.Server, net.L
 		return nil, nil, err
 	}
 
-	srv := &server{
-		endpoints: endpoints,
-	}
+	srv := newServer(k8sDNSZone, endpoints)
 
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -60,6 +60,20 @@ func NewServer(addr, kubeconfig string, done chan struct{}) (*grpc.Server, net.L
 	}()
 
 	return s, lis, nil
+}
+
+// Split out from NewServer make it easy to write unit tests.
+func newServer(k8sDNSZone string, endpoints *k8s.EndpointsWatcher) *server {
+	var k8sDNSZoneLabels []string
+	if k8sDNSZone == "" {
+		k8sDNSZoneLabels = []string{}
+	} else {
+		k8sDNSZoneLabels = strings.Split(k8sDNSZone, ".")
+	}
+	return &server{
+		k8sDNSZoneLabels: k8sDNSZoneLabels,
+		endpoints:        endpoints,
+	}
 }
 
 func (s *server) Get(dest *common.Destination, stream pb.Destination_GetServer) error {
@@ -86,20 +100,25 @@ func (s *server) Get(dest *common.Destination, stream pb.Destination_GetServer) 
 			return err
 		}
 	}
-	// service.namespace.svc.cluster.local
-	hostLabels := strings.Split(host, ".")
 
-	if len(hostLabels) < 2 {
-		err := fmt.Errorf("not a service: %s", host)
+	id, err := s.localKubernetesServiceIdFromDNSName(host)
+	if err != nil {
 		log.Error(err)
 		return err
 	}
 
-	service := hostLabels[0]
-	namespace := hostLabels[1]
+	if id != nil {
+		return s.resolveKubernetesService(*id, port, stream)
+	}
 
-	id := namespace + "/" + service
+	// TODO: Resolve name using DNS similar to Kubernetes' ClusterFirst
+	// resolution.
+	err = fmt.Errorf("cannot resolve service that isn't a local Kubernetes service: %s", host)
+	log.Error(err)
+	return err
+}
 
+func (s *server) resolveKubernetesService(id string, port int, stream pb.Destination_GetServer) error {
 	listener := endpointListener{stream: stream}
 
 	s.endpoints.Subscribe(id, uint32(port), listener)
@@ -109,6 +128,32 @@ func (s *server) Get(dest *common.Destination, stream pb.Destination_GetServer) 
 	s.endpoints.Unsubscribe(id, uint32(port), listener)
 
 	return nil
+}
+
+func (s *server) localKubernetesServiceIdFromDNSName(host string) (*string, error) {
+	hostLabels := strings.Split(host, ".")
+
+	// Verify that `host` ends with .svc.$zone.
+	if len(hostLabels) <= 1+len(s.k8sDNSZoneLabels) {
+		return nil, nil
+	}
+	n := len(hostLabels) - len(s.k8sDNSZoneLabels)
+	if !reflect.DeepEqual(hostLabels[n:], s.k8sDNSZoneLabels) {
+		return nil, nil
+	}
+	if hostLabels[n-1] != "svc" {
+		return nil, nil
+	}
+
+	// Extract the service name and namespace.
+	if n != 3 {
+		return nil, fmt.Errorf("not a service: %s", host)
+	}
+	service := hostLabels[0]
+	namespace := hostLabels[1]
+
+	id := namespace + "/" + service
+	return &id, nil
 }
 
 type endpointListener struct {
