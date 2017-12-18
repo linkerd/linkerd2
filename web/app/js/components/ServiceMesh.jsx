@@ -263,8 +263,8 @@ export default class ServiceMesh extends React.Component {
             </div>
             : <div className="incomplete-mesh-message">
               {this.unaddedDeploymentCount()} deployments have not been added to the service mesh.
-              <div className="instructions">Add one or more deployments to the deployment.yml file</div>
-              <div className="instructions">Then run <code>conduit inject deployment.yml | kubectl apply -f - </code> to add deploys to the service mesh</div>
+              <div className="instructions">Next, add one or more deployments to the deployment.yml file</div>
+              <div className="instructions">Then run <code>conduit inject deployment.yml | kubectl apply -f -</code> to add deploys to the service mesh</div>
             </div>
         }
       </div>
