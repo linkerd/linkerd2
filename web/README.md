@@ -1,4 +1,4 @@
-# Boron Web UI
+# Conduit Dashboard
 
 This is a React app. It uses webpack to bundle assets, and postcss to transform css.
 
@@ -44,4 +44,11 @@ docker-compose stop web
 To run unit tests:
 ```
 go test ./...
+```
+
+### JS unit tests
+To run:
+```
+cd web/app
+yarn karma start
 ```

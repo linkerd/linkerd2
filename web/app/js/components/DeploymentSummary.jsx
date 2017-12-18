@@ -20,18 +20,18 @@ export default class DeploymentSummary extends React.Component {
           <div className="summary-info">Last 10 minutes RPS</div>
 
           <LineGraph
-            data={this.props.data.timeseries.requestRate}
+            data={this.props.requestTs}
             lastUpdated={this.props.lastUpdated}
             containerClassName={toClassName(this.props.data.name)} />
 
           <div className="summary-stat">
             <div className="metric-title">Current requests</div>
-            <div className="metric-value">{metricToFormatter["REQUEST_RATE"](this.props.data.rollup.requestRate)}</div>
+            <div className="metric-value">{metricToFormatter["REQUEST_RATE"](this.props.data.requestRate)}</div>
           </div>
 
           <div className="summary-stat">
             <div className="metric-title">Current success</div>
-            <div className="metric-value">{metricToFormatter["SUCCESS_RATE"](this.props.data.rollup.successRate)}</div>
+            <div className="metric-value">{metricToFormatter["SUCCESS_RATE"](this.props.data.successRate)}</div>
           </div>
         </div>
       </div>

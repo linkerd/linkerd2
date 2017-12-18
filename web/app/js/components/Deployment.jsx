@@ -9,7 +9,7 @@ import StatPane from './StatPane.jsx';
 import TabbedMetricsTable from './TabbedMetricsTable.jsx';
 import UpstreamDownstream from './UpstreamDownstream.jsx';
 import { Col, Row } from 'antd';
-import { processMetrics, processTsWithLatencyBreakdown } from './util/MetricUtils.js';
+import { processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
 import './../../css/deployment.css';
 import 'whatwg-fetch';
 
@@ -45,9 +45,11 @@ export default class Deployment extends React.Component {
       metricsWindow: "10m",
       deploy: deployment,
       metrics:[],
+      timeseriesByPod: {},
       upstreamMetrics: [],
+      upstreamTsByDeploy: {},
       downstreamMetrics: [],
-      summaryMetrics: {},
+      downstreamTsByDeploy: {},
       pendingRequests: false,
       loaded: false
     };
@@ -77,20 +79,27 @@ export default class Deployment extends React.Component {
     let downstreamTsFetch = fetch(downstreamTimeseriesUrl).then(r => r.json());
 
     Promise.all([deployFetch, podFetch, podTsFetch, upstreamFetch, upstreamTsFetch, downstreamFetch, downstreamTsFetch])
-      .then(([deployMetrics, podRollup, podTimeseries, upstreamRollup, upsreamTimeseries, downstreamRollup, downstreamTimeseries]) => {
-        let deployTimeseries = processTsWithLatencyBreakdown(deployMetrics.metrics);
-        let podMetrics = _.compact(processMetrics(podRollup.metrics, podTimeseries.metrics, "targetPod"));
-        let upstreamMetrics = _.compact(processMetrics(upstreamRollup.metrics, upsreamTimeseries.metrics, "sourceDeploy"));
-        let downstreamMetrics = _.compact(processMetrics(downstreamRollup.metrics, downstreamTimeseries.metrics, "targetDeploy"));
+      .then(([deployMetrics, podRollup, podTimeseries, upstreamRollup, upstreamTimeseries, downstreamRollup, downstreamTimeseries]) => {
+        let tsByDeploy = processTimeseriesMetrics(deployMetrics.metrics, "targetDeploy");
+        let podMetrics = processRollupMetrics(podRollup.metrics, "targetPod");
+        let podTs = processTimeseriesMetrics(podTimeseries.metrics, "targetPod");
 
-        let totalRequestRate = _.sumBy(podMetrics, "rollup.requestRate");
-        _.each(podMetrics, datum => datum.rollup.totalRequests = totalRequestRate);
+        let upstreamMetrics = processRollupMetrics(upstreamRollup.metrics, "sourceDeploy");
+        let upstreamTsByDeploy = processTimeseriesMetrics(upstreamTimeseries.metrics, "sourceDeploy");
+        let downstreamMetrics = processRollupMetrics(downstreamRollup.metrics, "targetDeploy");
+        let downstreamTsByDeploy = processTimeseriesMetrics(downstreamTimeseries.metrics, "targetDeploy");
+
+        let totalRequestRate = _.sumBy(podMetrics, "requestRate");
+        _.each(podMetrics, datum => datum.totalRequests = totalRequestRate);
 
         this.setState({
           metrics: podMetrics,
+          timeseriesByPod: podTs,
+          deployTs: _.get(tsByDeploy, this.state.deploy, {}),
           upstreamMetrics: upstreamMetrics,
+          upstreamTsByDeploy: upstreamTsByDeploy,
           downstreamMetrics: downstreamMetrics,
-          summaryMetrics: deployTimeseries,
+          downstreamTsByDeploy: downstreamTsByDeploy,
           lastUpdated: Date.now(),
           pendingRequests: false,
           loaded: true
@@ -109,7 +118,9 @@ export default class Deployment extends React.Component {
   }
 
   renderSections() {
-    let currentSuccessRate = _.get(_.last(_.get(this.state.summaryMetrics, "SUCCESS_RATE", [])), "value");
+    let srTs = _.get(this.state.deployTs, "SUCCESS_RATE", []);
+    let currentSuccessRate = _.get(_.last(srTs), "value");
+
     return [
       <HealthPane
         key="deploy-health-pane"
@@ -121,14 +132,16 @@ export default class Deployment extends React.Component {
       <StatPane
         key="stat-pane"
         lastUpdated={this.state.lastUpdated}
-        summaryMetrics={this.state.summaryMetrics} />,
+        timeseries={this.state.deployTs} />,
       this.renderMidsection(),
       <UpstreamDownstream
         key="deploy-upstream-downstream"
         entity="deployment"
         lastUpdated={this.state.lastUpdated}
         upstreamMetrics={this.state.upstreamMetrics}
+        upstreamTsByEntity={this.state.upstreamTsByDeploy}
         downstreamMetrics={this.state.downstreamMetrics}
+        downstreamTsByEntity={this.state.downstreamTsByDeploy}
         pathPrefix={this.props.pathPrefix} />
     ];
   }
@@ -156,6 +169,7 @@ export default class Deployment extends React.Component {
               resource="pod"
               lastUpdated={this.state.lastUpdated}
               metrics={this.state.metrics}
+              timeseries={this.state.timeseriesByPod}
               pathPrefix={this.props.pathPrefix} />
           </div>
         </Col>

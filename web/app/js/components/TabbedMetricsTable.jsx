@@ -8,12 +8,7 @@ import { Table, Tabs } from 'antd';
 
 /*
   Table to display Success Rate, Requests and Latency in tabs.
-  Expects data of the form:
-  {
-    name: ...,
-    rollup: { requestRate: [], successRate: [], latency: [] },
-    timeseries: { requestRate: [], successRate: [], latency: [] }
-  }
+  Expects rollup and timeseries data.
 */
 
 const resourceInfo = {
@@ -39,45 +34,44 @@ const columns = {
   },
   successRate: {
     title: "Success Rate",
-    dataIndex: "rollup",
+    dataIndex: "successRate",
     key: "successRateRollup",
     className: "numeric",
-    render: d => metricToFormatter["SUCCESS_RATE"](d.successRate)
+    render: d => metricToFormatter["SUCCESS_RATE"](d)
   },
   requests: {
     title: "Request Rate",
-    dataIndex: "rollup",
+    dataIndex: "requestRate",
     key: "requestRateRollup",
     className: "numeric",
-    render: d => metricToFormatter["REQUEST_RATE"](d.requestRate)
+    render: d => metricToFormatter["REQUEST_RATE"](d)
   },
   requestDistribution: {
     title: "Request distribution",
-    dataIndex: "rollup",
     key: "distribution",
     className: "numeric",
     render: d => (new Percentage(d.requestRate, d.totalRequests)).prettyRate()
   },
   latencyP99: {
     title: "P99 Latency",
-    dataIndex: "rollup",
+    dataIndex: "latency",
     key: "p99LatencyRollup",
     className: "numeric",
-    render: d => metricToFormatter["LATENCY"](_.get(d, ["latency", "P99", 0, "value"]))
+    render: d => metricToFormatter["LATENCY"](_.get(d, ["P99", 0, "value"]))
   },
   latencyP95: {
     title: "P95 Latency",
-    dataIndex: "rollup",
+    dataIndex: "latency",
     key: "p95LatencyRollup",
     className: "numeric",
-    render: d => metricToFormatter["LATENCY"](_.get(d, ["latency", "P95", 0, "value"]))
+    render: d => metricToFormatter["LATENCY"](_.get(d, ["P95", 0, "value"]))
   },
   latencyP50: {
     title: "P50 Latency",
-    dataIndex: "rollup",
+    dataIndex: "latency",
     key: "p50LatencyRollup",
     className: "numeric",
-    render: d => metricToFormatter["LATENCY"](_.get(d, ["latency", "P50", 0, "value"]))
+    render: d => metricToFormatter["LATENCY"](_.get(d, ["P50", 0, "value"]))
   }
 };
 
@@ -96,6 +90,11 @@ const metricToColumns = {
   ]
 };
 
+const nameToDataKey = {
+  requestRate: "REQUEST_RATE",
+  successRate: "SUCCESS_RATE",
+  latency: "LATENCY"
+};
 export default class TabbedMetricsTable extends React.Component {
   getSparklineColumn(metricName) {
     return {
@@ -103,10 +102,13 @@ export default class TabbedMetricsTable extends React.Component {
       key: metricName,
       className: "numeric",
       render: d => {
-        let tsData = d["timeseries"][metricName];
+        let tsData;
         if (metricName === "latency") {
-          tsData = _.get(d, ["timeseries", metricName, "P99"]);
+          tsData = _.get(this.props.timeseries, [d.name, "LATENCY", "P99"], []);
+        } else {
+          tsData = _.get(this.props.timeseries, [d.name, nameToDataKey[metricName]], []);
         }
+
         return (<LineGraph
           data={tsData}
           lastUpdated={this.props.lastUpdated}
@@ -120,12 +122,14 @@ export default class TabbedMetricsTable extends React.Component {
   renderTable(metric) {
     let resource = resourceInfo[this.props.resource];
     let columns = _.compact(metricToColumns[metric](resource, this.props.pathPrefix));
-    columns.push(this.getSparklineColumn(metric));
+    if (!this.props.hideSparklines) {
+      columns.push(this.getSparklineColumn(metric));
+    }
 
     // TODO: move this into rollup aggregation
     let tableData = this.props.metrics;
-    let totalRequestRate = _.sumBy(this.props.metrics, "rollup.requestRate");
-    _.each(tableData, datum => datum.rollup.totalRequests = totalRequestRate);
+    let totalRequestRate = _.sumBy(this.props.metrics, "requestRate");
+    _.each(tableData, datum => datum.totalRequests = totalRequestRate);
 
     return (<Table
       dataSource={tableData}

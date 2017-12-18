@@ -243,7 +243,7 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec) enhancedPodTemplateSpec {
 			},
 		},
 		Env: []v1.EnvVar{
-			v1.EnvVar{Name: "CONDUIT_PROXY_LOG", Value: "trace,h2=debug,mio=info,tokio_core=info"},
+			v1.EnvVar{Name: "CONDUIT_PROXY_LOG", Value: "warn,conduit_proxy=info"},
 			v1.EnvVar{
 				Name:  "CONDUIT_PROXY_CONTROL_URL",
 				Value: fmt.Sprintf("tcp://proxy-api.%s.svc.cluster.local:%d", controlPlaneNamespace, proxyAPIPort),

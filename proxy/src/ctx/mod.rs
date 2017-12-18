@@ -7,8 +7,8 @@
 //! As a rule, context types should implement `Clone + Send + Sync`. This allows them to
 //! be stored in `http::Extensions`, for instance. Furthermore, because these contexts
 //! will be sent to a telemetry processing thread, we want to avoid excessive cloning.
+use config;
 use control::pb::proxy::telemetry as proto;
-use std::env;
 use std::sync::Arc;
 pub mod http;
 pub mod transport;
@@ -47,7 +47,8 @@ pub enum Proxy {
 }
 
 impl Process {
-    pub fn new(node: &str, instance: &str, ns: &str) -> Arc<Self> {
+    #[cfg(test)]
+    pub fn test(node: &str, instance: &str, ns: &str) -> Arc<Self> {
         Arc::new(Self {
             node: node.into(),
             scheduled_instance: instance.into(),
@@ -56,25 +57,18 @@ impl Process {
     }
 
     /// Construct a new `Process` from environment variables.
-    pub fn from_env() -> Arc<Self> {
-        fn get_var(key: &str) -> String {
-            env::var(key).unwrap_or_else(|why| {
-                warn!(
-                    "Process::from_env(): Failed to get value of {} environment variable: {:?}",
-                    key,
-                    why
-                );
-                String::from("")
-            })
+    pub fn new(config: &config::Config) -> Arc<Self> {
+        fn empty_if_missing(s: &Option<String>) -> String {
+            match *s {
+                Some(ref s) => s.clone(),
+                None => "".to_owned(),
+            }
         }
 
-        let node = get_var(::config::ENV_NODE_NAME);
-        let scheduled_instance = get_var(::config::ENV_POD_NAME);
-        let scheduled_namespace = get_var(::config::ENV_POD_NAMESPACE);
         Arc::new(Self {
-            node,
-            scheduled_instance,
-            scheduled_namespace,
+            node: empty_if_missing(&config.node_name),
+            scheduled_instance: empty_if_missing(&config.pod_name),
+            scheduled_namespace: empty_if_missing(&config.pod_namespace),
         })
     }
 }
