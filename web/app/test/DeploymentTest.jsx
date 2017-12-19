@@ -1,7 +1,7 @@
 import Deployment from '../js/components/Deployment.jsx';
 import { expect } from 'chai';
-import React from 'react';
-import { shallow } from 'enzyme';
+import { mount } from 'enzyme';
+import { routerWrap } from "./testHelpers.jsx";
 import sinon from 'sinon';
 import sinonStubPromise from 'sinon-stub-promise';
 
@@ -22,7 +22,7 @@ describe('Deployment', () => {
     fetchStub.returnsPromise().resolves({
       json: () => Promise.resolve({ metrics: [] })
     });
-    component = shallow(<Deployment location={{search: "search"}} />);
+    component = mount(routerWrap(Deployment));
     expect(component.find("ConduitSpinner")).to.have.length(1);
   });
 });
