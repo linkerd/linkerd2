@@ -11,6 +11,7 @@ import (
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/controller/util"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc/codes"
 )
 
 var (
@@ -107,35 +108,44 @@ func print(rsp pb.Api_TapClient) {
 			fmt.Println(err)
 			break
 		}
-		fmt.Printf("[%s -> %s]\n", util.AddressToString(event.GetSource()), util.AddressToString(event.GetTarget()))
-		switch ev := event.GetHttp().Event.(type) {
-		case *common.TapEvent_Http_RequestInit_:
-			fmt.Printf("HTTP Request\n")
-			fmt.Printf("Stream ID: (%d, %d)\n", ev.RequestInit.Id.Base, ev.RequestInit.Id.Stream)
-			fmt.Printf("%s %s %s%s\n",
-				ev.RequestInit.Scheme.GetRegistered().String(),
-				ev.RequestInit.Method.GetRegistered().String(),
-				ev.RequestInit.Authority,
-				ev.RequestInit.Path,
-			)
-			fmt.Println()
-		case *common.TapEvent_Http_ResponseInit_:
-			fmt.Printf("HTTP Response\n")
-			fmt.Printf("Stream ID: (%d, %d)\n", ev.ResponseInit.Id.Base, ev.ResponseInit.Id.Stream)
-			fmt.Printf("Status: %d\nLatency (us): %d\n",
-				ev.ResponseInit.GetHttpStatus(),
-				ev.ResponseInit.GetSinceRequestInit().Nanos/1000,
-			)
-			fmt.Println()
-		case *common.TapEvent_Http_ResponseEnd_:
-			fmt.Printf("HTTP Response End\n")
-			fmt.Printf("Stream ID: (%d, %d)\n", ev.ResponseEnd.Id.Base, ev.ResponseEnd.Id.Stream)
-			fmt.Printf("Grpc-Status: %d\nDuration (us): %d\nBytes: %d\n",
-				ev.ResponseEnd.GetGrpcStatus(),
-				ev.ResponseEnd.GetSinceResponseInit().Nanos/1000,
-				ev.ResponseEnd.GetResponseBytes(),
-			)
-			fmt.Println()
-		}
+		fmt.Println(eventToString(event))
+	}
+}
+
+func eventToString(event *common.TapEvent) string {
+	flow := fmt.Sprintf("src=%s dst=%s",
+		util.AddressToString(event.GetSource()),
+		util.AddressToString(event.GetTarget()),
+	)
+
+	switch ev := event.GetHttp().Event.(type) {
+	case *common.TapEvent_Http_RequestInit_:
+		return fmt.Sprintf("req id=%d:%d %s :method=%s :authority=%s :path=%s",
+			ev.RequestInit.Id.Base,
+			ev.RequestInit.Id.Stream,
+			flow,
+			ev.RequestInit.Method.GetRegistered().String(),
+			ev.RequestInit.Authority,
+			ev.RequestInit.Path,
+		)
+	case *common.TapEvent_Http_ResponseInit_:
+		return fmt.Sprintf("rsp id=%d:%d %s :status=%d latency=%dµs",
+			ev.ResponseInit.Id.Base,
+			ev.ResponseInit.Id.Stream,
+			flow,
+			ev.ResponseInit.GetHttpStatus(),
+			ev.ResponseInit.GetSinceRequestInit().Nanos/1000,
+		)
+	case *common.TapEvent_Http_ResponseEnd_:
+		return fmt.Sprintf("end id=%d:%d %s grpc-status=%s duration=%dµs response-length=%dB",
+			ev.ResponseEnd.Id.Base,
+			ev.ResponseEnd.Id.Stream,
+			flow,
+			codes.Code(ev.ResponseEnd.GetGrpcStatus()),
+			ev.ResponseEnd.GetSinceResponseInit().Nanos/1000,
+			ev.ResponseEnd.GetResponseBytes(),
+		)
+	default:
+		return fmt.Sprintf("unknown %s", flow)
 	}
 }
