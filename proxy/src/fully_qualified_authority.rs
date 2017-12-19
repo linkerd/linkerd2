@@ -101,7 +101,8 @@ impl FullyQualifiedAuthority {
         }
         normalized.extend_from_slice(colon_port.as_bytes());
 
-        FullyQualifiedAuthority(Authority::from_shared(normalized.freeze()).unwrap())
+        FullyQualifiedAuthority(Authority::from_shared(normalized.freeze())
+            .expect("syntactically-valid authority"))
     }
 
     pub fn without_trailing_dot(&self) -> &str {
