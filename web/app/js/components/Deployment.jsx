@@ -91,8 +91,7 @@ export default class Deployment extends React.Component {
         let downstreamMetrics = processRollupMetrics(downstreamRollup.metrics, "targetDeploy");
         let downstreamTsByDeploy = processTimeseriesMetrics(downstreamTimeseries.metrics, "targetDeploy");
 
-        let deploy = _.find(getPodsByDeployment(podList.pods),
-          ["name", this.state.deploy]);
+        let deploy = _.find(getPodsByDeployment(podList.pods), ["name", this.state.deploy]);
         let totalRequestRate = _.sumBy(podMetrics, "requestRate");
         _.each(podMetrics, datum => datum.totalRequests = totalRequestRate);
 
@@ -214,10 +213,6 @@ export default class Deployment extends React.Component {
     );
   }
 
-  renderContent() {
-    return this.renderSections();
-  }
-
   render() {
     if (!this.state.loaded) {
       return <ConduitSpinner />;
@@ -227,7 +222,7 @@ export default class Deployment extends React.Component {
           <div className="subsection-header">Deployment detail</div>
           {this.renderDeploymentTitle()}
         </div>
-        {this.renderContent()}
+        {this.renderSections()}
       </div>
     );
   }

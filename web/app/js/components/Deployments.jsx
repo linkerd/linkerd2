@@ -64,10 +64,7 @@ export default class Deployments extends React.Component {
     // expose serverPromise for testing
     this.serverPromise = Promise.all([rollupRequest, podRequest])
       .then(([rollup, p]) => {
-        let poByDeploy = getPodsByDeployment(p.pods,
-          (componentPods, name) => {
-            return { name: name, added: _.every(componentPods, 'added') };
-          });
+        let poByDeploy = getPodsByDeployment(p.pods);
         let meshDeploys = processRollupMetrics(rollup.metrics, "targetDeploy");
         let combinedMetrics = this.addDeploysWithNoMetrics(poByDeploy, meshDeploys);
 
