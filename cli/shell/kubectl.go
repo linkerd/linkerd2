@@ -21,13 +21,14 @@ type kubectl struct {
 }
 
 const (
-	kubectlDefaultProxyPort                   = 8001
-	kubectlDefaultTimeout                     = 10 * time.Second
-	portWhenProxyNotRunning                   = -1
+	kubectlDefaultProxyPort = 8001
+	kubectlDefaultTimeout   = 10 * time.Second
+	portWhenProxyNotRunning = -1
+	//As per https://github.com/kubernetes/kubernetes/commit/0daee3ad2238de7bb356d1b4368b0733a3497a3a#diff-595bfea7ed0dd0171e1f339a1f8bfcb6R155
 	magicCharacterThatIndicatesProxyIsRunning = '\n'
 )
 
-var minimunKubectlVersionExpected = [3]int{1, 8, 4}
+var minimunKubectlVersionExpected = [3]int{1, 8, 0}
 
 func (kctl *kubectl) ProxyPort() int {
 	return kctl.proxyPort
@@ -38,11 +39,7 @@ func (kctl *kubectl) Version() ([3]int, error) {
 	bytes, err := kctl.sh.CombinedOutput("kubectl", "version", "--client", "--short")
 	versionString := string(bytes)
 	if err != nil {
-		return [3]int{}, fmt.Errorf("Error running kubectl Version. Output: %s Error: %v", versionString, err)
-	}
-
-	if err != nil {
-		return version, err
+		return version, fmt.Errorf("Error running kubectl Version. Output: %s Error: %v", versionString, err)
 	}
 
 	justTheVersionString := strings.TrimPrefix(versionString, "Client Version: v")
@@ -77,7 +74,7 @@ func (kctl *kubectl) StartProxy(potentialErrorWhenStartingProxy chan error, port
 
 	fmt.Println(kubectlOutput)
 	if err != nil {
-		return fmt.Errorf("Error waiting for kubectl to start the proxy. kubetl returned [%s], error: %v", kubectlOutput, err)
+		return fmt.Errorf("Error waiting for kubectl to start the proxy. kubectl returned [%s], error: %v", kubectlOutput, err)
 	}
 
 	kctl.proxyPort = kubectlDefaultProxyPort
@@ -123,7 +120,10 @@ func MakeKubectl(shell Shell) (Kubectl, error) {
 	}
 
 	if !isCompatibleVersion(minimunKubectlVersionExpected, actualVersion) {
-		return nil, fmt.Errorf("Kubectl is on version %v, but version %v or more recent is required", actualVersion, minimunKubectlVersionExpected)
+		return nil, fmt.Errorf(
+			"Kubectl is on version [%d.%d.%d], but version [%d.%d.%d] or more recent is required",
+			actualVersion[0], actualVersion[1], actualVersion[2],
+			minimunKubectlVersionExpected[0], minimunKubectlVersionExpected[1], minimunKubectlVersionExpected[2])
 	}
 
 	return kubectl, nil
