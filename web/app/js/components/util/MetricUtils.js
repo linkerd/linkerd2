@@ -26,11 +26,13 @@ const convertLatencyTs = rawTs => {
   return _.groupBy(latencies, 'label');
 };
 
-export const getPodsByDeployment = (pods, mappingFunc) => {
+export const getPodsByDeployment = pods => {
   return _(pods)
     .reject(p => _.isEmpty(p.deployment) || p.controlPlane)
     .groupBy('deployment')
-    .map(mappingFunc)
+    .map((componentPods, name) => {
+      return { name: name, added: _.every(componentPods, 'added') };
+    })
     .sortBy('name')
     .value();
 };
