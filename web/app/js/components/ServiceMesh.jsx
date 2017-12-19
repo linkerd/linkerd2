@@ -4,9 +4,9 @@ import ConduitSpinner from "./ConduitSpinner.jsx";
 import DeploymentSummary from './DeploymentSummary.jsx';
 import Metric from './Metric.jsx';
 import React from 'react';
-import { rowGutter } from './util/Utils.js';
 import StatusTable from './StatusTable.jsx';
 import { Col, Row, Table } from 'antd';
+import { instructions, rowGutter } from './util/Utils.js';
 import { processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
 import './../../css/service-mesh.css';
 import 'whatwg-fetch';
@@ -253,9 +253,6 @@ export default class ServiceMesh extends React.Component {
   }
 
   renderAddDeploymentsMessage() {
-    let instructions = (<div className="instructions">Add one or more deployments to the deployment.yml file <br /><br />
-                        Then run <code>conduit inject deployment.yml | kubectl apply -f - </code> to add deploys to the service mesh</div>);
-
     if (this.deployCount() === 0) {
       return (
         <div className="incomplete-mesh-message">
@@ -267,13 +264,13 @@ export default class ServiceMesh extends React.Component {
       case 0:
         return (
           <div className="complete-mesh-message">
-              All deployments have been added to the service mesh.
+            All deployments have been added to the service mesh.
           </div>
         );
       case 1:
         return (
           <div className="incomplete-mesh-message">
-              1 deployment has not been added to the service mesh. {instructions}
+            1 deployment has not been added to the service mesh. {instructions}
           </div>
         );
       default:

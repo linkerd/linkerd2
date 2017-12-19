@@ -1,7 +1,7 @@
+import _ from 'lodash';
+import { createMemoryHistory } from 'history';
 import React from 'react';
 import { Route, Router } from 'react-router';
-import { createMemoryHistory } from 'history';
-import _ from 'lodash';
 
 export function printStack() {
   let e = new Error('dummy');

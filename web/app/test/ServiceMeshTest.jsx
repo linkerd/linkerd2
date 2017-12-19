@@ -1,12 +1,11 @@
-import ServiceMesh from '../js/components/ServiceMesh.jsx';
-import { expect } from 'chai';
-import { mount, shallow } from 'enzyme';
-import podFixtures from './fixtures/pods.json';
-import React from 'react';
-import sinon from 'sinon';
 import _ from 'lodash';
+import { expect } from 'chai';
+import { mount } from 'enzyme';
+import podFixtures from './fixtures/pods.json';
+import { routerWrap } from './testHelpers.jsx';
+import ServiceMesh from '../js/components/ServiceMesh.jsx';
+import sinon from 'sinon';
 import sinonStubPromise from 'sinon-stub-promise';
-import { printStack, routerWrap } from './testHelpers.jsx';
 
 sinonStubPromise(sinon);
 
