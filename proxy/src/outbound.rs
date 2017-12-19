@@ -11,6 +11,7 @@ use tower_router::Recognize;
 use bind::Bind;
 use control;
 use ctx;
+use fully_qualified_authority::FullyQualifiedAuthority;
 use telemetry;
 use transport;
 
@@ -29,15 +30,21 @@ type Error = tower_buffer::Error<
 pub struct Outbound<B> {
     bind: Bind<Arc<ctx::Proxy>, B>,
     discovery: control::Control,
+    default_namespace: Option<String>,
+    default_zone: Option<String>,
 }
 
 // ===== impl Outbound =====
 
 impl<B> Outbound<B> {
-    pub fn new(bind: Bind<Arc<ctx::Proxy>, B>, discovery: control::Control) -> Self {
+    pub fn new(bind: Bind<Arc<ctx::Proxy>, B>, discovery: control::Control,
+               default_namespace: Option<String>, default_zone: Option<String>)
+               -> Outbound<B> {
         Self {
             bind,
             discovery,
+            default_namespace,
+            default_zone,
         }
     }
 }
@@ -49,12 +56,17 @@ where
     type Request = http::Request<B>;
     type Response = http::Response<telemetry::sensor::http::ResponseBody<tower_h2::RecvBody>>;
     type Error = Error;
-    type Key = http::uri::Authority;
+    type Key = FullyQualifiedAuthority;
     type RouteError = ();
     type Service = Buffer<Balance<Discovery<B>>>;
 
     fn recognize(&self, req: &Self::Request) -> Option<Self::Key> {
-        req.uri().authority_part().cloned()
+        req.uri().authority_part().map(|authority|
+            FullyQualifiedAuthority::new(
+                authority,
+                self.default_namespace.as_ref().map(|s| s.as_ref()),
+                self.default_zone.as_ref().map(|s| s.as_ref()))
+        )
     }
 
     /// Builds a dynamic, load balancing service.
@@ -68,7 +80,7 @@ where
     /// changed.
     fn bind_service(
         &mut self,
-        authority: &http::uri::Authority,
+        authority: &FullyQualifiedAuthority,
     ) -> Result<Self::Service, Self::RouteError> {
         debug!("building outbound client to {:?}", authority);
 

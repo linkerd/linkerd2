@@ -26,7 +26,9 @@
   color: white;
   padding: var(--base-width);
   font-size: 16;
+  border-radius: calc(var(--base-width)/2);
   font-weight: var(--font-weight-extra-bold);
+  border-radius: var
 }
 
 /* styles for the StatusTable */

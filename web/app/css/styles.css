@@ -1,4 +1,5 @@
 
+
 :root {
     --white: #fff;
     --buttonblue: #4076c4;
@@ -112,10 +113,19 @@ h2, h3, h4, h5, h6 {
 .conduit-table thead > tr > th {
   background: var(--white);
   text-transform: uppercase;
-  font-style: bold;
+  font-weight: bold;
   border-bottom: 1px solid;
   border-color: #BDBDBD;
   word-break: keep-all;
+}
+
+.ant-table table {
+  font-weight: bold;
+  font-size: .8rem;
+}
+
+.ant-table-tbody > tr:hover > td {
+  background: rgba(47, 128, 237, .1);
 }
 
 tr th.numeric, .numeric {
@@ -132,7 +142,7 @@ tr th.numeric, .numeric {
   padding: var(--base-width);
   /* height: 190px; */
   background-repeat: space;
-  margin-bottom: calc(2 * var(--base-width));
+  margin-bottom: calc(var(--base-width)*2);
 }
 .border-container-content {
   overflow: hidden;

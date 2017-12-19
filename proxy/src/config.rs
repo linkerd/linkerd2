@@ -51,7 +51,17 @@ pub struct Config {
 
     pub pod_name: Option<String>,
     pub pod_namespace: Option<String>,
+    pub pod_zone: Option<String>,
     pub node_name: Option<String>,
+
+    /// Should we use `pod_namespace` and/or `pod_zone` to map unqualified/partially-qualified
+    /// to fully-qualified names using the given platform's conventions?
+    destinations_autocomplete_fqdn: Option<Environment>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum Environment {
+    Kubernetes,
 }
 
 /// Configuration settings for binding a listener.
@@ -76,6 +86,7 @@ pub enum Error {
 
 #[derive(Clone, Debug)]
 pub enum ParseError {
+    EnviromentUnsupported,
     NotANumber,
     HostIsNotAnIpAddress,
     NotUnicode,
@@ -132,6 +143,8 @@ const ENV_PUBLIC_CONNECT_TIMEOUT: &str = "CONDUIT_PROXY_PUBLIC_CONNECT_TIMEOUT";
 const ENV_NODE_NAME: &str = "CONDUIT_PROXY_NODE_NAME";
 const ENV_POD_NAME: &str = "CONDUIT_PROXY_POD_NAME";
 const ENV_POD_NAMESPACE: &str = "CONDUIT_PROXY_POD_NAMESPACE";
+const ENV_POD_ZONE: &str = "CONDUIT_PROXY_POD_ZONE";
+const ENV_DESTINATIONS_AUTOCOMPLETE_FQDN: &str = "CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN";
 
 pub const ENV_CONTROL_URL: &str = "CONDUIT_PROXY_CONTROL_URL";
 const ENV_RESOLV_CONF: &str = "CONDUIT_RESOLV_CONF";
@@ -170,7 +183,10 @@ impl<'a> TryFrom<&'a Strings> for Config {
         let report_timeout = parse(strings, ENV_REPORT_TIMEOUT_SECS, parse_number);
         let pod_name = strings.get(ENV_POD_NAME);
         let pod_namespace = strings.get(ENV_POD_NAMESPACE);
+        let pod_zone = strings.get(ENV_POD_ZONE);
         let node_name = strings.get(ENV_NODE_NAME);
+        let destinations_autocomplete_fqdn =
+            parse(strings, ENV_DESTINATIONS_AUTOCOMPLETE_FQDN, parse_environment);
 
         Ok(Config {
             private_listener: Listener {
@@ -204,8 +220,26 @@ impl<'a> TryFrom<&'a Strings> for Config {
                 Duration::from_secs(report_timeout?.unwrap_or(DEFAULT_REPORT_TIMEOUT_SECS)),
             pod_name: pod_name?,
             pod_namespace: pod_namespace?,
+            pod_zone: pod_zone?,
             node_name: node_name?,
+            destinations_autocomplete_fqdn: destinations_autocomplete_fqdn?,
         })
+    }
+}
+
+impl Config {
+    pub fn default_destination_namespace(&self) -> Option<&String> {
+        match self.destinations_autocomplete_fqdn {
+            Some(Environment::Kubernetes) => self.pod_namespace.as_ref(),
+            None => None,
+        }
+    }
+
+    pub fn default_destination_zone(&self) -> Option<&String> {
+        match self.destinations_autocomplete_fqdn {
+            Some(Environment::Kubernetes) => self.pod_zone.as_ref(),
+            None => None,
+        }
     }
 }
 
@@ -274,6 +308,13 @@ impl Strings for TestEnv {
 }
 
 // ===== Parsing =====
+
+fn parse_environment(s: &str) -> Result<Environment, ParseError> {
+    match s {
+        "Kubernetes" => Ok(Environment::Kubernetes),
+        _ => Err(ParseError::EnviromentUnsupported),
+    }
+}
 
 fn parse_number<T>(s: &str) -> Result<T, ParseError> where T: FromStr {
     s.parse().map_err(|_| ParseError::NotANumber)

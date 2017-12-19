@@ -62,6 +62,7 @@ pub mod control;
 pub mod convert;
 mod ctx;
 mod dns;
+mod fully_qualified_authority;
 mod inbound;
 mod logging;
 mod map_err;
@@ -204,10 +205,16 @@ impl Main {
                 .map_or_else(|| bind.clone(), |t| bind.clone().with_connect_timeout(t))
                 .with_ctx(ctx.clone());
 
+            let outgoing = Outbound::new(
+                bind,
+                control,
+                config.default_destination_namespace().cloned(),
+                config.default_destination_zone().cloned());
+
             let fut = serve(
                 outbound_listener,
                 h2::server::Builder::default(),
-                Outbound::new(bind, control),
+                outgoing,
                 ctx,
                 sensors,
                 &executor,
