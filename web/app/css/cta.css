@@ -8,7 +8,19 @@
     font-size: 14px;
     font-weight: var(--font-weight-bold);
     padding: 8px 0;
+
+   & code {
+      background-color: rgba(47, 128, 237, 1);
+      color: white;
+      font-size: .9rem;
+      letter-spacing: 0px;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+
   }
+
+
 
   & .summary {
     color: #27AE60;
@@ -22,7 +34,8 @@
   }
 
   & .step-container {
-    border-radius: 42px;
+    border-radius: calc(var(--base-width)*4);
+    width: 98%
   }
 
   & .step-container > div {
@@ -31,14 +44,15 @@
   }
 
   & .icon-container {
-    border-radius: 41px;
     width: 37px;
-    background-color: white;
+    border-radius: 0px;
+    padding-left: var(--base-width);
   }
 
   & .step-container .fa {
     font-size: 2em;
     line-height: 41px;
+    color: #fff;
   }
 
   & .action-steps {
