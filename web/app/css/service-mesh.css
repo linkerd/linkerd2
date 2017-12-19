@@ -19,11 +19,6 @@
   font-size: 14px;
   font-weight: var(--font-weight-bold);
   padding: 8px 0;
-
-  &.emphasis {
-    font-weight: var(--font-weight-extra-bold);
-    font-size: 16;
-  }
 }
 
 .incomplete-mesh-message, .complete-mesh-message {
@@ -50,7 +45,7 @@ td .status-dot {
   }
 
   &.status-dot-good {
-    background-color: #27AE60;
+    background-color: var(--green);
   }
   &.status-dot-bad {
     background-color: #EB5757;

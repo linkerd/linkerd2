@@ -201,10 +201,9 @@ export default class Deployment extends React.Component {
           !this.state.added ? (
             <div className="unadded-message">
               <div className="status-badge unadded"><p>UNADDED</p></div>
-              <div className={"incomplete-mesh-message"}>
-                <div className="instructions emphasis">{this.state.deploy} has not been added to the service mesh</div>
-                <div className="instructions">Add the deployment to the deployment.yml file</div>
-                <div className="instructions">Then run <code>kubectl inject deployment.yml | kubectl apply -f - </code> to add the deployment to the service mesh</div>
+              <div className="call-to-action">
+                <div className="action">Add {this.state.deploy} to the deployment.yml file</div>
+                <div className="action">Then run <code>kubectl inject deployment.yml | kubectl apply -f -</code> to add the deploys to the service mesh</div>
               </div>
             </div>
           ) : null

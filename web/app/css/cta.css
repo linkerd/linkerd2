@@ -23,7 +23,7 @@
 
 
   & .summary {
-    color: #27AE60;
+    color: var(--green);
 
   }
 
@@ -65,8 +65,8 @@
     }
 
     & .complete {
-      color: #27AE60;
-      background-color: #27AE60;
+      color: var(--green);
+      background-color: var(--green);
     }
     & .incomplete {
       color: #828282;

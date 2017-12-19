@@ -41,7 +41,7 @@ export default class HealthPane extends React.Component {
   getHealthStats() {
     let inboundSr = this.getAvgSuccessRate(this.props.upstreamMetrics);
     let outboundSr = this.getAvgSuccessRate(this.props.downstreamMetrics);
-    let sr = _.isUndefined(this.props.currentSr) ? null : this.props.currentSr;
+    let sr = this.props.currentSr;
 
     return {
       inbound: {

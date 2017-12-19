@@ -1,7 +1,7 @@
 import Deployment from '../js/components/Deployment.jsx';
 import { expect } from 'chai';
-import { mount, shallow } from 'enzyme';
 import React from 'react';
+import { shallow } from 'enzyme';
 import sinon from 'sinon';
 import sinonStubPromise from 'sinon-stub-promise';
 
@@ -9,10 +9,6 @@ sinonStubPromise(sinon);
 
 describe('Deployment', () => {
   let component, fetchStub;
-
-  function withPromise(fn) {
-    return component.get(0).serverPromise.then(fn);
-  }
 
   beforeEach(() => {
     fetchStub = sinon.stub(window, 'fetch');
@@ -26,7 +22,7 @@ describe('Deployment', () => {
     fetchStub.returnsPromise().resolves({
       json: () => Promise.resolve({ metrics: [] })
     });
-    component = shallow(<Deployment location={{search:"search"}} />);
+    component = shallow(<Deployment location={{search: "search"}} />);
     expect(component.find("ConduitSpinner")).to.have.length(1);
   });
 });
