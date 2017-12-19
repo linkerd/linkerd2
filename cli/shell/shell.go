@@ -27,14 +27,13 @@ func (sh *unixShell) CombinedOutput(name string, arg ...string) (string, error) 
 }
 
 func (sh *unixShell) AsyncStdout(potentialErrorFromAsyncProcess chan error, name string, arg ...string) (*bufio.Reader, error) {
-	errorReturnedByProcess := make(chan error, 1)
 	command := exec.Command(name, arg...)
 	stdout, err := command.StdoutPipe()
 	if err != nil {
 		return nil, fmt.Errorf("Error executing command in an async way: %v", err)
 	}
 
-	go func(e chan error) { e <- command.Run() }(errorReturnedByProcess)
+	go func(e chan error) { e <- command.Run() }(potentialErrorFromAsyncProcess)
 	return bufio.NewReader(stdout), nil
 }
 
@@ -57,7 +56,7 @@ func (sh *unixShell) WaitForCharacter(charToWaitFor byte, outputReader *bufio.Re
 
 	select {
 	case <-time.After(timeout):
-		return "", fmt.Errorf("Timed-out expoecting token [%c] in reader [%v]", charToWaitFor, outputReader)
+		return "", fmt.Errorf("Timed-out expoecting token [%c] in reader", charToWaitFor)
 	case e := <-potentialError:
 		return "", e
 	case o := <-output:

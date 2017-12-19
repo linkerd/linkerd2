@@ -39,18 +39,6 @@ func (sh *mockShell) WaitForCharacter(charToWaitFor byte, outputReader *bufio.Re
 }
 
 func TestKubectlVersion(t *testing.T) {
-	t.Run("Returns some Version as a smoke test", func(t *testing.T) {
-		kctl, err := MakeKubectl(MakeUnixShell())
-		if err != nil {
-			t.Fatalf("Error parsing string: %v", err)
-		}
-		_, err = kctl.Version()
-
-		if err != nil {
-			t.Fatalf("Error running command: %v", err)
-		}
-	})
-
 	t.Run("Correctly parses a Version string", func(t *testing.T) {
 		versions := map[string][3]int{
 			"Client Version: v1.8.4":        {1, 8, 4},
