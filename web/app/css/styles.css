@@ -137,6 +137,12 @@ tr th.numeric, .numeric {
   color: var(--subheader-grey);
 }
 
+.action {
+  font-size: 14px;
+  font-weight: var(--font-weight-bold);
+  padding: 8px 0;
+}
+
 /* fancy borders */
 .border-container {
   padding: var(--base-width);

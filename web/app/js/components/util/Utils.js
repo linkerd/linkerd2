@@ -80,6 +80,6 @@ export const toClassName = name => {
 * Instructions for adding deployments to service mesh
 */
 export const instructions = (
-  <div className="instructions">Add one or more deployments to the deployment.yml file <br /><br />
+  <div className="action">Add one or more deployments to the deployment.yml file <br /><br />
   Then run <code>conduit inject deployment.yml | kubectl apply -f - </code> to add deploys to the service mesh</div>
 );

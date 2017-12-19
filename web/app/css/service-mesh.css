@@ -15,12 +15,6 @@
   width: 131px;
 }
 
-.instructions {
-  font-size: 14px;
-  font-weight: var(--font-weight-bold);
-  padding: 8px 0;
-}
-
 .incomplete-mesh-message, .complete-mesh-message {
   background-color: var(--messageblue);
   color: white;
