@@ -35,7 +35,7 @@ type (
 
 func NewClient(config *Config, transport http.RoundTripper) (pb.ApiClient, error) {
 	if !config.ServerURL.IsAbs() {
-		return nil, fmt.Errorf("server URL must be absolute")
+		return nil, fmt.Errorf("server URL must be absolute, was [%s]", config.ServerURL.String())
 	}
 
 	return &client{

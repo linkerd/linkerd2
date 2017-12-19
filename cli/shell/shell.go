@@ -1,17 +1,20 @@
 package shell
 
 import (
-	"os/exec"
 	"bufio"
-	"time"
 	"fmt"
 	"io"
+	"os"
+	"os/exec"
+	"runtime"
+	"time"
 )
 
 type Shell interface {
 	CombinedOutput(name string, arg ...string) (string, error)
 	AsyncStdout(potentialErrorFromAsyncProcess chan error, name string, arg ...string) (*bufio.Reader, error)
 	WaitForCharacter(charToWaitFor byte, output *bufio.Reader, timeout time.Duration) (string, error)
+	HomeDir() string
 }
 
 type unixShell struct{}
@@ -63,6 +66,16 @@ func (sh *unixShell) WaitForCharacter(charToWaitFor byte, outputReader *bufio.Re
 		return o, nil
 	}
 
+}
+
+func (sh *unixShell) HomeDir() string {
+	var homeEnvVar string
+	if runtime.GOOS == "windows" {
+		homeEnvVar = "USERPROFILE"
+	} else {
+		homeEnvVar = "HOME"
+	}
+	return os.Getenv(homeEnvVar)
 }
 
 func MakeUnixShell() Shell {

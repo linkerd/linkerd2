@@ -36,6 +36,14 @@ func (kctl *kubectl) ProxyPort() int {
 	return kctl.proxyPort
 }
 
+func (kctl *kubectl) ProxyHost() string {
+	return "127.0.0.1"
+}
+
+func (kctl *kubectl) ProxyScheme() string {
+	return "http"
+}
+
 func (kctl *kubectl) Version() ([3]int, error) {
 	var version [3]int
 	bytes, err := kctl.sh.CombinedOutput("kubectl", "version", "--client", "--short")
@@ -88,12 +96,9 @@ func (kctl *kubectl) UrlFor(namespace string, extraPathStartingWithSlash string)
 		return nil, errors.New("proxy needs to be started before generating URLs")
 	}
 
-	urlString := fmt.Sprintf("http://%s:%d/api/v1/namespaces/%s%s", "127.0.0.1", kctl.ProxyPort(), namespace, extraPathStartingWithSlash)
-	url, err := url.Parse(urlString)
-	if err != nil {
-		return nil, fmt.Errorf("Error generating URL from [%s]", urlString)
-	}
-	return url, err
+	schemeHostAndPort := fmt.Sprintf("%s://%s:%d",kctl.ProxyScheme(),kctl.ProxyHost(), kctl.ProxyPort())
+
+	return generateKubernetesApiBaseUrlFor(schemeHostAndPort, namespace, extraPathStartingWithSlash)
 }
 
 func isCompatibleVersion(minimalRequirementVersion [3]int, actualVersion [3]int) bool {

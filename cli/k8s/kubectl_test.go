@@ -1,13 +1,13 @@
 package k8s
 
 import (
-	"testing"
-	"fmt"
-	"strings"
-	"errors"
 	"bufio"
-	"time"
+	"errors"
+	"fmt"
 	"net/url"
+	"strings"
+	"testing"
+	"time"
 )
 
 type mockShell struct {
@@ -37,6 +37,10 @@ func (sh *mockShell) AsyncStdout(asyncError chan error, name string, arg ...stri
 
 func (sh *mockShell) WaitForCharacter(charToWaitFor byte, outputReader *bufio.Reader, timeout time.Duration) (string, error) {
 	return outputReader.ReadString(charToWaitFor)
+}
+
+func (sh *mockShell) HomeDir() string {
+	return "/home/bob"
 }
 
 func TestKubectlVersion(t *testing.T) {
