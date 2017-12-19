@@ -5,17 +5,16 @@ import React from 'react';
 import { Col, Progress, Row } from 'antd';
 import './../../css/health-pane.css';
 
-const TrafficIndicator = () => {
+const TrafficIndicator = ({healthStat}) => {
   return (
     <Progress
       percent={100}
-      status="active"
+      status={healthStat === "health-unknown" ? "success" : "active"}
       strokeWidth={8}
       format={() => null} />
   );
 };
 
-const neutralSr = 0.5;
 
 export default class HealthPane extends React.Component {
   getRequestRate(metrics) {
@@ -27,6 +26,9 @@ export default class HealthPane extends React.Component {
   }
 
   getHealthClassName(successRate) {
+    if (_.isNil(successRate) || _.isNaN(successRate)) {
+      return "health-unknown";
+    }
     if (successRate < 0.4) {
       return "health-bad";
     }
@@ -39,7 +41,7 @@ export default class HealthPane extends React.Component {
   getHealthStats() {
     let inboundSr = this.getAvgSuccessRate(this.props.upstreamMetrics);
     let outboundSr = this.getAvgSuccessRate(this.props.downstreamMetrics);
-    let sr = _.isUndefined(this.props.currentSr) ? neutralSr : this.props.currentSr;
+    let sr = this.props.currentSr;
 
     return {
       inbound: {
@@ -76,7 +78,7 @@ export default class HealthPane extends React.Component {
           <Col span={8}>
             <div className="entity-count">&laquo; {_.size(this.props.upstreamMetrics)} {this.props.entityType}s</div>
             <div className={`adjacent-health ${stats.inbound.health}`}>
-              <TrafficIndicator />
+              <TrafficIndicator healthStat={stats.inbound.health} />
             </div>
           </Col>
           <Col span={8}>
@@ -86,7 +88,7 @@ export default class HealthPane extends React.Component {
           <Col span={8}>
             <div className="entity-count float-right">{_.size(this.props.downstreamMetrics)} {this.props.entityType}s &raquo;</div>
             <div className={`adjacent-health ${stats.outbound.health}`}>
-              <TrafficIndicator />
+              <TrafficIndicator healthStat={stats.outbound.health} />
             </div>
           </Col>
         </Row>

@@ -11,6 +11,8 @@
     --latency-p95: #2D9CDB;
     --latency-p50: #56CCF2;
     --subheader-grey: #828282;
+    --status-gray: #BDBDBD;
+    --green: #27AE60;
     --font-stack: 'Lato', helvetica, arial, sans-serif;
     --font-weight-light: 300;
     --font-weight-regular: 400;
@@ -115,7 +117,7 @@ h2, h3, h4, h5, h6 {
   text-transform: uppercase;
   font-weight: bold;
   border-bottom: 1px solid;
-  border-color: #BDBDBD;
+  border-color: var(--status-gray);
   word-break: keep-all;
 }
 

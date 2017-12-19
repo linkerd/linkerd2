@@ -9,7 +9,7 @@ import StatPane from './StatPane.jsx';
 import TabbedMetricsTable from './TabbedMetricsTable.jsx';
 import UpstreamDownstream from './UpstreamDownstream.jsx';
 import { Col, Row } from 'antd';
-import { processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
+import { getPodsByDeployment, processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
 import './../../css/deployment.css';
 import 'whatwg-fetch';
 
@@ -69,6 +69,7 @@ export default class Deployment extends React.Component {
     let upstreamTimeseriesUrl = `${upstreamRollupUrl}&timeseries=true`;
     let downstreamRollupUrl = `${metricsUrl}&aggregation=target_deploy&source_deploy=${this.state.deploy}`;
     let downstreamTimeseriesUrl = `${downstreamRollupUrl}&timeseries=true`;
+    let podListUrl = `${this.props.pathPrefix}/api/pods`;
 
     let deployFetch = fetch(deployMetricsUrl).then(r => r.json());
     let podFetch = fetch(podRollupUrl).then(r => r.json());
@@ -77,9 +78,10 @@ export default class Deployment extends React.Component {
     let upstreamTsFetch = fetch(upstreamTimeseriesUrl).then(r => r.json());
     let downstreamFetch = fetch(downstreamRollupUrl).then(r => r.json());
     let downstreamTsFetch = fetch(downstreamTimeseriesUrl).then(r => r.json());
+    let podListFetch = fetch(podListUrl).then(r => r.json());
 
-    Promise.all([deployFetch, podFetch, podTsFetch, upstreamFetch, upstreamTsFetch, downstreamFetch, downstreamTsFetch])
-      .then(([deployMetrics, podRollup, podTimeseries, upstreamRollup, upstreamTimeseries, downstreamRollup, downstreamTimeseries]) => {
+    Promise.all([deployFetch, podFetch, podTsFetch, upstreamFetch, upstreamTsFetch, downstreamFetch, downstreamTsFetch, podListFetch])
+      .then(([deployMetrics, podRollup, podTimeseries, upstreamRollup, upstreamTimeseries, downstreamRollup, downstreamTimeseries, podList]) => {
         let tsByDeploy = processTimeseriesMetrics(deployMetrics.metrics, "targetDeploy");
         let podMetrics = processRollupMetrics(podRollup.metrics, "targetPod");
         let podTs = processTimeseriesMetrics(podTimeseries.metrics, "targetPod");
@@ -89,12 +91,14 @@ export default class Deployment extends React.Component {
         let downstreamMetrics = processRollupMetrics(downstreamRollup.metrics, "targetDeploy");
         let downstreamTsByDeploy = processTimeseriesMetrics(downstreamTimeseries.metrics, "targetDeploy");
 
+        let deploy = _.find(getPodsByDeployment(podList.pods), ["name", this.state.deploy]);
         let totalRequestRate = _.sumBy(podMetrics, "requestRate");
         _.each(podMetrics, datum => datum.totalRequests = totalRequestRate);
 
         this.setState({
           metrics: podMetrics,
           timeseriesByPod: podTs,
+          added: deploy.added,
           deployTs: _.get(tsByDeploy, this.state.deploy, {}),
           upstreamMetrics: upstreamMetrics,
           upstreamTsByDeploy: upstreamTsByDeploy,
@@ -128,7 +132,8 @@ export default class Deployment extends React.Component {
         entityType="deployment"
         currentSr={currentSuccessRate}
         upstreamMetrics={this.state.upstreamMetrics}
-        downstreamMetrics={this.state.downstreamMetrics} />,
+        downstreamMetrics={this.state.downstreamMetrics}
+        deploymentAdded={this.state.added} />,
       <StatPane
         key="stat-pane"
         lastUpdated={this.state.lastUpdated}
@@ -188,12 +193,23 @@ export default class Deployment extends React.Component {
     );
   }
 
-  renderContent() {
-    if (_.isEmpty(this.state.metrics)) {
-      return <div>No data</div>;
-    } else {
-      return this.renderSections();
-    }
+  renderDeploymentTitle() {
+    return (
+      <div className="deployment-title">
+        <h1>{this.state.deploy}</h1>
+        {
+          !this.state.added ? (
+            <div className="unadded-message">
+              <div className="status-badge unadded"><p>UNADDED</p></div>
+              <div className="call-to-action">
+                <div className="action">Add {this.state.deploy} to the deployment.yml file</div>
+                <div className="action">Then run <code>kubectl inject deployment.yml | kubectl apply -f -</code> to add the deploys to the service mesh</div>
+              </div>
+            </div>
+          ) : null
+        }
+      </div>
+    );
   }
 
   render() {
@@ -203,9 +219,9 @@ export default class Deployment extends React.Component {
       <div className="page-content deployment-detail">
         <div className="page-header">
           <div className="subsection-header">Deployment detail</div>
-          <h1>{this.state.deploy}</h1>
+          {this.renderDeploymentTitle()}
         </div>
-        {this.renderContent()}
+        {this.renderSections()}
       </div>
     );
   }

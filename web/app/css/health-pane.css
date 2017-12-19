@@ -22,7 +22,7 @@
     padding: 0 var(--base-width);
 
     &.health-good {
-      border: 2px solid #27AE60;
+      border: 2px solid var(--green);
     }
     &.health-bad {
       border: 2px solid #EB5757;
@@ -30,13 +30,16 @@
     &.health-neutral {
       border: 2px solid #108ee9;
     }
+    &.health-unknown {
+      border: 2px solid var(--status-gray);
+    }
   }
 
   & .adjacent-health {
     /* override ant progress bar styles */
     &.health-good {
       & .ant-progress-bg {
-        background: #27AE60;
+        background: var(--green);
       }
     }
     &.health-bad {
@@ -47,6 +50,11 @@
     &.health-neutral {
       & .ant-progress-bg {
         background: #108ee9;
+      }
+    }
+    &.health-unknown {
+      & .ant-progress-bg {
+        background: var(--status-gray);
       }
     }
   }

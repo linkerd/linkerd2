@@ -41,13 +41,7 @@ const columns = {
       title: "Deployment",
       dataIndex: "name",
       key: "name",
-      render: (name, record) => {
-        if (shouldLink && _.some(record.statuses, ["value", "good"])) {
-          return <Link to={`${pathPrefix}/deployment?deploy=${name}`}>{name}</Link>;
-        } else {
-          return name;
-        }
-      }
+      render: name => shouldLink ? <Link to={`${pathPrefix}/deployment?deploy=${name}`}>{name}</Link> : name
     };
   },
   pods: {

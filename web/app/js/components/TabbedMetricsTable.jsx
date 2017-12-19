@@ -26,10 +26,7 @@ const columns = {
       title: resource.title,
       dataIndex: "name",
       key: "name",
-      render: (_text, deploy) => {
-        return deploy.added ? <Link to={`${pathPrefix}${resource.url}${deploy.name}`}>{deploy.name}</Link> :
-          deploy.name;
-      }
+      render: name => <Link to={`${pathPrefix}${resource.url}${name}`}>{name}</Link>
     };
   },
   successRate: {
