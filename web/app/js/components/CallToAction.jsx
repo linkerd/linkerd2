@@ -1,3 +1,4 @@
+import { instructions } from './util/Utils.js';
 import React from 'react';
 import { Col, Row } from 'antd';
 import './../../css/cta.css';
@@ -39,8 +40,7 @@ export default class CallToAction extends React.Component {
           </Row>
         </div>
 
-        <div className="action">Next, add one or more deployments to the deployment.yml file</div>
-        <div className="action">Then run <code>conduit inject deployment.yml | kubectl apply -f -</code> to add deploys to the service mesh</div>
+        {instructions}
       </div>
     );
   }

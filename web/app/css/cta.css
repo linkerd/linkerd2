@@ -4,23 +4,14 @@
 .call-to-action {
   padding: 16px 0;
 
-  & .action {
-    font-size: 14px;
-    font-weight: var(--font-weight-bold);
-    padding: 8px 0;
-
-   & code {
-      background-color: rgba(47, 128, 237, 1);
-      color: white;
-      font-size: .9rem;
-      letter-spacing: 0px;
-      padding: 4px 8px;
-      border-radius: 4px;
-    }
-
+  & code {
+    background-color: rgba(47, 128, 237, 1);
+    color: white;
+    font-size: .9rem;
+    letter-spacing: 0px;
+    padding: 4px 8px;
+    border-radius: 4px;
   }
-
-
 
   & .summary {
     color: var(--green);
