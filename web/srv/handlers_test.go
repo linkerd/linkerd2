@@ -36,10 +36,11 @@ func TestHandleIndex(t *testing.T) {
 		t.Errorf("Expected:          %+v", header)
 	}
 
-	expectedVersionDiv := "<div class=\"main\" id=\"main\" data-release-version=\"0.3.3\" data-go-version=\"the best one\">"
+	expectedVersionDiv := "<div class=\"main\" id=\"main\" data-release-version=\"0.3.3\" data-go-version=\"the best one\" data-uuid=\"\">"
 
-	if !strings.Contains(recorder.Body.String(), expectedVersionDiv) {
-		t.Errorf("the version string was not rendered")
-		t.Errorf("Expected to find: %+v", expectedVersionDiv)
+	actualBody := recorder.Body.String()
+
+	if !strings.Contains(actualBody, expectedVersionDiv) {
+		t.Fatalf("Expected string [%s] to be presentn in [%s]", expectedVersionDiv, actualBody)
 	}
 }
