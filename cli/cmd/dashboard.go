@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 	"github.com/runconduit/conduit/cli/shell"
+	"github.com/runconduit/conduit/cli/k8s"
 )
 
 var (
@@ -21,7 +22,7 @@ var dashboardCmd = &cobra.Command{
 			log.Fatalf("port must be positive, was %d", proxyPort)
 		}
 
-		kubectl, err := shell.MakeKubectl(shell.MakeUnixShell())
+		kubectl, err := k8s.MakeKubectl(shell.MakeUnixShell())
 		if err != nil {
 			log.Fatalf("Failed to start kubectl: %v", err)
 		}

@@ -43,3 +43,5 @@ func getVersion()(string, error) {
 	}
 	return resp.GetReleaseVersion(), nil
 }
+
+//TODO: server not responding

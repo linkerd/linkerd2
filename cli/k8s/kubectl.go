@@ -1,4 +1,4 @@
-package shell
+package k8s
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 	"strings"
 	"strconv"
 	"time"
+	"github.com/runconduit/conduit/cli/shell"
 )
 
 type Kubectl interface {
@@ -16,7 +17,7 @@ type Kubectl interface {
 }
 
 type kubectl struct {
-	sh        Shell
+	sh        shell.Shell
 	proxyPort int
 }
 
@@ -106,7 +107,7 @@ func isCompatibleVersion(minimalRequirementVersion [3]int, actualVersion [3]int)
 	return false
 }
 
-func MakeKubectl(shell Shell) (Kubectl, error) {
+func MakeKubectl(shell shell.Shell) (Kubectl, error) {
 
 	kubectl := &kubectl{
 		sh:        shell,

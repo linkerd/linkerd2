@@ -1,4 +1,4 @@
-package shell
+package k8s
 
 import (
 	"testing"
