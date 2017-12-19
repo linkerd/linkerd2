@@ -125,7 +125,7 @@ export default class TabbedMetricsTable extends React.Component {
 
     // TODO: move this into rollup aggregation
     let tableData = this.props.metrics;
-    let totalRequestRate = _.sumBy(this.props.metrics, "requestRate");
+    let totalRequestRate = _.sumBy(this.props.metrics, "requestRate") || 0;
     _.each(tableData, datum => datum.totalRequests = totalRequestRate);
 
     return (<Table
