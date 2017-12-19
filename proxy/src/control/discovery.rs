@@ -4,10 +4,11 @@ use std::net::SocketAddr;
 
 use futures::{Async, Future, Poll, Stream};
 use futures::sync::mpsc;
-use http::uri::Authority;
 use tower::Service;
 use tower_discover::{Change, Discover};
 use tower_grpc;
+
+use fully_qualified_authority::FullyQualifiedAuthority;
 
 use super::codec::Protobuf;
 use super::pb::common::{Destination, TcpAddress};
@@ -24,7 +25,7 @@ pub type ClientBody = ::tower_grpc::client::codec::EncodingBody<
 /// A handle to start watching a destination for address changes.
 #[derive(Clone, Debug)]
 pub struct Discovery {
-    tx: mpsc::UnboundedSender<(Authority, mpsc::UnboundedSender<Update>)>,
+    tx: mpsc::UnboundedSender<(FullyQualifiedAuthority, mpsc::UnboundedSender<Update>)>,
 }
 
 /// A `tower_discover::Discover`, given to a `tower_balance::Balance`.
@@ -37,7 +38,7 @@ pub struct Watch<B> {
 /// A background handle to eventually bind on the controller thread.
 #[derive(Debug)]
 pub struct Background {
-    rx: mpsc::UnboundedReceiver<(Authority, mpsc::UnboundedSender<Update>)>,
+    rx: mpsc::UnboundedReceiver<(FullyQualifiedAuthority, mpsc::UnboundedSender<Update>)>,
 }
 
 type DiscoveryWatch<F> = DestinationSet<
@@ -51,14 +52,14 @@ type DiscoveryWatch<F> = DestinationSet<
 /// the controller destination API.
 #[derive(Debug)]
 pub struct DiscoveryWork<F> {
-    destinations: HashMap<Authority, DiscoveryWatch<F>>,
+    destinations: HashMap<FullyQualifiedAuthority, DiscoveryWatch<F>>,
     /// A queue of authorities that need to be reconnected.
-    reconnects: VecDeque<Authority>,
+    reconnects: VecDeque<FullyQualifiedAuthority>,
     /// The Destination.Get RPC client service.
     /// Each poll, records whether the rpc service was till ready.
     rpc_ready: bool,
     /// A receiver of new watch requests.
-    rx: mpsc::UnboundedReceiver<(Authority, mpsc::UnboundedSender<Update>)>,
+    rx: mpsc::UnboundedReceiver<(FullyQualifiedAuthority, mpsc::UnboundedSender<Update>)>,
 }
 
 #[derive(Debug)]
@@ -115,7 +116,7 @@ pub fn new() -> (Discovery, Background) {
 
 impl Discovery {
     /// Start watching for address changes for a certain authority.
-    pub fn resolve<B>(&self, authority: &Authority, bind: B) -> Watch<B> {
+    pub fn resolve<B>(&self, authority: &FullyQualifiedAuthority, bind: B) -> Watch<B> {
         trace!("resolve; authority={:?}", authority);
         let (tx, rx) = mpsc::unbounded();
         self.tx
@@ -251,7 +252,7 @@ where
                         Entry::Vacant(vac) => {
                             let req = Destination {
                                 scheme: "k8s".into(),
-                                path: vac.key().as_str().into(),
+                                path: vac.key().without_trailing_dot().into(),
                             };
                             let stream = DestinationSvc::new(&mut rpc).get(req);
                             vac.insert(DestinationSet {
@@ -292,7 +293,7 @@ where
                 trace!("Destination.Get reconnect {:?}", auth);
                 let req = Destination {
                     scheme: "k8s".into(),
-                    path: auth.as_str().into(),
+                    path: auth.without_trailing_dot().into(),
                 };
                 set.rx = DestinationSvc::new(&mut rpc).get(req);
                 set.needs_reconnect = false;
@@ -346,7 +347,7 @@ where
             };
             if needs_reconnect {
                 set.needs_reconnect = true;
-                self.reconnects.push_back(Authority::clone(auth));
+                self.reconnects.push_back(FullyQualifiedAuthority::clone(auth));
             }
         }
     }
