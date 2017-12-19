@@ -183,7 +183,7 @@ func makeCallFromContainerToAnother(t *testing.T, fromPodNamed string, fromConta
 func checkIfIntegrationTestsAreEnabled(t *testing.T) {
 	integrationTestsEnvironmentVariable := "CONDUIT_INTEGRATION_TESTS_ENABLED"
 	if _, isSet := os.LookupEnv(integrationTestsEnvironmentVariable); !isSet {
-		fmt.Printf("=> Environment variable [%s] isn'' set, skipping this test\n", integrationTestsEnvironmentVariable)
+		fmt.Printf("=> Environment variable [%s] isn't set, skipping this test\n", integrationTestsEnvironmentVariable)
 		t.SkipNow()
 	} else {
 		t.Parallel()

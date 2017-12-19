@@ -56,7 +56,7 @@ func (sh *unixShell) WaitForCharacter(charToWaitFor byte, outputReader *bufio.Re
 
 	select {
 	case <-time.After(timeout):
-		return "", fmt.Errorf("Timed-out expoecting token [%c] in reader [%v]", charToWaitFor, outputReader)
+		return "", fmt.Errorf("Timed-out expoecting token [%c] in reader", charToWaitFor)
 	case e := <-potentialError:
 		return "", e
 	case o := <-output:
