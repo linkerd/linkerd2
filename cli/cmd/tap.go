@@ -11,6 +11,7 @@ import (
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/controller/util"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc/codes"
 )
 
 var (
@@ -107,59 +108,44 @@ func print(rsp pb.Api_TapClient) {
 			fmt.Println(err)
 			break
 		}
-
-		flow := fmt.Sprintf("src=%s dst=%s",
-			util.AddressToString(event.GetSource()),
-			util.AddressToString(event.GetTarget()),
-		)
-
-		switch ev := event.GetHttp().Event.(type) {
-		case *common.TapEvent_Http_RequestInit_:
-			fmt.Printf("req id=%d:%d %s :method=%s :authority=%s :path=%s\n",
-				ev.RequestInit.Id.Base,
-				ev.RequestInit.Id.Stream,
-				flow,
-				ev.RequestInit.Method.GetRegistered().String(),
-				ev.RequestInit.Authority,
-				ev.RequestInit.Path,
-			)
-		case *common.TapEvent_Http_ResponseInit_:
-			fmt.Printf("rsp id=%d:%d %s :status=%d latency=%dµs\n",
-				ev.ResponseInit.Id.Base,
-				ev.ResponseInit.Id.Stream,
-				flow,
-				ev.ResponseInit.GetHttpStatus(),
-				ev.ResponseInit.GetSinceRequestInit().Nanos/1000,
-			)
-		case *common.TapEvent_Http_ResponseEnd_:
-			fmt.Printf("end id=%d:%d %s grpc-status=%s duration=%dµs response-length=%dB\n",
-				ev.ResponseEnd.Id.Base,
-				ev.ResponseEnd.Id.Stream,
-				flow,
-				grpcStatusName(ev.ResponseEnd.GetGrpcStatus()),
-				ev.ResponseEnd.GetSinceResponseInit().Nanos/1000,
-				ev.ResponseEnd.GetResponseBytes(),
-			)
-		}
+		fmt.Println(eventToString(event))
 	}
 }
 
-func grpcStatusName(n uint32) string {
-	switch n {
-	case 0:
-		return "OK"
-	case 1:
-		return "CANCELED"
-	case 2:
-		return "UNKNOWN"
-	case 12:
-		return "UNIMPLEMENTED"
-	case 13:
-		return "INTERNAL"
-	case 14:
-		return "UNAVAILABLE"
-	// TODO ...
+func eventToString(event *common.TapEvent) string {
+	flow := fmt.Sprintf("src=%s dst=%s",
+		util.AddressToString(event.GetSource()),
+		util.AddressToString(event.GetTarget()),
+	)
+
+	switch ev := event.GetHttp().Event.(type) {
+	case *common.TapEvent_Http_RequestInit_:
+		return fmt.Sprintf("req id=%d:%d %s :method=%s :authority=%s :path=%s",
+			ev.RequestInit.Id.Base,
+			ev.RequestInit.Id.Stream,
+			flow,
+			ev.RequestInit.Method.GetRegistered().String(),
+			ev.RequestInit.Authority,
+			ev.RequestInit.Path,
+		)
+	case *common.TapEvent_Http_ResponseInit_:
+		return fmt.Sprintf("rsp id=%d:%d %s :status=%d latency=%dµs",
+			ev.ResponseInit.Id.Base,
+			ev.ResponseInit.Id.Stream,
+			flow,
+			ev.ResponseInit.GetHttpStatus(),
+			ev.ResponseInit.GetSinceRequestInit().Nanos/1000,
+		)
+	case *common.TapEvent_Http_ResponseEnd_:
+		return fmt.Sprintf("end id=%d:%d %s grpc-status=%s duration=%dµs response-length=%dB",
+			ev.ResponseEnd.Id.Base,
+			ev.ResponseEnd.Id.Stream,
+			flow,
+			codes.Code(ev.ResponseEnd.GetGrpcStatus()),
+			ev.ResponseEnd.GetSinceResponseInit().Nanos/1000,
+			ev.ResponseEnd.GetResponseBytes(),
+		)
 	default:
-		return "???"
+		return fmt.Sprintf("unknown %s", flow)
 	}
 }
