@@ -1,19 +1,20 @@
 package iptablestest
 
 import (
-	"testing"
-	"net/http"
-	"io/ioutil"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
 	"os"
 	"strings"
-	"net/url"
+	"testing"
 )
 
 const (
-	ignoredContainerPort     = "7070"
-	proxyContainerPort       = "8080"
-	notTheProxyContainerPort = "9090"
+	ignoredContainerPort                = "7070"
+	proxyContainerPort                  = "8080"
+	notTheProxyContainerPort            = "9090"
+	integrationTestsEnvironmentVariable = "CONDUIT_INTEGRATION_TESTS_ENABLED"
 )
 
 func TestPodWithNoRules(t *testing.T) {
@@ -181,7 +182,6 @@ func makeCallFromContainerToAnother(t *testing.T, fromPodNamed string, fromConta
 }
 
 func checkIfIntegrationTestsAreEnabled(t *testing.T) {
-	integrationTestsEnvironmentVariable := "CONDUIT_INTEGRATION_TESTS_ENABLED"
 	if _, isSet := os.LookupEnv(integrationTestsEnvironmentVariable); !isSet {
 		fmt.Printf("=> Environment variable [%s] isn't set, skipping this test\n", integrationTestsEnvironmentVariable)
 		t.SkipNow()

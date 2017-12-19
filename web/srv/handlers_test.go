@@ -41,6 +41,6 @@ func TestHandleIndex(t *testing.T) {
 	actualBody := recorder.Body.String()
 
 	if !strings.Contains(actualBody, expectedVersionDiv) {
-		t.Fatalf("Expected string [%s] to be presentn in [%s]", expectedVersionDiv, actualBody)
+		t.Fatalf("Expected string [%s] to be present in [%s]", expectedVersionDiv, actualBody)
 	}
 }
