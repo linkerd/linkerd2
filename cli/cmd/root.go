@@ -63,7 +63,7 @@ func addControlPlaneNetworkingArgs(cmd *cobra.Command) {
 
 func newApiClient() (pb.ApiClient, error) {
 	var serverURL *url.URL
-	var transport http.RoundTripper
+	var secureK8sTransport http.RoundTripper
 
 	if apiAddr != "" {
 		// TODO: Standalone local testing should be done over HTTPS too.
@@ -72,7 +72,7 @@ func newApiClient() (pb.ApiClient, error) {
 			Host:   apiAddr,
 			Path:   "/",
 		}
-		transport = http.DefaultTransport
+		secureK8sTransport = http.DefaultTransport
 	} else {
 		kubeConfig, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
 		if err != nil {
@@ -82,12 +82,12 @@ func newApiClient() (pb.ApiClient, error) {
 		if err != nil {
 			return nil, fmt.Errorf("invalid host in kubernetes config: %s", kubeConfig.Host)
 		}
-		proxyURLRef := url.URL{
+		conduitProxyApiUrlRef := url.URL{
 			Path: fmt.Sprintf("api/v1/namespaces/%s/services/http:api:http/proxy/", controlPlaneNamespace),
 		}
-		serverURL = serverURLBase.ResolveReference(&proxyURLRef)
+		serverURL = serverURLBase.ResolveReference(&conduitProxyApiUrlRef)
 
-		transport, err = rest.TransportFor(kubeConfig)
+		secureK8sTransport, err = rest.TransportFor(kubeConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -96,7 +96,7 @@ func newApiClient() (pb.ApiClient, error) {
 	apiConfig := &public.Config{
 		ServerURL: serverURL,
 	}
-	return public.NewClient(apiConfig, transport)
+	return public.NewClient(apiConfig, secureK8sTransport)
 }
 
 // Exit with non-zero exit status without printing the command line usage and

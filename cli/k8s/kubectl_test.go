@@ -7,6 +7,7 @@ import (
 	"errors"
 	"bufio"
 	"time"
+	"net/url"
 )
 
 type mockShell struct {
@@ -182,14 +183,14 @@ func TestUrlFor(t *testing.T) {
 
 		expectedNamespace := "expected-namespace"
 		expectedPath := "/expected/path:for/desired/endpoint"
-		expectedUrl := fmt.Sprintf("http://127.0.0.1:%d/api/v1/namespaces/%s%s", kubectlDefaultProxyPort, expectedNamespace, expectedPath)
+		expectedUrl, _ := url.Parse(fmt.Sprintf("http://127.0.0.1:%d/api/v1/namespaces/%s%s", kubectlDefaultProxyPort, expectedNamespace, expectedPath))
 
 		actualUrl, err := kctl.UrlFor(expectedNamespace, expectedPath)
 		if err != nil {
 			t.Fatalf("Unexpected error generating URL: %v", err)
 		}
 
-		if actualUrl != expectedUrl {
+		if actualUrl.String() != expectedUrl.String() {
 			t.Fatalf("Expected generated URL to be [%s] but was [%s]", expectedUrl, actualUrl)
 		}
 	})

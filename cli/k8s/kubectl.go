@@ -7,12 +7,13 @@ import (
 	"strconv"
 	"time"
 	"github.com/runconduit/conduit/cli/shell"
+	"net/url"
 )
 
 type Kubectl interface {
 	Version() ([3]int, error)
 	StartProxy(potentialErrorWhenStartingProxy chan error, port int) error
-	UrlFor(namespace string, extraPathStartingWithSlash string) (string, error)
+	UrlFor(namespace string, extraPathStartingWithSlash string) (*url.URL, error)
 	ProxyPort() int
 }
 
@@ -63,7 +64,7 @@ func (kctl *kubectl) Version() ([3]int, error) {
 }
 
 func (kctl *kubectl) StartProxy(potentialErrorWhenStartingProxy chan error, port int) error {
-	fmt.Printf("Running `kubectl proxy %d`\n", port)
+	fmt.Printf("Running `kubectl proxy -p %d`\n", port)
 
 	if kctl.ProxyPort() != portWhenProxyNotRunning {
 		return fmt.Errorf("Kubectl proxy already running on port [%d]", kctl.ProxyPort)
@@ -82,13 +83,17 @@ func (kctl *kubectl) StartProxy(potentialErrorWhenStartingProxy chan error, port
 	return nil
 }
 
-func (kctl *kubectl) UrlFor(namespace string, extraPathStartingWithSlash string) (string, error) {
+func (kctl *kubectl) UrlFor(namespace string, extraPathStartingWithSlash string) (*url.URL, error) {
 	if kctl.ProxyPort() == portWhenProxyNotRunning {
-		return "", errors.New("proxy needs to be started before generating URLs")
+		return nil, errors.New("proxy needs to be started before generating URLs")
 	}
 
-	url := fmt.Sprintf("http://%s:%d/api/v1/namespaces/%s%s", "127.0.0.1", kctl.ProxyPort(), namespace, extraPathStartingWithSlash)
-	return url, nil
+	urlString := fmt.Sprintf("http://%s:%d/api/v1/namespaces/%s%s", "127.0.0.1", kctl.ProxyPort(), namespace, extraPathStartingWithSlash)
+	url, err := url.Parse(urlString)
+	if err != nil {
+		return nil, fmt.Errorf("Error generating URL from [%s]", urlString)
+	}
+	return url, err
 }
 
 func isCompatibleVersion(minimalRequirementVersion [3]int, actualVersion [3]int) bool {
