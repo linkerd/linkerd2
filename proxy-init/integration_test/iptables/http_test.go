@@ -21,24 +21,24 @@ func TestPodWithNoRules(t *testing.T) {
 	svcName := "svc-pod-with-no-rules"
 
 	t.Run("succeeds connecting to pod directly through container's exposed port", func(t *testing.T) {
-		marksParallelIfConfigured(t)
+		checkIfIntegrationTestsAreEnabled(t)
 		expectSuccessfulGetRequestTo(t, podWithNoRulesIp, proxyContainerPort)
 	})
 
 	t.Run("fails to connect to pod directly through any port that isn't the container's exposed port", func(t *testing.T) {
-		marksParallelIfConfigured(t)
+		checkIfIntegrationTestsAreEnabled(t)
 		expectCannotConnectGetRequestTo(t, podWithNoRulesIp, "8088")
 		expectCannotConnectGetRequestTo(t, podWithNoRulesIp, "8888")
 		expectCannotConnectGetRequestTo(t, podWithNoRulesIp, "8988")
 	})
 
 	t.Run("succeeds connecting to pod via a service through container's exposed port", func(t *testing.T) {
-		marksParallelIfConfigured(t)
+		checkIfIntegrationTestsAreEnabled(t)
 		expectSuccessfulGetRequestTo(t, svcName, proxyContainerPort)
 	})
 
 	t.Run("fails to connect to pod via a service through any port that isn't the container's exposed port", func(t *testing.T) {
-		marksParallelIfConfigured(t)
+		checkIfIntegrationTestsAreEnabled(t)
 		expectCannotConnectGetRequestTo(t, svcName, "8088")
 		expectCannotConnectGetRequestTo(t, svcName, "8888")
 		expectCannotConnectGetRequestTo(t, svcName, "8988")
@@ -50,12 +50,12 @@ func TestPodRedirectsAllPorts(t *testing.T) {
 	svcName := "svc-pod-redirects-all-ports"
 
 	t.Run("succeeds connecting to pod directly through container's exposed port", func(t *testing.T) {
-		marksParallelIfConfigured(t)
+		checkIfIntegrationTestsAreEnabled(t)
 		expectSuccessfulGetRequestTo(t, podRedirectsAllPortsIp, proxyContainerPort)
 	})
 
 	t.Run("succeeds connecting to pod directly through any port that isn't the container's exposed port", func(t *testing.T) {
-		marksParallelIfConfigured(t)
+		checkIfIntegrationTestsAreEnabled(t)
 		expectSuccessfulGetRequestTo(t, podRedirectsAllPortsIp, "8088")
 		expectSuccessfulGetRequestTo(t, podRedirectsAllPortsIp, "8888")
 		expectSuccessfulGetRequestTo(t, podRedirectsAllPortsIp, "8988")
@@ -63,12 +63,12 @@ func TestPodRedirectsAllPorts(t *testing.T) {
 	})
 
 	t.Run("succeeds connecting to pod via a service through container's exposed port", func(t *testing.T) {
-		marksParallelIfConfigured(t)
+		checkIfIntegrationTestsAreEnabled(t)
 		expectSuccessfulGetRequestTo(t, svcName, proxyContainerPort)
 	})
 
 	t.Run("fails to connect to pod via a service through any port that isn't the container's exposed port", func(t *testing.T) {
-		marksParallelIfConfigured(t)
+		checkIfIntegrationTestsAreEnabled(t)
 		expectCannotConnectGetRequestTo(t, svcName, "8088")
 		expectCannotConnectGetRequestTo(t, svcName, "8888")
 		expectCannotConnectGetRequestTo(t, svcName, "8988")
@@ -79,18 +79,18 @@ func TestPodWithSomePortsRedirected(t *testing.T) {
 	podRedirectsSomePortsIp := os.Getenv("POD_REDIRECTS_WHITELISTED_IP")
 
 	t.Run("succeeds connecting to pod directly through container's exposed port", func(t *testing.T) {
-		marksParallelIfConfigured(t)
+		checkIfIntegrationTestsAreEnabled(t)
 		expectSuccessfulGetRequestTo(t, podRedirectsSomePortsIp, proxyContainerPort)
 	})
 
 	t.Run("succeeds connecting to pod directly through ports configured to redirect", func(t *testing.T) {
-		marksParallelIfConfigured(t)
+		checkIfIntegrationTestsAreEnabled(t)
 		expectSuccessfulGetRequestTo(t, podRedirectsSomePortsIp, "9090")
 		expectSuccessfulGetRequestTo(t, podRedirectsSomePortsIp, "9099")
 	})
 
 	t.Run("fails to connect to pod via through any port that isn't configured to redirect", func(t *testing.T) {
-		marksParallelIfConfigured(t)
+		checkIfIntegrationTestsAreEnabled(t)
 		expectCannotConnectGetRequestTo(t, podRedirectsSomePortsIp, "8088")
 		expectCannotConnectGetRequestTo(t, podRedirectsSomePortsIp, "8888")
 		expectCannotConnectGetRequestTo(t, podRedirectsSomePortsIp, "8988")
@@ -101,18 +101,18 @@ func TestPodWithSomePortsIgnored(t *testing.T) {
 	podIgnoredSomePortsIp := os.Getenv("POD_DOEST_REDIRECT_BLACKLISTED_IP")
 
 	t.Run("succeeds connecting to pod directly through container's exposed port", func(t *testing.T) {
-		marksParallelIfConfigured(t)
+		checkIfIntegrationTestsAreEnabled(t)
 		expectSuccessfulGetRequestTo(t, podIgnoredSomePortsIp, proxyContainerPort)
 	})
 
 	t.Run("succeeds connecting to pod directly through ports configured to redirect", func(t *testing.T) {
-		marksParallelIfConfigured(t)
+		checkIfIntegrationTestsAreEnabled(t)
 		expectSuccessfulGetRequestTo(t, podIgnoredSomePortsIp, "9090")
 		expectSuccessfulGetRequestTo(t, podIgnoredSomePortsIp, "9099")
 	})
 
 	t.Run("doesnt redirect when through port that is ignored", func(t *testing.T) {
-		marksParallelIfConfigured(t)
+		checkIfIntegrationTestsAreEnabled(t)
 		response := expectSuccessfulGetRequestTo(t, podIgnoredSomePortsIp, ignoredContainerPort)
 
 		if response == "proxy" {
@@ -134,7 +134,7 @@ func TestPodMakesOutboundConnection(t *testing.T) {
 	proxyPodIp := podIgnoredSomePortsIp
 
 	t.Run("connecting to another pod from non-proxy container gets redirected to proxy", func(t *testing.T) {
-		marksParallelIfConfigured(t)
+		checkIfIntegrationTestsAreEnabled(t)
 		portOfContainerToMAkeTheRequest := ignoredContainerPort
 		targetPodIp := podWithNoRulesIp
 		targetPort := ignoredContainerPort
@@ -148,7 +148,7 @@ func TestPodMakesOutboundConnection(t *testing.T) {
 	})
 
 	t.Run("connecting to another pod from proxy container does not get redirected to proxy", func(t *testing.T) {
-		marksParallelIfConfigured(t)
+		checkIfIntegrationTestsAreEnabled(t)
 		targetPodName := podWithNoRulesName
 		targetPodIp := podWithNoRulesIp
 
@@ -161,7 +161,7 @@ func TestPodMakesOutboundConnection(t *testing.T) {
 	})
 
 	t.Run("connecting to loopback from non-proxy container does not get redirected to proxy", func(t *testing.T) {
-		marksParallelIfConfigured(t)
+		checkIfIntegrationTestsAreEnabled(t)
 
 		response := makeCallFromContainerToAnother(t, proxyPodIp, ignoredContainerPort, "127.0.0.1", notTheProxyContainerPort)
 
@@ -180,8 +180,14 @@ func makeCallFromContainerToAnother(t *testing.T, fromPodNamed string, fromConta
 	return expectSuccessfulGetRequestToUrl(t, targetUrl)
 }
 
-func marksParallelIfConfigured(t *testing.T) {
-	t.Parallel()
+func checkIfIntegrationTestsAreEnabled(t *testing.T) {
+	integrationTestsEnvironmentVariable := "CONDUIT_INTEGRATION_TESTS_ENABLED"
+	if _, isSet := os.LookupEnv(integrationTestsEnvironmentVariable); !isSet {
+		fmt.Printf("=> Environment variable [%s] isn'' set, skipping this test\n", integrationTestsEnvironmentVariable)
+		t.SkipNow()
+	} else {
+		t.Parallel()
+	}
 }
 
 func expectCannotConnectGetRequestTo(t *testing.T, host string, port string) {
