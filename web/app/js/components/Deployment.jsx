@@ -2,14 +2,15 @@ import _ from 'lodash';
 import BarChart from './BarChart.jsx';
 import ConduitSpinner from "./ConduitSpinner.jsx";
 import HealthPane from './HealthPane.jsx';
+import { incompleteMeshMessage } from './util/CopyUtils.jsx';
 import Metric from './Metric.jsx';
 import React from 'react';
+import { rowGutter } from './util/Utils.js';
 import StatPane from './StatPane.jsx';
 import TabbedMetricsTable from './TabbedMetricsTable.jsx';
 import UpstreamDownstream from './UpstreamDownstream.jsx';
 import { Col, Row } from 'antd';
 import { emptyMetric, getPodsByDeployment, processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
-import { instructions, rowGutter } from './util/Utils.js';
 import './../../css/deployment.css';
 import 'whatwg-fetch';
 
@@ -212,7 +213,7 @@ export default class Deployment extends React.Component {
             <div className="unadded-message">
               <div className="status-badge unadded"><p>UNADDED</p></div>
               <div className="call-to-action">
-                {instructions(this.state.deploy)}
+                {incompleteMeshMessage(this.state.deploy)}
               </div>
             </div>
           ) : null

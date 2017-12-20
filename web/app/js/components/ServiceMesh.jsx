@@ -2,11 +2,12 @@ import _ from 'lodash';
 import CallToAction from './CallToAction.jsx';
 import ConduitSpinner from "./ConduitSpinner.jsx";
 import DeploymentSummary from './DeploymentSummary.jsx';
+import { incompleteMeshMessage } from './util/CopyUtils.jsx';
 import Metric from './Metric.jsx';
 import React from 'react';
+import { rowGutter } from './util/Utils.js';
 import StatusTable from './StatusTable.jsx';
 import { Col, Row, Table } from 'antd';
-import { instructions, rowGutter } from './util/Utils.js';
 import { processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
 import './../../css/service-mesh.css';
 import 'whatwg-fetch';
@@ -257,7 +258,7 @@ export default class ServiceMesh extends React.Component {
     if (this.deployCount() === 0) {
       return (
         <div className="incomplete-mesh-message">
-          No deployments detected. {instructions()}
+          No deployments detected. {incompleteMeshMessage()}
         </div>
       );
     } else {
@@ -271,13 +272,13 @@ export default class ServiceMesh extends React.Component {
       case 1:
         return (
           <div className="incomplete-mesh-message">
-            1 deployment has not been added to the service mesh. {instructions()}
+            1 deployment has not been added to the service mesh. {incompleteMeshMessage()}
           </div>
         );
       default:
         return (
           <div className="incomplete-mesh-message">
-            {this.unaddedDeploymentCount()} deployments have not been added to the service mesh. {instructions()}
+            {this.unaddedDeploymentCount()} deployments have not been added to the service mesh. {incompleteMeshMessage()}
           </div>
         );
       }

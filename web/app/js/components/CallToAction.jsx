@@ -1,4 +1,4 @@
-import { instructions } from './util/Utils.js';
+import { incompleteMeshMessage } from './util/CopyUtils.jsx';
 import React from 'react';
 import { Col, Row } from 'antd';
 import './../../css/cta.css';
@@ -40,7 +40,7 @@ export default class CallToAction extends React.Component {
           </Row>
         </div>
 
-        {instructions()}
+        {incompleteMeshMessage()}
       </div>
     );
   }

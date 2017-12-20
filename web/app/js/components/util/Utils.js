@@ -1,5 +1,4 @@
 import _ from 'lodash';
-import React from 'react';
 import * as d3 from 'd3';
 
 /*
@@ -74,21 +73,4 @@ export const styleNum = (number, unit = "", truncate = true) => {
 export const toClassName = name => {
   if (!name) return "";
   return _.lowerCase(name).replace(/[^a-zA-Z0-9]/g, "_");
-};
-
-/*
-* Instructions for adding deployments to service mesh
-*/
-export const instructions = name => {
-  if (name) {
-    return (
-      <div className="action">Add {name} to the deployment.yml file<br /><br />
-      Then run <code>conduit inject deployment.yml | kubectl apply -f -</code> to add it to the service mesh</div>
-    );
-  } else {
-    return (
-      <div className="action">Add one or more deployments to the deployment.yml file<br /><br />
-      Then run <code>conduit inject deployment.yml | kubectl apply -f -</code> to add them to the service mesh</div>
-    );
-  }
 };
