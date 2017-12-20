@@ -8,6 +8,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/runconduit/conduit/cli/k8s"
+	"github.com/runconduit/conduit/cli/shell"
+
 	common "github.com/runconduit/conduit/controller/gen/common"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/controller/util"
@@ -68,7 +71,12 @@ Valid targets include:
 				return errors.New("invalid target type")
 			}
 
-			client, err := newApiClient()
+			kubeApi, err := k8s.MakeK8sAPi(shell.MakeUnixShell(), kubeconfigPath, apiAddr)
+			if err != nil {
+				return err
+			}
+
+			client, err := newApiClient(kubeApi)
 			if err != nil {
 				return err
 			}

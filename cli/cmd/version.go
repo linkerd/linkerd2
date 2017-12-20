@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/runconduit/conduit/cli/k8s"
+	"github.com/runconduit/conduit/cli/shell"
+
 	"github.com/runconduit/conduit/controller"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/spf13/cobra"
@@ -33,7 +36,12 @@ func init() {
 }
 
 func getVersion() (string, error) {
-	client, err := newApiClient()
+	kubeApi, err := k8s.MakeK8sAPi(shell.MakeUnixShell(), kubeconfigPath, apiAddr)
+	if err != nil {
+		return "", err
+	}
+
+	client, err := newApiClient(kubeApi)
 	if err != nil {
 		return "", err
 	}

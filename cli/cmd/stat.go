@@ -9,6 +9,9 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/runconduit/conduit/cli/k8s"
+	"github.com/runconduit/conduit/cli/shell"
+
 	"github.com/runconduit/conduit/controller/api/util"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/spf13/cobra"
@@ -67,7 +70,12 @@ The optional [TARGET] option can be either a name for a deployment or pod resour
 }
 
 func makeStatsRequest(aggType pb.AggregationType) error {
-	client, err := newApiClient()
+	kubeApi, err := k8s.MakeK8sAPi(shell.MakeUnixShell(), kubeconfigPath, apiAddr)
+	if err != nil {
+		return err
+	}
+
+	client, err := newApiClient(kubeApi)
 	if err != nil {
 		return fmt.Errorf("error creating api client while making stats request: %v", err)
 	}
