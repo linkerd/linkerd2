@@ -38,16 +38,17 @@ func TestAsyncStdout(t *testing.T) {
 		asyncError := make(chan error, 1)
 		output, err := MakeUnixShell().AsyncStdout(asyncError, "echo", expectedOutput)
 		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
+			t.Fatalf("Unexpected error [%v], asyncError is [%v]", err, <-asyncError)
 		}
 
 		outputBytes, err := ioutil.ReadAll(output)
 		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
+			t.Fatalf("Unexpected error [%v], asyncError is [%v]", err, <-asyncError)
 		}
 
-		if strings.TrimSpace(string(outputBytes)) != expectedOutput {
-			t.Fatalf("Expecting command output to be [%s], got [%s]", expectedOutput, output)
+		actualOutput := strings.TrimSpace(string(outputBytes))
+		if actualOutput != expectedOutput {
+			t.Fatalf("Expecting command output to be [%s], got [%s]", expectedOutput, actualOutput)
 		}
 
 		select {
@@ -63,7 +64,7 @@ func TestAsyncStdout(t *testing.T) {
 		asyncError := make(chan error, 1)
 		out, err := MakeUnixShell().AsyncStdout(asyncError, "command-that-doesnt", "--exist")
 		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
+			t.Fatalf("Unexpected error [%v], asyncError is [%v]", err, <-asyncError)
 		}
 
 		select {
@@ -78,24 +79,25 @@ func TestAsyncStdout(t *testing.T) {
 }
 
 func TestWaitForCharacter(t *testing.T) {
-
 	t.Run("Executes command and returns result without error if return code 0", func(t *testing.T) {
 		shell := MakeUnixShell()
 		asyncError := make(chan error, 1)
 		expectedOutput := "expected>"
+
 		output, err := shell.AsyncStdout(asyncError, "echo", expectedOutput)
 		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
+			t.Fatalf("Unexpected error [%v], asyncError is [%v]", err, <-asyncError)
 		}
 
 		outputString, err := shell.WaitForCharacter('>', output, 10*time.Second)
 		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
+			t.Fatalf("Unexpected error [%v], asyncError is [%v]", err, <-asyncError)
 		}
 
 		if strings.TrimSpace(outputString) != expectedOutput {
 			t.Fatalf("Expecting command output to be [%s], got [%s]", expectedOutput, output)
 		}
+
 		select {
 		case e := <-asyncError:
 			if e != nil {
