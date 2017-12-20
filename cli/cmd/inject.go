@@ -8,14 +8,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/runconduit/conduit/controller"
-
 	"github.com/ghodss/yaml"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
-
+	"github.com/runconduit/conduit/controller"
 	"github.com/spf13/cobra"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	yamlDecoder "k8s.io/client-go/pkg/util/yaml"
 )
 
@@ -281,8 +279,8 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec) enhancedPodTemplateSpec {
 				ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
 			},
 			v1.EnvVar{
-				Name:      "CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN",
-				Value:     "Kubernetes",
+				Name:  "CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN",
+				Value: "Kubernetes",
 			},
 		},
 	}
@@ -376,7 +374,7 @@ type enhancedDaemonSet struct {
 
 func init() {
 	RootCmd.AddCommand(injectCmd)
-	injectCmd.PersistentFlags().StringVarP(&version, "conduit-version", "v", "v0.1.0", "tag to be used for conduit images")
+	injectCmd.PersistentFlags().StringVarP(&version, "conduit-version", "v", controller.Version, "tag to be used for conduit images")
 	injectCmd.PersistentFlags().StringVar(&initImage, "init-image", "gcr.io/runconduit/proxy-init", "Conduit init container image name")
 	injectCmd.PersistentFlags().StringVar(&proxyImage, "proxy-image", "gcr.io/runconduit/proxy", "Conduit proxy container image name")
 	injectCmd.PersistentFlags().StringVar(&imagePullPolicy, "image-pull-policy", "IfNotPresent", "Docker image pull policy")
