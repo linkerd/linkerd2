@@ -41,8 +41,7 @@ jobs:
         # TODO decide whether protoc should be committed or not. If so, we shouldn't do
         # this or we should error if it dirties the repo.
         - ./bin/protoc-go.sh
-        - go test ./...  --run "^(integration_test)"
-
+        - go test -v ./...
     - language: node_js
       node_js:
         - "8"
@@ -55,8 +54,7 @@ jobs:
       install:
         - cd web/app && yarn && yarn webpack
       script:
-        # TODO: start running karma tests
-        - echo "no tests"
+        - yarn karma start --single-run
 
     # Push container images to Google Container Registry.
     - stage: docker-deploy

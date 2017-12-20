@@ -26,10 +26,7 @@ const columns = {
       title: resource.title,
       dataIndex: "name",
       key: "name",
-      render: (_text, deploy) => {
-        return deploy.added ? <Link to={`${pathPrefix}${resource.url}${deploy.name}`}>{deploy.name}</Link> :
-          deploy.name;
-      }
+      render: name => <Link to={`${pathPrefix}${resource.url}${name}`}>{name}</Link>
     };
   },
   successRate: {
@@ -128,7 +125,7 @@ export default class TabbedMetricsTable extends React.Component {
 
     // TODO: move this into rollup aggregation
     let tableData = this.props.metrics;
-    let totalRequestRate = _.sumBy(this.props.metrics, "requestRate");
+    let totalRequestRate = _.sumBy(this.props.metrics, "requestRate") || 0;
     _.each(tableData, datum => datum.totalRequests = totalRequestRate);
 
     return (<Table

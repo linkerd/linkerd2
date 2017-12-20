@@ -4,12 +4,12 @@ import ConduitSpinner from "./ConduitSpinner.jsx";
 import HealthPane from './HealthPane.jsx';
 import Metric from './Metric.jsx';
 import React from 'react';
-import { rowGutter } from './util/Utils.js';
 import StatPane from './StatPane.jsx';
 import TabbedMetricsTable from './TabbedMetricsTable.jsx';
 import UpstreamDownstream from './UpstreamDownstream.jsx';
 import { Col, Row } from 'antd';
-import { processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
+import { emptyMetric, getPodsByDeployment, processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
+import { instructions, rowGutter } from './util/Utils.js';
 import './../../css/deployment.css';
 import 'whatwg-fetch';
 
@@ -46,6 +46,7 @@ export default class Deployment extends React.Component {
       deploy: deployment,
       metrics:[],
       timeseriesByPod: {},
+      pods: [],
       upstreamMetrics: [],
       upstreamTsByDeploy: {},
       downstreamMetrics: [],
@@ -69,6 +70,7 @@ export default class Deployment extends React.Component {
     let upstreamTimeseriesUrl = `${upstreamRollupUrl}&timeseries=true`;
     let downstreamRollupUrl = `${metricsUrl}&aggregation=target_deploy&source_deploy=${this.state.deploy}`;
     let downstreamTimeseriesUrl = `${downstreamRollupUrl}&timeseries=true`;
+    let podListUrl = `${this.props.pathPrefix}/api/pods`;
 
     let deployFetch = fetch(deployMetricsUrl).then(r => r.json());
     let podFetch = fetch(podRollupUrl).then(r => r.json());
@@ -77,24 +79,28 @@ export default class Deployment extends React.Component {
     let upstreamTsFetch = fetch(upstreamTimeseriesUrl).then(r => r.json());
     let downstreamFetch = fetch(downstreamRollupUrl).then(r => r.json());
     let downstreamTsFetch = fetch(downstreamTimeseriesUrl).then(r => r.json());
+    let podListFetch = fetch(podListUrl).then(r => r.json());
 
-    Promise.all([deployFetch, podFetch, podTsFetch, upstreamFetch, upstreamTsFetch, downstreamFetch, downstreamTsFetch])
-      .then(([deployMetrics, podRollup, podTimeseries, upstreamRollup, upstreamTimeseries, downstreamRollup, downstreamTimeseries]) => {
+    Promise.all([deployFetch, podFetch, podTsFetch, upstreamFetch, upstreamTsFetch, downstreamFetch, downstreamTsFetch, podListFetch])
+      .then(([deployMetrics, podRollup, podTimeseries, upstreamRollup, upstreamTimeseries, downstreamRollup, downstreamTimeseries, podList]) => {
         let tsByDeploy = processTimeseriesMetrics(deployMetrics.metrics, "targetDeploy");
-        let podMetrics = _.compact(processRollupMetrics(podRollup.metrics, "targetPod"));
+        let podMetrics = processRollupMetrics(podRollup.metrics, "targetPod");
         let podTs = processTimeseriesMetrics(podTimeseries.metrics, "targetPod");
 
-        let upstreamMetrics = _.compact(processRollupMetrics(upstreamRollup.metrics, "sourceDeploy"));
+        let upstreamMetrics = processRollupMetrics(upstreamRollup.metrics, "sourceDeploy");
         let upstreamTsByDeploy = processTimeseriesMetrics(upstreamTimeseries.metrics, "sourceDeploy");
-        let downstreamMetrics = _.compact(processRollupMetrics(downstreamRollup.metrics, "targetDeploy"));
+        let downstreamMetrics = processRollupMetrics(downstreamRollup.metrics, "targetDeploy");
         let downstreamTsByDeploy = processTimeseriesMetrics(downstreamTimeseries.metrics, "targetDeploy");
 
+        let deploy = _.find(getPodsByDeployment(podList.pods), ["name", this.state.deploy]);
         let totalRequestRate = _.sumBy(podMetrics, "requestRate");
         _.each(podMetrics, datum => datum.totalRequests = totalRequestRate);
 
         this.setState({
           metrics: podMetrics,
           timeseriesByPod: podTs,
+          pods: deploy.pods,
+          added: deploy.added,
           deployTs: _.get(tsByDeploy, this.state.deploy, {}),
           upstreamMetrics: upstreamMetrics,
           upstreamTsByDeploy: upstreamTsByDeploy,
@@ -128,11 +134,13 @@ export default class Deployment extends React.Component {
         entityType="deployment"
         currentSr={currentSuccessRate}
         upstreamMetrics={this.state.upstreamMetrics}
-        downstreamMetrics={this.state.downstreamMetrics} />,
-      <StatPane
-        key="stat-pane"
-        lastUpdated={this.state.lastUpdated}
-        timeseries={this.state.deployTs} />,
+        downstreamMetrics={this.state.downstreamMetrics}
+        deploymentAdded={this.state.added} />,
+      _.isEmpty(this.state.deployTs) ? null :
+        <StatPane
+          key="stat-pane"
+          lastUpdated={this.state.lastUpdated}
+          timeseries={this.state.deployTs} />,
       this.renderMidsection(),
       <UpstreamDownstream
         key="deploy-upstream-downstream"
@@ -147,6 +155,11 @@ export default class Deployment extends React.Component {
   }
 
   renderMidsection() {
+    let podTableData = this.state.metrics;
+    if (_.isEmpty(this.state.metrics)) {
+      podTableData = _.map(this.state.pods, po => emptyMetric(po.name));
+    }
+
     return (
       <Row gutter={rowGutter} key="deployment-midsection">
         <Col span={16}>
@@ -154,21 +167,23 @@ export default class Deployment extends React.Component {
             <div className="border-container border-neutral subsection-header">
               <div className="border-container-content subsection-header">Pod summary</div>
             </div>
-            <div className="pod-distribution-chart">
-              <div className="bar-chart-title">
-                <div>Request load by pod</div>
-                <div className="bar-chart-tooltip" />
-              </div>
-              <BarChart
-                data={this.state.metrics}
-                lastUpdated={this.state.lastUpdated}
-                containerClassName="pod-distribution-chart" />
-            </div>
-
+            {
+              _.isEmpty(this.state.metrics) ? null :
+                <div className="pod-distribution-chart">
+                  <div className="bar-chart-title">
+                    <div>Request load by pod</div>
+                    <div className="bar-chart-tooltip" />
+                  </div>
+                  <BarChart
+                    data={this.state.metrics}
+                    lastUpdated={this.state.lastUpdated}
+                    containerClassName="pod-distribution-chart" />
+                </div>
+            }
             <TabbedMetricsTable
               resource="pod"
               lastUpdated={this.state.lastUpdated}
-              metrics={this.state.metrics}
+              metrics={podTableData}
               timeseries={this.state.timeseriesByPod}
               pathPrefix={this.props.pathPrefix} />
           </div>
@@ -178,7 +193,7 @@ export default class Deployment extends React.Component {
           <div className="border-container border-neutral deployment-details">
             <div className="border-container-content">
               <div className=" subsection-header">Deployment details</div>
-              <Metric title="Pods" value={_.size(this.state.metrics)} />
+              <Metric title="Pods" value={_.size(podTableData)} />
               <Metric title="Upstream deployments" value={this.numUpstreams()} />
               <Metric title="Downstream deployments" value={this.numDownstreams()} />
             </div>
@@ -188,25 +203,37 @@ export default class Deployment extends React.Component {
     );
   }
 
-  renderContent() {
-    if (_.isEmpty(this.state.metrics)) {
-      return <div>No data</div>;
-    } else {
-      return this.renderSections();
-    }
+  renderDeploymentTitle() {
+    return (
+      <div className="deployment-title">
+        <h1>{this.state.deploy}</h1>
+        {
+          !this.state.added ? (
+            <div className="unadded-message">
+              <div className="status-badge unadded"><p>UNADDED</p></div>
+              <div className="call-to-action">
+                {instructions(this.state.deploy)}
+              </div>
+            </div>
+          ) : null
+        }
+      </div>
+    );
   }
 
   render() {
     if (!this.state.loaded) {
       return <ConduitSpinner />;
-    } else return (
-      <div className="page-content deployment-detail">
-        <div className="page-header">
-          <div className="subsection-header">Deployment detail</div>
-          <h1>{this.state.deploy}</h1>
+    } else {
+      return (
+        <div className="page-content deployment-detail">
+          <div className="page-header">
+            <div className="subsection-header">Deployment detail</div>
+            {this.renderDeploymentTitle()}
+          </div>
+          {this.renderSections()}
         </div>
-        {this.renderContent()}
-      </div>
-    );
+      );
+    }
   }
 }

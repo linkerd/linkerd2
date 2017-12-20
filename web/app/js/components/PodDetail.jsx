@@ -73,9 +73,9 @@ export default class PodDetail extends React.Component {
         let podTs = processTimeseriesMetrics(podMetrics.metrics, "targetPod");
         let podTimeseries = _.get(podTs, this.state.pod, {});
 
-        let upstreamMetrics = _.compact(processRollupMetrics(upstreamRollup.metrics, "sourcePod"));
+        let upstreamMetrics = processRollupMetrics(upstreamRollup.metrics, "sourcePod");
         let upstreamTsByPod = processTimeseriesMetrics(upstreamTimeseries.metrics, "sourcePod");
-        let downstreamMetrics = _.compact(processRollupMetrics(downstreamRollup.metrics, "targetPod"));
+        let downstreamMetrics = processRollupMetrics(downstreamRollup.metrics, "targetPod");
         let downstreamTsByPod = processTimeseriesMetrics(downstreamTimeseries.metrics, "targetPod");
 
         this.setState({
@@ -95,6 +95,7 @@ export default class PodDetail extends React.Component {
 
   renderSections() {
     let currentSuccessRate = _.get(_.last(_.get(this.state.podTs, "SUCCESS_RATE", [])), "value");
+
     return [
       <HealthPane
         key="pod-health-pane"
@@ -103,10 +104,11 @@ export default class PodDetail extends React.Component {
         currentSr={currentSuccessRate}
         upstreamMetrics={this.state.upstreamMetrics}
         downstreamMetrics={this.state.downstreamMetrics} />,
-      <StatPane
-        key="pod-stat-pane"
-        lastUpdated={this.state.lastUpdated}
-        timeseries={this.state.podTs} />,
+      _.isEmpty(this.state.podTs) ? null :
+        <StatPane
+          key="pod-stat-pane"
+          lastUpdated={this.state.lastUpdated}
+          timeseries={this.state.podTs} />,
       <UpstreamDownstream
         key="pod-upstream-downstream"
         entity="pod"
@@ -119,16 +121,8 @@ export default class PodDetail extends React.Component {
     ];
   }
 
-  renderContent() {
-    if (_.isEmpty(this.state.podTs)) {
-      return <div>No data</div>;
-    } else {
-      return this.renderSections();
-    }
-  }
-
   render() {
-    if(!this.state.loaded){
+    if (!this.state.loaded) {
       return <ConduitSpinner />;
     } else return (
       <div className="page-content pod-detail">
@@ -136,7 +130,7 @@ export default class PodDetail extends React.Component {
           <div className="subsection-header">Pod detail</div>
           <h1>{this.state.pod}</h1>
         </div>
-        {this.renderContent()}
+        {this.renderSections()}
       </div>
     );
   }

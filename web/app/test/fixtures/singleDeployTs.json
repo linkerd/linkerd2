@@ -1,0 +1,1396 @@
+{
+  "metrics": [
+    {
+      "name": "REQUEST_RATE",
+      "metadata": {
+        "targetPod": "",
+        "targetDeploy": "test/potato3",
+        "sourcePod": "",
+        "sourceDeploy": "",
+        "component": "",
+        "path": ""
+      },
+      "datapoints": [
+        {
+          "value": {
+            "gauge": 4.100410041004101
+          },
+          "timestampMs": "1513208774139"
+        },
+        {
+          "value": {
+            "gauge": 14.098590140985902
+          },
+          "timestampMs": "1513208824139"
+        },
+        {
+          "value": {
+            "gauge": 11.705852926463233
+          },
+          "timestampMs": "1513208844139"
+        },
+        {
+          "value": {
+            "gauge": 0.29997000299970006
+          },
+          "timestampMs": "1513208854139"
+        },
+        {
+          "value": {
+            "gauge": 4.5
+          },
+          "timestampMs": "1513208864139"
+        },
+        {
+          "value": {
+            "gauge": 10.896730980705787
+          },
+          "timestampMs": "1513208874139"
+        },
+        {
+          "value": {
+            "gauge": 4.7
+          },
+          "timestampMs": "1513208884139"
+        },
+        {
+          "value": {
+            "gauge": 10.00300090027008
+          },
+          "timestampMs": "1513208894139"
+        },
+        {
+          "value": {
+            "gauge": 21.8
+          },
+          "timestampMs": "1513208904139"
+        },
+        {
+          "value": {
+            "gauge": 2.2993102069379185
+          },
+          "timestampMs": "1513208934139"
+        },
+        {
+          "value": {
+            "gauge": 0.1000100010001
+          },
+          "timestampMs": "1513208954139"
+        },
+        {
+          "value": {
+            "gauge": 7.097870638808358
+          },
+          "timestampMs": "1513208964139"
+        },
+        {
+          "value": {
+            "gauge": 2.50075022506752
+          },
+          "timestampMs": "1513208974139"
+        },
+        {
+          "value": {
+            "gauge": 3.9996000399960008
+          },
+          "timestampMs": "1513208984139"
+        },
+        {
+          "value": {
+            "gauge": 8.7
+          },
+          "timestampMs": "1513208994139"
+        },
+        {
+          "value": {
+            "gauge": 15.9015901590159
+          },
+          "timestampMs": "1513209004139"
+        },
+        {
+          "value": {
+            "gauge": 0.3999200159968006
+          },
+          "timestampMs": "1513209014139"
+        },
+        {
+          "value": {
+            "gauge": 7.998400319936012
+          },
+          "timestampMs": "1513209034139"
+        },
+        {
+          "value": {
+            "gauge": 6.2012402480496105
+          },
+          "timestampMs": "1513209044139"
+        },
+        {
+          "value": {
+            "gauge": 5.6005600560056
+          },
+          "timestampMs": "1513209054139"
+        },
+        {
+          "value": {
+            "gauge": 13.3013301330133
+          },
+          "timestampMs": "1513209074139"
+        },
+        {
+          "value": {
+            "gauge": 3.5003500350035
+          },
+          "timestampMs": "1513209084139"
+        },
+        {
+          "value": {
+            "gauge": 2.0004000800160036
+          },
+          "timestampMs": "1513209104139"
+        },
+        {
+          "value": {
+            "gauge": 12.298770122987701
+          },
+          "timestampMs": "1513209124139"
+        },
+        {
+          "value": {
+            "gauge": 11.9011901190119
+          },
+          "timestampMs": "1513209134139"
+        },
+        {
+          "value": {
+            "gauge": 9.199080091990801
+          },
+          "timestampMs": "1513209154139"
+        },
+        {
+          "value": {
+            "gauge": 13.3
+          },
+          "timestampMs": "1513209164139"
+        },
+        {
+          "value": {
+            "gauge": 17.3
+          },
+          "timestampMs": "1513209184139"
+        },
+        {
+          "value": {
+            "gauge": 4.999500049995001
+          },
+          "timestampMs": "1513209194139"
+        },
+        {
+          "value": {
+            "gauge": 6.2006200620062
+          },
+          "timestampMs": "1513209204139"
+        },
+        {
+          "value": {
+            "gauge": 0.9997000899730082
+          },
+          "timestampMs": "1513209214139"
+        },
+        {
+          "value": {
+            "gauge": 13.4
+          },
+          "timestampMs": "1513209244139"
+        },
+        {
+          "value": {
+            "gauge": 9.1
+          },
+          "timestampMs": "1513209254139"
+        },
+        {
+          "value": {
+            "gauge": 8
+          },
+          "timestampMs": "1513209264139"
+        },
+        {
+          "value": {
+            "gauge": 9.300930093009299
+          },
+          "timestampMs": "1513209274139"
+        },
+        {
+          "value": {
+            "gauge": 13.4013401340134
+          },
+          "timestampMs": "1513209294139"
+        },
+        {
+          "value": {
+            "gauge": 0.49975012493753124
+          },
+          "timestampMs": "1513209304139"
+        },
+        {
+          "value": {
+            "gauge": 7.302921168467387
+          },
+          "timestampMs": "1513209314139"
+        },
+        {
+          "value": {
+            "gauge": 6.40128025605121
+          },
+          "timestampMs": "1513209324139"
+        },
+        {
+          "value": {
+            "gauge": 2.3995200959808036
+          },
+          "timestampMs": "1513209334139"
+        },
+        {
+          "value": {
+            "gauge": 8.895552223888055
+          },
+          "timestampMs": "1513209354139"
+        }
+      ]
+    },
+    {
+      "name": "SUCCESS_RATE",
+      "metadata": {
+        "targetPod": "",
+        "targetDeploy": "test/potato3",
+        "sourcePod": "",
+        "sourceDeploy": "",
+        "component": "",
+        "path": ""
+      },
+      "datapoints": [
+        {
+          "value": {
+            "gauge": 0.29268292682926833
+          },
+          "timestampMs": "1513208774609"
+        },
+        {
+          "value": {
+            "gauge": 0.2907801418439716
+          },
+          "timestampMs": "1513208824609"
+        },
+        {
+          "value": {
+            "gauge": 0.34188034188034183
+          },
+          "timestampMs": "1513208844609"
+        },
+        {
+          "value": {
+            "gauge": 0
+          },
+          "timestampMs": "1513208854609"
+        },
+        {
+          "value": {
+            "gauge": 0.4666666666666667
+          },
+          "timestampMs": "1513208864609"
+        },
+        {
+          "value": {
+            "gauge": 0.3211009174311927
+          },
+          "timestampMs": "1513208874609"
+        },
+        {
+          "value": {
+            "gauge": 0.36170212765957444
+          },
+          "timestampMs": "1513208884609"
+        },
+        {
+          "value": {
+            "gauge": 0.32
+          },
+          "timestampMs": "1513208894609"
+        },
+        {
+          "value": {
+            "gauge": 0.3348623853211009
+          },
+          "timestampMs": "1513208904609"
+        },
+        {
+          "value": {
+            "gauge": 0.34782608695652173
+          },
+          "timestampMs": "1513208934609"
+        },
+        {
+          "value": {
+            "gauge": 1
+          },
+          "timestampMs": "1513208954609"
+        },
+        {
+          "value": {
+            "gauge": 0.36619718309859156
+          },
+          "timestampMs": "1513208964609"
+        },
+        {
+          "value": {
+            "gauge": 0.39999999999999997
+          },
+          "timestampMs": "1513208974609"
+        },
+        {
+          "value": {
+            "gauge": 0.325
+          },
+          "timestampMs": "1513208984609"
+        },
+        {
+          "value": {
+            "gauge": 0.33333333333333337
+          },
+          "timestampMs": "1513208994609"
+        },
+        {
+          "value": {
+            "gauge": 0.31446540880503143
+          },
+          "timestampMs": "1513209004609"
+        },
+        {
+          "value": {
+            "gauge": 1
+          },
+          "timestampMs": "1513209014609"
+        },
+        {
+          "value": {
+            "gauge": 0.35
+          },
+          "timestampMs": "1513209034609"
+        },
+        {
+          "value": {
+            "gauge": 0.3064516129032258
+          },
+          "timestampMs": "1513209044609"
+        },
+        {
+          "value": {
+            "gauge": 0.39285714285714285
+          },
+          "timestampMs": "1513209054609"
+        },
+        {
+          "value": {
+            "gauge": 0.3308270676691729
+          },
+          "timestampMs": "1513209074609"
+        },
+        {
+          "value": {
+            "gauge": 0.3142857142857143
+          },
+          "timestampMs": "1513209084609"
+        },
+        {
+          "value": {
+            "gauge": 0.3999999999999999
+          },
+          "timestampMs": "1513209104609"
+        },
+        {
+          "value": {
+            "gauge": 0.29268292682926833
+          },
+          "timestampMs": "1513209124609"
+        },
+        {
+          "value": {
+            "gauge": 0.36134453781512604
+          },
+          "timestampMs": "1513209134609"
+        },
+        {
+          "value": {
+            "gauge": 0.33695652173913043
+          },
+          "timestampMs": "1513209154609"
+        },
+        {
+          "value": {
+            "gauge": 0.42105263157894735
+          },
+          "timestampMs": "1513209164609"
+        },
+        {
+          "value": {
+            "gauge": 0.3526011560693642
+          },
+          "timestampMs": "1513209184609"
+        },
+        {
+          "value": {
+            "gauge": 0.29999999999999993
+          },
+          "timestampMs": "1513209194609"
+        },
+        {
+          "value": {
+            "gauge": 0.3709677419354839
+          },
+          "timestampMs": "1513209204609"
+        },
+        {
+          "value": {
+            "gauge": 0.3
+          },
+          "timestampMs": "1513209214609"
+        },
+        {
+          "value": {
+            "gauge": 0.32089552238805963
+          },
+          "timestampMs": "1513209244609"
+        },
+        {
+          "value": {
+            "gauge": 0.37362637362637363
+          },
+          "timestampMs": "1513209254609"
+        },
+        {
+          "value": {
+            "gauge": 0.32499999999999996
+          },
+          "timestampMs": "1513209264609"
+        },
+        {
+          "value": {
+            "gauge": 0.39784946236559143
+          },
+          "timestampMs": "1513209274609"
+        },
+        {
+          "value": {
+            "gauge": 0.3656716417910447
+          },
+          "timestampMs": "1513209294609"
+        },
+        {
+          "value": {
+            "gauge": 0.19999999999999998
+          },
+          "timestampMs": "1513209304609"
+        },
+        {
+          "value": {
+            "gauge": 0.2876712328767123
+          },
+          "timestampMs": "1513209314609"
+        },
+        {
+          "value": {
+            "gauge": 0.359375
+          },
+          "timestampMs": "1513209324609"
+        },
+        {
+          "value": {
+            "gauge": 0.5416666666666667
+          },
+          "timestampMs": "1513209334609"
+        },
+        {
+          "value": {
+            "gauge": 0.4157303370786517
+          },
+          "timestampMs": "1513209354609"
+        }
+      ]
+    },
+    {
+      "name": "LATENCY",
+      "metadata": {
+        "targetPod": "",
+        "targetDeploy": "test/potato3",
+        "sourcePod": "",
+        "sourceDeploy": "",
+        "component": "",
+        "path": ""
+      },
+      "datapoints": [
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "534"
+                },
+                {
+                  "label": "P95",
+                  "value": "953"
+                },
+                {
+                  "label": "P99",
+                  "value": "990"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513208765882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "490"
+                },
+                {
+                  "label": "P95",
+                  "value": "948"
+                },
+                {
+                  "label": "P99",
+                  "value": "989"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513208815882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "504"
+                },
+                {
+                  "label": "P95",
+                  "value": "950"
+                },
+                {
+                  "label": "P99",
+                  "value": "990"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513208835882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "450"
+                },
+                {
+                  "label": "P95",
+                  "value": "925"
+                },
+                {
+                  "label": "P99",
+                  "value": "985"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513208845882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "437"
+                },
+                {
+                  "label": "P95",
+                  "value": "943"
+                },
+                {
+                  "label": "P99",
+                  "value": "988"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513208855882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "513"
+                },
+                {
+                  "label": "P95",
+                  "value": "951"
+                },
+                {
+                  "label": "P99",
+                  "value": "990"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513208865882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "450"
+                },
+                {
+                  "label": "P95",
+                  "value": "941"
+                },
+                {
+                  "label": "P99",
+                  "value": "988"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513208875882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "545"
+                },
+                {
+                  "label": "P95",
+                  "value": "954"
+                },
+                {
+                  "label": "P99",
+                  "value": "990"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513208885882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "430"
+                },
+                {
+                  "label": "P95",
+                  "value": "940"
+                },
+                {
+                  "label": "P99",
+                  "value": "988"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513208895882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "437"
+                },
+                {
+                  "label": "P95",
+                  "value": "936"
+                },
+                {
+                  "label": "P99",
+                  "value": "987"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513208925882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "750"
+                },
+                {
+                  "label": "P95",
+                  "value": "975"
+                },
+                {
+                  "label": "P99",
+                  "value": "995"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513208945882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "587"
+                },
+                {
+                  "label": "P95",
+                  "value": "958"
+                },
+                {
+                  "label": "P99",
+                  "value": "991"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513208955882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "462"
+                },
+                {
+                  "label": "P95",
+                  "value": "943"
+                },
+                {
+                  "label": "P99",
+                  "value": "988"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513208965882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "565"
+                },
+                {
+                  "label": "P95",
+                  "value": "956"
+                },
+                {
+                  "label": "P99",
+                  "value": "991"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513208975882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "546"
+                },
+                {
+                  "label": "P95",
+                  "value": "954"
+                },
+                {
+                  "label": "P99",
+                  "value": "990"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513208985882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "503"
+                },
+                {
+                  "label": "P95",
+                  "value": "950"
+                },
+                {
+                  "label": "P99",
+                  "value": "990"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513208995882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "200"
+                },
+                {
+                  "label": "P95",
+                  "value": "950"
+                },
+                {
+                  "label": "P99",
+                  "value": "990"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513209005882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "523"
+                },
+                {
+                  "label": "P95",
+                  "value": "952"
+                },
+                {
+                  "label": "P99",
+                  "value": "990"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513209025882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "454"
+                },
+                {
+                  "label": "P95",
+                  "value": "940"
+                },
+                {
+                  "label": "P99",
+                  "value": "988"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513209035882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "500"
+                },
+                {
+                  "label": "P95",
+                  "value": "949"
+                },
+                {
+                  "label": "P99",
+                  "value": "990"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513209045882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "437"
+                },
+                {
+                  "label": "P95",
+                  "value": "943"
+                },
+                {
+                  "label": "P99",
+                  "value": "988"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513209065882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "450"
+                },
+                {
+                  "label": "P95",
+                  "value": "945"
+                },
+                {
+                  "label": "P99",
+                  "value": "989"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513209075882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "500"
+                },
+                {
+                  "label": "P95",
+                  "value": "949"
+                },
+                {
+                  "label": "P99",
+                  "value": "990"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513209095882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "489"
+                },
+                {
+                  "label": "P95",
+                  "value": "948"
+                },
+                {
+                  "label": "P99",
+                  "value": "989"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513209115882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "535"
+                },
+                {
+                  "label": "P95",
+                  "value": "953"
+                },
+                {
+                  "label": "P99",
+                  "value": "990"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513209125882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "500"
+                },
+                {
+                  "label": "P95",
+                  "value": "950"
+                },
+                {
+                  "label": "P99",
+                  "value": "990"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513209145882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "525"
+                },
+                {
+                  "label": "P95",
+                  "value": "952"
+                },
+                {
+                  "label": "P99",
+                  "value": "990"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513209155882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "424"
+                },
+                {
+                  "label": "P95",
+                  "value": "938"
+                },
+                {
+                  "label": "P99",
+                  "value": "987"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513209175882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "500"
+                },
+                {
+                  "label": "P95",
+                  "value": "950"
+                },
+                {
+                  "label": "P99",
+                  "value": "990"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513209185882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "544"
+                },
+                {
+                  "label": "P95",
+                  "value": "954"
+                },
+                {
+                  "label": "P99",
+                  "value": "990"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513209195882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "583"
+                },
+                {
+                  "label": "P95",
+                  "value": "958"
+                },
+                {
+                  "label": "P99",
+                  "value": "991"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513209205882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "460"
+                },
+                {
+                  "label": "P95",
+                  "value": "946"
+                },
+                {
+                  "label": "P99",
+                  "value": "989"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513209235882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "445"
+                },
+                {
+                  "label": "P95",
+                  "value": "943"
+                },
+                {
+                  "label": "P99",
+                  "value": "988"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513209245882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "523"
+                },
+                {
+                  "label": "P95",
+                  "value": "952"
+                },
+                {
+                  "label": "P99",
+                  "value": "990"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513209255882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "470"
+                },
+                {
+                  "label": "P95",
+                  "value": "944"
+                },
+                {
+                  "label": "P99",
+                  "value": "988"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513209265882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "521"
+                },
+                {
+                  "label": "P95",
+                  "value": "952"
+                },
+                {
+                  "label": "P99",
+                  "value": "990"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513209285882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "583"
+                },
+                {
+                  "label": "P95",
+                  "value": "958"
+                },
+                {
+                  "label": "P99",
+                  "value": "991"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513209295882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "506"
+                },
+                {
+                  "label": "P95",
+                  "value": "950"
+                },
+                {
+                  "label": "P99",
+                  "value": "990"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513209305882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "400"
+                },
+                {
+                  "label": "P95",
+                  "value": "923"
+                },
+                {
+                  "label": "P99",
+                  "value": "984"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513209315882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "480"
+                },
+                {
+                  "label": "P95",
+                  "value": "945"
+                },
+                {
+                  "label": "P99",
+                  "value": "989"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513209325882"
+        },
+        {
+          "value": {
+            "histogram": {
+              "values": [
+                {
+                  "label": "P50",
+                  "value": "475"
+                },
+                {
+                  "label": "P95",
+                  "value": "948"
+                },
+                {
+                  "label": "P99",
+                  "value": "989"
+                }
+              ]
+            }
+          },
+          "timestampMs": "1513209345882"
+        }
+      ]
+    }
+  ]
+}

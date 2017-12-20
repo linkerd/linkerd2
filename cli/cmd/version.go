@@ -13,7 +13,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print the client and server version information",
 	Long:  "Print the client and server version information.",
-	Args: cobra.NoArgs,
+	Args:  cobra.NoArgs,
 	Run: exitSilentlyOnError(func(cmd *cobra.Command, args []string) error {
 		fmt.Println("Client version: " + controller.Version)
 
@@ -32,7 +32,7 @@ func init() {
 	addControlPlaneNetworkingArgs(versionCmd)
 }
 
-func getVersion()(string, error) {
+func getVersion() (string, error) {
 	client, err := newApiClient()
 	if err != nil {
 		return "", err

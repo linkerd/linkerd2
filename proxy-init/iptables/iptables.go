@@ -23,7 +23,8 @@ var (
 type FirewallConfiguration struct {
 	Mode                   string
 	PortsToRedirectInbound []int
-	PortsToIgnore          []int
+	InboundPortsToIgnore   []int
+	OutboundPortsToIgnore  []int
 	ProxyInboundPort       int
 	ProxyOutgoingPort      int
 	ProxyUid               int
@@ -77,6 +78,7 @@ func addOutgoingTrafficRules(commands []*exec.Cmd, firewallConfiguration Firewal
 
 	commands = append(commands, makeCreateNewChain(ConduitOutputChainName, "redirect-common-chain"))
 
+	// Ingore traffic from the proxy
 	if firewallConfiguration.ProxyUid > 0 {
 		log.Printf("Ignoring uid %d", firewallConfiguration.ProxyUid)
 		commands = append(commands, makeIgnoreUserId(ConduitOutputChainName, firewallConfiguration.ProxyUid, "ignore-proxy-user-id"))
@@ -86,6 +88,8 @@ func addOutgoingTrafficRules(commands []*exec.Cmd, firewallConfiguration Firewal
 
 	// Ignore loopback
 	commands = append(commands, makeIgnoreLoopback(ConduitOutputChainName, "ignore-loopback"))
+	// Ignore ports
+	commands = addRulesForIgnoredPorts(firewallConfiguration.OutboundPortsToIgnore, ConduitOutputChainName, commands)
 
 	log.Printf("Redirecting all OUTPUT to %d", firewallConfiguration.ProxyOutgoingPort)
 	commands = append(commands, makeRedirectChainToPort(ConduitOutputChainName, firewallConfiguration.ProxyOutgoingPort, "redirect-all-outgoing-to-proxy-port"))
@@ -101,7 +105,7 @@ func addIncomingTrafficRules(commands []*exec.Cmd, firewallConfiguration Firewal
 	executeCommand(firewallConfiguration, makeDeleteChain(ConduitRedirectChainName))
 
 	commands = append(commands, makeCreateNewChain(ConduitRedirectChainName, "redirect-common-chain"))
-	commands = addRulesForIgnoredPorts(firewallConfiguration, ConduitRedirectChainName, commands)
+	commands = addRulesForIgnoredPorts(firewallConfiguration.InboundPortsToIgnore, ConduitRedirectChainName, commands)
 	commands = addRulesForInboundPortRedirect(firewallConfiguration, ConduitRedirectChainName, commands)
 
 	//Redirect all remaining inbound traffic to the proxy.
@@ -130,9 +134,9 @@ func addRulesForInboundPortRedirect(firewallConfiguration FirewallConfiguration,
 	return commands
 }
 
-func addRulesForIgnoredPorts(firewallConfiguration FirewallConfiguration, chainName string, commands []*exec.Cmd) []*exec.Cmd {
-	for _, ignoredPort := range firewallConfiguration.PortsToIgnore {
-		log.Printf("Will ignore port %d", ignoredPort)
+func addRulesForIgnoredPorts(portsToIgnore []int, chainName string, commands []*exec.Cmd) []*exec.Cmd {
+	for _, ignoredPort := range portsToIgnore {
+		log.Printf("Will ignore port %d on chain %s", ignoredPort, chainName)
 
 		commands = append(commands, makeIgnorePort(chainName, ignoredPort, fmt.Sprintf("ignore-port-%d", ignoredPort)))
 	}

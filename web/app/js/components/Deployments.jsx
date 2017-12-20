@@ -6,7 +6,7 @@ import React from 'react';
 import { rowGutter } from './util/Utils.js';
 import TabbedMetricsTable from './TabbedMetricsTable.jsx';
 import { Col, Row } from 'antd';
-import { emptyMetric, processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
+import { emptyMetric, getPodsByDeployment, processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
 import './../../css/deployments.css';
 import 'whatwg-fetch';
 
@@ -38,17 +38,6 @@ export default class Deployments extends React.Component {
     window.clearInterval(this.timerId);
   }
 
-  getDeploymentList(pods) {
-    return _(pods)
-      .reject(p => _.isEmpty(p.deployment) || p.controlPlane)
-      .groupBy('deployment')
-      .map((componentPods, name) => {
-        return { name: name, added: _.every(componentPods, 'added') };
-      })
-      .sortBy('name')
-      .value();
-  }
-
   addDeploysWithNoMetrics(deploys, metrics) {
     // also display deployments which have not been added to the service mesh
     // (and therefore have no associated metrics)
@@ -72,10 +61,11 @@ export default class Deployments extends React.Component {
 
     let podRequest = fetch(podPath).then(r => r.json());
 
-    Promise.all([rollupRequest, podRequest])
+    // expose serverPromise for testing
+    this.serverPromise = Promise.all([rollupRequest, podRequest])
       .then(([rollup, p]) => {
-        let poByDeploy = this.getDeploymentList(p.pods);
-        let meshDeploys = _.compact(processRollupMetrics(rollup.metrics, "targetDeploy"));
+        let poByDeploy = getPodsByDeployment(p.pods);
+        let meshDeploys = processRollupMetrics(rollup.metrics, "targetDeploy");
         let combinedMetrics = this.addDeploysWithNoMetrics(poByDeploy, meshDeploys);
 
         this.loadTimeseriesFromServer(meshDeploys, combinedMetrics);
@@ -98,7 +88,7 @@ export default class Deployments extends React.Component {
       pendingRequests: false
     };
 
-    if(limitSparklineData) {
+    if (limitSparklineData) {
       // don't fetch timeseries for every deploy
       let leastHealthyDeployments = this.getLeastHealthyDeployments(meshDeployMetrics);
 
@@ -185,12 +175,12 @@ export default class Deployments extends React.Component {
       <div className="page-content">
         <div className="page-header">
           <h1>All deployments</h1>
-          {_.isEmpty(this.state.metrics) ?
-            <CallToAction numDeployments={_.size(this.state.metrics)} /> :
-            null
-          }
         </div>
-        {!_.isEmpty(this.state.metrics) ? this.renderPageContents() : null}
+        {
+          _.isEmpty(this.state.metrics) ?
+            <CallToAction numDeployments={_.size(this.state.metrics)} /> :
+            this.renderPageContents()
+        }
       </div>
     );
   }
