@@ -1,9 +1,11 @@
 package shell
 
 import (
-	"testing"
-	"strings"
 	"io/ioutil"
+	"os"
+	"runtime"
+	"strings"
+	"testing"
 	"time"
 )
 
@@ -116,5 +118,16 @@ func TestWaitForCharacter(t *testing.T) {
 			t.Fatalf("Expecting error, got nothing. output was [%s]", outputString)
 		}
 		close(asyncError)
+	})
+}
+
+func TestHomeDir(t *testing.T) {
+	t.Run("Home dir for non-Windows boxes follow a common pattern", func(t *testing.T) {
+		shell := MakeUnixShell()
+		home := shell.HomeDir()
+		expected := os.Getenv("HOME")
+		if runtime.GOOS != "windows" && !strings.Contains(home, expected) {
+			t.Errorf("This is a UNIX-like system, expecting home dir [%s] to contain [%s]", home, expected)
+		}
 	})
 }

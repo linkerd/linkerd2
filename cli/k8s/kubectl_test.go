@@ -1,11 +1,12 @@
-package shell
+package k8s
 
 import (
-	"testing"
-	"fmt"
-	"strings"
-	"errors"
 	"bufio"
+	"errors"
+	"fmt"
+	"net/url"
+	"strings"
+	"testing"
 	"time"
 )
 
@@ -36,6 +37,10 @@ func (sh *mockShell) AsyncStdout(asyncError chan error, name string, arg ...stri
 
 func (sh *mockShell) WaitForCharacter(charToWaitFor byte, outputReader *bufio.Reader, timeout time.Duration) (string, error) {
 	return outputReader.ReadString(charToWaitFor)
+}
+
+func (sh *mockShell) HomeDir() string {
+	return "/home/bob"
 }
 
 func TestKubectlVersion(t *testing.T) {
@@ -182,14 +187,14 @@ func TestUrlFor(t *testing.T) {
 
 		expectedNamespace := "expected-namespace"
 		expectedPath := "/expected/path:for/desired/endpoint"
-		expectedUrl := fmt.Sprintf("http://127.0.0.1:%d/api/v1/namespaces/%s%s", kubectlDefaultProxyPort, expectedNamespace, expectedPath)
+		expectedUrl, _ := url.Parse(fmt.Sprintf("http://127.0.0.1:%d/api/v1/namespaces/%s%s", kubectlDefaultProxyPort, expectedNamespace, expectedPath))
 
 		actualUrl, err := kctl.UrlFor(expectedNamespace, expectedPath)
 		if err != nil {
 			t.Fatalf("Unexpected error generating URL: %v", err)
 		}
 
-		if actualUrl != expectedUrl {
+		if actualUrl.String() != expectedUrl.String() {
 			t.Fatalf("Expected generated URL to be [%s] but was [%s]", expectedUrl, actualUrl)
 		}
 	})

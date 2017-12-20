@@ -2,18 +2,13 @@ package cmd
 
 import (
 	"fmt"
-	"net/http"
-	"net/url"
 	"os"
 
-	"path/filepath"
-	"runtime"
-
+	"github.com/runconduit/conduit/cli/k8s"
+	"github.com/runconduit/conduit/cli/shell"
 	"github.com/runconduit/conduit/controller/api/public"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/spf13/cobra"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 var cfgFile string
@@ -43,59 +38,32 @@ func init() {
 // TODO: decide if we want to use viper
 
 func addControlPlaneNetworkingArgs(cmd *cobra.Command) {
-	// See https://github.com/kubernetes/client-go/blob/master/examples/out-of-cluster-client-configuration/main.go
-	kubeconfigDefaultPath := ""
-	var homeEnvVar string
-	if runtime.GOOS == "windows" {
-		homeEnvVar = "USERPROFILE"
-	} else {
-		homeEnvVar = "HOME"
-	}
-	homeDir := os.Getenv(homeEnvVar)
-	if homeDir != "" {
-		kubeconfigDefaultPath = filepath.Join(homeDir, ".kube", "config")
-	}
 	// Use the same argument name as `kubectl` (see the output of `kubectl options`).
-	cmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", kubeconfigDefaultPath, "Path to the kubeconfig file to use for CLI requests")
+	cmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", "", "Path to the kubeconfig file to use for CLI requests")
 
 	cmd.PersistentFlags().StringVar(&apiAddr, "api-addr", "", "Override kubeconfig and communicate directly with the control plane at host:port (mostly for testing)")
 }
 
 func newApiClient() (pb.ApiClient, error) {
-	var serverURL *url.URL
-	var transport http.RoundTripper
+	kubeApi, err := k8s.MakeK8sAPi(shell.MakeUnixShell(), kubeconfigPath, apiAddr)
+	if err != nil {
+		return nil, err
+	}
 
-	if apiAddr != "" {
-		// TODO: Standalone local testing should be done over HTTPS too.
-		serverURL = &url.URL{
-			Scheme: "http",
-			Host:   apiAddr,
-			Path:   "/",
-		}
-		transport = http.DefaultTransport
-	} else {
-		kubeConfig, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
-		if err != nil {
-			return nil, err
-		}
-		serverURLBase, err := url.Parse(kubeConfig.Host)
-		if err != nil {
-			return nil, fmt.Errorf("invalid host in kubernetes config: %s", kubeConfig.Host)
-		}
-		proxyURLRef := url.URL{
-			Path: fmt.Sprintf("api/v1/namespaces/%s/services/http:api:http/proxy/", controlPlaneNamespace),
-		}
-		serverURL = serverURLBase.ResolveReference(&proxyURLRef)
-
-		transport, err = rest.TransportFor(kubeConfig)
-		if err != nil {
-			return nil, err
-		}
+	url, err := kubeApi.UrlFor(controlPlaneNamespace, "/services/http:api:http/proxy/")
+	if err != nil {
+		return nil, err
 	}
 
 	apiConfig := &public.Config{
-		ServerURL: serverURL,
+		ServerURL: url,
 	}
+
+	transport, err := kubeApi.MakeSecureTransport()
+	if err != nil {
+		return nil, err
+	}
+
 	return public.NewClient(apiConfig, transport)
 }
 

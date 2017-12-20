@@ -1,4 +1,4 @@
-package shell
+package k8s
 
 import (
 	"fmt"
@@ -6,17 +6,19 @@ import (
 	"strings"
 	"strconv"
 	"time"
+	"github.com/runconduit/conduit/cli/shell"
+	"net/url"
 )
 
 type Kubectl interface {
 	Version() ([3]int, error)
 	StartProxy(potentialErrorWhenStartingProxy chan error, port int) error
-	UrlFor(namespace string, extraPathStartingWithSlash string) (string, error)
+	UrlFor(namespace string, extraPathStartingWithSlash string) (*url.URL, error)
 	ProxyPort() int
 }
 
 type kubectl struct {
-	sh        Shell
+	sh        shell.Shell
 	proxyPort int
 }
 
@@ -32,6 +34,14 @@ var minimunKubectlVersionExpected = [3]int{1, 8, 0}
 
 func (kctl *kubectl) ProxyPort() int {
 	return kctl.proxyPort
+}
+
+func (kctl *kubectl) ProxyHost() string {
+	return "127.0.0.1"
+}
+
+func (kctl *kubectl) ProxyScheme() string {
+	return "http"
 }
 
 func (kctl *kubectl) Version() ([3]int, error) {
@@ -62,7 +72,7 @@ func (kctl *kubectl) Version() ([3]int, error) {
 }
 
 func (kctl *kubectl) StartProxy(potentialErrorWhenStartingProxy chan error, port int) error {
-	fmt.Printf("Running `kubectl proxy %d`\n", port)
+	fmt.Printf("Running `kubectl proxy -p %d`\n", port)
 
 	if kctl.ProxyPort() != portWhenProxyNotRunning {
 		return fmt.Errorf("Kubectl proxy already running on port [%d]", kctl.ProxyPort)
@@ -81,13 +91,14 @@ func (kctl *kubectl) StartProxy(potentialErrorWhenStartingProxy chan error, port
 	return nil
 }
 
-func (kctl *kubectl) UrlFor(namespace string, extraPathStartingWithSlash string) (string, error) {
+func (kctl *kubectl) UrlFor(namespace string, extraPathStartingWithSlash string) (*url.URL, error) {
 	if kctl.ProxyPort() == portWhenProxyNotRunning {
-		return "", errors.New("proxy needs to be started before generating URLs")
+		return nil, errors.New("proxy needs to be started before generating URLs")
 	}
 
-	url := fmt.Sprintf("http://%s:%d/api/v1/namespaces/%s%s", "127.0.0.1", kctl.ProxyPort(), namespace, extraPathStartingWithSlash)
-	return url, nil
+	schemeHostAndPort := fmt.Sprintf("%s://%s:%d",kctl.ProxyScheme(),kctl.ProxyHost(), kctl.ProxyPort())
+
+	return generateKubernetesApiBaseUrlFor(schemeHostAndPort, namespace, extraPathStartingWithSlash)
 }
 
 func isCompatibleVersion(minimalRequirementVersion [3]int, actualVersion [3]int) bool {
@@ -106,7 +117,7 @@ func isCompatibleVersion(minimalRequirementVersion [3]int, actualVersion [3]int)
 	return false
 }
 
-func MakeKubectl(shell Shell) (Kubectl, error) {
+func MakeKubectl(shell shell.Shell) (Kubectl, error) {
 
 	kubectl := &kubectl{
 		sh:        shell,

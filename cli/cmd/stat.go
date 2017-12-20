@@ -69,16 +69,16 @@ The optional [TARGET] option can be either a name for a deployment or pod resour
 func makeStatsRequest(aggType pb.AggregationType) error {
 	client, err := newApiClient()
 	if err != nil {
-		return err
+		return fmt.Errorf("error creating api client while making stats request: %v", err)
 	}
 	req, err := buildMetricRequest(aggType)
 	if err != nil {
-		return err
+		return fmt.Errorf("error creating metrics request while making stats request: %v", err)
 	}
 
 	resp, err := client.Stat(context.Background(), req)
 	if err != nil {
-		return err
+		return fmt.Errorf("error calling stat with request: %v", err)
 	}
 
 	var buffer bytes.Buffer
