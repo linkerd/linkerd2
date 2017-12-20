@@ -7,7 +7,7 @@
   --darkblue: #071E3C;
   --warmgrey: #f6f6f6;
   --coldgrey: #c9c9c9;
-  --latency-p99: #2F80ED;
+  --latency-p99: var(--messageblue);
   --latency-p95: #2D9CDB;
   --latency-p50: #56CCF2;
   --subheader-grey: #828282;
@@ -184,4 +184,41 @@ tr th.numeric, .numeric {
     text-decoration: underline;
     text-decoration-style: dotted;
   }
+}
+
+
+/* from https://conduit.io/ */
+
+a.button {
+  color: var(--messageblue);
+  background: #fff;
+  border-radius: 48px;
+  border: 1px solid var(--messageblue);
+  padding: 10px 14px 11px 14px;
+  font-weight: bold;
+  font-size: 14px;
+  margin: 0px 8px 8px 0px;
+  position: relative;
+  line-height: 4;
+}
+a.button:hover {
+  top: 1px;
+  background-color: #efefef;
+  text-decoration: none;
+}
+a.button:active {
+  background-color: var(--messageblue);
+  color: #fff;
+}
+a.button.primary {
+  color: #fff;
+  background-color: var(--messageblue);
+}
+a.button.primary:hover {
+  top: 1px;
+  background-color: #2875DE;
+  text-decoration: none;
+}
+a.button.primary:active {
+  background-color: #2469C7;
 }

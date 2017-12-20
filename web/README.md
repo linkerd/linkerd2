@@ -43,6 +43,13 @@ And then set the `-webpack-dev-server` flag when running the web server:
 go run main.go -webpack-dev-server=http://localhost:8080
 ```
 
+To add a JS dependency:
+
+```
+cd web/app
+yarn add [dep]
+```
+
 ## Run docker-compose
 
 You can also run all of the go apps in a docker-compose environment.

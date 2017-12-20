@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import logo from './../../img/reversed_logo.png';
 import { Menu } from 'antd';
 import React from 'react';
+import Version from './Version.jsx';
 import './../../css/sidebar.css';
 
 export default class Sidebar extends React.Component {
@@ -28,13 +29,9 @@ export default class Sidebar extends React.Component {
               <Link to="https://conduit.io/docs/" target="_blank">Documentation</Link>
             </Menu.Item>
           </Menu>
-          <div className="conduit-current-version">
-            Running {this.props.releaseVersion}<br />
-            <iframe
-              className="conduit-version-check"
-              src={`https://versioncheck.conduit.io/version/${this.props.releaseVersion}?uuid=${this.props.uuid}`}
-              sandbox="allow-top-navigation" />
-          </div>
+          <Version
+            releaseVersion={this.props.releaseVersion}
+            uuid={this.props.uuid} />
         </div>
       </div>
     );
