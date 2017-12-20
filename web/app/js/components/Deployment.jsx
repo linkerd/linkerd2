@@ -4,12 +4,12 @@ import ConduitSpinner from "./ConduitSpinner.jsx";
 import HealthPane from './HealthPane.jsx';
 import Metric from './Metric.jsx';
 import React from 'react';
-import { rowGutter } from './util/Utils.js';
 import StatPane from './StatPane.jsx';
 import TabbedMetricsTable from './TabbedMetricsTable.jsx';
 import UpstreamDownstream from './UpstreamDownstream.jsx';
 import { Col, Row } from 'antd';
-import { getPodsByDeployment, processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
+import { emptyMetric, getPodsByDeployment, processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
+import { instructions, rowGutter } from './util/Utils.js';
 import './../../css/deployment.css';
 import 'whatwg-fetch';
 
@@ -46,6 +46,7 @@ export default class Deployment extends React.Component {
       deploy: deployment,
       metrics:[],
       timeseriesByPod: {},
+      pods: [],
       upstreamMetrics: [],
       upstreamTsByDeploy: {},
       downstreamMetrics: [],
@@ -98,6 +99,7 @@ export default class Deployment extends React.Component {
         this.setState({
           metrics: podMetrics,
           timeseriesByPod: podTs,
+          pods: deploy.pods,
           added: deploy.added,
           deployTs: _.get(tsByDeploy, this.state.deploy, {}),
           upstreamMetrics: upstreamMetrics,
@@ -134,10 +136,11 @@ export default class Deployment extends React.Component {
         upstreamMetrics={this.state.upstreamMetrics}
         downstreamMetrics={this.state.downstreamMetrics}
         deploymentAdded={this.state.added} />,
-      <StatPane
-        key="stat-pane"
-        lastUpdated={this.state.lastUpdated}
-        timeseries={this.state.deployTs} />,
+      _.isEmpty(this.state.deployTs) ? null :
+        <StatPane
+          key="stat-pane"
+          lastUpdated={this.state.lastUpdated}
+          timeseries={this.state.deployTs} />,
       this.renderMidsection(),
       <UpstreamDownstream
         key="deploy-upstream-downstream"
@@ -152,6 +155,11 @@ export default class Deployment extends React.Component {
   }
 
   renderMidsection() {
+    let podTableData = this.state.metrics;
+    if (_.isEmpty(this.state.metrics)) {
+      podTableData = _.map(this.state.pods, po => emptyMetric(po.name));
+    }
+
     return (
       <Row gutter={rowGutter} key="deployment-midsection">
         <Col span={16}>
@@ -159,21 +167,23 @@ export default class Deployment extends React.Component {
             <div className="border-container border-neutral subsection-header">
               <div className="border-container-content subsection-header">Pod summary</div>
             </div>
-            <div className="pod-distribution-chart">
-              <div className="bar-chart-title">
-                <div>Request load by pod</div>
-                <div className="bar-chart-tooltip" />
-              </div>
-              <BarChart
-                data={this.state.metrics}
-                lastUpdated={this.state.lastUpdated}
-                containerClassName="pod-distribution-chart" />
-            </div>
-
+            {
+              _.isEmpty(this.state.metrics) ? null :
+                <div className="pod-distribution-chart">
+                  <div className="bar-chart-title">
+                    <div>Request load by pod</div>
+                    <div className="bar-chart-tooltip" />
+                  </div>
+                  <BarChart
+                    data={this.state.metrics}
+                    lastUpdated={this.state.lastUpdated}
+                    containerClassName="pod-distribution-chart" />
+                </div>
+            }
             <TabbedMetricsTable
               resource="pod"
               lastUpdated={this.state.lastUpdated}
-              metrics={this.state.metrics}
+              metrics={podTableData}
               timeseries={this.state.timeseriesByPod}
               pathPrefix={this.props.pathPrefix} />
           </div>
@@ -183,7 +193,7 @@ export default class Deployment extends React.Component {
           <div className="border-container border-neutral deployment-details">
             <div className="border-container-content">
               <div className=" subsection-header">Deployment details</div>
-              <Metric title="Pods" value={_.size(this.state.metrics)} />
+              <Metric title="Pods" value={_.size(podTableData)} />
               <Metric title="Upstream deployments" value={this.numUpstreams()} />
               <Metric title="Downstream deployments" value={this.numDownstreams()} />
             </div>
@@ -202,8 +212,7 @@ export default class Deployment extends React.Component {
             <div className="unadded-message">
               <div className="status-badge unadded"><p>UNADDED</p></div>
               <div className="call-to-action">
-                <div className="action">Add {this.state.deploy} to the deployment.yml file</div>
-                <div className="action">Then run <code>kubectl inject deployment.yml | kubectl apply -f -</code> to add the deploys to the service mesh</div>
+                {instructions(this.state.deploy)}
               </div>
             </div>
           ) : null
@@ -215,14 +224,16 @@ export default class Deployment extends React.Component {
   render() {
     if (!this.state.loaded) {
       return <ConduitSpinner />;
-    } else return (
-      <div className="page-content deployment-detail">
-        <div className="page-header">
-          <div className="subsection-header">Deployment detail</div>
-          {this.renderDeploymentTitle()}
+    } else {
+      return (
+        <div className="page-content deployment-detail">
+          <div className="page-header">
+            <div className="subsection-header">Deployment detail</div>
+            {this.renderDeploymentTitle()}
+          </div>
+          {this.renderSections()}
         </div>
-        {this.renderSections()}
-      </div>
-    );
+      );
+    }
   }
 }

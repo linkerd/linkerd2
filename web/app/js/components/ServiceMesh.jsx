@@ -257,7 +257,7 @@ export default class ServiceMesh extends React.Component {
     if (this.deployCount() === 0) {
       return (
         <div className="incomplete-mesh-message">
-          No deployments detected. {instructions}
+          No deployments detected. {instructions()}
         </div>
       );
     } else {
@@ -271,13 +271,13 @@ export default class ServiceMesh extends React.Component {
       case 1:
         return (
           <div className="incomplete-mesh-message">
-            1 deployment has not been added to the service mesh. {instructions}
+            1 deployment has not been added to the service mesh. {instructions()}
           </div>
         );
       default:
         return (
           <div className="incomplete-mesh-message">
-            {this.unaddedDeploymentCount()} deployments have not been added to the service mesh. {instructions}
+            {this.unaddedDeploymentCount()} deployments have not been added to the service mesh. {instructions()}
           </div>
         );
       }
