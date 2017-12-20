@@ -10,6 +10,10 @@ sinonStubPromise(sinon);
 describe('Deployment', () => {
   let component, fetchStub;
 
+  function withPromise(fn) {
+    return component.find("Deployment").get(0).serverPromise.then(fn);
+  }
+
   beforeEach(() => {
     fetchStub = sinon.stub(window, 'fetch');
   });
@@ -20,9 +24,13 @@ describe('Deployment', () => {
 
   it('renders the spinner before metrics are loaded', () => {
     fetchStub.returnsPromise().resolves({
+      ok: true,
       json: () => Promise.resolve({ metrics: [] })
     });
     component = mount(routerWrap(Deployment));
-    expect(component.find("ConduitSpinner")).to.have.length(1);
+
+    return withPromise(() => {
+      expect(component.find("ConduitSpinner")).to.have.length(1);
+    });
   });
 });

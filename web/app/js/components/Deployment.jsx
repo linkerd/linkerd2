@@ -20,6 +20,7 @@ export default class Deployment extends React.Component {
   constructor(props) {
     super(props);
     this.api = ApiHelpers(this.props.pathPrefix);
+    this.handleApiError = this.handleApiError.bind(this);
     this.loadFromServer = this.loadFromServer.bind(this);
     this.state = this.initialState(this.props.location);
   }
@@ -85,7 +86,8 @@ export default class Deployment extends React.Component {
     let downstreamFetch = this.api.fetch(downstreamRollupUrl);
     let downstreamTsFetch = this.api.fetch(downstreamTimeseriesUrl);
 
-    Promise.all([deployFetch, podRollupFetch, podTsFetch, upstreamFetch, upstreamTsFetch, downstreamFetch, downstreamTsFetch, podListFetch])
+    // expose serverPromise for testing
+    this.serverPromise = Promise.all([deployFetch, podRollupFetch, podTsFetch, upstreamFetch, upstreamTsFetch, downstreamFetch, downstreamTsFetch, podListFetch])
       .then(([deployMetrics, podRollup, podTimeseries, upstreamRollup, upstreamTimeseries, downstreamRollup, downstreamTimeseries, podList]) => {
         let tsByDeploy = processTimeseriesMetrics(deployMetrics.metrics, "targetDeploy");
         let podMetrics = processRollupMetrics(podRollup.metrics, "targetPod");

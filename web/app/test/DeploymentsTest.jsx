@@ -24,18 +24,19 @@ describe('Deployments', () => {
   });
 
   it('renders the spinner before metrics are loaded', () => {
-    fetchStub.returnsPromise().resolves({
-      json: () => Promise.resolve({ metrics: [] })
-    });
+    fetchStub.returnsPromise().resolves({ ok: true });
     component = mount(routerWrap(Deployments));
 
-    expect(component.find("Deployments")).to.have.length(1);
-    expect(component.find("ConduitSpinner")).to.have.length(1);
-    expect(component.find("CallToAction")).to.have.length(0);
+    return withPromise(() => {
+      expect(component.find("Deployments")).to.have.length(1);
+      expect(component.find("ConduitSpinner")).to.have.length(1);
+      expect(component.find("CallToAction")).to.have.length(0);
+    });
   });
 
   it('renders a call to action if no metrics are received', () => {
     fetchStub.returnsPromise().resolves({
+      ok: true,
       json: () => Promise.resolve({ metrics: [] })
     });
     component = mount(routerWrap(Deployments));
@@ -49,6 +50,7 @@ describe('Deployments', () => {
 
   it('renders the deployments page if pod data is received', () => {
     fetchStub.returnsPromise().resolves({
+      ok: true,
       json: () => Promise.resolve({ metrics: [], pods: podFixtures.pods })
     });
     component = mount(routerWrap(Deployments));

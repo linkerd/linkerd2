@@ -24,25 +24,41 @@ describe('ServiceMesh', () => {
     window.fetch.restore();
   });
 
+  it("displays an error if the api call didn't go well", () => {
+    let errorMsg = "Something went wrong!";
+
+    fetchStub.returnsPromise().resolves({
+      ok: false,
+      statusText: errorMsg
+    });
+    component = mount(routerWrap(ServiceMesh));
+
+    return withPromise(() => {
+      expect(component.html()).to.include(errorMsg);
+    });
+  });
+
   it("displays message for no deployments detetcted", () => {
     fetchStub.returnsPromise().resolves({
+      ok: true,
       json: () => Promise.resolve({ pods: []})
     });
     component = mount(routerWrap(ServiceMesh));
 
     return withPromise(() => {
-      expect(component.html()).includes("No deployments detected.");
+      expect(component.html()).to.include("No deployments detected.");
     });
   });
 
   it("displays message for more than one deployment added to servicemesh", () => {
     fetchStub.returnsPromise().resolves({
+      ok: true,
       json: () => Promise.resolve({ pods: podFixtures.pods})
     });
     component = mount(routerWrap(ServiceMesh));
 
     return withPromise(() => {
-      expect(component.html()).includes("deployments have not been added to the service mesh.");
+      expect(component.html()).to.include("deployments have not been added to the service mesh.");
     });
   });
 
@@ -51,12 +67,13 @@ describe('ServiceMesh', () => {
     _.set(addedPods[0], "added", true);
 
     fetchStub.returnsPromise().resolves({
+      ok: true,
       json: () => Promise.resolve({ pods: addedPods})
     });
     component = mount(routerWrap(ServiceMesh));
 
     return withPromise(() => {
-      expect(component.html()).includes("1 deployment has not been added to the service mesh.");
+      expect(component.html()).to.include("1 deployment has not been added to the service mesh.");
     });
   });
 
@@ -67,12 +84,13 @@ describe('ServiceMesh', () => {
     });
 
     fetchStub.returnsPromise().resolves({
+      ok: true,
       json: () => Promise.resolve({ pods: addedPods})
     });
     component = mount(routerWrap(ServiceMesh));
 
     return withPromise(() => {
-      expect(component.html()).includes("All deployments have been added to the service mesh.");
+      expect(component.html()).to.include("All deployments have been added to the service mesh.");
     });
   });
 });
