@@ -413,7 +413,7 @@ func validate() error {
 		return fmt.Errorf("%s is not a valid namespace", controlPlaneNamespace)
 	}
 	if !alphaNumDashDot.MatchString(version) {
-		return fmt.Errorf("%s is not a valid verison", version)
+		return fmt.Errorf("%s is not a valid version", version)
 	}
 	if !alphaNumDashDotSlash.MatchString(dockerRegistry) {
 		return fmt.Errorf("%s is not a valid Docker registry", dockerRegistry)
