@@ -8,14 +8,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/runconduit/conduit/controller"
-
 	"github.com/ghodss/yaml"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
-
+	"github.com/runconduit/conduit/controller"
 	"github.com/spf13/cobra"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	yamlDecoder "k8s.io/client-go/pkg/util/yaml"
 )
 
@@ -26,6 +24,7 @@ var (
 	inboundPort                   uint
 	outboundPort                  uint
 	ignoreInboundPorts            []uint
+	ignoreOutboundPorts           []uint
 	proxyControlPort              uint
 	proxyAPIPort                  uint
 	conduitCreatedByAnnotation    = "conduit.io/created-by"
@@ -205,22 +204,38 @@ func injectDaemonSet(bytes []byte) (interface{}, error) {
  */
 func injectPodTemplateSpec(t *v1.PodTemplateSpec) enhancedPodTemplateSpec {
 	f := false
-	skipPorts := append(ignoreInboundPorts, proxyControlPort)
-	skipPortsStr := make([]string, len(skipPorts))
-	for i, p := range skipPorts {
-		skipPortsStr[i] = strconv.Itoa(int(p))
+	inboundSkipPorts := append(ignoreInboundPorts, proxyControlPort)
+	inboundSkipPortsStr := make([]string, len(inboundSkipPorts))
+	for i, p := range inboundSkipPorts {
+		inboundSkipPortsStr[i] = strconv.Itoa(int(p))
+	}
+
+	outboundSkipPortsStr := make([]string, len(ignoreOutboundPorts))
+	for i, p := range ignoreOutboundPorts {
+		outboundSkipPortsStr[i] = strconv.Itoa(int(p))
+	}
+
+	initArgs := []string{
+		"--incoming-proxy-port", fmt.Sprintf("%d", inboundPort),
+		"--outgoing-proxy-port", fmt.Sprintf("%d", outboundPort),
+		"--proxy-uid", fmt.Sprintf("%d", proxyUID),
+	}
+
+	if len(inboundSkipPortsStr) > 0 {
+		initArgs = append(initArgs, "--inbound-ports-to-ignore")
+		initArgs = append(initArgs, strings.Join(inboundSkipPortsStr, ","))
+	}
+
+	if len(outboundSkipPortsStr) > 0 {
+		initArgs = append(initArgs, "--outbound-ports-to-ignore")
+		initArgs = append(initArgs, strings.Join(outboundSkipPortsStr, ","))
 	}
 
 	initContainer := v1.Container{
 		Name:            "conduit-init",
 		Image:           fmt.Sprintf("%s:%s", initImage, version),
 		ImagePullPolicy: v1.PullPolicy(imagePullPolicy),
-		Args: []string{
-			"-p", fmt.Sprintf("%d", inboundPort),
-			"-o", fmt.Sprintf("%d", outboundPort),
-			"-i", fmt.Sprintf("%s", strings.Join(skipPortsStr, ",")),
-			"-u", fmt.Sprintf("%d", proxyUID),
-		},
+		Args:            initArgs,
 		SecurityContext: &v1.SecurityContext{
 			Capabilities: &v1.Capabilities{
 				Add: []v1.Capability{v1.Capability("NET_ADMIN")},
@@ -243,7 +258,7 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec) enhancedPodTemplateSpec {
 			},
 		},
 		Env: []v1.EnvVar{
-			v1.EnvVar{Name: "CONDUIT_PROXY_LOG", Value: "trace,h2=debug,mio=info,tokio_core=info"},
+			v1.EnvVar{Name: "CONDUIT_PROXY_LOG", Value: "warn,conduit_proxy=info"},
 			v1.EnvVar{
 				Name:  "CONDUIT_PROXY_CONTROL_URL",
 				Value: fmt.Sprintf("tcp://proxy-api.%s.svc.cluster.local:%d", controlPlaneNamespace, proxyAPIPort),
@@ -262,6 +277,10 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec) enhancedPodTemplateSpec {
 			v1.EnvVar{
 				Name:      "CONDUIT_PROXY_POD_NAMESPACE",
 				ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
+			},
+			v1.EnvVar{
+				Name:  "CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN",
+				Value: "Kubernetes",
 			},
 		},
 	}
@@ -355,7 +374,7 @@ type enhancedDaemonSet struct {
 
 func init() {
 	RootCmd.AddCommand(injectCmd)
-	injectCmd.PersistentFlags().StringVarP(&version, "conduit-version", "v", "v0.1.0", "tag to be used for conduit images")
+	injectCmd.PersistentFlags().StringVarP(&version, "conduit-version", "v", controller.Version, "tag to be used for conduit images")
 	injectCmd.PersistentFlags().StringVar(&initImage, "init-image", "gcr.io/runconduit/proxy-init", "Conduit init container image name")
 	injectCmd.PersistentFlags().StringVar(&proxyImage, "proxy-image", "gcr.io/runconduit/proxy", "Conduit proxy container image name")
 	injectCmd.PersistentFlags().StringVar(&imagePullPolicy, "image-pull-policy", "IfNotPresent", "Docker image pull policy")
@@ -363,6 +382,7 @@ func init() {
 	injectCmd.PersistentFlags().UintVar(&inboundPort, "inbound-port", 4143, "proxy port to use for inbound traffic")
 	injectCmd.PersistentFlags().UintVar(&outboundPort, "outbound-port", 4140, "proxy port to use for outbound traffic")
 	injectCmd.PersistentFlags().UintSliceVar(&ignoreInboundPorts, "skip-inbound-ports", nil, "ports that should skip the proxy and send directly to the applicaiton")
+	injectCmd.PersistentFlags().UintSliceVar(&ignoreOutboundPorts, "skip-outbound-ports", nil, "outbound ports that should skip the proxy")
 	injectCmd.PersistentFlags().UintVar(&proxyControlPort, "control-port", 4190, "proxy port to use for control")
 	injectCmd.PersistentFlags().UintVar(&proxyAPIPort, "api-port", 8086, "port where the Conduit controller is running")
 }

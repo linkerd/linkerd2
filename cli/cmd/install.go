@@ -8,7 +8,6 @@ import (
 	"text/template"
 
 	"github.com/runconduit/conduit/controller"
-
 	uuid "github.com/satori/go.uuid"
 	"github.com/spf13/cobra"
 )
@@ -413,7 +412,7 @@ func validate() error {
 		return fmt.Errorf("%s is not a valid namespace", controlPlaneNamespace)
 	}
 	if !alphaNumDashDot.MatchString(version) {
-		return fmt.Errorf("%s is not a valid verison", version)
+		return fmt.Errorf("%s is not a valid version", version)
 	}
 	if !alphaNumDashDotSlash.MatchString(dockerRegistry) {
 		return fmt.Errorf("%s is not a valid Docker registry", dockerRegistry)
@@ -426,7 +425,7 @@ func validate() error {
 
 func init() {
 	RootCmd.AddCommand(installCmd)
-	installCmd.PersistentFlags().StringVarP(&version, "version", "v", "v0.1.0", "Conduit version to install")
+	installCmd.PersistentFlags().StringVarP(&version, "version", "v", controller.Version, "Conduit version to install")
 	installCmd.PersistentFlags().StringVarP(&dockerRegistry, "registry", "r", "gcr.io/runconduit", "Docker registry to pull images from")
 	installCmd.PersistentFlags().UintVar(&controllerReplicas, "controller-replicas", 1, "replicas of the controller to deploy")
 	installCmd.PersistentFlags().UintVar(&webReplicas, "web-replicas", 1, "replicas of the web server to deploy")

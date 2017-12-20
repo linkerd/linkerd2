@@ -167,7 +167,7 @@ spec:
       - name: conduit-init
         image: gcr.io/runconduit/proxy-init:latest
         imagePullPolicy: Never
-        args: ["-p", "8080",  "-o", "8080", "-u", "2102", "-i", "7070"]
+        args: ["-p", "8080",  "-o", "8080", "-u", "2102", "--inbound-ports-to-ignore", "7070"]
         securityContext:
           capabilities:
             add:

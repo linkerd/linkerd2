@@ -15,18 +15,14 @@
   width: 131px;
 }
 
-.instructions {
-  font-size: 14px;
-  font-weight: var(--font-weight-bold);
-  padding: 8px 0;
-}
-
 .incomplete-mesh-message, .complete-mesh-message {
   background-color: var(--messageblue);
   color: white;
   padding: var(--base-width);
   font-size: 16;
+  border-radius: calc(var(--base-width)/2);
   font-weight: var(--font-weight-extra-bold);
+  border-radius: var
 }
 
 /* styles for the StatusTable */
@@ -43,7 +39,7 @@ td .status-dot {
   }
 
   &.status-dot-good {
-    background-color: #27AE60;
+    background-color: var(--green);
   }
   &.status-dot-bad {
     background-color: #EB5757;

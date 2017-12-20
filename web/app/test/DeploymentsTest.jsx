@@ -2,7 +2,7 @@ import Deployments from '../js/components/Deployments.jsx';
 import { expect } from 'chai';
 import { mount } from 'enzyme';
 import podFixtures from './fixtures/pods.json';
-import React from 'react';
+import { routerWrap } from "./testHelpers.jsx";
 import sinon from 'sinon';
 import sinonStubPromise from 'sinon-stub-promise';
 
@@ -12,7 +12,7 @@ describe('Deployments', () => {
   let component, fetchStub;
 
   function withPromise(fn) {
-    return component.get(0).serverPromise.then(fn);
+    return component.find("Deployments").get(0).serverPromise.then(fn);
   }
 
   beforeEach(() => {
@@ -27,7 +27,7 @@ describe('Deployments', () => {
     fetchStub.returnsPromise().resolves({
       json: () => Promise.resolve({ metrics: [] })
     });
-    component = mount(<Deployments />);
+    component = mount(routerWrap(Deployments));
 
     expect(component.find("Deployments")).to.have.length(1);
     expect(component.find("ConduitSpinner")).to.have.length(1);
@@ -38,7 +38,7 @@ describe('Deployments', () => {
     fetchStub.returnsPromise().resolves({
       json: () => Promise.resolve({ metrics: [] })
     });
-    component = mount(<Deployments />);
+    component = mount(routerWrap(Deployments));
 
     return withPromise(() => {
       expect(component.find("Deployments")).to.have.length(1);
@@ -51,7 +51,7 @@ describe('Deployments', () => {
     fetchStub.returnsPromise().resolves({
       json: () => Promise.resolve({ metrics: [], pods: podFixtures.pods })
     });
-    component = mount(<Deployments />);
+    component = mount(routerWrap(Deployments));
 
     return withPromise(() => {
       expect(component.find("Deployments")).to.have.length(1);
