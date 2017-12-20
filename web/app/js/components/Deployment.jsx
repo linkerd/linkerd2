@@ -4,12 +4,12 @@ import ConduitSpinner from "./ConduitSpinner.jsx";
 import HealthPane from './HealthPane.jsx';
 import Metric from './Metric.jsx';
 import React from 'react';
-import { rowGutter } from './util/Utils.js';
 import StatPane from './StatPane.jsx';
 import TabbedMetricsTable from './TabbedMetricsTable.jsx';
 import UpstreamDownstream from './UpstreamDownstream.jsx';
 import { Col, Row } from 'antd';
 import { emptyMetric, getPodsByDeployment, processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
+import { instructions, rowGutter } from './util/Utils.js';
 import './../../css/deployment.css';
 import 'whatwg-fetch';
 
@@ -212,8 +212,7 @@ export default class Deployment extends React.Component {
             <div className="unadded-message">
               <div className="status-badge unadded"><p>UNADDED</p></div>
               <div className="call-to-action">
-                <div className="action">Add {this.state.deploy} to the deployment.yml file</div>
-                <div className="action">Then run <code>kubectl inject deployment.yml | kubectl apply -f -</code> to add the deploys to the service mesh</div>
+                {instructions(this.state.deploy)}
               </div>
             </div>
           ) : null

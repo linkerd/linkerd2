@@ -40,7 +40,7 @@ export default class CallToAction extends React.Component {
           </Row>
         </div>
 
-        {instructions}
+        {instructions()}
       </div>
     );
   }
