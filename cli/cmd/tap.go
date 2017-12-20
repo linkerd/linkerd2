@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	common "github.com/runconduit/conduit/controller/gen/common"
@@ -105,7 +106,7 @@ func print(rsp pb.Api_TapClient) {
 			break
 		}
 		if err != nil {
-			fmt.Println(err)
+			fmt.Fprintln(os.Stderr, err)
 			break
 		}
 		fmt.Println(eventToString(event))
