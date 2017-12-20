@@ -8,6 +8,7 @@ export default class Routes extends React.Component {
         <div className="page-header">
           <h1>Routes</h1>
         </div>
+        <div>Coming soon!</div>
       </div>
     );
   }
