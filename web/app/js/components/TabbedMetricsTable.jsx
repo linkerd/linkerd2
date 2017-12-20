@@ -2,7 +2,9 @@ import _ from 'lodash';
 import LineGraph from './LineGraph.jsx';
 import { Link } from 'react-router-dom';
 import Percentage from './util/Percentage.js';
+import { processTimeseriesMetrics } from './util/MetricUtils.js';
 import React from 'react';
+import { ApiHelpers, timeseriesUrls } from './util/ApiHelpers.js';
 import { metricToFormatter, toClassName } from './util/Utils.js';
 import { Table, Tabs } from 'antd';
 
@@ -92,7 +94,76 @@ const nameToDataKey = {
   successRate: "SUCCESS_RATE",
   latency: "LATENCY"
 };
+
 export default class TabbedMetricsTable extends React.Component {
+  constructor(props) {
+    super(props);
+    this.api = ApiHelpers(this.props.pathPrefix);
+    this.handleApiError = this.handleApiError.bind(this);
+    this.loadFromServer = this.loadFromServer.bind(this);
+
+    let tsHelper = timeseriesUrls(this.props.pathPrefix, this.props.metricsWindow)[this.props.resource];
+
+    this.state = {
+      timeseries: {},
+      groupBy: tsHelper.groupBy,
+      metricsUrl: tsHelper.url(this.props.entity),
+      error: '',
+      lastUpdated: this.props.lastUpdated,
+      metricsWindow: "10s",
+      pollingInterval: "10000",
+      pendingRequests: false
+    };
+  }
+
+  componentDidMount() {
+    if (!this.props.hideSparklines) {
+      this.loadFromServer();
+      this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
+    }
+  }
+
+  shouldComponentUpdate(nextProps) {
+    /*
+      Even though we update the state after each timeseries fetch, only re-render
+      the component when the rollup metrics also need updating, so that all the
+      parts of the table refresh at once.
+     */
+    if (nextProps.lastUpdated === this.props.lastUpdated) {
+      return false;
+    }
+    return true;
+  }
+
+  componentWillUnmount() {
+    window.clearInterval(this.timerId);
+  }
+
+  loadFromServer() {
+    if (this.state.pendingRequests) {
+      return; // don't make more requests if the ones we sent haven't completed
+    }
+    this.setState({ pendingRequests: true });
+
+    this.api.fetch(this.state.metricsUrl.ts)
+      .then(tsResp => {
+        let tsByEntity = processTimeseriesMetrics(tsResp.metrics, this.state.groupBy);
+        this.setState({
+          timeseries: tsByEntity,
+          pendingRequests: false,
+          error: ''
+        });
+      })
+      .catch(this.handleApiError);
+  }
+
+  handleApiError(e) {
+    this.setState({
+      pendingRequests: false,
+      error: `Error getting data from server: ${e.message}`
+    });
+  }
+
   getSparklineColumn(metricName) {
     return {
       title: "10 minute history",
@@ -101,9 +172,9 @@ export default class TabbedMetricsTable extends React.Component {
       render: d => {
         let tsData;
         if (metricName === "latency") {
-          tsData = _.get(this.props.timeseries, [d.name, "LATENCY", "P99"], []);
+          tsData = _.get(this.state.timeseries, [d.name, "LATENCY", "P99"], []);
         } else {
-          tsData = _.get(this.props.timeseries, [d.name, nameToDataKey[metricName]], []);
+          tsData = _.get(this.state.timeseries, [d.name, nameToDataKey[metricName]], []);
         }
 
         return (<LineGraph

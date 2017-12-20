@@ -50,12 +50,12 @@ export default class Deployment extends React.Component {
       metricsWindow: "10m",
       deploy: deployment,
       metrics:[],
-      timeseriesByPod: {},
+
       pods: [],
       upstreamMetrics: [],
-      upstreamTsByDeploy: {},
+
       downstreamMetrics: [],
-      downstreamTsByDeploy: {},
+
       pendingRequests: false,
       loaded: false,
       error: ''
@@ -71,32 +71,22 @@ export default class Deployment extends React.Component {
     let metricsUrl = `${this.props.pathPrefix}/api/metrics?window=${this.state.metricsWindow}` ;
     let deployMetricsUrl = `${metricsUrl}&timeseries=true&target_deploy=${this.state.deploy}`;
     let podRollupUrl = `${metricsUrl}&aggregation=target_pod&target_deploy=${this.state.deploy}`;
-    let podTimeseriesUrl = `${podRollupUrl}&timeseries=true`;
     let upstreamRollupUrl = `${metricsUrl}&aggregation=source_deploy&target_deploy=${this.state.deploy}`;
-    let upstreamTimeseriesUrl = `${upstreamRollupUrl}&timeseries=true`;
     let downstreamRollupUrl = `${metricsUrl}&aggregation=target_deploy&source_deploy=${this.state.deploy}`;
-    let downstreamTimeseriesUrl = `${downstreamRollupUrl}&timeseries=true`;
 
     let deployFetch = this.api.fetch(deployMetricsUrl);
     let podListFetch = this.api.fetchPods();
     let podRollupFetch = this.api.fetch(podRollupUrl);
-    let podTsFetch = this.api.fetch(podTimeseriesUrl);
     let upstreamFetch = this.api.fetch(upstreamRollupUrl);
-    let upstreamTsFetch = this.api.fetch(upstreamTimeseriesUrl);
     let downstreamFetch = this.api.fetch(downstreamRollupUrl);
-    let downstreamTsFetch = this.api.fetch(downstreamTimeseriesUrl);
 
     // expose serverPromise for testing
-    this.serverPromise = Promise.all([deployFetch, podRollupFetch, podTsFetch, upstreamFetch, upstreamTsFetch, downstreamFetch, downstreamTsFetch, podListFetch])
-      .then(([deployMetrics, podRollup, podTimeseries, upstreamRollup, upstreamTimeseries, downstreamRollup, downstreamTimeseries, podList]) => {
+    this.serverPromise = Promise.all([deployFetch, podRollupFetch, upstreamFetch, downstreamFetch, podListFetch])
+      .then(([deployMetrics, podRollup, upstreamRollup, downstreamRollup, podList]) => {
         let tsByDeploy = processTimeseriesMetrics(deployMetrics.metrics, "targetDeploy");
         let podMetrics = processRollupMetrics(podRollup.metrics, "targetPod");
-        let podTs = processTimeseriesMetrics(podTimeseries.metrics, "targetPod");
-
         let upstreamMetrics = processRollupMetrics(upstreamRollup.metrics, "sourceDeploy");
-        let upstreamTsByDeploy = processTimeseriesMetrics(upstreamTimeseries.metrics, "sourceDeploy");
         let downstreamMetrics = processRollupMetrics(downstreamRollup.metrics, "targetDeploy");
-        let downstreamTsByDeploy = processTimeseriesMetrics(downstreamTimeseries.metrics, "targetDeploy");
 
         let deploy = _.find(getPodsByDeployment(podList.pods), ["name", this.state.deploy]);
         let totalRequestRate = _.sumBy(podMetrics, "requestRate");
@@ -104,14 +94,11 @@ export default class Deployment extends React.Component {
 
         this.setState({
           metrics: podMetrics,
-          timeseriesByPod: podTs,
           pods: deploy.pods,
           added: deploy.added,
           deployTs: _.get(tsByDeploy, this.state.deploy, {}),
           upstreamMetrics: upstreamMetrics,
-          upstreamTsByDeploy: upstreamTsByDeploy,
           downstreamMetrics: downstreamMetrics,
-          downstreamTsByDeploy: downstreamTsByDeploy,
           lastUpdated: Date.now(),
           pendingRequests: false,
           loaded: true,
@@ -156,12 +143,12 @@ export default class Deployment extends React.Component {
       this.renderMidsection(),
       <UpstreamDownstream
         key="deploy-upstream-downstream"
-        entity="deployment"
+        resource="deployment"
+        entity={this.state.deploy}
         lastUpdated={this.state.lastUpdated}
         upstreamMetrics={this.state.upstreamMetrics}
-        upstreamTsByEntity={this.state.upstreamTsByDeploy}
         downstreamMetrics={this.state.downstreamMetrics}
-        downstreamTsByEntity={this.state.downstreamTsByDeploy}
+        metricsWindow={this.state.metricsWindow}
         pathPrefix={this.props.pathPrefix} />
     ];
   }
@@ -194,10 +181,11 @@ export default class Deployment extends React.Component {
             }
             <TabbedMetricsTable
               resource="pod"
-              lastUpdated={this.state.lastUpdated}
+              entity={this.state.deploy}
               metrics={podTableData}
-              timeseries={this.state.timeseriesByPod}
-              pathPrefix={this.props.pathPrefix} />
+              lastUpdated={this.state.lastUpdated}
+              pathPrefix={this.props.pathPrefix}
+              metricsWindow={this.state.metricsWindow} />
           </div>
         </Col>
 

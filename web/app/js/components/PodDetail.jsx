@@ -43,9 +43,7 @@ export default class PodDetail extends React.Component {
       metricsWindow: "10m",
       pod: pod,
       upstreamMetrics: [],
-      upstreamTsByPod: {},
       downstreamMetrics: [],
-      downstreamTsByPod: {},
       podTs: {},
       pendingRequests: false,
       loaded: false,
@@ -61,36 +59,27 @@ export default class PodDetail extends React.Component {
 
     let metricsUrl = `${this.props.pathPrefix}/api/metrics?window=${this.state.metricsWindow}` ;
     let podMetricsUrl = `${metricsUrl}&timeseries=true&target_pod=${this.state.pod}`;
-
     let upstreamRollupUrl = `${metricsUrl}&aggregation=source_pod&target_pod=${this.state.pod}`;
-    let upstreamTimeseriesUrl = `${upstreamRollupUrl}&timeseries=true`;
     let downstreamRollupUrl = `${metricsUrl}&aggregation=target_pod&source_pod=${this.state.pod}`;
-    let downstreamTimeseriesUrl = `${downstreamRollupUrl}&timeseries=true`;
 
     let podFetch = this.api.fetch(podMetricsUrl);
     let upstreamFetch =  this.api.fetch(upstreamRollupUrl);
-    let upstreamTsFetch =  this.api.fetch(upstreamTimeseriesUrl);
     let downstreamFetch =  this.api.fetch(downstreamRollupUrl);
-    let downstreamTsFetch =  this.api.fetch(downstreamTimeseriesUrl);
 
-    Promise.all([podFetch, upstreamFetch, upstreamTsFetch, downstreamFetch, downstreamTsFetch])
-      .then(([podMetrics, upstreamRollup, upstreamTimeseries, downstreamRollup, downstreamTimeseries]) => {
+    Promise.all([podFetch, upstreamFetch, downstreamFetch])
+      .then(([podMetrics, upstreamRollup, downstreamRollup]) => {
         let podTs = processTimeseriesMetrics(podMetrics.metrics, "targetPod");
         let podTimeseries = _.get(podTs, this.state.pod, {});
 
         let upstreamMetrics = processRollupMetrics(upstreamRollup.metrics, "sourcePod");
-        let upstreamTsByPod = processTimeseriesMetrics(upstreamTimeseries.metrics, "sourcePod");
         let downstreamMetrics = processRollupMetrics(downstreamRollup.metrics, "targetPod");
-        let downstreamTsByPod = processTimeseriesMetrics(downstreamTimeseries.metrics, "targetPod");
 
         this.setState({
           pendingRequests: false,
           lastUpdated: Date.now(),
           podTs: podTimeseries,
           upstreamMetrics: upstreamMetrics,
-          upstreamTsByPod: upstreamTsByPod,
           downstreamMetrics: downstreamMetrics,
-          downstreamTsByPod: downstreamTsByPod,
           loaded: true,
           error: ''
         });
@@ -122,12 +111,12 @@ export default class PodDetail extends React.Component {
           timeseries={this.state.podTs} />,
       <UpstreamDownstream
         key="pod-upstream-downstream"
-        entity="pod"
+        resource="pod"
+        entity={this.state.pod}
         lastUpdated={this.state.lastUpdated}
         upstreamMetrics={this.state.upstreamMetrics}
-        upstreamTsByEntity={this.state.upstreamTsByPod}
         downstreamMetrics={this.state.downstreamMetrics}
-        downstreamTsByEntity={this.state.downstreamTsByPod}
+        metricsWindow={this.state.metricsWindow}
         pathPrefix={this.props.pathPrefix} />
     ];
   }

@@ -78,49 +78,34 @@ export default class Deployments extends React.Component {
   }
 
   loadTimeseriesFromServer(meshDeployMetrics, combinedMetrics) {
+    // fetch only the timeseries for the 3 deployments we display at the top of the page
     let limitSparklineData = _.size(meshDeployMetrics) > maxTsToFetch;
     let rollupPath = `${this.props.pathPrefix}/api/metrics?window=${this.state.metricsWindow}`;
     let timeseriesPath = `${rollupPath}&timeseries=true`;
+    let leastHealthyDeployments = this.getLeastHealthyDeployments(meshDeployMetrics);
 
-    let updatedState = {
-      metrics: combinedMetrics,
-      limitSparklineData: limitSparklineData,
-      loaded: true,
-      pendingRequests: false,
-      error: ''
-    };
+    let tsPromises = _.map(leastHealthyDeployments, dep => {
+      let tsPathForDeploy = `${timeseriesPath}&target_deploy=${dep.name}`;
+      return this.api.fetch(tsPathForDeploy);
+    });
 
-    if (limitSparklineData) {
-      // don't fetch timeseries for every deploy
-      let leastHealthyDeployments = this.getLeastHealthyDeployments(meshDeployMetrics);
-
-      let tsPromises = _.map(leastHealthyDeployments, dep => {
-        let tsPathForDeploy = `${timeseriesPath}&target_deploy=${dep.name}`;
-        return this.api.fetch(tsPathForDeploy);
-      });
-      Promise.all(tsPromises)
-        .then(tsMetrics => {
-          let leastHealthyTs = _.reduce(tsMetrics, (mem, ea) => {
-            mem = mem.concat(ea.metrics);
-            return mem;
-          }, []);
-          let tsByDeploy = processTimeseriesMetrics(leastHealthyTs, "targetDeploy");
-          this.setState(_.merge({}, updatedState, {
-            timeseriesByDeploy: tsByDeploy,
-            lastUpdated: Date.now(),
-          }));
-        }).catch(this.handleApiError);
-    } else {
-      // fetch timeseries for all deploys
-      this.api.fetch(timeseriesPath)
-        .then(ts => {
-          let tsByDeploy = processTimeseriesMetrics(ts.metrics, "targetDeploy");
-          this.setState(_.merge({}, updatedState, {
-            timeseriesByDeploy: tsByDeploy,
-            lastUpdated: Date.now()
-          }));
-        }).catch(this.handleApiError);
-    }
+    Promise.all(tsPromises)
+      .then(tsMetrics => {
+        let leastHealthyTs = _.reduce(tsMetrics, (mem, ea) => {
+          mem = mem.concat(ea.metrics);
+          return mem;
+        }, []);
+        let tsByDeploy = processTimeseriesMetrics(leastHealthyTs, "targetDeploy");
+        this.setState({
+          timeseriesByDeploy: tsByDeploy,
+          lastUpdated: Date.now(),
+          metrics: combinedMetrics,
+          limitSparklineData: limitSparklineData,
+          loaded: true,
+          pendingRequests: false,
+          error: ''
+        });
+      }).catch(this.handleApiError);
   }
 
   handleApiError(e) {
@@ -164,8 +149,8 @@ export default class Deployments extends React.Component {
             resource="deployment"
             lastUpdated={this.state.lastUpdated}
             metrics={this.state.metrics}
-            timeseries={this.state.timeseriesByDeploy}
             hideSparklines={this.state.limitSparklineData}
+            metricsWindow={this.state.metricsWindow}
             pathPrefix={this.props.pathPrefix} />
         </div>
       </div>

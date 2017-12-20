@@ -4,6 +4,7 @@ import { rowGutter } from './util/Utils.js';
 import TabbedMetricsTable from './TabbedMetricsTable.jsx';
 import { Col, Row } from 'antd';
 
+const maxTsToFetch = 15;
 export default class UpstreamDownstreamTables extends React.Component {
   render() {
     let numUpstreams = _.size(this.props.upstreamMetrics);
@@ -16,14 +17,16 @@ export default class UpstreamDownstreamTables extends React.Component {
               <div className="upstream-downstream-list">
                 <div className="border-container border-neutral subsection-header">
                   <div className="border-container-content subsection-header">
-                Upstream {this.props.entity}s: {numUpstreams}
+                Upstream {this.props.resource}s: {numUpstreams}
                   </div>
                 </div>
                 <TabbedMetricsTable
-                  resource={`upstream_${this.props.entity}`}
+                  resource={`upstream_${this.props.resource}`}
+                  entity={this.props.entity}
+                  hideSparklines={numUpstreams > maxTsToFetch}
                   lastUpdated={this.props.lastUpdated}
                   metrics={this.props.upstreamMetrics}
-                  timeseries={this.props.upstreamTsByEntity}
+                  metricsWindow={this.props.metricsWindow}
                   pathPrefix={this.props.pathPrefix} />
               </div>
           }
@@ -32,14 +35,16 @@ export default class UpstreamDownstreamTables extends React.Component {
               <div className="upstream-downstream-list">
                 <div className="border-container border-neutral subsection-header">
                   <div className="border-container-content subsection-header">
-                Downstream {this.props.entity}s: {numDownstreams}
+                Downstream {this.props.resource}s: {numDownstreams}
                   </div>
                 </div>
                 <TabbedMetricsTable
-                  resource={`downstream_${this.props.entity}`}
+                  resource={`downstream_${this.props.resource}`}
+                  entity={this.props.entity}
+                  hideSparklines={numDownstreams > maxTsToFetch}
                   lastUpdated={this.props.lastUpdated}
                   metrics={this.props.downstreamMetrics}
-                  timeseries={this.props.downstreamTsByEntity}
+                  metricsWindow={this.props.metricsWindow}
                   pathPrefix={this.props.pathPrefix} />
               </div>
           }
