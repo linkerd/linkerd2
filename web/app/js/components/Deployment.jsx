@@ -193,7 +193,7 @@ export default class Deployment extends React.Component {
           <div className="border-container border-neutral deployment-details">
             <div className="border-container-content">
               <div className=" subsection-header">Deployment details</div>
-              <Metric title="Pods" value={_.size(this.state.metrics)} />
+              <Metric title="Pods" value={_.size(podTableData)} />
               <Metric title="Upstream deployments" value={this.numUpstreams()} />
               <Metric title="Downstream deployments" value={this.numDownstreams()} />
             </div>
