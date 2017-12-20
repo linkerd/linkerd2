@@ -23,7 +23,7 @@ func TestKubernetesApiUrlFor(t *testing.T) {
 		}
 
 		if actualUrl.String() != expectedUrlString {
-			t.Fatalf("Expected generated URl to be [%s], but got [%s]", expectedUrlString, actualUrl.String())
+			t.Fatalf("Expected generated URL to be [%s], but got [%s]", expectedUrlString, actualUrl.String())
 		}
 	})
 }

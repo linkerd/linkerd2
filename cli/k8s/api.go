@@ -1,12 +1,10 @@
 package k8s
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
-
 	"os"
-
-	"fmt"
 
 	"github.com/runconduit/conduit/cli/shell"
 	"k8s.io/client-go/rest"

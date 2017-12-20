@@ -22,7 +22,7 @@ func TestGenerateKubernetesApiBaseUrlFor(t *testing.T) {
 		}
 	})
 
-	t.Run("Return error it extra path doesn'' start with slash", func(t *testing.T) {
+	t.Run("Return error it extra path doesn't start with slash", func(t *testing.T) {
 		schemeHostAndPort := "ftp://some-server.example.com:666"
 		namespace := "some-namespace"
 		extraPath := "does-not-start/with/slash"

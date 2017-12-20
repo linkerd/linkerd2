@@ -127,7 +127,7 @@ func TestHomeDir(t *testing.T) {
 		home := shell.HomeDir()
 		expected := os.Getenv("HOME")
 		if runtime.GOOS != "windows" && !strings.Contains(home, expected) {
-			t.Errorf("This is a UNIX-like system, expecting home dir [%s] to contain [/home]", expected)
+			t.Errorf("This is a UNIX-like system, expecting home dir [%s] to contain [%s]", home, expected)
 		}
 	})
 }
