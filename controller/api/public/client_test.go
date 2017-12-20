@@ -15,7 +15,7 @@ func TestClientUnmarshal(t *testing.T) {
 	versionInfo := pb.VersionInfo{
 		GoVersion:      "1.9.1",
 		BuildDate:      "2017.11.17",
-		ReleaseVersion: "0.1.0",
+		ReleaseVersion: "1.2.3",
 	}
 
 	var unmarshaled pb.VersionInfo
