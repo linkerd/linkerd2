@@ -217,17 +217,27 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec) enhancedPodTemplateSpec {
 		outboundSkipPortsStr[i] = strconv.Itoa(int(p))
 	}
 
+	initArgs := []string{
+		"--incoming-proxy-port", fmt.Sprintf("%d", inboundPort),
+		"--outgoing-proxy-port", fmt.Sprintf("%d", outboundPort),
+		"--proxy-uid", fmt.Sprintf("%d", proxyUID),
+	}
+
+	if len(inboundSkipPortsStr) > 0 {
+		initArgs = append(initArgs, "--inbound-ports-to-ignore")
+		initArgs = append(initArgs, strings.Join(inboundSkipPortsStr, ","))
+	}
+
+	if len(outboundSkipPortsStr) > 0 {
+		initArgs = append(initArgs, "--outbound-ports-to-ignore")
+		initArgs = append(initArgs, strings.Join(outboundSkipPortsStr, ","))
+	}
+
 	initContainer := v1.Container{
 		Name:            "conduit-init",
 		Image:           fmt.Sprintf("%s:%s", initImage, version),
 		ImagePullPolicy: v1.PullPolicy(imagePullPolicy),
-		Args: []string{
-			"--incoming-proxy-port", fmt.Sprintf("%d", inboundPort),
-			"--outgoing-proxy-port", fmt.Sprintf("%d", outboundPort),
-			"--inbound-ports-to-ignore", fmt.Sprintf("%s", strings.Join(inboundSkipPortsStr, ",")),
-			"--outbound-ports-to-ignore", fmt.Sprintf("%s", strings.Join(outboundSkipPortsStr, ",")),
-			"--proxy-uid", fmt.Sprintf("%d", proxyUID),
-		},
+		Args:            initArgs,
 		SecurityContext: &v1.SecurityContext{
 			Capabilities: &v1.Capabilities{
 				Add: []v1.Capability{v1.Capability("NET_ADMIN")},
