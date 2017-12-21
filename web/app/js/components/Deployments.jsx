@@ -17,9 +17,9 @@ export default class Deployments extends React.Component {
   constructor(props) {
     super(props);
     this.api = ApiHelpers(this.props.pathPrefix);
+    this.handleApiError = this.handleApiError.bind(this);
     this.loadFromServer = this.loadFromServer.bind(this);
     this.loadTimeseriesFromServer = this.loadTimeseriesFromServer.bind(this);
-    this.handleApiError = this.handleApiError.bind(this);
 
     this.state = {
       metricsWindow: "10m",
