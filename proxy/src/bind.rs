@@ -52,12 +52,16 @@ type CtxtExec = ::logging::ContextualExecutor<(&'static str, SocketAddr), Handle
 
 impl<B> Bind<(), B> {
     pub fn new(executor: Handle) -> Self {
+        let mut h2_builder = h2::client::Builder::default();
+        // h2 currently doesn't handle PUSH_PROMISE that well, so we just
+        // disable it for now.
+        h2_builder.enable_push(false);
         Self {
             executor,
             ctx: (),
             sensors: telemetry::Sensors::null(),
             req_ids: Default::default(),
-            h2_builder: h2::client::Builder::default(),
+            h2_builder,
             connect_timeout: Duration::from_millis(DEFAULT_TIMEOUT_MS),
             _p: PhantomData,
         }
