@@ -324,7 +324,7 @@ spec:
       annotations:
         conduit.io/created-by: "{{.CliVersion}}"
     spec:
-    serviceAccount: conduit-prometheus
+      serviceAccount: conduit-prometheus
       volumes:
       - name: prometheus-config
         configMap:
