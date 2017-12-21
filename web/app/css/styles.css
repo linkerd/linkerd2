@@ -1,24 +1,25 @@
 
 
 :root {
-    --white: #fff;
-    --buttonblue: #4076c4;
-    --messageblue: #2F80ED;
-    --darkblue: #071E3C;
-    --warmgrey: #f6f6f6;
-    --coldgrey: #c9c9c9;
-    --latency-p99: #2F80ED;
-    --latency-p95: #2D9CDB;
-    --latency-p50: #56CCF2;
-    --subheader-grey: #828282;
-    --status-gray: #BDBDBD;
-    --green: #27AE60;
-    --font-stack: 'Lato', helvetica, arial, sans-serif;
-    --font-weight-light: 300;
-    --font-weight-regular: 400;
-    --font-weight-bold: 700;
-    --font-weight-extra-bold: 900;
-    --base-width: 8px;
+  --white: #fff;
+  --buttonblue: #4076c4;
+  --messageblue: #2F80ED;
+  --darkblue: #071E3C;
+  --warmgrey: #f6f6f6;
+  --coldgrey: #c9c9c9;
+  --latency-p99: #2F80ED;
+  --latency-p95: #2D9CDB;
+  --latency-p50: #56CCF2;
+  --subheader-grey: #828282;
+  --status-gray: #BDBDBD;
+  --green: #27AE60;
+  --bad-red: #EB5757;
+  --font-stack: 'Lato', helvetica, arial, sans-serif;
+  --font-weight-light: 300;
+  --font-weight-regular: 400;
+  --font-weight-bold: 700;
+  --font-weight-extra-bold: 900;
+  --base-width: 8px;
 }
 
 .hide {
@@ -148,7 +149,6 @@ tr th.numeric, .numeric {
 /* fancy borders */
 .border-container {
   padding: var(--base-width);
-  /* height: 190px; */
   background-repeat: space;
   margin-bottom: calc(var(--base-width)*2);
 }
@@ -156,7 +156,6 @@ tr th.numeric, .numeric {
   overflow: hidden;
   padding: var(--base-width);
   background-color: white;
-  /* height: 174px; */
 }
 .border-container.border-bad {
   background-image: url(./../img/red_check.png);
@@ -166,4 +165,23 @@ tr th.numeric, .numeric {
 }
 .border-container.border-neutral {
   background-image: url(./../img/grey_check.png);
+}
+
+.error-message-container {
+  overflow: auto;
+  width: 100%;
+  padding: var(--base-width);
+  margin-bottom: calc(3 * var(--base-width));
+  border-radius: 5px;
+  background: var(--bad-red);
+  color: white;
+  font-size: 12px;
+  font-weight: var(--font-weight-bold);
+
+  & .dismiss {
+    float: right;
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+  }
 }

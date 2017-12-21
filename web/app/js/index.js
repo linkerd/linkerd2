@@ -1,6 +1,5 @@
 import Deployment from './components/Deployment.jsx';
 import Deployments from './components/Deployments.jsx';
-import Docs from './components/Docs.jsx';
 import enUS from 'antd/lib/locale-provider/en_US'; // configure ant locale globally
 import NoMatch from './components/NoMatch.jsx';
 import PodDetail from './components/PodDetail.jsx';
@@ -38,7 +37,6 @@ ReactDOM.render((
               <Route path={`${pathPrefix}/deployment`} render={props => <Deployment pathPrefix={pathPrefix} location={props.location} />} />
               <Route path={`${pathPrefix}/pod`} render={props => <PodDetail pathPrefix={pathPrefix} location={props.location} />} />
               <Route path={`${pathPrefix}/routes`} render={() => <Routes pathPrefix={pathPrefix} />} />
-              <Route path={`${pathPrefix}/docs`} render={() => <Docs pathPrefix={pathPrefix} />} />
               <Route component={NoMatch} />
             </Switch>
           </div>

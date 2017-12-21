@@ -1,7 +1,9 @@
 import _ from 'lodash';
+import { ApiHelpers } from './util/ApiHelpers.js';
 import CallToAction from './CallToAction.jsx';
 import ConduitSpinner from "./ConduitSpinner.jsx";
 import DeploymentSummary from './DeploymentSummary.jsx';
+import ErrorBanner from './ErrorBanner.jsx';
 import { incompleteMeshMessage } from './util/CopyUtils.jsx';
 import Metric from './Metric.jsx';
 import React from 'react';
@@ -10,7 +12,6 @@ import StatusTable from './StatusTable.jsx';
 import { Col, Row, Table } from 'antd';
 import { processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
 import './../../css/service-mesh.css';
-import 'whatwg-fetch';
 
 const serviceMeshDetailsColumns = [
   {
@@ -52,6 +53,8 @@ export default class ServiceMesh extends React.Component {
   constructor(props) {
     super(props);
     this.loadFromServer = this.loadFromServer.bind(this);
+    this.handleApiError = this.handleApiError.bind(this);
+    this.api = ApiHelpers(this.props.pathPrefix);
 
     this.state = {
       pollingInterval: 2000,
@@ -61,7 +64,8 @@ export default class ServiceMesh extends React.Component {
       components: [],
       lastUpdated: 0,
       pendingRequests: false,
-      loaded: false
+      loaded: false,
+      error: ''
     };
   }
 
@@ -82,10 +86,10 @@ export default class ServiceMesh extends React.Component {
 
     let rollupPath = `${this.props.pathPrefix}/api/metrics?window=${this.state.metricsWindow}&aggregation=mesh`;
     let timeseriesPath = `${rollupPath}&timeseries=true`;
-    let podsPath = `${this.props.pathPrefix}/api/pods`;
-    let rollupRequest = fetch(rollupPath).then(r => r.json());
-    let timeseriesRequest = fetch(timeseriesPath).then(r => r.json());
-    let podsRequest = fetch(podsPath).then(r => r.json());
+
+    let rollupRequest = this.api.fetch(rollupPath);
+    let timeseriesRequest = this.api.fetch(timeseriesPath);
+    let podsRequest = this.api.fetchPods(this.props.pathPrefix);
 
     this.serverPromise = Promise.all([rollupRequest, timeseriesRequest, podsRequest])
       .then(([metrics, ts, pods]) => {
@@ -101,11 +105,17 @@ export default class ServiceMesh extends React.Component {
           components: c,
           lastUpdated: Date.now(),
           pendingRequests: false,
-          loaded: true
+          loaded: true,
+          error: ''
         });
-      }).catch(() => {
-        this.setState({ pendingRequests: false });
-      });
+      }).catch(this.handleApiError);
+  }
+
+  handleApiError(e) {
+    this.setState({
+      pendingRequests: false,
+      error: `Error getting data from server: ${e.message}`
+    });
   }
 
   addedDeploymentCount() {
@@ -312,16 +322,19 @@ export default class ServiceMesh extends React.Component {
   }
 
   render() {
-    if (!this.state.loaded) {
-      return <ConduitSpinner />;
-    } else return (
+    return (
       <div className="page-content">
-        <div className="page-header">
-          <h1>Service mesh overview</h1>
-          {this.renderOverview()}
-          {this.renderControlPlane()}
-          {this.renderDataPlane()}
-        </div>
+        { !this.state.error ? null : <ErrorBanner message={this.state.error} /> }
+        { !this.state.loaded ? <ConduitSpinner /> :
+          <div>
+            <div className="page-header">
+              <h1>Service mesh overview</h1>
+            </div>
+            {this.renderOverview()}
+            {this.renderControlPlane()}
+            {this.renderDataPlane()}
+          </div>
+        }
       </div>
     );
   }
