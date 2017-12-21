@@ -90,7 +90,8 @@ export default class PodDetail extends React.Component {
           upstreamTsByPod: upstreamTsByPod,
           downstreamMetrics: downstreamMetrics,
           downstreamTsByPod: downstreamTsByPod,
-          loaded: true
+          loaded: true,
+          error: ''
         });
       }).catch(this.handleApiError);
   }

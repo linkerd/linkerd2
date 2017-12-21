@@ -114,7 +114,8 @@ export default class Deployment extends React.Component {
           downstreamTsByDeploy: downstreamTsByDeploy,
           lastUpdated: Date.now(),
           pendingRequests: false,
-          loaded: true
+          loaded: true,
+          error: ''
         });
       }).catch(this.handleApiError);
   }
