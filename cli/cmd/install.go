@@ -18,7 +18,7 @@ apiVersion: v1
 metadata:
   name: {{.Namespace}}
 
-### Service Account ###
+### Service Account Controller ###
 ---
 kind: ServiceAccount
 apiVersion: v1
@@ -53,6 +53,40 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: conduit-controller
+  namespace: conduit
+
+### Service Account Prometheus ###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: conduit-prometheus
+  namespace: conduit
+
+### RBAC ###
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: conduit-prometheus
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["list", "watch"]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: conduit-prometheus
+  namespace: conduit
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: conduit-prometheus
+subjects:
+- kind: ServiceAccount
+  name: conduit-prometheus
   namespace: conduit
 
 ### Controller ###
@@ -290,6 +324,7 @@ spec:
       annotations:
         conduit.io/created-by: "{{.CliVersion}}"
     spec:
+    serviceAccount: conduit-prometheus
       volumes:
       - name: prometheus-config
         configMap:
