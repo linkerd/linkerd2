@@ -1,0 +1,11 @@
+NAME    REQUEST_RATE   SUCCESS_RATE   P50_LATENCY   P99_LATENCY
+pod-0         0.0rps          0.00%           1ms           9ms
+pod-1         0.1rps         10.00%           2ms          10ms
+pod-2         0.2rps         20.00%           3ms          11ms
+pod-3         0.3rps         30.00%           4ms          12ms
+pod-4         0.4rps         40.00%           5ms          13ms
+pod-5         0.5rps         50.00%           6ms          14ms
+pod-6         0.6rps         60.00%           7ms          15ms
+pod-7         0.7rps         70.00%           8ms          16ms
+pod-8         0.8rps         80.00%           9ms          17ms
+pod-9         0.9rps         90.00%          10ms          18ms

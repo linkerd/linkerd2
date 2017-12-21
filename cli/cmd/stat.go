@@ -17,14 +17,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const padding = 3
-
-type row struct {
-	requestRate float64
-	successRate float64
-	latencyP50  int64
-	latencyP99  int64
-}
+const ConduitPaths = "paths"
 
 var target string
 var timeWindow string
@@ -43,75 +36,100 @@ Valid resource types include:
 
 The optional [TARGET] option can be either a name for a deployment or pod resource`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		var resourceType string
+		var friendlyName string
+
 		switch len(args) {
 		case 1:
-			resourceType = args[0]
+			friendlyName = args[0]
 		case 2:
-			resourceType = args[0]
+			friendlyName = args[0]
 			target = args[1]
 		default:
 			return errors.New("please specify a resource type: pods, deployments or paths")
 		}
 
-		switch resourceType {
-		case "pods", "pod", "po":
-			return makeStatsRequest(pb.AggregationType_TARGET_POD)
-		case "deployments", "deployment", "deploy":
-			return makeStatsRequest(pb.AggregationType_TARGET_DEPLOY)
-		case "paths", "path", "pa":
-			return makeStatsRequest(pb.AggregationType_PATH)
-		default:
-			return errors.New("invalid resource type")
+		validatedResourceType, err := k8s.CanonicalKubernetesNameFromFriendlyName(friendlyName)
+		if err != nil {
+			switch friendlyName {
+			case "paths", "path", "pa":
+				validatedResourceType = ConduitPaths
+			default:
+				return fmt.Errorf("invalid resource type %s, only %v are allowed as resource types", friendlyName, []string{k8s.KubernetesPods, k8s.KubernetesDeployments, ConduitPaths})
+			}
+		}
+		kubeApi, err := k8s.MakeK8sAPi(shell.MakeUnixShell(), kubeconfigPath, apiAddr)
+		if err != nil {
+			return err
 		}
 
-		return nil
+		client, err := newApiClient(kubeApi)
+		if err != nil {
+			return fmt.Errorf("error creating api client while making stats request: %v", err)
+		}
+
+		output, err := requestStatsFromApi(client, validatedResourceType)
+		if err != nil {
+			return err
+		}
+
+		_, err = fmt.Print(output)
+
+		return err
 	},
 }
 
-func makeStatsRequest(aggType pb.AggregationType) error {
-	kubeApi, err := k8s.MakeK8sAPi(shell.MakeUnixShell(), kubeconfigPath, apiAddr)
-	if err != nil {
-		return err
-	}
+func init() {
+	RootCmd.AddCommand(statCmd)
+	addControlPlaneNetworkingArgs(statCmd)
+	statCmd.PersistentFlags().StringVarP(&timeWindow, "time-window", "t", "1m", "Stat window.  One of: '10s', '1m', '10m', '1h', '6h', '24h'.")
+	statCmd.PersistentFlags().BoolVarP(&watch, "watch", "w", false, "After listing/getting the requested object, watch for changes.")
+	statCmd.PersistentFlags().BoolVar(&watchOnly, "watch-only", false, "Watch for changes to the requested object(s), without listing/getting first.")
+}
 
-	client, err := newApiClient(kubeApi)
-	if err != nil {
-		return fmt.Errorf("error creating api client while making stats request: %v", err)
-	}
+var resourceTypeToAggregationType = map[string]pb.AggregationType{
+	k8s.KubernetesPods:        pb.AggregationType_TARGET_POD,
+	k8s.KubernetesDeployments: pb.AggregationType_TARGET_DEPLOY,
+	ConduitPaths:              pb.AggregationType_PATH,
+}
+
+func requestStatsFromApi(client pb.ApiClient, resourceType string) (string, error) {
+	aggType := resourceTypeToAggregationType[resourceType]
 	req, err := buildMetricRequest(aggType)
 	if err != nil {
-		return fmt.Errorf("error creating metrics request while making stats request: %v", err)
+		return "", fmt.Errorf("error creating metrics request while making stats request: %v", err)
 	}
 
 	resp, err := client.Stat(context.Background(), req)
 	if err != nil {
-		return fmt.Errorf("error calling stat with request: %v", err)
+		return "", fmt.Errorf("error calling stat with request: %v", err)
 	}
 
+	return renderStats(resp)
+}
+
+func renderStats(resp *pb.MetricResponse) (string, error) {
 	var buffer bytes.Buffer
 	w := tabwriter.NewWriter(&buffer, 0, 0, padding, ' ', tabwriter.AlignRight)
-	displayStats(resp, w)
+	writeStatsToBuffer(resp, w)
 	w.Flush()
 
 	// strip left padding on the first column
 	out := string(buffer.Bytes()[padding:])
 	out = strings.Replace(out, "\n"+strings.Repeat(" ", padding), "\n", -1)
 
-	_, err = fmt.Print(out)
-	return err
+	return out, nil
 }
 
-func sortStatsKeys(stats map[string]*row) []string {
-	var sortedKeys []string
-	for key, _ := range stats {
-		sortedKeys = append(sortedKeys, key)
-	}
-	sort.Strings(sortedKeys)
-	return sortedKeys
+const padding = 3
+
+type row struct {
+	requestRate float64
+	successRate float64
+	latencyP50  int64
+	latencyP99  int64
 }
 
-func displayStats(resp *pb.MetricResponse, w *tabwriter.Writer) {
+func writeStatsToBuffer(resp *pb.MetricResponse, w *tabwriter.Writer) {
 	nameHeader := "NAME"
 	maxNameLength := len(nameHeader)
 
@@ -208,10 +226,11 @@ func buildMetricRequest(aggregationType pb.AggregationType) (*pb.MetricRequest, 
 	}, nil
 }
 
-func init() {
-	RootCmd.AddCommand(statCmd)
-	addControlPlaneNetworkingArgs(statCmd)
-	statCmd.PersistentFlags().StringVarP(&timeWindow, "time-window", "t", "1m", "Stat window.  One of: '10s', '1m', '10m', '1h', '6h', '24h'.")
-	statCmd.PersistentFlags().BoolVarP(&watch, "watch", "w", false, "After listing/getting the requested object, watch for changes.")
-	statCmd.PersistentFlags().BoolVar(&watchOnly, "watch-only", false, "Watch for changes to the requested object(s), without listing/getting first.")
+func sortStatsKeys(stats map[string]*row) []string {
+	var sortedKeys []string
+	for key, _ := range stats {
+		sortedKeys = append(sortedKeys, key)
+	}
+	sort.Strings(sortedKeys)
+	return sortedKeys
 }

@@ -11,10 +11,11 @@ type mockApiClient struct {
 	errorToReturn            error
 	versionInfoToReturn      *pb.VersionInfo
 	listPodsResponseToReturn *pb.ListPodsResponse
+	metricResponseToReturn   *pb.MetricResponse
 }
 
 func (c *mockApiClient) Stat(ctx context.Context, in *pb.MetricRequest, opts ...grpc.CallOption) (*pb.MetricResponse, error) {
-	return nil, c.errorToReturn
+	return c.metricResponseToReturn, c.errorToReturn
 }
 
 func (c *mockApiClient) Version(ctx context.Context, in *pb.Empty, opts ...grpc.CallOption) (*pb.VersionInfo, error) {

@@ -20,15 +20,19 @@ var getCmd = &cobra.Command{
 Valid resource types include:
  * pods (aka pod, po)`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) != 1 {
+		if len(args) < 1 {
 			return errors.New("please specify a resource type")
+		}
+
+		if len(args) > 1 {
+			return errors.New("please specify only one resource type")
 		}
 
 		friendlyName := args[0]
 		resourceType, err := k8s.CanonicalKubernetesNameFromFriendlyName(friendlyName)
 
 		if err != nil || resourceType != k8s.KubernetesPods {
-			return fmt.Errorf("invalid resource type [%s]", friendlyName)
+			return fmt.Errorf("invalid resource type %s, only %s are allowed as resource types", friendlyName, k8s.KubernetesPods)
 		}
 
 		kubeApi, err := k8s.MakeK8sAPi(shell.MakeUnixShell(), kubeconfigPath, apiAddr)
