@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+
 	"os"
 	"os/exec"
 	"runtime"
@@ -33,11 +34,14 @@ func (sh *unixShell) AsyncStdout(potentialErrorFromAsyncProcess chan error, name
 	command := exec.Command(name, arg...)
 	stdout, err := command.StdoutPipe()
 	if err != nil {
-		return nil, fmt.Errorf("Error executing command in an async way: %v", err)
+		return nil, fmt.Errorf("error executing command in an async way: %v", err)
 	}
 
+	reader := bufio.NewReader(stdout)
+
 	go func(e chan error) { e <- command.Run() }(potentialErrorFromAsyncProcess)
-	return bufio.NewReader(stdout), nil
+
+	return reader, nil
 }
 
 func (sh *unixShell) WaitForCharacter(charToWaitFor byte, outputReader *bufio.Reader, timeout time.Duration) (string, error) {
@@ -48,9 +52,9 @@ func (sh *unixShell) WaitForCharacter(charToWaitFor byte, outputReader *bufio.Re
 		outputString, err := outputReader.ReadString(charToWaitFor)
 		if err != nil {
 			if err == io.EOF {
-				e <- fmt.Errorf("Reached end of stream while waiting for character [%c] in output [%s] of command: %v", charToWaitFor, outputString, err)
+				e <- fmt.Errorf("reached end of stream while waiting for character [%c] in output [%s] of command: %v", charToWaitFor, outputString, err)
 			} else {
-				e <- fmt.Errorf("Error while reading output from command: %v", err)
+				e <- fmt.Errorf("error while reading output from command: %v", err)
 			}
 		}
 
@@ -59,7 +63,7 @@ func (sh *unixShell) WaitForCharacter(charToWaitFor byte, outputReader *bufio.Re
 
 	select {
 	case <-time.After(timeout):
-		return "", fmt.Errorf("Timed-out expoecting token [%c] in reader", charToWaitFor)
+		return "", fmt.Errorf("timed-out expoecting token [%c] in reader", charToWaitFor)
 	case e := <-potentialError:
 		return "", e
 	case o := <-output:
