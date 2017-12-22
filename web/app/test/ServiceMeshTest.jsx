@@ -41,6 +41,7 @@ describe('ServiceMesh', () => {
 
   it("renders the spinner before metrics are loaded", () => {
     fetchStub.returnsPromise().resolves({
+      ok: true,
       json: () => Promise.resolve({ metrics: [] })
     });
     component = mount(routerWrap(ServiceMesh));
@@ -52,12 +53,12 @@ describe('ServiceMesh', () => {
 
   it("renders a call to action if no metrics are received", () => {
     fetchStub.returnsPromise().resolves({
+      ok: true,
       json: () => Promise.resolve({ metrics: [] })
     });
     component = mount(routerWrap(ServiceMesh));
 
     return withPromise(() => {
-      expect(component.html()).to.include(errorMsg);
       expect(component.find("ServiceMesh")).to.have.length(1);
       expect(component.find("ConduitSpinner")).to.have.length(0);
       expect(component.find("CallToAction")).to.have.length(1);
@@ -125,6 +126,7 @@ describe('ServiceMesh', () => {
     _.set(addedPods[0], "added", true);
 
     fetchStub.returnsPromise().resolves({
+      ok: true,
       json: () => Promise.resolve({ metrics: multiDeployRollupFixtures.metrics, pods: addedPods})
     });
     component = mount(routerWrap(ServiceMesh));
@@ -138,6 +140,7 @@ describe('ServiceMesh', () => {
 
   it("renders service mesh details", () => {
     fetchStub.returnsPromise().resolves({
+      ok: true,
       json: () => Promise.resolve({ metrics: [] })
     });
     component = mount(routerWrap(ServiceMesh));
@@ -152,6 +155,7 @@ describe('ServiceMesh', () => {
 
   it("renders control plane", () => {
     fetchStub.returnsPromise().resolves({
+      ok: true,
       json: () => Promise.resolve({ metrics: [] })
     });
     component = mount(routerWrap(ServiceMesh));
@@ -165,6 +169,7 @@ describe('ServiceMesh', () => {
 
   it("renders data plane", () => {
     fetchStub.returnsPromise().resolves({
+      ok: true,
       json: () => Promise.resolve({ metrics: [] })
     });
     component = mount(routerWrap(ServiceMesh));
