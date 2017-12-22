@@ -36,25 +36,25 @@ Valid resource types include:
 
 The optional [TARGET] option can be either a name for a deployment or pod resource`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		var friendlyName string
+		var friendlyNameForResourceType string
 
 		switch len(args) {
 		case 1:
-			friendlyName = args[0]
+			friendlyNameForResourceType = args[0]
 		case 2:
-			friendlyName = args[0]
+			friendlyNameForResourceType = args[0]
 			target = args[1]
 		default:
 			return errors.New("please specify a resource type: pods, deployments or paths")
 		}
 
-		validatedResourceType, err := k8s.CanonicalKubernetesNameFromFriendlyName(friendlyName)
+		validatedResourceType, err := k8s.CanonicalKubernetesNameFromFriendlyName(friendlyNameForResourceType)
 		if err != nil {
-			switch friendlyName {
+			switch friendlyNameForResourceType {
 			case "paths", "path", "pa":
 				validatedResourceType = ConduitPaths
 			default:
-				return fmt.Errorf("invalid resource type %s, only %v are allowed as resource types", friendlyName, []string{k8s.KubernetesPods, k8s.KubernetesDeployments, ConduitPaths})
+				return fmt.Errorf("invalid resource type %s, only %v are allowed as resource types", friendlyNameForResourceType, []string{k8s.KubernetesPods, k8s.KubernetesDeployments, ConduitPaths})
 			}
 		}
 		kubeApi, err := k8s.MakeK8sAPi(shell.MakeUnixShell(), kubeconfigPath, apiAddr)

@@ -1,12 +1,14 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"strings"
+	"text/tabwriter"
 
 	"github.com/runconduit/conduit/cli/k8s"
 	"github.com/runconduit/conduit/cli/shell"
@@ -39,57 +41,46 @@ Valid targets include:
  * Pods (default/hello-world-h4fb2)
  * Deployments (default/hello-world)`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		switch len(args) {
-		case 2:
-			resourceType := strings.ToLower(args[0])
-
-			// We don't validate inputs because they are validated on the server.
-			req := &pb.TapRequest{
-				MaxRps:    maxRps,
-				ToPort:    toPort,
-				ToIP:      toIP,
-				FromPort:  fromPort,
-				FromIP:    fromIP,
-				Scheme:    scheme,
-				Method:    method,
-				Authority: authority,
-				Path:      path,
-			}
-
-			switch resourceType {
-			case "deploy", "deployment", "deployments":
-				req.Target = &pb.TapRequest_Deployment{
-					Deployment: args[1],
-				}
-
-			case "po", "pod", "pods":
-				req.Target = &pb.TapRequest_Pod{
-					Pod: args[1],
-				}
-
-			default:
-				return errors.New("invalid target type")
-			}
-
-			kubeApi, err := k8s.MakeK8sAPi(shell.MakeUnixShell(), kubeconfigPath, apiAddr)
-			if err != nil {
-				return err
-			}
-
-			client, err := newApiClient(kubeApi)
-			if err != nil {
-				return err
-			}
-			rsp, err := client.Tap(context.Background(), req)
-			if err != nil {
-				return err
-			}
-			print(rsp)
-
-			return nil
-		default:
+		if len(args) != 2 {
 			return errors.New("please specify a target")
 		}
+
+		// We don't validate inputs because they are validated on the server.
+		partialReq := &pb.TapRequest{
+			MaxRps:    maxRps,
+			ToPort:    toPort,
+			ToIP:      toIP,
+			FromPort:  fromPort,
+			FromIP:    fromIP,
+			Scheme:    scheme,
+			Method:    method,
+			Authority: authority,
+			Path:      path,
+		}
+
+		friendlyNameForResourceType := strings.ToLower(args[0])
+		validatedResourceType, err := k8s.CanonicalKubernetesNameFromFriendlyName(friendlyNameForResourceType)
+		if err != nil {
+			return fmt.Errorf("unsupported resourceType [%s]", friendlyNameForResourceType)
+		}
+
+		kubeApi, err := k8s.MakeK8sAPi(shell.MakeUnixShell(), kubeconfigPath, apiAddr)
+		if err != nil {
+			return err
+		}
+
+		client, err := newApiClient(kubeApi)
+		if err != nil {
+			return err
+		}
+
+		output, err := requestTapFromApi(client, args[1], validatedResourceType, partialReq)
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Print(output)
+
+		return err
 	},
 }
 
@@ -107,7 +98,46 @@ func init() {
 	tapCmd.PersistentFlags().StringVar(&path, "path", "", "Display requests with paths that start with this prefix")
 }
 
-func print(rsp pb.Api_TapClient) {
+func requestTapFromApi(client pb.ApiClient, targetName string, resourceType string, req *pb.TapRequest) (string, error) {
+	switch resourceType {
+	case k8s.KubernetesDeployments:
+		req.Target = &pb.TapRequest_Deployment{
+			Deployment: targetName,
+		}
+
+	case k8s.KubernetesPods:
+		req.Target = &pb.TapRequest_Pod{
+			Pod: targetName,
+		}
+	default:
+		return "", fmt.Errorf("unsupported resourceType [%s]", resourceType)
+	}
+
+	rsp, err := client.Tap(context.Background(), req)
+	if err != nil {
+		return "", err
+	}
+
+	return renderTap(rsp)
+}
+
+func renderTap(rsp pb.Api_TapClient) (string, error) {
+	var buffer bytes.Buffer
+	w := tabwriter.NewWriter(&buffer, 0, 0, 0, ' ', tabwriter.AlignRight)
+	err := writeTapEvenToBuffer(rsp, w)
+	if err != nil {
+		return "", err
+	}
+	w.Flush()
+
+	// strip left padding on the first column
+	out := string(buffer.Bytes())
+
+	return out, nil
+
+}
+
+func writeTapEvenToBuffer(rsp pb.Api_TapClient, w *tabwriter.Writer) error {
 	for {
 		event, err := rsp.Recv()
 		if err == io.EOF {
@@ -117,17 +147,24 @@ func print(rsp pb.Api_TapClient) {
 			fmt.Fprintln(os.Stderr, err)
 			break
 		}
-		fmt.Println(eventToString(event))
+		_, err = fmt.Fprintln(w, renderTapEvent(event))
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
-func eventToString(event *common.TapEvent) string {
+func renderTapEvent(event *common.TapEvent) string {
 	flow := fmt.Sprintf("src=%s dst=%s",
 		util.AddressToString(event.GetSource()),
 		util.AddressToString(event.GetTarget()),
 	)
 
-	switch ev := event.GetHttp().Event.(type) {
+	http := event.GetHttp()
+	http_event := http.Event
+	switch ev := http_event.(type) {
 	case *common.TapEvent_Http_RequestInit_:
 		return fmt.Sprintf("req id=%d:%d %s :method=%s :authority=%s :path=%s",
 			ev.RequestInit.Id.Base,

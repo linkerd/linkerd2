@@ -1,0 +1,2 @@
+req id=1:0 src=0.0.0.1:0 dst=0.0.0.9:0 :method=GET :authority=localhost :path=/some/path
+end id=1:0 src=0.0.0.1:0 dst=0.0.0.9:0 grpc-status=Code(666) duration=0µs response-length=1337B
