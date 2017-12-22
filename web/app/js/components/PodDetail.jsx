@@ -13,6 +13,7 @@ export default class PodDetail extends React.Component {
   constructor(props) {
     super(props);
     this.api = ApiHelpers(this.props.pathPrefix);
+    this.handleApiError = this.handleApiError.bind(this);
     this.loadFromServer = this.loadFromServer.bind(this);
     this.state = this.initialState(this.props.location);
   }
