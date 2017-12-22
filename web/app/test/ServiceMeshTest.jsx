@@ -65,64 +65,8 @@ describe('ServiceMesh', () => {
     });
   });
 
-  it("displays message for no deployments detetcted", () => {
-    fetchStub.returnsPromise().resolves({
-      ok: true,
-      json: () => Promise.resolve({ pods: []})
-    });
-    component = mount(routerWrap(ServiceMesh));
-
-    return withPromise(() => {
-      expect(component.html()).to.include("No deployments detected.");
-    });
-  });
-
-  it("displays message for more than one deployment not added to servicemesh", () => {
-    fetchStub.returnsPromise().resolves({
-      ok: true,
-      json: () => Promise.resolve({ pods: podFixtures.pods})
-    });
-    component = mount(routerWrap(ServiceMesh));
-
-    return withPromise(() => {
-      expect(component.html()).to.include("deployments have not been added to the service mesh.");
-    });
-  });
-
-  it("displays message for only one deployment not added to servicemesh", () => {
-    let addedPods = _.clone(podFixtures.pods);
-    _.set(addedPods[0], "added", true);
-
-    fetchStub.returnsPromise().resolves({
-      ok: true,
-      json: () => Promise.resolve({ pods: addedPods})
-    });
-    component = mount(routerWrap(ServiceMesh));
-
-    return withPromise(() => {
-      expect(component.html()).to.include("1 deployment has not been added to the service mesh.");
-    });
-  });
-
-  it("displays message for all deployments added to servicemesh", () => {
-    let addedPods = _.clone(podFixtures.pods);
-    _.forEach(addedPods, pod => {
-      _.set(pod, "added", true);
-    });
-
-    fetchStub.returnsPromise().resolves({
-      ok: true,
-      json: () => Promise.resolve({ pods: addedPods})
-    });
-    component = mount(routerWrap(ServiceMesh));
-
-    return withPromise(() => {
-      expect(component.html()).to.include("All deployments have been added to the service mesh.");
-    });
-  });
-
-  it("renders controllerhealth if metrics are received", () => {
-    let addedPods = _.clone(podFixtures.pods);
+  it("renders controller component summaries", () => {
+    let addedPods = _.cloneDeep(podFixtures.pods);
     _.set(addedPods[0], "added", true);
 
     fetchStub.returnsPromise().resolves({
@@ -138,7 +82,7 @@ describe('ServiceMesh', () => {
     });
   });
 
-  it("renders service mesh details", () => {
+  it("renders service mesh details section", () => {
     fetchStub.returnsPromise().resolves({
       ok: true,
       json: () => Promise.resolve({ metrics: [] })
@@ -153,7 +97,7 @@ describe('ServiceMesh', () => {
     });
   });
 
-  it("renders control plane", () => {
+  it("renders control plane section", () => {
     fetchStub.returnsPromise().resolves({
       ok: true,
       json: () => Promise.resolve({ metrics: [] })
@@ -167,7 +111,7 @@ describe('ServiceMesh', () => {
     });
   });
 
-  it("renders data plane", () => {
+  it("renders data plane section", () => {
     fetchStub.returnsPromise().resolves({
       ok: true,
       json: () => Promise.resolve({ metrics: [] })
@@ -178,6 +122,64 @@ describe('ServiceMesh', () => {
       expect(component.find("ServiceMesh")).to.have.length(1);
       expect(component.find("ConduitSpinner")).to.have.length(0);
       expect(component.html()).includes("Data plane");
+    });
+  });
+
+  describe("renderAddDeploymentsMessage", () => {
+    it("displays when no deployments are in the mesh", () => {
+      fetchStub.returnsPromise().resolves({
+        ok: true,
+        json: () => Promise.resolve({ pods: []})
+      });
+      component = mount(routerWrap(ServiceMesh));
+
+      return withPromise(() => {
+        expect(component.html()).to.include("No deployments detected.");
+      });
+    });
+
+    it("displays a message if >1 deployment has not been added to the mesh", () => {
+      fetchStub.returnsPromise().resolves({
+        ok: true,
+        json: () => Promise.resolve({ pods: podFixtures.pods})
+      });
+      component = mount(routerWrap(ServiceMesh));
+
+      return withPromise(() => {
+        expect(component.html()).to.include("deployments have not been added to the service mesh.");
+      });
+    });
+
+    it("displays message if 1 deployment has not added to servicemesh", () => {
+      let addedPods = _.cloneDeep(podFixtures.pods);
+      _.set(addedPods[0], "added", true);
+
+      fetchStub.returnsPromise().resolves({
+        ok: true,
+        json: () => Promise.resolve({ pods: addedPods})
+      });
+      component = mount(routerWrap(ServiceMesh));
+
+      return withPromise(() => {
+        expect(component.html()).to.include("1 deployment has not been added to the service mesh.");
+      });
+    });
+
+    it("displays message if all deployments have been added to servicemesh", () => {
+      let addedPods = _.cloneDeep(podFixtures.pods);
+      _.forEach(addedPods, pod => {
+        _.set(pod, "added", true);
+      });
+
+      fetchStub.returnsPromise().resolves({
+        ok: true,
+        json: () => Promise.resolve({ pods: addedPods})
+      });
+      component = mount(routerWrap(ServiceMesh));
+
+      return withPromise(() => {
+        expect(component.html()).to.include("All deployments have been added to the service mesh.");
+      });
     });
   });
 });
