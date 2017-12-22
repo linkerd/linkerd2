@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import Percentage from './util/Percentage.js';
 import { processTimeseriesMetrics } from './util/MetricUtils.js';
 import React from 'react';
-import { ApiHelpers, timeseriesUrls } from './util/ApiHelpers.js';
+import { ApiHelpers, urlsForResource } from './util/ApiHelpers.js';
 import { metricToFormatter, toClassName } from './util/Utils.js';
 import { Table, Tabs } from 'antd';
 
@@ -102,7 +102,7 @@ export default class TabbedMetricsTable extends React.Component {
     this.handleApiError = this.handleApiError.bind(this);
     this.loadFromServer = this.loadFromServer.bind(this);
 
-    let tsHelper = timeseriesUrls(this.props.pathPrefix, this.props.metricsWindow)[this.props.resource];
+    let tsHelper = urlsForResource(this.props.pathPrefix, this.props.metricsWindow)[this.props.resource];
 
     this.state = {
       timeseries: {},

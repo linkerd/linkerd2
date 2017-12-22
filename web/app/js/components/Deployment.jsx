@@ -1,5 +1,4 @@
 import _ from 'lodash';
-import { ApiHelpers } from './util/ApiHelpers.js';
 import BarChart from './BarChart.jsx';
 import ConduitSpinner from "./ConduitSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
@@ -11,6 +10,7 @@ import { rowGutter } from './util/Utils.js';
 import StatPane from './StatPane.jsx';
 import TabbedMetricsTable from './TabbedMetricsTable.jsx';
 import UpstreamDownstream from './UpstreamDownstream.jsx';
+import { ApiHelpers, urlsForResource } from './util/ApiHelpers.js';
 import { Col, Row } from 'antd';
 import { emptyMetric, getPodsByDeployment, processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
 import './../../css/deployment.css';
@@ -68,11 +68,13 @@ export default class Deployment extends React.Component {
     }
     this.setState({ pendingRequests: true });
 
+    let urls = urlsForResource(this.props.pathPrefix, this.state.metricsWindow);
+
     let metricsUrl = `${this.props.pathPrefix}/api/metrics?window=${this.state.metricsWindow}` ;
     let deployMetricsUrl = `${metricsUrl}&timeseries=true&target_deploy=${this.state.deploy}`;
-    let podRollupUrl = `${metricsUrl}&aggregation=target_pod&target_deploy=${this.state.deploy}`;
-    let upstreamRollupUrl = `${metricsUrl}&aggregation=source_deploy&target_deploy=${this.state.deploy}`;
-    let downstreamRollupUrl = `${metricsUrl}&aggregation=target_deploy&source_deploy=${this.state.deploy}`;
+    let podRollupUrl = urls["pod"].url(this.state.deploy).rollup;
+    let upstreamRollupUrl = urls["upstream_deployment"].url(this.state.deploy).rollup;
+    let downstreamRollupUrl = urls["downstream_deployment"].url(this.state.deploy).rollup;
 
     let deployFetch = this.api.fetch(deployMetricsUrl);
     let podListFetch = this.api.fetchPods();

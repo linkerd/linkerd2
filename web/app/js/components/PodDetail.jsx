@@ -1,11 +1,11 @@
 import _ from 'lodash';
-import { ApiHelpers } from './util/ApiHelpers.js';
 import ConduitSpinner from "./ConduitSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
 import HealthPane from './HealthPane.jsx';
 import React from 'react';
 import StatPane from './StatPane.jsx';
 import UpstreamDownstream from './UpstreamDownstream.jsx';
+import { ApiHelpers, urlsForResource } from './util/ApiHelpers.js';
 import { processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
 import 'whatwg-fetch';
 
@@ -57,10 +57,12 @@ export default class PodDetail extends React.Component {
     }
     this.setState({ pendingRequests: true });
 
+    let urls = urlsForResource(this.props.pathPrefix, this.state.metricsWindow);
+
     let metricsUrl = `${this.props.pathPrefix}/api/metrics?window=${this.state.metricsWindow}` ;
     let podMetricsUrl = `${metricsUrl}&timeseries=true&target_pod=${this.state.pod}`;
-    let upstreamRollupUrl = `${metricsUrl}&aggregation=source_pod&target_pod=${this.state.pod}`;
-    let downstreamRollupUrl = `${metricsUrl}&aggregation=target_pod&source_pod=${this.state.pod}`;
+    let upstreamRollupUrl = urls["upstream_pod"].url(this.state.pod).rollup;
+    let downstreamRollupUrl = urls["downstream_pod"].url(this.state.pod).rollup;
 
     let podFetch = this.api.fetch(podMetricsUrl);
     let upstreamFetch =  this.api.fetch(upstreamRollupUrl);

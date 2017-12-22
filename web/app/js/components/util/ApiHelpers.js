@@ -24,9 +24,10 @@ export const ApiHelpers = pathPrefix => {
   };
 };
 
-export const timeseriesUrls = (pathPrefix, metricsWindow) => {
+export const urlsForResource = (pathPrefix, metricsWindow) => {
   /*
     Timeseries fetches used in the TabbedMetricsTable
+    Rollup fetches used throughout app
   */
   let metricsUrl = `${pathPrefix}/api/metrics?window=${metricsWindow}`;
 
