@@ -5,7 +5,7 @@
 ## Getting Help ##
 
 If you have a question about Conduit or have encountered problems using it,
-start by [asking a question in the forums][discourse] or join us on in the
+start by [asking a question in the forums][discourse] or join us in the
 [#conduit Slack channel][slack].
 
 ## Certificate of Origin ##
@@ -23,8 +23,8 @@ Signed-off-by: Jane Smith <jane.smith@example.com>
 
 Use your real name (sorry, no pseudonyms or anonymous contributions).
 
-If you set your user.name and user.email git configs, you can sign your commit
-automatically with `git commit -s`.
+If you set your `user.name` and `user.email` git configs, you can sign your
+commit automatically with `git commit -s`.
 
 ## Submitting a Pull Request ##
 
@@ -58,7 +58,7 @@ Solution
 
 Validation
 
-Fixes #[Github issue ID]
+Fixes #[GitHub issue ID]
 ```
 
 #### Subject ####
@@ -68,7 +68,7 @@ Fixes #[Github issue ID]
 - use the active voice
 - capitalize first word and proper nouns
 - do not end in a period — this is a title/subject
-- reference the github issue by number
+- reference the GitHub issue by number
 
 ##### Examples #####
 
