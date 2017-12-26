@@ -1,7 +1,6 @@
 import _ from 'lodash';
 import { expect } from 'chai';
 import { mount } from 'enzyme';
-import multiDeployRollupFixtures from './fixtures/multiDeployRollup.json';
 import podFixtures from './fixtures/pods.json';
 import { routerWrap } from './testHelpers.jsx';
 import ServiceMesh from '../js/components/ServiceMesh.jsx';
@@ -71,7 +70,7 @@ describe('ServiceMesh', () => {
 
     fetchStub.returnsPromise().resolves({
       ok: true,
-      json: () => Promise.resolve({ metrics: multiDeployRollupFixtures.metrics, pods: addedPods})
+      json: () => Promise.resolve({ pods: addedPods})
     });
     component = mount(routerWrap(ServiceMesh));
 
@@ -92,8 +91,8 @@ describe('ServiceMesh', () => {
     return withPromise(() => {
       expect(component.find("ServiceMesh")).to.have.length(1);
       expect(component.find("ConduitSpinner")).to.have.length(0);
-      expect(component.html()).includes("Service mesh details");
-      expect(component.html()).includes("Conduit version");
+      expect(component.html()).to.include("Service mesh details");
+      expect(component.html()).to.include("Conduit version");
     });
   });
 
@@ -107,7 +106,7 @@ describe('ServiceMesh', () => {
     return withPromise(() => {
       expect(component.find("ServiceMesh")).to.have.length(1);
       expect(component.find("ConduitSpinner")).to.have.length(0);
-      expect(component.html()).includes("Control plane");
+      expect(component.html()).to.include("Control plane");
     });
   });
 
@@ -121,7 +120,7 @@ describe('ServiceMesh', () => {
     return withPromise(() => {
       expect(component.find("ServiceMesh")).to.have.length(1);
       expect(component.find("ConduitSpinner")).to.have.length(0);
-      expect(component.html()).includes("Data plane");
+      expect(component.html()).to.include("Data plane");
     });
   });
 
@@ -150,7 +149,7 @@ describe('ServiceMesh', () => {
       });
     });
 
-    it("displays message if 1 deployment has not added to servicemesh", () => {
+    it("displays a message if 1 deployment has not added to servicemesh", () => {
       let addedPods = _.cloneDeep(podFixtures.pods);
       _.set(addedPods[0], "added", true);
 
@@ -165,7 +164,7 @@ describe('ServiceMesh', () => {
       });
     });
 
-    it("displays message if all deployments have been added to servicemesh", () => {
+    it("displays a message if all deployments have been added to servicemesh", () => {
       let addedPods = _.cloneDeep(podFixtures.pods);
       _.forEach(addedPods, pod => {
         _.set(pod, "added", true);
