@@ -64,6 +64,23 @@ cd web
 go run main.go -api-addr=localhost:8085
 ```
 
+## Run Web against a public API server in Kubernetes
+
+If you are running the public API server in Kubernetes, forward localhost:8085
+to the conduit controller pod:
+
+```
+POD_NAME=$(kubectl --namespace=conduit get po --selector=app=controller -o jsonpath='{.items[*].metadata.name}')
+kubectl -n conduit port-forward $POD_NAME 8085:8085
+```
+
+Then connect the local web process to the forwarded port:
+
+```
+cd web
+go run main.go -api-addr=localhost:8085
+```
+
 ## Testing
 
 ### Golang unit tests
