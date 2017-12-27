@@ -1,0 +1,2 @@
+NAME            REQUEST_RATE   SUCCESS_RATE   P50_LATENCY   P99_LATENCY
+deployment-66         1.0rps        100.00%          11ms          19ms

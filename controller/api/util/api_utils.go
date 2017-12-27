@@ -2,6 +2,7 @@ package util
 
 import (
 	"errors"
+	"fmt"
 
 	pb "github.com/runconduit/conduit/controller/gen/public"
 )
@@ -10,8 +11,8 @@ import (
   Shared utilities for interacting with the controller public api
 */
 
-func GetWindow(timeWindow string) (pb.TimeWindow, error) {
-	switch timeWindow {
+func GetWindow(timeWindowFriendlyName string) (pb.TimeWindow, error) {
+	switch timeWindowFriendlyName {
 	case "10s":
 		return pb.TimeWindow_TEN_SEC, nil
 	case "1m":
@@ -20,8 +21,9 @@ func GetWindow(timeWindow string) (pb.TimeWindow, error) {
 		return pb.TimeWindow_TEN_MIN, nil
 	case "1h":
 		return pb.TimeWindow_ONE_HOUR, nil
+	default:
+		return pb.TimeWindow_ONE_MIN, errors.New("invalid time-window " + timeWindowFriendlyName)
 	}
-	return pb.TimeWindow_ONE_MIN, errors.New("invalid time-window " + timeWindow)
 }
 
 func GetWindowString(timeWindow pb.TimeWindow) (string, error) {
@@ -34,8 +36,9 @@ func GetWindowString(timeWindow pb.TimeWindow) (string, error) {
 		return "10m", nil
 	case pb.TimeWindow_ONE_HOUR:
 		return "1h", nil
+	default:
+		return "", fmt.Errorf("invalid time-window %v", timeWindow)
 	}
-	return "", errors.New("invalid time-window " + timeWindow.String())
 }
 
 func GetMetricName(metricName string) (pb.MetricName, error) {
@@ -46,8 +49,9 @@ func GetMetricName(metricName string) (pb.MetricName, error) {
 		return pb.MetricName_LATENCY, nil
 	case "successRate":
 		return pb.MetricName_SUCCESS_RATE, nil
+	default:
+		return pb.MetricName_REQUEST_RATE, errors.New("invalid metric name " + metricName)
 	}
-	return pb.MetricName_REQUEST_RATE, errors.New("invalid metric name " + metricName)
 }
 
 func GetAggregationType(aggregationType string) (pb.AggregationType, error) {
@@ -64,6 +68,7 @@ func GetAggregationType(aggregationType string) (pb.AggregationType, error) {
 		return pb.AggregationType_MESH, nil
 	case "path":
 		return pb.AggregationType_PATH, nil
+	default:
+		return pb.AggregationType_TARGET_POD, errors.New("invalid aggregation type " + aggregationType)
 	}
-	return pb.AggregationType_TARGET_POD, errors.New("invalid aggregation type " + aggregationType)
 }

@@ -4,7 +4,6 @@ import (
 	"os"
 
 	"github.com/runconduit/conduit/cli/k8s"
-	"github.com/runconduit/conduit/cli/shell"
 	"github.com/runconduit/conduit/controller/api/public"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/spf13/cobra"
@@ -34,12 +33,7 @@ func addControlPlaneNetworkingArgs(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVar(&apiAddr, "api-addr", "", "Override kubeconfig and communicate directly with the control plane at host:port (mostly for testing)")
 }
 
-func newApiClient() (pb.ApiClient, error) {
-	kubeApi, err := k8s.MakeK8sAPi(shell.MakeUnixShell(), kubeconfigPath, apiAddr)
-	if err != nil {
-		return nil, err
-	}
-
+func newApiClient(kubeApi k8s.KubernetesApi) (pb.ApiClient, error) {
 	url, err := kubeApi.UrlFor(controlPlaneNamespace, "/services/http:api:http/proxy/")
 	if err != nil {
 		return nil, err

@@ -281,3 +281,38 @@ func TestMakeKubectl(t *testing.T) {
 		}
 	})
 }
+
+func TestCanonicalKubernetesNameFromFriendlyName(t *testing.T) {
+	t.Run("Returns canonical name for all known variants", func(t *testing.T) {
+		expectations := map[string]string{
+			"po":          KubernetesPods,
+			"pod":         KubernetesPods,
+			"deployment":  KubernetesDeployments,
+			"deployments": KubernetesDeployments,
+		}
+
+		for input, expectedName := range expectations {
+			actualName, err := CanonicalKubernetesNameFromFriendlyName(input)
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+
+			if actualName != expectedName {
+				t.Fatalf("Expected friendly name [%s] to resolve to [%s], but got [%s]", input, expectedName, actualName)
+			}
+		}
+	})
+
+	t.Run("Returns error if inout isn't a supported name", func(t *testing.T) {
+		unsupportedNames := []string{
+			"pdo", "dop", "paths", "path", "", "mesh",
+		}
+
+		for _, n := range unsupportedNames {
+			out, err := CanonicalKubernetesNameFromFriendlyName(n)
+			if err == nil {
+				t.Fatalf("Expecting error when resolving [%s], but it did resolkve to [%s]", n, out)
+			}
+		}
+	})
+}

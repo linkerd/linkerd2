@@ -1,13 +1,14 @@
 package k8s
 
 import (
-	"fmt"
 	"errors"
-	"strings"
-	"strconv"
-	"time"
-	"github.com/runconduit/conduit/cli/shell"
+	"fmt"
 	"net/url"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/runconduit/conduit/cli/shell"
 )
 
 type Kubectl interface {
@@ -23,6 +24,8 @@ type kubectl struct {
 }
 
 const (
+	KubernetesDeployments   = "deployments"
+	KubernetesPods          = "pods"
 	kubectlDefaultProxyPort = 8001
 	kubectlDefaultTimeout   = 10 * time.Second
 	portWhenProxyNotRunning = -1
@@ -30,7 +33,7 @@ const (
 	magicCharacterThatIndicatesProxyIsRunning = '\n'
 )
 
-var minimunKubectlVersionExpected = [3]int{1, 8, 0}
+var minimumKubectlVersionExpected = [3]int{1, 8, 0}
 
 func (kctl *kubectl) ProxyPort() int {
 	return kctl.proxyPort
@@ -96,7 +99,7 @@ func (kctl *kubectl) UrlFor(namespace string, extraPathStartingWithSlash string)
 		return nil, errors.New("proxy needs to be started before generating URLs")
 	}
 
-	schemeHostAndPort := fmt.Sprintf("%s://%s:%d",kctl.ProxyScheme(),kctl.ProxyHost(), kctl.ProxyPort())
+	schemeHostAndPort := fmt.Sprintf("%s://%s:%d", kctl.ProxyScheme(), kctl.ProxyHost(), kctl.ProxyPort())
 
 	return generateKubernetesApiBaseUrlFor(schemeHostAndPort, namespace, extraPathStartingWithSlash)
 }
@@ -117,6 +120,19 @@ func isCompatibleVersion(minimalRequirementVersion [3]int, actualVersion [3]int)
 	return false
 }
 
+//CanonicalKubernetesNameFromFriendlyName returns a canonical name from common shorthands used in command line tools.
+// This works based on https://github.com/kubernetes/kubernetes/blob/63ffb1995b292be0a1e9ebde6216b83fc79dd988/pkg/kubectl/kubectl.go#L39
+func CanonicalKubernetesNameFromFriendlyName(friendlyName string) (string, error) {
+	switch friendlyName {
+	case "deploy", "deployment", "deployments":
+		return KubernetesDeployments, nil
+	case "po", "pod", "pods":
+		return KubernetesPods, nil
+	}
+
+	return "", fmt.Errorf("cannot find Kubernetes canonical name from friendly name [%s]", friendlyName)
+}
+
 func MakeKubectl(shell shell.Shell) (Kubectl, error) {
 
 	kubectl := &kubectl{
@@ -130,11 +146,11 @@ func MakeKubectl(shell shell.Shell) (Kubectl, error) {
 		return nil, err
 	}
 
-	if !isCompatibleVersion(minimunKubectlVersionExpected, actualVersion) {
+	if !isCompatibleVersion(minimumKubectlVersionExpected, actualVersion) {
 		return nil, fmt.Errorf(
 			"Kubectl is on version [%d.%d.%d], but version [%d.%d.%d] or more recent is required",
 			actualVersion[0], actualVersion[1], actualVersion[2],
-			minimunKubectlVersionExpected[0], minimunKubectlVersionExpected[1], minimunKubectlVersionExpected[2])
+			minimumKubectlVersionExpected[0], minimumKubectlVersionExpected[1], minimumKubectlVersionExpected[2])
 	}
 
 	return kubectl, nil
