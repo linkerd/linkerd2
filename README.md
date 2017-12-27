@@ -39,6 +39,35 @@ with `conduit version`
 [this section on Conduit docs][conduit-demo]
 
 
+## Local development
+
+These commands build and deploy all conduit components from source. They install
+a `conduit` executable onto the local system, and deploy the remaining
+components onto Minikube.
+
+This setup assumes working Go and Minikube environments.
+
+```bash
+# build and install conduit cli locally
+go build -o $GOPATH/bin/conduit ./cli
+
+# verify cli version
+conduit version
+
+# build all docker images
+DOCKER_FORCE_BUILD=1 DOCKER_TRACE=1 bin/mkube bin/docker-build latest
+
+# install conduit
+conduit install --version latest | kubectl apply -f -
+
+# validate installation
+kubectl --namespace=conduit get all
+
+# view conduit dashboard
+conduit dashboard
+```
+
+
 ## Code of Conduct
 
 This project is for everyone. We ask that our users and contributors take a few
