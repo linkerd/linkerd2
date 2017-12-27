@@ -155,7 +155,7 @@ func (kctl *kubectl) SelfCheck() ([]healthcheck.CheckResult, error) {
 	output, err := kctl.sh.CombinedOutput("kubectl", "get", "pods")
 	if err != nil {
 		kubectlApiAccessCheck.Status = healthcheck.CheckFailed
-		kubectlApiAccessCheck.NextSteps = fmt.Sprintf("kubectl cannot reach the Kubernetes cluster. The error message is: %s", output)
+		kubectlApiAccessCheck.NextSteps = output
 	} else {
 		kubectlApiAccessCheck.Status = healthcheck.CheckOk
 	}

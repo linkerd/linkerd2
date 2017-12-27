@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 
 	"github.com/runconduit/conduit/cli/healthcheck"
@@ -14,6 +13,8 @@ import (
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/spf13/cobra"
 )
+
+const lineWidth = 52
 
 var statusCmd = &cobra.Command{
 	Use:   "status",
@@ -26,17 +27,20 @@ problems were found.`,
 
 		kubeApi, err := k8s.MakeK8sAPi(shell.MakeUnixShell(), kubeconfigPath, apiAddr)
 		if err != nil {
-			return err
+			fmt.Fprintf(os.Stderr, "Error: %s\n", err.Error())
+			return statusCheckResultWasError(os.Stdout, err)
 		}
 
 		client, err := newApiClient(kubeApi)
 		if err != nil {
-			return err
+			fmt.Fprintf(os.Stderr, "Error: %s\n", err.Error())
+			return statusCheckResultWasError(os.Stdout, err)
 		}
 
 		kubectl, err := k8s.MakeKubectl(shell.MakeUnixShell())
 		if err != nil {
-			log.Fatalf("Failed to start kubectl: %v", err)
+			fmt.Fprintf(os.Stderr, "Error: %s\n", err.Error())
+			return statusCheckResultWasError(os.Stdout, err)
 		}
 
 		return checkStatus(os.Stdout, kubeApi, client, kubectl)
@@ -45,7 +49,6 @@ problems were found.`,
 
 func checkStatus(w io.Writer, api k8s.KubernetesApi, client pb.ApiClient, kubectl k8s.Kubectl) error {
 	prettyPrintResults := func(result healthcheck.CheckResult) {
-		lineWidth := 52
 		checkLabel := fmt.Sprintf("%s: %s", result.SubsystemName, result.CheckDescription)
 
 		filler := ""
@@ -70,16 +73,31 @@ func checkStatus(w io.Writer, api k8s.KubernetesApi, client pb.ApiClient, kubect
 	var errBasedOnOverallStatus error
 	switch check.OverallStatus {
 	case healthcheck.CheckOk:
-		fmt.Fprintln(w, "Status check results are [ok]")
-		errBasedOnOverallStatus = nil
+		errBasedOnOverallStatus = statusCheckResultWasOk(w, errBasedOnOverallStatus)
 	case healthcheck.CheckFailed:
-		fmt.Fprintln(w, "Status check results are [FAIL]")
-		errBasedOnOverallStatus = errors.New("Failed status check")
+		errBasedOnOverallStatus = statusCheckResultWasFail(w, errBasedOnOverallStatus)
 	case healthcheck.CheckError:
-		fmt.Fprintln(w, "Status check results are [ERROR]")
-		errBasedOnOverallStatus = errors.New("Error during status check")
+		errBasedOnOverallStatus = statusCheckResultWasError(w, errBasedOnOverallStatus)
 	}
 
+	return errBasedOnOverallStatus
+}
+
+func statusCheckResultWasOk(w io.Writer, errBasedOnOverallStatus error) error {
+	fmt.Fprintln(w, "Status check results are [ok]")
+	errBasedOnOverallStatus = nil
+	return errBasedOnOverallStatus
+}
+
+func statusCheckResultWasFail(w io.Writer, errBasedOnOverallStatus error) error {
+	fmt.Fprintln(w, "Status check results are [FAIL]")
+	errBasedOnOverallStatus = errors.New("Failed status check")
+	return errBasedOnOverallStatus
+}
+
+func statusCheckResultWasError(w io.Writer, errBasedOnOverallStatus error) error {
+	fmt.Fprintln(w, "Status check results are [ERROR]")
+	errBasedOnOverallStatus = errors.New("Error during status check")
 	return errBasedOnOverallStatus
 }
 
