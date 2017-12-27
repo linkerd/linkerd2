@@ -1,0 +1,4 @@
+kubectl: can talk to Kubernetes cluster.............[ok]
+kubectl: is in $PATH................................[FAIL]  -- This should contain instructions for fail
+kubectl: has compatible version.....................[ERROR] -- This should contain instructions for err
+Status check results are [ERROR]

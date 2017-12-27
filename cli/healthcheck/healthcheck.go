@@ -9,9 +9,10 @@ const (
 )
 
 type CheckResult struct {
-	ComponentName    string
-	checkDescription string
-	status           CheckStatus
+	SubsystemName    string
+	CheckDescription string
+	Status           CheckStatus
+	NextSteps        string
 }
 
 type Check struct {
@@ -23,6 +24,8 @@ type StatusChecker interface {
 	SelfCheck() ([]CheckResult, error)
 }
 
+type CheckObserver func(result CheckResult)
+
 type HealthChecker struct {
 	subsystemsToCheck []StatusChecker
 }
@@ -31,7 +34,11 @@ func (hC *HealthChecker) Add(subsystemChecker StatusChecker) {
 	hC.subsystemsToCheck = append(hC.subsystemsToCheck, subsystemChecker)
 }
 
-func (hC *HealthChecker) PerformCheck() Check {
+func (hC *HealthChecker) PerformCheck(observer CheckObserver) Check {
+	if observer == nil {
+		observer = func(_ CheckResult) {}
+	}
+
 	check := Check{
 		Results:       make([]CheckResult, 0),
 		OverallStatus: CheckOk,
@@ -42,16 +49,16 @@ func (hC *HealthChecker) PerformCheck() Check {
 		if err != nil {
 			check.OverallStatus = CheckError
 		}
-		for _, r := range results {
-			check.Results = append(check.Results, r)
-			checkResultContainsError := r.status == CheckError
-			shouldOverriveStatus := r.status == CheckFailed && check.OverallStatus == CheckOk
+		for _, singleResult := range results {
+			check.Results = append(check.Results, singleResult)
+			checkResultContainsError := singleResult.Status == CheckError
+			shouldOverrideStatus := singleResult.Status == CheckFailed && check.OverallStatus == CheckOk
 
-			if checkResultContainsError || shouldOverriveStatus {
-				check.OverallStatus = r.status
+			if checkResultContainsError || shouldOverrideStatus {
+				check.OverallStatus = singleResult.Status
 			}
+			observer(singleResult)
 		}
-
 	}
 	return check
 }

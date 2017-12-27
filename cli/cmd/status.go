@@ -1,9 +1,13 @@
 package cmd
 
 import (
+	"errors"
+	"fmt"
 	"io"
 	"log"
 	"os"
+
+	"github.com/runconduit/conduit/cli/healthcheck"
 
 	"github.com/runconduit/conduit/cli/k8s"
 	"github.com/runconduit/conduit/cli/shell"
@@ -40,7 +44,43 @@ problems were found.`,
 }
 
 func checkStatus(w io.Writer, api k8s.KubernetesApi, client pb.ApiClient, kubectl k8s.Kubectl) error {
-	return nil
+	prettyPrintResults := func(result healthcheck.CheckResult) {
+		lineWidth := 52
+		checkLabel := fmt.Sprintf("%s: %s", result.SubsystemName, result.CheckDescription)
+
+		filler := ""
+		for i := 0; i < lineWidth-len(checkLabel); i++ {
+			filler = filler + "."
+		}
+
+		switch result.Status {
+		case healthcheck.CheckOk:
+			fmt.Fprintf(w, "%s%s[ok]\n", checkLabel, filler)
+		case healthcheck.CheckFailed:
+			fmt.Fprintf(w, "%s%s[FAIL]  -- %s\n", checkLabel, filler, result.NextSteps)
+		case healthcheck.CheckError:
+			fmt.Fprintf(w, "%s%s[ERROR] -- %s\n", checkLabel, filler, result.NextSteps)
+		}
+	}
+
+	checker := healthcheck.MakeHealthChecker()
+	checker.Add(kubectl)
+	check := checker.PerformCheck(prettyPrintResults)
+
+	var errBasedOnOverallStatus error
+	switch check.OverallStatus {
+	case healthcheck.CheckOk:
+		fmt.Fprintln(w, "Status check results are [ok]")
+		errBasedOnOverallStatus = nil
+	case healthcheck.CheckFailed:
+		fmt.Fprintln(w, "Status check results are [FAIL]")
+		errBasedOnOverallStatus = errors.New("Failed status check")
+	case healthcheck.CheckError:
+		fmt.Fprintln(w, "Status check results are [ERROR]")
+		errBasedOnOverallStatus = errors.New("Error during status check")
+	}
+
+	return errBasedOnOverallStatus
 }
 
 func init() {

@@ -18,21 +18,21 @@ func (m *mockSubsystem) SelfCheck() ([]CheckResult, error) {
 func TestSelfChecker(t *testing.T) {
 	workingSubsystem1 := &mockSubsystem{
 		checksToReturn: []CheckResult{
-			{ComponentName: "w1", checkDescription: "w1a", status: CheckOk},
-			{ComponentName: "w1", checkDescription: "w1b", status: CheckOk},
+			{SubsystemName: "w1", CheckDescription: "w1a", Status: CheckOk},
+			{SubsystemName: "w1", CheckDescription: "w1b", Status: CheckOk},
 		},
 	}
 	workingSubsystem2 := &mockSubsystem{
 		checksToReturn: []CheckResult{
-			{ComponentName: "w2", checkDescription: "w2a", status: CheckOk},
-			{ComponentName: "w2", checkDescription: "w2b", status: CheckOk},
+			{SubsystemName: "w2", CheckDescription: "w2a", Status: CheckOk},
+			{SubsystemName: "w2", CheckDescription: "w2b", Status: CheckOk},
 		},
 	}
 
 	failingSubsystem1 := &mockSubsystem{
 		checksToReturn: []CheckResult{
-			{ComponentName: "f1", checkDescription: "fa", status: CheckOk},
-			{ComponentName: "f1", checkDescription: "fb", status: CheckFailed},
+			{SubsystemName: "f1", CheckDescription: "fa", Status: CheckOk},
+			{SubsystemName: "f1", CheckDescription: "fb", Status: CheckFailed},
 		},
 	}
 
@@ -47,7 +47,7 @@ func TestSelfChecker(t *testing.T) {
 		healthChecker.Add(workingSubsystem2)
 		healthChecker.Add(failingSubsystem1)
 
-		results := healthChecker.PerformCheck()
+		results := healthChecker.PerformCheck(nil)
 
 		allExpectedResults := make([]CheckResult, 0)
 		allExpectedResults = append(allExpectedResults, workingSubsystem1.checksToReturn...)
@@ -74,13 +74,47 @@ func TestSelfChecker(t *testing.T) {
 		}
 	})
 
+	t.Run("Notifies observer of all results", func(t *testing.T) {
+		healthChecker := MakeHealthChecker()
+
+		healthChecker.Add(workingSubsystem1)
+		healthChecker.Add(workingSubsystem2)
+		healthChecker.Add(failingSubsystem1)
+
+		observedResults := make([]CheckResult, 0)
+		observer := func(r CheckResult) {
+			observedResults = append(observedResults, r)
+		}
+
+		check := healthChecker.PerformCheck(observer)
+
+		observedLength := len(observedResults)
+		expectedLength := len(check.Results)
+
+		if expectedLength != observedLength {
+			t.Fatalf("Expecting observed check to contain [%d] check, got [%d]", expectedLength, observedLength)
+		}
+
+		observedResultsSet := make(map[CheckResult]bool)
+		for _, result := range observedResults {
+			observedResultsSet[result] = true
+		}
+
+		for _, observed := range check.Results {
+			if !observedResultsSet[observed] {
+				t.Fatalf("Expected observed results to contain [%v], but was: %v", observed,
+					reflect.ValueOf(observedResultsSet).MapKeys())
+			}
+		}
+	})
+
 	t.Run("Is successful if all checks were succesful", func(t *testing.T) {
 		healthChecker := MakeHealthChecker()
 
 		healthChecker.Add(workingSubsystem1)
 		healthChecker.Add(workingSubsystem2)
 
-		results := healthChecker.PerformCheck()
+		results := healthChecker.PerformCheck(nil)
 
 		if results.OverallStatus != CheckOk {
 			t.Fatalf("Expecting check to be successful, but got [%v]", results)
@@ -94,7 +128,7 @@ func TestSelfChecker(t *testing.T) {
 		healthChecker.Add(failingSubsystem1)
 		healthChecker.Add(workingSubsystem2)
 
-		results := healthChecker.PerformCheck()
+		results := healthChecker.PerformCheck(nil)
 
 		if results.OverallStatus != CheckFailed {
 			t.Fatalf("Expecting check to be error, but got [%v]", results)
@@ -109,7 +143,7 @@ func TestSelfChecker(t *testing.T) {
 		healthChecker.Add(workingSubsystem2)
 		healthChecker.Add(erroingSubsystem1)
 
-		results := healthChecker.PerformCheck()
+		results := healthChecker.PerformCheck(nil)
 
 		if results.OverallStatus != CheckError {
 			t.Fatalf("Expecting check to be error, but got [%v]", results)
