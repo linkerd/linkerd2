@@ -1,5 +1,7 @@
 package healthcheck
 
+import log "github.com/sirupsen/logrus"
+
 type CheckStatus string
 
 const (
@@ -47,6 +49,7 @@ func (hC *HealthChecker) PerformCheck(observer CheckObserver) Check {
 	for _, checker := range hC.subsystemsToCheck {
 		results, err := checker.SelfCheck()
 		if err != nil {
+			log.Errorf("Error checking [%s]: %s", checker, err)
 			check.OverallStatus = CheckError
 			continue
 		}

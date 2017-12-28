@@ -57,6 +57,8 @@ func checkStatus(w io.Writer, kubectl k8s.Kubectl) error {
 	checker.Add(kubectl)
 	check := checker.PerformCheck(prettyPrintResults)
 
+	fmt.Fprintln(w, "")
+
 	var errBasedOnOverallStatus error
 	switch check.OverallStatus {
 	case healthcheck.CheckOk:
