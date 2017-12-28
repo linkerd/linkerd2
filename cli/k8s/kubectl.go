@@ -18,7 +18,7 @@ type Kubectl interface {
 	StartProxy(potentialErrorWhenStartingProxy chan error, port int) error
 	UrlFor(namespace string, extraPathStartingWithSlash string) (*url.URL, error)
 	ProxyPort() int
-	SelfCheck() ([]healthcheck.CheckResult, error)
+	healthcheck.StatusChecker
 }
 
 type kubectl struct {
@@ -112,11 +112,11 @@ func (kctl *kubectl) UrlFor(namespace string, extraPathStartingWithSlash string)
 }
 
 func (kctl *kubectl) SelfCheck() ([]healthcheck.CheckResult, error) {
-	results := make([]healthcheck.CheckResult, 0)
 
 	kubectlOnPathCheck := healthcheck.CheckResult{
 		SubsystemName:    KubectlSubsystemName,
 		CheckDescription: KubectlIsInstalledCheckDescription,
+		Status:           healthcheck.CheckError,
 	}
 	_, err := kctl.sh.CombinedOutput("kubectl", "config")
 	if err != nil {
@@ -125,11 +125,11 @@ func (kctl *kubectl) SelfCheck() ([]healthcheck.CheckResult, error) {
 	} else {
 		kubectlOnPathCheck.Status = healthcheck.CheckOk
 	}
-	results = append(results, kubectlOnPathCheck)
 
 	kubectlVersionCheck := healthcheck.CheckResult{
 		SubsystemName:    KubectlSubsystemName,
 		CheckDescription: KubectlVersionCheckDescription,
+		Status:           healthcheck.CheckError,
 	}
 
 	actualVersion, err := kctl.Version()
@@ -146,11 +146,11 @@ func (kctl *kubectl) SelfCheck() ([]healthcheck.CheckResult, error) {
 				minimumKubectlVersionExpected[0], minimumKubectlVersionExpected[1], minimumKubectlVersionExpected[2])
 		}
 	}
-	results = append(results, kubectlVersionCheck)
 
 	kubectlApiAccessCheck := healthcheck.CheckResult{
 		SubsystemName:    KubectlSubsystemName,
 		CheckDescription: KubectlConnectivityCheckDescription,
+		Status:           healthcheck.CheckError,
 	}
 	output, err := kctl.sh.CombinedOutput("kubectl", "get", "pods")
 	if err != nil {
@@ -159,8 +159,12 @@ func (kctl *kubectl) SelfCheck() ([]healthcheck.CheckResult, error) {
 	} else {
 		kubectlApiAccessCheck.Status = healthcheck.CheckOk
 	}
-	results = append(results, kubectlApiAccessCheck)
 
+	results := []healthcheck.CheckResult{
+		kubectlOnPathCheck,
+		kubectlVersionCheck,
+		kubectlApiAccessCheck,
+	}
 	return results, nil
 }
 
