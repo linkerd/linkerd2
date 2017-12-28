@@ -27,7 +27,7 @@ problems were found.`,
 		kubectl, err := k8s.MakeKubectl(shell.MakeUnixShell())
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %s\n", err.Error())
-			return statusCheckResultWasError(os.Stdout, err)
+			return statusCheckResultWasError(os.Stdout)
 		}
 
 		return checkStatus(os.Stdout, kubectl)
@@ -60,32 +60,29 @@ func checkStatus(w io.Writer, kubectl k8s.Kubectl) error {
 	var errBasedOnOverallStatus error
 	switch check.OverallStatus {
 	case healthcheck.CheckOk:
-		errBasedOnOverallStatus = statusCheckResultWasOk(w, errBasedOnOverallStatus)
+		errBasedOnOverallStatus = statusCheckResultWasOk(w)
 	case healthcheck.CheckFailed:
-		errBasedOnOverallStatus = statusCheckResultWasFail(w, errBasedOnOverallStatus)
+		errBasedOnOverallStatus = statusCheckResultWasFail(w)
 	case healthcheck.CheckError:
-		errBasedOnOverallStatus = statusCheckResultWasError(w, errBasedOnOverallStatus)
+		errBasedOnOverallStatus = statusCheckResultWasError(w)
 	}
 
 	return errBasedOnOverallStatus
 }
 
-func statusCheckResultWasOk(w io.Writer, errBasedOnOverallStatus error) error {
+func statusCheckResultWasOk(w io.Writer) error {
 	fmt.Fprintln(w, "Status check results are [ok]")
-	errBasedOnOverallStatus = nil
-	return errBasedOnOverallStatus
+	return nil
 }
 
-func statusCheckResultWasFail(w io.Writer, errBasedOnOverallStatus error) error {
+func statusCheckResultWasFail(w io.Writer) error {
 	fmt.Fprintln(w, "Status check results are [FAIL]")
-	errBasedOnOverallStatus = errors.New("Failed status check")
-	return errBasedOnOverallStatus
+	return errors.New("failed status check")
 }
 
-func statusCheckResultWasError(w io.Writer, errBasedOnOverallStatus error) error {
+func statusCheckResultWasError(w io.Writer) error {
 	fmt.Fprintln(w, "Status check results are [ERROR]")
-	errBasedOnOverallStatus = errors.New("Error during status check")
-	return errBasedOnOverallStatus
+	return errors.New("error during status check")
 }
 
 func init() {
