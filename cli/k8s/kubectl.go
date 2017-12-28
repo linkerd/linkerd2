@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/runconduit/conduit/cli/healthcheck"
+
 	"github.com/runconduit/conduit/cli/shell"
 )
 
@@ -16,6 +18,7 @@ type Kubectl interface {
 	StartProxy(potentialErrorWhenStartingProxy chan error, port int) error
 	UrlFor(namespace string, extraPathStartingWithSlash string) (*url.URL, error)
 	ProxyPort() int
+	healthcheck.StatusChecker
 }
 
 type kubectl struct {
@@ -24,11 +27,15 @@ type kubectl struct {
 }
 
 const (
-	KubernetesDeployments   = "deployments"
-	KubernetesPods          = "pods"
-	kubectlDefaultProxyPort = 8001
-	kubectlDefaultTimeout   = 10 * time.Second
-	portWhenProxyNotRunning = -1
+	KubernetesDeployments               = "deployments"
+	KubernetesPods                      = "pods"
+	kubectlDefaultProxyPort             = 8001
+	kubectlDefaultTimeout               = 10 * time.Second
+	portWhenProxyNotRunning             = -1
+	KubectlSubsystemName                = "kubectl"
+	KubectlIsInstalledCheckDescription  = "is in $PATH"
+	KubectlVersionCheckDescription      = "has compatible version"
+	KubectlConnectivityCheckDescription = "can talk to Kubernetes cluster"
 	//As per https://github.com/kubernetes/kubernetes/commit/0daee3ad2238de7bb356d1b4368b0733a3497a3a#diff-595bfea7ed0dd0171e1f339a1f8bfcb6R155
 	magicCharacterThatIndicatesProxyIsRunning = '\n'
 )
@@ -52,7 +59,7 @@ func (kctl *kubectl) Version() ([3]int, error) {
 	bytes, err := kctl.sh.CombinedOutput("kubectl", "version", "--client", "--short")
 	versionString := string(bytes)
 	if err != nil {
-		return version, fmt.Errorf("Error running kubectl Version. Output: %s Error: %v", versionString, err)
+		return version, fmt.Errorf("error running kubectl Version. Output: %s Error: %v", versionString, err)
 	}
 
 	justTheVersionString := strings.TrimPrefix(versionString, "Client Version: v")
@@ -60,13 +67,13 @@ func (kctl *kubectl) Version() ([3]int, error) {
 	split := strings.Split(justTheMajorMinorRevisionNumbers, ".")
 
 	if len(split) < 3 {
-		return version, fmt.Errorf("Unknown Version string format from Kubectl: [%s] not enough segments: %s", versionString, split)
+		return version, fmt.Errorf("unknown Version string format from Kubectl: [%s] not enough segments: %s", versionString, split)
 	}
 
 	for i, segment := range split {
 		v, err := strconv.Atoi(strings.TrimSpace(segment))
 		if err != nil {
-			return version, fmt.Errorf("Unknown Version string format from Kubectl: [%s], not an integer: [%s]", versionString, segment)
+			return version, fmt.Errorf("unknown Version string format from Kubectl: [%s], not an integer: [%s]", versionString, segment)
 		}
 		version[i] = v
 	}
@@ -78,7 +85,7 @@ func (kctl *kubectl) StartProxy(potentialErrorWhenStartingProxy chan error, port
 	fmt.Printf("Running `kubectl proxy -p %d`\n", port)
 
 	if kctl.ProxyPort() != portWhenProxyNotRunning {
-		return fmt.Errorf("Kubectl proxy already running on port [%d]", kctl.ProxyPort)
+		return fmt.Errorf("kubectl proxy already running on port [%d]", kctl.ProxyPort)
 	}
 
 	output, err := kctl.sh.AsyncStdout(potentialErrorWhenStartingProxy, "kubectl", "proxy", "-p", strconv.Itoa(port))
@@ -87,7 +94,7 @@ func (kctl *kubectl) StartProxy(potentialErrorWhenStartingProxy chan error, port
 
 	fmt.Println(kubectlOutput)
 	if err != nil {
-		return fmt.Errorf("Error waiting for kubectl to start the proxy. kubectl returned [%s], error: %v", kubectlOutput, err)
+		return fmt.Errorf("error waiting for kubectl to start the proxy. kubectl returned [%s], error: %v", kubectlOutput, err)
 	}
 
 	kctl.proxyPort = kubectlDefaultProxyPort
@@ -102,6 +109,63 @@ func (kctl *kubectl) UrlFor(namespace string, extraPathStartingWithSlash string)
 	schemeHostAndPort := fmt.Sprintf("%s://%s:%d", kctl.ProxyScheme(), kctl.ProxyHost(), kctl.ProxyPort())
 
 	return generateKubernetesApiBaseUrlFor(schemeHostAndPort, namespace, extraPathStartingWithSlash)
+}
+
+func (kctl *kubectl) SelfCheck() ([]healthcheck.CheckResult, error) {
+
+	kubectlOnPathCheck := healthcheck.CheckResult{
+		SubsystemName:    KubectlSubsystemName,
+		CheckDescription: KubectlIsInstalledCheckDescription,
+		Status:           healthcheck.CheckError,
+	}
+	_, err := kctl.sh.CombinedOutput("kubectl", "config")
+	if err != nil {
+		kubectlOnPathCheck.Status = healthcheck.CheckFailed
+		kubectlOnPathCheck.NextSteps = fmt.Sprintf("Could not run the command `kubectl`. The error message is: [%s] and the current $PATH is: %s", err.Error(), kctl.sh.Path())
+	} else {
+		kubectlOnPathCheck.Status = healthcheck.CheckOk
+	}
+
+	kubectlVersionCheck := healthcheck.CheckResult{
+		SubsystemName:    KubectlSubsystemName,
+		CheckDescription: KubectlVersionCheckDescription,
+		Status:           healthcheck.CheckError,
+	}
+
+	actualVersion, err := kctl.Version()
+	if err != nil {
+		kubectlVersionCheck.Status = healthcheck.CheckError
+		kubectlVersionCheck.NextSteps = fmt.Sprintf("Error getting version from kubectl. The error message is: [%s].", err.Error())
+	} else {
+		if isCompatibleVersion(minimumKubectlVersionExpected, actualVersion) {
+			kubectlVersionCheck.Status = healthcheck.CheckOk
+		} else {
+			kubectlVersionCheck.Status = healthcheck.CheckFailed
+			kubectlVersionCheck.NextSteps = fmt.Sprintf("Kubectl is on version [%d.%d.%d], but version [%d.%d.%d] or more recent is required.",
+				actualVersion[0], actualVersion[1], actualVersion[2],
+				minimumKubectlVersionExpected[0], minimumKubectlVersionExpected[1], minimumKubectlVersionExpected[2])
+		}
+	}
+
+	kubectlApiAccessCheck := healthcheck.CheckResult{
+		SubsystemName:    KubectlSubsystemName,
+		CheckDescription: KubectlConnectivityCheckDescription,
+		Status:           healthcheck.CheckError,
+	}
+	output, err := kctl.sh.CombinedOutput("kubectl", "get", "pods")
+	if err != nil {
+		kubectlApiAccessCheck.Status = healthcheck.CheckFailed
+		kubectlApiAccessCheck.NextSteps = output
+	} else {
+		kubectlApiAccessCheck.Status = healthcheck.CheckOk
+	}
+
+	results := []healthcheck.CheckResult{
+		kubectlOnPathCheck,
+		kubectlVersionCheck,
+		kubectlApiAccessCheck,
+	}
+	return results, nil
 }
 
 func isCompatibleVersion(minimalRequirementVersion [3]int, actualVersion [3]int) bool {
@@ -148,7 +212,7 @@ func MakeKubectl(shell shell.Shell) (Kubectl, error) {
 
 	if !isCompatibleVersion(minimumKubectlVersionExpected, actualVersion) {
 		return nil, fmt.Errorf(
-			"Kubectl is on version [%d.%d.%d], but version [%d.%d.%d] or more recent is required",
+			"kubectl is on version [%d.%d.%d], but version [%d.%d.%d] or more recent is required",
 			actualVersion[0], actualVersion[1], actualVersion[2],
 			minimumKubectlVersionExpected[0], minimumKubectlVersionExpected[1], minimumKubectlVersionExpected[2])
 	}

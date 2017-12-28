@@ -16,6 +16,7 @@ type Shell interface {
 	AsyncStdout(potentialErrorFromAsyncProcess chan error, name string, arg ...string) (*bufio.Reader, error)
 	WaitForCharacter(charToWaitFor byte, output *bufio.Reader, timeout time.Duration) (string, error)
 	HomeDir() string
+	Path() string
 }
 
 type unixShell struct{}
@@ -80,6 +81,16 @@ func (sh *unixShell) HomeDir() string {
 		homeEnvVar = "HOME"
 	}
 	return os.Getenv(homeEnvVar)
+}
+
+func (sh *unixShell) Path() string {
+	var pathEnvVar string
+	if runtime.GOOS == "windows" {
+		pathEnvVar = "Path"
+	} else {
+		pathEnvVar = "PATH"
+	}
+	return os.Getenv(pathEnvVar)
 }
 
 func MakeUnixShell() Shell {
