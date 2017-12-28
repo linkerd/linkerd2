@@ -36,8 +36,9 @@ func TestSelfChecker(t *testing.T) {
 		},
 	}
 
-	erroingSubsystem1 := &mockSubsystem{
-		errToReturn: errors.New("Expected"),
+	erroringSubsystem1 := &mockSubsystem{
+		errToReturn:    errors.New("expected"),
+		checksToReturn: []CheckResult{{SubsystemName: "e1", CheckDescription: "this should always be ignored because of the error", Status: CheckOk}},
 	}
 
 	t.Run("Returns all checks by subsystems", func(t *testing.T) {
@@ -108,7 +109,7 @@ func TestSelfChecker(t *testing.T) {
 		}
 	})
 
-	t.Run("Is successful if all checks were succesful", func(t *testing.T) {
+	t.Run("Is successful if all checks were successful", func(t *testing.T) {
 		healthChecker := MakeHealthChecker()
 
 		healthChecker.Add(workingSubsystem1)
@@ -141,12 +142,17 @@ func TestSelfChecker(t *testing.T) {
 		healthChecker.Add(workingSubsystem1)
 		healthChecker.Add(failingSubsystem1)
 		healthChecker.Add(workingSubsystem2)
-		healthChecker.Add(erroingSubsystem1)
+		healthChecker.Add(erroringSubsystem1)
 
 		results := healthChecker.PerformCheck(nil)
 
 		if results.OverallStatus != CheckError {
 			t.Fatalf("Expecting check to be error, but got [%v]", results)
+		}
+
+		expectedNumberOfChecks := len(workingSubsystem1.checksToReturn) + len(workingSubsystem2.checksToReturn) + len(failingSubsystem1.checksToReturn)
+		if len(results.Results) > expectedNumberOfChecks {
+			t.Fatalf("Expecting errored checks to be ignored, but got [%v]", results)
 		}
 	})
 }

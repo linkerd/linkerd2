@@ -48,6 +48,7 @@ func (hC *HealthChecker) PerformCheck(observer CheckObserver) Check {
 		results, err := checker.SelfCheck()
 		if err != nil {
 			check.OverallStatus = CheckError
+			continue
 		}
 		for _, singleResult := range results {
 			check.Results = append(check.Results, singleResult)
