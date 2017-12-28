@@ -50,7 +50,7 @@ func TestCheckStatus(t *testing.T) {
 		}
 
 		output := bytes.NewBufferString("")
-		checkStatus(output, nil, nil, kubectl)
+		checkStatus(output, kubectl)
 
 		goldenFileBytes, err := ioutil.ReadFile("testdata/status_busy_output.golden")
 		if err != nil {
