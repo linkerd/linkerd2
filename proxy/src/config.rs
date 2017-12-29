@@ -86,7 +86,7 @@ pub enum Error {
 
 #[derive(Clone, Debug)]
 pub enum ParseError {
-    EnviromentUnsupported,
+    EnvironmentUnsupported,
     NotANumber,
     HostIsNotAnIpAddress,
     NotUnicode,
@@ -312,7 +312,7 @@ impl Strings for TestEnv {
 fn parse_environment(s: &str) -> Result<Environment, ParseError> {
     match s {
         "Kubernetes" => Ok(Environment::Kubernetes),
-        _ => Err(ParseError::EnviromentUnsupported),
+        _ => Err(ParseError::EnvironmentUnsupported),
     }
 }
 
