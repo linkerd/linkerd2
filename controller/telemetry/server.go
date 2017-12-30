@@ -73,7 +73,7 @@ func init() {
 
 type (
 	server struct {
-		prometheusApi     v1.API
+		prometheusAPI     v1.API
 		pods              *k8s.PodIndex
 		replicaSets       *k8s.ReplicaSetStore
 		instances         instanceCache
@@ -159,7 +159,7 @@ func NewServer(addr, prometheusUrl string, ignoredNamespaces []string, kubeconfi
 	}
 
 	srv := &server{
-		prometheusApi:     v1.NewAPI(prometheusClient),
+		prometheusAPI:     v1.NewAPI(prometheusClient),
 		pods:              pods,
 		replicaSets:       replicaSets,
 		instances:         instanceCache{cache: make(map[string]time.Time, 0)},
@@ -184,29 +184,58 @@ func NewServer(addr, prometheusUrl string, ignoredNamespaces []string, kubeconfi
 func (s *server) Query(ctx context.Context, req *read.QueryRequest) (*read.QueryResponse, error) {
 	log.Debugf("Query request: %+v", req)
 
-	start := time.Unix(0, req.StartMs*int64(time.Millisecond))
-	end := time.Unix(0, req.EndMs*int64(time.Millisecond))
-
-	step, err := time.ParseDuration(req.Step)
-	if err != nil {
-		log.Errorf("ParseDuration(%+v) failed with: %+v", req.Step, err)
-		return nil, err
-	}
-
-	queryRange := v1.Range{Start: start, End: end, Step: step}
-	res, err := s.prometheusApi.QueryRange(ctx, req.Query, queryRange)
-	if err != nil {
-		log.Errorf("QueryRange(%+v, %+v) failed with: %+v", req.Query, queryRange, err)
-		return nil, err
-	}
-
-	if res.Type() != model.ValMatrix {
-		return nil, fmt.Errorf("Unexpected query result type: %s", res.Type())
-	}
-
 	samples := make([]*read.Sample, 0)
-	for _, s := range res.(model.Matrix) {
-		samples = append(samples, convertSampleStream(s))
+
+	if req.StartMs != 0 && req.EndMs != 0 && req.Step != "" {
+		// timeseries query
+
+		start := time.Unix(0, req.StartMs*int64(time.Millisecond))
+		end := time.Unix(0, req.EndMs*int64(time.Millisecond))
+		step, err := time.ParseDuration(req.Step)
+		if err != nil {
+			log.Errorf("ParseDuration(%+v) failed with: %+v", req.Step, err)
+			return nil, err
+		}
+
+		queryRange := v1.Range{
+			Start: start,
+			End:   end,
+			Step:  step,
+		}
+
+		res, err := s.prometheusAPI.QueryRange(ctx, req.Query, queryRange)
+		if err != nil {
+			log.Errorf("QueryRange(%+v, %+v) failed with: %+v", req.Query, queryRange, err)
+			return nil, err
+		}
+		log.Debugf("Query response: %+v", res)
+
+		if res.Type() != model.ValMatrix {
+			err = fmt.Errorf("Unexpected query result type (expected Matrix): %s", res.Type())
+			log.Errorf("%s", err)
+			return nil, err
+		}
+		for _, s := range res.(model.Matrix) {
+			samples = append(samples, convertSampleStream(s))
+		}
+	} else {
+		// single data point (aka summary) query
+
+		res, err := s.prometheusAPI.Query(ctx, req.Query, time.Time{})
+		if err != nil {
+			log.Errorf("Query(%+v, %+v) failed with: %+v", req.Query, time.Time{}, err)
+			return nil, err
+		}
+		log.Debugf("Query response: %+v", res)
+
+		if res.Type() != model.ValVector {
+			err = fmt.Errorf("Unexpected query result type (expected Vector): %s", res.Type())
+			log.Errorf("%s", err)
+			return nil, err
+		}
+		for _, s := range res.(model.Vector) {
+			samples = append(samples, convertSample(s))
+		}
 	}
 
 	return &read.QueryResponse{Metrics: samples}, nil
@@ -381,14 +410,16 @@ func methodString(method *common.HttpMethod) string {
 	return ""
 }
 
-func convertSampleStream(sample *model.SampleStream) *read.Sample {
+func metricToMap(metric model.Metric) map[string]string {
 	labels := make(map[string]string)
-	for k, v := range sample.Metric {
+	for k, v := range metric {
 		labels[string(k)] = string(v)
 	}
+	return labels
+}
 
+func convertSampleStream(sample *model.SampleStream) *read.Sample {
 	values := make([]*read.SampleValue, 0)
-
 	for _, s := range sample.Values {
 		v := read.SampleValue{
 			Value:       float64(s.Value),
@@ -397,7 +428,18 @@ func convertSampleStream(sample *model.SampleStream) *read.Sample {
 		values = append(values, &v)
 	}
 
-	return &read.Sample{Values: values, Labels: labels}
+	return &read.Sample{Values: values, Labels: metricToMap(sample.Metric)}
+}
+
+func convertSample(sample *model.Sample) *read.Sample {
+	values := []*read.SampleValue{
+		&read.SampleValue{
+			Value:       float64(sample.Value),
+			TimestampMs: int64(sample.Timestamp),
+		},
+	}
+
+	return &read.Sample{Values: values, Labels: metricToMap(sample.Metric)}
 }
 
 func (s *server) requestLabelsFor(requestScope *write.RequestScope) prometheus.Labels {

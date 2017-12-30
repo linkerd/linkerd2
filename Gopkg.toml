@@ -40,6 +40,10 @@ required = ["github.com/golang/protobuf/protoc-gen-go"]
   name = "github.com/golang/protobuf"
   revision = "1e59b77b52bf8e4b449a57e6f79f21226d571845" # protobuf has no release tags at time of writing
 
+[[constraint]]
+  name = "github.com/prometheus/client_golang"
+  revision = "9bb6ab929dcbe1c8393cd9ef70387cb69811bd1c"
+
 #
 # k8s.io/kubernetes dependency fixes
 # taken from https://github.com/kubernetes/kubernetes/blob/master/Godeps/Godeps.json
