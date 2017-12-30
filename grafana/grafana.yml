@@ -1,0 +1,91 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-bootstrap
+data:
+  grafana-bootstrap.sh: |-
+    #!/bin/sh
+
+    set -ex
+
+    GRAFANA_HOST=grafana.default.svc.cluster.local
+
+    prometheus_data_source=$(cat <<EOF
+    {
+      "access": "proxy",
+      "isDefault": true,
+      "jsonData": {"timeInterval": "5s"},
+      "name": "prometheus",
+      "type": "prometheus",
+      "url": "http://prometheus.conduit.svc.cluster.local:9090"
+    }
+    EOF
+    )
+
+    until $(curl -sfo /dev/null http://admin:admin@$GRAFANA_HOST:3000/api/datasources); do
+      # wait for grafana to boot
+      sleep 1
+    done
+    curl -vX POST -d "${prometheus_data_source}" -H "Content-Type: application/json" http://admin:admin@$GRAFANA_HOST:3000/api/datasources
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: grafana
+  labels:
+    app: grafana
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+      - image: grafana/grafana:4.6.3
+        name: grafana
+        env:
+        - name: GF_AUTH_ANONYMOUS_ENABLED
+          value: "true"
+        - name: GF_AUTH_ANONYMOUS_ORG_ROLE
+          value: Admin
+        ports:
+        - name: grafana
+          containerPort: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+spec:
+  selector:
+    app: grafana
+  type: LoadBalancer
+  ports:
+  - name: grafana
+    port: 3000
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: grafana-bootstrap
+spec:
+  template:
+    metadata:
+      name: grafana-bootstrap
+    spec:
+      containers:
+      - name: grafana-bootstrap
+        image: radial/busyboxplus:curl
+        command: ["/grafana-bootstrap/grafana-bootstrap.sh"]
+        volumeMounts:
+        - name: "grafana-bootstrap"
+          mountPath: "/grafana-bootstrap"
+          readOnly: true
+      volumes:
+      - name: grafana-bootstrap
+        configMap:
+          name: "grafana-bootstrap"
+          defaultMode: 0744
+      restartPolicy: OnFailure
