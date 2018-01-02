@@ -8,8 +8,8 @@ import (
 
 	"github.com/runconduit/conduit/cli/healthcheck"
 
-	"github.com/runconduit/conduit/cli/k8s"
 	"github.com/runconduit/conduit/cli/shell"
+	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/spf13/cobra"
 )
 

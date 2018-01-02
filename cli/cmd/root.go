@@ -3,9 +3,10 @@ package cmd
 import (
 	"os"
 
-	"github.com/runconduit/conduit/cli/k8s"
-	"github.com/runconduit/conduit/controller/api/public"
+	"github.com/runconduit/conduit/pkg/conduit"
+
 	pb "github.com/runconduit/conduit/controller/gen/public"
+	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/spf13/cobra"
 )
 
@@ -39,11 +40,11 @@ func newApiClient(kubeApi k8s.KubernetesApi) (pb.ApiClient, error) {
 		return nil, err
 	}
 
-	apiConfig := &public.Config{
+	apiConfig := &conduit.Config{
 		ServerURL: url,
 	}
 
-	return public.NewClient(apiConfig, kubeApi)
+	return conduit.NewExternalClient(apiConfig, kubeApi)
 }
 
 // Exit with non-zero exit status without printing the command line usage and

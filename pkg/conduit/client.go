@@ -1,4 +1,4 @@
-package public
+package conduit
 
 import (
 	"bufio"
@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/runconduit/conduit/cli/k8s"
+	"github.com/runconduit/conduit/pkg/k8s"
 
 	"github.com/golang/protobuf/proto"
 	common "github.com/runconduit/conduit/controller/gen/common"
@@ -35,7 +35,18 @@ type (
 	}
 )
 
-func NewClient(config *Config, k8sApi k8s.KubernetesApi) (pb.ApiClient, error) {
+func NewInternalClient(config *Config) (pb.ApiClient, error) {
+	if !config.ServerURL.IsAbs() {
+		return nil, fmt.Errorf("server URL must be absolute, was [%s]", config.ServerURL.String())
+	}
+
+	return &client{
+		serverURL: config.ServerURL.ResolveReference(&url.URL{Path: ApiPrefix}),
+		client:    http.DefaultClient,
+	}, nil
+}
+
+func NewExternalClient(config *Config, k8sApi k8s.KubernetesApi) (pb.ApiClient, error) {
 	if !config.ServerURL.IsAbs() {
 		return nil, fmt.Errorf("server URL must be absolute, was [%s]", config.ServerURL.String())
 	}
@@ -46,7 +57,7 @@ func NewClient(config *Config, k8sApi k8s.KubernetesApi) (pb.ApiClient, error) {
 	}
 
 	return &client{
-		serverURL: config.ServerURL.ResolveReference(&url.URL{Path: apiPrefix}),
+		serverURL: config.ServerURL.ResolveReference(&url.URL{Path: ApiPrefix}),
 		client:    k8sRestClient,
 	}, nil
 }
@@ -91,7 +102,7 @@ func (c *client) apiRequest(ctx context.Context, endpoint string, req proto.Mess
 	defer httpRsp.Body.Close()
 
 	reader := bufio.NewReader(httpRsp.Body)
-	errorMsg := httpRsp.Header.Get(errorHeader)
+	errorMsg := httpRsp.Header.Get(ErrorHeader)
 	return clientUnmarshal(reader, errorMsg, rsp)
 }
 

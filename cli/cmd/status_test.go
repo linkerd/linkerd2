@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/runconduit/conduit/cli/k8s"
+	"github.com/runconduit/conduit/pkg/k8s"
 
 	"github.com/runconduit/conduit/cli/healthcheck"
 )

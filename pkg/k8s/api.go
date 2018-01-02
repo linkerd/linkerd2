@@ -51,5 +51,6 @@ func NewK8sAPi(shell shell.Shell, k8sConfigFilesystemPathOverride string, apiHos
 
 	return &kubernetesApi{
 		apiSchemeHostAndPort: apiHostAndPortOverride,
+		config:               config,
 	}, nil
 }

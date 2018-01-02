@@ -11,9 +11,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/runconduit/conduit/controller/api/public"
-	"github.com/runconduit/conduit/web/srv"
+	"github.com/runconduit/conduit/pkg/conduit"
+
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/runconduit/conduit/web/srv"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -46,10 +47,10 @@ func main() {
 		Host:   *apiAddr,
 		Path:   "/",
 	}
-	apiConfig := public.Config{
+	apiConfig := conduit.Config{
 		ServerURL: apiURL,
 	}
-	client, err := public.NewClient(&apiConfig, http.DefaultTransport)
+	client, err := conduit.NewInternalClient(&apiConfig)
 	if err != nil {
 		log.Fatalf("failed to construct client for API server URL %s", apiURL)
 	}

@@ -1,4 +1,4 @@
-package public
+package conduit
 
 import (
 	"bufio"

@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/runconduit/conduit/cli/k8s"
 	"github.com/runconduit/conduit/cli/shell"
+	"github.com/runconduit/conduit/pkg/k8s"
 
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/spf13/cobra"

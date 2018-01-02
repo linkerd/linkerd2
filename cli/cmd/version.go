@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/runconduit/conduit/cli/k8s"
 	"github.com/runconduit/conduit/cli/shell"
+	"github.com/runconduit/conduit/pkg/k8s"
 
 	"github.com/runconduit/conduit/controller"
 	pb "github.com/runconduit/conduit/controller/gen/public"
