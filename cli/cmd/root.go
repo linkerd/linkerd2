@@ -43,7 +43,7 @@ func newApiClient(kubeApi k8s.KubernetesApi) (pb.ApiClient, error) {
 		ServerURL: url,
 	}
 
-	transport, err := kubeApi.MakeSecureTransport()
+	transport, err := kubeApi.NewSecureTransport()
 	if err != nil {
 		return nil, err
 	}

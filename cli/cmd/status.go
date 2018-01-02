@@ -24,7 +24,7 @@ problems were found.`,
 	Args: cobra.NoArgs,
 	Run: exitSilentlyOnError(func(cmd *cobra.Command, args []string) error {
 
-		kubectl, err := k8s.MakeKubectl(shell.MakeUnixShell())
+		kubectl, err := k8s.MakeKubectl(shell.NewUnixShell())
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %s\n", err.Error())
 			return statusCheckResultWasError(os.Stdout)

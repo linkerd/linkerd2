@@ -13,7 +13,7 @@ import (
 const kubernetesConfigFilePathEnvVariable = "KUBECONFIG"
 
 type KubernetesApi interface {
-	MakeSecureTransport() (http.RoundTripper, error)
+	NewSecureTransport() (http.RoundTripper, error)
 	UrlFor(namespace string, extraPathStartingWithSlash string) (*url.URL, error)
 }
 
@@ -26,11 +26,11 @@ func (k8s *kubernetesApi) UrlFor(namespace string, extraPathStartingWithSlash st
 	return generateKubernetesApiBaseUrlFor(k8s.apiSchemeHostAndPort, namespace, extraPathStartingWithSlash)
 }
 
-func (k8s *kubernetesApi) MakeSecureTransport() (http.RoundTripper, error) {
+func (k8s *kubernetesApi) NewSecureTransport() (http.RoundTripper, error) {
 	return rest.TransportFor(k8s.config)
 }
 
-func MakeK8sAPi(shell shell.Shell, k8sConfigFilesystemPathOverride string, apiHostAndPortOverride string) (KubernetesApi, error) {
+func NewK8sAPi(shell shell.Shell, k8sConfigFilesystemPathOverride string, apiHostAndPortOverride string) (KubernetesApi, error) {
 	kubeconfigEnvVar := os.Getenv(kubernetesConfigFilePathEnvVariable)
 	config, err := parseK8SConfig(findK8sConfigFile(k8sConfigFilesystemPathOverride, kubeconfigEnvVar, shell.HomeDir()))
 	if err != nil {
