@@ -157,7 +157,6 @@ const DEFAULT_PRIVATE_LISTENER: &str = "tcp://127.0.0.1:4140";
 const DEFAULT_PUBLIC_LISTENER: &str = "tcp://0.0.0.0:4143";
 const DEFAULT_CONTROL_LISTENER: &str = "tcp://0.0.0.0:4190";
 const DEFAULT_PRIVATE_CONNECT_TIMEOUT_MS: u64 = 20;
-const DEFAULT_CONTROL_URL: &str = "tcp://proxy-api.conduit.svc.cluster.local:8086";
 const DEFAULT_RESOLV_CONF: &str = "/etc/resolv.conf";
 
 // ===== impl Config =====
@@ -176,7 +175,6 @@ impl<'a> TryFrom<&'a Strings> for Config {
         let public_connect_timeout = parse(strings, ENV_PUBLIC_CONNECT_TIMEOUT, parse_number);
         let private_connect_timeout = parse(strings, ENV_PRIVATE_CONNECT_TIMEOUT, parse_number);
         let resolv_conf_path = strings.get(ENV_RESOLV_CONF);
-        let control_host_and_port = parse(strings, ENV_CONTROL_URL, parse_url);
         let event_buffer_capacity = parse(strings, ENV_EVENT_BUFFER_CAPACITY, parse_number);
         let metrics_flush_interval_secs =
             parse(strings, ENV_METRICS_FLUSH_INTERVAL_SECS, parse_number);
@@ -187,6 +185,17 @@ impl<'a> TryFrom<&'a Strings> for Config {
         let node_name = strings.get(ENV_NODE_NAME);
         let destinations_autocomplete_fqdn =
             parse(strings, ENV_DESTINATIONS_AUTOCOMPLETE_FQDN, parse_environment);
+
+        // There is no default controller URL because a default would make it
+        // too easy to connect to the wrong controller, which would be dangerous.
+        let control_host_and_port = match parse(strings, ENV_CONTROL_URL, parse_url) {
+            Ok(Some(x)) => Ok(x),
+            Ok(None) => {
+                error!("{} is not set", ENV_CONTROL_URL);
+                Err(Error::InvalidEnvVar)
+            },
+            Err(e) => Err(e),
+        };
 
         Ok(Config {
             private_listener: Listener {
@@ -209,8 +218,7 @@ impl<'a> TryFrom<&'a Strings> for Config {
             resolv_conf_path: resolv_conf_path?
                 .unwrap_or(DEFAULT_RESOLV_CONF.into())
                 .into(),
-            control_host_and_port: control_host_and_port?
-                .unwrap_or_else(|| parse_url(DEFAULT_CONTROL_URL).unwrap()),
+            control_host_and_port: control_host_and_port?,
 
             event_buffer_capacity: event_buffer_capacity?.unwrap_or(DEFAULT_EVENT_BUFFER_CAPACITY),
             metrics_flush_interval:
