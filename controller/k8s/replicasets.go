@@ -74,6 +74,9 @@ func (p *ReplicaSetStore) GetDeploymentForPod(pod *v1.Pod) (string, error) {
 		if err != nil {
 			return "", err
 		}
+		if len(rs.GetOwnerReferences()) == 0 {
+			return namespace + "/" + rsName, nil
+		}
 		return namespace + "/" + rs.GetOwnerReferences()[0].Name, nil
 	}
 	return namespace + "/" + parent.Name, nil
