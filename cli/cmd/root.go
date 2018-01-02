@@ -43,12 +43,7 @@ func newApiClient(kubeApi k8s.KubernetesApi) (pb.ApiClient, error) {
 		ServerURL: url,
 	}
 
-	transport, err := kubeApi.NewSecureTransport()
-	if err != nil {
-		return nil, err
-	}
-
-	return public.NewClient(apiConfig, transport)
+	return public.NewClient(apiConfig, kubeApi)
 }
 
 // Exit with non-zero exit status without printing the command line usage and

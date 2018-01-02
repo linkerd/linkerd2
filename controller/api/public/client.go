@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/runconduit/conduit/cli/k8s"
+
 	"github.com/golang/protobuf/proto"
 	common "github.com/runconduit/conduit/controller/gen/common"
 	pb "github.com/runconduit/conduit/controller/gen/public"
@@ -33,16 +35,19 @@ type (
 	}
 )
 
-func NewClient(config *Config, transport http.RoundTripper) (pb.ApiClient, error) {
+func NewClient(config *Config, k8sApi k8s.KubernetesApi) (pb.ApiClient, error) {
 	if !config.ServerURL.IsAbs() {
 		return nil, fmt.Errorf("server URL must be absolute, was [%s]", config.ServerURL.String())
 	}
 
+	k8sRestClient, err := k8sApi.NewClient()
+	if err != nil {
+		return nil, err
+	}
+
 	return &client{
 		serverURL: config.ServerURL.ResolveReference(&url.URL{Path: apiPrefix}),
-		client: &http.Client{
-			Transport: transport,
-		},
+		client:    k8sRestClient,
 	}, nil
 }
 
