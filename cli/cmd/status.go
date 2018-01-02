@@ -6,10 +6,10 @@ import (
 	"io"
 	"os"
 
-	"github.com/runconduit/conduit/cli/healthcheck"
+	"github.com/runconduit/conduit/pkg/healthcheck"
 
-	"github.com/runconduit/conduit/cli/shell"
 	"github.com/runconduit/conduit/pkg/k8s"
+	"github.com/runconduit/conduit/pkg/shell"
 	"github.com/spf13/cobra"
 )
 

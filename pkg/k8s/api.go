@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/runconduit/conduit/cli/shell"
+	"github.com/runconduit/conduit/pkg/shell"
 	"k8s.io/client-go/rest"
 )
 

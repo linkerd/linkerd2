@@ -8,7 +8,7 @@ import (
 	"text/template"
 
 	"github.com/runconduit/conduit/controller"
-	uuid "github.com/satori/go.uuid"
+	"github.com/satori/go.uuid"
 	"github.com/spf13/cobra"
 )
 

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/runconduit/conduit/cli/healthcheck"
+	"github.com/runconduit/conduit/pkg/healthcheck"
 )
 
 type mockShell struct {

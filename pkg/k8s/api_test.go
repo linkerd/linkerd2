@@ -3,7 +3,7 @@ package k8s
 import (
 	"testing"
 
-	"github.com/runconduit/conduit/cli/shell"
+	"github.com/runconduit/conduit/pkg/shell"
 )
 
 func TestKubernetesApiUrlFor(t *testing.T) {

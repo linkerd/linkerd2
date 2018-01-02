@@ -10,8 +10,8 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/runconduit/conduit/cli/shell"
 	"github.com/runconduit/conduit/pkg/k8s"
+	"github.com/runconduit/conduit/pkg/shell"
 
 	common "github.com/runconduit/conduit/controller/gen/common"
 	pb "github.com/runconduit/conduit/controller/gen/public"

@@ -5,8 +5,8 @@ import (
 	"log"
 
 	"github.com/pkg/browser"
-	"github.com/runconduit/conduit/cli/shell"
 	"github.com/runconduit/conduit/pkg/k8s"
+	"github.com/runconduit/conduit/pkg/shell"
 	"github.com/spf13/cobra"
 )
 

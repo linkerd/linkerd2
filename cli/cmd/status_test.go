@@ -6,9 +6,8 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/runconduit/conduit/pkg/healthcheck"
 	"github.com/runconduit/conduit/pkg/k8s"
-
-	"github.com/runconduit/conduit/cli/healthcheck"
 )
 
 type mockKubectl struct {
