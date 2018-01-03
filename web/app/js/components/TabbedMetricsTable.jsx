@@ -111,7 +111,7 @@ export default class TabbedMetricsTable extends React.Component {
       error: '',
       lastUpdated: this.props.lastUpdated,
       metricsWindow: "10s",
-      pollingInterval: "10000",
+      pollingInterval: 10000,
       pendingRequests: false
     };
   }
@@ -121,18 +121,6 @@ export default class TabbedMetricsTable extends React.Component {
       this.loadFromServer();
       this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
     }
-  }
-
-  shouldComponentUpdate(nextProps) {
-    /*
-      Even though we update the state after each timeseries fetch, only re-render
-      the component when the rollup metrics also need updating, so that all the
-      parts of the table refresh at once.
-     */
-    if (nextProps.lastUpdated === this.props.lastUpdated) {
-      return false;
-    }
-    return true;
   }
 
   componentWillUnmount() {
