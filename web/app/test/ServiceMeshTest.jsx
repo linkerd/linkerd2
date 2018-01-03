@@ -17,7 +17,7 @@ describe('ServiceMesh', () => {
   }
 
   beforeEach(() => {
-    fetchStub = sinon.stub(window, 'fetch');
+    fetchStub = sinon.stub(window, 'fetch').returnsPromise();
   });
 
   afterEach(() => {
@@ -27,7 +27,7 @@ describe('ServiceMesh', () => {
   it("displays an error if the api call didn't go well", () => {
     let errorMsg = "Something went wrong!";
 
-    fetchStub.returnsPromise().resolves({
+    fetchStub.resolves({
       ok: false,
       statusText: errorMsg
     });
@@ -39,10 +39,6 @@ describe('ServiceMesh', () => {
   });
 
   it("renders the spinner before metrics are loaded", () => {
-    fetchStub.returnsPromise().resolves({
-      ok: true,
-      json: () => Promise.resolve({ metrics: [] })
-    });
     component = mount(routerWrap(ServiceMesh));
 
     expect(component.find("ConduitSpinner")).to.have.length(1);
@@ -51,7 +47,7 @@ describe('ServiceMesh', () => {
   });
 
   it("renders a call to action if no metrics are received", () => {
-    fetchStub.returnsPromise().resolves({
+    fetchStub.resolves({
       ok: true,
       json: () => Promise.resolve({ metrics: [] })
     });
@@ -68,7 +64,7 @@ describe('ServiceMesh', () => {
     let addedPods = _.cloneDeep(podFixtures.pods);
     _.set(addedPods[0], "added", true);
 
-    fetchStub.returnsPromise().resolves({
+    fetchStub.resolves({
       ok: true,
       json: () => Promise.resolve({ pods: addedPods})
     });
@@ -82,7 +78,7 @@ describe('ServiceMesh', () => {
   });
 
   it("renders service mesh details section", () => {
-    fetchStub.returnsPromise().resolves({
+    fetchStub.resolves({
       ok: true,
       json: () => Promise.resolve({ metrics: [] })
     });
@@ -97,7 +93,7 @@ describe('ServiceMesh', () => {
   });
 
   it("renders control plane section", () => {
-    fetchStub.returnsPromise().resolves({
+    fetchStub.resolves({
       ok: true,
       json: () => Promise.resolve({ metrics: [] })
     });
@@ -111,7 +107,7 @@ describe('ServiceMesh', () => {
   });
 
   it("renders data plane section", () => {
-    fetchStub.returnsPromise().resolves({
+    fetchStub.resolves({
       ok: true,
       json: () => Promise.resolve({ metrics: [] })
     });
@@ -126,7 +122,7 @@ describe('ServiceMesh', () => {
 
   describe("renderAddDeploymentsMessage", () => {
     it("displays when no deployments are in the mesh", () => {
-      fetchStub.returnsPromise().resolves({
+      fetchStub.resolves({
         ok: true,
         json: () => Promise.resolve({ pods: []})
       });
@@ -138,7 +134,7 @@ describe('ServiceMesh', () => {
     });
 
     it("displays a message if >1 deployment has not been added to the mesh", () => {
-      fetchStub.returnsPromise().resolves({
+      fetchStub.resolves({
         ok: true,
         json: () => Promise.resolve({ pods: podFixtures.pods})
       });
@@ -153,7 +149,7 @@ describe('ServiceMesh', () => {
       let addedPods = _.cloneDeep(podFixtures.pods);
       _.set(addedPods[0], "added", true);
 
-      fetchStub.returnsPromise().resolves({
+      fetchStub.resolves({
         ok: true,
         json: () => Promise.resolve({ pods: addedPods})
       });
@@ -170,7 +166,7 @@ describe('ServiceMesh', () => {
         _.set(pod, "added", true);
       });
 
-      fetchStub.returnsPromise().resolves({
+      fetchStub.resolves({
         ok: true,
         json: () => Promise.resolve({ pods: addedPods})
       });
