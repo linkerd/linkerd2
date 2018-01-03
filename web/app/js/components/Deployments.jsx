@@ -1,5 +1,4 @@
 import _ from 'lodash';
-import { ApiHelpers } from './util/ApiHelpers.js';
 import CallToAction from './CallToAction.jsx';
 import ConduitSpinner from "./ConduitSpinner.jsx";
 import DeploymentSummary from './DeploymentSummary.jsx';
@@ -7,6 +6,7 @@ import ErrorBanner from './ErrorBanner.jsx';
 import React from 'react';
 import { rowGutter } from './util/Utils.js';
 import TabbedMetricsTable from './TabbedMetricsTable.jsx';
+import { ApiHelpers, urlsForResource } from './util/ApiHelpers.js';
 import { Col, Row } from 'antd';
 import { emptyMetric, getPodsByDeployment, processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
 import './../../css/deployments.css';
@@ -80,12 +80,12 @@ export default class Deployments extends React.Component {
   loadTimeseriesFromServer(meshDeployMetrics, combinedMetrics) {
     // fetch only the timeseries for the 3 deployments we display at the top of the page
     let limitSparklineData = _.size(meshDeployMetrics) > maxTsToFetch;
-    let rollupPath = `${this.props.pathPrefix}/api/metrics?window=${this.state.metricsWindow}`;
-    let timeseriesPath = `${rollupPath}&timeseries=true`;
+
+    let resourceInfo = urlsForResource(this.props.pathPrefix, this.state.metricsWindow)["deployment"];
     let leastHealthyDeployments = this.getLeastHealthyDeployments(meshDeployMetrics);
 
     let tsPromises = _.map(leastHealthyDeployments, dep => {
-      let tsPathForDeploy = `${timeseriesPath}&target_deploy=${dep.name}`;
+      let tsPathForDeploy = resourceInfo.url(dep.name).ts;
       return this.api.fetch(tsPathForDeploy);
     });
 
@@ -95,7 +95,7 @@ export default class Deployments extends React.Component {
           mem = mem.concat(ea.metrics);
           return mem;
         }, []);
-        let tsByDeploy = processTimeseriesMetrics(leastHealthyTs, "targetDeploy");
+        let tsByDeploy = processTimeseriesMetrics(leastHealthyTs, resourceInfo.groupBy);
         this.setState({
           timeseriesByDeploy: tsByDeploy,
           lastUpdated: Date.now(),

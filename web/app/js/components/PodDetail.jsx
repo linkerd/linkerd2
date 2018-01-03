@@ -59,7 +59,7 @@ export default class PodDetail extends React.Component {
 
     let urls = urlsForResource(this.props.pathPrefix, this.state.metricsWindow);
 
-    let metricsUrl = `${this.props.pathPrefix}/api/metrics?window=${this.state.metricsWindow}` ;
+    let metricsUrl = urls["deployment"].url().rollup;
     let podMetricsUrl = `${metricsUrl}&timeseries=true&target_pod=${this.state.pod}`;
     let upstreamRollupUrl = urls["upstream_pod"].url(this.state.pod).rollup;
     let downstreamRollupUrl = urls["downstream_pod"].url(this.state.pod).rollup;

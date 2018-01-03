@@ -32,13 +32,14 @@ export const urlsForResource = (pathPrefix, metricsWindow) => {
   let metricsUrl = `${pathPrefix}/api/metrics?window=${metricsWindow}`;
 
   return {
-    // all deploys
+    // all deploys (default), or a given deploy if specified
     "deployment": {
       groupBy: "targetDeploy",
-      url: () => {
-        let timeseriesPath = `${metricsUrl}&timeseries=true`;
+      url: (deploy = null) => {
+        let timeseriesUrl = !deploy ? `${metricsUrl}&timeseries=true` :
+          `${metricsUrl}&timeseries=true&target_deploy=${deploy}`;
         return {
-          ts: timeseriesPath,
+          ts: timeseriesUrl,
           rollup: metricsUrl
         };
       }

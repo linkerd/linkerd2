@@ -50,12 +50,9 @@ export default class Deployment extends React.Component {
       metricsWindow: "10m",
       deploy: deployment,
       metrics:[],
-
       pods: [],
       upstreamMetrics: [],
-
       downstreamMetrics: [],
-
       pendingRequests: false,
       loaded: false,
       error: ''
@@ -70,7 +67,7 @@ export default class Deployment extends React.Component {
 
     let urls = urlsForResource(this.props.pathPrefix, this.state.metricsWindow);
 
-    let metricsUrl = `${this.props.pathPrefix}/api/metrics?window=${this.state.metricsWindow}` ;
+    let metricsUrl = urls["deployment"].url().rollup;
     let deployMetricsUrl = `${metricsUrl}&timeseries=true&target_deploy=${this.state.deploy}`;
     let podRollupUrl = urls["pod"].url(this.state.deploy).rollup;
     let upstreamRollupUrl = urls["upstream_deployment"].url(this.state.deploy).rollup;
