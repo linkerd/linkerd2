@@ -1,0 +1,11 @@
+@import 'styles.css';
+
+.version {
+  padding: 0 0 0 9px;
+  font-size: 13px;
+  font-weight: var(--font-weight-bold);
+  line-height: 2;
+  position: fixed;
+  height: 40px;
+  bottom: calc(var(--base-width)*10);
+}

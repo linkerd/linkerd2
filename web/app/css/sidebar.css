@@ -65,24 +65,6 @@
   & .ant-menu-item-active, & .ant-menu:not(.ant-menu-horizontal) .ant-menu-item-selected {
     background: #007EFF;
   }
-
-  & .conduit-current-version {
-    border: none;
-    margin: 0;
-    padding: 0 0 0 9px;
-    position: fixed;
-    height: 40px;
-    width: 150px;
-    bottom: calc(var(--base-width)*3);
-    color: white;
-    font-weight: 700;
-  }
-
-  & .conduit-version-check {
-    border: none;
-    margin: 0;
-    padding: 0;
-  }
 }
 
 .call-to-action .action {
