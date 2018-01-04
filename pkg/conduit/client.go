@@ -61,7 +61,7 @@ func (c *client) Tap(ctx context.Context, req *pb.TapRequest, _ ...grpc.CallOpti
 
 func (c tapClient) Recv() (*common.TapEvent, error) {
 	var msg common.TapEvent
-	err := clientUnmarshal(c.reader, "", &msg)
+	err := fromByteStreamToProtocolBuffers(c.reader, "", &msg)
 	return &msg, err
 }
 
@@ -82,7 +82,7 @@ func (c *client) apiRequest(ctx context.Context, endpoint string, req proto.Mess
 
 	reader := bufio.NewReader(httpRsp.Body)
 	errorMsg := httpRsp.Header.Get(ErrorHeader)
-	return clientUnmarshal(reader, errorMsg, rsp)
+	return fromByteStreamToProtocolBuffers(reader, errorMsg, rsp)
 }
 
 func (c *client) post(ctx context.Context, endpoint string, req proto.Message) (*http.Response, error) {

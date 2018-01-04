@@ -10,29 +10,36 @@ import (
 	pb "github.com/runconduit/conduit/controller/gen/public"
 )
 
-//todo: make object mockable and test client
-func clientUnmarshal(r *bufio.Reader, errorMsg string, msg proto.Message) error {
+func fromByteStreamToProtocolBuffers(byteStreamContainingMessage *bufio.Reader, errorMessageReturnedAsMetadata string, out proto.Message) error {
+	//TODO: why the magic number 4?
 	byteSize := make([]byte, 4)
-	_, err := r.Read(byteSize)
+
+	//TODO: why is this necessary?
+	_, err := byteStreamContainingMessage.Read(byteSize)
 	if err != nil {
-		return err
+		return fmt.Errorf("error reading byte stream header: %v", err)
 	}
 
 	size := binary.LittleEndian.Uint32(byteSize)
 	bytes := make([]byte, size)
-	_, err = io.ReadFull(r, bytes)
+	_, err = io.ReadFull(byteStreamContainingMessage, bytes)
 	if err != nil {
-		return err
+		return fmt.Errorf("error reading byte stream content: %v", err)
 	}
 
-	if errorMsg != "" {
+	if errorMessageReturnedAsMetadata != "" {
 		var apiError pb.ApiError
 		err = proto.Unmarshal(bytes, &apiError)
 		if err != nil {
-			return err
+			return fmt.Errorf("error unmarshalling error from byte stream: %v", err)
 		}
-		return fmt.Errorf("%s: %s", errorMsg, apiError.Error)
+		return fmt.Errorf("%s: %s", errorMessageReturnedAsMetadata, apiError.Error)
 	}
 
-	return proto.Unmarshal(bytes, msg)
+	err = proto.Unmarshal(bytes, out)
+	if err != nil {
+		return fmt.Errorf("error unmarshalling bytes: %v", err)
+	} else {
+		return nil
+	}
 }
