@@ -12,38 +12,29 @@ import (
 	"github.com/golang/protobuf/proto"
 	common "github.com/runconduit/conduit/controller/gen/common"
 	pb "github.com/runconduit/conduit/controller/gen/public"
+	"github.com/runconduit/conduit/pkg/k8s"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
 
-type (
-	Config struct {
-		ServerURL *url.URL
-	}
-
-	client struct {
-		serverURL *url.URL
-		client    *http.Client
-	}
-
-	tapClient struct {
-		ctx    context.Context
-		reader *bufio.Reader
-	}
+const (
+	ApiRoot             = "/" // Must be absolute (with a leading slash).
+	ApiVersion          = "v1"
+	JsonContentType     = "application/json"
+	ApiPrefix           = "api/" + ApiVersion + "/" // Must be relative (without a leading slash).
+	ProtobufContentType = "application/octet-stream"
+	ErrorHeader         = "conduit-error"
 )
 
-func NewClient(config *Config, transport http.RoundTripper) (pb.ApiClient, error) {
-	if !config.ServerURL.IsAbs() {
-		return nil, fmt.Errorf("server URL must be absolute, was [%s]", config.ServerURL.String())
-	}
+type client struct {
+	serverURL *url.URL
+	client    *http.Client
+}
 
-	return &client{
-		serverURL: config.ServerURL.ResolveReference(&url.URL{Path: apiPrefix}),
-		client: &http.Client{
-			Transport: transport,
-		},
-	}, nil
+type tapClient struct {
+	ctx    context.Context
+	reader *bufio.Reader
 }
 
 func (c *client) Stat(ctx context.Context, req *pb.MetricRequest, _ ...grpc.CallOption) (*pb.MetricResponse, error) {
@@ -78,6 +69,20 @@ func (c *client) Tap(ctx context.Context, req *pb.TapRequest, _ ...grpc.CallOpti
 	return &tapClient{ctx: ctx, reader: bufio.NewReader(rsp.Body)}, nil
 }
 
+func (c tapClient) Recv() (*common.TapEvent, error) {
+	var msg common.TapEvent
+	err := fromByteStreamToProtocolBuffers(c.reader, "", &msg)
+	return &msg, err
+}
+
+// satisfy the pb.Api_TapClient interface
+func (c tapClient) Header() (metadata.MD, error) { return nil, nil }
+func (c tapClient) Trailer() metadata.MD         { return nil }
+func (c tapClient) CloseSend() error             { return nil }
+func (c tapClient) Context() context.Context     { return c.ctx }
+func (c tapClient) SendMsg(interface{}) error    { return nil }
+func (c tapClient) RecvMsg(interface{}) error    { return nil }
+
 func (c *client) apiRequest(ctx context.Context, endpoint string, req proto.Message, rsp proto.Message) error {
 	httpRsp, err := c.post(ctx, endpoint, req)
 	if err != nil {
@@ -86,8 +91,8 @@ func (c *client) apiRequest(ctx context.Context, endpoint string, req proto.Mess
 	defer httpRsp.Body.Close()
 
 	reader := bufio.NewReader(httpRsp.Body)
-	errorMsg := httpRsp.Header.Get(errorHeader)
-	return clientUnmarshal(reader, errorMsg, rsp)
+	errorMsg := httpRsp.Header.Get(ErrorHeader)
+	return fromByteStreamToProtocolBuffers(reader, errorMsg, rsp)
 }
 
 func (c *client) post(ctx context.Context, endpoint string, req proto.Message) (*http.Response, error) {
@@ -110,42 +115,76 @@ func (c *client) post(ctx context.Context, endpoint string, req proto.Message) (
 	return c.client.Do(httpReq.WithContext(ctx))
 }
 
-func clientUnmarshal(r *bufio.Reader, errorMsg string, msg proto.Message) error {
-	byteSize := make([]byte, 4)
-	_, err := r.Read(byteSize)
+func NewInternalClient(kubernetesApiHost string) (pb.ApiClient, error) {
+	apiURL := &url.URL{
+		Scheme: "http",
+		Host:   kubernetesApiHost,
+		Path:   "/",
+	}
+
+	return newClient(apiURL, http.DefaultClient)
+}
+
+func NewExternalClient(controlPlaneNamespace string, kubeApi k8s.KubernetesApi) (pb.ApiClient, error) {
+	apiURL, err := kubeApi.UrlFor(controlPlaneNamespace, "/services/http:api:http/proxy/")
 	if err != nil {
-		return err
+		return nil, err
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	httpClientToUse, err := kubeApi.NewClient()
+	if err != nil {
+		return nil, err
+	}
+
+	return newClient(apiURL, httpClientToUse)
+}
+
+func newClient(apiURL *url.URL, httpClientToUse *http.Client) (pb.ApiClient, error) {
+
+	if !apiURL.IsAbs() {
+		return nil, fmt.Errorf("server URL must be absolute, was [%s]", apiURL.String())
+	}
+
+	return &client{
+		serverURL: apiURL.ResolveReference(&url.URL{Path: ApiPrefix}),
+		client:    httpClientToUse,
+	}, nil
+}
+
+func fromByteStreamToProtocolBuffers(byteStreamContainingMessage *bufio.Reader, errorMessageReturnedAsMetadata string, out proto.Message) error {
+	//TODO: why the magic number 4?
+	byteSize := make([]byte, 4)
+
+	//TODO: why is this necessary?
+	_, err := byteStreamContainingMessage.Read(byteSize)
+	if err != nil {
+		return fmt.Errorf("error reading byte stream header: %v", err)
 	}
 
 	size := binary.LittleEndian.Uint32(byteSize)
 	bytes := make([]byte, size)
-	_, err = io.ReadFull(r, bytes)
+	_, err = io.ReadFull(byteStreamContainingMessage, bytes)
 	if err != nil {
-		return err
+		return fmt.Errorf("error reading byte stream content: %v", err)
 	}
 
-	if errorMsg != "" {
+	if errorMessageReturnedAsMetadata != "" {
 		var apiError pb.ApiError
 		err = proto.Unmarshal(bytes, &apiError)
 		if err != nil {
-			return err
+			return fmt.Errorf("error unmarshalling error from byte stream: %v", err)
 		}
-		return fmt.Errorf("%s: %s", errorMsg, apiError.Error)
+		return fmt.Errorf("%s: %s", errorMessageReturnedAsMetadata, apiError.Error)
 	}
 
-	return proto.Unmarshal(bytes, msg)
+	err = proto.Unmarshal(bytes, out)
+	if err != nil {
+		return fmt.Errorf("error unmarshalling bytes: %v", err)
+	} else {
+		return nil
+	}
 }
-
-func (c tapClient) Recv() (*common.TapEvent, error) {
-	var msg common.TapEvent
-	err := clientUnmarshal(c.reader, "", &msg)
-	return &msg, err
-}
-
-// satisfy the pb.Api_TapClient interface
-func (c tapClient) Header() (metadata.MD, error) { return nil, nil }
-func (c tapClient) Trailer() metadata.MD         { return nil }
-func (c tapClient) CloseSend() error             { return nil }
-func (c tapClient) Context() context.Context     { return c.ctx }
-func (c tapClient) SendMsg(interface{}) error    { return nil }
-func (c tapClient) RecvMsg(interface{}) error    { return nil }

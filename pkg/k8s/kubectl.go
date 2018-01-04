@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/runconduit/conduit/cli/healthcheck"
+	"github.com/runconduit/conduit/pkg/healthcheck"
 
-	"github.com/runconduit/conduit/cli/shell"
+	"github.com/runconduit/conduit/pkg/shell"
 )
 
 type Kubectl interface {

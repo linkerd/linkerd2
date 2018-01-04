@@ -36,7 +36,7 @@ func TestGenerateKubernetesApiBaseUrlFor(t *testing.T) {
 
 func TestParseK8SConfig(t *testing.T) {
 	t.Run("Gets host correctly form existing file", func(t *testing.T) {
-		config, err := parseK8SConfig("config.test")
+		config, err := parseK8SConfig("testdata/config.test")
 		if err != nil {
 			t.Fatalf("Unexpected error starting proxy: %v", err)
 		}

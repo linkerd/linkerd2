@@ -93,6 +93,6 @@ func (sh *unixShell) Path() string {
 	return os.Getenv(pathEnvVar)
 }
 
-func MakeUnixShell() Shell {
+func NewUnixShell() Shell {
 	return &unixShell{}
 }

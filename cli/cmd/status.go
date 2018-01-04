@@ -6,10 +6,10 @@ import (
 	"io"
 	"os"
 
-	"github.com/runconduit/conduit/cli/healthcheck"
+	"github.com/runconduit/conduit/pkg/healthcheck"
 
-	"github.com/runconduit/conduit/cli/k8s"
-	"github.com/runconduit/conduit/cli/shell"
+	"github.com/runconduit/conduit/pkg/k8s"
+	"github.com/runconduit/conduit/pkg/shell"
 	"github.com/spf13/cobra"
 )
 
@@ -24,7 +24,7 @@ problems were found.`,
 	Args: cobra.NoArgs,
 	Run: exitSilentlyOnError(func(cmd *cobra.Command, args []string) error {
 
-		kubectl, err := k8s.MakeKubectl(shell.MakeUnixShell())
+		kubectl, err := k8s.MakeKubectl(shell.NewUnixShell())
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %s\n", err.Error())
 			return statusCheckResultWasError(os.Stdout)

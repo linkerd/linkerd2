@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/runconduit/conduit/cli/k8s"
 	pb "github.com/runconduit/conduit/controller/gen/public"
+	"github.com/runconduit/conduit/pkg/k8s"
 
 	"github.com/golang/protobuf/ptypes/duration"
 	google_protobuf "github.com/golang/protobuf/ptypes/duration"

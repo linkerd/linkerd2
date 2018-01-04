@@ -12,7 +12,7 @@ import (
 func TestCombinedOutput(t *testing.T) {
 	t.Run("Executes command and returns result without error if return code 0", func(t *testing.T) {
 		expectedOutput := "expected"
-		output, err := MakeUnixShell().CombinedOutput("echo", expectedOutput)
+		output, err := NewUnixShell().CombinedOutput("echo", expectedOutput)
 
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
@@ -24,7 +24,7 @@ func TestCombinedOutput(t *testing.T) {
 	})
 
 	t.Run("Executes command and returns result and  error if return code>0", func(t *testing.T) {
-		_, err := MakeUnixShell().CombinedOutput("command-that-doesnt", "--exist")
+		_, err := NewUnixShell().CombinedOutput("command-that-doesnt", "--exist")
 
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing")
@@ -36,7 +36,7 @@ func TestAsyncStdout(t *testing.T) {
 	t.Run("Executes command and returns result without error if return code 0", func(t *testing.T) {
 		expectedOutput := "expected"
 		asyncError := make(chan error, 1)
-		output, err := MakeUnixShell().AsyncStdout(asyncError, "echo", expectedOutput)
+		output, err := NewUnixShell().AsyncStdout(asyncError, "echo", expectedOutput)
 		if err != nil {
 			t.Fatalf("Unexpected error [%v], asyncError is [%v]", err, <-asyncError)
 		}
@@ -65,7 +65,7 @@ func TestAsyncStdout(t *testing.T) {
 
 	t.Run("Executes command and returns result and error if did not find expected character", func(t *testing.T) {
 		asyncError := make(chan error, 1)
-		out, err := MakeUnixShell().AsyncStdout(asyncError, "command-that-doesnt", "--exist")
+		out, err := NewUnixShell().AsyncStdout(asyncError, "command-that-doesnt", "--exist")
 		if err != nil {
 			t.Fatalf("Unexpected error [%v], asyncError is [%v]", err, <-asyncError)
 		}
@@ -84,7 +84,7 @@ func TestAsyncStdout(t *testing.T) {
 
 func TestWaitForCharacter(t *testing.T) {
 	t.Run("Executes command and returns result without error if return code 0", func(t *testing.T) {
-		shell := MakeUnixShell()
+		shell := NewUnixShell()
 		asyncError := make(chan error, 1)
 		expectedOutput := "expected>"
 
@@ -114,7 +114,7 @@ func TestWaitForCharacter(t *testing.T) {
 	})
 
 	t.Run("Executes command and returns timeout error if expected character never shows up in output", func(t *testing.T) {
-		shell := MakeUnixShell()
+		shell := NewUnixShell()
 		asyncError := make(chan error, 1)
 		output, err := shell.AsyncStdout(asyncError, "sleep", "1")
 		if err != nil {
@@ -132,7 +132,7 @@ func TestWaitForCharacter(t *testing.T) {
 
 func TestHomeDir(t *testing.T) {
 	t.Run("Home dir for non-Windows boxes follow a common pattern", func(t *testing.T) {
-		shell := MakeUnixShell()
+		shell := NewUnixShell()
 		home := shell.HomeDir()
 		expected := os.Getenv("HOME")
 		if runtime.GOOS != "windows" && !strings.Contains(home, expected) {

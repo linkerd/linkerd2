@@ -3,9 +3,9 @@ package cmd
 import (
 	"os"
 
-	"github.com/runconduit/conduit/cli/k8s"
 	"github.com/runconduit/conduit/controller/api/public"
 	pb "github.com/runconduit/conduit/controller/gen/public"
+	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/spf13/cobra"
 )
 
@@ -34,21 +34,7 @@ func addControlPlaneNetworkingArgs(cmd *cobra.Command) {
 }
 
 func newApiClient(kubeApi k8s.KubernetesApi) (pb.ApiClient, error) {
-	url, err := kubeApi.UrlFor(controlPlaneNamespace, "/services/http:api:http/proxy/")
-	if err != nil {
-		return nil, err
-	}
-
-	apiConfig := &public.Config{
-		ServerURL: url,
-	}
-
-	transport, err := kubeApi.MakeSecureTransport()
-	if err != nil {
-		return nil, err
-	}
-
-	return public.NewClient(apiConfig, transport)
+	return public.NewExternalClient(controlPlaneNamespace, kubeApi)
 }
 
 // Exit with non-zero exit status without printing the command line usage and

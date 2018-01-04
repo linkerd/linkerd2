@@ -3,7 +3,7 @@ package k8s
 import (
 	"testing"
 
-	"github.com/runconduit/conduit/cli/shell"
+	"github.com/runconduit/conduit/pkg/shell"
 )
 
 func TestKubernetesApiUrlFor(t *testing.T) {
@@ -12,7 +12,7 @@ func TestKubernetesApiUrlFor(t *testing.T) {
 		extraPath := "/some/extra/path"
 		expectedUrlString := "https://35.184.231.31/api/v1/namespaces/some-namespace/some/extra/path"
 
-		api, err := MakeK8sAPi(shell.MakeUnixShell(), "config.test", "https://35.184.231.31")
+		api, err := NewK8sAPi(shell.NewUnixShell(), "testdata/config.test", "https://35.184.231.31")
 		if err != nil {
 			t.Fatalf("Unexpected error starting proxy: %v", err)
 		}

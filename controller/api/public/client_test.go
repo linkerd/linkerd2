@@ -3,7 +3,12 @@ package public
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/binary"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -11,66 +16,170 @@ import (
 	pb "github.com/runconduit/conduit/controller/gen/public"
 )
 
-func TestClientUnmarshal(t *testing.T) {
-	versionInfo := pb.VersionInfo{
-		GoVersion:      "1.9.1",
-		BuildDate:      "2017.11.17",
-		ReleaseVersion: "1.2.3",
-	}
-
-	var unmarshaled pb.VersionInfo
-	reader := bufferedReader(t, &versionInfo)
-	err := clientUnmarshal(reader, "", &unmarshaled)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	if unmarshaled != versionInfo {
-		t.Fatalf("mismatch, %+v != %+v", unmarshaled, versionInfo)
-	}
+type mockTransport struct {
+	responseToReturn *http.Response
+	requestSent      *http.Request
+	errorToReturn    error
 }
 
-func TestClientUnmarshalLargeMessage(t *testing.T) {
-	series := pb.MetricSeries{
-		Name:       pb.MetricName_REQUEST_RATE,
-		Metadata:   &pb.MetricMetadata{},
-		Datapoints: make([]*pb.MetricDatapoint, 0),
-	}
+func (m *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	m.requestSent = req
+	return m.responseToReturn, m.errorToReturn
+}
 
-	for i := float64(0); i < 1000; i++ {
-		datapoint := pb.MetricDatapoint{
-			Value:       &pb.MetricValue{Value: &pb.MetricValue_Gauge{Gauge: i}},
-			TimestampMs: time.Now().UnixNano() / int64(time.Millisecond),
+func TestNewInternalClient(t *testing.T) {
+	t.Run("Makes a well-formed request over the Kubernetes public API", func(t *testing.T) {
+		mockTransport := &mockTransport{}
+		mockTransport.responseToReturn = &http.Response{
+			StatusCode: 500,
+			Body:       ioutil.NopCloser(strings.NewReader("body")),
 		}
-		series.Datapoints = append(series.Datapoints, &datapoint)
-	}
+		mockHttpClient := &http.Client{
+			Transport: mockTransport,
+		}
 
-	var unmarshaled pb.MetricSeries
-	reader := bufferedReader(t, &series)
-	err := clientUnmarshal(reader, "", &unmarshaled)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
+		apiURL := &url.URL{
+			Scheme: "http",
+			Host:   "some-hostname",
+			Path:   "/",
+		}
 
-	if len(unmarshaled.Datapoints) != 1000 {
-		t.Fatal("missing datapoints")
-	}
+		client, err := newClient(apiURL, mockHttpClient)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		_, err = client.Version(context.Background(), &pb.Empty{})
+
+		expectedUrlRequested := "http://some-hostname/api/v1/Version"
+		actualUrlRequested := mockTransport.requestSent.URL.String()
+		if actualUrlRequested != expectedUrlRequested {
+			t.Fatalf("Expected request to URL [%v], but got [%v]", expectedUrlRequested, actualUrlRequested)
+		}
+	})
 }
 
-func TestClientUnmarshalApiErrorAsError(t *testing.T) {
-	apiError := pb.ApiError{Error: "an error occurred"}
+func TestFromByteStreamToProtocolBuffers(t *testing.T) {
+	t.Run("Correctly marshalls an valid object", func(t *testing.T) {
+		versionInfo := pb.VersionInfo{
+			GoVersion:      "1.9.1",
+			BuildDate:      "2017.11.17",
+			ReleaseVersion: "1.2.3",
+		}
 
-	var unmarshaled pb.VersionInfo
-	reader := bufferedReader(t, &apiError)
-	err := clientUnmarshal(reader, "Bad Request", &unmarshaled)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+		var protobufMessageToBeFilledWithData pb.VersionInfo
+		reader := bufferedReader(t, &versionInfo)
 
-	expected := "Bad Request: an error occurred"
-	if err.Error() != expected {
-		t.Fatalf("mismatch, %s != %s", err.Error(), expected)
-	}
+		err := fromByteStreamToProtocolBuffers(reader, "", &protobufMessageToBeFilledWithData)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+
+		if protobufMessageToBeFilledWithData != versionInfo {
+			t.Fatalf("mismatch, %+v != %+v", protobufMessageToBeFilledWithData, versionInfo)
+		}
+	})
+
+	t.Run("Correctly marshalls a large byte arrey", func(t *testing.T) {
+		series := pb.MetricSeries{
+			Name:       pb.MetricName_REQUEST_RATE,
+			Metadata:   &pb.MetricMetadata{},
+			Datapoints: make([]*pb.MetricDatapoint, 0),
+		}
+
+		numberOfDatapointsInMessage := 1000
+		for i := 0; i < numberOfDatapointsInMessage; i++ {
+			datapoint := pb.MetricDatapoint{
+				Value:       &pb.MetricValue{Value: &pb.MetricValue_Gauge{Gauge: float64(i)}},
+				TimestampMs: time.Now().UnixNano() / int64(time.Millisecond),
+			}
+			series.Datapoints = append(series.Datapoints, &datapoint)
+		}
+
+		var protobufMessageToBeFilledWithData pb.MetricSeries
+		reader := bufferedReader(t, &series)
+		err := fromByteStreamToProtocolBuffers(reader, "", &protobufMessageToBeFilledWithData)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+
+		actualNumberOfDatapointsMarshalled := len(protobufMessageToBeFilledWithData.Datapoints)
+		if actualNumberOfDatapointsMarshalled != numberOfDatapointsInMessage {
+			t.Fatalf("Expected marshalling to return [%d] datapoints, but got [%d]", numberOfDatapointsInMessage, actualNumberOfDatapointsMarshalled)
+		}
+	})
+
+	t.Run("When error, uses both byte array and supplied message to return error", func(t *testing.T) {
+		apiError := pb.ApiError{Error: "an error occurred"}
+
+		var protobufMessageToBeFilledWithData pb.VersionInfo
+		reader := bufferedReader(t, &apiError)
+		err := fromByteStreamToProtocolBuffers(reader, "Bad Request", &protobufMessageToBeFilledWithData)
+		if err == nil {
+			t.Fatal("expected error")
+		}
+
+		expectedErrorMessage := "Bad Request: an error occurred"
+		actualErrorMessage := err.Error()
+		if actualErrorMessage != expectedErrorMessage {
+			t.Fatalf("Expecting returned error message to be [%s], but got [%s]", expectedErrorMessage, actualErrorMessage)
+		}
+	})
+
+	t.Run("When byte array contains error but no message was supplied, treats stream as regular object", func(t *testing.T) {
+		apiError := pb.ApiError{Error: "an error occurred"}
+
+		var protobufMessageToBeFilledWithData pb.ApiError
+		reader := bufferedReader(t, &apiError)
+		err := fromByteStreamToProtocolBuffers(reader, "", &protobufMessageToBeFilledWithData)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		expectedErrorMessage := apiError.Error
+		actualErrorMessage := protobufMessageToBeFilledWithData.Error
+		if actualErrorMessage != expectedErrorMessage {
+			t.Fatalf("Expected object to contain message [%s], but got [%s]", expectedErrorMessage, actualErrorMessage)
+		}
+	})
+
+	t.Run("When byte array does not contain error but a message was supplied, returns error", func(t *testing.T) {
+		versionInfo := pb.VersionInfo{
+			GoVersion:      "1.9.1",
+			BuildDate:      "2017.11.17",
+			ReleaseVersion: "1.2.3",
+		}
+
+		expectedErrorMessage := "supplied error message here"
+		var protobufMessageToBeFilledWithData pb.VersionInfo
+		reader := bufferedReader(t, &versionInfo)
+
+		err := fromByteStreamToProtocolBuffers(reader, expectedErrorMessage, &protobufMessageToBeFilledWithData)
+		if err == nil {
+			t.Fatal("Expecting error, got nothing")
+		}
+
+		actualErrorMessage := err.Error()
+		if !strings.Contains(actualErrorMessage, expectedErrorMessage) {
+			t.Fatalf("Expected object to contain message [%s], but got [%s]", expectedErrorMessage, actualErrorMessage)
+		}
+	})
+
+	t.Run("Correctly marshalls an valid object", func(t *testing.T) {
+		versionInfo := pb.VersionInfo{
+			GoVersion:      "1.9.1",
+			BuildDate:      "2017.11.17",
+			ReleaseVersion: "1.2.3",
+		}
+
+		var protobufMessageToBeFilledWithData pb.MetricSeries
+		reader := bufferedReader(t, &versionInfo)
+
+		err := fromByteStreamToProtocolBuffers(reader, "", &protobufMessageToBeFilledWithData)
+		if err == nil {
+			t.Fatal("Expecting error, got nothing")
+		}
+	})
 }
 
 func bufferedReader(t *testing.T, msg proto.Message) *bufio.Reader {
