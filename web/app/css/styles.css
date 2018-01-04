@@ -113,28 +113,6 @@ h2, h3, h4, h5, h6 {
   }
 }
 
-.conduit-table thead > tr > th {
-  background: var(--white);
-  text-transform: uppercase;
-  font-weight: bold;
-  border-bottom: 1px solid;
-  border-color: var(--status-gray);
-  word-break: keep-all;
-}
-
-.ant-table table {
-  font-weight: bold;
-  font-size: .8rem;
-}
-
-.ant-table-tbody > tr:hover > td {
-  background: rgba(47, 128, 237, .1);
-}
-
-tr th.numeric, .numeric {
-  text-align: right;
-}
-
 .no-data-msg {
   font-size: 12px;
   color: var(--subheader-grey);
@@ -221,4 +199,39 @@ a.button.primary:hover {
 }
 a.button.primary:active {
   background-color: #2469C7;
+}
+
+/*
+  Ant overrides
+*/
+.ant-menu, .ant-table, .ant-tabs {
+  font-family: var(--font-stack);
+}
+
+.conduit-table {
+  & .ant-table-content {
+    font-size: 12px;
+  }
+
+  & thead > tr > th {
+    background: var(--white);
+    text-transform: uppercase;
+    font-style: bold;
+    border-bottom: 1px solid;
+    border-color: var(--status-gray);
+    word-break: keep-all;
+  }
+
+  & .ant-table table {
+    font-weight: bold;
+    font-size: .8rem;
+  }
+
+  & .ant-table-tbody > tr:hover > td {
+    background: rgba(47, 128, 237, .1);
+  }
+
+  & tr th.numeric, .numeric {
+    text-align: right;
+  }
 }

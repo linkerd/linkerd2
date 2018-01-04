@@ -28,7 +28,8 @@ const StatusDot = ({status, multilineDots, columnName}) => (
     title={<div>
       <div>{status.name}</div>
       <div>{_.get(columnConfig, [columnName, "dotExplanation", status.value])}</div>
-    </div>}>
+    </div>}
+    overlayStyle={{ fontSize: "12px" }}>
     <div
       className={`status-dot status-dot-${status.value} ${multilineDots ? 'dot-multiline': ''}`}
       key={status.name}>&nbsp;</div>

@@ -29,6 +29,7 @@
 td .status-dot {
   float: left;
   width: calc(2 * var(--base-width));
+  height: calc(2 * var(--base-width));
   min-width: calc(2 * var(--base-width));
   border-radius: 50%;
   margin-right: var(--base-width);

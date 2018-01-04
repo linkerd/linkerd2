@@ -24,6 +24,10 @@
     margin: 6px 12px;
     font-size: small;
 
+    & p {
+      margin-bottom: 0;
+    }
+
     &.unadded {
       background: var(--status-gray);
       color: white;
