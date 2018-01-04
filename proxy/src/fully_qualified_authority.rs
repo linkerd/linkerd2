@@ -1,6 +1,5 @@
 use bytes::BytesMut;
 
-use std::ascii::AsciiExt;
 use std::net::IpAddr;
 use std::str::FromStr;
 
