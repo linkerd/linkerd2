@@ -3,8 +3,7 @@ package cmd
 import (
 	"os"
 
-	"github.com/runconduit/conduit/pkg/conduit"
-
+	"github.com/runconduit/conduit/controller/api/public"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/spf13/cobra"
@@ -35,7 +34,7 @@ func addControlPlaneNetworkingArgs(cmd *cobra.Command) {
 }
 
 func newApiClient(kubeApi k8s.KubernetesApi) (pb.ApiClient, error) {
-	return conduit.NewExternalClient(controlPlaneNamespace, kubeApi)
+	return public.NewExternalClient(controlPlaneNamespace, kubeApi)
 }
 
 // Exit with non-zero exit status without printing the command line usage and

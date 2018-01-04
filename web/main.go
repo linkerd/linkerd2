@@ -10,9 +10,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/runconduit/conduit/pkg/conduit"
-
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/runconduit/conduit/controller/api/public"
 	"github.com/runconduit/conduit/web/srv"
 	log "github.com/sirupsen/logrus"
 )
@@ -41,7 +40,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to parse API server address: %s", kubernetesApiHost)
 	}
-	client, err := conduit.NewInternalClient(*kubernetesApiHost)
+	client, err := public.NewInternalClient(*kubernetesApiHost)
 	if err != nil {
 		log.Fatalf("failed to construct client for API server URL %s", kubernetesApiHost)
 	}

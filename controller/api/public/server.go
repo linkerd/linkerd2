@@ -6,8 +6,6 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/runconduit/conduit/pkg/conduit"
-
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/prometheus/client_golang/prometheus"
@@ -67,7 +65,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	// Validate request content type
 	switch req.Header.Get("Content-Type") {
-	case "", conduit.ProtobufContentType, conduit.JsonContentType:
+	case "", ProtobufContentType, JsonContentType:
 	default:
 		serverMarshalError(w, req, fmt.Errorf("unsupported Content-Type"), http.StatusUnsupportedMediaType)
 		return
@@ -75,13 +73,13 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	// Serve request
 	switch req.URL.Path {
-	case conduit.ApiRoot + conduit.ApiPrefix + "Stat":
+	case ApiRoot + ApiPrefix + "Stat":
 		h.handleStat(w, req)
-	case conduit.ApiRoot + conduit.ApiPrefix + "Version":
+	case ApiRoot + ApiPrefix + "Version":
 		h.handleVersion(w, req)
-	case conduit.ApiRoot + conduit.ApiPrefix + "ListPods":
+	case ApiRoot + ApiPrefix + "ListPods":
 		h.handleListPods(w, req)
-	case conduit.ApiRoot + conduit.ApiPrefix + "Tap":
+	case ApiRoot + ApiPrefix + "Tap":
 		h.handleTap(w, req)
 	default:
 		http.NotFound(w, req)
@@ -177,13 +175,13 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request) {
 
 func serverUnmarshal(req *http.Request, msg proto.Message) error {
 	switch req.Header.Get("Content-Type") {
-	case "", conduit.ProtobufContentType:
+	case "", ProtobufContentType:
 		bytes, err := ioutil.ReadAll(req.Body)
 		if err != nil {
 			return err
 		}
 		return proto.Unmarshal(bytes, msg)
-	case conduit.JsonContentType:
+	case JsonContentType:
 		return jsonUnmarshaler.Unmarshal(req.Body, msg)
 	}
 	return nil
@@ -191,7 +189,7 @@ func serverUnmarshal(req *http.Request, msg proto.Message) error {
 
 func serverMarshal(w http.ResponseWriter, req *http.Request, msg proto.Message) error {
 	switch req.Header.Get("Content-Type") {
-	case "", conduit.ProtobufContentType:
+	case "", ProtobufContentType:
 		bytes, err := proto.Marshal(msg)
 		if err != nil {
 			return err
@@ -201,7 +199,7 @@ func serverMarshal(w http.ResponseWriter, req *http.Request, msg proto.Message) 
 		_, err = w.Write(append(byteSize, bytes...))
 		return err
 
-	case conduit.JsonContentType:
+	case JsonContentType:
 		str, err := jsonMarshaler.MarshalToString(msg)
 		if err != nil {
 			return err
@@ -215,9 +213,9 @@ func serverMarshal(w http.ResponseWriter, req *http.Request, msg proto.Message) 
 
 func serverMarshalError(w http.ResponseWriter, req *http.Request, err error, code int) error {
 	switch req.Header.Get("Content-Type") {
-	case "", conduit.ProtobufContentType:
-		w.Header().Set(conduit.ErrorHeader, http.StatusText(code))
-	case conduit.JsonContentType:
+	case "", ProtobufContentType:
+		w.Header().Set(ErrorHeader, http.StatusText(code))
+	case JsonContentType:
 		w.WriteHeader(code)
 	}
 
