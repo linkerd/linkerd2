@@ -9,11 +9,10 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/runconduit/conduit/pkg/k8s"
-
 	"github.com/golang/protobuf/proto"
 	common "github.com/runconduit/conduit/controller/gen/common"
 	pb "github.com/runconduit/conduit/controller/gen/public"
+	"github.com/runconduit/conduit/pkg/k8s"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
