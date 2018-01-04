@@ -1,4 +1,6 @@
+import Adapter from 'enzyme-adapter-react-16';
 import { BrowserRouter } from 'react-router-dom';
+import Enzyme from 'enzyme';
 import { expect } from 'chai';
 import { mount } from 'enzyme';
 import React from 'react';
@@ -6,6 +8,7 @@ import sinon from 'sinon';
 import sinonStubPromise from 'sinon-stub-promise';
 import Version from '../js/components/Version.jsx';
 
+Enzyme.configure({ adapter: new Adapter() });
 sinonStubPromise(sinon);
 
 describe('Version', () => {
@@ -15,7 +18,7 @@ describe('Version', () => {
   let component, fetchStub;
 
   function withPromise(fn) {
-    return component.find("Version").get(0).serverPromise.then(fn);
+    return component.find("Version").instance().serverPromise.then(fn);
   }
 
   beforeEach(() => {
@@ -23,6 +26,7 @@ describe('Version', () => {
   });
 
   afterEach(() => {
+    component = null;
     window.fetch.restore();
   });
 
