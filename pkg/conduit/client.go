@@ -17,64 +17,14 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-type (
-	//TODO: not needed
-	Config struct {
-		ServerURL *url.URL
-	}
-
-	client struct {
-		serverURL *url.URL
-		client    *http.Client
-	}
-
-	tapClient struct {
-		ctx    context.Context
-		reader *bufio.Reader
-	}
-)
-
-func NewInternalClient(kubernetesApiHost string) (pb.ApiClient, error) {
-	apiURL := &url.URL{
-		Scheme: "http",
-		Host:   kubernetesApiHost,
-		Path:   "/",
-	}
-
-	return newClient(apiURL, http.DefaultClient)
+type client struct {
+	serverURL *url.URL
+	client    *http.Client
 }
 
-func NewExternalClient(controlPlaneNamespace string, kubeApi k8s.KubernetesApi) (pb.ApiClient, error) {
-	apiURL, err := kubeApi.UrlFor(controlPlaneNamespace, "/services/http:api:http/proxy/")
-	if err != nil {
-		return nil, err
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	httpClientToUse, err := kubeApi.NewClient()
-	if err != nil {
-		return nil, err
-	}
-
-	return newClient(apiURL, httpClientToUse)
-}
-
-func newClient(apiURL *url.URL, httpClientToUse *http.Client) (pb.ApiClient, error) {
-	apiConfig := &Config{
-		ServerURL: apiURL,
-	}
-
-	if !apiConfig.ServerURL.IsAbs() {
-		return nil, fmt.Errorf("server URL must be absolute, was [%s]", apiConfig.ServerURL.String())
-	}
-
-	return &client{
-		serverURL: apiConfig.ServerURL.ResolveReference(&url.URL{Path: ApiPrefix}),
-		client:    httpClientToUse,
-	}, nil
+type tapClient struct {
+	ctx    context.Context
+	reader *bufio.Reader
 }
 
 func (c *client) Stat(ctx context.Context, req *pb.MetricRequest, _ ...grpc.CallOption) (*pb.MetricResponse, error) {
@@ -109,6 +59,20 @@ func (c *client) Tap(ctx context.Context, req *pb.TapRequest, _ ...grpc.CallOpti
 	return &tapClient{ctx: ctx, reader: bufio.NewReader(rsp.Body)}, nil
 }
 
+func (c tapClient) Recv() (*common.TapEvent, error) {
+	var msg common.TapEvent
+	err := clientUnmarshal(c.reader, "", &msg)
+	return &msg, err
+}
+
+// satisfy the pb.Api_TapClient interface
+func (c tapClient) Header() (metadata.MD, error) { return nil, nil }
+func (c tapClient) Trailer() metadata.MD         { return nil }
+func (c tapClient) CloseSend() error             { return nil }
+func (c tapClient) Context() context.Context     { return c.ctx }
+func (c tapClient) SendMsg(interface{}) error    { return nil }
+func (c tapClient) RecvMsg(interface{}) error    { return nil }
+
 func (c *client) apiRequest(ctx context.Context, endpoint string, req proto.Message, rsp proto.Message) error {
 	httpRsp, err := c.post(ctx, endpoint, req)
 	if err != nil {
@@ -141,16 +105,42 @@ func (c *client) post(ctx context.Context, endpoint string, req proto.Message) (
 	return c.client.Do(httpReq.WithContext(ctx))
 }
 
-func (c tapClient) Recv() (*common.TapEvent, error) {
-	var msg common.TapEvent
-	err := clientUnmarshal(c.reader, "", &msg)
-	return &msg, err
+func NewInternalClient(kubernetesApiHost string) (pb.ApiClient, error) {
+	apiURL := &url.URL{
+		Scheme: "http",
+		Host:   kubernetesApiHost,
+		Path:   "/",
+	}
+
+	return newClient(apiURL, http.DefaultClient)
 }
 
-// satisfy the pb.Api_TapClient interface
-func (c tapClient) Header() (metadata.MD, error) { return nil, nil }
-func (c tapClient) Trailer() metadata.MD         { return nil }
-func (c tapClient) CloseSend() error             { return nil }
-func (c tapClient) Context() context.Context     { return c.ctx }
-func (c tapClient) SendMsg(interface{}) error    { return nil }
-func (c tapClient) RecvMsg(interface{}) error    { return nil }
+func NewExternalClient(controlPlaneNamespace string, kubeApi k8s.KubernetesApi) (pb.ApiClient, error) {
+	apiURL, err := kubeApi.UrlFor(controlPlaneNamespace, "/services/http:api:http/proxy/")
+	if err != nil {
+		return nil, err
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	httpClientToUse, err := kubeApi.NewClient()
+	if err != nil {
+		return nil, err
+	}
+
+	return newClient(apiURL, httpClientToUse)
+}
+
+func newClient(apiURL *url.URL, httpClientToUse *http.Client) (pb.ApiClient, error) {
+
+	if !apiURL.IsAbs() {
+		return nil, fmt.Errorf("server URL must be absolute, was [%s]", apiURL.String())
+	}
+
+	return &client{
+		serverURL: apiURL.ResolveReference(&url.URL{Path: ApiPrefix}),
+		client:    httpClientToUse,
+	}, nil
+}
