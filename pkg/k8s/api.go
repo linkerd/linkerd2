@@ -42,7 +42,7 @@ func NewK8sAPi(shell shell.Shell, k8sConfigFilesystemPathOverride string, apiHos
 
 	config, err := parseK8SConfig(findK8sConfigFile(k8sConfigFilesystemPathOverride, kubeconfigEnvVar, shell.HomeDir()))
 	if err != nil {
-		return nil, fmt.Errorf("error instantiating Kubernetes API client: %v", err)
+		return nil, fmt.Errorf("error configuring Kubernetes API client: %v", err)
 	}
 
 	if apiHostAndPortOverride == "" {

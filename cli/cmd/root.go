@@ -35,16 +35,7 @@ func addControlPlaneNetworkingArgs(cmd *cobra.Command) {
 }
 
 func newApiClient(kubeApi k8s.KubernetesApi) (pb.ApiClient, error) {
-	url, err := kubeApi.UrlFor(controlPlaneNamespace, "/services/http:api:http/proxy/")
-	if err != nil {
-		return nil, err
-	}
-
-	apiConfig := &conduit.Config{
-		ServerURL: url,
-	}
-
-	return conduit.NewExternalClient(apiConfig, kubeApi)
+	return conduit.NewExternalClient(controlPlaneNamespace, kubeApi)
 }
 
 // Exit with non-zero exit status without printing the command line usage and

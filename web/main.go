@@ -5,7 +5,6 @@ import (
 	"flag"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
@@ -21,7 +20,7 @@ import (
 func main() {
 	addr := flag.String("addr", ":8084", "address to serve on")
 	metricsAddr := flag.String("metrics-addr", ":9994", "address to serve scrapable metrics on")
-	apiAddr := flag.String("api-addr", ":8085", "address of public api")
+	kubernetesApiHost := flag.String("api-addr", ":8085", "host address of kubernetes public api")
 	templateDir := flag.String("template-dir", "templates", "directory to search for template files")
 	staticDir := flag.String("static-dir", "app/dist", "directory to search for static files")
 	uuid := flag.String("uuid", "", "unqiue Conduit install id")
@@ -38,21 +37,13 @@ func main() {
 	}
 	log.SetLevel(level)
 
-	_, _, err = net.SplitHostPort(*apiAddr) // Verify apiAddr is of the form host:port.
+	_, _, err = net.SplitHostPort(*kubernetesApiHost) // Verify kubernetesApiHost is of the form host:port.
 	if err != nil {
-		log.Fatalf("failed to parse API server address: %s", apiAddr)
+		log.Fatalf("failed to parse API server address: %s", kubernetesApiHost)
 	}
-	apiURL := &url.URL{
-		Scheme: "http",
-		Host:   *apiAddr,
-		Path:   "/",
-	}
-	apiConfig := conduit.Config{
-		ServerURL: apiURL,
-	}
-	client, err := conduit.NewInternalClient(&apiConfig)
+	client, err := conduit.NewInternalClient(*kubernetesApiHost)
 	if err != nil {
-		log.Fatalf("failed to construct client for API server URL %s", apiURL)
+		log.Fatalf("failed to construct client for API server URL %s", kubernetesApiHost)
 	}
 
 	stop := make(chan os.Signal, 1)

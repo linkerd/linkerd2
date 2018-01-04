@@ -1,84 +1,55 @@
 package conduit
 
 import (
-	"bufio"
-	"bytes"
-	"encoding/binary"
+	"context"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"strings"
 	"testing"
-	"time"
 
-	"github.com/golang/protobuf/proto"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 )
 
-func TestClientUnmarshal(t *testing.T) {
-	versionInfo := pb.VersionInfo{
-		GoVersion:      "1.9.1",
-		BuildDate:      "2017.11.17",
-		ReleaseVersion: "1.2.3",
-	}
-
-	var unmarshaled pb.VersionInfo
-	reader := bufferedReader(t, &versionInfo)
-	err := clientUnmarshal(reader, "", &unmarshaled)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	if unmarshaled != versionInfo {
-		t.Fatalf("mismatch, %+v != %+v", unmarshaled, versionInfo)
-	}
+type mockTransport struct {
+	responseToReturn *http.Response
+	requestSent      *http.Request
+	errorToReturn    error
 }
 
-func TestClientUnmarshalLargeMessage(t *testing.T) {
-	series := pb.MetricSeries{
-		Name:       pb.MetricName_REQUEST_RATE,
-		Metadata:   &pb.MetricMetadata{},
-		Datapoints: make([]*pb.MetricDatapoint, 0),
-	}
+func (m *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	m.requestSent = req
+	return m.responseToReturn, m.errorToReturn
+}
 
-	for i := float64(0); i < 1000; i++ {
-		datapoint := pb.MetricDatapoint{
-			Value:       &pb.MetricValue{Value: &pb.MetricValue_Gauge{Gauge: i}},
-			TimestampMs: time.Now().UnixNano() / int64(time.Millisecond),
+func TestNewInternalClient(t *testing.T) {
+	t.Run("Makes a well-formed request over the Kubernetes public API", func(t *testing.T) {
+		mockTransport := &mockTransport{}
+		mockTransport.responseToReturn = &http.Response{
+			StatusCode: 500,
+			Body:       ioutil.NopCloser(strings.NewReader("body")),
 		}
-		series.Datapoints = append(series.Datapoints, &datapoint)
-	}
+		mockHttpClient := &http.Client{
+			Transport: mockTransport,
+		}
 
-	var unmarshaled pb.MetricSeries
-	reader := bufferedReader(t, &series)
-	err := clientUnmarshal(reader, "", &unmarshaled)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
+		apiURL := &url.URL{
+			Scheme: "http",
+			Host:   "some-hostname",
+			Path:   "/",
+		}
 
-	if len(unmarshaled.Datapoints) != 1000 {
-		t.Fatal("missing datapoints")
-	}
-}
+		client, err := newClient(apiURL, mockHttpClient)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
 
-func TestClientUnmarshalApiErrorAsError(t *testing.T) {
-	apiError := pb.ApiError{Error: "an error occurred"}
+		_, err = client.Version(context.Background(), &pb.Empty{})
 
-	var unmarshaled pb.VersionInfo
-	reader := bufferedReader(t, &apiError)
-	err := clientUnmarshal(reader, "Bad Request", &unmarshaled)
-	if err == nil {
-		t.Fatal("expected error")
-	}
-
-	expected := "Bad Request: an error occurred"
-	if err.Error() != expected {
-		t.Fatalf("mismatch, %s != %s", err.Error(), expected)
-	}
-}
-
-func bufferedReader(t *testing.T, msg proto.Message) *bufio.Reader {
-	msgBytes, err := proto.Marshal(msg)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-	sizeBytes := make([]byte, 4)
-	binary.LittleEndian.PutUint32(sizeBytes, uint32(len(msgBytes)))
-	return bufio.NewReader(bytes.NewReader(append(sizeBytes, msgBytes...)))
+		expectedUrlRequested := "http://some-hostname/api/v1/Version"
+		actualUrlRequested := mockTransport.requestSent.URL.String()
+		if actualUrlRequested != expectedUrlRequested {
+			t.Fatalf("Expected request to URL [%v], but got [%v]", expectedUrlRequested, actualUrlRequested)
+		}
+	})
 }

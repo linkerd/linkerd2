@@ -3,9 +3,7 @@ package conduit
 import (
 	"bufio"
 	"bytes"
-	"encoding/binary"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 
@@ -20,6 +18,7 @@ import (
 )
 
 type (
+	//TODO: not needed
 	Config struct {
 		ServerURL *url.URL
 	}
@@ -35,30 +34,46 @@ type (
 	}
 )
 
-func NewInternalClient(config *Config) (pb.ApiClient, error) {
-	if !config.ServerURL.IsAbs() {
-		return nil, fmt.Errorf("server URL must be absolute, was [%s]", config.ServerURL.String())
+func NewInternalClient(kubernetesApiHost string) (pb.ApiClient, error) {
+	apiURL := &url.URL{
+		Scheme: "http",
+		Host:   kubernetesApiHost,
+		Path:   "/",
 	}
 
-	return &client{
-		serverURL: config.ServerURL.ResolveReference(&url.URL{Path: ApiPrefix}),
-		client:    http.DefaultClient,
-	}, nil
+	return newClient(apiURL, http.DefaultClient)
 }
 
-func NewExternalClient(config *Config, k8sApi k8s.KubernetesApi) (pb.ApiClient, error) {
-	if !config.ServerURL.IsAbs() {
-		return nil, fmt.Errorf("server URL must be absolute, was [%s]", config.ServerURL.String())
-	}
-
-	k8sRestClient, err := k8sApi.NewClient()
+func NewExternalClient(controlPlaneNamespace string, kubeApi k8s.KubernetesApi) (pb.ApiClient, error) {
+	apiURL, err := kubeApi.UrlFor(controlPlaneNamespace, "/services/http:api:http/proxy/")
 	if err != nil {
 		return nil, err
 	}
 
+	if err != nil {
+		return nil, err
+	}
+
+	httpClientToUse, err := kubeApi.NewClient()
+	if err != nil {
+		return nil, err
+	}
+
+	return newClient(apiURL, httpClientToUse)
+}
+
+func newClient(apiURL *url.URL, httpClientToUse *http.Client) (pb.ApiClient, error) {
+	apiConfig := &Config{
+		ServerURL: apiURL,
+	}
+
+	if !apiConfig.ServerURL.IsAbs() {
+		return nil, fmt.Errorf("server URL must be absolute, was [%s]", apiConfig.ServerURL.String())
+	}
+
 	return &client{
-		serverURL: config.ServerURL.ResolveReference(&url.URL{Path: ApiPrefix}),
-		client:    k8sRestClient,
+		serverURL: apiConfig.ServerURL.ResolveReference(&url.URL{Path: ApiPrefix}),
+		client:    httpClientToUse,
 	}, nil
 }
 
@@ -124,32 +139,6 @@ func (c *client) post(ctx context.Context, endpoint string, req proto.Message) (
 	}
 
 	return c.client.Do(httpReq.WithContext(ctx))
-}
-
-func clientUnmarshal(r *bufio.Reader, errorMsg string, msg proto.Message) error {
-	byteSize := make([]byte, 4)
-	_, err := r.Read(byteSize)
-	if err != nil {
-		return err
-	}
-
-	size := binary.LittleEndian.Uint32(byteSize)
-	bytes := make([]byte, size)
-	_, err = io.ReadFull(r, bytes)
-	if err != nil {
-		return err
-	}
-
-	if errorMsg != "" {
-		var apiError pb.ApiError
-		err = proto.Unmarshal(bytes, &apiError)
-		if err != nil {
-			return err
-		}
-		return fmt.Errorf("%s: %s", errorMsg, apiError.Error)
-	}
-
-	return proto.Unmarshal(bytes, msg)
 }
 
 func (c tapClient) Recv() (*common.TapEvent, error) {
