@@ -2,19 +2,27 @@ package k8s
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
 
+	"github.com/runconduit/conduit/pkg/healthcheck"
 	"github.com/runconduit/conduit/pkg/shell"
 	"k8s.io/client-go/rest"
 )
 
-const kubernetesConfigFilePathEnvVariable = "KUBECONFIG"
+const (
+	kubernetesConfigFilePathEnvVariable = "KUBECONFIG"
+	KubeapiSubsystemName                = "kubernetes-api"
+	KubeapiClientCheckDescription       = "can initialize the client"
+	KubeapiAccessCheckDescription       = "can query the Kubernetes API"
+)
 
 type KubernetesApi interface {
 	UrlFor(namespace string, extraPathStartingWithSlash string) (*url.URL, error)
 	NewClient() (*http.Client, error)
+	healthcheck.StatusChecker
 }
 
 type kubernetesApi struct {
@@ -22,8 +30,8 @@ type kubernetesApi struct {
 	apiSchemeHostAndPort string
 }
 
-func (k8s *kubernetesApi) NewClient() (*http.Client, error) {
-	secureTransport, err := rest.TransportFor(k8s.config)
+func (kubeapi *kubernetesApi) NewClient() (*http.Client, error) {
+	secureTransport, err := rest.TransportFor(kubeapi.config)
 	if err != nil {
 		return nil, fmt.Errorf("error instantiating Kubernetes API client: %v", err)
 	}
@@ -33,8 +41,65 @@ func (k8s *kubernetesApi) NewClient() (*http.Client, error) {
 	}, nil
 }
 
-func (k8s *kubernetesApi) UrlFor(namespace string, extraPathStartingWithSlash string) (*url.URL, error) {
-	return generateKubernetesApiBaseUrlFor(k8s.apiSchemeHostAndPort, namespace, extraPathStartingWithSlash)
+func (kubeapi *kubernetesApi) SelfCheck() ([]healthcheck.CheckResult, error) {
+	apiConnectivityCheck := healthcheck.CheckResult{
+		Status:           healthcheck.CheckError,
+		SubsystemName:    KubeapiSubsystemName,
+		CheckDescription: KubeapiClientCheckDescription,
+	}
+
+	client, err := kubeapi.NewClient()
+	if err != nil {
+		apiConnectivityCheck.Status = healthcheck.CheckError
+		apiConnectivityCheck.NextSteps = fmt.Sprintf("Error connecting to the API. Error message is [%s]", err.Error())
+	} else {
+		apiConnectivityCheck.Status = healthcheck.CheckOk
+	}
+
+	apiAccessCheck := healthcheck.CheckResult{
+		Status:           healthcheck.CheckError,
+		SubsystemName:    KubeapiSubsystemName,
+		CheckDescription: KubeapiAccessCheckDescription,
+	}
+
+	endpointToCheck, err := generateBaseKubernetesApiUrl(kubeapi.apiSchemeHostAndPort)
+	if err != nil {
+		apiAccessCheck.Status = healthcheck.CheckError
+		apiAccessCheck.NextSteps = fmt.Sprintf("Error querying Kubernetes API. Configured host is [%s], error message is [%s]", kubeapi.apiSchemeHostAndPort, err.Error())
+	} else {
+		if client != nil {
+			resp, err := client.Get(endpointToCheck.String())
+			if err != nil {
+				apiAccessCheck.Status = healthcheck.CheckError
+				apiAccessCheck.NextSteps = fmt.Sprintf("HTTP GET request to endpoint [%s] resulted in error: [%s]", endpointToCheck, err.Error())
+			} else {
+				statusCodeReturnedIsWithinSuccessRange := resp.StatusCode < 400
+				if statusCodeReturnedIsWithinSuccessRange {
+					apiAccessCheck.Status = healthcheck.CheckOk
+				} else {
+					bytes, err := ioutil.ReadAll(resp.Body)
+					if err != nil {
+						apiAccessCheck.Status = healthcheck.CheckError
+						apiAccessCheck.NextSteps = fmt.Sprintf("HTTP GET request to endpoint [%s] resulted in invalid response: [%v]", endpointToCheck, resp)
+					} else {
+						body := string(bytes)
+
+						apiAccessCheck.Status = healthcheck.CheckFailed
+						apiAccessCheck.NextSteps = fmt.Sprintf("HTTP GET request to endpoint [%s] resulted in Status: [%s], body: [%s]", endpointToCheck, resp.Status, body)
+					}
+				}
+			}
+		}
+	}
+	results := []healthcheck.CheckResult{
+		apiConnectivityCheck,
+		apiAccessCheck,
+	}
+	return results, nil
+}
+
+func (kubeapi *kubernetesApi) UrlFor(namespace string, extraPathStartingWithSlash string) (*url.URL, error) {
+	return generateKubernetesApiBaseUrlFor(kubeapi.apiSchemeHostAndPort, namespace, extraPathStartingWithSlash)
 }
 
 func NewK8sAPi(shell shell.Shell, k8sConfigFilesystemPathOverride string, apiHostAndPortOverride string) (KubernetesApi, error) {

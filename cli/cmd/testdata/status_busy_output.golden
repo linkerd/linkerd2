@@ -1,5 +1,7 @@
 kubectl: can talk to Kubernetes cluster.............[ok]
 kubectl: is in $PATH................................[FAIL]  -- This should contain instructions for fail
 kubectl: has compatible version.....................[ERROR] -- This should contain instructions for err
+kubernetes-api: can initialize the client...........[FAIL]  -- This should contain instructions for fail
+kubernetes-api: can query the Kubernetes API........[ok]
 
 Status check results are [ERROR]

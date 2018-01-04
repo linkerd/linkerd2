@@ -24,7 +24,7 @@ func TestKubectlVersion(t *testing.T) {
 		shell := &shell.MockShell{}
 		for k, expectedVersion := range versions {
 			shell.OutputToReturn = append(shell.OutputToReturn, k)
-			kctl, err := MakeKubectl(shell)
+			kctl, err := NewKubectl(shell)
 			shell.OutputToReturn = append(shell.OutputToReturn, k)
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
@@ -53,7 +53,7 @@ func TestKubectlVersion(t *testing.T) {
 		shell := &shell.MockShell{}
 		for _, expectedVersion := range versions {
 			shell.OutputToReturn = append(shell.OutputToReturn, expectedVersion)
-			_, err := MakeKubectl(shell)
+			_, err := NewKubectl(shell)
 
 			if err == nil {
 				t.Fatalf("Expected error parsing string: %s", expectedVersion)
@@ -67,7 +67,7 @@ func TestKubectlStartProxy(t *testing.T) {
 		shell := &shell.MockShell{}
 		potentialAsyncError := make(chan error, 1)
 		shell.OutputToReturn = append(shell.OutputToReturn, "Client Version: v1.8.4")
-		kctl, _ := MakeKubectl(shell)
+		kctl, _ := NewKubectl(shell)
 
 		shell.OutputToReturn = append(shell.OutputToReturn, fmt.Sprintf("Starting to serve on 127.0.0.1:8001%c", magicCharacterThatIndicatesProxyIsRunning))
 		err := kctl.StartProxy(potentialAsyncError, kubectlDefaultProxyPort)
@@ -89,7 +89,7 @@ func TestKubectlStartProxy(t *testing.T) {
 		shell := &shell.MockShell{}
 		potentialAsyncError := make(chan error, 1)
 		shell.OutputToReturn = append(shell.OutputToReturn, "Client Version: v1.8.4")
-		kctl, _ := MakeKubectl(shell)
+		kctl, _ := NewKubectl(shell)
 
 		shell.OutputToReturn = append(shell.OutputToReturn, fmt.Sprintf("Starting to serve on 127.0.0.1:8001%c", magicCharacterThatIndicatesProxyIsRunning))
 		err := kctl.StartProxy(potentialAsyncError, kubectlDefaultProxyPort)
@@ -113,7 +113,7 @@ func TestKubectlStartProxy(t *testing.T) {
 		shell := &shell.MockShell{}
 		potentialAsyncError := make(chan error, 1)
 		shell.OutputToReturn = append(shell.OutputToReturn, "Client Version: v1.8.4")
-		kctl, err := MakeKubectl(shell)
+		kctl, err := NewKubectl(shell)
 
 		if err != nil {
 			t.Fatalf("Unexpected error starting proxy: %v", err)
@@ -131,7 +131,7 @@ func TestKubectlStartProxy(t *testing.T) {
 		shell := &shell.MockShell{}
 		potentialAsyncError := make(chan error, 1)
 		shell.OutputToReturn = append(shell.OutputToReturn, "Client Version: v1.8.4")
-		kctl, _ := MakeKubectl(shell)
+		kctl, _ := NewKubectl(shell)
 
 		shell.OutputToReturn = append(shell.OutputToReturn, "ANY STRING THAT DOEST CONTAIN THE MAGIC CHARACTER WE ARE LOOKING FOR")
 		err := kctl.StartProxy(potentialAsyncError, kubectlDefaultProxyPort)
@@ -147,7 +147,7 @@ func TestUrlFor(t *testing.T) {
 		shell := &shell.MockShell{}
 		potentialAsyncError := make(chan error, 1)
 		shell.OutputToReturn = append(shell.OutputToReturn, "Client Version: v1.8.4")
-		kctl, _ := MakeKubectl(shell)
+		kctl, _ := NewKubectl(shell)
 
 		shell.OutputToReturn = append(shell.OutputToReturn, fmt.Sprintf("Starting to serve on 127.0.0.1:8001%c", magicCharacterThatIndicatesProxyIsRunning))
 		err := kctl.StartProxy(potentialAsyncError, kubectlDefaultProxyPort)
@@ -172,7 +172,7 @@ func TestUrlFor(t *testing.T) {
 	t.Run("Returns error if proxy isn't running", func(t *testing.T) {
 		shell := &shell.MockShell{}
 		shell.OutputToReturn = append(shell.OutputToReturn, "Client Version: v1.8.4")
-		kctl, _ := MakeKubectl(shell)
+		kctl, _ := NewKubectl(shell)
 
 		shell.OutputToReturn = append(shell.OutputToReturn, fmt.Sprintf("Starting to serve on 127.0.0.1:8001%c", magicCharacterThatIndicatesProxyIsRunning))
 		_, err := kctl.UrlFor("someNamespace", "/somePath")
@@ -221,7 +221,7 @@ func TestKubectlSelfCheck(t *testing.T) {
 		shell := &shell.MockShell{}
 		shell.OutputToReturn = append(shell.OutputToReturn, "Client Version: v1.8.4")
 		var kubectlAsStatusChecker healthcheck.StatusChecker
-		kubectlAsStatusChecker, _ = MakeKubectl(shell)
+		kubectlAsStatusChecker, _ = NewKubectl(shell)
 
 		output, err := ioutil.ReadFile("testdata/kubectl_config.output")
 		if err != nil {
@@ -257,7 +257,7 @@ func TestKubectlSelfCheck(t *testing.T) {
 		shell := &shell.MockShell{}
 		shell.OutputToReturn = append(shell.OutputToReturn, "Client Version: v1.8.4")
 		var kubectlAsStatusChecker healthcheck.StatusChecker
-		kubectlAsStatusChecker, _ = MakeKubectl(shell)
+		kubectlAsStatusChecker, _ = NewKubectl(shell)
 
 		output, err := ioutil.ReadFile("testdata/kubectl_config.output")
 		if err != nil {
@@ -290,7 +290,7 @@ func TestKubectlSelfCheck(t *testing.T) {
 
 }
 
-func TestMakeKubectl(t *testing.T) {
+func TestNewKubectl(t *testing.T) {
 	t.Run("Starts when kubectl is at compatible version", func(t *testing.T) {
 		versions := map[string][3]int{
 			"Client Version: v1.8.4":        {1, 8, 4},
@@ -300,7 +300,7 @@ func TestMakeKubectl(t *testing.T) {
 		shell := &shell.MockShell{}
 		for k, v := range versions {
 			shell.OutputToReturn = append(shell.OutputToReturn, k)
-			_, err := MakeKubectl(shell)
+			_, err := NewKubectl(shell)
 
 			if err != nil {
 				t.Fatalf("Unexpected error when kubectl is at version [%v]: %v", v, err)
@@ -317,7 +317,7 @@ func TestMakeKubectl(t *testing.T) {
 		shell := &shell.MockShell{}
 		for k, v := range versions {
 			shell.OutputToReturn = append(shell.OutputToReturn, k)
-			_, err := MakeKubectl(shell)
+			_, err := NewKubectl(shell)
 
 			if err == nil {
 				t.Fatalf("Expecting error when starting with incompatible version [%v] but got nothing", v)
