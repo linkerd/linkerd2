@@ -15,10 +15,25 @@ func generateKubernetesApiBaseUrlFor(schemeHostAndPort string, namespace string,
 		return nil, fmt.Errorf("Path must start with a [/], was [%s]", extraPathStartingWithSlash)
 	}
 
-	urlString := fmt.Sprintf("%s/api/v1/namespaces/%s%s", schemeHostAndPort, namespace, extraPathStartingWithSlash)
+	baseURL, err := generateBaseKubernetesApiUrl(schemeHostAndPort)
+	if err != nil {
+		return nil, err
+	}
+
+	urlString := fmt.Sprintf("%snamespaces/%s%s", baseURL.String(), namespace, extraPathStartingWithSlash)
 	url, err := url.Parse(urlString)
 	if err != nil {
-		return nil, fmt.Errorf("Error generating URL from [%s]", urlString)
+		return nil, fmt.Errorf("error generating namespace URL for Kubernetes API from [%s]", urlString)
+	}
+
+	return url, nil
+}
+
+func generateBaseKubernetesApiUrl(schemeHostAndPort string) (*url.URL, error) {
+	urlString := fmt.Sprintf("%s/api/v1/", schemeHostAndPort)
+	url, err := url.Parse(urlString)
+	if err != nil {
+		return nil, fmt.Errorf("error generating base URL for Kubernetes API from [%s]", urlString)
 	}
 	return url, nil
 }

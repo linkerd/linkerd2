@@ -197,7 +197,7 @@ func CanonicalKubernetesNameFromFriendlyName(friendlyName string) (string, error
 	return "", fmt.Errorf("cannot find Kubernetes canonical name from friendly name [%s]", friendlyName)
 }
 
-func MakeKubectl(shell shell.Shell) (Kubectl, error) {
+func NewKubectl(shell shell.Shell) (Kubectl, error) {
 
 	kubectl := &kubectl{
 		sh:        shell,

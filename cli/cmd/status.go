@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/runconduit/conduit/pkg/healthcheck"
-
 	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/runconduit/conduit/pkg/shell"
 	"github.com/spf13/cobra"
@@ -24,17 +23,23 @@ problems were found.`,
 	Args: cobra.NoArgs,
 	Run: exitSilentlyOnError(func(cmd *cobra.Command, args []string) error {
 
-		kubectl, err := k8s.MakeKubectl(shell.NewUnixShell())
+		kubectl, err := k8s.NewKubectl(shell.NewUnixShell())
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %s\n", err.Error())
+			fmt.Fprintf(os.Stderr, "Error with kubectl: %s\n", err.Error())
 			return statusCheckResultWasError(os.Stdout)
 		}
 
-		return checkStatus(os.Stdout, kubectl)
+		kubeApi, err := k8s.NewK8sAPi(shell.NewUnixShell(), kubeconfigPath, apiAddr)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error with Kubernetes API: %s\n", err.Error())
+			return statusCheckResultWasError(os.Stdout)
+		}
+
+		return checkStatus(os.Stdout, kubectl, kubeApi)
 	}),
 }
 
-func checkStatus(w io.Writer, kubectl k8s.Kubectl) error {
+func checkStatus(w io.Writer, kubectl k8s.Kubectl, kubeApi k8s.KubernetesApi) error {
 	prettyPrintResults := func(result healthcheck.CheckResult) {
 		checkLabel := fmt.Sprintf("%s: %s", result.SubsystemName, result.CheckDescription)
 
@@ -55,6 +60,7 @@ func checkStatus(w io.Writer, kubectl k8s.Kubectl) error {
 
 	checker := healthcheck.MakeHealthChecker()
 	checker.Add(kubectl)
+	checker.Add(kubeApi)
 	check := checker.PerformCheck(prettyPrintResults)
 
 	fmt.Fprintln(w, "")
