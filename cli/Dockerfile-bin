@@ -3,6 +3,7 @@ FROM gcr.io/runconduit/go-deps:e258aef9 as golang
 WORKDIR /go/src/github.com/runconduit/conduit
 COPY cli cli
 COPY controller controller
+COPY pkg pkg
 RUN mkdir -p /out
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /out/conduit-linux ./cli
 RUN CGO_ENABLED=0 GOOS=darwin go build -a -installsuffix cgo -o /out/conduit-macos ./cli
