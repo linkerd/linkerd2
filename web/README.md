@@ -30,6 +30,17 @@ go run main.go
 
 The web server will be running on localhost:8084.
 
+Note the web process depends on a public-api server, for which you have three options:
+
+1. Boot public-api locally
+
+    ```
+    go run ../controller/cmd/public-api/main.go
+    ```
+
+2. Connect to public-api in docker-compose (see below)
+3. Connect to public-api in Kubernetes (see below)
+
 To develop with a webpack dev server, start the server in a separate window:
 
 ```
@@ -68,7 +79,7 @@ that's running in your docker environment:
 ```
 docker-compose stop web
 cd web
-go run main.go -api-addr=localhost:8085
+go run main.go -api-addr=localhost:8085 # where localhost is the Docker address
 ```
 
 ## Run Web against a public API server in Kubernetes
