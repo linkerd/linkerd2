@@ -82,6 +82,7 @@ use outbound::Outbound;
 /// Runs a sidecar proxy.
 ///
 /// The proxy binds two listeners:
+///
 /// - a private socket (TCP or UNIX) for outbound requests to other instances;
 /// - and a public socket (TCP and optionally TLS) for inbound requests from other
 ///   instances.
