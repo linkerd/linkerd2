@@ -7,9 +7,8 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/runconduit/conduit/pkg/shell"
-
 	"github.com/runconduit/conduit/pkg/healthcheck"
+	"github.com/runconduit/conduit/pkg/shell"
 )
 
 func TestKubectlVersion(t *testing.T) {

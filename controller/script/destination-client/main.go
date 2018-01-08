@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"flag"
-	"io"
 	log "github.com/sirupsen/logrus"
+	"io"
 	"math/rand"
 	"time"
 

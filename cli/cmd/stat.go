@@ -9,11 +9,10 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/runconduit/conduit/pkg/k8s"
-	"github.com/runconduit/conduit/pkg/shell"
-
 	"github.com/runconduit/conduit/controller/api/util"
 	pb "github.com/runconduit/conduit/controller/gen/public"
+	"github.com/runconduit/conduit/pkg/k8s"
+	"github.com/runconduit/conduit/pkg/shell"
 	"github.com/spf13/cobra"
 )
 

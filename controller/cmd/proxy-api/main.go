@@ -7,9 +7,9 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/runconduit/conduit/controller/api/proxy"
 	"github.com/runconduit/conduit/controller/destination"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 )
 

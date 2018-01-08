@@ -11,7 +11,6 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/web/util/filesonly"
 	log "github.com/sirupsen/logrus"

@@ -1,11 +1,11 @@
 package main
 
 import (
-	"net/http"
 	"fmt"
-	"os"
-	"log"
 	"io/ioutil"
+	"log"
+	"net/http"
+	"os"
 	"strings"
 )
 

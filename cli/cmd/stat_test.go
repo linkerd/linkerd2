@@ -8,9 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/runconduit/conduit/pkg/k8s"
-
 	pb "github.com/runconduit/conduit/controller/gen/public"
+	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/stretchr/testify/assert"
 )
 

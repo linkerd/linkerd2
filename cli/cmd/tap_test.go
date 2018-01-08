@@ -6,13 +6,12 @@ import (
 	"net/http"
 	"testing"
 
-	pb "github.com/runconduit/conduit/controller/gen/public"
-	"github.com/runconduit/conduit/pkg/k8s"
-
 	"github.com/golang/protobuf/ptypes/duration"
 	google_protobuf "github.com/golang/protobuf/ptypes/duration"
 	common "github.com/runconduit/conduit/controller/gen/common"
+	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/controller/util"
+	"github.com/runconduit/conduit/pkg/k8s"
 	"google.golang.org/grpc/codes"
 )
 

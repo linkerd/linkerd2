@@ -7,14 +7,12 @@ import (
 
 	common "github.com/runconduit/conduit/controller/gen/common"
 	"github.com/runconduit/conduit/controller/util"
-
+	log "github.com/sirupsen/logrus"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/pkg/fields"
 	"k8s.io/client-go/pkg/util/intstr"
 	"k8s.io/client-go/tools/cache"
-
-	log "github.com/sirupsen/logrus"
 )
 
 const kubeSystem = "kube-system"

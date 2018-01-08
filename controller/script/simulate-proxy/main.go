@@ -9,13 +9,12 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/runconduit/conduit/controller/api/proxy"
 	common "github.com/runconduit/conduit/controller/gen/common"
 	pb "github.com/runconduit/conduit/controller/gen/proxy/telemetry"
 	"github.com/runconduit/conduit/controller/k8s"
 	"github.com/runconduit/conduit/controller/util"
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	k8sV1 "k8s.io/client-go/pkg/api/v1"
 )

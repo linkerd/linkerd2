@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/runconduit/conduit/pkg/healthcheck"
-
 	"github.com/runconduit/conduit/pkg/shell"
 )
 
