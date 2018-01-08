@@ -67,6 +67,28 @@ kubectl --namespace=conduit get all
 conduit dashboard
 ```
 
+## Updating Docker dependencies
+
+The Rust proxy and Go Docker images rely on base dependency images with
+hard-coded SHA's:
+
+`gcr.io/runconduit/go-deps` depends on
+- `Gopkg.lock`
+- `Dockerfile-go-deps`
+
+`gcr.io/runconduit/proxy-deps` depends on
+- `Cargo.lock`
+- `proxy/Dockerfile-deps`
+
+If any of these files change, update the Dockerfile SHA's with:
+
+```
+GO_DEPS_SHA=$(sh -c ". bin/_tag.sh && go_deps_sha")
+PROXY_DEPS_SHA=$(sh -c ". bin/_tag.sh && proxy_deps_sha")
+
+find . -type f -name 'Dockerfile*' -exec sed -i '' -e 's/gcr\.io\/runconduit\/go-deps:[^ ]*/gcr\.io\/runconduit\/go-deps:'$GO_DEPS_SHA'/g' {} \;
+find . -type f -name 'Dockerfile*' -exec sed -i '' -e 's/gcr\.io\/runconduit\/proxy-deps:[^ ]*/gcr\.io\/runconduit\/proxy-deps:'$PROXY_DEPS_SHA'/g' {} \;
+```
 
 ## Code of Conduct
 

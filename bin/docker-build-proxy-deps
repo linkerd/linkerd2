@@ -7,7 +7,7 @@ set -eu
 
 image=$(docker_maybe_build . \
     "$(docker_repo proxy-deps)" \
-    "$(cargo_sha)" \
+    "$(proxy_deps_sha)" \
     proxy/Dockerfile-deps)
 
 echo "$image"
