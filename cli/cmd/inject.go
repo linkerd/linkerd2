@@ -11,10 +11,11 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/runconduit/conduit/controller"
 	"github.com/spf13/cobra"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
-	yamlDecoder "k8s.io/client-go/pkg/util/yaml"
+	batchV1 "k8s.io/api/batch/v1"
+	"k8s.io/api/core/v1"
+	"k8s.io/api/extensions/v1beta1"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 )
 
 var (
@@ -71,7 +72,7 @@ with 'conduit inject'. e.g. curl http://url.to/yml | conduit inject -
 			}
 
 			// Unmarshal the object enough to read the Kind field
-			var meta meta_v1.TypeMeta
+			var meta metaV1.TypeMeta
 			if err := yaml.Unmarshal(bytes, &meta); err != nil {
 				return err
 			}
@@ -165,7 +166,7 @@ func injectReplicaSet(bytes []byte) (interface{}, error) {
  * with the sidecar and init-container injected.
  */
 func injectJob(bytes []byte) (interface{}, error) {
-	var job v1beta1.Job
+	var job batchV1.Job
 	err := yaml.Unmarshal(bytes, &job)
 	if err != nil {
 		return nil, err
@@ -353,12 +354,12 @@ type enhancedReplicaSet struct {
 }
 
 type enhancedJobSpec struct {
-	*v1beta1.JobSpec
+	*batchV1.JobSpec
 	Template enhancedPodTemplateSpec `json:"template,omitempty"`
 }
 
 type enhancedJob struct {
-	*v1beta1.Job
+	*batchV1.Job
 	Spec enhancedJobSpec `json:"spec,omitempty"`
 }
 

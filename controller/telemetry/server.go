@@ -23,7 +23,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	k8sV1 "k8s.io/client-go/pkg/api/v1"
+	k8sV1 "k8s.io/api/core/v1"
 )
 
 var (

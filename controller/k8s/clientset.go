@@ -4,6 +4,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	// Load all the auth plugins for the cloud providers.
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
 func NewClientSet(kubeConfig string) (*kubernetes.Clientset, error) {

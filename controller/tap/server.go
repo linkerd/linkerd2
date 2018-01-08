@@ -16,7 +16,7 @@ import (
 	"github.com/runconduit/conduit/controller/util"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
-	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/api/core/v1"
 )
 
 var tapInterval = 10 * time.Second
@@ -334,7 +334,10 @@ func NewServer(addr string, tapPort uint, kubeconfig string) (*grpc.Server, net.
 			return nil, fmt.Errorf("Object is not a Pod")
 		}
 		deployment, err := replicaSets.GetDeploymentForPod(pod)
-		return []string{deployment}, err
+		if err != nil {
+			return []string{}, nil
+		}
+		return []string{deployment}, nil
 	}
 
 	pods, err := k8s.NewPodIndex(clientSet, deploymentIndex)

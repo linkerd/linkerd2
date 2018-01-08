@@ -8,10 +8,10 @@ import (
 	common "github.com/runconduit/conduit/controller/gen/common"
 	"github.com/runconduit/conduit/controller/util"
 	log "github.com/sirupsen/logrus"
+	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/fields"
-	"k8s.io/client-go/pkg/util/intstr"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -116,7 +116,7 @@ func (e *EndpointsWatcher) Unsubscribe(service string, port uint32, listener End
 
 // Watches a Kubernetes resource type
 type informer struct {
-	informer *cache.Controller
+	informer cache.Controller
 	store    *cache.Store
 	stopCh   chan struct{}
 }

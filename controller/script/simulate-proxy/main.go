@@ -16,7 +16,9 @@ import (
 	"github.com/runconduit/conduit/controller/util"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
-	k8sV1 "k8s.io/client-go/pkg/api/v1"
+	"k8s.io/api/core/v1"
+	// Load all the auth plugins for the cloud providers.
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
 /* A simple script for posting simulated telemetry data to the proxy api */
@@ -96,7 +98,7 @@ func podIndexFunc(obj interface{}) ([]string, error) {
 	return nil, nil
 }
 
-func randomPod(pods []*k8sV1.Pod, prvPodIp *common.IPAddress) *common.IPAddress {
+func randomPod(pods []*v1.Pod, prvPodIp *common.IPAddress) *common.IPAddress {
 	var podIp *common.IPAddress
 	for {
 		if podIp != nil {
@@ -150,7 +152,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	allPods := make([]*k8sV1.Pod, 0)
+	allPods := make([]*v1.Pod, 0)
 	for _, pod := range podList {
 		if pod.Status.PodIP != "" && (*maxPods == 0 || len(allPods) < *maxPods) {
 			allPods = append(allPods, pod)

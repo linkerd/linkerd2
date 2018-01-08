@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
+	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/fields"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -39,7 +39,7 @@ func NewPodIndex(clientset *kubernetes.Clientset, index cache.IndexFunc) (*PodIn
 }
 
 func (p *PodIndex) Run() {
-	p.reflector.RunUntil(p.stopCh)
+	go p.reflector.Run(p.stopCh)
 }
 
 func (p *PodIndex) Stop() {

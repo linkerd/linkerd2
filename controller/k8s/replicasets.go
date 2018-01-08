@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"time"
 
+	"k8s.io/api/core/v1"
+	"k8s.io/api/extensions/v1beta1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
-	"k8s.io/client-go/pkg/fields"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -39,7 +39,7 @@ func NewReplicaSetStore(clientset *kubernetes.Clientset) (*ReplicaSetStore, erro
 }
 
 func (p *ReplicaSetStore) Run() {
-	p.reflector.RunUntil(p.stopCh)
+	go p.reflector.Run(p.stopCh)
 }
 
 func (p *ReplicaSetStore) Stop() {
