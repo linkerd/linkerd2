@@ -1,3 +1,13 @@
+# WARNING: because whether or not to build a new deps image is based on 
+#          the SHA of `Cargo.lock`, changes to this Dockerfile will NOT 
+#          cause a new deps image to be built. If you change anything in 
+#          this file, it is necessary to also change `Cargo.lock`, such 
+#          as by appending a newline, to cause the deps image to be 
+#          rebuilt.
+#
+#          See https://github.com/runconduit/conduit/issues/115 for more
+#          information.
+
 FROM rust:1.23.0
 WORKDIR /usr/src/conduit
 COPY codegen ./codegen
