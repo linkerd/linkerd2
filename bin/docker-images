@@ -28,5 +28,5 @@ docker_image web          "${tag}"
 docker_image cli          "${tag}"
 docker_image cli-bin      "${tag}"
 
-docker_image go-deps      "$(gopkg_sha)"
-docker_image proxy-deps   "$(cargo_sha)"
+docker_image go-deps      "$(go_deps_sha)"
+docker_image proxy-deps   "$(proxy_deps_sha)"

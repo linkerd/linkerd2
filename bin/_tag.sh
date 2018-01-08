@@ -6,12 +6,12 @@ git_sha() {
     git rev-parse "$1" | cut -c 1-8
 }
 
-cargo_sha() {
-    shasum Cargo.lock | awk '{print $1}' |cut -c 1-8
+proxy_deps_sha() {
+    cat Cargo.lock proxy/Dockerfile-deps | shasum - | awk '{print $1}' |cut -c 1-8
 }
 
-gopkg_sha() {
-    shasum Gopkg.lock | awk '{print $1}' |cut -c 1-8
+go_deps_sha() {
+    cat Gopkg.lock Dockerfile-go-deps | shasum - | awk '{print $1}' |cut -c 1-8
 }
 
 dir_tag() {

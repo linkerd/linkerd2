@@ -1,5 +1,5 @@
 ## compile rust proxy
-FROM gcr.io/runconduit/proxy-deps:944e9e27 as build
+FROM gcr.io/runconduit/proxy-deps:e01062fe as build
 WORKDIR /usr/src/conduit
 # Ranked roughly from least to most likely to change. Cargo.lock is the least likely
 # because it is supposed to be cached in the deps base image.

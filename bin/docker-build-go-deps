@@ -7,7 +7,7 @@ set -eu
 
 image=$(docker_maybe_build . \
     "$(docker_repo go-deps)" \
-    "$(gopkg_sha)" \
+    "$(go_deps_sha)" \
     Dockerfile-go-deps)
 
 echo "$image"

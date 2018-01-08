@@ -6,5 +6,5 @@ set -eu
 . bin/_tag.sh
 
 docker_push base         2017-10-30.01
-docker_push go-deps      "$(gopkg_sha)"
-docker_push proxy-deps   "$(cargo_sha)"
+docker_push go-deps      "$(go_deps_sha)"
+docker_push proxy-deps   "$(proxy_deps_sha)"
