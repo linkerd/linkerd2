@@ -173,7 +173,7 @@ a.button {
   border-radius: 48px;
   border: 1px solid var(--messageblue);
   padding: 10px 14px 11px 14px;
-  font-weight: bold;
+  font-weight: var(--font-weight-bold);
   font-size: 14px;
   margin: 0px 8px 8px 0px;
   position: relative;
@@ -216,7 +216,7 @@ a.button.primary:active {
   & thead > tr > th {
     background: var(--white);
     text-transform: uppercase;
-    font-style: bold;
+    font-weight: var(--font-weight-bold);
     border-bottom: 1px solid;
     border-color: var(--status-gray);
     word-break: keep-all;
@@ -231,7 +231,7 @@ a.button.primary:active {
     background: rgba(47, 128, 237, .1);
   }
 
-  & tr th.numeric, .numeric {
+  & tr .numeric {
     text-align: right;
   }
 }
