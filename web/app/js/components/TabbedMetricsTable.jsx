@@ -170,7 +170,8 @@ export default class TabbedMetricsTable extends React.Component {
           lastUpdated={this.props.lastUpdated}
           containerClassName={`spark-${toClassName(metricName)}-${toClassName(d.name)}-${toClassName(this.props.resource)}`}
           height={17}
-          width={170} />);
+          width={170}
+          showFlash={false} />);
       }
     };
   }

@@ -5,7 +5,7 @@ import './../../css/line-graph.css';
 
 const defaultSvgWidth = 238;
 const defaultSvgHeight = 72;
-const margin = { top: 0, right: 0, bottom: 0, left: 0 };
+const margin = { top: 6, right: 6, bottom: 6, left: 0 };
 
 export default class LineGraph extends React.Component {
   constructor(props) {
@@ -106,6 +106,7 @@ export default class LineGraph extends React.Component {
       .attr("d", this.line(this.props.data));
 
     this.updateAxes();
+    this.flashLatestDataPoint();
   }
 
   updateGraph() {
@@ -121,6 +122,7 @@ export default class LineGraph extends React.Component {
       .attr("d", this.line(this.props.data));
 
     this.updateAxes();
+    this.flashLatestDataPoint();
   }
 
   updateAxes() {
@@ -130,6 +132,40 @@ export default class LineGraph extends React.Component {
 
       this.yAxis
         .call(d3.axisLeft(this.yScale)); // add y axis labels
+    }
+  }
+
+  flashLatestDataPoint() {
+    this.svg.select("circle").remove();
+    let circleData = {};
+
+    if (!_.isEmpty(this.props.data) && this.props.showFlash) {
+      circleData = this.props.data.slice(-1)[0];
+      this.svg.append("circle")
+        .attr("class", "flash")
+        .style("opacity", 0.6)
+        .attr("cx", () => {
+          if (circleData.timestamp) {
+            return this.xScale(circleData.timestamp);
+          }
+        })
+        .attr("cy", () => {
+          if (circleData.value) {
+            return this.yScale(circleData.value);
+          }
+        })
+        .attr("r", 6)
+        .transition()
+        .on("start", function repeat() {
+          d3.active(this)
+            .transition()
+            .duration(550)
+            .style("opacity", 0.6)
+            .transition()
+            .duration(550)
+            .style("opacity", 0)
+            .on("start", repeat);
+        });
     }
   }
 

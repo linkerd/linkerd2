@@ -23,7 +23,8 @@ export default class StatPaneStat extends React.Component {
           <LineGraph
             data={this.props.timeseries}
             lastUpdated={this.props.lastUpdated}
-            containerClassName={`stat-pane-stat-${toClassName(this.props.name)}`} />
+            containerClassName={`stat-pane-stat-${toClassName(this.props.name)}`}
+            showFlash={true} />
         </div>
       </div>
     );
