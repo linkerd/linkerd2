@@ -85,7 +85,7 @@ func (kctl *kubectl) StartProxy(potentialErrorWhenStartingProxy chan error, port
 	fmt.Printf("Running `kubectl proxy -p %d`\n", port)
 
 	if kctl.ProxyPort() != portWhenProxyNotRunning {
-		return fmt.Errorf("kubectl proxy already running on port [%d]", kctl.ProxyPort)
+		return fmt.Errorf("kubectl proxy already running on port [%d]", kctl.ProxyPort())
 	}
 
 	output, err := kctl.sh.AsyncStdout(potentialErrorWhenStartingProxy, "kubectl", "proxy", "-p", strconv.Itoa(port))

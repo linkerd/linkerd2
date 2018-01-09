@@ -38,11 +38,11 @@ func main() {
 
 	_, _, err = net.SplitHostPort(*kubernetesApiHost) // Verify kubernetesApiHost is of the form host:port.
 	if err != nil {
-		log.Fatalf("failed to parse API server address: %s", kubernetesApiHost)
+		log.Fatalf("failed to parse API server address: %s", *kubernetesApiHost)
 	}
 	client, err := public.NewInternalClient(*kubernetesApiHost)
 	if err != nil {
-		log.Fatalf("failed to construct client for API server URL %s", kubernetesApiHost)
+		log.Fatalf("failed to construct client for API server URL %s", *kubernetesApiHost)
 	}
 
 	stop := make(chan os.Signal, 1)
@@ -64,6 +64,7 @@ func main() {
 	<-stop
 
 	log.Info("shutting down HTTP server on", *addr)
-	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	server.Shutdown(ctx)
 }

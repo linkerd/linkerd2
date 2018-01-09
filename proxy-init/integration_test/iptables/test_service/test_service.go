@@ -47,7 +47,7 @@ func response() string {
 }
 
 func main() {
-	fmt.Printf("Starting stub HTTP server on port [%s] will serve [%s] proxy [%s]", port, hostname, amITheProxy)
+	fmt.Printf("Starting stub HTTP server on port [%s] will serve [%s] proxy [%t]", port, hostname, amITheProxy)
 
 	http.HandleFunc("/", returnHostAndPortHandler)
 	http.HandleFunc("/call", callOtherServiceHandler)

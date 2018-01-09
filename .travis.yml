@@ -42,6 +42,7 @@ jobs:
         # this or we should error if it dirties the repo.
         - ./bin/protoc-go.sh
         - go test -v ./...
+        - go vet ./...
     - language: node_js
       node_js:
         - "8"
