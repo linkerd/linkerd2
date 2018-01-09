@@ -31,7 +31,7 @@ problems were found.`,
 			return statusCheckResultWasError(os.Stdout)
 		}
 
-		kubeApi, err := k8s.NewK8sAPi(shell.NewUnixShell(), kubeconfigPath, apiAddr)
+		kubeApi, err := k8s.NewK8sAPI(shell.NewUnixShell(), kubeconfigPath, apiAddr)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error with Kubernetes API: %s\n", err.Error())
 			return statusCheckResultWasError(os.Stdout)
