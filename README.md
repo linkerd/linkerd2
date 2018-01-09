@@ -48,6 +48,9 @@ components onto Minikube.
 This setup assumes working Go and Minikube environments.
 
 ```bash
+# ensure all go dependencies are in vendor
+dep ensure && dep prune
+
 # build and install conduit cli locally
 go build -o $GOPATH/bin/conduit ./cli
 
