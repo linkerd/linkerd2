@@ -34,7 +34,7 @@ Valid resource types include:
 			return fmt.Errorf("invalid resource type %s, only %s are allowed as resource types", friendlyName, k8s.KubernetesPods)
 		}
 
-		kubeApi, err := k8s.NewK8sAPi(shell.NewUnixShell(), kubeconfigPath, apiAddr)
+		kubeApi, err := k8s.NewK8sAPI(shell.NewUnixShell(), kubeconfigPath, apiAddr)
 		if err != nil {
 			return err
 		}
