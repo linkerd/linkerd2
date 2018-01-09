@@ -14,6 +14,10 @@ else
     exit 64
 fi
 
+dockerfile=proxy-init/Dockerfile
+
+validate_go_deps_tag $dockerfile
+
 (
     unset DOCKER_FORCE_BUILD
     bin/docker-build-base
@@ -23,4 +27,4 @@ fi
 docker_maybe_build . \
     "$(docker_repo proxy-init)" \
     "${tag}" \
-    proxy-init/Dockerfile
+    $dockerfile

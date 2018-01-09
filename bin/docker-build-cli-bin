@@ -14,6 +14,10 @@ else
     exit 64
 fi
 
+dockerfile=cli/Dockerfile-bin
+
+validate_go_deps_tag $dockerfile
+
 (
     unset DOCKER_FORCE_BUILD
     bin/docker-build-base
@@ -23,7 +27,7 @@ fi
 IMG=$(docker_maybe_build . \
     "$(docker_repo cli-bin)" \
     "${tag}" \
-    cli/Dockerfile-bin)
+    $dockerfile)
 
 ID=$(docker create "$IMG")
 
