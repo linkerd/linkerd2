@@ -77,7 +77,7 @@ func TestKubectlStartProxy(t *testing.T) {
 		}
 
 		if kctl.ProxyPort() != kubectlDefaultProxyPort {
-			t.Fatalf("Expecting proxy to be running on [%d] but it's on [%d]", kubectlDefaultProxyPort, kctl.ProxyPort)
+			t.Fatalf("Expecting proxy to be running on [%d] but it's on [%d]", kubectlDefaultProxyPort, kctl.ProxyPort())
 		}
 
 		if shell.LastFullCommand() != "kubectl proxy -p 8001" {
@@ -105,7 +105,7 @@ func TestKubectlStartProxy(t *testing.T) {
 		}
 
 		if kctl.ProxyPort() != kubectlDefaultProxyPort {
-			t.Fatalf("Expected proxy to keep running on port [%d] but got [%d]", kubectlDefaultProxyPort, kctl.ProxyPort)
+			t.Fatalf("Expected proxy to keep running on port [%d] but got [%d]", kubectlDefaultProxyPort, kctl.ProxyPort())
 		}
 	})
 

@@ -100,7 +100,7 @@ func TestWaitForCharacter(t *testing.T) {
 		}
 
 		if strings.TrimSpace(outputString) != expectedOutput {
-			t.Fatalf("Expecting command output to be [%s], got [%s]", expectedOutput, output)
+			t.Fatalf("Expecting command output to be [%s], got [%v]", expectedOutput, output)
 		}
 
 		select {

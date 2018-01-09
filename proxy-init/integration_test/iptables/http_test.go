@@ -195,7 +195,7 @@ func expectCannotConnectGetRequestTo(t *testing.T, host string, port string) {
 	fmt.Printf("Expecting failed GET to %s\n", targetUrl)
 	resp, err := http.Get(targetUrl)
 	if err == nil {
-		t.Fatalf("Expected error when connecting to %s, got:\n%s", targetUrl, resp)
+		t.Fatalf("Expected error when connecting to %s, got:\n%+v", targetUrl, resp)
 	}
 }
 
