@@ -6,17 +6,16 @@ import (
 
 	common "github.com/runconduit/conduit/controller/gen/common"
 	pb "github.com/runconduit/conduit/controller/gen/public"
-	"github.com/runconduit/conduit/pkg/healthcheck"
 	"google.golang.org/grpc"
 )
 
 type MockConduitApiClient struct {
-	ErrorToReturn            error
-	VersionInfoToReturn      *pb.VersionInfo
-	ListPodsResponseToReturn *pb.ListPodsResponse
-	MetricResponseToReturn   *pb.MetricResponse
-	SelfCheckResultsToReturn []healthcheck.CheckResult
-	Api_TapClientToReturn    pb.Api_TapClient
+	ErrorToReturn             error
+	VersionInfoToReturn       *pb.VersionInfo
+	ListPodsResponseToReturn  *pb.ListPodsResponse
+	MetricResponseToReturn    *pb.MetricResponse
+	SelfCheckResponseToReturn *common.SelfCheckResponse
+	Api_TapClientToReturn     pb.Api_TapClient
 }
 
 func (c *MockConduitApiClient) Stat(ctx context.Context, in *pb.MetricRequest, opts ...grpc.CallOption) (*pb.MetricResponse, error) {
@@ -35,8 +34,8 @@ func (c *MockConduitApiClient) Tap(ctx context.Context, in *pb.TapRequest, opts 
 	return c.Api_TapClientToReturn, c.ErrorToReturn
 }
 
-func (c *MockConduitApiClient) SelfCheck() ([]healthcheck.CheckResult, error) {
-	return c.SelfCheckResultsToReturn, c.ErrorToReturn
+func (c *MockConduitApiClient) SelfCheck(ctx context.Context, in *common.SelfCheckRequest, _ ...grpc.CallOption) (*common.SelfCheckResponse, error) {
+	return c.SelfCheckResponseToReturn, c.ErrorToReturn
 }
 
 type MockApi_TapClient struct {

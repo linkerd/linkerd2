@@ -12,7 +12,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	common "github.com/runconduit/conduit/controller/gen/common"
 	pb "github.com/runconduit/conduit/controller/gen/public"
-	"github.com/runconduit/conduit/pkg/healthcheck"
 	"github.com/runconduit/conduit/pkg/k8s"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -29,11 +28,6 @@ const (
 	ConduitApiSubsystemName                = "conduit-api"
 	ConduitApiConnectivityCheckDescription = "can be reached"
 )
-
-type ConduitApiClient interface {
-	pb.ApiClient
-	healthcheck.StatusChecker
-}
 
 type grpcOverHttpClient struct {
 	serverURL  *url.URL
@@ -77,26 +71,8 @@ func (c *grpcOverHttpClient) Tap(ctx context.Context, req *pb.TapRequest, _ ...g
 	return &tapClient{ctx: ctx, reader: bufio.NewReader(rsp.Body)}, nil
 }
 
-func (c *grpcOverHttpClient) SelfCheck() ([]healthcheck.CheckResult, error) {
-	conduitApiConnectivityCheck := healthcheck.CheckResult{
-		SubsystemName:    ConduitApiSubsystemName,
-		CheckDescription: ConduitApiConnectivityCheckDescription,
-		Status:           healthcheck.CheckError,
-	}
-	resp, err := c.Version(context.Background(), &pb.Empty{})
-	if err != nil {
-		conduitApiConnectivityCheck.Status = healthcheck.CheckError
-		conduitApiConnectivityCheck.FriendlyMessageToUser = fmt.Sprintf("Error connecting to the API. Error message is [%s]", err.Error())
-	} else {
-		if resp.ReleaseVersion != "" {
-			conduitApiConnectivityCheck.Status = healthcheck.CheckOk
-		}
-	}
-
-	results := []healthcheck.CheckResult{
-		conduitApiConnectivityCheck,
-	}
-	return results, nil
+func (s *grpcOverHttpClient) SelfCheck(ctx context.Context, in *common.SelfCheckRequest, _ ...grpc.CallOption) (*common.SelfCheckResponse, error) {
+	return nil, nil //TODO: WIP
 }
 
 func (c tapClient) Recv() (*common.TapEvent, error) {
@@ -145,7 +121,7 @@ func (c *grpcOverHttpClient) post(ctx context.Context, endpoint string, req prot
 	return c.httpClient.Do(httpReq.WithContext(ctx))
 }
 
-func NewInternalClient(kubernetesApiHost string) (ConduitApiClient, error) {
+func NewInternalClient(kubernetesApiHost string) (pb.ApiClient, error) {
 	apiURL := &url.URL{
 		Scheme: "http",
 		Host:   kubernetesApiHost,
@@ -155,7 +131,7 @@ func NewInternalClient(kubernetesApiHost string) (ConduitApiClient, error) {
 	return newClient(apiURL, http.DefaultClient)
 }
 
-func NewExternalClient(controlPlaneNamespace string, kubeApi k8s.KubernetesApi) (ConduitApiClient, error) {
+func NewExternalClient(controlPlaneNamespace string, kubeApi k8s.KubernetesApi) (pb.ApiClient, error) {
 	apiURL, err := kubeApi.UrlFor(controlPlaneNamespace, "/services/http:api:http/proxy/")
 	if err != nil {
 		return nil, err
@@ -173,7 +149,7 @@ func NewExternalClient(controlPlaneNamespace string, kubeApi k8s.KubernetesApi) 
 	return newClient(apiURL, httpClientToUse)
 }
 
-func newClient(apiURL *url.URL, httpClientToUse *http.Client) (ConduitApiClient, error) {
+func newClient(apiURL *url.URL, httpClientToUse *http.Client) (pb.ApiClient, error) {
 
 	if !apiURL.IsAbs() {
 		return nil, fmt.Errorf("server URL must be absolute, was [%s]", apiURL.String())

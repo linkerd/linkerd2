@@ -3,6 +3,5 @@ kubectl: is in $PATH................................[FAIL]  -- This should conta
 kubectl: has compatible version.....................[ERROR] -- This should contain instructions for err
 kubernetes-api: can initialize the client...........[FAIL]  -- This should contain instructions for fail
 kubernetes-api: can query the Kubernetes API........[ok]
-conduit-api: can be reached.........................[FAIL]  -- This should contain instructions for fail
 
 Status check results are [ERROR]

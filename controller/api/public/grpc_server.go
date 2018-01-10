@@ -10,6 +10,7 @@ import (
 
 	"github.com/runconduit/conduit/controller"
 	"github.com/runconduit/conduit/controller/api/util"
+	common "github.com/runconduit/conduit/controller/gen/common"
 	tapPb "github.com/runconduit/conduit/controller/gen/controller/tap"
 	telemPb "github.com/runconduit/conduit/controller/gen/controller/telemetry"
 	pb "github.com/runconduit/conduit/controller/gen/public"
@@ -147,6 +148,10 @@ func (s *grpcServer) Tap(req *pb.TapRequest, stream pb.Api_TapServer) error {
 			tapStream.Send(event)
 		}
 	}
+}
+
+func (s *grpcServer) SelfCheck(ctx context.Context, in *common.SelfCheckRequest) (*common.SelfCheckResponse, error) {
+	return nil, nil //TODO: WIP
 }
 
 func (s *grpcServer) requestRate(ctx context.Context, req *pb.MetricRequest) ([]*pb.MetricSeries, error) {

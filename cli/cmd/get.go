@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/runconduit/conduit/controller/api/public"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/runconduit/conduit/pkg/shell"
@@ -63,7 +62,7 @@ func init() {
 	addControlPlaneNetworkingArgs(getCmd)
 }
 
-func getPods(apiClient public.ConduitApiClient) ([]string, error) {
+func getPods(apiClient pb.ApiClient) ([]string, error) {
 	resp, err := apiClient.ListPods(context.Background(), &pb.Empty{})
 	if err != nil {
 		return nil, err
