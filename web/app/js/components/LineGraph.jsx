@@ -142,7 +142,7 @@ export default class LineGraph extends React.Component {
   }
 
   flashLatestDataPoint() {
-    if (this.props.flashLastDatapoint === false) {
+    if (!this.props.flashLastDatapoint) {
       return;
     }
 
@@ -169,12 +169,8 @@ export default class LineGraph extends React.Component {
 
       let circleData = _.last(this.props.data);
       circle
-        .attr("cx", () => {
-          return this.xScale(circleData.timestamp);
-        })
-        .attr("cy", () => {
-          return this.yScale(circleData.value);
-        });
+        .attr("cx", () => this.xScale(circleData.timestamp))
+        .attr("cy", () => this.yScale(circleData.value));
     }
   }
 
