@@ -23,5 +23,5 @@
 }
 
 .flash {
-  fill: #56CCF2;
+  fill: var(--latency-p50);
 }

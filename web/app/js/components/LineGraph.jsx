@@ -105,6 +105,12 @@ export default class LineGraph extends React.Component {
     lineChart
       .attr("d", this.line(this.props.data));
 
+    this.svg.append("circle")
+      .attr("class", "flash")
+      .attr("flashing", "off")
+      .style("opacity", 0)
+      .attr("r", 6);
+
     this.updateAxes();
     this.flashLatestDataPoint();
   }
@@ -136,35 +142,38 @@ export default class LineGraph extends React.Component {
   }
 
   flashLatestDataPoint() {
-    this.svg.select("circle").remove();
-    let circleData = {};
+    if (this.props.flashLastDatapoint === false) {
+      return;
+    }
 
-    if (!_.isEmpty(this.props.data) && this.props.showFlash) {
-      circleData = this.props.data.slice(-1)[0];
-      this.svg.append("circle")
-        .attr("class", "flash")
-        .style("opacity", 0.6)
+    let circle = this.svg.select("circle");
+    if (_.isEmpty(this.props.data)) {
+      circle.attr("flashing", "off").interrupt().style("opacity", 0);
+    } else {
+      if (circle.attr("flashing") === "off") {
+        circle
+          .attr("flashing", "on")
+          .transition()
+          .on("start", function repeat() {
+            d3.active(this)
+              .transition()
+              .duration(1000)
+              .style("opacity", 0.6)
+              .transition()
+              .duration(1000)
+              .style("opacity", 0)
+              .transition()
+              .on("start", repeat);
+          });
+      }
+
+      let circleData = _.last(this.props.data);
+      circle
         .attr("cx", () => {
-          if (circleData.timestamp) {
-            return this.xScale(circleData.timestamp);
-          }
+          return this.xScale(circleData.timestamp);
         })
         .attr("cy", () => {
-          if (circleData.value) {
-            return this.yScale(circleData.value);
-          }
-        })
-        .attr("r", 6)
-        .transition()
-        .on("start", function repeat() {
-          d3.active(this)
-            .transition()
-            .duration(550)
-            .style("opacity", 0.6)
-            .transition()
-            .duration(550)
-            .style("opacity", 0)
-            .on("start", repeat);
+          return this.yScale(circleData.value);
         });
     }
   }
