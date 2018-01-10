@@ -15,7 +15,7 @@ else
 fi
 
 
-# Build gcr.io/runconduit/cli-bin, which is used by Dockerfile-cli.
+# Build gcr.io/runconduit/cli-bin, which is used by cli/Dockerfile.
 bin/docker-build-cli-bin "${tag}" >/dev/null
 
 docker_maybe_build . \
