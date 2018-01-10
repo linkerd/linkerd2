@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/runconduit/conduit/controller/api/public"
 	"github.com/runconduit/conduit/pkg/healthcheck"
 	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/runconduit/conduit/pkg/shell"
@@ -37,11 +38,17 @@ problems were found.`,
 			return statusCheckResultWasError(os.Stdout)
 		}
 
-		return checkStatus(os.Stdout, kubectl, kubeApi)
+		conduitApi, err := newApiClient(kubeApi)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error with Conduit API: %s\n", err.Error())
+			return statusCheckResultWasError(os.Stdout)
+		}
+
+		return checkStatus(os.Stdout, kubectl, kubeApi, conduitApi)
 	}),
 }
 
-func checkStatus(w io.Writer, kubectl k8s.Kubectl, kubeApi k8s.KubernetesApi) error {
+func checkStatus(w io.Writer, kubectl k8s.Kubectl, kubeApi k8s.KubernetesApi, conduitApi public.ConduitApiClient) error {
 	prettyPrintResults := func(result healthcheck.CheckResult) {
 		checkLabel := fmt.Sprintf("%s: %s", result.SubsystemName, result.CheckDescription)
 
@@ -63,6 +70,8 @@ func checkStatus(w io.Writer, kubectl k8s.Kubectl, kubeApi k8s.KubernetesApi) er
 	checker := healthcheck.MakeHealthChecker()
 	checker.Add(kubectl)
 	checker.Add(kubeApi)
+	checker.Add(conduitApi)
+
 	check := checker.PerformCheck(prettyPrintResults)
 
 	fmt.Fprintln(w, "")

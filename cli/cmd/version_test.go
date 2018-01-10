@@ -26,7 +26,7 @@ func TestGetVersion(t *testing.T) {
 		}
 	})
 
-	t.Run("Returns undfined when cannot gt server version", func(t *testing.T) {
+	t.Run("Returns undefined when cannot get server version", func(t *testing.T) {
 		expectedServerVersion := "unavailable"
 		expectedClientVersion := controller.Version
 		mockClient := &public.MockConduitApiClient{}

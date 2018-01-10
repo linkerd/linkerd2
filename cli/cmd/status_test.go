@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"testing"
 
+	"github.com/runconduit/conduit/controller/api/public"
+
 	"github.com/runconduit/conduit/pkg/healthcheck"
 	"github.com/runconduit/conduit/pkg/k8s"
 )
@@ -49,8 +51,18 @@ func TestCheckStatus(t *testing.T) {
 			},
 		}
 
+		conduitApi := &public.MockConduitApiClient{}
+		conduitApi.SelfCheckResultsToReturn = []healthcheck.CheckResult{
+			{
+				SubsystemName:    public.ConduitApiSubsystemName,
+				CheckDescription: public.ConduitApiConnectivityCheckDescription,
+				Status:           healthcheck.CheckFailed,
+				NextSteps:        "This should contain instructions for fail",
+			},
+		}
+
 		output := bytes.NewBufferString("")
-		checkStatus(output, kubectl, kubeApi)
+		checkStatus(output, kubectl, kubeApi, conduitApi)
 
 		goldenFileBytes, err := ioutil.ReadFile("testdata/status_busy_output.golden")
 		if err != nil {
