@@ -11,10 +11,10 @@ const (
 )
 
 type CheckResult struct {
-	SubsystemName    string
-	CheckDescription string
-	Status           CheckStatus
-	NextSteps        string
+	SubsystemName         string
+	CheckDescription      string
+	Status                CheckStatus
+	FriendlyMessageToUser string
 }
 
 type Check struct {

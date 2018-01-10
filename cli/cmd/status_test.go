@@ -16,48 +16,48 @@ func TestCheckStatus(t *testing.T) {
 		kubectl := &k8s.MockKubectl{}
 		kubectl.SelfCheckResultsToReturn = []healthcheck.CheckResult{
 			{
-				SubsystemName:    k8s.KubectlSubsystemName,
-				CheckDescription: k8s.KubectlConnectivityCheckDescription,
-				Status:           healthcheck.CheckOk,
-				NextSteps:        "This shouldnt be printed",
+				SubsystemName:         k8s.KubectlSubsystemName,
+				CheckDescription:      k8s.KubectlConnectivityCheckDescription,
+				Status:                healthcheck.CheckOk,
+				FriendlyMessageToUser: "This shouldnt be printed",
 			},
 			{
-				SubsystemName:    k8s.KubectlSubsystemName,
-				CheckDescription: k8s.KubectlIsInstalledCheckDescription,
-				Status:           healthcheck.CheckFailed,
-				NextSteps:        "This should contain instructions for fail",
+				SubsystemName:         k8s.KubectlSubsystemName,
+				CheckDescription:      k8s.KubectlIsInstalledCheckDescription,
+				Status:                healthcheck.CheckFailed,
+				FriendlyMessageToUser: "This should contain instructions for fail",
 			},
 			{
-				SubsystemName:    k8s.KubectlSubsystemName,
-				CheckDescription: k8s.KubectlVersionCheckDescription,
-				Status:           healthcheck.CheckError,
-				NextSteps:        "This should contain instructions for err",
+				SubsystemName:         k8s.KubectlSubsystemName,
+				CheckDescription:      k8s.KubectlVersionCheckDescription,
+				Status:                healthcheck.CheckError,
+				FriendlyMessageToUser: "This should contain instructions for err",
 			},
 		}
 
 		kubeApi := &k8s.MockKubeApi{}
 		kubeApi.SelfCheckResultsToReturn = []healthcheck.CheckResult{
 			{
-				SubsystemName:    k8s.KubeapiSubsystemName,
-				CheckDescription: k8s.KubeapiClientCheckDescription,
-				Status:           healthcheck.CheckFailed,
-				NextSteps:        "This should contain instructions for fail",
+				SubsystemName:         k8s.KubeapiSubsystemName,
+				CheckDescription:      k8s.KubeapiClientCheckDescription,
+				Status:                healthcheck.CheckFailed,
+				FriendlyMessageToUser: "This should contain instructions for fail",
 			},
 			{
-				SubsystemName:    k8s.KubeapiSubsystemName,
-				CheckDescription: k8s.KubeapiAccessCheckDescription,
-				Status:           healthcheck.CheckOk,
-				NextSteps:        "This shouldnt be printed",
+				SubsystemName:         k8s.KubeapiSubsystemName,
+				CheckDescription:      k8s.KubeapiAccessCheckDescription,
+				Status:                healthcheck.CheckOk,
+				FriendlyMessageToUser: "This shouldnt be printed",
 			},
 		}
 
 		conduitApi := &public.MockConduitApiClient{}
 		conduitApi.SelfCheckResultsToReturn = []healthcheck.CheckResult{
 			{
-				SubsystemName:    public.ConduitApiSubsystemName,
-				CheckDescription: public.ConduitApiConnectivityCheckDescription,
-				Status:           healthcheck.CheckFailed,
-				NextSteps:        "This should contain instructions for fail",
+				SubsystemName:         public.ConduitApiSubsystemName,
+				CheckDescription:      public.ConduitApiConnectivityCheckDescription,
+				Status:                healthcheck.CheckFailed,
+				FriendlyMessageToUser: "This should contain instructions for fail",
 			},
 		}
 

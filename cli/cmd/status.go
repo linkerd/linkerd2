@@ -61,9 +61,9 @@ func checkStatus(w io.Writer, kubectl k8s.Kubectl, kubeApi k8s.KubernetesApi, co
 		case healthcheck.CheckOk:
 			fmt.Fprintf(w, "%s%s[ok]\n", checkLabel, filler)
 		case healthcheck.CheckFailed:
-			fmt.Fprintf(w, "%s%s[FAIL]  -- %s\n", checkLabel, filler, result.NextSteps)
+			fmt.Fprintf(w, "%s%s[FAIL]  -- %s\n", checkLabel, filler, result.FriendlyMessageToUser)
 		case healthcheck.CheckError:
-			fmt.Fprintf(w, "%s%s[ERROR] -- %s\n", checkLabel, filler, result.NextSteps)
+			fmt.Fprintf(w, "%s%s[ERROR] -- %s\n", checkLabel, filler, result.FriendlyMessageToUser)
 		}
 	}
 

@@ -86,7 +86,7 @@ func (c *grpcOverHttpClient) SelfCheck() ([]healthcheck.CheckResult, error) {
 	resp, err := c.Version(context.Background(), &pb.Empty{})
 	if err != nil {
 		conduitApiConnectivityCheck.Status = healthcheck.CheckError
-		conduitApiConnectivityCheck.NextSteps = fmt.Sprintf("Error connecting to the API. Error message is [%s]", err.Error())
+		conduitApiConnectivityCheck.FriendlyMessageToUser = fmt.Sprintf("Error connecting to the API. Error message is [%s]", err.Error())
 	} else {
 		if resp.ReleaseVersion != "" {
 			conduitApiConnectivityCheck.Status = healthcheck.CheckOk
