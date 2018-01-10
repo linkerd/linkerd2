@@ -103,6 +103,18 @@ export const urlsForResource = (pathPrefix, metricsWindow) => {
           rollup: downstreamRollupUrl
         };
       }
+    },
+    "path": {
+      groupBy: "path",
+      url: () => {
+        let pathRollupUrl = `${metricsUrl}&aggregation=path`;
+        let pathTsUrl = `${pathRollupUrl}&timeseries=true`;
+
+        return {
+          ts: pathTsUrl,
+          rollup: pathRollupUrl
+        };
+      }
     }
   };
 };

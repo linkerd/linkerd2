@@ -49,7 +49,7 @@ export default class Deployment extends React.Component {
       pollingInterval: 10000,
       metricsWindow: "10m",
       deploy: deployment,
-      metrics:[],
+      metrics: [],
       pods: [],
       upstreamMetrics: [],
       downstreamMetrics: [],
