@@ -1,17 +1,23 @@
+/* eslint-disable */
+import 'raf/polyfill';
+import Adapter from 'enzyme-adapter-react-16';
 import Deployment from '../js/components/Deployment.jsx';
+import Enzyme from 'enzyme';
 import { expect } from 'chai';
 import { mount } from 'enzyme';
 import { routerWrap } from "./testHelpers.jsx";
 import sinon from 'sinon';
 import sinonStubPromise from 'sinon-stub-promise';
+/* eslint-enable */
 
+Enzyme.configure({ adapter: new Adapter() });
 sinonStubPromise(sinon);
 
 describe('Deployment', () => {
   let component, fetchStub;
 
   function withPromise(fn) {
-    return component.find("Deployment").get(0).serverPromise.then(fn);
+    return component.find("Deployment").instance().serverPromise.then(fn);
   }
 
   beforeEach(() => {
@@ -19,6 +25,7 @@ describe('Deployment', () => {
   });
 
   afterEach(() => {
+    component = null;
     window.fetch.restore();
   });
 

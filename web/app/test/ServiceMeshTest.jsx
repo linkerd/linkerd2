@@ -1,4 +1,6 @@
 import _ from 'lodash';
+import Adapter from 'enzyme-adapter-react-16';
+import Enzyme from 'enzyme';
 import { expect } from 'chai';
 import { mount } from 'enzyme';
 import podFixtures from './fixtures/pods.json';
@@ -7,13 +9,14 @@ import ServiceMesh from '../js/components/ServiceMesh.jsx';
 import sinon from 'sinon';
 import sinonStubPromise from 'sinon-stub-promise';
 
+Enzyme.configure({ adapter: new Adapter() });
 sinonStubPromise(sinon);
 
 describe('ServiceMesh', () => {
   let component, fetchStub;
 
   function withPromise(fn) {
-    return component.find("ServiceMesh").get(0).serverPromise.then(fn);
+    return component.find("ServiceMesh").instance().serverPromise.then(fn);
   }
 
   beforeEach(() => {
@@ -21,6 +24,7 @@ describe('ServiceMesh', () => {
   });
 
   afterEach(() => {
+    component = null;
     window.fetch.restore();
   });
 
@@ -54,6 +58,7 @@ describe('ServiceMesh', () => {
     component = mount(routerWrap(ServiceMesh));
 
     return withPromise(() => {
+      component.update();
       expect(component.find("ServiceMesh")).to.have.length(1);
       expect(component.find("ConduitSpinner")).to.have.length(0);
       expect(component.find("CallToAction")).to.have.length(1);
@@ -71,6 +76,7 @@ describe('ServiceMesh', () => {
     component = mount(routerWrap(ServiceMesh));
 
     return withPromise(() => {
+      component.update();
       expect(component.find("ServiceMesh")).to.have.length(1);
       expect(component.find("ConduitSpinner")).to.have.length(0);
       expect(component.find("DeploymentSummary")).to.have.length(3);
@@ -85,6 +91,7 @@ describe('ServiceMesh', () => {
     component = mount(routerWrap(ServiceMesh));
 
     return withPromise(() => {
+      component.update();
       expect(component.find("ServiceMesh")).to.have.length(1);
       expect(component.find("ConduitSpinner")).to.have.length(0);
       expect(component.html()).to.include("Service mesh details");
@@ -100,6 +107,7 @@ describe('ServiceMesh', () => {
     component = mount(routerWrap(ServiceMesh));
 
     return withPromise(() => {
+      component.update();
       expect(component.find("ServiceMesh")).to.have.length(1);
       expect(component.find("ConduitSpinner")).to.have.length(0);
       expect(component.html()).to.include("Control plane");
@@ -114,6 +122,7 @@ describe('ServiceMesh', () => {
     component = mount(routerWrap(ServiceMesh));
 
     return withPromise(() => {
+      component.update();
       expect(component.find("ServiceMesh")).to.have.length(1);
       expect(component.find("ConduitSpinner")).to.have.length(0);
       expect(component.html()).to.include("Data plane");
