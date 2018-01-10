@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/runconduit/conduit/controller"
+	"github.com/runconduit/conduit/controller/api/public"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/runconduit/conduit/pkg/shell"
@@ -49,7 +50,7 @@ type versions struct {
 	Client string
 }
 
-func getVersions(client pb.ApiClient) versions {
+func getVersions(client public.ConduitApiClient) versions {
 	resp, err := client.Version(context.Background(), &pb.Empty{})
 	if err != nil {
 		return versions{

@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/runconduit/conduit/controller/api/public"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	log "github.com/sirupsen/logrus"
 )
@@ -15,7 +16,7 @@ type (
 	handler struct {
 		render    renderTemplate
 		serveFile serveFile
-		apiClient pb.ApiClient
+		apiClient public.ConduitApiClient
 		uuid      string
 	}
 )

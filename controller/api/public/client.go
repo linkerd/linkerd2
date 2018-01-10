@@ -27,6 +27,10 @@ const (
 	ErrorHeader         = "conduit-error"
 )
 
+type ConduitApiClient interface {
+	pb.ApiClient
+}
+
 type client struct {
 	serverURL *url.URL
 	client    *http.Client
@@ -115,7 +119,7 @@ func (c *client) post(ctx context.Context, endpoint string, req proto.Message) (
 	return c.client.Do(httpReq.WithContext(ctx))
 }
 
-func NewInternalClient(kubernetesApiHost string) (pb.ApiClient, error) {
+func NewInternalClient(kubernetesApiHost string) (ConduitApiClient, error) {
 	apiURL := &url.URL{
 		Scheme: "http",
 		Host:   kubernetesApiHost,
@@ -125,7 +129,7 @@ func NewInternalClient(kubernetesApiHost string) (pb.ApiClient, error) {
 	return newClient(apiURL, http.DefaultClient)
 }
 
-func NewExternalClient(controlPlaneNamespace string, kubeApi k8s.KubernetesApi) (pb.ApiClient, error) {
+func NewExternalClient(controlPlaneNamespace string, kubeApi k8s.KubernetesApi) (ConduitApiClient, error) {
 	apiURL, err := kubeApi.UrlFor(controlPlaneNamespace, "/services/http:api:http/proxy/")
 	if err != nil {
 		return nil, err
@@ -143,7 +147,7 @@ func NewExternalClient(controlPlaneNamespace string, kubeApi k8s.KubernetesApi) 
 	return newClient(apiURL, httpClientToUse)
 }
 
-func newClient(apiURL *url.URL, httpClientToUse *http.Client) (pb.ApiClient, error) {
+func newClient(apiURL *url.URL, httpClientToUse *http.Client) (ConduitApiClient, error) {
 
 	if !apiURL.IsAbs() {
 		return nil, fmt.Errorf("server URL must be absolute, was [%s]", apiURL.String())

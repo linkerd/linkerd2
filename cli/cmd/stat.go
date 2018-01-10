@@ -9,6 +9,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/runconduit/conduit/controller/api/public"
 	"github.com/runconduit/conduit/controller/api/util"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
@@ -91,7 +92,7 @@ var resourceTypeToAggregationType = map[string]pb.AggregationType{
 	ConduitPaths:              pb.AggregationType_PATH,
 }
 
-func requestStatsFromApi(client pb.ApiClient, resourceType string) (string, error) {
+func requestStatsFromApi(client public.ConduitApiClient, resourceType string) (string, error) {
 	aggType := resourceTypeToAggregationType[resourceType]
 	req, err := buildMetricRequest(aggType)
 	if err != nil {

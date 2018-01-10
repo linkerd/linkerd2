@@ -10,6 +10,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/runconduit/conduit/controller/api/public"
 	common "github.com/runconduit/conduit/controller/gen/common"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/controller/util"
@@ -97,7 +98,7 @@ func init() {
 	tapCmd.PersistentFlags().StringVar(&path, "path", "", "Display requests with paths that start with this prefix")
 }
 
-func requestTapFromApi(client pb.ApiClient, targetName string, resourceType string, req *pb.TapRequest) (string, error) {
+func requestTapFromApi(client public.ConduitApiClient, targetName string, resourceType string, req *pb.TapRequest) (string, error) {
 	switch resourceType {
 	case k8s.KubernetesDeployments:
 		req.Target = &pb.TapRequest_Deployment{
