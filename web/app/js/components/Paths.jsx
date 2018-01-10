@@ -76,7 +76,6 @@ export default class Paths extends React.Component {
 
             <TabbedMetricsTable
               resource="path"
-              entity=""
               metrics={this.state.metrics}
               lastUpdated={this.state.lastUpdated}
               pathPrefix={this.props.pathPrefix}

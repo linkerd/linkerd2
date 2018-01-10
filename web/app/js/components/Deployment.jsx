@@ -53,6 +53,7 @@ export default class Deployment extends React.Component {
       pods: [],
       upstreamMetrics: [],
       downstreamMetrics: [],
+      pathMetrics: [],
       pendingRequests: false,
       loaded: false,
       error: ''
@@ -71,20 +72,23 @@ export default class Deployment extends React.Component {
     let podRollupUrl = urls["pod"].url(this.state.deploy).rollup;
     let upstreamRollupUrl = urls["upstream_deployment"].url(this.state.deploy).rollup;
     let downstreamRollupUrl = urls["downstream_deployment"].url(this.state.deploy).rollup;
+    let pathMetricsUrl = urls["path"].url(this.state.deploy).rollup;
 
     let deployFetch = this.api.fetch(deployMetricsUrl);
     let podListFetch = this.api.fetchPods();
     let podRollupFetch = this.api.fetch(podRollupUrl);
     let upstreamFetch = this.api.fetch(upstreamRollupUrl);
     let downstreamFetch = this.api.fetch(downstreamRollupUrl);
+    let pathsFetch = this.api.fetch(pathMetricsUrl);
 
     // expose serverPromise for testing
-    this.serverPromise = Promise.all([deployFetch, podRollupFetch, upstreamFetch, downstreamFetch, podListFetch])
-      .then(([deployMetrics, podRollup, upstreamRollup, downstreamRollup, podList]) => {
+    this.serverPromise = Promise.all([deployFetch, podRollupFetch, upstreamFetch, downstreamFetch, podListFetch, pathsFetch])
+      .then(([deployMetrics, podRollup, upstreamRollup, downstreamRollup, podList, paths]) => {
         let tsByDeploy = processTimeseriesMetrics(deployMetrics.metrics, "targetDeploy");
         let podMetrics = processRollupMetrics(podRollup.metrics, "targetPod");
         let upstreamMetrics = processRollupMetrics(upstreamRollup.metrics, "sourceDeploy");
         let downstreamMetrics = processRollupMetrics(downstreamRollup.metrics, "targetDeploy");
+        let pathMetrics = processRollupMetrics(paths.metrics, "path");
 
         let deploy = _.find(getPodsByDeployment(podList.pods), ["name", this.state.deploy]);
         let totalRequestRate = _.sumBy(podMetrics, "requestRate");
@@ -97,6 +101,7 @@ export default class Deployment extends React.Component {
           deployTs: _.get(tsByDeploy, this.state.deploy, {}),
           upstreamMetrics: upstreamMetrics,
           downstreamMetrics: downstreamMetrics,
+          pathMetrics: pathMetrics,
           lastUpdated: Date.now(),
           pendingRequests: false,
           loaded: true,
@@ -147,7 +152,8 @@ export default class Deployment extends React.Component {
         upstreamMetrics={this.state.upstreamMetrics}
         downstreamMetrics={this.state.downstreamMetrics}
         metricsWindow={this.state.metricsWindow}
-        pathPrefix={this.props.pathPrefix} />
+        pathPrefix={this.props.pathPrefix} />,
+      this.renderPaths()
     ];
   }
 
@@ -199,6 +205,24 @@ export default class Deployment extends React.Component {
         </Col>
       </Row>
     );
+  }
+
+  renderPaths() {
+    return _.size(this.state.pathMetrics) === 0 ? null :
+      <div>
+        <div className="border-container border-neutral subsection-header">
+          <div className="border-container-content subsection-header">
+              Paths
+          </div>
+        </div>
+        <TabbedMetricsTable
+          resource="path"
+          metrics={this.state.pathMetrics}
+          hideSparklines={true}
+          lastUpdated={this.props.lastUpdated}
+          metricsWindow={this.props.metricsWindow}
+          pathPrefix={this.props.pathPrefix} />
+      </div>;
   }
 
   renderDeploymentTitle() {
