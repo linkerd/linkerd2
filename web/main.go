@@ -51,19 +51,19 @@ func main() {
 	server := srv.NewServer(*addr, *templateDir, *staticDir, *uuid, *webpackDevServer, *reload, client)
 
 	go func() {
-		log.Info("starting HTTP server on", *addr)
+		log.Infof("starting HTTP server on %+v", *addr)
 		server.ListenAndServe()
 	}()
 
 	go func() {
-		log.Info("serving scrapable metrics on", *metricsAddr)
+		log.Infof("serving scrapable metrics on %+v", *metricsAddr)
 		http.Handle("/metrics", promhttp.Handler())
 		http.ListenAndServe(*metricsAddr, nil)
 	}()
 
 	<-stop
 
-	log.Info("shutting down HTTP server on", *addr)
+	log.Infof("shutting down HTTP server on %+v", *addr)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	server.Shutdown(ctx)

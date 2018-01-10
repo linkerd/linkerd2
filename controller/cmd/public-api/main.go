@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -11,10 +10,10 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/runconduit/conduit/controller/api/public"
 	"github.com/runconduit/conduit/controller/tap"
 	"github.com/runconduit/conduit/controller/telemetry"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
@@ -42,18 +41,18 @@ func main() {
 	server := public.NewServer(*addr, telemetryClient, tapClient)
 
 	go func() {
-		fmt.Println("starting HTTP server on", *addr)
+		log.Infof("starting HTTP server on %+v", *addr)
 		server.ListenAndServe()
 	}()
 
 	go func() {
-		fmt.Println("serving scrapable metrics on", *metricsAddr)
+		log.Infof("serving scrapable metrics on %+v", *metricsAddr)
 		http.Handle("/metrics", promhttp.Handler())
 		http.ListenAndServe(*metricsAddr, nil)
 	}()
 
 	<-stop
 
-	fmt.Println("shutting down HTTP server on", *addr)
+	log.Infof("shutting down HTTP server on %+v", *addr)
 	server.Shutdown(context.Background())
 }
