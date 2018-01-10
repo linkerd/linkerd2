@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/runconduit/conduit/controller"
+	"github.com/runconduit/conduit/controller/api/public"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 )
 
@@ -12,8 +13,8 @@ func TestGetVersion(t *testing.T) {
 	t.Run("Returns existing versions from server and client", func(t *testing.T) {
 		expectedServerVersion := "1.2.3"
 		expectedClientVersion := controller.Version
-		mockClient := &mockApiClient{}
-		mockClient.versionInfoToReturn = &pb.VersionInfo{
+		mockClient := &public.MockConduitApiClient{}
+		mockClient.VersionInfoToReturn = &pb.VersionInfo{
 			ReleaseVersion: expectedServerVersion,
 		}
 
@@ -28,8 +29,8 @@ func TestGetVersion(t *testing.T) {
 	t.Run("Returns undfined when cannot gt server version", func(t *testing.T) {
 		expectedServerVersion := "unavailable"
 		expectedClientVersion := controller.Version
-		mockClient := &mockApiClient{}
-		mockClient.errorToReturn = errors.New("expected")
+		mockClient := &public.MockConduitApiClient{}
+		mockClient.ErrorToReturn = errors.New("expected")
 
 		versions := getVersions(mockClient)
 

@@ -12,6 +12,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	common "github.com/runconduit/conduit/controller/gen/common"
 	pb "github.com/runconduit/conduit/controller/gen/public"
+	"github.com/runconduit/conduit/pkg/healthcheck"
 	"github.com/runconduit/conduit/pkg/k8s"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -29,6 +30,7 @@ const (
 
 type ConduitApiClient interface {
 	pb.ApiClient
+	healthcheck.StatusChecker
 }
 
 type client struct {
@@ -71,6 +73,10 @@ func (c *client) Tap(ctx context.Context, req *pb.TapRequest, _ ...grpc.CallOpti
 	}()
 
 	return &tapClient{ctx: ctx, reader: bufio.NewReader(rsp.Body)}, nil
+}
+
+func (c *client) SelfCheck() ([]healthcheck.CheckResult, error) {
+	return nil, nil
 }
 
 func (c tapClient) Recv() (*common.TapEvent, error) {
