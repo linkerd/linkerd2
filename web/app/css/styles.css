@@ -227,6 +227,11 @@ a.button.primary:active {
     font-size: .8rem;
   }
 
+  & tr > th, & tr > td {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
   & .ant-table-tbody > tr:hover > td {
     background: rgba(47, 128, 237, .1);
   }
