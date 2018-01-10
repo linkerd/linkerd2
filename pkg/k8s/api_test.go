@@ -4,41 +4,43 @@ import (
 	"testing"
 
 	"github.com/runconduit/conduit/pkg/shell"
+	"fmt"
 )
 
 func TestKubernetesApiUrlFor(t *testing.T) {
 	const namespace = "some-namespace"
 	const extraPath = "/some/extra/path"
+	testData := []struct {
+		testInput string
+		expected  string
+	}{
+		{
+			testInput: "https://35.184.231.31",
+			expected:  fmt.Sprintf("https://35.184.231.31/api/v1/namespaces/%s%s", namespace, extraPath),
+		},
+		{
+			testInput: "35.184.231.31",
+			expected:  fmt.Sprintf("https://35.184.231.31/api/v1/namespaces/%s%s", namespace, extraPath),
+		},
+		{
+			testInput: "http://35.184.231.31",
+			expected:  fmt.Sprintf("http://35.184.231.31/api/v1/namespaces/%s%s", namespace, extraPath),
+		},
+	}
 
 	t.Run("Returns URL from base URL overridden in construction", func(t *testing.T) {
-		testUrl := "https://35.184.231.31"
-		expectedUrlString := "https://35.184.231.31/api/v1/namespaces/some-namespace/some/extra/path"
-		generateUrlTest(t, namespace, extraPath, testUrl, expectedUrlString)
+		for _, data := range testData {
+			api, err := NewK8sAPI(shell.NewUnixShell(), "testdata/config.test", data.testInput)
+			if err != nil {
+				t.Fatalf("Unexpected error starting proxy: %v", err)
+			}
+			actualUrl, err := api.UrlFor(namespace, extraPath)
+			if err != nil {
+				t.Fatalf("Unexpected error starting proxy: %v", err)
+			}
+			if actualUrl.String() != data.expected {
+				t.Fatalf("Expected generated URL to be [%s], but got [%s]", data.expected, actualUrl.String())
+			}
+		}
 	})
-
-	t.Run("Returns URL from base URL with no https prefix in URL override", func(t *testing.T) {
-		testUrl := "35.184.231.31"
-		expectedUrlString := "https://35.184.231.31/api/v1/namespaces/some-namespace/some/extra/path"
-		generateUrlTest(t, namespace, extraPath, testUrl, expectedUrlString)
-	})
-
-	t.Run("Returns URL from base URL with with http prefix in URL override", func(t *testing.T) {
-		testUrl := "http://35.184.231.31"
-		expectedUrlString := "http://35.184.231.31/api/v1/namespaces/some-namespace/some/extra/path"
-		generateUrlTest(t, namespace, extraPath, testUrl, expectedUrlString)
-	})
-}
-
-func generateUrlTest(t *testing.T, namespace string, extraPath string, testUrl string,  expectedUrlString string) {
-	api, err := NewK8sAPI(shell.NewUnixShell(), "testdata/config.test", testUrl)
-	if err != nil {
-		t.Fatalf("Unexpected error starting proxy: %v", err)
-	}
-	actualUrl, err := api.UrlFor(namespace, extraPath)
-	if err != nil {
-		t.Fatalf("Unexpected error starting proxy: %v", err)
-	}
-	if actualUrl.String() != expectedUrlString {
-		t.Fatalf("Expected generated URL to be [%s], but got [%s]", expectedUrlString, actualUrl.String())
-	}
 }

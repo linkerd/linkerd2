@@ -11,7 +11,6 @@ import (
 	"github.com/runconduit/conduit/pkg/healthcheck"
 	"github.com/runconduit/conduit/pkg/shell"
 	"k8s.io/client-go/rest"
-	"strings"
 	"regexp"
 )
 
@@ -125,15 +124,17 @@ func NewK8sAPI(shell shell.Shell, k8sConfigFilesystemPathOverride string, apiHos
 	}
 
 	if apiHostAndPortOverride == "" {
-		apiHostAndPortOverride = config.Host
+		return &kubernetesApi{
+			apiSchemeHostAndPort: config.Host,
+			config:               config,
+		}, nil
 	} else {
 		if !httpPrefix.MatchString(apiHostAndPortOverride) {
-			apiHostAndPortOverride = strings.Join([]string{"https://", apiHostAndPortOverride}, "")
+			apiHostAndPortOverride = fmt.Sprintf("https://%s", apiHostAndPortOverride)
 		}
+		return &kubernetesApi{
+			apiSchemeHostAndPort: apiHostAndPortOverride,
+			config:               config,
+		}, nil
 	}
-
-	return &kubernetesApi{
-		apiSchemeHostAndPort: apiHostAndPortOverride,
-		config:               config,
-	}, nil
 }
