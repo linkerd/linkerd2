@@ -259,7 +259,6 @@ where
     }
 }
 
-
 impl Default for Latencies {
     fn default() -> Self {
         let max = Latency(500_000);
@@ -279,6 +278,22 @@ impl Default for Latencies {
     }
 }
 
+impl<'a> Into<Vec<LatencyProto>> for &'a Latencies {
+    fn into(self) -> Vec<LatencyProto> {
+        self.0.into_iter()
+            .map(LatencyProto::from)
+            .collect()
+    }
+}
+
+impl Into<Vec<LatencyProto>> for Latencies {
+    fn into(self) -> Vec<LatencyProto> {
+        self.0.into_iter()
+            .map(LatencyProto::from)
+            .collect()
+    }
+}
+
 // ===== impl LatencyProto =====
 
 impl<'a> From<&'a LeafBucket<Latency>> for LatencyProto {
@@ -289,14 +304,3 @@ impl<'a> From<&'a LeafBucket<Latency>> for LatencyProto {
         }
     }
 }
-
-impl<'a> Into<Vec<LatencyProto>> for &'a Latencies {
-    fn into(self) -> Vec<LatencyProto> {
-        self.0.into_iter()
-            .map(LatencyProto::from)
-            .collect()
-    }
-}
-
-
-

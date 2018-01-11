@@ -266,7 +266,7 @@ impl Metrics {
                         }
                     }),
                     ends: ends,
-                    response_latencies: (&res_stats.latencies).into(),
+                    response_latencies: res_stats.latencies.into(),
                 });
             }
 
