@@ -3,7 +3,6 @@ package k8s
 import (
 	"fmt"
 	"net/url"
-
 	"path/filepath"
 
 	"k8s.io/client-go/rest"

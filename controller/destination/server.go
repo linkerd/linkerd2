@@ -37,7 +37,10 @@ func NewServer(addr, kubeconfig string, done chan struct{}) (*grpc.Server, net.L
 	}
 
 	endpoints := k8s.NewEndpointsWatcher(clientSet)
-	go endpoints.Run()
+	err = endpoints.Run()
+	if err != nil {
+		return nil, nil, err
+	}
 
 	srv := &server{
 		endpoints: endpoints,

@@ -8,8 +8,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/runconduit/conduit/controller/tap"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/runconduit/conduit/controller/tap"
 	log "github.com/sirupsen/logrus"
 )
 

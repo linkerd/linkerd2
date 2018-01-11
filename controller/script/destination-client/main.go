@@ -4,13 +4,13 @@ import (
 	"context"
 	"flag"
 	"io"
-	log "github.com/sirupsen/logrus"
 	"math/rand"
 	"time"
 
 	"github.com/runconduit/conduit/controller/destination"
 	common "github.com/runconduit/conduit/controller/gen/common"
 	"github.com/runconduit/conduit/controller/util"
+	log "github.com/sirupsen/logrus"
 )
 
 // This is a throwaway script for testing the destination service

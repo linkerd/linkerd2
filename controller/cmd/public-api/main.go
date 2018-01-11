@@ -8,12 +8,11 @@ import (
 	"os/signal"
 	"syscall"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/runconduit/conduit/controller/api/public"
 	"github.com/runconduit/conduit/controller/tap"
 	"github.com/runconduit/conduit/controller/telemetry"
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {

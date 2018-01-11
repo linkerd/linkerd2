@@ -12,7 +12,7 @@ RUN $HOME/.yarn/bin/yarn install --pure-lockfile
 RUN $HOME/.yarn/bin/yarn webpack
 
 ## compile go server
-FROM gcr.io/runconduit/go-deps:41719552 as golang
+FROM gcr.io/runconduit/go-deps:c29bbc7a as golang
 WORKDIR /go/src/github.com/runconduit/conduit
 COPY web web
 COPY controller controller

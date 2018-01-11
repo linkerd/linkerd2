@@ -7,17 +7,18 @@ import (
 
 	common "github.com/runconduit/conduit/controller/gen/common"
 	"github.com/runconduit/conduit/controller/util"
-
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/fields"
-	"k8s.io/client-go/pkg/util/intstr"
-	"k8s.io/client-go/tools/cache"
-
 	log "github.com/sirupsen/logrus"
+	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
 )
 
-const kubeSystem = "kube-system"
+const (
+	kubeSystem       = "kube-system"
+	endpointResource = "endpoints"
+)
 
 type EndpointsListener interface {
 	Update(add []common.TcpAddress, remove []common.TcpAddress)
@@ -53,9 +54,12 @@ func NewEndpointsWatcher(clientset *kubernetes.Clientset) *EndpointsWatcher {
 	}
 }
 
-func (e *EndpointsWatcher) Run() {
-	e.endpointInformer.run()
-	e.serviceInformer.run()
+func (e *EndpointsWatcher) Run() error {
+	err := e.endpointInformer.run()
+	if err != nil {
+		return err
+	}
+	return e.serviceInformer.run()
 }
 
 func (e *EndpointsWatcher) Stop() {
@@ -118,13 +122,14 @@ func (e *EndpointsWatcher) Unsubscribe(service string, port uint32, listener End
 
 // Watches a Kubernetes resource type
 type informer struct {
-	informer *cache.Controller
+	informer cache.Controller
 	store    *cache.Store
 	stopCh   chan struct{}
 }
 
-func (i *informer) run() {
+func (i *informer) run() error {
 	go i.informer.Run(i.stopCh)
+	return initializeWatcher(i.informer)
 }
 
 func (i *informer) stop() {
@@ -132,8 +137,12 @@ func (i *informer) stop() {
 }
 
 func newEndpointInformer(clientset *kubernetes.Clientset, servicePorts *map[string]*map[uint32]*servicePort, mutex *sync.RWMutex) informer {
-
-	endpointsListWatcher := cache.NewListWatchFromClient(clientset.CoreV1().RESTClient(), "Endpoints", v1.NamespaceAll, fields.Everything())
+	endpointsListWatcher := cache.NewListWatchFromClient(
+		clientset.CoreV1().RESTClient(),
+		endpointResource,
+		v1.NamespaceAll,
+		fields.Everything(),
+	)
 
 	store, inf := cache.NewInformer(
 		endpointsListWatcher,

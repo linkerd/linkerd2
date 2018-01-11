@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/runconduit/conduit/controller"
-
 	pb "github.com/runconduit/conduit/controller/gen/public"
 )
 

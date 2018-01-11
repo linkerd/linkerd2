@@ -8,8 +8,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/runconduit/conduit/controller/destination"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/runconduit/conduit/controller/destination"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -32,7 +32,7 @@ func main() {
 	}
 
 	go func() {
-		log.Infof("starting gRPC server on %s\n", *addr)
+		log.Infof("starting gRPC server on %s", *addr)
 		server.Serve(lis)
 	}()
 

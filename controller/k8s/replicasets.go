@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"time"
 
+	"k8s.io/api/core/v1"
+	"k8s.io/api/extensions/v1beta1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
-	"k8s.io/client-go/pkg/fields"
 	"k8s.io/client-go/tools/cache"
 )
+
+const replicaSetResource = "replicasets"
 
 type ReplicaSetStore struct {
 	store     *cache.Store
@@ -20,7 +22,12 @@ type ReplicaSetStore struct {
 func NewReplicaSetStore(clientset *kubernetes.Clientset) (*ReplicaSetStore, error) {
 	store := cache.NewStore(cache.MetaNamespaceKeyFunc)
 
-	replicatSetListWatcher := cache.NewListWatchFromClient(clientset.ExtensionsV1beta1().RESTClient(), "ReplicaSets", v1.NamespaceAll, fields.Everything())
+	replicatSetListWatcher := cache.NewListWatchFromClient(
+		clientset.ExtensionsV1beta1().RESTClient(),
+		replicaSetResource,
+		v1.NamespaceAll,
+		fields.Everything(),
+	)
 
 	reflector := cache.NewReflector(
 		replicatSetListWatcher,
@@ -38,8 +45,9 @@ func NewReplicaSetStore(clientset *kubernetes.Clientset) (*ReplicaSetStore, erro
 	}, nil
 }
 
-func (p *ReplicaSetStore) Run() {
-	p.reflector.RunUntil(p.stopCh)
+func (p *ReplicaSetStore) Run() error {
+	go p.reflector.ListAndWatch(p.stopCh)
+	return initializeWatcher(p.reflector)
 }
 
 func (p *ReplicaSetStore) Stop() {

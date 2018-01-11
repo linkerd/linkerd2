@@ -9,15 +9,16 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/runconduit/conduit/controller/api/proxy"
 	common "github.com/runconduit/conduit/controller/gen/common"
 	pb "github.com/runconduit/conduit/controller/gen/proxy/telemetry"
 	"github.com/runconduit/conduit/controller/k8s"
 	"github.com/runconduit/conduit/controller/util"
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
-	k8sV1 "k8s.io/client-go/pkg/api/v1"
+	"k8s.io/api/core/v1"
+	// Load all the auth plugins for the cloud providers.
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
 /* A simple script for posting simulated telemetry data to the proxy api */
@@ -97,7 +98,7 @@ func podIndexFunc(obj interface{}) ([]string, error) {
 	return nil, nil
 }
 
-func randomPod(pods []*k8sV1.Pod, prvPodIp *common.IPAddress) *common.IPAddress {
+func randomPod(pods []*v1.Pod, prvPodIp *common.IPAddress) *common.IPAddress {
 	var podIp *common.IPAddress
 	for {
 		if podIp != nil {
@@ -105,6 +106,9 @@ func randomPod(pods []*k8sV1.Pod, prvPodIp *common.IPAddress) *common.IPAddress 
 		}
 
 		randomPod := pods[rand.Intn(len(pods))]
+		if strings.HasPrefix(randomPod.GetNamespace(), "kube-") {
+			continue // skip pods in the kube-* namespaces
+		}
 		podIp = stringToIp(randomPod.Status.PodIP)
 		if prvPodIp != nil && podIp.GetIpv4() == prvPodIp.GetIpv4() {
 			podIp = nil
@@ -143,15 +147,18 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	pods.Run()
 
-	// required for pods.List() to work -> otherwise the list of pods returned is empty
-	time.Sleep(2 * time.Second)
+	err = pods.Run()
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
 	podList, err := pods.List()
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	allPods := make([]*k8sV1.Pod, 0)
+
+	allPods := make([]*v1.Pod, 0)
 	for _, pod := range podList {
 		if pod.Status.PodIP != "" && (*maxPods == 0 || len(allPods) < *maxPods) {
 			allPods = append(allPods, pod)

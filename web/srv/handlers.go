@@ -3,8 +3,8 @@ package srv
 import (
 	"net/http"
 
-	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/julienschmidt/httprouter"
+	pb "github.com/runconduit/conduit/controller/gen/public"
 	log "github.com/sirupsen/logrus"
 )
 
