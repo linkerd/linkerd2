@@ -72,20 +72,22 @@ struct Buckets<T: PartialOrd, B: Bucket<T>=LeafBucket<T>> {
 }
 
 impl<T> LeafBucket<T> {
+
     // Construct a new `LeafBucket` with the upper bound of `max`.
     fn new<I: Into<T>>(max: I) -> Self {
         LeafBucket {
             max: max.into(),
             count: 0
         }
-
     }
+
 }
 
 impl<T> Bucket<T> for LeafBucket<T>
 where
     T: PartialOrd
 {
+
     fn contains(&self, t: &T) -> bool {
         t <= &self.max
     }
@@ -108,7 +110,7 @@ where
     T: PartialOrd,
     B: Bucket<T>,
 {
-    #[inline]
+
     fn contains(&self, t: &T) -> bool {
         t <= &self.max
     }
@@ -120,6 +122,7 @@ where
         }
         false
     }
+
 }
 
 impl<T> Buckets<T, LeafBucket<T>>
@@ -197,22 +200,27 @@ impl From<Duration> for Latency {
                 Some(secs as u32)
             };
         // represent the duration as tenths of a ms.
-        let tenths_of_ms =
-            secs.and_then(|as_secs|
+        let tenths_of_ms = {
+            let t = secs.and_then(|as_secs|
                 // convert the number of seconds to tenths of a ms, or
                 // None on overflow.
                 as_secs.checked_mul(SEC_TO_TENTHS_OF_A_MS)
-            )
-                .and_then(|as_tenths_ms| {
-                    // convert the subsecond part of the duration (in ns) to
-                    // tenths of a millisecond.
-                    let subsec_tenths_ms = dur.subsec_nanos() / TENTHS_OF_MS_TO_NS;
-                    as_tenths_ms.checked_add(subsec_tenths_ms)
-                })
-                .unwrap_or_else(|| {
-                    debug!("{:?} too large to represent as tenths of a millisecond!", dur);
-                    u32::MAX
-                });
+            );
+            let t = t.and_then(|as_tenths_ms| {
+                // convert the subsecond part of the duration (in ns) to
+                // tenths of a millisecond.
+                let subsec_tenths_ms = dur.subsec_nanos() / TENTHS_OF_MS_TO_NS;
+                as_tenths_ms.checked_add(subsec_tenths_ms)
+            });
+            t.unwrap_or_else(|| {
+                debug!(
+                    "{:?} too large to represent as tenths of a \
+                     millisecond!",
+                     dur
+                );
+                u32::MAX
+            })
+        };
         Latency(tenths_of_ms)
     }
 }
@@ -225,7 +233,6 @@ impl From<u32> for Latency {
 }
 
 impl Into<u32> for Latency {
-    #[inline]
     fn into(self) -> u32 {
         self.0
     }
@@ -236,7 +243,6 @@ impl Into<u32> for Latency {
 impl Latencies {
 
     /// Add an observed `Latency` value to the histogram.
-    #[inline]
     pub fn add<I: Into<Latency>>(&mut self, i: I) {
         self.0.add(&i.into());
     }
@@ -248,7 +254,6 @@ impl<I> ops::AddAssign<I> for Latencies
 where
     I: Into<Latency>
 {
-    #[inline]
     fn add_assign(&mut self, rhs: I) {
         self.add(rhs)
     }
@@ -257,21 +262,20 @@ where
 
 impl Default for Latencies {
     fn default() -> Self {
-        Latencies(Buckets{
-            max: Latency(500000),
-            buckets: [
-                // TODO: should be configurable, not hardcoded.
-                // NOTE: All our bucket sizes should have one more zero than
-                //       the controller's bucket sizes - controller will report
-                //       data in whole-millisecond precision by multiplying all
-                //       our latency values by 10.
-                Buckets::linear(10),
-                Buckets::linear(100),
-                Buckets::linear(1000),
-                Buckets::linear(10000),
-                Buckets::linear(100000),
-            ]
-        })
+        let max = Latency(500_000);
+        // TODO: should be configurable, not hardcoded.
+        // NOTE: All our bucket sizes should have one more zero than
+        //       the controller's bucket sizes - controller will report
+        //       data in whole-millisecond precision by multiplying all
+        //       our latency values by 10.
+        let buckets = [
+            Buckets::linear(10),
+            Buckets::linear(100),
+            Buckets::linear(1_000),
+            Buckets::linear(10_000),
+            Buckets::linear(100_000),
+        ]
+        Latencies(Buckets { max, buckets })
     }
 }
 

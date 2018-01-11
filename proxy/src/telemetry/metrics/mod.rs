@@ -6,7 +6,6 @@ use std::{u32, u64};
 use http;
 use ordermap::OrderMap;
 
-use ctx;
 use control::pb::common::{
     TcpAddress,
     HttpMethod,
@@ -25,6 +24,7 @@ use control::pb::proxy::telemetry::{
     StreamSummary,
     TransportSummary,
 };
+use ctx;
 use telemetry::event::{Event};
 
 mod latency;
@@ -112,9 +112,9 @@ impl Metrics {
                 self.transport(transport)
                     .disconnects
                     .push(TransportSummary {
-                    duration_ms: dur_to_ms(close.duration),
-                    bytes_sent: 0,
-                });
+                        duration_ms: dur_to_ms(close.duration),
+                        bytes_sent: 0,
+                    });
             }
 
             Event::StreamRequestOpen(ref req) => {
@@ -199,7 +199,7 @@ impl Metrics {
                     .or_insert_with(TransportStats::default)
             }
             ctx::transport::Ctx::Client(ref c) => self.destinations
-                    .entry(c.remote)
+                .entry(c.remote)
                 .or_insert_with(TransportStats::default),
         }
     }
@@ -262,7 +262,7 @@ impl Metrics {
                 responses.push(ResponseScope {
                     ctx: status_code.map(|code| {
                         ResponseCtx {
-                        http_status_code: u32::from(code.as_u16()),
+                            http_status_code: u32::from(code.as_u16()),
                         }
                     }),
                     ends: ends,
