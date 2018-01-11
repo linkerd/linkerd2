@@ -6,7 +6,7 @@ use std::time::Duration;
 use http;
 use ordermap::OrderMap;
 
-use control::pb::common::{HttpMethod, TcpAddress};
+use control::pb::common::{HttpMethod, TcpAddress, Protocol};
 use control::pb::proxy::telemetry::{
     eos_ctx,
     ClientTransport,
@@ -81,6 +81,9 @@ enum End {
 
 #[derive(Debug, Default)]
 struct TransportStats {
+    // TODO: we may want to have more distinction between transports, if
+    // we want to collect different metrics based on transport protocol?
+    protocol: Protocol,
     connects: u32,
     disconnects: Vec<TransportSummary>,
 }
@@ -199,11 +202,11 @@ impl Metrics {
                 let source = s.remote.ip();
                 self.sources
                     .entry(source)
-                    .or_insert_with(TransportStats::default)
+                    .or_insert_with(|| { TransportStats::from(s.protocol) })
             }
             ctx::transport::Ctx::Client(ref c) => self.destinations
                 .entry(c.remote)
-                .or_insert_with(TransportStats::default),
+                .or_insert_with(|| { TransportStats::from(c.protocol) }),
         }
     }
 
@@ -216,6 +219,7 @@ impl Metrics {
                 source_ip: Some(ip.into()),
                 connects: stats.connects,
                 disconnects: stats.disconnects,
+                protocol: stats.protocol as i32,
             })
         }
 
@@ -227,6 +231,7 @@ impl Metrics {
                 }),
                 connects: stats.connects,
                 disconnects: stats.disconnects,
+                protocol: stats.protocol as i32,
             });
         }
 
@@ -369,6 +374,17 @@ fn dur_to_ms(dur: Duration) -> u64 {
             debug!("{:?} too large to convert to ms!", dur);
             u64::MAX
         })
+}
+
+// ===== impl TransportStats =====
+
+impl From<Protocol> for TransportStats {
+    fn from(protocol: Protocol) -> TransportStats {
+        TransportStats {
+            protocol,
+            ..Default::default()
+        }
+    }
 }
 
 #[cfg(test)]
