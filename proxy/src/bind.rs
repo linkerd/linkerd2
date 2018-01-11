@@ -137,7 +137,7 @@ where
         let client_ctx = ctx::transport::Client::new(
             &self.ctx,
             addr,
-            &control::pb::proxy::common::Protocol::Http,
+            control::pb::proxy::common::Protocol::Http,
         );
 
         // Map a socket address to an HTTP/2.0 connection.

@@ -44,14 +44,14 @@ impl Server {
         local: &SocketAddr,
         remote: &SocketAddr,
         orig_dst: &Option<SocketAddr>,
-        protocol: &Protocol,
+        protocol: Protocol,
     ) -> Arc<Server> {
         let s = Server {
             proxy: Arc::clone(proxy),
             local: *local,
             remote: *remote,
             orig_dst: *orig_dst,
-            protocol: *protocol,
+            protocol: protocol,
         };
 
         Arc::new(s)
@@ -62,12 +62,12 @@ impl Client {
     pub fn new(
         proxy: &Arc<ctx::Proxy>,
         remote: &SocketAddr,
-        protocol: &Protocol,
+        protocol: Protocol,
     ) -> Arc<Client> {
         let c = Client {
             proxy: Arc::clone(proxy),
             remote: *remote,
-            protocol: *protocol,
+            protocol: protocol,
         };
 
         Arc::new(c)

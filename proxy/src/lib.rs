@@ -325,7 +325,7 @@ where
                     &local_addr,
                     &remote_addr,
                     &orig_dst,
-                    &protocol,
+                    protocol,
                 );
 
             let io = sensors.accept(connection, opened_at, &srv_ctx);

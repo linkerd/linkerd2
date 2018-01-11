@@ -188,7 +188,7 @@ mod tests {
                     &local,
                     &remote,
                     &Some(orig_dst),
-                    &Protocol::Http,
+                    Protocol::Http,
                 ));
 
             let rec = if Inbound::<()>::same_addr(&orig_dst, &local) {
@@ -216,7 +216,7 @@ mod tests {
                     &local,
                     &remote,
                     &None,
-                    &Protocol::Http,
+                    Protocol::Http,
                 ));
 
             inbound.recognize(&req) == default
@@ -248,7 +248,7 @@ mod tests {
                     &local,
                     &remote,
                     &Some(local),
-                    &Protocol::Http,
+                    Protocol::Http,
                 ));
 
             inbound.recognize(&req) == default
