@@ -106,6 +106,9 @@ func randomPod(pods []*v1.Pod, prvPodIp *common.IPAddress) *common.IPAddress {
 		}
 
 		randomPod := pods[rand.Intn(len(pods))]
+		if strings.HasPrefix(randomPod.GetNamespace(), "kube-") {
+			continue // skip pods in the kube-* namespaces
+		}
 		podIp = stringToIp(randomPod.Status.PodIP)
 		if prvPodIp != nil && podIp.GetIpv4() == prvPodIp.GetIpv4() {
 			podIp = nil
@@ -144,14 +147,17 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	pods.Run()
 
-	// required for pods.List() to work -> otherwise the list of pods returned is empty
-	time.Sleep(2 * time.Second)
+	err = pods.Run()
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
 	podList, err := pods.List()
 	if err != nil {
 		log.Fatal(err.Error())
 	}
+
 	allPods := make([]*v1.Pod, 0)
 	for _, pod := range podList {
 		if pod.Status.PodIP != "" && (*maxPods == 0 || len(allPods) < *maxPods) {

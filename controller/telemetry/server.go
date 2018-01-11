@@ -142,13 +142,19 @@ func NewServer(addr, prometheusUrl string, ignoredNamespaces []string, kubeconfi
 	if err != nil {
 		return nil, nil, err
 	}
-	pods.Run()
+	err = pods.Run()
+	if err != nil {
+		return nil, nil, err
+	}
 
 	replicaSets, err := k8s.NewReplicaSetStore(clientSet)
 	if err != nil {
 		return nil, nil, err
 	}
-	replicaSets.Run()
+	err = replicaSets.Run()
+	if err != nil {
+		return nil, nil, err
+	}
 
 	srv := &server{
 		prometheusApi:     v1.NewAPI(prometheusClient),
@@ -215,7 +221,7 @@ func (s *server) ListPods(ctx context.Context, req *read.ListPodsRequest) (*publ
 		}
 		deployment, err := s.replicaSets.GetDeploymentForPod(pod)
 		if err != nil {
-			log.Println(err.Error())
+			log.Debugf("Cannot get deployment for pod %s: %s", pod.Name, err)
 			deployment = ""
 		}
 		name := pod.Namespace + "/" + pod.Name
@@ -322,22 +328,22 @@ func (s *server) getNameAndDeployment(ip *common.IPAddress) (string, string) {
 	ipStr := util.IPToString(ip)
 	pods, err := s.pods.GetPodsByIndex(ipStr)
 	if err != nil {
-		log.Printf("Cannot get pod for IP %s: %s", ipStr, err)
+		log.Debugf("Cannot get pod for IP %s: %s", ipStr, err)
 		return "", ""
 	}
 	if len(pods) == 0 {
-		log.Printf("No pod exists for IP %s", ipStr)
+		log.Debugf("No pod exists for IP %s", ipStr)
 		return "", ""
 	}
 	if len(pods) > 1 {
-		log.Printf("Multiple pods found for IP %s", ipStr)
+		log.Debugf("Multiple pods found for IP %s", ipStr)
 		return "", ""
 	}
 	pod := pods[0]
 	name := pod.Namespace + "/" + pod.Name
 	deployment, err := (*s.replicaSets).GetDeploymentForPod(pod)
 	if err != nil {
-		log.Printf("Cannot get deployment for pod %s: %s", pod.Name, err)
+		log.Debugf("Cannot get deployment for pod %s: %s", pod.Name, err)
 		return name, ""
 	}
 	return name, deployment

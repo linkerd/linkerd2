@@ -15,7 +15,10 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-const kubeSystem = "kube-system"
+const (
+	kubeSystem       = "kube-system"
+	endpointResource = "endpoints"
+)
 
 type EndpointsListener interface {
 	Update(add []common.TcpAddress, remove []common.TcpAddress)
@@ -51,9 +54,12 @@ func NewEndpointsWatcher(clientset *kubernetes.Clientset) *EndpointsWatcher {
 	}
 }
 
-func (e *EndpointsWatcher) Run() {
-	e.endpointInformer.run()
-	e.serviceInformer.run()
+func (e *EndpointsWatcher) Run() error {
+	err := e.endpointInformer.run()
+	if err != nil {
+		return err
+	}
+	return e.serviceInformer.run()
 }
 
 func (e *EndpointsWatcher) Stop() {
@@ -121,8 +127,9 @@ type informer struct {
 	stopCh   chan struct{}
 }
 
-func (i *informer) run() {
+func (i *informer) run() error {
 	go i.informer.Run(i.stopCh)
+	return initializeWatcher(i.informer)
 }
 
 func (i *informer) stop() {
@@ -130,8 +137,12 @@ func (i *informer) stop() {
 }
 
 func newEndpointInformer(clientset *kubernetes.Clientset, servicePorts *map[string]*map[uint32]*servicePort, mutex *sync.RWMutex) informer {
-
-	endpointsListWatcher := cache.NewListWatchFromClient(clientset.CoreV1().RESTClient(), "Endpoints", v1.NamespaceAll, fields.Everything())
+	endpointsListWatcher := cache.NewListWatchFromClient(
+		clientset.CoreV1().RESTClient(),
+		endpointResource,
+		v1.NamespaceAll,
+		fields.Everything(),
+	)
 
 	store, inf := cache.NewInformer(
 		endpointsListWatcher,

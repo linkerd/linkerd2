@@ -325,7 +325,10 @@ func NewServer(addr string, tapPort uint, kubeconfig string) (*grpc.Server, net.
 	if err != nil {
 		return nil, nil, err
 	}
-	replicaSets.Run()
+	err = replicaSets.Run()
+	if err != nil {
+		return nil, nil, err
+	}
 
 	// index pods by deployment
 	deploymentIndex := func(obj interface{}) ([]string, error) {
@@ -335,6 +338,7 @@ func NewServer(addr string, tapPort uint, kubeconfig string) (*grpc.Server, net.
 		}
 		deployment, err := replicaSets.GetDeploymentForPod(pod)
 		if err != nil {
+			log.Debugf("Cannot get deployment for pod %s: %s", pod.Name, err)
 			return []string{}, nil
 		}
 		return []string{deployment}, nil
@@ -344,7 +348,10 @@ func NewServer(addr string, tapPort uint, kubeconfig string) (*grpc.Server, net.
 	if err != nil {
 		return nil, nil, err
 	}
-	pods.Run()
+	err = pods.Run()
+	if err != nil {
+		return nil, nil, err
+	}
 
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {

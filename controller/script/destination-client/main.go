@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"math/rand"
 	"time"
@@ -11,6 +10,7 @@ import (
 	"github.com/runconduit/conduit/controller/destination"
 	common "github.com/runconduit/conduit/controller/gen/common"
 	"github.com/runconduit/conduit/controller/util"
+	log "github.com/sirupsen/logrus"
 )
 
 // This is a throwaway script for testing the destination service

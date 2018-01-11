@@ -32,7 +32,7 @@ func main() {
 	}
 
 	go func() {
-		log.Infof("starting gRPC server on %s\n", *addr)
+		log.Infof("starting gRPC server on %s", *addr)
 		server.Serve(lis)
 	}()
 

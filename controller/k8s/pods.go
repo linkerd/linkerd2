@@ -10,6 +10,8 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
+const podResource = "pods"
+
 type PodIndex struct {
 	indexer   *cache.Indexer
 	reflector *cache.Reflector
@@ -17,10 +19,14 @@ type PodIndex struct {
 }
 
 func NewPodIndex(clientset *kubernetes.Clientset, index cache.IndexFunc) (*PodIndex, error) {
-
 	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{"index": index})
 
-	podListWatcher := cache.NewListWatchFromClient(clientset.CoreV1().RESTClient(), "pods", v1.NamespaceAll, fields.Everything())
+	podListWatcher := cache.NewListWatchFromClient(
+		clientset.CoreV1().RESTClient(),
+		podResource,
+		v1.NamespaceAll,
+		fields.Everything(),
+	)
 
 	reflector := cache.NewReflector(
 		podListWatcher,
@@ -38,8 +44,9 @@ func NewPodIndex(clientset *kubernetes.Clientset, index cache.IndexFunc) (*PodIn
 	}, nil
 }
 
-func (p *PodIndex) Run() {
-	go p.reflector.Run(p.stopCh)
+func (p *PodIndex) Run() error {
+	go p.reflector.ListAndWatch(p.stopCh)
+	return initializeWatcher(p.reflector)
 }
 
 func (p *PodIndex) Stop() {
