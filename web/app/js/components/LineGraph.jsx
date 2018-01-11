@@ -150,6 +150,7 @@ export default class LineGraph extends React.Component {
     if (_.isEmpty(this.props.data)) {
       circle.attr("flashing", "off").interrupt().style("opacity", 0);
     } else {
+      let circleData = _.last(this.props.data);
       if (circle.attr("flashing") === "off") {
         circle
           .attr("flashing", "on")
@@ -166,8 +167,6 @@ export default class LineGraph extends React.Component {
               .on("start", repeat);
           });
       }
-
-      let circleData = _.last(this.props.data);
       circle
         .attr("cx", () => this.xScale(circleData.timestamp))
         .attr("cy", () => this.yScale(circleData.value));
