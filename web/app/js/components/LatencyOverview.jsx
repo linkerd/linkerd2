@@ -5,7 +5,7 @@ import * as d3 from 'd3';
 import './../../css/latency-overview.css';
 import './../../css/line-graph.css';
 
-const defaultSvgWidth = 900;
+const defaultSvgWidth = 874;
 const defaultSvgHeight = 350;
 const margin = { top: 20, right: 0, bottom: 30, left: 0 };
 const dataDefaults = { P50: [], P95: [], P99: [] };

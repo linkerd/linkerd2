@@ -20,9 +20,16 @@
 
 circle.dot {
   stroke-width: 2px;
-  opacity: 0.8;
+  fill-opacity: 0.7;
+  stroke-opacity: 0.9;
 }
 
-.dot-label {
-  font-size: 11px;
+.overlay {
+  fill: none;
+  pointer-events: all;
+}
+
+.vertical-highlight {
+  fill: steelblue;
+  opacity: 0.1;
 }
