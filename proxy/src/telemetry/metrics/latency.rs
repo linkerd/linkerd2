@@ -273,7 +273,7 @@ impl Default for Latencies {
             Buckets::linear(1_000),
             Buckets::linear(10_000),
             Buckets::linear(100_000),
-        ]
+        ];
         Latencies(Buckets { max, buckets })
     }
 }
