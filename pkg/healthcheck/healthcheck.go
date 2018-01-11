@@ -49,7 +49,7 @@ func (hC *HealthChecker) PerformCheck(observer CheckObserver) Check {
 	for _, checker := range hC.subsystemsToCheck {
 		results, err := checker.SelfCheck()
 		if err != nil {
-			log.Errorf("Error checking [%s]: %s", checker, err)
+			log.Errorf("Error checking [%s]: %s", checker, err.Error())
 			check.OverallStatus = CheckError
 			continue
 		}

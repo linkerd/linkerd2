@@ -18,40 +18,46 @@ type statusCheckerProxy struct {
 }
 
 func (proxy *statusCheckerProxy) SelfCheck() ([]CheckResult, error) {
+	translatedResults := make([]CheckResult, 0)
+
+	canConnectViaGrpcCheck := CheckResult{
+		SubsystemName:    proxy.prefix,
+		CheckDescription: "retrieve status via gRPC",
+		Status:           CheckError,
+	}
 	selfCheckResponse, err := proxy.delegate.SelfCheck(context.Background(), &pb.SelfCheckRequest{})
 	if err != nil {
-		return []CheckResult{
-			{
-				SubsystemName:         proxy.prefix,
-				CheckDescription:      "retrieve status via gRPC",
-				Status:                CheckError,
-				FriendlyMessageToUser: err.Error(),
-			},
-		}, err
-	}
+		canConnectViaGrpcCheck.Status = CheckError
+		canConnectViaGrpcCheck.FriendlyMessageToUser = err.Error()
+	} else {
+		canConnectViaGrpcCheck.Status = CheckOk
 
-	translatedResults := make([]CheckResult, 0)
-	for _, check := range selfCheckResponse.Results {
-		fullSubsystemName := fmt.Sprintf("%s-%s", proxy.prefix, check.SubsystemName)
+		for _, check := range selfCheckResponse.Results {
+			fullSubsystemName := fmt.Sprintf("%s[%s]", proxy.prefix, check.SubsystemName)
 
-		var status CheckStatus
+			var status CheckStatus
 
-		switch CheckStatus(check.Status) {
-		case CheckOk, CheckFailed, CheckError:
-			status = CheckStatus(check.Status)
-		default:
-			status = CheckError
+			switch CheckStatus(check.Status) {
+			case CheckOk, CheckFailed, CheckError:
+				status = CheckStatus(check.Status)
+			default:
+				status = CheckError
+			}
+
+			translatedResults = append(translatedResults, CheckResult{
+				SubsystemName:         fullSubsystemName,
+				CheckDescription:      check.CheckDescription,
+				Status:                status,
+				FriendlyMessageToUser: check.FriendlyMessageToUser,
+			})
 		}
-
-		translatedResults = append(translatedResults, CheckResult{
-			SubsystemName:         fullSubsystemName,
-			CheckDescription:      check.CheckDescription,
-			Status:                status,
-			FriendlyMessageToUser: check.FriendlyMessageToUser,
-		})
 	}
 
-	return translatedResults, nil
+	allResults := []CheckResult{
+		canConnectViaGrpcCheck,
+	}
+	allResults = append(allResults, translatedResults...)
+	return allResults, nil
 }
 
 func NewGrpcStatusChecker(name string, grpClient grpcStatusChecker) StatusChecker {

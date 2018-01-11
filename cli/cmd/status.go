@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const lineWidth = 52
+const lineWidth = 80
 
 var statusForceSystemInfo bool
 

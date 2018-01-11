@@ -19,14 +19,13 @@ import (
 )
 
 const (
-	ApiRoot                                = "/" // Must be absolute (with a leading slash).
-	ApiVersion                             = "v1"
-	JsonContentType                        = "application/json"
-	ApiPrefix                              = "api/" + ApiVersion + "/" // Must be relative (without a leading slash).
-	ProtobufContentType                    = "application/octet-stream"
-	ErrorHeader                            = "conduit-error"
-	ConduitApiSubsystemName                = "conduit-api"
-	ConduitApiConnectivityCheckDescription = "can be reached"
+	ApiRoot                 = "/" // Must be absolute (with a leading slash).
+	ApiVersion              = "v1"
+	JsonContentType         = "application/json"
+	ApiPrefix               = "api/" + ApiVersion + "/" // Must be relative (without a leading slash).
+	ProtobufContentType     = "application/octet-stream"
+	ErrorHeader             = "conduit-error"
+	ConduitApiSubsystemName = "conduit-api"
 )
 
 type grpcOverHttpClient struct {
@@ -51,6 +50,12 @@ func (c *grpcOverHttpClient) Version(ctx context.Context, req *pb.Empty, _ ...gr
 	return &msg, err
 }
 
+func (c *grpcOverHttpClient) SelfCheck(ctx context.Context, req *common.SelfCheckRequest, _ ...grpc.CallOption) (*common.SelfCheckResponse, error) {
+	var msg common.SelfCheckResponse
+	err := c.apiRequest(ctx, "SelfCheck", req, &msg)
+	return &msg, err
+}
+
 func (c *grpcOverHttpClient) ListPods(ctx context.Context, req *pb.Empty, _ ...grpc.CallOption) (*pb.ListPodsResponse, error) {
 	var msg pb.ListPodsResponse
 	err := c.apiRequest(ctx, "ListPods", req, &msg)
@@ -58,7 +63,8 @@ func (c *grpcOverHttpClient) ListPods(ctx context.Context, req *pb.Empty, _ ...g
 }
 
 func (c *grpcOverHttpClient) Tap(ctx context.Context, req *pb.TapRequest, _ ...grpc.CallOption) (pb.Api_TapClient, error) {
-	rsp, err := c.post(ctx, "Tap", req)
+	url := c.endpointNameToPublicApiUrl("Tap")
+	rsp, err := c.post(ctx, url, req)
 	if err != nil {
 		return nil, err
 	}
@@ -70,11 +76,6 @@ func (c *grpcOverHttpClient) Tap(ctx context.Context, req *pb.TapRequest, _ ...g
 
 	return &tapClient{ctx: ctx, reader: bufio.NewReader(rsp.Body)}, nil
 }
-
-func (s *grpcOverHttpClient) SelfCheck(ctx context.Context, in *common.SelfCheckRequest, _ ...grpc.CallOption) (*common.SelfCheckResponse, error) {
-	return nil, nil //TODO: WIP
-}
-
 func (c tapClient) Recv() (*common.TapEvent, error) {
 	var msg common.TapEvent
 	err := fromByteStreamToProtocolBuffers(c.reader, "", &msg)
@@ -90,10 +91,18 @@ func (c tapClient) SendMsg(interface{}) error    { return nil }
 func (c tapClient) RecvMsg(interface{}) error    { return nil }
 
 func (c *grpcOverHttpClient) apiRequest(ctx context.Context, endpoint string, req proto.Message, rsp proto.Message) error {
-	httpRsp, err := c.post(ctx, endpoint, req)
+	url := c.endpointNameToPublicApiUrl(endpoint)
+
+	httpRsp, err := c.post(ctx, url, req)
 	if err != nil {
 		return err
 	}
+
+	clientSideErrorStatusCode := httpRsp.StatusCode >= 400 && httpRsp.StatusCode <= 499
+	if clientSideErrorStatusCode {
+		return fmt.Errorf("POST to Conduit API endpoint [%s] returned HTTP status [%s]", url, httpRsp.Status)
+	}
+
 	defer httpRsp.Body.Close()
 
 	reader := bufio.NewReader(httpRsp.Body)
@@ -101,9 +110,7 @@ func (c *grpcOverHttpClient) apiRequest(ctx context.Context, endpoint string, re
 	return fromByteStreamToProtocolBuffers(reader, errorMsg, rsp)
 }
 
-func (c *grpcOverHttpClient) post(ctx context.Context, endpoint string, req proto.Message) (*http.Response, error) {
-	url := c.serverURL.ResolveReference(&url.URL{Path: endpoint})
-
+func (c *grpcOverHttpClient) post(ctx context.Context, url *url.URL, req proto.Message) (*http.Response, error) {
 	reqBytes, err := proto.Marshal(req)
 	if err != nil {
 		return nil, err
@@ -119,6 +126,10 @@ func (c *grpcOverHttpClient) post(ctx context.Context, endpoint string, req prot
 	}
 
 	return c.httpClient.Do(httpReq.WithContext(ctx))
+}
+
+func (c *grpcOverHttpClient) endpointNameToPublicApiUrl(endpoint string) *url.URL {
+	return c.serverURL.ResolveReference(&url.URL{Path: endpoint})
 }
 
 func NewInternalClient(kubernetesApiHost string) (pb.ApiClient, error) {

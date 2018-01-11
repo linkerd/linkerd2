@@ -73,14 +73,16 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	// Serve request
 	switch req.URL.Path {
-	case ApiRoot + ApiPrefix + "Stat":
+	case fullUrlPathFor("Stat"):
 		h.handleStat(w, req)
-	case ApiRoot + ApiPrefix + "Version":
+	case fullUrlPathFor("Version"):
 		h.handleVersion(w, req)
-	case ApiRoot + ApiPrefix + "ListPods":
+	case fullUrlPathFor("ListPods"):
 		h.handleListPods(w, req)
-	case ApiRoot + ApiPrefix + "Tap":
+	case fullUrlPathFor("Tap"):
 		h.handleTap(w, req)
+	case fullUrlPathFor("SelfCheck"):
+		h.handleSelfCheck(w, req)
 	default:
 		http.NotFound(w, req)
 	}
@@ -116,6 +118,27 @@ func (h *handler) handleVersion(w http.ResponseWriter, req *http.Request) {
 	}
 
 	rsp, err := h.grpcServer.Version(req.Context(), &emptyRequest)
+	if err != nil {
+		serverMarshalError(w, req, err, http.StatusInternalServerError)
+		return
+	}
+
+	err = serverMarshal(w, req, rsp)
+	if err != nil {
+		serverMarshalError(w, req, err, http.StatusInternalServerError)
+		return
+	}
+}
+
+func (h *handler) handleSelfCheck(w http.ResponseWriter, req *http.Request) {
+	var selfCheckRequest common.SelfCheckRequest
+	err := serverUnmarshal(req, &selfCheckRequest)
+	if err != nil {
+		serverMarshalError(w, req, err, http.StatusBadRequest)
+		return
+	}
+
+	rsp, err := h.grpcServer.SelfCheck(req.Context(), &selfCheckRequest)
 	if err != nil {
 		serverMarshalError(w, req, err, http.StatusInternalServerError)
 		return
@@ -238,3 +261,7 @@ func (s tapServer) SetTrailer(metadata.MD)       { return }
 func (s tapServer) Context() context.Context     { return s.req.Context() }
 func (s tapServer) SendMsg(interface{}) error    { return nil }
 func (s tapServer) RecvMsg(interface{}) error    { return nil }
+
+func fullUrlPathFor(method string) string {
+	return ApiRoot + ApiPrefix + method
+}
