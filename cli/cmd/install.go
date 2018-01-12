@@ -429,7 +429,7 @@ var installCmd = &cobra.Command{
 			WebReplicas:        webReplicas,
 			PrometheusReplicas: prometheusReplicas,
 			ImagePullPolicy:    imagePullPolicy,
-			UUID:               uuid.NewV4().String(),
+			UUID:               uuid.Must(uuid.NewV4()).String(),
 			CliVersion:         fmt.Sprintf("conduit/cli %s", controller.Version),
 		})
 		return nil
