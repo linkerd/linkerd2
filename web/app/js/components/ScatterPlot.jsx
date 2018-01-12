@@ -7,14 +7,13 @@ import './../../css/scatterplot.css';
 const defaultSvgWidth = 574;
 const defaultSvgHeight = 375;
 const margin = { top: 0, right: 0, bottom: 10, left: 0 };
-const circleRadius = 16;
+const baseWidth = 8;
+const circleRadius = 2 * baseWidth;
 const graphPadding = 3 * circleRadius;
 const highlightBarWidth = 3 * circleRadius;
 const successRateColorScale = d3.scaleQuantize()
   .domain([0, 1])
   .range(["#8B0000", "#FF6347", "#FF4500", "#FFA500","#008000"]);
-
-const getP99 = d => _.get(d, ["latency", "P99", 0, "value"]);
 
 export default class ScatterPlot extends React.Component {
   constructor(props) {
@@ -83,6 +82,10 @@ export default class ScatterPlot extends React.Component {
       .attr("height", this.state.height);
     this.overlayNode = d3.select(".overlay").node();
 
+    this.overlayTooltip = this.svg.append("g")
+      .attr("class", "overlay-tooltip")
+      .append("text");
+
     this.highlightFirstDatapoint();
   }
 
@@ -90,13 +93,14 @@ export default class ScatterPlot extends React.Component {
     // when graph is initially loaded / reloaded, set highlight and sidebar to first datapoint
     let firstDatapoint = _.first(this.props.data);
     if (firstDatapoint) {
-      let firstLatency = _.get(firstDatapoint, ["latency", "P99", 0, "value"]);
+      let firstLatency = _.get(firstDatapoint, ["latency", "P99"]);
       let firstLatencyX = this.xScale(firstLatency);
       let nearestDatapoints = this.getNearbyDatapoints(firstLatencyX, this.props.data);
 
       this.verticalHighlight
         .attr("transform", "translate(" + (firstLatencyX - (highlightBarWidth/2)) + ", 0)");
       this.renderSidebarTooltip(nearestDatapoints);
+      this.overlayTooltip.text('');
     }
   }
 
@@ -122,7 +126,7 @@ export default class ScatterPlot extends React.Component {
   }
 
   updateScales(data) {
-    this.xScale.domain(d3.extent(data, getP99));
+    this.xScale.domain(d3.extent(data, d => d.latency.P99));
     this.yScale.domain([0, 1]);
 
     this.updateAxes();
@@ -170,23 +174,21 @@ export default class ScatterPlot extends React.Component {
 
   getNearbyDatapoints(x, data) {
     // return nodes that have nearby x-coordinates
-    let xMargin = 30; // todo move constant
-    let x0 = this.xScale.invert(x - xMargin);
-    let x1 = this.xScale.invert(x + 2 * xMargin);
+    let x0 = this.xScale.invert(x - highlightBarWidth);
+    let x1 = this.xScale.invert(x + highlightBarWidth);
 
-    return  _.filter(data, d => {
-      let latency = getP99(d);
-      return latency <= x1 && latency >= x0;
-    });
+    return _(data).filter(d => {
+      return d.latency.P99 <= x1 && d.latency.P99 >= x0;
+    }).orderBy('successRate', 'desc').value();
   }
 
   updateGraph() {
-    let plotData = this.props.data;
-
     this.scatterPlot = this.svg.selectAll(".dot")
-      .data(plotData);
+      .data(this.props.data);
 
     this.scatterPlot.exit().remove();
+
+    let spNode = this.scatterPlot.node();
 
     this.scatterPlot
       .enter()
@@ -194,31 +196,67 @@ export default class ScatterPlot extends React.Component {
       .attr("class", "dot")
       .attr("r", circleRadius)
       .merge(this.scatterPlot) // newfangled d3 'update' selection
-      .attr("cx", d => this.xScale(getP99(d)))
+      .attr("cx", d => this.xScale(d.latency.P99))
       .attr("cy", d => this.yScale(d.successRate))
       .style("fill", d => successRateColorScale(d.successRate))
-      .style("stroke", d => successRateColorScale(d.successRate));
+      .style("stroke", d => successRateColorScale(d.successRate))
+      .on("mousemove", () => {
+        if (spNode) {
+          let currXPos = d3.mouse(spNode)[0];
+          this.positionOverlayHighlightAndTooltip(currXPos);
+        }
+      });
 
     this.highlightFirstDatapoint();
     this.overlay
       .on("mousemove", () => {
         let currXPos = d3.mouse(this.overlayNode)[0];
-        this.verticalHighlight.attr("transform", "translate(" + currXPos + ", 0)");
-        let nearestDatapoints = this.getNearbyDatapoints(currXPos, plotData);
-
-        this.renderSidebarTooltip(nearestDatapoints);
+        this.positionOverlayHighlightAndTooltip(currXPos);
       });
   }
 
+  positionOverlayHighlightAndTooltip(currXPos) {
+    let nearestDatapoints = this.getNearbyDatapoints(currXPos, this.props.data);
+    this.renderOverlayTooltip(nearestDatapoints);
+    this.renderSidebarTooltip(nearestDatapoints);
+
+    this.verticalHighlight.attr("transform", "translate(" + (currXPos - highlightBarWidth / 2) + ", 0)");
+
+    let overlayTooltipYPos = this.state.height / 2;
+    if (!_.isEmpty(nearestDatapoints)) {
+      // start the tooltip at the most successful datapoint
+      overlayTooltipYPos = this.yScale(nearestDatapoints[0].successRate);
+    }
+
+    let overlayTooltipXPos = currXPos + highlightBarWidth / 2 + baseWidth;
+    if (currXPos > defaultSvgWidth / 2) {
+      // display tooltip to the left if we're on the RH side of the graph
+      let bbox = this.overlayTooltip.node().getBBox();
+      overlayTooltipXPos = currXPos - bbox.width - baseWidth - highlightBarWidth / 2;
+    }
+
+    this.overlayTooltip.attr("transform", "translate(" +
+      overlayTooltipXPos + ", " + overlayTooltipYPos + ")");
+  }
+
   renderSidebarTooltip(data) {
-    let innerHtml = _(data)
-      .orderBy('successRate', 'desc')
-      .map(d => this.renderNodeTooltipDatum(d)).value();
+    let innerHtml = _.map(data, d => this.renderNodeTooltipDatum(d));
     this.sidebar.html(innerHtml.join(''));
   }
 
+  renderOverlayTooltip(data) {
+    this.overlayTooltip.text('');
+
+    _.each(data, (d, i) => {
+      this.overlayTooltip
+        .append("tspan").text(d.name)
+        .attr("x", 0)
+        .attr("y", i * 15);
+    });
+  }
+
   renderNodeTooltipDatum(d) {
-    let latency = metricToFormatter["LATENCY"](getP99(d));
+    let latency = metricToFormatter["LATENCY"](d.latency.P99);
     let sr = metricToFormatter["SUCCESS_RATE"](d.successRate);
     return `<div class="title">${d.name}</div><div>${latency}, ${sr}</div>`;
   }

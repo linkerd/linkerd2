@@ -14,12 +14,11 @@ import './../../css/deployments.css';
 import 'whatwg-fetch';
 
 const maxTsToFetch = 15; // Beyond this, stop showing sparklines in table
-const getP99 = d => _.get(d, ["latency", "P99", 0, "value"]);
 let nodeStats = (description, node) => (
   <div>
     <div className="title">{description}:</div>
     <div>
-      {node.name} ({metricToFormatter["LATENCY"](getP99(node))})
+      {node.name} ({metricToFormatter["LATENCY"](_.get(node, ["latency", "P99"]))})
     </div>
   </div>
 );
@@ -136,15 +135,15 @@ export default class Deployments extends React.Component {
 
   renderPageContents() {
     let leastHealthyDeployments = this.getLeastHealthyDeployments(this.state.metrics);
-    let slowestNode = _.maxBy(this.state.metrics, getP99);
-    let fastestNode = _.minBy(this.state.metrics, getP99);
-
     let scatterplotData = _.reduce(this.state.metrics, (mem, datum) => {
       if (!_.isNil(datum.successRate) && !_.isNil(datum.latency)) {
         mem.push(datum);
       }
       return mem;
     }, []);
+
+    let slowestNode = _.maxBy(scatterplotData, 'latency.P99');
+    let fastestNode = _.minBy(scatterplotData, 'latency.P99');
 
     return (
       <div className="clearfix">

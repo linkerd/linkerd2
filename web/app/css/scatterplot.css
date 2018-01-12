@@ -29,6 +29,11 @@ circle.dot {
   pointer-events: all;
 }
 
+.overlay-tooltip {
+  fill: #777;
+  font-size: 12px;
+}
+
 .vertical-highlight {
   fill: steelblue;
   opacity: 0.1;

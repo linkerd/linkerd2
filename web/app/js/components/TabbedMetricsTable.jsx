@@ -146,18 +146,15 @@ export default class TabbedMetricsTable extends React.Component {
   }
 
   preprocessMetrics() {
-    let tableData = this.props.metrics;
+    let tableData = _.cloneDeep(this.props.metrics);
     let totalRequestRate = _.sumBy(this.props.metrics, "requestRate") || 0;
 
     _.each(tableData, datum => {
       datum.totalRequests = totalRequestRate;
       datum.requestDistribution = new Percentage(datum.requestRate, datum.totalRequests);
 
-      _.each(datum.latency, (d, quantile) => {
-        _.each(d, datapoint => {
-          let latencyValue = _.isNil(datapoint.value) ? null : parseInt(datapoint.value, 10);
-          datum[quantile] = latencyValue;
-        });
+      _.each(datum.latency, (value, quantile) => {
+        datum[quantile] = value;
       });
     });
 
