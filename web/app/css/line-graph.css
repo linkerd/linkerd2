@@ -11,17 +11,17 @@
 }
 
 .line-p50 {
-  stroke: var(--latency-p50);
+  stroke: var(--latency-p50-blue);
 }
 
 .line-p95 {
-  stroke: var(--latency-p95);
+  stroke: var(--latency-p95-blue);
 }
 
 .line-p99 {
-  stroke: var(--latency-p99);
+  stroke: var(--latency-p99-blue);
 }
 
 .flash {
-  fill: var(--latency-p50);
+  fill: var(--latency-p50-blue);
 }

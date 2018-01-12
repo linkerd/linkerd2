@@ -7,9 +7,9 @@
   --darkblue: #071E3C;
   --warmgrey: #f6f6f6;
   --coldgrey: #c9c9c9;
-  --latency-p99: var(--messageblue);
-  --latency-p95: #2D9CDB;
-  --latency-p50: #56CCF2;
+  --latency-p99-blue: var(--messageblue);
+  --latency-p95-blue: #2D9CDB;
+  --latency-p50-blue: #56CCF2;
   --subheader-grey: #828282;
   --status-gray: #BDBDBD;
   --green: #27AE60;
