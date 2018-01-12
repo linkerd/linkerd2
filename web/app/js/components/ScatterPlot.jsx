@@ -83,7 +83,11 @@ export default class ScatterPlot extends React.Component {
       .attr("height", this.state.height);
     this.overlayNode = d3.select(".overlay").node();
 
-    // when graph is initially loaded, set highlight and sidebar to first datapoint
+    this.highlightFirstDatapoint();
+  }
+
+  highlightFirstDatapoint() {
+    // when graph is initially loaded / reloaded, set highlight and sidebar to first datapoint
     let firstDatapoint = _.first(this.props.data);
     if (firstDatapoint) {
       let firstLatency = _.get(firstDatapoint, ["latency", "P99", 0, "value"]);
@@ -195,6 +199,7 @@ export default class ScatterPlot extends React.Component {
       .style("fill", d => successRateColorScale(d.successRate))
       .style("stroke", d => successRateColorScale(d.successRate));
 
+    this.highlightFirstDatapoint();
     this.overlay
       .on("mousemove", () => {
         let currXPos = d3.mouse(this.overlayNode)[0];
