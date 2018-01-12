@@ -22,7 +22,8 @@ export default class DeploymentSummary extends React.Component {
           <LineGraph
             data={this.props.requestTs}
             lastUpdated={this.props.lastUpdated}
-            containerClassName={toClassName(this.props.data.name)} />
+            containerClassName={toClassName(this.props.data.name)}
+            flashLastDatapoint={true} />
 
           <div className="summary-stat">
             <div className="metric-title">Current requests</div>

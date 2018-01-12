@@ -21,3 +21,7 @@
 .line-p99 {
   stroke: var(--latency-p99);
 }
+
+.flash {
+  fill: var(--latency-p50);
+}
