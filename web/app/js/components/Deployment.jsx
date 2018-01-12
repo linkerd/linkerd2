@@ -209,7 +209,7 @@ export default class Deployment extends React.Component {
 
   renderPaths() {
     return _.size(this.state.pathMetrics) === 0 ? null :
-      <div>
+      <div key="deployment-paths">
         <div className="border-container border-neutral subsection-header">
           <div className="border-container-content subsection-header">
               Paths
