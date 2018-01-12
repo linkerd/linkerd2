@@ -22,7 +22,7 @@ func (proxy *statusCheckerProxy) SelfCheck() ([]CheckResult, error) {
 
 	canConnectViaGrpcCheck := CheckResult{
 		SubsystemName:    proxy.prefix,
-		CheckDescription: "retrieve status via gRPC",
+		CheckDescription: "can retrieve status via gRPC",
 		Status:           CheckError,
 	}
 	selfCheckResponse, err := proxy.delegate.SelfCheck(context.Background(), &pb.SelfCheckRequest{})
@@ -53,11 +53,11 @@ func (proxy *statusCheckerProxy) SelfCheck() ([]CheckResult, error) {
 		}
 	}
 
-	allResults := []CheckResult{
+	subsystemResults := []CheckResult{
 		canConnectViaGrpcCheck,
 	}
-	allResults = append(allResults, translatedResults...)
-	return allResults, nil
+	subsystemResults = append(subsystemResults, translatedResults...)
+	return subsystemResults, nil
 }
 
 func NewGrpcStatusChecker(name string, grpClient grpcStatusChecker) StatusChecker {

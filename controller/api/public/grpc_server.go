@@ -8,14 +8,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/runconduit/conduit/pkg/healthcheck"
-
 	"github.com/runconduit/conduit/controller"
 	"github.com/runconduit/conduit/controller/api/util"
 	common "github.com/runconduit/conduit/controller/gen/common"
 	tapPb "github.com/runconduit/conduit/controller/gen/controller/tap"
 	telemPb "github.com/runconduit/conduit/controller/gen/controller/telemetry"
 	pb "github.com/runconduit/conduit/controller/gen/public"
+	"github.com/runconduit/conduit/pkg/healthcheck"
 	"golang.org/x/net/context"
 )
 
@@ -143,12 +142,11 @@ func (s *grpcServer) SelfCheck(ctx context.Context, in *common.SelfCheckRequest)
 	if err != nil {
 		telemetryClientCheck.Status = string(healthcheck.CheckError)
 		telemetryClientCheck.FriendlyMessageToUser = fmt.Sprintf("Error talking to telemetry service from control plane: %s", err.Error())
-		return nil, err
 	} else {
 		telemetryClientCheck.Status = string(healthcheck.CheckOk)
 	}
 
-	//TODO: check tap service
+	//TODO: check other services
 
 	response := &common.SelfCheckResponse{
 		Results: []*common.CheckResult{

@@ -32,6 +32,11 @@ type (
 var (
 	jsonMarshaler   = jsonpb.Marshaler{EmitDefaults: true}
 	jsonUnmarshaler = jsonpb.Unmarshaler{}
+	statPath        = fullUrlPathFor("Stat")
+	versionPath     = fullUrlPathFor("Version")
+	listPodsPath    = fullUrlPathFor("ListPods")
+	tapPath         = fullUrlPathFor("Tap")
+	selfCheckPath   = fullUrlPathFor("SelfCheck")
 )
 
 func NewServer(addr string, telemetryClient telemPb.TelemetryClient, tapClient tapPb.TapClient) *http.Server {
@@ -73,15 +78,15 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	// Serve request
 	switch req.URL.Path {
-	case fullUrlPathFor("Stat"):
+	case statPath:
 		h.handleStat(w, req)
-	case fullUrlPathFor("Version"):
+	case versionPath:
 		h.handleVersion(w, req)
-	case fullUrlPathFor("ListPods"):
+	case listPodsPath:
 		h.handleListPods(w, req)
-	case fullUrlPathFor("Tap"):
+	case tapPath:
 		h.handleTap(w, req)
-	case fullUrlPathFor("SelfCheck"):
+	case selfCheckPath:
 		h.handleSelfCheck(w, req)
 	default:
 		http.NotFound(w, req)

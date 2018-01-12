@@ -15,8 +15,6 @@ import (
 
 const lineWidth = 80
 
-var statusForceSystemInfo bool
-
 var statusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Check your Conduit installation for potential problems.",
@@ -106,6 +104,5 @@ func statusCheckResultWasError(w io.Writer) error {
 
 func init() {
 	RootCmd.AddCommand(statusCmd)
-	statusCmd.PersistentFlags().BoolVar(&statusForceSystemInfo, "print-system-info", false, "Fores command to print system information, even if tests were successful.")
 	addControlPlaneNetworkingArgs(statusCmd)
 }

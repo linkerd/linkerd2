@@ -118,7 +118,7 @@ message CheckResult {
     string SubsystemName = 1;
     string CheckDescription = 2;
     string Status = 3;
-    string FriendlyMessageToUser =4;
+    string FriendlyMessageToUser = 4;
 }
 
 message SelfCheckRequest {}
