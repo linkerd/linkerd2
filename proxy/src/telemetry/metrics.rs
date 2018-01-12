@@ -6,7 +6,7 @@ use std::time::Duration;
 use http;
 use ordermap::OrderMap;
 
-use control::pb::common::{HttpMethod, TcpAddress};
+use control::pb::common::{HttpMethod, TcpAddress, Protocol};
 use control::pb::proxy::telemetry::{
     eos_ctx,
     ClientTransport,
@@ -81,6 +81,7 @@ enum End {
 
 #[derive(Debug, Default)]
 struct TransportStats {
+    protocol: Protocol,
     connects: u32,
     disconnects: Vec<TransportSummary>,
 }
@@ -199,11 +200,17 @@ impl Metrics {
                 let source = s.remote.ip();
                 self.sources
                     .entry(source)
-                    .or_insert_with(TransportStats::default)
+                    .or_insert_with(|| TransportStats {
+                        protocol: s.protocol,
+                        ..TransportStats::default()
+                    })
             }
             ctx::transport::Ctx::Client(ref c) => self.destinations
                 .entry(c.remote)
-                .or_insert_with(TransportStats::default),
+                .or_insert_with(|| TransportStats {
+                    protocol: c.protocol,
+                    ..TransportStats::default()
+                })
         }
     }
 
@@ -216,6 +223,7 @@ impl Metrics {
                 source_ip: Some(ip.into()),
                 connects: stats.connects,
                 disconnects: stats.disconnects,
+                protocol: stats.protocol as i32,
             })
         }
 
@@ -227,6 +235,7 @@ impl Metrics {
                 }),
                 connects: stats.connects,
                 disconnects: stats.disconnects,
+                protocol: stats.protocol as i32,
             });
         }
 

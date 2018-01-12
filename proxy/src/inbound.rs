@@ -117,6 +117,7 @@ mod tests {
     use tower_router::Recognize;
 
     use super::Inbound;
+    use control::pb::common::Protocol;
     use bind::Bind;
     use ctx;
 
@@ -182,7 +183,13 @@ mod tests {
 
             let mut req = http::Request::new(());
             req.extensions_mut()
-                .insert(ctx::transport::Server::new(&ctx, &local, &remote, &Some(orig_dst)));
+                .insert(ctx::transport::Server::new(
+                    &ctx,
+                    &local,
+                    &remote,
+                    &Some(orig_dst),
+                    Protocol::Http,
+                ));
 
             let rec = if Inbound::<()>::same_addr(&orig_dst, &local) {
                 None
@@ -204,7 +211,13 @@ mod tests {
 
             let mut req = http::Request::new(());
             req.extensions_mut()
-                .insert(ctx::transport::Server::new(&ctx, &local, &remote, &None));
+                .insert(ctx::transport::Server::new(
+                    &ctx,
+                    &local,
+                    &remote,
+                    &None,
+                    Protocol::Http,
+                ));
 
             inbound.recognize(&req) == default
         }
@@ -230,7 +243,13 @@ mod tests {
 
             let mut req = http::Request::new(());
             req.extensions_mut()
-                .insert(ctx::transport::Server::new(&ctx, &local, &remote, &Some(local)));
+                .insert(ctx::transport::Server::new(
+                    &ctx,
+                    &local,
+                    &remote,
+                    &Some(local),
+                    Protocol::Http,
+                ));
 
             inbound.recognize(&req) == default
         }

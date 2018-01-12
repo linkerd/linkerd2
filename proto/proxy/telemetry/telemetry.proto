@@ -38,12 +38,14 @@ message ServerTransport {
   common.IPAddress source_ip = 1;
   uint32 connects = 2;
   repeated TransportSummary disconnects = 3;
+  common.Protocol protocol = 4;
 }
 
 message ClientTransport {
   common.TcpAddress target_addr = 1;
   uint32 connects = 2;
   repeated TransportSummary disconnects = 3;
+  common.Protocol protocol = 4;
 }
 
 message TransportSummary {

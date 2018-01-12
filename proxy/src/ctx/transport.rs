@@ -1,6 +1,8 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
+use control::pb::common::Protocol;
+
 use ctx;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -16,6 +18,7 @@ pub struct Server {
     pub remote: SocketAddr,
     pub local: SocketAddr,
     pub orig_dst: Option<SocketAddr>,
+    pub protocol: Protocol,
 }
 
 /// Identifies a connection from the proxy to another process.
@@ -23,6 +26,7 @@ pub struct Server {
 pub struct Client {
     pub proxy: Arc<ctx::Proxy>,
     pub remote: SocketAddr,
+    pub protocol: Protocol,
 }
 
 impl Ctx {
@@ -40,12 +44,14 @@ impl Server {
         local: &SocketAddr,
         remote: &SocketAddr,
         orig_dst: &Option<SocketAddr>,
+        protocol: Protocol,
     ) -> Arc<Server> {
         let s = Server {
             proxy: Arc::clone(proxy),
             local: *local,
             remote: *remote,
             orig_dst: *orig_dst,
+            protocol: protocol,
         };
 
         Arc::new(s)
@@ -53,10 +59,15 @@ impl Server {
 }
 
 impl Client {
-    pub fn new(proxy: &Arc<ctx::Proxy>, remote: &SocketAddr) -> Arc<Client> {
+    pub fn new(
+        proxy: &Arc<ctx::Proxy>,
+        remote: &SocketAddr,
+        protocol: Protocol,
+    ) -> Arc<Client> {
         let c = Client {
             proxy: Arc::clone(proxy),
             remote: *remote,
+            protocol: protocol,
         };
 
         Arc::new(c)

@@ -2,7 +2,7 @@
 #![cfg_attr(feature = "cargo-clippy", allow(clippy))]
 
 use std::error::Error;
-use std::fmt;
+use std::{fmt, hash};
 use std::sync::Arc;
 
 use http;
@@ -396,6 +396,13 @@ impl<'a> From<&'a ::std::net::SocketAddr> for common::TcpAddress {
     }
 }
 
+impl hash::Hash for common::Protocol {
+    // it's necessary to implement Hash for Protocol as it's a field on
+    // ctx::Transport, which derives Hash.
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        (*self as i32).hash(state)
+    }
+}
 
 fn pb_duration(d: &::std::time::Duration) -> ::prost_types::Duration {
     let seconds = if d.as_secs() > ::std::i64::MAX as u64 {

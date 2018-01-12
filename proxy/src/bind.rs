@@ -134,13 +134,17 @@ where
 {
     pub fn bind_service(&self, addr: &SocketAddr) -> Service<B> {
         trace!("bind_service {}", addr);
-        let client_ctx = ctx::transport::Client::new(&self.ctx, addr);
+        let client_ctx = ctx::transport::Client::new(
+            &self.ctx,
+            addr,
+            control::pb::proxy::common::Protocol::Http,
+        );
 
         // Map a socket address to an HTTP/2.0 connection.
         let connect = {
             let c = Timeout::new(
                 transport::Connect::new(*addr, &self.executor),
-                self.connect_timeout, 
+                self.connect_timeout,
                 &self.executor,
             );
 

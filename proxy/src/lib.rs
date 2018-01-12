@@ -317,8 +317,16 @@ where
             let opened_at = Instant::now();
             let orig_dst = connection.original_dst_addr();
             let local_addr = connection.local_addr().unwrap_or(listen_addr);
+            // TODO: detect protocol.
+            let protocol = control::pb::common::Protocol::Http;
             let srv_ctx =
-                ctx::transport::Server::new(&proxy_ctx, &local_addr, &remote_addr, &orig_dst);
+                ctx::transport::Server::new(
+                    &proxy_ctx,
+                    &local_addr,
+                    &remote_addr,
+                    &orig_dst,
+                    protocol,
+                );
 
             let io = sensors.accept(connection, opened_at, &srv_ctx);
 

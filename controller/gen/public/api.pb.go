@@ -899,7 +899,7 @@ func (c *apiClient) Stat(ctx context.Context, in *MetricRequest, opts ...grpc.Ca
 	out := new(MetricResponse)
 	err := grpc.Invoke(ctx, "/conduit.public.Api/Stat", in, out, c.cc, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("Error invoking gRPC service: %v", err)
+		return nil, err
 	}
 	return out, nil
 }
