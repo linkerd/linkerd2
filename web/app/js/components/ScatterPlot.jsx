@@ -47,13 +47,6 @@ export default class ScatterPlot extends React.Component {
     this.sidebar = d3.select(".scatterplot-display")
       .append("div").attr("class", "sidebar-tooltip");
 
-    // overlay on which to attch mouse events
-    this.overlay = this.svg.append("rect")
-      .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
-      .attr("class", "overlay")
-      .attr("width", this.state.width)
-      .attr("height", this.state.height);
-
     this.initializeVerticalHighlight();
     this.renderAxisLabels();
     this.updateGraph();
@@ -80,6 +73,15 @@ export default class ScatterPlot extends React.Component {
       .attr("class", "vertical-highlight")
       .attr("width", highlightBarWidth)
       .attr("height", this.state.height);
+
+    // overlay on which to attach mouse events
+    // attach this after all other items are attached otherwise they block mouse events
+    this.overlay = this.svg.append("rect")
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+      .attr("class", "overlay")
+      .attr("width", this.state.width)
+      .attr("height", this.state.height);
+    this.overlayNode = d3.select(".overlay").node();
 
     // when graph is initially loaded, set highlight and sidebar to first datapoint
     let firstDatapoint = _.first(this.props.data);
@@ -195,7 +197,7 @@ export default class ScatterPlot extends React.Component {
 
     this.overlay
       .on("mousemove", () => {
-        let currXPos = d3.mouse(d3.select("rect").node())[0];
+        let currXPos = d3.mouse(this.overlayNode)[0];
         this.verticalHighlight.attr("transform", "translate(" + currXPos + ", 0)");
         let nearestDatapoints = this.getNearbyDatapoints(currXPos, plotData);
 
