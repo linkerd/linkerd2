@@ -19,74 +19,91 @@ const resourceInfo = {
   "upstream_pod": { title: "upstream pod", url: "/pod?pod=" },
   "downstream_pod": { title: "downstream pod", url: "/pod?pod=" },
   "deployment": { title: "deployment", url: "/deployment?deploy=" },
-  "pod": { title: "pod", url: "/pod?pod=" }
+  "pod": { title: "pod", url: "/pod?pod=" },
+  "path": { title: "path", url: null }
 };
 
-const columns = {
-  resourceName: (resource, pathPrefix) => {
-    return {
-      title: resource.title,
-      dataIndex: "name",
-      key: "name",
-      render: name => <Link to={`${pathPrefix}${resource.url}${name}`}>{name}</Link>
-    };
-  },
-  successRate: {
-    title: "Success Rate",
-    dataIndex: "successRate",
-    key: "successRateRollup",
-    className: "numeric",
-    render: d => metricToFormatter["SUCCESS_RATE"](d)
-  },
-  requests: {
-    title: "Request Rate",
-    dataIndex: "requestRate",
-    key: "requestRateRollup",
-    className: "numeric",
-    render: d => metricToFormatter["REQUEST_RATE"](d)
-  },
-  requestDistribution: {
-    title: "Request distribution",
-    key: "distribution",
-    className: "numeric",
-    render: d => (new Percentage(d.requestRate, d.totalRequests)).prettyRate()
-  },
-  latencyP99: {
-    title: "P99 Latency",
-    dataIndex: "latency",
-    key: "p99LatencyRollup",
-    className: "numeric",
-    render: d => metricToFormatter["LATENCY"](_.get(d, ["P99", 0, "value"]))
-  },
-  latencyP95: {
-    title: "P95 Latency",
-    dataIndex: "latency",
-    key: "p95LatencyRollup",
-    className: "numeric",
-    render: d => metricToFormatter["LATENCY"](_.get(d, ["P95", 0, "value"]))
-  },
-  latencyP50: {
-    title: "P50 Latency",
-    dataIndex: "latency",
-    key: "p50LatencyRollup",
-    className: "numeric",
-    render: d => metricToFormatter["LATENCY"](_.get(d, ["P50", 0, "value"]))
-  }
+const generateColumns = sortable => {
+  return {
+    resourceName: (resource, pathPrefix) => {
+      return {
+        title: resource.title,
+        dataIndex: "name",
+        key: "name",
+        sorter: sortable ? (a, b) => (a.name || "").localeCompare(b.name) : false,
+        render: name => !resource.url ? name :
+          <Link to={`${pathPrefix}${resource.url}${name}`}>{name}</Link>
+      };
+    },
+    successRate: {
+      title: "Success Rate",
+      dataIndex: "successRate",
+      key: "successRateRollup",
+      className: "numeric",
+      sorter: sortable ? (a, b) => numericSort(a.successRate, b.successRate) : false,
+      render: d => metricToFormatter["SUCCESS_RATE"](d)
+    },
+    requests: {
+      title: "Request Rate",
+      dataIndex: "requestRate",
+      key: "requestRateRollup",
+      className: "numeric",
+      sorter: sortable ? (a, b) => numericSort(a.requestRate, b.requestRate) : false,
+      render: d => metricToFormatter["REQUEST_RATE"](d)
+    },
+    requestDistribution: {
+      title: "Request distribution",
+      dataIndex: "requestDistribution",
+      key: "distribution",
+      className: "numeric",
+      sorter: sortable ? (a, b) =>
+        numericSort(a.requestDistribution.get(), b.requestDistribution.get()) : false,
+      render: d => d.prettyRate()
+    },
+    latencyP99: {
+      title: "P99 Latency",
+      dataIndex: "P99",
+      key: "p99LatencyRollup",
+      className: "numeric",
+      sorter: sortable ? (a, b) => numericSort(a.P99, b.P99) : false,
+      render: metricToFormatter["LATENCY"]
+    },
+    latencyP95: {
+      title: "P95 Latency",
+      dataIndex: "P95",
+      key: "p95LatencyRollup",
+      className: "numeric",
+      sorter: sortable ? (a, b) => numericSort(a.P95, b.P95) : false,
+      render: metricToFormatter["LATENCY"]
+    },
+    latencyP50: {
+      title: "P50 Latency",
+      dataIndex: "P50",
+      key: "p50LatencyRollup",
+      className: "numeric",
+      sorter: sortable ? (a, b) => numericSort(a.P50, b.P50) : false,
+      render: metricToFormatter["LATENCY"]
+    }
+  };
 };
 
-const metricToColumns = {
-  requestRate: (resource, pathPrefix) => [
-    columns.resourceName(resource, pathPrefix),
-    columns.requests,
-    resource.title === "deployment" ? null : columns.requestDistribution
-  ],
-  successRate: (resource, pathPrefix) => [columns.resourceName(resource, pathPrefix), columns.successRate],
-  latency: (resource, pathPrefix) => [
-    columns.resourceName(resource, pathPrefix),
-    columns.latencyP99,
-    columns.latencyP95,
-    columns.latencyP50
-  ]
+const numericSort = (a, b) => (_.isNil(a) ? -1 : a) - (_.isNil(b) ? -1 : b);
+
+const metricToColumns = baseCols => {
+  return {
+    requestRate: (resource, pathPrefix) => [
+      baseCols.resourceName(resource, pathPrefix),
+      baseCols.requests,
+      resource.title === "deployment" ? null : baseCols.requestDistribution
+    ],
+    successRate: (resource, pathPrefix) => [baseCols.resourceName(resource, pathPrefix), baseCols.successRate],
+    latency: (resource, pathPrefix) => [
+      baseCols.resourceName(resource, pathPrefix),
+      baseCols.latencyP99,
+      baseCols.latencyP95,
+      baseCols.latencyP50
+    ]
+  };
 };
 
 const nameToDataKey = {
@@ -106,6 +123,7 @@ export default class TabbedMetricsTable extends React.Component {
 
     this.state = {
       timeseries: {},
+      rollup: this.preprocessMetrics(),
       groupBy: tsHelper.groupBy,
       metricsUrl: tsHelper.url(this.props.entity),
       error: '',
@@ -125,6 +143,25 @@ export default class TabbedMetricsTable extends React.Component {
 
   componentWillUnmount() {
     window.clearInterval(this.timerId);
+  }
+
+  preprocessMetrics() {
+    let tableData = this.props.metrics;
+    let totalRequestRate = _.sumBy(this.props.metrics, "requestRate") || 0;
+
+    _.each(tableData, datum => {
+      datum.totalRequests = totalRequestRate;
+      datum.requestDistribution = new Percentage(datum.requestRate, datum.totalRequests);
+
+      _.each(datum.latency, (d, quantile) => {
+        _.each(d, datapoint => {
+          let latencyValue = _.isNil(datapoint.value) ? null : parseInt(datapoint.value, 10);
+          datum[quantile] = latencyValue;
+        });
+      });
+    });
+
+    return tableData;
   }
 
   loadFromServer() {
@@ -177,18 +214,14 @@ export default class TabbedMetricsTable extends React.Component {
 
   renderTable(metric) {
     let resource = resourceInfo[this.props.resource];
-    let columns = _.compact(metricToColumns[metric](resource, this.props.pathPrefix));
+    let columnDefinitions = metricToColumns(generateColumns(this.props.sortable));
+    let columns = _.compact(columnDefinitions[metric](resource, this.props.pathPrefix));
     if (!this.props.hideSparklines) {
       columns.push(this.getSparklineColumn(metric));
     }
 
-    // TODO: move this into rollup aggregation
-    let tableData = this.props.metrics;
-    let totalRequestRate = _.sumBy(this.props.metrics, "requestRate") || 0;
-    _.each(tableData, datum => datum.totalRequests = totalRequestRate);
-
     return (<Table
-      dataSource={tableData}
+      dataSource={this.state.rollup}
       columns={columns}
       pagination={false}
       className="conduit-table"

@@ -220,6 +220,10 @@ a.button.primary:active {
     border-bottom: 1px solid;
     border-color: var(--status-gray);
     word-break: keep-all;
+
+    &.ant-table-column-sort {
+      background: none;
+    }
   }
 
   & .ant-table table {
