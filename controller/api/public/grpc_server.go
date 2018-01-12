@@ -10,9 +10,11 @@ import (
 
 	"github.com/runconduit/conduit/controller"
 	"github.com/runconduit/conduit/controller/api/util"
+	common "github.com/runconduit/conduit/controller/gen/common"
 	tapPb "github.com/runconduit/conduit/controller/gen/controller/tap"
 	telemPb "github.com/runconduit/conduit/controller/gen/controller/telemetry"
 	pb "github.com/runconduit/conduit/controller/gen/public"
+	"github.com/runconduit/conduit/pkg/healthcheck"
 	"golang.org/x/net/context"
 )
 
@@ -32,19 +34,20 @@ type (
 )
 
 const (
-	countQuery         = "sum(irate(responses_total{%s}[%s])) by (%s)"
-	countHttpQuery     = "sum(irate(http_requests_total{%s}[%s])) by (%s)"
-	countGrpcQuery     = "sum(irate(grpc_server_handled_total{%s}[%s])) by (%s)"
-	latencyQuery       = "sum(irate(response_latency_ms_bucket{%s}[%s])) by (%s)"
-	quantileQuery      = "histogram_quantile(%s, %s)"
-	defaultVectorRange = "1m"
-
-	targetPodLabel    = "target"
-	targetDeployLabel = "target_deployment"
-	sourcePodLabel    = "source"
-	sourceDeployLabel = "source_deployment"
-	jobLabel          = "job"
-	pathLabel         = "path"
+	countQuery                      = "sum(irate(responses_total{%s}[%s])) by (%s)"
+	countHttpQuery                  = "sum(irate(http_requests_total{%s}[%s])) by (%s)"
+	countGrpcQuery                  = "sum(irate(grpc_server_handled_total{%s}[%s])) by (%s)"
+	latencyQuery                    = "sum(irate(response_latency_ms_bucket{%s}[%s])) by (%s)"
+	quantileQuery                   = "histogram_quantile(%s, %s)"
+	defaultVectorRange              = "1m"
+	targetPodLabel                  = "target"
+	targetDeployLabel               = "target_deployment"
+	sourcePodLabel                  = "source"
+	sourceDeployLabel               = "source_deployment"
+	jobLabel                        = "job"
+	pathLabel                       = "path"
+	TelemetryClientSubsystemName    = "telemetry"
+	TelemetryClientCheckDescription = "control plane can use telemetry service"
 )
 
 var (
@@ -126,6 +129,31 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.Empty) (*pb.ListPodsR
 		return nil, err
 	}
 	return resp, nil
+}
+
+func (s *grpcServer) SelfCheck(ctx context.Context, in *common.SelfCheckRequest) (*common.SelfCheckResponse, error) {
+	telemetryClientCheck := &common.CheckResult{
+		SubsystemName:    TelemetryClientSubsystemName,
+		CheckDescription: TelemetryClientCheckDescription,
+		Status:           string(healthcheck.CheckError),
+	}
+
+	_, err := s.telemetryClient.ListPods(ctx, &telemPb.ListPodsRequest{})
+	if err != nil {
+		telemetryClientCheck.Status = string(healthcheck.CheckError)
+		telemetryClientCheck.FriendlyMessageToUser = fmt.Sprintf("Error talking to telemetry service from control plane: %s", err.Error())
+	} else {
+		telemetryClientCheck.Status = string(healthcheck.CheckOk)
+	}
+
+	//TODO: check other services
+
+	response := &common.SelfCheckResponse{
+		Results: []*common.CheckResult{
+			telemetryClientCheck,
+		},
+	}
+	return response, nil
 }
 
 // Pass through to tap service

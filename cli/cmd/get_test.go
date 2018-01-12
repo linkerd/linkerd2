@@ -4,12 +4,13 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/runconduit/conduit/controller/api/public"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 )
 
 func TestGetPods(t *testing.T) {
 	t.Run("Returns names of existing pods if everything went ok", func(t *testing.T) {
-		mockClient := &mockApiClient{}
+		mockClient := &public.MockConduitApiClient{}
 
 		pods := []*pb.Pod{
 			{Name: "pod-a"},
@@ -26,7 +27,7 @@ func TestGetPods(t *testing.T) {
 			Pods: pods,
 		}
 
-		mockClient.listPodsResponseToReturn = response
+		mockClient.ListPodsResponseToReturn = response
 		actualPodNames, err := getPods(mockClient)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
@@ -41,9 +42,9 @@ func TestGetPods(t *testing.T) {
 	})
 
 	t.Run("Returns empty list if no [ods found", func(t *testing.T) {
-		mockClient := &mockApiClient{}
+		mockClient := &public.MockConduitApiClient{}
 
-		mockClient.listPodsResponseToReturn = &pb.ListPodsResponse{
+		mockClient.ListPodsResponseToReturn = &pb.ListPodsResponse{
 			Pods: []*pb.Pod{},
 		}
 
@@ -58,8 +59,8 @@ func TestGetPods(t *testing.T) {
 	})
 
 	t.Run("Returns error if cant find pods in API", func(t *testing.T) {
-		mockClient := &mockApiClient{}
-		mockClient.errorToReturn = errors.New("expected")
+		mockClient := &public.MockConduitApiClient{}
+		mockClient.ErrorToReturn = errors.New("expected")
 
 		_, err := getPods(mockClient)
 		if err == nil {

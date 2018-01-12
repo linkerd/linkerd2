@@ -120,7 +120,7 @@ func (kctl *kubectl) SelfCheck() ([]healthcheck.CheckResult, error) {
 	_, err := kctl.sh.CombinedOutput("kubectl", "config")
 	if err != nil {
 		kubectlOnPathCheck.Status = healthcheck.CheckFailed
-		kubectlOnPathCheck.NextSteps = fmt.Sprintf("Could not run the command `kubectl`. The error message is: [%s] and the current $PATH is: %s", err.Error(), kctl.sh.Path())
+		kubectlOnPathCheck.FriendlyMessageToUser = fmt.Sprintf("Could not run the command `kubectl`. The error message is: [%s] and the current $PATH is: %s", err.Error(), kctl.sh.Path())
 	} else {
 		kubectlOnPathCheck.Status = healthcheck.CheckOk
 	}
@@ -134,13 +134,13 @@ func (kctl *kubectl) SelfCheck() ([]healthcheck.CheckResult, error) {
 	actualVersion, err := kctl.Version()
 	if err != nil {
 		kubectlVersionCheck.Status = healthcheck.CheckError
-		kubectlVersionCheck.NextSteps = fmt.Sprintf("Error getting version from kubectl. The error message is: [%s].", err.Error())
+		kubectlVersionCheck.FriendlyMessageToUser = fmt.Sprintf("Error getting version from kubectl. The error message is: [%s].", err.Error())
 	} else {
 		if isCompatibleVersion(minimumKubectlVersionExpected, actualVersion) {
 			kubectlVersionCheck.Status = healthcheck.CheckOk
 		} else {
 			kubectlVersionCheck.Status = healthcheck.CheckFailed
-			kubectlVersionCheck.NextSteps = fmt.Sprintf("Kubectl is on version [%d.%d.%d], but version [%d.%d.%d] or more recent is required.",
+			kubectlVersionCheck.FriendlyMessageToUser = fmt.Sprintf("Kubectl is on version [%d.%d.%d], but version [%d.%d.%d] or more recent is required.",
 				actualVersion[0], actualVersion[1], actualVersion[2],
 				minimumKubectlVersionExpected[0], minimumKubectlVersionExpected[1], minimumKubectlVersionExpected[2])
 		}
@@ -154,7 +154,7 @@ func (kctl *kubectl) SelfCheck() ([]healthcheck.CheckResult, error) {
 	output, err := kctl.sh.CombinedOutput("kubectl", "get", "pods")
 	if err != nil {
 		kubectlApiAccessCheck.Status = healthcheck.CheckFailed
-		kubectlApiAccessCheck.NextSteps = output
+		kubectlApiAccessCheck.FriendlyMessageToUser = output
 	} else {
 		kubectlApiAccessCheck.Status = healthcheck.CheckOk
 	}

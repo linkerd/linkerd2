@@ -8,6 +8,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes/duration"
 	google_protobuf "github.com/golang/protobuf/ptypes/duration"
+	"github.com/runconduit/conduit/controller/api/public"
 	common "github.com/runconduit/conduit/controller/gen/common"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/controller/util"
@@ -25,7 +26,7 @@ func TestRequestTapFromApi(t *testing.T) {
 		path := "/some/path"
 		sourceIp := "234.234.234.234"
 		targetIp := "123.123.123.123"
-		mockApiClient := &mockApiClient{}
+		mockApiClient := &public.MockConduitApiClient{}
 
 		event1 := createEvent(&common.TapEvent_Http{
 			Event: &common.TapEvent_Http_RequestInit_{
@@ -55,8 +56,8 @@ func TestRequestTapFromApi(t *testing.T) {
 				},
 			},
 		})
-		mockApiClient.api_TapClientToReturn = &mockApi_TapClient{
-			tapEventsToReturn: []common.TapEvent{event1, event2},
+		mockApiClient.Api_TapClientToReturn = &public.MockApi_TapClient{
+			TapEventsToReturn: []common.TapEvent{event1, event2},
 		}
 
 		partialReq := &pb.TapRequest{
@@ -96,10 +97,10 @@ func TestRequestTapFromApi(t *testing.T) {
 		path := "/some/path"
 		sourceIp := "234.234.234.234"
 		targetIp := "123.123.123.123"
-		mockApiClient := &mockApiClient{}
+		mockApiClient := &public.MockConduitApiClient{}
 
-		mockApiClient.api_TapClientToReturn = &mockApi_TapClient{
-			tapEventsToReturn: []common.TapEvent{},
+		mockApiClient.Api_TapClientToReturn = &public.MockApi_TapClient{
+			TapEventsToReturn: []common.TapEvent{},
 		}
 
 		partialReq := &pb.TapRequest{
@@ -140,9 +141,9 @@ func TestRequestTapFromApi(t *testing.T) {
 		path := "/some/path"
 		sourceIp := "234.234.234.234"
 		targetIp := "123.123.123.123"
-		mockApiClient := &mockApiClient{}
-		mockApiClient.api_TapClientToReturn = &mockApi_TapClient{
-			errorsToReturn: []error{errors.New("expected")},
+		mockApiClient := &public.MockConduitApiClient{}
+		mockApiClient.Api_TapClientToReturn = &public.MockApi_TapClient{
+			ErrorsToReturn: []error{errors.New("expected")},
 		}
 
 		partialReq := &pb.TapRequest{

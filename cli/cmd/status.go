@@ -6,13 +6,14 @@ import (
 	"io"
 	"os"
 
+	"github.com/runconduit/conduit/controller/api/public"
 	"github.com/runconduit/conduit/pkg/healthcheck"
 	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/runconduit/conduit/pkg/shell"
 	"github.com/spf13/cobra"
 )
 
-const lineWidth = 52
+const lineWidth = 80
 
 var statusCmd = &cobra.Command{
 	Use:   "status",
@@ -35,11 +36,17 @@ problems were found.`,
 			return statusCheckResultWasError(os.Stdout)
 		}
 
-		return checkStatus(os.Stdout, kubectl, kubeApi)
+		conduitApi, err := newApiClient(kubeApi)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error with Conduit API: %s\n", err.Error())
+			return statusCheckResultWasError(os.Stdout)
+		}
+
+		return checkStatus(os.Stdout, kubectl, kubeApi, healthcheck.NewGrpcStatusChecker(public.ConduitApiSubsystemName, conduitApi))
 	}),
 }
 
-func checkStatus(w io.Writer, kubectl k8s.Kubectl, kubeApi k8s.KubernetesApi) error {
+func checkStatus(w io.Writer, checkers ...healthcheck.StatusChecker) error {
 	prettyPrintResults := func(result healthcheck.CheckResult) {
 		checkLabel := fmt.Sprintf("%s: %s", result.SubsystemName, result.CheckDescription)
 
@@ -52,15 +59,17 @@ func checkStatus(w io.Writer, kubectl k8s.Kubectl, kubeApi k8s.KubernetesApi) er
 		case healthcheck.CheckOk:
 			fmt.Fprintf(w, "%s%s[ok]\n", checkLabel, filler)
 		case healthcheck.CheckFailed:
-			fmt.Fprintf(w, "%s%s[FAIL]  -- %s\n", checkLabel, filler, result.NextSteps)
+			fmt.Fprintf(w, "%s%s[FAIL]  -- %s\n", checkLabel, filler, result.FriendlyMessageToUser)
 		case healthcheck.CheckError:
-			fmt.Fprintf(w, "%s%s[ERROR] -- %s\n", checkLabel, filler, result.NextSteps)
+			fmt.Fprintf(w, "%s%s[ERROR] -- %s\n", checkLabel, filler, result.FriendlyMessageToUser)
 		}
 	}
 
 	checker := healthcheck.MakeHealthChecker()
-	checker.Add(kubectl)
-	checker.Add(kubeApi)
+	for _, c := range checkers {
+		checker.Add(c)
+	}
+
 	check := checker.PerformCheck(prettyPrintResults)
 
 	fmt.Fprintln(w, "")

@@ -11,10 +11,10 @@ const (
 )
 
 type CheckResult struct {
-	SubsystemName    string
-	CheckDescription string
-	Status           CheckStatus
-	NextSteps        string
+	SubsystemName         string
+	CheckDescription      string
+	Status                CheckStatus
+	FriendlyMessageToUser string
 }
 
 type Check struct {
@@ -49,7 +49,7 @@ func (hC *HealthChecker) PerformCheck(observer CheckObserver) Check {
 	for _, checker := range hC.subsystemsToCheck {
 		results, err := checker.SelfCheck()
 		if err != nil {
-			log.Errorf("Error checking [%s]: %s", checker, err)
+			log.Errorf("Error checking [%s]: %s", checker, err.Error())
 			check.OverallStatus = CheckError
 			continue
 		}

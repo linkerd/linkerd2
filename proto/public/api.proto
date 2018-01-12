@@ -133,5 +133,6 @@ service Api {
   rpc Stat(MetricRequest) returns (MetricResponse) {}
   rpc Version(Empty) returns (VersionInfo) {}
   rpc ListPods(Empty) returns (ListPodsResponse) {}
+  rpc SelfCheck(common.SelfCheckRequest) returns (common.SelfCheckResponse) {}
   rpc Tap(TapRequest) returns (stream common.TapEvent) {}
 }

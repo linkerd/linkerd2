@@ -51,7 +51,7 @@ func (kubeapi *kubernetesApi) SelfCheck() ([]healthcheck.CheckResult, error) {
 	client, err := kubeapi.NewClient()
 	if err != nil {
 		apiConnectivityCheck.Status = healthcheck.CheckError
-		apiConnectivityCheck.NextSteps = fmt.Sprintf("Error connecting to the API. Error message is [%s]", err.Error())
+		apiConnectivityCheck.FriendlyMessageToUser = fmt.Sprintf("Error connecting to the API. Error message is [%s]", err.Error())
 	} else {
 		apiConnectivityCheck.Status = healthcheck.CheckOk
 	}
@@ -65,13 +65,13 @@ func (kubeapi *kubernetesApi) SelfCheck() ([]healthcheck.CheckResult, error) {
 	endpointToCheck, err := generateBaseKubernetesApiUrl(kubeapi.apiSchemeHostAndPort)
 	if err != nil {
 		apiAccessCheck.Status = healthcheck.CheckError
-		apiAccessCheck.NextSteps = fmt.Sprintf("Error querying Kubernetes API. Configured host is [%s], error message is [%s]", kubeapi.apiSchemeHostAndPort, err.Error())
+		apiAccessCheck.FriendlyMessageToUser = fmt.Sprintf("Error querying Kubernetes API. Configured host is [%s], error message is [%s]", kubeapi.apiSchemeHostAndPort, err.Error())
 	} else {
 		if client != nil {
 			resp, err := client.Get(endpointToCheck.String())
 			if err != nil {
 				apiAccessCheck.Status = healthcheck.CheckError
-				apiAccessCheck.NextSteps = fmt.Sprintf("HTTP GET request to endpoint [%s] resulted in error: [%s]", endpointToCheck, err.Error())
+				apiAccessCheck.FriendlyMessageToUser = fmt.Sprintf("HTTP GET request to endpoint [%s] resulted in error: [%s]", endpointToCheck, err.Error())
 			} else {
 				statusCodeReturnedIsWithinSuccessRange := resp.StatusCode < 400
 				if statusCodeReturnedIsWithinSuccessRange {
@@ -80,12 +80,12 @@ func (kubeapi *kubernetesApi) SelfCheck() ([]healthcheck.CheckResult, error) {
 					bytes, err := ioutil.ReadAll(resp.Body)
 					if err != nil {
 						apiAccessCheck.Status = healthcheck.CheckError
-						apiAccessCheck.NextSteps = fmt.Sprintf("HTTP GET request to endpoint [%s] resulted in invalid response: [%v]", endpointToCheck, resp)
+						apiAccessCheck.FriendlyMessageToUser = fmt.Sprintf("HTTP GET request to endpoint [%s] resulted in invalid response: [%v]", endpointToCheck, resp)
 					} else {
 						body := string(bytes)
 
 						apiAccessCheck.Status = healthcheck.CheckFailed
-						apiAccessCheck.NextSteps = fmt.Sprintf("HTTP GET request to endpoint [%s] resulted in Status: [%s], body: [%s]", endpointToCheck, resp.Status, body)
+						apiAccessCheck.FriendlyMessageToUser = fmt.Sprintf("HTTP GET request to endpoint [%s] resulted in Status: [%s], body: [%s]", endpointToCheck, resp.Status, body)
 					}
 				}
 			}
