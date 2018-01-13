@@ -2,17 +2,17 @@
 
 :root {
   --white: #fff;
-  --buttonblue: #4076c4;
-  --messageblue: #2F80ED;
+  --indigoblue: #4076c4;
+  --royalblue: #2F80ED;
   --darkblue: #071E3C;
-  --royalblue: #2D9CDB;
+  --curiousblue: #2D9CDB;
   --pictonblue: #56CCF2;
   --warmgrey: #f6f6f6;
   --coldgrey: #c9c9c9;
-  --subheader-grey: #828282;
-  --status-gray: #BDBDBD;
+  --neutralgrey: #828282;
+  --silvergrey: #BDBDBD;
   --green: #27AE60;
-  --bad-red: #EB5757;
+  --siennared: #EB5757;
   --font-stack: 'Lato', helvetica, arial, sans-serif;
   --font-weight-light: 300;
   --font-weight-regular: 400;
@@ -150,7 +150,7 @@ h2, h3, h4, h5, h6 {
   padding: var(--base-width);
   margin-bottom: calc(3 * var(--base-width));
   border-radius: 5px;
-  background: var(--bad-red);
+  background: var(--siennared);
   color: white;
   font-size: 12px;
   font-weight: var(--font-weight-bold);

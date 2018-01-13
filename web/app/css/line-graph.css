@@ -15,11 +15,11 @@
 }
 
 .line-p95 {
-  stroke: var(--royalblue);
+  stroke: var(--curiousblue);
 }
 
 .line-p99 {
-  stroke: var(--messageblue);
+  stroke: var(--royalblue);
 }
 
 .flash {

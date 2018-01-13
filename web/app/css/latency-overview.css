@@ -22,9 +22,9 @@
     border-left: 4px solid var(--pictonblue);;
   }
   & .current-latency-P95 {
-    border-left: 4px solid var(--royalblue);
+    border-left: 4px solid var(--curiousblue);
   }
   & .current-latency-P99 {
-    border-left: 4px solid var(--messageblue);
+    border-left: 4px solid var(--royalblue);
   }
 }

@@ -25,7 +25,7 @@
       border: 2px solid var(--green);
     }
     &.health-bad {
-      border: 2px solid var(--bad-red);
+      border: 2px solid var(--siennared);
     }
     &.health-neutral {
       border: 2px solid #108ee9;
@@ -44,7 +44,7 @@
     }
     &.health-bad {
       & .ant-progress-bg {
-        background: var(--bad-red);
+        background: var(--siennared);
       }
     }
     &.health-neutral {
