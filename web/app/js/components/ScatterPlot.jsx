@@ -193,6 +193,8 @@ export default class ScatterPlot extends React.Component {
   }
 
   updateGraph() {
+    this.updateScales(this.props.data);
+
     this.scatterPlot = this.svg.selectAll(".dot")
       .data(this.props.data);
 
