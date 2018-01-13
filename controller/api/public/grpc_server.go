@@ -10,11 +10,10 @@ import (
 
 	"github.com/runconduit/conduit/controller"
 	"github.com/runconduit/conduit/controller/api/util"
-	common "github.com/runconduit/conduit/controller/gen/common"
+	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 	tapPb "github.com/runconduit/conduit/controller/gen/controller/tap"
 	telemPb "github.com/runconduit/conduit/controller/gen/controller/telemetry"
 	pb "github.com/runconduit/conduit/controller/gen/public"
-	"github.com/runconduit/conduit/pkg/healthcheck"
 	"golang.org/x/net/context"
 )
 
@@ -131,25 +130,23 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.Empty) (*pb.ListPodsR
 	return resp, nil
 }
 
-func (s *grpcServer) SelfCheck(ctx context.Context, in *common.SelfCheckRequest) (*common.SelfCheckResponse, error) {
-	telemetryClientCheck := &common.CheckResult{
+func (s *grpcServer) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckRequest) (*healthcheckPb.SelfCheckResponse, error) {
+	telemetryClientCheck := &healthcheckPb.CheckResult{
 		SubsystemName:    TelemetryClientSubsystemName,
 		CheckDescription: TelemetryClientCheckDescription,
-		Status:           string(healthcheck.CheckError),
+		Status:           healthcheckPb.CheckStatus_OK,
 	}
 
 	_, err := s.telemetryClient.ListPods(ctx, &telemPb.ListPodsRequest{})
 	if err != nil {
-		telemetryClientCheck.Status = string(healthcheck.CheckError)
+		telemetryClientCheck.Status = healthcheckPb.CheckStatus_ERROR
 		telemetryClientCheck.FriendlyMessageToUser = fmt.Sprintf("Error talking to telemetry service from control plane: %s", err.Error())
-	} else {
-		telemetryClientCheck.Status = string(healthcheck.CheckOk)
 	}
 
 	//TODO: check other services
 
-	response := &common.SelfCheckResponse{
-		Results: []*common.CheckResult{
+	response := &healthcheckPb.SelfCheckResponse{
+		Results: []*healthcheckPb.CheckResult{
 			telemetryClientCheck,
 		},
 	}

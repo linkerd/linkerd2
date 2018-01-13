@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/runconduit/conduit/controller/api/public"
+	pb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 	"github.com/runconduit/conduit/pkg/healthcheck"
 	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/runconduit/conduit/pkg/shell"
@@ -47,7 +48,7 @@ problems were found.`,
 }
 
 func checkStatus(w io.Writer, checkers ...healthcheck.StatusChecker) error {
-	prettyPrintResults := func(result healthcheck.CheckResult) {
+	prettyPrintResults := func(result *pb.CheckResult) {
 		checkLabel := fmt.Sprintf("%s: %s", result.SubsystemName, result.CheckDescription)
 
 		filler := ""
@@ -56,11 +57,11 @@ func checkStatus(w io.Writer, checkers ...healthcheck.StatusChecker) error {
 		}
 
 		switch result.Status {
-		case healthcheck.CheckOk:
+		case pb.CheckStatus_OK:
 			fmt.Fprintf(w, "%s%s[ok]\n", checkLabel, filler)
-		case healthcheck.CheckFailed:
+		case pb.CheckStatus_FAIL:
 			fmt.Fprintf(w, "%s%s[FAIL]  -- %s\n", checkLabel, filler, result.FriendlyMessageToUser)
-		case healthcheck.CheckError:
+		case pb.CheckStatus_ERROR:
 			fmt.Fprintf(w, "%s%s[ERROR] -- %s\n", checkLabel, filler, result.FriendlyMessageToUser)
 		}
 	}
@@ -76,11 +77,11 @@ func checkStatus(w io.Writer, checkers ...healthcheck.StatusChecker) error {
 
 	var errBasedOnOverallStatus error
 	switch check.OverallStatus {
-	case healthcheck.CheckOk:
+	case pb.CheckStatus_OK:
 		errBasedOnOverallStatus = statusCheckResultWasOk(w)
-	case healthcheck.CheckFailed:
+	case pb.CheckStatus_FAIL:
 		errBasedOnOverallStatus = statusCheckResultWasFail(w)
-	case healthcheck.CheckError:
+	case pb.CheckStatus_ERROR:
 		errBasedOnOverallStatus = statusCheckResultWasError(w)
 	}
 

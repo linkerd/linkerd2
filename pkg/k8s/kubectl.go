@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	pb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 	"github.com/runconduit/conduit/pkg/healthcheck"
 	"github.com/runconduit/conduit/pkg/shell"
 )
@@ -110,61 +111,72 @@ func (kctl *kubectl) UrlFor(namespace string, extraPathStartingWithSlash string)
 	return generateKubernetesApiBaseUrlFor(schemeHostAndPort, namespace, extraPathStartingWithSlash)
 }
 
-func (kctl *kubectl) SelfCheck() ([]healthcheck.CheckResult, error) {
+func (kctl *kubectl) SelfCheck() []*pb.CheckResult {
+	return []*pb.CheckResult{
+		kctl.checkKubectlOnPath(),
+		kctl.checkKubectlVersion(),
+		kctl.checkKubectlApiAccess(),
+	}
+}
 
-	kubectlOnPathCheck := healthcheck.CheckResult{
+func (kctl *kubectl) checkKubectlOnPath() *pb.CheckResult {
+	checkResult := &pb.CheckResult{
+		Status:           pb.CheckStatus_OK,
 		SubsystemName:    KubectlSubsystemName,
 		CheckDescription: KubectlIsInstalledCheckDescription,
-		Status:           healthcheck.CheckError,
-	}
-	_, err := kctl.sh.CombinedOutput("kubectl", "config")
-	if err != nil {
-		kubectlOnPathCheck.Status = healthcheck.CheckFailed
-		kubectlOnPathCheck.FriendlyMessageToUser = fmt.Sprintf("Could not run the command `kubectl`. The error message is: [%s] and the current $PATH is: %s", err.Error(), kctl.sh.Path())
-	} else {
-		kubectlOnPathCheck.Status = healthcheck.CheckOk
 	}
 
-	kubectlVersionCheck := healthcheck.CheckResult{
+	_, err := kctl.sh.CombinedOutput("kubectl", "config")
+	if err != nil {
+		checkResult.Status = pb.CheckStatus_ERROR
+		checkResult.FriendlyMessageToUser = fmt.Sprintf("Could not run the command `kubectl`. The error message is: [%s] and the current $PATH is: %s", err.Error(), kctl.sh.Path())
+		return checkResult
+	}
+
+	return checkResult
+}
+
+func (kctl *kubectl) checkKubectlVersion() *pb.CheckResult {
+	checkResult := &pb.CheckResult{
+		Status:           pb.CheckStatus_OK,
 		SubsystemName:    KubectlSubsystemName,
 		CheckDescription: KubectlVersionCheckDescription,
-		Status:           healthcheck.CheckError,
 	}
 
 	actualVersion, err := kctl.Version()
 	if err != nil {
-		kubectlVersionCheck.Status = healthcheck.CheckError
-		kubectlVersionCheck.FriendlyMessageToUser = fmt.Sprintf("Error getting version from kubectl. The error message is: [%s].", err.Error())
-	} else {
-		if isCompatibleVersion(minimumKubectlVersionExpected, actualVersion) {
-			kubectlVersionCheck.Status = healthcheck.CheckOk
-		} else {
-			kubectlVersionCheck.Status = healthcheck.CheckFailed
-			kubectlVersionCheck.FriendlyMessageToUser = fmt.Sprintf("Kubectl is on version [%d.%d.%d], but version [%d.%d.%d] or more recent is required.",
-				actualVersion[0], actualVersion[1], actualVersion[2],
-				minimumKubectlVersionExpected[0], minimumKubectlVersionExpected[1], minimumKubectlVersionExpected[2])
-		}
+		checkResult.Status = pb.CheckStatus_ERROR
+		checkResult.FriendlyMessageToUser = fmt.Sprintf("Error getting version from kubectl. The error message is: [%s].", err.Error())
+		return checkResult
 	}
 
-	kubectlApiAccessCheck := healthcheck.CheckResult{
+	if !isCompatibleVersion(minimumKubectlVersionExpected, actualVersion) {
+		checkResult.Status = pb.CheckStatus_FAIL
+		checkResult.FriendlyMessageToUser = fmt.Sprintf("Kubectl is on version [%d.%d.%d], but version [%d.%d.%d] or more recent is required.",
+			actualVersion[0], actualVersion[1], actualVersion[2],
+			minimumKubectlVersionExpected[0], minimumKubectlVersionExpected[1], minimumKubectlVersionExpected[2])
+		return checkResult
+	}
+
+	return checkResult
+}
+
+func (kctl *kubectl) checkKubectlApiAccess() *pb.CheckResult {
+	kubectlApiAccessCheck := &pb.CheckResult{
+		Status:           pb.CheckStatus_OK,
 		SubsystemName:    KubectlSubsystemName,
 		CheckDescription: KubectlConnectivityCheckDescription,
-		Status:           healthcheck.CheckError,
-	}
-	output, err := kctl.sh.CombinedOutput("kubectl", "get", "pods")
-	if err != nil {
-		kubectlApiAccessCheck.Status = healthcheck.CheckFailed
-		kubectlApiAccessCheck.FriendlyMessageToUser = output
-	} else {
-		kubectlApiAccessCheck.Status = healthcheck.CheckOk
 	}
 
-	results := []healthcheck.CheckResult{
-		kubectlOnPathCheck,
-		kubectlVersionCheck,
-		kubectlApiAccessCheck,
+	output, err := kctl.sh.CombinedOutput("kubectl", "get", "pods")
+	if err != nil {
+		kubectlApiAccessCheck.Status = pb.CheckStatus_FAIL
+		kubectlApiAccessCheck.FriendlyMessageToUser = output
+		return kubectlApiAccessCheck
 	}
-	return results, nil
+
+	kubectlApiAccessCheck.Status = pb.CheckStatus_OK
+	return kubectlApiAccessCheck
 }
 
 func isCompatibleVersion(minimalRequirementVersion [3]int, actualVersion [3]int) bool {

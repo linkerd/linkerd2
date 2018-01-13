@@ -113,16 +113,3 @@ enum Protocol {
   HTTP = 0;
   TCP = 1;
 }
-
-message CheckResult {
-    string SubsystemName = 1;
-    string CheckDescription = 2;
-    string Status = 3;
-    string FriendlyMessageToUser = 4;
-}
-
-message SelfCheckRequest {}
-
-message SelfCheckResponse {
-    repeated CheckResult results = 1;
-}

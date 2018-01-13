@@ -5,46 +5,46 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/runconduit/conduit/pkg/healthcheck"
+	pb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 	"github.com/runconduit/conduit/pkg/k8s"
 )
 
 func TestCheckStatus(t *testing.T) {
 	t.Run("Prints expected output", func(t *testing.T) {
 		kubectl := &k8s.MockKubectl{}
-		kubectl.SelfCheckResultsToReturn = []healthcheck.CheckResult{
+		kubectl.SelfCheckResultsToReturn = []*pb.CheckResult{
 			{
 				SubsystemName:         k8s.KubectlSubsystemName,
 				CheckDescription:      k8s.KubectlConnectivityCheckDescription,
-				Status:                healthcheck.CheckOk,
+				Status:                pb.CheckStatus_OK,
 				FriendlyMessageToUser: "This shouldnt be printed",
 			},
 			{
 				SubsystemName:         k8s.KubectlSubsystemName,
 				CheckDescription:      k8s.KubectlIsInstalledCheckDescription,
-				Status:                healthcheck.CheckFailed,
+				Status:                pb.CheckStatus_FAIL,
 				FriendlyMessageToUser: "This should contain instructions for fail",
 			},
 			{
 				SubsystemName:         k8s.KubectlSubsystemName,
 				CheckDescription:      k8s.KubectlVersionCheckDescription,
-				Status:                healthcheck.CheckError,
+				Status:                pb.CheckStatus_ERROR,
 				FriendlyMessageToUser: "This should contain instructions for err",
 			},
 		}
 
 		kubeApi := &k8s.MockKubeApi{}
-		kubeApi.SelfCheckResultsToReturn = []healthcheck.CheckResult{
+		kubeApi.SelfCheckResultsToReturn = []*pb.CheckResult{
 			{
 				SubsystemName:         k8s.KubeapiSubsystemName,
 				CheckDescription:      k8s.KubeapiClientCheckDescription,
-				Status:                healthcheck.CheckFailed,
+				Status:                pb.CheckStatus_FAIL,
 				FriendlyMessageToUser: "This should contain instructions for fail",
 			},
 			{
 				SubsystemName:         k8s.KubeapiSubsystemName,
 				CheckDescription:      k8s.KubeapiAccessCheckDescription,
-				Status:                healthcheck.CheckOk,
+				Status:                pb.CheckStatus_OK,
 				FriendlyMessageToUser: "This shouldnt be printed",
 			},
 		}

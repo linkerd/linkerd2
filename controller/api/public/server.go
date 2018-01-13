@@ -11,6 +11,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	common "github.com/runconduit/conduit/controller/gen/common"
+	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 	tapPb "github.com/runconduit/conduit/controller/gen/controller/tap"
 	telemPb "github.com/runconduit/conduit/controller/gen/controller/telemetry"
 	pb "github.com/runconduit/conduit/controller/gen/public"
@@ -136,7 +137,7 @@ func (h *handler) handleVersion(w http.ResponseWriter, req *http.Request) {
 }
 
 func (h *handler) handleSelfCheck(w http.ResponseWriter, req *http.Request) {
-	var selfCheckRequest common.SelfCheckRequest
+	var selfCheckRequest healthcheckPb.SelfCheckRequest
 	err := serverUnmarshal(req, &selfCheckRequest)
 	if err != nil {
 		serverMarshalError(w, req, err, http.StatusBadRequest)
