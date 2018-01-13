@@ -31,7 +31,7 @@
       border: 2px solid #108ee9;
     }
     &.health-unknown {
-      border: 2px solid var(--status-gray);
+      border: 2px solid var(--silvergrey);
     }
   }
 
@@ -54,7 +54,7 @@
     }
     &.health-unknown {
       & .ant-progress-bg {
-        background: var(--status-gray);
+        background: var(--silvergrey);
       }
     }
   }
