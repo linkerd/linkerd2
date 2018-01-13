@@ -177,9 +177,19 @@ export default class ScatterPlot extends React.Component {
     let x0 = this.xScale.invert(x - highlightBarWidth);
     let x1 = this.xScale.invert(x + highlightBarWidth);
 
-    return _(data).filter(d => {
-      return d.latency.P99 <= x1 && d.latency.P99 >= x0;
-    }).orderBy('successRate', 'desc').value();
+    if (x0 === x1) {
+      // handle case where all the x points are in one column
+      let datapointsX = this.xScale(_.first(data).latency.P99);
+      if (Math.abs(x - datapointsX < highlightBarWidth)) {
+        return data;
+      } else {
+        return [];
+      }
+    } else {
+      return _(data).filter(d => {
+        return d.latency.P99 <= x1 && d.latency.P99 >= x0;
+      }).orderBy('successRate', 'desc').value();
+    }
   }
 
   updateGraph() {
