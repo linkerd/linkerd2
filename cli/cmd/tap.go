@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -73,13 +72,7 @@ Valid targets include:
 			return err
 		}
 
-		output, err := requestTapFromApi(client, args[1], validatedResourceType, partialReq)
-		if err != nil {
-			return err
-		}
-		_, err = fmt.Print(output)
-
-		return err
+		return requestTapFromApi(os.Stdout, client, args[1], validatedResourceType, partialReq)
 	},
 }
 
@@ -97,7 +90,7 @@ func init() {
 	tapCmd.PersistentFlags().StringVar(&path, "path", "", "Display requests with paths that start with this prefix")
 }
 
-func requestTapFromApi(client pb.ApiClient, targetName string, resourceType string, req *pb.TapRequest) (string, error) {
+func requestTapFromApi(w io.Writer, client pb.ApiClient, targetName string, resourceType string, req *pb.TapRequest) error {
 	switch resourceType {
 	case k8s.KubernetesDeployments:
 		req.Target = &pb.TapRequest_Deployment{
@@ -109,36 +102,32 @@ func requestTapFromApi(client pb.ApiClient, targetName string, resourceType stri
 			Pod: targetName,
 		}
 	default:
-		return "", fmt.Errorf("unsupported resourceType [%s]", resourceType)
+		return fmt.Errorf("unsupported resourceType [%s]", resourceType)
 	}
 
 	rsp, err := client.Tap(context.Background(), req)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	return renderTap(rsp)
+	return renderTap(w, rsp)
 }
 
-func renderTap(rsp pb.Api_TapClient) (string, error) {
-	var buffer bytes.Buffer
-	w := tabwriter.NewWriter(&buffer, 0, 0, 0, ' ', tabwriter.AlignRight)
-	err := writeTapEvenToBuffer(rsp, w)
+func renderTap(w io.Writer, tapClient pb.Api_TapClient) error {
+	tableWriter := tabwriter.NewWriter(w, 0, 0, 0, ' ', tabwriter.AlignRight)
+	err := writeTapEventsToBuffer(tapClient, tableWriter)
 	if err != nil {
-		return "", err
+		return err
 	}
-	w.Flush()
+	tableWriter.Flush()
 
-	// strip left padding on the first column
-	out := string(buffer.Bytes())
-
-	return out, nil
+	return nil
 
 }
 
-func writeTapEvenToBuffer(rsp pb.Api_TapClient, w *tabwriter.Writer) error {
+func writeTapEventsToBuffer(tapClient pb.Api_TapClient, w *tabwriter.Writer) error {
 	for {
-		event, err := rsp.Recv()
+		event, err := tapClient.Recv()
 		if err == io.EOF {
 			break
 		}
