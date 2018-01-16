@@ -24,7 +24,7 @@ func main() {
 	staticDir := flag.String("static-dir", "app/dist", "directory to search for static files")
 	uuid := flag.String("uuid", "", "unqiue Conduit install id")
 	reload := flag.Bool("reload", true, "reloading set to true or false")
-	logLevel := flag.String("log-level", "info", "log level, must be one of: panic, fatal, error, warn, info, debug")
+	logLevel := flag.String("log-level", log.InfoLevel.String(), "log level, must be one of: panic, fatal, error, warn, info, debug")
 	webpackDevServer := flag.String("webpack-dev-server", "", "use webpack to serve static assets; frontend will use this instead of static-dir")
 
 	flag.Parse()

@@ -13,6 +13,7 @@ import (
 	common "github.com/runconduit/conduit/controller/gen/common"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -64,6 +65,7 @@ func (c *grpcOverHttpClient) ListPods(ctx context.Context, req *pb.Empty, _ ...g
 
 func (c *grpcOverHttpClient) Tap(ctx context.Context, req *pb.TapRequest, _ ...grpc.CallOption) (pb.Api_TapClient, error) {
 	url := c.endpointNameToPublicApiUrl("Tap")
+	log.Debugf("Making streaming gRPC-over-HTTP call to [%s]", url.String())
 	rsp, err := c.post(ctx, url, req)
 	if err != nil {
 		return nil, err
@@ -71,6 +73,7 @@ func (c *grpcOverHttpClient) Tap(ctx context.Context, req *pb.TapRequest, _ ...g
 
 	go func() {
 		<-ctx.Done()
+		log.Debug("Closing response body after context marked as done")
 		rsp.Body.Close()
 	}()
 
@@ -93,11 +96,13 @@ func (c tapClient) RecvMsg(interface{}) error    { return nil }
 func (c *grpcOverHttpClient) apiRequest(ctx context.Context, endpoint string, req proto.Message, rsp proto.Message) error {
 	url := c.endpointNameToPublicApiUrl(endpoint)
 
+	log.Debugf("Making gRPC-over-HTTP call to [%s]", url.String())
 	httpRsp, err := c.post(ctx, url, req)
 	if err != nil {
 		return err
 	}
 
+	log.Debugf("gRPC-over-HTTP call returned status [%s] and content length [%d]", httpRsp.Status, httpRsp.ContentLength)
 	clientSideErrorStatusCode := httpRsp.StatusCode >= 400 && httpRsp.StatusCode <= 499
 	if clientSideErrorStatusCode {
 		return fmt.Errorf("POST to Conduit API endpoint [%s] returned HTTP status [%s]", url, httpRsp.Status)
