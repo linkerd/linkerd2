@@ -240,7 +240,10 @@ export default class ScatterPlot extends React.Component {
     if (firstLabelPosition + bbox.height > this.state.height - 50) {
       // if there are a bunch of nodes at 0, the labels could extend below the chart
       // translate upward if this is the case
-      overlayTooltipYPos -= (bbox.height);
+      overlayTooltipYPos -= bbox.height;
+
+      // re-render tooltip labels, squished together
+      this.renderOverlayTooltip(nearestDatapoints, true);
     }
 
     let overlayTooltipXPos = currXPos + highlightBarWidth / 2 + baseWidth;
@@ -259,9 +262,9 @@ export default class ScatterPlot extends React.Component {
     this.sidebar.html(innerHtml.join(''));
   }
 
-  renderOverlayTooltip(data) {
+  renderOverlayTooltip(data, ignoreNodeSpacing = false) {
     this.overlayTooltip.text('');
-    let labelWithPosition = this.computeTooltipLabelPositions(data);
+    let labelWithPosition = this.computeTooltipLabelPositions(data, ignoreNodeSpacing);
 
     _.each(labelWithPosition, d => {
       this.overlayTooltip
@@ -276,7 +279,7 @@ export default class ScatterPlot extends React.Component {
     return this.yScale(datum.successRate) + circleRadius / 2 - 5;
   }
 
-  computeTooltipLabelPositions(data) {
+  computeTooltipLabelPositions(data, ignoreNodeSpacing = false) {
     // in the case that there are multiple nodes in the highlighted area,
     // try to position each label next to its corresponding node
     // if the nodes are too close together, simply list the node labels
@@ -288,15 +291,15 @@ export default class ScatterPlot extends React.Component {
     });
 
     if (_.size(positions) > 1) {
-      let shouldAutoSpace = false;
       _.each(positions, (_d, i) => {
         if (i > 0) {
           if (positions[i].computedY - positions[i - 1].computedY < 10) {
-            shouldAutoSpace = true;
+            // labels are too close together, don't label at the node Y values
+            ignoreNodeSpacing = true;
           }
         }
       });
-      if (shouldAutoSpace) {
+      if (ignoreNodeSpacing) {
         let basePos = positions[0].computedY;
         _.each(positions, (d, i) => {
           d.computedY = basePos + i * 15;
