@@ -89,7 +89,7 @@ export default class ServiceMesh extends React.Component {
 
     let rollupRequest = this.api.fetch(rollupPath);
     let timeseriesRequest = this.api.fetch(timeseriesPath);
-    let podsRequest = this.api.fetchPods(this.props.pathPrefix);
+    let podsRequest = this.api.fetchPods();
 
     this.serverPromise = Promise.all([rollupRequest, timeseriesRequest, podsRequest])
       .then(([metrics, ts, pods]) => {
