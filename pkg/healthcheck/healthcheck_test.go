@@ -36,39 +36,12 @@ func TestSelfChecker(t *testing.T) {
 		},
 	}
 
-	t.Run("Returns all checks by subsystems", func(t *testing.T) {
-		healthChecker := MakeHealthChecker()
-
-		healthChecker.Add(workingSubsystem1)
-		healthChecker.Add(workingSubsystem2)
-		healthChecker.Add(failingSubsystem1)
-
-		results := healthChecker.PerformCheck(nil)
-
-		allExpectedResults := make([]*pb.CheckResult, 0)
-		allExpectedResults = append(allExpectedResults, workingSubsystem1.checksToReturn...)
-		allExpectedResults = append(allExpectedResults, workingSubsystem2.checksToReturn...)
-		allExpectedResults = append(allExpectedResults, failingSubsystem1.checksToReturn...)
-
-		expectedLength := len(allExpectedResults)
-		actualLength := len(results.Results)
-
-		if actualLength != expectedLength {
-			t.Fatalf("Expecting check results to contain [%d] results, got [%d]", expectedLength, actualLength)
-		}
-
-		actualChecksSet := make(map[pb.CheckResult]bool)
-		for _, result := range results.Results {
-			actualChecksSet[*result] = true
-		}
-
-		for _, expected := range allExpectedResults {
-			if !actualChecksSet[*expected] {
-				t.Fatalf("Expected results to contain [%v], but was: %v", expected,
-					reflect.ValueOf(actualChecksSet).MapKeys())
-			}
-		}
-	})
+	errorSubsystem1 := &mockSubsystem{
+		checksToReturn: []*pb.CheckResult{
+			{SubsystemName: "e1", CheckDescription: "ea", Status: pb.CheckStatus_ERROR},
+			{SubsystemName: "e1", CheckDescription: "eb", Status: pb.CheckStatus_OK},
+		},
+	}
 
 	t.Run("Notifies observer of all results", func(t *testing.T) {
 		healthChecker := MakeHealthChecker()
@@ -82,10 +55,20 @@ func TestSelfChecker(t *testing.T) {
 			observedResults = append(observedResults, r)
 		}
 
-		check := healthChecker.PerformCheck(observer)
+		allChecks := make([]*pb.CheckResult, 0)
+		allChecks = append(allChecks, workingSubsystem1.checksToReturn...)
+		allChecks = append(allChecks, workingSubsystem2.checksToReturn...)
+		allChecks = append(allChecks, failingSubsystem1.checksToReturn...)
+
+		expectedResults := make([]*pb.CheckResult, 0)
+		for _, check := range allChecks {
+			expectedResults = append(expectedResults, check)
+		}
+
+		healthChecker.PerformCheck(observer)
 
 		observedLength := len(observedResults)
-		expectedLength := len(check.Results)
+		expectedLength := len(expectedResults)
 
 		if expectedLength != observedLength {
 			t.Fatalf("Expecting observed check to contain [%d] check, got [%d]", expectedLength, observedLength)
@@ -96,9 +79,9 @@ func TestSelfChecker(t *testing.T) {
 			observedResultsSet[*result] = true
 		}
 
-		for _, observed := range check.Results {
-			if !observedResultsSet[*observed] {
-				t.Fatalf("Expected observed results to contain [%v], but was: %v", observed,
+		for _, expected := range expectedResults {
+			if !observedResultsSet[*expected] {
+				t.Fatalf("Expected observed results to contain [%v], but was: %v", expected,
 					reflect.ValueOf(observedResultsSet).MapKeys())
 			}
 		}
@@ -110,24 +93,38 @@ func TestSelfChecker(t *testing.T) {
 		healthChecker.Add(workingSubsystem1)
 		healthChecker.Add(workingSubsystem2)
 
-		results := healthChecker.PerformCheck(nil)
+		checkStatus := healthChecker.PerformCheck(nil)
 
-		if results.OverallStatus != pb.CheckStatus_OK {
-			t.Fatalf("Expecting check to be successful, but got [%v]", results)
+		if checkStatus != pb.CheckStatus_OK {
+			t.Fatalf("Expecting check to be successful, but got [%s]", checkStatus)
 		}
 	})
 
-	t.Run("Is failure if even a single test failed", func(t *testing.T) {
+	t.Run("Is failure if even a single test failed and no errors", func(t *testing.T) {
 		healthChecker := MakeHealthChecker()
 
 		healthChecker.Add(workingSubsystem1)
 		healthChecker.Add(failingSubsystem1)
 		healthChecker.Add(workingSubsystem2)
 
-		results := healthChecker.PerformCheck(nil)
+		checkStatus := healthChecker.PerformCheck(nil)
 
-		if results.OverallStatus != pb.CheckStatus_FAIL {
-			t.Fatalf("Expecting check to be error, but got [%v]", results)
+		if checkStatus != pb.CheckStatus_FAIL {
+			t.Fatalf("Expecting check to be error, but got [%s]", checkStatus)
+		}
+	})
+
+	t.Run("Is error if even a single test errored", func(t *testing.T) {
+		healthChecker := MakeHealthChecker()
+
+		healthChecker.Add(workingSubsystem1)
+		healthChecker.Add(failingSubsystem1)
+		healthChecker.Add(errorSubsystem1)
+
+		checkStatus := healthChecker.PerformCheck(nil)
+
+		if checkStatus != pb.CheckStatus_ERROR {
+			t.Fatalf("Expecting check to be error, but got [%s]", checkStatus)
 		}
 	})
 }

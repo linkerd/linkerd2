@@ -15,11 +15,6 @@ message CheckResult {
     string FriendlyMessageToUser = 4;
 }
 
-message Check {
-    repeated CheckResult results = 1;
-    CheckStatus overallStatus = 2;
-}
-
 message SelfCheckRequest {}
 
 message SelfCheckResponse {

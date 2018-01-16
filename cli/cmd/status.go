@@ -71,21 +71,21 @@ func checkStatus(w io.Writer, checkers ...healthcheck.StatusChecker) error {
 		checker.Add(c)
 	}
 
-	check := checker.PerformCheck(prettyPrintResults)
+	checkStatus := checker.PerformCheck(prettyPrintResults)
 
 	fmt.Fprintln(w, "")
 
-	var errBasedOnOverallStatus error
-	switch check.OverallStatus {
+	var err error
+	switch checkStatus {
 	case pb.CheckStatus_OK:
-		errBasedOnOverallStatus = statusCheckResultWasOk(w)
+		err = statusCheckResultWasOk(w)
 	case pb.CheckStatus_FAIL:
-		errBasedOnOverallStatus = statusCheckResultWasFail(w)
+		err = statusCheckResultWasFail(w)
 	case pb.CheckStatus_ERROR:
-		errBasedOnOverallStatus = statusCheckResultWasError(w)
+		err = statusCheckResultWasError(w)
 	}
 
-	return errBasedOnOverallStatus
+	return err
 }
 
 func statusCheckResultWasOk(w io.Writer) error {
