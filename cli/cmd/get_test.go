@@ -41,7 +41,7 @@ func TestGetPods(t *testing.T) {
 		}
 	})
 
-	t.Run("Returns empty list if no [ods found", func(t *testing.T) {
+	t.Run("Returns empty list if no pods found", func(t *testing.T) {
 		mockClient := &public.MockConduitApiClient{}
 
 		mockClient.ListPodsResponseToReturn = &pb.ListPodsResponse{
