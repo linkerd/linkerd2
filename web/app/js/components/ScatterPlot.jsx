@@ -84,7 +84,7 @@ export default class ScatterPlot extends React.Component {
 
     this.overlayTooltip = this.svg.append("g")
       .attr("class", "overlay-tooltip")
-      .append("text");
+      .attr("height", this.state.height);
 
     this.highlightFirstDatapoint();
   }
@@ -231,24 +231,27 @@ export default class ScatterPlot extends React.Component {
     let nearestDatapoints = this.getNearbyDatapoints(currXPos, this.props.data);
     this.renderOverlayTooltip(nearestDatapoints);
     this.renderSidebarTooltip(nearestDatapoints);
-
     this.verticalHighlight.attr("transform", "translate(" + (currXPos - highlightBarWidth / 2) + ", 0)");
 
-    let overlayTooltipYPos = this.state.height / 2;
-    if (!_.isEmpty(nearestDatapoints)) {
-      // start the tooltip at the most successful datapoint
-      overlayTooltipYPos = this.yScale(nearestDatapoints[0].successRate);
+    let bbox = this.overlayTooltip.node().getBBox();
+
+    let overlayTooltipYPos = 0;
+    let firstLabelPosition = _.isEmpty(nearestDatapoints) ? null : this.getTooltipLabelY(nearestDatapoints[0]);
+    if (firstLabelPosition + bbox.height > this.state.height - 50) {
+      // if there are a bunch of nodes at 0, the labels could extend below the chart
+      // translate upward if this is the case
+      overlayTooltipYPos -= (bbox.height);
     }
 
     let overlayTooltipXPos = currXPos + highlightBarWidth / 2 + baseWidth;
     if (currXPos > defaultSvgWidth / 2) {
       // display tooltip to the left if we're on the RH side of the graph
-      let bbox = this.overlayTooltip.node().getBBox();
       overlayTooltipXPos = currXPos - bbox.width - baseWidth - highlightBarWidth / 2;
     }
 
-    this.overlayTooltip.attr("transform", "translate(" +
-      overlayTooltipXPos + ", " + overlayTooltipYPos + ")");
+    this.overlayTooltip
+      .attr("transform", "translate(" + overlayTooltipXPos + ", " + overlayTooltipYPos + ")")
+      .raise();
   }
 
   renderSidebarTooltip(data) {
@@ -258,13 +261,49 @@ export default class ScatterPlot extends React.Component {
 
   renderOverlayTooltip(data) {
     this.overlayTooltip.text('');
+    let labelWithPosition = this.computeTooltipLabelPositions(data);
 
-    _.each(data, (d, i) => {
+    _.each(labelWithPosition, d => {
       this.overlayTooltip
-        .append("tspan").text(d.name)
+        .append("text").text(d.name)
         .attr("x", 0)
-        .attr("y", i * 15);
+        .attr("y", d.computedY);
     });
+  }
+
+  getTooltipLabelY(datum) {
+    // position the tooltip label roughly aligned with the center of the node
+    return this.yScale(datum.successRate) + circleRadius / 2 - 5;
+  }
+
+  computeTooltipLabelPositions(data) {
+    // in the case that there are multiple nodes in the highlighted area,
+    // try to position each label next to its corresponding node
+    // if the nodes are too close together, simply list the node labels
+    let positions = _.map(data, d => {
+      return {
+        name: d.name,
+        computedY: this.getTooltipLabelY(d)
+      };
+    });
+
+    if (_.size(positions) > 1) {
+      let shouldAutoSpace = false;
+      _.each(positions, (_d, i) => {
+        if (i > 0) {
+          if (positions[i].computedY - positions[i - 1].computedY < 10) {
+            shouldAutoSpace = true;
+          }
+        }
+      });
+      if (shouldAutoSpace) {
+        let basePos = positions[0].computedY;
+        _.each(positions, (d, i) => {
+          d.computedY = basePos + i * 15;
+        });
+      }
+    }
+    return positions;
   }
 
   renderNodeTooltipDatum(d) {
