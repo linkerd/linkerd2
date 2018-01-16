@@ -4,42 +4,42 @@ import (
 	"reflect"
 	"testing"
 
-	pb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
+	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 )
 
 type mockSubsystem struct {
-	checksToReturn []*pb.CheckResult
+	checksToReturn []*healthcheckPb.CheckResult
 }
 
-func (m *mockSubsystem) SelfCheck() []*pb.CheckResult {
+func (m *mockSubsystem) SelfCheck() []*healthcheckPb.CheckResult {
 	return m.checksToReturn
 }
 
 func TestSelfChecker(t *testing.T) {
 	workingSubsystem1 := &mockSubsystem{
-		checksToReturn: []*pb.CheckResult{
-			{SubsystemName: "w1", CheckDescription: "w1a", Status: pb.CheckStatus_OK},
-			{SubsystemName: "w1", CheckDescription: "w1b", Status: pb.CheckStatus_OK},
+		checksToReturn: []*healthcheckPb.CheckResult{
+			{SubsystemName: "w1", CheckDescription: "w1a", Status: healthcheckPb.CheckStatus_OK},
+			{SubsystemName: "w1", CheckDescription: "w1b", Status: healthcheckPb.CheckStatus_OK},
 		},
 	}
 	workingSubsystem2 := &mockSubsystem{
-		checksToReturn: []*pb.CheckResult{
-			{SubsystemName: "w2", CheckDescription: "w2a", Status: pb.CheckStatus_OK},
-			{SubsystemName: "w2", CheckDescription: "w2b", Status: pb.CheckStatus_OK},
+		checksToReturn: []*healthcheckPb.CheckResult{
+			{SubsystemName: "w2", CheckDescription: "w2a", Status: healthcheckPb.CheckStatus_OK},
+			{SubsystemName: "w2", CheckDescription: "w2b", Status: healthcheckPb.CheckStatus_OK},
 		},
 	}
 
 	failingSubsystem1 := &mockSubsystem{
-		checksToReturn: []*pb.CheckResult{
-			{SubsystemName: "f1", CheckDescription: "fa", Status: pb.CheckStatus_OK},
-			{SubsystemName: "f1", CheckDescription: "fb", Status: pb.CheckStatus_FAIL},
+		checksToReturn: []*healthcheckPb.CheckResult{
+			{SubsystemName: "f1", CheckDescription: "fa", Status: healthcheckPb.CheckStatus_OK},
+			{SubsystemName: "f1", CheckDescription: "fb", Status: healthcheckPb.CheckStatus_FAIL},
 		},
 	}
 
 	errorSubsystem1 := &mockSubsystem{
-		checksToReturn: []*pb.CheckResult{
-			{SubsystemName: "e1", CheckDescription: "ea", Status: pb.CheckStatus_ERROR},
-			{SubsystemName: "e1", CheckDescription: "eb", Status: pb.CheckStatus_OK},
+		checksToReturn: []*healthcheckPb.CheckResult{
+			{SubsystemName: "e1", CheckDescription: "ea", Status: healthcheckPb.CheckStatus_ERROR},
+			{SubsystemName: "e1", CheckDescription: "eb", Status: healthcheckPb.CheckStatus_OK},
 		},
 	}
 
@@ -50,17 +50,17 @@ func TestSelfChecker(t *testing.T) {
 		healthChecker.Add(workingSubsystem2)
 		healthChecker.Add(failingSubsystem1)
 
-		observedResults := make([]*pb.CheckResult, 0)
-		observer := func(r *pb.CheckResult) {
+		observedResults := make([]*healthcheckPb.CheckResult, 0)
+		observer := func(r *healthcheckPb.CheckResult) {
 			observedResults = append(observedResults, r)
 		}
 
-		allChecks := make([]*pb.CheckResult, 0)
+		allChecks := make([]*healthcheckPb.CheckResult, 0)
 		allChecks = append(allChecks, workingSubsystem1.checksToReturn...)
 		allChecks = append(allChecks, workingSubsystem2.checksToReturn...)
 		allChecks = append(allChecks, failingSubsystem1.checksToReturn...)
 
-		expectedResults := make([]*pb.CheckResult, 0)
+		expectedResults := make([]*healthcheckPb.CheckResult, 0)
 		for _, check := range allChecks {
 			expectedResults = append(expectedResults, check)
 		}
@@ -74,7 +74,7 @@ func TestSelfChecker(t *testing.T) {
 			t.Fatalf("Expecting observed check to contain [%d] check, got [%d]", expectedLength, observedLength)
 		}
 
-		observedResultsSet := make(map[pb.CheckResult]bool)
+		observedResultsSet := make(map[healthcheckPb.CheckResult]bool)
 		for _, result := range observedResults {
 			observedResultsSet[*result] = true
 		}
@@ -95,7 +95,7 @@ func TestSelfChecker(t *testing.T) {
 
 		checkStatus := healthChecker.PerformCheck(nil)
 
-		if checkStatus != pb.CheckStatus_OK {
+		if checkStatus != healthcheckPb.CheckStatus_OK {
 			t.Fatalf("Expecting check to be successful, but got [%s]", checkStatus)
 		}
 	})
@@ -109,7 +109,7 @@ func TestSelfChecker(t *testing.T) {
 
 		checkStatus := healthChecker.PerformCheck(nil)
 
-		if checkStatus != pb.CheckStatus_FAIL {
+		if checkStatus != healthcheckPb.CheckStatus_FAIL {
 			t.Fatalf("Expecting check to be error, but got [%s]", checkStatus)
 		}
 	})
@@ -123,7 +123,7 @@ func TestSelfChecker(t *testing.T) {
 
 		checkStatus := healthChecker.PerformCheck(nil)
 
-		if checkStatus != pb.CheckStatus_ERROR {
+		if checkStatus != healthcheckPb.CheckStatus_ERROR {
 			t.Fatalf("Expecting check to be error, but got [%s]", checkStatus)
 		}
 	})

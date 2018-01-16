@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"testing"
 
-	pb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
+	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 	"github.com/runconduit/conduit/pkg/healthcheck"
 	"github.com/runconduit/conduit/pkg/shell"
 )
@@ -245,9 +245,9 @@ func TestKubectlSelfCheck(t *testing.T) {
 			t.Fatalf("Expecting [%d] checks, got [%d]", expectedNumChecks, actualNumChecks)
 		}
 
-		checkResult(t, results[0], KubectlIsInstalledCheckDescription, pb.CheckStatus_OK)
-		checkResult(t, results[1], KubectlVersionCheckDescription, pb.CheckStatus_OK)
-		checkResult(t, results[2], KubectlConnectivityCheckDescription, pb.CheckStatus_OK)
+		checkResult(t, results[0], KubectlIsInstalledCheckDescription, healthcheckPb.CheckStatus_OK)
+		checkResult(t, results[1], KubectlVersionCheckDescription, healthcheckPb.CheckStatus_OK)
+		checkResult(t, results[2], KubectlConnectivityCheckDescription, healthcheckPb.CheckStatus_OK)
 	})
 
 	t.Run("Returns failures when problems were found", func(t *testing.T) {
@@ -277,9 +277,9 @@ func TestKubectlSelfCheck(t *testing.T) {
 		if actualNumChecks != expectedNumChecks {
 			t.Fatalf("Expecting [%d] checks, got [%d]", expectedNumChecks, actualNumChecks)
 		}
-		checkResult(t, results[0], KubectlIsInstalledCheckDescription, pb.CheckStatus_OK)
-		checkResult(t, results[1], KubectlVersionCheckDescription, pb.CheckStatus_FAIL)
-		checkResult(t, results[2], KubectlConnectivityCheckDescription, pb.CheckStatus_OK)
+		checkResult(t, results[0], KubectlIsInstalledCheckDescription, healthcheckPb.CheckStatus_OK)
+		checkResult(t, results[1], KubectlVersionCheckDescription, healthcheckPb.CheckStatus_FAIL)
+		checkResult(t, results[2], KubectlConnectivityCheckDescription, healthcheckPb.CheckStatus_OK)
 	})
 }
 
@@ -354,7 +354,7 @@ func TestCanonicalKubernetesNameFromFriendlyName(t *testing.T) {
 	})
 }
 
-func checkResult(t *testing.T, actualResult *pb.CheckResult, expectedDescription string, expectedStatus pb.CheckStatus) {
+func checkResult(t *testing.T, actualResult *healthcheckPb.CheckResult, expectedDescription string, expectedStatus healthcheckPb.CheckStatus) {
 	if actualResult.SubsystemName != KubectlSubsystemName || actualResult.CheckDescription != expectedDescription || actualResult.Status != expectedStatus {
 		t.Fatalf("Expecting results to have subsytem [%s], description [%s] and status [%s], but got: %v", KubectlSubsystemName, expectedDescription, expectedStatus, actualResult)
 	}

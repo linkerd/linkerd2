@@ -5,46 +5,46 @@ import (
 	"io/ioutil"
 	"testing"
 
-	pb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
+	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 	"github.com/runconduit/conduit/pkg/k8s"
 )
 
 func TestCheckStatus(t *testing.T) {
 	t.Run("Prints expected output", func(t *testing.T) {
 		kubectl := &k8s.MockKubectl{}
-		kubectl.SelfCheckResultsToReturn = []*pb.CheckResult{
+		kubectl.SelfCheckResultsToReturn = []*healthcheckPb.CheckResult{
 			{
 				SubsystemName:         k8s.KubectlSubsystemName,
 				CheckDescription:      k8s.KubectlConnectivityCheckDescription,
-				Status:                pb.CheckStatus_OK,
+				Status:                healthcheckPb.CheckStatus_OK,
 				FriendlyMessageToUser: "This shouldnt be printed",
 			},
 			{
 				SubsystemName:         k8s.KubectlSubsystemName,
 				CheckDescription:      k8s.KubectlIsInstalledCheckDescription,
-				Status:                pb.CheckStatus_FAIL,
+				Status:                healthcheckPb.CheckStatus_FAIL,
 				FriendlyMessageToUser: "This should contain instructions for fail",
 			},
 			{
 				SubsystemName:         k8s.KubectlSubsystemName,
 				CheckDescription:      k8s.KubectlVersionCheckDescription,
-				Status:                pb.CheckStatus_ERROR,
+				Status:                healthcheckPb.CheckStatus_ERROR,
 				FriendlyMessageToUser: "This should contain instructions for err",
 			},
 		}
 
 		kubeApi := &k8s.MockKubeApi{}
-		kubeApi.SelfCheckResultsToReturn = []*pb.CheckResult{
+		kubeApi.SelfCheckResultsToReturn = []*healthcheckPb.CheckResult{
 			{
 				SubsystemName:         k8s.KubeapiSubsystemName,
 				CheckDescription:      k8s.KubeapiClientCheckDescription,
-				Status:                pb.CheckStatus_FAIL,
+				Status:                healthcheckPb.CheckStatus_FAIL,
 				FriendlyMessageToUser: "This should contain instructions for fail",
 			},
 			{
 				SubsystemName:         k8s.KubeapiSubsystemName,
 				CheckDescription:      k8s.KubeapiAccessCheckDescription,
-				Status:                pb.CheckStatus_OK,
+				Status:                healthcheckPb.CheckStatus_OK,
 				FriendlyMessageToUser: "This shouldnt be printed",
 			},
 		}

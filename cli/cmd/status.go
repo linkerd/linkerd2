@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/runconduit/conduit/controller/api/public"
-	pb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
+	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 	"github.com/runconduit/conduit/pkg/healthcheck"
 	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/runconduit/conduit/pkg/shell"
@@ -48,7 +48,7 @@ problems were found.`,
 }
 
 func checkStatus(w io.Writer, checkers ...healthcheck.StatusChecker) error {
-	prettyPrintResults := func(result *pb.CheckResult) {
+	prettyPrintResults := func(result *healthcheckPb.CheckResult) {
 		checkLabel := fmt.Sprintf("%s: %s", result.SubsystemName, result.CheckDescription)
 
 		filler := ""
@@ -57,11 +57,11 @@ func checkStatus(w io.Writer, checkers ...healthcheck.StatusChecker) error {
 		}
 
 		switch result.Status {
-		case pb.CheckStatus_OK:
+		case healthcheckPb.CheckStatus_OK:
 			fmt.Fprintf(w, "%s%s[ok]\n", checkLabel, filler)
-		case pb.CheckStatus_FAIL:
+		case healthcheckPb.CheckStatus_FAIL:
 			fmt.Fprintf(w, "%s%s[FAIL]  -- %s\n", checkLabel, filler, result.FriendlyMessageToUser)
-		case pb.CheckStatus_ERROR:
+		case healthcheckPb.CheckStatus_ERROR:
 			fmt.Fprintf(w, "%s%s[ERROR] -- %s\n", checkLabel, filler, result.FriendlyMessageToUser)
 		}
 	}
@@ -77,11 +77,11 @@ func checkStatus(w io.Writer, checkers ...healthcheck.StatusChecker) error {
 
 	var err error
 	switch checkStatus {
-	case pb.CheckStatus_OK:
+	case healthcheckPb.CheckStatus_OK:
 		err = statusCheckResultWasOk(w)
-	case pb.CheckStatus_FAIL:
+	case healthcheckPb.CheckStatus_FAIL:
 		err = statusCheckResultWasFail(w)
-	case pb.CheckStatus_ERROR:
+	case healthcheckPb.CheckStatus_ERROR:
 		err = statusCheckResultWasError(w)
 	}
 
