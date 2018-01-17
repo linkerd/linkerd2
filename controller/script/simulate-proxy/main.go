@@ -169,6 +169,8 @@ func main() {
 		count := randomCount()
 		sourceIp := randomPod(allPods, nil)
 		targetIp := randomPod(allPods, sourceIp)
+
+		// HTTP
 		req := &pb.ReportRequest{
 			Process: &pb.Process{
 				ScheduledInstance:  "hello-1mfa0",
@@ -207,6 +209,50 @@ func main() {
 		if err != nil {
 			log.Fatal(err.Error())
 		}
+
+		// TCP
+		req = &pb.ReportRequest{
+			Process: &pb.Process{
+				ScheduledInstance:  "hello-tcp-1mfa0",
+				ScheduledNamespace: "people-tcp",
+			},
+			ClientTransports: []*pb.ClientTransport{
+				&pb.ClientTransport{
+					TargetAddr: &common.TcpAddress{
+						Ip:   targetIp,
+						Port: randomPort(),
+					},
+					Connects: count,
+					Disconnects: []*pb.TransportSummary{
+						&pb.TransportSummary{
+							DurationMs: uint64(randomCount()),
+							BytesSent:  uint64(randomCount()),
+						},
+					},
+					Protocol: common.Protocol_TCP,
+				},
+			},
+			ServerTransports: []*pb.ServerTransport{
+				&pb.ServerTransport{
+					SourceIp: sourceIp,
+					Connects: count,
+					Disconnects: []*pb.TransportSummary{
+						&pb.TransportSummary{
+							DurationMs: uint64(randomCount()),
+							BytesSent:  uint64(randomCount()),
+						},
+					},
+					Protocol: common.Protocol_TCP,
+				},
+			},
+			Proxy: pb.ReportRequest_INBOUND,
+		}
+
+		_, err = client.Report(context.Background(), req)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+
 		time.Sleep(*sleep)
 	}
 }
