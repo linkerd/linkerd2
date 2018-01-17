@@ -37,7 +37,7 @@ problems were found.`,
 			return statusCheckResultWasError(os.Stdout)
 		}
 
-		conduitApi, err := newApiClient(kubeApi)
+		conduitApi, err := newPublicAPIClient(kubeApi, apiAddr)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error with Conduit API: %s\n", err.Error())
 			return statusCheckResultWasError(os.Stdout)
