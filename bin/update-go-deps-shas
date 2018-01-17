@@ -2,7 +2,7 @@
 
 set -eu
 
-# Updates the tag for `runconduit/go-deps` across all Dockerfiles in this repository.F
+# Updates the tag for `runconduit/go-deps` across all Dockerfiles in this repository.
 
 sha=$(. bin/_tag.sh ; go_deps_sha)
 

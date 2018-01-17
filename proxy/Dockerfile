@@ -1,7 +1,6 @@
 # Proxy build and runtime
 #
-# Fetches all required rust dependencies and caches library artifacts. All sources are
-# omitted from the resulting image so that.
+# Builds a slim runtime image with the conduit-proxy binary.
 #
 # When this file is changed, `proxy/Dockerfile` must be updated with a new tag, as output
 # by `( bin/_tag.sh ; proxy_deps_sha )`.
