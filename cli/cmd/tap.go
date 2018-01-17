@@ -73,12 +73,7 @@ Valid targets include:
 			return err
 		}
 
-		err = requestTapFromApi(os.Stdout, client, args[1], validatedResourceType, partialReq)
-		if err != nil {
-			return err
-		}
-
-		return err
+		return requestTapFromApi(os.Stdout, client, args[1], validatedResourceType, partialReq)
 	},
 }
 
@@ -119,9 +114,9 @@ func requestTapFromApi(w io.Writer, client pb.ApiClient, targetName string, reso
 	return renderTap(w, rsp)
 }
 
-func renderTap(w io.Writer, rsp pb.Api_TapClient) error {
+func renderTap(w io.Writer, tapClient pb.Api_TapClient) error {
 	tableWriter := tabwriter.NewWriter(w, 0, 0, 0, ' ', tabwriter.AlignRight)
-	err := writeTapEvenToBuffer(rsp, tableWriter)
+	err := writeTapEventsToBuffer(tapClient, tableWriter)
 	if err != nil {
 		return err
 	}
@@ -131,11 +126,10 @@ func renderTap(w io.Writer, rsp pb.Api_TapClient) error {
 
 }
 
-func writeTapEvenToBuffer(rsp pb.Api_TapClient, w *tabwriter.Writer) error {
+func writeTapEventsToBuffer(tapClient pb.Api_TapClient, w *tabwriter.Writer) error {
 	for {
 		log.Debug("Waiting for data...")
-		event, err := rsp.Recv()
-
+		event, err := tapClient.Recv()
 		if err == io.EOF {
 			break
 		}
