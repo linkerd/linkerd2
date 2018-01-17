@@ -1,11 +1,11 @@
 package k8s
 
 import (
+	"fmt"
+	"net/url"
 	"testing"
 
 	"github.com/runconduit/conduit/pkg/shell"
-	"fmt"
-	"net/url"
 )
 
 func TestKubernetesApiUrlFor(t *testing.T) {
@@ -21,43 +21,6 @@ func TestKubernetesApiUrlFor(t *testing.T) {
 			actualUrl := generateURL(testInput, t, namespace, extraPath)
 			if actualUrl.String() != expected {
 				t.Fatalf("Expected generated URL to be [%s], but got [%s]", expected, actualUrl.String())
-			}
-		}
-	})
-
-	t.Run("Return URL with prepended scheme from a base URL with no scheme specified", func(t *testing.T) {
-		testData := map[string]string{
-			"35.184.231.31": fmt.Sprintf("https://35.184.231.31/api/v1/namespaces/%s%s", namespace, extraPath),
-		}
-		for testInput, expected := range testData {
-			actualUrl := generateURL(testInput, t, namespace, extraPath)
-			if actualUrl.String() != expected {
-				t.Fatalf("Expected generated URL to be [%s], but got [%s]", expected, actualUrl.String())
-			}
-		}
-	})
-
-	t.Run("Return unmodified URL from a base URL with an existing scheme", func(t *testing.T) {
-		testData := map[string]string{
-			"htp://35.184.231.31":    fmt.Sprintf("htp://35.184.231.31/api/v1/namespaces/%s%s", namespace, extraPath),
-			"tcp://35.184.231.31":    fmt.Sprintf("tcp://35.184.231.31/api/v1/namespaces/%s%s", namespace, extraPath),
-			"htttpp://35.184.231.31": fmt.Sprintf("htttpp://35.184.231.31/api/v1/namespaces/%s%s", namespace, extraPath),
-		}
-		for testInput, expected := range testData {
-			actualUrl := generateURL(testInput, t, namespace, extraPath)
-			if actualUrl.String() != expected {
-				t.Fatalf("Expected generated URL to be [%s], but got [%s]", expected, actualUrl.String())
-			}
-
-		}
-	})
-
-	t.Run("Return error on malformed URL from base URL during API construction", func(t *testing.T) {
-		testData := []string{"http://**&^^.(&(^"}
-		for _, data := range testData {
-			_, err := NewK8sAPI(shell.NewUnixShell(), "testdata/config.test", data)
-			if err == nil {
-				t.Fatalf("Expected error from proxy on malformed URL: %s", data)
 			}
 		}
 	})
