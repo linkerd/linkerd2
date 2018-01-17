@@ -2,11 +2,11 @@ package cmd
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/pkg/browser"
 	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/runconduit/conduit/pkg/shell"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 

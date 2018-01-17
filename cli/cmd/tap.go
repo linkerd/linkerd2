@@ -14,6 +14,7 @@ import (
 	"github.com/runconduit/conduit/controller/util"
 	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/runconduit/conduit/pkg/shell"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/codes"
 )
@@ -127,6 +128,7 @@ func renderTap(w io.Writer, tapClient pb.Api_TapClient) error {
 
 func writeTapEventsToBuffer(tapClient pb.Api_TapClient, w *tabwriter.Writer) error {
 	for {
+		log.Debug("Waiting for data...")
 		event, err := tapClient.Recv()
 		if err == io.EOF {
 			break
