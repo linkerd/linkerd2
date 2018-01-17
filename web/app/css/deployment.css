@@ -29,7 +29,7 @@
     }
 
     &.unadded {
-      background: var(--silvergrey);
+      background: var(--silver);
       color: white;
       vertical-align: top;
     }

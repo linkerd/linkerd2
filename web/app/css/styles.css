@@ -9,9 +9,12 @@
   --warmgrey: #f6f6f6;
   --coldgrey: #c9c9c9;
   --neutralgrey: #828282;
-  --silvergrey: #BDBDBD;
+  --silver: #BDBDBD;
   --green: #27AE60;
   --siennared: #EB5757;
+  --latency-p99: var(--royalblue);
+  --latency-p95: var(--curiousblue);
+  --latency-p50: var(--pictonblue);
   --font-stack: 'Lato', helvetica, arial, sans-serif;
   --font-weight-light: 300;
   --font-weight-regular: 400;
@@ -216,7 +219,7 @@ a.button.primary:active {
     text-transform: uppercase;
     font-weight: var(--font-weight-bold);
     border-bottom: 1px solid;
-    border-color: var(--silvergrey);
+    border-color: var(--silver);
     word-break: keep-all;
 
     &.ant-table-column-sort {
