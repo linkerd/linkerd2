@@ -1,5 +1,6 @@
 import _ from 'lodash';
 import { ApiHelpers } from './util/ApiHelpers.js';
+import { getPodsByDeployment } from './util/MetricUtils.js';
 import { Link } from 'react-router-dom';
 import logo from './../../img/reversed_logo.png';
 import React from 'react';
@@ -25,10 +26,8 @@ export default class Sidebar extends React.Component {
 
   loadFromServer() {
     this.api.fetchPods().then(r => {
-      let deploys =  _(r.pods)
-        .groupBy('deployment')
-        .keys()
-        .sort().value();
+      let deploys =  _.map(getPodsByDeployment(r.pods), 'name');
+
       this.setState({
         deployments: deploys,
         filteredDeployments: deploys
