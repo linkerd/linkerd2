@@ -18,11 +18,12 @@ func TestLocalKubernetesServiceIdFromDNSName(t *testing.T) {
 		{"cluster.local", "", nil, true},
 		{"cluster.local", "name", nil, false},
 		{"cluster.local", "name.ns", nil, false},
-		{"cluster.local", "name.ns.svc", nil, false},
+		{"cluster.local", "name.ns.svc", &ns_name, false},
 		{"cluster.local", "name.ns.pod", nil, false},
 		{"cluster.local", "name.ns.other", nil, false},
 		{"cluster.local", "name.ns.svc.cluster", nil, false},
 		{"cluster.local", "name.ns.svc.cluster.local", &ns_name, false},
+		{"cluster.local", "name.ns.svc.other.local", nil, false},
 		{"cluster.local", "name.ns.pod.cluster.local", nil, false},
 		{"cluster.local", "name.ns.other.cluster.local", nil, false},
 		{"cluster.local", "name.ns.cluster.local", nil, false},
@@ -31,14 +32,22 @@ func TestLocalKubernetesServiceIdFromDNSName(t *testing.T) {
 		{"cluster.local", "name.ns.svc.something.cluster.local", nil, false},
 		{"cluster.local", "name.ns.svc.something.cluster.local", nil, false},
 		{"cluster.local", "something.name.ns.svc.cluster.local", nil, true},
-		{"k8s.example.com", "name.ns.svc.cluster.local", nil, false},
+		{"k8s.example.com", "name.ns.svc.cluster.local", &ns_name, false},
+		{"k8s.example.com", "name.ns.svc.cluster.local.k8s.example.com", nil, false},
 		{"k8s.example.com", "name.ns.svc.k8s.example.com", &ns_name, false},
 		{"k8s.example.com", "name.ns.svc.k8s.example.org", nil, false},
 		{"cluster.local", "name.ns.svc.k8s.example.com", nil, false},
 		{"", "name.ns.svc", &ns_name, false},
-		{"", "name.ns.svc.cluster.local", nil, false},
+		{"", "name.ns.svc.cluster.local", &ns_name, false},
+		{"", "name.ns.svc.cluster.local.", &ns_name, false},
+		{"", "name.ns.svc.other.local", nil, false},
 		{"example", "name.ns.svc.example", &ns_name, false},
+		{"example", "name.ns.svc.example.", &ns_name, false},
 		{"example", "name.ns.svc.example.com", nil, false},
+		{"example", "name.ns.svc.cluster.local", &ns_name, false},
+
+		// XXX: See the comment about this issue in localKubernetesServiceIdFromDNSName.
+		{"cluster.local", "name.ns.svc.", &ns_name, false},
 	}
 
 	for i, tc := range testCases {

@@ -144,20 +144,39 @@ func (s *server) localKubernetesServiceIdFromDNSName(host string) (*string, erro
 		return nil, err
 	}
 
-	// Verify that `host` ends with .svc.$zone.
-	if len(hostLabels) <= 1+len(s.k8sDNSZoneLabels) {
-		return nil, nil
+	// Verify that `host` ends with ".svc.$zone", ".svc.cluster.local," or ".svc".
+	matched := false
+	if len(s.k8sDNSZoneLabels) > 0 {
+		hostLabels, matched = maybeStripSuffixLabels(hostLabels, s.k8sDNSZoneLabels)
 	}
-	n := len(hostLabels) - len(s.k8sDNSZoneLabels)
-	if !reflect.DeepEqual(hostLabels[n:], s.k8sDNSZoneLabels) {
-		return nil, nil
+	// Accept "cluster.local" as an alias for "$zone". The Kubernetes DNS
+	// specification
+	// (https://github.com/kubernetes/dns/blob/master/docs/specification.md)
+	// doesn't require Kubernetes to do this, but some hosting providers like
+	// GKE do it, and so we need to support it for transparency.
+	if !matched {
+		hostLabels, matched = maybeStripSuffixLabels(hostLabels, []string{"cluster", "local"})
 	}
-	if hostLabels[n-1] != "svc" {
+	// TODO:
+	// ```
+	// 	if !matched {
+	//		return nil, nil
+	//  }
+	// ```
+	//
+	// This is technically wrong since the protocol definition for the
+	// Destination service indicates that `host` is a FQDN and so we should
+	// never append a ".$zone" suffix to it, but we need to do this as a
+	// workaround until the proxies are configured to know "$zone."
+	hostLabels, matched = maybeStripSuffixLabels(hostLabels, []string{"svc"})
+	if !matched {
 		return nil, nil
 	}
 
-	// Extract the service name and namespace.
-	if n != 3 {
+	// Extract the service name and namespace. TODO: Federated services have
+	// *three* components before "svc"; see
+	// https://github.com/runconduit/conduit/issues/156.
+	if len(hostLabels) != 2 {
 		return nil, fmt.Errorf("not a service: %s", host)
 	}
 	service := hostLabels[0]
@@ -226,4 +245,15 @@ func splitDNSName(dnsName string) ([]string, error) {
 		}
 	}
 	return labels, nil
+}
+
+func maybeStripSuffixLabels(input []string, suffix []string) ([]string, bool) {
+	if len(input) <= 1+len(suffix) {
+		return input, false
+	}
+	n := len(input) - len(suffix)
+	if !reflect.DeepEqual(input[n:], suffix) {
+		return input, false
+	}
+	return input[:n], true
 }
