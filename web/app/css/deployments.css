@@ -5,22 +5,22 @@
   width: 50%;
 }
 
-.deployments-list, .scatterplot {
-  padding-top: 30px;
-}
-
 .line-graph {
   margin-top: var(--base-width);
 }
 
-.scatterplot-tooltip .chart-label {
-  float: left;
-}
+.scatterplot-display {
+  font-size: 12px;
 
-.scatterplot-tooltip .tooltip {
-  float: right;
-  color: black;
-  font-weight: bold;
+  & .title {
+    font-weight: var(--font-weight-bold);
+    margin-top: var(--base-width);
+  }
+
+  & .extremal-latencies {
+    padding-bottom: var(--base-width);
+    border-bottom: 1px solid #BDBDBD;
+  }
 }
 
 & .border-container {

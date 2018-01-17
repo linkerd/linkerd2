@@ -72,7 +72,10 @@ export const processRollupMetrics = (rawMetrics, targetEntity) => {
         successRate = _.get(datum, gaugeAccessor);
       } else if (datum.name === "LATENCY") {
         let latencies = _.get(datum, latencyAccessor);
-        latency = _.groupBy(latencies, 'label');
+        latency = _.reduce(latencies, (mem, ea) => {
+          mem[ea.label] = _.isNil(ea.value) ? null : parseInt(ea.value, 10);
+          return mem;
+        }, {});
       }
     });
 
