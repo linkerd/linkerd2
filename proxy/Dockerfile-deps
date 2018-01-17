@@ -1,14 +1,14 @@
-# WARNING: because whether or not to build a new deps image is based on 
-#          the SHA of `Cargo.lock`, changes to this Dockerfile will NOT 
-#          cause a new deps image to be built. If you change anything in 
-#          this file, it is necessary to also change `Cargo.lock`, such 
-#          as by appending a newline, to cause the deps image to be 
-#          rebuilt.
+# Proxy dependencies
 #
-#          See https://github.com/runconduit/conduit/issues/115 for more
-#          information.
+# Fetches all required rust dependencies and caches library artifacts. All Conduit sources
+# are omitted from the resulting image so that artifacts may be built from source over
+# this image.
+#
+# When this file is changed, you must run `bin/update-go-deps-shas`.
 
-FROM rust:1.23.0
+# Compile the application to ensure we've obtained all build dependencies and that they
+# compile.
+FROM rust:1.23.0 as build
 WORKDIR /usr/src/conduit
 COPY codegen ./codegen
 COPY futures-mpsc-lossy ./futures-mpsc-lossy
@@ -20,8 +20,16 @@ COPY tower-grpc ./tower-grpc
 COPY Cargo.toml Cargo.lock ./
 COPY proto ./proto
 COPY proxy ./proxy
+RUN cargo fetch
+RUN cargo build -p conduit-proxy
+RUN cargo build -p conduit-proxy --release
 
-# Cache as much as possible; but don't keep aroud the artifact or things might get
-# confusing.
-RUN cargo build -p conduit-proxy           && rm target/debug/conduit-proxy
-RUN cargo build -p conduit-proxy --release && rm target/release/conduit-proxy
+# Preserve dependency sources and build artifacts without maintaining conduit
+# sources/artifacts.
+FROM rust:1.23.0
+WORKDIR /usr/src/conduit
+COPY --from=build $CARGO_HOME                           $CARGO_HOME
+COPY --from=build /usr/src/conduit/target/debug/deps    target/debug/deps
+COPY --from=build /usr/src/conduit/target/release/deps  target/release/deps
+COPY --from=build /usr/src/conduit/Cargo.toml           Cargo.toml
+COPY --from=build /usr/src/conduit/Cargo.lock           Cargo.lock
