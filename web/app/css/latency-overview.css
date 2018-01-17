@@ -19,12 +19,12 @@
   }
 
   & .current-latency-P50 {
-    border-left: 4px solid var(--latency-p50);;
+    border-left: 4px solid var(--pictonblue);;
   }
   & .current-latency-P95 {
-    border-left: 4px solid var(--latency-p95);
+    border-left: 4px solid var(--curiousblue);
   }
   & .current-latency-P99 {
-    border-left: 4px solid var(--latency-p99);
+    border-left: 4px solid var(--royalblue);
   }
 }

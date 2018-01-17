@@ -2,18 +2,16 @@
 
 :root {
   --white: #fff;
-  --buttonblue: #4076c4;
-  --messageblue: #2F80ED;
+  --royalblue: #2F80ED;
   --darkblue: #071E3C;
+  --curiousblue: #2D9CDB;
+  --pictonblue: #56CCF2;
   --warmgrey: #f6f6f6;
   --coldgrey: #c9c9c9;
-  --latency-p99: var(--messageblue);
-  --latency-p95: #2D9CDB;
-  --latency-p50: #56CCF2;
-  --subheader-grey: #828282;
-  --status-gray: #BDBDBD;
+  --neutralgrey: #828282;
+  --silvergrey: #BDBDBD;
   --green: #27AE60;
-  --bad-red: #EB5757;
+  --siennared: #EB5757;
   --font-stack: 'Lato', helvetica, arial, sans-serif;
   --font-weight-light: 300;
   --font-weight-regular: 400;
@@ -90,7 +88,7 @@ h2, h3, h4, h5, h6 {
 
 .summary-info {
   font-size: 12px;
-  color: var(--subheader-grey);
+  color: var(--neutralgrey);
 }
 
 .metric-title {
@@ -115,7 +113,7 @@ h2, h3, h4, h5, h6 {
 
 .no-data-msg {
   font-size: 12px;
-  color: var(--subheader-grey);
+  color: var(--neutralgrey);
 }
 
 .action {
@@ -151,7 +149,7 @@ h2, h3, h4, h5, h6 {
   padding: var(--base-width);
   margin-bottom: calc(3 * var(--base-width));
   border-radius: 5px;
-  background: var(--bad-red);
+  background: var(--siennared);
   color: white;
   font-size: 12px;
   font-weight: var(--font-weight-bold);
@@ -168,10 +166,10 @@ h2, h3, h4, h5, h6 {
 /* from https://conduit.io/ */
 
 a.button {
-  color: var(--messageblue);
+  color: var(--royalblue);
   background: #fff;
   border-radius: 48px;
-  border: 1px solid var(--messageblue);
+  border: 1px solid var(--royalblue);
   padding: 10px 14px 11px 14px;
   font-weight: var(--font-weight-bold);
   font-size: 14px;
@@ -185,12 +183,12 @@ a.button:hover {
   text-decoration: none;
 }
 a.button:active {
-  background-color: var(--messageblue);
+  background-color: var(--royalblue);
   color: #fff;
 }
 a.button.primary {
   color: #fff;
-  background-color: var(--messageblue);
+  background-color: var(--royalblue);
 }
 a.button.primary:hover {
   top: 1px;
@@ -218,7 +216,7 @@ a.button.primary:active {
     text-transform: uppercase;
     font-weight: var(--font-weight-bold);
     border-bottom: 1px solid;
-    border-color: var(--status-gray);
+    border-color: var(--silvergrey);
     word-break: keep-all;
 
     &.ant-table-column-sort {
