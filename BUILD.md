@@ -371,15 +371,8 @@ hard-coded SHA's:
 - [`Cargo.lock`](Cargo.lock)
 - [`proxy/Dockerfile-deps`](proxy/Dockerfile-deps)
 
-If any of these files change, update the Dockerfile SHA's with:
-
-```bash
-GO_DEPS_SHA=$(sh -c ". bin/_tag.sh && go_deps_sha")
-PROXY_DEPS_SHA=$(sh -c ". bin/_tag.sh && proxy_deps_sha")
-
-find . -type f -name 'Dockerfile*' -exec sed -i '' -e 's/gcr\.io\/runconduit\/go-deps:[^ ]*/gcr\.io\/runconduit\/go-deps:'$GO_DEPS_SHA'/g' {} \;
-find . -type f -name 'Dockerfile*' -exec sed -i '' -e 's/gcr\.io\/runconduit\/proxy-deps:[^ ]*/gcr\.io\/runconduit\/proxy-deps:'$PROXY_DEPS_SHA'/g' {} \;
-```
+The `bin/update-proxy-deps-shas` and `bin/update-go-deps-shas` must be run when their
+respective dependencies change.
 
 # Build Architecture
 
