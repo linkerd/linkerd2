@@ -25,10 +25,8 @@ fn build_control() {
         .build(server_files, dirs)
         .unwrap();
 
-    // recompile protobufs only if any of the proto files changes...
-    for file in dirs.iter().chain(client_files).chain(server_files) {
+    // recompile protobufs only if any of the proto files changes.
+    for file in client_files.iter().chain(server_files) {
         println!("cargo:rerun-if-changed={}", file);
     }
-    /// ...or if the build script itself changes.
-    println!("cargo:rerun-if-changed=build.rs");
 }
