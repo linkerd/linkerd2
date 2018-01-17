@@ -1,8 +1,6 @@
 # Proxy build and runtime
 #
 # Builds a slim runtime image with the conduit-proxy binary.
-#
-# When this file is changed, you must run `bin/update-proxy-deps-shas`.
 
 ## Build the rust proxy into a binary.
 #
