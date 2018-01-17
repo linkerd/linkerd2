@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"errors"
 	"io/ioutil"
 	"net/http"
@@ -72,7 +73,8 @@ func TestRequestTapFromApi(t *testing.T) {
 			Path:      path,
 		}
 
-		output, err := requestTapFromApi(mockApiClient, targetName, resourceType, partialReq)
+		writer := bytes.NewBufferString("")
+		err := requestTapFromApi(writer, mockApiClient, targetName, resourceType, partialReq)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -82,7 +84,7 @@ func TestRequestTapFromApi(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 		expectedContent := string(goldenFileBytes)
-
+		output := writer.String()
 		if expectedContent != output {
 			t.Fatalf("Expected function to render:\n%s\bbut got:\n%s", expectedContent, output)
 		}
@@ -114,8 +116,9 @@ func TestRequestTapFromApi(t *testing.T) {
 			Authority: authority,
 			Path:      path,
 		}
+		writer := bytes.NewBufferString("")
 
-		output, err := requestTapFromApi(mockApiClient, targetName, resourceType, partialReq)
+		err := requestTapFromApi(writer, mockApiClient, targetName, resourceType, partialReq)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -125,7 +128,7 @@ func TestRequestTapFromApi(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 		expectedContent := string(goldenFileBytes)
-
+		output := writer.String()
 		if expectedContent != output {
 			t.Fatalf("Expected function to render:\n%s\bbut got:\n%s", expectedContent, output)
 		}
@@ -157,8 +160,10 @@ func TestRequestTapFromApi(t *testing.T) {
 			Authority: authority,
 			Path:      path,
 		}
+		writer := bytes.NewBufferString("")
 
-		output, err := requestTapFromApi(mockApiClient, targetName, resourceType, partialReq)
+		err := requestTapFromApi(writer, mockApiClient, targetName, resourceType, partialReq)
+		output := writer.String()
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing but outpus [%s]", output)
 		}
