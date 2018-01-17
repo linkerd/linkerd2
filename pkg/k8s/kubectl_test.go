@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"testing"
 
+	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 	"github.com/runconduit/conduit/pkg/healthcheck"
 	"github.com/runconduit/conduit/pkg/shell"
 )
@@ -236,10 +237,7 @@ func TestKubectlSelfCheck(t *testing.T) {
 		}
 		shell.OutputToReturn = append(shell.OutputToReturn, string(output))
 
-		results, err := kubectlAsStatusChecker.SelfCheck()
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
+		results := kubectlAsStatusChecker.SelfCheck()
 
 		expectedNumChecks := 3
 		actualNumChecks := len(results)
@@ -247,9 +245,9 @@ func TestKubectlSelfCheck(t *testing.T) {
 			t.Fatalf("Expecting [%d] checks, got [%d]", expectedNumChecks, actualNumChecks)
 		}
 
-		checkResult(t, results[0], KubectlIsInstalledCheckDescription, healthcheck.CheckOk)
-		checkResult(t, results[1], KubectlVersionCheckDescription, healthcheck.CheckOk)
-		checkResult(t, results[2], KubectlConnectivityCheckDescription, healthcheck.CheckOk)
+		checkResult(t, results[0], KubectlIsInstalledCheckDescription, healthcheckPb.CheckStatus_OK)
+		checkResult(t, results[1], KubectlVersionCheckDescription, healthcheckPb.CheckStatus_OK)
+		checkResult(t, results[2], KubectlConnectivityCheckDescription, healthcheckPb.CheckStatus_OK)
 	})
 
 	t.Run("Returns failures when problems were found", func(t *testing.T) {
@@ -272,21 +270,17 @@ func TestKubectlSelfCheck(t *testing.T) {
 		}
 		shell.OutputToReturn = append(shell.OutputToReturn, string(output))
 
-		results, err := kubectlAsStatusChecker.SelfCheck()
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
+		results := kubectlAsStatusChecker.SelfCheck()
 
 		expectedNumChecks := 3
 		actualNumChecks := len(results)
 		if actualNumChecks != expectedNumChecks {
 			t.Fatalf("Expecting [%d] checks, got [%d]", expectedNumChecks, actualNumChecks)
 		}
-		checkResult(t, results[0], KubectlIsInstalledCheckDescription, healthcheck.CheckOk)
-		checkResult(t, results[1], KubectlVersionCheckDescription, healthcheck.CheckFailed)
-		checkResult(t, results[2], KubectlConnectivityCheckDescription, healthcheck.CheckOk)
+		checkResult(t, results[0], KubectlIsInstalledCheckDescription, healthcheckPb.CheckStatus_OK)
+		checkResult(t, results[1], KubectlVersionCheckDescription, healthcheckPb.CheckStatus_FAIL)
+		checkResult(t, results[2], KubectlConnectivityCheckDescription, healthcheckPb.CheckStatus_OK)
 	})
-
 }
 
 func TestNewKubectl(t *testing.T) {
@@ -360,7 +354,7 @@ func TestCanonicalKubernetesNameFromFriendlyName(t *testing.T) {
 	})
 }
 
-func checkResult(t *testing.T, actualResult healthcheck.CheckResult, expectedDescription string, expectedStatus healthcheck.CheckStatus) {
+func checkResult(t *testing.T, actualResult *healthcheckPb.CheckResult, expectedDescription string, expectedStatus healthcheckPb.CheckStatus) {
 	if actualResult.SubsystemName != KubectlSubsystemName || actualResult.CheckDescription != expectedDescription || actualResult.Status != expectedStatus {
 		t.Fatalf("Expecting results to have subsytem [%s], description [%s] and status [%s], but got: %v", KubectlSubsystemName, expectedDescription, expectedStatus, actualResult)
 	}

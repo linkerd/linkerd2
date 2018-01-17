@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/runconduit/conduit/controller/api/public"
+	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 	"github.com/runconduit/conduit/pkg/healthcheck"
 	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/runconduit/conduit/pkg/shell"
@@ -47,7 +48,7 @@ problems were found.`,
 }
 
 func checkStatus(w io.Writer, checkers ...healthcheck.StatusChecker) error {
-	prettyPrintResults := func(result healthcheck.CheckResult) {
+	prettyPrintResults := func(result *healthcheckPb.CheckResult) {
 		checkLabel := fmt.Sprintf("%s: %s", result.SubsystemName, result.CheckDescription)
 
 		filler := ""
@@ -56,11 +57,11 @@ func checkStatus(w io.Writer, checkers ...healthcheck.StatusChecker) error {
 		}
 
 		switch result.Status {
-		case healthcheck.CheckOk:
+		case healthcheckPb.CheckStatus_OK:
 			fmt.Fprintf(w, "%s%s[ok]\n", checkLabel, filler)
-		case healthcheck.CheckFailed:
+		case healthcheckPb.CheckStatus_FAIL:
 			fmt.Fprintf(w, "%s%s[FAIL]  -- %s\n", checkLabel, filler, result.FriendlyMessageToUser)
-		case healthcheck.CheckError:
+		case healthcheckPb.CheckStatus_ERROR:
 			fmt.Fprintf(w, "%s%s[ERROR] -- %s\n", checkLabel, filler, result.FriendlyMessageToUser)
 		}
 	}
@@ -70,21 +71,21 @@ func checkStatus(w io.Writer, checkers ...healthcheck.StatusChecker) error {
 		checker.Add(c)
 	}
 
-	check := checker.PerformCheck(prettyPrintResults)
+	checkStatus := checker.PerformCheck(prettyPrintResults)
 
 	fmt.Fprintln(w, "")
 
-	var errBasedOnOverallStatus error
-	switch check.OverallStatus {
-	case healthcheck.CheckOk:
-		errBasedOnOverallStatus = statusCheckResultWasOk(w)
-	case healthcheck.CheckFailed:
-		errBasedOnOverallStatus = statusCheckResultWasFail(w)
-	case healthcheck.CheckError:
-		errBasedOnOverallStatus = statusCheckResultWasError(w)
+	var err error
+	switch checkStatus {
+	case healthcheckPb.CheckStatus_OK:
+		err = statusCheckResultWasOk(w)
+	case healthcheckPb.CheckStatus_FAIL:
+		err = statusCheckResultWasFail(w)
+	case healthcheckPb.CheckStatus_ERROR:
+		err = statusCheckResultWasError(w)
 	}
 
-	return errBasedOnOverallStatus
+	return err
 }
 
 func statusCheckResultWasOk(w io.Writer) error {

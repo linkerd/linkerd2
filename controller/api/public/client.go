@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	common "github.com/runconduit/conduit/controller/gen/common"
+	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
 	log "github.com/sirupsen/logrus"
@@ -51,8 +52,8 @@ func (c *grpcOverHttpClient) Version(ctx context.Context, req *pb.Empty, _ ...gr
 	return &msg, err
 }
 
-func (c *grpcOverHttpClient) SelfCheck(ctx context.Context, req *common.SelfCheckRequest, _ ...grpc.CallOption) (*common.SelfCheckResponse, error) {
-	var msg common.SelfCheckResponse
+func (c *grpcOverHttpClient) SelfCheck(ctx context.Context, req *healthcheckPb.SelfCheckRequest, _ ...grpc.CallOption) (*healthcheckPb.SelfCheckResponse, error) {
+	var msg healthcheckPb.SelfCheckResponse
 	err := c.apiRequest(ctx, "SelfCheck", req, &msg)
 	return &msg, err
 }
