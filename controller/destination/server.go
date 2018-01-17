@@ -144,14 +144,31 @@ func (s *server) localKubernetesServiceIdFromDNSName(host string) (*string, erro
 		return nil, err
 	}
 
-	// Verify that `host` ends with .svc.$zone.
-	var matched bool
+	// Verify that `host` ends with ".svc.$zone", ".svc.cluster.local," or ".svc",
+	// but not ".svc.".
+	matched := false
 	if len(s.k8sDNSZoneLabels) > 0 {
 		hostLabels, matched = maybeStripSuffixLabels(hostLabels, s.k8sDNSZoneLabels)
-		if !matched {
-			return nil, err
-		}
 	}
+	// Accept "cluster.local" as an alias for "$zone". The Kubernetes DNS
+	// specification
+	// (https://github.com/kubernetes/dns/blob/master/docs/specification.md)
+	// doesn't require Kubernetes to do this, but some hosting providers like
+	// GKE do it, and so we need to support it for transparency.
+	if !matched {
+		hostLabels, matched = maybeStripSuffixLabels(hostLabels, []string{"cluster", "local"})
+	}
+	// TODO:
+	// ```
+	// 	if !matched {
+	//		return nil, nil
+	//  }
+	// ```
+	//
+	// This is technically wrong since the protocol definition for the
+	// Destination service indicates that `host` is a FQDN and so we should
+	// never append a ".$zone" suffix to it, but we need to do this as a
+	// workaround until the proxies are configured to know "$zone."
 	hostLabels, matched = maybeStripSuffixLabels(hostLabels, []string{"svc"})
 	if !matched {
 		return nil, nil
