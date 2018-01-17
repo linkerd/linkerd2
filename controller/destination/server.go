@@ -145,19 +145,22 @@ func (s *server) localKubernetesServiceIdFromDNSName(host string) (*string, erro
 	}
 
 	// Verify that `host` ends with .svc.$zone.
-	if len(hostLabels) <= 1+len(s.k8sDNSZoneLabels) {
-		return nil, nil
+	var matched bool
+	if len(s.k8sDNSZoneLabels) > 0 {
+		hostLabels, matched = maybeStripSuffixLabels(hostLabels, s.k8sDNSZoneLabels)
+		if !matched {
+			return nil, err
+		}
 	}
-	n := len(hostLabels) - len(s.k8sDNSZoneLabels)
-	if !reflect.DeepEqual(hostLabels[n:], s.k8sDNSZoneLabels) {
-		return nil, nil
-	}
-	if hostLabels[n-1] != "svc" {
+	hostLabels, matched = maybeStripSuffixLabels(hostLabels, []string{"svc"})
+	if !matched {
 		return nil, nil
 	}
 
-	// Extract the service name and namespace.
-	if n != 3 {
+	// Extract the service name and namespace. TODO: Federated services have
+	// *three* components before "svc"; see
+	// https://github.com/runconduit/conduit/issues/156.
+	if len(hostLabels) != 2 {
 		return nil, fmt.Errorf("not a service: %s", host)
 	}
 	service := hostLabels[0]
@@ -226,4 +229,15 @@ func splitDNSName(dnsName string) ([]string, error) {
 		}
 	}
 	return labels, nil
+}
+
+func maybeStripSuffixLabels(input []string, suffix []string) ([]string, bool) {
+	if len(input) <= 1+len(suffix) {
+		return input, false
+	}
+	n := len(input) - len(suffix)
+	if !reflect.DeepEqual(input[n:], suffix) {
+		return input, false
+	}
+	return input[:n], true
 }
