@@ -43,8 +43,37 @@ func TestLocalKubernetesServiceIdFromDNSName(t *testing.T) {
 
 	for i, tc := range testCases {
 		t.Run(fmt.Sprintf("%d: (%s, %s)", i, tc.k8sDNSZone, tc.host), func(t *testing.T) {
-			srv := newServer(tc.k8sDNSZone, nil)
+			srv, err := newServer(tc.k8sDNSZone, nil)
+			assert.Nil(t, err)
 			result, err := srv.localKubernetesServiceIdFromDNSName(tc.host)
+			assert.Equal(t, tc.result, result)
+			assert.Equal(t, tc.resultErr, err != nil)
+		})
+	}
+}
+
+func TestSplitDNSName(t *testing.T) {
+	testCases := []struct {
+		input     string
+		result    []string
+		resultErr bool
+	}{
+		{"example", []string{"example"}, false},
+		{"example.", []string{"example"}, false},
+		{"example.com", []string{"example", "com"}, false},
+		{"example.com.", []string{"example", "com"}, false},
+		{".example", []string{}, true},
+		{".example.com", []string{}, true},
+		{".example.com.", []string{}, true},
+		{"example..com", []string{}, true},
+		{"example.com..", []string{}, true},
+		{"..example.com.", []string{}, true},
+		{"foo.example.com", []string{"foo", "example", "com"}, false},
+	}
+
+	for i, tc := range testCases {
+		t.Run(fmt.Sprintf("%d: %s", i, tc.input), func(t *testing.T) {
+			result, err := splitDNSName(tc.input)
 			assert.Equal(t, tc.result, result)
 			assert.Equal(t, tc.resultErr, err != nil)
 		})

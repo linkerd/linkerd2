@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"errors"
 	common "github.com/runconduit/conduit/controller/gen/common"
 	pb "github.com/runconduit/conduit/controller/gen/proxy/destination"
 	"github.com/runconduit/conduit/controller/k8s"
@@ -44,7 +45,10 @@ func NewServer(addr, kubeconfig string, k8sDNSZone string, done chan struct{}) (
 		return nil, nil, err
 	}
 
-	srv := newServer(k8sDNSZone, endpoints)
+	srv, err := newServer(k8sDNSZone, endpoints)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -63,17 +67,21 @@ func NewServer(addr, kubeconfig string, k8sDNSZone string, done chan struct{}) (
 }
 
 // Split out from NewServer make it easy to write unit tests.
-func newServer(k8sDNSZone string, endpoints *k8s.EndpointsWatcher) *server {
+func newServer(k8sDNSZone string, endpoints *k8s.EndpointsWatcher) (*server, error) {
 	var k8sDNSZoneLabels []string
 	if k8sDNSZone == "" {
 		k8sDNSZoneLabels = []string{}
 	} else {
-		k8sDNSZoneLabels = strings.Split(k8sDNSZone, ".")
+		var err error
+		k8sDNSZoneLabels, err = splitDNSName(k8sDNSZone)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return &server{
 		k8sDNSZoneLabels: k8sDNSZoneLabels,
 		endpoints:        endpoints,
-	}
+	}, nil
 }
 
 func (s *server) Get(dest *common.Destination, stream pb.Destination_GetServer) error {
@@ -131,7 +139,10 @@ func (s *server) resolveKubernetesService(id string, port int, stream pb.Destina
 }
 
 func (s *server) localKubernetesServiceIdFromDNSName(host string) (*string, error) {
-	hostLabels := strings.Split(host, ".")
+	hostLabels, err := splitDNSName(host)
+	if err != nil {
+		return nil, err
+	}
 
 	// Verify that `host` ends with .svc.$zone.
 	if len(hostLabels) <= 1+len(s.k8sDNSZoneLabels) {
@@ -196,4 +207,23 @@ func toAddrSet(endpoints []common.TcpAddress) *pb.AddrSet {
 		addrs = append(addrs, &endpoints[i])
 	}
 	return &pb.AddrSet{Addrs: addrs}
+}
+
+func splitDNSName(dnsName string) ([]string, error) {
+	// If the name is fully qualified, strip off the final dot.
+	if strings.HasSuffix(dnsName, ".") {
+		dnsName = dnsName[:len(dnsName)-1]
+	}
+
+	labels := strings.Split(dnsName, ".")
+
+	// Rejects any empty labels, which is especially important to do for
+	// the beginning and the end because we do matching based on labels'
+	// relative positions.
+	for _, l := range labels {
+		if l == "" {
+			return []string{}, errors.New("Empty label in DNS name: " + dnsName)
+		}
+	}
+	return labels, nil
 }
