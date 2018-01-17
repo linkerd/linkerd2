@@ -39,59 +39,10 @@ with `conduit version`
 [this section on Conduit docs][conduit-demo]
 
 
-## Local development
+## Working in this repo ##
 
-These commands build and deploy all conduit components from source. They install
-a `conduit` executable onto the local system, and deploy the remaining
-components onto Minikube.
+[`BUILD.md`](BUILD.md) includes general information on how to work in this repo.
 
-This setup assumes working Go and Minikube environments.
-
-```bash
-# ensure all go dependencies are in vendor
-dep ensure && dep prune
-
-# build and install conduit cli locally
-go build -o $GOPATH/bin/conduit ./cli
-
-# verify cli version
-conduit version
-
-# build all docker images
-DOCKER_FORCE_BUILD=1 DOCKER_TRACE=1 bin/mkube bin/docker-build latest
-
-# install conduit
-conduit install --version latest | kubectl apply -f -
-
-# validate installation
-kubectl --namespace=conduit get all
-
-# view conduit dashboard
-conduit dashboard
-```
-
-## Updating Docker dependencies
-
-The Rust proxy and Go Docker images rely on base dependency images with
-hard-coded SHA's:
-
-`gcr.io/runconduit/go-deps` depends on
-- `Gopkg.lock`
-- `Dockerfile-go-deps`
-
-`gcr.io/runconduit/proxy-deps` depends on
-- `Cargo.lock`
-- `proxy/Dockerfile-deps`
-
-If any of these files change, update the Dockerfile SHA's with:
-
-```
-GO_DEPS_SHA=$(sh -c ". bin/_tag.sh && go_deps_sha")
-PROXY_DEPS_SHA=$(sh -c ". bin/_tag.sh && proxy_deps_sha")
-
-find . -type f -name 'Dockerfile*' -exec sed -i '' -e 's/gcr\.io\/runconduit\/go-deps:[^ ]*/gcr\.io\/runconduit\/go-deps:'$GO_DEPS_SHA'/g' {} \;
-find . -type f -name 'Dockerfile*' -exec sed -i '' -e 's/gcr\.io\/runconduit\/proxy-deps:[^ ]*/gcr\.io\/runconduit\/proxy-deps:'$PROXY_DEPS_SHA'/g' {} \;
-```
 
 ## Code of Conduct
 
