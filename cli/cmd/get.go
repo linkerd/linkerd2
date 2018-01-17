@@ -39,7 +39,7 @@ Valid resource types include:
 			return err
 		}
 
-		client, err := newApiClient(kubeApi)
+		client, err := newPublicAPIClient(kubeApi, apiAddr)
 		if err != nil {
 			return err
 		}

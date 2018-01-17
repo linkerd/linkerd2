@@ -44,8 +44,11 @@ func addControlPlaneNetworkingArgs(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVar(&apiAddr, "api-addr", "", "Override kubeconfig and communicate directly with the control plane at host:port (mostly for testing)")
 }
 
-func newApiClient(kubeApi k8s.KubernetesApi) (pb.ApiClient, error) {
-	return public.NewExternalClient(controlPlaneNamespace, kubeApi)
+func newPublicAPIClient(api k8s.KubernetesApi, apiAddr string) (pb.ApiClient, error) {
+	if apiAddr != "" {
+		return public.NewInternalClient(apiAddr)
+	}
+	return public.NewExternalClient(controlPlaneNamespace, api)
 }
 
 // Exit with non-zero exit status without printing the command line usage and

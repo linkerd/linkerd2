@@ -11,7 +11,6 @@ import (
 	"github.com/runconduit/conduit/pkg/healthcheck"
 	"github.com/runconduit/conduit/pkg/shell"
 	"k8s.io/client-go/rest"
-	"regexp"
 )
 
 const (
@@ -20,7 +19,7 @@ const (
 	KubeapiClientCheckDescription       = "can initialize the client"
 	KubeapiAccessCheckDescription       = "can query the Kubernetes API"
 )
-var httpPrefix = regexp.MustCompile(`://`)
+
 type KubernetesApi interface {
 	UrlFor(namespace string, extraPathStartingWithSlash string) (*url.URL, error)
 	NewClient() (*http.Client, error)
@@ -128,18 +127,10 @@ func NewK8sAPI(shell shell.Shell, k8sConfigFilesystemPathOverride string, apiHos
 			apiSchemeHostAndPort: config.Host,
 			config:               config,
 		}, nil
-	} else {
-		parsedURL, err := url.Parse(apiHostAndPortOverride)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing override url: %v", err)
-		}
-
-		if parsedURL.Scheme == "" {
-			apiHostAndPortOverride = fmt.Sprintf("https://%s", apiHostAndPortOverride)
-		}
-		return &kubernetesApi{
-			apiSchemeHostAndPort: apiHostAndPortOverride,
-			config:               config,
-		}, nil
 	}
+
+	return &kubernetesApi{
+		apiSchemeHostAndPort: apiHostAndPortOverride,
+		config:               config,
+	}, nil
 }

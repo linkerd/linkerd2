@@ -61,7 +61,7 @@ The optional [TARGET] option can be either a name for a deployment or pod resour
 			return err
 		}
 
-		client, err := newApiClient(kubeApi)
+		client, err := newPublicAPIClient(kubeApi, apiAddr)
 		if err != nil {
 			return fmt.Errorf("error creating api client while making stats request: %v", err)
 		}

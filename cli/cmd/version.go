@@ -19,13 +19,12 @@ var versionCmd = &cobra.Command{
 	Long:  "Print the client and server version information.",
 	Args:  cobra.NoArgs,
 	Run: exitSilentlyOnError(func(cmd *cobra.Command, args []string) error {
-
 		kubeApi, err := k8s.NewK8sAPI(shell.NewUnixShell(), kubeconfigPath, apiAddr)
 		if err != nil {
 			return err
 		}
 
-		client, err := newApiClient(kubeApi)
+		client, err := newPublicAPIClient(kubeApi, apiAddr)
 		if err != nil {
 			return err
 		}
