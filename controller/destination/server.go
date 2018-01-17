@@ -144,8 +144,7 @@ func (s *server) localKubernetesServiceIdFromDNSName(host string) (*string, erro
 		return nil, err
 	}
 
-	// Verify that `host` ends with ".svc.$zone", ".svc.cluster.local," or ".svc",
-	// but not ".svc.".
+	// Verify that `host` ends with ".svc.$zone", ".svc.cluster.local," or ".svc".
 	matched := false
 	if len(s.k8sDNSZoneLabels) > 0 {
 		hostLabels, matched = maybeStripSuffixLabels(hostLabels, s.k8sDNSZoneLabels)
