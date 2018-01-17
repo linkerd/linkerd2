@@ -8,15 +8,29 @@ import (
 )
 
 var (
-	initializationTimeout = 5 * time.Second
-	sleepBetweenChecks    = 100 * time.Millisecond
+	initializationTimeout = 30 * time.Second
+	sleepBetweenChecks    = 500 * time.Millisecond
 )
 
-type watcher interface {
+type resourceToWatch interface {
 	LastSyncResourceVersion() string
 }
 
-func initializeWatcher(w watcher) error {
+type watcher struct {
+	resource     resourceToWatch
+	resourceType string
+	timeout      time.Duration
+}
+
+func newWatcher(resource resourceToWatch, resourceType string) *watcher {
+	return &watcher{
+		resource:     resource,
+		resourceType: resourceType,
+		timeout:      initializationTimeout,
+	}
+}
+
+func (w *watcher) run() error {
 	timedOut := make(chan struct{}, 1)
 	defer close(timedOut)
 	initialized := make(chan struct{}, 1)
@@ -26,15 +40,15 @@ func initializeWatcher(w watcher) error {
 		for {
 			select {
 			case <-timedOut:
-				log.Warn("Watcher timed out")
+				log.Warnf("[%s watcher] timed out", w.resourceType)
 				return
 			case <-time.Tick(sleepBetweenChecks):
-				if w.LastSyncResourceVersion() != "" {
-					log.Info("Watcher initialized")
+				if w.resource.LastSyncResourceVersion() != "" {
+					log.Infof("[%s watcher] initialized", w.resourceType)
 					initialized <- struct{}{}
 					return
 				}
-				log.Debug("Waiting for watcher to initialize")
+				log.Debugf("[%s watcher] waiting for initialization", w.resourceType)
 			}
 		}
 	}()
@@ -42,8 +56,8 @@ func initializeWatcher(w watcher) error {
 	select {
 	case <-initialized:
 		return nil
-	case <-time.After(initializationTimeout):
+	case <-time.After(w.timeout):
 		timedOut <- struct{}{}
-		return fmt.Errorf("Watcher initialization timed out")
+		return fmt.Errorf("[%s watcher] timed out", w.resourceType)
 	}
 }

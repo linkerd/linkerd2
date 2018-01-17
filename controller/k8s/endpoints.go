@@ -129,7 +129,7 @@ type informer struct {
 
 func (i *informer) run() error {
 	go i.informer.Run(i.stopCh)
-	return initializeWatcher(i.informer)
+	return newWatcher(i.informer, endpointResource).run()
 }
 
 func (i *informer) stop() {
