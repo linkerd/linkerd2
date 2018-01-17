@@ -24,4 +24,9 @@ fn build_control() {
         .enable_server(true)
         .build(server_files, dirs)
         .unwrap();
+
+    // recompile protobufs only if any of the proto files changes.
+    for file in client_files.iter().chain(server_files) {
+        println!("cargo:rerun-if-changed={}", file);
+    }
 }
