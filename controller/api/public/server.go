@@ -69,14 +69,6 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// Validate request content type
-	switch req.Header.Get("Content-Type") {
-	case "", ProtobufContentType, JsonContentType:
-	default:
-		serverMarshalError(w, req, fmt.Errorf("unsupported Content-Type"), http.StatusUnsupportedMediaType)
-		return
-	}
-
 	// Serve request
 	switch req.URL.Path {
 	case statPath:
@@ -203,51 +195,26 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request) {
 }
 
 func serverUnmarshal(req *http.Request, msg proto.Message) error {
-	switch req.Header.Get("Content-Type") {
-	case "", ProtobufContentType:
-		bytes, err := ioutil.ReadAll(req.Body)
-		if err != nil {
-			return err
-		}
-		return proto.Unmarshal(bytes, msg)
-	case JsonContentType:
-		return jsonUnmarshaler.Unmarshal(req.Body, msg)
+	bytes, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		return err
 	}
-	return nil
+	return proto.Unmarshal(bytes, msg)
 }
 
 func serverMarshal(w http.ResponseWriter, req *http.Request, msg proto.Message) error {
-	switch req.Header.Get("Content-Type") {
-	case "", ProtobufContentType:
-		bytes, err := proto.Marshal(msg)
-		if err != nil {
-			return err
-		}
-		byteSize := make([]byte, 4)
-		binary.LittleEndian.PutUint32(byteSize, uint32(len(bytes)))
-		_, err = w.Write(append(byteSize, bytes...))
-		return err
-
-	case JsonContentType:
-		str, err := jsonMarshaler.MarshalToString(msg)
-		if err != nil {
-			return err
-		}
-		_, err = w.Write(append([]byte(str), '\n'))
+	bytes, err := proto.Marshal(msg)
+	if err != nil {
 		return err
 	}
-
-	return nil
+	byteSize := make([]byte, 4)
+	binary.LittleEndian.PutUint32(byteSize, uint32(len(bytes)))
+	_, err = w.Write(append(byteSize, bytes...))
+	return err
 }
 
 func serverMarshalError(w http.ResponseWriter, req *http.Request, err error, code int) error {
-	switch req.Header.Get("Content-Type") {
-	case "", ProtobufContentType:
-		w.Header().Set(ErrorHeader, http.StatusText(code))
-	case JsonContentType:
-		w.WriteHeader(code)
-	}
-
+	w.Header().Set(ErrorHeader, http.StatusText(code))
 	return serverMarshal(w, req, &pb.ApiError{Error: err.Error()})
 }
 
