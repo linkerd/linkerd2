@@ -27,12 +27,11 @@ type KubernetesApi interface {
 }
 
 type kubernetesApi struct {
-	config               *rest.Config
-	apiSchemeHostAndPort string
+	*rest.Config
 }
 
 func (kubeapi *kubernetesApi) NewClient() (*http.Client, error) {
-	secureTransport, err := rest.TransportFor(kubeapi.config)
+	secureTransport, err := rest.TransportFor(kubeapi.Config)
 	if err != nil {
 		return nil, fmt.Errorf("error instantiating Kubernetes API client: %v", err)
 	}
@@ -78,10 +77,10 @@ func (kubeapi *kubernetesApi) checkApiAccess(client *http.Client) *healthcheckPb
 		return checkResult
 	}
 
-	endpointToCheck, err := generateBaseKubernetesApiUrl(kubeapi.apiSchemeHostAndPort)
+	endpointToCheck, err := generateBaseKubernetesApiUrl(kubeapi.Host)
 	if err != nil {
 		checkResult.Status = healthcheckPb.CheckStatus_ERROR
-		checkResult.FriendlyMessageToUser = fmt.Sprintf("Error querying Kubernetes API. Configured host is [%s], error message is [%s]", kubeapi.apiSchemeHostAndPort, err.Error())
+		checkResult.FriendlyMessageToUser = fmt.Sprintf("Error querying Kubernetes API. Configured host is [%s], error message is [%s]", kubeapi.Host, err.Error())
 		return checkResult
 	}
 
@@ -111,26 +110,15 @@ func (kubeapi *kubernetesApi) checkApiAccess(client *http.Client) *healthcheckPb
 }
 
 func (kubeapi *kubernetesApi) UrlFor(namespace string, extraPathStartingWithSlash string) (*url.URL, error) {
-	return generateKubernetesApiBaseUrlFor(kubeapi.apiSchemeHostAndPort, namespace, extraPathStartingWithSlash)
+	return generateKubernetesApiBaseUrlFor(kubeapi.Host, namespace, extraPathStartingWithSlash)
 }
 
-func NewK8sAPI(shell shell.Shell, k8sConfigFilesystemPathOverride string, apiHostAndPortOverride string) (KubernetesApi, error) {
+func NewK8sAPI(shell shell.Shell, k8sConfigFilesystemPathOverride string) (KubernetesApi, error) {
 	kubeconfigEnvVar := os.Getenv(kubernetesConfigFilePathEnvVariable)
 
 	config, err := parseK8SConfig(findK8sConfigFile(k8sConfigFilesystemPathOverride, kubeconfigEnvVar, shell.HomeDir()))
 	if err != nil {
 		return nil, fmt.Errorf("error configuring Kubernetes API client: %v", err)
 	}
-
-	if apiHostAndPortOverride == "" {
-		return &kubernetesApi{
-			apiSchemeHostAndPort: config.Host,
-			config:               config,
-		}, nil
-	}
-
-	return &kubernetesApi{
-		apiSchemeHostAndPort: apiHostAndPortOverride,
-		config:               config,
-	}, nil
+	return &kubernetesApi{Config: config}, nil
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/runconduit/conduit/controller/api/public"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
+	"github.com/runconduit/conduit/pkg/shell"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -44,11 +45,15 @@ func addControlPlaneNetworkingArgs(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVar(&apiAddr, "api-addr", "", "Override kubeconfig and communicate directly with the control plane at host:port (mostly for testing)")
 }
 
-func newPublicAPIClient(api k8s.KubernetesApi, apiAddr string) (pb.ApiClient, error) {
+func newPublicAPIClient() (pb.ApiClient, error) {
 	if apiAddr != "" {
 		return public.NewInternalClient(apiAddr)
 	}
-	return public.NewExternalClient(controlPlaneNamespace, api)
+	kubeApi, err := k8s.NewK8sAPI(shell.NewUnixShell(), kubeconfigPath)
+	if err != nil {
+		return nil, err
+	}
+	return public.NewExternalClient(controlPlaneNamespace, kubeApi)
 }
 
 // Exit with non-zero exit status without printing the command line usage and

@@ -7,7 +7,6 @@ import (
 
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
-	"github.com/runconduit/conduit/pkg/shell"
 	"github.com/spf13/cobra"
 )
 
@@ -33,13 +32,7 @@ Valid resource types include:
 		if err != nil || resourceType != k8s.KubernetesPods {
 			return fmt.Errorf("invalid resource type %s, only %s are allowed as resource types", friendlyName, k8s.KubernetesPods)
 		}
-
-		kubeApi, err := k8s.NewK8sAPI(shell.NewUnixShell(), kubeconfigPath, apiAddr)
-		if err != nil {
-			return err
-		}
-
-		client, err := newPublicAPIClient(kubeApi, apiAddr)
+		client, err := newPublicAPIClient()
 		if err != nil {
 			return err
 		}

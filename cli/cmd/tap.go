@@ -13,7 +13,6 @@ import (
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/controller/util"
 	"github.com/runconduit/conduit/pkg/k8s"
-	"github.com/runconduit/conduit/pkg/shell"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/codes"
@@ -63,12 +62,7 @@ Valid targets include:
 			return fmt.Errorf("unsupported resourceType [%s]", friendlyNameForResourceType)
 		}
 
-		kubeApi, err := k8s.NewK8sAPI(shell.NewUnixShell(), kubeconfigPath, apiAddr)
-		if err != nil {
-			return err
-		}
-
-		client, err := newPublicAPIClient(kubeApi, apiAddr)
+		client, err := newPublicAPIClient()
 		if err != nil {
 			return err
 		}
