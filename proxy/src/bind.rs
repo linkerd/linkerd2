@@ -5,7 +5,6 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
 use std::time::Duration;
 
-use h2;
 use http;
 use tokio_core::reactor::Handle;
 use tower_h2;
@@ -14,6 +13,7 @@ use tower_reconnect::{self, Reconnect};
 use control;
 use ctx;
 use telemetry;
+use transparency;
 use transport;
 use ::timeout::Timeout;
 
@@ -28,7 +28,6 @@ const DEFAULT_TIMEOUT_MS: u64 = 300;
 /// Buffering is not bounded and no timeouts are applied.
 pub struct Bind<C, B> {
     ctx: C,
-    h2_builder: h2::client::Builder,
     sensors: telemetry::Sensors,
     executor: Handle,
     req_ids: Arc<AtomicUsize>,
@@ -36,32 +35,37 @@ pub struct Bind<C, B> {
     _p: PhantomData<B>,
 }
 
+/// Binds a `Service` from a `SocketAddr` for a pre-determined protocol.
+pub struct BindProtocol<C, B> {
+    bind: Bind<C, B>,
+    protocol: Protocol,
+}
+
+/// Mark whether to use HTTP/1 or HTTP/2
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Protocol {
+    Http1,
+    Http2
+}
+
 type Service<B> = Reconnect<
     telemetry::sensor::NewHttp<
-        tower_h2::client::Client<
+        transparency::Client<
             telemetry::sensor::Connect<transport::TimeoutConnect<transport::Connect>>,
-            CtxtExec,
             B,
         >,
         B,
-        tower_h2::RecvBody,
+        transparency::HttpBody,
     >,
 >;
 
-type CtxtExec = ::logging::ContextualExecutor<(&'static str, SocketAddr), Handle>;
-
 impl<B> Bind<(), B> {
     pub fn new(executor: Handle) -> Self {
-        let mut h2_builder = h2::client::Builder::default();
-        // h2 currently doesn't handle PUSH_PROMISE that well, so we just
-        // disable it for now.
-        h2_builder.enable_push(false);
         Self {
             executor,
             ctx: (),
             sensors: telemetry::Sensors::null(),
             req_ids: Default::default(),
-            h2_builder,
             connect_timeout: Duration::from_millis(DEFAULT_TIMEOUT_MS),
             _p: PhantomData,
         }
@@ -84,7 +88,6 @@ impl<B> Bind<(), B> {
     pub fn with_ctx<C>(self, ctx: C) -> Bind<C, B> {
         Bind {
             ctx,
-            h2_builder: self.h2_builder,
             sensors: self.sensors,
             executor: self.executor,
             req_ids: self.req_ids,
@@ -98,7 +101,6 @@ impl<C: Clone, B> Clone for Bind<C, B> {
     fn clone(&self) -> Self {
         Self {
             ctx: self.ctx.clone(),
-            h2_builder: self.h2_builder.clone(),
             sensors: self.sensors.clone(),
             executor: self.executor.clone(),
             req_ids: self.req_ids.clone(),
@@ -110,6 +112,10 @@ impl<C: Clone, B> Clone for Bind<C, B> {
 
 
 impl<C, B> Bind<C, B> {
+    pub fn connect_timeout(&self) -> Duration {
+        self.connect_timeout
+    }
+
     // pub fn ctx(&self) -> &C {
     //     &self.ctx
     // }
@@ -132,15 +138,15 @@ impl<B> Bind<Arc<ctx::Proxy>, B>
 where
     B: tower_h2::Body + 'static,
 {
-    pub fn bind_service(&self, addr: &SocketAddr) -> Service<B> {
-        trace!("bind_service {}", addr);
+    pub fn bind_service(&self, addr: &SocketAddr, protocol: Protocol) -> Service<B> {
+        trace!("bind_service addr={}, protocol={:?}", addr, protocol);
         let client_ctx = ctx::transport::Client::new(
             &self.ctx,
             addr,
             control::pb::proxy::common::Protocol::Http,
         );
 
-        // Map a socket address to an HTTP/2.0 connection.
+        // Map a socket address to a connection.
         let connect = {
             let c = Timeout::new(
                 transport::Connect::new(*addr, &self.executor),
@@ -151,30 +157,39 @@ where
             self.sensors.connect(c, &client_ctx)
         };
 
-        // Establishes an HTTP/2.0 connection
-        let client = tower_h2::client::Client::new(
+        let client = transparency::Client::new(
+            protocol,
             connect,
-            self.h2_builder.clone(),
-            ::logging::context_executor(("client", *addr), self.executor.clone()),
+            self.executor.clone(),
         );
 
-        let h2_proxy = self.sensors.http(self.req_ids.clone(), client, &client_ctx);
+        let proxy = self.sensors.http(self.req_ids.clone(), client, &client_ctx);
 
         // Automatically perform reconnects if the connection fails.
         //
         // TODO: Add some sort of backoff logic.
-        Reconnect::new(h2_proxy)
+        Reconnect::new(proxy)
     }
 }
 
-// ===== impl Bind =====
+// ===== impl BindProtocol =====
 
-impl<B> control::discovery::Bind for Bind<Arc<ctx::Proxy>, B>
+
+impl<C, B> Bind<C, B> {
+    pub fn with_protocol(self, protocol: Protocol) -> BindProtocol<C, B> {
+        BindProtocol {
+            bind: self,
+            protocol,
+        }
+    }
+}
+
+impl<B> control::discovery::Bind for BindProtocol<Arc<ctx::Proxy>, B>
 where
     B: tower_h2::Body + 'static,
 {
     type Request = http::Request<B>;
-    type Response = http::Response<telemetry::sensor::http::ResponseBody<tower_h2::RecvBody>>;
+    type Response = http::Response<telemetry::sensor::http::ResponseBody<transparency::HttpBody>>;
     type Error = tower_reconnect::Error<
         tower_h2::client::Error,
         tower_h2::client::ConnectError<transport::TimeoutError<io::Error>>,
@@ -183,6 +198,7 @@ where
     type BindError = ();
 
     fn bind(&self, addr: &SocketAddr) -> Result<Self::Service, Self::BindError> {
-        Ok::<_, ()>(self.bind_service(addr))
+        Ok(self.bind.bind_service(addr, self.protocol))
     }
 }
+

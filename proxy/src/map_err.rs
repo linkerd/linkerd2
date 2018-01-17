@@ -4,6 +4,7 @@ use std::marker::PhantomData;
 use futures::{Future, Poll};
 use h2;
 use http;
+use http::header::CONTENT_LENGTH;
 use tower::Service;
 
 /// Map an HTTP service's error to an appropriate 500 response.
@@ -73,9 +74,10 @@ where
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         self.inner.poll().or_else(|e| {
-            error!("turning h2 error into 500: {:?}", e);
+            error!("turning service error into 500: {:?}", e);
             let response = http::Response::builder()
                 .status(500)
+                .header(CONTENT_LENGTH, "0")
                 .body(Default::default())
                 .unwrap();
 

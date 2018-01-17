@@ -12,6 +12,8 @@ extern crate futures;
 extern crate futures_mpsc_lossy;
 extern crate h2;
 extern crate http;
+extern crate httparse;
+extern crate hyper;
 extern crate ipnet;
 #[cfg(target_os = "linux")]
 extern crate libc;
@@ -46,12 +48,11 @@ use std::io;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::thread;
-use std::time::Instant;
+use std::time::Duration;
 
 use tokio_core::reactor::{Core, Handle};
 use tower::NewService;
 use tower_fn::*;
-use tower_h2::*;
 use tower_router::{Recognize, Router};
 
 pub mod app;
@@ -68,6 +69,7 @@ mod logging;
 mod map_err;
 mod outbound;
 mod telemetry;
+mod transparency;
 mod transport;
 pub mod timeout;
 mod tower_fn; // TODO: move to tower-fn
@@ -77,6 +79,8 @@ use connection::BoundPort;
 use control::pb::proxy::tap;
 use inbound::Inbound;
 use map_err::MapErr;
+use transparency::{HttpBody, Server};
+pub use transport::{GetOriginalDst, SoOriginalDst};
 use outbound::Outbound;
 
 /// Runs a sidecar proxy.
@@ -92,16 +96,21 @@ use outbound::Outbound;
 /// The private listener routes requests to service-discovery-aware load-balancer.
 ///
 
-pub struct Main {
+pub struct Main<G> {
     config: config::Config,
 
     control_listener: BoundPort,
     inbound_listener: BoundPort,
     outbound_listener: BoundPort,
+
+    get_original_dst: G,
 }
 
-impl Main {
-    pub fn new(config: config::Config) -> Self {
+impl<G> Main<G>
+where
+    G: GetOriginalDst + Clone + 'static,
+{
+    pub fn new(config: config::Config, get_original_dst: G) -> Self {
 
         let control_listener = BoundPort::new(config.control_listener.addr)
             .expect("controller listener bind");
@@ -114,6 +123,7 @@ impl Main {
             control_listener,
             inbound_listener,
             outbound_listener,
+            get_original_dst,
         }
     }
 
@@ -145,6 +155,7 @@ impl Main {
             control_listener,
             inbound_listener,
             outbound_listener,
+            get_original_dst,
         } = self;
 
         let control_host_and_port = config.control_host_and_port.clone();
@@ -186,10 +197,11 @@ impl Main {
 
             let fut = serve(
                 inbound_listener,
-                h2::server::Builder::default(),
                 Inbound::new(default_addr, bind),
+                config.private_connect_timeout,
                 ctx,
                 sensors.clone(),
+                get_original_dst.clone(),
                 &executor,
             );
             ::logging::context_future("inbound", fut)
@@ -206,6 +218,8 @@ impl Main {
                 .map_or_else(|| bind.clone(), |t| bind.clone().with_connect_timeout(t))
                 .with_ctx(ctx.clone());
 
+            let tcp_connect_timeout = bind.connect_timeout();
+
             let outgoing = Outbound::new(
                 bind,
                 control,
@@ -214,10 +228,11 @@ impl Main {
 
             let fut = serve(
                 outbound_listener,
-                h2::server::Builder::default(),
                 outgoing,
+                tcp_connect_timeout,
                 ctx,
                 sensors,
+                get_original_dst,
                 &executor,
             );
             ::logging::context_future("outbound", fut)
@@ -239,7 +254,6 @@ impl Main {
 
                     let server = serve_control(
                         control_listener,
-                        h2::server::Builder::default(),
                         new_service,
                         &executor,
                     );
@@ -275,85 +289,69 @@ impl Main {
     }
 }
 
-fn serve<R, B, E, F>(
+fn serve<R, B, E, F, G>(
     bound_port: BoundPort,
-    h2_builder: h2::server::Builder,
     recognize: R,
+    tcp_connect_timeout: Duration,
     proxy_ctx: Arc<ctx::Proxy>,
     sensors: telemetry::Sensors,
+    get_orig_dst: G,
     executor: &Handle,
 ) -> Box<Future<Item = (), Error = io::Error> + 'static>
 where
-    B: Body + Default + 'static,
+    B: tower_h2::Body + Default + 'static,
     E: ::std::fmt::Debug + 'static,
     F: ::std::fmt::Debug + 'static,
     R: Recognize<
-        Request = http::Request<RecvBody>,
+        Request = http::Request<HttpBody>,
         Response = http::Response<telemetry::sensor::http::ResponseBody<B>>,
         Error = E,
         RouteError = F,
     >
         + 'static,
+    G: GetOriginalDst + 'static,
 {
     let router = Router::new(recognize);
-    let stack = NewServiceFn::new(move || {
+    let stack = Arc::new(NewServiceFn::new(move || {
         // Clone the router handle
         let router = router.clone();
 
         // Map errors to 500 responses
         MapErr::new(router)
-    });
+    }));
 
     let listen_addr = bound_port.local_addr();
     let server = Server::new(
+        listen_addr,
+        proxy_ctx,
+        sensors,
+        get_orig_dst,
         stack,
-        h2_builder,
-        ::logging::context_executor(("serve", listen_addr), executor.clone()),
+        tcp_connect_timeout,
+        executor.clone(),
     );
+
     bound_port.listen_and_fold(
         executor,
-        (server, proxy_ctx, sensors, executor.clone()),
-        move |(server, proxy_ctx, sensors, executor), (connection, remote_addr)| {
-            let opened_at = Instant::now();
-            let orig_dst = connection.original_dst_addr();
-            let local_addr = connection.local_addr().unwrap_or(listen_addr);
-            // TODO: detect protocol.
-            let protocol = control::pb::common::Protocol::Http;
-            let srv_ctx =
-                ctx::transport::Server::new(
-                    &proxy_ctx,
-                    &local_addr,
-                    &remote_addr,
-                    &orig_dst,
-                    protocol,
-                );
-
-            let io = sensors.accept(connection, opened_at, &srv_ctx);
-
-            // TODO session context
-            let set_ctx = move |request: &mut http::Request<()>| {
-                request.extensions_mut().insert(Arc::clone(&srv_ctx));
-            };
-
-            let s = server.serve_modified(io, set_ctx).map_err(|_| ());
-            executor.spawn(::logging::context_future(("serve", local_addr), s));
-
-            future::ok((server, proxy_ctx, sensors, executor))
+        (),
+        move |(), (connection, remote_addr)| {
+            server.serve(connection, remote_addr);
+            Ok(())
         },
     )
 }
 
 fn serve_control<N, B>(
     bound_port: BoundPort,
-    h2_builder: h2::server::Builder,
     new_service: N,
     executor: &Handle,
 ) -> Box<Future<Item = (), Error = io::Error> + 'static>
 where
-    B: Body + 'static,
-    N: NewService<Request = http::Request<RecvBody>, Response = http::Response<B>> + 'static,
+    B: tower_h2::Body + 'static,
+    N: NewService<Request = http::Request<tower_h2::RecvBody>, Response = http::Response<B>> + 'static,
 {
-    let server = Server::new(new_service, h2_builder, executor.clone());
+    let h2_builder = h2::server::Builder::default();
+    let server = tower_h2::Server::new(new_service, h2_builder, executor.clone());
     bound_port.listen_and_fold(
         executor,
         (server, executor.clone()),

@@ -1,9 +1,8 @@
 use std::io;
-use std::net::{IpAddr, SocketAddr};
+use std::net::{SocketAddr};
 use std::sync::Arc;
 
 use http;
-use tokio_core::reactor::Handle;
 use tower_buffer::{self, Buffer};
 use tower_h2;
 use tower_reconnect::{self, Reconnect};
@@ -12,6 +11,7 @@ use tower_router::Recognize;
 use bind;
 use ctx;
 use telemetry;
+use transparency;
 use transport;
 
 type Bind<B> = bind::Bind<Arc<ctx::Proxy>, B>;
@@ -21,13 +21,10 @@ pub struct Inbound<B> {
     bind: Bind<B>,
 }
 
-type Client<B> = tower_h2::client::Client<
+type Client<B> = transparency::Client<
     telemetry::sensor::Connect<transport::TimeoutConnect<transport::Connect>>,
-    CtxtExec,
     B,
 >;
-
-type CtxtExec = ::logging::ContextualExecutor<(&'static str, SocketAddr), Handle>;
 
 // ===== impl Inbound =====
 
@@ -38,14 +35,6 @@ impl<B> Inbound<B> {
             bind,
         }
     }
-
-    fn same_addr(a0: &SocketAddr, a1: &SocketAddr) -> bool {
-        (a0.port() == a1.port()) && match (a0.ip(), a1.ip()) {
-            (IpAddr::V6(a0), IpAddr::V4(a1)) => a0.to_ipv4() == Some(a1),
-            (IpAddr::V4(a0), IpAddr::V6(a1)) => Some(a0) == a1.to_ipv4(),
-            (a0, a1) => (a0 == a1),
-        }
-    }
 }
 
 impl<B> Recognize for Inbound<B>
@@ -53,36 +42,32 @@ where
     B: tower_h2::Body + 'static,
 {
     type Request = http::Request<B>;
-    type Response = http::Response<telemetry::sensor::http::ResponseBody<tower_h2::RecvBody>>;
+    type Response = http::Response<telemetry::sensor::http::ResponseBody<transparency::HttpBody>>;
     type Error = tower_buffer::Error<
         tower_reconnect::Error<
             tower_h2::client::Error,
             tower_h2::client::ConnectError<transport::TimeoutError<io::Error>>,
         >,
     >;
-    type Key = SocketAddr;
+    type Key = (SocketAddr, bind::Protocol);
     type RouteError = ();
-    type Service = Buffer<Reconnect<telemetry::sensor::NewHttp<Client<B>, B, tower_h2::RecvBody>>>;
+    type Service = Buffer<Reconnect<telemetry::sensor::NewHttp<Client<B>, B, transparency::HttpBody>>>;
 
     fn recognize(&self, req: &Self::Request) -> Option<Self::Key> {
         let key = req.extensions()
             .get::<Arc<ctx::transport::Server>>()
             .and_then(|ctx| {
                 trace!("recognize local={} orig={:?}", ctx.local, ctx.orig_dst);
-                match ctx.orig_dst {
-                    None => None,
-                    Some(orig_dst) => {
-                        // If the original destination is actually the listening socket,
-                        // we don't want to create a loop.
-                        if Self::same_addr(&orig_dst, &ctx.local) {
-                            None
-                        } else {
-                            Some(orig_dst)
-                        }
-                    }
-                }
+                ctx.orig_dst_if_not_local()
             })
             .or_else(|| self.default_addr);
+
+        let proto = match req.version() {
+            http::Version::HTTP_2 => bind::Protocol::Http2,
+            _ => bind::Protocol::Http1,
+        };
+
+        let key = key.map(|addr| (addr, proto));
 
         trace!("recognize key={:?}", key);
 
@@ -95,14 +80,15 @@ where
     ///
     /// Buffering is currently unbounded and does not apply timeouts. This must be
     /// changed.
-    fn bind_service(&mut self, addr: &SocketAddr) -> Result<Self::Service, Self::RouteError> {
-        debug!("building inbound client to {}", addr);
+    fn bind_service(&mut self, key: &Self::Key) -> Result<Self::Service, Self::RouteError> {
+        let &(ref addr, proto) = key;
+        debug!("building inbound {:?} client to {}", proto, addr);
 
         // Wrap with buffering. This currently is an unbounded buffer, which
         // is not ideal.
         //
         // TODO: Don't use unbounded buffering.
-        Buffer::new(self.bind.bind_service(addr), self.bind.executor()).map_err(|_| {})
+        Buffer::new(self.bind.bind_service(addr, proto), self.bind.executor()).map_err(|_| {})
     }
 }
 
@@ -112,13 +98,12 @@ mod tests {
     use std::sync::Arc;
 
     use http;
-    use quickcheck::TestResult;
     use tokio_core::reactor::Core;
     use tower_router::Recognize;
 
     use super::Inbound;
     use control::pb::common::Protocol;
-    use bind::Bind;
+    use bind::{self, Bind};
     use ctx;
 
     fn new_inbound(default: Option<net::SocketAddr>, ctx: &Arc<ctx::Proxy>) -> Inbound<()> {
@@ -128,50 +113,6 @@ mod tests {
     }
 
     quickcheck! {
-        fn same_addr_ipv4(ip0: net::Ipv4Addr, ip1: net::Ipv4Addr, port0: u16, port1: u16) -> TestResult {
-            if port0 == 0 || port0 == ::std::u16::MAX {
-                return TestResult::discard();
-            } else if port1 == 0 || port1 == ::std::u16::MAX {
-                return TestResult::discard();
-            }
-
-            let addr0 = net::SocketAddr::new(net::IpAddr::V4(ip0), port0);
-            let addr1 = net::SocketAddr::new(net::IpAddr::V4(ip1), port1);
-            TestResult::from_bool(Inbound::<()>::same_addr(&addr0, &addr1) == (addr0 == addr1))
-        }
-
-        fn same_addr_ipv6(ip0: net::Ipv6Addr, ip1: net::Ipv6Addr, port0: u16, port1: u16) -> TestResult {
-            if port0 == 0 || port0 == ::std::u16::MAX {
-                return TestResult::discard();
-            } else if port1 == 0 || port1 == ::std::u16::MAX {
-                return TestResult::discard();
-            }
-
-            let addr0 = net::SocketAddr::new(net::IpAddr::V6(ip0), port0);
-            let addr1 = net::SocketAddr::new(net::IpAddr::V6(ip1), port1);
-            TestResult::from_bool(Inbound::<()>::same_addr(&addr0, &addr1) == (addr0 == addr1))
-        }
-
-        fn same_addr_ip6_mapped_ipv4(ip: net::Ipv4Addr, port: u16) -> TestResult {
-            if port == 0 || port == ::std::u16::MAX {
-                return TestResult::discard();
-            }
-
-            let addr4 = net::SocketAddr::new(net::IpAddr::V4(ip), port);
-            let addr6 = net::SocketAddr::new(net::IpAddr::V6(ip.to_ipv6_mapped()), port);
-            TestResult::from_bool(Inbound::<()>::same_addr(&addr4, &addr6))
-        }
-
-        fn same_addr_ip6_compat_ipv4(ip: net::Ipv4Addr, port: u16) -> TestResult {
-            if port == 0 || port == ::std::u16::MAX {
-                return TestResult::discard();
-            }
-
-            let addr4 = net::SocketAddr::new(net::IpAddr::V4(ip), port);
-            let addr6 = net::SocketAddr::new(net::IpAddr::V6(ip.to_ipv6_compatible()), port);
-            TestResult::from_bool(Inbound::<()>::same_addr(&addr4, &addr6))
-        }
-
         fn recognize_orig_dst(
             orig_dst: net::SocketAddr,
             local: net::SocketAddr,
@@ -181,21 +122,13 @@ mod tests {
 
             let inbound = new_inbound(None, &ctx);
 
+            let srv_ctx = ctx::transport::Server::new(&ctx, &local, &remote, &Some(orig_dst), Protocol::Http);
+
+            let rec = srv_ctx.orig_dst_if_not_local().map(|addr| (addr, bind::Protocol::Http1));
+
             let mut req = http::Request::new(());
             req.extensions_mut()
-                .insert(ctx::transport::Server::new(
-                    &ctx,
-                    &local,
-                    &remote,
-                    &Some(orig_dst),
-                    Protocol::Http,
-                ));
-
-            let rec = if Inbound::<()>::same_addr(&orig_dst, &local) {
-                None
-            } else {
-                Some(orig_dst)
-            };
+                .insert(srv_ctx);
 
             inbound.recognize(&req) == rec
         }
@@ -219,7 +152,7 @@ mod tests {
                     Protocol::Http,
                 ));
 
-            inbound.recognize(&req) == default
+            inbound.recognize(&req) == default.map(|addr| (addr, bind::Protocol::Http1))
         }
 
         fn recognize_default_no_ctx(default: Option<net::SocketAddr>) -> bool {
@@ -229,7 +162,7 @@ mod tests {
 
             let req = http::Request::new(());
 
-            inbound.recognize(&req) == default
+            inbound.recognize(&req) == default.map(|addr| (addr, bind::Protocol::Http1))
         }
 
         fn recognize_default_no_loop(
@@ -251,7 +184,7 @@ mod tests {
                     Protocol::Http,
                 ));
 
-            inbound.recognize(&req) == default
+            inbound.recognize(&req) == default.map(|addr| (addr, bind::Protocol::Http1))
         }
     }
 }
