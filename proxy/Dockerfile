@@ -2,13 +2,12 @@
 #
 # Builds a slim runtime image with the conduit-proxy binary.
 #
-# When this file is changed, `proxy/Dockerfile` must be updated with a new tag, as output
-# by `( bin/_tag.sh ; proxy_deps_sha )`.
+# When this file is changed, you must run `bin/update-proxy-deps-shas`.
 
 ## Build the rust proxy into a binary.
 #
 # If the RELEASE arg is set and non-empty, a release artifact is built.
-FROM gcr.io/runconduit/proxy-deps:daa576f2 as build
+FROM gcr.io/runconduit/proxy-deps:98588d89 as build
 WORKDIR /usr/src/conduit
 # Ranked roughly from least to most likely to change. Cargo.lock is the least likely
 # because it is supposed to be cached in the deps base image.

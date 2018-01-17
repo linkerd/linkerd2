@@ -1,7 +1,7 @@
 # Go dependencies
 #
 # Fetches all required Go dependencies. All Conduit sources are omitted from the resulting
-# image so that artifacts may be built frmo source over this image.
+# image so that artifacts may be built from source over this image.
 #
 # When this file is changed, run `bin/update-go-deps-shas`.
 
