@@ -73,7 +73,7 @@ export default class Deployments extends React.Component {
     let rollupPath = `${this.props.pathPrefix}/api/metrics?window=${this.state.metricsWindow}`;
 
     let rollupRequest = this.api.fetch(rollupPath);
-    let podsRequest = this.api.fetchPods(this.props.pathPrefix);
+    let podsRequest = this.api.fetchPods();
 
     // expose serverPromise for testing
     this.serverPromise = Promise.all([rollupRequest, podsRequest])
