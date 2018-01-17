@@ -28,13 +28,22 @@ func (e httpError) Error() string {
 }
 
 func httpRequestToProto(req *http.Request, protoRequestOut proto.Message) error {
-	err := serverUnmarshal(req, protoRequestOut)
+	bytes, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		return httpError{
 			Code:         http.StatusBadRequest,
 			WrappedError: err,
 		}
 	}
+
+	err = proto.Unmarshal(bytes, protoRequestOut)
+	if err != nil {
+		return httpError{
+			Code:         http.StatusBadRequest,
+			WrappedError: err,
+		}
+	}
+
 	return nil
 }
 
@@ -65,21 +74,27 @@ func writeProtoToHttpResponse(w http.ResponseWriter, msg proto.Message) error {
 		return err
 	}
 
-	fullPayload := appendHeaderTo(marshalledProtobufMessage)
+	fullPayload := serializeAsPayload(marshalledProtobufMessage)
 	_, err = w.Write(fullPayload)
 	return err
 }
 
-func appendHeaderTo(marshalledProtobuf []byte) []byte {
-	byteMagicNumber := make([]byte, 4)
+const numBytesForMessageLength = 4
+
+func serializeAsPayload(marshalledProtobuf []byte) []byte {
+	byteMagicNumber := make([]byte, numBytesForMessageLength)
 	sizeOfTheProtobufPayload := len(marshalledProtobuf)
 	binary.LittleEndian.PutUint32(byteMagicNumber, uint32(sizeOfTheProtobufPayload))
 	return append(byteMagicNumber, marshalledProtobuf...)
 }
 
-func removeHeaderFrom(protobufPayload []byte) ([]byte, error) {
-	byteMagicNumber := make([]byte, 4)
+func deserializeFromPayload(protobufPayload []byte) []byte {
+	messageLengthinBytes := make([]byte, numBytesForMessageLength)
 	reader := bytes.NewReader(protobufPayload)
-	reader.Read(byteMagicNumber)
-	return ioutil.ReadAll(reader)
+	reader.Read(messageLengthinBytes)
+	messageLength := binary.LittleEndian.Uint32(messageLengthinBytes)
+
+	fromIndex := numBytesForMessageLength
+	untilIndex := messageLength + numBytesForMessageLength
+	return protobufPayload[fromIndex:untilIndex]
 }

@@ -1,13 +1,10 @@
 package public
 
 import (
-	"encoding/binary"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 
 	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/proto"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	common "github.com/runconduit/conduit/controller/gen/common"
@@ -65,7 +62,7 @@ func NewServer(addr string, telemetryClient telemPb.TelemetryClient, tapClient t
 func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// Validate request method
 	if req.Method != http.MethodPost {
-		serverMarshalError(w, req, fmt.Errorf("POST required"), http.StatusMethodNotAllowed)
+		writeErrorToHttpResponse(w, fmt.Errorf("POST required"))
 		return
 	}
 
@@ -87,99 +84,99 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 func (h *handler) handleStat(w http.ResponseWriter, req *http.Request) {
-	var metricRequest pb.MetricRequest
-	err := serverUnmarshal(req, &metricRequest)
+	var protoRequest pb.MetricRequest
+	err := httpRequestToProto(req, &protoRequest)
 	if err != nil {
-		serverMarshalError(w, req, err, http.StatusBadRequest)
+		writeErrorToHttpResponse(w, err)
 		return
 	}
 
-	rsp, err := h.grpcServer.Stat(req.Context(), &metricRequest)
+	rsp, err := h.grpcServer.Stat(req.Context(), &protoRequest)
 	if err != nil {
-		serverMarshalError(w, req, err, http.StatusInternalServerError)
+		writeErrorToHttpResponse(w, err)
 		return
 	}
 
-	err = serverMarshal(w, req, rsp)
+	err = writeProtoToHttpResponse(w, rsp)
 	if err != nil {
-		serverMarshalError(w, req, err, http.StatusInternalServerError)
+		writeErrorToHttpResponse(w, err)
 		return
 	}
 }
 
 func (h *handler) handleVersion(w http.ResponseWriter, req *http.Request) {
-	var emptyRequest pb.Empty
-	err := serverUnmarshal(req, &emptyRequest)
+	var protoRequest pb.Empty
+	err := httpRequestToProto(req, &protoRequest)
 	if err != nil {
-		serverMarshalError(w, req, err, http.StatusBadRequest)
+		writeErrorToHttpResponse(w, err)
 		return
 	}
 
-	rsp, err := h.grpcServer.Version(req.Context(), &emptyRequest)
+	rsp, err := h.grpcServer.Version(req.Context(), &protoRequest)
 	if err != nil {
-		serverMarshalError(w, req, err, http.StatusInternalServerError)
+		writeErrorToHttpResponse(w, err)
 		return
 	}
 
-	err = serverMarshal(w, req, rsp)
+	err = writeProtoToHttpResponse(w, rsp)
 	if err != nil {
-		serverMarshalError(w, req, err, http.StatusInternalServerError)
+		writeErrorToHttpResponse(w, err)
 		return
 	}
 }
 
 func (h *handler) handleSelfCheck(w http.ResponseWriter, req *http.Request) {
-	var selfCheckRequest healthcheckPb.SelfCheckRequest
-	err := serverUnmarshal(req, &selfCheckRequest)
+	var protoRequest healthcheckPb.SelfCheckRequest
+	err := httpRequestToProto(req, &protoRequest)
 	if err != nil {
-		serverMarshalError(w, req, err, http.StatusBadRequest)
+		writeErrorToHttpResponse(w, err)
 		return
 	}
 
-	rsp, err := h.grpcServer.SelfCheck(req.Context(), &selfCheckRequest)
+	rsp, err := h.grpcServer.SelfCheck(req.Context(), &protoRequest)
 	if err != nil {
-		serverMarshalError(w, req, err, http.StatusInternalServerError)
+		writeErrorToHttpResponse(w, err)
 		return
 	}
 
-	err = serverMarshal(w, req, rsp)
+	err = writeProtoToHttpResponse(w, rsp)
 	if err != nil {
-		serverMarshalError(w, req, err, http.StatusInternalServerError)
+		writeErrorToHttpResponse(w, err)
 		return
 	}
 }
 
 func (h *handler) handleListPods(w http.ResponseWriter, req *http.Request) {
-	var emptyRequest pb.Empty
-	err := serverUnmarshal(req, &emptyRequest)
+	var protoRequest pb.Empty
+	err := httpRequestToProto(req, &protoRequest)
 	if err != nil {
-		serverMarshalError(w, req, err, http.StatusBadRequest)
+		writeErrorToHttpResponse(w, err)
 		return
 	}
 
-	rsp, err := h.grpcServer.ListPods(req.Context(), &emptyRequest)
+	rsp, err := h.grpcServer.ListPods(req.Context(), &protoRequest)
 	if err != nil {
-		serverMarshalError(w, req, err, http.StatusInternalServerError)
+		writeErrorToHttpResponse(w, err)
 		return
 	}
 
-	err = serverMarshal(w, req, rsp)
+	err = writeProtoToHttpResponse(w, rsp)
 	if err != nil {
-		serverMarshalError(w, req, err, http.StatusInternalServerError)
+		writeErrorToHttpResponse(w, err)
 		return
 	}
 }
 
 func (h *handler) handleTap(w http.ResponseWriter, req *http.Request) {
-	var tapRequest pb.TapRequest
-	err := serverUnmarshal(req, &tapRequest)
+	var protoRequest pb.TapRequest
+	err := httpRequestToProto(req, &protoRequest)
 	if err != nil {
-		serverMarshalError(w, req, err, http.StatusBadRequest)
+		writeErrorToHttpResponse(w, err)
 		return
 	}
 
 	if _, ok := w.(http.Flusher); !ok {
-		serverMarshalError(w, req, fmt.Errorf("streaming not supported"), http.StatusBadRequest)
+		writeErrorToHttpResponse(w, fmt.Errorf("streaming not supported"))
 		return
 	}
 
@@ -187,42 +184,20 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Transfer-Encoding", "chunked")
 
 	server := tapServer{w: w, req: req}
-	err = h.grpcServer.Tap(&tapRequest, server)
+	err = h.grpcServer.Tap(&protoRequest, server)
 	if err != nil {
-		serverMarshalError(w, req, err, http.StatusInternalServerError)
+		writeErrorToHttpResponse(w, err)
 		return
 	}
 }
 
-func serverUnmarshal(req *http.Request, msg proto.Message) error {
-	bytes, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		return err
-	}
-	return proto.Unmarshal(bytes, msg)
-}
-
-func serverMarshal(w http.ResponseWriter, req *http.Request, msg proto.Message) error {
-	bytes, err := proto.Marshal(msg)
-	if err != nil {
-		return err
-	}
-	byteSize := make([]byte, 4)
-	binary.LittleEndian.PutUint32(byteSize, uint32(len(bytes)))
-	_, err = w.Write(append(byteSize, bytes...))
-	return err
-}
-
-func serverMarshalError(w http.ResponseWriter, req *http.Request, err error, code int) error {
-	w.Header().Set(ErrorHeader, http.StatusText(code))
-	return serverMarshal(w, req, &pb.ApiError{Error: err.Error()})
-}
-
 func (s tapServer) Send(msg *common.TapEvent) error {
-	err := serverMarshal(s.w, s.req, msg)
+	err := writeProtoToHttpResponse(s.w, msg)
 	if err != nil {
+		writeErrorToHttpResponse(s.w, err)
 		return err
 	}
+
 	s.w.(http.Flusher).Flush()
 	return nil
 }

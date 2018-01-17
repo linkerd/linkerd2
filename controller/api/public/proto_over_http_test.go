@@ -111,14 +111,11 @@ func TestWriteErrorToHttpResponse(t *testing.T) {
 			t.Fatalf("Expecting response to have status code [%d], got [%s]", expectedErrorStatusCode, actualErrorStatusCode)
 		}
 
-		payload, err := removeHeaderFrom(responseWriter.body.Bytes())
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
+		payload := deserializeFromPayload(responseWriter.body.Bytes())
 
 		expectedErrorPayload := pb.ApiError{Error: genericError.Error()}
 		var actualErrorPayload pb.ApiError
-		err = proto.Unmarshal(payload, &actualErrorPayload)
+		err := proto.Unmarshal(payload, &actualErrorPayload)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -145,14 +142,11 @@ func TestWriteErrorToHttpResponse(t *testing.T) {
 			t.Fatalf("Expecting response to have status code [%d], got [%s]", expectedErrorStatusCode, actualErrorStatusCode)
 		}
 
-		payload, err := removeHeaderFrom(responseWriter.body.Bytes())
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
+		payload := deserializeFromPayload(responseWriter.body.Bytes())
 
 		expectedErrorPayload := pb.ApiError{Error: httpError.WrappedError.Error()}
 		var actualErrorPayload pb.ApiError
-		err = proto.Unmarshal(payload, &actualErrorPayload)
+		err := proto.Unmarshal(payload, &actualErrorPayload)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -179,10 +173,7 @@ func TestWriteProtoToHttpResponse(t *testing.T) {
 
 		assertResponseHasProtobufContentType(t, responseWriter)
 
-		payload, err := removeHeaderFrom(responseWriter.body.Bytes())
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
+		payload := deserializeFromPayload(responseWriter.body.Bytes())
 
 		var actualMessage pb.VersionInfo
 		err = proto.Unmarshal(payload, &actualMessage)
@@ -192,6 +183,22 @@ func TestWriteProtoToHttpResponse(t *testing.T) {
 
 		if expectedMessage != actualMessage {
 			t.Fatalf("Expected response body to contain message [%v], but got [%v]", expectedMessage, actualMessage)
+		}
+	})
+}
+
+func TestPayloadSize(t *testing.T) {
+	t.Run("Can read message correctly based on payload size correct payload size to message", func(t *testing.T) {
+		expectedMessage := "this is the message"
+
+		messageWithSize := serializeAsPayload([]byte(expectedMessage))
+
+		messageWithSomeNoise := append(messageWithSize, []byte("this is noise and should not be read")...)
+
+		actualMessage := deserializeFromPayload(messageWithSomeNoise)
+
+		if string(actualMessage) != expectedMessage {
+			t.Fatalf("Expecting payload to contain message [%s], but it had [%s]", expectedMessage, actualMessage)
 		}
 	})
 }
