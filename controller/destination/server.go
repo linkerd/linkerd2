@@ -233,6 +233,9 @@ func toAddrSet(endpoints []common.TcpAddress) *pb.AddrSet {
 }
 
 func splitDNSName(dnsName string) ([]string, error) {
+	// TODO: Validate that `dnsName` is a valid DNS name:
+	// https://github.com/runconduit/conduit/issues/170.
+
 	// If the name is fully qualified, strip off the final dot.
 	if strings.HasSuffix(dnsName, ".") {
 		dnsName = dnsName[:len(dnsName)-1]
@@ -242,7 +245,8 @@ func splitDNSName(dnsName string) ([]string, error) {
 
 	// Rejects any empty labels, which is especially important to do for
 	// the beginning and the end because we do matching based on labels'
-	// relative positions.
+	// relative positions. For example, we need to reject ".example.com"
+	// instead of splitting it into ["", "example", "com"].
 	for _, l := range labels {
 		if l == "" {
 			return []string{}, errors.New("Empty label in DNS name: " + dnsName)
