@@ -138,6 +138,10 @@ func (s *server) resolveKubernetesService(id string, port int, stream pb.Destina
 	return nil
 }
 
+// localKubernetesServiceIdFromDNSName returns the name of the service in
+// "namespace-name/service-name" form if `host` is a DNS name in a form used
+// for local Kubernetes services. It returns nil if `host` isn't in such a
+// form.
 func (s *server) localKubernetesServiceIdFromDNSName(host string) (*string, error) {
 	hostLabels, err := splitDNSName(host)
 	if err != nil {
