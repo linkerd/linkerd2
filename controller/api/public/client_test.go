@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/binary"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -80,14 +79,14 @@ func TestFromByteStreamToProtocolBuffers(t *testing.T) {
 		}
 	})
 
-	t.Run("Correctly marshalls a large byte arrey", func(t *testing.T) {
+	t.Run("Correctly marshalls a large byte array", func(t *testing.T) {
 		series := pb.MetricSeries{
 			Name:       pb.MetricName_REQUEST_RATE,
 			Metadata:   &pb.MetricMetadata{},
 			Datapoints: make([]*pb.MetricDatapoint, 0),
 		}
 
-		numberOfDatapointsInMessage := 1000
+		numberOfDatapointsInMessage := 50
 		for i := 0; i < numberOfDatapointsInMessage; i++ {
 			datapoint := pb.MetricDatapoint{
 				Value:       &pb.MetricValue{Value: &pb.MetricValue_Gauge{Gauge: float64(i)}},
@@ -95,10 +94,10 @@ func TestFromByteStreamToProtocolBuffers(t *testing.T) {
 			}
 			series.Datapoints = append(series.Datapoints, &datapoint)
 		}
-
-		var protobufMessageToBeFilledWithData pb.MetricSeries
 		reader := bufferedReader(t, &series)
-		err := fromByteStreamToProtocolBuffers(reader, "", &protobufMessageToBeFilledWithData)
+
+		protobufMessageToBeFilledWithData := &pb.MetricSeries{}
+		err := fromByteStreamToProtocolBuffers(reader, "", protobufMessageToBeFilledWithData)
 		if err != nil {
 			t.Fatal(err.Error())
 		}
@@ -166,16 +165,16 @@ func TestFromByteStreamToProtocolBuffers(t *testing.T) {
 	})
 
 	t.Run("Correctly marshalls an valid object", func(t *testing.T) {
-		versionInfo := pb.VersionInfo{
+		versionInfo := &pb.VersionInfo{
 			GoVersion:      "1.9.1",
 			BuildDate:      "2017.11.17",
 			ReleaseVersion: "1.2.3",
 		}
 
-		var protobufMessageToBeFilledWithData pb.MetricSeries
-		reader := bufferedReader(t, &versionInfo)
+		reader := bufferedReader(t, versionInfo)
 
-		err := fromByteStreamToProtocolBuffers(reader, "", &protobufMessageToBeFilledWithData)
+		protobufMessageToBeFilledWithData := &pb.MetricSeries{}
+		err := fromByteStreamToProtocolBuffers(reader, "", protobufMessageToBeFilledWithData)
 		if err == nil {
 			t.Fatal("Expecting error, got nothing")
 		}
@@ -185,9 +184,13 @@ func TestFromByteStreamToProtocolBuffers(t *testing.T) {
 func bufferedReader(t *testing.T, msg proto.Message) *bufio.Reader {
 	msgBytes, err := proto.Marshal(msg)
 	if err != nil {
-		t.Fatal(err.Error())
+		t.Fatalf("Unexpected error: %v", err)
 	}
-	sizeBytes := make([]byte, 4)
-	binary.LittleEndian.PutUint32(sizeBytes, uint32(len(msgBytes)))
-	return bufio.NewReader(bytes.NewReader(append(sizeBytes, msgBytes...)))
+
+	payload, err := serializeAsPayload(msgBytes)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	return bufio.NewReader(bytes.NewReader(payload))
 }

@@ -1,7 +1,7 @@
 package public
 
 import (
-	"bytes"
+	"bufio"
 	"encoding/binary"
 	"fmt"
 	"io/ioutil"
@@ -16,6 +16,7 @@ const (
 	defaultHttpErrorStatusCode = http.StatusInternalServerError
 	contentTypeHeader          = "Content-Type"
 	protobufContentType        = "application/octet-stream"
+	numBytesForMessageLength   = 4
 )
 
 type httpError struct {
@@ -74,27 +75,30 @@ func writeProtoToHttpResponse(w http.ResponseWriter, msg proto.Message) error {
 		return err
 	}
 
-	fullPayload := serializeAsPayload(marshalledProtobufMessage)
+	fullPayload, err := serializeAsPayload(marshalledProtobufMessage)
+	if err != nil {
+		return err
+	}
 	_, err = w.Write(fullPayload)
 	return err
 }
 
-const numBytesForMessageLength = 4
+func serializeAsPayload(marshalledProtobuf []byte) ([]byte, error) {
+	lengthOfThePayload := uint32(len(marshalledProtobuf))
 
-func serializeAsPayload(marshalledProtobuf []byte) []byte {
-	byteMagicNumber := make([]byte, numBytesForMessageLength)
-	sizeOfTheProtobufPayload := len(marshalledProtobuf)
-	binary.LittleEndian.PutUint32(byteMagicNumber, uint32(sizeOfTheProtobufPayload))
-	return append(byteMagicNumber, marshalledProtobuf...)
+	messageLengthInBytes := make([]byte, numBytesForMessageLength)
+	binary.LittleEndian.PutUint32(messageLengthInBytes, lengthOfThePayload)
+
+	return append(messageLengthInBytes, marshalledProtobuf...), nil
 }
 
-func deserializeFromPayload(protobufPayload []byte) []byte {
-	messageLengthinBytes := make([]byte, numBytesForMessageLength)
-	reader := bytes.NewReader(protobufPayload)
-	reader.Read(messageLengthinBytes)
-	messageLength := binary.LittleEndian.Uint32(messageLengthinBytes)
+func deserializePayloadFromReader(reader *bufio.Reader) ([]byte, error) {
+	messageLengthInBytes := make([]byte, numBytesForMessageLength)
+	reader.Read(messageLengthInBytes)
+	messageLength := binary.LittleEndian.Uint32(messageLengthInBytes)
 
-	fromIndex := numBytesForMessageLength
-	untilIndex := messageLength + numBytesForMessageLength
-	return protobufPayload[fromIndex:untilIndex]
+	messageContentsInBytes := make([]byte, messageLength)
+	_, err := reader.Read(messageContentsInBytes)
+
+	return messageContentsInBytes, err
 }

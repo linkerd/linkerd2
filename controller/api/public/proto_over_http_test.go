@@ -1,14 +1,17 @@
 package public
 
 import (
+	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
 	"strings"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
+
 	pb "github.com/runconduit/conduit/controller/gen/public"
 )
 
@@ -111,11 +114,14 @@ func TestWriteErrorToHttpResponse(t *testing.T) {
 			t.Fatalf("Expecting response to have status code [%d], got [%s]", expectedErrorStatusCode, actualErrorStatusCode)
 		}
 
-		payload := deserializeFromPayload(responseWriter.body.Bytes())
+		payloadRead, err := deserializePayloadFromReader(bufio.NewReader(bytes.NewReader(responseWriter.body.Bytes())))
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
 
 		expectedErrorPayload := pb.ApiError{Error: genericError.Error()}
 		var actualErrorPayload pb.ApiError
-		err := proto.Unmarshal(payload, &actualErrorPayload)
+		err = proto.Unmarshal(payloadRead, &actualErrorPayload)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -142,11 +148,14 @@ func TestWriteErrorToHttpResponse(t *testing.T) {
 			t.Fatalf("Expecting response to have status code [%d], got [%s]", expectedErrorStatusCode, actualErrorStatusCode)
 		}
 
-		payload := deserializeFromPayload(responseWriter.body.Bytes())
+		payloadRead, err := deserializePayloadFromReader(bufio.NewReader(bytes.NewReader(responseWriter.body.Bytes())))
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
 
 		expectedErrorPayload := pb.ApiError{Error: httpError.WrappedError.Error()}
 		var actualErrorPayload pb.ApiError
-		err := proto.Unmarshal(payload, &actualErrorPayload)
+		err = proto.Unmarshal(payloadRead, &actualErrorPayload)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -173,10 +182,13 @@ func TestWriteProtoToHttpResponse(t *testing.T) {
 
 		assertResponseHasProtobufContentType(t, responseWriter)
 
-		payload := deserializeFromPayload(responseWriter.body.Bytes())
+		payloadRead, err := deserializePayloadFromReader(bufio.NewReader(bytes.NewReader(responseWriter.body.Bytes())))
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
 
 		var actualMessage pb.VersionInfo
-		err = proto.Unmarshal(payload, &actualMessage)
+		err = proto.Unmarshal(payloadRead, &actualMessage)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -188,16 +200,73 @@ func TestWriteProtoToHttpResponse(t *testing.T) {
 }
 
 func TestPayloadSize(t *testing.T) {
-	t.Run("Can read message correctly based on payload size correct payload size to message", func(t *testing.T) {
+	t.Run("Can write and read message correctly based on payload size correct payload size to message", func(t *testing.T) {
 		expectedMessage := "this is the message"
 
-		messageWithSize := serializeAsPayload([]byte(expectedMessage))
+		messageWithSize, err := serializeAsPayload([]byte(expectedMessage))
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
 
 		messageWithSomeNoise := append(messageWithSize, []byte("this is noise and should not be read")...)
 
-		actualMessage := deserializeFromPayload(messageWithSomeNoise)
+		actualMessage, err := deserializePayloadFromReader(bufio.NewReader(bytes.NewReader(messageWithSomeNoise)))
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
 
 		if string(actualMessage) != expectedMessage {
+			t.Fatalf("Expecting payload to contain message [%s], but it had [%s]", expectedMessage, actualMessage)
+		}
+	})
+
+	t.Run("Can write and read  marshalled protobuf messages", func(t *testing.T) {
+		seriesToReturn := make([]*pb.MetricSeries, 0)
+		for i := 0; i < 351; i++ {
+			seriesToReturn = append(seriesToReturn, &pb.MetricSeries{Name: pb.MetricName_LATENCY})
+		}
+
+		expectedMessage := &pb.MetricResponse{
+			Metrics: seriesToReturn,
+		}
+
+		expectedReadArray, err := proto.Marshal(expectedMessage)
+
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		serialized, err := serializeAsPayload(expectedReadArray)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		reader := bufio.NewReader(bytes.NewReader(serialized))
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		actualReadArray, err := deserializePayloadFromReader(reader)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		if !reflect.DeepEqual(actualReadArray, expectedReadArray) {
+			n := len(actualReadArray)
+			xor := make([]byte, n)
+			for i := 0; i < n; i++ {
+				xor[i] = actualReadArray[i] ^ expectedReadArray[i]
+			}
+			t.Fatalf("Expecting read byte array to be equal to written byte array, but they were different. xor: [%v]", xor)
+		}
+
+		actualMessage := &pb.MetricResponse{}
+		err = proto.Unmarshal(actualReadArray, actualMessage)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		if !reflect.DeepEqual(actualMessage, expectedMessage) {
 			t.Fatalf("Expecting payload to contain message [%s], but it had [%s]", expectedMessage, actualMessage)
 		}
 	})
