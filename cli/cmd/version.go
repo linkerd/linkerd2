@@ -6,8 +6,6 @@ import (
 
 	"github.com/runconduit/conduit/controller"
 	pb "github.com/runconduit/conduit/controller/gen/public"
-	"github.com/runconduit/conduit/pkg/k8s"
-	"github.com/runconduit/conduit/pkg/shell"
 	"github.com/spf13/cobra"
 )
 
@@ -19,13 +17,7 @@ var versionCmd = &cobra.Command{
 	Long:  "Print the client and server version information.",
 	Args:  cobra.NoArgs,
 	Run: exitSilentlyOnError(func(cmd *cobra.Command, args []string) error {
-
-		kubeApi, err := k8s.NewK8sAPi(shell.NewUnixShell(), kubeconfigPath, apiAddr)
-		if err != nil {
-			return err
-		}
-
-		client, err := newApiClient(kubeApi)
+		client, err := newPublicAPIClient()
 		if err != nil {
 			return err
 		}

@@ -154,10 +154,6 @@ func NewExternalClient(controlPlaneNamespace string, kubeApi k8s.KubernetesApi) 
 		return nil, err
 	}
 
-	if err != nil {
-		return nil, err
-	}
-
 	httpClientToUse, err := kubeApi.NewClient()
 	if err != nil {
 		return nil, err

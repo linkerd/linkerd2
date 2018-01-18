@@ -8,6 +8,7 @@ import (
 
 	"github.com/runconduit/conduit/controller/api/public"
 	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
+	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/healthcheck"
 	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/runconduit/conduit/pkg/shell"
@@ -31,13 +32,18 @@ problems were found.`,
 			return statusCheckResultWasError(os.Stdout)
 		}
 
-		kubeApi, err := k8s.NewK8sAPi(shell.NewUnixShell(), kubeconfigPath, apiAddr)
+		kubeApi, err := k8s.NewK8sAPI(shell.NewUnixShell(), kubeconfigPath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error with Kubernetes API: %s\n", err.Error())
 			return statusCheckResultWasError(os.Stdout)
 		}
 
-		conduitApi, err := newApiClient(kubeApi)
+		var conduitApi pb.ApiClient
+		if apiAddr != "" {
+			conduitApi, err = public.NewInternalClient(apiAddr)
+		} else {
+			conduitApi, err = public.NewExternalClient(controlPlaneNamespace, kubeApi)
+		}
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error with Conduit API: %s\n", err.Error())
 			return statusCheckResultWasError(os.Stdout)
