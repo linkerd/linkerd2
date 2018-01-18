@@ -1,6 +1,6 @@
 [package]
 name = "tower-h2"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Oliver Gould <ver@buoyant.io>"]
 description = "Exploring tower + h2"
 publish = false
