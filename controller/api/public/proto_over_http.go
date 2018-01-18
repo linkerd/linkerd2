@@ -24,6 +24,11 @@ type httpError struct {
 	WrappedError error
 }
 
+type flushableResponseWriter interface {
+	http.ResponseWriter
+	http.Flusher
+}
+
 func (e httpError) Error() string {
 	return fmt.Sprintf("HTTP error, status Code [%d], wrapped error is: %v", e.Code, e.WrappedError)
 }
@@ -81,6 +86,17 @@ func writeProtoToHttpResponse(w http.ResponseWriter, msg proto.Message) error {
 	}
 	_, err = w.Write(fullPayload)
 	return err
+}
+
+func newStreamingWriter(w http.ResponseWriter) (flushableResponseWriter, error) {
+	flushableWriter, ok := w.(flushableResponseWriter)
+	if !ok {
+		return nil, fmt.Errorf("streaming not supported by this writer")
+	}
+
+	flushableWriter.Header().Set("Connection", "keep-alive")
+	flushableWriter.Header().Set("Transfer-Encoding", "chunked")
+	return flushableWriter, nil
 }
 
 func serializeAsPayload(marshalledProtobuf []byte) ([]byte, error) {

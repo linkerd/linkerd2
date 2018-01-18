@@ -32,6 +32,17 @@ func (w *stubResponseWriter) Write(p []byte) (int, error) {
 
 func (w *stubResponseWriter) WriteHeader(int) {}
 
+func (w *stubResponseWriter) Flush() {}
+
+type nonStreamingResponseWriter struct {
+}
+
+func (w *nonStreamingResponseWriter) Header() http.Header { return nil }
+
+func (w *nonStreamingResponseWriter) Write(p []byte) (int, error) { return -1, nil }
+
+func (w *nonStreamingResponseWriter) WriteHeader(int) {}
+
 func newStubResponseWriter() *stubResponseWriter {
 	return &stubResponseWriter{
 		headers: make(http.Header),
@@ -268,6 +279,41 @@ func TestPayloadSize(t *testing.T) {
 
 		if !reflect.DeepEqual(actualMessage, expectedMessage) {
 			t.Fatalf("Expecting payload to contain message [%s], but it had [%s]", expectedMessage, actualMessage)
+		}
+	})
+}
+
+func TestNewStreamingWriter(t *testing.T) {
+	t.Run("Returns a streaming writer if the ResponseWriter is compatible with streaming", func(t *testing.T) {
+		rawWriter := newStubResponseWriter()
+		flushableWriter, err := newStreamingWriter(rawWriter)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		if flushableWriter != rawWriter {
+			t.Fatalf("Expected to return same instance of writer")
+		}
+
+		header := "Connection"
+		expectedValue := "keep-alive"
+		actualValue := rawWriter.Header().Get(header)
+		if actualValue != expectedValue {
+			t.Fatalf("Expected header [%s] to be set to [%s], but was [%s]", header, expectedValue, actualValue)
+		}
+
+		header = "Transfer-Encoding"
+		expectedValue = "chunked"
+		actualValue = rawWriter.Header().Get(header)
+		if actualValue != expectedValue {
+			t.Fatalf("Expected header [%s] to be set to [%s], but was [%s]", header, expectedValue, actualValue)
+		}
+	})
+
+	t.Run("Returns an error if writer doesnt support streaming", func(t *testing.T) {
+		_, err := newStreamingWriter(&nonStreamingResponseWriter{})
+		if err == nil {
+			t.Fatalf("Expecting error, got nothing")
 		}
 	})
 }

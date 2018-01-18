@@ -16,17 +16,6 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-type (
-	handler struct {
-		grpcServer pb.ApiServer
-	}
-
-	tapServer struct {
-		w   http.ResponseWriter
-		req *http.Request
-	}
-)
-
 var (
 	jsonMarshaler   = jsonpb.Marshaler{EmitDefaults: true}
 	jsonUnmarshaler = jsonpb.Unmarshaler{}
@@ -36,6 +25,10 @@ var (
 	tapPath         = fullUrlPathFor("Tap")
 	selfCheckPath   = fullUrlPathFor("SelfCheck")
 )
+
+type handler struct {
+	grpcServer pb.ApiServer
+}
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// Validate request method
@@ -146,27 +139,30 @@ func (h *handler) handleListPods(w http.ResponseWriter, req *http.Request) {
 }
 
 func (h *handler) handleTap(w http.ResponseWriter, req *http.Request) {
-	var protoRequest pb.TapRequest
-	err := httpRequestToProto(req, &protoRequest)
+	flushableWriter, err := newStreamingWriter(w)
 	if err != nil {
 		writeErrorToHttpResponse(w, err)
 		return
 	}
 
-	if _, ok := w.(http.Flusher); !ok {
-		writeErrorToHttpResponse(w, fmt.Errorf("streaming not supported"))
+	var protoRequest pb.TapRequest
+	err = httpRequestToProto(req, &protoRequest)
+	if err != nil {
+		writeErrorToHttpResponse(w, err)
 		return
 	}
 
-	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("Transfer-Encoding", "chunked")
-
-	server := tapServer{w: w, req: req}
+	server := tapServer{w: flushableWriter, req: req}
 	err = h.grpcServer.Tap(&protoRequest, server)
 	if err != nil {
 		writeErrorToHttpResponse(w, err)
 		return
 	}
+}
+
+type tapServer struct {
+	w   flushableResponseWriter
+	req *http.Request
 }
 
 func (s tapServer) Send(msg *common.TapEvent) error {
@@ -176,7 +172,7 @@ func (s tapServer) Send(msg *common.TapEvent) error {
 		return err
 	}
 
-	s.w.(http.Flusher).Flush()
+	s.w.Flush()
 	return nil
 }
 
