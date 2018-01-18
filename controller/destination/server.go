@@ -248,10 +248,10 @@ func splitDNSName(dnsName string) ([]string, error) {
 }
 
 func maybeStripSuffixLabels(input []string, suffix []string) ([]string, bool) {
-	if len(input) <= 1+len(suffix) {
+	n := len(input) - len(suffix)
+	if n < 0 {
 		return input, false
 	}
-	n := len(input) - len(suffix)
 	if !reflect.DeepEqual(input[n:], suffix) {
 		return input, false
 	}
