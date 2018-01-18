@@ -37,28 +37,6 @@ var (
 	selfCheckPath   = fullUrlPathFor("SelfCheck")
 )
 
-func NewServer(addr string, telemetryClient telemPb.TelemetryClient, tapClient tapPb.TapClient) *http.Server {
-	var baseHandler http.Handler
-	counter := prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "http_requests_total",
-			Help: "A counter for requests to the wrapped handler.",
-		},
-		[]string{"code", "method"},
-	)
-	prometheus.MustRegister(counter)
-
-	baseHandler = &handler{
-		grpcServer: newGrpcServer(telemetryClient, tapClient),
-	}
-	instrumentedHandler := promhttp.InstrumentHandlerCounter(counter, baseHandler)
-
-	return &http.Server{
-		Addr:    addr,
-		Handler: instrumentedHandler,
-	}
-}
-
 func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// Validate request method
 	if req.Method != http.MethodPost {
@@ -212,4 +190,30 @@ func (s tapServer) RecvMsg(interface{}) error    { return nil }
 
 func fullUrlPathFor(method string) string {
 	return ApiRoot + ApiPrefix + method
+}
+
+func withTelemetry(baseHandler *handler) http.HandlerFunc {
+	counter := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "http_requests_total",
+			Help: "A counter for requests to the wrapped handler.",
+		},
+		[]string{"code", "method"},
+	)
+	prometheus.MustRegister(counter)
+	instrumentedHandler := promhttp.InstrumentHandlerCounter(counter, baseHandler)
+	return instrumentedHandler
+}
+
+func NewServer(addr string, telemetryClient telemPb.TelemetryClient, tapClient tapPb.TapClient) *http.Server {
+	baseHandler := &handler{
+		grpcServer: newGrpcServer(telemetryClient, tapClient),
+	}
+
+	instrumentedHandler := withTelemetry(baseHandler)
+
+	return &http.Server{
+		Addr:    addr,
+		Handler: instrumentedHandler,
+	}
 }
