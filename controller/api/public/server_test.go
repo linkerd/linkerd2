@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/gogo/protobuf/proto"
+	common "github.com/runconduit/conduit/controller/gen/common"
 	healcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 )
@@ -16,6 +17,7 @@ import (
 type mockGrpcServer struct {
 	LastRequestReceived proto.Message
 	ResponseToReturn    proto.Message
+	TapStreamsToReturn  []*common.TapEvent
 	ErrorToReturn       error
 }
 
@@ -41,6 +43,9 @@ func (m *mockGrpcServer) SelfCheck(ctx context.Context, req *healcheckPb.SelfChe
 
 func (m *mockGrpcServer) Tap(req *pb.TapRequest, tapServer pb.Api_TapServer) error {
 	m.LastRequestReceived = req
+	for _, msg := range m.TapStreamsToReturn {
+		tapServer.Send(msg)
+	}
 	return nil
 }
 
@@ -122,6 +127,43 @@ func TestServer(t *testing.T) {
 
 		for _, testCase := range []grpcCallTestCase{testListPods, testStat, testVersion, testSelfCheck} {
 			assertCallWasForwarded(t, mockGrpcServer, testCase.expectedRequest, testCase.expectedResponse, testCase.functionCall)
+		}
+	})
+
+	t.Run("Delegates all streaming tap RPC messages to the underlying grpc server", func(t *testing.T) {
+		expectedTapResponses := []*common.TapEvent{
+			{
+				Target: &common.TcpAddress{
+					Port: 9999,
+				},
+				Source: &common.TcpAddress{
+					Port: 6666,
+				},
+			}, {
+				Target: &common.TcpAddress{
+					Port: 2102,
+				},
+				Source: &common.TcpAddress{
+					Port: 1983,
+				},
+			},
+		}
+		mockGrpcServer.TapStreamsToReturn = expectedTapResponses
+
+		tapClient, err := client.Tap(context.TODO(), &pb.TapRequest{})
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		for _, expectedTapEvent := range expectedTapResponses {
+			actualTapEvent, err := tapClient.Recv()
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+
+			if !reflect.DeepEqual(actualTapEvent, expectedTapEvent) {
+				t.Fatalf("Expecting tap event to be [%v], but was [%v]", expectedTapEvent, actualTapEvent)
+			}
 		}
 	})
 }
