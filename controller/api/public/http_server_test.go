@@ -77,14 +77,7 @@ func TestServer(t *testing.T) {
 			t.Fatalf("Could not start server: %v", err)
 		}
 	}()
-	defer func() {
-		err := httpServer.Shutdown(context.Background())
-		if err != nil {
-			fmt.Println(err)
-			t.Fatalf("Could not stop server: %v", err)
-		}
-	}()
-this better break the build
+
 	client, err := NewInternalClient("localhost:8889")
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)

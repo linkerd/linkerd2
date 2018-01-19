@@ -126,23 +126,6 @@ func TestFromByteStreamToProtocolBuffers(t *testing.T) {
 		}
 	})
 
-	t.Run("Returns error if byte stream doesnt contain valid object", func(t *testing.T) {
-		versionInfo := &pb.VersionInfo{
-			GoVersion:      "1.9.1",
-			BuildDate:      "2017.11.17",
-			ReleaseVersion: "1.2.3",
-		}
-
-		reader := bufferedReader(t, versionInfo)
-		reader.Discard(10)
-
-		protobufMessageToBeFilledWithData := &pb.VersionInfo{}
-		err := fromByteStreamToProtocolBuffers(reader, protobufMessageToBeFilledWithData)
-		if err == nil {
-			t.Fatal("Expecting error, got nothing")
-		}
-	})
-
 	t.Run("Returns error if byte stream contains wrong object", func(t *testing.T) {
 		versionInfo := &pb.VersionInfo{
 			GoVersion:      "1.9.1",
@@ -151,7 +134,6 @@ func TestFromByteStreamToProtocolBuffers(t *testing.T) {
 		}
 
 		reader := bufferedReader(t, versionInfo)
-		reader.Discard(10)
 
 		protobufMessageToBeFilledWithData := &pb.MetricSeries{}
 		err := fromByteStreamToProtocolBuffers(reader, protobufMessageToBeFilledWithData)

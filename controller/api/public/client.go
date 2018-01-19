@@ -154,11 +154,10 @@ func fromByteStreamToProtocolBuffers(byteStreamContainingMessage *bufio.Reader, 
 
 	err = proto.Unmarshal(messageInBytes, messageInProtobuf)
 	if err != nil {
-		log.Debugf("%v", string(messageInBytes))
 		return fmt.Errorf("error unmarshalling array of [%d] bytes as string [%s] error: %v", len(messageInBytes), string(messageInBytes), err)
-	} else {
-		return nil
 	}
+
+	return nil
 }
 
 func newClient(apiURL *url.URL, httpClientToUse *http.Client) (pb.ApiClient, error) {

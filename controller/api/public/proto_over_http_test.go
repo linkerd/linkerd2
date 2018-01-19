@@ -11,12 +11,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gogo/protobuf/proto"
+	pb "github.com/runconduit/conduit/controller/gen/public"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-
-	"github.com/gogo/protobuf/proto"
-
-	pb "github.com/runconduit/conduit/controller/gen/public"
 )
 
 type stubResponseWriter struct {
