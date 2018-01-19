@@ -135,15 +135,6 @@ export default class Deployments extends React.Component {
 
   renderPageContents() {
     let leastHealthyDeployments = this.getLeastHealthyDeployments(this.state.metrics);
-    let scatterplotData = _.reduce(this.state.metrics, (mem, datum) => {
-      if (!_.isNil(datum.successRate) && !_.isNil(datum.latency)) {
-        mem.push(datum);
-      }
-      return mem;
-    }, []);
-
-    let slowestNode = _.maxBy(scatterplotData, 'latency.P99');
-    let fastestNode = _.minBy(scatterplotData, 'latency.P99');
 
     return (
       <div className="clearfix">
@@ -162,31 +153,9 @@ export default class Deployments extends React.Component {
             })
           }
         </Row>
-        <Row gutter={rowGutter}>
-          { _.isEmpty(scatterplotData) ? null :
-            <div className="deployments-scatterplot">
-              <div className="scatterplot-info">
-                <div className="subsection-header">Success rate vs p99 latency</div>
-              </div>
-              <Row gutter={rowGutter}>
-                <Col span={8}>
-                  <div className="scatterplot-display">
-                    <div className="extremal-latencies">
-                      { !fastestNode ? null : nodeStats("Least latency", fastestNode) }
-                      { !slowestNode ? null : nodeStats("Most latency", slowestNode) }
-                    </div>
-                  </div>
-                </Col>
-                <Col span={16}><div className="scatterplot-chart">
-                  <ScatterPlot
-                    data={scatterplotData}
-                    lastUpdated={this.state.lastUpdated}
-                    containerClassName="scatterplot-chart" />
-                </div></Col>
-              </Row>
-            </div>
-          }
-        </Row>
+        {/* <Row gutter={rowGutter}>
+          { this.renderScatterplot() }
+        </Row> */}
         <div className="deployments-list">
           <TabbedMetricsTable
             resource="deployment"
@@ -198,6 +167,44 @@ export default class Deployments extends React.Component {
         </div>
       </div>
     );
+  }
+
+  renderScatterplot() {
+    let scatterplotData = _.reduce(this.state.metrics, (mem, datum) => {
+      if (!_.isNil(datum.successRate) && !_.isNil(datum.latency)) {
+        mem.push(datum);
+      }
+      return mem;
+    }, []);
+
+    let slowestNode = _.maxBy(scatterplotData, 'latency.P99');
+    let fastestNode = _.minBy(scatterplotData, 'latency.P99');
+
+    if (_.isEmpty(scatterplotData)) {
+      return null;
+    }
+
+    return (<div className="deployments-scatterplot">
+      <div className="scatterplot-info">
+        <div className="subsection-header">Success rate vs p99 latency</div>
+      </div>
+      <Row gutter={rowGutter}>
+        <Col span={8}>
+          <div className="scatterplot-display">
+            <div className="extremal-latencies">
+              { !fastestNode ? null : nodeStats("Least latency", fastestNode) }
+              { !slowestNode ? null : nodeStats("Most latency", slowestNode) }
+            </div>
+          </div>
+        </Col>
+        <Col span={16}><div className="scatterplot-chart">
+          <ScatterPlot
+            data={scatterplotData}
+            lastUpdated={this.state.lastUpdated}
+            containerClassName="scatterplot-chart" />
+        </div></Col>
+      </Row>
+    </div>);
   }
 
   render() {
