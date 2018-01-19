@@ -30,7 +30,7 @@ getting started.
 
 3. Run `conduit install | kubectl apply -f -` to install Conduit
 
-4. Check to make sure you're running the [latest version][releases]of Conduit
+4. Check to make sure you're running the [latest version][releases] of Conduit
 with `conduit version`
 
 5. Open a local version of the Conduit controller with `conduit dashboard`
