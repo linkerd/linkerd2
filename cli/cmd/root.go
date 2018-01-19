@@ -40,8 +40,8 @@ func init() {
 
 func addControlPlaneNetworkingArgs(cmd *cobra.Command) {
 	// Use the same argument name as `kubectl` (see the output of `kubectl options`).
+	//TODO: move these to init() as they are globally applicable
 	cmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", "", "Path to the kubeconfig file to use for CLI requests")
-
 	cmd.PersistentFlags().StringVar(&apiAddr, "api-addr", "", "Override kubeconfig and communicate directly with the control plane at host:port (mostly for testing)")
 }
 

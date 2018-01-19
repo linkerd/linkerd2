@@ -12,6 +12,7 @@ import (
 	tapPb "github.com/runconduit/conduit/controller/gen/controller/tap"
 	telemPb "github.com/runconduit/conduit/controller/gen/controller/telemetry"
 	pb "github.com/runconduit/conduit/controller/gen/public"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/metadata"
 )
@@ -31,6 +32,7 @@ type handler struct {
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	log.Debugf("Got [%s] request to [%s]", req.Method, req.URL.Path)
 	// Validate request method
 	if req.Method != http.MethodPost {
 		writeErrorToHttpResponse(w, fmt.Errorf("POST required"))
@@ -52,6 +54,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	default:
 		http.NotFound(w, req)
 	}
+
 }
 
 func (h *handler) handleStat(w http.ResponseWriter, req *http.Request) {

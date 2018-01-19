@@ -61,7 +61,7 @@ func (p *ReplicaSetStore) GetReplicaSet(key string) (*v1beta1.ReplicaSet, error)
 		return nil, err
 	}
 	if !exists {
-		return nil, fmt.Errorf("No ReplicaSet exists for name %s", key)
+		return nil, fmt.Errorf("no ReplicaSet exists for name %s", key)
 	}
 	rs, ok := item.(*v1beta1.ReplicaSet)
 	if !ok {

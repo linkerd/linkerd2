@@ -62,7 +62,6 @@ func (c *grpcOverHttpClient) ListPods(ctx context.Context, req *pb.Empty, _ ...g
 
 func (c *grpcOverHttpClient) Tap(ctx context.Context, req *pb.TapRequest, _ ...grpc.CallOption) (pb.Api_TapClient, error) {
 	url := c.endpointNameToPublicApiUrl("Tap")
-	log.Debugf("Making streaming gRPC-over-HTTP call to [%s]", url.String())
 	rsp, err := c.post(ctx, url, req)
 	if err != nil {
 		return nil, err
@@ -127,7 +126,14 @@ func (c *grpcOverHttpClient) post(ctx context.Context, url *url.URL, req proto.M
 		return nil, err
 	}
 
-	return c.httpClient.Do(httpReq.WithContext(ctx))
+	rsp, err := c.httpClient.Do(httpReq.WithContext(ctx))
+	if err != nil {
+		log.Debugf("Error invoking [%s]: %v", url.String(), err)
+	} else {
+		log.Debugf("Response from [%s] had hesaders: %v", url.String(), rsp.Header)
+	}
+
+	return rsp, err
 }
 
 func (c *grpcOverHttpClient) endpointNameToPublicApiUrl(endpoint string) *url.URL {
@@ -153,7 +159,8 @@ func fromByteStreamToProtocolBuffers(byteStreamContainingMessage *bufio.Reader, 
 
 	err = proto.Unmarshal(messageInBytes, messageInProtobuf)
 	if err != nil {
-		return fmt.Errorf("error unmarshalling bytes: %v", err)
+		log.Debugf("%v", string(messageInBytes))
+		return fmt.Errorf("error unmarshalling array of [%d] bytes as string [%s] error: %v", len(messageInBytes), string(messageInBytes), err)
 	} else {
 		return nil
 	}
@@ -189,8 +196,12 @@ func newClient(apiURL *url.URL, httpClientToUse *http.Client) (pb.ApiClient, err
 		return nil, fmt.Errorf("server URL must be absolute, was [%s]", apiURL.String())
 	}
 
+	serverUrl := apiURL.ResolveReference(&url.URL{Path: ApiPrefix})
+
+	log.Debugf("Expecting Conduit Public API to be server over [%s]", serverUrl)
+
 	return &grpcOverHttpClient{
-		serverURL:  apiURL.ResolveReference(&url.URL{Path: ApiPrefix}),
+		serverURL:  serverUrl,
 		httpClient: httpClientToUse,
 	}, nil
 }

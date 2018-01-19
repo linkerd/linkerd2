@@ -59,6 +59,7 @@ func TestNewInternalClient(t *testing.T) {
 }
 
 func TestFromByteStreamToProtocolBuffers(t *testing.T) {
+
 	t.Run("Correctly marshalls an valid object", func(t *testing.T) {
 		versionInfo := pb.VersionInfo{
 			GoVersion:      "1.9.1",

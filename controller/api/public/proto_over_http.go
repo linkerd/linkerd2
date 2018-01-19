@@ -99,13 +99,13 @@ func newStreamingWriter(w http.ResponseWriter) (flushableResponseWriter, error) 
 	return flushableWriter, nil
 }
 
-func serializeAsPayload(marshalledProtobuf []byte) ([]byte, error) {
-	lengthOfThePayload := uint32(len(marshalledProtobuf))
+func serializeAsPayload(messageContentsInBytes []byte) ([]byte, error) {
+	lengthOfThePayload := uint32(len(messageContentsInBytes))
 
 	messageLengthInBytes := make([]byte, numBytesForMessageLength)
 	binary.LittleEndian.PutUint32(messageLengthInBytes, lengthOfThePayload)
 
-	return append(messageLengthInBytes, marshalledProtobuf...), nil
+	return append(messageLengthInBytes, messageContentsInBytes...), nil
 }
 
 func deserializePayloadFromReader(reader *bufio.Reader) ([]byte, error) {
@@ -115,6 +115,6 @@ func deserializePayloadFromReader(reader *bufio.Reader) ([]byte, error) {
 
 	messageContentsInBytes := make([]byte, messageLength)
 	_, err := reader.Read(messageContentsInBytes)
-
+	log.Debugf("Message declared its payload size as [%d] bytes", messageLength)
 	return messageContentsInBytes, err
 }

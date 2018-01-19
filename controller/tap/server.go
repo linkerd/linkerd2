@@ -334,7 +334,7 @@ func NewServer(addr string, tapPort uint, kubeconfig string) (*grpc.Server, net.
 	deploymentIndex := func(obj interface{}) ([]string, error) {
 		pod, ok := obj.(*v1.Pod)
 		if !ok {
-			return nil, fmt.Errorf("Object is not a Pod")
+			return nil, fmt.Errorf("object is not a Pod")
 		}
 		deployment, err := replicaSets.GetDeploymentForPod(pod)
 		if err != nil {

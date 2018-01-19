@@ -43,10 +43,13 @@ func (m *mockGrpcServer) SelfCheck(ctx context.Context, req *healcheckPb.SelfChe
 
 func (m *mockGrpcServer) Tap(req *pb.TapRequest, tapServer pb.Api_TapServer) error {
 	m.LastRequestReceived = req
-	for _, msg := range m.TapStreamsToReturn {
-		tapServer.Send(msg)
+	if m.ErrorToReturn == nil {
+		for _, msg := range m.TapStreamsToReturn {
+			tapServer.Send(msg)
+		}
 	}
-	return nil
+
+	return m.ErrorToReturn
 }
 
 type grpcCallTestCase struct {
@@ -149,6 +152,7 @@ func TestServer(t *testing.T) {
 			},
 		}
 		mockGrpcServer.TapStreamsToReturn = expectedTapResponses
+		mockGrpcServer.ErrorToReturn = nil
 
 		tapClient, err := client.Tap(context.TODO(), &pb.TapRequest{})
 		if err != nil {
@@ -165,6 +169,21 @@ func TestServer(t *testing.T) {
 				t.Fatalf("Expecting tap event to be [%v], but was [%v]", expectedTapEvent, actualTapEvent)
 			}
 		}
+	})
+
+	t.Run("Handles errors before opening keep-alive response", func(t *testing.T) {
+		mockGrpcServer.ErrorToReturn = errors.New("expected error")
+
+		tapClient, err := client.Tap(context.TODO(), &pb.TapRequest{})
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		_, err = tapClient.Recv()
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
 	})
 }
 
