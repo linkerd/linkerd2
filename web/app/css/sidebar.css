@@ -68,6 +68,23 @@
 }
 
 .call-to-action .action {
-    font-size: inherit;
-    color: (var(--white))
+  font-size: inherit;
+  color: var(--white);
+}
+
+.conduit-autocomplete {
+  margin-bottom: calc(2 * var(--base-width));
+
+  & .ant-select-selection__placeholder {
+    color: #7395C8;
+    font-size: 12px;
+  }
+
+  & .ant-select-search {
+    background: #1B3358;
+  }
+
+  & .ant-input {
+    border: 1px solid #7395C8;
+  }
 }
