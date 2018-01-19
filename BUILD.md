@@ -130,7 +130,7 @@ These commands assume working [Go](https://golang.org) and
 dep ensure && dep prune
 
 # verify cluster (minikube) status
-bin/go-run cli status
+bin/go-run cli check
 
 # build all docker images, using minikube as our docker repo
 DOCKER_FORCE_BUILD=1 DOCKER_TRACE=1 bin/mkube bin/docker-build latest
@@ -216,13 +216,13 @@ You may also leverage `go-run` to execute our `conduit` cli command. While in a
 release context you may run:
 
 ```bash
-conduit status
+conduit check
 ```
 
 In development you can run:
 
 ```bash
-bin/go-run cli status
+bin/go-run cli check
 ```
 
 ## Web

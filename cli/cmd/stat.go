@@ -19,8 +19,6 @@ const ConduitPaths = "paths"
 
 var target string
 var timeWindow string
-var watch bool
-var watchOnly bool
 
 var statCmd = &cobra.Command{
 	Use:   "stat [flags] RESOURCE [TARGET]",
@@ -74,9 +72,7 @@ The optional [TARGET] option can be either a name for a deployment or pod resour
 func init() {
 	RootCmd.AddCommand(statCmd)
 	addControlPlaneNetworkingArgs(statCmd)
-	statCmd.PersistentFlags().StringVarP(&timeWindow, "time-window", "t", "1m", "Stat window.  One of: '10s', '1m', '10m', '1h', '6h', '24h'.")
-	statCmd.PersistentFlags().BoolVarP(&watch, "watch", "w", false, "After listing/getting the requested object, watch for changes.")
-	statCmd.PersistentFlags().BoolVar(&watchOnly, "watch-only", false, "Watch for changes to the requested object(s), without listing/getting first.")
+	statCmd.PersistentFlags().StringVarP(&timeWindow, "time-window", "t", "1m", "Stat window.  One of: '10s', '1m', '10m', '1h'.")
 }
 
 var resourceTypeToAggregationType = map[string]pb.AggregationType{

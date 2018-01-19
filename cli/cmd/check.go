@@ -17,11 +17,11 @@ import (
 
 const lineWidth = 80
 
-var statusCmd = &cobra.Command{
-	Use:   "status",
+var checkCmd = &cobra.Command{
+	Use:   "check",
 	Short: "Check your Conduit installation for potential problems.",
-	Long: `Check your Conduit installation for potential problems. The status command will perform various checks of your
-local system, the Conduit control plane, and connectivity between those. The process will exit with non-zero status if
+	Long: `Check your Conduit installation for potential problems. The check command will perform various checks of your
+local system, the Conduit control plane, and connectivity between those. The process will exit with non-zero check if
 problems were found.`,
 	Args: cobra.NoArgs,
 	Run: exitSilentlyOnError(func(cmd *cobra.Command, args []string) error {
@@ -110,6 +110,6 @@ func statusCheckResultWasError(w io.Writer) error {
 }
 
 func init() {
-	RootCmd.AddCommand(statusCmd)
-	addControlPlaneNetworkingArgs(statusCmd)
+	RootCmd.AddCommand(checkCmd)
+	addControlPlaneNetworkingArgs(checkCmd)
 }
