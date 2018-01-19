@@ -11,6 +11,9 @@ import (
 	"strings"
 	"testing"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	"github.com/gogo/protobuf/proto"
 
 	pb "github.com/runconduit/conduit/controller/gen/public"
@@ -173,6 +176,39 @@ func TestWriteErrorToHttpResponse(t *testing.T) {
 		}
 
 		if actualErrorPayload != expectedErrorPayload {
+			t.Fatalf("Expecting error to be serialised as [%v], but got [%v]", expectedErrorPayload, actualErrorPayload)
+		}
+	})
+
+	t.Run("Writes gRPC specific error correctly to response", func(t *testing.T) {
+		expectedErrorStatusCode := defaultHttpErrorStatusCode
+
+		responseWriter := newStubResponseWriter()
+		expectedErrorMessage := "error message"
+		grpcError := status.Errorf(codes.AlreadyExists, expectedErrorMessage)
+
+		writeErrorToHttpResponse(responseWriter, grpcError)
+
+		assertResponseHasProtobufContentType(t, responseWriter)
+
+		actualErrorStatusCode := responseWriter.headers.Get(errorHeader)
+		if actualErrorStatusCode != http.StatusText(expectedErrorStatusCode) {
+			t.Fatalf("Expecting response to have status code [%d], got [%s]", expectedErrorStatusCode, actualErrorStatusCode)
+		}
+
+		payloadRead, err := deserializePayloadFromReader(bufio.NewReader(bytes.NewReader(responseWriter.body.Bytes())))
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		expectedErrorPayload := pb.ApiError{Error: expectedErrorMessage}
+		var actualErrorPayload pb.ApiError
+		err = proto.Unmarshal(payloadRead, &actualErrorPayload)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		if !reflect.DeepEqual(actualErrorPayload, expectedErrorPayload) {
 			t.Fatalf("Expecting error to be serialised as [%v], but got [%v]", expectedErrorPayload, actualErrorPayload)
 		}
 	})

@@ -8,6 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	common "github.com/runconduit/conduit/controller/gen/common"
 	pb "github.com/runconduit/conduit/controller/gen/controller/tap"
 	proxy "github.com/runconduit/conduit/controller/gen/proxy/tap"
@@ -41,7 +44,7 @@ func (s *server) Tap(req *public.TapRequest, stream pb.Tap_TapServer) error {
 		targetName = target.Pod
 		pod, err := s.pods.GetPod(target.Pod)
 		if err != nil {
-			return err
+			return status.Errorf(codes.NotFound, err.Error())
 		}
 		pods = []*v1.Pod{pod}
 	case *public.TapRequest_Deployment:

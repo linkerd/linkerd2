@@ -8,6 +8,8 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"google.golang.org/grpc/status"
+
 	"github.com/golang/protobuf/proto"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	log "github.com/sirupsen/logrus"
@@ -66,7 +68,12 @@ func writeErrorToHttpResponse(w http.ResponseWriter, errorObtained error) {
 
 	w.Header().Set(errorHeader, http.StatusText(statusCode))
 
-	errorAsProto := &pb.ApiError{Error: errorToReturn.Error()}
+	errorMessageToReturn := errorToReturn.Error()
+	if grpcError, ok := status.FromError(errorObtained); ok {
+		errorMessageToReturn = grpcError.Message()
+	}
+
+	errorAsProto := &pb.ApiError{Error: errorMessageToReturn}
 
 	err := writeProtoToHttpResponse(w, errorAsProto)
 	if err != nil {
