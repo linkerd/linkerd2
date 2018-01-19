@@ -7,10 +7,13 @@ use tokio_core::reactor::Handle;
 
 use super::codec::Protobuf;
 use super::pb::proxy::telemetry::{ReportRequest, ReportResponse};
+/*
 use super::pb::proxy::telemetry::client::Telemetry as TelemetrySvc;
 use super::pb::proxy::telemetry::client::telemetry_methods::Report as ReportRpc;
+*/
 use ::timeout::{Timeout, TimeoutFuture};
 
+/*
 pub type ClientBody = tower_grpc::client::codec::EncodingBody<
     Protobuf<ReportRequest, ReportResponse>,
     tower_grpc::client::codec::Unary<ReportRequest>,
@@ -22,11 +25,12 @@ type TelemetryStream<F> = tower_grpc::client::BodyFuture<
         Protobuf<ReportRequest, ReportResponse>,
     >,
 >;
+*/
 
 #[derive(Debug)]
 pub struct Telemetry<T, F> {
     reports: T,
-    in_flight: Option<(Instant, TelemetryStream<F>)>,
+    in_flight: Option<(Instant, F /*TelemetryStream<F>*/)>,
     report_timeout: Duration,
     handle: Handle,
 }
@@ -50,15 +54,17 @@ where
     pub fn poll_rpc<S>(&mut self, client: &mut S)
     where
         S: Service<
-            Request = ::http::Request<ClientBody>,
+            Request = ::http::Request<()/*ClientBody*/>,
             Response = F::Item,
             Error = F::Error,
             Future = F,
         >,
     {
         let client = Timeout::new(client, self.report_timeout, &self.handle);
+        /*
         let grpc = tower_grpc::Client::new(Protobuf::new(), client);
         let mut rpc = ReportRpc::new(grpc);
+        */
 
         //let _ctxt = ::logging::context("Telemetry.Report".into());
 
@@ -78,7 +84,9 @@ where
                 }
             }
 
+            unimplemented!();
 
+            /*
             let controller_ready = self.in_flight.is_none() && match rpc.poll_ready() {
                 Ok(Async::Ready(_)) => true,
                 Ok(Async::NotReady) => {
@@ -124,6 +132,7 @@ where
                     }
                 }
             }
+            */
         }
     }
 }

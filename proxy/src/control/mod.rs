@@ -91,7 +91,9 @@ impl Background {
                 executor,
             );
 
-            let h2_client = tower_h2::client::Client::new(
+            // TODO: Remove annotations. If you see this comment, you should
+            // shout @carllerche.
+            let h2_client = tower_h2::client::Connect::<_, _, ()>::new(
                 connect,
                 h2::client::Builder::default(),
                 ::logging::context_executor(ctx, executor.clone()),
@@ -103,13 +105,18 @@ impl Background {
             AddOrigin::new(scheme, authority, backoff)
         };
 
-        let mut disco = self.disco.work();
-        let mut telemetry = Telemetry::new(events, report_timeout, executor);
+        // TODO: Remove annotation
+        let mut disco = self.disco.work::<()>();
+        unimplemented!();
+        // let mut telemetry = Telemetry::new(events, report_timeout, executor);
 
         let fut = future::poll_fn(move || {
             trace!("poll rpc services");
+            unimplemented!();
+            /*
             disco.poll_rpc(&mut EnumService(&mut client, PhantomData));
             telemetry.poll_rpc(&mut EnumService(&mut client, PhantomData));
+            */
 
             Ok(Async::NotReady)
         });
@@ -217,6 +224,7 @@ where
 
 // ===== impl  EnumService =====
 
+/*
 struct EnumService<S, B>(S, PhantomData<B>);
 
 impl<S, B> Service for EnumService<S, B>
@@ -238,7 +246,6 @@ where
         self.0.call(http::Request::from_parts(head, body.into()))
     }
 }
-
 
 
 enum GrpcEncodingBody {
@@ -285,3 +292,4 @@ impl From<self::discovery::ClientBody> for GrpcEncodingBody {
         GrpcEncodingBody::DestinationGet(body)
     }
 }
+*/

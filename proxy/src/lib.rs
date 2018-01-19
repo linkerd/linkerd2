@@ -1,6 +1,6 @@
 #![cfg_attr(feature = "cargo-clippy", allow(clone_on_ref_ptr))]
 #![cfg_attr(feature = "cargo-clippy", allow(new_without_default_derive))]
-#![deny(warnings)]
+// #![deny(warnings)]
 
 extern crate abstract_ns;
 extern crate bytes;
@@ -235,6 +235,9 @@ impl Main {
 
                     let (taps, observe) = control::Observe::new(100);
 
+                    unimplemented!();
+
+                    /*
                     let new_service = tap::server::Tap::new_service().observe(observe);
 
                     let server = serve_control(
@@ -261,6 +264,7 @@ impl Main {
 
                     let shutdown = controller_shutdown_signal.then(|_| Ok::<(), ()>(()));
                     core.run(shutdown).expect("controller api");
+                    */
                 })
                 .expect("initialize controller api thread");
         }

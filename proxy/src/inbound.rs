@@ -21,7 +21,7 @@ pub struct Inbound<B> {
     bind: Bind<B>,
 }
 
-type Client<B> = tower_h2::client::Client<
+type Client<B> = tower_h2::client::Connect<
     telemetry::sensor::Connect<transport::TimeoutConnect<transport::Connect>>,
     CtxtExec,
     B,

@@ -13,14 +13,18 @@ use fully_qualified_authority::FullyQualifiedAuthority;
 use super::codec::Protobuf;
 use super::pb::common::{Destination, TcpAddress};
 use super::pb::proxy::destination::Update as PbUpdate;
+/*
 use super::pb::proxy::destination::client::Destination as DestinationSvc;
 use super::pb::proxy::destination::client::destination_methods::Get as GetRpc;
 use super::pb::proxy::destination::update::Update as PbUpdate2;
+*/
 
+/*
 pub type ClientBody = ::tower_grpc::client::codec::EncodingBody<
     Protobuf<Destination, PbUpdate>,
     ::tower_grpc::client::codec::Unary<Destination>,
 >;
+*/
 
 /// A handle to start watching a destination for address changes.
 #[derive(Clone, Debug)]
@@ -42,10 +46,13 @@ pub struct Background {
 }
 
 type DiscoveryWatch<F> = DestinationSet<
+F
+/*
     tower_grpc::client::Streaming<
         tower_grpc::client::ResponseFuture<Protobuf<Destination, PbUpdate>, F>,
         tower_grpc::client::codec::DecodingBody<Protobuf<Destination, PbUpdate>>,
     >,
+    */
 >;
 
 /// A future returned from `Background::work()`, doing the work of talking to
@@ -188,7 +195,7 @@ where
     pub fn poll_rpc<S>(&mut self, client: &mut S)
     where
         S: Service<
-            Request = ::http::Request<ClientBody>,
+            Request = ::http::Request<() /*ClientBody*/>,
             Response = F::Item,
             Error = F::Error,
             Future = F,
@@ -211,7 +218,7 @@ where
     fn poll_new_watches<S>(&mut self, mut client: &mut S)
     where
         S: Service<
-            Request = ::http::Request<ClientBody>,
+            Request = ::http::Request<() /*ClientBody*/>,
             Response = F::Item,
             Error = F::Error,
             Future = F,
@@ -239,6 +246,9 @@ where
                 continue;
             }
 
+            unimplemented!();
+
+            /*
             let grpc = tower_grpc::Client::new(Protobuf::new(), &mut client);
             let mut rpc = GetRpc::new(grpc);
             // check for any new watches
@@ -271,6 +281,7 @@ where
                 Ok(Async::NotReady) => break,
                 Err(_) => unreachable!("unbounded receiver doesn't error"),
             }
+            */
         }
     }
 
@@ -278,13 +289,15 @@ where
     fn poll_reconnect<S>(&mut self, client: &mut S) -> bool
     where
         S: Service<
-            Request = ::http::Request<ClientBody>,
+            Request = ::http::Request<() /*ClientBody*/>,
             Response = F::Item,
             Error = F::Error,
             Future = F,
         >,
     {
         debug_assert!(self.rpc_ready);
+        unimplemented!();
+        /*
         let grpc = tower_grpc::Client::new(Protobuf::new(), client);
         let mut rpc = GetRpc::new(grpc);
 
@@ -303,6 +316,7 @@ where
             }
         }
         false
+        */
     }
 
     fn poll_destinations(&mut self) {
@@ -311,6 +325,7 @@ where
                 continue;
             }
             let needs_reconnect = 'set: loop {
+                /*
                 match set.rx.poll() {
                     Ok(Async::Ready(Some(update))) => match update.update {
                         Some(PbUpdate2::Add(a_set)) => for addr in a_set.addrs {
@@ -344,6 +359,8 @@ where
                         break 'set true;
                     }
                 }
+                */
+                unimplemented!();
             };
             if needs_reconnect {
                 set.needs_reconnect = true;

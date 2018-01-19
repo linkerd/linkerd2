@@ -4,7 +4,6 @@ use futures::{future, Poll, Stream};
 use futures_mpsc_lossy;
 use ordermap::OrderMap;
 use tower_grpc::{self, Request, Response};
-use tower_grpc::codegen::server::grpc::ServerStreamingService;
 
 use control::pb::common::TapEvent;
 use control::pb::proxy::tap::ObserveRequest;
@@ -42,6 +41,7 @@ impl Observe {
     }
 }
 
+/*
 impl ServerStreamingService for Observe {
     type Request = ObserveRequest;
     type Response = TapEvent;
@@ -91,6 +91,7 @@ impl ServerStreamingService for Observe {
         future::ok(Response::new(events))
     }
 }
+*/
 
 impl Stream for TapEvents {
     type Item = TapEvent;

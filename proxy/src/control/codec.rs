@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 
 use bytes::{Buf, BufMut};
 use prost::{DecodeError, Message};
-use tower_grpc::client::codec::{Codec, DecodeBuf, EncodeBuf};
+// use tower_grpc::client::codec::{Codec, DecodeBuf, EncodeBuf};
 
 /// A protobuf codec.
 pub struct Protobuf<T, U>(PhantomData<(T, U)>);
@@ -26,6 +26,7 @@ impl<T, U> fmt::Debug for Protobuf<T, U> {
     }
 }
 
+/*
 impl<T: Message, U: Message + Default> Codec for Protobuf<T, U> {
     const CONTENT_TYPE: &'static str = "application/grpc+proto";
 
@@ -58,6 +59,7 @@ impl<T: Message, U: Message + Default> Codec for Protobuf<T, U> {
         }
     }
 }
+*/
 
 /// Can never be instantiated.
 pub enum Void {}

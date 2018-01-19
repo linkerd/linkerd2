@@ -38,7 +38,7 @@ pub struct Bind<C, B> {
 
 type Service<B> = Reconnect<
     telemetry::sensor::NewHttp<
-        tower_h2::client::Client<
+        tower_h2::client::Connect<
             telemetry::sensor::Connect<transport::TimeoutConnect<transport::Connect>>,
             CtxtExec,
             B,
@@ -152,7 +152,7 @@ where
         };
 
         // Establishes an HTTP/2.0 connection
-        let client = tower_h2::client::Client::new(
+        let client = tower_h2::client::Connect::new(
             connect,
             self.h2_builder.clone(),
             ::logging::context_executor(("client", *addr), self.executor.clone()),
