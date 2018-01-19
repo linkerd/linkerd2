@@ -1,7 +1,7 @@
 /* eslint-disable */
 import 'raf/polyfill';
 import Adapter from 'enzyme-adapter-react-16';
-import Deployment from '../js/components/Deployment.jsx';
+import DeploymentDetail from '../js/components/DeploymentDetail.jsx';
 import Enzyme from 'enzyme';
 import { expect } from 'chai';
 import { mount } from 'enzyme';
@@ -13,11 +13,11 @@ import sinonStubPromise from 'sinon-stub-promise';
 Enzyme.configure({ adapter: new Adapter() });
 sinonStubPromise(sinon);
 
-describe('Deployment', () => {
+describe('DeploymentDetail', () => {
   let component, fetchStub;
 
   function withPromise(fn) {
-    return component.find("Deployment").instance().serverPromise.then(fn);
+    return component.find("DeploymentDetail").instance().serverPromise.then(fn);
   }
 
   beforeEach(() => {
@@ -34,7 +34,7 @@ describe('Deployment', () => {
       ok: true,
       json: () => Promise.resolve({ metrics: [] })
     });
-    component = mount(routerWrap(Deployment));
+    component = mount(routerWrap(DeploymentDetail));
 
     return withPromise(() => {
       expect(component.find("ConduitSpinner")).to.have.length(1);

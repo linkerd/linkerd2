@@ -1,5 +1,5 @@
-import Deployment from './components/Deployment.jsx';
-import Deployments from './components/Deployments.jsx';
+import DeploymentDetail from './components/DeploymentDetail.jsx';
+import DeploymentsList from './components/DeploymentsList.jsx';
 import NoMatch from './components/NoMatch.jsx';
 import Paths from './components/Paths.jsx';
 import PodDetail from './components/PodDetail.jsx';
@@ -32,8 +32,8 @@ ReactDOM.render((
           <Switch>
             <Redirect exact from={`${pathPrefix}/`} to={`${pathPrefix}/servicemesh`} />
             <Route path={`${pathPrefix}/servicemesh`} render={() => <ServiceMesh pathPrefix={pathPrefix} releaseVersion={appData.releaseVersion} />} />
-            <Route path={`${pathPrefix}/deployments`} render={() => <Deployments pathPrefix={pathPrefix} />} />
-            <Route path={`${pathPrefix}/deployment`} render={props => <Deployment pathPrefix={pathPrefix} location={props.location} />} />
+            <Route path={`${pathPrefix}/deployments`} render={() => <DeploymentsList pathPrefix={pathPrefix} />} />
+            <Route path={`${pathPrefix}/deployment`} render={props => <DeploymentDetail pathPrefix={pathPrefix} location={props.location} />} />
             <Route path={`${pathPrefix}/paths`} render={props => <Paths pathPrefix={pathPrefix} location={props.location} />} />
             <Route path={`${pathPrefix}/pod`} render={props => <PodDetail pathPrefix={pathPrefix} location={props.location} />} />
             <Route path={`${pathPrefix}/routes`} render={() => <Routes pathPrefix={pathPrefix} />} />

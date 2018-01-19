@@ -1,16 +1,16 @@
 import Adapter from 'enzyme-adapter-react-16';
+import EntityOverview from '../js/components/EntityOverview.jsx';
 import Enzyme from 'enzyme';
 import { expect } from 'chai';
 import { mount } from 'enzyme';
 import React from 'react';
-import StatPane from '../js/components/StatPane.jsx';
 
 Enzyme.configure({ adapter: new Adapter() });
 
-describe('StatPane', () => {
+describe('EntityOverview', () => {
   it('renders the request, success rate and latency components', () => {
     let component = mount(
-      <StatPane
+      <EntityOverview
         lastUpdated={Date.now()}
         timeseries={[]} />
     );
