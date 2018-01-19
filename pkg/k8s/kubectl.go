@@ -14,7 +14,7 @@ import (
 )
 
 type Kubectl interface {
-	Version() ([3]int, error)
+	Version() (*VersionInfo, error)
 	StartProxy(potentialErrorWhenStartingProxy chan error, port int) error
 	UrlFor(namespace string, extraPathStartingWithSlash string) (*url.URL, error)
 	ProxyPort() int
@@ -24,6 +24,11 @@ type Kubectl interface {
 type kubectl struct {
 	sh        shell.Shell
 	proxyPort int
+}
+
+type VersionInfo struct {
+	Client [3]int
+	Server [3]int
 }
 
 const (
@@ -42,6 +47,25 @@ const (
 
 var minimumKubectlVersionExpected = [3]int{1, 8, 0}
 
+func (v *VersionInfo) ToVersionString() [2]string {
+	var versions [2]string
+	prettyPrintArray := func(arr [3]int) string {
+		versionString := ""
+		for i, version := range arr {
+
+			versionString = versionString + strconv.Itoa(version)
+			if i < len(arr)-1 {
+				versionString = versionString + "."
+			}
+		}
+		return "v" + versionString
+	}
+
+	versions[0] = prettyPrintArray(v.Client)
+	versions[1] = prettyPrintArray(v.Server)
+	return versions
+}
+
 func (kctl *kubectl) ProxyPort() int {
 	return kctl.proxyPort
 }
@@ -54,15 +78,40 @@ func (kctl *kubectl) ProxyScheme() string {
 	return "http"
 }
 
-func (kctl *kubectl) Version() ([3]int, error) {
-	var version [3]int
-	bytes, err := kctl.sh.CombinedOutput("kubectl", "version", "--client", "--short")
+func (kctl *kubectl) Version() (*VersionInfo, error) {
+	var versionStruct = &VersionInfo{}
+	var clientPrefix = "Client Version: v"
+	var serverPrefix = "Server Version: v"
+
+	bytes, err := kctl.sh.CombinedOutput("kubectl", "version", "--short")
 	versionString := string(bytes)
 	if err != nil {
-		return version, fmt.Errorf("error running kubectl Version. Output: %s Error: %v", versionString, err)
+		return versionStruct, fmt.Errorf("error running kubectl Version. Output: %s Error: %v", versionString, err)
 	}
 
-	justTheVersionString := strings.TrimPrefix(versionString, "Client Version: v")
+	clientAndServerVersionStrings := strings.Split(versionString, "\n")
+	for _, ver := range clientAndServerVersionStrings {
+		if strings.HasPrefix(ver, clientPrefix) {
+			version, err := extractVersionNumber(ver, clientPrefix)
+			if err != nil {
+				return nil, err
+			}
+			versionStruct.Client = version
+
+		} else if strings.HasPrefix(ver, serverPrefix) {
+			version, err := extractVersionNumber(ver, serverPrefix)
+			if err != nil {
+				return nil, err
+			}
+			versionStruct.Server = version
+		}
+	}
+	return versionStruct, nil
+}
+
+func extractVersionNumber(versionString string, prefix string) ([3]int, error) {
+	var version [3]int
+	justTheVersionString := strings.TrimPrefix(versionString, prefix)
 	justTheMajorMinorRevisionNumbers := strings.Split(justTheVersionString, "-")[0]
 	split := strings.Split(justTheMajorMinorRevisionNumbers, ".")
 
@@ -77,7 +126,6 @@ func (kctl *kubectl) Version() ([3]int, error) {
 		}
 		version[i] = v
 	}
-
 	return version, nil
 }
 
@@ -149,11 +197,12 @@ func (kctl *kubectl) checkKubectlVersion() *healthcheckPb.CheckResult {
 		checkResult.FriendlyMessageToUser = fmt.Sprintf("Error getting version from kubectl. The error message is: [%s].", err.Error())
 		return checkResult
 	}
+	clientVersion := actualVersion.Client
 
-	if !isCompatibleVersion(minimumKubectlVersionExpected, actualVersion) {
+	if !isCompatibleVersion(minimumKubectlVersionExpected, clientVersion) {
 		checkResult.Status = healthcheckPb.CheckStatus_FAIL
 		checkResult.FriendlyMessageToUser = fmt.Sprintf("Kubectl is on version [%d.%d.%d], but version [%d.%d.%d] or more recent is required.",
-			actualVersion[0], actualVersion[1], actualVersion[2],
+			clientVersion[0], clientVersion[1], clientVersion[2],
 			minimumKubectlVersionExpected[0], minimumKubectlVersionExpected[1], minimumKubectlVersionExpected[2])
 		return checkResult
 	}
@@ -216,15 +265,16 @@ func NewKubectl(shell shell.Shell) (Kubectl, error) {
 	}
 
 	actualVersion, err := kubectl.Version()
+	clientVersion := actualVersion.Client
 
 	if err != nil {
 		return nil, err
 	}
 
-	if !isCompatibleVersion(minimumKubectlVersionExpected, actualVersion) {
+	if !isCompatibleVersion(minimumKubectlVersionExpected, clientVersion) {
 		return nil, fmt.Errorf(
 			"kubectl is on version [%d.%d.%d], but version [%d.%d.%d] or more recent is required",
-			actualVersion[0], actualVersion[1], actualVersion[2],
+			clientVersion[0], clientVersion[1], clientVersion[2],
 			minimumKubectlVersionExpected[0], minimumKubectlVersionExpected[1], minimumKubectlVersionExpected[2])
 	}
 

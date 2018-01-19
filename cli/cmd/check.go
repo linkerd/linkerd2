@@ -6,6 +6,8 @@ import (
 	"io"
 	"os"
 
+	"strings"
+
 	"github.com/runconduit/conduit/controller/api/public"
 	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 	pb "github.com/runconduit/conduit/controller/gen/public"
@@ -26,7 +28,8 @@ problems were found.`,
 	Args: cobra.NoArgs,
 	Run: exitSilentlyOnError(func(cmd *cobra.Command, args []string) error {
 
-		kubectl, err := k8s.NewKubectl(shell.NewUnixShell())
+		sh := shell.NewUnixShell()
+		kubectl, err := k8s.NewKubectl(sh)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error with kubectl: %s\n", err.Error())
 			return statusCheckResultWasError(os.Stdout)
@@ -49,8 +52,35 @@ problems were found.`,
 			return statusCheckResultWasError(os.Stdout)
 		}
 
-		return checkStatus(os.Stdout, kubectl, kubeApi, healthcheck.NewGrpcStatusChecker(public.ConduitApiSubsystemName, conduitApi))
+		err = checkStatus(os.Stdout, kubectl, kubeApi, healthcheck.NewGrpcStatusChecker(public.ConduitApiSubsystemName, conduitApi))
+		if err != nil {
+			err = prettyPrintSystemInformation(conduitApi, kubectl, sh)
+		}
+		return err
 	}),
+}
+
+func prettyPrintSystemInformation(api pb.ApiClient, kbctl k8s.Kubectl, sh shell.Shell) error {
+	systemInformationLabel := "System Information"
+	headerLabel := strings.Repeat("-", 5)
+	versions := getVersions(api)
+	kbctlVersions, err := kbctl.Version()
+	if err != nil {
+		return err
+	}
+	kbctlVersionStrings := kbctlVersions.ToVersionString()
+	uname, err := sh.CombinedOutput("uname", "-v")
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("\n%s %s %s\n", headerLabel, systemInformationLabel, headerLabel)
+	fmt.Printf("conduit_server_version=%s\n", versions.Server)
+	fmt.Printf("conduit_client_version:=%s\n", versions.Client)
+	fmt.Printf("k8s_client_version=%v\n", kbctlVersionStrings[0])
+	fmt.Printf("k8s_server_version=%v\n", kbctlVersionStrings[1])
+	fmt.Printf("uname=%s\n", uname)
+	return nil
 }
 
 func checkStatus(w io.Writer, checkers ...healthcheck.StatusChecker) error {
