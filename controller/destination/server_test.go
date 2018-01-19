@@ -2,8 +2,9 @@ package destination
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestLocalKubernetesServiceIdFromDNSName(t *testing.T) {
@@ -12,7 +13,7 @@ func TestLocalKubernetesServiceIdFromDNSName(t *testing.T) {
 	testCases := []struct {
 		k8sDNSZone string
 		host       string
-		result     *string
+		result    *string
 		resultErr  bool
 	}{
 		{"cluster.local", "", nil, true},
@@ -85,6 +86,25 @@ func TestSplitDNSName(t *testing.T) {
 			result, err := splitDNSName(tc.input)
 			assert.Equal(t, tc.result, result)
 			assert.Equal(t, tc.resultErr, err != nil)
+		})
+	}
+}
+
+func TestIsIPAddress(t *testing.T) {
+	testCases := []struct {
+		host   string
+		result bool
+	}{
+		{"8.8.8.8", true},
+		{"example.com", false},
+	}
+
+	for i, tc := range testCases {
+		t.Run(fmt.Sprintf("%d: %+v", i, tc.host), func(t *testing.T) {
+			isIP, _ := isIPAddress(tc.host)
+			if isIP != tc.result {
+				t.Fatalf("Unexpected result: %+v", isIP)
+			}
 		})
 	}
 }
