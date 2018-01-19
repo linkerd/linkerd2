@@ -59,21 +59,32 @@ type grpcCallTestCase struct {
 }
 
 func TestServer(t *testing.T) {
+
 	mockGrpcServer := &mockGrpcServer{}
 	handler := &handler{
 		grpcServer: mockGrpcServer,
 	}
 
 	httpServer := &http.Server{
-		Addr:    ":8889",
+		Addr:    "localhost:8889",
 		Handler: handler,
 	}
 
 	go func() {
-		httpServer.ListenAndServe()
+		err := httpServer.ListenAndServe()
+		if err != nil {
+			fmt.Println(err)
+			t.Fatalf("Could not start server: %v", err)
+		}
 	}()
-	defer httpServer.Shutdown(context.Background())
-
+	defer func() {
+		err := httpServer.Shutdown(context.Background())
+		if err != nil {
+			fmt.Println(err)
+			t.Fatalf("Could not stop server: %v", err)
+		}
+	}()
+this better break the build
 	client, err := NewInternalClient("localhost:8889")
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)

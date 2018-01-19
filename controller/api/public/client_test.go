@@ -72,7 +72,7 @@ func TestFromByteStreamToProtocolBuffers(t *testing.T) {
 
 		err := fromByteStreamToProtocolBuffers(reader, &protobufMessageToBeFilledWithData)
 		if err != nil {
-			t.Fatal(err.Error())
+			t.Fatalf("Unexpected error: %v", err)
 		}
 
 		if protobufMessageToBeFilledWithData != versionInfo {
@@ -100,7 +100,7 @@ func TestFromByteStreamToProtocolBuffers(t *testing.T) {
 		protobufMessageToBeFilledWithData := &pb.MetricSeries{}
 		err := fromByteStreamToProtocolBuffers(reader, protobufMessageToBeFilledWithData)
 		if err != nil {
-			t.Fatal(err.Error())
+			t.Fatalf("Unexpected error: %v", err)
 		}
 
 		actualNumberOfDatapointsMarshalled := len(protobufMessageToBeFilledWithData.Datapoints)
