@@ -65,6 +65,7 @@ export default class Sidebar extends React.Component {
           </div>
 
           <AutoComplete
+            className="conduit-autocomplete"
             value={this.state.autocompleteValue}
             dataSource={this.state.filteredDeployments}
             style={{ width: searchBarWidth }}
