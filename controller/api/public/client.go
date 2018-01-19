@@ -22,7 +22,6 @@ const (
 	ApiRoot                 = "/" // Must be absolute (with a leading slash).
 	ApiVersion              = "v1"
 	ApiPrefix               = "api/" + ApiVersion + "/" // Must be relative (without a leading slash).
-	ErrorHeader             = "conduit-error"
 	ConduitApiSubsystemName = "conduit-api"
 )
 
@@ -57,21 +56,25 @@ func (c *grpcOverHttpClient) ListPods(ctx context.Context, req *pb.Empty, _ ...g
 
 func (c *grpcOverHttpClient) Tap(ctx context.Context, req *pb.TapRequest, _ ...grpc.CallOption) (pb.Api_TapClient, error) {
 	url := c.endpointNameToPublicApiUrl("Tap")
-	rsp, err := c.post(ctx, url, req)
+	httpRsp, err := c.post(ctx, url, req)
 	if err != nil {
+		return nil, err
+	}
+
+	if err = checkIfResponseHasConduitError(httpRsp); err != nil {
 		return nil, err
 	}
 
 	go func() {
 		<-ctx.Done()
 		log.Debug("Closing response body after context marked as done")
-		rsp.Body.Close()
+		httpRsp.Body.Close()
 	}()
 
-	return &tapClient{ctx: ctx, reader: bufio.NewReader(rsp.Body)}, nil
+	return &tapClient{ctx: ctx, reader: bufio.NewReader(httpRsp.Body)}, nil
 }
 
-func (c *grpcOverHttpClient) apiRequest(ctx context.Context, endpoint string, req proto.Message, rsp proto.Message) error {
+func (c *grpcOverHttpClient) apiRequest(ctx context.Context, endpoint string, req proto.Message, protoResponse proto.Message) error {
 	url := c.endpointNameToPublicApiUrl(endpoint)
 
 	log.Debugf("Making gRPC-over-HTTP call to [%s]", url.String())
@@ -86,11 +89,13 @@ func (c *grpcOverHttpClient) apiRequest(ctx context.Context, endpoint string, re
 		return fmt.Errorf("POST to Conduit API endpoint [%s] returned HTTP status [%s]", url, httpRsp.Status)
 	}
 
-	defer httpRsp.Body.Close()
+	if err = checkIfResponseHasConduitError(httpRsp); err != nil {
+		return err
+	}
 
+	defer httpRsp.Body.Close()
 	reader := bufio.NewReader(httpRsp.Body)
-	errorMsg := httpRsp.Header.Get(ErrorHeader)
-	return fromByteStreamToProtocolBuffers(reader, errorMsg, rsp)
+	return fromByteStreamToProtocolBuffers(reader, protoResponse)
 }
 
 func (c *grpcOverHttpClient) post(ctx context.Context, url *url.URL, req proto.Message) (*http.Response, error) {
@@ -112,7 +117,7 @@ func (c *grpcOverHttpClient) post(ctx context.Context, url *url.URL, req proto.M
 	if err != nil {
 		log.Debugf("Error invoking [%s]: %v", url.String(), err)
 	} else {
-		log.Debugf("Response from [%s] had hesaders: %v", url.String(), rsp.Header)
+		log.Debugf("Response from [%s] had headers: %v", url.String(), rsp.Header)
 	}
 
 	return rsp, err
@@ -129,7 +134,7 @@ type tapClient struct {
 
 func (c tapClient) Recv() (*common.TapEvent, error) {
 	var msg common.TapEvent
-	err := fromByteStreamToProtocolBuffers(c.reader, "", &msg)
+	err := fromByteStreamToProtocolBuffers(c.reader, &msg)
 	return &msg, err
 }
 
@@ -141,21 +146,10 @@ func (c tapClient) Context() context.Context     { return c.ctx }
 func (c tapClient) SendMsg(interface{}) error    { return nil }
 func (c tapClient) RecvMsg(interface{}) error    { return nil }
 
-func fromByteStreamToProtocolBuffers(byteStreamContainingMessage *bufio.Reader, errorMessageReturnedAsMetadata string, messageInProtobuf proto.Message) error {
+func fromByteStreamToProtocolBuffers(byteStreamContainingMessage *bufio.Reader, messageInProtobuf proto.Message) error {
 	messageInBytes, err := deserializePayloadFromReader(byteStreamContainingMessage)
 	if err != nil {
 		return fmt.Errorf("error reading byte stream header: %v", err)
-	}
-
-	if errorMessageReturnedAsMetadata != "" {
-		var apiError pb.ApiError
-
-		err = proto.Unmarshal(messageInBytes, &apiError)
-		if err != nil {
-			return fmt.Errorf("error unmarshalling error from byte stream: %v", err)
-		}
-
-		return fmt.Errorf("%s: %s", errorMessageReturnedAsMetadata, apiError.Error)
 	}
 
 	err = proto.Unmarshal(messageInBytes, messageInProtobuf)
@@ -175,7 +169,7 @@ func newClient(apiURL *url.URL, httpClientToUse *http.Client) (pb.ApiClient, err
 
 	serverUrl := apiURL.ResolveReference(&url.URL{Path: ApiPrefix})
 
-	log.Debugf("Expecting Conduit Public API to be server over [%s]", serverUrl)
+	log.Debugf("Expecting Conduit Public API to be served over [%s]", serverUrl)
 
 	return &grpcOverHttpClient{
 		serverURL:  serverUrl,

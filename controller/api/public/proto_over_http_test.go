@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"reflect"
 	"strings"
@@ -120,7 +121,7 @@ func TestWriteErrorToHttpResponse(t *testing.T) {
 
 		assertResponseHasProtobufContentType(t, responseWriter)
 
-		actualErrorStatusCode := responseWriter.headers.Get(ErrorHeader)
+		actualErrorStatusCode := responseWriter.headers.Get(errorHeader)
 		if actualErrorStatusCode != http.StatusText(expectedErrorStatusCode) {
 			t.Fatalf("Expecting response to have status code [%d], got [%s]", expectedErrorStatusCode, actualErrorStatusCode)
 		}
@@ -154,7 +155,7 @@ func TestWriteErrorToHttpResponse(t *testing.T) {
 
 		assertResponseHasProtobufContentType(t, responseWriter)
 
-		actualErrorStatusCode := responseWriter.headers.Get(ErrorHeader)
+		actualErrorStatusCode := responseWriter.headers.Get(errorHeader)
 		if actualErrorStatusCode != http.StatusText(expectedErrorStatusCode) {
 			t.Fatalf("Expecting response to have status code [%d], got [%s]", expectedErrorStatusCode, actualErrorStatusCode)
 		}
@@ -312,6 +313,55 @@ func TestNewStreamingWriter(t *testing.T) {
 
 	t.Run("Returns an error if writer doesnt support streaming", func(t *testing.T) {
 		_, err := newStreamingWriter(&nonStreamingResponseWriter{})
+		if err == nil {
+			t.Fatalf("Expecting error, got nothing")
+		}
+	})
+}
+
+func TestCheckIfResponseHasError(t *testing.T) {
+	t.Run("If response doesnt contain Conduit error, returns nil", func(t *testing.T) {
+		response := &http.Response{
+			Header: make(http.Header),
+		}
+		err := checkIfResponseHasConduitError(response)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+	})
+
+	t.Run("If response contains Conduit error returns error in body", func(t *testing.T) {
+		expectedErrorMessage := "expected error message"
+		protoInBytes, err := proto.Marshal(&pb.ApiError{Error: expectedErrorMessage})
+		message, err := serializeAsPayload(protoInBytes)
+		response := &http.Response{
+			Header: make(http.Header),
+			Body:   ioutil.NopCloser(bytes.NewReader(message)),
+		}
+		response.Header.Set(errorHeader, "error")
+
+		err = checkIfResponseHasConduitError(response)
+		if err == nil {
+			t.Fatalf("Expecting error, got nothing")
+		}
+
+		actualErrorMessage := err.Error()
+		if actualErrorMessage != expectedErrorMessage {
+			t.Fatalf("Expected error message to be [%s], but it was [%s]", expectedErrorMessage, actualErrorMessage)
+		}
+	})
+
+	t.Run("If response contains Conduit error but body isn't error message returns error", func(t *testing.T) {
+		protoInBytes, err := proto.Marshal(&pb.MetricMetadata{Path: "a"})
+		message, err := serializeAsPayload(protoInBytes)
+		response := &http.Response{
+			Header: make(http.Header),
+			Body:   ioutil.NopCloser(bytes.NewReader(message)),
+		}
+		response.Header.Set(errorHeader, "error")
+
+		err = checkIfResponseHasConduitError(response)
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing")
 		}

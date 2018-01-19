@@ -3,6 +3,7 @@ package public
 import (
 	"bufio"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 )
 
 const (
+	errorHeader                = "conduit-error"
 	defaultHttpErrorStatusCode = http.StatusInternalServerError
 	contentTypeHeader          = "Content-Type"
 	protobufContentType        = "application/octet-stream"
@@ -62,14 +64,14 @@ func writeErrorToHttpResponse(w http.ResponseWriter, errorObtained error) {
 		errorToReturn = httpErr.WrappedError
 	}
 
-	w.Header().Set(ErrorHeader, http.StatusText(statusCode))
+	w.Header().Set(errorHeader, http.StatusText(statusCode))
 
 	errorAsProto := &pb.ApiError{Error: errorToReturn.Error()}
 
 	err := writeProtoToHttpResponse(w, errorAsProto)
 	if err != nil {
 		log.Errorf("Error writing error to http response: %v", err)
-		w.Header().Set(ErrorHeader, err.Error())
+		w.Header().Set(errorHeader, err.Error())
 	}
 }
 
@@ -117,4 +119,23 @@ func deserializePayloadFromReader(reader *bufio.Reader) ([]byte, error) {
 	_, err := reader.Read(messageContentsInBytes)
 	log.Debugf("Message declared its payload size as [%d] bytes", messageLength)
 	return messageContentsInBytes, err
+}
+
+func checkIfResponseHasConduitError(rsp *http.Response) error {
+	errorMsg := rsp.Header.Get(errorHeader)
+
+	if errorMsg != "" {
+		reader := bufio.NewReader(rsp.Body)
+		defer rsp.Body.Close()
+		var apiError pb.ApiError
+
+		err := fromByteStreamToProtocolBuffers(reader, &apiError)
+		if err != nil {
+			return fmt.Errorf("response is Conduit error header [%s], but response body didn't contain protobuf error: %v", errorMsg, err)
+		}
+
+		return errors.New(apiError.Error)
+	}
+
+	return nil
 }

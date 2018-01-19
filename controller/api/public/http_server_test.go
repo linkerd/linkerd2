@@ -174,16 +174,10 @@ func TestServer(t *testing.T) {
 	t.Run("Handles errors before opening keep-alive response", func(t *testing.T) {
 		mockGrpcServer.ErrorToReturn = errors.New("expected error")
 
-		tapClient, err := client.Tap(context.TODO(), &pb.TapRequest{})
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
+		_, err := client.Tap(context.TODO(), &pb.TapRequest{})
+		if err == nil {
+			t.Fatalf("Expecting error, got nothing")
 		}
-
-		_, err = tapClient.Recv()
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
-
 	})
 }
 
