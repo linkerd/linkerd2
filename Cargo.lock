@@ -98,14 +98,14 @@ dependencies = [
 
 [[package]]
 name = "codegen"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "ordermap 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "conduit-proxy"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "abstract-ns 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "bytes 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -113,7 +113,7 @@ dependencies = [
  "domain 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
- "futures-mpsc-lossy 0.0.1",
+ "futures-mpsc-lossy 0.1.2",
  "h2 0.1.0 (git+https://github.com/carllerche/h2)",
  "http 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "ipnet 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -132,11 +132,11 @@ dependencies = [
  "tower-balance 0.1.0 (git+https://github.com/tower-rs/tower)",
  "tower-buffer 0.1.0 (git+https://github.com/tower-rs/tower)",
  "tower-discover 0.1.0 (git+https://github.com/tower-rs/tower)",
- "tower-grpc 0.1.1",
- "tower-grpc-build 0.1.1",
- "tower-h2 0.1.1",
+ "tower-grpc 0.1.2",
+ "tower-grpc-build 0.1.2",
+ "tower-h2 0.1.2",
  "tower-reconnect 0.1.0 (git+https://github.com/tower-rs/tower)",
- "tower-router 0.1.1",
+ "tower-router 0.1.2",
  "tower-util 0.1.0 (git+https://github.com/tower-rs/tower)",
  "url 1.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -265,7 +265,7 @@ dependencies = [
 
 [[package]]
 name = "futures-mpsc-lossy"
-version = "0.0.1"
+version = "0.1.2"
 dependencies = [
  "futures 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -851,7 +851,7 @@ dependencies = [
 
 [[package]]
 name = "tower-grpc"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "bytes 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -864,21 +864,21 @@ dependencies = [
  "tokio-connect 0.1.0 (git+https://github.com/carllerche/tokio-connect)",
  "tokio-core 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "tower 0.1.0 (git+https://github.com/tower-rs/tower)",
- "tower-h2 0.1.1",
+ "tower-h2 0.1.2",
  "tower-router 0.1.0 (git+https://github.com/tower-rs/tower)",
 ]
 
 [[package]]
 name = "tower-grpc-build"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
- "codegen 0.1.1",
+ "codegen 0.1.2",
  "prost-build 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "tower-grpc-examples"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "bytes 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -891,14 +891,14 @@ dependencies = [
  "serde_json 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-core 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "tower 0.1.0 (git+https://github.com/tower-rs/tower)",
- "tower-grpc 0.1.1",
- "tower-grpc-build 0.1.1",
- "tower-h2 0.1.1",
+ "tower-grpc 0.1.2",
+ "tower-grpc-build 0.1.2",
+ "tower-h2 0.1.2",
 ]
 
 [[package]]
 name = "tower-h2"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "bytes 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -934,7 +934,7 @@ dependencies = [
 
 [[package]]
 name = "tower-router"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "futures 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "ordermap 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)",

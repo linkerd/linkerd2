@@ -1,6 +1,6 @@
 [package]
 name = "tower-grpc-examples"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Carl Lerche <me@carllerche.com>"]
 
 [[bin]]
