@@ -31,11 +31,6 @@ type grpcOverHttpClient struct {
 	httpClient *http.Client
 }
 
-type tapClient struct {
-	ctx    context.Context
-	reader *bufio.Reader
-}
-
 func (c *grpcOverHttpClient) Stat(ctx context.Context, req *pb.MetricRequest, _ ...grpc.CallOption) (*pb.MetricResponse, error) {
 	var msg pb.MetricResponse
 	err := c.apiRequest(ctx, "Stat", req, &msg)
@@ -75,19 +70,6 @@ func (c *grpcOverHttpClient) Tap(ctx context.Context, req *pb.TapRequest, _ ...g
 
 	return &tapClient{ctx: ctx, reader: bufio.NewReader(rsp.Body)}, nil
 }
-func (c tapClient) Recv() (*common.TapEvent, error) {
-	var msg common.TapEvent
-	err := fromByteStreamToProtocolBuffers(c.reader, "", &msg)
-	return &msg, err
-}
-
-// satisfy the pb.Api_TapClient interface
-func (c tapClient) Header() (metadata.MD, error) { return nil, nil }
-func (c tapClient) Trailer() metadata.MD         { return nil }
-func (c tapClient) CloseSend() error             { return nil }
-func (c tapClient) Context() context.Context     { return c.ctx }
-func (c tapClient) SendMsg(interface{}) error    { return nil }
-func (c tapClient) RecvMsg(interface{}) error    { return nil }
 
 func (c *grpcOverHttpClient) apiRequest(ctx context.Context, endpoint string, req proto.Message, rsp proto.Message) error {
 	url := c.endpointNameToPublicApiUrl(endpoint)
@@ -140,6 +122,25 @@ func (c *grpcOverHttpClient) endpointNameToPublicApiUrl(endpoint string) *url.UR
 	return c.serverURL.ResolveReference(&url.URL{Path: endpoint})
 }
 
+type tapClient struct {
+	ctx    context.Context
+	reader *bufio.Reader
+}
+
+func (c tapClient) Recv() (*common.TapEvent, error) {
+	var msg common.TapEvent
+	err := fromByteStreamToProtocolBuffers(c.reader, "", &msg)
+	return &msg, err
+}
+
+// satisfy the pb.Api_TapClient interface
+func (c tapClient) Header() (metadata.MD, error) { return nil, nil }
+func (c tapClient) Trailer() metadata.MD         { return nil }
+func (c tapClient) CloseSend() error             { return nil }
+func (c tapClient) Context() context.Context     { return c.ctx }
+func (c tapClient) SendMsg(interface{}) error    { return nil }
+func (c tapClient) RecvMsg(interface{}) error    { return nil }
+
 func fromByteStreamToProtocolBuffers(byteStreamContainingMessage *bufio.Reader, errorMessageReturnedAsMetadata string, messageInProtobuf proto.Message) error {
 	messageInBytes, err := deserializePayloadFromReader(byteStreamContainingMessage)
 	if err != nil {
@@ -166,6 +167,22 @@ func fromByteStreamToProtocolBuffers(byteStreamContainingMessage *bufio.Reader, 
 	}
 }
 
+func newClient(apiURL *url.URL, httpClientToUse *http.Client) (pb.ApiClient, error) {
+
+	if !apiURL.IsAbs() {
+		return nil, fmt.Errorf("server URL must be absolute, was [%s]", apiURL.String())
+	}
+
+	serverUrl := apiURL.ResolveReference(&url.URL{Path: ApiPrefix})
+
+	log.Debugf("Expecting Conduit Public API to be server over [%s]", serverUrl)
+
+	return &grpcOverHttpClient{
+		serverURL:  serverUrl,
+		httpClient: httpClientToUse,
+	}, nil
+}
+
 func NewInternalClient(kubernetesApiHost string) (pb.ApiClient, error) {
 	apiURL := &url.URL{
 		Scheme: "http",
@@ -188,20 +205,4 @@ func NewExternalClient(controlPlaneNamespace string, kubeApi k8s.KubernetesApi) 
 	}
 
 	return newClient(apiURL, httpClientToUse)
-}
-
-func newClient(apiURL *url.URL, httpClientToUse *http.Client) (pb.ApiClient, error) {
-
-	if !apiURL.IsAbs() {
-		return nil, fmt.Errorf("server URL must be absolute, was [%s]", apiURL.String())
-	}
-
-	serverUrl := apiURL.ResolveReference(&url.URL{Path: ApiPrefix})
-
-	log.Debugf("Expecting Conduit Public API to be server over [%s]", serverUrl)
-
-	return &grpcOverHttpClient{
-		serverURL:  serverUrl,
-		httpClient: httpClientToUse,
-	}, nil
 }
