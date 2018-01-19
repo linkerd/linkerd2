@@ -1,3 +1,7 @@
+## v0.1.3
+
+* This is a minor bugfix for some web dashboard UI elements that were not rendering correctly.
+
 ## v0.1.2
 
 Conduit 0.1.2 continues down the path of increasing usability and improving debugging and

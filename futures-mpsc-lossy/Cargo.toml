@@ -1,6 +1,6 @@
 [package]
 name = "futures-mpsc-lossy"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["Oliver Gould <ver@buoyant.io>"]
 publish = false
 
