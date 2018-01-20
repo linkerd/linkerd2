@@ -75,5 +75,9 @@
 
   & .ant-input {
     border: 1px solid #7395C8;
+
+    &.ant-select-search__field {
+      color: white;
+    }
   }
 }
