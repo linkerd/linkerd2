@@ -6,7 +6,7 @@ use futures::{future, Async, Future, Poll, Stream};
 use h2;
 use http;
 use tokio_core::reactor::{
-    Handle, 
+    Handle,
     // TODO: would rather just have Backoff in a separate file so this
     //       renaming import is not necessary.
     Timeout as ReactorTimeout
@@ -31,6 +31,7 @@ use self::discovery::{Background as DiscoBg, Discovery, Watch};
 pub use self::discovery::Bind;
 pub use self::observe::Observe;
 use self::pb::proxy::telemetry::ReportRequest;
+use self::pb::proxy::destination::client::Destination as DestinationSvc;
 use self::telemetry::Telemetry;
 
 pub struct Control {
@@ -84,6 +85,8 @@ impl Background {
             let authority =
                 http::uri::Authority::from_shared(format!("{}", host_and_port).into()).unwrap();
 
+            let uri = unimplemented!();
+
             let dns_resolver = dns::Resolver::new(dns_config, executor);
             let connect = Timeout::new(
                 LookupAddressAndConnect::new(host_and_port, dns_resolver, executor),
@@ -91,9 +94,7 @@ impl Background {
                 executor,
             );
 
-            // TODO: Remove annotations. If you see this comment, you should
-            // shout @carllerche.
-            let h2_client = tower_h2::client::Connect::<_, _, ()>::new(
+            let h2_client = tower_h2::client::Connect::new(
                 connect,
                 h2::client::Builder::default(),
                 ::logging::context_executor(ctx, executor.clone()),
@@ -102,24 +103,29 @@ impl Background {
 
             let reconnect = Reconnect::new(h2_client);
             let backoff = Backoff::new(reconnect, Duration::from_secs(5), executor);
-            AddOrigin::new(scheme, authority, backoff)
+            let add_origin = AddOrigin::new(scheme, authority, backoff);
+
+            DestinationSvc::new(add_origin, uri).unwrap()
         };
 
         // TODO: Remove annotation
-        let mut disco = self.disco.work::<()>();
-        unimplemented!();
+        let mut disco = self.disco.work();
         // let mut telemetry = Telemetry::new(events, report_timeout, executor);
 
         let fut = future::poll_fn(move || {
             trace!("poll rpc services");
-            unimplemented!();
+            disco.poll_rpc(&mut client);
             /*
-            disco.poll_rpc(&mut EnumService(&mut client, PhantomData));
             telemetry.poll_rpc(&mut EnumService(&mut client, PhantomData));
             */
 
+            unimplemented!();
+
             Ok(Async::NotReady)
         });
+
+        unimplemented!();
+
         Box::new(fut)
     }
 }

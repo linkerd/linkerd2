@@ -1,18 +1,21 @@
 use std::collections::{HashSet, VecDeque};
 use std::collections::hash_map::{Entry, HashMap};
 use std::net::SocketAddr;
+use std::fmt;
 
 use futures::{Async, Future, Poll, Stream};
 use futures::sync::mpsc;
 use tower::Service;
+use tower_h2::{HttpService, BoxBody};
 use tower_discover::{Change, Discover};
-use tower_grpc;
+use tower_grpc as grpc;
 
 use fully_qualified_authority::FullyQualifiedAuthority;
 
 use super::codec::Protobuf;
 use super::pb::common::{Destination, TcpAddress};
 use super::pb::proxy::destination::Update as PbUpdate;
+use super::pb::proxy::destination::client::{Destination as DestinationSvc};
 /*
 use super::pb::proxy::destination::client::Destination as DestinationSvc;
 use super::pb::proxy::destination::client::destination_methods::Get as GetRpc;
@@ -46,20 +49,14 @@ pub struct Background {
 }
 
 type DiscoveryWatch<F> = DestinationSet<
-F
-/*
-    tower_grpc::client::Streaming<
-        tower_grpc::client::ResponseFuture<Protobuf<Destination, PbUpdate>, F>,
-        tower_grpc::client::codec::DecodingBody<Protobuf<Destination, PbUpdate>>,
-    >,
-    */
+    grpc::client::server_streaming::ResponseFuture<PbUpdate, F>,
 >;
 
 /// A future returned from `Background::work()`, doing the work of talking to
 /// the controller destination API.
 #[derive(Debug)]
-pub struct DiscoveryWork<F> {
-    destinations: HashMap<FullyQualifiedAuthority, DiscoveryWatch<F>>,
+pub struct DiscoveryWork<T: HttpService> {
+    destinations: HashMap<FullyQualifiedAuthority, DiscoveryWatch<T::Future>>,
     /// A queue of authorities that need to be reconnected.
     reconnects: VecDeque<FullyQualifiedAuthority>,
     /// The Destination.Get RPC client service.
@@ -70,10 +67,10 @@ pub struct DiscoveryWork<F> {
 }
 
 #[derive(Debug)]
-struct DestinationSet<R> {
+struct DestinationSet<T> {
     addrs: HashSet<SocketAddr>,
     needs_reconnect: bool,
-    rx: R,
+    rx: T,
     tx: mpsc::UnboundedSender<Update>,
 }
 
@@ -175,7 +172,10 @@ where
 
 impl Background {
     /// Bind this handle to start talking to the controller API.
-    pub fn work<F>(self) -> DiscoveryWork<F> {
+    pub fn work<T>(self) -> DiscoveryWork<T>
+    where T: HttpService<RequestBody = BoxBody>,
+          T::Error: fmt::Debug,
+    {
         DiscoveryWork {
             destinations: HashMap::new(),
             reconnects: VecDeque::new(),
@@ -187,20 +187,12 @@ impl Background {
 
 // ==== impl DiscoveryWork =====
 
-impl<F> DiscoveryWork<F>
+impl<T> DiscoveryWork<T>
 where
-    F: Future<Item = ::http::Response<::tower_h2::RecvBody>>,
-    F::Error: ::std::fmt::Debug,
+    T: HttpService<RequestBody = BoxBody>,
+    T::Error: fmt::Debug,
 {
-    pub fn poll_rpc<S>(&mut self, client: &mut S)
-    where
-        S: Service<
-            Request = ::http::Request<() /*ClientBody*/>,
-            Response = F::Item,
-            Error = F::Error,
-            Future = F,
-        >,
-    {
+    pub fn poll_rpc(&mut self, client: &mut DestinationSvc<T>) {
         // This loop is make sure any streams that were found disconnected
         // in `poll_destinations` while the `rpc` service is ready should
         // be reconnected now, otherwise the task would just sleep...
@@ -215,15 +207,7 @@ where
         }
     }
 
-    fn poll_new_watches<S>(&mut self, mut client: &mut S)
-    where
-        S: Service<
-            Request = ::http::Request<() /*ClientBody*/>,
-            Response = F::Item,
-            Error = F::Error,
-            Future = F,
-        >,
-    {
+    fn poll_new_watches(&mut self, mut client: &mut DestinationSvc<T>) {
         loop {
             // if rpc service isn't ready, not much we can do...
             match client.poll_ready() {
@@ -246,11 +230,6 @@ where
                 continue;
             }
 
-            unimplemented!();
-
-            /*
-            let grpc = tower_grpc::Client::new(Protobuf::new(), &mut client);
-            let mut rpc = GetRpc::new(grpc);
             // check for any new watches
             match self.rx.poll() {
                 Ok(Async::Ready(Some((auth, tx)))) => {
@@ -264,7 +243,8 @@ where
                                 scheme: "k8s".into(),
                                 path: vac.key().without_trailing_dot().into(),
                             };
-                            let stream = DestinationSvc::new(&mut rpc).get(req);
+                            // TODO: Can grpc::Request::new be removed?
+                            let stream = client.get(grpc::Request::new(req));
                             vac.insert(DestinationSet {
                                 addrs: HashSet::new(),
                                 needs_reconnect: false,
@@ -281,22 +261,14 @@ where
                 Ok(Async::NotReady) => break,
                 Err(_) => unreachable!("unbounded receiver doesn't error"),
             }
-            */
         }
     }
 
     /// Tries to reconnect next watch stream. Returns true if reconnection started.
-    fn poll_reconnect<S>(&mut self, client: &mut S) -> bool
-    where
-        S: Service<
-            Request = ::http::Request<() /*ClientBody*/>,
-            Response = F::Item,
-            Error = F::Error,
-            Future = F,
-        >,
-    {
+    fn poll_reconnect(&mut self, client: &mut DestinationSvc<T>) -> bool {
         debug_assert!(self.rpc_ready);
         unimplemented!();
+
         /*
         let grpc = tower_grpc::Client::new(Protobuf::new(), client);
         let mut rpc = GetRpc::new(grpc);
