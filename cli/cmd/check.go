@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-
 	"strings"
 
 	"github.com/runconduit/conduit/controller/api/public"
@@ -19,13 +18,14 @@ import (
 
 const lineWidth = 80
 
+var sysInfo bool
+
 var checkCmd = &cobra.Command{
 	Use:   "check",
 	Short: "Check your Conduit installation for potential problems.",
 	Long: `Check your Conduit installation for potential problems. The check command will perform various checks of your
 local system, the Conduit control plane, and connectivity between those. The process will exit with non-zero check if
 problems were found.`,
-	Args: cobra.NoArgs,
 	Run: exitSilentlyOnError(func(cmd *cobra.Command, args []string) error {
 
 		sh := shell.NewUnixShell()
@@ -141,5 +141,6 @@ func statusCheckResultWasError(w io.Writer) error {
 
 func init() {
 	RootCmd.AddCommand(checkCmd)
+	checkCmd.Flags().BoolVarP(&sysInfo, "sys-info", "s", false, "Print system information for debugging purposes")
 	addControlPlaneNetworkingArgs(checkCmd)
 }
