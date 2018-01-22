@@ -4,8 +4,4 @@ members = [
   "futures-mpsc-lossy",
   "proxy",
   "tower-router",
-  "tower-grpc",
-  "tower-grpc-build",
-  "tower-grpc-examples",
-  "tower-h2",
 ]

@@ -11,11 +11,7 @@ WORKDIR /usr/src/conduit
 # because it is supposed to be cached in the deps base image.
 COPY codegen ./codegen
 COPY futures-mpsc-lossy ./futures-mpsc-lossy
-COPY tower-h2 ./tower-h2
 COPY tower-router ./tower-router
-COPY tower-grpc-examples ./tower-grpc-examples
-COPY tower-grpc-build ./tower-grpc-build
-COPY tower-grpc ./tower-grpc
 COPY proto ./proto
 COPY proxy ./proxy
 ARG RELEASE

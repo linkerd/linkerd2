@@ -10,6 +10,7 @@ chrono = "0.4"
 domain = "0.2.2"
 env_logger = "0.4"
 futures = "0.1"
+h2 = "0.1"
 http = "0.1"
 ipnet = "1.0"
 log = "0.3"
@@ -27,19 +28,20 @@ abstract-ns = "0.4"
 ns-dns-tokio = "0.4"
 
 #futures-watch   = { git = "https://github.com/carllerche/better-future" }
-h2              = "0.1"
+
 tokio-connect   = { git = "https://github.com/carllerche/tokio-connect" }
 tower           = { git = "https://github.com/tower-rs/tower" }
 tower-balance   = { git = "https://github.com/tower-rs/tower" }
 tower-buffer    = { git = "https://github.com/tower-rs/tower" }
 tower-discover  = { git = "https://github.com/tower-rs/tower" }
+tower-grpc      = { git = "https://github.com/tower-rs/tower-grpc" }
+tower-h2        = { git = "https://github.com/tower-rs/tower-h2" }
 tower-reconnect = { git = "https://github.com/tower-rs/tower" }
 tower-util      = { git = "https://github.com/tower-rs/tower" }
 
 futures-mpsc-lossy = { path = "../futures-mpsc-lossy" }
 tower-router       = { path = "../tower-router" }
-tower-grpc         = { git = "https://github.com/tower-rs/tower-grpc" }
-tower-h2           = { git = "https://github.com/tower-rs/tower-h2" }
+
 
 [target.'cfg(target_os = "linux")'.dependencies]
 libc = "0.2"
