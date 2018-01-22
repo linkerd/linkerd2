@@ -267,11 +267,6 @@ where
     /// Tries to reconnect next watch stream. Returns true if reconnection started.
     fn poll_reconnect(&mut self, client: &mut DestinationSvc<T>) -> bool {
         debug_assert!(self.rpc_ready);
-        unimplemented!();
-
-        /*
-        let grpc = tower_grpc::Client::new(Protobuf::new(), client);
-        let mut rpc = GetRpc::new(grpc);
 
         while let Some(auth) = self.reconnects.pop_front() {
             if let Some(set) = self.destinations.get_mut(&auth) {
@@ -280,7 +275,7 @@ where
                     scheme: "k8s".into(),
                     path: auth.without_trailing_dot().into(),
                 };
-                set.rx = DestinationSvc::new(&mut rpc).get(req);
+                set.rx = client.get(grpc::Request::new(req));
                 set.needs_reconnect = false;
                 return true;
             } else {
@@ -288,7 +283,6 @@ where
             }
         }
         false
-        */
     }
 
     fn poll_destinations(&mut self) {
