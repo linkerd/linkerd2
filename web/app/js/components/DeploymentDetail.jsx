@@ -1,12 +1,12 @@
 import _ from 'lodash';
 import BarChart from './BarChart.jsx';
 import ConduitSpinner from "./ConduitSpinner.jsx";
-import EntityOverview from './EntityOverview.jsx';
 import ErrorBanner from './ErrorBanner.jsx';
-import HealthPane from './HealthPane.jsx';
 import { incompleteMeshMessage } from './util/CopyUtils.jsx';
 import Metric from './Metric.jsx';
 import React from 'react';
+import ResourceHealthOverview from './ResourceHealthOverview.jsx';
+import ResourceMetricOverview from './ResourceMetricOverview.jsx';
 import { rowGutter } from './util/Utils.js';
 import TabbedMetricsTable from './TabbedMetricsTable.jsx';
 import UpstreamDownstream from './UpstreamDownstream.jsx';
@@ -130,7 +130,7 @@ export default class DeploymentDetail extends React.Component {
     let currentSuccessRate = _.get(_.last(srTs), "value");
 
     return [
-      <HealthPane
+      <ResourceHealthOverview
         key="deploy-health-pane"
         entity={this.state.deploy}
         entityType="deployment"
@@ -139,7 +139,7 @@ export default class DeploymentDetail extends React.Component {
         downstreamMetrics={this.state.downstreamMetrics}
         deploymentAdded={this.state.added} />,
       _.isEmpty(this.state.deployTs) ? null :
-        <EntityOverview
+        <ResourceMetricOverview
           key="stat-pane"
           lastUpdated={this.state.lastUpdated}
           timeseries={this.state.deployTs} />,
@@ -147,7 +147,7 @@ export default class DeploymentDetail extends React.Component {
       <UpstreamDownstream
         key="deploy-upstream-downstream"
         resource="deployment"
-        entity={this.state.deploy}
+        Resource={this.state.deploy}
         lastUpdated={this.state.lastUpdated}
         upstreamMetrics={this.state.upstreamMetrics}
         downstreamMetrics={this.state.downstreamMetrics}
@@ -185,7 +185,7 @@ export default class DeploymentDetail extends React.Component {
             }
             <TabbedMetricsTable
               resource="pod"
-              entity={this.state.deploy}
+              Resource={this.state.deploy}
               metrics={podTableData}
               lastUpdated={this.state.lastUpdated}
               pathPrefix={this.props.pathPrefix}

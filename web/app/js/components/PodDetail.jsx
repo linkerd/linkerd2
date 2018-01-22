@@ -1,9 +1,9 @@
 import _ from 'lodash';
 import ConduitSpinner from "./ConduitSpinner.jsx";
-import EntityOverview from './EntityOverview.jsx';
 import ErrorBanner from './ErrorBanner.jsx';
-import HealthPane from './HealthPane.jsx';
 import React from 'react';
+import ResourceHealthOverview from './ResourceHealthOverview.jsx';
+import ResourceMetricOverview from './ResourceMetricOverview.jsx';
 import UpstreamDownstream from './UpstreamDownstream.jsx';
 import { ApiHelpers, urlsForResource } from './util/ApiHelpers.js';
 import { processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
@@ -99,7 +99,7 @@ export default class PodDetail extends React.Component {
     let currentSuccessRate = _.get(_.last(_.get(this.state.podTs, "SUCCESS_RATE", [])), "value");
 
     return [
-      <HealthPane
+      <ResourceHealthOverview
         key="pod-health-pane"
         entity={this.state.pod}
         entityType="pod"
@@ -107,7 +107,7 @@ export default class PodDetail extends React.Component {
         upstreamMetrics={this.state.upstreamMetrics}
         downstreamMetrics={this.state.downstreamMetrics} />,
       _.isEmpty(this.state.podTs) ? null :
-        <EntityOverview
+        <ResourceMetricOverview
           key="pod-stat-pane"
           lastUpdated={this.state.lastUpdated}
           timeseries={this.state.podTs} />,

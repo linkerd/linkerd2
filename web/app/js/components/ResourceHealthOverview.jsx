@@ -16,7 +16,7 @@ const TrafficIndicator = ({healthStat}) => {
 };
 
 
-export default class HealthPane extends React.Component {
+export default class ResourceHealthOverview extends React.Component {
   getRequestRate(metrics) {
     return _.sumBy(metrics, 'requestRate');
   }
