@@ -17,12 +17,12 @@ export default class UpstreamDownstreamTables extends React.Component {
               <div className="upstream-downstream-list">
                 <div className="border-container border-neutral subsection-header">
                   <div className="border-container-content subsection-header">
-                Upstream {this.props.resource}s: {numUpstreams}
+                Upstream {this.props.resourceType}s: {numUpstreams}
                   </div>
                 </div>
                 <TabbedMetricsTable
-                  resource={`upstream_${this.props.resource}`}
-                  entity={this.props.entity}
+                  resource={`upstream_${this.props.resourceType}`}
+                  resourceName={this.props.resourceName}
                   hideSparklines={numUpstreams > maxTsToFetch}
                   lastUpdated={this.props.lastUpdated}
                   metrics={this.props.upstreamMetrics}
@@ -35,12 +35,12 @@ export default class UpstreamDownstreamTables extends React.Component {
               <div className="upstream-downstream-list">
                 <div className="border-container border-neutral subsection-header">
                   <div className="border-container-content subsection-header">
-                Downstream {this.props.resource}s: {numDownstreams}
+                Downstream {this.props.resourceType}s: {numDownstreams}
                   </div>
                 </div>
                 <TabbedMetricsTable
-                  resource={`downstream_${this.props.resource}`}
-                  entity={this.props.entity}
+                  resource={`downstream_${this.props.resourceType}`}
+                  resourceName={this.props.resourceName}
                   hideSparklines={numDownstreams > maxTsToFetch}
                   lastUpdated={this.props.lastUpdated}
                   metrics={this.props.downstreamMetrics}

@@ -101,8 +101,8 @@ export default class PodDetail extends React.Component {
     return [
       <ResourceHealthOverview
         key="pod-health-pane"
-        entity={this.state.pod}
-        entityType="pod"
+        resourceName={this.state.pod}
+        resourceType="pod"
         currentSr={currentSuccessRate}
         upstreamMetrics={this.state.upstreamMetrics}
         downstreamMetrics={this.state.downstreamMetrics} />,
@@ -113,8 +113,8 @@ export default class PodDetail extends React.Component {
           timeseries={this.state.podTs} />,
       <UpstreamDownstream
         key="pod-upstream-downstream"
-        resource="pod"
-        entity={this.state.pod}
+        resourceType="pod"
+        resourceName={this.state.pod}
         lastUpdated={this.state.lastUpdated}
         upstreamMetrics={this.state.upstreamMetrics}
         downstreamMetrics={this.state.downstreamMetrics}

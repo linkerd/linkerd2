@@ -132,8 +132,8 @@ export default class DeploymentDetail extends React.Component {
     return [
       <ResourceHealthOverview
         key="deploy-health-pane"
-        entity={this.state.deploy}
-        entityType="deployment"
+        resourceName={this.state.deploy}
+        resourceType="deployment"
         currentSr={currentSuccessRate}
         upstreamMetrics={this.state.upstreamMetrics}
         downstreamMetrics={this.state.downstreamMetrics}
@@ -146,8 +146,8 @@ export default class DeploymentDetail extends React.Component {
       this.renderMidsection(),
       <UpstreamDownstream
         key="deploy-upstream-downstream"
-        resource="deployment"
-        Resource={this.state.deploy}
+        resourceType="deployment"
+        resourceName={this.state.deploy}
         lastUpdated={this.state.lastUpdated}
         upstreamMetrics={this.state.upstreamMetrics}
         downstreamMetrics={this.state.downstreamMetrics}
