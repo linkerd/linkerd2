@@ -185,7 +185,7 @@ export default class DeploymentDetail extends React.Component {
             }
             <TabbedMetricsTable
               resource="pod"
-              Resource={this.state.deploy}
+              resourceName={this.state.deploy}
               metrics={podTableData}
               lastUpdated={this.state.lastUpdated}
               pathPrefix={this.props.pathPrefix}
