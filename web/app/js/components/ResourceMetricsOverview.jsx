@@ -5,7 +5,7 @@ import ResourceOverviewMetric from './ResourceOverviewMetric.jsx';
 import { rowGutter } from './util/Utils.js';
 import { Col, Row } from 'antd';
 
-export default class ResourceMetricOverview extends React.Component {
+export default class ResourceMetricsOverview extends React.Component {
   render() {
     return (
       <div>

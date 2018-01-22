@@ -1,16 +1,16 @@
 import Adapter from 'enzyme-adapter-react-16';
-import EntityOverview from '../js/components/EntityOverview.jsx';
 import Enzyme from 'enzyme';
 import { expect } from 'chai';
 import { mount } from 'enzyme';
 import React from 'react';
+import ResourceMetricsOverview from '../js/components/ResourceMetricsOverview.jsx';
 
 Enzyme.configure({ adapter: new Adapter() });
 
-describe('EntityOverview', () => {
+describe('ResourceMetricsOverview', () => {
   it('renders the request, success rate and latency components', () => {
     let component = mount(
-      <EntityOverview
+      <ResourceMetricsOverview
         lastUpdated={Date.now()}
         timeseries={[]} />
     );

@@ -3,7 +3,7 @@ import ConduitSpinner from "./ConduitSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
 import React from 'react';
 import ResourceHealthOverview from './ResourceHealthOverview.jsx';
-import ResourceMetricOverview from './ResourceMetricOverview.jsx';
+import ResourceMetricsOverview from './ResourceMetricsOverview.jsx';
 import UpstreamDownstream from './UpstreamDownstream.jsx';
 import { ApiHelpers, urlsForResource } from './util/ApiHelpers.js';
 import { processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
@@ -107,7 +107,7 @@ export default class PodDetail extends React.Component {
         upstreamMetrics={this.state.upstreamMetrics}
         downstreamMetrics={this.state.downstreamMetrics} />,
       _.isEmpty(this.state.podTs) ? null :
-        <ResourceMetricOverview
+        <ResourceMetricsOverview
           key="pod-stat-pane"
           lastUpdated={this.state.lastUpdated}
           timeseries={this.state.podTs} />,

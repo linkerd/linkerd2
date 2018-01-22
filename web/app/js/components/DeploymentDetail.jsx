@@ -6,7 +6,7 @@ import { incompleteMeshMessage } from './util/CopyUtils.jsx';
 import Metric from './Metric.jsx';
 import React from 'react';
 import ResourceHealthOverview from './ResourceHealthOverview.jsx';
-import ResourceMetricOverview from './ResourceMetricOverview.jsx';
+import ResourceMetricsOverview from './ResourceMetricsOverview.jsx';
 import { rowGutter } from './util/Utils.js';
 import TabbedMetricsTable from './TabbedMetricsTable.jsx';
 import UpstreamDownstream from './UpstreamDownstream.jsx';
@@ -139,7 +139,7 @@ export default class DeploymentDetail extends React.Component {
         downstreamMetrics={this.state.downstreamMetrics}
         deploymentAdded={this.state.added} />,
       _.isEmpty(this.state.deployTs) ? null :
-        <ResourceMetricOverview
+        <ResourceMetricsOverview
           key="stat-pane"
           lastUpdated={this.state.lastUpdated}
           timeseries={this.state.deployTs} />,
