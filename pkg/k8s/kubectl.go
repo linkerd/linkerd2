@@ -13,24 +13,6 @@ import (
 	"github.com/runconduit/conduit/pkg/shell"
 )
 
-type Kubectl interface {
-	Version() (*VersionInfo, error)
-	StartProxy(potentialErrorWhenStartingProxy chan error, port int) error
-	UrlFor(namespace string, extraPathStartingWithSlash string) (*url.URL, error)
-	ProxyPort() int
-	healthcheck.StatusChecker
-}
-
-type kubectl struct {
-	sh        shell.Shell
-	proxyPort int
-}
-
-type VersionInfo struct {
-	Client [3]int
-	Server [3]int
-}
-
 const (
 	KubernetesDeployments               = "deployments"
 	KubernetesPods                      = "pods"
@@ -43,11 +25,31 @@ const (
 	KubectlConnectivityCheckDescription = "can talk to Kubernetes cluster"
 	//As per https://github.com/kubernetes/kubernetes/commit/0daee3ad2238de7bb356d1b4368b0733a3497a3a#diff-595bfea7ed0dd0171e1f339a1f8bfcb6R155
 	magicCharacterThatIndicatesProxyIsRunning = '\n'
+	ClientPrefix                              = "Client Version: v"
+	ServerPrefix                              = "Server Version: v"
 )
+
+type Kubectl interface {
+	Version() (kubectlVersion, error)
+	StartProxy(potentialErrorWhenStartingProxy chan error, port int) error
+	UrlFor(namespace string, extraPathStartingWithSlash string) (*url.URL, error)
+	ProxyPort() int
+	healthcheck.StatusChecker
+}
+
+type kubectl struct {
+	sh        shell.Shell
+	proxyPort int
+}
+
+type kubectlVersion struct {
+	Client [3]int
+	Server [3]int
+}
 
 var minimumKubectlVersionExpected = [3]int{1, 8, 0}
 
-func (v *VersionInfo) ToVersionString() [2]string {
+func (v *kubectlVersion) ToVersionString() [2]string {
 	var versions [2]string
 	prettyPrintArray := func(arr [3]int) string {
 		versionString := ""
@@ -78,35 +80,36 @@ func (kctl *kubectl) ProxyScheme() string {
 	return "http"
 }
 
-func (kctl *kubectl) Version() (*VersionInfo, error) {
-	var versionStruct = &VersionInfo{}
-	var clientPrefix = "Client Version: v"
-	var serverPrefix = "Server Version: v"
+func (kctl *kubectl) Version() (kubectlVersion, error) {
+	var kbctlVersion kubectlVersion
 
 	bytes, err := kctl.sh.CombinedOutput("kubectl", "version", "--short")
 	versionString := string(bytes)
 	if err != nil {
-		return versionStruct, fmt.Errorf("error running kubectl Version. Output: %s Error: %v", versionString, err)
+		return kbctlVersion, fmt.Errorf("error running kubectl Version. Output: %s Error: %v", versionString, err)
 	}
 
 	clientAndServerVersionStrings := strings.Split(versionString, "\n")
+	if len(clientAndServerVersionStrings) > 0 {
+		kbctlVersion = kubectlVersion{}
+	}
 	for _, ver := range clientAndServerVersionStrings {
-		if strings.HasPrefix(ver, clientPrefix) {
-			version, err := extractVersionNumber(ver, clientPrefix)
+		if strings.HasPrefix(ver, ClientPrefix) {
+			versionNum, err := extractVersionNumber(ver, ClientPrefix)
 			if err != nil {
-				return nil, err
+				return kbctlVersion, err
 			}
-			versionStruct.Client = version
+			kbctlVersion.Client = versionNum
 
-		} else if strings.HasPrefix(ver, serverPrefix) {
-			version, err := extractVersionNumber(ver, serverPrefix)
+		} else if strings.HasPrefix(ver, ServerPrefix) {
+			versionNum, err := extractVersionNumber(ver, ServerPrefix)
 			if err != nil {
-				return nil, err
+				return kbctlVersion, err
 			}
-			versionStruct.Server = version
+			kbctlVersion.Server = versionNum
 		}
 	}
-	return versionStruct, nil
+	return kbctlVersion, nil
 }
 
 func extractVersionNumber(versionString string, prefix string) ([3]int, error) {
