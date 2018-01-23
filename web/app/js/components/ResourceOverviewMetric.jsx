@@ -3,7 +3,7 @@ import LineGraph from './LineGraph.jsx';
 import React from 'react';
 import { metricToFormatter, toClassName } from './util/Utils.js';
 
-export default class StatPaneStat extends React.Component {
+export default class EntityOverviewMetric extends React.Component {
   render() {
     let lastDatapoint = _.last(this.props.timeseries) || {};
     let metric = _.get(lastDatapoint, "value");

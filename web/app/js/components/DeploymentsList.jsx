@@ -23,7 +23,7 @@ let nodeStats = (description, node) => (
   </div>
 );
 
-export default class Deployments extends React.Component {
+export default class DeploymentsList extends React.Component {
   constructor(props) {
     super(props);
     this.api = ApiHelpers(this.props.pathPrefix);

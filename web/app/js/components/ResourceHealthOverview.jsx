@@ -16,7 +16,7 @@ const TrafficIndicator = ({healthStat}) => {
 };
 
 
-export default class HealthPane extends React.Component {
+export default class ResourceHealthOverview extends React.Component {
   getRequestRate(metrics) {
     return _.sumBy(metrics, 'requestRate');
   }
@@ -63,7 +63,7 @@ export default class HealthPane extends React.Component {
 
     return (
       <div key="entity-heath" className="entity-health">
-        <div className="subsection-header">{this.props.entityType} Health</div>
+        <div className="subsection-header">{this.props.resourceType} Health</div>
         <Row>
           <Col span={8}>
             <Metric title="Inbound request rate" value={stats.inbound.requests} className="float-right" />
@@ -76,17 +76,17 @@ export default class HealthPane extends React.Component {
 
         <Row>
           <Col span={8}>
-            <div className="entity-count">&laquo; {_.size(this.props.upstreamMetrics)} {this.props.entityType}s</div>
+            <div className="entity-count">&laquo; {_.size(this.props.upstreamMetrics)} {this.props.resourceType}s</div>
             <div className={`adjacent-health ${stats.inbound.health}`}>
               <TrafficIndicator healthStat={stats.inbound.health} />
             </div>
           </Col>
           <Col span={8}>
             <div className="entity-count">&nbsp;</div>
-            <div className={`entity-title ${stats.current.health}`}>{this.props.entity}</div>
+            <div className={`entity-title ${stats.current.health}`}>{this.props.resourceName}</div>
           </Col>
           <Col span={8}>
-            <div className="entity-count float-right">{_.size(this.props.downstreamMetrics)} {this.props.entityType}s &raquo;</div>
+            <div className="entity-count float-right">{_.size(this.props.downstreamMetrics)} {this.props.resourceType}s &raquo;</div>
             <div className={`adjacent-health ${stats.outbound.health}`}>
               <TrafficIndicator healthStat={stats.outbound.health} />
             </div>

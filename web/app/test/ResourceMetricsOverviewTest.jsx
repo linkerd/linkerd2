@@ -3,14 +3,14 @@ import Enzyme from 'enzyme';
 import { expect } from 'chai';
 import { mount } from 'enzyme';
 import React from 'react';
-import StatPane from '../js/components/StatPane.jsx';
+import ResourceMetricsOverview from '../js/components/ResourceMetricsOverview.jsx';
 
 Enzyme.configure({ adapter: new Adapter() });
 
-describe('StatPane', () => {
+describe('ResourceMetricsOverview', () => {
   it('renders the request, success rate and latency components', () => {
     let component = mount(
-      <StatPane
+      <ResourceMetricsOverview
         lastUpdated={Date.now()}
         timeseries={[]} />
     );

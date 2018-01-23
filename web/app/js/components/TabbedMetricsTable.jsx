@@ -125,7 +125,7 @@ export default class TabbedMetricsTable extends React.Component {
       timeseries: {},
       rollup: this.preprocessMetrics(),
       groupBy: tsHelper.groupBy,
-      metricsUrl: tsHelper.url(this.props.entity),
+      metricsUrl: tsHelper.url(this.props.resourceName),
       error: '',
       lastUpdated: this.props.lastUpdated,
       metricsWindow: "10s",

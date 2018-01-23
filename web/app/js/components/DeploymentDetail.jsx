@@ -2,12 +2,12 @@ import _ from 'lodash';
 import BarChart from './BarChart.jsx';
 import ConduitSpinner from "./ConduitSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
-import HealthPane from './HealthPane.jsx';
 import { incompleteMeshMessage } from './util/CopyUtils.jsx';
 import Metric from './Metric.jsx';
 import React from 'react';
+import ResourceHealthOverview from './ResourceHealthOverview.jsx';
+import ResourceMetricsOverview from './ResourceMetricsOverview.jsx';
 import { rowGutter } from './util/Utils.js';
-import StatPane from './StatPane.jsx';
 import TabbedMetricsTable from './TabbedMetricsTable.jsx';
 import UpstreamDownstream from './UpstreamDownstream.jsx';
 import { ApiHelpers, urlsForResource } from './util/ApiHelpers.js';
@@ -16,7 +16,7 @@ import { emptyMetric, getPodsByDeployment, processRollupMetrics, processTimeseri
 import './../../css/deployment.css';
 import 'whatwg-fetch';
 
-export default class Deployment extends React.Component {
+export default class DeploymentDetail extends React.Component {
   constructor(props) {
     super(props);
     this.api = ApiHelpers(this.props.pathPrefix);
@@ -130,24 +130,24 @@ export default class Deployment extends React.Component {
     let currentSuccessRate = _.get(_.last(srTs), "value");
 
     return [
-      <HealthPane
+      <ResourceHealthOverview
         key="deploy-health-pane"
-        entity={this.state.deploy}
-        entityType="deployment"
+        resourceName={this.state.deploy}
+        resourceType="deployment"
         currentSr={currentSuccessRate}
         upstreamMetrics={this.state.upstreamMetrics}
         downstreamMetrics={this.state.downstreamMetrics}
         deploymentAdded={this.state.added} />,
       _.isEmpty(this.state.deployTs) ? null :
-        <StatPane
+        <ResourceMetricsOverview
           key="stat-pane"
           lastUpdated={this.state.lastUpdated}
           timeseries={this.state.deployTs} />,
       this.renderMidsection(),
       <UpstreamDownstream
         key="deploy-upstream-downstream"
-        resource="deployment"
-        entity={this.state.deploy}
+        resourceType="deployment"
+        resourceName={this.state.deploy}
         lastUpdated={this.state.lastUpdated}
         upstreamMetrics={this.state.upstreamMetrics}
         downstreamMetrics={this.state.downstreamMetrics}
@@ -185,7 +185,7 @@ export default class Deployment extends React.Component {
             }
             <TabbedMetricsTable
               resource="pod"
-              entity={this.state.deploy}
+              resourceName={this.state.deploy}
               metrics={podTableData}
               lastUpdated={this.state.lastUpdated}
               pathPrefix={this.props.pathPrefix}
