@@ -10,8 +10,6 @@ use tower_h2::{HttpService, BoxBody};
 use tower_discover::{Change, Discover};
 use tower_grpc as grpc;
 
-use tower_grpc::client::server_streaming;
-
 use fully_qualified_authority::FullyQualifiedAuthority;
 
 use super::codec::Protobuf;
@@ -35,6 +33,8 @@ pub type ClientBody = ::tower_grpc::client::codec::EncodingBody<
 type UpdateRsp<F> =
     grpc::client::server_streaming::ResponseFuture<PbUpdate, F>;
 
+type UpdateStream<E> = Stream<Item=PbUpdate, Error=E>;
+
 /// A handle to start watching a destination for address changes.
 #[derive(Clone, Debug)]
 pub struct Discovery {
@@ -54,16 +54,21 @@ pub struct Background {
     rx: mpsc::UnboundedReceiver<(FullyQualifiedAuthority, mpsc::UnboundedSender<Update>)>,
 }
 
-type DiscoveryWatch<F> = DestinationSet<UpdateRsp<F>>;
+type DiscoveryWatch<F, S> = DestinationSet<UpdateRsp<F>, S>;
 
 /// A future returned from `Background::work()`, doing the work of talking to
 /// the controller destination API.
 // TODO: debug impl
-pub struct DiscoveryWork<T: HttpService>
+pub struct DiscoveryWork<T, S>
 where
-    UpdateRsp<T::Future>: Future,
+    T: HttpService,
+    UpdateRsp<T::Future>: Future<Item=grpc::Response<S>>,
+    S: Stream,
 {
-    destinations: HashMap<FullyQualifiedAuthority, DiscoveryWatch<T::Future>>,
+    destinations: HashMap<
+        FullyQualifiedAuthority,
+        DiscoveryWatch<T::Future, S
+    >>,
     /// A queue of authorities that need to be reconnected.
     reconnects: VecDeque<FullyQualifiedAuthority>,
     /// The Destination.Get RPC client service.
@@ -73,19 +78,29 @@ where
     rx: mpsc::UnboundedReceiver<(FullyQualifiedAuthority, mpsc::UnboundedSender<Update>)>,
 }
 
-struct DestinationSet<T>
+struct DestinationSet<T, S>
 where
-    T: Future,
+    T: Future<Item=grpc::Response<S>>,
+    S: Stream,
 {
     addrs: HashSet<SocketAddr>,
     needs_reconnect: bool,
-    rx: SetRx<T, <T as Future>::Item>,
+    rx: UpdateRx<T, S>,
     tx: mpsc::UnboundedSender<Update>,
 }
 
-enum SetRx<F, S> {
+enum UpdateRx<F, S>
+where
+    F: Future<Item=grpc::Response<S>>,
+    S: Stream,
+{
     Waiting(F),
     Streaming(S),
+}
+#[derive(Debug)]
+enum RxError<F, S> {
+    Future(F),
+    Stream(S),
 }
 
 #[derive(Debug)]
@@ -186,10 +201,12 @@ where
 
 impl Background {
     /// Bind this handle to start talking to the controller API.
-    pub fn work<T>(self) -> DiscoveryWork<T>
+    pub fn work<E, T, S>(self) -> DiscoveryWork<T, S>
     where T: HttpService<RequestBody = BoxBody>,
           T::Error: fmt::Debug,
-          UpdateRsp<T::Future>: Future,
+          UpdateRsp<T::Future>: Future<Item=grpc::Response<S>, Error=E>,
+          S: Stream,
+          E: fmt::Debug,
     {
         DiscoveryWork {
             destinations: HashMap::new(),
@@ -202,19 +219,17 @@ impl Background {
 
 // ==== impl DiscoveryWork =====
 
-impl<E, T> DiscoveryWork<T>
+impl<E, T, S> DiscoveryWork<T, S>
 where
     T: HttpService<RequestBody = BoxBody>,
-    T::Future: fmt::Debug,
+    // T::Future: fmt::Debug,
     T::Error: fmt::Debug,
-    UpdateRsp<T::Future>: Future,
-    <UpdateRsp<T::Future> as Future>::Item: Stream<Item=PbUpdate, Error=E>,
+    E: fmt::Debug,
+    UpdateRsp<T::Future>: Future<Item=grpc::Response<S>, Error=E>,
+    S: Stream<Item=PbUpdate, Error=E>,
     <UpdateRsp<T::Future> as Future>::Error: fmt::Debug,
-    SetRx<UpdateRsp<T::Future>, <UpdateRsp<T::Future> as Future>::Item>:
-        Stream<Item=PbUpdate>,
-    <SetRx<UpdateRsp<T::Future>, <UpdateRsp<T::Future> as Future>::Item> as Stream>::Error:
-        fmt::Debug,
-
+    UpdateRx<UpdateRsp<T::Future>, S>: Stream<Item=PbUpdate>,
+    <UpdateRx<UpdateRsp<T::Future>, S> as Stream>::Error: fmt::Debug,
 {
     pub fn poll_rpc(&mut self, client: &mut DestinationSvc<T>) {
         // This loop is make sure any streams that were found disconnected
@@ -268,7 +283,7 @@ where
                                 path: vac.key().without_trailing_dot().into(),
                             };
                             // TODO: Can grpc::Request::new be removed?
-                            let stream = SetRx::from(client.get(grpc::Request::new(req)));
+                            let stream = UpdateRx::from(client.get(grpc::Request::new(req)));
                             vac.insert(DestinationSet {
                                 addrs: HashSet::new(),
                                 needs_reconnect: false,
@@ -299,7 +314,7 @@ where
                     scheme: "k8s".into(),
                     path: auth.without_trailing_dot().into(),
                 };
-                set.rx = SetRx::from(client.get(grpc::Request::new(req)));
+                set.rx = UpdateRx::from(client.get(grpc::Request::new(req)));
                 set.needs_reconnect = false;
                 return true;
             } else {
@@ -377,41 +392,43 @@ where
     }
 }
 
-// ===== impl SetRx =====
+// ===== impl UpdateRx =====
 
-impl<F, S, E> Stream for SetRx<F, S>
+impl<F, S, E> Stream for UpdateRx<F, S>
 where
-    F: Future<Item=S, Error=E>,
+    F: Future<Item=grpc::Response<S>, Error=E>,
     E: fmt::Debug,
     S: Stream,
-    E: From<S::Error>,
 {
     type Item = <S as Stream>::Item;
-    type Error = E;
+    type Error = RxError<E, <S as Stream>::Error>;
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
         // this is not ideal.
         let stream = match *self {
-            SetRx::Waiting(ref mut future) => match future.poll() {
-                Ok(Async::Ready(stream)) => stream,
+            UpdateRx::Waiting(ref mut future) => match future.poll() {
+                Ok(Async::Ready(response)) => response.into_inner(),
                 Ok(Async::NotReady) => return Ok(Async::NotReady),
-                Err(e) => return Err(e),
+                Err(e) => return Err(RxError::Future(e)),
             },
-            SetRx::Streaming(ref mut stream) => return stream.poll().map_err(E::from),
+            UpdateRx::Streaming(ref mut stream) =>
+                return stream.poll().map_err(RxError::Stream),
         };
-        *self = SetRx::Streaming(stream);
+        *self = UpdateRx::Streaming(stream);
         self.poll()
     }
 }
 
-impl<F, S, E> From<F> for SetRx<F, S>
+impl<F, S, E> From<F> for UpdateRx<F, S>
 where
-    F: Future<Item=S, Error=E>,
+    F: Future<Item=grpc::Response<S>, Error=E>,
     S: Stream,
 {
     fn from(f: F) -> Self {
-        SetRx::Waiting(f)
+        UpdateRx::Waiting(f)
     }
 }
+
+// ===== impl RxError =====
 
 fn pb_to_sock_addr(pb: TcpAddress) -> Option<SocketAddr> {
     use super::pb::common::ip_address::Ip;
