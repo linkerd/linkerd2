@@ -66,11 +66,28 @@ struct DestinationSet<T, S> {
     tx: mpsc::UnboundedSender<Update>,
 }
 
+/// Receiver for destination set updates.
+///
+/// The destination RPC returns a `ResponseFuture` whose item is a
+/// `Response<Stream>`, so this type holds the state of that RPC call ---
+/// either we're waiting for the future, or we have a stream --- and allows
+/// us to implement `Stream` regardless of whether the RPC has returned yet
+/// or not.
+///
+/// Polling an `UpdateRx` polls the wrapped future while we are
+/// `Waiting`, and the `Stream` if we are `Streaming`. If the future is `Ready`,
+/// then we switch states to `Streaming`.
 enum UpdateRx<F, S> {
     Waiting(F),
     Streaming(S),
 }
 
+/// Wraps the error types returned by `UpdateRx` polls.
+///
+/// An `UpdateRx` error is either the error type of the `Future` in the
+/// `UpdateRx::Waiting` state, or the `Stream` in the `UpdateRx::Streaming`
+/// state.
+// TODO: impl Error?
 #[derive(Debug)]
 enum RxError<F, S> {
     Future(F),
