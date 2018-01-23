@@ -10,16 +10,19 @@ use tower_h2::{HttpService, BoxBody};
 use tower_discover::{Change, Discover};
 use tower_grpc as grpc;
 
+use tower_grpc::client::server_streaming;
+
 use fully_qualified_authority::FullyQualifiedAuthority;
 
 use super::codec::Protobuf;
 use super::pb::common::{Destination, TcpAddress};
 use super::pb::proxy::destination::Update as PbUpdate;
+use super::pb::proxy::destination::update::Update as PbUpdate2;
 use super::pb::proxy::destination::client::{Destination as DestinationSvc};
 /*
 use super::pb::proxy::destination::client::Destination as DestinationSvc;
 use super::pb::proxy::destination::client::destination_methods::Get as GetRpc;
-use super::pb::proxy::destination::update::Update as PbUpdate2;
+
 */
 
 /*
@@ -54,8 +57,11 @@ type DiscoveryWatch<F> = DestinationSet<
 
 /// A future returned from `Background::work()`, doing the work of talking to
 /// the controller destination API.
-#[derive(Debug)]
-pub struct DiscoveryWork<T: HttpService> {
+// TODO: debug impl
+pub struct DiscoveryWork<T: HttpService>
+where
+    server_streaming::ResponseFuture<PbUpdate, T::Future>: Future,
+{
     destinations: HashMap<FullyQualifiedAuthority, DiscoveryWatch<T::Future>>,
     /// A queue of authorities that need to be reconnected.
     reconnects: VecDeque<FullyQualifiedAuthority>,
@@ -66,12 +72,19 @@ pub struct DiscoveryWork<T: HttpService> {
     rx: mpsc::UnboundedReceiver<(FullyQualifiedAuthority, mpsc::UnboundedSender<Update>)>,
 }
 
-#[derive(Debug)]
-struct DestinationSet<T> {
+struct DestinationSet<T>
+where
+    T: Future,
+{
     addrs: HashSet<SocketAddr>,
     needs_reconnect: bool,
-    rx: T,
+    rx: SetRx<T, <T as Future>::Item>,
     tx: mpsc::UnboundedSender<Update>,
+}
+
+enum SetRx<F, S> {
+    Waiting(F),
+    Streaming(S),
 }
 
 #[derive(Debug)]
@@ -175,6 +188,7 @@ impl Background {
     pub fn work<T>(self) -> DiscoveryWork<T>
     where T: HttpService<RequestBody = BoxBody>,
           T::Error: fmt::Debug,
+          server_streaming::ResponseFuture<PbUpdate, T::Future>: Future,
     {
         DiscoveryWork {
             destinations: HashMap::new(),
@@ -187,10 +201,19 @@ impl Background {
 
 // ==== impl DiscoveryWork =====
 
-impl<T> DiscoveryWork<T>
+impl<E, T> DiscoveryWork<T>
 where
     T: HttpService<RequestBody = BoxBody>,
+    T::Future: fmt::Debug,
     T::Error: fmt::Debug,
+    server_streaming::ResponseFuture<PbUpdate, T::Future>: Future,
+    <server_streaming::ResponseFuture<PbUpdate, T::Future> as Future>::Item:        Stream<Item=PbUpdate, Error=E>,
+    <server_streaming::ResponseFuture<PbUpdate, T::Future> as Future>::Error:       fmt::Debug,
+    SetRx<server_streaming::ResponseFuture<PbUpdate, T::Future>, <server_streaming::ResponseFuture<PbUpdate, T::Future> as Future>::Item>:
+        Stream<Item=PbUpdate>,
+    <SetRx<server_streaming::ResponseFuture<PbUpdate, T::Future>, <server_streaming::ResponseFuture<PbUpdate, T::Future> as Future>::Item> as Stream>::Error:
+        fmt::Debug,
+
 {
     pub fn poll_rpc(&mut self, client: &mut DestinationSvc<T>) {
         // This loop is make sure any streams that were found disconnected
@@ -244,7 +267,7 @@ where
                                 path: vac.key().without_trailing_dot().into(),
                             };
                             // TODO: Can grpc::Request::new be removed?
-                            let stream = client.get(grpc::Request::new(req));
+                            let stream = SetRx::from(client.get(grpc::Request::new(req)));
                             vac.insert(DestinationSet {
                                 addrs: HashSet::new(),
                                 needs_reconnect: false,
@@ -275,7 +298,7 @@ where
                     scheme: "k8s".into(),
                     path: auth.without_trailing_dot().into(),
                 };
-                set.rx = client.get(grpc::Request::new(req));
+                set.rx = SetRx::from(client.get(grpc::Request::new(req)));
                 set.needs_reconnect = false;
                 return true;
             } else {
@@ -291,7 +314,7 @@ where
                 continue;
             }
             let needs_reconnect = 'set: loop {
-                /*
+
                 match set.rx.poll() {
                     Ok(Async::Ready(Some(update))) => match update.update {
                         Some(PbUpdate2::Add(a_set)) => for addr in a_set.addrs {
@@ -325,8 +348,7 @@ where
                         break 'set true;
                     }
                 }
-                */
-                unimplemented!();
+
             };
             if needs_reconnect {
                 set.needs_reconnect = true;
@@ -351,6 +373,42 @@ where
 
     fn bind(&self, addr: &SocketAddr) -> Result<Self::Service, Self::BindError> {
         (*self)(addr)
+    }
+}
+
+// ===== impl SetRx =====
+
+impl<F, S, E> Stream for SetRx<F, S>
+where
+    F: Future<Item=S, Error=E>,
+    E: fmt::Debug,
+    S: Stream,
+    E: From<S::Error>,
+{
+    type Item = <S as Stream>::Item;
+    type Error = E;
+    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
+        // this is not ideal.
+        let stream = match *self {
+            SetRx::Waiting(ref mut future) => match future.poll() {
+                Ok(Async::Ready(stream)) => stream,
+                Ok(Async::NotReady) => return Ok(Async::NotReady),
+                Err(e) => return Err(e),
+            },
+            SetRx::Streaming(ref mut stream) => return stream.poll().map_err(E::from),
+        };
+        *self = SetRx::Streaming(stream);
+        self.poll()
+    }
+}
+
+impl<F, S, E> From<F> for SetRx<F, S>
+where
+    F: Future<Item=S, Error=E>,
+    S: Stream,
+{
+    fn from(f: F) -> Self {
+        SetRx::Waiting(f)
     }
 }
 
@@ -406,3 +464,4 @@ fn pb_to_sock_addr(pb: TcpAddress) -> Option<SocketAddr> {
         None => None,
     }
 }
+
