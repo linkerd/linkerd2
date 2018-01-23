@@ -196,12 +196,9 @@ impl Background {
 impl<E, T, S> DiscoveryWork<T, S>
 where
     T: HttpService<RequestBody = BoxBody>,
-    // T::Future: fmt::Debug,
     T::Error: fmt::Debug,
-    E: fmt::Debug,
     UpdateRsp<T::Future>: Future<Item=grpc::Response<S>, Error=E>,
     S: Stream<Item=PbUpdate, Error=E>,
-    <UpdateRsp<T::Future> as Future>::Error: fmt::Debug,
     UpdateRx<UpdateRsp<T::Future>, S>: Stream<Item=PbUpdate>,
     <UpdateRx<UpdateRsp<T::Future>, S> as Stream>::Error: fmt::Debug,
 {
