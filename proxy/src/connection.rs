@@ -1,3 +1,4 @@
+use bytes::Buf;
 use futures::*;
 use std;
 use std::io;
@@ -128,8 +129,15 @@ impl io::Read for Connection {
     }
 }
 
-// TODO: impl specialty functions
-impl AsyncRead for Connection {}
+impl AsyncRead for Connection {
+    unsafe fn prepare_uninitialized_buffer(&self, buf: &mut [u8]) -> bool {
+        use self::Connection::*;
+
+        match *self {
+            Plain(ref t) => t.prepare_uninitialized_buffer(buf),
+        }
+    }
+}
 
 impl io::Write for Connection {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
@@ -149,13 +157,20 @@ impl io::Write for Connection {
     }
 }
 
-// TODO: impl specialty functions
 impl AsyncWrite for Connection {
     fn shutdown(&mut self) -> Poll<(), io::Error> {
         use self::Connection::*;
 
         match *self {
             Plain(ref mut t) => t.shutdown(),
+        }
+    }
+
+    fn write_buf<B: Buf>(&mut self, buf: &mut B) -> Poll<usize, io::Error> {
+        use self::Connection::*;
+
+        match *self {
+            Plain(ref mut t) => t.write_buf(buf),
         }
     }
 }
