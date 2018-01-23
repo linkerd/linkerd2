@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"log"
+
 	healthCheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 	"github.com/runconduit/conduit/pkg/shell"
 	"k8s.io/client-go/rest"
@@ -63,7 +65,7 @@ func TestKubernetesAPIHealthCheck(t *testing.T) {
 }
 func assert(t *testing.T, condition bool, msg string) {
 	if !condition {
-		fmt.Sprintf("Failed: %s", msg)
+		log.Printf("Failed: %s", msg)
 		t.Fail()
 	}
 	fmt.Println(msg)
