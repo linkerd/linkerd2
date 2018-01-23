@@ -36,7 +36,7 @@ var dashboardCmd = &cobra.Command{
 
 		kubeApi, err := k8s.NewK8sAPI(sh, kubeconfigPath)
 		if err != nil {
-			log.Fatalf("Failed to create Kubernetes API: %v", err)
+			log.Fatalf("Failed to connect to the Kubernetes API: %v", err)
 		}
 
 		checkResults := kubeApi.SelfCheck()
@@ -47,7 +47,7 @@ var dashboardCmd = &cobra.Command{
 		}
 
 		if dashboardCheckResult.Status != healthcheckPb.CheckStatus_OK {
-			log.Fatalf("Failed to access dashboard in the %s namespace", controlPlaneNamespace)
+			log.Fatalf("Failed to access dashboard")
 		}
 
 		asyncProcessErr := make(chan error, 1)

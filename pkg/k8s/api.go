@@ -19,7 +19,7 @@ const (
 	ConduitDashboardSubsystemName       = "conduit dashboard"
 	KubeapiClientCheckDescription       = "can initialize the client"
 	KubeapiAccessCheckDescription       = "can query the Kubernetes API"
-	KubeapiDashboardCheckDescription    = "can query Conduit dashboard through Kubernetes API"
+	ConduitDashboardCheckDescription    = "can query the Conduit dashboard through Kubernetes API"
 )
 
 type KubernetesApi interface {
@@ -116,7 +116,7 @@ func (kubeapi *kubernetesApi) checkDashboardAccess(client *http.Client) *healthc
 	checkResult := &healthcheckPb.CheckResult{
 		Status:           healthcheckPb.CheckStatus_OK,
 		SubsystemName:    ConduitDashboardSubsystemName,
-		CheckDescription: KubeapiDashboardCheckDescription,
+		CheckDescription: ConduitDashboardCheckDescription,
 	}
 	dashboardEndpoint, err := kubeapi.UrlFor("conduit", "/services/web:http/proxy")
 	if err != nil {
