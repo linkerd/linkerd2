@@ -12,28 +12,14 @@ use tower_grpc as grpc;
 
 use fully_qualified_authority::FullyQualifiedAuthority;
 
-use super::codec::Protobuf;
 use super::pb::common::{Destination, TcpAddress};
 use super::pb::proxy::destination::Update as PbUpdate;
 use super::pb::proxy::destination::update::Update as PbUpdate2;
 use super::pb::proxy::destination::client::{Destination as DestinationSvc};
-/*
-use super::pb::proxy::destination::client::Destination as DestinationSvc;
-use super::pb::proxy::destination::client::destination_methods::Get as GetRpc;
-
-*/
-
-/*
-pub type ClientBody = ::tower_grpc::client::codec::EncodingBody<
-    Protobuf<Destination, PbUpdate>,
-    ::tower_grpc::client::codec::Unary<Destination>,
->;
-*/
 
 type UpdateRsp<F> =
     grpc::client::server_streaming::ResponseFuture<PbUpdate, F>;
 
-type UpdateStream<E> = Stream<Item=PbUpdate, Error=E>;
 
 /// A handle to start watching a destination for address changes.
 #[derive(Clone, Debug)]
@@ -59,16 +45,11 @@ type DiscoveryWatch<F, S> = DestinationSet<UpdateRsp<F>, S>;
 /// A future returned from `Background::work()`, doing the work of talking to
 /// the controller destination API.
 // TODO: debug impl
-pub struct DiscoveryWork<T, S>
-where
-    T: HttpService,
-    UpdateRsp<T::Future>: Future<Item=grpc::Response<S>>,
-    S: Stream,
-{
+pub struct DiscoveryWork<T: HttpService, S> {
     destinations: HashMap<
         FullyQualifiedAuthority,
-        DiscoveryWatch<T::Future, S
-    >>,
+        DiscoveryWatch<T::Future, S>
+    >,
     /// A queue of authorities that need to be reconnected.
     reconnects: VecDeque<FullyQualifiedAuthority>,
     /// The Destination.Get RPC client service.
@@ -78,25 +59,18 @@ where
     rx: mpsc::UnboundedReceiver<(FullyQualifiedAuthority, mpsc::UnboundedSender<Update>)>,
 }
 
-struct DestinationSet<T, S>
-where
-    T: Future<Item=grpc::Response<S>>,
-    S: Stream,
-{
+struct DestinationSet<T, S> {
     addrs: HashSet<SocketAddr>,
     needs_reconnect: bool,
     rx: UpdateRx<T, S>,
     tx: mpsc::UnboundedSender<Update>,
 }
 
-enum UpdateRx<F, S>
-where
-    F: Future<Item=grpc::Response<S>>,
-    S: Stream,
-{
+enum UpdateRx<F, S> {
     Waiting(F),
     Streaming(S),
 }
+
 #[derive(Debug)]
 enum RxError<F, S> {
     Future(F),
