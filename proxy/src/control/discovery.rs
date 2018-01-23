@@ -32,6 +32,9 @@ pub type ClientBody = ::tower_grpc::client::codec::EncodingBody<
 >;
 */
 
+type UpdateRsp<F> =
+    grpc::client::server_streaming::ResponseFuture<PbUpdate, F>;
+
 /// A handle to start watching a destination for address changes.
 #[derive(Clone, Debug)]
 pub struct Discovery {
@@ -51,16 +54,14 @@ pub struct Background {
     rx: mpsc::UnboundedReceiver<(FullyQualifiedAuthority, mpsc::UnboundedSender<Update>)>,
 }
 
-type DiscoveryWatch<F> = DestinationSet<
-    grpc::client::server_streaming::ResponseFuture<PbUpdate, F>,
->;
+type DiscoveryWatch<F> = DestinationSet<UpdateRsp<F>>;
 
 /// A future returned from `Background::work()`, doing the work of talking to
 /// the controller destination API.
 // TODO: debug impl
 pub struct DiscoveryWork<T: HttpService>
 where
-    server_streaming::ResponseFuture<PbUpdate, T::Future>: Future,
+    UpdateRsp<T::Future>: Future,
 {
     destinations: HashMap<FullyQualifiedAuthority, DiscoveryWatch<T::Future>>,
     /// A queue of authorities that need to be reconnected.
@@ -188,7 +189,7 @@ impl Background {
     pub fn work<T>(self) -> DiscoveryWork<T>
     where T: HttpService<RequestBody = BoxBody>,
           T::Error: fmt::Debug,
-          server_streaming::ResponseFuture<PbUpdate, T::Future>: Future,
+          UpdateRsp<T::Future>: Future,
     {
         DiscoveryWork {
             destinations: HashMap::new(),
@@ -206,12 +207,12 @@ where
     T: HttpService<RequestBody = BoxBody>,
     T::Future: fmt::Debug,
     T::Error: fmt::Debug,
-    server_streaming::ResponseFuture<PbUpdate, T::Future>: Future,
-    <server_streaming::ResponseFuture<PbUpdate, T::Future> as Future>::Item:        Stream<Item=PbUpdate, Error=E>,
-    <server_streaming::ResponseFuture<PbUpdate, T::Future> as Future>::Error:       fmt::Debug,
-    SetRx<server_streaming::ResponseFuture<PbUpdate, T::Future>, <server_streaming::ResponseFuture<PbUpdate, T::Future> as Future>::Item>:
+    UpdateRsp<T::Future>: Future,
+    <UpdateRsp<T::Future> as Future>::Item: Stream<Item=PbUpdate, Error=E>,
+    <UpdateRsp<T::Future> as Future>::Error: fmt::Debug,
+    SetRx<UpdateRsp<T::Future>, <UpdateRsp<T::Future> as Future>::Item>:
         Stream<Item=PbUpdate>,
-    <SetRx<server_streaming::ResponseFuture<PbUpdate, T::Future>, <server_streaming::ResponseFuture<PbUpdate, T::Future> as Future>::Item> as Stream>::Error:
+    <SetRx<UpdateRsp<T::Future>, <UpdateRsp<T::Future> as Future>::Item> as Stream>::Error:
         fmt::Debug,
 
 {
