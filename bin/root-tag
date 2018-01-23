@@ -2,4 +2,4 @@
 
 . bin/_tag.sh
 
-clean_head_root_tag
+head_root_tag

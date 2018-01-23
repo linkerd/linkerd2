@@ -117,35 +117,34 @@ and run Conduit:
 ## Comprehensive
 
 This configuration builds all Conduit components in Docker images, and deploys
-them onto Minikube. This configuration also builds and installs a `conduit`
-executable onto the local system. This setup most closely parallels our
-recommended production installation, documented at
-https://conduit.io/getting-started/.
+them onto Minikube. This setup most closely parallels our recommended production
+installation, documented at https://conduit.io/getting-started/.
 
-These commands assume working [Go](https://golang.org) and
-[Minikube](https://github.com/kubernetes/minikube) environments.
+These commands assume a working
+[Minikube](https://github.com/kubernetes/minikube) environment.
 
 ```bash
-# ensure all go dependencies are in vendor
-dep ensure && dep prune
-
-# verify cluster (minikube) status
-bin/go-run cli check
-
 # build all docker images, using minikube as our docker repo
-DOCKER_FORCE_BUILD=1 DOCKER_TRACE=1 bin/mkube bin/docker-build latest
+# this command will also place conduit executables in target/cli/
+DOCKER_TRACE=1 bin/mkube bin/docker-build
+
+# note: depending on your OS, use one of these three conduit executables:
+# target/cli/darwin/conduit
+# target/cli/linux/conduit
+# target/cli/windows/conduit
 
 # install conduit
-bin/go-run cli install --version latest | kubectl apply -f -
+target/cli/darwin/conduit install --version $(bin/root-tag) | kubectl apply -f -
 
 # verify cli and server versions
-bin/go-run cli version
+target/cli/darwin/conduit version
 
 # validate installation
 kubectl --namespace=conduit get all
+target/cli/darwin/conduit check
 
 # view conduit dashboard
-bin/go-run cli dashboard
+target/cli/darwin/conduit dashboard
 
 # install the demo app
 curl https://raw.githubusercontent.com/runconduit/conduit-examples/master/emojivoto/emojivoto.yml | conduit inject - --skip-inbound-ports=80 | kubectl apply -f -
@@ -154,10 +153,10 @@ curl https://raw.githubusercontent.com/runconduit/conduit-examples/master/emojiv
 minikube -n emojivoto service web-svc --url
 
 # view details per deployment
-bin/go-run cli stat deployments
+target/cli/darwin/conduit stat deployments
 
 # view a live pipeline of requests
-bin/go-run cli tap deploy emojivoto/voting-svc
+target/cli/darwin/conduit tap deploy emojivoto/voting-svc
 ```
 
 ## Go
@@ -403,9 +402,6 @@ build_architecture
     "_log.sh";
     "_tag.sh";
 
-    "docker-build" -> "_docker.sh";
-    "docker-build" -> "_tag.sh";
-
     "docker-build" -> "docker-build-controller";
     "docker-build" -> "docker-build-web";
     "docker-build" -> "docker-build-proxy";
@@ -462,13 +458,11 @@ build_architecture
     "docker-images" -> "_tag.sh";
 
     "docker-pull" -> "_docker.sh";
-    "docker-pull" -> "_tag.sh";
 
     "docker-pull-deps" -> "_docker.sh";
     "docker-pull-deps" -> "_tag.sh";
 
     "docker-push" -> "_docker.sh";
-    "docker-push" -> "_tag.sh";
 
     "docker-push-deps" -> "_docker.sh";
     "docker-push-deps" -> "_tag.sh";
@@ -488,13 +482,23 @@ build_architecture
     "root-tag" -> "_tag.sh";
 
     "travis.yml" -> "_gcp.sh";
-    "travis.yml" -> "_tag.sh";
     "travis.yml" -> "docker-build";
+    "travis.yml" -> "docker-pull";
     "travis.yml" -> "docker-pull-deps";
     "travis.yml" -> "docker-push";
     "travis.yml" -> "docker-push-deps";
     "travis.yml" -> "docker-retag-all";
     "travis.yml" -> "protoc-go.sh";
+    "travis.yml" -> "root-tag";
+
+    "update-go-deps-shas" -> "_tag.sh";
+    "update-go-deps-shas" -> "cli/Dockerfile-bin";
+    "update-go-deps-shas" -> "controller/Dockerfile";
+    "update-go-deps-shas" -> "proxy-init/Dockerfile";
+    "update-go-deps-shas" -> "web/Dockerfile";
+
+    "update-proxy-deps-shas" -> "_tag.sh";
+    "update-proxy-deps-shas" -> "proxy/Dockerfile";
   }
 build_architecture
 </details>

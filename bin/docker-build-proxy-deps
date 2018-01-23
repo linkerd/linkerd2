@@ -1,13 +1,21 @@
 #!/bin/sh
 
+# Builds (or pulls) our proxy-deps docker image.
+
 set -eu
+
+if [ $# -ne 0 ]; then
+    echo "no arguments allowed for $(basename $0), given: $@" >&2
+    exit 64
+fi
 
 . bin/_docker.sh
 . bin/_tag.sh
 
-image=$(docker_maybe_build . \
-    "$(docker_repo proxy-deps)" \
-    "$(proxy_deps_sha)" \
-    proxy/Dockerfile-deps)
+tag=$(proxy_deps_sha)
 
-echo "$image"
+if (docker_pull proxy-deps "${tag}"); then
+    echo "$(docker_repo proxy-deps):${tag}"
+else
+    docker_build proxy-deps "${tag}" proxy/Dockerfile-deps
+fi
