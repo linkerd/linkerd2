@@ -1,5 +1,4 @@
 import LineGraph from './LineGraph.jsx';
-import { Link } from 'react-router-dom';
 import React from 'react';
 import { metricToFormatter, toClassName } from './util/Utils.js';
 
@@ -8,7 +7,9 @@ export default class DeploymentSummary extends React.Component {
     if (this.props.noLink) {
       return this.props.data.name;
     } else {
-      return <Link to={`${this.props.pathPrefix}/deployment?deploy=${this.props.data.name}`}>{this.props.data.name}</Link>;
+      return (<this.props.api.ConduitLink
+        to={`/deployment?deploy=${this.props.data.name}`}
+        name={this.props.data.name} />);
     }
   }
 
@@ -17,7 +18,7 @@ export default class DeploymentSummary extends React.Component {
       <div className={`border-container border-neutral`}>
         <div className="border-container-content">
           <div className="summary-title">{this.title()}</div>
-          <div className="summary-info">Last 10 minutes RPS</div>
+          <div className="summary-info">RPS (last {this.props.api.getMetricsWindow()})</div>
 
           <LineGraph
             data={this.props.requestTs}

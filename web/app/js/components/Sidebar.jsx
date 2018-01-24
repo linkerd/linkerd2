@@ -1,7 +1,5 @@
 import _ from 'lodash';
-import { ApiHelpers } from './util/ApiHelpers.js';
 import { getPodsByDeployment } from './util/MetricUtils.js';
-import { Link } from 'react-router-dom';
 import logo from './../../img/reversed_logo.png';
 import React from 'react';
 import Version from './Version.jsx';
@@ -13,7 +11,7 @@ const searchBarWidth = 240;
 export default class Sidebar extends React.Component {
   constructor(props) {
     super(props);
-    this.api = ApiHelpers(this.props.pathPrefix);
+    this.api = this.props.api;
     this.filterDeployments = this.filterDeployments.bind(this);
     this.onAutocompleteSelect = this.onAutocompleteSelect.bind(this);
     this.loadFromServer();
@@ -60,12 +58,12 @@ export default class Sidebar extends React.Component {
 
   render() {
     let normalizedPath = this.props.location.pathname.replace(this.props.pathPrefix, "");
-
+    let ConduitLink = this.api.ConduitLink;
     return (
       <div className="sidebar">
         <div className="list-container">
           <div className="sidebar-headers">
-            <Link to={`${this.props.pathPrefix}/servicemesh`}><img src={logo} /></Link>
+            <ConduitLink to="/servicemesh" name={<img src={logo} />} />
           </div>
 
           <AutoComplete
@@ -79,16 +77,16 @@ export default class Sidebar extends React.Component {
 
           <Menu className="sidebar-menu" theme="dark" selectedKeys={[normalizedPath]}>
             <Menu.Item className="sidebar-menu-item" key="/servicemesh">
-              <Link to={`${this.props.pathPrefix}/servicemesh`}>Service mesh</Link>
+              <ConduitLink to="/servicemesh" name="Service mesh" />
             </Menu.Item>
             <Menu.Item className="sidebar-menu-item" key="/deployments">
-              <Link to={`${this.props.pathPrefix}/deployments`}>Deployments</Link>
+              <ConduitLink to="/deployments" name="Deployments" />
             </Menu.Item>
             <Menu.Item className="sidebar-menu-item" key="/routes">
-              <Link to={`${this.props.pathPrefix}/routes`}>Routes</Link>
+              <ConduitLink to="/routes" name="Routes" />
             </Menu.Item>
             <Menu.Item className="sidebar-menu-item" key="/docs">
-              <Link to="https://conduit.io/docs/" target="_blank">Documentation</Link>
+              <ConduitLink to="https://conduit.io/docs/" absolute="true" target="_blank" name="Documentation" />
             </Menu.Item>
           </Menu>
 

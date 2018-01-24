@@ -1,10 +1,32 @@
+import _ from 'lodash';
+import { Link } from 'react-router-dom';
+import React from 'react';
 import 'whatwg-fetch';
 
-export const ApiHelpers = pathPrefix => {
-  const podsPath = `${pathPrefix}/api/pods`;
+export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '10m') => {
+  let metricsWindow = defaultMetricsWindow;
+  const podsPath = `/api/pods`;
+  const metricsPath = () => `/api/metrics?window=${metricsWindow}`;
+
+  const validMetricsWindows = {
+    "10s": true,
+    "1m": true,
+    "10m": true,
+    "1h": true
+  };
 
   const apiFetch = path => {
+    if (!_.isEmpty(pathPrefix)) {
+      path = `${pathPrefix}${path}`;
+    }
     return fetch(path).then(handleFetchErr).then(r => r.json());
+  };
+
+  const fetchMetrics = (path = metricsPath()) => {
+    if (path.indexOf("window") === -1) {
+      path = `${path}&window=${getMetricsWindow()}`;
+    }
+    return apiFetch(path);
   };
 
   const fetchPods = () => {
@@ -18,20 +40,15 @@ export const ApiHelpers = pathPrefix => {
     return resp;
   };
 
-  return {
-    fetch: apiFetch,
-    fetchPods
+  const getMetricsWindow = () => metricsWindow;
+
+  const setMetricsWindow = window => {
+    if (!validMetricsWindows[window]) return;
+    metricsWindow = window;
   };
-};
 
-export const urlsForResource = (pathPrefix, metricsWindow) => {
-  /*
-    Timeseries fetches used in the TabbedMetricsTable
-    Rollup fetches used throughout app
-  */
-  let metricsUrl = `${pathPrefix}/api/metrics?window=${metricsWindow}`;
-
-  return {
+  const metricsUrl = `/api/metrics?`;
+  const urlsForResource = {
     // all deploys (default), or a given deploy if specified
     "deployment": {
       groupBy: "targetDeploy",
@@ -118,5 +135,27 @@ export const urlsForResource = (pathPrefix, metricsWindow) => {
         };
       }
     }
+  };
+
+
+  // prefix all links in the app with `pathPrefix`
+  const ConduitLink = props => {
+    let {to, name, absolute} = props;
+    if (absolute) {
+      return <Link to={to}>{name}</Link>;
+    } else {
+      return <Link to={`${pathPrefix}${to}`}>{name}</Link>;
+    }
+  };
+
+  return {
+    fetch: apiFetch,
+    fetchMetrics,
+    fetchPods,
+    getMetricsWindow,
+    setMetricsWindow,
+    getValidMetricsWindows: () => _.keys(validMetricsWindows),
+    urlsForResource: urlsForResource,
+    ConduitLink
   };
 };

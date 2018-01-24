@@ -1,18 +1,18 @@
 import _ from 'lodash';
 import ConduitSpinner from "./ConduitSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
+import PageHeader from './PageHeader.jsx';
 import React from 'react';
 import ResourceHealthOverview from './ResourceHealthOverview.jsx';
 import ResourceMetricsOverview from './ResourceMetricsOverview.jsx';
 import UpstreamDownstream from './UpstreamDownstream.jsx';
-import { ApiHelpers, urlsForResource } from './util/ApiHelpers.js';
 import { processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
 import 'whatwg-fetch';
 
 export default class PodDetail extends React.Component {
   constructor(props) {
     super(props);
-    this.api = ApiHelpers(this.props.pathPrefix);
+    this.api = this.props.api;
     this.handleApiError = this.handleApiError.bind(this);
     this.loadFromServer = this.loadFromServer.bind(this);
     this.state = this.initialState(this.props.location);
@@ -40,7 +40,6 @@ export default class PodDetail extends React.Component {
     return {
       lastUpdated: 0,
       pollingInterval: 10000,
-      metricsWindow: "10m",
       pod: pod,
       upstreamMetrics: [],
       downstreamMetrics: [],
@@ -57,16 +56,16 @@ export default class PodDetail extends React.Component {
     }
     this.setState({ pendingRequests: true });
 
-    let urls = urlsForResource(this.props.pathPrefix, this.state.metricsWindow);
+    let urls = this.api.urlsForResource;
 
     let metricsUrl = urls["deployment"].url().rollup;
     let podMetricsUrl = `${metricsUrl}&timeseries=true&target_pod=${this.state.pod}`;
     let upstreamRollupUrl = urls["upstream_pod"].url(this.state.pod).rollup;
     let downstreamRollupUrl = urls["downstream_pod"].url(this.state.pod).rollup;
 
-    let podFetch = this.api.fetch(podMetricsUrl);
-    let upstreamFetch =  this.api.fetch(upstreamRollupUrl);
-    let downstreamFetch =  this.api.fetch(downstreamRollupUrl);
+    let podFetch = this.api.fetchMetrics(podMetricsUrl);
+    let upstreamFetch =  this.api.fetchMetrics(upstreamRollupUrl);
+    let downstreamFetch =  this.api.fetchMetrics(downstreamRollupUrl);
 
     Promise.all([podFetch, upstreamFetch, downstreamFetch])
       .then(([podMetrics, upstreamRollup, downstreamRollup]) => {
@@ -110,7 +109,8 @@ export default class PodDetail extends React.Component {
         <ResourceMetricsOverview
           key="pod-stat-pane"
           lastUpdated={this.state.lastUpdated}
-          timeseries={this.state.podTs} />,
+          timeseries={this.state.podTs}
+          window={this.api.getMetricsWindow()} />,
       <UpstreamDownstream
         key="pod-upstream-downstream"
         resourceType="pod"
@@ -118,8 +118,7 @@ export default class PodDetail extends React.Component {
         lastUpdated={this.state.lastUpdated}
         upstreamMetrics={this.state.upstreamMetrics}
         downstreamMetrics={this.state.downstreamMetrics}
-        metricsWindow={this.state.metricsWindow}
-        pathPrefix={this.props.pathPrefix} />
+        api={this.api} />
     ];
   }
 
@@ -129,10 +128,10 @@ export default class PodDetail extends React.Component {
         { !this.state.error ? null : <ErrorBanner message={this.state.error} /> }
         { !this.state.loaded ? <ConduitSpinner /> :
           <div>
-            <div className="page-header">
-              <div className="subsection-header">Pod detail</div>
-              <h1>{this.state.pod}</h1>
-            </div>
+            <PageHeader
+              subHeaderTitle="Pod detail"
+              subHeader={this.state.pod}
+              api={this.api} />
             {this.renderSections()}
           </div>
         }

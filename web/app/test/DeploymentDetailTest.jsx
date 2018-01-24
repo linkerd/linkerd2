@@ -1,5 +1,6 @@
 /* eslint-disable */
-import 'raf/polyfill';
+import 'raf/polyfill'; // the polyfill import must be first
+import { ApiHelpers } from '../js/components/util/ApiHelpers.jsx';
 import Adapter from 'enzyme-adapter-react-16';
 import DeploymentDetail from '../js/components/DeploymentDetail.jsx';
 import Enzyme from 'enzyme';
