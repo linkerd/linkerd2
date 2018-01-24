@@ -406,7 +406,7 @@ func responseLabelsFor(responseScope *write.ResponseScope, eosScope *write.EosSc
 	case *write.EosCtx_Other:
 		// The stream did not end with a `grpc-status` trailer (i.e., it was
 		// not a gRPC message). Classify based on the response's HTTP status.
-		if responseScope.Ctx.HttpStatusCode < http.StatusBadRequest {
+		if responseScope.Ctx.HttpStatusCode < http.StatusInternalServerError {
 			classification = "success"
 		}
 	}
