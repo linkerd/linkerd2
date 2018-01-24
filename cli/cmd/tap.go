@@ -147,8 +147,8 @@ func renderTapEvent(event *common.TapEvent) string {
 	)
 
 	http := event.GetHttp()
-	http_event := http.Event
-	switch ev := http_event.(type) {
+	httpEvent := http.Event
+	switch ev := httpEvent.(type) {
 	case *common.TapEvent_Http_RequestInit_:
 		return fmt.Sprintf("req id=%d:%d %s :method=%s :authority=%s :path=%s",
 			ev.RequestInit.Id.Base,
@@ -167,14 +167,41 @@ func renderTapEvent(event *common.TapEvent) string {
 			ev.ResponseInit.GetSinceRequestInit().Nanos/1000,
 		)
 	case *common.TapEvent_Http_ResponseEnd_:
-		return fmt.Sprintf("end id=%d:%d %s grpc-status=%s duration=%dµs response-length=%dB",
+
+		if ev.ResponseEnd.Eos != nil {
+			switch eos := ev.ResponseEnd.Eos.End.(type) {
+			case *common.Eos_GrpcStatusCode:
+				return fmt.Sprintf("end id=%d:%d %s grpc-status=%s duration=%dµs response-length=%dB",
+					ev.ResponseEnd.Id.Base,
+					ev.ResponseEnd.Id.Stream,
+					flow,
+					codes.Code(eos.GrpcStatusCode),
+					ev.ResponseEnd.GetSinceResponseInit().Nanos/1000,
+					ev.ResponseEnd.GetResponseBytes(),
+				)
+			case *common.Eos_ResetErrorCode:
+				return fmt.Sprintf("end id=%d:%d %s reset-error=%+v duration=%dµs response-length=%dB",
+					ev.ResponseEnd.Id.Base,
+					ev.ResponseEnd.Id.Stream,
+					flow,
+					eos.ResetErrorCode,
+					ev.ResponseEnd.GetSinceResponseInit().Nanos/1000,
+					ev.ResponseEnd.GetResponseBytes(),
+				)
+			}
+		}
+
+		// this catchall handles 2 cases:
+		// 1) ev.ResponseEnd.Eos == nil
+		// 2) ev.ResponseEnd.Eos.End == nil
+		return fmt.Sprintf("end id=%d:%d %s duration=%dµs response-length=%dB",
 			ev.ResponseEnd.Id.Base,
 			ev.ResponseEnd.Id.Stream,
 			flow,
-			codes.Code(ev.ResponseEnd.GetGrpcStatus()),
 			ev.ResponseEnd.GetSinceResponseInit().Nanos/1000,
 			ev.ResponseEnd.GetResponseBytes(),
 		)
+
 	default:
 		return fmt.Sprintf("unknown %s", flow)
 	}
