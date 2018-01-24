@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"strconv"
 	"sync"
 	"time"
@@ -397,7 +398,15 @@ func responseLabelsFor(responseScope *write.ResponseScope, eosScope *write.EosSc
 	classification := "failure"
 	switch x := eosScope.Ctx.End.(type) {
 	case *write.EosCtx_GrpcStatusCode:
+		// The stream ended with a `grpc-status` trailer.
+		// Classify based on the gRPC status code.
 		if x.GrpcStatusCode == uint32(codes.OK) {
+			classification = "success"
+		}
+	case *write.EosCtx_Other:
+		// The stream did not end with a `grpc-status` trailer (i.e., it was
+		// not a gRPC message). Classify based on the response's HTTP status.
+		if responseScope.Ctx.HttpStatusCode < http.StatusInternalServerError {
 			classification = "success"
 		}
 	}

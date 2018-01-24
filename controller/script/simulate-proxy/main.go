@@ -24,10 +24,72 @@ import (
 /* A simple script for posting simulated telemetry data to the proxy api */
 
 var (
-	responseCodes = []codes.Code{
+	grpcResponseCodes = []codes.Code{
 		codes.OK,
 		codes.PermissionDenied,
 		codes.Unavailable,
+	}
+
+	httpResponseCodes = []int{
+		http.StatusContinue,
+		http.StatusSwitchingProtocols,
+		http.StatusProcessing,
+		http.StatusOK,
+		http.StatusCreated,
+		http.StatusAccepted,
+		http.StatusNonAuthoritativeInfo,
+		http.StatusNoContent,
+		http.StatusResetContent,
+		http.StatusPartialContent,
+		http.StatusMultiStatus,
+		http.StatusAlreadyReported,
+		http.StatusIMUsed,
+		http.StatusMultipleChoices,
+		http.StatusMovedPermanently,
+		http.StatusFound,
+		http.StatusSeeOther,
+		http.StatusNotModified,
+		http.StatusUseProxy,
+		http.StatusTemporaryRedirect,
+		http.StatusPermanentRedirect,
+		http.StatusBadRequest,
+		http.StatusUnauthorized,
+		http.StatusPaymentRequired,
+		http.StatusForbidden,
+		http.StatusNotFound,
+		http.StatusMethodNotAllowed,
+		http.StatusNotAcceptable,
+		http.StatusProxyAuthRequired,
+		http.StatusRequestTimeout,
+		http.StatusConflict,
+		http.StatusGone,
+		http.StatusLengthRequired,
+		http.StatusPreconditionFailed,
+		http.StatusRequestEntityTooLarge,
+		http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType,
+		http.StatusRequestedRangeNotSatisfiable,
+		http.StatusExpectationFailed,
+		http.StatusTeapot,
+		http.StatusUnprocessableEntity,
+		http.StatusLocked,
+		http.StatusFailedDependency,
+		http.StatusUpgradeRequired,
+		http.StatusPreconditionRequired,
+		http.StatusTooManyRequests,
+		http.StatusRequestHeaderFieldsTooLarge,
+		http.StatusUnavailableForLegalReasons,
+		http.StatusInternalServerError,
+		http.StatusNotImplemented,
+		http.StatusBadGateway,
+		http.StatusServiceUnavailable,
+		http.StatusGatewayTimeout,
+		http.StatusHTTPVersionNotSupported,
+		http.StatusVariantAlsoNegotiates,
+		http.StatusInsufficientStorage,
+		http.StatusLoopDetected,
+		http.StatusNotExtended,
+		http.StatusNetworkAuthenticationRequired,
 	}
 
 	streamSummary = &pb.StreamSummary{
@@ -60,12 +122,12 @@ func randomLatencies(count uint32) (latencies []*pb.Latency) {
 	return
 }
 
-func randomEos(count uint32) (eos []*pb.EosScope) {
-	responseCodes := make(map[uint32]uint32)
+func randomGrpcEos(count uint32) (eos []*pb.EosScope) {
+	grpcResponseCodes := make(map[uint32]uint32)
 	for i := uint32(0); i < count; i++ {
-		responseCodes[randomResponseCode()] += 1
+		grpcResponseCodes[randomGrpcResponseCode()] += 1
 	}
-	for code, streamCount := range responseCodes {
+	for code, streamCount := range grpcResponseCodes {
 		eos = append(eos, &pb.EosScope{
 			Ctx:     &pb.EosCtx{End: &pb.EosCtx_GrpcStatusCode{GrpcStatusCode: code}},
 			Streams: streamSummaries(streamCount),
@@ -74,8 +136,22 @@ func randomEos(count uint32) (eos []*pb.EosScope) {
 	return
 }
 
-func randomResponseCode() uint32 {
-	return uint32(responseCodes[rand.Intn(len(responseCodes))])
+func randomH2Eos(count uint32) (eos []*pb.EosScope) {
+	for i := uint32(0); i < count; i++ {
+		eos = append(eos, &pb.EosScope{
+			Ctx:     &pb.EosCtx{End: &pb.EosCtx_Other{Other: true}},
+			Streams: streamSummaries(i),
+		})
+	}
+	return
+}
+
+func randomGrpcResponseCode() uint32 {
+	return uint32(grpcResponseCodes[rand.Intn(len(grpcResponseCodes))])
+}
+
+func randomHttpResponseCode() uint32 {
+	return uint32(httpResponseCodes[rand.Intn(len(httpResponseCodes))])
 }
 
 func streamSummaries(count uint32) (summaries []*pb.StreamSummary) {
@@ -170,53 +246,13 @@ func main() {
 		sourceIp := randomPod(allPods, nil)
 		targetIp := randomPod(allPods, sourceIp)
 
-		// HTTP
 		req := &pb.ReportRequest{
 			Process: &pb.Process{
 				ScheduledInstance:  "hello-1mfa0",
 				ScheduledNamespace: "people",
 			},
-			ClientTransports: []*pb.ClientTransport{},
-			ServerTransports: []*pb.ServerTransport{},
-			Proxy:            pb.ReportRequest_INBOUND,
-			Requests: []*pb.RequestScope{
-				&pb.RequestScope{
-					Ctx: &pb.RequestCtx{
-						SourceIp: sourceIp,
-						TargetAddr: &common.TcpAddress{
-							Ip:   targetIp,
-							Port: randomPort(),
-						},
-						Authority: "world.greeting:7778",
-						Method:    &common.HttpMethod{Type: &common.HttpMethod_Registered_{Registered: common.HttpMethod_GET}},
-						Path:      "/World/Greeting",
-					},
-					Count: count,
-					Responses: []*pb.ResponseScope{
-						&pb.ResponseScope{
-							Ctx: &pb.ResponseCtx{
-								HttpStatusCode: http.StatusOK,
-							},
-							ResponseLatencies: randomLatencies(count),
-							Ends:              randomEos(count),
-						},
-					},
-				},
-			},
-		}
-
-		_, err = client.Report(context.Background(), req)
-		if err != nil {
-			log.Fatal(err.Error())
-		}
-
-		// TCP
-		req = &pb.ReportRequest{
-			Process: &pb.Process{
-				ScheduledInstance:  "hello-tcp-1mfa0",
-				ScheduledNamespace: "people-tcp",
-			},
 			ClientTransports: []*pb.ClientTransport{
+				// TCP
 				&pb.ClientTransport{
 					TargetAddr: &common.TcpAddress{
 						Ip:   targetIp,
@@ -233,6 +269,7 @@ func main() {
 				},
 			},
 			ServerTransports: []*pb.ServerTransport{
+				// TCP
 				&pb.ServerTransport{
 					SourceIp: sourceIp,
 					Connects: count,
@@ -246,6 +283,56 @@ func main() {
 				},
 			},
 			Proxy: pb.ReportRequest_INBOUND,
+			Requests: []*pb.RequestScope{
+
+				// gRPC
+				&pb.RequestScope{
+					Ctx: &pb.RequestCtx{
+						SourceIp: sourceIp,
+						TargetAddr: &common.TcpAddress{
+							Ip:   targetIp,
+							Port: randomPort(),
+						},
+						Authority: "world.greeting:7778",
+						Method:    &common.HttpMethod{Type: &common.HttpMethod_Registered_{Registered: common.HttpMethod_GET}},
+						Path:      "/World/GreetingGrpc",
+					},
+					Count: count,
+					Responses: []*pb.ResponseScope{
+						&pb.ResponseScope{
+							Ctx: &pb.ResponseCtx{
+								HttpStatusCode: http.StatusOK,
+							},
+							ResponseLatencies: randomLatencies(count),
+							Ends:              randomGrpcEos(count),
+						},
+					},
+				},
+
+				// HTTP/2
+				&pb.RequestScope{
+					Ctx: &pb.RequestCtx{
+						SourceIp: sourceIp,
+						TargetAddr: &common.TcpAddress{
+							Ip:   targetIp,
+							Port: randomPort(),
+						},
+						Authority: "world.greeting:7778",
+						Method:    &common.HttpMethod{Type: &common.HttpMethod_Registered_{Registered: common.HttpMethod_GET}},
+						Path:      "/World/GreetingH2",
+					},
+					Count: count,
+					Responses: []*pb.ResponseScope{
+						&pb.ResponseScope{
+							Ctx: &pb.ResponseCtx{
+								HttpStatusCode: randomHttpResponseCode(),
+							},
+							ResponseLatencies: randomLatencies(count),
+							Ends:              randomH2Eos(count),
+						},
+					},
+				},
+			},
 		}
 
 		_, err = client.Report(context.Background(), req)
