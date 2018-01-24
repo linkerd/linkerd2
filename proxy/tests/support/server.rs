@@ -4,78 +4,123 @@ use std::sync::Arc;
 use support::*;
 
 pub fn new() -> Server {
-    Server::new()
+    http2()
+}
+
+pub fn http1() -> Server {
+    Server::http1()
+}
+
+pub fn http2() -> Server {
+    Server::http2()
+}
+
+pub fn tcp() -> tcp::TcpServer {
+    tcp::server()
 }
 
 #[derive(Debug)]
 pub struct Server {
-    routes: HashMap<String, String>,
+    routes: HashMap<String, Route>,
+    version: Run,
 }
 
 #[derive(Debug)]
 pub struct Listening {
     pub addr: SocketAddr,
-    shutdown: Shutdown,
+    pub(super) shutdown: Shutdown,
 }
 
 impl Server {
-    pub fn new() -> Self {
+    fn new(run: Run) -> Self {
         Server {
             routes: HashMap::new(),
+            version: run,
         }
+    }
+    fn http1() -> Self {
+        Server::new(Run::Http1)
+    }
+
+    fn http2() -> Self {
+        Server::new(Run::Http2)
     }
 
     pub fn route(mut self, path: &str, resp: &str) -> Self {
-        self.routes.insert(path.into(), resp.into());
+        self.routes.insert(path.into(), Route::string(resp));
+        self
+    }
+
+    pub fn route_fn<F>(mut self, path: &str, cb: F) -> Self
+    where
+        F: Fn(Request<()>) -> Response<String> + Send + 'static,
+    {
+        self.routes.insert(path.into(), Route(Box::new(cb)));
         self
     }
 
     pub fn run(self) -> Listening {
         let (tx, rx) = shutdown_signal();
         let (addr_tx, addr_rx) = oneshot::channel();
-        ::std::thread::Builder::new()
-            .name("support server".into())
-            .spawn(move || {
-                let mut core = Core::new().unwrap();
-                let reactor = core.handle();
+        ::std::thread::Builder::new().name("support server".into()).spawn(move || {
+            let mut core = Core::new().unwrap();
+            let reactor = core.handle();
 
-                let h2 = tower_h2::Server::new(
-                    NewSvc(Arc::new(self.routes)),
-                    Default::default(),
-                    reactor.clone(),
-                );
+            let new_svc = NewSvc(Arc::new(self.routes));
 
-                let addr = ([127, 0, 0, 1], 0).into();
-                let bind = TcpListener::bind(&addr, &reactor).expect("bind");
+            let srv: Box<Fn(TcpStream) -> Box<Future<Item=(), Error=()>>> = match self.version {
+                Run::Http1 => {
+                    let h1 = hyper::server::Http::<hyper::Chunk>::new();
 
-                let local_addr = bind.local_addr().expect("local_addr");
-                info!("bound listener, sending addr: {}", local_addr);
-                let _ = addr_tx.send(local_addr);
+                    Box::new(move |sock| {
+                        let h1_clone = h1.clone();
+                        let conn = new_svc.new_service()
+                            .from_err()
+                            .and_then(move |svc| h1_clone.serve_connection(sock, svc))
+                            .map(|_| ())
+                            .map_err(|e| println!("server h1 error: {}", e));
+                        Box::new(conn)
+                    })
+                },
+                Run::Http2 => {
+                    let h2 = tower_h2::Server::new(
+                        new_svc,
+                        Default::default(),
+                        reactor.clone(),
+                    );
+                    Box::new(move |sock| {
+                        let conn = h2.serve(sock)
+                            .map_err(|e| println!("server h2 error: {:?}", e));
+                        Box::new(conn)
+                    })
+                },
+            };
 
-                let serve = bind.incoming()
-                    .fold((h2, reactor), |(h2, reactor), (sock, _)| {
-                        if let Err(e) = sock.set_nodelay(true) {
-                            return Err(e);
-                        }
+            let addr = ([127, 0, 0, 1], 0).into();
+            let bind = TcpListener::bind(&addr, &reactor).expect("bind");
 
-                        let serve = h2.serve(sock);
-                        reactor.spawn(serve.map_err(|e| println!("server error: {:?}", e)));
+            let local_addr = bind.local_addr().expect("local_addr");
+            let _ = addr_tx.send(local_addr);
 
-                        Ok((h2, reactor))
-                    });
+            let serve = bind.incoming()
+                .fold((srv, reactor), |(srv, reactor), (sock, _)| {
+                    if let Err(e) = sock.set_nodelay(true) {
+                        return Err(e);
+                    }
+                    reactor.spawn(srv(sock));
 
-                core.handle().spawn(
-                    serve
-                        .map(|_| ())
-                        .map_err(|e| println!("server error: {}", e)),
-                );
+                    Ok((srv, reactor))
+                });
 
-                info!("running");
-                core.run(rx).unwrap();
-            })
-            .unwrap();
+            core.handle().spawn(
+                serve
+                    .map(|_| ())
+                    .map_err(|e| println!("server error: {}", e)),
+            );
 
-        info!("awaiting listening addr");
+            core.run(rx).unwrap();
+        }).unwrap();
+
         let addr = addr_rx.wait().expect("addr");
 
         Listening {
@@ -85,7 +130,11 @@ impl Server {
     }
 }
 
-type Response = http::Response<RspBody>;
+#[derive(Debug)]
+enum Run {
+    Http1,
+    Http2,
+}
 
 struct RspBody(Option<Bytes>);
 
@@ -115,31 +164,49 @@ impl Body for RspBody {
     }
 }
 
+struct Route(Box<Fn(Request<()>) -> Response<String> + Send>);
+
+impl Route {
+    fn string(body: &str) -> Route {
+        let body = body.to_owned();
+        Route(Box::new(move |_| {
+            http::Response::builder()
+                .status(200)
+                .body(body.clone())
+                .unwrap()
+        }))
+    }
+}
+
+impl ::std::fmt::Debug for Route {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        f.write_str("Route")
+    }
+}
+
 #[derive(Debug)]
-struct Svc(Arc<HashMap<String, String>>);
+struct Svc(Arc<HashMap<String, Route>>);
 
 impl Service for Svc {
     type Request = Request<RecvBody>;
-    type Response = Response;
+    type Response = Response<RspBody>;
     type Error = h2::Error;
-    type Future = future::FutureResult<Response, Self::Error>;
+    type Future = future::FutureResult<Self::Response, Self::Error>;
 
     fn poll_ready(&mut self) -> Poll<(), Self::Error> {
         Ok(Async::Ready(()))
     }
 
     fn call(&mut self, req: Self::Request) -> Self::Future {
-        let mut rsp = http::Response::builder();
-        rsp.version(http::Version::HTTP_2);
-
-        let path = req.uri().path();
-        let rsp = match self.0.get(path) {
-            Some(body) => {
-                let body = RspBody::new(body.as_bytes().into());
-                rsp.status(200).body(body).unwrap()
+        let rsp = match self.0.get(req.uri().path()) {
+            Some(route) => {
+                (route.0)(req.map(|_| ()))
+                    .map(|s| RspBody::new(s.as_bytes().into()))
             }
             None => {
-                println!("server 404: {:?}", path);
+                println!("server 404: {:?}", req.uri().path());
+                let mut rsp = http::Response::builder();
+                rsp.version(http::Version::HTTP_2);
                 let body = RspBody::empty();
                 rsp.status(404).body(body).unwrap()
             }
@@ -148,11 +215,37 @@ impl Service for Svc {
     }
 }
 
+impl hyper::server::Service for Svc {
+    type Request = hyper::server::Request;
+    type Response = hyper::server::Response<hyper::Body>;
+    type Error = hyper::Error;
+    type Future = future::FutureResult<hyper::server::Response<hyper::Body>, hyper::Error>;
+
+    fn call(&self, req: Self::Request) -> Self::Future {
+
+        let rsp = match self.0.get(req.uri().path()) {
+            Some(route) => {
+                (route.0)(Request::from(req).map(|_| ()))
+                    .map(|s| hyper::Body::from(s))
+                    .into()
+            }
+            None => {
+                println!("server 404: {:?}", req.uri().path());
+                let rsp = hyper::server::Response::new();
+                let body = hyper::Body::empty();
+                rsp.with_status(hyper::NotFound)
+                    .with_body(body)
+            }
+        };
+        future::ok(rsp)
+    }
+}
+
 #[derive(Debug)]
-struct NewSvc(Arc<HashMap<String, String>>);
+struct NewSvc(Arc<HashMap<String, Route>>);
 impl NewService for NewSvc {
     type Request = Request<RecvBody>;
-    type Response = Response;
+    type Response = Response<RspBody>;
     type Error = h2::Error;
     type InitError = ::std::io::Error;
     type Service = Svc;

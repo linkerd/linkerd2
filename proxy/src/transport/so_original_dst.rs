@@ -1,22 +1,34 @@
 use std::net::SocketAddr;
 use tokio_core::net::TcpStream;
 
-#[cfg(not(target_os = "linux"))]
-pub fn get_original_dst(_: &TcpStream) -> Option<SocketAddr> {
-    debug!("no support for SO_ORIGINAL_DST");
-    None
+/// A generic way to get the original destination address of a socket.
+///
+/// This is especially useful to allow tests to provide a mock implementation.
+pub trait GetOriginalDst {
+    fn get_original_dst(&self, socket: &TcpStream) -> Option<SocketAddr>;
 }
 
-// TODO change/remove once https://github.com/tokio-rs/tokio/issues/25 is addressed
-#[cfg(target_os = "linux")]
-pub fn get_original_dst(sock: &TcpStream) -> Option<SocketAddr> {
-    use self::linux;
-    use std::os::unix::io::AsRawFd;
+#[derive(Copy, Clone, Debug)]
+pub struct SoOriginalDst;
 
-    debug!("get_original_dst {:?}", sock);
+impl GetOriginalDst for SoOriginalDst {
+    #[cfg(not(target_os = "linux"))]
+    fn get_original_dst(&self, _: &TcpStream) -> Option<SocketAddr> {
+        debug!("no support for SO_ORIGINAL_DST");
+        None
+    }
 
-    let res = unsafe { linux::so_original_dst(sock.as_raw_fd()) };
-    res.ok()
+    // TODO change/remove once https://github.com/tokio-rs/tokio/issues/25 is addressed
+    #[cfg(target_os = "linux")]
+    fn get_original_dst(&self, sock: &TcpStream) -> Option<SocketAddr> {
+        use self::linux;
+        use std::os::unix::io::AsRawFd;
+
+        debug!("get_original_dst {:?}", sock);
+
+        let res = unsafe { linux::so_original_dst(sock.as_raw_fd()) };
+        res.ok()
+    }
 }
 
 #[cfg(target_os = "linux")]

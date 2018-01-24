@@ -11,7 +11,6 @@ use tower::{NewService, Service};
 use std::marker::PhantomData;
 
 /// Attaches service implementations to h2 connections.
-#[derive(Clone)]
 pub struct Server<S, E, B>
 where S: NewService,
       B: Body,
@@ -149,6 +148,23 @@ where S: NewService<Request = http::Request<RecvBody>, Response = Response<B>>,
             state: State::Init(handshake.join(service)),
             executor,
             modify,
+        }
+    }
+}
+
+// B doesn't need to be Clone, it's just a marker type.
+impl<S, E, B> Clone for Server<S, E, B>
+where
+    S: NewService + Clone,
+    E: Clone,
+    B: Body,
+{
+    fn clone(&self) -> Self {
+        Server {
+            new_service: self.new_service.clone(),
+            executor: self.executor.clone(),
+            builder: self.builder.clone(),
+            _p: PhantomData,
         }
     }
 }

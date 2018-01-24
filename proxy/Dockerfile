@@ -5,7 +5,7 @@
 ## Build the rust proxy into a binary.
 #
 # If the RELEASE arg is set and non-empty, a release artifact is built.
-FROM gcr.io/runconduit/proxy-deps:cef4a0cf as build
+FROM gcr.io/runconduit/proxy-deps:b5aefa4c as build
 WORKDIR /usr/src/conduit
 # Ranked roughly from least to most likely to change. Cargo.lock is the least likely
 # because it is supposed to be cached in the deps base image.

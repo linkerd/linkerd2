@@ -126,7 +126,7 @@ impl<'a> TryFrom<&'a Event> for common::TapEvent {
                         stream: ctx.id as u64,
                     }),
                     method: Some((&ctx.method).into()),
-                    scheme: ctx.uri.scheme().map(|s| s.into()),
+                    scheme: ctx.uri.scheme_part().map(|s| s.as_str().into()),
                     authority: ctx.uri
                         .authority_part()
                         .map(|a| a.as_str())
