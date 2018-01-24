@@ -85,8 +85,6 @@ impl Background {
             let authority =
                 http::uri::Authority::from_shared(format!("{}", host_and_port).into()).unwrap();
 
-            let uri = unimplemented!();
-
             let dns_resolver = dns::Resolver::new(dns_config, executor);
             let connect = Timeout::new(
                 LookupAddressAndConnect::new(host_and_port, dns_resolver, executor),
