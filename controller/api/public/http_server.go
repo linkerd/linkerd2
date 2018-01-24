@@ -32,7 +32,7 @@ type handler struct {
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	log.Debugf("Got [%s] request to [%s]", req.Method, req.URL.Path)
+	log.Debugf("Serving %s %s", req.Method, req.URL.Path)
 	// Validate request method
 	if req.Method != http.MethodPost {
 		writeErrorToHttpResponse(w, fmt.Errorf("POST required"))
@@ -200,8 +200,7 @@ func withTelemetry(baseHandler *handler) http.HandlerFunc {
 		[]string{"code", "method"},
 	)
 	prometheus.MustRegister(counter)
-	instrumentedHandler := promhttp.InstrumentHandlerCounter(counter, baseHandler)
-	return instrumentedHandler
+	return promhttp.InstrumentHandlerCounter(counter, baseHandler)
 }
 
 func NewServer(addr string, telemetryClient telemPb.TelemetryClient, tapClient tapPb.TapClient) *http.Server {

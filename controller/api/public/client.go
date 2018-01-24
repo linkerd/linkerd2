@@ -62,6 +62,7 @@ func (c *grpcOverHttpClient) Tap(ctx context.Context, req *pb.TapRequest, _ ...g
 	}
 
 	if err = checkIfResponseHasConduitError(httpRsp); err != nil {
+		httpRsp.Body.Close()
 		return nil, err
 	}
 
@@ -82,8 +83,9 @@ func (c *grpcOverHttpClient) apiRequest(ctx context.Context, endpoint string, re
 	if err != nil {
 		return err
 	}
-
+	defer httpRsp.Body.Close()
 	log.Debugf("gRPC-over-HTTP call returned status [%s] and content length [%d]", httpRsp.Status, httpRsp.ContentLength)
+
 	clientSideErrorStatusCode := httpRsp.StatusCode >= 400 && httpRsp.StatusCode <= 499
 	if clientSideErrorStatusCode {
 		return fmt.Errorf("POST to Conduit API endpoint [%s] returned HTTP status [%s]", url, httpRsp.Status)
@@ -93,7 +95,6 @@ func (c *grpcOverHttpClient) apiRequest(ctx context.Context, endpoint string, re
 		return err
 	}
 
-	defer httpRsp.Body.Close()
 	reader := bufio.NewReader(httpRsp.Body)
 	return fromByteStreamToProtocolBuffers(reader, protoResponse)
 }
@@ -146,15 +147,15 @@ func (c tapClient) Context() context.Context     { return c.ctx }
 func (c tapClient) SendMsg(interface{}) error    { return nil }
 func (c tapClient) RecvMsg(interface{}) error    { return nil }
 
-func fromByteStreamToProtocolBuffers(byteStreamContainingMessage *bufio.Reader, messageInProtobuf proto.Message) error {
-	messageInBytes, err := deserializePayloadFromReader(byteStreamContainingMessage)
+func fromByteStreamToProtocolBuffers(byteStreamContainingMessage *bufio.Reader, out proto.Message) error {
+	messageAsBytes, err := deserializePayloadFromReader(byteStreamContainingMessage)
 	if err != nil {
 		return fmt.Errorf("error reading byte stream header: %v", err)
 	}
 
-	err = proto.Unmarshal(messageInBytes, messageInProtobuf)
+	err = proto.Unmarshal(messageAsBytes, out)
 	if err != nil {
-		return fmt.Errorf("error unmarshalling array of [%d] bytes as string [%s] error: %v", len(messageInBytes), string(messageInBytes), err)
+		return fmt.Errorf("error unmarshalling array of [%d] bytes as string [%s] error: %v", len(messageAsBytes), string(messageAsBytes), err)
 	}
 
 	return nil

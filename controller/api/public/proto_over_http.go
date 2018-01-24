@@ -8,11 +8,10 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"google.golang.org/grpc/status"
-
 	"github.com/golang/protobuf/proto"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/grpc/status"
 )
 
 const (
@@ -133,7 +132,6 @@ func checkIfResponseHasConduitError(rsp *http.Response) error {
 
 	if errorMsg != "" {
 		reader := bufio.NewReader(rsp.Body)
-		defer rsp.Body.Close()
 		var apiError pb.ApiError
 
 		err := fromByteStreamToProtocolBuffers(reader, &apiError)

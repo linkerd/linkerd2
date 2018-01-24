@@ -102,7 +102,7 @@ func requestTapFromApi(w io.Writer, client pb.ApiClient, targetName string, reso
 
 	rsp, err := client.Tap(context.Background(), req)
 	if err != nil {
-		fmt.Fprintf(w, err.Error())
+		fmt.Fprintln(w, err.Error())
 		return err
 	}
 

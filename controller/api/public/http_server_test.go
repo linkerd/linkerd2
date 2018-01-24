@@ -73,7 +73,6 @@ func TestServer(t *testing.T) {
 	go func() {
 		err := httpServer.ListenAndServe()
 		if err != nil {
-			fmt.Println(err)
 			t.Fatalf("Could not start server: %v", err)
 		}
 	}()

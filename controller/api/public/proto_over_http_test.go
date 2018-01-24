@@ -53,7 +53,7 @@ func newStubResponseWriter() *stubResponseWriter {
 }
 
 func TestHttpRequestToProto(t *testing.T) {
-	someUrl := "www.example.org/something"
+	someUrl := "https://www.example.org/something"
 	someMethod := http.MethodPost
 
 	t.Run("Given a valid request, serializes its contents into protobuf object", func(t *testing.T) {
@@ -140,7 +140,7 @@ func TestWriteErrorToHttpResponse(t *testing.T) {
 		}
 
 		if actualErrorPayload != expectedErrorPayload {
-			t.Fatalf("Expecting error to be serialised as [%v], but got [%v]", expectedErrorPayload, actualErrorPayload)
+			t.Fatalf("Expecting error to be serialized as [%v], but got [%v]", expectedErrorPayload, actualErrorPayload)
 		}
 	})
 
@@ -174,7 +174,7 @@ func TestWriteErrorToHttpResponse(t *testing.T) {
 		}
 
 		if actualErrorPayload != expectedErrorPayload {
-			t.Fatalf("Expecting error to be serialised as [%v], but got [%v]", expectedErrorPayload, actualErrorPayload)
+			t.Fatalf("Expecting error to be serialized as [%v], but got [%v]", expectedErrorPayload, actualErrorPayload)
 		}
 	})
 
@@ -207,7 +207,7 @@ func TestWriteErrorToHttpResponse(t *testing.T) {
 		}
 
 		if !reflect.DeepEqual(actualErrorPayload, expectedErrorPayload) {
-			t.Fatalf("Expecting error to be serialised as [%v], but got [%v]", expectedErrorPayload, actualErrorPayload)
+			t.Fatalf("Expecting error to be serialized as [%v], but got [%v]", expectedErrorPayload, actualErrorPayload)
 		}
 	})
 }
@@ -354,7 +354,7 @@ func TestNewStreamingWriter(t *testing.T) {
 }
 
 func TestCheckIfResponseHasError(t *testing.T) {
-	t.Run("If response doesnt contain Conduit error, returns nil", func(t *testing.T) {
+	t.Run("returns nil if response doesnt contain Conduit error", func(t *testing.T) {
 		response := &http.Response{
 			Header: make(http.Header),
 		}
@@ -365,7 +365,7 @@ func TestCheckIfResponseHasError(t *testing.T) {
 
 	})
 
-	t.Run("If response contains Conduit error returns error in body", func(t *testing.T) {
+	t.Run("returns error in body if response contains Conduit error", func(t *testing.T) {
 		expectedErrorMessage := "expected error message"
 		protoInBytes, err := proto.Marshal(&pb.ApiError{Error: expectedErrorMessage})
 		message, err := serializeAsPayload(protoInBytes)
@@ -386,7 +386,7 @@ func TestCheckIfResponseHasError(t *testing.T) {
 		}
 	})
 
-	t.Run("If response contains Conduit error but body isn't error message returns error", func(t *testing.T) {
+	t.Run("returns error if response contains Conduit error but body isn't error message", func(t *testing.T) {
 		protoInBytes, err := proto.Marshal(&pb.MetricMetadata{Path: "a"})
 		message, err := serializeAsPayload(protoInBytes)
 		response := &http.Response{
