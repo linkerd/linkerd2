@@ -155,7 +155,7 @@ func fromByteStreamToProtocolBuffers(byteStreamContainingMessage *bufio.Reader, 
 
 	err = proto.Unmarshal(messageAsBytes, out)
 	if err != nil {
-		return fmt.Errorf("error unmarshalling array of [%d] bytes as string [%s] error: %v", len(messageAsBytes), string(messageAsBytes), err)
+		return fmt.Errorf("error unmarshalling array of [%d] bytes error: %v", len(messageAsBytes), err)
 	}
 
 	return nil

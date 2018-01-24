@@ -245,8 +245,8 @@ func TestWriteProtoToHttpResponse(t *testing.T) {
 	})
 }
 
-func TestPayloadSize(t *testing.T) {
-	t.Run("Can write and read message correctly based on payload size correct payload size to message", func(t *testing.T) {
+func TestDeserializePayloadFromReader(t *testing.T) {
+	t.Run("Can read message correctly based on payload size correct payload size to message", func(t *testing.T) {
 		expectedMessage := "this is the message"
 
 		messageWithSize, err := serializeAsPayload([]byte(expectedMessage))
@@ -263,6 +263,49 @@ func TestPayloadSize(t *testing.T) {
 
 		if string(actualMessage) != expectedMessage {
 			t.Fatalf("Expecting payload to contain message [%s], but it had [%s]", expectedMessage, actualMessage)
+		}
+	})
+
+	t.Run("Can multiple messages in the same stream", func(t *testing.T) {
+		expectedMessage1 := "Hit the road, Jack and don't you come back\n"
+		for i := 0; i < 450; i++ {
+			expectedMessage1 = expectedMessage1 + fmt.Sprintf("no more (%d), ", i)
+		}
+
+		expectedMessage2 := "back street back, alright\n"
+		for i := 0; i < 450; i++ {
+			expectedMessage2 = expectedMessage2 + fmt.Sprintf("tum (%d), ", i)
+		}
+
+		messageWithSize1, err := serializeAsPayload([]byte(expectedMessage1))
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		messageWithSize2, err := serializeAsPayload([]byte(expectedMessage2))
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		streamWithManyMessages := append(messageWithSize1, messageWithSize2...)
+		reader := bufio.NewReader(bytes.NewReader(streamWithManyMessages))
+
+		actualMessage1, err := deserializePayloadFromReader(reader)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		actualMessage2, err := deserializePayloadFromReader(reader)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		if string(actualMessage1) != expectedMessage1 {
+			t.Fatalf("Expecting payload to contain message:\n%s\nbut it had\n%s", expectedMessage1, actualMessage1)
+		}
+
+		if string(actualMessage2) != expectedMessage2 {
+			t.Fatalf("Expecting payload to contain message:\n%s\nbut it had\n%s", expectedMessage2, actualMessage2)
 		}
 	})
 
@@ -314,6 +357,50 @@ func TestPayloadSize(t *testing.T) {
 
 		if !reflect.DeepEqual(actualMessage, expectedMessage) {
 			t.Fatalf("Expecting payload to contain message [%s], but it had [%s]", expectedMessage, actualMessage)
+		}
+	})
+
+	t.Run("Can read byte streams larger than Go's default buffer chunk size", func(t *testing.T) {
+		goDefaultChunkSize := 4000
+		expectedMessage := "Hit the road, Jack and don't you come back\n"
+		for i := 0; i < 450; i++ {
+			expectedMessage = expectedMessage + fmt.Sprintf("no more (%d), ", i)
+		}
+
+		expectedMessageAsBytes := []byte(expectedMessage)
+		lengthOfInputData := len(expectedMessageAsBytes)
+
+		if lengthOfInputData < goDefaultChunkSize {
+			t.Fatalf("Test needs data larger than [%d] bytes, currently only [%d] bytes", goDefaultChunkSize, lengthOfInputData)
+		}
+
+		payload, err := serializeAsPayload(expectedMessageAsBytes)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		actualMessage, err := deserializePayloadFromReader(bufio.NewReader(bytes.NewReader(payload)))
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		if string(actualMessage) != expectedMessage {
+			t.Fatalf("Expecting payload to contain message:\n%s\n, but it had\n%s", expectedMessageAsBytes, actualMessage)
+		}
+	})
+
+	t.Run("Returns error when message has fewer bytes than declared message size", func(t *testing.T) {
+		expectedMessage := "this is the message"
+
+		messageWithSize, err := serializeAsPayload([]byte(expectedMessage))
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		messageMissingOneCharacter := messageWithSize[:len(expectedMessage)-1]
+		_, err = deserializePayloadFromReader(bufio.NewReader(bytes.NewReader(messageMissingOneCharacter)))
+		if err == nil {
+			t.Fatalf("Expecting error, got nothing")
 		}
 	})
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 
@@ -119,12 +120,33 @@ func serializeAsPayload(messageContentsInBytes []byte) ([]byte, error) {
 func deserializePayloadFromReader(reader *bufio.Reader) ([]byte, error) {
 	messageLengthInBytes := make([]byte, numBytesForMessageLength)
 	reader.Read(messageLengthInBytes)
-	messageLength := binary.LittleEndian.Uint32(messageLengthInBytes)
+	messageLength := int(binary.LittleEndian.Uint32(messageLengthInBytes))
 
-	messageContentsInBytes := make([]byte, messageLength)
-	_, err := reader.Read(messageContentsInBytes)
-	log.Debugf("Message declared its payload size as [%d] bytes", messageLength)
-	return messageContentsInBytes, err
+	messageContentsAsBytes := make([]byte, 0)
+	totalBytesRead := 0
+	for {
+		remainingBytes := messageLength - totalBytesRead
+		buffer := make([]byte, remainingBytes)
+		numBytesRead, err := reader.Read(buffer)
+		messageRead := buffer[:numBytesRead]
+		messageContentsAsBytes = append(messageContentsAsBytes, messageRead...)
+		if err != nil {
+			if err == io.EOF {
+				if totalBytesRead != messageLength {
+					return nil, fmt.Errorf("message declared size [%d] but could only read [%d] bytes before an EOF", messageLength, totalBytesRead)
+				}
+				break
+			}
+			return nil, err
+		}
+		totalBytesRead = totalBytesRead + numBytesRead
+
+		if totalBytesRead == messageLength {
+			break
+		}
+	}
+
+	return messageContentsAsBytes, nil
 }
 
 func checkIfResponseHasConduitError(rsp *http.Response) error {

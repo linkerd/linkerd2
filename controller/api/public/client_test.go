@@ -87,7 +87,7 @@ func TestFromByteStreamToProtocolBuffers(t *testing.T) {
 			Datapoints: make([]*pb.MetricDatapoint, 0),
 		}
 
-		numberOfDatapointsInMessage := 50
+		numberOfDatapointsInMessage := 400
 		for i := 0; i < numberOfDatapointsInMessage; i++ {
 			datapoint := pb.MetricDatapoint{
 				Value:       &pb.MetricValue{Value: &pb.MetricValue_Gauge{Gauge: float64(i)}},
