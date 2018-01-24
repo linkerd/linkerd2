@@ -230,15 +230,13 @@ impl Main {
             thread::Builder::new()
                 .name("controller-client".into())
                 .spawn(move || {
+                    use control::pb::proxy::tap::server::TapServer;
+
                     let mut core = Core::new().expect("initialize controller core");
                     let executor = core.handle();
 
                     let (taps, observe) = control::Observe::new(100);
-
-                    unimplemented!();
-
-                    /*
-                    let new_service = tap::server::Tap::new_service().observe(observe);
+                    let new_service = TapServer::new(observe);
 
                     let server = serve_control(
                         control_listener,
@@ -264,7 +262,6 @@ impl Main {
 
                     let shutdown = controller_shutdown_signal.then(|_| Ok::<(), ()>(()));
                     core.run(shutdown).expect("controller api");
-                    */
                 })
                 .expect("initialize controller api thread");
         }
