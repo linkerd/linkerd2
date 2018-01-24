@@ -150,7 +150,7 @@ dependencies = [
  "tower-discover 0.1.0 (git+https://github.com/tower-rs/tower)",
  "tower-grpc 0.1.0 (git+https://github.com/tower-rs/tower-grpc)",
  "tower-grpc-build 0.1.0 (git+https://github.com/tower-rs/tower-grpc)",
- "tower-h2 0.1.0 (git+https://github.com/tower-rs/tower-h2)",
+ "tower-h2 0.1.0 (git+https://github.com/tower-rs/tower-h2?branch=lift-service)",
  "tower-reconnect 0.1.0 (git+https://github.com/tower-rs/tower)",
  "tower-router 0.1.1",
  "tower-util 0.1.0 (git+https://github.com/tower-rs/tower)",
@@ -895,6 +895,22 @@ dependencies = [
 [[package]]
 name = "tower-h2"
 version = "0.1.0"
+source = "git+https://github.com/tower-rs/tower-h2?branch=lift-service#051b040f37f90afc01bf84dee2adebaa42c1ba10"
+dependencies = [
+ "bytes 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "futures 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
+ "h2 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "http 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio-connect 0.1.0 (git+https://github.com/carllerche/tokio-connect)",
+ "tokio-core 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio-io 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tower 0.1.0 (git+https://github.com/tower-rs/tower)",
+]
+
+[[package]]
+name = "tower-h2"
+version = "0.1.0"
 source = "git+https://github.com/tower-rs/tower-h2#3c053d2d637e35f652e2533d27550d1d7065b107"
 dependencies = [
  "bytes 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1144,6 +1160,7 @@ dependencies = [
 "checksum tower-grpc 0.1.0 (git+https://github.com/tower-rs/tower-grpc)" = "<none>"
 "checksum tower-grpc-build 0.1.0 (git+https://github.com/tower-rs/tower-grpc)" = "<none>"
 "checksum tower-h2 0.1.0 (git+https://github.com/tower-rs/tower-h2)" = "<none>"
+"checksum tower-h2 0.1.0 (git+https://github.com/tower-rs/tower-h2?branch=lift-service)" = "<none>"
 "checksum tower-reconnect 0.1.0 (git+https://github.com/tower-rs/tower)" = "<none>"
 "checksum tower-util 0.1.0 (git+https://github.com/tower-rs/tower)" = "<none>"
 "checksum unicode-bidi 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)" = "49f2bd0c6468a8230e1db229cff8029217cf623c767ea5d60bfbd42729ea54d5"
