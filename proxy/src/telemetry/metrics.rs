@@ -6,10 +6,14 @@ use std::time::Duration;
 use http;
 use ordermap::OrderMap;
 
-use control::pb::common::{HttpMethod, TcpAddress, Protocol};
+use control::pb::common::{
+    HttpMethod,
+    TcpAddress,
+    Protocol,
+};
 use control::pb::proxy::telemetry::{
-    eos_ctx,
     ClientTransport,
+    eos_ctx,
     EosCtx,
     EosScope,
     Latency as PbLatency,

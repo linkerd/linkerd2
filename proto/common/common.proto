@@ -57,6 +57,13 @@ message Destination {
   string path = 2;
 }
 
+message Eos {
+  oneof end {
+    uint32 grpc_status_code = 1;
+    uint32 reset_error_code = 2;
+  }
+}
+
 message TapEvent {
   TcpAddress source = 1;
   TcpAddress target = 2;
@@ -104,7 +111,7 @@ message TapEvent {
       google.protobuf.Duration since_response_init = 3;
       uint64 response_bytes = 4;
 
-      uint32 grpc_status = 5;
+      Eos eos = 5;
     }
   }
 }

@@ -8,7 +8,7 @@ use futures_mpsc_lossy;
 use ctx;
 
 mod control;
-mod event;
+pub mod event;
 mod metrics;
 pub mod sensor;
 pub mod tap;
