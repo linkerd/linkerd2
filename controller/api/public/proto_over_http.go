@@ -118,32 +118,14 @@ func serializeAsPayload(messageContentsInBytes []byte) ([]byte, error) {
 }
 
 func deserializePayloadFromReader(reader *bufio.Reader) ([]byte, error) {
-	messageLengthInBytes := make([]byte, numBytesForMessageLength)
-	reader.Read(messageLengthInBytes)
-	messageLength := int(binary.LittleEndian.Uint32(messageLengthInBytes))
+	messageLengthAsBytes := make([]byte, numBytesForMessageLength)
+	reader.Read(messageLengthAsBytes)
+	messageLength := int(binary.LittleEndian.Uint32(messageLengthAsBytes))
 
-	messageContentsAsBytes := make([]byte, 0)
-	totalBytesRead := 0
-	for {
-		remainingBytes := messageLength - totalBytesRead
-		buffer := make([]byte, remainingBytes)
-		numBytesRead, err := reader.Read(buffer)
-		messageRead := buffer[:numBytesRead]
-		messageContentsAsBytes = append(messageContentsAsBytes, messageRead...)
-		if err != nil {
-			if err == io.EOF {
-				if totalBytesRead != messageLength {
-					return nil, fmt.Errorf("message declared size [%d] but could only read [%d] bytes before an EOF", messageLength, totalBytesRead)
-				}
-				break
-			}
-			return nil, err
-		}
-		totalBytesRead = totalBytesRead + numBytesRead
-
-		if totalBytesRead == messageLength {
-			break
-		}
+	messageContentsAsBytes := make([]byte, messageLength)
+	_, err := io.ReadFull(reader, messageContentsAsBytes)
+	if err != nil {
+		return nil, fmt.Errorf("error while reading bytes from message: %v", err)
 	}
 
 	return messageContentsAsBytes, nil
