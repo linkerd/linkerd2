@@ -46,7 +46,9 @@ func TestRequestTapFromApi(t *testing.T) {
 					Id: &common.TapEvent_Http_StreamId{
 						Base: 1,
 					},
-					GrpcStatus: 666,
+					Eos: &common.Eos{
+						End: &common.Eos_GrpcStatusCode{GrpcStatusCode: 666},
+					},
 					SinceRequestInit: &google_protobuf.Duration{
 						Seconds: 10,
 					},
@@ -243,19 +245,79 @@ func TestEventToString(t *testing.T) {
 		}
 	})
 
-	t.Run("Converts HTTP response end event to string", func(t *testing.T) {
+	t.Run("Converts gRPC response end event to string", func(t *testing.T) {
 		event := toTapEvent(&common.TapEvent_Http{
 			Event: &common.TapEvent_Http_ResponseEnd_{
 				ResponseEnd: &common.TapEvent_Http_ResponseEnd{
 					SinceRequestInit:  &duration.Duration{Nanos: 999000},
 					SinceResponseInit: &duration.Duration{Nanos: 888000},
 					ResponseBytes:     111,
-					GrpcStatus:        uint32(codes.OK),
+					Eos: &common.Eos{
+						End: &common.Eos_GrpcStatusCode{GrpcStatusCode: uint32(codes.OK)},
+					},
 				},
 			},
 		})
 
 		expectedOutput := "end id=7:8 src=1.2.3.4:5555 dst=2.3.4.5:6666 grpc-status=OK duration=888µs response-length=111B"
+		output := renderTapEvent(event)
+		if output != expectedOutput {
+			t.Fatalf("Expecting command output to be [%s], got [%s]", expectedOutput, output)
+		}
+	})
+
+	t.Run("Converts HTTP response end event with reset error code to string", func(t *testing.T) {
+		event := toTapEvent(&common.TapEvent_Http{
+			Event: &common.TapEvent_Http_ResponseEnd_{
+				ResponseEnd: &common.TapEvent_Http_ResponseEnd{
+					SinceRequestInit:  &duration.Duration{Nanos: 999000},
+					SinceResponseInit: &duration.Duration{Nanos: 888000},
+					ResponseBytes:     111,
+					Eos: &common.Eos{
+						End: &common.Eos_ResetErrorCode{ResetErrorCode: 123},
+					},
+				},
+			},
+		})
+
+		expectedOutput := "end id=7:8 src=1.2.3.4:5555 dst=2.3.4.5:6666 reset-error=123 duration=888µs response-length=111B"
+		output := renderTapEvent(event)
+		if output != expectedOutput {
+			t.Fatalf("Expecting command output to be [%s], got [%s]", expectedOutput, output)
+		}
+	})
+
+	t.Run("Converts HTTP response end event with empty EOS context string", func(t *testing.T) {
+		event := toTapEvent(&common.TapEvent_Http{
+			Event: &common.TapEvent_Http_ResponseEnd_{
+				ResponseEnd: &common.TapEvent_Http_ResponseEnd{
+					SinceRequestInit:  &duration.Duration{Nanos: 999000},
+					SinceResponseInit: &duration.Duration{Nanos: 888000},
+					ResponseBytes:     111,
+					Eos:               &common.Eos{},
+				},
+			},
+		})
+
+		expectedOutput := "end id=7:8 src=1.2.3.4:5555 dst=2.3.4.5:6666 duration=888µs response-length=111B"
+		output := renderTapEvent(event)
+		if output != expectedOutput {
+			t.Fatalf("Expecting command output to be [%s], got [%s]", expectedOutput, output)
+		}
+	})
+
+	t.Run("Converts HTTP response end event without EOS context string", func(t *testing.T) {
+		event := toTapEvent(&common.TapEvent_Http{
+			Event: &common.TapEvent_Http_ResponseEnd_{
+				ResponseEnd: &common.TapEvent_Http_ResponseEnd{
+					SinceRequestInit:  &duration.Duration{Nanos: 999000},
+					SinceResponseInit: &duration.Duration{Nanos: 888000},
+					ResponseBytes:     111,
+				},
+			},
+		})
+
+		expectedOutput := "end id=7:8 src=1.2.3.4:5555 dst=2.3.4.5:6666 duration=888µs response-length=111B"
 		output := renderTapEvent(event)
 		if output != expectedOutput {
 			t.Fatalf("Expecting command output to be [%s], got [%s]", expectedOutput, output)
