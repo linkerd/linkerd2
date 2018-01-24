@@ -146,6 +146,19 @@ func randomH2Eos(count uint32) (eos []*pb.EosScope) {
 	return
 }
 
+func randomH2Responses(count uint32) (rsps []*pb.ResponseScope) {
+	for i := uint32(0); i < count; i++ {
+		eos = append(rsps, &pb.ResponseScope{
+			Ctx: &pb.ResponseCtx{
+				HttpStatusCode: randomHttpResponseCode(),
+			},
+			ResponseLatencies: randomLatencies(count),
+			Ends:              randomH2Eos(count),
+		})
+	}
+	return
+}
+
 func randomGrpcResponseCode() uint32 {
 	return uint32(grpcResponseCodes[rand.Intn(len(grpcResponseCodes))])
 }
@@ -265,7 +278,7 @@ func main() {
 						},
 						Authority: "world.greeting:7778",
 						Method:    &common.HttpMethod{Type: &common.HttpMethod_Registered_{Registered: common.HttpMethod_GET}},
-						Path:      "/World/Greeting",
+						Path:      "/World/GreetingGrpc",
 					},
 					Count: count,
 					Responses: []*pb.ResponseScope{
@@ -305,7 +318,7 @@ func main() {
 						},
 						Authority: "world.greeting:7778",
 						Method:    &common.HttpMethod{Type: &common.HttpMethod_Registered_{Registered: common.HttpMethod_GET}},
-						Path:      "/World/Greeting",
+						Path:      "/World/GreetingH2",
 					},
 					Count: count,
 					Responses: []*pb.ResponseScope{
