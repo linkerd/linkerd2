@@ -246,16 +246,46 @@ func main() {
 		sourceIp := randomPod(allPods, nil)
 		targetIp := randomPod(allPods, sourceIp)
 
-		// gRPC
 		req := &pb.ReportRequest{
 			Process: &pb.Process{
 				ScheduledInstance:  "hello-1mfa0",
 				ScheduledNamespace: "people",
 			},
-			ClientTransports: []*pb.ClientTransport{},
-			ServerTransports: []*pb.ServerTransport{},
-			Proxy:            pb.ReportRequest_INBOUND,
+			ClientTransports: []*pb.ClientTransport{
+				// TCP
+				&pb.ClientTransport{
+					TargetAddr: &common.TcpAddress{
+						Ip:   targetIp,
+						Port: randomPort(),
+					},
+					Connects: count,
+					Disconnects: []*pb.TransportSummary{
+						&pb.TransportSummary{
+							DurationMs: uint64(randomCount()),
+							BytesSent:  uint64(randomCount()),
+						},
+					},
+					Protocol: common.Protocol_TCP,
+				},
+			},
+			ServerTransports: []*pb.ServerTransport{
+				// TCP
+				&pb.ServerTransport{
+					SourceIp: sourceIp,
+					Connects: count,
+					Disconnects: []*pb.TransportSummary{
+						&pb.TransportSummary{
+							DurationMs: uint64(randomCount()),
+							BytesSent:  uint64(randomCount()),
+						},
+					},
+					Protocol: common.Protocol_TCP,
+				},
+			},
+			Proxy: pb.ReportRequest_INBOUND,
 			Requests: []*pb.RequestScope{
+
+				// gRPC
 				&pb.RequestScope{
 					Ctx: &pb.RequestCtx{
 						SourceIp: sourceIp,
@@ -278,24 +308,8 @@ func main() {
 						},
 					},
 				},
-			},
-		}
 
-		_, err = client.Report(context.Background(), req)
-		if err != nil {
-			log.Fatal(err.Error())
-		}
-
-		// HTTP/2
-		req = &pb.ReportRequest{
-			Process: &pb.Process{
-				ScheduledInstance:  "hello-h2-1mfa0",
-				ScheduledNamespace: "people-h2",
-			},
-			ClientTransports: []*pb.ClientTransport{},
-			ServerTransports: []*pb.ServerTransport{},
-			Proxy:            pb.ReportRequest_INBOUND,
-			Requests: []*pb.RequestScope{
+				// HTTP/2
 				&pb.RequestScope{
 					Ctx: &pb.RequestCtx{
 						SourceIp: sourceIp,
@@ -319,49 +333,6 @@ func main() {
 					},
 				},
 			},
-		}
-
-		_, err = client.Report(context.Background(), req)
-		if err != nil {
-			log.Fatal(err.Error())
-		}
-
-		// TCP
-		req = &pb.ReportRequest{
-			Process: &pb.Process{
-				ScheduledInstance:  "hello-tcp-1mfa0",
-				ScheduledNamespace: "people-tcp",
-			},
-			ClientTransports: []*pb.ClientTransport{
-				&pb.ClientTransport{
-					TargetAddr: &common.TcpAddress{
-						Ip:   targetIp,
-						Port: randomPort(),
-					},
-					Connects: count,
-					Disconnects: []*pb.TransportSummary{
-						&pb.TransportSummary{
-							DurationMs: uint64(randomCount()),
-							BytesSent:  uint64(randomCount()),
-						},
-					},
-					Protocol: common.Protocol_TCP,
-				},
-			},
-			ServerTransports: []*pb.ServerTransport{
-				&pb.ServerTransport{
-					SourceIp: sourceIp,
-					Connects: count,
-					Disconnects: []*pb.TransportSummary{
-						&pb.TransportSummary{
-							DurationMs: uint64(randomCount()),
-							BytesSent:  uint64(randomCount()),
-						},
-					},
-					Protocol: common.Protocol_TCP,
-				},
-			},
-			Proxy: pb.ReportRequest_INBOUND,
 		}
 
 		_, err = client.Report(context.Background(), req)
