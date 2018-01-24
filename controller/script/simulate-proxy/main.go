@@ -146,19 +146,6 @@ func randomH2Eos(count uint32) (eos []*pb.EosScope) {
 	return
 }
 
-func randomH2Responses(count uint32) (rsps []*pb.ResponseScope) {
-	for i := uint32(0); i < count; i++ {
-		eos = append(rsps, &pb.ResponseScope{
-			Ctx: &pb.ResponseCtx{
-				HttpStatusCode: randomHttpResponseCode(),
-			},
-			ResponseLatencies: randomLatencies(count),
-			Ends:              randomH2Eos(count),
-		})
-	}
-	return
-}
-
 func randomGrpcResponseCode() uint32 {
 	return uint32(grpcResponseCodes[rand.Intn(len(grpcResponseCodes))])
 }
@@ -324,7 +311,7 @@ func main() {
 					Responses: []*pb.ResponseScope{
 						&pb.ResponseScope{
 							Ctx: &pb.ResponseCtx{
-								HttpStatusCode: http.StatusOK,
+								HttpStatusCode: randomHttpResponseCode(),
 							},
 							ResponseLatencies: randomLatencies(count),
 							Ends:              randomH2Eos(count),
