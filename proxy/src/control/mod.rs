@@ -85,8 +85,6 @@ impl Background {
             let authority =
                 http::uri::Authority::from_shared(format!("{}", host_and_port).into()).unwrap();
 
-            let uri = unimplemented!();
-
             let dns_resolver = dns::Resolver::new(dns_config, executor);
             let connect = Timeout::new(
                 LookupAddressAndConnect::new(host_and_port, dns_resolver, executor),
@@ -103,28 +101,20 @@ impl Background {
 
             let reconnect = Reconnect::new(h2_client);
             let backoff = Backoff::new(reconnect, Duration::from_secs(5), executor);
-            let add_origin = AddOrigin::new(scheme, authority, backoff);
-
-            DestinationSvc::new(add_origin, uri).unwrap()
+            // TODO: Use AddOrigin in tower-http
+            AddOrigin::new(scheme, authority, backoff)
         };
 
-        // TODO: Remove annotation
         let mut disco = self.disco.work();
-        // let mut telemetry = Telemetry::new(events, report_timeout, executor);
+        let mut telemetry = Telemetry::new(events, report_timeout, executor);
 
         let fut = future::poll_fn(move || {
             trace!("poll rpc services");
             disco.poll_rpc(&mut client);
-            /*
-            telemetry.poll_rpc(&mut EnumService(&mut client, PhantomData));
-            */
-
-            unimplemented!();
+            telemetry.poll_rpc(&mut client);
 
             Ok(Async::NotReady)
         });
-
-        unimplemented!();
 
         Box::new(fut)
     }

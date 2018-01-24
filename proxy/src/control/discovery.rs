@@ -219,7 +219,7 @@ where
     UpdateRx<UpdateRsp<T::Future>, S>: Stream<Item=PbUpdate>,
     <UpdateRx<UpdateRsp<T::Future>, S> as Stream>::Error: fmt::Debug,
 {
-    pub fn poll_rpc(&mut self, client: &mut DestinationSvc<T>) {
+    pub fn poll_rpc(&mut self, client: &mut T) {
         // This loop is make sure any streams that were found disconnected
         // in `poll_destinations` while the `rpc` service is ready should
         // be reconnected now, otherwise the task would just sleep...
@@ -234,7 +234,7 @@ where
         }
     }
 
-    fn poll_new_watches(&mut self, mut client: &mut DestinationSvc<T>) {
+    fn poll_new_watches(&mut self, client: &mut T) {
         loop {
             // if rpc service isn't ready, not much we can do...
             match client.poll_ready() {
@@ -271,7 +271,8 @@ where
                                 path: vac.key().without_trailing_dot().into(),
                             };
                             // TODO: Can grpc::Request::new be removed?
-                            let stream = UpdateRx::from(client.get(grpc::Request::new(req)));
+                            let mut svc = DestinationSvc::new(client.lift_ref());
+                            let stream = svc.get(grpc::Request::new(req));
                             vac.insert(DestinationSet {
                                 addrs: HashSet::new(),
                                 needs_reconnect: false,
@@ -292,7 +293,7 @@ where
     }
 
     /// Tries to reconnect next watch stream. Returns true if reconnection started.
-    fn poll_reconnect(&mut self, client: &mut DestinationSvc<T>) -> bool {
+    fn poll_reconnect(&mut self, client: &mut T) -> bool {
         debug_assert!(self.rpc_ready);
 
         while let Some(auth) = self.reconnects.pop_front() {

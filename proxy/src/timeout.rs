@@ -37,10 +37,9 @@ pub struct TimeoutFuture<F> {
 //===== impl Timeout =====
 
 impl<U> Timeout<U> {
-
     /// Construct a new `Timeout` wrapping `inner`.
     pub fn new(inner: U, duration: Duration, handle: &Handle) -> Self {
-        Timeout { 
+        Timeout {
             inner,
             duration,
             handle: handle.clone(),
@@ -49,13 +48,13 @@ impl<U> Timeout<U> {
 
 }
 
-impl<S, T, E> Service for Timeout<S> 
+impl<S, T, E> Service for Timeout<S>
 where
     S: Service<Response=T, Error=E>,
     // E: Error,
 {
     type Request = S::Request;
-    type Response = T; 
+    type Response = T;
     type Error = TimeoutError<E>;
     type Future = TimeoutFuture<S::Future>;
 
