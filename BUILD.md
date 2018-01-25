@@ -141,7 +141,7 @@ bin/conduit check
 bin/conduit dashboard
 
 # install the demo app
-curl https://raw.githubusercontent.com/runconduit/conduit-examples/master/emojivoto/emojivoto.yml | bin/conduit inject - --skip-inbound-ports=80 | kubectl apply -f -
+curl https://raw.githubusercontent.com/runconduit/conduit-examples/master/emojivoto/emojivoto.yml | bin/conduit inject - | kubectl apply -f -
 
 # view demo app
 minikube -n emojivoto service web-svc --url
