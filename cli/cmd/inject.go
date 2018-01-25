@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
-	"github.com/runconduit/conduit/controller"
+	"github.com/runconduit/conduit/pkg/version"
 	"github.com/spf13/cobra"
 	batchV1 "k8s.io/api/batch/v1"
 	"k8s.io/api/core/v1"
@@ -234,7 +234,7 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec) enhancedPodTemplateSpec {
 
 	initContainer := v1.Container{
 		Name:            "conduit-init",
-		Image:           fmt.Sprintf("%s:%s", initImage, version),
+		Image:           fmt.Sprintf("%s:%s", initImage, conduitVersion),
 		ImagePullPolicy: v1.PullPolicy(imagePullPolicy),
 		Args:            initArgs,
 		SecurityContext: &v1.SecurityContext{
@@ -247,7 +247,7 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec) enhancedPodTemplateSpec {
 
 	sidecar := v1.Container{
 		Name:            "conduit-proxy",
-		Image:           fmt.Sprintf("%s:%s", proxyImage, version),
+		Image:           fmt.Sprintf("%s:%s", proxyImage, conduitVersion),
 		ImagePullPolicy: v1.PullPolicy(imagePullPolicy),
 		SecurityContext: &v1.SecurityContext{
 			RunAsUser: &proxyUID,
@@ -289,8 +289,8 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec) enhancedPodTemplateSpec {
 	if t.Annotations == nil {
 		t.Annotations = make(map[string]string)
 	}
-	t.Annotations[conduitCreatedByAnnotation] = fmt.Sprintf("conduit/cli %s", controller.Version)
-	t.Annotations[conduitProxyVersionAnnotation] = version
+	t.Annotations[conduitCreatedByAnnotation] = fmt.Sprintf("conduit/cli %s", version.Version)
+	t.Annotations[conduitProxyVersionAnnotation] = conduitVersion
 
 	if t.Labels == nil {
 		t.Labels = make(map[string]string)
@@ -375,7 +375,7 @@ type enhancedDaemonSet struct {
 
 func init() {
 	RootCmd.AddCommand(injectCmd)
-	injectCmd.PersistentFlags().StringVarP(&version, "conduit-version", "v", controller.Version, "tag to be used for conduit images")
+	injectCmd.PersistentFlags().StringVarP(&conduitVersion, "conduit-version", "v", version.Version, "tag to be used for conduit images")
 	injectCmd.PersistentFlags().StringVar(&initImage, "init-image", "gcr.io/runconduit/proxy-init", "Conduit init container image name")
 	injectCmd.PersistentFlags().StringVar(&proxyImage, "proxy-image", "gcr.io/runconduit/proxy", "Conduit proxy container image name")
 	injectCmd.PersistentFlags().StringVar(&imagePullPolicy, "image-pull-policy", "IfNotPresent", "Docker image pull policy")

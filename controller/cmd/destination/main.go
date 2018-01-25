@@ -10,6 +10,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/runconduit/conduit/controller/destination"
+	"github.com/runconduit/conduit/pkg/version"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -18,7 +19,10 @@ func main() {
 	metricsAddr := flag.String("metrics-addr", ":9999", "address to serve scrapable metrics on")
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
 	k8sDNSZone := flag.String("kubernetes-dns-zone", "", "The DNS suffix for the local Kubernetes zone.")
+	printVersion := version.VersionFlag()
+
 	flag.Parse()
+	version.MaybePrintVersionAndExit(*printVersion)
 
 	log.SetLevel(log.DebugLevel) // TODO: make configurable
 

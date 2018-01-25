@@ -71,7 +71,7 @@ export default class Version extends React.Component {
   render() {
     return (
       <div className="version">
-        Currently running Conduit {this.props.releaseVersion}<br />
+        Running Conduit {this.props.releaseVersion}<br />
         {this.renderVersionCheck()}
       </div>
     );

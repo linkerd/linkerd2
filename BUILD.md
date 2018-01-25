@@ -125,38 +125,32 @@ These commands assume a working
 
 ```bash
 # build all docker images, using minikube as our docker repo
-# this command will also place conduit executables in target/cli/
 DOCKER_TRACE=1 bin/mkube bin/docker-build
 
-# note: depending on your OS, use one of these three conduit executables:
-# target/cli/darwin/conduit
-# target/cli/linux/conduit
-# target/cli/windows/conduit
-
 # install conduit
-target/cli/darwin/conduit install --version $(bin/root-tag) | kubectl apply -f -
+bin/conduit install | kubectl apply -f -
 
 # verify cli and server versions
-target/cli/darwin/conduit version
+bin/conduit version
 
 # validate installation
 kubectl --namespace=conduit get all
-target/cli/darwin/conduit check
+bin/conduit check
 
 # view conduit dashboard
-target/cli/darwin/conduit dashboard
+bin/conduit dashboard
 
 # install the demo app
-curl https://raw.githubusercontent.com/runconduit/conduit-examples/master/emojivoto/emojivoto.yml | conduit inject - --skip-inbound-ports=80 | kubectl apply -f -
+curl https://raw.githubusercontent.com/runconduit/conduit-examples/master/emojivoto/emojivoto.yml | bin/conduit inject - --skip-inbound-ports=80 | kubectl apply -f -
 
 # view demo app
 minikube -n emojivoto service web-svc --url
 
 # view details per deployment
-target/cli/darwin/conduit stat deployments
+bin/conduit stat deployments
 
 # view a live pipeline of requests
-target/cli/darwin/conduit tap deploy emojivoto/voting-svc
+bin/conduit tap deploy emojivoto/voting-svc
 ```
 
 ## Go

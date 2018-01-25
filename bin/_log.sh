@@ -2,8 +2,8 @@
 
 set -eu
 
-# debug logging is enabled by default and may be disabled with BUILD_DEBUG=
-#export BUILD_DEBUG="${BUILD_DEBUG:-}"
+# build debug logging is disabled by default; enable with BUILD_DEBUG=1
+# shell trace logging is disabled by default; enable with TRACE=1
 
 export TRACE="${TRACE:-}"
 if [ -n "$TRACE" ]; then

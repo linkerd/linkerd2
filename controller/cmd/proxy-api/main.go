@@ -10,6 +10,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/runconduit/conduit/controller/api/proxy"
 	"github.com/runconduit/conduit/controller/destination"
+	"github.com/runconduit/conduit/pkg/version"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -18,7 +19,10 @@ func main() {
 	metricsAddr := flag.String("metrics-addr", ":9996", "address to serve scrapable metrics on")
 	telemetryAddr := flag.String("telemetry-addr", ":8087", "address of telemetry service")
 	destinationAddr := flag.String("destination-addr", ":8089", "address of destination service")
+	printVersion := version.VersionFlag()
+
 	flag.Parse()
+	version.MaybePrintVersionAndExit(*printVersion)
 
 	log.SetLevel(log.DebugLevel) // TODO: make configurable
 

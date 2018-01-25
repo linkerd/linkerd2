@@ -10,6 +10,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/runconduit/conduit/controller/telemetry"
+	"github.com/runconduit/conduit/pkg/version"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -19,7 +20,10 @@ func main() {
 	prometheusUrl := flag.String("prometheus-url", "http://127.0.0.1:9090", "prometheus url")
 	ignoredNamespaces := flag.String("ignore-namespaces", "", "comma separated list of namespaces to not list pods from")
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
+	printVersion := version.VersionFlag()
+
 	flag.Parse()
+	version.MaybePrintVersionAndExit(*printVersion)
 
 	log.SetLevel(log.DebugLevel) // TODO: make configurable
 	stop := make(chan os.Signal, 1)

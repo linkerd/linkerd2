@@ -17,6 +17,8 @@ WORKDIR /go/src/github.com/runconduit/conduit
 COPY web web
 COPY controller controller
 COPY pkg pkg
+ARG CONDUIT_VERSION
+RUN sed -i "s/unknown/$CONDUIT_VERSION/" pkg/version/version.go
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o web/web ./web
 
 ## package it all up

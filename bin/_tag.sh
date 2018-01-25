@@ -18,6 +18,10 @@ clean_head() {
     git diff-index --quiet HEAD --
 }
 
+named_tag() {
+    echo "$(git name-rev --tags --name-only $(git_sha HEAD))"
+}
+
 head_root_tag() {
     if clean_head ; then
         clean_head_root_tag
@@ -28,7 +32,11 @@ head_root_tag() {
 
 clean_head_root_tag() {
     if clean_head ; then
-        echo "git-$(git_sha HEAD)"
+        if [ "$(named_tag)" != "undefined" ]; then
+            echo "$(named_tag)"
+        else
+            echo "git-$(git_sha HEAD)"
+        fi
     else
         echo "Commit unstaged changes." >&2
         exit 3

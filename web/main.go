@@ -12,6 +12,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/runconduit/conduit/controller/api/public"
+	"github.com/runconduit/conduit/pkg/version"
 	"github.com/runconduit/conduit/web/srv"
 	log "github.com/sirupsen/logrus"
 )
@@ -26,8 +27,10 @@ func main() {
 	reload := flag.Bool("reload", true, "reloading set to true or false")
 	logLevel := flag.String("log-level", log.InfoLevel.String(), "log level, must be one of: panic, fatal, error, warn, info, debug")
 	webpackDevServer := flag.String("webpack-dev-server", "", "use webpack to serve static assets; frontend will use this instead of static-dir")
+	printVersion := version.VersionFlag()
 
 	flag.Parse()
+	version.MaybePrintVersionAndExit(*printVersion)
 
 	// set global log level
 	level, err := log.ParseLevel(*logLevel)
