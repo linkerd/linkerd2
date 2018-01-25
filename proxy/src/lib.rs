@@ -74,7 +74,6 @@ mod tower_fn; // TODO: move to tower-fn
 
 use bind::Bind;
 use connection::BoundPort;
-use control::pb::proxy::tap;
 use inbound::Inbound;
 use map_err::MapErr;
 use outbound::Outbound;

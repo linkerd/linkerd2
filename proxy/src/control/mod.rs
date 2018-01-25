@@ -1,4 +1,3 @@
-use std::marker::PhantomData;
 use std::time::{Duration, Instant};
 
 use bytes::Bytes;
@@ -31,7 +30,6 @@ use self::discovery::{Background as DiscoBg, Discovery, Watch};
 pub use self::discovery::Bind;
 pub use self::observe::Observe;
 use self::pb::proxy::telemetry::ReportRequest;
-use self::pb::proxy::destination::client::Destination as DestinationSvc;
 use self::telemetry::Telemetry;
 
 pub struct Control {

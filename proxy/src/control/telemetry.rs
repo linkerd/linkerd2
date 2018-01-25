@@ -2,12 +2,10 @@ use std::fmt;
 use std::time::{Duration, Instant};
 
 use futures::{Async, Future, Stream};
-use tower::Service;
 use tokio_core::reactor::Handle;
 use tower_h2::{HttpService, BoxBody};
 use tower_grpc as grpc;
 
-use super::codec::Protobuf;
 use super::pb::proxy::telemetry::{ReportRequest, ReportResponse};
 use super::pb::proxy::telemetry::client::Telemetry as TelemetrySvc;
 use ::timeout::{Timeout, TimeoutFuture};

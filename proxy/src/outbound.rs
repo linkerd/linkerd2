@@ -1,36 +1,22 @@
-use std::io;
 use std::sync::Arc;
 
 use http;
 use tower;
 use tower_balance::{self, choose, Balance};
-use tower_buffer::{self, Buffer};
+use tower_buffer::Buffer;
 use tower_discover::Discover;
 use tower_h2;
-use tower_reconnect;
 use tower_router::Recognize;
 
 use bind::Bind;
 use control;
 use ctx;
 use fully_qualified_authority::FullyQualifiedAuthority;
-use telemetry;
-use transport;
 
 type Discovery<B> = control::discovery::Watch<Bind<Arc<ctx::Proxy>, B>>;
 
 // todo: better lb
 type LoadBalance<B> = Balance<Discovery<B>, choose::RoundRobin>;
-
-type Error = tower_buffer::Error<
-    tower_balance::Error<
-        tower_reconnect::Error<
-            tower_h2::client::Error,
-            tower_h2::client::ConnectError<transport::TimeoutError<io::Error>>,
-        >,
-        (),
-    >,
->;
 
 pub struct Outbound<B> {
     bind: Bind<Arc<ctx::Proxy>, B>,

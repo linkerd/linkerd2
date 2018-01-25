@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use futures::{future, Poll, Stream};
 use futures_mpsc_lossy;
 use ordermap::OrderMap;
-use tower_grpc::{self as grpc, Request, Response};
+use tower_grpc::{self as grpc, Response};
 
 use control::pb::common::TapEvent;
 use control::pb::proxy::tap::{server, ObserveRequest};
