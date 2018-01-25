@@ -41,7 +41,7 @@ export default class Sidebar extends React.Component {
   }
 
   onAutocompleteSelect(deployment) {
-    let pathToDeploymentPage = `/deployment?deploy=${deployment}`;
+    let pathToDeploymentPage = `${this.props.pathPrefix}/deployment?deploy=${deployment}`;
     this.props.history.push(pathToDeploymentPage);
     this.setState({
       autocompleteValue: '',
