@@ -20,9 +20,9 @@ COPY tower-grpc ./tower-grpc
 COPY Cargo.toml Cargo.lock ./
 COPY proto ./proto
 COPY proxy ./proxy
-RUN cargo fetch
-RUN cargo build -p conduit-proxy
-RUN cargo build -p conduit-proxy --release
+RUN cargo fetch --locked
+RUN cargo build --frozen -p conduit-proxy
+RUN cargo build --frozen -p conduit-proxy --release
 
 # Preserve dependency sources and build artifacts without maintaining conduit
 # sources/artifacts.

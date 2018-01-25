@@ -20,8 +20,8 @@ COPY proto ./proto
 COPY proxy ./proxy
 ARG RELEASE
 RUN if [ -z "$RELEASE" ]; \
-    then cargo build -p conduit-proxy           && mv target/debug/conduit-proxy   target/conduit-proxy ; \
-    else cargo build -p conduit-proxy --release && mv target/release/conduit-proxy target/conduit-proxy ; \
+    then cargo build --frozen -p conduit-proxy           && mv target/debug/conduit-proxy   target/conduit-proxy ; \
+    else cargo build --frozen -p conduit-proxy --release && mv target/release/conduit-proxy target/conduit-proxy ; \
     fi
 
 ## Install the proxy binary into the base runtime image.
