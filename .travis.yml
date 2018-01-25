@@ -18,14 +18,15 @@ jobs:
 
     # Compile the application and run tests.
     - stage: test
-
       language: rust
       rust: stable
       cache:
         cargo: true
+      install:
+        - cargo fetch --locked
       script:
-        - cargo check
-        - cargo test
+        - cargo check --frozen
+        - cargo test --frozen
 
     - language: go
       go: 1.9
