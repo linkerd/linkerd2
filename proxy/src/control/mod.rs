@@ -20,7 +20,6 @@ use fully_qualified_authority::FullyQualifiedAuthority;
 use transport::LookupAddressAndConnect;
 use timeout::Timeout;
 
-mod codec;
 pub mod discovery;
 mod observe;
 pub mod pb;
