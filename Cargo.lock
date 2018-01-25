@@ -145,7 +145,7 @@ dependencies = [
  "tokio-core 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-io 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "tower 0.1.0 (git+https://github.com/tower-rs/tower)",
- "tower-balance 0.1.0 (git+https://github.com/tower-rs/tower?rev=ffe0ae8d379a061192b01134d2bf5eb7719b1234)",
+ "tower-balance 0.1.0 (git+https://github.com/tower-rs/tower)",
  "tower-buffer 0.1.0 (git+https://github.com/tower-rs/tower)",
  "tower-discover 0.1.0 (git+https://github.com/tower-rs/tower)",
  "tower-grpc 0.1.0 (git+https://github.com/tower-rs/tower-grpc)",
@@ -661,6 +661,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rand"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "fuchsia-zircon 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.2.36 (registry+https://github.com/rust-lang/crates.io-index)",
+ "winapi 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "redox_syscall"
 version = "0.1.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -823,22 +833,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "tower"
-version = "0.1.0"
-source = "git+https://github.com/tower-rs/tower?rev=ffe0ae8d379a061192b01134d2bf5eb7719b1234#ffe0ae8d379a061192b01134d2bf5eb7719b1234"
-dependencies = [
- "futures 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "tower-balance"
 version = "0.1.0"
-source = "git+https://github.com/tower-rs/tower?rev=ffe0ae8d379a061192b01134d2bf5eb7719b1234#ffe0ae8d379a061192b01134d2bf5eb7719b1234"
+source = "git+https://github.com/tower-rs/tower#4bedc520770f055f36779a52e82fab178aa78fdc"
 dependencies = [
  "futures 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "ordermap 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)",
- "tower 0.1.0 (git+https://github.com/tower-rs/tower?rev=ffe0ae8d379a061192b01134d2bf5eb7719b1234)",
- "tower-discover 0.1.0 (git+https://github.com/tower-rs/tower?rev=ffe0ae8d379a061192b01134d2bf5eb7719b1234)",
+ "rand 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tower 0.1.0 (git+https://github.com/tower-rs/tower)",
+ "tower-discover 0.1.0 (git+https://github.com/tower-rs/tower)",
 ]
 
 [[package]]
@@ -857,15 +860,6 @@ source = "git+https://github.com/tower-rs/tower#4bedc520770f055f36779a52e82fab17
 dependencies = [
  "futures 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "tower 0.1.0 (git+https://github.com/tower-rs/tower)",
-]
-
-[[package]]
-name = "tower-discover"
-version = "0.1.0"
-source = "git+https://github.com/tower-rs/tower?rev=ffe0ae8d379a061192b01134d2bf5eb7719b1234#ffe0ae8d379a061192b01134d2bf5eb7719b1234"
-dependencies = [
- "futures 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
- "tower 0.1.0 (git+https://github.com/tower-rs/tower?rev=ffe0ae8d379a061192b01134d2bf5eb7719b1234)",
 ]
 
 [[package]]
@@ -1132,6 +1126,7 @@ dependencies = [
 "checksum quickcheck 0.4.2 (git+https://github.com/BurntSushi/quickcheck?rev=a1658ce)" = "<none>"
 "checksum quote 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)" = "7a6e920b65c65f10b2ae65c831a81a073a89edd28c7cce89475bff467ab4167a"
 "checksum rand 0.3.20 (registry+https://github.com/rust-lang/crates.io-index)" = "512870020642bb8c221bf68baa1b2573da814f6ccfe5c9699b1c303047abe9b1"
+"checksum rand 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "eba5f8cb59cc50ed56be8880a5c7b496bfd9bd26394e176bc67884094145c2c5"
 "checksum redox_syscall 0.1.37 (registry+https://github.com/rust-lang/crates.io-index)" = "0d92eecebad22b767915e4d529f89f28ee96dbbf5a4810d2b844373f136417fd"
 "checksum regex 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)" = "744554e01ccbd98fff8c457c3b092cd67af62a555a43bfe97ae8a0451f7799fa"
 "checksum regex-syntax 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "8e931c58b93d86f080c734bfd2bce7dd0079ae2331235818133c8be7f422e20e"
@@ -1152,11 +1147,9 @@ dependencies = [
 "checksum tokio-core 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)" = "52b4e32d8edbf29501aabb3570f027c6ceb00ccef6538f4bddba0200503e74e8"
 "checksum tokio-io 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)" = "514aae203178929dbf03318ad7c683126672d4d96eccb77b29603d33c9e25743"
 "checksum tower 0.1.0 (git+https://github.com/tower-rs/tower)" = "<none>"
-"checksum tower 0.1.0 (git+https://github.com/tower-rs/tower?rev=ffe0ae8d379a061192b01134d2bf5eb7719b1234)" = "<none>"
-"checksum tower-balance 0.1.0 (git+https://github.com/tower-rs/tower?rev=ffe0ae8d379a061192b01134d2bf5eb7719b1234)" = "<none>"
+"checksum tower-balance 0.1.0 (git+https://github.com/tower-rs/tower)" = "<none>"
 "checksum tower-buffer 0.1.0 (git+https://github.com/tower-rs/tower)" = "<none>"
 "checksum tower-discover 0.1.0 (git+https://github.com/tower-rs/tower)" = "<none>"
-"checksum tower-discover 0.1.0 (git+https://github.com/tower-rs/tower?rev=ffe0ae8d379a061192b01134d2bf5eb7719b1234)" = "<none>"
 "checksum tower-grpc 0.1.0 (git+https://github.com/tower-rs/tower-grpc)" = "<none>"
 "checksum tower-grpc-build 0.1.0 (git+https://github.com/tower-rs/tower-grpc)" = "<none>"
 "checksum tower-h2 0.1.0 (git+https://github.com/tower-rs/tower-h2)" = "<none>"

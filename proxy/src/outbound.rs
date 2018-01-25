@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use http;
 use tower;
-use tower_balance::{self, Balance};
+use tower_balance::{self, choose, Balance};
 use tower_buffer::{self, Buffer};
 use tower_discover::Discover;
 use tower_h2;
@@ -18,6 +18,9 @@ use telemetry;
 use transport;
 
 type Discovery<B> = control::discovery::Watch<Bind<Arc<ctx::Proxy>, B>>;
+
+// todo: better lb
+type LoadBalance<B> = Balance<Discovery<B>, choose::RoundRobin>;
 
 type Error = tower_buffer::Error<
     tower_balance::Error<
@@ -53,16 +56,17 @@ impl<B> Outbound<B> {
 
 impl<B> Recognize for Outbound<B>
 where
-    B: tower_h2::Body + control::discovery::Bind + 'static,
-    Discovery<B>: Discover,
-    Balance<Discovery<B>>: tower::Service,
+    Bind<Arc<ctx::Proxy>, B>: control::discovery::Bind,
+    B: tower_h2::Body + 'static,
+    control::discovery::Watch<Bind<Arc<ctx::Proxy>, B>>: Discover,
+    LoadBalance<B>: tower::Service,
 {
-    type Request = http::Request<B>;
-    type Response = http::Response<telemetry::sensor::http::ResponseBody<tower_h2::RecvBody>>;
-    type Error = Error;
+    type Request = <Buffer<LoadBalance<B>> as tower::Service>::Request;
+    type Response = <Buffer<LoadBalance<B>> as tower::Service>::Response;
+    type Error = <Buffer<LoadBalance<B>> as tower::Service>::Error;
     type Key = FullyQualifiedAuthority;
     type RouteError = ();
-    type Service = Buffer<Balance<Discovery<B>>>;
+    type Service = Buffer<LoadBalance<B>>;
 
     fn recognize(&self, req: &Self::Request) -> Option<Self::Key> {
         req.uri().authority_part().map(|authority|

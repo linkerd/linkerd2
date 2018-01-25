@@ -31,7 +31,7 @@ ns-dns-tokio = "0.4"
 
 tokio-connect   = { git = "https://github.com/carllerche/tokio-connect" }
 tower           = { git = "https://github.com/tower-rs/tower" }
-tower-balance   = { git = "https://github.com/tower-rs/tower", rev = "ffe0ae8d379a061192b01134d2bf5eb7719b1234" }
+tower-balance   = { git = "https://github.com/tower-rs/tower" }
 tower-buffer    = { git = "https://github.com/tower-rs/tower" }
 tower-discover  = { git = "https://github.com/tower-rs/tower" }
 tower-grpc      = { git = "https://github.com/tower-rs/tower-grpc" }
