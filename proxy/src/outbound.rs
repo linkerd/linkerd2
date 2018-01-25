@@ -94,7 +94,8 @@ where
 
         let resolve = self.discovery.resolve(authority, self.bind.clone());
 
-        let balance = Balance::new(resolve);
+        // TODO: move to p2c lb.
+        let balance = tower_balance::round_robin(resolve);
 
         // Wrap with buffering. This currently is an unbounded buffer,
         // which is not ideal.
