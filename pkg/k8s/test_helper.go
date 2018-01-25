@@ -54,8 +54,8 @@ type HttpClient interface {
 	Get(url string) (*http.Response, error)
 }
 
-type MockClient struct{}
+type MockHttpClient struct{}
 
-func (m *MockClient) Get(url string) (*http.Response, error) {
+func (m *MockHttpClient) Get(url string) (*http.Response, error) {
 	return &http.Response{}, nil
 }

@@ -16,10 +16,8 @@ import (
 const (
 	kubernetesConfigFilePathEnvVariable = "KUBECONFIG"
 	KubeapiSubsystemName                = "kubernetes-api"
-	ConduitDashboardSubsystemName       = "conduit dashboard"
 	KubeapiClientCheckDescription       = "can initialize the client"
 	KubeapiAccessCheckDescription       = "can query the Kubernetes API"
-	ConduitDashboardCheckDescription    = "can query the Conduit dashboard through Kubernetes API"
 )
 
 type KubernetesApi interface {
@@ -46,8 +44,7 @@ func (kubeapi *kubernetesApi) NewClient() (*http.Client, error) {
 func (kubeapi *kubernetesApi) SelfCheck() []*healthcheckPb.CheckResult {
 	apiConnectivityCheck, client := kubeapi.checkApiConnectivity()
 	apiAccessCheck := kubeapi.checkApiAccess(client)
-	dashboardCheck := kubeapi.checkDashboardAccess(client)
-	return []*healthcheckPb.CheckResult{apiConnectivityCheck, apiAccessCheck, dashboardCheck}
+	return []*healthcheckPb.CheckResult{apiConnectivityCheck, apiAccessCheck}
 }
 
 func (kubeapi *kubernetesApi) checkApiConnectivity() (*healthcheckPb.CheckResult, *http.Client) {
@@ -109,27 +106,6 @@ func (kubeapi *kubernetesApi) checkApiAccess(client *http.Client) *healthcheckPb
 		return checkResult
 	}
 
-	return checkResult
-}
-
-func (kubeapi *kubernetesApi) checkDashboardAccess(client *http.Client) *healthcheckPb.CheckResult {
-	checkResult := &healthcheckPb.CheckResult{
-		Status:           healthcheckPb.CheckStatus_OK,
-		SubsystemName:    ConduitDashboardSubsystemName,
-		CheckDescription: ConduitDashboardCheckDescription,
-	}
-	dashboardEndpoint, err := kubeapi.UrlFor("conduit", "/services/web:http/proxy")
-	if err != nil {
-		checkResult.Status = healthcheckPb.CheckStatus_ERROR
-		checkResult.FriendlyMessageToUser = "Failed to generate dashboard URL"
-		return checkResult
-	}
-	resp, err := client.Get(dashboardEndpoint.String())
-	if resp.StatusCode != http.StatusOK {
-		checkResult.Status = healthcheckPb.CheckStatus_FAIL
-		checkResult.FriendlyMessageToUser = fmt.Sprintf("HTTP GET request to endpoint [%s] resulted in invalid response [%v]", dashboardEndpoint, resp.Status)
-		return checkResult
-	}
 	return checkResult
 }
 
