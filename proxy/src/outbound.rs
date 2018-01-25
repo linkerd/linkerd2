@@ -2,8 +2,10 @@ use std::io;
 use std::sync::Arc;
 
 use http;
+use tower;
 use tower_balance::{self, Balance};
 use tower_buffer::{self, Buffer};
+use tower_discover::Discover;
 use tower_h2;
 use tower_reconnect;
 use tower_router::Recognize;
@@ -51,7 +53,9 @@ impl<B> Outbound<B> {
 
 impl<B> Recognize for Outbound<B>
 where
-    B: tower_h2::Body + 'static,
+    B: tower_h2::Body + control::discovery::Bind + 'static,
+    Discovery<B>: Discover,
+    Balance<Discovery<B>>: tower::Service,
 {
     type Request = http::Request<B>;
     type Response = http::Response<telemetry::sensor::http::ResponseBody<tower_h2::RecvBody>>;
