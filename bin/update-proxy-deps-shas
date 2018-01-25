@@ -7,5 +7,5 @@ set -eu
 sha=$(. bin/_tag.sh ; proxy_deps_sha)
 
 for f in $( grep -lR --include=Dockerfile\* proxy-deps: . ) ; do
-    sed -Ei '' -e "s|runconduit/proxy-deps:[^ ]+|runconduit/proxy-deps:${sha}|" "$f"
+    sed -E -i'' -e "s|runconduit/proxy-deps:[^ ]+|runconduit/proxy-deps:${sha}|" "$f"
 done

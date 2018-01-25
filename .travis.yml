@@ -44,6 +44,7 @@ jobs:
         - ./bin/protoc-go.sh
         - go test -v ./...
         - go vet ./...
+
     - language: node_js
       node_js:
         - "8"
@@ -57,6 +58,19 @@ jobs:
         - cd web/app && yarn && yarn webpack
       script:
         - yarn karma start --single-run
+
+    - language: generic
+      script:
+        - |
+          (
+            . bin/_tag.sh
+            for f in $( grep -lR --include=Dockerfile\* go-deps: . ) ; do
+              validate_go_deps_tag $f
+            done
+            for f in $( grep -lR --include=Dockerfile\* proxy-deps: . ) ; do
+              validate_proxy_deps_tag $f
+            done
+          )
 
     # Push container images to Google Container Registry.
     - stage: docker-deploy

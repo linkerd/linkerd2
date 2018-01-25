@@ -7,5 +7,5 @@ set -eu
 sha=$(. bin/_tag.sh ; go_deps_sha)
 
 for f in $( grep -lR --include=Dockerfile\* go-deps: . ) ; do
-    sed -Ei '' -e "s|runconduit/go-deps:[^ ]+|runconduit/go-deps:${sha}|" "$f"
+    sed -E -i'' -e "s|runconduit/go-deps:[^ ]+|runconduit/go-deps:${sha}|" "$f"
 done

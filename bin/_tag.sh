@@ -51,7 +51,7 @@ validate_tag() {
         echo "Tag in "$file" does not match source tree:"
         echo $dockerfile_tag" ("$file")"
         echo $deps_tag" (source)"
-        exit 3
+        return 3
     fi
 }
 
