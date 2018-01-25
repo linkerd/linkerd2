@@ -38,7 +38,7 @@ var tapCmd = &cobra.Command{
 Valid targets include:
  * Pods (default/hello-world-h4fb2)
  * Deployments (default/hello-world)`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: exitSilentlyOnError(func(cmd *cobra.Command, args []string) error {
 		if len(args) != 2 {
 			return errors.New("please specify a target")
 		}
@@ -68,7 +68,7 @@ Valid targets include:
 		}
 
 		return requestTapFromApi(os.Stdout, client, args[1], validatedResourceType, partialReq)
-	},
+	}),
 }
 
 func init() {
@@ -102,6 +102,7 @@ func requestTapFromApi(w io.Writer, client pb.ApiClient, targetName string, reso
 
 	rsp, err := client.Tap(context.Background(), req)
 	if err != nil {
+		fmt.Fprintln(w, err.Error())
 		return err
 	}
 
@@ -117,7 +118,6 @@ func renderTap(w io.Writer, tapClient pb.Api_TapClient) error {
 	tableWriter.Flush()
 
 	return nil
-
 }
 
 func writeTapEventsToBuffer(tapClient pb.Api_TapClient, w *tabwriter.Writer) error {

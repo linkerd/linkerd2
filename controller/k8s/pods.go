@@ -59,7 +59,7 @@ func (p *PodIndex) GetPod(key string) (*v1.Pod, error) {
 		return nil, err
 	}
 	if !exists {
-		return nil, fmt.Errorf("No pod exists for key %s", key)
+		return nil, fmt.Errorf("no pod exists for key %s", key)
 	}
 	pod, ok := item.(*v1.Pod)
 	if !ok {

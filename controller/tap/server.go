@@ -16,6 +16,8 @@ import (
 	"github.com/runconduit/conduit/controller/util"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"k8s.io/api/core/v1"
 )
 
@@ -41,7 +43,7 @@ func (s *server) Tap(req *public.TapRequest, stream pb.Tap_TapServer) error {
 		targetName = target.Pod
 		pod, err := s.pods.GetPod(target.Pod)
 		if err != nil {
-			return err
+			return status.Errorf(codes.NotFound, err.Error())
 		}
 		pods = []*v1.Pod{pod}
 	case *public.TapRequest_Deployment:
@@ -334,7 +336,7 @@ func NewServer(addr string, tapPort uint, kubeconfig string) (*grpc.Server, net.
 	deploymentIndex := func(obj interface{}) ([]string, error) {
 		pod, ok := obj.(*v1.Pod)
 		if !ok {
-			return nil, fmt.Errorf("Object is not a Pod")
+			return nil, fmt.Errorf("object is not a Pod")
 		}
 		deployment, err := replicaSets.GetDeploymentForPod(pod)
 		if err != nil {

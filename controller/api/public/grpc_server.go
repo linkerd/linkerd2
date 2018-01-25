@@ -14,6 +14,7 @@ import (
 	tapPb "github.com/runconduit/conduit/controller/gen/controller/tap"
 	telemPb "github.com/runconduit/conduit/controller/gen/controller/telemetry"
 	pb "github.com/runconduit/conduit/controller/gen/public"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )
 
@@ -156,8 +157,10 @@ func (s *grpcServer) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckR
 // Pass through to tap service
 func (s *grpcServer) Tap(req *pb.TapRequest, stream pb.Api_TapServer) error {
 	tapStream := stream.(tapServer)
-	rsp, err := s.tapClient.Tap(tapStream.Context(), req)
+	tapClient, err := s.tapClient.Tap(tapStream.Context(), req)
 	if err != nil {
+		//TODO: why not return the error?
+		log.Errorf("Unexpected error tapping [%v]: %v", req, err)
 		return nil
 	}
 	for {
@@ -165,7 +168,7 @@ func (s *grpcServer) Tap(req *pb.TapRequest, stream pb.Api_TapServer) error {
 		case <-tapStream.Context().Done():
 			return nil
 		default:
-			event, err := rsp.Recv()
+			event, err := tapClient.Recv()
 			if err != nil {
 				return err
 			}

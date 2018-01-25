@@ -3,9 +3,7 @@ package public
 import (
 	"bufio"
 	"bytes"
-	"encoding/binary"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 
@@ -23,21 +21,13 @@ import (
 const (
 	ApiRoot                 = "/" // Must be absolute (with a leading slash).
 	ApiVersion              = "v1"
-	JsonContentType         = "application/json"
 	ApiPrefix               = "api/" + ApiVersion + "/" // Must be relative (without a leading slash).
-	ProtobufContentType     = "application/octet-stream"
-	ErrorHeader             = "conduit-error"
 	ConduitApiSubsystemName = "conduit-api"
 )
 
 type grpcOverHttpClient struct {
 	serverURL  *url.URL
 	httpClient *http.Client
-}
-
-type tapClient struct {
-	ctx    context.Context
-	reader *bufio.Reader
 }
 
 func (c *grpcOverHttpClient) Stat(ctx context.Context, req *pb.MetricRequest, _ ...grpc.CallOption) (*pb.MetricResponse, error) {
@@ -66,35 +56,26 @@ func (c *grpcOverHttpClient) ListPods(ctx context.Context, req *pb.Empty, _ ...g
 
 func (c *grpcOverHttpClient) Tap(ctx context.Context, req *pb.TapRequest, _ ...grpc.CallOption) (pb.Api_TapClient, error) {
 	url := c.endpointNameToPublicApiUrl("Tap")
-	log.Debugf("Making streaming gRPC-over-HTTP call to [%s]", url.String())
-	rsp, err := c.post(ctx, url, req)
+	httpRsp, err := c.post(ctx, url, req)
 	if err != nil {
+		return nil, err
+	}
+
+	if err = checkIfResponseHasConduitError(httpRsp); err != nil {
+		httpRsp.Body.Close()
 		return nil, err
 	}
 
 	go func() {
 		<-ctx.Done()
 		log.Debug("Closing response body after context marked as done")
-		rsp.Body.Close()
+		httpRsp.Body.Close()
 	}()
 
-	return &tapClient{ctx: ctx, reader: bufio.NewReader(rsp.Body)}, nil
-}
-func (c tapClient) Recv() (*common.TapEvent, error) {
-	var msg common.TapEvent
-	err := fromByteStreamToProtocolBuffers(c.reader, "", &msg)
-	return &msg, err
+	return &tapClient{ctx: ctx, reader: bufio.NewReader(httpRsp.Body)}, nil
 }
 
-// satisfy the pb.Api_TapClient interface
-func (c tapClient) Header() (metadata.MD, error) { return nil, nil }
-func (c tapClient) Trailer() metadata.MD         { return nil }
-func (c tapClient) CloseSend() error             { return nil }
-func (c tapClient) Context() context.Context     { return c.ctx }
-func (c tapClient) SendMsg(interface{}) error    { return nil }
-func (c tapClient) RecvMsg(interface{}) error    { return nil }
-
-func (c *grpcOverHttpClient) apiRequest(ctx context.Context, endpoint string, req proto.Message, rsp proto.Message) error {
+func (c *grpcOverHttpClient) apiRequest(ctx context.Context, endpoint string, req proto.Message, protoResponse proto.Message) error {
 	url := c.endpointNameToPublicApiUrl(endpoint)
 
 	log.Debugf("Making gRPC-over-HTTP call to [%s]", url.String())
@@ -102,18 +83,20 @@ func (c *grpcOverHttpClient) apiRequest(ctx context.Context, endpoint string, re
 	if err != nil {
 		return err
 	}
-
+	defer httpRsp.Body.Close()
 	log.Debugf("gRPC-over-HTTP call returned status [%s] and content length [%d]", httpRsp.Status, httpRsp.ContentLength)
+
 	clientSideErrorStatusCode := httpRsp.StatusCode >= 400 && httpRsp.StatusCode <= 499
 	if clientSideErrorStatusCode {
 		return fmt.Errorf("POST to Conduit API endpoint [%s] returned HTTP status [%s]", url, httpRsp.Status)
 	}
 
-	defer httpRsp.Body.Close()
+	if err = checkIfResponseHasConduitError(httpRsp); err != nil {
+		return err
+	}
 
 	reader := bufio.NewReader(httpRsp.Body)
-	errorMsg := httpRsp.Header.Get(ErrorHeader)
-	return fromByteStreamToProtocolBuffers(reader, errorMsg, rsp)
+	return fromByteStreamToProtocolBuffers(reader, protoResponse)
 }
 
 func (c *grpcOverHttpClient) post(ctx context.Context, url *url.URL, req proto.Message) (*http.Response, error) {
@@ -131,11 +114,67 @@ func (c *grpcOverHttpClient) post(ctx context.Context, url *url.URL, req proto.M
 		return nil, err
 	}
 
-	return c.httpClient.Do(httpReq.WithContext(ctx))
+	rsp, err := c.httpClient.Do(httpReq.WithContext(ctx))
+	if err != nil {
+		log.Debugf("Error invoking [%s]: %v", url.String(), err)
+	} else {
+		log.Debugf("Response from [%s] had headers: %v", url.String(), rsp.Header)
+	}
+
+	return rsp, err
 }
 
 func (c *grpcOverHttpClient) endpointNameToPublicApiUrl(endpoint string) *url.URL {
 	return c.serverURL.ResolveReference(&url.URL{Path: endpoint})
+}
+
+type tapClient struct {
+	ctx    context.Context
+	reader *bufio.Reader
+}
+
+func (c tapClient) Recv() (*common.TapEvent, error) {
+	var msg common.TapEvent
+	err := fromByteStreamToProtocolBuffers(c.reader, &msg)
+	return &msg, err
+}
+
+// satisfy the pb.Api_TapClient interface
+func (c tapClient) Header() (metadata.MD, error) { return nil, nil }
+func (c tapClient) Trailer() metadata.MD         { return nil }
+func (c tapClient) CloseSend() error             { return nil }
+func (c tapClient) Context() context.Context     { return c.ctx }
+func (c tapClient) SendMsg(interface{}) error    { return nil }
+func (c tapClient) RecvMsg(interface{}) error    { return nil }
+
+func fromByteStreamToProtocolBuffers(byteStreamContainingMessage *bufio.Reader, out proto.Message) error {
+	messageAsBytes, err := deserializePayloadFromReader(byteStreamContainingMessage)
+	if err != nil {
+		return fmt.Errorf("error reading byte stream header: %v", err)
+	}
+
+	err = proto.Unmarshal(messageAsBytes, out)
+	if err != nil {
+		return fmt.Errorf("error unmarshalling array of [%d] bytes error: %v", len(messageAsBytes), err)
+	}
+
+	return nil
+}
+
+func newClient(apiURL *url.URL, httpClientToUse *http.Client) (pb.ApiClient, error) {
+
+	if !apiURL.IsAbs() {
+		return nil, fmt.Errorf("server URL must be absolute, was [%s]", apiURL.String())
+	}
+
+	serverUrl := apiURL.ResolveReference(&url.URL{Path: ApiPrefix})
+
+	log.Debugf("Expecting Conduit Public API to be served over [%s]", serverUrl)
+
+	return &grpcOverHttpClient{
+		serverURL:  serverUrl,
+		httpClient: httpClientToUse,
+	}, nil
 }
 
 func NewInternalClient(kubernetesApiHost string) (pb.ApiClient, error) {
@@ -160,50 +199,4 @@ func NewExternalClient(controlPlaneNamespace string, kubeApi k8s.KubernetesApi) 
 	}
 
 	return newClient(apiURL, httpClientToUse)
-}
-
-func newClient(apiURL *url.URL, httpClientToUse *http.Client) (pb.ApiClient, error) {
-
-	if !apiURL.IsAbs() {
-		return nil, fmt.Errorf("server URL must be absolute, was [%s]", apiURL.String())
-	}
-
-	return &grpcOverHttpClient{
-		serverURL:  apiURL.ResolveReference(&url.URL{Path: ApiPrefix}),
-		httpClient: httpClientToUse,
-	}, nil
-}
-
-func fromByteStreamToProtocolBuffers(byteStreamContainingMessage *bufio.Reader, errorMessageReturnedAsMetadata string, out proto.Message) error {
-	//TODO: why the magic number 4?
-	byteSize := make([]byte, 4)
-
-	//TODO: why is this necessary?
-	_, err := byteStreamContainingMessage.Read(byteSize)
-	if err != nil {
-		return fmt.Errorf("error reading byte stream header: %v", err)
-	}
-
-	size := binary.LittleEndian.Uint32(byteSize)
-	bytes := make([]byte, size)
-	_, err = io.ReadFull(byteStreamContainingMessage, bytes)
-	if err != nil {
-		return fmt.Errorf("error reading byte stream content: %v", err)
-	}
-
-	if errorMessageReturnedAsMetadata != "" {
-		var apiError pb.ApiError
-		err = proto.Unmarshal(bytes, &apiError)
-		if err != nil {
-			return fmt.Errorf("error unmarshalling error from byte stream: %v", err)
-		}
-		return fmt.Errorf("%s: %s", errorMessageReturnedAsMetadata, apiError.Error)
-	}
-
-	err = proto.Unmarshal(bytes, out)
-	if err != nil {
-		return fmt.Errorf("error unmarshalling bytes: %v", err)
-	} else {
-		return nil
-	}
 }
