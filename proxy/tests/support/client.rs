@@ -56,7 +56,7 @@ fn run(addr: SocketAddr) -> Sender {
             let reactor = core.handle();
 
             let conn = Conn(addr, reactor.clone());
-            let h2 = tower_h2::Client::<Conn, Handle, ()>::new(
+            let h2 = tower_h2::client::Connect::<Conn, Handle, ()>::new(
                 conn,
                 Default::default(),
                 reactor.clone(),
