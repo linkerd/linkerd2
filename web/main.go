@@ -25,12 +25,10 @@ func main() {
 	staticDir := flag.String("static-dir", "app/dist", "directory to search for static files")
 	uuid := flag.String("uuid", "", "unqiue Conduit install id")
 	reload := flag.Bool("reload", true, "reloading set to true or false")
-	logLevel := flag.String("log-level", log.InfoLevel.String(), "log level, must be one of: panic, fatal, error, warn, info, debug")
 	webpackDevServer := flag.String("webpack-dev-server", "", "use webpack to serve static assets; frontend will use this instead of static-dir")
+	logLevel := flag.String("log-level", log.InfoLevel.String(), "log level, must be one of: panic, fatal, error, warn, info, debug")
 	printVersion := version.VersionFlag()
-
 	flag.Parse()
-	version.MaybePrintVersionAndExit(*printVersion)
 
 	// set global log level
 	level, err := log.ParseLevel(*logLevel)
@@ -38,6 +36,8 @@ func main() {
 		log.Fatalf("invalid log-level: %s", *logLevel)
 	}
 	log.SetLevel(level)
+
+	version.MaybePrintVersionAndExit(*printVersion)
 
 	_, _, err = net.SplitHostPort(*kubernetesApiHost) // Verify kubernetesApiHost is of the form host:port.
 	if err != nil {

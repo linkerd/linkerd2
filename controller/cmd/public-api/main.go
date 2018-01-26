@@ -21,9 +21,17 @@ func main() {
 	metricsAddr := flag.String("metrics-addr", ":9995", "address to serve scrapable metrics on")
 	telemetryAddr := flag.String("telemetry-addr", ":8087", "address of telemetry service")
 	tapAddr := flag.String("tap-addr", ":8088", "address of tap service")
+	logLevel := flag.String("log-level", log.InfoLevel.String(), "log level, must be one of: panic, fatal, error, warn, info, debug")
 	printVersion := version.VersionFlag()
-
 	flag.Parse()
+
+	// set global log level
+	level, err := log.ParseLevel(*logLevel)
+	if err != nil {
+		log.Fatalf("invalid log-level: %s", *logLevel)
+	}
+	log.SetLevel(level)
+
 	version.MaybePrintVersionAndExit(*printVersion)
 
 	stop := make(chan os.Signal, 1)

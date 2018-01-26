@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // DO NOT EDIT
@@ -19,4 +21,5 @@ func MaybePrintVersionAndExit(printVersion bool) {
 		fmt.Println(Version)
 		os.Exit(0)
 	}
+	log.Infof("running conduit version %s", Version)
 }
