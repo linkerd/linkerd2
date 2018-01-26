@@ -10,9 +10,12 @@ Conduit is an ultralight service mesh for Kubernetes from the makers of [Linkerd
 features a native proxy, written in [Rust][rust], that boasts the performance of C without
 all the heartbleed.
 
-Conduit is **experimental**. Currently, it _only supports HTTP/2_ and is especially
-well-suited for [gRPC][grpc]. Follow our progress towards production-readiness here and on
-[Twitter][twitter].
+Conduit is **experimental**. It is capable of proxying all TCP traffic, and reporting
+top-line metrics (success rates, latencies, etc) for all HTTP, HTTP/2, and gRPC traffic.
+It currently does not work with websockets or with HTTP tunneling--see the
+`--skip-outbound-ports` flag for how to exclude these types of traffic.
+
+Follow our progress towards production-readiness here and on [Twitter][twitter].
 
 <!-- TODO add roadmap link -->
 
@@ -72,7 +75,6 @@ specific language governing permissions and limitations under the License.
 [conduit-demo]: https://conduit.io/getting-started/#install-the-demo-app
 [conduit-docs]: https://conduit.io/docs/
 <!-- [examples]: https://github.com/runconduit/conduit-examples -->
-[grpc]: https://grpc.io/
 [l5d]: https://linkerd.io/
 [license-badge]: https://img.shields.io/github/license/linkerd/linkerd.svg
 [logo]: https://user-images.githubusercontent.com/240738/33589722-649152de-d92f-11e7-843a-b078ac889a39.png
