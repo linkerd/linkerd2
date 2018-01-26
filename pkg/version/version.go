@@ -7,8 +7,8 @@ import (
 )
 
 // DO NOT EDIT
-// This const is updated automatically as part of the build process
-const Version = "unknown"
+// This var is updated automatically as part of the build process
+var Version = "unknown"
 
 func VersionFlag() *bool {
 	return flag.Bool("version", false, "print version and exit")
