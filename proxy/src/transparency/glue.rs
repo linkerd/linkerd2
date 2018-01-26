@@ -3,7 +3,7 @@ use std::fmt;
 use std::io;
 use std::sync::Arc;
 
-use bytes::Bytes;
+use bytes::{Bytes, IntoBuf};
 use futures::{future, Async, Future, Poll, Stream};
 use futures::future::Either;
 use h2;
@@ -25,7 +25,10 @@ pub enum HttpBody {
 
 /// Glue for `tower_h2::Body`s to be used in hyper.
 #[derive(Debug)]
-pub(super) struct BodyStream<B>(pub(super) B);
+pub(super) struct BodyStream<B> {
+    body: B,
+    poll_trailers: bool,
+}
 
 /// Glue for the `Data` part of a `tower_h2::Body` to be used as an `AsRef` in `BodyStream`.
 #[derive(Debug)]
@@ -116,6 +119,16 @@ impl Default for HttpBody {
 
 // ===== impl BodyStream =====
 
+impl<B> BodyStream<B> {
+    /// Wrap a `tower_h2::Body` into a `Stream` hyper can understand.
+    pub fn new(body: B) -> Self {
+        BodyStream {
+            body,
+            poll_trailers: false,
+        }
+    }
+}
+
 impl<B> Stream for BodyStream<B>
 where
     B: tower_h2::Body,
@@ -124,12 +137,35 @@ where
     type Error = hyper::Error;
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-        self.0.poll_data()
-            .map(|async| async.map(|opt| opt.map(|buf| BufAsRef(::bytes::IntoBuf::into_buf(buf)))))
-            .map_err(|e| {
-                trace!("h2 body error: {:?}", e);
-                hyper::Error::Io(io::ErrorKind::Other.into())
-            })
+        loop {
+            if self.poll_trailers {
+                return match self.body.poll_trailers() {
+                    // we don't care about actual trailers, just that the poll
+                    // was ready. now we can tell hyper the stream is done
+                    Ok(Async::Ready(_)) => Ok(Async::Ready(None)),
+                    Ok(Async::NotReady) => Ok(Async::NotReady),
+                    Err(e) => {
+                        trace!("h2 trailers error: {:?}", e);
+                        Err(hyper::Error::Io(io::ErrorKind::Other.into()))
+                    }
+                };
+            } else {
+                match self.body.poll_data() {
+                    Ok(Async::Ready(Some(buf))) => return Ok(Async::Ready(Some(BufAsRef(buf.into_buf())))),
+                    Ok(Async::Ready(None)) => {
+                        // when the data is empty, even though hyper can't use the trailers,
+                        // we need to poll for them, to allow the stream to mark itself as
+                        // completed successfully.
+                        self.poll_trailers = true;
+                    },
+                    Ok(Async::NotReady) => return Ok(Async::NotReady),
+                    Err(e) => {
+                        trace!("h2 body error: {:?}", e);
+                        return Err(hyper::Error::Io(io::ErrorKind::Other.into()))
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -217,7 +253,7 @@ where
             return Ok(Async::Ready(res));
         }
         h1::strip_connection_headers(res.headers_mut());
-        Ok(Async::Ready(res.map(BodyStream).into()))
+        Ok(Async::Ready(res.map(BodyStream::new).into()))
     }
 }
 

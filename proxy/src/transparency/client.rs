@@ -166,7 +166,7 @@ where
         match self.inner {
             ClientServiceInner::Http1(ref h1) => {
                 let is_body_empty = req.body().is_end_stream();
-                let mut req = hyper::Request::from(req.map(BodyStream));
+                let mut req = hyper::Request::from(req.map(BodyStream::new));
                 if is_body_empty {
                     req.headers_mut().set(hyper::header::ContentLength(0));
                 }
