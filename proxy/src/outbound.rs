@@ -42,10 +42,7 @@ impl<B> Outbound<B> {
 
 impl<B> Recognize for Outbound<B>
 where
-    Bind<Arc<ctx::Proxy>, B>: control::discovery::Bind,
-    B: tower_h2::Body + 'static,
-    control::discovery::Watch<Bind<Arc<ctx::Proxy>, B>>: Discover,
-    LoadBalance<B>: tower::Service<Request=http::Request<B>>,
+    B: tower_h2::Body + 'static
 {
     type Request = <Buffer<LoadBalance<B>> as tower::Service>::Request;
     type Response = <Buffer<LoadBalance<B>> as tower::Service>::Response;
