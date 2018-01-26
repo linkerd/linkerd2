@@ -3,7 +3,7 @@
 set -eu
 
 git_sha_head() {
-    git rev-parse HEAD | cut -c 1-8
+    git rev-parse --short=8 HEAD
 }
 
 proxy_deps_sha() {
