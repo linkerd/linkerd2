@@ -5,6 +5,8 @@ services:
     build:
       context: .
       dockerfile: controller/Dockerfile
+      args:
+      - CONDUIT_VERSION=latest
     ports:
     - "8089:8089"
     - "9999:9999"
@@ -20,6 +22,8 @@ services:
     build:
       context: .
       dockerfile: controller/Dockerfile
+      args:
+      - CONDUIT_VERSION=latest
     ports:
     - "8088:8088"
     - "9998:9998"
@@ -35,6 +39,8 @@ services:
     build:
       context: .
       dockerfile: controller/Dockerfile
+      args:
+      - CONDUIT_VERSION=latest
     ports:
     - "8087:8087"
     - "9997:9997"
@@ -51,6 +57,8 @@ services:
     build:
       context: .
       dockerfile: controller/Dockerfile
+      args:
+      - CONDUIT_VERSION=latest
     ports:
     - "8086:8086"
     - "9996:9996"
@@ -65,6 +73,8 @@ services:
     build:
       context: .
       dockerfile: controller/Dockerfile
+      args:
+      - CONDUIT_VERSION=latest
     ports:
     - "8085:8085"
     - "9995:9995"
@@ -79,6 +89,8 @@ services:
     build:
       context: .
       dockerfile: web/Dockerfile
+      args:
+      - CONDUIT_VERSION=latest
     ports:
     - "8084:8084"
     - "9994:9994"

@@ -19,4 +19,5 @@ validate_go_deps_tag $dockerfile
     bin/docker-build-go-deps
 ) >/dev/null
 
-docker_build web "$(head_root_tag)" $dockerfile
+tag="$(head_root_tag)"
+docker_build web $tag $dockerfile --build-arg CONDUIT_VERSION=$tag

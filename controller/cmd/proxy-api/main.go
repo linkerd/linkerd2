@@ -10,6 +10,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/runconduit/conduit/controller/api/proxy"
 	"github.com/runconduit/conduit/controller/destination"
+	"github.com/runconduit/conduit/pkg/version"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -18,9 +19,18 @@ func main() {
 	metricsAddr := flag.String("metrics-addr", ":9996", "address to serve scrapable metrics on")
 	telemetryAddr := flag.String("telemetry-addr", ":8087", "address of telemetry service")
 	destinationAddr := flag.String("destination-addr", ":8089", "address of destination service")
+	logLevel := flag.String("log-level", log.InfoLevel.String(), "log level, must be one of: panic, fatal, error, warn, info, debug")
+	printVersion := version.VersionFlag()
 	flag.Parse()
 
-	log.SetLevel(log.DebugLevel) // TODO: make configurable
+	// set global log level
+	level, err := log.ParseLevel(*logLevel)
+	if err != nil {
+		log.Fatalf("invalid log-level: %s", *logLevel)
+	}
+	log.SetLevel(level)
+
+	version.MaybePrintVersionAndExit(*printVersion)
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)

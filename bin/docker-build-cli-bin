@@ -19,9 +19,9 @@ validate_go_deps_tag $dockerfile
     bin/docker-build-go-deps
 ) >/dev/null
 
-
-docker_build cli-bin $(head_root_tag) $dockerfile
-IMG=$(docker_repo cli-bin):$(head_root_tag)
+tag="$(head_root_tag)"
+docker_build cli-bin $tag $dockerfile --build-arg CONDUIT_VERSION=$tag
+IMG=$(docker_repo cli-bin):$tag
 ID=$(docker create "$IMG")
 
 # copy the newly built conduit cli binaries to the local system

@@ -12,6 +12,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/runconduit/conduit/controller/api/public"
+	"github.com/runconduit/conduit/pkg/version"
 	"github.com/runconduit/conduit/web/srv"
 	log "github.com/sirupsen/logrus"
 )
@@ -24,9 +25,9 @@ func main() {
 	staticDir := flag.String("static-dir", "app/dist", "directory to search for static files")
 	uuid := flag.String("uuid", "", "unqiue Conduit install id")
 	reload := flag.Bool("reload", true, "reloading set to true or false")
-	logLevel := flag.String("log-level", log.InfoLevel.String(), "log level, must be one of: panic, fatal, error, warn, info, debug")
 	webpackDevServer := flag.String("webpack-dev-server", "", "use webpack to serve static assets; frontend will use this instead of static-dir")
-
+	logLevel := flag.String("log-level", log.InfoLevel.String(), "log level, must be one of: panic, fatal, error, warn, info, debug")
+	printVersion := version.VersionFlag()
 	flag.Parse()
 
 	// set global log level
@@ -35,6 +36,8 @@ func main() {
 		log.Fatalf("invalid log-level: %s", *logLevel)
 	}
 	log.SetLevel(level)
+
+	version.MaybePrintVersionAndExit(*printVersion)
 
 	_, _, err = net.SplitHostPort(*kubernetesApiHost) // Verify kubernetesApiHost is of the form host:port.
 	if err != nil {

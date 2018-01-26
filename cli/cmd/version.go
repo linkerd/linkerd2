@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/runconduit/conduit/controller"
 	pb "github.com/runconduit/conduit/controller/gen/public"
+	"github.com/runconduit/conduit/pkg/version"
 	"github.com/spf13/cobra"
 )
 
@@ -45,14 +45,14 @@ func getVersions(client pb.ApiClient) versions {
 	resp, err := client.Version(context.Background(), &pb.Empty{})
 	if err != nil {
 		return versions{
-			Client: controller.Version,
+			Client: version.Version,
 			Server: DefaultVersionString,
 		}
 	}
 
 	versions := versions{
 		Server: resp.GetReleaseVersion(),
-		Client: controller.Version,
+		Client: version.Version,
 	}
 
 	return versions

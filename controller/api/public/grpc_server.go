@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/runconduit/conduit/controller"
 	"github.com/runconduit/conduit/controller/api/util"
 	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 	tapPb "github.com/runconduit/conduit/controller/gen/controller/tap"
 	telemPb "github.com/runconduit/conduit/controller/gen/controller/telemetry"
 	pb "github.com/runconduit/conduit/controller/gen/public"
+	"github.com/runconduit/conduit/pkg/version"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )
@@ -120,7 +120,7 @@ func (s *grpcServer) Stat(ctx context.Context, req *pb.MetricRequest) (*pb.Metri
 }
 
 func (_ *grpcServer) Version(ctx context.Context, req *pb.Empty) (*pb.VersionInfo, error) {
-	return &pb.VersionInfo{GoVersion: runtime.Version(), ReleaseVersion: controller.Version, BuildDate: "1970-01-01T00:00:00Z"}, nil
+	return &pb.VersionInfo{GoVersion: runtime.Version(), ReleaseVersion: version.Version, BuildDate: "1970-01-01T00:00:00Z"}, nil
 }
 
 func (s *grpcServer) ListPods(ctx context.Context, req *pb.Empty) (*pb.ListPodsResponse, error) {
