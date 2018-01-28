@@ -14,11 +14,12 @@ import (
 
 func TestKubectlVersion(t *testing.T) {
 	t.Run("Correctly parses a Version string", func(t *testing.T) {
-		versions := map[string][3]int{
-			"Client Version: v1.8.4":        {1, 8, 4},
-			"Client Version: v2.7.1":        {2, 7, 1},
-			"Client Version: v2.0.1":        {2, 0, 1},
-			"Client Version: v1.9.0-beta.2": {1, 9, 0},
+		versions := map[string][2][3]int{
+			"Client Version: v1.8.4\nServer Version: v1.8.0":        {{1, 8, 4}, {1, 8, 0}},
+			"Client Version: v2.7.1\nServer Version: v1.8.0":        {{2, 7, 1}, {1, 8, 0}},
+			"Client Version: v2.0.1\nServer Version: v1.8.0":        {{2, 0, 1}, {1, 8, 0}},
+			"Client Version: v1.9.0-beta.2\nServer Version: v1.8.0": {{1, 9, 0}, {1, 8, 0}},
+			"Client Version: v1.8.4\n":                              {{1, 8, 4}, {0, 0, 0}},
 		}
 
 		shell := &shell.MockShell{}
@@ -35,8 +36,11 @@ func TestKubectlVersion(t *testing.T) {
 				t.Fatalf("Error parsing string: %v", err)
 			}
 
-			if actualVersion != expectedVersion {
-				t.Fatalf("Expecting %s to be parsed into %v but got %v", k, expectedVersion, actualVersion)
+			if actualVersion.Client != expectedVersion[0] {
+				t.Fatalf("Expecting %s to be parsed into %v but got %v", k, expectedVersion[0], actualVersion.Client)
+			}
+			if actualVersion.Server != expectedVersion[1] {
+				t.Fatalf("Expecting %s to be parsed into %v but got %v", k, expectedVersion[1], actualVersion.Server)
 			}
 		}
 	})
