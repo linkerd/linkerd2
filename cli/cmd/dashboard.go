@@ -5,6 +5,8 @@ import (
 
 	"github.com/pkg/browser"
 	"github.com/runconduit/conduit/cli/dashboard"
+	"github.com/runconduit/conduit/pkg/k8s"
+	"github.com/runconduit/conduit/pkg/shell"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -22,10 +24,19 @@ var dashboardCmd = &cobra.Command{
 			log.Fatalf("port must be positive, was %d", proxyPort)
 		}
 
-		dshBoard, err := dashboard.NewDashboardHandler(kubeconfigPath)
+		shell := shell.NewUnixShell()
+		kubectl, err := k8s.NewKubectl(shell)
+
 		if err != nil {
-			log.Fatalf("failed to instantiate new dashboard handler: %v", err)
+			return fmt.Errorf("failed to start kubectl: %v", err)
 		}
+
+		kubeApi, err := k8s.NewK8sAPI(shell, kubeconfigPath)
+		if err != nil {
+			return fmt.Errorf("failed to connect to the Kubernetes API: %v", err)
+		}
+
+		dshBoard := dashboard.NewDashboardHandler(kubectl, kubeApi)
 
 		if dshBoard.IsDashboardAvailable() {
 			asyncProcessErr := make(chan error, 1)
