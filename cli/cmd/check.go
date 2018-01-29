@@ -24,18 +24,20 @@ var checkCmd = &cobra.Command{
 local system, the Conduit control plane, and connectivity between those. The process will exit with non-zero check if
 problems were found.`,
 	Args: cobra.NoArgs,
-	Run: exitSilentlyOnError(func(cmd *cobra.Command, args []string) error {
+	Run: func(cmd *cobra.Command, args []string) {
 
 		kubectl, err := k8s.NewKubectl(shell.NewUnixShell())
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error with kubectl: %s\n", err.Error())
-			return statusCheckResultWasError(os.Stdout)
+			statusCheckResultWasError(os.Stdout)
+			os.Exit(2)
 		}
 
 		kubeApi, err := k8s.NewK8sAPI(shell.NewUnixShell(), kubeconfigPath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error with Kubernetes API: %s\n", err.Error())
-			return statusCheckResultWasError(os.Stdout)
+			statusCheckResultWasError(os.Stdout)
+			os.Exit(2)
 		}
 
 		var conduitApi pb.ApiClient
@@ -46,11 +48,15 @@ problems were found.`,
 		}
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error with Conduit API: %s\n", err.Error())
-			return statusCheckResultWasError(os.Stdout)
+			statusCheckResultWasError(os.Stdout)
+			os.Exit(2)
 		}
 
-		return checkStatus(os.Stdout, kubectl, kubeApi, healthcheck.NewGrpcStatusChecker(public.ConduitApiSubsystemName, conduitApi))
-	}),
+		err = checkStatus(os.Stdout, kubectl, kubeApi, healthcheck.NewGrpcStatusChecker(public.ConduitApiSubsystemName, conduitApi))
+		if err != nil {
+			os.Exit(2)
+		}
+	},
 }
 
 func checkStatus(w io.Writer, checkers ...healthcheck.StatusChecker) error {

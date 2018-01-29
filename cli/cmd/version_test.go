@@ -6,37 +6,34 @@ import (
 
 	"github.com/runconduit/conduit/controller/api/public"
 	pb "github.com/runconduit/conduit/controller/gen/public"
-	"github.com/runconduit/conduit/pkg/version"
 )
 
-func TestGetVersion(t *testing.T) {
-	t.Run("Returns existing versions from server and client", func(t *testing.T) {
+func TestGetServerVersion(t *testing.T) {
+	t.Run("Returns existing version from server", func(t *testing.T) {
 		expectedServerVersion := "1.2.3"
-		expectedClientVersion := version.Version
 		mockClient := &public.MockConduitApiClient{}
 		mockClient.VersionInfoToReturn = &pb.VersionInfo{
 			ReleaseVersion: expectedServerVersion,
 		}
 
-		versions := getVersions(mockClient)
+		version := getServerVersion(mockClient)
 
-		if versions.Client != expectedClientVersion || versions.Server != expectedServerVersion {
-			t.Fatalf("Expected client version to be [%s], was [%s]; expecting server version to be [%s], was [%s]",
-				versions.Client, expectedClientVersion, versions.Server, expectedServerVersion)
+		if version != expectedServerVersion {
+			t.Fatalf("Expected server version to be [%s], was [%s]",
+				expectedServerVersion, version)
 		}
 	})
 
-	t.Run("Returns undefined when cannot get server version", func(t *testing.T) {
+	t.Run("Returns unavailable when cannot get server version", func(t *testing.T) {
 		expectedServerVersion := "unavailable"
-		expectedClientVersion := version.Version
 		mockClient := &public.MockConduitApiClient{}
 		mockClient.ErrorToReturn = errors.New("expected")
 
-		versions := getVersions(mockClient)
+		version := getServerVersion(mockClient)
 
-		if versions.Client != expectedClientVersion || versions.Server != expectedServerVersion {
-			t.Fatalf("Expected client version to be [%s], was [%s]; expecting server version to be [%s], was [%s]",
-				expectedClientVersion, versions.Client, expectedServerVersion, versions.Server)
+		if version != expectedServerVersion {
+			t.Fatalf("Expected server version to be [%s], was [%s]",
+				expectedServerVersion, version)
 		}
 	})
 }
