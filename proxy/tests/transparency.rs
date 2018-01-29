@@ -227,7 +227,9 @@ fn inbound_tcp() {
 fn tcp_with_no_orig_dst() {
     let _ = env_logger::init();
 
-    let srv = server::tcp().run();
+    let srv = server::tcp()
+        .accept(move |_| "don't read me")
+        .run();
     let ctrl = controller::new().run();
     let proxy = proxy::new()
         .controller(ctrl)
@@ -240,7 +242,11 @@ fn tcp_with_no_orig_dst() {
     let tcp_client = client.connect();
     tcp_client.write("custom tcp hello");
 
-    assert!(tcp_client.try_read().is_err());
+    let read = tcp_client
+        .try_read()
+        // This read might be an error, or an empty vec
+        .unwrap_or_else(|_| Vec::new());
+    assert_eq!(read, b"");
 }
 
 #[test]
