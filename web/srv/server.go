@@ -9,8 +9,6 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/controller/util"
 	"github.com/runconduit/conduit/web/util/filesonly"
@@ -52,50 +50,20 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 func NewServer(addr, templateDir, staticDir, uuid, webpackDevServer string, reload bool, apiClient pb.ApiClient) *http.Server {
-	counter := prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "http_requests_total",
-			Help: "A counter for requests to the wrapped handler.",
-		},
-		[]string{"code"},
-	)
-
-	duration := prometheus.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Name:    "http_request_duration_seconds",
-			Help:    "A histogram of latencies for requests in seconds.",
-			Buckets: util.RequestDurationBucketsSeconds,
-		},
-		[]string{"code"},
-	)
-
-	responseSize := prometheus.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Name:    "http_response_size_bytes",
-			Help:    "A histogram of response sizes for requests.",
-			Buckets: util.ResponseSizeBuckets,
-		},
-		[]string{},
-	)
-
-	prometheus.MustRegister(counter, duration, responseSize)
-
 	server := &Server{
 		templateDir:     templateDir,
 		staticDir:       staticDir,
 		templateContext: templateContext{webpackDevServer},
 		reload:          reload,
 	}
+
 	server.router = &httprouter.Router{
 		RedirectTrailingSlash:  true,
 		RedirectFixedPath:      true,
 		HandleMethodNotAllowed: false, // disable 405s
 	}
 
-	wrappedServer := promhttp.InstrumentHandlerDuration(duration,
-		promhttp.InstrumentHandlerResponseSize(responseSize,
-			promhttp.InstrumentHandlerCounter(counter, server)))
-
+	wrappedServer := util.WithTelemetry(server)
 	handler := &handler{
 		apiClient: apiClient,
 		render:    server.RenderTemplate,
