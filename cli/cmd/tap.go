@@ -38,9 +38,9 @@ var tapCmd = &cobra.Command{
 Valid targets include:
  * Pods (default/hello-world-h4fb2)
  * Deployments (default/hello-world)`,
-	Run: exitSilentlyOnError(func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) != 2 {
-			return errors.New("please specify a target")
+			return errors.New("please specify a resource type and target")
 		}
 
 		// We don't validate inputs because they are validated on the server.
@@ -59,7 +59,7 @@ Valid targets include:
 		friendlyNameForResourceType := strings.ToLower(args[0])
 		validatedResourceType, err := k8s.CanonicalKubernetesNameFromFriendlyName(friendlyNameForResourceType)
 		if err != nil {
-			return fmt.Errorf("unsupported resourceType [%s]", friendlyNameForResourceType)
+			return fmt.Errorf("unsupported resource type [%s]", friendlyNameForResourceType)
 		}
 
 		client, err := newPublicAPIClient()
@@ -68,7 +68,7 @@ Valid targets include:
 		}
 
 		return requestTapFromApi(os.Stdout, client, args[1], validatedResourceType, partialReq)
-	}),
+	},
 }
 
 func init() {
@@ -97,12 +97,11 @@ func requestTapFromApi(w io.Writer, client pb.ApiClient, targetName string, reso
 			Pod: targetName,
 		}
 	default:
-		return fmt.Errorf("unsupported resourceType [%s]", resourceType)
+		return fmt.Errorf("unsupported resource type [%s]", resourceType)
 	}
 
 	rsp, err := client.Tap(context.Background(), req)
 	if err != nil {
-		fmt.Fprintln(w, err.Error())
 		return err
 	}
 

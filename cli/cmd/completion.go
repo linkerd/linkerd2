@@ -36,17 +36,14 @@ var completionCmd = &cobra.Command{
 	Example:   example,
 	Args:      cobra.ExactArgs(1),
 	ValidArgs: []string{"bash", "zsh"},
-	Run: exitSilentlyOnError(func(cmd *cobra.Command, args []string) error {
-
+	Run: func(cmd *cobra.Command, args []string) {
 		out, err := getCompletion(args[0])
 		if err != nil {
 			log.Fatal(err.Error())
 		} else {
 			fmt.Printf(out)
 		}
-
-		return err
-	}),
+	},
 }
 
 func init() {

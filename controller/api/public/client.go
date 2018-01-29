@@ -178,10 +178,9 @@ func newClient(apiURL *url.URL, httpClientToUse *http.Client) (pb.ApiClient, err
 }
 
 func NewInternalClient(kubernetesApiHost string) (pb.ApiClient, error) {
-	apiURL := &url.URL{
-		Scheme: "http",
-		Host:   kubernetesApiHost,
-		Path:   "/",
+	apiURL, err := url.Parse(fmt.Sprintf("http://%s/", kubernetesApiHost))
+	if err != nil {
+		return nil, err
 	}
 
 	return newClient(apiURL, http.DefaultClient)

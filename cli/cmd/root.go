@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"os"
-
 	"github.com/runconduit/conduit/controller/api/public"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
@@ -54,21 +52,4 @@ func newPublicAPIClient() (pb.ApiClient, error) {
 		return nil, err
 	}
 	return public.NewExternalClient(controlPlaneNamespace, kubeApi)
-}
-
-// Exit with non-zero exit status without printing the command line usage and
-// without printing the error message.
-//
-// When a `RunE` command returns an error, Cobra will print the usage message
-// so the `RunE` function needs to handle any non-usage errors itself without
-// returning an error. `exitSilentlyOnError` can be used as the `Run` (not
-// `RunE`) function to help with this.
-//
-// TODO: This is used by the `version` command now; it should be used by other commands too.
-func exitSilentlyOnError(f func(cmd *cobra.Command, args []string) error) func(cmd *cobra.Command, args []string) {
-	return func(cmd *cobra.Command, args []string) {
-		if err := f(cmd, args); err != nil {
-			os.Exit(2) // Reserve 1 for usage errors.
-		}
-	}
 }
