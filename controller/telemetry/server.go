@@ -181,17 +181,21 @@ func NewServer(addr, prometheusUrl string, ignoredNamespaces []string, kubeconfi
 }
 
 func (s *server) Query(ctx context.Context, req *read.QueryRequest) (*read.QueryResponse, error) {
+	log.Debugf("Query request: %+v", req)
+
 	start := time.Unix(0, req.StartMs*int64(time.Millisecond))
 	end := time.Unix(0, req.EndMs*int64(time.Millisecond))
 
 	step, err := time.ParseDuration(req.Step)
 	if err != nil {
+		log.Errorf("ParseDuration(%+v) failed with: %+v", req.Step, err)
 		return nil, err
 	}
 
 	queryRange := v1.Range{Start: start, End: end, Step: step}
 	res, err := s.prometheusApi.QueryRange(ctx, req.Query, queryRange)
 	if err != nil {
+		log.Errorf("QueryRange(%+v, %+v) failed with: %+v", req.Query, queryRange, err)
 		return nil, err
 	}
 
@@ -208,6 +212,7 @@ func (s *server) Query(ctx context.Context, req *read.QueryRequest) (*read.Query
 }
 
 func (s *server) ListPods(ctx context.Context, req *read.ListPodsRequest) (*public.ListPodsResponse, error) {
+	log.Debugf("ListPods request: %+v", req)
 
 	pods, err := s.pods.List()
 	if err != nil {
@@ -259,13 +264,15 @@ func (s *server) ListPods(ctx context.Context, req *read.ListPodsRequest) (*publ
 }
 
 func (s *server) Report(ctx context.Context, req *write.ReportRequest) (*write.ReportResponse, error) {
+	log.Debugf("Report request: %+v", req)
+
 	id := "unknown"
 	if req.Process != nil {
 		id = req.Process.ScheduledNamespace + "/" + req.Process.ScheduledInstance
 	}
 
 	log := log.WithFields(log.Fields{"id": id})
-	log.Debugf("received report with %d requests", len(req.Requests))
+	log.Debugf("Received report with %d requests", len(req.Requests))
 
 	s.instances.update(id)
 

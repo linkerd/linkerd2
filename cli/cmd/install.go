@@ -2,13 +2,13 @@ package cmd
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"regexp"
 	"text/template"
 
 	"github.com/runconduit/conduit/pkg/version"
 	uuid "github.com/satori/go.uuid"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -167,6 +167,7 @@ spec:
         - "-metrics-addr=:9995"
         - "-telemetry-addr=127.0.0.1:8087"
         - "-tap-addr=127.0.0.1:8088"
+        - "-log-level={{.ControllerLogLevel}}"
       - name: destination
         ports:
         - name: grpc
@@ -179,6 +180,7 @@ spec:
         - "destination"
         - "-addr=:8089"
         - "-metrics-addr=:9999"
+        - "-log-level={{.ControllerLogLevel}}"
       - name: proxy-api
         ports:
         - name: grpc
@@ -193,6 +195,7 @@ spec:
         - "-metrics-addr=:9996"
         - "-destination-addr=:8089"
         - "-telemetry-addr=:8087"
+        - "-log-level={{.ControllerLogLevel}}"
       - name: tap
         ports:
         - name: grpc
@@ -205,6 +208,7 @@ spec:
         - "tap"
         - "-addr=:8088"
         - "-metrics-addr=:9998"
+        - "-log-level={{.ControllerLogLevel}}"
       - name: telemetry
         ports:
         - name: grpc
@@ -219,6 +223,7 @@ spec:
         - "-metrics-addr=:9997"
         - "-ignore-namespaces=kube-system"
         - "-prometheus-url=http://prometheus:9090"
+        - "-log-level={{.ControllerLogLevel}}"
 
 ### Web ###
 ---
@@ -281,6 +286,7 @@ spec:
         - "-static-dir=/dist"
         - "-template-dir=/templates"
         - "-uuid={{.UUID}}"
+        - "-log-level={{.ControllerLogLevel}}"
 
 ### Prometheus ###
 ---
@@ -397,6 +403,7 @@ type installConfig struct {
 	ImagePullPolicy    string
 	UUID               string
 	CliVersion         string
+	ControllerLogLevel string
 }
 
 var (
@@ -406,6 +413,7 @@ var (
 	webReplicas        uint
 	prometheusReplicas uint
 	imagePullPolicy    string
+	controllerLogLevel string
 )
 
 var installCmd = &cobra.Command{
@@ -414,7 +422,7 @@ var installCmd = &cobra.Command{
 	Long:  "Output Kubernetes configs to install Conduit.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := validate(); err != nil {
-			log.Fatal(err.Error())
+			return err
 		}
 		template, err := template.New("conduit").Parse(conduitTemplate)
 		if err != nil {
@@ -431,6 +439,7 @@ var installCmd = &cobra.Command{
 			ImagePullPolicy:    imagePullPolicy,
 			UUID:               uuid.NewV4().String(),
 			CliVersion:         fmt.Sprintf("conduit/cli %s", version.Version),
+			ControllerLogLevel: controllerLogLevel,
 		})
 		return nil
 	},
@@ -453,7 +462,10 @@ func validate() error {
 		return fmt.Errorf("%s is not a valid Docker registry", dockerRegistry)
 	}
 	if imagePullPolicy != "Always" && imagePullPolicy != "IfNotPresent" && imagePullPolicy != "Never" {
-		return fmt.Errorf("imagePullPolicy must be one of Always, IfNotPresent, or Never")
+		return fmt.Errorf("--image-pull-policy must be one of: Always, IfNotPresent, Never")
+	}
+	if _, err := log.ParseLevel(controllerLogLevel); err != nil {
+		return fmt.Errorf("--log-level must be one of: panic, fatal, error, warn, info, debug")
 	}
 	return nil
 }
@@ -466,4 +478,5 @@ func init() {
 	installCmd.PersistentFlags().UintVar(&webReplicas, "web-replicas", 1, "replicas of the web server to deploy")
 	installCmd.PersistentFlags().UintVar(&prometheusReplicas, "prometheus-replicas", 1, "replicas of prometheus to deploy")
 	installCmd.PersistentFlags().StringVar(&imagePullPolicy, "image-pull-policy", "IfNotPresent", "Docker image pull policy")
+	installCmd.PersistentFlags().StringVar(&controllerLogLevel, "log-level", "info", "log level for the controller and web components")
 }

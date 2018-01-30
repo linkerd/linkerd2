@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/runconduit/conduit/controller/api/public"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
@@ -13,25 +16,23 @@ var cfgFile string
 var controlPlaneNamespace string
 var apiAddr string // An empty value means "use the Kubernetes configuration"
 var kubeconfigPath string
-var logLevel string
+var verbose bool
 
 var RootCmd = &cobra.Command{
 	Use:   "conduit",
 	Short: "conduit manages the Conduit service mesh",
 	Long:  `conduit manages the Conduit service mesh.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		// set global log level
-		level, err := log.ParseLevel(logLevel)
-		if err != nil {
-			log.Fatalf("invalid log-level: %s", logLevel)
+		// turn on debug logging
+		if verbose {
+			log.SetLevel(log.DebugLevel)
 		}
-		log.SetLevel(level)
 	},
 }
 
 func init() {
 	RootCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "conduit-namespace", "n", "conduit", "namespace in which Conduit is installed")
-	RootCmd.PersistentFlags().StringVar(&logLevel, "log-level", log.FatalLevel.String(), "log level, must be one of: panic, fatal, error, warn, info, debug")
+	RootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "turn on debug logging")
 }
 
 // TODO: decide if we want to use viper
@@ -52,4 +53,12 @@ func newPublicAPIClient() (pb.ApiClient, error) {
 		return nil, err
 	}
 	return public.NewExternalClient(controlPlaneNamespace, kubeApi)
+}
+
+// This is equivalent to calling log.Fatalf, but unlike go's logger interface,
+// it does not support any formatting of the output prior to printing, which is
+// preferable for printing errors from the CLI
+func logFatalf(format string, v ...interface{}) {
+	fmt.Fprintf(os.Stderr, format+"\n", v...)
+	os.Exit(1)
 }

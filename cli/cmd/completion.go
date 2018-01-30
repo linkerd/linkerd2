@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"log"
 
 	"github.com/spf13/cobra"
 )
@@ -39,7 +38,7 @@ var completionCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		out, err := getCompletion(args[0])
 		if err != nil {
-			log.Fatal(err.Error())
+			logFatalf(err.Error())
 		} else {
 			fmt.Printf(out)
 		}
