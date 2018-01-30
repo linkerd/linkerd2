@@ -287,7 +287,7 @@ export default class ServiceMesh extends React.Component {
         );
       default:
         return (
-          <div clasName="mesh-completion-message">
+          <div className="mesh-completion-message">
             {this.unaddedDeploymentCount()} deployments have not been added to the service mesh. {incompleteMeshMessage()}
           </div>
         );
