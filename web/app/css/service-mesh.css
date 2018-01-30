@@ -15,7 +15,8 @@
   width: 131px;
 }
 
-.incomplete-mesh-message, .complete-mesh-message {
+.mesh-completion-message {
+  margin-top: calc(4 * var(--base-width));
   background-color: var(--royalblue);
   color: white;
   padding: var(--base-width);
