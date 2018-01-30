@@ -62,11 +62,11 @@ where
         get_orig_dst: G,
         stack: S,
         tcp_connect_timeout: Duration,
+        peek_timeout: Duration,
         executor: Handle,
     ) -> Self {
         let recv_body_svc = HttpBodyNewSvc::new(stack.clone());
         let tcp = tcp::Proxy::new(tcp_connect_timeout, sensors.clone(), &executor);
-        let peek_timeout = Duration::from_millis(2);
         Server {
             executor: executor.clone(),
             get_orig_dst,
