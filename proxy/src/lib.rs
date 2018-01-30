@@ -199,6 +199,7 @@ where
                 inbound_listener,
                 Inbound::new(default_addr, bind),
                 config.private_connect_timeout,
+                config.private_peek_timeout,
                 ctx,
                 sensors.clone(),
                 get_original_dst.clone(),
@@ -230,6 +231,7 @@ where
                 outbound_listener,
                 outgoing,
                 tcp_connect_timeout,
+                config.public_peek_timeout,
                 ctx,
                 sensors,
                 get_original_dst,
@@ -293,6 +295,7 @@ fn serve<R, B, E, F, G>(
     bound_port: BoundPort,
     recognize: R,
     tcp_connect_timeout: Duration,
+    peek_timeout: Duration,
     proxy_ctx: Arc<ctx::Proxy>,
     sensors: telemetry::Sensors,
     get_orig_dst: G,
@@ -328,6 +331,7 @@ where
         get_orig_dst,
         stack,
         tcp_connect_timeout,
+        peek_timeout,
         executor.clone(),
     );
 

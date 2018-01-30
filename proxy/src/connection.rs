@@ -187,6 +187,12 @@ pub struct Peek<T> {
     inner: Option<(Connection, T)>,
 }
 
+impl<T> Peek<T> {
+    pub fn into_inner(self) -> Option<(Connection, T)> {
+        self.inner
+    }
+}
+
 impl<T: AsMut<[u8]>> Future for Peek<T> {
     type Item = (Connection, T, usize);
     type Error = std::io::Error;

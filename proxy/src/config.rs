@@ -34,6 +34,12 @@ pub struct Config {
     /// The maximum amount of time to wait for a connection to the private peer.
     pub private_connect_timeout: Duration,
 
+    /// The maximum amount of time to peek inbound connections to detect protocol.
+    pub public_peek_timeout: Duration,
+
+    /// The maximum amount of time to peek outbound connections to detect protocol.
+    pub private_peek_timeout: Duration,
+
     /// The path to "/etc/resolv.conf"
     pub resolv_conf_path: PathBuf,
 
@@ -139,6 +145,8 @@ pub const ENV_PUBLIC_LISTENER: &str = "CONDUIT_PROXY_PUBLIC_LISTENER";
 pub const ENV_CONTROL_LISTENER: &str = "CONDUIT_PROXY_CONTROL_LISTENER";
 const ENV_PRIVATE_CONNECT_TIMEOUT: &str = "CONDUIT_PROXY_PRIVATE_CONNECT_TIMEOUT";
 const ENV_PUBLIC_CONNECT_TIMEOUT: &str = "CONDUIT_PROXY_PUBLIC_CONNECT_TIMEOUT";
+const ENV_PRIVATE_PEEK_TIMEOUT: &str = "CONDUIT_PROXY_PRIVATE_PEEK_TIMEOUT";
+const ENV_PUBLIC_PEEK_TIMEOUT: &str = "CONDUIT_PROXY_PUBLIC_PEEK_TIMEOUT";
 
 const ENV_NODE_NAME: &str = "CONDUIT_PROXY_NODE_NAME";
 const ENV_POD_NAME: &str = "CONDUIT_PROXY_POD_NAME";
@@ -157,6 +165,8 @@ const DEFAULT_PRIVATE_LISTENER: &str = "tcp://127.0.0.1:4140";
 const DEFAULT_PUBLIC_LISTENER: &str = "tcp://0.0.0.0:4143";
 const DEFAULT_CONTROL_LISTENER: &str = "tcp://0.0.0.0:4190";
 const DEFAULT_PRIVATE_CONNECT_TIMEOUT_MS: u64 = 20;
+const DEFAULT_PUBLIC_PEEK_TIMEOUT_MS: u64 = 2;
+const DEFAULT_PRIVATE_PEEK_TIMEOUT_MS: u64 = 2;
 const DEFAULT_RESOLV_CONF: &str = "/etc/resolv.conf";
 
 // ===== impl Config =====
@@ -174,6 +184,8 @@ impl<'a> TryFrom<&'a Strings> for Config {
         let private_forward = parse(strings, ENV_PRIVATE_FORWARD, str::parse);
         let public_connect_timeout = parse(strings, ENV_PUBLIC_CONNECT_TIMEOUT, parse_number);
         let private_connect_timeout = parse(strings, ENV_PRIVATE_CONNECT_TIMEOUT, parse_number);
+        let public_peek_timeout = parse(strings, ENV_PUBLIC_PEEK_TIMEOUT, parse_number);
+        let private_peek_timeout = parse(strings, ENV_PRIVATE_PEEK_TIMEOUT, parse_number);
         let resolv_conf_path = strings.get(ENV_RESOLV_CONF);
         let event_buffer_capacity = parse(strings, ENV_EVENT_BUFFER_CAPACITY, parse_number);
         let metrics_flush_interval_secs =
@@ -215,6 +227,12 @@ impl<'a> TryFrom<&'a Strings> for Config {
             private_connect_timeout:
                 Duration::from_millis(private_connect_timeout?
                                           .unwrap_or(DEFAULT_PRIVATE_CONNECT_TIMEOUT_MS)),
+            public_peek_timeout:
+                Duration::from_millis(public_peek_timeout?
+                                          .unwrap_or(DEFAULT_PUBLIC_PEEK_TIMEOUT_MS)),
+            private_peek_timeout:
+                Duration::from_millis(private_peek_timeout?
+                                          .unwrap_or(DEFAULT_PRIVATE_PEEK_TIMEOUT_MS)),
             resolv_conf_path: resolv_conf_path?
                 .unwrap_or(DEFAULT_RESOLV_CONF.into())
                 .into(),
