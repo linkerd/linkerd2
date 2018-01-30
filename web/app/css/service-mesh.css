@@ -25,6 +25,10 @@
   border-radius: var
 }
 
+.service-mesh-table {
+  margin-top: 18px;
+}
+
 /* styles for the StatusTable */
 td .status-dot {
   float: left;
