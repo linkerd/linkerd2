@@ -4,9 +4,10 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use futures::Future;
+use futures::future::Either;
 use http;
 use hyper;
-use tokio_core::reactor::Handle;
+use tokio_core::reactor::{Handle, Timeout};
 use tower::NewService;
 use tower_h2;
 
@@ -36,6 +37,7 @@ where
     h2: tower_h2::Server<HttpBodyNewSvc<S>, Handle, B>,
     listen_addr: SocketAddr,
     new_service: S,
+    peek_timeout: Duration,
     proxy_ctx: Arc<ProxyCtx>,
     sensors: Sensors,
     tcp: tcp::Proxy,
@@ -64,6 +66,7 @@ where
     ) -> Self {
         let recv_body_svc = HttpBodyNewSvc::new(stack.clone());
         let tcp = tcp::Proxy::new(tcp_connect_timeout, sensors.clone(), &executor);
+        let peek_timeout = Duration::from_millis(2);
         Server {
             executor: executor.clone(),
             get_orig_dst,
@@ -71,6 +74,7 @@ where
             h2: tower_h2::Server::new(recv_body_svc, Default::default(), executor),
             listen_addr,
             new_service: stack,
+            peek_timeout,
             proxy_ctx,
             sensors,
             tcp,
@@ -98,9 +102,30 @@ where
         let h2 = self.h2.clone();
         let tcp = self.tcp.clone();
         let new_service = self.new_service.clone();
-        let fut = connection
-            .peek_future(sniff)
-            .map_err(|_| ())
+        let timeout = Timeout::new(self.peek_timeout, &self.executor)
+            .expect("tokio Timeout::new failed");
+        let peek = connection.peek_future(sniff);
+        let fut = peek.select2(timeout)
+            .then(|res| {
+                match res {
+                    Ok(Either::A((peeked, _))) => {
+                        Ok(peeked)
+                    },
+                    Err(Either::A((peeked_err, _))) => {
+                        debug!("error peeking connection: {}", peeked_err);
+                        Err(())
+                    }
+                    Ok(Either::B((_, peek))) |
+                    Err(Either::B((_, peek))) => {
+                        debug!("timeout peeking connection, assuming TCP");
+                        if let Some((conn, sniff)) = peek.into_inner() {
+                            Ok((conn, sniff, 0))
+                        } else {
+                            unreachable!("peek not consumed if timeout triggers first");
+                        }
+                    },
+                }
+            })
             .and_then(move |(connection, sniff, n)| -> Box<Future<Item=(), Error=()>> {
                 if let Some(proto) = Protocol::detect(&sniff[..n]) {
                     let srv_ctx = ServerCtx::new(

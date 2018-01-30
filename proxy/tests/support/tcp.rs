@@ -27,7 +27,12 @@ pub struct TcpClient {
 }
 
 pub struct TcpServer {
-    accepts: VecDeque<Box<Fn(Vec<u8>) -> Vec<u8> + Send>>,
+    accepts: VecDeque<Accept>,
+}
+
+enum Accept {
+    Write(Box<Fn() -> Vec<u8> + Send>),
+    ReadWrite(Box<Fn(Vec<u8>) -> Vec<u8> + Send>),
 }
 
 pub struct TcpConn {
@@ -53,9 +58,19 @@ impl TcpServer {
         F: Fn(Vec<u8>) -> U + Send + 'static,
         U: Into<Vec<u8>>,
     {
-        self.accepts.push_back(Box::new(move |v| cb(v).into()));
+        self.accepts.push_back(Accept::ReadWrite(Box::new(move |v| cb(v).into())));
         self
     }
+
+    pub fn accept_write<F, U>(mut self, cb: F) -> Self
+    where
+        F: Fn() -> U + Send + 'static,
+        U: Into<Vec<u8>>,
+    {
+        self.accepts.push_back(Accept::Write(Box::new(move || cb().into())));
+        self
+    }
+
 
     pub fn run(self) -> server::Listening {
         run_server(self)
@@ -164,18 +179,30 @@ fn run_server(tcp: TcpServer) -> server::Listening {
         let mut accepts = tcp.accepts;
 
         let work = bind.incoming().for_each(move |(sock, _)| {
-            let cb = accepts.pop_front().expect("no more accepts");
+            let accept = accepts.pop_front().expect("no more accepts");
 
-            let fut = tokio_io::io::read(sock, vec![0; 1024])
-                .and_then(move |(sock, mut vec, n)| {
-                    vec.truncate(n);
-                    let write = cb(vec);
-                    tokio_io::io::write_all(sock, write)
-                })
-                .map(|_| ())
-                .map_err(|e| panic!("tcp server error: {}", e));
+            match accept {
+                Accept::ReadWrite(cb) => {
+                    let fut = tokio_io::io::read(sock, vec![0; 1024])
+                        .and_then(move |(sock, mut vec, n)| {
+                            vec.truncate(n);
+                            let write = cb(vec);
+                            tokio_io::io::write_all(sock, write)
+                        })
+                        .map(|_| ())
+                        .map_err(|e| panic!("tcp server error: {}", e));
 
-            reactor.spawn(fut);
+                    reactor.spawn(fut);
+                },
+                Accept::Write(cb) => {
+                    let write = cb();
+                    let fut = tokio_io::io::write_all(sock, write)
+                        .map(|_| ())
+                        .map_err(|e| panic!("tcp server error: {}", e));
+
+                    reactor.spawn(fut);
+                },
+            }
             Ok(())
         });
 

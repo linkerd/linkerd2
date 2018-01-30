@@ -14,6 +14,10 @@ impl Protocol {
     ///
     /// If no protocol can be determined, returns `None`.
     pub fn detect(bytes: &[u8]) -> Option<Protocol> {
+        if bytes.len() == 0 {
+            return None;
+        }
+
         // http2 is easiest to detect
         if bytes.len() >= H2_PREFACE.len() {
             if &bytes[..H2_PREFACE.len()] == H2_PREFACE {

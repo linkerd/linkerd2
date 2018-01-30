@@ -250,6 +250,29 @@ fn tcp_with_no_orig_dst() {
 }
 
 #[test]
+fn tcp_with_no_peek() {
+    let _ = env_logger::init();
+
+    let msg = "server starts handshake";
+    let srv = server::tcp()
+        .accept_write(move || {
+            "server starts handshake"
+        })
+        .run();
+    let ctrl = controller::new().run();
+    let proxy = proxy::new()
+        .controller(ctrl)
+        .outbound(srv)
+        .run();
+
+    let client = client::tcp(proxy.outbound);
+
+    // we never write, just read
+    let tcp_client = client.connect();
+    assert_eq!(tcp_client.read(), msg.as_bytes())
+}
+
+#[test]
 fn http11_upgrade_not_supported() {
     let _ = env_logger::init();
 
