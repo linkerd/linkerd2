@@ -91,18 +91,35 @@ describe('ApiHelpers', () => {
   describe('fetch', () => {
     it('adds pathPrefix to a metrics request', () => {
       api = ApiHelpers('/the/path/prefix');
-      api.fetchMetrics('/resource/foo');
+      api.fetch('/resource/foo');
 
       expect(fetchStub.calledOnce).to.be.true;
-      expect(fetchStub.args[0][0]).to.equal('/the/path/prefix/resource/foo&window=10m');
+      expect(fetchStub.args[0][0]).to.equal('/the/path/prefix/resource/foo');
     });
 
     it('requests from / when there is no path prefix', () => {
       api = ApiHelpers('');
-      api.fetchMetrics('/resource/foo');
+      api.fetch('/resource/foo');
 
       expect(fetchStub.calledOnce).to.be.true;
-      expect(fetchStub.args[0][0]).to.equal('/resource/foo&window=10m');
+      expect(fetchStub.args[0][0]).to.equal('/resource/foo');
+    });
+
+    it('throws an error if response status is not "ok"', () => {
+      let errorMessage = "do or do not. there is no try.";
+      fetchStub.returnsPromise().resolves({
+        ok: false,
+        statusText: errorMessage
+      });
+
+      api = ApiHelpers('');
+      let errorHandler = sinon.spy();
+
+      api.fetch('/resource/foo')
+        .catch(errorHandler);
+
+      expect(errorHandler.args[0][0].message).to.equal(errorMessage);
+      expect(errorHandler.calledOnce).to.be.true;
     });
   });
 
@@ -111,7 +128,28 @@ describe('ApiHelpers', () => {
       api.fetchMetrics('/my/path');
 
       expect(fetchStub.calledOnce).to.be.true;
-      expect(fetchStub.args[0][0]).to.equal('/my/path&window=10m');
+      expect(fetchStub.args[0][0]).to.equal('/my/path?window=10m');
+    });
+
+    it('adds a ?window= if metricsWindow is the only param', () => {
+      api.fetchMetrics('/metrics');
+
+      expect(fetchStub.calledOnce).to.be.true;
+      expect(fetchStub.args[0][0]).to.equal('/metrics?window=10m');
+    });
+
+    it('adds &window= if metricsWindow is not the only param', () => {
+      api.fetchMetrics('/metrics?foo=3&bar="me"');
+
+      expect(fetchStub.calledOnce).to.be.true;
+      expect(fetchStub.args[0][0]).to.equal('/metrics?foo=3&bar="me"&window=10m');
+    });
+
+    it('does not add another &window= there is already a window param', () => {
+      api.fetchMetrics('/metrics?foo=3&window=24h&bar="me"');
+
+      expect(fetchStub.calledOnce).to.be.true;
+      expect(fetchStub.args[0][0]).to.equal('/metrics?foo=3&window=24h&bar="me"');
     });
   });
 

@@ -24,7 +24,11 @@ export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '10m') => {
 
   const fetchMetrics = (path = metricsPath()) => {
     if (path.indexOf("window") === -1) {
-      path = `${path}&window=${getMetricsWindow()}`;
+      if (path.indexOf("?") === -1) {
+        path = `${path}?window=${getMetricsWindow()}`;
+      } else {
+        path = `${path}&window=${getMetricsWindow()}`;
+      }
     }
     return apiFetch(path);
   };

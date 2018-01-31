@@ -185,7 +185,7 @@ export default class TabbedMetricsTable extends React.Component {
 
   getSparklineColumn(metricName) {
     return {
-      title: "10 minute history",
+      title: `History (last ${this.api.getMetricsWindow()})`,
       key: metricName,
       className: "numeric",
       render: d => {
