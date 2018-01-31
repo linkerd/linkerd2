@@ -146,8 +146,6 @@ where
     pub fn run_until<F>(self, shutdown_signal: F)
     where
         F: Future<Item = (), Error = ()>,
-        // bind::BindProtocol<Arc<ctx::Proxy>, transparency::HttpBody>: control::discovery::Bind,
-        // bind::NewHttp<transparency::HttpBody>: tower::NewService,
     {
         let process_ctx = ctx::Process::new(&self.config);
 

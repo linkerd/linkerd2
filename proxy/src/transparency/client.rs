@@ -10,8 +10,6 @@ use tower_h2;
 use bind;
 use super::glue::{BodyStream, HttpBody, HyperConnect};
 
-// type ClientConn<C, B> = tower_h2::client::Connection<C, Handle, B>;
-
 /// A `NewService` that can speak either HTTP/1 or HTTP/2.
 pub struct Client<C, B>
 where
@@ -132,7 +130,6 @@ impl<C, B> Future for ClientNewServiceFuture<C, B>
 where
     C: Connect + 'static,
     B: tower_h2::Body + 'static,
-    // ClientConn<C, B>: Service,
 {
     type Item = ClientService<C, B>;
     type Error = tower_h2::client::ConnectError<C::Error>;
@@ -158,12 +155,6 @@ where
     C: Connect + 'static,
     C::Future: 'static,
     B: tower_h2::Body + 'static,
-    // ClientConn<C, B>: Service<
-    //     Request = http::Request<B>,
-    //     Response = http::Response<tower_h2::RecvBody>,
-    //     Error = tower_h2::client::Error,
-    //     Future = tower_h2::client::ResponseFuture
-    // >,
 {
     type Request = http::Request<B>;
     type Response = http::Response<HttpBody>;
