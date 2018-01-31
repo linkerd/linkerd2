@@ -30,17 +30,9 @@ export default class DeploymentsList extends React.Component {
     this.handleApiError = this.handleApiError.bind(this);
     this.loadFromServer = this.loadFromServer.bind(this);
     this.loadTimeseriesFromServer = this.loadTimeseriesFromServer.bind(this);
+    this.onMetricsWindowChange = this.onMetricsWindowChange.bind(this);
 
-    this.state = {
-      pollingInterval: 10000, // TODO: poll based on metricsWindow size
-      metrics: [],
-      timeseriesByDeploy: {},
-      lastUpdated: 0,
-      limitSparklineData: false,
-      pendingRequests: false,
-      loaded: false,
-      error: ''
-    };
+    this.state = this.initialState();
   }
 
   componentDidMount() {
@@ -50,6 +42,19 @@ export default class DeploymentsList extends React.Component {
 
   componentWillUnmount() {
     window.clearInterval(this.timerId);
+  }
+
+  initialState() {
+    return {
+      pollingInterval: 10000, // TODO: poll based on metricsWindow size
+      metrics: [],
+      timeseriesByDeploy: {},
+      lastUpdated: 0,
+      limitSparklineData: false,
+      pendingRequests: false,
+      loaded: false,
+      error: ''
+    };
   }
 
   addDeploysWithNoMetrics(deploys, metrics) {
@@ -203,13 +208,24 @@ export default class DeploymentsList extends React.Component {
     </div>);
   }
 
+  onMetricsWindowChange() {
+    let initialState = this.initialState();
+    let currentState = {
+      pendingRequests: this.state.pendingRequests // let pending requests complete, until we have a way of cancelling them
+    };
+    this.setState(_.merge({}, initialState, currentState));
+  }
+
   render() {
     return (
       <div className="page-content">
         { !this.state.error ? null : <ErrorBanner message={this.state.error} /> }
         { !this.state.loaded ? <ConduitSpinner />  :
           <div>
-            <PageHeader header="Deployments" api={this.api} />
+            <PageHeader
+              header="Deployments"
+              onMetricsWindowChange={this.onMetricsWindowChange}
+              api={this.api} />
             { _.isEmpty(this.state.metrics) ?
               <CallToAction numDeployments={_.size(this.state.metrics)} /> :
               this.renderPageContents()
