@@ -176,7 +176,7 @@ impl<'a> TryFrom<&'a Event> for common::TapEvent {
                         stream: ctx.id as u64,
                     }),
                     method: Some((&ctx.method).into()),
-                    scheme: ctx.uri.scheme_part().map(|s| s.as_str().into()),
+                    scheme: ctx.uri.scheme_part().map(common::Scheme::from),
                     authority: ctx.uri
                         .authority_part()
                         .map(|a| a.as_str())
@@ -309,6 +309,12 @@ impl<'a> From<&'a http::Method> for common::HttpMethod {
         common::HttpMethod {
             type_: Some(m.into()),
         }
+    }
+}
+
+impl<'a> From<&'a http::uri::Scheme> for common::Scheme {
+    fn from(scheme: &'a http::uri::Scheme) -> Self {
+        scheme.as_ref().into()
     }
 }
 

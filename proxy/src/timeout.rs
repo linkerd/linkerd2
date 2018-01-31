@@ -3,10 +3,12 @@ use futures::{Async, Future, Poll};
 
 use std::error::Error;
 use std::fmt;
+use std::io;
 use std::time::Duration;
 
 use tokio_connect::Connect;
 use tokio_core::reactor::{Timeout as ReactorTimeout, Handle};
+use tokio_io;
 use tower::Service;
 
 
@@ -37,10 +39,9 @@ pub struct TimeoutFuture<F> {
 //===== impl Timeout =====
 
 impl<U> Timeout<U> {
-
     /// Construct a new `Timeout` wrapping `inner`.
     pub fn new(inner: U, duration: Duration, handle: &Handle) -> Self {
-        Timeout { 
+        Timeout {
             inner,
             duration,
             handle: handle.clone(),
@@ -49,13 +50,13 @@ impl<U> Timeout<U> {
 
 }
 
-impl<S, T, E> Service for Timeout<S> 
+impl<S, T, E> Service for Timeout<S>
 where
     S: Service<Response=T, Error=E>,
     // E: Error,
 {
     type Request = S::Request;
-    type Response = T; 
+    type Response = T;
     type Error = TimeoutError<E>;
     type Future = TimeoutFuture<S::Future>;
 
@@ -101,11 +102,51 @@ where
     }
 }
 
+impl<C> io::Read for Timeout<C>
+where
+    C: io::Read,
+{
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.inner.read(buf)
+    }
+}
+
+impl<C> io::Write for Timeout<C>
+where
+    C: io::Write,
+{
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.inner.write(buf)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.inner.flush()
+    }
+}
+
+impl<C> tokio_io::AsyncRead for Timeout<C>
+where
+    C: tokio_io::AsyncRead,
+{
+    unsafe fn prepare_uninitialized_buffer(&self, buf: &mut [u8]) -> bool {
+        self.inner.prepare_uninitialized_buffer(buf)
+    }
+}
+
+impl<C> tokio_io::AsyncWrite for Timeout<C>
+where
+    C: tokio_io::AsyncWrite,
+{
+    fn shutdown(&mut self) -> Poll<(), io::Error> {
+        self.inner.shutdown()
+    }
+}
 
 //===== impl TimeoutError =====
 
 impl<E> From<E> for TimeoutError<E> {
-    #[inline] fn from(error: E) -> Self {
+    #[inline]
+    fn from(error: E) -> Self {
         TimeoutError::Error(error)
     }
 }
@@ -116,7 +157,7 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            TimeoutError::Timeout(ref duration) => 
+            TimeoutError::Timeout(ref duration) =>
                 // TODO: format the duration nicer.
                 write!(f, "operation timed out after {:?}", duration),
             TimeoutError::Error(ref err) =>
@@ -125,10 +166,10 @@ where
     }
 }
 
-impl<E> Error for TimeoutError<E> 
-where 
+impl<E> Error for TimeoutError<E>
+where
     E: Error
-{ 
+{
     fn cause(&self) -> Option<&Error> {
         match *self {
             TimeoutError::Error(ref err) => Some(err),
@@ -160,7 +201,7 @@ where
             Err(TimeoutError::Timeout(self.duration))
         } else {
             Ok(Async::NotReady)
-        } 
+        }
     }
 }
 

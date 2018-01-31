@@ -10,6 +10,8 @@ use tower_h2;
 use bind;
 use super::glue::{BodyStream, HttpBody, HyperConnect};
 
+// type ClientConn<C, B> = tower_h2::client::Connection<C, Handle, B>;
+
 /// A `NewService` that can speak either HTTP/1 or HTTP/2.
 pub struct Client<C, B>
 where
@@ -23,7 +25,7 @@ where
     B: tower_h2::Body,
 {
     Http1(hyper::Client<HyperConnect<C>, BodyStream<B>>),
-    Http2(tower_h2::client::Client<C, Handle, B>),
+    Http2(tower_h2::client::Connect<C, Handle, B>),
 }
 
 /// A `Future` returned from `Client::new_service()`.
@@ -48,6 +50,7 @@ where
 pub struct ClientService<C, B>
 where
     B: tower_h2::Body,
+    C: Connect,
 {
     inner: ClientServiceInner<C, B>,
 }
@@ -55,9 +58,14 @@ where
 enum ClientServiceInner<C, B>
 where
     B: tower_h2::Body,
+    C: Connect
 {
     Http1(hyper::Client<HyperConnect<C>, BodyStream<B>>),
-    Http2(tower_h2::client::Service<C, Handle, B>),
+    Http2(tower_h2::client::Connection<
+        <C as Connect>::Connected,
+        Handle,
+        B
+    >),
 }
 
 impl<C, B> Client<C, B>
@@ -83,7 +91,7 @@ where
                 // h2 currently doesn't handle PUSH_PROMISE that well, so we just
                 // disable it for now.
                 h2_builder.enable_push(false);
-                let h2 = tower_h2::client::Client::new(connect, h2_builder, executor);
+                let h2 = tower_h2::client::Connect::new(connect, h2_builder, executor);
 
                 Client {
                     inner: ClientInner::Http2(h2),
@@ -124,6 +132,7 @@ impl<C, B> Future for ClientNewServiceFuture<C, B>
 where
     C: Connect + 'static,
     B: tower_h2::Body + 'static,
+    // ClientConn<C, B>: Service,
 {
     type Item = ClientService<C, B>;
     type Error = tower_h2::client::ConnectError<C::Error>;
@@ -149,6 +158,12 @@ where
     C: Connect + 'static,
     C::Future: 'static,
     B: tower_h2::Body + 'static,
+    // ClientConn<C, B>: Service<
+    //     Request = http::Request<B>,
+    //     Response = http::Response<tower_h2::RecvBody>,
+    //     Error = tower_h2::client::Error,
+    //     Future = tower_h2::client::ResponseFuture
+    // >,
 {
     type Request = http::Request<B>;
     type Response = http::Response<HttpBody>;

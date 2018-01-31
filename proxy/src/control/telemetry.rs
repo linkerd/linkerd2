@@ -1,42 +1,32 @@
+use std::fmt;
 use std::time::{Duration, Instant};
 
 use futures::{Async, Future, Stream};
-use tower::Service;
-use tower_grpc;
 use tokio_core::reactor::Handle;
+use tower_h2::{HttpService, BoxBody};
+use tower_grpc as grpc;
 
-use super::codec::Protobuf;
 use super::pb::proxy::telemetry::{ReportRequest, ReportResponse};
 use super::pb::proxy::telemetry::client::Telemetry as TelemetrySvc;
-use super::pb::proxy::telemetry::client::telemetry_methods::Report as ReportRpc;
 use ::timeout::{Timeout, TimeoutFuture};
 
-pub type ClientBody = tower_grpc::client::codec::EncodingBody<
-    Protobuf<ReportRequest, ReportResponse>,
-    tower_grpc::client::codec::Unary<ReportRequest>,
->;
-
-type TelemetryStream<F> = tower_grpc::client::BodyFuture<
-    tower_grpc::client::Unary<
-        tower_grpc::client::ResponseFuture<Protobuf<ReportRequest, ReportResponse>, TimeoutFuture<F>>,
-        Protobuf<ReportRequest, ReportResponse>,
-    >,
->;
+type TelemetryStream<F, B> = grpc::client::unary::ResponseFuture<
+    ReportResponse, TimeoutFuture<F>, B>;
 
 #[derive(Debug)]
-pub struct Telemetry<T, F> {
+pub struct Telemetry<T, S: HttpService> {
     reports: T,
-    in_flight: Option<(Instant, TelemetryStream<F>)>,
+    in_flight: Option<(Instant, TelemetryStream<S::Future, S::ResponseBody>)>,
     report_timeout: Duration,
     handle: Handle,
 }
 
-impl<T, F> Telemetry<T, F>
+impl<T, S> Telemetry<T, S>
 where
+    S: HttpService<RequestBody = BoxBody, ResponseBody = ::tower_h2::RecvBody>,
+    S::Error: fmt::Debug,
     T: Stream<Item = ReportRequest>,
     T::Error: ::std::fmt::Debug,
-    F: Future<Item = ::http::Response<::tower_h2::RecvBody>>,
-    F::Error: ::std::fmt::Debug,
 {
     pub fn new(reports: T, report_timeout: Duration, handle: &Handle) -> Self {
         Telemetry {
@@ -47,18 +37,10 @@ where
         }
     }
 
-    pub fn poll_rpc<S>(&mut self, client: &mut S)
-    where
-        S: Service<
-            Request = ::http::Request<ClientBody>,
-            Response = F::Item,
-            Error = F::Error,
-            Future = F,
-        >,
+    pub fn poll_rpc(&mut self, client: &mut S)
     {
-        let client = Timeout::new(client, self.report_timeout, &self.handle);
-        let grpc = tower_grpc::Client::new(Protobuf::new(), client);
-        let mut rpc = ReportRpc::new(grpc);
+        let client = Timeout::new(client.lift_ref(), self.report_timeout, &self.handle);
+        let mut svc = TelemetrySvc::new(client);
 
         //let _ctxt = ::logging::context("Telemetry.Report".into());
 
@@ -78,8 +60,7 @@ where
                 }
             }
 
-
-            let controller_ready = self.in_flight.is_none() && match rpc.poll_ready() {
+            let controller_ready = self.in_flight.is_none() && match svc.poll_ready() {
                 Ok(Async::Ready(_)) => true,
                 Ok(Async::NotReady) => {
                     trace!("controller unavailable");
@@ -119,7 +100,7 @@ where
                             report.server_transports.len(),
                             report.client_transports.len(),
                         );
-                        let rep = TelemetrySvc::new(&mut rpc).report(report);
+                        let rep = svc.report(grpc::Request::new(report));
                         self.in_flight = Some((Instant::now(), rep));
                     }
                 }

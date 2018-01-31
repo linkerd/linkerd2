@@ -77,7 +77,11 @@ impl<N, A, B> NewHttp<N, A, B>
 where
     A: Body + 'static,
     B: Body + 'static,
-    N: NewService<Request = http::Request<A>, Response = http::Response<B>, Error = client::Error>
+    N: NewService<
+        Request = http::Request<A>,
+        Response = http::Response<B>,
+        Error = client::Error,
+    >
         + 'static,
 {
     pub(super) fn new(
@@ -100,7 +104,11 @@ impl<N, A, B> NewService for NewHttp<N, A, B>
 where
     A: Body + 'static,
     B: Body + 'static,
-    N: NewService<Request = http::Request<A>, Response = http::Response<B>, Error = client::Error>
+    N: NewService<
+        Request = http::Request<A>,
+        Response = http::Response<B>,
+        Error = client::Error,
+    >
         + 'static,
 {
     type Request = N::Request;
@@ -152,7 +160,11 @@ impl<S, A, B> Service for Http<S, A, B>
 where
     A: Body + 'static,
     B: Body + 'static,
-    S: Service<Request = http::Request<A>, Response = http::Response<B>, Error = client::Error>
+    S: Service<
+        Request = http::Request<A>,
+        Response = http::Response<B>,
+        Error = client::Error,
+    >
         + 'static,
 {
     type Request = S::Request;
@@ -197,7 +209,7 @@ where
 
 impl<F, B> Future for Respond<F, B>
 where
-    F: Future<Item = http::Response<B>, Error = client::Error>,
+    F: Future<Item = http::Response<B>, Error=client::Error>,
     B: Body + 'static,
 {
     type Item = http::Response<ResponseBody<B>>;

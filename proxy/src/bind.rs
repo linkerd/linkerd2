@@ -1,4 +1,3 @@
-use std::io;
 use std::marker::PhantomData;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -7,13 +6,14 @@ use std::time::Duration;
 
 use http;
 use tokio_core::reactor::Handle;
+use tower;
 use tower_h2;
-use tower_reconnect::{self, Reconnect};
+use tower_reconnect::Reconnect;
 
 use control;
 use ctx;
-use telemetry;
-use transparency;
+use telemetry::{self, sensor};
+use transparency::{self, HttpBody};
 use transport;
 use ::timeout::Timeout;
 
@@ -48,15 +48,15 @@ pub enum Protocol {
     Http2
 }
 
-type Service<B> = Reconnect<
-    telemetry::sensor::NewHttp<
-        transparency::Client<
-            telemetry::sensor::Connect<transport::TimeoutConnect<transport::Connect>>,
-            B,
-        >,
-        B,
-        transparency::HttpBody,
-    >,
+pub type Service<B> = Reconnect<NewHttp<B>>;
+
+pub type NewHttp<B> = sensor::NewHttp<Client<B>, B, HttpBody>;
+
+pub type HttpResponse = http::Response<sensor::http::ResponseBody<HttpBody>>;
+
+pub type Client<B> = transparency::Client<
+    sensor::Connect<transport::TimeoutConnect<transport::Connect>>,
+    B,
 >;
 
 impl<B> Bind<(), B> {
@@ -189,11 +189,8 @@ where
     B: tower_h2::Body + 'static,
 {
     type Request = http::Request<B>;
-    type Response = http::Response<telemetry::sensor::http::ResponseBody<transparency::HttpBody>>;
-    type Error = tower_reconnect::Error<
-        tower_h2::client::Error,
-        tower_h2::client::ConnectError<transport::TimeoutError<io::Error>>,
-    >;
+    type Response = HttpResponse;
+    type Error = <Service<B> as tower::Service>::Error;
     type Service = Service<B>;
     type BindError = ();
 

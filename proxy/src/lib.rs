@@ -76,7 +76,6 @@ mod tower_fn; // TODO: move to tower-fn
 
 use bind::Bind;
 use connection::BoundPort;
-use control::pb::proxy::tap;
 use inbound::Inbound;
 use map_err::MapErr;
 use transparency::{HttpBody, Server};
@@ -147,6 +146,8 @@ where
     pub fn run_until<F>(self, shutdown_signal: F)
     where
         F: Future<Item = (), Error = ()>,
+        // bind::BindProtocol<Arc<ctx::Proxy>, transparency::HttpBody>: control::discovery::Bind,
+        // bind::NewHttp<transparency::HttpBody>: tower::NewService,
     {
         let process_ctx = ctx::Process::new(&self.config);
 
@@ -245,12 +246,13 @@ where
             thread::Builder::new()
                 .name("controller-client".into())
                 .spawn(move || {
+                    use control::pb::proxy::tap::server::TapServer;
+
                     let mut core = Core::new().expect("initialize controller core");
                     let executor = core.handle();
 
                     let (taps, observe) = control::Observe::new(100);
-
-                    let new_service = tap::server::Tap::new_service().observe(observe);
+                    let new_service = TapServer::new(observe);
 
                     let server = serve_control(
                         control_listener,

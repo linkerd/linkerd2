@@ -124,7 +124,7 @@ fn run(addr: SocketAddr, version: Run) -> Sender {
                     .map_err(|e| println!("client error: {:?}", e)))
             },
             Run::Http2 => {
-                let h2 = tower_h2::Client::<Conn, Handle, ()>::new(
+                let h2 = tower_h2::client::Connect::<Conn, Handle, ()>::new(
                     conn,
                     Default::default(),
                     reactor.clone(),
