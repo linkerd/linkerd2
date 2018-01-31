@@ -6,7 +6,7 @@ additional configuration.
 
 * Data plane
   * Conduit now transparently proxies all TCP traffic, including HTTP/1.x and HTTP/2.
-    (See details below.)
+    (See caveats below.)
 * Command-line interface
   * Improved error handling for the `tap` command
   * `tap` also now works with HTTP/1.x traffic
@@ -14,11 +14,12 @@ additional configuration.
   * Minor UI appearance tweaks
   * Deployments now searchable from the dashboard sidebar
 
-Details:
+Caveats:
 * Conduit will automatically work for most protocols. However, applications that use WebSockets,
   HTTP tunneling/proxying, or protocols such as MySQL and SMTP, will require some additional
   configuration. See the [documentation](https://conduit.io/adding-your-service/#protocol-support)
   for details.
+* Conduit doesn’t yet support external DNS lookups. These will be addressed in an upcoming release.
 
 ## v0.1.3
 
