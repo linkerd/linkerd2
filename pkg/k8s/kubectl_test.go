@@ -1,10 +1,7 @@
 package k8s
 
 import (
-	"errors"
-	"fmt"
 	"io/ioutil"
-	"net/url"
 	"testing"
 
 	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
@@ -58,126 +55,6 @@ func TestKubectlVersion(t *testing.T) {
 			if err == nil {
 				t.Fatalf("Expected error parsing string: %s", expectedVersion)
 			}
-		}
-	})
-}
-
-func TestKubectlStartProxy(t *testing.T) {
-	t.Run("Starts a proxy when no previous proxy was running", func(t *testing.T) {
-		shell := &shell.MockShell{}
-		potentialAsyncError := make(chan error, 1)
-		shell.OutputToReturn = append(shell.OutputToReturn, "Client Version: v1.8.4")
-		kctl, _ := NewKubectl(shell)
-
-		shell.OutputToReturn = append(shell.OutputToReturn, fmt.Sprintf("Starting to serve on 127.0.0.1:8001%c", magicCharacterThatIndicatesProxyIsRunning))
-		err := kctl.StartProxy(potentialAsyncError, kubectlDefaultProxyPort)
-
-		if err != nil {
-			t.Fatalf("Unexpected error starting proxy: %v", err)
-		}
-
-		if kctl.ProxyPort() != kubectlDefaultProxyPort {
-			t.Fatalf("Expecting proxy to be running on [%d] but it's on [%d]", kubectlDefaultProxyPort, kctl.ProxyPort())
-		}
-
-		if shell.LastFullCommand() != "kubectl proxy -p 8001" {
-			t.Fatalf("Expecting kubectl to send correct command to Shell, sent [%s]", shell.LastFullCommand())
-		}
-	})
-
-	t.Run("Returns error if there was already a proxy running, keeps old proxy running", func(t *testing.T) {
-		shell := &shell.MockShell{}
-		potentialAsyncError := make(chan error, 1)
-		shell.OutputToReturn = append(shell.OutputToReturn, "Client Version: v1.8.4")
-		kctl, _ := NewKubectl(shell)
-
-		shell.OutputToReturn = append(shell.OutputToReturn, fmt.Sprintf("Starting to serve on 127.0.0.1:8001%c", magicCharacterThatIndicatesProxyIsRunning))
-		err := kctl.StartProxy(potentialAsyncError, kubectlDefaultProxyPort)
-
-		if err != nil {
-			t.Fatalf("Unexpected error starting proxy: %v", err)
-		}
-
-		err = kctl.StartProxy(potentialAsyncError, kubectlDefaultProxyPort)
-
-		if err == nil {
-			t.Fatalf("Expected error trying to start proxy again, got nothing")
-		}
-
-		if kctl.ProxyPort() != kubectlDefaultProxyPort {
-			t.Fatalf("Expected proxy to keep running on port [%d] but got [%d]", kubectlDefaultProxyPort, kctl.ProxyPort())
-		}
-	})
-
-	t.Run("Returns error if a proxy had already been started by some other process", func(t *testing.T) {
-		shell := &shell.MockShell{}
-		potentialAsyncError := make(chan error, 1)
-		shell.OutputToReturn = append(shell.OutputToReturn, "Client Version: v1.8.4")
-		kctl, err := NewKubectl(shell)
-
-		if err != nil {
-			t.Fatalf("Unexpected error starting proxy: %v", err)
-		}
-
-		shell.ErrorToReturn = errors.New("F1213 17:30:50.272013   39247 proxy.go:153] listen tcp 127.0.0.1:8001: bind: address already in use")
-		err = kctl.StartProxy(potentialAsyncError, kubectlDefaultProxyPort)
-
-		if err == nil {
-			t.Fatalf("Expected error trying to start proxy again, got nothing")
-		}
-	})
-
-	t.Run("Returns error if cannot detect that proxy has been started", func(t *testing.T) {
-		shell := &shell.MockShell{}
-		potentialAsyncError := make(chan error, 1)
-		shell.OutputToReturn = append(shell.OutputToReturn, "Client Version: v1.8.4")
-		kctl, _ := NewKubectl(shell)
-
-		shell.OutputToReturn = append(shell.OutputToReturn, "ANY STRING THAT DOEST CONTAIN THE MAGIC CHARACTER WE ARE LOOKING FOR")
-		err := kctl.StartProxy(potentialAsyncError, kubectlDefaultProxyPort)
-
-		if err == nil {
-			t.Fatalf("Expected error trying to start proxy again, got nothing")
-		}
-	})
-}
-
-func TestUrlFor(t *testing.T) {
-	t.Run("Generates expected URL if proxy is running", func(t *testing.T) {
-		shell := &shell.MockShell{}
-		potentialAsyncError := make(chan error, 1)
-		shell.OutputToReturn = append(shell.OutputToReturn, "Client Version: v1.8.4")
-		kctl, _ := NewKubectl(shell)
-
-		shell.OutputToReturn = append(shell.OutputToReturn, fmt.Sprintf("Starting to serve on 127.0.0.1:8001%c", magicCharacterThatIndicatesProxyIsRunning))
-		err := kctl.StartProxy(potentialAsyncError, kubectlDefaultProxyPort)
-		if err != nil {
-			t.Fatalf("Unexpected error starting proxy: %v", err)
-		}
-
-		expectedNamespace := "expected-namespace"
-		expectedPath := "/expected/path:for/desired/endpoint"
-		expectedUrl, _ := url.Parse(fmt.Sprintf("http://127.0.0.1:%d/api/v1/namespaces/%s%s", kubectlDefaultProxyPort, expectedNamespace, expectedPath))
-
-		actualUrl, err := kctl.UrlFor(expectedNamespace, expectedPath)
-		if err != nil {
-			t.Fatalf("Unexpected error generating URL: %v", err)
-		}
-
-		if actualUrl.String() != expectedUrl.String() {
-			t.Fatalf("Expected generated URL to be [%s] but was [%s]", expectedUrl, actualUrl)
-		}
-	})
-
-	t.Run("Returns error if proxy isn't running", func(t *testing.T) {
-		shell := &shell.MockShell{}
-		shell.OutputToReturn = append(shell.OutputToReturn, "Client Version: v1.8.4")
-		kctl, _ := NewKubectl(shell)
-
-		shell.OutputToReturn = append(shell.OutputToReturn, fmt.Sprintf("Starting to serve on 127.0.0.1:8001%c", magicCharacterThatIndicatesProxyIsRunning))
-		_, err := kctl.UrlFor("someNamespace", "/somePath")
-		if err == nil {
-			t.Fatalf("Expected error getting URL before starting proxy, got nothing")
 		}
 	})
 }
