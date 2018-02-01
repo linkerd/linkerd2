@@ -57,7 +57,7 @@ jobs:
       install:
         - cd web/app && yarn && yarn webpack
       script:
-        - yarn karma start --single-run
+        - yarn karma start --single-run --reporters dots
 
     - language: generic
       script:
