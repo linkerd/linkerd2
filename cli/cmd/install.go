@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"text/template"
 
-	"github.com/runconduit/conduit/controller"
+	"github.com/runconduit/conduit/pkg/version"
 	uuid "github.com/satori/go.uuid"
 	"github.com/spf13/cobra"
 )
@@ -400,7 +400,7 @@ type installConfig struct {
 }
 
 var (
-	version            string
+	conduitVersion     string
 	dockerRegistry     string
 	controllerReplicas uint
 	webReplicas        uint
@@ -422,15 +422,15 @@ var installCmd = &cobra.Command{
 		}
 		template.Execute(os.Stdout, installConfig{
 			Namespace:          controlPlaneNamespace,
-			ControllerImage:    fmt.Sprintf("%s/controller:%s", dockerRegistry, version),
-			WebImage:           fmt.Sprintf("%s/web:%s", dockerRegistry, version),
+			ControllerImage:    fmt.Sprintf("%s/controller:%s", dockerRegistry, conduitVersion),
+			WebImage:           fmt.Sprintf("%s/web:%s", dockerRegistry, conduitVersion),
 			PrometheusImage:    "prom/prometheus:v1.8.1",
 			ControllerReplicas: controllerReplicas,
 			WebReplicas:        webReplicas,
 			PrometheusReplicas: prometheusReplicas,
 			ImagePullPolicy:    imagePullPolicy,
 			UUID:               uuid.NewV4().String(),
-			CliVersion:         fmt.Sprintf("conduit/cli %s", controller.Version),
+			CliVersion:         fmt.Sprintf("conduit/cli %s", version.Version),
 		})
 		return nil
 	},
@@ -446,8 +446,8 @@ func validate() error {
 	if !alphaNumDash.MatchString(controlPlaneNamespace) {
 		return fmt.Errorf("%s is not a valid namespace", controlPlaneNamespace)
 	}
-	if !alphaNumDashDot.MatchString(version) {
-		return fmt.Errorf("%s is not a valid version", version)
+	if !alphaNumDashDot.MatchString(conduitVersion) {
+		return fmt.Errorf("%s is not a valid version", conduitVersion)
 	}
 	if !alphaNumDashDotSlash.MatchString(dockerRegistry) {
 		return fmt.Errorf("%s is not a valid Docker registry", dockerRegistry)
@@ -460,7 +460,7 @@ func validate() error {
 
 func init() {
 	RootCmd.AddCommand(installCmd)
-	installCmd.PersistentFlags().StringVarP(&version, "version", "v", controller.Version, "Conduit version to install")
+	installCmd.PersistentFlags().StringVarP(&conduitVersion, "version", "v", version.Version, "Conduit version to install")
 	installCmd.PersistentFlags().StringVarP(&dockerRegistry, "registry", "r", "gcr.io/runconduit", "Docker registry to pull images from")
 	installCmd.PersistentFlags().UintVar(&controllerReplicas, "controller-replicas", 1, "replicas of the controller to deploy")
 	installCmd.PersistentFlags().UintVar(&webReplicas, "web-replicas", 1, "replicas of the web server to deploy")

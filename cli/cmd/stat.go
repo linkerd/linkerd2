@@ -9,11 +9,9 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/runconduit/conduit/pkg/k8s"
-	"github.com/runconduit/conduit/pkg/shell"
-
 	"github.com/runconduit/conduit/controller/api/util"
 	pb "github.com/runconduit/conduit/controller/gen/public"
+	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/spf13/cobra"
 )
 
@@ -21,8 +19,6 @@ const ConduitPaths = "paths"
 
 var target string
 var timeWindow string
-var watch bool
-var watchOnly bool
 
 var statCmd = &cobra.Command{
 	Use:   "stat [flags] RESOURCE [TARGET]",
@@ -57,12 +53,7 @@ The optional [TARGET] option can be either a name for a deployment or pod resour
 				return fmt.Errorf("invalid resource type %s, only %v are allowed as resource types", friendlyNameForResourceType, []string{k8s.KubernetesPods, k8s.KubernetesDeployments, ConduitPaths})
 			}
 		}
-		kubeApi, err := k8s.NewK8sAPi(shell.NewUnixShell(), kubeconfigPath, apiAddr)
-		if err != nil {
-			return err
-		}
-
-		client, err := newApiClient(kubeApi)
+		client, err := newPublicAPIClient()
 		if err != nil {
 			return fmt.Errorf("error creating api client while making stats request: %v", err)
 		}
@@ -81,9 +72,7 @@ The optional [TARGET] option can be either a name for a deployment or pod resour
 func init() {
 	RootCmd.AddCommand(statCmd)
 	addControlPlaneNetworkingArgs(statCmd)
-	statCmd.PersistentFlags().StringVarP(&timeWindow, "time-window", "t", "1m", "Stat window.  One of: '10s', '1m', '10m', '1h', '6h', '24h'.")
-	statCmd.PersistentFlags().BoolVarP(&watch, "watch", "w", false, "After listing/getting the requested object, watch for changes.")
-	statCmd.PersistentFlags().BoolVar(&watchOnly, "watch-only", false, "Watch for changes to the requested object(s), without listing/getting first.")
+	statCmd.PersistentFlags().StringVarP(&timeWindow, "time-window", "t", "1m", "Stat window.  One of: '10s', '1m', '10m', '1h'.")
 }
 
 var resourceTypeToAggregationType = map[string]pb.AggregationType{

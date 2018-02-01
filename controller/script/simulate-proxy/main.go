@@ -9,24 +9,87 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/runconduit/conduit/controller/api/proxy"
 	common "github.com/runconduit/conduit/controller/gen/common"
 	pb "github.com/runconduit/conduit/controller/gen/proxy/telemetry"
 	"github.com/runconduit/conduit/controller/k8s"
 	"github.com/runconduit/conduit/controller/util"
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
-	k8sV1 "k8s.io/client-go/pkg/api/v1"
+	"k8s.io/api/core/v1"
+	// Load all the auth plugins for the cloud providers.
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
 /* A simple script for posting simulated telemetry data to the proxy api */
 
 var (
-	responseCodes = []codes.Code{
+	grpcResponseCodes = []codes.Code{
 		codes.OK,
 		codes.PermissionDenied,
 		codes.Unavailable,
+	}
+
+	httpResponseCodes = []int{
+		http.StatusContinue,
+		http.StatusSwitchingProtocols,
+		http.StatusProcessing,
+		http.StatusOK,
+		http.StatusCreated,
+		http.StatusAccepted,
+		http.StatusNonAuthoritativeInfo,
+		http.StatusNoContent,
+		http.StatusResetContent,
+		http.StatusPartialContent,
+		http.StatusMultiStatus,
+		http.StatusAlreadyReported,
+		http.StatusIMUsed,
+		http.StatusMultipleChoices,
+		http.StatusMovedPermanently,
+		http.StatusFound,
+		http.StatusSeeOther,
+		http.StatusNotModified,
+		http.StatusUseProxy,
+		http.StatusTemporaryRedirect,
+		http.StatusPermanentRedirect,
+		http.StatusBadRequest,
+		http.StatusUnauthorized,
+		http.StatusPaymentRequired,
+		http.StatusForbidden,
+		http.StatusNotFound,
+		http.StatusMethodNotAllowed,
+		http.StatusNotAcceptable,
+		http.StatusProxyAuthRequired,
+		http.StatusRequestTimeout,
+		http.StatusConflict,
+		http.StatusGone,
+		http.StatusLengthRequired,
+		http.StatusPreconditionFailed,
+		http.StatusRequestEntityTooLarge,
+		http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType,
+		http.StatusRequestedRangeNotSatisfiable,
+		http.StatusExpectationFailed,
+		http.StatusTeapot,
+		http.StatusUnprocessableEntity,
+		http.StatusLocked,
+		http.StatusFailedDependency,
+		http.StatusUpgradeRequired,
+		http.StatusPreconditionRequired,
+		http.StatusTooManyRequests,
+		http.StatusRequestHeaderFieldsTooLarge,
+		http.StatusUnavailableForLegalReasons,
+		http.StatusInternalServerError,
+		http.StatusNotImplemented,
+		http.StatusBadGateway,
+		http.StatusServiceUnavailable,
+		http.StatusGatewayTimeout,
+		http.StatusHTTPVersionNotSupported,
+		http.StatusVariantAlsoNegotiates,
+		http.StatusInsufficientStorage,
+		http.StatusLoopDetected,
+		http.StatusNotExtended,
+		http.StatusNetworkAuthenticationRequired,
 	}
 
 	streamSummary = &pb.StreamSummary{
@@ -59,12 +122,12 @@ func randomLatencies(count uint32) (latencies []*pb.Latency) {
 	return
 }
 
-func randomEos(count uint32) (eos []*pb.EosScope) {
-	responseCodes := make(map[uint32]uint32)
+func randomGrpcEos(count uint32) (eos []*pb.EosScope) {
+	grpcResponseCodes := make(map[uint32]uint32)
 	for i := uint32(0); i < count; i++ {
-		responseCodes[randomResponseCode()] += 1
+		grpcResponseCodes[randomGrpcResponseCode()] += 1
 	}
-	for code, streamCount := range responseCodes {
+	for code, streamCount := range grpcResponseCodes {
 		eos = append(eos, &pb.EosScope{
 			Ctx:     &pb.EosCtx{End: &pb.EosCtx_GrpcStatusCode{GrpcStatusCode: code}},
 			Streams: streamSummaries(streamCount),
@@ -73,8 +136,22 @@ func randomEos(count uint32) (eos []*pb.EosScope) {
 	return
 }
 
-func randomResponseCode() uint32 {
-	return uint32(responseCodes[rand.Intn(len(responseCodes))])
+func randomH2Eos(count uint32) (eos []*pb.EosScope) {
+	for i := uint32(0); i < count; i++ {
+		eos = append(eos, &pb.EosScope{
+			Ctx:     &pb.EosCtx{End: &pb.EosCtx_Other{Other: true}},
+			Streams: streamSummaries(i),
+		})
+	}
+	return
+}
+
+func randomGrpcResponseCode() uint32 {
+	return uint32(grpcResponseCodes[rand.Intn(len(grpcResponseCodes))])
+}
+
+func randomHttpResponseCode() uint32 {
+	return uint32(httpResponseCodes[rand.Intn(len(httpResponseCodes))])
 }
 
 func streamSummaries(count uint32) (summaries []*pb.StreamSummary) {
@@ -97,7 +174,7 @@ func podIndexFunc(obj interface{}) ([]string, error) {
 	return nil, nil
 }
 
-func randomPod(pods []*k8sV1.Pod, prvPodIp *common.IPAddress) *common.IPAddress {
+func randomPod(pods []*v1.Pod, prvPodIp *common.IPAddress) *common.IPAddress {
 	var podIp *common.IPAddress
 	for {
 		if podIp != nil {
@@ -105,6 +182,9 @@ func randomPod(pods []*k8sV1.Pod, prvPodIp *common.IPAddress) *common.IPAddress 
 		}
 
 		randomPod := pods[rand.Intn(len(pods))]
+		if strings.HasPrefix(randomPod.GetNamespace(), "kube-") {
+			continue // skip pods in the kube-* namespaces
+		}
 		podIp = stringToIp(randomPod.Status.PodIP)
 		if prvPodIp != nil && podIp.GetIpv4() == prvPodIp.GetIpv4() {
 			podIp = nil
@@ -143,15 +223,18 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	pods.Run()
 
-	// required for pods.List() to work -> otherwise the list of pods returned is empty
-	time.Sleep(2 * time.Second)
+	err = pods.Run()
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
 	podList, err := pods.List()
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	allPods := make([]*k8sV1.Pod, 0)
+
+	allPods := make([]*v1.Pod, 0)
 	for _, pod := range podList {
 		if pod.Status.PodIP != "" && (*maxPods == 0 || len(allPods) < *maxPods) {
 			allPods = append(allPods, pod)
@@ -162,15 +245,47 @@ func main() {
 		count := randomCount()
 		sourceIp := randomPod(allPods, nil)
 		targetIp := randomPod(allPods, sourceIp)
+
 		req := &pb.ReportRequest{
 			Process: &pb.Process{
 				ScheduledInstance:  "hello-1mfa0",
 				ScheduledNamespace: "people",
 			},
-			ClientTransports: []*pb.ClientTransport{},
-			ServerTransports: []*pb.ServerTransport{},
-			Proxy:            pb.ReportRequest_INBOUND,
+			ClientTransports: []*pb.ClientTransport{
+				// TCP
+				&pb.ClientTransport{
+					TargetAddr: &common.TcpAddress{
+						Ip:   targetIp,
+						Port: randomPort(),
+					},
+					Connects: count,
+					Disconnects: []*pb.TransportSummary{
+						&pb.TransportSummary{
+							DurationMs: uint64(randomCount()),
+							BytesSent:  uint64(randomCount()),
+						},
+					},
+					Protocol: common.Protocol_TCP,
+				},
+			},
+			ServerTransports: []*pb.ServerTransport{
+				// TCP
+				&pb.ServerTransport{
+					SourceIp: sourceIp,
+					Connects: count,
+					Disconnects: []*pb.TransportSummary{
+						&pb.TransportSummary{
+							DurationMs: uint64(randomCount()),
+							BytesSent:  uint64(randomCount()),
+						},
+					},
+					Protocol: common.Protocol_TCP,
+				},
+			},
+			Proxy: pb.ReportRequest_INBOUND,
 			Requests: []*pb.RequestScope{
+
+				// gRPC
 				&pb.RequestScope{
 					Ctx: &pb.RequestCtx{
 						SourceIp: sourceIp,
@@ -180,7 +295,7 @@ func main() {
 						},
 						Authority: "world.greeting:7778",
 						Method:    &common.HttpMethod{Type: &common.HttpMethod_Registered_{Registered: common.HttpMethod_GET}},
-						Path:      "/World/Greeting",
+						Path:      "/World/GreetingGrpc",
 					},
 					Count: count,
 					Responses: []*pb.ResponseScope{
@@ -189,7 +304,31 @@ func main() {
 								HttpStatusCode: http.StatusOK,
 							},
 							ResponseLatencies: randomLatencies(count),
-							Ends:              randomEos(count),
+							Ends:              randomGrpcEos(count),
+						},
+					},
+				},
+
+				// HTTP/2
+				&pb.RequestScope{
+					Ctx: &pb.RequestCtx{
+						SourceIp: sourceIp,
+						TargetAddr: &common.TcpAddress{
+							Ip:   targetIp,
+							Port: randomPort(),
+						},
+						Authority: "world.greeting:7778",
+						Method:    &common.HttpMethod{Type: &common.HttpMethod_Registered_{Registered: common.HttpMethod_GET}},
+						Path:      "/World/GreetingH2",
+					},
+					Count: count,
+					Responses: []*pb.ResponseScope{
+						&pb.ResponseScope{
+							Ctx: &pb.ResponseCtx{
+								HttpStatusCode: randomHttpResponseCode(),
+							},
+							ResponseLatencies: randomLatencies(count),
+							Ends:              randomH2Eos(count),
 						},
 					},
 				},
@@ -200,6 +339,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err.Error())
 		}
+
 		time.Sleep(*sleep)
 	}
 }

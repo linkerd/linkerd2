@@ -1,0 +1,21 @@
+#!/bin/sh
+
+set -eu
+
+system=$(uname -s)
+
+if [ "$system" = "Darwin" ]; then
+  bin=target/cli/darwin/conduit
+elif [ "$system" = "Linux" ]; then
+  bin=target/cli/linux/conduit
+else
+  echo "unknown system: $system" >&2
+  exit 1
+fi
+
+# build conduit executable if it does not exist
+if [ ! -f $bin ]; then
+  bin/docker-build-cli-bin >/dev/null
+fi
+
+exec $bin "$@"

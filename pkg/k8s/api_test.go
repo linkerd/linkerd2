@@ -1,29 +1,29 @@
 package k8s
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/runconduit/conduit/pkg/shell"
 )
 
 func TestKubernetesApiUrlFor(t *testing.T) {
-	t.Run("Returns URL from base URL overridden in construction", func(t *testing.T) {
-		namespace := "some-namespace"
-		extraPath := "/some/extra/path"
-		expectedUrlString := "https://35.184.231.31/api/v1/namespaces/some-namespace/some/extra/path"
+	const namespace = "some-namespace"
+	const extraPath = "/some/extra/path"
 
-		api, err := NewK8sAPi(shell.NewUnixShell(), "testdata/config.test", "https://35.184.231.31")
+	t.Run("Returns base config containing k8s endpoint listed in config.test", func(t *testing.T) {
+		expected := fmt.Sprintf("https://55.197.171.239/api/v1/namespaces/%s%s", namespace, extraPath)
+		shell := &shell.MockShell{}
+		api, err := NewK8sAPI(shell, "testdata/config.test")
 		if err != nil {
 			t.Fatalf("Unexpected error starting proxy: %v", err)
 		}
-
 		actualUrl, err := api.UrlFor(namespace, extraPath)
 		if err != nil {
 			t.Fatalf("Unexpected error starting proxy: %v", err)
 		}
-
-		if actualUrl.String() != expectedUrlString {
-			t.Fatalf("Expected generated URL to be [%s], but got [%s]", expectedUrlString, actualUrl.String())
+		if actualUrl.String() != expected {
+			t.Fatalf("Expected generated URL to be [%s], but got [%s]", expected, actualUrl.String())
 		}
 	})
 }

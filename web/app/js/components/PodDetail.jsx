@@ -1,9 +1,9 @@
 import _ from 'lodash';
 import ConduitSpinner from "./ConduitSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
-import HealthPane from './HealthPane.jsx';
 import React from 'react';
-import StatPane from './StatPane.jsx';
+import ResourceHealthOverview from './ResourceHealthOverview.jsx';
+import ResourceMetricsOverview from './ResourceMetricsOverview.jsx';
 import UpstreamDownstream from './UpstreamDownstream.jsx';
 import { ApiHelpers, urlsForResource } from './util/ApiHelpers.js';
 import { processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
@@ -99,22 +99,22 @@ export default class PodDetail extends React.Component {
     let currentSuccessRate = _.get(_.last(_.get(this.state.podTs, "SUCCESS_RATE", [])), "value");
 
     return [
-      <HealthPane
+      <ResourceHealthOverview
         key="pod-health-pane"
-        entity={this.state.pod}
-        entityType="pod"
+        resourceName={this.state.pod}
+        resourceType="pod"
         currentSr={currentSuccessRate}
         upstreamMetrics={this.state.upstreamMetrics}
         downstreamMetrics={this.state.downstreamMetrics} />,
       _.isEmpty(this.state.podTs) ? null :
-        <StatPane
+        <ResourceMetricsOverview
           key="pod-stat-pane"
           lastUpdated={this.state.lastUpdated}
           timeseries={this.state.podTs} />,
       <UpstreamDownstream
         key="pod-upstream-downstream"
-        resource="pod"
-        entity={this.state.pod}
+        resourceType="pod"
+        resourceName={this.state.pod}
         lastUpdated={this.state.lastUpdated}
         upstreamMetrics={this.state.upstreamMetrics}
         downstreamMetrics={this.state.downstreamMetrics}

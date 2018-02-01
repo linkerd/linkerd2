@@ -5,6 +5,7 @@ package conduit.public;
 import "google/protobuf/duration.proto";
 
 import "common/common.proto";
+import "common/healthcheck/healthcheck.proto";
 
 enum MetricName {
   REQUEST_RATE = 0;
@@ -133,5 +134,6 @@ service Api {
   rpc Stat(MetricRequest) returns (MetricResponse) {}
   rpc Version(Empty) returns (VersionInfo) {}
   rpc ListPods(Empty) returns (ListPodsResponse) {}
+  rpc SelfCheck(common.healthcheck.SelfCheckRequest) returns (common.healthcheck.SelfCheckResponse) {}
   rpc Tap(TapRequest) returns (stream common.TapEvent) {}
 }

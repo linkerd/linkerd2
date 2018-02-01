@@ -1,20 +1,10 @@
 @import 'styles.css';
 
-.list-container {
-  width: 100%;
-  float: right;
-  min-height: 50vh;
-  background-size: auto 100%;
-}
-
 .sidebar {
-  width: 100%;
   padding: 0px 0px 0px 20%;
-  float: right;
   background-color: #091B39;
   color: white;
-  height: 100vh;
-  min-height: 200vh;
+  min-height: 100vh;
   background-image: url(./../img/sidebar-bg.png);
   background-repeat: no-repeat;
   background-size: 100% 50vh;
@@ -37,7 +27,7 @@
   }
 
   & .sidebar-headers {
-    margin: 27px 0px 27px 0px;
+    padding: 27px 0px;
   }
 
   & .ant.menu {
@@ -68,6 +58,26 @@
 }
 
 .call-to-action .action {
-    font-size: inherit;
-    color: (var(--white))
+  font-size: inherit;
+}
+
+.conduit-autocomplete {
+  margin-bottom: calc(2 * var(--base-width));
+
+  & .ant-select-selection__placeholder {
+    color: #7395C8;
+    font-size: 12px;
+  }
+
+  & .ant-select-search {
+    background: #1B3358;
+  }
+
+  & .ant-input {
+    border: 1px solid #7395C8;
+
+    &.ant-select-search__field {
+      color: white;
+    }
+  }
 }

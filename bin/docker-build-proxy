@@ -2,31 +2,21 @@
 
 set -eu
 
-. bin/_docker.sh
-. bin/_tag.sh
-
-if [ $# -eq 0 ]; then
-    tag="$(clean_head_root_tag)"
-elif [ $# -eq 1 ]; then
-    tag="${1:-}"
-else
-    echo "usage: $(basename $0) [tag]" >&2
+if [ $# -ne 0 ]; then
+    echo "no arguments allowed for $(basename $0), given: $@" >&2
     exit 64
 fi
+
+. bin/_docker.sh
+. bin/_tag.sh
 
 dockerfile=proxy/Dockerfile
 
 validate_proxy_deps_tag $dockerfile
 
 (
-    unset DOCKER_FORCE_BUILD
     bin/docker-build-base
     bin/docker-build-proxy-deps
 ) >/dev/null
 
-# Build release images by default
-docker_build . \
-    "$(docker_repo proxy)" \
-    "${tag}" \
-    $dockerfile \
-    --build-arg="RELEASE=${PROXY_RELEASE:-1}"
+docker_build proxy "$(head_root_tag)" $dockerfile --build-arg="RELEASE=${PROXY_RELEASE:-1}"

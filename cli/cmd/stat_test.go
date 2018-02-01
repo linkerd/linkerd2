@@ -8,15 +8,15 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/runconduit/conduit/pkg/k8s"
-
+	"github.com/runconduit/conduit/controller/api/public"
 	pb "github.com/runconduit/conduit/controller/gen/public"
+	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestRequestStatsFromApi(t *testing.T) {
 	t.Run("Returns string output containing the data returned by the API", func(t *testing.T) {
-		mockClient := &mockApiClient{}
+		mockClient := &public.MockConduitApiClient{}
 
 		podName := "pod-1"
 		metricDatapoints := []*pb.MetricDatapoint{
@@ -37,7 +37,7 @@ func TestRequestStatsFromApi(t *testing.T) {
 				Datapoints: metricDatapoints,
 			},
 		}
-		mockClient.metricResponseToReturn = &pb.MetricResponse{
+		mockClient.MetricResponseToReturn = &pb.MetricResponse{
 			Metrics: series,
 		}
 
@@ -52,8 +52,8 @@ func TestRequestStatsFromApi(t *testing.T) {
 	})
 
 	t.Run("Returns error if API call failed", func(t *testing.T) {
-		mockClient := &mockApiClient{}
-		mockClient.errorToReturn = errors.New("Expected")
+		mockClient := &public.MockConduitApiClient{}
+		mockClient.ErrorToReturn = errors.New("Expected")
 		output, err := requestStatsFromApi(mockClient, k8s.KubernetesPods)
 
 		if err == nil {

@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"time"
 
+	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/fields"
 	"k8s.io/client-go/tools/cache"
 )
+
+const podResource = "pods"
 
 type PodIndex struct {
 	indexer   *cache.Indexer
@@ -17,10 +19,14 @@ type PodIndex struct {
 }
 
 func NewPodIndex(clientset *kubernetes.Clientset, index cache.IndexFunc) (*PodIndex, error) {
-
 	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{"index": index})
 
-	podListWatcher := cache.NewListWatchFromClient(clientset.CoreV1().RESTClient(), "pods", v1.NamespaceAll, fields.Everything())
+	podListWatcher := cache.NewListWatchFromClient(
+		clientset.CoreV1().RESTClient(),
+		podResource,
+		v1.NamespaceAll,
+		fields.Everything(),
+	)
 
 	reflector := cache.NewReflector(
 		podListWatcher,
@@ -38,8 +44,9 @@ func NewPodIndex(clientset *kubernetes.Clientset, index cache.IndexFunc) (*PodIn
 	}, nil
 }
 
-func (p *PodIndex) Run() {
-	p.reflector.RunUntil(p.stopCh)
+func (p *PodIndex) Run() error {
+	go p.reflector.ListAndWatch(p.stopCh)
+	return newWatcher(p.reflector, podResource).run()
 }
 
 func (p *PodIndex) Stop() {
@@ -52,7 +59,7 @@ func (p *PodIndex) GetPod(key string) (*v1.Pod, error) {
 		return nil, err
 	}
 	if !exists {
-		return nil, fmt.Errorf("No pod exists for key %s", key)
+		return nil, fmt.Errorf("no pod exists for key %s", key)
 	}
 	pod, ok := item.(*v1.Pod)
 	if !ok {

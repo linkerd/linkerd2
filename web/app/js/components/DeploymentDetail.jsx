@@ -2,12 +2,12 @@ import _ from 'lodash';
 import BarChart from './BarChart.jsx';
 import ConduitSpinner from "./ConduitSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
-import HealthPane from './HealthPane.jsx';
 import { incompleteMeshMessage } from './util/CopyUtils.jsx';
 import Metric from './Metric.jsx';
 import React from 'react';
+import ResourceHealthOverview from './ResourceHealthOverview.jsx';
+import ResourceMetricsOverview from './ResourceMetricsOverview.jsx';
 import { rowGutter } from './util/Utils.js';
-import StatPane from './StatPane.jsx';
 import TabbedMetricsTable from './TabbedMetricsTable.jsx';
 import UpstreamDownstream from './UpstreamDownstream.jsx';
 import { ApiHelpers, urlsForResource } from './util/ApiHelpers.js';
@@ -16,7 +16,7 @@ import { emptyMetric, getPodsByDeployment, processRollupMetrics, processTimeseri
 import './../../css/deployment.css';
 import 'whatwg-fetch';
 
-export default class Deployment extends React.Component {
+export default class DeploymentDetail extends React.Component {
   constructor(props) {
     super(props);
     this.api = ApiHelpers(this.props.pathPrefix);
@@ -49,10 +49,11 @@ export default class Deployment extends React.Component {
       pollingInterval: 10000,
       metricsWindow: "10m",
       deploy: deployment,
-      metrics:[],
+      metrics: [],
       pods: [],
       upstreamMetrics: [],
       downstreamMetrics: [],
+      pathMetrics: [],
       pendingRequests: false,
       loaded: false,
       error: ''
@@ -71,20 +72,23 @@ export default class Deployment extends React.Component {
     let podRollupUrl = urls["pod"].url(this.state.deploy).rollup;
     let upstreamRollupUrl = urls["upstream_deployment"].url(this.state.deploy).rollup;
     let downstreamRollupUrl = urls["downstream_deployment"].url(this.state.deploy).rollup;
+    let pathMetricsUrl = urls["path"].url(this.state.deploy).rollup;
 
     let deployFetch = this.api.fetch(deployMetricsUrl);
     let podListFetch = this.api.fetchPods();
     let podRollupFetch = this.api.fetch(podRollupUrl);
     let upstreamFetch = this.api.fetch(upstreamRollupUrl);
     let downstreamFetch = this.api.fetch(downstreamRollupUrl);
+    let pathsFetch = this.api.fetch(pathMetricsUrl);
 
     // expose serverPromise for testing
-    this.serverPromise = Promise.all([deployFetch, podRollupFetch, upstreamFetch, downstreamFetch, podListFetch])
-      .then(([deployMetrics, podRollup, upstreamRollup, downstreamRollup, podList]) => {
+    this.serverPromise = Promise.all([deployFetch, podRollupFetch, upstreamFetch, downstreamFetch, podListFetch, pathsFetch])
+      .then(([deployMetrics, podRollup, upstreamRollup, downstreamRollup, podList, paths]) => {
         let tsByDeploy = processTimeseriesMetrics(deployMetrics.metrics, "targetDeploy");
         let podMetrics = processRollupMetrics(podRollup.metrics, "targetPod");
         let upstreamMetrics = processRollupMetrics(upstreamRollup.metrics, "sourceDeploy");
         let downstreamMetrics = processRollupMetrics(downstreamRollup.metrics, "targetDeploy");
+        let pathMetrics = processRollupMetrics(paths.metrics, "path");
 
         let deploy = _.find(getPodsByDeployment(podList.pods), ["name", this.state.deploy]);
         let totalRequestRate = _.sumBy(podMetrics, "requestRate");
@@ -97,6 +101,7 @@ export default class Deployment extends React.Component {
           deployTs: _.get(tsByDeploy, this.state.deploy, {}),
           upstreamMetrics: upstreamMetrics,
           downstreamMetrics: downstreamMetrics,
+          pathMetrics: pathMetrics,
           lastUpdated: Date.now(),
           pendingRequests: false,
           loaded: true,
@@ -125,29 +130,30 @@ export default class Deployment extends React.Component {
     let currentSuccessRate = _.get(_.last(srTs), "value");
 
     return [
-      <HealthPane
+      <ResourceHealthOverview
         key="deploy-health-pane"
-        entity={this.state.deploy}
-        entityType="deployment"
+        resourceName={this.state.deploy}
+        resourceType="deployment"
         currentSr={currentSuccessRate}
         upstreamMetrics={this.state.upstreamMetrics}
         downstreamMetrics={this.state.downstreamMetrics}
         deploymentAdded={this.state.added} />,
       _.isEmpty(this.state.deployTs) ? null :
-        <StatPane
+        <ResourceMetricsOverview
           key="stat-pane"
           lastUpdated={this.state.lastUpdated}
           timeseries={this.state.deployTs} />,
       this.renderMidsection(),
       <UpstreamDownstream
         key="deploy-upstream-downstream"
-        resource="deployment"
-        entity={this.state.deploy}
+        resourceType="deployment"
+        resourceName={this.state.deploy}
         lastUpdated={this.state.lastUpdated}
         upstreamMetrics={this.state.upstreamMetrics}
         downstreamMetrics={this.state.downstreamMetrics}
         metricsWindow={this.state.metricsWindow}
-        pathPrefix={this.props.pathPrefix} />
+        pathPrefix={this.props.pathPrefix} />,
+      this.renderPaths()
     ];
   }
 
@@ -179,7 +185,7 @@ export default class Deployment extends React.Component {
             }
             <TabbedMetricsTable
               resource="pod"
-              entity={this.state.deploy}
+              resourceName={this.state.deploy}
               metrics={podTableData}
               lastUpdated={this.state.lastUpdated}
               pathPrefix={this.props.pathPrefix}
@@ -199,6 +205,24 @@ export default class Deployment extends React.Component {
         </Col>
       </Row>
     );
+  }
+
+  renderPaths() {
+    return _.size(this.state.pathMetrics) === 0 ? null :
+      <div key="deployment-paths">
+        <div className="border-container border-neutral subsection-header">
+          <div className="border-container-content subsection-header">
+              Paths
+          </div>
+        </div>
+        <TabbedMetricsTable
+          resource="path"
+          metrics={this.state.pathMetrics}
+          hideSparklines={true}
+          lastUpdated={this.props.lastUpdated}
+          metricsWindow={this.props.metricsWindow}
+          pathPrefix={this.props.pathPrefix} />
+      </div>;
   }
 
   renderDeploymentTitle() {

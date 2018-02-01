@@ -2,10 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/runconduit/conduit/proxy-init/iptables"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 

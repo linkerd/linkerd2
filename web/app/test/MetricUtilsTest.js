@@ -41,9 +41,9 @@ describe('MetricUtils', () => {
           requestRate: 6.1,
           successRate: 0.3770491803278688,
           latency: {
-            P95: [ { label: 'P95', value: '953' } ],
-            P99: [ { label: 'P99', value: '990' } ],
-            P50: [ { label: 'P50', value: '537' } ],
+            P95: 953,
+            P99: 990,
+            P50: 537
           },
           added: true
         }

@@ -36,11 +36,12 @@ export const urlsForResource = (pathPrefix, metricsWindow) => {
     "deployment": {
       groupBy: "targetDeploy",
       url: (deploy = null) => {
+        let rollupUrl = !deploy ? metricsUrl : `${metricsUrl}&target_deploy=${deploy}`;
         let timeseriesUrl = !deploy ? `${metricsUrl}&timeseries=true` :
           `${metricsUrl}&timeseries=true&target_deploy=${deploy}`;
         return {
           ts: timeseriesUrl,
-          rollup: metricsUrl
+          rollup: rollupUrl
         };
       }
     },
@@ -101,6 +102,19 @@ export const urlsForResource = (pathPrefix, metricsWindow) => {
         return {
           ts: downstreamTimeseriesUrl,
           rollup: downstreamRollupUrl
+        };
+      }
+    },
+    "path": {
+      // all paths (default), or all paths of a given deploy if specified
+      groupBy: "path",
+      url: (deploy = null) => {
+        let pathRollupUrl = `${metricsUrl}&aggregation=path${ !deploy ? "" : `&target_deploy=${deploy}`}`;
+        let pathTsUrl = `${pathRollupUrl}&timeseries=true`;
+
+        return {
+          ts: pathTsUrl,
+          rollup: pathRollupUrl
         };
       }
     }

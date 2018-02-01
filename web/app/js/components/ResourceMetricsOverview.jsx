@@ -1,24 +1,24 @@
 import _ from 'lodash';
 import LatencyOverview from './LatencyOverview.jsx';
 import React from 'react';
+import ResourceOverviewMetric from './ResourceOverviewMetric.jsx';
 import { rowGutter } from './util/Utils.js';
-import StatPaneStat from './StatPaneStat.jsx';
 import { Col, Row } from 'antd';
 
-export default class StatPane extends React.Component {
+export default class ResourceMetricsOverview extends React.Component {
   render() {
     return (
       <div>
         <Row gutter={rowGutter}>
           <Col span={8}>
-            <StatPaneStat
+            <ResourceOverviewMetric
               name="Current request rate"
               metric="REQUEST_RATE"
               lastUpdated={this.props.lastUpdated}
               timeseries={_.get(this.props.timeseries, "REQUEST_RATE", [])} />
           </Col>
           <Col span={8}>
-            <StatPaneStat
+            <ResourceOverviewMetric
               name="Current success rate"
               metric="SUCCESS_RATE"
               lastUpdated={this.props.lastUpdated}

@@ -4,11 +4,11 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/runconduit/conduit/pkg/healthcheck"
+	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 )
 
 type MockKubeApi struct {
-	SelfCheckResultsToReturn              []healthcheck.CheckResult
+	SelfCheckResultsToReturn              []*healthcheckPb.CheckResult
 	UrlForNamespaceReceived               string
 	UrlExtraPathStartingWithSlashReceived string
 	UrlForUrlToReturn                     *url.URL
@@ -26,13 +26,12 @@ func (m *MockKubeApi) NewClient() (*http.Client, error) {
 	return m.NewClientClientToReturn, m.ErrorToReturn
 }
 
-func (m *MockKubeApi) SelfCheck() ([]healthcheck.CheckResult, error) {
-	return m.SelfCheckResultsToReturn, m.ErrorToReturn
+func (m *MockKubeApi) SelfCheck() []*healthcheckPb.CheckResult {
+	return m.SelfCheckResultsToReturn
 }
 
 type MockKubectl struct {
-	SelfCheckResultsToReturn []healthcheck.CheckResult
-	ErrorToReturn            error
+	SelfCheckResultsToReturn []*healthcheckPb.CheckResult
 }
 
 func (m *MockKubectl) Version() ([3]int, error) { return [3]int{}, nil }
@@ -47,6 +46,6 @@ func (m *MockKubectl) UrlFor(namespace string, extraPathStartingWithSlash string
 
 func (m *MockKubectl) ProxyPort() int { return -666 }
 
-func (m *MockKubectl) SelfCheck() ([]healthcheck.CheckResult, error) {
-	return m.SelfCheckResultsToReturn, m.ErrorToReturn
+func (m *MockKubectl) SelfCheck() []*healthcheckPb.CheckResult {
+	return m.SelfCheckResultsToReturn
 }

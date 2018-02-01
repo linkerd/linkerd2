@@ -55,6 +55,7 @@ fn inbound_sends_telemetry() {
     assert_eq!(stream.frames_sent, 1);
 }
 
+
 #[test]
 fn inbound_aggregates_telemetry_over_several_requests() {
     let _ = env_logger::init();
@@ -213,3 +214,4 @@ fn records_latency_statistics() {
 
 #[test]
 fn telemetry_report_errors_are_ignored() {}
+

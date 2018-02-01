@@ -18,14 +18,15 @@ jobs:
 
     # Compile the application and run tests.
     - stage: test
-
       language: rust
       rust: stable
       cache:
         cargo: true
+      install:
+        - cargo fetch --locked
       script:
-        - cargo check
-        - cargo test
+        - cargo check --frozen
+        - cargo test --frozen
 
     - language: go
       go: 1.9
@@ -43,6 +44,7 @@ jobs:
         - ./bin/protoc-go.sh
         - go test -v ./...
         - go vet ./...
+
     - language: node_js
       node_js:
         - "8"
@@ -56,6 +58,19 @@ jobs:
         - cd web/app && yarn && yarn webpack
       script:
         - yarn karma start --single-run
+
+    - language: generic
+      script:
+        - |
+          (
+            . bin/_tag.sh
+            for f in $( grep -lR --include=Dockerfile\* go-deps: . ) ; do
+              validate_go_deps_tag $f
+            done
+            for f in $( grep -lR --include=Dockerfile\* proxy-deps: . ) ; do
+              validate_proxy_deps_tag $f
+            done
+          )
 
     # Push container images to Google Container Registry.
     - stage: docker-deploy
@@ -106,13 +121,14 @@ jobs:
       before_script:
         - gcloud docker --authorize-only
         - bin/docker-pull-deps
+        - bin/docker-pull master
         - |
           export CONDUIT_TAG=$(. bin/_tag.sh ; clean_head_root_tag)
           echo "CONDUIT_TAG=${CONDUIT_TAG}"
         - export PROXY_RELEASE=1 BUILD_DEBUG=1 DOCKER_TRACE=1
 
       script:
-        - bin/docker-build $CONDUIT_TAG
+        - bin/docker-build
 
       after_success:
         - bin/docker-push-deps

@@ -3,12 +3,10 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
 
-	"github.com/runconduit/conduit/pkg/k8s"
-	"github.com/runconduit/conduit/pkg/shell"
-
-	"github.com/runconduit/conduit/controller"
 	pb "github.com/runconduit/conduit/controller/gen/public"
+	"github.com/runconduit/conduit/pkg/version"
 	"github.com/spf13/cobra"
 )
 
@@ -19,25 +17,19 @@ var versionCmd = &cobra.Command{
 	Short: "Print the client and server version information",
 	Long:  "Print the client and server version information.",
 	Args:  cobra.NoArgs,
-	Run: exitSilentlyOnError(func(cmd *cobra.Command, args []string) error {
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("Client version: %s\n", version.Version)
 
-		kubeApi, err := k8s.NewK8sAPi(shell.NewUnixShell(), kubeconfigPath, apiAddr)
+		client, err := newPublicAPIClient()
 		if err != nil {
-			return err
+			fmt.Fprintf(os.Stderr, "Error connecting to server: %s\n", err)
+			return
 		}
 
-		client, err := newApiClient(kubeApi)
-		if err != nil {
-			return err
-		}
+		fmt.Printf("Server version: %s\n", getServerVersion(client))
 
-		versions := getVersions(client)
-
-		fmt.Printf("Client version: %s\n", versions.Client)
-		fmt.Printf("Server version: %s\n", versions.Server)
-
-		return err
-	}),
+		return
+	},
 }
 
 func init() {
@@ -45,24 +37,11 @@ func init() {
 	addControlPlaneNetworkingArgs(versionCmd)
 }
 
-type versions struct {
-	Server string
-	Client string
-}
-
-func getVersions(client pb.ApiClient) versions {
+func getServerVersion(client pb.ApiClient) string {
 	resp, err := client.Version(context.Background(), &pb.Empty{})
 	if err != nil {
-		return versions{
-			Client: controller.Version,
-			Server: DefaultVersionString,
-		}
+		return DefaultVersionString
 	}
 
-	versions := versions{
-		Server: resp.GetReleaseVersion(),
-		Client: controller.Version,
-	}
-
-	return versions
+	return resp.GetReleaseVersion()
 }

@@ -2,8 +2,8 @@
 
 set -eu
 
-git_sha() {
-    git rev-parse "$1" | cut -c 1-8
+git_sha_head() {
+    git rev-parse --short=8 HEAD
 }
 
 proxy_deps_sha() {
@@ -14,22 +14,33 @@ go_deps_sha() {
     cat Gopkg.lock Dockerfile-go-deps | shasum - | awk '{print $1}' |cut -c 1-8
 }
 
-dir_tag() {
-    dir="$1"
-    echo "git-$(git log -n 1 --format="%h" "$dir")"
+clean_head() {
+    git diff-index --quiet HEAD --
 }
 
-clean_head_root_tag() {
-    if git diff-index --quiet HEAD -- ; then
-        echo "git-$(git_sha HEAD)"
+named_tag() {
+    echo "$(git name-rev --tags --name-only $(git_sha_head))"
+}
+
+head_root_tag() {
+    if clean_head ; then
+        clean_head_root_tag
     else
-        echo "Commit unstaged changes or set an explicit build tag." >&2
-        exit 3
+        echo "dev-$(git_sha_head)-$USER"
     fi
 }
 
-master_root_tag() {
-    echo "git-$(git_sha master)"
+clean_head_root_tag() {
+    if clean_head ; then
+        if [ "$(named_tag)" != "undefined" ]; then
+            echo "$(named_tag)"
+        else
+            echo "git-$(git_sha_head)"
+        fi
+    else
+        echo "Commit unstaged changes." >&2
+        exit 3
+    fi
 }
 
 validate_tag() {
@@ -48,7 +59,7 @@ validate_tag() {
         echo "Tag in "$file" does not match source tree:"
         echo $dockerfile_tag" ("$file")"
         echo $deps_tag" (source)"
-        exit 3
+        return 3
     fi
 }
 

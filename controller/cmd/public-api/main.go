@@ -8,12 +8,12 @@ import (
 	"os/signal"
 	"syscall"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/runconduit/conduit/controller/api/public"
 	"github.com/runconduit/conduit/controller/tap"
 	"github.com/runconduit/conduit/controller/telemetry"
+	"github.com/runconduit/conduit/pkg/version"
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -21,7 +21,18 @@ func main() {
 	metricsAddr := flag.String("metrics-addr", ":9995", "address to serve scrapable metrics on")
 	telemetryAddr := flag.String("telemetry-addr", ":8087", "address of telemetry service")
 	tapAddr := flag.String("tap-addr", ":8088", "address of tap service")
+	logLevel := flag.String("log-level", log.InfoLevel.String(), "log level, must be one of: panic, fatal, error, warn, info, debug")
+	printVersion := version.VersionFlag()
 	flag.Parse()
+
+	// set global log level
+	level, err := log.ParseLevel(*logLevel)
+	if err != nil {
+		log.Fatalf("invalid log-level: %s", *logLevel)
+	}
+	log.SetLevel(level)
+
+	version.MaybePrintVersionAndExit(*printVersion)
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)

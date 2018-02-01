@@ -4,16 +4,26 @@ import ConduitSpinner from "./ConduitSpinner.jsx";
 import DeploymentSummary from './DeploymentSummary.jsx';
 import ErrorBanner from './ErrorBanner.jsx';
 import React from 'react';
-import { rowGutter } from './util/Utils.js';
+import ScatterPlot from './ScatterPlot.jsx';
 import TabbedMetricsTable from './TabbedMetricsTable.jsx';
 import { ApiHelpers, urlsForResource } from './util/ApiHelpers.js';
 import { Col, Row } from 'antd';
 import { emptyMetric, getPodsByDeployment, processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
+import { metricToFormatter, rowGutter } from './util/Utils.js';
 import './../../css/deployments.css';
 import 'whatwg-fetch';
 
 const maxTsToFetch = 15; // Beyond this, stop showing sparklines in table
-export default class Deployments extends React.Component {
+let nodeStats = (description, node) => (
+  <div>
+    <div className="title">{description}:</div>
+    <div>
+      {node.name} ({metricToFormatter["LATENCY"](_.get(node, ["latency", "P99"]))})
+    </div>
+  </div>
+);
+
+export default class DeploymentsList extends React.Component {
   constructor(props) {
     super(props);
     this.api = ApiHelpers(this.props.pathPrefix);
@@ -63,7 +73,7 @@ export default class Deployments extends React.Component {
     let rollupPath = `${this.props.pathPrefix}/api/metrics?window=${this.state.metricsWindow}`;
 
     let rollupRequest = this.api.fetch(rollupPath);
-    let podsRequest = this.api.fetchPods(this.props.pathPrefix);
+    let podsRequest = this.api.fetchPods();
 
     // expose serverPromise for testing
     this.serverPromise = Promise.all([rollupRequest, podsRequest])
@@ -128,8 +138,7 @@ export default class Deployments extends React.Component {
 
     return (
       <div className="clearfix">
-        <div className="subsection-header">Least-healthy deployments</div>
-        {_.isEmpty(this.state.metrics) ? <div className="no-data-msg">No data</div> : null}
+        {_.isEmpty(leastHealthyDeployments) ? null : <div className="subsection-header">Least-healthy deployments</div>}
         <Row gutter={rowGutter}>
           {
             _.map(leastHealthyDeployments, deployment => {
@@ -144,6 +153,9 @@ export default class Deployments extends React.Component {
             })
           }
         </Row>
+        {/* <Row gutter={rowGutter}>
+          { this.renderScatterplot() }
+        </Row> */}
         <div className="deployments-list">
           <TabbedMetricsTable
             resource="deployment"
@@ -155,6 +167,44 @@ export default class Deployments extends React.Component {
         </div>
       </div>
     );
+  }
+
+  renderScatterplot() {
+    let scatterplotData = _.reduce(this.state.metrics, (mem, datum) => {
+      if (!_.isNil(datum.successRate) && !_.isNil(datum.latency)) {
+        mem.push(datum);
+      }
+      return mem;
+    }, []);
+
+    let slowestNode = _.maxBy(scatterplotData, 'latency.P99');
+    let fastestNode = _.minBy(scatterplotData, 'latency.P99');
+
+    if (_.isEmpty(scatterplotData)) {
+      return null;
+    }
+
+    return (<div className="deployments-scatterplot">
+      <div className="scatterplot-info">
+        <div className="subsection-header">Success rate vs p99 latency</div>
+      </div>
+      <Row gutter={rowGutter}>
+        <Col span={8}>
+          <div className="scatterplot-display">
+            <div className="extremal-latencies">
+              { !fastestNode ? null : nodeStats("Least latency", fastestNode) }
+              { !slowestNode ? null : nodeStats("Most latency", slowestNode) }
+            </div>
+          </div>
+        </Col>
+        <Col span={16}><div className="scatterplot-chart">
+          <ScatterPlot
+            data={scatterplotData}
+            lastUpdated={this.state.lastUpdated}
+            containerClassName="scatterplot-chart" />
+        </div></Col>
+      </Row>
+    </div>);
   }
 
   render() {

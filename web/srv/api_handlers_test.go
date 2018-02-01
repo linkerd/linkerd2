@@ -9,10 +9,18 @@ import (
 	"testing"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/runconduit/conduit/controller/api/public"
+	pb "github.com/runconduit/conduit/controller/gen/public"
 )
 
 func TestHandleApiVersion(t *testing.T) {
-	var mockApiClient MockApiClient
+	mockApiClient := &public.MockConduitApiClient{
+		VersionInfoToReturn: &pb.VersionInfo{
+			GoVersion:      "the best one",
+			BuildDate:      "never",
+			ReleaseVersion: "0.3.3",
+		},
+	}
 	server := FakeServer()
 
 	handler := &handler{
@@ -48,7 +56,9 @@ func TestHandleApiVersion(t *testing.T) {
 }
 
 func TestHandleApiMetrics(t *testing.T) {
-	var mockApiClient MockApiClient
+	mockApiClient := &public.MockConduitApiClient{
+		MetricResponseToReturn: &pb.MetricResponse{},
+	}
 	server := FakeServer()
 
 	handler := &handler{

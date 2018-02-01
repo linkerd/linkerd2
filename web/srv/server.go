@@ -11,7 +11,6 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/web/util/filesonly"
 	log "github.com/sirupsen/logrus"
@@ -93,6 +92,7 @@ func NewServer(addr, templateDir, staticDir, uuid, webpackDevServer string, relo
 	server.router.GET("/pod", handler.handleIndex)
 	server.router.GET("/deployment", handler.handleIndex)
 	server.router.GET("/deployments", handler.handleIndex)
+	server.router.GET("/paths", handler.handleIndex)
 	server.router.GET("/servicemesh", handler.handleIndex)
 	server.router.GET("/routes", handler.handleIndex)
 	server.router.ServeFiles(

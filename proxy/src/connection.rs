@@ -1,3 +1,4 @@
+use bytes::Buf;
 use futures::*;
 use std;
 use std::io;
@@ -8,7 +9,7 @@ use tokio_core::reactor::Handle;
 use tokio_io::{AsyncRead, AsyncWrite};
 
 use config::Addr;
-use transport;
+use transport::GetOriginalDst;
 
 pub type PlaintextSocket = tokio_core::net::TcpStream;
 
@@ -97,12 +98,18 @@ impl Future for Connecting {
 // ===== impl Connection =====
 
 impl Connection {
-    pub fn original_dst_addr(&self) -> Option<SocketAddr> {
-        transport::get_original_dst(self.socket())
+    pub fn original_dst_addr<T: GetOriginalDst>(&self, get: &T) -> Option<SocketAddr> {
+        get.get_original_dst(self.socket())
     }
 
     pub fn local_addr(&self) -> Result<SocketAddr, std::io::Error> {
         self.socket().local_addr()
+    }
+
+    pub fn peek_future<T: AsMut<[u8]>>(self, buf: T) -> Peek<T> {
+        Peek {
+            inner: Some((self, buf))
+        }
     }
 
     // This must never be made public so that in the future `Connection` can
@@ -128,8 +135,15 @@ impl io::Read for Connection {
     }
 }
 
-// TODO: impl specialty functions
-impl AsyncRead for Connection {}
+impl AsyncRead for Connection {
+    unsafe fn prepare_uninitialized_buffer(&self, buf: &mut [u8]) -> bool {
+        use self::Connection::*;
+
+        match *self {
+            Plain(ref t) => t.prepare_uninitialized_buffer(buf),
+        }
+    }
+}
 
 impl io::Write for Connection {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
@@ -149,13 +163,45 @@ impl io::Write for Connection {
     }
 }
 
-// TODO: impl specialty functions
 impl AsyncWrite for Connection {
     fn shutdown(&mut self) -> Poll<(), io::Error> {
         use self::Connection::*;
 
         match *self {
             Plain(ref mut t) => t.shutdown(),
+        }
+    }
+
+    fn write_buf<B: Buf>(&mut self, buf: &mut B) -> Poll<usize, io::Error> {
+        use self::Connection::*;
+
+        match *self {
+            Plain(ref mut t) => t.write_buf(buf),
+        }
+    }
+}
+
+// impl Peek
+
+pub struct Peek<T> {
+    inner: Option<(Connection, T)>,
+}
+
+impl<T: AsMut<[u8]>> Future for Peek<T> {
+    type Item = (Connection, T, usize);
+    type Error = std::io::Error;
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        let (conn, mut buf) = self.inner.take().expect("polled after completed");
+        match conn.socket().peek(buf.as_mut()) {
+            Ok(n) => Ok(Async::Ready((conn, buf, n))),
+            Err(e) => match e.kind() {
+                std::io::ErrorKind::WouldBlock => {
+                    self.inner = Some((conn, buf));
+                    Ok(Async::NotReady)
+                },
+                _ => Err(e)
+            },
         }
     }
 }

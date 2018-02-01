@@ -13,5 +13,5 @@ fn main() {
             process::exit(64)
         }
     };
-    conduit_proxy::Main::new(config).run();
+    conduit_proxy::Main::new(config, conduit_proxy::SoOriginalDst).run();
 }

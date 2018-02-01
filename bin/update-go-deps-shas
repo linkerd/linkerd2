@@ -1,0 +1,11 @@
+#!/bin/sh
+
+set -eu
+
+# Updates the tag for `runconduit/go-deps` across all Dockerfiles in this repository.
+
+sha=$(. bin/_tag.sh ; go_deps_sha)
+
+for f in $( grep -lR --include=Dockerfile\* go-deps: . ) ; do
+    sed -E -i'' -e "s|runconduit/go-deps:[^ ]+|runconduit/go-deps:${sha}|" "$f"
+done

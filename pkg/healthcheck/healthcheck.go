@@ -1,32 +1,14 @@
 package healthcheck
 
-import log "github.com/sirupsen/logrus"
-
-type CheckStatus string
-
-const (
-	CheckOk     = CheckStatus("OK")
-	CheckFailed = CheckStatus("FAIL")
-	CheckError  = CheckStatus("ERROR")
+import (
+	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 )
 
-type CheckResult struct {
-	SubsystemName    string
-	CheckDescription string
-	Status           CheckStatus
-	NextSteps        string
-}
-
-type Check struct {
-	Results       []CheckResult
-	OverallStatus CheckStatus
-}
-
 type StatusChecker interface {
-	SelfCheck() ([]CheckResult, error)
+	SelfCheck() []*healthcheckPb.CheckResult
 }
 
-type CheckObserver func(result CheckResult)
+type CheckObserver func(result *healthcheckPb.CheckResult)
 
 type HealthChecker struct {
 	subsystemsToCheck []StatusChecker
@@ -36,35 +18,25 @@ func (hC *HealthChecker) Add(subsystemChecker StatusChecker) {
 	hC.subsystemsToCheck = append(hC.subsystemsToCheck, subsystemChecker)
 }
 
-func (hC *HealthChecker) PerformCheck(observer CheckObserver) Check {
-	if observer == nil {
-		observer = func(_ CheckResult) {}
-	}
-
-	check := Check{
-		Results:       make([]CheckResult, 0),
-		OverallStatus: CheckOk,
-	}
+func (hC *HealthChecker) PerformCheck(observer CheckObserver) healthcheckPb.CheckStatus {
+	var overallStatus healthcheckPb.CheckStatus
 
 	for _, checker := range hC.subsystemsToCheck {
-		results, err := checker.SelfCheck()
-		if err != nil {
-			log.Errorf("Error checking [%s]: %s", checker, err)
-			check.OverallStatus = CheckError
-			continue
-		}
-		for _, singleResult := range results {
-			check.Results = append(check.Results, singleResult)
-			checkResultContainsError := singleResult.Status == CheckError
-			shouldOverrideStatus := singleResult.Status == CheckFailed && check.OverallStatus == CheckOk
+		for _, singleResult := range checker.SelfCheck() {
+			checkResultContainsError := singleResult.Status == healthcheckPb.CheckStatus_ERROR
+			shouldOverrideStatus := singleResult.Status == healthcheckPb.CheckStatus_FAIL && overallStatus == healthcheckPb.CheckStatus_OK
 
 			if checkResultContainsError || shouldOverrideStatus {
-				check.OverallStatus = singleResult.Status
+				overallStatus = singleResult.Status
 			}
-			observer(singleResult)
+
+			if observer != nil {
+				observer(singleResult)
+			}
 		}
 	}
-	return check
+
+	return overallStatus
 }
 
 func MakeHealthChecker() *HealthChecker {

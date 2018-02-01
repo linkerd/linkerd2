@@ -16,7 +16,9 @@ import (
 	"github.com/runconduit/conduit/controller/util"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
-	"k8s.io/client-go/pkg/api/v1"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"k8s.io/api/core/v1"
 )
 
 var tapInterval = 10 * time.Second
@@ -41,7 +43,7 @@ func (s *server) Tap(req *public.TapRequest, stream pb.Tap_TapServer) error {
 		targetName = target.Pod
 		pod, err := s.pods.GetPod(target.Pod)
 		if err != nil {
-			return err
+			return status.Errorf(codes.NotFound, err.Error())
 		}
 		pods = []*v1.Pod{pod}
 	case *public.TapRequest_Deployment:
@@ -325,23 +327,33 @@ func NewServer(addr string, tapPort uint, kubeconfig string) (*grpc.Server, net.
 	if err != nil {
 		return nil, nil, err
 	}
-	replicaSets.Run()
+	err = replicaSets.Run()
+	if err != nil {
+		return nil, nil, err
+	}
 
 	// index pods by deployment
 	deploymentIndex := func(obj interface{}) ([]string, error) {
 		pod, ok := obj.(*v1.Pod)
 		if !ok {
-			return nil, fmt.Errorf("Object is not a Pod")
+			return nil, fmt.Errorf("object is not a Pod")
 		}
 		deployment, err := replicaSets.GetDeploymentForPod(pod)
-		return []string{deployment}, err
+		if err != nil {
+			log.Debugf("Cannot get deployment for pod %s: %s", pod.Name, err)
+			return []string{}, nil
+		}
+		return []string{deployment}, nil
 	}
 
 	pods, err := k8s.NewPodIndex(clientSet, deploymentIndex)
 	if err != nil {
 		return nil, nil, err
 	}
-	pods.Run()
+	err = pods.Run()
+	if err != nil {
+		return nil, nil, err
+	}
 
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {

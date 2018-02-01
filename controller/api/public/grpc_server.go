@@ -8,11 +8,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/runconduit/conduit/controller"
 	"github.com/runconduit/conduit/controller/api/util"
+	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 	tapPb "github.com/runconduit/conduit/controller/gen/controller/tap"
 	telemPb "github.com/runconduit/conduit/controller/gen/controller/telemetry"
 	pb "github.com/runconduit/conduit/controller/gen/public"
+	"github.com/runconduit/conduit/pkg/version"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )
 
@@ -32,19 +34,20 @@ type (
 )
 
 const (
-	countQuery         = "sum(irate(responses_total{%s}[%s])) by (%s)"
-	countHttpQuery     = "sum(irate(http_requests_total{%s}[%s])) by (%s)"
-	countGrpcQuery     = "sum(irate(grpc_server_handled_total{%s}[%s])) by (%s)"
-	latencyQuery       = "sum(irate(response_latency_ms_bucket{%s}[%s])) by (%s)"
-	quantileQuery      = "histogram_quantile(%s, %s)"
-	defaultVectorRange = "1m"
-
-	targetPodLabel    = "target"
-	targetDeployLabel = "target_deployment"
-	sourcePodLabel    = "source"
-	sourceDeployLabel = "source_deployment"
-	jobLabel          = "job"
-	pathLabel         = "path"
+	countQuery                      = "sum(irate(responses_total{%s}[%s])) by (%s)"
+	countHttpQuery                  = "sum(irate(http_requests_total{%s}[%s])) by (%s)"
+	countGrpcQuery                  = "sum(irate(grpc_server_handled_total{%s}[%s])) by (%s)"
+	latencyQuery                    = "sum(irate(response_latency_ms_bucket{%s}[%s])) by (%s)"
+	quantileQuery                   = "histogram_quantile(%s, %s)"
+	defaultVectorRange              = "1m"
+	targetPodLabel                  = "target"
+	targetDeployLabel               = "target_deployment"
+	sourcePodLabel                  = "source"
+	sourceDeployLabel               = "source_deployment"
+	jobLabel                        = "job"
+	pathLabel                       = "path"
+	TelemetryClientSubsystemName    = "telemetry"
+	TelemetryClientCheckDescription = "control plane can use telemetry service"
 )
 
 var (
@@ -117,7 +120,7 @@ func (s *grpcServer) Stat(ctx context.Context, req *pb.MetricRequest) (*pb.Metri
 }
 
 func (_ *grpcServer) Version(ctx context.Context, req *pb.Empty) (*pb.VersionInfo, error) {
-	return &pb.VersionInfo{GoVersion: runtime.Version(), ReleaseVersion: controller.Version, BuildDate: "1970-01-01T00:00:00Z"}, nil
+	return &pb.VersionInfo{GoVersion: runtime.Version(), ReleaseVersion: version.Version, BuildDate: "1970-01-01T00:00:00Z"}, nil
 }
 
 func (s *grpcServer) ListPods(ctx context.Context, req *pb.Empty) (*pb.ListPodsResponse, error) {
@@ -128,11 +131,36 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.Empty) (*pb.ListPodsR
 	return resp, nil
 }
 
+func (s *grpcServer) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckRequest) (*healthcheckPb.SelfCheckResponse, error) {
+	telemetryClientCheck := &healthcheckPb.CheckResult{
+		SubsystemName:    TelemetryClientSubsystemName,
+		CheckDescription: TelemetryClientCheckDescription,
+		Status:           healthcheckPb.CheckStatus_OK,
+	}
+
+	_, err := s.telemetryClient.ListPods(ctx, &telemPb.ListPodsRequest{})
+	if err != nil {
+		telemetryClientCheck.Status = healthcheckPb.CheckStatus_ERROR
+		telemetryClientCheck.FriendlyMessageToUser = fmt.Sprintf("Error talking to telemetry service from control plane: %s", err.Error())
+	}
+
+	//TODO: check other services
+
+	response := &healthcheckPb.SelfCheckResponse{
+		Results: []*healthcheckPb.CheckResult{
+			telemetryClientCheck,
+		},
+	}
+	return response, nil
+}
+
 // Pass through to tap service
 func (s *grpcServer) Tap(req *pb.TapRequest, stream pb.Api_TapServer) error {
 	tapStream := stream.(tapServer)
-	rsp, err := s.tapClient.Tap(tapStream.Context(), req)
+	tapClient, err := s.tapClient.Tap(tapStream.Context(), req)
 	if err != nil {
+		//TODO: why not return the error?
+		log.Errorf("Unexpected error tapping [%v]: %v", req, err)
 		return nil
 	}
 	for {
@@ -140,7 +168,7 @@ func (s *grpcServer) Tap(req *pb.TapRequest, stream pb.Api_TapServer) error {
 		case <-tapStream.Context().Done():
 			return nil
 		default:
-			event, err := rsp.Recv()
+			event, err := tapClient.Recv()
 			if err != nil {
 				return err
 			}
