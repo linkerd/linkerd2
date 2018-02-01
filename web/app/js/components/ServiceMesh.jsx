@@ -54,23 +54,9 @@ export default class ServiceMesh extends React.Component {
     super(props);
     this.loadFromServer = this.loadFromServer.bind(this);
     this.handleApiError = this.handleApiError.bind(this);
-    this.onMetricsWindowChange = this.onMetricsWindowChange.bind(this);
     this.api = this.props.api;
 
-    this.state = this.initialState();
-  }
-
-  componentDidMount() {
-    this.loadFromServer();
-    this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
-  }
-
-  componentWillUnmount() {
-    window.clearInterval(this.timerId);
-  }
-
-  initialState() {
-    return {
+    this.state = {
       pollingInterval: 2000,
       metrics: [],
       deploys: [],
@@ -80,6 +66,15 @@ export default class ServiceMesh extends React.Component {
       loaded: false,
       error: ''
     };
+  }
+
+  componentDidMount() {
+    this.loadFromServer();
+    this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
+  }
+
+  componentWillUnmount() {
+    window.clearInterval(this.timerId);
   }
 
   loadFromServer() {
@@ -327,14 +322,6 @@ export default class ServiceMesh extends React.Component {
     }
   }
 
-  onMetricsWindowChange() {
-    let initialState = this.initialState();
-    let currentState = {
-      pendingRequests: this.state.pendingRequests // let pending requests complete, until we have a way of cancelling them
-    };
-    this.setState(_.merge({}, initialState, currentState));
-  }
-
   render() {
     return (
       <div className="page-content">
@@ -344,7 +331,6 @@ export default class ServiceMesh extends React.Component {
             <PageHeader
               header="Service mesh overview"
               hideButtons={this.proxyCount() === 0}
-              onMetricsWindowChange={this.onMetricsWindowChange}
               api={this.api} />
             {this.renderOverview()}
             {this.renderControlPlane()}

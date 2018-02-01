@@ -22,7 +22,6 @@ export default class DeploymentDetail extends React.Component {
     this.api = this.props.api;
     this.handleApiError = this.handleApiError.bind(this);
     this.loadFromServer = this.loadFromServer.bind(this);
-    this.onMetricsWindowChange = this.onMetricsWindowChange.bind(this);
     this.state = this.initialState(this.props.location);
   }
 
@@ -236,14 +235,6 @@ export default class DeploymentDetail extends React.Component {
     );
   }
 
-  onMetricsWindowChange() {
-    let initialState = this.initialState(this.props.location);
-    let currentState = {
-      pendingRequests: this.state.pendingRequests // let pending requests complete, until we have a way of cancelling them
-    };
-    this.setState(_.merge({}, initialState, currentState));
-  }
-
   render() {
     return (
       <div className="page-content deployment-detail">
@@ -254,7 +245,6 @@ export default class DeploymentDetail extends React.Component {
               subHeaderTitle="Deployment detail"
               subHeader={this.renderDeploymentTitle()}
               subMessage={incompleteMeshMessage(this.state.deploy)}
-              onMetricsWindowChange={this.onMetricsWindowChange}
               api={this.api} />
 
             {this.renderSections()}

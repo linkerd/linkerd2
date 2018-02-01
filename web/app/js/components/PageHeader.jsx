@@ -15,7 +15,6 @@ export default class PageHeader extends React.Component {
     let window = e.target.value;
     this.props.api.setMetricsWindow(window);
     this.setState({selectedWindow: window});
-    _.isNil(this.props.onMetricsWindowChange) ? null : this.props.onMetricsWindowChange();
   }
 
   render() {
