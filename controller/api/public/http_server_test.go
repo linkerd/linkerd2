@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"reflect"
 	"testing"
@@ -65,13 +66,13 @@ func TestServer(t *testing.T) {
 		grpcServer: mockGrpcServer,
 	}
 
-	httpServer := &http.Server{
-		Addr:    "localhost:8889",
-		Handler: handler,
+	listener, err := net.Listen("tcp", "localhost:8889")
+	if err != nil {
+		t.Fatalf("Could not start listener: %v", err)
 	}
 
 	go func() {
-		err := httpServer.ListenAndServe()
+		err := http.Serve(listener, handler)
 		if err != nil {
 			t.Fatalf("Could not start server: %v", err)
 		}
