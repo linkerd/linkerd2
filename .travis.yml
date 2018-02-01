@@ -134,7 +134,7 @@ jobs:
         - bin/docker-push-deps
         - bin/docker-push $CONDUIT_TAG
         - bin/docker-retag-all $CONDUIT_TAG master && bin/docker-push master
-        - target/cli/linux/conduit install --version=$CONDUIT_TAG |tee conduit.yml
+        - target/cli/linux/conduit install --conduit-version=$CONDUIT_TAG |tee conduit.yml
         - kubectl -n conduit apply -f conduit.yml --prune --selector='conduit.io/plane=control'
 
 notifications:
