@@ -28,6 +28,7 @@ var (
 	ignoreOutboundPorts           []uint
 	proxyControlPort              uint
 	proxyAPIPort                  uint
+	proxyLogLevel                 string
 	conduitCreatedByAnnotation    = "conduit.io/created-by"
 	conduitProxyVersionAnnotation = "conduit.io/proxy-version"
 	conduitControlLabel           = "conduit.io/controller"
@@ -259,7 +260,7 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec) enhancedPodTemplateSpec {
 			},
 		},
 		Env: []v1.EnvVar{
-			v1.EnvVar{Name: "CONDUIT_PROXY_LOG", Value: "warn,conduit_proxy=info"},
+			v1.EnvVar{Name: "CONDUIT_PROXY_LOG", Value: proxyLogLevel},
 			v1.EnvVar{
 				Name:  "CONDUIT_PROXY_CONTROL_URL",
 				Value: fmt.Sprintf("tcp://proxy-api.%s.svc.cluster.local:%d", controlPlaneNamespace, proxyAPIPort),
@@ -386,4 +387,5 @@ func init() {
 	injectCmd.PersistentFlags().UintSliceVar(&ignoreOutboundPorts, "skip-outbound-ports", nil, "outbound ports that should skip the proxy")
 	injectCmd.PersistentFlags().UintVar(&proxyControlPort, "control-port", 4190, "proxy port to use for control")
 	injectCmd.PersistentFlags().UintVar(&proxyAPIPort, "api-port", 8086, "port where the Conduit controller is running")
+	injectCmd.PersistentFlags().StringVar(&proxyLogLevel, "proxy-log-level", "warn,conduit_proxy=info", "log level for the proxy")
 }

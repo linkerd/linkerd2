@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"log"
 
 	"github.com/spf13/cobra"
 )
@@ -36,13 +35,14 @@ var completionCmd = &cobra.Command{
 	Example:   example,
 	Args:      cobra.ExactArgs(1),
 	ValidArgs: []string{"bash", "zsh"},
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		out, err := getCompletion(args[0])
 		if err != nil {
-			log.Fatal(err.Error())
-		} else {
-			fmt.Printf(out)
+			return err
 		}
+
+		fmt.Printf(out)
+		return nil
 	},
 }
 

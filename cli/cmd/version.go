@@ -23,7 +23,7 @@ var versionCmd = &cobra.Command{
 		client, err := newPublicAPIClient()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error connecting to server: %s\n", err)
-			return
+			os.Exit(1)
 		}
 
 		fmt.Printf("Server version: %s\n", getServerVersion(client))

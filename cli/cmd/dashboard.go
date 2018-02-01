@@ -2,11 +2,11 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/pkg/browser"
 	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/runconduit/conduit/pkg/shell"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -20,12 +20,13 @@ var dashboardCmd = &cobra.Command{
 	Long:  "Open the Conduit dashboard in a web browser.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if proxyPort <= 0 {
-			log.Fatalf("port must be positive, was %d", proxyPort)
+			return fmt.Errorf("port must be positive, was %d", proxyPort)
 		}
 
 		kubectl, err := k8s.NewKubectl(shell.NewUnixShell())
 		if err != nil {
-			log.Fatalf("Failed to start kubectl: %v", err)
+			fmt.Fprintf(os.Stderr, "Failed to start kubectl: %s", err)
+			os.Exit(1)
 		}
 
 		asyncProcessErr := make(chan error, 1)
@@ -33,26 +34,30 @@ var dashboardCmd = &cobra.Command{
 		err = kubectl.StartProxy(asyncProcessErr, proxyPort)
 
 		if err != nil {
-			log.Fatalf("Failed to start kubectl proxy: %v", err)
+			fmt.Fprintf(os.Stderr, "Failed to start kubectl proxy: %s", err)
+			os.Exit(1)
 		}
 
 		url, err := kubectl.UrlFor(controlPlaneNamespace, "/services/web:http/proxy/")
 
 		if err != nil {
-			log.Fatalf("Failed to generate URL for dashboard: %v", err)
+			fmt.Fprintf(os.Stderr, "Failed to generate URL for dashboard: %s", err)
+			os.Exit(1)
 		}
 
 		fmt.Printf("Opening [%s] in the default browser\n", url)
 		err = browser.OpenURL(url.String())
 
 		if err != nil {
-			log.Fatalf("failed to open URL %s in the default browser: %v", url, err)
+			fmt.Fprintf(os.Stderr, "Failed to open URL %s in the default browser: %s", url, err)
+			os.Exit(1)
 		}
 
 		select {
 		case err = <-asyncProcessErr:
 			if err != nil {
-				log.Fatalf("Error starting proxy via kubectl: %v", err)
+				fmt.Fprintf(os.Stderr, "Error starting proxy via kubectl: %s", err)
+				os.Exit(1)
 			}
 		}
 		close(asyncProcessErr)
