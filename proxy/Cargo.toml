@@ -10,6 +10,7 @@ chrono = "0.4"
 domain = "0.2.2"
 env_logger = "0.4"
 futures = "0.1"
+h2 = "0.1"
 http = "0.1"
 httparse = "1.2"
 hyper = { version = "0.11.15", features = ["compat"] }
@@ -21,33 +22,34 @@ url = "1.5"
 tokio-core = "0.1"
 tokio-io = "0.1"
 
-prost = "0.2"
-prost-derive = "0.2"
-prost-types = "0.2"
+prost = "0.3.0"
+prost-derive = "0.3.0"
+prost-types = "0.3.0"
 
 abstract-ns = "0.4"
 ns-dns-tokio = "0.4"
 
 #futures-watch   = { git = "https://github.com/carllerche/better-future" }
-h2              = { git = "https://github.com/carllerche/h2" }
+
 tokio-connect   = { git = "https://github.com/carllerche/tokio-connect" }
 tower           = { git = "https://github.com/tower-rs/tower" }
 tower-balance   = { git = "https://github.com/tower-rs/tower" }
 tower-buffer    = { git = "https://github.com/tower-rs/tower" }
 tower-discover  = { git = "https://github.com/tower-rs/tower" }
+tower-grpc      = { git = "https://github.com/tower-rs/tower-grpc" }
+tower-h2        = { git = "https://github.com/tower-rs/tower-h2" }
 tower-reconnect = { git = "https://github.com/tower-rs/tower" }
 tower-util      = { git = "https://github.com/tower-rs/tower" }
 
 futures-mpsc-lossy = { path = "../futures-mpsc-lossy" }
 tower-router       = { path = "../tower-router" }
-tower-grpc         = { path = "../tower-grpc" }
-tower-h2           = { path = "../tower-h2" }
+
 
 [target.'cfg(target_os = "linux")'.dependencies]
 libc = "0.2"
 
 [build-dependencies]
-tower-grpc-build = { path = "../tower-grpc-build" }
+tower-grpc-build = { git = "https://github.com/tower-rs/tower-grpc" }
 
 [dev-dependencies]
 # Quickcheck 0.4.1, on crates.io, is missng useful Arbitrary implementations that exist on

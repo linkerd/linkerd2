@@ -11,8 +11,8 @@ import "common/common.proto";
 // or lookups against other service discovery backends.
 //
 // The controller is expected to send an Update every time there is a
-// change in service discovery.  The controller is also expected to send an 
-// update at least once every ADDRESS_UPDATE_INTERVAL to indicate that the 
+// change in service discovery.  The controller is also expected to send an
+// update at least once every ADDRESS_UPDATE_INTERVAL to indicate that the
 // controller is still healthy.  If no service discovery updates have taken
 // place, the controller can simply send an empty `add`.  The controller may
 // determine the value of ADDRESS_UPDATE_INTERVAL.
@@ -40,5 +40,5 @@ message WeightedAddrSet {
 
 message WeightedAddr {
   common.TcpAddress addr = 1;
-  uint32 weight = 3; 
+  uint32 weight = 3;
 }

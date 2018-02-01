@@ -3,11 +3,10 @@ use std::sync::{Arc, Mutex};
 use futures::{future, Poll, Stream};
 use futures_mpsc_lossy;
 use ordermap::OrderMap;
-use tower_grpc::{self, Request, Response};
-use tower_grpc::codegen::server::grpc::ServerStreamingService;
+use tower_grpc::{self as grpc, Response};
 
 use control::pb::common::TapEvent;
-use control::pb::proxy::tap::ObserveRequest;
+use control::pb::proxy::tap::{server, ObserveRequest};
 use convert::*;
 use ctx;
 use telemetry::Event;
@@ -42,29 +41,23 @@ impl Observe {
     }
 }
 
-impl ServerStreamingService for Observe {
-    type Request = ObserveRequest;
-    type Response = TapEvent;
-    type ResponseStream = TapEvents;
-    type Future = future::FutureResult<Response<Self::ResponseStream>, tower_grpc::Error>;
+impl server::Tap for Observe {
+    type ObserveStream = TapEvents;
+    type ObserveFuture = future::FutureResult<Response<Self::ObserveStream>, grpc::Error>;
 
-    fn poll_ready(&mut self) -> Poll<(), tower_grpc::Error> {
-        Ok(().into())
-    }
-
-    fn call(&mut self, req: Request<ObserveRequest>) -> Self::Future {
+    fn observe(&mut self, req: grpc::Request<ObserveRequest>) -> Self::ObserveFuture {
         if self.next_id == ::std::usize::MAX {
-            return future::err(tower_grpc::Error::Grpc(tower_grpc::Status::INTERNAL));
+            return future::err(grpc::Error::Grpc(grpc::Status::INTERNAL));
         }
 
-        let (_, req) = req.into_http().into_parts();
+        let req = req.into_inner();
         let (tap, rx) = match req.match_
             .and_then(|m| Tap::new(&m, self.tap_capacity).ok())
         {
             Some(m) => m,
             None => {
-                return future::err(tower_grpc::Error::Grpc(
-                    tower_grpc::Status::INVALID_ARGUMENT,
+                return future::err(grpc::Error::Grpc(
+                    grpc::Status::INVALID_ARGUMENT,
                 ));
             }
         };
@@ -77,7 +70,7 @@ impl ServerStreamingService for Observe {
                 tap_id
             }
             Err(_) => {
-                return future::err(tower_grpc::Error::Grpc(tower_grpc::Status::INTERNAL));
+                return future::err(grpc::Error::Grpc(grpc::Status::INTERNAL));
             }
         };
 
@@ -88,13 +81,14 @@ impl ServerStreamingService for Observe {
             remaining: req.limit as usize,
             taps: self.taps.clone(),
         };
+
         future::ok(Response::new(events))
     }
 }
 
 impl Stream for TapEvents {
     type Item = TapEvent;
-    type Error = tower_grpc::Error;
+    type Error = grpc::Error;
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
         loop {

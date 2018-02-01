@@ -1,32 +1,21 @@
-use std::io;
 use std::sync::Arc;
 
 use http;
-use tower_balance::{self, Balance};
-use tower_buffer::{self, Buffer};
+
+use tower;
+use tower_balance::{self, choose, Balance};
+use tower_buffer::Buffer;
 use tower_h2;
-use tower_reconnect;
 use tower_router::Recognize;
 
-use bind::{Bind, BindProtocol, Protocol};
-use control;
+use bind::{self, Bind, Protocol};
+use control::{self, discovery};
 use ctx;
 use fully_qualified_authority::FullyQualifiedAuthority;
-use telemetry;
-use transparency;
-use transport;
 
-type Discovery<B> = control::discovery::Watch<BindProtocol<Arc<ctx::Proxy>, B>>;
+type BindProtocol<B> = bind::BindProtocol<Arc<ctx::Proxy>, B>;
 
-type Error = tower_buffer::Error<
-    tower_balance::Error<
-        tower_reconnect::Error<
-            tower_h2::client::Error,
-            tower_h2::client::ConnectError<transport::TimeoutError<io::Error>>,
-        >,
-        (),
-    >,
->;
+type Discovery<B> = discovery::Watch<BindProtocol<B>>;
 
 pub struct Outbound<B> {
     bind: Bind<Arc<ctx::Proxy>, B>,
@@ -55,11 +44,14 @@ where
     B: tower_h2::Body + 'static,
 {
     type Request = http::Request<B>;
-    type Response = http::Response<telemetry::sensor::http::ResponseBody<transparency::HttpBody>>;
-    type Error = Error;
+    type Response = bind::HttpResponse;
+    type Error = <Self::Service as tower::Service>::Error;
     type Key = (FullyQualifiedAuthority, Protocol);
     type RouteError = ();
-    type Service = Buffer<Balance<Discovery<B>>>;
+    type Service = Buffer<Balance<
+        Discovery<B>,
+        choose::RoundRobin, // TODO: better load balancer.
+    >>;
 
     fn recognize(&self, req: &Self::Request) -> Option<Self::Key> {
         req.uri().authority_part().map(|authority| {
@@ -97,7 +89,8 @@ where
             self.bind.clone().with_protocol(protocol),
         );
 
-        let balance = Balance::new(resolve);
+        // TODO: move to p2c lb.
+        let balance = tower_balance::round_robin(resolve);
 
         // Wrap with buffering. This currently is an unbounded buffer,
         // which is not ideal.

@@ -1,4 +1,3 @@
-use std::marker::PhantomData;
 use std::time::{Duration, Instant};
 
 use bytes::Bytes;
@@ -6,7 +5,7 @@ use futures::{future, Async, Future, Poll, Stream};
 use h2;
 use http;
 use tokio_core::reactor::{
-    Handle, 
+    Handle,
     // TODO: would rather just have Backoff in a separate file so this
     //       renaming import is not necessary.
     Timeout as ReactorTimeout
@@ -21,7 +20,6 @@ use fully_qualified_authority::FullyQualifiedAuthority;
 use transport::LookupAddressAndConnect;
 use timeout::Timeout;
 
-mod codec;
 pub mod discovery;
 mod observe;
 pub mod pb;
@@ -91,7 +89,7 @@ impl Background {
                 executor,
             );
 
-            let h2_client = tower_h2::client::Client::new(
+            let h2_client = tower_h2::client::Connect::new(
                 connect,
                 h2::client::Builder::default(),
                 ::logging::context_executor(ctx, executor.clone()),
@@ -100,6 +98,7 @@ impl Background {
 
             let reconnect = Reconnect::new(h2_client);
             let backoff = Backoff::new(reconnect, Duration::from_secs(5), executor);
+            // TODO: Use AddOrigin in tower-http
             AddOrigin::new(scheme, authority, backoff)
         };
 
@@ -108,11 +107,12 @@ impl Background {
 
         let fut = future::poll_fn(move || {
             trace!("poll rpc services");
-            disco.poll_rpc(&mut EnumService(&mut client, PhantomData));
-            telemetry.poll_rpc(&mut EnumService(&mut client, PhantomData));
+            disco.poll_rpc(&mut client);
+            telemetry.poll_rpc(&mut client);
 
             Ok(Async::NotReady)
         });
+
         Box::new(fut)
     }
 }
@@ -215,73 +215,3 @@ where
     }
 }
 
-// ===== impl  EnumService =====
-
-struct EnumService<S, B>(S, PhantomData<B>);
-
-impl<S, B> Service for EnumService<S, B>
-where
-    S: Service<Request = http::Request<GrpcEncodingBody>>,
-    B: Into<GrpcEncodingBody>,
-{
-    type Request = http::Request<B>;
-    type Response = S::Response;
-    type Error = S::Error;
-    type Future = S::Future;
-
-    fn poll_ready(&mut self) -> Poll<(), Self::Error> {
-        self.0.poll_ready()
-    }
-
-    fn call(&mut self, req: Self::Request) -> Self::Future {
-        let (head, body) = req.into_parts();
-        self.0.call(http::Request::from_parts(head, body.into()))
-    }
-}
-
-
-
-enum GrpcEncodingBody {
-    TelemetryReport(self::telemetry::ClientBody),
-    DestinationGet(self::discovery::ClientBody),
-}
-
-impl tower_h2::Body for GrpcEncodingBody {
-    type Data = Bytes;
-
-    #[inline]
-    fn is_end_stream(&self) -> bool {
-        match *self {
-            GrpcEncodingBody::TelemetryReport(ref b) => b.is_end_stream(),
-            GrpcEncodingBody::DestinationGet(ref b) => b.is_end_stream(),
-        }
-    }
-
-    #[inline]
-    fn poll_data(&mut self) -> Poll<Option<Self::Data>, h2::Error> {
-        match *self {
-            GrpcEncodingBody::TelemetryReport(ref mut b) => b.poll_data(),
-            GrpcEncodingBody::DestinationGet(ref mut b) => b.poll_data(),
-        }
-    }
-
-    #[inline]
-    fn poll_trailers(&mut self) -> Poll<Option<http::HeaderMap>, h2::Error> {
-        match *self {
-            GrpcEncodingBody::TelemetryReport(ref mut b) => b.poll_trailers(),
-            GrpcEncodingBody::DestinationGet(ref mut b) => b.poll_trailers(),
-        }
-    }
-}
-
-impl From<self::telemetry::ClientBody> for GrpcEncodingBody {
-    fn from(body: self::telemetry::ClientBody) -> Self {
-        GrpcEncodingBody::TelemetryReport(body)
-    }
-}
-
-impl From<self::discovery::ClientBody> for GrpcEncodingBody {
-    fn from(body: self::discovery::ClientBody) -> Self {
-        GrpcEncodingBody::DestinationGet(body)
-    }
-}

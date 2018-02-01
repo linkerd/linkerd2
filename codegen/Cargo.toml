@@ -1,7 +1,0 @@
-[package]
-name = "codegen"
-version = "0.2.0"
-authors = ["Carl Lerche <me@carllerche.com>"]
-
-[dependencies]
-ordermap = "0.3.0"
