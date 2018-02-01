@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/browser"
+	"github.com/runconduit/conduit/cli/dashboard"
 	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/runconduit/conduit/pkg/shell"
 	log "github.com/sirupsen/logrus"
@@ -23,39 +24,52 @@ var dashboardCmd = &cobra.Command{
 			log.Fatalf("port must be positive, was %d", proxyPort)
 		}
 
-		kubectl, err := k8s.NewKubectl(shell.NewUnixShell())
-		if err != nil {
-			log.Fatalf("Failed to start kubectl: %v", err)
-		}
-
-		asyncProcessErr := make(chan error, 1)
-
-		err = kubectl.StartProxy(asyncProcessErr, proxyPort)
+		shell := shell.NewUnixShell()
+		kubectl, err := k8s.NewKubectl(shell)
 
 		if err != nil {
-			log.Fatalf("Failed to start kubectl proxy: %v", err)
+			return fmt.Errorf("failed to start kubectl: %v", err)
 		}
 
-		url, err := kubectl.UrlFor(controlPlaneNamespace, "/services/web:http/proxy/")
-
+		kubeApi, err := k8s.NewK8sAPI(shell, kubeconfigPath)
 		if err != nil {
-			log.Fatalf("Failed to generate URL for dashboard: %v", err)
+			return fmt.Errorf("failed to connect to the Kubernetes API: %v", err)
 		}
 
-		fmt.Printf("Opening [%s] in the default browser\n", url)
-		err = browser.OpenURL(url.String())
+		dshBoard := dashboard.NewDashboardHandler(kubectl, kubeApi)
 
-		if err != nil {
-			log.Fatalf("failed to open URL %s in the default browser: %v", url, err)
-		}
+		if dshBoard.IsDashboardAvailable() {
+			asyncProcessErr := make(chan error, 1)
 
-		select {
-		case err = <-asyncProcessErr:
+			err = dshBoard.StartProxy(asyncProcessErr, proxyPort)
 			if err != nil {
-				log.Fatalf("Error starting proxy via kubectl: %v", err)
+				log.Fatalf("Failed to start kubectl proxy: %v", err)
 			}
+
+			url, err := dshBoard.UrlFor(controlPlaneNamespace, "/services/web:http/proxy/")
+			if err != nil {
+				log.Fatalf("Failed to generate URL for dashboard: %v", err)
+			}
+
+			fmt.Printf("Opening [%s] in the default browser\n", url)
+
+			err = browser.OpenURL(url.String())
+			if err != nil {
+				log.Fatalf("failed to open URL %s in the default browser: %v", url, err)
+			}
+
+			select {
+			case err = <-asyncProcessErr:
+				if err != nil {
+					log.Fatalf("Error starting proxy via kubectl: %v", err)
+				}
+			}
+
+			close(asyncProcessErr)
+
+			return nil
 		}
-		close(asyncProcessErr)
+		log.Fatal("Failed to access conduit dashboard")
 		return nil
 	},
 }

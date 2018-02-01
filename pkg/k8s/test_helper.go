@@ -49,3 +49,13 @@ func (m *MockKubectl) ProxyPort() int { return -666 }
 func (m *MockKubectl) SelfCheck() []*healthcheckPb.CheckResult {
 	return m.SelfCheckResultsToReturn
 }
+
+type HttpClient interface {
+	Get(url string) (*http.Response, error)
+}
+
+type MockHttpClient struct{}
+
+func (m *MockHttpClient) Get(url string) (*http.Response, error) {
+	return &http.Response{}, nil
+}
