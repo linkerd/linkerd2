@@ -20,7 +20,7 @@ depurl="https://github.com/golang/dep/releases/download/v${depversion}/dep-${os}
 if [ ! -f "$depbin" ]; then
   tmp=$(mktemp -d -t dep.XXX)
   (
-    cd $tmp
+    cd "$tmp"
     curl -L --silent --fail -o "$depbin" "$depurl"
     chmod +x "$depbin"
   )

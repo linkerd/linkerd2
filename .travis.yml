@@ -35,7 +35,7 @@ jobs:
         directories:
           - vendor
       install:
-        - .bin/dep ensure
+        - ./bin/dep ensure
       script:
         # TODO decide whether protoc should be committed or not. If so, we shouldn't do
         # this or we should error if it dirties the repo.
