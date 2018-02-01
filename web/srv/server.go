@@ -9,9 +9,8 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	pb "github.com/runconduit/conduit/controller/gen/public"
+	"github.com/runconduit/conduit/controller/util"
 	"github.com/runconduit/conduit/web/util/filesonly"
 	log "github.com/sirupsen/logrus"
 )
@@ -51,28 +50,20 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 func NewServer(addr, templateDir, staticDir, uuid, webpackDevServer string, reload bool, apiClient pb.ApiClient) *http.Server {
-	counter := prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "http_requests_total",
-			Help: "A counter for requests to the wrapped handler.",
-		},
-		[]string{"code", "method"},
-	)
-
-	prometheus.MustRegister(counter)
 	server := &Server{
 		templateDir:     templateDir,
 		staticDir:       staticDir,
 		templateContext: templateContext{webpackDevServer},
 		reload:          reload,
 	}
+
 	server.router = &httprouter.Router{
 		RedirectTrailingSlash:  true,
 		RedirectFixedPath:      true,
 		HandleMethodNotAllowed: false, // disable 405s
 	}
-	wrappedServer := promhttp.InstrumentHandlerCounter(counter, server)
 
+	wrappedServer := util.WithTelemetry(server)
 	handler := &handler{
 		apiClient: apiClient,
 		render:    server.RenderTemplate,
