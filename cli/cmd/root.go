@@ -20,9 +20,6 @@ var RootCmd = &cobra.Command{
 	Short: "conduit manages the Conduit service mesh",
 	Long:  `conduit manages the Conduit service mesh.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		// clear log color formatting
-		log.SetFormatter(&log.TextFormatter{DisableColors: true})
-
 		// enable / disable logging
 		if verbose {
 			log.SetLevel(log.DebugLevel)
