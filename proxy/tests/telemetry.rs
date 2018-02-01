@@ -193,12 +193,10 @@ fn records_latency_statistics() {
     let _ = env_logger::init();
 
     info!("running test server");
-    let mut srv = server::new()
-        .route("/hey", "hello")
-        .route("/hi", "good morning");
-    &mut srv["/hey"].extra_latency(Duration::from_millis(500));
-    &mut srv["/hi"].extra_latency(Duration::from_millis(40));
-    let srv = srv.run();
+    let srv = server::new()
+        .route_with_latency("/hey", "hello", Duration::from_millis(500))
+        .route_with_latency("/hi", "good morning", Duration::from_millis(40))
+        .run();
 
     let mut ctrl = controller::new();
     let reports = ctrl.reports();

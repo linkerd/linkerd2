@@ -1,10 +1,6 @@
-use std::borrow::Borrow;
 use std::collections::HashMap;
-use std::default::Default;
-use std::hash::Hash;
-use std::{thread, ops};
 use std::sync::Arc;
-use std::time::Duration;
+use std::thread;
 
 use support::*;
 
@@ -26,14 +22,8 @@ pub fn tcp() -> tcp::TcpServer {
 
 #[derive(Debug)]
 pub struct Server {
+    routes: HashMap<String, Route>,
     version: Run,
-    routes: HashMap<String, Endpoint>,
-}
-
-#[derive(Debug, Default)]
-pub struct Endpoint {
-    response: String,
-    extra_latency: Option<Duration>,
 }
 
 #[derive(Debug)]
@@ -67,6 +57,24 @@ impl Server {
         F: Fn(Request<()>) -> Response<String> + Send + 'static,
     {
         self.routes.insert(path.into(), Route(Box::new(cb)));
+        self
+    }
+
+    pub fn route_with_latency(
+        mut self,
+        path: &str,
+        resp: &str,
+        latency: Duration
+    ) -> Self {
+        let resp = resp.to_owned();
+        let route = Route(Box::new(move |_| {
+            thread::sleep(latency);
+            http::Response::builder()
+                .status(200)
+                .body(resp.clone())
+                .unwrap()
+        }));
+        self.routes.insert(path.into(), route);
         self
     }
 
@@ -147,56 +155,6 @@ enum Run {
     Http2,
 }
 
-impl<'a, Q: ?Sized> ops::Index<&'a Q> for Server
-where
-    String: Borrow<Q>,
-    Q: Hash + Eq,
-{
-    type Output = Endpoint;
-    fn index(&self, index: &'a Q) -> &Self::Output {
-        self.routes.index(index)
-    }
-}
-
-impl<'a, Q: ?Sized> ops::IndexMut<&'a Q> for Server
-where
-    String: Borrow<Q>,
-    Q: Hash + Eq,
-{
-    fn index_mut(&mut self, index: &'a Q) -> &mut Self::Output {
-        self.routes.get_mut(index).unwrap()
-    }
-}
-
-impl<S> From<S> for Endpoint
-where String: From<S> {
-    fn from(s: S) -> Self {
-        Endpoint {
-            response: String::from(s),
-            ..Default::default()
-        }
-    }
-}
-
-impl Endpoint {
-    /// Add extra latency to this endpoint.
-    pub fn extra_latency(&mut self, dur: Duration) -> &mut Self {
-        self.extra_latency = Some(dur);
-        self
-    }
-
-    /// Set the response.
-    pub fn response<S>(&mut self, rsp: S) -> &mut Self
-    where
-        String: From<S>
-    {
-        self.response = String::from(rsp);
-        self
-    }
-}
-
-type Response = http::Response<RspBody>;
-
 struct RspBody(Option<Bytes>);
 
 impl RspBody {
@@ -246,7 +204,7 @@ impl ::std::fmt::Debug for Route {
 }
 
 #[derive(Debug)]
-struct Svc(Arc<HashMap<String, Endpoint>>);
+struct Svc(Arc<HashMap<String, Route>>);
 
 impl Service for Svc {
     type Request = Request<RecvBody>;
@@ -259,17 +217,10 @@ impl Service for Svc {
     }
 
     fn call(&mut self, req: Self::Request) -> Self::Future {
-        let mut rsp = http::Response::builder();
-        rsp.version(http::Version::HTTP_2);
-
-        let path = req.uri().path();
-        let rsp = match self.0.get(path) {
-            Some(&Endpoint { ref response, ref extra_latency }) => {
-                if let &Some(ref duration) = extra_latency {
-                    thread::sleep(*duration);
-                }
-                let body = RspBody::new(response.as_bytes().into());
-                rsp.status(200).body(body).unwrap()
+        let rsp = match self.0.get(req.uri().path()) {
+            Some(route) => {
+                (route.0)(req.map(|_| ()))
+                    .map(|s| RspBody::new(s.as_bytes().into()))
             }
             None => {
                 println!("server 404: {:?}", req.uri().path());
@@ -310,7 +261,7 @@ impl hyper::server::Service for Svc {
 }
 
 #[derive(Debug)]
-struct NewSvc(Arc<HashMap<String, Endpoint>>);
+struct NewSvc(Arc<HashMap<String, Route>>);
 impl NewService for NewSvc {
     type Request = Request<RecvBody>;
     type Response = Response<RspBody>;
