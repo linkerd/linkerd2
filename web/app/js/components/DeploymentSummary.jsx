@@ -26,12 +26,12 @@ export default class DeploymentSummary extends React.Component {
             flashLastDatapoint={true} />
 
           <div className="summary-stat">
-            <div className="metric-title">Current requests</div>
+            <div className="metric-title">Request rate</div>
             <div className="metric-value">{metricToFormatter["REQUEST_RATE"](this.props.data.requestRate)}</div>
           </div>
 
           <div className="summary-stat">
-            <div className="metric-title">Current success</div>
+            <div className="metric-title">Success rate</div>
             <div className="metric-value">{metricToFormatter["SUCCESS_RATE"](this.props.data.successRate)}</div>
           </div>
         </div>
