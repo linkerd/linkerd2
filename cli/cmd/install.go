@@ -465,7 +465,7 @@ func validate() error {
 		return fmt.Errorf("--image-pull-policy must be one of: Always, IfNotPresent, Never")
 	}
 	if _, err := log.ParseLevel(controllerLogLevel); err != nil {
-		return fmt.Errorf("--log-level must be one of: panic, fatal, error, warn, info, debug")
+		return fmt.Errorf("--controller-log-level must be one of: panic, fatal, error, warn, info, debug")
 	}
 	return nil
 }
@@ -478,5 +478,5 @@ func init() {
 	installCmd.PersistentFlags().UintVar(&webReplicas, "web-replicas", 1, "replicas of the web server to deploy")
 	installCmd.PersistentFlags().UintVar(&prometheusReplicas, "prometheus-replicas", 1, "replicas of prometheus to deploy")
 	installCmd.PersistentFlags().StringVar(&imagePullPolicy, "image-pull-policy", "IfNotPresent", "Docker image pull policy")
-	installCmd.PersistentFlags().StringVar(&controllerLogLevel, "log-level", "info", "log level for the controller and web components")
+	installCmd.PersistentFlags().StringVar(&controllerLogLevel, "controller-log-level", "info", "log level for the controller and web components")
 }

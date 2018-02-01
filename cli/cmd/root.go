@@ -1,9 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/runconduit/conduit/controller/api/public"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
@@ -23,9 +20,14 @@ var RootCmd = &cobra.Command{
 	Short: "conduit manages the Conduit service mesh",
 	Long:  `conduit manages the Conduit service mesh.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		// turn on debug logging
+		// clear log color formatting
+		log.SetFormatter(&log.TextFormatter{DisableColors: true})
+
+		// enable / disable logging
 		if verbose {
 			log.SetLevel(log.DebugLevel)
+		} else {
+			log.SetLevel(log.PanicLevel)
 		}
 	},
 }
@@ -53,12 +55,4 @@ func newPublicAPIClient() (pb.ApiClient, error) {
 		return nil, err
 	}
 	return public.NewExternalClient(controlPlaneNamespace, kubeApi)
-}
-
-// This is equivalent to calling log.Fatalf, but unlike go's logger interface,
-// it does not support any formatting of the output prior to printing, which is
-// preferable for printing errors from the CLI
-func logFatalf(format string, v ...interface{}) {
-	fmt.Fprintf(os.Stderr, format+"\n", v...)
-	os.Exit(1)
 }
