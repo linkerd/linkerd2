@@ -1,3 +1,31 @@
+## v0.2.0
+
+This is a big milestone! With this release, Conduit adds support for HTTP/1.x and raw TCP traffic,
+meaning it should "just work" for most applications that are running on Kubernetes without
+additional configuration.
+
+* Data plane
+  * Conduit now transparently proxies all TCP traffic, including HTTP/1.x and HTTP/2.
+    (See caveats below.)
+* Command-line interface
+  * Improved error handling for the `tap` command
+  * `tap` also now works with HTTP/1.x traffic
+* Dashboard
+  * Minor UI appearance tweaks
+  * Deployments now searchable from the dashboard sidebar
+
+Caveats:
+* Conduit will automatically work for most protocols. However, applications that use WebSockets,
+  HTTP tunneling/proxying, or protocols such as MySQL and SMTP, will require some additional
+  configuration. See the [documentation](https://conduit.io/adding-your-service/#protocol-support)
+  for details.
+* Conduit doesn't yet support external DNS lookups. These will be addressed in an upcoming release.
+* There are known issues with Conduit's telemetry pipeline that prevent it from scaling beyond a
+  few nodes. These will be addressed in an upcoming release.
+* Conduit is still in alpha! Please help us by
+  [filing issues and contributing pull requests](https://github.com/runconduit/conduit/issues/new).
+
+
 ## v0.1.3
 
 * This is a minor bugfix for some web dashboard UI elements that were not rendering correctly.
@@ -30,7 +58,7 @@ Conduit 0.1.1 is focused on making it easier to get started with Conduit.
 * The `conduit tap` command output has been reformatted to be line-oriented, making it easier to
   parse with common UNIX command line utilities.
 * Conduit now supports routing of non-fully qualified domain names.
-* The web UI has improved support for large deployments and deployments that don’t have any
+* The web UI has improved support for large deployments and deployments that don't have any
   inbound/outbound traffic.
 
 ## v0.1.0

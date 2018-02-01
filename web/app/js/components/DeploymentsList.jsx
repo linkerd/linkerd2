@@ -214,7 +214,7 @@ export default class DeploymentsList extends React.Component {
         { !this.state.loaded ? <ConduitSpinner />  :
           <div>
             <div className="page-header">
-              <h1>All deployments</h1>
+              <h1>Deployments</h1>
             </div>
             { _.isEmpty(this.state.metrics) ?
               <CallToAction numDeployments={_.size(this.state.metrics)} /> :

@@ -8,6 +8,7 @@
   }
   & .metric {
     float: right;
+    text-align: right;
   }
 }
 
@@ -15,7 +16,8 @@
   width: 131px;
 }
 
-.incomplete-mesh-message, .complete-mesh-message {
+.mesh-completion-message {
+  margin-top: calc(4 * var(--base-width));
   background-color: var(--royalblue);
   color: white;
   padding: var(--base-width);
@@ -23,6 +25,10 @@
   border-radius: calc(var(--base-width)/2);
   font-weight: var(--font-weight-extra-bold);
   border-radius: var
+}
+
+.service-mesh-table {
+  margin-top: 18px;
 }
 
 /* styles for the StatusTable */

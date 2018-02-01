@@ -99,9 +99,9 @@ const metricToColumns = baseCols => {
     successRate: (resource, pathPrefix) => [baseCols.resourceName(resource, pathPrefix), baseCols.successRate],
     latency: (resource, pathPrefix) => [
       baseCols.resourceName(resource, pathPrefix),
-      baseCols.latencyP99,
+      baseCols.latencyP50,
       baseCols.latencyP95,
-      baseCols.latencyP50
+      baseCols.latencyP99
     ]
   };
 };
