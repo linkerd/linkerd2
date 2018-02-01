@@ -28,6 +28,7 @@ extern crate prost_types;
 #[cfg(test)]
 #[macro_use]
 extern crate quickcheck;
+extern crate rand;
 extern crate tokio_connect;
 extern crate tokio_core;
 extern crate tokio_io;
