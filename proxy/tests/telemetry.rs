@@ -90,7 +90,9 @@ fn http1_inbound_sends_telemetry() {
     // responses
     let res = &req.responses[0];
     assert_eq!(res.ctx.as_ref().unwrap().http_status_code, 200);
-    assert_eq!(res.response_latencies.len(), 1);
+    // response latencies should always have a length equal to the number
+    // of latency buckets into which the controller will aggregate latencies.
+    assert_eq!(res.response_latencies.len(), 25);
     assert_eq!(res.ends.len(), 1);
     // ends
     let ends = &res.ends[0];
