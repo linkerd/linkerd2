@@ -1,7 +1,5 @@
 #![deny(missing_docs)]
-use control::pb::telemetry::{
-    Latency as LatencyProto,
-};
+use control::pb::telemetry::LatencyBucket;
 
 use std::{ops, slice, u32};
 use std::default::Default;
@@ -184,18 +182,18 @@ impl Default for Histogram {
     }
 }
 
-impl<'a> Into<Vec<LatencyProto>> for &'a Histogram {
-    fn into(self) -> Vec<LatencyProto> {
+impl<'a> Into<Vec<LatencyBucket>> for &'a Histogram {
+    fn into(self) -> Vec<LatencyBucket> {
         self.0.into_iter()
-            .map(LatencyProto::from)
+            .map(LatencyBucket::from)
             .collect()
     }
 }
 
-impl Into<Vec<LatencyProto>> for Histogram {
-    fn into(self) -> Vec<LatencyProto> {
+impl Into<Vec<LatencyBucket>> for Histogram {
+    fn into(self) -> Vec<LatencyBucket> {
         self.0.into_iter()
-            .map(LatencyProto::from)
+            .map(LatencyBucket::from)
             .collect()
     }
 }
@@ -257,12 +255,12 @@ impl Into<u32> for Latency {
     }
 }
 
-// ===== impl LatencyProto =====
+// ===== impl LatencyBucket =====
 
-impl<'a> From<&'a Bucket<Latency>> for LatencyProto {
+impl<'a> From<&'a Bucket<Latency>> for LatencyBucket {
     fn from(bucket: &'a Bucket<Latency>) -> Self {
-        LatencyProto {
-            latency: bucket.max.into(),
+        LatencyBucket {
+            max_value: bucket.max.into(),
             count: bucket.count,
         }
     }

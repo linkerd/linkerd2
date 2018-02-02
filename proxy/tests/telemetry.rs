@@ -238,7 +238,7 @@ fn records_latency_statistics() {
     for ref bucket in &res.response_latencies {
         // 500 ms of extra latency should put us in the 500-10000
         // decimillisecond bucket.
-        if bucket.latency == 10000 {
+        if bucket.max_value == 10000 {
             assert_eq!(bucket.count, 1);
         } else {
             assert_eq!(bucket.count, 0);
@@ -259,7 +259,7 @@ fn records_latency_statistics() {
     for ref bucket in &res.response_latencies {
         // 40 ms of extra latency should put us in the 400-500
         // decimillisecond bucket.
-        if bucket.latency == 500 {
+        if bucket.max_value == 500 {
             assert_eq!(bucket.count, 2);
         } else {
             assert_eq!(bucket.count, 0);
