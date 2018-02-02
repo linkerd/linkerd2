@@ -7,28 +7,16 @@ use std::{ops, slice, u32};
 use std::default::Default;
 use std::time::Duration;
 
+/// The number of buckets in a  latency histogram.
+pub const NUM_BUCKETS: usize = 26;
+
 /// A series of latency values and counts.
 #[derive(Debug)]
-pub struct Latencies(Buckets<Latency, Buckets<Latency>>);
+pub struct Histogram([Bucket<Latency>; NUM_BUCKETS]);
 
 /// A latency in tenths of a millisecond.
 #[derive(Debug, Default, Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Hash)]
 pub struct Latency(u32);
-
-/// Generalization of a histogram bucket counting observations of type `T`.
-trait Bucket<T: PartialOrd> {
-
-    /// Returns `true` if a given `observation` falls into this `Bucket`.
-    fn contains(&self, observation: &T) -> bool;
-
-    /// Observe a value, incrementing this bucket if it `contains` that value.
-    ///
-    /// # Returns
-    /// - `true` if this `Bucket`'s count was incremented;
-    /// - `false` otherwise.
-    fn add(&mut self, observation: &T) -> bool;
-
-}
 
 /// A "leaf" bucket containing a single counter.
 ///
@@ -36,7 +24,7 @@ trait Bucket<T: PartialOrd> {
 /// - `T`: the type of observations counted by this bucket.
 /// - `C`: the type used for counting observed values.
 #[derive(Debug, Clone)]
-struct LeafBucket<T, C = u32> {
+pub struct Bucket<T, C = u32> {
 
     /// The upper bound of the range of values in this bucket.
     max: T,
@@ -47,35 +35,11 @@ struct LeafBucket<T, C = u32> {
 }
 
 
-/// An array of [`Bucket`]s which can themselves be a bucket.
-///
-/// [`Bucket`]: trait.Bucket.html
-#[derive(Debug, Clone)]
-struct Buckets<T: PartialOrd, B: Bucket<T>=LeafBucket<T>> {
-
-    /// The upper bound of this `Bucket`.
-    ///
-    /// This should be the highest `max` value of the buckets herein contained.
-    max: T,
-
-    /// The aforementioned `Bucket`s herein contained.
-    ///
-    /// Currently, these must be in order.
-    // FIXME: number of buckets per bucket set is hardcoded, currently -
-    //        we don't need a `Vec` here, since the number of buckets never
-    //        grows, but Rust doesn't have variable-sized arrays. we could
-    //        just have a `Box<[B]>` here, or take a slice, but the former
-    //        allocates and the latter would introduce a lifetime bound
-    //        on the `Buckets` (which might be okay).
-    buckets: [B; 5],
-
-}
-
-impl<T> LeafBucket<T> {
+impl<T> Bucket<T> {
 
     // Construct a new `LeafBucket` with the upper bound of `max`.
     fn new<I: Into<T>>(max: I) -> Self {
-        LeafBucket {
+        Bucket {
             max: max.into(),
             count: 0
         }
@@ -83,7 +47,7 @@ impl<T> LeafBucket<T> {
 
 }
 
-impl<T> Bucket<T> for LeafBucket<T>
+impl<T> Bucket<T>
 where
     T: PartialOrd
 {
@@ -92,7 +56,7 @@ where
         t <= &self.max
     }
 
-    fn add(&mut self, t: &T) -> bool {
+    fn observe(&mut self, t: &T) -> bool {
         if self.contains(t) {
             // silently truncate if the count is over u32::MAX.
             self.count = self.count.saturating_add(1);
@@ -105,80 +69,135 @@ where
 }
 
 
-impl<T, B> Bucket<T> for Buckets<T, B>
-where
-    T: PartialOrd,
-    B: Bucket<T>,
-{
 
-    fn contains(&self, t: &T) -> bool {
-        t <= &self.max
-    }
+// ===== impl Histogram =====
 
-    fn add(&mut self, t: &T) -> bool {
-        // FIXME: this is assuming buckets is in order...
-        for ref mut bucket in &mut self.buckets[..] {
-            if bucket.add(t) { return true; }
+impl Histogram {
+
+    /// Observe a measurement
+    pub fn observe<I>(&mut self, measurement: I)
+    where
+        I: Into<Latency>,
+    {
+        let measurement = measurement.into();
+        for ref mut bucket in self {
+            if bucket.observe(&measurement) {
+                return;
+            }
         }
-        false
     }
 
-}
-
-impl<T> Buckets<T, LeafBucket<T>>
-where
-    T: PartialOrd
-{
-    /// Construct a set of five linear [`LeafBucket`]s with width `width`.
+    /// Construct a new, empty `Histogram`.
     ///
-    /// [`LeafBucket`]: struct.LeafBucket.html
-    fn linear(width: u32) -> Self
-    where T: From<u32> {
-        Buckets {
-            max: T::from(width * 5),
-            buckets: [
-                // TODO: construct this from a range argument?
-                LeafBucket::new(width),
-                LeafBucket::new(width * 2),
-                LeafBucket::new(width * 3),
-                LeafBucket::new(width * 4),
-                LeafBucket::new(width * 5),
-            ]
-        }
+    /// The buckets in this `Histogram` should mimic the Prometheus buckets
+    /// created by the Conduit controller's telemetry server, but with max
+    /// values one order of magnitude higher. This is because we're recording
+    /// latencies in tenths of a millisecond, but truncating these observations
+    /// to millisecond resolution.
+    pub fn new() -> Self {
+        // The controller telemetry server creates 5 sets of 5 linear buckets
+        // each:
+        Histogram([
+            // TODO: it would be nice if we didn't have to hard-code each
+            //       individual bucket and could use Rust ranges or something.
+            //       However, because we're using a raw fixed size array rather
+            //       than a vector (as we don't ever expect to grow this array
+            //       and thus don't _need_ a vector) we can't concatenate it
+            //       from smaller arrays, making it difficult to construct
+            //       programmatically...
+            // in the controller:
+            // prometheus.LinearBuckets(1, 1, 5),
+            Bucket::new(10),
+            Bucket::new(20),
+            Bucket::new(30),
+            Bucket::new(40),
+            Bucket::new(50),
+            // prometheus.LinearBuckets(10, 10, 5),
+            Bucket::new(100),
+            Bucket::new(200),
+            Bucket::new(300),
+            Bucket::new(400),
+            Bucket::new(500),
+            // prometheus.LinearBuckets(100, 100, 5),
+            Bucket::new(1_000),
+            Bucket::new(2_000),
+            Bucket::new(3_000),
+            Bucket::new(4_000),
+            Bucket::new(5_000),
+            // prometheus.LinearBuckets(1000, 1000, 5),
+            Bucket::new(10_000),
+            Bucket::new(20_000),
+            Bucket::new(30_000),
+            Bucket::new(40_000),
+            Bucket::new(50_000),
+            // prometheus.LinearBuckets(10000, 10000, 5),
+            Bucket::new(100_000),
+            Bucket::new(200_000),
+            Bucket::new(300_000),
+            Bucket::new(400_000),
+            Bucket::new(500_000),
+            // Prometheus implicitly creates a max bucket for everything that
+            // falls outside of the highest-valued bucket, but we need to
+            // create it explicitly.
+            Bucket::new(u32::MAX),
+        ])
+    }
 
+}
+
+impl<I> ops::AddAssign<I> for Histogram
+where
+    I: Into<Latency>
+{
+    #[inline]
+    fn add_assign(&mut self, measurement: I) {
+        self.observe(measurement)
+    }
+
+}
+
+
+impl<'a> IntoIterator for &'a Histogram {
+    type Item = &'a Bucket<Latency>;
+    type IntoIter = slice::Iter<'a, Bucket<Latency>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
+    }
+
+}
+
+impl<'a> IntoIterator for &'a mut Histogram {
+    type Item = &'a mut Bucket<Latency>;
+    type IntoIter = slice::IterMut<'a, Bucket<Latency>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter_mut()
+    }
+
+}
+
+impl Default for Histogram {
+    #[inline]
+    fn default() -> Self {
+        Self::new()
     }
 }
 
-impl<'a, T> IntoIterator for &'a Buckets<T>
-where
-    T: PartialOrd,
-{
-    type Item = &'a LeafBucket<T>;
-    type IntoIter = slice::Iter<'a, LeafBucket<T>>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.buckets.into_iter()
+impl<'a> Into<Vec<LatencyProto>> for &'a Histogram {
+    fn into(self) -> Vec<LatencyProto> {
+        self.0.into_iter()
+            .map(LatencyProto::from)
+            .collect()
     }
-
 }
 
-impl<'a, T> IntoIterator for &'a Buckets<T, Buckets<T>>
-where
-    T: PartialOrd,
-{
-    type Item = &'a LeafBucket<T>;
-    // TODO: remove box
-    type IntoIter = Box<Iterator<Item=Self::Item> + 'a>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        Box::new(
-            self.buckets
-                .into_iter()
-                .flat_map(|bucket| bucket.into_iter())
-        )
-
+impl Into<Vec<LatencyProto>> for Histogram {
+    fn into(self) -> Vec<LatencyProto> {
+        self.0.into_iter()
+            .map(LatencyProto::from)
+            .collect()
     }
-
 }
 
 // ===== impl Latency =====
@@ -238,66 +257,10 @@ impl Into<u32> for Latency {
     }
 }
 
-// ===== impl Latencies =====
-
-impl Latencies {
-
-    /// Add an observed `Latency` value to the histogram.
-    pub fn add<I: Into<Latency>>(&mut self, i: I) {
-        self.0.add(&i.into());
-    }
-
-}
-
-
-impl<I> ops::AddAssign<I> for Latencies
-where
-    I: Into<Latency>
-{
-    fn add_assign(&mut self, rhs: I) {
-        self.add(rhs)
-    }
-}
-
-impl Default for Latencies {
-    fn default() -> Self {
-        let max = Latency(500_000);
-        // TODO: should be configurable, not hardcoded.
-        // NOTE: All our bucket sizes should have one more zero than
-        //       the controller's bucket sizes - controller will report
-        //       data in whole-millisecond precision by multiplying all
-        //       our latency values by 10.
-        let buckets = [
-            Buckets::linear(10),
-            Buckets::linear(100),
-            Buckets::linear(1_000),
-            Buckets::linear(10_000),
-            Buckets::linear(100_000),
-        ];
-        Latencies(Buckets { max, buckets })
-    }
-}
-
-impl<'a> Into<Vec<LatencyProto>> for &'a Latencies {
-    fn into(self) -> Vec<LatencyProto> {
-        self.0.into_iter()
-            .map(LatencyProto::from)
-            .collect()
-    }
-}
-
-impl Into<Vec<LatencyProto>> for Latencies {
-    fn into(self) -> Vec<LatencyProto> {
-        self.0.into_iter()
-            .map(LatencyProto::from)
-            .collect()
-    }
-}
-
 // ===== impl LatencyProto =====
 
-impl<'a> From<&'a LeafBucket<Latency>> for LatencyProto {
-    fn from(bucket: &'a LeafBucket<Latency>) -> Self {
+impl<'a> From<&'a Bucket<Latency>> for LatencyProto {
+    fn from(bucket: &'a Bucket<Latency>) -> Self {
         LatencyProto {
             latency: bucket.max.into(),
             count: bucket.count,

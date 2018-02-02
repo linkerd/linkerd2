@@ -43,8 +43,9 @@ fn inbound_sends_telemetry() {
     let res = &req.responses[0];
     assert_eq!(res.ctx.as_ref().unwrap().http_status_code, 200);
     // response latencies should always have a length equal to the number
-    // of latency buckets into which the controller will aggregate latencies.
-    assert_eq!(res.response_latencies.len(), 25);
+    // of latency buckets into which the controller will aggregate latencies,
+    // plus one (for the infinity bucket).
+    assert_eq!(res.response_latencies.len(), 26);
     assert_eq!(res.ends.len(), 1);
     // ends
     let ends = &res.ends[0];
@@ -91,8 +92,9 @@ fn http1_inbound_sends_telemetry() {
     let res = &req.responses[0];
     assert_eq!(res.ctx.as_ref().unwrap().http_status_code, 200);
     // response latencies should always have a length equal to the number
-    // of latency buckets into which the controller will aggregate latencies.
-    assert_eq!(res.response_latencies.len(), 25);
+    // of latency buckets into which the controller will aggregate latencies,
+    // plus one (for the infinity bucket).
+    assert_eq!(res.response_latencies.len(), 26);
     assert_eq!(res.ends.len(), 1);
     // ends
     let ends = &res.ends[0];
@@ -152,8 +154,9 @@ fn inbound_aggregates_telemetry_over_several_requests() {
     let res = &req.responses[0];
     assert_eq!(res.ctx.as_ref().unwrap().http_status_code, 200);
     // response latencies should always have a length equal to the number
-    // of latency buckets the controller will aggregate latencies with.
-    assert_eq!(res.response_latencies.len(), 25);
+    // of latency buckets into which the controller will aggregate latencies,
+    // plus one (for the infinity bucket).
+    assert_eq!(res.response_latencies.len(), 26);
     assert_eq!(res.ends.len(), 1);
 
     // ------ ends ----------------------
@@ -175,8 +178,9 @@ fn inbound_aggregates_telemetry_over_several_requests() {
     let res = &req.responses[0];
     assert_eq!(res.ctx.as_ref().unwrap().http_status_code, 200);
     // response latencies should always have a length equal to the number
-    // of latency buckets the controller will aggregate latencies with.
-    assert_eq!(res.response_latencies.len(), 25);
+    // of latency buckets into which the controller will aggregate latencies,
+    // plus one (for the infinity bucket).
+    assert_eq!(res.response_latencies.len(), 26);
     assert_eq!(res.ends.len(), 1);
 
     // ------ ends ----------------------
@@ -226,7 +230,10 @@ fn records_latency_statistics() {
     assert_eq!(req.ctx.as_ref().unwrap().authority, "test.conduit.local");
     assert_eq!(req.ctx.as_ref().unwrap().path, "/hey");
     let res = &req.responses[0];
-    assert_eq!(res.response_latencies.len(), 25);
+    // response latencies should always have a length equal to the number
+    // of latency buckets into which the controller will aggregate latencies,
+    // plus one (for the infinity bucket).
+    assert_eq!(res.response_latencies.len(), 26);
 
     for ref bucket in &res.response_latencies {
         // 500 ms of extra latency should put us in the 500-10000
@@ -245,7 +252,10 @@ fn records_latency_statistics() {
     assert_eq!(req.count, 2);
     assert_eq!(req.responses.len(), 1);
     let res = req.responses.get(0).expect("responses[0]");
-    assert_eq!(res.response_latencies.len(), 25);
+    // response latencies should always have a length equal to the number
+    // of latency buckets into which the controller will aggregate latencies,
+    // plus one (for the infinity bucket).
+    assert_eq!(res.response_latencies.len(), 26);
     for ref bucket in &res.response_latencies {
         // 40 ms of extra latency should put us in the 400-500
         // decimillisecond bucket.

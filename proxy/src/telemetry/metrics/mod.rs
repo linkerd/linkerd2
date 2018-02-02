@@ -29,7 +29,6 @@ use ctx;
 use telemetry::event::{Event};
 
 mod latency;
-use self::latency::{Latencies, MS_TO_NS};
 
 #[derive(Debug)]
 pub struct Metrics {
@@ -60,7 +59,7 @@ struct ResponseStats {
     ///
     /// Observed latencies are mapped to a count of the times that
     /// latency value was seen.
-    latencies: Latencies,
+    latencies: latency::Histogram,
 }
 
 #[derive(Debug)]
@@ -316,7 +315,7 @@ fn dur_to_ms(dur: Duration) -> u64 {
         // to log if an overflow occurs...
         .checked_mul(1_000)
         .and_then(|as_millis| {
-            let subsec = u64::from(dur.subsec_nanos() / MS_TO_NS);
+            let subsec = u64::from(dur.subsec_nanos() / latency::MS_TO_NS);
             as_millis.checked_add(subsec)
         })
         .unwrap_or_else(|| {
