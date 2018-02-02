@@ -3,10 +3,15 @@ package k8s
 import (
 	"fmt"
 	"net/url"
+	"os"
 	"path/filepath"
 
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+)
+
+const (
+	kubernetesConfigFilePathEnvVariable = "KUBECONFIG"
 )
 
 func generateKubernetesApiBaseUrlFor(schemeHostAndPort string, namespace string, extraPathStartingWithSlash string) (*url.URL, error) {
@@ -52,4 +57,10 @@ func findK8sConfigFile(override string, contentsOfKubecongigEnvVar string, homeD
 
 func parseK8SConfig(pathToConfigFile string) (*rest.Config, error) {
 	return clientcmd.BuildConfigFromFlags("", pathToConfigFile)
+}
+
+func buildK8sConfig(homedir string, k8sConfigFilesystemPathOverride string) (*rest.Config, error) {
+	kubeconfigEnvVar := os.Getenv(kubernetesConfigFilePathEnvVariable)
+
+	return parseK8SConfig(findK8sConfigFile(k8sConfigFilesystemPathOverride, kubeconfigEnvVar, homedir))
 }
