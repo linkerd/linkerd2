@@ -1,6 +1,5 @@
-import _ from 'lodash';
 import React from 'react';
-import { Col, Radio, Row } from 'antd';
+import { Col, Row } from 'antd';
 
 export default class PageHeader extends React.Component {
   constructor(props) {
@@ -26,7 +25,7 @@ export default class PageHeader extends React.Component {
             {!this.props.subHeaderTitle ? null : <div className="subsection-header">{this.props.subHeaderTitle}</div>}
             {!this.props.subHeader ? null : <h1>{this.props.subHeader}</h1>}
           </Col>
-          { this.props.hideButtons ? null :
+          {/* { this.props.hideButtons ? null :
             <Col span={6}>
               <Radio.Group
                 className="time-window-btns"
@@ -39,7 +38,7 @@ export default class PageHeader extends React.Component {
                 }
               </Radio.Group>
             </Col>
-          }
+          } */}
         </Row>
 
         {!this.props.subMessage ? null : <div>{this.props.subMessage}</div>}

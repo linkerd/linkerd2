@@ -145,8 +145,9 @@ export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '10m') => {
   // prefix all links in the app with `pathPrefix`
   const ConduitLink = props => {
     let {to, name, absolute} = props;
+
     if (absolute) {
-      return <Link to={to}>{name}</Link>;
+      return <Link to={to} target="_blank">{name}</Link>;
     } else {
       return <Link to={`${pathPrefix}${to}`}>{name}</Link>;
     }
