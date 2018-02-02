@@ -150,7 +150,7 @@ minikube -n emojivoto service web-svc --url
 bin/conduit stat deployments
 
 # view a live pipeline of requests
-bin/conduit tap deploy emojivoto/voting-svc
+bin/conduit tap deploy emojivoto/voting
 ```
 
 ## Go
