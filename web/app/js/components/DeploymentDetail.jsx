@@ -141,6 +141,7 @@ export default class DeploymentDetail extends React.Component {
       _.isEmpty(this.state.deployTs) ? null :
         <ResourceMetricsOverview
           key="stat-pane"
+          resourceType="deployment"
           lastUpdated={this.state.lastUpdated}
           timeseries={this.state.deployTs} />,
       this.renderMidsection(),

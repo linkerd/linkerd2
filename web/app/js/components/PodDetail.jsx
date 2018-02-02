@@ -109,6 +109,7 @@ export default class PodDetail extends React.Component {
       _.isEmpty(this.state.podTs) ? null :
         <ResourceMetricsOverview
           key="pod-stat-pane"
+          resourceType="pod"
           lastUpdated={this.state.lastUpdated}
           timeseries={this.state.podTs} />,
       <UpstreamDownstream

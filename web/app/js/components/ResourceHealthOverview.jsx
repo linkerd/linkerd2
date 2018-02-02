@@ -65,7 +65,7 @@ export default class ResourceHealthOverview extends React.Component {
 
     return (
       <div key="entity-heath" className="entity-health">
-        <div className="subsection-header">{this.props.resourceType} Health</div>
+        <div className="subsection-header">Upstream/Downstream Traffic</div>
         <Row>
           <Col span={8}>
             { stats.inbound.numDeploys === 0 ? null :
