@@ -16,7 +16,7 @@ pub struct Histogram([Bucket<Latency>; NUM_BUCKETS]);
 #[derive(Debug, Default, Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Hash)]
 pub struct Latency(u32);
 
-/// A "leaf" bucket containing a single counter.
+/// A bucket in a latency histogram.
 ///
 /// # Type Parameters:
 /// - `T`: the type of observations counted by this bucket.
@@ -24,7 +24,7 @@ pub struct Latency(u32);
 #[derive(Debug, Clone)]
 pub struct Bucket<T, C = u32> {
 
-    /// The upper bound of the range of values in this bucket.
+    /// The inclusive upper bound on the range of values in this bucket.
     max: T,
 
     /// Count of observations falling into this bucket.
@@ -35,7 +35,7 @@ pub struct Bucket<T, C = u32> {
 
 impl<T> Bucket<T> {
 
-    // Construct a new `LeafBucket` with the upper bound of `max`.
+    // Construct a new `Bucket` with the inclusive upper bound of `max`.
     fn new<I: Into<T>>(max: I) -> Self {
         Bucket {
             max: max.into(),
