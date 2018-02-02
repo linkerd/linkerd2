@@ -67,21 +67,12 @@ message RequestCtx {
   string path = 5;
 }
 
-// A latency bucket, with a maximum value in tenths of a millisecond and a
-// count of the times that latency was observed.
-message LatencyBucket {
-    // Maximum latency value in this bucket, value in tenths of a millisecond.
-    uint32 max_value = 1;
-    // Count of occurences of this latency value.
-    uint32 count = 2;
-}
-
 message ResponseScope {
   ResponseCtx ctx = 1;
   // Response latencies (time from request headers sent to response headers received),
   // represented as an array of observed latency values with precision to 100µs and
   // the number of times those values were observed, ordered by the latency value.
-  repeated LatencyBucket response_latencies = 2;
+  repeated uint32 response_latencies = 2;
   repeated EosScope ends = 3;
 }
 

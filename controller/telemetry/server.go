@@ -3,6 +3,7 @@ package telemetry
 import (
 	"errors"
 	"fmt"
+	"math"
 	"net"
 	"net/http"
 	"strconv"
@@ -45,6 +46,15 @@ var (
 		},
 		responseLabels,
 	)
+
+	latencyBucketMaxValues = [26]uint32{
+		1, 2, 3, 4, 5,
+		10, 20, 30, 40, 50,
+		100, 200, 300, 400, 500,
+		1000, 2000, 3000, 4000, 5000,
+		10000, 20000, 30000, 40000, 50000,
+		math.MaxUint32,
+	}
 
 	responseLatencyBuckets = append(append(append(append(append(
 		prometheus.LinearBuckets(1, 1, 5),
@@ -282,15 +292,15 @@ func (s *server) Report(ctx context.Context, req *write.ReportRequest) (*write.R
 				return nil, errors.New("ResponseCtx is required")
 			}
 
-			for _, latency := range responseScope.ResponseLatencies {
+			for latencyBucket, count := range responseScope.ResponseLatencies {
 				// The latencies as received from the proxy are represented as an array of
 				// latency values in tenths of a millisecond, and a count of the number of
 				// times a request of that latency was observed.
 
 				// First, convert the latency value from tenths of a ms to ms and
 				// convert from u32 to f64.
-				latencyMs := float64(latency.MaxValue * 10)
-				for i := uint32(0); i < latency.Count; i++ {
+				latencyMs := float64(latencyBucketMaxValues[latencyBucket])
+				for i := uint32(0); i < count; i++ {
 					// Then, report that latency value to Prometheus a number of times
 					// equal to the count reported by the proxy.
 					latencyStat.Observe(latencyMs)
