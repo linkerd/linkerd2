@@ -16,7 +16,7 @@ protocurl="https://github.com/google/protobuf/releases/download/v${protocversion
 if [ ! -f "$protocbin" ]; then
   tmp=$(mktemp -d -t protoc.XXX)
   (
-    cd $tmp
+    cd "$tmp"
     curl -L --silent --fail -o "$protocbin.zip" "$protocurl"
     jar xf "$protocbin.zip"
     chmod +x bin/protoc

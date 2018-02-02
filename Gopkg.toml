@@ -1,5 +1,9 @@
 required = ["github.com/golang/protobuf/protoc-gen-go"]
 
+[prune]
+  unused-packages = true
+  go-tests = true
+
 [[constraint]]
   name = "google.golang.org/grpc"
   version = "1.7.0"

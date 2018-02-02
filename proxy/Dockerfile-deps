@@ -4,7 +4,7 @@
 # are omitted from the resulting image so that artifacts may be built from source over
 # this image.
 #
-# When this file is changed, you must run `bin/update-go-deps-shas`.
+# When this file is changed, you must run `bin/update-proxy-deps-shas`.
 
 # Compile the application to ensure we've obtained all build dependencies and that they
 # compile.
