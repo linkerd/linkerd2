@@ -1,5 +1,6 @@
+import _ from 'lodash';
 import React from 'react';
-import { Col, Row } from 'antd';
+import { Col, Radio, Row } from 'antd';
 
 export default class PageHeader extends React.Component {
   constructor(props) {
@@ -16,6 +17,27 @@ export default class PageHeader extends React.Component {
     this.setState({selectedWindow: window});
   }
 
+  renderMetricWindowButtons() {
+    // don't use time window changing until the results of Telemetry Scalability are in
+    // https://github.com/runconduit/conduit/milestone/4
+    if (this.props.hideButtons) {
+      return null;
+    } else {
+      return (<Col span={6}>
+        <Radio.Group
+          className="time-window-btns"
+          value={this.state.selectedWindow}
+          onChange={this.onTimeWindowClick} >
+          {
+            _.map(this.props.api.getValidMetricsWindows(), (w, i) => {
+              return <Radio.Button key={`metrics-window-btn-${i}`} value={w}>{w}</Radio.Button>;
+            })
+          }
+        </Radio.Group>
+      </Col>);
+    }
+  }
+
   render() {
     return (
       <div className="page-header">
@@ -25,20 +47,7 @@ export default class PageHeader extends React.Component {
             {!this.props.subHeaderTitle ? null : <div className="subsection-header">{this.props.subHeaderTitle}</div>}
             {!this.props.subHeader ? null : <h1>{this.props.subHeader}</h1>}
           </Col>
-          {/* { this.props.hideButtons ? null :
-            <Col span={6}>
-              <Radio.Group
-                className="time-window-btns"
-                value={this.state.selectedWindow}
-                onChange={this.onTimeWindowClick} >
-                {
-                  _.map(this.props.api.getValidMetricsWindows(), (w, i) => {
-                    return <Radio.Button key={`metrics-window-btn-${i}`} value={w}>{w}</Radio.Button>;
-                  })
-                }
-              </Radio.Group>
-            </Col>
-          } */}
+          {/* {this.renderMetricWindowButtons()} */}
         </Row>
 
         {!this.props.subMessage ? null : <div>{this.props.subMessage}</div>}
