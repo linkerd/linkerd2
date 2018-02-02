@@ -182,7 +182,7 @@ bin/go-run controller/script/simulate-proxy --kubeconfig ~/.kube/config --addr $
 ### Testing
 
 ```bash
-dep ensure && dep prune
+bin/dep ensure
 go test ./...
 go vet ./...
 ```
