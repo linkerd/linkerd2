@@ -289,7 +289,7 @@ func (s *server) Report(ctx context.Context, req *write.ReportRequest) (*write.R
 
 				// First, convert the latency value from tenths of a ms to ms and
 				// convert from u32 to f64.
-				latencyMs := float64(latency.Latency * 10)
+				latencyMs := float64(latency.MaxValue * 10)
 				for i := uint32(0); i < latency.Count; i++ {
 					// Then, report that latency value to Prometheus a number of times
 					// equal to the count reported by the proxy.
