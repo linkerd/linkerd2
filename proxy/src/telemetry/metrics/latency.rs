@@ -1,6 +1,4 @@
 #![deny(missing_docs)]
-use control::pb::telemetry::LatencyBucket;
-
 use std::{ops, slice, u32};
 use std::default::Default;
 use std::time::Duration;
@@ -8,64 +6,60 @@ use std::time::Duration;
 /// The number of buckets in a  latency histogram.
 pub const NUM_BUCKETS: usize = 26;
 
+static BUCKETS: [Latency; NUM_BUCKETS] = [
+    // The controller telemetry server creates 5 sets of 5 linear buckets
+    // each:
+    // TODO: it would be nice if we didn't have to hard-code each
+    //       individual bucket and could use Rust ranges or something.
+    //       However, because we're using a raw fixed size array rather
+    //       than a vector (as we don't ever expect to grow this array
+    //       and thus don't _need_ a vector) we can't concatenate it
+    //       from smaller arrays, making it difficult to construct
+    //       programmatically...
+    // in the controller:
+    // prometheus.LinearBuckets(1, 1, 5),
+    Latency(10),
+    Latency(20),
+    Latency(30),
+    Latency(40),
+    Latency(50),
+    // prometheus.LinearBuckets(10, 10, 5),
+    Latency(100),
+    Latency(200),
+    Latency(300),
+    Latency(400),
+    Latency(500),
+    // prometheus.LinearBuckets(100, 100, 5),
+    Latency(1_000),
+    Latency(2_000),
+    Latency(3_000),
+    Latency(4_000),
+    Latency(5_000),
+    // prometheus.LinearBuckets(1000, 1000, 5),
+    Latency(10_000),
+    Latency(20_000),
+    Latency(30_000),
+    Latency(40_000),
+    Latency(50_000),
+    // prometheus.LinearBuckets(10000, 10000, 5),
+    Latency(100_000),
+    Latency(200_000),
+    Latency(300_000),
+    Latency(400_000),
+    Latency(500_000),
+    // Prometheus implicitly creates a max bucket for everything that
+    // falls outside of the highest-valued bucket, but we need to
+    // create it explicitly.
+    Latency(u32::MAX),
+];
+
 /// A series of latency values and counts.
 #[derive(Debug)]
-pub struct Histogram([Bucket<Latency>; NUM_BUCKETS]);
+pub struct Histogram([u32; NUM_BUCKETS]);
 
 /// A latency in tenths of a millisecond.
 #[derive(Debug, Default, Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Hash)]
 pub struct Latency(u32);
-
-/// A bucket in a latency histogram.
-///
-/// # Type Parameters:
-/// - `T`: the type of observations counted by this bucket.
-/// - `C`: the type used for counting observed values.
-#[derive(Debug, Clone)]
-pub struct Bucket<T, C = u32> {
-
-    /// The inclusive upper bound on the range of values in this bucket.
-    max: T,
-
-    /// Count of observations falling into this bucket.
-    count: C,
-
-}
-
-
-impl<T> Bucket<T> {
-
-    // Construct a new `Bucket` with the inclusive upper bound of `max`.
-    fn new<I: Into<T>>(max: I) -> Self {
-        Bucket {
-            max: max.into(),
-            count: 0
-        }
-    }
-
-}
-
-impl<T> Bucket<T>
-where
-    T: PartialOrd
-{
-
-    fn contains(&self, t: &T) -> bool {
-        t <= &self.max
-    }
-
-    fn observe(&mut self, t: &T) -> bool {
-        if self.contains(t) {
-            // silently truncate if the count is over u32::MAX.
-            self.count = self.count.saturating_add(1);
-            true
-        } else {
-            false
-        }
-
-    }
-}
-
 
 
 // ===== impl Histogram =====
@@ -78,11 +72,11 @@ impl Histogram {
         I: Into<Latency>,
     {
         let measurement = measurement.into();
-        for ref mut bucket in self {
-            if bucket.observe(&measurement) {
-                return;
-            }
-        }
+        let i = BUCKETS.iter()
+            .position(|max| &measurement <= max)
+            .expect("latency value greater than u32::MAX; this shouldn't be \
+                     possible.");
+        self.0[i] += 1;
     }
 
     /// Construct a new, empty `Histogram`.
@@ -93,52 +87,7 @@ impl Histogram {
     /// latencies in tenths of a millisecond, but truncating these observations
     /// to millisecond resolution.
     pub fn new() -> Self {
-        // The controller telemetry server creates 5 sets of 5 linear buckets
-        // each:
-        Histogram([
-            // TODO: it would be nice if we didn't have to hard-code each
-            //       individual bucket and could use Rust ranges or something.
-            //       However, because we're using a raw fixed size array rather
-            //       than a vector (as we don't ever expect to grow this array
-            //       and thus don't _need_ a vector) we can't concatenate it
-            //       from smaller arrays, making it difficult to construct
-            //       programmatically...
-            // in the controller:
-            // prometheus.LinearBuckets(1, 1, 5),
-            Bucket::new(10),
-            Bucket::new(20),
-            Bucket::new(30),
-            Bucket::new(40),
-            Bucket::new(50),
-            // prometheus.LinearBuckets(10, 10, 5),
-            Bucket::new(100),
-            Bucket::new(200),
-            Bucket::new(300),
-            Bucket::new(400),
-            Bucket::new(500),
-            // prometheus.LinearBuckets(100, 100, 5),
-            Bucket::new(1_000),
-            Bucket::new(2_000),
-            Bucket::new(3_000),
-            Bucket::new(4_000),
-            Bucket::new(5_000),
-            // prometheus.LinearBuckets(1000, 1000, 5),
-            Bucket::new(10_000),
-            Bucket::new(20_000),
-            Bucket::new(30_000),
-            Bucket::new(40_000),
-            Bucket::new(50_000),
-            // prometheus.LinearBuckets(10000, 10000, 5),
-            Bucket::new(100_000),
-            Bucket::new(200_000),
-            Bucket::new(300_000),
-            Bucket::new(400_000),
-            Bucket::new(500_000),
-            // Prometheus implicitly creates a max bucket for everything that
-            // falls outside of the highest-valued bucket, but we need to
-            // create it explicitly.
-            Bucket::new(u32::MAX),
-        ])
+        Histogram([0; NUM_BUCKETS])
     }
 
 }
@@ -156,8 +105,8 @@ where
 
 
 impl<'a> IntoIterator for &'a Histogram {
-    type Item = &'a Bucket<Latency>;
-    type IntoIter = slice::Iter<'a, Bucket<Latency>>;
+    type Item = &'a u32;
+    type IntoIter = slice::Iter<'a, u32>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.iter()
@@ -165,36 +114,11 @@ impl<'a> IntoIterator for &'a Histogram {
 
 }
 
-impl<'a> IntoIterator for &'a mut Histogram {
-    type Item = &'a mut Bucket<Latency>;
-    type IntoIter = slice::IterMut<'a, Bucket<Latency>>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.0.iter_mut()
-    }
-
-}
 
 impl Default for Histogram {
     #[inline]
     fn default() -> Self {
         Self::new()
-    }
-}
-
-impl<'a> Into<Vec<LatencyBucket>> for &'a Histogram {
-    fn into(self) -> Vec<LatencyBucket> {
-        self.0.into_iter()
-            .map(LatencyBucket::from)
-            .collect()
-    }
-}
-
-impl Into<Vec<LatencyBucket>> for Histogram {
-    fn into(self) -> Vec<LatencyBucket> {
-        self.0.into_iter()
-            .map(LatencyBucket::from)
-            .collect()
     }
 }
 
@@ -252,16 +176,5 @@ impl From<u32> for Latency {
 impl Into<u32> for Latency {
     fn into(self) -> u32 {
         self.0
-    }
-}
-
-// ===== impl LatencyBucket =====
-
-impl<'a> From<&'a Bucket<Latency>> for LatencyBucket {
-    fn from(bucket: &'a Bucket<Latency>) -> Self {
-        LatencyBucket {
-            max_value: bucket.max.into(),
-            count: bucket.count,
-        }
     }
 }

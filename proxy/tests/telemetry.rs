@@ -233,15 +233,13 @@ fn records_latency_statistics() {
     // response latencies should always have a length equal to the number
     // of latency buckets into which the controller will aggregate latencies,
     // plus one (for the infinity bucket).
-    assert_eq!(res.response_latencies.len(), 26);
-
-    for ref bucket in &res.response_latencies {
-        // 500 ms of extra latency should put us in the 500-10000
-        // decimillisecond bucket.
-        if bucket.max_value == 10000 {
-            assert_eq!(bucket.count, 1);
+    for (idx, bucket) in res.response_latencies.iter().enumerate() {
+        // 500 ms of extra latency should put us in the 5000-10000
+        // decimillisecond bucket (the 15th bucket)
+        if idx == 15 {
+            assert_eq!(*bucket, 1, "poorly bucketed latencies: {:?}", res.response_latencies);
         } else {
-            assert_eq!(bucket.count, 0);
+            assert_eq!(*bucket, 0, "poorly bucketed latencies: {:?}", res.response_latencies);
         }
     }
 
@@ -256,13 +254,13 @@ fn records_latency_statistics() {
     // of latency buckets into which the controller will aggregate latencies,
     // plus one (for the infinity bucket).
     assert_eq!(res.response_latencies.len(), 26);
-    for ref bucket in &res.response_latencies {
+    for (idx, bucket) in res.response_latencies.iter().enumerate() {
         // 40 ms of extra latency should put us in the 400-500
-        // decimillisecond bucket.
-        if bucket.max_value == 500 {
-            assert_eq!(bucket.count, 2);
+        // decimillisecond bucket (the 10th bucket)
+        if idx == 9 {
+            assert_eq!(*bucket, 2, "poorly bucketed latencies: {:?}", res.response_latencies);
         } else {
-            assert_eq!(bucket.count, 0);
+            assert_eq!(*bucket, 0, "poorly bucketed latencies: {:?}", res.response_latencies);
         }
     }
 
