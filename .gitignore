@@ -12,3 +12,4 @@ web/app/dist
 .protoc
 .gorun
 .dep
+.dep.exe
