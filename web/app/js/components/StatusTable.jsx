@@ -41,7 +41,7 @@ const columns = {
       title: "Deployment",
       dataIndex: "name",
       key: "name",
-      render: name => shouldLink ? <ConduitLink to={`/deployment?deploy=${name}`} name={name} /> : name
+      render: name => shouldLink ? <ConduitLink to={`/deployment?deploy=${name}`}>{name}</ConduitLink> : name
     };
   },
   pods: {

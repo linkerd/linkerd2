@@ -63,7 +63,7 @@ export default class Sidebar extends React.Component {
       <div className="sidebar">
         <div className="list-container">
           <div className="sidebar-headers">
-            <ConduitLink to="/servicemesh" name={<img src={logo} />} />
+            <ConduitLink to="/servicemesh"><img src={logo} /></ConduitLink>
           </div>
 
           <AutoComplete
@@ -77,16 +77,16 @@ export default class Sidebar extends React.Component {
 
           <Menu className="sidebar-menu" theme="dark" selectedKeys={[normalizedPath]}>
             <Menu.Item className="sidebar-menu-item" key="/servicemesh">
-              <ConduitLink to="/servicemesh" name="Service mesh" />
+              <ConduitLink to="/servicemesh">Service mesh</ConduitLink>
             </Menu.Item>
             <Menu.Item className="sidebar-menu-item" key="/deployments">
-              <ConduitLink to="/deployments" name="Deployments" />
+              <ConduitLink to="/deployments">Deployments</ConduitLink>
             </Menu.Item>
             <Menu.Item className="sidebar-menu-item" key="/routes">
-              <ConduitLink to="/routes" name="Routes" />
+              <ConduitLink to="/routes">Routes</ConduitLink>
             </Menu.Item>
             <Menu.Item className="sidebar-menu-item" key="/docs">
-              <ConduitLink to="https://conduit.io/docs/" absolute="true" target="_blank" name="Documentation" />
+              <ConduitLink to="https://conduit.io/docs/" absolute="true">Documentation</ConduitLink>
             </Menu.Item>
           </Menu>
 

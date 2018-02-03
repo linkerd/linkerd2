@@ -59,32 +59,32 @@ describe('ApiHelpers', () => {
   describe('ConduitLink', () => {
     it('wraps a relative link with the pathPrefix', () => {
       api = ApiHelpers('/my/path/prefix');
-      let linkProps = { to: "/myrelpath", name: "Informative Link Title" };
+      let linkProps = { to: "/myrelpath", children: ["Informative Link Title"] };
       let conduitLink = mount(routerWrap(api.ConduitLink, linkProps));
 
       expect(conduitLink.find("Link")).to.have.length(1);
       expect(conduitLink.html()).to.contain('href="/my/path/prefix/myrelpath"');
-      expect(conduitLink.html()).to.contain(linkProps.name);
+      expect(conduitLink.html()).to.contain(linkProps.children[0]);
     });
 
     it('wraps a relative link with no pathPrefix', () => {
       api = ApiHelpers('');
-      let linkProps = { to: "/myrelpath", name: "Informative Link Title" };
+      let linkProps = { to: "/myrelpath", children: ["Informative Link Title"] };
       let conduitLink = mount(routerWrap(api.ConduitLink, linkProps));
 
       expect(conduitLink.find("Link")).to.have.length(1);
       expect(conduitLink.html()).to.contain('href="/myrelpath"');
-      expect(conduitLink.html()).to.contain(linkProps.name);
+      expect(conduitLink.html()).to.contain(linkProps.children[0]);
     });
 
     it('leaves an absolute link unchanged', () => {
       api = ApiHelpers('/my/path/prefix');
-      let linkProps = { absolute: "true", to: "http://xkcd.com", name: "Best Webcomic" };
+      let linkProps = { absolute: "true", to: "http://xkcd.com", children: ["Best Webcomic"] };
       let conduitLink = mount(routerWrap(api.ConduitLink, linkProps));
 
       expect(conduitLink.find("Link")).to.have.length(1);
       expect(conduitLink.html()).to.contain('href="http://xkcd.com"');
-      expect(conduitLink.html()).to.contain(linkProps.name);
+      expect(conduitLink.html()).to.contain(linkProps.children[0]);
     });
   });
 

@@ -30,7 +30,7 @@ const generateColumns = (sortable, ConduitLink) => {
         key: "name",
         sorter: sortable ? (a, b) => (a.name || "").localeCompare(b.name) : false,
         render: name => !resource.url ? name :
-          <ConduitLink to={`${resource.url}${name}`} name={name} />
+          <ConduitLink to={`${resource.url}${name}`}>{name}</ConduitLink>
       };
     },
     successRate: {
