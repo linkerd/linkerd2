@@ -108,18 +108,15 @@ func randomCount() uint32 {
 	return uint32(rand.Int31n(100) + 1)
 }
 
-func randomLatencies(count uint32) (latencies []*pb.LatencyBucket) {
+func randomLatencies(count uint32) (latencies []uint32) {
+	var l [26]uint32
 	for i := uint32(0); i < count; i++ {
 
 		// The latency value with precision to 100µs.
-		latencyValue := uint32(rand.Int31n(int32(time.Second / (time.Millisecond * 10))))
-		latency := pb.LatencyBucket{
-			MaxValue: latencyValue,
-			Count:    1,
-		}
-		latencies = append(latencies, &latency)
+		latencyValue := uint32(rand.Int31n(26))
+		l[latencyValue]++
 	}
-	return
+	return l[:]
 }
 
 func randomGrpcEos(count uint32) (eos []*pb.EosScope) {
