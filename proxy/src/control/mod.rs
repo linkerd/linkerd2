@@ -28,7 +28,7 @@ mod telemetry;
 use self::discovery::{Background as DiscoBg, Discovery, Watch};
 pub use self::discovery::Bind;
 pub use self::observe::Observe;
-use self::pb::proxy::telemetry::ReportRequest;
+use conduit_proxy_controller_grpc::telemetry::ReportRequest;
 use self::telemetry::Telemetry;
 
 pub struct Control {

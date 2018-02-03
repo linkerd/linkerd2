@@ -5,6 +5,11 @@ authors = ["Oliver Gould <ver@buoyant.io>"]
 publish = false
 
 [dependencies]
+convert                         = { path = "./convert" }
+conduit-proxy-controller-grpc   = { path = "./controller-grpc" }
+futures-mpsc-lossy              = { path = "./futures-mpsc-lossy" }
+conduit-proxy-router            = { path = "./router" }
+
 bytes = "0.4"
 chrono = "0.4"
 domain = "0.2.2"
@@ -23,7 +28,6 @@ tokio-core = "0.1"
 tokio-io = "0.1"
 
 prost = "0.3.0"
-prost-derive = "0.3.0"
 prost-types = "0.3.0"
 
 abstract-ns = "0.4"
@@ -41,17 +45,9 @@ tower-h2        = { git = "https://github.com/tower-rs/tower-h2" }
 tower-reconnect = { git = "https://github.com/tower-rs/tower" }
 tower-util      = { git = "https://github.com/tower-rs/tower" }
 
-futures-mpsc-lossy = { path = "../futures-mpsc-lossy" }
-tower-router       = { path = "../tower-router" }
-
-
 [target.'cfg(target_os = "linux")'.dependencies]
 libc = "0.2"
 
-[build-dependencies]
-tower-grpc-build = { git = "https://github.com/tower-rs/tower-grpc" }
-
 [dev-dependencies]
-# Quickcheck 0.4.1, on crates.io, is missng useful Arbitrary implementations that exist on
-# master.
-quickcheck = { git = "https://github.com/BurntSushi/quickcheck", rev = "a1658ce" }
+quickcheck = "0.6"
+conduit-proxy-controller-grpc = { path = "./controller-grpc" , features = ["arbitrary"] }

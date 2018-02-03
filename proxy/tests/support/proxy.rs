@@ -2,7 +2,7 @@ use support::*;
 
 use std::sync::{Arc, Mutex};
 
-use support::conduit_proxy::convert::TryFrom;
+use convert::TryFrom;
 
 pub fn new() -> Proxy {
     Proxy::new()

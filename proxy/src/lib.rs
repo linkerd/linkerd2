@@ -5,6 +5,8 @@
 extern crate abstract_ns;
 extern crate bytes;
 extern crate chrono;
+extern crate conduit_proxy_controller_grpc;
+extern crate convert;
 extern crate domain;
 extern crate env_logger;
 #[macro_use]
@@ -22,8 +24,6 @@ extern crate log;
 extern crate ns_dns_tokio;
 extern crate ordermap;
 extern crate prost;
-#[macro_use]
-extern crate prost_derive;
 extern crate prost_types;
 #[cfg(test)]
 #[macro_use]
@@ -38,7 +38,7 @@ extern crate tower_discover;
 extern crate tower_grpc;
 extern crate tower_h2;
 extern crate tower_reconnect;
-extern crate tower_router;
+extern crate conduit_proxy_router;
 extern crate tower_util;
 extern crate url;
 
@@ -53,14 +53,13 @@ use std::time::Duration;
 use tokio_core::reactor::{Core, Handle};
 use tower::NewService;
 use tower_fn::*;
-use tower_router::{Recognize, Router};
+use conduit_proxy_router::{Recognize, Router};
 
 pub mod app;
 mod bind;
 pub mod config;
 mod connection;
 pub mod control;
-pub mod convert;
 mod ctx;
 mod dns;
 mod fully_qualified_authority;
@@ -244,7 +243,7 @@ where
             thread::Builder::new()
                 .name("controller-client".into())
                 .spawn(move || {
-                    use control::pb::proxy::tap::server::TapServer;
+                    use conduit_proxy_controller_grpc::tap::server::TapServer;
 
                     let mut core = Core::new().expect("initialize controller core");
                     let executor = core.handle();

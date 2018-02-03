@@ -8,7 +8,7 @@
 //! be stored in `http::Extensions`, for instance. Furthermore, because these contexts
 //! will be sent to a telemetry processing thread, we want to avoid excessive cloning.
 use config;
-use control::pb::proxy::telemetry as proto;
+use conduit_proxy_controller_grpc::telemetry as proto;
 use std::sync::Arc;
 pub mod http;
 pub mod transport;

@@ -5,8 +5,8 @@ use futures_mpsc_lossy;
 use ordermap::OrderMap;
 use tower_grpc::{self as grpc, Response};
 
-use control::pb::common::TapEvent;
-use control::pb::proxy::tap::{server, ObserveRequest};
+use conduit_proxy_controller_grpc::common::TapEvent;
+use conduit_proxy_controller_grpc::tap::{server, ObserveRequest};
 use convert::*;
 use ctx;
 use telemetry::Event;

@@ -6,7 +6,7 @@ use tower;
 use tower_balance::{self, choose, Balance};
 use tower_buffer::Buffer;
 use tower_h2;
-use tower_router::Recognize;
+use conduit_proxy_router::Recognize;
 
 use bind::{self, Bind, Protocol};
 use control::{self, discovery};

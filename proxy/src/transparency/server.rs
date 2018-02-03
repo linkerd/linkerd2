@@ -10,7 +10,7 @@ use tokio_core::reactor::Handle;
 use tower::NewService;
 use tower_h2;
 
-use control;
+use conduit_proxy_controller_grpc::common;
 use connection::Connection;
 use ctx::Proxy as ProxyCtx;
 use ctx::transport::{Server as ServerCtx};
@@ -108,7 +108,7 @@ where
                         &local_addr,
                         &remote_addr,
                         &orig_dst,
-                        control::pb::proxy::common::Protocol::Http,
+                        common::Protocol::Http,
                     );
 
                     // record telemetry
@@ -144,7 +144,7 @@ where
                         &local_addr,
                         &remote_addr,
                         &orig_dst,
-                        control::pb::proxy::common::Protocol::Tcp,
+                        common::Protocol::Tcp,
                     );
 
                     // record telemetry

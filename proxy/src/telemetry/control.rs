@@ -9,7 +9,7 @@ use tokio_core::reactor::{Handle, Timeout};
 use super::event::Event;
 use super::metrics::Metrics;
 use super::tap::Taps;
-use control::pb::telemetry::ReportRequest;
+use conduit_proxy_controller_grpc::telemetry::ReportRequest;
 use ctx;
 
 /// A `Control` which has been configured but not initialized.

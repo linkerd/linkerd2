@@ -6,12 +6,12 @@ use std::time::Duration;
 use http;
 use ordermap::OrderMap;
 
-use control::pb::common::{
+use conduit_proxy_controller_grpc::common::{
     HttpMethod,
     TcpAddress,
     Protocol,
 };
-use control::pb::proxy::telemetry::{
+use conduit_proxy_controller_grpc::telemetry::{
     ClientTransport,
     eos_ctx,
     EosCtx,

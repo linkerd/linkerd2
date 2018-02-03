@@ -128,6 +128,9 @@ dependencies = [
  "abstract-ns 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "bytes 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "chrono 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "conduit-proxy-controller-grpc 0.2.0",
+ "conduit-proxy-router 0.2.0",
+ "convert 0.2.0",
  "domain 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -142,9 +145,8 @@ dependencies = [
  "ns-dns-tokio 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ordermap 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "prost 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "prost-derive 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "prost-types 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "quickcheck 0.4.2 (git+https://github.com/BurntSushi/quickcheck?rev=a1658ce)",
+ "quickcheck 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-connect 0.1.0 (git+https://github.com/carllerche/tokio-connect)",
  "tokio-core 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-io 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -153,13 +155,42 @@ dependencies = [
  "tower-buffer 0.1.0 (git+https://github.com/tower-rs/tower)",
  "tower-discover 0.1.0 (git+https://github.com/tower-rs/tower)",
  "tower-grpc 0.1.0 (git+https://github.com/tower-rs/tower-grpc)",
- "tower-grpc-build 0.1.0 (git+https://github.com/tower-rs/tower-grpc)",
  "tower-h2 0.1.0 (git+https://github.com/tower-rs/tower-h2)",
  "tower-reconnect 0.1.0 (git+https://github.com/tower-rs/tower)",
- "tower-router 0.2.0",
  "tower-util 0.1.0 (git+https://github.com/tower-rs/tower)",
  "url 1.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "conduit-proxy-controller-grpc"
+version = "0.2.0"
+dependencies = [
+ "bytes 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "convert 0.2.0",
+ "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
+ "h2 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "http 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "prost 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "prost-derive 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "prost-types 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "quickcheck 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tower-grpc 0.1.0 (git+https://github.com/tower-rs/tower-grpc)",
+ "tower-grpc-build 0.1.0 (git+https://github.com/tower-rs/tower-grpc)",
+ "tower-h2 0.1.0 (git+https://github.com/tower-rs/tower-h2)",
+]
+
+[[package]]
+name = "conduit-proxy-router"
+version = "0.2.0"
+dependencies = [
+ "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ordermap 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tower 0.1.0 (git+https://github.com/tower-rs/tower)",
+]
+
+[[package]]
+name = "convert"
+version = "0.2.0"
 
 [[package]]
 name = "crc"
@@ -710,12 +741,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "quickcheck"
-version = "0.4.2"
-source = "git+https://github.com/BurntSushi/quickcheck?rev=a1658ce#a1658ce9fc9ab41fd3aa1faeaa326fcf28dfcd45"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
- "rand 0.3.20 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1052,15 +1083,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tower-router"
-version = "0.2.0"
-dependencies = [
- "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
- "ordermap 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)",
- "tower 0.1.0 (git+https://github.com/tower-rs/tower)",
-]
-
-[[package]]
 name = "tower-util"
 version = "0.1.0"
 source = "git+https://github.com/tower-rs/tower#c06aa5452d130da948c0b9a3b587edc094b19045"
@@ -1272,7 +1294,7 @@ dependencies = [
 "checksum prost-derive 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "bc57900c837af0e8bf5917e3d1fa45109cde500b36dc65621eb2775acde0d54d"
 "checksum prost-types 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "dc53b19b9de90ddbcdaa34120141cdcca68ad5f0de4859cc94f5417878958fc2"
 "checksum quick-error 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "eda5fe9b71976e62bc81b781206aaa076401769b2143379d3eb2118388babac4"
-"checksum quickcheck 0.4.2 (git+https://github.com/BurntSushi/quickcheck?rev=a1658ce)" = "<none>"
+"checksum quickcheck 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "13f4460d3daa06eb1c4b9a3c55dffe65cb030dd70cf1bfdd482532f48ab24f74"
 "checksum quote 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)" = "7a6e920b65c65f10b2ae65c831a81a073a89edd28c7cce89475bff467ab4167a"
 "checksum quote 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "1eca14c727ad12702eb4b6bfb5a232287dcf8385cb8ca83a3eeaf6519c44c408"
 "checksum rand 0.3.20 (registry+https://github.com/rust-lang/crates.io-index)" = "512870020642bb8c221bf68baa1b2573da814f6ccfe5c9699b1c303047abe9b1"
