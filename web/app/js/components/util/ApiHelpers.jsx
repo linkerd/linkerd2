@@ -9,10 +9,10 @@ export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '10m') => {
   const metricsPath = () => `/api/metrics?window=${metricsWindow}`;
 
   const validMetricsWindows = {
-    "10s": true,
-    "1m": true,
-    "10m": true,
-    "1h": true
+    "10s": "10 minutes",
+    "1m": "1 minute",
+    "10m": "10 minutes",
+    "1h": "1 hour"
   };
 
   const apiFetch = path => {
@@ -45,6 +45,7 @@ export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '10m') => {
   };
 
   const getMetricsWindow = () => metricsWindow;
+  const getMetricsWindowDisplayText = () => validMetricsWindows[metricsWindow];
 
   const setMetricsWindow = window => {
     if (!validMetricsWindows[window]) return;
@@ -160,6 +161,7 @@ export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '10m') => {
     getMetricsWindow,
     setMetricsWindow,
     getValidMetricsWindows: () => _.keys(validMetricsWindows),
+    getMetricsWindowDisplayText,
     urlsForResource: urlsForResource,
     ConduitLink
   };

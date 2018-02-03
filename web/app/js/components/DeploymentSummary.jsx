@@ -18,7 +18,7 @@ export default class DeploymentSummary extends React.Component {
       <div className={`border-container border-neutral`}>
         <div className="border-container-content">
           <div className="summary-title">{this.title()}</div>
-          <div className="summary-info">RPS (last {this.props.api.getMetricsWindow()})</div>
+          <div className="summary-info">RPS (last {this.props.api.getMetricsWindowDisplayText()})</div>
 
           <LineGraph
             data={this.props.requestTs}

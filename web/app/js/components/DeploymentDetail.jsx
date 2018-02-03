@@ -244,7 +244,7 @@ export default class DeploymentDetail extends React.Component {
             <PageHeader
               subHeaderTitle="Deployment detail"
               subHeader={this.renderDeploymentTitle()}
-              subMessage={incompleteMeshMessage(this.state.deploy)}
+              subMessage={!this.state.added ? incompleteMeshMessage(this.state.deploy) : null}
               api={this.api} />
 
             {this.renderSections()}
