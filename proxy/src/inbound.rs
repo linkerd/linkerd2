@@ -90,7 +90,7 @@ mod tests {
     use tower_router::Recognize;
 
     use super::Inbound;
-    use control::pb::common::Protocol;
+    use conduit_grpc::common::Protocol;
     use bind::{self, Bind};
     use ctx;
 

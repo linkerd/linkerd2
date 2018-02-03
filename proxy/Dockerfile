@@ -2,45 +2,65 @@
 #
 # Builds a slim runtime image with the conduit-proxy binary.
 
+## Mock out all local library code and fetch external dependencies.
 FROM rust:1.23.0 as fetch
 WORKDIR /usr/src/conduit
-RUN mkdir -p futures-mpsc-lossy/src tower-router/src proxy/src
-RUN touch futures-mpsc-lossy/src/lib.rs tower-router/src/lib.rs proxy/src/lib.rs
-COPY Cargo.toml Cargo.lock          ./
-COPY futures-mpsc-lossy/Cargo.toml  futures-mpsc-lossy/Cargo.toml
-COPY tower-router/Cargo.toml        tower-router/Cargo.toml
-COPY proxy/Cargo.toml               proxy/Cargo.toml
+RUN mkdir -p \
+        proxy/src \
+        proxy/convert/src \
+        proxy/futures-mpsc-lossy/src \
+        proxy/grpc/src \
+        proxy/tower-router/src \
+    && touch \
+        proxy/src/lib.rs \
+        proxy/convert/src/lib.rs \
+        proxy/futures-mpsc-lossy/src/lib.rs \
+        proxy/grpc/src/lib.rs \
+        proxy/tower-router/src/lib.rs
+COPY Cargo.toml Cargo.lock                ./
+COPY proxy/Cargo.toml                     proxy/Cargo.toml
+COPY proxy/convert/Cargo.toml             proxy/convert/Cargo.toml
+COPY proxy/futures-mpsc-lossy/Cargo.toml  proxy/futures-mpsc-lossy/Cargo.toml
+COPY proxy/grpc/Cargo.toml                proxy/grpc/Cargo.toml
+COPY proxy/tower-router/Cargo.toml        proxy/tower-router/Cargo.toml
 RUN cargo fetch --locked
 
-FROM rust:1.23.0 as deps
+## Mock out the proxy source and build all libraries.
+#
+# Because the proto build has build-time dependencies, this step allows these dependencies
+# to be cached across proxy source rebuilds.
+FROM rust:1.23.0 as libs
 WORKDIR /usr/src/conduit
 COPY --from=fetch $CARGO_HOME $CARGO_HOME
-COPY Cargo.toml Cargo.lock  ./
-COPY futures-mpsc-lossy     ./futures-mpsc-lossy
-COPY tower-router           ./tower-router
-COPY proxy/Cargo.toml       proxy/Cargo.toml
-RUN mkdir proxy/src && \
-    touch proxy/src/lib.rs
+RUN mkdir -p proxy/src \
+    && touch proxy/src/lib.rs
+COPY Cargo.toml Cargo.lock     ./
+COPY proto                     ./proto
+COPY proxy/Cargo.toml          ./proxy/Cargo.toml
+COPY proxy/convert             ./proxy/convert
+COPY proxy/futures-mpsc-lossy  ./proxy/futures-mpsc-lossy
+COPY proxy/tower-router        ./proxy/tower-router
+COPY proxy/grpc                ./proxy/grpc
 ARG RELEASE
 RUN if [ -z "$RELEASE" ]; \
     then cargo build --frozen ; \
-    else cargo build --frozen --release ;  fi
+    else cargo build --frozen --release ; \
+    fi
 
+## Build the proxy binary using pre-built dependencies.
 FROM rust:1.23.0 as bin
 WORKDIR /usr/src/conduit
-COPY --from=deps $CARGO_HOME $CARGO_HOME
+COPY --from=fetch $CARGO_HOME $CARGO_HOME
 COPY Cargo.toml Cargo.lock  ./
-COPY futures-mpsc-lossy     ./futures-mpsc-lossy
-COPY tower-router           ./tower-router
 COPY proto                  ./proto
 COPY proxy                  ./proxy
 ARG RELEASE
-COPY --from=deps /usr/src/conduit/target ./target
+COPY --from=libs /usr/src/conduit/target ./target
 RUN if [ -z "$RELEASE" ]; then \
-        cargo build --frozen -p conduit-proxy --bin conduit-proxy && \
+        cargo build -p conduit-proxy --bin conduit-proxy --frozen && \
         mv target/debug/conduit-proxy target/conduit-proxy ; \
     else \
-        cargo build --frozen -p conduit-proxy --bin conduit-proxy --release && \
+        cargo build -p conduit-proxy --bin conduit-proxy --frozen --release && \
         mv target/release/conduit-proxy target/conduit-proxy ; \
     fi
 
