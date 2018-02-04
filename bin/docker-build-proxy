@@ -2,21 +2,7 @@
 
 set -eu
 
-if [ $# -ne 0 ]; then
-    echo "no arguments allowed for $(basename $0), given: $@" >&2
-    exit 64
-fi
-
 . bin/_docker.sh
 . bin/_tag.sh
 
-dockerfile=proxy/Dockerfile
-
-validate_proxy_deps_tag $dockerfile
-
-(
-    bin/docker-build-base
-    bin/docker-build-proxy-deps
-) >/dev/null
-
-docker_build proxy "$(head_root_tag)" $dockerfile --build-arg="RELEASE=${PROXY_RELEASE:-1}"
+docker_build proxy "$(head_root_tag)" proxy/Dockerfile $@

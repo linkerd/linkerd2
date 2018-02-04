@@ -125,7 +125,7 @@ jobs:
         - |
           export CONDUIT_TAG=$(. bin/_tag.sh ; clean_head_root_tag)
           echo "CONDUIT_TAG=${CONDUIT_TAG}"
-        - export PROXY_RELEASE=1 BUILD_DEBUG=1 DOCKER_TRACE=1
+        - export BUILD_DEBUG=1 DOCKER_TRACE=1
 
       script:
         - bin/docker-build
