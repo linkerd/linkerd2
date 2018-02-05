@@ -378,7 +378,6 @@ build_architecture
     "cli/Dockerfile" [color=lightblue, style=filled, shape=rect];
     "cli/Dockerfile-bin" [color=lightblue, style=filled, shape=rect];
     "proxy/Dockerfile" [color=lightblue, style=filled, shape=rect];
-    "proxy/Dockerfile-deps" [color=lightblue, style=filled, shape=rect];
     "proxy-init/Dockerfile" [color=lightblue, style=filled, shape=rect];
     "proxy-init/integration-test/iptables/Dockerfile-tester" [color=lightblue, style=filled, shape=rect];
     "web/Dockerfile" [color=lightblue, style=filled, shape=rect];
