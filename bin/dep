@@ -4,15 +4,18 @@ set -eu
 
 cd "$(pwd -P)"
 
+os=linux
+exe=
 if [ "$(uname -s)" = "Darwin" ]; then
   os=darwin
-else
-  os=linux
+elif [ "$(uname -o)" = "Msys" ]; then
+  os=windows
+  exe=.exe
 fi
 
-depbin=.dep
+depbin=.dep${exe}
 depversion=0.4.1 # Need to keep this in sync with Dockerfile-go-deps
-depurl="https://github.com/golang/dep/releases/download/v${depversion}/dep-${os}-amd64"
+depurl="https://github.com/golang/dep/releases/download/v${depversion}/dep-${os}-amd64${exe}"
 
 if [ ! -f "$depbin" ]; then
   tmp=$(mktemp -d -t dep.XXX)
