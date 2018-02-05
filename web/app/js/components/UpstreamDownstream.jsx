@@ -4,7 +4,6 @@ import { rowGutter } from './util/Utils.js';
 import TabbedMetricsTable from './TabbedMetricsTable.jsx';
 import { Col, Row } from 'antd';
 
-const maxTsToFetch = 15;
 export default class UpstreamDownstreamTables extends React.Component {
   render() {
     let numUpstreams = _.size(this.props.upstreamMetrics);
@@ -23,8 +22,6 @@ export default class UpstreamDownstreamTables extends React.Component {
                 <TabbedMetricsTable
                   resource={`upstream_${this.props.resourceType}`}
                   resourceName={this.props.resourceName}
-                  hideSparklines={numUpstreams > maxTsToFetch}
-                  lastUpdated={this.props.lastUpdated}
                   metrics={this.props.upstreamMetrics}
                   api={this.props.api} />
               </div>
@@ -40,8 +37,6 @@ export default class UpstreamDownstreamTables extends React.Component {
                 <TabbedMetricsTable
                   resource={`downstream_${this.props.resourceType}`}
                   resourceName={this.props.resourceName}
-                  hideSparklines={numDownstreams > maxTsToFetch}
-                  lastUpdated={this.props.lastUpdated}
                   metrics={this.props.downstreamMetrics}
                   api={this.props.api} />
               </div>

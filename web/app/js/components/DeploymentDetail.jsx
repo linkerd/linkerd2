@@ -16,6 +16,8 @@ import { emptyMetric, getPodsByDeployment, processRollupMetrics, processTimeseri
 import './../../css/deployment.css';
 import 'whatwg-fetch';
 
+const Fragment = React.Fragment;
+
 export default class DeploymentDetail extends React.Component {
   constructor(props) {
     super(props);
@@ -164,45 +166,50 @@ export default class DeploymentDetail extends React.Component {
     }
 
     return (
-      <Row gutter={rowGutter} key="deployment-midsection">
-        <Col span={16}>
-          <div className="pod-summary">
-            <div className="border-container border-neutral subsection-header">
-              <div className="border-container-content subsection-header">Pod summary</div>
-            </div>
-            {
-              _.isEmpty(this.state.metrics) ? null :
-                <div className="pod-distribution-chart">
-                  <div className="bar-chart-title">
-                    <div>Request load by pod</div>
-                    <div className="bar-chart-tooltip" />
+      <Fragment key="deployment-pod-summary">
+        <Row gutter={rowGutter}>
+          <Col span={16}>
+            <div className="pod-summary">
+              <div className="border-container border-neutral subsection-header">
+                <div className="border-container-content subsection-header">Pod summary</div>
+              </div>
+              {
+                _.isEmpty(this.state.metrics) ? null :
+                  <div className="pod-distribution-chart">
+                    <div className="bar-chart-title">
+                      <div>Request load by pod</div>
+                      <div className="bar-chart-tooltip" />
+                    </div>
+                    <BarChart
+                      data={this.state.metrics}
+                      lastUpdated={this.state.lastUpdated}
+                      containerClassName="pod-distribution-chart" />
                   </div>
-                  <BarChart
-                    data={this.state.metrics}
-                    lastUpdated={this.state.lastUpdated}
-                    containerClassName="pod-distribution-chart" />
-                </div>
-            }
+              }
+            </div>
+          </Col>
+          <Col span={8}>
+            <div className="border-container border-neutral deployment-details">
+              <div className="border-container-content">
+                <div className=" subsection-header">Deployment details</div>
+                <Metric title="Pods" value={_.size(podTableData)} />
+                <Metric title="Upstream deployments" value={this.numUpstreams()} />
+                <Metric title="Downstream deployments" value={this.numDownstreams()} />
+              </div>
+            </div>
+          </Col>
+        </Row>
+
+        <Row>
+          <Col span={24}>
             <TabbedMetricsTable
               resource="pod"
               resourceName={this.state.deploy}
               metrics={podTableData}
-              lastUpdated={this.state.lastUpdated}
               api={this.api} />
-          </div>
-        </Col>
-
-        <Col span={8}>
-          <div className="border-container border-neutral deployment-details">
-            <div className="border-container-content">
-              <div className=" subsection-header">Deployment details</div>
-              <Metric title="Pods" value={_.size(podTableData)} />
-              <Metric title="Upstream deployments" value={this.numUpstreams()} />
-              <Metric title="Downstream deployments" value={this.numDownstreams()} />
-            </div>
-          </div>
-        </Col>
-      </Row>
+          </Col>
+        </Row>
+      </Fragment>
     );
   }
 
@@ -217,8 +224,6 @@ export default class DeploymentDetail extends React.Component {
         <TabbedMetricsTable
           resource="path"
           metrics={this.state.pathMetrics}
-          hideSparklines={true}
-          lastUpdated={this.props.lastUpdated}
           api={this.api} />
       </div>;
   }
