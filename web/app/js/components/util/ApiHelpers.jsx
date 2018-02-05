@@ -3,6 +3,39 @@ import { Link } from 'react-router-dom';
 import React from 'react';
 import 'whatwg-fetch';
 
+const checkFetchOk = resp => {
+  if (!resp.ok) {
+    throw Error(resp.statusText);
+  } else {
+    return resp;
+  }
+};
+
+// makeCancelable from @istarkov
+// https://reactjs.org/blog/2015/12/16/ismounted-antipattern.html
+const makeCancelable = (promise, onSuccess) => {
+  let hasCanceled_ = false;
+
+  const wrappedPromise = new Promise((resolve, reject) => {
+    return promise.then(
+      result => hasCanceled_ ? reject({ isCanceled: true }) : resolve(result),
+      error => hasCanceled_ ? reject({ isCanceled: true }) : reject(error)
+    );
+  })
+    .then(checkFetchOk)
+    .then(onSuccess);
+
+  return {
+    promise: wrappedPromise,
+    cancel: () => {
+      hasCanceled_ = true;
+    },
+    status: () => {
+      return hasCanceled_;
+    }
+  };
+};
+
 export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '10m') => {
   let metricsWindow = defaultMetricsWindow;
   const podsPath = `/api/pods`;
@@ -18,7 +51,8 @@ export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '10m') => {
     if (!_.isEmpty(pathPrefix)) {
       path = `${pathPrefix}${path}`;
     }
-    return fetch(path).then(handleFetchErr).then(r => r.json());
+
+    return makeCancelable(fetch(path), r => r.json());
   };
 
   const fetchMetrics = path => {
@@ -36,12 +70,7 @@ export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '10m') => {
     return apiFetch(podsPath);
   };
 
-  const handleFetchErr = resp => {
-    if (!resp.ok) {
-      throw Error(resp.statusText);
-    }
-    return resp;
-  };
+
 
   const getMetricsWindow = () => metricsWindow;
   const getMetricsWindowDisplayText = () => validMetricsWindows[metricsWindow];
@@ -113,6 +142,8 @@ export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '10m') => {
     getValidMetricsWindows: () => _.keys(validMetricsWindows),
     getMetricsWindowDisplayText,
     urlsForResource: urlsForResource,
-    ConduitLink
+    ConduitLink,
+    // DO NOT USE makeCancelable, use fetch, this is only exposed for testing
+    makeCancelable
   };
 };

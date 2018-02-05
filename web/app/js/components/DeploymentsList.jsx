@@ -32,6 +32,10 @@ export default class DeploymentsList extends React.Component {
 
   componentWillUnmount() {
     window.clearInterval(this.timerId);
+
+    if (!_.isEmpty(this.requests)) {
+      _.each(this.requests, promise => promise.cancel());
+    }
   }
 
   addDeploysWithNoMetrics(deploys, metrics) {
@@ -51,11 +55,13 @@ export default class DeploymentsList extends React.Component {
     }
     this.setState({ pendingRequests: true });
 
-    let rollupRequest = this.api.fetchMetrics(this.api.urlsForResource["deployment"].url().rollup);
-    let podsRequest = this.api.fetchPods();
+    this.requests = {
+      rollup: this.api.fetchMetrics(this.api.urlsForResource["deployment"].url().rollup),
+      pods: this.api.fetchPods()
+    };
 
     // expose serverPromise for testing
-    this.serverPromise = Promise.all([rollupRequest, podsRequest])
+    this.serverPromise = Promise.all([this.requests.rollup.promise, this.requests.pods.promise])
       .then(([rollup, p]) => {
         let poByDeploy = getPodsByDeployment(p.pods);
         let meshDeploys = processRollupMetrics(rollup.metrics, "targetDeploy");
@@ -72,6 +78,10 @@ export default class DeploymentsList extends React.Component {
   }
 
   handleApiError(e) {
+    if (e.isCanceled) {
+      return;
+    }
+
     this.setState({
       pendingRequests: false,
       error: `Error getting data from server: ${e.message}`

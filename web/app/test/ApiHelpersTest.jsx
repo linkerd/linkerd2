@@ -1,4 +1,5 @@
 /* eslint-disable */
+import _ from 'lodash';
 import 'raf/polyfill'; // the polyfill import must be first
 import Adapter from 'enzyme-adapter-react-16';
 import { ApiHelpers } from '../js/components/util/ApiHelpers.jsx';
@@ -22,7 +23,7 @@ describe('ApiHelpers', () => {
       ok: true,
       json: () => Promise.resolve({ metrics: [] })
     });
-    api = ApiHelpers("");
+    api = ApiHelpers('');
   });
 
   afterEach(() => {
@@ -88,6 +89,71 @@ describe('ApiHelpers', () => {
     });
   });
 
+  describe('makeCancelable', () => {
+    it('wraps the original promise', () => {
+      let p = Promise.resolve({ result: 'my response', ok: true });
+      let cancelablePromise = api.makeCancelable(p);
+
+      return cancelablePromise.promise
+        .then(resp => {
+          expect(resp.result).to.equal('my response');
+        });
+    });
+
+    it('returns an error on original promise rejection', () => {
+      let p = Promise.reject({ rejectionReason: 'it is bad' });
+      let cancelablePromise = api.makeCancelable(p);
+
+      return cancelablePromise.promise
+        .then(() => {
+          return Promise.reject('Expected method to reject.');
+        })
+        .catch(e => {
+          expect(e).to.deep.equal({ rejectionReason: 'it is bad' });
+        });
+    });
+
+    it('returns an error if the fetch did not go well', () => {
+      let reason = { rejectionReason: 'it is bad' };
+      let p = Promise.reject(reason);
+      let cancelablePromise = api.makeCancelable(p);
+
+      return cancelablePromise.promise
+        .then(() => {
+          return Promise.reject('Expected method to reject.');
+        })
+        .catch(e => {
+          expect(e).to.deep.equal(reason);
+        });
+    });
+
+    it('calls the provided success handler on response success', () => {
+      let onSuccess = sinon.spy();
+      let fakeFetchResults = { result: 5, ok: true };
+      let p = Promise.resolve(fakeFetchResults);
+      let cancelablePromise = api.makeCancelable(p, onSuccess);
+
+      return cancelablePromise.promise
+        .then(() => {
+          expect(onSuccess.calledOnce).to.be.true;
+          expect(onSuccess.args[0][0]).to.deep.equal(fakeFetchResults);
+        });
+    });
+
+    it('allows you to cancel a promise', () => {
+      let p = Promise.resolve({ result: 'my response', ok: true });
+      let cancelablePromise = api.makeCancelable(p);
+      cancelablePromise.cancel();
+
+      return cancelablePromise.promise
+        .then(() => {
+          return Promise.reject('Expected method to reject.');
+        }).catch(resp => {
+          expect(resp.isCanceled).to.be.true;
+        });
+    });
+  });
+
   describe('fetch', () => {
     it('adds pathPrefix to a metrics request', () => {
       api = ApiHelpers('/the/path/prefix');
@@ -115,11 +181,38 @@ describe('ApiHelpers', () => {
       api = ApiHelpers('');
       let errorHandler = sinon.spy();
 
-      api.fetch('/resource/foo')
-        .catch(errorHandler);
+      let f = api.fetch('/resource/foo');
 
-      expect(errorHandler.args[0][0].message).to.equal(errorMessage);
-      expect(errorHandler.calledOnce).to.be.true;
+      return f.promise
+        .then(() => {
+          return Promise.reject('Expected method to reject.');
+        }, errorHandler)
+        .then(() => {
+          expect(errorHandler.args[0][0].message).to.equal(errorMessage);
+          expect(errorHandler.calledOnce).to.be.true;
+        });
+    });
+
+    it('correctly passes through rejection messages', () => {
+      let rejectionMessage = "hm, an error";
+      fetchStub.returnsPromise().rejects({
+        myReason: rejectionMessage
+      });
+
+      api = ApiHelpers('');
+      let rejectHandler = sinon.spy();
+
+      let f = api.fetch('/resource/foo');
+
+      return f.promise
+        .then(() => {
+          return Promise.reject('Expected method to reject.');
+        }, rejectHandler)
+        .then(() => {
+          expect(rejectHandler.args[0][0]).to.have.own.property('myReason');
+          expect(rejectHandler.args[0][0].myReason).to.equal(rejectionMessage);
+          expect(rejectHandler.calledOnce).to.be.true;
+        });
     });
   });
 

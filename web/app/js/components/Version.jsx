@@ -30,8 +30,8 @@ export default class Version extends React.Component {
     let versionUrl = `https://versioncheck.conduit.io/version.json?version=${this.props.releaseVersion}?uuid=${this.props.uuid}`;
     let versionFetch = ApiHelpers("").fetch(versionUrl);
     // expose serverPromise for testing
-    this.serverPromise = Promise.all([versionFetch])
-      .then(([resp]) => {
+    this.serverPromise = versionFetch.promise
+      .then(resp => {
         this.setState({
           latest: resp.version,
           loaded: true,
