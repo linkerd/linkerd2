@@ -284,8 +284,7 @@ func (s *server) Report(ctx context.Context, req *write.ReportRequest) (*write.R
 
 			// validate this ResponseScope's latency histogram.
 			numBuckets := len(responseScope.ResponseLatencyCounts)
-			// add one for the +Inf bucket
-			expectedNumBuckets := len(req.HistogramBucketMaxValues)
+			expectedNumBuckets := len(req.HistogramBucketBoundsTenthMs)
 			if numBuckets != expectedNumBuckets {
 				err := errors.New(
 					"received report with incorrect number of latency buckets")
@@ -300,11 +299,12 @@ func (s *server) Report(ctx context.Context, req *write.ReportRequest) (*write.R
 			for bucketNum, count := range responseScope.ResponseLatencyCounts {
 				// Look up the bucket max value corresponding to this position
 				// in the report's latency histogram.
-				bucketMax := float64(req.HistogramBucketMaxValues[bucketNum])
+				latencyTenthsMs := req.HistogramBucketBoundsTenthMs[bucketNum]
+				latencyMs := float64(latencyTenthsMs / 10)
 				for i := uint32(0); i < count; i++ {
 					// Then, report that latency value to Prometheus a number
 					// of times equal to the count reported by the proxy.
-					latencyStat.Observe(bucketMax)
+					latencyStat.Observe(latencyMs)
 				}
 
 			}

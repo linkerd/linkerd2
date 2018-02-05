@@ -26,7 +26,7 @@ use control::pb::proxy::telemetry::{
     TransportSummary,
 };
 use ctx;
-use telemetry::event::{Event};
+use telemetry::event::Event;
 
 mod latency;
 
@@ -212,8 +212,8 @@ impl Metrics {
     }
 
     pub fn generate_report(&mut self) -> ReportRequest {
-        let histogram_bucket_max_values: Vec<u32> =
-            latency::BUCKET_MAX_VALUES.iter()
+        let histogram_bucket_bounds_tenth_ms: Vec<u32> =
+            latency::BUCKET_BOUNDS.iter()
                 .map(|&latency| latency.into())
                 .collect();
 
@@ -313,7 +313,7 @@ impl Metrics {
             server_transports,
             client_transports,
             requests,
-            histogram_bucket_max_values,
+            histogram_bucket_bounds_tenth_ms,
         }
     }
 }

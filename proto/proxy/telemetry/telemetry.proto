@@ -27,12 +27,15 @@ message ReportRequest {
 
   repeated RequestScope requests = 5;
 
+  // The inclusive upper bound of each bucket in the response latency histogram,
+  // in tenths of a millisecond.
+  //
   // Each ResponseScope message will contain an array of numbers representing
   // the number of observed response latencies in each bucket of the latency
   // histogram. Since the structure of the latency histogram will be the same
   // across all ResponseScopes, we only need to report the max values for these
   // buckets a single time.
-  repeated uint32 histogram_bucket_max_values = 6;
+  repeated uint32 histogram_bucket_bounds_tenth_ms = 6;
 }
 
 message Process {
@@ -77,7 +80,7 @@ message RequestCtx {
 message ResponseScope {
   ResponseCtx ctx = 1;
   // Response latencies (time from request headers sent to response headers
-  // received), represented as a histogram with buckets whose inclusive
+  // received). Represented as a histogram with buckets whose inclusive
   // upper bounds are given in the `histogram_bucket_max_values` array in
   // ReportRequest. Each number in this array represents the number of times a
   // latency falling into that bucket was observed.

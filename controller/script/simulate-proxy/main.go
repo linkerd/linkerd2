@@ -24,10 +24,6 @@ import (
 
 /* A simple script for posting simulated telemetry data to the proxy api */
 
-const (
-	numLatencyBuckets = 26
-)
-
 var (
 	grpcResponseCodes = []codes.Code{
 		codes.OK,
@@ -104,17 +100,20 @@ var (
 	}
 	ports = []uint32{3333, 6262}
 
-	latencyBucketBounds = [numLatencyBuckets]uint32{
+	// these values should be one order of magnitude greater than
+	// the controller's Prometheus buckets, because the proxy will
+	// report them in tenths of a millisecond.
+	latencyBucketBounds = [26]uint32{
 		// prometheus.LinearBuckets(1, 1, 5),
-		1, 2, 3, 4, 5,
-		// prometheus.LinearBuckets(10, 10, 5),
 		10, 20, 30, 40, 50,
+		// prometheus.LinearBuckets(10, 10, 5),
+		100, 200, 300, 400, 50,
 		// prometheus.LinearBuckets(100, 100, 5),
-		100, 200, 300, 400, 500,
-		// prometheus.LinearBuckets(1000, 1000, 5),
 		1000, 2000, 3000, 4000, 5000,
+		// prometheus.LinearBuckets(1000, 1000, 5),
+		10000, 20000, 30000, 40000, 5000,
 		// prometheus.LinearBuckets(10000, 10000, 5),
-		10000, 20000, 30000, 40000, 50000,
+		100000, 200000, 300000, 400000, 500000,
 		// Prometheus implicitly creates a max bucket for everything that
 		// falls outside of the highest-valued bucket, but we need to
 		// create it explicitly.
@@ -131,14 +130,14 @@ func randomCount() uint32 {
 }
 
 func randomLatencies(count uint32) []uint32 {
-	var latencies [numLatencyBuckets]uint32
+	latencies := make([]uint32, len(latencyBucketBounds))
 	for i := uint32(0); i < count; i++ {
 
 		// Randomly select a bucket to increment.
-		bucket := uint32(rand.Int31n(numLatencyBuckets))
+		bucket := uint32(rand.Int31n(int32(len(latencies))))
 		latencies[bucket]++
 	}
-	return latencies[:]
+	return latencies
 }
 
 func randomGrpcEos(count uint32) (eos []*pb.EosScope) {
@@ -322,7 +321,7 @@ func main() {
 							Ctx: &pb.ResponseCtx{
 								HttpStatusCode: http.StatusOK,
 							},
-							ResponseLatencyCounts: randomLatencies(count),
+							ResponseLatencyMsCounts: randomLatencies(count),
 							Ends: randomGrpcEos(count),
 						},
 					},
@@ -346,14 +345,14 @@ func main() {
 							Ctx: &pb.ResponseCtx{
 								HttpStatusCode: randomHttpResponseCode(),
 							},
-							ResponseLatencyCounts: randomLatencies(count),
+							ResponseLatencyMsCounts: randomLatencies(count),
 							Ends: randomH2Eos(count),
 						},
 					},
 				},
 			},
 
-			HistogramBucketMaxValues: latencyMaxValues[:],
+			HistogramBucketMaxValues: latencyBucketBounds[:],
 		}
 
 		_, err = client.Report(context.Background(), req)

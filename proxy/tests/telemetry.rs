@@ -46,7 +46,7 @@ fn inbound_sends_telemetry() {
     // of latency buckets in the latency histogram.
     assert_eq!(
         res.response_latency_counts.len(),
-        report.histogram_bucket_max_values.len()
+        report.histogram_bucket_bounds_tenth_ms.len()
     );
     assert_eq!(res.ends.len(), 1);
     // ends
@@ -97,7 +97,7 @@ fn http1_inbound_sends_telemetry() {
     // of latency buckets in the latency histogram.
     assert_eq!(
         res.response_latency_counts.len(),
-        report.histogram_bucket_max_values.len()
+        report.histogram_bucket_bounds_tenth_ms.len()
     );
     assert_eq!(res.ends.len(), 1);
     // ends
@@ -161,7 +161,7 @@ fn inbound_aggregates_telemetry_over_several_requests() {
     // of latency buckets in the latency histogram.
     assert_eq!(
         res.response_latency_counts.len(),
-        report.histogram_bucket_max_values.len()
+        report.histogram_bucket_bounds_tenth_ms.len()
     );
     assert_eq!(res.ends.len(), 1);
 
@@ -187,7 +187,7 @@ fn inbound_aggregates_telemetry_over_several_requests() {
     // of latency buckets in the latency histogram.
     assert_eq!(
         res.response_latency_counts.len(),
-        report.histogram_bucket_max_values.len()
+        report.histogram_bucket_bounds_tenth_ms.len()
     );
     assert_eq!(res.ends.len(), 1);
 
@@ -242,7 +242,7 @@ fn records_latency_statistics() {
     // of latency buckets in the latency histogram.
     assert_eq!(
         res.response_latency_counts.len(),
-        report.histogram_bucket_max_values.len()
+        report.histogram_bucket_bounds_tenth_ms.len()
     );
     for (idx, bucket) in res.response_latency_counts.iter().enumerate() {
         // 500 ms of extra latency should put us in the 500-1000
@@ -265,7 +265,7 @@ fn records_latency_statistics() {
     // of latency buckets in the latency histogram.
     assert_eq!(
         res.response_latency_counts.len(),
-        report.histogram_bucket_max_values.len()
+        report.histogram_bucket_bounds_tenth_ms.len()
     );
     for (idx, bucket) in res.response_latency_counts.iter().enumerate() {
         // 40 ms of extra latency should put us in the 40-50
