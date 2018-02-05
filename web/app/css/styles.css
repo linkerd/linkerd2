@@ -70,6 +70,10 @@ h2, h3, h4, h5, h6 {
   margin-bottom: 0px;
 }
 
+.time-window-btns {
+  float: right;
+}
+
 .subsection-header {
   text-transform: uppercase;
   font-size: 14px;

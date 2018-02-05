@@ -15,12 +15,14 @@ export default class ResourceMetricsOverview extends React.Component {
               name="Request rate"
               metric="REQUEST_RATE"
               lastUpdated={this.props.lastUpdated}
+              window={this.props.window}
               timeseries={_.get(this.props.timeseries, "REQUEST_RATE", [])} />
           </Col>
           <Col span={8}>
             <ResourceOverviewMetric
               name="Success rate"
               metric="SUCCESS_RATE"
+              window={this.props.window}
               lastUpdated={this.props.lastUpdated}
               timeseries={_.get(this.props.timeseries, "SUCCESS_RATE", [])} />
           </Col>

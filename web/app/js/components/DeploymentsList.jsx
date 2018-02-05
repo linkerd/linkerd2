@@ -3,10 +3,10 @@ import CallToAction from './CallToAction.jsx';
 import ConduitSpinner from "./ConduitSpinner.jsx";
 import DeploymentSummary from './DeploymentSummary.jsx';
 import ErrorBanner from './ErrorBanner.jsx';
+import PageHeader from './PageHeader.jsx';
 import React from 'react';
 import ScatterPlot from './ScatterPlot.jsx';
 import TabbedMetricsTable from './TabbedMetricsTable.jsx';
-import { ApiHelpers, urlsForResource } from './util/ApiHelpers.js';
 import { Col, Row } from 'antd';
 import { emptyMetric, getPodsByDeployment, processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
 import { metricToFormatter, rowGutter } from './util/Utils.js';
@@ -26,13 +26,12 @@ let nodeStats = (description, node) => (
 export default class DeploymentsList extends React.Component {
   constructor(props) {
     super(props);
-    this.api = ApiHelpers(this.props.pathPrefix);
+    this.api = this.props.api;
     this.handleApiError = this.handleApiError.bind(this);
     this.loadFromServer = this.loadFromServer.bind(this);
     this.loadTimeseriesFromServer = this.loadTimeseriesFromServer.bind(this);
 
     this.state = {
-      metricsWindow: "10m",
       pollingInterval: 10000, // TODO: poll based on metricsWindow size
       metrics: [],
       timeseriesByDeploy: {},
@@ -70,9 +69,7 @@ export default class DeploymentsList extends React.Component {
     }
     this.setState({ pendingRequests: true });
 
-    let rollupPath = `${this.props.pathPrefix}/api/metrics?window=${this.state.metricsWindow}`;
-
-    let rollupRequest = this.api.fetch(rollupPath);
+    let rollupRequest = this.api.fetchMetrics(this.api.urlsForResource["deployment"].url().rollup);
     let podsRequest = this.api.fetchPods();
 
     // expose serverPromise for testing
@@ -91,12 +88,12 @@ export default class DeploymentsList extends React.Component {
     // fetch only the timeseries for the 3 deployments we display at the top of the page
     let limitSparklineData = _.size(meshDeployMetrics) > maxTsToFetch;
 
-    let resourceInfo = urlsForResource(this.props.pathPrefix, this.state.metricsWindow)["deployment"];
+    let resourceInfo = this.api.urlsForResource["deployment"];
     let leastHealthyDeployments = this.getLeastHealthyDeployments(meshDeployMetrics);
 
     let tsPromises = _.map(leastHealthyDeployments, dep => {
       let tsPathForDeploy = resourceInfo.url(dep.name).ts;
-      return this.api.fetch(tsPathForDeploy);
+      return this.api.fetchMetrics(tsPathForDeploy);
     });
 
     Promise.all(tsPromises)
@@ -147,8 +144,8 @@ export default class DeploymentsList extends React.Component {
                   key={deployment.name}
                   lastUpdated={this.state.lastUpdated}
                   data={deployment}
-                  requestTs={_.get(this.state.timeseriesByDeploy, [deployment.name, "REQUEST_RATE"], [])}
-                  pathPrefix={this.props.pathPrefix} />
+                  api = {this.api}
+                  requestTs={_.get(this.state.timeseriesByDeploy, [deployment.name, "REQUEST_RATE"], [])} />
               </Col>);
             })
           }
@@ -162,8 +159,7 @@ export default class DeploymentsList extends React.Component {
             lastUpdated={this.state.lastUpdated}
             metrics={this.state.metrics}
             hideSparklines={this.state.limitSparklineData}
-            metricsWindow={this.state.metricsWindow}
-            pathPrefix={this.props.pathPrefix} />
+            api={this.api} />
         </div>
       </div>
     );
@@ -213,9 +209,7 @@ export default class DeploymentsList extends React.Component {
         { !this.state.error ? null : <ErrorBanner message={this.state.error} /> }
         { !this.state.loaded ? <ConduitSpinner />  :
           <div>
-            <div className="page-header">
-              <h1>Deployments</h1>
-            </div>
+            <PageHeader header="Deployments" api={this.api} />
             { _.isEmpty(this.state.metrics) ?
               <CallToAction numDeployments={_.size(this.state.metrics)} /> :
               this.renderPageContents()
