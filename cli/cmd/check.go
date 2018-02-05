@@ -33,7 +33,7 @@ problems were found.`,
 			os.Exit(2)
 		}
 
-		kubeApi, err := k8s.NewK8sAPI(shell.NewUnixShell(), kubeconfigPath)
+		kubeApi, err := k8s.NewK8sAPI(shell.NewUnixShell().HomeDir(), kubeconfigPath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error with Kubernetes API: %s\n", err.Error())
 			statusCheckResultWasError(os.Stdout)

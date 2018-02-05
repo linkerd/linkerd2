@@ -5,19 +5,18 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"os"
 
 	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 	"github.com/runconduit/conduit/pkg/healthcheck"
-	"github.com/runconduit/conduit/pkg/shell"
 	"k8s.io/client-go/rest"
+	// Load all the auth plugins for the cloud providers.
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
 const (
-	kubernetesConfigFilePathEnvVariable = "KUBECONFIG"
-	KubeapiSubsystemName                = "kubernetes-api"
-	KubeapiClientCheckDescription       = "can initialize the client"
-	KubeapiAccessCheckDescription       = "can query the Kubernetes API"
+	KubeapiSubsystemName          = "kubernetes-api"
+	KubeapiClientCheckDescription = "can initialize the client"
+	KubeapiAccessCheckDescription = "can query the Kubernetes API"
 )
 
 type KubernetesApi interface {
@@ -109,16 +108,17 @@ func (kubeapi *kubernetesApi) checkApiAccess(client *http.Client) *healthcheckPb
 	return checkResult
 }
 
+// UrlFor generates a URL based on the Kubernetes config.
 func (kubeapi *kubernetesApi) UrlFor(namespace string, extraPathStartingWithSlash string) (*url.URL, error) {
 	return generateKubernetesApiBaseUrlFor(kubeapi.Host, namespace, extraPathStartingWithSlash)
 }
 
-func NewK8sAPI(shell shell.Shell, k8sConfigFilesystemPathOverride string) (KubernetesApi, error) {
-	kubeconfigEnvVar := os.Getenv(kubernetesConfigFilePathEnvVariable)
-
-	config, err := parseK8SConfig(findK8sConfigFile(k8sConfigFilesystemPathOverride, kubeconfigEnvVar, shell.HomeDir()))
+// NewK8sAPI returns a new KubernetesApi interface
+func NewK8sAPI(homedir string, k8sConfigFilesystemPathOverride string) (KubernetesApi, error) {
+	config, err := buildK8sConfig(homedir, k8sConfigFilesystemPathOverride)
 	if err != nil {
 		return nil, fmt.Errorf("error configuring Kubernetes API client: %v", err)
 	}
+
 	return &kubernetesApi{Config: config}, nil
 }

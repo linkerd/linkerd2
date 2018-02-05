@@ -14,16 +14,16 @@ func TestKubernetesApiUrlFor(t *testing.T) {
 	t.Run("Returns base config containing k8s endpoint listed in config.test", func(t *testing.T) {
 		expected := fmt.Sprintf("https://55.197.171.239/api/v1/namespaces/%s%s", namespace, extraPath)
 		shell := &shell.MockShell{}
-		api, err := NewK8sAPI(shell, "testdata/config.test")
+		api, err := NewK8sAPI(shell.HomeDir(), "testdata/config.test")
 		if err != nil {
-			t.Fatalf("Unexpected error starting proxy: %v", err)
+			t.Fatalf("Unexpected error creating Kubernetes API: %+v", err)
 		}
-		actualUrl, err := api.UrlFor(namespace, extraPath)
+		actualURL, err := api.UrlFor(namespace, extraPath)
 		if err != nil {
-			t.Fatalf("Unexpected error starting proxy: %v", err)
+			t.Fatalf("Unexpected error generating URL: %+v", err)
 		}
-		if actualUrl.String() != expected {
-			t.Fatalf("Expected generated URL to be [%s], but got [%s]", expected, actualUrl.String())
+		if actualURL.String() != expected {
+			t.Fatalf("Expected generated URL to be [%s], but got [%s]", expected, actualURL.String())
 		}
 	})
 }

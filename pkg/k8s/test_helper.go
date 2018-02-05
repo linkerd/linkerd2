@@ -36,16 +36,6 @@ type MockKubectl struct {
 
 func (m *MockKubectl) Version() ([3]int, error) { return [3]int{}, nil }
 
-func (m *MockKubectl) StartProxy(potentialErrorWhenStartingProxy chan error, port int) error {
-	return nil
-}
-
-func (m *MockKubectl) UrlFor(namespace string, extraPathStartingWithSlash string) (*url.URL, error) {
-	return nil, nil
-}
-
-func (m *MockKubectl) ProxyPort() int { return -666 }
-
 func (m *MockKubectl) SelfCheck() []*healthcheckPb.CheckResult {
 	return m.SelfCheckResultsToReturn
 }
