@@ -3,7 +3,6 @@ package telemetry
 import (
 	"errors"
 	"fmt"
-	"math"
 	"net"
 	"net/http"
 	"strconv"
@@ -46,15 +45,6 @@ var (
 		},
 		responseLabels,
 	)
-
-	latencyBucketMaxValues = [26]uint32{
-		1, 2, 3, 4, 5,
-		10, 20, 30, 40, 50,
-		100, 200, 300, 400, 500,
-		1000, 2000, 3000, 4000, 5000,
-		10000, 20000, 30000, 40000, 50000,
-		math.MaxUint32,
-	}
 
 	responseLatencyBuckets = append(append(append(append(append(
 		prometheus.LinearBuckets(1, 1, 5),
@@ -277,35 +267,6 @@ func (s *server) Report(ctx context.Context, req *write.ReportRequest) (*write.R
 	logCtx := log.WithFields(log.Fields{"id": id})
 	logCtx.Debugf("received report with %d requests", len(req.Requests))
 
-	// validate the request's latency histogram.
-	numBuckets := len(req.LatencyMaxValues)
-	// add one for the +Inf bucket
-	expectedNumBuckets := len(responseLatencyBuckets) + 1
-	if numBuckets != expectedNumBuckets {
-		err := errors.New(
-			"received report with incorrect number of latency buckets")
-		logCtx.WithFields(log.Fields{
-			"numBuckets": numBuckets,
-			"expected":   expectedNumBuckets,
-		}).WithError(err).Error()
-		return nil, err
-	}
-
-	for bucketNumber, bucketMax := range req.LatencyMaxValues {
-		if bucketNumber < expectedNumBuckets {
-			expectedMax := uint32(responseLatencyBuckets[bucketNumber])
-			if bucketMax != expectedMax {
-				err := errors.New(
-					"received report with unexpected latency bucket max value")
-				logCtx.WithFields(log.Fields{
-					"bucketNumber": bucketNumber,
-					"bucketMax":    bucketMax,
-					"expected":     expectedMax,
-				}).WithError(err).Error()
-				return nil, err
-			}
-		}
-	}
 	s.instances.update(id)
 
 	for _, requestScope := range req.Requests {
@@ -321,10 +282,25 @@ func (s *server) Report(ctx context.Context, req *write.ReportRequest) (*write.R
 				return nil, errors.New("ResponseCtx is required")
 			}
 
-			for bucketNum, count := range responseScope.ResponseLatencies {
+			// validate this ResponseScope's latency histogram.
+			numBuckets := len(responseScope.ResponseLatencyCounts)
+			// add one for the +Inf bucket
+			expectedNumBuckets := len(req.HistogramBucketMaxValues)
+			if numBuckets != expectedNumBuckets {
+				err := errors.New(
+					"received report with incorrect number of latency buckets")
+				logCtx.WithFields(log.Fields{
+					"numBuckets": numBuckets,
+					"expected":   expectedNumBuckets,
+					"scope":      responseScope,
+				}).WithError(err).Error()
+				return nil, err
+			}
+
+			for bucketNum, count := range responseScope.ResponseLatencyCounts {
 				// Look up the bucket max value corresponding to this position
-				// in the latency histogram.
-				bucketMax := responseLatencyBuckets[bucketNum]
+				// in the report's latency histogram.
+				bucketMax := float64(req.HistogramBucketMaxValues[bucketNum])
 				for i := uint32(0); i < count; i++ {
 					// Then, report that latency value to Prometheus a number
 					// of times equal to the count reported by the proxy.

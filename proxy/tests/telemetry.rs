@@ -44,7 +44,10 @@ fn inbound_sends_telemetry() {
     assert_eq!(res.ctx.as_ref().unwrap().http_status_code, 200);
     // response latencies should always have a length equal to the number
     // of latency buckets in the latency histogram.
-    assert_eq!(res.response_latencies.len(), report.latency_max_values.len());
+    assert_eq!(
+        res.response_latency_counts.len(),
+        report.histogram_bucket_max_values.len()
+    );
     assert_eq!(res.ends.len(), 1);
     // ends
     let ends = &res.ends[0];
@@ -92,7 +95,10 @@ fn http1_inbound_sends_telemetry() {
     assert_eq!(res.ctx.as_ref().unwrap().http_status_code, 200);
     // response latencies should always have a length equal to the number
     // of latency buckets in the latency histogram.
-    assert_eq!(res.response_latencies.len(), report.latency_max_values.len());
+    assert_eq!(
+        res.response_latency_counts.len(),
+        report.histogram_bucket_max_values.len()
+    );
     assert_eq!(res.ends.len(), 1);
     // ends
     let ends = &res.ends[0];
@@ -153,7 +159,10 @@ fn inbound_aggregates_telemetry_over_several_requests() {
     assert_eq!(res.ctx.as_ref().unwrap().http_status_code, 200);
     // response latencies should always have a length equal to the number
     // of latency buckets in the latency histogram.
-    assert_eq!(res.response_latencies.len(), report.latency_max_values.len());
+    assert_eq!(
+        res.response_latency_counts.len(),
+        report.histogram_bucket_max_values.len()
+    );
     assert_eq!(res.ends.len(), 1);
 
     // ------ ends ----------------------
@@ -176,7 +185,10 @@ fn inbound_aggregates_telemetry_over_several_requests() {
     assert_eq!(res.ctx.as_ref().unwrap().http_status_code, 200);
     // response latencies should always have a length equal to the number
     // of latency buckets in the latency histogram.
-    assert_eq!(res.response_latencies.len(), report.latency_max_values.len());
+    assert_eq!(
+        res.response_latency_counts.len(),
+        report.histogram_bucket_max_values.len()
+    );
     assert_eq!(res.ends.len(), 1);
 
     // ------ ends ----------------------
@@ -228,14 +240,17 @@ fn records_latency_statistics() {
     let res = &req.responses[0];
     // response latencies should always have a length equal to the number
     // of latency buckets in the latency histogram.
-    assert_eq!(res.response_latencies.len(), report.latency_max_values.len());
-    for (idx, bucket) in res.response_latencies.iter().enumerate() {
-        // 500 ms of extra latency should put us in the 5000-10000
-        // decimillisecond bucket (the 15th bucket)
+    assert_eq!(
+        res.response_latency_counts.len(),
+        report.histogram_bucket_max_values.len()
+    );
+    for (idx, bucket) in res.response_latency_counts.iter().enumerate() {
+        // 500 ms of extra latency should put us in the 500-1000
+        // millisecond bucket (the 15th bucket)
         if idx == 15 {
-            assert_eq!(*bucket, 1, "poorly bucketed latencies: {:?}", res.response_latencies);
+            assert_eq!(*bucket, 1, "poorly bucketed latencies: {:?}", res.response_latency_counts);
         } else {
-            assert_eq!(*bucket, 0, "poorly bucketed latencies: {:?}", res.response_latencies);
+            assert_eq!(*bucket, 0, "poorly bucketed latencies: {:?}", res.response_latency_counts);
         }
     }
 
@@ -248,14 +263,17 @@ fn records_latency_statistics() {
     let res = req.responses.get(0).expect("responses[0]");
     // response latencies should always have a length equal to the number
     // of latency buckets in the latency histogram.
-    assert_eq!(res.response_latencies.len(), report.latency_max_values.len());
-    for (idx, bucket) in res.response_latencies.iter().enumerate() {
-        // 40 ms of extra latency should put us in the 400-500
-        // decimillisecond bucket (the 10th bucket)
+    assert_eq!(
+        res.response_latency_counts.len(),
+        report.histogram_bucket_max_values.len()
+    );
+    for (idx, bucket) in res.response_latency_counts.iter().enumerate() {
+        // 40 ms of extra latency should put us in the 40-50
+        // millisecond bucket (the 10th bucket)
         if idx == 9 {
-            assert_eq!(*bucket, 2, "poorly bucketed latencies: {:?}", res.response_latencies);
+            assert_eq!(*bucket, 2, "poorly bucketed latencies: {:?}", res.response_latency_counts);
         } else {
-            assert_eq!(*bucket, 0, "poorly bucketed latencies: {:?}", res.response_latencies);
+            assert_eq!(*bucket, 0, "poorly bucketed latencies: {:?}", res.response_latency_counts);
         }
     }
 

@@ -104,7 +104,7 @@ var (
 	}
 	ports = []uint32{3333, 6262}
 
-	latencyMaxValues = [numLatencyBuckets]uint32{
+	latencyBucketBounds = [numLatencyBuckets]uint32{
 		// prometheus.LinearBuckets(1, 1, 5),
 		1, 2, 3, 4, 5,
 		// prometheus.LinearBuckets(10, 10, 5),
@@ -322,8 +322,8 @@ func main() {
 							Ctx: &pb.ResponseCtx{
 								HttpStatusCode: http.StatusOK,
 							},
-							ResponseLatencies: randomLatencies(count),
-							Ends:              randomGrpcEos(count),
+							ResponseLatencyCounts: randomLatencies(count),
+							Ends: randomGrpcEos(count),
 						},
 					},
 				},
@@ -346,14 +346,14 @@ func main() {
 							Ctx: &pb.ResponseCtx{
 								HttpStatusCode: randomHttpResponseCode(),
 							},
-							ResponseLatencies: randomLatencies(count),
-							Ends:              randomH2Eos(count),
+							ResponseLatencyCounts: randomLatencies(count),
+							Ends: randomH2Eos(count),
 						},
 					},
 				},
 			},
 
-			LatencyMaxValues: latencyMaxValues[:],
+			HistogramBucketMaxValues: latencyMaxValues[:],
 		}
 
 		_, err = client.Report(context.Background(), req)

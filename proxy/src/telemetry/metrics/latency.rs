@@ -19,35 +19,35 @@ pub const BUCKET_MAX_VALUES: [Latency; NUM_BUCKETS] = [
     //       programmatically...
     // in the controller:
     // prometheus.LinearBuckets(1, 1, 5),
+    Latency(1),
+    Latency(2),
+    Latency(3),
+    Latency(4),
+    Latency(5),
+    // prometheus.LinearBuckets(10, 10, 5),
     Latency(10),
     Latency(20),
     Latency(30),
     Latency(40),
     Latency(50),
-    // prometheus.LinearBuckets(10, 10, 5),
+    // prometheus.LinearBuckets(100, 100, 5),
     Latency(100),
     Latency(200),
     Latency(300),
     Latency(400),
     Latency(500),
-    // prometheus.LinearBuckets(100, 100, 5),
+    // prometheus.LinearBuckets(1000, 1000, 5),
     Latency(1_000),
     Latency(2_000),
     Latency(3_000),
     Latency(4_000),
-    Latency(5_000),
-    // prometheus.LinearBuckets(1000, 1000, 5),
+    Latency(0_000),
+    // prometheus.LinearBuckets(10000, 10000, 5),
     Latency(10_000),
     Latency(20_000),
     Latency(30_000),
     Latency(40_000),
     Latency(50_000),
-    // prometheus.LinearBuckets(10000, 10000, 5),
-    Latency(100_000),
-    Latency(200_000),
-    Latency(300_000),
-    Latency(400_000),
-    Latency(500_000),
     // Prometheus implicitly creates a max bucket for everything that
     // falls outside of the highest-valued bucket, but we need to
     // create it explicitly.
@@ -58,7 +58,7 @@ pub const BUCKET_MAX_VALUES: [Latency; NUM_BUCKETS] = [
 #[derive(Debug)]
 pub struct Histogram([u32; NUM_BUCKETS]);
 
-/// A latency in tenths of a millisecond.
+/// A latency in milliseconds.
 #[derive(Debug, Default, Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Hash)]
 pub struct Latency(u32);
 
@@ -126,8 +126,6 @@ impl Default for Histogram {
 // ===== impl Latency =====
 
 const SEC_TO_MS: u32 = 1_000;
-const SEC_TO_TENTHS_OF_A_MS: u32 = SEC_TO_MS * 10;
-const TENTHS_OF_MS_TO_NS: u32 =  MS_TO_NS / 10;
 /// Conversion ratio from milliseconds to nanoseconds.
 pub const MS_TO_NS: u32 = 1_000_000;
 
@@ -141,29 +139,26 @@ impl From<Duration> for Latency {
             } else {
                 Some(secs as u32)
             };
-        // represent the duration as tenths of a ms.
-        let tenths_of_ms = {
+        // represent the duration as ms.
+        let as_ms = {
             let t = secs.and_then(|as_secs|
-                // convert the number of seconds to tenths of a ms, or
-                // None on overflow.
-                as_secs.checked_mul(SEC_TO_TENTHS_OF_A_MS)
+                // convert the number of seconds to ms, or None on overflow.
+                as_secs.checked_mul(SEC_TO_MS)
             );
-            let t = t.and_then(|as_tenths_ms| {
-                // convert the subsecond part of the duration (in ns) to
-                // tenths of a millisecond.
-                let subsec_tenths_ms = dur.subsec_nanos() / TENTHS_OF_MS_TO_NS;
-                as_tenths_ms.checked_add(subsec_tenths_ms)
+            let t = t.and_then(|as_ms| {
+                // convert the subsecond part of the duration (in ns) to ms.
+                let subsec_ms = dur.subsec_nanos() / MS_TO_NS;
+                as_ms.checked_add(subsec_ms)
             });
             t.unwrap_or_else(|| {
                 debug!(
-                    "{:?} too large to represent as tenths of a \
-                     millisecond!",
+                    "{:?} too large to represent as milliseconds!",
                      dur
                 );
                 u32::MAX
             })
         };
-        Latency(tenths_of_ms)
+        Latency(as_ms)
     }
 }
 
