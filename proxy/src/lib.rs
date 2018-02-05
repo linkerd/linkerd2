@@ -5,6 +5,8 @@
 extern crate abstract_ns;
 extern crate bytes;
 extern crate chrono;
+extern crate conduit_grpc;
+extern crate convert;
 extern crate domain;
 extern crate env_logger;
 #[macro_use]
@@ -22,8 +24,6 @@ extern crate log;
 extern crate ns_dns_tokio;
 extern crate ordermap;
 extern crate prost;
-#[macro_use]
-extern crate prost_derive;
 extern crate prost_types;
 #[cfg(test)]
 #[macro_use]
@@ -60,7 +60,6 @@ mod bind;
 pub mod config;
 mod connection;
 pub mod control;
-pub mod convert;
 mod ctx;
 mod dns;
 mod fully_qualified_authority;
@@ -244,7 +243,7 @@ where
             thread::Builder::new()
                 .name("controller-client".into())
                 .spawn(move || {
-                    use control::pb::proxy::tap::server::TapServer;
+                    use conduit_grpc::tap::server::TapServer;
 
                     let mut core = Core::new().expect("initialize controller core");
                     let executor = core.handle();

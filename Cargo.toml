@@ -1,6 +1,8 @@
 [workspace]
 members = [
-  "futures-mpsc-lossy",
   "proxy",
-  "tower-router",
+  "proxy/convert",
+  "proxy/futures-mpsc-lossy",
+  "proxy/grpc",
+  "proxy/tower-router",
 ]
