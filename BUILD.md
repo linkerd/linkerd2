@@ -353,12 +353,7 @@ hard-coded SHA's:
 - [`Gopkg.lock`](Gopkg.lock)
 - [`Dockerfile-go-deps`](Dockerfile-go-deps)
 
-`gcr.io/runconduit/proxy-deps` depends on
-- [`Cargo.lock`](Cargo.lock)
-- [`proxy/Dockerfile-deps`](proxy/Dockerfile-deps)
-
-The `bin/update-proxy-deps-shas` and `bin/update-go-deps-shas` must be run when their
-respective dependencies change.
+`bin/update-go-deps-shas` must be run when go dependencies change.
 
 # Build Architecture
 
@@ -376,7 +371,6 @@ build_architecture
     "cli/Dockerfile" [color=lightblue, style=filled, shape=rect];
     "cli/Dockerfile-bin" [color=lightblue, style=filled, shape=rect];
     "proxy/Dockerfile" [color=lightblue, style=filled, shape=rect];
-    "proxy/Dockerfile-deps" [color=lightblue, style=filled, shape=rect];
     "proxy-init/Dockerfile" [color=lightblue, style=filled, shape=rect];
     "proxy-init/integration-test/iptables/Dockerfile-tester" [color=lightblue, style=filled, shape=rect];
     "web/Dockerfile" [color=lightblue, style=filled, shape=rect];
@@ -424,10 +418,6 @@ build_architecture
     "docker-build-proxy" -> "docker-build-base";
     "docker-build-proxy" -> "docker-build-go-deps";
     "docker-build-proxy" -> "proxy/Dockerfile";
-
-    "docker-build-proxy-deps" -> "_docker.sh";
-    "docker-build-proxy-deps" -> "_tag.sh";
-    "docker-build-proxy-deps" -> "proxy/Dockerfile-deps";
 
     "docker-build-proxy-init" -> "_docker.sh";
     "docker-build-proxy-init" -> "_tag.sh";
@@ -483,9 +473,6 @@ build_architecture
     "update-go-deps-shas" -> "controller/Dockerfile";
     "update-go-deps-shas" -> "proxy-init/Dockerfile";
     "update-go-deps-shas" -> "web/Dockerfile";
-
-    "update-proxy-deps-shas" -> "_tag.sh";
-    "update-proxy-deps-shas" -> "proxy/Dockerfile";
   }
 build_architecture
 </details>

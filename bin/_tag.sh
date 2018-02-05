@@ -6,10 +6,6 @@ git_sha_head() {
     git rev-parse --short=8 HEAD
 }
 
-proxy_deps_sha() {
-    cat Cargo.lock proxy/Dockerfile-deps | shasum - | awk '{print $1}' |cut -c 1-8
-}
-
 go_deps_sha() {
     cat Gopkg.lock Dockerfile-go-deps | shasum - | awk '{print $1}' |cut -c 1-8
 }
@@ -66,14 +62,9 @@ validate_tag() {
 # These functions should be called by any docker-build-* script that relies on
 # Go or Rust dependencies. To confirm the set of scripts that should call this
 # function, run:
-# $ grep -ER 'docker-build-(go|proxy)-deps' .
+# $ grep -ER 'docker-build-go-deps' .
 
 validate_go_deps_tag() {
     file="$1"
     validate_tag "$file" "gcr.io/runconduit/go-deps" "$(go_deps_sha)"
-}
-
-validate_proxy_deps_tag() {
-    file="$1"
-    validate_tag "$file" "gcr.io/runconduit/proxy-deps" "$(proxy_deps_sha)"
 }
