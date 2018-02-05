@@ -128,7 +128,7 @@ jobs:
         - export BUILD_DEBUG=1 DOCKER_TRACE=1
 
       script:
-        - bin/docker-build
+        - SKIP_TESTS=1 bin/docker-build
 
       after_success:
         - bin/docker-push-deps

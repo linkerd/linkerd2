@@ -9,6 +9,9 @@ fi
 
 bin/docker-build-controller
 bin/docker-build-web
-bin/docker-build-proxy
 bin/docker-build-proxy-init
 bin/docker-build-cli
+
+bin/docker-build-proxy \
+    --build-arg="SKIP_TESTS=${SKIP_TESTS:-}" \
+    --build-arg="DEBUG=${PROXY_DEBUG:-}"
