@@ -17,9 +17,9 @@ export default class PageHeader extends React.Component {
     this.setState({selectedWindow: window});
   }
 
+  // don't use time window changing until the results of Telemetry Scalability are in
+  // https://github.com/runconduit/conduit/milestone/4
   renderMetricWindowButtons() {
-    // don't use time window changing until the results of Telemetry Scalability are in
-    // https://github.com/runconduit/conduit/milestone/4
     if (this.props.hideButtons) {
       return null;
     } else {

@@ -69,7 +69,7 @@ export default class DeploymentsList extends React.Component {
     }
     this.setState({ pendingRequests: true });
 
-    let rollupRequest = this.api.fetchMetrics();
+    let rollupRequest = this.api.fetchMetrics(this.api.urlsForResource["deployment"].url().rollup);
     let podsRequest = this.api.fetchPods();
 
     // expose serverPromise for testing

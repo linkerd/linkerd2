@@ -6,7 +6,6 @@ import 'whatwg-fetch';
 export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '10m') => {
   let metricsWindow = defaultMetricsWindow;
   const podsPath = `/api/pods`;
-  const metricsPath = () => `/api/metrics?window=${metricsWindow}`;
 
   const validMetricsWindows = {
     "10s": "10 minutes",
@@ -22,7 +21,7 @@ export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '10m') => {
     return fetch(path).then(handleFetchErr).then(r => r.json());
   };
 
-  const fetchMetrics = (path = metricsPath()) => {
+  const fetchMetrics = path => {
     if (path.indexOf("window") === -1) {
       if (path.indexOf("?") === -1) {
         path = `${path}?window=${getMetricsWindow()}`;

@@ -125,10 +125,11 @@ describe('ApiHelpers', () => {
 
   describe('fetchMetrics', () => {
     it('adds pathPrefix and metricsWindow to a metrics request', () => {
+      api = ApiHelpers('/the/prefix');
       api.fetchMetrics('/my/path');
 
       expect(fetchStub.calledOnce).to.be.true;
-      expect(fetchStub.args[0][0]).to.equal('/my/path?window=10m');
+      expect(fetchStub.args[0][0]).to.equal('/the/prefix/my/path?window=10m');
     });
 
     it('adds a ?window= if metricsWindow is the only param', () => {
@@ -145,7 +146,7 @@ describe('ApiHelpers', () => {
       expect(fetchStub.args[0][0]).to.equal('/metrics?foo=3&bar="me"&window=10m');
     });
 
-    it('does not add another &window= there is already a window param', () => {
+    it('does not add another &window= if there is already a window param', () => {
       api.fetchMetrics('/metrics?foo=3&window=24h&bar="me"');
 
       expect(fetchStub.calledOnce).to.be.true;
