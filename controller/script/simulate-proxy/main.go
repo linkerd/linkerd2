@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"math"
 	"math/rand"
 	"net/http"
 	"strconv"
@@ -22,6 +23,10 @@ import (
 )
 
 /* A simple script for posting simulated telemetry data to the proxy api */
+
+const (
+	numLatencyBuckets = 26
+)
 
 var (
 	grpcResponseCodes = []codes.Code{
@@ -98,6 +103,23 @@ var (
 		FramesSent: 4,
 	}
 	ports = []uint32{3333, 6262}
+
+	latencyMaxValues = [numLatencyBuckets]uint32{
+		// prometheus.LinearBuckets(1, 1, 5),
+		1, 2, 3, 4, 5,
+		// prometheus.LinearBuckets(10, 10, 5),
+		10, 20, 30, 40, 50,
+		// prometheus.LinearBuckets(100, 100, 5),
+		100, 200, 300, 400, 500,
+		// prometheus.LinearBuckets(1000, 1000, 5),
+		1000, 2000, 3000, 4000, 5000,
+		// prometheus.LinearBuckets(10000, 10000, 5),
+		10000, 20000, 30000, 40000, 50000,
+		// Prometheus implicitly creates a max bucket for everything that
+		// falls outside of the highest-valued bucket, but we need to
+		// create it explicitly.
+		math.MaxUint32,
+	}
 )
 
 func randomPort() uint32 {
@@ -109,14 +131,14 @@ func randomCount() uint32 {
 }
 
 func randomLatencies(count uint32) []uint32 {
-	var latencies [26]uint32
+	var latencies [numLatencyBuckets]uint32
 	for i := uint32(0); i < count; i++ {
 
 		// Randomly select a bucket to increment.
-		bucket := uint32(rand.Int31n(26))
+		bucket := uint32(rand.Int31n(numLatencyBuckets))
 		latencies[bucket]++
 	}
-	return l[:]
+	return latencies[:]
 }
 
 func randomGrpcEos(count uint32) (eos []*pb.EosScope) {
@@ -330,6 +352,8 @@ func main() {
 					},
 				},
 			},
+
+			LatencyMaxValues: latencyMaxValues[:],
 		}
 
 		_, err = client.Report(context.Background(), req)

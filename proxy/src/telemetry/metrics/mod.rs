@@ -212,6 +212,15 @@ impl Metrics {
     }
 
     pub fn generate_report(&mut self) -> ReportRequest {
+        let latency_max_values: Vec<u32> =
+            latency::BUCKET_MAX_VALUES.iter()
+                .map(|&latency| {
+                    let latency: u32 = latency.into();
+                    // convert from tenths of a ms to ms.
+                    latency / 10
+                })
+                .collect();
+
         let mut server_transports = Vec::new();
         let mut client_transports = Vec::new();
 
@@ -308,6 +317,7 @@ impl Metrics {
             server_transports,
             client_transports,
             requests,
+            latency_max_values,
         }
     }
 }

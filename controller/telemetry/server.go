@@ -274,9 +274,38 @@ func (s *server) Report(ctx context.Context, req *write.ReportRequest) (*write.R
 		id = req.Process.ScheduledNamespace + "/" + req.Process.ScheduledInstance
 	}
 
-	log := log.WithFields(log.Fields{"id": id})
-	log.Debugf("received report with %d requests", len(req.Requests))
+	logCtx := log.WithFields(log.Fields{"id": id})
+	logCtx.Debugf("received report with %d requests", len(req.Requests))
 
+	// validate the request's latency histogram.
+	numBuckets := len(req.LatencyMaxValues)
+	// add one for the +Inf bucket
+	expectedNumBuckets := len(responseLatencyBuckets) + 1
+	if numBuckets != expectedNumBuckets {
+		err := errors.New(
+			"received report with incorrect number of latency buckets")
+		logCtx.WithFields(log.Fields{
+			"numBuckets": numBuckets,
+			"expected":   expectedNumBuckets,
+		}).WithError(err).Error()
+		return nil, err
+	}
+
+	for bucketNumber, bucketMax := range req.LatencyMaxValues {
+		if bucketNumber < expectedNumBuckets {
+			expectedMax := uint32(responseLatencyBuckets[bucketNumber])
+			if bucketMax != expectedMax {
+				err := errors.New(
+					"received report with unexpected latency bucket max value")
+				logCtx.WithFields(log.Fields{
+					"bucketNumber": bucketNumber,
+					"bucketMax":    bucketMax,
+					"expected":     expectedMax,
+				}).WithError(err).Error()
+				return nil, err
+			}
+		}
+	}
 	s.instances.update(id)
 
 	for _, requestScope := range req.Requests {
@@ -292,18 +321,14 @@ func (s *server) Report(ctx context.Context, req *write.ReportRequest) (*write.R
 				return nil, errors.New("ResponseCtx is required")
 			}
 
-			for latencyBucket, count := range responseScope.ResponseLatencies {
-				// The latencies as received from the proxy are represented as an array of
-				// latency values in tenths of a millisecond, and a count of the number of
-				// times a request of that latency was observed.
-
-				// First, convert the latency value from tenths of a ms to ms and
-				// convert from u32 to f64.
-				latencyMs := float64(latencyBucketMaxValues[latencyBucket])
+			for bucketNum, count := range responseScope.ResponseLatencies {
+				// Look up the bucket max value corresponding to this position
+				// in the latency histogram.
+				bucketMax := responseLatencyBuckets[bucketNum]
 				for i := uint32(0); i < count; i++ {
-					// Then, report that latency value to Prometheus a number of times
-					// equal to the count reported by the proxy.
-					latencyStat.Observe(latencyMs)
+					// Then, report that latency value to Prometheus a number
+					// of times equal to the count reported by the proxy.
+					latencyStat.Observe(bucketMax)
 				}
 
 			}

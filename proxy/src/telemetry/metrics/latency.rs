@@ -6,7 +6,8 @@ use std::time::Duration;
 /// The number of buckets in a  latency histogram.
 pub const NUM_BUCKETS: usize = 26;
 
-static BUCKETS: [Latency; NUM_BUCKETS] = [
+/// The maximum value (inclusive) for each latency bucket.
+pub const BUCKET_MAX_VALUES: [Latency; NUM_BUCKETS] = [
     // The controller telemetry server creates 5 sets of 5 linear buckets
     // each:
     // TODO: it would be nice if we didn't have to hard-code each
@@ -72,7 +73,7 @@ impl Histogram {
         I: Into<Latency>,
     {
         let measurement = measurement.into();
-        let i = BUCKETS.iter()
+        let i = BUCKET_MAX_VALUES.iter()
             .position(|max| &measurement <= max)
             .expect("latency value greater than u32::MAX; this shouldn't be \
                      possible.");

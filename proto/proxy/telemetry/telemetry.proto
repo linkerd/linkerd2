@@ -26,6 +26,13 @@ message ReportRequest {
   repeated ClientTransport client_transports = 4;
 
   repeated RequestScope requests = 5;
+
+  // Each ResponseScope message will contain an array of numbers representing
+  // the number of observed response latencies in each bucket of the latency
+  // histogram. Since the structure of the latency histogram will be the same
+  // across all ResponseScopes, we only need to report the max values for these
+  // buckets a single time.
+  repeated uint32 latency_max_values = 6;
 }
 
 message Process {
