@@ -12,9 +12,11 @@ ARG RUNTIME_IMAGE=gcr.io/runconduit/base:2017-10-30.01
 # are cached.
 FROM $RUST_IMAGE as fetch
 WORKDIR /usr/src/conduit
-RUN for d in proxy proxy/convert proxy/futures-mpsc-lossy proxy/grpc proxy/tower-router ; \
-    do mkdir -p "${d}/src" && touch "${d}/src/lib.rs" ; \
-    done
+COPY proxy/.empty.rs proxy/src/lib.rs
+COPY proxy/.empty.rs proxy/convert/src/lib.rs
+COPY proxy/.empty.rs proxy/futures-mpsc-lossy/src/lib.rs
+COPY proxy/.empty.rs proxy/grpc/src/lib.rs
+COPY proxy/.empty.rs proxy/tower-router/src/lib.rs
 COPY Cargo.toml Cargo.lock ./
 COPY proxy/Cargo.toml                     proxy/Cargo.toml
 COPY proxy/convert/Cargo.toml             proxy/convert/Cargo.toml
@@ -29,9 +31,8 @@ RUN cargo fetch --locked
 FROM $RUST_IMAGE as libs
 WORKDIR /usr/src/conduit
 COPY --from=fetch $CARGO_HOME $CARGO_HOME
-RUN for d in proxy proxy/grpc ; \
-    do mkdir -p "${d}/src" && touch "${d}/src/lib.rs" ; \
-    done
+COPY proxy/.empty.rs proxy/src/lib.rs
+COPY proxy/.empty.rs proxy/grpc/src/lib.rs
 COPY Cargo.toml Cargo.lock ./
 COPY proxy/Cargo.toml          ./proxy/Cargo.toml
 COPY proxy/convert             ./proxy/convert
@@ -57,9 +58,7 @@ RUN if [ -n "$DEBUG" ]; \
 FROM $RUST_IMAGE as grpc
 WORKDIR /usr/src/conduit
 COPY --from=fetch $CARGO_HOME $CARGO_HOME
-RUN for d in proxy ; \
-    do mkdir -p "${d}/src" && touch "${d}/src/lib.rs" ; \
-    done
+COPY proxy/.empty.rs proxy/src/lib.rs
 COPY Cargo.toml Cargo.lock ./
 COPY proto                     ./proto
 COPY proxy/Cargo.toml          ./proxy/Cargo.toml
