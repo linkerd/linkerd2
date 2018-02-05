@@ -46,10 +46,12 @@ export default class ResourceHealthOverview extends React.Component {
     return {
       inbound: {
         requests: metricToFormatter["REQUEST_RATE"](this.getRequestRate(this.props.upstreamMetrics)),
+        numDeploys: _.size(this.props.upstreamMetrics),
         health: this.getHealthClassName(inboundSr)
       },
       outbound: {
         requests: metricToFormatter["REQUEST_RATE"](this.getRequestRate(this.props.downstreamMetrics)),
+        numDeploys: _.size(this.props.downstreamMetrics),
         health: this.getHealthClassName(outboundSr)
       },
       current: {
@@ -63,20 +65,24 @@ export default class ResourceHealthOverview extends React.Component {
 
     return (
       <div key="entity-heath" className="entity-health">
-        <div className="subsection-header">{this.props.resourceType} Health</div>
+        <div className="subsection-header">Upstream/Downstream Traffic</div>
         <Row>
           <Col span={8}>
-            <Metric title="Inbound request rate" value={stats.inbound.requests} className="float-right" />
+            { stats.inbound.numDeploys === 0 ? null :
+              <Metric title="Inbound request rate" value={stats.inbound.requests} className="float-right" />
+            }
           </Col>
           <Col span={8} />
           <Col span={8}>
-            <Metric title="Outbound request rate" value={stats.outbound.requests} className="float-left" />
+            { stats.outbound.numDeploys === 0 ? null :
+              <Metric title="Outbound request rate" value={stats.outbound.requests} className="float-left" />
+            }
           </Col>
         </Row>
 
         <Row>
           <Col span={8}>
-            <div className="entity-count">&laquo; {_.size(this.props.upstreamMetrics)} {this.props.resourceType}s</div>
+            <div className="entity-count">&laquo; {stats.inbound.numDeploys} {this.props.resourceType}s</div>
             <div className={`adjacent-health ${stats.inbound.health}`}>
               <TrafficIndicator healthStat={stats.inbound.health} />
             </div>
@@ -86,7 +92,7 @@ export default class ResourceHealthOverview extends React.Component {
             <div className={`entity-title ${stats.current.health}`}>{this.props.resourceName}</div>
           </Col>
           <Col span={8}>
-            <div className="entity-count float-right">{_.size(this.props.downstreamMetrics)} {this.props.resourceType}s &raquo;</div>
+            <div className="entity-count float-right">{stats.outbound.numDeploys} {this.props.resourceType}s &raquo;</div>
             <div className={`adjacent-health ${stats.outbound.health}`}>
               <TrafficIndicator healthStat={stats.outbound.health} />
             </div>

@@ -28,13 +28,18 @@ const serviceMeshDetailsColumns = [
 ];
 const componentNames = {
   "prometheus":   "Prometheus",
-  "destination":  "Controller destination",
-  "proxy-api":    "Controller proxy-api",
-  "public-api":   "Controller public-api",
-  "tap":          "Controller tap",
-  "telemetry":    "Controller telemetry",
+  "destination":  "Controller Destination",
+  "proxy-api":    "Controller Proxy API",
+  "public-api":   "Controller Public API",
+  "tap":          "Controller Tap",
+  "telemetry":    "Controller Telemetry",
   "web":          "Web UI"
 };
+
+const componentGraphTitles = {
+  "telemetry": "Telemetry requests"
+};
+
 const componentDeploys = {
   "prometheus":   "prometheus",
   "destination":  "controller",
@@ -44,7 +49,7 @@ const componentDeploys = {
   "telemetry":    "controller",
   "web":          "web"
 };
-const componentsToGraph = ["proxy-api", "telemetry", "destination"];
+const componentsToGraph = ["proxy-api", "telemetry", "public-api"];
 const noData = {
   timeseries: { requestRate: [], successRate: [] }
 };
@@ -195,7 +200,7 @@ export default class ServiceMesh extends React.Component {
             _.map(componentsToGraph, meshComponent => {
               let data = _.cloneDeep(_.find(this.state.metrics, ["name", meshComponent]) || noData);
               data.id = meshComponent;
-              data.name = componentNames[meshComponent];
+              data.name = componentGraphTitles[meshComponent] || componentNames[meshComponent];
               return (<Col span={8} key={`col-${data.id}`}>
                 <DeploymentSummary
                   api={this.api}

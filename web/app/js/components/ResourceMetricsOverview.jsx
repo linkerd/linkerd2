@@ -9,6 +9,7 @@ export default class ResourceMetricsOverview extends React.Component {
   render() {
     return (
       <div>
+        <div className="subsection-header">{this.props.resourceType} Health</div>
         <Row gutter={rowGutter}>
           <Col span={8}>
             <ResourceOverviewMetric
