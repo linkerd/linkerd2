@@ -1,6 +1,3 @@
-#![allow(dead_code)]
-#![cfg_attr(feature = "cargo-clippy", allow(clippy))]
-
 extern crate convert;
 extern crate h2;
 extern crate http;
