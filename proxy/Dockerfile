@@ -69,8 +69,8 @@ COPY --from=fetch $CARGO_HOME $CARGO_HOME
 COPY --from=libs /usr/src/conduit/target ./target
 ARG BUILD_UNOPTIMIZED
 RUN if [ -n "$BUILD_UNOPTIMIZED" ]; \
-    then cargo build -p conduit-grpc --features=arbitrary --frozen ; \
-    else cargo build -p conduit-grpc --features=arbitrary --frozen --release ; \
+    then cargo build -p conduit-proxy-controller-grpc --features=arbitrary --frozen ; \
+    else cargo build -p conduit-proxy-controller-grpc --features=arbitrary --frozen --release ; \
     fi
 
 
