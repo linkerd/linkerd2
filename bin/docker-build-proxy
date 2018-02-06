@@ -2,7 +2,14 @@
 
 set -eu
 
+if [ $# -ne 0 ]; then
+    echo "no arguments allowed for $(basename $0), given: $@" >&2
+    exit 64
+fi
+
 . bin/_docker.sh
 . bin/_tag.sh
 
-docker_build proxy "$(head_root_tag)" proxy/Dockerfile $@
+docker_build proxy "$(head_root_tag)" proxy/Dockerfile \
+    --build-arg="PROXY_SKIP_TESTS=${PROXY_SKIP_TESTS:-}" \
+    --build-arg="PROXY_UNOPTIMIZED=${PROXY_UNOPTIMIZED:-}"

@@ -4,7 +4,7 @@
 # This reduces build time and produces binaries with debug symbols, at the expense of
 # runtime perforamnce.
 #
-# When SKIP_TESTS is set and not empty, tests are not run. Otherwise, tests are run
+# When PROXY_SKIP_TESTS is set and not empty, tests are not run. Otherwise, tests are run
 # against either unoptimized or optimized proxy code, according to PROXY_UNOPTIMIZED.
 
 ARG RUST_IMAGE=rust:1.23.0
@@ -31,9 +31,9 @@ COPY proxy/router/Cargo.toml                proxy/router/Cargo.toml
 RUN cargo fetch --locked
 
 # Build libraries, leaving the proxy and gRPC bindings mocked out.
-COPY proxy/convert                      ./proxy/convert
-COPY proxy/futures-mpsc-lossy           ./proxy/futures-mpsc-lossy
-COPY proxy/router                       ./proxy/router
+COPY proxy/convert             proxy/convert
+COPY proxy/futures-mpsc-lossy  proxy/futures-mpsc-lossy
+COPY proxy/router              proxy/router
 ARG PROXY_UNOPTIMIZED
 RUN if [ -n "$PROXY_UNOPTIMIZED" ]; \
     then cargo build --frozen ; \
@@ -41,22 +41,22 @@ RUN if [ -n "$PROXY_UNOPTIMIZED" ]; \
     fi
 
 # Build gRPC bindings, leaving the proxy mocked out.
-COPY proto                      ./proto
-COPY proxy/controller-grpc      ./proxy/controller-grpc
+COPY proto                  proto
+COPY proxy/controller-grpc  proxy/controller-grpc
 RUN if [ -n "$PROXY_UNOPTIMIZED" ]; \
     then cargo build -p conduit-proxy-controller-grpc --features=arbitrary --frozen ; \
     else cargo build -p conduit-proxy-controller-grpc --features=arbitrary --frozen --release ; \
     fi
 
 # Build the proxy binary using pre-built dependencies.
-COPY proxy/src      ./proxy/src
-COPY proxy/tests    ./proxy/tests
+COPY proxy/src      proxy/src
+COPY proxy/tests    proxy/tests
 RUN if [ -n "$PROXY_UNOPTIMIZED" ]; \
     then cargo build -p conduit-proxy --bin conduit-proxy --frozen ; \
     else cargo build -p conduit-proxy --bin conduit-proxy --frozen --release ; \
     fi
-ARG SKIP_TESTS
-RUN if [ -n "$SKIP_TESTS" ]; \
+ARG PROXY_SKIP_TESTS
+RUN if [ -n "$PROXY_SKIP_TESTS" ]; \
     then echo "tests skipped" ; \
     elif [ -n "$PROXY_UNOPTIMIZED" ]; \
     then cargo test -p conduit-proxy --frozen ; \

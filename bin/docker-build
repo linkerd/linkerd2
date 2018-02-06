@@ -12,6 +12,4 @@ bin/docker-build-web
 bin/docker-build-proxy-init
 bin/docker-build-cli
 
-bin/docker-build-proxy \
-    --build-arg="SKIP_TESTS=${SKIP_TESTS:-}" \
-    --build-arg="BUILD_UNOPTIMIZED=${PROXY_UNOPTIMIZED:-}"
+bin/docker-build-proxy
