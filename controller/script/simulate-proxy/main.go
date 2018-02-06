@@ -321,7 +321,7 @@ func main() {
 							Ctx: &pb.ResponseCtx{
 								HttpStatusCode: http.StatusOK,
 							},
-							ResponseLatencyMsCounts: randomLatencies(count),
+							ResponseLatencyCounts: randomLatencies(count),
 							Ends: randomGrpcEos(count),
 						},
 					},
@@ -345,14 +345,14 @@ func main() {
 							Ctx: &pb.ResponseCtx{
 								HttpStatusCode: randomHttpResponseCode(),
 							},
-							ResponseLatencyMsCounts: randomLatencies(count),
+							ResponseLatencyCounts: randomLatencies(count),
 							Ends: randomH2Eos(count),
 						},
 					},
 				},
 			},
 
-			HistogramBucketMaxValues: latencyBucketBounds[:],
+			HistogramBucketBoundsTenthMs: latencyBucketBounds[:],
 		}
 
 		_, err = client.Report(context.Background(), req)
