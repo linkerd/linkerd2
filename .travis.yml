@@ -123,8 +123,9 @@ jobs:
         - export BUILD_DEBUG=1 DOCKER_TRACE=1
 
       script:
-        # Tests are run in the `test` stage, se-running them here would be redundant/slow. #280
-        - SKIP_TESTS=1 bin/docker-build
+        # Proxy tests are run in the `test` stage, re-running them here would be
+        # redundant/slow. #280
+        - PROXY_SKIP_TESTS=1 bin/docker-build
 
       after_success:
         - bin/docker-push-deps
