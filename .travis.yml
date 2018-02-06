@@ -123,6 +123,7 @@ jobs:
         - export BUILD_DEBUG=1 DOCKER_TRACE=1
 
       script:
+        # Tests are run in the `test` stage, se-running them here would be redundant/slow. #280
         - SKIP_TESTS=1 bin/docker-build
 
       after_success:
