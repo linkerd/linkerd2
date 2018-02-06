@@ -5,7 +5,7 @@ use http;
 use tower;
 use tower_buffer::{self, Buffer};
 use tower_h2;
-use tower_router::Recognize;
+use conduit_proxy_router::Recognize;
 
 use bind;
 use ctx;
@@ -87,10 +87,10 @@ mod tests {
 
     use http;
     use tokio_core::reactor::Core;
-    use tower_router::Recognize;
+    use conduit_proxy_router::Recognize;
 
     use super::Inbound;
-    use control::pb::common::Protocol;
+    use conduit_proxy_controller_grpc::common::Protocol;
     use bind::{self, Bind};
     use ctx;
 

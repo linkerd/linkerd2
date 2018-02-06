@@ -10,21 +10,15 @@
 # compile.
 FROM rust:1.23.0 as build
 WORKDIR /usr/src/conduit
-COPY futures-mpsc-lossy ./futures-mpsc-lossy
-COPY tower-router ./tower-router
 COPY Cargo.toml Cargo.lock ./
 COPY proto ./proto
 COPY proxy ./proxy
 RUN cargo fetch --locked
-RUN cargo build --frozen -p conduit-proxy
-RUN cargo build --frozen -p conduit-proxy --release
 
 # Preserve dependency sources and build artifacts without maintaining conduit
 # sources/artifacts.
 FROM rust:1.23.0
 WORKDIR /usr/src/conduit
 COPY --from=build $CARGO_HOME                           $CARGO_HOME
-COPY --from=build /usr/src/conduit/target/debug/deps    target/debug/deps
-COPY --from=build /usr/src/conduit/target/release/deps  target/release/deps
 COPY --from=build /usr/src/conduit/Cargo.toml           Cargo.toml
 COPY --from=build /usr/src/conduit/Cargo.lock           Cargo.lock

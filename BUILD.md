@@ -51,13 +51,6 @@ written in Go. The dashboard UI is a React application.
 
   - [`proxy`](proxy): High-performance data plane, injected as a sidecar with
     every service.
-  - [`tower-grpc`](tower-grpc): A client and server gRPC implementation based on
-    Tower.
-  - [`tower-grpc-examples`](tower-grpc-examples): Demonstrates how to use Tower
-    gRPC clients and servers with code generation.
-  - [`tower-h2`](tower-h2): Tower `Service` abstractions for HTTP/2 and Rust.
-  - [`tower-router`](tower-router): A Tower middleware that routes requests to
-    one of a set of inner services using a request predicate.
 
 # Components
 

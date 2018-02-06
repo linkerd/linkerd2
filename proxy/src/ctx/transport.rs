@@ -1,7 +1,7 @@
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 
-use control::pb::common::Protocol;
+use conduit_proxy_controller_grpc::common::Protocol;
 
 use ctx;
 

@@ -5,8 +5,8 @@ use support::*;
 use std::net::IpAddr;
 use std::sync::{Arc, Mutex};
 
+use conduit_proxy_controller_grpc as pb;
 use self::bytes::BufMut;
-use self::conduit_proxy::control::pb;
 use self::futures::sync::mpsc;
 use self::prost::Message;
 

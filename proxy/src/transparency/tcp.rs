@@ -7,7 +7,7 @@ use tokio_core::reactor::Handle;
 use tokio_io::{AsyncRead, AsyncWrite};
 use tokio_io::io::copy;
 
-use control;
+use conduit_proxy_controller_grpc::common;
 use ctx::transport::{Client as ClientCtx, Server as ServerCtx};
 use telemetry::Sensors;
 use timeout::Timeout;
@@ -59,7 +59,7 @@ impl Proxy {
         let client_ctx = ClientCtx::new(
             &srv_ctx.proxy,
             &orig_dst,
-            control::pb::proxy::common::Protocol::Tcp,
+            common::Protocol::Tcp,
         );
         let c = Timeout::new(
             transport::Connect::new(orig_dst, &self.executor),
