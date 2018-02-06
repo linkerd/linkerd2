@@ -7,4 +7,3 @@ set -eu
 
 docker_pull base       2017-10-30.01       || true
 docker_pull go-deps    "$(go_deps_sha)"    || true
-docker_pull proxy-deps "$(proxy_deps_sha)" || true
