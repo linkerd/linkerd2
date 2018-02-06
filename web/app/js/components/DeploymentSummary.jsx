@@ -8,8 +8,9 @@ export default class DeploymentSummary extends React.Component {
       return this.props.data.name;
     } else {
       return (<this.props.api.ConduitLink
-        to={`/deployment?deploy=${this.props.data.name}`}
-        name={this.props.data.name} />);
+        to={`/deployment?deploy=${this.props.data.name}`}>
+        {this.props.data.name}
+      </this.props.api.ConduitLink>);
     }
   }
 
