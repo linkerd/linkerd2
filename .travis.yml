@@ -25,7 +25,6 @@ jobs:
       install:
         - cargo fetch --locked
       script:
-        - cargo check --frozen
         - cargo test --frozen
 
     - language: go
