@@ -300,7 +300,7 @@ func (s *server) Report(ctx context.Context, req *write.ReportRequest) (*write.R
 				// Look up the bucket max value corresponding to this position
 				// in the report's latency histogram.
 				latencyTenthsMs := req.HistogramBucketBoundsTenthMs[bucketNum]
-				latencyMs := float64(latencyTenthsMs / 10)
+				latencyMs := float64(latencyTenthsMs) / 10
 				for i := uint32(0); i < count; i++ {
 					// Then, report that latency value to Prometheus a number
 					// of times equal to the count reported by the proxy.

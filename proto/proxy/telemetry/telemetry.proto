@@ -81,8 +81,8 @@ message ResponseScope {
   ResponseCtx ctx = 1;
   // Response latencies (time from request headers sent to response headers
   // received). Represented as a histogram with buckets whose inclusive
-  // upper bounds are given in the `histogram_bucket_max_values` array in
-  // ReportRequest. Each number in this array represents the number of times a
+  // upper bounds are given in the `histogram_bucket_bounds_tenths_ms` array in
+  // `ReportRequest`. Each number in this array represents the number of times a
   // latency falling into that bucket was observed.
   repeated uint32 response_latency_counts = 2;
   repeated EosScope ends = 3;

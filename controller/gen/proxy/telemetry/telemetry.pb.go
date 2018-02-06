@@ -350,8 +350,8 @@ type ResponseScope struct {
 	Ctx *ResponseCtx `protobuf:"bytes,1,opt,name=ctx" json:"ctx,omitempty"`
 	// Response latencies (time from request headers sent to response headers
 	// received). Represented as a histogram with buckets whose inclusive
-	// upper bounds are given in the `histogram_bucket_max_values` array in
-	// ReportRequest. Each number in this array represents the number of times a
+	// upper bounds are given in the `histogram_bucket_bounds_tenths_ms` array in
+	// `ReportRequest`. Each number in this array represents the number of times a
 	// latency falling into that bucket was observed.
 	ResponseLatencyCounts []uint32    `protobuf:"varint,2,rep,packed,name=response_latency_counts,json=responseLatencyCounts" json:"response_latency_counts,omitempty"`
 	Ends                  []*EosScope `protobuf:"bytes,3,rep,name=ends" json:"ends,omitempty"`
