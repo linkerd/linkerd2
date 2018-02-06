@@ -24,7 +24,6 @@ pub struct LookupAddressAndConnect {
 }
 
 pub type TimeoutConnect<C> = timeout::Timeout<C>;
-pub type TimeoutError<E> = timeout::TimeoutError<E>;
 
 // ===== impl Connect =====
 

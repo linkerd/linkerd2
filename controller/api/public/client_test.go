@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"strings"
 	"testing"
 	"time"
 
@@ -31,7 +30,7 @@ func TestNewInternalClient(t *testing.T) {
 		mockTransport := &mockTransport{}
 		mockTransport.responseToReturn = &http.Response{
 			StatusCode: 500,
-			Body:       ioutil.NopCloser(strings.NewReader("body")),
+			Body:       ioutil.NopCloser(bufferedReader(t, &pb.Empty{})),
 		}
 		mockHttpClient := &http.Client{
 			Transport: mockTransport,
@@ -42,7 +41,6 @@ func TestNewInternalClient(t *testing.T) {
 			Host:   "some-hostname",
 			Path:   "/",
 		}
-
 		client, err := newClient(apiURL, mockHttpClient)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)

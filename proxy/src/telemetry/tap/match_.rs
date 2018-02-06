@@ -260,7 +260,10 @@ impl<'a> TryFrom<&'a observe_request::match_::tcp::Netmask> for NetMatch {
 impl HttpMatch {
     fn matches(&self, req: &Arc<ctx::http::Request>) -> bool {
         match *self {
-            HttpMatch::Scheme(ref m) => req.uri.scheme_part().map(|s| &**m == s).unwrap_or(false),
+            HttpMatch::Scheme(ref m) => req.uri
+                .scheme_part()
+                .map(|s| m == s.as_ref())
+                .unwrap_or(false),
 
             HttpMatch::Method(ref m) => *m == req.method,
 

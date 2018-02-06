@@ -4,19 +4,14 @@
 # are omitted from the resulting image so that artifacts may be built from source over
 # this image.
 #
-# When this file is changed, you must run `bin/update-go-deps-shas`.
+# When this file is changed, you must run `bin/update-proxy-deps-shas`.
 
 # Compile the application to ensure we've obtained all build dependencies and that they
 # compile.
 FROM rust:1.23.0 as build
 WORKDIR /usr/src/conduit
-COPY codegen ./codegen
 COPY futures-mpsc-lossy ./futures-mpsc-lossy
-COPY tower-h2 ./tower-h2
 COPY tower-router ./tower-router
-COPY tower-grpc-examples ./tower-grpc-examples
-COPY tower-grpc-build ./tower-grpc-build
-COPY tower-grpc ./tower-grpc
 COPY Cargo.toml Cargo.lock ./
 COPY proto ./proto
 COPY proxy ./proxy

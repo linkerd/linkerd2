@@ -160,7 +160,7 @@ export default class MultiLineGraph extends React.Component {
     return (
       <div className="current-latency">
         {
-          _.map(["P99", "P95", "P50"], latency => {
+          _.map(["P50", "P95", "P99"], latency => {
             let ts = this.props.data[latency];
             let lat = metricToFormatter["LATENCY"](_.get(_.last(ts), 'value', []));
             return (

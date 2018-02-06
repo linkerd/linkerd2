@@ -5,13 +5,12 @@ import (
 	"net/http"
 
 	"github.com/golang/protobuf/jsonpb"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	common "github.com/runconduit/conduit/controller/gen/common"
 	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 	tapPb "github.com/runconduit/conduit/controller/gen/controller/tap"
 	telemPb "github.com/runconduit/conduit/controller/gen/controller/telemetry"
 	pb "github.com/runconduit/conduit/controller/gen/public"
+	"github.com/runconduit/conduit/controller/util"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/metadata"
@@ -191,24 +190,12 @@ func fullUrlPathFor(method string) string {
 	return ApiRoot + ApiPrefix + method
 }
 
-func withTelemetry(baseHandler *handler) http.HandlerFunc {
-	counter := prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "http_requests_total",
-			Help: "A counter for requests to the wrapped handler.",
-		},
-		[]string{"code", "method"},
-	)
-	prometheus.MustRegister(counter)
-	return promhttp.InstrumentHandlerCounter(counter, baseHandler)
-}
-
 func NewServer(addr string, telemetryClient telemPb.TelemetryClient, tapClient tapPb.TapClient) *http.Server {
 	baseHandler := &handler{
 		grpcServer: newGrpcServer(telemetryClient, tapClient),
 	}
 
-	instrumentedHandler := withTelemetry(baseHandler)
+	instrumentedHandler := util.WithTelemetry(baseHandler)
 
 	return &http.Server{
 		Addr:    addr,

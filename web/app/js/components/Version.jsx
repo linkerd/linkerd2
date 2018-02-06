@@ -1,4 +1,4 @@
-import { ApiHelpers } from './util/ApiHelpers.js';
+import { ApiHelpers } from './util/ApiHelpers.jsx';
 import { Link } from 'react-router-dom';
 import React from 'react';
 import './../../css/version.css';

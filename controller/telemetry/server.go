@@ -20,6 +20,7 @@ import (
 	public "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/controller/k8s"
 	"github.com/runconduit/conduit/controller/util"
+	pkgK8s "github.com/runconduit/conduit/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -181,17 +182,21 @@ func NewServer(addr, prometheusUrl string, ignoredNamespaces []string, kubeconfi
 }
 
 func (s *server) Query(ctx context.Context, req *read.QueryRequest) (*read.QueryResponse, error) {
+	log.Debugf("Query request: %+v", req)
+
 	start := time.Unix(0, req.StartMs*int64(time.Millisecond))
 	end := time.Unix(0, req.EndMs*int64(time.Millisecond))
 
 	step, err := time.ParseDuration(req.Step)
 	if err != nil {
+		log.Errorf("ParseDuration(%+v) failed with: %+v", req.Step, err)
 		return nil, err
 	}
 
 	queryRange := v1.Range{Start: start, End: end, Step: step}
 	res, err := s.prometheusApi.QueryRange(ctx, req.Query, queryRange)
 	if err != nil {
+		log.Errorf("QueryRange(%+v, %+v) failed with: %+v", req.Query, queryRange, err)
 		return nil, err
 	}
 
@@ -208,6 +213,7 @@ func (s *server) Query(ctx context.Context, req *read.QueryRequest) (*read.Query
 }
 
 func (s *server) ListPods(ctx context.Context, req *read.ListPodsRequest) (*public.ListPodsResponse, error) {
+	log.Debugf("ListPods request: %+v", req)
 
 	pods, err := s.pods.List()
 	if err != nil {
@@ -233,8 +239,8 @@ func (s *server) ListPods(ctx context.Context, req *read.ListPodsRequest) (*publ
 			status = "Terminating"
 		}
 
-		plane, _ := pod.Labels["conduit.io/plane"]
-		controller, _ := pod.Labels["conduit.io/controller"]
+		controllerComponent := pod.Labels[pkgK8s.ControllerComponentLabel]
+		controllerNS := pod.Labels[pkgK8s.ControllerNSLabel]
 
 		item := &public.Pod{
 			Name:                pod.Namespace + "/" + pod.Name,
@@ -242,8 +248,8 @@ func (s *server) ListPods(ctx context.Context, req *read.ListPodsRequest) (*publ
 			Status:              status,
 			PodIP:               pod.Status.PodIP,
 			Added:               added,
-			ControllerNamespace: controller,
-			ControlPlane:        plane == "control",
+			ControllerNamespace: controllerNS,
+			ControlPlane:        controllerComponent != "",
 		}
 		if added {
 			since := time.Since(updated)
@@ -259,6 +265,8 @@ func (s *server) ListPods(ctx context.Context, req *read.ListPodsRequest) (*publ
 }
 
 func (s *server) Report(ctx context.Context, req *write.ReportRequest) (*write.ReportResponse, error) {
+	log.Debugf("Report request: %+v", req)
+
 	id := "unknown"
 	if req.Process != nil {
 		id = req.Process.ScheduledNamespace + "/" + req.Process.ScheduledInstance

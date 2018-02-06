@@ -1,18 +1,14 @@
-use std::io;
 use std::net::{SocketAddr};
 use std::sync::Arc;
 
 use http;
+use tower;
 use tower_buffer::{self, Buffer};
 use tower_h2;
-use tower_reconnect::{self, Reconnect};
 use tower_router::Recognize;
 
 use bind;
 use ctx;
-use telemetry;
-use transparency;
-use transport;
 
 type Bind<B> = bind::Bind<Arc<ctx::Proxy>, B>;
 
@@ -20,11 +16,6 @@ pub struct Inbound<B> {
     default_addr: Option<SocketAddr>,
     bind: Bind<B>,
 }
-
-type Client<B> = transparency::Client<
-    telemetry::sensor::Connect<transport::TimeoutConnect<transport::Connect>>,
-    B,
->;
 
 // ===== impl Inbound =====
 
@@ -42,16 +33,13 @@ where
     B: tower_h2::Body + 'static,
 {
     type Request = http::Request<B>;
-    type Response = http::Response<telemetry::sensor::http::ResponseBody<transparency::HttpBody>>;
+    type Response = bind::HttpResponse;
     type Error = tower_buffer::Error<
-        tower_reconnect::Error<
-            tower_h2::client::Error,
-            tower_h2::client::ConnectError<transport::TimeoutError<io::Error>>,
-        >,
+        <bind::Service<B> as tower::Service>::Error
     >;
     type Key = (SocketAddr, bind::Protocol);
     type RouteError = ();
-    type Service = Buffer<Reconnect<telemetry::sensor::NewHttp<Client<B>, B, transparency::HttpBody>>>;
+    type Service = Buffer<bind::Service<B>>;
 
     fn recognize(&self, req: &Self::Request) -> Option<Self::Key> {
         let key = req.extensions()

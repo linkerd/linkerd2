@@ -150,7 +150,7 @@ minikube -n emojivoto service web-svc --url
 bin/conduit stat deployments
 
 # view a live pipeline of requests
-bin/conduit tap deploy emojivoto/voting-svc
+bin/conduit tap deploy emojivoto/voting
 ```
 
 ## Go
@@ -182,8 +182,8 @@ bin/go-run controller/script/simulate-proxy --kubeconfig ~/.kube/config --addr $
 ### Testing
 
 ```bash
-dep ensure && dep prune
-go test ./...
+bin/dep ensure
+go test -race ./...
 go vet ./...
 ```
 

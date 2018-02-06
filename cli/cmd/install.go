@@ -2,13 +2,15 @@ package cmd
 
 import (
 	"fmt"
-	"log"
+	"io"
 	"os"
 	"regexp"
 	"text/template"
 
+	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/runconduit/conduit/pkg/version"
 	uuid "github.com/satori/go.uuid"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -24,7 +26,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: conduit-controller
-  namespace: conduit
+  namespace: {{.Namespace}}
 
 ### RBAC ###
 ---
@@ -45,7 +47,7 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: conduit-controller
-  namespace: conduit
+  namespace: {{.Namespace}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -53,7 +55,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: conduit-controller
-  namespace: conduit
+  namespace: {{.Namespace}}
 
 ### Service Account Prometheus ###
 ---
@@ -61,7 +63,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: conduit-prometheus
-  namespace: conduit
+  namespace: {{.Namespace}}
 
 ### RBAC ###
 ---
@@ -79,7 +81,7 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: conduit-prometheus
-  namespace: conduit
+  namespace: {{.Namespace}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -87,7 +89,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: conduit-prometheus
-  namespace: conduit
+  namespace: {{.Namespace}}
 
 ### Controller ###
 ---
@@ -98,9 +100,9 @@ metadata:
   namespace: {{.Namespace}}
   labels:
     app: controller
-    conduit.io/plane: control
+    {{.ControllerComponentLabel}}: controller
   annotations:
-    conduit.io/created-by: "{{.CliVersion}}"
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
   type: ClusterIP
   selector:
@@ -118,9 +120,9 @@ metadata:
   namespace: {{.Namespace}}
   labels:
     app: controller
-    conduit.io/plane: control
+    {{.ControllerComponentLabel}}: controller
   annotations:
-    conduit.io/created-by: "{{.CliVersion}}"
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
   type: ClusterIP
   selector:
@@ -138,18 +140,18 @@ metadata:
   namespace: {{.Namespace}}
   labels:
     app: controller
-    conduit.io/plane: control
+    {{.ControllerComponentLabel}}: controller
   annotations:
-    conduit.io/created-by: "{{.CliVersion}}"
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
   replicas: {{.ControllerReplicas}}
   template:
     metadata:
       labels:
         app: controller
-        conduit.io/plane: control
+        {{.ControllerComponentLabel}}: controller
       annotations:
-        conduit.io/created-by: "{{.CliVersion}}"
+        {{.CreatedByAnnotation}}: {{.CliVersion}}
     spec:
       serviceAccount: conduit-controller
       containers:
@@ -167,6 +169,7 @@ spec:
         - "-metrics-addr=:9995"
         - "-telemetry-addr=127.0.0.1:8087"
         - "-tap-addr=127.0.0.1:8088"
+        - "-log-level={{.ControllerLogLevel}}"
       - name: destination
         ports:
         - name: grpc
@@ -179,6 +182,7 @@ spec:
         - "destination"
         - "-addr=:8089"
         - "-metrics-addr=:9999"
+        - "-log-level={{.ControllerLogLevel}}"
       - name: proxy-api
         ports:
         - name: grpc
@@ -193,6 +197,7 @@ spec:
         - "-metrics-addr=:9996"
         - "-destination-addr=:8089"
         - "-telemetry-addr=:8087"
+        - "-log-level={{.ControllerLogLevel}}"
       - name: tap
         ports:
         - name: grpc
@@ -205,6 +210,7 @@ spec:
         - "tap"
         - "-addr=:8088"
         - "-metrics-addr=:9998"
+        - "-log-level={{.ControllerLogLevel}}"
       - name: telemetry
         ports:
         - name: grpc
@@ -219,6 +225,7 @@ spec:
         - "-metrics-addr=:9997"
         - "-ignore-namespaces=kube-system"
         - "-prometheus-url=http://prometheus:9090"
+        - "-log-level={{.ControllerLogLevel}}"
 
 ### Web ###
 ---
@@ -229,9 +236,9 @@ metadata:
   namespace: {{.Namespace}}
   labels:
     app: web
-    conduit.io/plane: control
+    {{.ControllerComponentLabel}}: web
   annotations:
-    conduit.io/created-by: "{{.CliVersion}}"
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
   type: ClusterIP
   selector:
@@ -252,18 +259,18 @@ metadata:
   namespace: {{.Namespace}}
   labels:
     app: web
-    conduit.io/plane: control
+    {{.ControllerComponentLabel}}: web
   annotations:
-    conduit.io/created-by: "{{.CliVersion}}"
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
   replicas: {{.WebReplicas}}
   template:
     metadata:
       labels:
         app: web
-        conduit.io/plane: control
+        {{.ControllerComponentLabel}}: web
       annotations:
-        conduit.io/created-by: "{{.CliVersion}}"
+        {{.CreatedByAnnotation}}: {{.CliVersion}}
     spec:
       containers:
       - name: web
@@ -281,6 +288,7 @@ spec:
         - "-static-dir=/dist"
         - "-template-dir=/templates"
         - "-uuid={{.UUID}}"
+        - "-log-level={{.ControllerLogLevel}}"
 
 ### Prometheus ###
 ---
@@ -291,9 +299,9 @@ metadata:
   namespace: {{.Namespace}}
   labels:
     app: prometheus
-    conduit.io/plane: control
+    {{.ControllerComponentLabel}}: prometheus
   annotations:
-    conduit.io/created-by: "{{.CliVersion}}"
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
   type: ClusterIP
   selector:
@@ -311,18 +319,18 @@ metadata:
   namespace: {{.Namespace}}
   labels:
     app: prometheus
-    conduit.io/plane: control
+    {{.ControllerComponentLabel}}: prometheus
   annotations:
-    conduit.io/created-by: "{{.CliVersion}}"
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
   replicas: {{.PrometheusReplicas}}
   template:
     metadata:
       labels:
         app: prometheus
-        conduit.io/plane: control
+        {{.ControllerComponentLabel}}: prometheus
       annotations:
-        conduit.io/created-by: "{{.CliVersion}}"
+        {{.CreatedByAnnotation}}: {{.CliVersion}}
     spec:
       serviceAccount: conduit-prometheus
       volumes:
@@ -358,9 +366,9 @@ metadata:
   namespace: {{.Namespace}}
   labels:
     app: prometheus
-    conduit.io/plane: control
+    {{.ControllerComponentLabel}}: prometheus
   annotations:
-    conduit.io/created-by: "{{.CliVersion}}"
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
 data:
   prometheus.yml: |-
     global:
@@ -387,16 +395,19 @@ data:
 `
 
 type installConfig struct {
-	Namespace          string
-	ControllerImage    string
-	WebImage           string
-	PrometheusImage    string
-	ControllerReplicas uint
-	WebReplicas        uint
-	PrometheusReplicas uint
-	ImagePullPolicy    string
-	UUID               string
-	CliVersion         string
+	Namespace                string
+	ControllerImage          string
+	WebImage                 string
+	PrometheusImage          string
+	ControllerReplicas       uint
+	WebReplicas              uint
+	PrometheusReplicas       uint
+	ImagePullPolicy          string
+	UUID                     string
+	CliVersion               string
+	ControllerLogLevel       string
+	ControllerComponentLabel string
+	CreatedByAnnotation      string
 }
 
 var (
@@ -406,6 +417,7 @@ var (
 	webReplicas        uint
 	prometheusReplicas uint
 	imagePullPolicy    string
+	controllerLogLevel string
 )
 
 var installCmd = &cobra.Command{
@@ -414,26 +426,33 @@ var installCmd = &cobra.Command{
 	Long:  "Output Kubernetes configs to install Conduit.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := validate(); err != nil {
-			log.Fatal(err.Error())
-		}
-		template, err := template.New("conduit").Parse(conduitTemplate)
-		if err != nil {
 			return err
 		}
-		template.Execute(os.Stdout, installConfig{
-			Namespace:          controlPlaneNamespace,
-			ControllerImage:    fmt.Sprintf("%s/controller:%s", dockerRegistry, conduitVersion),
-			WebImage:           fmt.Sprintf("%s/web:%s", dockerRegistry, conduitVersion),
-			PrometheusImage:    "prom/prometheus:v1.8.1",
-			ControllerReplicas: controllerReplicas,
-			WebReplicas:        webReplicas,
-			PrometheusReplicas: prometheusReplicas,
-			ImagePullPolicy:    imagePullPolicy,
-			UUID:               uuid.NewV4().String(),
-			CliVersion:         fmt.Sprintf("conduit/cli %s", version.Version),
-		})
-		return nil
+		config := installConfig{
+			Namespace:                controlPlaneNamespace,
+			ControllerImage:          fmt.Sprintf("%s/controller:%s", dockerRegistry, conduitVersion),
+			WebImage:                 fmt.Sprintf("%s/web:%s", dockerRegistry, conduitVersion),
+			PrometheusImage:          "prom/prometheus:v1.8.1",
+			ControllerReplicas:       controllerReplicas,
+			WebReplicas:              webReplicas,
+			PrometheusReplicas:       prometheusReplicas,
+			ImagePullPolicy:          imagePullPolicy,
+			UUID:                     uuid.NewV4().String(),
+			CliVersion:               k8s.CreatedByAnnotationValue(),
+			ControllerLogLevel:       controllerLogLevel,
+			ControllerComponentLabel: k8s.ControllerComponentLabel,
+			CreatedByAnnotation:      k8s.CreatedByAnnotation,
+		}
+		return render(config, os.Stdout)
 	},
+}
+
+func render(config installConfig, w io.Writer) error {
+	template, err := template.New("conduit").Parse(conduitTemplate)
+	if err != nil {
+		return err
+	}
+	return template.Execute(w, config)
 }
 
 var alphaNumDash = regexp.MustCompile("^[a-zA-Z0-9-]+$")
@@ -453,17 +472,21 @@ func validate() error {
 		return fmt.Errorf("%s is not a valid Docker registry", dockerRegistry)
 	}
 	if imagePullPolicy != "Always" && imagePullPolicy != "IfNotPresent" && imagePullPolicy != "Never" {
-		return fmt.Errorf("imagePullPolicy must be one of Always, IfNotPresent, or Never")
+		return fmt.Errorf("--image-pull-policy must be one of: Always, IfNotPresent, Never")
+	}
+	if _, err := log.ParseLevel(controllerLogLevel); err != nil {
+		return fmt.Errorf("--controller-log-level must be one of: panic, fatal, error, warn, info, debug")
 	}
 	return nil
 }
 
 func init() {
 	RootCmd.AddCommand(installCmd)
-	installCmd.PersistentFlags().StringVarP(&conduitVersion, "version", "v", version.Version, "Conduit version to install")
+	installCmd.PersistentFlags().StringVarP(&conduitVersion, "conduit-version", "v", version.Version, "tag to be used for Conduit images")
 	installCmd.PersistentFlags().StringVarP(&dockerRegistry, "registry", "r", "gcr.io/runconduit", "Docker registry to pull images from")
 	installCmd.PersistentFlags().UintVar(&controllerReplicas, "controller-replicas", 1, "replicas of the controller to deploy")
 	installCmd.PersistentFlags().UintVar(&webReplicas, "web-replicas", 1, "replicas of the web server to deploy")
 	installCmd.PersistentFlags().UintVar(&prometheusReplicas, "prometheus-replicas", 1, "replicas of prometheus to deploy")
 	installCmd.PersistentFlags().StringVar(&imagePullPolicy, "image-pull-policy", "IfNotPresent", "Docker image pull policy")
+	installCmd.PersistentFlags().StringVar(&controllerLogLevel, "controller-log-level", "info", "log level for the controller and web components")
 }

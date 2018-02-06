@@ -11,3 +11,5 @@ web/app/node_modules
 web/app/dist
 .protoc
 .gorun
+.dep
+.dep.exe

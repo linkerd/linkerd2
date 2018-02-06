@@ -34,15 +34,13 @@ jobs:
       cache:
         directories:
           - vendor
-      before_install:
-        - go get -u github.com/golang/dep/cmd/dep
       install:
-        - dep ensure
+        - ./bin/dep ensure
       script:
         # TODO decide whether protoc should be committed or not. If so, we shouldn't do
         # this or we should error if it dirties the repo.
         - ./bin/protoc-go.sh
-        - go test -v ./...
+        - go test -race -v ./...
         - go vet ./...
 
     - language: node_js
@@ -57,7 +55,7 @@ jobs:
       install:
         - cd web/app && yarn && yarn webpack
       script:
-        - yarn karma start --single-run
+        - yarn karma start --single-run --reporters dots
 
     - language: generic
       script:
@@ -134,8 +132,8 @@ jobs:
         - bin/docker-push-deps
         - bin/docker-push $CONDUIT_TAG
         - bin/docker-retag-all $CONDUIT_TAG master && bin/docker-push master
-        - target/cli/linux/conduit install --version=$CONDUIT_TAG |tee conduit.yml
-        - kubectl -n conduit apply -f conduit.yml --prune --selector='conduit.io/plane=control'
+        - target/cli/linux/conduit install --conduit-version=$CONDUIT_TAG |tee conduit.yml
+        - kubectl -n conduit apply -f conduit.yml --prune --selector='conduit.io/control-plane-component'
 
 notifications:
   email:

@@ -12,21 +12,34 @@ import (
 
 const DefaultVersionString = "unavailable"
 
+var shortVersion bool
+var onlyClientVersion bool
+
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print the client and server version information",
-	Long:  "Print the client and server version information.",
-	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("Client version: %s\n", version.Version)
-
-		client, err := newPublicAPIClient()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error connecting to server: %s\n", err)
-			return
+		clientVersion := version.Version
+		if shortVersion {
+			fmt.Println(clientVersion)
+		} else {
+			fmt.Printf("Client version: %s\n", clientVersion)
 		}
 
-		fmt.Printf("Server version: %s\n", getServerVersion(client))
+		conduitApiClient, err := newPublicAPIClient()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error connecting to server: %s\n", err)
+			os.Exit(1)
+		}
+
+		if !onlyClientVersion {
+			serverVersion := getServerVersion(conduitApiClient)
+			if shortVersion {
+				fmt.Println(serverVersion)
+			} else {
+				fmt.Printf("Server version: %s\n", serverVersion)
+			}
+		}
 
 		return
 	},
@@ -34,6 +47,8 @@ var versionCmd = &cobra.Command{
 
 func init() {
 	RootCmd.AddCommand(versionCmd)
+	versionCmd.PersistentFlags().BoolVar(&shortVersion, "short", false, "Print the version number(s) only, with no additional output")
+	versionCmd.PersistentFlags().BoolVar(&onlyClientVersion, "client", false, "Print the client version only")
 	addControlPlaneNetworkingArgs(versionCmd)
 }
 
