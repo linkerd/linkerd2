@@ -20,8 +20,12 @@ jobs:
     - stage: test
       language: rust
       rust: stable
-      cache:
-        cargo: true
+      cache: cargo
+      before_install:
+        # TEMPORARY: clear cargo caches
+        - rm -rf $HOME/.cargo/checkouts
+        - rm -rf $HOME/.cargo/db
+        - rm -rf $TRAVIS_BUILD_DIR/target
       install:
         - cargo fetch --locked
       script:
