@@ -16,11 +16,11 @@ use std::error::Error;
 #[cfg(feature = "arbitrary")]
 pub mod arbitrary;
 
-pub use self::proto::*;
+pub use self::gen::*;
 
 // The generated code requires two tiers of outer modules so that references between
 // modules resolve properly.
-mod proto {
+mod gen {
     pub mod common {
         include!(concat!(env!("OUT_DIR"), "/conduit.common.rs"));
     }
@@ -37,6 +37,36 @@ mod proto {
         include!(concat!(env!("OUT_DIR"), "/conduit.proxy.telemetry.rs"));
     }
 }
+
+/// Converts a Rust Duration to a Protobuf Duration.
+pub fn pb_duration(d: &::std::time::Duration) -> ::prost_types::Duration {
+    let seconds = if d.as_secs() > ::std::i64::MAX as u64 {
+        ::std::i64::MAX
+    } else {
+        d.as_secs() as i64
+    };
+
+    let nanos = if d.subsec_nanos() > ::std::i32::MAX as u32 {
+        ::std::i32::MAX
+    } else {
+        d.subsec_nanos() as i32
+    };
+
+    ::prost_types::Duration {
+        seconds,
+        nanos,
+    }
+}
+
+/// Indicates an HTTP Method could not be decoded.
+#[derive(Debug, Clone)]
+pub struct InvalidMethod;
+
+
+/// Indicates a URI Scheme could not be decoded.
+#[derive(Debug, Clone)]
+pub struct InvalidScheme;
+
 
 // ===== impl common::Eos =====
 
@@ -81,6 +111,33 @@ impl From<::std::net::IpAddr> for common::IpAddress {
     }
 }
 
+impl From<[u8; 4]> for common::ip_address::Ip {
+    fn from(octets: [u8; 4]) -> Self {
+        common::ip_address::Ip::Ipv4(
+            u32::from(octets[0]) << 24 | u32::from(octets[1]) << 16 | u32::from(octets[2]) << 8
+                | u32::from(octets[3]),
+        )
+    }
+}
+
+// ===== impl common::ip_address:Ip =====
+
+impl From<::std::net::Ipv4Addr> for common::ip_address::Ip {
+    #[inline]
+    fn from(v4: ::std::net::Ipv4Addr) -> Self {
+        Self::from(v4.octets())
+    }
+}
+
+impl<T> From<T> for common::ip_address::Ip
+where
+    common::IPv6: From<T>,
+{
+    #[inline]
+    fn from(t: T) -> Self {
+        common::ip_address::Ip::Ipv6(common::IPv6::from(t))
+    }
+}
 
 // ===== impl common::IPv6 =====
 
@@ -123,34 +180,7 @@ impl<'a> From<&'a common::IPv6> for ::std::net::Ipv6Addr {
     }
 }
 
-// ===== impl common::ip_address::Ip =====
-
-impl From<[u8; 4]> for common::ip_address::Ip {
-    fn from(octets: [u8; 4]) -> Self {
-        common::ip_address::Ip::Ipv4(
-            u32::from(octets[0]) << 24 | u32::from(octets[1]) << 16 | u32::from(octets[2]) << 8
-                | u32::from(octets[3]),
-        )
-    }
-}
-
-impl From<::std::net::Ipv4Addr> for common::ip_address::Ip {
-    #[inline]
-    fn from(v4: ::std::net::Ipv4Addr) -> Self {
-        Self::from(v4.octets())
-    }
-}
-
-impl<T> From<T> for common::ip_address::Ip
-where
-    common::IPv6: From<T>,
-{
-    #[inline]
-    fn from(t: T) -> Self {
-        common::ip_address::Ip::Ipv6(common::IPv6::from(t))
-    }
-}
-
+// ===== impl common::TcpAddress =====
 
 impl<'a> From<&'a ::std::net::SocketAddr> for common::TcpAddress {
     fn from(sa: &::std::net::SocketAddr) -> common::TcpAddress {
@@ -161,6 +191,8 @@ impl<'a> From<&'a ::std::net::SocketAddr> for common::TcpAddress {
     }
 }
 
+// ===== impl common::Protocol =====
+
 impl hash::Hash for common::Protocol {
     // it's necessary to implement Hash for Protocol as it's a field on
     // ctx::Transport, which derives Hash.
@@ -169,24 +201,7 @@ impl hash::Hash for common::Protocol {
     }
 }
 
-pub fn pb_duration(d: &::std::time::Duration) -> ::prost_types::Duration {
-    let seconds = if d.as_secs() > ::std::i64::MAX as u64 {
-        ::std::i64::MAX
-    } else {
-        d.as_secs() as i64
-    };
-
-    let nanos = if d.subsec_nanos() > ::std::i32::MAX as u32 {
-        ::std::i32::MAX
-    } else {
-        d.subsec_nanos() as i32
-    };
-
-    ::prost_types::Duration {
-        seconds,
-        nanos,
-    }
-}
+// ===== impl common::scheme::Type =====
 
 impl<'a> TryInto<String> for &'a common::scheme::Type {
     type Err = InvalidScheme;
@@ -205,6 +220,8 @@ impl<'a> TryInto<String> for &'a common::scheme::Type {
         }
     }
 }
+
+// ===== impl common::HttpMethod =====
 
 impl<'a> TryFrom<&'a common::http_method::Type> for http::Method {
     type Err = InvalidMethod;
@@ -267,6 +284,23 @@ impl<'a> From<&'a http::Method> for common::HttpMethod {
     }
 }
 
+// ===== impl InvalidMethod =====
+
+impl fmt::Display for InvalidMethod {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "invalid http method")
+    }
+}
+
+impl Error for InvalidMethod {
+    #[inline]
+    fn description(&self) -> &str {
+        "invalid http method"
+    }
+}
+
+// ===== impl common::Scheme =====
+
 impl<'a> From<&'a http::uri::Scheme> for common::Scheme {
     fn from(scheme: &'a http::uri::Scheme) -> Self {
         scheme.as_ref().into()
@@ -293,25 +327,7 @@ impl<'a> From<&'a str> for common::Scheme {
     }
 }
 
-#[derive(Debug, Clone)]
-// TODO: do we want to carry the string if there is one?
-pub struct InvalidMethod;
-
-impl fmt::Display for InvalidMethod {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "invalid http method")
-    }
-}
-
-impl Error for InvalidMethod {
-    #[inline]
-    fn description(&self) -> &str {
-        "invalid http method"
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct InvalidScheme;
+// ===== impl InvalidScheme =====
 
 impl fmt::Display for InvalidScheme {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
