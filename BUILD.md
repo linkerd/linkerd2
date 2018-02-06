@@ -327,6 +327,23 @@ To connect to a live `proxy-api` at `localhost:8086`:
 bin/go-run controller/cmd/proxy-api
 ```
 
+### Docker
+
+The `bin/docker-build-proxy` script builds the proxy:
+
+```bash
+DOCKER_TRACE=1 PROXY_UNOPTIMIZED=1 PROXY_SKIP_TESTS=1 bin/docker-build-proxy
+```
+
+It supports two environment variables:
+
+- `PROXY_UNOPTIMIZED` -- When set and non-empty, produces unoptimized build artifacts,
+  which reduces build times at the expense of runtime performance. Changing this will
+  likely invalidate a substantial portion of Docker's cache.
+- `PROXY_SKIP_TESTS` -- When set and non-empty, prevents the proxy's tests from being run
+  during the build. Changing this setting will not invalidate Docker's cache.
+
+
 ### Testing
 
 ```bash
@@ -416,7 +433,6 @@ build_architecture
     "docker-build-proxy" -> "_docker.sh";
     "docker-build-proxy" -> "_tag.sh";
     "docker-build-proxy" -> "docker-build-base";
-    "docker-build-proxy" -> "docker-build-go-deps";
     "docker-build-proxy" -> "proxy/Dockerfile";
 
     "docker-build-proxy-init" -> "_docker.sh";
