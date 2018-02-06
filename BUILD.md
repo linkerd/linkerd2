@@ -346,9 +346,17 @@ It supports two environment variables:
 
 ### Testing
 
+To build the Rust code and run tests, run:
+
+```bash
+cargo test
+```
+
+To analyze the Rust code and report errors, without building object files or
+running tests, run:
+
 ```bash
 cargo check
-cargo test
 ```
 
 # Dependencies
