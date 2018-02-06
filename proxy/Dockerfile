@@ -7,8 +7,10 @@
 # When SKIP_TESTS is set and not empty, tests are not run. Otherwise, tests are run
 # against either unoptimized or optimized proxy code, according to PROXY_UNOPTIMIZED.
 
-## Builds the proxy as incrementally as possible.
 ARG RUST_IMAGE=rust:1.23.0
+ARG RUNTIME_IMAGE=gcr.io/runconduit/base:2017-10-30.01
+
+## Builds the proxy as incrementally as possible.
 FROM $RUST_IMAGE as build
 
 WORKDIR /usr/src/conduit
@@ -66,7 +68,6 @@ RUN if [ -n "$PROXY_UNOPTIMIZED" ]; \
     fi
 
 ## Install the proxy binary into the base runtime image.
-ARG RUNTIME_IMAGE=gcr.io/runconduit/base:2017-10-30.01
 FROM $RUNTIME_IMAGE as runtime
 COPY --from=build /usr/src/conduit/target/conduit-proxy /usr/local/bin/conduit-proxy
 ENV CONDUIT_PROXY_LOG=warn,conduit_proxy=info
