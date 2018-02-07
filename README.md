@@ -31,8 +31,8 @@ getting started.
 
 2. Add `$HOME/.conduit/bin` to your `PATH`.
 
-3. Run `conduit install | kubectl apply -f -` to install Conduit into your Kubernetes
-   cluster.
+3. Install Conduit into your Kubernetes cluster with:
+  `conduit install | kubectl apply -f -`.
 
 4. Verify that the installation succeeded with `conduit check`.
 
