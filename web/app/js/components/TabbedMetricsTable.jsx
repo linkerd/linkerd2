@@ -79,14 +79,6 @@ export default class TabbedMetricsTable extends React.Component {
   constructor(props) {
     super(props);
     this.api = this.props.api;
-
-    this.state = {
-      timeseries: {},
-      rollup: this.preprocessMetrics(),
-      error: '',
-      pollingInterval: 10000,
-      pendingRequests: false
-    };
   }
 
   preprocessMetrics() {
@@ -103,10 +95,11 @@ export default class TabbedMetricsTable extends React.Component {
 
   render() {
     let resource = resourceInfo[this.props.resource];
+    let tableData = this.preprocessMetrics();
     let columns = _.compact(columnDefinitions(this.props.sortable, resource, this.api.ConduitLink));
 
     return (<Table
-      dataSource={this.state.rollup}
+      dataSource={tableData}
       columns={columns}
       pagination={false}
       className="conduit-table"
