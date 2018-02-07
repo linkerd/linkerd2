@@ -158,9 +158,7 @@ export default class DeploymentsList extends React.Component {
         <div className="deployments-list">
           <TabbedMetricsTable
             resource="deployment"
-            lastUpdated={this.state.lastUpdated}
             metrics={this.state.metrics}
-            hideSparklines={this.state.limitSparklineData}
             api={this.api} />
         </div>
       </div>
