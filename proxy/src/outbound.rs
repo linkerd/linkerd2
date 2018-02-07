@@ -1,9 +1,8 @@
-use std::sync::Arc;
-
 use http;
-
+use rand;
+use std::sync::Arc;
 use tower;
-use tower_balance::{self, choose, Balance};
+use tower_balance::{self, choose, load, Balance};
 use tower_buffer::Buffer;
 use tower_h2;
 use conduit_proxy_router::Recognize;
@@ -49,8 +48,8 @@ where
     type Key = (FullyQualifiedAuthority, Protocol);
     type RouteError = ();
     type Service = Buffer<Balance<
-        Discovery<B>,
-        choose::RoundRobin, // TODO: better load balancer.
+        load::WithPendingRequests<Discovery<B>>,
+        choose::PowerOfTwoChoices<rand::ThreadRng>,
     >>;
 
     fn recognize(&self, req: &Self::Request) -> Option<Self::Key> {
@@ -89,8 +88,9 @@ where
             self.bind.clone().with_protocol(protocol),
         );
 
-        // TODO: move to p2c lb.
-        let balance = tower_balance::round_robin(resolve);
+        let loaded = tower_balance::load::WithPendingRequests::new(resolve);
+
+        let balance = tower_balance::power_of_two_choices(loaded, rand::thread_rng());
 
         // Wrap with buffering. This currently is an unbounded buffer,
         // which is not ideal.

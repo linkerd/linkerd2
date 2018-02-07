@@ -22,6 +22,7 @@ hyper = { version = "0.11.15", features = ["compat"] }
 ipnet = "1.0"
 log = "0.3"
 ordermap = "0.2"
+rand = "0.4"
 url = "1.5"
 
 tokio-core = "0.1"

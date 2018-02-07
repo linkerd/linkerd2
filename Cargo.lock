@@ -147,6 +147,7 @@ dependencies = [
  "prost 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "prost-types 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "quickcheck 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-connect 0.1.0 (git+https://github.com/carllerche/tokio-connect)",
  "tokio-core 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-io 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
