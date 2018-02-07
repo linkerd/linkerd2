@@ -1,6 +1,5 @@
 import _ from 'lodash';
 import { metricToFormatter } from './util/Utils.js';
-import Percentage from './util/Percentage.js';
 import React from 'react';
 import { Table } from 'antd';
 
@@ -19,10 +18,6 @@ const resourceInfo = {
   "path": { title: "path", url: null }
 };
 
-const ColumnTitle = props => {
-  return <div className="column-title">{props.children}</div>;
-};
-
 const columnDefinitions = (sortable = true, resource, ConduitLink) => {
   return [
     {
@@ -35,7 +30,7 @@ const columnDefinitions = (sortable = true, resource, ConduitLink) => {
         <ConduitLink to={`${resource.url}${name}`}>{name}</ConduitLink>
     },
     {
-      title: <ColumnTitle>Success<br />Rate</ColumnTitle>,
+      title: "Success Rate",
       dataIndex: "successRate",
       key: "successRateRollup",
       className: "numeric",
@@ -43,7 +38,7 @@ const columnDefinitions = (sortable = true, resource, ConduitLink) => {
       render: d => metricToFormatter["SUCCESS_RATE"](d)
     },
     {
-      title: <ColumnTitle>Request<br />Rate</ColumnTitle>,
+      title: "Request Rate",
       dataIndex: "requestRate",
       key: "requestRateRollup",
       defaultSortOrder: 'descend',
@@ -52,24 +47,15 @@ const columnDefinitions = (sortable = true, resource, ConduitLink) => {
       render: d => metricToFormatter["REQUEST_RATE"](d)
     },
     {
-      title: <ColumnTitle>Request<br />Distribution</ColumnTitle>,
-      dataIndex: "requestDistribution",
-      key: "distribution",
+      title: "P50 Latency",
+      dataIndex: "P50",
+      key: "p50LatencyRollup",
       className: "numeric",
-      sorter: sortable ? (a, b) =>
-        numericSort(a.requestDistribution.get(), b.requestDistribution.get()) : false,
-      render: d => d.prettyRate()
-    },
-    {
-      title: <ColumnTitle>P99<br />Latency</ColumnTitle>,
-      dataIndex: "P99",
-      key: "p99LatencyRollup",
-      className: "numeric",
-      sorter: sortable ? (a, b) => numericSort(a.P99, b.P99) : false,
+      sorter: sortable ? (a, b) => numericSort(a.P50, b.P50) : false,
       render: metricToFormatter["LATENCY"]
     },
     {
-      title: <ColumnTitle>P95<br />Latency</ColumnTitle>,
+      title: "P95 Latency",
       dataIndex: "P95",
       key: "p95LatencyRollup",
       className: "numeric",
@@ -77,11 +63,11 @@ const columnDefinitions = (sortable = true, resource, ConduitLink) => {
       render: metricToFormatter["LATENCY"]
     },
     {
-      title: <ColumnTitle>P50<br />Latency</ColumnTitle>,
-      dataIndex: "P50",
-      key: "p50LatencyRollup",
+      title: "P99 Latency",
+      dataIndex: "P99",
+      key: "p99LatencyRollup",
       className: "numeric",
-      sorter: sortable ? (a, b) => numericSort(a.P50, b.P50) : false,
+      sorter: sortable ? (a, b) => numericSort(a.P99, b.P99) : false,
       render: metricToFormatter["LATENCY"]
     }
   ];
@@ -96,28 +82,12 @@ export default class TabbedMetricsTable extends React.Component {
 
     this.state = {
       timeseries: {},
-      rollup: this.preprocessMetrics(),
+      rollup: this.props.metrics,
       error: '',
       lastUpdated: this.props.lastUpdated,
       pollingInterval: 10000,
       pendingRequests: false
     };
-  }
-
-  preprocessMetrics() {
-    let tableData = _.cloneDeep(this.props.metrics);
-    let totalRequestRate = _.sumBy(this.props.metrics, "requestRate") || 0;
-
-    _.each(tableData, datum => {
-      datum.totalRequests = totalRequestRate;
-      datum.requestDistribution = new Percentage(datum.requestRate, datum.totalRequests);
-
-      _.each(datum.latency, (value, quantile) => {
-        datum[quantile] = value;
-      });
-    });
-
-    return tableData;
   }
 
   render() {
