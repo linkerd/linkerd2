@@ -82,12 +82,24 @@ export default class TabbedMetricsTable extends React.Component {
 
     this.state = {
       timeseries: {},
-      rollup: this.props.metrics,
+      rollup: this.preprocessMetrics(),
       error: '',
-      lastUpdated: this.props.lastUpdated,
       pollingInterval: 10000,
       pendingRequests: false
     };
+  }
+
+  preprocessMetrics() {
+    let tableData = _.cloneDeep(this.props.metrics);
+    let totalRequestRate = _.sumBy(this.props.metrics, "requestRate") || 0;
+
+    _.each(tableData, datum => {
+      _.each(datum.latency, (value, quantile) => {
+        datum[quantile] = value;
+      });
+    });
+
+    return tableData;
   }
 
   render() {
