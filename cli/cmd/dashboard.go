@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 
 	"github.com/pkg/browser"
@@ -21,9 +22,16 @@ var dashboardCmd = &cobra.Command{
 			return fmt.Errorf("port must be greater than or equal to zero, was %d", dashboardProxyPort)
 		}
 
-		kubernetesProxy, err := k8s.InitK8sProxy(shell.NewUnixShell().HomeDir(), kubeconfigPath, dashboardProxyPort)
+		shellHomeDir := shell.NewUnixShell().HomeDir()
+		kubernetesProxy, err := k8s.InitK8sProxy(shellHomeDir, kubeconfigPath, dashboardProxyPort)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to initialize proxy: %s\n", err)
+			os.Exit(1)
+		}
+
+		kubeAPI, err := k8s.NewK8sAPI(shellHomeDir, kubeconfigPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to initialize kubernetes API: %+v", err)
 			os.Exit(1)
 		}
 
@@ -33,10 +41,21 @@ var dashboardCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		dashboardAvailable, err := isDashboardAvailable(kubeAPI)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed while checking availability of dashboard: %+v\n", err)
+		}
+
+		if !dashboardAvailable {
+			fmt.Printf("Conduit dashboard is not installed in cluster")
+			os.Exit(1)
+		}
+
 		fmt.Printf("Conduit dashboard available at:\n%s\n", url.String())
 
 		if !dashboardSkipBrowser {
 			fmt.Println("Opening the default browser")
+
 			err = browser.OpenURL(url.String())
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to open URL %s in the default browser: %s", url, err)
@@ -53,6 +72,26 @@ var dashboardCmd = &cobra.Command{
 
 		return nil
 	},
+}
+
+func isDashboardAvailable(kubeAPI k8s.KubernetesApi) (bool, error) {
+	client, err := kubeAPI.NewClient()
+	if err != nil {
+		return false, err
+	}
+	fullUrl, err := kubeAPI.UrlFor(controlPlaneNamespace, "/services/web")
+	if err != nil {
+		return false, err
+	}
+	req, err := client.Get(fullUrl.String())
+	if err != nil {
+		return false, err
+	}
+	if req.StatusCode == http.StatusOK {
+		return true, nil
+	}
+	return false, nil
+
 }
 
 func init() {
