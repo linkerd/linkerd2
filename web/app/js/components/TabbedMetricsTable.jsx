@@ -30,14 +30,6 @@ const columnDefinitions = (sortable = true, resource, ConduitLink) => {
         <ConduitLink to={`${resource.url}${name}`}>{name}</ConduitLink>
     },
     {
-      title: "Success Rate",
-      dataIndex: "successRate",
-      key: "successRateRollup",
-      className: "numeric",
-      sorter: sortable ? (a, b) => numericSort(a.successRate, b.successRate) : false,
-      render: d => metricToFormatter["SUCCESS_RATE"](d)
-    },
-    {
       title: "Request Rate",
       dataIndex: "requestRate",
       key: "requestRateRollup",
@@ -45,6 +37,14 @@ const columnDefinitions = (sortable = true, resource, ConduitLink) => {
       className: "numeric",
       sorter: sortable ? (a, b) => numericSort(a.requestRate, b.requestRate) : false,
       render: d => metricToFormatter["REQUEST_RATE"](d)
+    },
+    {
+      title: "Success Rate",
+      dataIndex: "successRate",
+      key: "successRateRollup",
+      className: "numeric",
+      sorter: sortable ? (a, b) => numericSort(a.successRate, b.successRate) : false,
+      render: d => metricToFormatter["SUCCESS_RATE"](d)
     },
     {
       title: "P50 Latency",
