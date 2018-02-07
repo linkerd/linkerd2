@@ -27,19 +27,18 @@ getting started.
 
 ## Getting started with Conduit
 
-1. Install the Conduit CLI `curl https://run.conduit.io/install | sh `
+1. Install the Conduit CLI with `curl https://run.conduit.io/install | sh `.
 
-2. Copy `/Users/username/.conduit/bin/conduit` into your PATH
+2. Add `$HOME/.conduit/bin` to your `PATH`.
 
-3. Run `conduit install | kubectl apply -f -` to install Conduit
+3. Run `conduit install | kubectl apply -f -` to install Conduit into your Kubernetes
+   cluster.
 
-4. Check to make sure you're running the [latest version][releases] of Conduit
-with `conduit version`
+4. Verify that the installation succeeded with `conduit check`.
 
-5. Open a local version of the Conduit controller with `conduit dashboard`
+5. Explore the Conduit controller with `conduit dashboard`.
 
-6. (Optional) To install a demo application for your Conduit instance, visit
-[this section on Conduit docs][conduit-demo]
+6. Optionally, install a [demo application][conduit-demo] to run with Conduit.
 
 
 ## Working in this repo ##
