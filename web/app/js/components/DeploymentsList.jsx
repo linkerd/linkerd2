@@ -89,20 +89,20 @@ export default class DeploymentsList extends React.Component {
     let limitSparklineData = _.size(meshDeployMetrics) > maxTsToFetch;
 
     let resourceInfo = this.api.urlsForResource["deployment"];
-    let leastHealthyDeployments = this.getLeastHealthyDeployments(meshDeployMetrics);
+    let mostActiveDeployments = this.getMostActiveDeployments(meshDeployMetrics);
 
-    let tsPromises = _.map(leastHealthyDeployments, dep => {
+    let tsPromises = _.map(mostActiveDeployments, dep => {
       let tsPathForDeploy = resourceInfo.url(dep.name).ts;
       return this.api.fetchMetrics(tsPathForDeploy);
     });
 
     Promise.all(tsPromises)
       .then(tsMetrics => {
-        let leastHealthyTs = _.reduce(tsMetrics, (mem, ea) => {
+        let mostActiveTs = _.reduce(tsMetrics, (mem, ea) => {
           mem = mem.concat(ea.metrics);
           return mem;
         }, []);
-        let tsByDeploy = processTimeseriesMetrics(leastHealthyTs, resourceInfo.groupBy);
+        let tsByDeploy = processTimeseriesMetrics(mostActiveTs, resourceInfo.groupBy);
         this.setState({
           timeseriesByDeploy: tsByDeploy,
           lastUpdated: Date.now(),
@@ -122,30 +122,32 @@ export default class DeploymentsList extends React.Component {
     });
   }
 
-  getLeastHealthyDeployments(deployMetrics, limit = 3) {
+  getMostActiveDeployments(deployMetrics, limit = 3) {
     return _(deployMetrics)
       .filter('added')
-      .sortBy('successRate')
+      .orderBy('requestRate', 'desc')
       .take(limit)
       .value();
   }
 
   renderPageContents() {
-    let leastHealthyDeployments = this.getLeastHealthyDeployments(this.state.metrics);
+    let mostActiveDeployments = this.getMostActiveDeployments(this.state.metrics);
 
     return (
       <div className="clearfix">
-        {_.isEmpty(leastHealthyDeployments) ? null : <div className="subsection-header">Least-healthy deployments</div>}
+        {_.isEmpty(mostActiveDeployments) ? null :
+          <div className="subsection-header">Most active deployments</div>}
         <Row gutter={rowGutter}>
           {
-            _.map(leastHealthyDeployments, deployment => {
+            _.map(mostActiveDeployments, deployment => {
               return (<Col span={8} key={`col-${deployment.name}`}>
                 <DeploymentSummary
                   key={deployment.name}
                   lastUpdated={this.state.lastUpdated}
                   data={deployment}
                   api = {this.api}
-                  requestTs={_.get(this.state.timeseriesByDeploy, [deployment.name, "REQUEST_RATE"], [])} />
+                  requestTs={_.get(this.state.timeseriesByDeploy,
+                    [deployment.name, "REQUEST_RATE"], [])} />
               </Col>);
             })
           }
@@ -156,9 +158,7 @@ export default class DeploymentsList extends React.Component {
         <div className="deployments-list">
           <TabbedMetricsTable
             resource="deployment"
-            lastUpdated={this.state.lastUpdated}
             metrics={this.state.metrics}
-            hideSparklines={this.state.limitSparklineData}
             api={this.api} />
         </div>
       </div>

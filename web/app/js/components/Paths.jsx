@@ -74,10 +74,8 @@ export default class Paths extends React.Component {
             <TabbedMetricsTable
               resource="path"
               metrics={this.state.metrics}
-              lastUpdated={this.state.lastUpdated}
               api={this.api}
-              sortable={true}
-              hideSparklines={true} />
+              sortable={true} />
           </div>
         }
       </div>

@@ -10,7 +10,7 @@ import (
 
 // DO NOT EDIT
 // This var is updated automatically as part of the build process
-var Version = "unknown"
+var Version = "latest"
 
 func VersionFlag() *bool {
 	return flag.Bool("version", false, "print version and exit")

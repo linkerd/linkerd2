@@ -7,4 +7,3 @@ set -eu
 
 docker_push base         2017-10-30.01
 docker_push go-deps      "$(go_deps_sha)"
-docker_push proxy-deps   "$(proxy_deps_sha)"

@@ -6,12 +6,12 @@ fn main() {
 
 fn build_control() {
     let client_files = &[
-        "../proto/common/common.proto",
-        "../proto/proxy/destination/destination.proto",
-        "../proto/proxy/telemetry/telemetry.proto",
+        "../../proto/common/common.proto",
+        "../../proto/proxy/destination/destination.proto",
+        "../../proto/proxy/telemetry/telemetry.proto",
     ];
-    let server_files = &["../proto/proxy/tap/tap.proto"];
-    let dirs = &["../proto"];
+    let server_files = &["../../proto/proxy/tap/tap.proto"];
+    let dirs = &["../../proto"];
 
     tower_grpc_build::Config::new()
         .enable_client(true)

@@ -10,13 +10,6 @@ fi
 . bin/_docker.sh
 . bin/_tag.sh
 
-dockerfile=proxy/Dockerfile
-
-validate_proxy_deps_tag $dockerfile
-
-(
-    bin/docker-build-base
-    bin/docker-build-proxy-deps
-) >/dev/null
-
-docker_build proxy "$(head_root_tag)" $dockerfile --build-arg="RELEASE=${PROXY_RELEASE:-1}"
+docker_build proxy "$(head_root_tag)" proxy/Dockerfile \
+    --build-arg="PROXY_SKIP_TESTS=${PROXY_SKIP_TESTS:-}" \
+    --build-arg="PROXY_UNOPTIMIZED=${PROXY_UNOPTIMIZED:-}"

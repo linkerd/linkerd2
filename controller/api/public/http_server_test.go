@@ -60,30 +60,29 @@ type grpcCallTestCase struct {
 }
 
 func TestServer(t *testing.T) {
-
-	mockGrpcServer := &mockGrpcServer{}
-	handler := &handler{
-		grpcServer: mockGrpcServer,
-	}
-
-	listener, err := net.Listen("tcp", "localhost:8889")
-	if err != nil {
-		t.Fatalf("Could not start listener: %v", err)
-	}
-
-	go func() {
-		err := http.Serve(listener, handler)
-		if err != nil {
-			t.Fatalf("Could not start server: %v", err)
-		}
-	}()
-
-	client, err := NewInternalClient("localhost:8889")
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
-
 	t.Run("Delegates all non-streaming RPC messages to the underlying grpc server", func(t *testing.T) {
+		mockGrpcServer := &mockGrpcServer{}
+
+		listener, err := net.Listen("tcp", "localhost:0")
+		if err != nil {
+			t.Fatalf("Could not start listener: %v", err)
+		}
+
+		go func() {
+			handler := &handler{
+				grpcServer: mockGrpcServer,
+			}
+			err := http.Serve(listener, handler)
+			if err != nil {
+				t.Fatalf("Could not start server: %v", err)
+			}
+		}()
+
+		client, err := NewInternalClient(listener.Addr().String())
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
 		listPodsReq := &pb.Empty{}
 		testListPods := grpcCallTestCase{
 			expectedRequest: listPodsReq,
@@ -138,6 +137,28 @@ func TestServer(t *testing.T) {
 	})
 
 	t.Run("Delegates all streaming tap RPC messages to the underlying grpc server", func(t *testing.T) {
+		mockGrpcServer := &mockGrpcServer{}
+
+		listener, err := net.Listen("tcp", "localhost:0")
+		if err != nil {
+			t.Fatalf("Could not start listener: %v", err)
+		}
+
+		go func() {
+			handler := &handler{
+				grpcServer: mockGrpcServer,
+			}
+			err := http.Serve(listener, handler)
+			if err != nil {
+				t.Fatalf("Could not start server: %v", err)
+			}
+		}()
+
+		client, err := NewInternalClient(listener.Addr().String())
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
 		expectedTapResponses := []*common.TapEvent{
 			{
 				Target: &common.TcpAddress{
@@ -176,9 +197,31 @@ func TestServer(t *testing.T) {
 	})
 
 	t.Run("Handles errors before opening keep-alive response", func(t *testing.T) {
+		mockGrpcServer := &mockGrpcServer{}
+
+		listener, err := net.Listen("tcp", "localhost:0")
+		if err != nil {
+			t.Fatalf("Could not start listener: %v", err)
+		}
+
+		go func() {
+			handler := &handler{
+				grpcServer: mockGrpcServer,
+			}
+			err := http.Serve(listener, handler)
+			if err != nil {
+				t.Fatalf("Could not start server: %v", err)
+			}
+		}()
+
+		client, err := NewInternalClient(listener.Addr().String())
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
 		mockGrpcServer.ErrorToReturn = errors.New("expected error")
 
-		_, err := client.Tap(context.TODO(), &pb.TapRequest{})
+		_, err = client.Tap(context.TODO(), &pb.TapRequest{})
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing")
 		}
