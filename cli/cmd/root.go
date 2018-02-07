@@ -47,9 +47,9 @@ func newPublicAPIClient() (pb.ApiClient, error) {
 	if apiAddr != "" {
 		return public.NewInternalClient(apiAddr)
 	}
-	kubeApi, err := k8s.NewK8sAPI(shell.NewUnixShell(), kubeconfigPath)
+	kubeAPI, err := k8s.NewK8sAPI(shell.NewUnixShell().HomeDir(), kubeconfigPath)
 	if err != nil {
 		return nil, err
 	}
-	return public.NewExternalClient(controlPlaneNamespace, kubeApi)
+	return public.NewExternalClient(controlPlaneNamespace, kubeAPI)
 }

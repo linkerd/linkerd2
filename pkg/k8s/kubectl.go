@@ -1,12 +1,9 @@
 package k8s
 
 import (
-	"errors"
 	"fmt"
-	"net/url"
 	"strconv"
 	"strings"
-	"time"
 
 	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 	"github.com/runconduit/conduit/pkg/healthcheck"
@@ -15,44 +12,24 @@ import (
 
 type Kubectl interface {
 	Version() ([3]int, error)
-	StartProxy(potentialErrorWhenStartingProxy chan error, port int) error
-	UrlFor(namespace string, extraPathStartingWithSlash string) (*url.URL, error)
-	ProxyPort() int
 	healthcheck.StatusChecker
 }
 
 type kubectl struct {
-	sh        shell.Shell
-	proxyPort int
+	sh shell.Shell
 }
 
 const (
 	KubernetesDeployments               = "deployments"
 	KubernetesPods                      = "pods"
-	kubectlDefaultProxyPort             = 8001
-	kubectlDefaultTimeout               = 10 * time.Second
-	portWhenProxyNotRunning             = -1
 	KubectlSubsystemName                = "kubectl"
 	KubectlIsInstalledCheckDescription  = "is in $PATH"
 	KubectlVersionCheckDescription      = "has compatible version"
 	KubectlConnectivityCheckDescription = "can talk to Kubernetes cluster"
 	//As per https://github.com/kubernetes/kubernetes/commit/0daee3ad2238de7bb356d1b4368b0733a3497a3a#diff-595bfea7ed0dd0171e1f339a1f8bfcb6R155
-	magicCharacterThatIndicatesProxyIsRunning = '\n'
 )
 
 var minimumKubectlVersionExpected = [3]int{1, 8, 0}
-
-func (kctl *kubectl) ProxyPort() int {
-	return kctl.proxyPort
-}
-
-func (kctl *kubectl) ProxyHost() string {
-	return "127.0.0.1"
-}
-
-func (kctl *kubectl) ProxyScheme() string {
-	return "http"
-}
 
 func (kctl *kubectl) Version() ([3]int, error) {
 	var version [3]int
@@ -79,36 +56,6 @@ func (kctl *kubectl) Version() ([3]int, error) {
 	}
 
 	return version, nil
-}
-
-func (kctl *kubectl) StartProxy(potentialErrorWhenStartingProxy chan error, port int) error {
-	fmt.Printf("Running `kubectl proxy -p %d`\n", port)
-
-	if kctl.ProxyPort() != portWhenProxyNotRunning {
-		return fmt.Errorf("kubectl proxy already running on port [%d]", kctl.ProxyPort())
-	}
-
-	output, err := kctl.sh.AsyncStdout(potentialErrorWhenStartingProxy, "kubectl", "proxy", "-p", strconv.Itoa(port))
-
-	kubectlOutput, err := kctl.sh.WaitForCharacter(magicCharacterThatIndicatesProxyIsRunning, output, kubectlDefaultTimeout)
-
-	fmt.Println(kubectlOutput)
-	if err != nil {
-		return fmt.Errorf("error waiting for kubectl to start the proxy. kubectl returned [%s], error: %v", kubectlOutput, err)
-	}
-
-	kctl.proxyPort = kubectlDefaultProxyPort
-	return nil
-}
-
-func (kctl *kubectl) UrlFor(namespace string, extraPathStartingWithSlash string) (*url.URL, error) {
-	if kctl.ProxyPort() == portWhenProxyNotRunning {
-		return nil, errors.New("proxy needs to be started before generating URLs")
-	}
-
-	schemeHostAndPort := fmt.Sprintf("%s://%s:%d", kctl.ProxyScheme(), kctl.ProxyHost(), kctl.ProxyPort())
-
-	return generateKubernetesApiBaseUrlFor(schemeHostAndPort, namespace, extraPathStartingWithSlash)
 }
 
 func (kctl *kubectl) SelfCheck() []*healthcheckPb.CheckResult {
@@ -211,8 +158,7 @@ func CanonicalKubernetesNameFromFriendlyName(friendlyName string) (string, error
 func NewKubectl(shell shell.Shell) (Kubectl, error) {
 
 	kubectl := &kubectl{
-		sh:        shell,
-		proxyPort: portWhenProxyNotRunning,
+		sh: shell,
 	}
 
 	actualVersion, err := kubectl.Version()

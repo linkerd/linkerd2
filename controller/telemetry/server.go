@@ -20,6 +20,7 @@ import (
 	public "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/controller/k8s"
 	"github.com/runconduit/conduit/controller/util"
+	pkgK8s "github.com/runconduit/conduit/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -238,8 +239,8 @@ func (s *server) ListPods(ctx context.Context, req *read.ListPodsRequest) (*publ
 			status = "Terminating"
 		}
 
-		plane, _ := pod.Labels["conduit.io/plane"]
-		controller, _ := pod.Labels["conduit.io/controller"]
+		controllerComponent := pod.Labels[pkgK8s.ControllerComponentLabel]
+		controllerNS := pod.Labels[pkgK8s.ControllerNSLabel]
 
 		item := &public.Pod{
 			Name:                pod.Namespace + "/" + pod.Name,
@@ -247,8 +248,8 @@ func (s *server) ListPods(ctx context.Context, req *read.ListPodsRequest) (*publ
 			Status:              status,
 			PodIP:               pod.Status.PodIP,
 			Added:               added,
-			ControllerNamespace: controller,
-			ControlPlane:        plane == "control",
+			ControllerNamespace: controllerNS,
+			ControlPlane:        controllerComponent != "",
 		}
 		if added {
 			since := time.Since(updated)

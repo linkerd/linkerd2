@@ -51,13 +51,6 @@ written in Go. The dashboard UI is a React application.
 
   - [`proxy`](proxy): High-performance data plane, injected as a sidecar with
     every service.
-  - [`tower-grpc`](tower-grpc): A client and server gRPC implementation based on
-    Tower.
-  - [`tower-grpc-examples`](tower-grpc-examples): Demonstrates how to use Tower
-    gRPC clients and servers with code generation.
-  - [`tower-h2`](tower-h2): Tower `Service` abstractions for HTTP/2 and Rust.
-  - [`tower-router`](tower-router): A Tower middleware that routes requests to
-    one of a set of inner services using a request predicate.
 
 # Components
 
@@ -150,7 +143,7 @@ minikube -n emojivoto service web-svc --url
 bin/conduit stat deployments
 
 # view a live pipeline of requests
-bin/conduit tap deploy emojivoto/voting-svc
+bin/conduit tap deploy emojivoto/voting
 ```
 
 ## Go
@@ -182,8 +175,8 @@ bin/go-run controller/script/simulate-proxy --kubeconfig ~/.kube/config --addr $
 ### Testing
 
 ```bash
-dep ensure && dep prune
-go test ./...
+bin/dep ensure
+go test -race ./...
 go vet ./...
 ```
 
@@ -334,11 +327,36 @@ To connect to a live `proxy-api` at `localhost:8086`:
 bin/go-run controller/cmd/proxy-api
 ```
 
+### Docker
+
+The `bin/docker-build-proxy` script builds the proxy:
+
+```bash
+DOCKER_TRACE=1 PROXY_UNOPTIMIZED=1 PROXY_SKIP_TESTS=1 bin/docker-build-proxy
+```
+
+It supports two environment variables:
+
+- `PROXY_UNOPTIMIZED` -- When set and non-empty, produces unoptimized build artifacts,
+  which reduces build times at the expense of runtime performance. Changing this will
+  likely invalidate a substantial portion of Docker's cache.
+- `PROXY_SKIP_TESTS` -- When set and non-empty, prevents the proxy's tests from being run
+  during the build. Changing this setting will not invalidate Docker's cache.
+
+
 ### Testing
+
+To build the Rust code and run tests, run:
+
+```bash
+cargo test
+```
+
+To analyze the Rust code and report errors, without building object files or
+running tests, run:
 
 ```bash
 cargo check
-cargo test
 ```
 
 # Dependencies
@@ -360,12 +378,7 @@ hard-coded SHA's:
 - [`Gopkg.lock`](Gopkg.lock)
 - [`Dockerfile-go-deps`](Dockerfile-go-deps)
 
-`gcr.io/runconduit/proxy-deps` depends on
-- [`Cargo.lock`](Cargo.lock)
-- [`proxy/Dockerfile-deps`](proxy/Dockerfile-deps)
-
-The `bin/update-proxy-deps-shas` and `bin/update-go-deps-shas` must be run when their
-respective dependencies change.
+`bin/update-go-deps-shas` must be run when go dependencies change.
 
 # Build Architecture
 
@@ -383,7 +396,6 @@ build_architecture
     "cli/Dockerfile" [color=lightblue, style=filled, shape=rect];
     "cli/Dockerfile-bin" [color=lightblue, style=filled, shape=rect];
     "proxy/Dockerfile" [color=lightblue, style=filled, shape=rect];
-    "proxy/Dockerfile-deps" [color=lightblue, style=filled, shape=rect];
     "proxy-init/Dockerfile" [color=lightblue, style=filled, shape=rect];
     "proxy-init/integration-test/iptables/Dockerfile-tester" [color=lightblue, style=filled, shape=rect];
     "web/Dockerfile" [color=lightblue, style=filled, shape=rect];
@@ -429,12 +441,7 @@ build_architecture
     "docker-build-proxy" -> "_docker.sh";
     "docker-build-proxy" -> "_tag.sh";
     "docker-build-proxy" -> "docker-build-base";
-    "docker-build-proxy" -> "docker-build-go-deps";
     "docker-build-proxy" -> "proxy/Dockerfile";
-
-    "docker-build-proxy-deps" -> "_docker.sh";
-    "docker-build-proxy-deps" -> "_tag.sh";
-    "docker-build-proxy-deps" -> "proxy/Dockerfile-deps";
 
     "docker-build-proxy-init" -> "_docker.sh";
     "docker-build-proxy-init" -> "_tag.sh";
@@ -490,9 +497,6 @@ build_architecture
     "update-go-deps-shas" -> "controller/Dockerfile";
     "update-go-deps-shas" -> "proxy-init/Dockerfile";
     "update-go-deps-shas" -> "web/Dockerfile";
-
-    "update-proxy-deps-shas" -> "_tag.sh";
-    "update-proxy-deps-shas" -> "proxy/Dockerfile";
   }
 build_architecture
 </details>

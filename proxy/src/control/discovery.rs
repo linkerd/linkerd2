@@ -12,10 +12,10 @@ use tower_grpc as grpc;
 
 use fully_qualified_authority::FullyQualifiedAuthority;
 
-use super::pb::common::{Destination, TcpAddress};
-use super::pb::proxy::destination::Update as PbUpdate;
-use super::pb::proxy::destination::update::Update as PbUpdate2;
-use super::pb::proxy::destination::client::{Destination as DestinationSvc};
+use conduit_proxy_controller_grpc::common::{Destination, TcpAddress};
+use conduit_proxy_controller_grpc::destination::Update as PbUpdate;
+use conduit_proxy_controller_grpc::destination::update::Update as PbUpdate2;
+use conduit_proxy_controller_grpc::destination::client::{Destination as DestinationSvc};
 
 /// A handle to start watching a destination for address changes.
 #[derive(Clone, Debug)]
@@ -415,7 +415,7 @@ where T: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>,
 // ===== impl RxError =====
 
 fn pb_to_sock_addr(pb: TcpAddress) -> Option<SocketAddr> {
-    use super::pb::common::ip_address::Ip;
+    use conduit_proxy_controller_grpc::common::ip_address::Ip;
     use std::net::{Ipv4Addr, Ipv6Addr};
     /*
     current structure is:
@@ -432,7 +432,6 @@ fn pb_to_sock_addr(pb: TcpAddress) -> Option<SocketAddr> {
         port: u32,
     }
     */
-    // oh gawd i wish ? worked with Options already...
     match pb.ip {
         Some(ip) => match ip.ip {
             Some(Ip::Ipv4(octets)) => {

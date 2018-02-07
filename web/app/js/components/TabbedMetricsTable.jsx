@@ -1,10 +1,8 @@
 import _ from 'lodash';
 import LineGraph from './LineGraph.jsx';
-import { Link } from 'react-router-dom';
 import Percentage from './util/Percentage.js';
 import { processTimeseriesMetrics } from './util/MetricUtils.js';
 import React from 'react';
-import { ApiHelpers, urlsForResource } from './util/ApiHelpers.js';
 import { metricToFormatter, toClassName } from './util/Utils.js';
 import { Table, Tabs } from 'antd';
 
@@ -23,16 +21,16 @@ const resourceInfo = {
   "path": { title: "path", url: null }
 };
 
-const generateColumns = sortable => {
+const generateColumns = (sortable, ConduitLink) => {
   return {
-    resourceName: (resource, pathPrefix) => {
+    resourceName: resource => {
       return {
         title: resource.title,
         dataIndex: "name",
         key: "name",
         sorter: sortable ? (a, b) => (a.name || "").localeCompare(b.name) : false,
         render: name => !resource.url ? name :
-          <Link to={`${pathPrefix}${resource.url}${name}`}>{name}</Link>
+          <ConduitLink to={`${resource.url}${name}`}>{name}</ConduitLink>
       };
     },
     successRate: {
@@ -91,14 +89,14 @@ const numericSort = (a, b) => (_.isNil(a) ? -1 : a) - (_.isNil(b) ? -1 : b);
 
 const metricToColumns = baseCols => {
   return {
-    requestRate: (resource, pathPrefix) => [
-      baseCols.resourceName(resource, pathPrefix),
+    requestRate: resource => [
+      baseCols.resourceName(resource),
       baseCols.requests,
       resource.title === "deployment" ? null : baseCols.requestDistribution
     ],
-    successRate: (resource, pathPrefix) => [baseCols.resourceName(resource, pathPrefix), baseCols.successRate],
-    latency: (resource, pathPrefix) => [
-      baseCols.resourceName(resource, pathPrefix),
+    successRate: resource => [baseCols.resourceName(resource), baseCols.successRate],
+    latency: resource => [
+      baseCols.resourceName(resource),
       baseCols.latencyP50,
       baseCols.latencyP95,
       baseCols.latencyP99
@@ -115,11 +113,11 @@ const nameToDataKey = {
 export default class TabbedMetricsTable extends React.Component {
   constructor(props) {
     super(props);
-    this.api = ApiHelpers(this.props.pathPrefix);
+    this.api = this.props.api;
     this.handleApiError = this.handleApiError.bind(this);
     this.loadFromServer = this.loadFromServer.bind(this);
 
-    let tsHelper = urlsForResource(this.props.pathPrefix, this.props.metricsWindow)[this.props.resource];
+    let tsHelper = this.api.urlsForResource[this.props.resource];
 
     this.state = {
       timeseries: {},
@@ -128,7 +126,6 @@ export default class TabbedMetricsTable extends React.Component {
       metricsUrl: tsHelper.url(this.props.resourceName),
       error: '',
       lastUpdated: this.props.lastUpdated,
-      metricsWindow: "10s",
       pollingInterval: 10000,
       pendingRequests: false
     };
@@ -167,7 +164,7 @@ export default class TabbedMetricsTable extends React.Component {
     }
     this.setState({ pendingRequests: true });
 
-    this.api.fetch(this.state.metricsUrl.ts)
+    this.api.fetchMetrics(this.state.metricsUrl.ts)
       .then(tsResp => {
         let tsByEntity = processTimeseriesMetrics(tsResp.metrics, this.state.groupBy);
         this.setState({
@@ -188,7 +185,7 @@ export default class TabbedMetricsTable extends React.Component {
 
   getSparklineColumn(metricName) {
     return {
-      title: "10 minute history",
+      title: `History (last ${this.api.getMetricsWindow()})`,
       key: metricName,
       className: "numeric",
       render: d => {
@@ -212,8 +209,8 @@ export default class TabbedMetricsTable extends React.Component {
 
   renderTable(metric) {
     let resource = resourceInfo[this.props.resource];
-    let columnDefinitions = metricToColumns(generateColumns(this.props.sortable));
-    let columns = _.compact(columnDefinitions[metric](resource, this.props.pathPrefix));
+    let columnDefinitions = metricToColumns(generateColumns(this.props.sortable, this.props.api.ConduitLink));
+    let columns = _.compact(columnDefinitions[metric](resource));
     if (!this.props.hideSparklines) {
       columns.push(this.getSparklineColumn(metric));
     }

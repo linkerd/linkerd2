@@ -10,6 +10,7 @@ use tower;
 use tower_h2;
 use tower_reconnect::Reconnect;
 
+use conduit_proxy_controller_grpc;
 use control;
 use ctx;
 use telemetry::{self, sensor};
@@ -143,7 +144,7 @@ where
         let client_ctx = ctx::transport::Client::new(
             &self.ctx,
             addr,
-            control::pb::proxy::common::Protocol::Http,
+            conduit_proxy_controller_grpc::common::Protocol::Http,
         );
 
         // Map a socket address to a connection.

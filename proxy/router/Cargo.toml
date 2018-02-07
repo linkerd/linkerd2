@@ -1,5 +1,5 @@
 [package]
-name = "tower-router"
+name = "conduit-proxy-router"
 version = "0.2.0"
 authors = ["Carl Lerche <me@carllerche.com>"]
 publish = false

@@ -20,12 +20,10 @@ jobs:
     - stage: test
       language: rust
       rust: stable
-      cache:
-        cargo: true
+      cache: cargo
       install:
         - cargo fetch --locked
       script:
-        - cargo check --frozen
         - cargo test --frozen
 
     - language: go
@@ -34,15 +32,13 @@ jobs:
       cache:
         directories:
           - vendor
-      before_install:
-        - go get -u github.com/golang/dep/cmd/dep
       install:
-        - dep ensure
+        - ./bin/dep ensure
       script:
         # TODO decide whether protoc should be committed or not. If so, we shouldn't do
         # this or we should error if it dirties the repo.
         - ./bin/protoc-go.sh
-        - go test -v ./...
+        - go test -race -v ./...
         - go vet ./...
 
     - language: node_js
@@ -66,9 +62,6 @@ jobs:
             . bin/_tag.sh
             for f in $( grep -lR --include=Dockerfile\* go-deps: . ) ; do
               validate_go_deps_tag $f
-            done
-            for f in $( grep -lR --include=Dockerfile\* proxy-deps: . ) ; do
-              validate_proxy_deps_tag $f
             done
           )
 
@@ -125,17 +118,19 @@ jobs:
         - |
           export CONDUIT_TAG=$(. bin/_tag.sh ; clean_head_root_tag)
           echo "CONDUIT_TAG=${CONDUIT_TAG}"
-        - export PROXY_RELEASE=1 BUILD_DEBUG=1 DOCKER_TRACE=1
+        - export BUILD_DEBUG=1 DOCKER_TRACE=1
 
       script:
-        - bin/docker-build
+        # Proxy tests are run in the `test` stage, re-running them here would be
+        # redundant/slow. #280
+        - PROXY_SKIP_TESTS=1 bin/docker-build
 
       after_success:
         - bin/docker-push-deps
         - bin/docker-push $CONDUIT_TAG
         - bin/docker-retag-all $CONDUIT_TAG master && bin/docker-push master
-        - target/cli/linux/conduit install --version=$CONDUIT_TAG |tee conduit.yml
-        - kubectl -n conduit apply -f conduit.yml --prune --selector='conduit.io/plane=control'
+        - target/cli/linux/conduit install --conduit-version=$CONDUIT_TAG |tee conduit.yml
+        - kubectl -n conduit apply -f conduit.yml --prune --selector='conduit.io/control-plane-component'
 
 notifications:
   email:

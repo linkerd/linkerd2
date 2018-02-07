@@ -6,8 +6,8 @@ use tokio_core::reactor::Handle;
 use tower_h2::{HttpService, BoxBody};
 use tower_grpc as grpc;
 
-use super::pb::proxy::telemetry::{ReportRequest, ReportResponse};
-use super::pb::proxy::telemetry::client::Telemetry as TelemetrySvc;
+use conduit_proxy_controller_grpc::telemetry::{ReportRequest, ReportResponse};
+use conduit_proxy_controller_grpc::telemetry::client::Telemetry as TelemetrySvc;
 use ::timeout::{Timeout, TimeoutFuture};
 
 type TelemetryStream<F, B> = grpc::client::unary::ResponseFuture<

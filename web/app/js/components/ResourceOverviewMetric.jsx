@@ -3,7 +3,7 @@ import LineGraph from './LineGraph.jsx';
 import React from 'react';
 import { metricToFormatter, toClassName } from './util/Utils.js';
 
-export default class EntityOverviewMetric extends React.Component {
+export default class ResourceOverviewMetric extends React.Component {
   render() {
     let lastDatapoint = _.last(this.props.timeseries) || {};
     let metric = _.get(lastDatapoint, "value");
@@ -15,7 +15,7 @@ export default class EntityOverviewMetric extends React.Component {
           <div className="summary-container clearfix">
             <div className="metric-info">
               <div className="summary-title">{this.props.name}</div>
-              <div className="summary-info">Last 10 minutes performance</div>
+              <div className="summary-info">last {this.props.window}</div>
             </div>
             <div className="metric-value">{displayMetric}</div>
           </div>

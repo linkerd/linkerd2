@@ -1,0 +1,45 @@
+#!/bin/bash
+# bash is required since indirect variable substitution is used.
+
+set -eu
+
+# Keep this in sync with Dockerfile-go-deps. The digests will be different for each
+# version and each platform; they can be found in the *.sha256 files alongside the
+# executables at ${dep_base_url}.
+depversion=0.4.1
+dep_base_url="https://github.com/golang/dep/releases/download/v${depversion}/"
+dep_digest_linux=31144e465e52ffbc0035248a10ddea61a09bf28b00784fd3fdd9882c8cbb2315
+dep_digest_darwin=f170008e2bf8b196779c361a4eaece1b03450d23bbf32d1a0beaa9b00b6a5ab4
+dep_digest_windows=f6e6a872c54d5ae7536ac71fd5bcac9f4e7b8a1dafa1ef7c23866e2f3069fe4e
+
+cd "$(pwd -P)"
+
+os=linux
+exe=
+if [ "$(uname -s)" = "Darwin" ]; then
+  os=darwin
+elif [ "$(uname -o)" = "Msys" ]; then
+  os=windows
+  exe=.exe
+fi
+
+depbin=.dep${exe}
+depurl="${dep_base_url}dep-${os}-amd64${exe}"
+
+if [ ! -f "$depbin" ]; then
+  tmp=$(mktemp -d -t dep.XXX)
+  (
+    cd "$tmp"
+    curl -L --silent --fail -o "$depbin" "$depurl"
+    ddv="dep_digest_${os}"
+    (echo "${!ddv} *$depbin" | shasum -c -a 256 -p -s -) || {
+      echo Actual digest of $depbin does not match expected digest.
+      exit 1
+    }
+    chmod +x "$depbin"
+  )
+  mv "$tmp/$depbin" "$depbin"
+  rm -rf "$tmp"
+fi
+
+./$depbin "$@"

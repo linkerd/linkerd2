@@ -1,7 +1,7 @@
 use futures_mpsc_lossy;
 use ordermap::OrderMap;
 
-use control::pb::tap::observe_request;
+use conduit_proxy_controller_grpc::tap::observe_request;
 
 use super::Event;
 
