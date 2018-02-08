@@ -119,13 +119,6 @@ jobs:
         # redundant/slow. #280
         - PROXY_SKIP_TESTS=1 bin/docker-build
 
-      after_success:
-        - bin/docker-push-deps
-        - bin/docker-push $CONDUIT_TAG
-        - bin/docker-retag-all $CONDUIT_TAG master && bin/docker-push master
-        - target/cli/linux/conduit install --conduit-version=$CONDUIT_TAG |tee conduit.yml
-        - kubectl -n conduit apply -f conduit.yml --prune --selector='conduit.io/control-plane-component'
-
 notifications:
   email:
     on_success: never
