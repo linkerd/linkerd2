@@ -87,7 +87,11 @@ jobs:
       script:
         # Proxy tests are run in the `test` stage, re-running them here would be
         # redundant/slow. #280
-        - PROXY_SKIP_TESTS=1 bin/docker-build
+        - bin/docker-build-controller
+        - bin/docker-build-web
+        - PROXY_SKIP_TESTS=1 bin/docker-build-proxy
+        - bin/docker-build-proxy-init
+        - bin/docker-build-cli
 
 notifications:
   email:
