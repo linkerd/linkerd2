@@ -18,6 +18,7 @@ extern crate url;
 pub extern crate env_logger;
 
 use self::bytes::{BigEndian, Bytes, BytesMut};
+pub use self::conduit_proxy::*;
 pub use self::futures::*;
 use self::futures::sync::oneshot;
 pub use self::http::{HeaderMap, Request, Response};

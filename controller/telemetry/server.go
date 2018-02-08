@@ -272,8 +272,8 @@ func (s *server) Report(ctx context.Context, req *write.ReportRequest) (*write.R
 		id = req.Process.ScheduledNamespace + "/" + req.Process.ScheduledInstance
 	}
 
-	log := log.WithFields(log.Fields{"id": id})
-	log.Debugf("Received report with %d requests", len(req.Requests))
+	logCtx := log.WithFields(log.Fields{"id": id})
+	logCtx.Debugf("Received report with %d requests", len(req.Requests))
 
 	s.instances.update(id)
 
@@ -290,17 +290,28 @@ func (s *server) Report(ctx context.Context, req *write.ReportRequest) (*write.R
 				return nil, errors.New("ResponseCtx is required")
 			}
 
-			for _, latency := range responseScope.ResponseLatencies {
-				// The latencies as received from the proxy are represented as an array of
-				// latency values in tenths of a millisecond, and a count of the number of
-				// times a request of that latency was observed.
+			// Validate this ResponseScope's latency histogram.
+			numBuckets := len(responseScope.ResponseLatencyCounts)
+			expectedNumBuckets := len(req.HistogramBucketBoundsTenthMs)
+			if numBuckets != expectedNumBuckets {
+				err := errors.New(
+					"received report with incorrect number of latency buckets")
+				logCtx.WithFields(log.Fields{
+					"numBuckets": numBuckets,
+					"expected":   expectedNumBuckets,
+					"scope":      responseScope,
+				}).WithError(err).Error()
+				return nil, err
+			}
 
-				// First, convert the latency value from tenths of a ms to ms and
-				// convert from u32 to f64.
-				latencyMs := float64(latency.Latency * 10)
-				for i := uint32(0); i < latency.Count; i++ {
-					// Then, report that latency value to Prometheus a number of times
-					// equal to the count reported by the proxy.
+			for bucketNum, count := range responseScope.ResponseLatencyCounts {
+				// Look up the bucket max value corresponding to this position
+				// in the report's latency histogram.
+				latencyTenthsMs := req.HistogramBucketBoundsTenthMs[bucketNum]
+				latencyMs := float64(latencyTenthsMs) / 10
+				for i := uint32(0); i < count; i++ {
+					// Then, report that latency value to Prometheus a number
+					// of times equal to the count reported by the proxy.
 					latencyStat.Observe(latencyMs)
 				}
 
