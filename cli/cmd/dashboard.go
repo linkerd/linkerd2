@@ -29,19 +29,13 @@ var dashboardCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		kubeAPI, err := k8s.NewK8sAPI(shellHomeDir, kubeconfigPath)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to initialize kubernetes API: %+v", err)
-			os.Exit(1)
-		}
-
 		url, err := kubernetesProxy.URLFor(controlPlaneNamespace, "/services/web:http/proxy/")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to generate URL for dashboard: %s\n", err)
 			os.Exit(1)
 		}
 
-		dashboardAvailable, err := isDashboardAvailable(kubeAPI)
+		dashboardAvailable, err := isDashboardAvailable(http.DefaultClient, url.String())
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed while checking availability of dashboard: %+v\n", err)
 		}
@@ -74,23 +68,15 @@ var dashboardCmd = &cobra.Command{
 	},
 }
 
-func isDashboardAvailable(kubeAPI k8s.KubernetesApi) (bool, error) {
-	client, err := kubeAPI.NewClient()
+func isDashboardAvailable(client *http.Client, url string) (bool, error) {
+	req, err := client.Get(url)
 	if err != nil {
 		return false, err
 	}
-	fullUrl, err := kubeAPI.UrlFor(controlPlaneNamespace, "/services/web")
-	if err != nil {
-		return false, err
+	if req.StatusCode >= 400 {
+		return false, nil
 	}
-	req, err := client.Get(fullUrl.String())
-	if err != nil {
-		return false, err
-	}
-	if req.StatusCode == http.StatusOK {
-		return true, nil
-	}
-	return false, nil
+	return true, nil
 
 }
 
