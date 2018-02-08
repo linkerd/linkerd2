@@ -26,11 +26,10 @@ var statCmd = &cobra.Command{
 	Long: `Display runtime statistics about mesh resources.
 
 Valid resource types include:
- * pods (aka pod, po)
  * deployments (aka deployment, deploy)
  * paths (aka path, pa)
 
-The optional [TARGET] option can be either a name for a deployment or pod resource`,
+The optional [TARGET] option can be a name for a deployment.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var friendlyNameForResourceType string
 
@@ -41,7 +40,7 @@ The optional [TARGET] option can be either a name for a deployment or pod resour
 			friendlyNameForResourceType = args[0]
 			target = args[1]
 		default:
-			return errors.New("please specify a resource type: pods, deployments or paths")
+			return errors.New("please specify a resource type: deployments or paths")
 		}
 
 		validatedResourceType, err := k8s.CanonicalKubernetesNameFromFriendlyName(friendlyNameForResourceType)
@@ -50,7 +49,13 @@ The optional [TARGET] option can be either a name for a deployment or pod resour
 			case "paths", "path", "pa":
 				validatedResourceType = ConduitPaths
 			default:
-				return fmt.Errorf("invalid resource type %s, only %v are allowed as resource types", friendlyNameForResourceType, []string{k8s.KubernetesPods, k8s.KubernetesDeployments, ConduitPaths})
+				return fmt.Errorf("invalid resource type %s, only %v are allowed as resource types", friendlyNameForResourceType, []string{k8s.KubernetesDeployments, ConduitPaths})
+			}
+		} else {
+			switch friendlyNameForResourceType {
+			case "pods", "pod", "po":
+				return fmt.Errorf("invalid resource type %s, only %v are allowed as resource types", friendlyNameForResourceType, []string{k8s.KubernetesDeployments, ConduitPaths})
+			default:
 			}
 		}
 		client, err := newPublicAPIClient()
@@ -76,7 +81,6 @@ func init() {
 }
 
 var resourceTypeToAggregationType = map[string]pb.AggregationType{
-	k8s.KubernetesPods:        pb.AggregationType_TARGET_POD,
 	k8s.KubernetesDeployments: pb.AggregationType_TARGET_DEPLOY,
 	ConduitPaths:              pb.AggregationType_PATH,
 }
@@ -130,9 +134,7 @@ func writeStatsToBuffer(resp *pb.MetricResponse, w *tabwriter.Writer) {
 
 		metadata := *metric.Metadata
 		var name string
-		if metadata.TargetPod != "" {
-			name = metadata.TargetPod
-		} else if metadata.TargetDeploy != "" {
+		if metadata.TargetDeploy != "" {
 			name = metadata.TargetDeploy
 		} else if metadata.Path != "" {
 			name = metadata.Path
@@ -190,10 +192,6 @@ func buildMetricRequest(aggregationType pb.AggregationType) (*pb.MetricRequest, 
 	window, err := util.GetWindow(timeWindow)
 	if err != nil {
 		return nil, err
-	}
-
-	if target != "all" && aggregationType == pb.AggregationType_TARGET_POD {
-		filterBy.TargetPod = target
 	}
 	if target != "all" && aggregationType == pb.AggregationType_TARGET_DEPLOY {
 		filterBy.TargetDeploy = target

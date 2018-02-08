@@ -40,9 +40,7 @@ const (
 	latencyQuery                    = "sum(irate(response_latency_ms_bucket{%s}[%s])) by (%s)"
 	quantileQuery                   = "histogram_quantile(%s, %s)"
 	defaultVectorRange              = "1m"
-	targetPodLabel                  = "target"
 	targetDeployLabel               = "target_deployment"
-	sourcePodLabel                  = "source"
 	sourceDeployLabel               = "source_deployment"
 	jobLabel                        = "job"
 	pathLabel                       = "path"
@@ -65,9 +63,7 @@ var (
 	}
 
 	aggregationMap = map[pb.AggregationType]string{
-		pb.AggregationType_TARGET_POD:    targetPodLabel,
 		pb.AggregationType_TARGET_DEPLOY: targetDeployLabel,
-		pb.AggregationType_SOURCE_POD:    sourcePodLabel,
 		pb.AggregationType_SOURCE_DEPLOY: sourceDeployLabel,
 		pb.AggregationType_MESH:          jobLabel,
 		pb.AggregationType_PATH:          pathLabel,
@@ -378,17 +374,9 @@ func formatQuery(query string, req *pb.MetricRequest, sumBy string) (string, err
 	}
 
 	if metadata := req.FilterBy; metadata != nil {
-		if metadata.TargetPod != "" {
-			filterLabels = append(filterLabels, fmt.Sprintf("%s=\"%s\"", targetPodLabel, metadata.TargetPod))
-			sumLabels = append(sumLabels, targetPodLabel)
-		}
 		if metadata.TargetDeploy != "" {
 			filterLabels = append(filterLabels, fmt.Sprintf("%s=\"%s\"", targetDeployLabel, metadata.TargetDeploy))
 			sumLabels = append(sumLabels, targetDeployLabel)
-		}
-		if metadata.SourcePod != "" {
-			filterLabels = append(filterLabels, fmt.Sprintf("%s=\"%s\"", sourcePodLabel, metadata.SourcePod))
-			sumLabels = append(sumLabels, sourcePodLabel)
 		}
 		if metadata.SourceDeploy != "" {
 			filterLabels = append(filterLabels, fmt.Sprintf("%s=\"%s\"", sourceDeployLabel, metadata.SourceDeploy))
@@ -459,9 +447,7 @@ func filterQueryRsp(rsp *telemPb.QueryResponse, end int64) {
 
 func extractMetadata(metric *telemPb.Sample) pb.MetricMetadata {
 	return pb.MetricMetadata{
-		TargetPod:    metric.Labels[targetPodLabel],
 		TargetDeploy: metric.Labels[targetDeployLabel],
-		SourcePod:    metric.Labels[sourcePodLabel],
 		SourceDeploy: metric.Labels[sourceDeployLabel],
 		Path:         metric.Labels[pathLabel],
 	}
