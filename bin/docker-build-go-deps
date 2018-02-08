@@ -14,8 +14,4 @@ fi
 
 tag=$(go_deps_sha)
 
-if (docker_pull go-deps "${tag}"); then
-    echo "$(docker_repo go-deps):${tag}"
-else
-    docker_build go-deps "${tag}" Dockerfile-go-deps
-fi
+docker_build go-deps "${tag}" Dockerfile-go-deps
