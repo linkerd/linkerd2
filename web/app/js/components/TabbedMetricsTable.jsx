@@ -11,10 +11,10 @@ import { Table } from 'antd';
 const resourceInfo = {
   "upstream_deployment": { title: "deployment", url: "/deployment?deploy=" },
   "downstream_deployment": { title: "deployment", url: "/deployment?deploy=" },
-  "upstream_pod": { title: "upstream pod", url: "/pod?pod=" },
-  "downstream_pod": { title: "downstream pod", url: "/pod?pod=" },
+  "upstream_pod": { title: "upstream pod", url: null },
+  "downstream_pod": { title: "downstream pod", url: null },
   "deployment": { title: "deployment", url: "/deployment?deploy=" },
-  "pod": { title: "pod", url: "/pod?pod=" },
+  "pod": { title: "pod", url: null },
   "path": { title: "path", url: null }
 };
 
