@@ -83,7 +83,7 @@ jobs:
         - export BUILD_DEBUG=1 DOCKER_TRACE=1
 
       script:
-        - PROXY_SKIP_TESTS=1 bin/docker-build-proxy
+        - bin/docker-build-proxy
 
 notifications:
   email:
