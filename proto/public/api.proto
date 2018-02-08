@@ -67,7 +67,6 @@ message MetricSeries {
 
 message MetricMetadata {
   string targetDeploy = 2;
-  string sourcePod = 3;
   string sourceDeploy = 4;
   string component = 5;
   string path = 6;
