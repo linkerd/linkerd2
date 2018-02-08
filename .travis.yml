@@ -13,15 +13,7 @@ stages:
 
 jobs:
   include:
-    - stage: docker-deploy
-
-      language: generic
-      services:
-        - docker
-
-      cache:
-        directories:
-          - "$HOME/google-cloud-sdk/"
+    - language: generic
 
       before_install:
         - docker version
@@ -32,7 +24,6 @@ jobs:
           echo "CONDUIT_TAG=${CONDUIT_TAG}"
         - export BUILD_DEBUG=1 DOCKER_TRACE=1
 
-    - language: generic
       script:
         # Proxy tests are run in the `test` stage, re-running them here would be
         # redundant/slow. #280
@@ -42,6 +33,16 @@ jobs:
         - bin/docker-build-cli
 
     - language: generic
+
+      before_install:
+        - docker version
+
+      before_script:
+        - |
+          export CONDUIT_TAG=$(. bin/_tag.sh ; clean_head_root_tag)
+          echo "CONDUIT_TAG=${CONDUIT_TAG}"
+        - export BUILD_DEBUG=1 DOCKER_TRACE=1
+
       script:
         - PROXY_SKIP_TESTS=1 bin/docker-build-proxy
 
