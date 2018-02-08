@@ -100,9 +100,12 @@ var (
 	}
 	ports = []uint32{3333, 6262}
 
-	// these values should be one order of magnitude greater than
-	// the controller's Prometheus buckets, because the proxy will
-	// report them in tenths of a millisecond.
+	// latencyBucketBounds holds the maximum value (inclusive, in tenths of a
+	// millisecond) that may be counted in a given histogram bucket.
+
+	// These values are one order of magnitude greater than the controller's
+	// Prometheus buckets, because the proxy will reports latencies in tenths
+	// of a millisecond rather than whole milliseconds.
 	latencyBucketBounds = [26]uint32{
 		// prometheus.LinearBuckets(1, 1, 5),
 		10, 20, 30, 40, 50,

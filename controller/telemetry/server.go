@@ -273,7 +273,7 @@ func (s *server) Report(ctx context.Context, req *write.ReportRequest) (*write.R
 	}
 
 	logCtx := log.WithFields(log.Fields{"id": id})
-	logCtx.Debugf("received report with %d requests", len(req.Requests))
+	logCtx.Debugf("Received report with %d requests", len(req.Requests))
 
 	s.instances.update(id)
 
@@ -290,7 +290,7 @@ func (s *server) Report(ctx context.Context, req *write.ReportRequest) (*write.R
 				return nil, errors.New("ResponseCtx is required")
 			}
 
-			// validate this ResponseScope's latency histogram.
+			// Validate this ResponseScope's latency histogram.
 			numBuckets := len(responseScope.ResponseLatencyCounts)
 			expectedNumBuckets := len(req.HistogramBucketBoundsTenthMs)
 			if numBuckets != expectedNumBuckets {
