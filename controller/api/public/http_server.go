@@ -31,7 +31,9 @@ type handler struct {
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	log.Debugf("Serving %s %s", req.Method, req.URL.Path)
+	log.WithFields(log.Fields{
+		"req.Method": req.Method, "req.URL": req.URL, "req.Form": req.Form,
+	}).Debugf("Serving %s %s", req.Method, req.URL.Path)
 	// Validate request method
 	if req.Method != http.MethodPost {
 		writeErrorToHttpResponse(w, fmt.Errorf("POST required"))

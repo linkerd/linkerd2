@@ -40,7 +40,9 @@ const (
 	latencyQuery                    = "sum(irate(response_latency_ms_bucket{%s}[%s])) by (%s)"
 	quantileQuery                   = "histogram_quantile(%s, %s)"
 	defaultVectorRange              = "1m"
+	targetPodLabel                  = "target"
 	targetDeployLabel               = "target_deployment"
+	sourcePodLabel                  = "source"
 	sourceDeployLabel               = "source_deployment"
 	jobLabel                        = "job"
 	pathLabel                       = "path"
@@ -63,7 +65,9 @@ var (
 	}
 
 	aggregationMap = map[pb.AggregationType]string{
+		pb.AggregationType_TARGET_POD:    targetPodLabel,
 		pb.AggregationType_TARGET_DEPLOY: targetDeployLabel,
+		pb.AggregationType_SOURCE_POD:    sourcePodLabel,
 		pb.AggregationType_SOURCE_DEPLOY: sourceDeployLabel,
 		pb.AggregationType_MESH:          jobLabel,
 		pb.AggregationType_PATH:          pathLabel,

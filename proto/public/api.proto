@@ -66,6 +66,7 @@ message MetricSeries {
 }
 
 message MetricMetadata {
+  reserved 1, 3;
   string targetDeploy = 2;
   string sourceDeploy = 4;
   string component = 5;

@@ -50,7 +50,7 @@ export default class DeploymentDetail extends React.Component {
       pollingInterval: 10000,
       deploy: deployment,
       metrics: [],
-      // pods: [],
+      pods: [],
       upstreamMetrics: [],
       downstreamMetrics: [],
       pathMetrics: [],
