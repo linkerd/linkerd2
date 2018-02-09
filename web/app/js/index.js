@@ -3,7 +3,6 @@ import DeploymentDetail from './components/DeploymentDetail.jsx';
 import DeploymentsList from './components/DeploymentsList.jsx';
 import { Layout } from 'antd';
 import NoMatch from './components/NoMatch.jsx';
-import Paths from './components/Paths.jsx';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import Routes from './components/Routes.jsx';
@@ -37,7 +36,6 @@ ReactDOM.render((
               <Route path={`${pathPrefix}/servicemesh`} render={() => <ServiceMesh api={api} releaseVersion={appData.releaseVersion} />} />
               <Route path={`${pathPrefix}/deployments`} render={() => <DeploymentsList api={api} />} />
               <Route path={`${pathPrefix}/deployment`} render={props => <DeploymentDetail api={api} location={props.location} />} />
-              <Route path={`${pathPrefix}/paths`} render={props => <Paths api={api} location={props.location} />} />
               <Route path={`${pathPrefix}/routes`} render={() => <Routes />} />
               <Route component={NoMatch} />
             </Switch>

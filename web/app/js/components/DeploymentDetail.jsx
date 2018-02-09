@@ -6,7 +6,6 @@ import PageHeader from './PageHeader.jsx';
 import React from 'react';
 import ResourceHealthOverview from './ResourceHealthOverview.jsx';
 import ResourceMetricsOverview from './ResourceMetricsOverview.jsx';
-import TabbedMetricsTable from './TabbedMetricsTable.jsx';
 import UpstreamDownstream from './UpstreamDownstream.jsx';
 import { getPodsByDeployment, processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
 import './../../css/deployment.css';
@@ -44,11 +43,9 @@ export default class DeploymentDetail extends React.Component {
       lastUpdated: 0,
       pollingInterval: 10000,
       deploy: deployment,
-      metrics: [],
       pods: [],
       upstreamMetrics: [],
       downstreamMetrics: [],
-      pathMetrics: [],
       pendingRequests: false,
       loaded: false,
       error: ''
@@ -67,22 +64,19 @@ export default class DeploymentDetail extends React.Component {
     let deployMetricsUrl = urls["deployment"].url(this.state.deploy).ts;
     let upstreamRollupUrl = urls["upstream_deployment"].url(this.state.deploy).rollup;
     let downstreamRollupUrl = urls["downstream_deployment"].url(this.state.deploy).rollup;
-    let pathMetricsUrl = urls["path"].url(this.state.deploy).rollup;
 
     let deployFetch = this.api.fetchMetrics(deployMetricsUrl);
     let upstreamFetch = this.api.fetchMetrics(upstreamRollupUrl);
     let downstreamFetch = this.api.fetchMetrics(downstreamRollupUrl);
-    let pathsFetch = this.api.fetchMetrics(pathMetricsUrl);
 
     // expose serverPromise for testing
     this.serverPromise = Promise.all([
-      deployFetch, upstreamFetch, downstreamFetch, podListFetch, pathsFetch
+      deployFetch, upstreamFetch, downstreamFetch, podListFetch
     ])
-      .then(([deployMetrics, upstreamRollup, downstreamRollup, podList, paths]) => {
+      .then(([deployMetrics, upstreamRollup, downstreamRollup, podList]) => {
         let tsByDeploy = processTimeseriesMetrics(deployMetrics.metrics, "targetDeploy");
         let upstreamMetrics = processRollupMetrics(upstreamRollup.metrics, "sourceDeploy");
         let downstreamMetrics = processRollupMetrics(downstreamRollup.metrics, "targetDeploy");
-        let pathMetrics = processRollupMetrics(paths.metrics, "path");
 
         let deploy = _.find(getPodsByDeployment(podList.pods), ["name", this.state.deploy]);
 
@@ -92,7 +86,6 @@ export default class DeploymentDetail extends React.Component {
           deployTs: _.get(tsByDeploy, this.state.deploy, {}),
           upstreamMetrics: upstreamMetrics,
           downstreamMetrics: downstreamMetrics,
-          pathMetrics: pathMetrics,
           lastUpdated: Date.now(),
           pendingRequests: false,
           loaded: true,
@@ -144,23 +137,7 @@ export default class DeploymentDetail extends React.Component {
         upstreamMetrics={this.state.upstreamMetrics}
         downstreamMetrics={this.state.downstreamMetrics}
         api={this.api} />,
-      this.renderPaths()
     ];
-  }
-
-  renderPaths() {
-    return _.size(this.state.pathMetrics) === 0 ? null :
-      <div key="deployment-paths">
-        <div className="border-container border-neutral subsection-header">
-          <div className="border-container-content subsection-header">
-              Paths
-          </div>
-        </div>
-        <TabbedMetricsTable
-          resource="path"
-          metrics={this.state.pathMetrics}
-          api={this.api} />
-      </div>;
   }
 
   renderDeploymentTitle() {
