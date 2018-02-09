@@ -21,11 +21,9 @@ enum TimeWindow {
 }
 
 enum AggregationType {
-  TARGET_POD = 0;
-  TARGET_DEPLOY = 1;
-  SOURCE_POD = 2;
-  SOURCE_DEPLOY = 3;
-  MESH = 4;
+  TARGET_DEPLOY = 0;
+  SOURCE_DEPLOY = 1;
+  MESH = 2;
 }
 
 enum HistogramLabel {

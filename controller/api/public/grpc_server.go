@@ -64,9 +64,7 @@ var (
 	}
 
 	aggregationMap = map[pb.AggregationType]string{
-		pb.AggregationType_TARGET_POD:    targetPodLabel,
 		pb.AggregationType_TARGET_DEPLOY: targetDeployLabel,
-		pb.AggregationType_SOURCE_POD:    sourcePodLabel,
 		pb.AggregationType_SOURCE_DEPLOY: sourceDeployLabel,
 		pb.AggregationType_MESH:          jobLabel,
 	}
