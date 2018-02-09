@@ -39,7 +39,7 @@ const (
 	countGrpcQuery                  = "sum(irate(grpc_server_handled_total{%s}[%s])) by (%s)"
 	latencyQuery                    = "sum(irate(response_latency_ms_bucket{%s}[%s])) by (%s)"
 	quantileQuery                   = "histogram_quantile(%s, %s)"
-	defaultVectorRange              = "1m"
+	defaultVectorRange              = "30s" // 3x scrape_interval in prometheus config
 	targetPodLabel                  = "target"
 	targetDeployLabel               = "target_deployment"
 	sourcePodLabel                  = "source"
@@ -305,25 +305,9 @@ func (s *grpcServer) queryCount(ctx context.Context, req *pb.MetricRequest, rawQ
 		return nil, err
 	}
 
-	start, end, step, err := queryParams(req)
+	queryRsp, err := s.query(ctx, req, query)
 	if err != nil {
 		return nil, err
-	}
-
-	queryReq := &telemPb.QueryRequest{
-		Query:   query,
-		StartMs: start,
-		EndMs:   end,
-		Step:    step,
-	}
-
-	queryRsp, err := s.telemetryClient.Query(ctx, queryReq)
-	if err != nil {
-		return nil, err
-	}
-
-	if req.Summarize {
-		filterQueryRsp(queryRsp, end)
 	}
 
 	return queryRsp, nil
@@ -338,30 +322,42 @@ func (s *grpcServer) queryLatency(ctx context.Context, req *pb.MetricRequest) (m
 		return nil, err
 	}
 
-	start, end, step, err := queryParams(req)
-	if err != nil {
-		return nil, err
-	}
-
 	for quantile, label := range quantileMap {
 		q := fmt.Sprintf(quantileQuery, quantile, query)
-		queryReq := &telemPb.QueryRequest{
-			Query:   q,
-			StartMs: start,
-			EndMs:   end,
-			Step:    step,
-		}
-		queryRsp, err := s.telemetryClient.Query(ctx, queryReq)
+
+		queryRsp, err := s.query(ctx, req, q)
 		if err != nil {
 			return nil, err
 		}
-		if req.Summarize {
-			filterQueryRsp(queryRsp, end)
-		}
+
 		queryRsps[label] = queryRsp
 	}
 
 	return queryRsps, nil
+}
+
+func (s *grpcServer) query(ctx context.Context, req *pb.MetricRequest, query string) (*telemPb.QueryResponse, error) {
+	queryReq := &telemPb.QueryRequest{
+		Query: query,
+	}
+
+	if !req.Summarize {
+		start, end, step, err := queryParams(req)
+		if err != nil {
+			return nil, err
+		}
+
+		queryReq.StartMs = start
+		queryReq.EndMs = end
+		queryReq.Step = step
+	}
+
+	queryRsp, err := s.telemetryClient.Query(ctx, queryReq)
+	if err != nil {
+		return nil, err
+	}
+
+	return queryRsp, nil
 }
 
 func formatQuery(query string, req *pb.MetricRequest, sumBy string) (string, error) {
@@ -396,19 +392,10 @@ func formatQuery(query string, req *pb.MetricRequest, sumBy string) (string, err
 		}
 	}
 
-	duration := defaultVectorRange
-	if req.Summarize {
-		durationStr, err := util.GetWindowString(req.Window)
-		if err != nil {
-			return "", err
-		}
-		duration = durationStr
-	}
-
 	return fmt.Sprintf(
 		query,
 		strings.Join(filterLabels, ","),
-		duration,
+		defaultVectorRange,
 		strings.Join(sumLabels, ","),
 	), nil
 }
@@ -434,19 +421,6 @@ func queryParams(req *pb.MetricRequest) (int64, int64, string, error) {
 
 	ms := int64(time.Millisecond)
 	return start.UnixNano() / ms, end.UnixNano() / ms, step, nil
-}
-
-func filterQueryRsp(rsp *telemPb.QueryResponse, end int64) {
-	for _, metric := range rsp.Metrics {
-		values := make([]*telemPb.SampleValue, 0)
-		for _, v := range metric.Values {
-			if v.TimestampMs == end {
-				values = append(values, v)
-			}
-		}
-		metric.Values = values
-	}
-	return
 }
 
 func extractMetadata(metric *telemPb.Sample) pb.MetricMetadata {
