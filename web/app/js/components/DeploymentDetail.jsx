@@ -11,7 +11,7 @@ import { rowGutter } from './util/Utils.js';
 import TabbedMetricsTable from './TabbedMetricsTable.jsx';
 import UpstreamDownstream from './UpstreamDownstream.jsx';
 import { Col, Row } from 'antd';
-import { emptyMetric, processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
+import { getPodsByDeployment, processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
 import './../../css/deployment.css';
 import 'whatwg-fetch';
 
@@ -68,6 +68,7 @@ export default class DeploymentDetail extends React.Component {
 
     let urls = this.api.urlsForResource;
 
+    let podListFetch = this.api.fetchPods();
     let deployMetricsUrl = urls["deployment"].url(this.state.deploy).ts;
     let upstreamRollupUrl = urls["upstream_deployment"].url(this.state.deploy).rollup;
     let downstreamRollupUrl = urls["downstream_deployment"].url(this.state.deploy).rollup;
@@ -79,14 +80,20 @@ export default class DeploymentDetail extends React.Component {
     let pathsFetch = this.api.fetchMetrics(pathMetricsUrl);
 
     // expose serverPromise for testing
-    this.serverPromise = Promise.all([deployFetch, upstreamFetch, downstreamFetch, pathsFetch])
-      .then(([deployMetrics,upstreamRollup, downstreamRollup, paths]) => {
+    this.serverPromise = Promise.all([
+      deployFetch, upstreamFetch, downstreamFetch, podListFetch, pathsFetch
+    ])
+      .then(([deployMetrics, upstreamRollup, downstreamRollup, podList, paths]) => {
         let tsByDeploy = processTimeseriesMetrics(deployMetrics.metrics, "targetDeploy");
         let upstreamMetrics = processRollupMetrics(upstreamRollup.metrics, "sourceDeploy");
         let downstreamMetrics = processRollupMetrics(downstreamRollup.metrics, "targetDeploy");
         let pathMetrics = processRollupMetrics(paths.metrics, "path");
 
+        let deploy = _.find(getPodsByDeployment(podList.pods), ["name", this.state.deploy]);
+
         this.setState({
+          added: deploy.added,
+          pods: deploy.pods,
           deployTs: _.get(tsByDeploy, this.state.deploy, {}),
           upstreamMetrics: upstreamMetrics,
           downstreamMetrics: downstreamMetrics,
