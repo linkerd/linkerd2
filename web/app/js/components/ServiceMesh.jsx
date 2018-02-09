@@ -28,11 +28,11 @@ const serviceMeshDetailsColumns = [
 ];
 const componentNames = {
   "prometheus":   "Prometheus",
-  "destination":  "Controller Destination",
-  "proxy-api":    "Controller Proxy API",
-  "public-api":   "Controller Public API",
-  "tap":          "Controller Tap",
-  "telemetry":    "Controller Telemetry",
+  "destination":  "Destination",
+  "proxy-api":    "Proxy API",
+  "public-api":   "Public API",
+  "tap":          "Tap",
+  "telemetry":    "Telemetry",
   "web":          "Web UI"
 };
 
