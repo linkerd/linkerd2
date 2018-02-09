@@ -6,7 +6,6 @@ import PageHeader from './PageHeader.jsx';
 import React from 'react';
 import ResourceHealthOverview from './ResourceHealthOverview.jsx';
 import ResourceMetricsOverview from './ResourceMetricsOverview.jsx';
-import TabbedMetricsTable from './TabbedMetricsTable.jsx';
 import UpstreamDownstream from './UpstreamDownstream.jsx';
 import { getPodsByDeployment, processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
 import './../../css/deployment.css';
@@ -144,23 +143,7 @@ export default class DeploymentDetail extends React.Component {
         upstreamMetrics={this.state.upstreamMetrics}
         downstreamMetrics={this.state.downstreamMetrics}
         api={this.api} />,
-      this.renderPaths()
     ];
-  }
-
-  renderPaths() {
-    return _.size(this.state.pathMetrics) === 0 ? null :
-      <div key="deployment-paths">
-        <div className="border-container border-neutral subsection-header">
-          <div className="border-container-content subsection-header">
-              Paths
-          </div>
-        </div>
-        <TabbedMetricsTable
-          resource="path"
-          metrics={this.state.pathMetrics}
-          api={this.api} />
-      </div>;
   }
 
   renderDeploymentTitle() {
