@@ -29,7 +29,7 @@ import (
 )
 
 var (
-	requestLabels = []string{"source", "target", "source_deployment", "target_deployment", "method", "path"}
+	requestLabels = []string{"source_deployment", "target_deployment", "method", "path"}
 	requestsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "requests_total",
@@ -344,29 +344,31 @@ func (s *server) shouldIngore(pod *k8sV1.Pod) bool {
 	return false
 }
 
-func (s *server) getNameAndDeployment(ip *common.IPAddress) (string, string) {
+// getDeployment returns the name of the deployment associated with a pod.
+// If the name of the deployment could not be found, then a message will be
+// logged, and getDeployment will return an emtpy string.
+func (s *server) getDeployment(ip *common.IPAddress) string {
 	ipStr := util.IPToString(ip)
 	pods, err := s.pods.GetPodsByIndex(ipStr)
 	if err != nil {
 		log.Debugf("Cannot get pod for IP %s: %s", ipStr, err)
-		return "", ""
+		return ""
 	}
 	if len(pods) == 0 {
 		log.Debugf("No pod exists for IP %s", ipStr)
-		return "", ""
+		return ""
 	}
 	if len(pods) > 1 {
 		log.Debugf("Multiple pods found for IP %s", ipStr)
-		return "", ""
+		return ""
 	}
 	pod := pods[0]
-	name := pod.Namespace + "/" + pod.Name
 	deployment, err := (*s.replicaSets).GetDeploymentForPod(pod)
 	if err != nil {
-		log.Debugf("Cannot get deployment for pod %s: %s", pod.Name, err)
-		return name, ""
+		log.WithError(err).Debugf("Cannot get deployment for pod %s", pod.Name)
+		return ""
 	}
-	return name, deployment
+	return deployment
 }
 
 func methodString(method *common.HttpMethod) string {
@@ -399,13 +401,11 @@ func convertSampleStream(sample *model.SampleStream) *read.Sample {
 }
 
 func (s *server) requestLabelsFor(requestScope *write.RequestScope) prometheus.Labels {
-	sourceName, sourceDeployment := s.getNameAndDeployment(requestScope.Ctx.SourceIp)
-	targetName, targetDeployment := s.getNameAndDeployment(requestScope.Ctx.TargetAddr.Ip)
+	sourceDeployment := s.getDeployment(requestScope.Ctx.SourceIp)
+	targetDeployment := s.getDeployment(requestScope.Ctx.TargetAddr.Ip)
 
 	return prometheus.Labels{
-		"source":            sourceName,
 		"source_deployment": sourceDeployment,
-		"target":            targetName,
 		"target_deployment": targetDeployment,
 		"method":            methodString(requestScope.Ctx.Method),
 		"path":              requestScope.Ctx.Path,

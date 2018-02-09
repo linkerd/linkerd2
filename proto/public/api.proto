@@ -66,12 +66,10 @@ message MetricSeries {
 }
 
 message MetricMetadata {
-  string targetPod = 1;
-  string targetDeploy = 2;
-  string sourcePod = 3;
-  string sourceDeploy = 4;
-  string component = 5;
-  string path = 6;
+  string targetDeploy = 1;
+  string sourceDeploy = 2;
+  string component = 3;
+  string path = 4;
 }
 
 message MetricResponse {
