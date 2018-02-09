@@ -93,11 +93,6 @@ var (
 		http.StatusNetworkAuthenticationRequired,
 	}
 
-	streamSummary = &pb.StreamSummary{
-		BytesSent:  12345,
-		DurationMs: 10,
-		FramesSent: 4,
-	}
 	ports = []uint32{3333, 6262}
 
 	// latencyBucketBounds holds the maximum value (inclusive, in tenths of a
@@ -151,7 +146,7 @@ func randomGrpcEos(count uint32) (eos []*pb.EosScope) {
 	for code, streamCount := range grpcResponseCodes {
 		eos = append(eos, &pb.EosScope{
 			Ctx:     &pb.EosCtx{End: &pb.EosCtx_GrpcStatusCode{GrpcStatusCode: code}},
-			Streams: streamSummaries(streamCount),
+			Streams: streamCount,
 		})
 	}
 	return
@@ -161,7 +156,7 @@ func randomH2Eos(count uint32) (eos []*pb.EosScope) {
 	for i := uint32(0); i < count; i++ {
 		eos = append(eos, &pb.EosScope{
 			Ctx:     &pb.EosCtx{End: &pb.EosCtx_Other{Other: true}},
-			Streams: streamSummaries(i),
+			Streams: uint32(rand.Int31()),
 		})
 	}
 	return
@@ -173,13 +168,6 @@ func randomGrpcResponseCode() uint32 {
 
 func randomHttpResponseCode() uint32 {
 	return uint32(httpResponseCodes[rand.Intn(len(httpResponseCodes))])
-}
-
-func streamSummaries(count uint32) (summaries []*pb.StreamSummary) {
-	for i := uint32(0); i < count; i++ {
-		summaries = append(summaries, streamSummary)
-	}
-	return
 }
 
 func stringToIp(str string) *common.IPAddress {

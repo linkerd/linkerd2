@@ -356,7 +356,7 @@ func (s *server) Report(ctx context.Context, req *write.ReportRequest) (*write.R
 					responseLabels[k] = v
 				}
 
-				responsesTotal.With(responseLabels).Add(float64(len(eosScope.Streams)))
+				responsesTotal.With(responseLabels).Add(float64(eosScope.Streams))
 			}
 		}
 

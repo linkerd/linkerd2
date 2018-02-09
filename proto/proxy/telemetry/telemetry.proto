@@ -92,7 +92,7 @@ message ResponseCtx {
 
 message EosScope {
   EosCtx ctx = 1;
-  repeated StreamSummary streams = 2;
+  uint32 streams = 2;
 }
 
 message EosCtx {
@@ -101,12 +101,6 @@ message EosCtx {
     uint32 reset_error_code = 2;
     bool other = 3; // Stream ended without reset and without grpc status code
   }
-}
-
-message StreamSummary {
-  uint64 duration_ms = 1;
-  uint64 bytes_sent = 2;
-  uint32 frames_sent = 3;
 }
 
 message ReportResponse {}
