@@ -315,7 +315,6 @@ func main() {
 							Port: randomPort(),
 						},
 						Authority: "world.greeting:7778",
-						Method:    &common.HttpMethod{Type: &common.HttpMethod_Registered_{Registered: common.HttpMethod_GET}},
 					},
 					Count: count,
 					Responses: []*pb.ResponseScope{
@@ -338,7 +337,6 @@ func main() {
 							Port: randomPort(),
 						},
 						Authority: "world.greeting:7778",
-						Method:    &common.HttpMethod{Type: &common.HttpMethod_Registered_{Registered: common.HttpMethod_GET}},
 					},
 					Count: count,
 					Responses: []*pb.ResponseScope{

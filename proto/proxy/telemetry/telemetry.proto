@@ -73,7 +73,6 @@ message RequestCtx {
   common.IPAddress source_ip = 1;
   common.TcpAddress target_addr = 2;
   string authority = 3;
-  common.HttpMethod method = 4;
 }
 
 message ResponseScope {

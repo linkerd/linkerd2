@@ -7,7 +7,6 @@ use http;
 use ordermap::OrderMap;
 
 use conduit_proxy_controller_grpc::common::{
-    HttpMethod,
     TcpAddress,
     Protocol,
 };
@@ -289,7 +288,6 @@ impl Metrics {
 
             requests.push(RequestScope {
                 ctx: Some(RequestCtx {
-                    method: Some(HttpMethod::from(&req.method)),
                     authority: req.uri
                         .authority_part()
                         .map(|a| a.to_string())
