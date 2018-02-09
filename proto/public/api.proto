@@ -26,7 +26,6 @@ enum AggregationType {
   SOURCE_POD = 2;
   SOURCE_DEPLOY = 3;
   MESH = 4;
-  PATH = 5;
 }
 
 enum HistogramLabel {
@@ -69,7 +68,6 @@ message MetricMetadata {
   string targetDeploy = 1;
   string sourceDeploy = 2;
   string component = 3;
-  string path = 4;
 }
 
 message MetricResponse {

@@ -124,7 +124,6 @@ func TestGetAggregationType(t *testing.T) {
 			"source_pod":    pb.AggregationType_SOURCE_POD,
 			"source_deploy": pb.AggregationType_SOURCE_DEPLOY,
 			"mesh":          pb.AggregationType_MESH,
-			"path":          pb.AggregationType_PATH,
 		}
 
 		for aggregationFriendlyName, expectedAggregation := range expectations {

@@ -450,7 +450,6 @@ func (s *server) requestLabelsFor(requestScope *write.RequestScope) prometheus.L
 		"source_deployment": sourceDeployment,
 		"target_deployment": targetDeployment,
 		"method":            methodString(requestScope.Ctx.Method),
-		"path":              requestScope.Ctx.Path,
 	}
 }
 
