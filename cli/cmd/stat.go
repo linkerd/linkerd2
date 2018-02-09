@@ -27,7 +27,6 @@ var statCmd = &cobra.Command{
 
 Valid resource types include:
  * deployments (aka deployment, deploy)
- * paths (aka path, pa)
 
 The optional [TARGET] option can be a name for a deployment.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -40,21 +39,16 @@ The optional [TARGET] option can be a name for a deployment.`,
 			friendlyNameForResourceType = args[0]
 			target = args[1]
 		default:
-			return errors.New("please specify a resource type: deployments or paths")
+			return errors.New("please specify a resource type: deployments")
 		}
 
 		validatedResourceType, err := k8s.CanonicalKubernetesNameFromFriendlyName(friendlyNameForResourceType)
 		if err != nil {
-			switch friendlyNameForResourceType {
-			case "paths", "path", "pa":
-				validatedResourceType = ConduitPaths
-			default:
-				return fmt.Errorf("invalid resource type %s, only %v are allowed as resource types", friendlyNameForResourceType, []string{k8s.KubernetesDeployments, ConduitPaths})
-			}
+			return fmt.Errorf("invalid resource type %s, only %v are allowed as resource types", friendlyNameForResourceType, []string{k8s.KubernetesDeployments})
 		} else {
 			switch friendlyNameForResourceType {
-			case "pods", "pod", "po":
-				return fmt.Errorf("invalid resource type %s, only %v are allowed as resource types", friendlyNameForResourceType, []string{k8s.KubernetesDeployments, ConduitPaths})
+			case "pods", "pod", "po", "paths", "path", "pa":
+				return fmt.Errorf("invalid resource type %s, only %v are allowed as resource types", friendlyNameForResourceType, []string{k8s.KubernetesDeployments})
 			default:
 			}
 		}
@@ -82,7 +76,6 @@ func init() {
 
 var resourceTypeToAggregationType = map[string]pb.AggregationType{
 	k8s.KubernetesDeployments: pb.AggregationType_TARGET_DEPLOY,
-	ConduitPaths:              pb.AggregationType_PATH,
 }
 
 func requestStatsFromApi(client pb.ApiClient, resourceType string) (string, error) {
