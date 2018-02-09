@@ -119,12 +119,9 @@ func TestGetMetricName(t *testing.T) {
 func TestGetAggregationType(t *testing.T) {
 	t.Run("Returns valid metrics from name", func(t *testing.T) {
 		expectations := map[string]pb.AggregationType{
-			"target_pod":    pb.AggregationType_TARGET_POD,
 			"target_deploy": pb.AggregationType_TARGET_DEPLOY,
-			"source_pod":    pb.AggregationType_SOURCE_POD,
 			"source_deploy": pb.AggregationType_SOURCE_DEPLOY,
 			"mesh":          pb.AggregationType_MESH,
-			"path":          pb.AggregationType_PATH,
 		}
 
 		for aggregationFriendlyName, expectedAggregation := range expectations {
@@ -142,8 +139,8 @@ func TestGetAggregationType(t *testing.T) {
 	})
 
 	t.Run("Returns error and default value if unknown friendly name for TimeWindow", func(t *testing.T) {
-		invalidNames := []string{"pod_target", "pod", "service", "target_service", "target_mesh", ""}
-		defaultAggregation := pb.AggregationType_TARGET_POD
+		invalidNames := []string{"service", "target_service", "target_mesh", ""}
+		defaultAggregation := pb.AggregationType_TARGET_DEPLOY
 
 		for _, invalidName := range invalidNames {
 			aggregation, err := GetAggregationType(invalidName)

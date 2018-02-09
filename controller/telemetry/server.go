@@ -29,7 +29,7 @@ import (
 )
 
 var (
-	requestLabels = []string{"source_deployment", "target_deployment", "method", "path"}
+	requestLabels = []string{"source_deployment", "target_deployment", "method"}
 	requestsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "requests_total",
@@ -450,7 +450,6 @@ func (s *server) requestLabelsFor(requestScope *write.RequestScope) prometheus.L
 		"source_deployment": sourceDeployment,
 		"target_deployment": targetDeployment,
 		"method":            methodString(requestScope.Ctx.Method),
-		"path":              requestScope.Ctx.Path,
 	}
 }
 

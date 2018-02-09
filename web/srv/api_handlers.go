@@ -121,7 +121,6 @@ func (h *handler) handleApiMetrics(w http.ResponseWriter, req *http.Request, p h
 		TargetDeploy: req.FormValue("target_deploy"),
 		SourceDeploy: req.FormValue("source_deploy"),
 		Component:    req.FormValue("component"),
-		Path:         req.FormValue("path"),
 	}
 
 	metrics, groupBy, window, err := validateMetricParams(metricNameParam, aggParam, timeWindowParam)

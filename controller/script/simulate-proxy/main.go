@@ -316,7 +316,6 @@ func main() {
 						},
 						Authority: "world.greeting:7778",
 						Method:    &common.HttpMethod{Type: &common.HttpMethod_Registered_{Registered: common.HttpMethod_GET}},
-						Path:      "/World/GreetingGrpc",
 					},
 					Count: count,
 					Responses: []*pb.ResponseScope{
@@ -340,7 +339,6 @@ func main() {
 						},
 						Authority: "world.greeting:7778",
 						Method:    &common.HttpMethod{Type: &common.HttpMethod_Registered_{Registered: common.HttpMethod_GET}},
-						Path:      "/World/GreetingH2",
 					},
 					Count: count,
 					Responses: []*pb.ResponseScope{

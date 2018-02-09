@@ -129,8 +129,6 @@ func writeStatsToBuffer(resp *pb.MetricResponse, w *tabwriter.Writer) {
 		var name string
 		if metadata.TargetDeploy != "" {
 			name = metadata.TargetDeploy
-		} else if metadata.Path != "" {
-			name = metadata.Path
 		}
 
 		if len(name) > maxNameLength {
@@ -188,9 +186,6 @@ func buildMetricRequest(aggregationType pb.AggregationType) (*pb.MetricRequest, 
 	}
 	if target != "all" && aggregationType == pb.AggregationType_TARGET_DEPLOY {
 		filterBy.TargetDeploy = target
-	}
-	if target != "all" && aggregationType == pb.AggregationType_PATH {
-		filterBy.Path = target
 	}
 
 	return &pb.MetricRequest{

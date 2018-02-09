@@ -21,12 +21,9 @@ enum TimeWindow {
 }
 
 enum AggregationType {
-  TARGET_POD = 0;
-  TARGET_DEPLOY = 1;
-  SOURCE_POD = 2;
-  SOURCE_DEPLOY = 3;
-  MESH = 4;
-  PATH = 5;
+  TARGET_DEPLOY = 0;
+  SOURCE_DEPLOY = 1;
+  MESH = 2;
 }
 
 enum HistogramLabel {
@@ -69,7 +66,6 @@ message MetricMetadata {
   string targetDeploy = 1;
   string sourceDeploy = 2;
   string component = 3;
-  string path = 4;
 }
 
 message MetricResponse {
