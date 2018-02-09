@@ -2,20 +2,15 @@ import _ from 'lodash';
 import ConduitSpinner from "./ConduitSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
 import { incompleteMeshMessage } from './util/CopyUtils.jsx';
-import Metric from './Metric.jsx';
 import PageHeader from './PageHeader.jsx';
 import React from 'react';
 import ResourceHealthOverview from './ResourceHealthOverview.jsx';
 import ResourceMetricsOverview from './ResourceMetricsOverview.jsx';
-import { rowGutter } from './util/Utils.js';
 import TabbedMetricsTable from './TabbedMetricsTable.jsx';
 import UpstreamDownstream from './UpstreamDownstream.jsx';
-import { Col, Row } from 'antd';
 import { getPodsByDeployment, processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
 import './../../css/deployment.css';
 import 'whatwg-fetch';
-
-const Fragment = React.Fragment;
 
 export default class DeploymentDetail extends React.Component {
   constructor(props) {
