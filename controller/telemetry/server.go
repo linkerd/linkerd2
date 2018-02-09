@@ -344,28 +344,31 @@ func (s *server) shouldIngore(pod *k8sV1.Pod) bool {
 	return false
 }
 
-func (s *server) getDeployment(ip *common.IPAddress) (*string, error) {
+// getDeployment returns the name of the deployment associated with a pod.
+// If the name of the deployment could not be found, then a message will be
+// logged, and getDeployment will return an emtpy string.
+func (s *server) getDeployment(ip *common.IPAddress) string {
 	ipStr := util.IPToString(ip)
 	pods, err := s.pods.GetPodsByIndex(ipStr)
 	if err != nil {
 		log.Debugf("Cannot get pod for IP %s: %s", ipStr, err)
-		return nil, err
+		return ""
 	}
 	if len(pods) == 0 {
 		log.Debugf("No pod exists for IP %s", ipStr)
-		return nil, fmt.Errorf("No pod exists for IP %s", ipStr)
+		return ""
 	}
 	if len(pods) > 1 {
 		log.Debugf("Multiple pods found for IP %s", ipStr)
-		return nil, fmt.Errorf("Multiple pods found %s", ipStr)
+		return ""
 	}
 	pod := pods[0]
 	deployment, err := (*s.replicaSets).GetDeploymentForPod(pod)
 	if err != nil {
-		log.Debugf("Cannot get deployment for pod %s: %s", pod.Name, err)
-		return nil, err
+		log.WithError(err).Debugf("Cannot get deployment for pod %s", pod.Name)
+		return ""
 	}
-	return &deployment, nil
+	return deployment
 }
 
 func methodString(method *common.HttpMethod) string {
@@ -398,21 +401,8 @@ func convertSampleStream(sample *model.SampleStream) *read.Sample {
 }
 
 func (s *server) requestLabelsFor(requestScope *write.RequestScope) prometheus.Labels {
-	var sourceDeployment string
-	sourceDeploymentPtr, _ := s.getDeployment(requestScope.Ctx.SourceIp)
-	if sourceDeploymentPtr == nil {
-		sourceDeployment = ""
-	} else {
-		sourceDeployment = *sourceDeploymentPtr
-	}
-
-	var targetDeployment string
-	targetDeploymentPtr, _ := s.getDeployment(requestScope.Ctx.TargetAddr.Ip)
-	if targetDeploymentPtr == nil {
-		targetDeployment = ""
-	} else {
-		targetDeployment = *targetDeploymentPtr
-	}
+	sourceDeployment := s.getDeployment(requestScope.Ctx.SourceIp)
+	targetDeployment := s.getDeployment(requestScope.Ctx.TargetAddr.Ip)
 
 	return prometheus.Labels{
 		"source_deployment": sourceDeployment,
