@@ -56,18 +56,14 @@ func GetMetricName(metricName string) (pb.MetricName, error) {
 
 func GetAggregationType(aggregationType string) (pb.AggregationType, error) {
 	switch aggregationType {
-	case "target_pod":
-		return pb.AggregationType_TARGET_POD, nil
 	case "target_deploy":
 		return pb.AggregationType_TARGET_DEPLOY, nil
-	case "source_pod":
-		return pb.AggregationType_SOURCE_POD, nil
 	case "source_deploy":
 		return pb.AggregationType_SOURCE_DEPLOY, nil
 	case "mesh":
 		return pb.AggregationType_MESH, nil
 
 	default:
-		return pb.AggregationType_TARGET_POD, errors.New("invalid aggregation type " + aggregationType)
+		return pb.AggregationType_TARGET_DEPLOY, errors.New("invalid aggregation type " + aggregationType)
 	}
 }
