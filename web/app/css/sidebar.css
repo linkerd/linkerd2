@@ -1,7 +1,7 @@
 @import 'styles.css';
 
 .sidebar {
-  padding: 0px 0px 0px 20%;
+  padding: 0px 10% 0px 10%;
   background-color: #091B39;
   color: white;
   min-height: 100vh;
