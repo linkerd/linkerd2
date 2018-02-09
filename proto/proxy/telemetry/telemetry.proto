@@ -74,7 +74,6 @@ message RequestCtx {
   common.TcpAddress target_addr = 2;
   string authority = 3;
   common.HttpMethod method = 4;
-  string path = 5;
 }
 
 message ResponseScope {

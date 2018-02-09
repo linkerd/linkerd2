@@ -35,7 +35,6 @@ fn inbound_sends_telemetry() {
     assert_eq!(report.requests.len(), 1);
     let req = &report.requests[0];
     assert_eq!(req.ctx.as_ref().unwrap().authority, "test.conduit.local");
-    assert_eq!(req.ctx.as_ref().unwrap().path, "/hey");
     //assert_eq!(req.ctx.as_ref().unwrap().method, GET);
     assert_eq!(req.count, 1);
     assert_eq!(req.responses.len(), 1);
@@ -86,7 +85,6 @@ fn http1_inbound_sends_telemetry() {
     assert_eq!(report.requests.len(), 1);
     let req = &report.requests[0];
     assert_eq!(req.ctx.as_ref().unwrap().authority, "test.conduit.local");
-    assert_eq!(req.ctx.as_ref().unwrap().path, "/hey");
     //assert_eq!(req.ctx.as_ref().unwrap().method, GET);
     assert_eq!(req.count, 1);
     assert_eq!(req.responses.len(), 1);
@@ -151,7 +149,6 @@ fn inbound_aggregates_telemetry_over_several_requests() {
     // -- first request -----------------
     let req = &report.requests[0];
     assert_eq!(req.ctx.as_ref().unwrap().authority, "test.conduit.local");
-    assert_eq!(req.ctx.as_ref().unwrap().path, "/hey");
     assert_eq!(req.count, 1);
     assert_eq!(req.responses.len(), 1);
     // ---- response --------------------
@@ -176,7 +173,6 @@ fn inbound_aggregates_telemetry_over_several_requests() {
     // -- second request ----------------
     let req = &report.requests[1];
     assert_eq!(req.ctx.as_ref().unwrap().authority, "test.conduit.local");
-    assert_eq!(req.ctx.as_ref().unwrap().path, "/hi");
     // repeated twice
     assert_eq!(req.count, 2);
     assert_eq!(req.responses.len(), 1);
@@ -241,7 +237,6 @@ fn records_latency_statistics() {
     // first request
     let req = &report.requests[0];
     assert_eq!(req.ctx.as_ref().unwrap().authority, "test.conduit.local");
-    assert_eq!(req.ctx.as_ref().unwrap().path, "/hey");
     let res = &req.responses[0];
     // response latencies should always have a length equal to the number
     // of latency buckets in the latency histogram.
@@ -262,7 +257,6 @@ fn records_latency_statistics() {
     // second request
     let req = &report.requests.get(1).expect("second report");
     assert_eq!(req.ctx.as_ref().unwrap().authority, "test.conduit.local");
-    assert_eq!(req.ctx.as_ref().unwrap().path, "/hi");
     assert_eq!(req.count, 2);
     assert_eq!(req.responses.len(), 1);
     let res = req.responses.get(0).expect("responses[0]");
