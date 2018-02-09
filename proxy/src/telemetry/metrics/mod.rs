@@ -290,7 +290,6 @@ impl Metrics {
             requests.push(RequestScope {
                 ctx: Some(RequestCtx {
                     method: Some(HttpMethod::from(&req.method)),
-                    path: req.uri.path().to_string(),
                     authority: req.uri
                         .authority_part()
                         .map(|a| a.to_string())

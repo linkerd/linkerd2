@@ -474,7 +474,7 @@ func TestCheckIfResponseHasError(t *testing.T) {
 	})
 
 	t.Run("returns error if response contains Conduit error but body isn't error message", func(t *testing.T) {
-		protoInBytes, err := proto.Marshal(&pb.MetricMetadata{Path: "a"})
+		protoInBytes, err := proto.Marshal(&pb.MetricMetadata{TargetDeploy: "a"})
 		message, err := serializeAsPayload(protoInBytes)
 		response := &http.Response{
 			Header: make(http.Header),

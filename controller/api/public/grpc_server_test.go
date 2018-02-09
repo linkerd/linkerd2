@@ -43,7 +43,6 @@ func TestStat(t *testing.T) {
 								&telemetry.SampleValue{Value: 1, TimestampMs: 2},
 							},
 							Labels: map[string]string{
-								pathLabel:         "pathLabel",
 								sourceDeployLabel: "sourceDeployLabel",
 								targetDeployLabel: "targetDeployLabel",
 							},
@@ -60,7 +59,6 @@ func TestStat(t *testing.T) {
 						&pb.MetricSeries{
 							Name: pb.MetricName_REQUEST_RATE,
 							Metadata: &pb.MetricMetadata{
-								Path:         "pathLabel",
 								SourceDeploy: "sourceDeployLabel",
 								TargetDeploy: "targetDeployLabel",
 							},

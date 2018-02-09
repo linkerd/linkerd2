@@ -45,7 +45,6 @@ const (
 	sourcePodLabel                  = "source"
 	sourceDeployLabel               = "source_deployment"
 	jobLabel                        = "job"
-	pathLabel                       = "path"
 	TelemetryClientSubsystemName    = "telemetry"
 	TelemetryClientCheckDescription = "control plane can use telemetry service"
 )
@@ -65,12 +64,9 @@ var (
 	}
 
 	aggregationMap = map[pb.AggregationType]string{
-		pb.AggregationType_TARGET_POD:    targetPodLabel,
 		pb.AggregationType_TARGET_DEPLOY: targetDeployLabel,
-		pb.AggregationType_SOURCE_POD:    sourcePodLabel,
 		pb.AggregationType_SOURCE_DEPLOY: sourceDeployLabel,
 		pb.AggregationType_MESH:          jobLabel,
-		pb.AggregationType_PATH:          pathLabel,
 	}
 
 	emptyMetadata = pb.MetricMetadata{}
@@ -386,10 +382,6 @@ func formatQuery(query string, req *pb.MetricRequest, sumBy string) (string, err
 			filterLabels = append(filterLabels, fmt.Sprintf("%s=\"%s\"", jobLabel, metadata.Component))
 			sumLabels = append(sumLabels, jobLabel)
 		}
-		if metadata.Path != "" {
-			filterLabels = append(filterLabels, fmt.Sprintf("%s=\"%s\"", pathLabel, metadata.Path))
-			sumLabels = append(sumLabels, pathLabel)
-		}
 	}
 
 	return fmt.Sprintf(
@@ -427,7 +419,6 @@ func extractMetadata(metric *telemPb.Sample) pb.MetricMetadata {
 	return pb.MetricMetadata{
 		TargetDeploy: metric.Labels[targetDeployLabel],
 		SourceDeploy: metric.Labels[sourceDeployLabel],
-		Path:         metric.Labels[pathLabel],
 	}
 }
 
