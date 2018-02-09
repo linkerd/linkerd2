@@ -2,6 +2,7 @@ import _ from 'lodash';
 import { getPodsByDeployment } from './util/MetricUtils.js';
 import logo from './../../img/reversed_logo.png';
 import React from 'react';
+import SocialLinks from './SocialLinks.jsx';
 import Version from './Version.jsx';
 import { AutoComplete, Menu } from 'antd';
 import './../../css/sidebar.css';
@@ -86,6 +87,8 @@ export default class Sidebar extends React.Component {
               <ConduitLink to="https://conduit.io/docs/" absolute="true">Documentation</ConduitLink>
             </Menu.Item>
           </Menu>
+
+          <SocialLinks />
 
           <Version
             releaseVersion={this.props.releaseVersion}

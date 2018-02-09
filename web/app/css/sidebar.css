@@ -55,6 +55,17 @@
   & .ant-menu-item-active, & .ant-menu:not(.ant-menu-horizontal) .ant-menu-item-selected {
     background: #007EFF;
   }
+
+  & .social-links {
+    padding: 0 0 0 9px;
+    position: fixed;
+    height: 40px;
+    bottom: calc(var(--base-width)*16);
+
+    & a {
+      margin-right: calc(var(--base-width)*2);
+    }
+  }
 }
 
 .call-to-action .action {
