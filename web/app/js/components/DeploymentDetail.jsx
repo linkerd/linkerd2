@@ -141,7 +141,6 @@ export default class DeploymentDetail extends React.Component {
           lastUpdated={this.state.lastUpdated}
           timeseries={this.state.deployTs}
           window={this.api.getMetricsWindow()} />,
-      this.renderMidsection(),
       <UpstreamDownstream
         key="deploy-upstream-downstream"
         resourceType="deployment"
@@ -152,27 +151,6 @@ export default class DeploymentDetail extends React.Component {
         api={this.api} />,
       this.renderPaths()
     ];
-  }
-
-  renderMidsection() {
-
-    return (
-      <Fragment key="deployment-pod-summary">
-        <Row gutter={rowGutter}>
-
-          <Col span={8}>
-            <div className="border-container border-neutral deployment-details">
-              <div className="border-container-content">
-                <div className=" subsection-header">Deployment details</div>
-                <Metric title="Upstream deployments" value={this.numUpstreams()} />
-                <Metric title="Downstream deployments" value={this.numDownstreams()} />
-              </div>
-            </div>
-          </Col>
-        </Row>
-
-      </Fragment>
-    );
   }
 
   renderPaths() {
