@@ -41,10 +41,21 @@ func TestStat(t *testing.T) {
 						&telemetry.Sample{
 							Values: []*telemetry.SampleValue{
 								&telemetry.SampleValue{Value: 1, TimestampMs: 2},
+								&telemetry.SampleValue{Value: 3, TimestampMs: 4},
 							},
 							Labels: map[string]string{
 								sourceDeployLabel: "sourceDeployLabel",
 								targetDeployLabel: "targetDeployLabel",
+							},
+						},
+						&telemetry.Sample{
+							Values: []*telemetry.SampleValue{
+								&telemetry.SampleValue{Value: 5, TimestampMs: 6},
+								&telemetry.SampleValue{Value: 7, TimestampMs: 8},
+							},
+							Labels: map[string]string{
+								sourceDeployLabel: "sourceDeployLabel2",
+								targetDeployLabel: "targetDeployLabel2",
 							},
 						},
 					},
@@ -66,6 +77,27 @@ func TestStat(t *testing.T) {
 								&pb.MetricDatapoint{
 									Value:       &pb.MetricValue{Value: &pb.MetricValue_Gauge{Gauge: 1}},
 									TimestampMs: 2,
+								},
+								&pb.MetricDatapoint{
+									Value:       &pb.MetricValue{Value: &pb.MetricValue_Gauge{Gauge: 3}},
+									TimestampMs: 4,
+								},
+							},
+						},
+						&pb.MetricSeries{
+							Name: pb.MetricName_REQUEST_RATE,
+							Metadata: &pb.MetricMetadata{
+								SourceDeploy: "sourceDeployLabel2",
+								TargetDeploy: "targetDeployLabel2",
+							},
+							Datapoints: []*pb.MetricDatapoint{
+								&pb.MetricDatapoint{
+									Value:       &pb.MetricValue{Value: &pb.MetricValue_Gauge{Gauge: 5}},
+									TimestampMs: 6,
+								},
+								&pb.MetricDatapoint{
+									Value:       &pb.MetricValue{Value: &pb.MetricValue_Gauge{Gauge: 7}},
+									TimestampMs: 8,
 								},
 							},
 						},
