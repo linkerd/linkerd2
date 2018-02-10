@@ -29,7 +29,7 @@ import (
 )
 
 var (
-	requestLabels = []string{"source_deployment", "target_deployment", "method"}
+	requestLabels = []string{"source_deployment", "target_deployment"}
 	requestsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "requests_total",
@@ -356,7 +356,7 @@ func (s *server) Report(ctx context.Context, req *write.ReportRequest) (*write.R
 					responseLabels[k] = v
 				}
 
-				responsesTotal.With(responseLabels).Add(float64(len(eosScope.Streams)))
+				responsesTotal.With(responseLabels).Add(float64(eosScope.Streams))
 			}
 		}
 
@@ -449,7 +449,6 @@ func (s *server) requestLabelsFor(requestScope *write.RequestScope) prometheus.L
 	return prometheus.Labels{
 		"source_deployment": sourceDeployment,
 		"target_deployment": targetDeployment,
-		"method":            methodString(requestScope.Ctx.Method),
 	}
 }
 

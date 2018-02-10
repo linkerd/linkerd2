@@ -7,7 +7,6 @@ use http;
 use ordermap::OrderMap;
 
 use conduit_proxy_controller_grpc::common::{
-    HttpMethod,
     TcpAddress,
     Protocol,
 };
@@ -22,7 +21,6 @@ use conduit_proxy_controller_grpc::telemetry::{
     ResponseCtx,
     ResponseScope,
     ServerTransport,
-    StreamSummary,
     TransportSummary,
 };
 use ctx;
@@ -54,19 +52,12 @@ struct RequestStats {
 
 #[derive(Debug, Default)]
 struct ResponseStats {
-    ends: OrderMap<End, Vec<EndStats>>,
+    ends: OrderMap<End, u32>,
     /// Response latencies in tenths of a millisecond.
     ///
     /// Observed latencies are mapped to a count of the times that
     /// latency value was seen.
     latencies: latency::Histogram,
-}
-
-#[derive(Debug)]
-struct EndStats {
-    duration_ms: u64,
-    bytes_sent: u64,
-    frames_sent: u32,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -133,36 +124,19 @@ impl Metrics {
                     .or_insert_with(Default::default);
 
                 stats.latencies += fail.since_request_open;
-                ends.push(EndStats {
-                    // We never got a response, but we need to a count
-                    // for this request + end, so a 0 EndStats is used.
-                    //
-                    // TODO: would be better if this case didn't need
-                    // a `Vec`, and could just be a usize counter.
-                    duration_ms: 0,
-                    bytes_sent: 0,
-                    frames_sent: 0,
-                });
+                *ends += 1;
             }
 
             Event::StreamResponseOpen(ref res, ref open) => {
                 self.response(res).latencies += open.since_request_open;
             },
             Event::StreamResponseFail(ref res, ref fail) => {
-                self.response_end(res, End::Reset(fail.error.into()))
-                    .push(EndStats {
-                        duration_ms: dur_to_ms(fail.since_response_open),
-                        bytes_sent: fail.bytes_sent,
-                        frames_sent: fail.frames_sent,
-                    });
+                *self.response_end(res, End::Reset(fail.error.into()))
+                    += 1;
             }
             Event::StreamResponseEnd(ref res, ref end) => {
                 let e = end.grpc_status.map(End::Grpc).unwrap_or(End::Other);
-                self.response_end(res, e).push(EndStats {
-                    duration_ms: dur_to_ms(end.since_response_open),
-                    bytes_sent: end.bytes_sent,
-                    frames_sent: end.frames_sent,
-                });
+                *self.response_end(res, e) += 1;
             }
         }
     }
@@ -184,7 +158,7 @@ impl Metrics {
         &mut self,
         res: &'a Arc<ctx::http::Response>,
         end: End,
-    ) -> &mut Vec<EndStats> {
+    ) -> &mut u32 {
         self.response(res)
             .ends
             .entry(end)
@@ -249,16 +223,7 @@ impl Metrics {
             for (status_code, res_stats) in stats.responses {
                 let mut ends = Vec::with_capacity(res_stats.ends.len());
 
-                for (end, end_stats) in res_stats.ends {
-                    let mut streams = Vec::with_capacity(end_stats.len());
-
-                    for stats in end_stats {
-                        streams.push(StreamSummary {
-                            duration_ms: stats.duration_ms,
-                            bytes_sent: stats.bytes_sent,
-                            frames_sent: stats.frames_sent,
-                        });
-                    }
+                for (end, streams) in res_stats.ends {
 
                     ends.push(EosScope {
                         ctx: Some(EosCtx {
@@ -289,7 +254,6 @@ impl Metrics {
 
             requests.push(RequestScope {
                 ctx: Some(RequestCtx {
-                    method: Some(HttpMethod::from(&req.method)),
                     authority: req.uri
                         .authority_part()
                         .map(|a| a.to_string())

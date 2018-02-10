@@ -50,11 +50,7 @@ fn inbound_sends_telemetry() {
     assert_eq!(res.ends.len(), 1);
     // ends
     let ends = &res.ends[0];
-    assert_eq!(ends.streams.len(), 1);
-    // streams
-    let stream = &ends.streams[0];
-    assert_eq!(stream.bytes_sent, 5);
-    assert_eq!(stream.frames_sent, 1);
+    assert_eq!(ends.streams, 1);
 }
 
 
@@ -100,11 +96,7 @@ fn http1_inbound_sends_telemetry() {
     assert_eq!(res.ends.len(), 1);
     // ends
     let ends = &res.ends[0];
-    assert_eq!(ends.streams.len(), 1);
-    // streams
-    let stream = &ends.streams[0];
-    assert_eq!(stream.bytes_sent, 5);
-    assert_eq!(stream.frames_sent, 1);
+    assert_eq!(ends.streams, 1);
 }
 
 
@@ -164,11 +156,7 @@ fn inbound_aggregates_telemetry_over_several_requests() {
 
     // ------ ends ----------------------
     let ends = &res.ends[0];
-    assert_eq!(ends.streams.len(), 1);
-    // -------- streams -----------------
-    let stream = &ends.streams[0];
-    assert_eq!(stream.bytes_sent, 5);
-    assert_eq!(stream.frames_sent, 1);
+    assert_eq!(ends.streams, 1);
 
     // -- second request ----------------
     let req = &report.requests[1];
@@ -189,12 +177,7 @@ fn inbound_aggregates_telemetry_over_several_requests() {
 
     // ------ ends ----------------------
     let ends = &res.ends[0];
-    assert_eq!(ends.streams.len(), 2);
-
-    // -------- streams -----------------
-    let stream = &ends.streams[0];
-    assert_eq!(stream.bytes_sent, 12);
-    assert_eq!(stream.frames_sent, 1);
+    assert_eq!(ends.streams, 2);
 
 }
 
