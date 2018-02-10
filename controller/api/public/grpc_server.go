@@ -107,8 +107,8 @@ func (s *grpcServer) Stat(ctx context.Context, req *pb.MetricRequest) (*pb.Metri
 			log.Errorf("Stat -> queryMetric failed with: %s", err)
 			err = result.err
 		} else {
-			for _, ser := range result.series {
-				metrics = append(metrics, &ser)
+			for i := range result.series {
+				metrics = append(metrics, &result.series[i])
 			}
 		}
 	}
