@@ -6,7 +6,9 @@
 # When this file is changed, run `bin/update-go-deps-shas`.
 
 FROM golang:1.9.4
-WORKDIR /go/src/github.com/runconduit/conduit
+ENV TEMP_GOPATH=/temp-gopath
+ENV GOPATH=${TEMP_GOPATH}
+WORKDIR $GOPATH/src/github.com/runconduit/conduit
 
 # Download `dep` without being sensitive to changes to Gopkg.{toml,lock}.
 COPY bin/dep bin/dep
@@ -16,3 +18,79 @@ RUN bin/dep version
 COPY Gopkg.toml Gopkg.lock ./
 RUN bin/dep ensure -vendor-only -v
 
+# Move the dependencies to where `go install` can see them.
+ENV GOPATH=/go
+RUN mv vendor/* $GOPATH/src/
+
+# Precompile key slow-to-build dependencies. This list doesn't need to be
+# complete for the build to work correctly; the completeness of this list
+# only affects the speed of incremental rebuilds of Dependent Dockerfiles.
+#
+# This list was derived from the output of `find $GOPATH/pkg -type f`
+# after building the controller.
+RUN CGO_ENABLED=0 GOOS=linux go install -installsuffix cgo \
+    github.com/golang/protobuf/jsonpb \
+    github.com/grpc-ecosystem/go-grpc-prometheus \
+    github.com/prometheus/client_golang/api \
+    github.com/prometheus/client_golang/api/prometheus/v1 \
+    github.com/prometheus/client_golang/prometheus \
+    github.com/prometheus/client_golang/prometheus/promhttp \
+    github.com/prometheus/client_model/go \
+    github.com/prometheus/common/expfmt \
+    github.com/prometheus/common/model \
+    github.com/sirupsen/logrus \
+    google.golang.org/grpc \
+    k8s.io/client-go/discovery \
+    k8s.io/client-go/kubernetes \
+    k8s.io/client-go/kubernetes/scheme \
+    k8s.io/client-go/kubernetes/typed/admissionregistration/v1alpha1 \
+    k8s.io/client-go/kubernetes/typed/admissionregistration/v1beta1 \
+    k8s.io/client-go/kubernetes/typed/apps/v1 \
+    k8s.io/client-go/kubernetes/typed/apps/v1beta1 \
+    k8s.io/client-go/kubernetes/typed/apps/v1beta2 \
+    k8s.io/client-go/kubernetes/typed/authentication/v1 \
+    k8s.io/client-go/kubernetes/typed/authentication/v1beta1 \
+    k8s.io/client-go/kubernetes/typed/authorization/v1 \
+    k8s.io/client-go/kubernetes/typed/authorization/v1beta1 \
+    k8s.io/client-go/kubernetes/typed/autoscaling/v1 \
+    k8s.io/client-go/kubernetes/typed/autoscaling/v2beta1 \
+    k8s.io/client-go/kubernetes/typed/batch/v1 \
+    k8s.io/client-go/kubernetes/typed/batch/v1beta1 \
+    k8s.io/client-go/kubernetes/typed/batch/v2alpha1 \
+    k8s.io/client-go/kubernetes/typed/certificates/v1beta1 \
+    k8s.io/client-go/kubernetes/typed/core/v1 \
+    k8s.io/client-go/kubernetes/typed/events/v1beta1 \
+    k8s.io/client-go/kubernetes/typed/extensions/v1beta1 \
+    k8s.io/client-go/kubernetes/typed/networking/v1 \
+    k8s.io/client-go/kubernetes/typed/policy/v1beta1 \
+    k8s.io/client-go/kubernetes/typed/rbac/v1 \
+    k8s.io/client-go/kubernetes/typed/rbac/v1alpha1 \
+    k8s.io/client-go/kubernetes/typed/rbac/v1beta1 \
+    k8s.io/client-go/kubernetes/typed/scheduling/v1alpha1 \
+    k8s.io/client-go/kubernetes/typed/settings/v1alpha1 \
+    k8s.io/client-go/kubernetes/typed/storage/v1 \
+    k8s.io/client-go/kubernetes/typed/storage/v1alpha1 \
+    k8s.io/client-go/kubernetes/typed/storage/v1beta1 \
+    k8s.io/client-go/pkg/version \
+    k8s.io/client-go/plugin/pkg/client/auth \
+    k8s.io/client-go/plugin/pkg/client/auth/azure \
+    k8s.io/client-go/plugin/pkg/client/auth/gcp \
+    k8s.io/client-go/plugin/pkg/client/auth/oidc \
+    k8s.io/client-go/plugin/pkg/client/auth/openstack \
+    k8s.io/client-go/rest \
+    k8s.io/client-go/rest/watch \
+    k8s.io/client-go/tools/auth \
+    k8s.io/client-go/tools/cache \
+    k8s.io/client-go/tools/clientcmd \
+    k8s.io/client-go/tools/pager \
+    k8s.io/client-go/transport \
+    k8s.io/client-go/util/buffer \
+    k8s.io/client-go/util/cert \
+    k8s.io/client-go/util/flowcontrol \
+    k8s.io/client-go/util/homedir \
+    k8s.io/client-go/util/integer \
+    k8s.io/client-go/util/jsonpath \
+    k8s.io/kubernetes/pkg/kubectl/proxy \
+    k8s.io/kubernetes/pkg/kubectl/util
+
+RUN mv ${TEMP_GOPATH}/src/github.com/runconduit $GOPATH/src/github.com/runconduit
