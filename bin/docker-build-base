@@ -13,8 +13,4 @@ fi
 
 tag="2017-10-30.01"
 
-if (docker_pull base "${tag}"); then
-    echo "$(docker_repo base):${tag}"
-else
-    docker_build base "${tag}" Dockerfile-base
-fi
+docker_build base "${tag}" Dockerfile-base
