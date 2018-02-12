@@ -3,9 +3,12 @@ package cmd
 import (
 	"fmt"
 	"io"
-	"os"
 	"regexp"
 	"text/template"
+
+	"bytes"
+
+	"os"
 
 	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/runconduit/conduit/pkg/version"
@@ -408,6 +411,8 @@ type installConfig struct {
 	ControllerLogLevel       string
 	ControllerComponentLabel string
 	CreatedByAnnotation      string
+	ControllerProxy          string
+	InitContainers           string
 }
 
 var (
@@ -425,6 +430,7 @@ var installCmd = &cobra.Command{
 	Short: "Output Kubernetes configs to install Conduit",
 	Long:  "Output Kubernetes configs to install Conduit.",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		buf := new(bytes.Buffer)
 		if err := validate(); err != nil {
 			return err
 		}
@@ -442,8 +448,14 @@ var installCmd = &cobra.Command{
 			ControllerLogLevel:       controllerLogLevel,
 			ControllerComponentLabel: k8s.ControllerComponentLabel,
 			CreatedByAnnotation:      k8s.CreatedByAnnotation,
+			ControllerProxy:          printSideCar(),
+			InitContainers:           initContainers(),
 		}
-		return render(config, os.Stdout)
+		err := render(config, buf)
+		if err != nil {
+			return err
+		}
+		return injectYAML(buf, os.Stdout)
 	},
 }
 
@@ -478,6 +490,10 @@ func validate() error {
 		return fmt.Errorf("--controller-log-level must be one of: panic, fatal, error, warn, info, debug")
 	}
 	return nil
+}
+
+func installNamespace() {
+
 }
 
 func init() {

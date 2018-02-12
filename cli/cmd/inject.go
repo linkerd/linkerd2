@@ -304,6 +304,127 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec) enhancedPodTemplateSpec {
 	}
 }
 
+func printSideCar() string {
+
+	sidecar := v1.Container{
+		Name:            "conduit-proxy",
+		Image:           fmt.Sprintf("%s:%s", proxyImage, conduitVersion),
+		ImagePullPolicy: v1.PullPolicy(imagePullPolicy),
+		SecurityContext: &v1.SecurityContext{
+			RunAsUser: &proxyUID,
+		},
+		Ports: []v1.ContainerPort{
+			v1.ContainerPort{
+				Name:          "conduit-proxy",
+				ContainerPort: int32(inboundPort),
+			},
+		},
+		Env: []v1.EnvVar{
+			v1.EnvVar{Name: "CONDUIT_PROXY_LOG", Value: proxyLogLevel},
+			v1.EnvVar{
+				Name:  "CONDUIT_PROXY_CONTROL_URL",
+				Value: fmt.Sprintf("tcp://proxy-api.%s.svc.cluster.local:%d", controlPlaneNamespace, proxyAPIPort),
+			},
+			v1.EnvVar{Name: "CONDUIT_PROXY_CONTROL_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", proxyControlPort)},
+			v1.EnvVar{Name: "CONDUIT_PROXY_PRIVATE_LISTENER", Value: fmt.Sprintf("tcp://127.0.0.1:%d", outboundPort)},
+			v1.EnvVar{Name: "CONDUIT_PROXY_PUBLIC_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", inboundPort)},
+			v1.EnvVar{
+				Name:      "CONDUIT_PROXY_NODE_NAME",
+				ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "spec.nodeName"}},
+			},
+			v1.EnvVar{
+				Name:      "CONDUIT_PROXY_POD_NAME",
+				ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.name"}},
+			},
+			v1.EnvVar{
+				Name:      "CONDUIT_PROXY_POD_NAMESPACE",
+				ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
+			},
+			v1.EnvVar{
+				Name:  "CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN",
+				Value: "Kubernetes",
+			},
+		},
+	}
+	sidecarStr, err := yaml.Marshal(sidecar)
+	if err != nil {
+		os.Exit(1)
+	}
+	return string(sidecarStr)
+}
+
+func initContainers() string {
+	privilegeBool := false
+	initArgs := []string{
+		"--incoming-proxy-port", fmt.Sprintf("%d", inboundPort),
+		"--outgoing-proxy-port", fmt.Sprintf("%d", outboundPort),
+		"--proxy-uid", fmt.Sprintf("%d", proxyUID),
+	}
+	initContainer := v1.Container{
+		Name:            "conduit-init",
+		Image:           fmt.Sprintf("%s:%s", initImage, conduitVersion),
+		ImagePullPolicy: v1.PullPolicy(imagePullPolicy),
+		Args:            initArgs,
+		SecurityContext: &v1.SecurityContext{
+			Capabilities: &v1.Capabilities{
+				Add: []v1.Capability{v1.Capability("NET_ADMIN")},
+			},
+			Privileged: &privilegeBool,
+		},
+	}
+	initContainerStr, err := yaml.Marshal(initContainer)
+	if err != nil {
+		os.Exit(1)
+	}
+	return string(initContainerStr)
+
+}
+
+func injectYAML(in io.Reader, out io.Writer) error {
+	reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(in, 4096))
+	// Iterate over all YAML objects in the input
+	for {
+		// Read a single YAML object
+		bytes, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		// Unmarshal the object enough to read the Kind field
+		var meta metaV1.TypeMeta
+		if err := yaml.Unmarshal(bytes, &meta); err != nil {
+			return err
+		}
+
+		var injected interface{} = nil
+		switch meta.Kind {
+		case "Deployment":
+			injected, err = injectDeployment(bytes)
+		case "ReplicationController":
+			injected, err = injectReplicationController(bytes)
+		case "ReplicaSet":
+			injected, err = injectReplicaSet(bytes)
+		case "Job":
+			injected, err = injectJob(bytes)
+		case "DaemonSet":
+			injected, err = injectDaemonSet(bytes)
+		}
+		output := bytes
+		if injected != nil {
+			output, err = yaml.Marshal(injected)
+			if err != nil {
+				return err
+			}
+		}
+		out.Write(output)
+		fmt.Println("---")
+	}
+	return nil
+}
+
 /* The v1.PodSpec struct contains a field annotation that causes the
  * InitContainers field to be omitted when serializing the struct as json.
  * Since we wish for this field to be included, we have to define our own
