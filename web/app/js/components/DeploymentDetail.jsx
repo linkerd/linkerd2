@@ -2,12 +2,12 @@ import _ from 'lodash';
 import ConduitSpinner from "./ConduitSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
 import { incompleteMeshMessage } from './util/CopyUtils.jsx';
+import MetricsSummary from './MetricsSummary.jsx';
 import PageHeader from './PageHeader.jsx';
 import React from 'react';
 import ResourceHealthOverview from './ResourceHealthOverview.jsx';
-import ResourceMetricsOverview from './ResourceMetricsOverview.jsx';
 import UpstreamDownstream from './UpstreamDownstream.jsx';
-import { getPodsByDeployment, processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
+import { getPodsByDeployment, processRollupMetrics } from './util/MetricUtils.js';
 import './../../css/deployment.css';
 import 'whatwg-fetch';
 
@@ -61,7 +61,7 @@ export default class DeploymentDetail extends React.Component {
     let urls = this.api.urlsForResource;
 
     let podListFetch = this.api.fetchPods();
-    let deployMetricsUrl = urls["deployment"].url(this.state.deploy).ts;
+    let deployMetricsUrl = urls["deployment"].url(this.state.deploy).rollup;
     let upstreamRollupUrl = urls["upstream_deployment"].url(this.state.deploy).rollup;
     let downstreamRollupUrl = urls["downstream_deployment"].url(this.state.deploy).rollup;
 
@@ -70,11 +70,9 @@ export default class DeploymentDetail extends React.Component {
     let downstreamFetch = this.api.fetchMetrics(downstreamRollupUrl);
 
     // expose serverPromise for testing
-    this.serverPromise = Promise.all([
-      deployFetch, upstreamFetch, downstreamFetch, podListFetch
-    ])
+    this.serverPromise = Promise.all([deployFetch, upstreamFetch, downstreamFetch, podListFetch])
       .then(([deployMetrics, upstreamRollup, downstreamRollup, podList]) => {
-        let tsByDeploy = processTimeseriesMetrics(deployMetrics.metrics, "targetDeploy");
+        let deployRollup = processRollupMetrics(deployMetrics.metrics, "targetDeploy");
         let upstreamMetrics = processRollupMetrics(upstreamRollup.metrics, "sourceDeploy");
         let downstreamMetrics = processRollupMetrics(downstreamRollup.metrics, "targetDeploy");
 
@@ -83,7 +81,8 @@ export default class DeploymentDetail extends React.Component {
         this.setState({
           added: deploy.added,
           pods: deploy.pods,
-          deployTs: _.get(tsByDeploy, this.state.deploy, {}),
+          deployMetrics: _.get(deployRollup, 0, {}),
+          deployTs: {},
           upstreamMetrics: upstreamMetrics,
           downstreamMetrics: downstreamMetrics,
           lastUpdated: Date.now(),
@@ -114,6 +113,9 @@ export default class DeploymentDetail extends React.Component {
     let currentSuccessRate = _.get(_.last(srTs), "value");
 
     return [
+      <MetricsSummary
+        key="metrics-summary"
+        metrics={this.state.deployMetrics} />,
       <ResourceHealthOverview
         key="deploy-health-pane"
         resourceName={this.state.deploy}
@@ -122,13 +124,6 @@ export default class DeploymentDetail extends React.Component {
         upstreamMetrics={this.state.upstreamMetrics}
         downstreamMetrics={this.state.downstreamMetrics}
         deploymentAdded={this.state.added} />,
-      _.isEmpty(this.state.deployTs) ? null :
-        <ResourceMetricsOverview
-          key="stat-pane"
-          resourceType="deployment"
-          lastUpdated={this.state.lastUpdated}
-          timeseries={this.state.deployTs}
-          window={this.api.getMetricsWindow()} />,
       <UpstreamDownstream
         key="deploy-upstream-downstream"
         resourceType="deployment"
