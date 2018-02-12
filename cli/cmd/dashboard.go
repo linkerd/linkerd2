@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
-	"net/http"
 	"os"
 
 	"github.com/pkg/browser"
+	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
+	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/runconduit/conduit/pkg/shell"
 	"github.com/spf13/cobra"
@@ -35,13 +37,18 @@ var dashboardCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		dashboardAvailable, err := isDashboardAvailable(http.DefaultClient, url.String())
+		client, err := newPublicAPIClient()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to initialize API Client: %+v\n", err)
+		}
+
+		dashboardAvailable, err := isDashboardAvailable(client)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed while checking availability of dashboard: %+v\n", err)
 		}
 
 		if !dashboardAvailable {
-			fmt.Printf("Conduit dashboard is not installed in cluster")
+			fmt.Fprint(os.Stderr, "Conduit dashboard might not be installed in your cluster\n")
 			os.Exit(1)
 		}
 
@@ -68,16 +75,18 @@ var dashboardCmd = &cobra.Command{
 	},
 }
 
-func isDashboardAvailable(client *http.Client, url string) (bool, error) {
-	req, err := client.Get(url)
+func isDashboardAvailable(client pb.ApiClient) (bool, error) {
+	res, err := client.SelfCheck(context.Background(), &healthcheckPb.SelfCheckRequest{})
 	if err != nil {
 		return false, err
 	}
-	if req.StatusCode >= 400 {
-		return false, nil
+
+	for _, result := range res.Results {
+		if result.Status != healthcheckPb.CheckStatus_OK {
+			return false, nil
+		}
 	}
 	return true, nil
-
 }
 
 func init() {

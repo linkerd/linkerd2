@@ -1,22 +1,30 @@
 package cmd
 
 import (
-	"fmt"
-	"net/http"
-	"net/http/httptest"
+	"errors"
 	"testing"
+
+	"github.com/runconduit/conduit/controller/api/public"
+	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 )
 
-type MockHttpClient struct{}
-
 func TestDashboardAvailability(t *testing.T) {
-	t.Run("Returns true if dashboard HTTP request status code is 200", func(t *testing.T) {
-		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintln(w, "Hello, client")
-		}))
-		defer ts.Close()
+	t.Run("Returns true if api client has responds with a list of Self Checks that are OK", func(t *testing.T) {
 
-		dashboardAvailable, err := isDashboardAvailable(ts.Client(), ts.URL)
+		mockSelfCheckResponse := &healthcheckPb.SelfCheckResponse{
+			Results: []*healthcheckPb.CheckResult{
+				{
+					SubsystemName: "TestSystem",
+					Status:        healthcheckPb.CheckStatus_OK,
+				},
+			},
+		}
+
+		mockPublicApi := &public.MockConduitApiClient{
+			SelfCheckResponseToReturn: mockSelfCheckResponse,
+		}
+
+		dashboardAvailable, err := isDashboardAvailable(mockPublicApi)
 		if err != nil {
 			t.Fatalf("Expected to not receive an error but got: %+v\n", err)
 		}
@@ -26,34 +34,40 @@ func TestDashboardAvailability(t *testing.T) {
 		}
 	})
 
-	t.Run("Returns true if dashboard HTTP request status code is 300", func(t *testing.T) {
-		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusPermanentRedirect)
-		}))
-		defer ts.Close()
-
-		dashboardAvailable, err := isDashboardAvailable(ts.Client(), ts.URL)
-		if err != nil {
-			t.Fatalf("Expected to not receive an error but got: %+v\n", err)
+	t.Run("Returns false if public api client returns a list of Self Checks that have failed", func(t *testing.T) {
+		mockSelfCheckResponse := &healthcheckPb.SelfCheckResponse{
+			Results: []*healthcheckPb.CheckResult{
+				{
+					SubsystemName: "TestSystem",
+					Status:        healthcheckPb.CheckStatus_FAIL,
+				},
+			},
 		}
 
-		if !dashboardAvailable {
-			t.Fatalf("Expected dashboard available to be true but got: %t", dashboardAvailable)
+		mockPublicApi := &public.MockConduitApiClient{
+			SelfCheckResponseToReturn: mockSelfCheckResponse,
 		}
-	})
-	t.Run("dashboardAvailable is false if dashboard HTTP request status code is 500", func(t *testing.T) {
-		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusInternalServerError)
-		}))
-		defer ts.Close()
 
-		dashboardAvailable, err := isDashboardAvailable(ts.Client(), ts.URL)
+		dashboardAvailable, err := isDashboardAvailable(mockPublicApi)
 		if err != nil {
 			t.Fatalf("Expected to not receive an error but got: %+v\n", err)
 		}
 
 		if dashboardAvailable {
-			t.Fatalf("Expected dashboard available to be true but got: %t", dashboardAvailable)
+			t.Fatalf("Expected dashboard available to be false but got: %t", dashboardAvailable)
+		}
+	})
+
+	t.Run("Return false when public API Self Check fails to make a request", func(t *testing.T) {
+		mockPublicApi := &public.MockConduitApiClient{
+			ErrorToReturn: errors.New("expected"),
+		}
+		dashboardAvailable, err := isDashboardAvailable(mockPublicApi)
+		if err == nil {
+			t.Fatalf("Expected error to not be nil")
+		}
+		if dashboardAvailable {
+			t.Fatalf("Expected dashboard available to return false but gotL %t", dashboardAvailable)
 		}
 	})
 }
