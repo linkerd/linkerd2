@@ -5,7 +5,7 @@
 #
 # When this file is changed, run `bin/update-go-deps-shas`.
 
-FROM golang:1.9.1
+FROM golang:1.9.4
 WORKDIR /go/src/github.com/runconduit/conduit
 
 # Download `dep` without being sensitive to changes to Gopkg.{toml,lock}.
