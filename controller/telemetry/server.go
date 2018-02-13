@@ -186,11 +186,17 @@ func (s *server) Query(ctx context.Context, req *read.QueryRequest) (*read.Query
 
 	samples := make([]*read.Sample, 0)
 
+	if req.EndMs == 0 {
+		err := fmt.Errorf("EndMs timestamp missing from request: %+v", req)
+		log.Errorf("%s", err)
+		return nil, err
+	}
+	end := time.Unix(0, req.EndMs*int64(time.Millisecond))
+
 	if req.StartMs != 0 && req.EndMs != 0 && req.Step != "" {
 		// timeseries query
 
 		start := time.Unix(0, req.StartMs*int64(time.Millisecond))
-		end := time.Unix(0, req.EndMs*int64(time.Millisecond))
 		step, err := time.ParseDuration(req.Step)
 		if err != nil {
 			log.Errorf("ParseDuration(%+v) failed with: %+v", req.Step, err)
@@ -221,9 +227,9 @@ func (s *server) Query(ctx context.Context, req *read.QueryRequest) (*read.Query
 	} else {
 		// single data point (aka summary) query
 
-		res, err := s.prometheusAPI.Query(ctx, req.Query, time.Time{})
+		res, err := s.prometheusAPI.Query(ctx, req.Query, end)
 		if err != nil {
-			log.Errorf("Query(%+v, %+v) failed with: %+v", req.Query, time.Time{}, err)
+			log.Errorf("Query(%+v, %+v) failed with: %+v", req.Query, end, err)
 			return nil, err
 		}
 		log.Debugf("Query response: %+v", res)

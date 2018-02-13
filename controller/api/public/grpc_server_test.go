@@ -13,13 +13,21 @@ import (
 )
 
 type mockTelemetry struct {
+	test   *testing.T
 	client telemetry.TelemetryClient
-	res    *telemetry.QueryResponse
+	tRes   *telemetry.QueryResponse
+	mReq   *pb.MetricRequest
 }
 
 // satisfies telemetry.TelemetryClient
 func (m *mockTelemetry) Query(ctx context.Context, in *telemetry.QueryRequest, opts ...grpc.CallOption) (*telemetry.QueryResponse, error) {
-	return m.res, nil
+	if in.EndMs == 0 {
+		m.test.Errorf("EndMs not set in telemetry request: %+v", in)
+	}
+	if !m.mReq.Summarize && (in.StartMs == 0 || in.Step == "") {
+		m.test.Errorf("Range params not set in timeseries request: %+v", in)
+	}
+	return m.tRes, nil
 }
 func (m *mockTelemetry) ListPods(ctx context.Context, in *telemetry.ListPodsRequest, opts ...grpc.CallOption) (*conduit_public.ListPodsResponse, error) {
 	return nil, nil
@@ -64,6 +72,8 @@ func TestStat(t *testing.T) {
 					Metrics: []pb.MetricName{
 						pb.MetricName_REQUEST_RATE,
 					},
+					Summarize: true,
+					Window:    pb.TimeWindow_TEN_MIN,
 				},
 				mRes: &pb.MetricResponse{
 					Metrics: []*pb.MetricSeries{
@@ -107,7 +117,7 @@ func TestStat(t *testing.T) {
 		}
 
 		for _, tr := range responses {
-			s := newGrpcServer(&mockTelemetry{res: tr.tRes}, tap.NewTapClient(nil))
+			s := newGrpcServer(&mockTelemetry{test: t, tRes: tr.tRes, mReq: tr.mReq}, tap.NewTapClient(nil))
 
 			res, err := s.Stat(context.Background(), tr.mReq)
 			if err != nil {
