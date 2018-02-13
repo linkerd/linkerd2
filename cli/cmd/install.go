@@ -349,9 +349,8 @@ spec:
         image: {{.PrometheusImage}}
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
-        - "-storage.local.retention=6h"
-        - "-storage.local.memory-chunks=500000"
-        - "-config.file=/etc/prometheus/prometheus.yml"
+        - "--storage.tsdb.retention=6h"
+        - "--config.file=/etc/prometheus/prometheus.yml"
 
       # TODO remove/replace?
       - name: kubectl
@@ -432,7 +431,7 @@ var installCmd = &cobra.Command{
 			Namespace:                controlPlaneNamespace,
 			ControllerImage:          fmt.Sprintf("%s/controller:%s", dockerRegistry, conduitVersion),
 			WebImage:                 fmt.Sprintf("%s/web:%s", dockerRegistry, conduitVersion),
-			PrometheusImage:          "prom/prometheus:v1.8.1",
+			PrometheusImage:          "prom/prometheus:v2.1.0",
 			ControllerReplicas:       controllerReplicas,
 			WebReplicas:              webReplicas,
 			PrometheusReplicas:       prometheusReplicas,
