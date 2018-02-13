@@ -116,7 +116,7 @@ jobs:
 
       script:
         # We re-run the tests here in *release* (--release) mode since the
-        # `test` stage only runs them in *debug* node.
+        # `test` stage only runs them in *debug* mode.
         - bin/docker-build
 
       after_success:
