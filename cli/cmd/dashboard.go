@@ -39,7 +39,8 @@ var dashboardCmd = &cobra.Command{
 
 		client, err := newPublicAPIClient()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to initialize API Client: %+v\n", err)
+			fmt.Fprintf(os.Stderr, "Failed to initialize Conduit API client: %+v\n", err)
+			os.Exit(1)
 		}
 
 		dashboardAvailable, err := isDashboardAvailable(client)
@@ -48,7 +49,7 @@ var dashboardCmd = &cobra.Command{
 		}
 
 		if !dashboardAvailable {
-			fmt.Fprint(os.Stderr, "Conduit dashboard might not be installed in your cluster\n")
+			fmt.Fprint(os.Stderr, "Conduit web deployment is not installed in your cluster\n")
 			os.Exit(1)
 		}
 
