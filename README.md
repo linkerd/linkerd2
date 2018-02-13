@@ -40,6 +40,7 @@ getting started.
 
 6. Optionally, install a [demo application][conduit-demo] to run with Conduit.
 
+7. Add [your own service][conduit-inject] to the Conduit mesh!
 
 ## Working in this repo ##
 
@@ -72,6 +73,7 @@ specific language governing permissions and limitations under the License.
 [ci-badge]: https://travis-ci.org/runconduit/conduit.svg?branch=master
 [coc]: https://github.com/linkerd/linkerd/wiki/Linkerd-code-of-conduct
 [conduit-demo]: https://conduit.io/getting-started/#install-the-demo-app
+[conduit-inject]: https://conduit.io/adding-your-service/
 [conduit-docs]: https://conduit.io/docs/
 <!-- [examples]: https://github.com/runconduit/conduit-examples -->
 [l5d]: https://linkerd.io/
