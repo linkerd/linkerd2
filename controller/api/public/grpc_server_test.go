@@ -3,6 +3,8 @@ package public
 import (
 	"context"
 	"reflect"
+	"sort"
+	"sync/atomic"
 	"testing"
 
 	tap "github.com/runconduit/conduit/controller/gen/controller/tap"
@@ -17,10 +19,19 @@ type mockTelemetry struct {
 	client telemetry.TelemetryClient
 	tRes   *telemetry.QueryResponse
 	mReq   *pb.MetricRequest
+	ts     int64
 }
 
 // satisfies telemetry.TelemetryClient
 func (m *mockTelemetry) Query(ctx context.Context, in *telemetry.QueryRequest, opts ...grpc.CallOption) (*telemetry.QueryResponse, error) {
+
+	if !atomic.CompareAndSwapInt64(&m.ts, 0, in.EndMs) {
+		ts := atomic.LoadInt64(&m.ts)
+		if ts != in.EndMs {
+			m.test.Errorf("Timestamp changed across queries: %+v / %+v / %+v ", in, ts, in.EndMs)
+		}
+	}
+
 	if in.EndMs == 0 {
 		m.test.Errorf("EndMs not set in telemetry request: %+v", in)
 	}
@@ -32,6 +43,13 @@ func (m *mockTelemetry) Query(ctx context.Context, in *telemetry.QueryRequest, o
 func (m *mockTelemetry) ListPods(ctx context.Context, in *telemetry.ListPodsRequest, opts ...grpc.CallOption) (*conduit_public.ListPodsResponse, error) {
 	return nil, nil
 }
+
+// sorting results makes it easier to compare against expected output
+type ByHV []*pb.HistogramValue
+
+func (hv ByHV) Len() int           { return len(hv) }
+func (hv ByHV) Swap(i, j int)      { hv[i], hv[j] = hv[j], hv[i] }
+func (hv ByHV) Less(i, j int) bool { return hv[i].Label <= hv[j].Label }
 
 type testResponse struct {
 	tRes *telemetry.QueryResponse
@@ -114,6 +132,63 @@ func TestStat(t *testing.T) {
 					},
 				},
 			},
+
+			testResponse{
+				tRes: &telemetry.QueryResponse{
+					Metrics: []*telemetry.Sample{
+						&telemetry.Sample{
+							Values: []*telemetry.SampleValue{
+								&telemetry.SampleValue{Value: 1, TimestampMs: 2},
+							},
+							Labels: map[string]string{
+								sourceDeployLabel: "sourceDeployLabel",
+								targetDeployLabel: "targetDeployLabel",
+							},
+						},
+					},
+				},
+				mReq: &pb.MetricRequest{
+					Metrics: []pb.MetricName{
+						pb.MetricName_LATENCY,
+					},
+					Summarize: true,
+					Window:    pb.TimeWindow_TEN_MIN,
+				},
+				mRes: &pb.MetricResponse{
+					Metrics: []*pb.MetricSeries{
+						&pb.MetricSeries{
+							Name: pb.MetricName_LATENCY,
+							Metadata: &pb.MetricMetadata{
+								SourceDeploy: "sourceDeployLabel",
+								TargetDeploy: "targetDeployLabel",
+							},
+							Datapoints: []*pb.MetricDatapoint{
+								&pb.MetricDatapoint{
+									Value: &pb.MetricValue{Value: &pb.MetricValue_Histogram{
+										Histogram: &pb.Histogram{
+											Values: []*pb.HistogramValue{
+												&pb.HistogramValue{
+													Label: pb.HistogramLabel_P50,
+													Value: 1,
+												},
+												&pb.HistogramValue{
+													Label: pb.HistogramLabel_P95,
+													Value: 1,
+												},
+												&pb.HistogramValue{
+													Label: pb.HistogramLabel_P99,
+													Value: 1,
+												},
+											},
+										},
+									}},
+									TimestampMs: 2,
+								},
+							},
+						},
+					},
+				},
+			},
 		}
 
 		for _, tr := range responses {
@@ -122,6 +197,11 @@ func TestStat(t *testing.T) {
 			res, err := s.Stat(context.Background(), tr.mReq)
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
+			}
+
+			switch res.Metrics[0].Name {
+			case pb.MetricName_LATENCY:
+				sort.Sort(ByHV(res.Metrics[0].Datapoints[0].Value.GetHistogram().Values))
 			}
 
 			if !reflect.DeepEqual(res, tr.mRes) {
