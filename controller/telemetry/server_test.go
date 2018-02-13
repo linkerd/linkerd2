@@ -42,10 +42,19 @@ func TestServerResponses(t *testing.T) {
 	responses := []testResponse{
 
 		testResponse{
+			err:     errors.New("EndMs timestamp missing from request: query:\"fake query0\" "),
+			promRes: &model.Scalar{},
+			queryReq: &read.QueryRequest{
+				Query: "fake query0",
+			},
+			queryRes: nil,
+		},
+		testResponse{
 			err:     errors.New("Unexpected query result type (expected Vector): scalar"),
 			promRes: &model.Scalar{},
 			queryReq: &read.QueryRequest{
-				Query: "fake query",
+				Query: "fake query1",
+				EndMs: 1,
 			},
 			queryRes: nil,
 		},
@@ -53,7 +62,8 @@ func TestServerResponses(t *testing.T) {
 			err:     errors.New("Unexpected query result type (expected Vector): matrix"),
 			promRes: model.Matrix{},
 			queryReq: &read.QueryRequest{
-				Query: "fake query",
+				Query: "fake query2",
+				EndMs: 1,
 			},
 			queryRes: nil,
 		},
@@ -61,7 +71,7 @@ func TestServerResponses(t *testing.T) {
 			err:     errors.New("Unexpected query result type (expected Matrix): vector"),
 			promRes: model.Vector{},
 			queryReq: &read.QueryRequest{
-				Query:   "fake query",
+				Query:   "fake query3",
 				StartMs: 1,
 				EndMs:   2,
 				Step:    "10s",
@@ -83,7 +93,8 @@ func TestServerResponses(t *testing.T) {
 				},
 			},
 			queryReq: &read.QueryRequest{
-				Query: "fake query",
+				Query: "fake query4",
+				EndMs: 1,
 			},
 			queryRes: &read.QueryResponse{
 				Metrics: []*read.Sample{
@@ -117,7 +128,7 @@ func TestServerResponses(t *testing.T) {
 				},
 			},
 			queryReq: &read.QueryRequest{
-				Query:   "fake query",
+				Query:   "fake query5",
 				StartMs: 1,
 				EndMs:   2,
 				Step:    "10s",

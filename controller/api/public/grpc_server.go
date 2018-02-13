@@ -104,7 +104,7 @@ func (s *grpcServer) Stat(ctx context.Context, req *pb.MetricRequest) (*pb.Metri
 	for _ = range req.Metrics {
 		result := <-resultsCh
 		if result.err != nil {
-			log.Errorf("Stat -> queryMetric failed with: %s", err)
+			log.Errorf("Stat -> queryMetric failed with: %s", result.err)
 			err = result.err
 		} else {
 			for i := range result.series {
@@ -406,14 +406,15 @@ func (s *grpcServer) query(ctx context.Context, req *pb.MetricRequest, query str
 		Query: query,
 	}
 
-	if !req.Summarize {
-		start, end, step, err := queryParams(req)
-		if err != nil {
-			return queryResult{res: telemPb.QueryResponse{}, err: err}
-		}
+	start, end, step, err := queryParams(req)
+	if err != nil {
+		return queryResult{res: telemPb.QueryResponse{}, err: err}
+	}
 
+	// EndMs always required to ensure deterministic timestamps
+	queryReq.EndMs = end
+	if !req.Summarize {
 		queryReq.StartMs = start
-		queryReq.EndMs = end
 		queryReq.Step = step
 	}
 

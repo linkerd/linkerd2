@@ -14,9 +14,17 @@ service Telemetry {
 }
 
 message QueryRequest {
+  // required
   string query = 1;
+
+  // required for timeseries queries
   int64 start_ms = 2;
+
+  // required for timeseries queries
+  // optional for single data point, but if unset, results will have non-deterministic timestamps
   int64 end_ms = 3;
+
+  // required for timeseries queries
   string step = 4;
 }
 
