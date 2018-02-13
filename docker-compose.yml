@@ -102,12 +102,11 @@ services:
     - -template-dir=/templates
 
   prometheus:
-    image: prom/prometheus:v1.8.1
+    image: prom/prometheus:v2.1.0
     ports:
     - 9090:9090
     volumes:
     - .prometheus.dev.yml:/etc/prometheus/prometheus.yml:ro
     command:
-    - -config.file=/etc/prometheus/prometheus.yml
-    - -storage.local.memory-chunks=500000
-    - -storage.local.retention=6h
+    - --config.file=/etc/prometheus/prometheus.yml
+    - --storage.tsdb.retention=6h

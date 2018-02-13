@@ -333,9 +333,8 @@ spec:
         image: PrometheusImage
         imagePullPolicy: ImagePullPolicy
         args:
-        - "-storage.local.retention=6h"
-        - "-storage.local.memory-chunks=500000"
-        - "-config.file=/etc/prometheus/prometheus.yml"
+        - "--storage.tsdb.retention=6h"
+        - "--config.file=/etc/prometheus/prometheus.yml"
 
       # TODO remove/replace?
       - name: kubectl
