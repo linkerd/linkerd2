@@ -27,20 +27,20 @@ getting started.
 
 ## Getting started with Conduit
 
-1. Install the Conduit CLI `curl https://run.conduit.io/install | sh `
+1. Install the Conduit CLI with `curl https://run.conduit.io/install | sh `.
 
-2. Copy `/Users/username/.conduit/bin/conduit` into your PATH
+2. Add `$HOME/.conduit/bin` to your `PATH`.
 
-3. Run `conduit install | kubectl apply -f -` to install Conduit
+3. Install Conduit into your Kubernetes cluster with:
+  `conduit install | kubectl apply -f -`.
 
-4. Check to make sure you're running the [latest version][releases] of Conduit
-with `conduit version`
+4. Verify that the installation succeeded with `conduit check`.
 
-5. Open a local version of the Conduit controller with `conduit dashboard`
+5. Explore the Conduit controller with `conduit dashboard`.
 
-6. (Optional) To install a demo application for your Conduit instance, visit
-[this section on Conduit docs][conduit-demo]
+6. Optionally, install a [demo application][conduit-demo] to run with Conduit.
 
+7. Add [your own service][conduit-inject] to the Conduit mesh!
 
 ## Working in this repo ##
 
@@ -73,6 +73,7 @@ specific language governing permissions and limitations under the License.
 [ci-badge]: https://travis-ci.org/runconduit/conduit.svg?branch=master
 [coc]: https://github.com/linkerd/linkerd/wiki/Linkerd-code-of-conduct
 [conduit-demo]: https://conduit.io/getting-started/#install-the-demo-app
+[conduit-inject]: https://conduit.io/adding-your-service/
 [conduit-docs]: https://conduit.io/docs/
 <!-- [examples]: https://github.com/runconduit/conduit-examples -->
 [l5d]: https://linkerd.io/
