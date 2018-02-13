@@ -1,0 +1,28 @@
+#!/bin/sh
+
+set -eu
+
+if [ $# -ne 0 ]; then
+    echo "no arguments allowed for $(basename $0), given: $@" >&2
+    exit 64
+fi
+
+. bin/_tag.sh
+
+tag="$(head_root_tag)"
+
+# copy the newly built conduit cli binaries to the local system
+for os in ${OS:-darwin linux windows} ; do
+  output_dir=./target/go/${os}_amd64_cgo
+  mkdir -p ${output_dir}
+  if [ "$os" = "windows" ]; then
+    exe=.exe
+  else
+    exe=
+  fi
+  CGO_ENABLED=0 GOOS=${os} go build \
+    -installsuffix cgo \
+	-ldflags "-X github.com/runconduit/conduit/pkg/version.Version=${tag}" \
+	-o "${output_dir}/conduit${exe}" \
+    ./cli
+done

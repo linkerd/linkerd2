@@ -7,17 +7,26 @@ if [ $# -ne 0 ]; then
     exit 64
 fi
 
-. bin/_docker.sh
 . bin/_tag.sh
 
-dockerfile=controller/Dockerfile
-
-validate_go_deps_tag $dockerfile
-
-(
-    bin/docker-build-base
-    bin/docker-build-go-deps
-) >/dev/null
-
 tag="$(head_root_tag)"
-docker_build controller $tag $dockerfile --build-arg CONDUIT_VERSION=$tag
+
+output_dir=./target/go/linux_amd64_cgo
+mkdir -p ${output_dir}
+for component in \
+    destination \
+    proxy-api \
+    public-api \
+    tap \
+    telemetry \
+    ; do
+  CGO_ENABLED=0 GOOS=linux go build \
+      -installsuffix cgo \
+	  -ldflags "-X github.com/runconduit/conduit/pkg/version.Version=${tag}" \
+	  -o "${output_dir}/$component" \
+	  "./controller/cmd/$component"
+done
+
+bin/docker-build-base > /dev/null
+. bin/_docker.sh
+docker_build controller $tag controller/Dockerfile
