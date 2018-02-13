@@ -115,9 +115,9 @@ jobs:
         - export BUILD_DEBUG=1 DOCKER_TRACE=1
 
       script:
-        # Proxy tests are run in the `test` stage, re-running them here would be
-        # redundant/slow. #280
-        - PROXY_SKIP_TESTS=1 bin/docker-build
+        # We re-run the tests here in *release* (--release) mode since the
+        # `test` stage only runs them in *debug* mode.
+        - bin/docker-build
 
       after_success:
         - bin/docker-push-deps
