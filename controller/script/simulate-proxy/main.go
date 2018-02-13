@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"math"
 	"math/rand"
 	"net/http"
 	"strconv"
@@ -92,12 +93,30 @@ var (
 		http.StatusNetworkAuthenticationRequired,
 	}
 
-	streamSummary = &pb.StreamSummary{
-		BytesSent:  12345,
-		DurationMs: 10,
-		FramesSent: 4,
-	}
 	ports = []uint32{3333, 6262}
+
+	// latencyBucketBounds holds the maximum value (inclusive, in tenths of a
+	// millisecond) that may be counted in a given histogram bucket.
+
+	// These values are one order of magnitude greater than the controller's
+	// Prometheus buckets, because the proxy will reports latencies in tenths
+	// of a millisecond rather than whole milliseconds.
+	latencyBucketBounds = [26]uint32{
+		// prometheus.LinearBuckets(1, 1, 5),
+		10, 20, 30, 40, 50,
+		// prometheus.LinearBuckets(10, 10, 5),
+		100, 200, 300, 400, 50,
+		// prometheus.LinearBuckets(100, 100, 5),
+		1000, 2000, 3000, 4000, 5000,
+		// prometheus.LinearBuckets(1000, 1000, 5),
+		10000, 20000, 30000, 40000, 5000,
+		// prometheus.LinearBuckets(10000, 10000, 5),
+		100000, 200000, 300000, 400000, 500000,
+		// Prometheus implicitly creates a max bucket for everything that
+		// falls outside of the highest-valued bucket, but we need to
+		// create it explicitly.
+		math.MaxUint32,
+	}
 )
 
 func randomPort() uint32 {
@@ -108,18 +127,15 @@ func randomCount() uint32 {
 	return uint32(rand.Int31n(100) + 1)
 }
 
-func randomLatencies(count uint32) (latencies []*pb.Latency) {
+func randomLatencies(count uint32) []uint32 {
+	latencies := make([]uint32, len(latencyBucketBounds))
 	for i := uint32(0); i < count; i++ {
 
-		// The latency value with precision to 100µs.
-		latencyValue := uint32(rand.Int31n(int32(time.Second / (time.Millisecond * 10))))
-		latency := pb.Latency{
-			Latency: latencyValue,
-			Count:   1,
-		}
-		latencies = append(latencies, &latency)
+		// Randomly select a bucket to increment.
+		bucket := uint32(rand.Int31n(int32(len(latencies))))
+		latencies[bucket]++
 	}
-	return
+	return latencies
 }
 
 func randomGrpcEos(count uint32) (eos []*pb.EosScope) {
@@ -130,7 +146,7 @@ func randomGrpcEos(count uint32) (eos []*pb.EosScope) {
 	for code, streamCount := range grpcResponseCodes {
 		eos = append(eos, &pb.EosScope{
 			Ctx:     &pb.EosCtx{End: &pb.EosCtx_GrpcStatusCode{GrpcStatusCode: code}},
-			Streams: streamSummaries(streamCount),
+			Streams: streamCount,
 		})
 	}
 	return
@@ -140,7 +156,7 @@ func randomH2Eos(count uint32) (eos []*pb.EosScope) {
 	for i := uint32(0); i < count; i++ {
 		eos = append(eos, &pb.EosScope{
 			Ctx:     &pb.EosCtx{End: &pb.EosCtx_Other{Other: true}},
-			Streams: streamSummaries(i),
+			Streams: uint32(rand.Int31()),
 		})
 	}
 	return
@@ -152,13 +168,6 @@ func randomGrpcResponseCode() uint32 {
 
 func randomHttpResponseCode() uint32 {
 	return uint32(httpResponseCodes[rand.Intn(len(httpResponseCodes))])
-}
-
-func streamSummaries(count uint32) (summaries []*pb.StreamSummary) {
-	for i := uint32(0); i < count; i++ {
-		summaries = append(summaries, streamSummary)
-	}
-	return
 }
 
 func stringToIp(str string) *common.IPAddress {
@@ -294,8 +303,6 @@ func main() {
 							Port: randomPort(),
 						},
 						Authority: "world.greeting:7778",
-						Method:    &common.HttpMethod{Type: &common.HttpMethod_Registered_{Registered: common.HttpMethod_GET}},
-						Path:      "/World/GreetingGrpc",
 					},
 					Count: count,
 					Responses: []*pb.ResponseScope{
@@ -303,8 +310,8 @@ func main() {
 							Ctx: &pb.ResponseCtx{
 								HttpStatusCode: http.StatusOK,
 							},
-							ResponseLatencies: randomLatencies(count),
-							Ends:              randomGrpcEos(count),
+							ResponseLatencyCounts: randomLatencies(count),
+							Ends: randomGrpcEos(count),
 						},
 					},
 				},
@@ -318,8 +325,6 @@ func main() {
 							Port: randomPort(),
 						},
 						Authority: "world.greeting:7778",
-						Method:    &common.HttpMethod{Type: &common.HttpMethod_Registered_{Registered: common.HttpMethod_GET}},
-						Path:      "/World/GreetingH2",
 					},
 					Count: count,
 					Responses: []*pb.ResponseScope{
@@ -327,12 +332,14 @@ func main() {
 							Ctx: &pb.ResponseCtx{
 								HttpStatusCode: randomHttpResponseCode(),
 							},
-							ResponseLatencies: randomLatencies(count),
-							Ends:              randomH2Eos(count),
+							ResponseLatencyCounts: randomLatencies(count),
+							Ends: randomH2Eos(count),
 						},
 					},
 				},
 			},
+
+			HistogramBucketBoundsTenthMs: latencyBucketBounds[:],
 		}
 
 		_, err = client.Report(context.Background(), req)

@@ -18,7 +18,7 @@ func TestRequestStatsFromApi(t *testing.T) {
 	t.Run("Returns string output containing the data returned by the API", func(t *testing.T) {
 		mockClient := &public.MockConduitApiClient{}
 
-		podName := "pod-1"
+		deployName := "deployment-1"
 		metricDatapoints := []*pb.MetricDatapoint{
 			{
 				Value: &pb.MetricValue{
@@ -32,7 +32,7 @@ func TestRequestStatsFromApi(t *testing.T) {
 			{
 				Name: pb.MetricName_SUCCESS_RATE,
 				Metadata: &pb.MetricMetadata{
-					TargetPod: podName,
+					TargetDeploy: deployName,
 				},
 				Datapoints: metricDatapoints,
 			},
@@ -41,13 +41,13 @@ func TestRequestStatsFromApi(t *testing.T) {
 			Metrics: series,
 		}
 
-		stats, err := requestStatsFromApi(mockClient, k8s.KubernetesPods)
+		stats, err := requestStatsFromApi(mockClient, k8s.KubernetesDeployments)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		if !strings.Contains(stats, podName) {
-			t.Fatalf("Expected response to contain [%s], but was [%s]", podName, stats)
+		if !strings.Contains(stats, deployName) {
+			t.Fatalf("Expected response to contain [%s], but was [%s]", deployName, stats)
 		}
 	})
 
@@ -98,8 +98,8 @@ func TestRenderStats(t *testing.T) {
 	t.Run("Prints stats correctly for busy example", func(t *testing.T) {
 		allSeries := make([]*pb.MetricSeries, 0)
 		for i := 0; i < 10; i++ {
-			seriesForPodX := generateMetricSeriesFor(fmt.Sprintf("pod-%d", i), int64(i))
-			allSeries = append(allSeries, seriesForPodX...)
+			seriesForDeployX := generateMetricSeriesFor(fmt.Sprintf("deployment-%d", i), int64(i))
+			allSeries = append(allSeries, seriesForDeployX...)
 		}
 
 		//shuffles
@@ -173,7 +173,7 @@ func TestSortStatsKeys(t *testing.T) {
 	})
 }
 
-func generateMetricSeriesFor(podName string, seed int64) []*pb.MetricSeries {
+func generateMetricSeriesFor(deployName string, seed int64) []*pb.MetricSeries {
 	metricDatapoints := []*pb.MetricDatapoint{
 		{
 			Value: &pb.MetricValue{
@@ -211,21 +211,21 @@ func generateMetricSeriesFor(podName string, seed int64) []*pb.MetricSeries {
 		{
 			Name: pb.MetricName_REQUEST_RATE,
 			Metadata: &pb.MetricMetadata{
-				TargetPod: podName,
+				TargetDeploy: deployName,
 			},
 			Datapoints: metricDatapoints,
 		},
 		{
 			Name: pb.MetricName_SUCCESS_RATE,
 			Metadata: &pb.MetricMetadata{
-				TargetPod: podName,
+				TargetDeploy: deployName,
 			},
 			Datapoints: metricDatapoints,
 		},
 		{
 			Name: pb.MetricName_LATENCY,
 			Metadata: &pb.MetricMetadata{
-				TargetPod: podName,
+				TargetDeploy: deployName,
 			},
 			Datapoints: latencyHistogram,
 		},

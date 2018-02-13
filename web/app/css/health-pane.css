@@ -1,6 +1,7 @@
 @import 'styles.css';
 
 .entity-health {
+  margin-top: 32px;
   margin-bottom: 32px;
 
   & .metric-title {

@@ -5,17 +5,14 @@
 #
 # When this file is changed, run `bin/update-go-deps-shas`.
 
-# Fetch `dep` and ensure that all Go dependencies are vendored.
-FROM golang:1.9.1 as build
-RUN curl -fsSL -o /usr/local/bin/dep https://github.com/golang/dep/releases/download/v0.4.1/dep-linux-amd64 && chmod +x /usr/local/bin/dep
+FROM golang:1.9.4
 WORKDIR /go/src/github.com/runconduit/conduit
-COPY . .
-RUN dep ensure
 
-# Preserve dependency sources and build artifacts without maintaining conduit
-# sources/artifacts.
-FROM golang:1.9.1
-WORKDIR /go/src/github.com/runconduit/conduit
-COPY --from=build /go/src/github.com/runconduit/conduit/vendor     vendor
-COPY --from=build /go/src/github.com/runconduit/conduit/Gopkg.toml Gopkg.toml
-COPY --from=build /go/src/github.com/runconduit/conduit/Gopkg.lock Gopkg.lock
+# Download `dep` without being sensitive to changes to Gopkg.{toml,lock}.
+COPY bin/dep bin/dep
+RUN bin/dep version
+
+# Vendor the Go dependencies.
+COPY Gopkg.toml Gopkg.lock ./
+RUN bin/dep ensure -vendor-only -v
+

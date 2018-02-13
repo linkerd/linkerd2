@@ -99,7 +99,7 @@ func TestServer(t *testing.T) {
 		}
 		seriesToReturn := make([]*pb.MetricSeries, 0)
 		for i := 0; i < 100; i++ {
-			seriesToReturn = append(seriesToReturn, &pb.MetricSeries{Name: pb.MetricName_LATENCY, Metadata: &pb.MetricMetadata{Path: fmt.Sprintf("/%d", i)}})
+			seriesToReturn = append(seriesToReturn, &pb.MetricSeries{Name: pb.MetricName_LATENCY, Metadata: &pb.MetricMetadata{TargetDeploy: fmt.Sprintf("/%d", i)}})
 		}
 		testStat := grpcCallTestCase{
 			expectedRequest: statReq,

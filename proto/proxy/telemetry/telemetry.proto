@@ -26,6 +26,16 @@ message ReportRequest {
   repeated ClientTransport client_transports = 4;
 
   repeated RequestScope requests = 5;
+
+  // The inclusive upper bound of each bucket in the response latency histogram,
+  // in tenths of a millisecond.
+  //
+  // Each ResponseScope message will contain an array of numbers representing
+  // the number of observed response latencies in each bucket of the latency
+  // histogram. Since the structure of the latency histogram will be the same
+  // across all ResponseScopes, we only need to report the max values for these
+  // buckets a single time.
+  repeated uint32 histogram_bucket_bounds_tenth_ms = 6;
 }
 
 message Process {
@@ -63,25 +73,16 @@ message RequestCtx {
   common.IPAddress source_ip = 1;
   common.TcpAddress target_addr = 2;
   string authority = 3;
-  common.HttpMethod method = 4;
-  string path = 5;
-}
-
-// A latency value in tenths of a millisecond and a count of the times
-// that latency was observed.
-message Latency {
-    // Latency value in tenths of a millisecond.
-    uint32 latency = 1;
-    // Count of occurences of this latency value.
-    uint32 count = 2;
 }
 
 message ResponseScope {
   ResponseCtx ctx = 1;
-  // Response latencies (time from request headers sent to response headers received),
-  // represented as an array of observed latency values with precision to 100µs and
-  // the number of times those values were observed, ordered by the latency value.
-  repeated Latency response_latencies = 2;
+  // Response latencies (time from request headers sent to response headers
+  // received). Represented as a histogram with buckets whose inclusive
+  // upper bounds are given in the `histogram_bucket_bounds_tenths_ms` array in
+  // `ReportRequest`. Each number in this array represents the number of times a
+  // latency falling into that bucket was observed.
+  repeated uint32 response_latency_counts = 2;
   repeated EosScope ends = 3;
 }
 
@@ -91,7 +92,7 @@ message ResponseCtx {
 
 message EosScope {
   EosCtx ctx = 1;
-  repeated StreamSummary streams = 2;
+  uint32 streams = 2;
 }
 
 message EosCtx {
@@ -100,12 +101,6 @@ message EosCtx {
     uint32 reset_error_code = 2;
     bool other = 3; // Stream ended without reset and without grpc status code
   }
-}
-
-message StreamSummary {
-  uint64 duration_ms = 1;
-  uint64 bytes_sent = 2;
-  uint32 frames_sent = 3;
 }
 
 message ReportResponse {}

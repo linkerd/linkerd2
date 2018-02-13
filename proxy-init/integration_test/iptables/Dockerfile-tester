@@ -1,4 +1,4 @@
-FROM golang:1.9.1
+FROM golang:1.9.4
 
 ADD iptables/ /go
 # Kubernetes Jobs will be retried until they return status 0,

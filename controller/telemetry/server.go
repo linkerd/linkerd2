@@ -29,7 +29,7 @@ import (
 )
 
 var (
-	requestLabels = []string{"source", "target", "source_deployment", "target_deployment", "method", "path"}
+	requestLabels = []string{"source_deployment", "target_deployment"}
 	requestsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "requests_total",
@@ -73,7 +73,7 @@ func init() {
 
 type (
 	server struct {
-		prometheusApi     v1.API
+		prometheusAPI     v1.API
 		pods              *k8s.PodIndex
 		replicaSets       *k8s.ReplicaSetStore
 		instances         instanceCache
@@ -159,7 +159,7 @@ func NewServer(addr, prometheusUrl string, ignoredNamespaces []string, kubeconfi
 	}
 
 	srv := &server{
-		prometheusApi:     v1.NewAPI(prometheusClient),
+		prometheusAPI:     v1.NewAPI(prometheusClient),
 		pods:              pods,
 		replicaSets:       replicaSets,
 		instances:         instanceCache{cache: make(map[string]time.Time, 0)},
@@ -184,29 +184,58 @@ func NewServer(addr, prometheusUrl string, ignoredNamespaces []string, kubeconfi
 func (s *server) Query(ctx context.Context, req *read.QueryRequest) (*read.QueryResponse, error) {
 	log.Debugf("Query request: %+v", req)
 
-	start := time.Unix(0, req.StartMs*int64(time.Millisecond))
-	end := time.Unix(0, req.EndMs*int64(time.Millisecond))
-
-	step, err := time.ParseDuration(req.Step)
-	if err != nil {
-		log.Errorf("ParseDuration(%+v) failed with: %+v", req.Step, err)
-		return nil, err
-	}
-
-	queryRange := v1.Range{Start: start, End: end, Step: step}
-	res, err := s.prometheusApi.QueryRange(ctx, req.Query, queryRange)
-	if err != nil {
-		log.Errorf("QueryRange(%+v, %+v) failed with: %+v", req.Query, queryRange, err)
-		return nil, err
-	}
-
-	if res.Type() != model.ValMatrix {
-		return nil, fmt.Errorf("Unexpected query result type: %s", res.Type())
-	}
-
 	samples := make([]*read.Sample, 0)
-	for _, s := range res.(model.Matrix) {
-		samples = append(samples, convertSampleStream(s))
+
+	if req.StartMs != 0 && req.EndMs != 0 && req.Step != "" {
+		// timeseries query
+
+		start := time.Unix(0, req.StartMs*int64(time.Millisecond))
+		end := time.Unix(0, req.EndMs*int64(time.Millisecond))
+		step, err := time.ParseDuration(req.Step)
+		if err != nil {
+			log.Errorf("ParseDuration(%+v) failed with: %+v", req.Step, err)
+			return nil, err
+		}
+
+		queryRange := v1.Range{
+			Start: start,
+			End:   end,
+			Step:  step,
+		}
+
+		res, err := s.prometheusAPI.QueryRange(ctx, req.Query, queryRange)
+		if err != nil {
+			log.Errorf("QueryRange(%+v, %+v) failed with: %+v", req.Query, queryRange, err)
+			return nil, err
+		}
+		log.Debugf("Query response: %+v", res)
+
+		if res.Type() != model.ValMatrix {
+			err = fmt.Errorf("Unexpected query result type (expected Matrix): %s", res.Type())
+			log.Errorf("%s", err)
+			return nil, err
+		}
+		for _, s := range res.(model.Matrix) {
+			samples = append(samples, convertSampleStream(s))
+		}
+	} else {
+		// single data point (aka summary) query
+
+		res, err := s.prometheusAPI.Query(ctx, req.Query, time.Time{})
+		if err != nil {
+			log.Errorf("Query(%+v, %+v) failed with: %+v", req.Query, time.Time{}, err)
+			return nil, err
+		}
+		log.Debugf("Query response: %+v", res)
+
+		if res.Type() != model.ValVector {
+			err = fmt.Errorf("Unexpected query result type (expected Vector): %s", res.Type())
+			log.Errorf("%s", err)
+			return nil, err
+		}
+		for _, s := range res.(model.Vector) {
+			samples = append(samples, convertSample(s))
+		}
 	}
 
 	return &read.QueryResponse{Metrics: samples}, nil
@@ -272,8 +301,8 @@ func (s *server) Report(ctx context.Context, req *write.ReportRequest) (*write.R
 		id = req.Process.ScheduledNamespace + "/" + req.Process.ScheduledInstance
 	}
 
-	log := log.WithFields(log.Fields{"id": id})
-	log.Debugf("Received report with %d requests", len(req.Requests))
+	logCtx := log.WithFields(log.Fields{"id": id})
+	logCtx.Debugf("Received report with %d requests", len(req.Requests))
 
 	s.instances.update(id)
 
@@ -290,17 +319,28 @@ func (s *server) Report(ctx context.Context, req *write.ReportRequest) (*write.R
 				return nil, errors.New("ResponseCtx is required")
 			}
 
-			for _, latency := range responseScope.ResponseLatencies {
-				// The latencies as received from the proxy are represented as an array of
-				// latency values in tenths of a millisecond, and a count of the number of
-				// times a request of that latency was observed.
+			// Validate this ResponseScope's latency histogram.
+			numBuckets := len(responseScope.ResponseLatencyCounts)
+			expectedNumBuckets := len(req.HistogramBucketBoundsTenthMs)
+			if numBuckets != expectedNumBuckets {
+				err := errors.New(
+					"received report with incorrect number of latency buckets")
+				logCtx.WithFields(log.Fields{
+					"numBuckets": numBuckets,
+					"expected":   expectedNumBuckets,
+					"scope":      responseScope,
+				}).WithError(err).Error()
+				return nil, err
+			}
 
-				// First, convert the latency value from tenths of a ms to ms and
-				// convert from u32 to f64.
-				latencyMs := float64(latency.Latency * 10)
-				for i := uint32(0); i < latency.Count; i++ {
-					// Then, report that latency value to Prometheus a number of times
-					// equal to the count reported by the proxy.
+			for bucketNum, count := range responseScope.ResponseLatencyCounts {
+				// Look up the bucket max value corresponding to this position
+				// in the report's latency histogram.
+				latencyTenthsMs := req.HistogramBucketBoundsTenthMs[bucketNum]
+				latencyMs := float64(latencyTenthsMs) / 10
+				for i := uint32(0); i < count; i++ {
+					// Then, report that latency value to Prometheus a number
+					// of times equal to the count reported by the proxy.
 					latencyStat.Observe(latencyMs)
 				}
 
@@ -316,7 +356,7 @@ func (s *server) Report(ctx context.Context, req *write.ReportRequest) (*write.R
 					responseLabels[k] = v
 				}
 
-				responsesTotal.With(responseLabels).Add(float64(len(eosScope.Streams)))
+				responsesTotal.With(responseLabels).Add(float64(eosScope.Streams))
 			}
 		}
 
@@ -333,29 +373,31 @@ func (s *server) shouldIngore(pod *k8sV1.Pod) bool {
 	return false
 }
 
-func (s *server) getNameAndDeployment(ip *common.IPAddress) (string, string) {
+// getDeployment returns the name of the deployment associated with a pod.
+// If the name of the deployment could not be found, then a message will be
+// logged, and getDeployment will return an emtpy string.
+func (s *server) getDeployment(ip *common.IPAddress) string {
 	ipStr := util.IPToString(ip)
 	pods, err := s.pods.GetPodsByIndex(ipStr)
 	if err != nil {
 		log.Debugf("Cannot get pod for IP %s: %s", ipStr, err)
-		return "", ""
+		return ""
 	}
 	if len(pods) == 0 {
 		log.Debugf("No pod exists for IP %s", ipStr)
-		return "", ""
+		return ""
 	}
 	if len(pods) > 1 {
 		log.Debugf("Multiple pods found for IP %s", ipStr)
-		return "", ""
+		return ""
 	}
 	pod := pods[0]
-	name := pod.Namespace + "/" + pod.Name
 	deployment, err := (*s.replicaSets).GetDeploymentForPod(pod)
 	if err != nil {
-		log.Debugf("Cannot get deployment for pod %s: %s", pod.Name, err)
-		return name, ""
+		log.WithError(err).Debugf("Cannot get deployment for pod %s", pod.Name)
+		return ""
 	}
-	return name, deployment
+	return deployment
 }
 
 func methodString(method *common.HttpMethod) string {
@@ -368,14 +410,16 @@ func methodString(method *common.HttpMethod) string {
 	return ""
 }
 
-func convertSampleStream(sample *model.SampleStream) *read.Sample {
+func metricToMap(metric model.Metric) map[string]string {
 	labels := make(map[string]string)
-	for k, v := range sample.Metric {
+	for k, v := range metric {
 		labels[string(k)] = string(v)
 	}
+	return labels
+}
 
+func convertSampleStream(sample *model.SampleStream) *read.Sample {
 	values := make([]*read.SampleValue, 0)
-
 	for _, s := range sample.Values {
 		v := read.SampleValue{
 			Value:       float64(s.Value),
@@ -384,20 +428,27 @@ func convertSampleStream(sample *model.SampleStream) *read.Sample {
 		values = append(values, &v)
 	}
 
-	return &read.Sample{Values: values, Labels: labels}
+	return &read.Sample{Values: values, Labels: metricToMap(sample.Metric)}
+}
+
+func convertSample(sample *model.Sample) *read.Sample {
+	values := []*read.SampleValue{
+		&read.SampleValue{
+			Value:       float64(sample.Value),
+			TimestampMs: int64(sample.Timestamp),
+		},
+	}
+
+	return &read.Sample{Values: values, Labels: metricToMap(sample.Metric)}
 }
 
 func (s *server) requestLabelsFor(requestScope *write.RequestScope) prometheus.Labels {
-	sourceName, sourceDeployment := s.getNameAndDeployment(requestScope.Ctx.SourceIp)
-	targetName, targetDeployment := s.getNameAndDeployment(requestScope.Ctx.TargetAddr.Ip)
+	sourceDeployment := s.getDeployment(requestScope.Ctx.SourceIp)
+	targetDeployment := s.getDeployment(requestScope.Ctx.TargetAddr.Ip)
 
 	return prometheus.Labels{
-		"source":            sourceName,
 		"source_deployment": sourceDeployment,
-		"target":            targetName,
 		"target_deployment": targetDeployment,
-		"method":            methodString(requestScope.Ctx.Method),
-		"path":              requestScope.Ctx.Path,
 	}
 }
 

@@ -118,12 +118,9 @@ func (h *handler) handleApiMetrics(w http.ResponseWriter, req *http.Request, p h
 	timeseries := req.FormValue("timeseries") == "true"
 
 	filterBy := pb.MetricMetadata{
-		TargetPod:    req.FormValue("target_pod"),
 		TargetDeploy: req.FormValue("target_deploy"),
-		SourcePod:    req.FormValue("source_pod"),
 		SourceDeploy: req.FormValue("source_deploy"),
 		Component:    req.FormValue("component"),
-		Path:         req.FormValue("path"),
 	}
 
 	metrics, groupBy, window, err := validateMetricParams(metricNameParam, aggParam, timeWindowParam)

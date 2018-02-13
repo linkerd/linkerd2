@@ -11,10 +11,7 @@ import { Table } from 'antd';
 const resourceInfo = {
   "upstream_deployment": { title: "deployment", url: "/deployment?deploy=" },
   "downstream_deployment": { title: "deployment", url: "/deployment?deploy=" },
-  "upstream_pod": { title: "upstream pod", url: "/pod?pod=" },
-  "downstream_pod": { title: "downstream pod", url: "/pod?pod=" },
   "deployment": { title: "deployment", url: "/deployment?deploy=" },
-  "pod": { title: "pod", url: "/pod?pod=" },
   "path": { title: "path", url: null }
 };
 
@@ -79,14 +76,6 @@ export default class TabbedMetricsTable extends React.Component {
   constructor(props) {
     super(props);
     this.api = this.props.api;
-
-    this.state = {
-      timeseries: {},
-      rollup: this.preprocessMetrics(),
-      error: '',
-      pollingInterval: 10000,
-      pendingRequests: false
-    };
   }
 
   preprocessMetrics() {
@@ -103,10 +92,11 @@ export default class TabbedMetricsTable extends React.Component {
 
   render() {
     let resource = resourceInfo[this.props.resource];
+    let tableData = this.preprocessMetrics();
     let columns = _.compact(columnDefinitions(this.props.sortable, resource, this.api.ConduitLink));
 
     return (<Table
-      dataSource={this.state.rollup}
+      dataSource={tableData}
       columns={columns}
       pagination={false}
       className="conduit-table"

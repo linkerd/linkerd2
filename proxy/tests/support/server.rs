@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::thread;
 
 use support::*;
 
@@ -56,6 +57,24 @@ impl Server {
         F: Fn(Request<()>) -> Response<String> + Send + 'static,
     {
         self.routes.insert(path.into(), Route(Box::new(cb)));
+        self
+    }
+
+    pub fn route_with_latency(
+        mut self,
+        path: &str,
+        resp: &str,
+        latency: Duration
+    ) -> Self {
+        let resp = resp.to_owned();
+        let route = Route(Box::new(move |_| {
+            thread::sleep(latency);
+            http::Response::builder()
+                .status(200)
+                .body(resp.clone())
+                .unwrap()
+        }));
+        self.routes.insert(path.into(), route);
         self
     }
 

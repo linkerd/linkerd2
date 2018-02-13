@@ -15,9 +15,7 @@ export default class UpstreamDownstreamTables extends React.Component {
             numUpstreams === 0 ? null :
               <div className="upstream-downstream-list">
                 <div className="border-container border-neutral subsection-header">
-                  <div className="border-container-content subsection-header">
-                Upstream {this.props.resourceType}s: {numUpstreams}
-                  </div>
+                  <div className="border-container-content subsection-header">Upstreams</div>
                 </div>
                 <TabbedMetricsTable
                   resource={`upstream_${this.props.resourceType}`}
@@ -30,9 +28,7 @@ export default class UpstreamDownstreamTables extends React.Component {
             numDownstreams === 0 ? null :
               <div className="upstream-downstream-list">
                 <div className="border-container border-neutral subsection-header">
-                  <div className="border-container-content subsection-header">
-                Downstream {this.props.resourceType}s: {numDownstreams}
-                  </div>
+                  <div className="border-container-content subsection-header">Downstreams</div>
                 </div>
                 <TabbedMetricsTable
                   resource={`downstream_${this.props.resourceType}`}
