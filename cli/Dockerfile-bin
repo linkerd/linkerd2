@@ -1,14 +1,14 @@
 ## compile binaries
-FROM gcr.io/runconduit/go-deps:749453c2 as golang
+FROM gcr.io/runconduit/go-deps:1fc8d578 as golang
 ARG CONDUIT_VERSION
 WORKDIR /go/src/github.com/runconduit/conduit
 COPY cli cli
 COPY controller controller
 COPY pkg pkg
 RUN mkdir -p /out
-RUN CGO_ENABLED=0 GOOS=darwin go build -a -installsuffix cgo -o /out/conduit-darwin -ldflags "-X github.com/runconduit/conduit/pkg/version.Version=$CONDUIT_VERSION" ./cli
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /out/conduit-linux -ldflags "-X github.com/runconduit/conduit/pkg/version.Version=$CONDUIT_VERSION" ./cli
-RUN CGO_ENABLED=0 GOOS=windows go build -a -installsuffix cgo -o /out/conduit-windows -ldflags "-X github.com/runconduit/conduit/pkg/version.Version=$CONDUIT_VERSION" ./cli
+RUN CGO_ENABLED=0 GOOS=darwin  go build -installsuffix cgo -o /out/conduit-darwin  -ldflags "-X github.com/runconduit/conduit/pkg/version.Version=$CONDUIT_VERSION" ./cli
+RUN CGO_ENABLED=0 GOOS=linux   go build -installsuffix cgo -o /out/conduit-linux   -ldflags "-X github.com/runconduit/conduit/pkg/version.Version=$CONDUIT_VERSION" ./cli
+RUN CGO_ENABLED=0 GOOS=windows go build -installsuffix cgo -o /out/conduit-windows -ldflags "-X github.com/runconduit/conduit/pkg/version.Version=$CONDUIT_VERSION" ./cli
 
 ## export without sources & dependencies
 FROM gcr.io/runconduit/base:2017-10-30.01
