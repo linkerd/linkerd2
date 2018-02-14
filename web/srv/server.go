@@ -80,12 +80,9 @@ func NewServer(addr, templateDir, staticDir, uuid, webpackDevServer string, relo
 
 	// webapp routes
 	server.router.GET("/", handler.handleIndex)
-	server.router.GET("/pod", handler.handleIndex)
 	server.router.GET("/deployment", handler.handleIndex)
 	server.router.GET("/deployments", handler.handleIndex)
-	server.router.GET("/paths", handler.handleIndex)
 	server.router.GET("/servicemesh", handler.handleIndex)
-	server.router.GET("/routes", handler.handleIndex)
 	server.router.ServeFiles(
 		"/dist/*filepath", // add catch-all parameter to match all files in dir
 		filesonly.FileSystem(server.staticDir))
