@@ -10,6 +10,7 @@ import (
 
 	"os"
 
+	k8sController "github.com/runconduit/conduit/controller/k8s"
 	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/runconduit/conduit/pkg/version"
 	uuid "github.com/satori/go.uuid"
@@ -411,8 +412,6 @@ type installConfig struct {
 	ControllerLogLevel       string
 	ControllerComponentLabel string
 	CreatedByAnnotation      string
-	ControllerProxy          string
-	InitContainers           string
 }
 
 var (
@@ -424,6 +423,8 @@ var (
 	imagePullPolicy    string
 	controllerLogLevel string
 )
+
+var defaultProxyConfig = k8sController.PodConfig{}
 
 var installCmd = &cobra.Command{
 	Use:   "install [flags]",
@@ -448,14 +449,12 @@ var installCmd = &cobra.Command{
 			ControllerLogLevel:       controllerLogLevel,
 			ControllerComponentLabel: k8s.ControllerComponentLabel,
 			CreatedByAnnotation:      k8s.CreatedByAnnotation,
-			ControllerProxy:          printSideCar(),
-			InitContainers:           initContainers(),
 		}
 		err := render(config, buf)
 		if err != nil {
 			return err
 		}
-		return injectYAML(buf, os.Stdout)
+		return k8sController.InjectYAML(buf, os.Stdout, k8sController.DefaultProxyConfig)
 	},
 }
 
@@ -490,10 +489,6 @@ func validate() error {
 		return fmt.Errorf("--controller-log-level must be one of: panic, fatal, error, warn, info, debug")
 	}
 	return nil
-}
-
-func installNamespace() {
-
 }
 
 func init() {
