@@ -1,16 +1,13 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"io"
+	"os"
 	"regexp"
 	"text/template"
 
-	"bytes"
-
-	"os"
-
-	k8sController "github.com/runconduit/conduit/controller/k8s"
 	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/runconduit/conduit/pkg/version"
 	uuid "github.com/satori/go.uuid"
@@ -424,8 +421,6 @@ var (
 	controllerLogLevel string
 )
 
-var defaultProxyConfig = k8sController.PodConfig{}
-
 var installCmd = &cobra.Command{
 	Use:   "install [flags]",
 	Short: "Output Kubernetes configs to install Conduit",
@@ -454,7 +449,7 @@ var installCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		return k8sController.InjectYAML(buf, os.Stdout, k8sController.DefaultProxyConfig)
+		return InjectYAML(buf, os.Stdout)
 	},
 }
 
