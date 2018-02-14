@@ -264,7 +264,8 @@ export default class ServiceMesh extends React.Component {
             className="conduit-table"
             dataSource={this.getServiceMeshDetails()}
             columns={serviceMeshDetailsColumns}
-            pagination={false} />
+            pagination={false}
+            size="middle" />
         </div>
       </div>
     );
