@@ -27,6 +27,10 @@ import (
 	k8sV1 "k8s.io/api/core/v1"
 )
 
+const (
+	requestsMetric = "reports_total"
+)
+
 var (
 	requestLabels = []string{"source_deployment", "target_deployment", "method"}
 	requestsTotal = prometheus.NewCounterVec(
@@ -66,7 +70,7 @@ var (
 	reportsLabels = []string{"pod"}
 	reportsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "reports_total",
+			Name: requestsMetric,
 			Help: "Total number of telemetry reports received",
 		},
 		reportsLabels,
@@ -214,11 +218,11 @@ func (s *server) ListPods(ctx context.Context, req *read.ListPodsRequest) (*publ
 		return nil, err
 	}
 
-	// Reports is map from instance name to the absolute time of the most recent
+	// Reports is a map from instance name to the absolute time of the most recent
 	// report from that instance.
 	reports := make(map[string]time.Time)
 	// Query Prometheus for reports in the last 30 seconds.
-	res, err := s.prometheusAPI.Query(ctx, "reports_total[30s]", time.Time{})
+	res, err := s.prometheusAPI.Query(ctx, requestsMetric + "[30s]", time.Time{})
 	if err != nil {
 		return nil, err
 	}
