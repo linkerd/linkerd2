@@ -89,19 +89,6 @@ export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '10m') => {
           rollup: downstreamRollupUrl
         };
       }
-    },
-    "path": {
-      // all paths (default), or all paths of a given deploy if specified
-      groupBy: "path",
-      url: (deploy = null) => {
-        let pathRollupUrl = `${metricsUrl}&aggregation=path${ !deploy ? "" : `&target_deploy=${deploy}`}`;
-        let pathTsUrl = `${pathRollupUrl}&timeseries=true`;
-
-        return {
-          ts: pathTsUrl,
-          rollup: pathRollupUrl
-        };
-      }
     }
   };
 
