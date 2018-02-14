@@ -2,9 +2,9 @@ import _ from 'lodash';
 import CallToAction from './CallToAction.jsx';
 import ConduitSpinner from "./ConduitSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
+import MetricsTable from './MetricsTable.jsx';
 import PageHeader from './PageHeader.jsx';
 import React from 'react';
-import TabbedMetricsTable from './TabbedMetricsTable.jsx';
 import { emptyMetric, getPodsByDeployment, processRollupMetrics } from './util/MetricUtils.js';
 import './../../css/deployments.css';
 import 'whatwg-fetch';
@@ -88,7 +88,7 @@ export default class DeploymentsList extends React.Component {
             { _.isEmpty(this.state.metrics) ?
               <CallToAction numDeployments={_.size(this.state.metrics)} /> :
               <div className="deployments-list">
-                <TabbedMetricsTable
+                <MetricsTable
                   resource="deployment"
                   metrics={this.state.metrics}
                   api={this.api} />
