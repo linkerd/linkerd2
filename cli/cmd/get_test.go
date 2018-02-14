@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/runconduit/conduit/controller/api/public"
@@ -12,32 +13,24 @@ func TestGetPods(t *testing.T) {
 	t.Run("Returns names of existing pods if everything went ok", func(t *testing.T) {
 		mockClient := &public.MockConduitApiClient{}
 
+		podName := "pod-a"
+
 		pods := []*pb.Pod{
-			{Name: "pod-a"},
-			{Name: "pod-b"},
-			{Name: "pod-c"},
+			{Name: "pod-a", Status: "Running", Added: true, PodIP: "10.233.64.1"},
 		}
 
-		expectedPodNames := []string{
-			"pod-a",
-			"pod-b",
-			"pod-c",
-		}
 		response := &pb.ListPodsResponse{
 			Pods: pods,
 		}
 
 		mockClient.ListPodsResponseToReturn = response
-		actualPodNames, err := getPods(mockClient)
+		actualPods, err := getPods(mockClient)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		for i, actualName := range actualPodNames {
-			expectedName := expectedPodNames[i]
-			if expectedName != actualName {
-				t.Fatalf("Expected %dth element on %v to be [%s], but was [%s]", i, actualPodNames, expectedName, actualName)
-			}
+		if !strings.Contains(actualPods, podName) {
+			t.Fatalf("Expected response to contain [%s], but was [%s]", podName, actualPods)
 		}
 	})
 
@@ -48,13 +41,13 @@ func TestGetPods(t *testing.T) {
 			Pods: []*pb.Pod{},
 		}
 
-		actualPodNames, err := getPods(mockClient)
+		actualPods, err := getPods(mockClient)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		if len(actualPodNames) != 0 {
-			t.Fatalf("Expecting no pod names, got %v", actualPodNames)
+		if strings.TrimPrefix(actualPods, "NAME   STATUS   ADDED   PODIP") == "" {
+			t.Fatalf("Expecting no pods, got %v", actualPods)
 		}
 	})
 

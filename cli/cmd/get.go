@@ -1,9 +1,13 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"sort"
+	"strings"
+	"text/tabwriter"
 
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
@@ -37,16 +41,14 @@ Valid resource types include:
 			return err
 		}
 
-		podNames, err := getPods(client)
+		output, err := getPods(client)
 		if err != nil {
 			return err
 		}
 
-		for _, podName := range podNames {
-			fmt.Println(podName)
-		}
+		_, err = fmt.Print(output)
 
-		return nil
+		return err
 	},
 }
 
@@ -55,16 +57,78 @@ func init() {
 	addControlPlaneNetworkingArgs(getCmd)
 }
 
-func getPods(apiClient pb.ApiClient) ([]string, error) {
+func getPods(apiClient pb.ApiClient) (string, error) {
 	resp, err := apiClient.ListPods(context.Background(), &pb.Empty{})
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	names := make([]string, 0)
+	return renderPods(resp)
+}
+
+func renderPods(resp *pb.ListPodsResponse) (string, error) {
+	var buffer bytes.Buffer
+	w := tabwriter.NewWriter(&buffer, 0, 0, padding, ' ', 0)
+	writePodsToBuffer(resp, w)
+	w.Flush()
+
+	out := string(buffer.Bytes())
+
+	return out, nil
+}
+
+type podRow struct {
+	Status string
+	Added  bool
+	PodIP  string
+}
+
+func writePodsToBuffer(resp *pb.ListPodsResponse, w *tabwriter.Writer) {
+	nameHeader := "NAME"
+	maxNameLength := len(nameHeader)
+
+	pods := make(map[string]*podRow)
 	for _, pod := range resp.GetPods() {
-		names = append(names, pod.Name)
+		name := pod.Name
+
+		if len(name) > maxNameLength {
+			maxNameLength = len(name)
+		}
+
+		if _, ok := pods[name]; !ok {
+			pods[name] = &podRow{}
+		}
+
+		pods[name].Status = pod.Status
+		pods[name].Added = pod.Added
+		pods[name].PodIP = pod.PodIP
 	}
 
-	return names, nil
+	fmt.Fprintln(w, strings.Join([]string{
+		nameHeader+strings.Repeat(" ", maxNameLength-len(nameHeader)),
+		"STATUS",
+		"ADDED",
+		"PODIP\t",
+	}, "\t"))
+
+	sortedNames := sortPodsKeys(pods)
+	for _, name := range sortedNames {
+		fmt.Fprintf(
+			w,
+			"%s\t%s\t%t\t%s\t\n",
+			name+strings.Repeat(" ", maxNameLength-len(name)),
+			pods[name].Status,
+			pods[name].Added,
+			pods[name].PodIP,
+		)
+	}
+}
+
+func sortPodsKeys(pods map[string]*podRow) []string {
+	var sortedKeys []string
+	for key, _ := range pods {
+		sortedKeys = append(sortedKeys, key)
+	}
+	sort.Strings(sortedKeys)
+	return sortedKeys
 }
