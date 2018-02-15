@@ -28,7 +28,7 @@ import (
 )
 
 const (
-	requestsMetric = "reports_total"
+	reportsMetric = "reports_total"
 )
 
 var (
@@ -70,7 +70,7 @@ var (
 	reportsLabels = []string{"pod"}
 	reportsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: requestsMetric,
+			Name: reportsMetric,
 			Help: "Total number of telemetry reports received",
 		},
 		reportsLabels,
@@ -181,7 +181,7 @@ func (s *server) Query(ctx context.Context, req *read.QueryRequest) (*read.Query
 
 		if res.Type() != model.ValMatrix {
 			err = fmt.Errorf("Unexpected query result type (expected Matrix): %s", res.Type())
-			log.Errorf("%s", err)
+			log.Error(err)
 			return nil, err
 		}
 		for _, s := range res.(model.Matrix) {
@@ -199,7 +199,7 @@ func (s *server) Query(ctx context.Context, req *read.QueryRequest) (*read.Query
 
 		if res.Type() != model.ValVector {
 			err = fmt.Errorf("Unexpected query result type (expected Vector): %s", res.Type())
-			log.Errorf("%s", err)
+			log.Error(err)
 			return nil, err
 		}
 		for _, s := range res.(model.Vector) {
@@ -222,21 +222,19 @@ func (s *server) ListPods(ctx context.Context, req *read.ListPodsRequest) (*publ
 	// report from that instance.
 	reports := make(map[string]time.Time)
 	// Query Prometheus for reports in the last 30 seconds.
-	res, err := s.prometheusAPI.Query(ctx, requestsMetric + "[30s]", time.Time{})
+	res, err := s.prometheusAPI.Query(ctx, reportsMetric + "[30s]", time.Time{})
 	if err != nil {
 		return nil, err
 	}
 	if res.Type() != model.ValMatrix {
 		err = fmt.Errorf("Unexpected query result type (expected Matrix): %s", res.Type())
-		log.Errorf("%s", err)
+		log.Error(err)
 		return nil, err
 	}
 	for _, s := range res.(model.Matrix) {
 		labels := metricToMap(s.Metric)
 		timestamp := s.Values[len(s.Values)-1].Timestamp
-		secs := timestamp / 1000
-		nanos := (timestamp % 1000) * 1000000
-		reports[labels["pod"]] = time.Unix(int64(secs), int64(nanos))
+		reports[labels["pod"]] = time.Unix(0, int64(timestamp)*int64(time.Millisecond))
 	}
 
 	podList := make([]*public.Pod, 0)
