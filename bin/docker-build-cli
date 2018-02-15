@@ -11,6 +11,6 @@ fi
 . bin/_tag.sh
 
 # Build gcr.io/runconduit/cli-bin, which is used by cli/Dockerfile.
-bin/docker-build-cli-bin >/dev/null
+OS= bin/build-cli-bin >/dev/null
 
 docker_build cli "$(head_root_tag)" cli/Dockerfile
