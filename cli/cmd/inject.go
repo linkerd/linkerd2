@@ -56,49 +56,7 @@ with 'conduit inject'. e.g. curl http://url.to/yml | conduit inject -
 				return err
 			}
 		}
-
-		reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(in, 4096))
-		// Iterate over all YAML objects in the input
-		for {
-			// Read a single YAML object
-			bytes, err := reader.Read()
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				return err
-			}
-
-			// Unmarshal the object enough to read the Kind field
-			var meta metaV1.TypeMeta
-			if err := yaml.Unmarshal(bytes, &meta); err != nil {
-				return err
-			}
-
-			var injected interface{} = nil
-			switch meta.Kind {
-			case "Deployment":
-				injected, err = injectDeployment(bytes)
-			case "ReplicationController":
-				injected, err = injectReplicationController(bytes)
-			case "ReplicaSet":
-				injected, err = injectReplicaSet(bytes)
-			case "Job":
-				injected, err = injectJob(bytes)
-			case "DaemonSet":
-				injected, err = injectDaemonSet(bytes)
-			}
-			output := bytes
-			if injected != nil {
-				output, err = yaml.Marshal(injected)
-				if err != nil {
-					return err
-				}
-			}
-			os.Stdout.Write(output)
-			fmt.Println("---")
-		}
-		return nil
+		return InjectYAML(in, os.Stdout)
 	},
 }
 
@@ -302,6 +260,51 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec) enhancedPodTemplateSpec {
 			append(t.Spec.InitContainers, initContainer),
 		},
 	}
+}
+
+func InjectYAML(in io.Reader, out io.Writer) error {
+	reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(in, 4096))
+	// Iterate over all YAML objects in the input
+	for {
+		// Read a single YAML object
+		bytes, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		// Unmarshal the object enough to read the Kind field
+		var meta metaV1.TypeMeta
+		if err := yaml.Unmarshal(bytes, &meta); err != nil {
+			return err
+		}
+
+		var injected interface{} = nil
+		switch meta.Kind {
+		case "Deployment":
+			injected, err = injectDeployment(bytes)
+		case "ReplicationController":
+			injected, err = injectReplicationController(bytes)
+		case "ReplicaSet":
+			injected, err = injectReplicaSet(bytes)
+		case "Job":
+			injected, err = injectJob(bytes)
+		case "DaemonSet":
+			injected, err = injectDaemonSet(bytes)
+		}
+		output := bytes
+		if injected != nil {
+			output, err = yaml.Marshal(injected)
+			if err != nil {
+				return err
+			}
+		}
+		out.Write(output)
+		fmt.Println("---")
+	}
+	return nil
 }
 
 /* The v1.PodSpec struct contains a field annotation that causes the

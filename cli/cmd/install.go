@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"text/template"
 
+	"bytes"
+
 	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/runconduit/conduit/pkg/version"
 	uuid "github.com/satori/go.uuid"
@@ -424,6 +426,7 @@ var installCmd = &cobra.Command{
 	Short: "Output Kubernetes configs to install Conduit",
 	Long:  "Output Kubernetes configs to install Conduit.",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		buf := new(bytes.Buffer)
 		if err := validate(); err != nil {
 			return err
 		}
@@ -442,7 +445,11 @@ var installCmd = &cobra.Command{
 			ControllerComponentLabel: k8s.ControllerComponentLabel,
 			CreatedByAnnotation:      k8s.CreatedByAnnotation,
 		}
-		return render(config, os.Stdout)
+		err := render(config, buf)
+		if err != nil {
+			return err
+		}
+		return InjectYAML(buf, os.Stdout)
 	},
 }
 
