@@ -60,6 +60,7 @@ export default class Sidebar extends React.Component {
   render() {
     let normalizedPath = this.props.location.pathname.replace(this.props.pathPrefix, "");
     let ConduitLink = this.api.ConduitLink;
+
     return (
       <div className="sidebar">
         <div className="list-container">
@@ -88,11 +89,16 @@ export default class Sidebar extends React.Component {
             </Menu.Item>
           </Menu>
 
-          <SocialLinks />
-
-          <Version
-            releaseVersion={this.props.releaseVersion}
-            uuid={this.props.uuid} />
+          {
+            !this.props.collapsed ? (
+              <React.Fragment>
+                <SocialLinks />
+                <Version
+                  releaseVersion={this.props.releaseVersion}
+                  uuid={this.props.uuid} />
+              </React.Fragment>
+            ) : null
+          }
         </div>
       </div>
     );
