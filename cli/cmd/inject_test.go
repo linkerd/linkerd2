@@ -12,12 +12,12 @@ import (
 
 func TestInjectYAML(t *testing.T) {
 	t.Run("Run successful conduit inject on valid k8s yaml", func(t *testing.T) {
-		file, err := os.Open("testdata/TestInjectYAML_emojivoto_deployment.input.yml")
+		file, err := os.Open("testdata/inject_emojivoto_deployment.input.yml")
 		if err != nil {
 			t.Errorf("error opening test file: %v\n", err)
 		}
 
-		goldenFileBytes, err := ioutil.ReadFile("testdata/TestInjectYAML_emojivoto_deployment.output.golden.yml")
+		goldenFileBytes, err := ioutil.ReadFile("testdata/inject_emojivoto_deployment.golden.yml")
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
