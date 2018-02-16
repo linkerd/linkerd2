@@ -9,6 +9,15 @@ import (
 )
 
 func TestRender(t *testing.T) {
+	// The default configuration, with the random UUID overridden with a fixed
+	// value to facilitate testing.
+	defaultControlPlaneNamespace := controlPlaneNamespace
+	defaultConfig, err := validateAndBuildConfig()
+	if err != nil {
+		t.Fatalf("Unexpected error from validateAndBuildConfig(): %v", err)
+	}
+	defaultConfig.UUID = "deaab91a-f4ab-448a-b7d1-c832a2fa0a60"
+
 	// A configuration that shows that all config setting strings are honored
 	// by `render()`.
 	metaConfig := installConfig{
@@ -32,6 +41,7 @@ func TestRender(t *testing.T) {
 		controlPlaneNamespace string
 		goldenFileName        string
 	}{
+		{*defaultConfig, defaultControlPlaneNamespace, "testdata/install_default.golden"},
 		{metaConfig, metaConfig.Namespace, "testdata/install_output.golden"},
 	}
 
