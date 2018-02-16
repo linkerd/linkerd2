@@ -10,7 +10,7 @@ import (
 
 func TestRender(t *testing.T) {
 	t.Run("Should render an install config", func(t *testing.T) {
-		goldenFileBytes, err := ioutil.ReadFile("testdata/render_install_output.golden")
+		goldenFileBytes, err := ioutil.ReadFile("testdata/install_output.golden")
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
