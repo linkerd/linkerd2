@@ -427,7 +427,6 @@ var installCmd = &cobra.Command{
 	Short: "Output Kubernetes configs to install Conduit",
 	Long:  "Output Kubernetes configs to install Conduit.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		buf := new(bytes.Buffer)
 		if err := validate(); err != nil {
 			return err
 		}
@@ -446,11 +445,7 @@ var installCmd = &cobra.Command{
 			ControllerComponentLabel: k8s.ControllerComponentLabel,
 			CreatedByAnnotation:      k8s.CreatedByAnnotation,
 		}
-		err := render(config, buf)
-		if err != nil {
-			return err
-		}
-		return InjectYAML(buf, os.Stdout)
+		return renderWithInjectYAML(config, os.Stdout)
 	},
 }
 
@@ -460,6 +455,15 @@ func render(config installConfig, w io.Writer) error {
 		return err
 	}
 	return template.Execute(w, config)
+}
+
+func renderWithInjectYAML(config installConfig, out io.Writer) error {
+	buf := new(bytes.Buffer)
+	err := render(config, buf)
+	if err != nil {
+		return err
+	}
+	return InjectYAML(buf, out)
 }
 
 var alphaNumDash = regexp.MustCompile("^[a-zA-Z0-9-]+$")
