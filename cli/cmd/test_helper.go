@@ -13,6 +13,5 @@ func diffCompare(t *testing.T, actual string, expected string) {
 		patches := dmp.PatchMake(expected, diffs)
 		patchText := dmp.PatchToText(patches)
 		t.Fatalf("Unexpected output:\n%+v", patchText)
-
 	}
 }
