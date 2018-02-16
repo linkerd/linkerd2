@@ -86,14 +86,13 @@ metadata:
   name: api
   namespace: {{.Namespace}}
   labels:
-    app: controller
     {{.ControllerComponentLabel}}: controller
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
   type: ClusterIP
   selector:
-    app: controller
+    {{.ControllerComponentLabel}}: controller
   ports:
   - name: http
     port: 8085
@@ -106,14 +105,13 @@ metadata:
   name: proxy-api
   namespace: {{.Namespace}}
   labels:
-    app: controller
     {{.ControllerComponentLabel}}: controller
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
   type: ClusterIP
   selector:
-    app: controller
+    {{.ControllerComponentLabel}}: controller
   ports:
   - name: grpc
     port: 8086
@@ -126,7 +124,6 @@ metadata:
   name: controller
   namespace: {{.Namespace}}
   labels:
-    app: controller
     {{.ControllerComponentLabel}}: controller
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
@@ -135,7 +132,6 @@ spec:
   template:
     metadata:
       labels:
-        app: controller
         {{.ControllerComponentLabel}}: controller
       annotations:
         {{.CreatedByAnnotation}}: {{.CliVersion}}
@@ -222,14 +218,13 @@ metadata:
   name: web
   namespace: {{.Namespace}}
   labels:
-    app: web
     {{.ControllerComponentLabel}}: web
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
   type: ClusterIP
   selector:
-    app: web
+    {{.ControllerComponentLabel}}: web
   ports:
   - name: http
     port: 8084
@@ -245,7 +240,6 @@ metadata:
   name: web
   namespace: {{.Namespace}}
   labels:
-    app: web
     {{.ControllerComponentLabel}}: web
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
@@ -254,7 +248,6 @@ spec:
   template:
     metadata:
       labels:
-        app: web
         {{.ControllerComponentLabel}}: web
       annotations:
         {{.CreatedByAnnotation}}: {{.CliVersion}}
@@ -286,14 +279,13 @@ metadata:
   name: prometheus
   namespace: {{.Namespace}}
   labels:
-    app: prometheus
     {{.ControllerComponentLabel}}: prometheus
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
   type: ClusterIP
   selector:
-    app: prometheus
+    {{.ControllerComponentLabel}}: prometheus
   ports:
   - name: http
     port: 9090
@@ -306,7 +298,6 @@ metadata:
   name: prometheus
   namespace: {{.Namespace}}
   labels:
-    app: prometheus
     {{.ControllerComponentLabel}}: prometheus
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
@@ -315,7 +306,6 @@ spec:
   template:
     metadata:
       labels:
-        app: prometheus
         {{.ControllerComponentLabel}}: prometheus
       annotations:
         {{.CreatedByAnnotation}}: {{.CliVersion}}
@@ -352,7 +342,6 @@ metadata:
   name: prometheus-config
   namespace: {{.Namespace}}
   labels:
-    app: prometheus
     {{.ControllerComponentLabel}}: prometheus
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
