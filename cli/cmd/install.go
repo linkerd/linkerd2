@@ -7,8 +7,6 @@ import (
 	"regexp"
 	"text/template"
 
-	"bytes"
-
 	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/runconduit/conduit/pkg/version"
 	uuid "github.com/satori/go.uuid"
@@ -453,12 +451,7 @@ func render(config installConfig, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	buf := new(bytes.Buffer)
-	err = template.Execute(buf, config)
-	if err != nil {
-		return err
-	}
-	return InjectYAML(buf, w)
+	return template.Execute(w, config)
 }
 
 var alphaNumDash = regexp.MustCompile("^[a-zA-Z0-9-]+$")
