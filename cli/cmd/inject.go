@@ -172,9 +172,13 @@ func injectDaemonSet(bytes []byte) (interface{}, error) {
 }
 
 /* Given a PodTemplateSpec, return a new PodTemplateSpec with the sidecar
- * and init-container injected.
+ * and init-container injected. If the pod is unsuitable for having them
+ * injected, return null.
  */
 func injectPodTemplateSpec(t *v1.PodTemplateSpec) *enhancedPodTemplateSpec {
+	// Pods with `hostNetwork=true` share a network namespace with the host. The
+	// init-container would destroy the iptables configuration on the host, so
+	// skip the injection in this case.
 	if t.Spec.HostNetwork {
 		return nil
 	}
