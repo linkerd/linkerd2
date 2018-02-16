@@ -17,16 +17,16 @@ describe('Utils', () => {
       compare(          5.0000001,  "5"       );
       compare(          7.6666667,  "7.67"    );
       compare(        123.456,      "123.46"  );
-      compare(       1212.999999,   "1.2k"    );
-      compare(       5329.333333,   "5.3k"    );
-      compare(      16384.888,      "16.4k"   );
-      compare(     131042,          "131k"    );
-      compare(    1048576,          "1M"      );
-      compare(    2097152.1,        "2.1M"    );
-      compare(   16777216,          "16.8M"   );
-      compare(  536870912,          "536.9M"  );
-      compare( 1073741824,          "1.1G"    );
-      compare(68719476736,          "68.7G"   );
+      compare(       1212.999999,   "1.213k"  );
+      compare(       5329.333333,   "5.329k"  );
+      compare(      16384.888,      "16.385k" );
+      compare(     131042,          "131.042k");
+      compare(    1048576,          "1.049M"  );
+      compare(    2097152.1,        "2.097M"  );
+      compare(   16777216,          "16.777M" );
+      compare(  536870912,          "536.871M");
+      compare( 1073741824,          "1.074G"  );
+      compare(68719476736,          "68.719G" );
     });
 
     it('properly formats numbers with units and no truncation', () => {
@@ -63,9 +63,9 @@ describe('Utils', () => {
       expect(metricToFormatter["REQUEST_RATE"](99)).to.equal('99 RPS');
       expect(metricToFormatter["REQUEST_RATE"](999)).to.equal('999 RPS');
       expect(metricToFormatter["REQUEST_RATE"](1000)).to.equal('1k RPS');
-      expect(metricToFormatter["REQUEST_RATE"](4444)).to.equal('4.4k RPS');
-      expect(metricToFormatter["REQUEST_RATE"](9999)).to.equal('10k RPS');
-      expect(metricToFormatter["REQUEST_RATE"](99999)).to.equal('100k RPS');
+      expect(metricToFormatter["REQUEST_RATE"](4444)).to.equal('4.444k RPS');
+      expect(metricToFormatter["REQUEST_RATE"](9999)).to.equal('9.999k RPS');
+      expect(metricToFormatter["REQUEST_RATE"](99999)).to.equal('99.999k RPS');
     });
 
     it('formats subsecond latency as ms', () => {

@@ -1,7 +1,7 @@
 import _ from 'lodash';
 import { metricToFormatter } from './util/Utils.js';
 import React from 'react';
-import { Table } from 'antd';
+import { Table, Tooltip } from 'antd';
 
 /*
   Table to display Success Rate, Requests and Latency in tabs.
@@ -13,6 +13,16 @@ const resourceInfo = {
   "downstream_deployment": { title: "deployment", url: "/deployment?deploy=" },
   "deployment": { title: "deployment", url: "/deployment?deploy=" },
   "path": { title: "path", url: null }
+};
+
+const withTooltip = (d, metricName) => {
+  return (
+    <Tooltip
+      title={metricToFormatter["UNTRUNCATED"](d)}
+      overlayStyle={{ fontSize: "12px" }}>
+      <span>{metricToFormatter[metricName](d)}</span>
+    </Tooltip>
+  );
 };
 
 const columnDefinitions = (sortable = true, resource, ConduitLink) => {
@@ -33,7 +43,7 @@ const columnDefinitions = (sortable = true, resource, ConduitLink) => {
       key: "requestRateRollup",
       className: "numeric",
       sorter: sortable ? (a, b) => numericSort(a.requestRate, b.requestRate) : false,
-      render: d => metricToFormatter["REQUEST_RATE"](d)
+      render: d => withTooltip(d, "REQUEST_RATE")
     },
     {
       title: "Success Rate",
