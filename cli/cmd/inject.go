@@ -302,7 +302,7 @@ func InjectYAML(in io.Reader, out io.Writer) error {
 			}
 		}
 		out.Write(output)
-		fmt.Println("---")
+		out.Write([]byte("---\n"))
 	}
 	return nil
 }
