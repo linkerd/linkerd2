@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"io/ioutil"
 	"testing"
-
-	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
 func TestRender(t *testing.T) {
@@ -38,13 +36,6 @@ func TestRender(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 		content := buf.String()
-
-		if content != expectedContent {
-			dmp := diffmatchpatch.New()
-			diffs := dmp.DiffMain(content, expectedContent, true)
-			patches := dmp.PatchMake(expectedContent, diffs)
-			patchText := dmp.PatchToText(patches)
-			t.Fatalf("Unexpected output:\n%+v", patchText)
-		}
+		diffCompare(t, content, expectedContent)
 	})
 }
