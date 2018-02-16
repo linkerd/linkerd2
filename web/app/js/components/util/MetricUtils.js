@@ -31,10 +31,18 @@ export const getPodsByDeployment = pods => {
     .reject(p => _.isEmpty(p.deployment) || p.controlPlane)
     .groupBy('deployment')
     .map((componentPods, name) => {
+      _.remove(componentPods, p => {
+        return p.status === "Terminating" || p.status === "Completed";
+      });
+
+      let podsWithStatus = _.map(componentPods, p => {
+        return _.merge({}, p, { value: p.added ? "good" : "neutral" });
+      });
+
       return {
         name: name,
         added: _.every(componentPods, 'added'),
-        pods: componentPods
+        pods: _.sortBy(podsWithStatus, "name")
       };
     })
     .sortBy('name')
