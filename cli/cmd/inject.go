@@ -69,6 +69,8 @@ func injectDeployment(bytes []byte) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	deployment.Spec.Template.Namespace = controlPlaneNamespace
 	podTemplateSpec := injectPodTemplateSpec(&deployment.Spec.Template)
 	return enhancedDeployment{
 		&deployment,
@@ -156,6 +158,15 @@ func injectDaemonSet(bytes []byte) (interface{}, error) {
 	}, nil
 }
 
+func containsProxyAPIContainer(spec v1.PodSpec, containerName string) bool {
+	for _, container := range spec.Containers {
+		if container.Name == containerName {
+			return true
+		}
+	}
+	return false
+}
+
 /* Given a PodTemplateSpec, return a new PodTemplateSpec with the sidecar
  * and init-container injected.
  */
@@ -201,6 +212,13 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec) enhancedPodTemplateSpec {
 		},
 	}
 
+	controlPlaneDNSName := fmt.Sprintf("tcp://proxy-api.%s.svc.cluster.local:%d", controlPlaneNamespace, proxyAPIPort)
+	if t.Namespace == controlPlaneNamespace && containsProxyAPIContainer(t.Spec, "proxy-api") {
+		controlPlaneDNSName = fmt.Sprintf("tcp://%s:%d", "127.0.0.1", proxyAPIPort)
+	}
+	//remove namespace from container spec as its no longer needed to detect if we are processing a controller plane config
+	t.Namespace = ""
+
 	sidecar := v1.Container{
 		Name:            "conduit-proxy",
 		Image:           fmt.Sprintf("%s:%s", proxyImage, conduitVersion),
@@ -218,7 +236,7 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec) enhancedPodTemplateSpec {
 			v1.EnvVar{Name: "CONDUIT_PROXY_LOG", Value: proxyLogLevel},
 			v1.EnvVar{
 				Name:  "CONDUIT_PROXY_CONTROL_URL",
-				Value: fmt.Sprintf("tcp://proxy-api.%s.svc.cluster.local:%d", controlPlaneNamespace, proxyAPIPort),
+				Value: controlPlaneDNSName,
 			},
 			v1.EnvVar{Name: "CONDUIT_PROXY_CONTROL_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", proxyControlPort)},
 			v1.EnvVar{Name: "CONDUIT_PROXY_PRIVATE_LISTENER", Value: fmt.Sprintf("tcp://127.0.0.1:%d", outboundPort)},
