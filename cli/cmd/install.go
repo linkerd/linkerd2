@@ -444,7 +444,7 @@ var installCmd = &cobra.Command{
 			ControllerComponentLabel: k8s.ControllerComponentLabel,
 			CreatedByAnnotation:      k8s.CreatedByAnnotation,
 		}
-		return renderWithInjectYAML(config, os.Stdout)
+		return render(config, os.Stdout)
 	},
 }
 
@@ -453,16 +453,12 @@ func render(config installConfig, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	return template.Execute(w, config)
-}
-
-func renderWithInjectYAML(config installConfig, out io.Writer) error {
 	buf := new(bytes.Buffer)
-	err := render(config, buf)
+	err = template.Execute(buf, config)
 	if err != nil {
 		return err
 	}
-	return InjectYAML(buf, out)
+	return InjectYAML(buf, w)
 }
 
 var alphaNumDash = regexp.MustCompile("^[a-zA-Z0-9-]+$")
