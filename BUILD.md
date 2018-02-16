@@ -310,6 +310,8 @@ yarn karma start --single-run
 These commands assume a working [Rust](https://www.rust-lang.org)
 environment.
 
+Note that we _only_ support the most recent `stable` version of Rust.
+
 To build and run the Rust proxy:
 
 ```bash
