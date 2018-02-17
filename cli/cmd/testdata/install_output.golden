@@ -210,6 +210,59 @@ spec:
         - "-ignore-namespaces=kube-system"
         - "-prometheus-url=http://prometheus:9090"
         - "-log-level=ControllerLogLevel"
+      - env:
+        - name: CONDUIT_PROXY_LOG
+          value: warn,conduit_proxy=info
+        - name: CONDUIT_PROXY_CONTROL_URL
+          value: tcp://127.0.0.1:8086
+        - name: CONDUIT_PROXY_CONTROL_LISTENER
+          value: tcp://0.0.0.0:4190
+        - name: CONDUIT_PROXY_PRIVATE_LISTENER
+          value: tcp://127.0.0.1:4140
+        - name: CONDUIT_PROXY_PUBLIC_LISTENER
+          value: tcp://0.0.0.0:4143
+        - name: CONDUIT_PROXY_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: CONDUIT_PROXY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: CONDUIT_PROXY_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN
+          value: Kubernetes
+        image: gcr.io/runconduit/proxy:master
+        imagePullPolicy: IfNotPresent
+        name: conduit-proxy
+        ports:
+        - containerPort: 4143
+          name: conduit-proxy
+        resources: {}
+        securityContext:
+          runAsUser: 2102
+      initContainers:
+      - args:
+        - --incoming-proxy-port
+        - "4143"
+        - --outgoing-proxy-port
+        - "4140"
+        - --proxy-uid
+        - "2102"
+        - --inbound-ports-to-ignore
+        - "4190"
+        image: gcr.io/runconduit/proxy-init:master
+        imagePullPolicy: IfNotPresent
+        name: conduit-init
+        resources: {}
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+          privileged: false
 
 ### Web ###
 ---
@@ -273,6 +326,59 @@ spec:
         - "-template-dir=/templates"
         - "-uuid=UUID"
         - "-log-level=ControllerLogLevel"
+      - env:
+        - name: CONDUIT_PROXY_LOG
+          value: warn,conduit_proxy=info
+        - name: CONDUIT_PROXY_CONTROL_URL
+          value: tcp://proxy-api.Namespace.svc.cluster.local:8086
+        - name: CONDUIT_PROXY_CONTROL_LISTENER
+          value: tcp://0.0.0.0:4190
+        - name: CONDUIT_PROXY_PRIVATE_LISTENER
+          value: tcp://127.0.0.1:4140
+        - name: CONDUIT_PROXY_PUBLIC_LISTENER
+          value: tcp://0.0.0.0:4143
+        - name: CONDUIT_PROXY_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: CONDUIT_PROXY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: CONDUIT_PROXY_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN
+          value: Kubernetes
+        image: gcr.io/runconduit/proxy:master
+        imagePullPolicy: IfNotPresent
+        name: conduit-proxy
+        ports:
+        - containerPort: 4143
+          name: conduit-proxy
+        resources: {}
+        securityContext:
+          runAsUser: 2102
+      initContainers:
+      - args:
+        - --incoming-proxy-port
+        - "4143"
+        - --outgoing-proxy-port
+        - "4140"
+        - --proxy-uid
+        - "2102"
+        - --inbound-ports-to-ignore
+        - "4190"
+        image: gcr.io/runconduit/proxy-init:master
+        imagePullPolicy: IfNotPresent
+        name: conduit-init
+        resources: {}
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+          privileged: false
 
 ### Prometheus ###
 ---
@@ -340,6 +446,60 @@ spec:
       - name: kubectl
         image: buoyantio/kubectl:v1.6.2
         args: ["proxy", "-p", "8001"]
+      - env:
+        - name: CONDUIT_PROXY_LOG
+          value: warn,conduit_proxy=info
+        - name: CONDUIT_PROXY_CONTROL_URL
+          value: tcp://proxy-api.Namespace.svc.cluster.local:8086
+        - name: CONDUIT_PROXY_CONTROL_LISTENER
+          value: tcp://0.0.0.0:4190
+        - name: CONDUIT_PROXY_PRIVATE_LISTENER
+          value: tcp://127.0.0.1:4140
+        - name: CONDUIT_PROXY_PUBLIC_LISTENER
+          value: tcp://0.0.0.0:4143
+        - name: CONDUIT_PROXY_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: CONDUIT_PROXY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: CONDUIT_PROXY_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN
+          value: Kubernetes
+        image: gcr.io/runconduit/proxy:master
+        imagePullPolicy: IfNotPresent
+        name: conduit-proxy
+        ports:
+        - containerPort: 4143
+          name: conduit-proxy
+        resources: {}
+        securityContext:
+          runAsUser: 2102
+      initContainers:
+      - args:
+        - --incoming-proxy-port
+        - "4143"
+        - --outgoing-proxy-port
+        - "4140"
+        - --proxy-uid
+        - "2102"
+        - --inbound-ports-to-ignore
+        - "4190"
+        image: gcr.io/runconduit/proxy-init:master
+        imagePullPolicy: IfNotPresent
+        name: conduit-init
+        resources: {}
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+          privileged: false
+
 
 ---
 kind: ConfigMap
