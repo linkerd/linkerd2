@@ -60,36 +60,6 @@ with 'conduit inject'. e.g. curl http://url.to/yml | conduit inject -
 	},
 }
 
-func unmarshalDeployment(bytes []byte) (interface{}, *v1.PodTemplateSpec, error) {
-	var deployment v1beta1.Deployment
-	err := yaml.Unmarshal(bytes, &deployment)
-	return &deployment, &deployment.Spec.Template, err
-}
-
-func unmarshalReplicationController(bytes []byte) (interface{}, *v1.PodTemplateSpec, error) {
-	var rc v1.ReplicationController
-	err := yaml.Unmarshal(bytes, &rc)
-	return &rc, rc.Spec.Template, err
-}
-
-func unmarshalReplicaSet(bytes []byte) (interface{}, *v1.PodTemplateSpec, error) {
-	var rs v1beta1.ReplicaSet
-	err := yaml.Unmarshal(bytes, &rs)
-	return &rs, &rs.Spec.Template, err
-}
-
-func unmarshalJob(bytes []byte) (interface{}, *v1.PodTemplateSpec, error) {
-	var job batchV1.Job
-	err := yaml.Unmarshal(bytes, &job)
-	return &job, &job.Spec.Template, err
-}
-
-func unmarshalDaemonSet(bytes []byte) (interface{}, *v1.PodTemplateSpec, error) {
-	var ds v1beta1.DaemonSet
-	err := yaml.Unmarshal(bytes, &ds)
-	return &ds, &ds.Spec.Template, err
-}
-
 /* Given a PodTemplateSpec, return a new PodTemplateSpec with the sidecar
  * and init-container injected. If the pod is unsuitable for having them
  * injected, return null.
@@ -234,16 +204,32 @@ func InjectYAML(in io.Reader, out io.Writer) error {
 
 		switch meta.Kind {
 		case "Deployment":
-			obj, podTemplateSpec, err = unmarshalDeployment(bytes)
+			var deployment v1beta1.Deployment
+			err = yaml.Unmarshal(bytes, &deployment)
+			obj = &deployment
+			podTemplateSpec = &deployment.Spec.Template
 		case "ReplicationController":
-			obj, podTemplateSpec, err = unmarshalReplicationController(bytes)
+			var rc v1.ReplicationController
+			err = yaml.Unmarshal(bytes, &rc)
+			obj = &rc
+			podTemplateSpec = rc.Spec.Template
 		case "ReplicaSet":
-			obj, podTemplateSpec, err = unmarshalReplicaSet(bytes)
+			var rs v1beta1.ReplicaSet
+			err = yaml.Unmarshal(bytes, &rs)
+			obj = &rs
+			podTemplateSpec = &rs.Spec.Template
 		case "Job":
-			obj, podTemplateSpec, err = unmarshalJob(bytes)
+			var job batchV1.Job
+			err = yaml.Unmarshal(bytes, &job)
+			obj = &job
+			podTemplateSpec = &job.Spec.Template
 		case "DaemonSet":
-			obj, podTemplateSpec, err = unmarshalDaemonSet(bytes)
+			var ds v1beta1.DaemonSet
+			err = yaml.Unmarshal(bytes, &ds)
+			obj = &ds
+			podTemplateSpec = &ds.Spec.Template
 		}
+
 		if err != nil {
 			return err
 		}
