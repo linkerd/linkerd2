@@ -37,10 +37,11 @@ type (
 		Contents interface{}
 	}
 	appParams struct {
-		Data         *pb.VersionInfo
-		UUID         string
-		Error        bool
-		ErrorMessage string
+		Data                *pb.VersionInfo
+		UUID                string
+		ControllerNamespace string
+		Error               bool
+		ErrorMessage        string
 	}
 )
 
@@ -49,7 +50,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	s.router.ServeHTTP(w, req)
 }
 
-func NewServer(addr, templateDir, staticDir, uuid, webpackDevServer string, reload bool, apiClient pb.ApiClient) *http.Server {
+func NewServer(addr, templateDir, staticDir, uuid, controllerNamespace, webpackDevServer string, reload bool, apiClient pb.ApiClient) *http.Server {
 	server := &Server{
 		templateDir:     templateDir,
 		staticDir:       staticDir,
@@ -65,10 +66,11 @@ func NewServer(addr, templateDir, staticDir, uuid, webpackDevServer string, relo
 
 	wrappedServer := util.WithTelemetry(server)
 	handler := &handler{
-		apiClient: apiClient,
-		render:    server.RenderTemplate,
-		serveFile: server.serveFile,
-		uuid:      uuid,
+		apiClient:           apiClient,
+		render:              server.RenderTemplate,
+		serveFile:           server.serveFile,
+		uuid:                uuid,
+		controllerNamespace: controllerNamespace,
 	}
 
 	httpServer := &http.Server{

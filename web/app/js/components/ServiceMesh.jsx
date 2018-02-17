@@ -152,7 +152,8 @@ export default class ServiceMesh extends React.Component {
       { key: 2, name: "Control plane components", value: this.componentCount() },
       { key: 3, name: "Added deployments", value: this.addedDeploymentCount() },
       { key: 4, name: "Unadded deployments", value: this.unaddedDeploymentCount() },
-      { key: 5, name: "Data plane proxies", value: this.proxyCount() }
+      { key: 5, name: "Data plane proxies", value: this.proxyCount() },
+      { key: 6, name: "Conduit namespace", value: this.props.controllerNamespace }
     ];
   }
 

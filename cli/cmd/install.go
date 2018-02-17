@@ -287,7 +287,8 @@ spec:
         - "-api-addr=api:8085"
         - "-static-dir=/dist"
         - "-template-dir=/templates"
-        - "-uuid={{.UUID}}"
+				- "-uuid={{.UUID}}"
+				- "-controller-namespace={{.Namespace}}"
         - "-log-level={{.ControllerLogLevel}}"
 
 ### Prometheus ###
