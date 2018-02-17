@@ -121,6 +121,20 @@ export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '10m') => {
     }
   };
 
+  // maintain a list of a component's requests,
+  // convenient for providing a cancel() functionality
+  let currentRequests = [];
+  const setCurrentRequests = cancelablePromises => {
+    currentRequests = cancelablePromises;
+  };
+  const getCurrentPromises = () => {
+    return _.map(currentRequests, 'promise');
+  };
+  const cancelCurrentRequests = () => {
+    _.each(currentRequests, promise => {
+      promise.cancel();
+    });
+  };
 
   // prefix all links in the app with `pathPrefix`
   const ConduitLink = props => {
@@ -143,6 +157,9 @@ export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '10m') => {
     getMetricsWindowDisplayText,
     urlsForResource: urlsForResource,
     ConduitLink,
+    setCurrentRequests,
+    getCurrentPromises,
+    cancelCurrentRequests,
     // DO NOT USE makeCancelable, use fetch, this is only exposed for testing
     makeCancelable
   };

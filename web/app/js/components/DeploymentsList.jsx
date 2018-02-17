@@ -32,10 +32,7 @@ export default class DeploymentsList extends React.Component {
 
   componentWillUnmount() {
     window.clearInterval(this.timerId);
-
-    if (!_.isEmpty(this.requests)) {
-      _.each(this.requests, promise => promise.cancel());
-    }
+    this.api.cancelCurrentRequests();
   }
 
   addDeploysWithNoMetrics(deploys, metrics) {
@@ -55,13 +52,13 @@ export default class DeploymentsList extends React.Component {
     }
     this.setState({ pendingRequests: true });
 
-    this.requests = {
-      rollup: this.api.fetchMetrics(this.api.urlsForResource["deployment"].url().rollup),
-      pods: this.api.fetchPods()
-    };
+    this.api.setCurrentRequests([
+      this.api.fetchMetrics(this.api.urlsForResource["deployment"].url().rollup),
+      this.api.fetchPods()
+    ]);
 
     // expose serverPromise for testing
-    this.serverPromise = Promise.all([this.requests.rollup.promise, this.requests.pods.promise])
+    this.serverPromise = Promise.all(this.api.getCurrentPromises())
       .then(([rollup, p]) => {
         let poByDeploy = getPodsByDeployment(p.pods);
         let meshDeploys = processRollupMetrics(rollup.metrics, "targetDeploy");

@@ -80,10 +80,7 @@ export default class ServiceMesh extends React.Component {
 
   componentWillUnmount() {
     window.clearInterval(this.timerId);
-
-    if (!_.isEmpty(this.requests)) {
-      _.each(this.requests, promise => promise.cancel());
-    }
+    this.api.cancelCurrentRequests();
   }
 
   loadFromServer() {
@@ -95,17 +92,13 @@ export default class ServiceMesh extends React.Component {
     let rollupPath = `/api/metrics?aggregation=mesh`;
     let timeseriesPath = `${rollupPath}&timeseries=true`;
 
-    this.requests = {
-      rollup: this.api.fetchMetrics(rollupPath),
-      ts: this.api.fetchMetrics(timeseriesPath),
-      pods: this.api.fetchPods()
-    };
+    this.api.setCurrentRequests([
+      this.api.fetchMetrics(rollupPath),
+      this.api.fetchMetrics(timeseriesPath),
+      this.api.fetchPods()
+    ]);
 
-    this.serverPromise = Promise.all([
-      this.requests.rollup.promise,
-      this.requests.ts.promise,
-      this.requests.pods.promise
-    ])
+    this.serverPromise = Promise.all(this.api.getCurrentPromises())
       .then(([metrics, ts, pods]) => {
         let m = processRollupMetrics(metrics.metrics, "component");
         let tsByComponent = processTimeseriesMetrics(ts.metrics, "component");

@@ -34,10 +34,7 @@ export default class DeploymentDetail extends React.Component {
 
   componentWillUnmount() {
     window.clearInterval(this.timerId);
-
-    if (!_.isEmpty(this.requests)) {
-      _.each(this.requests, promise => promise.cancel());
-    }
+    this.api.cancelCurrentRequests();
   }
 
   initialState(location) {
@@ -68,20 +65,15 @@ export default class DeploymentDetail extends React.Component {
     let upstreamRollupUrl = urls["upstream_deployment"].url(this.state.deploy).rollup;
     let downstreamRollupUrl = urls["downstream_deployment"].url(this.state.deploy).rollup;
 
-    this.requests = {
-      deploy: this.api.fetchMetrics(deployMetricsUrl),
-      upstreams: this.api.fetchMetrics(upstreamRollupUrl),
-      downstreams: this.api.fetchMetrics(downstreamRollupUrl),
-      podList: this.api.fetchPods()
-    };
+    this.api.setCurrentRequests([
+      this.api.fetchMetrics(deployMetricsUrl),
+      this.api.fetchMetrics(upstreamRollupUrl),
+      this.api.fetchMetrics(downstreamRollupUrl),
+      this.api.fetchPods()
+    ]);
 
     // expose serverPromise for testing
-    this.serverPromise = Promise.all([
-      this.requests.deploy.promise,
-      this.requests.upstreams.promise,
-      this.requests.downstreams.promise,
-      this.requests.podList.promise
-    ])
+    this.serverPromise = Promise.all(this.api.getCurrentPromises())
       .then(([deployMetrics, upstreamRollup, downstreamRollup, podList]) => {
         let deployRollup = processRollupMetrics(deployMetrics.metrics, "targetDeploy");
         let upstreamMetrics = processRollupMetrics(upstreamRollup.metrics, "sourceDeploy");
