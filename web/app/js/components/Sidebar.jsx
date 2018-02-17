@@ -15,20 +15,37 @@ export default class Sidebar extends React.Component {
     this.api = this.props.api;
     this.filterDeployments = this.filterDeployments.bind(this);
     this.onAutocompleteSelect = this.onAutocompleteSelect.bind(this);
-    this.loadFromServer();
+    this.loadFromServer = this.loadFromServer.bind(this);
 
     this.state = {
+      pollingInterval: 10000, // longer, this doesn't need to be updated as often
+      pendingRequests: false,
       autocompleteValue: '',
       deployments: [],
       filteredDeployments: []
     };
   }
 
+  componentDidMount() {
+    this.loadFromServer();
+    this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
+  }
+
+  componentWillUnmount() {
+    window.clearInterval(this.timerId);
+  }
+
   loadFromServer() {
+    if (this.state.pendingRequests) {
+      return; // don't make more requests if the ones we sent haven't completed
+    }
+    this.setState({ pendingRequests: true });
+
     this.api.fetchPods().then(r => {
       let deploys =  _.map(getPodsByDeployment(r.pods), 'name');
 
       this.setState({
+        pendingRequests: false,
         deployments: deploys,
         filteredDeployments: deploys
       });
