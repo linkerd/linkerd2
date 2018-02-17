@@ -206,32 +206,43 @@ func InjectYAML(in io.Reader, out io.Writer) error {
 		case "Deployment":
 			var deployment v1beta1.Deployment
 			err = yaml.Unmarshal(bytes, &deployment)
+			if err != nil {
+				return err
+			}
 			obj = &deployment
 			podTemplateSpec = &deployment.Spec.Template
 		case "ReplicationController":
 			var rc v1.ReplicationController
 			err = yaml.Unmarshal(bytes, &rc)
+			if err != nil {
+				return err
+			}
 			obj = &rc
 			podTemplateSpec = rc.Spec.Template
 		case "ReplicaSet":
 			var rs v1beta1.ReplicaSet
 			err = yaml.Unmarshal(bytes, &rs)
+			if err != nil {
+				return err
+			}
 			obj = &rs
 			podTemplateSpec = &rs.Spec.Template
 		case "Job":
 			var job batchV1.Job
 			err = yaml.Unmarshal(bytes, &job)
+			if err != nil {
+				return err
+			}
 			obj = &job
 			podTemplateSpec = &job.Spec.Template
 		case "DaemonSet":
 			var ds v1beta1.DaemonSet
 			err = yaml.Unmarshal(bytes, &ds)
+			if err != nil {
+				return err
+			}
 			obj = &ds
 			podTemplateSpec = &ds.Spec.Template
-		}
-
-		if err != nil {
-			return err
 		}
 
 		// If we don't inject anything into the pod template then output the
