@@ -70,11 +70,14 @@ func injectDeployment(bytes []byte) (interface{}, error) {
 		return nil, err
 	}
 	podTemplateSpec := injectPodTemplateSpec(&deployment.Spec.Template)
-	return enhancedDeployment{
+	if podTemplateSpec == nil {
+		return nil, nil
+	}
+	return &enhancedDeployment{
 		&deployment,
 		enhancedDeploymentSpec{
 			&deployment.Spec,
-			podTemplateSpec,
+			*podTemplateSpec,
 		},
 	}, nil
 }
@@ -90,11 +93,14 @@ func injectReplicationController(bytes []byte) (interface{}, error) {
 		return nil, err
 	}
 	podTemplateSpec := injectPodTemplateSpec(rc.Spec.Template)
+	if podTemplateSpec == nil {
+		return nil, nil
+	}
 	return enhancedReplicationController{
 		&rc,
 		enhancedReplicationControllerSpec{
 			&rc.Spec,
-			podTemplateSpec,
+			*podTemplateSpec,
 		},
 	}, nil
 }
@@ -109,11 +115,14 @@ func injectReplicaSet(bytes []byte) (interface{}, error) {
 		return nil, err
 	}
 	podTemplateSpec := injectPodTemplateSpec(&rs.Spec.Template)
-	return enhancedReplicaSet{
+	if podTemplateSpec == nil {
+		return nil, nil
+	}
+	return &enhancedReplicaSet{
 		&rs,
 		enhancedReplicaSetSpec{
 			&rs.Spec,
-			podTemplateSpec,
+			*podTemplateSpec,
 		},
 	}, nil
 }
@@ -128,11 +137,14 @@ func injectJob(bytes []byte) (interface{}, error) {
 		return nil, err
 	}
 	podTemplateSpec := injectPodTemplateSpec(&job.Spec.Template)
-	return enhancedJob{
+	if podTemplateSpec == nil {
+		return nil, nil
+	}
+	return &enhancedJob{
 		&job,
 		enhancedJobSpec{
 			&job.Spec,
-			podTemplateSpec,
+			*podTemplateSpec,
 		},
 	}, nil
 }
@@ -147,19 +159,30 @@ func injectDaemonSet(bytes []byte) (interface{}, error) {
 		return nil, err
 	}
 	podTemplateSpec := injectPodTemplateSpec(&ds.Spec.Template)
+	if podTemplateSpec == nil {
+		return nil, nil
+	}
 	return enhancedDaemonSet{
 		&ds,
 		enhancedDaemonSetSpec{
 			&ds.Spec,
-			podTemplateSpec,
+			*podTemplateSpec,
 		},
 	}, nil
 }
 
 /* Given a PodTemplateSpec, return a new PodTemplateSpec with the sidecar
- * and init-container injected.
+ * and init-container injected. If the pod is unsuitable for having them
+ * injected, return null.
  */
-func injectPodTemplateSpec(t *v1.PodTemplateSpec) enhancedPodTemplateSpec {
+func injectPodTemplateSpec(t *v1.PodTemplateSpec) *enhancedPodTemplateSpec {
+	// Pods with `hostNetwork=true` share a network namespace with the host. The
+	// init-container would destroy the iptables configuration on the host, so
+	// skip the injection in this case.
+	if t.Spec.HostNetwork {
+		return nil
+	}
+
 	f := false
 	inboundSkipPorts := append(ignoreInboundPorts, proxyControlPort)
 	inboundSkipPortsStr := make([]string, len(inboundSkipPorts))
@@ -253,7 +276,7 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec) enhancedPodTemplateSpec {
 	}
 	t.Labels[k8s.ControllerNSLabel] = controlPlaneNamespace
 	t.Spec.Containers = append(t.Spec.Containers, sidecar)
-	return enhancedPodTemplateSpec{
+	return &enhancedPodTemplateSpec{
 		t,
 		enhancedPodSpec{
 			&t.Spec,
