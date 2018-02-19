@@ -57,19 +57,19 @@ with 'conduit inject'. e.g. curl http://url.to/yml | conduit inject -
 				return err
 			}
 		}
-
-
-		postInjectBuf := new(bytes.Buffer)
-
-		err = InjectYAML(in, postInjectBuf)
-		if err != nil {
-			return err
-		}
-
-		io.Copy(os.Stdout, postInjectBuf)
-
-		return nil
+		return runInjectCmd(in, os.Stderr, os.Stdout)
 	},
+}
+
+func runInjectCmd(input io.Reader, errWriter io.Writer, outWriter io.Writer) error {
+	postInjectBuf := &bytes.Buffer{}
+	err := InjectYAML(input, postInjectBuf)
+	if err != nil {
+		fmt.Fprintf(errWriter, "Error injecting conduit proxy: %v", err)
+		return nil //Return nil so we do not print usage information in the command
+	}
+	io.Copy(outWriter, postInjectBuf)
+	return nil
 }
 
 /* Given a PodTemplateSpec, return a new PodTemplateSpec with the sidecar

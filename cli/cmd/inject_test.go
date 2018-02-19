@@ -3,15 +3,12 @@ package cmd
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
-	"strings"
 	"testing"
-
-	"github.com/spf13/cobra"
 )
 
-func emptyRun(*cobra.Command, []string) {}
 func TestInjectYAML(t *testing.T) {
 	testCases := []struct {
 		inputFileName  string
@@ -50,27 +47,22 @@ func TestInjectYAML(t *testing.T) {
 	}
 
 	t.Run("Do not print invalid YAML on inject error", func(t *testing.T) {
-		rootTestCmd := &cobra.Command{Use: "root", Args: cobra.NoArgs, Run: emptyRun}
+		errBuffer := &bytes.Buffer{}
+		outBuffer := &bytes.Buffer{}
+		expectedErrorMsg := `Error injecting conduit proxy: error converting YAML to JSON: yaml: line 14: did not find expected key`
 
-		rootTestCmd.AddCommand(injectCmd)
-
-		buf := new(bytes.Buffer)
-		rootTestCmd.SetOutput(buf)
-		rootTestCmd.SetArgs([]string{"inject", "testdata/inject_gettest_deployment.input"})
-
-		_, err := rootTestCmd.ExecuteC()
-		if err == nil {
-			t.Fatal("Command returned nil but should have returned error")
-		}
-
-		goldenFileBytes, err := ioutil.ReadFile("testdata/inject_gettest_deployment.golden")
+		in, err := os.Open("testdata/inject_gettest_deployment.input")
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		actualOutput := buf.String()
+		runInjectCmd(in, errBuffer, outBuffer)
 
-		expectedOutput := string(goldenFileBytes)
-		diffCompare(t, strings.TrimSpace(actualOutput), strings.TrimSpace(expectedOutput))
+		if len(outBuffer.Bytes()) != 0 {
+			t.Fatalf("Expected output buffer to be empty but got: \n%v", outBuffer)
+		}
+
+		actualErrorMsg := errBuffer.String()
+		diffCompare(t, actualErrorMsg, expectedErrorMsg)
 	})
 }
