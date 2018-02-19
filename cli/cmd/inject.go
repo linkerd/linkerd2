@@ -199,8 +199,8 @@ func InjectYAML(in io.Reader, out io.Writer) error {
 
 		// obj and podTemplateSpec will reference zero or one the following
 		// objects, depending on the type.
-		var obj interface{} = nil
-		var podTemplateSpec *v1.PodTemplateSpec = nil
+		var obj interface{}
+		var podTemplateSpec *v1.PodTemplateSpec
 
 		switch meta.Kind {
 		case "Deployment":
