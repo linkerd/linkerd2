@@ -45,11 +45,18 @@ func TestHandleIndex(t *testing.T) {
 		t.Errorf("Expected:          %+v", header)
 	}
 
-	expectedVersionDiv := "<div class=\"main\" id=\"main\" data-release-version=\"0.3.3\" data-go-version=\"the best one\" data-controller-namespace=\"\" data-uuid=\"\">"
-
 	actualBody := recorder.Body.String()
 
-	if !strings.Contains(actualBody, expectedVersionDiv) {
-		t.Fatalf("Expected string [%s] to be present in [%s]", expectedVersionDiv, actualBody)
+	expectedSubstrings := []string{
+		"<div class=\"main\" id=\"main\"",
+		"data-release-version=\"0.3.3\"",
+		"data-go-version=\"the best one\"",
+		"data-controller-namespace=\"\"",
+		"data-uuid=\"\"",
+	}
+	for _, expectedSubstring := range expectedSubstrings {
+		if !strings.Contains(actualBody, expectedSubstring) {
+			t.Fatalf("Expected string [%s] to be present in [%s]", expectedSubstring, actualBody)
+		}
 	}
 }
