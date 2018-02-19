@@ -27,6 +27,7 @@ let applicationHtml = hideSidebar => (
       <Layout.Sider
         width="310"
         breakpoint="lg"
+        collapsible={true}
         collapsedWidth={0}
         onCollapse={onSidebarCollapse}>
         <Route
