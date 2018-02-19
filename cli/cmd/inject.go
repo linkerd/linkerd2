@@ -65,13 +65,17 @@ with 'conduit inject'. e.g. curl http://url.to/yml | conduit inject -
  */
 func injectDeployment(bytes []byte) (interface{}, error) {
 	var deployment v1beta1.Deployment
+	var DNSOverride string
 	err := yaml.Unmarshal(bytes, &deployment)
 	if err != nil {
 		return nil, err
 	}
 
-	deployment.Spec.Template.Namespace = controlPlaneNamespace
-	podTemplateSpec := injectPodTemplateSpec(&deployment.Spec.Template)
+	if deployment.Name == "controller" {
+		DNSOverride = "localhost"
+	}
+
+	podTemplateSpec := injectPodTemplateSpec(&deployment.Spec.Template, DNSOverride)
 	return enhancedDeployment{
 		&deployment,
 		enhancedDeploymentSpec{
@@ -87,11 +91,12 @@ func injectDeployment(bytes []byte) (interface{}, error) {
  */
 func injectReplicationController(bytes []byte) (interface{}, error) {
 	var rc v1.ReplicationController
+	var DNSOverride string
 	err := yaml.Unmarshal(bytes, &rc)
 	if err != nil {
 		return nil, err
 	}
-	podTemplateSpec := injectPodTemplateSpec(rc.Spec.Template)
+	podTemplateSpec := injectPodTemplateSpec(rc.Spec.Template, DNSOverride)
 	return enhancedReplicationController{
 		&rc,
 		enhancedReplicationControllerSpec{
@@ -106,11 +111,12 @@ func injectReplicationController(bytes []byte) (interface{}, error) {
  */
 func injectReplicaSet(bytes []byte) (interface{}, error) {
 	var rs v1beta1.ReplicaSet
+	var DNSOverride string
 	err := yaml.Unmarshal(bytes, &rs)
 	if err != nil {
 		return nil, err
 	}
-	podTemplateSpec := injectPodTemplateSpec(&rs.Spec.Template)
+	podTemplateSpec := injectPodTemplateSpec(&rs.Spec.Template, DNSOverride)
 	return enhancedReplicaSet{
 		&rs,
 		enhancedReplicaSetSpec{
@@ -125,11 +131,12 @@ func injectReplicaSet(bytes []byte) (interface{}, error) {
  */
 func injectJob(bytes []byte) (interface{}, error) {
 	var job batchV1.Job
+	var DNSOverride string
 	err := yaml.Unmarshal(bytes, &job)
 	if err != nil {
 		return nil, err
 	}
-	podTemplateSpec := injectPodTemplateSpec(&job.Spec.Template)
+	podTemplateSpec := injectPodTemplateSpec(&job.Spec.Template, DNSOverride)
 	return enhancedJob{
 		&job,
 		enhancedJobSpec{
@@ -144,11 +151,12 @@ func injectJob(bytes []byte) (interface{}, error) {
  */
 func injectDaemonSet(bytes []byte) (interface{}, error) {
 	var ds v1beta1.DaemonSet
+	var DNSOverride string
 	err := yaml.Unmarshal(bytes, &ds)
 	if err != nil {
 		return nil, err
 	}
-	podTemplateSpec := injectPodTemplateSpec(&ds.Spec.Template)
+	podTemplateSpec := injectPodTemplateSpec(&ds.Spec.Template, DNSOverride)
 	return enhancedDaemonSet{
 		&ds,
 		enhancedDaemonSetSpec{
@@ -158,19 +166,10 @@ func injectDaemonSet(bytes []byte) (interface{}, error) {
 	}, nil
 }
 
-func containsProxyAPIContainer(spec v1.PodSpec, containerName string) bool {
-	for _, container := range spec.Containers {
-		if container.Name == containerName {
-			return true
-		}
-	}
-	return false
-}
-
 /* Given a PodTemplateSpec, return a new PodTemplateSpec with the sidecar
  * and init-container injected.
  */
-func injectPodTemplateSpec(t *v1.PodTemplateSpec) enhancedPodTemplateSpec {
+func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride string) enhancedPodTemplateSpec {
 	f := false
 	inboundSkipPorts := append(ignoreInboundPorts, proxyControlPort)
 	inboundSkipPortsStr := make([]string, len(inboundSkipPorts))
@@ -211,13 +210,10 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec) enhancedPodTemplateSpec {
 			Privileged: &f,
 		},
 	}
-
-	controlPlaneDNSName := fmt.Sprintf("tcp://proxy-api.%s.svc.cluster.local:%d", controlPlaneNamespace, proxyAPIPort)
-	if t.Namespace == controlPlaneNamespace && containsProxyAPIContainer(t.Spec, "proxy-api") {
-		controlPlaneDNSName = fmt.Sprintf("tcp://%s:%d", "127.0.0.1", proxyAPIPort)
+	controlPlaneDNS := fmt.Sprintf("proxy-api.%s.svc.cluster.local", controlPlaneNamespace)
+	if controlPlaneDNSNameOverride != "" {
+		controlPlaneDNS = controlPlaneDNSNameOverride
 	}
-	//remove namespace from container spec as its no longer needed to detect if we are processing a controller plane config
-	t.Namespace = ""
 
 	sidecar := v1.Container{
 		Name:            "conduit-proxy",
@@ -236,7 +232,7 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec) enhancedPodTemplateSpec {
 			v1.EnvVar{Name: "CONDUIT_PROXY_LOG", Value: proxyLogLevel},
 			v1.EnvVar{
 				Name:  "CONDUIT_PROXY_CONTROL_URL",
-				Value: controlPlaneDNSName,
+				Value: fmt.Sprintf("tcp://%s:%d", controlPlaneDNS, proxyAPIPort),
 			},
 			v1.EnvVar{Name: "CONDUIT_PROXY_CONTROL_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", proxyControlPort)},
 			v1.EnvVar{Name: "CONDUIT_PROXY_PRIVATE_LISTENER", Value: fmt.Sprintf("tcp://127.0.0.1:%d", outboundPort)},
