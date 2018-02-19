@@ -1,10 +1,13 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 
 	"github.com/pkg/browser"
+	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
+	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/runconduit/conduit/pkg/shell"
 	"github.com/spf13/cobra"
@@ -21,7 +24,8 @@ var dashboardCmd = &cobra.Command{
 			return fmt.Errorf("port must be greater than or equal to zero, was %d", dashboardProxyPort)
 		}
 
-		kubernetesProxy, err := k8s.InitK8sProxy(shell.NewUnixShell().HomeDir(), kubeconfigPath, dashboardProxyPort)
+		shellHomeDir := shell.NewUnixShell().HomeDir()
+		kubernetesProxy, err := k8s.InitK8sProxy(shellHomeDir, kubeconfigPath, dashboardProxyPort)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to initialize proxy: %s\n", err)
 			os.Exit(1)
@@ -33,10 +37,27 @@ var dashboardCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		client, err := newPublicAPIClient()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to initialize Conduit API client: %+v\n", err)
+			os.Exit(1)
+		}
+
+		dashboardAvailable, err := isDashboardAvailable(client)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed while checking availability of dashboard: %+v\n", err)
+		}
+
+		if !dashboardAvailable {
+			fmt.Fprint(os.Stderr, "Conduit web deployment is not installed in your cluster\n")
+			os.Exit(1)
+		}
+
 		fmt.Printf("Conduit dashboard available at:\n%s\n", url.String())
 
 		if !dashboardSkipBrowser {
 			fmt.Println("Opening the default browser")
+
 			err = browser.OpenURL(url.String())
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to open URL %s in the default browser: %s", url, err)
@@ -53,6 +74,20 @@ var dashboardCmd = &cobra.Command{
 
 		return nil
 	},
+}
+
+func isDashboardAvailable(client pb.ApiClient) (bool, error) {
+	res, err := client.SelfCheck(context.Background(), &healthcheckPb.SelfCheckRequest{})
+	if err != nil {
+		return false, err
+	}
+
+	for _, result := range res.Results {
+		if result.Status != healthcheckPb.CheckStatus_OK {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 func init() {
