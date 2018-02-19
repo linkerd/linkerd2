@@ -1,0 +1,18 @@
+Error: error converting YAML to JSON: yaml: line 14: did not find expected key
+Usage:
+  root inject [flags] CONFIG-FILE
+
+Flags:
+      --api-port uint                   port where the Conduit controller is running (default 8086)
+  -v, --conduit-version string          tag to be used for Conduit images (default "latest")
+      --control-port uint               proxy port to use for control (default 4190)
+  -h, --help                            help for inject
+      --image-pull-policy string        Docker image pull policy (default "IfNotPresent")
+      --inbound-port uint               proxy port to use for inbound traffic (default 4143)
+      --init-image string               Conduit init container image name (default "gcr.io/runconduit/proxy-init")
+      --outbound-port uint              proxy port to use for outbound traffic (default 4140)
+      --proxy-image string              Conduit proxy container image name (default "gcr.io/runconduit/proxy")
+      --proxy-log-level string          log level for the proxy (default "warn,conduit_proxy=info")
+      --proxy-uid int                   Run the proxy under this user ID (default 2102)
+      --skip-inbound-ports uintSlice    ports that should skip the proxy and send directly to the application (default [])
+      --skip-outbound-ports uintSlice   outbound ports that should skip the proxy (default [])
