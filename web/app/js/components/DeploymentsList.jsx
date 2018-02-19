@@ -17,7 +17,7 @@ export default class DeploymentsList extends React.Component {
     this.loadFromServer = this.loadFromServer.bind(this);
 
     this.state = {
-      pollingInterval: 10000, // TODO: poll based on metricsWindow size
+      pollingInterval: 2000, // TODO: poll based on metricsWindow size
       metrics: [],
       pendingRequests: false,
       loaded: false,

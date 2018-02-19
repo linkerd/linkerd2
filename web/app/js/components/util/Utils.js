@@ -27,7 +27,8 @@ const formatLatency = m => {
 export const metricToFormatter = {
   "REQUEST_RATE": m => _.isNil(m) ? "---" : styleNum(m, " RPS", true),
   "SUCCESS_RATE": m => _.isNil(m) ? "---" : successRateFormatter(m),
-  "LATENCY": formatLatency
+  "LATENCY": formatLatency,
+  "UNTRUNCATED": m => styleNum(m, "", false)
 };
 
 /*
@@ -61,13 +62,13 @@ export const styleNum = (number, unit = "", truncate = true) => {
   }
 
   if (truncate && number > 999999999) {
-    number = roundNumber(number / 1000000000.0, 1);
+    number = roundNumber(number / 1000000000.0, 3);
     return addCommas(number) + "G" + unit;
   } else if (truncate && number > 999999) {
-    number = roundNumber(number / 1000000.0, 1);
+    number = roundNumber(number / 1000000.0, 3);
     return addCommas(number) + "M" + unit;
   } else if (truncate && number > 999) {
-    number = roundNumber(number / 1000.0, 1);
+    number = roundNumber(number / 1000.0, 3);
     return addCommas(number) + "k" + unit;
   } else if (number > 999) {
     number = roundNumber(number, 0);

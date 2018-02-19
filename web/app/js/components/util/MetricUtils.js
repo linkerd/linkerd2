@@ -26,17 +26,36 @@ const convertLatencyTs = rawTs => {
   return _.groupBy(latencies, 'label');
 };
 
+const getPodCategorization = pod => {
+  if (pod.added && pod.status === "Running") {
+    return "good";
+  } else if (pod.status === "Pending" || pod.status === "Running") {
+    return "neutral";
+  } else if (pod.status === "Failed") {
+    return "bad";
+  }
+  return ""; // Terminating | Succeeded | Unknown
+};
+
 export const getPodsByDeployment = pods => {
   return _(pods)
     .reject(p => _.isEmpty(p.deployment) || p.controlPlane)
     .groupBy('deployment')
     .map((componentPods, name) => {
+      let podsWithStatus = _.chain(componentPods)
+        .map(p => {
+          return _.merge({}, p, { value: getPodCategorization(p) });
+        })
+        .reject(p => _.isEmpty(p.value))
+        .value();
+
       return {
         name: name,
         added: _.every(componentPods, 'added'),
-        pods: componentPods
+        pods: _.sortBy(podsWithStatus, 'name')
       };
     })
+    .reject(p => _.isEmpty(p.pods))
     .sortBy('name')
     .value();
 };

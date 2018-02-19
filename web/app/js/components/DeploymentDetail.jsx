@@ -41,7 +41,7 @@ export default class DeploymentDetail extends React.Component {
     let deployment = urlParams.get("deploy");
     return {
       lastUpdated: 0,
-      pollingInterval: 10000,
+      pollingInterval: 2000,
       deploy: deployment,
       pods: [],
       upstreamMetrics: [],

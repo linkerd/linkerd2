@@ -67,7 +67,7 @@ describe('ServiceMesh', () => {
 
   it("renders controller component summaries", () => {
     let addedPods = _.cloneDeep(podFixtures.pods);
-    _.set(addedPods[0], "added", true);
+    _.set(addedPods[1], "added", true);
 
     fetchStub.resolves({
       ok: true,

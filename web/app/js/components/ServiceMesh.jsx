@@ -10,7 +10,11 @@ import React from 'react';
 import { rowGutter } from './util/Utils.js';
 import StatusTable from './StatusTable.jsx';
 import { Col, Row, Table } from 'antd';
-import { processRollupMetrics, processTimeseriesMetrics } from './util/MetricUtils.js';
+import {
+  getPodsByDeployment,
+  processRollupMetrics,
+  processTimeseriesMetrics
+} from './util/MetricUtils.js';
 import './../../css/service-mesh.css';
 
 const serviceMeshDetailsColumns = [
@@ -99,14 +103,14 @@ export default class ServiceMesh extends React.Component {
       .then(([metrics, ts, pods]) => {
         let m = processRollupMetrics(metrics.metrics, "component");
         let tsByComponent = processTimeseriesMetrics(ts.metrics, "component");
-        let d = this.getDeploymentList(pods.pods);
-        let c = this.processComponents(pods.pods);
+        let podsByDeploy = getPodsByDeployment(pods.pods);
+        let controlPlanePods = this.processComponents(pods.pods);
 
         this.setState({
           metrics: m,
           timeseriesByComponent: tsByComponent,
-          deploys: d,
-          components: c,
+          deploys: podsByDeploy,
+          components: controlPlanePods,
           lastUpdated: Date.now(),
           pendingRequests: false,
           loaded: true,
@@ -124,7 +128,7 @@ export default class ServiceMesh extends React.Component {
 
   addedDeploymentCount() {
     return _.size(_.filter(this.state.deploys, d => {
-      return _.every(d.pods, ["value", "good"]);
+      return _.every(d.pods, ["added", true]);
     }));
   }
 
@@ -155,23 +159,6 @@ export default class ServiceMesh extends React.Component {
       { key: 5, name: "Unadded deployments", value: this.unaddedDeploymentCount() },
       { key: 6, name: "Data plane proxies", value: this.proxyCount() }
     ];
-  }
-
-  getDeploymentList(pods) {
-    return _(pods)
-      .reject(p => _.isEmpty(p.deployment) || p.controlPlane)
-      .groupBy("deployment")
-      .map((componentPods, name) => {
-        _.remove(componentPods, p => {
-          return p.status === "Terminating";
-        });
-        let podStatuses = _.map(componentPods, p => {
-          return { name: p.name, value: p.added ? "good" : "neutral" };
-        });
-        return { name: name, pods: _.sortBy(podStatuses, "name") };
-      })
-      .sortBy("name")
-      .value();
   }
 
   processComponents(pods) {
