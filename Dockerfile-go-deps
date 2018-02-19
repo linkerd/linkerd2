@@ -7,26 +7,32 @@
 
 FROM golang:1.9.4
 ENV TEMP_GOPATH=/temp-gopath
-ENV GOPATH=${TEMP_GOPATH}
-WORKDIR $GOPATH/src/github.com/runconduit/conduit
+WORKDIR ${TEMP_GOPATH}/src/github.com/runconduit/conduit
 
 # Download `dep` without being sensitive to changes to Gopkg.{toml,lock}.
 COPY bin/dep bin/dep
-RUN bin/dep version
+RUN GOPATH=${TEMP_GOPATH} bin/dep version
 
-# Vendor the Go dependencies.
+# Vendor the Go dependencies. `dep ensure` caches the entire Git repo for
+# every dependency in `${TEMP_GOPATH}/pkg/dep` so it is important to remove it.
+# `go install` below cannot find the packages under vendor/ so move them to
+# /go/pkg. This is all done in a single RUN to avoid creating a giant
+# intermediate layer.
 COPY Gopkg.toml Gopkg.lock ./
-RUN bin/dep ensure -vendor-only -v
+RUN \
+  GOPATH=${TEMP_GOPATH} bin/dep ensure -vendor-only -v && \
+  mv vendor/* /go/src/ && \
+  rm -rf ${TEMP_GOPATH}
 
-# Move the dependencies to where `go install` can see them.
-ENV GOPATH=/go
-RUN mv vendor/* $GOPATH/src/
+# The previous WORKDIR was deleted. Reset it to avoid any potential for
+# strangeness later.
+WORKDIR /
 
 # Precompile key slow-to-build dependencies. This list doesn't need to be
 # complete for the build to work correctly; the completeness of this list
 # only affects the speed of incremental rebuilds of Dependent Dockerfiles.
 #
-# This list was derived from the output of `find $GOPATH/pkg -type f`
+# This list was derived from the output of `find /go/pkg -type f`
 # after building the controller.
 RUN CGO_ENABLED=0 GOOS=linux go install -installsuffix cgo \
     github.com/golang/protobuf/jsonpb \
@@ -92,5 +98,3 @@ RUN CGO_ENABLED=0 GOOS=linux go install -installsuffix cgo \
     k8s.io/client-go/util/jsonpath \
     k8s.io/kubernetes/pkg/kubectl/proxy \
     k8s.io/kubernetes/pkg/kubectl/util
-
-RUN mv ${TEMP_GOPATH}/src/github.com/runconduit $GOPATH/src/github.com/runconduit
