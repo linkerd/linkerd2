@@ -6,18 +6,16 @@
 
 :balloon: Welcome to Conduit! :wave:
 
-Conduit is an ultralight service mesh for Kubernetes from the makers of [Linkerd][l5d]. It
-features a native proxy, written in [Rust][rust], that boasts the performance of C without
-all the heartbleed.
+Conduit is an ultralight service mesh for Kubernetes. It features a minimalist
+control plane written in Go, and a native proxy data plane written in
+[Rust][rust] that boasts the performance of C without the heartbleed.
 
-Conduit is **experimental**. It is capable of proxying all TCP traffic, and reporting
+Conduit is **alpha**. It is capable of proxying all TCP traffic, and reporting
 top-line metrics (success rates, latencies, etc) for all HTTP, HTTP/2, and gRPC traffic.
 It currently does not work with websockets or with HTTP tunneling--see the
 `--skip-outbound-ports` flag for how to exclude these types of traffic.
 
-Follow our progress towards production-readiness here and on [Twitter][twitter].
-
-<!-- TODO add roadmap link -->
+Follow our progress towards production-readiness in the [Conduit roadmap][roadmap].
 
 ## Documentation
 
@@ -79,6 +77,7 @@ specific language governing permissions and limitations under the License.
 [l5d]: https://linkerd.io/
 [license-badge]: https://img.shields.io/github/license/linkerd/linkerd.svg
 [logo]: https://user-images.githubusercontent.com/240738/33589722-649152de-d92f-11e7-843a-b078ac889a39.png
+[roadmap]:https://conduit.io/roadmap
 [releases]: https://github.com/runconduit/conduit/releases
 [rust]: https://rust-lang.org/
 [twitter]: https://twitter.com/runconduit/
