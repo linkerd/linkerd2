@@ -60,82 +60,6 @@ with 'conduit inject'. e.g. curl http://url.to/yml | conduit inject -
 	},
 }
 
-/* Given a byte slice representing a deployment, unmarshal the deployment and
- * return a new deployment with the sidecar and init-container injected.
- */
-func injectDeployment(bytes []byte) (interface{}, error) {
-	var deployment v1beta1.Deployment
-	err := yaml.Unmarshal(bytes, &deployment)
-	if err != nil {
-		return nil, err
-	}
-	if !injectPodTemplateSpec(&deployment.Spec.Template) {
-		return nil, nil
-	}
-	return &deployment, nil
-}
-
-/* Given a byte slice representing a replication controller, unmarshal the
- * replication controller and return a new replication controller with the
- * sidecar and init-container injected.
- */
-func injectReplicationController(bytes []byte) (interface{}, error) {
-	var rc v1.ReplicationController
-	err := yaml.Unmarshal(bytes, &rc)
-	if err != nil {
-		return nil, err
-	}
-	if !injectPodTemplateSpec(rc.Spec.Template) {
-		return nil, nil
-	}
-	return &rc, nil
-}
-
-/* Given a byte slice representing a replica set, unmarshal the replica set and
- * return a new replica set with the sidecar and init-container injected.
- */
-func injectReplicaSet(bytes []byte) (interface{}, error) {
-	var rs v1beta1.ReplicaSet
-	err := yaml.Unmarshal(bytes, &rs)
-	if err != nil {
-		return nil, err
-	}
-	if !injectPodTemplateSpec(&rs.Spec.Template) {
-		return nil, nil
-	}
-	return &rs, nil
-}
-
-/* Given a byte slice representing a job, unmarshal the job and return a new job
- * with the sidecar and init-container injected.
- */
-func injectJob(bytes []byte) (interface{}, error) {
-	var job batchV1.Job
-	err := yaml.Unmarshal(bytes, &job)
-	if err != nil {
-		return nil, err
-	}
-	if !injectPodTemplateSpec(&job.Spec.Template) {
-		return nil, nil
-	}
-	return &job, nil
-}
-
-/* Given a byte slice representing a daemonset, unmarshal the daemonset and
- * return a new daemonset with the sidecar and init-container injected.
- */
-func injectDaemonSet(bytes []byte) (interface{}, error) {
-	var ds v1beta1.DaemonSet
-	err := yaml.Unmarshal(bytes, &ds)
-	if err != nil {
-		return nil, err
-	}
-	if !injectPodTemplateSpec(&ds.Spec.Template) {
-		return nil, nil
-	}
-	return &ds, nil
-}
-
 /* Given a PodTemplateSpec, return a new PodTemplateSpec with the sidecar
  * and init-container injected. If the pod is unsuitable for having them
  * injected, return null.
@@ -259,32 +183,79 @@ func InjectYAML(in io.Reader, out io.Writer) error {
 			return err
 		}
 
+		// The Kuberentes API is versioned and each version has an API modeled
+		// with its own distinct Go types. If we tell `yaml.Unmarshal()` which
+		// version we support then it will provide a representation of that
+		// object using the given type if possible. However, it only allows us
+		// to supply one object (of one type), so first we have to determine
+		// what kind of object `bytes` represents so we can pass an object of
+		// the correct type to `yaml.Unmarshal()`.
+
 		// Unmarshal the object enough to read the Kind field
 		var meta metaV1.TypeMeta
 		if err := yaml.Unmarshal(bytes, &meta); err != nil {
 			return err
 		}
 
-		var injected interface{} = nil
+		// obj and podTemplateSpec will reference zero or one the following
+		// objects, depending on the type.
+		var obj interface{}
+		var podTemplateSpec *v1.PodTemplateSpec
+
 		switch meta.Kind {
 		case "Deployment":
-			injected, err = injectDeployment(bytes)
+			var deployment v1beta1.Deployment
+			err = yaml.Unmarshal(bytes, &deployment)
+			if err != nil {
+				return err
+			}
+			obj = &deployment
+			podTemplateSpec = &deployment.Spec.Template
 		case "ReplicationController":
-			injected, err = injectReplicationController(bytes)
+			var rc v1.ReplicationController
+			err = yaml.Unmarshal(bytes, &rc)
+			if err != nil {
+				return err
+			}
+			obj = &rc
+			podTemplateSpec = rc.Spec.Template
 		case "ReplicaSet":
-			injected, err = injectReplicaSet(bytes)
+			var rs v1beta1.ReplicaSet
+			err = yaml.Unmarshal(bytes, &rs)
+			if err != nil {
+				return err
+			}
+			obj = &rs
+			podTemplateSpec = &rs.Spec.Template
 		case "Job":
-			injected, err = injectJob(bytes)
+			var job batchV1.Job
+			err = yaml.Unmarshal(bytes, &job)
+			if err != nil {
+				return err
+			}
+			obj = &job
+			podTemplateSpec = &job.Spec.Template
 		case "DaemonSet":
-			injected, err = injectDaemonSet(bytes)
+			var ds v1beta1.DaemonSet
+			err = yaml.Unmarshal(bytes, &ds)
+			if err != nil {
+				return err
+			}
+			obj = &ds
+			podTemplateSpec = &ds.Spec.Template
 		}
+
+		// If we don't inject anything into the pod template then output the
+		// original serialization of the original object. Otherwise, output the
+		// serialization of the modified object.
 		output := bytes
-		if injected != nil {
-			output, err = yaml.Marshal(injected)
+		if podTemplateSpec != nil && injectPodTemplateSpec(podTemplateSpec) {
+			output, err = yaml.Marshal(obj)
 			if err != nil {
 				return err
 			}
 		}
+
 		out.Write(output)
 		out.Write([]byte("---\n"))
 	}
