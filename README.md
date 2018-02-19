@@ -15,7 +15,7 @@ top-line metrics (success rates, latencies, etc) for all HTTP, HTTP/2, and gRPC 
 It currently does not work with websockets or with HTTP tunneling--see the
 `--skip-outbound-ports` flag for how to exclude these types of traffic.
 
-## Join the fun
+## Get involved
 
 * [conduit-users mailing list][conduit-users]: Conduit user discussion mailing list.
 * [conduit-dev mailing list][conduit-dev]: Conduit development discussion mailing list.
@@ -50,7 +50,7 @@ getting started, or view the full [Conduit roadmap][roadmap].
 [`BUILD.md`](BUILD.md) includes general information on how to work in this repo.
 
 
-## Code of Conduct
+## Code of conduct
 
 This project is for everyone. We ask that our users and contributors take a few
 minutes to review our [code of conduct][coc].
