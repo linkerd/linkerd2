@@ -15,13 +15,18 @@ top-line metrics (success rates, latencies, etc) for all HTTP, HTTP/2, and gRPC 
 It currently does not work with websockets or with HTTP tunneling--see the
 `--skip-outbound-ports` flag for how to exclude these types of traffic.
 
-Follow our progress towards production-readiness in the [Conduit roadmap][roadmap].
+## Join the fun
+
+* [conduit-users mailing list][conduit-users]: Conduit user discussion mailing list.
+* [conduit-dev mailing list][conduit-dev]: Conduit development discussion mailing list.
+* [conduit-announce mailing list][conduit-announce]: Conduit announcements only (low volume).
+* Follow [@RunConduit][twitter] on Twitter.
+* Join the #conduit channel on the [Linkerd Slack][slack].
 
 ## Documentation
 
 View [Conduit docs][conduit-docs] for more a more comprehensive guide to
-getting started.
-
+getting started, or view the full [Conduit roadmap][roadmap].
 
 ## Getting started with Conduit
 
@@ -70,15 +75,18 @@ specific language governing permissions and limitations under the License.
 [ci]: https://travis-ci.org/runconduit/conduit
 [ci-badge]: https://travis-ci.org/runconduit/conduit.svg?branch=master
 [coc]: https://github.com/linkerd/linkerd/wiki/Linkerd-code-of-conduct
+[conduit-announce]: https://groups.google.com/forum/#!forum/conduit-announce
 [conduit-demo]: https://conduit.io/getting-started/#install-the-demo-app
+[conduit-dev]: https://groups.google.com/forum/#!forum/conduit-dev
 [conduit-inject]: https://conduit.io/adding-your-service/
 [conduit-docs]: https://conduit.io/docs/
+[conduit-users]: https://groups.google.com/forum/#!forum/conduit-users
 <!-- [examples]: https://github.com/runconduit/conduit-examples -->
 [license-badge]: https://img.shields.io/github/license/linkerd/linkerd.svg
 [logo]: https://user-images.githubusercontent.com/240738/33589722-649152de-d92f-11e7-843a-b078ac889a39.png
 [roadmap]: https://conduit.io/roadmap
 [releases]: https://github.com/runconduit/conduit/releases
 [rust]: https://www.rust-lang.org/
-[twitter]: https://twitter.com/runconduit/
 [slack-badge]: http://slack.linkerd.io/badge.svg
 [slack]: http://slack.linkerd.io
+[twitter]: https://twitter.com/runconduit/
