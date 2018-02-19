@@ -21,6 +21,7 @@ const columnDefinitions = (sortable = true, resource, ConduitLink) => {
       title: resource.title,
       dataIndex: "name",
       key: "name",
+      defaultSortOrder: 'ascend',
       width: 150,
       sorter: sortable ? (a, b) => (a.name || "").localeCompare(b.name) : false,
       render: name => !resource.url ? name :
@@ -30,7 +31,6 @@ const columnDefinitions = (sortable = true, resource, ConduitLink) => {
       title: "Request Rate",
       dataIndex: "requestRate",
       key: "requestRateRollup",
-      defaultSortOrder: 'descend',
       className: "numeric",
       sorter: sortable ? (a, b) => numericSort(a.requestRate, b.requestRate) : false,
       render: d => metricToFormatter["REQUEST_RATE"](d)
