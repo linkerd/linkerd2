@@ -5,8 +5,9 @@ import (
 	"bytes"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
-	"fmt"
+
 	"github.com/spf13/cobra"
 )
 
@@ -38,44 +39,27 @@ func TestInjectYAML(t *testing.T) {
 	})
 
 	t.Run("Do not print invalid YAML on inject error", func(t *testing.T) {
-		//file, err := os.Open("testdata/inject_emojivoto_deployment.input.yml")
-		//if err != nil {
-		//	t.Errorf("error opening test file: %v\n", err)
-		//}
-		root := &cobra.Command{
-			Use:   "test",
-			Short: "test",
-			RunE: func(cmd *cobra.Command, args []string) error {
-				fmt.Println("Running tests...")
-				return nil
-			},
-		}
-		root.AddCommand(injectCmd)
+		rootTestCmd := &cobra.Command{Use: "root", Args: cobra.NoArgs, Run: emptyRun}
 
-		//read := bufio.NewReader(file)
-
-		output := new(bytes.Buffer)
-		root.SetOutput(output)
-		root.SetArgs([]string{""})
-		_, err := root.ExecuteC()
-		if err != nil {
-			t.Error()
-		}
-		fmt.Println(output.String())
-	})
-
-	t.Run("Test", func(t *testing.T) {
-		rootCmd := &cobra.Command{Use: "root", Args: cobra.NoArgs, Run: emptyRun}
-
-		rootCmd.AddCommand(injectCmd)
+		rootTestCmd.AddCommand(injectCmd)
 
 		buf := new(bytes.Buffer)
-		rootCmd.SetOutput(buf)
-		rootCmd.SetArgs([]string{"inject", "testdata/inject_gettest_deployment.input"})
+		rootTestCmd.SetOutput(buf)
+		rootTestCmd.SetArgs([]string{"inject", "testdata/inject_gettest_deployment.input"})
 
-		_, err := rootCmd.ExecuteC()
-		if err != nil {
-			t.Error()
+		_, err := rootTestCmd.ExecuteC()
+		if err == nil {
+			t.Fatal("Command returned nil but should have returned error")
 		}
+
+		goldenFileBytes, err := ioutil.ReadFile("testdata/inject_gettest_deployment.golden")
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		actualOutput := buf.String()
+
+		expectedOutput := string(goldenFileBytes)
+		diffCompare(t, strings.TrimSpace(actualOutput), strings.TrimSpace(expectedOutput))
 	})
 }

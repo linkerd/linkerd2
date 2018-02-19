@@ -16,3 +16,7 @@ Flags:
       --proxy-uid int                   Run the proxy under this user ID (default 2102)
       --skip-inbound-ports uintSlice    ports that should skip the proxy and send directly to the application (default [])
       --skip-outbound-ports uintSlice   outbound ports that should skip the proxy (default [])
+
+Global Flags:
+  -n, --conduit-namespace string   namespace in which Conduit is installed (default "conduit")
+      --verbose                    turn on debug logging
