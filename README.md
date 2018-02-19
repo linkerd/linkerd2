@@ -74,12 +74,11 @@ specific language governing permissions and limitations under the License.
 [conduit-inject]: https://conduit.io/adding-your-service/
 [conduit-docs]: https://conduit.io/docs/
 <!-- [examples]: https://github.com/runconduit/conduit-examples -->
-[l5d]: https://linkerd.io/
 [license-badge]: https://img.shields.io/github/license/linkerd/linkerd.svg
 [logo]: https://user-images.githubusercontent.com/240738/33589722-649152de-d92f-11e7-843a-b078ac889a39.png
-[roadmap]:https://conduit.io/roadmap
+[roadmap]: https://conduit.io/roadmap
 [releases]: https://github.com/runconduit/conduit/releases
-[rust]: https://rust-lang.org/
+[rust]: https://www.rust-lang.org/
 [twitter]: https://twitter.com/runconduit/
 [slack-badge]: http://slack.linkerd.io/badge.svg
 [slack]: http://slack.linkerd.io
