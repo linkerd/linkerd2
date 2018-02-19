@@ -95,6 +95,7 @@ export default class StatusTable extends React.Component {
       columns={tableCols}
       pagination={false}
       className="conduit-table"
-      rowKey={r => r.name} />);
+      rowKey={r => r.name}
+      size="middle" />);
   }
 }

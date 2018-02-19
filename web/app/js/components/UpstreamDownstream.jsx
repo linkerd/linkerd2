@@ -1,7 +1,7 @@
 import _ from 'lodash';
+import MetricsTable from './MetricsTable.jsx';
 import React from 'react';
 import { rowGutter } from './util/Utils.js';
-import TabbedMetricsTable from './TabbedMetricsTable.jsx';
 import { Col, Row } from 'antd';
 
 export default class UpstreamDownstreamTables extends React.Component {
@@ -17,7 +17,7 @@ export default class UpstreamDownstreamTables extends React.Component {
                 <div className="border-container border-neutral subsection-header">
                   <div className="border-container-content subsection-header">Upstreams</div>
                 </div>
-                <TabbedMetricsTable
+                <MetricsTable
                   resource={`upstream_${this.props.resourceType}`}
                   resourceName={this.props.resourceName}
                   metrics={this.props.upstreamMetrics}
@@ -30,7 +30,7 @@ export default class UpstreamDownstreamTables extends React.Component {
                 <div className="border-container border-neutral subsection-header">
                   <div className="border-container-content subsection-header">Downstreams</div>
                 </div>
-                <TabbedMetricsTable
+                <MetricsTable
                   resource={`downstream_${this.props.resourceType}`}
                   resourceName={this.props.resourceName}
                   metrics={this.props.downstreamMetrics}

@@ -15,20 +15,37 @@ export default class Sidebar extends React.Component {
     this.api = this.props.api;
     this.filterDeployments = this.filterDeployments.bind(this);
     this.onAutocompleteSelect = this.onAutocompleteSelect.bind(this);
-    this.loadFromServer();
+    this.loadFromServer = this.loadFromServer.bind(this);
 
     this.state = {
+      pollingInterval: 10000, // longer, this doesn't need to be updated as often
+      pendingRequests: false,
       autocompleteValue: '',
       deployments: [],
       filteredDeployments: []
     };
   }
 
+  componentDidMount() {
+    this.loadFromServer();
+    this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
+  }
+
+  componentWillUnmount() {
+    window.clearInterval(this.timerId);
+  }
+
   loadFromServer() {
+    if (this.state.pendingRequests) {
+      return; // don't make more requests if the ones we sent haven't completed
+    }
+    this.setState({ pendingRequests: true });
+
     this.api.fetchPods().then(r => {
       let deploys =  _.map(getPodsByDeployment(r.pods), 'name');
 
       this.setState({
+        pendingRequests: false,
         deployments: deploys,
         filteredDeployments: deploys
       });
@@ -60,6 +77,7 @@ export default class Sidebar extends React.Component {
   render() {
     let normalizedPath = this.props.location.pathname.replace(this.props.pathPrefix, "");
     let ConduitLink = this.api.ConduitLink;
+
     return (
       <div className="sidebar">
         <div className="list-container">
@@ -88,11 +106,16 @@ export default class Sidebar extends React.Component {
             </Menu.Item>
           </Menu>
 
-          <SocialLinks />
-
-          <Version
-            releaseVersion={this.props.releaseVersion}
-            uuid={this.props.uuid} />
+          {
+            !this.props.collapsed ? (
+              <React.Fragment>
+                <SocialLinks />
+                <Version
+                  releaseVersion={this.props.releaseVersion}
+                  uuid={this.props.uuid} />
+              </React.Fragment>
+            ) : null
+          }
         </div>
       </div>
     );

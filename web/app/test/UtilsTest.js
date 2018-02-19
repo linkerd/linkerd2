@@ -56,7 +56,7 @@ describe('Utils', () => {
       let undefinedMetric;
       expect(metricToFormatter["REQUEST_RATE"](undefinedMetric)).to.equal('---');
       expect(metricToFormatter["SUCCESS_RATE"](undefinedMetric)).to.equal('---');
-      expect(metricToFormatter["LATENCY"](undefinedMetric)).to.equal('--- ms');
+      expect(metricToFormatter["LATENCY"](undefinedMetric)).to.equal('---');
     });
 
     it('formats requests with rounding and unit', () => {
@@ -68,12 +68,15 @@ describe('Utils', () => {
       expect(metricToFormatter["REQUEST_RATE"](99999)).to.equal('100k RPS');
     });
 
-    it('formats latency', () => {
+    it('formats subsecond latency as ms', () => {
       expect(metricToFormatter["LATENCY"](99)).to.equal('99 ms');
       expect(metricToFormatter["LATENCY"](999)).to.equal('999 ms');
-      expect(metricToFormatter["LATENCY"](1000)).to.equal('1,000 ms');
-      expect(metricToFormatter["LATENCY"](9999)).to.equal('9,999 ms');
-      expect(metricToFormatter["LATENCY"](99999)).to.equal('99,999 ms');
+    });
+
+    it('formats latency greater than 1s as s', () => {
+      expect(metricToFormatter["LATENCY"](1000)).to.equal('1.000 s');
+      expect(metricToFormatter["LATENCY"](9999)).to.equal('9.999 s');
+      expect(metricToFormatter["LATENCY"](99999)).to.equal('99.999 s');
     });
 
     it('formats success rate', () => {

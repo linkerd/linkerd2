@@ -21,6 +21,7 @@ const columnDefinitions = (sortable = true, resource, ConduitLink) => {
       title: resource.title,
       dataIndex: "name",
       key: "name",
+      defaultSortOrder: 'ascend',
       width: 150,
       sorter: sortable ? (a, b) => (a.name || "").localeCompare(b.name) : false,
       render: name => !resource.url ? name :
@@ -30,7 +31,6 @@ const columnDefinitions = (sortable = true, resource, ConduitLink) => {
       title: "Request Rate",
       dataIndex: "requestRate",
       key: "requestRateRollup",
-      defaultSortOrder: 'descend',
       className: "numeric",
       sorter: sortable ? (a, b) => numericSort(a.requestRate, b.requestRate) : false,
       render: d => metricToFormatter["REQUEST_RATE"](d)
@@ -72,7 +72,7 @@ const columnDefinitions = (sortable = true, resource, ConduitLink) => {
 
 const numericSort = (a, b) => (_.isNil(a) ? -1 : a) - (_.isNil(b) ? -1 : b);
 
-export default class TabbedMetricsTable extends React.Component {
+export default class MetricsTable extends React.Component {
   constructor(props) {
     super(props);
     this.api = this.props.api;
@@ -100,6 +100,7 @@ export default class TabbedMetricsTable extends React.Component {
       columns={columns}
       pagination={false}
       className="conduit-table"
-      rowKey={r => r.name} />);
+      rowKey={r => r.name}
+      size="middle" />);
   }
 }
