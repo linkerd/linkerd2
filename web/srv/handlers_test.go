@@ -45,7 +45,7 @@ func TestHandleIndex(t *testing.T) {
 		t.Errorf("Expected:          %+v", header)
 	}
 
-	expectedVersionDiv := "<div class=\"main\" id=\"main\" data-release-version=\"0.3.3\" data-go-version=\"the best one\" data-uuid=\"\">"
+	expectedVersionDiv := "<div class=\"main\" id=\"main\" data-release-version=\"0.3.3\" data-go-version=\"the best one\" data-controller-namespace=\"\" data-uuid=\"\">"
 
 	actualBody := recorder.Body.String()
 
