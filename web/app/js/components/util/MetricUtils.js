@@ -29,7 +29,7 @@ const convertLatencyTs = rawTs => {
 const getPodCategorization = pod => {
   if (pod.added && pod.status === "Running") {
     return "good";
-  } else if (pod.status === "Pending") {
+  } else if (pod.status === "Pending" || pod.status === "Running") {
     return "neutral";
   } else if (pod.status === "Failed") {
     return "bad";
@@ -42,20 +42,20 @@ export const getPodsByDeployment = pods => {
     .reject(p => _.isEmpty(p.deployment) || p.controlPlane)
     .groupBy('deployment')
     .map((componentPods, name) => {
-      _.remove(componentPods, p => {
-        return p.status === "Terminating" || p.status === "Completed";
-      });
-
-      let podsWithStatus = _.map(componentPods, p => {
-        return _.merge({}, p, { value: getPodCategorization(p) });
-      });
+      let podsWithStatus = _.chain(componentPods)
+        .map(p => {
+          return _.merge({}, p, { value: getPodCategorization(p) });
+        })
+        .reject(p => _.isEmpty(p.value))
+        .value();
 
       return {
         name: name,
         added: _.every(componentPods, 'added'),
-        pods: _.sortBy(podsWithStatus, "name")
+        pods: _.sortBy(podsWithStatus, 'name')
       };
     })
+    .reject(p => _.isEmpty(p.pods))
     .sortBy('name')
     .value();
 };

@@ -6,17 +6,20 @@ const columnConfig = {
   "Pod Status": {
     width: 200,
     wrapDotsAt: 7, // dots take up more than one line in the table; space them out
-    dotExplanation: {
-      good: "is up and running",
-      neutral: "has not been started"
+    dotExplanation: status => {
+      return status.value === "good" ? "is up and running" : "has not been started";
     }
   },
   "Proxy Status": {
     width: 250,
     wrapDotsAt: 9,
-    dotExplanation: {
-      good: "has been added to the mesh",
-      neutral: "has not been added to the mesh"
+    dotExplanation: pod => {
+      let addedStatus = !pod.added ? "Not in mesh" : "Added to mesh";
+
+      return (<React.Fragment>
+        <div>Pod status: {pod.status}</div>
+        <div>{addedStatus}</div>
+      </React.Fragment>);
     }
   }
 };
@@ -26,7 +29,7 @@ const StatusDot = ({status, multilineDots, columnName}) => (
     placement="top"
     title={<div>
       <div>{status.name}</div>
-      <div>{_.get(columnConfig, [columnName, "dotExplanation", status.value])}</div>
+      <div>{_.get(columnConfig, [columnName, "dotExplanation"])(status)}</div>
     </div>}
     overlayStyle={{ fontSize: "12px" }}>
     <div
