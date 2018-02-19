@@ -69,17 +69,10 @@ func injectDeployment(bytes []byte) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	podTemplateSpec := injectPodTemplateSpec(&deployment.Spec.Template)
-	if podTemplateSpec == nil {
+	if !injectPodTemplateSpec(&deployment.Spec.Template) {
 		return nil, nil
 	}
-	return &enhancedDeployment{
-		&deployment,
-		enhancedDeploymentSpec{
-			&deployment.Spec,
-			*podTemplateSpec,
-		},
-	}, nil
+	return &deployment, nil
 }
 
 /* Given a byte slice representing a replication controller, unmarshal the
@@ -92,17 +85,10 @@ func injectReplicationController(bytes []byte) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	podTemplateSpec := injectPodTemplateSpec(rc.Spec.Template)
-	if podTemplateSpec == nil {
+	if !injectPodTemplateSpec(rc.Spec.Template) {
 		return nil, nil
 	}
-	return enhancedReplicationController{
-		&rc,
-		enhancedReplicationControllerSpec{
-			&rc.Spec,
-			*podTemplateSpec,
-		},
-	}, nil
+	return &rc, nil
 }
 
 /* Given a byte slice representing a replica set, unmarshal the replica set and
@@ -114,17 +100,10 @@ func injectReplicaSet(bytes []byte) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	podTemplateSpec := injectPodTemplateSpec(&rs.Spec.Template)
-	if podTemplateSpec == nil {
+	if !injectPodTemplateSpec(&rs.Spec.Template) {
 		return nil, nil
 	}
-	return &enhancedReplicaSet{
-		&rs,
-		enhancedReplicaSetSpec{
-			&rs.Spec,
-			*podTemplateSpec,
-		},
-	}, nil
+	return &rs, nil
 }
 
 /* Given a byte slice representing a job, unmarshal the job and return a new job
@@ -136,17 +115,10 @@ func injectJob(bytes []byte) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	podTemplateSpec := injectPodTemplateSpec(&job.Spec.Template)
-	if podTemplateSpec == nil {
+	if !injectPodTemplateSpec(&job.Spec.Template) {
 		return nil, nil
 	}
-	return &enhancedJob{
-		&job,
-		enhancedJobSpec{
-			&job.Spec,
-			*podTemplateSpec,
-		},
-	}, nil
+	return &job, nil
 }
 
 /* Given a byte slice representing a daemonset, unmarshal the daemonset and
@@ -158,29 +130,22 @@ func injectDaemonSet(bytes []byte) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	podTemplateSpec := injectPodTemplateSpec(&ds.Spec.Template)
-	if podTemplateSpec == nil {
+	if !injectPodTemplateSpec(&ds.Spec.Template) {
 		return nil, nil
 	}
-	return enhancedDaemonSet{
-		&ds,
-		enhancedDaemonSetSpec{
-			&ds.Spec,
-			*podTemplateSpec,
-		},
-	}, nil
+	return &ds, nil
 }
 
 /* Given a PodTemplateSpec, return a new PodTemplateSpec with the sidecar
  * and init-container injected. If the pod is unsuitable for having them
  * injected, return null.
  */
-func injectPodTemplateSpec(t *v1.PodTemplateSpec) *enhancedPodTemplateSpec {
+func injectPodTemplateSpec(t *v1.PodTemplateSpec) bool {
 	// Pods with `hostNetwork=true` share a network namespace with the host. The
 	// init-container would destroy the iptables configuration on the host, so
 	// skip the injection in this case.
 	if t.Spec.HostNetwork {
-		return nil
+		return false
 	}
 
 	f := false
@@ -276,13 +241,9 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec) *enhancedPodTemplateSpec {
 	}
 	t.Labels[k8s.ControllerNSLabel] = controlPlaneNamespace
 	t.Spec.Containers = append(t.Spec.Containers, sidecar)
-	return &enhancedPodTemplateSpec{
-		t,
-		enhancedPodSpec{
-			&t.Spec,
-			append(t.Spec.InitContainers, initContainer),
-		},
-	}
+	t.Spec.InitContainers = append(t.Spec.InitContainers, initContainer)
+
+	return true
 }
 
 func InjectYAML(in io.Reader, out io.Writer) error {
@@ -328,72 +289,6 @@ func InjectYAML(in io.Reader, out io.Writer) error {
 		out.Write([]byte("---\n"))
 	}
 	return nil
-}
-
-/* The v1.PodSpec struct contains a field annotation that causes the
- * InitContainers field to be omitted when serializing the struct as json.
- * Since we wish for this field to be included, we have to define our own
- * enhancedPodSpec struct with a different annotation on this field.  We then
- * must define our own structs to use this struct, and so on.
- */
-type enhancedPodSpec struct {
-	*v1.PodSpec
-	InitContainers []v1.Container `json:"initContainers"`
-}
-
-type enhancedPodTemplateSpec struct {
-	*v1.PodTemplateSpec
-	Spec enhancedPodSpec `json:"spec,omitempty"`
-}
-
-type enhancedDeploymentSpec struct {
-	*v1beta1.DeploymentSpec
-	Template enhancedPodTemplateSpec `json:"template,omitempty"`
-}
-
-type enhancedDeployment struct {
-	*v1beta1.Deployment
-	Spec enhancedDeploymentSpec `json:"spec,omitempty"`
-}
-
-type enhancedReplicationControllerSpec struct {
-	*v1.ReplicationControllerSpec
-	Template enhancedPodTemplateSpec `json:"template,omitempty"`
-}
-
-type enhancedReplicationController struct {
-	*v1.ReplicationController
-	Spec enhancedReplicationControllerSpec `json:"spec,omitempty"`
-}
-
-type enhancedReplicaSetSpec struct {
-	*v1beta1.ReplicaSetSpec
-	Template enhancedPodTemplateSpec `json:"template,omitempty"`
-}
-
-type enhancedReplicaSet struct {
-	*v1beta1.ReplicaSet
-	Spec enhancedReplicaSetSpec `json:"spec,omitempty"`
-}
-
-type enhancedJobSpec struct {
-	*batchV1.JobSpec
-	Template enhancedPodTemplateSpec `json:"template,omitempty"`
-}
-
-type enhancedJob struct {
-	*batchV1.Job
-	Spec enhancedJobSpec `json:"spec,omitempty"`
-}
-
-type enhancedDaemonSetSpec struct {
-	*v1beta1.DaemonSetSpec
-	Template enhancedPodTemplateSpec `json:"template,omitempty"`
-}
-
-type enhancedDaemonSet struct {
-	*v1beta1.DaemonSet
-	Spec enhancedDaemonSetSpec `json:"spec,omitempty"`
 }
 
 func init() {
