@@ -288,6 +288,7 @@ spec:
         - "-static-dir=/dist"
         - "-template-dir=/templates"
         - "-uuid={{.UUID}}"
+        - "-controller-namespace={{.Namespace}}"
         - "-log-level={{.ControllerLogLevel}}"
 
 ### Prometheus ###

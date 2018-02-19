@@ -11,12 +11,23 @@ export const rowGutter = 3 * baseWidth;
 * Number formatters
 */
 const successRateFormatter = d3.format(".2%");
+const latencySecFormatter = d3.format(".3f");
 const latencyFormatter = d3.format(",");
+
+const formatLatency = m => {
+  if (_.isNil(m)) {
+    return "---";
+  } else if (m < 1000) {
+    return `${latencyFormatter(m)} ms`;
+  } else {
+    return `${latencySecFormatter(m / 1000)} s`;
+  }
+};
 
 export const metricToFormatter = {
   "REQUEST_RATE": m => _.isNil(m) ? "---" : styleNum(m, " RPS", true),
   "SUCCESS_RATE": m => _.isNil(m) ? "---" : successRateFormatter(m),
-  "LATENCY": m => `${_.isNil(m) ? "---" : latencyFormatter(m)} ms`
+  "LATENCY": formatLatency
 };
 
 /*

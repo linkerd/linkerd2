@@ -21,18 +21,31 @@ if (proxyPathMatch) {
 
 let api = ApiHelpers(pathPrefix);
 
-ReactDOM.render((
+let applicationHtml = hideSidebar => (
   <BrowserRouter>
     <Layout>
-      <Layout.Sider width="310">
-        <Route render={routeProps => <Sidebar {...routeProps} goVersion={appData.goVersion} releaseVersion={appData.releaseVersion} api={api} pathPrefix={pathPrefix} uuid={appData.uuid} />} />
+      <Layout.Sider
+        width="310"
+        breakpoint="lg"
+        collapsible={true}
+        collapsedWidth={0}
+        onCollapse={onSidebarCollapse}>
+        <Route
+          render={routeProps => (<Sidebar
+            {...routeProps}
+            goVersion={appData.goVersion}
+            releaseVersion={appData.releaseVersion}
+            api={api}
+            collapsed={hideSidebar}
+            pathPrefix={pathPrefix}
+            uuid={appData.uuid} />)} />
       </Layout.Sider>
       <Layout>
         <Layout.Content style={{ margin: '0 0', padding: 0, background: '#fff' }}>
           <div className="main-content">
             <Switch>
               <Redirect exact from={`${pathPrefix}/`} to={`${pathPrefix}/servicemesh`} />
-              <Route path={`${pathPrefix}/servicemesh`} render={() => <ServiceMesh api={api} releaseVersion={appData.releaseVersion} />} />
+              <Route path={`${pathPrefix}/servicemesh`} render={() => <ServiceMesh api={api} releaseVersion={appData.releaseVersion} controllerNamespace={appData.controllerNamespace} />} />
               <Route path={`${pathPrefix}/deployments`} render={() => <DeploymentsList api={api} />} />
               <Route path={`${pathPrefix}/deployment`} render={props => <DeploymentDetail api={api} location={props.location} />} />
               <Route component={NoMatch} />
@@ -42,4 +55,10 @@ ReactDOM.render((
       </Layout>
     </Layout>
   </BrowserRouter>
-), appMain);
+);
+
+const onSidebarCollapse = isHidden => {
+  ReactDOM.render(applicationHtml(isHidden), appMain);
+};
+
+ReactDOM.render(applicationHtml(false), appMain);

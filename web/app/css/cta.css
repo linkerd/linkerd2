@@ -19,13 +19,19 @@
   }
 
   & .action-steps div {
-    height: 41px;
     line-height: 41px;
     margin-bottom: 8px;
+    max-width: 272px;
+    height: 41px;
+
+    @media screen and (min-width: 1120px) {
+      float: left;
+    }
   }
 
   & .step-container {
     border-radius: calc(var(--base-width)*4);
+    margin-right: var(--base-width);
     width: 98%
   }
 

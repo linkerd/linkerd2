@@ -65,7 +65,7 @@ describe('DeploymentsList', () => {
       expect(component.find("DeploymentsList").length).to.equal(1);
       expect(component.find("ConduitSpinner").length).to.equal(0);
       expect(component.find("CallToAction").length).to.equal(0);
-      expect(component.find("TabbedMetricsTable").length).to.equal(1);
+      expect(component.find("MetricsTable").length).to.equal(1);
     });
   });
 });

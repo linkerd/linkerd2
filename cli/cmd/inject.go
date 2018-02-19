@@ -58,6 +58,7 @@ with 'conduit inject'. e.g. curl http://url.to/yml | conduit inject -
 			}
 		}
 
+
 		postInjectBuf := new(bytes.Buffer)
 
 		err = InjectYAML(in, postInjectBuf)
@@ -71,106 +72,18 @@ with 'conduit inject'. e.g. curl http://url.to/yml | conduit inject -
 	},
 }
 
-/* Given a byte slice representing a deployment, unmarshal the deployment and
- * return a new deployment with the sidecar and init-container injected.
- */
-func injectDeployment(bytes []byte) (interface{}, error) {
-	var deployment v1beta1.Deployment
-	err := yaml.Unmarshal(bytes, &deployment)
-	if err != nil {
-		return nil, err
-	}
-	podTemplateSpec := injectPodTemplateSpec(&deployment.Spec.Template)
-	return enhancedDeployment{
-		&deployment,
-		enhancedDeploymentSpec{
-			&deployment.Spec,
-			podTemplateSpec,
-		},
-	}, nil
-}
-
-/* Given a byte slice representing a replication controller, unmarshal the
- * replication controller and return a new replication controller with the
- * sidecar and init-container injected.
- */
-func injectReplicationController(bytes []byte) (interface{}, error) {
-	var rc v1.ReplicationController
-	err := yaml.Unmarshal(bytes, &rc)
-	if err != nil {
-		return nil, err
-	}
-	podTemplateSpec := injectPodTemplateSpec(rc.Spec.Template)
-	return enhancedReplicationController{
-		&rc,
-		enhancedReplicationControllerSpec{
-			&rc.Spec,
-			podTemplateSpec,
-		},
-	}, nil
-}
-
-/* Given a byte slice representing a replica set, unmarshal the replica set and
- * return a new replica set with the sidecar and init-container injected.
- */
-func injectReplicaSet(bytes []byte) (interface{}, error) {
-	var rs v1beta1.ReplicaSet
-	err := yaml.Unmarshal(bytes, &rs)
-	if err != nil {
-		return nil, err
-	}
-	podTemplateSpec := injectPodTemplateSpec(&rs.Spec.Template)
-	return enhancedReplicaSet{
-		&rs,
-		enhancedReplicaSetSpec{
-			&rs.Spec,
-			podTemplateSpec,
-		},
-	}, nil
-}
-
-/* Given a byte slice representing a job, unmarshal the job and return a new job
- * with the sidecar and init-container injected.
- */
-func injectJob(bytes []byte) (interface{}, error) {
-	var job batchV1.Job
-	err := yaml.Unmarshal(bytes, &job)
-	if err != nil {
-		return nil, err
-	}
-	podTemplateSpec := injectPodTemplateSpec(&job.Spec.Template)
-	return enhancedJob{
-		&job,
-		enhancedJobSpec{
-			&job.Spec,
-			podTemplateSpec,
-		},
-	}, nil
-}
-
-/* Given a byte slice representing a daemonset, unmarshal the daemonset and
- * return a new daemonset with the sidecar and init-container injected.
- */
-func injectDaemonSet(bytes []byte) (interface{}, error) {
-	var ds v1beta1.DaemonSet
-	err := yaml.Unmarshal(bytes, &ds)
-	if err != nil {
-		return nil, err
-	}
-	podTemplateSpec := injectPodTemplateSpec(&ds.Spec.Template)
-	return enhancedDaemonSet{
-		&ds,
-		enhancedDaemonSetSpec{
-			&ds.Spec,
-			podTemplateSpec,
-		},
-	}, nil
-}
-
 /* Given a PodTemplateSpec, return a new PodTemplateSpec with the sidecar
- * and init-container injected.
+ * and init-container injected. If the pod is unsuitable for having them
+ * injected, return null.
  */
-func injectPodTemplateSpec(t *v1.PodTemplateSpec) enhancedPodTemplateSpec {
+func injectPodTemplateSpec(t *v1.PodTemplateSpec) bool {
+	// Pods with `hostNetwork=true` share a network namespace with the host. The
+	// init-container would destroy the iptables configuration on the host, so
+	// skip the injection in this case.
+	if t.Spec.HostNetwork {
+		return false
+	}
+
 	f := false
 	inboundSkipPorts := append(ignoreInboundPorts, proxyControlPort)
 	inboundSkipPortsStr := make([]string, len(inboundSkipPorts))
@@ -264,13 +177,10 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec) enhancedPodTemplateSpec {
 	}
 	t.Labels[k8s.ControllerNSLabel] = controlPlaneNamespace
 	t.Spec.Containers = append(t.Spec.Containers, sidecar)
-	return enhancedPodTemplateSpec{
-		t,
-		enhancedPodSpec{
-			&t.Spec,
-			append(t.Spec.InitContainers, initContainer),
-		},
-	}
+	t.Spec.InitContainers = append(t.Spec.InitContainers, initContainer)
+
+	return true
+
 }
 
 func InjectYAML(in io.Reader, out io.Writer) error {
@@ -286,102 +196,83 @@ func InjectYAML(in io.Reader, out io.Writer) error {
 			return err
 		}
 
+		// The Kuberentes API is versioned and each version has an API modeled
+		// with its own distinct Go types. If we tell `yaml.Unmarshal()` which
+		// version we support then it will provide a representation of that
+		// object using the given type if possible. However, it only allows us
+		// to supply one object (of one type), so first we have to determine
+		// what kind of object `bytes` represents so we can pass an object of
+		// the correct type to `yaml.Unmarshal()`.
+
 		// Unmarshal the object enough to read the Kind field
 		var meta metaV1.TypeMeta
 		if err := yaml.Unmarshal(bytes, &meta); err != nil {
 			return err
 		}
 
-		var injected interface{} = nil
+		// obj and podTemplateSpec will reference zero or one the following
+		// objects, depending on the type.
+		var obj interface{}
+		var podTemplateSpec *v1.PodTemplateSpec
+
 		switch meta.Kind {
 		case "Deployment":
-			injected, err = injectDeployment(bytes)
+			var deployment v1beta1.Deployment
+			err = yaml.Unmarshal(bytes, &deployment)
+			if err != nil {
+				return err
+			}
+			obj = &deployment
+			podTemplateSpec = &deployment.Spec.Template
 		case "ReplicationController":
-			injected, err = injectReplicationController(bytes)
+			var rc v1.ReplicationController
+			err = yaml.Unmarshal(bytes, &rc)
+			if err != nil {
+				return err
+			}
+			obj = &rc
+			podTemplateSpec = rc.Spec.Template
 		case "ReplicaSet":
-			injected, err = injectReplicaSet(bytes)
+			var rs v1beta1.ReplicaSet
+			err = yaml.Unmarshal(bytes, &rs)
+			if err != nil {
+				return err
+			}
+			obj = &rs
+			podTemplateSpec = &rs.Spec.Template
 		case "Job":
-			injected, err = injectJob(bytes)
+			var job batchV1.Job
+			err = yaml.Unmarshal(bytes, &job)
+			if err != nil {
+				return err
+			}
+			obj = &job
+			podTemplateSpec = &job.Spec.Template
 		case "DaemonSet":
-			injected, err = injectDaemonSet(bytes)
+			var ds v1beta1.DaemonSet
+			err = yaml.Unmarshal(bytes, &ds)
+			if err != nil {
+				return err
+			}
+			obj = &ds
+			podTemplateSpec = &ds.Spec.Template
 		}
+
+		// If we don't inject anything into the pod template then output the
+		// original serialization of the original object. Otherwise, output the
+		// serialization of the modified object.
 		output := bytes
-		if injected != nil {
-			output, err = yaml.Marshal(injected)
+		if podTemplateSpec != nil && injectPodTemplateSpec(podTemplateSpec) {
+			output, err = yaml.Marshal(obj)
 			if err != nil {
 				return err
 			}
 		}
+
 		out.Write(output)
 		out.Write([]byte("---\n"))
 	}
 	return nil
-}
-
-/* The v1.PodSpec struct contains a field annotation that causes the
- * InitContainers field to be omitted when serializing the struct as json.
- * Since we wish for this field to be included, we have to define our own
- * enhancedPodSpec struct with a different annotation on this field.  We then
- * must define our own structs to use this struct, and so on.
- */
-type enhancedPodSpec struct {
-	*v1.PodSpec
-	InitContainers []v1.Container `json:"initContainers"`
-}
-
-type enhancedPodTemplateSpec struct {
-	*v1.PodTemplateSpec
-	Spec enhancedPodSpec `json:"spec,omitempty"`
-}
-
-type enhancedDeploymentSpec struct {
-	*v1beta1.DeploymentSpec
-	Template enhancedPodTemplateSpec `json:"template,omitempty"`
-}
-
-type enhancedDeployment struct {
-	*v1beta1.Deployment
-	Spec enhancedDeploymentSpec `json:"spec,omitempty"`
-}
-
-type enhancedReplicationControllerSpec struct {
-	*v1.ReplicationControllerSpec
-	Template enhancedPodTemplateSpec `json:"template,omitempty"`
-}
-
-type enhancedReplicationController struct {
-	*v1.ReplicationController
-	Spec enhancedReplicationControllerSpec `json:"spec,omitempty"`
-}
-
-type enhancedReplicaSetSpec struct {
-	*v1beta1.ReplicaSetSpec
-	Template enhancedPodTemplateSpec `json:"template,omitempty"`
-}
-
-type enhancedReplicaSet struct {
-	*v1beta1.ReplicaSet
-	Spec enhancedReplicaSetSpec `json:"spec,omitempty"`
-}
-
-type enhancedJobSpec struct {
-	*batchV1.JobSpec
-	Template enhancedPodTemplateSpec `json:"template,omitempty"`
-}
-
-type enhancedJob struct {
-	*batchV1.Job
-	Spec enhancedJobSpec `json:"spec,omitempty"`
-}
-
-type enhancedDaemonSetSpec struct {
-	*v1beta1.DaemonSetSpec
-	Template enhancedPodTemplateSpec `json:"template,omitempty"`
-}
-
-type enhancedDaemonSet struct {
-	*v1beta1.DaemonSet
-	Spec enhancedDaemonSetSpec `json:"spec,omitempty"`
 }
 
 func init() {

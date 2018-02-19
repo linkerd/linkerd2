@@ -13,15 +13,16 @@ type (
 	serveFile      func(http.ResponseWriter, string, string, interface{}) error
 
 	handler struct {
-		render    renderTemplate
-		serveFile serveFile
-		apiClient pb.ApiClient
-		uuid      string
+		render              renderTemplate
+		serveFile           serveFile
+		apiClient           pb.ApiClient
+		uuid                string
+		controllerNamespace string
 	}
 )
 
 func (h *handler) handleIndex(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
-	params := appParams{UUID: h.uuid}
+	params := appParams{UUID: h.uuid, ControllerNamespace: h.controllerNamespace}
 
 	version, err := h.apiClient.Version(req.Context(), &pb.Empty{}) // TODO: remove and call /api/version from web app
 	if err != nil {

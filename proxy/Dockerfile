@@ -7,7 +7,7 @@
 # When PROXY_SKIP_TESTS is set and not empty, tests are not run. Otherwise, tests are run
 # against either unoptimized or optimized proxy code, according to PROXY_UNOPTIMIZED.
 
-ARG RUST_IMAGE=rust:1.23.0
+ARG RUST_IMAGE=rust:1.24.0
 ARG RUNTIME_IMAGE=gcr.io/runconduit/base:2017-10-30.01
 
 ## Builds the proxy as incrementally as possible.
