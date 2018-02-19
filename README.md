@@ -6,24 +6,27 @@
 
 :balloon: Welcome to Conduit! :wave:
 
-Conduit is an ultralight service mesh for Kubernetes from the makers of [Linkerd][l5d]. It
-features a native proxy, written in [Rust][rust], that boasts the performance of C without
-all the heartbleed.
+Conduit is an ultralight service mesh for Kubernetes. It features a minimalist
+control plane written in Go, and a native proxy data plane written in
+[Rust][rust] that boasts the performance of C without the heartbleed.
 
-Conduit is **experimental**. It is capable of proxying all TCP traffic, and reporting
+Conduit is **alpha**. It is capable of proxying all TCP traffic, and reporting
 top-line metrics (success rates, latencies, etc) for all HTTP, HTTP/2, and gRPC traffic.
 It currently does not work with websockets or with HTTP tunneling--see the
 `--skip-outbound-ports` flag for how to exclude these types of traffic.
 
-Follow our progress towards production-readiness here and on [Twitter][twitter].
+## Get involved
 
-<!-- TODO add roadmap link -->
+* [conduit-users mailing list][conduit-users]: Conduit user discussion mailing list.
+* [conduit-dev mailing list][conduit-dev]: Conduit development discussion mailing list.
+* [conduit-announce mailing list][conduit-announce]: Conduit announcements only (low volume).
+* Follow [@RunConduit][twitter] on Twitter.
+* Join the #conduit channel on the [Linkerd Slack][slack].
 
 ## Documentation
 
 View [Conduit docs][conduit-docs] for more a more comprehensive guide to
-getting started.
-
+getting started, or view the full [Conduit roadmap][roadmap].
 
 ## Getting started with Conduit
 
@@ -47,7 +50,7 @@ getting started.
 [`BUILD.md`](BUILD.md) includes general information on how to work in this repo.
 
 
-## Code of Conduct
+## Code of conduct
 
 This project is for everyone. We ask that our users and contributors take a few
 minutes to review our [code of conduct][coc].
@@ -55,7 +58,7 @@ minutes to review our [code of conduct][coc].
 
 ## License
 
-Copyright 2018, Buoyant Inc. All rights reserved.
+Conduit is copyright 2018 Buoyant, Inc. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use
 these files except in compliance with the License. You may obtain a copy of the
@@ -72,15 +75,18 @@ specific language governing permissions and limitations under the License.
 [ci]: https://travis-ci.org/runconduit/conduit
 [ci-badge]: https://travis-ci.org/runconduit/conduit.svg?branch=master
 [coc]: https://github.com/linkerd/linkerd/wiki/Linkerd-code-of-conduct
+[conduit-announce]: https://groups.google.com/forum/#!forum/conduit-announce
 [conduit-demo]: https://conduit.io/getting-started/#install-the-demo-app
+[conduit-dev]: https://groups.google.com/forum/#!forum/conduit-dev
 [conduit-inject]: https://conduit.io/adding-your-service/
 [conduit-docs]: https://conduit.io/docs/
+[conduit-users]: https://groups.google.com/forum/#!forum/conduit-users
 <!-- [examples]: https://github.com/runconduit/conduit-examples -->
-[l5d]: https://linkerd.io/
 [license-badge]: https://img.shields.io/github/license/linkerd/linkerd.svg
 [logo]: https://user-images.githubusercontent.com/240738/33589722-649152de-d92f-11e7-843a-b078ac889a39.png
+[roadmap]: https://conduit.io/roadmap
 [releases]: https://github.com/runconduit/conduit/releases
-[rust]: https://rust-lang.org/
-[twitter]: https://twitter.com/runconduit/
+[rust]: https://www.rust-lang.org/
 [slack-badge]: http://slack.linkerd.io/badge.svg
 [slack]: http://slack.linkerd.io
+[twitter]: https://twitter.com/runconduit/
