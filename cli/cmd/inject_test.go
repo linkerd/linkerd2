@@ -48,46 +48,47 @@ func TestInjectYAML(t *testing.T) {
 }
 
 func TestRunInjectCmd(t *testing.T) {
-	t.Run("Do not print invalid YAML on inject error", func(t *testing.T) {
-		errBuffer := &bytes.Buffer{}
-		outBuffer := &bytes.Buffer{}
-		expectedErrorMsg := `Error injecting conduit proxy: error converting YAML to JSON: yaml: line 14: did not find expected key`
+	testCases := []struct {
+		inputFileName        string
+		stdErrGoldenFileName string
+		stdOutGoldenFileName string
+		exitCode             int
+	}{
+		{
+			inputFileName:        "inject_gettest_deployment.bad.input.yml",
+			stdErrGoldenFileName: "inject_gettest_deployment.bad.golden",
+			exitCode:             1,
+		},
+		{
+			inputFileName:        "inject_gettest_deployment.good.input.yml",
+			stdOutGoldenFileName: "inject_gettest_deployment.good.golden.yml",
+			exitCode:             0,
+		},
+	}
 
-		in, err := os.Open("testdata/inject_gettest_deployment.input.yml")
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
+	for i, tc := range testCases {
+		t.Run(fmt.Sprintf("%d: %s", i, tc.inputFileName), func(t *testing.T) {
+			errBuffer := &bytes.Buffer{}
+			outBuffer := &bytes.Buffer{}
 
-		errCode := runInjectCmd(in, errBuffer, outBuffer)
+			in, err := os.Open(fmt.Sprintf("testData/%s", tc.inputFileName))
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
 
-		if errCode != 1 {
-			t.Fatalf("Expected error code to be 1 but got: %d", errCode)
-		}
+			exitCode := runInjectCmd(in, errBuffer, outBuffer)
+			if exitCode != tc.exitCode {
+				t.Fatalf("Expected exit code to be %d but got: %d", tc.exitCode, exitCode)
+			}
 
-		if len(outBuffer.Bytes()) != 0 {
-			t.Fatalf("Expected output buffer to be empty but got: \n%v", outBuffer)
-		}
+			actualStdOutResult := outBuffer.String()
+			expectedStdOutResult := readGoldenTestFile(t, "testData/", tc.stdOutGoldenFileName)
 
-		actualErrorMsg := errBuffer.String()
-		diffCompare(t, actualErrorMsg, expectedErrorMsg)
-	})
-	t.Run("Do not print invalid YAML on inject error", func(t *testing.T) {
-		errBuffer := &bytes.Buffer{}
-		outBuffer := &bytes.Buffer{}
+			diffCompare(t, actualStdOutResult, expectedStdOutResult)
 
-		in, err := os.Open("testdata/inject_emojivoto_deployment.input.yml")
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
-
-		errCode := runInjectCmd(in, errBuffer, outBuffer)
-
-		if errCode != 0 {
-			t.Fatalf("Expected error code to be 0 but got: %d", errCode)
-		}
-
-		if len(outBuffer.Bytes()) == 0 {
-			t.Fatalf("Expected output buffer to be empty but got: \n%v", outBuffer)
-		}
-	})
+			actualStdErrResult := errBuffer.String()
+			expectedStdErrResult := readGoldenTestFile(t, "testData/", tc.stdErrGoldenFileName)
+			diffCompare(t, actualStdErrResult, expectedStdErrResult)
+		})
+	}
 }

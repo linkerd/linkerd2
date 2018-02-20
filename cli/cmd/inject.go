@@ -68,12 +68,12 @@ func runInjectCmd(input io.Reader, errWriter io.Writer, outWriter io.Writer) int
 	postInjectBuf := &bytes.Buffer{}
 	err := InjectYAML(input, postInjectBuf)
 	if err != nil {
-		fmt.Fprintf(errWriter, "Error injecting conduit proxy: %v", err)
+		fmt.Fprintf(errWriter, "Error injecting conduit proxy: %v\n", err)
 		return 1
 	}
 	_, err = io.Copy(outWriter, postInjectBuf)
 	if err != nil {
-		fmt.Fprintf(errWriter, "Error printing YAML: %v", err)
+		fmt.Fprintf(errWriter, "Error printing YAML: %v\n", err)
 		return 1
 	}
 	return 0
