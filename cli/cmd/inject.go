@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -56,8 +57,26 @@ with 'conduit inject'. e.g. curl http://url.to/yml | conduit inject -
 				return err
 			}
 		}
-		return InjectYAML(in, os.Stdout)
+		exitCode := runInjectCmd(in, os.Stderr, os.Stdout)
+		os.Exit(exitCode)
+		return nil
 	},
+}
+
+// Returns the integer representation of os.Exit code; 0 on success and 1 on failure.
+func runInjectCmd(input io.Reader, errWriter io.Writer, outWriter io.Writer) int {
+	postInjectBuf := &bytes.Buffer{}
+	err := InjectYAML(input, postInjectBuf)
+	if err != nil {
+		fmt.Fprintf(errWriter, "Error injecting conduit proxy: %v\n", err)
+		return 1
+	}
+	_, err = io.Copy(outWriter, postInjectBuf)
+	if err != nil {
+		fmt.Fprintf(errWriter, "Error printing YAML: %v\n", err)
+		return 1
+	}
+	return 0
 }
 
 /* Given a PodTemplateSpec, return a new PodTemplateSpec with the sidecar

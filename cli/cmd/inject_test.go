@@ -46,3 +46,49 @@ func TestInjectYAML(t *testing.T) {
 		})
 	}
 }
+
+func TestRunInjectCmd(t *testing.T) {
+	testCases := []struct {
+		inputFileName        string
+		stdErrGoldenFileName string
+		stdOutGoldenFileName string
+		exitCode             int
+	}{
+		{
+			inputFileName:        "inject_gettest_deployment.bad.input.yml",
+			stdErrGoldenFileName: "inject_gettest_deployment.bad.golden",
+			exitCode:             1,
+		},
+		{
+			inputFileName:        "inject_gettest_deployment.good.input.yml",
+			stdOutGoldenFileName: "inject_gettest_deployment.good.golden.yml",
+			exitCode:             0,
+		},
+	}
+
+	for i, tc := range testCases {
+		t.Run(fmt.Sprintf("%d: %s", i, tc.inputFileName), func(t *testing.T) {
+			errBuffer := &bytes.Buffer{}
+			outBuffer := &bytes.Buffer{}
+
+			in, err := os.Open(fmt.Sprintf("testdata/%s", tc.inputFileName))
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+
+			exitCode := runInjectCmd(in, errBuffer, outBuffer)
+			if exitCode != tc.exitCode {
+				t.Fatalf("Expected exit code to be %d but got: %d", tc.exitCode, exitCode)
+			}
+
+			actualStdOutResult := outBuffer.String()
+			expectedStdOutResult := readOptionalTestFile(t, tc.stdOutGoldenFileName)
+
+			diffCompare(t, actualStdOutResult, expectedStdOutResult)
+
+			actualStdErrResult := errBuffer.String()
+			expectedStdErrResult := readOptionalTestFile(t, tc.stdErrGoldenFileName)
+			diffCompare(t, actualStdErrResult, expectedStdErrResult)
+		})
+	}
+}
