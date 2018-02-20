@@ -21,7 +21,7 @@ func (proxy *statusCheckerProxy) SelfCheck() []*healthcheckPb.CheckResult {
 	canConnectViaGrpcCheck := &healthcheckPb.CheckResult{
 		Status:           healthcheckPb.CheckStatus_OK,
 		SubsystemName:    proxy.prefix,
-		CheckDescription: "can retrieve status via gRPC",
+		CheckDescription: "can query the Conduit API",
 	}
 
 	selfCheckResponse, err := proxy.delegate.SelfCheck(context.Background(), &healthcheckPb.SelfCheckRequest{})

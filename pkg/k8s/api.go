@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -8,16 +9,20 @@ import (
 
 	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 	"github.com/runconduit/conduit/pkg/healthcheck"
+	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/rest"
 	// Load all the auth plugins for the cloud providers.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
 const (
-	KubeapiSubsystemName          = "kubernetes-api"
-	KubeapiClientCheckDescription = "can initialize the client"
-	KubeapiAccessCheckDescription = "can query the Kubernetes API"
+	KubeapiSubsystemName           = "kubernetes-api"
+	KubeapiClientCheckDescription  = "can initialize the client"
+	KubeapiAccessCheckDescription  = "can query the Kubernetes API"
+	KubeapiVersionCheckDescription = "is running the minimum Kubernetes API version"
 )
+
+var minApiVersion = [3]int{1, 8, 0}
 
 type KubernetesApi interface {
 	UrlFor(namespace string, extraPathStartingWithSlash string) (*url.URL, error)
@@ -40,10 +45,21 @@ func (kubeapi *kubernetesApi) NewClient() (*http.Client, error) {
 	}, nil
 }
 
-func (kubeapi *kubernetesApi) SelfCheck() []*healthcheckPb.CheckResult {
+func (kubeapi *kubernetesApi) SelfCheck() (checks []*healthcheckPb.CheckResult) {
 	apiConnectivityCheck, client := kubeapi.checkApiConnectivity()
-	apiAccessCheck := kubeapi.checkApiAccess(client)
-	return []*healthcheckPb.CheckResult{apiConnectivityCheck, apiAccessCheck}
+	checks = append(checks, apiConnectivityCheck)
+	if apiConnectivityCheck.Status != healthcheckPb.CheckStatus_OK {
+		return
+	}
+
+	apiAccessCheck, versionRsp := kubeapi.checkApiAccess(client)
+	checks = append(checks, apiAccessCheck)
+	if apiAccessCheck.Status != healthcheckPb.CheckStatus_OK {
+		return
+	}
+
+	checks = append(checks, kubeapi.checkApiVersion(versionRsp))
+	return
 }
 
 func (kubeapi *kubernetesApi) checkApiConnectivity() (*healthcheckPb.CheckResult, *http.Client) {
@@ -63,45 +79,73 @@ func (kubeapi *kubernetesApi) checkApiConnectivity() (*healthcheckPb.CheckResult
 	return checkResult, client
 }
 
-func (kubeapi *kubernetesApi) checkApiAccess(client *http.Client) *healthcheckPb.CheckResult {
+func (kubeapi *kubernetesApi) checkApiAccess(client *http.Client) (*healthcheckPb.CheckResult, string) {
 	checkResult := &healthcheckPb.CheckResult{
 		Status:           healthcheckPb.CheckStatus_OK,
 		SubsystemName:    KubeapiSubsystemName,
 		CheckDescription: KubeapiAccessCheckDescription,
 	}
 
-	if client == nil {
-		checkResult.Status = healthcheckPb.CheckStatus_ERROR
-		checkResult.FriendlyMessageToUser = "Error building Kubernetes API client."
-		return checkResult
-	}
-
-	endpointToCheck, err := generateBaseKubernetesApiUrl(kubeapi.Host)
+	endpointToCheck, err := url.Parse(kubeapi.Host + "/version")
 	if err != nil {
 		checkResult.Status = healthcheckPb.CheckStatus_ERROR
 		checkResult.FriendlyMessageToUser = fmt.Sprintf("Error querying Kubernetes API. Configured host is [%s], error message is [%s]", kubeapi.Host, err.Error())
-		return checkResult
+		return checkResult, ""
 	}
 
 	resp, err := client.Get(endpointToCheck.String())
 	if err != nil {
 		checkResult.Status = healthcheckPb.CheckStatus_ERROR
 		checkResult.FriendlyMessageToUser = fmt.Sprintf("HTTP GET request to endpoint [%s] resulted in error: [%s]", endpointToCheck, err.Error())
-		return checkResult
+		return checkResult, ""
 	}
+	defer resp.Body.Close()
+
+	bytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		checkResult.Status = healthcheckPb.CheckStatus_ERROR
+		checkResult.FriendlyMessageToUser = fmt.Sprintf("HTTP GET request to endpoint [%s] resulted in invalid response: [%v]", endpointToCheck, resp)
+		return checkResult, ""
+	}
+	body := string(bytes)
 
 	statusCodeReturnedIsWithinSuccessRange := resp.StatusCode < 400
 	if !statusCodeReturnedIsWithinSuccessRange {
-		bytes, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			checkResult.Status = healthcheckPb.CheckStatus_ERROR
-			checkResult.FriendlyMessageToUser = fmt.Sprintf("HTTP GET request to endpoint [%s] resulted in invalid response: [%v]", endpointToCheck, resp)
-			return checkResult
-		}
-
-		body := string(bytes)
 		checkResult.Status = healthcheckPb.CheckStatus_FAIL
 		checkResult.FriendlyMessageToUser = fmt.Sprintf("HTTP GET request to endpoint [%s] resulted in Status: [%s], body: [%s]", endpointToCheck, resp.Status, body)
+		return checkResult, ""
+	}
+
+	return checkResult, body
+}
+
+func (kubeapi *kubernetesApi) checkApiVersion(versionRsp string) *healthcheckPb.CheckResult {
+	checkResult := &healthcheckPb.CheckResult{
+		Status:           healthcheckPb.CheckStatus_OK,
+		SubsystemName:    KubeapiSubsystemName,
+		CheckDescription: KubeapiVersionCheckDescription,
+	}
+
+	var versionInfo version.Info
+	err := json.Unmarshal([]byte(versionRsp), &versionInfo)
+	if err != nil {
+		checkResult.Status = healthcheckPb.CheckStatus_ERROR
+		checkResult.FriendlyMessageToUser = fmt.Sprintf("Version endpoint returned invalid JSON: [%v]", versionRsp)
+		return checkResult
+	}
+
+	apiVersion, err := getK8sVersion(versionInfo.String())
+	if err != nil {
+		checkResult.Status = healthcheckPb.CheckStatus_ERROR
+		checkResult.FriendlyMessageToUser = fmt.Sprintf("Failed to parse version [%s]: %s", versionInfo.String(), err)
+		return checkResult
+	}
+
+	if !isCompatibleVersion(minApiVersion, apiVersion) {
+		checkResult.Status = healthcheckPb.CheckStatus_FAIL
+		checkResult.FriendlyMessageToUser = fmt.Sprintf("Kubernetes is on version [%d.%d.%d], but version [%d.%d.%d] or more recent is required.",
+			apiVersion[0], apiVersion[1], apiVersion[2],
+			minApiVersion[0], minApiVersion[1], minApiVersion[2])
 		return checkResult
 	}
 

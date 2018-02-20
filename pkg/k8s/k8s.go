@@ -12,6 +12,8 @@ import (
 
 const (
 	kubernetesConfigFilePathEnvVariable = "KUBECONFIG"
+	KubernetesDeployments               = "deployments"
+	KubernetesPods                      = "pods"
 )
 
 func generateKubernetesApiBaseUrlFor(schemeHostAndPort string, namespace string, extraPathStartingWithSlash string) (*url.URL, error) {
@@ -63,4 +65,17 @@ func buildK8sConfig(homedir string, k8sConfigFilesystemPathOverride string) (*re
 	kubeconfigEnvVar := os.Getenv(kubernetesConfigFilePathEnvVariable)
 
 	return parseK8SConfig(findK8sConfigFile(k8sConfigFilesystemPathOverride, kubeconfigEnvVar, homedir))
+}
+
+//CanonicalKubernetesNameFromFriendlyName returns a canonical name from common shorthands used in command line tools.
+// This works based on https://github.com/kubernetes/kubernetes/blob/63ffb1995b292be0a1e9ebde6216b83fc79dd988/pkg/kubectl/kubectl.go#L39
+func CanonicalKubernetesNameFromFriendlyName(friendlyName string) (string, error) {
+	switch friendlyName {
+	case "deploy", "deployment", "deployments":
+		return KubernetesDeployments, nil
+	case "po", "pod", "pods":
+		return KubernetesPods, nil
+	}
+
+	return "", fmt.Errorf("cannot find Kubernetes canonical name from friendly name [%s]", friendlyName)
 }
