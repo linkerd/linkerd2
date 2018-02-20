@@ -19,12 +19,16 @@ func diffCompare(t *testing.T, actual string, expected string) {
 	}
 }
 
-func readGoldenTestFile(t *testing.T, testDirWithTrailingSlash string, goldenFileName string) string {
+/**
+	Attempts to read a file and return the contents of that file as a string.
+	readOptionalTestFile returns an empty string if the file name parameter being passed
+	in is an empty string.
+**/
+func readOptionalTestFile(t *testing.T, fileName string) string {
 	var fileData string
 
-	if goldenFileName != "" {
-		testDirWithFileName := fmt.Sprintf("%s%s", testDirWithTrailingSlash, goldenFileName)
-		file, err := os.Open(testDirWithFileName)
+	if fileName != "" {
+		file, err := os.Open(fmt.Sprintf("%s/%s", "testdata", fileName))
 		if err != nil {
 			t.Fatalf("Failed to open expected output file: %v", err)
 		}

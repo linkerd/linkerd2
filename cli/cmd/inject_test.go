@@ -71,7 +71,7 @@ func TestRunInjectCmd(t *testing.T) {
 			errBuffer := &bytes.Buffer{}
 			outBuffer := &bytes.Buffer{}
 
-			in, err := os.Open(fmt.Sprintf("testData/%s", tc.inputFileName))
+			in, err := os.Open(fmt.Sprintf("testdata/%s", tc.inputFileName))
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
@@ -82,12 +82,12 @@ func TestRunInjectCmd(t *testing.T) {
 			}
 
 			actualStdOutResult := outBuffer.String()
-			expectedStdOutResult := readGoldenTestFile(t, "testData/", tc.stdOutGoldenFileName)
+			expectedStdOutResult := readOptionalTestFile(t, tc.stdOutGoldenFileName)
 
 			diffCompare(t, actualStdOutResult, expectedStdOutResult)
 
 			actualStdErrResult := errBuffer.String()
-			expectedStdErrResult := readGoldenTestFile(t, "testData/", tc.stdErrGoldenFileName)
+			expectedStdErrResult := readOptionalTestFile(t, tc.stdErrGoldenFileName)
 			diffCompare(t, actualStdErrResult, expectedStdErrResult)
 		})
 	}
