@@ -13,7 +13,7 @@ spec:
   template:
     metadata:
       annotations:
-        conduit.io/created-by: conduit/cli latest
+        conduit.io/created-by: conduit/cli undefined
         conduit.io/proxy-version: latest
       creationTimestamp: null
       labels:

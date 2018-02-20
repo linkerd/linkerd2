@@ -10,6 +10,7 @@ import (
 )
 
 func TestInjectYAML(t *testing.T) {
+	conduitVersion = "latest" // override "undefined"
 	testCases := []struct {
 		inputFileName  string
 		goldenFileName string
