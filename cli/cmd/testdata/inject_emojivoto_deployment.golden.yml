@@ -13,8 +13,8 @@ spec:
   template:
     metadata:
       annotations:
-        conduit.io/created-by: conduit/cli latest
-        conduit.io/proxy-version: latest
+        conduit.io/created-by: conduit/cli undefined
+        conduit.io/proxy-version: testinjectversion
       creationTimestamp: null
       labels:
         app: web-svc
@@ -61,7 +61,7 @@ spec:
               fieldPath: metadata.namespace
         - name: CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN
           value: Kubernetes
-        image: gcr.io/runconduit/proxy:latest
+        image: gcr.io/runconduit/proxy:testinjectversion
         imagePullPolicy: IfNotPresent
         name: conduit-proxy
         ports:
@@ -80,7 +80,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - "4190"
-        image: gcr.io/runconduit/proxy-init:latest
+        image: gcr.io/runconduit/proxy-init:testinjectversion
         imagePullPolicy: IfNotPresent
         name: conduit-init
         resources: {}

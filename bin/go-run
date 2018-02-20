@@ -7,6 +7,7 @@ if [ "$#" -eq 0 ]; then
   exit 1
 fi
 
-go build -v -i -race -o .gorun ./"$1"
+ldflags="-X github.com/runconduit/conduit/pkg/version.Version=$(bin/root-tag)"
+go build -v -i -race -o .gorun -ldflags "$ldflags" "./$1"
 shift
 exec ./.gorun "$@"
