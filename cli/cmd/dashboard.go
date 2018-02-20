@@ -10,6 +10,7 @@ import (
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/runconduit/conduit/pkg/shell"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -44,6 +45,10 @@ var dashboardCmd = &cobra.Command{
 		}
 
 		dashboardAvailable, err := isDashboardAvailable(client)
+		if err != nil {
+			log.Debugf("Error checking dashboard availability: %s", err)
+		}
+
 		if err != nil || !dashboardAvailable {
 			fmt.Fprintf(os.Stderr, "Conduit is not running in the \"%s\" namespace\n", controlPlaneNamespace)
 			fmt.Fprintf(os.Stderr, "Install with: conduit install -n %s | kubectl apply -f -\n", controlPlaneNamespace)
