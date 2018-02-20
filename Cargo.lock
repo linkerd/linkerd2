@@ -137,7 +137,6 @@ version = "0.2.0"
 dependencies = [
  "abstract-ns 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "bytes 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "chrono 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "conduit-proxy-controller-grpc 0.2.0",
  "conduit-proxy-router 0.2.0",
  "convert 0.2.0",
