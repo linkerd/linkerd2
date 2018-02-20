@@ -1,19 +1,7 @@
 ---
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: get-test
----
 apiVersion: apps/v1beta1
 kind: Deployment
-metadata:
-  name: get-test-deploy-injected-1
-  namespace: get-test
 spec:
-  replicas: 1
-  selector:
-      matchLabels:
-        app: get-test
   template:
     metadata:
           labels:

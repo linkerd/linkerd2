@@ -51,7 +51,7 @@ func TestInjectYAML(t *testing.T) {
 		outBuffer := &bytes.Buffer{}
 		expectedErrorMsg := `Error injecting conduit proxy: error converting YAML to JSON: yaml: line 14: did not find expected key`
 
-		in, err := os.Open("testdata/inject_gettest_deployment.input")
+		in, err := os.Open("testdata/inject_gettest_deployment.input.yml")
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
