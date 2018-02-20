@@ -10,7 +10,7 @@ import (
 )
 
 func TestInjectYAML(t *testing.T) {
-	conduitVersion = "latest" // override "undefined"
+	testInjectVersion := "testinjectversion"
 	testCases := []struct {
 		inputFileName  string
 		goldenFileName string
@@ -31,7 +31,7 @@ func TestInjectYAML(t *testing.T) {
 
 			output := new(bytes.Buffer)
 
-			err = InjectYAML(read, output)
+			err = InjectYAML(read, output, testInjectVersion)
 			if err != nil {
 				t.Errorf("Unexpected error injecting YAML: %v\n", err)
 			}
@@ -49,6 +49,7 @@ func TestInjectYAML(t *testing.T) {
 }
 
 func TestRunInjectCmd(t *testing.T) {
+	testInjectVersion := "testinjectversion"
 	testCases := []struct {
 		inputFileName        string
 		stdErrGoldenFileName string
@@ -77,7 +78,7 @@ func TestRunInjectCmd(t *testing.T) {
 				t.Fatalf("Unexpected error: %v", err)
 			}
 
-			exitCode := runInjectCmd(in, errBuffer, outBuffer)
+			exitCode := runInjectCmd(in, errBuffer, outBuffer, testInjectVersion)
 			if exitCode != tc.exitCode {
 				t.Fatalf("Expected exit code to be %d but got: %d", tc.exitCode, exitCode)
 			}

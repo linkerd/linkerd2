@@ -57,16 +57,16 @@ with 'conduit inject'. e.g. curl http://url.to/yml | conduit inject -
 				return err
 			}
 		}
-		exitCode := runInjectCmd(in, os.Stderr, os.Stdout)
+		exitCode := runInjectCmd(in, os.Stderr, os.Stdout, conduitVersion)
 		os.Exit(exitCode)
 		return nil
 	},
 }
 
 // Returns the integer representation of os.Exit code; 0 on success and 1 on failure.
-func runInjectCmd(input io.Reader, errWriter io.Writer, outWriter io.Writer) int {
+func runInjectCmd(input io.Reader, errWriter, outWriter io.Writer, version string) int {
 	postInjectBuf := &bytes.Buffer{}
-	err := InjectYAML(input, postInjectBuf)
+	err := InjectYAML(input, postInjectBuf, version)
 	if err != nil {
 		fmt.Fprintf(errWriter, "Error injecting conduit proxy: %v\n", err)
 		return 1
@@ -83,7 +83,7 @@ func runInjectCmd(input io.Reader, errWriter io.Writer, outWriter io.Writer) int
  * and init-container injected. If the pod is unsuitable for having them
  * injected, return null.
  */
-func injectPodTemplateSpec(t *v1.PodTemplateSpec) bool {
+func injectPodTemplateSpec(t *v1.PodTemplateSpec, version string) bool {
 	// Pods with `hostNetwork=true` share a network namespace with the host. The
 	// init-container would destroy the iptables configuration on the host, so
 	// skip the injection in this case.
@@ -121,7 +121,7 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec) bool {
 
 	initContainer := v1.Container{
 		Name:            "conduit-init",
-		Image:           fmt.Sprintf("%s:%s", initImage, conduitVersion),
+		Image:           fmt.Sprintf("%s:%s", initImage, version),
 		ImagePullPolicy: v1.PullPolicy(imagePullPolicy),
 		Args:            initArgs,
 		SecurityContext: &v1.SecurityContext{
@@ -134,7 +134,7 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec) bool {
 
 	sidecar := v1.Container{
 		Name:            "conduit-proxy",
-		Image:           fmt.Sprintf("%s:%s", proxyImage, conduitVersion),
+		Image:           fmt.Sprintf("%s:%s", proxyImage, version),
 		ImagePullPolicy: v1.PullPolicy(imagePullPolicy),
 		SecurityContext: &v1.SecurityContext{
 			RunAsUser: &proxyUID,
@@ -177,7 +177,7 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec) bool {
 		t.Annotations = make(map[string]string)
 	}
 	t.Annotations[k8s.CreatedByAnnotation] = k8s.CreatedByAnnotationValue()
-	t.Annotations[k8s.ProxyVersionAnnotation] = conduitVersion
+	t.Annotations[k8s.ProxyVersionAnnotation] = version
 
 	if t.Labels == nil {
 		t.Labels = make(map[string]string)
@@ -189,7 +189,7 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec) bool {
 	return true
 }
 
-func InjectYAML(in io.Reader, out io.Writer) error {
+func InjectYAML(in io.Reader, out io.Writer, version string) error {
 	reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(in, 4096))
 	// Iterate over all YAML objects in the input
 	for {
@@ -268,7 +268,7 @@ func InjectYAML(in io.Reader, out io.Writer) error {
 		// original serialization of the original object. Otherwise, output the
 		// serialization of the modified object.
 		output := bytes
-		if podTemplateSpec != nil && injectPodTemplateSpec(podTemplateSpec) {
+		if podTemplateSpec != nil && injectPodTemplateSpec(podTemplateSpec, version) {
 			output, err = yaml.Marshal(obj)
 			if err != nil {
 				return err
