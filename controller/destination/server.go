@@ -19,6 +19,7 @@ import (
 type (
 	server struct {
 		k8sDNSZoneLabels []string
+		egress           *DnsWatcher
 		endpoints        *k8s.EndpointsWatcher
 	}
 )
@@ -80,6 +81,7 @@ func newServer(k8sDNSZone string, endpoints *k8s.EndpointsWatcher) (*server, err
 	}
 	return &server{
 		k8sDNSZoneLabels: k8sDNSZoneLabels,
+		egress:           NewDnsWatcher(),
 		endpoints:        endpoints,
 	}, nil
 }
@@ -126,11 +128,7 @@ func (s *server) Get(dest *common.Destination, stream pb.Destination_GetServer) 
 		return s.resolveKubernetesService(*id, port, stream)
 	}
 
-	// TODO: Resolve name using DNS similar to Kubernetes' ClusterFirst
-	// resolution.
-	err = fmt.Errorf("cannot resolve service that isn't a local Kubernetes service: %s", host)
-	log.Error(err)
-	return err
+	return s.resolveExternalDns(host, stream)
 }
 
 func isIPAddress(host string) (bool, *common.IPAddress) {
@@ -169,6 +167,18 @@ func (s *server) resolveKubernetesService(id string, port int, stream pb.Destina
 	<-stream.Context().Done()
 
 	s.endpoints.Unsubscribe(id, uint32(port), listener)
+
+	return nil
+}
+
+func (s *server) resolveExternalDns(host string, stream pb.Destination_GetServer) error {
+	listener := endpointListener{stream: stream}
+
+	s.egress.Subscribe(host, listener)
+
+	<-stream.Context().Done()
+
+	s.egress.Unsubscribe(host, listener)
 
 	return nil
 }
