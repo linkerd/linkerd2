@@ -454,12 +454,12 @@ func render(config installConfig, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	buf := new(bytes.Buffer)
+	buf := &bytes.Buffer{}
 	err = template.Execute(buf, config)
 	if err != nil {
 		return err
 	}
-	return InjectYAML(buf, w)
+	return InjectYAML(buf, w, conduitVersion)
 }
 
 var alphaNumDash = regexp.MustCompile("^[a-zA-Z0-9-]+$")
