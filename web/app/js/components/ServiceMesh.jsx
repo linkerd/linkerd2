@@ -84,6 +84,7 @@ export default class ServiceMesh extends React.Component {
 
   componentWillUnmount() {
     window.clearInterval(this.timerId);
+    this.api.cancelCurrentRequests();
   }
 
   loadFromServer() {
@@ -95,11 +96,13 @@ export default class ServiceMesh extends React.Component {
     let rollupPath = `/api/metrics?aggregation=mesh`;
     let timeseriesPath = `${rollupPath}&timeseries=true`;
 
-    let rollupRequest = this.api.fetchMetrics(rollupPath);
-    let timeseriesRequest = this.api.fetchMetrics(timeseriesPath);
-    let podsRequest = this.api.fetchPods();
+    this.api.setCurrentRequests([
+      this.api.fetchMetrics(rollupPath),
+      this.api.fetchMetrics(timeseriesPath),
+      this.api.fetchPods()
+    ]);
 
-    this.serverPromise = Promise.all([rollupRequest, timeseriesRequest, podsRequest])
+    this.serverPromise = Promise.all(this.api.getCurrentPromises())
       .then(([metrics, ts, pods]) => {
         let m = processRollupMetrics(metrics.metrics, "component");
         let tsByComponent = processTimeseriesMetrics(ts.metrics, "component");
@@ -116,10 +119,15 @@ export default class ServiceMesh extends React.Component {
           loaded: true,
           error: ''
         });
-      }).catch(this.handleApiError);
+      })
+      .catch(this.handleApiError);
   }
 
   handleApiError(e) {
+    if (e.isCanceled) {
+      return;
+    }
+
     this.setState({
       pendingRequests: false,
       error: `Error getting data from server: ${e.message}`

@@ -41,7 +41,7 @@ export default class Sidebar extends React.Component {
     }
     this.setState({ pendingRequests: true });
 
-    this.api.fetchPods().then(r => {
+    this.api.fetchPods().promise.then(r => {
       let deploys =  _.map(getPodsByDeployment(r.pods), 'name');
 
       this.setState({

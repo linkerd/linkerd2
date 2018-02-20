@@ -34,6 +34,7 @@ export default class DeploymentDetail extends React.Component {
 
   componentWillUnmount() {
     window.clearInterval(this.timerId);
+    this.api.cancelCurrentRequests();
   }
 
   initialState(location) {
@@ -60,17 +61,19 @@ export default class DeploymentDetail extends React.Component {
 
     let urls = this.api.urlsForResource;
 
-    let podListFetch = this.api.fetchPods();
     let deployMetricsUrl = urls["deployment"].url(this.state.deploy).rollup;
     let upstreamRollupUrl = urls["upstream_deployment"].url(this.state.deploy).rollup;
     let downstreamRollupUrl = urls["downstream_deployment"].url(this.state.deploy).rollup;
 
-    let deployFetch = this.api.fetchMetrics(deployMetricsUrl);
-    let upstreamFetch = this.api.fetchMetrics(upstreamRollupUrl);
-    let downstreamFetch = this.api.fetchMetrics(downstreamRollupUrl);
+    this.api.setCurrentRequests([
+      this.api.fetchMetrics(deployMetricsUrl),
+      this.api.fetchMetrics(upstreamRollupUrl),
+      this.api.fetchMetrics(downstreamRollupUrl),
+      this.api.fetchPods()
+    ]);
 
     // expose serverPromise for testing
-    this.serverPromise = Promise.all([deployFetch, upstreamFetch, downstreamFetch, podListFetch])
+    this.serverPromise = Promise.all(this.api.getCurrentPromises())
       .then(([deployMetrics, upstreamRollup, downstreamRollup, podList]) => {
         let deployRollup = processRollupMetrics(deployMetrics.metrics, "targetDeploy");
         let upstreamMetrics = processRollupMetrics(upstreamRollup.metrics, "sourceDeploy");
@@ -90,10 +93,15 @@ export default class DeploymentDetail extends React.Component {
           loaded: true,
           error: ''
         });
-      }).catch(this.handleApiError);
+      })
+      .catch(this.handleApiError);
   }
 
   handleApiError(e) {
+    if (e.isCanceled) {
+      return;
+    }
+
     this.setState({
       pendingRequests: false,
       error: `Error getting data from server: ${e.message}`
