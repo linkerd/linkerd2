@@ -29,13 +29,3 @@ func (m *MockKubeApi) NewClient() (*http.Client, error) {
 func (m *MockKubeApi) SelfCheck() []*healthcheckPb.CheckResult {
 	return m.SelfCheckResultsToReturn
 }
-
-type MockKubectl struct {
-	SelfCheckResultsToReturn []*healthcheckPb.CheckResult
-}
-
-func (m *MockKubectl) Version() ([3]int, error) { return [3]int{}, nil }
-
-func (m *MockKubectl) SelfCheck() []*healthcheckPb.CheckResult {
-	return m.SelfCheckResultsToReturn
-}
