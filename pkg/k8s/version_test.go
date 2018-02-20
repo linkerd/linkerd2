@@ -51,7 +51,7 @@ func TestIsCompatibleVersion(t *testing.T) {
 	t.Run("Success when compatible versions", func(t *testing.T) {
 		compatibleVersions := map[[3]int][3]int{
 			{1, 8, 4}: {1, 8, 4},
-			{1, 9, 0}: {1, 9, 2},
+			{1, 9, 2}: {1, 9, 4},
 			{1, 1, 1}: {1, 1, 1},
 			{1, 1, 1}: {2, 1, 2},
 			{1, 1, 1}: {1, 2, 1},
