@@ -60,3 +60,25 @@ fn outbound_times_out() {
     // Currently, the outbound router will wait forever until discovery tells
     // it where to send the request. It should probably time out eventually.
 }
+
+#[test]
+fn outbound_uses_orig_dst_if_not_local_svc() {
+    let _ = env_logger::init();
+
+    let srv = server::new()
+        .route("/", "hello")
+        .route("/bye", "bye")
+        .run();
+    let ctrl = controller::new()
+        // no controller rule for srv
+        .run();
+    let proxy = proxy::new()
+        .controller(ctrl)
+        // set outbound orig_dst to srv
+        .outbound(srv)
+        .run();
+    let client = client::new(proxy.outbound, "versioncheck.conduit.io");
+
+    assert_eq!(client.get("/"), "hello");
+    assert_eq!(client.get("/bye"), "bye");
+}
