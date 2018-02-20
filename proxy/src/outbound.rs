@@ -8,6 +8,7 @@ use tower;
 use tower_balance::{self, choose, load, Balance};
 use tower_buffer::Buffer;
 use tower_discover::{Change, Discover};
+use tower_in_flight_limit::InFlightLimit;
 use tower_h2;
 use conduit_proxy_router::Recognize;
 
@@ -25,6 +26,8 @@ pub struct Outbound<B> {
     default_namespace: Option<String>,
     default_zone: Option<String>,
 }
+
+const MAX_IN_FLIGHT: usize = 10_000;
 
 // ===== impl Outbound =====
 
@@ -56,10 +59,10 @@ where
     type Error = <Self::Service as tower::Service>::Error;
     type Key = (Destination, Protocol);
     type RouteError = ();
-    type Service = Buffer<Balance<
+    type Service = InFlightLimit<Buffer<Balance<
         load::WithPendingRequests<Discovery<B>>,
         choose::PowerOfTwoChoices<rand::ThreadRng>,
-    >>;
+    >>>;
 
     fn recognize(&self, req: &Self::Request) -> Option<Self::Key> {
         let local = req.uri().authority_part().and_then(|authority| {
@@ -128,11 +131,11 @@ where
 
         let balance = tower_balance::power_of_two_choices(loaded, rand::thread_rng());
 
-        // Wrap with buffering. This currently is an unbounded buffer,
-        // which is not ideal.
-        //
-        // TODO: Don't use unbounded buffering.
-        Buffer::new(balance, self.bind.executor()).map_err(|_| {})
+        Buffer::new(balance, self.bind.executor())
+            .map(|buffer| {
+                InFlightLimit::new(buffer, MAX_IN_FLIGHT)
+            })
+            .map_err(|_| {})
     }
 }
 
