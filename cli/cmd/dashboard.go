@@ -94,6 +94,6 @@ func init() {
 
 	// This is identical to what `kubectl proxy --help` reports, `--port 0`
 	// indicates a random port.
-	dashboardCmd.PersistentFlags().IntVarP(&dashboardProxyPort, "port", "p", 0, "The port on which to run the proxy. Set to 0 to pick a random port.")
+	dashboardCmd.PersistentFlags().IntVarP(&dashboardProxyPort, "port", "p", 0, "The port on which to run the proxy. When set to 0, a random port will be used.")
 	dashboardCmd.PersistentFlags().BoolVar(&dashboardSkipBrowser, "url", false, "Display the Conduit dashboard URL in the CLI instead of opening it in the default browser")
 }
