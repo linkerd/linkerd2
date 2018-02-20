@@ -30,7 +30,7 @@ fn inbound_sends_telemetry() {
     // process
     assert_eq!(report.process.as_ref().unwrap().node, "");
     assert_eq!(report.process.as_ref().unwrap().scheduled_instance, "");
-    assert_eq!(report.process.as_ref().unwrap().scheduled_namespace, "");
+    assert_eq!(report.process.as_ref().unwrap().scheduled_namespace, "conduit");
     // requests
     assert_eq!(report.requests.len(), 1);
     let req = &report.requests[0];
@@ -130,10 +130,6 @@ fn inbound_aggregates_telemetry_over_several_requests() {
     let report = reports.wait().next().unwrap().unwrap();
     // proxy inbound
     assert_eq!(report.proxy, 0);
-    // process
-    assert_eq!(report.process.as_ref().unwrap().node, "");
-    assert_eq!(report.process.as_ref().unwrap().scheduled_instance, "");
-    assert_eq!(report.process.as_ref().unwrap().scheduled_namespace, "");
 
     // requests -----------------------
     assert_eq!(report.requests.len(), 2);
