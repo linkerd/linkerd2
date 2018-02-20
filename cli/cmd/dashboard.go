@@ -10,6 +10,7 @@ import (
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/runconduit/conduit/pkg/shell"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -45,11 +46,12 @@ var dashboardCmd = &cobra.Command{
 
 		dashboardAvailable, err := isDashboardAvailable(client)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed while checking availability of dashboard: %+v\n", err)
+			log.Debugf("Error checking dashboard availability: %s", err)
 		}
 
-		if !dashboardAvailable {
-			fmt.Fprint(os.Stderr, "Conduit web deployment is not installed in your cluster\n")
+		if err != nil || !dashboardAvailable {
+			fmt.Fprintf(os.Stderr, "Conduit is not running in the \"%s\" namespace\n", controlPlaneNamespace)
+			fmt.Fprintf(os.Stderr, "Install with: conduit install -n %s | kubectl apply -f -\n", controlPlaneNamespace)
 			os.Exit(1)
 		}
 
@@ -97,6 +99,6 @@ func init() {
 
 	// This is identical to what `kubectl proxy --help` reports, `--port 0`
 	// indicates a random port.
-	dashboardCmd.PersistentFlags().IntVarP(&dashboardProxyPort, "port", "p", 8001, "The port on which to run the proxy. Set to 0 to pick a random port.")
+	dashboardCmd.PersistentFlags().IntVarP(&dashboardProxyPort, "port", "p", 0, "The port on which to run the proxy. When set to 0, a random port will be used.")
 	dashboardCmd.PersistentFlags().BoolVar(&dashboardSkipBrowser, "url", false, "Display the Conduit dashboard URL in the CLI instead of opening it in the default browser")
 }
