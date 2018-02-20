@@ -63,7 +63,7 @@ with 'conduit inject'. e.g. curl http://url.to/yml | conduit inject -
 	},
 }
 
-// Returns the integer representation of os.Exist code; 0 on success and 1 on failure.
+// Returns the integer representation of os.Exit code; 0 on success and 1 on failure.
 func runInjectCmd(input io.Reader, errWriter io.Writer, outWriter io.Writer) int {
 	postInjectBuf := &bytes.Buffer{}
 	err := InjectYAML(input, postInjectBuf)

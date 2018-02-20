@@ -45,7 +45,9 @@ func TestInjectYAML(t *testing.T) {
 			diffCompare(t, actualOutput, expectedOutput)
 		})
 	}
+}
 
+func TestRunInjectCmd(t *testing.T) {
 	t.Run("Do not print invalid YAML on inject error", func(t *testing.T) {
 		errBuffer := &bytes.Buffer{}
 		outBuffer := &bytes.Buffer{}
@@ -56,7 +58,11 @@ func TestInjectYAML(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		runInjectCmd(in, errBuffer, outBuffer)
+		errCode := runInjectCmd(in, errBuffer, outBuffer)
+
+		if errCode != 1 {
+			t.Fatalf("Expected error code to be 1 but got: %d", errCode)
+		}
 
 		if len(outBuffer.Bytes()) != 0 {
 			t.Fatalf("Expected output buffer to be empty but got: \n%v", outBuffer)
@@ -64,5 +70,24 @@ func TestInjectYAML(t *testing.T) {
 
 		actualErrorMsg := errBuffer.String()
 		diffCompare(t, actualErrorMsg, expectedErrorMsg)
+	})
+	t.Run("Do not print invalid YAML on inject error", func(t *testing.T) {
+		errBuffer := &bytes.Buffer{}
+		outBuffer := &bytes.Buffer{}
+
+		in, err := os.Open("testdata/inject_emojivoto_deployment.input.yml")
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		errCode := runInjectCmd(in, errBuffer, outBuffer)
+
+		if errCode != 0 {
+			t.Fatalf("Expected error code to be 0 but got: %d", errCode)
+		}
+
+		if len(outBuffer.Bytes()) == 0 {
+			t.Fatalf("Expected output buffer to be empty but got: \n%v", outBuffer)
+		}
 	})
 }
