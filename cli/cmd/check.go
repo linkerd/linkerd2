@@ -26,13 +26,6 @@ problems were found.`,
 	Args: cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		kubectl, err := k8s.NewKubectl(shell.NewUnixShell())
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error with kubectl: %s\n", err.Error())
-			statusCheckResultWasError(os.Stdout)
-			os.Exit(2)
-		}
-
 		kubeApi, err := k8s.NewK8sAPI(shell.NewUnixShell().HomeDir(), kubeconfigPath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error with Kubernetes API: %s\n", err.Error())
@@ -52,7 +45,7 @@ problems were found.`,
 			os.Exit(2)
 		}
 
-		err = checkStatus(os.Stdout, kubectl, kubeApi, healthcheck.NewGrpcStatusChecker(public.ConduitApiSubsystemName, conduitApi))
+		err = checkStatus(os.Stdout, kubeApi, healthcheck.NewGrpcStatusChecker(public.ConduitApiSubsystemName, conduitApi))
 		if err != nil {
 			os.Exit(2)
 		}
