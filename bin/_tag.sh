@@ -1,5 +1,3 @@
-#!/bin/sh
-
 set -eu
 
 git_sha_head() {
@@ -7,7 +5,9 @@ git_sha_head() {
 }
 
 go_deps_sha() {
-    cat Gopkg.lock Dockerfile-go-deps | shasum - | awk '{print $1}' |cut -c 1-8
+    bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+    rootdir="$( cd $bindir/.. && pwd )"
+    cat $rootdir/Gopkg.lock $rootdir/Dockerfile-go-deps | shasum - | awk '{print $1}' |cut -c 1-8
 }
 
 clean_head() {
@@ -59,9 +59,9 @@ validate_tag() {
     fi
 }
 
-# These functions should be called by any docker-build-* script that relies on
-# Go or Rust dependencies. To confirm the set of scripts that should call this
-# function, run:
+# This function should be called by any docker-build-* script that relies on Go
+# dependencies. To confirm the set of scripts that should call this function,
+# run:
 # $ grep -ER 'docker-build-go-deps' .
 
 validate_go_deps_tag() {

@@ -1,11 +1,8 @@
-#!/bin/sh
-#
-# docker
-#
-
 set -eu
 
-. bin/_log.sh
+bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+. $bindir/_log.sh
 
 # TODO this should be set to the canonical public docker regsitry; we can override this
 # docker regsistry in, for instance, CI.
@@ -42,8 +39,10 @@ docker_build() {
         output="/dev/stderr"
     fi
 
-    log_debug "  :; docker build . -t $repo:$tag -f $file $extra"
-    docker build . \
+    rootdir="$( cd $bindir/.. && pwd )"
+
+    log_debug "  :; docker build $rootdir -t $repo:$tag -f $file $extra"
+    docker build $rootdir \
         -t "$repo:$tag" \
         -f "$file" \
         $extra \

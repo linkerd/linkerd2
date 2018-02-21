@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 set -eu
 
@@ -7,9 +7,11 @@ if [ $# -ne 0 ]; then
     exit 64
 fi
 
-bin/docker-build-controller
-bin/docker-build-web
-bin/docker-build-proxy-init
-bin/docker-build-cli
+bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-bin/docker-build-proxy
+$bindir/docker-build-controller
+$bindir/docker-build-web
+$bindir/docker-build-proxy-init
+$bindir/docker-build-cli
+
+$bindir/docker-build-proxy

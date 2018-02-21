@@ -1,8 +1,3 @@
-#!/bin/sh
-#
-# gcp -- mostly for CI
-#
-
 set -eu
 
 get_k8s_ctx() {

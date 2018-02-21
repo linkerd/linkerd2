@@ -1,13 +1,16 @@
-#!/bin/sh
+#!/bin/bash
 
 set -eu
+
+bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+rootdir="$( cd $bindir/.. && pwd )"
 
 system=$(uname -s)
 
 if [ "$system" = "Darwin" ]; then
-  bin=target/cli/darwin/conduit
+  bin=$rootdir/target/cli/darwin/conduit
 elif [ "$system" = "Linux" ]; then
-  bin=target/cli/linux/conduit
+  bin=$rootdir/target/cli/linux/conduit
 else
   echo "unknown system: $system" >&2
   exit 1
@@ -15,7 +18,7 @@ fi
 
 # build conduit executable if it does not exist
 if [ ! -f $bin ]; then
-  bin/docker-build-cli-bin >/dev/null
+  $bindir/docker-build-cli-bin >/dev/null
 fi
 
 exec $bin "$@"

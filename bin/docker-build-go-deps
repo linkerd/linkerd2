@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Builds (or pulls) our go-deps docker image.
 
@@ -9,13 +9,16 @@ if [ $# -ne 0 ]; then
     exit 64
 fi
 
-. bin/_docker.sh
-. bin/_tag.sh
+bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+. $bindir/_docker.sh
+. $bindir/_tag.sh
 
 tag=$(go_deps_sha)
 
 if (docker_pull go-deps "${tag}"); then
     echo "$(docker_repo go-deps):${tag}"
 else
-    docker_build go-deps "${tag}" Dockerfile-go-deps
+    rootdir="$( cd $bindir/.. && pwd )"
+    docker_build go-deps "${tag}" $rootdir/Dockerfile-go-deps
 fi
