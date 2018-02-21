@@ -13,6 +13,8 @@ impl FullyQualifiedAuthority {
     /// Case folding is not done; that is done internally inside `Authority`.
     ///
     /// This assumes the authority is syntactically valid.
+    ///
+    /// Returns `None` is authority doesn't look like a local Kubernetes service.
     pub fn new(authority: &Authority, default_namespace: Option<&str>,
                default_zone: Option<&str>)
                -> Option<FullyQualifiedAuthority> {
@@ -39,7 +41,7 @@ impl FullyQualifiedAuthority {
             return Some(FullyQualifiedAuthority(Authority::from_shared(normalized).unwrap()));
         }
 
-        // parts = (name, namespace, svc, zone)
+        // parts should have a maximum 4 of pieces (name, namespace, svc, zone)
         let mut parts = name.splitn(4, '.');
 
         // `Authority` guarantees the name has at least one part.
@@ -54,35 +56,34 @@ impl FullyQualifiedAuthority {
         };
 
         // Rewrite "$name.$namespace" -> "$name.$namespace.svc".
-        let (has_svc, append_svc) = if let Some(part) = parts.next() {
-            (part.eq_ignore_ascii_case("svc"), false)
+        let append_svc = if let Some(part) = parts.next() {
+            if !part.eq_ignore_ascii_case("svc") {
+                // if not "$name.$namespace.svc", treat as external
+                return None;
+            } else {
+                false
+            }
+        } else if has_explicit_namespace {
+            true
+        } else if namespace_to_append.is_none() {
+            // if not "*.svc" and no default namespace, treat as external
+            return None;
         } else {
-            let has_namespace =
-                has_explicit_namespace || namespace_to_append.is_some();
-            (has_namespace, has_namespace)
+            true
         };
 
-
         // Rewrite "$name.$namespace.svc" -> "$name.$namespace.svc.$zone".
-        let zone_to_append = if has_svc {
-            if let Some(zone) = parts.next() {
-                if let Some(default_zone) = default_zone {
-                    if zone.eq_ignore_ascii_case(default_zone) {
-                        None
-                    } else {
-                        // if "a.b.svc.foo" and zone is not "foo",
-                        // treat as external
-                        return None;
-                    }
-                } else {
-                    None
+        let zone_to_append = if let Some(zone) = parts.next() {
+            if let Some(default_zone) = default_zone {
+                if !zone.eq_ignore_ascii_case(default_zone) {
+                    // if "a.b.svc.foo" and zone is not "foo",
+                    // treat as external
+                    return None;
                 }
-            } else {
-                default_zone
             }
+            None
         } else {
-            // if not a "*.svc", treat as external
-            return None;
+            default_zone
         };
 
         let mut additional_len = 0;

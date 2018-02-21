@@ -70,6 +70,9 @@ where
 
         });
 
+        // If we can't fully qualify the authority as a local service,
+        // and there is no original dst, then we have nothing! In that
+        // case, we return `None`, which results an "unrecognized" error.
         let dest = if let Some(local) = local {
             Destination::LocalSvc(local)
         } else {
@@ -149,6 +152,11 @@ where
         match *self {
             Discovery::LocalSvc(ref mut w) => w.poll(),
             Discovery::External(ref mut opt) => {
+                // This "discovers" a single address for an external service
+                // that never has another change. This can mean it floats
+                // in the Balancer forever. However, when we finally add
+                // circuit-breaking, this should be able to take care of itself,
+                // closing down when the connection is no longer usable.
                 if let Some((addr, bind)) = opt.take() {
                     let svc = bind.bind(&addr)?;
                     Ok(Async::Ready(Change::Insert(addr, svc)))
