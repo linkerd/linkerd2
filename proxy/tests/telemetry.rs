@@ -18,7 +18,7 @@ fn inbound_sends_telemetry() {
         .inbound(srv)
         .metrics_flush_interval(Duration::from_millis(500))
         .run();
-    let client = client::new(proxy.inbound, "test.conduit.local");
+    let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
 
     info!("client.get(/hey)");
     assert_eq!(client.get("/hey"), "hello");
@@ -30,11 +30,11 @@ fn inbound_sends_telemetry() {
     // process
     assert_eq!(report.process.as_ref().unwrap().node, "");
     assert_eq!(report.process.as_ref().unwrap().scheduled_instance, "");
-    assert_eq!(report.process.as_ref().unwrap().scheduled_namespace, "");
+    assert_eq!(report.process.as_ref().unwrap().scheduled_namespace, "test");
     // requests
     assert_eq!(report.requests.len(), 1);
     let req = &report.requests[0];
-    assert_eq!(req.ctx.as_ref().unwrap().authority, "test.conduit.local");
+    assert_eq!(req.ctx.as_ref().unwrap().authority, "tele.test.svc.cluster.local");
     //assert_eq!(req.ctx.as_ref().unwrap().method, GET);
     assert_eq!(req.count, 1);
     assert_eq!(req.responses.len(), 1);
@@ -68,7 +68,7 @@ fn http1_inbound_sends_telemetry() {
         .inbound(srv)
         .metrics_flush_interval(Duration::from_millis(500))
         .run();
-    let client = client::http1(proxy.inbound, "test.conduit.local");
+    let client = client::http1(proxy.inbound, "tele.test.svc.cluster.local");
 
     info!("client.get(/hey)");
     assert_eq!(client.get("/hey"), "hello");
@@ -80,7 +80,7 @@ fn http1_inbound_sends_telemetry() {
     // requests
     assert_eq!(report.requests.len(), 1);
     let req = &report.requests[0];
-    assert_eq!(req.ctx.as_ref().unwrap().authority, "test.conduit.local");
+    assert_eq!(req.ctx.as_ref().unwrap().authority, "tele.test.svc.cluster.local");
     //assert_eq!(req.ctx.as_ref().unwrap().method, GET);
     assert_eq!(req.count, 1);
     assert_eq!(req.responses.len(), 1);
@@ -117,7 +117,7 @@ fn inbound_aggregates_telemetry_over_several_requests() {
         .inbound(srv)
         .metrics_flush_interval(Duration::from_millis(500))
         .run();
-    let client = client::new(proxy.inbound, "test.conduit.local");
+    let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
 
     info!("client.get(/hey)");
     assert_eq!(client.get("/hey"), "hello");
@@ -130,17 +130,13 @@ fn inbound_aggregates_telemetry_over_several_requests() {
     let report = reports.wait().next().unwrap().unwrap();
     // proxy inbound
     assert_eq!(report.proxy, 0);
-    // process
-    assert_eq!(report.process.as_ref().unwrap().node, "");
-    assert_eq!(report.process.as_ref().unwrap().scheduled_instance, "");
-    assert_eq!(report.process.as_ref().unwrap().scheduled_namespace, "");
 
     // requests -----------------------
     assert_eq!(report.requests.len(), 2);
 
     // -- first request -----------------
     let req = &report.requests[0];
-    assert_eq!(req.ctx.as_ref().unwrap().authority, "test.conduit.local");
+    assert_eq!(req.ctx.as_ref().unwrap().authority, "tele.test.svc.cluster.local");
     assert_eq!(req.count, 1);
     assert_eq!(req.responses.len(), 1);
     // ---- response --------------------
@@ -160,7 +156,7 @@ fn inbound_aggregates_telemetry_over_several_requests() {
 
     // -- second request ----------------
     let req = &report.requests[1];
-    assert_eq!(req.ctx.as_ref().unwrap().authority, "test.conduit.local");
+    assert_eq!(req.ctx.as_ref().unwrap().authority, "tele.test.svc.cluster.local");
     // repeated twice
     assert_eq!(req.count, 2);
     assert_eq!(req.responses.len(), 1);
@@ -203,7 +199,7 @@ fn records_latency_statistics() {
         .inbound(srv)
         .metrics_flush_interval(Duration::from_secs(5))
         .run();
-    let client = client::new(proxy.inbound, "test.conduit.local");
+    let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
 
     info!("client.get(/hey)");
     assert_eq!(client.get("/hey"), "hello");
@@ -219,7 +215,7 @@ fn records_latency_statistics() {
     assert_eq!(report.requests.len(), 2);
     // first request
     let req = &report.requests[0];
-    assert_eq!(req.ctx.as_ref().unwrap().authority, "test.conduit.local");
+    assert_eq!(req.ctx.as_ref().unwrap().authority, "tele.test.svc.cluster.local");
     let res = &req.responses[0];
     // response latencies should always have a length equal to the number
     // of latency buckets in the latency histogram.
@@ -239,7 +235,7 @@ fn records_latency_statistics() {
 
     // second request
     let req = &report.requests.get(1).expect("second report");
-    assert_eq!(req.ctx.as_ref().unwrap().authority, "test.conduit.local");
+    assert_eq!(req.ctx.as_ref().unwrap().authority, "tele.test.svc.cluster.local");
     assert_eq!(req.count, 2);
     assert_eq!(req.responses.len(), 1);
     let res = req.responses.get(0).expect("responses[0]");

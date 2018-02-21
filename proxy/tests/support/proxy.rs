@@ -111,6 +111,10 @@ fn run(proxy: Proxy) -> Listening {
     env.put(config::ENV_PUBLIC_LISTENER, "tcp://127.0.0.1:0".to_owned());
     env.put(config::ENV_CONTROL_LISTENER, "tcp://127.0.0.1:0".to_owned());
 
+    env.put(config::ENV_POD_NAMESPACE, "test".to_owned());
+    env.put(config::ENV_POD_ZONE, "cluster.local".to_owned());
+    env.put(config::ENV_DESTINATIONS_AUTOCOMPLETE_FQDN, "Kubernetes".to_owned());
+
     let mut config = config::Config::try_from(&env).unwrap();
 
     // TODO: We currently can't use `config::ENV_METRICS_FLUSH_INTERVAL_SECS`
