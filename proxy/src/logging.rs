@@ -2,12 +2,11 @@ use std::cell::RefCell;
 use std::env;
 use std::fmt;
 use std::rc::Rc;
-use std::io::Write;
 
-use env_logger::Builder;
+use env_logger::LogBuilder;
 use futures::{Future, Poll};
 use futures::future::{ExecuteError, Executor};
-use log::Level;
+use log::LogLevel;
 
 const ENV_LOG: &str = "CONDUIT_PROXY_LOG";
 
@@ -16,21 +15,19 @@ thread_local! {
 }
 
 pub fn init() {
-    Builder::new()
-        .format(|buf, record| {
+    LogBuilder::new()
+        .format(|record| {
             CONTEXT.with(|ctxt| {
                 let level = match record.level() {
-                    Level::Trace => "T",
-                    Level::Debug => "D",
-                    Level::Info => "I",
-                    Level::Warn => "W",
-                    Level::Error => "E",
+                    LogLevel::Trace => "TRCE",
+                    LogLevel::Debug => "DBUG",
+                    LogLevel::Info => "INFO",
+                    LogLevel::Warn => "WARN",
+                    LogLevel::Error => "ERR!",
                 };
-                writeln!(buf,
-                    "{}\t{}:{}] {}: {:?}{}",
+                format!(
+                    "{} {} {:?}{}",
                     level,
-                    record.file().unwrap_or_default(),
-                    record.line().unwrap_or_default(),
                     record.target(),
                     Context(&ctxt.borrow()),
                     record.args()
@@ -38,7 +35,8 @@ pub fn init() {
             })
         })
         .parse(&env::var(ENV_LOG).unwrap_or_default())
-        .init();
+        .init()
+        .expect("logger");
 }
 
 /// Execute a closure with a `Debug` item attached to allow log messages.
