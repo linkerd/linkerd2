@@ -135,8 +135,8 @@ spec:
     metadata:
       annotations:
         CreatedByAnnotation: CliVersion
-        conduit.io/created-by: conduit/cli latest
-        conduit.io/proxy-version: latest
+        conduit.io/created-by: conduit/cli undefined
+        conduit.io/proxy-version: undefined
       creationTimestamp: null
       labels:
         ControllerComponentLabel: controller
@@ -245,7 +245,7 @@ spec:
               fieldPath: metadata.namespace
         - name: CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN
           value: Kubernetes
-        image: gcr.io/runconduit/proxy:latest
+        image: gcr.io/runconduit/proxy:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-proxy
         ports:
@@ -264,7 +264,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - "4190"
-        image: gcr.io/runconduit/proxy-init:latest
+        image: gcr.io/runconduit/proxy-init:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-init
         resources: {}
@@ -317,8 +317,8 @@ spec:
     metadata:
       annotations:
         CreatedByAnnotation: CliVersion
-        conduit.io/created-by: conduit/cli latest
-        conduit.io/proxy-version: latest
+        conduit.io/created-by: conduit/cli undefined
+        conduit.io/proxy-version: undefined
       creationTimestamp: null
       labels:
         ControllerComponentLabel: web
@@ -333,6 +333,7 @@ spec:
         - -static-dir=/dist
         - -template-dir=/templates
         - -uuid=UUID
+        - -controller-namespace=Namespace
         - -log-level=ControllerLogLevel
         image: WebImage
         imagePullPolicy: ImagePullPolicy
@@ -368,7 +369,7 @@ spec:
               fieldPath: metadata.namespace
         - name: CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN
           value: Kubernetes
-        image: gcr.io/runconduit/proxy:latest
+        image: gcr.io/runconduit/proxy:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-proxy
         ports:
@@ -387,7 +388,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - "4190"
-        image: gcr.io/runconduit/proxy-init:latest
+        image: gcr.io/runconduit/proxy-init:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-init
         resources: {}
@@ -436,8 +437,8 @@ spec:
     metadata:
       annotations:
         CreatedByAnnotation: CliVersion
-        conduit.io/created-by: conduit/cli latest
-        conduit.io/proxy-version: latest
+        conduit.io/created-by: conduit/cli undefined
+        conduit.io/proxy-version: undefined
       creationTimestamp: null
       labels:
         ControllerComponentLabel: prometheus
@@ -491,7 +492,7 @@ spec:
               fieldPath: metadata.namespace
         - name: CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN
           value: Kubernetes
-        image: gcr.io/runconduit/proxy:latest
+        image: gcr.io/runconduit/proxy:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-proxy
         ports:
@@ -510,7 +511,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - "4190"
-        image: gcr.io/runconduit/proxy-init:latest
+        image: gcr.io/runconduit/proxy-init:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-init
         resources: {}

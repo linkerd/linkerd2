@@ -1,13 +1,12 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
 	"regexp"
 	"text/template"
-
-	"bytes"
 
 	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/runconduit/conduit/pkg/version"
