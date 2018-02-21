@@ -123,18 +123,18 @@ dependencies = [
 
 [[package]]
 name = "conduit-proxy"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "abstract-ns 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "bytes 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "chrono 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "conduit-proxy-controller-grpc 0.2.0",
- "conduit-proxy-router 0.2.0",
- "convert 0.2.0",
+ "conduit-proxy-controller-grpc 0.3.0",
+ "conduit-proxy-router 0.3.0",
+ "convert 0.3.0",
  "domain 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
- "futures-mpsc-lossy 0.2.0",
+ "futures-mpsc-lossy 0.3.0",
  "h2 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "http 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "httparse 1.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -165,10 +165,10 @@ dependencies = [
 
 [[package]]
 name = "conduit-proxy-controller-grpc"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "bytes 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "convert 0.2.0",
+ "convert 0.3.0",
  "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "h2 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "http 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -183,7 +183,7 @@ dependencies = [
 
 [[package]]
 name = "conduit-proxy-router"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "ordermap 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -192,7 +192,7 @@ dependencies = [
 
 [[package]]
 name = "convert"
-version = "0.2.0"
+version = "0.3.0"
 
 [[package]]
 name = "crc"
@@ -324,7 +324,7 @@ dependencies = [
 
 [[package]]
 name = "futures-mpsc-lossy"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
