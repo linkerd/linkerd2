@@ -27,7 +27,7 @@ jobs:
         - cargo test --frozen
 
     - language: go
-      go: 1.10.0
+      go: 1.10
       go_import_path: github.com/runconduit/conduit
       cache:
         directories:
