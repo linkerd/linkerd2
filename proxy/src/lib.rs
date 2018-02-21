@@ -4,7 +4,6 @@
 
 extern crate abstract_ns;
 extern crate bytes;
-extern crate chrono;
 extern crate conduit_proxy_controller_grpc;
 extern crate convert;
 extern crate domain;

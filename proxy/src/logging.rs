@@ -3,7 +3,6 @@ use std::env;
 use std::fmt;
 use std::rc::Rc;
 
-use chrono::Utc;
 use env_logger::LogBuilder;
 use futures::{Future, Poll};
 use futures::future::{ExecuteError, Executor};
@@ -27,8 +26,7 @@ pub fn init() {
                     LogLevel::Error => "ERR!",
                 };
                 format!(
-                    "{} {} {} {:?}{}",
-                    Utc::now().format("%s%.6f"),
+                    "{} {} {:?}{}",
                     level,
                     record.target(),
                     Context(&ctxt.borrow()),
