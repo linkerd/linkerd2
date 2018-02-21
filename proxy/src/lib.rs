@@ -41,6 +41,7 @@ extern crate tower_h2;
 extern crate tower_reconnect;
 extern crate conduit_proxy_router;
 extern crate tower_util;
+extern crate tower_in_flight_limit;
 extern crate url;
 
 use futures::*;

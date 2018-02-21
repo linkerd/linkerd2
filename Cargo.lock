@@ -157,6 +157,7 @@ dependencies = [
  "tower-discover 0.1.0 (git+https://github.com/tower-rs/tower)",
  "tower-grpc 0.1.0 (git+https://github.com/tower-rs/tower-grpc)",
  "tower-h2 0.1.0 (git+https://github.com/tower-rs/tower-h2)",
+ "tower-in-flight-limit 0.1.0 (git+https://github.com/tower-rs/tower)",
  "tower-reconnect 0.1.0 (git+https://github.com/tower-rs/tower)",
  "tower-util 0.1.0 (git+https://github.com/tower-rs/tower)",
  "url 1.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -997,7 +998,7 @@ dependencies = [
 [[package]]
 name = "tower"
 version = "0.1.0"
-source = "git+https://github.com/tower-rs/tower#c06aa5452d130da948c0b9a3b587edc094b19045"
+source = "git+https://github.com/tower-rs/tower#41c54b208e9dcc89ef9e83c0acd584d66b6a90b8"
 dependencies = [
  "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -1005,7 +1006,7 @@ dependencies = [
 [[package]]
 name = "tower-balance"
 version = "0.1.0"
-source = "git+https://github.com/tower-rs/tower#c06aa5452d130da948c0b9a3b587edc094b19045"
+source = "git+https://github.com/tower-rs/tower#41c54b208e9dcc89ef9e83c0acd584d66b6a90b8"
 dependencies = [
  "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1018,7 +1019,7 @@ dependencies = [
 [[package]]
 name = "tower-buffer"
 version = "0.1.0"
-source = "git+https://github.com/tower-rs/tower#c06aa5452d130da948c0b9a3b587edc094b19045"
+source = "git+https://github.com/tower-rs/tower#41c54b208e9dcc89ef9e83c0acd584d66b6a90b8"
 dependencies = [
  "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "tower 0.1.0 (git+https://github.com/tower-rs/tower)",
@@ -1027,7 +1028,7 @@ dependencies = [
 [[package]]
 name = "tower-discover"
 version = "0.1.0"
-source = "git+https://github.com/tower-rs/tower#c06aa5452d130da948c0b9a3b587edc094b19045"
+source = "git+https://github.com/tower-rs/tower#41c54b208e9dcc89ef9e83c0acd584d66b6a90b8"
 dependencies = [
  "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "tower 0.1.0 (git+https://github.com/tower-rs/tower)",
@@ -1074,9 +1075,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "tower-in-flight-limit"
+version = "0.1.0"
+source = "git+https://github.com/tower-rs/tower#41c54b208e9dcc89ef9e83c0acd584d66b6a90b8"
+dependencies = [
+ "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tower 0.1.0 (git+https://github.com/tower-rs/tower)",
+ "tower-ready-service 0.1.0 (git+https://github.com/tower-rs/tower)",
+]
+
+[[package]]
+name = "tower-ready-service"
+version = "0.1.0"
+source = "git+https://github.com/tower-rs/tower#41c54b208e9dcc89ef9e83c0acd584d66b6a90b8"
+dependencies = [
+ "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tower 0.1.0 (git+https://github.com/tower-rs/tower)",
+]
+
+[[package]]
 name = "tower-reconnect"
 version = "0.1.0"
-source = "git+https://github.com/tower-rs/tower#c06aa5452d130da948c0b9a3b587edc094b19045"
+source = "git+https://github.com/tower-rs/tower#41c54b208e9dcc89ef9e83c0acd584d66b6a90b8"
 dependencies = [
  "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1086,10 +1106,11 @@ dependencies = [
 [[package]]
 name = "tower-util"
 version = "0.1.0"
-source = "git+https://github.com/tower-rs/tower#c06aa5452d130da948c0b9a3b587edc094b19045"
+source = "git+https://github.com/tower-rs/tower#41c54b208e9dcc89ef9e83c0acd584d66b6a90b8"
 dependencies = [
  "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "tower 0.1.0 (git+https://github.com/tower-rs/tower)",
+ "tower-ready-service 0.1.0 (git+https://github.com/tower-rs/tower)",
 ]
 
 [[package]]
@@ -1333,6 +1354,8 @@ dependencies = [
 "checksum tower-grpc 0.1.0 (git+https://github.com/tower-rs/tower-grpc)" = "<none>"
 "checksum tower-grpc-build 0.1.0 (git+https://github.com/tower-rs/tower-grpc)" = "<none>"
 "checksum tower-h2 0.1.0 (git+https://github.com/tower-rs/tower-h2)" = "<none>"
+"checksum tower-in-flight-limit 0.1.0 (git+https://github.com/tower-rs/tower)" = "<none>"
+"checksum tower-ready-service 0.1.0 (git+https://github.com/tower-rs/tower)" = "<none>"
 "checksum tower-reconnect 0.1.0 (git+https://github.com/tower-rs/tower)" = "<none>"
 "checksum tower-util 0.1.0 (git+https://github.com/tower-rs/tower)" = "<none>"
 "checksum unicase 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "284b6d3db520d67fbe88fd778c21510d1b0ba4a551e5d0fbb023d33405f6de8a"

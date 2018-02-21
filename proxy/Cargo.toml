@@ -36,15 +36,16 @@ ns-dns-tokio = "0.4"
 
 #futures-watch   = { git = "https://github.com/carllerche/better-future" }
 
-tokio-connect   = { git = "https://github.com/carllerche/tokio-connect" }
-tower           = { git = "https://github.com/tower-rs/tower" }
-tower-balance   = { git = "https://github.com/tower-rs/tower" }
-tower-buffer    = { git = "https://github.com/tower-rs/tower" }
-tower-discover  = { git = "https://github.com/tower-rs/tower" }
-tower-grpc      = { git = "https://github.com/tower-rs/tower-grpc" }
-tower-h2        = { git = "https://github.com/tower-rs/tower-h2" }
-tower-reconnect = { git = "https://github.com/tower-rs/tower" }
-tower-util      = { git = "https://github.com/tower-rs/tower" }
+tokio-connect         = { git = "https://github.com/carllerche/tokio-connect" }
+tower                 = { git = "https://github.com/tower-rs/tower" }
+tower-balance         = { git = "https://github.com/tower-rs/tower" }
+tower-buffer          = { git = "https://github.com/tower-rs/tower" }
+tower-discover        = { git = "https://github.com/tower-rs/tower" }
+tower-grpc            = { git = "https://github.com/tower-rs/tower-grpc" }
+tower-h2              = { git = "https://github.com/tower-rs/tower-h2" }
+tower-reconnect       = { git = "https://github.com/tower-rs/tower" }
+tower-in-flight-limit = { git = "https://github.com/tower-rs/tower" }
+tower-util            = { git = "https://github.com/tower-rs/tower" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 libc = "0.2"
