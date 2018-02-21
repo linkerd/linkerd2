@@ -1,3 +1,43 @@
+## v0.3.0
+
+Conduit 0.3 focused heavily on production hardening of Conduit's telemetry system. Conduit 0.3
+should "just work" for most apps on Kubernetes 1.8 or 1.9 without configuration, and should support
+Kubernetes clusters with hundreds of services, thousands of instances, and hundreds of RPS per
+instance.
+
+With this release, Conduit also moves from _experimental_ to _alpha_---meaning that we're ready
+for some serious testing and vetting from you. As part of this, we've published the
+[Conduit roadmap](https://conduit.io/roadmap/), and we've also launched some new mailing lists:
+[conduit-users](https://groups.google.com/forum/#!forum/conduit-users),
+[conduit-dev](https://groups.google.com/forum/#!forum/conduit-dev), and
+[conduit-announce](https://groups.google.com/forum/#!forum/conduit-announce).
+
+* CLI
+  * CLI commands no longer depend on `kubectl`
+  * `conduit dashboard` now runs on an ephemeral port, removing port 8001 conflicts
+  * `conduit inject` now skips pods with `hostNetwork=true`
+  * CLI commands now have friendlier error messages, and support a `--verbose` flag for debugging
+* Web UI
+  * All displayed metrics are now instantaneous snapshots rather than aggregated over 10 minutes
+  * The sidebar can now be collapsed
+  * UX refinements and bug fixes
+* Conduit proxy (data plane)
+  * Proxy does load-aware (P2C + least-loaded) L7 balancing for HTTP
+  * Proxy can now route to external DNS names
+  * Proxy now properly sheds load in some pathological cases when it cannot route
+* Telemetry system
+  * Many optimizations and refinements to support scale goals
+  * Per-path and per-pod metrics have been removed temporarily to improve scalability and stability;
+    they will be reintroduced in Conduit 0.4 (#405)
+* Build improvements
+  * The Conduit docker images are now much smaller.
+  * Dockerfiles have been changed to leverage caching, improving build times substantially
+
+Known Issues:
+* Some DNS lookups to external domains fail (#62, #155, #392)
+* Applications that use WebSockets, HTTP tunneling/proxying, or protocols such as MySQL and SMTP,
+  require additional configuration (#339)
+
 ## v0.2.0
 
 This is a big milestone! With this release, Conduit adds support for HTTP/1.x and raw TCP traffic,
@@ -24,7 +64,6 @@ Caveats:
   few nodes. These will be addressed in an upcoming release.
 * Conduit is still in alpha! Please help us by
   [filing issues and contributing pull requests](https://github.com/runconduit/conduit/issues/new).
-
 
 ## v0.1.3
 

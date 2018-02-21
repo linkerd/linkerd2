@@ -35,9 +35,15 @@ var tapCmd = &cobra.Command{
 	Short: "Listen to a traffic stream",
 	Long: `Listen to a traffic stream.
 
-Valid targets include:
- * Pods (default/hello-world-h4fb2)
- * Deployments (default/hello-world)`,
+Only deployment resources (aka deployments, deploy) and pod resources
+(aka pods, po) are supported.
+
+The TARGET argument is used to specify the pod or deployment to tap.`,
+	Example: `  # tap the web deployment in the default namespace
+  conduit tap deploy default/web
+
+  # tap the web-dlbvj pod in the default namespace
+  conduit tap pod default/web-dlbvj`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) != 2 {
 			return errors.New("please specify a resource type and target")

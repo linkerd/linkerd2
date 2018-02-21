@@ -11,12 +11,13 @@ import (
 )
 
 var getCmd = &cobra.Command{
-	Use:   "get [flags] RESOURCE",
+	Use:   "get [flags] pods",
 	Short: "Display one or many mesh resources",
 	Long: `Display one or many mesh resources.
 
-Valid resource types include:
- * pods (aka pod, po)`,
+Only pod resources (aka pods, po) are supported.`,
+	Example: `  # get all pods
+  conduit get pods`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) < 1 {
 			return errors.New("please specify a resource type")

@@ -4,6 +4,7 @@ use std::sync::Arc;
 use http;
 use tower;
 use tower_buffer::{self, Buffer};
+use tower_in_flight_limit::{self, InFlightLimit};
 use tower_h2;
 use conduit_proxy_router::Recognize;
 
@@ -16,6 +17,8 @@ pub struct Inbound<B> {
     default_addr: Option<SocketAddr>,
     bind: Bind<B>,
 }
+
+const MAX_IN_FLIGHT: usize = 10_000;
 
 // ===== impl Inbound =====
 
@@ -34,12 +37,14 @@ where
 {
     type Request = http::Request<B>;
     type Response = bind::HttpResponse;
-    type Error = tower_buffer::Error<
-        <bind::Service<B> as tower::Service>::Error
+    type Error = tower_in_flight_limit::Error<
+        tower_buffer::Error<
+            <bind::Service<B> as tower::Service>::Error
+        >
     >;
     type Key = (SocketAddr, bind::Protocol);
     type RouteError = ();
-    type Service = Buffer<bind::Service<B>>;
+    type Service = InFlightLimit<Buffer<bind::Service<B>>>;
 
     fn recognize(&self, req: &Self::Request) -> Option<Self::Key> {
         let key = req.extensions()
@@ -72,11 +77,11 @@ where
         let &(ref addr, proto) = key;
         debug!("building inbound {:?} client to {}", proto, addr);
 
-        // Wrap with buffering. This currently is an unbounded buffer, which
-        // is not ideal.
-        //
-        // TODO: Don't use unbounded buffering.
-        Buffer::new(self.bind.bind_service(addr, proto), self.bind.executor()).map_err(|_| {})
+        Buffer::new(self.bind.bind_service(addr, proto), self.bind.executor())
+            .map(|buffer| {
+                InFlightLimit::new(buffer, MAX_IN_FLIGHT)
+            })
+            .map_err(|_| {})
     }
 }
 

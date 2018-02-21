@@ -21,14 +21,18 @@ var target string
 var timeWindow string
 
 var statCmd = &cobra.Command{
-	Use:   "stat [flags] RESOURCE [TARGET]",
+	Use:   "stat [flags] deployment [TARGET]",
 	Short: "Display runtime statistics about mesh resources",
 	Long: `Display runtime statistics about mesh resources.
 
-Valid resource types include:
- * deployments (aka deployment, deploy)
+Only deployment resources (aka deployments, deploy) are supported.
 
-The optional [TARGET] option can be a name for a deployment.`,
+The optional [TARGET] argument can be used to target a specific deployment.`,
+	Example: `  # get stats for all deployments
+  conduit stat deployments
+
+  # get stats for the web deployment in the default namespace
+  conduit stat deploy default/web`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var friendlyNameForResourceType string
 
@@ -39,7 +43,7 @@ The optional [TARGET] option can be a name for a deployment.`,
 			friendlyNameForResourceType = args[0]
 			target = args[1]
 		default:
-			return errors.New("please specify a resource type: deployments")
+			return errors.New("please specify a resource type")
 		}
 
 		validatedResourceType, err := k8s.CanonicalKubernetesNameFromFriendlyName(friendlyNameForResourceType)

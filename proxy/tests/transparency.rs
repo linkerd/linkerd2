@@ -7,10 +7,10 @@ fn outbound_http1() {
 
     let srv = server::http1().route("/", "hello h1").run();
     let ctrl = controller::new()
-        .destination("test.conduit.local", srv.addr)
+        .destination("transparency.test.svc.cluster.local", srv.addr)
         .run();
     let proxy = proxy::new().controller(ctrl).outbound(srv).run();
-    let client = client::http1(proxy.outbound, "test.conduit.local");
+    let client = client::http1(proxy.outbound, "transparency.test.svc.cluster.local");
 
     assert_eq!(client.get("/"), "hello h1");
 }
@@ -25,7 +25,7 @@ fn inbound_http1() {
         .controller(ctrl)
         .inbound(srv)
         .run();
-    let client = client::http1(proxy.inbound, "test.conduit.local");
+    let client = client::http1(proxy.inbound, "transparency.test.svc.cluster.local");
 
     assert_eq!(client.get("/"), "hello h1");
 }
@@ -70,7 +70,7 @@ fn http1_removes_connection_headers() {
         .controller(ctrl)
         .inbound(srv)
         .run();
-    let client = client::http1(proxy.inbound, "test.conduit.local");
+    let client = client::http1(proxy.inbound, "transparency.test.svc.cluster.local");
 
     let res = client.request(client.request_builder("/")
         .header("x-foo-bar", "baz")
@@ -84,7 +84,7 @@ fn http1_removes_connection_headers() {
 fn http10_with_host() {
     let _ = env_logger::init();
 
-    let host = "test.conduit.local";
+    let host = "transparency.test.svc.cluster.local";
     let srv = server::http1()
         .route_fn("/", move |req| {
             assert_eq!(req.version(), http::Version::HTTP_10);
@@ -144,7 +144,7 @@ fn http10_without_host() {
 fn http11_absolute_uri_differs_from_host() {
     let _ = env_logger::init();
 
-    let host = "test.conduit.local";
+    let host = "transparency.test.svc.cluster.local";
     let srv = server::http1()
         .route_fn("/", move |req| {
             assert_eq!(req.version(), http::Version::HTTP_11);
