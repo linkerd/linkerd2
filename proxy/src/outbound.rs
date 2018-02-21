@@ -63,7 +63,7 @@ where
 
     fn recognize(&self, req: &Self::Request) -> Option<Self::Key> {
         let local = req.uri().authority_part().and_then(|authority| {
-            FullyQualifiedAuthority::new(
+            FullyQualifiedAuthority::normalize(
                 authority,
                 self.default_namespace.as_ref().map(|s| s.as_ref()),
                 self.default_zone.as_ref().map(|s| s.as_ref()))
@@ -73,6 +73,10 @@ where
         // If we can't fully qualify the authority as a local service,
         // and there is no original dst, then we have nothing! In that
         // case, we return `None`, which results an "unrecognized" error.
+        //
+        // In practice, this shouldn't ever happen, since we expect the proxy
+        // to be run on Linux servers, with iptables setup, so there should
+        // always be an original destination.
         let dest = if let Some(local) = local {
             Destination::LocalSvc(local)
         } else {

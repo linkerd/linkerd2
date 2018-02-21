@@ -15,7 +15,7 @@ impl FullyQualifiedAuthority {
     /// This assumes the authority is syntactically valid.
     ///
     /// Returns `None` is authority doesn't look like a local Kubernetes service.
-    pub fn new(authority: &Authority, default_namespace: Option<&str>,
+    pub fn normalize(authority: &Authority, default_namespace: Option<&str>,
                default_zone: Option<&str>)
                -> Option<FullyQualifiedAuthority> {
         // Don't change IP-address-based authorities.
@@ -60,13 +60,13 @@ impl FullyQualifiedAuthority {
             if !part.eq_ignore_ascii_case("svc") {
                 // if not "$name.$namespace.svc", treat as external
                 return None;
-            } else {
-                false
             }
+
+            false
         } else if has_explicit_namespace {
             true
         } else if namespace_to_append.is_none() {
-            // if not "*.svc" and no default namespace, treat as external
+            // We can't append ".svc" without a namespace, so treat as external.
             return None;
         } else {
             true
@@ -139,7 +139,7 @@ mod tests {
             use http::uri::Authority;
 
             let input = Authority::from_shared(Bytes::from(input.as_bytes())).unwrap();
-            let output = match super::FullyQualifiedAuthority::new(
+            let output = match super::FullyQualifiedAuthority::normalize(
                 &input, default_namespace, default_zone) {
                 Some(output) => output,
                 None => panic!(
@@ -158,7 +158,7 @@ mod tests {
             use http::uri::Authority;
 
             let input = Authority::from_shared(Bytes::from(input.as_bytes())).unwrap();
-            assert_eq!(None, super::FullyQualifiedAuthority::new(
+            assert_eq!(None, super::FullyQualifiedAuthority::normalize(
                 &input, default_namespace, default_zone));
         }
 
