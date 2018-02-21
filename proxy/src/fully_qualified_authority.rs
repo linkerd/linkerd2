@@ -255,9 +255,18 @@ mod tests {
         // IPv4 addresses are left unchanged.
         none("1.2.3.4", Some("namespace"), Some("cluster.local"));
         none("1.2.3.4:1234", Some("namespace"), Some("cluster.local"));
+        none("127.0.0.1", Some("namespace"), Some("cluster.local"));
+        none("127.0.0.1:8080", Some("namespace"), Some("cluster.local"));
+        none("127.0.0.1", None, Some("cluster.local"));
+        none("127.0.0.1", Some("namespace"), None);
+        none("127.0.0.1", None, None);
+        none("127.0.0.1", Some("1"), Some("1"));
 
         // IPv6 addresses are left unchanged.
         none("[::1]", Some("namespace"), Some("cluster.local"));
         none("[::1]:1234", Some("namespace"), Some("cluster.local"));
+        none("[::1]", None, Some("cluster.local"));
+        none("[::1]", Some("namespace"), None);
+        none("[::1]", None, None);
     }
 }
