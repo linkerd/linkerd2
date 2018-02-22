@@ -33,8 +33,13 @@ jobs:
         directories:
           - vendor
       install:
-        - ./bin/dep ensure -vendor-only -v
-        - ./bin/dep status -v
+        # TODO: Ideally this should be something like:
+        #
+        #   - ./bin/dep ensure -vendor-only -v
+        #   - ./bin/dep status -v
+        #
+        # However, that change breaks the `./bin/protoc-go.sh` step below.
+        - ./bin/dep ensure
       script:
         # TODO decide whether protoc should be committed or not. If so, we shouldn't do
         # this or we should error if it dirties the repo.
