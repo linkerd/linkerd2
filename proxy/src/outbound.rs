@@ -17,6 +17,7 @@ use control::{self, discovery};
 use control::discovery::Bind as BindTrait;
 use ctx;
 use fully_qualified_authority::FullyQualifiedAuthority;
+use timeout::{NewTimeout, Timeout};
 
 type BindProtocol<B> = bind::BindProtocol<Arc<ctx::Proxy>, B>;
 
@@ -25,6 +26,7 @@ pub struct Outbound<B> {
     discovery: control::Control,
     default_namespace: Option<String>,
     default_zone: Option<String>,
+    timeout: NewTimeout,
 }
 
 const MAX_IN_FLIGHT: usize = 10_000;
@@ -32,14 +34,18 @@ const MAX_IN_FLIGHT: usize = 10_000;
 // ===== impl Outbound =====
 
 impl<B> Outbound<B> {
-    pub fn new(bind: Bind<Arc<ctx::Proxy>, B>, discovery: control::Control,
-               default_namespace: Option<String>, default_zone: Option<String>)
+    pub fn new(bind: Bind<Arc<ctx::Proxy>, B>,
+               discovery: control::Control,
+               default_namespace: Option<String>,
+               default_zone: Option<String>,
+               timeout: NewTimeout,)
                -> Outbound<B> {
         Self {
             bind,
             discovery,
             default_namespace,
             default_zone,
+            timeout,
         }
     }
 }
@@ -59,10 +65,10 @@ where
     type Error = <Self::Service as tower::Service>::Error;
     type Key = (Destination, Protocol);
     type RouteError = ();
-    type Service = InFlightLimit<Buffer<Balance<
+    type Service = Timeout<InFlightLimit<Buffer<Balance<
         load::WithPendingRequests<Discovery<B>>,
-        choose::PowerOfTwoChoices<rand::ThreadRng>,
-    >>>;
+        choose::PowerOfTwoChoices<rand::ThreadRng>
+    >>>>;
 
     fn recognize(&self, req: &Self::Request) -> Option<Self::Key> {
         let local = req.uri().authority_part().and_then(|authority| {
@@ -133,7 +139,8 @@ where
 
         Buffer::new(balance, self.bind.executor())
             .map(|buffer| {
-                InFlightLimit::new(buffer, MAX_IN_FLIGHT)
+                let inflight = InFlightLimit::new(buffer, MAX_IN_FLIGHT);
+                self.timeout.apply(inflight)
             })
             .map_err(|_| {})
     }
