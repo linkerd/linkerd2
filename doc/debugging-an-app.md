@@ -96,7 +96,7 @@ when we try to vote for 💩 ourselves, in the UI? Follow the instructions in
 
 Now click on the 💩 emoji to vote on it.
 
-{{< figure src="/images/emojivoto-poop.png" title="Demo application 💩 page" >}}
+![](images/emojivoto-poop.png "Demo application 💩 page")
 
 Oh! The demo application is intentionally returning errors for all requests to
 vote for 💩. We've found where the errors are coming from. At this point, we

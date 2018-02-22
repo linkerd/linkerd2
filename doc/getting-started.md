@@ -171,7 +171,7 @@ Kubectl then applies the config to your Kubernetes cluster.
 
 If you see something like below, Conduit is now running on your cluster.  🎉
 
-{{< figure src="/images/dashboard.png" title="An example of the empty conduit dashboard" >}}
+![](images/dashboard.png "An example of the empty conduit dashboard")
 
 Of course, you haven’t actually added any services to the mesh yet,
 so the dashboard won’t have much to display beyond the status of the service mesh itself.

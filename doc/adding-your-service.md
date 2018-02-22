@@ -34,7 +34,7 @@ each pod with a new one that additionally contains the Conduit sidecar proxy.
 You will know that your service has been successfully added to the service mesh
 if its proxy status is green in the Conduit dashboard.
 
-{{< figure src="/images/data-plane.png" title="conduit dashboard" >}}
+![](images/dashboard-data-plane.png "conduit dashboard")
 
 ### You can always get to the Conduit dashboard by running
 #### `conduit dashboard`
