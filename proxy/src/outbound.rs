@@ -18,7 +18,7 @@ use control::{self, discovery};
 use control::discovery::Bind as BindTrait;
 use ctx;
 use fully_qualified_authority::FullyQualifiedAuthority;
-use timeout::Timeout;
+use timeout::{NewTimeout, Timeout};
 
 type BindProtocol<B> = bind::BindProtocol<Arc<ctx::Proxy>, B>;
 
@@ -27,7 +27,7 @@ pub struct Outbound<B> {
     discovery: control::Control,
     default_namespace: Option<String>,
     default_zone: Option<String>,
-    bind_timeout: Duration,
+    timeout: NewTimeout,
 }
 
 const MAX_IN_FLIGHT: usize = 10_000;
@@ -39,14 +39,14 @@ impl<B> Outbound<B> {
                discovery: control::Control,
                default_namespace: Option<String>,
                default_zone: Option<String>,
-               bind_timeout: Duration,)
+               timeout: NewTimeout,)
                -> Outbound<B> {
         Self {
             bind,
             discovery,
             default_namespace,
             default_zone,
-            bind_timeout,
+            timeout,
         }
     }
 }
@@ -66,7 +66,7 @@ where
     type Error = <Self::Service as tower::Service>::Error;
     type Key = (Destination, Protocol);
     type RouteError = ();
-    type Service = InFlightLimit<Timeout<Buffer<Balance<
+    type Service = Timeout<InFlightLimit<Buffer<Balance<
         load::WithPendingRequests<Discovery<B>>,
         choose::PowerOfTwoChoices<rand::ThreadRng>
     >>>>;
@@ -138,16 +138,12 @@ where
 
         let balance = tower_balance::power_of_two_choices(loaded, rand::thread_rng());
 
-        // use the same executor as the underlying `Bind` for the `Buffer` and
-        // `Timeout`.
-        let handle = self.bind.executor();
-
-        let buffer = Buffer::new(balance, handle).map_err(|_| {})?;
-
-        let timeout = Timeout::new(buffer, self.bind_timeout, handle);
-
-        Ok(InFlightLimit::new(timeout, MAX_IN_FLIGHT))
-
+        Buffer::new(balance, self.bind.executor())
+            .map(|buffer| {
+                let inflight = InFlightLimit::new(buffer, MAX_IN_FLIGHT);
+                self.timeout.apply(inflight)
+            })
+            .map_err(|_| {})
     }
 }
 
