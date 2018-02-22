@@ -83,7 +83,7 @@ func runInjectCmd(input io.Reader, errWriter, outWriter io.Writer, version strin
  * and init-container injected. If the pod is unsuitable for having them
  * injected, return null.
  */
-func injectPodTemplateSpec(t *v1.PodTemplateSpec, version string) bool {
+func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride string, version string) bool {
 	// Pods with `hostNetwork=true` share a network namespace with the host. The
 	// init-container would destroy the iptables configuration on the host, so
 	// skip the injection in this case.
@@ -131,6 +131,10 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec, version string) bool {
 			Privileged: &f,
 		},
 	}
+	controlPlaneDNS := fmt.Sprintf("proxy-api.%s.svc.cluster.local", controlPlaneNamespace)
+	if controlPlaneDNSNameOverride != "" {
+		controlPlaneDNS = controlPlaneDNSNameOverride
+	}
 
 	sidecar := v1.Container{
 		Name:            "conduit-proxy",
@@ -149,7 +153,7 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec, version string) bool {
 			v1.EnvVar{Name: "CONDUIT_PROXY_LOG", Value: proxyLogLevel},
 			v1.EnvVar{
 				Name:  "CONDUIT_PROXY_CONTROL_URL",
-				Value: fmt.Sprintf("tcp://proxy-api.%s.svc.cluster.local:%d", controlPlaneNamespace, proxyAPIPort),
+				Value: fmt.Sprintf("tcp://%s:%d", controlPlaneDNS, proxyAPIPort),
 			},
 			v1.EnvVar{Name: "CONDUIT_PROXY_CONTROL_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", proxyControlPort)},
 			v1.EnvVar{Name: "CONDUIT_PROXY_PRIVATE_LISTENER", Value: fmt.Sprintf("tcp://127.0.0.1:%d", outboundPort)},
@@ -220,13 +224,18 @@ func InjectYAML(in io.Reader, out io.Writer, version string) error {
 		// objects, depending on the type.
 		var obj interface{}
 		var podTemplateSpec *v1.PodTemplateSpec
+		var DNSOverride string
 
 		switch meta.Kind {
 		case "Deployment":
 			var deployment v1beta1.Deployment
+
 			err = yaml.Unmarshal(bytes, &deployment)
 			if err != nil {
 				return err
+			}
+			if deployment.Name == "controller" {
+				DNSOverride = "localhost"
 			}
 			obj = &deployment
 			podTemplateSpec = &deployment.Spec.Template
@@ -268,7 +277,7 @@ func InjectYAML(in io.Reader, out io.Writer, version string) error {
 		// original serialization of the original object. Otherwise, output the
 		// serialization of the modified object.
 		output := bytes
-		if podTemplateSpec != nil && injectPodTemplateSpec(podTemplateSpec, version) {
+		if podTemplateSpec != nil && injectPodTemplateSpec(podTemplateSpec, DNSOverride, version) {
 			output, err = yaml.Marshal(obj)
 			if err != nil {
 				return err

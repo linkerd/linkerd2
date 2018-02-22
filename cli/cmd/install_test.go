@@ -14,8 +14,6 @@ func TestRender(t *testing.T) {
 		}
 		expectedContent := string(goldenFileBytes)
 
-		var buf bytes.Buffer
-
 		config := installConfig{
 			Namespace:                "Namespace",
 			ControllerImage:          "ControllerImage",
@@ -32,7 +30,8 @@ func TestRender(t *testing.T) {
 			CreatedByAnnotation:      "CreatedByAnnotation",
 		}
 
-		err = render(config, &buf)
+		buf := new(bytes.Buffer)
+		err = render(config, buf)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
