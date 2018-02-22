@@ -4,20 +4,27 @@ RUN curl -o- -L https://yarnpkg.com/install.sh | bash
 ENV GOPATH /go
 ENV PACKAGE github.com/runconduit/conduit/web/app
 ENV PACKAGEDIR $GOPATH/src/$PACKAGE
-COPY web/app $PACKAGEDIR
-WORKDIR $PACKAGEDIR
+
 # node dependencies
-RUN $HOME/.yarn/bin/yarn install --pure-lockfile
+COPY web/app/package.json web/app/yarn.lock $PACKAGEDIR/
+WORKDIR $PACKAGEDIR
+RUN $HOME/.yarn/bin/yarn install --pure-lockfile --frozen-lockfile
+
 # frontend assets
+COPY web/app $PACKAGEDIR
 RUN $HOME/.yarn/bin/yarn webpack
 
 ## compile go server
 FROM gcr.io/runconduit/go-deps:d45c01b4 as golang
 ARG CONDUIT_VERSION
 WORKDIR /go/src/github.com/runconduit/conduit
-COPY web web
-COPY controller controller
 COPY pkg pkg
+COPY controller/gen controller/gen
+COPY controller/api controller/api
+COPY controller/util controller/util
+COPY web/main.go web/
+COPY web/util web/util
+COPY web/srv web/srv
 RUN CGO_ENABLED=0 GOOS=linux go build -installsuffix cgo -o web/web -ldflags "-X github.com/runconduit/conduit/pkg/version.Version=$CONDUIT_VERSION" ./web
 
 ## package it all up
