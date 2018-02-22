@@ -1,5 +1,5 @@
 +++
-title = "Conduit public roadmap"
+title = "Conduit roadmap"
 docpage = true
 [menu.docs]
   parent = "roadmap"
@@ -34,7 +34,7 @@ overly conservative.
 
 ### Development
 
-- Published (this) public roadmap
+- Published (this) roadmap
 - All milestones, issues, PRs, & mailing lists made public
 
 ## [0.4: Automatic TLS; Prometheus++](https://github.com/runconduit/conduit/milestone/6)
