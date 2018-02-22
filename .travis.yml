@@ -27,19 +27,16 @@ jobs:
         - cargo test --frozen
 
     - language: go
-      go: 1.10
+      # XXX; The "1.10" must be quoted or it will get intrepreted as 1.1. See
+      # https://github.com/travis-ci/gimme/issues/132.
+      go: "1.10"
       go_import_path: github.com/runconduit/conduit
       cache:
         directories:
           - vendor
       install:
-        # TODO: Ideally this should be something like:
-        #
-        #   - ./bin/dep ensure -vendor-only -v
-        #   - ./bin/dep status -v
-        #
-        # However, that change breaks the `./bin/protoc-go.sh` step below.
-        - ./bin/dep ensure
+        - ./bin/dep ensure -vendor-only -v
+        - ./bin/dep status -v
       script:
         # TODO decide whether protoc should be committed or not. If so, we shouldn't do
         # this or we should error if it dirties the repo.
