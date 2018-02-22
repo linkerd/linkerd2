@@ -51,13 +51,8 @@ where
     // We don't want to require a static lifetime, and in fact,
     // only use the reference within this closure, so converting
     // to a raw pointer is safe.
-    let context = context as *const fmt::Debug;
-    CONTEXT.with(|ctxt| {
-        ctxt.borrow_mut().push(context);
-        let ret = closure();
-        ctxt.borrow_mut().pop();
-        ret
-    })
+    let _guard = ContextGuard::new(context);
+    closure()
 }
 
 /// Wrap a `Future` with a `Debug` value that will be inserted into all logs
@@ -139,5 +134,29 @@ impl<'a> fmt::Debug for Context<'a> {
             f.write_str(", ")?;
         }
         Ok(())
+    }
+}
+
+/// Guards that the pushed context is removed from TLS afterwards.
+///
+/// Specifically, this protects even if the passed function panics,
+/// as destructors are run while unwinding.
+struct ContextGuard<'a>(&'a (fmt::Debug + 'static));
+
+impl<'a> ContextGuard<'a> {
+    fn new(context: &'a (fmt::Debug + 'static)) -> Self {
+        let raw = context as *const fmt::Debug;
+        CONTEXT.with(|ctxt| {
+            ctxt.borrow_mut().push(raw);
+        });
+        ContextGuard(context)
+    }
+}
+
+impl<'a> Drop for ContextGuard<'a> {
+    fn drop(&mut self) {
+        CONTEXT.with(|ctxt| {
+            ctxt.borrow_mut().pop();
+        });
     }
 }

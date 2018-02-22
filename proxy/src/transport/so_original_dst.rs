@@ -24,7 +24,7 @@ impl GetOriginalDst for SoOriginalDst {
         use self::linux;
         use std::os::unix::io::AsRawFd;
 
-        debug!("get_original_dst {:?}", sock);
+        trace!("get_original_dst {:?}", sock);
 
         let res = unsafe { linux::so_original_dst(sock.as_raw_fd()) };
         res.ok()
