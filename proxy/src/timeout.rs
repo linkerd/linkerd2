@@ -160,8 +160,7 @@ where
             TimeoutError::Timeout(ref duration) =>
                 // TODO: format the duration nicer.
                 write!(f, "operation timed out after {:?}", duration),
-            TimeoutError::Error(ref err) =>
-                write!(f, "inner operation failed: {}", err),
+            TimeoutError::Error(ref err) => fmt::Display::fmt(err, f),
         }
     }
 }

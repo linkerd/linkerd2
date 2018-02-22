@@ -214,7 +214,6 @@ where
         // in `poll_destinations` while the `rpc` service is ready should
         // be reconnected now, otherwise the task would just sleep...
         loop {
-            trace!("poll_rpc");
             self.poll_new_watches(client);
             self.poll_destinations();
 

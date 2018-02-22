@@ -1,3 +1,5 @@
+use std::fmt;
+use std::io;
 use std::time::{Duration, Instant};
 
 use bytes::Bytes;
@@ -12,13 +14,13 @@ use tokio_core::reactor::{
 };
 use tower::Service;
 use tower_h2;
-use tower_reconnect::Reconnect;
+use tower_reconnect::{Error as ReconnectError, Reconnect};
 use url::HostAndPort;
 
 use dns;
 use fully_qualified_authority::FullyQualifiedAuthority;
 use transport::LookupAddressAndConnect;
-use timeout::Timeout;
+use timeout::{Timeout, TimeoutError};
 
 pub mod discovery;
 mod observe;
@@ -97,7 +99,8 @@ impl Background {
 
 
             let reconnect = Reconnect::new(h2_client);
-            let backoff = Backoff::new(reconnect, Duration::from_secs(5), executor);
+            let log_errors = LogErrors::new(reconnect);
+            let backoff = Backoff::new(log_errors, Duration::from_secs(5), executor);
             // TODO: Use AddOrigin in tower-http
             AddOrigin::new(scheme, authority, backoff)
         };
@@ -106,7 +109,6 @@ impl Background {
         let mut telemetry = Telemetry::new(events, report_timeout, executor);
 
         let fut = future::poll_fn(move || {
-            trace!("poll rpc services");
             disco.poll_rpc(&mut client);
             telemetry.poll_rpc(&mut client);
 
@@ -159,8 +161,8 @@ where
         }
 
         match self.inner.poll_ready() {
-            Err(err) => {
-                warn!("controller error: {:?}", err);
+            Err(_err) => {
+                trace!("backoff: controller error, waiting {:?}", self.wait_dur);
                 self.waiting = true;
                 self.timer.reset(Instant::now() + self.wait_dur);
                 Ok(Async::NotReady)
@@ -215,3 +217,78 @@ where
     }
 }
 
+// ===== impl LogErrors
+
+/// Log errors talking to the controller in human format.
+struct LogErrors<S> {
+    inner: S,
+}
+
+// We want some friendly logs, but the stack of services don't have fmt::Display
+// errors, so we have to build that ourselves. For now, this hard codes the
+// expected error stack, and so any new middleware added will need to adjust this.
+//
+// The dead_code allowance is because rustc is being stupid and doesn't see it
+// is used down below.
+#[allow(dead_code)]
+type LogError = ReconnectError<
+    tower_h2::client::Error,
+    tower_h2::client::ConnectError<
+        TimeoutError<
+            io::Error
+        >
+    >
+>;
+
+impl<S> LogErrors<S>
+where
+    S: Service<Error=LogError>,
+{
+    fn new(service: S) -> Self {
+        LogErrors {
+            inner: service,
+        }
+    }
+}
+
+impl<S> Service for LogErrors<S>
+where
+    S: Service<Error=LogError>,
+{
+    type Request = S::Request;
+    type Response = S::Response;
+    type Error = S::Error;
+    type Future = S::Future;
+
+    fn poll_ready(&mut self) -> Poll<(), Self::Error> {
+        self.inner.poll_ready().map_err(|e| {
+            error!("controller error: {}", HumanError(&e));
+            e
+        })
+    }
+
+    fn call(&mut self, req: Self::Request) -> Self::Future {
+        self.inner.call(req)
+    }
+}
+
+struct HumanError<'a>(&'a LogError);
+
+impl<'a> fmt::Display for HumanError<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self.0 {
+            ReconnectError::Inner(ref e) => {
+                fmt::Display::fmt(e, f)
+            },
+            ReconnectError::Connect(ref e) => {
+                fmt::Display::fmt(e, f)
+            },
+            ReconnectError::NotReady => {
+                // this error should only happen if we `call` the service
+                // when it isn't ready, which is really more of a bug on
+                // our side...
+                f.pad("bug: called service when not ready")
+            },
+        }
+    }
+}

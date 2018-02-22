@@ -45,7 +45,6 @@ where
         //let _ctxt = ::logging::context("Telemetry.Report".into());
 
         loop {
-            trace!("poll_rpc");
             if let Some((t0, mut fut)) = self.in_flight.take() {
                 match fut.poll() {
                     Ok(Async::NotReady) => {
