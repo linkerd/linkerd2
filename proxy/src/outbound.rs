@@ -70,7 +70,7 @@ where
     type Error = <Self::Service as tower::Service>::Error;
     type Key = (Destination, Protocol);
     type RouteError = ();
-    type Service = Timeout<InFlightLimit<Buffer<Balance<
+    type Service = InFlightLimit<Timeout<Buffer<Balance<
         load::WithPendingRequests<Discovery<B>>,
         choose::PowerOfTwoChoices<rand::ThreadRng>
     >>>>;
@@ -142,12 +142,13 @@ where
 
         let balance = tower_balance::power_of_two_choices(loaded, rand::thread_rng());
 
-        Buffer::new(balance, self.bind.executor())
-            .map(|buffer| {
-                let inflight = InFlightLimit::new(buffer, MAX_IN_FLIGHT);
-                Timeout::new(inflight, self.bind_timeout, &self.handle)
-            })
-            .map_err(|_| {})
+        let buffer = Buffer::new(balance, self.bind.executor())
+            .map_err(|_| {})?;
+
+        let timeout = Timeout::new(buffer, self.bind_timeout, &self.handle);
+
+        Ok(InFlightLimit::new(timeout, MAX_IN_FLIGHT))
+
     }
 }
 
@@ -158,7 +159,7 @@ pub enum Discovery<B> {
 
 impl<B> Discover for Discovery<B>
 where
-    B: tower_h2::Body + 'static
+    B: tower_h2::Body + 'static,
 {
     type Key = SocketAddr;
     type Request = http::Request<B>;
