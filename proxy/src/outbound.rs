@@ -5,7 +5,6 @@ use futures::{Async, Poll};
 use http;
 use rand;
 use std::sync::Arc;
-use tokio_core::reactor::Handle;
 use tower;
 use tower_balance::{self, choose, load, Balance};
 use tower_buffer::Buffer;
@@ -29,7 +28,6 @@ pub struct Outbound<B> {
     default_namespace: Option<String>,
     default_zone: Option<String>,
     bind_timeout: Duration,
-    handle: Handle,
 }
 
 const MAX_IN_FLIGHT: usize = 10_000;
@@ -41,8 +39,7 @@ impl<B> Outbound<B> {
                discovery: control::Control,
                default_namespace: Option<String>,
                default_zone: Option<String>,
-               bind_timeout: Duration,
-               handle: &Handle,)
+               bind_timeout: Duration,)
                -> Outbound<B> {
         Self {
             bind,
@@ -50,7 +47,6 @@ impl<B> Outbound<B> {
             default_namespace,
             default_zone,
             bind_timeout,
-            handle: handle.clone(),
         }
     }
 }
@@ -142,10 +138,13 @@ where
 
         let balance = tower_balance::power_of_two_choices(loaded, rand::thread_rng());
 
-        let buffer = Buffer::new(balance, self.bind.executor())
-            .map_err(|_| {})?;
+        // use the same executor as the underlying `Bind` for the `Buffer` and
+        // `Timeout`.
+        let handle = self.bind.executor();
 
-        let timeout = Timeout::new(buffer, self.bind_timeout, &self.handle);
+        let buffer = Buffer::new(balance, handle).map_err(|_| {})?;
+
+        let timeout = Timeout::new(buffer, self.bind_timeout, handle);
 
         Ok(InFlightLimit::new(timeout, MAX_IN_FLIGHT))
 
