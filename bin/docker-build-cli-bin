@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 set -eu
 
@@ -7,16 +7,19 @@ if [ $# -ne 0 ]; then
     exit 64
 fi
 
-. bin/_docker.sh
-. bin/_tag.sh
+bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+rootdir="$( cd $bindir/.. && pwd )"
 
-dockerfile=cli/Dockerfile-bin
+. $bindir/_docker.sh
+. $bindir/_tag.sh
+
+dockerfile=$rootdir/cli/Dockerfile-bin
 
 validate_go_deps_tag $dockerfile
 
 (
-    bin/docker-build-base
-    bin/docker-build-go-deps
+    $bindir/docker-build-base
+    $bindir/docker-build-go-deps
 ) >/dev/null
 
 tag="$(head_root_tag)"
@@ -26,7 +29,7 @@ ID=$(docker create "$IMG")
 
 # copy the newly built conduit cli binaries to the local system
 for OS in darwin linux windows ; do
-    DIR="target/cli/${OS}"
+    DIR="${rootdir}/target/cli/${OS}"
     mkdir -p "$DIR"
 
     if docker cp "$ID:/out/conduit-${OS}" "$DIR/conduit" ; then

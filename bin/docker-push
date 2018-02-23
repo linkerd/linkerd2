@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 set -eu
 
@@ -9,7 +9,9 @@ else
     exit 64
 fi
 
-. bin/_docker.sh
+bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+. $bindir/_docker.sh
 
 docker_push proxy        "${tag}"
 docker_push proxy-init   "${tag}"

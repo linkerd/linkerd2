@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 set -eu
 
@@ -7,10 +7,13 @@ if [ $# -ne 0 ]; then
     exit 64
 fi
 
-. bin/_docker.sh
-. bin/_tag.sh
+bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+rootdir="$( cd $bindir/.. && pwd )"
+
+. $bindir/_docker.sh
+. $bindir/_tag.sh
 
 # Build gcr.io/runconduit/cli-bin, which is used by cli/Dockerfile.
-bin/docker-build-cli-bin >/dev/null
+$bindir/docker-build-cli-bin >/dev/null
 
-docker_build cli "$(head_root_tag)" cli/Dockerfile
+docker_build cli "$(head_root_tag)" $rootdir/cli/Dockerfile

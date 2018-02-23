@@ -189,13 +189,13 @@ build/run/debug loop faster.
 In general, replace commands like this:
 
 ```bash
-go run web/main.go
+go run cli/main.go
 ```
 
 with this:
 
 ```bash
-bin/go-run web
+bin/go-run cli
 ```
 
 You may also leverage `go-run` to execute our `conduit` cli command. While in a
@@ -234,8 +234,8 @@ yarn
 ```bash
 cd web/app
 yarn && yarn webpack
-cd ../..
-bin/go-run web
+cd ..
+../bin/go-run .
 ```
 
 The web server will be running on `localhost:8084`.
@@ -256,7 +256,8 @@ address of the public API server that's running in your docker environment:
 
 ```bash
 docker-compose stop web
-bin/go-run web --api-addr=$DOCKER_IP:8085
+cd web
+../bin/go-run . --api-addr=$DOCKER_IP:8085
 ```
 
 #### 3. Connect to `public-api` in Kubernetes
@@ -272,7 +273,8 @@ kubectl -n conduit port-forward $POD_NAME 8085:8085
 Then connect the local web process to the forwarded port:
 
 ```bash
-bin/go-run web --api-addr=localhost:8085
+cd web
+../bin/go-run . --api-addr=localhost:8085
 ```
 
 ### Webpack dev server
@@ -287,7 +289,8 @@ yarn webpack-dev-server
 And then set the `--webpack-dev-server` flag when running the web server:
 
 ```bash
-bin/go-run web --webpack-dev-server=http://localhost:8080
+cd web
+../bin/go-run . --webpack-dev-server=http://localhost:8080
 ```
 
 To add a JS dependency:
@@ -368,6 +371,7 @@ cargo check
 If you make Protobuf changes, run:
 
 ```bash
+bin/dep ensure
 bin/protoc-go.sh
 ```
 
@@ -410,6 +414,8 @@ build_architecture
     "_log.sh";
     "_tag.sh";
 
+    "dep";
+
     "docker-build" -> "docker-build-controller";
     "docker-build" -> "docker-build-web";
     "docker-build" -> "docker-build-proxy";
@@ -442,7 +448,6 @@ build_architecture
 
     "docker-build-proxy" -> "_docker.sh";
     "docker-build-proxy" -> "_tag.sh";
-    "docker-build-proxy" -> "docker-build-base";
     "docker-build-proxy" -> "proxy/Dockerfile";
 
     "docker-build-proxy-init" -> "_docker.sh";
@@ -473,6 +478,7 @@ build_architecture
     "docker-retag-all" -> "_docker.sh";
 
     "go-run" -> ".gorun";
+    "go-run" -> "root-tag";
 
     "minikube-start-hyperv.bat";
 
@@ -484,15 +490,15 @@ build_architecture
 
     "root-tag" -> "_tag.sh";
 
-    "travis.yml" -> "_gcp.sh";
-    "travis.yml" -> "docker-build";
-    "travis.yml" -> "docker-pull";
-    "travis.yml" -> "docker-pull-deps";
-    "travis.yml" -> "docker-push";
-    "travis.yml" -> "docker-push-deps";
-    "travis.yml" -> "docker-retag-all";
-    "travis.yml" -> "protoc-go.sh";
-    "travis.yml" -> "root-tag";
+    ".travis.yml" -> "_gcp.sh";
+    ".travis.yml" -> "dep";
+    ".travis.yml" -> "docker-build";
+    ".travis.yml" -> "docker-pull";
+    ".travis.yml" -> "docker-pull-deps";
+    ".travis.yml" -> "docker-push";
+    ".travis.yml" -> "docker-push-deps";
+    ".travis.yml" -> "docker-retag-all";
+    ".travis.yml" -> "protoc-go.sh";
 
     "update-go-deps-shas" -> "_tag.sh";
     "update-go-deps-shas" -> "cli/Dockerfile-bin";

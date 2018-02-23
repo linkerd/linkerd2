@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 set -eu
 
@@ -9,7 +9,9 @@ fi
 from="${1}"
 to="${2}"
 
-. bin/_docker.sh
+bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+. $bindir/_docker.sh
 
 docker_retag proxy        "$from" "$to"
 docker_retag proxy-init   "$from" "$to"
