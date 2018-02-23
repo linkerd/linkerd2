@@ -291,6 +291,25 @@ fn http11_upgrade_not_supported() {
 
     tcp_client.write(msg1);
 
-    let expected = "HTTP/1.1 502 Bad Gateway\r\n";
+    let expected = "HTTP/1.1 500 ";
     assert_eq!(s(&tcp_client.read()[..expected.len()]), expected);
+}
+
+#[test]
+fn http1_get_doesnt_add_transfer_encoding() {
+    let _ = env_logger::init();
+
+    let srv = server::http1()
+        .route_fn("/", |req| {
+            assert!(!req.headers().contains_key("transfer-encoding"));
+            Response::new("hello h1".into())
+        })
+        .run();
+    let ctrl = controller::new().run();
+    let proxy = proxy::new()
+        .controller(ctrl)
+        .inbound(srv)
+        .run();
+    let client = client::http1(proxy.inbound, "transparency.test.svc.cluster.local");
+    assert_eq!(client.get("/"), "hello h1");
 }

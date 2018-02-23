@@ -246,12 +246,6 @@ where
             hyper::Error::Io(io::ErrorKind::Other.into())
         }));
 
-        if res.status() == http::StatusCode::SWITCHING_PROTOCOLS {
-            debug!("HTTP/1.1 101 upgrade not supported");
-            let res = hyper::Response::new()
-                .with_status(hyper::StatusCode::BadGateway);
-            return Ok(Async::Ready(res));
-        }
         h1::strip_connection_headers(res.headers_mut());
         Ok(Async::Ready(res.map(BodyStream::new).into()))
     }
