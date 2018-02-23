@@ -1,15 +1,17 @@
 use std::net::SocketAddr;
+use std::{fmt, io};
 
 use futures::{Async, Poll};
 use http;
 use rand;
 use std::sync::Arc;
-use tower;
+use tower::{self, Service};
 use tower_balance::{self, choose, load, Balance};
-use tower_buffer::Buffer;
+use tower_buffer::{Buffer, Error as BufferError};
 use tower_discover::{Change, Discover};
-use tower_in_flight_limit::InFlightLimit;
+use tower_in_flight_limit::{InFlightLimit, Error as InFlightLimitError};
 use tower_h2;
+use tower_reconnect::Error as ReconnectError;
 use conduit_proxy_router::Recognize;
 
 use bind::{self, Bind, Protocol};
@@ -17,7 +19,7 @@ use control::{self, discovery};
 use control::discovery::Bind as BindTrait;
 use ctx;
 use fully_qualified_authority::FullyQualifiedAuthority;
-use timeout::{NewTimeout, Timeout};
+use timeout::{NewTimeout, Timeout, TimeoutError};
 
 type BindProtocol<B> = bind::BindProtocol<Arc<ctx::Proxy>, B>;
 
@@ -65,10 +67,10 @@ where
     type Error = <Self::Service as tower::Service>::Error;
     type Key = (Destination, Protocol);
     type RouteError = ();
-    type Service = Timeout<InFlightLimit<Buffer<Balance<
+    type Service = LogErrors<Timeout<InFlightLimit<Buffer<Balance<
         load::WithPendingRequests<Discovery<B>>,
         choose::PowerOfTwoChoices<rand::ThreadRng>
-    >>>>;
+    >>>>>;
 
     fn recognize(&self, req: &Self::Request) -> Option<Self::Key> {
         let local = req.uri().authority_part().and_then(|authority| {
@@ -140,7 +142,8 @@ where
         Buffer::new(balance, self.bind.executor())
             .map(|buffer| {
                 let inflight = InFlightLimit::new(buffer, MAX_IN_FLIGHT);
-                self.timeout.apply(inflight)
+                let timeout = self.timeout.apply(inflight);
+                LogErrors::new(timeout)
             })
             .map_err(|_| {})
     }
@@ -153,7 +156,7 @@ pub enum Discovery<B> {
 
 impl<B> Discover for Discovery<B>
 where
-    B: tower_h2::Body + 'static,
+    B: tower_h2::Body + 'static
 {
     type Key = SocketAddr;
     type Request = http::Request<B>;
@@ -178,6 +181,70 @@ where
                     Ok(Async::NotReady)
                 }
             }
+        }
+    }
+}
+
+// ===== impl LogErrors
+
+/// Log errors talking to the controller in human format.
+pub
+struct LogErrors<S> {
+    inner: S,
+}
+
+// We want some friendly logs, but the stack of services don't have fmt::Display
+// errors, so we have to build that ourselves. For now, this hard codes the
+// expected error stack, and so any new middleware added will need to adjust this.
+//
+// The dead_code allowance is because rustc is being stupid and doesn't see it
+// is used down below.
+// #[allow(dead_code)]
+type LogError = TimeoutError<InFlightLimitError<BufferError<tower_balance::Error<ReconnectError<tower_h2::client::Error, tower_h2::client::ConnectError<TimeoutError<io::Error>>>, ()>>>>;
+
+impl<S> LogErrors<S>
+where
+    S: Service<Error=LogError>,
+{
+    fn new(service: S) -> Self {
+        LogErrors {
+            inner: service,
+        }
+    }
+}
+
+impl<S> Service for LogErrors<S>
+where
+    S: Service<Error=LogError>,
+{
+    type Request = S::Request;
+    type Response = S::Response;
+    type Error = S::Error;
+    type Future = S::Future;
+
+    fn poll_ready(&mut self) -> Poll<(), Self::Error> {
+        self.inner.poll_ready().map_err(|e| {
+            error!("bind service error: {}", HumanError(&e));
+            e
+        })
+    }
+
+    fn call(&mut self, req: Self::Request) -> Self::Future {
+        self.inner.call(req)
+    }
+}
+
+struct HumanError<'a>(&'a LogError);
+
+impl<'a> fmt::Display for HumanError<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self.0 {
+            TimeoutError::Error(ref e) => {
+                fmt::Debug::fmt(e, f)
+            },
+            TimeoutError::Timeout(ref after) => {
+               write!(f, "binding timed out after {:?}", after)
+            },
         }
     }
 }
