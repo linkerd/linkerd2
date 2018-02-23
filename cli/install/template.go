@@ -368,4 +368,149 @@ data:
       - source_labels: [__meta_kubernetes_pod_container_name]
         action: replace
         target_label: job
+
+### Grafana ###
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: grafana
+  namespace: {{.Namespace}}
+  labels:
+    {{.ControllerComponentLabel}}: grafana
+  annotations:
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
+spec:
+  type: ClusterIP
+  selector:
+    {{.ControllerComponentLabel}}: grafana
+  ports:
+  - name: http
+    port: 3000
+    targetPort: 3000
+
+---
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: grafana
+  namespace: {{.Namespace}}
+  labels:
+    {{.ControllerComponentLabel}}: grafana
+  annotations:
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        {{.ControllerComponentLabel}}: grafana
+      annotations:
+        {{.CreatedByAnnotation}}: {{.CliVersion}}
+    spec:
+      volumes:
+      - name: grafana-config
+        configMap:
+          name: grafana-config
+          items:
+          - key: grafana.ini
+            path: grafana.ini
+          - key: datasources.yaml
+            path: provisioning/datasources/datasources.yaml
+          - key: dashboards.yaml
+            path: provisioning/dashboards/dashboards.yaml
+      - name: grafana-dashboards
+        configMap:
+          name: grafana-dashboards
+      - name: grafana-dashboard-home
+        configMap:
+          name: grafana-dashboards
+          items:
+          - key: conduit-viz.json
+            path: home.json
+      containers:
+      - name: grafana
+        ports:
+        - name: http
+          containerPort: 3000
+        volumeMounts:
+        - name: grafana-config
+          mountPath: /etc/grafana
+          readOnly: true
+        - name: grafana-dashboards
+          mountPath: /var/lib/grafana/dashboards
+          readOnly: false
+        - name: grafana-dashboard-home
+          mountPath: /usr/share/grafana/public/dashboards
+          readOnly: true
+        image: {{.GrafanaImage}}
+        imagePullPolicy: {{.ImagePullPolicy}}
+
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: grafana-config
+  namespace: {{.Namespace}}
+  labels:
+    {{.ControllerComponentLabel}}: grafana
+  annotations:
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
+data:
+  grafana.ini: |-
+    instance_name = conduit-grafana
+
+    [auth]
+    disable_login_form = true
+
+    [auth.anonymous]
+    enabled = true
+    org_role = Editor
+
+    [auth.basic]
+    enabled = false
+
+  datasources.yaml: |-
+    apiVersion: 1
+    datasources:
+    - name: prometheus
+      type: prometheus
+      access: proxy
+      orgId: 1
+      url: http://prometheus.{{.Namespace}}.svc.cluster.local:9090
+      isDefault: true
+      jsonData:
+        timeInterval: "5s"
+      version: 1
+      editable: true
+
+  dashboards.yaml: |-
+    apiVersion: 1
+    providers:
+    - name: 'default'
+      orgId: 1
+      folder: ''
+      type: file
+      disableDeletion: true
+      editable: true
+      options:
+        path: /var/lib/grafana/dashboards
+        homeDashboardId: conduit-viz
+
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: grafana-dashboards
+  namespace: {{.Namespace}}
+  labels:
+    {{.ControllerComponentLabel}}: grafana
+  annotations:
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
+data:
+  conduit-viz.json: |-
+    {{.VizDashboard}}
+
+  conduit-health.json: |-
+    {{.HealthDashboard}}
 `

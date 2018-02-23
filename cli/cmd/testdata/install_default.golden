@@ -546,4 +546,273 @@ data:
       - source_labels: [__meta_kubernetes_pod_container_name]
         action: replace
         target_label: job
+
+### Grafana ###
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: grafana
+  namespace: conduit
+  labels:
+    conduit.io/control-plane-component: grafana
+  annotations:
+    conduit.io/created-by: conduit/cli undefined
+spec:
+  type: ClusterIP
+  selector:
+    conduit.io/control-plane-component: grafana
+  ports:
+  - name: http
+    port: 3000
+    targetPort: 3000
+
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  annotations:
+    conduit.io/created-by: conduit/cli undefined
+  creationTimestamp: null
+  labels:
+    conduit.io/control-plane-component: grafana
+  name: grafana
+  namespace: conduit
+spec:
+  replicas: 1
+  strategy: {}
+  template:
+    metadata:
+      annotations:
+        conduit.io/created-by: conduit/cli undefined
+        conduit.io/proxy-version: undefined
+      creationTimestamp: null
+      labels:
+        conduit.io/control-plane-component: grafana
+        conduit.io/control-plane-ns: conduit
+    spec:
+      containers:
+      - image: grafana/grafana:5.0.0-beta4
+        imagePullPolicy: IfNotPresent
+        name: grafana
+        ports:
+        - containerPort: 3000
+          name: http
+        resources: {}
+        volumeMounts:
+        - mountPath: /etc/grafana
+          name: grafana-config
+          readOnly: true
+        - mountPath: /var/lib/grafana/dashboards
+          name: grafana-dashboards
+        - mountPath: /usr/share/grafana/public/dashboards
+          name: grafana-dashboard-home
+          readOnly: true
+      - env:
+        - name: CONDUIT_PROXY_LOG
+          value: warn,conduit_proxy=info
+        - name: CONDUIT_PROXY_CONTROL_URL
+          value: tcp://proxy-api.conduit.svc.cluster.local:8086
+        - name: CONDUIT_PROXY_CONTROL_LISTENER
+          value: tcp://0.0.0.0:4190
+        - name: CONDUIT_PROXY_PRIVATE_LISTENER
+          value: tcp://127.0.0.1:4140
+        - name: CONDUIT_PROXY_PUBLIC_LISTENER
+          value: tcp://0.0.0.0:4143
+        - name: CONDUIT_PROXY_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: CONDUIT_PROXY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: CONDUIT_PROXY_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN
+          value: Kubernetes
+        image: gcr.io/runconduit/proxy:undefined
+        imagePullPolicy: IfNotPresent
+        name: conduit-proxy
+        ports:
+        - containerPort: 4143
+          name: conduit-proxy
+        resources: {}
+        securityContext:
+          runAsUser: 2102
+      initContainers:
+      - args:
+        - --incoming-proxy-port
+        - "4143"
+        - --outgoing-proxy-port
+        - "4140"
+        - --proxy-uid
+        - "2102"
+        - --inbound-ports-to-ignore
+        - "4190"
+        image: gcr.io/runconduit/proxy-init:undefined
+        imagePullPolicy: IfNotPresent
+        name: conduit-init
+        resources: {}
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+          privileged: false
+      volumes:
+      - configMap:
+          items:
+          - key: grafana.ini
+            path: grafana.ini
+          - key: datasources.yaml
+            path: provisioning/datasources/datasources.yaml
+          - key: dashboards.yaml
+            path: provisioning/dashboards/dashboards.yaml
+          name: grafana-config
+        name: grafana-config
+      - configMap:
+          name: grafana-dashboards
+        name: grafana-dashboards
+      - configMap:
+          items:
+          - key: conduit-viz.json
+            path: home.json
+          name: grafana-dashboards
+        name: grafana-dashboard-home
+status: {}
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: grafana-config
+  namespace: conduit
+  labels:
+    conduit.io/control-plane-component: grafana
+  annotations:
+    conduit.io/created-by: conduit/cli undefined
+data:
+  grafana.ini: |-
+    instance_name = conduit-grafana
+
+    [auth]
+    disable_login_form = true
+
+    [auth.anonymous]
+    enabled = true
+    org_role = Editor
+
+    [auth.basic]
+    enabled = false
+
+  datasources.yaml: |-
+    apiVersion: 1
+    datasources:
+    - name: prometheus
+      type: prometheus
+      access: proxy
+      orgId: 1
+      url: http://prometheus.conduit.svc.cluster.local:9090
+      isDefault: true
+      jsonData:
+        timeInterval: "5s"
+      version: 1
+      editable: true
+
+  dashboards.yaml: |-
+    apiVersion: 1
+    providers:
+    - name: 'default'
+      orgId: 1
+      folder: ''
+      type: file
+      disableDeletion: true
+      editable: true
+      options:
+        path: /var/lib/grafana/dashboards
+        homeDashboardId: conduit-viz
+
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: grafana-dashboards
+  namespace: conduit
+  labels:
+    conduit.io/control-plane-component: grafana
+  annotations:
+    conduit.io/created-by: conduit/cli undefined
+data:
+  conduit-viz.json: |-
+    {
+      "rows": [
+        {
+          "collapse": false,
+          "height": "50px",
+          "panels": [
+            {
+              "content": "<div>\n  <div style=\"position: absolute; top: 0, left: 0\">\n    <a href=\"https://conduit.io\" target=\"_blank\"><img src=\"https://conduit.io/images/conduit-primary-white.svg\" style=\"height: 30px;\"></a>\n  </div>\n  <div style=\"position: absolute; top: 0; right: 0; font-size: 15px\">\n    <a href=\"https://conduit.io\" target=\"_blank\">Conduit</a> is a next-generation ultralight service mesh for Kubernetes.\n    <br>\n    Need help? Visit <a href=\"https://conduit.io\" target=\"_blank\">conduit.io</a>.\n  </div>\n</div>",
+              "height": "1px",
+              "id": 14,
+              "links": [],
+              "mode": "html",
+              "span": 12,
+              "title": "",
+              "transparent": true,
+              "type": "text"
+            }
+          ],
+          "showTitle": false
+        },
+        {
+          "collapse": false,
+          "height": 250,
+          "panels": [
+            {
+              "legend": {
+              },
+              "lines": true,
+              "targets": [
+                {
+                  "expr": "sum(irate(responses_total[20s])) by (target_deployment)",
+                  "format": "time_series",
+                  "intervalFactor": 1,
+                  "legendFormat": "{{target_deployment}}",
+                  "refId": "A"
+                }
+              ],
+              "title": "Request Volume",
+              "type": "graph",
+              "xaxis": {
+                "show": true
+              },
+              "yaxes": [
+                {
+                  "format": "rps",
+                  "show": true
+                },
+                {
+                  "show": true
+                }
+              ]
+            }
+          ],
+          "showTitle": false
+        }
+      ],
+      "refresh": "5s",
+      "time": {
+        "from": "now-5m",
+        "to": "now"
+      },
+      "title": "conduit-viz"
+    }
+
+
+  conduit-health.json: |-
+    {
+      "title": "conduit-health"
+    }
+
 ---
