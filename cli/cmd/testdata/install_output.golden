@@ -141,7 +141,7 @@ spec:
       labels:
         ControllerComponentLabel: controller
         app: controller
-        conduit.io/control-plane-ns: conduit
+        conduit.io/control-plane-ns: Namespace
     spec:
       containers:
       - args:
@@ -323,7 +323,7 @@ spec:
       labels:
         ControllerComponentLabel: web
         app: web
-        conduit.io/control-plane-ns: conduit
+        conduit.io/control-plane-ns: Namespace
     spec:
       containers:
       - args:
@@ -348,7 +348,7 @@ spec:
         - name: CONDUIT_PROXY_LOG
           value: warn,conduit_proxy=info
         - name: CONDUIT_PROXY_CONTROL_URL
-          value: tcp://proxy-api.conduit.svc.cluster.local:8086
+          value: tcp://proxy-api.Namespace.svc.cluster.local:8086
         - name: CONDUIT_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: CONDUIT_PROXY_PRIVATE_LISTENER
@@ -443,7 +443,7 @@ spec:
       labels:
         ControllerComponentLabel: prometheus
         app: prometheus
-        conduit.io/control-plane-ns: conduit
+        conduit.io/control-plane-ns: Namespace
     spec:
       containers:
       - args:
@@ -471,7 +471,7 @@ spec:
         - name: CONDUIT_PROXY_LOG
           value: warn,conduit_proxy=info
         - name: CONDUIT_PROXY_CONTROL_URL
-          value: tcp://proxy-api.conduit.svc.cluster.local:8086
+          value: tcp://proxy-api.Namespace.svc.cluster.local:8086
         - name: CONDUIT_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: CONDUIT_PROXY_PRIVATE_LISTENER

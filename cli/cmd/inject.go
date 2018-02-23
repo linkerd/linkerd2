@@ -20,6 +20,11 @@ import (
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 )
 
+const (
+	LocalhostDNSNameOverride = "localhost"
+	ControlPlanePodName      = "controller"
+)
+
 var (
 	initImage           string
 	proxyImage          string
@@ -224,21 +229,20 @@ func InjectYAML(in io.Reader, out io.Writer, version string) error {
 		// objects, depending on the type.
 		var obj interface{}
 		var podTemplateSpec *v1.PodTemplateSpec
-		var DNSOverride string
+		var DNSNameOverride string
 
-		/* When injecting the conduit proxy into a conduit controller pod. The conduit proxy's
-		   CONDUIT_PROXY_CONTROL_URL variable must be set to localhost for the following reasons:
-			1. According to https://github.com/kubernetes/minikube/issues/1568, minikube has an issue
-		       where pods are unable to connect to themselves through their associated service IP.
-		       Setting the CONDUIT_PROXY_CONTROL_URL to localhost allows the proxy to bypass kube DNS
-		       name resolution as a workaround to this issue.
-			2. We avoid the TLS overhead in encrypting and decrypting intra-pod traffic i.e. traffic
-		       between containers in the same pod.
-			3. Using a Service IP instead of localhost would mean intra-pod traffic would be load-balanced
-		       across all controller pod replicas. This is undesirable as we would want all traffic between
-			   containers to be self contained.
-			4. We skip recording telemetry for intra-pod traffic within the control plane.
-		*/
+		// When injecting the conduit proxy into a conduit controller pod. The conduit proxy's
+		// CONDUIT_PROXY_CONTROL_URL variable must be set to localhost for the following reasons:
+		//	1. According to https://github.com/kubernetes/minikube/issues/1568, minikube has an issue
+		//     where pods are unable to connect to themselves through their associated service IP.
+		//     Setting the CONDUIT_PROXY_CONTROL_URL to localhost allows the proxy to bypass kube DNS
+		//     name resolution as a workaround to this issue.
+		//  2. We avoid the TLS overhead in encrypting and decrypting intra-pod traffic i.e. traffic
+		//     between containers in the same pod.
+		//  3. Using a Service IP instead of localhost would mean intra-pod traffic would be load-balanced
+		//     across all controller pod replicas. This is undesirable as we would want all traffic between
+		//	   containers to be self contained.
+		//  4. We skip recording telemetry for intra-pod traffic within the control plane.
 		switch meta.Kind {
 		case "Deployment":
 			var deployment v1beta1.Deployment
@@ -246,8 +250,8 @@ func InjectYAML(in io.Reader, out io.Writer, version string) error {
 			if err != nil {
 				return err
 			}
-			if deployment.Name == "controller" {
-				DNSOverride = "localhost"
+			if deployment.Name == ControlPlanePodName && deployment.Namespace == controlPlaneNamespace {
+				DNSNameOverride = LocalhostDNSNameOverride
 			}
 			obj = &deployment
 			podTemplateSpec = &deployment.Spec.Template
@@ -289,7 +293,7 @@ func InjectYAML(in io.Reader, out io.Writer, version string) error {
 		// original serialization of the original object. Otherwise, output the
 		// serialization of the modified object.
 		output := bytes
-		if podTemplateSpec != nil && injectPodTemplateSpec(podTemplateSpec, DNSOverride, version) {
+		if podTemplateSpec != nil && injectPodTemplateSpec(podTemplateSpec, DNSNameOverride, version) {
 			output, err = yaml.Marshal(obj)
 			if err != nil {
 				return err
