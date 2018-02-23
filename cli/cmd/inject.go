@@ -20,6 +20,11 @@ import (
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 )
 
+const (
+	LocalhostDNSNameOverride = "localhost"
+	ControlPlanePodName      = "controller"
+)
+
 var (
 	initImage           string
 	proxyImage          string
@@ -83,7 +88,7 @@ func runInjectCmd(input io.Reader, errWriter, outWriter io.Writer, version strin
  * and init-container injected. If the pod is unsuitable for having them
  * injected, return null.
  */
-func injectPodTemplateSpec(t *v1.PodTemplateSpec, version string) bool {
+func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride, version string) bool {
 	// Pods with `hostNetwork=true` share a network namespace with the host. The
 	// init-container would destroy the iptables configuration on the host, so
 	// skip the injection in this case.
@@ -131,6 +136,10 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec, version string) bool {
 			Privileged: &f,
 		},
 	}
+	controlPlaneDNS := fmt.Sprintf("proxy-api.%s.svc.cluster.local", controlPlaneNamespace)
+	if controlPlaneDNSNameOverride != "" {
+		controlPlaneDNS = controlPlaneDNSNameOverride
+	}
 
 	sidecar := v1.Container{
 		Name:            "conduit-proxy",
@@ -149,7 +158,7 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec, version string) bool {
 			v1.EnvVar{Name: "CONDUIT_PROXY_LOG", Value: proxyLogLevel},
 			v1.EnvVar{
 				Name:  "CONDUIT_PROXY_CONTROL_URL",
-				Value: fmt.Sprintf("tcp://proxy-api.%s.svc.cluster.local:%d", controlPlaneNamespace, proxyAPIPort),
+				Value: fmt.Sprintf("tcp://%s:%d", controlPlaneDNS, proxyAPIPort),
 			},
 			v1.EnvVar{Name: "CONDUIT_PROXY_CONTROL_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", proxyControlPort)},
 			v1.EnvVar{Name: "CONDUIT_PROXY_PRIVATE_LISTENER", Value: fmt.Sprintf("tcp://127.0.0.1:%d", outboundPort)},
@@ -220,13 +229,29 @@ func InjectYAML(in io.Reader, out io.Writer, version string) error {
 		// objects, depending on the type.
 		var obj interface{}
 		var podTemplateSpec *v1.PodTemplateSpec
+		var DNSNameOverride string
 
+		// When injecting the conduit proxy into a conduit controller pod. The conduit proxy's
+		// CONDUIT_PROXY_CONTROL_URL variable must be set to localhost for the following reasons:
+		//	1. According to https://github.com/kubernetes/minikube/issues/1568, minikube has an issue
+		//     where pods are unable to connect to themselves through their associated service IP.
+		//     Setting the CONDUIT_PROXY_CONTROL_URL to localhost allows the proxy to bypass kube DNS
+		//     name resolution as a workaround to this issue.
+		//  2. We avoid the TLS overhead in encrypting and decrypting intra-pod traffic i.e. traffic
+		//     between containers in the same pod.
+		//  3. Using a Service IP instead of localhost would mean intra-pod traffic would be load-balanced
+		//     across all controller pod replicas. This is undesirable as we would want all traffic between
+		//	   containers to be self contained.
+		//  4. We skip recording telemetry for intra-pod traffic within the control plane.
 		switch meta.Kind {
 		case "Deployment":
 			var deployment v1beta1.Deployment
 			err = yaml.Unmarshal(bytes, &deployment)
 			if err != nil {
 				return err
+			}
+			if deployment.Name == ControlPlanePodName && deployment.Namespace == controlPlaneNamespace {
+				DNSNameOverride = LocalhostDNSNameOverride
 			}
 			obj = &deployment
 			podTemplateSpec = &deployment.Spec.Template
@@ -268,7 +293,7 @@ func InjectYAML(in io.Reader, out io.Writer, version string) error {
 		// original serialization of the original object. Otherwise, output the
 		// serialization of the modified object.
 		output := bytes
-		if podTemplateSpec != nil && injectPodTemplateSpec(podTemplateSpec, version) {
+		if podTemplateSpec != nil && injectPodTemplateSpec(podTemplateSpec, DNSNameOverride, version) {
 			output, err = yaml.Marshal(obj)
 			if err != nil {
 				return err
@@ -283,16 +308,20 @@ func InjectYAML(in io.Reader, out io.Writer, version string) error {
 
 func init() {
 	RootCmd.AddCommand(injectCmd)
-	injectCmd.PersistentFlags().StringVarP(&conduitVersion, "conduit-version", "v", version.Version, "tag to be used for Conduit images")
+	addProxyConfigFlags(injectCmd)
 	injectCmd.PersistentFlags().StringVar(&initImage, "init-image", "gcr.io/runconduit/proxy-init", "Conduit init container image name")
-	injectCmd.PersistentFlags().StringVar(&proxyImage, "proxy-image", "gcr.io/runconduit/proxy", "Conduit proxy container image name")
-	injectCmd.PersistentFlags().StringVar(&imagePullPolicy, "image-pull-policy", "IfNotPresent", "Docker image pull policy")
-	injectCmd.PersistentFlags().Int64Var(&proxyUID, "proxy-uid", 2102, "Run the proxy under this user ID")
 	injectCmd.PersistentFlags().UintVar(&inboundPort, "inbound-port", 4143, "proxy port to use for inbound traffic")
 	injectCmd.PersistentFlags().UintVar(&outboundPort, "outbound-port", 4140, "proxy port to use for outbound traffic")
 	injectCmd.PersistentFlags().UintSliceVar(&ignoreInboundPorts, "skip-inbound-ports", nil, "ports that should skip the proxy and send directly to the application")
 	injectCmd.PersistentFlags().UintSliceVar(&ignoreOutboundPorts, "skip-outbound-ports", nil, "outbound ports that should skip the proxy")
-	injectCmd.PersistentFlags().UintVar(&proxyControlPort, "control-port", 4190, "proxy port to use for control")
-	injectCmd.PersistentFlags().UintVar(&proxyAPIPort, "api-port", 8086, "port where the Conduit controller is running")
-	injectCmd.PersistentFlags().StringVar(&proxyLogLevel, "proxy-log-level", "warn,conduit_proxy=info", "log level for the proxy")
+}
+
+func addProxyConfigFlags(cmd *cobra.Command) {
+	cmd.PersistentFlags().StringVarP(&conduitVersion, "conduit-version", "v", version.Version, "tag to be used for Conduit images")
+	cmd.PersistentFlags().StringVar(&proxyImage, "proxy-image", "gcr.io/runconduit/proxy", "Conduit proxy container image name")
+	cmd.PersistentFlags().StringVar(&imagePullPolicy, "image-pull-policy", "IfNotPresent", "Docker image pull policy")
+	cmd.PersistentFlags().Int64Var(&proxyUID, "proxy-uid", 2102, "Run the proxy under this user ID")
+	cmd.PersistentFlags().StringVar(&proxyLogLevel, "proxy-log-level", "warn,conduit_proxy=info", "log level for the proxy")
+	cmd.PersistentFlags().UintVar(&proxyAPIPort, "api-port", 8086, "port where the Conduit controller is running")
+	cmd.PersistentFlags().UintVar(&proxyControlPort, "control-port", 4190, "proxy port to use for control")
 }

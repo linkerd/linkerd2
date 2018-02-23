@@ -117,101 +117,164 @@ spec:
     targetPort: 8086
 
 ---
-kind: Deployment
 apiVersion: extensions/v1beta1
+kind: Deployment
 metadata:
-  name: controller
-  namespace: Namespace
-  labels:
-    app: controller
-    ControllerComponentLabel: controller
   annotations:
     CreatedByAnnotation: CliVersion
+  creationTimestamp: null
+  labels:
+    ControllerComponentLabel: controller
+    app: controller
+  name: controller
+  namespace: Namespace
 spec:
   replicas: 1
+  strategy: {}
   template:
     metadata:
-      labels:
-        app: controller
-        ControllerComponentLabel: controller
       annotations:
         CreatedByAnnotation: CliVersion
+        conduit.io/created-by: conduit/cli undefined
+        conduit.io/proxy-version: undefined
+      creationTimestamp: null
+      labels:
+        ControllerComponentLabel: controller
+        app: controller
+        conduit.io/control-plane-ns: Namespace
     spec:
-      serviceAccount: conduit-controller
       containers:
-      - name: public-api
-        ports:
-        - name: http
-          containerPort: 8085
-        - name: admin-http
-          containerPort: 9995
+      - args:
+        - public-api
+        - -addr=:8085
+        - -metrics-addr=:9995
+        - -telemetry-addr=127.0.0.1:8087
+        - -tap-addr=127.0.0.1:8088
+        - -log-level=ControllerLogLevel
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy
-        args:
-        - "public-api"
-        - "-addr=:8085"
-        - "-metrics-addr=:9995"
-        - "-telemetry-addr=127.0.0.1:8087"
-        - "-tap-addr=127.0.0.1:8088"
-        - "-log-level=ControllerLogLevel"
-      - name: destination
+        name: public-api
         ports:
-        - name: grpc
-          containerPort: 8089
-        - name: admin-http
-          containerPort: 9999
+        - containerPort: 8085
+          name: http
+        - containerPort: 9995
+          name: admin-http
+        resources: {}
+      - args:
+        - destination
+        - -addr=:8089
+        - -metrics-addr=:9999
+        - -log-level=ControllerLogLevel
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy
-        args:
-        - "destination"
-        - "-addr=:8089"
-        - "-metrics-addr=:9999"
-        - "-log-level=ControllerLogLevel"
-      - name: proxy-api
+        name: destination
         ports:
-        - name: grpc
-          containerPort: 8086
-        - name: admin-http
-          containerPort: 9996
+        - containerPort: 8089
+          name: grpc
+        - containerPort: 9999
+          name: admin-http
+        resources: {}
+      - args:
+        - proxy-api
+        - -addr=:8086
+        - -metrics-addr=:9996
+        - -destination-addr=:8089
+        - -telemetry-addr=:8087
+        - -log-level=ControllerLogLevel
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy
-        args:
-        - "proxy-api"
-        - "-addr=:8086"
-        - "-metrics-addr=:9996"
-        - "-destination-addr=:8089"
-        - "-telemetry-addr=:8087"
-        - "-log-level=ControllerLogLevel"
-      - name: tap
+        name: proxy-api
         ports:
-        - name: grpc
-          containerPort: 8088
-        - name: admin-http
-          containerPort: 9998
+        - containerPort: 8086
+          name: grpc
+        - containerPort: 9996
+          name: admin-http
+        resources: {}
+      - args:
+        - tap
+        - -addr=:8088
+        - -metrics-addr=:9998
+        - -log-level=ControllerLogLevel
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy
-        args:
-        - "tap"
-        - "-addr=:8088"
-        - "-metrics-addr=:9998"
-        - "-log-level=ControllerLogLevel"
-      - name: telemetry
+        name: tap
         ports:
-        - name: grpc
-          containerPort: 8087
-        - name: admin-http
-          containerPort: 9997
+        - containerPort: 8088
+          name: grpc
+        - containerPort: 9998
+          name: admin-http
+        resources: {}
+      - args:
+        - telemetry
+        - -addr=:8087
+        - -metrics-addr=:9997
+        - -ignore-namespaces=kube-system
+        - -prometheus-url=http://prometheus:9090
+        - -log-level=ControllerLogLevel
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy
-        args:
-        - "telemetry"
-        - "-addr=:8087"
-        - "-metrics-addr=:9997"
-        - "-ignore-namespaces=kube-system"
-        - "-prometheus-url=http://prometheus:9090"
-        - "-log-level=ControllerLogLevel"
-
-### Web ###
+        name: telemetry
+        ports:
+        - containerPort: 8087
+          name: grpc
+        - containerPort: 9997
+          name: admin-http
+        resources: {}
+      - env:
+        - name: CONDUIT_PROXY_LOG
+          value: warn,conduit_proxy=info
+        - name: CONDUIT_PROXY_CONTROL_URL
+          value: tcp://localhost:8086
+        - name: CONDUIT_PROXY_CONTROL_LISTENER
+          value: tcp://0.0.0.0:4190
+        - name: CONDUIT_PROXY_PRIVATE_LISTENER
+          value: tcp://127.0.0.1:4140
+        - name: CONDUIT_PROXY_PUBLIC_LISTENER
+          value: tcp://0.0.0.0:4143
+        - name: CONDUIT_PROXY_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: CONDUIT_PROXY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: CONDUIT_PROXY_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN
+          value: Kubernetes
+        image: gcr.io/runconduit/proxy:undefined
+        imagePullPolicy: IfNotPresent
+        name: conduit-proxy
+        ports:
+        - containerPort: 4143
+          name: conduit-proxy
+        resources: {}
+        securityContext:
+          runAsUser: 2102
+      initContainers:
+      - args:
+        - --incoming-proxy-port
+        - "4143"
+        - --outgoing-proxy-port
+        - "4140"
+        - --proxy-uid
+        - "2102"
+        - --inbound-ports-to-ignore
+        - "4190"
+        image: gcr.io/runconduit/proxy-init:undefined
+        imagePullPolicy: IfNotPresent
+        name: conduit-init
+        resources: {}
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+          privileged: false
+      serviceAccount: conduit-controller
+status: {}
 ---
 kind: Service
 apiVersion: v1
@@ -236,46 +299,105 @@ spec:
     targetPort: 9994
 
 ---
-kind: Deployment
 apiVersion: extensions/v1beta1
+kind: Deployment
 metadata:
-  name: web
-  namespace: Namespace
-  labels:
-    app: web
-    ControllerComponentLabel: web
   annotations:
     CreatedByAnnotation: CliVersion
+  creationTimestamp: null
+  labels:
+    ControllerComponentLabel: web
+    app: web
+  name: web
+  namespace: Namespace
 spec:
   replicas: 2
+  strategy: {}
   template:
     metadata:
-      labels:
-        app: web
-        ControllerComponentLabel: web
       annotations:
         CreatedByAnnotation: CliVersion
+        conduit.io/created-by: conduit/cli undefined
+        conduit.io/proxy-version: undefined
+      creationTimestamp: null
+      labels:
+        ControllerComponentLabel: web
+        app: web
+        conduit.io/control-plane-ns: Namespace
     spec:
       containers:
-      - name: web
-        ports:
-        - name: http
-          containerPort: 8084
-        - name: admin-http
-          containerPort: 9994
+      - args:
+        - -addr=:8084
+        - -metrics-addr=:9994
+        - -api-addr=api:8085
+        - -static-dir=/dist
+        - -template-dir=/templates
+        - -uuid=UUID
+        - -controller-namespace=Namespace
+        - -log-level=ControllerLogLevel
         image: WebImage
         imagePullPolicy: ImagePullPolicy
-        args:
-        - "-addr=:8084"
-        - "-metrics-addr=:9994"
-        - "-api-addr=api:8085"
-        - "-static-dir=/dist"
-        - "-template-dir=/templates"
-        - "-uuid=UUID"
-        - "-controller-namespace=Namespace"
-        - "-log-level=ControllerLogLevel"
-
-### Prometheus ###
+        name: web
+        ports:
+        - containerPort: 8084
+          name: http
+        - containerPort: 9994
+          name: admin-http
+        resources: {}
+      - env:
+        - name: CONDUIT_PROXY_LOG
+          value: warn,conduit_proxy=info
+        - name: CONDUIT_PROXY_CONTROL_URL
+          value: tcp://proxy-api.Namespace.svc.cluster.local:8086
+        - name: CONDUIT_PROXY_CONTROL_LISTENER
+          value: tcp://0.0.0.0:4190
+        - name: CONDUIT_PROXY_PRIVATE_LISTENER
+          value: tcp://127.0.0.1:4140
+        - name: CONDUIT_PROXY_PUBLIC_LISTENER
+          value: tcp://0.0.0.0:4143
+        - name: CONDUIT_PROXY_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: CONDUIT_PROXY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: CONDUIT_PROXY_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN
+          value: Kubernetes
+        image: gcr.io/runconduit/proxy:undefined
+        imagePullPolicy: IfNotPresent
+        name: conduit-proxy
+        ports:
+        - containerPort: 4143
+          name: conduit-proxy
+        resources: {}
+        securityContext:
+          runAsUser: 2102
+      initContainers:
+      - args:
+        - --incoming-proxy-port
+        - "4143"
+        - --outgoing-proxy-port
+        - "4140"
+        - --proxy-uid
+        - "2102"
+        - --inbound-ports-to-ignore
+        - "4190"
+        image: gcr.io/runconduit/proxy-init:undefined
+        imagePullPolicy: IfNotPresent
+        name: conduit-init
+        resources: {}
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+          privileged: false
+status: {}
 ---
 kind: Service
 apiVersion: v1
@@ -297,51 +419,113 @@ spec:
     targetPort: 9090
 
 ---
-kind: Deployment
 apiVersion: extensions/v1beta1
+kind: Deployment
 metadata:
-  name: prometheus
-  namespace: Namespace
-  labels:
-    app: prometheus
-    ControllerComponentLabel: prometheus
   annotations:
     CreatedByAnnotation: CliVersion
+  creationTimestamp: null
+  labels:
+    ControllerComponentLabel: prometheus
+    app: prometheus
+  name: prometheus
+  namespace: Namespace
 spec:
   replicas: 3
+  strategy: {}
   template:
     metadata:
-      labels:
-        app: prometheus
-        ControllerComponentLabel: prometheus
       annotations:
         CreatedByAnnotation: CliVersion
+        conduit.io/created-by: conduit/cli undefined
+        conduit.io/proxy-version: undefined
+      creationTimestamp: null
+      labels:
+        ControllerComponentLabel: prometheus
+        app: prometheus
+        conduit.io/control-plane-ns: Namespace
     spec:
-      serviceAccount: conduit-prometheus
-      volumes:
-      - name: prometheus-config
-        configMap:
-          name: prometheus-config
       containers:
-      - name: prometheus
-        ports:
-        - name: http
-          containerPort: 9090
-        volumeMounts:
-        - name: prometheus-config
-          mountPath: /etc/prometheus
-          readOnly: true
+      - args:
+        - --storage.tsdb.retention=6h
+        - --config.file=/etc/prometheus/prometheus.yml
         image: PrometheusImage
         imagePullPolicy: ImagePullPolicy
-        args:
-        - "--storage.tsdb.retention=6h"
-        - "--config.file=/etc/prometheus/prometheus.yml"
-
-      # TODO remove/replace?
-      - name: kubectl
+        name: prometheus
+        ports:
+        - containerPort: 9090
+          name: http
+        resources: {}
+        volumeMounts:
+        - mountPath: /etc/prometheus
+          name: prometheus-config
+          readOnly: true
+      - args:
+        - proxy
+        - -p
+        - "8001"
         image: buoyantio/kubectl:v1.6.2
-        args: ["proxy", "-p", "8001"]
-
+        name: kubectl
+        resources: {}
+      - env:
+        - name: CONDUIT_PROXY_LOG
+          value: warn,conduit_proxy=info
+        - name: CONDUIT_PROXY_CONTROL_URL
+          value: tcp://proxy-api.Namespace.svc.cluster.local:8086
+        - name: CONDUIT_PROXY_CONTROL_LISTENER
+          value: tcp://0.0.0.0:4190
+        - name: CONDUIT_PROXY_PRIVATE_LISTENER
+          value: tcp://127.0.0.1:4140
+        - name: CONDUIT_PROXY_PUBLIC_LISTENER
+          value: tcp://0.0.0.0:4143
+        - name: CONDUIT_PROXY_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: CONDUIT_PROXY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: CONDUIT_PROXY_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN
+          value: Kubernetes
+        image: gcr.io/runconduit/proxy:undefined
+        imagePullPolicy: IfNotPresent
+        name: conduit-proxy
+        ports:
+        - containerPort: 4143
+          name: conduit-proxy
+        resources: {}
+        securityContext:
+          runAsUser: 2102
+      initContainers:
+      - args:
+        - --incoming-proxy-port
+        - "4143"
+        - --outgoing-proxy-port
+        - "4140"
+        - --proxy-uid
+        - "2102"
+        - --inbound-ports-to-ignore
+        - "4190"
+        image: gcr.io/runconduit/proxy-init:undefined
+        imagePullPolicy: IfNotPresent
+        name: conduit-init
+        resources: {}
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+          privileged: false
+      serviceAccount: conduit-prometheus
+      volumes:
+      - configMap:
+          name: prometheus-config
+        name: prometheus-config
+status: {}
 ---
 kind: ConfigMap
 apiVersion: v1
@@ -376,3 +560,4 @@ data:
       - source_labels: [__meta_kubernetes_pod_container_name]
         action: replace
         target_label: job
+---

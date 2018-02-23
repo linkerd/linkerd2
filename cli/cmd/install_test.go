@@ -14,10 +14,10 @@ func TestRender(t *testing.T) {
 		}
 		expectedContent := string(goldenFileBytes)
 
-		var buf bytes.Buffer
-
+		testNamespace := "Namespace"
+		controlPlaneNamespace = testNamespace // Set control plane namespace to enforce localhost DNS override.
 		config := installConfig{
-			Namespace:                "Namespace",
+			Namespace:                testNamespace,
 			ControllerImage:          "ControllerImage",
 			WebImage:                 "WebImage",
 			PrometheusImage:          "PrometheusImage",
@@ -32,7 +32,8 @@ func TestRender(t *testing.T) {
 			CreatedByAnnotation:      "CreatedByAnnotation",
 		}
 
-		err = render(config, &buf)
+		buf := &bytes.Buffer{}
+		err = render(config, buf)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
