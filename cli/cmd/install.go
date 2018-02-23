@@ -46,26 +46,33 @@ var installCmd = &cobra.Command{
 	Short: "Output Kubernetes configs to install Conduit",
 	Long:  "Output Kubernetes configs to install Conduit.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := validate(); err != nil {
+		config, err := validateAndBuildConfig()
+		if err != nil {
 			return err
 		}
-		config := installConfig{
-			Namespace:                controlPlaneNamespace,
-			ControllerImage:          fmt.Sprintf("%s/controller:%s", dockerRegistry, conduitVersion),
-			WebImage:                 fmt.Sprintf("%s/web:%s", dockerRegistry, conduitVersion),
-			PrometheusImage:          "prom/prometheus:v2.1.0",
-			ControllerReplicas:       controllerReplicas,
-			WebReplicas:              webReplicas,
-			PrometheusReplicas:       prometheusReplicas,
-			ImagePullPolicy:          imagePullPolicy,
-			UUID:                     uuid.NewV4().String(),
-			CliVersion:               k8s.CreatedByAnnotationValue(),
-			ControllerLogLevel:       controllerLogLevel,
-			ControllerComponentLabel: k8s.ControllerComponentLabel,
-			CreatedByAnnotation:      k8s.CreatedByAnnotation,
-		}
-		return render(config, os.Stdout)
+		return render(*config, os.Stdout)
 	},
+}
+
+func validateAndBuildConfig() (*installConfig, error) {
+	if err := validate(); err != nil {
+		return nil, err
+	}
+	return &installConfig{
+		Namespace:                controlPlaneNamespace,
+		ControllerImage:          fmt.Sprintf("%s/controller:%s", dockerRegistry, conduitVersion),
+		WebImage:                 fmt.Sprintf("%s/web:%s", dockerRegistry, conduitVersion),
+		PrometheusImage:          "prom/prometheus:v2.1.0",
+		ControllerReplicas:       controllerReplicas,
+		WebReplicas:              webReplicas,
+		PrometheusReplicas:       prometheusReplicas,
+		ImagePullPolicy:          imagePullPolicy,
+		UUID:                     uuid.NewV4().String(),
+		CliVersion:               k8s.CreatedByAnnotationValue(),
+		ControllerLogLevel:       controllerLogLevel,
+		ControllerComponentLabel: k8s.ControllerComponentLabel,
+		CreatedByAnnotation:      k8s.CreatedByAnnotation,
+	}, nil
 }
 
 func render(config installConfig, w io.Writer) error {
