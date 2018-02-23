@@ -9,7 +9,6 @@ import (
 	"text/template"
 
 	"github.com/runconduit/conduit/pkg/k8s"
-	"github.com/runconduit/conduit/pkg/version"
 	uuid "github.com/satori/go.uuid"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -488,11 +487,10 @@ func validate() error {
 
 func init() {
 	RootCmd.AddCommand(installCmd)
-	installCmd.PersistentFlags().StringVarP(&conduitVersion, "conduit-version", "v", version.Version, "tag to be used for Conduit images")
+	addProxyConfigFlags(installCmd)
 	installCmd.PersistentFlags().StringVarP(&dockerRegistry, "registry", "r", "gcr.io/runconduit", "Docker registry to pull images from")
 	installCmd.PersistentFlags().UintVar(&controllerReplicas, "controller-replicas", 1, "replicas of the controller to deploy")
 	installCmd.PersistentFlags().UintVar(&webReplicas, "web-replicas", 1, "replicas of the web server to deploy")
 	installCmd.PersistentFlags().UintVar(&prometheusReplicas, "prometheus-replicas", 1, "replicas of prometheus to deploy")
-	installCmd.PersistentFlags().StringVar(&imagePullPolicy, "image-pull-policy", "IfNotPresent", "Docker image pull policy")
 	installCmd.PersistentFlags().StringVar(&controllerLogLevel, "controller-log-level", "info", "log level for the controller and web components")
 }

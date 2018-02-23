@@ -88,7 +88,7 @@ func runInjectCmd(input io.Reader, errWriter, outWriter io.Writer, version strin
  * and init-container injected. If the pod is unsuitable for having them
  * injected, return null.
  */
-func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride string, version string) bool {
+func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride, version string) bool {
 	// Pods with `hostNetwork=true` share a network namespace with the host. The
 	// init-container would destroy the iptables configuration on the host, so
 	// skip the injection in this case.
@@ -308,16 +308,20 @@ func InjectYAML(in io.Reader, out io.Writer, version string) error {
 
 func init() {
 	RootCmd.AddCommand(injectCmd)
-	injectCmd.PersistentFlags().StringVarP(&conduitVersion, "conduit-version", "v", version.Version, "tag to be used for Conduit images")
+	addProxyConfigFlags(injectCmd)
 	injectCmd.PersistentFlags().StringVar(&initImage, "init-image", "gcr.io/runconduit/proxy-init", "Conduit init container image name")
-	injectCmd.PersistentFlags().StringVar(&proxyImage, "proxy-image", "gcr.io/runconduit/proxy", "Conduit proxy container image name")
-	injectCmd.PersistentFlags().StringVar(&imagePullPolicy, "image-pull-policy", "IfNotPresent", "Docker image pull policy")
-	injectCmd.PersistentFlags().Int64Var(&proxyUID, "proxy-uid", 2102, "Run the proxy under this user ID")
 	injectCmd.PersistentFlags().UintVar(&inboundPort, "inbound-port", 4143, "proxy port to use for inbound traffic")
 	injectCmd.PersistentFlags().UintVar(&outboundPort, "outbound-port", 4140, "proxy port to use for outbound traffic")
 	injectCmd.PersistentFlags().UintSliceVar(&ignoreInboundPorts, "skip-inbound-ports", nil, "ports that should skip the proxy and send directly to the application")
 	injectCmd.PersistentFlags().UintSliceVar(&ignoreOutboundPorts, "skip-outbound-ports", nil, "outbound ports that should skip the proxy")
-	injectCmd.PersistentFlags().UintVar(&proxyControlPort, "control-port", 4190, "proxy port to use for control")
-	injectCmd.PersistentFlags().UintVar(&proxyAPIPort, "api-port", 8086, "port where the Conduit controller is running")
-	injectCmd.PersistentFlags().StringVar(&proxyLogLevel, "proxy-log-level", "warn,conduit_proxy=info", "log level for the proxy")
+}
+
+func addProxyConfigFlags(cmd *cobra.Command) {
+	cmd.PersistentFlags().StringVarP(&conduitVersion, "conduit-version", "v", version.Version, "tag to be used for Conduit images")
+	cmd.PersistentFlags().StringVar(&proxyImage, "proxy-image", "gcr.io/runconduit/proxy", "Conduit proxy container image name")
+	cmd.PersistentFlags().StringVar(&imagePullPolicy, "image-pull-policy", "IfNotPresent", "Docker image pull policy")
+	cmd.PersistentFlags().Int64Var(&proxyUID, "proxy-uid", 2102, "Run the proxy under this user ID")
+	cmd.PersistentFlags().StringVar(&proxyLogLevel, "proxy-log-level", "warn,conduit_proxy=info", "log level for the proxy")
+	cmd.PersistentFlags().UintVar(&proxyAPIPort, "api-port", 8086, "port where the Conduit controller is running")
+	cmd.PersistentFlags().UintVar(&proxyControlPort, "control-port", 4190, "proxy port to use for control")
 }
