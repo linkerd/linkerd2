@@ -224,7 +224,6 @@ where
                 config.default_destination_namespace().cloned(),
                 config.default_destination_zone().cloned(),
                 config.bind_timeout,
-                &executor,
             );
 
             let fut = serve(
