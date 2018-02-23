@@ -301,7 +301,7 @@ fn serve<R, B, E, F, G>(
 ) -> Box<Future<Item = (), Error = io::Error> + 'static>
 where
     B: tower_h2::Body + Default + 'static,
-    E: ::std::fmt::Debug + 'static,
+    E: ::std::fmt::Debug + ::std::error::Error + 'static,
     F: ::std::fmt::Debug + 'static,
     R: Recognize<
         Request = http::Request<HttpBody>,
@@ -324,6 +324,10 @@ where
                     error!("route error: {:?}", r);
                     http::StatusCode::INTERNAL_SERVER_ERROR
                 }
+                // RouteError::Inner(i) => {
+                //     error!("timed out after {:?}", after);
+                //     http::StatusCode::GATEWAY_TIMED_OUT
+                // }
                 RouteError::Inner(i) => {
                     error!("inner error: {:?}", i);
                     http::StatusCode::INTERNAL_SERVER_ERROR
