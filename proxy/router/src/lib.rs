@@ -6,9 +6,8 @@ use futures::{Future, Poll};
 use indexmap::IndexMap;
 use tower::Service;
 
-use std::error;
+use std::{error, fmt, mem};
 use std::hash::Hash;
-use std::mem;
 use std::sync::{Arc, Mutex};
 
 /// Route requests based on the request authority
@@ -221,6 +220,46 @@ where T: Recognize,
             }
             NotRecognized => Err(Error::NotRecognized),
             Invalid => panic!(),
+        }
+    }
+}
+
+// ===== impl RouteError =====
+
+impl<T, U> fmt::Display for Error<T, U>
+where
+    T: fmt::Debug,
+    U: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Error::Inner(ref why) =>
+                write!(f, "inner service error: {:?}", why),
+            Error::Route(ref why) =>
+                write!(f, "route recognition failed: {:?}", why),
+            Error::NotRecognized => f.pad("route not recognized"),
+        }
+    }
+}
+
+impl<T, U> error::Error for Error<T, U>
+where
+    T: error::Error,
+    U: error::Error,
+{
+    fn cause(&self) -> Option<&error::Error> {
+        match *self {
+            Error::Inner(ref why) => Some(why),
+            Error::Route(ref why) => Some(why),
+            _ => None,
+        }
+    }
+
+    fn description(&self) -> &str {
+        match *self {
+            Error::Inner(_) => "inner service error",
+            Error::Route(_) => "route recognition failed",
+            Error::NotRecognized => "route not recognized",
         }
     }
 }
