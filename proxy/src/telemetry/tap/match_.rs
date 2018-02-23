@@ -416,7 +416,7 @@ mod tests {
                                 let ok =
                                     b'A' <= c && c <= b'Z' ||
                                     b'a' <= c && c <= b'z' ||
-                                    b'0' <= c && c <= b'0' ;
+                                    b'0' <= c && c <= b'9' ;
                                 if !ok {
                                     err = Some(InvalidMatch::InvalidHttpMethod);
                                     break;
