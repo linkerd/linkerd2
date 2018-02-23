@@ -64,9 +64,8 @@ where
 
     fn call(&mut self, req: Self::Request) -> Self::Future {
         let duration = self.duration;
-        // TODO: should this panic or wrap the error?
         let timeout = ReactorTimeout::new(duration, &self.handle)
-            .expect("failed to create timeout!");
+            .expect("reactor gone");
         let inner = self.inner.call(req);
         TimeoutFuture {
             inner,
@@ -87,7 +86,6 @@ where
 
     fn connect(&self) -> Self::Future {
         let duration = self.duration;
-        // TODO: should this panic or wrap the error?
         let timeout = ReactorTimeout::new(duration, &self.handle)
             .expect("reactor gone");
         let inner = self.inner.connect();
