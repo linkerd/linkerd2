@@ -83,14 +83,13 @@ metadata:
   name: api
   namespace: Namespace
   labels:
-    app: controller
     ControllerComponentLabel: controller
   annotations:
     CreatedByAnnotation: CliVersion
 spec:
   type: ClusterIP
   selector:
-    app: controller
+    ControllerComponentLabel: controller
   ports:
   - name: http
     port: 8085
@@ -103,14 +102,13 @@ metadata:
   name: proxy-api
   namespace: Namespace
   labels:
-    app: controller
     ControllerComponentLabel: controller
   annotations:
     CreatedByAnnotation: CliVersion
 spec:
   type: ClusterIP
   selector:
-    app: controller
+    ControllerComponentLabel: controller
   ports:
   - name: grpc
     port: 8086
@@ -125,7 +123,6 @@ metadata:
   creationTimestamp: null
   labels:
     ControllerComponentLabel: controller
-    app: controller
   name: controller
   namespace: Namespace
 spec:
@@ -140,7 +137,6 @@ spec:
       creationTimestamp: null
       labels:
         ControllerComponentLabel: controller
-        app: controller
         conduit.io/control-plane-ns: Namespace
     spec:
       containers:
@@ -282,14 +278,13 @@ metadata:
   name: web
   namespace: Namespace
   labels:
-    app: web
     ControllerComponentLabel: web
   annotations:
     CreatedByAnnotation: CliVersion
 spec:
   type: ClusterIP
   selector:
-    app: web
+    ControllerComponentLabel: web
   ports:
   - name: http
     port: 8084
@@ -307,7 +302,6 @@ metadata:
   creationTimestamp: null
   labels:
     ControllerComponentLabel: web
-    app: web
   name: web
   namespace: Namespace
 spec:
@@ -322,7 +316,6 @@ spec:
       creationTimestamp: null
       labels:
         ControllerComponentLabel: web
-        app: web
         conduit.io/control-plane-ns: Namespace
     spec:
       containers:
@@ -405,14 +398,13 @@ metadata:
   name: prometheus
   namespace: Namespace
   labels:
-    app: prometheus
     ControllerComponentLabel: prometheus
   annotations:
     CreatedByAnnotation: CliVersion
 spec:
   type: ClusterIP
   selector:
-    app: prometheus
+    ControllerComponentLabel: prometheus
   ports:
   - name: http
     port: 9090
@@ -427,7 +419,6 @@ metadata:
   creationTimestamp: null
   labels:
     ControllerComponentLabel: prometheus
-    app: prometheus
   name: prometheus
   namespace: Namespace
 spec:
@@ -442,7 +433,6 @@ spec:
       creationTimestamp: null
       labels:
         ControllerComponentLabel: prometheus
-        app: prometheus
         conduit.io/control-plane-ns: Namespace
     spec:
       containers:
@@ -533,7 +523,6 @@ metadata:
   name: prometheus-config
   namespace: Namespace
   labels:
-    app: prometheus
     ControllerComponentLabel: prometheus
   annotations:
     CreatedByAnnotation: CliVersion
