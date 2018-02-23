@@ -6,6 +6,7 @@ use futures::{Future, Poll};
 use indexmap::IndexMap;
 use tower::Service;
 
+use std::error;
 use std::hash::Hash;
 use std::mem;
 use std::sync::{Arc, Mutex};
