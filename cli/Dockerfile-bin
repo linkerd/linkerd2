@@ -12,6 +12,8 @@ RUN CGO_ENABLED=0 GOOS=linux   go build -installsuffix cgo -o /out/conduit-linux
 RUN CGO_ENABLED=0 GOOS=windows go build -installsuffix cgo -o /out/conduit-windows -ldflags "${GO_LDFLAGS}" ./cli
 
 ## export without sources & dependencies
-FROM gcr.io/runconduit/base:2017-10-30.01
+FROM scratch
 COPY --from=golang /out /out
-WORKDIR /out
+# `ENTRYPOINT` prevents `docker build` from otherwise failing with "Error
+# response from daemon: No command specified."
+ENTRYPOINT ["/out/conduit-linux"]
