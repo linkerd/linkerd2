@@ -11,14 +11,6 @@ use tokio_core::reactor::{Timeout as ReactorTimeout, Handle};
 use tokio_io;
 use tower::Service;
 
-/// Generates timeouts wrapping a `Service`.
-#[derive(Debug, Clone)]
-pub struct NewTimeout {
-    duration: Duration,
-    handle: Handle,
-}
-
-
 /// A timeout that wraps an underlying operation.
 #[derive(Debug, Clone)]
 pub struct Timeout<U> {
@@ -223,27 +215,4 @@ where
            .field("duration", &self.duration)
            .finish()
     }
-}
-
-//===== impl NewTimeout =====
-
-impl NewTimeout {
-
-    /// Returns a new NewTimeout
-    pub fn new(duration: Duration, handle: &Handle) -> Self {
-        Self {
-            duration,
-            handle: handle.clone(),
-        }
-    }
-
-    /// Wrap the provided `Service` with a `Timeout`.
-    pub fn apply<S>(&self, inner: S) -> Timeout<S> {
-        Timeout {
-            inner,
-            duration: self.duration,
-            handle: self.handle.clone(),
-        }
-    }
-
 }

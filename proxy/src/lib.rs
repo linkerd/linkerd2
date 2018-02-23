@@ -219,17 +219,13 @@ where
 
             let tcp_connect_timeout = bind.connect_timeout();
 
-            let bind_timeout = timeout::NewTimeout::new(
-                config.bind_timeout,
-                &executor
-            );
-
             let outgoing = Outbound::new(
                 bind,
                 control,
                 config.default_destination_namespace().cloned(),
                 config.default_destination_zone().cloned(),
-                bind_timeout,
+                config.bind_timeout,
+                &executor,
             );
 
             let fut = serve(
