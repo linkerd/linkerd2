@@ -61,6 +61,8 @@ spec:
               fieldPath: metadata.namespace
         - name: CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN
           value: Kubernetes
+        - name: CONDUIT_PROXY_DEPLOYMENT
+          value: controller
         image: gcr.io/runconduit/proxy:testinjectversion
         imagePullPolicy: IfNotPresent
         name: conduit-proxy
@@ -154,6 +156,8 @@ spec:
               fieldPath: metadata.namespace
         - name: CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN
           value: Kubernetes
+        - name: CONDUIT_PROXY_DEPLOYMENT
+          value: not-controller
         image: gcr.io/runconduit/proxy:testinjectversion
         imagePullPolicy: IfNotPresent
         name: conduit-proxy
