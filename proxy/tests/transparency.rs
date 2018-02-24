@@ -3,7 +3,7 @@ use self::support::*;
 
 #[test]
 fn outbound_http1() {
-    let _ = env_logger::init();
+    let _ = env_logger::try_init();
 
     let srv = server::http1().route("/", "hello h1").run();
     let ctrl = controller::new()
@@ -17,7 +17,7 @@ fn outbound_http1() {
 
 #[test]
 fn inbound_http1() {
-    let _ = env_logger::init();
+    let _ = env_logger::try_init();
 
     let srv = server::http1().route("/", "hello h1").run();
     let ctrl = controller::new().run();
@@ -32,7 +32,7 @@ fn inbound_http1() {
 
 #[test]
 fn http1_connect_not_supported() {
-    let _ = env_logger::init();
+    let _ = env_logger::try_init();
 
     let srv = server::tcp()
         .run();
@@ -53,7 +53,7 @@ fn http1_connect_not_supported() {
 
 #[test]
 fn http1_removes_connection_headers() {
-    let _ = env_logger::init();
+    let _ = env_logger::try_init();
 
     let srv = server::http1()
         .route_fn("/", |req| {
@@ -82,7 +82,7 @@ fn http1_removes_connection_headers() {
 
 #[test]
 fn http10_with_host() {
-    let _ = env_logger::init();
+    let _ = env_logger::try_init();
 
     let host = "transparency.test.svc.cluster.local";
     let srv = server::http1()
@@ -112,7 +112,7 @@ fn http10_with_host() {
 
 #[test]
 fn http10_without_host() {
-    let _ = env_logger::init();
+    let _ = env_logger::try_init();
 
     let srv = server::http1()
         .route_fn("/", move |req| {
@@ -142,7 +142,7 @@ fn http10_without_host() {
 
 #[test]
 fn http11_absolute_uri_differs_from_host() {
-    let _ = env_logger::init();
+    let _ = env_logger::try_init();
 
     let host = "transparency.test.svc.cluster.local";
     let srv = server::http1()
@@ -171,7 +171,7 @@ fn http11_absolute_uri_differs_from_host() {
 
 #[test]
 fn outbound_tcp() {
-    let _ = env_logger::init();
+    let _ = env_logger::try_init();
 
     let msg1 = "custom tcp hello";
     let msg2 = "custom tcp bye";
@@ -198,7 +198,7 @@ fn outbound_tcp() {
 
 #[test]
 fn inbound_tcp() {
-    let _ = env_logger::init();
+    let _ = env_logger::try_init();
 
     let msg1 = "custom tcp hello";
     let msg2 = "custom tcp bye";
@@ -225,7 +225,7 @@ fn inbound_tcp() {
 
 #[test]
 fn tcp_with_no_orig_dst() {
-    let _ = env_logger::init();
+    let _ = env_logger::try_init();
 
     let srv = server::tcp()
         .accept(move |_| "don't read me")
@@ -251,7 +251,7 @@ fn tcp_with_no_orig_dst() {
 
 #[test]
 fn http11_upgrade_not_supported() {
-    let _ = env_logger::init();
+    let _ = env_logger::try_init();
 
     // our h1 proxy will strip the Connection header
     // and headers it mentions
@@ -297,7 +297,7 @@ fn http11_upgrade_not_supported() {
 
 #[test]
 fn http1_get_doesnt_add_transfer_encoding() {
-    let _ = env_logger::init();
+    let _ = env_logger::try_init();
 
     let srv = server::http1()
         .route_fn("/", |req| {
