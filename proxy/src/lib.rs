@@ -44,6 +44,7 @@ extern crate tower_in_flight_limit;
 
 use futures::*;
 
+use std::error::Error;
 use std::io;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -301,8 +302,8 @@ fn serve<R, B, E, F, G>(
 ) -> Box<Future<Item = (), Error = io::Error> + 'static>
 where
     B: tower_h2::Body + Default + 'static,
-    E: ::std::fmt::Debug + ::std::error::Error + 'static,
-    F: ::std::fmt::Debug + 'static,
+    E: Error + 'static,
+    F: Error + 'static,
     R: Recognize<
         Request = http::Request<HttpBody>,
         Response = http::Response<telemetry::sensor::http::ResponseBody<B>>,
@@ -317,20 +318,24 @@ where
         // Clone the router handle
         let router = router.clone();
 
-        // Map errors to 500 responses
+        // Map errors to appropriate response error codes.
         MapErr::new(router, |e| {
+
             match e {
                 RouteError::Route(r) => {
                     error!("route error: {:?}", r);
                     http::StatusCode::INTERNAL_SERVER_ERROR
                 }
-                // RouteError::Inner(i) => {
-                //     error!("timed out after {:?}", after);
-                //     http::StatusCode::GATEWAY_TIMED_OUT
-                // }
                 RouteError::Inner(i) => {
-                    error!("inner error: {:?}", i);
-                    http::StatusCode::INTERNAL_SERVER_ERROR
+                    // TODO: type system hates this...
+                    // if let Some(cause) = i.cause() {
+                    //         error!("{}: timed out after {:?}",
+                    //             i.description(), after);
+                    //         http::StatusCode::GATEWAY_TIMEOUT
+                    // } else {
+                        error!("inner service error: {}", i);
+                        http::StatusCode::INTERNAL_SERVER_ERROR
+                    // }
                 }
                 RouteError::NotRecognized => {
                     error!("route not recognized");

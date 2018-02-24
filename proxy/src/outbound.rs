@@ -8,7 +8,7 @@ use http;
 use rand;
 use tower;
 use tower_balance::{self, choose, load, Balance};
-use tower_buffer::{self, Buffer};
+use tower_buffer::Buffer;
 use tower_discover::{Change, Discover};
 use tower_in_flight_limit::InFlightLimit;
 use tower_h2;
@@ -66,7 +66,7 @@ where
     type Response = bind::HttpResponse;
     type Error = <Self::Service as tower::Service>::Error;
     type Key = (Destination, Protocol);
-    type RouteError = BufferSpawnError;
+    type RouteError = bind::BufferSpawnError;
     type Service = InFlightLimit<Timeout<Buffer<Balance<
         load::WithPendingRequests<Discovery<B>>,
         choose::PowerOfTwoChoices<rand::ThreadRng>
@@ -143,7 +143,8 @@ where
         // `Timeout`.
         let handle = self.bind.executor();
 
-        let buffer = Buffer::new(balance, handle)?;
+        let buffer = Buffer::new(balance, handle)
+            .map_err(|_| bind::BufferSpawnError::Outbound)?;
 
         let timeout = Timeout::new(buffer, self.bind_timeout, handle);
 
@@ -189,31 +190,6 @@ where
         }
     }
 }
-
-
-#[derive(Copy, Clone, Debug)]
-pub struct BufferSpawnError;
-
-impl fmt::Display for BufferSpawnError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("error spawning outbound buffer task")
-    }
-}
-
-impl error::Error for BufferSpawnError {
-    fn description(&self) -> &str {
-        "error spawning outbound buffer task"
-    }
-
-    fn cause(&self) -> Option<&error::Error> { None }
-}
-
-impl<T> From<tower_buffer::SpawnError<T>> for BufferSpawnError {
-    fn from(_t: tower_buffer::SpawnError<T>) -> Self {
-        BufferSpawnError
-    }
-}
-
 #[derive(Copy, Clone, Debug)]
 pub enum BindError {
     External { addr: SocketAddr },
