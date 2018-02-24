@@ -7,7 +7,7 @@ use std::net::IpAddr;
 use std::path::Path;
 use std::str::FromStr;
 use tokio_core::reactor::Handle;
-use url;
+use transport;
 
 #[derive(Clone, Debug)]
 pub struct Config(domain::resolv::ResolvConf);
@@ -45,17 +45,16 @@ impl Resolver {
         ))
     }
 
-    pub fn resolve_host(&self, host: &url::Host) -> IpAddrFuture {
+    pub fn resolve_host(&self, host: &transport::Host) -> IpAddrFuture {
         match *host {
-            url::Host::Domain(ref name) => {
+            transport::Host::DnsName(ref name) => {
                 trace!("resolve {}", name);
                 match abstract_ns::Name::from_str(name) {
                     Ok(name) => IpAddrFuture::DNS(self.0.resolve_host(&name)),
                     Err(_) => IpAddrFuture::InvalidDNSName(name.clone()),
                 }
             }
-            url::Host::Ipv4(ref addr) => IpAddrFuture::Fixed(IpAddr::V4(*addr)),
-            url::Host::Ipv6(ref addr) => IpAddrFuture::Fixed(IpAddr::V6(*addr)),
+            transport::Host::Ip(addr) => IpAddrFuture::Fixed(addr),
         }
     }
 }

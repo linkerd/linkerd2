@@ -14,7 +14,6 @@ extern crate tokio_core;
 pub extern crate tokio_io;
 extern crate tower;
 extern crate tower_h2;
-extern crate url;
 pub extern crate env_logger;
 
 use self::bytes::{BigEndian, Bytes, BytesMut};
