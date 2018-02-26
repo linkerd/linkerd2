@@ -2,44 +2,60 @@ use std::fmt;
 use std::time::{Duration, Instant};
 
 use futures::{Async, Future, Stream};
-use tokio_core::reactor::Handle;
 use tower_h2::{HttpService, BoxBody};
 use tower_grpc as grpc;
 
 use conduit_proxy_controller_grpc::telemetry::{ReportRequest, ReportResponse};
 use conduit_proxy_controller_grpc::telemetry::client::Telemetry as TelemetrySvc;
-use ::timeout::{Timeout, TimeoutFuture};
+use time::{NewTimeout, Timer, TimeoutFuture};
 
-type TelemetryStream<F, B> = grpc::client::unary::ResponseFuture<
-    ReportResponse, TimeoutFuture<F>, B>;
+type TelemetryStream<F, B, T> = grpc::client::unary::ResponseFuture<
+    ReportResponse,
+    TimeoutFuture<F, T>,
+    B
+>;
 
 #[derive(Debug)]
-pub struct Telemetry<T, S: HttpService> {
-    reports: T,
-    in_flight: Option<(Instant, TelemetryStream<S::Future, S::ResponseBody>)>,
-    report_timeout: Duration,
-    handle: Handle,
+pub struct Telemetry<R, S: HttpService, T: Timer> {
+    reports: R,
+    in_flight: Option<(
+        Instant,
+        TelemetryStream<S::Future, S::ResponseBody, T::Sleep>
+    )>,
+    report_timeout: NewTimeout<T>,
+    timer: T,
 }
 
-impl<T, S> Telemetry<T, S>
+impl<R, S, T> Telemetry<R, S, T>
 where
     S: HttpService<RequestBody = BoxBody, ResponseBody = ::tower_h2::RecvBody>,
     S::Error: fmt::Debug,
-    T: Stream<Item = ReportRequest>,
-    T::Error: ::std::fmt::Debug,
+    R: Stream<Item = ReportRequest>,
+    R::Error: fmt::Debug,
+    T: Timer,
+    T::Error: fmt::Debug,
 {
-    pub fn new(reports: T, report_timeout: Duration, handle: &Handle) -> Self {
+    pub fn new(reports: R,
+               report_timeout: Duration,
+               timer: &T)
+               -> Self
+    {
+        let timer = timer.clone();
+        let report_timeout = timer
+            .new_timeout(report_timeout)
+            .with_description("report");
+
         Telemetry {
             reports,
             in_flight: None,
             report_timeout,
-            handle: handle.clone(),
+            timer,
         }
     }
 
     pub fn poll_rpc(&mut self, client: &mut S)
     {
-        let client = Timeout::new(client.lift_ref(), self.report_timeout, &self.handle);
+        let client = self.report_timeout.apply_to(client.lift_ref());
         let mut svc = TelemetrySvc::new(client);
 
         //let _ctxt = ::logging::context("Telemetry.Report".into());
@@ -100,7 +116,7 @@ where
                             report.client_transports.len(),
                         );
                         let rep = svc.report(grpc::Request::new(report));
-                        self.in_flight = Some((Instant::now(), rep));
+                        self.in_flight = Some((self.timer.now(), rep));
                     }
                 }
             }

@@ -19,28 +19,32 @@ use control::{self, discovery};
 use control::discovery::Bind as BindTrait;
 use ctx;
 use fully_qualified_authority::{FullyQualifiedAuthority, NamedAddress};
-use timeout::Timeout;
+use time::{Timer, Timeout, NewTimeout};
 use transparency::h1;
 
-type BindProtocol<B> = bind::BindProtocol<Arc<ctx::Proxy>, B>;
+type BindProtocol<B, T> = bind::BindProtocol<Arc<ctx::Proxy>, B, T>;
 
-pub struct Outbound<B> {
-    bind: Bind<Arc<ctx::Proxy>, B>,
+pub struct Outbound<B, T> {
+    bind: Bind<Arc<ctx::Proxy>, B, T>,
     discovery: control::Control,
     default_namespace: String,
-    bind_timeout: Duration,
+    bind_timeout: NewTimeout<T>,
 }
 
 const MAX_IN_FLIGHT: usize = 10_000;
 
 // ===== impl Outbound =====
 
-impl<B> Outbound<B> {
-    pub fn new(bind: Bind<Arc<ctx::Proxy>, B>,
+impl<B, T> Outbound<B, T> {
+    pub fn new(bind: Bind<Arc<ctx::Proxy>, B, T>,
                discovery: control::Control,
                default_namespace: String,
                bind_timeout: Duration,)
-               -> Outbound<B> {
+               -> Outbound<B, T>
+    {
+        let bind_timeout = bind
+            .timer()
+            .new_timeout(bind_timeout);
         Self {
             bind,
             discovery,
@@ -70,20 +74,23 @@ impl From<SocketAddr> for Destination {
     }
 }
 
-
-impl<B> Recognize for Outbound<B>
+impl<B, T> Recognize for Outbound<B, T>
 where
     B: tower_h2::Body + 'static,
+    T: Timer + 'static,
 {
     type Request = http::Request<B>;
     type Response = bind::HttpResponse;
     type Error = <Self::Service as tower::Service>::Error;
     type Key = (Destination, Protocol);
     type RouteError = bind::BufferSpawnError;
-    type Service = InFlightLimit<Timeout<Buffer<Balance<
-        load::WithPendingRequests<Discovery<B>>,
-        choose::PowerOfTwoChoices<rand::ThreadRng>
-    >>>>;
+    type Service = InFlightLimit<Timeout<
+        Buffer<Balance<
+            load::WithPendingRequests<Discovery<B, T>>,
+            choose::PowerOfTwoChoices<rand::ThreadRng>
+        >>,
+        T,
+    >>;
 
     fn recognize(&self, req: &Self::Request) -> Option<Reuse<Self::Key>> {
         let proto = bind::Protocol::detect(req);
@@ -168,27 +175,28 @@ where
         let buffer = Buffer::new(balance, handle)
             .map_err(|_| bind::BufferSpawnError::Outbound)?;
 
-        let timeout = Timeout::new(buffer, self.bind_timeout, handle);
+        let timeout = self.bind_timeout.apply_to(buffer);
 
         Ok(InFlightLimit::new(timeout, MAX_IN_FLIGHT))
 
     }
 }
 
-pub enum Discovery<B> {
-    LocalSvc(discovery::Watch<BindProtocol<B>>),
-    External(Option<(SocketAddr, BindProtocol<B>)>),
+pub enum Discovery<B, T> {
+    LocalSvc(discovery::Watch<BindProtocol<B, T>>),
+    External(Option<(SocketAddr, BindProtocol<B, T>)>),
 }
 
-impl<B> Discover for Discovery<B>
+impl<B, T> Discover for Discovery<B, T>
 where
     B: tower_h2::Body + 'static,
+    T: Timer + 'static,
 {
     type Key = SocketAddr;
     type Request = http::Request<B>;
     type Response = bind::HttpResponse;
-    type Error = <bind::Service<B> as tower::Service>::Error;
-    type Service = bind::Service<B>;
+    type Error = <bind::Service<B, T> as tower::Service>::Error;
+    type Service = bind::Service<B, T>;
     type DiscoverError = BindError;
 
     fn poll(&mut self) -> Poll<Change<Self::Key, Self::Service>, Self::DiscoverError> {

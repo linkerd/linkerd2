@@ -11,20 +11,33 @@ use tokio_io::{AsyncRead, AsyncWrite};
 use conduit_proxy_controller_grpc::common;
 use ctx::transport::{Client as ClientCtx, Server as ServerCtx};
 use telemetry::Sensors;
-use timeout::Timeout;
+use time::{NewTimeout, Timer};
 use transport;
 
 /// TCP Server Proxy
 #[derive(Debug, Clone)]
-pub struct Proxy {
-    connect_timeout: Duration,
+pub struct Proxy<T> {
+    connect_timeout: NewTimeout<T>,
     executor: Handle,
     sensors: Sensors,
 }
 
-impl Proxy {
+impl<T> Proxy<T>
+where
+    T: Timer,
+{
+
     /// Create a new TCP `Proxy`.
-    pub fn new(connect_timeout: Duration, sensors: Sensors, executor: &Handle) -> Self {
+    pub fn new(connect_timeout: Duration,
+               sensors: Sensors,
+               executor: &Handle,
+               timer: &T)
+               -> Self
+    {
+        let connect_timeout = timer
+            .new_timeout(connect_timeout)
+            .with_description("TCP connection");
+
         Self {
             connect_timeout,
             executor: executor.clone(),
@@ -33,9 +46,11 @@ impl Proxy {
     }
 
     /// Serve a TCP connection, trying to forward it to its destination.
-    pub fn serve<T>(&self, tcp_in: T, srv_ctx: Arc<ServerCtx>) -> Box<Future<Item=(), Error=()>>
+    pub fn serve<C>(&self, tcp_in: C, srv_ctx: Arc<ServerCtx>) -> Box<Future<Item=(), Error=()>>
     where
-        T: AsyncRead + AsyncWrite + 'static,
+        C: AsyncRead + AsyncWrite + 'static,
+        T: 'static,
+        T::Error: ::std::fmt::Debug,
     {
         let orig_dst = srv_ctx.orig_dst_if_not_local();
 
@@ -62,10 +77,8 @@ impl Proxy {
             &orig_dst,
             common::Protocol::Tcp,
         );
-        let c = Timeout::new(
-            transport::Connect::new(orig_dst, &self.executor),
-            self.connect_timeout,
-            &self.executor,
+        let c = self.connect_timeout.apply_to(
+            transport::Connect::new(orig_dst, &self.executor)
         );
         let connect = self.sensors.connect(c, &client_ctx);
 
