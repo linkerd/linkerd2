@@ -4,6 +4,11 @@ version = "0.3.0"
 authors = ["Oliver Gould <ver@buoyant.io>"]
 publish = false
 
+[features]
+default = ["flaky_tests"]
+# Disable to skip certain tests that should not be run on CI.
+flaky_tests = []
+
 [dependencies]
 convert                         = { path = "./convert" }
 conduit-proxy-controller-grpc   = { path = "./controller-grpc" }
