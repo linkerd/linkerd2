@@ -94,6 +94,7 @@ mod tests {
 
     use http;
     use tokio_core::reactor::Core;
+    use tokio_timer::Timer;
     use conduit_proxy_router::Recognize;
 
     use super::Inbound;
@@ -101,9 +102,12 @@ mod tests {
     use bind::{self, Bind};
     use ctx;
 
-    fn new_inbound(default: Option<net::SocketAddr>, ctx: &Arc<ctx::Proxy>) -> Inbound<()> {
+    fn new_inbound(default: Option<net::SocketAddr>, ctx: &Arc<ctx::Proxy>)
+                  -> Inbound<(), Timer>
+    {
         let core = Core::new().unwrap();
-        let bind = Bind::new(core.handle()).with_ctx(ctx.clone());
+        let timer = Timer::default();
+        let bind = Bind::new(core.handle(), timer).with_ctx(ctx.clone());
         Inbound::new(default, bind)
     }
 

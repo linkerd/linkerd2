@@ -129,9 +129,9 @@ impl<C, B, T> Bind<C, B, T> {
         &self.executor
     }
 
-    // pub fn timer(&self) -> &T {
-    //     &self.timer
-    // }
+    pub fn timer(&self) -> &T {
+        &self.timer
+    }
 
 
     // pub fn req_ids(&self) -> &Arc<AtomicUsize> {
