@@ -207,7 +207,7 @@ spec:
         - "-addr=:8087"
         - "-metrics-addr=:9997"
         - "-ignore-namespaces=kube-system"
-        - "-prometheus-url=http://prometheus:9090"
+        - "-prometheus-url=http://prometheus.{{.Namespace}}.svc.cluster.local:9090"
         - "-log-level={{.ControllerLogLevel}}"
 
 ### Web ###
