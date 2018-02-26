@@ -20,7 +20,7 @@ use self::bytes::{BigEndian, Bytes, BytesMut};
 pub use self::conduit_proxy::*;
 pub use self::futures::*;
 use self::futures::sync::oneshot;
-pub use self::http::{HeaderMap, Request, Response};
+pub use self::http::{HeaderMap, Request, Response, StatusCode};
 use self::http::header::HeaderValue;
 use self::tokio_connect::Connect;
 use self::tokio_core::net::{TcpListener, TcpStream};
