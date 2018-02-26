@@ -223,7 +223,9 @@ where
                 bind,
                 control,
                 config.default_destination_namespace().cloned(),
-                config.default_destination_zone().cloned());
+                config.default_destination_zone().cloned(),
+                config.bind_timeout,
+            );
 
             let fut = serve(
                 outbound_listener,

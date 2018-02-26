@@ -49,6 +49,9 @@ pub struct Config {
     /// Timeout after which to cancel telemetry reports.
     pub report_timeout: Duration,
 
+    /// Timeout after which to cancel binding a request.
+    pub bind_timeout: Duration,
+
     pub pod_name: Option<String>,
     pub pod_namespace: Option<String>,
     pub pod_zone: Option<String>,
@@ -139,6 +142,7 @@ pub const ENV_PUBLIC_LISTENER: &str = "CONDUIT_PROXY_PUBLIC_LISTENER";
 pub const ENV_CONTROL_LISTENER: &str = "CONDUIT_PROXY_CONTROL_LISTENER";
 const ENV_PRIVATE_CONNECT_TIMEOUT: &str = "CONDUIT_PROXY_PRIVATE_CONNECT_TIMEOUT";
 const ENV_PUBLIC_CONNECT_TIMEOUT: &str = "CONDUIT_PROXY_PUBLIC_CONNECT_TIMEOUT";
+pub const ENV_BIND_TIMEOUT: &str = "CONDUIT_PROXY_BIND_TIMEOUT";
 
 const ENV_NODE_NAME: &str = "CONDUIT_PROXY_NODE_NAME";
 const ENV_POD_NAME: &str = "CONDUIT_PROXY_POD_NAME";
@@ -157,6 +161,7 @@ const DEFAULT_PRIVATE_LISTENER: &str = "tcp://127.0.0.1:4140";
 const DEFAULT_PUBLIC_LISTENER: &str = "tcp://0.0.0.0:4143";
 const DEFAULT_CONTROL_LISTENER: &str = "tcp://0.0.0.0:4190";
 const DEFAULT_PRIVATE_CONNECT_TIMEOUT_MS: u64 = 20;
+const DEFAULT_BIND_TIMEOUT_MS: u64 = 10_000; // ten seconds, as in Linkerd.
 const DEFAULT_RESOLV_CONF: &str = "/etc/resolv.conf";
 
 // ===== impl Config =====
@@ -174,6 +179,7 @@ impl<'a> TryFrom<&'a Strings> for Config {
         let private_forward = parse(strings, ENV_PRIVATE_FORWARD, str::parse);
         let public_connect_timeout = parse(strings, ENV_PUBLIC_CONNECT_TIMEOUT, parse_number);
         let private_connect_timeout = parse(strings, ENV_PRIVATE_CONNECT_TIMEOUT, parse_number);
+        let bind_timeout = parse(strings, ENV_BIND_TIMEOUT, parse_number);
         let resolv_conf_path = strings.get(ENV_RESOLV_CONF);
         let event_buffer_capacity = parse(strings, ENV_EVENT_BUFFER_CAPACITY, parse_number);
         let metrics_flush_interval_secs =
@@ -226,6 +232,8 @@ impl<'a> TryFrom<&'a Strings> for Config {
                                         .unwrap_or(DEFAULT_METRICS_FLUSH_INTERVAL_SECS)),
             report_timeout:
                 Duration::from_secs(report_timeout?.unwrap_or(DEFAULT_REPORT_TIMEOUT_SECS)),
+            bind_timeout:
+                Duration::from_millis(bind_timeout?.unwrap_or(DEFAULT_BIND_TIMEOUT_MS)),
             pod_name: pod_name?,
             pod_namespace: pod_namespace?,
             pod_zone: pod_zone?,

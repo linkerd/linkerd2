@@ -1,4 +1,5 @@
 use std::net::SocketAddr;
+use std::time::Duration;
 
 use futures::{Async, Poll};
 use http;
@@ -17,6 +18,7 @@ use control::{self, discovery};
 use control::discovery::Bind as BindTrait;
 use ctx;
 use fully_qualified_authority::FullyQualifiedAuthority;
+use timeout::Timeout;
 
 type BindProtocol<B> = bind::BindProtocol<Arc<ctx::Proxy>, B>;
 
@@ -25,6 +27,7 @@ pub struct Outbound<B> {
     discovery: control::Control,
     default_namespace: Option<String>,
     default_zone: Option<String>,
+    bind_timeout: Duration,
 }
 
 const MAX_IN_FLIGHT: usize = 10_000;
@@ -32,14 +35,18 @@ const MAX_IN_FLIGHT: usize = 10_000;
 // ===== impl Outbound =====
 
 impl<B> Outbound<B> {
-    pub fn new(bind: Bind<Arc<ctx::Proxy>, B>, discovery: control::Control,
-               default_namespace: Option<String>, default_zone: Option<String>)
+    pub fn new(bind: Bind<Arc<ctx::Proxy>, B>,
+               discovery: control::Control,
+               default_namespace: Option<String>,
+               default_zone: Option<String>,
+               bind_timeout: Duration,)
                -> Outbound<B> {
         Self {
             bind,
             discovery,
             default_namespace,
             default_zone,
+            bind_timeout,
         }
     }
 }
@@ -59,10 +66,10 @@ where
     type Error = <Self::Service as tower::Service>::Error;
     type Key = (Destination, Protocol);
     type RouteError = ();
-    type Service = InFlightLimit<Buffer<Balance<
+    type Service = InFlightLimit<Timeout<Buffer<Balance<
         load::WithPendingRequests<Discovery<B>>,
-        choose::PowerOfTwoChoices<rand::ThreadRng>,
-    >>>;
+        choose::PowerOfTwoChoices<rand::ThreadRng>
+    >>>>;
 
     fn recognize(&self, req: &Self::Request) -> Option<Self::Key> {
         let local = req.uri().authority_part().and_then(|authority| {
@@ -131,11 +138,16 @@ where
 
         let balance = tower_balance::power_of_two_choices(loaded, rand::thread_rng());
 
-        Buffer::new(balance, self.bind.executor())
-            .map(|buffer| {
-                InFlightLimit::new(buffer, MAX_IN_FLIGHT)
-            })
-            .map_err(|_| {})
+        // use the same executor as the underlying `Bind` for the `Buffer` and
+        // `Timeout`.
+        let handle = self.bind.executor();
+
+        let buffer = Buffer::new(balance, handle).map_err(|_| {})?;
+
+        let timeout = Timeout::new(buffer, self.bind_timeout, handle);
+
+        Ok(InFlightLimit::new(timeout, MAX_IN_FLIGHT))
+
     }
 }
 

@@ -11,7 +11,6 @@ use tokio_core::reactor::{Timeout as ReactorTimeout, Handle};
 use tokio_io;
 use tower::Service;
 
-
 /// A timeout that wraps an underlying operation.
 #[derive(Debug, Clone)]
 pub struct Timeout<U> {
@@ -53,7 +52,6 @@ impl<U> Timeout<U> {
 impl<S, T, E> Service for Timeout<S>
 where
     S: Service<Response=T, Error=E>,
-    // E: Error,
 {
     type Request = S::Request;
     type Response = T;
@@ -66,9 +64,8 @@ where
 
     fn call(&mut self, req: Self::Request) -> Self::Future {
         let duration = self.duration;
-        // TODO: should this panic or wrap the error?
         let timeout = ReactorTimeout::new(duration, &self.handle)
-            .expect("failed to create timeout!");
+            .expect("reactor gone");
         let inner = self.inner.call(req);
         TimeoutFuture {
             inner,
@@ -82,7 +79,6 @@ where
 impl<C> Connect for Timeout<C>
 where
     C: Connect,
-    // C::Error: Error,
 {
     type Connected = C::Connected;
     type Error = TimeoutError<C::Error>;
@@ -90,9 +86,8 @@ where
 
     fn connect(&self) -> Self::Future {
         let duration = self.duration;
-        // TODO: should this panic or wrap the error?
         let timeout = ReactorTimeout::new(duration, &self.handle)
-            .expect("failed to create timeout!");
+            .expect("reactor gone");
         let inner = self.inner.connect();
         TimeoutFuture {
             inner,
