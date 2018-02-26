@@ -22,7 +22,7 @@ futures = "0.1"
 h2 = "0.1"
 http = "0.1"
 httparse = "1.2"
-hyper = { version = "0.11.19", features = ["compat"] }
+hyper = { version = "0.11.19", default-features = false, features = ["compat"] }
 ipnet = "1.0"
 log = "0.3"
 ordermap = "0.2"
