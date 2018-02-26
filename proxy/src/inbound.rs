@@ -90,7 +90,8 @@ mod tests {
     use std::sync::Arc;
 
     use http;
-    use tokio_core::reactor::{Core, Handle};
+    use tokio_core::reactor::Core;
+    use tokio_timer::Timer;
     use conduit_proxy_router::Recognize;
 
     use super::Inbound;
@@ -98,11 +99,13 @@ mod tests {
     use bind::{self, Bind, Host};
     use ctx;
 
-    fn new_inbound(default: Option<net::SocketAddr>, ctx: &Arc<ctx::Proxy>) -> Inbound<(), Handle> {
+    fn new_inbound(default: Option<net::SocketAddr>, ctx: &Arc<ctx::Proxy>)
+                  -> Inbound<(), Timer>
+    {
         let core = Core::new().unwrap();
-        let handle = core.handle();
-        let bind = Bind::new(handle).with_ctx(ctx.clone());
-        Inbound::new(default, bind, handle)
+        let timer = Timer::default();
+        let bind = Bind::new(core.handle(), timer).with_ctx(ctx.clone());
+        Inbound::new(default, bind)
     }
 
     quickcheck! {

@@ -126,17 +126,12 @@ impl<S, T> Timeout<S, T> {
     ///
     /// The description will be used primarily for adding context
     /// to the error message for the timeout's `TimeoutError`.
-    pub fn with_description<I>(self, description: I) -> Self
+    pub fn with_description<I>(mut self, description: I) -> Self
     where
         I: Into<String>,
     {
-        let description = Some(Arc::new(description.into()));
-        Timeout {
-            timer: self.timer,
-            upstream: self.upstream,
-            duration: self.duration,
-            description,
-        }
+        self.description = Some(Arc::new(description.into()));
+        self
     }
 
 }
@@ -245,16 +240,12 @@ impl<T> NewTimeout<T> {
     ///
     /// The description will be used primarily for adding context
     /// to the error message for the timeout's `TimeoutError`.
-    pub fn with_description<I>(self, description: I) -> Self
+    pub fn with_description<I>(mut self, description: I) -> Self
     where
         I: Into<String>,
     {
-        let description = Some(Arc::new(description.into()));
-        NewTimeout {
-            timer: self.timer,
-            duration: self.duration,
-            description,
-        }
+        self.description = Some(Arc::new(description.into()));
+        self
     }
 
     /// Apply the timeout to the given `upstream` service, creating a

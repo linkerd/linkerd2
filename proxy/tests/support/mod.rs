@@ -12,6 +12,7 @@ extern crate prost;
 extern crate tokio_connect;
 extern crate tokio_core;
 pub extern crate tokio_io;
+extern crate tokio_timer;
 extern crate tower;
 extern crate tower_h2;
 pub extern crate env_logger;
