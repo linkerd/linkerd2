@@ -81,7 +81,7 @@ impl tower_h2::Body for HttpBody {
 
     fn is_end_stream(&self) -> bool {
         match *self {
-            HttpBody::Http1(_) => false,
+            HttpBody::Http1(ref b) => b.is_empty(),
             HttpBody::Http2(ref b) => b.is_end_stream(),
         }
     }

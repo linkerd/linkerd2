@@ -296,13 +296,21 @@ fn http11_upgrade_not_supported() {
 }
 
 #[test]
-fn http1_get_doesnt_add_transfer_encoding() {
+fn http1_requests_without_body_doesnt_add_transfer_encoding() {
     let _ = env_logger::try_init();
 
     let srv = server::http1()
         .route_fn("/", |req| {
-            assert!(!req.headers().contains_key("transfer-encoding"));
-            Response::new("hello h1".into())
+            let has_body_header = req.headers().contains_key("transfer-encoding")
+                || req.headers().contains_key("content-length");
+            let status = if  has_body_header {
+                StatusCode::BAD_REQUEST
+            } else {
+                StatusCode::OK
+            };
+            let mut res = Response::new("".into());
+            *res.status_mut() = status;
+            res
         })
         .run();
     let ctrl = controller::new().run();
@@ -311,5 +319,23 @@ fn http1_get_doesnt_add_transfer_encoding() {
         .inbound(srv)
         .run();
     let client = client::http1(proxy.inbound, "transparency.test.svc.cluster.local");
-    assert_eq!(client.get("/"), "hello h1");
+
+    let methods = &[
+        "GET",
+        "POST",
+        "PUT",
+        "DELETE",
+        "HEAD",
+        "PATCH",
+    ];
+
+    for &method in methods {
+        let resp = client.request(
+            client
+                .request_builder("/")
+                .method(method)
+        );
+
+        assert_eq!(resp.status(), StatusCode::OK, "method={:?}", method);
+    }
 }
