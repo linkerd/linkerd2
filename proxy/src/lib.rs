@@ -31,6 +31,7 @@ extern crate rand;
 extern crate tokio_connect;
 extern crate tokio_core;
 extern crate tokio_io;
+extern crate tokio_timer;
 extern crate tower;
 extern crate tower_balance;
 extern crate tower_buffer;
@@ -72,6 +73,7 @@ mod telemetry;
 mod transparency;
 mod transport;
 pub mod timeout;
+pub mod time;
 mod tower_fn; // TODO: move to tower-fn
 
 use bind::Bind;

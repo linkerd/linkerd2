@@ -1,0 +1,268 @@
+use std::{fmt, io};
+use std::error::Error;
+use std::time::{Duration, Instant};
+use std::sync::Arc;
+
+use futures::{Future, Poll, Async};
+use tokio_connect::Connect;
+use tokio_io;
+use tower::Service;
+
+/// Abstraction over the interface required for a timer.
+///
+/// This trait exists primarily so that we can provide implementations for
+/// both `tokio_timer` and a mock timer for tests.
+pub trait Timer: Sized {
+    type Sleep: Future<Item=(), Error=Self::Error>;
+    type Error;
+
+    /// Returns a future that completes after the given duration.
+    fn sleep(&self, duration: Duration) -> Self::Sleep;
+
+    /// Returns the current time.
+    ///
+    /// This takes `&self` primarily for the mock timer implementation.
+    fn now(&self) -> Instant;
+
+    /// Returns a `Timeout` service using this timer.
+    fn timeout<'a, U>(&'a self, upstream: U, duration: Duration)
+                     -> Timeout<'a, U, Self>
+    {
+        Timeout {
+            upstream,
+            timer: self,
+            duration,
+            description: None,
+        }
+    }
+}
+
+/// Applies a timeout to requests.
+#[derive(Debug, Clone)]
+pub struct Timeout<'timer, S, T: 'timer> {
+    upstream: S,
+    timer: &'timer T,
+    duration: Duration,
+    description: Option<Arc<String>>,
+}
+
+/// Errors produced by `Timeout`.
+#[derive(Debug, Clone)]
+pub enum TimeoutError<U, T> {
+    /// The inner service produced an error
+    Upstream(U),
+
+    /// The timer produced an error
+    Timer(T),
+
+    /// The request did not complete within the specified timeout.
+    Timeout {
+        after: Duration,
+        description: Option<Arc<String>>,
+    },
+
+}
+
+/// `Timeout` inner future
+#[derive(Debug)]
+pub struct TimeoutFuture<F, S> {
+    inner: F,
+    sleep: S,
+    description: Option<Arc<String>>,
+    after: Duration
+}
+
+// ===== impl Timeout =====
+
+impl<'timer, S, T> Timeout<'timer, S, T> {
+
+    /// Add a description to this timeout.
+    ///
+    /// The description will be used primarily for adding context
+    /// to the error message for the timeout's `TimeoutError`.
+    pub fn with_description<I>(&mut self, description: I) -> &mut Self
+    where
+        I: Into<String>,
+    {
+        self.description = Some(Arc::new(description.into()));
+        self
+    }
+
+}
+
+impl<'timer, S, T> Timeout<'timer, S, T>
+where
+    T: Timer,
+{
+    #[inline]
+    fn future<F>(&self, inner: F) -> TimeoutFuture<F, T::Sleep> {
+        let description = self.description.as_ref().map(Arc::clone);
+        let sleep = self.timer.sleep(self.duration);
+        let after = self.duration;
+        TimeoutFuture {
+            inner,
+            sleep,
+            description,
+            after,
+        }
+    }
+}
+
+impl<'timer, S, T> Service for Timeout<'timer, S, T>
+where
+    S: Service,
+    T: Timer,
+{
+    type Request = S::Request;
+    type Response = S::Response;
+    type Error = TimeoutError<S::Error, T::Error>;
+    type Future = TimeoutFuture<S::Future, T::Sleep>;
+
+    fn poll_ready(&mut self) -> Poll<(), Self::Error> {
+        self.upstream.poll_ready()
+            .map_err(TimeoutError::Upstream)
+    }
+
+    fn call(&mut self, request: Self::Request) -> Self::Future {
+        let inner = self.upstream.call(request);
+        self.future(inner)
+    }
+}
+
+impl<'timer, C, T> Connect for Timeout<'timer, C, T>
+where
+    C: Connect,
+    T: Timer,
+{
+    type Connected = C::Connected;
+    type Error = TimeoutError<C::Error, T::Error>;
+    type Future = TimeoutFuture<C::Future, T::Sleep>;
+
+    fn connect(&self) -> Self::Future {
+        let inner = self.upstream.connect();
+        self.future(inner)
+    }
+}
+
+
+impl<'timer, C, T> io::Read for Timeout<'timer, C, T>
+where
+    C: io::Read,
+{
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.upstream.read(buf)
+    }
+}
+
+impl<'timer, C, T> io::Write for Timeout<'timer, C, T>
+where
+    C: io::Write,
+{
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.upstream.write(buf)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.upstream.flush()
+    }
+}
+
+impl<'timer, C, T> tokio_io::AsyncRead for Timeout<'timer, C, T>
+where
+    C: tokio_io::AsyncRead,
+{
+    unsafe fn prepare_uninitialized_buffer(&self, buf: &mut [u8]) -> bool {
+        self.upstream.prepare_uninitialized_buffer(buf)
+    }
+}
+
+impl<'timer, C, T> tokio_io::AsyncWrite for Timeout<'timer, C, T>
+where
+    C: tokio_io::AsyncWrite,
+{
+    fn shutdown(&mut self) -> Poll<(), io::Error> {
+        self.upstream.shutdown()
+    }
+}
+
+// ===== impl TimeoutFuture =====
+
+impl<F, S> TimeoutFuture<F, S> {
+
+    #[inline]
+    fn timeout_error<E, T>(&self) -> TimeoutError<E, T> {
+        let description = self.description.as_ref().map(Arc::clone);
+        TimeoutError::Timeout {
+            after: self.after,
+            description,
+        }
+    }
+
+}
+
+impl<F, S> Future for TimeoutFuture<F, S>
+where
+    F: Future,
+    S: Future,
+{
+    type Item = F::Item;
+    type Error = TimeoutError<F::Error, S::Error>;
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        // First, try polling the future
+        match self.inner.poll() {
+            Ok(Async::Ready(v)) => return Ok(Async::Ready(v)),
+            Ok(Async::NotReady) => {}
+            Err(e) => return Err(TimeoutError::Upstream(e)),
+        }
+
+        // Now check the sleep
+        match self.sleep.poll() {
+            Ok(Async::NotReady) => Ok(Async::NotReady),
+            Ok(Async::Ready(_)) => Err(self.timeout_error()),
+            Err(e) => Err(TimeoutError::Timer(e)),
+        }
+    }
+}
+
+// ===== impl TimeoutError =====
+
+impl<U, T> fmt::Display for TimeoutError<U, T>
+where
+    U: fmt::Display,
+    T: fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            TimeoutError::Timeout { ref after, description: Some(ref what) } =>
+                write!(f, "{} timed out after {:?}", what, after),
+            TimeoutError::Timeout { ref after, description: None } =>
+                write!(f, "operation timed out after {:?}", after),
+            TimeoutError::Timer(ref err) => fmt::Display::fmt(err, f),
+            TimeoutError::Upstream(ref err) => fmt::Display::fmt(err, f),
+        }
+    }
+}
+
+impl<U, T> Error for TimeoutError<U, T>
+where
+    U: Error,
+    T: Error,
+{
+    fn cause(&self) -> Option<&Error> {
+        match *self {
+            TimeoutError::Upstream(ref err) => Some(err),
+            TimeoutError::Timer(ref err) => Some(err),
+            _ => None,
+        }
+    }
+
+    fn description(&self) -> &str {
+        match *self {
+            TimeoutError::Timeout { .. } => "operation timed out",
+            TimeoutError::Upstream(ref err) => err.description(),
+            TimeoutError::Timer(ref err) => err.description(),
+        }
+    }
+}
+
