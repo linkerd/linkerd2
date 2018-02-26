@@ -1,3 +1,5 @@
+//! Timeouts and abstraction over timer implementations.
+#![deny(missing_docs)]
 use std::{fmt, io};
 use std::error::Error;
 use std::time::{Duration, Instant};
@@ -13,8 +15,13 @@ use tower::Service;
 ///
 /// This trait exists primarily so that we can provide implementations for
 /// both `tokio_timer` and a mock timer for tests.
-pub trait Timer: Sized {
+pub trait Timer: Clone + Sized {
+    /// The type of the future returned by `sleep`.
     type Sleep: Future<Item=(), Error=Self::Error>;
+    /// Error type for the `Sleep` future.
+    ///
+    /// This error will indicate an error *in the timer*, not that
+    /// a timeout was exceeded.
     type Error;
 
     /// Returns a future that completes after the given duration.
@@ -26,12 +33,21 @@ pub trait Timer: Sized {
     fn now(&self) -> Instant;
 
     /// Returns a `Timeout` service using this timer.
-    fn timeout<'a, U>(&'a self, upstream: U, duration: Duration)
-                     -> Timeout<'a, U, Self>
+    fn timeout<U>(&self, upstream: U, duration: Duration)
+                     -> Timeout<U, Self>
     {
         Timeout {
             upstream,
-            timer: self,
+            timer: self.clone(),
+            duration,
+            description: None,
+        }
+    }
+
+    /// Returns a `NewTimeout` using this timer.
+    fn new_timeout(&self, duration: Duration) -> NewTimeout<Self> {
+        NewTimeout {
+            timer: self.clone(),
             duration,
             description: None,
         }
@@ -40,9 +56,17 @@ pub trait Timer: Sized {
 
 /// Applies a timeout to requests.
 #[derive(Clone, Debug)]
-pub struct Timeout<'timer, S, T: 'timer> {
+pub struct Timeout<S, T> {
     upstream: S,
-    timer: &'timer T,
+    timer: T,
+    duration: Duration,
+    description: Option<Arc<String>>,
+}
+
+/// Wraps services with a preset timeout.
+#[derive(Clone, Debug)]
+pub struct NewTimeout<T> {
+    timer: T,
     duration: Duration,
     description: Option<Arc<String>>,
 }
@@ -58,7 +82,9 @@ pub enum TimeoutError<U, T> {
 
     /// The request did not complete within the specified timeout.
     Timeout {
+        /// The duration exceeded by the timed-out request.
         after: Duration,
+        /// An optional description naming the request that timed out.
         description: Option<Arc<String>>,
     },
 
@@ -94,23 +120,28 @@ impl Timer for tokio_timer::Timer {
 
 // ===== impl Timeout =====
 
-impl<'timer, S, T> Timeout<'timer, S, T> {
+impl<S, T> Timeout<S, T> {
 
     /// Add a description to this timeout.
     ///
     /// The description will be used primarily for adding context
     /// to the error message for the timeout's `TimeoutError`.
-    pub fn with_description<I>(&mut self, description: I) -> &mut Self
+    pub fn with_description<I>(self, description: I) -> Self
     where
         I: Into<String>,
     {
-        self.description = Some(Arc::new(description.into()));
-        self
+        let description = Some(Arc::new(description.into()));
+        Timeout {
+            timer: self.timer,
+            upstream: self.upstream,
+            duration: self.duration,
+            description,
+        }
     }
 
 }
 
-impl<'timer, S, T> Timeout<'timer, S, T>
+impl<S, T> Timeout<S, T>
 where
     T: Timer,
 {
@@ -128,7 +159,7 @@ where
     }
 }
 
-impl<'timer, S, T> Service for Timeout<'timer, S, T>
+impl<S, T> Service for Timeout<S, T>
 where
     S: Service,
     T: Timer,
@@ -149,7 +180,7 @@ where
     }
 }
 
-impl<'timer, C, T> Connect for Timeout<'timer, C, T>
+impl<C, T> Connect for Timeout<C, T>
 where
     C: Connect,
     T: Timer,
@@ -165,7 +196,7 @@ where
 }
 
 
-impl<'timer, C, T> io::Read for Timeout<'timer, C, T>
+impl<C, T> io::Read for Timeout<C, T>
 where
     C: io::Read,
 {
@@ -174,7 +205,7 @@ where
     }
 }
 
-impl<'timer, C, T> io::Write for Timeout<'timer, C, T>
+impl<C, T> io::Write for Timeout<C, T>
 where
     C: io::Write,
 {
@@ -187,7 +218,7 @@ where
     }
 }
 
-impl<'timer, C, T> tokio_io::AsyncRead for Timeout<'timer, C, T>
+impl<C, T> tokio_io::AsyncRead for Timeout<C, T>
 where
     C: tokio_io::AsyncRead,
 {
@@ -196,13 +227,59 @@ where
     }
 }
 
-impl<'timer, C, T> tokio_io::AsyncWrite for Timeout<'timer, C, T>
+impl<C, T> tokio_io::AsyncWrite for Timeout<C, T>
 where
     C: tokio_io::AsyncWrite,
 {
     fn shutdown(&mut self) -> Poll<(), io::Error> {
         self.upstream.shutdown()
     }
+}
+
+
+// ===== impl NewTimeout =====
+
+impl<T> NewTimeout<T> {
+
+    /// Add a description to the returned timeout.
+    ///
+    /// The description will be used primarily for adding context
+    /// to the error message for the timeout's `TimeoutError`.
+    pub fn with_description<I>(self, description: I) -> Self
+    where
+        I: Into<String>,
+    {
+        let description = Some(Arc::new(description.into()));
+        NewTimeout {
+            timer: self.timer,
+            duration: self.duration,
+            description,
+        }
+    }
+
+    /// Apply the timeout to the given `upstream` service, creating a
+    /// `Timeout` service.
+    pub fn apply_to<U>(&self, upstream: U) -> Timeout<U, T>
+    where
+        T: Clone,
+    {
+        let description = self.description.as_ref().map(Arc::clone);
+        Timeout {
+            upstream,
+            timer: self.timer.clone(),
+            duration: self.duration,
+            description,
+
+        }
+    }
+
+    /// Borrow the `Timer` backing this `NewTimeout`.
+    #[inline]
+    #[allow(dead_code)]
+    pub fn timer(&self) -> &T {
+        &self.timer
+    }
+
 }
 
 // ===== impl TimeoutFuture =====

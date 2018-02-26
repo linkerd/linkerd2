@@ -16,7 +16,7 @@ use ctx;
 use telemetry::{self, sensor};
 use transparency::{self, HttpBody};
 use transport;
-use ::timeout::Timeout;
+use time::{Timer, Timeout};
 
 const DEFAULT_TIMEOUT_MS: u64 = 300;
 
@@ -27,18 +27,19 @@ const DEFAULT_TIMEOUT_MS: u64 = 300;
 /// # TODO
 ///
 /// Buffering is not bounded and no timeouts are applied.
-pub struct Bind<C, B> {
+pub struct Bind<C, B, T> {
     ctx: C,
     sensors: telemetry::Sensors,
     executor: Handle,
     req_ids: Arc<AtomicUsize>,
     connect_timeout: Duration,
+    timer: T,
     _p: PhantomData<B>,
 }
 
 /// Binds a `Service` from a `SocketAddr` for a pre-determined protocol.
-pub struct BindProtocol<C, B> {
-    bind: Bind<C, B>,
+pub struct BindProtocol<C, B, T> {
+    bind: Bind<C, B, T>,
     protocol: Protocol,
 }
 
@@ -49,25 +50,26 @@ pub enum Protocol {
     Http2
 }
 
-pub type Service<B> = Reconnect<NewHttp<B>>;
+pub type Service<B, T> = Reconnect<NewHttp<B, T>>;
 
-pub type NewHttp<B> = sensor::NewHttp<Client<B>, B, HttpBody>;
+pub type NewHttp<B, T> = sensor::NewHttp<Client<B, T>, B, HttpBody>;
 
 pub type HttpResponse = http::Response<sensor::http::ResponseBody<HttpBody>>;
 
-pub type Client<B> = transparency::Client<
-    sensor::Connect<transport::TimeoutConnect<transport::Connect>>,
+pub type Client<B, T> = transparency::Client<
+    sensor::Connect<Timeout<transport::Connect, T>>,
     B,
 >;
 
-impl<B> Bind<(), B> {
-    pub fn new(executor: Handle) -> Self {
+impl<B, T> Bind<(), B, T> {
+    pub fn new(executor: Handle, timer: T) -> Self {
         Self {
             executor,
             ctx: (),
             sensors: telemetry::Sensors::null(),
             req_ids: Default::default(),
             connect_timeout: Duration::from_millis(DEFAULT_TIMEOUT_MS),
+            timer,
             _p: PhantomData,
         }
     }
@@ -86,19 +88,20 @@ impl<B> Bind<(), B> {
         }
     }
 
-    pub fn with_ctx<C>(self, ctx: C) -> Bind<C, B> {
+    pub fn with_ctx<C>(self, ctx: C) -> Bind<C, B, T> {
         Bind {
             ctx,
             sensors: self.sensors,
             executor: self.executor,
             req_ids: self.req_ids,
             connect_timeout: self.connect_timeout,
+            timer: self.timer,
             _p: PhantomData,
         }
     }
 }
 
-impl<C: Clone, B> Clone for Bind<C, B> {
+impl<C: Clone, B, T: Clone> Clone for Bind<C, B, T> {
     fn clone(&self) -> Self {
         Self {
             ctx: self.ctx.clone(),
@@ -106,13 +109,14 @@ impl<C: Clone, B> Clone for Bind<C, B> {
             executor: self.executor.clone(),
             req_ids: self.req_ids.clone(),
             connect_timeout: self.connect_timeout,
+            timer: self.timer.clone(),
             _p: PhantomData,
         }
     }
 }
 
 
-impl<C, B> Bind<C, B> {
+impl<C, B, T> Bind<C, B, T> {
     pub fn connect_timeout(&self) -> Duration {
         self.connect_timeout
     }
@@ -125,6 +129,11 @@ impl<C, B> Bind<C, B> {
         &self.executor
     }
 
+    // pub fn timer(&self) -> &T {
+    //     &self.timer
+    // }
+
+
     // pub fn req_ids(&self) -> &Arc<AtomicUsize> {
     //     &self.req_ids
     // }
@@ -135,11 +144,14 @@ impl<C, B> Bind<C, B> {
 
 }
 
-impl<B> Bind<Arc<ctx::Proxy>, B>
+impl<B, T> Bind<Arc<ctx::Proxy>, B, T>
 where
     B: tower_h2::Body + 'static,
+    T: Timer + 'static,
 {
-    pub fn bind_service(&self, addr: &SocketAddr, protocol: Protocol) -> Service<B> {
+    pub fn bind_service(&self, addr: &SocketAddr, protocol: Protocol)
+                        -> Service<B, T>
+    {
         trace!("bind_service addr={}, protocol={:?}", addr, protocol);
         let client_ctx = ctx::transport::Client::new(
             &self.ctx,
@@ -149,11 +161,13 @@ where
 
         // Map a socket address to a connection.
         let connect = {
-            let c = Timeout::new(
-                transport::Connect::new(*addr, &self.executor),
-                self.connect_timeout,
-                &self.executor,
-            );
+            let c = self.timer
+                .timeout(
+                    transport::Connect::new(*addr, &self.executor),
+                    self.connect_timeout,
+                ).with_description(format!(
+                    "binding service for {}, protocol={:?}", addr, protocol)
+                );
 
             self.sensors.connect(c, &client_ctx)
         };
@@ -176,8 +190,8 @@ where
 // ===== impl BindProtocol =====
 
 
-impl<C, B> Bind<C, B> {
-    pub fn with_protocol(self, protocol: Protocol) -> BindProtocol<C, B> {
+impl<C, B, T> Bind<C, B, T> {
+    pub fn with_protocol(self, protocol: Protocol) -> BindProtocol<C, B, T> {
         BindProtocol {
             bind: self,
             protocol,
@@ -185,14 +199,15 @@ impl<C, B> Bind<C, B> {
     }
 }
 
-impl<B> control::discovery::Bind for BindProtocol<Arc<ctx::Proxy>, B>
+impl<B, T> control::discovery::Bind for BindProtocol<Arc<ctx::Proxy>, B, T>
 where
     B: tower_h2::Body + 'static,
+    T: Timer + 'static,
 {
     type Request = http::Request<B>;
     type Response = HttpResponse;
-    type Error = <Service<B> as tower::Service>::Error;
-    type Service = Service<B>;
+    type Error = <Service<B, T> as tower::Service>::Error;
+    type Service = Service<B, T>;
     type BindError = ();
 
     fn bind(&self, addr: &SocketAddr) -> Result<Self::Service, Self::BindError> {

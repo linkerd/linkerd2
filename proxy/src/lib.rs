@@ -45,7 +45,8 @@ extern crate tower_in_flight_limit;
 
 use futures::*;
 
-use std::io;
+use std::error::Error;
+use std::{fmt, io};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::thread;
@@ -71,7 +72,6 @@ mod outbound;
 mod telemetry;
 mod transparency;
 mod transport;
-pub mod timeout;
 pub mod time;
 mod tower_fn; // TODO: move to tower-fn
 
@@ -96,7 +96,7 @@ use outbound::Outbound;
 /// The private listener routes requests to service-discovery-aware load-balancer.
 ///
 
-pub struct Main<G> {
+pub struct Main<G, T> {
     config: config::Config,
 
     control_listener: BoundPort,
@@ -104,13 +104,17 @@ pub struct Main<G> {
     outbound_listener: BoundPort,
 
     get_original_dst: G,
+
+    timer: T,
 }
 
-impl<G> Main<G>
+impl<G, T> Main<G, T>
 where
     G: GetOriginalDst + Clone + 'static,
+    T: time::Timer + Send + 'static,
+    T::Error: Error + fmt::Debug + 'static,
 {
-    pub fn new(config: config::Config, get_original_dst: G) -> Self {
+    pub fn new(config: config::Config, get_original_dst: G, timer: T) -> Self {
 
         let control_listener = BoundPort::new(config.control_listener.addr)
             .expect("controller listener bind");
@@ -124,6 +128,7 @@ where
             inbound_listener,
             outbound_listener,
             get_original_dst,
+            timer,
         }
     }
 
@@ -156,6 +161,7 @@ where
             inbound_listener,
             outbound_listener,
             get_original_dst,
+            timer,
         } = self;
 
         let control_host_and_port = config.control_host_and_port.clone();
@@ -174,14 +180,15 @@ where
             config.metrics_flush_interval,
         );
 
-        let (control, control_bg) = control::new();
+        let (control, control_bg) = control::new(&timer);
 
         let mut core = Core::new().expect("executor");
         let executor = core.handle();
 
         let dns_config = dns::Config::from_file(&config.resolv_conf_path);
 
-        let bind = Bind::new(executor.clone()).with_sensors(sensors.clone());
+        let bind = Bind::new(executor.clone(), timer.clone())
+            .with_sensors(sensors.clone());
 
         // Setup the public listener. This will listen on a publicly accessible
         // address and listen for inbound connections that should be forwarded
@@ -203,6 +210,7 @@ where
                 sensors.clone(),
                 get_original_dst.clone(),
                 &executor,
+                &timer,
             );
             ::logging::context_future("inbound", fut)
         };
@@ -236,6 +244,7 @@ where
                 sensors,
                 get_original_dst,
                 &executor,
+                &timer,
             );
             ::logging::context_future("outbound", fut)
         };
@@ -292,7 +301,7 @@ where
     }
 }
 
-fn serve<R, B, E, F, G>(
+fn serve<R, B, E, F, G, T>(
     bound_port: BoundPort,
     recognize: R,
     tcp_connect_timeout: Duration,
@@ -300,6 +309,7 @@ fn serve<R, B, E, F, G>(
     sensors: telemetry::Sensors,
     get_orig_dst: G,
     executor: &Handle,
+    timer: &T,
 ) -> Box<Future<Item = (), Error = io::Error> + 'static>
 where
     B: tower_h2::Body + Default + 'static,
@@ -313,6 +323,8 @@ where
     >
         + 'static,
     G: GetOriginalDst + 'static,
+    T: time::Timer + 'static,
+    T::Error: fmt::Debug,
 {
     let router = Router::new(recognize);
     let stack = Arc::new(NewServiceFn::new(move || {
@@ -332,6 +344,7 @@ where
         stack,
         tcp_connect_timeout,
         executor.clone(),
+        timer,
     );
 
     bound_port.listen_and_fold(
