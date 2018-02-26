@@ -15,11 +15,10 @@ use tokio_core::reactor::{
 use tower::Service;
 use tower_h2;
 use tower_reconnect::{Error as ReconnectError, Reconnect};
-use url::HostAndPort;
 
 use dns;
 use fully_qualified_authority::FullyQualifiedAuthority;
-use transport::LookupAddressAndConnect;
+use transport::{HostAndPort, LookupAddressAndConnect};
 use timeout::{Timeout, TimeoutError};
 
 pub mod discovery;
@@ -79,11 +78,9 @@ impl Background {
     {
         // Build up the Controller Client Stack
         let mut client = {
-            let ctx = ("controller-client", format!("{}", host_and_port));
+            let ctx = ("controller-client", format!("{:?}", host_and_port));
             let scheme = http::uri::Scheme::from_shared(Bytes::from_static(b"http")).unwrap();
-            let authority =
-                http::uri::Authority::from_shared(format!("{}", host_and_port).into()).unwrap();
-
+            let authority = http::uri::Authority::from(&host_and_port);
             let dns_resolver = dns::Resolver::new(dns_config, executor);
             let connect = Timeout::new(
                 LookupAddressAndConnect::new(host_and_port, dns_resolver, executor),

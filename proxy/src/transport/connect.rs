@@ -1,12 +1,15 @@
 use futures::Future;
 use tokio_connect;
 use tokio_core::reactor::Handle;
-use url;
 
 use std::io;
 use std::net::{IpAddr, SocketAddr};
+use std::str::FromStr;
+
+use http;
 
 use connection;
+use convert;
 use dns;
 use ::timeout;
 
@@ -16,14 +19,62 @@ pub struct Connect {
     handle: Handle,
 }
 
+#[derive(Clone, Debug)]
+pub struct HostAndPort {
+    pub host: Host,
+    pub port: u16,
+}
+
+#[derive(Clone, Debug)]
+pub enum Host {
+    DnsName(String),
+    Ip(IpAddr),
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum HostAndPortError {
+    /// The port is missing.
+    MissingPort,
+}
+
 #[derive(Debug, Clone)]
 pub struct LookupAddressAndConnect {
-    host_and_port: url::HostAndPort,
+    host_and_port: HostAndPort,
     dns_resolver: dns::Resolver,
     handle: Handle,
 }
 
 pub type TimeoutConnect<C> = timeout::Timeout<C>;
+
+// ===== impl HostAndPort =====
+
+impl<'a> convert::TryFrom<&'a http::uri::Authority> for HostAndPort {
+    type Err = HostAndPortError;
+    fn try_from(a: &http::uri::Authority) -> Result<Self, Self::Err> {
+        let host = {
+            let host = a.host();
+            match IpAddr::from_str(host) {
+                Err(_) => Host::DnsName(host.to_owned()),
+                Ok(ip) => Host::Ip(ip),
+            }
+        };
+        let port = a.port().ok_or_else(|| HostAndPortError::MissingPort)?;
+        Ok(HostAndPort {
+            host,
+            port
+        })
+    }
+}
+
+impl<'a> From<&'a HostAndPort> for http::uri::Authority {
+    fn from(a: &HostAndPort) -> Self {
+        let s = match a.host {
+            Host::DnsName(ref n) => format!("{}:{}", n, a.port),
+            Host::Ip(ref ip) => format!("{}:{}", ip, a.port),
+        };
+        http::uri::Authority::from_str(&s).unwrap()
+    }
+}
 
 // ===== impl Connect =====
 
@@ -51,7 +102,7 @@ impl tokio_connect::Connect for Connect {
 
 impl LookupAddressAndConnect {
     pub fn new(
-        host_and_port: url::HostAndPort,
+        host_and_port: HostAndPort,
         dns_resolver: dns::Resolver,
         handle: &Handle,
     ) -> Self {
@@ -78,7 +129,7 @@ impl tokio_connect::Connect for LookupAddressAndConnect {
                 io::Error::new(io::ErrorKind::NotFound, "DNS resolution failed")
             })
             .and_then(move |ip_addr: IpAddr| {
-                info!("DNS resolved {} to {}", host, ip_addr);
+                info!("DNS resolved {:?} to {}", host, ip_addr);
                 let addr = SocketAddr::from((ip_addr, port));
                 trace!("connect {}", addr);
                 connection::connect(&addr, &handle)

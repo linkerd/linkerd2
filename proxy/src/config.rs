@@ -5,8 +5,9 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
 
-use url::{Host, HostAndPort, Url};
+use http;
 
+use transport::{Host, HostAndPort, HostAndPortError};
 use convert::TryFrom;
 
 // TODO:
@@ -104,17 +105,14 @@ pub enum UrlError {
     /// The URL has a scheme that isn't supported.
     UnsupportedScheme,
 
-    /// The URL is missing the host part.
-    MissingHost,
+    /// The URL is missing the authority part.
+    MissingAuthority,
 
-    /// The URL is missing the port and there is no default port.
-    MissingPort,
+    /// The URL is missing the authority part.
+    AuthorityError(HostAndPortError),
 
     /// The URL contains a path component that isn't "/", which isn't allowed.
     PathNotAllowed,
-
-    /// The URL contains a fragment, which isn't allowed.
-    FragmentNotAllowed,
 }
 
 /// The strings used to build a configuration.
@@ -265,20 +263,11 @@ impl FromStr for Addr {
     type Err = ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match parse_url(s)? {
-            HostAndPort {
-                host: Host::Ipv4(ip),
-                port,
-            } => Ok(Addr(SocketAddr::new(ip.into(), port))),
-            HostAndPort {
-                host: Host::Ipv6(ip),
-                port,
-            } => Ok(Addr(SocketAddr::new(ip.into(), port))),
-            HostAndPort {
-                host: Host::Domain(_),
-                ..
-            } => Err(ParseError::HostIsNotAnIpAddress),
+        let a = parse_url(s)?;
+        if let Host::Ip(ip) = a.host {
+            return Ok(Addr(SocketAddr::from((ip, a.port))));
         }
+        Err(ParseError::HostIsNotAnIpAddress)
     }
 }
 
@@ -337,24 +326,22 @@ fn parse_number<T>(s: &str) -> Result<T, ParseError> where T: FromStr {
 }
 
 fn parse_url(s: &str) -> Result<HostAndPort, ParseError> {
-    let url = Url::parse(&s).map_err(|_| ParseError::UrlError(UrlError::SyntaxError))?;
-    let host = url.host()
-        .ok_or_else(|| ParseError::UrlError(UrlError::MissingHost))?
-        .to_owned();
-    if url.scheme() != "tcp" {
+    let url = s.parse::<http::Uri>().map_err(|_| ParseError::UrlError(UrlError::SyntaxError))?;
+    if url.scheme_part().map(|s| s.as_str()) != Some("tcp") {
         return Err(ParseError::UrlError(UrlError::UnsupportedScheme));
     }
-    let port = url.port().ok_or_else(|| ParseError::UrlError(UrlError::MissingPort))?;
+    let authority = url.authority_part()
+        .ok_or_else(|| ParseError::UrlError(UrlError::MissingAuthority))?;
+
     if url.path() != "/" {
         return Err(ParseError::UrlError(UrlError::PathNotAllowed));
     }
-    if url.fragment().is_some() {
-        return Err(ParseError::UrlError(UrlError::FragmentNotAllowed));
-    }
-    Ok(HostAndPort {
-        host,
-        port,
-    })
+    // http::Uri doesn't provde an accessor for the fragment; See
+    // https://github.com/hyperium/http/issues/127. For now just ignore any
+    // fragment that is there.
+
+    HostAndPort::try_from(authority)
+        .map_err(|e| ParseError::UrlError(UrlError::AuthorityError(e)))
 }
 
 fn parse<T, Parse>(strings: &Strings, name: &str, parse: Parse) -> Result<Option<T>, Error>
