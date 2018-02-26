@@ -6,6 +6,7 @@ use std::sync::Arc;
 use futures::{Future, Poll, Async};
 use tokio_connect::Connect;
 use tokio_io;
+use tokio_timer;
 use tower::Service;
 
 /// Abstraction over the interface required for a timer.
@@ -38,7 +39,7 @@ pub trait Timer: Sized {
 }
 
 /// Applies a timeout to requests.
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub struct Timeout<'timer, S, T: 'timer> {
     upstream: S,
     timer: &'timer T,
@@ -47,7 +48,7 @@ pub struct Timeout<'timer, S, T: 'timer> {
 }
 
 /// Errors produced by `Timeout`.
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub enum TimeoutError<U, T> {
     /// The inner service produced an error
     Upstream(U),
@@ -70,6 +71,25 @@ pub struct TimeoutFuture<F, S> {
     sleep: S,
     description: Option<Arc<String>>,
     after: Duration
+}
+
+// ===== impl Timer =====
+
+impl Timer for tokio_timer::Timer {
+    type Sleep = tokio_timer::Sleep;
+    type Error = tokio_timer::TimerError;
+
+    /// Returns a future that completes after the given duration.
+    fn sleep(&self, duration: Duration) -> Self::Sleep {
+        self.sleep(duration)
+    }
+
+    /// Returns the current time.
+    ///
+    /// This takes `&self` primarily for the mock timer implementation.
+    fn now(&self) -> Instant {
+        Instant::now()
+    }
 }
 
 // ===== impl Timeout =====
