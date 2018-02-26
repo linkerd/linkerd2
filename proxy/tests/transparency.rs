@@ -357,7 +357,7 @@ fn http1_requests_without_body_doesnt_add_transfer_encoding() {
             } else {
                 StatusCode::OK
             };
-            let mut res = Response::new(Default::default());
+            let mut res = Response::new("".into());
             *res.status_mut() = status;
             res
         })
