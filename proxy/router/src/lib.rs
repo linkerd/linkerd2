@@ -1,9 +1,9 @@
 extern crate futures;
-extern crate ordermap;
+extern crate indexmap;
 extern crate tower;
 
 use futures::{Future, Poll};
-use ordermap::OrderMap;
+use indexmap::IndexMap;
 use tower::Service;
 
 use std::hash::Hash;
@@ -67,7 +67,7 @@ where T: Recognize,
 struct Inner<T>
 where T: Recognize,
 {
-    routes: OrderMap<T::Key, T::Service>,
+    routes: IndexMap<T::Key, T::Service>,
     recognize: T,
 }
 

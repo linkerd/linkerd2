@@ -1,5 +1,5 @@
 use futures_mpsc_lossy;
-use ordermap::OrderMap;
+use indexmap::IndexMap;
 
 use conduit_proxy_controller_grpc::tap::observe_request;
 
@@ -12,7 +12,7 @@ pub use self::match_::InvalidMatch;
 
 #[derive(Default, Debug)]
 pub struct Taps {
-    by_id: OrderMap<usize, Tap>,
+    by_id: IndexMap<usize, Tap>,
 }
 
 #[derive(Debug)]
