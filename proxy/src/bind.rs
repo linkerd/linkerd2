@@ -1,10 +1,11 @@
+use std::cmp;
 use std::marker::PhantomData;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
 use std::time::Duration;
 
-use http;
+use http::{self, header, uri};
 use tokio_core::reactor::Handle;
 use tower;
 use tower_h2;
@@ -13,7 +14,6 @@ use tower_reconnect::Reconnect;
 use conduit_proxy_controller_grpc;
 use control;
 use ctx;
-use fully_qualified_authority::FullyQualifiedAuthority;
 use telemetry::{self, sensor};
 use transparency::{self, HttpBody};
 use transport;
@@ -43,18 +43,21 @@ pub struct BindProtocol<C, B> {
     protocol: Protocol,
 }
 
-/// Mark whether to use HTTP/1 or HTTP/2
+/// Protocol portion of the `Recognize` key for a request.
+///
+/// This marks whether to use HTTP/2 or HTTP/1.x for a request. In
+/// the case of HTTP/1.x requests, it also stores a "host" key to ensure
+/// that each host receives its own connection.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Protocol {
     Http1(Host),
     Http2
 }
 
-/// Mark whether to use HTTP/1 or HTTP/2
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Eq, Hash)]
 pub enum Host {
-    LocalSvc(FullyQualifiedAuthority),
-    External(http::uri::Authority),
+    Authority(uri::Authority),
+    NoAuthority,
 }
 
 pub type Service<B> = Reconnect<NewHttp<B>>;
@@ -217,39 +220,43 @@ where
 // ===== impl Protocol =====
 
 
-impl Protocol {
-    pub fn from_req<B>(req: &http::Request<B>,
-                       fqa: Option<&FullyQualifiedAuthority>)
-                       -> Option<Protocol>
-    {
+impl<'a, B> From<&'a http::Request<B>> for Protocol {
+    fn from(req: &'a http::Request<B>) -> Protocol {
         if req.version() == http::Version::HTTP_2 {
-            return Some(Protocol::Http2)
+            return Protocol::Http2
         }
 
-        let host = fqa
-            .map(Host::from)
-            .or_else(|| req
-                .uri()
-                .authority_part()
-                .map(Host::from)
-            );
+        // If the request has an authority part, use that as the host part of
+        // the key for an HTTP/1.x request.
+        let host = req.uri().authority_part()
+            .cloned()
+            .or_else(|| {
+                // No authority part in the request URI, so try and use the
+                // Host: header value, if one is present and it can be parsed
+                // as an Authority.
+                    req.headers().get(header::HOST)
+                        .and_then(|header| {
+                            header.to_str().ok()
+                                .and_then(|header|
+                                    header.parse::<uri::Authority>().ok())
+                        })
+                })
+            .map(Host::Authority)
+            .unwrap_or_else(|| Host::NoAuthority);
 
-
-        Some(Protocol::Http1(host?))
+        Protocol::Http1(host)
     }
 }
 
 // ===== impl Host =====
 
-
-impl<'a> From<&'a FullyQualifiedAuthority> for Host {
-    fn from(fqa: &'a FullyQualifiedAuthority) -> Self {
-        Host::LocalSvc(fqa.clone())
-    }
-}
-
-impl<'a> From<&'a http::uri::Authority> for Host {
-    fn from(authority: &'a http::uri::Authority) -> Self {
-        Host::External(authority.clone())
+impl cmp::PartialEq for Host {
+    // Override the equality rules for `Host` so that the `NoAuthority` case
+    // is *never* equal, even to other `NoAuthority` values.
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (&Host::Authority(ref a), &Host::Authority(ref b)) => a == b,
+            _ => false,
+        }
     }
 }
