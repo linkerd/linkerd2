@@ -21,7 +21,7 @@ prost-types = "0.3.0"
 tower-grpc = { git = "https://github.com/tower-rs/tower-grpc" }
 tower-h2   = { git = "https://github.com/tower-rs/tower-h2" }
 
-quickcheck = { version = "0.6", optional = true }
+quickcheck = { version = "0.6", default-features = false, optional = true }
 
 
 [build-dependencies]

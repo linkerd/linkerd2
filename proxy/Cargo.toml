@@ -54,5 +54,5 @@ tower-util            = { git = "https://github.com/tower-rs/tower" }
 libc = "0.2"
 
 [dev-dependencies]
-quickcheck = "0.6"
+quickcheck = { version = "0.6", default-features = false }
 conduit-proxy-controller-grpc = { path = "./controller-grpc" , features = ["arbitrary"] }
