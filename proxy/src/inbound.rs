@@ -55,9 +55,9 @@ where
             })
             .or_else(|| self.default_addr);
 
-        let proto = bind::Protocol::from_req(req, None);
+        let proto = bind::Protocol::from(req);
 
-        let key = key.and_then(|addr| Some((addr, proto?)));
+        let key = key.map(|addr| (addr, proto));
         trace!("recognize key={:?}", key);
 
 
@@ -93,7 +93,7 @@ mod tests {
 
     use super::Inbound;
     use conduit_proxy_controller_grpc::common::Protocol;
-    use bind::{self, Bind};
+    use bind::Bind;
     use ctx;
 
     fn new_inbound(default: Option<net::SocketAddr>, ctx: &Arc<ctx::Proxy>) -> Inbound<()> {
@@ -113,14 +113,13 @@ mod tests {
             let inbound = new_inbound(None, &ctx);
 
             let srv_ctx = ctx::transport::Server::new(&ctx, &local, &remote, &Some(orig_dst), Protocol::Http);
-
-            let rec = srv_ctx.orig_dst_if_not_local().map(|addr| (addr, bind::Protocol::Http1));
+            let rec = srv_ctx.orig_dst_if_not_local();
 
             let mut req = http::Request::new(());
             req.extensions_mut()
                 .insert(srv_ctx);
 
-            inbound.recognize(&req) == rec
+            inbound.recognize(&req).map(|(addr, _)| addr) == rec
         }
 
         fn recognize_default_no_orig_dst(
@@ -142,7 +141,8 @@ mod tests {
                     Protocol::Http,
                 ));
 
-            inbound.recognize(&req) == default.map(|addr| (addr, bind::Protocol::Http1))
+
+            inbound.recognize(&req).map(|(addr, _)| addr) == default
         }
 
         fn recognize_default_no_ctx(default: Option<net::SocketAddr>) -> bool {
@@ -152,7 +152,7 @@ mod tests {
 
             let req = http::Request::new(());
 
-            inbound.recognize(&req) == default.map(|addr| (addr, bind::Protocol::Http1))
+            inbound.recognize(&req).map(|(addr, _)| addr) == default
         }
 
         fn recognize_default_no_loop(
@@ -174,7 +174,7 @@ mod tests {
                     Protocol::Http,
                 ));
 
-            inbound.recognize(&req) == default.map(|addr| (addr, bind::Protocol::Http1))
+            inbound.recognize(&req).map(|(addr, _)| addr) == default
         }
     }
 }

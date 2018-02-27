@@ -96,8 +96,6 @@ where
 
         });
 
-        let proto = bind::Protocol::from_req(req, local.as_ref())?;
-
         // If we can't fully qualify the authority as a local service,
         // and there is no original dst, then we have nothing! In that
         // case, we return `None`, which results an "unrecognized" error.
@@ -119,10 +117,7 @@ where
             Destination::External(orig_dst?)
         };
 
-        let proto = match req.version() {
-            http::Version::HTTP_2 => Protocol::Http2,
-            _ => Protocol::Http1,
-        };
+        let proto = bind::Protocol::from(req);
 
         Some((dest, proto))
     }
