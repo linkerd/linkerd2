@@ -13,6 +13,7 @@ import (
 	"github.com/runconduit/conduit/controller/util"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"reflect"
 )
 
@@ -268,9 +269,6 @@ func toAddrSet(endpoints []common.TcpAddress) *pb.AddrSet {
 }
 
 func splitDNSName(dnsName string) ([]string, error) {
-	// TODO: Validate that `dnsName` is a valid DNS name:
-	// https://github.com/runconduit/conduit/issues/170.
-
 	// If the name is fully qualified, strip off the final dot.
 	if strings.HasSuffix(dnsName, ".") {
 		dnsName = dnsName[:len(dnsName)-1]
@@ -285,6 +283,10 @@ func splitDNSName(dnsName string) ([]string, error) {
 	for _, l := range labels {
 		if l == "" {
 			return []string{}, errors.New("Empty label in DNS name: " + dnsName)
+		}
+		errs := validation.IsDNS1123Label(l)
+		if errs != nil && len(errs) > 0 {
+			return []string{}, errors.New(errs[0])
 		}
 	}
 	return labels, nil

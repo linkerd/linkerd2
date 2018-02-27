@@ -79,6 +79,8 @@ func TestSplitDNSName(t *testing.T) {
 		{"example.com..", []string{}, true},
 		{"..example.com.", []string{}, true},
 		{"foo.example.com", []string{"foo", "example", "com"}, false},
+		{"invalid/character", []string{}, true},
+		{"", []string{}, true},
 	}
 
 	for i, tc := range testCases {
