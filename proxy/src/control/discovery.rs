@@ -263,7 +263,8 @@ where
                         Entry::Vacant(vac) => {
                             let req = Destination {
                                 scheme: "k8s".into(),
-                                path: vac.key().without_trailing_dot().into(),
+                                path: vac.key().without_trailing_dot()
+                                        .as_str().into(),
                             };
                             // TODO: Can grpc::Request::new be removed?
                             let mut svc = DestinationSvc::new(client.lift_ref());
@@ -298,7 +299,7 @@ where
                 trace!("Destination.Get reconnect {:?}", auth);
                 let req = Destination {
                     scheme: "k8s".into(),
-                    path: auth.without_trailing_dot().into(),
+                    path: auth.without_trailing_dot().as_str().into(),
                 };
                 let mut svc = DestinationSvc::new(client.lift_ref());
                 let response = svc.get(grpc::Request::new(req));

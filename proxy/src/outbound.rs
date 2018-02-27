@@ -17,7 +17,7 @@ use bind::{self, Bind, Protocol};
 use control::{self, discovery};
 use control::discovery::Bind as BindTrait;
 use ctx;
-use fully_qualified_authority::FullyQualifiedAuthority;
+use fully_qualified_authority::{FullyQualifiedAuthority, NamedAddress};
 use timeout::Timeout;
 
 type BindProtocol<B> = bind::BindProtocol<Arc<ctx::Proxy>, B>;
@@ -72,7 +72,7 @@ where
     >>>>;
 
     fn recognize(&self, req: &Self::Request) -> Option<Self::Key> {
-        let local = req.uri().authority_part().and_then(|authority| {
+        let local = req.uri().authority_part().map(|authority| {
             FullyQualifiedAuthority::normalize(
                 authority,
                 self.default_namespace.as_ref().map(|s| s.as_ref()),
@@ -87,8 +87,11 @@ where
         // In practice, this shouldn't ever happen, since we expect the proxy
         // to be run on Linux servers, with iptables setup, so there should
         // always be an original destination.
-        let dest = if let Some(local) = local {
-            Destination::LocalSvc(local)
+        let dest = if let Some(NamedAddress {
+            name,
+            use_destination_service: true
+        }) = local {
+            Destination::LocalSvc(name)
         } else {
             let orig_dst = req.extensions()
                 .get::<Arc<ctx::transport::Server>>()
