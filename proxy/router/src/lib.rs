@@ -228,15 +228,14 @@ where T: Recognize,
 
 impl<T, U> fmt::Display for Error<T, U>
 where
-    T: fmt::Debug,
-    U: fmt::Debug,
+    T: fmt::Display,
+    U: fmt::Display,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Error::Inner(ref why) =>
-                write!(f, "inner service error: {:?}", why),
+            Error::Inner(ref why) => fmt::Display::fmt(why, f),
             Error::Route(ref why) =>
-                write!(f, "route recognition failed: {:?}", why),
+                write!(f, "route recognition failed: {}", why),
             Error::NotRecognized => f.pad("route not recognized"),
         }
     }

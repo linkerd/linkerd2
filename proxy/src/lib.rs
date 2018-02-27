@@ -333,7 +333,7 @@ where
                     //             i.description(), after);
                     //         http::StatusCode::GATEWAY_TIMEOUT
                     // } else {
-                        error!("inner service error: {}", i);
+                        error!("{}", i);
                         http::StatusCode::INTERNAL_SERVER_ERROR
                     // }
                 }
