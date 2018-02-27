@@ -5,24 +5,14 @@ use std::str::FromStr;
 
 use http::uri::Authority;
 
-/// A fully qualified authority according to Kubernetes service naming
-/// conventions.
+/// A normalized `Authority`.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct FullyQualifiedAuthority(Authority);
 
-/// A fully qualified authority, and whether or not the `Destination` service
-/// should be queried for that name.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct NamedAddress {
     pub name: FullyQualifiedAuthority,
     pub use_destination_service: bool
-}
-
-impl NamedAddress {
-    #[inline]
-    pub fn without_trailing_dot(&self) -> &Authority {
-        self.name.without_trailing_dot()
-    }
 }
 
 impl FullyQualifiedAuthority {
@@ -186,7 +176,7 @@ mod tests {
             let output = super::FullyQualifiedAuthority::normalize(
                 &input, default_namespace, default_zone);
             assert_eq!(output.use_destination_service, true);
-            output.without_trailing_dot().as_str().into()
+            output.name.without_trailing_dot().as_str().into()
         }
 
         fn external(input: &str, default_namespace: Option<&str>,
@@ -198,7 +188,7 @@ mod tests {
             let output = super::FullyQualifiedAuthority::normalize(
                 &input, default_namespace, default_zone);
             assert_eq!(output.use_destination_service, false);
-            assert_eq!(output.without_trailing_dot().as_str(), input);
+            assert_eq!(output.name.without_trailing_dot().as_str(), input);
         }
 
         external("name", None, None);
