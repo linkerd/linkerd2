@@ -71,12 +71,6 @@ pub type Client<B> = transparency::Client<
     B,
 >;
 
-pub fn request_orig_dst<B>(req: &http::Request<B>) -> Option<SocketAddr> {
-    req.extensions()
-        .get::<Arc<ctx::transport::Server>>().map(AsRef::as_ref)
-        .and_then(ctx::transport::Server::orig_dst_if_not_local)
-}
-
 impl<B> Bind<(), B> {
     pub fn new(executor: Handle) -> Self {
         Self {
