@@ -5,7 +5,7 @@ use std::thread;
 
 #[test]
 fn outbound_asks_controller_api() {
-    let _ = env_logger::init();
+    let _ = env_logger::try_init();
 
     let srv = server::new().route("/", "hello").route("/bye", "bye").run();
     let ctrl = controller::new()
@@ -20,7 +20,7 @@ fn outbound_asks_controller_api() {
 
 #[test]
 fn outbound_reconnects_if_controller_stream_ends() {
-    let _ = env_logger::init();
+    let _ = env_logger::try_init();
 
     let srv = server::new().route("/recon", "nect").run();
     let ctrl = controller::new()
@@ -35,7 +35,7 @@ fn outbound_reconnects_if_controller_stream_ends() {
 
 #[test]
 fn outbound_updates_newer_services() {
-    let _ = env_logger::init();
+    let _ = env_logger::try_init();
 
     //TODO: when the support server can listen on both http1 and http2
     //at the same time, do that here
@@ -91,7 +91,7 @@ fn outbound_times_out() {
 
 #[test]
 fn outbound_uses_orig_dst_if_not_local_svc() {
-    let _ = env_logger::init();
+    let _ = env_logger::try_init();
 
     let srv = server::new()
         .route("/", "hello")
