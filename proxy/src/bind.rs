@@ -13,6 +13,7 @@ use tower_reconnect::Reconnect;
 use conduit_proxy_controller_grpc;
 use control;
 use ctx;
+use fully_qualified_authority::FullyQualifiedAuthority;
 use telemetry::{self, sensor};
 use transparency::{self, HttpBody};
 use transport;
@@ -43,10 +44,17 @@ pub struct BindProtocol<C, B> {
 }
 
 /// Mark whether to use HTTP/1 or HTTP/2
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Protocol {
-    Http1,
+    Http1(Host),
     Http2
+}
+
+/// Mark whether to use HTTP/1 or HTTP/2
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Host {
+    LocalSvc(FullyQualifiedAuthority),
+    External(http::uri::Authority),
 }
 
 pub type Service<B> = Reconnect<NewHttp<B>>;
@@ -59,6 +67,12 @@ pub type Client<B> = transparency::Client<
     sensor::Connect<transport::TimeoutConnect<transport::Connect>>,
     B,
 >;
+
+pub fn request_orig_dst<B>(req: &http::Request<B>) -> Option<SocketAddr> {
+    req.extensions()
+        .get::<Arc<ctx::transport::Server>>().map(AsRef::as_ref)
+        .and_then(ctx::transport::Server::orig_dst_if_not_local)
+}
 
 impl<B> Bind<(), B> {
     pub fn new(executor: Handle) -> Self {
@@ -139,7 +153,7 @@ impl<B> Bind<Arc<ctx::Proxy>, B>
 where
     B: tower_h2::Body + 'static,
 {
-    pub fn bind_service(&self, addr: &SocketAddr, protocol: Protocol) -> Service<B> {
+    pub fn bind_service(&self, addr: &SocketAddr, protocol: &Protocol) -> Service<B> {
         trace!("bind_service addr={}, protocol={:?}", addr, protocol);
         let client_ctx = ctx::transport::Client::new(
             &self.ctx,
@@ -196,7 +210,46 @@ where
     type BindError = ();
 
     fn bind(&self, addr: &SocketAddr) -> Result<Self::Service, Self::BindError> {
-        Ok(self.bind.bind_service(addr, self.protocol))
+        Ok(self.bind.bind_service(addr, &self.protocol))
     }
 }
 
+// ===== impl Protocol =====
+
+
+impl Protocol {
+    pub fn from_req<B>(req: &http::Request<B>,
+                       fqa: Option<&FullyQualifiedAuthority>)
+                       -> Option<Protocol>
+    {
+        if req.version() == http::Version::HTTP_2 {
+            return Some(Protocol::Http2)
+        }
+
+        let host = fqa
+            .map(Host::from)
+            .or_else(|| req
+                .uri()
+                .authority_part()
+                .map(Host::from)
+            );
+
+
+        Some(Protocol::Http1(host?))
+    }
+}
+
+// ===== impl Host =====
+
+
+impl<'a> From<&'a FullyQualifiedAuthority> for Host {
+    fn from(fqa: &'a FullyQualifiedAuthority) -> Self {
+        Host::LocalSvc(fqa.clone())
+    }
+}
+
+impl<'a> From<&'a http::uri::Authority> for Host {
+    fn from(authority: &'a http::uri::Authority) -> Self {
+        Host::External(authority.clone())
+    }
+}

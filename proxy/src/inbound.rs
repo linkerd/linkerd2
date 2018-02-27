@@ -55,14 +55,11 @@ where
             })
             .or_else(|| self.default_addr);
 
-        let proto = match req.version() {
-            http::Version::HTTP_2 => bind::Protocol::Http2,
-            _ => bind::Protocol::Http1,
-        };
+        let proto = bind::Protocol::from_req(req, None);
 
-        let key = key.map(|addr| (addr, proto));
-
+        let key = key.and_then(|addr| Some((addr, proto?)));
         trace!("recognize key={:?}", key);
+
 
         key
     }
@@ -74,7 +71,7 @@ where
     /// Buffering is currently unbounded and does not apply timeouts. This must be
     /// changed.
     fn bind_service(&mut self, key: &Self::Key) -> Result<Self::Service, Self::RouteError> {
-        let &(ref addr, proto) = key;
+        let &(ref addr, ref proto) = key;
         debug!("building inbound {:?} client to {}", proto, addr);
 
         Buffer::new(self.bind.bind_service(addr, proto), self.bind.executor())

@@ -73,9 +73,13 @@ where
     B: tower_h2::Body + 'static,
 {
     /// Create a new `Client`, bound to a specific protocol (HTTP/1 or HTTP/2).
-    pub fn new(protocol: bind::Protocol, connect: C, executor: Handle) -> Self {
-        match protocol {
-            bind::Protocol::Http1 => {
+    pub fn new(protocol: &bind::Protocol,
+               connect: C,
+               executor: Handle)
+               -> Self
+    {
+        match *protocol {
+            bind::Protocol::Http1(_) => {
                 let h1 = hyper::Client::configure()
                     .connector(HyperConnect::new(connect))
                     .body()
