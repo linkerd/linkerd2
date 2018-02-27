@@ -59,7 +59,7 @@ fn outbound_updates_newer_services() {
 #[test]
 #[cfg_attr(not(feature = "flaky_tests"), ignore)]
 fn outbound_times_out() {
-    let _ = env_logger::init();
+    let _ = env_logger::try_init();
     let mut env = config::TestEnv::new();
 
     // set the bind timeout to 100 ms.
