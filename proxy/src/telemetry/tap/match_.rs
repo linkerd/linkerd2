@@ -412,15 +412,8 @@ mod tests {
                         None => Some(InvalidMatch::Empty),
                         Some(&common::http_method::Type::Unregistered(ref m)) => if m.len() <= 15 {
                             let mut err = None;
-                            for c in m.bytes() {
-                                let ok =
-                                    b'A' <= c && c <= b'Z' ||
-                                    b'a' <= c && c <= b'z' ||
-                                    b'0' <= c && c <= b'9' ;
-                                if !ok {
-                                    err = Some(InvalidMatch::InvalidHttpMethod);
-                                    break;
-                                }
+                            if let Err(_) = ::http::Method::from_bytes(m.as_bytes()) {
+                                err = Some(InvalidMatch::InvalidHttpMethod);
                             }
                             err
                         } else {
