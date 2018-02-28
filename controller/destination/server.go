@@ -3,18 +3,19 @@ package destination
 import (
 	"fmt"
 	"net"
+	"regexp"
 	"strconv"
 	"strings"
 
 	"errors"
+	"reflect"
+
 	common "github.com/runconduit/conduit/controller/gen/common"
 	pb "github.com/runconduit/conduit/controller/gen/proxy/destination"
 	"github.com/runconduit/conduit/controller/k8s"
 	"github.com/runconduit/conduit/controller/util"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
-	"k8s.io/apimachinery/pkg/util/validation"
-	"reflect"
 )
 
 type (
@@ -22,6 +23,12 @@ type (
 		k8sDNSZoneLabels []string
 		endpoints        *k8s.EndpointsWatcher
 	}
+)
+
+var (
+	dnsCharactersRegexp             = regexp.MustCompile("^[a-zA-Z0-9-]{0,63}$")
+	startsAndEndsWithAlphanumRegexp = regexp.MustCompile("^(([a-zA-Z0-9].*[a-zA-Z0-9])|[a-zA-Z0-9])$")
+	containsAlphaRegexp             = regexp.MustCompile("[a-zA-Z]")
 )
 
 // The Destination service serves service discovery information to the proxy.
@@ -284,9 +291,14 @@ func splitDNSName(dnsName string) ([]string, error) {
 		if l == "" {
 			return []string{}, errors.New("Empty label in DNS name: " + dnsName)
 		}
-		errs := validation.IsDNS1123Label(l)
-		if errs != nil && len(errs) > 0 {
-			return []string{}, errors.New(errs[0])
+		if !dnsCharactersRegexp.MatchString(l) {
+			return []string{}, errors.New("DNS name is too long or contains invalid characters: " + dnsName)
+		}
+		if !startsAndEndsWithAlphanumRegexp.MatchString(l) {
+			return []string{}, errors.New("DNS name cannot start or end with a dash: " + dnsName)
+		}
+		if !containsAlphaRegexp.MatchString(l) {
+			return []string{}, errors.New("DNS name cannot only contain numerals: " + dnsName)
 		}
 	}
 	return labels, nil
