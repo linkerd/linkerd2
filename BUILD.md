@@ -144,6 +144,10 @@ bin/conduit stat deployments
 
 # view a live pipeline of requests
 bin/conduit tap deploy emojivoto/voting
+
+# view grafana dashboard
+kubectl -n conduit port-forward $(kubectl --namespace=conduit get po --selector=app=grafana -o jsonpath='{.items[*].metadata.name}') 3000:3000
+open http://localhost:3000
 ```
 
 ## Go

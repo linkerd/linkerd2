@@ -549,4 +549,208 @@ data:
       - source_labels: [__meta_kubernetes_pod_container_name]
         action: replace
         target_label: job
+
+### Grafana ###
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: grafana
+  namespace: Namespace
+  labels:
+    ControllerComponentLabel: grafana
+  annotations:
+    CreatedByAnnotation: CliVersion
+spec:
+  type: ClusterIP
+  selector:
+    ControllerComponentLabel: grafana
+  ports:
+  - name: http
+    port: 3000
+    targetPort: 3000
+
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  annotations:
+    CreatedByAnnotation: CliVersion
+  creationTimestamp: null
+  labels:
+    ControllerComponentLabel: grafana
+  name: grafana
+  namespace: Namespace
+spec:
+  replicas: 1
+  strategy: {}
+  template:
+    metadata:
+      annotations:
+        CreatedByAnnotation: CliVersion
+        conduit.io/created-by: conduit/cli undefined
+        conduit.io/proxy-version: undefined
+      creationTimestamp: null
+      labels:
+        ControllerComponentLabel: grafana
+        conduit.io/control-plane-ns: Namespace
+    spec:
+      containers:
+      - image: GrafanaImage
+        imagePullPolicy: ImagePullPolicy
+        name: grafana
+        ports:
+        - containerPort: 3000
+          name: http
+        resources: {}
+        volumeMounts:
+        - mountPath: /etc/grafana
+          name: grafana-config
+          readOnly: true
+        - mountPath: /var/lib/grafana/dashboards
+          name: grafana-dashboards
+        - mountPath: /usr/share/grafana/public/dashboards
+          name: grafana-dashboard-home
+          readOnly: true
+      - env:
+        - name: CONDUIT_PROXY_LOG
+          value: warn,conduit_proxy=info
+        - name: CONDUIT_PROXY_CONTROL_URL
+          value: tcp://proxy-api.Namespace.svc.cluster.local:8086
+        - name: CONDUIT_PROXY_CONTROL_LISTENER
+          value: tcp://0.0.0.0:4190
+        - name: CONDUIT_PROXY_PRIVATE_LISTENER
+          value: tcp://127.0.0.1:4140
+        - name: CONDUIT_PROXY_PUBLIC_LISTENER
+          value: tcp://0.0.0.0:4143
+        - name: CONDUIT_PROXY_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: CONDUIT_PROXY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: CONDUIT_PROXY_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN
+          value: Kubernetes
+        image: gcr.io/runconduit/proxy:undefined
+        imagePullPolicy: IfNotPresent
+        name: conduit-proxy
+        ports:
+        - containerPort: 4143
+          name: conduit-proxy
+        resources: {}
+        securityContext:
+          runAsUser: 2102
+      initContainers:
+      - args:
+        - --incoming-proxy-port
+        - "4143"
+        - --outgoing-proxy-port
+        - "4140"
+        - --proxy-uid
+        - "2102"
+        - --inbound-ports-to-ignore
+        - "4190"
+        image: gcr.io/runconduit/proxy-init:undefined
+        imagePullPolicy: IfNotPresent
+        name: conduit-init
+        resources: {}
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+          privileged: false
+      volumes:
+      - configMap:
+          items:
+          - key: grafana.ini
+            path: grafana.ini
+          - key: datasources.yaml
+            path: provisioning/datasources/datasources.yaml
+          - key: dashboards.yaml
+            path: provisioning/dashboards/dashboards.yaml
+          name: grafana-config
+        name: grafana-config
+      - configMap:
+          name: grafana-dashboards
+        name: grafana-dashboards
+      - configMap:
+          items:
+          - key: conduit-viz.json
+            path: home.json
+          name: grafana-dashboards
+        name: grafana-dashboard-home
+status: {}
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: grafana-config
+  namespace: Namespace
+  labels:
+    ControllerComponentLabel: grafana
+  annotations:
+    CreatedByAnnotation: CliVersion
+data:
+  grafana.ini: |-
+    instance_name = conduit-grafana
+
+    [auth]
+    disable_login_form = true
+
+    [auth.anonymous]
+    enabled = true
+    org_role = Editor
+
+    [auth.basic]
+    enabled = false
+
+  datasources.yaml: |-
+    apiVersion: 1
+    datasources:
+    - name: prometheus
+      type: prometheus
+      access: proxy
+      orgId: 1
+      url: http://prometheus.Namespace.svc.cluster.local:9090
+      isDefault: true
+      jsonData:
+        timeInterval: "5s"
+      version: 1
+      editable: true
+
+  dashboards.yaml: |-
+    apiVersion: 1
+    providers:
+    - name: 'default'
+      orgId: 1
+      folder: ''
+      type: file
+      disableDeletion: true
+      editable: true
+      options:
+        path: /var/lib/grafana/dashboards
+        homeDashboardId: conduit-viz
+
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: grafana-dashboards
+  namespace: Namespace
+  labels:
+    ControllerComponentLabel: grafana
+  annotations:
+    CreatedByAnnotation: CliVersion
+data:
+  conduit-viz.json: |-
+    VizDashboard
+
+  conduit-health.json: |-
+    HealthDashboard
 ---
