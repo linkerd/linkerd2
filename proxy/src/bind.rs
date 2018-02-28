@@ -2,7 +2,6 @@ use std::marker::PhantomData;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
-use std::time::Duration;
 
 use http;
 use tokio_core::reactor::Handle;
@@ -16,9 +15,6 @@ use ctx;
 use telemetry::{self, sensor};
 use transparency::{self, HttpBody};
 use transport;
-use ::timeout::Timeout;
-
-const DEFAULT_TIMEOUT_MS: u64 = 300;
 
 /// Binds a `Service` from a `SocketAddr`.
 ///
@@ -32,7 +28,6 @@ pub struct Bind<C, B> {
     sensors: telemetry::Sensors,
     executor: Handle,
     req_ids: Arc<AtomicUsize>,
-    connect_timeout: Duration,
     _p: PhantomData<B>,
 }
 
@@ -56,7 +51,7 @@ pub type NewHttp<B> = sensor::NewHttp<Client<B>, B, HttpBody>;
 pub type HttpResponse = http::Response<sensor::http::ResponseBody<HttpBody>>;
 
 pub type Client<B> = transparency::Client<
-    sensor::Connect<transport::TimeoutConnect<transport::Connect>>,
+    sensor::Connect<transport::Connect>,
     B,
 >;
 
@@ -67,15 +62,7 @@ impl<B> Bind<(), B> {
             ctx: (),
             sensors: telemetry::Sensors::null(),
             req_ids: Default::default(),
-            connect_timeout: Duration::from_millis(DEFAULT_TIMEOUT_MS),
             _p: PhantomData,
-        }
-    }
-
-    pub fn with_connect_timeout(self, connect_timeout: Duration) -> Self {
-        Self {
-            connect_timeout,
-            ..self
         }
     }
 
@@ -92,7 +79,6 @@ impl<B> Bind<(), B> {
             sensors: self.sensors,
             executor: self.executor,
             req_ids: self.req_ids,
-            connect_timeout: self.connect_timeout,
             _p: PhantomData,
         }
     }
@@ -105,7 +91,6 @@ impl<C: Clone, B> Clone for Bind<C, B> {
             sensors: self.sensors.clone(),
             executor: self.executor.clone(),
             req_ids: self.req_ids.clone(),
-            connect_timeout: self.connect_timeout,
             _p: PhantomData,
         }
     }
@@ -113,9 +98,6 @@ impl<C: Clone, B> Clone for Bind<C, B> {
 
 
 impl<C, B> Bind<C, B> {
-    pub fn connect_timeout(&self) -> Duration {
-        self.connect_timeout
-    }
 
     // pub fn ctx(&self) -> &C {
     //     &self.ctx
@@ -148,15 +130,10 @@ where
         );
 
         // Map a socket address to a connection.
-        let connect = {
-            let c = Timeout::new(
-                transport::Connect::new(*addr, &self.executor),
-                self.connect_timeout,
-                &self.executor,
-            );
-
-            self.sensors.connect(c, &client_ctx)
-        };
+        let connect = self.sensors.connect(
+            transport::Connect::new(*addr, &self.executor),
+            &client_ctx
+        );
 
         let client = transparency::Client::new(
             protocol,
