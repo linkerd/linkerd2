@@ -9,7 +9,6 @@ import (
 	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
-	"github.com/runconduit/conduit/pkg/shell"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -25,8 +24,7 @@ var dashboardCmd = &cobra.Command{
 			return fmt.Errorf("port must be greater than or equal to zero, was %d", dashboardProxyPort)
 		}
 
-		shellHomeDir := shell.NewUnixShell().HomeDir()
-		kubernetesProxy, err := k8s.InitK8sProxy(shellHomeDir, kubeconfigPath, dashboardProxyPort)
+		kubernetesProxy, err := k8s.NewProxy(kubeconfigPath, dashboardProxyPort)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to initialize proxy: %s\n", err)
 			os.Exit(1)
