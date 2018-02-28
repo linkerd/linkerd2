@@ -320,22 +320,14 @@ where
 
         // Map errors to appropriate response error codes.
         MapErr::new(router, |e| {
-
             match e {
                 RouteError::Route(r) => {
-                    error!("route error: {:?}", r);
+                    error!("route error: {}", r);
                     http::StatusCode::INTERNAL_SERVER_ERROR
                 }
                 RouteError::Inner(i) => {
-                    // TODO: type system hates this...
-                    // if let Some(cause) = i.cause() {
-                    //         error!("{}: timed out after {:?}",
-                    //             i.description(), after);
-                    //         http::StatusCode::GATEWAY_TIMEOUT
-                    // } else {
-                        error!("{}", i);
-                        http::StatusCode::INTERNAL_SERVER_ERROR
-                    // }
+                    error!("{}", i);
+                    http::StatusCode::INTERNAL_SERVER_ERROR
                 }
                 RouteError::NotRecognized => {
                     error!("route not recognized");

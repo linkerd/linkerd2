@@ -25,12 +25,6 @@ pub struct ResponseFuture<T, E, F> {
     _p: PhantomData<E>,
 }
 
-// pub fn get_cause<E>(whatever: &E) -> Option<&Error> {
-//     match whatever {
-//         e @ &Error => Some(e),
-//         _ => None
-//     }
-// }
 
 // ===== impl MapErr =====
 
@@ -46,23 +40,6 @@ where
             f: Arc::new(f),
             _p: PhantomData,
         }
-    }
-}
-
-impl<T, E> MapErr<T, E, fn(E) -> http::StatusCode>
-where
-    T: Service<Error = E>,
-    E: Debug,
-{
-    /// Crete a new `MapErr` with the default behaviour
-    /// (mapping all errors to HTTP 500).
-    #[allow(dead_code)]
-    pub fn internal_error(inner: T) -> Self {
-        let default_map = |error: E| -> http::StatusCode {
-            error!("turning service error into 500: {:?}", error);
-            StatusCode::INTERNAL_SERVER_ERROR
-        };
-        Self::new(inner, default_map)
     }
 }
 
