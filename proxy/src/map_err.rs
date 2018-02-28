@@ -1,13 +1,9 @@
-// use std::any::Any;
-// use std::error::Error;
-use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::sync::Arc;
 
 use futures::{Future, Poll};
 use h2;
 use http;
-use http::StatusCode;
 use http::header::CONTENT_LENGTH;
 use tower::Service;
 
