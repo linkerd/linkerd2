@@ -4,12 +4,10 @@ import (
 	"github.com/runconduit/conduit/controller/api/public"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
-	"github.com/runconduit/conduit/pkg/shell"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
-var cfgFile string
 var controlPlaneNamespace string
 var apiAddr string // An empty value means "use the Kubernetes configuration"
 var kubeconfigPath string
@@ -47,7 +45,7 @@ func newPublicAPIClient() (pb.ApiClient, error) {
 	if apiAddr != "" {
 		return public.NewInternalClient(apiAddr)
 	}
-	kubeAPI, err := k8s.NewK8sAPI(shell.NewUnixShell().HomeDir(), kubeconfigPath)
+	kubeAPI, err := k8s.NewAPI(kubeconfigPath)
 	if err != nil {
 		return nil, err
 	}

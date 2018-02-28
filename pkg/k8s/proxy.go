@@ -16,10 +16,10 @@ type KubernetesProxy struct {
 	server   *proxy.Server
 }
 
-// InitK8sProxy initalizes a KubernetesProxy object and starts listening on a
+// NewProxy returns a new KubernetesProxy object and starts listening on a
 // network address.
-func InitK8sProxy(homedir string, k8sConfigFilesystemPathOverride string, proxyPort int) (*KubernetesProxy, error) {
-	config, err := buildK8sConfig(homedir, k8sConfigFilesystemPathOverride)
+func NewProxy(configPath string, proxyPort int) (*KubernetesProxy, error) {
+	config, err := getConfig(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("error configuring Kubernetes API client: %v", err)
 	}
