@@ -158,7 +158,7 @@ const DEFAULT_REPORT_TIMEOUT_SECS: u64 = 10; // TODO: is this a reasonable defau
 const DEFAULT_PRIVATE_LISTENER: &str = "tcp://127.0.0.1:4140";
 const DEFAULT_PUBLIC_LISTENER: &str = "tcp://0.0.0.0:4143";
 const DEFAULT_CONTROL_LISTENER: &str = "tcp://0.0.0.0:4190";
-const DEFAULT_PRIVATE_CONNECT_TIMEOUT_MS: u64 = 20;
+const DEFAULT_PRIVATE_CONNECT_TIMEOUT_MS: u64 = 200;
 const DEFAULT_BIND_TIMEOUT_MS: u64 = 10_000; // ten seconds, as in Linkerd.
 const DEFAULT_RESOLV_CONF: &str = "/etc/resolv.conf";
 
