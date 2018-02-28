@@ -1,6 +1,7 @@
 package telemetry
 
 import (
+	"context"
 	"errors"
 	"reflect"
 	"testing"
@@ -9,7 +10,6 @@ import (
 	"github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 	read "github.com/runconduit/conduit/controller/gen/controller/telemetry"
-	"golang.org/x/net/context"
 )
 
 type mockProm struct {

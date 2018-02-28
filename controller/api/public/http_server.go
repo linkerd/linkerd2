@@ -1,6 +1,7 @@
 package public
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -12,7 +13,6 @@ import (
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/controller/util"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc/metadata"
 )
 
