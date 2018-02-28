@@ -15,6 +15,7 @@ use connection::Connection;
 use ctx::Proxy as ProxyCtx;
 use ctx::transport::{Server as ServerCtx};
 use telemetry::Sensors;
+use time::Timer;
 use transport::GetOriginalDst;
 use super::glue::{HttpBody, HttpBodyNewSvc, HyperServerSvc};
 use super::protocol::Protocol;
@@ -25,7 +26,7 @@ use super::tcp;
 /// This type can `serve` new connections, determine what protocol
 /// the connection is speaking, and route it to the corresponding
 /// service.
-pub struct Server<S: NewService, B: tower_h2::Body, G>
+pub struct Server<S: NewService, B: tower_h2::Body, G, T>
 where
     S: NewService<Request=http::Request<HttpBody>>,
     S::Future: 'static,
@@ -38,10 +39,10 @@ where
     new_service: S,
     proxy_ctx: Arc<ProxyCtx>,
     sensors: Sensors,
-    tcp: tcp::Proxy,
+    tcp: tcp::Proxy<T>,
 }
 
-impl<S, B, G> Server<S, B, G>
+impl<S, B, G, T> Server<S, B, G, T>
 where
     S: NewService<
         Request = http::Request<HttpBody>,
@@ -51,6 +52,8 @@ where
     S::Error: fmt::Debug,
     B: tower_h2::Body + 'static,
     G: GetOriginalDst,
+    T: Timer + 'static,
+    T::Error: fmt::Debug,
 {
     /// Creates a new `Server`.
     pub fn new(
@@ -61,9 +64,15 @@ where
         stack: S,
         tcp_connect_timeout: Duration,
         executor: Handle,
+        timer: &T,
     ) -> Self {
         let recv_body_svc = HttpBodyNewSvc::new(stack.clone());
-        let tcp = tcp::Proxy::new(tcp_connect_timeout, sensors.clone(), &executor);
+        let tcp = tcp::Proxy::new(
+            tcp_connect_timeout,
+            sensors.clone(),
+            &executor,
+            timer,
+        );
         Server {
             executor: executor.clone(),
             get_orig_dst,

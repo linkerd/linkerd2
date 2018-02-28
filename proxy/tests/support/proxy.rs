@@ -1,20 +1,24 @@
 use support::*;
+use support::time::Timer;
 
+use std::error::Error;
 use std::sync::{Arc, Mutex};
 
 use convert::TryFrom;
 
-pub fn new() -> Proxy {
+pub fn new() -> Proxy<tokio_timer::Timer> {
     Proxy::new()
 }
 
 #[derive(Debug)]
-pub struct Proxy {
+pub struct Proxy<T> {
     controller: Option<controller::Listening>,
     inbound: Option<server::Listening>,
     outbound: Option<server::Listening>,
 
     metrics_flush_interval: Option<Duration>,
+
+    timer: T,
 }
 
 #[derive(Debug)]
@@ -26,7 +30,7 @@ pub struct Listening {
     shutdown: Shutdown,
 }
 
-impl Proxy {
+impl Proxy<tokio_timer::Timer> {
     pub fn new() -> Self {
         Proxy {
             controller: None,
@@ -34,8 +38,13 @@ impl Proxy {
             outbound: None,
 
             metrics_flush_interval: None,
+
+            timer: tokio_timer::Timer::default(),
         }
     }
+}
+
+impl<T> Proxy<T> {
 
     pub fn controller(mut self, c: controller::Listening) -> Self {
         self.controller = Some(c);
@@ -57,13 +66,32 @@ impl Proxy {
         self
     }
 
-    pub fn run(self) -> Listening {
+        pub fn timer<I>(self, timer: I) -> Proxy<I> {
+        Proxy {
+            controller: self.controller,
+            inbound: self.inbound,
+            outbound: self.outbound,
+            metrics_flush_interval: self.metrics_flush_interval,
+            timer,
+        }
+    }
+
+    pub fn run(self) -> Listening
+    where
+        T: Timer + Send + 'static,
+        T::Error: Error,
+    {
         self.run_with_test_env(config::TestEnv::new())
     }
 
-    pub fn run_with_test_env(self, mut env: config::TestEnv) -> Listening {
+    pub fn run_with_test_env(self, mut env: config::TestEnv) -> Listening
+    where
+        T: Timer + Send + 'static,
+        T::Error: Error,
+    {
         run(self, env)
     }
+
 }
 
 #[derive(Clone, Debug)]
@@ -95,7 +123,11 @@ impl conduit_proxy::GetOriginalDst for MockOriginalDst {
 }
 
 
-fn run(proxy: Proxy, mut env: config::TestEnv) -> Listening {
+fn run<T>(proxy: Proxy<T>, mut env: config::TestEnv) -> Listening
+where
+    T: Timer + Send + 'static,
+    T::Error: Error,
+{
     use self::conduit_proxy::config;
 
     let controller = proxy.controller.expect("proxy controller missing");
@@ -131,7 +163,11 @@ fn run(proxy: Proxy, mut env: config::TestEnv) -> Listening {
 
     let mock_orig_dst = MockOriginalDst(Arc::new(Mutex::new(mock_orig_dst)));
 
-    let main = conduit_proxy::Main::new(config, mock_orig_dst.clone());
+    let main = conduit_proxy::Main::new(
+        config,
+        mock_orig_dst.clone(),
+        proxy.timer
+    );
 
     let control_addr = main.control_addr();
     let inbound_addr = main.inbound_addr();
