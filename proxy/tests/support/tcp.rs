@@ -2,6 +2,7 @@ use support::*;
 
 use std::collections::VecDeque;
 use std::io;
+use std::sync::{Arc, Mutex};
 
 use self::futures::sync::{mpsc, oneshot};
 use self::tokio_core::net::TcpStream;
@@ -182,6 +183,8 @@ fn run_client(addr: SocketAddr) -> TcpSender {
 fn run_server(tcp: TcpServer) -> server::Listening {
     let (tx, rx) = shutdown_signal();
     let (addr_tx, addr_rx) = oneshot::channel();
+    let conn_count = Arc::new(Mutex::new(0));
+    let srv_conn_count = Arc::clone(&conn_count);
     ::std::thread::Builder::new().name("support server".into()).spawn(move || {
         let mut core = Core::new().unwrap();
         let reactor = core.handle();
@@ -198,6 +201,7 @@ fn run_server(tcp: TcpServer) -> server::Listening {
             let cb = accepts.pop_front().expect("no more accepts");
 
             let fut = cb.call_box(sock);
+            *(srv_conn_count.lock().unwrap()) += 1;
             reactor.spawn(fut);
             Ok(())
         });
@@ -209,5 +213,6 @@ fn run_server(tcp: TcpServer) -> server::Listening {
     server::Listening {
         addr,
         shutdown: tx,
+        conn_count,
     }
 }

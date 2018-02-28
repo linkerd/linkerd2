@@ -605,3 +605,39 @@ fn http1_response_end_of_file() {
         assert_eq!(body, "body till eof", "HTTP/{} body", v);
     }
 }
+
+#[test]
+fn http1_one_connection_per_host() {
+    let _ = env_logger::try_init();
+
+    let srv = server::http1().route("/", "hello").run();
+    let ctrl = controller::new()
+        .run();
+    let proxy = proxy::new().controller(ctrl).inbound(srv).run();
+
+    let client = client::http1(proxy.inbound, "foo.bar");
+
+    let res1 = client.request(client.request_builder("/")
+        .version(http::Version::HTTP_11)
+        .header("host", "foo.bar")
+    );
+    assert_eq!(res1.status(), http::StatusCode::OK);
+    assert_eq!(res1.version(), http::Version::HTTP_11);
+    let res1 = client.request(client.request_builder("/")
+        .version(http::Version::HTTP_11)
+        .header("host", "foo.bar")
+    );
+    assert_eq!(res1.status(), http::StatusCode::OK);
+    assert_eq!(res1.version(), http::Version::HTTP_11);
+
+    let client = client::http1(proxy.inbound, "bar.baz");
+    let res2 = client.request(client.request_builder("/")
+        .version(http::Version::HTTP_11)
+        .header("host", "bar.baz"));
+    assert_eq!(res2.status(), http::StatusCode::OK);
+    assert_eq!(res2.version(), http::Version::HTTP_11);
+
+    let inbound = &proxy.inbound_server.as_ref()
+        .expect("no inbound server!");
+    assert_eq!(inbound.connections(), 2);
+}
