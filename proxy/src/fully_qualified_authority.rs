@@ -5,8 +5,15 @@ use std::str::FromStr;
 
 use http::uri::Authority;
 
+/// A normalized `Authority`.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct FullyQualifiedAuthority(Authority);
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct NamedAddress {
+    pub name: FullyQualifiedAuthority,
+    pub use_destination_service: bool
+}
 
 impl FullyQualifiedAuthority {
     /// Normalizes the name according to Kubernetes service naming conventions.
@@ -16,11 +23,15 @@ impl FullyQualifiedAuthority {
     ///
     /// Returns `None` is authority doesn't look like a local Kubernetes service.
     pub fn normalize(authority: &Authority, default_namespace: Option<&str>,
-               default_zone: Option<&str>)
-               -> Option<FullyQualifiedAuthority> {
+                     default_zone: Option<&str>)
+                    -> NamedAddress
+    {
         // Don't change IP-address-based authorities.
         if IpAddr::from_str(authority.host()).is_ok() {
-            return None;
+            return NamedAddress {
+                name: FullyQualifiedAuthority(authority.clone()),
+                use_destination_service: false,
+            }
         };
 
         // TODO: `Authority` doesn't have a way to get the serialized form of the
@@ -38,7 +49,12 @@ impl FullyQualifiedAuthority {
         if name.ends_with('.') {
             let authority = authority.clone().into_bytes();
             let normalized = authority.slice(0, authority.len() - 1);
-            return Some(FullyQualifiedAuthority(Authority::from_shared(normalized).unwrap()));
+            let authority = Authority::from_shared(normalized).unwrap();
+            let name = FullyQualifiedAuthority(authority);
+            return NamedAddress {
+                name,
+                use_destination_service: true,
+            }
         }
 
         // parts should have a maximum 4 of pieces (name, namespace, svc, zone)
@@ -59,7 +75,10 @@ impl FullyQualifiedAuthority {
         let append_svc = if let Some(part) = parts.next() {
             if !part.eq_ignore_ascii_case("svc") {
                 // if not "$name.$namespace.svc", treat as external
-                return None;
+                return NamedAddress {
+                    name: FullyQualifiedAuthority(authority.clone()),
+                    use_destination_service: false,
+                }
             }
 
             false
@@ -67,7 +86,10 @@ impl FullyQualifiedAuthority {
             true
         } else if namespace_to_append.is_none() {
             // We can't append ".svc" without a namespace, so treat as external.
-            return None;
+            return NamedAddress {
+                name: FullyQualifiedAuthority(authority.clone()),
+                use_destination_service: false,
+            }
         } else {
             true
         };
@@ -78,7 +100,10 @@ impl FullyQualifiedAuthority {
                 if !zone.eq_ignore_ascii_case(default_zone) {
                     // if "a.b.svc.foo" and zone is not "foo",
                     // treat as external
-                    return None;
+                    return NamedAddress {
+                        name: FullyQualifiedAuthority(authority.clone()),
+                        use_destination_service: false,
+                    }
                 }
             }
             None
@@ -99,7 +124,10 @@ impl FullyQualifiedAuthority {
 
         // If we're not going to change anything then don't allocate anything.
         if additional_len == 0 {
-            return Some(FullyQualifiedAuthority(authority.clone()));
+            return NamedAddress {
+                name: FullyQualifiedAuthority(authority.clone()),
+                use_destination_service: true,
+            }
         }
 
         // `authority.as_str().len()` includes the length of `colon_port`.
@@ -119,12 +147,17 @@ impl FullyQualifiedAuthority {
         }
         normalized.extend_from_slice(colon_port.as_bytes());
 
-        Some(FullyQualifiedAuthority(Authority::from_shared(normalized.freeze())
-            .expect("syntactically-valid authority")))
+        let name = Authority::from_shared(normalized.freeze())
+            .expect("syntactically-valid authority");
+        let name = FullyQualifiedAuthority(name);
+        NamedAddress {
+            name,
+            use_destination_service: true,
+        }
     }
 
-    pub fn without_trailing_dot(&self) -> &str {
-        self.0.as_str()
+    pub fn without_trailing_dot(&self) -> &Authority {
+        &self.0
     }
 }
 
@@ -132,141 +165,137 @@ impl FullyQualifiedAuthority {
 mod tests {
     #[test]
     fn test_normalized_authority() {
-        fn f(input: &str, default_namespace: Option<&str>,
+        fn local(input: &str, default_namespace: Option<&str>,
              default_zone: Option<&str>)
              -> String {
             use bytes::Bytes;
             use http::uri::Authority;
 
-            let input = Authority::from_shared(Bytes::from(input.as_bytes())).unwrap();
-            let output = match super::FullyQualifiedAuthority::normalize(
-                &input, default_namespace, default_zone) {
-                Some(output) => output,
-                None => panic!(
-                    "unexpected None for input={:?}, default_namespace={:?}, default_zone={:?}",
-                    input,
-                    default_namespace,
-                    default_zone
-                ),
-            };
-            output.without_trailing_dot().into()
+            let input = Authority::from_shared(Bytes::from(input.as_bytes()))
+                .unwrap();
+            let output = super::FullyQualifiedAuthority::normalize(
+                &input, default_namespace, default_zone);
+            assert_eq!(output.use_destination_service, true);
+            output.name.without_trailing_dot().as_str().into()
         }
 
-        fn none(input: &str, default_namespace: Option<&str>,
+        fn external(input: &str, default_namespace: Option<&str>,
              default_zone: Option<&str>) {
             use bytes::Bytes;
             use http::uri::Authority;
 
             let input = Authority::from_shared(Bytes::from(input.as_bytes())).unwrap();
-            assert_eq!(None, super::FullyQualifiedAuthority::normalize(
-                &input, default_namespace, default_zone));
+            let output = super::FullyQualifiedAuthority::normalize(
+                &input, default_namespace, default_zone);
+            assert_eq!(output.use_destination_service, false);
+            assert_eq!(output.name.without_trailing_dot().as_str(), input);
         }
 
-        none("name", None, None);
+        external("name", None, None);
         assert_eq!("name.namespace.svc",
-                   f("name.namespace", None, None));
+                   local("name.namespace", None, None));
         assert_eq!("name.namespace.svc",
-                   f("name.namespace.svc", None, None));
+                   local("name.namespace.svc", None, None));
         assert_eq!("name.namespace.svc.cluster",
-                   f("name.namespace.svc.cluster", None, None));
+                   local("name.namespace.svc.cluster", None, None));
         assert_eq!("name.namespace.svc.cluster.local",
-                   f("name.namespace.svc.cluster.local", None, None));
+                   local("name.namespace.svc.cluster.local", None, None));
 
         assert_eq!("name.namespace.svc",
-                   f("name", Some("namespace"), None));
+                   local("name", Some("namespace"), None));
         assert_eq!("name.namespace.svc",
-                   f("name.namespace", Some("namespace"), None));
+                   local("name.namespace", Some("namespace"), None));
         assert_eq!("name.namespace.svc",
-                   f("name.namespace.svc", Some("namespace"), None));
+                   local("name.namespace.svc", Some("namespace"), None));
         assert_eq!("name.namespace.svc.cluster",
-                   f("name.namespace.svc.cluster", Some("namespace"), None));
+                   local("name.namespace.svc.cluster", Some("namespace"), None));
         assert_eq!("name.namespace.svc.cluster.local",
-                   f("name.namespace.svc.cluster.local", Some("namespace"), None));
+                   local("name.namespace.svc.cluster.local", Some("namespace"), None));
 
-        none("name", None, Some("cluster.local"));
+        external("name", None, Some("cluster.local"));
         assert_eq!("name.namespace.svc.cluster.local",
-                   f("name.namespace", None, Some("cluster.local")));
+                   local("name.namespace", None, Some("cluster.local")));
         assert_eq!("name.namespace.svc.cluster.local",
-                   f("name.namespace.svc", None, Some("cluster.local")));
-        none("name.namespace.svc.cluster", None, Some("cluster.local"));
+                   local("name.namespace.svc", None, Some("cluster.local")));
+        external("name.namespace.svc.cluster", None, Some("cluster.local"));
         assert_eq!("name.namespace.svc.cluster.local",
-                   f("name.namespace.svc.cluster.local", None, Some("cluster.local")));
+                   local("name.namespace.svc.cluster.local", None, Some("cluster.local")));
 
         assert_eq!("name.namespace.svc.cluster.local",
-                   f("name", Some("namespace"), Some("cluster.local")));
+                   local("name", Some("namespace"), Some("cluster.local")));
         assert_eq!("name.namespace.svc.cluster.local",
-                   f("name.namespace", Some("namespace"), Some("cluster.local")));
+                   local("name.namespace", Some("namespace"), Some("cluster.local")));
         assert_eq!("name.namespace.svc.cluster.local",
-                   f("name.namespace.svc", Some("namespace"), Some("cluster.local")));
-        none("name.namespace.svc.cluster", Some("namespace"), Some("cluster.local"));
+                   local("name.namespace.svc", Some("namespace"), Some("cluster.local")));
+        external("name.namespace.svc.cluster", Some("namespace"), Some("cluster.local"));
         assert_eq!("name.namespace.svc.cluster.local",
-                   f("name.namespace.svc.cluster.local", Some("namespace"), Some("cluster.local")));
+                   local("name.namespace.svc.cluster.local", Some("namespace"), Some("cluster.local")));
 
         // Fully-qualified names end with a dot and aren't modified except by removing the dot.
         assert_eq!("name",
-                   f("name.", None, None));
+                   local("name.", None, None));
         assert_eq!("name.namespace",
-                   f("name.namespace.", None, None));
+                   local("name.namespace.", None, None));
         assert_eq!("name.namespace.svc",
-                   f("name.namespace.svc.", None, None));
+                   local("name.namespace.svc.", None, None));
         assert_eq!("name.namespace.svc.cluster",
-                   f("name.namespace.svc.cluster.", None, None));
+                   local("name.namespace.svc.cluster.", None, None));
         assert_eq!("name.namespace.svc.cluster.local",
-                   f("name.namespace.svc.cluster.local.", None, None));
+                   local("name.namespace.svc.cluster.local.", None, None));
         assert_eq!("name",
-                   f("name.", Some("namespace"), None));
+                   local("name.", Some("namespace"), None));
         assert_eq!("name.namespace",
-                   f("name.namespace.", Some("namespace"), None));
+                   local("name.namespace.", Some("namespace"), None));
         assert_eq!("name.namespace.svc",
-                   f("name.namespace.svc.", Some("namespace"), None));
+                   local("name.namespace.svc.", Some("namespace"), None));
         assert_eq!("name.namespace.svc.cluster",
-                   f("name.namespace.svc.cluster.", Some("namespace"), None));
+                   local("name.namespace.svc.cluster.", Some("namespace"), None));
         assert_eq!("name.namespace.svc.cluster.local",
-                   f("name.namespace.svc.cluster.local.", Some("namespace"), None));
+                   local("name.namespace.svc.cluster.local.", Some("namespace"), None));
         assert_eq!("name",
-                   f("name.", Some("namespace"), Some("cluster.local")));
+                   local("name.", Some("namespace"), Some("cluster.local")));
         assert_eq!("name.namespace",
-                   f("name.namespace.", Some("namespace"), Some("cluster.local")));
+                   local("name.namespace.", Some("namespace"), Some("cluster.local")));
         assert_eq!("name.namespace.svc",
-                   f("name.namespace.svc.", Some("namespace"), Some("cluster.local")));
+                   local("name.namespace.svc.", Some("namespace"), Some("cluster.local")));
         assert_eq!("name.namespace.svc.cluster",
-                   f("name.namespace.svc.cluster.", Some("namespace"), Some("cluster.local")));
+                   local("name.namespace.svc.cluster.", Some("namespace"), Some("cluster.local")));
         assert_eq!("name.namespace.svc.cluster.local",
-                   f("name.namespace.svc.cluster.local.", Some("namespace"), Some("cluster.local")));
+                   local("name.namespace.svc.cluster.local.", Some("namespace"), Some("cluster.local")));
 
         // Ports are preserved.
         assert_eq!("name.namespace.svc.cluster.local:1234",
-                   f("name:1234", Some("namespace"), Some("cluster.local")));
+                   local("name:1234", Some("namespace"), Some("cluster.local")));
         assert_eq!("name.namespace.svc.cluster.local:1234",
-                   f("name.namespace:1234", Some("namespace"), Some("cluster.local")));
+                   local("name.namespace:1234", Some("namespace"), Some("cluster.local")));
         assert_eq!("name.namespace.svc.cluster.local:1234",
-                   f("name.namespace.svc:1234", Some("namespace"), Some("cluster.local")));
-        none("name.namespace.svc.cluster:1234", Some("namespace"), Some("cluster.local"));
+                   local("name.namespace.svc:1234", Some("namespace"), Some("cluster.local")));
+        external("name.namespace.svc.cluster:1234", Some("namespace"), Some("cluster.local"));
         assert_eq!("name.namespace.svc.cluster.local:1234",
-                   f("name.namespace.svc.cluster.local:1234", Some("namespace"), Some("cluster.local")));
+                   local("name.namespace.svc.cluster.local:1234", Some("namespace"), Some("cluster.local")));
 
         // "SVC" is recognized as being equivalent to "svc"
         assert_eq!("name.namespace.SVC.cluster.local",
-                   f("name.namespace.SVC", Some("namespace"), Some("cluster.local")));
-        none("name.namespace.SVC.cluster", Some("namespace"), Some("cluster.local"));
+                   local("name.namespace.SVC", Some("namespace"), Some("cluster.local")));
+        external("name.namespace.SVC.cluster", Some("namespace"), Some("cluster.local"));
         assert_eq!("name.namespace.SVC.cluster.local",
-                   f("name.namespace.SVC.cluster.local", Some("namespace"), Some("cluster.local")));
+                   local("name.namespace.SVC.cluster.local", Some("namespace"), Some("cluster.local")));
 
         // IPv4 addresses are left unchanged.
-        none("1.2.3.4", Some("namespace"), Some("cluster.local"));
-        none("1.2.3.4:1234", Some("namespace"), Some("cluster.local"));
-        none("127.0.0.1", Some("namespace"), Some("cluster.local"));
-        none("127.0.0.1:8080", Some("namespace"), Some("cluster.local"));
-        none("127.0.0.1", None, Some("cluster.local"));
-        none("127.0.0.1", Some("namespace"), None);
-        none("127.0.0.1", None, None);
-        none("127.0.0.1", Some("1"), Some("1"));
+        external("1.2.3.4", Some("namespace"), Some("cluster.local"));
+        external("1.2.3.4:1234", Some("namespace"), Some("cluster.local"));
+        external("127.0.0.1", Some("namespace"), Some("cluster.local"));
+        external("127.0.0.1:8080", Some("namespace"), Some("cluster.local"));
+        external("127.0.0.1", None, Some("cluster.local"));
+        external("127.0.0.1", Some("namespace"), None);
+        external("127.0.0.1", None, None);
+        external("127.0.0.1", Some("1"), Some("1"));
 
         // IPv6 addresses are left unchanged.
-        none("[::1]", Some("namespace"), Some("cluster.local"));
-        none("[::1]:1234", Some("namespace"), Some("cluster.local"));
-        none("[::1]", None, Some("cluster.local"));
-        none("[::1]", Some("namespace"), None);
-        none("[::1]", None, None);
+        external("[::1]", Some("namespace"), Some("cluster.local"));
+        external("[::1]:1234", Some("namespace"), Some("cluster.local"));
+        external("[::1]", None, Some("cluster.local"));
+        external("[::1]", Some("namespace"), None);
+        external("[::1]", None, None);
     }
 }
