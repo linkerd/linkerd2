@@ -2,14 +2,15 @@ package public
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 	"sync/atomic"
 	"testing"
 
 	tap "github.com/runconduit/conduit/controller/gen/controller/tap"
 	telemetry "github.com/runconduit/conduit/controller/gen/controller/telemetry"
-	conduit_public "github.com/runconduit/conduit/controller/gen/public"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"google.golang.org/grpc"
 )
@@ -40,7 +41,7 @@ func (m *mockTelemetry) Query(ctx context.Context, in *telemetry.QueryRequest, o
 	}
 	return m.tRes, nil
 }
-func (m *mockTelemetry) ListPods(ctx context.Context, in *telemetry.ListPodsRequest, opts ...grpc.CallOption) (*conduit_public.ListPodsResponse, error) {
+func (m *mockTelemetry) ListPods(ctx context.Context, in *telemetry.ListPodsRequest, opts ...grpc.CallOption) (*pb.ListPodsResponse, error) {
 	return nil, nil
 }
 
@@ -192,7 +193,7 @@ func TestStat(t *testing.T) {
 		}
 
 		for _, tr := range responses {
-			s := newGrpcServer(&mockTelemetry{test: t, tRes: tr.tRes, mReq: tr.mReq}, tap.NewTapClient(nil))
+			s := newGrpcServer(&mockTelemetry{test: t, tRes: tr.tRes, mReq: tr.mReq}, tap.NewTapClient(nil), "conduit")
 
 			res, err := s.Stat(context.Background(), tr.mReq)
 			if err != nil {
@@ -209,4 +210,35 @@ func TestStat(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestFormatQueryExclusions(t *testing.T) {
+	testCases := []struct {
+		input          []string
+		expectedOutput string
+	}{
+		{[]string{"conduit"}, `target_deployment!~"conduit/.*",source_deployment!~"conduit/.*"`},
+		{[]string{}, ""},
+	}
+
+	for i, tc := range testCases {
+		t.Run(fmt.Sprintf("%d:filter out %v metrics", i, tc.input), func(t *testing.T) {
+			result, err := formatQuery(countHttpQuery, &pb.MetricRequest{
+				Metrics: []pb.MetricName{
+					pb.MetricName_REQUEST_RATE,
+				},
+				Summarize: false,
+				FilterBy:  &pb.MetricMetadata{TargetDeploy: "deployment/service1"},
+				Window:    pb.TimeWindow_ONE_HOUR,
+			}, "", tc.input)
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+
+			if !strings.Contains(result, tc.expectedOutput) {
+				t.Fatalf("Expected test output to contain: %s\nbut got: %s\n", tc.expectedOutput, result)
+			}
+		})
+
+	}
 }

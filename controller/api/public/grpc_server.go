@@ -20,8 +20,9 @@ import (
 
 type (
 	grpcServer struct {
-		telemetryClient telemPb.TelemetryClient
-		tapClient       tapPb.TapClient
+		telemetryClient     telemPb.TelemetryClient
+		tapClient           tapPb.TapClient
+		controllerNamespace string
 	}
 
 	successRate struct {
@@ -86,8 +87,8 @@ var (
 	emptyMetadata = pb.MetricMetadata{}
 )
 
-func newGrpcServer(telemetryClient telemPb.TelemetryClient, tapClient tapPb.TapClient) *grpcServer {
-	return &grpcServer{telemetryClient: telemetryClient, tapClient: tapClient}
+func newGrpcServer(telemetryClient telemPb.TelemetryClient, tapClient tapPb.TapClient, controllerNamespace string) *grpcServer {
+	return &grpcServer{telemetryClient: telemetryClient, tapClient: tapClient, controllerNamespace: controllerNamespace}
 }
 
 func (s *grpcServer) Stat(ctx context.Context, req *pb.MetricRequest) (*pb.MetricResponse, error) {
@@ -356,7 +357,7 @@ func (s *grpcServer) latency(ctx context.Context, req *pb.MetricRequest) ([]pb.M
 }
 
 func (s *grpcServer) queryCount(ctx context.Context, req *pb.MetricRequest, rawQuery, sumBy string) queryResult {
-	query, err := formatQuery(rawQuery, req, sumBy)
+	query, err := formatQuery(rawQuery, req, sumBy, []string{s.controllerNamespace})
 	if err != nil {
 		return queryResult{res: telemPb.QueryResponse{}, err: err}
 	}
@@ -372,7 +373,7 @@ func (s *grpcServer) queryCount(ctx context.Context, req *pb.MetricRequest, rawQ
 func (s *grpcServer) queryLatency(ctx context.Context, req *pb.MetricRequest) (map[pb.HistogramLabel]telemPb.QueryResponse, error) {
 	queryRsps := make(map[pb.HistogramLabel]telemPb.QueryResponse)
 
-	query, err := formatQuery(latencyQuery, req, "le")
+	query, err := formatQuery(latencyQuery, req, "le", []string{s.controllerNamespace})
 	if err != nil {
 		return nil, err
 	}
@@ -444,7 +445,7 @@ func reqToQueryReq(req *pb.MetricRequest, query string) (telemPb.QueryRequest, e
 	return queryReq, nil
 }
 
-func formatQuery(query string, req *pb.MetricRequest, sumBy string) (string, error) {
+func formatQuery(query string, req *pb.MetricRequest, sumBy string, filterExclusions []string) (string, error) {
 	sumLabels := make([]string, 0)
 	filterLabels := make([]string, 0)
 
@@ -470,6 +471,11 @@ func formatQuery(query string, req *pb.MetricRequest, sumBy string) (string, err
 			filterLabels = append(filterLabels, fmt.Sprintf("%s=\"%s\"", jobLabel, metadata.Component))
 			sumLabels = append(sumLabels, jobLabel)
 		}
+	}
+
+	for _, exclusion := range filterExclusions {
+		filterLabels = append(filterLabels, fmt.Sprintf("%s!~\"%s\"", targetDeployLabel, fmt.Sprintf("%s/.*", exclusion)))
+		filterLabels = append(filterLabels, fmt.Sprintf("%s!~\"%s\"", sourceDeployLabel, fmt.Sprintf("%s/.*", exclusion)))
 	}
 
 	return fmt.Sprintf(
