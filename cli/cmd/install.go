@@ -93,7 +93,7 @@ func render(config installConfig, w io.Writer) error {
 		controlPort:     proxyControlPort,
 		outboundPort:    outboundPort,
 		inboundPort:     inboundPort,
-		eventBufferSize: 0,
+		eventBufferSize: 0, // Sets the telemetry event buffer to zero in order to turn off telemetry from control plane
 	}
 	return InjectYAML(buf, w, proxyConfig)
 }
