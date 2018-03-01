@@ -26,9 +26,8 @@ type (
 )
 
 var (
-	dnsCharactersRegexp             = regexp.MustCompile("^[a-zA-Z0-9-]{0,63}$")
-	startsAndEndsWithAlphanumRegexp = regexp.MustCompile("^(([a-zA-Z0-9].*[a-zA-Z0-9])|[a-zA-Z0-9])$")
-	containsAlphaRegexp             = regexp.MustCompile("[a-zA-Z]")
+	dnsCharactersRegexp = regexp.MustCompile("^[a-zA-Z0-9_-]{0,63}$")
+	containsAlphaRegexp = regexp.MustCompile("[a-zA-Z]")
 )
 
 // The Destination service serves service discovery information to the proxy.
@@ -294,11 +293,11 @@ func splitDNSName(dnsName string) ([]string, error) {
 		if !dnsCharactersRegexp.MatchString(l) {
 			return []string{}, errors.New("DNS name is too long or contains invalid characters: " + dnsName)
 		}
-		if !startsAndEndsWithAlphanumRegexp.MatchString(l) {
+		if strings.HasPrefix(l, "-") || strings.HasSuffix(l, "-") {
 			return []string{}, errors.New("DNS name cannot start or end with a dash: " + dnsName)
 		}
 		if !containsAlphaRegexp.MatchString(l) {
-			return []string{}, errors.New("DNS name cannot only contain numerals: " + dnsName)
+			return []string{}, errors.New("DNS name cannot only contain digits and hyphens: " + dnsName)
 		}
 	}
 	return labels, nil
