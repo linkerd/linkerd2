@@ -241,6 +241,8 @@ spec:
               fieldPath: metadata.namespace
         - name: CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN
           value: Kubernetes
+        - name: CONDUIT_PROXY_EVENT_BUFFER_CAPACITY
+          value: "0"
         image: gcr.io/runconduit/proxy:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-proxy
@@ -362,6 +364,8 @@ spec:
               fieldPath: metadata.namespace
         - name: CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN
           value: Kubernetes
+        - name: CONDUIT_PROXY_EVENT_BUFFER_CAPACITY
+          value: "0"
         image: gcr.io/runconduit/proxy:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-proxy
@@ -482,6 +486,8 @@ spec:
               fieldPath: metadata.namespace
         - name: CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN
           value: Kubernetes
+        - name: CONDUIT_PROXY_EVENT_BUFFER_CAPACITY
+          value: "0"
         image: gcr.io/runconduit/proxy:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-proxy

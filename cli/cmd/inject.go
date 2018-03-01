@@ -21,8 +21,9 @@ import (
 )
 
 const (
-	LocalhostDNSNameOverride = "localhost"
-	ControlPlanePodName      = "controller"
+	LocalhostDNSNameOverride    = "localhost"
+	ControlPlanePodName         = "controller"
+	DefaultProxyEventBufferSize = 10000
 )
 
 var (
@@ -37,6 +38,17 @@ var (
 	proxyAPIPort        uint
 	proxyLogLevel       string
 )
+
+type proxyConfig struct {
+	version         string
+	logLevel        string
+	controlPlaneDNS string
+	apiPort         uint
+	controlPort     uint
+	outboundPort    uint
+	inboundPort     uint
+	eventBufferSize uint
+}
 
 var injectCmd = &cobra.Command{
 	Use:   "inject [flags] CONFIG-FILE",
@@ -71,7 +83,16 @@ with 'conduit inject'. e.g. curl http://url.to/yml | conduit inject -
 // Returns the integer representation of os.Exit code; 0 on success and 1 on failure.
 func runInjectCmd(input io.Reader, errWriter, outWriter io.Writer, version string) int {
 	postInjectBuf := &bytes.Buffer{}
-	err := InjectYAML(input, postInjectBuf, version)
+	proxyConfig := &proxyConfig{
+		version:         version,
+		logLevel:        proxyLogLevel,
+		apiPort:         proxyAPIPort,
+		controlPort:     proxyControlPort,
+		outboundPort:    outboundPort,
+		inboundPort:     inboundPort,
+		eventBufferSize: DefaultProxyEventBufferSize,
+	}
+	err := InjectYAML(input, postInjectBuf, proxyConfig)
 	if err != nil {
 		fmt.Fprintf(errWriter, "Error injecting conduit proxy: %v\n", err)
 		return 1
@@ -88,7 +109,7 @@ func runInjectCmd(input io.Reader, errWriter, outWriter io.Writer, version strin
  * and init-container injected. If the pod is unsuitable for having them
  * injected, return null.
  */
-func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride, version string) bool {
+func injectPodTemplateSpec(t *v1.PodTemplateSpec, proxyConfig *proxyConfig) bool {
 	// Pods with `hostNetwork=true` share a network namespace with the host. The
 	// init-container would destroy the iptables configuration on the host, so
 	// skip the injection in this case.
@@ -97,7 +118,7 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride, v
 	}
 
 	f := false
-	inboundSkipPorts := append(ignoreInboundPorts, proxyControlPort)
+	inboundSkipPorts := append(ignoreInboundPorts, proxyConfig.controlPort)
 	inboundSkipPortsStr := make([]string, len(inboundSkipPorts))
 	for i, p := range inboundSkipPorts {
 		inboundSkipPortsStr[i] = strconv.Itoa(int(p))
@@ -109,8 +130,8 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride, v
 	}
 
 	initArgs := []string{
-		"--incoming-proxy-port", fmt.Sprintf("%d", inboundPort),
-		"--outgoing-proxy-port", fmt.Sprintf("%d", outboundPort),
+		"--incoming-proxy-port", fmt.Sprintf("%d", proxyConfig.inboundPort),
+		"--outgoing-proxy-port", fmt.Sprintf("%d", proxyConfig.outboundPort),
 		"--proxy-uid", fmt.Sprintf("%d", proxyUID),
 	}
 
@@ -126,7 +147,7 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride, v
 
 	initContainer := v1.Container{
 		Name:            "conduit-init",
-		Image:           fmt.Sprintf("%s:%s", initImage, version),
+		Image:           fmt.Sprintf("%s:%s", initImage, proxyConfig.version),
 		ImagePullPolicy: v1.PullPolicy(imagePullPolicy),
 		Args:            initArgs,
 		SecurityContext: &v1.SecurityContext{
@@ -136,14 +157,10 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride, v
 			Privileged: &f,
 		},
 	}
-	controlPlaneDNS := fmt.Sprintf("proxy-api.%s.svc.cluster.local", controlPlaneNamespace)
-	if controlPlaneDNSNameOverride != "" {
-		controlPlaneDNS = controlPlaneDNSNameOverride
-	}
 
 	sidecar := v1.Container{
 		Name:            "conduit-proxy",
-		Image:           fmt.Sprintf("%s:%s", proxyImage, version),
+		Image:           fmt.Sprintf("%s:%s", proxyImage, proxyConfig.version),
 		ImagePullPolicy: v1.PullPolicy(imagePullPolicy),
 		SecurityContext: &v1.SecurityContext{
 			RunAsUser: &proxyUID,
@@ -151,42 +168,17 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride, v
 		Ports: []v1.ContainerPort{
 			v1.ContainerPort{
 				Name:          "conduit-proxy",
-				ContainerPort: int32(inboundPort),
+				ContainerPort: int32(proxyConfig.inboundPort),
 			},
 		},
-		Env: []v1.EnvVar{
-			v1.EnvVar{Name: "CONDUIT_PROXY_LOG", Value: proxyLogLevel},
-			v1.EnvVar{
-				Name:  "CONDUIT_PROXY_CONTROL_URL",
-				Value: fmt.Sprintf("tcp://%s:%d", controlPlaneDNS, proxyAPIPort),
-			},
-			v1.EnvVar{Name: "CONDUIT_PROXY_CONTROL_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", proxyControlPort)},
-			v1.EnvVar{Name: "CONDUIT_PROXY_PRIVATE_LISTENER", Value: fmt.Sprintf("tcp://127.0.0.1:%d", outboundPort)},
-			v1.EnvVar{Name: "CONDUIT_PROXY_PUBLIC_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", inboundPort)},
-			v1.EnvVar{
-				Name:      "CONDUIT_PROXY_NODE_NAME",
-				ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "spec.nodeName"}},
-			},
-			v1.EnvVar{
-				Name:      "CONDUIT_PROXY_POD_NAME",
-				ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.name"}},
-			},
-			v1.EnvVar{
-				Name:      "CONDUIT_PROXY_POD_NAMESPACE",
-				ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
-			},
-			v1.EnvVar{
-				Name:  "CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN",
-				Value: "Kubernetes",
-			},
-		},
+		Env: makeProxyEnvVar(proxyConfig),
 	}
 
 	if t.Annotations == nil {
 		t.Annotations = make(map[string]string)
 	}
 	t.Annotations[k8s.CreatedByAnnotation] = k8s.CreatedByAnnotationValue()
-	t.Annotations[k8s.ProxyVersionAnnotation] = version
+	t.Annotations[k8s.ProxyVersionAnnotation] = proxyConfig.version
 
 	if t.Labels == nil {
 		t.Labels = make(map[string]string)
@@ -198,7 +190,7 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride, v
 	return true
 }
 
-func InjectYAML(in io.Reader, out io.Writer, version string) error {
+func InjectYAML(in io.Reader, out io.Writer, config *proxyConfig) error {
 	reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(in, 4096))
 	// Iterate over all YAML objects in the input
 	for {
@@ -229,7 +221,6 @@ func InjectYAML(in io.Reader, out io.Writer, version string) error {
 		// objects, depending on the type.
 		var obj interface{}
 		var podTemplateSpec *v1.PodTemplateSpec
-		var DNSNameOverride string
 
 		// When injecting the conduit proxy into a conduit controller pod. The conduit proxy's
 		// CONDUIT_PROXY_CONTROL_URL variable must be set to localhost for the following reasons:
@@ -251,7 +242,9 @@ func InjectYAML(in io.Reader, out io.Writer, version string) error {
 				return err
 			}
 			if deployment.Name == ControlPlanePodName && deployment.Namespace == controlPlaneNamespace {
-				DNSNameOverride = LocalhostDNSNameOverride
+				config.controlPlaneDNS = LocalhostDNSNameOverride
+			} else {
+				config.controlPlaneDNS = fmt.Sprintf("proxy-api.%s.svc.cluster.local", controlPlaneNamespace)
 			}
 			obj = &deployment
 			podTemplateSpec = &deployment.Spec.Template
@@ -293,7 +286,7 @@ func InjectYAML(in io.Reader, out io.Writer, version string) error {
 		// original serialization of the original object. Otherwise, output the
 		// serialization of the modified object.
 		output := bytes
-		if podTemplateSpec != nil && injectPodTemplateSpec(podTemplateSpec, DNSNameOverride, version) {
+		if podTemplateSpec != nil && injectPodTemplateSpec(podTemplateSpec, config) {
 			output, err = yaml.Marshal(obj)
 			if err != nil {
 				return err
@@ -304,6 +297,44 @@ func InjectYAML(in io.Reader, out io.Writer, version string) error {
 		out.Write([]byte("---\n"))
 	}
 	return nil
+}
+
+func makeProxyEnvVar(config *proxyConfig) []v1.EnvVar {
+
+	envs := []v1.EnvVar{
+		v1.EnvVar{Name: "CONDUIT_PROXY_LOG", Value: config.logLevel},
+		v1.EnvVar{
+			Name:  "CONDUIT_PROXY_CONTROL_URL",
+			Value: fmt.Sprintf("tcp://%s:%d", config.controlPlaneDNS, config.apiPort),
+		},
+		v1.EnvVar{Name: "CONDUIT_PROXY_CONTROL_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", config.controlPort)},
+		v1.EnvVar{Name: "CONDUIT_PROXY_PRIVATE_LISTENER", Value: fmt.Sprintf("tcp://127.0.0.1:%d", config.outboundPort)},
+		v1.EnvVar{Name: "CONDUIT_PROXY_PUBLIC_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", config.inboundPort)},
+		v1.EnvVar{
+			Name:      "CONDUIT_PROXY_NODE_NAME",
+			ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "spec.nodeName"}},
+		},
+		v1.EnvVar{
+			Name:      "CONDUIT_PROXY_POD_NAME",
+			ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.name"}},
+		},
+		v1.EnvVar{
+			Name:      "CONDUIT_PROXY_POD_NAMESPACE",
+			ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
+		},
+		v1.EnvVar{
+			Name:  "CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN",
+			Value: "Kubernetes",
+		},
+	}
+
+	if config.eventBufferSize != DefaultProxyEventBufferSize {
+		envs = append(envs, v1.EnvVar{
+			Name:  "CONDUIT_PROXY_EVENT_BUFFER_CAPACITY",
+			Value: fmt.Sprintf("%d", config.eventBufferSize),
+		})
+	}
+	return envs
 }
 
 func init() {

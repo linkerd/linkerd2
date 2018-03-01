@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
+
+	"k8s.io/api/core/v1"
 )
 
 func TestInjectYAML(t *testing.T) {
@@ -32,7 +34,16 @@ func TestInjectYAML(t *testing.T) {
 
 			output := new(bytes.Buffer)
 
-			err = InjectYAML(read, output, testInjectVersion)
+			err = InjectYAML(read, output, &proxyConfig{
+				version:         testInjectVersion,
+				logLevel:        "warn,conduit_proxy=info",
+				controlPlaneDNS: "",
+				apiPort:         8086,
+				controlPort:     4190,
+				outboundPort:    4140,
+				inboundPort:     4143,
+				eventBufferSize: DefaultProxyEventBufferSize,
+			})
 			if err != nil {
 				t.Errorf("Unexpected error injecting YAML: %v\n", err)
 			}
@@ -94,4 +105,34 @@ func TestRunInjectCmd(t *testing.T) {
 			diffCompare(t, actualStdErrResult, expectedStdErrResult)
 		})
 	}
+}
+
+func TestMakeProxyEnvVar(t *testing.T) {
+	testCases := []struct {
+		inputProxyConfig proxyConfig
+		expectedEnvVar   v1.EnvVar
+	}{
+		{
+			proxyConfig{eventBufferSize: 0},
+			v1.EnvVar{Name: "CONDUIT_PROXY_EVENT_BUFFER_CAPACITY", Value: "0"},
+		},
+	}
+
+	for i, tc := range testCases {
+		t.Run(fmt.Sprintf("%d:%v", i, tc.inputProxyConfig), func(t *testing.T) {
+			envs := makeProxyEnvVar(&tc.inputProxyConfig)
+			if !containsEnvVar(envs, tc.expectedEnvVar) {
+				t.Fatalf("failed to find expected EnvVar: %v", tc.expectedEnvVar)
+			}
+		})
+	}
+}
+
+func containsEnvVar(envs []v1.EnvVar, expectedEnv v1.EnvVar) bool {
+	for _, env := range envs {
+		if env == expectedEnv {
+			return true
+		}
+	}
+	return false
 }
