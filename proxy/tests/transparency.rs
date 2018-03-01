@@ -617,27 +617,50 @@ fn http1_one_connection_per_host() {
 
     let client = client::http1(proxy.inbound, "foo.bar");
 
-    let res1 = client.request(client.request_builder("/")
-        .version(http::Version::HTTP_11)
-        .header("host", "foo.bar")
-    );
-    assert_eq!(res1.status(), http::StatusCode::OK);
-    assert_eq!(res1.version(), http::Version::HTTP_11);
-    let res1 = client.request(client.request_builder("/")
-        .version(http::Version::HTTP_11)
-        .header("host", "foo.bar")
-    );
-    assert_eq!(res1.status(), http::StatusCode::OK);
-    assert_eq!(res1.version(), http::Version::HTTP_11);
+    let inbound = &proxy.inbound_server.as_ref()
+        .expect("no inbound server!");
 
-    let client = client::http1(proxy.inbound, "bar.baz");
+    // Make a request with the header "Host: foo.bar". After the request, the
+    // server should have seen one connection.
+    let res1 = client.request(client.request_builder("/")
+        .version(http::Version::HTTP_11)
+        .header("host", "foo.bar")
+    );
+    assert_eq!(res1.status(), http::StatusCode::OK);
+    assert_eq!(res1.version(), http::Version::HTTP_11);
+    assert_eq!(inbound.connections(), 1);
+
+    // Another request with the same host. The proxy may reuse the connection.
+    let res1 = client.request(client.request_builder("/")
+        .version(http::Version::HTTP_11)
+        .header("host", "foo.bar")
+    );
+    assert_eq!(res1.status(), http::StatusCode::OK);
+    assert_eq!(res1.version(), http::Version::HTTP_11);
+    assert_eq!(inbound.connections(), 1);
+
+    // Make a request with a different Host header. This request must use a new
+    // connection.
     let res2 = client.request(client.request_builder("/")
         .version(http::Version::HTTP_11)
         .header("host", "bar.baz"));
     assert_eq!(res2.status(), http::StatusCode::OK);
     assert_eq!(res2.version(), http::Version::HTTP_11);
-
-    let inbound = &proxy.inbound_server.as_ref()
-        .expect("no inbound server!");
     assert_eq!(inbound.connections(), 2);
+
+    let res2 = client.request(client.request_builder("/")
+        .version(http::Version::HTTP_11)
+        .header("host", "bar.baz"));
+    assert_eq!(res2.status(), http::StatusCode::OK);
+    assert_eq!(res2.version(), http::Version::HTTP_11);
+    assert_eq!(inbound.connections(), 2);
+
+        // Make a request with a different Host header. This request must use a new
+    // connection.
+    let res3 = client.request(client.request_builder("/")
+        .version(http::Version::HTTP_11)
+        .header("host", "quuuux.com"));
+    assert_eq!(res3.status(), http::StatusCode::OK);
+    assert_eq!(res3.version(), http::Version::HTTP_11);
+    assert_eq!(inbound.connections(), 3);
 }
