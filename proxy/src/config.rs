@@ -29,9 +29,6 @@ pub struct Config {
     /// Where to forward externally received connections.
     pub private_forward: Option<Addr>,
 
-    /// The maximum amount of time to wait for a connection to the public peer.
-    pub public_connect_timeout: Option<Duration>,
-
     /// The maximum amount of time to wait for a connection to the private peer.
     pub private_connect_timeout: Duration,
 
