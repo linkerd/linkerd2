@@ -6,7 +6,7 @@ use tower;
 use tower_buffer::{self, Buffer};
 use tower_in_flight_limit::{self, InFlightLimit};
 use tower_h2;
-use conduit_proxy_router::Recognize;
+use conduit_proxy_router::{Cachability, Recognize};
 
 use bind;
 use ctx;
@@ -46,7 +46,7 @@ where
     type RouteError = bind::BufferSpawnError;
     type Service = InFlightLimit<Buffer<bind::Service<B>>>;
 
-    fn recognize(&self, req: &Self::Request) -> Option<Self::Key> {
+    fn recognize(&self, req: &Self::Request) -> Option<Cachability<Self::Key>> {
         let key = req.extensions()
             .get::<Arc<ctx::transport::Server>>()
             .and_then(|ctx| {
@@ -57,7 +57,7 @@ where
 
         let proto = bind::Protocol::from(req);
 
-        let key = key.map(|addr| (addr, proto));
+        let key = key.map(move|addr| proto.into_key(addr));
         trace!("recognize key={:?}", key);
 
 
@@ -93,7 +93,7 @@ mod tests {
 
     use super::Inbound;
     use conduit_proxy_controller_grpc::common::Protocol;
-    use bind::Bind;
+    use bind::{self, Bind, Host};
     use ctx;
 
     fn new_inbound(default: Option<net::SocketAddr>, ctx: &Arc<ctx::Proxy>) -> Inbound<()> {
@@ -113,13 +113,16 @@ mod tests {
             let inbound = new_inbound(None, &ctx);
 
             let srv_ctx = ctx::transport::Server::new(&ctx, &local, &remote, &Some(orig_dst), Protocol::Http);
-            let rec = srv_ctx.orig_dst_if_not_local();
+
+            let rec = srv_ctx.orig_dst_if_not_local().map(|addr|
+                bind::Protocol::Http1(Host::NoAuthority).into_key(addr)
+            );
 
             let mut req = http::Request::new(());
             req.extensions_mut()
                 .insert(srv_ctx);
 
-            inbound.recognize(&req).map(|(addr, _)| addr) == rec
+            inbound.recognize(&req) == rec
         }
 
         fn recognize_default_no_orig_dst(
@@ -141,8 +144,9 @@ mod tests {
                     Protocol::Http,
                 ));
 
-
-            inbound.recognize(&req).map(|(addr, _)| addr) == default
+            inbound.recognize(&req) == default.map(|addr|
+                bind::Protocol::Http1(Host::NoAuthority).into_key(addr)
+            )
         }
 
         fn recognize_default_no_ctx(default: Option<net::SocketAddr>) -> bool {
@@ -152,7 +156,9 @@ mod tests {
 
             let req = http::Request::new(());
 
-            inbound.recognize(&req).map(|(addr, _)| addr) == default
+            inbound.recognize(&req) == default.map(|addr|
+                bind::Protocol::Http1(Host::NoAuthority).into_key(addr)
+            )
         }
 
         fn recognize_default_no_loop(
@@ -174,7 +180,9 @@ mod tests {
                     Protocol::Http,
                 ));
 
-            inbound.recognize(&req).map(|(addr, _)| addr) == default
+            inbound.recognize(&req) == default.map(|addr|
+                bind::Protocol::Http1(Host::NoAuthority).into_key(addr)
+            )
         }
     }
 }

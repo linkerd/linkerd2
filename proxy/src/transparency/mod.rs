@@ -1,6 +1,6 @@
 mod client;
 mod glue;
-mod h1;
+pub mod h1;
 mod protocol;
 mod server;
 mod tcp;

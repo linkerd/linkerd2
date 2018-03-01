@@ -12,7 +12,7 @@ use tower_buffer::Buffer;
 use tower_discover::{Change, Discover};
 use tower_in_flight_limit::InFlightLimit;
 use tower_h2;
-use conduit_proxy_router::Recognize;
+use conduit_proxy_router::{Cachability, Recognize};
 
 use bind::{self, Bind, Protocol};
 use control::{self, discovery};
@@ -87,7 +87,9 @@ where
         choose::PowerOfTwoChoices<rand::ThreadRng>
     >>>>;
 
-    fn recognize(&self, req: &Self::Request) -> Option<Self::Key> {
+    fn recognize(&self, req: &Self::Request) -> Option<Cachability<Self::Key>> {
+        let proto = bind::Protocol::from(req);
+
         let local = req.uri().authority_part().map(|authority| {
             FullyQualifiedAuthority::normalize(
                 authority,
@@ -117,9 +119,8 @@ where
             Destination::External(orig_dst?)
         };
 
-        let proto = bind::Protocol::from(req);
 
-        Some((dest, proto))
+        Some(proto.into_key(dest))
     }
 
     /// Builds a dynamic, load balancing service.
