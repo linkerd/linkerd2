@@ -53,7 +53,7 @@ func TestLocalKubernetesServiceIdFromDNSName(t *testing.T) {
 
 	for i, tc := range testCases {
 		t.Run(fmt.Sprintf("%d: (%s, %s)", i, tc.k8sDNSZone, tc.host), func(t *testing.T) {
-			srv, err := newServer(tc.k8sDNSZone, nil)
+			srv, err := newServer(tc.k8sDNSZone, nil, nil)
 			assert.Nil(t, err)
 			result, err := srv.localKubernetesServiceIdFromDNSName(tc.host)
 			assert.Equal(t, tc.result, result)
