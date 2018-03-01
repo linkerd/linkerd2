@@ -1,4 +1,3 @@
-use std::cmp;
 use std::marker::PhantomData;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -12,10 +11,11 @@ use tower_h2;
 use tower_reconnect::Reconnect;
 
 use conduit_proxy_controller_grpc;
+use conduit_proxy_router::Cachability;
 use control;
 use ctx;
 use telemetry::{self, sensor};
-use transparency::{self, HttpBody};
+use transparency::{self, HttpBody, h1};
 use transport;
 use ::timeout::Timeout;
 
@@ -54,7 +54,7 @@ pub enum Protocol {
     Http2
 }
 
-#[derive(Clone, Debug, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Host {
     Authority(uri::Authority),
     NoAuthority,
@@ -220,37 +220,48 @@ impl<'a, B> From<&'a http::Request<B>> for Protocol {
             return Protocol::Http2
         }
 
+        if req.extensions().get::<h1::AuthorityRewriting>() ==
+            Some(&h1::AuthorityRewriting::SoOriginalDst)
+        {
+            return Protocol::Http1(Host::NoAuthority);
+        }
+
         // If the request has an authority part, use that as the host part of
         // the key for an HTTP/1.x request.
         let host = req.uri().authority_part()
-            .cloned()
-            .or_else(|| {
-                // No authority part in the request URI, so try and use the
-                // Host: header value, if one is present and it can be parsed
-                // as an Authority.
-                    req.headers().get(header::HOST)
-                        .and_then(|header| {
-                            header.to_str().ok()
-                                .and_then(|header|
-                                    header.parse::<uri::Authority>().ok())
-                        })
-                })
-            .map(Host::Authority)
+                .cloned()
+                .or_else(|| {
+                    // No authority part in the request URI, so try and use the
+                    // Host: header value, if one is present and it can be parsed
+                    // as an Authority.
+                        req.headers().get(header::HOST)
+                            .and_then(|header| {
+                                header.to_str().ok()
+                                    .and_then(|header|
+                                        header.parse::<uri::Authority>().ok())
+                            })
+                    })
+                .map(Host::Authority)
             .unwrap_or_else(|| Host::NoAuthority);
 
         Protocol::Http1(host)
     }
 }
 
-// ===== impl Host =====
+impl Protocol {
 
-impl cmp::PartialEq for Host {
-    // Override the equality rules for `Host` so that the `NoAuthority` case
-    // is *never* equal, even to other `NoAuthority` values.
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (&Host::Authority(ref a), &Host::Authority(ref b)) => a == b,
+    pub fn is_cachable(&self) -> bool {
+        match *self {
+            Protocol::Http2 | Protocol::Http1(Host::Authority(_)) => true,
             _ => false,
+        }
+    }
+
+    pub fn into_key<T>(self, key: T) -> Cachability<(T, Protocol)> {
+        if self.is_cachable() {
+            Cachability::Reusable((key, self))
+        } else {
+            Cachability::Unique((key, self))
         }
     }
 }

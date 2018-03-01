@@ -6,6 +6,7 @@ use futures::{Future, Poll};
 use indexmap::IndexMap;
 use tower::Service;
 
+use std::convert::AsRef;
 use std::hash::Hash;
 use std::mem;
 use std::sync::{Arc, Mutex};
@@ -40,7 +41,7 @@ pub trait Recognize {
                             Error = Self::Error>;
 
     /// Obtains a Key for a request.
-    fn recognize(&self, req: &Self::Request) -> Option<Self::Key>;
+    fn recognize(&self, req: &Self::Request) -> Option<Cachability<Self::Key>>;
 
     /// Return a `Service` to handle requests from the provided authority.
     ///
@@ -50,6 +51,13 @@ pub trait Recognize {
 }
 
 pub struct Single<S>(Option<S>);
+
+/// Whether or not the service to a given key may be cached.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Cachability<T> {
+    Reusable(T),
+    Unique(T),
+}
 
 #[derive(Debug)]
 pub enum Error<T, U> {
@@ -123,13 +131,22 @@ where T: Recognize,
             let service;
 
             if let Some(key) = inner.recognize.recognize(&request) {
-                if let Some(s) = inner.routes.get_mut(&key) {
+                // Is the bound service for that key reusable?
+                let cached = if let Cachability::Reusable(ref key) = key {
+                    // The key is reusable --- look in the cache.
+                    inner.routes.get_mut(key)
+                } else {
+                    // If the key is not reuseable, then the cached service is
+                    // always None.
+                    None
+                };
+                if let Some(s) = cached {
                     // The service for the authority is already cached
                     service = s;
                 } else {
                     // The authority does not match an existing route, try to
                     // recognize it.
-                    match inner.recognize.bind_service(&key) {
+                    match inner.recognize.bind_service(key.as_ref()) {
                         Ok(s) => {
                             // A new service has been matched. Set the outer
                             // variables and jump out o the loop
@@ -156,8 +173,10 @@ where T: Recognize,
         // First, route the request to the new service
         let response = new_service.call(request);
 
-        // Now, cache the new service
-        inner.routes.insert(new_key, new_service);
+        // Now, cache the new service'
+        if let Cachability::Reusable(new_key) = new_key {
+            inner.routes.insert(new_key, new_service);
+        }
 
         // And finally, return the response
         ResponseFuture { state: State::Inner(response) }
@@ -190,8 +209,8 @@ impl<S: Service> Recognize for Single<S> {
     type RouteError = ();
     type Service = S;
 
-    fn recognize(&self, _: &Self::Request) -> Option<Self::Key> {
-        Some(())
+    fn recognize(&self, _: &Self::Request) -> Option<Cachability<Self::Key>> {
+        Some(Cachability::Reusable(()))
     }
 
     fn bind_service(&mut self, _: &Self::Key) -> Result<S, Self::RouteError> {
@@ -220,6 +239,17 @@ where T: Recognize,
             }
             NotRecognized => Err(Error::NotRecognized),
             Invalid => panic!(),
+        }
+    }
+}
+
+// ===== impl Cachability=====
+
+impl<T> AsRef<T> for Cachability<T> {
+    fn as_ref(&self) -> &T {
+        match *self {
+            Cachability::Reusable(ref key) => key,
+            Cachability::Unique(ref key) => key,
         }
     }
 }
