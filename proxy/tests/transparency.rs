@@ -655,14 +655,66 @@ fn http1_one_connection_per_host() {
     assert_eq!(res2.version(), http::Version::HTTP_11);
     assert_eq!(inbound.connections(), 2);
 
-        // Make a request with a different Host header. This request must use a new
+    // Make a request with a different Host header. This request must use a new
     // connection.
     let res3 = client.request(client.request_builder("/")
         .version(http::Version::HTTP_11)
         .header("host", "quuuux.com"));
     assert_eq!(res3.status(), http::StatusCode::OK);
-    assert_eq!(res3
-
-    .version(), http::Version::HTTP_11);
+    assert_eq!(res3.version(), http::Version::HTTP_11);
     assert_eq!(inbound.connections(), 3);
+}
+
+#[test]
+fn http1_requests_without_host_have_unique_connections() {
+    let _ = env_logger::try_init();
+
+    let srv = server::http1().route("/", "hello").run();
+    let ctrl = controller::new()
+        .run();
+    let proxy = proxy::new().controller(ctrl).inbound(srv).run();
+
+    let client = client::http1(proxy.inbound, "foo.bar");
+
+    let inbound = &proxy.inbound_server.as_ref()
+        .expect("no inbound server!");
+
+    // Make a request with no Host header and no authority in the request path.
+    let res = client.request(client.request_builder("/")
+        .version(http::Version::HTTP_11)
+        .header("host", "")
+    );
+    assert_eq!(res.status(), http::StatusCode::OK);
+    assert_eq!(res.version(), http::Version::HTTP_11);
+    assert_eq!(inbound.connections(), 1);
+
+    // Another request with no Host. The proxy must open a new connection
+    // for that request.
+    let res = client.request(client.request_builder("/")
+        .version(http::Version::HTTP_11)
+        .header("host", "")
+    );
+    assert_eq!(res.status(), http::StatusCode::OK);
+    assert_eq!(res.version(), http::Version::HTTP_11);
+    assert_eq!(inbound.connections(), 2);
+
+    // Make a request with a host header. It must also receive its
+    // own connection.
+    let res = client.request(client.request_builder("/")
+        .version(http::Version::HTTP_11)
+        .header("host", "foo.bar")
+    );
+    assert_eq!(res.status(), http::StatusCode::OK);
+    assert_eq!(res.version(), http::Version::HTTP_11);
+    assert_eq!(inbound.connections(), 3);
+
+    // Another request with no Host. The proxy must open a new connection
+    // for that request.
+    let res = client.request(client.request_builder("/")
+        .version(http::Version::HTTP_11)
+        .header("host", "")
+    );
+    assert_eq!(res.status(), http::StatusCode::OK);
+    assert_eq!(res.version(), http::Version::HTTP_11);
+    assert_eq!(inbound.connections(), 4);
 }
