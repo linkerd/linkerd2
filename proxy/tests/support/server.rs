@@ -1,5 +1,6 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
 
 use support::*;
@@ -30,12 +31,12 @@ pub struct Server {
 pub struct Listening {
     pub addr: SocketAddr,
     pub(super) shutdown: Shutdown,
-    pub(super) conn_count: Arc<Mutex<usize>>,
+    pub(super) conn_count: Arc<AtomicUsize>,
 }
 
 impl Listening {
     pub fn connections(&self) -> usize {
-        *self.conn_count.lock().unwrap()
+        self.conn_count.load(Ordering::Acquire)
     }
 }
 
@@ -88,7 +89,7 @@ impl Server {
     pub fn run(self) -> Listening {
         let (tx, rx) = shutdown_signal();
         let (addr_tx, addr_rx) = oneshot::channel();
-        let conn_count = Arc::new(Mutex::new(0));
+        let conn_count = Arc::new(AtomicUsize::from(0));
         let srv_conn_count = Arc::clone(&conn_count);
         ::std::thread::Builder::new().name("support server".into()).spawn(move || {
             let mut core = Core::new().unwrap();
@@ -105,7 +106,7 @@ impl Server {
                         let srv_conn_count = Arc::clone(&srv_conn_count);
                         let conn = new_svc.new_service()
                             .inspect(move |_| {
-                                *(srv_conn_count.lock().unwrap()) += 1;
+                                srv_conn_count.fetch_add(1, Ordering::Release);
                             })
                             .from_err()
                             .and_then(move |svc| h1_clone.serve_connection(sock, svc))
@@ -125,7 +126,7 @@ impl Server {
                         let conn = h2.serve(sock)
                             .map_err(|e| println!("server h2 error: {:?}", e))
                             .inspect(move |_| {
-                                *(srv_conn_count.lock().unwrap()) += 1;
+                                srv_conn_count.fetch_add(1, Ordering::Release);
                             });
                         Box::new(conn)
                     })
