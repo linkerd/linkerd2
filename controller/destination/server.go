@@ -3,17 +3,19 @@ package destination
 import (
 	"fmt"
 	"net"
+	"regexp"
 	"strconv"
 	"strings"
 
 	"errors"
+	"reflect"
+
 	common "github.com/runconduit/conduit/controller/gen/common"
 	pb "github.com/runconduit/conduit/controller/gen/proxy/destination"
 	"github.com/runconduit/conduit/controller/k8s"
 	"github.com/runconduit/conduit/controller/util"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
-	"reflect"
 )
 
 type (
@@ -21,6 +23,11 @@ type (
 		k8sDNSZoneLabels []string
 		endpoints        *k8s.EndpointsWatcher
 	}
+)
+
+var (
+	dnsCharactersRegexp = regexp.MustCompile("^[a-zA-Z0-9_-]{0,63}$")
+	containsAlphaRegexp = regexp.MustCompile("[a-zA-Z]")
 )
 
 // The Destination service serves service discovery information to the proxy.
@@ -268,9 +275,6 @@ func toAddrSet(endpoints []common.TcpAddress) *pb.AddrSet {
 }
 
 func splitDNSName(dnsName string) ([]string, error) {
-	// TODO: Validate that `dnsName` is a valid DNS name:
-	// https://github.com/runconduit/conduit/issues/170.
-
 	// If the name is fully qualified, strip off the final dot.
 	if strings.HasSuffix(dnsName, ".") {
 		dnsName = dnsName[:len(dnsName)-1]
@@ -285,6 +289,15 @@ func splitDNSName(dnsName string) ([]string, error) {
 	for _, l := range labels {
 		if l == "" {
 			return []string{}, errors.New("Empty label in DNS name: " + dnsName)
+		}
+		if !dnsCharactersRegexp.MatchString(l) {
+			return []string{}, errors.New("DNS name is too long or contains invalid characters: " + dnsName)
+		}
+		if strings.HasPrefix(l, "-") || strings.HasSuffix(l, "-") {
+			return []string{}, errors.New("DNS name cannot start or end with a dash: " + dnsName)
+		}
+		if !containsAlphaRegexp.MatchString(l) {
+			return []string{}, errors.New("DNS name cannot only contain digits and hyphens: " + dnsName)
 		}
 	}
 	return labels, nil
