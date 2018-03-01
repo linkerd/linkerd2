@@ -395,6 +395,8 @@ fn http1_one_connection_per_host() {
         .version(http::Version::HTTP_11)
         .header("host", "quuuux.com"));
     assert_eq!(res3.status(), http::StatusCode::OK);
-    assert_eq!(res3.version(), http::Version::HTTP_11);
+    assert_eq!(res3
+
+    .version(), http::Version::HTTP_11);
     assert_eq!(inbound.connections(), 3);
 }
