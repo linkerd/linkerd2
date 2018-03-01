@@ -116,11 +116,6 @@ where
             Destination::External(orig_dst?)
         };
 
-        let proto = match req.version() {
-            http::Version::HTTP_2 => Protocol::Http2,
-            _ => Protocol::Http1,
-        };
-
         let proto = bind::Protocol::from(req);
 
         Some((dest, proto))
