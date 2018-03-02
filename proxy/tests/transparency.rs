@@ -296,13 +296,21 @@ fn http11_upgrade_not_supported() {
 }
 
 #[test]
-fn http1_get_doesnt_add_transfer_encoding() {
+fn http1_requests_without_body_doesnt_add_transfer_encoding() {
     let _ = env_logger::try_init();
 
     let srv = server::http1()
         .route_fn("/", |req| {
-            assert!(!req.headers().contains_key("transfer-encoding"));
-            Response::new("hello h1".into())
+            let has_body_header = req.headers().contains_key("transfer-encoding")
+                || req.headers().contains_key("content-length");
+            let status = if  has_body_header {
+                StatusCode::BAD_REQUEST
+            } else {
+                StatusCode::OK
+            };
+            let mut res = Response::new("".into());
+            *res.status_mut() = status;
+            res
         })
         .run();
     let ctrl = controller::new().run();
@@ -311,5 +319,136 @@ fn http1_get_doesnt_add_transfer_encoding() {
         .inbound(srv)
         .run();
     let client = client::http1(proxy.inbound, "transparency.test.svc.cluster.local");
-    assert_eq!(client.get("/"), "hello h1");
+
+    let methods = &[
+        "GET",
+        "POST",
+        "PUT",
+        "DELETE",
+        "HEAD",
+        "PATCH",
+    ];
+
+    for &method in methods {
+        let resp = client.request(
+            client
+                .request_builder("/")
+                .method(method)
+        );
+
+        assert_eq!(resp.status(), StatusCode::OK, "method={:?}", method);
+    }
+}
+
+#[test]
+fn http1_one_connection_per_host() {
+    let _ = env_logger::try_init();
+
+    let srv = server::http1().route("/", "hello").run();
+    let ctrl = controller::new()
+        .run();
+    let proxy = proxy::new().controller(ctrl).inbound(srv).run();
+
+    let client = client::http1(proxy.inbound, "foo.bar");
+
+    let inbound = &proxy.inbound_server.as_ref()
+        .expect("no inbound server!");
+
+    // Make a request with the header "Host: foo.bar". After the request, the
+    // server should have seen one connection.
+    let res1 = client.request(client.request_builder("/")
+        .version(http::Version::HTTP_11)
+        .header("host", "foo.bar")
+    );
+    assert_eq!(res1.status(), http::StatusCode::OK);
+    assert_eq!(res1.version(), http::Version::HTTP_11);
+    assert_eq!(inbound.connections(), 1);
+
+    // Another request with the same host. The proxy may reuse the connection.
+    let res1 = client.request(client.request_builder("/")
+        .version(http::Version::HTTP_11)
+        .header("host", "foo.bar")
+    );
+    assert_eq!(res1.status(), http::StatusCode::OK);
+    assert_eq!(res1.version(), http::Version::HTTP_11);
+    assert_eq!(inbound.connections(), 1);
+
+    // Make a request with a different Host header. This request must use a new
+    // connection.
+    let res2 = client.request(client.request_builder("/")
+        .version(http::Version::HTTP_11)
+        .header("host", "bar.baz"));
+    assert_eq!(res2.status(), http::StatusCode::OK);
+    assert_eq!(res2.version(), http::Version::HTTP_11);
+    assert_eq!(inbound.connections(), 2);
+
+    let res2 = client.request(client.request_builder("/")
+        .version(http::Version::HTTP_11)
+        .header("host", "bar.baz"));
+    assert_eq!(res2.status(), http::StatusCode::OK);
+    assert_eq!(res2.version(), http::Version::HTTP_11);
+    assert_eq!(inbound.connections(), 2);
+
+    // Make a request with a different Host header. This request must use a new
+    // connection.
+    let res3 = client.request(client.request_builder("/")
+        .version(http::Version::HTTP_11)
+        .header("host", "quuuux.com"));
+    assert_eq!(res3.status(), http::StatusCode::OK);
+    assert_eq!(res3.version(), http::Version::HTTP_11);
+    assert_eq!(inbound.connections(), 3);
+}
+
+#[test]
+fn http1_requests_without_host_have_unique_connections() {
+    let _ = env_logger::try_init();
+
+    let srv = server::http1().route("/", "hello").run();
+    let ctrl = controller::new()
+        .run();
+    let proxy = proxy::new().controller(ctrl).inbound(srv).run();
+
+    let client = client::http1(proxy.inbound, "foo.bar");
+
+    let inbound = &proxy.inbound_server.as_ref()
+        .expect("no inbound server!");
+
+    // Make a request with no Host header and no authority in the request path.
+    let res = client.request(client.request_builder("/")
+        .version(http::Version::HTTP_11)
+        .header("host", "")
+    );
+    assert_eq!(res.status(), http::StatusCode::OK);
+    assert_eq!(res.version(), http::Version::HTTP_11);
+    assert_eq!(inbound.connections(), 1);
+
+    // Another request with no Host. The proxy must open a new connection
+    // for that request.
+    let res = client.request(client.request_builder("/")
+        .version(http::Version::HTTP_11)
+        .header("host", "")
+    );
+    assert_eq!(res.status(), http::StatusCode::OK);
+    assert_eq!(res.version(), http::Version::HTTP_11);
+    assert_eq!(inbound.connections(), 2);
+
+    // Make a request with a host header. It must also receive its
+    // own connection.
+    let res = client.request(client.request_builder("/")
+        .version(http::Version::HTTP_11)
+        .header("host", "foo.bar")
+    );
+    assert_eq!(res.status(), http::StatusCode::OK);
+    assert_eq!(res.version(), http::Version::HTTP_11);
+    assert_eq!(inbound.connections(), 3);
+
+    // Another request with no Host. The proxy must open a new connection
+    // for that request.
+    let res = client.request(client.request_builder("/")
+        .version(http::Version::HTTP_11)
+        .header("host", "")
+    );
+    assert_eq!(res.status(), http::StatusCode::OK);
+    assert_eq!(res.version(), http::Version::HTTP_11);
+    assert_eq!(inbound.connections(), 4);
 }
