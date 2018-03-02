@@ -331,7 +331,7 @@ where
                 }
                 RouteError::NotRecognized => {
                     error!("route not recognized");
-                    http::StatusCode::NOT_FOUND
+                    http::StatusCode::INTERNAL_SERVER_ERROR
                 }
             }
         })
