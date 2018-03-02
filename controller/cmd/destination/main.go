@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	addr := flag.String("addr", ":8089", "address to serve on")
+	addr := flag.String("addr", "127.0.0.1:8089", "address to serve on")
 	metricsAddr := flag.String("metrics-addr", ":9999", "address to serve scrapable metrics on")
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
 	k8sDNSZone := flag.String("kubernetes-dns-zone", "", "The DNS suffix for the local Kubernetes zone.")

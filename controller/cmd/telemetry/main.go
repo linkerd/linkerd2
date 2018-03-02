@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	addr := flag.String("addr", ":8087", "address to serve on")
+	addr := flag.String("addr", "127.0.0.1:8087", "address to serve on")
 	metricsAddr := flag.String("metrics-addr", ":9997", "address to serve scrapable metrics on")
 	prometheusUrl := flag.String("prometheus-url", "http://127.0.0.1:9090", "prometheus url")
 	ignoredNamespaces := flag.String("ignore-namespaces", "", "comma separated list of namespaces to not list pods from")
