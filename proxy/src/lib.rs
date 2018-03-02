@@ -322,15 +322,15 @@ where
         MapErr::new(router, |e| {
             match e {
                 RouteError::Route(r) => {
-                    error!("route error: {}", r);
+                    error!(" turning route error: {} into 500", r);
                     http::StatusCode::INTERNAL_SERVER_ERROR
                 }
                 RouteError::Inner(i) => {
-                    error!("{}", i);
+                    error!("turning {} into 500", i);
                     http::StatusCode::INTERNAL_SERVER_ERROR
                 }
                 RouteError::NotRecognized => {
-                    error!("route not recognized");
+                    error!("turning route not recognized error into 500");
                     http::StatusCode::INTERNAL_SERVER_ERROR
                 }
             }
