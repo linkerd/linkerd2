@@ -250,6 +250,55 @@ fn tcp_with_no_orig_dst() {
 }
 
 #[test]
+fn tcp_connections_close_if_client_closes() {
+    use std::sync::mpsc;
+
+    let _ = env_logger::try_init();
+
+    let msg1 = "custom tcp hello";
+    let msg2 = "custom tcp bye";
+
+    let (tx, rx) = mpsc::channel();
+
+    let srv = server::tcp()
+        .accept_fut(move |sock| {
+            tokio_io::io::read(sock, vec![0; 1024])
+                .and_then(move |(sock, vec, n)| {
+                    assert_eq!(&vec[..n], msg1.as_bytes());
+
+                    tokio_io::io::write_all(sock, msg2.as_bytes())
+                }).and_then(|(sock, _)| {
+                    // lets read again, but we should get eof
+                    tokio_io::io::read(sock, [0; 16])
+                })
+                .map(move |(_sock, _vec, n)| {
+                    assert_eq!(n, 0);
+                    tx.send(()).unwrap();
+                })
+                .map_err(|e| panic!("tcp server error: {}", e))
+        })
+        .run();
+    let ctrl = controller::new().run();
+    let proxy = proxy::new()
+        .controller(ctrl)
+        .inbound(srv)
+        .run();
+
+    let client = client::tcp(proxy.inbound);
+
+    let tcp_client = client.connect();
+    tcp_client.write(msg1);
+    assert_eq!(tcp_client.read(), msg2.as_bytes());
+
+    drop(tcp_client);
+
+    // rx will be fulfilled when our tcp accept_fut sees
+    // a socket disconnect, which is what we are testing for.
+    // the timeout here is just to prevent this test from hanging
+    rx.recv_timeout(Duration::from_secs(5)).unwrap();
+}
+
+#[test]
 fn http11_upgrade_not_supported() {
     let _ = env_logger::try_init();
 
