@@ -16,7 +16,7 @@ futures-mpsc-lossy              = { path = "./futures-mpsc-lossy" }
 conduit-proxy-router            = { path = "./router" }
 
 bytes = "0.4"
-domain = "0.2.2"
+domain = "0.2.3"
 env_logger = { version = "0.5", default-features = false }
 futures = "0.1"
 h2 = "0.1"
