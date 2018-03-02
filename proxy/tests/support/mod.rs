@@ -8,6 +8,7 @@ extern crate futures;
 extern crate h2;
 pub extern crate http;
 extern crate hyper;
+extern crate indexmap;
 extern crate prost;
 extern crate tokio_connect;
 extern crate tokio_core;
@@ -35,6 +36,7 @@ pub mod client;
 pub mod controller;
 pub mod proxy;
 pub mod server;
+pub mod timer;
 mod tcp;
 
 pub type Shutdown = oneshot::Sender<()>;
