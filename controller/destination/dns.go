@@ -11,6 +11,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+var refreshInterval = 10 * time.Second
+
 type DnsListener interface {
 	Update(add []common.TcpAddress, remove []common.TcpAddress)
 }
@@ -97,7 +99,7 @@ func newInformer(host string) *informer {
 }
 
 func (i *informer) run() {
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(refreshInterval)
 	for {
 		addrs, err := net.LookupHost(i.host)
 		if err != nil {
