@@ -44,6 +44,7 @@ extern crate tower_in_flight_limit;
 
 use futures::*;
 
+use std::error::Error;
 use std::io;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -53,7 +54,7 @@ use std::time::Duration;
 use tokio_core::reactor::{Core, Handle};
 use tower::NewService;
 use tower_fn::*;
-use conduit_proxy_router::{Recognize, Router};
+use conduit_proxy_router::{Recognize, Router, Error as RouteError};
 
 pub mod app;
 mod bind;
@@ -301,8 +302,8 @@ fn serve<R, B, E, F, G>(
 ) -> Box<Future<Item = (), Error = io::Error> + 'static>
 where
     B: tower_h2::Body + Default + 'static,
-    E: ::std::fmt::Debug + 'static,
-    F: ::std::fmt::Debug + 'static,
+    E: Error + 'static,
+    F: Error + 'static,
     R: Recognize<
         Request = http::Request<HttpBody>,
         Response = http::Response<telemetry::sensor::http::ResponseBody<B>>,
@@ -317,8 +318,23 @@ where
         // Clone the router handle
         let router = router.clone();
 
-        // Map errors to 500 responses
-        MapErr::new(router)
+        // Map errors to appropriate response error codes.
+        MapErr::new(router, |e| {
+            match e {
+                RouteError::Route(r) => {
+                    error!(" turning route error: {} into 500", r);
+                    http::StatusCode::INTERNAL_SERVER_ERROR
+                }
+                RouteError::Inner(i) => {
+                    error!("turning {} into 500", i);
+                    http::StatusCode::INTERNAL_SERVER_ERROR
+                }
+                RouteError::NotRecognized => {
+                    error!("turning route not recognized error into 500");
+                    http::StatusCode::INTERNAL_SERVER_ERROR
+                }
+            }
+        })
     }));
 
     let listen_addr = bound_port.local_addr();

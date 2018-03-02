@@ -1,10 +1,11 @@
+use std::{error, fmt};
 use std::net::SocketAddr;
 use std::time::Duration;
+use std::sync::Arc;
 
 use futures::{Async, Poll};
 use http;
 use rand;
-use std::sync::Arc;
 use tower;
 use tower_balance::{self, choose, load, Balance};
 use tower_buffer::Buffer;
@@ -65,7 +66,7 @@ where
     type Response = bind::HttpResponse;
     type Error = <Self::Service as tower::Service>::Error;
     type Key = (Destination, Protocol);
-    type RouteError = ();
+    type RouteError = bind::BufferSpawnError;
     type Service = InFlightLimit<Timeout<Buffer<Balance<
         load::WithPendingRequests<Discovery<B>>,
         choose::PowerOfTwoChoices<rand::ThreadRng>
@@ -145,7 +146,8 @@ where
         // `Timeout`.
         let handle = self.bind.executor();
 
-        let buffer = Buffer::new(balance, handle).map_err(|_| {})?;
+        let buffer = Buffer::new(balance, handle)
+            .map_err(|_| bind::BufferSpawnError::Outbound)?;
 
         let timeout = Timeout::new(buffer, self.bind_timeout, handle);
 
@@ -168,11 +170,12 @@ where
     type Response = bind::HttpResponse;
     type Error = <bind::Service<B> as tower::Service>::Error;
     type Service = bind::Service<B>;
-    type DiscoverError = ();
+    type DiscoverError = BindError;
 
     fn poll(&mut self) -> Poll<Change<Self::Key, Self::Service>, Self::DiscoverError> {
         match *self {
-            Discovery::LocalSvc(ref mut w) => w.poll(),
+            Discovery::LocalSvc(ref mut w) => w.poll()
+                .map_err(|_| BindError::Internal),
             Discovery::External(ref mut opt) => {
                 // This "discovers" a single address for an external service
                 // that never has another change. This can mean it floats
@@ -180,7 +183,8 @@ where
                 // circuit-breaking, this should be able to take care of itself,
                 // closing down when the connection is no longer usable.
                 if let Some((addr, bind)) = opt.take() {
-                    let svc = bind.bind(&addr)?;
+                    let svc = bind.bind(&addr)
+                        .map_err(|_| BindError::External{ addr })?;
                     Ok(Async::Ready(Change::Insert(addr, svc)))
                 } else {
                     Ok(Async::NotReady)
@@ -188,4 +192,32 @@ where
             }
         }
     }
+}
+#[derive(Copy, Clone, Debug)]
+pub enum BindError {
+    External { addr: SocketAddr },
+    Internal,
+}
+
+impl fmt::Display for BindError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            BindError::External { addr } =>
+                write!(f, "binding external service for {:?} failed", addr),
+            BindError::Internal =>
+                write!(f, "binding internal service failed"),
+        }
+    }
+
+}
+
+impl error::Error for BindError {
+    fn description(&self) -> &str {
+        match *self {
+            BindError::External { .. } => "binding external service failed",
+            BindError::Internal => "binding internal service failed",
+        }
+    }
+
+    fn cause(&self) -> Option<&error::Error> { None }
 }
