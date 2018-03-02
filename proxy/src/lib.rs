@@ -187,7 +187,7 @@ where
         let inbound = {
             let ctx = ctx::Proxy::inbound(&process_ctx);
 
-            let bind = bind.clone() .with_ctx(ctx.clone());
+            let bind = bind.clone().with_ctx(ctx.clone());
 
             let default_addr = config.private_forward.map(|a| a.into());
 
