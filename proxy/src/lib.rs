@@ -222,7 +222,8 @@ where
             let fut = serve(
                 outbound_listener,
                 outgoing,
-                config.private_connect_timeout,
+                config.public_connect_timeout
+                    .unwrap_or_else(||Duration::from_millis(300)),
                 ctx,
                 sensors,
                 get_original_dst,

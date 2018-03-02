@@ -29,6 +29,9 @@ pub struct Config {
     /// Where to forward externally received connections.
     pub private_forward: Option<Addr>,
 
+    /// The maximum amount of time to wait for a connection to the public peer.
+    pub public_connect_timeout: Option<Duration>,
+
     /// The maximum amount of time to wait for a connection to the private peer.
     pub private_connect_timeout: Duration,
 
@@ -136,6 +139,7 @@ pub const ENV_PRIVATE_FORWARD: &str = "CONDUIT_PROXY_PRIVATE_FORWARD";
 pub const ENV_PUBLIC_LISTENER: &str = "CONDUIT_PROXY_PUBLIC_LISTENER";
 pub const ENV_CONTROL_LISTENER: &str = "CONDUIT_PROXY_CONTROL_LISTENER";
 const ENV_PRIVATE_CONNECT_TIMEOUT: &str = "CONDUIT_PROXY_PRIVATE_CONNECT_TIMEOUT";
+const ENV_PUBLIC_CONNECT_TIMEOUT: &str = "CONDUIT_PROXY_PUBLIC_CONNECT_TIMEOUT";
 pub const ENV_BIND_TIMEOUT: &str = "CONDUIT_PROXY_BIND_TIMEOUT";
 
 const ENV_NODE_NAME: &str = "CONDUIT_PROXY_NODE_NAME";
@@ -171,6 +175,7 @@ impl<'a> TryFrom<&'a Strings> for Config {
         let public_listener_addr = parse(strings, ENV_PUBLIC_LISTENER, str::parse);
         let control_listener_addr = parse(strings, ENV_CONTROL_LISTENER, str::parse);
         let private_forward = parse(strings, ENV_PRIVATE_FORWARD, str::parse);
+        let public_connect_timeout = parse(strings, ENV_PUBLIC_CONNECT_TIMEOUT, parse_number);
         let private_connect_timeout = parse(strings, ENV_PRIVATE_CONNECT_TIMEOUT, parse_number);
         let bind_timeout = parse(strings, ENV_BIND_TIMEOUT, parse_number);
         let resolv_conf_path = strings.get(ENV_RESOLV_CONF);
@@ -210,6 +215,7 @@ impl<'a> TryFrom<&'a Strings> for Config {
                     .unwrap_or_else(|| Addr::from_str(DEFAULT_CONTROL_LISTENER).unwrap()),
             },
             private_forward: private_forward?,
+            public_connect_timeout: public_connect_timeout?.map(Duration::from_millis),
             private_connect_timeout:
                 Duration::from_millis(private_connect_timeout?
                                           .unwrap_or(DEFAULT_PRIVATE_CONNECT_TIMEOUT_MS)),
