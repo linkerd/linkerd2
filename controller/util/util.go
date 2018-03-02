@@ -59,3 +59,36 @@ func decodeIPToOctets(ip uint32) [4]uint8 {
 		uint8(ip & 255),
 	}
 }
+
+func DiffAddresses(oldAddrs []pb.TcpAddress, newAddrs []pb.TcpAddress) ([]pb.TcpAddress, []pb.TcpAddress) {
+	addSet := make(map[string]pb.TcpAddress)
+	removeSet := make(map[string]pb.TcpAddress)
+
+	for _, addr := range newAddrs {
+		key := AddressToString(&addr)
+		addSet[key] = addr
+	}
+
+	for _, addr := range oldAddrs {
+		key := AddressToString(&addr)
+		delete(addSet, key)
+		removeSet[key] = addr
+	}
+
+	for _, addr := range newAddrs {
+		key := AddressToString(&addr)
+		delete(removeSet, key)
+	}
+
+	add := make([]pb.TcpAddress, 0)
+	for _, addr := range addSet {
+		add = append(add, addr)
+	}
+
+	remove := make([]pb.TcpAddress, 0)
+	for _, addr := range removeSet {
+		remove = append(remove, addr)
+	}
+
+	return add, remove
+}
