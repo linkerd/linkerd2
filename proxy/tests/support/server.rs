@@ -75,6 +75,7 @@ impl Server {
         latency: Duration
     ) -> Self {
         let resp = resp.to_owned();
+
         let route = Route(Box::new(move |_| {
             thread::sleep(latency);
             http::Response::builder()

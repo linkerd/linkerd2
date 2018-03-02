@@ -208,7 +208,7 @@ impl<'a> TryFrom<&'a Strings> for Config {
             private_forward: private_forward?,
             public_connect_timeout: Duration::from_millis(
                 public_connect_timeout?
-                    .unwrap_or(DEFAULT_PUBLIC_CONNECT_TIMEOUT_MS)
+                    .unwrap_or(200)
             ),
             private_connect_timeout:
                 Duration::from_millis(private_connect_timeout?
