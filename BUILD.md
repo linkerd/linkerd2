@@ -128,7 +128,7 @@ bin/conduit version
 
 # validate installation
 kubectl --namespace=conduit get all
-bin/conduit check
+bin/conduit check --expected-version $(bin/root-tag)
 
 # view conduit dashboard
 bin/conduit dashboard
