@@ -41,7 +41,7 @@ pub trait Recognize {
                             Error = Self::Error>;
 
     /// Obtains a Key for a request.
-    fn recognize(&self, req: &Self::Request) -> Option<Cachability<Self::Key>>;
+    fn recognize(&self, req: &Self::Request) -> Option<Uses<Self::Key>>;
 
     /// Return a `Service` to handle requests from the provided authority.
     ///
@@ -54,9 +54,9 @@ pub struct Single<S>(Option<S>);
 
 /// Whether or not the service to a given key may be cached.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum Cachability<T> {
+pub enum Uses<T> {
     Reusable(T),
-    Unique(T),
+    SingleUse(T),
 }
 
 #[derive(Debug)]
@@ -132,7 +132,7 @@ where T: Recognize,
 
             if let Some(key) = inner.recognize.recognize(&request) {
                 // Is the bound service for that key reusable?
-                let cached = if let Cachability::Reusable(ref key) = key {
+                let cached = if let Uses::Reusable(ref key) = key {
                     // The key is reusable --- look in the cache.
                     inner.routes.get_mut(key)
                 } else {
@@ -174,7 +174,7 @@ where T: Recognize,
         let response = new_service.call(request);
 
         // Now, cache the new service'
-        if let Cachability::Reusable(new_key) = new_key {
+        if let Uses::Reusable(new_key) = new_key {
             inner.routes.insert(new_key, new_service);
         }
 
@@ -209,8 +209,8 @@ impl<S: Service> Recognize for Single<S> {
     type RouteError = ();
     type Service = S;
 
-    fn recognize(&self, _: &Self::Request) -> Option<Cachability<Self::Key>> {
-        Some(Cachability::Reusable(()))
+    fn recognize(&self, _: &Self::Request) -> Option<Uses<Self::Key>> {
+        Some(Uses::Reusable(()))
     }
 
     fn bind_service(&mut self, _: &Self::Key) -> Result<S, Self::RouteError> {
@@ -243,13 +243,13 @@ where T: Recognize,
     }
 }
 
-// ===== impl Cachability=====
+// ===== impl Uses=====
 
-impl<T> AsRef<T> for Cachability<T> {
+impl<T> AsRef<T> for Uses<T> {
     fn as_ref(&self) -> &T {
         match *self {
-            Cachability::Reusable(ref key) => key,
-            Cachability::Unique(ref key) => key,
+            Uses::Reusable(ref key) => key,
+            Uses::SingleUse(ref key) => key,
         }
     }
 }

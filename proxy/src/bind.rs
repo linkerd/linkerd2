@@ -11,7 +11,7 @@ use tower_h2;
 use tower_reconnect::Reconnect;
 
 use conduit_proxy_controller_grpc;
-use conduit_proxy_router::Cachability;
+use conduit_proxy_router::Uses;
 use control;
 use ctx;
 use telemetry::{self, sensor};
@@ -257,11 +257,11 @@ impl Protocol {
         }
     }
 
-    pub fn into_key<T>(self, key: T) -> Cachability<(T, Protocol)> {
+    pub fn into_key<T>(self, key: T) -> Uses<(T, Protocol)> {
         if self.is_cachable() {
-            Cachability::Reusable((key, self))
+            Uses::Reusable((key, self))
         } else {
-            Cachability::Unique((key, self))
+            Uses::SingleUse((key, self))
         }
     }
 }

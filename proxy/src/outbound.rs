@@ -11,7 +11,7 @@ use tower_buffer::Buffer;
 use tower_discover::{Change, Discover};
 use tower_in_flight_limit::InFlightLimit;
 use tower_h2;
-use conduit_proxy_router::{Cachability, Recognize};
+use conduit_proxy_router::{Uses, Recognize};
 
 use bind::{self, Bind, Protocol};
 use control::{self, discovery};
@@ -86,7 +86,7 @@ where
         choose::PowerOfTwoChoices<rand::ThreadRng>
     >>>>;
 
-    fn recognize(&self, req: &Self::Request) -> Option<Cachability<Self::Key>> {
+    fn recognize(&self, req: &Self::Request) -> Option<Uses<Self::Key>> {
         let proto = bind::Protocol::from(req);
 
         let local = req.uri().authority_part().map(|authority| {

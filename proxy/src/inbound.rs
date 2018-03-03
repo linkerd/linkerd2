@@ -6,7 +6,7 @@ use tower;
 use tower_buffer::{self, Buffer};
 use tower_in_flight_limit::{self, InFlightLimit};
 use tower_h2;
-use conduit_proxy_router::{Cachability, Recognize};
+use conduit_proxy_router::{Uses, Recognize};
 
 use bind;
 use ctx;
@@ -46,7 +46,7 @@ where
     type RouteError = ();
     type Service = InFlightLimit<Buffer<bind::Service<B>>>;
 
-    fn recognize(&self, req: &Self::Request) -> Option<Cachability<Self::Key>> {
+    fn recognize(&self, req: &Self::Request) -> Option<Uses<Self::Key>> {
         let key = req.extensions()
             .get::<Arc<ctx::transport::Server>>()
             .and_then(|ctx| {
