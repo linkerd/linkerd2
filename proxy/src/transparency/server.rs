@@ -38,7 +38,7 @@ where
     listen_addr: SocketAddr,
     new_service: S,
     proxy_ctx: Arc<ProxyCtx>,
-    sensors: Sensors,
+    sensors: Sensors<T>,
     tcp: tcp::Proxy<T>,
 }
 
@@ -59,7 +59,7 @@ where
     pub fn new(
         listen_addr: SocketAddr,
         proxy_ctx: Arc<ProxyCtx>,
-        sensors: Sensors,
+        sensors: Sensors<T>,
         get_orig_dst: G,
         stack: S,
         tcp_connect_timeout: Duration,

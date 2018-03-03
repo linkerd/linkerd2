@@ -11,59 +11,60 @@ use tower_h2::{client, Body};
 
 use ctx;
 use telemetry::event::{self, Event};
+use time::Timer;
 
 const GRPC_STATUS: &str = "grpc-status";
 
-pub struct NewHttp<N, A, B> {
+pub struct NewHttp<N, A, B, T> {
     next_id: Arc<AtomicUsize>,
     new_service: N,
-    handle: super::Handle,
+    handle: super::Handle<T>,
     client_ctx: Arc<ctx::transport::Client>,
     _p: PhantomData<(A, B)>,
 }
 
-pub struct Init<F, A, B> {
+pub struct Init<F, A, B, T> {
     next_id: Arc<AtomicUsize>,
     future: F,
-    handle: super::Handle,
+    handle: super::Handle<T>,
     client_ctx: Arc<ctx::transport::Client>,
     _p: PhantomData<(A, B)>,
 }
 
 /// Wraps a transport with telemetry.
 #[derive(Debug)]
-pub struct Http<S, A, B> {
+pub struct Http<S, A, B, T> {
     next_id: Arc<AtomicUsize>,
     service: S,
-    handle: super::Handle,
+    handle: super::Handle<T>,
     client_ctx: Arc<ctx::transport::Client>,
     _p: PhantomData<(A, B)>,
 }
 
 #[derive(Debug)]
-pub struct Respond<F, B> {
+pub struct Respond<F, B, T> {
     future: F,
-    inner: Option<RespondInner>,
+    inner: Option<RespondInner<T>>,
     _p: PhantomData<(B)>,
 }
 
 #[derive(Debug)]
-struct RespondInner {
-    handle: super::Handle,
+struct RespondInner<T> {
+    handle: super::Handle<T>,
     ctx: Arc<ctx::http::Request>,
     request_open: Instant,
 }
 
-#[derive(Default, Debug)]
-pub struct ResponseBody<B> {
+#[derive(Debug)]
+pub struct ResponseBody<B, T> {
     body: B,
-    inner: Option<ResponseBodyInner>,
+    inner: Option<ResponseBodyInner<T>>,
     _p: PhantomData<(B)>,
 }
 
 #[derive(Debug)]
-struct ResponseBodyInner {
-    handle: super::Handle,
+struct ResponseBodyInner<T> {
+    handle: super::Handle<T>,
     ctx: Arc<ctx::http::Response>,
     bytes_sent: u64,
     frames_sent: u32,
@@ -73,7 +74,7 @@ struct ResponseBodyInner {
 
 // === NewHttp ===
 
-impl<N, A, B> NewHttp<N, A, B>
+impl<N, A, B, T> NewHttp<N, A, B, T>
 where
     A: Body + 'static,
     B: Body + 'static,
@@ -83,11 +84,12 @@ where
         Error = client::Error,
     >
         + 'static,
+    T: Clone,
 {
     pub(super) fn new(
         next_id: Arc<AtomicUsize>,
         new_service: N,
-        handle: &super::Handle,
+        handle: &super::Handle<T>,
         client_ctx: &Arc<ctx::transport::Client>,
     ) -> Self {
         Self {
@@ -100,7 +102,7 @@ where
     }
 }
 
-impl<N, A, B> NewService for NewHttp<N, A, B>
+impl<N, A, B, T> NewService for NewHttp<N, A, B, T>
 where
     A: Body + 'static,
     B: Body + 'static,
@@ -110,13 +112,14 @@ where
         Error = client::Error,
     >
         + 'static,
+    T: Timer,
 {
     type Request = N::Request;
-    type Response = http::Response<ResponseBody<B>>;
+    type Response = http::Response<ResponseBody<B, T>>;
     type Error = N::Error;
     type InitError = N::InitError;
-    type Future = Init<N::Future, A, B>;
-    type Service = Http<N::Service, A, B>;
+    type Future = Init<N::Future, A, B, T>;
+    type Service = Http<N::Service, A, B, T>;
 
     fn new_service(&self) -> Self::Future {
         Init {
@@ -131,14 +134,15 @@ where
 
 // === Init ===
 
-impl<F, A, B> Future for Init<F, A, B>
+impl<F, A, B, T> Future for Init<F, A, B, T>
 where
     A: Body + 'static,
     B: Body + 'static,
     F: Future,
     F::Item: Service<Request = http::Request<A>, Response = http::Response<B>>,
+    T: Clone,
 {
-    type Item = Http<F::Item, A, B>;
+    type Item = Http<F::Item, A, B, T>;
     type Error = F::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
@@ -156,7 +160,7 @@ where
 
 // === Http ===
 
-impl<S, A, B> Service for Http<S, A, B>
+impl<S, A, B, T> Service for Http<S, A, B, T>
 where
     A: Body + 'static,
     B: Body + 'static,
@@ -166,11 +170,12 @@ where
         Error = client::Error,
     >
         + 'static,
+    T: Timer,
 {
     type Request = S::Request;
-    type Response = http::Response<ResponseBody<B>>;
+    type Response = http::Response<ResponseBody<B, T>>;
     type Error = S::Error;
-    type Future = Respond<S::Future, B>;
+    type Future = Respond<S::Future, B, T>;
 
     fn poll_ready(&mut self) -> Poll<(), Self::Error> {
         self.service.poll_ready()
@@ -189,7 +194,7 @@ where
                 Some(RespondInner {
                     ctx,
                     handle: self.handle.clone(),
-                    request_open: Instant::now(),
+                    request_open: self.handle.timer.now(),
                 })
             }
         };
@@ -207,12 +212,13 @@ where
 
 // === Measured ===
 
-impl<F, B> Future for Respond<F, B>
+impl<F, B, T> Future for Respond<F, B, T>
 where
     F: Future<Item = http::Response<B>, Error=client::Error>,
     B: Body + 'static,
+    T: Timer,
 {
-    type Item = http::Response<ResponseBody<B>>;
+    type Item = http::Response<ResponseBody<B, T>>;
     type Error = F::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
@@ -228,12 +234,15 @@ where
                     } = i;
 
                     let ctx = ctx::http::Response::new(&rsp, &ctx);
+                    let timer = &handle.timer.clone();
+                    let since_request_open = timer
+                        .elapsed(request_open);
 
                     handle.send(|| {
                         Event::StreamResponseOpen(
                             Arc::clone(&ctx),
                             event::StreamResponseOpen {
-                                since_request_open: request_open.elapsed(),
+                                since_request_open,
                             },
                         )
                     });
@@ -249,7 +258,7 @@ where
                                 Arc::clone(&ctx),
                                 event::StreamResponseEnd {
                                     grpc_status,
-                                    since_request_open: request_open.elapsed(),
+                                    since_request_open,
                                     since_response_open: Duration::default(),
                                     bytes_sent: 0,
                                     frames_sent: 0,
@@ -265,7 +274,7 @@ where
                             bytes_sent: 0,
                             frames_sent: 0,
                             request_open,
-                            response_open: Instant::now(),
+                            response_open: timer.now(),
                         })
                     }
                 });
@@ -291,13 +300,14 @@ where
                             mut handle,
                             request_open,
                         } = i;
-
+                        let since_request_open = handle
+                            .timer.elapsed(request_open);
                         handle.send(|| {
                             Event::StreamRequestFail(
                                 Arc::clone(&ctx),
                                 event::StreamRequestFail {
                                     error,
-                                    since_request_open: request_open.elapsed(),
+                                    since_request_open,
                                 },
                             )
                         });
@@ -312,14 +322,24 @@ where
 
 // === ResponseBody ===
 
-impl<B> ResponseBody<B> {
+impl<B: Default, T> Default for ResponseBody<B, T> {
+    fn default() -> Self {
+        ResponseBody {
+            body: B::default(),
+            inner: None,
+            _p: PhantomData,
+        }
+    }
+}
+
+impl<B, T: Timer> ResponseBody<B, T> {
     /// Wraps an operation on the underlying transport with error telemetry.
     ///
     /// If the transport operation results in a non-recoverable error, a transport close
     /// event is emitted.
-    fn sense_err<F, T>(&mut self, op: F) -> Result<T, h2::Error>
+    fn sense_err<F, I>(&mut self, op: F) -> Result<I, h2::Error>
     where
-        F: FnOnce(&mut B) -> Result<T, h2::Error>,
+        F: FnOnce(&mut B) -> Result<I, h2::Error>,
     {
         match op(&mut self.body) {
             Ok(v) => Ok(v),
@@ -335,14 +355,17 @@ impl<B> ResponseBody<B> {
                             frames_sent,
                             ..
                         } = i;
-
+                        let since_request_open = handle
+                            .timer.elapsed(request_open);
+                        let since_response_open = handle
+                            .timer.elapsed(response_open);
                         handle.send(|| {
                             event::Event::StreamResponseFail(
                                 Arc::clone(&ctx),
                                 event::StreamResponseFail {
                                     error,
-                                    since_request_open: request_open.elapsed(),
-                                    since_response_open: response_open.elapsed(),
+                                    since_request_open,
+                                    since_response_open,
                                     bytes_sent,
                                     frames_sent,
                                 },
@@ -357,9 +380,10 @@ impl<B> ResponseBody<B> {
     }
 }
 
-impl<B> Body for ResponseBody<B>
+impl<B, T> Body for ResponseBody<B, T>
 where
     B: Body + 'static,
+    T: Timer,
 {
     /// The body chunk type
     type Data = <B::Data as IntoBuf>::Buf;
@@ -395,7 +419,10 @@ where
                         bytes_sent,
                         frames_sent,
                     } = i;
-
+                    let since_request_open = handle
+                        .timer.elapsed(request_open);
+                    let since_response_open = handle
+                        .timer.elapsed(response_open);
                     handle.send(|| {
                         let grpc_status = trls.as_ref()
                             .and_then(|t| t.get(GRPC_STATUS))
@@ -406,8 +433,8 @@ where
                             Arc::clone(&ctx),
                             event::StreamResponseEnd {
                                 grpc_status,
-                                since_request_open: request_open.elapsed(),
-                                since_response_open: response_open.elapsed(),
+                                since_request_open,
+                                since_response_open,
                                 bytes_sent,
                                 frames_sent,
                             },

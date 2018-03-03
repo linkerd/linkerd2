@@ -32,6 +32,14 @@ pub trait Timer: Clone + Sized {
     /// This takes `&self` primarily for the mock timer implementation.
     fn now(&self) -> Instant;
 
+    /// Returns the `Duration` elapsed since a given `Instant`.
+    fn elapsed(&self, since: Instant) -> Duration {
+        match self.now() {
+            now if since >= now => since - now,
+            now => now - since,
+        }
+    }
+
     /// Returns a `Timeout` service using this timer.
     fn timeout<U>(&self, upstream: U, duration: Duration)
                      -> Timeout<U, Self>

@@ -178,6 +178,7 @@ where
             &process_ctx,
             config.event_buffer_capacity,
             config.metrics_flush_interval,
+            &timer,
         );
 
         let (control, control_bg) = control::new(&timer);
@@ -298,7 +299,7 @@ fn serve<R, B, E, F, G, T>(
     recognize: R,
     tcp_connect_timeout: Duration,
     proxy_ctx: Arc<ctx::Proxy>,
-    sensors: telemetry::Sensors,
+    sensors: telemetry::Sensors<T>,
     get_orig_dst: G,
     executor: &Handle,
     timer: &T,
@@ -309,7 +310,7 @@ where
     F: Error + 'static,
     R: Recognize<
         Request = http::Request<HttpBody>,
-        Response = http::Response<telemetry::sensor::http::ResponseBody<B>>,
+        Response = http::Response<telemetry::sensor::http::ResponseBody<B, T>>,
         Error = E,
         RouteError = F,
     >

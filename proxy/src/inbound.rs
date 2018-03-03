@@ -38,7 +38,7 @@ where
     T: Timer + 'static,
 {
     type Request = http::Request<B>;
-    type Response = bind::HttpResponse;
+    type Response = bind::HttpResponse<T>;
     type Error = tower_in_flight_limit::Error<
         tower_buffer::Error<
             <bind::Service<B, T> as tower::Service>::Error

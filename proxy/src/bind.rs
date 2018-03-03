@@ -32,7 +32,7 @@ use time::{Timer};
 /// Buffering is not bounded and no timeouts are applied.
 pub struct Bind<C, B, T> {
     ctx: C,
-    sensors: telemetry::Sensors,
+    sensors: telemetry::Sensors<T>,
     executor: Handle,
     req_ids: Arc<AtomicUsize>,
     timer: T,
@@ -77,12 +77,22 @@ pub struct NormalizeUri<S> {
 
 pub type Service<B, T> = Reconnect<NormalizeUri<NewHttp<B, T>>>;
 
-pub type NewHttp<B, T> = sensor::NewHttp<Client<B, T>, B, HttpBody>;
+pub type NewHttp<B, T> = sensor::NewHttp<
+    Client<B, T>,
+    B,
+    HttpBody,
+    T
+>;
 
-pub type HttpResponse = http::Response<sensor::http::ResponseBody<HttpBody>>;
+pub type HttpResponse<T> = http::Response<
+    sensor::http::ResponseBody<HttpBody, T>,
+>;
 
 pub type Client<B, T> = transparency::Client<
-    sensor::Connect<transport::Connect>,
+    sensor::Connect<
+        transport::Connect,
+        T,
+    >,
     B,
 >;
 
@@ -112,19 +122,19 @@ impl Error for BufferSpawnError {
     fn cause(&self) -> Option<&Error> { None }
 }
 
-impl<B, T> Bind<(), B, T> {
+impl<B, T: Timer> Bind<(), B, T> {
     pub fn new(executor: Handle, timer: T) -> Self {
         Self {
             executor,
             ctx: (),
-            sensors: telemetry::Sensors::null(),
+            sensors: telemetry::Sensors::null(&timer),
             req_ids: Default::default(),
             timer,
             _p: PhantomData,
         }
     }
 
-    pub fn with_sensors(self, sensors: telemetry::Sensors) -> Self {
+    pub fn with_sensors(self, sensors: telemetry::Sensors<T>) -> Self {
         Self {
             sensors,
             ..self
@@ -242,7 +252,7 @@ where
     T: Timer + 'static,
 {
     type Request = http::Request<B>;
-    type Response = HttpResponse;
+    type Response = HttpResponse<T>;
     type Error = <Service<B, T> as tower::Service>::Error;
     type Service = Service<B, T>;
     type BindError = ();
@@ -264,14 +274,8 @@ impl<S> NormalizeUri<S> {
 
 impl<S, B> tower::NewService for NormalizeUri<S>
 where
-    S: tower::NewService<
-        Request=http::Request<B>,
-        Response=HttpResponse,
-    >,
-    S::Service: tower::Service<
-        Request=http::Request<B>,
-        Response=HttpResponse,
-    >,
+    S: tower::NewService<Request=http::Request<B>>,
+    S::Service: tower::Service<Request=http::Request<B>>,
     NormalizeUri<S::Service>: tower::Service,
     B: tower_h2::Body,
 {
@@ -291,14 +295,11 @@ where
 
 impl<S, B> tower::Service for NormalizeUri<S>
 where
-    S: tower::Service<
-        Request=http::Request<B>,
-        Response=HttpResponse,
-    >,
+    S: tower::Service<Request=http::Request<B>>,
     B: tower_h2::Body,
 {
     type Request = S::Request;
-    type Response = HttpResponse;
+    type Response = S::Response;
     type Error = S::Error;
     type Future = S::Future;
 

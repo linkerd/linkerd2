@@ -7,14 +7,15 @@ use tokio_io::{AsyncRead, AsyncWrite};
 
 use ctx;
 use telemetry::event;
+use time::Timer;
 
 /// Wraps a transport with telemetry.
 #[derive(Debug)]
-pub struct Transport<T>(T, Option<Inner>);
+pub struct Transport<I, T>(I, Option<Inner<T>>);
 
 #[derive(Debug)]
-struct Inner {
-    handle: super::Handle,
+struct Inner<T> {
+    handle: super::Handle<T>,
     ctx: Arc<ctx::transport::Ctx>,
     opened_at: Instant,
 
@@ -25,28 +26,32 @@ struct Inner {
 
 /// Builds client transports with telemetry.
 #[derive(Clone, Debug)]
-pub struct Connect<C> {
+pub struct Connect<C, T> {
     underlying: C,
-    handle: super::Handle,
+    handle: super::Handle<T>,
     ctx: Arc<ctx::transport::Client>,
 }
 
 /// Adds telemetry to a pending client transport.
 #[derive(Clone, Debug)]
-pub struct Connecting<C: tokio_connect::Connect> {
+pub struct Connecting<C: tokio_connect::Connect, T> {
     underlying: C::Future,
-    handle: super::Handle,
+    handle: super::Handle<T>,
     ctx: Arc<ctx::transport::Client>,
 }
 
 // === impl Transport ===
 
-impl<T: AsyncRead + AsyncWrite> Transport<T> {
+impl<I, T> Transport<I, T>
+where
+    I: AsyncRead + AsyncWrite,
+    T: Timer,
+{
     /// Wraps a transport with telemetry and emits a transport open event.
     pub(super) fn open(
-        io: T,
+        io: I,
         opened_at: Instant,
-        handle: &super::Handle,
+        handle: &super::Handle<T>,
         ctx: Arc<ctx::transport::Ctx>,
     ) -> Self {
         let mut handle = handle.clone();
@@ -69,7 +74,7 @@ impl<T: AsyncRead + AsyncWrite> Transport<T> {
     /// event is emitted.
     fn sense_err<F, U>(&mut self, op: F) -> io::Result<U>
     where
-        F: FnOnce(&mut T) -> io::Result<U>,
+        F: FnOnce(&mut I) -> io::Result<U>,
     {
         match op(&mut self.0) {
             Ok(v) => Ok(v),
@@ -81,8 +86,8 @@ impl<T: AsyncRead + AsyncWrite> Transport<T> {
                         opened_at,
                     }) = self.1.take()
                     {
+                        let duration = handle.timer.elapsed(opened_at);
                         handle.send(move || {
-                            let duration = opened_at.elapsed();
                             let ev = event::TransportClose {
                                 duration,
                                 clean: false,
@@ -98,7 +103,7 @@ impl<T: AsyncRead + AsyncWrite> Transport<T> {
     }
 }
 
-impl<T> Drop for Transport<T> {
+impl<I, T> Drop for Transport<I, T> {
     fn drop(&mut self) {
         if let Some(Inner {
             mut handle,
@@ -118,13 +123,21 @@ impl<T> Drop for Transport<T> {
     }
 }
 
-impl<T: AsyncRead + AsyncWrite> io::Read for Transport<T> {
+impl<I, T> io::Read for Transport<I, T>
+where
+    I: AsyncRead + AsyncWrite,
+    T: Timer,
+{
     fn read(&mut self, mut buf: &mut [u8]) -> io::Result<usize> {
         self.sense_err(move |io| io.read(buf))
     }
 }
 
-impl<T: AsyncRead + AsyncWrite> io::Write for Transport<T> {
+impl<I, T> io::Write for Transport<I, T>
+where
+    I: AsyncRead + AsyncWrite,
+    T: Timer,
+{
     fn flush(&mut self) -> io::Result<()> {
         self.sense_err(|io| io.flush())
     }
@@ -134,13 +147,21 @@ impl<T: AsyncRead + AsyncWrite> io::Write for Transport<T> {
     }
 }
 
-impl<T: AsyncRead + AsyncWrite> AsyncRead for Transport<T> {
+impl<I, T> AsyncRead for Transport<I, T>
+where
+    I: AsyncRead + AsyncWrite,
+    T: Timer,
+{
     unsafe fn prepare_uninitialized_buffer(&self, buf: &mut [u8]) -> bool {
         self.0.prepare_uninitialized_buffer(buf)
     }
 }
 
-impl<T: AsyncRead + AsyncWrite> AsyncWrite for Transport<T> {
+impl<I, T> AsyncWrite for Transport<I, T>
+where
+    I: AsyncRead + AsyncWrite,
+    T: Timer,
+{
     fn shutdown(&mut self) -> Poll<(), io::Error> {
         self.sense_err(|io| io.shutdown())
     }
@@ -148,11 +169,15 @@ impl<T: AsyncRead + AsyncWrite> AsyncWrite for Transport<T> {
 
 // === impl Connect ===
 
-impl<C: tokio_connect::Connect> Connect<C> {
+impl<C, T> Connect<C, T>
+where
+    C: tokio_connect::Connect,
+    T: Clone,
+{
     /// Returns a `Connect` to `addr` and `handle`.
     pub(super) fn new(
         underlying: C,
-        handle: &super::Handle,
+        handle: &super::Handle<T>,
         ctx: &Arc<ctx::transport::Client>,
     ) -> Self {
         Connect {
@@ -163,10 +188,14 @@ impl<C: tokio_connect::Connect> Connect<C> {
     }
 }
 
-impl<C: tokio_connect::Connect> tokio_connect::Connect for Connect<C> {
-    type Connected = Transport<C::Connected>;
+impl<C, T> tokio_connect::Connect for Connect<C, T>
+where
+    C: tokio_connect::Connect,
+    T: Timer,
+{
+    type Connected = Transport<C::Connected, T>;
     type Error = C::Error;
-    type Future = Connecting<C>;
+    type Future = Connecting<C, T>;
 
     fn connect(&self) -> Self::Future {
         Connecting {
@@ -179,15 +208,20 @@ impl<C: tokio_connect::Connect> tokio_connect::Connect for Connect<C> {
 
 // === impl Connecting ===
 
-impl<C: tokio_connect::Connect> Future for Connecting<C> {
-    type Item = Transport<C::Connected>;
+impl<C, T> Future for Connecting<C, T>
+where
+    C: tokio_connect::Connect,
+    T: Timer,
+{
+    type Item = Transport<C::Connected, T>;
     type Error = C::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         let io = try_ready!(self.underlying.poll());
         debug!("client connection open");
         let ctx = Arc::new(Arc::clone(&self.ctx).into());
-        let trans = Transport::open(io, Instant::now(), &self.handle, ctx);
+        let opened_at = self.handle.timer.now();
+        let trans = Transport::open(io, opened_at, &self.handle, ctx);
         Ok(trans.into())
     }
 }

@@ -19,7 +19,7 @@ use transport;
 pub struct Proxy<T> {
     connect_timeout: NewTimeout<T>,
     executor: Handle,
-    sensors: Sensors,
+    sensors: Sensors<T>,
 }
 
 impl<T> Proxy<T>
@@ -29,7 +29,7 @@ where
 
     /// Create a new TCP `Proxy`.
     pub fn new(connect_timeout: Duration,
-               sensors: Sensors,
+               sensors: Sensors<T>,
                executor: &Handle,
                timer: &T)
                -> Self
