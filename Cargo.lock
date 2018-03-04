@@ -786,7 +786,7 @@ dependencies = [
 [[package]]
 name = "tower"
 version = "0.1.0"
-source = "git+https://github.com/tower-rs/tower#59679934c9907e5b690666629467534aa6a425cc"
+source = "git+https://github.com/tower-rs/tower#7caef48bfe5aba261b7bb41992b4d408f1cfe304"
 dependencies = [
  "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -794,11 +794,11 @@ dependencies = [
 [[package]]
 name = "tower-balance"
 version = "0.1.0"
-source = "git+https://github.com/tower-rs/tower#59679934c9907e5b690666629467534aa6a425cc"
+source = "git+https://github.com/tower-rs/tower#7caef48bfe5aba261b7bb41992b4d408f1cfe304"
 dependencies = [
  "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
+ "indexmap 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "ordermap 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "tower 0.1.0 (git+https://github.com/tower-rs/tower)",
  "tower-discover 0.1.0 (git+https://github.com/tower-rs/tower)",
@@ -807,7 +807,7 @@ dependencies = [
 [[package]]
 name = "tower-buffer"
 version = "0.1.0"
-source = "git+https://github.com/tower-rs/tower#59679934c9907e5b690666629467534aa6a425cc"
+source = "git+https://github.com/tower-rs/tower#7caef48bfe5aba261b7bb41992b4d408f1cfe304"
 dependencies = [
  "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "tower 0.1.0 (git+https://github.com/tower-rs/tower)",
@@ -816,7 +816,7 @@ dependencies = [
 [[package]]
 name = "tower-discover"
 version = "0.1.0"
-source = "git+https://github.com/tower-rs/tower#59679934c9907e5b690666629467534aa6a425cc"
+source = "git+https://github.com/tower-rs/tower#7caef48bfe5aba261b7bb41992b4d408f1cfe304"
 dependencies = [
  "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "tower 0.1.0 (git+https://github.com/tower-rs/tower)",
@@ -867,7 +867,7 @@ dependencies = [
 [[package]]
 name = "tower-in-flight-limit"
 version = "0.1.0"
-source = "git+https://github.com/tower-rs/tower#59679934c9907e5b690666629467534aa6a425cc"
+source = "git+https://github.com/tower-rs/tower#7caef48bfe5aba261b7bb41992b4d408f1cfe304"
 dependencies = [
  "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "tower 0.1.0 (git+https://github.com/tower-rs/tower)",
@@ -877,7 +877,7 @@ dependencies = [
 [[package]]
 name = "tower-ready-service"
 version = "0.1.0"
-source = "git+https://github.com/tower-rs/tower#59679934c9907e5b690666629467534aa6a425cc"
+source = "git+https://github.com/tower-rs/tower#7caef48bfe5aba261b7bb41992b4d408f1cfe304"
 dependencies = [
  "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "tower 0.1.0 (git+https://github.com/tower-rs/tower)",
@@ -886,7 +886,7 @@ dependencies = [
 [[package]]
 name = "tower-reconnect"
 version = "0.1.0"
-source = "git+https://github.com/tower-rs/tower#59679934c9907e5b690666629467534aa6a425cc"
+source = "git+https://github.com/tower-rs/tower#7caef48bfe5aba261b7bb41992b4d408f1cfe304"
 dependencies = [
  "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -896,7 +896,7 @@ dependencies = [
 [[package]]
 name = "tower-util"
 version = "0.1.0"
-source = "git+https://github.com/tower-rs/tower#59679934c9907e5b690666629467534aa6a425cc"
+source = "git+https://github.com/tower-rs/tower#7caef48bfe5aba261b7bb41992b4d408f1cfe304"
 dependencies = [
  "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "tower 0.1.0 (git+https://github.com/tower-rs/tower)",
