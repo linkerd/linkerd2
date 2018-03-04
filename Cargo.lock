@@ -851,13 +851,13 @@ dependencies = [
 [[package]]
 name = "tower-h2"
 version = "0.1.0"
-source = "git+https://github.com/tower-rs/tower-h2#745d02c8489f44b4b1e9549aba4dda0d1f417067"
+source = "git+https://github.com/tower-rs/tower-h2#59f344f02d37a9e8596805f159bdca3af13ee7b0"
 dependencies = [
  "bytes 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "h2 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "http 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "log 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-connect 0.1.0 (git+https://github.com/carllerche/tokio-connect)",
  "tokio-core 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-io 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
