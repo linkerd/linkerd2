@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"errors"
 	"sync"
 	"testing"
 	"time"
@@ -26,7 +27,8 @@ func (w *resourceToWatchImpl) SetLastSyncResourceVersion(version string) {
 func TestWatcher(t *testing.T) {
 	t.Run("Returns nil if the resource initializes in the time limit", func(t *testing.T) {
 		resource := &resourceToWatchImpl{}
-		watcher := newWatcher(resource, "resourcestring")
+		stopCh := make(chan struct{}, 1)
+		watcher := newWatcher(resource, "resourcestring", nil, stopCh)
 		watcher.timeout = 2 * time.Second
 		go func() {
 			time.Sleep(1 * time.Second)
@@ -40,7 +42,8 @@ func TestWatcher(t *testing.T) {
 
 	t.Run("Returns error if the watcher does not initialize in the time limit", func(t *testing.T) {
 		resource := &resourceToWatchImpl{}
-		watcher := newWatcher(resource, "resourcestring")
+		stopCh := make(chan struct{}, 1)
+		watcher := newWatcher(resource, "resourcestring", nil, stopCh)
 		watcher.timeout = 2 * time.Second
 		go func() {
 			time.Sleep(3 * time.Second)
@@ -50,5 +53,35 @@ func TestWatcher(t *testing.T) {
 		if err == nil {
 			t.Fatalf("Expected error, got nil")
 		}
+	})
+	t.Run("Returns error if the watcher does not initialize in the time limit", func(t *testing.T) {
+		resource := &resourceToWatchImpl{}
+		var lock sync.RWMutex
+		didRetry := false
+
+		testWatchInit := func(stop <-chan struct{}) error {
+			lock.Lock()
+			defer lock.Unlock()
+			didRetry = true
+			return errors.New("mock error")
+		}
+		stopCh := make(chan struct{}, 1)
+		watcher := newWatcher(resource, "resourcestring", testWatchInit, stopCh)
+		watcher.timeout = 1 * time.Second
+		go func() {
+			time.Sleep(3 * time.Second)
+			resource.SetLastSyncResourceVersion("synced")
+		}()
+		_ = watcher.run()
+		select {
+		case <-stopCh:
+			lock.Lock()
+			defer lock.Unlock()
+			if !didRetry {
+				t.Fatalf("watchInitializer failed to retry")
+			}
+
+		}
+
 	})
 }

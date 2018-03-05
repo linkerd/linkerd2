@@ -12,6 +12,7 @@ var (
 	sleepBetweenChecks    = 500 * time.Millisecond
 )
 
+type watchInitializer func(stopCh <-chan struct{}) error
 type resourceToWatch interface {
 	LastSyncResourceVersion() string
 }
@@ -20,13 +21,17 @@ type watcher struct {
 	resource     resourceToWatch
 	resourceType string
 	timeout      time.Duration
+	watchInit    watchInitializer
+	stopCh       chan struct{}
 }
 
-func newWatcher(resource resourceToWatch, resourceType string) *watcher {
+func newWatcher(resource resourceToWatch, resourceType string, watchInit watchInitializer, stop chan struct{}) *watcher {
 	return &watcher{
 		resource:     resource,
 		resourceType: resourceType,
 		timeout:      initializationTimeout,
+		watchInit:    watchInit,
+		stopCh:       stop,
 	}
 }
 
@@ -35,6 +40,18 @@ func (w *watcher) run() error {
 	defer close(timedOut)
 	initialized := make(chan struct{}, 1)
 	defer close(initialized)
+
+	if w.watchInit != nil {
+		go func() {
+			for {
+				err := w.watchInit(w.stopCh)
+				if err != nil {
+					log.Errorf("Error establishing watch in [%s watcher]. Retrying", w.resourceType)
+				}
+				time.Sleep(1 * time.Second)
+			}
+		}()
+	}
 
 	go func() {
 		for {
@@ -58,6 +75,7 @@ func (w *watcher) run() error {
 		return nil
 	case <-time.After(w.timeout):
 		timedOut <- struct{}{}
+		w.stopCh <- struct{}{}
 		return fmt.Errorf("[%s watcher] timed out", w.resourceType)
 	}
 }
