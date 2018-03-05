@@ -91,7 +91,17 @@ func render(config installConfig, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	return InjectYAML(buf, w, conduitVersion)
+
+	proxyConfig := &proxyConfig{
+		version:         conduitVersion,
+		logLevel:        proxyLogLevel,
+		apiPort:         proxyAPIPort,
+		controlPort:     proxyControlPort,
+		outboundPort:    outboundPort,
+		inboundPort:     inboundPort,
+		eventBufferSize: 0, // Sets the telemetry event buffer to zero in order to turn off telemetry from control plane
+	}
+	return InjectYAML(buf, w, proxyConfig)
 }
 
 var alphaNumDash = regexp.MustCompile("^[a-zA-Z0-9-]+$")
