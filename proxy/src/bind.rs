@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use futures::{future, Future, Poll};
 use futures::future::{Either, Map};
-use http::{self, uri};
+use http::{self, header,uri};
 use tokio_core::reactor::Handle;
 use tower;
 use tower_h2;
@@ -257,7 +257,6 @@ where
     type InitError = S::InitError;
     type Future = Map<
         S::Future,
-        // ReconstructUri<S::Service>::new,
         fn(S::Service) -> ReconstructUri<S::Service>
     >;
     fn new_service(&self) -> Self::Future {
@@ -296,6 +295,7 @@ where
         Either::A(self.upstream.call(request))
     }
 }
+
 // ===== impl Protocol =====
 
 
@@ -305,17 +305,21 @@ impl<'a, B> From<&'a http::Request<B>> for Protocol {
             return Protocol::Http2
         }
 
-        if req.extensions().get::<h1::AuthorityRewriting>() ==
-            Some(&h1::AuthorityRewriting::SoOriginalDst)
-        {
-            return Protocol::Http1(Host::NoAuthority);
-        }
-
         // If the request has an authority part, use that as the host part of
         // the key for an HTTP/1.x request.
-        let host = req.uri()
-            .authority_part()
+        let host = req.uri().authority_part()
             .cloned()
+            .or_else(|| {
+                // No authority part in the request URI, so try and use the
+                // Host: header value, if one is present and it can be parsed
+                // as an Authority.
+                    req.headers().get(header::HOST)
+                        .and_then(|header| {
+                            header.to_str().ok()
+                                .and_then(|header|
+                                    header.parse::<uri::Authority>().ok())
+                        })
+                })
             .map(Host::Authority)
             .unwrap_or_else(|| Host::NoAuthority);
 
