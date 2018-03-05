@@ -188,9 +188,7 @@ where
         let inbound = {
             let ctx = ctx::Proxy::inbound(&process_ctx);
 
-            let bind = bind.clone()
-                .with_connect_timeout(config.private_connect_timeout)
-                .with_ctx(ctx.clone());
+            let bind = bind.clone().with_ctx(ctx.clone());
 
             let default_addr = config.private_forward.map(|a| a.into());
 
@@ -212,12 +210,7 @@ where
         let outbound = {
             let ctx = ctx::Proxy::outbound(&process_ctx);
 
-            let bind = config
-                .public_connect_timeout
-                .map_or_else(|| bind.clone(), |t| bind.clone().with_connect_timeout(t))
-                .with_ctx(ctx.clone());
-
-            let tcp_connect_timeout = bind.connect_timeout();
+            let bind = bind.clone().with_ctx(ctx.clone());
 
             let outgoing = Outbound::new(
                 bind,
@@ -230,7 +223,7 @@ where
             let fut = serve(
                 outbound_listener,
                 outgoing,
-                tcp_connect_timeout,
+                config.public_connect_timeout,
                 ctx,
                 sensors,
                 get_original_dst,
