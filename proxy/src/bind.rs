@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
 use std::time::Duration;
 
-use http::{self, header, uri};
+use http::{self, uri};
 use tokio_core::reactor::Handle;
 use tower;
 use tower_h2;
@@ -228,20 +228,10 @@ impl<'a, B> From<&'a http::Request<B>> for Protocol {
 
         // If the request has an authority part, use that as the host part of
         // the key for an HTTP/1.x request.
-        let host = req.uri().authority_part()
-                .cloned()
-                .or_else(|| {
-                    // No authority part in the request URI, so try and use the
-                    // Host: header value, if one is present and it can be parsed
-                    // as an Authority.
-                        req.headers().get(header::HOST)
-                            .and_then(|header| {
-                                header.to_str().ok()
-                                    .and_then(|header|
-                                        header.parse::<uri::Authority>().ok())
-                            })
-                    })
-                .map(Host::Authority)
+        let host = req.uri()
+            .authority_part()
+            .cloned()
+            .map(Host::Authority)
             .unwrap_or_else(|| Host::NoAuthority);
 
         Protocol::Http1(host)
