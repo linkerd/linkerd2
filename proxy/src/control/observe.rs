@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use futures::{future, Poll, Stream};
 use futures_mpsc_lossy;
-use ordermap::OrderMap;
+use indexmap::IndexMap;
 use tower_grpc::{self as grpc, Response};
 
 use conduit_proxy_controller_grpc::common::TapEvent;
@@ -22,7 +22,7 @@ pub struct Observe {
 pub struct TapEvents {
     rx: futures_mpsc_lossy::Receiver<Event>,
     remaining: usize,
-    current: OrderMap<Arc<ctx::http::Request>, ()>,
+    current: IndexMap<Arc<ctx::http::Request>, ()>,
     tap_id: usize,
     taps: Arc<Mutex<Taps>>,
 }
@@ -77,7 +77,7 @@ impl server::Tap for Observe {
         let events = TapEvents {
             rx,
             tap_id,
-            current: OrderMap::default(),
+            current: IndexMap::default(),
             remaining: req.limit as usize,
             taps: self.taps.clone(),
         };

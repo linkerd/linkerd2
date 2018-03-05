@@ -11,11 +11,14 @@ import (
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/healthcheck"
 	"github.com/runconduit/conduit/pkg/k8s"
-	"github.com/runconduit/conduit/pkg/shell"
+	"github.com/runconduit/conduit/pkg/version"
 	"github.com/spf13/cobra"
 )
 
-const lineWidth = 80
+const (
+	lineWidth       = 80
+	versionCheckURL = "https://versioncheck.conduit.io/version.json"
+)
 
 var checkCmd = &cobra.Command{
 	Use:   "check",
@@ -26,7 +29,7 @@ problems were found.`,
 	Args: cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		kubeApi, err := k8s.NewK8sAPI(shell.NewUnixShell().HomeDir(), kubeconfigPath)
+		kubeApi, err := k8s.NewAPI(kubeconfigPath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error with Kubernetes API: %s\n", err.Error())
 			statusCheckResultWasError(os.Stdout)
@@ -45,7 +48,10 @@ problems were found.`,
 			os.Exit(2)
 		}
 
-		err = checkStatus(os.Stdout, kubeApi, healthcheck.NewGrpcStatusChecker(public.ConduitApiSubsystemName, conduitApi))
+		grpcStatusChecker := healthcheck.NewGrpcStatusChecker(public.ConduitApiSubsystemName, conduitApi)
+		versionStatusChecker := version.NewVersionStatusChecker(versionCheckURL, conduitApi)
+
+		err = checkStatus(os.Stdout, kubeApi, grpcStatusChecker, versionStatusChecker)
 		if err != nil {
 			os.Exit(2)
 		}

@@ -1,7 +1,6 @@
 package k8s
 
 import (
-	"path/filepath"
 	"testing"
 )
 
@@ -59,11 +58,11 @@ func TestGenerateBaseKubernetesApiUrl(t *testing.T) {
 	})
 }
 
-func TestParseK8SConfig(t *testing.T) {
+func TestGetConfig(t *testing.T) {
 	t.Run("Gets host correctly form existing file", func(t *testing.T) {
-		config, err := parseK8SConfig("testdata/config.test")
+		config, err := getConfig("testdata/config.test")
 		if err != nil {
-			t.Fatalf("Unexpected error starting proxy: %v", err)
+			t.Fatalf("Unexpected error: %v", err)
 		}
 
 		expectedHost := "https://55.197.171.239"
@@ -73,40 +72,9 @@ func TestParseK8SConfig(t *testing.T) {
 	})
 
 	t.Run("Returns error if configuration cannot be found", func(t *testing.T) {
-		_, err := parseK8SConfig("/this/doest./not/exist.config")
+		_, err := getConfig("/this/doest./not/exist.config")
 		if err == nil {
 			t.Fatalf("Expecting error when config file doesnt exist, got nothing")
-		}
-	})
-}
-
-func TestFindK8sConfigFile(t *testing.T) {
-	override := "/this/is/overrriden"
-	envVarContents := "~/tmp/.kube"
-	homeDir := "/home/bob"
-
-	t.Run("When override is set, everything else is ignored", func(t *testing.T) {
-		whereTheConfigFileIs := findK8sConfigFile(override, envVarContents, homeDir)
-
-		if whereTheConfigFileIs != override {
-			t.Fatalf("Expected override [%s] to take precedence, but it was [%s]", override, whereTheConfigFileIs)
-		}
-	})
-
-	t.Run("When override NOT set, $KUBECONFIG takes precedence", func(t *testing.T) {
-		whereTheConfigFileIs := findK8sConfigFile("", envVarContents, homeDir)
-
-		if whereTheConfigFileIs != envVarContents {
-			t.Fatalf("Expected $KUBECONFIG [%s] to take precedence, but it was [%s]", envVarContents, envVarContents)
-		}
-	})
-
-	t.Run("When override NOT set, and $KUBECONFIG is NOT set, takes default dir", func(t *testing.T) {
-		whereTheConfigFileIs := findK8sConfigFile("", "", homeDir)
-
-		expectedDir := filepath.Join(homeDir, ".kube", "config")
-		if whereTheConfigFileIs != expectedDir {
-			t.Fatalf("Expected default directory [%s] to take precedence, but it was [%s]", expectedDir, expectedDir)
 		}
 	})
 }

@@ -1,13 +1,13 @@
 extern crate futures;
-extern crate ordermap;
+extern crate indexmap;
 extern crate tower;
 
 use futures::{Future, Poll};
-use ordermap::OrderMap;
+use indexmap::IndexMap;
 use tower::Service;
 
+use std::{error, fmt, mem};
 use std::hash::Hash;
-use std::mem;
 use std::sync::{Arc, Mutex};
 
 /// Route requests based on the request authority
@@ -67,7 +67,7 @@ where T: Recognize,
 struct Inner<T>
 where T: Recognize,
 {
-    routes: OrderMap<T::Key, T::Service>,
+    routes: IndexMap<T::Key, T::Service>,
     recognize: T,
 }
 
@@ -220,6 +220,45 @@ where T: Recognize,
             }
             NotRecognized => Err(Error::NotRecognized),
             Invalid => panic!(),
+        }
+    }
+}
+
+// ===== impl RouteError =====
+
+impl<T, U> fmt::Display for Error<T, U>
+where
+    T: fmt::Display,
+    U: fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Error::Inner(ref why) => fmt::Display::fmt(why, f),
+            Error::Route(ref why) =>
+                write!(f, "route recognition failed: {}", why),
+            Error::NotRecognized => f.pad("route not recognized"),
+        }
+    }
+}
+
+impl<T, U> error::Error for Error<T, U>
+where
+    T: error::Error,
+    U: error::Error,
+{
+    fn cause(&self) -> Option<&error::Error> {
+        match *self {
+            Error::Inner(ref why) => Some(why),
+            Error::Route(ref why) => Some(why),
+            _ => None,
+        }
+    }
+
+    fn description(&self) -> &str {
+        match *self {
+            Error::Inner(_) => "inner service error",
+            Error::Route(_) => "route recognition failed",
+            Error::NotRecognized => "route not recognized",
         }
     }
 }

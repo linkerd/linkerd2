@@ -1,9 +1,11 @@
+use std::{error, fmt};
 use std::net::SocketAddr;
+use std::time::Duration;
+use std::sync::Arc;
 
 use futures::{Async, Poll};
 use http;
 use rand;
-use std::sync::Arc;
 use tower;
 use tower_balance::{self, choose, load, Balance};
 use tower_buffer::Buffer;
@@ -16,7 +18,8 @@ use bind::{self, Bind, Protocol};
 use control::{self, discovery};
 use control::discovery::Bind as BindTrait;
 use ctx;
-use fully_qualified_authority::FullyQualifiedAuthority;
+use fully_qualified_authority::{FullyQualifiedAuthority, NamedAddress};
+use timeout::Timeout;
 
 type BindProtocol<B> = bind::BindProtocol<Arc<ctx::Proxy>, B>;
 
@@ -25,6 +28,7 @@ pub struct Outbound<B> {
     discovery: control::Control,
     default_namespace: Option<String>,
     default_zone: Option<String>,
+    bind_timeout: Duration,
 }
 
 const MAX_IN_FLIGHT: usize = 10_000;
@@ -32,14 +36,18 @@ const MAX_IN_FLIGHT: usize = 10_000;
 // ===== impl Outbound =====
 
 impl<B> Outbound<B> {
-    pub fn new(bind: Bind<Arc<ctx::Proxy>, B>, discovery: control::Control,
-               default_namespace: Option<String>, default_zone: Option<String>)
+    pub fn new(bind: Bind<Arc<ctx::Proxy>, B>,
+               discovery: control::Control,
+               default_namespace: Option<String>,
+               default_zone: Option<String>,
+               bind_timeout: Duration,)
                -> Outbound<B> {
         Self {
             bind,
             discovery,
             default_namespace,
             default_zone,
+            bind_timeout,
         }
     }
 }
@@ -58,14 +66,14 @@ where
     type Response = bind::HttpResponse;
     type Error = <Self::Service as tower::Service>::Error;
     type Key = (Destination, Protocol);
-    type RouteError = ();
-    type Service = InFlightLimit<Buffer<Balance<
+    type RouteError = bind::BufferSpawnError;
+    type Service = InFlightLimit<Timeout<Buffer<Balance<
         load::WithPendingRequests<Discovery<B>>,
-        choose::PowerOfTwoChoices<rand::ThreadRng>,
-    >>>;
+        choose::PowerOfTwoChoices<rand::ThreadRng>
+    >>>>;
 
     fn recognize(&self, req: &Self::Request) -> Option<Self::Key> {
-        let local = req.uri().authority_part().and_then(|authority| {
+        let local = req.uri().authority_part().map(|authority| {
             FullyQualifiedAuthority::normalize(
                 authority,
                 self.default_namespace.as_ref().map(|s| s.as_ref()),
@@ -80,8 +88,11 @@ where
         // In practice, this shouldn't ever happen, since we expect the proxy
         // to be run on Linux servers, with iptables setup, so there should
         // always be an original destination.
-        let dest = if let Some(local) = local {
-            Destination::LocalSvc(local)
+        let dest = if let Some(NamedAddress {
+            name,
+            use_destination_service: true
+        }) = local {
+            Destination::LocalSvc(name)
         } else {
             let orig_dst = req.extensions()
                 .get::<Arc<ctx::transport::Server>>()
@@ -131,11 +142,17 @@ where
 
         let balance = tower_balance::power_of_two_choices(loaded, rand::thread_rng());
 
-        Buffer::new(balance, self.bind.executor())
-            .map(|buffer| {
-                InFlightLimit::new(buffer, MAX_IN_FLIGHT)
-            })
-            .map_err(|_| {})
+        // use the same executor as the underlying `Bind` for the `Buffer` and
+        // `Timeout`.
+        let handle = self.bind.executor();
+
+        let buffer = Buffer::new(balance, handle)
+            .map_err(|_| bind::BufferSpawnError::Outbound)?;
+
+        let timeout = Timeout::new(buffer, self.bind_timeout, handle);
+
+        Ok(InFlightLimit::new(timeout, MAX_IN_FLIGHT))
+
     }
 }
 
@@ -153,11 +170,12 @@ where
     type Response = bind::HttpResponse;
     type Error = <bind::Service<B> as tower::Service>::Error;
     type Service = bind::Service<B>;
-    type DiscoverError = ();
+    type DiscoverError = BindError;
 
     fn poll(&mut self) -> Poll<Change<Self::Key, Self::Service>, Self::DiscoverError> {
         match *self {
-            Discovery::LocalSvc(ref mut w) => w.poll(),
+            Discovery::LocalSvc(ref mut w) => w.poll()
+                .map_err(|_| BindError::Internal),
             Discovery::External(ref mut opt) => {
                 // This "discovers" a single address for an external service
                 // that never has another change. This can mean it floats
@@ -165,7 +183,8 @@ where
                 // circuit-breaking, this should be able to take care of itself,
                 // closing down when the connection is no longer usable.
                 if let Some((addr, bind)) = opt.take() {
-                    let svc = bind.bind(&addr)?;
+                    let svc = bind.bind(&addr)
+                        .map_err(|_| BindError::External{ addr })?;
                     Ok(Async::Ready(Change::Insert(addr, svc)))
                 } else {
                     Ok(Async::NotReady)
@@ -173,4 +192,32 @@ where
             }
         }
     }
+}
+#[derive(Copy, Clone, Debug)]
+pub enum BindError {
+    External { addr: SocketAddr },
+    Internal,
+}
+
+impl fmt::Display for BindError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            BindError::External { addr } =>
+                write!(f, "binding external service for {:?} failed", addr),
+            BindError::Internal =>
+                write!(f, "binding internal service failed"),
+        }
+    }
+
+}
+
+impl error::Error for BindError {
+    fn description(&self) -> &str {
+        match *self {
+            BindError::External { .. } => "binding external service failed",
+            BindError::Internal => "binding internal service failed",
+        }
+    }
+
+    fn cause(&self) -> Option<&error::Error> { None }
 }

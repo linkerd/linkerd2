@@ -4,6 +4,11 @@ version = "0.3.0"
 authors = ["Oliver Gould <ver@buoyant.io>"]
 publish = false
 
+[features]
+default = ["flaky_tests"]
+# Disable to skip certain tests that should not be run on CI.
+flaky_tests = []
+
 [dependencies]
 convert                         = { path = "./convert" }
 conduit-proxy-controller-grpc   = { path = "./controller-grpc" }
@@ -11,18 +16,17 @@ futures-mpsc-lossy              = { path = "./futures-mpsc-lossy" }
 conduit-proxy-router            = { path = "./router" }
 
 bytes = "0.4"
-domain = "0.2.2"
-env_logger = "0.4"
+domain = "0.2.3"
+env_logger = { version = "0.5", default-features = false }
 futures = "0.1"
 h2 = "0.1"
 http = "0.1"
 httparse = "1.2"
-hyper = { version = "0.11.19", features = ["compat"] }
+hyper = { version = "0.11.19", default-features = false, features = ["compat"] }
 ipnet = "1.0"
-log = "0.3"
-ordermap = "0.2"
+log = "0.4.1"
+indexmap = "0.4.1"
 rand = "0.4"
-url = "1.5"
 
 tokio-core = "0.1"
 tokio-io = "0.1"
@@ -50,5 +54,5 @@ tower-util            = { git = "https://github.com/tower-rs/tower" }
 libc = "0.2"
 
 [dev-dependencies]
-quickcheck = "0.6"
+quickcheck = { version = "0.6", default-features = false }
 conduit-proxy-controller-grpc = { path = "./controller-grpc" , features = ["arbitrary"] }

@@ -66,6 +66,9 @@ func (s *server) Tap(req *public.TapRequest, stream pb.Tap_TapServer) error {
 
 	// divide the rps evenly between all pods to tap
 	rpsPerPod := req.MaxRps / float32(len(pods))
+	if rpsPerPod < 1 {
+		rpsPerPod = 1
+	}
 
 	for _, pod := range pods {
 		// initiate a tap on the pod

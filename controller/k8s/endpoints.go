@@ -118,6 +118,14 @@ func (e *EndpointsWatcher) Unsubscribe(service string, port uint32, listener End
 	return nil
 }
 
+func (e *EndpointsWatcher) GetService(service string) (*v1.Service, bool, error) {
+	obj, exists, err := (*e.serviceInformer.store).GetByKey(service)
+	if err != nil || !exists {
+		return nil, exists, err
+	}
+	return obj.(*v1.Service), exists, err
+}
+
 /// informer ///
 
 // Watches a Kubernetes resource type
@@ -346,7 +354,7 @@ func (sp *servicePort) updateEndpoints(newEndpoints *v1.Endpoints) {
 
 	log.Debugf("Updating %s:%d to %s", sp.service, sp.port, util.AddressesToString(newAddresses))
 
-	add, remove := diff(sp.addresses, newAddresses)
+	add, remove := util.DiffAddresses(sp.addresses, newAddresses)
 	for _, listener := range sp.listeners {
 		listener.Update(add, remove)
 	}
@@ -387,7 +395,7 @@ func (sp *servicePort) updateService(newService *v1.Service) {
 
 		log.Debugf("Updating %s:%d to %s", sp.service, sp.port, util.AddressesToString(newAddresses))
 
-		add, remove := diff(sp.addresses, newAddresses)
+		add, remove := util.DiffAddresses(sp.addresses, newAddresses)
 		for _, listener := range sp.listeners {
 			listener.Update(add, remove)
 		}
@@ -406,7 +414,7 @@ func (sp *servicePort) deleteService() {
 
 		log.Debugf("Updating %s:%d to %s", sp.service, sp.port, util.AddressesToString(newAddresses))
 
-		add, remove := diff(sp.addresses, newAddresses)
+		add, remove := util.DiffAddresses(sp.addresses, newAddresses)
 		for _, listener := range sp.listeners {
 			listener.Update(add, remove)
 		}
@@ -482,28 +490,4 @@ func addresses(endpoints *v1.Endpoints, port intstr.IntOrString) []common.TcpAdd
 		}
 	}
 	return addrs
-}
-
-func diff(old []common.TcpAddress, new []common.TcpAddress) ([]common.TcpAddress, []common.TcpAddress) {
-	addSet := make(map[string]common.TcpAddress)
-	removeSet := make(map[string]common.TcpAddress)
-	for _, addr := range new {
-		addSet[util.AddressToString(&addr)] = addr
-	}
-	for _, addr := range old {
-		delete(addSet, util.AddressToString(&addr))
-		removeSet[util.AddressToString(&addr)] = addr
-	}
-	for _, addr := range new {
-		delete(removeSet, util.AddressToString(&addr))
-	}
-	add := make([]common.TcpAddress, 0)
-	for _, addr := range addSet {
-		add = append(add, addr)
-	}
-	remove := make([]common.TcpAddress, 0)
-	for _, addr := range removeSet {
-		remove = append(remove, addr)
-	}
-	return add, remove
 }

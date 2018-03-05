@@ -6,7 +6,7 @@ use self::support::*;
 
 #[test]
 fn inbound_sends_telemetry() {
-    let _ = env_logger::init();
+    let _ = env_logger::try_init();
 
     info!("running test server");
     let srv = server::new().route("/hey", "hello").run();
@@ -56,7 +56,7 @@ fn inbound_sends_telemetry() {
 
 #[test]
 fn http1_inbound_sends_telemetry() {
-    let _ = env_logger::init();
+    let _ = env_logger::try_init();
 
     info!("running test server");
     let srv = server::http1().route("/hey", "hello").run();
@@ -102,7 +102,7 @@ fn http1_inbound_sends_telemetry() {
 
 #[test]
 fn inbound_aggregates_telemetry_over_several_requests() {
-    let _ = env_logger::init();
+    let _ = env_logger::try_init();
 
     info!("running test server");
     let srv = server::new()
@@ -177,14 +177,14 @@ fn inbound_aggregates_telemetry_over_several_requests() {
 
 }
 
-// Ignore this test for now, because our method of adding latency to requests
-// (calling `thread::sleep`) is likely to be flakey, especially on CI.
+// Ignore this test on CI, because our method of adding latency to requests
+// (calling `thread::sleep`) is likely to be flakey on Travis.
 // Eventually, we can add some kind of mock timer system for simulating latency
 // more reliably, and re-enable this test.
 #[test]
-#[ignore]
+#[cfg_attr(not(feature = "flaky_tests"), ignore)]
 fn records_latency_statistics() {
-    let _ = env_logger::init();
+    let _ = env_logger::try_init();
 
     info!("running test server");
     let srv = server::new()

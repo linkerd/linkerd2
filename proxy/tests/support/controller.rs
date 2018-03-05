@@ -2,6 +2,7 @@
 
 use support::*;
 
+use std::fmt;
 use std::net::IpAddr;
 use std::sync::{Arc, Mutex};
 
@@ -14,9 +15,11 @@ pub fn new() -> Controller {
     Controller::new()
 }
 
+struct Destination(Box<Fn() -> Option<pb::destination::Update> + Send>);
+
 #[derive(Debug)]
 pub struct Controller {
-    destinations: Vec<(String, Option<pb::destination::Update>)>,
+    destinations: Vec<(String, Destination)>,
     reports: Option<mpsc::UnboundedSender<pb::telemetry::ReportRequest>>,
 }
 
@@ -35,14 +38,21 @@ impl Controller {
     }
 
     pub fn destination(mut self, dest: &str, addr: SocketAddr) -> Self {
+        self.destination_fn(dest, move || Some(destination_update(addr)))
+    }
+
+    pub fn destination_fn<F>(mut self, dest: &str, f: F) -> Self
+    where
+        F: Fn() -> Option<pb::destination::Update> + Send + 'static,
+    {
         self.destinations
-            .push((dest.into(), Some(destination_update(addr))));
+            .push((dest.into(), Destination(Box::new(f))));
         self
     }
 
+
     pub fn destination_close(mut self, dest: &str) -> Self {
-        self.destinations.push((dest.into(), None));
-        self
+        self.destination_fn(dest, || None)
     }
 
     pub fn reports(&mut self) -> mpsc::UnboundedReceiver<pb::telemetry::ReportRequest> {
@@ -57,10 +67,16 @@ impl Controller {
 }
 
 type Response = self::http::Response<GrpcBody>;
-type Destinations = Arc<Mutex<Vec<(String, Option<pb::destination::Update>)>>>;
+type Destinations = Arc<Mutex<Vec<(String, Destination)>>>;
 
 const DESTINATION_GET: &str = "/conduit.proxy.destination.Destination/Get";
 const TELEMETRY_REPORT: &str = "/conduit.proxy.telemetry.Telemetry/Report";
+
+impl fmt::Debug for Destination {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Destination")
+    }
+}
 
 #[derive(Debug)]
 struct Svc {
@@ -85,7 +101,8 @@ impl Svc {
                         let mut vec = destinations.lock().unwrap();
                         //TODO: decode `_bytes` and compare with `.0`
                         if !vec.is_empty() {
-                            vec.remove(0).1
+                            let Destination(f) = vec.remove(0).1;
+                            f()
                         } else {
                             None
                         }
@@ -249,7 +266,7 @@ fn run(controller: Controller) -> Listening {
     }
 }
 
-fn destination_update(addr: SocketAddr) -> pb::destination::Update {
+pub fn destination_update(addr: SocketAddr) -> pb::destination::Update {
     pb::destination::Update {
         update: Some(pb::destination::update::Update::Add(
             pb::destination::WeightedAddrSet {

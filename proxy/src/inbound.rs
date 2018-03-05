@@ -43,7 +43,7 @@ where
         >
     >;
     type Key = (SocketAddr, bind::Protocol);
-    type RouteError = ();
+    type RouteError = bind::BufferSpawnError;
     type Service = InFlightLimit<Buffer<bind::Service<B>>>;
 
     fn recognize(&self, req: &Self::Request) -> Option<Self::Key> {
@@ -81,7 +81,7 @@ where
             .map(|buffer| {
                 InFlightLimit::new(buffer, MAX_IN_FLIGHT)
             })
-            .map_err(|_| {})
+            .map_err(|_| bind::BufferSpawnError::Inbound)
     }
 }
 

@@ -1,6 +1,7 @@
 package public
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"runtime"
@@ -15,7 +16,6 @@ import (
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/version"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/net/context"
 )
 
 type (

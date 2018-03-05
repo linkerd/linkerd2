@@ -5,8 +5,9 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
 
-use url::{Host, HostAndPort, Url};
+use http;
 
+use transport::{Host, HostAndPort, HostAndPortError};
 use convert::TryFrom;
 
 // TODO:
@@ -48,6 +49,9 @@ pub struct Config {
 
     /// Timeout after which to cancel telemetry reports.
     pub report_timeout: Duration,
+
+    /// Timeout after which to cancel binding a request.
+    pub bind_timeout: Duration,
 
     pub pod_name: Option<String>,
     pub pod_namespace: Option<String>,
@@ -101,17 +105,14 @@ pub enum UrlError {
     /// The URL has a scheme that isn't supported.
     UnsupportedScheme,
 
-    /// The URL is missing the host part.
-    MissingHost,
+    /// The URL is missing the authority part.
+    MissingAuthority,
 
-    /// The URL is missing the port and there is no default port.
-    MissingPort,
+    /// The URL is missing the authority part.
+    AuthorityError(HostAndPortError),
 
     /// The URL contains a path component that isn't "/", which isn't allowed.
     PathNotAllowed,
-
-    /// The URL contains a fragment, which isn't allowed.
-    FragmentNotAllowed,
 }
 
 /// The strings used to build a configuration.
@@ -139,6 +140,7 @@ pub const ENV_PUBLIC_LISTENER: &str = "CONDUIT_PROXY_PUBLIC_LISTENER";
 pub const ENV_CONTROL_LISTENER: &str = "CONDUIT_PROXY_CONTROL_LISTENER";
 const ENV_PRIVATE_CONNECT_TIMEOUT: &str = "CONDUIT_PROXY_PRIVATE_CONNECT_TIMEOUT";
 const ENV_PUBLIC_CONNECT_TIMEOUT: &str = "CONDUIT_PROXY_PUBLIC_CONNECT_TIMEOUT";
+pub const ENV_BIND_TIMEOUT: &str = "CONDUIT_PROXY_BIND_TIMEOUT";
 
 const ENV_NODE_NAME: &str = "CONDUIT_PROXY_NODE_NAME";
 const ENV_POD_NAME: &str = "CONDUIT_PROXY_POD_NAME";
@@ -157,6 +159,7 @@ const DEFAULT_PRIVATE_LISTENER: &str = "tcp://127.0.0.1:4140";
 const DEFAULT_PUBLIC_LISTENER: &str = "tcp://0.0.0.0:4143";
 const DEFAULT_CONTROL_LISTENER: &str = "tcp://0.0.0.0:4190";
 const DEFAULT_PRIVATE_CONNECT_TIMEOUT_MS: u64 = 20;
+const DEFAULT_BIND_TIMEOUT_MS: u64 = 10_000; // ten seconds, as in Linkerd.
 const DEFAULT_RESOLV_CONF: &str = "/etc/resolv.conf";
 
 // ===== impl Config =====
@@ -174,6 +177,7 @@ impl<'a> TryFrom<&'a Strings> for Config {
         let private_forward = parse(strings, ENV_PRIVATE_FORWARD, str::parse);
         let public_connect_timeout = parse(strings, ENV_PUBLIC_CONNECT_TIMEOUT, parse_number);
         let private_connect_timeout = parse(strings, ENV_PRIVATE_CONNECT_TIMEOUT, parse_number);
+        let bind_timeout = parse(strings, ENV_BIND_TIMEOUT, parse_number);
         let resolv_conf_path = strings.get(ENV_RESOLV_CONF);
         let event_buffer_capacity = parse(strings, ENV_EVENT_BUFFER_CAPACITY, parse_number);
         let metrics_flush_interval_secs =
@@ -226,6 +230,8 @@ impl<'a> TryFrom<&'a Strings> for Config {
                                         .unwrap_or(DEFAULT_METRICS_FLUSH_INTERVAL_SECS)),
             report_timeout:
                 Duration::from_secs(report_timeout?.unwrap_or(DEFAULT_REPORT_TIMEOUT_SECS)),
+            bind_timeout:
+                Duration::from_millis(bind_timeout?.unwrap_or(DEFAULT_BIND_TIMEOUT_MS)),
             pod_name: pod_name?,
             pod_namespace: pod_namespace?,
             pod_zone: pod_zone?,
@@ -257,20 +263,11 @@ impl FromStr for Addr {
     type Err = ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match parse_url(s)? {
-            HostAndPort {
-                host: Host::Ipv4(ip),
-                port,
-            } => Ok(Addr(SocketAddr::new(ip.into(), port))),
-            HostAndPort {
-                host: Host::Ipv6(ip),
-                port,
-            } => Ok(Addr(SocketAddr::new(ip.into(), port))),
-            HostAndPort {
-                host: Host::Domain(_),
-                ..
-            } => Err(ParseError::HostIsNotAnIpAddress),
+        let a = parse_url(s)?;
+        if let Host::Ip(ip) = a.host {
+            return Ok(Addr(SocketAddr::from((ip, a.port))));
         }
+        Err(ParseError::HostIsNotAnIpAddress)
     }
 }
 
@@ -329,24 +326,22 @@ fn parse_number<T>(s: &str) -> Result<T, ParseError> where T: FromStr {
 }
 
 fn parse_url(s: &str) -> Result<HostAndPort, ParseError> {
-    let url = Url::parse(&s).map_err(|_| ParseError::UrlError(UrlError::SyntaxError))?;
-    let host = url.host()
-        .ok_or_else(|| ParseError::UrlError(UrlError::MissingHost))?
-        .to_owned();
-    if url.scheme() != "tcp" {
+    let url = s.parse::<http::Uri>().map_err(|_| ParseError::UrlError(UrlError::SyntaxError))?;
+    if url.scheme_part().map(|s| s.as_str()) != Some("tcp") {
         return Err(ParseError::UrlError(UrlError::UnsupportedScheme));
     }
-    let port = url.port().ok_or_else(|| ParseError::UrlError(UrlError::MissingPort))?;
+    let authority = url.authority_part()
+        .ok_or_else(|| ParseError::UrlError(UrlError::MissingAuthority))?;
+
     if url.path() != "/" {
         return Err(ParseError::UrlError(UrlError::PathNotAllowed));
     }
-    if url.fragment().is_some() {
-        return Err(ParseError::UrlError(UrlError::FragmentNotAllowed));
-    }
-    Ok(HostAndPort {
-        host,
-        port,
-    })
+    // http::Uri doesn't provde an accessor for the fragment; See
+    // https://github.com/hyperium/http/issues/127. For now just ignore any
+    // fragment that is there.
+
+    HostAndPort::try_from(authority)
+        .map_err(|e| ParseError::UrlError(UrlError::AuthorityError(e)))
 }
 
 fn parse<T, Parse>(strings: &Strings, name: &str, parse: Parse) -> Result<Option<T>, Error>

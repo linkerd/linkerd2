@@ -144,6 +144,10 @@ bin/conduit stat deployments
 
 # view a live pipeline of requests
 bin/conduit tap deploy emojivoto/voting
+
+# view grafana dashboard
+kubectl -n conduit port-forward $(kubectl --namespace=conduit get po --selector=app=grafana -o jsonpath='{.items[*].metadata.name}') 3000:3000
+open http://localhost:3000
 ```
 
 ## Go
@@ -320,7 +324,7 @@ To build and run the Rust proxy:
 ```bash
 cargo build -p conduit-proxy
 CONDUIT_PROXY_LOG=trace \
-  CONDUIT_PROXY_PUBLIC_LISTENER=tcp://0:5432 \
+  CONDUIT_PROXY_PUBLIC_LISTENER=tcp://0.0.0.0:5432 \
   CONDUIT_PROXY_PRIVATE_FORWARD=tcp://127.0.0.1:1234 \
   CONDUIT_PROXY_CONTROL_URL=tcp://127.0.0.1:8086 \
   target/debug/conduit-proxy

@@ -1,3 +1,5 @@
+use std::error::Error;
+use std::fmt;
 use std::marker::PhantomData;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -59,6 +61,33 @@ pub type Client<B> = transparency::Client<
     sensor::Connect<transport::TimeoutConnect<transport::Connect>>,
     B,
 >;
+
+#[derive(Copy, Clone, Debug)]
+pub enum BufferSpawnError {
+    Inbound,
+    Outbound,
+}
+
+impl fmt::Display for BufferSpawnError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad(self.description())
+    }
+}
+
+impl Error for BufferSpawnError {
+
+    fn description(&self) -> &str {
+        match *self {
+            BufferSpawnError::Inbound =>
+                "error spawning inbound buffer task",
+            BufferSpawnError::Outbound =>
+                "error spawning outbound buffer task",
+        }
+    }
+
+    fn cause(&self) -> Option<&Error> { None }
+}
+
 
 impl<B> Bind<(), B> {
     pub fn new(executor: Handle) -> Self {

@@ -21,7 +21,7 @@ extern crate libc;
 #[macro_use]
 extern crate log;
 extern crate ns_dns_tokio;
-extern crate ordermap;
+extern crate indexmap;
 extern crate prost;
 extern crate prost_types;
 #[cfg(test)]
@@ -41,10 +41,10 @@ extern crate tower_reconnect;
 extern crate conduit_proxy_router;
 extern crate tower_util;
 extern crate tower_in_flight_limit;
-extern crate url;
 
 use futures::*;
 
+use std::error::Error;
 use std::io;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -54,7 +54,7 @@ use std::time::Duration;
 use tokio_core::reactor::{Core, Handle};
 use tower::NewService;
 use tower_fn::*;
-use conduit_proxy_router::{Recognize, Router};
+use conduit_proxy_router::{Recognize, Router, Error as RouteError};
 
 pub mod app;
 mod bind;
@@ -223,7 +223,9 @@ where
                 bind,
                 control,
                 config.default_destination_namespace().cloned(),
-                config.default_destination_zone().cloned());
+                config.default_destination_zone().cloned(),
+                config.bind_timeout,
+            );
 
             let fut = serve(
                 outbound_listener,
@@ -300,8 +302,8 @@ fn serve<R, B, E, F, G>(
 ) -> Box<Future<Item = (), Error = io::Error> + 'static>
 where
     B: tower_h2::Body + Default + 'static,
-    E: ::std::fmt::Debug + 'static,
-    F: ::std::fmt::Debug + 'static,
+    E: Error + 'static,
+    F: Error + 'static,
     R: Recognize<
         Request = http::Request<HttpBody>,
         Response = http::Response<telemetry::sensor::http::ResponseBody<B>>,
@@ -316,8 +318,23 @@ where
         // Clone the router handle
         let router = router.clone();
 
-        // Map errors to 500 responses
-        MapErr::new(router)
+        // Map errors to appropriate response error codes.
+        MapErr::new(router, |e| {
+            match e {
+                RouteError::Route(r) => {
+                    error!(" turning route error: {} into 500", r);
+                    http::StatusCode::INTERNAL_SERVER_ERROR
+                }
+                RouteError::Inner(i) => {
+                    error!("turning {} into 500", i);
+                    http::StatusCode::INTERNAL_SERVER_ERROR
+                }
+                RouteError::NotRecognized => {
+                    error!("turning route not recognized error into 500");
+                    http::StatusCode::INTERNAL_SERVER_ERROR
+                }
+            }
+        })
     }));
 
     let listen_addr = bound_port.local_addr();

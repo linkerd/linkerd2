@@ -157,9 +157,9 @@ func (kubeapi *kubernetesApi) UrlFor(namespace string, extraPathStartingWithSlas
 	return generateKubernetesApiBaseUrlFor(kubeapi.Host, namespace, extraPathStartingWithSlash)
 }
 
-// NewK8sAPI returns a new KubernetesApi interface
-func NewK8sAPI(homedir string, k8sConfigFilesystemPathOverride string) (KubernetesApi, error) {
-	config, err := buildK8sConfig(homedir, k8sConfigFilesystemPathOverride)
+// NewAPI returns a new KubernetesApi interface
+func NewAPI(configPath string) (KubernetesApi, error) {
+	config, err := getConfig(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("error configuring Kubernetes API client: %v", err)
 	}

@@ -1,6 +1,7 @@
 package telemetry
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -21,7 +22,6 @@ import (
 	"github.com/runconduit/conduit/controller/util"
 	pkgK8s "github.com/runconduit/conduit/pkg/k8s"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	k8sV1 "k8s.io/api/core/v1"
@@ -68,7 +68,7 @@ var (
 	)
 
 	reportsLabels = []string{"pod"}
-	reportsTotal = prometheus.NewCounterVec(
+	reportsTotal  = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: reportsMetric,
 			Help: "Total number of telemetry reports received",
@@ -228,7 +228,7 @@ func (s *server) ListPods(ctx context.Context, req *read.ListPodsRequest) (*publ
 	// report from that instance.
 	reports := make(map[string]time.Time)
 	// Query Prometheus for reports in the last 30 seconds.
-	res, err := s.prometheusAPI.Query(ctx, reportsMetric + "[30s]", time.Time{})
+	res, err := s.prometheusAPI.Query(ctx, reportsMetric+"[30s]", time.Time{})
 	if err != nil {
 		return nil, err
 	}

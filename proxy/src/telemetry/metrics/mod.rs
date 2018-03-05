@@ -4,7 +4,7 @@ use std::time::Duration;
 use std::{u32, u64};
 
 use http;
-use ordermap::OrderMap;
+use indexmap::IndexMap;
 
 use conduit_proxy_controller_grpc::common::{
     TcpAddress,
@@ -30,9 +30,9 @@ mod latency;
 
 #[derive(Debug)]
 pub struct Metrics {
-    sources: OrderMap<net::IpAddr, TransportStats>,
-    destinations: OrderMap<net::SocketAddr, TransportStats>,
-    requests: OrderMap<RequestKey, RequestStats>,
+    sources: IndexMap<net::IpAddr, TransportStats>,
+    destinations: IndexMap<net::SocketAddr, TransportStats>,
+    requests: IndexMap<RequestKey, RequestStats>,
     process_ctx: Arc<ctx::Process>,
 }
 
@@ -47,12 +47,12 @@ struct RequestKey {
 #[derive(Debug, Default)]
 struct RequestStats {
     count: u32,
-    responses: OrderMap<Option<http::StatusCode>, ResponseStats>,
+    responses: IndexMap<Option<http::StatusCode>, ResponseStats>,
 }
 
 #[derive(Debug, Default)]
 struct ResponseStats {
-    ends: OrderMap<End, u32>,
+    ends: IndexMap<End, u32>,
     /// Response latencies in tenths of a millisecond.
     ///
     /// Observed latencies are mapped to a count of the times that
@@ -88,9 +88,9 @@ impl RequestKey {
 impl Metrics {
     pub fn new(process_ctx: Arc<ctx::Process>) -> Self {
         Metrics {
-            sources: OrderMap::new(),
-            destinations: OrderMap::new(),
-            requests: OrderMap::new(),
+            sources: IndexMap::new(),
+            destinations: IndexMap::new(),
+            requests: IndexMap::new(),
             process_ctx,
         }
     }

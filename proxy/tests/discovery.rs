@@ -1,9 +1,11 @@
 mod support;
 use self::support::*;
 
+use std::thread;
+
 #[test]
 fn outbound_asks_controller_api() {
-    let _ = env_logger::init();
+    let _ = env_logger::try_init();
 
     let srv = server::new().route("/", "hello").route("/bye", "bye").run();
     let ctrl = controller::new()
@@ -18,7 +20,7 @@ fn outbound_asks_controller_api() {
 
 #[test]
 fn outbound_reconnects_if_controller_stream_ends() {
-    let _ = env_logger::init();
+    let _ = env_logger::try_init();
 
     let srv = server::new().route("/recon", "nect").run();
     let ctrl = controller::new()
@@ -33,7 +35,7 @@ fn outbound_reconnects_if_controller_stream_ends() {
 
 #[test]
 fn outbound_updates_newer_services() {
-    let _ = env_logger::init();
+    let _ = env_logger::try_init();
 
     //TODO: when the support server can listen on both http1 and http2
     //at the same time, do that here
@@ -55,15 +57,41 @@ fn outbound_updates_newer_services() {
 }
 
 #[test]
-#[ignore]
+#[cfg_attr(not(feature = "flaky_tests"), ignore)]
 fn outbound_times_out() {
-    // Currently, the outbound router will wait forever until discovery tells
-    // it where to send the request. It should probably time out eventually.
+    let _ = env_logger::try_init();
+    let mut env = config::TestEnv::new();
+
+    // set the bind timeout to 100 ms.
+    env.put(config::ENV_BIND_TIMEOUT, "100".to_owned());
+
+    let srv = server::http1().route("/h1", "hello h1").run();
+    let addr = srv.addr.clone();
+    let ctrl = controller::new()
+        // when the proxy requests the destination, sleep for 500 ms, and then
+        // return the correct destination
+        .destination_fn("disco.test.svc.cluster.local", move || {
+            thread::sleep(Duration::from_millis(500));
+            Some(controller::destination_update(addr))
+        })
+        .run();
+
+    let proxy = proxy::new()
+        .controller(ctrl)
+        .outbound(srv)
+        .run_with_test_env(env);
+
+    let client = client::http2(proxy.outbound, "disco.test.svc.cluster.local");
+    let mut req = client.request_builder("/");
+    let rsp = client.request(req.method("GET"));
+
+    // the request should time out
+    assert_eq!(rsp.status(), http::StatusCode::INTERNAL_SERVER_ERROR);
 }
 
 #[test]
 fn outbound_uses_orig_dst_if_not_local_svc() {
-    let _ = env_logger::init();
+    let _ = env_logger::try_init();
 
     let srv = server::new()
         .route("/", "hello")

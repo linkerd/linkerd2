@@ -58,7 +58,11 @@ impl Proxy {
     }
 
     pub fn run(self) -> Listening {
-        run(self)
+        self.run_with_test_env(config::TestEnv::new())
+    }
+
+    pub fn run_with_test_env(self, mut env: config::TestEnv) -> Listening {
+        run(self, env)
     }
 }
 
@@ -90,7 +94,8 @@ impl conduit_proxy::GetOriginalDst for MockOriginalDst {
     }
 }
 
-fn run(proxy: Proxy) -> Listening {
+
+fn run(proxy: Proxy, mut env: config::TestEnv) -> Listening {
     use self::conduit_proxy::config;
 
     let controller = proxy.controller.expect("proxy controller missing");
@@ -98,7 +103,6 @@ fn run(proxy: Proxy) -> Listening {
     let outbound = proxy.outbound;
     let mut mock_orig_dst = DstInner::default();
 
-    let mut env = config::TestEnv::new();
     env.put(config::ENV_CONTROL_URL, format!("tcp://{}", controller.addr));
     env.put(config::ENV_PRIVATE_LISTENER, "tcp://127.0.0.1:0".to_owned());
     if let Some(ref inbound) = inbound {
