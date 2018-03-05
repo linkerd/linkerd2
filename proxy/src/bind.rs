@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use futures::{future, Future, Poll};
 use futures::future::{Either, Map};
-use http::{self, header, uri};
+use http::{self, uri};
 use tokio_core::reactor::Handle;
 use tower;
 use tower_h2;
@@ -301,23 +301,6 @@ where
 
 impl<'a, B> From<&'a http::Request<B>> for Protocol {
     fn from(req: &'a http::Request<B>) -> Protocol {
-        // No authority part in the request URI, so try and use the
-        // Host: header value, if one is present and it can be parsed
-        // as an Authority.
-        //
-        // (this is its own function to make the map below less deeply nested)
-        let authority_from_host_header = || -> Option<uri::Authority> {
-            req.headers().get(header::HOST)
-                .and_then(|header| {
-                    header.to_str().ok()
-                        .and_then(|header|
-                            if header != "" {
-                                header.parse::<uri::Authority>().ok()
-                            } else {
-                                None
-                            })
-                })
-        };
 
         if req.version() == http::Version::HTTP_2 {
             return Protocol::Http2
@@ -327,7 +310,7 @@ impl<'a, B> From<&'a http::Request<B>> for Protocol {
         // the key for an HTTP/1.x request.
         let host = req.uri().authority_part()
             .cloned()
-            .or_else(authority_from_host_header)
+            .or_else(|| h1::authority_from_host(req))
             .map(Host::Authority)
             .unwrap_or_else(|| Host::NoAuthority);
 
