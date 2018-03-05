@@ -179,7 +179,7 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride, v
 				Name:  "CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN",
 				Value: "Kubernetes",
 			},
-			v1.EnvVar{Name: "CONDUIT_PROXY_DEPLOYMENT", Value: owner},
+			v1.EnvVar{Name: "CONDUIT_PROMETHEUS_LABELS", Value: owner},
 		},
 	}
 
@@ -256,7 +256,7 @@ func InjectYAML(in io.Reader, out io.Writer, version string) error {
 				DNSNameOverride = LocalhostDNSNameOverride
 			}
 			obj = &deployment
-			owner = deployment.Name
+			owner = "deployment=" + deployment.Name
 			podTemplateSpec = &deployment.Spec.Template
 		case "ReplicationController":
 			var rc v1.ReplicationController
@@ -265,7 +265,7 @@ func InjectYAML(in io.Reader, out io.Writer, version string) error {
 				return err
 			}
 			obj = &rc
-			owner = rc.Name
+			owner = "replication_controller=" + rc.Name
 			podTemplateSpec = rc.Spec.Template
 		case "ReplicaSet":
 			var rs v1beta1.ReplicaSet
@@ -274,7 +274,7 @@ func InjectYAML(in io.Reader, out io.Writer, version string) error {
 				return err
 			}
 			obj = &rs
-			owner = rs.Name
+			owner = "replica_set=" + rs.Name
 			podTemplateSpec = &rs.Spec.Template
 		case "Job":
 			var job batchV1.Job
@@ -283,7 +283,7 @@ func InjectYAML(in io.Reader, out io.Writer, version string) error {
 				return err
 			}
 			obj = &job
-			owner = job.Name
+			owner = "job=" + job.Name
 			podTemplateSpec = &job.Spec.Template
 		case "DaemonSet":
 			var ds v1beta1.DaemonSet
@@ -292,7 +292,7 @@ func InjectYAML(in io.Reader, out io.Writer, version string) error {
 				return err
 			}
 			obj = &ds
-			owner = ds.Name
+			owner = "daemon_set=" + ds.Name
 			podTemplateSpec = &ds.Spec.Template
 		}
 
