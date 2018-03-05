@@ -6,7 +6,6 @@ use bytes::BytesMut;
 use http;
 use http::header::{HeaderValue, HOST};
 use http::uri::{Authority, Parts, Scheme, Uri};
-
 use ctx::transport::{Server as ServerCtx};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -16,6 +15,7 @@ pub enum AuthorityRewriting {
     // AuthorityFromHost,
     SoOriginalDst,
 }
+
 
 pub fn reconstruct_uri<B>(req: &mut http::Request<B>) -> Result<(), ()> {
     // RFC7230#section-5.4

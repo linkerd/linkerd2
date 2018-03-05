@@ -1,9 +1,12 @@
+use std::default::Default;
 use std::marker::PhantomData;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
 use std::time::Duration;
 
+use futures::{future, Future, Poll};
+use futures::future::{Either, Map};
 use http::{self, uri};
 use tokio_core::reactor::Handle;
 use tower;
@@ -60,7 +63,13 @@ pub enum Host {
     NoAuthority,
 }
 
-pub type Service<B> = Reconnect<NewHttp<B>>;
+/// Reconstruct HTTP/1.x URIs.
+#[derive(Copy, Clone, Debug)]
+pub struct ReconstructUri<S> {
+    upstream: S
+}
+
+pub type Service<B> = Reconnect<ReconstructUri<NewHttp<B>>>;
 
 pub type NewHttp<B> = sensor::NewHttp<Client<B>, B, HttpBody>;
 
@@ -175,7 +184,14 @@ where
             self.executor.clone(),
         );
 
-        let proxy = self.sensors.http(self.req_ids.clone(), client, &client_ctx);
+        let sensors = self.sensors.http(
+            self.req_ids.clone(),
+            client,
+            &client_ctx
+        );
+
+        // Rewrite the HTTP/1 URI, if necessary.
+        let proxy = ReconstructUri::new(sensors);
 
         // Automatically perform reconnects if the connection fails.
         //
@@ -211,6 +227,75 @@ where
     }
 }
 
+
+// ===== impl ReconstructUri =====
+
+
+impl<S> ReconstructUri<S> {
+    fn new (upstream: S) -> Self {
+        Self { upstream }
+    }
+}
+
+impl<S, B> tower::NewService for ReconstructUri<S>
+where
+    S: tower::NewService<
+        Request=http::Request<B>,
+        Response=HttpResponse,
+    >,
+    S::Service: tower::Service<
+        Request=http::Request<B>,
+        Response=HttpResponse,
+    >,
+    ReconstructUri<S::Service>: tower::Service,
+    B: tower_h2::Body,
+{
+    type Request = <Self::Service as tower::Service>::Request;
+    type Response = <Self::Service as tower::Service>::Response;
+    type Error = <Self::Service as tower::Service>::Error;
+    type Service = ReconstructUri<S::Service>;
+    type InitError = S::InitError;
+    type Future = Map<
+        S::Future,
+        // ReconstructUri<S::Service>::new,
+        fn(S::Service) -> ReconstructUri<S::Service>
+    >;
+    fn new_service(&self) -> Self::Future {
+        self.upstream.new_service().map(ReconstructUri::new)
+    }
+}
+
+impl<S, B> tower::Service for ReconstructUri<S>
+where
+    S: tower::Service<
+        Request=http::Request<B>,
+        Response=HttpResponse,
+    >,
+    B: tower_h2::Body,
+{
+    type Request = S::Request;
+    type Response = HttpResponse;
+    type Error = S::Error;
+    type Future = Either<
+        S::Future,
+        future::FutureResult<Self::Response, Self::Error>,
+    >;
+
+    fn poll_ready(&mut self) -> Poll<(), S::Error> {
+        self.upstream.poll_ready()
+    }
+
+    fn call(&mut self, mut request: S::Request) -> Self::Future {
+        if let Err(_) = h1::reconstruct_uri(&mut request) {
+            let res = http::Response::builder()
+                .status(http::StatusCode::BAD_REQUEST)
+                .body(Default::default())
+                .unwrap();
+            return Either::B(future::ok(res));
+        }
+        Either::A(self.upstream.call(request))
+    }
+}
 // ===== impl Protocol =====
 
 
