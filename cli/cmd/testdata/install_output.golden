@@ -241,8 +241,8 @@ spec:
               fieldPath: metadata.namespace
         - name: CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN
           value: Kubernetes
-        - name: CONDUIT_PROXY_DEPLOYMENT
-          value: controller
+        - name: CONDUIT_PROMETHEUS_LABELS
+          value: deployment=controller
         image: gcr.io/runconduit/proxy:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-proxy
@@ -364,8 +364,8 @@ spec:
               fieldPath: metadata.namespace
         - name: CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN
           value: Kubernetes
-        - name: CONDUIT_PROXY_DEPLOYMENT
-          value: web
+        - name: CONDUIT_PROMETHEUS_LABELS
+          value: deployment=web
         image: gcr.io/runconduit/proxy:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-proxy
@@ -479,8 +479,8 @@ spec:
               fieldPath: metadata.namespace
         - name: CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN
           value: Kubernetes
-        - name: CONDUIT_PROXY_DEPLOYMENT
-          value: prometheus
+        - name: CONDUIT_PROMETHEUS_LABELS
+          value: deployment=prometheus
         image: gcr.io/runconduit/proxy:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-proxy
@@ -636,6 +636,8 @@ spec:
               fieldPath: metadata.namespace
         - name: CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN
           value: Kubernetes
+        - name: CONDUIT_PROMETHEUS_LABELS
+          value: deployment=grafana
         image: gcr.io/runconduit/proxy:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-proxy

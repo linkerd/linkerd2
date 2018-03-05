@@ -62,7 +62,7 @@ spec:
         - name: CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN
           value: Kubernetes
         - name: CONDUIT_PROMETHEUS_LABELS
-          value: Deployment=controller
+          value: deployment=controller
         image: gcr.io/runconduit/proxy:testinjectversion
         imagePullPolicy: IfNotPresent
         name: conduit-proxy
@@ -157,7 +157,7 @@ spec:
         - name: CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN
           value: Kubernetes
         - name: CONDUIT_PROMETHEUS_LABELS
-          value: Deployment=not-controller
+          value: deployment=not-controller
         image: gcr.io/runconduit/proxy:testinjectversion
         imagePullPolicy: IfNotPresent
         name: conduit-proxy
