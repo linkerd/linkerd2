@@ -41,17 +41,15 @@ func (w *watcher) run() error {
 	initialized := make(chan struct{}, 1)
 	defer close(initialized)
 
-	if w.watchInit != nil {
-		go func() {
-			for {
-				err := w.watchInit(w.stopCh)
-				if err != nil {
-					log.Errorf("Error establishing watch in [%s watcher]. Retrying", w.resourceType)
-				}
-				time.Sleep(1 * time.Second)
+	go func() {
+		for {
+			err := w.watchInit(w.stopCh)
+			if err != nil {
+				log.Errorf("Error establishing watch in [%s watcher]. Retrying", w.resourceType)
 			}
-		}()
-	}
+			time.Sleep(1 * time.Second)
+		}
+	}()
 
 	go func() {
 		for {

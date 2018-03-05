@@ -12,6 +12,10 @@ type resourceToWatchImpl struct {
 	lastSyncResourceVersion string
 }
 
+func watchInitializerImpl(_ <-chan struct{}) error {
+	return nil
+}
+
 func (w *resourceToWatchImpl) LastSyncResourceVersion() string {
 	w.RLock()
 	defer w.RUnlock()
@@ -28,7 +32,7 @@ func TestWatcher(t *testing.T) {
 	t.Run("Returns nil if the resource initializes in the time limit", func(t *testing.T) {
 		resource := &resourceToWatchImpl{}
 		stopCh := make(chan struct{}, 1)
-		watcher := newWatcher(resource, "resourcestring", nil, stopCh)
+		watcher := newWatcher(resource, "resourcestring", watchInitializerImpl, stopCh)
 		watcher.timeout = 2 * time.Second
 		go func() {
 			time.Sleep(1 * time.Second)
@@ -43,7 +47,7 @@ func TestWatcher(t *testing.T) {
 	t.Run("Returns error if the watcher does not initialize in the time limit", func(t *testing.T) {
 		resource := &resourceToWatchImpl{}
 		stopCh := make(chan struct{}, 1)
-		watcher := newWatcher(resource, "resourcestring", nil, stopCh)
+		watcher := newWatcher(resource, "resourcestring", watchInitializerImpl, stopCh)
 		watcher.timeout = 2 * time.Second
 		go func() {
 			time.Sleep(3 * time.Second)

@@ -45,7 +45,6 @@ func NewPodIndex(clientset *kubernetes.Clientset, index cache.IndexFunc) (*PodIn
 }
 
 func (p *PodIndex) Run() error {
-	go p.reflector.ListAndWatch(p.stopCh)
 	return newWatcher(p.reflector, podResource, p.reflector.ListAndWatch, p.stopCh).run()
 }
 

@@ -46,7 +46,6 @@ func NewReplicaSetStore(clientset *kubernetes.Clientset) (*ReplicaSetStore, erro
 }
 
 func (p *ReplicaSetStore) Run() error {
-	go p.reflector.ListAndWatch(p.stopCh)
 	return newWatcher(p.reflector, replicaSetResource, p.reflector.ListAndWatch, p.stopCh).run()
 }
 
