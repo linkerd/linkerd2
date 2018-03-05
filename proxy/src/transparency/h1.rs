@@ -8,15 +8,6 @@ use http::header::{HeaderValue, HOST};
 use http::uri::{Authority, Parts, Scheme, Uri};
 use ctx::transport::{Server as ServerCtx};
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum AuthorityRewriting {
-    // Unmodified,
-    // HostFromAuthority,
-    // AuthorityFromHost,
-    SoOriginalDst,
-}
-
-
 pub fn reconstruct_uri<B>(req: &mut http::Request<B>) -> Result<(), ()> {
     // RFC7230#section-5.4
     // If an absolute-form uri is received, it must replace
@@ -63,10 +54,6 @@ pub fn reconstruct_uri<B>(req: &mut http::Request<B>) -> Result<(), ()> {
         let auth = Authority::from_shared(bytes)
             .expect("socket address is valid authority");
         set_authority(req.uri_mut(), auth);
-
-        // note that the request originally had no authority.
-        let _ = req.extensions_mut()
-            .insert(AuthorityRewriting::SoOriginalDst);
 
         return Ok(());
     }
