@@ -141,8 +141,6 @@ spec:
       containers:
       - args:
         - public-api
-        - -telemetry-addr=127.0.0.1:8087
-        - -tap-addr=127.0.0.1:8088
         - -log-level=info
         image: gcr.io/runconduit/controller:undefined
         imagePullPolicy: IfNotPresent
@@ -167,8 +165,6 @@ spec:
         resources: {}
       - args:
         - proxy-api
-        - -destination-addr=127.0.0.1:8089
-        - -telemetry-addr=127.0.0.1:8087
         - -log-level=info
         image: gcr.io/runconduit/controller:undefined
         imagePullPolicy: IfNotPresent
@@ -308,7 +304,7 @@ spec:
     spec:
       containers:
       - args:
-        - -api-addr=api:8085
+        - -api-addr=api.conduit.svc.cluster.local:8085
         - -static-dir=/dist
         - -template-dir=/templates
         - -uuid=deaab91a-f4ab-448a-b7d1-c832a2fa0a60

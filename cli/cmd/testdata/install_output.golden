@@ -142,8 +142,6 @@ spec:
       containers:
       - args:
         - public-api
-        - -telemetry-addr=127.0.0.1:8087
-        - -tap-addr=127.0.0.1:8088
         - -log-level=ControllerLogLevel
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy
@@ -168,8 +166,6 @@ spec:
         resources: {}
       - args:
         - proxy-api
-        - -destination-addr=127.0.0.1:8089
-        - -telemetry-addr=127.0.0.1:8087
         - -log-level=ControllerLogLevel
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy
@@ -310,7 +306,7 @@ spec:
     spec:
       containers:
       - args:
-        - -api-addr=api:8085
+        - -api-addr=api.Namespace.svc.cluster.local:8085
         - -static-dir=/dist
         - -template-dir=/templates
         - -uuid=UUID

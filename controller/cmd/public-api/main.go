@@ -19,8 +19,8 @@ import (
 func main() {
 	addr := flag.String("addr", ":8085", "address to serve on")
 	metricsAddr := flag.String("metrics-addr", ":9995", "address to serve scrapable metrics on")
-	telemetryAddr := flag.String("telemetry-addr", ":8087", "address of telemetry service")
-	tapAddr := flag.String("tap-addr", ":8088", "address of tap service")
+	telemetryAddr := flag.String("telemetry-addr", "127.0.0.1:8087", "address of telemetry service")
+	tapAddr := flag.String("tap-addr", "127.0.0.1:8088", "address of tap service")
 	logLevel := flag.String("log-level", log.InfoLevel.String(), "log level, must be one of: panic, fatal, error, warn, info, debug")
 	printVersion := version.VersionFlag()
 	flag.Parse()

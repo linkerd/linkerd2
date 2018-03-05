@@ -148,8 +148,6 @@ spec:
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
         - "public-api"
-        - "-telemetry-addr=127.0.0.1:8087"
-        - "-tap-addr=127.0.0.1:8088"
         - "-log-level={{.ControllerLogLevel}}"
       - name: destination
         ports:
@@ -172,8 +170,6 @@ spec:
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
         - "proxy-api"
-        - "-destination-addr=127.0.0.1:8089"
-        - "-telemetry-addr=127.0.0.1:8087"
         - "-log-level={{.ControllerLogLevel}}"
       - name: tap
         ports:
@@ -252,7 +248,7 @@ spec:
         image: {{.WebImage}}
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
-        - "-api-addr=api:8085"
+        - "-api-addr=api.{{.Namespace}}.svc.cluster.local:8085"
         - "-static-dir=/dist"
         - "-template-dir=/templates"
         - "-uuid={{.UUID}}"
