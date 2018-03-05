@@ -330,11 +330,6 @@ spec:
         - "--storage.tsdb.retention=6h"
         - "--config.file=/etc/prometheus/prometheus.yml"
 
-      # TODO remove/replace?
-      - name: kubectl
-        image: buoyantio/kubectl:v1.6.2
-        args: ["proxy", "-p", "8001"]
-
 ---
 kind: ConfigMap
 apiVersion: v1

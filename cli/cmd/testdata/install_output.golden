@@ -450,13 +450,6 @@ spec:
         - mountPath: /etc/prometheus
           name: prometheus-config
           readOnly: true
-      - args:
-        - proxy
-        - -p
-        - "8001"
-        image: buoyantio/kubectl:v1.6.2
-        name: kubectl
-        resources: {}
       - env:
         - name: CONDUIT_PROXY_LOG
           value: warn,conduit_proxy=info
