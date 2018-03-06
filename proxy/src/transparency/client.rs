@@ -169,12 +169,38 @@ where
     }
 
     fn call(&mut self, req: Self::Request) -> Self::Future {
+        use http::header::CONTENT_LENGTH;
+
         match self.inner {
             ClientServiceInner::Http1(ref h1) => {
-                let is_body_empty = req.body().is_end_stream();
+                // As of hyper 0.11.x, a set body implies a body must be sent.
+                // If there is no content-length header, hyper adds a
+                // transfer-encoding: chunked header, since it has no other way
+                // of knowing if the body is empty or not.
+                //
+                // However, if we received a `Content-Length: 0` body ourselves,
+                // the `body.is_end_stream()` would be true. While its true that
+                // semantically a client request with no body headers and a request
+                // with `Content-Length: 0` have the exact same body length, we
+                // want to preserve the exact intent of the original request, as
+                // we are trying to be a transparent proxy.
+                //
+                // So, if `Content-Length` is set at all, we need to send it. If
+                // we unset the body, hyper assumes the RFC7230 semantics that
+                // it can strip content body headers. Therefore, even if the
+                // body is empty, it should still be passed to hyper so that
+                // the `Content-Length: 0` header is not stripped.
+                //
+                // This does *NOT* check for `Transfer-Encoding` as future-proofing
+                // measure. When we add the ability to proxy HTTP2 to HTTP1, this
+                // body could have come from h2, where there is no `Transfer-Encoding`.
+                // Instead, it has been replaced by `DATA` frames. The
+                // `HttpBody::is_end_stream()` manages that distinction for us.
+                let should_take_body = req.body().is_end_stream()
+                    && !req.headers().contains_key(CONTENT_LENGTH);
                 let mut req = hyper::Request::from(req.map(BodyStream::new));
-                if is_body_empty {
-                    req.headers_mut().set(hyper::header::ContentLength(0));
+                if should_take_body {
+                    req.body_mut().take();
                 }
                 ClientServiceFuture::Http1(h1.request(req))
             },
