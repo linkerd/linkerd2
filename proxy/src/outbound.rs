@@ -88,7 +88,7 @@ where
     >>>>;
 
     fn recognize(&self, req: &Self::Request) -> Option<Uses<Self::Key>> {
-        let proto = bind::Protocol::from(req);
+        let proto = bind::Protocol::detect(req);
 
         let local = req.uri().authority_part().map(|authority| {
             FullyQualifiedAuthority::normalize(

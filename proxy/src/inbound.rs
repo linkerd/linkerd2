@@ -55,7 +55,7 @@ where
             })
             .or_else(|| self.default_addr);
 
-        let proto = bind::Protocol::from(req);
+        let proto = bind::Protocol::detect(req);
 
         let key = key.map(move|addr| proto.into_key(addr));
         trace!("recognize key={:?}", key);

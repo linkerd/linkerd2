@@ -312,9 +312,9 @@ where
 // ===== impl Protocol =====
 
 
-impl<'a, B> From<&'a http::Request<B>> for Protocol {
-    fn from(req: &'a http::Request<B>) -> Protocol {
+impl Protocol {
 
+    pub fn detect<B>(req: &http::Request<B>) -> Self {
         if req.version() == http::Version::HTTP_2 {
             return Protocol::Http2
         }
@@ -329,9 +329,6 @@ impl<'a, B> From<&'a http::Request<B>> for Protocol {
 
         Protocol::Http1(host)
     }
-}
-
-impl Protocol {
 
     pub fn is_cachable(&self) -> bool {
         match *self {
