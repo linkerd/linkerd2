@@ -5,11 +5,17 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
+const maxInt = int(^uint(0) >> 1)
+
 var (
-	initializationTimeout = 30 * time.Second
-	sleepBetweenChecks    = 500 * time.Millisecond
+	initializationTimeout  = 60 * time.Second
+	sleepBetweenChecks     = 500 * time.Millisecond
+	durationBetweenBackoff = 1 * time.Second
+	watchBackoffFactor     = 1.5
+	backoffSteps           = maxInt // Try looping for the maximum number of steps possible
 )
 
 type watchInitializer func(stopCh <-chan struct{}) error
@@ -41,15 +47,18 @@ func (w *watcher) run() error {
 	initialized := make(chan struct{}, 1)
 	defer close(initialized)
 
-	go func() {
-		for {
-			err := w.watchInit(w.stopCh)
-			if err != nil {
-				log.Errorf("Error establishing watch in [%s watcher]. Retrying", w.resourceType)
-			}
-			time.Sleep(1 * time.Second)
+	go wait.ExponentialBackoff(wait.Backoff{
+		Duration: durationBetweenBackoff,
+		Factor:   watchBackoffFactor,
+		Steps:    backoffSteps,
+	}, func() (bool, error) {
+		err := w.watchInit(w.stopCh)
+		if err != nil {
+			log.Errorf("Error establishing watch in [%s watcher]. Retrying", w.resourceType)
+			return false, nil
 		}
-	}()
+		return true, err
+	})
 
 	go func() {
 		for {
