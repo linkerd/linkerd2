@@ -214,11 +214,11 @@ func TestStat(t *testing.T) {
 
 func TestFormatQueryExclusions(t *testing.T) {
 	testCases := []struct {
-		input          []string
+		input          string
 		expectedOutput string
 	}{
-		{[]string{"conduit"}, `target_deployment!~"conduit/.*",source_deployment!~"conduit/.*"`},
-		{[]string{}, ""},
+		{"conduit", `target_deployment!~"conduit/(web|controller|prometheus|grafana)",source_deployment!~"conduit/(web|controller|prometheus|grafana)"`},
+		{"", ""},
 	}
 
 	for i, tc := range testCases {
