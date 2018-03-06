@@ -21,6 +21,7 @@ func main() {
 	metricsAddr := flag.String("metrics-addr", ":9995", "address to serve scrapable metrics on")
 	telemetryAddr := flag.String("telemetry-addr", ":8087", "address of telemetry service")
 	tapAddr := flag.String("tap-addr", ":8088", "address of tap service")
+	controllerNamespace := flag.String("controller-namespace", "conduit", "namespace in which Conduit is installed")
 	logLevel := flag.String("log-level", log.InfoLevel.String(), "log level, must be one of: panic, fatal, error, warn, info, debug")
 	printVersion := version.VersionFlag()
 	flag.Parse()
@@ -49,7 +50,7 @@ func main() {
 	}
 	defer tapConn.Close()
 
-	server := public.NewServer(*addr, telemetryClient, tapClient)
+	server := public.NewServer(*addr, telemetryClient, tapClient, *controllerNamespace)
 
 	go func() {
 		log.Infof("starting HTTP server on %+v", *addr)

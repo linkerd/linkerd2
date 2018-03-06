@@ -152,6 +152,7 @@ spec:
         - "-metrics-addr=:9995"
         - "-telemetry-addr=127.0.0.1:8087"
         - "-tap-addr=127.0.0.1:8088"
+        - "-controller-namespace={{.Namespace}}"
         - "-log-level={{.ControllerLogLevel}}"
       - name: destination
         ports:
