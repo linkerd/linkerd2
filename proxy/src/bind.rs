@@ -1,6 +1,5 @@
 use std::error::Error;
 use std::fmt;
-use std::cmp;
 use std::default::Default;
 use std::marker::PhantomData;
 use std::net::SocketAddr;
@@ -298,6 +297,11 @@ where
     }
 
     fn call(&mut self, mut request: S::Request) -> Self::Future {
+        if request.version() == http::Version::HTTP_2 {
+            // skip `reconstruct_uri` entirely if the request is HTTP/2.
+            return Either::A(self.inner.call(request));
+        }
+
         if let Err(_) = h1::reconstruct_uri(&mut request) {
             let res = http::Response::builder()
                 .status(http::StatusCode::BAD_REQUEST)
