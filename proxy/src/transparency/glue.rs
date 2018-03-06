@@ -217,11 +217,6 @@ where
         let mut req: http::Request<hyper::Body> = req.into();
         req.extensions_mut().insert(self.srv_ctx.clone());
 
-        if let Err(()) = h1::reconstruct_uri(&mut req) {
-            let res = hyper::Response::new()
-                .with_status(hyper::BadRequest);
-            return Either::B(future::ok(res));
-        }
         h1::strip_connection_headers(req.headers_mut());
 
         let req = req.map(|b| HttpBody::Http1(b));

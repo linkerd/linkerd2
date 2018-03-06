@@ -1,11 +1,14 @@
 use std::error::Error;
 use std::fmt;
 use std::cmp;
+use std::default::Default;
 use std::marker::PhantomData;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
 
+use futures::{future, Future, Poll};
+use futures::future::{Either, Map};
 use http::{self, uri};
 use tokio_core::reactor::Handle;
 use tower;
@@ -58,7 +61,20 @@ pub enum Host {
     NoAuthority,
 }
 
-pub type Service<B> = Reconnect<NewHttp<B>>;
+/// Rewrites HTTP/1.x requests so that their URIs are in a canonical form.
+///
+/// The following transformations are applied:
+/// - If an absolute-form URI is received, it must replace
+///   the host header (in accordance with RFC7230#section-5.4)
+/// - If the request URI is not in absolute form, it is rewritten to contain
+///   the authority given in the `Host:` header, or, failing that, from the
+///   request's original destination according to `SO_ORIGINAL_DST`.
+#[derive(Copy, Clone, Debug)]
+pub struct ReconstructUri<S> {
+    inner: S
+}
+
+pub type Service<B> = Reconnect<ReconstructUri<NewHttp<B>>>;
 
 pub type NewHttp<B> = sensor::NewHttp<Client<B>, B, HttpBody>;
 
@@ -181,7 +197,14 @@ where
             self.executor.clone(),
         );
 
-        let proxy = self.sensors.http(self.req_ids.clone(), client, &client_ctx);
+        let sensors = self.sensors.http(
+            self.req_ids.clone(),
+            client,
+            &client_ctx
+        );
+
+        // Rewrite the HTTP/1 URI, if necessary.
+        let proxy = ReconstructUri::new(sensors);
 
         // Automatically perform reconnects if the connection fails.
         //
@@ -217,26 +240,90 @@ where
     }
 }
 
+
+// ===== impl ReconstructUri =====
+
+
+impl<S> ReconstructUri<S> {
+    fn new (inner: S) -> Self {
+        Self { inner }
+    }
+}
+
+impl<S, B> tower::NewService for ReconstructUri<S>
+where
+    S: tower::NewService<
+        Request=http::Request<B>,
+        Response=HttpResponse,
+    >,
+    S::Service: tower::Service<
+        Request=http::Request<B>,
+        Response=HttpResponse,
+    >,
+    ReconstructUri<S::Service>: tower::Service,
+    B: tower_h2::Body,
+{
+    type Request = <Self::Service as tower::Service>::Request;
+    type Response = <Self::Service as tower::Service>::Response;
+    type Error = <Self::Service as tower::Service>::Error;
+    type Service = ReconstructUri<S::Service>;
+    type InitError = S::InitError;
+    type Future = Map<
+        S::Future,
+        fn(S::Service) -> ReconstructUri<S::Service>
+    >;
+    fn new_service(&self) -> Self::Future {
+        self.inner.new_service().map(ReconstructUri::new)
+    }
+}
+
+impl<S, B> tower::Service for ReconstructUri<S>
+where
+    S: tower::Service<
+        Request=http::Request<B>,
+        Response=HttpResponse,
+    >,
+    B: tower_h2::Body,
+{
+    type Request = S::Request;
+    type Response = HttpResponse;
+    type Error = S::Error;
+    type Future = Either<
+        S::Future,
+        future::FutureResult<Self::Response, Self::Error>,
+    >;
+
+    fn poll_ready(&mut self) -> Poll<(), S::Error> {
+        self.inner.poll_ready()
+    }
+
+    fn call(&mut self, mut request: S::Request) -> Self::Future {
+        if let Err(_) = h1::reconstruct_uri(&mut request) {
+            let res = http::Response::builder()
+                .status(http::StatusCode::BAD_REQUEST)
+                .body(Default::default())
+                .unwrap();
+            return Either::B(future::ok(res));
+        }
+        Either::A(self.inner.call(request))
+    }
+}
+
 // ===== impl Protocol =====
 
 
 impl<'a, B> From<&'a http::Request<B>> for Protocol {
     fn from(req: &'a http::Request<B>) -> Protocol {
+
         if req.version() == http::Version::HTTP_2 {
             return Protocol::Http2
         }
 
-        if req.extensions().get::<h1::AuthorityRewriting>() ==
-            Some(&h1::AuthorityRewriting::SoOriginalDst)
-        {
-            return Protocol::Http1(Host::NoAuthority);
-        }
-
         // If the request has an authority part, use that as the host part of
         // the key for an HTTP/1.x request.
-        let host = req.uri()
-            .authority_part()
+        let host = req.uri().authority_part()
             .cloned()
+            .or_else(|| h1::authority_from_host(req))
             .map(Host::Authority)
             .unwrap_or_else(|| Host::NoAuthority);
 
