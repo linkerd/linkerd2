@@ -1,7 +1,7 @@
 use std::fmt;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use futures::Future;
 use http;
@@ -40,6 +40,7 @@ where
     proxy_ctx: Arc<ProxyCtx>,
     sensors: Sensors<T>,
     tcp: tcp::Proxy<T>,
+    timer: T,
 }
 
 impl<S, B, G, T> Server<S, B, G, T>
@@ -83,6 +84,7 @@ where
             proxy_ctx,
             sensors,
             tcp,
+            timer: timer.clone(),
         }
     }
 
@@ -93,7 +95,7 @@ where
     /// will be mapped into respective services, and spawned into an
     /// executor.
     pub fn serve(&self, connection: Connection, remote_addr: SocketAddr) {
-        let opened_at = Instant::now();
+        let opened_at = self.timer.now();
 
         // create Server context
         let orig_dst = connection.original_dst_addr(&self.get_orig_dst);

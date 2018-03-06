@@ -11,7 +11,7 @@ use time::Timer;
 
 /// Wraps a transport with telemetry.
 #[derive(Debug)]
-pub struct Transport<I, T>(I, Option<Inner<T>>);
+pub struct Transport<I, T: Timer>(I, Option<Inner<T>>);
 
 #[derive(Debug)]
 struct Inner<T> {
@@ -103,7 +103,10 @@ where
     }
 }
 
-impl<I, T> Drop for Transport<I, T> {
+impl<I, T> Drop for Transport<I, T>
+where
+    T: Timer,
+{
     fn drop(&mut self) {
         if let Some(Inner {
             mut handle,
@@ -111,8 +114,8 @@ impl<I, T> Drop for Transport<I, T> {
             opened_at,
         }) = self.1.take()
         {
+            let duration = handle.timer.elapsed(opened_at);
             handle.send(move || {
-                let duration = opened_at.elapsed();
                 let ev = event::TransportClose {
                     clean: true,
                     duration,

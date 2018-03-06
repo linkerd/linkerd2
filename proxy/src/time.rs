@@ -34,10 +34,7 @@ pub trait Timer: Clone + Sized {
 
     /// Returns the `Duration` elapsed since a given `Instant`.
     fn elapsed(&self, since: Instant) -> Duration {
-        match self.now() {
-            now if since >= now => since - now,
-            now => now - since,
-        }
+        self.now() - since
     }
 
     /// Returns a `Timeout` service using this timer.
