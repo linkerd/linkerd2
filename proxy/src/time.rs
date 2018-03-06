@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 use futures::{Future, Poll, Async};
 use tokio_connect::Connect;
+use tokio_core::reactor;
 use tokio_io;
 use tokio_timer;
 use tower::Service;
@@ -104,7 +105,26 @@ pub struct TimeoutFuture<F, S> {
     after: Duration
 }
 
+
 // ===== impl Timer =====
+
+impl Timer for reactor::Handle {
+    type Sleep = reactor::Timeout;
+    type Error = io::Error;
+
+    /// Returns a future that completes after the given duration.
+    fn sleep(&self, duration: Duration) -> Self::Sleep {
+        reactor::Timeout::new(duration, self)
+            .expect("timeout should be created successfully")
+    }
+
+    /// Returns the current time.
+    ///
+    /// This takes `&self` primarily for the mock timer implementation.
+    fn now(&self) -> Instant {
+        Instant::now()
+    }
+}
 
 impl Timer for tokio_timer::Timer {
     type Sleep = tokio_timer::Sleep;
