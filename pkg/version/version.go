@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"time"
 
 	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 	pb "github.com/runconduit/conduit/controller/gen/public"
@@ -37,10 +38,14 @@ func MaybePrintVersionAndExit(printVersion bool) {
 	log.Infof("running conduit version %s", Version)
 }
 
+var httpClientTimeout = 10 * time.Second
+
 type versionStatusChecker struct {
 	version         string
 	versionCheckURL string
-	client          pb.ApiClient
+	versionOverride string
+	publicApiClient pb.ApiClient
+	httpClient      http.Client
 }
 
 func (v versionStatusChecker) SelfCheck() []*healthcheckPb.CheckResult {
@@ -51,7 +56,7 @@ func (v versionStatusChecker) SelfCheck() []*healthcheckPb.CheckResult {
 		CheckDescription: CliCheckDescription,
 	}
 
-	latestVersion, err := getLatestVersion(v.versionCheckURL)
+	latestVersion, err := v.getLatestVersion()
 	if err != nil {
 		cliIsUpToDate.Status = healthcheckPb.CheckStatus_ERROR
 		cliIsUpToDate.FriendlyMessageToUser = err.Error()
@@ -68,7 +73,7 @@ func (v versionStatusChecker) SelfCheck() []*healthcheckPb.CheckResult {
 		CheckDescription: ControlPlaneCheckDescription,
 	}
 
-	controlPlaneVersion, err := getServerVersion(v.client)
+	controlPlaneVersion, err := v.getServerVersion()
 	if err != nil {
 		controlPlaneIsUpToDate.Status = healthcheckPb.CheckStatus_ERROR
 		controlPlaneIsUpToDate.FriendlyMessageToUser = err.Error()
@@ -84,8 +89,8 @@ func (v versionStatusChecker) SelfCheck() []*healthcheckPb.CheckResult {
 	return checks
 }
 
-func getServerVersion(client pb.ApiClient) (string, error) {
-	resp, err := client.Version(context.Background(), &pb.Empty{})
+func (v versionStatusChecker) getServerVersion() (string, error) {
+	resp, err := v.publicApiClient.Version(context.Background(), &pb.Empty{})
 	if err != nil {
 		return "", err
 	}
@@ -93,16 +98,21 @@ func getServerVersion(client pb.ApiClient) (string, error) {
 	return resp.GetReleaseVersion(), nil
 }
 
-func getLatestVersion(versionCheckURL string) (string, error) {
-	resp, err := http.Get(versionCheckURL)
+func (v versionStatusChecker) getLatestVersion() (string, error) {
+	if v.versionOverride != "" {
+		return v.versionOverride, nil
+	}
+
+	resp, err := v.httpClient.Get(v.versionCheckURL)
 	if err != nil {
 		return "", err
 	}
+	defer resp.Body.Close()
+
 	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("got %d error from %s", resp.StatusCode, versionCheckURL)
+		return "", fmt.Errorf("got %d error from %s", resp.StatusCode, v.versionCheckURL)
 	}
 
-	defer resp.Body.Close()
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
@@ -117,10 +127,12 @@ func getLatestVersion(versionCheckURL string) (string, error) {
 	return l["version"], nil
 }
 
-func NewVersionStatusChecker(versionCheckURL string, client pb.ApiClient) healthcheck.StatusChecker {
+func NewVersionStatusChecker(versionCheckURL, versionOverride string, client pb.ApiClient) healthcheck.StatusChecker {
 	return versionStatusChecker{
 		version:         Version,
 		versionCheckURL: versionCheckURL,
-		client:          client,
+		versionOverride: versionOverride,
+		publicApiClient: client,
+		httpClient:      http.Client{Timeout: httpClientTimeout},
 	}
 }

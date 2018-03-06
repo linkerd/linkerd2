@@ -21,7 +21,7 @@ func TestVersionCheck(t *testing.T) {
 		version.Version = "v0.3.0"
 		mockPublicApi := createMockPublicApi("v0.3.0")
 
-		versionStatusChecker := version.NewVersionStatusChecker("http://localhost:8080/", mockPublicApi)
+		versionStatusChecker := version.NewVersionStatusChecker("http://localhost:8080/", "", mockPublicApi)
 		checks := versionStatusChecker.SelfCheck()
 
 		expectedName := version.VersionSubsystemName
@@ -54,7 +54,7 @@ func TestVersionCheck(t *testing.T) {
 		version.Version = "v0.1.1"
 		mockPublicApi := createMockPublicApi("v0.3.0")
 
-		versionStatusChecker := version.NewVersionStatusChecker("http://localhost:8080/", mockPublicApi)
+		versionStatusChecker := version.NewVersionStatusChecker("http://localhost:8080/", "", mockPublicApi)
 		checks := versionStatusChecker.SelfCheck()
 
 		expectedStatus := healthcheckPb.CheckStatus_FAIL
@@ -72,7 +72,7 @@ func TestVersionCheck(t *testing.T) {
 		version.Version = "v0.3.0"
 		mockPublicApi := createMockPublicApi("v0.1.1")
 
-		versionStatusChecker := version.NewVersionStatusChecker("http://localhost:8080/", mockPublicApi)
+		versionStatusChecker := version.NewVersionStatusChecker("http://localhost:8080/", "", mockPublicApi)
 		checks := versionStatusChecker.SelfCheck()
 
 		expectedStatus := healthcheckPb.CheckStatus_FAIL
@@ -83,6 +83,21 @@ func TestVersionCheck(t *testing.T) {
 		expectedMessage := "is running version v0.1.1 but the latest version is v0.3.0"
 		if checks[1].FriendlyMessageToUser != expectedMessage {
 			t.Fatalf("Expecting message to be [%s], got [%s]", expectedMessage, checks[1].FriendlyMessageToUser)
+		}
+	})
+
+	t.Run("Supports overriding the expected version", func(t *testing.T) {
+		version.Version = "customversion"
+		mockPublicApi := createMockPublicApi("customversion")
+
+		versionStatusChecker := version.NewVersionStatusChecker("http://localhost:8080/", "customversion", mockPublicApi)
+		checks := versionStatusChecker.SelfCheck()
+
+		for _, check := range checks {
+			if check.Status != healthcheckPb.CheckStatus_OK {
+				t.Errorf("Expecting check for [%s] to be [%s], got [%s]",
+					check.CheckDescription, healthcheckPb.CheckStatus_OK, check.Status)
+			}
 		}
 	})
 }
