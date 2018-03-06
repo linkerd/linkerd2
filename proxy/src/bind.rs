@@ -63,10 +63,17 @@ pub enum Host {
     NoAuthority,
 }
 
-/// Reconstruct HTTP/1.x URIs.
+/// Rewrites HTTP/1.x requests so that their URIs are in a canonical form.
+///
+/// The following transformations are applied:
+/// - If an absolute-form URI is received, it must replace
+///   the host header (in accordance with RFC7230#section-5.4)
+/// - If the request URI is not in absolute form, it is rewritten to contain
+///   the authority given in the `Host:` header, or, failing that, from the
+///   request's original destination according to `SO_ORIGINAL_DST`.
 #[derive(Copy, Clone, Debug)]
 pub struct ReconstructUri<S> {
-    upstream: S
+    inner: S
 }
 
 pub type Service<B> = Reconnect<ReconstructUri<NewHttp<B>>>;
@@ -232,8 +239,8 @@ where
 
 
 impl<S> ReconstructUri<S> {
-    fn new (upstream: S) -> Self {
-        Self { upstream }
+    fn new (inner: S) -> Self {
+        Self { inner }
     }
 }
 
@@ -260,7 +267,7 @@ where
         fn(S::Service) -> ReconstructUri<S::Service>
     >;
     fn new_service(&self) -> Self::Future {
-        self.upstream.new_service().map(ReconstructUri::new)
+        self.inner.new_service().map(ReconstructUri::new)
     }
 }
 
@@ -281,7 +288,7 @@ where
     >;
 
     fn poll_ready(&mut self) -> Poll<(), S::Error> {
-        self.upstream.poll_ready()
+        self.inner.poll_ready()
     }
 
     fn call(&mut self, mut request: S::Request) -> Self::Future {
@@ -292,7 +299,7 @@ where
                 .unwrap();
             return Either::B(future::ok(res));
         }
-        Either::A(self.upstream.call(request))
+        Either::A(self.inner.call(request))
     }
 }
 
