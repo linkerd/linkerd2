@@ -700,6 +700,9 @@ data:
     [auth.basic]
     enabled = false
 
+    [analytics]
+    check_for_updates = false
+
   datasources.yaml: |-
     apiVersion: 1
     datasources:
