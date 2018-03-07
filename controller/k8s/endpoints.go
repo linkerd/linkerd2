@@ -136,8 +136,11 @@ type informer struct {
 }
 
 func (i *informer) run() error {
-	go i.informer.Run(i.stopCh)
-	return newWatcher(i.informer, endpointResource).run()
+	initializer := func(stopCh <-chan struct{}) error {
+		i.informer.Run(stopCh)
+		return nil
+	}
+	return newWatcher(i.informer, endpointResource, initializer, i.stopCh).run()
 }
 
 func (i *informer) stop() {
