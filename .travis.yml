@@ -24,7 +24,7 @@ jobs:
       install:
         - cargo fetch --locked
       script:
-        - cargo test --frozen --no-default-features
+        - cargo test --frozen
 
     - language: go
       # XXX; The "1.10" must be quoted or it will get intrepreted as 1.1. See
