@@ -55,7 +55,7 @@ pub struct Config {
 
     pub pod_name: Option<String>,
     pub pod_namespace: String,
-    pub pod_zone: Option<String>,
+    pub pod_zone: String,
     pub node_name: Option<String>,
 
     /// Should we use `pod_namespace` and/or `pod_zone` to map unqualified/partially-qualified
@@ -145,7 +145,6 @@ pub const ENV_BIND_TIMEOUT: &str = "CONDUIT_PROXY_BIND_TIMEOUT";
 const ENV_NODE_NAME: &str = "CONDUIT_PROXY_NODE_NAME";
 const ENV_POD_NAME: &str = "CONDUIT_PROXY_POD_NAME";
 pub const ENV_POD_NAMESPACE: &str = "CONDUIT_PROXY_POD_NAMESPACE";
-pub const ENV_POD_ZONE: &str = "CONDUIT_PROXY_POD_ZONE";
 pub const ENV_DESTINATIONS_AUTOCOMPLETE_FQDN: &str = "CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN";
 
 pub const ENV_CONTROL_URL: &str = "CONDUIT_PROXY_CONTROL_URL";
@@ -192,7 +191,6 @@ impl<'a> TryFrom<&'a Strings> for Config {
                 Error::InvalidEnvVar
             })
         });
-        let pod_zone = strings.get(ENV_POD_ZONE);
         let node_name = strings.get(ENV_NODE_NAME);
         let destinations_autocomplete_fqdn =
             parse(strings, ENV_DESTINATIONS_AUTOCOMPLETE_FQDN, parse_environment);
@@ -244,7 +242,7 @@ impl<'a> TryFrom<&'a Strings> for Config {
                 Duration::from_millis(bind_timeout?.unwrap_or(DEFAULT_BIND_TIMEOUT_MS)),
             pod_name: pod_name?,
             pod_namespace: pod_namespace?,
-            pod_zone: pod_zone?,
+            pod_zone: "cluster.local".to_owned(), // TODO: make configurable.
             node_name: node_name?,
             destinations_autocomplete_fqdn: destinations_autocomplete_fqdn?,
         })
@@ -261,7 +259,7 @@ impl Config {
 
     pub fn default_destination_zone(&self) -> Option<&String> {
         match self.destinations_autocomplete_fqdn {
-            Some(Environment::Kubernetes) => self.pod_zone.as_ref(),
+            Some(Environment::Kubernetes) => Some(&self.pod_zone),
             None => None,
         }
     }
