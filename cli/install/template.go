@@ -208,7 +208,7 @@ spec:
         - "-addr=:8087"
         - "-metrics-addr=:9997"
         - "-ignore-namespaces=kube-system"
-        - "-prometheus-url=http://prometheus.{{.Namespace}}.svc.cluster.local:9090"
+        - "-prometheus-url=http://prometheus.{{.Namespace}}.svc.cluster.local.:9090"
         - "-log-level={{.ControllerLogLevel}}"
 
 ### Web ###
@@ -265,7 +265,7 @@ spec:
         args:
         - "-addr=:8084"
         - "-metrics-addr=:9994"
-        - "-api-addr=api:8085"
+        - "-api-addr=api.{{.Namespace}}.svc.cluster.local.:8085"
         - "-static-dir=/dist"
         - "-template-dir=/templates"
         - "-uuid={{.UUID}}"
@@ -350,7 +350,7 @@ data:
     scrape_configs:
     - job_name: 'prometheus'
       static_configs:
-      - targets: ['localhost:9090']
+      - targets: ['localhost.:9090']
 
     - job_name: 'controller'
       kubernetes_sd_configs:
@@ -476,7 +476,7 @@ data:
       type: prometheus
       access: proxy
       orgId: 1
-      url: http://prometheus.{{.Namespace}}.svc.cluster.local:9090
+      url: http://prometheus.{{.Namespace}}.svc.cluster.local.:9090
       isDefault: true
       jsonData:
         timeInterval: "5s"
