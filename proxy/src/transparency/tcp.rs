@@ -132,7 +132,11 @@ where
         // could make progress.
         self.half_in.copy_into(&mut self.half_out)?;
         self.half_out.copy_into(&mut self.half_in)?;
-
+        trace!(
+            "Duplex::poll(); half_in.is_done={:?}; half_out.is_done={:?};",
+            self.half_in.is_done(),
+            self.half_out.is_done(),
+        );
         if self.half_in.is_done() && self.half_out.is_done() {
             Ok(Async::Ready(()))
         } else {
@@ -157,30 +161,48 @@ where
     where
         U: AsyncWrite,
     {
+        // Since Duplex::poll() intentionally ignores the Async part of our
+        // return value, we may be polled again after returning Ready, if the
+        // other half isn't ready. In that case, if the destination has
+        // shutdown, we finished in a previous poll, so don't even enter into
+        // the copy loop.
+        if dst.is_shutdown {
+            return Ok(Async::Ready(()));
+        }
         loop {
             try_ready!(self.read());
             try_ready!(self.write_into(dst));
-
-            if self.buf.is_none() && !dst.is_shutdown {
+            if self.buf.is_none() {
+                // If the destination was already shut down, we can't have
+                // gotten this far, so no need to guard against double
+                // shutdowns.
                 try_ready!(dst.io.shutdown());
                 dst.is_shutdown = true;
 
                 return Ok(Async::Ready(()));
             }
         }
+
+
     }
 
     fn read(&mut self) -> Poll<(), io::Error> {
         let mut is_eof = false;
         if let Some(ref mut buf) = self.buf {
+            trace!("HalfDuplex::read(); buf is Some");
             if !buf.has_remaining() {
+                trace!("HalfDuplex::read(); buf.has_remaining() == false;");
                 buf.reset();
                 let n = try_ready!(self.io.read_buf(buf));
+                trace!("HalfDuplex::read(); n={:?}", n);
                 is_eof = n == 0;
+            } else {
+                trace!("HalfDuplex::read(); buf had remaining");
             }
         }
 
         if is_eof {
+            trace!("HalfDuplex::read(); is_eof=true");
             self.buf.take();
         }
 
