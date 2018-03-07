@@ -54,7 +54,7 @@ pub struct Config {
     pub bind_timeout: Duration,
 
     pub pod_name: Option<String>,
-    pub pod_namespace: Option<String>,
+    pub pod_namespace: String,
     pub pod_zone: Option<String>,
     pub node_name: Option<String>,
 
@@ -185,7 +185,13 @@ impl<'a> TryFrom<&'a Strings> for Config {
             parse(strings, ENV_METRICS_FLUSH_INTERVAL_SECS, parse_number);
         let report_timeout = parse(strings, ENV_REPORT_TIMEOUT_SECS, parse_number);
         let pod_name = strings.get(ENV_POD_NAME);
-        let pod_namespace = strings.get(ENV_POD_NAMESPACE);
+        let pod_namespace = strings.get(ENV_POD_NAMESPACE).and_then(|maybe_value| {
+            // There cannot be a default pod namespace, and the pod namespace is required.
+            maybe_value.ok_or_else(|| {
+                error!("{} is not set", ENV_POD_NAMESPACE);
+                Error::InvalidEnvVar
+            })
+        });
         let pod_zone = strings.get(ENV_POD_ZONE);
         let node_name = strings.get(ENV_NODE_NAME);
         let destinations_autocomplete_fqdn =
@@ -248,7 +254,7 @@ impl<'a> TryFrom<&'a Strings> for Config {
 impl Config {
     pub fn default_destination_namespace(&self) -> Option<&String> {
         match self.destinations_autocomplete_fqdn {
-            Some(Environment::Kubernetes) => self.pod_namespace.as_ref(),
+            Some(Environment::Kubernetes) => Some(&self.pod_namespace),
             None => None,
         }
     }
