@@ -12,7 +12,7 @@ use tower_buffer::Buffer;
 use tower_discover::{Change, Discover};
 use tower_in_flight_limit::InFlightLimit;
 use tower_h2;
-use conduit_proxy_router::{Uses, Recognize};
+use conduit_proxy_router::{Reuse, Recognize};
 
 use bind::{self, Bind, Protocol};
 use control::{self, discovery};
@@ -87,7 +87,7 @@ where
         choose::PowerOfTwoChoices<rand::ThreadRng>
     >>>>;
 
-    fn recognize(&self, req: &Self::Request) -> Option<Uses<Self::Key>> {
+    fn recognize(&self, req: &Self::Request) -> Option<Reuse<Self::Key>> {
         let proto = bind::Protocol::detect(req);
 
         let local = req.uri().authority_part().map(|authority| {

@@ -153,8 +153,6 @@ fn run(proxy: Proxy, mut env: config::TestEnv) -> Listening {
         .name("support proxy".into())
         .spawn(move || {
             let _c = controller;
-            // let _i = inbound;
-            // let _o = outbound;
 
             let _ = running_tx.send(());
             main.run_until(rx);

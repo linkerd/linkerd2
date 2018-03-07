@@ -15,7 +15,7 @@ use tower_h2;
 use tower_reconnect::Reconnect;
 
 use conduit_proxy_controller_grpc;
-use conduit_proxy_router::Uses;
+use conduit_proxy_router::Reuse;
 use control;
 use ctx;
 use telemetry::{self, sensor};
@@ -202,7 +202,8 @@ where
             &client_ctx
         );
 
-        // Rewrite the HTTP/1 URI, if necessary.
+        // Rewrite the HTTP/1 URI, if the authorities in the Host header
+        // and request URI are not in agreement, or are not present.
         let proxy = ReconstructUri::new(sensors);
 
         // Automatically perform reconnects if the connection fails.
@@ -341,11 +342,11 @@ impl Protocol {
         }
     }
 
-    pub fn into_key<T>(self, key: T) -> Uses<(T, Protocol)> {
+    pub fn into_key<T>(self, key: T) -> Reuse<(T, Protocol)> {
         if self.is_cachable() {
-            Uses::Reusable((key, self))
+            Reuse::Reusable((key, self))
         } else {
-            Uses::SingleUse((key, self))
+            Reuse::SingleUse((key, self))
         }
     }
 }

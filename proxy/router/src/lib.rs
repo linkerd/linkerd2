@@ -41,7 +41,7 @@ pub trait Recognize {
                             Error = Self::Error>;
 
     /// Obtains a Key for a request.
-    fn recognize(&self, req: &Self::Request) -> Option<Uses<Self::Key>>;
+    fn recognize(&self, req: &Self::Request) -> Option<Reuse<Self::Key>>;
 
     /// Return a `Service` to handle requests from the provided authority.
     ///
@@ -53,8 +53,13 @@ pub trait Recognize {
 pub struct Single<S>(Option<S>);
 
 /// Whether or not the service to a given key may be cached.
+///
+/// Some services may, for various reasons, may not be able to
+/// be used to serve multiple requests. When this is the case,
+/// implementors of `recognize` may use `Reuse::SingleUse` to
+/// indicate that the service should not be cached.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum Uses<T> {
+pub enum Reuse<T> {
     Reusable(T),
     SingleUse(T),
 }
@@ -131,17 +136,17 @@ where T: Recognize,
             let service;
 
             if let Some(key) = inner.recognize.recognize(&request) {
-                // Is the bound service for that key reusable?
-                let cached = if let Uses::Reusable(ref key) = key {
+                // Is the bound service for that key reusable? If `recognize`
+                // returned `SingleUse`, that indicates that the service may
+                // not be used to serve multiple requests.
+                let cached = if let Reuse::Reusable(ref key) = key {
                     // The key is reusable --- look in the cache.
                     inner.routes.get_mut(key)
                 } else {
-                    // If the key is not reuseable, then the cached service is
-                    // always None.
                     None
                 };
                 if let Some(s) = cached {
-                    // The service for the authority is already cached
+                    // The service for the authority is already cached.
                     service = s;
                 } else {
                     // The authority does not match an existing route, try to
@@ -149,19 +154,19 @@ where T: Recognize,
                     match inner.recognize.bind_service(key.as_ref()) {
                         Ok(s) => {
                             // A new service has been matched. Set the outer
-                            // variables and jump out o the loop
+                            // variables and jump out o the loop.
                             new_key = key.clone();
                             new_service = s;
                             break;
                         }
                         Err(e) => {
-                            // Route recognition failed
+                            // Route recognition failed.
                             return ResponseFuture { state: State::RouteError(e) };
                         }
                     }
                 }
             } else {
-                // The request has no authority
+                // The request has no authority.
                 return ResponseFuture { state: State::NotRecognized };
             }
 
@@ -170,15 +175,15 @@ where T: Recognize,
             return ResponseFuture { state: State::Inner(response) };
         }
 
-        // First, route the request to the new service
+        // First, route the request to the new service.
         let response = new_service.call(request);
 
-        // Now, cache the new service'
-        if let Uses::Reusable(new_key) = new_key {
+        // Now, cache the new service.
+        if let Reuse::Reusable(new_key) = new_key {
             inner.routes.insert(new_key, new_service);
         }
 
-        // And finally, return the response
+        // And finally, return the response.
         ResponseFuture { state: State::Inner(response) }
     }
 }
@@ -209,8 +214,8 @@ impl<S: Service> Recognize for Single<S> {
     type RouteError = ();
     type Service = S;
 
-    fn recognize(&self, _: &Self::Request) -> Option<Uses<Self::Key>> {
-        Some(Uses::Reusable(()))
+    fn recognize(&self, _: &Self::Request) -> Option<Reuse<Self::Key>> {
+        Some(Reuse::Reusable(()))
     }
 
     fn bind_service(&mut self, _: &Self::Key) -> Result<S, Self::RouteError> {
@@ -282,13 +287,13 @@ where
     }
 }
 
-// ===== impl Uses=====
+// ===== impl Reuse =====
 
-impl<T> AsRef<T> for Uses<T> {
+impl<T> AsRef<T> for Reuse<T> {
     fn as_ref(&self) -> &T {
         match *self {
-            Uses::Reusable(ref key) => key,
-            Uses::SingleUse(ref key) => key,
+            Reuse::Reusable(ref key) => key,
+            Reuse::SingleUse(ref key) => key,
         }
     }
 }

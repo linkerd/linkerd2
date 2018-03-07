@@ -6,7 +6,7 @@ use tower;
 use tower_buffer::{self, Buffer};
 use tower_in_flight_limit::{self, InFlightLimit};
 use tower_h2;
-use conduit_proxy_router::{Uses, Recognize};
+use conduit_proxy_router::{Reuse, Recognize};
 
 use bind;
 use ctx;
@@ -46,7 +46,7 @@ where
     type RouteError = bind::BufferSpawnError;
     type Service = InFlightLimit<Buffer<bind::Service<B>>>;
 
-    fn recognize(&self, req: &Self::Request) -> Option<Uses<Self::Key>> {
+    fn recognize(&self, req: &Self::Request) -> Option<Reuse<Self::Key>> {
         let key = req.extensions()
             .get::<Arc<ctx::transport::Server>>()
             .and_then(|ctx| {
