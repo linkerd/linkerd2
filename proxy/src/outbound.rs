@@ -12,7 +12,7 @@ use tower_buffer::Buffer;
 use tower_discover::{Change, Discover};
 use tower_in_flight_limit::InFlightLimit;
 use tower_h2;
-use conduit_proxy_router::Recognize;
+use conduit_proxy_router::{Reuse, Recognize};
 
 use bind::{self, Bind, Protocol};
 use control::{self, discovery};
@@ -58,6 +58,21 @@ pub enum Destination {
     External(SocketAddr),
 }
 
+impl From<FullyQualifiedAuthority> for Destination {
+    #[inline]
+    fn from(authority: FullyQualifiedAuthority) -> Self {
+        Destination::LocalSvc(authority)
+    }
+}
+
+impl From<SocketAddr> for Destination {
+    #[inline]
+    fn from(addr: SocketAddr) -> Self {
+        Destination::External(addr)
+    }
+}
+
+
 impl<B> Recognize for Outbound<B>
 where
     B: tower_h2::Body + 'static,
@@ -72,7 +87,9 @@ where
         choose::PowerOfTwoChoices<rand::ThreadRng>
     >>>>;
 
-    fn recognize(&self, req: &Self::Request) -> Option<Self::Key> {
+    fn recognize(&self, req: &Self::Request) -> Option<Reuse<Self::Key>> {
+        let proto = bind::Protocol::detect(req);
+
         let local = req.uri().authority_part().map(|authority| {
             FullyQualifiedAuthority::normalize(
                 authority,
@@ -102,12 +119,8 @@ where
             Destination::External(orig_dst?)
         };
 
-        let proto = match req.version() {
-            http::Version::HTTP_2 => Protocol::Http2,
-            _ => Protocol::Http1,
-        };
 
-        Some((dest, proto))
+        Some(proto.into_key(dest))
     }
 
     /// Builds a dynamic, load balancing service.
@@ -123,18 +136,19 @@ where
         &mut self,
         key: &Self::Key,
     ) -> Result<Self::Service, Self::RouteError> {
-        let &(ref dest, protocol) = key;
+        let &(ref dest, ref protocol) = key;
         debug!("building outbound {:?} client to {:?}", protocol, dest);
 
         let resolve = match *dest {
             Destination::LocalSvc(ref authority) => {
                 Discovery::LocalSvc(self.discovery.resolve(
                     authority,
-                    self.bind.clone().with_protocol(protocol),
+                    self.bind.clone().with_protocol(protocol.clone()),
                 ))
             },
             Destination::External(addr) => {
-                Discovery::External(Some((addr, self.bind.clone().with_protocol(protocol))))
+                Discovery::External(Some((addr, self.bind.clone()
+                    .with_protocol(protocol.clone()))))
             }
         };
 

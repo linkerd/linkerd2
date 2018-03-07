@@ -23,6 +23,9 @@ pub struct Listening {
     pub inbound: SocketAddr,
     pub outbound: SocketAddr,
 
+    pub outbound_server: Option<server::Listening>,
+    pub inbound_server: Option<server::Listening>,
+
     shutdown: Shutdown,
 }
 
@@ -150,8 +153,6 @@ fn run(proxy: Proxy, mut env: config::TestEnv) -> Listening {
         .name("support proxy".into())
         .spawn(move || {
             let _c = controller;
-            let _i = inbound;
-            let _o = outbound;
 
             let _ = running_tx.send(());
             main.run_until(rx);
@@ -165,6 +166,10 @@ fn run(proxy: Proxy, mut env: config::TestEnv) -> Listening {
         control: control_addr,
         inbound: inbound_addr,
         outbound: outbound_addr,
+
+        outbound_server: outbound,
+        inbound_server: inbound,
+
         shutdown: tx,
     }
 }

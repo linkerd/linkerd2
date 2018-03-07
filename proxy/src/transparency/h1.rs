@@ -6,7 +6,6 @@ use bytes::BytesMut;
 use http;
 use http::header::{HeaderValue, HOST};
 use http::uri::{Authority, Parts, Scheme, Uri};
-
 use ctx::transport::{Server as ServerCtx};
 
 pub fn reconstruct_uri<B>(req: &mut http::Request<B>) -> Result<(), ()> {
@@ -27,20 +26,9 @@ pub fn reconstruct_uri<B>(req: &mut http::Request<B>) -> Result<(), ()> {
     }
 
     // try to parse the Host header
-    if let Some(host) = req.headers().get(HOST).cloned() {
-        let auth = host.to_str()
-            .ok()
-            .and_then(|s| {
-                if s.is_empty() {
-                    None
-                } else {
-                    s.parse::<Authority>().ok()
-                }
-            });
-        if let Some(auth) = auth {
-            set_authority(req.uri_mut(), auth);
-            return Ok(());
-        }
+    if let Some(auth) = authority_from_host(&req) {
+        set_authority(req.uri_mut(), auth);
+        return Ok(());
     }
 
     // last resort is to use the so_original_dst
@@ -60,6 +48,21 @@ pub fn reconstruct_uri<B>(req: &mut http::Request<B>) -> Result<(), ()> {
     }
 
     Err(())
+}
+
+/// Returns an Authority from a request's Host header.
+pub fn authority_from_host<B>(req: &http::Request<B>) -> Option<Authority> {
+    req.headers().get(HOST).cloned()
+        .and_then(|host| {
+             host.to_str().ok()
+                .and_then(|s| {
+                    if s.is_empty() {
+                        None
+                    } else {
+                        s.parse::<Authority>().ok()
+                    }
+                })
+        })
 }
 
 fn set_authority(uri: &mut http::Uri, auth: Authority) {
