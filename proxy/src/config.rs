@@ -55,7 +55,6 @@ pub struct Config {
 
     pub pod_name: Option<String>,
     pub pod_namespace: String,
-    pub pod_zone: String,
     pub node_name: Option<String>,
 }
 
@@ -230,7 +229,6 @@ impl<'a> TryFrom<&'a Strings> for Config {
                 Duration::from_millis(bind_timeout?.unwrap_or(DEFAULT_BIND_TIMEOUT_MS)),
             pod_name: pod_name?,
             pod_namespace: pod_namespace?,
-            pod_zone: "cluster.local".to_owned(), // TODO: make configurable.
             node_name: node_name?,
         })
     }
@@ -239,10 +237,6 @@ impl<'a> TryFrom<&'a Strings> for Config {
 impl Config {
     pub fn default_destination_namespace(&self) -> &str {
         &self.pod_namespace
-    }
-
-    pub fn default_destination_zone(&self) -> &str {
-        &self.pod_zone
     }
 }
 

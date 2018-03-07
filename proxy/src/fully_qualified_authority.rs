@@ -20,8 +20,8 @@ impl FullyQualifiedAuthority {
     /// Case folding is not done; that is done internally inside `Authority`.
     ///
     /// This assumes the authority is syntactically valid.
-    pub fn normalize(authority: &Authority, default_namespace: &str, default_zone: &str)
-                    -> NamedAddress
+    pub fn normalize(authority: &Authority, default_namespace: &str)
+                     -> NamedAddress
     {
         // Don't change IP-address-based authorities.
         if IpAddr::from_str(authority.host()).is_ok() {
@@ -92,8 +92,9 @@ impl FullyQualifiedAuthority {
         };
 
         // Rewrite "$name.$namespace.svc" -> "$name.$namespace.svc.$zone".
+        static DEFAULT_ZONE: &str = "cluster.local"; // TODO: make configurable.
         let zone_to_append = if let Some(zone) = parts.next() {
-            if !zone.eq_ignore_ascii_case(default_zone) {
+            if !zone.eq_ignore_ascii_case(DEFAULT_ZONE) {
                 // if "a.b.svc.foo" and zone is not "foo",
                 // treat as external
                 return NamedAddress {
@@ -103,7 +104,7 @@ impl FullyQualifiedAuthority {
             }
             None
         } else {
-            Some(default_zone)
+            Some(DEFAULT_ZONE)
         };
 
         let mut additional_len = 0;
@@ -160,9 +161,6 @@ impl FullyQualifiedAuthority {
 mod tests {
     #[test]
     fn test_normalized_authority() {
-        // TODO: Support configurable zone.
-        static ONLY_SUPPORTED_ZONE: &str = "cluster.local";
-
         fn local(input: &str, default_namespace: &str) -> String {
             use bytes::Bytes;
             use http::uri::Authority;
@@ -170,7 +168,7 @@ mod tests {
             let input = Authority::from_shared(Bytes::from(input.as_bytes()))
                 .unwrap();
             let output = super::FullyQualifiedAuthority::normalize(
-                &input, default_namespace, ONLY_SUPPORTED_ZONE);
+                &input, default_namespace);
             assert_eq!(output.use_destination_service, true);
             output.name.without_trailing_dot().as_str().into()
         }
@@ -181,7 +179,7 @@ mod tests {
 
             let input = Authority::from_shared(Bytes::from(input.as_bytes())).unwrap();
             let output = super::FullyQualifiedAuthority::normalize(
-                &input, default_namespace, ONLY_SUPPORTED_ZONE);
+                &input, default_namespace);
             assert_eq!(output.use_destination_service, false);
             assert_eq!(output.name.without_trailing_dot().as_str(), input);
         }

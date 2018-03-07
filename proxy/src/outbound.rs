@@ -27,7 +27,6 @@ pub struct Outbound<B> {
     bind: Bind<Arc<ctx::Proxy>, B>,
     discovery: control::Control,
     default_namespace: String,
-    default_zone: String,
     bind_timeout: Duration,
 }
 
@@ -39,14 +38,12 @@ impl<B> Outbound<B> {
     pub fn new(bind: Bind<Arc<ctx::Proxy>, B>,
                discovery: control::Control,
                default_namespace: String,
-               default_zone: String,
                bind_timeout: Duration,)
                -> Outbound<B> {
         Self {
             bind,
             discovery,
             default_namespace,
-            default_zone,
             bind_timeout,
         }
     }
@@ -93,8 +90,7 @@ where
         let local = req.uri().authority_part().map(|authority| {
             FullyQualifiedAuthority::normalize(
                 authority,
-                &self.default_namespace,
-                &self.default_zone)
+                &self.default_namespace)
 
         });
 

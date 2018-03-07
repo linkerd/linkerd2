@@ -216,7 +216,6 @@ where
                 bind,
                 control,
                 config.default_destination_namespace().to_owned(),
-                config.default_destination_zone().to_owned(),
                 config.bind_timeout,
             );
 
