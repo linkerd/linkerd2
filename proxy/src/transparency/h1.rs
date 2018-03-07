@@ -64,6 +64,7 @@ pub fn authority_from_host<B>(req: &http::Request<B>) -> Option<Authority> {
                 })
         })
 }
+
 fn set_authority(uri: &mut http::Uri, auth: Authority) {
     let mut parts = Parts::from(mem::replace(uri, Uri::default()));
     parts.scheme = Some(Scheme::HTTP);
