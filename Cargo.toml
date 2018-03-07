@@ -6,3 +6,6 @@ members = [
   "proxy/futures-mpsc-lossy",
   "proxy/router",
 ]
+
+[patch.crates-io]
+prost-derive = { git = "https://github.com/danburkert/prost" }
