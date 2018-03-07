@@ -209,6 +209,29 @@ mod tests {
         assert_eq!("name.namespace.svc.cluster.local",
                    local("name.namespace.svc.cluster.local.", "namespace"));
 
+        // Irrespective of how other absolute names are resolved, "localhost."
+        // absolute names aren't ever resolved through the destination service,
+        // as prescribed by https://tools.ietf.org/html/rfc6761#section-6.3:
+        //
+        //     The domain "localhost." and any names falling within ".localhost."
+        //     are special in the following ways: [...]
+        //
+        //     Name resolution APIs and libraries SHOULD recognize localhost
+        //     names as special and SHOULD always return the IP loopback address
+        //     for address queries [...] Name resolution APIs SHOULD NOT send
+        //     queries for localhost names to their configured caching DNS server(s).
+        external("localhost.", "namespace");
+        external("name.localhost.", "namespace");
+        external("name.namespace.svc.localhost.", "namespace");
+
+        // Although it probably isn't the desired behavior in almost any circumstance, match
+        // Kubernetes' behavior for non-absolute "localhost" and names that end with
+        // ".localhost".
+        assert_eq!("localhost.namespace.svc.cluster.local",
+                   local("localhost", "namespace"));
+        assert_eq!("name.localhost.svc.cluster.local",
+                   local("name.localhost", "namespace"));
+
         // Ports are preserved.
         assert_eq!("name.namespace.svc.cluster.local:1234",
                    local("name:1234", "namespace"));
