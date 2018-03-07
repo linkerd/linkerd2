@@ -1,6 +1,5 @@
 #![deny(warnings)]
 extern crate conduit_proxy;
-extern crate tokio_timer;
 use std::process;
 
 // Look in lib.rs.
@@ -13,6 +12,6 @@ fn main() {
             process::exit(64)
         }
     };
-    let timer = tokio_timer::Timer::default();
+    let timer = conduit_proxy::time::LazyReactorTimer::uninitialized();
     conduit_proxy::Main::new(config, conduit_proxy::SoOriginalDst, timer).run();
 }

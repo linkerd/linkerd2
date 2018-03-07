@@ -38,7 +38,6 @@ abstract-ns = "0.4"
 ns-dns-tokio = "0.4"
 
 #futures-watch   = { git = "https://github.com/carllerche/better-future" }
-tokio-timer           = "0.1.2"
 tokio-connect         = { git = "https://github.com/carllerche/tokio-connect" }
 tower                 = { git = "https://github.com/tower-rs/tower" }
 tower-balance         = { git = "https://github.com/tower-rs/tower" }

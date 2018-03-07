@@ -21,7 +21,7 @@ use ctx;
 use telemetry::{self, sensor};
 use transparency::{self, HttpBody, h1};
 use transport;
-use time::{Timer};
+use time::Timer;
 
 /// Binds a `Service` from a `SocketAddr`.
 ///

@@ -19,7 +19,7 @@ use tower_reconnect::{Error as ReconnectError, Reconnect};
 use dns;
 use fully_qualified_authority::FullyQualifiedAuthority;
 use transport::{HostAndPort, LookupAddressAndConnect};
-use time::{NewTimeout, Timer, TimeoutError};
+use time::{Timer, TimeoutError};
 
 pub mod discovery;
 mod observe;
@@ -38,7 +38,8 @@ pub struct Control {
 
 pub struct Background<T> {
     disco: DiscoBg,
-    connect_timeout: NewTimeout<T>,
+    connect_timeout: Duration,
+    timer: T,
 }
 
 pub fn new<T: Timer>(timer: &T) -> (Control, Background<T>) {
@@ -48,14 +49,10 @@ pub fn new<T: Timer>(timer: &T) -> (Control, Background<T>) {
         disco: tx,
     };
 
-    let connect_timeout = timer
-        .new_timeout(Duration::from_secs(3))
-        .with_description("discovery connection")
-        ;
-
     let b = Background {
         disco: rx,
-        connect_timeout,
+        connect_timeout: Duration::from_secs(3),
+        timer: timer.clone(),
     };
 
     (c, b)
@@ -87,13 +84,18 @@ where
     where
         S: Stream<Item = ReportRequest, Error = ()> + 'static,
     {
+        let timer = self.timer.with_handle(executor);
+
         // Build up the Controller Client Stack
         let mut client = {
             let ctx = ("controller-client", format!("{:?}", host_and_port));
             let scheme = http::uri::Scheme::from_shared(Bytes::from_static(b"http")).unwrap();
             let authority = http::uri::Authority::from(&host_and_port);
             let dns_resolver = dns::Resolver::new(dns_config, executor);
-            let connect = self.connect_timeout.apply_to(
+            let connect_timeout = timer
+                .new_timeout(self.connect_timeout)
+                .with_description(format!("{:?}", ctx));
+            let connect = connect_timeout.apply_to(
                 LookupAddressAndConnect::new(host_and_port, dns_resolver, executor),
             );
 
@@ -115,7 +117,7 @@ where
         let mut telemetry = Telemetry::new(
             events,
             report_timeout,
-            self.connect_timeout.timer()
+            &timer,
         );
 
         let fut = future::poll_fn(move || {
@@ -132,7 +134,8 @@ where
 // ===== Backoff =====
 
 /// Wait a duration if inner `poll_ready` returns an error.
-//TODO: move to tower-backoff
+// TODO: move to tower-backoff
+// TODO: rewrite to use `time::Timer`.
 struct Backoff<S> {
     inner: S,
     timer: ReactorTimeout,

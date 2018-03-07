@@ -31,7 +31,6 @@ extern crate rand;
 extern crate tokio_connect;
 extern crate tokio_core;
 extern crate tokio_io;
-extern crate tokio_timer;
 extern crate tower;
 extern crate tower_balance;
 extern crate tower_buffer;
@@ -185,6 +184,10 @@ where
 
         let mut core = Core::new().expect("executor");
         let executor = core.handle();
+
+        // Once the main reactor is created, use it to run any timeouts
+        // created by the rest of the proxy.
+        let timer = timer.with_handle(&executor);
 
         let dns_config = dns::Config::from_file(&config.resolv_conf_path);
 

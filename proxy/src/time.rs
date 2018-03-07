@@ -9,7 +9,6 @@ use futures::{Future, Poll, Async};
 use tokio_connect::Connect;
 use tokio_core::reactor;
 use tokio_io;
-use tokio_timer;
 use tower::Service;
 
 /// Abstraction over the interface required for a timer.
@@ -32,6 +31,15 @@ pub trait Timer: Clone + Sized {
     ///
     /// This takes `&self` primarily for the mock timer implementation.
     fn now(&self) -> Instant;
+
+    /// Initialize this timer with a `tokio_core::reactor::Handle`.
+    ///
+    /// This is necessary to initialize a `LazyReactorTimer`. For other
+    /// implementations, this is likely to be a no-op.
+    // TODO: It would be really nice if this wasn't part of the abstract
+    //       timer API, but consumers don't know if they'll be passed a
+    //       lazy reactor timer or some other implementation.
+    fn with_handle(self, handle: &reactor::Handle) -> Self;
 
     /// Returns the `Duration` elapsed since a given `Instant`.
     fn elapsed(&self, since: Instant) -> Duration {
@@ -105,6 +113,66 @@ pub struct TimeoutFuture<F, S> {
     after: Duration
 }
 
+/// Marker indicating that a timer should be created from a reactor handle
+/// when one becomes available.
+#[derive(Clone, Debug)]
+pub struct LazyReactorTimer {
+    inner: Option<reactor::Handle>,
+}
+
+// ===== impl LazyReactorTimer =====
+
+impl LazyReactorTimer {
+
+    /// Returns a new, uninitialized `LazyReactorTimer`.
+    ///
+    /// Using this timer will panic until `with_handle` is called on it.
+    pub fn uninitialized() -> Self {
+        LazyReactorTimer {
+            inner: None
+        }
+    }
+
+}
+
+unsafe impl Send for LazyReactorTimer {}
+unsafe impl Sync for LazyReactorTimer {}
+
+impl Timer for LazyReactorTimer {
+    type Sleep = reactor::Timeout;
+    type Error = io::Error;
+
+    /// Returns a future that completes after the given duration.
+    fn sleep(&self, duration: Duration) -> Self::Sleep {
+        self.inner.as_ref()
+            .expect("sleep() should not be called until the timer is ready.")
+            .sleep(duration)
+
+    }
+
+    /// Returns the current time.
+    ///
+    /// This takes `&self` primarily for the mock timer implementation.
+    fn now(&self) -> Instant {
+        Instant::now()
+    }
+
+    fn with_handle(self, handle: &reactor::Handle) -> Self {
+        if let Some(_) = self.inner {
+            // if the timer has already been initialized, switching the handle
+            // is probably a bad call, as the new handle may come from a
+            // different core, and unexpected things could happen.
+            warn!("attempted to initialize LazyReactorTimer twice, doing \
+                   nothing");
+            return self;
+        }
+
+        LazyReactorTimer {
+            inner: Some(handle.clone())
+        }
+    }
+}
+
 
 // ===== impl Timer =====
 
@@ -124,8 +192,16 @@ impl Timer for reactor::Handle {
     fn now(&self) -> Instant {
         Instant::now()
     }
+
+
+    fn with_handle(self, _handle: &reactor::Handle) -> Self {
+        self
+    }
 }
 
+// NOTE: this could easily be un-commented to replace the reactor timer
+//       with tokio_timer if we decide to add tokio_timer as a dependency.
+/*
 impl Timer for tokio_timer::Timer {
     type Sleep = tokio_timer::Sleep;
     type Error = tokio_timer::TimerError;
@@ -141,7 +217,12 @@ impl Timer for tokio_timer::Timer {
     fn now(&self) -> Instant {
         Instant::now()
     }
+
+    fn with_handle(self, _handle: &reactor::Handle) -> Self {
+        self
+    }
 }
+*/
 
 // ===== impl Timeout =====
 

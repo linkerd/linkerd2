@@ -6,6 +6,7 @@ use std::ops::AddAssign;
 
 use self::futures::sync::oneshot;
 use self::indexmap::IndexMap;
+use self::tokio_core::reactor;
 
 use self::conduit_proxy::time::Timer;
 
@@ -75,6 +76,10 @@ impl Timer for MockTimer  {
     /// This takes `&self` primarily for the mock timer implementation.
     fn now(&self) -> Instant {
         self.inner.now()
+    }
+
+    fn with_handle(self, _handle: &reactor::Handle) -> Self {
+        self
     }
 }
 
