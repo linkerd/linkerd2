@@ -136,7 +136,7 @@ type informer struct {
 }
 
 func (i *informer) run() error {
-	initializer := func(stopCh <-chan struct{}) (err error) {
+	initializer := func(stopCh <-chan struct{}) error {
 		i.informer.Run(stopCh)
 		return nil
 	}
