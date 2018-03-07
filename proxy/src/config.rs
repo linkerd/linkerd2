@@ -57,15 +57,6 @@ pub struct Config {
     pub pod_namespace: String,
     pub pod_zone: String,
     pub node_name: Option<String>,
-
-    /// Should we use `pod_namespace` and/or `pod_zone` to map unqualified/partially-qualified
-    /// to fully-qualified names using the given platform's conventions?
-    destinations_autocomplete_fqdn: Option<Environment>,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum Environment {
-    Kubernetes,
 }
 
 /// Configuration settings for binding a listener.
@@ -145,7 +136,6 @@ pub const ENV_BIND_TIMEOUT: &str = "CONDUIT_PROXY_BIND_TIMEOUT";
 const ENV_NODE_NAME: &str = "CONDUIT_PROXY_NODE_NAME";
 const ENV_POD_NAME: &str = "CONDUIT_PROXY_POD_NAME";
 pub const ENV_POD_NAMESPACE: &str = "CONDUIT_PROXY_POD_NAMESPACE";
-pub const ENV_DESTINATIONS_AUTOCOMPLETE_FQDN: &str = "CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN";
 
 pub const ENV_CONTROL_URL: &str = "CONDUIT_PROXY_CONTROL_URL";
 const ENV_RESOLV_CONF: &str = "CONDUIT_RESOLV_CONF";
@@ -192,8 +182,6 @@ impl<'a> TryFrom<&'a Strings> for Config {
             })
         });
         let node_name = strings.get(ENV_NODE_NAME);
-        let destinations_autocomplete_fqdn =
-            parse(strings, ENV_DESTINATIONS_AUTOCOMPLETE_FQDN, parse_environment);
 
         // There is no default controller URL because a default would make it
         // too easy to connect to the wrong controller, which would be dangerous.
@@ -244,24 +232,17 @@ impl<'a> TryFrom<&'a Strings> for Config {
             pod_namespace: pod_namespace?,
             pod_zone: "cluster.local".to_owned(), // TODO: make configurable.
             node_name: node_name?,
-            destinations_autocomplete_fqdn: destinations_autocomplete_fqdn?,
         })
     }
 }
 
 impl Config {
-    pub fn default_destination_namespace(&self) -> Option<&String> {
-        match self.destinations_autocomplete_fqdn {
-            Some(Environment::Kubernetes) => Some(&self.pod_namespace),
-            None => None,
-        }
+    pub fn default_destination_namespace(&self) -> &str {
+        &self.pod_namespace
     }
 
-    pub fn default_destination_zone(&self) -> Option<&String> {
-        match self.destinations_autocomplete_fqdn {
-            Some(Environment::Kubernetes) => Some(&self.pod_zone),
-            None => None,
-        }
+    pub fn default_destination_zone(&self) -> &str {
+        &self.pod_zone
     }
 }
 
@@ -321,13 +302,6 @@ impl Strings for TestEnv {
 }
 
 // ===== Parsing =====
-
-fn parse_environment(s: &str) -> Result<Environment, ParseError> {
-    match s {
-        "Kubernetes" => Ok(Environment::Kubernetes),
-        _ => Err(ParseError::EnvironmentUnsupported),
-    }
-}
 
 fn parse_number<T>(s: &str) -> Result<T, ParseError> where T: FromStr {
     s.parse().map_err(|_| ParseError::NotANumber)

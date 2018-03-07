@@ -26,8 +26,8 @@ type BindProtocol<B> = bind::BindProtocol<Arc<ctx::Proxy>, B>;
 pub struct Outbound<B> {
     bind: Bind<Arc<ctx::Proxy>, B>,
     discovery: control::Control,
-    default_namespace: Option<String>,
-    default_zone: Option<String>,
+    default_namespace: String,
+    default_zone: String,
     bind_timeout: Duration,
 }
 
@@ -38,8 +38,8 @@ const MAX_IN_FLIGHT: usize = 10_000;
 impl<B> Outbound<B> {
     pub fn new(bind: Bind<Arc<ctx::Proxy>, B>,
                discovery: control::Control,
-               default_namespace: Option<String>,
-               default_zone: Option<String>,
+               default_namespace: String,
+               default_zone: String,
                bind_timeout: Duration,)
                -> Outbound<B> {
         Self {
@@ -93,8 +93,8 @@ where
         let local = req.uri().authority_part().map(|authority| {
             FullyQualifiedAuthority::normalize(
                 authority,
-                self.default_namespace.as_ref().map(|s| s.as_ref()),
-                self.default_zone.as_ref().map(|s| s.as_ref()))
+                &self.default_namespace,
+                &self.default_zone)
 
         });
 
