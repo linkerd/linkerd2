@@ -2,9 +2,8 @@ package k8s
 
 import (
 	"fmt"
-	"time"
-
 	"math"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/wait"
