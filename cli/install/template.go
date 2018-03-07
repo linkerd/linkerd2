@@ -154,6 +154,7 @@ spec:
         - "-tap-addr=127.0.0.1:8088"
         - "-controller-namespace={{.Namespace}}"
         - "-log-level={{.ControllerLogLevel}}"
+        - "-logtostderr=true"
       - name: destination
         ports:
         - name: grpc
@@ -167,6 +168,7 @@ spec:
         - "-addr=:8089"
         - "-metrics-addr=:9999"
         - "-log-level={{.ControllerLogLevel}}"
+        - "-logtostderr=true"
       - name: proxy-api
         ports:
         - name: grpc
@@ -182,6 +184,7 @@ spec:
         - "-destination-addr=:8089"
         - "-telemetry-addr=:8087"
         - "-log-level={{.ControllerLogLevel}}"
+        - "-logtostderr=true"
       - name: tap
         ports:
         - name: grpc
@@ -195,6 +198,7 @@ spec:
         - "-addr=:8088"
         - "-metrics-addr=:9998"
         - "-log-level={{.ControllerLogLevel}}"
+        - "-logtostderr=true"
       - name: telemetry
         ports:
         - name: grpc
@@ -210,6 +214,7 @@ spec:
         - "-ignore-namespaces=kube-system"
         - "-prometheus-url=http://prometheus.{{.Namespace}}.svc.cluster.local:9090"
         - "-log-level={{.ControllerLogLevel}}"
+        - "-logtostderr=true"
 
 ### Web ###
 ---
