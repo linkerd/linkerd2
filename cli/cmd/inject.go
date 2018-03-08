@@ -175,10 +175,6 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride, v
 				Name:      "CONDUIT_PROXY_POD_NAMESPACE",
 				ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
 			},
-			v1.EnvVar{
-				Name:  "CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN",
-				Value: "Kubernetes",
-			},
 		},
 	}
 

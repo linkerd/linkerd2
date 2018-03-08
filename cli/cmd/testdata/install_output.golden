@@ -245,8 +245,6 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        - name: CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN
-          value: Kubernetes
         image: gcr.io/runconduit/proxy:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-proxy
@@ -366,8 +364,6 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        - name: CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN
-          value: Kubernetes
         image: gcr.io/runconduit/proxy:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-proxy
@@ -479,8 +475,6 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        - name: CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN
-          value: Kubernetes
         image: gcr.io/runconduit/proxy:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-proxy
@@ -634,8 +628,6 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        - name: CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN
-          value: Kubernetes
         image: gcr.io/runconduit/proxy:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-proxy
