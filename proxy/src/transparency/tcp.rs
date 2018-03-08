@@ -173,9 +173,8 @@ where
             try_ready!(self.read());
             try_ready!(self.write_into(dst));
             if self.buf.is_none() {
-                // If the destination was already shut down, we can't have
-                // gotten this far, so no need to guard against double
-                // shutdowns.
+                debug_assert!(!dst.is_shutdown,
+                    "attempted shut down destination twice");
                 try_ready!(dst.io.shutdown());
                 dst.is_shutdown = true;
 
@@ -189,15 +188,14 @@ where
     fn read(&mut self) -> Poll<(), io::Error> {
         let mut is_eof = false;
         if let Some(ref mut buf) = self.buf {
-            trace!("HalfDuplex::read(); buf is Some");
-            if !buf.has_remaining() {
-                trace!("HalfDuplex::read(); buf.has_remaining() == false;");
+            let has_remaining = buf.has_remaining();
+            trace!("HalfDuplex::read(); buf.has_remaining() = {:?};",
+                has_remaining);
+            if !has_remaining {
                 buf.reset();
                 let n = try_ready!(self.io.read_buf(buf));
                 trace!("HalfDuplex::read(); n={:?}", n);
                 is_eof = n == 0;
-            } else {
-                trace!("HalfDuplex::read(); buf had remaining");
             }
         }
 
