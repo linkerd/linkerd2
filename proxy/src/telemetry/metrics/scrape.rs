@@ -54,6 +54,6 @@ impl HyperService for Server {
 
         future::ok(HyperResponse::new()
             .with_status(StatusCode::Ok)
-            .with_body("Not yet implemented"))
+            .with_body(""))
     }
 }
