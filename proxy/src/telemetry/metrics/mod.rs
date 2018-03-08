@@ -27,7 +27,7 @@ use ctx;
 use telemetry::event::Event;
 
 mod latency;
-mod scrape;
+pub mod scrape;
 
 #[derive(Debug)]
 pub struct Metrics {

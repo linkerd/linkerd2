@@ -1,25 +1,59 @@
-use std::io;
+use std::sync::Arc;
 
-use tower::Service;
-use http;
-use transparency::HttpBody;
+use futures::future::{self, FutureResult};
+use hyper;
+use hyper::StatusCode;
+use hyper::server::{
+    Service as HyperService,
+    Request as HyperRequest,
+    Response as HyperResponse
+};
+
+
+/// Tracks Prometheus metrics
+#[derive(Debug, Clone)]
+pub struct Metrics {
+
+}
 
 /// Serve scrapable metrics.
 #[derive(Debug, Clone)]
 pub struct Server {
+    metrics: Arc<Metrics>,
 }
 
-impl Service for Server {
-    type Request = http::Request<HttpBody>;
-    type Response = http::Response<HttpBody>;
-    type Error = io::Error;
-    type Future = Box<Future<Item=Self::Response, Error=Self::Error>>;
+impl Server {
+    pub fn new(metrics: &Arc<Metrics>) -> Self {
+        Server { metrics: metrics.clone() }
+    }
+}
 
-    fn poll_ready(&mut self) -> Poll<(), Self::Error> {
-        unimplemented!()
+
+impl Metrics {
+    pub fn new() -> Self {
+        Metrics { }
     }
 
-    fn call(&mut self, req: Self::Request) -> Self::Future {
-        unimplemented!()
+    // /// Observe the given event.
+    // pub fn observe(&mut self, _event: &Event) {
+    //     unimplemented!()
+    // }
+}
+
+impl HyperService for Server {
+    type Request = HyperRequest;
+    type Response = HyperResponse;
+    type Error = hyper::Error;
+    type Future = FutureResult<Self::Response, Self::Error>;
+
+    fn call(& self, req: Self::Request) -> Self::Future {
+        if req.path() != "/metrics" {
+            let rsp = HyperResponse::new().with_status(StatusCode::NotFound);
+            return future::ok(rsp);
+        }
+
+        future::ok(HyperResponse::new()
+            .with_status(StatusCode::Ok)
+            .with_body("Not yet implementted"))
     }
 }

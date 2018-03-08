@@ -16,6 +16,7 @@ pub mod tap;
 pub use self::control::{Control, MakeControl};
 pub use self::event::Event;
 pub use self::sensor::Sensors;
+pub use self::metrics::scrape::Metrics;
 
 /// Creates proxy-specific runtime telemetry.
 ///

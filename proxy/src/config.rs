@@ -131,6 +131,7 @@ pub const ENV_PRIVATE_LISTENER: &str = "CONDUIT_PROXY_PRIVATE_LISTENER";
 pub const ENV_PRIVATE_FORWARD: &str = "CONDUIT_PROXY_PRIVATE_FORWARD";
 pub const ENV_PUBLIC_LISTENER: &str = "CONDUIT_PROXY_PUBLIC_LISTENER";
 pub const ENV_CONTROL_LISTENER: &str = "CONDUIT_PROXY_CONTROL_LISTENER";
+pub const ENV_METRICS_LISTENER: &str = "CONDUIT_PROXY_METRICS_LISTENER";
 const ENV_PRIVATE_CONNECT_TIMEOUT: &str = "CONDUIT_PROXY_PRIVATE_CONNECT_TIMEOUT";
 const ENV_PUBLIC_CONNECT_TIMEOUT: &str = "CONDUIT_PROXY_PUBLIC_CONNECT_TIMEOUT";
 pub const ENV_BIND_TIMEOUT: &str = "CONDUIT_PROXY_BIND_TIMEOUT";
@@ -140,7 +141,6 @@ const ENV_POD_NAME: &str = "CONDUIT_PROXY_POD_NAME";
 pub const ENV_POD_NAMESPACE: &str = "CONDUIT_PROXY_POD_NAMESPACE";
 
 pub const ENV_CONTROL_URL: &str = "CONDUIT_PROXY_CONTROL_URL";
-const ENV_METRICS_URL: &str = "CONDUIT_PROXY_METRICS_URL";
 const ENV_RESOLV_CONF: &str = "CONDUIT_RESOLV_CONF";
 
 // Default values for various configuration fields
@@ -150,7 +150,7 @@ const DEFAULT_REPORT_TIMEOUT_SECS: u64 = 10; // TODO: is this a reasonable defau
 const DEFAULT_PRIVATE_LISTENER: &str = "tcp://127.0.0.1:4140";
 const DEFAULT_PUBLIC_LISTENER: &str = "tcp://0.0.0.0:4143";
 const DEFAULT_CONTROL_LISTENER: &str = "tcp://0.0.0.0:4190";
-const DEFAULT_METRICS_LISTENER: &str = "http://127.0.0.1:4191";
+const DEFAULT_METRICS_LISTENER: &str = "tcp://127.0.0.1:4191";
 const DEFAULT_PRIVATE_CONNECT_TIMEOUT_MS: u64 = 20;
 const DEFAULT_PUBLIC_CONNECT_TIMEOUT_MS: u64 = 300;
 const DEFAULT_BIND_TIMEOUT_MS: u64 = 10_000; // ten seconds, as in Linkerd.
@@ -168,7 +168,7 @@ impl<'a> TryFrom<&'a Strings> for Config {
         let private_listener_addr = parse(strings, ENV_PRIVATE_LISTENER, str::parse);
         let public_listener_addr = parse(strings, ENV_PUBLIC_LISTENER, str::parse);
         let control_listener_addr = parse(strings, ENV_CONTROL_LISTENER, str::parse);
-        let metrics_listener_addr = parse(strings, ENV_METRICS_LSITENER, str::parse);
+        let metrics_listener_addr = parse(strings, ENV_METRICS_LISTENER, str::parse);
         let private_forward = parse(strings, ENV_PRIVATE_FORWARD, str::parse);
         let public_connect_timeout = parse(strings, ENV_PUBLIC_CONNECT_TIMEOUT, parse_number);
         let private_connect_timeout = parse(strings, ENV_PRIVATE_CONNECT_TIMEOUT, parse_number);
