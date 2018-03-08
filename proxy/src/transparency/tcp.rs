@@ -132,11 +132,6 @@ where
         // could make progress.
         self.half_in.copy_into(&mut self.half_out)?;
         self.half_out.copy_into(&mut self.half_in)?;
-        trace!(
-            "Duplex::poll(); half_in.is_done={:?}; half_out.is_done={:?};",
-            self.half_in.is_done(),
-            self.half_out.is_done(),
-        );
         if self.half_in.is_done() && self.half_out.is_done() {
             Ok(Async::Ready(()))
         } else {
@@ -174,7 +169,7 @@ where
             try_ready!(self.write_into(dst));
             if self.buf.is_none() {
                 debug_assert!(!dst.is_shutdown,
-                    "attempted shut down destination twice");
+                    "attempted to shut down destination twice");
                 try_ready!(dst.io.shutdown());
                 dst.is_shutdown = true;
 
@@ -189,18 +184,15 @@ where
         let mut is_eof = false;
         if let Some(ref mut buf) = self.buf {
             let has_remaining = buf.has_remaining();
-            trace!("HalfDuplex::read(); buf.has_remaining() = {:?};",
                 has_remaining);
             if !has_remaining {
                 buf.reset();
                 let n = try_ready!(self.io.read_buf(buf));
-                trace!("HalfDuplex::read(); n={:?}", n);
                 is_eof = n == 0;
             }
         }
 
         if is_eof {
-            trace!("HalfDuplex::read(); is_eof=true");
             self.buf.take();
         }
 
