@@ -41,19 +41,6 @@ impl FullyQualifiedAuthority {
             }
         };
 
-        // A fully qualified name ending with a dot is normalized by removing the
-        // dot and doing nothing else.
-        if name.ends_with('.') {
-            let authority = authority.clone().into_bytes();
-            let normalized = authority.slice(0, authority.len() - 1);
-            let authority = Authority::from_shared(normalized).unwrap();
-            let name = FullyQualifiedAuthority(authority);
-            return NamedAddress {
-                name,
-                use_destination_service: true,
-            }
-        }
-
         // parts should have a maximum 4 of pieces (name, namespace, svc, zone)
         let mut parts = name.splitn(4, '.');
 
@@ -61,7 +48,17 @@ impl FullyQualifiedAuthority {
         assert!(parts.next().is_some());
 
         // Rewrite "$name" -> "$name.$default_namespace".
-        let has_explicit_namespace = parts.next().is_some();
+        let has_explicit_namespace = match parts.next() {
+            Some("") => {
+                // "$name." is an external absolute name.
+                return NamedAddress {
+                    name: FullyQualifiedAuthority(authority.clone()),
+                    use_destination_service: false,
+                };
+            },
+            Some(_) => true,
+            None => false,
+        };
         let namespace_to_append = if !has_explicit_namespace {
             Some(default_namespace)
         } else {
@@ -71,13 +68,12 @@ impl FullyQualifiedAuthority {
         // Rewrite "$name.$namespace" -> "$name.$namespace.svc".
         let append_svc = if let Some(part) = parts.next() {
             if !part.eq_ignore_ascii_case("svc") {
-                // if not "$name.$namespace.svc", treat as external
+                // If not "$name.$namespace.svc", treat as external.
                 return NamedAddress {
                     name: FullyQualifiedAuthority(authority.clone()),
                     use_destination_service: false,
-                }
+                };
             }
-
             false
         } else if has_explicit_namespace {
             true
@@ -93,18 +89,25 @@ impl FullyQualifiedAuthority {
 
         // Rewrite "$name.$namespace.svc" -> "$name.$namespace.svc.$zone".
         static DEFAULT_ZONE: &str = "cluster.local"; // TODO: make configurable.
-        let zone_to_append = if let Some(zone) = parts.next() {
+        let (zone_to_append, strip_last) = if let Some(zone) = parts.next() {
+            let (zone, strip_last) =
+                if zone.ends_with('.') {
+                    (&zone[..zone.len() - 1], true)
+                } else {
+                    (zone, false)
+                };
             if !zone.eq_ignore_ascii_case(DEFAULT_ZONE) {
-                // if "a.b.svc.foo" and zone is not "foo",
-                // treat as external
+                // "a.b.svc." is an external absolute name.
+                // "a.b.svc.foo" is external if the default zone is not
+                // "foo".
                 return NamedAddress {
                     name: FullyQualifiedAuthority(authority.clone()),
                     use_destination_service: false,
                 }
             }
-            None
+            (None, strip_last)
         } else {
-            Some(DEFAULT_ZONE)
+            (Some(DEFAULT_ZONE), false)
         };
 
         let mut additional_len = 0;
@@ -119,7 +122,7 @@ impl FullyQualifiedAuthority {
         }
 
         // If we're not going to change anything then don't allocate anything.
-        if additional_len == 0 {
+        if additional_len == 0 && !strip_last {
             return NamedAddress {
                 name: FullyQualifiedAuthority(authority.clone()),
                 use_destination_service: true,
@@ -142,6 +145,11 @@ impl FullyQualifiedAuthority {
             normalized.extend_from_slice(zone.as_bytes());
         }
         normalized.extend_from_slice(colon_port.as_bytes());
+
+        if strip_last {
+            let new_len = normalized.len() - 1;
+            normalized.truncate(new_len);
+        }
 
         let name = Authority::from_shared(normalized.freeze())
             .expect("syntactically-valid authority");
@@ -169,7 +177,7 @@ mod tests {
                 .unwrap();
             let output = super::FullyQualifiedAuthority::normalize(
                 &input, default_namespace);
-            assert_eq!(output.use_destination_service, true);
+            assert_eq!(output.use_destination_service, true, "input: {}", input);
             output.name.without_trailing_dot().as_str().into()
         }
 
@@ -193,14 +201,11 @@ mod tests {
                    local("name.namespace.svc.cluster.local", "namespace"));
 
         // Fully-qualified names end with a dot and aren't modified except by removing the dot.
-        assert_eq!("name",
-                   local("name.", "namespace"));
-        assert_eq!("name.namespace",
-                   local("name.namespace.", "namespace"));
-        assert_eq!("name.namespace.svc",
-                   local("name.namespace.svc.", "namespace"));
-        assert_eq!("name.namespace.svc.cluster",
-                   local("name.namespace.svc.cluster.", "namespace"));
+        external("name.", "namespace");
+        external("name.namespace.", "namespace");
+        external("name.namespace.svc.", "namespace");
+        external("name.namespace.svc.cluster.", "namespace");
+        external("name.namespace.svc.acluster.local.", "namespace");
         assert_eq!("name.namespace.svc.cluster.local",
                    local("name.namespace.svc.cluster.local.", "namespace"));
 
