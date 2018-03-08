@@ -26,6 +26,9 @@ pub struct Config {
     /// Where to listen for connectoins initiated by the control planey.
     pub control_listener: Listener,
 
+    /// Where to serve scrapable metrics.
+    pub metrics_listener: Listener,
+
     /// Where to forward externally received connections.
     pub private_forward: Option<Addr>,
 
@@ -137,6 +140,7 @@ const ENV_POD_NAME: &str = "CONDUIT_PROXY_POD_NAME";
 pub const ENV_POD_NAMESPACE: &str = "CONDUIT_PROXY_POD_NAMESPACE";
 
 pub const ENV_CONTROL_URL: &str = "CONDUIT_PROXY_CONTROL_URL";
+const ENV_METRICS_URL: &str = "CONDUIT_PROXY_METRICS_URL";
 const ENV_RESOLV_CONF: &str = "CONDUIT_RESOLV_CONF";
 
 // Default values for various configuration fields
@@ -146,6 +150,7 @@ const DEFAULT_REPORT_TIMEOUT_SECS: u64 = 10; // TODO: is this a reasonable defau
 const DEFAULT_PRIVATE_LISTENER: &str = "tcp://127.0.0.1:4140";
 const DEFAULT_PUBLIC_LISTENER: &str = "tcp://0.0.0.0:4143";
 const DEFAULT_CONTROL_LISTENER: &str = "tcp://0.0.0.0:4190";
+const DEFAULT_METRICS_LISTENER: &str = "http://127.0.0.1:4191";
 const DEFAULT_PRIVATE_CONNECT_TIMEOUT_MS: u64 = 20;
 const DEFAULT_PUBLIC_CONNECT_TIMEOUT_MS: u64 = 300;
 const DEFAULT_BIND_TIMEOUT_MS: u64 = 10_000; // ten seconds, as in Linkerd.
@@ -163,6 +168,7 @@ impl<'a> TryFrom<&'a Strings> for Config {
         let private_listener_addr = parse(strings, ENV_PRIVATE_LISTENER, str::parse);
         let public_listener_addr = parse(strings, ENV_PUBLIC_LISTENER, str::parse);
         let control_listener_addr = parse(strings, ENV_CONTROL_LISTENER, str::parse);
+        let metrics_listener_addr = parse(strings, ENV_METRICS_LSITENER, str::parse);
         let private_forward = parse(strings, ENV_PRIVATE_FORWARD, str::parse);
         let public_connect_timeout = parse(strings, ENV_PUBLIC_CONNECT_TIMEOUT, parse_number);
         let private_connect_timeout = parse(strings, ENV_PRIVATE_CONNECT_TIMEOUT, parse_number);
@@ -205,6 +211,10 @@ impl<'a> TryFrom<&'a Strings> for Config {
             control_listener: Listener {
                 addr: control_listener_addr?
                     .unwrap_or_else(|| Addr::from_str(DEFAULT_CONTROL_LISTENER).unwrap()),
+            },
+            metrics_listener: Listener {
+                addr: metrics_listener_addr?
+                    .unwrap_or_else(|| Addr::from_str(DEFAULT_METRICS_LISTENER).unwrap()),
             },
             private_forward: private_forward?,
             public_connect_timeout: Duration::from_millis(
