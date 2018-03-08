@@ -257,3 +257,65 @@ impl BufMut for CopyBuf {
         self.write_pos += cnt;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::io::{Error, Read, Write, Result};
+    use tokio_io::{AsyncRead, AsyncWrite};
+    use futures::{Async, Poll};
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    use super::*;
+
+    struct DoneIo(AtomicBool);
+
+    impl<'a> Read for &'a DoneIo {
+        fn read(&mut self, _buf: &mut [u8]) -> Result<usize> {
+            if self.0.load(Ordering::Relaxed) { Ok(0) } else { Ok(1) }
+        }
+    }
+
+    impl<'a> AsyncRead for &'a DoneIo {
+        unsafe fn prepare_uninitialized_buffer(&self, buf: &mut [u8]) -> bool {
+            for mut i in buf {
+                *i = 0;
+            };
+            true
+        }
+    }
+
+    impl<'a> Write for &'a DoneIo {
+        fn write(&mut self, _buf: &[u8]) -> Result<usize> {
+            if self.0.load(Ordering::Relaxed) { Ok(1) } else { Ok(1) }
+        }
+        fn flush(&mut self) -> Result<()> {
+            Ok(())
+        }
+    }
+    impl<'a> AsyncWrite for &'a DoneIo {
+        fn shutdown(&mut self) -> Poll<(), Error> {
+            Ok(Async::Ready(()))
+        }
+    }
+
+    #[test]
+    fn duplex_doesnt_hang_when_one_half_finishes() {
+        // Test reproducing an infinite loop in Duplex that caused issue #519,
+        // where a Duplex would enter an infinite loop when one half finishes.
+        let io_1 = DoneIo(AtomicBool::new(true));
+        let io_2 = DoneIo(AtomicBool::new(false));
+        let mut duplex = Duplex::new(&io_1, &io_2);
+
+        // poll the duplex once
+        assert_eq!(duplex.poll().unwrap(), Async::NotReady);
+
+        // both ios are now done. the duplex should be done.
+        io_2.0.store(true, Ordering::Relaxed);
+
+        // the test will hang instead of failing.
+        // TODO: it would be nice if we could fail the test if the future
+        //       isn't finished after a minute or so...
+        duplex.wait().unwrap()
+    }
+
+}
