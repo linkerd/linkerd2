@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+
+use telemetry::event::Event;
 use futures::future::{self, FutureResult};
 use hyper;
 use hyper::StatusCode;
@@ -34,10 +36,15 @@ impl Metrics {
         Metrics { }
     }
 
-    // /// Observe the given event.
-    // pub fn observe(&mut self, _event: &Event) {
-    //     unimplemented!()
-    // }
+    /// Observe the given event.
+    ///
+    /// This borrows self immutably, so that individual metric fields
+    /// can implement their own mutual exclusion strategy (i.e. counters
+    /// can just use atomic integers).
+    pub fn record_event(&self, event: &Event) {
+        trace!("Metrics::record({:?})", event);
+        // TODO: record the event.
+    }
 }
 
 impl HyperService for Server {
