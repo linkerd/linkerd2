@@ -197,7 +197,6 @@ mod tests {
         assert_eq!("name.namespace.svc.cluster.local",
                    local("name.namespace.svc", "namespace"));
         external("name.namespace.svc.cluster", "namespace");
-        external("name.namespace.svc.cluster", "namespace");
         assert_eq!("name.namespace.svc.cluster.local",
                    local("name.namespace.svc.cluster.local", "namespace"));
 
