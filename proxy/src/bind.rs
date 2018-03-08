@@ -6,8 +6,8 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
 
-use futures::{future, Future, Poll};
-use futures::future::{Either, Map};
+use futures::{Future, Poll};
+use futures::future::Map;
 use http::{self, uri};
 use tokio_core::reactor::Handle;
 use tower;
@@ -69,11 +69,11 @@ pub enum Host {
 ///   the authority given in the `Host:` header, or, failing that, from the
 ///   request's original destination according to `SO_ORIGINAL_DST`.
 #[derive(Copy, Clone, Debug)]
-pub struct ReconstructUri<S> {
+pub struct NormalizeUri<S> {
     inner: S
 }
 
-pub type Service<B> = Reconnect<ReconstructUri<NewHttp<B>>>;
+pub type Service<B> = Reconnect<NormalizeUri<NewHttp<B>>>;
 
 pub type NewHttp<B> = sensor::NewHttp<Client<B>, B, HttpBody>;
 
@@ -204,7 +204,7 @@ where
 
         // Rewrite the HTTP/1 URI, if the authorities in the Host header
         // and request URI are not in agreement, or are not present.
-        let proxy = ReconstructUri::new(sensors);
+        let proxy = NormalizeUri::new(sensors);
 
         // Automatically perform reconnects if the connection fails.
         //
@@ -241,16 +241,16 @@ where
 }
 
 
-// ===== impl ReconstructUri =====
+// ===== impl NormalizeUri =====
 
 
-impl<S> ReconstructUri<S> {
+impl<S> NormalizeUri<S> {
     fn new (inner: S) -> Self {
         Self { inner }
     }
 }
 
-impl<S, B> tower::NewService for ReconstructUri<S>
+impl<S, B> tower::NewService for NormalizeUri<S>
 where
     S: tower::NewService<
         Request=http::Request<B>,
@@ -260,24 +260,24 @@ where
         Request=http::Request<B>,
         Response=HttpResponse,
     >,
-    ReconstructUri<S::Service>: tower::Service,
+    NormalizeUri<S::Service>: tower::Service,
     B: tower_h2::Body,
 {
     type Request = <Self::Service as tower::Service>::Request;
     type Response = <Self::Service as tower::Service>::Response;
     type Error = <Self::Service as tower::Service>::Error;
-    type Service = ReconstructUri<S::Service>;
+    type Service = NormalizeUri<S::Service>;
     type InitError = S::InitError;
     type Future = Map<
         S::Future,
-        fn(S::Service) -> ReconstructUri<S::Service>
+        fn(S::Service) -> NormalizeUri<S::Service>
     >;
     fn new_service(&self) -> Self::Future {
-        self.inner.new_service().map(ReconstructUri::new)
+        self.inner.new_service().map(NormalizeUri::new)
     }
 }
 
-impl<S, B> tower::Service for ReconstructUri<S>
+impl<S, B> tower::Service for NormalizeUri<S>
 where
     S: tower::Service<
         Request=http::Request<B>,
@@ -288,29 +288,17 @@ where
     type Request = S::Request;
     type Response = HttpResponse;
     type Error = S::Error;
-    type Future = Either<
-        S::Future,
-        future::FutureResult<Self::Response, Self::Error>,
-    >;
+    type Future = S::Future;
 
     fn poll_ready(&mut self) -> Poll<(), S::Error> {
         self.inner.poll_ready()
     }
 
     fn call(&mut self, mut request: S::Request) -> Self::Future {
-        if request.version() == http::Version::HTTP_2 {
-            // skip `reconstruct_uri` entirely if the request is HTTP/2.
-            return Either::A(self.inner.call(request));
+        if request.version() != http::Version::HTTP_2 {
+            h1::normalize_our_view_of_uri(&mut request);
         }
-
-        if let Err(_) = h1::reconstruct_uri(&mut request) {
-            let res = http::Response::builder()
-                .status(http::StatusCode::BAD_REQUEST)
-                .body(Default::default())
-                .unwrap();
-            return Either::B(future::ok(res));
-        }
-        Either::A(self.inner.call(request))
+        self.inner.call(request)
     }
 }
 
