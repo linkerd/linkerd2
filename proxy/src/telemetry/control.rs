@@ -214,6 +214,8 @@ impl Stream for Control {
                         }
                     }
 
+                    self.scrape_metrics.record_event(&ev);
+
                     self.flush_report()
                 }
                 Async::Ready(None) => {
