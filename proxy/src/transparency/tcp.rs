@@ -183,9 +183,7 @@ where
     fn read(&mut self) -> Poll<(), io::Error> {
         let mut is_eof = false;
         if let Some(ref mut buf) = self.buf {
-            let has_remaining = buf.has_remaining();
-                has_remaining);
-            if !has_remaining {
+            if !buf.has_remaining() {
                 buf.reset();
                 let n = try_ready!(self.io.read_buf(buf));
                 is_eof = n == 0;
