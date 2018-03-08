@@ -4,31 +4,29 @@ use std::sync::Arc;
 
 use bytes::BytesMut;
 use http;
-use http::header::{HeaderValue, HOST};
+use http::header::HOST;
 use http::uri::{Authority, Parts, Scheme, Uri};
 use ctx::transport::{Server as ServerCtx};
 
-pub fn reconstruct_uri<B>(req: &mut http::Request<B>) -> Result<(), ()> {
-    // RFC7230#section-5.4
-    // If an absolute-form uri is received, it must replace
-    // the host header
-    if let Some(auth) = req.uri().authority_part().cloned() {
-        if let Some(host) = req.headers().get(HOST) {
-            if auth.as_str().as_bytes() == host.as_bytes() {
-                // host and absolute-form agree, nothing more to do
-                return Ok(());
-            }
-        }
-        let host = HeaderValue::from_shared(auth.into_bytes())
-            .expect("a valid authority is valid header value");
-        req.headers_mut().insert(HOST, host);
-        return Ok(());
+/// Sentinel extension to signal that we should tell hyper to serialize
+/// the `Uri` in absolute-form.
+pub struct UriIsAbsoluteForm;
+
+/// Tries to make sure the `Uri` of the request is in a form needed by
+/// hyper's Client.
+///
+/// Also sets the `UriIsAbsoluteForm` extension if received `Uri` was
+/// already in absolute-form.
+pub fn normalize_our_view_of_uri<B>(req: &mut http::Request<B>) {
+    if req.uri().authority_part().is_some() {
+        req.extensions_mut().insert(UriIsAbsoluteForm);
+        return;
     }
 
     // try to parse the Host header
     if let Some(auth) = authority_from_host(&req) {
         set_authority(req.uri_mut(), auth);
-        return Ok(());
+        return;
     }
 
     // last resort is to use the so_original_dst
@@ -43,11 +41,7 @@ pub fn reconstruct_uri<B>(req: &mut http::Request<B>) -> Result<(), ()> {
         let auth = Authority::from_shared(bytes)
             .expect("socket address is valid authority");
         set_authority(req.uri_mut(), auth);
-
-        return Ok(());
     }
-
-    Err(())
 }
 
 /// Returns an Authority from a request's Host header.

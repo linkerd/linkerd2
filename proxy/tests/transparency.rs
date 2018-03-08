@@ -117,6 +117,8 @@ fn http10_without_host() {
     let srv = server::http1()
         .route_fn("/", move |req| {
             assert_eq!(req.version(), http::Version::HTTP_10);
+            assert!(!req.headers().contains_key("host"));
+            assert_eq!(req.uri().to_string(), "/");
             Response::builder()
                 .version(http::Version::HTTP_10)
                 .body("".into())
@@ -124,34 +126,37 @@ fn http10_without_host() {
         })
         .run();
     let ctrl = controller::new()
-        .destination(&srv.addr.to_string(), srv.addr)
         .run();
     let proxy = proxy::new()
         .controller(ctrl)
-        .outbound(srv)
+        .inbound(srv)
         .run();
-    let client = client::http1(proxy.outbound, "foo.bar");
 
-    let res = client.request(client.request_builder("/")
-        .version(http::Version::HTTP_10)
-        .header("host", ""));
+    let client = client::tcp(proxy.inbound);
 
-    assert_eq!(res.status(), http::StatusCode::OK);
-    assert_eq!(res.version(), http::Version::HTTP_10);
+    let tcp_client = client.connect();
+
+    tcp_client.write("\
+        GET / HTTP/1.0\r\n\
+        \r\n\
+    ");
+
+    let expected = "HTTP/1.0 200 OK\r\n";
+    assert_eq!(s(&tcp_client.read()[..expected.len()]), expected);
 }
 
 #[test]
 fn http11_absolute_uri_differs_from_host() {
     let _ = env_logger::try_init();
 
-    let host = "transparency.test.svc.cluster.local";
+    // We shouldn't touch the URI or the Host, just pass directly as we got.
+    let auth = "transparency.test.svc.cluster.local";
+    let host = "foo.bar";
     let srv = server::http1()
         .route_fn("/", move |req| {
-            assert_eq!(req.version(), http::Version::HTTP_11);
-            assert_eq!(req.headers().get("host").unwrap(), host);
-            Response::builder()
-                .body("".into())
-                .unwrap()
+            assert_eq!(req.headers()["host"], host);
+            assert_eq!(req.uri().to_string(), format!("http://{}/", auth));
+            Response::new("".into())
         })
         .run();
     let ctrl = controller::new().run();
@@ -159,11 +164,11 @@ fn http11_absolute_uri_differs_from_host() {
         .controller(ctrl)
         .inbound(srv)
         .run();
-    let client = client::http1_absolute_uris(proxy.inbound, host);
+    let client = client::http1_absolute_uris(proxy.inbound, auth);
 
     let res = client.request(client.request_builder("/")
         .version(http::Version::HTTP_11)
-        .header("host", "foo.bar"));
+        .header("host", host));
 
     assert_eq!(res.status(), http::StatusCode::OK);
     assert_eq!(res.version(), http::Version::HTTP_11);
