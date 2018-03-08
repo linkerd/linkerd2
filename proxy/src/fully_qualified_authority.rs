@@ -225,8 +225,9 @@ mod tests {
         external("name.namespace.svc.localhost.", "namespace");
 
         // Although it probably isn't the desired behavior in almost any circumstance, match
-        // Kubernetes' behavior for non-absolute "localhost" and names that end with
-        // ".localhost".
+        // standard behavior for non-absolute "localhost" and names that end with
+        // ".localhost" at least until we're comfortable implementing
+        // https://wiki.tools.ietf.org/html/draft-ietf-dnsop-let-localhost-be-localhost.
         assert_eq!("localhost.namespace.svc.cluster.local",
                    local("localhost", "namespace"));
         assert_eq!("name.localhost.svc.cluster.local",
