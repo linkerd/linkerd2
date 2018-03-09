@@ -97,8 +97,8 @@ impl MakeControl {
         let flush_timeout = Timeout::new(self.flush_interval, handle)?;
 
         Ok(Control {
-            metrics: Some(Metrics::new(self.process_ctx)),
-            scrape_metrics: Arc::new(scrape::Metrics::new()),
+            metrics: Some(Metrics::new(self.process_ctx.clone())),
+            scrape_metrics: Arc::new(scrape::Metrics::new(self.process_ctx)),
             rx: Some(self.rx),
             taps: Some(taps.clone()),
             flush_interval: self.flush_interval,
