@@ -55,7 +55,7 @@ Each of these metrics has the following labels:
                      applicable if `direction=outbound`.
 * `dst_daemon_set`: The daemon set to which this request is being sent.  Only
                     applicable if `direction=outbound`.
-* `dst_replication_controller`: The relication controller to which this request
+* `dst_replication_controller`: The replication controller to which this request
                                 is being sent.  Only applicable if
                                 `direction=outbound`.
 * `dst_namespace`: The namespace to which this request is being sent.  Only
