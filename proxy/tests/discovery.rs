@@ -34,6 +34,28 @@ fn outbound_reconnects_if_controller_stream_ends() {
 }
 
 #[test]
+fn outbound_http1_asks_controller_about_host() {
+    let _ = env_logger::try_init();
+
+    let srv = server::http1()
+        .route("/", "hello")
+        .route("/bye", "bye")
+        .run();
+    let ctrl = controller::new()
+        .destination("disco.test.svc.cluster.local", srv.addr)
+        .run();
+    let proxy = proxy::new()
+        .controller(ctrl)
+        // don't set srv as outbound(), so that SO_ORIGINAL_DST isn't
+        // used as a backup
+        .run();
+    let client = client::http1(proxy.outbound, "disco.test.svc.cluster.local");
+
+    assert_eq!(client.get("/"), "hello");
+    assert_eq!(client.get("/bye"), "bye");
+}
+
+#[test]
 fn outbound_updates_newer_services() {
     let _ = env_logger::try_init();
 
