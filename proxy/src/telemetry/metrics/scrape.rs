@@ -1,5 +1,5 @@
 use std::sync::Arc;
-
+use std::hash::{Hash, Hasher};
 
 use telemetry::event::Event;
 use futures::future::{self, FutureResult};
@@ -11,6 +11,10 @@ use hyper::server::{
     Response as HyperResponse
 };
 
+use indexmap::IndexMap;
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct Labels(IndexMap<&'static str, String>);
 
 /// Tracks Prometheus metrics
 #[derive(Debug, Clone)]
@@ -30,6 +34,7 @@ impl Server {
     }
 }
 
+// ===== impl Metrics =====
 
 impl Metrics {
     pub fn new() -> Self {
@@ -47,6 +52,9 @@ impl Metrics {
     }
 }
 
+// ===== impl Server =====
+
+
 impl HyperService for Server {
     type Request = HyperRequest;
     type Response = HyperResponse;
@@ -62,5 +70,16 @@ impl HyperService for Server {
         future::ok(HyperResponse::new()
             .with_status(StatusCode::Ok)
             .with_body(""))
+    }
+}
+
+
+// ===== impl Labels =====
+
+impl Hash for Labels {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        for pair in &self.0 {
+            pair.hash(state);
+        }
     }
 }
