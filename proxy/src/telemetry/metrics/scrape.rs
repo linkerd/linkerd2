@@ -1,10 +1,11 @@
-use std::sync::Arc;
-use std::sync::atomic::AtomicUsize;
+use std::sync::{Arc, Mutex};
+// use std::sync::atomic::AtomicUsize;
 use std::hash::{Hash, Hasher};
 use std::iter::{self, IntoIterator, Iterator};
-
+use std::fmt;
 
 use futures::future::{self, FutureResult};
+use http;
 use hyper;
 use hyper::StatusCode;
 use hyper::server::{
@@ -12,7 +13,7 @@ use hyper::server::{
     Request as HyperRequest,
     Response as HyperResponse
 };
-use indexmap::{self, IndexMap};
+use indexmap::{IndexMap};
 
 use ctx;
 use telemetry::event::Event;
@@ -32,13 +33,14 @@ struct LabelsInner {
 pub struct Stats {
 
     /// `request_total` counter metric.
-    request_total: AtomicUsize,
+    request_total: usize,
 }
 
 /// Tracks Prometheus metrics
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Metrics {
-    metrics: IndexMap<Labels, Stats>,
+    root_labels: Labels,
+    metrics: Mutex<IndexMap<Labels, Stats>>,
 }
 
 /// Serve scrapable metrics.
@@ -56,22 +58,42 @@ impl Server {
 // ===== impl Metrics =====
 
 impl Metrics {
-    pub fn new() -> Self {
+    pub fn new(process_ctx: Arc<ctx::Process>) -> Self {
         Metrics {
-            metrics: IndexMap::new(),
+            root_labels: Labels::from(process_ctx),
+            metrics: Mutex::new(IndexMap::new()),
         }
     }
 
     /// Observe the given event.
-    ///
-    /// This borrows self immutably, so that individual metric fields
-    /// can implement their own mutual exclusion strategy (i.e. counters
-    /// can just use atomic integers).
     pub fn record_event(&self, event: &Event) {
         trace!("Metrics::record({:?})", event);
         // TODO: record the event.
+        let proxy_labels = self.root_labels.with_proxy_ctx(event.proxy());
+        let mut metrics = self.metrics.lock().unwrap();
+        match *event {
+            Event::StreamRequestOpen(ref req) => {
+                let labels = proxy_labels.with_request_ctx(req);
+                metrics.entry(labels)
+                    .or_insert_with(Default::default)
+                    .request_total += 1;
+            },
+            _ => {}
+        }
+
     }
 }
+
+impl fmt::Display for Metrics {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let metrics = self.metrics.lock().unwrap();
+        for (labels, stats) in metrics.iter() {
+            write!(f, "request_total{{{}}} {}\n", labels, stats.request_total)?;
+        }
+        Ok(())
+    }
+}
+
 
 // ===== impl Server =====
 
@@ -82,7 +104,7 @@ impl HyperService for Server {
     type Error = hyper::Error;
     type Future = FutureResult<Self::Response, Self::Error>;
 
-    fn call(& self, req: Self::Request) -> Self::Future {
+    fn call(&self, req: Self::Request) -> Self::Future {
         if req.path() != "/metrics" {
             let rsp = HyperResponse::new().with_status(StatusCode::NotFound);
             return future::ok(rsp);
@@ -90,7 +112,7 @@ impl HyperService for Server {
 
         future::ok(HyperResponse::new()
             .with_status(StatusCode::Ok)
-            .with_body(""))
+            .with_body(format!("{}", self.metrics)))
     }
 }
 
@@ -98,6 +120,35 @@ impl HyperService for Server {
 // ===== impl Labels =====
 
 use std::ops;
+
+impl fmt::Display for Labels {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut labels = self.into_iter();
+
+        if let Some((label, value)) = labels.next() {
+            // format the first label pair without a comma.
+            write!(f, "{}=\"{}\"", label, value)?;
+
+            // format the remaining pairs with a comma preceeding them.
+            for (label, value) in labels {
+                write!(f, ",{}=\"{}\"", label, value)?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl From<Arc<ctx::Process>> for Labels {
+    fn from(_ctx: Arc<ctx::Process>) -> Self {
+        let inner = Arc::new(LabelsInner::new());
+        // TODO: when PR #448 lands, use CONDUIT_PROMETHEUS_LABELS to get the
+        // owning pod spec labels.
+        Labels {
+            inner,
+        }
+    }
+}
 
 impl<'a> IntoIterator for &'a Labels {
     type Item = (&'a str, &'a str);
@@ -110,13 +161,36 @@ impl<'a> IntoIterator for &'a Labels {
 }
 
 impl Labels {
-    fn child(&self) -> Labels {
-        let inner = Arc::new(LabelsInner {
-            parent: Some(self.clone()),
-            ..Default::default()
-        });
+    pub fn with_proxy_ctx<'a>(&self, proxy_ctx: &'a Arc<ctx::Proxy>) -> Labels {
+        let direction = if proxy_ctx.is_inbound() {
+            "inbound"
+        } else {
+            "outbound"
+        };
+        let inner = self.child() + ("direction", direction.to_owned());
+        let inner = Arc::new(inner);
         Labels {
             inner,
+        }
+    }
+
+    pub fn with_request_ctx<'a>(&self, request_ctx: &'a Arc<ctx::http::Request>)
+        -> Labels {
+        let authority = request_ctx.uri
+            .authority_part()
+            .map(http::uri::Authority::to_string)
+            .unwrap_or_else(String::new);
+        let inner = self.child() + ("authority", authority);
+        let inner = Arc::new(inner);
+        Labels {
+            inner,
+        }
+    }
+
+    fn child(&self) -> LabelsInner {
+        LabelsInner {
+            parent: Some(self.clone()),
+            ..Default::default()
         }
     }
 }
