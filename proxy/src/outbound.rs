@@ -20,6 +20,7 @@ use control::discovery::Bind as BindTrait;
 use ctx;
 use fully_qualified_authority::{FullyQualifiedAuthority, NamedAddress};
 use timeout::Timeout;
+use transparency::h1;
 
 type BindProtocol<B> = bind::BindProtocol<Arc<ctx::Proxy>, B>;
 
@@ -87,12 +88,14 @@ where
     fn recognize(&self, req: &Self::Request) -> Option<Reuse<Self::Key>> {
         let proto = bind::Protocol::detect(req);
 
-        let local = req.uri().authority_part().map(|authority| {
-            FullyQualifiedAuthority::normalize(
-                authority,
-                &self.default_namespace)
-
-        });
+        let local = req.uri().authority_part()
+            .cloned()
+            .or_else(|| h1::authority_from_host(req))
+            .map(|authority| {
+                FullyQualifiedAuthority::normalize(
+                    &authority,
+                    &self.default_namespace)
+            });
 
         // If we can't fully qualify the authority as a local service,
         // and there is no original dst, then we have nothing! In that
