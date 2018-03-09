@@ -136,7 +136,7 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride, v
 			Privileged: &f,
 		},
 	}
-	controlPlaneDNS := fmt.Sprintf("proxy-api.%s.svc.cluster.local", controlPlaneNamespace)
+	controlPlaneDNS := fmt.Sprintf("proxy-api.%s.svc.cluster.local.", controlPlaneNamespace)
 	if controlPlaneDNSNameOverride != "" {
 		controlPlaneDNS = controlPlaneDNSNameOverride
 	}
@@ -174,10 +174,6 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride, v
 			v1.EnvVar{
 				Name:      "CONDUIT_PROXY_POD_NAMESPACE",
 				ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
-			},
-			v1.EnvVar{
-				Name:  "CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN",
-				Value: "Kubernetes",
 			},
 		},
 	}

@@ -16,13 +16,13 @@ futures-mpsc-lossy              = { path = "./futures-mpsc-lossy" }
 conduit-proxy-router            = { path = "./router" }
 
 bytes = "0.4"
-domain = "0.2.2"
+domain = "0.2.3"
 env_logger = { version = "0.5", default-features = false }
 futures = "0.1"
 h2 = "0.1"
 http = "0.1"
 httparse = "1.2"
-hyper = { version = "0.11.19", default-features = false, features = ["compat"] }
+hyper = { version = "0.11.22", default-features = false, features = ["compat"] }
 ipnet = "1.0"
 log = "0.4.1"
 indexmap = "0.4.1"

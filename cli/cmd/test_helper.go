@@ -15,7 +15,7 @@ func diffCompare(t *testing.T, actual string, expected string) {
 		diffs := dmp.DiffMain(expected, actual, true)
 
 		// colorized output for local testing
-		// t.Fatalf("Unexpected output:\n%+v", dmp.DiffPrettyText(diffs))
+		t.Fatalf("Unexpected output:\n%+v", dmp.DiffPrettyText(diffs))
 
 		diffs = dmp.DiffCleanupSemantic(diffs)
 		patches := dmp.PatchMake(diffs)

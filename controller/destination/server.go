@@ -1,26 +1,34 @@
 package destination
 
 import (
+	"errors"
 	"fmt"
 	"net"
+	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 
-	"errors"
 	common "github.com/runconduit/conduit/controller/gen/common"
 	pb "github.com/runconduit/conduit/controller/gen/proxy/destination"
 	"github.com/runconduit/conduit/controller/k8s"
 	"github.com/runconduit/conduit/controller/util"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
-	"reflect"
+	"k8s.io/api/core/v1"
 )
 
 type (
 	server struct {
 		k8sDNSZoneLabels []string
-		endpoints        *k8s.EndpointsWatcher
+		endpointsWatcher *k8s.EndpointsWatcher
+		dnsWatcher       *DnsWatcher
 	}
+)
+
+var (
+	dnsCharactersRegexp = regexp.MustCompile("^[a-zA-Z0-9_-]{0,63}$")
+	containsAlphaRegexp = regexp.MustCompile("[a-zA-Z]")
 )
 
 // The Destination service serves service discovery information to the proxy.
@@ -32,20 +40,22 @@ type (
 // omitted, "default" is used as a default.append
 //
 // Addresses for the given destination are fetched from the Kubernetes Endpoints
-// API.
+// API, or resolved via DNS in the case of ExternalName type services.
 func NewServer(addr, kubeconfig string, k8sDNSZone string, done chan struct{}) (*grpc.Server, net.Listener, error) {
 	clientSet, err := k8s.NewClientSet(kubeconfig)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	endpoints := k8s.NewEndpointsWatcher(clientSet)
-	err = endpoints.Run()
+	endpointsWatcher := k8s.NewEndpointsWatcher(clientSet)
+	err = endpointsWatcher.Run()
 	if err != nil {
 		return nil, nil, err
 	}
 
-	srv, err := newServer(k8sDNSZone, endpoints)
+	dnsWatcher := NewDnsWatcher()
+
+	srv, err := newServer(k8sDNSZone, endpointsWatcher, dnsWatcher)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -60,14 +70,14 @@ func NewServer(addr, kubeconfig string, k8sDNSZone string, done chan struct{}) (
 
 	go func() {
 		<-done
-		endpoints.Stop()
+		endpointsWatcher.Stop()
 	}()
 
 	return s, lis, nil
 }
 
 // Split out from NewServer make it easy to write unit tests.
-func newServer(k8sDNSZone string, endpoints *k8s.EndpointsWatcher) (*server, error) {
+func newServer(k8sDNSZone string, endpointsWatcher *k8s.EndpointsWatcher, dnsWatcher *DnsWatcher) (*server, error) {
 	var k8sDNSZoneLabels []string
 	if k8sDNSZone == "" {
 		k8sDNSZoneLabels = []string{}
@@ -80,7 +90,8 @@ func newServer(k8sDNSZone string, endpoints *k8s.EndpointsWatcher) (*server, err
 	}
 	return &server{
 		k8sDNSZoneLabels: k8sDNSZoneLabels,
-		endpoints:        endpoints,
+		endpointsWatcher: endpointsWatcher,
+		dnsWatcher:       dnsWatcher,
 	}, nil
 }
 
@@ -103,7 +114,7 @@ func (s *server) Get(dest *common.Destination, stream pb.Destination_GetServer) 
 		var err error
 		port, err = strconv.Atoi(hostPort[1])
 		if err != nil {
-			err := fmt.Errorf("Invalid port %s", hostPort[1])
+			err = fmt.Errorf("Invalid port %s", hostPort[1])
 			log.Error(err)
 			return err
 		}
@@ -122,15 +133,25 @@ func (s *server) Get(dest *common.Destination, stream pb.Destination_GetServer) 
 		return err
 	}
 
-	if id != nil {
-		return s.resolveKubernetesService(*id, port, stream)
+	if id == nil {
+		// TODO: Resolve name using DNS similar to Kubernetes' ClusterFirst
+		// resolution.
+		err = fmt.Errorf("cannot resolve service that isn't a local Kubernetes service: %s", host)
+		log.Error(err)
+		return err
 	}
 
-	// TODO: Resolve name using DNS similar to Kubernetes' ClusterFirst
-	// resolution.
-	err = fmt.Errorf("cannot resolve service that isn't a local Kubernetes service: %s", host)
-	log.Error(err)
-	return err
+	svc, exists, err := s.endpointsWatcher.GetService(*id)
+	if err != nil {
+		log.Errorf("error retrieving service [%s]: %s", *id, err)
+		return err
+	}
+
+	if exists && svc.Spec.Type == v1.ServiceTypeExternalName {
+		return s.resolveExternalName(svc.Spec.ExternalName, stream)
+	}
+
+	return s.resolveKubernetesService(*id, port, stream)
 }
 
 func isIPAddress(host string) (bool, *common.IPAddress) {
@@ -164,11 +185,23 @@ func echoIPDestination(ip *common.IPAddress, port int, stream pb.Destination_Get
 func (s *server) resolveKubernetesService(id string, port int, stream pb.Destination_GetServer) error {
 	listener := endpointListener{stream: stream}
 
-	s.endpoints.Subscribe(id, uint32(port), listener)
+	s.endpointsWatcher.Subscribe(id, uint32(port), listener)
 
 	<-stream.Context().Done()
 
-	s.endpoints.Unsubscribe(id, uint32(port), listener)
+	s.endpointsWatcher.Unsubscribe(id, uint32(port), listener)
+
+	return nil
+}
+
+func (s *server) resolveExternalName(externalName string, stream pb.Destination_GetServer) error {
+	listener := endpointListener{stream: stream}
+
+	s.dnsWatcher.Subscribe(externalName, listener)
+
+	<-stream.Context().Done()
+
+	s.dnsWatcher.Unsubscribe(externalName, listener)
 
 	return nil
 }
@@ -268,9 +301,6 @@ func toAddrSet(endpoints []common.TcpAddress) *pb.AddrSet {
 }
 
 func splitDNSName(dnsName string) ([]string, error) {
-	// TODO: Validate that `dnsName` is a valid DNS name:
-	// https://github.com/runconduit/conduit/issues/170.
-
 	// If the name is fully qualified, strip off the final dot.
 	if strings.HasSuffix(dnsName, ".") {
 		dnsName = dnsName[:len(dnsName)-1]
@@ -285,6 +315,15 @@ func splitDNSName(dnsName string) ([]string, error) {
 	for _, l := range labels {
 		if l == "" {
 			return []string{}, errors.New("Empty label in DNS name: " + dnsName)
+		}
+		if !dnsCharactersRegexp.MatchString(l) {
+			return []string{}, errors.New("DNS name is too long or contains invalid characters: " + dnsName)
+		}
+		if strings.HasPrefix(l, "-") || strings.HasSuffix(l, "-") {
+			return []string{}, errors.New("DNS name cannot start or end with a dash: " + dnsName)
+		}
+		if !containsAlphaRegexp.MatchString(l) {
+			return []string{}, errors.New("DNS name cannot only contain digits and hyphens: " + dnsName)
 		}
 	}
 	return labels, nil

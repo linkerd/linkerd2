@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
 
 use support::*;
@@ -30,6 +31,13 @@ pub struct Server {
 pub struct Listening {
     pub addr: SocketAddr,
     pub(super) shutdown: Shutdown,
+    pub(super) conn_count: Arc<AtomicUsize>,
+}
+
+impl Listening {
+    pub fn connections(&self) -> usize {
+        self.conn_count.load(Ordering::Acquire)
+    }
 }
 
 impl Server {
@@ -81,6 +89,8 @@ impl Server {
     pub fn run(self) -> Listening {
         let (tx, rx) = shutdown_signal();
         let (addr_tx, addr_rx) = oneshot::channel();
+        let conn_count = Arc::new(AtomicUsize::from(0));
+        let srv_conn_count = Arc::clone(&conn_count);
         ::std::thread::Builder::new().name("support server".into()).spawn(move || {
             let mut core = Core::new().unwrap();
             let reactor = core.handle();
@@ -93,7 +103,11 @@ impl Server {
 
                     Box::new(move |sock| {
                         let h1_clone = h1.clone();
+                        let srv_conn_count = Arc::clone(&srv_conn_count);
                         let conn = new_svc.new_service()
+                            .inspect(move |_| {
+                                srv_conn_count.fetch_add(1, Ordering::Release);
+                            })
                             .from_err()
                             .and_then(move |svc| h1_clone.serve_connection(sock, svc))
                             .map(|_| ())
@@ -108,8 +122,12 @@ impl Server {
                         reactor.clone(),
                     );
                     Box::new(move |sock| {
+                        let srv_conn_count = Arc::clone(&srv_conn_count);
                         let conn = h2.serve(sock)
-                            .map_err(|e| println!("server h2 error: {:?}", e));
+                            .map_err(|e| println!("server h2 error: {:?}", e))
+                            .inspect(move |_| {
+                                srv_conn_count.fetch_add(1, Ordering::Release);
+                            });
                         Box::new(conn)
                     })
                 },
@@ -122,7 +140,7 @@ impl Server {
             let _ = addr_tx.send(local_addr);
 
             let serve = bind.incoming()
-                .fold((srv, reactor), |(srv, reactor), (sock, _)| {
+                .fold((srv, reactor), move |(srv, reactor), (sock, _)| {
                     if let Err(e) = sock.set_nodelay(true) {
                         return Err(e);
                     }
@@ -145,6 +163,7 @@ impl Server {
         Listening {
             addr,
             shutdown: tx,
+            conn_count,
         }
     }
 }

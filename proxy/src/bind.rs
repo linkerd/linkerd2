@@ -1,24 +1,26 @@
+use std::error::Error;
+use std::fmt;
+use std::default::Default;
 use std::marker::PhantomData;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
-use std::time::Duration;
 
-use http;
+use futures::{Future, Poll};
+use futures::future::Map;
+use http::{self, uri};
 use tokio_core::reactor::Handle;
 use tower;
 use tower_h2;
 use tower_reconnect::Reconnect;
 
 use conduit_proxy_controller_grpc;
+use conduit_proxy_router::Reuse;
 use control;
 use ctx;
 use telemetry::{self, sensor};
-use transparency::{self, HttpBody};
+use transparency::{self, HttpBody, h1};
 use transport;
-use ::timeout::Timeout;
-
-const DEFAULT_TIMEOUT_MS: u64 = 300;
 
 /// Binds a `Service` from a `SocketAddr`.
 ///
@@ -32,7 +34,6 @@ pub struct Bind<C, B> {
     sensors: telemetry::Sensors,
     executor: Handle,
     req_ids: Arc<AtomicUsize>,
-    connect_timeout: Duration,
     _p: PhantomData<B>,
 }
 
@@ -42,23 +43,72 @@ pub struct BindProtocol<C, B> {
     protocol: Protocol,
 }
 
-/// Mark whether to use HTTP/1 or HTTP/2
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+/// Protocol portion of the `Recognize` key for a request.
+///
+/// This marks whether to use HTTP/2 or HTTP/1.x for a request. In
+/// the case of HTTP/1.x requests, it also stores a "host" key to ensure
+/// that each host receives its own connection.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Protocol {
-    Http1,
+    Http1(Host),
     Http2
 }
 
-pub type Service<B> = Reconnect<NewHttp<B>>;
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Host {
+    Authority(uri::Authority),
+    NoAuthority,
+}
+
+/// Rewrites HTTP/1.x requests so that their URIs are in a canonical form.
+///
+/// The following transformations are applied:
+/// - If an absolute-form URI is received, it must replace
+///   the host header (in accordance with RFC7230#section-5.4)
+/// - If the request URI is not in absolute form, it is rewritten to contain
+///   the authority given in the `Host:` header, or, failing that, from the
+///   request's original destination according to `SO_ORIGINAL_DST`.
+#[derive(Copy, Clone, Debug)]
+pub struct NormalizeUri<S> {
+    inner: S
+}
+
+pub type Service<B> = Reconnect<NormalizeUri<NewHttp<B>>>;
 
 pub type NewHttp<B> = sensor::NewHttp<Client<B>, B, HttpBody>;
 
 pub type HttpResponse = http::Response<sensor::http::ResponseBody<HttpBody>>;
 
 pub type Client<B> = transparency::Client<
-    sensor::Connect<transport::TimeoutConnect<transport::Connect>>,
+    sensor::Connect<transport::Connect>,
     B,
 >;
+
+#[derive(Copy, Clone, Debug)]
+pub enum BufferSpawnError {
+    Inbound,
+    Outbound,
+}
+
+impl fmt::Display for BufferSpawnError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad(self.description())
+    }
+}
+
+impl Error for BufferSpawnError {
+
+    fn description(&self) -> &str {
+        match *self {
+            BufferSpawnError::Inbound =>
+                "error spawning inbound buffer task",
+            BufferSpawnError::Outbound =>
+                "error spawning outbound buffer task",
+        }
+    }
+
+    fn cause(&self) -> Option<&Error> { None }
+}
 
 impl<B> Bind<(), B> {
     pub fn new(executor: Handle) -> Self {
@@ -67,15 +117,7 @@ impl<B> Bind<(), B> {
             ctx: (),
             sensors: telemetry::Sensors::null(),
             req_ids: Default::default(),
-            connect_timeout: Duration::from_millis(DEFAULT_TIMEOUT_MS),
             _p: PhantomData,
-        }
-    }
-
-    pub fn with_connect_timeout(self, connect_timeout: Duration) -> Self {
-        Self {
-            connect_timeout,
-            ..self
         }
     }
 
@@ -92,7 +134,6 @@ impl<B> Bind<(), B> {
             sensors: self.sensors,
             executor: self.executor,
             req_ids: self.req_ids,
-            connect_timeout: self.connect_timeout,
             _p: PhantomData,
         }
     }
@@ -105,7 +146,6 @@ impl<C: Clone, B> Clone for Bind<C, B> {
             sensors: self.sensors.clone(),
             executor: self.executor.clone(),
             req_ids: self.req_ids.clone(),
-            connect_timeout: self.connect_timeout,
             _p: PhantomData,
         }
     }
@@ -113,9 +153,6 @@ impl<C: Clone, B> Clone for Bind<C, B> {
 
 
 impl<C, B> Bind<C, B> {
-    pub fn connect_timeout(&self) -> Duration {
-        self.connect_timeout
-    }
 
     // pub fn ctx(&self) -> &C {
     //     &self.ctx
@@ -139,7 +176,7 @@ impl<B> Bind<Arc<ctx::Proxy>, B>
 where
     B: tower_h2::Body + 'static,
 {
-    pub fn bind_service(&self, addr: &SocketAddr, protocol: Protocol) -> Service<B> {
+    pub fn bind_service(&self, addr: &SocketAddr, protocol: &Protocol) -> Service<B> {
         trace!("bind_service addr={}, protocol={:?}", addr, protocol);
         let client_ctx = ctx::transport::Client::new(
             &self.ctx,
@@ -148,15 +185,10 @@ where
         );
 
         // Map a socket address to a connection.
-        let connect = {
-            let c = Timeout::new(
-                transport::Connect::new(*addr, &self.executor),
-                self.connect_timeout,
-                &self.executor,
-            );
-
-            self.sensors.connect(c, &client_ctx)
-        };
+        let connect = self.sensors.connect(
+            transport::Connect::new(*addr, &self.executor),
+            &client_ctx
+        );
 
         let client = transparency::Client::new(
             protocol,
@@ -164,7 +196,15 @@ where
             self.executor.clone(),
         );
 
-        let proxy = self.sensors.http(self.req_ids.clone(), client, &client_ctx);
+        let sensors = self.sensors.http(
+            self.req_ids.clone(),
+            client,
+            &client_ctx
+        );
+
+        // Rewrite the HTTP/1 URI, if the authorities in the Host header
+        // and request URI are not in agreement, or are not present.
+        let proxy = NormalizeUri::new(sensors);
 
         // Automatically perform reconnects if the connection fails.
         //
@@ -196,7 +236,105 @@ where
     type BindError = ();
 
     fn bind(&self, addr: &SocketAddr) -> Result<Self::Service, Self::BindError> {
-        Ok(self.bind.bind_service(addr, self.protocol))
+        Ok(self.bind.bind_service(addr, &self.protocol))
     }
 }
 
+
+// ===== impl NormalizeUri =====
+
+
+impl<S> NormalizeUri<S> {
+    fn new (inner: S) -> Self {
+        Self { inner }
+    }
+}
+
+impl<S, B> tower::NewService for NormalizeUri<S>
+where
+    S: tower::NewService<
+        Request=http::Request<B>,
+        Response=HttpResponse,
+    >,
+    S::Service: tower::Service<
+        Request=http::Request<B>,
+        Response=HttpResponse,
+    >,
+    NormalizeUri<S::Service>: tower::Service,
+    B: tower_h2::Body,
+{
+    type Request = <Self::Service as tower::Service>::Request;
+    type Response = <Self::Service as tower::Service>::Response;
+    type Error = <Self::Service as tower::Service>::Error;
+    type Service = NormalizeUri<S::Service>;
+    type InitError = S::InitError;
+    type Future = Map<
+        S::Future,
+        fn(S::Service) -> NormalizeUri<S::Service>
+    >;
+    fn new_service(&self) -> Self::Future {
+        self.inner.new_service().map(NormalizeUri::new)
+    }
+}
+
+impl<S, B> tower::Service for NormalizeUri<S>
+where
+    S: tower::Service<
+        Request=http::Request<B>,
+        Response=HttpResponse,
+    >,
+    B: tower_h2::Body,
+{
+    type Request = S::Request;
+    type Response = HttpResponse;
+    type Error = S::Error;
+    type Future = S::Future;
+
+    fn poll_ready(&mut self) -> Poll<(), S::Error> {
+        self.inner.poll_ready()
+    }
+
+    fn call(&mut self, mut request: S::Request) -> Self::Future {
+        if request.version() != http::Version::HTTP_2 {
+            h1::normalize_our_view_of_uri(&mut request);
+        }
+        self.inner.call(request)
+    }
+}
+
+// ===== impl Protocol =====
+
+
+impl Protocol {
+
+    pub fn detect<B>(req: &http::Request<B>) -> Self {
+        if req.version() == http::Version::HTTP_2 {
+            return Protocol::Http2
+        }
+
+        // If the request has an authority part, use that as the host part of
+        // the key for an HTTP/1.x request.
+        let host = req.uri().authority_part()
+            .cloned()
+            .or_else(|| h1::authority_from_host(req))
+            .map(Host::Authority)
+            .unwrap_or_else(|| Host::NoAuthority);
+
+        Protocol::Http1(host)
+    }
+
+    pub fn is_cachable(&self) -> bool {
+        match *self {
+            Protocol::Http2 | Protocol::Http1(Host::Authority(_)) => true,
+            _ => false,
+        }
+    }
+
+    pub fn into_key<T>(self, key: T) -> Reuse<(T, Protocol)> {
+        if self.is_cachable() {
+            Reuse::Reusable((key, self))
+        } else {
+            Reuse::SingleUse((key, self))
+        }
+    }
+}

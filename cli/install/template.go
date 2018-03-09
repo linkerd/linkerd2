@@ -148,7 +148,9 @@ spec:
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
         - "public-api"
+        - "-controller-namespace={{.Namespace}}"
         - "-log-level={{.ControllerLogLevel}}"
+        - "-logtostderr=true"
       - name: destination
         ports:
         - name: grpc
@@ -160,6 +162,7 @@ spec:
         args:
         - "destination"
         - "-log-level={{.ControllerLogLevel}}"
+        - "-logtostderr=true"
       - name: proxy-api
         ports:
         - name: grpc
@@ -171,6 +174,7 @@ spec:
         args:
         - "proxy-api"
         - "-log-level={{.ControllerLogLevel}}"
+        - "-logtostderr=true"
       - name: tap
         ports:
         - name: grpc
@@ -182,6 +186,7 @@ spec:
         args:
         - "tap"
         - "-log-level={{.ControllerLogLevel}}"
+        - "-logtostderr=true"
       - name: telemetry
         ports:
         - name: grpc
@@ -195,6 +200,7 @@ spec:
         - "-ignore-namespaces=kube-system"
         - "-prometheus-url=http://prometheus.{{.Namespace}}.svc.cluster.local:9090"
         - "-log-level={{.ControllerLogLevel}}"
+        - "-logtostderr=true"
 
 ### Web ###
 ---
@@ -248,7 +254,7 @@ spec:
         image: {{.WebImage}}
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
-        - "-api-addr=api.{{.Namespace}}.svc.cluster.local:8085"
+        - "-api-addr=api.{{.Namespace}}.svc.cluster.local.:8085"
         - "-static-dir=/dist"
         - "-template-dir=/templates"
         - "-uuid={{.UUID}}"
@@ -313,11 +319,6 @@ spec:
         args:
         - "--storage.tsdb.retention=6h"
         - "--config.file=/etc/prometheus/prometheus.yml"
-
-      # TODO remove/replace?
-      - name: kubectl
-        image: buoyantio/kubectl:v1.6.2
-        args: ["proxy", "-p", "8001"]
 
 ---
 kind: ConfigMap
@@ -453,6 +454,9 @@ data:
 
     [auth.basic]
     enabled = false
+
+    [analytics]
+    check_for_updates = false
 
   datasources.yaml: |-
     apiVersion: 1

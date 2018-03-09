@@ -44,6 +44,7 @@ extern crate tower_in_flight_limit;
 
 use futures::*;
 
+use std::error::Error;
 use std::io;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -53,7 +54,7 @@ use std::time::Duration;
 use tokio_core::reactor::{Core, Handle};
 use tower::NewService;
 use tower_fn::*;
-use conduit_proxy_router::{Recognize, Router};
+use conduit_proxy_router::{Recognize, Router, Error as RouteError};
 
 pub mod app;
 mod bind;
@@ -187,9 +188,7 @@ where
         let inbound = {
             let ctx = ctx::Proxy::inbound(&process_ctx);
 
-            let bind = bind.clone()
-                .with_connect_timeout(config.private_connect_timeout)
-                .with_ctx(ctx.clone());
+            let bind = bind.clone().with_ctx(ctx.clone());
 
             let default_addr = config.private_forward.map(|a| a.into());
 
@@ -211,25 +210,19 @@ where
         let outbound = {
             let ctx = ctx::Proxy::outbound(&process_ctx);
 
-            let bind = config
-                .public_connect_timeout
-                .map_or_else(|| bind.clone(), |t| bind.clone().with_connect_timeout(t))
-                .with_ctx(ctx.clone());
-
-            let tcp_connect_timeout = bind.connect_timeout();
+            let bind = bind.clone().with_ctx(ctx.clone());
 
             let outgoing = Outbound::new(
                 bind,
                 control,
-                config.default_destination_namespace().cloned(),
-                config.default_destination_zone().cloned(),
+                config.default_destination_namespace().to_owned(),
                 config.bind_timeout,
             );
 
             let fut = serve(
                 outbound_listener,
                 outgoing,
-                tcp_connect_timeout,
+                config.public_connect_timeout,
                 ctx,
                 sensors,
                 get_original_dst,
@@ -301,8 +294,8 @@ fn serve<R, B, E, F, G>(
 ) -> Box<Future<Item = (), Error = io::Error> + 'static>
 where
     B: tower_h2::Body + Default + 'static,
-    E: ::std::fmt::Debug + 'static,
-    F: ::std::fmt::Debug + 'static,
+    E: Error + 'static,
+    F: Error + 'static,
     R: Recognize<
         Request = http::Request<HttpBody>,
         Response = http::Response<telemetry::sensor::http::ResponseBody<B>>,
@@ -317,8 +310,23 @@ where
         // Clone the router handle
         let router = router.clone();
 
-        // Map errors to 500 responses
-        MapErr::new(router)
+        // Map errors to appropriate response error codes.
+        MapErr::new(router, |e| {
+            match e {
+                RouteError::Route(r) => {
+                    error!(" turning route error: {} into 500", r);
+                    http::StatusCode::INTERNAL_SERVER_ERROR
+                }
+                RouteError::Inner(i) => {
+                    error!("turning {} into 500", i);
+                    http::StatusCode::INTERNAL_SERVER_ERROR
+                }
+                RouteError::NotRecognized => {
+                    error!("turning route not recognized error into 500");
+                    http::StatusCode::INTERNAL_SERVER_ERROR
+                }
+            }
+        })
     }));
 
     let listen_addr = bound_port.local_addr();

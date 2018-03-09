@@ -13,7 +13,7 @@ func TestLocalKubernetesServiceIdFromDNSName(t *testing.T) {
 	testCases := []struct {
 		k8sDNSZone string
 		host       string
-		result    *string
+		result     *string
 		resultErr  bool
 	}{
 		{"cluster.local", "", nil, true},
@@ -53,7 +53,7 @@ func TestLocalKubernetesServiceIdFromDNSName(t *testing.T) {
 
 	for i, tc := range testCases {
 		t.Run(fmt.Sprintf("%d: (%s, %s)", i, tc.k8sDNSZone, tc.host), func(t *testing.T) {
-			srv, err := newServer(tc.k8sDNSZone, nil)
+			srv, err := newServer(tc.k8sDNSZone, nil, nil)
 			assert.Nil(t, err)
 			result, err := srv.localKubernetesServiceIdFromDNSName(tc.host)
 			assert.Equal(t, tc.result, result)
@@ -79,6 +79,20 @@ func TestSplitDNSName(t *testing.T) {
 		{"example.com..", []string{}, true},
 		{"..example.com.", []string{}, true},
 		{"foo.example.com", []string{"foo", "example", "com"}, false},
+		{"invalid/character", []string{}, true},
+		{"", []string{}, true},
+		{"ALL-CAPS", []string{"ALL-CAPS"}, false},
+		{"This-dns-label-has-63-characters-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", []string{"This-dns-label-has-63-characters-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"}, false},
+		{"This-dns-label-has-64-character-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", []string{}, true},
+		{"ThisDnsLabelHas63Charactersxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", []string{"ThisDnsLabelHas63Charactersxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"}, false},
+		{"ThisDnsLabelHas64Charactersxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", []string{}, true},
+		{"0O0", []string{"0O0"}, false},
+		{"-hi", []string{}, true},
+		{"hi-", []string{}, true},
+		{"---", []string{}, true},
+		{"123", []string{}, true},
+		{"a", []string{"a"}, false},
+		{"underscores_are_okay", []string{"underscores_are_okay"}, false},
 	}
 
 	for i, tc := range testCases {

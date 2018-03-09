@@ -141,7 +141,9 @@ spec:
       containers:
       - args:
         - public-api
+        - -controller-namespace=conduit
         - -log-level=info
+        - -logtostderr=true
         image: gcr.io/runconduit/controller:undefined
         imagePullPolicy: IfNotPresent
         name: public-api
@@ -154,6 +156,7 @@ spec:
       - args:
         - destination
         - -log-level=info
+        - -logtostderr=true
         image: gcr.io/runconduit/controller:undefined
         imagePullPolicy: IfNotPresent
         name: destination
@@ -166,6 +169,7 @@ spec:
       - args:
         - proxy-api
         - -log-level=info
+        - -logtostderr=true
         image: gcr.io/runconduit/controller:undefined
         imagePullPolicy: IfNotPresent
         name: proxy-api
@@ -178,6 +182,7 @@ spec:
       - args:
         - tap
         - -log-level=info
+        - -logtostderr=true
         image: gcr.io/runconduit/controller:undefined
         imagePullPolicy: IfNotPresent
         name: tap
@@ -192,6 +197,7 @@ spec:
         - -ignore-namespaces=kube-system
         - -prometheus-url=http://prometheus.conduit.svc.cluster.local:9090
         - -log-level=info
+        - -logtostderr=true
         image: gcr.io/runconduit/controller:undefined
         imagePullPolicy: IfNotPresent
         name: telemetry
@@ -224,8 +230,6 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        - name: CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN
-          value: Kubernetes
         image: gcr.io/runconduit/proxy:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-proxy
@@ -304,7 +308,7 @@ spec:
     spec:
       containers:
       - args:
-        - -api-addr=api.conduit.svc.cluster.local:8085
+        - -api-addr=api.conduit.svc.cluster.local.:8085
         - -static-dir=/dist
         - -template-dir=/templates
         - -uuid=deaab91a-f4ab-448a-b7d1-c832a2fa0a60
@@ -323,7 +327,7 @@ spec:
         - name: CONDUIT_PROXY_LOG
           value: warn,conduit_proxy=info
         - name: CONDUIT_PROXY_CONTROL_URL
-          value: tcp://proxy-api.conduit.svc.cluster.local:8086
+          value: tcp://proxy-api.conduit.svc.cluster.local.:8086
         - name: CONDUIT_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: CONDUIT_PROXY_PRIVATE_LISTENER
@@ -342,8 +346,6 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        - name: CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN
-          value: Kubernetes
         image: gcr.io/runconduit/proxy:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-proxy
@@ -431,18 +433,11 @@ spec:
         - mountPath: /etc/prometheus
           name: prometheus-config
           readOnly: true
-      - args:
-        - proxy
-        - -p
-        - "8001"
-        image: buoyantio/kubectl:v1.6.2
-        name: kubectl
-        resources: {}
       - env:
         - name: CONDUIT_PROXY_LOG
           value: warn,conduit_proxy=info
         - name: CONDUIT_PROXY_CONTROL_URL
-          value: tcp://proxy-api.conduit.svc.cluster.local:8086
+          value: tcp://proxy-api.conduit.svc.cluster.local.:8086
         - name: CONDUIT_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: CONDUIT_PROXY_PRIVATE_LISTENER
@@ -461,8 +456,6 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        - name: CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN
-          value: Kubernetes
         image: gcr.io/runconduit/proxy:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-proxy
@@ -596,7 +589,7 @@ spec:
         - name: CONDUIT_PROXY_LOG
           value: warn,conduit_proxy=info
         - name: CONDUIT_PROXY_CONTROL_URL
-          value: tcp://proxy-api.conduit.svc.cluster.local:8086
+          value: tcp://proxy-api.conduit.svc.cluster.local.:8086
         - name: CONDUIT_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: CONDUIT_PROXY_PRIVATE_LISTENER
@@ -615,8 +608,6 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        - name: CONDUIT_PROXY_DESTINATIONS_AUTOCOMPLETE_FQDN
-          value: Kubernetes
         image: gcr.io/runconduit/proxy:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-proxy
@@ -689,6 +680,9 @@ data:
 
     [auth.basic]
     enabled = false
+
+    [analytics]
+    check_for_updates = false
 
   datasources.yaml: |-
     apiVersion: 1
