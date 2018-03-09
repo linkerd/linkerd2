@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::sync::atomic::AtomicUsize;
 use std::hash::{Hash, Hasher};
 
 use telemetry::event::Event;
@@ -16,10 +17,17 @@ use indexmap::IndexMap;
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Labels(IndexMap<&'static str, String>);
 
+#[derive(Debug, Clone, Default)]
+pub struct Stats {
+
+    /// `request_total` counter metric.
+    request_total: AtomicUsize,
+}
+
 /// Tracks Prometheus metrics
 #[derive(Debug, Clone)]
 pub struct Metrics {
-
+    metrics: IndexMap<Labels, Stats>,
 }
 
 /// Serve scrapable metrics.
@@ -38,7 +46,9 @@ impl Server {
 
 impl Metrics {
     pub fn new() -> Self {
-        Metrics { }
+        Metrics {
+            metrics: IndexMap::new(),
+        }
     }
 
     /// Observe the given event.
@@ -83,3 +93,4 @@ impl Hash for Labels {
         }
     }
 }
+
