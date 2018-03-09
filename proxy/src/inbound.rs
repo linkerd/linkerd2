@@ -1,12 +1,12 @@
 use std::net::{SocketAddr};
 use std::sync::Arc;
 
+use conduit_proxy_router::{Reuse, Recognize};
 use http;
 use tower;
 use tower_buffer::{self, Buffer};
 use tower_in_flight_limit::{self, InFlightLimit};
 use tower_h2;
-use conduit_proxy_router::{Reuse, Recognize};
 
 use bind;
 use ctx;
@@ -46,22 +46,26 @@ where
     type RouteError = bind::BufferSpawnError;
     type Service = InFlightLimit<Buffer<bind::Service<B>>>;
 
+    /// Determines the destination service to use by protocol and original destination.
     fn recognize(&self, req: &Self::Request) -> Option<Reuse<Self::Key>> {
-        let key = req.extensions()
+        let addr = req.extensions()
             .get::<Arc<ctx::transport::Server>>()
             .and_then(|ctx| {
                 trace!("recognize local={} orig={:?}", ctx.local, ctx.orig_dst);
                 ctx.orig_dst_if_not_local()
             })
-            .or_else(|| self.default_addr);
+            .or_else(|| self.default_addr)?;
 
         let proto = bind::Protocol::detect(req);
 
-        let key = key.map(move|addr| proto.into_key(addr));
-        trace!("recognize key={:?}", key);
-
-
-        key
+        trace!("recognize addr={:?} proto={:?}", addr, proto);
+        let key = match proto {
+            bind::Protocol::Http1(bind::Host::NoAuthority) => {
+                Reuse::SingleUse((addr, bind::Protocol::Http1(bind::Host::NoAuthority)))
+            }
+            proto => Reuse::Reusable((addr, proto)),
+        };
+        Some(key)
     }
 
     /// Builds a static service to a single endpoint.
@@ -89,11 +93,11 @@ mod tests {
 
     use http;
     use tokio_core::reactor::Core;
-    use conduit_proxy_router::Recognize;
+    use conduit_proxy_router::{Recognize, Reuse};
 
     use super::Inbound;
     use conduit_proxy_controller_grpc::common::Protocol;
-    use bind::{self, Bind, Host};
+    use bind::{self, Bind};
     use ctx;
 
     fn new_inbound(default: Option<net::SocketAddr>, ctx: &Arc<ctx::Proxy>) -> Inbound<()> {
@@ -115,7 +119,7 @@ mod tests {
             let srv_ctx = ctx::transport::Server::new(&ctx, &local, &remote, &Some(orig_dst), Protocol::Http);
 
             let rec = srv_ctx.orig_dst_if_not_local().map(|addr|
-                bind::Protocol::Http1(Host::NoAuthority).into_key(addr)
+                Reuse::SingleUse((addr, bind::Protocol::Http1(bind::Host::NoAuthority)))
             );
 
             let mut req = http::Request::new(());
@@ -145,7 +149,7 @@ mod tests {
                 ));
 
             inbound.recognize(&req) == default.map(|addr|
-                bind::Protocol::Http1(Host::NoAuthority).into_key(addr)
+                Reuse::SingleUse((addr, bind::Protocol::Http1(bind::Host::NoAuthority)))
             )
         }
 
@@ -157,7 +161,7 @@ mod tests {
             let req = http::Request::new(());
 
             inbound.recognize(&req) == default.map(|addr|
-                bind::Protocol::Http1(Host::NoAuthority).into_key(addr)
+                Reuse::SingleUse((addr, bind::Protocol::Http1(bind::Host::NoAuthority)))
             )
         }
 
@@ -181,7 +185,7 @@ mod tests {
                 ));
 
             inbound.recognize(&req) == default.map(|addr|
-                bind::Protocol::Http1(Host::NoAuthority).into_key(addr)
+                Reuse::SingleUse((addr, bind::Protocol::Http1(bind::Host::NoAuthority)))
             )
         }
     }

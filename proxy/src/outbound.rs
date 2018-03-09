@@ -3,6 +3,7 @@ use std::net::SocketAddr;
 use std::time::Duration;
 use std::sync::Arc;
 
+use conduit_proxy_router::{Reuse, Recognize};
 use futures::{Async, Poll};
 use http;
 use rand;
@@ -12,13 +13,12 @@ use tower_buffer::Buffer;
 use tower_discover::{Change, Discover};
 use tower_in_flight_limit::InFlightLimit;
 use tower_h2;
-use conduit_proxy_router::{Reuse, Recognize};
 
-use bind::{self, Bind, Protocol};
+use bind::{self, Bind, Host, Protocol};
 use control::{self, discovery};
 use control::discovery::Bind as BindTrait;
 use ctx;
-use fully_qualified_authority::{FullyQualifiedAuthority, NamedAddress};
+use fully_qualified_authority::FullyQualifiedAuthority;
 use timeout::Timeout;
 use transparency::h1;
 
@@ -51,25 +51,10 @@ impl<B> Outbound<B> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum Destination {
-    LocalSvc(FullyQualifiedAuthority),
-    External(SocketAddr),
+pub enum Dst {
+    Unbound(FullyQualifiedAuthority, Protocol),
+    Bound(SocketAddr, Protocol),
 }
-
-impl From<FullyQualifiedAuthority> for Destination {
-    #[inline]
-    fn from(authority: FullyQualifiedAuthority) -> Self {
-        Destination::LocalSvc(authority)
-    }
-}
-
-impl From<SocketAddr> for Destination {
-    #[inline]
-    fn from(addr: SocketAddr) -> Self {
-        Destination::External(addr)
-    }
-}
-
 
 impl<B> Recognize for Outbound<B>
 where
@@ -78,54 +63,66 @@ where
     type Request = http::Request<B>;
     type Response = bind::HttpResponse;
     type Error = <Self::Service as tower::Service>::Error;
-    type Key = (Destination, Protocol);
+    type Key = Dst;
     type RouteError = bind::BufferSpawnError;
     type Service = InFlightLimit<Timeout<Buffer<Balance<
         load::WithPendingRequests<Discovery<B>>,
         choose::PowerOfTwoChoices<rand::ThreadRng>
     >>>>;
 
+    /// Determines the destination service for a given Request.
+    ///
+    /// Destinations are either bound or unbound. Unbound destinations must be resolved
+    /// through the controller to produce a list of endpoints. Bound destinations use the
+    /// client-provided destination address.
+    ///
+    /// For HTTP/2 requests, a service may support several :authority values. HTTP/1
+    /// requests, on the other hand, may not share a service across authorities.
+    ///
+    /// Services may not be reused if they do not include an authority.
     fn recognize(&self, req: &Self::Request) -> Option<Reuse<Self::Key>> {
         let proto = bind::Protocol::detect(req);
 
-        // The request URI and Host: header have not yet been normalized
-        // by `NormalizeUri`, as we need to know whether the request will
-        // be routed by Host/authority or by SO_ORIGINAL_DST, in order to
-        // determine whether the service is reusable.
-        let local = req.uri().authority_part()
+        // Determine the request's `:authority` (or `Host`), either from its headers or
+        // from the request's URI.
+        //
+        // The authority is normalized to determine whether or not it should be resolved
+        // through the controller.
+        let qualified_name = req.uri().authority_part()
             .cloned()
-        // Therefore, we need to check the host header as well as the URI
-        // for a valid authority, before we fall back to SO_ORIGINAL_DST.
             .or_else(|| h1::authority_from_host(req))
             .map(|authority| {
-                FullyQualifiedAuthority::normalize(
-                    &authority,
-                    &self.default_namespace)
+                FullyQualifiedAuthority::normalize(&authority, &self.default_namespace)
             });
 
-        // If we can't fully qualify the authority as a local service,
-        // and there is no original dst, then we have nothing! In that
-        // case, we return `None`, which results an "unrecognized" error.
+        // If the request has an authority that looks like something the destination
+        // service might be able to resolve, treat the name as unbound. Note that this
+        // will result in different keys for different original authority values, so
+        // requests for `foo` and `foo.ns` won't be satisfied by the same connections.
+        if let Some(qn) = qualified_name {
+            if qn.use_destination_service {
+                return Some(Reuse::Reusable(Dst::Unbound(qn.name, proto)));
+            }
+        }
+
+        // Otherwise, send the request to the client-bound address.
         //
-        // In practice, this shouldn't ever happen, since we expect the proxy
-        // to be run on Linux servers, with iptables setup, so there should
-        // always be an original destination.
-        let dest = if let Some(NamedAddress {
-            name,
-            use_destination_service: true
-        }) = local {
-            Destination::LocalSvc(name)
-        } else {
-            let orig_dst = req.extensions()
-                .get::<Arc<ctx::transport::Server>>()
-                .and_then(|ctx| {
-                    ctx.orig_dst_if_not_local()
-                });
-            Destination::External(orig_dst?)
+        // If there is no original dst, then we have nothing! In that case, we return
+        // `None`, which results an "unrecognized" error. In practice, this shouldn't ever
+        // happen, since we expect the proxy to be run on Linux servers, with iptables
+        // setup, so there should always be an original destination.
+        let bound_addr = req.extensions()
+            .get::<Arc<ctx::transport::Server>>()
+            .and_then(|ctx| ctx.orig_dst_if_not_local())?;
+
+        // Connections can only be re-used if we know the authority.
+        let key = match proto {
+            proto@Protocol::Http1(Host::NoAuthority) => {
+                Reuse::SingleUse(Dst::Bound(bound_addr, proto))
+            }
+            proto => Reuse::Reusable(Dst::Bound(bound_addr, proto)),
         };
-
-
-        Some(proto.into_key(dest))
+        Some(key)
     }
 
     /// Builds a dynamic, load balancing service.
@@ -139,19 +136,18 @@ where
     /// changed.
     fn bind_service(
         &mut self,
-        key: &Self::Key,
+        dst: &Self::Key,
     ) -> Result<Self::Service, Self::RouteError> {
-        let &(ref dest, ref protocol) = key;
-        debug!("building outbound {:?} client to {:?}", protocol, dest);
+        debug!("building outbound client to {:?}", dst);
 
-        let resolve = match *dest {
-            Destination::LocalSvc(ref authority) => {
+        let resolve = match *dst {
+            Dst::Unbound(ref authority, ref protocol) => {
                 Discovery::LocalSvc(self.discovery.resolve(
                     authority,
                     self.bind.clone().with_protocol(protocol.clone()),
                 ))
             },
-            Destination::External(addr) => {
+            Dst::Bound(addr, ref protocol) => {
                 Discovery::External(Some((addr, self.bind.clone()
                     .with_protocol(protocol.clone()))))
             }

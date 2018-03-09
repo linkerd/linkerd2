@@ -41,13 +41,14 @@ impl FullyQualifiedAuthority {
             }
         };
 
-        // parts should have a maximum 4 of pieces (name, namespace, svc, zone)
+        // Detect local service names in the form _name.namespace.svc.zone_. _zone_ may
+        // contain dotted labels.
         let mut parts = name.splitn(4, '.');
 
         // `Authority` guarantees the name has at least one part.
         assert!(parts.next().is_some());
 
-        // Rewrite "$name" -> "$name.$default_namespace".
+        // Determine the _namespace_ label.
         let has_explicit_namespace = match parts.next() {
             Some("") => {
                 // "$name." is an external absolute name.
@@ -65,7 +66,7 @@ impl FullyQualifiedAuthority {
             None
         };
 
-        // Rewrite "$name.$namespace" -> "$name.$namespace.svc".
+        // Determine the _svc_ label.
         let append_svc = if let Some(part) = parts.next() {
             if !part.eq_ignore_ascii_case("svc") {
                 // If not "$name.$namespace.svc", treat as external.
@@ -87,7 +88,7 @@ impl FullyQualifiedAuthority {
             true
         };
 
-        // Rewrite "$name.$namespace.svc" -> "$name.$namespace.svc.$zone".
+        // Determine the _zone_ labels.
         static DEFAULT_ZONE: &str = "cluster.local"; // TODO: make configurable.
         let (zone_to_append, strip_last) = if let Some(zone) = parts.next() {
             let (zone, strip_last) =
@@ -96,6 +97,7 @@ impl FullyQualifiedAuthority {
                 } else {
                     (zone, false)
                 };
+
             if !zone.eq_ignore_ascii_case(DEFAULT_ZONE) {
                 // "a.b.svc." is an external absolute name.
                 // "a.b.svc.foo" is external if the default zone is not
@@ -105,11 +107,13 @@ impl FullyQualifiedAuthority {
                     use_destination_service: false,
                 }
             }
+
             (None, strip_last)
         } else {
             (Some(DEFAULT_ZONE), false)
         };
 
+        // Determine how many labels need to be appened to the original authority.
         let mut additional_len = 0;
         if let Some(namespace) = namespace_to_append {
             additional_len += 1 + namespace.len(); // "." + namespace
