@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::sync::atomic::AtomicUsize;
 use std::hash::{Hash, Hasher};
 use std::iter::{self, IntoIterator, Iterator};
 
@@ -27,10 +28,17 @@ struct LabelsInner {
     parent: Option<Labels>,
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct Stats {
+
+    /// `request_total` counter metric.
+    request_total: AtomicUsize,
+}
+
 /// Tracks Prometheus metrics
 #[derive(Debug, Clone)]
 pub struct Metrics {
-
+    metrics: IndexMap<Labels, Stats>,
 }
 
 /// Serve scrapable metrics.
@@ -49,7 +57,9 @@ impl Server {
 
 impl Metrics {
     pub fn new() -> Self {
-        Metrics { }
+        Metrics {
+            metrics: IndexMap::new(),
+        }
     }
 
     /// Observe the given event.
@@ -169,22 +179,4 @@ impl Hash for LabelsInner {
         }
     }
 }
-
-
-// impl<'a> From<&'a Arc<ctx::Proxy>> for Labels {
-//     fn from(ctx: &'a Arc<ctx::Proxy>) -> Self {
-//         match **ctx {
-//             ctx::Proxy::Inbound(ref process) =>
-//                 Labels::from(process) + ("direction", String::from("inbound")),
-//             ctx::Proxy::Outbound(ref process) =>
-//                 Labels::from(process) + ("direction", String::from("outbound")),
-//         }
-//     }
-// }
-
-// impl<'a> From<&'a Arc<ctx::http::Request>> for Labels {
-//     fn from(ctx: &'a Arc<ctx::Request>) -> Self {
-
-//     }
-// }
 
