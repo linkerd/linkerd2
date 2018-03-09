@@ -1,0 +1,79 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: linkerd-config
+data:
+  config.yaml: |-
+    routers:
+    - protocol: http
+      label: http
+      dtab:
+        /svc/httpbin.org => /$/inet/httpbin.org/80;
+      servers:
+      - port: 5555
+        ip: 0.0.0.0
+    - protocol: http
+      label: https
+      dtab:
+        /svc/httpbin.org => /$/inet/httpbin.org/443;
+      servers:
+      - port: 5556
+        ip: 0.0.0.0
+      client:
+        tls:
+          commonName: httpbin.org
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: proxy
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: proxy
+    spec:
+      volumes:
+      - name: linkerd-config
+        configMap:
+          name: linkerd-config
+      containers:
+      - name: proxy
+        image: buoyantio/linkerd:1.3.5
+        args:
+        - /io.buoyant/linkerd/config/config.yaml
+        ports:
+        - name: http
+          containerPort: 5555
+        volumeMounts:
+        - name: linkerd-config
+          mountPath: /io.buoyant/linkerd/config
+          readOnly: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: proxy-http
+spec:
+  selector:
+    app: proxy
+  type: LoadBalancer
+  ports:
+  - name: http
+    port: 80
+    targetPort: 5555
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: proxy-https
+spec:
+  selector:
+    app: proxy
+  type: LoadBalancer
+  ports:
+  - name: http
+    port: 80
+    targetPort: 5556

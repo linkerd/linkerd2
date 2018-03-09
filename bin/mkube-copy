@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+
+docker save $1 | bin/mkube docker load

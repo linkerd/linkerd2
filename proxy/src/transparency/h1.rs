@@ -46,7 +46,7 @@ pub fn normalize_our_view_of_uri<B>(req: &mut http::Request<B>) {
 
 /// Returns an Authority from a request's Host header.
 pub fn authority_from_host<B>(req: &http::Request<B>) -> Option<Authority> {
-    req.headers().get(HOST).cloned()
+    req.headers().get(HOST)
         .and_then(|host| {
              host.to_str().ok()
                 .and_then(|s| {
