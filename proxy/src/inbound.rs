@@ -6,7 +6,7 @@ use tower;
 use tower_buffer::{self, Buffer};
 use tower_in_flight_limit::{self, InFlightLimit};
 use tower_h2;
-use conduit_proxy_router::Recognize;
+use conduit_proxy_router::{Reuse, Recognize};
 
 use bind;
 use ctx;
@@ -46,7 +46,7 @@ where
     type RouteError = bind::BufferSpawnError;
     type Service = InFlightLimit<Buffer<bind::Service<B>>>;
 
-    fn recognize(&self, req: &Self::Request) -> Option<Self::Key> {
+    fn recognize(&self, req: &Self::Request) -> Option<Reuse<Self::Key>> {
         let key = req.extensions()
             .get::<Arc<ctx::transport::Server>>()
             .and_then(|ctx| {
@@ -55,14 +55,11 @@ where
             })
             .or_else(|| self.default_addr);
 
-        let proto = match req.version() {
-            http::Version::HTTP_2 => bind::Protocol::Http2,
-            _ => bind::Protocol::Http1,
-        };
+        let proto = bind::Protocol::detect(req);
 
-        let key = key.map(|addr| (addr, proto));
-
+        let key = key.map(move|addr| proto.into_key(addr));
         trace!("recognize key={:?}", key);
+
 
         key
     }
@@ -74,7 +71,7 @@ where
     /// Buffering is currently unbounded and does not apply timeouts. This must be
     /// changed.
     fn bind_service(&mut self, key: &Self::Key) -> Result<Self::Service, Self::RouteError> {
-        let &(ref addr, proto) = key;
+        let &(ref addr, ref proto) = key;
         debug!("building inbound {:?} client to {}", proto, addr);
 
         Buffer::new(self.bind.bind_service(addr, proto), self.bind.executor())
@@ -96,7 +93,7 @@ mod tests {
 
     use super::Inbound;
     use conduit_proxy_controller_grpc::common::Protocol;
-    use bind::{self, Bind};
+    use bind::{self, Bind, Host};
     use ctx;
 
     fn new_inbound(default: Option<net::SocketAddr>, ctx: &Arc<ctx::Proxy>) -> Inbound<()> {
@@ -117,7 +114,9 @@ mod tests {
 
             let srv_ctx = ctx::transport::Server::new(&ctx, &local, &remote, &Some(orig_dst), Protocol::Http);
 
-            let rec = srv_ctx.orig_dst_if_not_local().map(|addr| (addr, bind::Protocol::Http1));
+            let rec = srv_ctx.orig_dst_if_not_local().map(|addr|
+                bind::Protocol::Http1(Host::NoAuthority).into_key(addr)
+            );
 
             let mut req = http::Request::new(());
             req.extensions_mut()
@@ -145,7 +144,9 @@ mod tests {
                     Protocol::Http,
                 ));
 
-            inbound.recognize(&req) == default.map(|addr| (addr, bind::Protocol::Http1))
+            inbound.recognize(&req) == default.map(|addr|
+                bind::Protocol::Http1(Host::NoAuthority).into_key(addr)
+            )
         }
 
         fn recognize_default_no_ctx(default: Option<net::SocketAddr>) -> bool {
@@ -155,7 +156,9 @@ mod tests {
 
             let req = http::Request::new(());
 
-            inbound.recognize(&req) == default.map(|addr| (addr, bind::Protocol::Http1))
+            inbound.recognize(&req) == default.map(|addr|
+                bind::Protocol::Http1(Host::NoAuthority).into_key(addr)
+            )
         }
 
         fn recognize_default_no_loop(
@@ -177,7 +180,9 @@ mod tests {
                     Protocol::Http,
                 ));
 
-            inbound.recognize(&req) == default.map(|addr| (addr, bind::Protocol::Http1))
+            inbound.recognize(&req) == default.map(|addr|
+                bind::Protocol::Http1(Host::NoAuthority).into_key(addr)
+            )
         }
     }
 }

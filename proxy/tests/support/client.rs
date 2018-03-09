@@ -102,6 +102,9 @@ fn run(addr: SocketAddr, version: Run) -> Sender {
                     .build(&reactor);
                 Box::new(rx.for_each(move |(req, cb)| {
                     let mut req = hyper::Request::from(req.map(|()| hyper::Body::empty()));
+                    if !req.headers().has::<hyper::header::ContentLength>() {
+                        assert!(req.body_mut().take().unwrap().is_empty());
+                    }
                     if absolute_uris {
                         req.set_proxy(true);
                     }

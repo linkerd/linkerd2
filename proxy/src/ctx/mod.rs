@@ -28,8 +28,6 @@ pub struct Process {
     pub scheduled_instance: String,
 
     /// Identifies the namespace for the `scheduled_instance`.
-    ///
-    /// Empty if unknown.
     pub scheduled_namespace: String,
 }
 
@@ -68,7 +66,7 @@ impl Process {
         Arc::new(Self {
             node: empty_if_missing(&config.node_name),
             scheduled_instance: empty_if_missing(&config.pod_name),
-            scheduled_namespace: empty_if_missing(&config.pod_namespace),
+            scheduled_namespace: config.pod_namespace.clone(),
         })
     }
 }

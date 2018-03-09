@@ -1,6 +1,7 @@
 package destination
 
 import (
+	"sort"
 	"testing"
 
 	common "github.com/runconduit/conduit/controller/gen/common"
@@ -14,9 +15,24 @@ type testListener struct {
 	removed []common.TcpAddress
 }
 
+// sorting results makes it easier to compare against expected output
+type ByTCPAddr []common.TcpAddress
+
+func (b ByTCPAddr) Len() int           { return len(b) }
+func (b ByTCPAddr) Swap(i, j int)      { b[i], b[j] = b[j], b[i] }
+func (b ByTCPAddr) Less(i, j int) bool { return b[i].String() <= b[j].String() }
+
 func (me testListener) Update(add []common.TcpAddress, remove []common.TcpAddress) {
 	assert.Equal(me.t, len(me.added), len(add))
 	assert.Equal(me.t, len(me.removed), len(remove))
+
+	// Sort lists of TCP addresses before comparison. Ordering is not guaranteed,
+	// as the underlying util.DiffAddresses uses a map to determine changes.
+	sort.Sort(ByTCPAddr(me.added))
+	sort.Sort(ByTCPAddr(add))
+
+	sort.Sort(ByTCPAddr(me.removed))
+	sort.Sort(ByTCPAddr(remove))
 
 	for i, addr := range add {
 		assert.Equal(me.t, me.added[i], addr)

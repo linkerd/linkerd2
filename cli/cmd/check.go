@@ -20,6 +20,8 @@ const (
 	versionCheckURL = "https://versioncheck.conduit.io/version.json"
 )
 
+var versionOverride string
+
 var checkCmd = &cobra.Command{
 	Use:   "check",
 	Short: "Check your Conduit installation for potential problems.",
@@ -49,7 +51,7 @@ problems were found.`,
 		}
 
 		grpcStatusChecker := healthcheck.NewGrpcStatusChecker(public.ConduitApiSubsystemName, conduitApi)
-		versionStatusChecker := version.NewVersionStatusChecker(versionCheckURL, conduitApi)
+		versionStatusChecker := version.NewVersionStatusChecker(versionCheckURL, versionOverride, conduitApi)
 
 		err = checkStatus(os.Stdout, kubeApi, grpcStatusChecker, versionStatusChecker)
 		if err != nil {
@@ -117,4 +119,5 @@ func statusCheckResultWasError(w io.Writer) error {
 func init() {
 	RootCmd.AddCommand(checkCmd)
 	addControlPlaneNetworkingArgs(checkCmd)
+	checkCmd.PersistentFlags().StringVar(&versionOverride, "expected-version", "", "Overrides the version used when checking if Conduit is running the latest version (mostly for testing)")
 }

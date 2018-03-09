@@ -11,7 +11,6 @@ use http;
 use connection;
 use convert;
 use dns;
-use ::timeout;
 
 #[derive(Debug, Clone)]
 pub struct Connect {
@@ -43,8 +42,6 @@ pub struct LookupAddressAndConnect {
     dns_resolver: dns::Resolver,
     handle: Handle,
 }
-
-pub type TimeoutConnect<C> = timeout::Timeout<C>;
 
 // ===== impl HostAndPort =====
 
