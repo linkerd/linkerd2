@@ -15,7 +15,6 @@ use tower_h2;
 use tower_reconnect::Reconnect;
 
 use conduit_proxy_controller_grpc;
-use conduit_proxy_router::Reuse;
 use control;
 use ctx;
 use telemetry::{self, sensor};
@@ -321,20 +320,5 @@ impl Protocol {
             .unwrap_or_else(|| Host::NoAuthority);
 
         Protocol::Http1(host)
-    }
-
-    pub fn is_cachable(&self) -> bool {
-        match *self {
-            Protocol::Http2 | Protocol::Http1(Host::Authority(_)) => true,
-            _ => false,
-        }
-    }
-
-    pub fn into_key<T>(self, key: T) -> Reuse<(T, Protocol)> {
-        if self.is_cachable() {
-            Reuse::Reusable((key, self))
-        } else {
-            Reuse::SingleUse((key, self))
-        }
     }
 }
