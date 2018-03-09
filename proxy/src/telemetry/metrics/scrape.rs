@@ -1,7 +1,8 @@
 use std::sync::Arc;
 use std::hash::{Hash, Hasher};
+use std::iter::{self, IntoIterator, Iterator};
 
-use telemetry::event::Event;
+
 use futures::future::{self, FutureResult};
 use hyper;
 use hyper::StatusCode;
@@ -10,11 +11,21 @@ use hyper::server::{
     Request as HyperRequest,
     Response as HyperResponse
 };
+use indexmap::{self, IndexMap};
 
-use indexmap::IndexMap;
+use ctx;
+use telemetry::event::Event;
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct Labels(IndexMap<&'static str, String>);
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct Labels {
+    inner: Arc<LabelsInner>
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Default)]
+struct LabelsInner {
+    labels: IndexMap<&'static str, String>,
+    parent: Option<Labels>,
+}
 
 /// Tracks Prometheus metrics
 #[derive(Debug, Clone)]
@@ -76,10 +87,104 @@ impl HyperService for Server {
 
 // ===== impl Labels =====
 
-impl Hash for Labels {
+use std::ops;
+
+impl<'a> IntoIterator for &'a Labels {
+    type Item = (&'a str, &'a str);
+    // TODO: remove box.
+    type IntoIter = Box<Iterator<Item=Self::Item> + 'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.inner.into_iter()
+    }
+}
+
+impl Labels {
+    fn child(&self) -> Labels {
+        let inner = Arc::new(LabelsInner {
+            parent: Some(self.clone()),
+            ..Default::default()
+        });
+        Labels {
+            inner,
+        }
+    }
+}
+
+// ===== impl LabelsInner =====
+
+
+impl LabelsInner {
+
+    fn new() -> Self {
+        Default::default()
+    }
+
+    fn parent_iter<'a>(&'a self)
+        -> Box<Iterator<Item=(&'a str, &'a str)> + 'a>
+    {
+        self.parent.as_ref()
+            .map(|parent| {
+                let iter = parent.into_iter()
+                    .filter_map(move |(key, val)|
+                        // skip keys contained in this scope.
+                        if self.labels.contains_key(key) {
+                            None
+                        }
+                        else {
+                            Some((key, val.as_ref()))
+                        });
+                Box::new(iter) as Box<Iterator<Item=(&'a str, &'a str)> + 'a>
+            })
+            .unwrap_or_else(|| Box::new(iter::empty()))
+    }
+
+}
+
+
+impl ops::Add<(&'static str, String)> for LabelsInner {
+    type Output = Self;
+    fn add(mut self, (label, value): (&'static str, String)) -> Self::Output {
+        self.labels.insert(label, value);
+        self
+    }
+}
+
+impl<'a> IntoIterator for &'a LabelsInner {
+    type Item = (&'a str, &'a str);
+    // TODO: remove box.
+    type IntoIter = Box<Iterator<Item=Self::Item> + 'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        Box::new(self.labels.iter()
+            .map(|(&key, val)| (key, val.as_ref()))
+            .chain(self.parent_iter()))
+    }
+}
+
+impl Hash for LabelsInner {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        for pair in &self.0 {
+        for pair in self {
             pair.hash(state);
         }
     }
 }
+
+
+// impl<'a> From<&'a Arc<ctx::Proxy>> for Labels {
+//     fn from(ctx: &'a Arc<ctx::Proxy>) -> Self {
+//         match **ctx {
+//             ctx::Proxy::Inbound(ref process) =>
+//                 Labels::from(process) + ("direction", String::from("inbound")),
+//             ctx::Proxy::Outbound(ref process) =>
+//                 Labels::from(process) + ("direction", String::from("outbound")),
+//         }
+//     }
+// }
+
+// impl<'a> From<&'a Arc<ctx::http::Request>> for Labels {
+//     fn from(ctx: &'a Arc<ctx::Request>) -> Self {
+
+//     }
+// }
+
