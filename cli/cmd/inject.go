@@ -136,7 +136,7 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride, v
 			Privileged: &f,
 		},
 	}
-	controlPlaneDNS := fmt.Sprintf("proxy-api.%s.svc.cluster.local.", controlPlaneNamespace)
+	controlPlaneDNS := fmt.Sprintf("proxy-api.%s.svc.cluster.local", controlPlaneNamespace)
 	if controlPlaneDNSNameOverride != "" {
 		controlPlaneDNS = controlPlaneDNSNameOverride
 	}

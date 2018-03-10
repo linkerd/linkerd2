@@ -254,7 +254,7 @@ spec:
         image: {{.WebImage}}
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
-        - "-api-addr=api.{{.Namespace}}.svc.cluster.local.:8085"
+        - "-api-addr=api.{{.Namespace}}.svc.cluster.local:8085"
         - "-static-dir=/dist"
         - "-template-dir=/templates"
         - "-uuid={{.UUID}}"

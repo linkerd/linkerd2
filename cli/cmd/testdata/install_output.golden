@@ -310,7 +310,7 @@ spec:
     spec:
       containers:
       - args:
-        - -api-addr=api.Namespace.svc.cluster.local.:8085
+        - -api-addr=api.Namespace.svc.cluster.local:8085
         - -static-dir=/dist
         - -template-dir=/templates
         - -uuid=UUID
@@ -329,7 +329,7 @@ spec:
         - name: CONDUIT_PROXY_LOG
           value: warn,conduit_proxy=info
         - name: CONDUIT_PROXY_CONTROL_URL
-          value: tcp://proxy-api.Namespace.svc.cluster.local.:8086
+          value: tcp://proxy-api.Namespace.svc.cluster.local:8086
         - name: CONDUIT_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: CONDUIT_PROXY_PRIVATE_LISTENER
@@ -440,7 +440,7 @@ spec:
         - name: CONDUIT_PROXY_LOG
           value: warn,conduit_proxy=info
         - name: CONDUIT_PROXY_CONTROL_URL
-          value: tcp://proxy-api.Namespace.svc.cluster.local.:8086
+          value: tcp://proxy-api.Namespace.svc.cluster.local:8086
         - name: CONDUIT_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: CONDUIT_PROXY_PRIVATE_LISTENER
@@ -593,7 +593,7 @@ spec:
         - name: CONDUIT_PROXY_LOG
           value: warn,conduit_proxy=info
         - name: CONDUIT_PROXY_CONTROL_URL
-          value: tcp://proxy-api.Namespace.svc.cluster.local.:8086
+          value: tcp://proxy-api.Namespace.svc.cluster.local:8086
         - name: CONDUIT_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: CONDUIT_PROXY_PRIVATE_LISTENER
