@@ -36,32 +36,39 @@ pub struct Stats {
     request_total: usize,
 }
 
+type Metrics = BiLock<IndexMap<Labels, Stats>>;
+
 /// Tracks Prometheus metrics
 #[derive(Debug)]
-pub struct Metrics {
+pub struct MetricsTask {
     root_labels: Labels,
-    metrics: Mutex<IndexMap<Labels, Stats>>,
+    metrics: Metrics,
 }
 
 /// Serve scrapable metrics.
 #[derive(Debug, Clone)]
 pub struct Server {
-    metrics: Arc<Metrics>,
+    metrics: Metrics,
+}
+
+pub fn new(process_ctx: Arc<ctx::process>) -> (Server, Work) {
+    let (read, write) = BiLock::new(IndexMap::<Labels, Stats>::new());
+    (Server::new(read), Work::new(process_ctx, write))
 }
 
 impl Server {
-    pub fn new(metrics: &Arc<Metrics>) -> Self {
-        Server { metrics: metrics.clone() }
+    pub fn new(metrics: Metrics) -> Self {
+        Server { metrics, }
     }
 }
 
-// ===== impl Metrics =====
+// ===== impl MetricsTask =====
 
-impl Metrics {
-    pub fn new(process_ctx: Arc<ctx::Process>) -> Self {
+impl Work {
+    pub fn new(process_ctx: Arc<ctx::Process>, metrics: Metrics) -> Self {
         Metrics {
             root_labels: Labels::from(process_ctx),
-            metrics: Mutex::new(IndexMap::new()),
+            metrics,
         }
     }
 
@@ -70,7 +77,7 @@ impl Metrics {
         trace!("Metrics::record({:?})", event);
         // TODO: record the event.
         let proxy_labels = self.root_labels.with_proxy_ctx(event.proxy());
-        let mut metrics = self.metrics.lock().unwrap();
+        self.metrics.acquire().and_then(|)
         match *event {
             Event::StreamRequestOpen(ref req) => {
                 let labels = proxy_labels.with_request_ctx(req);
