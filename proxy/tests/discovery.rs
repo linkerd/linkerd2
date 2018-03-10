@@ -19,6 +19,21 @@ fn outbound_asks_controller_api() {
 }
 
 #[test]
+fn outbound_asks_controller_about_authority() {
+    let _ = env_logger::try_init();
+
+    let srv = server::new().route("/", "hello").route("/bye", "bye").run();
+    let ctrl = controller::new()
+        .destination("disco.test.svc.cluster.local", srv.addr)
+        .run();
+    let proxy = proxy::new().controller(ctrl).run();
+    let client = client::new(proxy.outbound, "disco.test.svc.cluster.local");
+
+    assert_eq!(client.get("/"), "hello");
+    assert_eq!(client.get("/bye"), "bye");
+}
+
+#[test]
 fn outbound_reconnects_if_controller_stream_ends() {
     let _ = env_logger::try_init();
 
@@ -31,6 +46,50 @@ fn outbound_reconnects_if_controller_stream_ends() {
     let client = client::new(proxy.outbound, "disco.test.svc.cluster.local");
 
     assert_eq!(client.get("/recon"), "nect");
+}
+
+#[test]
+fn outbound_http1_asks_controller_about_host() {
+    let _ = env_logger::try_init();
+
+    let srv = server::http1()
+        .route("/", "hello")
+        .route("/bye", "bye")
+        .run();
+    let ctrl = controller::new()
+        .destination("disco.test.svc.cluster.local", srv.addr)
+        .run();
+    let proxy = proxy::new()
+        .controller(ctrl)
+        // don't set srv as outbound(), so that SO_ORIGINAL_DST isn't
+        // used as a backup
+        .run();
+    let client = client::http1(proxy.outbound, "disco.test.svc.cluster.local");
+
+    assert_eq!(client.get("/"), "hello");
+    assert_eq!(client.get("/bye"), "bye");
+}
+
+#[test]
+fn outbound_http1_asks_controller_api() {
+    let _ = env_logger::try_init();
+
+    let srv = server::http1()
+        .route("/", "hello")
+        .route("/bye", "bye")
+        .run();
+    let ctrl = controller::new()
+        .destination("disco.test.svc.cluster.local", srv.addr)
+        .run();
+    let proxy = proxy::new()
+        .controller(ctrl)
+        // don't set srv as outbound(), so that SO_ORIGINAL_DST isn't
+        // used as a backup
+        .run();
+    let client = client::http1(proxy.outbound, "disco.test.svc.cluster.local");
+
+    assert_eq!(client.get("/"), "hello");
+    assert_eq!(client.get("/bye"), "bye");
 }
 
 #[test]

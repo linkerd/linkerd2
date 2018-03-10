@@ -20,6 +20,7 @@ use control::discovery::Bind as BindTrait;
 use ctx;
 use fully_qualified_authority::{FullyQualifiedAuthority, NamedAddress};
 use timeout::Timeout;
+use transparency::h1;
 
 type BindProtocol<B> = bind::BindProtocol<Arc<ctx::Proxy>, B>;
 
@@ -87,12 +88,20 @@ where
     fn recognize(&self, req: &Self::Request) -> Option<Reuse<Self::Key>> {
         let proto = bind::Protocol::detect(req);
 
-        let local = req.uri().authority_part().map(|authority| {
-            FullyQualifiedAuthority::normalize(
-                authority,
-                &self.default_namespace)
-
-        });
+        // The request URI and Host: header have not yet been normalized
+        // by `NormalizeUri`, as we need to know whether the request will
+        // be routed by Host/authority or by SO_ORIGINAL_DST, in order to
+        // determine whether the service is reusable.
+        let local = req.uri().authority_part()
+            .cloned()
+        // Therefore, we need to check the host header as well as the URI
+        // for a valid authority, before we fall back to SO_ORIGINAL_DST.
+            .or_else(|| h1::authority_from_host(req))
+            .map(|authority| {
+                FullyQualifiedAuthority::normalize(
+                    &authority,
+                    &self.default_namespace)
+            });
 
         // If we can't fully qualify the authority as a local service,
         // and there is no original dst, then we have nothing! In that
