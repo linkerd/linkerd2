@@ -99,7 +99,7 @@ impl MakeControl {
 
         let flush_timeout = Timeout::new(self.flush_interval, handle)?;
         let (metrics_work, metrics_service) =
-            scrape::new(self.process_ctx.clone());
+            scrape::new(self.process_ctx.clone(), handle);
         let metrics_service = Arc::new(metrics_service);
         let push_metrics = Some(PushMetrics::new(self.process_ctx));
 
@@ -222,7 +222,7 @@ impl Stream for Control {
                         }
                     }
 
-                    self.metrics_work.record_event(&ev);
+                    self.metrics_work.record_event(ev);
 
                     self.flush_report()
                 }
