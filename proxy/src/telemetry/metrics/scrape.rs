@@ -1,10 +1,10 @@
-use std::sync::{Arc, Mutex};
-// use std::sync::atomic::AtomicUsize;
+use std::sync::{self, Arc, RwLock};
 use std::hash::{Hash, Hasher};
 use std::iter::{self, IntoIterator, Iterator};
 use std::fmt;
 
-use futures::future::{self, FutureResult};
+use futures::future::{self, Either, Future, FutureResult};
+use futures::{Async, Poll};
 use http;
 use hyper;
 use hyper::StatusCode;
@@ -36,65 +36,73 @@ pub struct Stats {
     request_total: usize,
 }
 
-type Metrics = BiLock<IndexMap<Labels, Stats>>;
+#[derive(Debug, Clone, Default)]
+struct Metrics(IndexMap<Labels, Stats>);
 
 /// Tracks Prometheus metrics
 #[derive(Debug)]
-pub struct MetricsTask {
+pub struct Aggregate {
     root_labels: Labels,
-    metrics: Metrics,
+    metrics: Arc<RwLock<Metrics>>,
 }
 
 /// Serve scrapable metrics.
-#[derive(Debug, Clone)]
-pub struct Server {
-    metrics: Metrics,
+#[derive(Debug)]
+pub struct Serve {
+    metrics: Arc<RwLock<Metrics>>,
 }
 
-pub fn new(process_ctx: Arc<ctx::process>) -> (Server, Work) {
-    let (read, write) = BiLock::new(IndexMap::<Labels, Stats>::new());
-    (Server::new(read), Work::new(process_ctx, write))
+pub fn new(process_ctx: Arc<ctx::Process>) -> (Aggregate, Serve) {
+    let metrics = Arc::new(RwLock::new(Metrics::default()));
+    let serve = Serve::new(&metrics);
+    (Aggregate::new(process_ctx, metrics), serve)
 }
 
-impl Server {
-    pub fn new(metrics: Metrics) -> Self {
-        Server { metrics, }
+impl Serve {
+    fn new(metrics: &Arc<RwLock<Metrics>>) -> Self {
+        Serve { metrics: metrics.clone() }
     }
 }
 
-// ===== impl MetricsTask =====
 
-impl Work {
-    pub fn new(process_ctx: Arc<ctx::Process>, metrics: Metrics) -> Self {
-        Metrics {
+// ===== impl Aggregate =====
+
+impl Aggregate {
+    fn new(process_ctx: Arc<ctx::Process>,
+               metrics: Arc<RwLock<Metrics>>)
+               -> Self
+    {
+        Aggregate {
             root_labels: Labels::from(process_ctx),
             metrics,
         }
     }
 
     /// Observe the given event.
-    pub fn record_event(&self, event: &Event) {
+    pub fn record_event(&mut self, event: &Event) {
         trace!("Metrics::record({:?})", event);
-        // TODO: record the event.
         let proxy_labels = self.root_labels.with_proxy_ctx(event.proxy());
-        self.metrics.acquire().and_then(|)
+        let mut metrics = self.metrics.write()
+            .expect("RwLock can only be poisoned by a writer panicking,\
+                     and Serve tasks do not take the write lock.");
         match *event {
             Event::StreamRequestOpen(ref req) => {
                 let labels = proxy_labels.with_request_ctx(req);
-                metrics.entry(labels)
+                metrics.0.entry(labels)
                     .or_insert_with(Default::default)
                     .request_total += 1;
             },
-            _ => {}
-        }
+            _ => {
+                // TODO: record other events.
+            }
+        };
 
     }
 }
 
 impl fmt::Display for Metrics {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let metrics = self.metrics.lock().unwrap();
-        for (labels, stats) in metrics.iter() {
+        for (labels, stats) in self.0.iter() {
             write!(f, "request_total{{{}}} {}\n", labels, stats.request_total)?;
         }
         Ok(())
@@ -102,24 +110,68 @@ impl fmt::Display for Metrics {
 }
 
 
-// ===== impl Server =====
+#[derive(Debug)]
+pub struct ServeFuture {
+    lock: Arc<RwLock<Metrics>>,
+}
+
+impl ServeFuture {
+    fn new(lock: &Arc<RwLock<Metrics>>) -> Self {
+        ServeFuture {
+            lock: lock.clone(),
+        }
+    }
+}
+
+impl Future for ServeFuture {
+    type Item = HyperResponse;
+    type Error = hyper::Error;
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        // TODO: can the "turn try_read into a Future" part of this be factored
+        //       out into something reusable?
+        match self.lock.try_read() {
+            // Guard acquired!
+            Ok(metrics) => {
+                // TODO: handle both text and protobuf serialization.
+                let rsp = HyperResponse::new()
+                    .with_status(StatusCode::Ok)
+                    .with_body(format!("{}", *metrics));
+                Ok(Async::Ready(rsp))
+            },
+            // The locked object is being written to, so acquiring a read
+            // lock would block. Yield until the executor polls us again.
+            Err(sync::TryLockError::WouldBlock) => Ok(Async::NotReady),
+            // If the lock was poisoned, that's bad news.
+            Err(sync::TryLockError::Poisoned(err)) => {
+                // Bad news!
+                error!("metrics RwLock was poisoned: {:?}", err);
+                let rsp = HyperResponse::new()
+                    .with_status(StatusCode::InternalServerError);
+                Ok(Async::Ready(rsp))
+            },
+        }
+    }
+}
 
 
-impl HyperService for Server {
+// ===== impl Serve =====
+
+impl HyperService for Serve {
     type Request = HyperRequest;
     type Response = HyperResponse;
     type Error = hyper::Error;
-    type Future = FutureResult<Self::Response, Self::Error>;
+    type Future = Either<
+        ServeFuture,
+        FutureResult<Self::Response, Self::Error>,
+    >;
 
     fn call(&self, req: Self::Request) -> Self::Future {
         if req.path() != "/metrics" {
             let rsp = HyperResponse::new().with_status(StatusCode::NotFound);
-            return future::ok(rsp);
+            return Either::B(future::ok(rsp));
         }
-
-        future::ok(HyperResponse::new()
-            .with_status(StatusCode::Ok)
-            .with_body(format!("{}", self.metrics)))
+        Either::A(ServeFuture::new(&self.metrics))
     }
 }
 

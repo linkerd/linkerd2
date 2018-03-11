@@ -7,7 +7,7 @@ use futures_mpsc_lossy::Receiver;
 use tokio_core::reactor::{Handle, Timeout};
 
 use super::event::Event;
-use super::metrics::{scrape, Metrics};
+use super::metrics::{scrape, Metrics as PushMetrics};
 use super::tap::Taps;
 use conduit_proxy_controller_grpc::telemetry::ReportRequest;
 use connection;
@@ -39,10 +39,13 @@ pub struct MakeControl {
 /// Limit the amount of memory that may be consumed for metrics aggregation.
 pub struct Control {
     /// Holds the current state of aggregated metrics.
-    metrics: Option<Metrics>,
+    push_metrics: Option<PushMetrics>,
 
-    /// scrapable metrics
-    scrape_metrics: Arc<scrape::Metrics>,
+    /// Aggregates scrapable metrics.
+    metrics_work: scrape::Aggregate,
+
+    /// Serves scrapable metrics.
+    metrics_service: Arc<scrape::Serve>,
 
     /// Receives telemetry events.
     rx: Option<Receiver<Event>>,
@@ -95,10 +98,15 @@ impl MakeControl {
         trace!("telemetry control flush_interval={:?}", self.flush_interval);
 
         let flush_timeout = Timeout::new(self.flush_interval, handle)?;
+        let (metrics_work, metrics_service) =
+            scrape::new(self.process_ctx.clone());
+        let metrics_service = Arc::new(metrics_service);
+        let push_metrics = Some(PushMetrics::new(self.process_ctx));
 
         Ok(Control {
-            metrics: Some(Metrics::new(self.process_ctx.clone())),
-            scrape_metrics: Arc::new(scrape::Metrics::new(self.process_ctx)),
+            push_metrics,
+            metrics_work,
+            metrics_service,
             rx: Some(self.rx),
             taps: Some(taps.clone()),
             flush_interval: self.flush_interval,
@@ -129,7 +137,7 @@ impl Control {
     fn flush_report(&mut self) -> Option<ReportRequest> {
         let metrics = if self.flush_timeout_expired() {
             trace!("flush timeout expired");
-            self.metrics.as_mut()
+            self.push_metrics.as_mut()
         } else {
             None
         };
@@ -137,7 +145,7 @@ impl Control {
         metrics.map(Self::generate_report)
     }
 
-    fn generate_report(m: &mut Metrics) -> ReportRequest {
+    fn generate_report(m: &mut PushMetrics) -> ReportRequest {
         let mut r = m.generate_report();
         r.proxy = 0; // 0 = Inbound, 1 = Outbound
         r
@@ -170,13 +178,13 @@ impl Control {
         -> Box<Future<Item = (), Error = io::Error> + 'static>
     {
         use hyper;
-        let metrics = self.scrape_metrics.clone();
+        let service = self.metrics_service.clone();
         let hyper = hyper::server::Http::<hyper::Chunk>::new();
         bound_port.listen_and_fold(
             &self.handle,
             (hyper, self.handle.clone()),
             move |(hyper, executor), (conn, _)| {
-                let service = scrape::Server::new(&metrics);
+                let service = service.clone();
                 let serve = hyper.serve_connection(conn, service)
                     .map(|_| {})
                     .map_err(|e| {
@@ -209,18 +217,18 @@ impl Stream for Control {
 
                     // XXX Only inbound events are currently aggregated.
                     if ev.proxy().is_inbound() {
-                        if let Some(metrics) = self.metrics.as_mut() {
+                        if let Some(metrics) = self.push_metrics.as_mut() {
                             metrics.record_event(&ev);
                         }
                     }
 
-                    self.scrape_metrics.record_event(&ev);
+                    self.metrics_work.record_event(&ev);
 
                     self.flush_report()
                 }
                 Async::Ready(None) => {
                     warn!("events finished");
-                    let report = self.metrics
+                    let report = self.push_metrics
                         .take()
                         .map(|mut m| Self::generate_report(&mut m));
                     if report.is_none() {
@@ -238,7 +246,7 @@ impl Stream for Control {
 
         // There may be no new events, but the timeout fired; so check at least once
         // explicitly:
-        if self.metrics.is_none() {
+        if self.push_metrics.is_none() {
             Ok(Async::Ready(None))
         } else {
             match self.flush_report() {
@@ -259,7 +267,7 @@ impl Stream for Control {
 impl fmt::Debug for Control {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("Control")
-            .field("metrics", &self.metrics)
+            .field("push_metrics", &self.push_metrics)
             .field("rx", &self.rx)
             .field("taps", &self.taps)
             .field("flush_interval", &self.flush_interval)
