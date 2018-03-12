@@ -148,10 +148,6 @@ spec:
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
         - "public-api"
-        - "-addr=:8085"
-        - "-metrics-addr=:9995"
-        - "-telemetry-addr=127.0.0.1:8087"
-        - "-tap-addr=127.0.0.1:8088"
         - "-controller-namespace={{.Namespace}}"
         - "-log-level={{.ControllerLogLevel}}"
         - "-logtostderr=true"
@@ -165,8 +161,6 @@ spec:
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
         - "destination"
-        - "-addr=:8089"
-        - "-metrics-addr=:9999"
         - "-log-level={{.ControllerLogLevel}}"
         - "-logtostderr=true"
       - name: proxy-api
@@ -179,10 +173,6 @@ spec:
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
         - "proxy-api"
-        - "-addr=:8086"
-        - "-metrics-addr=:9996"
-        - "-destination-addr=:8089"
-        - "-telemetry-addr=:8087"
         - "-log-level={{.ControllerLogLevel}}"
         - "-logtostderr=true"
       - name: tap
@@ -195,8 +185,6 @@ spec:
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
         - "tap"
-        - "-addr=:8088"
-        - "-metrics-addr=:9998"
         - "-log-level={{.ControllerLogLevel}}"
         - "-logtostderr=true"
       - name: telemetry
@@ -209,8 +197,6 @@ spec:
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
         - "telemetry"
-        - "-addr=:8087"
-        - "-metrics-addr=:9997"
         - "-ignore-namespaces=kube-system"
         - "-prometheus-url=http://prometheus.{{.Namespace}}.svc.cluster.local:9090"
         - "-log-level={{.ControllerLogLevel}}"
@@ -268,9 +254,7 @@ spec:
         image: {{.WebImage}}
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
-        - "-addr=:8084"
-        - "-metrics-addr=:9994"
-        - "-api-addr=api:8085"
+        - "-api-addr=api.{{.Namespace}}.svc.cluster.local:8085"
         - "-static-dir=/dist"
         - "-template-dir=/templates"
         - "-uuid={{.UUID}}"
