@@ -2,7 +2,7 @@ use std::default::Default;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::iter::{self, IntoIterator, Iterator};
-use std::ops::DerefMut;
+use std::ops::{self, DerefMut};
 use std::sync::Arc;
 
 use futures::future::{self, Either, Future, FutureResult};
@@ -36,17 +36,10 @@ struct LabelsInner {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct Stats {
-
-    /// `request_total` counter metric.
-    request_total: u64,
-
-    /// `response_total` counter metric.
-    response_total: u64,
+struct Metrics {
+    request_total: IndexMap<Labels, u64>,
+    response_total: IndexMap<Labels, u64>,
 }
-
-#[derive(Debug, Clone, Default)]
-struct Metrics(IndexMap<Labels, Stats>);
 
 #[derive(Debug, Clone)]
 struct MetricsSnapshot {
@@ -91,64 +84,49 @@ impl Serve {
 
 impl Metrics {
     fn export(&self) -> MetricsSnapshot {
-        let mut snap = MetricsSnapshot::new();
-
-        for (labels, stats) in &self.0 {
-            let labels: Vec<prometheus::LabelPair> = labels.into();
-            snap.push_request_total(labels.clone(), stats.request_total);
+        MetricsSnapshot {
+            request_total: self.request_total(),
+            response_total: self.response_total(),
         }
-
-        snap
-    }
-}
-
-// ===== impl MetricsFamilies =====
-
-impl MetricsSnapshot {
-
-    fn push_request_total(&mut self,
-                          label: Vec<prometheus::LabelPair>,
-                          value: u64)
-                          -> &mut Self
-    {
-        self.request_total.metric.push(
-            prometheus::Metric {
-                label,
-                counter: Some(prometheus::Counter {
-                    value: Some(value as f64)
-                }),
-                ..Default::default()
-            }
-        );
-        self
     }
 
-    fn new() -> Self {
-        let request_total = prometheus::MetricFamily {
-            name: Some("request_total".into()),
-            help: Some("A counter of the number of requests the proxy has \
-                        received.".into()),
-            type_: Some(prometheus::MetricType::Counter.into()),
-            metric: Vec::new(),
-        };
-        let response_total = prometheus::MetricFamily {
+    fn counter((label, value): (&Labels, &u64)) -> prometheus::Metric {
+        prometheus::Metric {
+            label: label.into(),
+            counter: Some(prometheus::Counter {
+                value: Some(*value as f64)
+            }),
+            ..Default::default()
+        }
+    }
+
+    fn response_total(&self) -> prometheus::MetricFamily {
+        let metric = self.response_total.iter().map(Metrics::counter);
+        prometheus::MetricFamily {
             name: Some("response_total".into()),
             help: Some("A counter of the number of responses the proxy has \
                         received.".into()),
             type_: Some(prometheus::MetricType::Counter.into()),
-            metric: Vec::new(),
-        };
+            metric: metric.collect(),
+        }
+    }
 
-        MetricsSnapshot {
-            request_total,
-            response_total,
+    fn request_total(&self) -> prometheus::MetricFamily {
+        let metric = self.request_total.iter().map(Metrics::counter);
+        prometheus::MetricFamily {
+            name: Some("request_total".into()),
+            help: Some("A counter of the number of requests the proxy has \
+                        received.".into()),
+            type_: Some(prometheus::MetricType::Counter.into()),
+            metric: metric.collect(),
         }
     }
 }
 
+
 impl fmt::Display for MetricsSnapshot {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.request_total)
+        write!(f, "{}\n{}", self.request_total, self.response_total)
     }
 }
 
@@ -195,9 +173,9 @@ impl Aggregate {
             Event::StreamRequestOpen(ref req) => {
                 let labels = proxy_labels.with_request_ctx(req);
                 self.update_metrics(move |metrics| {
-                    metrics.0.entry(labels)
-                        .or_insert_with(Default::default)
-                        .request_total += 1;
+                    *metrics.request_total
+                        .entry(labels)
+                        .or_insert_with(Default::default) += 1;
                 });
             },
             Event::StreamResponseEnd(ref res, ref end) => {
@@ -205,9 +183,10 @@ impl Aggregate {
                     .with_response_ctx(res)
                     .with_grpc_status(end.grpc_status);
                 self.update_metrics(move |metrics| {
-                    metrics.0.entry(labels)
-                        .or_insert_with(Default::default)
-                        .response_total += 1;
+                    *metrics.response_total
+                        .entry(labels)
+                        .or_insert_with(Default::default) += 1;
+
                 });
             },
             _ => {
@@ -263,26 +242,6 @@ impl HyperService for Serve {
 
 
 // ===== impl Labels =====
-
-use std::ops;
-
-impl fmt::Display for Labels {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut labels = self.into_iter();
-
-        if let Some((label, value)) = labels.next() {
-            // format the first label pair without a comma.
-            write!(f, "{}=\"{}\"", label, value)?;
-
-            // format the remaining pairs with a comma preceeding them.
-            for (label, value) in labels {
-                write!(f, ",{}=\"{}\"", label, value)?;
-            }
-        }
-
-        Ok(())
-    }
-}
 
 impl From<Arc<ctx::Process>> for Labels {
     fn from(_ctx: Arc<ctx::Process>) -> Self {
