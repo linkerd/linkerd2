@@ -12,6 +12,7 @@ flaky_tests = []
 [dependencies]
 convert                         = { path = "./convert" }
 conduit-proxy-controller-grpc   = { path = "./controller-grpc" }
+conduit-proxy-prometheus-export = { path = "./prometheus-export" }
 futures-mpsc-lossy              = { path = "./futures-mpsc-lossy" }
 conduit-proxy-router            = { path = "./router" }
 

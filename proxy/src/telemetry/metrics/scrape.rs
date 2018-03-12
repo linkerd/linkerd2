@@ -1,7 +1,8 @@
-use std::sync::{self, Arc, RwLock};
+use std::default::Default;
+use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::iter::{self, IntoIterator, Iterator};
-use std::fmt;
+use std::sync::{self, Arc, RwLock};
 
 use futures::future::{self, Either, Future, FutureResult};
 use futures::sync::{BiLock, BiLockGuard};
@@ -17,6 +18,7 @@ use hyper::server::{
 use indexmap::{IndexMap};
 use tokio_core::reactor::Handle;
 
+use conduit_proxy_prometheus_export as prometheus;
 use ctx;
 use telemetry::event::Event;
 
@@ -35,11 +37,16 @@ struct LabelsInner {
 pub struct Stats {
 
     /// `request_total` counter metric.
-    request_total: usize,
+    request_total: u64,
 }
 
 #[derive(Debug, Clone, Default)]
 struct Metrics(IndexMap<Labels, Stats>);
+
+#[derive(Debug, Clone)]
+struct MetricsSnapshot {
+    request_total: prometheus::MetricFamily,
+}
 
 /// Tracks Prometheus metrics
 #[derive(Debug)]
@@ -64,8 +71,70 @@ pub fn new(process_ctx: Arc<ctx::Process>, handle: &Handle)
 }
 
 impl Serve {
+
     fn new(metrics: BiLock<Metrics>) -> Self {
         Serve { metrics: Arc::new(metrics) }
+    }
+
+    fn future(&self) -> MetricsFuture {
+        MetricsFuture { lock: self.metrics.clone() }
+    }
+}
+
+// ===== impl Metrics =====
+
+impl Metrics {
+    fn export(&self) -> MetricsSnapshot {
+        let mut snap = MetricsSnapshot::new();
+
+        for (labels, stats) in &self.0 {
+            let labels: Vec<prometheus::LabelPair> = labels.into();
+            snap.push_request_total(labels.clone(), stats.request_total);
+        }
+
+        snap
+    }
+}
+
+// ===== impl MetricsFamilies =====
+
+impl MetricsSnapshot {
+
+    fn push_request_total(&mut self,
+                          label: Vec<prometheus::LabelPair>,
+                          value: u64)
+                          -> &mut Self
+    {
+        self.request_total.metric.push(
+            prometheus::Metric {
+                label,
+                counter: Some(prometheus::Counter {
+                    value: Some(value as f64)
+                }),
+                ..Default::default()
+            }
+        );
+        self
+    }
+
+    fn new() -> Self {
+        let request_total = prometheus::MetricFamily {
+            name: Some("request_total".into()),
+            help: Some("A counter of the number of requests the proxy has \
+                        received.".into()),
+            type_: Some(prometheus::MetricType::Counter.into()),
+            metric: Vec::new(),
+        };
+
+        MetricsSnapshot {
+            request_total,
+        }
+    }
+}
+
+impl fmt::Display for MetricsSnapshot {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.request_total)
     }
 }
 
@@ -73,8 +142,8 @@ impl Serve {
 
 impl Aggregate {
     fn new(process_ctx: Arc<ctx::Process>,
-               metrics: BiLock<Metrics>,
-               handle: &Handle,)
+            metrics: BiLock<Metrics>,
+            handle: &Handle,)
                -> Self
     {
         Aggregate {
@@ -107,39 +176,18 @@ impl Aggregate {
     }
 }
 
-impl fmt::Display for Metrics {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for (labels, stats) in self.0.iter() {
-            write!(f, "request_total{{{}}} {}\n", labels, stats.request_total)?;
-        }
-        Ok(())
-    }
-}
-
-
 #[derive(Debug)]
-pub struct ServeFuture {
+struct MetricsFuture {
     lock: Arc<BiLock<Metrics>>,
 }
 
-impl Serve {
-    fn future(&self) -> ServeFuture {
-        ServeFuture { lock: self.metrics.clone() }
-    }
-}
-
-impl Future for ServeFuture {
-    type Item = HyperResponse;
+impl Future for MetricsFuture {
+    type Item = MetricsSnapshot;
     type Error = hyper::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         // TODO: can all readers share the lock?
-        Ok(self.lock.poll_lock().map(|metrics| {
-            let body = format!("{}", *metrics);
-            HyperResponse::new()
-                .with_status(StatusCode::Ok)
-                .with_body(body)
-        }))
+        Ok(self.lock.poll_lock().map(|metrics| metrics.export()))
     }
 }
 
@@ -151,8 +199,8 @@ impl HyperService for Serve {
     type Response = HyperResponse;
     type Error = hyper::Error;
     type Future = Either<
-        ServeFuture,
-        FutureResult<Self::Response, Self::Error>,
+        Box<Future<Item=Self::Response, Error=Self::Error>>,
+        FutureResult<Self::Response, Self::Error>
     >;
 
     fn call(&self, req: Self::Request) -> Self::Future {
@@ -160,7 +208,12 @@ impl HyperService for Serve {
             let rsp = HyperResponse::new().with_status(StatusCode::NotFound);
             return Either::B(future::ok(rsp));
         }
-        Either::A(self.future())
+        let rsp = self.future().map(|metrics| {
+            HyperResponse::new()
+                .with_status(StatusCode::Ok)
+                .with_body(format!("{}", metrics))
+        });
+        Either::A(Box::new(rsp))
     }
 }
 
@@ -205,6 +258,16 @@ impl<'a> IntoIterator for &'a Labels {
 
     fn into_iter(self) -> Self::IntoIter {
         self.inner.into_iter()
+    }
+}
+
+impl<'a> Into<Vec<prometheus::LabelPair>> for &'a Labels {
+    fn into(self) -> Vec<prometheus::LabelPair> {
+        self.into_iter().map(|(name, value)| prometheus::LabelPair {
+            name: Some(name.into()),
+            value: Some(value.into())
+        })
+        .collect()
     }
 }
 
