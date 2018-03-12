@@ -56,21 +56,6 @@ pub enum Destination {
     External(SocketAddr),
 }
 
-impl From<FullyQualifiedAuthority> for Destination {
-    #[inline]
-    fn from(authority: FullyQualifiedAuthority) -> Self {
-        Destination::LocalSvc(authority)
-    }
-}
-
-impl From<SocketAddr> for Destination {
-    #[inline]
-    fn from(addr: SocketAddr) -> Self {
-        Destination::External(addr)
-    }
-}
-
-
 impl<B> Recognize for Outbound<B>
 where
     B: tower_h2::Body + 'static,
