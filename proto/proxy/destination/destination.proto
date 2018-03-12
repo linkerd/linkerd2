@@ -10,12 +10,27 @@ import "common/common.proto";
 // weighted set of addresses and address metadata.  Can be implemented with DNS
 // or lookups against other service discovery backends.
 //
+// If the service does not exist then the controller must send
+// `no_endpoints{exists: false}` ASAP when a client subscribes or when the
+// service stops existing. If the service exists then the controller SHOULD
+// send a `no_endpoints{exists: true}` ASAP when a client subscribes
+//
 // The controller is expected to send an Update every time there is a
 // change in service discovery.  The controller is also expected to send an
 // update at least once every ADDRESS_UPDATE_INTERVAL to indicate that the
 // controller is still healthy.  If no service discovery updates have taken
 // place, the controller can simply send an empty `add`.  The controller may
 // determine the value of ADDRESS_UPDATE_INTERVAL.
+//
+// The client MUST be prepared to receive messages in any order and the client
+// MUST be able to cope with the presence or absence of redundant messages.
+// For example, `no_endpoints{exists: true}` might be sent prior to an `add`,
+// which would be equivalent to sending just the `add`. Similarly, a `remove`
+// followed by a `no_endpoints` message is equivalent to sending just the
+// `no_endpoints` message, and a `remove` that removes the last endpoint is
+// equivalent to a `no_endpoints{exists: true}` message. HOWEVER,
+// `no_endpoints{exists:false}` followed by an `add` is NOT equivalent to the
+// `add` alone.
 
 service Destination {
   // Given a destination, return all addresses in that destination as a long-
@@ -25,8 +40,19 @@ service Destination {
 
 message Update {
   oneof update {
+    // A new set of endpoints are available for the service. The set might be
+    // empty.
     WeightedAddrSet add = 1;
+
+    // Some endpoints have been removed from the service.
     AddrSet remove = 2;
+
+    // `no_endpoints{exists: false}` indicates that the service does not exist
+    // and the client MAY try an alternate service discovery method (e.g. DNS).
+    //
+    // `no_endpoints(exists: true)` indicates that the service does exist and
+    // the client MUST NOT fall back to an alternate service discovery method.
+    NoEndpoints no_endpoints = 3;
   }
 }
 
@@ -41,4 +67,8 @@ message WeightedAddrSet {
 message WeightedAddr {
   common.TcpAddress addr = 1;
   uint32 weight = 3;
+}
+
+message NoEndpoints {
+    bool exists = 1;
 }
