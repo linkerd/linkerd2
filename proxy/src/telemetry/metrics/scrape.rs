@@ -2,6 +2,7 @@ use std::default::Default;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::iter::{self, IntoIterator, Iterator};
+use std::ops::DerefMut;
 use std::sync::Arc;
 
 use futures::future::{self, Either, Future, FutureResult};
@@ -39,6 +40,9 @@ pub struct Stats {
 
     /// `request_total` counter metric.
     request_total: u64,
+
+    /// `response_total` counter metric.
+    response_total: u64,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -47,6 +51,7 @@ struct Metrics(IndexMap<Labels, Stats>);
 #[derive(Debug, Clone)]
 struct MetricsSnapshot {
     request_total: prometheus::MetricFamily,
+    response_total: prometheus::MetricFamily,
 }
 
 /// Tracks Prometheus metrics
@@ -126,9 +131,17 @@ impl MetricsSnapshot {
             type_: Some(prometheus::MetricType::Counter.into()),
             metric: Vec::new(),
         };
+        let response_total = prometheus::MetricFamily {
+            name: Some("response_total".into()),
+            help: Some("A counter of the number of responses the proxy has \
+                        received.".into()),
+            type_: Some(prometheus::MetricType::Counter.into()),
+            metric: Vec::new(),
+        };
 
         MetricsSnapshot {
             request_total,
+            response_total,
         }
     }
 }
@@ -154,26 +167,54 @@ impl Aggregate {
         }
     }
 
+    /// Wrapper function to acquire a lock on the metrics state
+    /// run a closure to update it, and release the lock.
+    ///
+    /// This makes `record_event` less repetitive, without causing us to
+    /// hold on to the lock for all the metrics updating logic (i.e. we
+    /// shouldn't need to hold a lock on the metrics state while destructuring
+    /// an event and constructing the corresponding labels, etc).
+    fn update_metrics<F>(&mut self, f: F)
+    where
+        F: FnOnce(&mut Metrics),
+    {
+        let metrics = self.metrics.take()
+            .expect("lock should not be taken outside of update_metrics");
+        let work = metrics.lock().map(|mut lock| {
+            f(lock.deref_mut());
+            self.metrics = Some(lock.unlock())
+        });
+        work.wait().expect("update metrics");
+    }
+
     /// Observe the given event.
     pub fn record_event(&mut self, event: Event) {
         trace!("Metrics::record({:?})", event);
         let proxy_labels = self.root_labels.with_proxy_ctx(event.proxy());
-        let metrics = self.metrics.take();
-        let work = metrics.unwrap().lock().map(move |mut metrics| {
-            match event {
-                Event::StreamRequestOpen(ref req) => {
-                    let labels = proxy_labels.with_request_ctx(req);
+        match event {
+            Event::StreamRequestOpen(ref req) => {
+                let labels = proxy_labels.with_request_ctx(req);
+                self.update_metrics(move |metrics| {
                     metrics.0.entry(labels)
                         .or_insert_with(Default::default)
                         .request_total += 1;
-                },
-                _ => {
-                    // TODO: record other events.
-                }
-            };
-            self.metrics = Some(metrics.unlock());
-        });
-        work.wait().expect("update metrics");
+                });
+            },
+            Event::StreamResponseEnd(ref res, ref end) => {
+                let labels = proxy_labels
+                    .with_response_ctx(res)
+                    .with_grpc_status(end.grpc_status);
+                self.update_metrics(move |metrics| {
+                    metrics.0.entry(labels)
+                        .or_insert_with(Default::default)
+                        .response_total += 1;
+                });
+            },
+            _ => {
+                // TODO: record other events.
+            }
+        };
+
     }
 }
 
@@ -296,6 +337,34 @@ impl Labels {
             .unwrap_or_else(String::new);
         let inner = self.child() + ("authority", authority);
         let inner = Arc::new(inner);
+        Labels {
+            inner,
+        }
+    }
+
+    pub fn with_response_ctx<'a>(&self, response_ctx: &'a Arc<ctx::http::Response>)
+        -> Labels {
+        let status = response_ctx.status.as_str();
+        let authority = response_ctx.request.uri
+            .authority_part()
+            .map(http::uri::Authority::to_string)
+            .unwrap_or_else(String::new);
+        let inner = self.child() + ("authority", authority) +
+            ("status_code", status.into());
+        let inner = Arc::new(inner);
+        Labels {
+            inner,
+        }
+    }
+
+
+    pub fn with_grpc_status(&self, status: Option<u32>)
+        -> Labels {
+        let inner = if let Some(code) = status {
+            Arc::new(self.child() + ("grpc_status", format!("{}", code)))
+        } else {
+            self.inner.clone()
+        };
         Labels {
             inner,
         }
