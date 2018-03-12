@@ -2,11 +2,11 @@ use std::default::Default;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::iter::{self, IntoIterator, Iterator};
-use std::sync::{self, Arc, RwLock};
+use std::sync::Arc;
 
 use futures::future::{self, Either, Future, FutureResult};
-use futures::sync::{BiLock, BiLockGuard};
-use futures::{Async, Poll};
+use futures::sync::BiLock;
+use futures::Poll;
 use http;
 use hyper;
 use hyper::StatusCode;
