@@ -9,6 +9,7 @@ use futures::sync::BiLock;
 use futures::Poll;
 use http;
 use hyper;
+use hyper::header::{ContentLength, ContentType};
 use hyper::StatusCode;
 use hyper::server::{
     Service as HyperService,
@@ -209,9 +210,11 @@ impl HyperService for Serve {
             return Either::B(future::ok(rsp));
         }
         let rsp = self.future().map(|metrics| {
+            let body = format!("{}", metrics);
             HyperResponse::new()
-                .with_status(StatusCode::Ok)
-                .with_body(format!("{}", metrics))
+                .with_header(ContentLength(body.len() as u64))
+                .with_header(ContentType::plaintext())
+                .with_body(body)
         });
         Either::A(Box::new(rsp))
     }
