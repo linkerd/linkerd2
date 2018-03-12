@@ -22,6 +22,7 @@ pub struct Listening {
     pub control: SocketAddr,
     pub inbound: SocketAddr,
     pub outbound: SocketAddr,
+    pub metrics: SocketAddr,
 
     pub outbound_server: Option<server::Listening>,
     pub inbound_server: Option<server::Listening>,
@@ -130,9 +131,11 @@ fn run(proxy: Proxy, mut env: config::TestEnv) -> Listening {
         config.metrics_flush_interval = dur;
     }
 
+    let main = conduit_proxy::Main::new(config, mock_orig_dst.clone());
 
-    let (running_tx, running_rx) = oneshot::channel();
-    let (tx, mut rx) = shutdown_signal();
+
+    let (running_tx, running_rx) = shutdown_signal();
+    let (tx, rx) = shutdown_signal();
 
     ::std::thread::Builder::new()
         .name("support proxy".into())
@@ -146,6 +149,7 @@ fn run(proxy: Proxy, mut env: config::TestEnv) -> Listening {
             let control_addr = main.control_addr();
             let inbound_addr = main.inbound_addr();
             let outbound_addr = main.outbound_addr();
+            let metrics_addr = main.metrics_addr();
 
             {
                 let mut inner = mock_orig_dst.0.lock().unwrap();
@@ -156,7 +160,12 @@ fn run(proxy: Proxy, mut env: config::TestEnv) -> Listening {
             // slip the running tx into the shutdown future, since the first time
             // the shutdown future is polled, that means all of the proxy is now
             // running.
-            let addrs = (control_addr, inbound_addr, outbound_addr);
+            let addrs = (
+                control_addr,
+                inbound_addr,
+                outbound_addr,
+                metrics_addr,
+            );
             let mut running = Some((running_tx, addrs));
             let on_shutdown = future::poll_fn(move || {
                 if let Some((tx, addrs)) = running.take() {
@@ -170,12 +179,14 @@ fn run(proxy: Proxy, mut env: config::TestEnv) -> Listening {
         })
         .unwrap();
 
-    let (control_addr, inbound_addr, outbound_addr) = running_rx.wait().unwrap();
+    let (control_addr, inbound_addr, outbound_addr, metrics_addr) =
+        running_rx.wait().unwrap();
 
     Listening {
         control: control_addr,
         inbound: inbound_addr,
         outbound: outbound_addr,
+        metrics: metrics_addr,
 
         outbound_server: outbound,
         inbound_server: inbound,
