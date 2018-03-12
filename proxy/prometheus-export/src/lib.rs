@@ -3,7 +3,7 @@ extern crate prost;
 extern crate prost_derive;
 
 use std::{fmt, f64};
-// pub use self::pb::*;
+pub use self::pb::*;
 
 /// Prometheus Protocol Buffers export format.
 pub mod pb {
