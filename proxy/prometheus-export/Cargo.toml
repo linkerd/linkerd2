@@ -1,5 +1,5 @@
 [package]
-name = "prometheus"
+name = "conduit-proxy-prometheus-export"
 version = "0.1.0"
 authors = ["Eliza Weisman <eliza@buoyant.io>"]
 publish = false
