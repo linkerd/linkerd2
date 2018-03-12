@@ -260,3 +260,31 @@ fn records_latency_statistics() {
 #[test]
 fn telemetry_report_errors_are_ignored() {}
 
+#[test]
+fn metrics_endpoint_request_count() {
+    let _ = env_logger::try_init();
+
+    info!("running test server");
+    let srv = server::new().route("/hey", "hello").run();
+
+    let ctrl = controller::new();
+    let proxy = proxy::new()
+        .controller(ctrl.run())
+        .inbound(srv)
+        .metrics_flush_interval(Duration::from_millis(500))
+        .run();
+    let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
+    let metrics = client::http1(proxy.metrics, "localhost");
+
+    // prior to seeing any requests, request count should be empty.
+    assert!(!metrics.get("/metrics")
+        .contains("request_total{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\"}"));
+
+    info!("client.get(/hey)");
+    assert_eq!(client.get("/hey"), "hello");
+
+    // after seeing a request, the request count should be 1.
+    assert!(metrics.get("/metrics")
+        .contains("request_total{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\"} 1"));
+
+}
