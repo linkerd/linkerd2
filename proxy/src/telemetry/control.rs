@@ -45,7 +45,7 @@ pub struct Control {
     metrics_work: prometheus::Aggregate,
 
     /// Serves scrapable metrics.
-    metrics_service: Arc<prometheus::Serve>,
+    metrics_service: prometheus::Serve,
 
     /// Receives telemetry events.
     rx: Option<Receiver<Event>>,
@@ -100,7 +100,6 @@ impl MakeControl {
         let flush_timeout = Timeout::new(self.flush_interval, handle)?;
         let (metrics_work, metrics_service) =
             prometheus::new(self.process_ctx.clone(), handle);
-        let metrics_service = Arc::new(metrics_service);
         let push_metrics = Some(PushMetrics::new(self.process_ctx));
 
         Ok(Control {
