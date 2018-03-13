@@ -14,7 +14,8 @@ pub struct SoOriginalDst;
 impl GetOriginalDst for SoOriginalDst {
     #[cfg(not(target_os = "linux"))]
     fn get_original_dst(&self, _: &TcpStream) -> Option<SocketAddr> {
-        Some("50.19.252.69:80".parse().unwrap())
+        debug!("no support for SO_ORIGINAL_DST");
+        None
     }
 
     // TODO change/remove once https://github.com/tokio-rs/tokio/issues/25 is addressed
