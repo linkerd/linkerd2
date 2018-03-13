@@ -1,5 +1,5 @@
 use std::default::Default;
-use std::fmt;
+use std::{fmt, u32};
 use std::hash::{Hash, Hasher};
 use std::iter::{self, IntoIterator, Iterator};
 use std::ops::{self, DerefMut};
@@ -22,6 +22,7 @@ use tokio_core::reactor::Handle;
 
 use ctx;
 use telemetry::event::Event;
+use super::latency::{BUCKET_BOUNDS, Histogram};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Labels {
@@ -38,6 +39,8 @@ struct LabelsInner {
 struct Metrics {
     request_total: Metric<Counter>,
     response_total: Metric<Counter>,
+    response_duration: Metric<Histogram>,
+    response_latency: Metric<Histogram>,
 }
 
 trait MetricValue {
@@ -45,7 +48,7 @@ trait MetricValue {
 }
 
 #[derive(Debug, Clone)]
-struct Metric<M: MetricValue> {
+struct Metric<M> {
     name: &'static str,
     help: &'static str,
     values: IndexMap<Labels, M>
@@ -99,21 +102,48 @@ impl Metrics {
             "request_total",
             "A counter of the number of requests the proxy has received.",
         );
+        let response_duration = Metric::<Histogram>::new(
+            "response_duration_ms",
+            "A histogram of the duration of a response. This is measured from \
+             when the response headers are received to when the response \
+             stream has completed.",
+        );
+        let response_latency = Metric::<Histogram>::new(
+            "response_latency_ms",
+            "A histogram of the total latency of a response. This is measured \
+            from when the request headers are received to when the response \
+            stream has completed.",
+        );
         Metrics {
             request_total,
             response_total,
+            response_duration,
+            response_latency,
         }
     }
 
-    fn request_total(&mut self, labels: Labels) -> &mut u64 {
+    fn request_total(&mut self, labels: &Labels) -> &mut u64 {
         &mut self.request_total.values
-            .entry(labels)
+            .entry(labels.clone())
             .or_insert_with(Default::default).0
     }
 
-    fn response_total(&mut self, labels: Labels) -> &mut u64 {
+    fn response_duration(&mut self, labels: &Labels) -> &mut Histogram {
+        self.response_duration.values
+            .entry(labels.clone())
+            .or_insert_with(Default::default)
+    }
+
+
+    fn response_latency(&mut self, labels: &Labels) -> &mut Histogram {
+        self.response_latency.values
+            .entry(labels.clone())
+            .or_insert_with(Default::default)
+    }
+
+    fn response_total(&mut self, labels: &Labels) -> &mut u64 {
         &mut self.response_total.values
-            .entry(labels)
+            .entry(labels.clone())
             .or_insert_with(Default::default).0
     }
 }
@@ -121,17 +151,24 @@ impl Metrics {
 
 impl fmt::Display for Metrics {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}\n{}", self.request_total, self.response_total)
+        write!(f, "{}\n{}\n{}\n{}",
+            self.request_total,
+            self.response_total,
+            self.response_duration,
+            self.response_latency,
+        )
+    }
+}
+
+impl fmt::Display for Counter {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0 as f64)
     }
 }
 
 // ===== impl Metric =====
 
-impl MetricValue for Counter {
-    const TYPE: &'static str = "counter";
-}
-
-impl<M: MetricValue> Metric<M> {
+impl<M> Metric<M> {
 
     pub fn new(name: &'static str, help: &'static str) -> Self {
         Metric {
@@ -143,22 +180,12 @@ impl<M: MetricValue> Metric<M> {
 
 }
 
-impl fmt::Display for Counter {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0 as f64)
-    }
-}
-
-impl<M> fmt::Display for Metric<M>
-where
-    M: MetricValue + fmt::Display,
-{
+impl fmt::Display for Metric<Counter> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f,
-            "# HELP {name} {help}\n# TYPE {name} {ty}\n",
+            "# HELP {name} {help}\n# TYPE {name} counter\n",
             name = self.name,
             help = self.help,
-            ty = M::TYPE
         )?;
 
         for (labels, value) in &self.values {
@@ -171,6 +198,29 @@ where
                     value = value,
                 )
             }?;
+        }
+
+        Ok(())
+    }
+}
+
+impl fmt::Display for Metric<Histogram> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f,
+            "# HELP {name} {help}\n# TYPE {name} histogram\n",
+            name = self.name,
+            help = self.help,
+        )?;
+
+        for (labels, histogram) in &self.values {
+            for (num, count) in histogram.into_iter().enumerate() {
+                write!(f, "{name}{{{labels},le=\"{le}\"}} {value}\n",
+                    name = self.name,
+                    labels = labels,
+                    le = BUCKET_BOUNDS[num],
+                    value = count,
+                )?;
+            }
         }
 
         Ok(())
@@ -219,16 +269,18 @@ impl Aggregate {
         match event {
             Event::StreamRequestOpen(ref req) => {
                 let labels = proxy_labels.with_request_ctx(req);
-                self.update_metrics(move |metrics| {
-                    *metrics.request_total(labels) += 1;
+                self.update_metrics(|metrics| {
+                    *metrics.request_total(&labels) += 1;
                 });
             },
             Event::StreamResponseEnd(ref res, ref end) => {
                 let labels = proxy_labels
                     .with_response_ctx(res)
                     .with_grpc_status(end.grpc_status);
-                self.update_metrics(move |metrics| {
-                    *metrics.response_total(labels) += 1;
+                self.update_metrics(|metrics| {
+                    *metrics.response_total(&labels) += 1;
+                    *metrics.response_duration(&labels) += end.since_response_open;
+                    *metrics.response_latency(&labels) += end.since_request_open;
                 });
             },
             _ => {

@@ -260,6 +260,13 @@ fn records_latency_statistics() {
 #[test]
 fn telemetry_report_errors_are_ignored() {}
 
+
+macro_rules! assert_contains {
+    ($scrape:expr, $contains:expr) => {
+        assert!($scrape.contains($contains), "metrics scrape:\n{:8}\ndid not contain:\n{:8}", $scrape, $contains)
+    }
+}
+
 #[test]
 fn metrics_endpoint_request_count() {
     let _ = env_logger::try_init();
@@ -283,10 +290,53 @@ fn metrics_endpoint_request_count() {
     info!("client.get(/hey)");
     assert_eq!(client.get("/hey"), "hello");
 
-    let rsp = metrics.get("/metrics");
-    info!("/metrics: {:?}", rsp);
+    let scrape = metrics.get("/metrics");
     // after seeing a request, the request count should be 1.
-    assert!(rsp
-        .contains("request_total{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\"} 1"));
+    assert_contains!(scrape, "request_total{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\"} 1");
 
+}
+
+#[test]
+fn metrics_endpoint_response_latency() {
+    let _ = env_logger::try_init();
+
+    info!("running test server");
+    let srv = server::new()
+        .route_with_latency("/hey", "hello", Duration::from_millis(500))
+        .route_with_latency("/hi", "good morning", Duration::from_millis(40))
+        .run();
+
+    let ctrl = controller::new();
+    let proxy = proxy::new()
+        .controller(ctrl.run())
+        .inbound(srv)
+        .metrics_flush_interval(Duration::from_millis(500))
+        .run();
+    let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
+    let metrics = client::http1(proxy.metrics, "localhost");
+
+    info!("client.get(/hey)");
+    assert_eq!(client.get("/hey"), "hello");
+
+    let scrape = metrics.get("/metrics");
+    assert_contains!(scrape,
+        "response_latency_ms{authority=\"tele.test.svc.cluster.local\",status_code=\"200\",direction=\"inbound\",le=\"1000\"} 1");
+
+    info!("client.get(/hi)");
+    assert_eq!(client.get("/hi"), "good morning");
+
+    let scrape = metrics.get("/metrics");
+    assert_contains!(scrape,
+        "response_latency_ms{authority=\"tele.test.svc.cluster.local\",status_code=\"200\",direction=\"inbound\",le=\"1000\"} 1");
+    assert_contains!(scrape, "response_latency_ms{authority=\"tele.test.svc.cluster.local\",status_code=\"200\",direction=\"inbound\",le=\"50\"} 1");
+
+    info!("client.get(/hi)");
+    assert_eq!(client.get("/hi"), "good morning");
+
+    let scrape = metrics.get("/metrics");
+    assert_contains!(scrape,
+        "response_latency_ms{authority=\"tele.test.svc.cluster.local\",status_code=\"200\",direction=\"inbound\",le=\"1000\"} 1");
+    assert_contains!(scrape, "response_latency_ms{authority=\"tele.test.svc.cluster.local\",status_code=\"200\",direction=\"inbound\",le=\"50\"} 2");
+
+    // TODO: assert all other buckets are 0
 }

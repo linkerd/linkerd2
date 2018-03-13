@@ -1,5 +1,5 @@
 #![deny(missing_docs)]
-use std::{ops, slice, u32};
+use std::{fmt, ops, slice, u32};
 use std::default::Default;
 use std::time::Duration;
 
@@ -56,7 +56,7 @@ pub const BUCKET_BOUNDS: [Latency; NUM_BUCKETS] = [
 ];
 
 /// A series of latency values and counts.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Histogram([u32; NUM_BUCKETS]);
 
 /// A latency in tenths of a millisecond.
@@ -124,6 +124,7 @@ impl Default for Histogram {
 const SEC_TO_MS: u32 = 1_000;
 const SEC_TO_TENTHS_OF_A_MS: u32 = SEC_TO_MS * 10;
 const TENTHS_OF_MS_TO_NS: u32 =  MS_TO_NS / 10;
+const MS_TO_TENTHS_OF_MS: u32 = 10;
 /// Conversion ratio from milliseconds to nanoseconds.
 pub const MS_TO_NS: u32 = 1_000_000;
 
@@ -173,5 +174,15 @@ impl From<u32> for Latency {
 impl Into<u32> for Latency {
     fn into(self) -> u32 {
         self.0
+    }
+}
+
+impl fmt::Display for Latency {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.0 == u32::MAX {
+            write!(f, "+Inf")
+        } else {
+            write!(f, "{}", (self.0 / MS_TO_TENTHS_OF_MS) as f64)
+        }
     }
 }
