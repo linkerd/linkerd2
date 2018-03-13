@@ -5,7 +5,6 @@
 extern crate abstract_ns;
 extern crate bytes;
 extern crate conduit_proxy_controller_grpc;
-extern crate conduit_proxy_prometheus_export;
 extern crate convert;
 extern crate domain;
 extern crate env_logger;
