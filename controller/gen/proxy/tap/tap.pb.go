@@ -75,9 +75,7 @@ func (m *ObserveRequest_Match) String() string            { return proto.Compact
 func (*ObserveRequest_Match) ProtoMessage()               {}
 func (*ObserveRequest_Match) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0, 0} }
 
-type isObserveRequest_Match_Match interface {
-	isObserveRequest_Match_Match()
-}
+type isObserveRequest_Match_Match interface{ isObserveRequest_Match_Match() }
 
 type ObserveRequest_Match_All struct {
 	All *ObserveRequest_Match_Seq `protobuf:"bytes,1,opt,name=all,oneof"`
@@ -332,9 +330,7 @@ func (m *ObserveRequest_Match_Tcp) String() string            { return proto.Com
 func (*ObserveRequest_Match_Tcp) ProtoMessage()               {}
 func (*ObserveRequest_Match_Tcp) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0, 0, 1} }
 
-type isObserveRequest_Match_Tcp_Match interface {
-	isObserveRequest_Match_Tcp_Match()
-}
+type isObserveRequest_Match_Tcp_Match interface{ isObserveRequest_Match_Tcp_Match() }
 
 type ObserveRequest_Match_Tcp_Netmask_ struct {
 	Netmask *ObserveRequest_Match_Tcp_Netmask `protobuf:"bytes,1,opt,name=netmask,oneof"`
@@ -511,9 +507,7 @@ func (m *ObserveRequest_Match_Http) String() string            { return proto.Co
 func (*ObserveRequest_Match_Http) ProtoMessage()               {}
 func (*ObserveRequest_Match_Http) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0, 0, 2} }
 
-type isObserveRequest_Match_Http_Match interface {
-	isObserveRequest_Match_Http_Match()
-}
+type isObserveRequest_Match_Http_Match interface{ isObserveRequest_Match_Http_Match() }
 
 type ObserveRequest_Match_Http_Scheme struct {
 	Scheme *conduit_common.Scheme `protobuf:"bytes,1,opt,name=scheme,oneof"`
@@ -694,9 +688,7 @@ func (*ObserveRequest_Match_Http_StringMatch) Descriptor() ([]byte, []int) {
 	return fileDescriptor0, []int{0, 0, 2, 0}
 }
 
-type isObserveRequest_Match_Http_StringMatch_Match interface {
-	isObserveRequest_Match_Http_StringMatch_Match()
-}
+type isObserveRequest_Match_Http_StringMatch_Match interface{ isObserveRequest_Match_Http_StringMatch_Match() }
 
 type ObserveRequest_Match_Http_StringMatch_Exact struct {
 	Exact string `protobuf:"bytes,1,opt,name=exact,oneof"`
