@@ -143,6 +143,10 @@ where
         self.outbound_listener.local_addr()
     }
 
+    pub fn metrics_addr(&self) -> SocketAddr {
+        self.metrics_listener.local_addr()
+    }
+
     pub fn run(self) {
         self.run_until(::futures::future::empty());
     }
@@ -383,6 +387,7 @@ where
             let s = server.serve(session).map_err(|_| ());
 
             executor.spawn(::logging::context_future("serve_control", s));
+
 
             future::ok((server, executor))
         },

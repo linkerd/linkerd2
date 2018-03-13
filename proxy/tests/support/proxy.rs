@@ -22,6 +22,7 @@ pub struct Listening {
     pub control: SocketAddr,
     pub inbound: SocketAddr,
     pub outbound: SocketAddr,
+    pub metrics: SocketAddr,
 
     pub outbound_server: Option<server::Listening>,
     pub inbound_server: Option<server::Listening>,
@@ -137,6 +138,7 @@ fn run(proxy: Proxy, mut env: config::TestEnv) -> Listening {
     let control_addr = main.control_addr();
     let inbound_addr = main.inbound_addr();
     let outbound_addr = main.outbound_addr();
+    let metrics_addr = main.metrics_addr();
 
     {
         let mut inner = mock_orig_dst.0.lock().unwrap();
@@ -158,12 +160,13 @@ fn run(proxy: Proxy, mut env: config::TestEnv) -> Listening {
         .unwrap();
 
     running_rx.wait().unwrap();
-    ::std::thread::sleep(::std::time::Duration::from_millis(100));
+    ::std::thread::sleep(::std::time::Duration::from_millis(200));
 
     Listening {
         control: control_addr,
         inbound: inbound_addr,
         outbound: outbound_addr,
+        metrics: metrics_addr,
 
         outbound_server: outbound,
         inbound_server: inbound,
