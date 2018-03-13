@@ -131,11 +131,8 @@ fn run(proxy: Proxy, mut env: config::TestEnv) -> Listening {
         config.metrics_flush_interval = dur;
     }
 
-    let main = conduit_proxy::Main::new(config, mock_orig_dst.clone());
-
-
-    let (running_tx, running_rx) = shutdown_signal();
-    let (tx, rx) = shutdown_signal();
+    let (running_tx, running_rx) = oneshot::channel();
+    let (tx, mut rx) = shutdown_signal();
 
     ::std::thread::Builder::new()
         .name("support proxy".into())

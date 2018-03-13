@@ -5,6 +5,7 @@
 extern crate abstract_ns;
 extern crate bytes;
 extern crate conduit_proxy_controller_grpc;
+extern crate conduit_proxy_prometheus_export;
 extern crate convert;
 extern crate domain;
 extern crate env_logger;
@@ -151,6 +152,10 @@ where
 
     pub fn handle(&self) -> Handle {
         self.reactor.handle()
+    }
+
+    pub fn metrics_addr(&self) -> SocketAddr {
+        self.metrics_listener.local_addr()
     }
 
     pub fn run_until<F>(self, shutdown_signal: F)
@@ -389,6 +394,7 @@ where
             let s = server.serve(session).map_err(|_| ());
 
             executor.spawn(::logging::context_future("serve_control", s));
+
 
             future::ok((server, executor))
         },
