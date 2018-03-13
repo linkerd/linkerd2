@@ -72,11 +72,14 @@ impl Server {
         mut self,
         path: &str,
         resp: &str,
+        time: timer::Control,
         latency: Duration
     ) -> Self {
         let resp = resp.to_owned();
+
         let route = Route(Box::new(move |_| {
-            thread::sleep(latency);
+            let mut time = time.clone();
+            time += latency;
             http::Response::builder()
                 .status(200)
                 .body(resp.clone())

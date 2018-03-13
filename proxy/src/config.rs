@@ -147,7 +147,6 @@ const DEFAULT_PRIVATE_LISTENER: &str = "tcp://127.0.0.1:4140";
 const DEFAULT_PUBLIC_LISTENER: &str = "tcp://0.0.0.0:4143";
 const DEFAULT_CONTROL_LISTENER: &str = "tcp://0.0.0.0:4190";
 const DEFAULT_PRIVATE_CONNECT_TIMEOUT_MS: u64 = 20;
-const DEFAULT_PUBLIC_CONNECT_TIMEOUT_MS: u64 = 300;
 const DEFAULT_BIND_TIMEOUT_MS: u64 = 10_000; // ten seconds, as in Linkerd.
 const DEFAULT_RESOLV_CONF: &str = "/etc/resolv.conf";
 
@@ -209,7 +208,7 @@ impl<'a> TryFrom<&'a Strings> for Config {
             private_forward: private_forward?,
             public_connect_timeout: Duration::from_millis(
                 public_connect_timeout?
-                    .unwrap_or(DEFAULT_PUBLIC_CONNECT_TIMEOUT_MS)
+                    .unwrap_or(200)
             ),
             private_connect_timeout:
                 Duration::from_millis(private_connect_timeout?

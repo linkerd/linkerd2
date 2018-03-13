@@ -182,14 +182,22 @@ fn inbound_aggregates_telemetry_over_several_requests() {
 // Eventually, we can add some kind of mock timer system for simulating latency
 // more reliably, and re-enable this test.
 #[test]
-#[cfg_attr(not(feature = "flaky_tests"), ignore)]
 fn records_latency_statistics() {
     let _ = env_logger::try_init();
+    let (mock_timer, time) = timer::mock();
 
     info!("running test server");
     let srv = server::new()
-        .route_with_latency("/hey", "hello", Duration::from_millis(500))
-        .route_with_latency("/hi", "good morning", Duration::from_millis(40))
+        .route_with_latency(
+            "/hey", "hello",
+            time.clone(),
+            Duration::from_millis(501),
+        )
+        .route_with_latency(
+            "/hi", "good morning",
+            time.clone(),
+            Duration::from_millis(41),
+        )
         .run();
 
     let mut ctrl = controller::new();
@@ -198,6 +206,7 @@ fn records_latency_statistics() {
         .controller(ctrl.run())
         .inbound(srv)
         .metrics_flush_interval(Duration::from_secs(5))
+        .timer(mock_timer)
         .run();
     let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
 

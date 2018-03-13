@@ -21,6 +21,7 @@ use ctx;
 use telemetry::{self, sensor};
 use transparency::{self, HttpBody, h1};
 use transport;
+use time::Timer;
 
 /// Binds a `Service` from a `SocketAddr`.
 ///
@@ -29,17 +30,18 @@ use transport;
 /// # TODO
 ///
 /// Buffering is not bounded and no timeouts are applied.
-pub struct Bind<C, B> {
+pub struct Bind<C, B, T> {
     ctx: C,
-    sensors: telemetry::Sensors,
+    sensors: telemetry::Sensors<T>,
     executor: Handle,
     req_ids: Arc<AtomicUsize>,
+    timer: T,
     _p: PhantomData<B>,
 }
 
 /// Binds a `Service` from a `SocketAddr` for a pre-determined protocol.
-pub struct BindProtocol<C, B> {
-    bind: Bind<C, B>,
+pub struct BindProtocol<C, B, T> {
+    bind: Bind<C, B, T>,
     protocol: Protocol,
 }
 
@@ -73,14 +75,24 @@ pub struct NormalizeUri<S> {
     inner: S
 }
 
-pub type Service<B> = Reconnect<NormalizeUri<NewHttp<B>>>;
+pub type Service<B, T> = Reconnect<NormalizeUri<NewHttp<B, T>>>;
 
-pub type NewHttp<B> = sensor::NewHttp<Client<B>, B, HttpBody>;
+pub type NewHttp<B, T> = sensor::NewHttp<
+    Client<B, T>,
+    B,
+    HttpBody,
+    T
+>;
 
-pub type HttpResponse = http::Response<sensor::http::ResponseBody<HttpBody>>;
+pub type HttpResponse<T> = http::Response<
+    sensor::http::ResponseBody<HttpBody, T>,
+>;
 
-pub type Client<B> = transparency::Client<
-    sensor::Connect<transport::Connect>,
+pub type Client<B, T> = transparency::Client<
+    sensor::Connect<
+        transport::Connect,
+        T,
+    >,
     B,
 >;
 
@@ -110,50 +122,51 @@ impl Error for BufferSpawnError {
     fn cause(&self) -> Option<&Error> { None }
 }
 
-impl<B> Bind<(), B> {
-    pub fn new(executor: Handle) -> Self {
+impl<B, T: Timer> Bind<(), B, T> {
+    pub fn new(executor: Handle, timer: T) -> Self {
         Self {
             executor,
             ctx: (),
-            sensors: telemetry::Sensors::null(),
+            sensors: telemetry::Sensors::null(&timer),
             req_ids: Default::default(),
+            timer,
             _p: PhantomData,
         }
     }
 
-    pub fn with_sensors(self, sensors: telemetry::Sensors) -> Self {
+    pub fn with_sensors(self, sensors: telemetry::Sensors<T>) -> Self {
         Self {
             sensors,
             ..self
         }
     }
 
-    pub fn with_ctx<C>(self, ctx: C) -> Bind<C, B> {
+    pub fn with_ctx<C>(self, ctx: C) -> Bind<C, B, T> {
         Bind {
             ctx,
             sensors: self.sensors,
             executor: self.executor,
             req_ids: self.req_ids,
+            timer: self.timer,
             _p: PhantomData,
         }
     }
 }
 
-impl<C: Clone, B> Clone for Bind<C, B> {
+impl<C: Clone, B, T: Clone> Clone for Bind<C, B, T> {
     fn clone(&self) -> Self {
         Self {
             ctx: self.ctx.clone(),
             sensors: self.sensors.clone(),
             executor: self.executor.clone(),
             req_ids: self.req_ids.clone(),
+            timer: self.timer.clone(),
             _p: PhantomData,
         }
     }
 }
 
-
-impl<C, B> Bind<C, B> {
-
+impl<C, B, T> Bind<C, B, T> {
     // pub fn ctx(&self) -> &C {
     //     &self.ctx
     // }
@@ -161,6 +174,11 @@ impl<C, B> Bind<C, B> {
     pub fn executor(&self) -> &Handle {
         &self.executor
     }
+
+    pub fn timer(&self) -> &T {
+        &self.timer
+    }
+
 
     // pub fn req_ids(&self) -> &Arc<AtomicUsize> {
     //     &self.req_ids
@@ -172,11 +190,14 @@ impl<C, B> Bind<C, B> {
 
 }
 
-impl<B> Bind<Arc<ctx::Proxy>, B>
+impl<B, T> Bind<Arc<ctx::Proxy>, B, T>
 where
     B: tower_h2::Body + 'static,
+    T: Timer + 'static,
 {
-    pub fn bind_service(&self, addr: &SocketAddr, protocol: &Protocol) -> Service<B> {
+    pub fn bind_service(&self, addr: &SocketAddr, protocol: &Protocol)
+                        -> Service<B, T>
+    {
         trace!("bind_service addr={}, protocol={:?}", addr, protocol);
         let client_ctx = ctx::transport::Client::new(
             &self.ctx,
@@ -216,8 +237,8 @@ where
 // ===== impl BindProtocol =====
 
 
-impl<C, B> Bind<C, B> {
-    pub fn with_protocol(self, protocol: Protocol) -> BindProtocol<C, B> {
+impl<C, B, T> Bind<C, B, T> {
+    pub fn with_protocol(self, protocol: Protocol) -> BindProtocol<C, B, T> {
         BindProtocol {
             bind: self,
             protocol,
@@ -225,14 +246,15 @@ impl<C, B> Bind<C, B> {
     }
 }
 
-impl<B> control::discovery::Bind for BindProtocol<Arc<ctx::Proxy>, B>
+impl<B, T> control::discovery::Bind for BindProtocol<Arc<ctx::Proxy>, B, T>
 where
     B: tower_h2::Body + 'static,
+    T: Timer + 'static,
 {
     type Request = http::Request<B>;
-    type Response = HttpResponse;
-    type Error = <Service<B> as tower::Service>::Error;
-    type Service = Service<B>;
+    type Response = HttpResponse<T>;
+    type Error = <Service<B, T> as tower::Service>::Error;
+    type Service = Service<B, T>;
     type BindError = ();
 
     fn bind(&self, addr: &SocketAddr) -> Result<Self::Service, Self::BindError> {
@@ -252,14 +274,8 @@ impl<S> NormalizeUri<S> {
 
 impl<S, B> tower::NewService for NormalizeUri<S>
 where
-    S: tower::NewService<
-        Request=http::Request<B>,
-        Response=HttpResponse,
-    >,
-    S::Service: tower::Service<
-        Request=http::Request<B>,
-        Response=HttpResponse,
-    >,
+    S: tower::NewService<Request=http::Request<B>>,
+    S::Service: tower::Service<Request=http::Request<B>>,
     NormalizeUri<S::Service>: tower::Service,
     B: tower_h2::Body,
 {
@@ -279,14 +295,11 @@ where
 
 impl<S, B> tower::Service for NormalizeUri<S>
 where
-    S: tower::Service<
-        Request=http::Request<B>,
-        Response=HttpResponse,
-    >,
+    S: tower::Service<Request=http::Request<B>>,
     B: tower_h2::Body,
 {
     type Request = S::Request;
-    type Response = HttpResponse;
+    type Response = S::Response;
     type Error = S::Error;
     type Future = S::Future;
 

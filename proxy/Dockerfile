@@ -59,8 +59,8 @@ ARG PROXY_SKIP_TESTS
 RUN if [ -n "$PROXY_SKIP_TESTS" ]; \
     then echo "tests skipped" ; \
     elif [ -n "$PROXY_UNOPTIMIZED" ]; \
-    then cargo test -p conduit-proxy --frozen --no-default-features ; \
-    else cargo test -p conduit-proxy --frozen --release --no-default-features ; \
+    then cargo test -p conduit-proxy --frozen ; \
+    else cargo test -p conduit-proxy --frozen --release ; \
     fi
 RUN if [ -n "$PROXY_UNOPTIMIZED" ]; \
     then mv target/debug/conduit-proxy   target/conduit-proxy ; \

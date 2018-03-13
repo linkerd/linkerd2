@@ -1,7 +1,7 @@
 use std::fmt;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use futures::Future;
 use http;
@@ -15,6 +15,7 @@ use connection::Connection;
 use ctx::Proxy as ProxyCtx;
 use ctx::transport::{Server as ServerCtx};
 use telemetry::Sensors;
+use time::Timer;
 use transport::GetOriginalDst;
 use super::glue::{HttpBody, HttpBodyNewSvc, HyperServerSvc};
 use super::protocol::Protocol;
@@ -25,7 +26,7 @@ use super::tcp;
 /// This type can `serve` new connections, determine what protocol
 /// the connection is speaking, and route it to the corresponding
 /// service.
-pub struct Server<S: NewService, B: tower_h2::Body, G>
+pub struct Server<S: NewService, B: tower_h2::Body, G, T>
 where
     S: NewService<Request=http::Request<HttpBody>>,
     S::Future: 'static,
@@ -37,11 +38,12 @@ where
     listen_addr: SocketAddr,
     new_service: S,
     proxy_ctx: Arc<ProxyCtx>,
-    sensors: Sensors,
-    tcp: tcp::Proxy,
+    sensors: Sensors<T>,
+    tcp: tcp::Proxy<T>,
+    timer: T,
 }
 
-impl<S, B, G> Server<S, B, G>
+impl<S, B, G, T> Server<S, B, G, T>
 where
     S: NewService<
         Request = http::Request<HttpBody>,
@@ -51,19 +53,27 @@ where
     S::Error: fmt::Debug,
     B: tower_h2::Body + 'static,
     G: GetOriginalDst,
+    T: Timer + 'static,
+    T::Error: fmt::Debug,
 {
     /// Creates a new `Server`.
     pub fn new(
         listen_addr: SocketAddr,
         proxy_ctx: Arc<ProxyCtx>,
-        sensors: Sensors,
+        sensors: Sensors<T>,
         get_orig_dst: G,
         stack: S,
         tcp_connect_timeout: Duration,
         executor: Handle,
+        timer: &T,
     ) -> Self {
         let recv_body_svc = HttpBodyNewSvc::new(stack.clone());
-        let tcp = tcp::Proxy::new(tcp_connect_timeout, sensors.clone(), &executor);
+        let tcp = tcp::Proxy::new(
+            tcp_connect_timeout,
+            sensors.clone(),
+            &executor,
+            timer,
+        );
         Server {
             executor: executor.clone(),
             get_orig_dst,
@@ -74,6 +84,7 @@ where
             proxy_ctx,
             sensors,
             tcp,
+            timer: timer.clone(),
         }
     }
 
@@ -84,7 +95,7 @@ where
     /// will be mapped into respective services, and spawned into an
     /// executor.
     pub fn serve(&self, connection: Connection, remote_addr: SocketAddr) {
-        let opened_at = Instant::now();
+        let opened_at = self.timer.now();
 
         // create Server context
         let orig_dst = connection.original_dst_addr(&self.get_orig_dst);

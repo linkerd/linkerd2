@@ -10,20 +10,21 @@ use conduit_proxy_router::{Reuse, Recognize};
 
 use bind;
 use ctx;
+use time::Timer;
 
-type Bind<B> = bind::Bind<Arc<ctx::Proxy>, B>;
+type Bind<B, T> = bind::Bind<Arc<ctx::Proxy>, B, T>;
 
-pub struct Inbound<B> {
+pub struct Inbound<B, T> {
     default_addr: Option<SocketAddr>,
-    bind: Bind<B>,
+    bind: Bind<B, T>,
 }
 
 const MAX_IN_FLIGHT: usize = 10_000;
 
 // ===== impl Inbound =====
 
-impl<B> Inbound<B> {
-    pub fn new(default_addr: Option<SocketAddr>, bind: Bind<B>) -> Self {
+impl<B, T> Inbound<B, T> {
+    pub fn new(default_addr: Option<SocketAddr>, bind: Bind<B, T>) -> Self {
         Self {
             default_addr,
             bind,
@@ -31,20 +32,21 @@ impl<B> Inbound<B> {
     }
 }
 
-impl<B> Recognize for Inbound<B>
+impl<B, T> Recognize for Inbound<B, T>
 where
     B: tower_h2::Body + 'static,
+    T: Timer + 'static,
 {
     type Request = http::Request<B>;
-    type Response = bind::HttpResponse;
+    type Response = bind::HttpResponse<T>;
     type Error = tower_in_flight_limit::Error<
         tower_buffer::Error<
-            <bind::Service<B> as tower::Service>::Error
+            <bind::Service<B, T> as tower::Service>::Error
         >
     >;
     type Key = (SocketAddr, bind::Protocol);
     type RouteError = bind::BufferSpawnError;
-    type Service = InFlightLimit<Buffer<bind::Service<B>>>;
+    type Service = InFlightLimit<Buffer<bind::Service<B, T>>>;
 
     fn recognize(&self, req: &Self::Request) -> Option<Reuse<Self::Key>> {
         let key = req.extensions()
@@ -88,7 +90,7 @@ mod tests {
     use std::sync::Arc;
 
     use http;
-    use tokio_core::reactor::Core;
+    use tokio_core::reactor::{Core, Handle};
     use conduit_proxy_router::Recognize;
 
     use super::Inbound;
@@ -96,9 +98,12 @@ mod tests {
     use bind::{self, Bind, Host};
     use ctx;
 
-    fn new_inbound(default: Option<net::SocketAddr>, ctx: &Arc<ctx::Proxy>) -> Inbound<()> {
+    fn new_inbound(default: Option<net::SocketAddr>, ctx: &Arc<ctx::Proxy>)
+                  -> Inbound<(), Handle>
+    {
         let core = Core::new().unwrap();
-        let bind = Bind::new(core.handle()).with_ctx(ctx.clone());
+        let timer = core.handle();
+        let bind = Bind::new(core.handle(), timer).with_ctx(ctx.clone());
         Inbound::new(default, bind)
     }
 

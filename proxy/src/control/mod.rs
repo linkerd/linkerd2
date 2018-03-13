@@ -1,5 +1,5 @@
+use std::error::Error;
 use std::fmt;
-use std::io;
 use std::time::{Duration, Instant};
 
 use bytes::Bytes;
@@ -19,7 +19,7 @@ use tower_reconnect::{Error as ReconnectError, Reconnect};
 use dns;
 use fully_qualified_authority::FullyQualifiedAuthority;
 use transport::{HostAndPort, LookupAddressAndConnect};
-use timeout::{Timeout, TimeoutError};
+use time::{Timer, TimeoutError};
 
 pub mod discovery;
 mod observe;
@@ -36,11 +36,13 @@ pub struct Control {
     disco: Discovery,
 }
 
-pub struct Background {
+pub struct Background<T> {
     disco: DiscoBg,
+    connect_timeout: Duration,
+    timer: T,
 }
 
-pub fn new() -> (Control, Background) {
+pub fn new<T: Timer>(timer: &T) -> (Control, Background<T>) {
     let (tx, rx) = self::discovery::new();
 
     let c = Control {
@@ -49,6 +51,8 @@ pub fn new() -> (Control, Background) {
 
     let b = Background {
         disco: rx,
+        connect_timeout: Duration::from_secs(3),
+        timer: timer.clone(),
     };
 
     (c, b)
@@ -64,7 +68,11 @@ impl Control {
 
 // ===== impl Background =====
 
-impl Background {
+impl<T> Background<T>
+where
+    T: Timer + 'static,
+    T::Error: Error,
+{
     pub fn bind<S>(
         self,
         events: S,
@@ -76,16 +84,19 @@ impl Background {
     where
         S: Stream<Item = ReportRequest, Error = ()> + 'static,
     {
+        let timer = self.timer.with_handle(executor);
+
         // Build up the Controller Client Stack
         let mut client = {
             let ctx = ("controller-client", format!("{:?}", host_and_port));
             let scheme = http::uri::Scheme::from_shared(Bytes::from_static(b"http")).unwrap();
             let authority = http::uri::Authority::from(&host_and_port);
             let dns_resolver = dns::Resolver::new(dns_config, executor);
-            let connect = Timeout::new(
+            let connect_timeout = timer
+                .new_timeout(self.connect_timeout)
+                .with_description(format!("{:?}", ctx));
+            let connect = connect_timeout.apply_to(
                 LookupAddressAndConnect::new(host_and_port, dns_resolver, executor),
-                Duration::from_secs(3),
-                executor,
             );
 
             let h2_client = tower_h2::client::Connect::new(
@@ -103,7 +114,11 @@ impl Background {
         };
 
         let mut disco = self.disco.work();
-        let mut telemetry = Telemetry::new(events, report_timeout, executor);
+        let mut telemetry = Telemetry::new(
+            events,
+            report_timeout,
+            &timer,
+        );
 
         let fut = future::poll_fn(move || {
             disco.poll_rpc(&mut client);
@@ -119,7 +134,8 @@ impl Background {
 // ===== Backoff =====
 
 /// Wait a duration if inner `poll_ready` returns an error.
-//TODO: move to tower-backoff
+// TODO: move to tower-backoff
+// TODO: rewrite to use `time::Timer`.
 struct Backoff<S> {
     inner: S,
     timer: ReactorTimeout,
@@ -228,18 +244,19 @@ struct LogErrors<S> {
 // The dead_code allowance is because rustc is being stupid and doesn't see it
 // is used down below.
 #[allow(dead_code)]
-type LogError = ReconnectError<
+type LogError<T, U> = ReconnectError<
     tower_h2::client::Error,
     tower_h2::client::ConnectError<
         TimeoutError<
-            io::Error
+            T,
+            U,
         >
     >
 >;
 
-impl<S> LogErrors<S>
+impl<S, T, U> LogErrors<S>
 where
-    S: Service<Error=LogError>,
+    S: Service<Error=LogError<T, U>>,
 {
     fn new(service: S) -> Self {
         LogErrors {
@@ -248,9 +265,11 @@ where
     }
 }
 
-impl<S> Service for LogErrors<S>
+impl<S, T, U> Service for LogErrors<S>
 where
-    S: Service<Error=LogError>,
+    S: Service<Error=LogError<T, U>>,
+    T: Error,
+    U: Error
 {
     type Request = S::Request;
     type Response = S::Response;
@@ -269,9 +288,12 @@ where
     }
 }
 
-struct HumanError<'a>(&'a LogError);
+struct HumanError<'a, T: 'a, U: 'a>(&'a LogError<T, U>);
 
-impl<'a> fmt::Display for HumanError<'a> {
+impl<'a, T, U> fmt::Display for HumanError<'a, T, U>
+where
+    TimeoutError<T, U>: Error,
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self.0 {
             ReconnectError::Inner(ref e) => {

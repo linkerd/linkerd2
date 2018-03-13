@@ -87,7 +87,8 @@ impl MakeControl {
     /// - `Err(io::Error)` if the timeout could not be created.
     pub fn make_control(self, taps: &Arc<Mutex<Taps>>, handle: &Handle) -> io::Result<Control> {
         trace!("telemetry control flush_interval={:?}", self.flush_interval);
-
+        // TODO: once the control timeouts use `time::timeout`, we'll want
+        // to call `Timer::with_handle` here.
         let flush_timeout = Timeout::new(self.flush_interval, handle)?;
 
         Ok(Control {

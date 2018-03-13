@@ -33,11 +33,11 @@ macro_rules! generate_tests {
         }
 
         #[test]
-        #[cfg_attr(not(feature = "flaky_tests"), ignore)]
         fn outbound_times_out() {
-            use std::thread;
             let _ = env_logger::try_init();
             let mut env = config::TestEnv::new();
+
+            let (mock_timer, time) = timer::mock();
 
             // set the bind timeout to 100 ms.
             env.put(config::ENV_BIND_TIMEOUT, "100".to_owned());
@@ -45,10 +45,11 @@ macro_rules! generate_tests {
             let srv = $make_server().route("/hi", "hello").run();
             let addr = srv.addr.clone();
             let ctrl = controller::new()
-                // when the proxy requests the destination, sleep for 500 ms, and then
-                // return the correct destination
+                // when the proxy requests the destination, "sleep" for 500 ms,
+                // and then return the correct destination
                 .destination_fn("disco.test.svc.cluster.local", move || {
-                    thread::sleep(Duration::from_millis(500));
+                    let mut time = time.clone();
+                    time += Duration::from_millis(110);
                     Some(controller::destination_update(addr))
                 })
                 .run();
@@ -56,10 +57,11 @@ macro_rules! generate_tests {
             let proxy = proxy::new()
                 .controller(ctrl)
                 .outbound(srv)
+                .timer(mock_timer)
                 .run_with_test_env(env);
 
             let client = $make_client(proxy.outbound, "disco.test.svc.cluster.local");
-            let mut req = client.request_builder("/");
+            let mut req = client.request_builder("/hi");
             let rsp = client.request(req.method("GET"));
             // the request should time out
             assert_eq!(rsp.status(), http::StatusCode::INTERNAL_SERVER_ERROR);
@@ -108,6 +110,7 @@ macro_rules! generate_tests {
             assert_eq!(client.get("/"), "hello");
             assert_eq!(client.get("/bye"), "bye");
         }
+
     }
 }
 
