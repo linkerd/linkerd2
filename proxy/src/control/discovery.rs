@@ -322,28 +322,15 @@ where
 
                 match set.rx.poll() {
                     Ok(Async::Ready(Some(update))) => match update.update {
-                        Some(PbUpdate2::Add(a_set)) => for addr in a_set.addrs {
-                            if let Some(addr) = addr.addr.and_then(pb_to_sock_addr) {
-                                if set.addrs.insert(addr) {
-                                    trace!("update {:?} for {:?}", addr, auth);
-                                    // retain is used to drop any senders that are dead
-                                    set.txs.retain(|tx| {
-                                        tx.unbounded_send(Update::Insert(addr)).is_ok()
-                                    });
-                                }
-                            }
-                        },
-                        Some(PbUpdate2::Remove(r_set)) => for addr in r_set.addrs {
-                            if let Some(addr) = pb_to_sock_addr(addr) {
-                                if set.addrs.remove(&addr) {
-                                    trace!("remove {:?} for {:?}", addr, auth);
-                                    // retain is used to drop any senders that are dead
-                                    set.txs.retain(|tx| {
-                                        tx.unbounded_send(Update::Remove(addr)).is_ok()
-                                    });
-                                }
-                            }
-                        },
+                        Some(PbUpdate2::Add(a_set)) =>
+                            set.add(
+                                auth,
+                                a_set.addrs.iter().filter_map(
+                                    |addr| addr.addr.clone().and_then(pb_to_sock_addr))),
+                        Some(PbUpdate2::Remove(r_set)) =>
+                            set.remove(
+                                auth,
+                                r_set.addrs.iter().filter_map(|addr| pb_to_sock_addr(addr.clone()))),
                         None => (),
                     },
                     Ok(Async::Ready(None)) => {
@@ -364,6 +351,39 @@ where
             if needs_reconnect {
                 set.needs_reconnect = true;
                 self.reconnects.push_back(FullyQualifiedAuthority::clone(auth));
+            }
+        }
+    }
+}
+
+// ===== impl DestinationSet =====
+
+impl <T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
+    fn add<Addrs>(&mut self, authority_for_logging: &FullyQualifiedAuthority, addrs_to_add: Addrs)
+        where Addrs: Iterator<Item = SocketAddr>
+    {
+        for addr in addrs_to_add {
+            if self.addrs.insert(addr) {
+                trace!("update {:?} for {:?}", addr, authority_for_logging);
+                // retain is used to drop any senders that are dead
+                self.txs.retain(|tx| {
+                    tx.unbounded_send(Update::Insert(addr)).is_ok()
+                });
+            }
+        }
+    }
+
+    fn remove<Addrs>(&mut self, authority_for_logging: &FullyQualifiedAuthority,
+                     addrs_to_remove: Addrs)
+        where Addrs: Iterator<Item = SocketAddr>
+    {
+        for addr in addrs_to_remove {
+            if self.addrs.remove(&addr) {
+                trace!("remove {:?} for {:?}", addr, authority_for_logging);
+                // retain is used to drop any senders that are dead
+                self.txs.retain(|tx| {
+                    tx.unbounded_send(Update::Remove(addr)).is_ok()
+                });
             }
         }
     }
