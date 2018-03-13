@@ -485,6 +485,11 @@ data:
         path: /var/lib/grafana/dashboards
         homeDashboardId: conduit-viz
 
+### Grafana ConfigMap ###
+# The ConfigMap below contains Grafana dashboards in the form of JSON files.
+# These JSON dashboard files constitute the majority of the "conduit install"
+# output, pushing this entire config to nearly 100kb. Open issue to explore
+# alternatives: https://github.com/runconduit/conduit/issues/567
 ---
 kind: ConfigMap
 apiVersion: v1
@@ -498,6 +503,9 @@ metadata:
 data:
   conduit-viz.json: |-
     {{.VizDashboard}}
+
+  conduit-deployment.json: |-
+    {{.DeploymentDashboard}}
 
   conduit-health.json: |-
     {{.HealthDashboard}}
