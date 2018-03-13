@@ -270,11 +270,9 @@ where
                             // them onto the new watch first
                             match set.addrs {
                                 Exists::Yes(ref mut addrs) => {
-                                    if !addrs.is_empty() {
-                                        for &addr in addrs.iter() {
-                                            tx.unbounded_send(Update::Insert(addr))
-                                                .expect("unbounded_send does not fail");
-                                        }
+                                    for &addr in addrs.iter() {
+                                        tx.unbounded_send(Update::Insert(addr))
+                                            .expect("unbounded_send does not fail");
                                     }
                                 },
                                 Exists::No | Exists::Unknown => (),
