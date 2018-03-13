@@ -2,6 +2,7 @@ use std::collections::{HashSet, VecDeque};
 use std::collections::hash_map::{Entry, HashMap};
 use std::net::SocketAddr;
 use std::fmt;
+use std::mem;
 
 use futures::{Async, Future, Poll, Stream};
 use futures::sync::mpsc;
@@ -54,10 +55,22 @@ pub struct DiscoveryWork<T: HttpService<ResponseBody = RecvBody>> {
 }
 
 struct DestinationSet<T: HttpService<ResponseBody = RecvBody>> {
-    addrs: HashSet<SocketAddr>,
+    addrs: Exists<HashSet<SocketAddr>>,
     needs_reconnect: bool,
     rx: UpdateRx<T>,
     txs: Vec<mpsc::UnboundedSender<Update>>,
+}
+
+enum Exists<T> {
+    Unknown, // Unknown if the item exists or not
+    Yes(T),
+    No, // Affirmatively known to not exist.
+}
+
+impl<T> Exists<T> {
+    fn take(&mut self) -> Exists<T> {
+        mem::replace(self, Exists::Unknown)
+    }
 }
 
 /// Receiver for destination set updates.
@@ -255,8 +268,14 @@ where
                             let set = occ.get_mut();
                             // we may already know of some addresses here, so push
                             // them onto the new watch first
-                            for &addr in &set.addrs {
-                                let _ = tx.unbounded_send(Update::Insert(addr));
+                            match set.addrs {
+                                Exists::Yes(ref mut addrs) => {
+                                    for &addr in addrs.iter() {
+                                        tx.unbounded_send(Update::Insert(addr))
+                                            .expect("unbounded_send does not fail");
+                                    }
+                                },
+                                Exists::No | Exists::Unknown => (),
                             }
                             set.txs.push(tx);
                         }
@@ -272,7 +291,7 @@ where
                             let stream = UpdateRx::Waiting(response);
 
                             vac.insert(DestinationSet {
-                                addrs: HashSet::new(),
+                                addrs: Exists::Unknown,
                                 needs_reconnect: false,
                                 rx: stream,
                                 txs: vec![tx],
@@ -322,28 +341,17 @@ where
 
                 match set.rx.poll() {
                     Ok(Async::Ready(Some(update))) => match update.update {
-                        Some(PbUpdate2::Add(a_set)) => for addr in a_set.addrs {
-                            if let Some(addr) = addr.addr.and_then(pb_to_sock_addr) {
-                                if set.addrs.insert(addr) {
-                                    trace!("update {:?} for {:?}", addr, auth);
-                                    // retain is used to drop any senders that are dead
-                                    set.txs.retain(|tx| {
-                                        tx.unbounded_send(Update::Insert(addr)).is_ok()
-                                    });
-                                }
-                            }
-                        },
-                        Some(PbUpdate2::Remove(r_set)) => for addr in r_set.addrs {
-                            if let Some(addr) = pb_to_sock_addr(addr) {
-                                if set.addrs.remove(&addr) {
-                                    trace!("remove {:?} for {:?}", addr, auth);
-                                    // retain is used to drop any senders that are dead
-                                    set.txs.retain(|tx| {
-                                        tx.unbounded_send(Update::Remove(addr)).is_ok()
-                                    });
-                                }
-                            }
-                        },
+                        Some(PbUpdate2::Add(a_set)) =>
+                            set.add(
+                                auth,
+                                a_set.addrs.iter().filter_map(
+                                    |addr| addr.addr.clone().and_then(pb_to_sock_addr))),
+                        Some(PbUpdate2::Remove(r_set)) =>
+                            set.remove(
+                                auth,
+                                r_set.addrs.iter().filter_map(|addr| pb_to_sock_addr(addr.clone()))),
+                        Some(PbUpdate2::NoEndpoints(no_endpoints)) =>
+                            set.no_endpoints(auth, no_endpoints.exists),
                         None => (),
                     },
                     Ok(Async::Ready(None)) => {
@@ -366,6 +374,82 @@ where
                 self.reconnects.push_back(FullyQualifiedAuthority::clone(auth));
             }
         }
+    }
+}
+
+// ===== impl DestinationSet =====
+
+impl <T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
+    fn add<Addrs>(&mut self, authority_for_logging: &FullyQualifiedAuthority, addrs_to_add: Addrs)
+        where Addrs: Iterator<Item = SocketAddr>
+    {
+        let mut addrs = match self.addrs.take() {
+            Exists::Yes(addrs) => addrs,
+            Exists::Unknown | Exists::No => {
+                trace!("adding entries for {:?} that wasn't known to exist. Now assuming it does.",
+                       authority_for_logging);
+                HashSet::new()
+            },
+        };
+        for addr in addrs_to_add {
+            if addrs.insert(addr) {
+                trace!("update {:?} for {:?}", addr, authority_for_logging);
+                // retain is used to drop any senders that are dead
+                self.txs.retain(|tx| {
+                    tx.unbounded_send(Update::Insert(addr)).is_ok()
+                });
+            }
+        }
+        self.addrs = Exists::Yes(addrs);
+    }
+
+    fn remove<Addrs>(&mut self, authority_for_logging: &FullyQualifiedAuthority,
+                     addrs_to_remove: Addrs)
+        where Addrs: Iterator<Item = SocketAddr>
+    {
+        let addrs = match self.addrs.take() {
+            Exists::Yes(mut addrs) => {
+                for addr in addrs_to_remove {
+                    if addrs.remove(&addr) {
+                        self.notify_of_removal(addr, authority_for_logging)
+                    }
+                }
+                addrs
+            },
+            Exists::Unknown | Exists::No => {
+                trace!("remove addresses for {:?} that wasn't known to exist. Now assuming it does.",
+                       authority_for_logging);
+                HashSet::new()
+            },
+        };
+        self.addrs = Exists::Yes(addrs)
+    }
+
+    fn no_endpoints(&mut self, authority_for_logging: &FullyQualifiedAuthority, exists: bool) {
+        trace!("no endpoints for {:?} that is known to {}", authority_for_logging,
+               if exists { "exist"} else { "not exist"});
+        match self.addrs.take() {
+            Exists::Yes(addrs) => {
+                for addr in addrs {
+                    self.notify_of_removal(addr, authority_for_logging)
+                }
+            },
+            Exists::No | Exists::Unknown => {},
+        }
+        self.addrs = if exists {
+            Exists::Yes(HashSet::new())
+        } else {
+            Exists::No
+        };
+    }
+
+    fn notify_of_removal(&mut self, addr: SocketAddr,
+                         authority_for_logging: &FullyQualifiedAuthority) {
+        trace!("remove {:?} for {:?}", addr, authority_for_logging);
+        // retain is used to drop any senders that are dead
+        self.txs.retain(|tx| {
+            tx.unbounded_send(Update::Remove(addr)).is_ok()
+        });
     }
 }
 

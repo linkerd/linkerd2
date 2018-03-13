@@ -281,6 +281,17 @@ func (listener endpointListener) Update(add []common.TcpAddress, remove []common
 	}
 }
 
+func (listener endpointListener) NoEndpoints(exists bool) {
+	update := &pb.Update{
+		Update: &pb.Update_NoEndpoints{
+			NoEndpoints: &pb.NoEndpoints{
+				Exists: exists,
+			},
+		},
+	}
+	listener.stream.Send(update)
+}
+
 func toWeightedAddrSet(endpoints []common.TcpAddress) *pb.WeightedAddrSet {
 	addrs := make([]*pb.WeightedAddr, 0)
 	for i := range endpoints {
