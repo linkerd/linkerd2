@@ -102,7 +102,6 @@ dependencies = [
  "abstract-ns 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "bytes 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "conduit-proxy-controller-grpc 0.3.0",
- "conduit-proxy-prometheus-export 0.1.0",
  "conduit-proxy-router 0.3.0",
  "convert 0.3.0",
  "domain 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -152,17 +151,6 @@ dependencies = [
  "tower-grpc 0.1.0 (git+https://github.com/tower-rs/tower-grpc)",
  "tower-grpc-build 0.1.0 (git+https://github.com/tower-rs/tower-grpc)",
  "tower-h2 0.1.0 (git+https://github.com/tower-rs/tower-h2)",
-]
-
-[[package]]
-name = "conduit-proxy-prometheus-export"
-version = "0.1.0"
-dependencies = [
- "bytes 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "prost 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "prost-build 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "prost-derive 0.3.2 (git+https://github.com/danburkert/prost)",
- "prost-types 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

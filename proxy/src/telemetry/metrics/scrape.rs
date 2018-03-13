@@ -20,7 +20,6 @@ use hyper::server::{
 use indexmap::{IndexMap};
 use tokio_core::reactor::Handle;
 
-use conduit_proxy_prometheus_export as prometheus;
 use ctx;
 use telemetry::event::Event;
 
@@ -35,17 +34,25 @@ struct LabelsInner {
     parent: Option<Labels>,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 struct Metrics {
-    request_total: IndexMap<Labels, u64>,
-    response_total: IndexMap<Labels, u64>,
+    request_total: Metric<Counter>,
+    response_total: Metric<Counter>,
+}
+
+trait MetricValue {
+    const TYPE: &'static str;
 }
 
 #[derive(Debug, Clone)]
-struct MetricsSnapshot {
-    request_total: prometheus::MetricFamily,
-    response_total: prometheus::MetricFamily,
+struct Metric<M: MetricValue> {
+    name: &'static str,
+    help: &'static str,
+    values: IndexMap<Labels, M>
 }
+
+#[derive(Copy, Debug, Default, Clone, Eq, PartialEq)]
+struct Counter(u64);
 
 /// Tracks Prometheus metrics
 #[derive(Debug)]
@@ -53,7 +60,6 @@ pub struct Aggregate {
     root_labels: Labels,
     metrics: Option<BiLock<Metrics>>,
     handle: Handle,
-
 }
 
 /// Serve scrapable metrics.
@@ -65,7 +71,7 @@ pub struct Serve {
 pub fn new(process_ctx: Arc<ctx::Process>, handle: &Handle)
           -> (Aggregate, Serve)
 {
-    let (read, write) = BiLock::new(Metrics::default());
+    let (read, write) = BiLock::new(Metrics::new());
     (Aggregate::new(process_ctx, write, handle), Serve::new(read))
 }
 
@@ -83,50 +89,91 @@ impl Serve {
 // ===== impl Metrics =====
 
 impl Metrics {
-    fn export(&self) -> MetricsSnapshot {
-        MetricsSnapshot {
-            request_total: self.request_total(),
-            response_total: self.response_total(),
+
+    pub fn new() -> Self {
+        let response_total = Metric::<Counter>::new(
+            "response_total",
+            "A counter of the number of responses the proxy has received.",
+        );
+        let request_total = Metric::<Counter>::new(
+            "request_total",
+            "A counter of the number of requests the proxy has received.",
+        );
+        Metrics {
+            request_total,
+            response_total,
         }
     }
 
-    fn counter((label, value): (&Labels, &u64)) -> prometheus::Metric {
-        prometheus::Metric {
-            label: label.into(),
-            counter: Some(prometheus::Counter {
-                value: Some(*value as f64)
-            }),
-            ..Default::default()
-        }
+    fn request_total(&mut self, labels: Labels) -> &mut u64 {
+        &mut self.request_total.values
+            .entry(labels)
+            .or_insert_with(Default::default).0
     }
 
-    fn response_total(&self) -> prometheus::MetricFamily {
-        let metric = self.response_total.iter().map(Metrics::counter);
-        prometheus::MetricFamily {
-            name: Some("response_total".into()),
-            help: Some("A counter of the number of responses the proxy has \
-                        received.".into()),
-            type_: Some(prometheus::MetricType::Counter.into()),
-            metric: metric.collect(),
-        }
-    }
-
-    fn request_total(&self) -> prometheus::MetricFamily {
-        let metric = self.request_total.iter().map(Metrics::counter);
-        prometheus::MetricFamily {
-            name: Some("request_total".into()),
-            help: Some("A counter of the number of requests the proxy has \
-                        received.".into()),
-            type_: Some(prometheus::MetricType::Counter.into()),
-            metric: metric.collect(),
-        }
+    fn response_total(&mut self, labels: Labels) -> &mut u64 {
+        &mut self.response_total.values
+            .entry(labels)
+            .or_insert_with(Default::default).0
     }
 }
 
 
-impl fmt::Display for MetricsSnapshot {
+impl fmt::Display for Metrics {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}\n{}", self.request_total, self.response_total)
+    }
+}
+
+// ===== impl Metric =====
+
+impl MetricValue for Counter {
+    const TYPE: &'static str = "counter";
+}
+
+impl<M: MetricValue> Metric<M> {
+
+    pub fn new(name: &'static str, help: &'static str) -> Self {
+        Metric {
+            name,
+            help,
+            values: IndexMap::new(),
+        }
+    }
+
+}
+
+impl fmt::Display for Counter {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0 as f64)
+    }
+}
+
+impl<M> fmt::Display for Metric<M>
+where
+    M: MetricValue + fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f,
+            "# HELP {name} {help}\n# TYPE {name} {ty}\n",
+            name = self.name,
+            help = self.help,
+            ty = M::TYPE
+        )?;
+
+        for (labels, value) in &self.values {
+            if labels.is_empty() {
+                write!(f, "{} {}\n", self.name, value)
+            } else {
+                write!(f, "{name}{{{labels}}} {value}\n",
+                    name = self.name,
+                    labels = labels,
+                    value = value,
+                )
+            }?;
+        }
+
+        Ok(())
     }
 }
 
@@ -173,9 +220,7 @@ impl Aggregate {
             Event::StreamRequestOpen(ref req) => {
                 let labels = proxy_labels.with_request_ctx(req);
                 self.update_metrics(move |metrics| {
-                    *metrics.request_total
-                        .entry(labels)
-                        .or_insert_with(Default::default) += 1;
+                    *metrics.request_total(labels) += 1;
                 });
             },
             Event::StreamResponseEnd(ref res, ref end) => {
@@ -183,10 +228,7 @@ impl Aggregate {
                     .with_response_ctx(res)
                     .with_grpc_status(end.grpc_status);
                 self.update_metrics(move |metrics| {
-                    *metrics.response_total
-                        .entry(labels)
-                        .or_insert_with(Default::default) += 1;
-
+                    *metrics.response_total(labels) += 1;
                 });
             },
             _ => {
@@ -203,12 +245,12 @@ struct MetricsFuture {
 }
 
 impl Future for MetricsFuture {
-    type Item = MetricsSnapshot;
+    type Item = Metrics;
     type Error = hyper::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         // TODO: can all readers share the lock?
-        Ok(self.lock.poll_lock().map(|metrics| metrics.export()))
+        Ok(self.lock.poll_lock().map(|metrics| metrics.clone()))
     }
 }
 
@@ -261,16 +303,6 @@ impl<'a> IntoIterator for &'a Labels {
 
     fn into_iter(self) -> Self::IntoIter {
         self.inner.into_iter()
-    }
-}
-
-impl<'a> Into<Vec<prometheus::LabelPair>> for &'a Labels {
-    fn into(self) -> Vec<prometheus::LabelPair> {
-        self.into_iter().map(|(name, value)| prometheus::LabelPair {
-            name: Some(name.into()),
-            value: Some(value.into())
-        })
-        .collect()
     }
 }
 
@@ -335,6 +367,34 @@ impl Labels {
             ..Default::default()
         }
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    pub fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
+
+impl fmt::Display for Labels {
+
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut labels = self.into_iter();
+
+        if let Some((label, value)) = labels.next() {
+            // format the first label pair without a comma.
+            write!(f, "{}=\"{}\"", label, value)?;
+
+            // format the remaining pairs with a comma preceeding them.
+            for (label, value) in labels {
+                write!(f, ",{}=\"{}\"", label, value)?;
+            }
+        }
+
+        Ok(())
+    }
+
 }
 
 // ===== impl LabelsInner =====
@@ -344,6 +404,13 @@ impl LabelsInner {
 
     fn new() -> Self {
         Default::default()
+    }
+
+    fn len(&self) -> usize {
+        self.labels.len() + self.parent
+            .as_ref()
+            .map(Labels::len)
+            .unwrap_or(0)
     }
 
     fn parent_iter<'a>(&'a self)

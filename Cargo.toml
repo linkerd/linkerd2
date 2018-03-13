@@ -4,7 +4,6 @@ members = [
   "proxy/convert",
   "proxy/controller-grpc",
   "proxy/futures-mpsc-lossy",
-  "proxy/prometheus-export",
   "proxy/router",
 ]
 

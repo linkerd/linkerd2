@@ -283,8 +283,10 @@ fn metrics_endpoint_request_count() {
     info!("client.get(/hey)");
     assert_eq!(client.get("/hey"), "hello");
 
+    let rsp = metrics.get("/metrics");
+    info!("/metrics: {:?}", rsp);
     // after seeing a request, the request count should be 1.
-    assert!(metrics.get("/metrics")
+    assert!(rsp
         .contains("request_total{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\"} 1"));
 
 }
