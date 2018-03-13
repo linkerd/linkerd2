@@ -7,7 +7,7 @@ use futures_mpsc_lossy::Receiver;
 use tokio_core::reactor::{Handle, Timeout};
 
 use super::event::Event;
-use super::metrics::{scrape, Metrics as PushMetrics};
+use super::metrics::{prometheus, Metrics as PushMetrics};
 use super::tap::Taps;
 use conduit_proxy_controller_grpc::telemetry::ReportRequest;
 use connection;
@@ -42,10 +42,10 @@ pub struct Control {
     push_metrics: Option<PushMetrics>,
 
     /// Aggregates scrapable metrics.
-    metrics_work: scrape::Aggregate,
+    metrics_work: prometheus::Aggregate,
 
     /// Serves scrapable metrics.
-    metrics_service: Arc<scrape::Serve>,
+    metrics_service: Arc<prometheus::Serve>,
 
     /// Receives telemetry events.
     rx: Option<Receiver<Event>>,
@@ -99,7 +99,7 @@ impl MakeControl {
 
         let flush_timeout = Timeout::new(self.flush_interval, handle)?;
         let (metrics_work, metrics_service) =
-            scrape::new(self.process_ctx.clone(), handle);
+            prometheus::new(self.process_ctx.clone(), handle);
         let metrics_service = Arc::new(metrics_service);
         let push_metrics = Some(PushMetrics::new(self.process_ctx));
 
