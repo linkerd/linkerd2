@@ -49,7 +49,7 @@ macro_rules! generate_tests {
                 // and then return the correct destination
                 .destination_fn("disco.test.svc.cluster.local", move || {
                     let mut time = time.clone();
-                    time += Duration::from_millis(500);
+                    time += Duration::from_millis(110);
                     Some(controller::destination_update(addr))
                 })
                 .run();
@@ -61,7 +61,7 @@ macro_rules! generate_tests {
                 .run_with_test_env(env);
 
             let client = $make_client(proxy.outbound, "disco.test.svc.cluster.local");
-            let mut req = client.request_builder("/");
+            let mut req = client.request_builder("/hi");
             let rsp = client.request(req.method("GET"));
             // the request should time out
             assert_eq!(rsp.status(), http::StatusCode::INTERNAL_SERVER_ERROR);

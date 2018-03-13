@@ -44,7 +44,7 @@ pub fn mock() -> (MockTimer, Control) {
         inner: Arc::clone(&inner),
     };
     let control = Control {
-        inner: Arc::clone(&inner),
+        inner,
     };
 
     (timer, control)
@@ -109,12 +109,12 @@ impl Inner {
         // Get all the keys whose durations have timed out.
         let timed_out_keys: Vec<Instant> = timeouts
             .keys()
-            .take_while(|&t| t <= &to)
+            .filter(|&&t| t <= *now)
             // XXX this is pretty inefficient, but it should only happen in
             // unit tests, so it doesn't really need to be optimized...
             .cloned()
             .collect();
-
+        // panic!("{:?}", timed_out_keys);
         for t in timed_out_keys {
             timeouts.remove(&t)
                 .expect("map should have values for all keys in key set")
@@ -124,7 +124,7 @@ impl Inner {
                 // If the reciever hasn't been dropped, send () to finish the
                 // timeout future.
                 .for_each(|tx|
-                    tx.send(())
+                     tx.send(())
                         .expect("send should succeed if rx was not canceled")
                 );
         }
