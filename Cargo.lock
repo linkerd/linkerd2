@@ -108,11 +108,11 @@ dependencies = [
  "env_logger 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-mpsc-lossy 0.3.0",
- "h2 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "h2 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "http 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "httparse 1.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.11.22 (registry+https://github.com/rust-lang/crates.io-index)",
- "indexmap 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "indexmap 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ipnet 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.36 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -142,7 +142,7 @@ dependencies = [
  "bytes 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "convert 0.3.0",
  "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
- "h2 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "h2 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "http 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "prost 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "prost-derive 0.3.2 (git+https://github.com/danburkert/prost)",
@@ -158,7 +158,7 @@ name = "conduit-proxy-router"
 version = "0.3.0"
 dependencies = [
  "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
- "indexmap 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "indexmap 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tower 0.1.0 (git+https://github.com/tower-rs/tower)",
 ]
 
@@ -248,7 +248,7 @@ dependencies = [
 
 [[package]]
 name = "h2"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "byteorder 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -256,7 +256,7 @@ dependencies = [
  "fnv 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "http 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "indexmap 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "indexmap 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "slab 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "string 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -312,6 +312,11 @@ dependencies = [
 [[package]]
 name = "indexmap"
 version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "indexmap"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -763,7 +768,7 @@ source = "git+https://github.com/tower-rs/tower-grpc#57d976aca89c13838b946dca9b6
 dependencies = [
  "bytes 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
- "h2 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "h2 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "http 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "prost 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -789,7 +794,7 @@ source = "git+https://github.com/tower-rs/tower-h2#59f344f02d37a9e8596805f159bdc
 dependencies = [
  "bytes 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
- "h2 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "h2 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "http 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-connect 0.1.0 (git+https://github.com/carllerche/tokio-connect)",
@@ -934,12 +939,13 @@ dependencies = [
 "checksum fuchsia-zircon-sys 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "3dcaa9ae7725d12cdb85b3ad99a434db70b468c09ded17e012d86b5c1010f7a7"
 "checksum futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)" = "0bab5b5e94f5c31fc764ba5dd9ad16568aae5d4825538c01d6bca680c9bf94a7"
 "checksum futures-cpupool 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)" = "ab90cde24b3319636588d0c35fe03b1333857621051837ed769faefb4c2162e4"
-"checksum h2 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "d30dc3a4b9c0e211cf214e69041b5a77e5245cb8d5d6511fb577cb06511bce40"
+"checksum h2 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "39d9ebc6de5a56567932d30d1364fc69bf6435d2d705f033f4e722e41703d3b0"
 "checksum heck 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ea04fa3ead4e05e51a7c806fc07271fdbde4e246a6c6d1efd52e72230b771b82"
 "checksum http 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "75df369fd52c60635208a4d3e694777c099569b3dcf4844df8f652dc004644ab"
 "checksum httparse 1.2.4 (registry+https://github.com/rust-lang/crates.io-index)" = "c2f407128745b78abc95c0ffbe4e5d37427fdc0d45470710cfef8c44522a2e37"
 "checksum hyper 0.11.22 (registry+https://github.com/rust-lang/crates.io-index)" = "d595f999e90624f64d2c4bc74c72adb0f3e0f773dc5692ca91338363b3568fa0"
 "checksum indexmap 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "7164c96d6e18ccc3ce43f3dedac996c21a220670a106c275b96ad92110401362"
+"checksum indexmap 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "7b9378f1f3923647a9aea6af4c6b5de68cc8a71415459ad25ef191191c48f5b7"
 "checksum iovec 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "dbe6e417e7d0975db6512b90796e8ce223145ac4e33c377e4a42882a0e88bb08"
 "checksum ipnet 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "51268c3a27ad46afd1cca0bbf423a5be2e9fd3e6a7534736c195f0f834b763ef"
 "checksum itertools 0.7.6 (registry+https://github.com/rust-lang/crates.io-index)" = "b07332223953b5051bceb67e8c4700aa65291535568e1f12408c43c4a42c0394"

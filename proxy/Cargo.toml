@@ -25,7 +25,7 @@ httparse = "1.2"
 hyper = { version = "0.11.22", default-features = false, features = ["compat"] }
 ipnet = "1.0"
 log = "0.4.1"
-indexmap = "0.4.1"
+indexmap = "1.0.0"
 rand = "0.4"
 
 tokio-core = "0.1"
