@@ -45,7 +45,7 @@ struct Metrics {
 }
 
 #[derive(Debug)]
-struct ResponseFuture {
+pub struct ResponseFuture {
     lock: Arc<BiLock<Metrics>>,
 }
 
@@ -333,7 +333,7 @@ impl Future for ResponseFuture {
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         Ok(self.lock.poll_lock().map(|metrics| {
-            let body = format!("{}", metrics);
+            let body = format!("{}", *metrics);
             HyperResponse::new()
                 .with_header(ContentLength(body.len() as u64))
                 .with_header(ContentType::plaintext())
