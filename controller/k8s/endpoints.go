@@ -22,6 +22,7 @@ const (
 
 type EndpointsListener interface {
 	Update(add []common.TcpAddress, remove []common.TcpAddress)
+	NoEndpoints(exists bool)
 }
 
 /// EndpointsWatcher ///
@@ -374,6 +375,7 @@ func (sp *servicePort) deleteEndpoints() {
 
 	for _, listener := range sp.listeners {
 		listener.Update(nil, sp.addresses)
+		listener.NoEndpoints(false)
 	}
 	sp.endpoints = &v1.Endpoints{}
 	sp.addresses = []common.TcpAddress{}

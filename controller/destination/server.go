@@ -147,11 +147,16 @@ func (s *server) Get(dest *common.Destination, stream pb.Destination_GetServer) 
 		return err
 	}
 
+	listener := &endpointListener{stream: stream}
+
+	// send an initial update indicating whether or not the service exists
+	listener.NoEndpoints(exists)
+
 	if exists && svc.Spec.Type == v1.ServiceTypeExternalName {
-		return s.resolveExternalName(svc.Spec.ExternalName, stream)
+		return s.resolveExternalName(svc.Spec.ExternalName, listener)
 	}
 
-	return s.resolveKubernetesService(*id, port, stream)
+	return s.resolveKubernetesService(*id, port, listener)
 }
 
 func isIPAddress(host string) (bool, *common.IPAddress) {
@@ -182,24 +187,20 @@ func echoIPDestination(ip *common.IPAddress, port int, stream pb.Destination_Get
 	return true
 }
 
-func (s *server) resolveKubernetesService(id string, port int, stream pb.Destination_GetServer) error {
-	listener := endpointListener{stream: stream}
-
+func (s *server) resolveKubernetesService(id string, port int, listener *endpointListener) error {
 	s.endpointsWatcher.Subscribe(id, uint32(port), listener)
 
-	<-stream.Context().Done()
+	<-listener.stream.Context().Done()
 
 	s.endpointsWatcher.Unsubscribe(id, uint32(port), listener)
 
 	return nil
 }
 
-func (s *server) resolveExternalName(externalName string, stream pb.Destination_GetServer) error {
-	listener := endpointListener{stream: stream}
-
+func (s *server) resolveExternalName(externalName string, listener *endpointListener) error {
 	s.dnsWatcher.Subscribe(externalName, listener)
 
-	<-stream.Context().Done()
+	<-listener.stream.Context().Done()
 
 	s.dnsWatcher.Unsubscribe(externalName, listener)
 
@@ -279,6 +280,17 @@ func (listener endpointListener) Update(add []common.TcpAddress, remove []common
 		}
 		listener.stream.Send(update)
 	}
+}
+
+func (listener endpointListener) NoEndpoints(exists bool) {
+	update := &pb.Update{
+		Update: &pb.Update_NoEndpoints{
+			NoEndpoints: &pb.NoEndpoints{
+				Exists: exists,
+			},
+		},
+	}
+	listener.stream.Send(update)
 }
 
 func toWeightedAddrSet(endpoints []common.TcpAddress) *pb.WeightedAddrSet {
