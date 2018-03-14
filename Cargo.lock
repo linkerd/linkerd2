@@ -112,7 +112,7 @@ dependencies = [
  "http 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "httparse 1.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.11.22 (registry+https://github.com/rust-lang/crates.io-index)",
- "indexmap 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "indexmap 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ipnet 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.36 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -158,7 +158,7 @@ name = "conduit-proxy-router"
 version = "0.3.0"
 dependencies = [
  "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
- "indexmap 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "indexmap 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tower 0.1.0 (git+https://github.com/tower-rs/tower)",
 ]
 

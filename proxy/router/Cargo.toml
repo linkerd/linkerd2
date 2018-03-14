@@ -6,5 +6,5 @@ publish = false
 
 [dependencies]
 futures = "0.1"
-indexmap = "0.4.1"
+indexmap = "1.0.0"
 tower = { git = "https://github.com/tower-rs/tower" }
