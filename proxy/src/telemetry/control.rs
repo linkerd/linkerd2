@@ -2,14 +2,15 @@ use std::{fmt, io};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use futures::{Async, Future, Poll, Stream};
+use futures::{future, Async, Future, Poll, Stream};
 use futures_mpsc_lossy::Receiver;
 use tokio_core::reactor::{Handle, Timeout};
 
 use super::event::Event;
-use super::metrics::Metrics;
+use super::metrics::{scrape, Metrics};
 use super::tap::Taps;
 use conduit_proxy_controller_grpc::telemetry::ReportRequest;
+use connection;
 use ctx;
 
 /// A `Control` which has been configured but not initialized.
@@ -40,6 +41,9 @@ pub struct Control {
     /// Holds the current state of aggregated metrics.
     metrics: Option<Metrics>,
 
+    /// scrapable metrics
+    scrape_metrics: Arc<scrape::Metrics>,
+
     /// Receives telemetry events.
     rx: Option<Receiver<Event>>,
 
@@ -53,6 +57,8 @@ pub struct Control {
     /// Ensures liveliness of telemetry by waking the stream to produce reports when
     /// needed.  This timeout is reset as reports are returned.
     flush_timeout: Timeout,
+
+    handle: Handle,
 }
 
 // ===== impl MakeControl =====
@@ -92,10 +98,12 @@ impl MakeControl {
 
         Ok(Control {
             metrics: Some(Metrics::new(self.process_ctx)),
+            scrape_metrics: Arc::new(scrape::Metrics::new()),
             rx: Some(self.rx),
             taps: Some(taps.clone()),
             flush_interval: self.flush_interval,
             flush_timeout,
+            handle: handle.clone(),
         })
     }
 }
@@ -157,6 +165,30 @@ impl Control {
             }
         }
     }
+
+    pub fn serve_metrics(&self, bound_port: connection::BoundPort)
+        -> Box<Future<Item = (), Error = io::Error> + 'static>
+    {
+        use hyper;
+        let metrics = self.scrape_metrics.clone();
+        let hyper = hyper::server::Http::<hyper::Chunk>::new();
+        bound_port.listen_and_fold(
+            &self.handle,
+            (hyper, self.handle.clone()),
+            move |(hyper, executor), (conn, _)| {
+                let service = scrape::Server::new(&metrics);
+                let serve = hyper.serve_connection(conn, service)
+                    .map(|_| {})
+                    .map_err(|e| {
+                        error!("error serving prometheus metrics: {:?}", e);
+                    });
+
+                executor.spawn(::logging::context_future("serve_metrics", serve));
+
+                future::ok((hyper, executor))
+            })
+    }
+
 }
 
 impl Stream for Control {

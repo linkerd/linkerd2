@@ -117,7 +117,7 @@ fn run(proxy: Proxy, mut env: config::TestEnv) -> Listening {
     }
     env.put(config::ENV_PUBLIC_LISTENER, "tcp://127.0.0.1:0".to_owned());
     env.put(config::ENV_CONTROL_LISTENER, "tcp://127.0.0.1:0".to_owned());
-
+    env.put(config::ENV_METRICS_LISTENER, "tcp://127.0.0.1:0".to_owned());
     env.put(config::ENV_POD_NAMESPACE, "test".to_owned());
 
     let mut config = config::Config::try_from(&env).unwrap();
