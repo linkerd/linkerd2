@@ -79,6 +79,8 @@ pub type NewHttp<B> = sensor::NewHttp<Client<B>, B, HttpBody>;
 
 pub type HttpResponse = http::Response<sensor::http::ResponseBody<HttpBody>>;
 
+pub type HttpRequest<B> = http::Request<sensor::http::RequestBody<B>>;
+
 pub type Client<B> = transparency::Client<
     sensor::Connect<transport::Connect>,
     B,
@@ -253,11 +255,11 @@ impl<S> NormalizeUri<S> {
 impl<S, B> tower::NewService for NormalizeUri<S>
 where
     S: tower::NewService<
-        Request=http::Request<B>,
+        Request=HttpRequest<B>,
         Response=HttpResponse,
     >,
     S::Service: tower::Service<
-        Request=http::Request<B>,
+        Request=HttpRequest<B>,
         Response=HttpResponse,
     >,
     NormalizeUri<S::Service>: tower::Service,
@@ -280,7 +282,7 @@ where
 impl<S, B> tower::Service for NormalizeUri<S>
 where
     S: tower::Service<
-        Request=http::Request<B>,
+        Request=HttpRequest<B>,
         Response=HttpResponse,
     >,
     B: tower_h2::Body,
