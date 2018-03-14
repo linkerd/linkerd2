@@ -221,8 +221,13 @@ impl Stream for Control {
                         }
                     }
 
-                    self.metrics_work.record_event(ev);
-
+                    if let Some(work) = self.metrics_work.record_event(ev) {
+                        // TODO: don't wait on this?
+                        // NOTE: I think this is roughly the same as the thread
+                        // blocking on acquiring a mutex, so it's *probably*
+                        // okay?
+                        work.wait().expect("update metrics");
+                    }
                     self.flush_report()
                 }
                 Async::Ready(None) => {

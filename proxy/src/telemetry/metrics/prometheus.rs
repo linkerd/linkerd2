@@ -2,7 +2,7 @@ use std::default::Default;
 use std::{fmt, u32};
 use std::hash::{Hash, Hasher};
 use std::iter::{self, IntoIterator, Iterator};
-use std::ops::{self, DerefMut};
+use std::ops;
 use std::sync::Arc;
 
 use futures::future::{self, Either, Future, FutureResult};
@@ -43,8 +43,9 @@ struct Metrics {
     response_latency: Metric<Histogram>,
 }
 
-trait MetricValue {
-    const TYPE: &'static str;
+#[derive(Debug)]
+struct MetricsFuture {
+    lock: Arc<BiLock<Metrics>>,
 }
 
 #[derive(Debug, Clone)]
@@ -61,8 +62,16 @@ struct Counter(u64);
 #[derive(Debug)]
 pub struct Aggregate {
     root_labels: Labels,
-    metrics: Option<BiLock<Metrics>>,
+    metrics: BiLock<Metrics>,
     handle: Handle,
+}
+
+#[derive(Debug)]
+pub struct Work<'a> {
+    // TODO: add batching.
+    lock: &'a BiLock<Metrics>,
+    labels: Labels,
+    event: Event,
 }
 
 /// Serve scrapable metrics.
@@ -237,65 +246,61 @@ impl Aggregate {
     {
         Aggregate {
             root_labels: Labels::from(process_ctx),
-            metrics: Some(metrics),
+            metrics: metrics,
             handle: handle.clone(),
         }
     }
 
-    /// Wrapper function to acquire a lock on the metrics state
-    /// run a closure to update it, and release the lock.
-    ///
-    /// This makes `record_event` less repetitive, without causing us to
-    /// hold on to the lock for all the metrics updating logic (i.e. we
-    /// shouldn't need to hold a lock on the metrics state while destructuring
-    /// an event and constructing the corresponding labels, etc).
-    fn update_metrics<F>(&mut self, f: F)
-    where
-        F: FnOnce(&mut Metrics),
-    {
-        let metrics = self.metrics.take()
-            .expect("lock should not be taken outside of update_metrics");
-        let work = metrics.lock().map(|mut lock| {
-            f(lock.deref_mut());
-            self.metrics = Some(lock.unlock())
-        });
-        work.wait().expect("update metrics");
-    }
-
     /// Observe the given event.
-    pub fn record_event(&mut self, event: Event) {
+    pub fn record_event(&mut self, event: Event) -> Option<Work> {
         trace!("Metrics::record({:?})", event);
-        let proxy_labels = self.root_labels.with_proxy_ctx(event.proxy());
-        match event {
+        let labels = match event {
             Event::StreamRequestOpen(ref req) => {
-                let labels = proxy_labels.with_request_ctx(req);
-                self.update_metrics(|metrics| {
-                    *metrics.request_total(&labels) += 1;
-                });
+                Some(self.root_labels
+                    .with_proxy_ctx(event.proxy())
+                    .with_request_ctx(req))
             },
             Event::StreamResponseEnd(ref res, ref end) => {
-                let labels = proxy_labels
+                Some(self.root_labels
+                    .with_proxy_ctx(event.proxy())
                     .with_response_ctx(res)
-                    .with_grpc_status(end.grpc_status);
-                self.update_metrics(|metrics| {
-                    *metrics.response_total(&labels) += 1;
-                    *metrics.response_duration(&labels) += end.since_response_open;
-                    *metrics.response_latency(&labels) += end.since_request_open;
-                });
+                    .with_grpc_status(end.grpc_status))
             },
             _ => {
                 // TODO: record other events.
+                None
             }
         };
+        labels.map(move |labels| Work { lock: &self.metrics, labels, event: event })
 
     }
 }
 
-#[derive(Debug)]
-struct MetricsFuture {
-    lock: Arc<BiLock<Metrics>>,
+
+#[must_use = "futures do nothing unless polled"]
+impl<'a> Future for Work<'a> {
+    type Item = ();
+    type Error = ();
+
+    fn poll(&mut self) -> Poll<(), ()> {
+        Ok(self.lock.poll_lock().map(|mut metrics|
+            match self.event {
+                Event::StreamResponseEnd(_, ref end) => {
+                    *metrics.response_total(&self.labels) += 1;
+                    *metrics.response_duration(&self.labels) += end.since_response_open;
+                    *metrics.response_latency(&self.labels) += end.since_request_open;
+                },
+                Event::StreamRequestOpen(_) => {
+                    *metrics.request_total(&self.labels) += 1;
+                },
+                _ => {},
+            }))
+    }
+
 }
 
+
+#[must_use = "futures do nothing unless polled"]
 impl Future for MetricsFuture {
     type Item = Metrics;
     type Error = hyper::Error;
