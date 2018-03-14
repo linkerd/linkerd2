@@ -24,6 +24,7 @@ use ctx;
 use telemetry::event::Event;
 use super::latency::{BUCKET_BOUNDS, Histogram};
 
+/// A set of Prometheus label pairs.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Labels {
     inner: Arc<LabelsInner>
@@ -44,7 +45,7 @@ struct Metrics {
 }
 
 #[derive(Debug)]
-struct MetricsFuture {
+struct ResponseFuture {
     lock: Arc<BiLock<Metrics>>,
 }
 
@@ -66,6 +67,7 @@ pub struct Aggregate {
     handle: Handle,
 }
 
+/// Future which will update the metrics state.
 #[derive(Debug)]
 pub struct Work<'a> {
     // TODO: add batching.
@@ -80,12 +82,20 @@ pub struct Serve {
     metrics: Arc<BiLock<Metrics>>,
 }
 
+/// Construct the Prometheus metrics.
+///
+/// Returns the `Aggregate` and `Serve` sides. The `Serve` side
+/// is a Hyper service which can be used to create the server for the
+/// scrape endpoint, while the `Aggregate` side can receive updates to the
+/// metrics by calling `record_event`.
 pub fn new(process_ctx: Arc<ctx::Process>, handle: &Handle)
-          -> (Aggregate, Serve)
+    -> (Aggregate, Serve)
 {
     let (read, write) = BiLock::new(Metrics::new());
     (Aggregate::new(process_ctx, write, handle), Serve::new(read))
 }
+
+// ===== impl Serve =====
 
 impl Serve {
 
@@ -93,8 +103,8 @@ impl Serve {
         Serve { metrics: Arc::new(metrics) }
     }
 
-    fn future(&self) -> MetricsFuture {
-        MetricsFuture { lock: self.metrics.clone() }
+    fn future(&self) -> ResponseFuture {
+        ResponseFuture { lock: self.metrics.clone() }
     }
 }
 
@@ -255,27 +265,37 @@ impl Aggregate {
     pub fn record_event(&mut self, event: Event) -> Option<Work> {
         trace!("Metrics::record({:?})", event);
         let labels = match event {
-            Event::StreamRequestOpen(ref req) => {
+            Event::StreamRequestOpen(ref req) =>
                 Some(self.root_labels
                     .with_proxy_ctx(event.proxy())
-                    .with_request_ctx(req))
-            },
-            Event::StreamResponseEnd(ref res, ref end) => {
+                    .with_request_ctx(req)),
+            Event::StreamResponseEnd(ref res, ref end) =>
                 Some(self.root_labels
                     .with_proxy_ctx(event.proxy())
                     .with_response_ctx(res)
-                    .with_grpc_status(end.grpc_status))
-            },
-            _ => {
-                // TODO: record other events.
-                None
-            }
+                    .with_grpc_status(end.grpc_status)),
+            Event::StreamResponseFail(ref res, _) =>
+                // TODO: do we care about the failure's error code here, or
+                //       does res.status_code cover that?
+                Some(self.root_labels
+                    .with_proxy_ctx(event.proxy())
+                    .with_response_ctx(res)),
+            _ =>
+                // TODO: this is where we could count transport events,
+                //       if there were any metrics that cared about them.
+                // TODO: track request failures?
+                None,
         };
-        labels.map(move |labels| Work { lock: &self.metrics, labels, event: event })
+        labels.map(move |labels| Work {
+            lock: &self.metrics,
+            labels,
+            event: event
+        })
 
     }
 }
 
+// ===== impl Work =====
 
 #[must_use = "futures do nothing unless polled"]
 impl<'a> Future for Work<'a> {
@@ -290,6 +310,11 @@ impl<'a> Future for Work<'a> {
                     *metrics.response_duration(&self.labels) += end.since_response_open;
                     *metrics.response_latency(&self.labels) += end.since_request_open;
                 },
+                Event::StreamResponseFail(_, ref fail) => {
+                    *metrics.response_total(&self.labels) += 1;
+                    *metrics.response_duration(&self.labels) += fail.since_response_open;
+                    *metrics.response_latency(&self.labels) += fail.since_request_open;
+                },
                 Event::StreamRequestOpen(_) => {
                     *metrics.request_total(&self.labels) += 1;
                 },
@@ -299,15 +324,21 @@ impl<'a> Future for Work<'a> {
 
 }
 
+// ===== impl ResponseFuture =====
 
 #[must_use = "futures do nothing unless polled"]
-impl Future for MetricsFuture {
-    type Item = Metrics;
+impl Future for ResponseFuture {
+    type Item = HyperResponse;
     type Error = hyper::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        // TODO: can all readers share the lock?
-        Ok(self.lock.poll_lock().map(|metrics| metrics.clone()))
+        Ok(self.lock.poll_lock().map(|metrics| {
+            let body = format!("{}", metrics);
+            HyperResponse::new()
+                .with_header(ContentLength(body.len() as u64))
+                .with_header(ContentType::plaintext())
+                .with_body(body)
+        }))
     }
 }
 
@@ -319,7 +350,7 @@ impl HyperService for Serve {
     type Response = HyperResponse;
     type Error = hyper::Error;
     type Future = Either<
-        Box<Future<Item=Self::Response, Error=Self::Error>>,
+        ResponseFuture,
         FutureResult<Self::Response, Self::Error>
     >;
 
@@ -328,14 +359,8 @@ impl HyperService for Serve {
             let rsp = HyperResponse::new().with_status(StatusCode::NotFound);
             return Either::B(future::ok(rsp));
         }
-        let rsp = self.future().map(|metrics| {
-            let body = format!("{}", metrics);
-            HyperResponse::new()
-                .with_header(ContentLength(body.len() as u64))
-                .with_header(ContentType::plaintext())
-                .with_body(body)
-        });
-        Either::A(Box::new(rsp))
+
+        Either::A(self.future())
     }
 }
 
@@ -346,7 +371,7 @@ impl From<Arc<ctx::Process>> for Labels {
     fn from(_ctx: Arc<ctx::Process>) -> Self {
         let inner = Arc::new(LabelsInner::new());
         // TODO: when PR #448 lands, use CONDUIT_PROMETHEUS_LABELS to get the
-        // owning pod spec labels.
+        //       owning pod spec labels.
         Labels {
             inner,
         }
@@ -364,6 +389,7 @@ impl<'a> IntoIterator for &'a Labels {
 }
 
 impl Labels {
+
     pub fn with_proxy_ctx<'a>(&self, proxy_ctx: &'a Arc<ctx::Proxy>) -> Labels {
         let direction = if proxy_ctx.is_inbound() {
             "inbound"
@@ -377,9 +403,10 @@ impl Labels {
         }
     }
 
-    pub fn with_request_ctx<'a>(&self, request_ctx: &'a Arc<ctx::http::Request>)
-        -> Labels {
-        let authority = request_ctx.uri
+    pub fn with_request_ctx<'a>(&self, req: &'a Arc<ctx::http::Request>)
+        -> Labels
+    {
+        let authority = req.uri
             .authority_part()
             .map(http::uri::Authority::to_string)
             .unwrap_or_else(String::new);
@@ -390,10 +417,11 @@ impl Labels {
         }
     }
 
-    pub fn with_response_ctx<'a>(&self, response_ctx: &'a Arc<ctx::http::Response>)
-        -> Labels {
-        let status = response_ctx.status.as_str();
-        let authority = response_ctx.request.uri
+    pub fn with_response_ctx<'a>(&self, rsp: &'a Arc<ctx::http::Response>)
+        -> Labels
+    {
+        let status = rsp.status.as_str();
+        let authority = rsp.request.uri
             .authority_part()
             .map(http::uri::Authority::to_string)
             .unwrap_or_else(String::new);
@@ -455,7 +483,6 @@ impl fmt::Display for Labels {
 }
 
 // ===== impl LabelsInner =====
-
 
 impl LabelsInner {
 
@@ -519,4 +546,3 @@ impl Hash for LabelsInner {
         }
     }
 }
-
