@@ -8,8 +8,8 @@ Conduit 0.3.1 improves Conduit's resilience and transparency.
   * A connection leak during proxying of non-HTTP TCP connections was fixed.
   * The proxy now handles unavailable services more gracefully by timing out while waiting for an endpoint to become available for the service.
 * Command-line interface
-  * `$KUBECONFIG` with multiple paths is now supported.
-  * `conduit check` now checks for the availability of a Conduit update.
+  * `$KUBECONFIG` with multiple paths is now supported. (PR #482 by @hypnoglow).
+  * `conduit check` now checks for the availability of a Conduit update. (PR #460 by @ahume).
 * Service Discovery
   * Kubernetes services with type `ExternalName` are now supported.
 * Control Plane
