@@ -3,11 +3,9 @@ use std::{fmt, u32};
 use std::hash::{Hash, Hasher};
 use std::iter::{self, IntoIterator, Iterator};
 use std::ops;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
-use futures::future::{self, Either, Future, FutureResult};
-use futures::sync::BiLock;
-use futures::Poll;
+use futures::future::{self, FutureResult};
 use http;
 use hyper;
 use hyper::header::{ContentLength, ContentType};
@@ -18,7 +16,6 @@ use hyper::server::{
     Response as HyperResponse
 };
 use indexmap::{IndexMap};
-use tokio_core::reactor::Handle;
 
 use ctx;
 use telemetry::event::Event;
@@ -44,11 +41,6 @@ struct Metrics {
     response_latency: Metric<Histogram>,
 }
 
-#[derive(Debug)]
-pub struct ResponseFuture {
-    lock: Arc<BiLock<Metrics>>,
-}
-
 #[derive(Debug, Clone)]
 struct Metric<M> {
     name: &'static str,
@@ -63,23 +55,14 @@ struct Counter(u64);
 #[derive(Debug)]
 pub struct Aggregate {
     root_labels: Labels,
-    metrics: BiLock<Metrics>,
-    handle: Handle,
+    metrics: Arc<Mutex<Metrics>>,
 }
 
-/// Future which will update the metrics state.
-#[derive(Debug)]
-pub struct Work<'a> {
-    // TODO: add batching.
-    lock: &'a BiLock<Metrics>,
-    labels: Labels,
-    event: Event,
-}
 
 /// Serve scrapable metrics.
 #[derive(Debug, Clone)]
 pub struct Serve {
-    metrics: Arc<BiLock<Metrics>>,
+    metrics: Arc<Mutex<Metrics>>,
 }
 
 /// Construct the Prometheus metrics.
@@ -88,24 +71,9 @@ pub struct Serve {
 /// is a Hyper service which can be used to create the server for the
 /// scrape endpoint, while the `Aggregate` side can receive updates to the
 /// metrics by calling `record_event`.
-pub fn new(process_ctx: Arc<ctx::Process>, handle: &Handle)
-    -> (Aggregate, Serve)
-{
-    let (read, write) = BiLock::new(Metrics::new());
-    (Aggregate::new(process_ctx, write, handle), Serve::new(read))
-}
-
-// ===== impl Serve =====
-
-impl Serve {
-
-    fn new(metrics: BiLock<Metrics>) -> Self {
-        Serve { metrics: Arc::new(metrics) }
-    }
-
-    fn future(&self) -> ResponseFuture {
-        ResponseFuture { lock: self.metrics.clone() }
-    }
+pub fn new(process_ctx: Arc<ctx::Process>) -> (Aggregate, Serve) {
+    let metrics = Arc::new(Mutex::new(Metrics::new()));
+    (Aggregate::new(process_ctx, &metrics), Serve::new(&metrics))
 }
 
 // ===== impl Metrics =====
@@ -273,117 +241,99 @@ impl fmt::Display for Metric<Histogram> {
 
 impl Aggregate {
     fn new(process_ctx: Arc<ctx::Process>,
-            metrics: BiLock<Metrics>,
-            handle: &Handle,)
-               -> Self
+           metrics: &Arc<Mutex<Metrics>>)
+           -> Self
     {
         Aggregate {
             root_labels: Labels::from(process_ctx),
-            metrics: metrics,
-            handle: handle.clone(),
+            metrics: metrics.clone(),
         }
     }
 
+    #[inline]
+    fn update<F: Fn(&mut Metrics)>(&mut self, f: F) {
+        let mut lock = self.metrics.lock()
+            .expect("metrics lock poisoned");
+        f(&mut *lock);
+    }
+
     /// Observe the given event.
-    pub fn record_event(&mut self, event: Event) -> Option<Work> {
+    pub fn record_event(&mut self, event: &Event) {
         trace!("Metrics::record({:?})", event);
-        let labels = match event {
-            Event::StreamRequestOpen(ref req) =>
-                Some(self.root_labels
+        match *event {
+            Event::StreamRequestOpen(ref req) => {
+                let labels = self.root_labels
                     .with_proxy_ctx(event.proxy())
-                    .with_request_ctx(req)),
-            Event::StreamResponseEnd(ref res, ref end) =>
-                Some(self.root_labels
+                    .with_request_ctx(req);
+                self.update(|metrics| {
+                    *metrics.request_total(&labels) += 1;
+                })
+            },
+
+            Event::StreamResponseEnd(ref res, ref end) => {
+                let labels = self.root_labels
                     .with_proxy_ctx(event.proxy())
                     .with_response_ctx(res)
-                    .with_grpc_status(end.grpc_status)),
-            Event::StreamResponseFail(ref res, _) =>
+                    .with_grpc_status(end.grpc_status);
+                self.update(|metrics| {
+                    *metrics.response_total(&labels) += 1;
+                    *metrics.response_duration(&labels) += end.since_response_open;
+                    *metrics.response_latency(&labels) += end.since_request_open;
+                });
+            },
+
+            Event::StreamResponseFail(ref res, ref fail) => {
                 // TODO: do we care about the failure's error code here, or
                 //       does res.status_code cover that?
-                Some(self.root_labels
+                let labels = self.root_labels
                     .with_proxy_ctx(event.proxy())
-                    .with_response_ctx(res)),
+                    .with_response_ctx(res);
+                self.update(|metrics| {
+                    *metrics.response_total(&labels) += 1;
+                    *metrics.response_duration(&labels) += fail.since_response_open;
+                    *metrics.response_latency(&labels) += fail.since_request_open;
+                });
+            },
+
             _ =>
                 // TODO: this is where we could count transport events,
                 //       if there were any metrics that cared about them.
                 // TODO: track request failures?
-                None,
+                { },
         };
-        labels.map(move |labels| Work {
-            lock: &self.metrics,
-            labels,
-            event: event
-        })
-
-    }
-}
-
-// ===== impl Work =====
-
-#[must_use = "futures do nothing unless polled"]
-impl<'a> Future for Work<'a> {
-    type Item = ();
-    type Error = ();
-
-    fn poll(&mut self) -> Poll<(), ()> {
-        Ok(self.lock.poll_lock().map(|mut metrics|
-            match self.event {
-                Event::StreamResponseEnd(_, ref end) => {
-                    *metrics.response_total(&self.labels) += 1;
-                    *metrics.response_duration(&self.labels) += end.since_response_open;
-                    *metrics.response_latency(&self.labels) += end.since_request_open;
-                },
-                Event::StreamResponseFail(_, ref fail) => {
-                    *metrics.response_total(&self.labels) += 1;
-                    *metrics.response_duration(&self.labels) += fail.since_response_open;
-                    *metrics.response_latency(&self.labels) += fail.since_request_open;
-                },
-                Event::StreamRequestOpen(_) => {
-                    *metrics.request_total(&self.labels) += 1;
-                },
-                _ => {},
-            }))
-    }
-
-}
-
-// ===== impl ResponseFuture =====
-
-#[must_use = "futures do nothing unless polled"]
-impl Future for ResponseFuture {
-    type Item = HyperResponse;
-    type Error = hyper::Error;
-
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        Ok(self.lock.poll_lock().map(|metrics| {
-            let body = format!("{}", *metrics);
-            HyperResponse::new()
-                .with_header(ContentLength(body.len() as u64))
-                .with_header(ContentType::plaintext())
-                .with_body(body)
-        }))
     }
 }
 
 
 // ===== impl Serve =====
 
+impl Serve {
+    fn new(metrics: &Arc<Mutex<Metrics>>) -> Self {
+        Serve { metrics: metrics.clone() }
+    }
+}
+
 impl HyperService for Serve {
     type Request = HyperRequest;
     type Response = HyperResponse;
     type Error = hyper::Error;
-    type Future = Either<
-        ResponseFuture,
-        FutureResult<Self::Response, Self::Error>
-    >;
+    type Future = FutureResult<Self::Response, Self::Error>;
 
     fn call(&self, req: Self::Request) -> Self::Future {
         if req.path() != "/metrics" {
-            let rsp = HyperResponse::new().with_status(StatusCode::NotFound);
-            return Either::B(future::ok(rsp));
+            return future::ok(HyperResponse::new()
+                .with_status(StatusCode::NotFound));
         }
 
-        Either::A(self.future())
+        let body = {
+            let metrics = self.metrics.lock()
+                .expect("metrics lock poisoned");
+            format!("{}", *metrics)
+        };
+        future::ok(HyperResponse::new()
+            .with_header(ContentLength(body.len() as u64))
+            .with_header(ContentType::plaintext())
+            .with_body(body))
     }
 }
 

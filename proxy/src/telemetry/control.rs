@@ -99,7 +99,7 @@ impl MakeControl {
 
         let flush_timeout = Timeout::new(self.flush_interval, handle)?;
         let (metrics_work, metrics_service) =
-            prometheus::new(self.process_ctx.clone(), handle);
+            prometheus::new(self.process_ctx.clone());
         let push_metrics = Some(PushMetrics::new(self.process_ctx));
 
         Ok(Control {
@@ -221,13 +221,8 @@ impl Stream for Control {
                         }
                     }
 
-                    if let Some(work) = self.metrics_work.record_event(ev) {
-                        // TODO: don't wait on this?
-                        // NOTE: I think this is roughly the same as the thread
-                        // blocking on acquiring a mutex, so it's *probably*
-                        // okay?
-                        work.wait().expect("update metrics");
-                    }
+                    self.metrics_work.record_event(&ev);
+
                     self.flush_report()
                 }
                 Async::Ready(None) => {
