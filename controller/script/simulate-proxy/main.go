@@ -1,8 +1,8 @@
 package main
 
 import (
-	"context"
 	"flag"
+	"fmt"
 	"math"
 	"math/rand"
 	"net/http"
@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/runconduit/conduit/controller/api/proxy"
+	prom "github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	common "github.com/runconduit/conduit/controller/gen/common"
-	pb "github.com/runconduit/conduit/controller/gen/proxy/telemetry"
 	"github.com/runconduit/conduit/controller/k8s"
 	"github.com/runconduit/conduit/controller/util"
 	log "github.com/sirupsen/logrus"
@@ -22,7 +22,99 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
-/* A simple script for posting simulated telemetry data to the proxy api */
+/* A simple script for exposing simulated prometheus metrics */
+
+type simulatedProxy struct {
+	sleep time.Duration
+}
+
+type proxyVectors struct {
+	requestTotals      *prom.CounterVec
+	responseTotals     *prom.CounterVec
+	responseDurationMs *prom.HistogramVec
+	responseLatencyMs  *prom.HistogramVec
+}
+
+// generateProxyTraffic randomly creates metrics under the guise of a single conduit proxy routing traffic.
+func (s *simulatedProxy) generateProxyTraffic(namespace string, podList []*v1.Pod, proxyVec *proxyVectors) {
+	inboundPod := podList[rand.Intn(len(podList))]
+
+	ip := randomPodIp(podList, nil)
+
+	for {
+		inboundRandomCount := int(rand.Float64() * 10)
+		outboundRandomCount := int(rand.Float64() * 10)
+		randomOutboundPod := podList[rand.Intn(len(podList))]
+
+		proxyVec.
+			requestTotals.
+			With(overrideDefaultLabels(prom.Labels{
+				"direction":  "inbound",
+				"deployment": strings.Split(inboundPod.GetName(), "-")[0],
+				"namespace":  namespace,
+				"instance":   ip.String(),
+				"authority":  "world.greeting:7778",
+			})).
+			Add(float64(inboundRandomCount))
+
+		proxyVec.
+			responseTotals.
+			With(overrideDefaultLabels(prom.Labels{
+				"direction":   "outbound",
+				"deployment":  strings.Split(inboundPod.GetName(), "-")[0],
+				"namespace":   namespace,
+				"instance":    ip.String(),
+				"authority":   "world.greeting:7778",
+				"status_code": fmt.Sprintf("%d", randomHttpResponseCode()),
+			})).
+			Add(float64(outboundRandomCount))
+
+		observeLatencies(
+			randomLatencies(randomCount()),
+			proxyVec.responseLatencyMs,
+			overrideDefaultLabels(prom.Labels{
+				"direction":      "outbound",
+				"dst_deployment": strings.Split(randomOutboundPod.GetName(), "-")[0],
+				"status_code":    strconv.Itoa(http.StatusOK),
+				"namespace":      namespace,
+				"authority":      "world.greeting:7778",
+			}))
+
+		observeLatencies(
+			randomLatencies(randomCount()),
+			proxyVec.responseLatencyMs,
+			overrideDefaultLabels(prom.Labels{
+				"direction":        "outbound",
+				"dst_deployment":   strings.Split(randomOutboundPod.GetName(), "-")[0],
+				"grpc_status_code": strconv.Itoa(int(randomGrpcResponseCode())),
+				"namespace":        namespace,
+				"authority":        "world.greeting:7778",
+			}))
+
+		observeLatencies(
+			randomLatencies(randomCount()),
+			proxyVec.responseDurationMs,
+			overrideDefaultLabels(prom.Labels{
+				"direction":        "outbound",
+				"dst_deployment":   strings.Split(randomOutboundPod.GetName(), "-")[0],
+				"grpc_status_code": strconv.Itoa(int(randomGrpcResponseCode())),
+				"namespace":        namespace,
+				"authority":        "world.greeting:7778",
+			}))
+
+		time.Sleep(s.sleep)
+	}
+}
+func observeLatencies(latencyBuckets []uint32, responseLatencies *prom.HistogramVec, latencyLabels prom.Labels) {
+	for bucketNum, count := range latencyBuckets {
+		latencyMs := float64(latencyBucketBounds[bucketNum]) / 10
+		for i := uint32(0); i < count; i++ {
+			// Then, report that latency value to Prometheus a number
+			// of times equal to the count reported by the proxy.
+			responseLatencies.With(latencyLabels).Observe(latencyMs)
+		}
+	}
+}
 
 var (
 	grpcResponseCodes = []codes.Code{
@@ -101,15 +193,15 @@ var (
 	// These values are one order of magnitude greater than the controller's
 	// Prometheus buckets, because the proxy will reports latencies in tenths
 	// of a millisecond rather than whole milliseconds.
-	latencyBucketBounds = [26]uint32{
+	latencyBucketBounds = []float64{
 		// prometheus.LinearBuckets(1, 1, 5),
 		10, 20, 30, 40, 50,
 		// prometheus.LinearBuckets(10, 10, 5),
-		100, 200, 300, 400, 50,
+		100, 200, 300, 400, 500,
 		// prometheus.LinearBuckets(100, 100, 5),
 		1000, 2000, 3000, 4000, 5000,
 		// prometheus.LinearBuckets(1000, 1000, 5),
-		10000, 20000, 30000, 40000, 5000,
+		10000, 20000, 30000, 40000, 50000,
 		// prometheus.LinearBuckets(10000, 10000, 5),
 		100000, 200000, 300000, 400000, 500000,
 		// Prometheus implicitly creates a max bucket for everything that
@@ -119,8 +211,79 @@ var (
 	}
 )
 
-func randomPort() uint32 {
-	return ports[rand.Intn(len(ports))]
+var (
+	labels        = generatePromLabels()
+	requestTotals = prom.NewCounterVec(
+		prom.CounterOpts{
+			Name: "request_total",
+			Help: "A counter of the number of requests the proxy has received",
+		},
+		labels,
+	)
+	responseTotals = prom.NewCounterVec(
+		prom.CounterOpts{
+			Name: "response_total",
+			Help: "A counter of the number of responses the proxy has received.",
+		},
+		labels,
+	)
+	responseDurationMs = prom.NewHistogramVec(
+		prom.HistogramOpts{
+			Name:    "response_duration_ms",
+			Help:    "A histogram of the duration of a response",
+			Buckets: latencyBucketBounds,
+		}, labels)
+
+	responseLatenciesMs = prom.NewHistogramVec(
+		prom.HistogramOpts{
+			Name:    "response_latency_ms",
+			Help:    "A histogram of the total latency of a response.",
+			Buckets: latencyBucketBounds,
+		}, labels)
+
+	kubeResourceTypes = []string{
+		"job",
+		"replica_set",
+		"deployment",
+		"daemon_set",
+		"replication_controller",
+		"namespace",
+	}
+)
+
+func generatePromLabels() []string {
+	constantLabels := []string{
+		"direction",
+		"authority",
+		"status_code",
+		"grpc_status_code",
+		"instance",
+	}
+
+	var destinationLabels = make([]string, len(kubeResourceTypes))
+
+	for i, label := range kubeResourceTypes {
+		destinationLabels[i] = fmt.Sprintf("dst_%s", label)
+	}
+	return append(append(constantLabels, kubeResourceTypes...), destinationLabels...)
+}
+
+// mergeLabelMaps combines two maps of the same size with the keys
+// map1 values take precedence during the union
+func overrideDefaultLabels(map1 map[string]string) map[string]string {
+	map2 := generateLabelMap(labels)
+	for k := range map2 {
+		map2[k] = map1[k]
+	}
+	return map2
+}
+
+func generateLabelMap(labels []string) map[string]string {
+	labelMap := make(map[string]string, len(labels))
+	for _, label := range labels {
+		labelMap[label] = ""
+	}
+	return labelMap
 }
 
 func randomCount() uint32 {
@@ -136,30 +299,6 @@ func randomLatencies(count uint32) []uint32 {
 		latencies[bucket]++
 	}
 	return latencies
-}
-
-func randomGrpcEos(count uint32) (eos []*pb.EosScope) {
-	grpcResponseCodes := make(map[uint32]uint32)
-	for i := uint32(0); i < count; i++ {
-		grpcResponseCodes[randomGrpcResponseCode()] += 1
-	}
-	for code, streamCount := range grpcResponseCodes {
-		eos = append(eos, &pb.EosScope{
-			Ctx:     &pb.EosCtx{End: &pb.EosCtx_GrpcStatusCode{GrpcStatusCode: code}},
-			Streams: streamCount,
-		})
-	}
-	return
-}
-
-func randomH2Eos(count uint32) (eos []*pb.EosScope) {
-	for i := uint32(0); i < count; i++ {
-		eos = append(eos, &pb.EosScope{
-			Ctx:     &pb.EosCtx{End: &pb.EosCtx_Other{Other: true}},
-			Streams: uint32(rand.Int31()),
-		})
-	}
-	return
 }
 
 func randomGrpcResponseCode() uint32 {
@@ -183,14 +322,14 @@ func podIndexFunc(obj interface{}) ([]string, error) {
 	return nil, nil
 }
 
-func randomPod(pods []*v1.Pod, prvPodIp *common.IPAddress) *common.IPAddress {
+func randomPodIp(pods []*v1.Pod, prvPodIp *common.IPAddress) *common.IPAddress {
 	var podIp *common.IPAddress
 	for {
 		if podIp != nil {
 			break
 		}
 
-		randomPod := pods[rand.Intn(len(pods))]
+		randomPod := randomPod(pods)
 		if strings.HasPrefix(randomPod.GetNamespace(), "kube-") {
 			continue // skip pods in the kube-* namespaces
 		}
@@ -202,12 +341,42 @@ func randomPod(pods []*v1.Pod, prvPodIp *common.IPAddress) *common.IPAddress {
 	return podIp
 }
 
+func randomPod(pods []*v1.Pod) *v1.Pod {
+	var pod *v1.Pod
+	for {
+		pod = pods[rand.Intn(len(pods))]
+		if strings.HasPrefix(pod.GetNamespace(), "kube-") {
+			continue // skip pods in the kube-* namespaces
+		} else {
+			break
+		}
+	}
+	return pod
+}
+
+func init() {
+	prom.MustRegister(requestTotals)
+	prom.MustRegister(responseTotals)
+	prom.MustRegister(responseLatenciesMs)
+	prom.MustRegister(responseDurationMs)
+}
+
+func getRandomNamespaceKey(podsByNamespace map[string][]*v1.Pod) string {
+	choice := rand.Intn(len(podsByNamespace))
+	var chosen int
+	for k := range podsByNamespace {
+		if chosen == choice {
+			return k
+		}
+		chosen++
+	}
+	return ""
+}
+
 func main() {
 	rand.Seed(time.Now().UnixNano())
-
-	addr := flag.String("addr", ":8086", "address of proxy api")
-	requestCount := flag.Int("requests", 0, "number of api requests to make (default: infinite)")
 	sleep := flag.Duration("sleep", time.Second, "time to sleep between requests")
+	metricsAddr := flag.String("metrics-addr", ":9000", "port to server prometheus metrics")
 	maxPods := flag.Int("max-pods", 0, "total number of pods to simulate (default unlimited)")
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config - required")
 	flag.Parse()
@@ -216,12 +385,6 @@ func main() {
 		log.Fatal("Unable to parse command line arguments")
 		return
 	}
-
-	client, conn, err := proxy.NewTelemetryClient(*addr)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-	defer conn.Close()
 
 	clientSet, err := k8s.NewClientSet(*kubeConfigPath)
 	if err != nil {
@@ -244,109 +407,24 @@ func main() {
 	}
 
 	allPods := make([]*v1.Pod, 0)
+	podsByNamespace := make(map[string][]*v1.Pod)
 	for _, pod := range podList {
-		if pod.Status.PodIP != "" && (*maxPods == 0 || len(allPods) < *maxPods) {
+		if pod.Status.PodIP != "" && !strings.HasPrefix(pod.GetNamespace(), "kube-") && (*maxPods == 0 || len(allPods) < *maxPods) {
 			allPods = append(allPods, pod)
+			podsByNamespace[pod.GetNamespace()] = append(podsByNamespace[pod.GetNamespace()], pod)
 		}
 	}
+	randomNamespace := getRandomNamespaceKey(podsByNamespace)
+	proxy := simulatedProxy{sleep: *sleep}
 
-	for i := 0; (*requestCount == 0) || (i < *requestCount); i++ {
-		count := randomCount()
-		sourceIp := randomPod(allPods, nil)
-		targetIp := randomPod(allPods, sourceIp)
+	go proxy.generateProxyTraffic(randomNamespace, podsByNamespace[randomNamespace], &proxyVectors{
+		requestTotals:      requestTotals,
+		responseTotals:     responseTotals,
+		responseLatencyMs:  responseLatenciesMs,
+		responseDurationMs: responseDurationMs,
+	})
 
-		req := &pb.ReportRequest{
-			Process: &pb.Process{
-				ScheduledInstance:  "hello-1mfa0",
-				ScheduledNamespace: "people",
-			},
-			ClientTransports: []*pb.ClientTransport{
-				// TCP
-				&pb.ClientTransport{
-					TargetAddr: &common.TcpAddress{
-						Ip:   targetIp,
-						Port: randomPort(),
-					},
-					Connects: count,
-					Disconnects: []*pb.TransportSummary{
-						&pb.TransportSummary{
-							DurationMs: uint64(randomCount()),
-							BytesSent:  uint64(randomCount()),
-						},
-					},
-					Protocol: common.Protocol_TCP,
-				},
-			},
-			ServerTransports: []*pb.ServerTransport{
-				// TCP
-				&pb.ServerTransport{
-					SourceIp: sourceIp,
-					Connects: count,
-					Disconnects: []*pb.TransportSummary{
-						&pb.TransportSummary{
-							DurationMs: uint64(randomCount()),
-							BytesSent:  uint64(randomCount()),
-						},
-					},
-					Protocol: common.Protocol_TCP,
-				},
-			},
-			Proxy: pb.ReportRequest_INBOUND,
-			Requests: []*pb.RequestScope{
-
-				// gRPC
-				&pb.RequestScope{
-					Ctx: &pb.RequestCtx{
-						SourceIp: sourceIp,
-						TargetAddr: &common.TcpAddress{
-							Ip:   targetIp,
-							Port: randomPort(),
-						},
-						Authority: "world.greeting:7778",
-					},
-					Count: count,
-					Responses: []*pb.ResponseScope{
-						&pb.ResponseScope{
-							Ctx: &pb.ResponseCtx{
-								HttpStatusCode: http.StatusOK,
-							},
-							ResponseLatencyCounts: randomLatencies(count),
-							Ends: randomGrpcEos(count),
-						},
-					},
-				},
-
-				// HTTP/2
-				&pb.RequestScope{
-					Ctx: &pb.RequestCtx{
-						SourceIp: sourceIp,
-						TargetAddr: &common.TcpAddress{
-							Ip:   targetIp,
-							Port: randomPort(),
-						},
-						Authority: "world.greeting:7778",
-					},
-					Count: count,
-					Responses: []*pb.ResponseScope{
-						&pb.ResponseScope{
-							Ctx: &pb.ResponseCtx{
-								HttpStatusCode: randomHttpResponseCode(),
-							},
-							ResponseLatencyCounts: randomLatencies(count),
-							Ends: randomH2Eos(count),
-						},
-					},
-				},
-			},
-
-			HistogramBucketBoundsTenthMs: latencyBucketBounds[:],
-		}
-
-		_, err = client.Report(context.Background(), req)
-		if err != nil {
-			log.Fatal(err.Error())
-		}
-
-		time.Sleep(*sleep)
-	}
+	log.Infof("serving scrapable metrics on %s", *metricsAddr)
+	http.Handle("/metrics", promhttp.Handler())
+	http.ListenAndServe(*metricsAddr, nil)
 }
