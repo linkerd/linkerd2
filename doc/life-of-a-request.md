@@ -1,8 +1,8 @@
-# The Life of a Request
+# The Life of a Connection
 
-This document describes, in broad strokes, how the Conduit proxy routes a request. We
-assume that inbound and outbound routing are basically the same, modulo a few details that
-are called out in the proper context.
+This document describes, in broad strokes, how the Conduit proxy works with regard to
+application traffic. We assume that inbound and outbound routing are basically the same,
+modulo a few details that are called out in the proper context.
 
 ## Accepting a connection
 
