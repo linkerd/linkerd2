@@ -57,7 +57,11 @@ pub const BUCKET_BOUNDS: [Latency; NUM_BUCKETS] = [
 
 /// A series of latency values and counts.
 #[derive(Debug, Clone)]
-pub struct Histogram([u32; NUM_BUCKETS]);
+pub struct Histogram {
+    buckets: [u32; NUM_BUCKETS],
+    /// The total sum of all observed latency values.
+    pub sum: usize,
+}
 
 /// A latency in tenths of a millisecond.
 #[derive(Debug, Default, Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Hash)]
@@ -78,12 +82,16 @@ impl Histogram {
             .position(|max| &measurement <= max)
             .expect("latency value greater than u32::MAX; this shouldn't be \
                      possible.");
-        self.0[i] += 1;
+        self.buckets[i] += 1;
+        self.sum += measurement.0 as usize;
     }
 
     /// Construct a new, empty `Histogram`.
     pub fn new() -> Self {
-        Histogram([0; NUM_BUCKETS])
+        Histogram {
+            buckets: [0; NUM_BUCKETS],
+            sum: 0,
+        }
     }
 
 }
@@ -105,7 +113,7 @@ impl<'a> IntoIterator for &'a Histogram {
     type IntoIter = slice::Iter<'a, u32>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.0.iter()
+        self.buckets.iter()
     }
 
 }

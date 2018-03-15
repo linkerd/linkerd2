@@ -232,14 +232,37 @@ impl fmt::Display for Metric<Histogram> {
         )?;
 
         for (labels, histogram) in &self.values {
-            for (num, count) in histogram.into_iter().enumerate() {
-                write!(f, "{name}{{{labels},le=\"{le}\"}} {value}\n",
+            // Look up the bucket numbers against the BUCKET_BOUNDS array
+            // to turn them into upper bounds.
+            let bounds_and_counts = histogram.into_iter()
+                .enumerate()
+                .map(|(num, count)| (BUCKET_BOUNDS[num], count));
+
+            // Since Prometheus expects each bucket's value to be the sum of
+            // the number of values in this bucket and all lower buckets,
+            // track the total count here.
+            let mut total_count = 0;
+            for (le, count) in bounds_and_counts {
+                // Add this bucket's count to the total count.
+                total_count += count;
+                write!(f, "{name}_bucket{{{labels},le=\"{le}\"}} {count}\n",
                     name = self.name,
                     labels = labels,
-                    le = BUCKET_BOUNDS[num],
-                    value = count,
+                    le = le,
+                    // Print the total count *as of this iteration*.
+                    count = total_count,
                 )?;
             }
+
+            // Print the total count and histogram sum stats.
+            write!(f,
+                "{name}_count{{{labels}}} {count}\n\
+                 {name}_sum{{{labels}}} {sum}\n",
+                name = self.name,
+                labels = labels,
+                count = total_count,
+                sum = histogram.sum,
+            )?;
         }
 
         Ok(())
