@@ -1,10 +1,13 @@
-use std::{fmt, io};
+use std::{fmt, io, thread};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use hyper;
+
 use futures::{future, Async, Future, Poll, Stream};
+use futures::sync::oneshot;
 use futures_mpsc_lossy::Receiver;
-use tokio_core::reactor::{Handle, Timeout};
+use tokio_core::reactor::{Core, Handle, Timeout};
 
 use super::event::Event;
 use super::metrics::{prometheus, Metrics as PushMetrics};
@@ -60,8 +63,6 @@ pub struct Control {
     /// Ensures liveliness of telemetry by waking the stream to produce reports when
     /// needed.  This timeout is reset as reports are returned.
     flush_timeout: Timeout,
-
-    handle: Handle,
 }
 
 // ===== impl MakeControl =====
@@ -110,7 +111,6 @@ impl MakeControl {
             taps: Some(taps.clone()),
             flush_interval: self.flush_interval,
             flush_timeout,
-            handle: handle.clone(),
         })
     }
 }
@@ -174,26 +174,40 @@ impl Control {
     }
 
     pub fn serve_metrics(&self, bound_port: connection::BoundPort)
-        -> Box<Future<Item = (), Error = io::Error> + 'static>
+        -> io::Result<oneshot::Sender<()>>
     {
-        use hyper;
+        let (tx, server_shutdown) = oneshot::channel::<()>();
         let service = self.metrics_service.clone();
-        let hyper = hyper::server::Http::<hyper::Chunk>::new();
-        bound_port.listen_and_fold(
-            &self.handle,
-            (hyper, self.handle.clone()),
-            move |(hyper, executor), (conn, _)| {
-                let service = service.clone();
-                let serve = hyper.serve_connection(conn, service)
-                    .map(|_| {})
-                    .map_err(|e| {
-                        error!("error serving prometheus metrics: {:?}", e);
-                    });
+        thread::Builder::new()
+            .name("metrics-server".into())
+            .spawn(move || {
+                let mut core = Core::new().expect("initialize metrics core");
+                let executor = core.handle();
+                let hyper = hyper::server::Http::<hyper::Chunk>::new();
+                let server = bound_port.listen_and_fold(
+                    &executor,
+                    (hyper, executor.clone()),
+                    move |(hyper, executor), (conn, _)| {
+                        let service = service.clone();
+                        let serve = hyper.serve_connection(conn, service)
+                            .map(|_| {})
+                            .map_err(|e| {
+                                error!("error serving prometheus metrics: {:?}", e);
+                            });
+                        executor.spawn(serve);
 
-                executor.spawn(::logging::context_future("serve_metrics", serve));
+                        future::ok((hyper, executor))
+                    })
+                    .map_err(|_| {})
+                    .map(|_| {});
+                executor.spawn(
+                    ::logging::context_future("metrics-server", server)
+                );
+                core.run(server_shutdown).expect("metrics server");
+            })?;
+        Ok(tx)
 
-                future::ok((hyper, executor))
-            })
+
     }
 
 }
