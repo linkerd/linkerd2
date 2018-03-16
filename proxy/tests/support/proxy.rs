@@ -130,35 +130,47 @@ fn run(proxy: Proxy, mut env: config::TestEnv) -> Listening {
         config.metrics_flush_interval = dur;
     }
 
-    let mock_orig_dst = MockOriginalDst(Arc::new(Mutex::new(mock_orig_dst)));
 
-    let main = conduit_proxy::Main::new(config, mock_orig_dst.clone());
-
-    let control_addr = main.control_addr();
-    let inbound_addr = main.inbound_addr();
-    let outbound_addr = main.outbound_addr();
-
-    {
-        let mut inner = mock_orig_dst.0.lock().unwrap();
-        inner.inbound_local_addr = Some(inbound_addr);
-        inner.outbound_local_addr = Some(outbound_addr);
-    }
-
-    let (running_tx, running_rx) = shutdown_signal();
-    let (tx, rx) = shutdown_signal();
+    let (running_tx, running_rx) = oneshot::channel();
+    let (tx, mut rx) = shutdown_signal();
 
     ::std::thread::Builder::new()
         .name("support proxy".into())
         .spawn(move || {
             let _c = controller;
 
-            let _ = running_tx.send(());
-            main.run_until(rx);
+            let mock_orig_dst = MockOriginalDst(Arc::new(Mutex::new(mock_orig_dst)));
+
+            let main = conduit_proxy::Main::new(config, mock_orig_dst.clone());
+
+            let control_addr = main.control_addr();
+            let inbound_addr = main.inbound_addr();
+            let outbound_addr = main.outbound_addr();
+
+            {
+                let mut inner = mock_orig_dst.0.lock().unwrap();
+                inner.inbound_local_addr = Some(inbound_addr);
+                inner.outbound_local_addr = Some(outbound_addr);
+            }
+
+            // slip the running tx into the shutdown future, since the first time
+            // the shutdown future is polled, that means all of the proxy is now
+            // running.
+            let addrs = (control_addr, inbound_addr, outbound_addr);
+            let mut running = Some((running_tx, addrs));
+            let on_shutdown = future::poll_fn(move || {
+                if let Some((tx, addrs)) = running.take() {
+                    let _ = tx.send(addrs);
+                }
+
+                rx.poll()
+            });
+
+            main.run_until(on_shutdown);
         })
         .unwrap();
 
-    running_rx.wait().unwrap();
-    ::std::thread::sleep(::std::time::Duration::from_millis(100));
+    let (control_addr, inbound_addr, outbound_addr) = running_rx.wait().unwrap();
 
     Listening {
         control: control_addr,
