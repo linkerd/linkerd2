@@ -275,9 +275,8 @@ where
                         .make_control(&taps, &executor)
                         .expect("bad news in telemetry town");
 
-                    let metrics_shutdown = telemetry
-                        .serve_metrics(metrics_listener)
-                        .expect("metrics server");
+                    let metrics_server = telemetry
+                        .serve_metrics(metrics_listener);
 
                     let client = control_bg.bind(
                         telemetry,
@@ -287,13 +286,13 @@ where
                         &executor
                     );
 
-                    let fut = client.join(server.map_err(|_| {})).map(|_| {});
+                    let fut = client.join3(
+                        server.map_err(|_| {}),
+                        metrics_server.map_err(|_| {}),
+                    ).map(|_| {});
                     executor.spawn(::logging::context_future("controller-client", fut));
 
-                    let shutdown = controller_shutdown_signal.then(|_| {
-                        let _ = metrics_shutdown.send(());
-                        Ok::<(), ()>(())
-                    });
+                    let shutdown = controller_shutdown_signal.then(|_| Ok::<(), ()>(()));
                     core.run(shutdown).expect("controller api");
                 })
                 .expect("initialize controller api thread");
