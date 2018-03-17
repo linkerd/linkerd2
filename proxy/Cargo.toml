@@ -30,6 +30,7 @@ rand = "0.4"
 
 tokio-core = "0.1"
 tokio-io = "0.1"
+tokio-signal = "0.1"
 
 prost = "0.3.0"
 prost-types = "0.3.0"

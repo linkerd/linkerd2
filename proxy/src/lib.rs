@@ -103,6 +103,8 @@ pub struct Main<G> {
     outbound_listener: BoundPort,
 
     get_original_dst: G,
+
+    reactor: Core,
 }
 
 impl<G> Main<G>
@@ -117,12 +119,16 @@ where
             .expect("public listener bind");
         let outbound_listener = BoundPort::new(config.private_listener.addr)
             .expect("private listener bind");
+
+        let reactor = Core::new().expect("reactor");
+        
         Main {
             config,
             control_listener,
             inbound_listener,
             outbound_listener,
             get_original_dst,
+            reactor,
         }
     }
 
@@ -139,8 +145,8 @@ where
         self.outbound_listener.local_addr()
     }
 
-    pub fn run(self) {
-        self.run_until(::futures::future::empty());
+    pub fn handle(&self) -> Handle {
+        self.reactor.handle()
     }
 
     pub fn run_until<F>(self, shutdown_signal: F)
@@ -155,6 +161,7 @@ where
             inbound_listener,
             outbound_listener,
             get_original_dst,
+            reactor: mut core,
         } = self;
 
         let control_host_and_port = config.control_host_and_port.clone();
@@ -175,7 +182,6 @@ where
 
         let (control, control_bg) = control::new();
 
-        let mut core = Core::new().expect("executor");
         let executor = core.handle();
 
         let dns_config = dns::Config::from_file(&config.resolv_conf_path);
