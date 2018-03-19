@@ -124,7 +124,7 @@ services:
     - go
     - run
     - /go/src/github.com/runconduit/conduit/controller/script/simulate-proxy/main.go
-    - --metrics-addr=0.0.0.0:9000
+    - --metrics-addrs=0.0.0.0:9000,0.0.0.0:9001,0.0.0.0:9002
     - --kubeconfig=/kubeconfig
     - --max-pods=10
     - --sleep=10ms

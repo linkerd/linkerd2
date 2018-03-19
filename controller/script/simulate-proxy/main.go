@@ -329,7 +329,7 @@ func getRandomNamespaceKey(podsByNamespace map[string][]*v1.Pod) string {
 func main() {
 	rand.Seed(time.Now().UnixNano())
 	sleep := flag.Duration("sleep", time.Second, "time to sleep between requests")
-	metricsAddr := flag.String("metrics-addr", ":9000", "port to server prometheus metrics")
+	metricsAddrs := flag.String("metrics-addrs", ":9000,:9001,:9002", "range of network addresses to serve prometheus metrics")
 	maxPods := flag.Int("max-pods", 0, "total number of pods to simulate (default unlimited)")
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config - required")
 	flag.Parse()
@@ -371,7 +371,7 @@ func main() {
 	stopCh := make(chan os.Signal)
 	signal.Notify(stopCh, os.Interrupt, os.Kill)
 
-	for _, addr := range strings.Split(*metricsAddr, ",") {
+	for _, addr := range strings.Split(*metricsAddrs, ",") {
 		randomNamespace := getRandomNamespaceKey(podsByNamespace)
 		proxyPod := podList[rand.Intn(len(podList))]
 
