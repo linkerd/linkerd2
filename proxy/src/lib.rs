@@ -183,7 +183,7 @@ where
             config.private_forward
         );
         info!(
-            "serving scrapable metrics on {:?}",
+            "serving Prometheus metrics on {:?}",
             metrics_listener.local_addr(),
         );
 
