@@ -6,6 +6,8 @@ import (
 	"math"
 	"math/rand"
 	"net/http"
+	"os"
+	"os/signal"
 	"strconv"
 	"strings"
 	"time"
@@ -25,98 +27,21 @@ import (
 /* A simple script for exposing simulated prometheus metrics */
 
 type simulatedProxy struct {
-	sleep time.Duration
+	sleep     time.Duration
+	pod       *v1.Pod
+	namespace string
+	*proxyMetricCollectors
 }
 
-type proxyVectors struct {
-	requestTotals      *prom.CounterVec
-	responseTotals     *prom.CounterVec
-	responseDurationMs *prom.HistogramVec
-	responseLatencyMs  *prom.HistogramVec
-}
-
-// generateProxyTraffic randomly creates metrics under the guise of a single conduit proxy routing traffic.
-func (s *simulatedProxy) generateProxyTraffic(namespace string, podList []*v1.Pod, proxyVec *proxyVectors) {
-	inboundPod := podList[rand.Intn(len(podList))]
-
-	ip := randomPodIp(podList, nil)
-
-	for {
-		inboundRandomCount := int(rand.Float64() * 10)
-		outboundRandomCount := int(rand.Float64() * 10)
-		randomOutboundPod := podList[rand.Intn(len(podList))]
-
-		proxyVec.
-			requestTotals.
-			With(overrideDefaultLabels(prom.Labels{
-				"direction":  "inbound",
-				"deployment": strings.Split(inboundPod.GetName(), "-")[0],
-				"namespace":  namespace,
-				"instance":   ip.String(),
-				"authority":  "world.greeting:7778",
-			})).
-			Add(float64(inboundRandomCount))
-
-		proxyVec.
-			responseTotals.
-			With(overrideDefaultLabels(prom.Labels{
-				"direction":   "outbound",
-				"deployment":  strings.Split(inboundPod.GetName(), "-")[0],
-				"namespace":   namespace,
-				"instance":    ip.String(),
-				"authority":   "world.greeting:7778",
-				"status_code": fmt.Sprintf("%d", randomHttpResponseCode()),
-			})).
-			Add(float64(outboundRandomCount))
-
-		observeLatencies(
-			randomLatencies(randomCount()),
-			proxyVec.responseLatencyMs,
-			overrideDefaultLabels(prom.Labels{
-				"direction":      "outbound",
-				"dst_deployment": strings.Split(randomOutboundPod.GetName(), "-")[0],
-				"status_code":    strconv.Itoa(http.StatusOK),
-				"namespace":      namespace,
-				"authority":      "world.greeting:7778",
-			}))
-
-		observeLatencies(
-			randomLatencies(randomCount()),
-			proxyVec.responseLatencyMs,
-			overrideDefaultLabels(prom.Labels{
-				"direction":        "outbound",
-				"dst_deployment":   strings.Split(randomOutboundPod.GetName(), "-")[0],
-				"grpc_status_code": strconv.Itoa(int(randomGrpcResponseCode())),
-				"namespace":        namespace,
-				"authority":        "world.greeting:7778",
-			}))
-
-		observeLatencies(
-			randomLatencies(randomCount()),
-			proxyVec.responseDurationMs,
-			overrideDefaultLabels(prom.Labels{
-				"direction":        "outbound",
-				"dst_deployment":   strings.Split(randomOutboundPod.GetName(), "-")[0],
-				"grpc_status_code": strconv.Itoa(int(randomGrpcResponseCode())),
-				"namespace":        namespace,
-				"authority":        "world.greeting:7778",
-			}))
-
-		time.Sleep(s.sleep)
-	}
-}
-func observeLatencies(latencyBuckets []uint32, responseLatencies *prom.HistogramVec, latencyLabels prom.Labels) {
-	for bucketNum, count := range latencyBuckets {
-		latencyMs := float64(latencyBucketBounds[bucketNum]) / 10
-		for i := uint32(0); i < count; i++ {
-			// Then, report that latency value to Prometheus a number
-			// of times equal to the count reported by the proxy.
-			responseLatencies.With(latencyLabels).Observe(latencyMs)
-		}
-	}
+type proxyMetricCollectors struct {
+	requestTotals     *prom.CounterVec
+	responseTotals    *prom.CounterVec
+	requestDurationMs *prom.HistogramVec
+	responseLatencyMs *prom.HistogramVec
 }
 
 var (
+	labels            = generatePromLabels()
 	grpcResponseCodes = []codes.Code{
 		codes.OK,
 		codes.PermissionDenied,
@@ -185,11 +110,8 @@ var (
 		http.StatusNetworkAuthenticationRequired,
 	}
 
-	ports = []uint32{3333, 6262}
-
 	// latencyBucketBounds holds the maximum value (inclusive, in tenths of a
 	// millisecond) that may be counted in a given histogram bucket.
-
 	// These values are one order of magnitude greater than the controller's
 	// Prometheus buckets, because the proxy will reports latencies in tenths
 	// of a millisecond rather than whole milliseconds.
@@ -211,37 +133,79 @@ var (
 	}
 )
 
-var (
-	labels        = generatePromLabels()
-	requestTotals = prom.NewCounterVec(
-		prom.CounterOpts{
-			Name: "request_total",
-			Help: "A counter of the number of requests the proxy has received",
-		},
-		labels,
-	)
-	responseTotals = prom.NewCounterVec(
-		prom.CounterOpts{
-			Name: "response_total",
-			Help: "A counter of the number of responses the proxy has received.",
-		},
-		labels,
-	)
-	responseDurationMs = prom.NewHistogramVec(
-		prom.HistogramOpts{
-			Name:    "response_duration_ms",
-			Help:    "A histogram of the duration of a response",
-			Buckets: latencyBucketBounds,
-		}, labels)
+// generateProxyTraffic randomly creates metrics under the guise of a single conduit proxy routing traffic.
+// metrics are generated for each proxyMetricCollector.
+func (s *simulatedProxy) generateProxyTraffic(podList []*v1.Pod) {
+	proxyPodName := strings.Split(s.pod.GetName(), "-")[0]
 
-	responseLatenciesMs = prom.NewHistogramVec(
-		prom.HistogramOpts{
-			Name:    "response_latency_ms",
-			Help:    "A histogram of the total latency of a response.",
-			Buckets: latencyBucketBounds,
-		}, labels)
+	for {
+		inboundRandomCount := int(rand.Float64() * 10)
+		outboundRandomCount := int(rand.Float64() * 10)
+		randomDestinationPod := podList[rand.Intn(len(podList))]
+		randomDestinationPodName := strings.Split(randomDestinationPod.GetName(), "-")[0]
 
-	kubeResourceTypes = []string{
+		s.requestTotals.
+			With(overrideDefaultLabels(s.newConduitLabel(proxyPodName, randomDestinationPodName))).
+			Add(float64(inboundRandomCount))
+
+		s.responseTotals.
+			With(overrideDefaultLabels(s.newConduitLabel(proxyPodName, randomDestinationPodName))).
+			Add(float64(outboundRandomCount))
+
+		observeHistogramVec(
+			randomLatencies(randomCount()),
+			s.responseLatencyMs,
+			overrideDefaultLabels(s.newConduitLabel(proxyPodName, randomDestinationPodName)))
+
+		observeHistogramVec(
+			randomLatencies(randomCount()),
+			s.requestDurationMs,
+			overrideDefaultLabels(s.newConduitLabel(proxyPodName, randomDestinationPodName)))
+
+		time.Sleep(s.sleep)
+	}
+}
+
+// newConduitLabel creates a label map to be used with metric generation.
+func (s *simulatedProxy) newConduitLabel(proxyPodName string, destinationPod string) prom.Labels {
+	labelMap := prom.Labels{
+		"direction":  randomRequestDirection(),
+		"deployment": proxyPodName,
+		"authority":  "world.greeting:7778",
+		"namespace":  s.namespace,
+	}
+	if labelMap["direction"] == "outbound" {
+		labelMap["dst_deployment"] = destinationPod
+	}
+
+	if rand.Intn(2) == 0 {
+		labelMap["grpc_status_code"] = fmt.Sprintf("%d", randomGrpcResponseCode())
+	} else {
+		labelMap["status_code"] = fmt.Sprintf("%d", randomHttpResponseCode())
+	}
+	return labelMap
+}
+
+func observeHistogramVec(latencyBuckets []uint32, latencies *prom.HistogramVec, latencyLabels prom.Labels) {
+	for bucketNum, count := range latencyBuckets {
+		latencyMs := float64(latencyBucketBounds[bucketNum]) / 10
+		for i := uint32(0); i < count; i++ {
+			// Then, report that latency value to Prometheus a number
+			// of times equal to the count reported by the proxy.
+			latencies.With(latencyLabels).Observe(latencyMs)
+		}
+	}
+}
+
+func randomRequestDirection() string {
+	if rand.Intn(2) == 0 {
+		return "inbound"
+	}
+	return "outbound"
+}
+
+func generatePromLabels() []string {
+	kubeResourceTypes := []string{
 		"job",
 		"replica_set",
 		"deployment",
@@ -249,18 +213,14 @@ var (
 		"replication_controller",
 		"namespace",
 	}
-)
-
-func generatePromLabels() []string {
 	constantLabels := []string{
 		"direction",
 		"authority",
 		"status_code",
 		"grpc_status_code",
-		"instance",
 	}
 
-	var destinationLabels = make([]string, len(kubeResourceTypes))
+	destinationLabels := make([]string, len(kubeResourceTypes))
 
 	for i, label := range kubeResourceTypes {
 		destinationLabels[i] = fmt.Sprintf("dst_%s", label)
@@ -354,13 +314,6 @@ func randomPod(pods []*v1.Pod) *v1.Pod {
 	return pod
 }
 
-func init() {
-	prom.MustRegister(requestTotals)
-	prom.MustRegister(responseTotals)
-	prom.MustRegister(responseLatenciesMs)
-	prom.MustRegister(responseDurationMs)
-}
-
 func getRandomNamespaceKey(podsByNamespace map[string][]*v1.Pod) string {
 	choice := rand.Intn(len(podsByNamespace))
 	var chosen int
@@ -414,17 +367,62 @@ func main() {
 			podsByNamespace[pod.GetNamespace()] = append(podsByNamespace[pod.GetNamespace()], pod)
 		}
 	}
-	randomNamespace := getRandomNamespaceKey(podsByNamespace)
-	proxy := simulatedProxy{sleep: *sleep}
 
-	go proxy.generateProxyTraffic(randomNamespace, podsByNamespace[randomNamespace], &proxyVectors{
-		requestTotals:      requestTotals,
-		responseTotals:     responseTotals,
-		responseLatencyMs:  responseLatenciesMs,
-		responseDurationMs: responseDurationMs,
-	})
+	stopCh := make(chan os.Signal)
+	signal.Notify(stopCh, os.Interrupt, os.Kill)
 
-	log.Infof("serving scrapable metrics on %s", *metricsAddr)
-	http.Handle("/metrics", promhttp.Handler())
-	http.ListenAndServe(*metricsAddr, nil)
+	for _, addr := range strings.Split(*metricsAddr, ",") {
+		randomNamespace := getRandomNamespaceKey(podsByNamespace)
+		proxyPod := podList[rand.Intn(len(podList))]
+
+		go func(address string, namespace string, pod *v1.Pod) {
+
+			proxy := simulatedProxy{
+				sleep:     *sleep,
+				pod:       pod,
+				namespace: namespace,
+				proxyMetricCollectors: &proxyMetricCollectors{requestTotals: prom.NewCounterVec(
+					prom.CounterOpts{
+						Name: "request_total",
+						Help: "A counter of the number of requests the proxy has received",
+					}, labels),
+					responseTotals: prom.NewCounterVec(
+						prom.CounterOpts{
+							Name: "response_total",
+							Help: "A counter of the number of responses the proxy has received.",
+						}, labels),
+					requestDurationMs: prom.NewHistogramVec(
+						prom.HistogramOpts{
+							Name:    "request_duration_ms",
+							Help:    "A histogram of the duration of a response",
+							Buckets: latencyBucketBounds,
+						}, labels),
+					responseLatencyMs: prom.NewHistogramVec(
+						prom.HistogramOpts{
+							Name:    "response_latency_ms",
+							Help:    "A histogram of the total latency of a response.",
+							Buckets: latencyBucketBounds,
+						}, labels)},
+			}
+
+			registerer := prom.NewRegistry()
+			registerer.MustRegister(
+				proxy.requestTotals,
+				proxy.responseTotals,
+				proxy.requestDurationMs,
+				proxy.responseLatencyMs,
+			)
+
+			go proxy.generateProxyTraffic(podList)
+
+			server := &http.Server{
+				Addr:    address,
+				Handler: promhttp.HandlerFor(registerer, promhttp.HandlerOpts{}),
+			}
+			log.Infof("serving scrapable metrics on %s", address)
+			server.ListenAndServe()
+
+		}(addr, randomNamespace, proxyPod)
+	}
+	<-stopCh
 }
