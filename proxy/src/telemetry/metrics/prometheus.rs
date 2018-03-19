@@ -59,7 +59,7 @@ pub struct Aggregate {
 }
 
 
-/// Serve scrapable metrics.
+/// Serve Prometheues metrics.
 #[derive(Debug, Clone)]
 pub struct Serve {
     metrics: Arc<Mutex<Metrics>>,

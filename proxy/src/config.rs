@@ -26,7 +26,7 @@ pub struct Config {
     /// Where to listen for connectoins initiated by the control planey.
     pub control_listener: Listener,
 
-    /// Where to serve scrapable metrics.
+    /// Where to serve Prometheus metrics.
     pub metrics_listener: Listener,
 
     /// Where to forward externally received connections.
