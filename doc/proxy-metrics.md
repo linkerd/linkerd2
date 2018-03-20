@@ -7,12 +7,13 @@ docpage = true
 
 The Conduit proxy exposes metrics that describe the traffic flowing through the
 proxy.  These metrics are exposed in Prometheus format on the proxy control port
-(4190 by default) at the `/metrics` path.  The following metrics will be
+(4191 by default) at the `/metrics` path.  The following metrics will be
 exposed:
 
 ### `request_total`
 
-A counter of the number of requests the proxy has received.
+A counter of the number of requests the proxy has received.  This is incremented
+when the request stream begins.
 
 ### `request_duration_ms`
 
@@ -21,7 +22,8 @@ request headers are received to when the request stream has completed.
 
 ### `response_total`
 
-A counter of the number of responses the proxy has received.
+A counter of the number of responses the proxy has received.  This is
+incremeneted when the response stream ends.
 
 ### `response_duration_ms`
 
