@@ -27,7 +27,7 @@ use super::tcp;
 /// service.
 pub struct Server<S: NewService, B: tower_h2::Body, G>
 where
-    S: NewService<Request=http:: Request<HttpBody>>,
+    S: NewService<Request=http::Request<HttpBody>>,
     S::Future: 'static,
 {
     executor: Handle,

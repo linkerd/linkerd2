@@ -323,16 +323,16 @@ impl Aggregate {
     pub fn record_event(&mut self, event: &Event) {
         trace!("Metrics::record({:?})", event);
         match *event {
-            Event::StreamRequestOpen(ref req) => {
-                let labels = Arc::new(RequestLabels::new(req));
-                self.update(|metrics| {
-                    *metrics.request_total(&labels) += 1;
-                })
+
+            Event::StreamRequestOpen(_) | Event::StreamResponseOpen(_, _) => {
+                // Do nothing; we'll record metrics for the request or response
+                //  when the stream *finishes*.
             },
 
             Event::StreamRequestFail(ref req, ref fail) => {
                 let labels = Arc::new(RequestLabels::new(req));
                 self.update(|metrics| {
+                    *metrics.request_total(&labels) += 1;
                     *metrics.request_duration(&labels) +=
                         fail.since_request_open;
                 })
@@ -341,13 +341,10 @@ impl Aggregate {
             Event::StreamRequestEnd(ref req, ref end) => {
                 let labels = Arc::new(RequestLabels::new(req));
                 self.update(|metrics| {
+                    *metrics.request_total(&labels) += 1;
                     *metrics.request_duration(&labels) +=
                         end.since_request_open;
                 })
-            },
-
-            Event::StreamResponseOpen(_, _) =>  {
-                // Wait until the response stream ends to record it.
             },
 
             Event::StreamResponseEnd(ref res, ref end) => {
