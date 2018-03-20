@@ -6,9 +6,8 @@ docpage = true
 +++
 
 The Conduit proxy exposes metrics that describe the traffic flowing through the
-proxy.  These metrics are exposed in Prometheus format on the proxy control port
-(4191 by default) at the `/metrics` path.  The following metrics will be
-exposed:
+proxy.  The following metrics are available at `/metrics` on the proxy's metrics
+port (default: `:4191`) in the [Prometheus format][prom-format]:
 
 ### `request_total`
 
@@ -69,3 +68,5 @@ Each of these metrics has the following labels:
 
 Note that the `instance` and `namespace` labels will typically be added by the
 Prometheus collector.
+
+[prom-format]: https://prometheus.io/docs/instrumenting/exposition_formats/#format-version-0.0.4
