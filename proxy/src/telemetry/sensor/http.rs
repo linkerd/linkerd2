@@ -65,6 +65,8 @@ pub struct MeasuredBody<B, I: BodySensor> {
     _p: PhantomData<(B)>,
 }
 
+/// The `inner` portion of a `MeasuredBody`, with differing implementations
+/// for request and response streams.
 pub trait BodySensor: Sized {
     fn fail(self, reason: h2::Reason);
     fn end(self, grpc_status: Option<u32>);
@@ -545,7 +547,6 @@ impl BodySensor for RequestBodyInner {
             event::Event::StreamRequestEnd(
                 Arc::clone(&ctx),
                 event::StreamRequestEnd {
-                    grpc_status,
                     since_request_open: request_open.elapsed(),
                 },
             )

@@ -41,7 +41,6 @@ pub struct StreamRequestFail {
 #[derive(Clone, Debug)]
 pub struct StreamRequestEnd {
     pub since_request_open: Duration,
-    pub grpc_status: Option<u32>,
 }
 
 #[derive(Clone, Debug)]
