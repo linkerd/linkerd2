@@ -255,11 +255,11 @@ impl<S> NormalizeUri<S> {
 impl<S, B> tower::NewService for NormalizeUri<S>
 where
     S: tower::NewService<
-        Request=HttpRequest<B>,
+        Request=http::Request<B>,
         Response=HttpResponse,
     >,
     S::Service: tower::Service<
-        Request=HttpRequest<B>,
+        Request=http::Request<B>,
         Response=HttpResponse,
     >,
     NormalizeUri<S::Service>: tower::Service,
@@ -282,7 +282,7 @@ where
 impl<S, B> tower::Service for NormalizeUri<S>
 where
     S: tower::Service<
-        Request=HttpRequest<B>,
+        Request=http::Request<B>,
         Response=HttpResponse,
     >,
     B: tower_h2::Body,

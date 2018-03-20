@@ -84,7 +84,11 @@ impl Sensors {
     where
         A: Body + 'static,
         B: Body + 'static,
-        N: NewService<Request = Request<A>, Response = Response<B>, Error = client::Error>
+        N: NewService<
+            Request = Request<http::RequestBody<A>>,
+            Response = Response<B>,
+            Error = client::Error
+        >
             + 'static,
     {
         NewHttp::new(next_id, new_service, &self.0, client_ctx)
