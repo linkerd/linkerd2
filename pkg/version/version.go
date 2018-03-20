@@ -90,7 +90,10 @@ func (v versionStatusChecker) SelfCheck() []*healthcheckPb.CheckResult {
 }
 
 func (v versionStatusChecker) getServerVersion() (string, error) {
-	resp, err := v.publicApiClient.Version(context.Background(), &pb.Empty{})
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resp, err := v.publicApiClient.Version(ctx, &pb.Empty{})
 	if err != nil {
 		return "", err
 	}

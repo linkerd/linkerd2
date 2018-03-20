@@ -1,11 +1,13 @@
 package k8s
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"time"
 
 	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 	"github.com/runconduit/conduit/pkg/healthcheck"
@@ -93,7 +95,11 @@ func (kubeapi *kubernetesApi) checkApiAccess(client *http.Client) (*healthcheckP
 		return checkResult, ""
 	}
 
-	resp, err := client.Get(endpointToCheck.String())
+	req, _ := http.NewRequest("GET", endpointToCheck.String(), nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resp, err := client.Do(req.WithContext(ctx))
 	if err != nil {
 		checkResult.Status = healthcheckPb.CheckStatus_ERROR
 		checkResult.FriendlyMessageToUser = fmt.Sprintf("HTTP GET request to endpoint [%s] resulted in error: [%s]", endpointToCheck, err.Error())
