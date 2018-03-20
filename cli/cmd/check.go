@@ -17,6 +17,9 @@ import (
 
 const (
 	lineWidth       = 80
+	okStatus        = "[ok]"
+	failStatus      = "[FAIL]"
+	errorStatus     = "[ERROR]"
 	versionCheckURL = "https://versioncheck.conduit.io/version.json"
 )
 
@@ -65,17 +68,18 @@ func checkStatus(w io.Writer, checkers ...healthcheck.StatusChecker) error {
 		checkLabel := fmt.Sprintf("%s: %s", result.SubsystemName, result.CheckDescription)
 
 		filler := ""
-		for i := 0; i < lineWidth-len(checkLabel); i++ {
+		lineBreak := "\n"
+		for i := 0; i < lineWidth-len(checkLabel)-len(okStatus)-len(lineBreak); i++ {
 			filler = filler + "."
 		}
 
 		switch result.Status {
 		case healthcheckPb.CheckStatus_OK:
-			fmt.Fprintf(w, "%s%s[ok]\n", checkLabel, filler)
+			fmt.Fprintf(w, "%s%s%s%s", checkLabel, filler, okStatus, lineBreak)
 		case healthcheckPb.CheckStatus_FAIL:
-			fmt.Fprintf(w, "%s%s[FAIL]  -- %s\n", checkLabel, filler, result.FriendlyMessageToUser)
+			fmt.Fprintf(w, "%s%s%s  -- %s%s", checkLabel, filler, failStatus, result.FriendlyMessageToUser, lineBreak)
 		case healthcheckPb.CheckStatus_ERROR:
-			fmt.Fprintf(w, "%s%s[ERROR] -- %s\n", checkLabel, filler, result.FriendlyMessageToUser)
+			fmt.Fprintf(w, "%s%s%s -- %s%s", checkLabel, filler, errorStatus, result.FriendlyMessageToUser, lineBreak)
 		}
 	}
 
