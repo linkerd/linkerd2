@@ -22,6 +22,7 @@ type installConfig struct {
 	PrometheusImage          string
 	GrafanaImage             string
 	VizDashboard             string
+	DeploymentDashboard      string
 	HealthDashboard          string
 	ControllerReplicas       uint
 	WebReplicas              uint
@@ -62,12 +63,14 @@ func validateAndBuildConfig() (*installConfig, error) {
 		return nil, err
 	}
 	return &installConfig{
-		Namespace:                controlPlaneNamespace,
-		ControllerImage:          fmt.Sprintf("%s/controller:%s", dockerRegistry, conduitVersion),
-		WebImage:                 fmt.Sprintf("%s/web:%s", dockerRegistry, conduitVersion),
-		PrometheusImage:          "prom/prometheus:v2.1.0",
-		GrafanaImage:             "grafana/grafana:5.0.0-beta4",
+		Namespace:       controlPlaneNamespace,
+		ControllerImage: fmt.Sprintf("%s/controller:%s", dockerRegistry, conduitVersion),
+		WebImage:        fmt.Sprintf("%s/web:%s", dockerRegistry, conduitVersion),
+		PrometheusImage: "prom/prometheus:v2.1.0",
+		GrafanaImage:    "grafana/grafana:5.0.1",
+		// TODO: these dashboards assume we're running in the "conduit" namespace
 		VizDashboard:             install.Viz,
+		DeploymentDashboard:      install.Deployment,
 		HealthDashboard:          install.Health,
 		ControllerReplicas:       controllerReplicas,
 		WebReplicas:              webReplicas,
