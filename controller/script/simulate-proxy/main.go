@@ -8,15 +8,12 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"time"
 
 	prom "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	common "github.com/runconduit/conduit/controller/gen/common"
 	"github.com/runconduit/conduit/controller/k8s"
-	"github.com/runconduit/conduit/controller/util"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"k8s.io/api/core/v1"
@@ -27,9 +24,12 @@ import (
 /* A simple script for exposing simulated prometheus metrics */
 
 type simulatedProxy struct {
-	sleep     time.Duration
-	pod       *v1.Pod
-	namespace string
+	podOwner       string
+	deploymentName string
+	sleep          time.Duration
+	namespace      string
+	deployments    []string
+	registerer     *prom.Registry
 	*proxyMetricCollectors
 }
 
@@ -135,63 +135,68 @@ var (
 
 // generateProxyTraffic randomly creates metrics under the guise of a single conduit proxy routing traffic.
 // metrics are generated for each proxyMetricCollector.
-func (s *simulatedProxy) generateProxyTraffic(podList []*v1.Pod) {
-	proxyPodName := strings.Split(s.pod.GetName(), "-")[0]
+func (s *simulatedProxy) generateProxyTraffic() {
 
 	for {
 		inboundRandomCount := int(rand.Float64() * 10)
 		outboundRandomCount := int(rand.Float64() * 10)
-		randomDestinationPod := podList[rand.Intn(len(podList))]
-		randomDestinationPodName := strings.Split(randomDestinationPod.GetName(), "-")[0]
+		deployment := getRandomDeployment(s.deployments, map[string]struct{}{s.podOwner: {}})
+
+		//split the deployment name into ["namespace", "deployment"]
+		destinationDeploymentName := strings.Split(deployment, "/")[1]
 
 		s.requestTotals.
-			With(overrideDefaultLabels(s.newConduitLabel(proxyPodName, randomDestinationPodName))).
+			With(overrideDefaultLabels(s.newConduitLabel(destinationDeploymentName, false))).
 			Add(float64(inboundRandomCount))
 
 		s.responseTotals.
-			With(overrideDefaultLabels(s.newConduitLabel(proxyPodName, randomDestinationPodName))).
+			With(overrideDefaultLabels(s.newConduitLabel(destinationDeploymentName, true))).
 			Add(float64(outboundRandomCount))
 
 		observeHistogramVec(
 			randomLatencies(randomCount()),
 			s.responseLatencyMs,
-			overrideDefaultLabels(s.newConduitLabel(proxyPodName, randomDestinationPodName)))
+			overrideDefaultLabels(s.newConduitLabel(destinationDeploymentName, true)))
 
 		observeHistogramVec(
 			randomLatencies(randomCount()),
 			s.requestDurationMs,
-			overrideDefaultLabels(s.newConduitLabel(proxyPodName, randomDestinationPodName)))
+			overrideDefaultLabels(s.newConduitLabel(destinationDeploymentName, false)))
 
 		time.Sleep(s.sleep)
 	}
 }
 
-// newConduitLabel creates a label map to be used with metric generation.
-func (s *simulatedProxy) newConduitLabel(proxyPodName string, destinationPod string) prom.Labels {
+// newConduitLabel creates a label map to be used for metric generation.
+func (s *simulatedProxy) newConduitLabel(destinationPod string, isResponseLabel bool) prom.Labels {
 	labelMap := prom.Labels{
 		"direction":  randomRequestDirection(),
-		"deployment": proxyPodName,
+		"deployment": s.deploymentName,
 		"authority":  "world.greeting:7778",
 		"namespace":  s.namespace,
 	}
 	if labelMap["direction"] == "outbound" {
 		labelMap["dst_deployment"] = destinationPod
 	}
-
-	if rand.Intn(2) == 0 {
-		labelMap["grpc_status_code"] = fmt.Sprintf("%d", randomGrpcResponseCode())
-	} else {
-		labelMap["status_code"] = fmt.Sprintf("%d", randomHttpResponseCode())
+	if isResponseLabel {
+		if rand.Intn(2) == 0 {
+			labelMap["grpc_status_code"] = fmt.Sprintf("%d", randomGrpcResponseCode())
+		} else {
+			labelMap["status_code"] = fmt.Sprintf("%d", randomHttpResponseCode())
+		}
 	}
+
 	return labelMap
 }
 
+// observeHistogramVec uses a latencyBuckets slice which holds an array of numbers that indicate
+// how many observations will be added to a each bucket. latencyBuckets and latencyBucketBounds
+// both are of the same array length. ObserveHistogramVec selects a latencyBucketBound based on a position
+// in the latencyBucket and then makes an observation within the selected bucket.
 func observeHistogramVec(latencyBuckets []uint32, latencies *prom.HistogramVec, latencyLabels prom.Labels) {
 	for bucketNum, count := range latencyBuckets {
 		latencyMs := float64(latencyBucketBounds[bucketNum]) / 10
 		for i := uint32(0); i < count; i++ {
-			// Then, report that latency value to Prometheus a number
-			// of times equal to the count reported by the proxy.
 			latencies.With(latencyLabels).Observe(latencyMs)
 		}
 	}
@@ -228,7 +233,7 @@ func generatePromLabels() []string {
 	return append(append(constantLabels, kubeResourceTypes...), destinationLabels...)
 }
 
-// mergeLabelMaps combines two maps of the same size with the keys
+// overrideDefaultLabels combines two maps of the same size with the keys
 // map1 values take precedence during the union
 func overrideDefaultLabels(map1 map[string]string) map[string]string {
 	map2 := generateLabelMap(labels)
@@ -269,67 +274,92 @@ func randomHttpResponseCode() uint32 {
 	return uint32(httpResponseCodes[rand.Intn(len(httpResponseCodes))])
 }
 
-func stringToIp(str string) *common.IPAddress {
-	octets := make([]uint8, 0)
-	for _, num := range strings.Split(str, ".") {
-		oct, _ := strconv.Atoi(num)
-		octets = append(octets, uint8(oct))
-	}
-	return util.IPV4(octets[0], octets[1], octets[2], octets[3])
-}
-
 func podIndexFunc(obj interface{}) ([]string, error) {
 	return nil, nil
 }
 
-func randomPodIp(pods []*v1.Pod, prvPodIp *common.IPAddress) *common.IPAddress {
-	var podIp *common.IPAddress
-	for {
-		if podIp != nil {
-			break
-		}
+func getRandomDeployment(deployments []string, excludeDeployments map[string]struct{}) string {
+	filteredDeployments := make([]string, 0)
 
-		randomPod := randomPod(pods)
-		if strings.HasPrefix(randomPod.GetNamespace(), "kube-") {
-			continue // skip pods in the kube-* namespaces
-		}
-		podIp = stringToIp(randomPod.Status.PodIP)
-		if prvPodIp != nil && podIp.GetIpv4() == prvPodIp.GetIpv4() {
-			podIp = nil
+	for _, deployment := range deployments {
+		if _, ok := excludeDeployments[deployment]; !ok {
+			filteredDeployments = append(filteredDeployments, deployment)
 		}
 	}
-	return podIp
+	return filteredDeployments[rand.Intn(len(filteredDeployments))]
+
 }
 
-func randomPod(pods []*v1.Pod) *v1.Pod {
-	var pod *v1.Pod
-	for {
-		pod = pods[rand.Intn(len(pods))]
-		if strings.HasPrefix(pod.GetNamespace(), "kube-") {
-			continue // skip pods in the kube-* namespaces
-		} else {
-			break
-		}
+func newSimulatedProxy(podOwner string, deployments []string, sleep *time.Duration) *simulatedProxy {
+	podOwnerComponents := strings.Split(podOwner, "/")
+	name := podOwnerComponents[1]
+	namespace := podOwnerComponents[0]
+
+	proxy := simulatedProxy{
+		podOwner:       podOwner,
+		sleep:          *sleep,
+		deployments:    deployments,
+		namespace:      namespace,
+		deploymentName: name,
+		registerer:     prom.NewRegistry(),
+		proxyMetricCollectors: &proxyMetricCollectors{requestTotals: prom.NewCounterVec(
+			prom.CounterOpts{
+				Name: "request_total",
+				Help: "A counter of the number of requests the proxy has received",
+			}, labels),
+			responseTotals: prom.NewCounterVec(
+				prom.CounterOpts{
+					Name: "response_total",
+					Help: "A counter of the number of responses the proxy has received.",
+				}, labels),
+			requestDurationMs: prom.NewHistogramVec(
+				prom.HistogramOpts{
+					Name:    "request_duration_ms",
+					Help:    "A histogram of the duration of a response",
+					Buckets: latencyBucketBounds,
+				}, labels),
+			responseLatencyMs: prom.NewHistogramVec(
+				prom.HistogramOpts{
+					Name:    "response_latency_ms",
+					Help:    "A histogram of the total latency of a response.",
+					Buckets: latencyBucketBounds,
+				}, labels)},
 	}
-	return pod
+
+	proxy.registerer.MustRegister(
+		proxy.requestTotals,
+		proxy.responseTotals,
+		proxy.requestDurationMs,
+		proxy.responseLatencyMs,
+	)
+	return &proxy
 }
 
-func getRandomNamespaceKey(podsByNamespace map[string][]*v1.Pod) string {
-	choice := rand.Intn(len(podsByNamespace))
-	var chosen int
-	for k := range podsByNamespace {
-		if chosen == choice {
-			return k
+func getDeployments(podList []*v1.Pod, deploys *k8s.ReplicaSetStore, maxPods *int) []string {
+	allPods := make([]*v1.Pod, 0)
+	deploymentSet := make(map[string]struct{})
+	for _, pod := range podList {
+		if pod.Status.PodIP != "" && !strings.HasPrefix(pod.GetNamespace(), "kube-") && (*maxPods == 0 || len(allPods) < *maxPods) {
+			allPods = append(allPods, pod)
+			deploymentName, err := deploys.GetDeploymentForPod(pod)
+			if err != nil {
+				log.Fatal(err.Error())
+			}
+			deploymentSet[deploymentName] = struct{}{}
 		}
-		chosen++
 	}
-	return ""
+
+	deployments := make([]string, 0)
+	for deployment := range deploymentSet {
+		deployments = append(deployments, deployment)
+	}
+	return deployments
 }
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
 	sleep := flag.Duration("sleep", time.Second, "time to sleep between requests")
-	metricsAddrs := flag.String("metrics-addrs", ":9000,:9001,:9002", "range of network addresses to serve prometheus metrics")
+	metricsAddrs := flag.String("metric-addrs", ":9000,:9001,:9002", "range of network addresses to serve prometheus metrics")
 	maxPods := flag.Int("max-pods", 0, "total number of pods to simulate (default unlimited)")
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config - required")
 	flag.Parse()
@@ -349,7 +379,17 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
+	deploys, err := k8s.NewReplicaSetStore(clientSet)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
 	err = pods.Run()
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	err = deploys.Run()
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -359,70 +399,31 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
-	allPods := make([]*v1.Pod, 0)
-	podsByNamespace := make(map[string][]*v1.Pod)
-	for _, pod := range podList {
-		if pod.Status.PodIP != "" && !strings.HasPrefix(pod.GetNamespace(), "kube-") && (*maxPods == 0 || len(allPods) < *maxPods) {
-			allPods = append(allPods, pod)
-			podsByNamespace[pod.GetNamespace()] = append(podsByNamespace[pod.GetNamespace()], pod)
-		}
-	}
+	deployments := getDeployments(podList, deploys, maxPods)
 
 	stopCh := make(chan os.Signal)
 	signal.Notify(stopCh, os.Interrupt, os.Kill)
 
+	excludedDeployments := make(map[string]struct{}, 0)
+
 	for _, addr := range strings.Split(*metricsAddrs, ",") {
-		randomNamespace := getRandomNamespaceKey(podsByNamespace)
-		proxyPod := podList[rand.Intn(len(podList))]
+		randomPodOwner := getRandomDeployment(deployments, excludedDeployments)
+		excludedDeployments[randomPodOwner] = struct{}{}
 
-		go func(address string, namespace string, pod *v1.Pod) {
+		go func(address string, podOwner string, deployments []string) {
 
-			proxy := simulatedProxy{
-				sleep:     *sleep,
-				pod:       pod,
-				namespace: namespace,
-				proxyMetricCollectors: &proxyMetricCollectors{requestTotals: prom.NewCounterVec(
-					prom.CounterOpts{
-						Name: "request_total",
-						Help: "A counter of the number of requests the proxy has received",
-					}, labels),
-					responseTotals: prom.NewCounterVec(
-						prom.CounterOpts{
-							Name: "response_total",
-							Help: "A counter of the number of responses the proxy has received.",
-						}, labels),
-					requestDurationMs: prom.NewHistogramVec(
-						prom.HistogramOpts{
-							Name:    "request_duration_ms",
-							Help:    "A histogram of the duration of a response",
-							Buckets: latencyBucketBounds,
-						}, labels),
-					responseLatencyMs: prom.NewHistogramVec(
-						prom.HistogramOpts{
-							Name:    "response_latency_ms",
-							Help:    "A histogram of the total latency of a response.",
-							Buckets: latencyBucketBounds,
-						}, labels)},
-			}
+			proxy := newSimulatedProxy(podOwner, deployments, sleep)
 
-			registerer := prom.NewRegistry()
-			registerer.MustRegister(
-				proxy.requestTotals,
-				proxy.responseTotals,
-				proxy.requestDurationMs,
-				proxy.responseLatencyMs,
-			)
-
-			go proxy.generateProxyTraffic(podList)
+			go proxy.generateProxyTraffic()
 
 			server := &http.Server{
 				Addr:    address,
-				Handler: promhttp.HandlerFor(registerer, promhttp.HandlerOpts{}),
+				Handler: promhttp.HandlerFor(proxy.registerer, promhttp.HandlerOpts{}),
 			}
 			log.Infof("serving scrapable metrics on %s", address)
 			server.ListenAndServe()
 
-		}(addr, randomNamespace, proxyPod)
+		}(addr, randomPodOwner, deployments)
 	}
 	<-stopCh
 }
