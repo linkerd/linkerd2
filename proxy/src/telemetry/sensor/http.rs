@@ -219,13 +219,26 @@ where
                     handle: self.handle.clone(),
                     request_open,
                 });
-                let body_inner = Some(RequestBodyInner {
-                    ctx,
-                    handle: self.handle.clone(),
-                    request_open,
-                    frames_sent: 0,
-                    bytes_sent: 0,
-                });
+                let body_inner =
+                    if req.body().is_end_stream() {
+                        self.handle.send(|| {
+                            Event::StreamRequestEnd(
+                                Arc::clone(&ctx),
+                                event::StreamRequestEnd {
+                                    since_request_open: request_open.elapsed(),
+                                },
+                            )
+                        });
+                        None
+                    } else {
+                        Some(RequestBodyInner {
+                            ctx,
+                            handle: self.handle.clone(),
+                            request_open,
+                            frames_sent: 0,
+                            bytes_sent: 0,
+                        })
+                    };
                 (respond_inner, body_inner)
             }
         };
@@ -535,7 +548,7 @@ impl BodySensor for RequestBodyInner {
         )
     }
 
-    fn end(self, grpc_status: Option<u32>) {
+    fn end(self, _grpc_status: Option<u32>) {
         let RequestBodyInner {
             ctx,
             mut handle,
