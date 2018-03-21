@@ -27,6 +27,7 @@ use ctx;
 use telemetry::event::Event;
 
 mod latency;
+pub mod prometheus;
 
 #[derive(Debug)]
 pub struct Metrics {

@@ -101,6 +101,7 @@ pub struct Main<G> {
     control_listener: BoundPort,
     inbound_listener: BoundPort,
     outbound_listener: BoundPort,
+    metrics_listener: BoundPort,
 
     get_original_dst: G,
 
@@ -121,12 +122,15 @@ where
             .expect("private listener bind");
 
         let reactor = Core::new().expect("reactor");
-        
+
+        let metrics_listener = BoundPort::new(config.metrics_listener.addr)
+            .expect("metrics listener bind");
         Main {
             config,
             control_listener,
             inbound_listener,
             outbound_listener,
+            metrics_listener,
             get_original_dst,
             reactor,
         }
@@ -149,6 +153,10 @@ where
         self.reactor.handle()
     }
 
+    pub fn metrics_addr(&self) -> SocketAddr {
+        self.metrics_listener.local_addr()
+    }
+
     pub fn run_until<F>(self, shutdown_signal: F)
     where
         F: Future<Item = (), Error = ()>,
@@ -160,6 +168,7 @@ where
             control_listener,
             inbound_listener,
             outbound_listener,
+            metrics_listener,
             get_original_dst,
             reactor: mut core,
         } = self;
@@ -172,6 +181,10 @@ where
             "proxying on {:?} to {:?}",
             inbound_listener.local_addr(),
             config.private_forward
+        );
+        info!(
+            "serving Prometheus metrics on {:?}",
+            metrics_listener.local_addr(),
         );
 
         let (sensors, telemetry) = telemetry::new(
@@ -262,6 +275,9 @@ where
                         .make_control(&taps, &executor)
                         .expect("bad news in telemetry town");
 
+                    let metrics_server = telemetry
+                        .serve_metrics(metrics_listener);
+
                     let client = control_bg.bind(
                         telemetry,
                         control_host_and_port,
@@ -270,7 +286,10 @@ where
                         &executor
                     );
 
-                    let fut = client.join(server.map_err(|_| {})).map(|_| {});
+                    let fut = client.join3(
+                        server.map_err(|_| {}),
+                        metrics_server.map_err(|_| {}),
+                    ).map(|_| {});
                     executor.spawn(::logging::context_future("controller-client", fut));
 
                     let shutdown = controller_shutdown_signal.then(|_| Ok::<(), ()>(()));
@@ -374,6 +393,7 @@ where
             let s = server.serve(session).map_err(|_| ());
 
             executor.spawn(::logging::context_future("serve_control", s));
+
 
             future::ok((server, executor))
         },

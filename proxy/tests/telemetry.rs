@@ -260,3 +260,119 @@ fn records_latency_statistics() {
 #[test]
 fn telemetry_report_errors_are_ignored() {}
 
+macro_rules! assert_contains {
+    ($scrape:expr, $contains:expr) => {
+        assert!($scrape.contains($contains), "metrics scrape:\n{:8}\ndid not contain:\n{:8}", $scrape, $contains)
+    }
+}
+
+#[test]
+fn metrics_endpoint_request_count() {
+    let _ = env_logger::try_init();
+
+    info!("running test server");
+    let srv = server::new().route("/hey", "hello").run();
+
+    let ctrl = controller::new();
+    let proxy = proxy::new()
+        .controller(ctrl.run())
+        .inbound(srv)
+        .metrics_flush_interval(Duration::from_millis(500))
+        .run();
+    let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
+    let metrics = client::http1(proxy.metrics, "localhost");
+
+    // prior to seeing any requests, request count should be empty.
+    assert!(!metrics.get("/metrics")
+        .contains("request_total{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\"}"));
+
+    info!("client.get(/hey)");
+    assert_eq!(client.get("/hey"), "hello");
+
+    let scrape = metrics.get("/metrics");
+    // after seeing a request, the request count should be 1.
+    assert_contains!(scrape, "request_total{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\"} 1");
+
+}
+
+#[test]
+fn metrics_endpoint_response_latency() {
+    let _ = env_logger::try_init();
+
+    info!("running test server");
+    let srv = server::new()
+        .route_with_latency("/hey", "hello", Duration::from_millis(500))
+        .route_with_latency("/hi", "good morning", Duration::from_millis(40))
+        .run();
+
+    let ctrl = controller::new();
+    let proxy = proxy::new()
+        .controller(ctrl.run())
+        .inbound(srv)
+        .metrics_flush_interval(Duration::from_millis(500))
+        .run();
+    let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
+    let metrics = client::http1(proxy.metrics, "localhost");
+
+    info!("client.get(/hey)");
+    assert_eq!(client.get("/hey"), "hello");
+
+    let scrape = metrics.get("/metrics");
+    // assert the >=1000ms bucket is incremented by our request with 500ms
+    // extra latency.
+    assert_contains!(scrape,
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",status_code=\"200\",le=\"1000\"} 1");
+    // the histogram's count should be 1.
+    assert_contains!(scrape,
+        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",status_code=\"200\"} 1");
+    // TODO: we're not going to make any assertions about the
+    // response_latency_ms_sum stat, since its granularity depends on the actual
+    // observed latencies, which may vary a bit. we could make more reliable
+    // assertions about that stat if we were using a mock timer, though, as the
+    // observed latency values would be predictable.
+
+    info!("client.get(/hi)");
+    assert_eq!(client.get("/hi"), "good morning");
+
+    let scrape = metrics.get("/metrics");
+
+    // request with 40ms extra latency should fall into the 50ms bucket.
+    assert_contains!(scrape,
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",status_code=\"200\",le=\"50\"} 1");
+    // 1000ms bucket should be incremented as well, since it counts *all*
+    // bservations less than or equal to 1000ms, even if they also increment
+    // other buckets.
+    assert_contains!(scrape,
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",status_code=\"200\",le=\"1000\"} 2");
+    // the histogram's total count should be 2.
+    assert_contains!(scrape,
+        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",status_code=\"200\"} 2");
+
+    info!("client.get(/hi)");
+    assert_eq!(client.get("/hi"), "good morning");
+
+    let scrape = metrics.get("/metrics");
+    // request with 40ms extra latency should fall into the 50ms bucket.
+    assert_contains!(scrape,
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",status_code=\"200\",le=\"50\"} 2");
+    // 1000ms bucket should be incremented as well.
+    assert_contains!(scrape,
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",status_code=\"200\",le=\"1000\"} 3");
+    // the histogram's total count should be 3.
+    assert_contains!(scrape,
+        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",status_code=\"200\"} 3");
+
+    info!("client.get(/hey)");
+    assert_eq!(client.get("/hey"), "hello");
+
+    let scrape = metrics.get("/metrics");
+    // 50ms bucket should be un-changed by the request with 500ms latency.
+    assert_contains!(scrape,
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",status_code=\"200\",le=\"50\"} 2");
+    // 1000ms bucket should be incremented.
+    assert_contains!(scrape,
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",status_code=\"200\",le=\"1000\"} 4");
+    // the histogram's total count should be 4.
+    assert_contains!(scrape,
+        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",status_code=\"200\"} 4");
+}
