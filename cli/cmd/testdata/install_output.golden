@@ -675,6 +675,9 @@ data:
   grafana.ini: |-
     instance_name = conduit-grafana
 
+    [server]
+    root_url = %(protocol)s://%(domain)s:/api/v1/namespaces/Namespace/services/grafana:http/proxy/
+
     [auth]
     disable_login_form = true
 
