@@ -302,11 +302,12 @@ func newSimulatedProxy(podOwner string, deployments []string, sleep *time.Durati
 		namespace:      namespace,
 		deploymentName: name,
 		registerer:     prom.NewRegistry(),
-		proxyMetricCollectors: &proxyMetricCollectors{requestTotals: prom.NewCounterVec(
-			prom.CounterOpts{
-				Name: "request_total",
-				Help: "A counter of the number of requests the proxy has received",
-			}, labels),
+		proxyMetricCollectors: &proxyMetricCollectors{
+			requestTotals: prom.NewCounterVec(
+				prom.CounterOpts{
+					Name: "request_total",
+					Help: "A counter of the number of requests the proxy has received",
+				}, labels),
 			responseTotals: prom.NewCounterVec(
 				prom.CounterOpts{
 					Name: "response_total",
@@ -323,7 +324,8 @@ func newSimulatedProxy(podOwner string, deployments []string, sleep *time.Durati
 					Name:    "response_latency_ms",
 					Help:    "A histogram of the total latency of a response.",
 					Buckets: latencyBucketBounds,
-				}, labels)},
+				}, labels),
+		},
 	}
 
 	proxy.registerer.MustRegister(
@@ -404,7 +406,7 @@ func main() {
 	stopCh := make(chan os.Signal)
 	signal.Notify(stopCh, os.Interrupt, os.Kill)
 
-	excludedDeployments := make(map[string]struct{}, 0)
+	excludedDeployments := map[string]struct{}{}
 
 	for _, addr := range strings.Split(*metricsAddrs, ",") {
 		randomPodOwner := getRandomDeployment(deployments, excludedDeployments)
@@ -413,15 +415,13 @@ func main() {
 		go func(address string, podOwner string, deployments []string) {
 
 			proxy := newSimulatedProxy(podOwner, deployments, sleep)
-
-			go proxy.generateProxyTraffic()
-
 			server := &http.Server{
 				Addr:    address,
 				Handler: promhttp.HandlerFor(proxy.registerer, promhttp.HandlerOpts{}),
 			}
 			log.Infof("serving scrapable metrics on %s", address)
-			server.ListenAndServe()
+			go server.ListenAndServe()
+			go proxy.generateProxyTraffic()
 
 		}(addr, randomPodOwner, deployments)
 	}
