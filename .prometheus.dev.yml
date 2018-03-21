@@ -31,3 +31,10 @@ scrape_configs:
   - job_name: 'destination'
     static_configs:
       - targets: ['destination:9999']
+
+  - job_name: 'conduit'
+    static_configs:
+      - targets:
+        - 'simulate-proxy:9000'
+        - 'simulate-proxy:9001'
+        - 'simulate-proxy:9002'

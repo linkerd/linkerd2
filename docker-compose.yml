@@ -110,3 +110,19 @@ services:
     command:
     - --config.file=/etc/prometheus/prometheus.yml
     - --storage.tsdb.retention=6h
+
+  simulate-proxy:
+    image: golang:1.10.0-alpine3.7
+    ports:
+    - 9000-9002:9000-9002
+    volumes:
+    - .:/go/src/github.com/runconduit/conduit
+    - ~/.kube/config:/kubeconfig:ro
+    command:
+    - go
+    - run
+    - /go/src/github.com/runconduit/conduit/controller/script/simulate-proxy/main.go
+    - --metric-addrs=0.0.0.0:9000,0.0.0.0:9001,0.0.0.0:9002
+    - --kubeconfig=/kubeconfig
+    - --max-pods=10
+    - --sleep=3s

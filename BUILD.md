@@ -167,11 +167,11 @@ traffic to the docker-compose environment:
 ```bash
 # confirm you are connected to Kubernetes
 kubectl version
-
-# simulate traffic
-bin/go-run controller/script/simulate-proxy --kubeconfig ~/.kube/config --addr $DOCKER_IP:8086 --max-pods 10 --sleep 10ms
 ```
 
+Note that the Kubernetes cluster your system is configured to talk to must not be referenced via 
+`localhost` in your Kubernetes config file, as `simulate-proxy` will not be able to connect to it.
+ This includes Kubernetes on Docker For Mac.
 ### Testing
 
 ```bash
