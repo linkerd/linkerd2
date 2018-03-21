@@ -12,8 +12,13 @@ import "common/common.proto";
 //
 // If the service does not exist then the controller must send
 // `no_endpoints{exists: false}` ASAP when a client subscribes or when the
-// service stops existing. If the service exists then the controller SHOULD
-// send a `no_endpoints{exists: true}` ASAP when a client subscribes
+// service stops existing. If the service exists and has endpoints available
+// then the controller must send `add` that lists all (or at least a large
+// number) of the endpoints for the service. If and only if the service exists
+// but does not have any endpoints available then the controller SHOULD send
+// `no_endpoints{exists: true}` when a client subscribes. In other words, the
+// `no_endpoints` message must only be sent when there are *no*endpoints for
+// the service.
 //
 // The controller is expected to send an Update every time there is a
 // change in service discovery.  The controller is also expected to send an
@@ -24,13 +29,21 @@ import "common/common.proto";
 //
 // The client MUST be prepared to receive messages in any order and the client
 // MUST be able to cope with the presence or absence of redundant messages.
-// For example, `no_endpoints{exists: true}` might be sent prior to an `add`,
-// which would be equivalent to sending just the `add`. Similarly, a `remove`
-// followed by a `no_endpoints` message is equivalent to sending just the
-// `no_endpoints` message, and a `remove` that removes the last endpoint is
-// equivalent to a `no_endpoints{exists: true}` message. HOWEVER,
-// `no_endpoints{exists:false}` followed by an `add` is NOT equivalent to the
-// `add` alone.
+//
+// `no_endpoints` followed by an `add` is *not* equivalent to just sending the
+// `add` regardless of the value of the `exists` field in the `no_endpoints`
+// message. `remove` followed by a `no_endpoints` message is equivalent to
+// sending just the `no_endpoints` message, and a `remove` that removes the
+// last endpoint is equivalent to a `no_endpoints{exists: true}` message.
+//
+// When the client gets disconnected from the controller and reconnects, the
+// client may use stale results from its previous subscription until, and only
+// until, it receives the first message. This is why the controller must send
+// a message at the start of a subscription. This is also why the controller
+// must not send a `no_endpoints` message before an `add` message; the client
+// would clear its cached messages between the time it receives the
+// `no_endpoints` message and the time it receives the `add` message, which is
+// not the desired behavior.
 
 service Destination {
   // Given a destination, return all addresses in that destination as a long-
