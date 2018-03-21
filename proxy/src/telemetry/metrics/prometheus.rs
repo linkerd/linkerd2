@@ -275,6 +275,10 @@ impl Aggregate {
                 // stream ends, we'll care about this event.
             },
 
+            Event::StreamResponseOpen(_, _) =>  {
+                // Wait until the response stream ends to record it.
+            },
+
             Event::StreamResponseEnd(ref res, ref end) => {
                 let labels = self.root_labels
                     .with_proxy_ctx(event.proxy())
@@ -299,7 +303,7 @@ impl Aggregate {
                 });
             },
 
-            Event::TransportOpen(_) | Event::TransportClose(_) => {
+            Event::TransportOpen(_) | Event::TransportClose(_, _) => {
                 // TODO: we don't collect any metrics around transport events.
             },
         };
