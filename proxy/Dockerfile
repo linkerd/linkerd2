@@ -15,10 +15,13 @@ FROM $RUST_IMAGE as build
 
 WORKDIR /usr/src/conduit
 
-# Fetch external dependencies.
-#
 # Mock out all local code and fetch external dependencies to ensure that external sources
 # are cached.
+#
+# Previously we did `cargo fetch --locked` followed by `cargo build --frozen` everwhere
+# below, however this resulted in Cargo downloading crates that are irrelevant for our
+# target platform, so now we do `cargo build --locked` here instead. See
+# https://github.com/rust-lang/cargo/issues/5216.
 RUN for d in proxy proxy/controller-grpc proxy/convert proxy/futures-mpsc-lossy proxy/router ; \
     do mkdir -p "${d}/src" && touch "${d}/src/lib.rs" ; \
     done
@@ -28,7 +31,6 @@ COPY proxy/controller-grpc/Cargo.toml       proxy/controller-grpc/Cargo.toml
 COPY proxy/convert/Cargo.toml               proxy/convert/Cargo.toml
 COPY proxy/futures-mpsc-lossy/Cargo.toml    proxy/futures-mpsc-lossy/Cargo.toml
 COPY proxy/router/Cargo.toml                proxy/router/Cargo.toml
-RUN cargo fetch --locked
 
 # Build libraries, leaving the proxy and gRPC bindings mocked out.
 COPY proxy/convert             proxy/convert
@@ -36,16 +38,16 @@ COPY proxy/futures-mpsc-lossy  proxy/futures-mpsc-lossy
 COPY proxy/router              proxy/router
 ARG PROXY_UNOPTIMIZED
 RUN if [ -n "$PROXY_UNOPTIMIZED" ]; \
-    then cargo build --frozen ; \
-    else cargo build --frozen --release ; \
+    then cargo build --locked ; \
+    else cargo build --locked --release ; \
     fi
 
 # Build gRPC bindings, leaving the proxy mocked out.
 COPY proto                  proto
 COPY proxy/controller-grpc  proxy/controller-grpc
 RUN if [ -n "$PROXY_UNOPTIMIZED" ]; \
-    then cargo build -p conduit-proxy-controller-grpc --features=arbitrary --frozen ; \
-    else cargo build -p conduit-proxy-controller-grpc --features=arbitrary --frozen --release ; \
+    then cargo build -p conduit-proxy-controller-grpc --features=arbitrary --locked ; \
+    else cargo build -p conduit-proxy-controller-grpc --features=arbitrary --locked --release ; \
     fi
 
 # Build the proxy binary using pre-built dependencies.
