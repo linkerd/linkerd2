@@ -58,9 +58,14 @@ pub const BUCKET_BOUNDS: [Latency; NUM_BUCKETS] = [
 /// A series of latency values and counts.
 #[derive(Debug, Clone)]
 pub struct Histogram {
+
+    /// Array of buckets in which to count latencies.
+    ///
+    /// The upper bound of a given bucket `i` is given in `BUCKET_BOUNDS[i]`.
     buckets: [u32; NUM_BUCKETS],
+
     /// The total sum of all observed latency values.
-    pub sum: usize,
+    pub sum: u64,
 }
 
 /// A latency in tenths of a millisecond.
@@ -83,7 +88,32 @@ impl Histogram {
             .expect("latency value greater than u32::MAX; this shouldn't be \
                      possible.");
         self.buckets[i] += 1;
-        self.sum += measurement.0 as usize;
+
+        // It's time to play ~*Will It Overflow???*~
+        //
+        // If we make the fairly generous assumptions of 1-minute latencies
+        // and 1 million RPS per set of metric labels (i.e. per pod), that
+        // gives us:
+        //          600,000 (1 minute = 600,000 tenths-of-milliseconds)
+        //  x     1,000,000 (1 million RPS)
+        //  ---------------
+        //  600,000,000,000 (6e11) gain per second
+        //
+        // times the number of seconds in a day (86,400):
+        //      6e11 x 86400 = 5.184e16
+        //
+        // 18,446,744,073,709,551,615 is the maximum 64-bit unsigned integer.
+        //      1.8446744073709551615e19 / 5.184e16 = 355 (about 1 year)
+        //
+        // So at 1 million RPS with 1-minute latencies, the sum will overflow
+        // in about a year. We don't really expect a conduit-proxy process to
+        // run that long (or see this kind of load), but we can revisit this
+        // if supporting extremely long-running deployments becomes a priority.
+        //
+        // (N.B. that storing latencies in whole milliseconds rather than tenths
+        // of milliseconds would change the time to overflow to almost 10
+        // years.)
+        self.sum += measurement.0 as u64;
     }
 
     /// Construct a new, empty `Histogram`.
@@ -170,6 +200,7 @@ impl From<Duration> for Latency {
         };
         Latency(tenths_of_ms)
     }
+
 }
 
 impl From<u32> for Latency {
@@ -188,9 +219,18 @@ impl Into<u32> for Latency {
 impl fmt::Display for Latency {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.0 == u32::MAX {
+            // Prometheus requires that text representations of numbers be in
+            // a format understandable by Go's strconv package. In particular,
+            // `-Inf`, `+Inf`, and `Nan` are used as the textual
+            // representations of floating point special values.
+            //
+            // We're representing latency buckets with u32s rather than floats,
+            // so we won't encounter these special values, but we want to treat
+            // the u32::MAX upper bound as the infinity bucket, so special case
+            // the formatting for u32::MAX.
             write!(f, "+Inf")
         } else {
-            write!(f, "{}", (self.0 / MS_TO_TENTHS_OF_MS) as f64)
+            write!(f, "{}", self.0 / MS_TO_TENTHS_OF_MS)
         }
     }
 }

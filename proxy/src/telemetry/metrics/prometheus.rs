@@ -121,7 +121,6 @@ impl Metrics {
             .or_insert_with(Default::default)
     }
 
-
     fn response_latency(&mut self, labels: &Labels) -> &mut Histogram {
         self.response_latency.values
             .entry(labels.clone())
@@ -270,6 +269,12 @@ impl Aggregate {
                 })
             },
 
+            Event::StreamRequestFail(_, _) => {
+                // The request total was already incremented by the
+                // StreamRequestOpen event; when we count requests on
+                // stream ends, we'll care about this event.
+            },
+
             Event::StreamResponseEnd(ref res, ref end) => {
                 let labels = self.root_labels
                     .with_proxy_ctx(event.proxy())
@@ -283,8 +288,7 @@ impl Aggregate {
             },
 
             Event::StreamResponseFail(ref res, ref fail) => {
-                // TODO: do we care about the failure's error code here, or
-                //       does res.status_code cover that?
+                // TODO: do we care about the failure's error code here?
                 let labels = self.root_labels
                     .with_proxy_ctx(event.proxy())
                     .with_response_ctx(res);
@@ -295,11 +299,9 @@ impl Aggregate {
                 });
             },
 
-            _ =>
-                // TODO: this is where we could count transport events,
-                //       if there were any metrics that cared about them.
-                // TODO: track request failures?
-                { },
+            Event::TransportOpen(_) | Event::TransportClose(_) => {
+                // TODO: we don't collect any metrics around transport events.
+            },
         };
     }
 }
