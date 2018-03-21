@@ -431,11 +431,11 @@ impl fmt::Display for OutboundLabels {
         match *self {
             OutboundLabels { namespace: Some(ref ns), dst: Some(ref dst) } =>
                  write!(f, "dst_namespace=\"{}\",dst_{},", ns, dst),
-            OutboundLabels { dst: Some(ref dst), .. } =>
+            OutboundLabels { namespace: None, dst: Some(ref dst), } =>
                 write!(f, "dst_{},", dst),
-            OutboundLabels { namespace: Some(ref ns), .. } =>
+            OutboundLabels { namespace: Some(ref ns), dst: None, } =>
                 write!(f, "dst_namespace=\"{}\",", ns),
-            OutboundLabels { .. } =>
+            OutboundLabels { namespace: None, dst: None, } =>
                 write!(f, ""),
         }
     }
