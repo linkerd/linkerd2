@@ -84,20 +84,28 @@ struct ResponseLabels {
     grpc_status_code: Option<u32>,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+// TODO: when #429 is done, this will no longer be dead code.
+#[allow(dead_code)]
+enum PodOwner {
+    /// The deployment to which this request is being sent.
+    Deployment(String),
+
+    /// The job to which this request is being sent.
+    Job(String),
+
+    /// The replica set to which this request is being sent.
+    ReplicaSet(String),
+
+    /// The replication controller to which this request is being sent.
+    ReplicationController(String),
+}
+
 #[derive(Clone, Debug, Default, Eq, PartialEq, Hash)]
 struct OutboundLabels {
-    /// The deployment to which this request is being sent (if applicable).
-    deployment: Option<String>,
-
-    /// The job to which this request is being sent (if applicable).
-    job: Option<String>,
-
-    /// The replica set to which this request is being sent (if applicable).
-    replica_set: Option<String>,
-
-    /// The replication controller to which this request is being sent (if
-    /// applicable).
-    replication_controller: Option<String>,
+    /// The owner of the destination pod.
+    //  TODO: when #429 is done, this will no longer need to be an Option.
+    dst: Option<PodOwner>,
 
     ///  The namespace to which this request is being sent (if
     /// applicable).
@@ -420,23 +428,33 @@ impl fmt::Display for RequestLabels {
 impl fmt::Display for OutboundLabels {
 
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let Some(ref ns) = self.namespace {
-            write!(f, "dst_namespace=\"{}\"", ns)?;
-        }
         match *self {
-            OutboundLabels { deployment: Some(ref d), .. } =>
-                write!(f, "dst_deployment=\"{}\",", d)?,
-            OutboundLabels { job: Some(ref job), .. } =>
-                write!(f, "dst_job=\"{}\",", job)?,
-            OutboundLabels { replica_set: Some(ref rs), .. } =>
-                write!(f, "dst_replica_set=\"{}\",", rs)?,
-            OutboundLabels { replication_controller: Some(ref rc), .. } =>
-                write!(f, "dst_replication_controller=\"{}\",", rc)?,
-            _ => {}
+            OutboundLabels { namespace: Some(ref ns), dst: Some(ref dst) } =>
+                 write!(f, "dst_namespace=\"{}\",dst_{},", ns, dst),
+            OutboundLabels { dst: Some(ref dst), .. } =>
+                write!(f, "dst_{},", dst),
+            OutboundLabels { namespace: Some(ref ns), .. } =>
+                write!(f, "dst_namespace=\"{}\",", ns),
+            OutboundLabels { .. } =>
+                write!(f, ""),
         }
-        Ok(())
     }
 
+}
+
+impl fmt::Display for PodOwner {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            PodOwner::Deployment(ref s) =>
+                write!(f, "deployment=\"{}\"", s),
+            PodOwner::Job(ref s) =>
+                write!(f, "job=\"{}\",", s),
+            PodOwner::ReplicaSet(ref s) =>
+                write!(f, "replica_set=\"{}\"", s),
+            PodOwner::ReplicationController(ref s) =>
+                write!(f, "replication_controller=\"{}\"", s),
+        }
+    }
 }
 
 // ===== impl ResponseLabels =====

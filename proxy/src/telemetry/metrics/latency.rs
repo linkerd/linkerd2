@@ -239,6 +239,9 @@ impl fmt::Display for Latency {
             // the formatting for u32::MAX.
             write!(f, "+Inf")
         } else {
+            // NOTE: if bucket values are changed so that they're no longer
+            //       evenly divisible by ten, we may want to ensure that there's
+            //       a reasonable cap on precision here.
             write!(f, "{}", self.0 / MS_TO_TENTHS_OF_MS)
         }
     }
