@@ -124,6 +124,15 @@ impl Histogram {
         }
     }
 
+    /// Return the sum value of this histogram in milliseconds.
+    ///
+    /// The sum is returned as a floating-point value, as it's
+    /// internally recorded in tenths of milliseconds, which could
+    /// represent a number of milliseconds with a fractional part.
+    pub fn sum_in_ms(&self) -> f64 {
+        self.sum as f64 / MS_TO_TENTHS_OF_MS as f64
+    }
+
 }
 
 impl<I> ops::AddAssign<I> for Histogram

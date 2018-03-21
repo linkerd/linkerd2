@@ -228,7 +228,7 @@ impl fmt::Display for Metric<Histogram> {
                 name = self.name,
                 labels = labels,
                 count = total_count,
-                sum = histogram.sum,
+                sum = histogram.sum_in_ms(),
             )?;
         }
 
