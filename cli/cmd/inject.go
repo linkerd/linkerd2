@@ -89,7 +89,7 @@ func runInjectCmd(input io.Reader, errWriter, outWriter io.Writer, version strin
  * and init-container injected. If the pod is unsuitable for having them
  * injected, return null.
  */
-func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride, version string) bool {
+func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride, version string, promLabels string) bool {
 	// Pods with `hostNetwork=true` share a network namespace with the host. The
 	// init-container would destroy the iptables configuration on the host, so
 	// skip the injection in this case.
@@ -181,6 +181,7 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride, v
 				Name:      "CONDUIT_PROXY_POD_NAMESPACE",
 				ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
 			},
+			v1.EnvVar{Name: "CONDUIT_PROMETHEUS_LABELS", Value: promLabels},
 		},
 	}
 
@@ -232,6 +233,7 @@ func InjectYAML(in io.Reader, out io.Writer, version string) error {
 		var obj interface{}
 		var podTemplateSpec *v1.PodTemplateSpec
 		var DNSNameOverride string
+		var promLabels string
 
 		// When injecting the conduit proxy into a conduit controller pod. The conduit proxy's
 		// CONDUIT_PROXY_CONTROL_URL variable must be set to localhost for the following reasons:
@@ -256,6 +258,7 @@ func InjectYAML(in io.Reader, out io.Writer, version string) error {
 				DNSNameOverride = LocalhostDNSNameOverride
 			}
 			obj = &deployment
+			promLabels = "deployment=" + deployment.Name
 			podTemplateSpec = &deployment.Spec.Template
 		case "ReplicationController":
 			var rc v1.ReplicationController
@@ -264,6 +267,7 @@ func InjectYAML(in io.Reader, out io.Writer, version string) error {
 				return err
 			}
 			obj = &rc
+			promLabels = "replication_controller=" + rc.Name
 			podTemplateSpec = rc.Spec.Template
 		case "ReplicaSet":
 			var rs v1beta1.ReplicaSet
@@ -272,6 +276,7 @@ func InjectYAML(in io.Reader, out io.Writer, version string) error {
 				return err
 			}
 			obj = &rs
+			promLabels = "replica_set=" + rs.Name
 			podTemplateSpec = &rs.Spec.Template
 		case "Job":
 			var job batchV1.Job
@@ -280,6 +285,7 @@ func InjectYAML(in io.Reader, out io.Writer, version string) error {
 				return err
 			}
 			obj = &job
+			promLabels = "job=" + job.Name
 			podTemplateSpec = &job.Spec.Template
 		case "DaemonSet":
 			var ds v1beta1.DaemonSet
@@ -288,6 +294,7 @@ func InjectYAML(in io.Reader, out io.Writer, version string) error {
 				return err
 			}
 			obj = &ds
+			promLabels = "daemon_set=" + ds.Name
 			podTemplateSpec = &ds.Spec.Template
 		}
 
@@ -295,7 +302,7 @@ func InjectYAML(in io.Reader, out io.Writer, version string) error {
 		// original serialization of the original object. Otherwise, output the
 		// serialization of the modified object.
 		output := bytes
-		if podTemplateSpec != nil && injectPodTemplateSpec(podTemplateSpec, DNSNameOverride, version) {
+		if podTemplateSpec != nil && injectPodTemplateSpec(podTemplateSpec, DNSNameOverride, version, promLabels) {
 			output, err = yaml.Marshal(obj)
 			if err != nil {
 				return err
