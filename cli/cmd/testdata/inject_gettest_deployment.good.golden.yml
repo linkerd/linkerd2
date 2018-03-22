@@ -45,6 +45,8 @@ spec:
           value: tcp://proxy-api.conduit.svc.cluster.local:8086
         - name: CONDUIT_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
+        - name: CONDUIT_PROXY_METRICS_LISTENER
+          value: tcp://0.0.0.0:4191
         - name: CONDUIT_PROXY_PRIVATE_LISTENER
           value: tcp://127.0.0.1:4140
         - name: CONDUIT_PROXY_PUBLIC_LISTENER
@@ -67,6 +69,8 @@ spec:
         ports:
         - containerPort: 4143
           name: conduit-proxy
+        - containerPort: 4191
+          name: conduit-metrics
         resources: {}
         securityContext:
           runAsUser: 2102
@@ -138,6 +142,8 @@ spec:
           value: tcp://proxy-api.conduit.svc.cluster.local:8086
         - name: CONDUIT_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
+        - name: CONDUIT_PROXY_METRICS_LISTENER
+          value: tcp://0.0.0.0:4191
         - name: CONDUIT_PROXY_PRIVATE_LISTENER
           value: tcp://127.0.0.1:4140
         - name: CONDUIT_PROXY_PUBLIC_LISTENER
@@ -160,6 +166,8 @@ spec:
         ports:
         - containerPort: 4143
           name: conduit-proxy
+        - containerPort: 4191
+          name: conduit-metrics
         resources: {}
         securityContext:
           runAsUser: 2102
