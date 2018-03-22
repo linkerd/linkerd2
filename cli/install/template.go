@@ -384,8 +384,18 @@ data:
       - source_labels: [__meta_kubernetes_namespace]
         action: replace
         target_label: namespace
+      # __meta_kubernetes_pod_label_conduit_io_proxy_deployment=foo =>
+      # k8s_deployment=foo
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_conduit_io_proxy_(.+)
+        replacement: k8s_$1
+      # drop all labels that we just made copies of in the previous labelmap
+      - action: labeldrop
+        regex: __meta_kubernetes_pod_label_conduit_io_proxy_(.+)
+      # __meta_kubernetes_pod_label_foo=bar => k8s_foo=bar
       - action: labelmap
         regex: __meta_kubernetes_pod_label_(.+)
+        replacement: k8s_$1
 
 ### Grafana ###
 ---

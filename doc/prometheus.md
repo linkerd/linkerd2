@@ -11,26 +11,52 @@ rich telemetry data to your cluster.  Simply add the following item to your
 `scrape_configs` in your Prometheus config file:
 
 ```yaml
-    - job_name: 'conduit'
+    - job_name: 'conduit-controller'
       kubernetes_sd_configs:
       - role: pod
         namespaces:
-          # Replace this with the namespace that Conduit is running in
-          names: ['conduit']
+          names: ['{{.Namespace}}']
       relabel_configs:
-      - source_labels: [__meta_kubernetes_pod_container_port_name]
+      - source_labels:
+        - __meta_kubernetes_pod_label_conduit_io_control_plane_component
+        - __meta_kubernetes_pod_container_port_name
         action: keep
-        regex: ^admin-http$
+        regex: (.*);admin-http$
+      - source_labels: [__meta_kubernetes_pod_container_name]
+        action: replace
+        target_label: component
+
+    - job_name: 'conduit-proxy'
+      kubernetes_sd_configs:
+      - role: pod
+      relabel_configs:
+      - source_labels:
+        - __meta_kubernetes_pod_container_name
+        - __meta_kubernetes_pod_container_port_name
+        action: keep
+        regex: ^conduit-proxy;conduit-metrics$
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: namespace
+      # __meta_kubernetes_pod_label_conduit_io_proxy_deployment=foo =>
+      # k8s_deployment=foo
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_conduit_io_proxy_(.+)
+        replacement: k8s_$1
+      # drop all labels that we just made copies of in the previous labelmap
+      - action: labeldrop
+        regex: __meta_kubernetes_pod_label_conduit_io_proxy_(.+)
+      # __meta_kubernetes_pod_label_foo=bar => k8s_foo=bar
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+        replacement: k8s_$1
 ```
 
 That's it!  Your Prometheus cluster is now configured to scrape Conduit's
-metrics.  Conduit's metrics will have the label `job="conduit"` and include:
+metrics.
 
-* `requests_total`: Total number of requests
-* `responses_total`: Total number of responses
-* `response_latency_ms`: Response latency in milliseconds
+Conduit's proxy metrics will have the label `job="conduit-proxy"`.  Conduit's
+control-plane metrics will have the label `job="conduit-controller"`.
 
-All metrics include the following labels:
-
-* `source_deployment`: The deployment (or replicaset, job, etc.) that sent the request
-* `target_deployment`: The deployment (or replicaset, job, etc.) that received the request
+For more information on specific metric and label definitions, have a look at
+[Proxy Metrics](/proxy-metrics),
