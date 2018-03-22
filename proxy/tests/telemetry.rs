@@ -553,7 +553,7 @@ fn metrics_endpoint_outbound_request_duration() {
         .outbound(srv)
         .metrics_flush_interval(Duration::from_millis(500))
         .run();
-    let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
+    let client = client::new(proxy.outbound, "tele.test.svc.cluster.local");
     let metrics = client::http1(proxy.metrics, "localhost");
 
     info!("client.get(/hey)");
