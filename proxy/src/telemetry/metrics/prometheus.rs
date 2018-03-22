@@ -413,7 +413,10 @@ impl fmt::Display for RequestLabels {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "authority=\"{}\",", self.authority)?;
         if let Some(ref outbound) = self.outbound_labels {
-            write!(f, "direction=\"outbound\",{}", outbound)?;
+            write!(f, "direction=\"outbound\"{comma}{dst}",
+                comma = if !outbound.is_empty() { "," } else { "" },
+                dst = outbound
+            )?;
         } else {
             write!(f, "direction=\"inbound\"")?;
         }
@@ -425,16 +428,25 @@ impl fmt::Display for RequestLabels {
 
 }
 
+
+// ===== impl OutboundLabels =====
+
+impl OutboundLabels {
+    fn is_empty(&self) -> bool {
+        self.namespace.is_none() && self.dst.is_none()
+    }
+}
+
 impl fmt::Display for OutboundLabels {
 
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             OutboundLabels { namespace: Some(ref ns), dst: Some(ref dst) } =>
-                 write!(f, "dst_namespace=\"{}\",dst_{},", ns, dst),
+                 write!(f, "dst_namespace=\"{}\",dst_{}", ns, dst),
             OutboundLabels { namespace: None, dst: Some(ref dst), } =>
-                write!(f, "dst_{},", dst),
+                write!(f, "dst_{}", dst),
             OutboundLabels { namespace: Some(ref ns), dst: None, } =>
-                write!(f, "dst_namespace=\"{}\",", ns),
+                write!(f, "dst_namespace=\"{}\"", ns),
             OutboundLabels { namespace: None, dst: None, } =>
                 write!(f, ""),
         }
