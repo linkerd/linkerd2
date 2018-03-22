@@ -413,7 +413,6 @@ fn metrics_endpoint_inbound_response_latency() {
         "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",status_code=\"200\"} 4");
 }
 
-
 // Ignore this test on CI, because our method of adding latency to requests
 // (calling `thread::sleep`) is likely to be flakey on Travis.
 // Eventually, we can add some kind of mock timer system for simulating latency
@@ -501,6 +500,75 @@ fn metrics_endpoint_outbound_response_latency() {
     // the histogram's total count should be 4.
     assert_contains!(scrape,
         "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",status_code=\"200\"} 4");
+}
+
+#[test]
+fn metrics_endpoint_inbound_request_duration() {
+    let _ = env_logger::try_init();
+
+    info!("running test server");
+    let srv = server::new()
+        .route("/hey", "hello")
+        .run();
+
+    let ctrl = controller::new();
+    let proxy = proxy::new()
+        .controller(ctrl.run())
+        .inbound(srv)
+        .metrics_flush_interval(Duration::from_millis(500))
+        .run();
+    let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
+    let metrics = client::http1(proxy.metrics, "localhost");
+
+    // request with body should increment request_duration
+    info!("client.get(/hey)");
+    assert_eq!(client.get("/hey"), "hello");
+
+    let scrape = metrics.get("/metrics");
+    assert_contains!(scrape,
+        "request_duration_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\"} 1");
+
+    // request without body should also increment request_duration
+    info!("client.get(/hey)");
+    assert_eq!(client.get("/hey"), "hello");
+
+    let scrape = metrics.get("/metrics");
+    assert_contains!(scrape,
+        "request_duration_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\"} 2");
+}
+
+#[test]
+fn metrics_endpoint_outbound_request_duration() {
+    let _ = env_logger::try_init();
+
+    info!("running test server");
+    let srv = server::new()
+        .route("/hey", "hello")
+        .run();
+    let ctrl = controller::new()
+        .destination("tele.test.svc.cluster.local", srv.addr)
+        .run();
+    let proxy = proxy::new()
+        .controller(ctrl)
+        .outbound(srv)
+        .metrics_flush_interval(Duration::from_millis(500))
+        .run();
+    let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
+    let metrics = client::http1(proxy.metrics, "localhost");
+
+    info!("client.get(/hey)");
+    assert_eq!(client.get("/hey"), "hello");
+
+    let scrape = metrics.get("/metrics");
+    assert_contains!(scrape,
+        "request_duration_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\"} 1");
+
+    info!("client.get(/hey)");
+    assert_eq!(client.get("/hey"), "hello");
+
+    let scrape = metrics.get("/metrics");
+    assert_contains!(scrape,
+        "request_duration_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\"} 2");
 }
 
 #[test]
