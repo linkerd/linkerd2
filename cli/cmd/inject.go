@@ -34,6 +34,7 @@ var (
 	ignoreInboundPorts  []uint
 	ignoreOutboundPorts []uint
 	proxyControlPort    uint
+	proxyMetricsPort    uint
 	proxyAPIPort        uint
 	proxyLogLevel       string
 )
@@ -153,6 +154,10 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride, v
 				Name:          "conduit-proxy",
 				ContainerPort: int32(inboundPort),
 			},
+			v1.ContainerPort{
+				Name:          "conduit-metrics",
+				ContainerPort: int32(proxyMetricsPort),
+			},
 		},
 		Env: []v1.EnvVar{
 			v1.EnvVar{Name: "CONDUIT_PROXY_LOG", Value: proxyLogLevel},
@@ -161,6 +166,7 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride, v
 				Value: fmt.Sprintf("tcp://%s:%d", controlPlaneDNS, proxyAPIPort),
 			},
 			v1.EnvVar{Name: "CONDUIT_PROXY_CONTROL_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", proxyControlPort)},
+			v1.EnvVar{Name: "CONDUIT_PROXY_METRICS_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", proxyMetricsPort)},
 			v1.EnvVar{Name: "CONDUIT_PROXY_PRIVATE_LISTENER", Value: fmt.Sprintf("tcp://127.0.0.1:%d", outboundPort)},
 			v1.EnvVar{Name: "CONDUIT_PROXY_PUBLIC_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", inboundPort)},
 			v1.EnvVar{
@@ -320,4 +326,5 @@ func addProxyConfigFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVar(&proxyLogLevel, "proxy-log-level", "warn,conduit_proxy=info", "log level for the proxy")
 	cmd.PersistentFlags().UintVar(&proxyAPIPort, "api-port", 8086, "port where the Conduit controller is running")
 	cmd.PersistentFlags().UintVar(&proxyControlPort, "control-port", 4190, "proxy port to use for control")
+	cmd.PersistentFlags().UintVar(&proxyMetricsPort, "metrics-port", 4191, "proxy port to serve metrics on")
 }

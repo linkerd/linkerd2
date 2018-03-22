@@ -354,6 +354,39 @@ data:
         action: replace
         target_label: job
 
+    # Double collect control-plane pods, In #499 we will remove the
+    # "controller" job above in favor of these two below.
+    - job_name: 'conduit-controller'
+      kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names: ['{{.Namespace}}']
+      # TODO: do something with "conduit.io/control-plane-component"
+      relabel_configs:
+      - source_labels:
+        - __meta_kubernetes_pod_label_conduit_io_control_plane_component
+        - __meta_kubernetes_pod_container_port_name
+        action: keep
+        regex: (.*);admin-http$
+      - source_labels: [__meta_kubernetes_pod_container_name]
+        action: replace
+        target_label: component
+
+    - job_name: 'conduit-proxy'
+      kubernetes_sd_configs:
+      - role: pod
+      relabel_configs:
+      - source_labels:
+        - __meta_kubernetes_pod_container_name
+        - __meta_kubernetes_pod_container_port_name
+        action: keep
+        regex: ^conduit-proxy;conduit-metrics$
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: namespace
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+
 ### Grafana ###
 ---
 kind: Service
