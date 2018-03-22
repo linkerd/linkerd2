@@ -1,6 +1,7 @@
 use std::default::Default;
 use std::{fmt, u32};
 use std::hash::Hash;
+use std::num::Wrapping;
 use std::sync::{Arc, Mutex};
 
 use futures::future::{self, FutureResult};
@@ -36,8 +37,13 @@ struct Metric<M, L: Hash + Eq> {
     values: IndexMap<L, M>
 }
 
+/// A Prometheus counter is represented by a `Wrapping` unsigned 64-bit int.
+///
+/// Counters handle overflows by wrapping rather than saturating (or panicking!)
+/// since most timeseries systems (like Prometheus) are designed to handle this
+/// case gracefully.
 #[derive(Copy, Debug, Default, Clone, Eq, PartialEq)]
-struct Counter(u64);
+pub struct Counter(Wrapping<u64>);
 
 /// Tracks Prometheus metrics
 #[derive(Debug)]
@@ -189,7 +195,9 @@ impl Metrics {
             .or_insert_with(Default::default)
     }
 
-    fn response_total(&mut self, labels: &Arc<ResponseLabels>) -> &mut u64 {
+    fn response_total(&mut self,
+                      labels: &Arc<ResponseLabels>)
+                      -> &mut Wrapping<u64> {
         &mut self.response_total.values
             .entry(labels.clone())
             .or_insert_with(Default::default).0
@@ -209,9 +217,11 @@ impl fmt::Display for Metrics {
     }
 }
 
+// ===== impl Counter =====
+
 impl fmt::Display for Counter {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0 as f64)
+        write!(f, "{}", (self.0).0 as f64)
     }
 }
 
@@ -332,9 +342,9 @@ impl Aggregate {
             Event::StreamRequestFail(ref req, ref fail) => {
                 let labels = Arc::new(RequestLabels::new(req));
                 self.update(|metrics| {
-                    *metrics.request_total(&labels) += 1;
                     *metrics.request_duration(&labels) +=
                         fail.since_request_open;
+                    *metrics.request_total(&labels) += Wrapping(1);
                 })
             },
 
@@ -353,7 +363,7 @@ impl Aggregate {
                     end.grpc_status,
                 ));
                 self.update(|metrics| {
-                    *metrics.response_total(&labels) += 1;
+                    *metrics.response_total(&labels) += Wrapping(1);
                     *metrics.response_duration(&labels) +=  end.since_response_open;
                     *metrics.response_latency(&labels) += end.since_request_open;
                 });
@@ -363,7 +373,7 @@ impl Aggregate {
                 // TODO: do we care about the failure's error code here?
                 let labels = Arc::new(ResponseLabels::new(res, None));
                 self.update(|metrics| {
-                    *metrics.response_total(&labels) += 1;
+                    *metrics.response_total(&labels) += Wrapping(1);
                     *metrics.response_duration(&labels) += fail.since_response_open;
                     *metrics.response_latency(&labels) += fail.since_request_open;
                 });

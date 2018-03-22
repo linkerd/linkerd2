@@ -1,6 +1,7 @@
 #![deny(missing_docs)]
-use std::{fmt, ops, slice, u32};
+use std::{fmt, iter, ops, slice, u32};
 use std::default::Default;
+use std::num::Wrapping;
 use std::time::Duration;
 
 /// The number of buckets in a  latency histogram.
@@ -62,10 +63,10 @@ pub struct Histogram {
     /// Array of buckets in which to count latencies.
     ///
     /// The upper bound of a given bucket `i` is given in `BUCKET_BOUNDS[i]`.
-    buckets: [u32; NUM_BUCKETS],
+    buckets: [Wrapping<u32>; NUM_BUCKETS],
 
     /// The total sum of all observed latency values.
-    pub sum: u64,
+    pub sum: Wrapping<u64>,
 }
 
 /// A latency in tenths of a millisecond.
@@ -87,9 +88,9 @@ impl Histogram {
             .position(|max| &measurement <= max)
             .expect("latency value greater than u32::MAX; this shouldn't be \
                      possible.");
-        self.buckets[i] += 1;
+        self.buckets[i] += Wrapping(1);
 
-        // It's time to play ~*Will It Overflow???*~
+        // It's time to play ~*Will It Wrap???*~
         //
         // If we make the fairly generous assumptions of 1-minute latencies
         // and 1 million RPS per set of metric labels (i.e. per pod), that
@@ -105,7 +106,7 @@ impl Histogram {
         // 18,446,744,073,709,551,615 is the maximum 64-bit unsigned integer.
         //      1.8446744073709551615e19 / 5.184e16 = 355 (about 1 year)
         //
-        // So at 1 million RPS with 1-minute latencies, the sum will overflow
+        // So at 1 million RPS with 1-minute latencies, the sum will wrap
         // in about a year. We don't really expect a conduit-proxy process to
         // run that long (or see this kind of load), but we can revisit this
         // if supporting extremely long-running deployments becomes a priority.
@@ -113,14 +114,14 @@ impl Histogram {
         // (N.B. that storing latencies in whole milliseconds rather than tenths
         // of milliseconds would change the time to overflow to almost 10
         // years.)
-        self.sum += measurement.0 as u64;
+        self.sum += Wrapping(measurement.0 as u64);
     }
 
     /// Construct a new, empty `Histogram`.
     pub fn new() -> Self {
         Histogram {
-            buckets: [0; NUM_BUCKETS],
-            sum: 0,
+            buckets: [Wrapping(0); NUM_BUCKETS],
+            sum: Wrapping(0),
         }
     }
 
@@ -130,7 +131,7 @@ impl Histogram {
     /// internally recorded in tenths of milliseconds, which could
     /// represent a number of milliseconds with a fractional part.
     pub fn sum_in_ms(&self) -> f64 {
-        self.sum as f64 / MS_TO_TENTHS_OF_MS as f64
+        self.sum.0 as f64 / MS_TO_TENTHS_OF_MS as f64
     }
 
 }
@@ -146,17 +147,18 @@ where
 
 }
 
-
 impl<'a> IntoIterator for &'a Histogram {
     type Item = &'a u32;
-    type IntoIter = slice::Iter<'a, u32>;
+    type IntoIter = iter::Map<
+        slice::Iter<'a, Wrapping<u32>>,
+        fn(&'a Wrapping<u32>) -> &'a u32
+    >;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.buckets.iter()
+        self.buckets.iter().map(|&Wrapping(ref a)| a)
     }
 
 }
-
 
 impl Default for Histogram {
     #[inline]
