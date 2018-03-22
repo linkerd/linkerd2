@@ -495,6 +495,7 @@ fn metrics_endpoint_outbound_response_latency() {
 
 #[test]
 fn metrics_have_no_double_commas() {
+    // Test for regressions to runconduit/conduit#600.
     let _ = env_logger::try_init();
 
     info!("running test server");
