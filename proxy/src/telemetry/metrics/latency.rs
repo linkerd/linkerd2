@@ -63,6 +63,7 @@ pub struct Histogram {
     /// Array of buckets in which to count latencies.
     ///
     /// The upper bound of a given bucket `i` is given in `BUCKET_BOUNDS[i]`.
+    // TODO: consider using `prometheus::Counter` rather than `Wrapping<u32>`?
     buckets: [Wrapping<u32>; NUM_BUCKETS],
 
     /// The total sum of all observed latency values.
