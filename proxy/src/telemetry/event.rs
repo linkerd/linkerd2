@@ -12,6 +12,7 @@ pub enum Event {
 
     StreamRequestOpen(Arc<ctx::http::Request>),
     StreamRequestFail(Arc<ctx::http::Request>, StreamRequestFail),
+    StreamRequestEnd(Arc<ctx::http::Request>, StreamRequestEnd),
 
     StreamResponseOpen(Arc<ctx::http::Response>, StreamResponseOpen),
     StreamResponseFail(Arc<ctx::http::Response>, StreamResponseFail),
@@ -35,6 +36,11 @@ pub struct TransportClose {
 pub struct StreamRequestFail {
     pub since_request_open: Duration,
     pub error: h2::Reason,
+}
+
+#[derive(Clone, Debug)]
+pub struct StreamRequestEnd {
+    pub since_request_open: Duration,
 }
 
 #[derive(Clone, Debug)]
@@ -67,6 +73,7 @@ impl Event {
         match *self {
             Event::StreamRequestOpen(_) |
             Event::StreamRequestFail(_, _) |
+            Event::StreamRequestEnd(_, _) |
             Event::StreamResponseOpen(_, _) |
             Event::StreamResponseFail(_, _) |
             Event::StreamResponseEnd(_, _) => true,
@@ -84,9 +91,9 @@ impl Event {
     pub fn proxy(&self) -> &Arc<ctx::Proxy> {
         match *self {
             Event::TransportOpen(ref ctx) | Event::TransportClose(ref ctx, _) => ctx.proxy(),
-            Event::StreamRequestOpen(ref req) | Event::StreamRequestFail(ref req, _) => {
-                &req.server.proxy
-            }
+            Event::StreamRequestOpen(ref req) |
+            Event::StreamRequestFail(ref req, _) |
+            Event::StreamRequestEnd(ref req, _) => &req.server.proxy,
             Event::StreamResponseOpen(ref rsp, _) |
             Event::StreamResponseFail(ref rsp, _) |
             Event::StreamResponseEnd(ref rsp, _) => &rsp.request.server.proxy,

@@ -22,6 +22,8 @@ use super::latency::{BUCKET_BOUNDS, Histogram};
 #[derive(Debug, Clone)]
 struct Metrics {
     request_total: Metric<Counter, Arc<RequestLabels>>,
+    request_duration: Metric<Histogram, Arc<RequestLabels>>,
+
     response_total: Metric<Counter, Arc<ResponseLabels>>,
     response_duration: Metric<Histogram, Arc<ResponseLabels>>,
     response_latency: Metric<Histogram, Arc<ResponseLabels>>,
@@ -122,6 +124,13 @@ impl Metrics {
             "A counter of the number of requests the proxy has received.",
         );
 
+        let request_duration = Metric::<Histogram, Arc<RequestLabels>>::new(
+            "request_duration_ms",
+            "A histogram of the duration of a request. This is measured from \
+             when the request headers are received to when the request \
+             stream has completed.",
+        );
+
         let response_total = Metric::<Counter, Arc<ResponseLabels>>::new(
             "response_total",
             "A counter of the number of responses the proxy has received.",
@@ -133,14 +142,17 @@ impl Metrics {
              when the response headers are received to when the response \
              stream has completed.",
         );
+
         let response_latency = Metric::<Histogram, Arc<ResponseLabels>>::new(
             "response_latency_ms",
             "A histogram of the total latency of a response. This is measured \
             from when the request headers are received to when the response \
             stream has completed.",
         );
+
         Metrics {
             request_total,
+            request_duration,
             response_total,
             response_duration,
             response_latency,
@@ -151,6 +163,14 @@ impl Metrics {
         &mut self.request_total.values
             .entry(labels.clone())
             .or_insert_with(Default::default).0
+    }
+
+    fn request_duration(&mut self,
+                        labels: &Arc<RequestLabels>)
+                        -> &mut Histogram {
+        self.request_duration.values
+            .entry(labels.clone())
+            .or_insert_with(Default::default)
     }
 
     fn response_duration(&mut self,
@@ -179,8 +199,9 @@ impl Metrics {
 
 impl fmt::Display for Metrics {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}\n{}\n{}\n{}",
+        write!(f, "{}\n{}\n{}\n{}\n{}",
             self.request_total,
+            self.request_duration,
             self.response_total,
             self.response_duration,
             self.response_latency,
@@ -302,21 +323,28 @@ impl Aggregate {
     pub fn record_event(&mut self, event: &Event) {
         trace!("Metrics::record({:?})", event);
         match *event {
-            Event::StreamRequestOpen(ref req) => {
+
+            Event::StreamRequestOpen(_) | Event::StreamResponseOpen(_, _) => {
+                // Do nothing; we'll record metrics for the request or response
+                //  when the stream *finishes*.
+            },
+
+            Event::StreamRequestFail(ref req, ref fail) => {
                 let labels = Arc::new(RequestLabels::new(req));
                 self.update(|metrics| {
                     *metrics.request_total(&labels) += 1;
+                    *metrics.request_duration(&labels) +=
+                        fail.since_request_open;
                 })
             },
 
-            Event::StreamRequestFail(_, _) => {
-                // The request total was already incremented by the
-                // StreamRequestOpen event; when we count requests on
-                // stream ends, we'll care about this event.
-            },
-
-            Event::StreamResponseOpen(_, _) =>  {
-                // Wait until the response stream ends to record it.
+            Event::StreamRequestEnd(ref req, ref end) => {
+                let labels = Arc::new(RequestLabels::new(req));
+                self.update(|metrics| {
+                    *metrics.request_total(&labels) += 1;
+                    *metrics.request_duration(&labels) +=
+                        end.since_request_open;
+                })
             },
 
             Event::StreamResponseEnd(ref res, ref end) => {

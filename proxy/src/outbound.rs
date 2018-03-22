@@ -3,8 +3,8 @@ use std::net::SocketAddr;
 use std::time::Duration;
 use std::sync::Arc;
 
-use futures::{Async, Poll};
 use http;
+use futures::{Async, Poll};
 use rand;
 use tower;
 use tower_balance::{self, choose, load, Balance};

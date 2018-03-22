@@ -79,6 +79,8 @@ pub type NewHttp<B> = sensor::NewHttp<Client<B>, B, HttpBody>;
 
 pub type HttpResponse = http::Response<sensor::http::ResponseBody<HttpBody>>;
 
+pub type HttpRequest<B> = http::Request<sensor::http::RequestBody<B>>;
+
 pub type Client<B> = transparency::Client<
     sensor::Connect<transport::Connect>,
     B,

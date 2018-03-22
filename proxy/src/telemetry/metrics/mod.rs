@@ -127,7 +127,10 @@ impl Metrics {
                 stats.latencies += fail.since_request_open;
                 *ends += 1;
             }
-
+            Event::StreamRequestEnd(_, _) => {
+                // Do nothing, as the push metrics are slated for removal and
+                // we don't need to support this event.
+            }
             Event::StreamResponseOpen(ref res, ref open) => {
                 self.response(res).latencies += open.since_request_open;
             },

@@ -1,7 +1,8 @@
 use bytes::{Buf, IntoBuf};
-use futures::{Async, Future, Poll};
+use futures::{Async, Future, Poll, Stream};
 use h2;
 use http;
+use std::default::Default;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -54,21 +55,43 @@ struct RespondInner {
     request_open: Instant,
 }
 
-#[derive(Default, Debug)]
-pub struct ResponseBody<B> {
+pub type ResponseBody<B> = MeasuredBody<B, ResponseBodyInner>;
+pub type RequestBody<B> = MeasuredBody<B, RequestBodyInner>;
+
+#[derive(Debug)]
+pub struct MeasuredBody<B, I: BodySensor> {
     body: B,
-    inner: Option<ResponseBodyInner>,
+    inner: Option<I>,
     _p: PhantomData<(B)>,
 }
 
+/// The `inner` portion of a `MeasuredBody`, with differing implementations
+/// for request and response streams.
+pub trait BodySensor: Sized {
+    fn fail(self, reason: h2::Reason);
+    fn end(self, grpc_status: Option<u32>);
+    fn frames_sent(&mut self) -> &mut u32;
+    fn bytes_sent(&mut self) -> &mut u64;
+}
+
 #[derive(Debug)]
-struct ResponseBodyInner {
+pub struct ResponseBodyInner {
     handle: super::Handle,
     ctx: Arc<ctx::http::Response>,
     bytes_sent: u64,
     frames_sent: u32,
     request_open: Instant,
     response_open: Instant,
+}
+
+
+#[derive(Debug)]
+pub struct RequestBodyInner {
+    handle: super::Handle,
+    ctx: Arc<ctx::http::Request>,
+    bytes_sent: u64,
+    frames_sent: u32,
+    request_open: Instant,
 }
 
 // === NewHttp ===
@@ -78,7 +101,7 @@ where
     A: Body + 'static,
     B: Body + 'static,
     N: NewService<
-        Request = http::Request<A>,
+        Request = http::Request<RequestBody<A>>,
         Response = http::Response<B>,
         Error = client::Error,
     >
@@ -105,13 +128,13 @@ where
     A: Body + 'static,
     B: Body + 'static,
     N: NewService<
-        Request = http::Request<A>,
+        Request = http::Request<RequestBody<A>>,
         Response = http::Response<B>,
         Error = client::Error,
     >
         + 'static,
 {
-    type Request = N::Request;
+    type Request = http::Request<A>;
     type Response = http::Response<ResponseBody<B>>;
     type Error = N::Error;
     type InitError = N::InitError;
@@ -136,7 +159,10 @@ where
     A: Body + 'static,
     B: Body + 'static,
     F: Future,
-    F::Item: Service<Request = http::Request<A>, Response = http::Response<B>>,
+    F::Item: Service<
+        Request = http::Request<RequestBody<A>>,
+        Response = http::Response<B>
+    >,
 {
     type Item = Http<F::Item, A, B>;
     type Error = F::Error;
@@ -161,13 +187,13 @@ where
     A: Body + 'static,
     B: Body + 'static,
     S: Service<
-        Request = http::Request<A>,
+        Request = http::Request<RequestBody<A>>,
         Response = http::Response<B>,
         Error = client::Error,
     >
         + 'static,
 {
-    type Request = S::Request;
+    type Request = http::Request<A>;
     type Response = http::Response<ResponseBody<B>>;
     type Error = S::Error;
     type Future = Respond<S::Future, B>;
@@ -177,8 +203,8 @@ where
     }
 
     fn call(&mut self, mut req: Self::Request) -> Self::Future {
-        let inner = match req.extensions_mut().remove::<Arc<ctx::transport::Server>>() {
-            None => None,
+        let (inner, body_inner) = match req.extensions_mut().remove::<Arc<ctx::transport::Server>>() {
+            None => (None, None),
             Some(ctx) => {
                 let id = self.next_id.fetch_add(1, Ordering::SeqCst);
                 let ctx = ctx::http::Request::new(&req, &ctx, &self.client_ctx, id);
@@ -186,15 +212,42 @@ where
                 self.handle
                     .send(|| Event::StreamRequestOpen(Arc::clone(&ctx)));
 
-                Some(RespondInner {
-                    ctx,
+                let request_open = Instant::now();
+
+                let respond_inner = Some(RespondInner {
+                    ctx: ctx.clone(),
                     handle: self.handle.clone(),
-                    request_open: Instant::now(),
-                })
+                    request_open,
+                });
+                let body_inner =
+                    if req.body().is_end_stream() {
+                        self.handle.send(|| {
+                            Event::StreamRequestEnd(
+                                Arc::clone(&ctx),
+                                event::StreamRequestEnd {
+                                    since_request_open: request_open.elapsed(),
+                                },
+                            )
+                        });
+                        None
+                    } else {
+                        Some(RequestBodyInner {
+                            ctx,
+                            handle: self.handle.clone(),
+                            request_open,
+                            frames_sent: 0,
+                            bytes_sent: 0,
+                        })
+                    };
+                (respond_inner, body_inner)
             }
         };
+        let req = {
+            let (parts, body) = req.into_parts();
+            let body = MeasuredBody::new(body, body_inner);
+            http::Request::from_parts(parts, body)
+        };
 
-        // TODO measure request lifetime.
         let future = self.service.call(req);
 
         Respond {
@@ -272,11 +325,7 @@ where
 
                 let rsp = {
                     let (parts, body) = rsp.into_parts();
-                    let body = ResponseBody {
-                        body,
-                        inner,
-                        _p: PhantomData,
-                    };
+                    let body = ResponseBody::new(body, inner);
                     http::Response::from_parts(parts, body)
                 };
 
@@ -310,9 +359,17 @@ where
     }
 }
 
-// === ResponseBody ===
+// === MeasuredBody ===
 
-impl<B> ResponseBody<B> {
+impl<B, I: BodySensor> MeasuredBody<B, I> {
+    pub fn new(body: B, inner: Option<I>) -> Self {
+        Self {
+            body,
+            inner,
+            _p: PhantomData,
+        }
+    }
+
     /// Wraps an operation on the underlying transport with error telemetry.
     ///
     /// If the transport operation results in a non-recoverable error, a transport close
@@ -326,28 +383,7 @@ impl<B> ResponseBody<B> {
             Err(e) => {
                 if let Some(error) = e.reason() {
                     if let Some(i) = self.inner.take() {
-                        let ResponseBodyInner {
-                            ctx,
-                            mut handle,
-                            request_open,
-                            response_open,
-                            bytes_sent,
-                            frames_sent,
-                            ..
-                        } = i;
-
-                        handle.send(|| {
-                            event::Event::StreamResponseFail(
-                                Arc::clone(&ctx),
-                                event::StreamResponseFail {
-                                    error,
-                                    since_request_open: request_open.elapsed(),
-                                    since_response_open: response_open.elapsed(),
-                                    bytes_sent,
-                                    frames_sent,
-                                },
-                            )
-                        });
+                        i.fail(error);
                     }
                 }
 
@@ -357,9 +393,10 @@ impl<B> ResponseBody<B> {
     }
 }
 
-impl<B> Body for ResponseBody<B>
+impl<B, I> Body for MeasuredBody<B, I>
 where
     B: Body + 'static,
+    I: BodySensor,
 {
     /// The body chunk type
     type Data = <B::Data as IntoBuf>::Buf;
@@ -373,8 +410,8 @@ where
         let frame = frame.map(|frame| {
             let frame = frame.into_buf();
             if let Some(ref mut inner) = self.inner {
-                inner.frames_sent += 1;
-                inner.bytes_sent += frame.remaining() as u64;
+                *inner.frames_sent() += 1;
+                *inner.bytes_sent() += frame.remaining() as u64;
             }
             frame
         });
@@ -387,36 +424,153 @@ where
             Ok(Async::NotReady) => Ok(Async::NotReady),
             Ok(Async::Ready(trls)) => {
                 if let Some(i) = self.inner.take() {
-                    let ResponseBodyInner {
-                        ctx,
-                        mut handle,
-                        request_open,
-                        response_open,
-                        bytes_sent,
-                        frames_sent,
-                    } = i;
-
-                    handle.send(|| {
-                        let grpc_status = trls.as_ref()
-                            .and_then(|t| t.get(GRPC_STATUS))
-                            .and_then(|v| v.to_str().ok())
-                            .and_then(|s| s.parse::<u32>().ok());
-
-                        event::Event::StreamResponseEnd(
-                            Arc::clone(&ctx),
-                            event::StreamResponseEnd {
-                                grpc_status,
-                                since_request_open: request_open.elapsed(),
-                                since_response_open: response_open.elapsed(),
-                                bytes_sent,
-                                frames_sent,
-                            },
-                        )
-                    })
+                    let grpc_status = trls.as_ref()
+                        .and_then(|t| t.get(GRPC_STATUS))
+                        .and_then(|v| v.to_str().ok())
+                        .and_then(|s| s.parse::<u32>().ok());
+                    i.end(grpc_status);
                 }
 
                 Ok(Async::Ready(trls))
             }
         }
+    }
+}
+
+impl<B, I> Default for MeasuredBody<B, I>
+where
+    B: Default,
+    I: BodySensor,
+{
+    fn default() -> Self {
+        Self {
+            body: B::default(),
+            inner: None,
+            _p: PhantomData,
+        }
+    }
+}
+
+impl<B, I> Stream for MeasuredBody<B, I>
+where
+    B: Stream,
+    I: BodySensor,
+{
+    type Item = B::Item;
+    type Error = B::Error;
+
+    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
+        self.body.poll()
+    }
+
+}
+
+// ===== impl BodySensor =====
+
+impl BodySensor for ResponseBodyInner {
+
+    fn fail(self, error: h2::Reason) {
+        let ResponseBodyInner {
+            ctx,
+            mut handle,
+            request_open,
+            response_open,
+            bytes_sent,
+            frames_sent,
+            ..
+        } = self;
+
+        handle.send(|| {
+            event::Event::StreamResponseFail(
+                Arc::clone(&ctx),
+                event::StreamResponseFail {
+                    error,
+                    since_request_open: request_open.elapsed(),
+                    since_response_open: response_open.elapsed(),
+                    bytes_sent,
+                    frames_sent,
+                },
+            )
+        });
+    }
+
+    fn end(self, grpc_status: Option<u32>) {
+        let ResponseBodyInner {
+            ctx,
+            mut handle,
+            request_open,
+            response_open,
+            bytes_sent,
+            frames_sent,
+        } = self;
+
+        handle.send(||
+            event::Event::StreamResponseEnd(
+                Arc::clone(&ctx),
+                event::StreamResponseEnd {
+                    grpc_status,
+                    since_request_open: request_open.elapsed(),
+                    since_response_open: response_open.elapsed(),
+                    bytes_sent,
+                    frames_sent,
+                },
+            )
+        )
+    }
+
+    fn frames_sent(&mut self) -> &mut u32 {
+        &mut self.frames_sent
+    }
+
+    fn bytes_sent(&mut self) -> &mut u64 {
+        &mut self.bytes_sent
+    }
+}
+
+impl BodySensor for RequestBodyInner {
+
+    fn fail(self, error: h2::Reason) {
+        let RequestBodyInner {
+            ctx,
+            mut handle,
+            request_open,
+            ..
+        } = self;
+
+        handle.send(||
+            event::Event::StreamRequestFail(
+                Arc::clone(&ctx),
+                event::StreamRequestFail {
+                    error,
+                    since_request_open: request_open.elapsed(),
+                },
+            )
+        )
+    }
+
+    fn end(self, _grpc_status: Option<u32>) {
+        let RequestBodyInner {
+            ctx,
+            mut handle,
+            request_open,
+            ..
+        } = self;
+
+        handle.send(||
+            event::Event::StreamRequestEnd(
+                Arc::clone(&ctx),
+                event::StreamRequestEnd {
+                    since_request_open: request_open.elapsed(),
+                },
+            )
+        )
+    }
+
+    fn frames_sent(&mut self) -> &mut u32 {
+        &mut self.frames_sent
+    }
+
+    fn bytes_sent(&mut self) -> &mut u64 {
+        &mut self.bytes_sent
     }
 }
