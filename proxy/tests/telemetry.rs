@@ -376,3 +376,43 @@ fn metrics_endpoint_response_latency() {
     assert_contains!(scrape,
         "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",status_code=\"200\"} 4");
 }
+
+
+#[test]
+fn metrics_have_no_double_commas() {
+    let _ = env_logger::try_init();
+
+    info!("running test server");
+    let inbound_srv = server::new().route("/hey", "hello").run();
+    let outbound_srv = server::new().route("/hey", "hello").run();
+
+    let ctrl = controller::new()
+        .destination("tele.test.svc.cluster.local", outbound_srv.addr)
+        .run();
+    let proxy = proxy::new()
+        .controller(ctrl)
+        .inbound(inbound_srv)
+        .outbound(outbound_srv)
+        .metrics_flush_interval(Duration::from_millis(500))
+        .run();
+    let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
+    let metrics = client::http1(proxy.metrics, "localhost");
+
+    let scrape = metrics.get("/metrics");
+    assert!(!scrape.contains(",,"));
+
+    info!("inbound.get(/hey)");
+    assert_eq!(client.get("/hey"), "hello");
+
+    let scrape = metrics.get("/metrics");
+    assert!(!scrape.contains(",,"), "inbound metrics had double comma");
+
+    let client = client::new(proxy.outbound, "tele.test.svc.cluster.local");
+
+    info!("outbound.get(/hey)");
+    assert_eq!(client.get("/hey"), "hello");
+
+    let scrape = metrics.get("/metrics");
+    assert!(!scrape.contains(",,"), "outbound metrics had double comma");
+
+}
