@@ -277,7 +277,7 @@ spec:
   selector:
     {{.ControllerComponentLabel}}: prometheus
   ports:
-  - name: http
+  - name: admin-http
     port: 9090
     targetPort: 9090
 
@@ -308,7 +308,7 @@ spec:
       containers:
       - name: prometheus
         ports:
-        - name: http
+        - name: admin-http
           containerPort: 9090
         volumeMounts:
         - name: prometheus-config
