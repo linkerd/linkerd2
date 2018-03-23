@@ -40,12 +40,6 @@ Each of these metrics has the following labels:
 
 * `direction`: `inbound` if the request originated from outside of the pod,
                `outbound` if the request originated from inside of the pod.
-* `deployment`: The deployment that the pod belongs to (if applicable).
-* `job`: The job that the pod belongs to (if applicable).
-* `replica_set`: The replica set that the pod belongs to (if applicable).
-* `daemon_set`: The daemon set that the pod belongs to (if applicable).
-* `replication_controller`: The replication controller that the pod belongs to 
-                            (if applicable).
 * `authority`: The value of the `:authority` (HTTP/2) or `Host` (HTTP/1.1)
                header of the request.
 * `dst_deployment`: The deployment to which this request is being sent.  Only
@@ -66,7 +60,53 @@ Each of these metrics has the following labels:
 * `grpc_status_code`: The value of the `grpc-status` trailer.  Only applicable
                       to response metrics for gRPC responses.
 
-Note that the `instance` and `namespace` labels will typically be added by the
-Prometheus collector.
+The following labels are added by the Prometheus collector. All Kubernetes
+labels are mapped to corresponding `k8s_*` Prometheus labels. Kubernetes labels
+prefixed with `conduit.io/` are added to your application at `conduit inject`
+time. More specifically, Kubernetes labels prefixed with `conduit.io/proxy-*`
+will correspond to `k8s_*` Prometheus labels:
+
+* `instance`: ip:port of the pod.
+* `job`: The Prometheus job responsible for the collection, typically
+         `conduit-proxy`.
+* `namespace`: Kubernetes namespace that the pod belongs to.
+* `k8s_deployment`: The deployment that the pod belongs to (if applicable).
+* `k8s_job`: The job that the pod belongs to (if applicable).
+* `k8s_replica_set`: The replica set that the pod belongs to (if applicable).
+* `k8s_daemon_set`: The daemon set that the pod belongs to (if applicable).
+* `k8s_replication_controller`: The replication controller that the pod belongs
+                                to (if applicable).
+* `k8s_pod_template_hash`: Corresponds to the
+                           [pod-template-hash][pod-template-hash] Kubernetes
+                           label. This value changes during redeploys and
+                           rolling restarts.
+
+Here's a concrete example, given the following pod snippet:
+
+```yaml
+namespace: emojivoto
+labels:
+  app: vote-bot
+  conduit.io/control-plane-ns: conduit
+  conduit.io/proxy-deployment: vote-bot
+  pod-template-hash: "3957278789"
+  test: vote-bot-test
+```
+
+The resulting Prometheus labels will look like this:
+
+```
+request_total{
+  namespace="emojivoto",
+  k8s_app="vote-bot",
+  k8s_conduit_io_control_plane_ns="conduit",
+  k8s_deployment="vote-bot",
+  k8s_pod_template_hash="3957278789",
+  k8s_test="vote-bot-test",
+  instance="10.1.3.93:4191",
+  job="conduit-proxy"
+}
+```
 
 [prom-format]: https://prometheus.io/docs/instrumenting/exposition_formats/#format-version-0.0.4
+[pod-template-hash]: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#pod-template-hash-label

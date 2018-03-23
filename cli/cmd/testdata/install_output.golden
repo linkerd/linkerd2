@@ -138,6 +138,7 @@ spec:
       labels:
         ControllerComponentLabel: controller
         conduit.io/control-plane-ns: Namespace
+        conduit.io/proxy-deployment: controller
     spec:
       containers:
       - args:
@@ -233,8 +234,6 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        - name: CONDUIT_PROMETHEUS_LABELS
-          value: deployment=controller
         image: gcr.io/runconduit/proxy:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-proxy
@@ -313,6 +312,7 @@ spec:
       labels:
         ControllerComponentLabel: web
         conduit.io/control-plane-ns: Namespace
+        conduit.io/proxy-deployment: web
     spec:
       containers:
       - args:
@@ -356,8 +356,6 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        - name: CONDUIT_PROMETHEUS_LABELS
-          value: deployment=web
         image: gcr.io/runconduit/proxy:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-proxy
@@ -432,6 +430,7 @@ spec:
       labels:
         ControllerComponentLabel: prometheus
         conduit.io/control-plane-ns: Namespace
+        conduit.io/proxy-deployment: prometheus
     spec:
       containers:
       - args:
@@ -473,8 +472,6 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        - name: CONDUIT_PROMETHEUS_LABELS
-          value: deployment=prometheus
         image: gcr.io/runconduit/proxy:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-proxy
@@ -575,8 +572,18 @@ data:
       - source_labels: [__meta_kubernetes_namespace]
         action: replace
         target_label: namespace
+      # __meta_kubernetes_pod_label_conduit_io_proxy_deployment=foo =>
+      # k8s_deployment=foo
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_conduit_io_proxy_(.+)
+        replacement: k8s_$1
+      # drop all labels that we just made copies of in the previous labelmap
+      - action: labeldrop
+        regex: __meta_kubernetes_pod_label_conduit_io_proxy_(.+)
+      # __meta_kubernetes_pod_label_foo=bar => k8s_foo=bar
       - action: labelmap
         regex: __meta_kubernetes_pod_label_(.+)
+        replacement: k8s_$1
 
 ### Grafana ###
 ---
@@ -622,6 +629,7 @@ spec:
       labels:
         ControllerComponentLabel: grafana
         conduit.io/control-plane-ns: Namespace
+        conduit.io/proxy-deployment: grafana
     spec:
       containers:
       - image: GrafanaImage
@@ -665,8 +673,6 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        - name: CONDUIT_PROMETHEUS_LABELS
-          value: deployment=grafana
         image: gcr.io/runconduit/proxy:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-proxy

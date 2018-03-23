@@ -19,6 +19,7 @@ spec:
       labels:
         app: web-svc
         conduit.io/control-plane-ns: conduit
+        conduit.io/proxy-deployment: controller
     spec:
       containers:
       - env:
@@ -61,8 +62,6 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        - name: CONDUIT_PROMETHEUS_LABELS
-          value: deployment=controller
         image: gcr.io/runconduit/proxy:testinjectversion
         imagePullPolicy: IfNotPresent
         name: conduit-proxy
@@ -116,6 +115,7 @@ spec:
       labels:
         app: web-svc
         conduit.io/control-plane-ns: conduit
+        conduit.io/proxy-deployment: not-controller
     spec:
       containers:
       - env:
@@ -158,8 +158,6 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        - name: CONDUIT_PROMETHEUS_LABELS
-          value: deployment=not-controller
         image: gcr.io/runconduit/proxy:testinjectversion
         imagePullPolicy: IfNotPresent
         name: conduit-proxy

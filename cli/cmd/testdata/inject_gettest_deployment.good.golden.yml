@@ -14,6 +14,7 @@ spec:
       labels:
         app: get-test
         conduit.io/control-plane-ns: conduit
+        conduit.io/proxy-deployment: get-test-deploy-injected-1
     spec:
       containers:
       - args:
@@ -63,8 +64,6 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        - name: CONDUIT_PROMETHEUS_LABELS
-          value: deployment=get-test-deploy-injected-1
         image: gcr.io/runconduit/proxy:testinjectversion
         imagePullPolicy: IfNotPresent
         name: conduit-proxy
@@ -113,6 +112,7 @@ spec:
       labels:
         app: get-test
         conduit.io/control-plane-ns: conduit
+        conduit.io/proxy-deployment: get-test-deploy-injected-2
     spec:
       containers:
       - args:
@@ -162,8 +162,6 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        - name: CONDUIT_PROMETHEUS_LABELS
-          value: deployment=get-test-deploy-injected-2
         image: gcr.io/runconduit/proxy:testinjectversion
         imagePullPolicy: IfNotPresent
         name: conduit-proxy

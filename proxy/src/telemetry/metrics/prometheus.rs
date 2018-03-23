@@ -448,8 +448,6 @@ impl fmt::Display for RequestLabels {
         } else {
             write!(f, "direction=\"inbound\"")?;
         }
-        // TODO: when PR #448 lands, use CONDUIT_PROMETHEUS_LABELS
-        // to add the appropriate labels for the owner of this pod.
 
         Ok(())
     }

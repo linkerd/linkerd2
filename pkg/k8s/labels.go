@@ -24,6 +24,26 @@ const (
 	// namespace of the Conduit control plane.
 	ControllerNSLabel = "conduit.io/control-plane-ns"
 
+	// ProxyDeploymentLabel is injected into mesh-enabled apps, identifying the
+	// deployment that this proxy belongs to.
+	ProxyDeploymentLabel = "conduit.io/proxy-deployment"
+
+	// ProxyReplicationControllerLabel is injected into mesh-enabled apps,
+	// identifying the ReplicationController that this proxy belongs to.
+	ProxyReplicationControllerLabel = "conduit.io/proxy-replication-controller"
+
+	// ProxyReplicaSetLabel is injected into mesh-enabled apps, identifying the
+	// ReplicaSet that this proxy belongs to.
+	ProxyReplicaSetLabel = "conduit.io/proxy-replica-set"
+
+	// ProxyJobLabel is injected into mesh-enabled apps, identifying the Job that
+	// this proxy belongs to.
+	ProxyJobLabel = "conduit.io/proxy-job"
+
+	// ProxyDaemonSetLabel is injected into mesh-enabled apps, identifying the
+	// DaemonSet that this proxy belongs to.
+	ProxyDaemonSetLabel = "conduit.io/proxy-daemon-set"
+
 	/*
 	 * Annotations
 	 */
