@@ -1,0 +1,62 @@
+#!/bin/bash
+
+function check_conduit_binary(){
+    printf "Checking the conduit binary..."
+    if [[ "$conduit_path" != /* ]]; then
+        printf "\\n[%s] is not an absolute path\\n" "$conduit_path"
+        exit 1
+    fi
+    if [ ! -x "$conduit_path" ]; then
+        printf "\\n[%s] does not exist or is not executable\\n" "$conduit_path"
+        exit 1
+    fi
+    exit_code=0
+    "$conduit_path" version --client > /dev/null 2>&1 || exit_code=$?
+    if [ $exit_code -ne 0 ]; then
+        printf "\\nFailed to run conduit version command\\n"
+        exit $exit_code
+    fi
+    printf "[ok]\\n"
+}
+
+function check_if_k8s_reachable(){
+    printf "Checking if there is a Kubernetes cluster available..."
+    exit_code=0
+    kubectl --request-timeout=5s get ns > /dev/null 2>&1 || exit_code=$?
+    if [ $exit_code -ne 0 ]; then
+        printf "\\nFailed to connect to Kubernetes cluster\\n"
+        exit $exit_code
+    fi
+    printf "[ok]\\n"
+}
+
+function run_test(){
+    printf "Running test [%s]\\n" "$(basename "$1")"
+    go test -v "$1" -conduit "$conduit_path" -conduit-namespace "$conduit_namespace" -integration-tests
+}
+
+conduit_path=$1
+
+if [ -z "$conduit_path" ]; then
+    echo "usage: $(basename "$0") /path/to/conduit [namespace]" >&2
+    exit 64
+fi
+
+check_conduit_binary
+check_if_k8s_reachable
+
+bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+test_directory="$bindir/../test"
+conduit_version=$($conduit_path version --client --short)
+conduit_namespace=${2:-conduit}
+
+printf "==================RUNNING ALL TESTS==================\\n"
+
+printf "Testing Conduit version [%s] namespace [%s]\\n" "$conduit_version" "$conduit_namespace"
+
+exit_code=0
+run_test "$test_directory/install_test.go" || exit_code=$?
+for test in $(find "$test_directory" -name '*_test.go' -mindepth 2); do
+    run_test "$test" || exit_code=$?
+done
+exit $exit_code

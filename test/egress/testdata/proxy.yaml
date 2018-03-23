@@ -1,0 +1,208 @@
+#POST
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: egress-test-https-post
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: egress-test-https-post
+  template:
+    metadata:
+      labels:
+        app: egress-test-https-post
+    spec:
+      containers:
+      - name: http-egress-https-post
+        image: buoyantio/bb:v0.0.1
+        args:
+          - "http-egress"
+          - "--h1-server-port"
+          - "8080"
+          - "--url"
+          - "https://www.httpbin.org/post"
+          - "--method"
+          - "POST"
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: egress-test-https-post-svc
+spec:
+  type: LoadBalancer
+  selector:
+    app: egress-test-https-post
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: egress-test-http-post
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: egress-test-http-post
+  template:
+    metadata:
+      labels:
+        app: egress-test-http-post
+    spec:
+      containers:
+      - name: http-egress-http-post
+        image: buoyantio/bb:v0.0.1
+        args:
+          - "http-egress"
+          - "--h1-server-port"
+          - "8080"
+          - "--url"
+          - "http://www.httpbin.org/post"
+          - "--method"
+          - "POST"
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: egress-test-http-post-svc
+spec:
+  type: LoadBalancer
+  selector:
+    app: egress-test-http-post
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+#GET
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: egress-test-https-get
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: egress-test-https-get
+  template:
+    metadata:
+      labels:
+        app: egress-test-https-get
+    spec:
+      containers:
+      - name: http-egress-https-get
+        image: buoyantio/bb:v0.0.1
+        args:
+          - "http-egress"
+          - "--h1-server-port"
+          - "8080"
+          - "--url"
+          - "https://www.httpbin.org/get"
+          - "--method"
+          - "GET"
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: egress-test-https-get-svc
+spec:
+  type: LoadBalancer
+  selector:
+    app: egress-test-https-get
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: egress-test-http-get
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: egress-test-http-get
+  template:
+    metadata:
+      labels:
+        app: egress-test-http-get
+    spec:
+      containers:
+      - name: http-egress-http-get
+        image: buoyantio/bb:v0.0.1
+        args:
+          - "http-egress"
+          - "--h1-server-port"
+          - "8080"
+          - "--url"
+          - "http://www.httpbin.org/get"
+          - "--method"
+          - "GET"
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: egress-test-http-get-svc
+spec:
+  type: LoadBalancer
+  selector:
+    app: egress-test-http-get
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+## Non www domains
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: egress-test-http-get
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: egress-test-not-www-get
+  template:
+    metadata:
+      labels:
+        app: egress-test-not-www-get
+    spec:
+      containers:
+      - name: egress-test-not-www-get
+        image: buoyantio/bb:v0.0.1
+        args:
+          - "http-egress"
+          - "--h1-server-port"
+          - "8080"
+          - "--url"
+          - "http://httpbin.org/anything"
+          - "--method"
+          - "GET"
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: egress-test-not-www-get-svc
+spec:
+  type: LoadBalancer
+  selector:
+    app: egress-test-not-www-get
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080

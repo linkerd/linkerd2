@@ -146,6 +146,10 @@ bin/conduit stat deployments
 bin/conduit tap deploy emojivoto/voting
 ```
 
+### Testing
+
+For comprehensive testing, see the [test README](test/README.md).
+
 ## Go
 
 These commands assume working [Go](https://golang.org) and
@@ -169,7 +173,7 @@ traffic to the docker-compose environment:
 kubectl version
 ```
 
-Note that the Kubernetes cluster your system is configured to talk to must not be referenced via 
+Note that the Kubernetes cluster your system is configured to talk to must not be referenced via
 `localhost` in your Kubernetes config file, as `simulate-proxy` will not be able to connect to it.
  This includes Kubernetes on Docker For Mac.
 ### Testing
