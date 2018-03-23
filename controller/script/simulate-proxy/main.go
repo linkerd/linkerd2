@@ -41,7 +41,33 @@ type proxyMetricCollectors struct {
 }
 
 var (
-	labels            = generatePromLabels()
+	// for reference: https://github.com/runconduit/conduit/blob/master/doc/proxy-metrics.md#labels
+	labels = []string{
+		// kubeResourceTypes
+		"k8s_daemon_set",
+		"k8s_deployment",
+		"k8s_job",
+		"k8s_replication_controller",
+		"k8s_replica_set",
+
+		"k8s_pod_template_hash",
+		"namespace",
+
+		// constantLabels
+		"direction",
+		"authority",
+		"status_code",
+		"grpc_status_code",
+
+		// destinationLabels
+		"dst_daemon_set",
+		"dst_deployment",
+		"dst_job",
+		"dst_replication_controller",
+		"dst_replica_set",
+		"dst_namespace",
+	}
+
 	grpcResponseCodes = []codes.Code{
 		codes.OK,
 		codes.PermissionDenied,
@@ -170,10 +196,10 @@ func (s *simulatedProxy) generateProxyTraffic() {
 // newConduitLabel creates a label map to be used for metric generation.
 func (s *simulatedProxy) newConduitLabel(destinationPod string, isResponseLabel bool) prom.Labels {
 	labelMap := prom.Labels{
-		"direction":  randomRequestDirection(),
-		"deployment": s.deploymentName,
-		"authority":  "world.greeting:7778",
-		"namespace":  s.namespace,
+		"direction":      randomRequestDirection(),
+		"k8s_deployment": s.deploymentName,
+		"authority":      "world.greeting:7778",
+		"namespace":      s.namespace,
 	}
 	if labelMap["direction"] == "outbound" {
 		labelMap["dst_deployment"] = destinationPod
@@ -207,30 +233,6 @@ func randomRequestDirection() string {
 		return "inbound"
 	}
 	return "outbound"
-}
-
-func generatePromLabels() []string {
-	kubeResourceTypes := []string{
-		"job",
-		"replica_set",
-		"deployment",
-		"daemon_set",
-		"replication_controller",
-		"namespace",
-	}
-	constantLabels := []string{
-		"direction",
-		"authority",
-		"status_code",
-		"grpc_status_code",
-	}
-
-	destinationLabels := make([]string, len(kubeResourceTypes))
-
-	for i, label := range kubeResourceTypes {
-		destinationLabels[i] = fmt.Sprintf("dst_%s", label)
-	}
-	return append(append(constantLabels, kubeResourceTypes...), destinationLabels...)
 }
 
 // overrideDefaultLabels combines two maps of the same size with the keys
@@ -412,18 +414,14 @@ func main() {
 		randomPodOwner := getRandomDeployment(deployments, excludedDeployments)
 		excludedDeployments[randomPodOwner] = struct{}{}
 
-		go func(address string, podOwner string, deployments []string) {
-
-			proxy := newSimulatedProxy(podOwner, deployments, sleep)
-			server := &http.Server{
-				Addr:    address,
-				Handler: promhttp.HandlerFor(proxy.registerer, promhttp.HandlerOpts{}),
-			}
-			log.Infof("serving scrapable metrics on %s", address)
-			go server.ListenAndServe()
-			go proxy.generateProxyTraffic()
-
-		}(addr, randomPodOwner, deployments)
+		proxy := newSimulatedProxy(randomPodOwner, deployments, sleep)
+		server := &http.Server{
+			Addr:    addr,
+			Handler: promhttp.HandlerFor(proxy.registerer, promhttp.HandlerOpts{}),
+		}
+		log.Infof("serving scrapable metrics on %s", addr)
+		go server.ListenAndServe()
+		go proxy.generateProxyTraffic()
 	}
 	<-stopCh
 }
