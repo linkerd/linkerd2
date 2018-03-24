@@ -147,16 +147,11 @@ func (s *server) Get(dest *common.Destination, stream pb.Destination_GetServer) 
 		return err
 	}
 
-	listener := &endpointListener{stream: stream}
-
-	// send an initial update indicating whether or not the service exists
-	listener.NoEndpoints(exists)
-
 	if exists && svc.Spec.Type == v1.ServiceTypeExternalName {
-		return s.resolveExternalName(svc.Spec.ExternalName, listener)
+		return s.resolveExternalName(svc.Spec.ExternalName, stream)
 	}
 
-	return s.resolveKubernetesService(*id, port, listener)
+	return s.resolveKubernetesService(*id, port, stream)
 }
 
 func isIPAddress(host string) (bool, *common.IPAddress) {
@@ -187,20 +182,24 @@ func echoIPDestination(ip *common.IPAddress, port int, stream pb.Destination_Get
 	return true
 }
 
-func (s *server) resolveKubernetesService(id string, port int, listener *endpointListener) error {
+func (s *server) resolveKubernetesService(id string, port int, stream pb.Destination_GetServer) error {
+	listener := endpointListener{stream: stream}
+
 	s.endpointsWatcher.Subscribe(id, uint32(port), listener)
 
-	<-listener.stream.Context().Done()
+	<-stream.Context().Done()
 
 	s.endpointsWatcher.Unsubscribe(id, uint32(port), listener)
 
 	return nil
 }
 
-func (s *server) resolveExternalName(externalName string, listener *endpointListener) error {
+func (s *server) resolveExternalName(externalName string, stream pb.Destination_GetServer) error {
+	listener := endpointListener{stream: stream}
+
 	s.dnsWatcher.Subscribe(externalName, listener)
 
-	<-listener.stream.Context().Done()
+	<-stream.Context().Done()
 
 	s.dnsWatcher.Unsubscribe(externalName, listener)
 
