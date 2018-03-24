@@ -1,8 +1,8 @@
 #![deny(missing_docs)]
 use std::{fmt, iter, ops, slice, u32};
-use std::default::Default;
-use std::num::Wrapping;
 use std::time::Duration;
+
+use super::prometheus;
 
 /// The number of buckets in a  latency histogram.
 pub const NUM_BUCKETS: usize = 26;
@@ -57,17 +57,16 @@ pub const BUCKET_BOUNDS: [Latency; NUM_BUCKETS] = [
 ];
 
 /// A series of latency values and counts.
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct Histogram {
 
     /// Array of buckets in which to count latencies.
     ///
     /// The upper bound of a given bucket `i` is given in `BUCKET_BOUNDS[i]`.
-    // TODO: consider using `prometheus::Counter` rather than `Wrapping<u32>`?
-    buckets: [Wrapping<u32>; NUM_BUCKETS],
+    buckets: [prometheus::Counter; NUM_BUCKETS],
 
     /// The total sum of all observed latency values.
-    pub sum: Wrapping<u64>,
+    pub sum: prometheus::Counter,
 }
 
 /// A latency in tenths of a millisecond.
@@ -89,7 +88,7 @@ impl Histogram {
             .position(|max| &measurement <= max)
             .expect("latency value greater than u32::MAX; this shouldn't be \
                      possible.");
-        self.buckets[i] += Wrapping(1);
+        self.buckets[i].incr();
 
         // It's time to play ~*Will It Wrap???*~
         //
@@ -115,15 +114,7 @@ impl Histogram {
         // (N.B. that storing latencies in whole milliseconds rather than tenths
         // of milliseconds would change the time to overflow to almost 10
         // years.)
-        self.sum += Wrapping(measurement.0 as u64);
-    }
-
-    /// Construct a new, empty `Histogram`.
-    pub fn new() -> Self {
-        Histogram {
-            buckets: [Wrapping(0); NUM_BUCKETS],
-            sum: Wrapping(0),
-        }
+        self.sum += measurement.0 as u64;
     }
 
     /// Return the sum value of this histogram in milliseconds.
@@ -132,7 +123,8 @@ impl Histogram {
     /// internally recorded in tenths of milliseconds, which could
     /// represent a number of milliseconds with a fractional part.
     pub fn sum_in_ms(&self) -> f64 {
-        self.sum.0 as f64 / MS_TO_TENTHS_OF_MS as f64
+        let sum: f64 = self.sum.into();
+        sum / MS_TO_TENTHS_OF_MS as f64
     }
 
 }
@@ -149,23 +141,16 @@ where
 }
 
 impl<'a> IntoIterator for &'a Histogram {
-    type Item = &'a u32;
+    type Item = u32;
     type IntoIter = iter::Map<
-        slice::Iter<'a, Wrapping<u32>>,
-        fn(&'a Wrapping<u32>) -> &'a u32
+        slice::Iter<'a, prometheus::Counter>,
+        fn(&'a prometheus::Counter) -> u32
     >;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.buckets.iter().map(|&Wrapping(ref a)| a)
+        self.buckets.iter().map(|&a| { let a: u64 = a.into(); a as u32 })
     }
 
-}
-
-impl Default for Histogram {
-    #[inline]
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 // ===== impl Latency =====

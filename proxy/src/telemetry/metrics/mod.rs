@@ -251,7 +251,6 @@ impl Metrics {
                     ends: ends,
                     response_latency_counts: res_stats.latencies
                         .into_iter()
-                        .map(|l| *l)
                         .collect(),
                 });
             }

@@ -71,6 +71,7 @@ impl Client {
             .unwrap()
     }
 
+
     pub fn request_builder(&self, path: &str) -> http::request::Builder {
         let mut b = Request::builder();
         b.uri(format!("http://{}{}", self.authority, path).as_str())

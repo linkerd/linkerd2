@@ -1,5 +1,5 @@
 use std::default::Default;
-use std::{fmt, u32};
+use std::{fmt, ops, u32};
 use std::hash::Hash;
 use std::num::Wrapping;
 use std::sync::{Arc, Mutex};
@@ -50,7 +50,6 @@ pub struct Counter(Wrapping<u64>);
 pub struct Aggregate {
     metrics: Arc<Mutex<Metrics>>,
 }
-
 
 /// Serve Prometheues metrics.
 #[derive(Debug, Clone)]
@@ -228,13 +227,31 @@ impl fmt::Display for Counter {
     }
 }
 
+impl Into<f64> for Counter {
+    fn into(self) -> f64 {
+        (self.0).0 as f64
+    }
+}
+
+impl Into<u64> for Counter {
+    fn into(self) -> u64 {
+        (self.0).0 as u64
+    }
+}
+
+impl ops::AddAssign<u64> for Counter {
+    fn add_assign(&mut self, rhs: u64) {
+        self.0 += Wrapping(rhs);
+    }
+}
+
 impl Counter {
 
     /// Increment the counter by one.
     ///
     /// This function wraps on overflows.
     pub fn incr(&mut self) -> &mut Self {
-        self.0 += Wrapping(1);
+        *self += 1;
         self
     }
 }
