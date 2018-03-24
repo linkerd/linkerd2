@@ -111,6 +111,15 @@ services:
     - --config.file=/etc/prometheus/prometheus.yml
     - --storage.tsdb.retention=6h
 
+  grafana:
+    image: grafana/grafana:5.0.3
+    ports:
+    - 3000:3000
+    volumes:
+    # TODO: find a way to share the dashboard json files, currently in cli/install/*.go
+    - ./grafana/dev.grafana.ini:/etc/grafana/grafana.ini:ro
+    - ./grafana/dev.datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
+
   simulate-proxy:
     image: golang:1.10.0-alpine3.7
     ports:
