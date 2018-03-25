@@ -13,9 +13,6 @@ bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 . $bindir/_docker.sh
 
-docker_pull proxy        "${tag}"  || true
-docker_pull proxy-init   "${tag}"  || true
-docker_pull controller   "${tag}"  || true
-docker_pull web          "${tag}"  || true
-docker_pull cli          "${tag}"  || true
-docker_pull cli-bin      "${tag}"  || true
+for img in proxy proxy-init controller web cli-bin ; do
+    docker_pull "$img" "$tag"
+done
