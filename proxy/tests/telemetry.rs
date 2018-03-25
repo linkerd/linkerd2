@@ -266,7 +266,9 @@ macro_rules! assert_contains {
     }
 }
 
+// https://github.com/runconduit/conduit/issues/613
 #[test]
+#[cfg_attr(not(feature = "flaky_tests"), ignore)]
 fn metrics_endpoint_inbound_request_count() {
     let _ = env_logger::try_init();
 
@@ -295,7 +297,9 @@ fn metrics_endpoint_inbound_request_count() {
 
 }
 
+// https://github.com/runconduit/conduit/issues/613
 #[test]
+#[cfg_attr(not(feature = "flaky_tests"), ignore)]
 fn metrics_endpoint_outbound_request_count() {
     let _ = env_logger::try_init();
 
@@ -502,7 +506,9 @@ fn metrics_endpoint_outbound_response_latency() {
         "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",status_code=\"200\"} 4");
 }
 
+// https://github.com/runconduit/conduit/issues/613
 #[test]
+#[cfg_attr(not(feature = "flaky_tests"), ignore)]
 fn metrics_endpoint_inbound_request_duration() {
     let _ = env_logger::try_init();
 
@@ -537,7 +543,9 @@ fn metrics_endpoint_inbound_request_duration() {
         "request_duration_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\"} 2");
 }
 
+// https://github.com/runconduit/conduit/issues/613
 #[test]
+#[cfg_attr(not(feature = "flaky_tests"), ignore)]
 fn metrics_endpoint_outbound_request_duration() {
     let _ = env_logger::try_init();
 
