@@ -92,13 +92,11 @@ func newGrpcServer(
 	telemetryClient telemPb.TelemetryClient,
 	tapClient tapPb.TapClient,
 	controllerNamespace string,
-	ignoreNamespaces []string,
 ) *grpcServer {
 	return &grpcServer{
 		telemetryClient:     telemetryClient,
 		tapClient:           tapClient,
 		controllerNamespace: controllerNamespace,
-		ignoreNamespaces:    ignoreNamespaces,
 	}
 }
 

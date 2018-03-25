@@ -196,9 +196,8 @@ func NewServer(
 	addr, controllerNamespace string,
 	telemetryClient telemPb.TelemetryClient,
 	tapClient tapPb.TapClient,
-	ignoreNamespaces []string,
 ) *http.Server {
-	grpcServer := newGrpcServer(telemetryClient, tapClient, controllerNamespace, ignoreNamespaces)
+	grpcServer := newGrpcServer(telemetryClient, tapClient, controllerNamespace)
 	httpServer := &handler{grpcServer}
 
 	return &http.Server{
