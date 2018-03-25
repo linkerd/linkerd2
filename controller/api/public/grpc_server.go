@@ -88,8 +88,18 @@ var (
 	controlPlaneComponents = []string{"web", "controller", "prometheus", "grafana"}
 )
 
-func newGrpcServer(telemetryClient telemPb.TelemetryClient, tapClient tapPb.TapClient, controllerNamespace string) *grpcServer {
-	return &grpcServer{telemetryClient: telemetryClient, tapClient: tapClient, controllerNamespace: controllerNamespace}
+func newGrpcServer(
+	telemetryClient telemPb.TelemetryClient,
+	tapClient tapPb.TapClient,
+	controllerNamespace string,
+	ignoreNamespaces []string,
+) *grpcServer {
+	return &grpcServer{
+		telemetryClient:     telemetryClient,
+		tapClient:           tapClient,
+		controllerNamespace: controllerNamespace,
+		ignoreNamespaces:    ignoreNamespaces,
+	}
 }
 
 func (s *grpcServer) Stat(ctx context.Context, req *pb.MetricRequest) (*pb.MetricResponse, error) {

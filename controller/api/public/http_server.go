@@ -192,15 +192,17 @@ func fullUrlPathFor(method string) string {
 	return ApiRoot + ApiPrefix + method
 }
 
-func NewServer(addr string, telemetryClient telemPb.TelemetryClient, tapClient tapPb.TapClient, controllerNamespace string) *http.Server {
-	baseHandler := &handler{
-		grpcServer: newGrpcServer(telemetryClient, tapClient, controllerNamespace),
-	}
-
-	instrumentedHandler := util.WithTelemetry(baseHandler)
+func NewServer(
+	addr, controllerNamespace string,
+	telemetryClient telemPb.TelemetryClient,
+	tapClient tapPb.TapClient,
+	ignoreNamespaces []string,
+) *http.Server {
+	grpcServer := newGrpcServer(telemetryClient, tapClient, controllerNamespace, ignoreNamespaces)
+	httpServer := &handler{grpcServer}
 
 	return &http.Server{
 		Addr:    addr,
-		Handler: instrumentedHandler,
+		Handler: util.WithTelemetry(httpServer),
 	}
 }
