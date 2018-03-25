@@ -141,14 +141,14 @@ where
 }
 
 impl<'a> IntoIterator for &'a Histogram {
-    type Item = u32;
+    type Item = u64;
     type IntoIter = iter::Map<
         slice::Iter<'a, prometheus::Counter>,
-        fn(&'a prometheus::Counter) -> u32
+        fn(&'a prometheus::Counter) -> u64
     >;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.buckets.iter().map(|&a| { let a: u64 = a.into(); a as u32 })
+        self.buckets.iter().map(|&count| count.into())
     }
 
 }
