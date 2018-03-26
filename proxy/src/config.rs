@@ -56,6 +56,9 @@ pub struct Config {
     /// Timeout after which to cancel binding a request.
     pub bind_timeout: Duration,
 
+    /// Labels to add to exported Prometheus metrics.
+    pub prometheus_labels: Option<String>,
+
     pub pod_name: Option<String>,
     pub pod_namespace: String,
     pub node_name: Option<String>,
@@ -140,6 +143,8 @@ const ENV_NODE_NAME: &str = "CONDUIT_PROXY_NODE_NAME";
 const ENV_POD_NAME: &str = "CONDUIT_PROXY_POD_NAME";
 pub const ENV_POD_NAMESPACE: &str = "CONDUIT_PROXY_POD_NAMESPACE";
 
+pub const ENV_PROMETHEUS_LABELS: &str = "CONDUIT_PROMETHEUS_LABELS";
+
 pub const ENV_CONTROL_URL: &str = "CONDUIT_PROXY_CONTROL_URL";
 const ENV_RESOLV_CONF: &str = "CONDUIT_RESOLV_CONF";
 
@@ -187,6 +192,7 @@ impl<'a> TryFrom<&'a Strings> for Config {
             })
         });
         let node_name = strings.get(ENV_NODE_NAME);
+        let prometheus_labels = strings.get(ENV_PROMETHEUS_LABELS);
 
         // There is no default controller URL because a default would make it
         // too easy to connect to the wrong controller, which would be dangerous.
@@ -240,6 +246,7 @@ impl<'a> TryFrom<&'a Strings> for Config {
             pod_name: pod_name?,
             pod_namespace: pod_namespace?,
             node_name: node_name?,
+            prometheus_labels: prometheus_labels?,
         })
     }
 }
