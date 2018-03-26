@@ -618,3 +618,35 @@ fn metrics_have_no_double_commas() {
     assert!(!scrape.contains(",,"), "outbound metrics had double comma");
 
 }
+
+#[test]
+fn metrics_labels() {
+    let _ = env_logger::try_init();
+    let mut env = config::TestEnv::new();
+
+    info!("running test server");
+    let srv = server::new().route("/hey", "hello").run();
+
+    // set an arbitrary labels env var.
+    env.put(config::ENV_PROMETHEUS_LABELS, "foo=\"bar\"".to_owned());
+
+    let ctrl = controller::new()
+        .destination("tele.test.svc.cluster.local", srv.addr)
+        .run();
+    let proxy = proxy::new()
+        .controller(ctrl)
+        .inbound(srv)
+        .metrics_flush_interval(Duration::from_millis(500))
+        .run_with_test_env(env);
+    let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
+    let metrics = client::http1(proxy.metrics, "localhost");
+
+    // make a request to the proxy first so that we can have some metrics to
+    // label.
+    info!("inbound.get(/hey)");
+    assert_eq!(client.get("/hey"), "hello");
+
+    let scrape = metrics.get("/metrics");
+    assert_contains!(scrape, "foo=\"bar\"");
+
+}
