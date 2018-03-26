@@ -9,6 +9,7 @@
 //! will be sent to a telemetry processing thread, we want to avoid excessive cloning.
 use config;
 use conduit_proxy_controller_grpc::telemetry as proto;
+use std::time::SystemTime;
 use std::sync::Arc;
 pub mod http;
 pub mod transport;
@@ -29,6 +30,8 @@ pub struct Process {
 
     /// Identifies the namespace for the `scheduled_instance`.
     pub scheduled_namespace: String,
+
+    pub start_time: SystemTime,
 }
 
 /// Indicates the orientation of traffic, relative to a sidecar proxy.
@@ -51,11 +54,13 @@ impl Process {
             node: node.into(),
             scheduled_instance: instance.into(),
             scheduled_namespace: ns.into(),
+            start_time: SystemTime::now(),
         })
     }
 
     /// Construct a new `Process` from environment variables.
     pub fn new(config: &config::Config) -> Arc<Self> {
+        let start_time = SystemTime::now();
         fn empty_if_missing(s: &Option<String>) -> String {
             match *s {
                 Some(ref s) => s.clone(),
@@ -67,6 +72,7 @@ impl Process {
             node: empty_if_missing(&config.node_name),
             scheduled_instance: empty_if_missing(&config.pod_name),
             scheduled_namespace: config.pod_namespace.clone(),
+            start_time,
         })
     }
 }
