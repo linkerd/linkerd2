@@ -101,4 +101,4 @@ header "Test output:"
 kubectl logs jobs/${TESTER_JOB_NAME}
 
 # Makes this script return status 0 if the test returned status 0
-kubectl logs jobs/${TESTER_JOB_NAME} | grep "status:0" > /dev/null
+kubectl logs jobs/${TESTER_JOB_NAME} 2>&1 | grep "status:0" > /dev/null
