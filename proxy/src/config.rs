@@ -3,6 +3,7 @@ use std::env;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::sync::Arc;
 use std::time::Duration;
 
 use http;
@@ -57,7 +58,7 @@ pub struct Config {
     pub bind_timeout: Duration,
 
     /// Labels to add to exported Prometheus metrics.
-    pub prometheus_labels: Option<String>,
+    pub prometheus_labels: Option<Arc<str>>,
 
     pub pod_name: Option<String>,
     pub pod_namespace: String,
@@ -246,7 +247,8 @@ impl<'a> TryFrom<&'a Strings> for Config {
             pod_name: pod_name?,
             pod_namespace: pod_namespace?,
             node_name: node_name?,
-            prometheus_labels: prometheus_labels?,
+            prometheus_labels: prometheus_labels?
+                .map(Arc::from),
         })
     }
 }

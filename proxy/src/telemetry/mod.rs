@@ -27,8 +27,10 @@ pub use self::sensor::Sensors;
 ///
 /// # Arguments
 /// - `capacity`: the number of events to aggregate.
-/// - `flush_interval`: the length of time after which a metrics report should be sent,
-///   regardless of how many events have been aggregated.
+/// - `flush_interval`: the length of time after which a metrics report should
+///    be sent, regardless of how many events have been aggregated.
+/// - `prometheus_labels`: the value of the `CONDUIT_PROMETHEUS_LABELS`
+///    environment variable.
 ///
 /// [`Sensors`]: struct.Sensors.html
 /// [`Control`]: struct.Control.html
@@ -36,9 +38,10 @@ pub fn new(
     process: &Arc<ctx::Process>,
     capacity: usize,
     flush_interval: Duration,
+    prometheus_labels: Option<Arc<str>>
 ) -> (Sensors, MakeControl) {
     let (tx, rx) = futures_mpsc_lossy::channel(capacity);
     let s = Sensors::new(tx);
-    let c = MakeControl::new(rx, flush_interval, process);
+    let c = MakeControl::new(rx, flush_interval, process, prometheus_labels);
     (s, c)
 }

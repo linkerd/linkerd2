@@ -186,11 +186,11 @@ where
             "serving Prometheus metrics on {:?}",
             metrics_listener.local_addr(),
         );
-
         let (sensors, telemetry) = telemetry::new(
             &process_ctx,
             config.event_buffer_capacity,
             config.metrics_flush_interval,
+            config.prometheus_labels.clone(),
         );
 
         let (control, control_bg) = control::new();
