@@ -1,5 +1,5 @@
 use std::default::Default;
-use std::{fmt, u32};
+use std::{fmt, u32, time};
 use std::hash::Hash;
 use std::sync::{Arc, Mutex};
 
@@ -27,6 +27,8 @@ struct Metrics {
     response_total: Metric<Counter, Arc<ResponseLabels>>,
     response_duration: Metric<Histogram, Arc<ResponseLabels>>,
     response_latency: Metric<Histogram, Arc<ResponseLabels>>,
+
+    start_time: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -58,8 +60,8 @@ pub struct Serve {
 /// is a Hyper service which can be used to create the server for the
 /// scrape endpoint, while the `Aggregate` side can receive updates to the
 /// metrics by calling `record_event`.
-pub fn new() -> (Aggregate, Serve) {
-    let metrics = Arc::new(Mutex::new(Metrics::new()));
+pub fn new(process: &Arc<ctx::Process>) -> (Aggregate, Serve) {
+    let metrics = Arc::new(Mutex::new(Metrics::new(process)));
     (Aggregate::new(&metrics), Serve::new(&metrics))
 }
 
@@ -118,7 +120,16 @@ struct OutboundLabels {
 
 impl Metrics {
 
-    pub fn new() -> Self {
+    pub fn new(process: &Arc<ctx::Process>) -> Self {
+
+        let start_time = process.start_time
+            .duration_since(time::UNIX_EPOCH)
+            .expect(
+                "process start time should not be before the beginning \
+                 of the Unix epoch"
+            )
+            .as_secs();
+
         let request_total = Metric::<Counter, Arc<RequestLabels>>::new(
             "request_total",
             "A counter of the number of requests the proxy has received.",
@@ -156,6 +167,7 @@ impl Metrics {
             response_total,
             response_duration,
             response_latency,
+            start_time,
         }
     }
 
@@ -199,12 +211,13 @@ impl Metrics {
 
 impl fmt::Display for Metrics {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}\n{}\n{}\n{}\n{}",
+        write!(f, "{}\n{}\n{}\n{}\n{}\nprocess_start_time_seconds {}\n",
             self.request_total,
             self.request_duration,
             self.response_total,
             self.response_duration,
             self.response_latency,
+            self.start_time,
         )
     }
 }
