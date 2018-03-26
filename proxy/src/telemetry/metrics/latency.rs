@@ -1,5 +1,6 @@
 #![deny(missing_docs)]
 use std::{fmt, iter, ops, slice, u32};
+use std::num::Wrapping;
 use std::time::Duration;
 
 use super::prometheus;
@@ -66,7 +67,26 @@ pub struct Histogram {
     buckets: [prometheus::Counter; NUM_BUCKETS],
 
     /// The total sum of all observed latency values.
-    pub sum: prometheus::Counter,
+    ///
+    /// Histogram sums always explicitly wrap on overflows rather than
+    /// panicking in debug builds. Prometheus' [`rate()`] and [`irate()`]
+    /// queries handle breaks in monotonicity gracefully (see also
+    /// [`resets()`]), so wrapping is less problematic than panicking in this
+    /// case.
+    ///
+    /// Note, however, that Prometheus actually represents this using 64-bit
+    /// floating-point numbers. The correct semantics are to ensure the sum
+    /// always gets reset to zero after Prometheus reads it, before it would
+    /// ever overflow a 52-bit `f64` mantissa.
+    ///
+    /// [`rate()`]: https://prometheus.io/docs/prometheus/latest/querying/functions/#rate()
+    /// [`irate()`]: https://prometheus.io/docs/prometheus/latest/querying/functions/#irate()
+    /// [`resets()`]: https://prometheus.io/docs/prometheus/latest/querying/functions/#resets
+    ///
+    // TODO: Implement Prometheus reset semantics correctly, taking into
+    //       consideration that Prometheus represents this as `f64` and so
+    //       there are only 52 significant bits.
+    pub sum: Wrapping<u64>,
 }
 
 /// A latency in tenths of a millisecond.
@@ -89,32 +109,7 @@ impl Histogram {
             .expect("latency value greater than u32::MAX; this shouldn't be \
                      possible.");
         self.buckets[i].incr();
-
-        // It's time to play ~*Will It Wrap???*~
-        //
-        // If we make the fairly generous assumptions of 1-minute latencies
-        // and 1 million RPS per set of metric labels (i.e. per pod), that
-        // gives us:
-        //          600,000 (1 minute = 600,000 tenths-of-milliseconds)
-        //  x     1,000,000 (1 million RPS)
-        //  ---------------
-        //  600,000,000,000 (6e11) gain per second
-        //
-        // times the number of seconds in a day (86,400):
-        //      6e11 x 86400 = 5.184e16
-        //
-        // 18,446,744,073,709,551,615 is the maximum 64-bit unsigned integer.
-        //      1.8446744073709551615e19 / 5.184e16 = 355 (about 1 year)
-        //
-        // So at 1 million RPS with 1-minute latencies, the sum will wrap
-        // in about a year. We don't really expect a conduit-proxy process to
-        // run that long (or see this kind of load), but we can revisit this
-        // if supporting extremely long-running deployments becomes a priority.
-        //
-        // (N.B. that storing latencies in whole milliseconds rather than tenths
-        // of milliseconds would change the time to overflow to almost 10
-        // years.)
-        self.sum += measurement.0 as u64;
+        self.sum += Wrapping(measurement.0 as u64);
     }
 
     /// Return the sum value of this histogram in milliseconds.
@@ -123,8 +118,7 @@ impl Histogram {
     /// internally recorded in tenths of milliseconds, which could
     /// represent a number of milliseconds with a fractional part.
     pub fn sum_in_ms(&self) -> f64 {
-        let sum: f64 = self.sum.into();
-        sum / MS_TO_TENTHS_OF_MS as f64
+        self.sum.0 as f64 / MS_TO_TENTHS_OF_MS as f64
     }
 
 }

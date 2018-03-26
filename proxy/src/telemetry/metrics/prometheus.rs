@@ -39,9 +39,23 @@ struct Metric<M, L: Hash + Eq> {
 
 /// A Prometheus counter is represented by a `Wrapping` unsigned 64-bit int.
 ///
-/// Counters handle overflows by wrapping rather than saturating (or panicking!)
-/// since most timeseries systems (like Prometheus) are designed to handle this
-/// case gracefully.
+/// Counters always explicitly wrap on overflows rather than panicking in
+/// debug builds. Prometheus' [`rate()`] and [`irate()`] queries handle breaks
+/// in monotonicity gracefully  (see also [`resets()`]), so wrapping is less
+/// problematic than panicking in this case.
+///
+/// Note, however, that Prometheus represents counters using 64-bit
+/// floating-point numbers. The correct semantics are to ensure the counter
+/// always gets reset to zero after Prometheus reads it, before it would ever
+/// overflow a 52-bit `f64` mantissa.
+///
+/// [`rate()`]: https://prometheus.io/docs/prometheus/latest/querying/functions/#rate()
+/// [`irate()`]: https://prometheus.io/docs/prometheus/latest/querying/functions/#irate()
+/// [`resets()`]: https://prometheus.io/docs/prometheus/latest/querying/functions/#resets
+///
+// TODO: Implement Prometheus reset semantics correctly, taking into
+//       consideration that Prometheus models counters as `f64` and so
+//       there are only 52 significant bits.
 #[derive(Copy, Debug, Default, Clone, Eq, PartialEq)]
 pub struct Counter(Wrapping<u64>);
 
@@ -227,21 +241,16 @@ impl fmt::Display for Counter {
     }
 }
 
-impl Into<f64> for Counter {
-    fn into(self) -> f64 {
-        (self.0).0 as f64
-    }
-}
-
 impl Into<u64> for Counter {
     fn into(self) -> u64 {
         (self.0).0 as u64
     }
 }
 
-impl ops::AddAssign<u64> for Counter {
-    fn add_assign(&mut self, rhs: u64) {
-        self.0 += Wrapping(rhs);
+impl ops::Add for Counter {
+    type Output = Self;
+    fn add(self, Counter(rhs): Self) -> Self::Output {
+        Counter(self.0 + rhs)
     }
 }
 
@@ -251,7 +260,7 @@ impl Counter {
     ///
     /// This function wraps on overflows.
     pub fn incr(&mut self) -> &mut Self {
-        *self += 1;
+        (*self).0 += Wrapping(1);
         self
     }
 }
@@ -382,7 +391,7 @@ impl Aggregate {
             Event::StreamRequestEnd(ref req, ref end) => {
                 let labels = Arc::new(RequestLabels::new(req));
                 self.update(|metrics| {
-                    *metrics.request_total(&labels) += 1;
+                    *metrics.request_total(&labels).incr();
                     *metrics.request_duration(&labels) +=
                         end.since_request_open;
                 })
