@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/golang/protobuf/ptypes/duration"
 	"github.com/prometheus/client_golang/api"
 	"github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/client_golang/prometheus"
@@ -86,10 +85,11 @@ func init() {
 
 type (
 	server struct {
-		prometheusAPI     v1.API
-		pods              *k8s.PodIndex
-		replicaSets       *k8s.ReplicaSetStore
-		ignoredNamespaces []string
+		prometheusAPI       v1.API
+		pods                *k8s.PodIndex
+		replicaSets         *k8s.ReplicaSetStore
+		ignoredNamespaces   []string
+		controllerNamespace string
 	}
 )
 
@@ -100,7 +100,7 @@ func podIPKeyFunc(obj interface{}) ([]string, error) {
 	return nil, fmt.Errorf("Object is not a Pod")
 }
 
-func NewServer(addr, prometheusUrl string, ignoredNamespaces []string, kubeconfig string) (*grpc.Server, net.Listener, error) {
+func NewServer(addr, controllerNamespace, prometheusUrl string, ignoredNamespaces []string, kubeconfig string) (*grpc.Server, net.Listener, error) {
 	prometheusClient, err := api.NewClient(api.Config{Address: prometheusUrl})
 	if err != nil {
 		return nil, nil, err
@@ -130,10 +130,11 @@ func NewServer(addr, prometheusUrl string, ignoredNamespaces []string, kubeconfi
 	}
 
 	srv := &server{
-		prometheusAPI:     v1.NewAPI(prometheusClient),
-		pods:              pods,
-		replicaSets:       replicaSets,
-		ignoredNamespaces: ignoredNamespaces,
+		prometheusAPI:       v1.NewAPI(prometheusClient),
+		pods:                pods,
+		replicaSets:         replicaSets,
+		ignoredNamespaces:   ignoredNamespaces,
+		controllerNamespace: controllerNamespace,
 	}
 
 	lis, err := net.Listen("tcp", addr)
@@ -224,25 +225,6 @@ func (s *server) ListPods(ctx context.Context, req *read.ListPodsRequest) (*publ
 		return nil, err
 	}
 
-	// Reports is a map from instance name to the absolute time of the most recent
-	// report from that instance.
-	reports := make(map[string]time.Time)
-	// Query Prometheus for reports in the last 30 seconds.
-	res, err := s.prometheusAPI.Query(ctx, reportsMetric+"[30s]", time.Time{})
-	if err != nil {
-		return nil, err
-	}
-	if res.Type() != model.ValMatrix {
-		err = fmt.Errorf("Unexpected query result type (expected Matrix): %s", res.Type())
-		log.Error(err)
-		return nil, err
-	}
-	for _, s := range res.(model.Matrix) {
-		labels := metricToMap(s.Metric)
-		timestamp := s.Values[len(s.Values)-1].Timestamp
-		reports[labels["pod"]] = time.Unix(0, int64(timestamp)*int64(time.Millisecond))
-	}
-
 	podList := make([]*public.Pod, 0)
 
 	for _, pod := range pods {
@@ -254,8 +236,6 @@ func (s *server) ListPods(ctx context.Context, req *read.ListPodsRequest) (*publ
 			log.Debugf("Cannot get deployment for pod %s: %s", pod.Name, err)
 			deployment = ""
 		}
-		name := pod.Namespace + "/" + pod.Name
-		updated, added := reports[name]
 
 		status := string(pod.Status.Phase)
 		if pod.DeletionTimestamp != nil {
@@ -265,6 +245,8 @@ func (s *server) ListPods(ctx context.Context, req *read.ListPodsRequest) (*publ
 		controllerComponent := pod.Labels[pkgK8s.ControllerComponentLabel]
 		controllerNS := pod.Labels[pkgK8s.ControllerNSLabel]
 
+		added := controllerNS == s.controllerNamespace
+
 		item := &public.Pod{
 			Name:                pod.Namespace + "/" + pod.Name,
 			Deployment:          deployment,
@@ -273,13 +255,6 @@ func (s *server) ListPods(ctx context.Context, req *read.ListPodsRequest) (*publ
 			Added:               added,
 			ControllerNamespace: controllerNS,
 			ControlPlane:        controllerComponent != "",
-		}
-		if added {
-			since := time.Since(updated)
-			item.SinceLastReport = &duration.Duration{
-				Seconds: int64(since / time.Second),
-				Nanos:   int32(since % time.Second),
-			}
 		}
 		podList = append(podList, item)
 	}

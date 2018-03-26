@@ -49,7 +49,7 @@ func main() {
 	}
 	defer tapConn.Close()
 
-	server := public.NewServer(*addr, telemetryClient, tapClient, *controllerNamespace)
+	server := public.NewServer(*addr, *controllerNamespace, telemetryClient, tapClient)
 
 	go func() {
 		log.Infof("starting HTTP server on %+v", *addr)

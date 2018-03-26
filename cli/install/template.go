@@ -197,6 +197,7 @@ spec:
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
         - "telemetry"
+        - "-controller-namespace={{.Namespace}}"
         - "-ignore-namespaces=kube-system"
         - "-prometheus-url=http://prometheus.{{.Namespace}}.svc.cluster.local:9090"
         - "-log-level={{.ControllerLogLevel}}"

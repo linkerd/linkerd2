@@ -195,6 +195,7 @@ spec:
         resources: {}
       - args:
         - telemetry
+        - -controller-namespace=conduit
         - -ignore-namespaces=kube-system
         - -prometheus-url=http://prometheus.conduit.svc.cluster.local:9090
         - -log-level=info
