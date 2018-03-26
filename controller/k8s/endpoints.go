@@ -342,7 +342,6 @@ func (sp *servicePort) updateEndpoints(newEndpoints *v1.Endpoints) {
 	newAddresses := addresses(newEndpoints, sp.targetPort)
 	sp.updateAddresses(newAddresses)
 	sp.endpoints = newEndpoints
-	sp.addresses = newAddresses
 }
 
 func (sp *servicePort) deleteEndpoints() {
@@ -376,7 +375,6 @@ func (sp *servicePort) updateService(newService *v1.Service) {
 		newAddresses := addresses(sp.endpoints, newTargetPort)
 		sp.updateAddresses(newAddresses)
 		sp.targetPort = newTargetPort
-		sp.addresses = newAddresses
 	}
 }
 
@@ -392,6 +390,7 @@ func (sp *servicePort) updateAddresses(newAddresses []common.TcpAddress) {
 			listener.Update(add, remove)
 		}
 	}
+	sp.addresses = newAddresses
 }
 
 func (sp *servicePort) subscribe(exists bool, listener EndpointsListener) {
