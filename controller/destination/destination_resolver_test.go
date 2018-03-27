@@ -2,106 +2,142 @@ package destination
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
-func TestLocalKubernetesServiceIdFromDNSName(t *testing.T) {
-	nsName := "ns/name"
+func TestLocalKubernetesServiceIdFromDNSName2(t *testing.T) {
 
-	testCases := []struct {
-		k8sDNSZone        string
-		host              string
-		expectedResult    *string
-		expectedResultErr bool
-	}{
-		{"cluster.local", "", nil, true},
-		{"cluster.local", "name", nil, false},
-		{"cluster.local", "name.ns", nil, false},
-		{"cluster.local", "name.ns.svc", &nsName, false},
-		{"cluster.local", "name.ns.pod", nil, false},
-		{"cluster.local", "name.ns.other", nil, false},
-		{"cluster.local", "name.ns.svc.cluster", nil, false},
-		{"cluster.local", "name.ns.svc.cluster.local", &nsName, false},
-		{"cluster.local", "name.ns.svc.other.local", nil, false},
-		{"cluster.local", "name.ns.pod.cluster.local", nil, false},
-		{"cluster.local", "name.ns.other.cluster.local", nil, false},
-		{"cluster.local", "name.ns.cluster.local", nil, false},
-		{"cluster.local", "name.ns.svc.cluster", nil, false},
-		{"cluster.local", "name.ns.svc.local", nil, false},
-		{"cluster.local", "name.ns.svc.something.cluster.local", nil, false},
-		{"cluster.local", "name.ns.svc.something.cluster.local", nil, false},
-		{"cluster.local", "something.name.ns.svc.cluster.local", nil, true},
-		{"k8s.example.com", "name.ns.svc.cluster.local", &nsName, false},
-		{"k8s.example.com", "name.ns.svc.cluster.local.k8s.example.com", nil, false},
-		{"k8s.example.com", "name.ns.svc.k8s.example.com", &nsName, false},
-		{"k8s.example.com", "name.ns.svc.k8s.example.org", nil, false},
-		{"cluster.local", "name.ns.svc.k8s.example.com", nil, false},
-		{"", "name.ns.svc", &nsName, false},
-		{"", "name.ns.svc.cluster.local", &nsName, false},
-		{"", "name.ns.svc.cluster.local.", &nsName, false},
-		{"", "name.ns.svc.other.local", nil, false},
-		{"example", "name.ns.svc.example", &nsName, false},
-		{"example", "name.ns.svc.example.", &nsName, false},
-		{"example", "name.ns.svc.example.com", nil, false},
-		{"example", "name.ns.svc.cluster.local", &nsName, false},
+	t.Run("Can't resolve names unless ends with '.svc.$zone', '.svc.cluster.local,' or '.svc'", func(t *testing.T) {
+		resolver, err := newDestinationResolver("some.namespace", nil, nil)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
 
-		// XXX: See the comment about this issue in localKubernetesServiceIdFromDNSName.
-		{"cluster.local", "name.ns.svc.", &nsName, false},
-	}
+		unresolvableServiceNames := []string{
+			"name",
+			"name.ns",
+			"name.ns.pod",
+			"name.ns.other",
+			"name.ns.svc.cluster",
+			"name.ns.svc.other.local",
+			"name.ns.pod.cluster.local",
+			"name.ns.other.cluster.local",
+			"name.ns.cluster.local",
+			"name.ns.svc.cluster",
+			"name.ns.svc.local",
+			"name.ns.svc.something.cluster.local",
+			"name.ns.svc.something.cluster.local",
+			"name.ns.svc.cluster.local.k8s.example.com",
+			"name.ns.svc.k8s.example.org",
+			"name.ns.svc.k8s.example.com",
+			"name.ns.svc.other.local",
+			"name.ns.svc.example.com"}
 
-	for i, tc := range testCases {
-		t.Run(fmt.Sprintf("%d: (%s, %s)", i, tc.k8sDNSZone, tc.host), func(t *testing.T) {
-			resolver, err := newDestinationResolver(tc.k8sDNSZone, nil, nil)
-			assert.Nil(t, err)
-			result, err := resolver.localKubernetesServiceIdFromDNSName(tc.host)
-			assert.Equal(t, tc.expectedResult, result)
-			assert.Equal(t, tc.expectedResultErr, err != nil)
-		})
-	}
+		assertIsntResolved(t, resolver, unresolvableServiceNames)
+	})
+
+	t.Run("Accepts 'cluster.local' as an alias for '$zone'", func(t *testing.T) {
+		resolver, err := newDestinationResolver("some.namespace", nil, nil)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		nameWithClusterLocal := "name.ns.svc.cluster.local"
+		resolvedNameWithClusterLocal, err := resolver.localKubernetesServiceIdFromDNSName(nameWithClusterLocal)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		if resolvedNameWithClusterLocal == nil {
+			t.Fatalf("Expected [%s] to resolve, but got nil", nameWithClusterLocal)
+		}
+
+		nameWithZone := "name.ns.svc.some.namespace"
+		resolvedNameWithZone, err := resolver.localKubernetesServiceIdFromDNSName(nameWithZone)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		if resolvedNameWithZone == nil {
+			t.Fatalf("Expected [%s] to resolve, but got nil", nameWithZone)
+		}
+
+		if *resolvedNameWithClusterLocal != *resolvedNameWithZone {
+			t.Fatalf("Expected both to resolve to the same, but got [%s]=>[%s] and [%s]=>[%s]", nameWithZone, *resolvedNameWithZone, nameWithClusterLocal, *resolvedNameWithClusterLocal)
+		}
+	})
+
+	t.Run("Resolves names is ends with  '.svc.$zone', '.svc.cluster.local', or '.svc'", func(t *testing.T) {
+		resolver, err := newDestinationResolver("this.is.the.zone", nil, nil)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		resolvableServiceNames := map[string]string{
+			"name1.ns.svc.this.is.the.zone":  "ns/name1",
+			"name2.ns.svc.this.is.the.zone.": "ns/name2",
+			"name3.ns.svc.cluster.local":     "ns/name3",
+			"name4.ns.svc.cluster.local.":    "ns/name4",
+		}
+		assertIsResolved(t, resolver, resolvableServiceNames)
+	})
+
+	t.Run("Resolves names of services only if three labels in it", func(t *testing.T) {
+		resolver, err := newDestinationResolver("some.namespace", nil, nil)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		validServiceNames := map[string]string{"name.ns.svc": "ns/name"}
+		assertIsResolved(t, resolver, validServiceNames)
+
+		invalidServiceNames := []string{"", "something.name.ns.svc.cluster.local", "a.svc", "svc", "a.b.c.svc", "a.b.c.d.svc"}
+		assertReturnError(t, resolver, invalidServiceNames)
+	})
+
 }
 
 func TestSplitDNSName(t *testing.T) {
-	testCases := []struct {
-		input             string
-		expectedResult    []string
-		expectedResultErr bool
-	}{
-		{"example", []string{"example"}, false},
-		{"example.", []string{"example"}, false},
-		{"example.com", []string{"example", "com"}, false},
-		{"example.com.", []string{"example", "com"}, false},
-		{".example", []string{}, true},
-		{".example.com", []string{}, true},
-		{".example.com.", []string{}, true},
-		{"example..com", []string{}, true},
-		{"example.com..", []string{}, true},
-		{"..example.com.", []string{}, true},
-		{"foo.example.com", []string{"foo", "example", "com"}, false},
-		{"invalid/character", []string{}, true},
-		{"", []string{}, true},
-		{"ALL-CAPS", []string{"ALL-CAPS"}, false},
-		{"This-dns-label-has-63-characters-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", []string{"This-dns-label-has-63-characters-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"}, false},
-		{"This-dns-label-has-64-character-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", []string{}, true},
-		{"ThisDnsLabelHas63Charactersxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", []string{"ThisDnsLabelHas63Charactersxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"}, false},
-		{"ThisDnsLabelHas64Charactersxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", []string{}, true},
-		{"0O0", []string{"0O0"}, false},
-		{"-hi", []string{}, true},
-		{"hi-", []string{}, true},
-		{"---", []string{}, true},
-		{"123", []string{}, true},
-		{"a", []string{"a"}, false},
-		{"underscores_are_okay", []string{"underscores_are_okay"}, false},
-	}
+	t.Run("Rejects syntactically invalid names", func(t *testing.T) {
+		invalidNames := []string{".example.com", ".example.com.", "example..com", "example.com..", "..example.com.",
+			".example", "invalid/character", "", "This-dns-label-has-64-character-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+			"ThisDnsLabelHas64Charactersxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", "-hi", "hi-", "---", "123"}
 
-	for i, tc := range testCases {
-		t.Run(fmt.Sprintf("%d: %s", i, tc.input), func(t *testing.T) {
-			result, err := splitDNSName(tc.input)
-			assert.Equal(t, tc.expectedResult, result)
-			assert.Equal(t, tc.expectedResultErr, err != nil)
-		})
-	}
+		for _, name := range invalidNames {
+			result, err := splitDNSName(name)
+			if err == nil {
+				t.Fatalf("Expecting error, got nothing and result was [%v]", result)
+			}
+		}
+	})
+
+	t.Run("Splits", func(t *testing.T) {
+		nameToExpectedSplits := map[string][]string{
+			"foo.example.com": {"foo", "example", "com"},
+			"example":         {"example"},
+			"example.":        {"example"},
+			"example.com":     {"example", "com"},
+			"example.com.":    {"example", "com"},
+			"ALL-CAPS":        {"ALL-CAPS"},
+			"This-dns-label-has-63-characters-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx": {"This-dns-label-has-63-characters-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"},
+			"ThisDnsLabelHas63Charactersxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx": {"ThisDnsLabelHas63Charactersxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"},
+			"0O0": {"0O0"},
+			"a":   {"a"},
+			"underscores_are_okay": {"underscores_are_okay"},
+		}
+
+		for name, expectedSplit := range nameToExpectedSplits {
+			actualSplit, err := splitDNSName(name)
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+
+			if !reflect.DeepEqual(actualSplit, expectedSplit) {
+				t.Fatalf("Expected name [%s] to be split as %v, but got %v", name, expectedSplit, actualSplit)
+			}
+		}
+	})
 }
 
 func TestIsIPAddress(t *testing.T) {
@@ -120,5 +156,68 @@ func TestIsIPAddress(t *testing.T) {
 				t.Fatalf("Unexpected result: %+v", isIP)
 			}
 		})
+	}
+}
+
+func TestMaybeStripSuffixLabels(t *testing.T) {
+	testCases := []struct {
+		input          []string
+		suffix         []string
+		expectedResult []string
+		expectedMatch  bool
+	}{
+		{[]string{"a", "b"}, []string{}, []string{"a", "b"}, true},
+		{[]string{"a", "b", "c"}, []string{"c"}, []string{"a", "b"}, true},
+		{[]string{"a", "b", "c", "d"}, []string{"c", "d"}, []string{"a", "b"}, true},
+		{[]string{"a", "b", "c", "d"}, []string{"x", "y"}, []string{"a", "b", "c", "d"}, false},
+		{[]string{}, []string{"x", "y"}, []string{}, false},
+		{[]string{"a", "b", "c", "d"}, []string{}, []string{"a", "b", "c", "d"}, true},
+	}
+
+	for _, testCase := range testCases {
+		actualResult, actualMatch := maybeStripSuffixLabels(testCase.input, testCase.suffix)
+
+		if !reflect.DeepEqual(actualResult, testCase.expectedResult) || actualMatch != testCase.expectedMatch {
+			t.Fatalf("Expected parameters %v, %v to return %v, %v but got %v, %v", testCase.input, testCase.suffix, testCase.expectedResult, testCase.expectedMatch, actualResult, actualMatch)
+		}
+	}
+}
+
+func assertReturnError(t *testing.T, resolver *destinationResolver, nameToExpectedError []string) {
+	for _, name := range nameToExpectedError {
+		resolvedName, err := resolver.localKubernetesServiceIdFromDNSName(name)
+		if err == nil {
+			t.Fatalf("Expecting error, got resovled name [%s]", *resolvedName)
+		}
+	}
+}
+
+func assertIsResolved(t *testing.T, resolver *destinationResolver, nameToExpectedResolved map[string]string) {
+	for name, expectedResolvedName := range nameToExpectedResolved {
+		resolvedName, err := resolver.localKubernetesServiceIdFromDNSName(name)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		if resolvedName == nil {
+			t.Fatalf("Expected name [%s] to resolve to [%s], but got [%v]", name, expectedResolvedName, resolvedName)
+		}
+
+		if *resolvedName != expectedResolvedName {
+			t.Fatalf("Expected name [%s] to resolve to [%s], but got [%s]", name, expectedResolvedName, *resolvedName)
+		}
+	}
+}
+
+func assertIsntResolved(t *testing.T, resolver *destinationResolver, nameToExpectedNotResolved []string) {
+	for _, name := range nameToExpectedNotResolved {
+		resolvedName, err := resolver.localKubernetesServiceIdFromDNSName(name)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		if resolvedName != nil {
+			t.Fatalf("Expected name [%s] to not resolve, but got [%s]", name, *resolvedName)
+		}
 	}
 }
