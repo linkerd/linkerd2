@@ -98,7 +98,8 @@ impl MakeControl {
         trace!("telemetry control flush_interval={:?}", self.flush_interval);
 
         let flush_timeout = Timeout::new(self.flush_interval, handle)?;
-        let (metrics_work, metrics_service) = prometheus::new();
+        let (metrics_work, metrics_service) =
+            prometheus::new(&self.process_ctx);
         let push_metrics = Some(PushMetrics::new(self.process_ctx));
 
         Ok(Control {
