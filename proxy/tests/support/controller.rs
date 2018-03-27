@@ -288,6 +288,34 @@ pub fn destination_update(addr: SocketAddr) -> pb::destination::Update {
     }
 }
 
+pub fn destination_add_none() -> pb::destination::Update {
+    pb::destination::Update {
+        update: Some(pb::destination::update::Update::Add(
+            pb::destination::WeightedAddrSet {
+                addrs: Vec::new(),
+            },
+        )),
+    }
+}
+
+pub fn destination_remove_none() -> pb::destination::Update {
+    pb::destination::Update {
+        update: Some(pb::destination::update::Update::Remove(
+            pb::destination::AddrSet {
+                addrs: Vec::new(),
+            },
+        )),
+    }
+}
+
+pub fn destination_exists_with_no_endpoints() -> pb::destination::Update {
+    pb::destination::Update {
+        update: Some(pb::destination::update::Update::NoEndpoints (
+            pb::destination::NoEndpoints { exists: true }
+        )),
+    }
+}
+
 fn ip_conv(ip: IpAddr) -> pb::common::IpAddress {
     match ip {
         IpAddr::V4(v4) => pb::common::IpAddress {
