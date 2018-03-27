@@ -13,7 +13,7 @@ of this repo, unless otherwise indicated by a `cd` command.
 - [Unit tests](#unit-tests)
   - [Rust](#rust)
   - [Go](#go)
-  - [React](#react)
+  - [Javascript](#javascript)
 - [Integration tests](#integration-tests)
   - [Prerequisites](#prerequisites)
   - [Running tests](#running-tests)
@@ -22,7 +22,7 @@ of this repo, unless otherwise indicated by a `cd` command.
 
 # Unit tests
 
-Conduit is primarily written in Rust, Go, and React, and each entails a
+Conduit is primarily written in Rust, Go, and Javascript, and each entails a
 different set of unit tests, described below.
 
 ## Rust
@@ -57,9 +57,9 @@ To analyze the Go code without running tests, run:
 go vet ./...
 ```
 
-## React
+## Javascript
 
-React dependencies are managed via [yarn](https://yarnpkg.com/) and
+Javascript dependencies are managed via [yarn](https://yarnpkg.com/) and
 [webpack](https://webpack.js.org/). To fetch dependencies and run tests, run:
 
 ```bash
@@ -99,9 +99,25 @@ $ bin/test-run
 usage: test-run /path/to/conduit [namespace]
 ```
 
+It's also possible to run tests individually, using the `go test` command. All
+of the tests are located in the `test/` directory, either at the root or in
+subdirectories. The root `test/install_test.go` test installs Conduit, so that
+must be run before any of the subdirectory tests (the `bin/test-run` script does
+this for you). The subdirectory tests are intended to be run independently of
+each other, and in the future they may be run in parallel.
+
+To run an individual test (e.g. the "get" test), first run the root test, and
+then run the subdirectory test. For instance:
+
+```bash
+$ go test -v ./test -integration-tests -conduit /path/to/conduit
+$ go test -v ./test/get -integration-tests -conduit /path/to/conduit
+```
+
 ### Testing against the installed version of the CLI
 
-By way of example, to test your installed version of the `conduit` CLI in the
+You can run tests using your installed version of the `conduit` CLI. For
+example, to run the full suite of tests using your installed CLI in the
 "specialtest" namespace, run:
 
 ```bash
