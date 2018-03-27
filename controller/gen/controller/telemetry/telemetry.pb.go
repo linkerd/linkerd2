@@ -38,10 +38,15 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 type QueryRequest struct {
-	Query   string `protobuf:"bytes,1,opt,name=query" json:"query,omitempty"`
-	StartMs int64  `protobuf:"varint,2,opt,name=start_ms,json=startMs" json:"start_ms,omitempty"`
-	EndMs   int64  `protobuf:"varint,3,opt,name=end_ms,json=endMs" json:"end_ms,omitempty"`
-	Step    string `protobuf:"bytes,4,opt,name=step" json:"step,omitempty"`
+	// required
+	Query string `protobuf:"bytes,1,opt,name=query" json:"query,omitempty"`
+	// required for timeseries queries
+	StartMs int64 `protobuf:"varint,2,opt,name=start_ms,json=startMs" json:"start_ms,omitempty"`
+	// required for timeseries queries
+	// optional for single data point, but if unset, results will have non-deterministic timestamps
+	EndMs int64 `protobuf:"varint,3,opt,name=end_ms,json=endMs" json:"end_ms,omitempty"`
+	// required for timeseries queries
+	Step string `protobuf:"bytes,4,opt,name=step" json:"step,omitempty"`
 }
 
 func (m *QueryRequest) Reset()                    { *m = QueryRequest{} }

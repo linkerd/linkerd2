@@ -131,9 +131,7 @@ func (m *HttpMethod) String() string            { return proto.CompactTextString
 func (*HttpMethod) ProtoMessage()               {}
 func (*HttpMethod) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
-type isHttpMethod_Type interface {
-	isHttpMethod_Type()
-}
+type isHttpMethod_Type interface{ isHttpMethod_Type() }
 
 type HttpMethod_Registered_ struct {
 	Registered HttpMethod_Registered `protobuf:"varint,1,opt,name=registered,enum=conduit.common.HttpMethod_Registered,oneof"`
@@ -243,9 +241,7 @@ func (m *Scheme) String() string            { return proto.CompactTextString(m) 
 func (*Scheme) ProtoMessage()               {}
 func (*Scheme) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
 
-type isScheme_Type interface {
-	isScheme_Type()
-}
+type isScheme_Type interface{ isScheme_Type() }
 
 type Scheme_Registered_ struct {
 	Registered Scheme_Registered `protobuf:"varint,1,opt,name=registered,enum=conduit.common.Scheme_Registered,oneof"`
@@ -355,9 +351,7 @@ func (m *IPAddress) String() string            { return proto.CompactTextString(
 func (*IPAddress) ProtoMessage()               {}
 func (*IPAddress) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
 
-type isIPAddress_Ip interface {
-	isIPAddress_Ip()
-}
+type isIPAddress_Ip interface{ isIPAddress_Ip() }
 
 type IPAddress_Ipv4 struct {
 	Ipv4 uint32 `protobuf:"fixed32,1,opt,name=ipv4,oneof"`
@@ -543,9 +537,7 @@ func (m *Eos) String() string            { return proto.CompactTextString(m) }
 func (*Eos) ProtoMessage()               {}
 func (*Eos) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
 
-type isEos_End interface {
-	isEos_End()
-}
+type isEos_End interface{ isEos_End() }
 
 type Eos_GrpcStatusCode struct {
 	GrpcStatusCode uint32 `protobuf:"varint,1,opt,name=grpc_status_code,json=grpcStatusCode,oneof"`
@@ -655,9 +647,7 @@ func (m *TapEvent) String() string            { return proto.CompactTextString(m
 func (*TapEvent) ProtoMessage()               {}
 func (*TapEvent) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
 
-type isTapEvent_Event interface {
-	isTapEvent_Event()
-}
+type isTapEvent_Event interface{ isTapEvent_Event() }
 
 type TapEvent_Http_ struct {
 	Http *TapEvent_Http `protobuf:"bytes,3,opt,name=http,oneof"`
@@ -761,9 +751,7 @@ func (m *TapEvent_Http) String() string            { return proto.CompactTextStr
 func (*TapEvent_Http) ProtoMessage()               {}
 func (*TapEvent_Http) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7, 0} }
 
-type isTapEvent_Http_Event interface {
-	isTapEvent_Http_Event()
-}
+type isTapEvent_Http_Event interface{ isTapEvent_Http_Event() }
 
 type TapEvent_Http_RequestInit_ struct {
 	RequestInit *TapEvent_Http_RequestInit `protobuf:"bytes,1,opt,name=request_init,json=requestInit,oneof"`

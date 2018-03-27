@@ -9,6 +9,7 @@ import (
 
 	"github.com/runconduit/conduit/controller/destination"
 	common "github.com/runconduit/conduit/controller/gen/common"
+	pb "github.com/runconduit/conduit/controller/gen/proxy/destination"
 	"github.com/runconduit/conduit/controller/util"
 	log "github.com/sirupsen/logrus"
 )
@@ -19,6 +20,7 @@ func main() {
 	rand.Seed(time.Now().UnixNano())
 
 	addr := flag.String("addr", ":8089", "address of proxy api")
+	path := flag.String("path", "strest-server.default.svc.cluster.local:8888", "destination path")
 	flag.Parse()
 
 	client, conn, err := destination.NewClient(*addr)
@@ -29,7 +31,7 @@ func main() {
 
 	req := &common.Destination{
 		Scheme: "k8s",
-		Path:   "strest-server.default.svc.cluster.local:8888",
+		Path:   *path,
 	}
 
 	rsp, err := client.Get(context.Background(), req)
@@ -45,18 +47,23 @@ func main() {
 		if err != nil {
 			log.Fatal(err.Error())
 		}
-		if add := update.GetAdd(); add != nil {
+
+		switch updateType := update.Update.(type) {
+		case *pb.Update_Add:
 			log.Println("Add:")
-			for _, addr := range add.Addrs {
+			for _, addr := range updateType.Add.Addrs {
 				log.Printf("- %s:%d", util.IPToString(addr.Addr.GetIp()), addr.Addr.Port)
 			}
 			log.Println()
-		}
-		if remove := update.GetRemove(); remove != nil {
+		case *pb.Update_Remove:
 			log.Println("Remove:")
-			for _, addr := range remove.Addrs {
+			for _, addr := range updateType.Remove.Addrs {
 				log.Printf("- %s:%d", util.IPToString(addr.GetIp()), addr.Port)
 			}
+			log.Println()
+		case *pb.Update_NoEndpoints:
+			log.Println("NoEndpoints:")
+			log.Printf("- exists:%t", updateType.NoEndpoints.Exists)
 			log.Println()
 		}
 	}

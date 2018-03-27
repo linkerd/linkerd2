@@ -206,9 +206,7 @@ func (m *MetricValue) String() string            { return proto.CompactTextStrin
 func (*MetricValue) ProtoMessage()               {}
 func (*MetricValue) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
 
-type isMetricValue_Value interface {
-	isMetricValue_Value()
-}
+type isMetricValue_Value interface{ isMetricValue_Value() }
 
 type MetricValue_Counter struct {
 	Counter int64 `protobuf:"varint,1,opt,name=counter,oneof"`
@@ -637,9 +635,7 @@ func (m *TapRequest) String() string            { return proto.CompactTextString
 func (*TapRequest) ProtoMessage()               {}
 func (*TapRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{12} }
 
-type isTapRequest_Target interface {
-	isTapRequest_Target()
-}
+type isTapRequest_Target interface{ isTapRequest_Target() }
 
 type TapRequest_Pod struct {
 	Pod string `protobuf:"bytes,1,opt,name=pod,oneof"`
