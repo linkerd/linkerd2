@@ -67,6 +67,15 @@ enum Exists<T> {
     No, // Affirmatively known to not exist.
 }
 
+/// A cache that supports incremental updates with lazy resetting on
+/// invalidation.
+///
+/// When the cache `c` initially becomes invalid (i.e. it becomes
+/// potentially out of sync with the data source so that incremental updates
+/// would stop working), call `c.reset_on_next_modification()`; the next
+/// incremental update will then replace the entire contents of the cache,
+/// instead of incrementally augmenting it. Until that next modification,
+/// however, the stale contents of the cache will be made available.
 struct Cache<T> {
     values: HashSet<T>,
     reset_on_next_modification: bool,
