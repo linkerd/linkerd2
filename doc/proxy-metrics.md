@@ -70,16 +70,15 @@ will correspond to `k8s_*` Prometheus labels:
 * `job`: The Prometheus job responsible for the collection, typically
          `conduit-proxy`.
 * `namespace`: Kubernetes namespace that the pod belongs to.
-* `k8s_deployment`: The deployment that the pod belongs to (if applicable).
+* `deployment`: The deployment that the pod belongs to (if applicable).
 * `k8s_job`: The job that the pod belongs to (if applicable).
-* `k8s_replica_set`: The replica set that the pod belongs to (if applicable).
-* `k8s_daemon_set`: The daemon set that the pod belongs to (if applicable).
-* `k8s_replication_controller`: The replication controller that the pod belongs
-                                to (if applicable).
-* `k8s_pod_template_hash`: Corresponds to the
-                           [pod-template-hash][pod-template-hash] Kubernetes
-                           label. This value changes during redeploys and
-                           rolling restarts.
+* `replica_set`: The replica set that the pod belongs to (if applicable).
+* `daemon_set`: The daemon set that the pod belongs to (if applicable).
+* `replication_controller`: The replication controller that the pod belongs to
+                            (if applicable).
+* `pod_template_hash`: Corresponds to the [pod-template-hash][pod-template-hash]
+                       Kubernetes label. This value changes during redeploys and
+                       rolling restarts.
 
 Here's a concrete example, given the following pod snippet:
 
@@ -98,11 +97,11 @@ The resulting Prometheus labels will look like this:
 ```
 request_total{
   namespace="emojivoto",
-  k8s_app="vote-bot",
-  k8s_conduit_io_control_plane_ns="conduit",
-  k8s_deployment="vote-bot",
-  k8s_pod_template_hash="3957278789",
-  k8s_test="vote-bot-test",
+  app="vote-bot",
+  conduit_io_control_plane_ns="conduit",
+  deployment="vote-bot",
+  pod_template_hash="3957278789",
+  test="vote-bot-test",
   instance="10.1.3.93:4191",
   job="conduit-proxy"
 }
