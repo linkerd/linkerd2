@@ -251,13 +251,13 @@ func (h *TestHelper) HTTPGetURL(url string) (string, error) {
 // GetURLForService returns the external URL for a service in a namespace.
 func (h *TestHelper) GetURLForService(namespace string, serviceName string) (string, error) {
 	var url string
-	err := h.RetryFor(2*time.Minute, func() error {
+	err := h.RetryFor(3*time.Minute, func() error {
 		// first try fetching the url from kubectl
 		cmd := exec.Command("kubectl", "-n", namespace, "get", "svc", serviceName, "-o",
 			"jsonpath={.status.loadBalancer.ingress[0].*}:{.spec.ports[0].port}")
 		out, err := cmd.Output()
 		if err != nil {
-			return err
+			return fmt.Errorf("kubectl get svc error: %s\n%s", out, err)
 		}
 		addr := strings.TrimSpace(string(out))
 		if !strings.HasPrefix(addr, ":") {
@@ -269,7 +269,7 @@ func (h *TestHelper) GetURLForService(namespace string, serviceName string) (str
 		cmd = exec.Command("minikube", "-n", namespace, "service", serviceName, "--url")
 		out, err = cmd.Output()
 		if err != nil {
-			return err
+			return fmt.Errorf("minikube service error: %s\n%s", out, err)
 		}
 		url = strings.TrimSpace(string(out))
 		return nil
