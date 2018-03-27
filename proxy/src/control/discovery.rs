@@ -56,7 +56,7 @@ pub struct DiscoveryWork<T: HttpService<ResponseBody = RecvBody>> {
 
 struct DestinationSet<T: HttpService<ResponseBody = RecvBody>> {
     addrs: Exists<HashSet<SocketAddr>>,
-    rx: DestinationServiceQuery<T>,
+    query: DestinationServiceQuery<T>,
     txs: Vec<mpsc::UnboundedSender<Update>>,
 }
 
@@ -286,10 +286,11 @@ where
                             set.txs.push(tx);
                         }
                         Entry::Vacant(vac) => {
-                            let rx = DestinationServiceQuery::connect(client, vac.key(), "connect");
+                            let query =
+                                DestinationServiceQuery::connect(client, vac.key(), "connect");
                             vac.insert(DestinationSet {
                                 addrs: Exists::Unknown,
-                                rx,
+                                query,
                                 txs: vec![tx],
                             });
                         }
@@ -311,7 +312,7 @@ where
 
         while let Some(auth) = self.reconnects.pop_front() {
             if let Some(set) = self.destinations.get_mut(&auth) {
-                set.rx = DestinationServiceQuery::connect(client, &auth, "recoonect");
+                set.query = DestinationServiceQuery::connect(client, &auth, "recoonect");
                 return true;
             } else {
                 trace!("reconnect no longer needed: {:?}", auth);
@@ -323,7 +324,7 @@ where
     fn poll_destinations(&mut self) {
         for (auth, set) in &mut self.destinations {
             let needs_reconnect = 'set: loop {
-                let poll_result = match set.rx {
+                let poll_result = match set.query {
                     DestinationServiceQuery::NeedsReconnect => {
                         continue;
                     },
@@ -363,7 +364,7 @@ where
 
             };
             if needs_reconnect {
-                set.rx = DestinationServiceQuery::NeedsReconnect;
+                set.query = DestinationServiceQuery::NeedsReconnect;
                 self.reconnects.push_back(FullyQualifiedAuthority::clone(auth));
             }
         }
