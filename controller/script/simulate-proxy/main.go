@@ -44,13 +44,13 @@ var (
 	// for reference: https://github.com/runconduit/conduit/blob/master/doc/proxy-metrics.md#labels
 	labels = []string{
 		// kubeResourceTypes
-		"k8s_daemon_set",
-		"k8s_deployment",
+		"daemon_set",
+		"deployment",
 		"k8s_job",
-		"k8s_replication_controller",
-		"k8s_replica_set",
+		"replication_controller",
+		"replica_set",
 
-		"k8s_pod_template_hash",
+		"pod_template_hash",
 		"namespace",
 
 		// constantLabels
@@ -196,10 +196,10 @@ func (s *simulatedProxy) generateProxyTraffic() {
 // newConduitLabel creates a label map to be used for metric generation.
 func (s *simulatedProxy) newConduitLabel(destinationPod string, isResponseLabel bool) prom.Labels {
 	labelMap := prom.Labels{
-		"direction":      randomRequestDirection(),
-		"k8s_deployment": s.deploymentName,
-		"authority":      "world.greeting:7778",
-		"namespace":      s.namespace,
+		"direction":  randomRequestDirection(),
+		"deployment": s.deploymentName,
+		"authority":  "world.greeting:7778",
+		"namespace":  s.namespace,
 	}
 	if labelMap["direction"] == "outbound" {
 		labelMap["dst_deployment"] = destinationPod
