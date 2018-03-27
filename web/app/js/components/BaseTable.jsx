@@ -1,5 +1,9 @@
 import { Table } from 'antd';
 
+// BaseTable extends ant-design's table, but overwrites the `toggleSortOrder`
+// method, in order to remove the default behavior of unsorting a column when
+// the same sorting arrow is pressed twice:
+// https://github.com/ant-design/ant-design/blob/master/components/table/Table.tsx#L348
 export default class BaseTable extends Table {
   constructor(props) {
     super(props);
@@ -8,13 +12,10 @@ export default class BaseTable extends Table {
 
   toggleSortOrder(order, column) {
     let { sortColumn, sortOrder } = this.state;
-    let isSortColumn = this.isSortColumn(column);
-    sortOrder = order;
-    sortColumn = column;
 
     const newState = {
-      sortOrder,
-      sortColumn,
+      sortOrder: order,
+      sortColumn: column,
     };
 
     if (this.getSortOrderColumns().length === 0) {

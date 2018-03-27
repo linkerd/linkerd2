@@ -1,4 +1,3 @@
-
 import _ from 'lodash';
 import BaseTable from './BaseTable.jsx';
 import { metricToFormatter } from './util/Utils.js';
