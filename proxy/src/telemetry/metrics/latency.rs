@@ -1,7 +1,9 @@
 #![deny(missing_docs)]
-use std::{fmt, ops, slice, u32};
-use std::default::Default;
+use std::{fmt, iter, ops, slice, u32};
+use std::num::Wrapping;
 use std::time::Duration;
+
+use super::prometheus;
 
 /// The number of buckets in a  latency histogram.
 pub const NUM_BUCKETS: usize = 26;
@@ -56,16 +58,35 @@ pub const BUCKET_BOUNDS: [Latency; NUM_BUCKETS] = [
 ];
 
 /// A series of latency values and counts.
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct Histogram {
 
     /// Array of buckets in which to count latencies.
     ///
     /// The upper bound of a given bucket `i` is given in `BUCKET_BOUNDS[i]`.
-    buckets: [u32; NUM_BUCKETS],
+    buckets: [prometheus::Counter; NUM_BUCKETS],
 
     /// The total sum of all observed latency values.
-    pub sum: u64,
+    ///
+    /// Histogram sums always explicitly wrap on overflows rather than
+    /// panicking in debug builds. Prometheus' [`rate()`] and [`irate()`]
+    /// queries handle breaks in monotonicity gracefully (see also
+    /// [`resets()`]), so wrapping is less problematic than panicking in this
+    /// case.
+    ///
+    /// Note, however, that Prometheus actually represents this using 64-bit
+    /// floating-point numbers. The correct semantics are to ensure the sum
+    /// always gets reset to zero after Prometheus reads it, before it would
+    /// ever overflow a 52-bit `f64` mantissa.
+    ///
+    /// [`rate()`]: https://prometheus.io/docs/prometheus/latest/querying/functions/#rate()
+    /// [`irate()`]: https://prometheus.io/docs/prometheus/latest/querying/functions/#irate()
+    /// [`resets()`]: https://prometheus.io/docs/prometheus/latest/querying/functions/#resets
+    ///
+    // TODO: Implement Prometheus reset semantics correctly, taking into
+    //       consideration that Prometheus represents this as `f64` and so
+    //       there are only 52 significant bits.
+    pub sum: Wrapping<u64>,
 }
 
 /// A latency in tenths of a millisecond.
@@ -87,41 +108,8 @@ impl Histogram {
             .position(|max| &measurement <= max)
             .expect("latency value greater than u32::MAX; this shouldn't be \
                      possible.");
-        self.buckets[i] += 1;
-
-        // It's time to play ~*Will It Overflow???*~
-        //
-        // If we make the fairly generous assumptions of 1-minute latencies
-        // and 1 million RPS per set of metric labels (i.e. per pod), that
-        // gives us:
-        //          600,000 (1 minute = 600,000 tenths-of-milliseconds)
-        //  x     1,000,000 (1 million RPS)
-        //  ---------------
-        //  600,000,000,000 (6e11) gain per second
-        //
-        // times the number of seconds in a day (86,400):
-        //      6e11 x 86400 = 5.184e16
-        //
-        // 18,446,744,073,709,551,615 is the maximum 64-bit unsigned integer.
-        //      1.8446744073709551615e19 / 5.184e16 = 355 (about 1 year)
-        //
-        // So at 1 million RPS with 1-minute latencies, the sum will overflow
-        // in about a year. We don't really expect a conduit-proxy process to
-        // run that long (or see this kind of load), but we can revisit this
-        // if supporting extremely long-running deployments becomes a priority.
-        //
-        // (N.B. that storing latencies in whole milliseconds rather than tenths
-        // of milliseconds would change the time to overflow to almost 10
-        // years.)
-        self.sum += measurement.0 as u64;
-    }
-
-    /// Construct a new, empty `Histogram`.
-    pub fn new() -> Self {
-        Histogram {
-            buckets: [0; NUM_BUCKETS],
-            sum: 0,
-        }
+        self.buckets[i].incr();
+        self.sum += Wrapping(measurement.0 as u64);
     }
 
     /// Return the sum value of this histogram in milliseconds.
@@ -130,7 +118,7 @@ impl Histogram {
     /// internally recorded in tenths of milliseconds, which could
     /// represent a number of milliseconds with a fractional part.
     pub fn sum_in_ms(&self) -> f64 {
-        self.sum as f64 / MS_TO_TENTHS_OF_MS as f64
+        self.sum.0 as f64 / MS_TO_TENTHS_OF_MS as f64
     }
 
 }
@@ -146,23 +134,17 @@ where
 
 }
 
-
 impl<'a> IntoIterator for &'a Histogram {
-    type Item = &'a u32;
-    type IntoIter = slice::Iter<'a, u32>;
+    type Item = u64;
+    type IntoIter = iter::Map<
+        slice::Iter<'a, prometheus::Counter>,
+        fn(&'a prometheus::Counter) -> u64
+    >;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.buckets.iter()
+        self.buckets.iter().map(|&count| count.into())
     }
 
-}
-
-
-impl Default for Histogram {
-    #[inline]
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 // ===== impl Latency =====

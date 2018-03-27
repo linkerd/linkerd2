@@ -251,7 +251,15 @@ impl Metrics {
                     ends: ends,
                     response_latency_counts: res_stats.latencies
                         .into_iter()
-                        .map(|l| *l)
+                        // NOTE: this potential truncation is unlikely to cause
+                        // problems here, as the push metrics reports have
+                        // different semantics from the scrapable Prometheus
+                        // metrics. Push metrics are reset every time a report
+                        // is generated, while the scrapable metrics last for
+                        // the entire lifetime of the process.
+                        //
+                        // Furthermore, this code is slated for removal soon.
+                        .map(|count| count as u32)
                         .collect(),
                 });
             }
