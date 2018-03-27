@@ -312,7 +312,7 @@ where
 
         while let Some(auth) = self.reconnects.pop_front() {
             if let Some(set) = self.destinations.get_mut(&auth) {
-                set.query = DestinationServiceQuery::connect(client, &auth, "recoonect");
+                set.query = DestinationServiceQuery::connect(client, &auth, "reconnect");
                 return true;
             } else {
                 trace!("reconnect no longer needed: {:?}", auth);
