@@ -2,7 +2,8 @@
 
 :balloon: Welcome to the Conduit development guide! :wave:
 
-This document will help you build, run, and test Conduit from source.
+This document will help you build and run Conduit from source. More information
+about testing from source can be found in the [TEST.md](TEST.md) guide.
 
 # Table of contents
 
@@ -49,8 +50,8 @@ written in Go. The dashboard UI is a React application.
 
 ## Data Plane (Rust)
 
-  - [`proxy`](proxy): High-performance data plane, injected as a sidecar with
-    every service.
+- [`proxy`](proxy): High-performance data plane, injected as a sidecar with
+  every service.
 
 # Components
 
@@ -169,16 +170,10 @@ traffic to the docker-compose environment:
 kubectl version
 ```
 
-Note that the Kubernetes cluster your system is configured to talk to must not be referenced via 
-`localhost` in your Kubernetes config file, as `simulate-proxy` will not be able to connect to it.
- This includes Kubernetes on Docker For Mac.
-### Testing
-
-```bash
-bin/dep ensure
-go test -race ./...
-go vet ./...
-```
+Note that the Kubernetes cluster your system is configured to talk to must not
+be referenced via `localhost` in your Kubernetes config file, as
+`simulate-proxy` will not be able to connect to it.  This includes Kubernetes on
+Docker For Mac.
 
 ### A note about Go run
 
@@ -240,8 +235,8 @@ cd ..
 
 The web server will be running on `localhost:8084`.
 
-Note the `web` process depends on a `public-api` server, for which you have three
-options:
+Note the `web` process depends on a `public-api` server, for which you have
+three options:
 
 #### 1. Connect to `public-api` locally
 
@@ -300,14 +295,6 @@ cd web/app
 yarn add [dep]
 ```
 
-### Testing
-
-```bash
-cd web/app
-yarn && yarn webpack
-yarn karma start --single-run
-```
-
 ## Rust
 
 These commands assume a working [Rust](https://www.rust-lang.org)
@@ -347,22 +334,6 @@ It supports two environment variables:
   likely invalidate a substantial portion of Docker's cache.
 - `PROXY_SKIP_TESTS` -- When set and non-empty, prevents the proxy's tests from being run
   during the build. Changing this setting will not invalidate Docker's cache.
-
-
-### Testing
-
-To build the Rust code and run tests, run:
-
-```bash
-cargo test
-```
-
-To analyze the Rust code and report errors, without building object files or
-running tests, run:
-
-```bash
-cargo check
-```
 
 # Dependencies
 
