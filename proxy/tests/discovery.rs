@@ -95,8 +95,8 @@ macro_rules! generate_tests {
                 assert_eq!(rsp.status(), http::StatusCode::INTERNAL_SERVER_ERROR);
             }
 
-            // TODO: Wait for the reconnect to happen.
-            thread::sleep(Duration::from_millis(500));
+            // Wait for the reconnect to happen. TODO: Replace this flaky logic.
+            thread::sleep(Duration::from_millis(1000));
 
             // This will time out since there are no endpoints.
             let mut req = initially_exists.request_builder("/");
