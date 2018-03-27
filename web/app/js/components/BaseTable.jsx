@@ -11,8 +11,6 @@ export default class BaseTable extends Table {
   }
 
   toggleSortOrder(order, column) {
-    let { sortColumn, sortOrder } = this.state;
-
     const newState = {
       sortOrder: order,
       sortColumn: column,
