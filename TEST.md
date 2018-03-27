@@ -10,16 +10,64 @@ of this repo, unless otherwise indicated by a `cd` command.
 
 # Table of contents
 
+- [Unit tests](#unit-tests)
+  - [Rust](#rust)
+  - [Go](#go)
+  - [React](#react)
 - [Integration tests](#integration-tests)
   - [Prerequisites](#prerequisites)
   - [Running tests](#running-tests)
   - [Cleanup](#cleanup)
   - [Writing tests](#writing-tests)
 - [Integration tests: proxy-init](#integration-tests-proxy-init)
-- [Unit tests](#unit-tests)
-  - [Rust](#rust)
-  - [Go](#go)
-  - [React](#react)
+
+# Unit tests
+
+Conduit is primarily written in Rust, Go, and React, and each entails a
+different set of unit tests, described below.
+
+## Rust
+
+Rust dependencies are managed via [cargo](https://github.com/rust-lang/cargo).
+To build the Rust code and run tests, run:
+
+```bash
+cargo test
+```
+
+To analyze the Rust code and report errors, without building object files or
+running tests, run:
+
+```bash
+cargo check
+```
+
+## Go
+
+Go dependencies are managed via [dep](https://github.com/golang/dep). To fetch
+dependencies and run tests, run:
+
+```bash
+bin/dep ensure
+go test -race ./...
+```
+
+To analyze the Go code without running tests, run:
+
+```bash
+go vet ./...
+```
+
+## React
+
+React dependencies are managed via [yarn](https://yarnpkg.com/) and
+[webpack](https://webpack.js.org/). To fetch dependencies and run tests, run:
+
+```bash
+cd web/app
+yarn && yarn webpack
+yarn karma start --single-run
+```
 
 # Integration tests
 
@@ -33,9 +81,9 @@ cluster. Prior to running the test suite, verify that:
 
 - The Conduit docker images you're trying to test have been built and are
   accessible to the Kubernetes cluster to which you are deploying
-- The kubectl CLI has been configured to talk to that Kubernetes cluster
+- The `kubectl` CLI has been configured to talk to that Kubernetes cluster
 - The Kubernetes cluster automatically provisions external IPs for external load
-  balanced services, or the cluster is running in minikube
+  balanced services (e.g. GKE), or the cluster is running in minikube
 - The `conduit` namespace that you're testing does not already exist
 - The repo's Go dependencies have been downloaded by running `bin/dep ensure`
 
@@ -141,52 +189,4 @@ The run the tests with:
 cd proxy-init/integration_test
 eval $(minikube docker-env)
 ./run_tests.sh
-```
-
-# Unit tests
-
-Conduit is primarily written in Rust, Go, and React, and each entails a
-different set of unit tests, described below.
-
-## Rust
-
-Rust dependencies are managed via [cargo](https://github.com/rust-lang/cargo).
-To build the Rust code and run tests, run:
-
-```bash
-cargo test
-```
-
-To analyze the Rust code and report errors, without building object files or
-running tests, run:
-
-```bash
-cargo check
-```
-
-## Go
-
-Go dependencies are managed via [dep](https://github.com/golang/dep). To fetch
-dependencies and run tests, run:
-
-```bash
-bin/dep ensure
-go test -race ./...
-```
-
-To analyze the Go code without running tests, run:
-
-```bash
-go vet ./...
-```
-
-## React
-
-React dependencies are managed via [yarn](https://yarnpkg.com/) and
-[webpack](https://webpack.js.org/). To fetch dependencies and run tests, run:
-
-```bash
-cd web/app
-yarn && yarn webpack
-yarn karma start --single-run
 ```
