@@ -10,12 +10,40 @@ import "common/common.proto";
 // weighted set of addresses and address metadata.  Can be implemented with DNS
 // or lookups against other service discovery backends.
 //
+// If the service does not exist then the controller must send
+// `no_endpoints{exists: false}` ASAP when a client subscribes or when the
+// service stops existing. If the service exists and has endpoints available
+// then the controller must send `add` that lists all (or at least a large
+// number) of the endpoints for the service. If and only if the service exists
+// but does not have any endpoints available then the controller SHOULD send
+// `no_endpoints{exists: true}` when a client subscribes. In other words, the
+// `no_endpoints` message must only be sent when there are *no*endpoints for
+// the service.
+//
 // The controller is expected to send an Update every time there is a
 // change in service discovery.  The controller is also expected to send an
 // update at least once every ADDRESS_UPDATE_INTERVAL to indicate that the
 // controller is still healthy.  If no service discovery updates have taken
 // place, the controller can simply send an empty `add`.  The controller may
 // determine the value of ADDRESS_UPDATE_INTERVAL.
+//
+// The client MUST be prepared to receive messages in any order and the client
+// MUST be able to cope with the presence or absence of redundant messages.
+//
+// `no_endpoints` followed by an `add` is *not* equivalent to just sending the
+// `add` regardless of the value of the `exists` field in the `no_endpoints`
+// message. `remove` followed by a `no_endpoints` message is equivalent to
+// sending just the `no_endpoints` message, and a `remove` that removes the
+// last endpoint is equivalent to a `no_endpoints{exists: true}` message.
+//
+// When the client gets disconnected from the controller and reconnects, the
+// client may use stale results from its previous subscription until, and only
+// until, it receives the first message. This is why the controller must send
+// a message at the start of a subscription. This is also why the controller
+// must not send a `no_endpoints` message before an `add` message; the client
+// would clear its cached messages between the time it receives the
+// `no_endpoints` message and the time it receives the `add` message, which is
+// not the desired behavior.
 
 service Destination {
   // Given a destination, return all addresses in that destination as a long-
@@ -25,8 +53,19 @@ service Destination {
 
 message Update {
   oneof update {
+    // A new set of endpoints are available for the service. The set might be
+    // empty.
     WeightedAddrSet add = 1;
+
+    // Some endpoints have been removed from the service.
     AddrSet remove = 2;
+
+    // `no_endpoints{exists: false}` indicates that the service does not exist
+    // and the client MAY try an alternate service discovery method (e.g. DNS).
+    //
+    // `no_endpoints(exists: true)` indicates that the service does exist and
+    // the client MUST NOT fall back to an alternate service discovery method.
+    NoEndpoints no_endpoints = 3;
   }
 }
 
@@ -41,4 +80,8 @@ message WeightedAddrSet {
 message WeightedAddr {
   common.TcpAddress addr = 1;
   uint32 weight = 3;
+}
+
+message NoEndpoints {
+    bool exists = 1;
 }

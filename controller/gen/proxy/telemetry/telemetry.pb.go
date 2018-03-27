@@ -419,9 +419,7 @@ func (m *EosCtx) String() string            { return proto.CompactTextString(m) 
 func (*EosCtx) ProtoMessage()               {}
 func (*EosCtx) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{10} }
 
-type isEosCtx_End interface {
-	isEosCtx_End()
-}
+type isEosCtx_End interface{ isEosCtx_End() }
 
 type EosCtx_GrpcStatusCode struct {
 	GrpcStatusCode uint32 `protobuf:"varint,1,opt,name=grpc_status_code,json=grpcStatusCode,oneof"`
