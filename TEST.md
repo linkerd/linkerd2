@@ -17,7 +17,6 @@ of this repo, unless otherwise indicated by a `cd` command.
 - [Integration tests](#integration-tests)
   - [Prerequisites](#prerequisites)
   - [Running tests](#running-tests)
-  - [Cleanup](#cleanup)
   - [Writing tests](#writing-tests)
 - [Integration tests: proxy-init](#integration-tests-proxy-init)
 
@@ -95,7 +94,14 @@ The `bin/test-run` script requires an absolute path to a Conduit binary to test
 as the first argument. You can optionally pass the namespace where Conduit will
 be installed as the second argument.
 
-For instance, to test your installed version of the `conduit` CLI in the
+```bash
+$ bin/test-run
+usage: test-run /path/to/conduit [namespace]
+```
+
+### Testing against the installed version of the CLI
+
+By way of example, to test your installed version of the `conduit` CLI in the
 "specialtest" namespace, run:
 
 ```bash
@@ -112,13 +118,20 @@ specialtest-get-test      Active    1m
 ...
 ```
 
+To cleanup the namespaces after the test has finished, run:
+
+```bash
+$ bin/test-cleanup specialtest
+```
+
+### Testing against a locally-built version of the CLI
+
 You can also test a locally-built version of the `conduit` CLI. Note, however,
 that this requires that you build the corresponding Conduit docker images and
 publish them to a docker registry that's accessible from the Kubernetes cluster
-where you're planning on running the tests. As a result, local testing mostly
-applies to [minikube](https://github.com/kubernetes/minikube), since you can
-build the images directly into minikube's local docker registry, as described
-below.
+where you're running the tests. As a result, local testing mostly applies to
+[minikube](https://github.com/kubernetes/minikube), since you can build the
+images directly into minikube's local docker registry, as described below.
 
 To test your current branch on minikube, first build all of the Conduit images
 in your minikube environment, by running:
@@ -127,7 +140,7 @@ in your minikube environment, by running:
 $ DOCKER_TRACE=1 bin/mkube bin/docker-build
 ```
 
-That command also outputs the corresponding `conduit` binaries into the
+That command also copies the corresponding `conduit` binaries into the
 `target/cli` directory, and you can use the `bin/conduit` script to load those
 binaries when running tests. To run tests using your local binary, run:
 
@@ -146,12 +159,10 @@ conduit-get-test      Active    3m
 ...
 ```
 
-## Cleanup
-
-To delete all of the test namespaces created while running the tests, run:
+To cleanup the namespaces after the test has finished, run:
 
 ```bash
-$ bin/test-cleanup <conduit-namespace>
+$ bin/test-cleanup conduit
 ```
 
 ## Writing tests
