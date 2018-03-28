@@ -1175,7 +1175,7 @@ const Health = `{
         ]
       },
       "timezone": "",
-      "title": "conduit-health",
+      "title": "Conduit Health",
       "uid": "Og9nanzmk",
       "version": 3
     }
