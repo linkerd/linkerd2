@@ -123,7 +123,7 @@ services:
   simulate-proxy:
     image: golang:1.10.0-alpine3.7
     ports:
-    - 9000-9009:9000-9009
+    - 10000-10009:10000-10009
     volumes:
     - .:/go/src/github.com/runconduit/conduit
     - ~/.kube/config:/kubeconfig:ro
@@ -131,7 +131,6 @@ services:
     - go
     - run
     - /go/src/github.com/runconduit/conduit/controller/script/simulate-proxy/main.go
-    - --metric-addrs=0.0.0.0:9000,0.0.0.0:9001,0.0.0.0:9002,0.0.0.0:9003,0.0.0.0:9004,0.0.0.0:9005,0.0.0.0:9006,0.0.0.0:9007,0.0.0.0:9008,0.0.0.0:9009
+    - --metric-ports=10000-10009
     - --kubeconfig=/kubeconfig
-    - --max-pods=10
     - --sleep=3s
