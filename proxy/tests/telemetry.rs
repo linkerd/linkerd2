@@ -361,10 +361,10 @@ fn metrics_endpoint_inbound_response_latency() {
     // assert the >=1000ms bucket is incremented by our request with 500ms
     // extra latency.
     assert_contains!(scrape,
-        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",status_code=\"200\",le=\"1000\"} 1");
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",classification=\"success\",status_code=\"200\",le=\"1000\"} 1");
     // the histogram's count should be 1.
     assert_contains!(scrape,
-        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",status_code=\"200\"} 1");
+        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",classification=\"success\",status_code=\"200\"} 1");
     // TODO: we're not going to make any assertions about the
     // response_latency_ms_sum stat, since its granularity depends on the actual
     // observed latencies, which may vary a bit. we could make more reliable
@@ -378,15 +378,15 @@ fn metrics_endpoint_inbound_response_latency() {
 
     // request with 40ms extra latency should fall into the 50ms bucket.
     assert_contains!(scrape,
-        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",status_code=\"200\",le=\"50\"} 1");
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",classification=\"success\",status_code=\"200\",le=\"50\"} 1");
     // 1000ms bucket should be incremented as well, since it counts *all*
     // bservations less than or equal to 1000ms, even if they also increment
     // other buckets.
     assert_contains!(scrape,
-        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",status_code=\"200\",le=\"1000\"} 2");
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",classification=\"success\",status_code=\"200\",le=\"1000\"} 2");
     // the histogram's total count should be 2.
     assert_contains!(scrape,
-        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",status_code=\"200\"} 2");
+        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",classification=\"success\",status_code=\"200\"} 2");
 
     info!("client.get(/hi)");
     assert_eq!(client.get("/hi"), "good morning");
@@ -394,13 +394,13 @@ fn metrics_endpoint_inbound_response_latency() {
     let scrape = metrics.get("/metrics");
     // request with 40ms extra latency should fall into the 50ms bucket.
     assert_contains!(scrape,
-        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",status_code=\"200\",le=\"50\"} 2");
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",classification=\"success\",status_code=\"200\",le=\"50\"} 2");
     // 1000ms bucket should be incremented as well.
     assert_contains!(scrape,
-        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",status_code=\"200\",le=\"1000\"} 3");
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",classification=\"success\",status_code=\"200\",le=\"1000\"} 3");
     // the histogram's total count should be 3.
     assert_contains!(scrape,
-        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",status_code=\"200\"} 3");
+        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",classification=\"success\",status_code=\"200\"} 3");
 
     info!("client.get(/hey)");
     assert_eq!(client.get("/hey"), "hello");
@@ -408,13 +408,13 @@ fn metrics_endpoint_inbound_response_latency() {
     let scrape = metrics.get("/metrics");
     // 50ms bucket should be un-changed by the request with 500ms latency.
     assert_contains!(scrape,
-        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",status_code=\"200\",le=\"50\"} 2");
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",classification=\"success\",status_code=\"200\",le=\"50\"} 2");
     // 1000ms bucket should be incremented.
     assert_contains!(scrape,
-        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",status_code=\"200\",le=\"1000\"} 4");
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",classification=\"success\",status_code=\"200\",le=\"1000\"} 4");
     // the histogram's total count should be 4.
     assert_contains!(scrape,
-        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",status_code=\"200\"} 4");
+        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",classification=\"success\",status_code=\"200\"} 4");
 }
 
 // Ignore this test on CI, because our method of adding latency to requests
@@ -450,10 +450,10 @@ fn metrics_endpoint_outbound_response_latency() {
     // assert the >=1000ms bucket is incremented by our request with 500ms
     // extra latency.
     assert_contains!(scrape,
-        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",status_code=\"200\",le=\"1000\"} 1");
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",classification=\"success\",status_code=\"200\",le=\"1000\"} 1");
     // the histogram's count should be 1.
     assert_contains!(scrape,
-        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",status_code=\"200\"} 1");
+        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",classification=\"success\",status_code=\"200\"} 1");
     // TODO: we're not going to make any assertions about the
     // response_latency_ms_sum stat, since its granularity depends on the actual
     // observed latencies, which may vary a bit. we could make more reliable
@@ -467,15 +467,15 @@ fn metrics_endpoint_outbound_response_latency() {
 
     // request with 40ms extra latency should fall into the 50ms bucket.
     assert_contains!(scrape,
-        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",status_code=\"200\",le=\"50\"} 1");
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",classification=\"success\",status_code=\"200\",le=\"50\"} 1");
     // 1000ms bucket should be incremented as well, since it counts *all*
     // bservations less than or equal to 1000ms, even if they also increment
     // other buckets.
     assert_contains!(scrape,
-        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",status_code=\"200\",le=\"1000\"} 2");
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",classification=\"success\",status_code=\"200\",le=\"1000\"} 2");
     // the histogram's total count should be 2.
     assert_contains!(scrape,
-        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",status_code=\"200\"} 2");
+        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",classification=\"success\",status_code=\"200\"} 2");
 
     info!("client.get(/hi)");
     assert_eq!(client.get("/hi"), "good morning");
@@ -483,13 +483,13 @@ fn metrics_endpoint_outbound_response_latency() {
     let scrape = metrics.get("/metrics");
     // request with 40ms extra latency should fall into the 50ms bucket.
     assert_contains!(scrape,
-        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",status_code=\"200\",le=\"50\"} 2");
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",classification=\"success\",status_code=\"200\",le=\"50\"} 2");
     // 1000ms bucket should be incremented as well.
     assert_contains!(scrape,
-        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",status_code=\"200\",le=\"1000\"} 3");
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",classification=\"success\",status_code=\"200\",le=\"1000\"} 3");
     // the histogram's total count should be 3.
     assert_contains!(scrape,
-        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",status_code=\"200\"} 3");
+        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",classification=\"success\",status_code=\"200\"} 3");
 
     info!("client.get(/hey)");
     assert_eq!(client.get("/hey"), "hello");
@@ -497,13 +497,13 @@ fn metrics_endpoint_outbound_response_latency() {
     let scrape = metrics.get("/metrics");
     // 50ms bucket should be un-changed by the request with 500ms latency.
     assert_contains!(scrape,
-        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",status_code=\"200\",le=\"50\"} 2");
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",classification=\"success\",status_code=\"200\",le=\"50\"} 2");
     // 1000ms bucket should be incremented.
     assert_contains!(scrape,
-        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",status_code=\"200\",le=\"1000\"} 4");
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",classification=\"success\",status_code=\"200\",le=\"1000\"} 4");
     // the histogram's total count should be 4.
     assert_contains!(scrape,
-        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",status_code=\"200\"} 4");
+        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",classification=\"success\",status_code=\"200\"} 4");
 }
 
 // https://github.com/runconduit/conduit/issues/613
