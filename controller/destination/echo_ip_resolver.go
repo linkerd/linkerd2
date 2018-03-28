@@ -7,17 +7,17 @@ import (
 	"github.com/runconduit/conduit/controller/util"
 )
 
-type echoIpResolver struct{}
+type echoIpV4Resolver struct{}
 
-func (i *echoIpResolver) canResolve(host string, port int) (bool, error) {
+func (i *echoIpV4Resolver) canResolve(host string, port int) (bool, error) {
 	isIP, _ := isIPAddress(host)
 	return isIP, nil
 }
 
-func (i *echoIpResolver) streamResolution(host string, port int, listener updateListener) error {
+func (i *echoIpV4Resolver) streamResolution(host string, port int, listener updateListener) error {
 	isIP, ip := isIPAddress(host)
 	if !isIP {
-		return fmt.Errorf("host [%s] isn'' an IP address", host)
+		return fmt.Errorf("host [%s] isn't an IP address", host)
 	}
 
 	address := common.TcpAddress{

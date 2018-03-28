@@ -17,8 +17,8 @@ var containsAlphaRegexp = regexp.MustCompile("[a-zA-Z]")
 
 type k8sResolver struct {
 	k8sDNSZoneLabels []string
-	endpointsWatcher *k8s.EndpointsWatcher
-	dnsWatcher       *DnsWatcher
+	endpointsWatcher k8s.EndpointsWatcher
+	dnsWatcher       DnsWatcher
 }
 
 func (k *k8sResolver) canResolve(host string, port int) (bool, error) {
@@ -27,7 +27,7 @@ func (k *k8sResolver) canResolve(host string, port int) (bool, error) {
 		return false, err
 	}
 
-	return name == nil, nil
+	return name != nil, nil
 }
 
 func (k *k8sResolver) streamResolution(host string, port int, listener updateListener) error {

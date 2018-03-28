@@ -5,15 +5,35 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/pkg/errors"
+
 	common "github.com/runconduit/conduit/controller/gen/common"
 	pb "github.com/runconduit/conduit/controller/gen/proxy/destination"
 	"github.com/runconduit/conduit/controller/k8s"
 	"google.golang.org/grpc/metadata"
 )
 
+type mockDestination_GetServer struct {
+	errorToReturn   error
+	contextToReturn context.Context
+	updatesReceived []*pb.Update
+}
+
+func (m *mockDestination_GetServer) Send(update *pb.Update) error {
+	m.updatesReceived = append(m.updatesReceived, update)
+	return m.errorToReturn
+}
+
+func (m *mockDestination_GetServer) SetHeader(metadata.MD) error  { return m.errorToReturn }
+func (m *mockDestination_GetServer) SendHeader(metadata.MD) error { return m.errorToReturn }
+func (m *mockDestination_GetServer) SetTrailer(metadata.MD)       {}
+func (m *mockDestination_GetServer) Context() context.Context     { return m.contextToReturn }
+func (m *mockDestination_GetServer) SendMsg(x interface{}) error  { return m.errorToReturn }
+func (m *mockDestination_GetServer) RecvMsg(x interface{}) error  { return m.errorToReturn }
+
 func TestBuildResolversList(t *testing.T) {
-	endpointsWatcher := &k8s.EndpointsWatcher{}
-	dnsWatcher := &DnsWatcher{}
+	endpointsWatcher := &k8s.MockEndpointsWatcher{}
+	dnsWatcher := &mockDnsWatcher{}
 
 	t.Run("Doesn't build a list if Kubernetes DNS zone isnt valid", func(t *testing.T) {
 		invalidK8sDNSZones := []string{"1", "-a", "a-", "-"}
@@ -37,7 +57,7 @@ func TestBuildResolversList(t *testing.T) {
 			t.Fatalf("Expecting [%d] resolvers, got [%d]: %v", expectedNumResolvers, actualNumResolvers, resolvers)
 		}
 
-		if _, ok := resolvers[0].(*echoIpResolver); !ok {
+		if _, ok := resolvers[0].(*echoIpV4Resolver); !ok {
 			t.Fatalf("Expecting first resolver to be echo IP, got [%+v]. List: %v", resolvers[0], resolvers)
 		}
 
@@ -46,24 +66,6 @@ func TestBuildResolversList(t *testing.T) {
 		}
 	})
 }
-
-type mockDestination_GetServer struct {
-	errorToReturn   error
-	contextToReturn context.Context
-	updatesReceived []*pb.Update
-}
-
-func (m *mockDestination_GetServer) Send(update *pb.Update) error {
-	m.updatesReceived = append(m.updatesReceived, update)
-	return m.errorToReturn
-}
-
-func (m *mockDestination_GetServer) SetHeader(metadata.MD) error  { return m.errorToReturn }
-func (m *mockDestination_GetServer) SendHeader(metadata.MD) error { return m.errorToReturn }
-func (m *mockDestination_GetServer) SetTrailer(metadata.MD)       {}
-func (m *mockDestination_GetServer) Context() context.Context     { return m.contextToReturn }
-func (m *mockDestination_GetServer) SendMsg(x interface{}) error  { return m.errorToReturn }
-func (m *mockDestination_GetServer) RecvMsg(x interface{}) error  { return m.errorToReturn }
 
 func TestEndpointListener(t *testing.T) {
 
@@ -137,6 +139,84 @@ func TestEndpointListener(t *testing.T) {
 
 		if !c {
 			t.Fatalf("Expected function to be completed after the cancel()")
+		}
+	})
+}
+
+type mockStreamingDestinationResolver struct {
+	hostReceived             string
+	portReceived             int
+	listenerReceived         updateListener
+	canResolveToReturn       bool
+	errToReturnForCanResolve error
+	errToReturnForResolution error
+}
+
+func (m *mockStreamingDestinationResolver) canResolve(host string, port int) (bool, error) {
+	return m.canResolveToReturn, m.errToReturnForCanResolve
+}
+
+func (m *mockStreamingDestinationResolver) streamResolution(host string, port int, listener updateListener) error {
+	m.hostReceived = host
+	m.portReceived = port
+	m.listenerReceived = listener
+	return m.errToReturnForResolution
+}
+
+func TestStreamResolutionUsingCorrectResolverFor(t *testing.T) {
+	stream := &mockDestination_GetServer{}
+	host := "something"
+	port := 666
+
+	t.Run("Uses first resolve rto say it can resolve", func(t *testing.T) {
+		no := &mockStreamingDestinationResolver{canResolveToReturn: false}
+		yes := &mockStreamingDestinationResolver{canResolveToReturn: true}
+		otherYes := &mockStreamingDestinationResolver{canResolveToReturn: true}
+
+		resolvers := []streamingDestinationResolver{no, no, yes, no, no, otherYes}
+
+		err := streamResolutionUsingCorrectResolverFor(resolvers, host, port, stream)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		if no.listenerReceived != nil {
+			t.Fatalf("Expected handler [%+v] to not be called, but it was", no)
+		}
+
+		if otherYes.listenerReceived != nil {
+			t.Fatalf("Expected handler [%+v] to not be called, but it was", otherYes)
+		}
+
+		if yes.listenerReceived == nil || yes.portReceived != port || yes.hostReceived != host {
+			t.Fatalf("Expected resolved [%+v] to have been called with stream [%v] host [%s] and port [%d]", yes, stream, host, port)
+		}
+	})
+
+	t.Run("Returns error if no resolver can resolve", func(t *testing.T) {
+		no := &mockStreamingDestinationResolver{canResolveToReturn: false}
+
+		resolvers := []streamingDestinationResolver{no, no, no, no}
+
+		err := streamResolutionUsingCorrectResolverFor(resolvers, host, port, stream)
+
+		if err == nil {
+			t.Fatalf("Expecting error, got nothing")
+		}
+	})
+
+	t.Run("Returns error if no resolver returned error", func(t *testing.T) {
+		errorOnCanResolve := &mockStreamingDestinationResolver{canResolveToReturn: true, errToReturnForCanResolve: errors.New("expected for can resolve")}
+		errorOnResolving := &mockStreamingDestinationResolver{canResolveToReturn: true, errToReturnForResolution: errors.New("expected for resolving")}
+
+		err := streamResolutionUsingCorrectResolverFor([]streamingDestinationResolver{errorOnCanResolve}, host, port, stream)
+		if err == nil {
+			t.Fatalf("Expecting error, got nothing")
+		}
+
+		err = streamResolutionUsingCorrectResolverFor([]streamingDestinationResolver{errorOnResolving}, host, port, stream)
+		if err == nil {
+			t.Fatalf("Expecting error, got nothing")
 		}
 	})
 }

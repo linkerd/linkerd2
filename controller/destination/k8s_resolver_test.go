@@ -1,11 +1,139 @@
 package destination
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strings"
 	"testing"
+
+	"k8s.io/api/core/v1"
+
+	"github.com/runconduit/conduit/controller/k8s"
 )
+
+func TestK8sResolver(t *testing.T) {
+	someKubernetesDNSZone, err := splitDNSName("some.namespace")
+
+	t.Run("can resolve addresses that look like kubernetes internal names", func(t *testing.T) {
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		somePort := 999
+		resolvableServiceNames := []string{
+			"name1.ns.svc.some.namespace",
+			"name2.ns.svc.some.namespace.",
+			"name3.ns.svc.cluster.local",
+			"name4.ns.svc.cluster.local."}
+		unresolvableServiceNames := []string{"name", "name.ns.svc.other.local"}
+
+		resolver := k8sResolver{k8sDNSZoneLabels: someKubernetesDNSZone}
+
+		for _, name := range resolvableServiceNames {
+			canResolve, err := resolver.canResolve(name, somePort)
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+
+			if !canResolve {
+				t.Fatalf("Expected k8s resolver to resolve name [%s] but it didnt", name)
+			}
+		}
+
+		for _, name := range unresolvableServiceNames {
+			canResolve, err := resolver.canResolve(name, somePort)
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+
+			if canResolve {
+				t.Fatalf("Expected k8s resolver to NOT resolve name [%s] but it did", name)
+			}
+		}
+
+	})
+
+	t.Run("subscribes the listener to resolve local services", func(t *testing.T) {
+		mockEndpointsWatcher := &k8s.MockEndpointsWatcher{
+			ExistsToReturn: true,
+			ServiceToReturn: &v1.Service{
+				Spec: v1.ServiceSpec{ExternalName: "sc", Type: v1.ServiceTypeLoadBalancer},
+			},
+		}
+
+		resolver := k8sResolver{
+			k8sDNSZoneLabels: someKubernetesDNSZone,
+			endpointsWatcher: mockEndpointsWatcher,
+			dnsWatcher:       &mockDnsWatcher{},
+		}
+
+		host := "name1.ns.svc.some.namespace"
+		port := 8989
+
+		context, cancelFn := context.WithCancel(context.TODO())
+		listener := &collectUpdateListener{
+			context: context,
+		}
+
+		done := make(chan bool, 1)
+		go func() {
+			err := resolver.streamResolution(host, port, listener)
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+			done <- true
+		}()
+		cancelFn()
+		<-done
+
+		if mockEndpointsWatcher.ListenerSubscribed != listener || mockEndpointsWatcher.ListenerUnsubscribed != listener {
+			t.Fatalf("Expected listener [%v] to have been subscribed then unsubscribed to endpoint watcher, got: %+v", listener, mockEndpointsWatcher)
+		}
+	})
+
+	t.Run("subscribes the listener to resolve external services", func(t *testing.T) {
+		mockEndpointsWatcher := &k8s.MockEndpointsWatcher{
+			ExistsToReturn: true,
+			ServiceToReturn: &v1.Service{
+				Spec: v1.ServiceSpec{ExternalName: "sc", Type: v1.ServiceTypeExternalName},
+			},
+		}
+
+		mockDnsWatcher := &mockDnsWatcher{}
+
+		resolver := k8sResolver{
+			k8sDNSZoneLabels: someKubernetesDNSZone,
+			endpointsWatcher: mockEndpointsWatcher,
+			dnsWatcher:       mockDnsWatcher,
+		}
+
+		host := "name32.ns.svc.some.namespace"
+		port := 9090
+
+		context, cancelFn := context.WithCancel(context.TODO())
+		listener := &collectUpdateListener{
+			context: context,
+		}
+
+		done := make(chan bool, 1)
+		go func() {
+			err := resolver.streamResolution(host, port, listener)
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+			done <- true
+		}()
+		cancelFn()
+		<-done
+
+		if mockDnsWatcher.ListenerSubscribed != listener || mockDnsWatcher.ListenerUnsubscribed != listener {
+			t.Fatalf("Expected listener [%v] to have been subscribed then unsubscribed to endpoint watcher, got: %+v", listener, mockEndpointsWatcher)
+		}
+	})
+
+	//TODO: Resolve name using DNS similar to Kubernetes' ClusterFirst
+}
 
 func TestLocalKubernetesServiceIdFromDNSName(t *testing.T) {
 

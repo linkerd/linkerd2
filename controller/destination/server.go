@@ -104,14 +104,13 @@ func streamResolutionUsingCorrectResolverFor(resolvers []streamingDestinationRes
 			return fmt.Errorf("resolver [%+v] found error resolving host [%s] port[%d]: %v", resolver, host, port, err)
 		}
 		if resolverCanResolve {
-			resolver.streamResolution(host, port, listener)
-			break
+			return resolver.streamResolution(host, port, listener)
 		}
 	}
-	return nil
+	return fmt.Errorf("cannot find resolver for host [%s] port [%d] amongst: %v", host, port, listener)
 }
 
-func buildResolversList(k8sDNSZone string, endpointsWatcher *k8s.EndpointsWatcher, dnsWatcher *DnsWatcher) ([]streamingDestinationResolver, error) {
+func buildResolversList(k8sDNSZone string, endpointsWatcher k8s.EndpointsWatcher, dnsWatcher DnsWatcher) ([]streamingDestinationResolver, error) {
 	var k8sDNSZoneLabels []string
 	if k8sDNSZone == "" {
 		k8sDNSZoneLabels = []string{}
@@ -123,7 +122,7 @@ func buildResolversList(k8sDNSZone string, endpointsWatcher *k8s.EndpointsWatche
 		}
 	}
 
-	ipResolver := &echoIpResolver{}
+	ipResolver := &echoIpV4Resolver{}
 
 	k8sResolver := &k8sResolver{k8sDNSZoneLabels: k8sDNSZoneLabels,
 		endpointsWatcher: endpointsWatcher,

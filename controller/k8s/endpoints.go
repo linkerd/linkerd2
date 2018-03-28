@@ -27,7 +27,15 @@ type EndpointsListener interface {
 
 /// EndpointsWatcher ///
 
-type EndpointsWatcher struct {
+type EndpointsWatcher interface {
+	GetService(service string) (*v1.Service, bool, error)
+	Subscribe(service string, port uint32, listener EndpointsListener) error
+	Unsubscribe(service string, port uint32, listener EndpointsListener) error
+	Run() error
+	Stop()
+}
+
+type endpointsWatcher struct {
 	endpointInformer informer
 	serviceInformer  informer
 	// a map of service -> service port -> servicePort
@@ -42,12 +50,12 @@ type EndpointsWatcher struct {
 // cluster.  Listeners can subscribe to a particular service and port and
 // EndpointsWatcher will publish the address set and all future changes for
 // that service:port.
-func NewEndpointsWatcher(clientset *kubernetes.Clientset) *EndpointsWatcher {
+func NewEndpointsWatcher(clientset *kubernetes.Clientset) EndpointsWatcher {
 
 	servicePorts := make(map[string]*map[uint32]*servicePort)
 	mutex := sync.RWMutex{}
 
-	return &EndpointsWatcher{
+	return &endpointsWatcher{
 		endpointInformer: newEndpointInformer(clientset, &servicePorts, &mutex),
 		serviceInformer:  newServiceInformer(clientset, &servicePorts, &mutex),
 		servicePorts:     &servicePorts,
@@ -55,7 +63,7 @@ func NewEndpointsWatcher(clientset *kubernetes.Clientset) *EndpointsWatcher {
 	}
 }
 
-func (e *EndpointsWatcher) Run() error {
+func (e *endpointsWatcher) Run() error {
 	err := e.endpointInformer.run()
 	if err != nil {
 		return err
@@ -63,7 +71,7 @@ func (e *EndpointsWatcher) Run() error {
 	return e.serviceInformer.run()
 }
 
-func (e *EndpointsWatcher) Stop() {
+func (e *endpointsWatcher) Stop() {
 	e.endpointInformer.stop()
 	e.serviceInformer.stop()
 }
@@ -71,7 +79,7 @@ func (e *EndpointsWatcher) Stop() {
 // Subscribe to a service and service port.
 // The provided listener will be updated each time the address set for the
 // given service port is changed.
-func (e *EndpointsWatcher) Subscribe(service string, port uint32, listener EndpointsListener) error {
+func (e *endpointsWatcher) Subscribe(service string, port uint32, listener EndpointsListener) error {
 
 	log.Printf("Establishing watch on endpoint %s:%d", service, port)
 
@@ -99,7 +107,7 @@ func (e *EndpointsWatcher) Subscribe(service string, port uint32, listener Endpo
 	return nil
 }
 
-func (e *EndpointsWatcher) Unsubscribe(service string, port uint32, listener EndpointsListener) error {
+func (e *endpointsWatcher) Unsubscribe(service string, port uint32, listener EndpointsListener) error {
 
 	log.Printf("Stopping watch on endpoint %s:%d", service, port)
 
@@ -120,7 +128,7 @@ func (e *EndpointsWatcher) Unsubscribe(service string, port uint32, listener End
 	return nil
 }
 
-func (e *EndpointsWatcher) GetService(service string) (*v1.Service, bool, error) {
+func (e *endpointsWatcher) GetService(service string) (*v1.Service, bool, error) {
 	obj, exists, err := e.serviceInformer.store.GetByKey(service)
 	if err != nil || !exists {
 		return nil, exists, err
@@ -296,7 +304,7 @@ type servicePort struct {
 	mutex sync.Mutex
 }
 
-func newServicePort(service string, port uint32, e *EndpointsWatcher) (*servicePort, error) {
+func newServicePort(service string, port uint32, e *endpointsWatcher) (*servicePort, error) {
 	endpoints := &v1.Endpoints{}
 	obj, exists, err := e.endpointInformer.store.GetByKey(service)
 	if err != nil {

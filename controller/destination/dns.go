@@ -17,18 +17,23 @@ type DnsListener interface {
 	Update(add []common.TcpAddress, remove []common.TcpAddress)
 }
 
-type DnsWatcher struct {
+type DnsWatcher interface {
+	Subscribe(host string, listener DnsListener) error
+	Unsubscribe(host string, listener DnsListener) error
+}
+
+type dnsWatcher struct {
 	hosts map[string]*informer
 	mutex sync.Mutex
 }
 
-func NewDnsWatcher() *DnsWatcher {
-	return &DnsWatcher{
+func NewDnsWatcher() DnsWatcher {
+	return &dnsWatcher{
 		hosts: make(map[string]*informer),
 	}
 }
 
-func (w *DnsWatcher) Subscribe(host string, listener DnsListener) error {
+func (w *dnsWatcher) Subscribe(host string, listener DnsListener) error {
 	log.Printf("Establishing dns watch on host %s", host)
 
 	w.mutex.Lock()
@@ -46,7 +51,7 @@ func (w *DnsWatcher) Subscribe(host string, listener DnsListener) error {
 	return nil
 }
 
-func (w *DnsWatcher) Unsubscribe(host string, listener DnsListener) error {
+func (w *dnsWatcher) Unsubscribe(host string, listener DnsListener) error {
 	log.Printf("Stopping dns watch on host %s", host)
 
 	w.mutex.Lock()
