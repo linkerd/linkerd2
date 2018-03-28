@@ -4,7 +4,6 @@ use std::time::{Duration, Instant};
 
 use bytes::Bytes;
 use futures::{future, Async, Future, Poll, Stream};
-use h2;
 use http;
 use tokio_core::reactor::{
     Handle,
@@ -90,7 +89,7 @@ impl Background {
 
             let h2_client = tower_h2::client::Connect::new(
                 connect,
-                h2::client::Builder::default(),
+                ::default_h2_client_builder(),
                 ::logging::context_executor(ctx, executor.clone()),
             );
 

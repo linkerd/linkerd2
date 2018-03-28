@@ -97,10 +97,7 @@ where
                 }
             },
             bind::Protocol::Http2 => {
-                let mut h2_builder = h2::client::Builder::default();
-                // h2 currently doesn't handle PUSH_PROMISE that well, so we just
-                // disable it for now.
-                h2_builder.enable_push(false);
+                let h2_builder = ::default_h2_client_builder();
                 let h2 = tower_h2::client::Connect::new(connect, h2_builder, executor);
 
                 Client {
