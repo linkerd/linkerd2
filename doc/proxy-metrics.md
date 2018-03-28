@@ -38,6 +38,10 @@ request headers are received to when the response stream has completed.
 
 Each of these metrics has the following labels:
 
+* `classification`: `success` if the response was successful, or `failure` if
+                    a server error occurred. This classification is based on
+                    the gRPC status code if one is present, and on the HTTP
+                    status code otherwise. Only applicable to response metrics.
 * `direction`: `inbound` if the request originated from outside of the pod,
                `outbound` if the request originated from inside of the pod.
 * `authority`: The value of the `:authority` (HTTP/2) or `Host` (HTTP/1.1)
