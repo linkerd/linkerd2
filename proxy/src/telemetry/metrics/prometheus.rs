@@ -94,7 +94,13 @@ struct RequestLabels {
     authority: String,
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+enum Classification {
+    Success,
+    Failure,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 struct ResponseLabels {
 
     request_labels: RequestLabels,
@@ -105,6 +111,9 @@ struct ResponseLabels {
     /// The value of the grpc-status trailer. Only applicable to response
     /// metrics for gRPC responses.
     grpc_status_code: Option<u32>,
+
+    /// Was the response a success or failure?
+    classification: Classification,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -424,7 +433,7 @@ impl Aggregate {
 
             Event::StreamResponseFail(ref res, ref fail) => {
                 // TODO: do we care about the failure's error code here?
-                let labels = Arc::new(ResponseLabels::new(res, None));
+                let labels = Arc::new(ResponseLabels::fail(res));
                 self.update(|metrics| {
                     *metrics.response_total(&labels).incr();
                     *metrics.response_duration(&labels) += fail.since_response_open;
@@ -561,12 +570,28 @@ impl fmt::Display for PodOwner {
 // ===== impl ResponseLabels =====
 
 impl ResponseLabels {
-    fn new(rsp: &ctx::http::Response,grpc_status_code: Option<u32>) -> Self {
+
+    fn new(rsp: &ctx::http::Response, grpc_status_code: Option<u32>) -> Self {
         let request_labels = RequestLabels::new(&rsp.request);
+        let classification = Classification::classify(rsp, grpc_status_code);
         ResponseLabels {
             request_labels,
             status_code: rsp.status.as_u16(),
             grpc_status_code,
+            classification,
+        }
+    }
+
+    /// Called when the response stream has failed.
+    fn fail(rsp: &ctx::http::Response) -> Self {
+        let request_labels = RequestLabels::new(&rsp.request);
+        ResponseLabels {
+            request_labels,
+            // TODO: is it correct to always treat this as 500?
+            // Alternatively, the status_code field could be made optional...
+            status_code: 500,
+            grpc_status_code: None,
+            classification: Classification::Failure,
         }
     }
 }
@@ -574,8 +599,9 @@ impl ResponseLabels {
 impl fmt::Display for ResponseLabels {
 
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{},status_code=\"{}\"",
+        write!(f, "{},{},status_code=\"{}\"",
             self.request_labels,
+            self.classification,
             self.status_code
         )?;
         if let Some(ref status) = self.grpc_status_code {
@@ -583,6 +609,46 @@ impl fmt::Display for ResponseLabels {
         }
 
         Ok(())
+    }
+
+}
+
+// ===== impl Classification =====
+
+impl Classification {
+
+    fn grpc_status(code: u32) -> Self {
+        if code == 0 {
+            // XXX: are gRPC status codes indicating client side errors
+            //      "successes" or "failures?
+            Classification::Success
+        } else {
+            Classification::Failure
+        }
+    }
+
+    fn http_status(status: &http::StatusCode) -> Self {
+        if status.is_server_error() {
+            Classification::Failure
+        } else {
+            Classification::Success
+        }
+    }
+
+    fn classify(rsp: &ctx::http::Response, grpc_status: Option<u32>) -> Self {
+        grpc_status.map(Classification::grpc_status)
+            .unwrap_or_else(|| Classification::http_status(&rsp.status))
+    }
+
+}
+
+impl fmt::Display for Classification {
+
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &Classification::Success => f.pad("classification=\"success\""),
+            &Classification::Failure => f.pad("classification=\"failure\""),
+        }
     }
 
 }
