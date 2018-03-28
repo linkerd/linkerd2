@@ -40,6 +40,10 @@ type proxyMetricCollectors struct {
 	responseLatencyMs *prom.HistogramVec
 }
 
+const (
+	successRate = 0.9
+)
+
 var (
 	// for reference: https://github.com/runconduit/conduit/blob/master/doc/proxy-metrics.md#labels
 	labels = []string{
@@ -166,28 +170,28 @@ func (s *simulatedProxy) generateProxyTraffic() {
 	for {
 		inboundRandomCount := int(rand.Float64() * 10)
 		outboundRandomCount := int(rand.Float64() * 10)
-		deployment := getRandomDeployment(s.deployments, map[string]struct{}{s.podOwner: {}})
+		for _, deployment := range s.deployments {
+			//split the deployment name into ["namespace", "deployment"]
+			destinationDeploymentName := strings.Split(deployment, "/")[1]
 
-		//split the deployment name into ["namespace", "deployment"]
-		destinationDeploymentName := strings.Split(deployment, "/")[1]
+			s.requestTotals.
+				With(overrideDefaultLabels(s.newConduitLabel(destinationDeploymentName, false))).
+				Add(float64(inboundRandomCount))
 
-		s.requestTotals.
-			With(overrideDefaultLabels(s.newConduitLabel(destinationDeploymentName, false))).
-			Add(float64(inboundRandomCount))
+			s.responseTotals.
+				With(overrideDefaultLabels(s.newConduitLabel(destinationDeploymentName, true))).
+				Add(float64(outboundRandomCount))
 
-		s.responseTotals.
-			With(overrideDefaultLabels(s.newConduitLabel(destinationDeploymentName, true))).
-			Add(float64(outboundRandomCount))
+			observeHistogramVec(
+				randomLatencies(randomCount()),
+				s.responseLatencyMs,
+				overrideDefaultLabels(s.newConduitLabel(destinationDeploymentName, true)))
 
-		observeHistogramVec(
-			randomLatencies(randomCount()),
-			s.responseLatencyMs,
-			overrideDefaultLabels(s.newConduitLabel(destinationDeploymentName, true)))
-
-		observeHistogramVec(
-			randomLatencies(randomCount()),
-			s.requestDurationMs,
-			overrideDefaultLabels(s.newConduitLabel(destinationDeploymentName, false)))
+			observeHistogramVec(
+				randomLatencies(randomCount()),
+				s.requestDurationMs,
+				overrideDefaultLabels(s.newConduitLabel(destinationDeploymentName, false)))
+		}
 
 		time.Sleep(s.sleep)
 	}
@@ -269,27 +273,34 @@ func randomLatencies(count uint32) []uint32 {
 }
 
 func randomGrpcResponseCode() uint32 {
-	return uint32(grpcResponseCodes[rand.Intn(len(grpcResponseCodes))])
+	code := codes.OK
+	if rand.Float32() > successRate {
+		code = grpcResponseCodes[rand.Intn(len(grpcResponseCodes))]
+	}
+	return uint32(code)
 }
 
 func randomHttpResponseCode() uint32 {
-	return uint32(httpResponseCodes[rand.Intn(len(httpResponseCodes))])
+	code := http.StatusOK
+	if rand.Float32() > successRate {
+		code = httpResponseCodes[rand.Intn(len(httpResponseCodes))]
+	}
+	return uint32(code)
 }
 
 func podIndexFunc(obj interface{}) ([]string, error) {
 	return nil, nil
 }
 
-func getRandomDeployment(deployments []string, excludeDeployments map[string]struct{}) string {
-	filteredDeployments := make([]string, 0)
+func filterDeployments(deployments []string, excludeDeployments map[string]struct{}) []string {
+	filteredDeployments := []string{}
 
 	for _, deployment := range deployments {
 		if _, ok := excludeDeployments[deployment]; !ok {
 			filteredDeployments = append(filteredDeployments, deployment)
 		}
 	}
-	return filteredDeployments[rand.Intn(len(filteredDeployments))]
-
+	return filteredDeployments
 }
 
 func newSimulatedProxy(podOwner string, deployments []string, sleep *time.Duration) *simulatedProxy {
@@ -408,13 +419,16 @@ func main() {
 	stopCh := make(chan os.Signal)
 	signal.Notify(stopCh, os.Interrupt, os.Kill)
 
-	excludedDeployments := map[string]struct{}{}
+	ownedDeployments := map[string]struct{}{}
 
 	for _, addr := range strings.Split(*metricsAddrs, ",") {
-		randomPodOwner := getRandomDeployment(deployments, excludedDeployments)
-		excludedDeployments[randomPodOwner] = struct{}{}
+		unowned := filterDeployments(deployments, ownedDeployments)
+		randomPodOwner := unowned[rand.Intn(len(unowned))]
+		ownedDeployments[randomPodOwner] = struct{}{}
 
-		proxy := newSimulatedProxy(randomPodOwner, deployments, sleep)
+		dstDeployments := filterDeployments(deployments, map[string]struct{}{randomPodOwner: {}})
+
+		proxy := newSimulatedProxy(randomPodOwner, dstDeployments, sleep)
 		server := &http.Server{
 			Addr:    addr,
 			Handler: promhttp.HandlerFor(proxy.registerer, promhttp.HandlerOpts{}),
