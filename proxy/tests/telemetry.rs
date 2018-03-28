@@ -330,6 +330,128 @@ fn metrics_endpoint_outbound_request_count() {
 
 }
 
+mod response_classification {
+    use super::support::*;
+
+    const REQ_STATUS_HEADER: &'static str = "x-test-status-requested";
+    const REQ_GRPC_STATUS_HEADER: &'static str = "x-test-grpc-status-requested";
+
+    const STATUSES: [http::StatusCode; 6] = [
+        http::StatusCode::OK,
+        http::StatusCode::NOT_MODIFIED,
+        http::StatusCode::BAD_REQUEST,
+        http::StatusCode::IM_A_TEAPOT,
+        http::StatusCode::GATEWAY_TIMEOUT,
+        http::StatusCode::INTERNAL_SERVER_ERROR,
+    ];
+
+
+    fn expected_metric(status: &http::StatusCode, direction: &str) -> String {
+        format!(
+            "response_total{{authority=\"tele.test.svc.cluster.local\",direction=\"{}\",classification=\"{}\",status_code=\"{}\"}} 1",
+            direction,
+            if status.is_server_error() { "failure" } else { "success" },
+            status.as_u16(),
+        )
+    }
+
+    fn make_test_server() -> server::Server {
+        fn parse_header(headers: &http::HeaderMap, which: &str)
+            -> Option<http::StatusCode>
+        {
+            headers.get(which)
+                .map(|val| {
+                    val.to_str()
+                        .expect("requested status should be ascii")
+                        .parse::<http::StatusCode>()
+                        .expect("requested status should be numbers")
+                })
+        }
+        info!("running test server");
+        server::new()
+            .route_fn("/", move |req| {
+                let headers = req.headers();
+                let status = parse_header(headers, REQ_STATUS_HEADER)
+                    .unwrap_or(http::StatusCode::OK);
+                let grpc_status = parse_header(headers, REQ_GRPC_STATUS_HEADER);
+                let mut rsp = if let Some(_grpc_status) = grpc_status {
+                    // TODO: tests for grpc statuses
+                    unimplemented!()
+                } else {
+                    Response::new("".into())
+                };
+                *rsp.status_mut() = status;
+                rsp
+            })
+    }
+
+    // https://github.com/runconduit/conduit/issues/613
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn inbound_http() {
+        let _ = env_logger::try_init();
+        let srv = make_test_server().run();
+        let ctrl = controller::new();
+        let proxy = proxy::new()
+            .controller(ctrl.run())
+            .inbound(srv)
+            .metrics_flush_interval(Duration::from_millis(500))
+            .run();
+        let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
+        let metrics = client::http1(proxy.metrics, "localhost");
+
+        for (i, status) in STATUSES.iter().enumerate() {
+            let request = client.request(
+                client.request_builder("/")
+                    .header(REQ_STATUS_HEADER, status.as_str())
+                    .method("GET")
+            );
+            assert_eq!(&request.status(), status);
+
+            let scrape = metrics.get("/metrics");
+            for status in &STATUSES[0..i] {
+                // assert that the current status code is incremented, *and* that
+                // all previous requests are *not* incremented.
+                assert_contains!(scrape, &expected_metric(status, "inbound"))
+            }
+        }
+    }
+
+    // https://github.com/runconduit/conduit/issues/613
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn outbound_http() {
+        let _ = env_logger::try_init();
+        let srv = make_test_server().run();
+        let ctrl = controller::new()
+            .destination("tele.test.svc.cluster.local", srv.addr)
+            .run();
+        let proxy = proxy::new()
+            .controller(ctrl)
+            .outbound(srv)
+            .metrics_flush_interval(Duration::from_millis(500))
+            .run();
+        let client = client::new(proxy.outbound, "tele.test.svc.cluster.local");
+        let metrics = client::http1(proxy.metrics, "localhost");
+
+        for (i, status) in STATUSES.iter().enumerate() {
+            let request = client.request(
+                client.request_builder("/")
+                    .header(REQ_STATUS_HEADER, status.as_str())
+                    .method("GET")
+            );
+            assert_eq!(&request.status(), status);
+
+            let scrape = metrics.get("/metrics");
+            for status in &STATUSES[0..i] {
+                // assert that the current status code is incremented, *and* that
+                // all previous requests are *not* incremented.
+                assert_contains!(scrape, &expected_metric(status, "outbound"))
+            }
+        }
+    }
+}
+
 // Ignore this test on CI, because our method of adding latency to requests
 // (calling `thread::sleep`) is likely to be flakey on Travis.
 // Eventually, we can add some kind of mock timer system for simulating latency
