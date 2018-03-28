@@ -14,11 +14,9 @@ import (
 	"google.golang.org/grpc"
 )
 
-type (
-	server struct {
-		resolver *destinationResolver
-	}
-)
+type server struct {
+	resolvers []streamingDestinationResolver
+}
 
 // The Destination service serves service discovery information to the proxy.
 // This implementation supports the "k8s" destination scheme and expects
@@ -44,13 +42,13 @@ func NewServer(addr, kubeconfig string, k8sDNSZone string, done chan struct{}) (
 
 	dnsWatcher := NewDnsWatcher()
 
-	resolver, err := newDestinationResolver(k8sDNSZone, endpointsWatcher, dnsWatcher)
+	resolver, err := buildResolversList(k8sDNSZone, endpointsWatcher, dnsWatcher)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	srv := server{
-		resolver: resolver,
+		resolvers: resolver,
 	}
 
 	lis, err := net.Listen("tcp", addr)
@@ -94,6 +92,107 @@ func (s *server) Get(dest *common.Destination, stream pb.Destination_GetServer) 
 		}
 	}
 
+	return streamResolutionUsingCorrectResolverFor(s.resolvers, host, port, stream)
+}
+
+func streamResolutionUsingCorrectResolverFor(resolvers []streamingDestinationResolver, host string, port int, stream pb.Destination_GetServer) error {
 	listener := &endpointListener{stream: stream}
-	return s.resolver.StreamResolutionFor(host, port, listener)
+
+	for _, resolver := range resolvers {
+		resolverCanResolve, err := resolver.canResolve(host, port)
+		if err != nil {
+			return fmt.Errorf("resolver [%+v] found error resolving host [%s] port[%d]: %v", resolver, host, port, err)
+		}
+		if resolverCanResolve {
+			resolver.streamResolution(host, port, listener)
+			break
+		}
+	}
+	return nil
+}
+
+func buildResolversList(k8sDNSZone string, endpointsWatcher *k8s.EndpointsWatcher, dnsWatcher *DnsWatcher) ([]streamingDestinationResolver, error) {
+	var k8sDNSZoneLabels []string
+	if k8sDNSZone == "" {
+		k8sDNSZoneLabels = []string{}
+	} else {
+		var err error
+		k8sDNSZoneLabels, err = splitDNSName(k8sDNSZone)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	ipResolver := &echoIpResolver{}
+
+	k8sResolver := &k8sResolver{k8sDNSZoneLabels: k8sDNSZoneLabels,
+		endpointsWatcher: endpointsWatcher,
+		dnsWatcher:       dnsWatcher,
+	}
+
+	resolvers := []streamingDestinationResolver{ipResolver, k8sResolver}
+	return resolvers, nil
+}
+
+type endpointListener struct {
+	stream pb.Destination_GetServer
+}
+
+func (listener *endpointListener) Done() <-chan struct{} {
+	return listener.stream.Context().Done()
+}
+
+func (listener *endpointListener) Update(add []common.TcpAddress, remove []common.TcpAddress) {
+	if len(add) > 0 {
+		update := &pb.Update{
+			Update: &pb.Update_Add{
+				Add: toWeightedAddrSet(add),
+			},
+		}
+		err := listener.stream.Send(update)
+		if err != nil {
+			log.Error(err)
+		}
+	}
+	if len(remove) > 0 {
+		update := &pb.Update{
+			Update: &pb.Update_Remove{
+				Remove: toAddrSet(remove),
+			},
+		}
+		err := listener.stream.Send(update)
+		if err != nil {
+			log.Error(err)
+		}
+	}
+}
+
+func (listener *endpointListener) NoEndpoints(exists bool) {
+	update := &pb.Update{
+		Update: &pb.Update_NoEndpoints{
+			NoEndpoints: &pb.NoEndpoints{
+				Exists: exists,
+			},
+		},
+	}
+	listener.stream.Send(update)
+}
+
+func toWeightedAddrSet(endpoints []common.TcpAddress) *pb.WeightedAddrSet {
+	addrs := make([]*pb.WeightedAddr, 0)
+	for i := range endpoints {
+		addrs = append(addrs, &pb.WeightedAddr{
+			Addr:   &endpoints[i],
+			Weight: 1,
+		})
+	}
+	return &pb.WeightedAddrSet{Addrs: addrs}
+}
+
+func toAddrSet(endpoints []common.TcpAddress) *pb.AddrSet {
+	addrs := make([]*common.TcpAddress, 0)
+	for i := range endpoints {
+		addrs = append(addrs, &endpoints[i])
+	}
+	return &pb.AddrSet{Addrs: addrs}
 }
