@@ -15,7 +15,7 @@ metadata:
   name: conduit-controller
   namespace: {{.Namespace}}
 
-### RBAC ###
+### Controller RBAC ###
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -34,7 +34,6 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: conduit-controller
-  namespace: {{.Namespace}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -42,6 +41,46 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: conduit-controller
+  namespace: {{.Namespace}}
+
+### Service Account CA ###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: conduit-ca
+  namespace: {{.Namespace}}
+
+### CA RBAC ###
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: conduit-ca
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["create", "list", "watch"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  resourceNames: [{{.CertificateBundleName}}]
+  verbs: ["update"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["list", "watch"]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: conduit-ca
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: conduit-ca
+subjects:
+- kind: ServiceAccount
+  name: conduit-ca
   namespace: {{.Namespace}}
 
 ### Service Account Prometheus ###
@@ -52,7 +91,7 @@ metadata:
   name: conduit-prometheus
   namespace: {{.Namespace}}
 
-### RBAC ###
+### Prometheus RBAC ###
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -68,7 +107,6 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: conduit-prometheus
-  namespace: {{.Namespace}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -188,6 +226,36 @@ spec:
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
         - "tap"
+        - "-log-level={{.ControllerLogLevel}}"
+        - "-logtostderr=true"
+
+---
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: ca-bundle-distributor
+  namespace: {{.Namespace}}
+  labels:
+    {{.ControllerComponentLabel}}: ca-bundle-distributor
+  annotations:
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
+spec:
+  replicas: {{.ControllerReplicas}}
+  template:
+    metadata:
+      labels:
+        {{.ControllerComponentLabel}}: ca-bundle-distributor
+      annotations:
+        {{.CreatedByAnnotation}}: {{.CliVersion}}
+    spec:
+      serviceAccount: conduit-ca
+      containers:
+      - name: ca-distributor
+        image: {{.ControllerImage}}
+        imagePullPolicy: {{.ImagePullPolicy}}
+        args:
+        - "ca-distributor"
+        - "-controller-namespace={{.Namespace}}"
         - "-log-level={{.ControllerLogLevel}}"
         - "-logtostderr=true"
 

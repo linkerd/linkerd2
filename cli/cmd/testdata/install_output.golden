@@ -12,7 +12,7 @@ metadata:
   name: conduit-controller
   namespace: Namespace
 
-### RBAC ###
+### Controller RBAC ###
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -31,7 +31,6 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: conduit-controller
-  namespace: Namespace
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -39,6 +38,46 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: conduit-controller
+  namespace: Namespace
+
+### Service Account CA ###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: conduit-ca
+  namespace: Namespace
+
+### CA RBAC ###
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: conduit-ca
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["create", "list", "watch"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  resourceNames: [CertificateBundleName]
+  verbs: ["update"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["list", "watch"]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: conduit-ca
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: conduit-ca
+subjects:
+- kind: ServiceAccount
+  name: conduit-ca
   namespace: Namespace
 
 ### Service Account Prometheus ###
@@ -49,7 +88,7 @@ metadata:
   name: conduit-prometheus
   namespace: Namespace
 
-### RBAC ###
+### Prometheus RBAC ###
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -65,7 +104,6 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: conduit-prometheus
-  namespace: Namespace
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -247,6 +285,93 @@ spec:
             - NET_ADMIN
           privileged: false
       serviceAccount: conduit-controller
+status: {}
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  annotations:
+    CreatedByAnnotation: CliVersion
+  creationTimestamp: null
+  labels:
+    ControllerComponentLabel: ca-bundle-distributor
+  name: ca-bundle-distributor
+  namespace: Namespace
+spec:
+  replicas: 1
+  strategy: {}
+  template:
+    metadata:
+      annotations:
+        CreatedByAnnotation: CliVersion
+        conduit.io/created-by: conduit/cli undefined
+        conduit.io/proxy-version: undefined
+      creationTimestamp: null
+      labels:
+        ControllerComponentLabel: ca-bundle-distributor
+        conduit.io/control-plane-ns: Namespace
+        conduit.io/proxy-deployment: ca-bundle-distributor
+    spec:
+      containers:
+      - args:
+        - ca-distributor
+        - -controller-namespace=Namespace
+        - -log-level=ControllerLogLevel
+        - -logtostderr=true
+        image: ControllerImage
+        imagePullPolicy: ImagePullPolicy
+        name: ca-distributor
+        resources: {}
+      - env:
+        - name: CONDUIT_PROXY_LOG
+          value: warn,conduit_proxy=info
+        - name: CONDUIT_PROXY_BIND_TIMEOUT
+          value: 10s
+        - name: CONDUIT_PROXY_CONTROL_URL
+          value: tcp://proxy-api.Namespace.svc.cluster.local:8086
+        - name: CONDUIT_PROXY_CONTROL_LISTENER
+          value: tcp://0.0.0.0:4190
+        - name: CONDUIT_PROXY_METRICS_LISTENER
+          value: tcp://0.0.0.0:4191
+        - name: CONDUIT_PROXY_PRIVATE_LISTENER
+          value: tcp://127.0.0.1:4140
+        - name: CONDUIT_PROXY_PUBLIC_LISTENER
+          value: tcp://0.0.0.0:4143
+        - name: CONDUIT_PROXY_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        image: gcr.io/runconduit/proxy:undefined
+        imagePullPolicy: IfNotPresent
+        name: conduit-proxy
+        ports:
+        - containerPort: 4143
+          name: conduit-proxy
+        - containerPort: 4191
+          name: conduit-metrics
+        resources: {}
+        securityContext:
+          runAsUser: 2102
+      initContainers:
+      - args:
+        - --incoming-proxy-port
+        - "4143"
+        - --outgoing-proxy-port
+        - "4140"
+        - --proxy-uid
+        - "2102"
+        - --inbound-ports-to-ignore
+        - 4190,4191
+        image: gcr.io/runconduit/proxy-init:undefined
+        imagePullPolicy: IfNotPresent
+        name: conduit-init
+        resources: {}
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+          privileged: false
+      serviceAccount: conduit-ca
 status: {}
 ---
 kind: Service

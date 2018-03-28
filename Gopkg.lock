@@ -608,7 +608,8 @@
     "util/homedir",
     "util/integer",
     "util/jsonpath",
-    "util/retry"
+    "util/retry",
+    "util/workqueue"
   ]
   revision = "33f2870a2b83179c823ddc90e5513f9e5fe43b38"
   version = "kubernetes-1.10.2"
@@ -626,6 +627,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "ef19d9c67ad3dd2b03a2ecb5fcbfcc71913e3ffc4cf79e72db6a2d0565e5f622"
+  inputs-digest = "44c7140f52ef427aed7c94340d686bdd91a23160c39a37cb5c3bdccff380e548"
   solver-name = "gps-cdcl"
   solver-version = 1

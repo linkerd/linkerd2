@@ -62,6 +62,14 @@ const (
 	// ProxyVersionAnnotation indicates the version of the injected data plane
 	// (e.g. v0.1.3).
 	ProxyVersionAnnotation = "conduit.io/proxy-version"
+
+	/*
+	 * Component Names
+	 */
+
+	// CertificateBundleName is the name of the ConfigMap that holds the root
+	// certificate
+	CertificateBundleName = "conduit-ca-bundle"
 )
 
 var proxyLabels = []string{

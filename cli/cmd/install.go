@@ -32,6 +32,7 @@ type installConfig struct {
 	CreatedByAnnotation      string
 	ProxyAPIPort             uint
 	EnableTLS                bool
+	CertificateBundleName    string
 }
 
 type installOptions struct {
@@ -105,6 +106,7 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		CreatedByAnnotation:      k8s.CreatedByAnnotation,
 		ProxyAPIPort:             options.proxyAPIPort,
 		EnableTLS:                options.enableTLS,
+		CertificateBundleName:    k8s.CertificateBundleName,
 	}, nil
 }
 

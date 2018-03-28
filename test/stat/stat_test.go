@@ -75,7 +75,7 @@ func parseRows(out string) (map[string]*rowStat, error) {
 	rows := strings.Split(out, "\n")
 	rows = rows[1 : len(rows)-1] // strip header and trailing newline
 
-	expectedRowCount := 4
+	expectedRowCount := 5
 	if len(rows) != expectedRowCount {
 		return nil, fmt.Errorf(
 			"Expected [%d] rows in stat output, got [%d]; full output:\n%s",
