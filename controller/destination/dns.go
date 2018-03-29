@@ -114,7 +114,7 @@ func (i *informer) run() {
 			for _, addr := range addrs {
 				ip, err := util.ParseIPV4(addr)
 				if err != nil {
-					log.Printf("%s is not a valid IP address", addr)
+					log.Printf("[%s] is not a valid IP address: %v", addr, err)
 				} else {
 					address := common.TcpAddress{Ip: ip, Port: 80}
 					addresses = append(addresses, address)

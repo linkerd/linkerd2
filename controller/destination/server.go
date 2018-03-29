@@ -42,13 +42,13 @@ func NewServer(addr, kubeconfig string, k8sDNSZone string, done chan struct{}) (
 
 	dnsWatcher := NewDnsWatcher()
 
-	resolver, err := buildResolversList(k8sDNSZone, endpointsWatcher, dnsWatcher)
+	resolvers, err := buildResolversList(k8sDNSZone, endpointsWatcher, dnsWatcher)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	srv := server{
-		resolvers: resolver,
+		resolvers: resolvers,
 	}
 
 	lis, err := net.Listen("tcp", addr)
@@ -107,7 +107,7 @@ func streamResolutionUsingCorrectResolverFor(resolvers []streamingDestinationRes
 			return resolver.streamResolution(host, port, listener)
 		}
 	}
-	return fmt.Errorf("cannot find resolver for host [%s] port [%d] amongst: %v", host, port, listener)
+	return fmt.Errorf("cannot find resolver for host [%s] port [%d]", host, port)
 }
 
 func buildResolversList(k8sDNSZone string, endpointsWatcher k8s.EndpointsWatcher, dnsWatcher DnsWatcher) ([]streamingDestinationResolver, error) {
@@ -123,11 +123,13 @@ func buildResolversList(k8sDNSZone string, endpointsWatcher k8s.EndpointsWatcher
 	}
 
 	ipResolver := &echoIpV4Resolver{}
+	log.Infof("Adding ipv4 name resolver")
 
 	k8sResolver := &k8sResolver{k8sDNSZoneLabels: k8sDNSZoneLabels,
 		endpointsWatcher: endpointsWatcher,
 		dnsWatcher:       dnsWatcher,
 	}
+	log.Infof("Adding k8s name resolver")
 
 	resolvers := []streamingDestinationResolver{ipResolver, k8sResolver}
 	return resolvers, nil
