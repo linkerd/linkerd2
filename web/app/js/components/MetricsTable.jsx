@@ -1,7 +1,8 @@
 import _ from 'lodash';
+import BaseTable from './BaseTable.jsx';
 import { metricToFormatter } from './util/Utils.js';
 import React from 'react';
-import { Table, Tooltip } from 'antd';
+import { Tooltip } from 'antd';
 
 /*
   Table to display Success Rate, Requests and Latency in tabs.
@@ -82,7 +83,7 @@ const columnDefinitions = (sortable = true, resource, ConduitLink) => {
 
 const numericSort = (a, b) => (_.isNil(a) ? -1 : a) - (_.isNil(b) ? -1 : b);
 
-export default class MetricsTable extends React.Component {
+export default class MetricsTable extends BaseTable {
   constructor(props) {
     super(props);
     this.api = this.props.api;
@@ -105,7 +106,7 @@ export default class MetricsTable extends React.Component {
     let tableData = this.preprocessMetrics();
     let columns = _.compact(columnDefinitions(this.props.sortable, resource, this.api.ConduitLink));
 
-    return (<Table
+    return (<BaseTable
       dataSource={tableData}
       columns={columns}
       pagination={false}
