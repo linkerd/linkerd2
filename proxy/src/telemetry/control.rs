@@ -55,8 +55,7 @@ impl MakeControl {
     ///
     /// # Arguments
     /// - `rx`: the `Receiver` side of the channel on which events are sent.
-    /// - `flush_interval`: the maximum amount of time between sending reports to the
-    ///   controller.
+    /// - `process_ctx`: runtime process metadata.
     pub(super) fn new(
         rx: Receiver<Event>,
         process_ctx: &Arc<ctx::Process>,
