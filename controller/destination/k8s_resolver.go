@@ -51,6 +51,7 @@ func (k *k8sResolver) streamResolution(host string, port int, listener updateLis
 		return err
 	}
 
+	fmt.Println("BAN ANA", svc.Labels, svc.Annotations)
 	if exists && svc.Spec.Type == v1.ServiceTypeExternalName {
 		return k.resolveExternalName(svc.Spec.ExternalName, listener)
 	}
