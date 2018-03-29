@@ -1,4 +1,4 @@
-use std::{fmt, io};
+use std::io;
 use std::sync::{Arc, Mutex};
 
 use futures::{future, Async, Future, Poll, Stream};
@@ -31,6 +31,7 @@ pub struct MakeControl {
 ///
 /// # TODO
 /// Limit the amount of memory that may be consumed for metrics aggregation.
+#[derive(Debug)]
 pub struct Control {
     /// Aggregates scrapable metrics.
     metrics_aggregate: prometheus::Aggregate,
@@ -156,14 +157,5 @@ impl Future for Control {
                 }
             };
         }
-    }
-}
-
-impl fmt::Debug for Control {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.debug_struct("Control")
-            .field("rx", &self.rx)
-            .field("taps", &self.taps)
-            .finish()
     }
 }
