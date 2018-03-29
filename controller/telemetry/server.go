@@ -87,18 +87,11 @@ func init() {
 type (
 	server struct {
 		prometheusAPI     v1.API
-		pods              *k8s.PodIndex
+		pods              k8s.PodIndex
 		replicaSets       *k8s.ReplicaSetStore
 		ignoredNamespaces []string
 	}
 )
-
-func podIPKeyFunc(obj interface{}) ([]string, error) {
-	if pod, ok := obj.(*k8sV1.Pod); ok {
-		return []string{pod.Status.PodIP}, nil
-	}
-	return nil, fmt.Errorf("Object is not a Pod")
-}
 
 func NewServer(addr, prometheusUrl string, ignoredNamespaces []string, kubeconfig string) (*grpc.Server, net.Listener, error) {
 	prometheusClient, err := api.NewClient(api.Config{Address: prometheusUrl})
@@ -111,7 +104,7 @@ func NewServer(addr, prometheusUrl string, ignoredNamespaces []string, kubeconfi
 		return nil, nil, err
 	}
 
-	pods, err := k8s.NewPodIndex(clientSet, podIPKeyFunc)
+	pods, err := k8s.NewPodsByIp(clientSet)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -392,16 +385,6 @@ func (s *server) getDeployment(ip *common.IPAddress) string {
 		return ""
 	}
 	return deployment
-}
-
-func methodString(method *common.HttpMethod) string {
-	switch method.Type.(type) {
-	case *common.HttpMethod_Registered_:
-		return method.GetRegistered().String()
-	case *common.HttpMethod_Unregistered:
-		return method.GetUnregistered()
-	}
-	return ""
 }
 
 func metricToMap(metric model.Metric) map[string]string {

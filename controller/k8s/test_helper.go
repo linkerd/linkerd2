@@ -28,3 +28,30 @@ func (m *MockEndpointsWatcher) Run() error {
 }
 
 func (m *MockEndpointsWatcher) Stop() {}
+
+type InMemoryPodIndex struct {
+	BackingMap map[string]*v1.Pod
+}
+
+func (i *InMemoryPodIndex) GetPod(key string) (*v1.Pod, error) {
+	return i.BackingMap[key], nil
+}
+
+func (i *InMemoryPodIndex) GetPodsByIndex(key string) ([]*v1.Pod, error) {
+	return []*v1.Pod{i.BackingMap[key]}, nil
+}
+
+func (i *InMemoryPodIndex) List() ([]*v1.Pod, error) {
+	var pods []*v1.Pod
+	for _, value := range i.BackingMap {
+		pods = append(pods, value)
+	}
+
+	return pods, nil
+}
+func (i *InMemoryPodIndex) Run() error { return nil }
+func (i *InMemoryPodIndex) Stop()      {}
+
+func NewEmptyPodIndex() PodIndex {
+	return &InMemoryPodIndex{BackingMap: map[string]*v1.Pod{}}
+}

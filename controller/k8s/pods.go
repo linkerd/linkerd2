@@ -12,13 +12,21 @@ import (
 
 const podResource = "pods"
 
-type PodIndex struct {
+type PodIndex interface {
+	GetPod(key string) (*v1.Pod, error)
+	GetPodsByIndex(key string) ([]*v1.Pod, error)
+	List() ([]*v1.Pod, error)
+	Run() error
+	Stop()
+}
+
+type podIndex struct {
 	indexer   *cache.Indexer
 	reflector *cache.Reflector
 	stopCh    chan struct{}
 }
 
-func NewPodIndex(clientset *kubernetes.Clientset, index cache.IndexFunc) (*PodIndex, error) {
+func NewPodIndex(clientset *kubernetes.Clientset, index cache.IndexFunc) (*podIndex, error) {
 	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{"index": index})
 
 	podListWatcher := cache.NewListWatchFromClient(
@@ -37,22 +45,22 @@ func NewPodIndex(clientset *kubernetes.Clientset, index cache.IndexFunc) (*PodIn
 
 	stopCh := make(chan struct{})
 
-	return &PodIndex{
+	return &podIndex{
 		indexer:   &indexer,
 		reflector: reflector,
 		stopCh:    stopCh,
 	}, nil
 }
 
-func (p *PodIndex) Run() error {
+func (p *podIndex) Run() error {
 	return newWatcher(p.reflector, podResource, p.reflector.ListAndWatch, p.stopCh).run()
 }
 
-func (p *PodIndex) Stop() {
+func (p *podIndex) Stop() {
 	p.stopCh <- struct{}{}
 }
 
-func (p *PodIndex) GetPod(key string) (*v1.Pod, error) {
+func (p *podIndex) GetPod(key string) (*v1.Pod, error) {
 	item, exists, err := (*p.indexer).GetByKey(key)
 	if err != nil {
 		return nil, err
@@ -67,7 +75,7 @@ func (p *PodIndex) GetPod(key string) (*v1.Pod, error) {
 	return pod, nil
 }
 
-func (p *PodIndex) GetPodsByIndex(key string) ([]*v1.Pod, error) {
+func (p *podIndex) GetPodsByIndex(key string) ([]*v1.Pod, error) {
 	items, err := (*p.indexer).ByIndex("index", key)
 	if err != nil {
 		return nil, err
@@ -83,7 +91,7 @@ func (p *PodIndex) GetPodsByIndex(key string) ([]*v1.Pod, error) {
 	return pods, nil
 }
 
-func (p *PodIndex) List() ([]*v1.Pod, error) {
+func (p *podIndex) List() ([]*v1.Pod, error) {
 	pods := make([]*v1.Pod, 0)
 
 	items := (*p.indexer).List()
@@ -96,4 +104,16 @@ func (p *PodIndex) List() ([]*v1.Pod, error) {
 	}
 
 	return pods, nil
+}
+
+func podIPKeyFunc(obj interface{}) ([]string, error) {
+	if pod, ok := obj.(*v1.Pod); ok {
+		return []string{pod.Status.PodIP}, nil
+	}
+	return nil, fmt.Errorf("Object is not a Pod")
+}
+
+// NewPodsByIp returns a PodIndex with the Pod's IP as its key.
+func NewPodsByIp(clientSet *kubernetes.Clientset) (PodIndex, error) {
+	return NewPodIndex(clientSet, podIPKeyFunc)
 }

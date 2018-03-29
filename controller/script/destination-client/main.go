@@ -51,8 +51,9 @@ func main() {
 		switch updateType := update.Update.(type) {
 		case *pb.Update_Add:
 			log.Println("Add:")
+			log.Printf("metric_labels: %v", updateType.Add.MetricLabels)
 			for _, addr := range updateType.Add.Addrs {
-				log.Printf("- %s:%d", util.IPToString(addr.Addr.GetIp()), addr.Addr.Port)
+				log.Printf("- %s:%d - %v", util.IPToString(addr.Addr.GetIp()), addr.Addr.Port, addr.MetricLabels)
 			}
 			log.Println()
 		case *pb.Update_Remove:

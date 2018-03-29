@@ -15,6 +15,7 @@ import (
 )
 
 type server struct {
+	podsByIp  k8s.PodIndex
 	resolvers []streamingDestinationResolver
 }
 
@@ -34,6 +35,15 @@ func NewServer(addr, kubeconfig string, k8sDNSZone string, done chan struct{}) (
 		return nil, nil, err
 	}
 
+	podsByIp, err := k8s.NewPodsByIp(clientSet)
+	if err != nil {
+		return nil, nil, err
+	}
+	err = podsByIp.Run()
+	if err != nil {
+		return nil, nil, err
+	}
+
 	endpointsWatcher := k8s.NewEndpointsWatcher(clientSet)
 	err = endpointsWatcher.Run()
 	if err != nil {
@@ -48,6 +58,7 @@ func NewServer(addr, kubeconfig string, k8sDNSZone string, done chan struct{}) (
 	}
 
 	srv := server{
+		podsByIp:  podsByIp,
 		resolvers: resolvers,
 	}
 
@@ -92,11 +103,12 @@ func (s *server) Get(dest *common.Destination, stream pb.Destination_GetServer) 
 		}
 	}
 
-	return streamResolutionUsingCorrectResolverFor(s.resolvers, host, port, stream)
+	return streamResolutionUsingCorrectResolverFor(s.podsByIp, s.resolvers, host, port, stream)
 }
 
-func streamResolutionUsingCorrectResolverFor(resolvers []streamingDestinationResolver, host string, port int, stream pb.Destination_GetServer) error {
-	listener := &endpointListener{stream: stream}
+func streamResolutionUsingCorrectResolverFor(podsByIp k8s.PodIndex, resolvers []streamingDestinationResolver, host string, port int, stream pb.Destination_GetServer) error {
+	serviceName := fmt.Sprintf("%s:%d", host, port)
+	listener := &endpointListener{serviceName: serviceName, stream: stream, podsByIp: podsByIp}
 
 	for _, resolver := range resolvers {
 		resolverCanResolve, err := resolver.canResolve(host, port)
@@ -133,67 +145,4 @@ func buildResolversList(k8sDNSZone string, endpointsWatcher k8s.EndpointsWatcher
 	log.Infof("Adding k8s name resolver")
 
 	return []streamingDestinationResolver{ipResolver, k8sResolver}, nil
-}
-
-type endpointListener struct {
-	stream pb.Destination_GetServer
-}
-
-func (listener *endpointListener) Done() <-chan struct{} {
-	return listener.stream.Context().Done()
-}
-
-func (listener *endpointListener) Update(add []common.TcpAddress, remove []common.TcpAddress) {
-	if len(add) > 0 {
-		update := &pb.Update{
-			Update: &pb.Update_Add{
-				Add: toWeightedAddrSet(add),
-			},
-		}
-		err := listener.stream.Send(update)
-		if err != nil {
-			log.Error(err)
-		}
-	}
-	if len(remove) > 0 {
-		update := &pb.Update{
-			Update: &pb.Update_Remove{
-				Remove: toAddrSet(remove),
-			},
-		}
-		err := listener.stream.Send(update)
-		if err != nil {
-			log.Error(err)
-		}
-	}
-}
-
-func (listener *endpointListener) NoEndpoints(exists bool) {
-	update := &pb.Update{
-		Update: &pb.Update_NoEndpoints{
-			NoEndpoints: &pb.NoEndpoints{
-				Exists: exists,
-			},
-		},
-	}
-	listener.stream.Send(update)
-}
-
-func toWeightedAddrSet(endpoints []common.TcpAddress) *pb.WeightedAddrSet {
-	addrs := make([]*pb.WeightedAddr, 0)
-	for i := range endpoints {
-		addrs = append(addrs, &pb.WeightedAddr{
-			Addr:   &endpoints[i],
-			Weight: 1,
-		})
-	}
-	return &pb.WeightedAddrSet{Addrs: addrs}
-}
-
-func toAddrSet(endpoints []common.TcpAddress) *pb.AddrSet {
-	addrs := make([]*common.TcpAddress, 0)
-	for i := range endpoints {
-		addrs = append(addrs, &endpoints[i])
-	}
-	return &pb.AddrSet{Addrs: addrs}
 }
