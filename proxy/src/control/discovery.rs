@@ -56,8 +56,7 @@ pub struct DiscoveryWork<T: HttpService<ResponseBody = RecvBody>> {
 
 struct DestinationSet<T: HttpService<ResponseBody = RecvBody>> {
     addrs: Exists<HashSet<SocketAddr>>,
-    needs_reconnect: bool,
-    rx: UpdateRx<T>,
+    query: DestinationServiceQuery<T>,
     txs: Vec<mpsc::UnboundedSender<Update>>,
 }
 
@@ -71,6 +70,13 @@ impl<T> Exists<T> {
     fn take(&mut self) -> Exists<T> {
         mem::replace(self, Exists::Unknown)
     }
+}
+
+enum DestinationServiceQuery<T: HttpService<ResponseBody = RecvBody>> {
+    NeedsReconnect,
+    ConnectedOrConnecting {
+        rx: UpdateRx<T>
+    },
 }
 
 /// Receiver for destination set updates.
@@ -280,20 +286,11 @@ where
                             set.txs.push(tx);
                         }
                         Entry::Vacant(vac) => {
-                            let req = Destination {
-                                scheme: "k8s".into(),
-                                path: vac.key().without_trailing_dot()
-                                        .as_str().into(),
-                            };
-                            // TODO: Can grpc::Request::new be removed?
-                            let mut svc = DestinationSvc::new(client.lift_ref());
-                            let response = svc.get(grpc::Request::new(req));
-                            let stream = UpdateRx::Waiting(response);
-
+                            let query =
+                                DestinationServiceQuery::connect(client, vac.key(), "connect");
                             vac.insert(DestinationSet {
                                 addrs: Exists::Unknown,
-                                needs_reconnect: false,
-                                rx: stream,
+                                query,
                                 txs: vec![tx],
                             });
                         }
@@ -315,15 +312,7 @@ where
 
         while let Some(auth) = self.reconnects.pop_front() {
             if let Some(set) = self.destinations.get_mut(&auth) {
-                trace!("Destination.Get reconnect {:?}", auth);
-                let req = Destination {
-                    scheme: "k8s".into(),
-                    path: auth.without_trailing_dot().as_str().into(),
-                };
-                let mut svc = DestinationSvc::new(client.lift_ref());
-                let response = svc.get(grpc::Request::new(req));
-                set.rx = UpdateRx::Waiting(response);
-                set.needs_reconnect = false;
+                set.query = DestinationServiceQuery::connect(client, &auth, "reconnect");
                 return true;
             } else {
                 trace!("reconnect no longer needed: {:?}", auth);
@@ -334,12 +323,17 @@ where
 
     fn poll_destinations(&mut self) {
         for (auth, set) in &mut self.destinations {
-            if set.needs_reconnect {
-                continue;
-            }
             let needs_reconnect = 'set: loop {
+                let poll_result = match set.query {
+                    DestinationServiceQuery::NeedsReconnect => {
+                        continue;
+                    },
+                    DestinationServiceQuery::ConnectedOrConnecting{ ref mut rx } => {
+                        rx.poll()
+                    }
+                };
 
-                match set.rx.poll() {
+                match poll_result {
                     Ok(Async::Ready(Some(update))) => match update.update {
                         Some(PbUpdate2::Add(a_set)) =>
                             set.add(
@@ -370,10 +364,27 @@ where
 
             };
             if needs_reconnect {
-                set.needs_reconnect = true;
+                set.query = DestinationServiceQuery::NeedsReconnect;
                 self.reconnects.push_back(FullyQualifiedAuthority::clone(auth));
             }
         }
+    }
+}
+
+
+// ===== impl DestinationServiceQuery =====
+
+impl<T: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>> DestinationServiceQuery<T> {
+    fn connect(client: &mut T, auth: &FullyQualifiedAuthority, connect_or_reconnect: &str) -> Self {
+        trace!("DestinationServiceQuery {} {:?}", connect_or_reconnect, auth);
+        let req = Destination {
+            scheme: "k8s".into(),
+            path: auth.without_trailing_dot().as_str().into(),
+        };
+        // TODO: Can grpc::Request::new be removed?
+        let mut svc = DestinationSvc::new(client.lift_ref());
+        let response = svc.get(grpc::Request::new(req));
+        DestinationServiceQuery::ConnectedOrConnecting { rx: UpdateRx::Waiting(response) }
     }
 }
 
