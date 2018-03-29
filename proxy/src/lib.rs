@@ -384,8 +384,7 @@ where
     B: tower_h2::Body + 'static,
     N: NewService<Request = http::Request<tower_h2::RecvBody>, Response = http::Response<B>> + 'static,
 {
-    let h2_builder = h2::server::Builder::default();
-    let server = tower_h2::Server::new(new_service, h2_builder, executor.clone());
+    let server = tower_h2::Server::new(new_service, default_h2_server_builder(), executor.clone());
     bound_port.listen_and_fold(
         executor,
         (server, executor.clone()),
@@ -398,4 +397,19 @@ where
             future::ok((server, executor))
         },
     )
+}
+
+fn default_h2_client_builder() -> h2::client::Builder {
+    let mut b = h2::client::Builder::new();
+    // Cargo-culted from gRPC.
+    b.initial_connection_window_size(1048560);
+    b.enable_push(false);
+    b
+}
+
+fn default_h2_server_builder() -> h2::server::Builder {
+    let mut b = h2::server::Builder::new();
+    // Cargo-culted from gRPC.
+    b.initial_connection_window_size(1048560);
+    b
 }

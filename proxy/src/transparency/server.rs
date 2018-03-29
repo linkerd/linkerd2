@@ -64,11 +64,12 @@ where
     ) -> Self {
         let recv_body_svc = HttpBodyNewSvc::new(stack.clone());
         let tcp = tcp::Proxy::new(tcp_connect_timeout, sensors.clone(), &executor);
+        let h2_builder = ::default_h2_server_builder();
         Server {
             executor: executor.clone(),
             get_orig_dst,
             h1: hyper::server::Http::new(),
-            h2: tower_h2::Server::new(recv_body_svc, Default::default(), executor),
+            h2: tower_h2::Server::new(recv_body_svc, h2_builder, executor),
             listen_addr,
             new_service: stack,
             proxy_ctx,
