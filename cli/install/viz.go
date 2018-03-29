@@ -19,7 +19,7 @@ const Viz = `{
       "gnetId": null,
       "graphTooltip": 1,
       "id": null,
-      "iteration": 1520894444409,
+      "iteration": 1522201643834,
       "links": [],
       "panels": [
         {
@@ -100,7 +100,7 @@ const Viz = `{
           "tableColumn": "",
           "targets": [
             {
-              "expr": "count(count(responses_total{target_deployment=~\"$target_deployment\"}) by (target_deployment))",
+              "expr": "count(count(request_total) by (deployment))",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "",
@@ -182,9 +182,9 @@ const Viz = `{
           "tableColumn": "",
           "targets": [
             {
-              "expr": "sum(irate(responses_total{target_deployment=~\"$target_deployment\", classification=\"success\"}[20s])) / sum(irate(responses_total{target_deployment=~\"$target_deployment\"}[20s]))",
+              "expr": "(sum(irate(response_total{status_code=\"200\"}[20s]))+sum(irate(response_total{grpc_status_code=\"0\"}[20s]))) / sum(irate(response_total{}[20s]))",
               "format": "time_series",
-              "intervalFactor": 2,
+              "intervalFactor": 1,
               "legendFormat": "",
               "refId": "A"
             }
@@ -264,7 +264,7 @@ const Viz = `{
           "tableColumn": "",
           "targets": [
             {
-              "expr": "sum(irate(responses_total{target_deployment=~\"$target_deployment\"}[20s]))",
+              "expr": "sum(irate(request_total{}[20s]))",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "",
@@ -337,10 +337,10 @@ const Viz = `{
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(responses_total{target_deployment=~\"$target_deployment\", classification=\"success\"}[20s])) by (target_deployment) / sum(irate(responses_total{target_deployment=~\"$target_deployment\"}[20s])) by (target_deployment)",
+              "expr": "(sum(irate(response_total{status_code=\"200\"}[20s])) by (deployment) + sum(irate(response_total{grpc_status_code=\"0\"}[20s])) by (deployment)) / sum(irate(response_total{}[20s])) by (deployment)",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "{{target_deployment}}",
+              "legendFormat": "{{deployment}}",
               "refId": "A"
             }
           ],
@@ -413,14 +413,14 @@ const Viz = `{
           "renderer": "flot",
           "seriesOverrides": [],
           "spaceLength": 10,
-          "stack": false,
+          "stack": true,
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(responses_total{target_deployment=~\"$target_deployment\"}[20s])) by (target_deployment)",
+              "expr": "sum(irate(request_total{}[20s])) by (deployment)",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "{{target_deployment}}",
+              "legendFormat": "{{deployment}}",
               "refId": "A"
             }
           ],
@@ -430,7 +430,7 @@ const Viz = `{
           "title": "Request Volume",
           "tooltip": {
             "shared": true,
-            "sort": 2,
+            "sort": 1,
             "value_type": "individual"
           },
           "type": "graph",
@@ -497,21 +497,21 @@ const Viz = `{
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{target_deployment=~\"$target_deployment\"}[20s])) by (le))",
+              "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{}[20s])) by (le))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "p50",
               "refId": "A"
             },
             {
-              "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{target_deployment=~\"$target_deployment\"}[20s])) by (le))",
+              "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{}[20s])) by (le))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "p95",
               "refId": "B"
             },
             {
-              "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{target_deployment=~\"$target_deployment\"}[20s])) by (le))",
+              "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{}[20s])) by (le))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "p99",
@@ -580,12 +580,12 @@ const Viz = `{
           },
           "id": 40,
           "panels": [],
-          "repeat": "target_deployment",
+          "repeat": "deployment",
           "title": "",
           "type": "row"
         },
         {
-          "content": "<div>\n  <img src=\"https://conduit.io/favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <a href=\"./dashboard/db/conduit-deployment?var-target_deployment=$target_deployment\">\n    <span style=\"font-size: 15px; border-image:none\">$target_deployment</span>\n  </a>\n</div>",
+          "content": "<div>\n  <img src=\"https://conduit.io/favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <a href=\"./dashboard/db/conduit-deployment?var-deployment=$deployment\">\n    <span style=\"font-size: 15px; border-image:none\">$deployment</span>\n  </a>\n</div>",
           "gridPos": {
             "h": 2,
             "w": 24,
@@ -637,10 +637,10 @@ const Viz = `{
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(responses_total{classification=\"success\", target_deployment=\"$target_deployment\"}[20s])) by (target) / sum(irate(responses_total{target_deployment=\"$target_deployment\"}[20s])) by (target)",
+              "expr": "(sum(irate(response_total{status_code=\"200\", dst_deployment=\"$deployment\"}[20s])) by (deployment) + sum(irate(response_total{grpc_status_code=\"0\", dst_deployment=\"$deployment\"}[20s])) by (deployment))/ sum(irate(response_total{dst_deployment=\"$deployment\"}[20s])) by (deployment)",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "{{target}}",
+              "legendFormat": "{{deployment}}",
               "refId": "A"
             }
           ],
@@ -717,10 +717,10 @@ const Viz = `{
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(responses_total{target_deployment=\"$target_deployment\"}[20s])) by (target)",
+              "expr": "sum(irate(request_total{dst_deployment=\"$deployment\"}[20s])) by (deployment)",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "{{target}}",
+              "legendFormat": "{{deployment}}",
               "refId": "A"
             }
           ],
@@ -797,7 +797,7 @@ const Viz = `{
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{target_deployment=\"$target_deployment\"}[20s])) by (le))",
+              "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{dst_deployment=\"$deployment\"}[20s])) by (le))",
               "format": "time_series",
               "hide": false,
               "intervalFactor": 1,
@@ -805,7 +805,7 @@ const Viz = `{
               "refId": "A"
             },
             {
-              "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{target_deployment=\"$target_deployment\"}[20s])) by (le))",
+              "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{dst_deployment=\"$deployment\"}[20s])) by (le))",
               "format": "time_series",
               "hide": false,
               "intervalFactor": 1,
@@ -813,7 +813,7 @@ const Viz = `{
               "refId": "B"
             },
             {
-              "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{target_deployment=\"$target_deployment\"}[20s])) by (le))",
+              "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{dst_deployment=\"$deployment\"}[20s])) by (le))",
               "format": "time_series",
               "hide": false,
               "intervalFactor": 1,
@@ -866,18 +866,15 @@ const Viz = `{
         "list": [
           {
             "allValue": null,
-            "current": {
-              "text": "All",
-              "value": "$__all"
-            },
+            "current": {},
             "datasource": "prometheus",
             "hide": 2,
             "includeAll": true,
             "label": null,
             "multi": false,
-            "name": "target_deployment",
+            "name": "deployment",
             "options": [],
-            "query": "label_values(requests_total{target_deployment!~\"conduit/.*\"}, target_deployment)",
+            "query": "label_values(deployment)",
             "refresh": 2,
             "regex": "",
             "sort": 1,
