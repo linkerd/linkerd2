@@ -290,8 +290,8 @@ where
                             // we may already know of some addresses here, so push
                             // them onto the new watch first
                             match set.addrs {
-                                Exists::Yes(Cache { ref values, reset_on_next_modification: _ }) => {
-                                    for &addr in values.iter() {
+                                Exists::Yes(ref cache) => {
+                                    for &addr in cache.values.iter() {
                                         tx.unbounded_send(Update::Insert(addr))
                                             .expect("unbounded_send does not fail");
                                     }
@@ -544,11 +544,13 @@ impl<T> Cache<T> where T: Clone + Copy + Eq + std::hash::Hash {
     fn retain<F>(&mut self, to_retain: &HashSet<T>, mut on_change: F)
         where F: FnMut(T, CacheChange)
     {
-        for value in self.values.clone().difference(to_retain) {
-            if self.values.remove(&value) { // Always true
+        self.values.retain(|value| {
+            let retain = to_retain.contains(&value);
+            if !retain {
                 on_change(*value, CacheChange::Removal)
             }
-        }
+            retain
+        });
         self.reset_on_next_modification = false;
     }
 }
