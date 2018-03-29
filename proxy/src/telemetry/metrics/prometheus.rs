@@ -36,6 +36,16 @@ struct Metrics {
 struct Metric<M, L: Hash + Eq> {
     name: &'static str,
     help: &'static str,
+
+    /// Labels from the `CONDUIT_PROMETHEUS_LABELS` environment variable.
+    ///
+    /// Since this should be applied to all metrics and never changes
+    /// over the lifetime of the process, we can store it at the `Metric` level
+    /// rather than in the `Labels` of each individual value. This should keep
+    /// the ref count much smaller, and means we don't have to factor it into
+    /// labels hashing.
+    env_labels: Option<Arc<str>>,
+
     values: IndexMap<L, M>
 }
 
@@ -79,8 +89,11 @@ pub struct Serve {
 /// is a Hyper service which can be used to create the server for the
 /// scrape endpoint, while the `Aggregate` side can receive updates to the
 /// metrics by calling `record_event`.
-pub fn new(process: &Arc<ctx::Process>) -> (Aggregate, Serve) {
-    let metrics = Arc::new(Mutex::new(Metrics::new(process)));
+pub fn new(process: &Arc<ctx::Process>,
+           env_labels: Option<Arc<str>>)
+           -> (Aggregate, Serve)
+{
+    let metrics = Arc::new(Mutex::new(Metrics::new(process, env_labels)));
     (Aggregate::new(&metrics), Serve::new(&metrics))
 }
 
@@ -148,7 +161,10 @@ struct OutboundLabels {
 
 impl Metrics {
 
-    pub fn new(process: &Arc<ctx::Process>) -> Self {
+    pub fn new(process: &Arc<ctx::Process>,
+               env_labels: Option<Arc<str>>)
+               -> Self
+    {
 
         let start_time = process.start_time
             .duration_since(time::UNIX_EPOCH)
@@ -161,6 +177,7 @@ impl Metrics {
         let request_total = Metric::<Counter, Arc<RequestLabels>>::new(
             "request_total",
             "A counter of the number of requests the proxy has received.",
+            env_labels.clone(),
         );
 
         let request_duration = Metric::<Histogram, Arc<RequestLabels>>::new(
@@ -168,11 +185,13 @@ impl Metrics {
             "A histogram of the duration of a request. This is measured from \
              when the request headers are received to when the request \
              stream has completed.",
+            env_labels.clone(),
         );
 
         let response_total = Metric::<Counter, Arc<ResponseLabels>>::new(
             "response_total",
             "A counter of the number of responses the proxy has received.",
+            env_labels.clone(),
         );
 
         let response_duration = Metric::<Histogram, Arc<ResponseLabels>>::new(
@@ -180,6 +199,8 @@ impl Metrics {
             "A histogram of the duration of a response. This is measured from \
              when the response headers are received to when the response \
              stream has completed.",
+
+            env_labels.clone(),
         );
 
         let response_latency = Metric::<Histogram, Arc<ResponseLabels>>::new(
@@ -187,6 +208,7 @@ impl Metrics {
             "A histogram of the total latency of a response. This is measured \
             from when the request headers are received to when the response \
             stream has completed.",
+            env_labels.clone(),
         );
 
         Metrics {
@@ -291,10 +313,14 @@ impl Counter {
 
 impl<M, L: Hash + Eq> Metric<M, L> {
 
-    pub fn new(name: &'static str, help: &'static str) -> Self {
+    pub fn new(name: &'static str,
+               help: &'static str,
+               env_labels: Option<Arc<str>>)
+               -> Self {
         Metric {
             name,
             help,
+            env_labels,
             values: IndexMap::new(),
         }
     }
@@ -313,9 +339,20 @@ where
             help = self.help,
         )?;
 
+        let comma = if self.env_labels.is_some() {
+            ","
+        } else {
+            ""
+        };
+
+        let env_labels = self.env_labels.as_ref()
+            .map_or("", AsRef::as_ref);
+
         for (labels, value) in &self.values {
-            write!(f, "{name}{{{labels}}} {value}\n",
+            write!(f, "{name}{{{env_labels}{comma}{labels}}} {value}\n",
                 name = self.name,
+                env_labels = env_labels,
+                comma = comma,
                 labels = labels,
                 value = value,
             )?;
@@ -336,7 +373,18 @@ impl<L> fmt::Display for Metric<Histogram, L> where
             help = self.help,
         )?;
 
+        // determine whether or not to place a comma after the labels from
+        // the environment variable.
+        let env_comma = if self.env_labels.is_some() {
+            ","
+        } else {
+            ""
+        };
+        let env_labels = self.env_labels.as_ref()
+            .map_or("", AsRef::as_ref);
+
         for (labels, histogram) in &self.values {
+
             // Look up the bucket numbers against the BUCKET_BOUNDS array
             // to turn them into upper bounds.
             let bounds_and_counts = histogram.into_iter()
@@ -350,8 +398,11 @@ impl<L> fmt::Display for Metric<Histogram, L> where
             for (le, count) in bounds_and_counts {
                 // Add this bucket's count to the total count.
                 total_count += count;
-                write!(f, "{name}_bucket{{{labels},le=\"{le}\"}} {count}\n",
+                write!(f,
+                    "{name}_bucket{{{env_labels}{comma}{labels},le=\"{le}\"}} {count}\n",
                     name = self.name,
+                    env_labels = env_labels,
+                    comma = env_comma,
                     labels = labels,
                     le = le,
                     // Print the total count *as of this iteration*.
@@ -361,9 +412,11 @@ impl<L> fmt::Display for Metric<Histogram, L> where
 
             // Print the total count and histogram sum stats.
             write!(f,
-                "{name}_count{{{labels}}} {count}\n\
-                 {name}_sum{{{labels}}} {sum}\n",
+                "{name}_count{{{env_labels}{comma}{labels}}} {count}\n\
+                 {name}_sum{{{env_labels}{comma}{labels}}} {sum}\n",
                 name = self.name,
+                env_labels = env_labels,
+                comma = env_comma,
                 labels = labels,
                 count = total_count,
                 sum = histogram.sum_in_ms(),
