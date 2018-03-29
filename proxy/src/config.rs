@@ -47,9 +47,6 @@ pub struct Config {
     /// Event queue capacity.
     pub event_buffer_capacity: usize,
 
-    /// Timeout after which to cancel telemetry reports.
-    pub report_timeout: Duration,
-
     /// Timeout after which to cancel binding a request.
     pub bind_timeout: Duration,
 
@@ -122,7 +119,6 @@ pub struct TestEnv {
 
 // Environment variables to look at when loading the configuration
 const ENV_EVENT_BUFFER_CAPACITY: &str = "CONDUIT_PROXY_EVENT_BUFFER_CAPACITY";
-const ENV_REPORT_TIMEOUT_SECS: &str = "CONDUIT_PROXY_REPORT_TIMEOUT_SECS";
 pub const ENV_PRIVATE_LISTENER: &str = "CONDUIT_PROXY_PRIVATE_LISTENER";
 pub const ENV_PRIVATE_FORWARD: &str = "CONDUIT_PROXY_PRIVATE_FORWARD";
 pub const ENV_PUBLIC_LISTENER: &str = "CONDUIT_PROXY_PUBLIC_LISTENER";
@@ -141,7 +137,6 @@ const ENV_RESOLV_CONF: &str = "CONDUIT_RESOLV_CONF";
 
 // Default values for various configuration fields
 const DEFAULT_EVENT_BUFFER_CAPACITY: usize = 10_000; // FIXME
-const DEFAULT_REPORT_TIMEOUT_SECS: u64 = 10; // TODO: is this a reasonable default?
 const DEFAULT_PRIVATE_LISTENER: &str = "tcp://127.0.0.1:4140";
 const DEFAULT_PUBLIC_LISTENER: &str = "tcp://0.0.0.0:4143";
 const DEFAULT_CONTROL_LISTENER: &str = "tcp://0.0.0.0:4190";
@@ -170,7 +165,6 @@ impl<'a> TryFrom<&'a Strings> for Config {
         let bind_timeout = parse(strings, ENV_BIND_TIMEOUT, parse_number);
         let resolv_conf_path = strings.get(ENV_RESOLV_CONF);
         let event_buffer_capacity = parse(strings, ENV_EVENT_BUFFER_CAPACITY, parse_number);
-        let report_timeout = parse(strings, ENV_REPORT_TIMEOUT_SECS, parse_number);
         let pod_name = strings.get(ENV_POD_NAME);
         let pod_namespace = strings.get(ENV_POD_NAMESPACE).and_then(|maybe_value| {
             // There cannot be a default pod namespace, and the pod namespace is required.
@@ -223,8 +217,6 @@ impl<'a> TryFrom<&'a Strings> for Config {
             control_host_and_port: control_host_and_port?,
 
             event_buffer_capacity: event_buffer_capacity?.unwrap_or(DEFAULT_EVENT_BUFFER_CAPACITY),
-            report_timeout:
-                Duration::from_secs(report_timeout?.unwrap_or(DEFAULT_REPORT_TIMEOUT_SECS)),
             bind_timeout:
                 Duration::from_millis(bind_timeout?.unwrap_or(DEFAULT_BIND_TIMEOUT_MS)),
             pod_name: pod_name?,
