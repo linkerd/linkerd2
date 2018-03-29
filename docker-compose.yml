@@ -112,7 +112,7 @@ services:
     - --storage.tsdb.retention=6h
 
   grafana:
-    image: grafana/grafana:5.0.3
+    image: grafana/grafana:5.0.4
     ports:
     - 3000:3000
     volumes:

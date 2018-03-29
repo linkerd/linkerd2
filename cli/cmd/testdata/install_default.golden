@@ -633,7 +633,7 @@ spec:
         conduit.io/proxy-deployment: grafana
     spec:
       containers:
-      - image: grafana/grafana:5.0.3
+      - image: grafana/grafana:5.0.4
         imagePullPolicy: IfNotPresent
         name: grafana
         ports:
