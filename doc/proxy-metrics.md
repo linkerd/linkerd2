@@ -80,6 +80,7 @@ will correspond to `k8s_*` Prometheus labels:
 * `daemon_set`: The daemon set that the pod belongs to (if applicable).
 * `replication_controller`: The replication controller that the pod belongs to
                             (if applicable).
+* `pod_name`: Kubernetes pod name.
 * `pod_template_hash`: Corresponds to the [pod-template-hash][pod-template-hash]
                        Kubernetes label. This value changes during redeploys and
                        rolling restarts.
@@ -87,6 +88,7 @@ will correspond to `k8s_*` Prometheus labels:
 Here's a concrete example, given the following pod snippet:
 
 ```yaml
+name: vote-bot-5b7f5657f6-xbjjw
 namespace: emojivoto
 labels:
   app: vote-bot
@@ -104,6 +106,7 @@ request_total{
   app="vote-bot",
   conduit_io_control_plane_ns="conduit",
   deployment="vote-bot",
+  pod_name="vote-bot-5b7f5657f6-xbjjw",
   pod_template_hash="3957278789",
   test="vote-bot-test",
   instance="10.1.3.93:4191",
