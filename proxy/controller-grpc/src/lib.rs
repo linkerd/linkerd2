@@ -32,10 +32,6 @@ mod gen {
     pub mod tap {
         include!(concat!(env!("OUT_DIR"), "/conduit.proxy.tap.rs"));
     }
-
-    pub mod telemetry {
-        include!(concat!(env!("OUT_DIR"), "/conduit.proxy.telemetry.rs"));
-    }
 }
 
 /// Converts a Rust Duration to a Protobuf Duration.

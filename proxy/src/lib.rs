@@ -190,7 +190,6 @@ where
         let (sensors, telemetry) = telemetry::new(
             &process_ctx,
             config.event_buffer_capacity,
-            config.metrics_flush_interval,
         );
 
         let (control, control_bg) = control::new();
@@ -279,15 +278,14 @@ where
                         .serve_metrics(metrics_listener);
 
                     let client = control_bg.bind(
-                        telemetry,
                         control_host_and_port,
                         dns_config,
-                        config.report_timeout,
                         &executor
                     );
 
-                    let fut = client.join3(
+                    let fut = client.join4(
                         server.map_err(|_| {}),
+                        telemetry,
                         metrics_server.map_err(|_| {}),
                     ).map(|_| {});
                     executor.spawn(::logging::context_future("controller-client", fut));

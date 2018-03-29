@@ -3,7 +3,7 @@ use std::io;
 use std::time::{Duration, Instant};
 
 use bytes::Bytes;
-use futures::{future, Async, Future, Poll, Stream};
+use futures::{future, Async, Future, Poll};
 use h2;
 use http;
 use tokio_core::reactor::{
@@ -24,13 +24,10 @@ use timeout::{Timeout, TimeoutError};
 pub mod discovery;
 mod observe;
 pub mod pb;
-mod telemetry;
 
 use self::discovery::{Background as DiscoBg, Discovery, Watch};
 pub use self::discovery::Bind;
 pub use self::observe::Observe;
-use conduit_proxy_controller_grpc::telemetry::ReportRequest;
-use self::telemetry::Telemetry;
 
 pub struct Control {
     disco: Discovery,
@@ -65,17 +62,12 @@ impl Control {
 // ===== impl Background =====
 
 impl Background {
-    pub fn bind<S>(
+    pub fn bind(
         self,
-        events: S,
         host_and_port: HostAndPort,
         dns_config: dns::Config,
-        report_timeout: Duration,
         executor: &Handle,
-    ) -> Box<Future<Item = (), Error = ()>>
-    where
-        S: Stream<Item = ReportRequest, Error = ()> + 'static,
-    {
+    ) -> Box<Future<Item = (), Error = ()>> {
         // Build up the Controller Client Stack
         let mut client = {
             let ctx = ("controller-client", format!("{:?}", host_and_port));
@@ -94,7 +86,6 @@ impl Background {
                 ::logging::context_executor(ctx, executor.clone()),
             );
 
-
             let reconnect = Reconnect::new(h2_client);
             let log_errors = LogErrors::new(reconnect);
             let backoff = Backoff::new(log_errors, Duration::from_secs(5), executor);
@@ -103,11 +94,9 @@ impl Background {
         };
 
         let mut disco = self.disco.work();
-        let mut telemetry = Telemetry::new(events, report_timeout, executor);
 
         let fut = future::poll_fn(move || {
             disco.poll_rpc(&mut client);
-            telemetry.poll_rpc(&mut client);
 
             Ok(Async::NotReady)
         });

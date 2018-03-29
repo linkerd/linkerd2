@@ -13,8 +13,6 @@ pub struct Proxy {
     controller: Option<controller::Listening>,
     inbound: Option<server::Listening>,
     outbound: Option<server::Listening>,
-
-    metrics_flush_interval: Option<Duration>,
 }
 
 #[derive(Debug)]
@@ -36,8 +34,6 @@ impl Proxy {
             controller: None,
             inbound: None,
             outbound: None,
-
-            metrics_flush_interval: None,
         }
     }
 
@@ -53,11 +49,6 @@ impl Proxy {
 
     pub fn outbound(mut self, s: server::Listening) -> Self {
         self.outbound = Some(s);
-        self
-    }
-
-    pub fn metrics_flush_interval(mut self, dur: Duration) -> Self {
-        self.metrics_flush_interval = Some(dur);
         self
     }
 
@@ -122,14 +113,6 @@ fn run(proxy: Proxy, mut env: config::TestEnv) -> Listening {
     env.put(config::ENV_POD_NAMESPACE, "test".to_owned());
 
     let mut config = config::Config::try_from(&env).unwrap();
-
-    // TODO: We currently can't use `config::ENV_METRICS_FLUSH_INTERVAL_SECS`
-    // because we need to be able to set the flush interval to a fraction of a
-    // second. We should change config::ENV_METRICS_FLUSH_INTERVAL_SECS so that
-    // it can support this.
-    if let Some(dur) = proxy.metrics_flush_interval {
-        config.metrics_flush_interval = dur;
-    }
 
     let (running_tx, running_rx) = oneshot::channel();
     let (tx, mut rx) = shutdown_signal();

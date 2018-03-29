@@ -47,9 +47,6 @@ pub struct Config {
     /// Event queue capacity.
     pub event_buffer_capacity: usize,
 
-    /// Interval after which to flush metrics.
-    pub metrics_flush_interval: Duration,
-
     /// Timeout after which to cancel telemetry reports.
     pub report_timeout: Duration,
 
@@ -125,7 +122,6 @@ pub struct TestEnv {
 
 // Environment variables to look at when loading the configuration
 const ENV_EVENT_BUFFER_CAPACITY: &str = "CONDUIT_PROXY_EVENT_BUFFER_CAPACITY";
-pub const ENV_METRICS_FLUSH_INTERVAL_SECS: &str = "CONDUIT_PROXY_METRICS_FLUSH_INTERVAL_SECS";
 const ENV_REPORT_TIMEOUT_SECS: &str = "CONDUIT_PROXY_REPORT_TIMEOUT_SECS";
 pub const ENV_PRIVATE_LISTENER: &str = "CONDUIT_PROXY_PRIVATE_LISTENER";
 pub const ENV_PRIVATE_FORWARD: &str = "CONDUIT_PROXY_PRIVATE_FORWARD";
@@ -145,7 +141,6 @@ const ENV_RESOLV_CONF: &str = "CONDUIT_RESOLV_CONF";
 
 // Default values for various configuration fields
 const DEFAULT_EVENT_BUFFER_CAPACITY: usize = 10_000; // FIXME
-const DEFAULT_METRICS_FLUSH_INTERVAL_SECS: u64 = 10;
 const DEFAULT_REPORT_TIMEOUT_SECS: u64 = 10; // TODO: is this a reasonable default?
 const DEFAULT_PRIVATE_LISTENER: &str = "tcp://127.0.0.1:4140";
 const DEFAULT_PUBLIC_LISTENER: &str = "tcp://0.0.0.0:4143";
@@ -175,8 +170,6 @@ impl<'a> TryFrom<&'a Strings> for Config {
         let bind_timeout = parse(strings, ENV_BIND_TIMEOUT, parse_number);
         let resolv_conf_path = strings.get(ENV_RESOLV_CONF);
         let event_buffer_capacity = parse(strings, ENV_EVENT_BUFFER_CAPACITY, parse_number);
-        let metrics_flush_interval_secs =
-            parse(strings, ENV_METRICS_FLUSH_INTERVAL_SECS, parse_number);
         let report_timeout = parse(strings, ENV_REPORT_TIMEOUT_SECS, parse_number);
         let pod_name = strings.get(ENV_POD_NAME);
         let pod_namespace = strings.get(ENV_POD_NAMESPACE).and_then(|maybe_value| {
@@ -230,9 +223,6 @@ impl<'a> TryFrom<&'a Strings> for Config {
             control_host_and_port: control_host_and_port?,
 
             event_buffer_capacity: event_buffer_capacity?.unwrap_or(DEFAULT_EVENT_BUFFER_CAPACITY),
-            metrics_flush_interval:
-                Duration::from_secs(metrics_flush_interval_secs?
-                                        .unwrap_or(DEFAULT_METRICS_FLUSH_INTERVAL_SECS)),
             report_timeout:
                 Duration::from_secs(report_timeout?.unwrap_or(DEFAULT_REPORT_TIMEOUT_SECS)),
             bind_timeout:
