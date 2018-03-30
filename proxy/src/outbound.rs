@@ -168,8 +168,8 @@ where
     type Key = SocketAddr;
     type Request = http::Request<B>;
     type Response = bind::HttpResponse;
-    type Error = <bind::Service<B> as tower::Service>::Error;
-    type Service = bind::Service<B>;
+    type Error = <Self::Service as tower::Service>::Error;
+    type Service = discovery::LabelRequest<bind::Service<B>>;
     type DiscoverError = BindError;
 
     fn poll(&mut self) -> Poll<Change<Self::Key, Self::Service>, Self::DiscoverError> {
@@ -184,6 +184,9 @@ where
                 // closing down when the connection is no longer usable.
                 if let Some((addr, bind)) = opt.take() {
                     let svc = bind.bind(&addr)
+                        // The controller has no labels to add to an external
+                        // service.
+                        .map(discovery::LabelRequest::none)
                         .map_err(|_| BindError::External{ addr })?;
                     Ok(Async::Ready(Change::Insert(addr, svc)))
                 } else {
