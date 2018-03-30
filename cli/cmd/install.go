@@ -63,12 +63,11 @@ func validateAndBuildConfig() (*installConfig, error) {
 		return nil, err
 	}
 	return &installConfig{
-		Namespace:       controlPlaneNamespace,
-		ControllerImage: fmt.Sprintf("%s/controller:%s", dockerRegistry, conduitVersion),
-		WebImage:        fmt.Sprintf("%s/web:%s", dockerRegistry, conduitVersion),
-		PrometheusImage: "prom/prometheus:v2.1.0",
-		GrafanaImage:    "grafana/grafana:5.0.4",
-		// TODO: these dashboards assume we're running in the "conduit" namespace
+		Namespace:                controlPlaneNamespace,
+		ControllerImage:          fmt.Sprintf("%s/controller:%s", dockerRegistry, conduitVersion),
+		WebImage:                 fmt.Sprintf("%s/web:%s", dockerRegistry, conduitVersion),
+		PrometheusImage:          "prom/prometheus:v2.1.0",
+		GrafanaImage:             "grafana/grafana:5.0.4",
 		VizDashboard:             install.Viz,
 		DeploymentDashboard:      install.Deployment,
 		HealthDashboard:          install.Health,

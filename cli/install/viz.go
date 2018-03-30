@@ -19,7 +19,7 @@ const Viz = `{
       "gnetId": null,
       "graphTooltip": 1,
       "id": null,
-      "iteration": 1522201643834,
+      "iteration": 1522434948953,
       "links": [],
       "panels": [
         {
@@ -100,7 +100,7 @@ const Viz = `{
           "tableColumn": "",
           "targets": [
             {
-              "expr": "count(count(request_total) by (deployment))",
+              "expr": "count(count(request_total{deployment=~\"$deployment\"}) by (deployment))",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "",
@@ -182,7 +182,7 @@ const Viz = `{
           "tableColumn": "",
           "targets": [
             {
-              "expr": "(sum(irate(response_total{status_code=\"200\"}[20s]))+sum(irate(response_total{grpc_status_code=\"0\"}[20s]))) / sum(irate(response_total{}[20s]))",
+              "expr": "(sum(irate(response_total{status_code=\"200\", deployment=~\"$deployment\"}[20s]))+sum(irate(response_total{grpc_status_code=\"0\", deployment=~\"$deployment\"}[20s]))) / sum(irate(response_total{deployment=~\"$deployment\"}[20s]))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "",
@@ -264,7 +264,7 @@ const Viz = `{
           "tableColumn": "",
           "targets": [
             {
-              "expr": "sum(irate(request_total{}[20s]))",
+              "expr": "sum(irate(request_total{deployment=~\"$deployment\"}[20s]))",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "",
@@ -337,7 +337,7 @@ const Viz = `{
           "steppedLine": false,
           "targets": [
             {
-              "expr": "(sum(irate(response_total{status_code=\"200\"}[20s])) by (deployment) + sum(irate(response_total{grpc_status_code=\"0\"}[20s])) by (deployment)) / sum(irate(response_total{}[20s])) by (deployment)",
+              "expr": "(sum(irate(response_total{status_code=\"200\", deployment=~\"$deployment\"}[20s])) by (deployment) + sum(irate(response_total{grpc_status_code=\"0\", deployment=~\"$deployment\"}[20s])) by (deployment)) / sum(irate(response_total{deployment=~\"$deployment\"}[20s])) by (deployment)",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "{{deployment}}",
@@ -417,7 +417,7 @@ const Viz = `{
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(request_total{}[20s])) by (deployment)",
+              "expr": "sum(irate(request_total{deployment=~\"$deployment\"}[20s])) by (deployment)",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "{{deployment}}",
@@ -497,21 +497,21 @@ const Viz = `{
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{}[20s])) by (le))",
+              "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{deployment=~\"$deployment\"}[20s])) by (le))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "p50",
               "refId": "A"
             },
             {
-              "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{}[20s])) by (le))",
+              "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{deployment=~\"$deployment\"}[20s])) by (le))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "p95",
               "refId": "B"
             },
             {
-              "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{}[20s])) by (le))",
+              "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{deployment=~\"$deployment\"}[20s])) by (le))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "p99",
@@ -874,7 +874,7 @@ const Viz = `{
             "multi": false,
             "name": "deployment",
             "options": [],
-            "query": "label_values(deployment)",
+            "query": "label_values(request_total{conduit_io_control_plane_component=\"\"}, deployment)",
             "refresh": 2,
             "regex": "",
             "sort": 1,
