@@ -1,11 +1,8 @@
 package destination
 
 import (
-	"errors"
 	"fmt"
 	"net"
-	"reflect"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -15,21 +12,11 @@ import (
 	"github.com/runconduit/conduit/controller/util"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
-	"k8s.io/api/core/v1"
 )
 
-type (
-	server struct {
-		k8sDNSZoneLabels []string
-		endpointsWatcher *k8s.EndpointsWatcher
-		dnsWatcher       *DnsWatcher
-	}
-)
-
-var (
-	dnsCharactersRegexp = regexp.MustCompile("^[a-zA-Z0-9_-]{0,63}$")
-	containsAlphaRegexp = regexp.MustCompile("[a-zA-Z]")
-)
+type server struct {
+	resolvers []streamingDestinationResolver
+}
 
 // The Destination service serves service discovery information to the proxy.
 // This implementation supports the "k8s" destination scheme and expects
@@ -55,9 +42,13 @@ func NewServer(addr, kubeconfig string, k8sDNSZone string, done chan struct{}) (
 
 	dnsWatcher := NewDnsWatcher()
 
-	srv, err := newServer(k8sDNSZone, endpointsWatcher, dnsWatcher)
+	resolvers, err := buildResolversList(k8sDNSZone, endpointsWatcher, dnsWatcher)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	srv := server{
+		resolvers: resolvers,
 	}
 
 	lis, err := net.Listen("tcp", addr)
@@ -66,7 +57,7 @@ func NewServer(addr, kubeconfig string, k8sDNSZone string, done chan struct{}) (
 	}
 
 	s := util.NewGrpcServer()
-	pb.RegisterDestinationServer(s, srv)
+	pb.RegisterDestinationServer(s, &srv)
 
 	go func() {
 		<-done
@@ -74,25 +65,6 @@ func NewServer(addr, kubeconfig string, k8sDNSZone string, done chan struct{}) (
 	}()
 
 	return s, lis, nil
-}
-
-// Split out from NewServer make it easy to write unit tests.
-func newServer(k8sDNSZone string, endpointsWatcher *k8s.EndpointsWatcher, dnsWatcher *DnsWatcher) (*server, error) {
-	var k8sDNSZoneLabels []string
-	if k8sDNSZone == "" {
-		k8sDNSZoneLabels = []string{}
-	} else {
-		var err error
-		k8sDNSZoneLabels, err = splitDNSName(k8sDNSZone)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return &server{
-		k8sDNSZoneLabels: k8sDNSZoneLabels,
-		endpointsWatcher: endpointsWatcher,
-		dnsWatcher:       dnsWatcher,
-	}, nil
 }
 
 func (s *server) Get(dest *common.Destination, stream pb.Destination_GetServer) error {
@@ -120,156 +92,68 @@ func (s *server) Get(dest *common.Destination, stream pb.Destination_GetServer) 
 		}
 	}
 
-	// If this is an IP address, echo it back
-	isIP, ip := isIPAddress(host)
-	if isIP {
-		echoIPDestination(ip, port, stream)
-		return nil
-	}
-
-	id, err := s.localKubernetesServiceIdFromDNSName(host)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-
-	if id == nil {
-		// TODO: Resolve name using DNS similar to Kubernetes' ClusterFirst
-		// resolution.
-		err = fmt.Errorf("cannot resolve service that isn't a local Kubernetes service: %s", host)
-		log.Error(err)
-		return err
-	}
-
-	svc, exists, err := s.endpointsWatcher.GetService(*id)
-	if err != nil {
-		log.Errorf("error retrieving service [%s]: %s", *id, err)
-		return err
-	}
-
-	if exists && svc.Spec.Type == v1.ServiceTypeExternalName {
-		return s.resolveExternalName(svc.Spec.ExternalName, stream)
-	}
-
-	return s.resolveKubernetesService(*id, port, stream)
+	return streamResolutionUsingCorrectResolverFor(s.resolvers, host, port, stream)
 }
 
-func isIPAddress(host string) (bool, *common.IPAddress) {
-	ip, err := util.ParseIPV4(host)
-	return err == nil, ip
+func streamResolutionUsingCorrectResolverFor(resolvers []streamingDestinationResolver, host string, port int, stream pb.Destination_GetServer) error {
+	listener := &endpointListener{stream: stream}
+
+	for _, resolver := range resolvers {
+		resolverCanResolve, err := resolver.canResolve(host, port)
+		if err != nil {
+			return fmt.Errorf("resolver [%+v] found error resolving host [%s] port[%d]: %v", resolver, host, port, err)
+		}
+		if resolverCanResolve {
+			return resolver.streamResolution(host, port, listener)
+		}
+	}
+	return fmt.Errorf("cannot find resolver for host [%s] port [%d]", host, port)
 }
 
-func echoIPDestination(ip *common.IPAddress, port int, stream pb.Destination_GetServer) bool {
-	update := &pb.Update{
-		Update: &pb.Update_Add{
-			Add: &pb.WeightedAddrSet{
-				Addrs: []*pb.WeightedAddr{
-					&pb.WeightedAddr{
-						Addr: &common.TcpAddress{
-							Ip:   ip,
-							Port: uint32(port),
-						},
-						Weight: 1,
-					},
-				},
-			},
-		},
-	}
-	stream.Send(update)
-
-	<-stream.Context().Done()
-
-	return true
-}
-
-func (s *server) resolveKubernetesService(id string, port int, stream pb.Destination_GetServer) error {
-	listener := endpointListener{stream: stream}
-
-	s.endpointsWatcher.Subscribe(id, uint32(port), listener)
-
-	<-stream.Context().Done()
-
-	s.endpointsWatcher.Unsubscribe(id, uint32(port), listener)
-
-	return nil
-}
-
-func (s *server) resolveExternalName(externalName string, stream pb.Destination_GetServer) error {
-	listener := endpointListener{stream: stream}
-
-	s.dnsWatcher.Subscribe(externalName, listener)
-
-	<-stream.Context().Done()
-
-	s.dnsWatcher.Unsubscribe(externalName, listener)
-
-	return nil
-}
-
-// localKubernetesServiceIdFromDNSName returns the name of the service in
-// "namespace-name/service-name" form if `host` is a DNS name in a form used
-// for local Kubernetes services. It returns nil if `host` isn't in such a
-// form.
-func (s *server) localKubernetesServiceIdFromDNSName(host string) (*string, error) {
-	hostLabels, err := splitDNSName(host)
-	if err != nil {
-		return nil, err
+func buildResolversList(k8sDNSZone string, endpointsWatcher k8s.EndpointsWatcher, dnsWatcher DnsWatcher) ([]streamingDestinationResolver, error) {
+	var k8sDNSZoneLabels []string
+	if k8sDNSZone == "" {
+		k8sDNSZoneLabels = []string{}
+	} else {
+		var err error
+		k8sDNSZoneLabels, err = splitDNSName(k8sDNSZone)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	// Verify that `host` ends with ".svc.$zone", ".svc.cluster.local," or ".svc".
-	matched := false
-	if len(s.k8sDNSZoneLabels) > 0 {
-		hostLabels, matched = maybeStripSuffixLabels(hostLabels, s.k8sDNSZoneLabels)
-	}
-	// Accept "cluster.local" as an alias for "$zone". The Kubernetes DNS
-	// specification
-	// (https://github.com/kubernetes/dns/blob/master/docs/specification.md)
-	// doesn't require Kubernetes to do this, but some hosting providers like
-	// GKE do it, and so we need to support it for transparency.
-	if !matched {
-		hostLabels, matched = maybeStripSuffixLabels(hostLabels, []string{"cluster", "local"})
-	}
-	// TODO:
-	// ```
-	// 	if !matched {
-	//		return nil, nil
-	//  }
-	// ```
-	//
-	// This is technically wrong since the protocol definition for the
-	// Destination service indicates that `host` is a FQDN and so we should
-	// never append a ".$zone" suffix to it, but we need to do this as a
-	// workaround until the proxies are configured to know "$zone."
-	hostLabels, matched = maybeStripSuffixLabels(hostLabels, []string{"svc"})
-	if !matched {
-		return nil, nil
-	}
+	ipResolver := &echoIpV4Resolver{}
+	log.Infof("Adding ipv4 name resolver")
 
-	// Extract the service name and namespace. TODO: Federated services have
-	// *three* components before "svc"; see
-	// https://github.com/runconduit/conduit/issues/156.
-	if len(hostLabels) != 2 {
-		return nil, fmt.Errorf("not a service: %s", host)
+	k8sResolver := &k8sResolver{
+		k8sDNSZoneLabels: k8sDNSZoneLabels,
+		endpointsWatcher: endpointsWatcher,
+		dnsWatcher:       dnsWatcher,
 	}
-	service := hostLabels[0]
-	namespace := hostLabels[1]
+	log.Infof("Adding k8s name resolver")
 
-	id := namespace + "/" + service
-	return &id, nil
+	return []streamingDestinationResolver{ipResolver, k8sResolver}, nil
 }
 
 type endpointListener struct {
 	stream pb.Destination_GetServer
 }
 
-func (listener endpointListener) Update(add []common.TcpAddress, remove []common.TcpAddress) {
+func (listener *endpointListener) Done() <-chan struct{} {
+	return listener.stream.Context().Done()
+}
+
+func (listener *endpointListener) Update(add []common.TcpAddress, remove []common.TcpAddress) {
 	if len(add) > 0 {
 		update := &pb.Update{
 			Update: &pb.Update_Add{
 				Add: toWeightedAddrSet(add),
 			},
 		}
-		listener.stream.Send(update)
+		err := listener.stream.Send(update)
+		if err != nil {
+			log.Error(err)
+		}
 	}
 	if len(remove) > 0 {
 		update := &pb.Update{
@@ -277,11 +161,14 @@ func (listener endpointListener) Update(add []common.TcpAddress, remove []common
 				Remove: toAddrSet(remove),
 			},
 		}
-		listener.stream.Send(update)
+		err := listener.stream.Send(update)
+		if err != nil {
+			log.Error(err)
+		}
 	}
 }
 
-func (listener endpointListener) NoEndpoints(exists bool) {
+func (listener *endpointListener) NoEndpoints(exists bool) {
 	update := &pb.Update{
 		Update: &pb.Update_NoEndpoints{
 			NoEndpoints: &pb.NoEndpoints{
@@ -309,44 +196,4 @@ func toAddrSet(endpoints []common.TcpAddress) *pb.AddrSet {
 		addrs = append(addrs, &endpoints[i])
 	}
 	return &pb.AddrSet{Addrs: addrs}
-}
-
-func splitDNSName(dnsName string) ([]string, error) {
-	// If the name is fully qualified, strip off the final dot.
-	if strings.HasSuffix(dnsName, ".") {
-		dnsName = dnsName[:len(dnsName)-1]
-	}
-
-	labels := strings.Split(dnsName, ".")
-
-	// Rejects any empty labels, which is especially important to do for
-	// the beginning and the end because we do matching based on labels'
-	// relative positions. For example, we need to reject ".example.com"
-	// instead of splitting it into ["", "example", "com"].
-	for _, l := range labels {
-		if l == "" {
-			return []string{}, errors.New("Empty label in DNS name: " + dnsName)
-		}
-		if !dnsCharactersRegexp.MatchString(l) {
-			return []string{}, errors.New("DNS name is too long or contains invalid characters: " + dnsName)
-		}
-		if strings.HasPrefix(l, "-") || strings.HasSuffix(l, "-") {
-			return []string{}, errors.New("DNS name cannot start or end with a dash: " + dnsName)
-		}
-		if !containsAlphaRegexp.MatchString(l) {
-			return []string{}, errors.New("DNS name cannot only contain digits and hyphens: " + dnsName)
-		}
-	}
-	return labels, nil
-}
-
-func maybeStripSuffixLabels(input []string, suffix []string) ([]string, bool) {
-	n := len(input) - len(suffix)
-	if n < 0 {
-		return input, false
-	}
-	if !reflect.DeepEqual(input[n:], suffix) {
-		return input, false
-	}
-	return input[:n], true
 }
