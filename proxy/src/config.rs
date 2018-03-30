@@ -168,6 +168,8 @@ const DEFAULT_BIND_TIMEOUT_MS: u64 = 10_000; // ten seconds, as in Linkerd.
 const DEFAULT_RESOLV_CONF: &str = "/etc/resolv.conf";
 
 // By default, we keep a list of known assigned ports of server-first protocols.
+//
+// https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.txt
 const DEFAULT_PORTS_DISABLE_PROTOCOL_DETECTION: &[u16] = &[
     25,   // SMTP
     3306, // MySQL
