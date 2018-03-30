@@ -281,8 +281,10 @@ pub fn destination_update(addr: SocketAddr) -> pb::destination::Update {
                             port: u32::from(addr.port()),
                         }),
                         weight: 0,
+                        ..Default::default()
                     },
                 ],
+                ..Default::default()
             },
         )),
     }
