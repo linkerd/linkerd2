@@ -19,7 +19,7 @@ import (
 func main() {
 	rand.Seed(time.Now().UnixNano())
 
-	addr := flag.String("addr", ":8089", "address of proxy api")
+	addr := flag.String("addr", ":8089", "address of destination service")
 	path := flag.String("path", "strest-server.default.svc.cluster.local:8888", "destination path")
 	flag.Parse()
 
