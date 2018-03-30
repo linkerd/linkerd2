@@ -29,6 +29,10 @@ mod gen {
         include!(concat!(env!("OUT_DIR"), "/conduit.proxy.destination.rs"));
     }
 
+    pub mod accept_policy {
+        include!(concat!(env!("OUT_DIR"), "/conduit.proxy.accept_policy.rs"));
+    }
+
     pub mod tap {
         include!(concat!(env!("OUT_DIR"), "/conduit.proxy.tap.rs"));
     }

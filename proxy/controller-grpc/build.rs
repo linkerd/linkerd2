@@ -7,6 +7,7 @@ fn main() {
 fn build_control() {
     let client_files = &[
         "../../proto/common/common.proto",
+        "../../proto/proxy/accept_policy/accept_policy.proto",
         "../../proto/proxy/destination/destination.proto",
         "../../proto/proxy/telemetry/telemetry.proto",
     ];

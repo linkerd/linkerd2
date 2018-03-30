@@ -10,6 +10,7 @@ extern crate domain;
 extern crate env_logger;
 #[macro_use]
 extern crate futures;
+extern crate futures_watch;
 extern crate futures_mpsc_lossy;
 extern crate h2;
 extern crate http;

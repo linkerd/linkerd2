@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package conduit.proxy.accept_policy;
+
+import "common/common.proto";
+
+service AcceptPolicy {
+  rpc Inbound(InboundAcceptPolicyRequest) returns (stream InboundAcceptPolicy) {}
+  rpc Outbound(OutboundAcceptPolicyRequest) returns (stream OutboundAcceptPolicy) {}
+}
+
+message InboundAcceptPolicyRequest {
+}
+
+// Describes how an inbound proxy should accept connections and requests to be routed.
+//
+// Inbound proxies may terminate TLS as they accept a connection.
+message InboundAcceptPolicy {
+  repeated OpaqueEndpoints opaque_endpoints = 1;
+}
+
+message OutboundAcceptPolicyRequest {
+}
+
+// Describes how an outbound proxy should accept connections and requests to be routed.//
+//
+// Outbound proxies do not terminate TLS as they accept a connection--TLSed streams are
+// handled as opaque TCP.
+message OutboundAcceptPolicy {
+  repeated OpaqueEndpoints opaque_endpoints = 1;
+}
+
+
+// Matches a set of endpoints considered to be "opaque" TCP endpoints on which protocol
+// detection should be bypassed.
+message OpaqueEndpoints {
+  Netmask netmask = 1;
+  repeated uint32 ports = 2;
+
+  message Netmask {
+    common.IPAddress ip = 1;
+    uint32 mask = 2;
+  }
+}
