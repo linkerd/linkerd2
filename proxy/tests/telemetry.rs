@@ -698,8 +698,9 @@ fn metrics_endpoint_outbound_dst_labels() {
             srv.addr,
             HashMap::from_iter(
                 vec![
+
+                    (String::from("addr_label2"), String::from("bar")),
                     (String::from("addr_label1"), String::from("foo")),
-                    (String::from("addr_label2"), String::from("bar"))
                 ]
             ),
             HashMap::new(),
@@ -710,8 +711,9 @@ fn metrics_endpoint_outbound_dst_labels() {
             HashMap::new(),
             HashMap::from_iter(
                 vec![
+
+                    (String::from("set_label2"), String::from("bar")),
                     (String::from("set_label1"), String::from("foo")),
-                    (String::from("set_label2"), String::from("bar"))
                 ]
             ))
         .labeled_destination(
@@ -739,13 +741,13 @@ fn metrics_endpoint_outbound_dst_labels() {
     assert_eq!(client.get("/"), "hello");
     let scrape = metrics.get("/metrics");
     assert_contains!(scrape,
-        "request_duration_ms_count{authority=\"labeled-addr.test.svc.cluster.local\",direction=\"outbound\",addr_label1=\"foo\",addr_label2=\"bar\"} 1");
+        "request_duration_ms_count{authority=\"labeled-addr.test.svc.cluster.local\",direction=\"outbound\",addr_label1=\"foo\",addr_label2=\"bar\",classification=\"success\",status_code=\"200\"} 1");
     assert_contains!(scrape,
-        "response_duration_ms_count{authority=\"labeled-addr.test.svc.cluster.local\",direction=\"outbound\",status_code=\"200\",classification=\"success\",addr_label1=\"foo\",addr_label2=\"bar\"} 1");
+        "response_duration_ms_count{authority=\"labeled-addr.test.svc.cluster.local\",direction=\"outbound\",addr_label1=\"foo\",addr_label2=\"bar\",classification=\"success\",status_code=\"200\",} 1");
     assert_contains!(scrape,
-        "response_total{authority=\"labeled-addr.test.svc.cluster.local\",direction=\"outbound\",status_code=\"200\",classification=\"success\",addr_label1=\"foo\",addr_label2=\"bar\"} 1");
+        "response_total{authority=\"labeled-addr.test.svc.cluster.local\",direction=\"outbound\",addr_label1=\"foo\",addr_label2=\"bar\",classification=\"success\",status_code=\"200\"} 1");
     assert_contains!(scrape,
-        "request_total{authority=\"labeled-addr.test.svc.cluster.local\",direction=\"outbound\",addr_label1=\"foo\",addr_label2=\"bar\"} 1");
+        "request_total{authority=\"labeled-addr.test.svc.cluster.local\",direction=\"outbound\",addr_label1=\"foo\",addr_label2=\"bar\",classification=\"success\",status_code=\"200\"} 1");
 
     let client = client::new(
         proxy.outbound,
@@ -755,13 +757,13 @@ fn metrics_endpoint_outbound_dst_labels() {
     assert_eq!(client.get("/"), "hello");
     let scrape = metrics.get("/metrics");
     assert_contains!(scrape,
-        "request_duration_ms_count{authority=\"labeled-set.test.svc.cluster.local\",direction=\"outbound\",set_label1=\"foo\",set_label2=\"bar\"} 1");
+        "request_duration_ms_count{authority=\"labeled-set.test.svc.cluster.local\",direction=\"outbound\",set_label1=\"foo\",set_label2=\"bar\",classification=\"success\",status_code=\"200\"} 1");
     assert_contains!(scrape,
-        "response_duration_ms_count{authority=\"labeled-set.test.svc.cluster.local\",direction=\"outbound\",status_code=\"200\",classification=\"success\",set_label1=\"foo\",set_label2=\"bar\"} 1");
+        "response_duration_ms_count{authority=\"labeled-set.test.svc.cluster.local\",direction=\"outbound\",set_label1=\"foo\",set_label2=\"bar\",classification=\"success\",status_code=\"200\"} 1");
     assert_contains!(scrape,
-        "response_total{authority=\"labeled-set.test.svc.cluster.local\",direction=\"outbound\",status_code=\"200\",classification=\"success\",set_label1=\"foo\",set_label2=\"bar\"} 1");
+        "response_total{authority=\"labeled-set.test.svc.cluster.local\",direction=\"outbound\",classification=\"success\",set_label1=\"foo\",set_label2=\"bar\",status_code=\"200\"} 1");
     assert_contains!(scrape,
-        "request_total{authority=\"labeled-set.test.svc.cluster.local\",direction=\"outbound\",set_label1=\"foo\",set_label2=\"bar\"} 1");
+        "request_total{authority=\"labeled-set.test.svc.cluster.local\",direction=\"outbound\",set_label1=\"foo\",set_label2=\"bar\",classification=\"success\",status_code=\"200\"} 1");
 
     let client = client::new(
         proxy.outbound,
@@ -773,11 +775,11 @@ fn metrics_endpoint_outbound_dst_labels() {
     assert_contains!(scrape,
         "request_duration_ms_count{authority=\"labeled-all.test.svc.cluster.local\",direction=\"outbound\",addr_label=\"foo\",set_label=\"bar\"} 1");
     assert_contains!(scrape,
-        "response_duration_ms_count{authority=\"labeled-all.test.svc.cluster.local\",direction=\"outbound\",status_code=\"200\",classification=\"success\",addr_label=\"foo\",set_label=\"bar\"} 1");
+        "response_duration_ms_count{authority=\"labeled-all.test.svc.cluster.local\",direction=\"outbound\",addr_label=\"foo\",set_label=\"bar\",status_code=\"200\",classification=\"success\"} 1");
     assert_contains!(scrape,
-        "response_total{authority=\"labeled-all.test.svc.cluster.local\",direction=\"outbound\",status_code=\"200\",classification=\"success\",addr_label=\"foo\",set_label=\"bar\"} 1");
+        "response_total{authority=\"labeled-all.test.svc.cluster.local\",direction=\"outbound\",addr_label=\"foo\",set_label=\"bar\",status_code=\"200\",classification=\"success\"} 1");
     assert_contains!(scrape,
-        "request_total{authority=\"labeled-set.test.svc.cluster.local\",direction=\"outbound\",addr_label=\"foo\",set_label=\"bar\"} 1");
+        "request_total{authority=\"labeled-set.test.svc.cluster.local\",direction=\"outbound\",addr_label=\"foo\",set_label=\"bar\",status_code=\"200\",classification=\"success\"} 1");
 }
 
 #[test]
