@@ -255,7 +255,7 @@ fn tcp_server_first() {
     let ctrl = controller::new().run();
     let proxy = proxy::new()
         .controller(ctrl)
-        .disable_private_ports_protocol_detection(vec![srv.addr.port()])
+        .disable_inbound_ports_protocol_detection(vec![srv.addr.port()])
         .inbound(srv)
         .run();
 

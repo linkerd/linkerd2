@@ -188,12 +188,12 @@ where
             metrics_listener.local_addr(),
         );
         info!(
-            "private listener disables protocol detection on ports {:?}",
-            config.private_ports_disable_protocol_detection,
+            "protocol detection disabled for inbound ports {:?}",
+            config.inbound_ports_disable_protocol_detection,
         );
         info!(
-            "public listener disables protocol detection on ports {:?}",
-            config.public_ports_disable_protocol_detection,
+            "protocol detection disabled for outbound ports {:?}",
+            config.outbound_ports_disable_protocol_detection,
         );
 
         let (sensors, telemetry) = telemetry::new(
@@ -224,7 +224,7 @@ where
                 inbound_listener,
                 Inbound::new(default_addr, bind),
                 config.private_connect_timeout,
-                config.private_ports_disable_protocol_detection,
+                config.inbound_ports_disable_protocol_detection,
                 ctx,
                 sensors.clone(),
                 get_original_dst.clone(),
@@ -252,7 +252,7 @@ where
                 outbound_listener,
                 outgoing,
                 config.public_connect_timeout,
-                config.public_ports_disable_protocol_detection,
+                config.outbound_ports_disable_protocol_detection,
                 ctx,
                 sensors,
                 get_original_dst,

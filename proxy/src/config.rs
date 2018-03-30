@@ -40,9 +40,9 @@ pub struct Config {
     /// The maximum amount of time to wait for a connection to the private peer.
     pub private_connect_timeout: Duration,
 
-    pub private_ports_disable_protocol_detection: IndexSet<u16>,
+    pub inbound_ports_disable_protocol_detection: IndexSet<u16>,
 
-    pub public_ports_disable_protocol_detection: IndexSet<u16>,
+    pub outbound_ports_disable_protocol_detection: IndexSet<u16>,
 
     /// The path to "/etc/resolv.conf"
     pub resolv_conf_path: PathBuf,
@@ -141,8 +141,11 @@ pub const ENV_METRICS_LISTENER: &str = "CONDUIT_PROXY_METRICS_LISTENER";
 const ENV_PRIVATE_CONNECT_TIMEOUT: &str = "CONDUIT_PROXY_PRIVATE_CONNECT_TIMEOUT";
 const ENV_PUBLIC_CONNECT_TIMEOUT: &str = "CONDUIT_PROXY_PUBLIC_CONNECT_TIMEOUT";
 pub const ENV_BIND_TIMEOUT: &str = "CONDUIT_PROXY_BIND_TIMEOUT";
-pub const ENV_PRIVATE_PORTS_DISABLE_PROTOCOL_DETECTION: &str = "CONDUIT_PROXY_PRIVATE_PORTS_DISABLE_PROTOCOL_DETECTION";
-pub const ENV_PUBLIC_PORTS_DISABLE_PROTOCOL_DETECTION: &str = "CONDUIT_PROXY_PUBLIC_PORTS_DISABLE_PROTOCOL_DETECTION";
+
+// These *disable* our protocol detection for connections whose SO_ORIGINAL_DST
+// has a port in the provided list.
+pub const ENV_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION: &str = "CONDUIT_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION";
+pub const ENV_OUTBOUND_PORTS_DISABLE_PROTOCOL_DETECTION: &str = "CONDUIT_PROXY_OUTBOUND_PORTS_DISABLE_PROTOCOL_DETECTION";
 
 const ENV_NODE_NAME: &str = "CONDUIT_PROXY_NODE_NAME";
 const ENV_POD_NAME: &str = "CONDUIT_PROXY_POD_NAME";
@@ -164,9 +167,6 @@ const DEFAULT_PUBLIC_CONNECT_TIMEOUT_MS: u64 = 300;
 const DEFAULT_BIND_TIMEOUT_MS: u64 = 10_000; // ten seconds, as in Linkerd.
 const DEFAULT_RESOLV_CONF: &str = "/etc/resolv.conf";
 
-// These *disable* our protocol detection for connections whose SO_ORIGINAL_DST
-// has a port in this list.
-//
 // By default, we keep a list of known assigned ports of server-first protocols.
 const DEFAULT_PORTS_DISABLE_PROTOCOL_DETECTION: &[u16] = &[
     25,   // SMTP
@@ -189,8 +189,8 @@ impl<'a> TryFrom<&'a Strings> for Config {
         let private_forward = parse(strings, ENV_PRIVATE_FORWARD, str::parse);
         let public_connect_timeout = parse(strings, ENV_PUBLIC_CONNECT_TIMEOUT, parse_number);
         let private_connect_timeout = parse(strings, ENV_PRIVATE_CONNECT_TIMEOUT, parse_number);
-        let private_disable_ports = parse(strings, ENV_PRIVATE_PORTS_DISABLE_PROTOCOL_DETECTION, parse_port_set);
-        let public_disable_ports = parse(strings, ENV_PUBLIC_PORTS_DISABLE_PROTOCOL_DETECTION, parse_port_set);
+        let inbound_disable_ports = parse(strings, ENV_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION, parse_port_set);
+        let outbound_disable_ports = parse(strings, ENV_OUTBOUND_PORTS_DISABLE_PROTOCOL_DETECTION, parse_port_set);
         let bind_timeout = parse(strings, ENV_BIND_TIMEOUT, parse_number);
         let resolv_conf_path = strings.get(ENV_RESOLV_CONF);
         let event_buffer_capacity = parse(strings, ENV_EVENT_BUFFER_CAPACITY, parse_number);
@@ -243,9 +243,9 @@ impl<'a> TryFrom<&'a Strings> for Config {
             private_connect_timeout:
                 Duration::from_millis(private_connect_timeout?
                                           .unwrap_or(DEFAULT_PRIVATE_CONNECT_TIMEOUT_MS)),
-            private_ports_disable_protocol_detection: private_disable_ports?
+            inbound_ports_disable_protocol_detection: inbound_disable_ports?
                 .unwrap_or_else(|| default_disable_ports_protocol_detection()),
-            public_ports_disable_protocol_detection: public_disable_ports?
+            outbound_ports_disable_protocol_detection: outbound_disable_ports?
                 .unwrap_or_else(|| default_disable_ports_protocol_detection()),
             resolv_conf_path: resolv_conf_path?
                 .unwrap_or(DEFAULT_RESOLV_CONF.into())

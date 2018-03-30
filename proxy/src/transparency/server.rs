@@ -93,8 +93,10 @@ where
         // create Server context
         let orig_dst = connection.original_dst_addr(&self.get_orig_dst);
         let local_addr = connection.local_addr().unwrap_or(self.listen_addr);
-        let proxy_ctx = self.proxy_ctx.clone();
 
+        // We are using the port from the connection's SO_ORIGINAL_DST to
+        // determine whether to skip protocol detection, not any port that
+        // would be found after doing discovery.
         let disable_protocol_detection = orig_dst
             .map(|addr| {
                 self.disable_protocol_detection_ports.contains(&addr.port())
@@ -103,24 +105,22 @@ where
 
         if disable_protocol_detection {
             trace!("protocol detection disabled for {:?}", orig_dst);
-
-            let srv_ctx = ServerCtx::new(
-                &proxy_ctx,
-                &local_addr,
-                &remote_addr,
-                &orig_dst,
-                common::Protocol::Tcp,
+            let fut = tcp_serve(
+                &self.tcp,
+                connection,
+                &self.sensors,
+                opened_at,
+                &self.proxy_ctx,
+                LocalAddr(&local_addr),
+                RemoteAddr(&remote_addr),
+                OrigDst(&orig_dst),
             );
-
-            // record telemetry
-            let tcp_in = self.sensors.accept(connection, opened_at, &srv_ctx);
-
-            let fut = self.tcp.serve(tcp_in, srv_ctx);
             self.executor.spawn(fut);
             return;
         }
 
         // try to sniff protocol
+        let proxy_ctx = self.proxy_ctx.clone();
         let sniff = [0u8; 32];
         let sensors = self.sensors.clone();
         let h1 = self.h1.clone();
@@ -167,19 +167,16 @@ where
                     }
                 } else {
                     trace!("transparency did not detect protocol, treating as TCP");
-
-                    let srv_ctx = ServerCtx::new(
+                    tcp_serve(
+                        &tcp,
+                        connection,
+                        &sensors,
+                        opened_at,
                         &proxy_ctx,
-                        &local_addr,
-                        &remote_addr,
-                        &orig_dst,
-                        common::Protocol::Tcp,
-                    );
-
-                    // record telemetry
-                    let tcp_in = sensors.accept(connection, opened_at, &srv_ctx);
-
-                    tcp.serve(tcp_in, srv_ctx)
+                        LocalAddr(&local_addr),
+                        RemoteAddr(&remote_addr),
+                        OrigDst(&orig_dst),
+                    )
                 }
             });
 
@@ -187,3 +184,34 @@ where
     }
 }
 
+// These newtypes act as a form of keyword arguments.
+//
+// It should be easier to notice when wrapping `LocalAddr(remote_addr)` at
+// the call site, then simply passing multiple socket addr arguments.
+struct LocalAddr<'a>(&'a SocketAddr);
+struct RemoteAddr<'a>(&'a SocketAddr);
+struct OrigDst<'a>(&'a Option<SocketAddr>);
+
+fn tcp_serve(
+    tcp: &tcp::Proxy,
+    connection: Connection,
+    sensors: &Sensors,
+    opened_at: Instant,
+    proxy_ctx: &Arc<ProxyCtx>,
+    local_addr: LocalAddr,
+    remote_addr: RemoteAddr,
+    orig_dst: OrigDst,
+) -> Box<Future<Item=(), Error=()>> {
+    let srv_ctx = ServerCtx::new(
+        proxy_ctx,
+        local_addr.0,
+        remote_addr.0,
+        orig_dst.0,
+        common::Protocol::Tcp,
+    );
+
+    // record telemetry
+    let tcp_in = sensors.accept(connection, opened_at, &srv_ctx);
+
+    tcp.serve(tcp_in, srv_ctx)
+}
