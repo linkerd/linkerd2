@@ -1,7 +1,7 @@
 package install
 
-// Viz defines the primary Conduit Grafana dashboard, installed via the `conduit install` command.
-const Viz = `{
+// TopLine defines the primary Conduit Grafana dashboard, installed via the `conduit install` command.
+const TopLine = `{
       "annotations": {
         "list": [
           {
