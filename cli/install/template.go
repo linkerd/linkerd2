@@ -462,7 +462,7 @@ spec:
         configMap:
           name: grafana-dashboards
           items:
-          - key: conduit-viz.json
+          - key: conduit-top-line.json
             path: home.json
       containers:
       - name: grafana
@@ -537,7 +537,7 @@ data:
       editable: true
       options:
         path: /var/lib/grafana/dashboards
-        homeDashboardId: conduit-viz
+        homeDashboardId: conduit-top-line
 
 ### Grafana ConfigMap ###
 # The ConfigMap below contains Grafana dashboards in the form of JSON files.
@@ -555,8 +555,8 @@ metadata:
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 data:
-  conduit-viz.json: |-
-    {{.VizDashboard}}
+  conduit-top-line.json: |-
+    {{.TopLineDashboard}}
 
   conduit-deployment.json: |-
     {{.DeploymentDashboard}}

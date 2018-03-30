@@ -21,7 +21,7 @@ type installConfig struct {
 	WebImage                 string
 	PrometheusImage          string
 	GrafanaImage             string
-	VizDashboard             string
+	TopLineDashboard         string
 	DeploymentDashboard      string
 	HealthDashboard          string
 	ControllerReplicas       uint
@@ -68,7 +68,7 @@ func validateAndBuildConfig() (*installConfig, error) {
 		WebImage:                 fmt.Sprintf("%s/web:%s", dockerRegistry, conduitVersion),
 		PrometheusImage:          "prom/prometheus:v2.1.0",
 		GrafanaImage:             "grafana/grafana:5.0.4",
-		VizDashboard:             install.Viz,
+		TopLineDashboard:         install.TopLine,
 		DeploymentDashboard:      install.Deployment,
 		HealthDashboard:          install.Health,
 		ControllerReplicas:       controllerReplicas,
