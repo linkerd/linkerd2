@@ -22,7 +22,7 @@ type k8sResolver struct {
 }
 
 func (k *k8sResolver) canResolve(host string, port int) (bool, error) {
-	name, err := localKubernetesServiceIdFromDNSName(k.k8sDNSZoneLabels, host)
+	name, err := k.localKubernetesServiceIdFromDNSName(host)
 	if err != nil {
 		return false, err
 	}
@@ -31,7 +31,7 @@ func (k *k8sResolver) canResolve(host string, port int) (bool, error) {
 }
 
 func (k *k8sResolver) streamResolution(host string, port int, listener updateListener) error {
-	serviceName, err := localKubernetesServiceIdFromDNSName(k.k8sDNSZoneLabels, host)
+	serviceName, err := k.localKubernetesServiceIdFromDNSName(host)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -51,7 +51,6 @@ func (k *k8sResolver) streamResolution(host string, port int, listener updateLis
 		return err
 	}
 
-	fmt.Println("BAN ANA", svc.Labels, svc.Annotations)
 	if exists && svc.Spec.Type == v1.ServiceTypeExternalName {
 		return k.resolveExternalName(svc.Spec.ExternalName, listener)
 	}
@@ -59,22 +58,22 @@ func (k *k8sResolver) streamResolution(host string, port int, listener updateLis
 	return k.resolveKubernetesService(*serviceName, port, listener)
 }
 
-func (s *k8sResolver) resolveKubernetesService(id string, port int, listener updateListener) error {
-	s.endpointsWatcher.Subscribe(id, uint32(port), listener)
+func (k *k8sResolver) resolveKubernetesService(id string, port int, listener updateListener) error {
+	k.endpointsWatcher.Subscribe(id, uint32(port), listener)
 
 	<-listener.Done()
 
-	s.endpointsWatcher.Unsubscribe(id, uint32(port), listener)
+	k.endpointsWatcher.Unsubscribe(id, uint32(port), listener)
 
 	return nil
 }
 
-func (s *k8sResolver) resolveExternalName(externalName string, listener updateListener) error {
-	s.dnsWatcher.Subscribe(externalName, listener)
+func (k *k8sResolver) resolveExternalName(externalName string, listener updateListener) error {
+	k.dnsWatcher.Subscribe(externalName, listener)
 
 	<-listener.Done()
 
-	s.dnsWatcher.Unsubscribe(externalName, listener)
+	k.dnsWatcher.Unsubscribe(externalName, listener)
 
 	return nil
 }
@@ -83,7 +82,7 @@ func (s *k8sResolver) resolveExternalName(externalName string, listener updateLi
 // "namespace-name/service-name" form if `host` is a DNS name in a form used
 // for local Kubernetes services. It returns nil if `host` isn't in such a
 // form.
-func localKubernetesServiceIdFromDNSName(k8sDNSZoneLabels []string, host string) (*string, error) {
+func (k *k8sResolver) localKubernetesServiceIdFromDNSName(host string) (*string, error) {
 	hostLabels, err := splitDNSName(host)
 	if err != nil {
 		return nil, err
@@ -91,8 +90,8 @@ func localKubernetesServiceIdFromDNSName(k8sDNSZoneLabels []string, host string)
 
 	// Verify that `host` ends with ".svc.$zone", ".svc.cluster.local," or ".svc".
 	matched := false
-	if len(k8sDNSZoneLabels) > 0 {
-		hostLabels, matched = maybeStripSuffixLabels(hostLabels, k8sDNSZoneLabels)
+	if len(k.k8sDNSZoneLabels) > 0 {
+		hostLabels, matched = maybeStripSuffixLabels(hostLabels, k.k8sDNSZoneLabels)
 	}
 	// Accept "cluster.local" as an alias for "$zone". The Kubernetes DNS
 	// specification

@@ -125,14 +125,14 @@ func buildResolversList(k8sDNSZone string, endpointsWatcher k8s.EndpointsWatcher
 	ipResolver := &echoIpV4Resolver{}
 	log.Infof("Adding ipv4 name resolver")
 
-	k8sResolver := &k8sResolver{k8sDNSZoneLabels: k8sDNSZoneLabels,
+	k8sResolver := &k8sResolver{
+		k8sDNSZoneLabels: k8sDNSZoneLabels,
 		endpointsWatcher: endpointsWatcher,
 		dnsWatcher:       dnsWatcher,
 	}
 	log.Infof("Adding k8s name resolver")
 
-	resolvers := []streamingDestinationResolver{ipResolver, k8sResolver}
-	return resolvers, nil
+	return []streamingDestinationResolver{ipResolver, k8sResolver}, nil
 }
 
 type endpointListener struct {

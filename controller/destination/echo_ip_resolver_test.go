@@ -8,7 +8,6 @@ import (
 	"github.com/runconduit/conduit/controller/util"
 
 	common "github.com/runconduit/conduit/controller/gen/common"
-	"golang.org/x/net/context"
 )
 
 func TestEchoIpV4Resolver(t *testing.T) {
@@ -48,13 +47,11 @@ func TestEchoIpV4Resolver(t *testing.T) {
 		resolver := &echoIpV4Resolver{}
 
 		for _, expectedIpAdded := range thingsThatAreIpV4s {
-			ctx, cancelFn := context.WithCancel(context.Background())
-
 			done := make(chan bool, 1)
-			collector := &collectUpdateListener{context: ctx}
+			listener, cancelFn := newCollectUpdateListener()
 
 			go func() {
-				err := resolver.streamResolution(expectedIpAdded, somePort, collector)
+				err := resolver.streamResolution(expectedIpAdded, somePort, listener)
 				done <- true
 
 				if err != nil {
@@ -65,7 +62,12 @@ func TestEchoIpV4Resolver(t *testing.T) {
 
 			cancelFn()
 			<-done
-			actualTcpAddressAdded := collector.added[0]
+
+			if len(listener.added) != 1 {
+				t.Fatalf("Expected added to contain 1 element, got: %v", listener.added)
+			}
+
+			actualTcpAddressAdded := listener.added[0]
 
 			expectedIp, err := util.ParseIPV4(expectedIpAdded)
 			if err != nil {
@@ -77,12 +79,12 @@ func TestEchoIpV4Resolver(t *testing.T) {
 				Port: uint32(somePort),
 			}
 
-			if len(collector.added) != 1 || !reflect.DeepEqual(actualTcpAddressAdded, expectedTcpAddressAdded) {
-				t.Fatalf("Expected [%+v] added addresses for IPv4 resolver, got: %+v", expectedTcpAddressAdded, collector)
+			if !reflect.DeepEqual(actualTcpAddressAdded, expectedTcpAddressAdded) {
+				t.Fatalf("Expected [%+v] added addresses for IPv4 resolver, got: %+v", expectedTcpAddressAdded, listener)
 			}
 
-			if len(collector.removed) != 0 {
-				t.Fatalf("Expected no removed addresses for IPv4 resolver, got: %+v", collector)
+			if len(listener.removed) != 0 {
+				t.Fatalf("Expected no removed addresses for IPv4 resolver, got: %+v", listener)
 			}
 		}
 	})

@@ -23,6 +23,11 @@ func (c *collectUpdateListener) Done() <-chan struct{} {
 
 func (c *collectUpdateListener) NoEndpoints(exists bool) {}
 
+func newCollectUpdateListener() (*collectUpdateListener, context.CancelFunc) {
+	ctx, cancelFn := context.WithCancel(context.Background())
+	return &collectUpdateListener{context: ctx}, cancelFn
+}
+
 type mockDnsWatcher struct {
 	ListenerSubscribed   DnsListener
 	ListenerUnsubscribed DnsListener

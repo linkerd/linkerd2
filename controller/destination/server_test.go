@@ -2,10 +2,9 @@ package destination
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"testing"
-
-	"github.com/pkg/errors"
 
 	common "github.com/runconduit/conduit/controller/gen/common"
 	pb "github.com/runconduit/conduit/controller/gen/proxy/destination"
@@ -122,7 +121,7 @@ func TestEndpointListener(t *testing.T) {
 		}
 	})
 
-	t.Run("It'' done when the underlying context is done", func(t *testing.T) {
+	t.Run("It returns when the underlying context is done", func(t *testing.T) {
 		context, cancelFn := context.WithCancel(context.Background())
 		mockGetServer := &mockDestination_GetServer{updatesReceived: []*pb.Update{}, contextToReturn: context}
 		listener := &endpointListener{stream: mockGetServer}
@@ -168,7 +167,7 @@ func TestStreamResolutionUsingCorrectResolverFor(t *testing.T) {
 	host := "something"
 	port := 666
 
-	t.Run("Uses first resolve rto say it can resolve", func(t *testing.T) {
+	t.Run("Uses first resolver that is able to resolve the host and port", func(t *testing.T) {
 		no := &mockStreamingDestinationResolver{canResolveToReturn: false}
 		yes := &mockStreamingDestinationResolver{canResolveToReturn: true}
 		otherYes := &mockStreamingDestinationResolver{canResolveToReturn: true}
@@ -205,7 +204,7 @@ func TestStreamResolutionUsingCorrectResolverFor(t *testing.T) {
 		}
 	})
 
-	t.Run("Returns error if no resolver returned error", func(t *testing.T) {
+	t.Run("Returns error if the resolver returned an error", func(t *testing.T) {
 		errorOnCanResolve := &mockStreamingDestinationResolver{canResolveToReturn: true, errToReturnForCanResolve: errors.New("expected for can resolve")}
 		errorOnResolving := &mockStreamingDestinationResolver{canResolveToReturn: true, errToReturnForResolution: errors.New("expected for resolving")}
 
