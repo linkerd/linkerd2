@@ -69,6 +69,9 @@ func (p *ReplicaSetStore) GetReplicaSet(key string) (*v1beta1.ReplicaSet, error)
 	return rs, nil
 }
 
+// GetDeploymentForPod returns pod owner information:
+// if the pod's replicaset belongs to a deployment: "namespace/deployment"
+// if the pod's replicaset does not belong to a deployment: "namespace/replicaset"
 func (p *ReplicaSetStore) GetDeploymentForPod(pod *v1.Pod) (string, error) {
 	namespace := pod.Namespace
 	if len(pod.GetOwnerReferences()) == 0 {

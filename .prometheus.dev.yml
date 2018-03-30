@@ -25,14 +25,15 @@ scrape_configs:
 
   - job_name: 'conduit-proxy'
     static_configs:
+    # use this to generate: https://play.golang.org/p/e7uvgT5sUo9
     - targets:
-      - 'simulate-proxy:9000'
-      - 'simulate-proxy:9001'
-      - 'simulate-proxy:9002'
-      - 'simulate-proxy:9003'
-      - 'simulate-proxy:9004'
-      - 'simulate-proxy:9005'
-      - 'simulate-proxy:9006'
-      - 'simulate-proxy:9007'
-      - 'simulate-proxy:9008'
-      - 'simulate-proxy:9009'
+      - 'simulate-proxy:10000'
+      - 'simulate-proxy:10001'
+      - 'simulate-proxy:10002'
+      - 'simulate-proxy:10003'
+      - 'simulate-proxy:10004'
+      - 'simulate-proxy:10005'
+      - 'simulate-proxy:10006'
+      - 'simulate-proxy:10007'
+      - 'simulate-proxy:10008'
+      - 'simulate-proxy:10009'
