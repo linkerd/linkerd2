@@ -5,9 +5,6 @@ extern crate log;
 mod support;
 use self::support::*;
 
-use std::collections::HashMap;
-use std::iter::FromIterator;
-
 #[test]
 fn inbound_sends_telemetry() {
     let _ = env_logger::try_init();
@@ -681,105 +678,154 @@ fn metrics_endpoint_outbound_request_duration() {
         "request_duration_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\"} 2");
 }
 
-// https://github.com/runconduit/conduit/issues/613
-#[test]
-#[cfg_attr(not(feature = "flaky_tests"), ignore)]
-fn metrics_endpoint_outbound_dst_labels() {
-    let _ = env_logger::try_init();
+// Tests for destination labels provided by control plane service discovery.
+mod outbound_dst_labels {
+    use super::support::*;
 
-    info!("running test server");
-    let srv = server::new()
-        .route("/", "hello")
-        .run();
+    use std::collections::HashMap;
+    use std::iter::FromIterator;
 
-    let ctrl = controller::new()
-        .labeled_destination(
-            "labeled-addr.test.svc.cluster.local",
-            srv.addr,
-            HashMap::from_iter(
-                vec![
+    // https://github.com/runconduit/conduit/issues/613
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn multiple_addr_labels() {
+        let _ = env_logger::try_init();
 
-                    (String::from("addr_label2"), String::from("bar")),
-                    (String::from("addr_label1"), String::from("foo")),
-                ]
-            ),
-            HashMap::new(),
-        )
-        .labeled_destination(
-            "labeled-set.test.svc.cluster.local",
-            srv.addr,
-            HashMap::new(),
-            HashMap::from_iter(
-                vec![
+        info!("running test server");
+        let srv = server::new()
+            .route("/", "hello")
+            .run();
 
-                    (String::from("set_label2"), String::from("bar")),
-                    (String::from("set_label1"), String::from("foo")),
-                ]
-            ))
-        .labeled_destination(
-            "labeled-all.test.svc.cluster.local",
-            srv.addr,
-            HashMap::from_iter(
-                vec![(String::from("addr_label"), String::from("foo"))]
-            ),
-            HashMap::from_iter(
-                vec![(String::from("set_label"), String::from("bar"))]
-            ))
-        .run();
-    let proxy = proxy::new()
-        .controller(ctrl)
-        .outbound(srv)
-        .metrics_flush_interval(Duration::from_millis(500))
-        .run();
-    let metrics = client::http1(proxy.metrics, "localhost");
+        let ctrl = controller::new()
+            .labeled_destination(
+                "labeled-addr.test.svc.cluster.local",
+                srv.addr,
+                HashMap::from_iter(
+                    vec![
+                        (String::from("addr_label2"), String::from("bar")),
+                        (String::from("addr_label1"), String::from("foo")),
+                    ]
+                ),
+                HashMap::new(),
+            )
+            .run();
+        let proxy = proxy::new()
+            .controller(ctrl)
+            .outbound(srv)
+            .metrics_flush_interval(Duration::from_millis(500))
+            .run();
+        let metrics = client::http1(proxy.metrics, "localhost");
 
-    let client = client::new(
-        proxy.outbound,
-        "labeled-addr.test.svc.cluster.local"
-    );
-    info!("client.get(/)");
-    assert_eq!(client.get("/"), "hello");
-    let scrape = metrics.get("/metrics");
-    assert_contains!(scrape,
-        "request_duration_ms_count{authority=\"labeled-addr.test.svc.cluster.local\",direction=\"outbound\",addr_label1=\"foo\",addr_label2=\"bar\",classification=\"success\",status_code=\"200\"} 1");
-    assert_contains!(scrape,
-        "response_duration_ms_count{authority=\"labeled-addr.test.svc.cluster.local\",direction=\"outbound\",addr_label1=\"foo\",addr_label2=\"bar\",classification=\"success\",status_code=\"200\",} 1");
-    assert_contains!(scrape,
-        "response_total{authority=\"labeled-addr.test.svc.cluster.local\",direction=\"outbound\",addr_label1=\"foo\",addr_label2=\"bar\",classification=\"success\",status_code=\"200\"} 1");
-    assert_contains!(scrape,
-        "request_total{authority=\"labeled-addr.test.svc.cluster.local\",direction=\"outbound\",addr_label1=\"foo\",addr_label2=\"bar\",classification=\"success\",status_code=\"200\"} 1");
+        let client = client::new(
+            proxy.outbound,
+            "labeled-addr.test.svc.cluster.local"
+        );
+        info!("client.get(/)");
+        assert_eq!(client.get("/"), "hello");
+        let scrape = metrics.get("/metrics");
+        // TODO: we can't make more specific assertions about the metrics
+        // besides asserting that both labels are present somewhere in the
+        // scrape, because testing for whole metric lines would depend on
+        // the order in which the labels occur, and we can't depend on hash
+        // map ordering.
+        assert_contains!(scrape, "addr_label1=\"foo\"");
+        assert_contains!(scrape, "addr_label2=\"bar\"");
 
-    let client = client::new(
-        proxy.outbound,
-        "labeled-set.test.svc.cluster.local"
-    );
-    info!("client.get(/)");
-    assert_eq!(client.get("/"), "hello");
-    let scrape = metrics.get("/metrics");
-    assert_contains!(scrape,
-        "request_duration_ms_count{authority=\"labeled-set.test.svc.cluster.local\",direction=\"outbound\",set_label1=\"foo\",set_label2=\"bar\",classification=\"success\",status_code=\"200\"} 1");
-    assert_contains!(scrape,
-        "response_duration_ms_count{authority=\"labeled-set.test.svc.cluster.local\",direction=\"outbound\",set_label1=\"foo\",set_label2=\"bar\",classification=\"success\",status_code=\"200\"} 1");
-    assert_contains!(scrape,
-        "response_total{authority=\"labeled-set.test.svc.cluster.local\",direction=\"outbound\",classification=\"success\",set_label1=\"foo\",set_label2=\"bar\",status_code=\"200\"} 1");
-    assert_contains!(scrape,
-        "request_total{authority=\"labeled-set.test.svc.cluster.local\",direction=\"outbound\",set_label1=\"foo\",set_label2=\"bar\",classification=\"success\",status_code=\"200\"} 1");
+    }
 
-    let client = client::new(
-        proxy.outbound,
-        "labeled-all.test.svc.cluster.local"
-    );
-    info!("client.get(/)");
-    assert_eq!(client.get("/"), "hello");
-    let scrape = metrics.get("/metrics");
-    assert_contains!(scrape,
-        "request_duration_ms_count{authority=\"labeled-all.test.svc.cluster.local\",direction=\"outbound\",addr_label=\"foo\",set_label=\"bar\"} 1");
-    assert_contains!(scrape,
-        "response_duration_ms_count{authority=\"labeled-all.test.svc.cluster.local\",direction=\"outbound\",addr_label=\"foo\",set_label=\"bar\",status_code=\"200\",classification=\"success\"} 1");
-    assert_contains!(scrape,
-        "response_total{authority=\"labeled-all.test.svc.cluster.local\",direction=\"outbound\",addr_label=\"foo\",set_label=\"bar\",status_code=\"200\",classification=\"success\"} 1");
-    assert_contains!(scrape,
-        "request_total{authority=\"labeled-set.test.svc.cluster.local\",direction=\"outbound\",addr_label=\"foo\",set_label=\"bar\",status_code=\"200\",classification=\"success\"} 1");
+    // https://github.com/runconduit/conduit/issues/613
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn multiple_addrset_labels() {
+        let _ = env_logger::try_init();
+
+        info!("running test server");
+        let srv = server::new()
+            .route("/", "hello")
+            .run();
+
+        let ctrl = controller::new()
+            .labeled_destination(
+                "labeled-set.test.svc.cluster.local",
+                srv.addr,
+                HashMap::new(),
+                HashMap::from_iter(
+                    vec![
+                        (String::from("set_label1"), String::from("foo")),
+                        (String::from("set_label2"), String::from("bar")),
+                    ])
+            )
+            .run();
+        let proxy = proxy::new()
+            .controller(ctrl)
+            .outbound(srv)
+            .metrics_flush_interval(Duration::from_millis(500))
+            .run();
+        let metrics = client::http1(proxy.metrics, "localhost");
+        let client = client::new(
+            proxy.outbound,
+            "labeled-set.test.svc.cluster.local"
+        );
+
+        info!("client.get(/)");
+        assert_eq!(client.get("/"), "hello");
+        let scrape = metrics.get("/metrics");
+        // TODO: we can't make more specific assertions about the metrics
+        // besides asserting that both labels are present somewhere in the
+        // scrape, because testing for whole metric lines would depend on
+        // the order in which the labels occur, and we can't depend on hash
+        // map ordering.
+        assert_contains!(scrape, "set_label1=\"foo\"");
+        assert_contains!(scrape, "set_label2=\"bar\"");
+
+    }
+
+    // https://github.com/runconduit/conduit/issues/613
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn labeled_addr_and_addrset() {
+        let _ = env_logger::try_init();
+
+        info!("running test server");
+        let srv = server::new()
+            .route("/", "hello")
+            .run();
+
+        let ctrl = controller::new()
+            .labeled_destination(
+                "labeled-all.test.svc.cluster.local",
+                srv.addr,
+                HashMap::from_iter(
+                    vec![(String::from("addr_label"), String::from("foo"))]
+                ),
+                HashMap::from_iter(
+                    vec![(String::from("set_label"), String::from("bar"))]
+                ))
+            .run();
+        let proxy = proxy::new()
+            .controller(ctrl)
+            .outbound(srv)
+            .metrics_flush_interval(Duration::from_millis(500))
+            .run();
+        let metrics = client::http1(proxy.metrics, "localhost");
+
+        let client = client::new(
+            proxy.outbound,
+            "labeled-all.test.svc.cluster.local"
+        );
+
+        info!("client.get(/)");
+        assert_eq!(client.get("/"), "hello");
+        let scrape = metrics.get("/metrics");
+        assert_contains!(scrape,
+            "request_duration_ms_count{authority=\"labeled-all.test.svc.cluster.local\",direction=\"outbound\",addr_label=\"foo\",set_label=\"bar\"} 1");
+        assert_contains!(scrape,
+            "response_duration_ms_count{authority=\"labeled-all.test.svc.cluster.local\",direction=\"outbound\",addr_label=\"foo\",set_label=\"bar\",classification=\"success\",status_code=\"200\"} 1");
+        assert_contains!(scrape,
+            "request_total{authority=\"labeled-all.test.svc.cluster.local\",direction=\"outbound\",addr_label=\"foo\",set_label=\"bar\"} 1");
+        assert_contains!(scrape,
+            "response_total{authority=\"labeled-all.test.svc.cluster.local\",direction=\"outbound\",addr_label=\"foo\",set_label=\"bar\",classification=\"success\",status_code=\"200\"} 1");
+    }
 }
 
 #[test]
