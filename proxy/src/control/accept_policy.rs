@@ -26,31 +26,35 @@ pub struct AcceptPolicy<S>
 where
     S: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>
 {
-    inbound: Policy<InboundKind, S>,
-    outbound: Policy<OutboundKind, S>,
+    inbound: Policy<InboundCall, S>,
+    outbound: Policy<OutboundCall, S>,
 }
 
-struct Policy<K, S>
+struct Policy<C, S>
 where
-    K: Kind,
+    C: Call,
     S: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>,
 {
-    rx: Rx<K::Message, S>,
-    store: Store<K::Message>,
-    _p: PhantomData<K>
+    rx: Rx<C::Message, S>,
+    store: Store<C::Message>,
+    _p: PhantomData<C>
 }
 
-trait Kind {
+trait Call {
     type Message: Message + Default;
 
-    fn stream<S>(svc: &mut S)
-        -> grpc::client::server_streaming::ResponseFuture<Self::Message, S::Future>
+    fn name() -> &'static str;
+
+    fn rx<S>(svc: &mut S) -> Rx<Self::Message, S>
     where
         S: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>;
 }
 
-struct InboundKind;
-struct OutboundKind;
+#[derive(Debug)]
+struct InboundCall;
+
+#[derive(Debug)]
+struct OutboundCall;
 
 enum Rx<P, S: HttpService<ResponseBody = RecvBody>> {
     Pending(grpc::client::server_streaming::ResponseFuture<P, S::Future>),
@@ -85,13 +89,13 @@ where
     }
 }
 
-impl<K, S> Policy<K, S>
+impl<C, S> Policy<C, S>
 where
-    K: Kind,
+    C: Call,
     S: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>,
     S::Error: ::std::fmt::Debug,
 {
-    fn new(store: Store<K::Message>) -> Self {
+    fn new(store: Store<C::Message>) -> Self {
         Self {
             store,
             rx: Rx::Closed,
@@ -103,15 +107,16 @@ where
         loop {
             match self.rx.poll() {
                 Ok(Async::NotReady) => return,
-                Ok(Async::Ready(Some(message))) => {
-                    let _ = self.store.store(message);
+                Ok(Async::Ready(Some(msg))) => {
+                    let _ = self.store.store(msg);
                 }
                 Ok(Async::Ready(None)) => {
-                    self.rx = Rx::Pending(K::stream::<S>(svc));
+                    debug!("{} stream completed", C::name());
+                    self.rx = C::rx::<S>(svc);
                 }
                 Err(e) => {
-                    error!("accept_policy error: {:?}", e);
-                    self.rx = Rx::Pending(K::stream::<S>(svc));
+                    error!("{} error: {:?}", C::name(), e);
+                    self.rx = C::rx::<S>(svc);
                 }
             }
         }
@@ -129,6 +134,9 @@ where
     fn poll(&mut self) -> Poll<Option<P>, Self::Error> {
         loop {
             let stream = match *self {
+                Rx::Closed => {
+                    return Ok(Async::Ready(None));
+                }
                 Rx::Open(ref mut rx) => {
                     return rx.poll().map_err(RxError::Stream);
                 }
@@ -138,9 +146,6 @@ where
                         Ok(Async::Ready(rsp)) => Ok(rsp.into_inner()),
                         Err(e) => Err(RxError::Response(e)),
                     }
-                }
-                Rx::Closed => {
-                    return Ok(Async::Ready(None));
                 }
             };
 
@@ -157,30 +162,36 @@ where
     }
 }
 
-impl Kind for InboundKind {
+impl Call for InboundCall {
     type Message = InboundAcceptPolicy;
 
-    fn stream<S>(svc: &mut S)
-        -> grpc::client::server_streaming::ResponseFuture<Self::Message, S::Future>
+    fn name() -> &'static str {
+        "Inbound"
+    }
+
+    fn rx<S>(svc: &mut S) -> Rx<Self::Message, S>
     where
         S: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>
     {
         let mut client = Client::new(svc.lift_ref());
         let req = InboundAcceptPolicyRequest {};
-        client.inbound(grpc::Request::new(req))
+        Rx::Pending(client.inbound(grpc::Request::new(req)))
     }
 }
 
-impl Kind for OutboundKind {
+impl Call for OutboundCall {
     type Message = OutboundAcceptPolicy;
 
-    fn stream<S>(svc: &mut S)
-        -> grpc::client::server_streaming::ResponseFuture<Self::Message, S::Future>
+    fn name() -> &'static str {
+        "Outbound"
+    }
+
+    fn rx<S>(svc: &mut S) -> Rx<Self::Message, S>
     where
         S: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>
     {
         let mut client = Client::new(svc.lift_ref());
         let req = OutboundAcceptPolicyRequest {};
-        client.outbound(grpc::Request::new(req))
+        Rx::Pending(client.outbound(grpc::Request::new(req)))
     }
 }
