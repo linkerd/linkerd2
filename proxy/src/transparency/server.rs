@@ -6,6 +6,7 @@ use std::time::{Duration, Instant};
 use futures::Future;
 use http;
 use hyper;
+use indexmap::IndexSet;
 use tokio_core::reactor::Handle;
 use tower::NewService;
 use tower_h2;
@@ -30,6 +31,7 @@ where
     S: NewService<Request=http::Request<HttpBody>>,
     S::Future: 'static,
 {
+    disable_protocol_detection_ports: IndexSet<u16>,
     executor: Handle,
     get_orig_dst: G,
     h1: hyper::server::Http,
@@ -60,11 +62,13 @@ where
         get_orig_dst: G,
         stack: S,
         tcp_connect_timeout: Duration,
+        disable_protocol_detection_ports: IndexSet<u16>,
         executor: Handle,
     ) -> Self {
         let recv_body_svc = HttpBodyNewSvc::new(stack.clone());
         let tcp = tcp::Proxy::new(tcp_connect_timeout, sensors.clone(), &executor);
         Server {
+            disable_protocol_detection_ports,
             executor: executor.clone(),
             get_orig_dst,
             h1: hyper::server::Http::new(),
@@ -90,6 +94,31 @@ where
         let orig_dst = connection.original_dst_addr(&self.get_orig_dst);
         let local_addr = connection.local_addr().unwrap_or(self.listen_addr);
         let proxy_ctx = self.proxy_ctx.clone();
+
+        let disable_protocol_detection = orig_dst
+            .map(|addr| {
+                self.disable_protocol_detection_ports.contains(&addr.port())
+            })
+            .unwrap_or(false);
+
+        if disable_protocol_detection {
+            trace!("protocol detection disabled for {:?}", orig_dst);
+
+            let srv_ctx = ServerCtx::new(
+                &proxy_ctx,
+                &local_addr,
+                &remote_addr,
+                &orig_dst,
+                common::Protocol::Tcp,
+            );
+
+            // record telemetry
+            let tcp_in = self.sensors.accept(connection, opened_at, &srv_ctx);
+
+            let fut = self.tcp.serve(tcp_in, srv_ctx);
+            self.executor.spawn(fut);
+            return;
+        }
 
         // try to sniff protocol
         let sniff = [0u8; 32];
