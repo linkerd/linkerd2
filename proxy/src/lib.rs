@@ -44,6 +44,7 @@ extern crate tower_util;
 extern crate tower_in_flight_limit;
 
 use futures::*;
+use futures_watch::Watch;
 
 use std::error::Error;
 use std::io;
@@ -55,6 +56,7 @@ use std::time::Duration;
 use tokio_core::reactor::{Core, Handle};
 use tower::NewService;
 use tower_fn::*;
+use conduit_proxy_controller_grpc::accept_policy::{InboundAcceptPolicy, OutboundAcceptPolicy};
 use conduit_proxy_router::{Recognize, Router, Error as RouteError};
 
 pub mod app;
@@ -202,6 +204,9 @@ where
 
         let bind = Bind::new(executor.clone()).with_sensors(sensors.clone());
 
+        let (_inbound_accept_policy_rx, inbound_accept_policy_tx) =
+            Watch::new(InboundAcceptPolicy::default());
+
         // Setup the public listener. This will listen on a publicly accessible
         // address and listen for inbound connections that should be forwarded
         // to the managed application (private destination).
@@ -223,6 +228,9 @@ where
             );
             ::logging::context_future("inbound", fut)
         };
+
+        let (_outbound_accept_policy_rx, outbound_accept_policy_tx) =
+            Watch::new(OutboundAcceptPolicy::default());
 
         // Setup the private listener. This will listen on a locally accessible
         // address and listen for outbound requests that should be routed
@@ -281,6 +289,8 @@ where
 
                     let client = control_bg.bind(
                         telemetry,
+                        inbound_accept_policy_tx,
+                        outbound_accept_policy_tx,
                         control_host_and_port,
                         dns_config,
                         config.report_timeout,
