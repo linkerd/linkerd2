@@ -151,11 +151,13 @@ message StatSummaryRequest {
 }
 
 message StatSummaryResponse {
-  Ok ok = 1;
-  ResourceError error = 2;
+  oneof response {
+    Ok ok = 1;
+    ResourceError error = 2;
+  }
 
   message Ok {
-    repeated StatTable stat_table = 1;
+    repeated StatTable stat_tables = 1;
   }
 }
 
