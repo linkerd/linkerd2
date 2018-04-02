@@ -190,12 +190,12 @@ where
             metrics_listener.local_addr(),
         );
         info!(
-            "private listener disables protocol detection on ports {:?}",
-            config.private_ports_disable_protocol_detection,
+            "protocol detection disabled for inbound ports {:?}",
+            config.inbound_ports_disable_protocol_detection,
         );
         info!(
-            "public listener disables protocol detection on ports {:?}",
-            config.public_ports_disable_protocol_detection,
+            "protocol detection disabled for outbound ports {:?}",
+            config.outbound_ports_disable_protocol_detection,
         );
 
         let (sensors, telemetry) = telemetry::new(
@@ -212,8 +212,11 @@ where
 
         let bind = Bind::new(executor.clone()).with_sensors(sensors.clone());
 
-        let (inbound_accept_policy_rx, inbound_accept_policy_tx) =
-            Watch::new(accept_policy::Inbound::default());
+        let (inbound_accept_policy_rx, inbound_accept_policy_tx) = {
+            use accept_policy::{EndpointMatch, Inbound, Net};
+            let m = EndpointMatch::new(Net::Any, config.inbound_ports_disable_protocol_detection);
+            Watch::new(Inbound::new(vec![m]))
+        };
 
         // Setup the public listener. This will listen on a publicly accessible
         // address and listen for inbound connections that should be forwarded
@@ -238,8 +241,11 @@ where
             ::logging::context_future("inbound", fut)
         };
 
-        let (outbound_accept_policy_rx, outbound_accept_policy_tx) =
-            Watch::new(accept_policy::Outbound::default());
+        let (outbound_accept_policy_rx, outbound_accept_policy_tx) = {
+            use accept_policy::{EndpointMatch, Outbound, Net};
+            let m = EndpointMatch::new(Net::Any, config.outbound_ports_disable_protocol_detection);
+            Watch::new(Outbound::new(vec![m]))
+        };
 
         // Setup the private listener. This will listen on a locally accessible
         // address and listen for outbound requests that should be routed
