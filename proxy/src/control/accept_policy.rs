@@ -195,7 +195,9 @@ impl StreamCall for InboundStreamCall {
         S: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>
     {
         let mut client = Client::new(svc.lift_ref());
-        let req = pb::InboundAcceptPolicyRequest {};
+        let req = pb::InboundAcceptPolicyRequest {
+            instance_id: Some(pb::InstanceId {})
+        };
         Rx::Init(client.inbound(grpc::Request::new(req)))
     }
 
@@ -222,7 +224,9 @@ impl StreamCall for OutboundStreamCall {
         S: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>
     {
         let mut client = Client::new(svc.lift_ref());
-        let req = pb::OutboundAcceptPolicyRequest {};
+        let req = pb::OutboundAcceptPolicyRequest {
+            instance_id: Some(pb::InstanceId {})
+        };
         Rx::Init(client.outbound(grpc::Request::new(req)))
     }
 

@@ -5,11 +5,26 @@ package conduit.proxy.accept_policy;
 import "common/common.proto";
 
 service AcceptPolicy {
+  // Describes how a proxy should accept inbound connections from remote peers.
+  //
+  // Includes;
+  // - Protocol detection
+  // - [TODO] TLS termination
   rpc Inbound(InboundAcceptPolicyRequest) returns (stream InboundAcceptPolicy) {}
+
+  // Describes how a proxy should accept outbound connections from local peers.
+  //
+  // Includes;
+  // - Protocol detection
   rpc Outbound(OutboundAcceptPolicyRequest) returns (stream OutboundAcceptPolicy) {}
 }
 
+message InstanceId {
+  // TODO
+}
+
 message InboundAcceptPolicyRequest {
+  InstanceId instance_id = 1;
 }
 
 // Describes how an inbound proxy should accept connections and requests to be routed.
@@ -20,6 +35,7 @@ message InboundAcceptPolicy {
 }
 
 message OutboundAcceptPolicyRequest {
+  InstanceId instance_id = 1;
 }
 
 // Describes how an outbound proxy should accept connections and requests to be routed.//
