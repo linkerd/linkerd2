@@ -4,13 +4,14 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use futures::Future;
+use futures_watch::Watch;
 use http;
 use hyper;
-use indexmap::IndexSet;
 use tokio_core::reactor::Handle;
 use tower::NewService;
 use tower_h2;
 
+use accept_policy::AcceptPolicy;
 use conduit_proxy_controller_grpc::common;
 use connection::Connection;
 use ctx::Proxy as ProxyCtx;
@@ -26,12 +27,13 @@ use super::tcp;
 /// This type can `serve` new connections, determine what protocol
 /// the connection is speaking, and route it to the corresponding
 /// service.
-pub struct Server<S: NewService, B: tower_h2::Body, G>
+pub struct Server<S: NewService, B: tower_h2::Body, A, G>
 where
+    A: AcceptPolicy,
     S: NewService<Request=http::Request<HttpBody>>,
     S::Future: 'static,
 {
-    disable_protocol_detection_ports: IndexSet<u16>,
+    accept_policy: Watch<A>,
     executor: Handle,
     get_orig_dst: G,
     h1: hyper::server::Http,
@@ -43,7 +45,7 @@ where
     tcp: tcp::Proxy,
 }
 
-impl<S, B, G> Server<S, B, G>
+impl<S, B, A, G> Server<S, B, A, G>
 where
     S: NewService<
         Request = http::Request<HttpBody>,
@@ -52,6 +54,7 @@ where
     S::Future: 'static,
     S::Error: fmt::Debug,
     B: tower_h2::Body + 'static,
+    A: AcceptPolicy,
     G: GetOriginalDst,
 {
     /// Creates a new `Server`.
@@ -62,13 +65,13 @@ where
         get_orig_dst: G,
         stack: S,
         tcp_connect_timeout: Duration,
-        disable_protocol_detection_ports: IndexSet<u16>,
+        accept_policy: Watch<A>,
         executor: Handle,
     ) -> Self {
         let recv_body_svc = HttpBodyNewSvc::new(stack.clone());
         let tcp = tcp::Proxy::new(tcp_connect_timeout, sensors.clone(), &executor);
         Server {
-            disable_protocol_detection_ports,
+            accept_policy,
             executor: executor.clone(),
             get_orig_dst,
             h1: hyper::server::Http::new(),
@@ -96,9 +99,7 @@ where
         let proxy_ctx = self.proxy_ctx.clone();
 
         let disable_protocol_detection = orig_dst
-            .map(|addr| {
-                self.disable_protocol_detection_ports.contains(&addr.port())
-            })
+            .map(|a| self.accept_policy.borrow().protocol_detection_disabled(a))
             .unwrap_or(false);
 
         if disable_protocol_detection {

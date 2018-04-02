@@ -17,7 +17,6 @@ use tower::Service;
 use tower_h2;
 use tower_reconnect::{Error as ReconnectError, Reconnect};
 
-use conduit_proxy_controller_grpc::accept_policy::{InboundAcceptPolicy, OutboundAcceptPolicy};
 use conduit_proxy_controller_grpc::telemetry::ReportRequest;
 
 use dns;
@@ -73,8 +72,8 @@ impl Background {
     pub fn bind<S>(
         self,
         events: S,
-        inbound_accept_policy: Store<InboundAcceptPolicy>,
-        outbound_accept_policy: Store<OutboundAcceptPolicy>,
+        inbound_accept_policy: Store<::accept_policy::Inbound>,
+        outbound_accept_policy: Store<::accept_policy::Outbound>,
         host_and_port: HostAndPort,
         dns_config: dns::Config,
         report_timeout: Duration,

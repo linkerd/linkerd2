@@ -53,13 +53,12 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-use indexmap::IndexSet;
 use tokio_core::reactor::{Core, Handle};
 use tower::NewService;
 use tower_fn::*;
-use conduit_proxy_controller_grpc::accept_policy::{InboundAcceptPolicy, OutboundAcceptPolicy};
 use conduit_proxy_router::{Recognize, Router, Error as RouteError};
 
+mod accept_policy;
 pub mod app;
 mod bind;
 pub mod config;
@@ -213,8 +212,8 @@ where
 
         let bind = Bind::new(executor.clone()).with_sensors(sensors.clone());
 
-        let (_inbound_accept_policy_rx, inbound_accept_policy_tx) =
-            Watch::new(InboundAcceptPolicy::default());
+        let (inbound_accept_policy_rx, inbound_accept_policy_tx) =
+            Watch::new(accept_policy::Inbound::default());
 
         // Setup the public listener. This will listen on a publicly accessible
         // address and listen for inbound connections that should be forwarded
@@ -230,7 +229,7 @@ where
                 inbound_listener,
                 Inbound::new(default_addr, bind),
                 config.private_connect_timeout,
-                config.private_ports_disable_protocol_detection,
+                inbound_accept_policy_rx,
                 ctx,
                 sensors.clone(),
                 get_original_dst.clone(),
@@ -239,8 +238,8 @@ where
             ::logging::context_future("inbound", fut)
         };
 
-        let (_outbound_accept_policy_rx, outbound_accept_policy_tx) =
-            Watch::new(OutboundAcceptPolicy::default());
+        let (outbound_accept_policy_rx, outbound_accept_policy_tx) =
+            Watch::new(accept_policy::Outbound::default());
 
         // Setup the private listener. This will listen on a locally accessible
         // address and listen for outbound requests that should be routed
@@ -261,7 +260,7 @@ where
                 outbound_listener,
                 outgoing,
                 config.public_connect_timeout,
-                config.public_ports_disable_protocol_detection,
+                outbound_accept_policy_rx,
                 ctx,
                 sensors,
                 get_original_dst,
@@ -331,11 +330,11 @@ where
     }
 }
 
-fn serve<R, B, E, F, G>(
+fn serve<R, B, E, F, A, G>(
     bound_port: BoundPort,
     recognize: R,
     tcp_connect_timeout: Duration,
-    disable_protocol_detection_ports: IndexSet<u16>,
+    accept_policy: Watch<A>,
     proxy_ctx: Arc<ctx::Proxy>,
     sensors: telemetry::Sensors,
     get_orig_dst: G,
@@ -352,6 +351,7 @@ where
         RouteError = F,
     >
         + 'static,
+    A: accept_policy::AcceptPolicy + 'static,
     G: GetOriginalDst + 'static,
 {
     let router = Router::new(recognize);
@@ -386,7 +386,7 @@ where
         get_orig_dst,
         stack,
         tcp_connect_timeout,
-        disable_protocol_detection_ports,
+        accept_policy,
         executor.clone(),
     );
 
