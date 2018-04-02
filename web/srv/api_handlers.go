@@ -155,3 +155,38 @@ func (h *handler) handleApiPods(w http.ResponseWriter, req *http.Request, p http
 
 	renderJsonPb(w, pods)
 }
+
+func (h *handler) handleApiStat(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
+	timeWindowParam := req.FormValue("window")
+	resourceNameParam := req.FormValue("resourceName")
+	resourceTypeParam := req.FormValue("resourceType")
+	namespaceParam := req.FormValue("namespace")
+
+	window := defaultMetricTimeWindow
+	if timeWindowParam != "" {
+		var requestedWindow pb.TimeWindow
+		requestedWindow, err := util.GetWindow(timeWindowParam)
+		if err != nil {
+			renderJsonError(w, err, http.StatusInternalServerError)
+			return
+		}
+		window = requestedWindow
+	}
+
+	statRequest := &pb.StatSummaryRequest{
+		Resource: &pb.ResourceSelection{
+			Spec: &pb.Resource{
+				Namespace: namespaceParam,
+				Name:      resourceNameParam,
+				Type:      resourceTypeParam,
+			},
+		},
+		TimeWindow: window,
+	}
+	result, err := h.apiClient.StatSummary(req.Context(), statRequest)
+	if err != nil {
+		renderJsonError(w, err, http.StatusInternalServerError)
+		return
+	}
+	renderJsonPb(w, result)
+}

@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"net/http"
 
+	promApi "github.com/prometheus/client_golang/api"
+	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	"k8s.io/client-go/kubernetes"
+
 	"github.com/golang/protobuf/jsonpb"
 	common "github.com/runconduit/conduit/controller/gen/common"
 	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
@@ -20,6 +24,7 @@ var (
 	jsonMarshaler   = jsonpb.Marshaler{EmitDefaults: true}
 	jsonUnmarshaler = jsonpb.Unmarshaler{}
 	statPath        = fullUrlPathFor("Stat")
+	statSummaryPath = fullUrlPathFor("StatSummary")
 	versionPath     = fullUrlPathFor("Version")
 	listPodsPath    = fullUrlPathFor("ListPods")
 	tapPath         = fullUrlPathFor("Tap")
@@ -27,7 +32,10 @@ var (
 )
 
 type handler struct {
-	grpcServer pb.ApiServer
+	grpcServer          pb.ApiServer
+	k8sClient           *kubernetes.Clientset
+	prometheusAPI       promv1.API
+	controllerNamespace string
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -44,6 +52,8 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	switch req.URL.Path {
 	case statPath:
 		h.handleStat(w, req)
+	case statSummaryPath:
+		h.handleStatSummary(w, req)
 	case versionPath:
 		h.handleVersion(w, req)
 	case listPodsPath:
@@ -72,6 +82,26 @@ func (h *handler) handleStat(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	err = writeProtoToHttpResponse(w, rsp)
+	if err != nil {
+		writeErrorToHttpResponse(w, err)
+		return
+	}
+}
+
+func (h *handler) handleStatSummary(w http.ResponseWriter, req *http.Request) {
+	var protoRequest pb.StatSummaryRequest
+
+	err := httpRequestToProto(req, &protoRequest)
+	if err != nil {
+		writeErrorToHttpResponse(w, err)
+		return
+	}
+	rsp, err := h.StatSummary(req.Context(), &protoRequest)
+	if err != nil {
+		writeErrorToHttpResponse(w, err)
+		return
+	}
 	err = writeProtoToHttpResponse(w, rsp)
 	if err != nil {
 		writeErrorToHttpResponse(w, err)
@@ -192,9 +222,12 @@ func fullUrlPathFor(method string) string {
 	return ApiRoot + ApiPrefix + method
 }
 
-func NewServer(addr string, telemetryClient telemPb.TelemetryClient, tapClient tapPb.TapClient, controllerNamespace string) *http.Server {
+func NewServer(addr string, k8sClient *kubernetes.Clientset, prometheusClient promApi.Client, telemetryClient telemPb.TelemetryClient, tapClient tapPb.TapClient, controllerNamespace string) *http.Server {
 	baseHandler := &handler{
-		grpcServer: newGrpcServer(telemetryClient, tapClient, controllerNamespace),
+		grpcServer:          newGrpcServer(telemetryClient, tapClient, controllerNamespace),
+		k8sClient:           k8sClient,
+		prometheusAPI:       promv1.NewAPI(prometheusClient),
+		controllerNamespace: controllerNamespace,
 	}
 
 	instrumentedHandler := util.WithTelemetry(baseHandler)
