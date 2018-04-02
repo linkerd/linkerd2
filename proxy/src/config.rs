@@ -1,11 +1,13 @@
 use std::collections::HashMap;
 use std::env;
+use std::iter::FromIterator;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
 
 use http;
+use indexmap::IndexSet;
 
 use transport::{Host, HostAndPort, HostAndPortError};
 use convert::TryFrom;
@@ -37,6 +39,10 @@ pub struct Config {
 
     /// The maximum amount of time to wait for a connection to the private peer.
     pub private_connect_timeout: Duration,
+
+    pub inbound_ports_disable_protocol_detection: IndexSet<u16>,
+
+    pub outbound_ports_disable_protocol_detection: IndexSet<u16>,
 
     /// The path to "/etc/resolv.conf"
     pub resolv_conf_path: PathBuf,
@@ -136,6 +142,11 @@ const ENV_PRIVATE_CONNECT_TIMEOUT: &str = "CONDUIT_PROXY_PRIVATE_CONNECT_TIMEOUT
 const ENV_PUBLIC_CONNECT_TIMEOUT: &str = "CONDUIT_PROXY_PUBLIC_CONNECT_TIMEOUT";
 pub const ENV_BIND_TIMEOUT: &str = "CONDUIT_PROXY_BIND_TIMEOUT";
 
+// These *disable* our protocol detection for connections whose SO_ORIGINAL_DST
+// has a port in the provided list.
+pub const ENV_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION: &str = "CONDUIT_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION";
+pub const ENV_OUTBOUND_PORTS_DISABLE_PROTOCOL_DETECTION: &str = "CONDUIT_PROXY_OUTBOUND_PORTS_DISABLE_PROTOCOL_DETECTION";
+
 const ENV_NODE_NAME: &str = "CONDUIT_PROXY_NODE_NAME";
 const ENV_POD_NAME: &str = "CONDUIT_PROXY_POD_NAME";
 pub const ENV_POD_NAMESPACE: &str = "CONDUIT_PROXY_POD_NAMESPACE";
@@ -156,6 +167,14 @@ const DEFAULT_PUBLIC_CONNECT_TIMEOUT_MS: u64 = 300;
 const DEFAULT_BIND_TIMEOUT_MS: u64 = 10_000; // ten seconds, as in Linkerd.
 const DEFAULT_RESOLV_CONF: &str = "/etc/resolv.conf";
 
+// By default, we keep a list of known assigned ports of server-first protocols.
+//
+// https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.txt
+const DEFAULT_PORTS_DISABLE_PROTOCOL_DETECTION: &[u16] = &[
+    25,   // SMTP
+    3306, // MySQL
+];
+
 // ===== impl Config =====
 
 impl<'a> TryFrom<&'a Strings> for Config {
@@ -172,6 +191,8 @@ impl<'a> TryFrom<&'a Strings> for Config {
         let private_forward = parse(strings, ENV_PRIVATE_FORWARD, str::parse);
         let public_connect_timeout = parse(strings, ENV_PUBLIC_CONNECT_TIMEOUT, parse_number);
         let private_connect_timeout = parse(strings, ENV_PRIVATE_CONNECT_TIMEOUT, parse_number);
+        let inbound_disable_ports = parse(strings, ENV_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION, parse_port_set);
+        let outbound_disable_ports = parse(strings, ENV_OUTBOUND_PORTS_DISABLE_PROTOCOL_DETECTION, parse_port_set);
         let bind_timeout = parse(strings, ENV_BIND_TIMEOUT, parse_number);
         let resolv_conf_path = strings.get(ENV_RESOLV_CONF);
         let event_buffer_capacity = parse(strings, ENV_EVENT_BUFFER_CAPACITY, parse_number);
@@ -224,6 +245,10 @@ impl<'a> TryFrom<&'a Strings> for Config {
             private_connect_timeout:
                 Duration::from_millis(private_connect_timeout?
                                           .unwrap_or(DEFAULT_PRIVATE_CONNECT_TIMEOUT_MS)),
+            inbound_ports_disable_protocol_detection: inbound_disable_ports?
+                .unwrap_or_else(|| default_disable_ports_protocol_detection()),
+            outbound_ports_disable_protocol_detection: outbound_disable_ports?
+                .unwrap_or_else(|| default_disable_ports_protocol_detection()),
             resolv_conf_path: resolv_conf_path?
                 .unwrap_or(DEFAULT_RESOLV_CONF.into())
                 .into(),
@@ -244,10 +269,8 @@ impl<'a> TryFrom<&'a Strings> for Config {
     }
 }
 
-impl Config {
-    pub fn default_destination_namespace(&self) -> &str {
-        &self.pod_namespace
-    }
+fn default_disable_ports_protocol_detection() -> IndexSet<u16> {
+    IndexSet::from_iter(DEFAULT_PORTS_DISABLE_PROTOCOL_DETECTION.iter().cloned())
 }
 
 // ===== impl Addr =====
@@ -328,6 +351,14 @@ fn parse_url(s: &str) -> Result<HostAndPort, ParseError> {
 
     HostAndPort::try_from(authority)
         .map_err(|e| ParseError::UrlError(UrlError::AuthorityError(e)))
+}
+
+fn parse_port_set(s: &str) -> Result<IndexSet<u16>, ParseError> {
+    let mut set = IndexSet::new();
+    for num in s.split(',') {
+        set.insert(parse_number::<u16>(num)?);
+    }
+    Ok(set)
 }
 
 fn parse<T, Parse>(strings: &Strings, name: &str, parse: Parse) -> Result<Option<T>, Error>

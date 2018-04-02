@@ -51,6 +51,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
+use indexmap::IndexSet;
 use tokio_core::reactor::{Core, Handle};
 use tower::NewService;
 use tower_fn::*;
@@ -186,6 +187,14 @@ where
             "serving Prometheus metrics on {:?}",
             metrics_listener.local_addr(),
         );
+        info!(
+            "protocol detection disabled for inbound ports {:?}",
+            config.inbound_ports_disable_protocol_detection,
+        );
+        info!(
+            "protocol detection disabled for outbound ports {:?}",
+            config.outbound_ports_disable_protocol_detection,
+        );
 
         let (sensors, telemetry) = telemetry::new(
             &process_ctx,
@@ -215,6 +224,7 @@ where
                 inbound_listener,
                 Inbound::new(default_addr, bind),
                 config.private_connect_timeout,
+                config.inbound_ports_disable_protocol_detection,
                 ctx,
                 sensors.clone(),
                 get_original_dst.clone(),
@@ -234,7 +244,7 @@ where
             let outgoing = Outbound::new(
                 bind,
                 control,
-                config.default_destination_namespace().to_owned(),
+                config.pod_namespace.to_owned(),
                 config.bind_timeout,
             );
 
@@ -242,6 +252,7 @@ where
                 outbound_listener,
                 outgoing,
                 config.public_connect_timeout,
+                config.outbound_ports_disable_protocol_detection,
                 ctx,
                 sensors,
                 get_original_dst,
@@ -254,6 +265,7 @@ where
 
         let (_tx, controller_shutdown_signal) = futures::sync::oneshot::channel::<()>();
         {
+            let report_timeout = config.report_timeout;
             thread::Builder::new()
                 .name("controller-client".into())
                 .spawn(move || {
@@ -282,7 +294,7 @@ where
                         telemetry,
                         control_host_and_port,
                         dns_config,
-                        config.report_timeout,
+                        report_timeout,
                         &executor
                     );
 
@@ -312,6 +324,7 @@ fn serve<R, B, E, F, G>(
     bound_port: BoundPort,
     recognize: R,
     tcp_connect_timeout: Duration,
+    disable_protocol_detection_ports: IndexSet<u16>,
     proxy_ctx: Arc<ctx::Proxy>,
     sensors: telemetry::Sensors,
     get_orig_dst: G,
@@ -362,6 +375,7 @@ where
         get_orig_dst,
         stack,
         tcp_connect_timeout,
+        disable_protocol_detection_ports,
         executor.clone(),
     );
 
