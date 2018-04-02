@@ -119,6 +119,10 @@ func (s *grpcServer) Stat(ctx context.Context, req *pb.MetricRequest) (*pb.Metri
 	return &pb.MetricResponse{Metrics: metrics}, err
 }
 
+func (s *grpcServer) StatV2(ctx context.Context, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
+	return &pb.StatSummaryResponse{}, nil
+}
+
 func (s *grpcServer) queryMetric(ctx context.Context, req *pb.MetricRequest, metric pb.MetricName) metricResult {
 
 	result := metricResult{}

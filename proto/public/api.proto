@@ -124,8 +124,62 @@ message ApiError {
   string error = 1;
 }
 
+message ResourceSpec {
+  string namespace = 1;
+  string resource = 2;
+}
+
+message ResourceSelection {
+  ResourceSpec spec = 1;
+  string label_selector = 2;
+}
+
+message ResourceNotFound {
+  ResourceSpec spec = 1;
+  ApiError error = 2;
+}
+
+message StatSummaryRequest {
+  ResourceSelection resource = 1;
+  TimeWindow time_window = 2;
+
+  oneof outbound {
+    Empty none = 3;
+    ResourceSpec out_to_resource   = 4;
+    ResourceSpec out_from_resource = 5;
+  }
+}
+
+message StatSummaryResponse {
+  repeated StatTable stat_tables = 1;
+  ResourceNotFound error = 2;
+}
+
+message StatTable {
+  oneof table {
+    PodGroup pod_group = 1;
+  }
+
+  message PodGroup {
+    repeated Row rows = 1;
+
+    message Row {
+      ResourceSpec spec = 1;
+
+      uint64 meshed_pod_count = 2;
+      uint64 total_pod_count = 3;
+
+      double volume_per_sec = 4;
+      double success_rate = 5;
+      uint64 latency_p50 = 6;
+      uint64 latency_p90 = 7;
+    }
+  }
+}
+
 service Api {
   rpc Stat(MetricRequest) returns (MetricResponse) {}
+  rpc StatV2(StatSummaryRequest) returns (StatSummaryResponse) {}
   rpc Version(Empty) returns (VersionInfo) {}
   rpc ListPods(Empty) returns (ListPodsResponse) {}
   rpc SelfCheck(common.healthcheck.SelfCheckRequest) returns (common.healthcheck.SelfCheckResponse) {}
