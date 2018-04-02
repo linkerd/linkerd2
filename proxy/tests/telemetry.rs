@@ -728,8 +728,8 @@ mod outbound_dst_labels {
         // scrape, because testing for whole metric lines would depend on
         // the order in which the labels occur, and we can't depend on hash
         // map ordering.
-        assert_contains!(scrape, "addr_label1=\"foo\"");
-        assert_contains!(scrape, "addr_label2=\"bar\"");
+        assert_contains!(scrape, "dst_addr_label1=\"foo\"");
+        assert_contains!(scrape, "dst_addr_label2=\"bar\"");
 
     }
 
@@ -775,8 +775,8 @@ mod outbound_dst_labels {
         // scrape, because testing for whole metric lines would depend on
         // the order in which the labels occur, and we can't depend on hash
         // map ordering.
-        assert_contains!(scrape, "set_label1=\"foo\"");
-        assert_contains!(scrape, "set_label2=\"bar\"");
+        assert_contains!(scrape, "dst_set_label1=\"foo\"");
+        assert_contains!(scrape, "dst_set_label2=\"bar\"");
 
     }
 
@@ -818,13 +818,13 @@ mod outbound_dst_labels {
         assert_eq!(client.get("/"), "hello");
         let scrape = metrics.get("/metrics");
         assert_contains!(scrape,
-            "request_duration_ms_count{authority=\"labeled-all.test.svc.cluster.local\",direction=\"outbound\",addr_label=\"foo\",set_label=\"bar\"} 1");
+            "request_duration_ms_count{authority=\"labeled-all.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"bar\"} 1");
         assert_contains!(scrape,
-            "response_duration_ms_count{authority=\"labeled-all.test.svc.cluster.local\",direction=\"outbound\",addr_label=\"foo\",set_label=\"bar\",classification=\"success\",status_code=\"200\"} 1");
+            "response_duration_ms_count{authority=\"labeled-all.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"bar\",classification=\"success\",status_code=\"200\"} 1");
         assert_contains!(scrape,
-            "request_total{authority=\"labeled-all.test.svc.cluster.local\",direction=\"outbound\",addr_label=\"foo\",set_label=\"bar\"} 1");
+            "request_total{authority=\"labeled-all.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"bar\"} 1");
         assert_contains!(scrape,
-            "response_total{authority=\"labeled-all.test.svc.cluster.local\",direction=\"outbound\",addr_label=\"foo\",set_label=\"bar\",classification=\"success\",status_code=\"200\"} 1");
+            "response_total{authority=\"labeled-all.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"bar\",classification=\"success\",status_code=\"200\"} 1");
     }
 }
 

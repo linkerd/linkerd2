@@ -129,7 +129,7 @@ impl fmt::Display for discovery::DstLabels {
         // which will output the direction label without a comma, and it makes
         // the logic a little simpler here.
         for (label, value) in self {
-            write!(f, ",{}=\"{}\"", label, value)?;
+            write!(f, ",dst_{}=\"{}\"", label, value)?;
         }
 
         Ok(())
