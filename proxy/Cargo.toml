@@ -24,6 +24,7 @@ h2 = "0.1.5"
 http = "0.1"
 httparse = "1.2"
 hyper = { version = "0.11.22", default-features = false, features = ["compat"] }
+hyper-compress = { git = "https://github.com/hawkw/hyper-compress.git" }
 ipnet = "1.0"
 log = "0.4.1"
 indexmap = "1.0.0"

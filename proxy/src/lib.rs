@@ -16,6 +16,7 @@ extern crate h2;
 extern crate http;
 extern crate httparse;
 extern crate hyper;
+extern crate hyper_compress;
 extern crate ipnet;
 #[cfg(target_os = "linux")]
 extern crate libc;

@@ -3,6 +3,7 @@ use std::sync::{Arc, Mutex};
 
 use futures::{future, Async, Future, Poll, Stream};
 use futures_mpsc_lossy::Receiver;
+use hyper_compress::server::GzWriterService;
 use tokio_core::reactor::Handle;
 
 use super::event::Event;
@@ -112,6 +113,7 @@ impl Control {
     {
         use hyper;
         let service = self.metrics_service.clone();
+        let service = GzWriterService::new(service);
         let hyper = hyper::server::Http::<hyper::Chunk>::new();
         bound_port.listen_and_fold(
             &self.handle,
