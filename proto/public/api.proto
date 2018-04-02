@@ -134,9 +134,9 @@ message ResourceSelection {
   string label_selector = 2;
 }
 
-message ResourceNotFound {
+message ResourceError {
   ResourceSpec spec = 1;
-  ApiError error = 2;
+  string error = 2;
 }
 
 message StatSummaryRequest {
@@ -151,8 +151,12 @@ message StatSummaryRequest {
 }
 
 message StatSummaryResponse {
-  repeated StatTable stat_tables = 1;
-  ResourceNotFound error = 2;
+  Ok ok = 1;
+  ResourceError error = 2;
+
+  message Ok {
+    repeated StatTable stat_table = 1;
+  }
 }
 
 message StatTable {
@@ -169,8 +173,8 @@ message StatTable {
       uint64 meshed_pod_count = 2;
       uint64 total_pod_count = 3;
 
-      double volume_per_sec = 4;
-      double success_rate = 5;
+      uint64 success_count = 4;
+      uint64 failure_count = 5;
       uint64 latency_p50 = 6;
       uint64 latency_p90 = 7;
     }
@@ -179,7 +183,7 @@ message StatTable {
 
 service Api {
   rpc Stat(MetricRequest) returns (MetricResponse) {}
-  rpc StatV2(StatSummaryRequest) returns (StatSummaryResponse) {}
+  rpc StatSummary(StatSummaryRequest) returns (StatSummaryResponse) {}
   rpc Version(Empty) returns (VersionInfo) {}
   rpc ListPods(Empty) returns (ListPodsResponse) {}
   rpc SelfCheck(common.healthcheck.SelfCheckRequest) returns (common.healthcheck.SelfCheckResponse) {}
