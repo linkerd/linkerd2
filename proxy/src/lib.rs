@@ -10,6 +10,7 @@ extern crate domain;
 extern crate env_logger;
 #[macro_use]
 extern crate futures;
+extern crate futures_watch;
 extern crate futures_mpsc_lossy;
 extern crate h2;
 extern crate http;
@@ -43,6 +44,7 @@ extern crate tower_util;
 extern crate tower_in_flight_limit;
 
 use futures::*;
+use futures_watch::Watch;
 
 use std::error::Error;
 use std::io;
@@ -56,6 +58,7 @@ use tower::NewService;
 use tower_fn::*;
 use conduit_proxy_router::{Recognize, Router, Error as RouteError};
 
+mod accept_policy;
 pub mod app;
 mod bind;
 pub mod config;
@@ -186,6 +189,14 @@ where
             "serving Prometheus metrics on {:?}",
             metrics_listener.local_addr(),
         );
+        info!(
+            "protocol detection disabled for inbound ports {:?}",
+            config.inbound_ports_disable_protocol_detection,
+        );
+        info!(
+            "protocol detection disabled for outbound ports {:?}",
+            config.outbound_ports_disable_protocol_detection,
+        );
 
         let (sensors, telemetry) = telemetry::new(
             &process_ctx,
@@ -201,6 +212,12 @@ where
 
         let bind = Bind::new(executor.clone()).with_sensors(sensors.clone());
 
+        let (inbound_accept_policy_rx, inbound_accept_policy_tx) = {
+            use accept_policy::{EndpointMatch, Inbound, Net};
+            let m = EndpointMatch::new(Net::Any, config.inbound_ports_disable_protocol_detection);
+            Watch::new(Inbound::new(vec![m]))
+        };
+
         // Setup the public listener. This will listen on a publicly accessible
         // address and listen for inbound connections that should be forwarded
         // to the managed application (private destination).
@@ -215,12 +232,19 @@ where
                 inbound_listener,
                 Inbound::new(default_addr, bind),
                 config.private_connect_timeout,
+                inbound_accept_policy_rx,
                 ctx,
                 sensors.clone(),
                 get_original_dst.clone(),
                 &executor,
             );
             ::logging::context_future("inbound", fut)
+        };
+
+        let (outbound_accept_policy_rx, outbound_accept_policy_tx) = {
+            use accept_policy::{EndpointMatch, Outbound, Net};
+            let m = EndpointMatch::new(Net::Any, config.outbound_ports_disable_protocol_detection);
+            Watch::new(Outbound::new(vec![m]))
         };
 
         // Setup the private listener. This will listen on a locally accessible
@@ -234,7 +258,7 @@ where
             let outgoing = Outbound::new(
                 bind,
                 control,
-                config.default_destination_namespace().to_owned(),
+                config.pod_namespace.to_owned(),
                 config.bind_timeout,
             );
 
@@ -242,6 +266,7 @@ where
                 outbound_listener,
                 outgoing,
                 config.public_connect_timeout,
+                outbound_accept_policy_rx,
                 ctx,
                 sensors,
                 get_original_dst,
@@ -254,6 +279,7 @@ where
 
         let (_tx, controller_shutdown_signal) = futures::sync::oneshot::channel::<()>();
         {
+            let report_timeout = config.report_timeout;
             thread::Builder::new()
                 .name("controller-client".into())
                 .spawn(move || {
@@ -280,9 +306,11 @@ where
 
                     let client = control_bg.bind(
                         telemetry,
+                        inbound_accept_policy_tx,
+                        outbound_accept_policy_tx,
                         control_host_and_port,
                         dns_config,
-                        config.report_timeout,
+                        report_timeout,
                         &executor
                     );
 
@@ -308,10 +336,11 @@ where
     }
 }
 
-fn serve<R, B, E, F, G>(
+fn serve<R, B, E, F, A, G>(
     bound_port: BoundPort,
     recognize: R,
     tcp_connect_timeout: Duration,
+    accept_policy: Watch<A>,
     proxy_ctx: Arc<ctx::Proxy>,
     sensors: telemetry::Sensors,
     get_orig_dst: G,
@@ -328,6 +357,7 @@ where
         RouteError = F,
     >
         + 'static,
+    A: accept_policy::AcceptPolicy + 'static,
     G: GetOriginalDst + 'static,
 {
     let router = Router::new(recognize);
@@ -362,6 +392,7 @@ where
         get_orig_dst,
         stack,
         tcp_connect_timeout,
+        accept_policy,
         executor.clone(),
     );
 

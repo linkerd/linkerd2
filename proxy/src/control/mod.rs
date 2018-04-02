@@ -4,6 +4,7 @@ use std::time::{Duration, Instant};
 
 use bytes::Bytes;
 use futures::{future, Async, Future, Poll, Stream};
+use futures_watch::Store;
 use h2;
 use http;
 use tokio_core::reactor::{
@@ -16,20 +17,23 @@ use tower::Service;
 use tower_h2;
 use tower_reconnect::{Error as ReconnectError, Reconnect};
 
+use conduit_proxy_controller_grpc::telemetry::ReportRequest;
+
 use dns;
 use fully_qualified_authority::FullyQualifiedAuthority;
 use transport::{HostAndPort, LookupAddressAndConnect};
 use timeout::{Timeout, TimeoutError};
 
+mod accept_policy;
 pub mod discovery;
 mod observe;
 pub mod pb;
 mod telemetry;
 
+use self::accept_policy::AcceptPolicy;
 use self::discovery::{Background as DiscoBg, Discovery, Watch};
 pub use self::discovery::Bind;
 pub use self::observe::Observe;
-use conduit_proxy_controller_grpc::telemetry::ReportRequest;
 use self::telemetry::Telemetry;
 
 pub struct Control {
@@ -68,6 +72,8 @@ impl Background {
     pub fn bind<S>(
         self,
         events: S,
+        inbound_accept_policy: Store<::accept_policy::Inbound>,
+        outbound_accept_policy: Store<::accept_policy::Outbound>,
         host_and_port: HostAndPort,
         dns_config: dns::Config,
         report_timeout: Duration,
@@ -102,10 +108,12 @@ impl Background {
             AddOrigin::new(scheme, authority, backoff)
         };
 
+        let mut accept_policy = AcceptPolicy::new(inbound_accept_policy, outbound_accept_policy);
         let mut disco = self.disco.work();
         let mut telemetry = Telemetry::new(events, report_timeout, executor);
 
         let fut = future::poll_fn(move || {
+            accept_policy.poll_rpc(&mut client);
             disco.poll_rpc(&mut client);
             telemetry.poll_rpc(&mut client);
 
