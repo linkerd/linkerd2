@@ -18,6 +18,7 @@ pub struct Outbound {
     protocol_detection_disabled: Vec<EndpointMatch>,
 }
 
+/// If no ports are specified, all ports match.
 #[derive(Clone, Debug)]
 pub struct EndpointMatch {
     net: Net,
@@ -26,6 +27,7 @@ pub struct EndpointMatch {
 
 #[derive(Clone, Debug)]
 pub enum Net {
+    Any,
     V4(Ipv4Net),
     V6(Ipv6Net),
 }
@@ -84,15 +86,17 @@ impl EndpointMatch {
 
 impl ProtocolDetectionDisabled for EndpointMatch {
     fn protocol_detection_disabled(&self, addr: net::SocketAddr) -> bool {
-        self.ports.contains(&addr.port()) && self.net.contains(addr.ip())
+        (self.ports.contains(&addr.port()) || self.ports.is_empty()) &&
+            self.net.contains(&addr.ip())
     }
 }
 
 // ==== impl Net =====
 
 impl Net {
-    fn contains(&self, ip: net::IpAddr) -> bool {
-        match (self, ip) {
+    fn contains(&self, ip: &net::IpAddr) -> bool {
+        match (self, *ip) {
+            (&Net::Any, _) => true,
             (&Net::V4(ref net4), net::IpAddr::V4(ref ip4)) => net4.contains(ip4),
             (&Net::V6(ref net6), net::IpAddr::V6(ref ip6)) => net6.contains(ip6),
             _ => false,

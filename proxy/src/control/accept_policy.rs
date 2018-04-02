@@ -266,17 +266,18 @@ fn convert_net(m: &pb::endpoint_match::Net) -> Result<Net, ConvertError> {
         m.mask as u8
     };
 
-    let ip = match m.ip.as_ref().and_then(|a| a.ip.as_ref()) {
-        Some(ip) => ip,
-        None => return Err(ConvertError::InvalidNetwork),
-    };
-
-    let net = match *ip {
-        ip_address::Ip::Ipv4(ref n) => {
+    let net = match m.ip.as_ref().and_then(|a| a.ip.as_ref()) {
+        None => {
+            if mask != 0 {
+                return Err(ConvertError::InvalidNetwork);
+            }
+            Net::Any
+        }
+        Some(&ip_address::Ip::Ipv4(ref n)) => {
             let net = Ipv4Net::new((*n).into(), mask).map_err(|_| ConvertError::InvalidNetwork)?;
             Net::V4(net)
         }
-        ip_address::Ip::Ipv6(ref ip6) => {
+        Some(&ip_address::Ip::Ipv6(ref ip6)) => {
             let net = Ipv6Net::new(ip6.into(), mask).map_err(|_| ConvertError::InvalidNetwork)?;
             Net::V6(net)
         }
