@@ -15,6 +15,8 @@ pub struct Proxy {
     outbound: Option<server::Listening>,
 
     metrics_flush_interval: Option<Duration>,
+    inbound_disable_ports_protocol_detection: Option<Vec<u16>>,
+    outbound_disable_ports_protocol_detection: Option<Vec<u16>>,
 }
 
 #[derive(Debug)]
@@ -38,6 +40,8 @@ impl Proxy {
             outbound: None,
 
             metrics_flush_interval: None,
+            inbound_disable_ports_protocol_detection: None,
+            outbound_disable_ports_protocol_detection: None,
         }
     }
 
@@ -58,6 +62,16 @@ impl Proxy {
 
     pub fn metrics_flush_interval(mut self, dur: Duration) -> Self {
         self.metrics_flush_interval = Some(dur);
+        self
+    }
+
+    pub fn disable_inbound_ports_protocol_detection(mut self, ports: Vec<u16>) -> Self {
+        self.inbound_disable_ports_protocol_detection = Some(ports);
+        self
+    }
+
+    pub fn disable_outbound_ports_protocol_detection(mut self, ports: Vec<u16>) -> Self {
+        self.outbound_disable_ports_protocol_detection = Some(ports);
         self
     }
 
@@ -120,6 +134,28 @@ fn run(proxy: Proxy, mut env: config::TestEnv) -> Listening {
     env.put(config::ENV_CONTROL_LISTENER, "tcp://127.0.0.1:0".to_owned());
     env.put(config::ENV_METRICS_LISTENER, "tcp://127.0.0.1:0".to_owned());
     env.put(config::ENV_POD_NAMESPACE, "test".to_owned());
+
+    if let Some(ports) = proxy.inbound_disable_ports_protocol_detection {
+        let ports = ports.into_iter()
+            .map(|p| p.to_string())
+            .collect::<Vec<_>>()
+            .join(",");
+        env.put(
+            config::ENV_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION,
+            ports
+        );
+    }
+
+    if let Some(ports) = proxy.outbound_disable_ports_protocol_detection {
+        let ports = ports.into_iter()
+            .map(|p| p.to_string())
+            .collect::<Vec<_>>()
+            .join(",");
+        env.put(
+            config::ENV_OUTBOUND_PORTS_DISABLE_PROTOCOL_DETECTION,
+            ports
+        );
+    }
 
     let mut config = config::Config::try_from(&env).unwrap();
 

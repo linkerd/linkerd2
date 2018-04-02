@@ -38,6 +38,10 @@ request headers are received to when the response stream has completed.
 
 Each of these metrics has the following labels:
 
+* `classification`: `success` if the response was successful, or `failure` if
+                    a server error occurred. This classification is based on
+                    the gRPC status code if one is present, and on the HTTP
+                    status code otherwise. Only applicable to response metrics.
 * `direction`: `inbound` if the request originated from outside of the pod,
                `outbound` if the request originated from inside of the pod.
 * `authority`: The value of the `:authority` (HTTP/2) or `Host` (HTTP/1.1)
@@ -76,6 +80,7 @@ will correspond to `k8s_*` Prometheus labels:
 * `daemon_set`: The daemon set that the pod belongs to (if applicable).
 * `replication_controller`: The replication controller that the pod belongs to
                             (if applicable).
+* `pod_name`: Kubernetes pod name.
 * `pod_template_hash`: Corresponds to the [pod-template-hash][pod-template-hash]
                        Kubernetes label. This value changes during redeploys and
                        rolling restarts.
@@ -83,6 +88,7 @@ will correspond to `k8s_*` Prometheus labels:
 Here's a concrete example, given the following pod snippet:
 
 ```yaml
+name: vote-bot-5b7f5657f6-xbjjw
 namespace: emojivoto
 labels:
   app: vote-bot
@@ -100,6 +106,7 @@ request_total{
   app="vote-bot",
   conduit_io_control_plane_ns="conduit",
   deployment="vote-bot",
+  pod_name="vote-bot-5b7f5657f6-xbjjw",
   pod_template_hash="3957278789",
   test="vote-bot-test",
   instance="10.1.3.93:4191",

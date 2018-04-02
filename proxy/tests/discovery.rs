@@ -3,6 +3,8 @@ use self::support::*;
 
 macro_rules! generate_tests {
     (server: $make_server:path, client: $make_client:path) => {
+        use conduit_proxy_controller_grpc as pb;
+
         #[test]
         fn outbound_asks_controller_api() {
             let _ = env_logger::try_init();
@@ -30,6 +32,77 @@ macro_rules! generate_tests {
             let client = $make_client(proxy.outbound, "disco.test.svc.cluster.local");
 
             assert_eq!(client.get("/recon"), "nect");
+        }
+
+        #[test]
+        #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+        fn outbound_destinations_reset_on_reconnect_followed_by_no_endpoints_exists() {
+            outbound_destinations_reset_on_reconnect(move || {
+                Some(controller::destination_exists_with_no_endpoints())
+            })
+        }
+
+        #[test]
+        #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+        fn outbound_destinations_reset_on_reconnect_followed_by_add_none() {
+            outbound_destinations_reset_on_reconnect(move || {
+                Some(controller::destination_add_none())
+            })
+        }
+
+        #[test]
+        #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+        fn outbound_destinations_reset_on_reconnect_followed_by_remove_none() {
+            outbound_destinations_reset_on_reconnect(move || {
+                Some(controller::destination_remove_none())
+            })
+        }
+
+        fn outbound_destinations_reset_on_reconnect<F>(f: F)
+            where F: Fn() -> Option<pb::destination::Update> + Send + 'static
+        {
+            use std::thread;
+            let _ = env_logger::try_init();
+            let mut env = config::TestEnv::new();
+
+            // set the bind timeout to 100 ms.
+            env.put(config::ENV_BIND_TIMEOUT, "100".to_owned());
+
+            let srv = $make_server().route("/", "hello").run();
+            let ctrl = controller::new()
+                .destination("initially-exists.ns.svc.cluster.local", srv.addr)
+                .destination_close("trigger-close.ns.svc.cluster.local")
+                .destination_fn("initially-exists.ns.svc.cluster.local", f)
+                .run();
+
+            let proxy = proxy::new()
+                .controller(ctrl)
+                .outbound(srv)
+                .run_with_test_env(env);
+
+            let initially_exists =
+                $make_client(proxy.outbound, "initially-exists.ns.svc.cluster.local");
+            assert_eq!(initially_exists.get("/"), "hello");
+
+            // Try to access a different server which will trigger the `destination_close()`
+            // above.
+            {
+                let trigger_close =
+                    $make_client(proxy.outbound, "trigger-close.ns.svc.cluster.local");
+                let mut req = trigger_close.request_builder("/");
+                let rsp = trigger_close.request(req.method("GET"));
+                // the request should time out
+                assert_eq!(rsp.status(), http::StatusCode::INTERNAL_SERVER_ERROR);
+            }
+
+            // Wait for the reconnect to happen. TODO: Replace this flaky logic.
+            thread::sleep(Duration::from_millis(1000));
+
+            // This will time out since there are no endpoints.
+            let mut req = initially_exists.request_builder("/");
+            let rsp = initially_exists.request(req.method("GET"));
+            // the request should time out
+            assert_eq!(rsp.status(), http::StatusCode::INTERNAL_SERVER_ERROR);
         }
 
         #[test]

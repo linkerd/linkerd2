@@ -3,7 +3,9 @@ FROM gcr.io/runconduit/go-deps:cc2413fa as golang
 ARG CONDUIT_VERSION
 WORKDIR /go/src/github.com/runconduit/conduit
 COPY cli cli
-COPY controller controller
+COPY controller/api controller/api
+COPY controller/gen controller/gen
+COPY controller/util controller/util
 COPY pkg pkg
 RUN mkdir -p /out
 ENV GO_LDFLAGS="-s -w -X github.com/runconduit/conduit/pkg/version.Version=${CONDUIT_VERSION}"

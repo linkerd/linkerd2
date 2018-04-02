@@ -206,32 +206,26 @@ In development you can run:
 bin/go-run cli check
 ```
 
-### Running the control plane for develpment
-Conduit's control plane is composed of several Go microservices. You can run these components
-in a Kubernetes (or Minikube) cluster, or even locally. 
+### Running the control plane for development
 
-To run it in a cluster, use `kubectl` to forward the port to your local host like this:
+Conduit's control plane is composed of several Go microservices. You can run
+these components in a Kubernetes (or Minikube) cluster, or even locally.
+
+To run an individual component locally, you can use the `go-run` command, and
+pass in valid Kubernetes credentials via the `-kubeconfig`. For instance, to run
+the destination service locally, run::
 
 ```bash
-# forward localhost:8089 to the destination service
-$ kubectl -n conduit port-forward $(kubectl --namespace=conduit get po --selector=conduit.io/control-plane-component=controller -o jsonpath='{.items[*].metadata.name}') 8089:8089
+bin/go-run controller/cmd/destination -kubeconfig ~/.kube/config -log-level debug
 ```
 
-To run it locally, you can use the `go run` script and valid Kubernetes credentials. For 
-example,here's how to run the destinations service:
+You can send test requests to the destination service using the
+`destination-client` in the `controller/script` directory. For instance:
 
 ```bash
- $ ./bin/go-run controller/cmd/destination -kubeconfig ~/.kube/config -log-level debug
- ```
- 
-Given these services use gRPC, you unfortunately can't use curl to poke around. If you want to 
-test the control plane, you should use one of the few test clients in the [`destination`](controller/destination) 
-directory. Here is an example of running it against the destinations service:
-
-```bash
-$ bin/go-run  controller/script/destination-client/main.go -path stat-test-t2-svc.default.svc.cluster.local:90
+bin/go-run controller/script/destination-client -path hello.default.svc.cluster.local:80
 ```
- 
+
 ## Web
 
 This is a React app fronting a Go process. It uses webpack to bundle assets, and

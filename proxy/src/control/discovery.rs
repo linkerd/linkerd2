@@ -1,3 +1,4 @@
+use std;
 use std::collections::{HashSet, VecDeque};
 use std::collections::hash_map::{Entry, HashMap};
 use std::net::SocketAddr;
@@ -55,9 +56,8 @@ pub struct DiscoveryWork<T: HttpService<ResponseBody = RecvBody>> {
 }
 
 struct DestinationSet<T: HttpService<ResponseBody = RecvBody>> {
-    addrs: Exists<HashSet<SocketAddr>>,
-    needs_reconnect: bool,
-    rx: UpdateRx<T>,
+    addrs: Exists<Cache<SocketAddr>>,
+    query: DestinationServiceQuery<T>,
     txs: Vec<mpsc::UnboundedSender<Update>>,
 }
 
@@ -67,10 +67,31 @@ enum Exists<T> {
     No, // Affirmatively known to not exist.
 }
 
+/// A cache that supports incremental updates with lazy resetting on
+/// invalidation.
+///
+/// When the cache `c` initially becomes invalid (i.e. it becomes
+/// potentially out of sync with the data source so that incremental updates
+/// would stop working), call `c.reset_on_next_modification()`; the next
+/// incremental update will then replace the entire contents of the cache,
+/// instead of incrementally augmenting it. Until that next modification,
+/// however, the stale contents of the cache will be made available.
+struct Cache<T> {
+    values: HashSet<T>,
+    reset_on_next_modification: bool,
+}
+
 impl<T> Exists<T> {
     fn take(&mut self) -> Exists<T> {
         mem::replace(self, Exists::Unknown)
     }
+}
+
+enum DestinationServiceQuery<T: HttpService<ResponseBody = RecvBody>> {
+    NeedsReconnect,
+    ConnectedOrConnecting {
+        rx: UpdateRx<T>
+    },
 }
 
 /// Receiver for destination set updates.
@@ -269,8 +290,8 @@ where
                             // we may already know of some addresses here, so push
                             // them onto the new watch first
                             match set.addrs {
-                                Exists::Yes(ref mut addrs) => {
-                                    for &addr in addrs.iter() {
+                                Exists::Yes(ref cache) => {
+                                    for &addr in cache.values.iter() {
                                         tx.unbounded_send(Update::Insert(addr))
                                             .expect("unbounded_send does not fail");
                                     }
@@ -280,20 +301,11 @@ where
                             set.txs.push(tx);
                         }
                         Entry::Vacant(vac) => {
-                            let req = Destination {
-                                scheme: "k8s".into(),
-                                path: vac.key().without_trailing_dot()
-                                        .as_str().into(),
-                            };
-                            // TODO: Can grpc::Request::new be removed?
-                            let mut svc = DestinationSvc::new(client.lift_ref());
-                            let response = svc.get(grpc::Request::new(req));
-                            let stream = UpdateRx::Waiting(response);
-
+                            let query =
+                                DestinationServiceQuery::connect(client, vac.key(), "connect");
                             vac.insert(DestinationSet {
                                 addrs: Exists::Unknown,
-                                needs_reconnect: false,
-                                rx: stream,
+                                query,
                                 txs: vec![tx],
                             });
                         }
@@ -315,15 +327,7 @@ where
 
         while let Some(auth) = self.reconnects.pop_front() {
             if let Some(set) = self.destinations.get_mut(&auth) {
-                trace!("Destination.Get reconnect {:?}", auth);
-                let req = Destination {
-                    scheme: "k8s".into(),
-                    path: auth.without_trailing_dot().as_str().into(),
-                };
-                let mut svc = DestinationSvc::new(client.lift_ref());
-                let response = svc.get(grpc::Request::new(req));
-                set.rx = UpdateRx::Waiting(response);
-                set.needs_reconnect = false;
+                set.query = DestinationServiceQuery::connect(client, &auth, "reconnect");
                 return true;
             } else {
                 trace!("reconnect no longer needed: {:?}", auth);
@@ -334,12 +338,17 @@ where
 
     fn poll_destinations(&mut self) {
         for (auth, set) in &mut self.destinations {
-            if set.needs_reconnect {
-                continue;
-            }
             let needs_reconnect = 'set: loop {
+                let poll_result = match set.query {
+                    DestinationServiceQuery::NeedsReconnect => {
+                        continue;
+                    },
+                    DestinationServiceQuery::ConnectedOrConnecting{ ref mut rx } => {
+                        rx.poll()
+                    }
+                };
 
-                match set.rx.poll() {
+                match poll_result {
                     Ok(Async::Ready(Some(update))) => match update.update {
                         Some(PbUpdate2::Add(a_set)) =>
                             set.add(
@@ -370,86 +379,179 @@ where
 
             };
             if needs_reconnect {
-                set.needs_reconnect = true;
+                set.query = DestinationServiceQuery::NeedsReconnect;
+                set.reset_on_next_modification();
                 self.reconnects.push_back(FullyQualifiedAuthority::clone(auth));
             }
         }
     }
 }
 
+
+// ===== impl DestinationServiceQuery =====
+
+impl<T: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>> DestinationServiceQuery<T> {
+    fn connect(client: &mut T, auth: &FullyQualifiedAuthority, connect_or_reconnect: &str) -> Self {
+        trace!("DestinationServiceQuery {} {:?}", connect_or_reconnect, auth);
+        let req = Destination {
+            scheme: "k8s".into(),
+            path: auth.without_trailing_dot().as_str().into(),
+        };
+        // TODO: Can grpc::Request::new be removed?
+        let mut svc = DestinationSvc::new(client.lift_ref());
+        let response = svc.get(grpc::Request::new(req));
+        DestinationServiceQuery::ConnectedOrConnecting { rx: UpdateRx::Waiting(response) }
+    }
+}
+
 // ===== impl DestinationSet =====
 
 impl <T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
-    fn add<Addrs>(&mut self, authority_for_logging: &FullyQualifiedAuthority, addrs_to_add: Addrs)
-        where Addrs: Iterator<Item = SocketAddr>
-    {
-        let mut addrs = match self.addrs.take() {
-            Exists::Yes(addrs) => addrs,
-            Exists::Unknown | Exists::No => {
-                trace!("adding entries for {:?} that wasn't known to exist. Now assuming it does.",
-                       authority_for_logging);
-                HashSet::new()
+    fn reset_on_next_modification(&mut self) {
+        match self.addrs {
+            Exists::Yes(ref mut cache) => {
+                cache.reset_on_next_modification = true;
             },
-        };
-        for addr in addrs_to_add {
-            if addrs.insert(addr) {
-                trace!("update {:?} for {:?}", addr, authority_for_logging);
-                // retain is used to drop any senders that are dead
-                self.txs.retain(|tx| {
-                    tx.unbounded_send(Update::Insert(addr)).is_ok()
-                });
-            }
+            Exists::No |
+            Exists::Unknown => (),
         }
-        self.addrs = Exists::Yes(addrs);
     }
 
-    fn remove<Addrs>(&mut self, authority_for_logging: &FullyQualifiedAuthority,
-                     addrs_to_remove: Addrs)
-        where Addrs: Iterator<Item = SocketAddr>
+    fn add<A>(&mut self, authority_for_logging: &FullyQualifiedAuthority, addrs_to_add: A)
+        where A: Iterator<Item = SocketAddr>
     {
-        let addrs = match self.addrs.take() {
-            Exists::Yes(mut addrs) => {
-                for addr in addrs_to_remove {
-                    if addrs.remove(&addr) {
-                        self.notify_of_removal(addr, authority_for_logging)
-                    }
-                }
-                addrs
-            },
-            Exists::Unknown | Exists::No => {
-                trace!("remove addresses for {:?} that wasn't known to exist. Now assuming it does.",
-                       authority_for_logging);
-                HashSet::new()
-            },
+        let mut cache = match self.addrs.take() {
+            Exists::Yes(mut cache) => cache,
+            Exists::Unknown | Exists::No => Cache::new(),
         };
-        self.addrs = Exists::Yes(addrs)
+        cache.extend(
+            addrs_to_add,
+            &mut |addr, change| Self::on_change(&mut self.txs, authority_for_logging, addr,
+                                                change));
+        self.addrs = Exists::Yes(cache);
+    }
+
+    fn remove<A>(&mut self, authority_for_logging: &FullyQualifiedAuthority, addrs_to_remove: A)
+        where A: Iterator<Item = SocketAddr>
+    {
+        let cache = match self.addrs.take() {
+            Exists::Yes(mut cache) => {
+                cache.remove(
+                    addrs_to_remove,
+                    &mut |addr, change| Self::on_change(&mut self.txs, authority_for_logging, addr,
+                                                        change));
+                cache
+            },
+            Exists::Unknown | Exists::No => Cache::new(),
+        };
+        self.addrs = Exists::Yes(cache);
     }
 
     fn no_endpoints(&mut self, authority_for_logging: &FullyQualifiedAuthority, exists: bool) {
         trace!("no endpoints for {:?} that is known to {}", authority_for_logging,
-               if exists { "exist"} else { "not exist"});
+               if exists { "exist" } else { "not exist" });
         match self.addrs.take() {
-            Exists::Yes(addrs) => {
-                for addr in addrs {
-                    self.notify_of_removal(addr, authority_for_logging)
-                }
+            Exists::Yes(mut cache) => {
+                cache.clear(
+                    &mut |addr, change| Self::on_change(&mut self.txs, authority_for_logging, addr,
+                                                        change));
             },
-            Exists::No | Exists::Unknown => {},
-        }
+            Exists::Unknown | Exists::No => (),
+        };
         self.addrs = if exists {
-            Exists::Yes(HashSet::new())
+            Exists::Yes(Cache::new())
         } else {
             Exists::No
         };
     }
 
-    fn notify_of_removal(&mut self, addr: SocketAddr,
-                         authority_for_logging: &FullyQualifiedAuthority) {
-        trace!("remove {:?} for {:?}", addr, authority_for_logging);
+    fn on_change(txs: &mut Vec<mpsc::UnboundedSender<Update>>,
+                 authority_for_logging: &FullyQualifiedAuthority,
+                 addr: SocketAddr,
+                 change: CacheChange) {
+        let (update_str, update_constructor): (&'static str, fn(SocketAddr) -> Update) =
+            match change {
+                CacheChange::Insertion => ("insert", Update::Insert),
+                CacheChange::Removal => ("remove", Update::Remove),
+            };
+        trace!("{} {:?} for {:?}", update_str, addr, authority_for_logging);
         // retain is used to drop any senders that are dead
-        self.txs.retain(|tx| {
-            tx.unbounded_send(Update::Remove(addr)).is_ok()
+        txs.retain(|tx| {
+            tx.unbounded_send(update_constructor(addr)).is_ok()
         });
+    }
+}
+
+// ===== impl Cache =====
+
+enum CacheChange {
+    Insertion,
+    Removal,
+}
+
+impl<T> Cache<T> where T: Clone + Copy + Eq + std::hash::Hash {
+    fn new() -> Self {
+        Cache {
+            values: HashSet::new(),
+            reset_on_next_modification: true,
+        }
+    }
+
+    fn extend<I, F>(&mut self, iter: I, on_change: &mut F)
+        where I: Iterator<Item = T>,
+              F: FnMut(T, CacheChange),
+    {
+        fn extend_inner<T, I, F>(values: &mut HashSet<T>, iter: I, on_change: &mut F)
+            where T: Copy + Eq + std::hash::Hash, I: Iterator<Item = T>, F: FnMut(T, CacheChange)
+        {
+            for value in iter {
+                if values.insert(value) {
+                    on_change(value, CacheChange::Insertion);
+                }
+            }
+        }
+
+        if !self.reset_on_next_modification {
+            extend_inner(&mut self.values, iter, on_change);
+        } else {
+            let to_insert = iter.collect::<HashSet<T>>();
+            extend_inner(&mut self.values, to_insert.iter().map(|value| *value), on_change);
+            self.retain(&to_insert, on_change);
+        }
+        self.reset_on_next_modification = false;
+    }
+
+    fn remove<I, F>(&mut self, iter: I, on_change: &mut F)
+        where I: Iterator<Item = T>,
+              F: FnMut(T, CacheChange)
+    {
+        if !self.reset_on_next_modification {
+            for value in iter {
+                if self.values.remove(&value) {
+                    on_change(value, CacheChange::Removal);
+                }
+            }
+        } else {
+            self.clear(on_change);
+        }
+        self.reset_on_next_modification = false;
+    }
+
+    fn clear<F>(&mut self, on_change: &mut F) where F: FnMut(T, CacheChange) {
+        self.retain(&HashSet::new(), on_change)
+    }
+
+    fn retain<F>(&mut self, to_retain: &HashSet<T>, mut on_change: F)
+        where F: FnMut(T, CacheChange)
+    {
+        self.values.retain(|value| {
+            let retain = to_retain.contains(&value);
+            if !retain {
+                on_change(*value, CacheChange::Removal)
+            }
+            retain
+        });
+        self.reset_on_next_modification = false;
     }
 }
 
@@ -547,5 +649,92 @@ fn pb_to_sock_addr(pb: TcpAddress) -> Option<SocketAddr> {
             None => None,
         },
         None => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cache_extend_reset_on_next_modification() {
+        let original_values = [1, 2, 3, 4].iter().cloned().collect::<HashSet<usize>>();
+
+        // One original value, one new value.
+        let new_values = [3, 5].iter().cloned().collect::<HashSet<usize>>();
+
+        {
+            let mut cache = Cache {
+                values: original_values.clone(),
+                reset_on_next_modification: true,
+            };
+            cache.extend(new_values.iter().cloned(), &mut |_, _| ());
+            assert_eq!(&cache.values, &new_values);
+            assert_eq!(cache.reset_on_next_modification, false);
+        }
+
+        {
+            let mut cache = Cache {
+                values: original_values.clone(),
+                reset_on_next_modification: false,
+            };
+            cache.extend(new_values.iter().cloned(), &mut |_, _| ());
+            assert_eq!(&cache.values,
+                       &[1, 2, 3, 4, 5].iter().cloned().collect::<HashSet<usize>>());
+            assert_eq!(cache.reset_on_next_modification, false);
+        }
+    }
+
+    #[test]
+    fn cache_remove_reset_on_next_modification() {
+        let original_values = [1, 2, 3, 4].iter().cloned().collect::<HashSet<usize>>();
+
+        // One original value, one new value.
+        let to_remove = [3, 5].iter().cloned().collect::<HashSet<usize>>();
+
+        {
+            let mut cache = Cache {
+                values: original_values.clone(),
+                reset_on_next_modification: true,
+            };
+            cache.remove(to_remove.iter().cloned(), &mut |_, _| ());
+            assert_eq!(&cache.values, &HashSet::new());
+            assert_eq!(cache.reset_on_next_modification, false);
+        }
+
+        {
+            let mut cache = Cache {
+                values: original_values.clone(),
+                reset_on_next_modification: false,
+            };
+            cache.remove(to_remove.iter().cloned(), &mut |_, _| ());
+            assert_eq!(&cache.values, &[1, 2, 4].iter().cloned().collect::<HashSet<usize>>());
+            assert_eq!(cache.reset_on_next_modification, false);
+        }
+    }
+
+    #[test]
+    fn cache_clear_reset_on_next_modification() {
+        let original_values = [1, 2, 3, 4].iter().cloned().collect::<HashSet<usize>>();
+
+        {
+            let mut cache = Cache {
+                values: original_values.clone(),
+                reset_on_next_modification: true,
+            };
+            cache.clear(&mut |_, _| ());
+            assert_eq!(&cache.values, &HashSet::new());
+            assert_eq!(cache.reset_on_next_modification, false);
+        }
+
+        {
+            let mut cache = Cache {
+                values: original_values.clone(),
+                reset_on_next_modification: false,
+            };
+            cache.clear(&mut |_, _| ());
+            assert_eq!(&cache.values, &HashSet::new());
+            assert_eq!(cache.reset_on_next_modification, false);
+        }
     }
 }

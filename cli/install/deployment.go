@@ -19,11 +19,11 @@ const Deployment = `{
       "gnetId": null,
       "graphTooltip": 1,
       "id": null,
-      "iteration": 1520894520976,
+      "iteration": 1522197746099,
       "links": [],
       "panels": [
         {
-          "content": "<div>\n  <img src=\"https://conduit.io/favicon.png\" style=\"baseline; height:40px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">$target_deployment</span>\n</div>",
+          "content": "<div>\n  <img src=\"https://conduit.io/favicon.png\" style=\"baseline; height:40px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">$deployment</span>\n</div>",
           "gridPos": {
             "h": 2,
             "w": 24,
@@ -99,7 +99,7 @@ const Deployment = `{
           "tableColumn": "",
           "targets": [
             {
-              "expr": "sum(irate(requests_total{target_deployment=\"$target_deployment\"}[20s]))",
+              "expr": "sum(irate(request_total{deployment=\"$deployment\"}[20s]))",
               "format": "time_series",
               "instant": false,
               "intervalFactor": 1,
@@ -183,7 +183,7 @@ const Deployment = `{
           "tableColumn": "",
           "targets": [
             {
-              "expr": "sum(irate(responses_total{classification=\"success\", target_deployment=\"$target_deployment\"}[20s])) / sum(irate(responses_total{target_deployment=\"$target_deployment\"}[20s]))",
+              "expr": "(sum(irate(response_total{status_code=\"200\", deployment=\"$deployment\"}[20s])) + sum(irate(response_total{grpc_status_code=\"0\", deployment=\"$deployment\"}[20s]))) / sum(irate(response_total{deployment=\"$deployment\"}[20s]))",
               "format": "time_series",
               "instant": false,
               "intervalFactor": 1,
@@ -267,7 +267,7 @@ const Deployment = `{
           "tableColumn": "",
           "targets": [
             {
-              "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{target_deployment=\"$target_deployment\"}[20s])) by (le))",
+              "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{deployment=\"$deployment\"}[20s])) by (le))",
               "format": "time_series",
               "instant": false,
               "intervalFactor": 1,
@@ -351,7 +351,7 @@ const Deployment = `{
           "tableColumn": "",
           "targets": [
             {
-              "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{target_deployment=\"$target_deployment\"}[20s])) by (le))",
+              "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{deployment=\"$deployment\"}[20s])) by (le))",
               "format": "time_series",
               "instant": false,
               "intervalFactor": 1,
@@ -435,7 +435,7 @@ const Deployment = `{
           "tableColumn": "",
           "targets": [
             {
-              "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{target_deployment=\"$target_deployment\"}[20s])) by (le))",
+              "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{deployment=\"$deployment\"}[20s])) by (le))",
               "format": "time_series",
               "instant": false,
               "intervalFactor": 1,
@@ -519,7 +519,7 @@ const Deployment = `{
           "tableColumn": "",
           "targets": [
             {
-              "expr": "count(requests_total{target_deployment=\"$target_deployment\"})",
+              "expr": "count(request_total{dst_deployment=\"$deployment\"})",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "",
@@ -601,7 +601,7 @@ const Deployment = `{
           "tableColumn": "",
           "targets": [
             {
-              "expr": "count(requests_total{source_deployment=\"$target_deployment\", target_deployment=~\"$outbound\"})",
+              "expr": "count(request_total{deployment=\"$deployment\", dst_deployment=~\"$outbound\"})",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "",
@@ -659,7 +659,7 @@ const Deployment = `{
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(requests_total{target_deployment=\"$target_deployment\"}[20s]))",
+              "expr": "sum(irate(request_total{deployment=\"$deployment\", direction=\"inbound\"}[20s]))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "inbound",
@@ -739,7 +739,7 @@ const Deployment = `{
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(requests_total{source_deployment=\"$target_deployment\", target_deployment=~\"$outbound\"}[20s]))",
+              "expr": "sum(irate(request_total{deployment=\"$deployment\", direction=\"outbound\"}[20s]))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "outbound",
@@ -812,7 +812,7 @@ const Deployment = `{
           "type": "row"
         },
         {
-          "content": "<div>\n  <img src=\"https://conduit.io/favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <a href=\"./dashboard/db/conduit-deployment?var-target_deployment=$inbound\">\n    <span style=\"font-size: 15px; border-image:none\">$inbound</span>\n  </a>\n</div>",
+          "content": "<div>\n  <img src=\"https://conduit.io/favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <a href=\"./dashboard/db/conduit-deployment?var-deployment=$inbound\">\n    <span style=\"font-size: 15px; border-image:none\">$inbound</span>\n  </a>\n</div>",
           "gridPos": {
             "h": 2,
             "w": 24,
@@ -863,10 +863,10 @@ const Deployment = `{
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(requests_total{source_deployment=\"$inbound\", target_deployment=\"$target_deployment\"}[20s])) by (source_deployment)",
+              "expr": "sum(irate(request_total{deployment=\"$inbound\", dst_deployment=\"$deployment\"}[20s])) by (deployment)",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "{{source_deployment}}",
+              "legendFormat": "{{deployment}}",
               "refId": "A"
             }
           ],
@@ -943,10 +943,10 @@ const Deployment = `{
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(responses_total{classification=\"success\", source_deployment=\"$inbound\", target_deployment=\"$target_deployment\"}[20s])) by (source_deployment) / sum(irate(responses_total{source_deployment=\"$inbound\", target_deployment=\"$target_deployment\"}[20s])) by (source_deployment)",
+              "expr": "(sum(irate(response_total{grpc_status_code=\"0\", deployment=\"$inbound\", dst_deployment=\"$deployment\"}[20s])) by (deployment) +sum(irate(response_total{status_code=\"200\", deployment=\"$inbound\", dst_deployment=\"$deployment\"}[20s])) by (deployment)) / sum(irate(response_total{deployment=\"$inbound\", dst_deployment=\"$deployment\"}[20s])) by (deployment)",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "{{source_deployment}}",
+              "legendFormat": "{{deployment}}",
               "refId": "A"
             }
           ],
@@ -1023,10 +1023,10 @@ const Deployment = `{
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{source_deployment=\"$inbound\", target_deployment=\"$target_deployment\"}[20s])) by (le, source_deployment))",
+              "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{deployment=\"$inbound\", dst_deployment=\"$deployment\"}[20s])) by (le, deployment))",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "{{source_deployment}} P50",
+              "legendFormat": "{{deployment}} P50",
               "refId": "A"
             }
           ],
@@ -1103,10 +1103,10 @@ const Deployment = `{
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{source_deployment=\"$inbound\", target_deployment=\"$target_deployment\"}[20s])) by (le, source_deployment))",
+              "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{deployment=\"$inbound\", dst_deployment=\"$deployment\"}[20s])) by (le, deployment))",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "{{source_deployment}} P95",
+              "legendFormat": "{{deployment}} P95",
               "refId": "A"
             }
           ],
@@ -1183,10 +1183,10 @@ const Deployment = `{
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{source_deployment=\"$inbound\", target_deployment=\"$target_deployment\"}[20s])) by (le, source_deployment))",
+              "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{deployment=\"$inbound\", dst_deployment=\"$deployment\"}[20s])) by (le, deployment))",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "{{source_deployment}} P99",
+              "legendFormat": "{{deployment}} P99",
               "refId": "A"
             }
           ],
@@ -1270,7 +1270,7 @@ const Deployment = `{
           "type": "row"
         },
         {
-          "content": "<div>\n  <img src=\"https://conduit.io/favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <a href=\"./dashboard/db/conduit-deployment?var-target_deployment=$outbound\">\n    <span style=\"font-size: 15px; border-image:none\">$outbound</span>\n  </a>\n</div>",
+          "content": "<div>\n  <img src=\"https://conduit.io/favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <a href=\"./dashboard/db/conduit-deployment?var-deployment=$outbound\">\n    <span style=\"font-size: 15px; border-image:none\">$outbound</span>\n  </a>\n</div>",
           "gridPos": {
             "h": 2,
             "w": 24,
@@ -1321,10 +1321,10 @@ const Deployment = `{
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(requests_total{source_deployment=\"$target_deployment\", target_deployment=\"$outbound\"}[20s])) by (target_deployment)",
+              "expr": "sum(irate(request_total{deployment=\"$deployment\", dst_deployment=\"$outbound\"}[20s])) by (dst_deployment)",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "{{target_deployment}}",
+              "legendFormat": "{{dst_deployment}}",
               "refId": "A"
             }
           ],
@@ -1401,10 +1401,10 @@ const Deployment = `{
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(responses_total{classification=\"success\", source_deployment=\"$target_deployment\", target_deployment=\"$outbound\"}[20s])) by (target_deployment) / sum(irate(responses_total{source_deployment=\"$target_deployment\", target_deployment=\"$outbound\"}[20s])) by (target_deployment)",
+              "expr": "(sum(irate(response_total{status_code=\"200\", deployment=\"$deployment\", dst_deployment=\"$outbound\"}[20s])) by (dst_deployment) + sum(irate(response_total{grpc_status_code=\"0\", deployment=\"$deployment\", dst_deployment=\"$outbound\"}[20s])) by (dst_deployment)) / sum(irate(response_total{deployment=\"$deployment\", dst_deployment=\"$outbound\"}[20s])) by (dst_deployment)",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "{{target_deployment}}",
+              "legendFormat": "{{dst_deployment}}",
               "refId": "A"
             }
           ],
@@ -1481,10 +1481,10 @@ const Deployment = `{
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{source_deployment=\"$target_deployment\", target_deployment=\"$outbound\"}[20s])) by (le, target_deployment))",
+              "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{deployment=\"$deployment\", dst_deployment=\"$outbound\"}[20s])) by (le, dst_deployment))",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "{{target_deployment}} P50",
+              "legendFormat": "{{dst_deployment}} P50",
               "refId": "A"
             }
           ],
@@ -1561,10 +1561,10 @@ const Deployment = `{
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{source_deployment=\"$target_deployment\", target_deployment=\"$outbound\"}[20s])) by (le, target_deployment))",
+              "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{deployment=\"$deployment\", dst_deployment=\"$outbound\"}[20s])) by (le, dst_deployment))",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "{{target_deployment}} P95",
+              "legendFormat": "{{dst_deployment}} P95",
               "refId": "A"
             }
           ],
@@ -1641,10 +1641,10 @@ const Deployment = `{
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{source_deployment=\"$target_deployment\", target_deployment=\"$outbound\"}[20s])) by (le, target_deployment))",
+              "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{deployment=\"$deployment\", dst_deployment=\"$outbound\"}[20s])) by (le, dst_deployment))",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "{{target_deployment}} P99",
+              "legendFormat": "{{dst_deployment}} P99",
               "refId": "A"
             }
           ],
@@ -1693,19 +1693,15 @@ const Deployment = `{
         "list": [
           {
             "allValue": null,
-            "current": {
-              "isNone": true,
-              "text": "None",
-              "value": ""
-            },
+            "current": {},
             "datasource": "prometheus",
             "hide": 0,
             "includeAll": false,
             "label": "Deployment",
             "multi": false,
-            "name": "target_deployment",
+            "name": "deployment",
             "options": [],
-            "query": "label_values(requests_total{target_deployment!~\"conduit/.*\"}, target_deployment)",
+            "query": "label_values(deployment)",
             "refresh": 2,
             "regex": "",
             "sort": 1,
@@ -1717,10 +1713,7 @@ const Deployment = `{
           },
           {
             "allValue": null,
-            "current": {
-              "text": "All",
-              "value": "$__all"
-            },
+            "current": {},
             "datasource": "prometheus",
             "hide": 2,
             "includeAll": true,
@@ -1728,7 +1721,7 @@ const Deployment = `{
             "multi": false,
             "name": "inbound",
             "options": [],
-            "query": "label_values(requests_total{target_deployment=\"$target_deployment\"}, source_deployment)",
+            "query": "label_values(request_total{dst_deployment=\"$deployment\"}, deployment)",
             "refresh": 2,
             "regex": "",
             "sort": 1,
@@ -1740,10 +1733,7 @@ const Deployment = `{
           },
           {
             "allValue": null,
-            "current": {
-              "text": "All",
-              "value": "$__all"
-            },
+            "current": {},
             "datasource": "prometheus",
             "hide": 2,
             "includeAll": true,
@@ -1751,7 +1741,7 @@ const Deployment = `{
             "multi": false,
             "name": "outbound",
             "options": [],
-            "query": "label_values(requests_total{source_deployment=\"$target_deployment\", target_deployment!~\"conduit/.*\"}, target_deployment)",
+            "query": "label_values(request_total{deployment=\"$deployment\"}, dst_deployment)",
             "refresh": 2,
             "regex": "",
             "sort": 1,
@@ -1794,7 +1784,7 @@ const Deployment = `{
       },
       "timezone": "",
       "title": "Conduit Deployment",
-      "uid": "m9JcBBekk",
+      "uid": "6svnwykmk",
       "version": 1
     }
 `

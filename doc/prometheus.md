@@ -38,6 +38,9 @@ rich telemetry data to your cluster.  Simply add the following item to your
       - source_labels: [__meta_kubernetes_namespace]
         action: replace
         target_label: namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: pod_name
       # special case k8s' "job" label, to not interfere with prometheus' "job"
       # label
       # __meta_kubernetes_pod_label_conduit_io_proxy_job=foo =>
