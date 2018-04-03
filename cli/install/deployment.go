@@ -1701,7 +1701,7 @@ const Deployment = `{
             "multi": false,
             "name": "deployment",
             "options": [],
-            "query": "label_values(deployment)",
+            "query": "label_values(request_total{conduit_io_control_plane_component=\"\"}, deployment)",
             "refresh": 2,
             "regex": "",
             "sort": 1,
