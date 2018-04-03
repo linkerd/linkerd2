@@ -75,11 +75,13 @@ message AddrSet {
 
 message WeightedAddrSet {
   repeated WeightedAddr addrs = 1;
+  map<string, string> metric_labels = 2;
 }
 
 message WeightedAddr {
   common.TcpAddress addr = 1;
   uint32 weight = 3;
+  map<string, string> metric_labels = 4;
 }
 
 message NoEndpoints {

@@ -19,7 +19,7 @@ import (
 func main() {
 	rand.Seed(time.Now().UnixNano())
 
-	addr := flag.String("addr", ":8089", "address of proxy api")
+	addr := flag.String("addr", ":8089", "address of destination service")
 	path := flag.String("path", "strest-server.default.svc.cluster.local:8888", "destination path")
 	flag.Parse()
 
@@ -51,8 +51,9 @@ func main() {
 		switch updateType := update.Update.(type) {
 		case *pb.Update_Add:
 			log.Println("Add:")
+			log.Printf("metric_labels: %v", updateType.Add.MetricLabels)
 			for _, addr := range updateType.Add.Addrs {
-				log.Printf("- %s:%d", util.IPToString(addr.Addr.GetIp()), addr.Addr.Port)
+				log.Printf("- %s:%d - %v", util.IPToString(addr.Addr.GetIp()), addr.Addr.Port, addr.MetricLabels)
 			}
 			log.Println()
 		case *pb.Update_Remove:

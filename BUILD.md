@@ -206,6 +206,26 @@ In development you can run:
 bin/go-run cli check
 ```
 
+### Running the control plane for development
+
+Conduit's control plane is composed of several Go microservices. You can run
+these components in a Kubernetes (or Minikube) cluster, or even locally.
+
+To run an individual component locally, you can use the `go-run` command, and
+pass in valid Kubernetes credentials via the `-kubeconfig` flag. For instance,
+to run the destination service locally, run:
+
+```bash
+bin/go-run controller/cmd/destination -kubeconfig ~/.kube/config -log-level debug
+```
+
+You can send test requests to the destination service using the
+`destination-client` in the `controller/script` directory. For instance:
+
+```bash
+bin/go-run controller/script/destination-client -path hello.default.svc.cluster.local:80
+```
+
 ## Web
 
 This is a React app fronting a Go process. It uses webpack to bundle assets, and

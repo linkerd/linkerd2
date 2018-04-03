@@ -6,6 +6,7 @@ import (
 	common "github.com/runconduit/conduit/controller/gen/common"
 )
 
+// implements the updateListener interface
 type collectUpdateListener struct {
 	added   []common.TcpAddress
 	removed []common.TcpAddress
