@@ -30,6 +30,37 @@ use self::tower_h2::{Body, RecvBody};
 use std::net::SocketAddr;
 pub use std::time::Duration;
 
+#[macro_export]
+macro_rules! eventually {
+    ($cond:expr, retries: $retries:expr, $($arg:tt)+) => {
+        for i in 0..$retries {
+            if $cond {
+                break;
+            } else if i == $retries {
+                panic!($($arg)+)
+            } else {
+                ::std::thread::sleep(Duration::from_millis(5));
+            }
+        }
+    };
+    ($cond:expr, $($arg:tt)+) => {
+        eventually!($cond, retries: 5, $($arg)+)
+    };
+    ($cond:expr, retries: $retries:expr) => {
+        eventually!($cond, retries: $retries,
+            "assertion failed (after {} retries): {}",
+            stringify!($retries),
+            stringify!($cond)
+        )
+    };
+    ($cond:expr) => {
+        eventually!($cond, retries: 5,
+            "assertion failed (after 5 retries): {}",
+            stringify!($cond)
+        )
+    };
+}
+
 pub mod client;
 pub mod controller;
 pub mod proxy;

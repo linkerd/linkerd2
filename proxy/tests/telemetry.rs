@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate log;
 
+#[macro_use]
 mod support;
 use self::support::*;
 
@@ -262,13 +263,11 @@ fn telemetry_report_errors_are_ignored() {}
 
 macro_rules! assert_contains {
     ($scrape:expr, $contains:expr) => {
-        assert!($scrape.contains($contains), "metrics scrape:\n{:8}\ndid not contain:\n{:8}", $scrape, $contains)
+        eventually!($scrape.contains($contains), "metrics scrape:\n{:8}\ndid not contain:\n{:8}", $scrape, $contains)
     }
 }
 
-// https://github.com/runconduit/conduit/issues/613
 #[test]
-#[cfg_attr(not(feature = "flaky_tests"), ignore)]
 fn metrics_endpoint_inbound_request_count() {
     let _ = env_logger::try_init();
 
@@ -297,9 +296,7 @@ fn metrics_endpoint_inbound_request_count() {
 
 }
 
-// https://github.com/runconduit/conduit/issues/613
 #[test]
-#[cfg_attr(not(feature = "flaky_tests"), ignore)]
 fn metrics_endpoint_outbound_request_count() {
     let _ = env_logger::try_init();
 
@@ -385,9 +382,7 @@ mod response_classification {
             })
     }
 
-    // https://github.com/runconduit/conduit/issues/613
     #[test]
-    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
     fn inbound_http() {
         let _ = env_logger::try_init();
         let srv = make_test_server().run();
@@ -417,9 +412,7 @@ mod response_classification {
         }
     }
 
-    // https://github.com/runconduit/conduit/issues/613
     #[test]
-    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
     fn outbound_http() {
         let _ = env_logger::try_init();
         let srv = make_test_server().run();
