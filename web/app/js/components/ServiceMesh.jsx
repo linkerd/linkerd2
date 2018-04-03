@@ -179,7 +179,7 @@ export default class ServiceMesh extends React.Component {
     return _(componentNames)
       .map((name, id) => {
         let componentPods = _.get(podIndex, _.get(componentDeploys, id), []);
-        return { name: name, pods: _.sortBy(getComponentPods(componentPods), "name") };
+        return { name: name, pods: getComponentPods(componentPods) };
       })
       .sortBy("name")
       .value();
