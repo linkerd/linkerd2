@@ -2,10 +2,13 @@
 #[macro_use]
 extern crate log;
 extern crate regex;
+extern crate flate2;
 
 #[macro_use]
 mod support;
 use self::support::*;
+use support::bytes::IntoBuf;
+use std::io::Read;
 
 macro_rules! assert_contains {
     ($scrape:expr, $contains:expr) => {
@@ -1090,4 +1093,55 @@ mod transport {
         drop(tcp_client);
         assert_contains!(metrics.get("/metrics"), &expected);
     }
+}
+
+// https://github.com/runconduit/conduit/issues/613
+#[test]
+#[cfg_attr(not(feature = "flaky_tests"), ignore)]
+fn metrics_compression() {
+    let _ = env_logger::try_init();
+
+    info!("running test server");
+    let srv = server::new().route("/hey", "hello").run();
+
+    let ctrl = controller::new()
+        .destination("tele.test.svc.cluster.local", srv.addr)
+        .run();
+    let proxy = proxy::new()
+        .controller(ctrl)
+        .inbound(srv)
+        .metrics_flush_interval(Duration::from_millis(500))
+        .run();
+    let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
+    let metrics = client::http1(proxy.metrics, "localhost");
+
+    let do_scrape = || {
+        let resp = metrics.request(
+            metrics.request_builder("/metrics")
+                .method("GET")
+                .header("Accept-Encoding", "gzip")
+        );
+        let body = resp.into_body()
+            .concat2()
+            .wait()
+            .expect("response body concat");
+        let mut decoder = flate2::read::GzDecoder::new(body.into_buf());
+        let mut scrape = String::new();
+        decoder.read_to_string(&mut scrape)
+            .expect("decode gzip");
+        scrape
+    };
+
+    info!("inbound.get(/hey)");
+    assert_eq!(client.get("/hey"), "hello");
+
+    let scrape = do_scrape();
+    assert_contains!(scrape,
+        "request_duration_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\"} 1");
+
+    info!("outbound.get(/hey)");
+    assert_eq!(client.get("/hey"), "hello");
+    let scrape = do_scrape();
+    assert_contains!(scrape,
+        "request_duration_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\"} 2");
 }

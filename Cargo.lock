@@ -114,6 +114,7 @@ dependencies = [
  "convert 0.3.0",
  "domain 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "flate2 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-mpsc-lossy 0.3.0",
  "futures-watch 0.1.0 (git+https://github.com/carllerche/better-future.git)",

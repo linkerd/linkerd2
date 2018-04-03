@@ -5,7 +5,7 @@
 // Note, lints like `unused_variable` should not be ignored.
 #![allow(dead_code)]
 
-extern crate bytes;
+pub extern crate bytes;
 pub extern crate conduit_proxy_controller_grpc;
 extern crate conduit_proxy;
 pub extern crate convert;
