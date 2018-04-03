@@ -15,6 +15,7 @@ import (
 var dnsCharactersRegexp = regexp.MustCompile("^[a-zA-Z0-9_-]{0,63}$")
 var containsAlphaRegexp = regexp.MustCompile("[a-zA-Z]")
 
+// implements the streamingDestinationResolver interface
 type k8sResolver struct {
 	k8sDNSZoneLabels []string
 	endpointsWatcher k8s.EndpointsWatcher

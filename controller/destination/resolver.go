@@ -7,6 +7,12 @@ import (
 	"github.com/runconduit/conduit/controller/util"
 )
 
+type streamingDestinationResolver interface {
+	canResolve(host string, port int) (bool, error)
+	streamResolution(host string, port int, listener updateListener) error
+}
+
+// implements the streamingDestinationResolver interface
 type echoIpV4Resolver struct{}
 
 func (i *echoIpV4Resolver) canResolve(host string, port int) (bool, error) {
