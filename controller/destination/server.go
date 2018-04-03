@@ -103,14 +103,14 @@ func (s *server) Get(dest *common.Destination, stream pb.Destination_GetServer) 
 		}
 	}
 
-	return streamResolutionUsingCorrectResolverFor(s.podsByIp, s.resolvers, host, port, stream)
+	return s.streamResolutionUsingCorrectResolverFor(host, port, stream)
 }
 
-func streamResolutionUsingCorrectResolverFor(podsByIp k8s.PodIndex, resolvers []streamingDestinationResolver, host string, port int, stream pb.Destination_GetServer) error {
+func (s *server) streamResolutionUsingCorrectResolverFor(host string, port int, stream pb.Destination_GetServer) error {
 	serviceName := fmt.Sprintf("%s:%d", host, port)
-	listener := &endpointListener{serviceName: serviceName, stream: stream, podsByIp: podsByIp}
+	listener := &endpointListener{serviceName: serviceName, stream: stream, podsByIp: s.podsByIp}
 
-	for _, resolver := range resolvers {
+	for _, resolver := range s.resolvers {
 		resolverCanResolve, err := resolver.canResolve(host, port)
 		if err != nil {
 			return fmt.Errorf("resolver [%+v] found error resolving host [%s] port[%d]: %v", resolver, host, port, err)

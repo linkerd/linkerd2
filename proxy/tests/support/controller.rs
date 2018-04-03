@@ -295,6 +295,7 @@ pub fn destination_add_none() -> pb::destination::Update {
         update: Some(pb::destination::update::Update::Add(
             pb::destination::WeightedAddrSet {
                 addrs: Vec::new(),
+                ..Default::default()
             },
         )),
     }
@@ -305,6 +306,7 @@ pub fn destination_remove_none() -> pb::destination::Update {
         update: Some(pb::destination::update::Update::Remove(
             pb::destination::AddrSet {
                 addrs: Vec::new(),
+                ..Default::default()
             },
         )),
     }

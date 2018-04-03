@@ -3,7 +3,6 @@ package destination
 import (
 	"context"
 	"errors"
-	"fmt"
 	"reflect"
 	"testing"
 
@@ -158,7 +157,6 @@ func TestEndpointListener(t *testing.T) {
 			},
 		}
 		addedAddress2 := common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 222}}, Port: 22}
-		fmt.Println(ipForAddr1)
 		podIndex := &k8s.InMemoryPodIndex{BackingMap: map[string]*v1.Pod{ipForAddr1: podForAddedAddress1}}
 
 		mockGetServer := &mockDestination_GetServer{updatesReceived: []*pb.Update{}}
@@ -234,9 +232,12 @@ func TestStreamResolutionUsingCorrectResolverFor(t *testing.T) {
 		yes := &mockStreamingDestinationResolver{canResolveToReturn: true}
 		otherYes := &mockStreamingDestinationResolver{canResolveToReturn: true}
 
-		resolvers := []streamingDestinationResolver{no, no, yes, no, no, otherYes}
+		server := server{
+			podsByIp:  k8s.NewEmptyPodIndex(),
+			resolvers: []streamingDestinationResolver{no, no, yes, no, no, otherYes},
+		}
 
-		err := streamResolutionUsingCorrectResolverFor(k8s.NewEmptyPodIndex(), resolvers, host, port, stream)
+		err := server.streamResolutionUsingCorrectResolverFor(host, port, stream)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -257,24 +258,40 @@ func TestStreamResolutionUsingCorrectResolverFor(t *testing.T) {
 	t.Run("Returns error if no resolver can resolve", func(t *testing.T) {
 		no := &mockStreamingDestinationResolver{canResolveToReturn: false}
 
-		resolvers := []streamingDestinationResolver{no, no, no, no}
+		server := server{
+			podsByIp:  k8s.NewEmptyPodIndex(),
+			resolvers: []streamingDestinationResolver{no, no, no, no},
+		}
 
-		err := streamResolutionUsingCorrectResolverFor(k8s.NewEmptyPodIndex(), resolvers, host, port, stream)
+		err := server.streamResolutionUsingCorrectResolverFor(host, port, stream)
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing")
 		}
 	})
 
-	t.Run("Returns error if the resolver returned an error", func(t *testing.T) {
-		errorOnCanResolve := &mockStreamingDestinationResolver{canResolveToReturn: true, errToReturnForCanResolve: errors.New("expected for can resolve")}
-		errorOnResolving := &mockStreamingDestinationResolver{canResolveToReturn: true, errToReturnForResolution: errors.New("expected for resolving")}
+	t.Run("Returns error if the resolver returned an error on canResolve", func(t *testing.T) {
+		resolver := &mockStreamingDestinationResolver{canResolveToReturn: true, errToReturnForCanResolve: errors.New("expected for can resolve")}
 
-		err := streamResolutionUsingCorrectResolverFor(k8s.NewEmptyPodIndex(), []streamingDestinationResolver{errorOnCanResolve}, host, port, stream)
+		server := server{
+			podsByIp:  k8s.NewEmptyPodIndex(),
+			resolvers: []streamingDestinationResolver{resolver},
+		}
+
+		err := server.streamResolutionUsingCorrectResolverFor(host, port, stream)
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing")
 		}
+	})
 
-		err = streamResolutionUsingCorrectResolverFor(k8s.NewEmptyPodIndex(), []streamingDestinationResolver{errorOnResolving}, host, port, stream)
+	t.Run("Returns error if the resolver returned an error on streamResolution", func(t *testing.T) {
+		resolver := &mockStreamingDestinationResolver{canResolveToReturn: true, errToReturnForResolution: errors.New("expected for resolving")}
+
+		server := server{
+			podsByIp:  k8s.NewEmptyPodIndex(),
+			resolvers: []streamingDestinationResolver{resolver},
+		}
+
+		err := server.streamResolutionUsingCorrectResolverFor(host, port, stream)
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing")
 		}
