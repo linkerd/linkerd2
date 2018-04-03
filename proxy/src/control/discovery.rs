@@ -1,11 +1,12 @@
 use std::borrow::Borrow;
 use std::collections::VecDeque;
-use std::collections::hash_map::{self, Entry, HashMap};
-use std::hash::{Hash, Hasher};
-use std::iter::{self, IntoIterator};
+use std::collections::hash_map::{Entry, HashMap};
+use std::fmt::Write;
+use std::iter::IntoIterator;
 use std::net::SocketAddr;
 use std::fmt;
 use std::time::Duration;
+
 
 use futures::{Async, Future, Poll, Stream};
 use futures::sync::mpsc;
@@ -66,11 +67,8 @@ pub struct DiscoveryWork<T: HttpService<ResponseBody = RecvBody>> {
     rx: mpsc::UnboundedReceiver<(DnsNameAndPort, mpsc::UnboundedSender<Update>)>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct DstLabels {
-    set: Arc<HashMap<String, String>>,
-    addr: Arc<HashMap<String, String>>,
-}
+#[derive(Clone, Debug, Hash, Eq, PartialEq)]
+pub struct DstLabels(Arc<str>);
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Labeled<T> {
@@ -666,52 +664,43 @@ where T: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>,
 
 // ===== impl DstLabels ====
 
-impl Hash for DstLabels {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        for pair in self {
-            pair.hash(state);
-        }
-    }
-}
-
-impl<'a> IntoIterator for &'a DstLabels {
-    type Item = (&'a str, &'a str);
-    type IntoIter = iter::Map<
-        iter::Chain<
-            hash_map::Iter<'a, String, String>,
-            hash_map::Iter<'a, String, String>,
-        >,
-        fn((&'a String, &'a String)) -> (&'a str, &'a str)
-    >;
-
-    fn into_iter(self) -> Self::IntoIter {
-        fn borrow_pair<'a>((k, v): (&'a String, &'a String))
-            -> (&'a str, &'a str)
-        {
-            (k.as_ref(), v.as_ref())
-        }
-        self.set.iter()
-            .chain(self.addr.iter())
-            .map(borrow_pair)
-
-    }
-}
-
 impl DstLabels {
-    pub fn is_empty(&self) -> bool {
-        self.addr.is_empty() && self.set.is_empty()
+
+    #[inline]
+    fn new<I, S>(labels: I) -> Self
+    where
+        I: IntoIterator<Item=(S, S)>,
+        S: fmt::Display,
+    {
+        // this could also be a `fold`, or a `map` + `collect`, but the
+        // mutable string + iteration is probably faster.
+        let mut s = String::new();
+        for (k, v) in labels {
+            write!(s, ",dst_{}=\"{}\"", k, v)
+                .expect("writing to string should not fail");
+        }
+        DstLabels(Arc::from(s))
     }
+
 }
 
+impl fmt::Display for DstLabels {
+
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+
+}
 
 impl Labeled<SocketAddr> {
     fn from_pb(pb: WeightedAddr, set_labels: &Arc<HashMap<String, String>>)
                -> Option<Self> {
         let inner = pb.addr.and_then(pb_to_sock_addr)?;
-        let metric_labels = Some(DstLabels {
-            addr: Arc::new(pb.metric_labels),
-            set: set_labels.clone(),
-        });
+        let label_iter =
+            set_labels.as_ref()
+                .iter()
+                .chain(pb.metric_labels.iter());
+        let metric_labels =  Some(DstLabels::new(label_iter));
         Some(Labeled { metric_labels, inner, })
     }
 }
