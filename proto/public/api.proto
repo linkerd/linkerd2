@@ -124,18 +124,19 @@ message ApiError {
   string error = 1;
 }
 
-message ResourceSpec {
+message Resource {
   string namespace = 1;
-  string resource = 2; // k8s resource e.g. deploy/foo, or 'all'
+  string type = 2;
+  string name = 3;
 }
 
 message ResourceSelection {
-  ResourceSpec spec = 1;
+  Resource spec = 1;
   string label_selector = 2;
 }
 
 message ResourceError {
-  ResourceSpec spec = 1;
+  Resource spec = 1;
   string error = 2;
 }
 
@@ -145,8 +146,8 @@ message StatSummaryRequest {
 
   oneof outbound {
     Empty none = 3;
-    ResourceSpec out_to_resource   = 4;
-    ResourceSpec out_from_resource = 5;
+    Resource out_to_resource   = 4;
+    Resource out_from_resource = 5;
   }
 }
 
@@ -161,6 +162,13 @@ message StatSummaryResponse {
   }
 }
 
+message BasicStats {
+  uint64 success_count = 1;
+  uint64 failure_count = 2;
+  uint64 latency_ms_p50 = 3;
+  uint64 latency_ms_p90 = 4;
+}
+
 message StatTable {
   oneof table {
     PodGroup pod_group = 1;
@@ -170,15 +178,12 @@ message StatTable {
     repeated Row rows = 1;
 
     message Row {
-      ResourceSpec spec = 1;
+      Resource spec = 1;
+      TimeWindow time_window = 2;
 
-      uint64 meshed_pod_count = 2;
-      uint64 total_pod_count = 3;
-
-      uint64 success_count = 4;
-      uint64 failure_count = 5;
-      uint64 latency_ms_p50 = 6;
-      uint64 latency_ms_p90 = 7;
+      uint64 meshed_pod_count = 3;
+      uint64 total_pod_count = 4;
+      BasicStats stats = 5;
     }
   }
 }
