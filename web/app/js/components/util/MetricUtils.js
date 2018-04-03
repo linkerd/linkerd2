@@ -60,6 +60,16 @@ export const getPodsByDeployment = pods => {
     .value();
 };
 
+export const getComponentPods = componentPods => {
+  return _.chain(componentPods)
+    .map( p => {
+      return { name: p.name, value: getPodCategorization(p) };
+    })
+    .reject(p => _.isEmpty(p.value))
+    .sortBy("name")
+    .value();
+};
+
 export const processTimeseriesMetrics = (rawTs, targetEntity) => {
   let tsbyEntity = _.groupBy(rawTs, "metadata." + targetEntity);
   return _.reduce(tsbyEntity, (mem, metrics, entity) => {
