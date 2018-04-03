@@ -8,6 +8,7 @@ extern crate conduit_proxy_controller_grpc;
 extern crate convert;
 extern crate domain;
 extern crate env_logger;
+extern crate deflate;
 #[macro_use]
 extern crate futures;
 extern crate futures_mpsc_lossy;
@@ -16,7 +17,6 @@ extern crate h2;
 extern crate http;
 extern crate httparse;
 extern crate hyper;
-extern crate hyper_compress;
 extern crate ipnet;
 #[cfg(target_os = "linux")]
 extern crate libc;

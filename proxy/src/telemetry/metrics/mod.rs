@@ -27,20 +27,25 @@
 //! to worry about missing commas, double commas, or trailing commas at the
 //! end of the label set (all of which will make Prometheus angry).
 use std::default::Default;
-use std::{fmt, ops, time};
+use std::{fmt, time};
 use std::hash::Hash;
 use std::num::Wrapping;
 use std::sync::{Arc, Mutex};
+use std::io::{self, Write};
+use std::ops::{self, Deref};
 
-use futures::Future;
+use deflate::Compression;
+use deflate::write::GzEncoder;
+use futures::{Async, AsyncSink, Future, Poll, Sink};
 use futures::future::{self, FutureResult};
-use hyper;
-use hyper::StatusCode;
+use futures::sync::mpsc;
+use hyper::{self, Body, Chunk, StatusCode};
+use hyper::header::{AcceptEncoding, ContentEncoding, ContentType, Encoding, QualityItem};
 use hyper::server::{
+    Request as HyperRequest,
     Service as HyperService,
     Response as HyperResponse,
 };
-use hyper_compress::server::GzWriterRequest;
 use indexmap::{IndexMap};
 use tokio_core::reactor;
 use tokio_io;
@@ -123,6 +128,11 @@ pub struct Aggregate {
 pub struct Serve {
     metrics: Arc<Mutex<Metrics>>,
     handle: reactor::Handle,
+}
+
+#[derive(Clone, Debug)]
+pub struct WriteBody {
+    tx: mpsc::Sender<Result<Chunk, hyper::Error>>,
 }
 
 /// Construct the Prometheus metrics.
@@ -593,35 +603,131 @@ impl Serve {
     }
 }
 
+fn is_gzip(req: &HyperRequest) -> bool {
+    if let Some(accept_encodings) = req
+        .headers()
+        .get::<AcceptEncoding>()
+    {
+        return accept_encodings
+            .iter()
+            .any(|&QualityItem { ref item, .. }| item == &Encoding::Gzip)
+    }
+    false
+}
+
 impl HyperService for Serve {
-    type Request = GzWriterRequest<hyper::Body>;
+    type Request = HyperRequest;
     type Response = HyperResponse;
     type Error = hyper::Error;
     type Future = FutureResult<Self::Response, Self::Error>;
 
-    fn call(&self, (writer, req): Self::Request) -> Self::Future {
+    fn call(&self, req: Self::Request) -> Self::Future {
         if req.path() != "/metrics" {
             return future::ok(HyperResponse::new()
                 .with_status(StatusCode::NotFound));
         }
 
-        let body = {
-            let metrics = self.metrics.lock()
-                .expect("metrics lock poisoned");
+        let metrics = self.metrics.lock()
+            .expect("metrics lock poisoned")
+            .deref()
+            .clone();
 
-            // TODO: avoid having the whole formatted metrics output in memory.
-            format!("{}", *metrics)
-        };
-
-        let work = tokio_io::io::write_all(writer, body)
-            .and_then(|(w, _)| tokio_io::io::shutdown(w))
-            .map(|_| ())
-            .map_err(|e| {
-                error!("error writing metrics: {:?}", e);
-            });
+        let is_gzip = is_gzip(&req);
+        let (writer, body) = WriteBody::new();
+        let work = future::lazy(move || {
+            if is_gzip {
+                let mut writer = GzEncoder::new(Vec::<u8>::new(), Compression::Default);
+                write!(writer, "{}", metrics)
+                    .and_then(move |()| {
+                        trace!("gzipping metrics");
+                        writer.finish()
+                    })
+            } else {
+                let mut writer = Vec::<u8>::new();
+                write!(writer, "{}", metrics).map(|_| writer)
+            }
+        })
+        .and_then(|text| tokio_io::io::write_all(writer, text))
+        .and_then(|(w, _)| tokio_io::io::shutdown(w))
+        .map(|_| ())
+        .map_err(|e| {
+            error!("error writing metrics: {:?}", e);
+        });
 
         self.handle.spawn(work);
+        let encoding = if is_gzip {
+            Encoding::Gzip
+        } else {
+            Encoding::Identity
+        };
 
-        future::ok(HyperResponse::new())
+        future::ok(HyperResponse::new()
+            .with_header(ContentEncoding(vec![encoding]))
+            .with_header(ContentType::plaintext())
+            .with_body(body))
+    }
+}
+
+
+// ==== impl WriteBody =====
+
+impl WriteBody {
+    pub fn new() -> (Self, Body) {
+        let (tx, rx) = Body::pair();
+        let writer = WriteBody {
+            tx,
+        };
+        (writer, rx)
+    }
+}
+
+impl Write for WriteBody {
+
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        poll_to_result(self.tx.poll_ready())?;
+        match self.tx.start_send(Ok(Chunk::from(Vec::from(buf)))) {
+            Ok(AsyncSink::NotReady(_)) => {
+                trace!("WriteBody::write: start_send -> NotReady");
+                Err(io::Error::from(io::ErrorKind::WouldBlock))?
+            },
+            Err(e) => {
+                trace!("WriteBody::write: start_send -> Err");
+                Err(io::Error::new(io::ErrorKind::Other, e))?
+            },
+            Ok(AsyncSink::Ready) => {
+                trace!("WriteBody::write: start_send {:?} bytes", buf.len());
+            },
+        }
+        poll_to_result(self.tx.poll_complete())?;
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        poll_to_result(self.tx.poll_complete())
+    }
+}
+
+
+impl tokio_io::AsyncWrite for WriteBody {
+    fn shutdown(&mut self) -> Poll<(), io::Error> {
+        trace!("WriteBody::shutdown;");
+        self.tx.poll_complete()
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+    }
+}
+
+#[inline]
+fn poll_to_result<T>(poll: Poll<(), mpsc::SendError<T>>) -> io::Result<()>
+where
+    T: Send + Sync + 'static,
+{
+    match poll {
+        Ok(Async::Ready(_)) => Ok(()),
+        // If the sender is not ready, return WouldBlock to
+        // signal that we're not ready.
+        Ok(Async::NotReady) => Err(io::Error::from(io::ErrorKind::WouldBlock)),
+        // SendError is returned if the body went away unexpectedly.
+        // This is bad news.
+        Err(e) => Err(io::Error::new(io::ErrorKind::Other, e)),
     }
 }
