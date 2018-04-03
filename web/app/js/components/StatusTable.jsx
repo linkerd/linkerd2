@@ -1,4 +1,5 @@
 import _ from 'lodash';
+import GrafanaLink from './GrafanaLink.jsx';
 import React from 'react';
 import { Table, Tooltip } from 'antd';
 
@@ -70,7 +71,12 @@ const columns = {
         });
       }
     };
-  }
+  },
+  grafana: ConduitLink => {
+    return {
+      render: row => row.added ? <GrafanaLink name={row.name} size={16} conduitLink={ConduitLink} /> : null
+    };
+  },
 };
 
 export default class StatusTable extends React.Component {
@@ -79,7 +85,8 @@ export default class StatusTable extends React.Component {
       return {
         name: datum.name,
         statuses: datum.pods,
-        numEntities: _.size(datum.pods)
+        numEntities: _.size(datum.pods),
+        added: datum.added
       };
     });
     return _.sortBy(tableData, 'name');
@@ -89,7 +96,8 @@ export default class StatusTable extends React.Component {
     let tableCols = [
       columns.resourceName(this.props.shouldLink, this.props.api.ConduitLink),
       columns.pods,
-      columns.status(this.props.statusColumnTitle)
+      columns.status(this.props.statusColumnTitle),
+      columns.grafana(this.props.api.ConduitLink),
     ];
     let tableData = this.getTableData();
 

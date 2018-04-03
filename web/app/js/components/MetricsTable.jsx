@@ -1,5 +1,6 @@
 import _ from 'lodash';
 import BaseTable from './BaseTable.jsx';
+import GrafanaLink from './GrafanaLink.jsx';
 import { metricToFormatter } from './util/Utils.js';
 import React from 'react';
 import { Tooltip } from 'antd';
@@ -77,7 +78,10 @@ const columnDefinitions = (sortable = true, resource, ConduitLink) => {
       className: "numeric",
       sorter: sortable ? (a, b) => numericSort(a.P99, b.P99) : false,
       render: metricToFormatter["LATENCY"]
-    }
+    },
+    {
+      render: row => row.added ? <GrafanaLink name={row.name} size={16} conduitLink={ConduitLink} /> : null
+    },
   ];
 };
 

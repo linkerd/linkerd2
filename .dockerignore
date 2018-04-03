@@ -15,4 +15,5 @@ target
 !target/docker-build
 web/app/node_modules
 web/app/dist
+web/app/yarn-error.log
 vendor

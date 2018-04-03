@@ -58,6 +58,17 @@ describe('ApiHelpers', () => {
   });
 
   describe('ConduitLink', () => {
+    it('respects default values', () => {
+      api = ApiHelpers('/my/path/prefix/web:/foo');
+      let linkProps = { to: "/myrelpath", children: ["Informative Link Title"] };
+      let conduitLink = mount(routerWrap(api.ConduitLink, linkProps));
+
+      expect(conduitLink.find("Link")).to.have.length(1);
+      expect(conduitLink.html()).to.contain('href="/my/path/prefix/web:/foo/myrelpath"');
+      expect(conduitLink.html()).to.not.contain('target="_blank"');
+      expect(conduitLink.html()).to.contain(linkProps.children[0]);
+    });
+
     it('wraps a relative link with the pathPrefix', () => {
       api = ApiHelpers('/my/path/prefix');
       let linkProps = { to: "/myrelpath", children: ["Informative Link Title"] };
@@ -78,13 +89,23 @@ describe('ApiHelpers', () => {
       expect(conduitLink.html()).to.contain(linkProps.children[0]);
     });
 
-    it('leaves an absolute link unchanged', () => {
-      api = ApiHelpers('/my/path/prefix');
-      let linkProps = { absolute: "true", to: "http://xkcd.com", children: ["Best Webcomic"] };
+    it('replaces the deployment in a pathPrefix', () => {
+      api = ApiHelpers('/my/path/prefix/web:/foo');
+      let linkProps = { deployment: "mydeployment", to: "/myrelpath", children: ["Informative Link Title"] };
       let conduitLink = mount(routerWrap(api.ConduitLink, linkProps));
 
       expect(conduitLink.find("Link")).to.have.length(1);
-      expect(conduitLink.html()).to.contain('href="http://xkcd.com"');
+      expect(conduitLink.html()).to.contain('href="/my/path/prefix/mydeployment:/foo/myrelpath"');
+      expect(conduitLink.html()).to.contain(linkProps.children[0]);
+    });
+
+    it('sets target=blank', () => {
+      api = ApiHelpers('/my/path/prefix');
+      let linkProps = { targetBlank: true, to: "/myrelpath", children: ["Informative Link Title"] };
+      let conduitLink = mount(routerWrap(api.ConduitLink, linkProps));
+
+      expect(conduitLink.find("Link")).to.have.length(1);
+      expect(conduitLink.html()).to.contain('target="_blank"');
       expect(conduitLink.html()).to.contain(linkProps.children[0]);
     });
   });

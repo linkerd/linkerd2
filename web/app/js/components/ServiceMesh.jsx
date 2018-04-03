@@ -136,9 +136,7 @@ export default class ServiceMesh extends React.Component {
   }
 
   addedDeploymentCount() {
-    return _.size(_.filter(this.state.deploys, d => {
-      return _.every(d.pods, ["added", true]);
-    }));
+    return _.size(_.filter(this.state.deploys, ["added", true]));
   }
 
   unaddedDeploymentCount() {
