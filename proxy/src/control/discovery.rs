@@ -72,16 +72,9 @@ pub struct DstLabels {
     addr: Arc<HashMap<String, String>>,
 }
 
-/// A service that adds a label extension to all requests transiting it.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct LabelRequest<T> {
-    labels: Option<DstLabels>,
-    inner: T,
-}
-
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Labeled<T> {
-    metric_labels: DstLabels,
+    metric_labels: Option<DstLabels>,
     inner: T,
 }
 
@@ -202,7 +195,7 @@ where
     type Request = B::Request;
     type Response = B::Response;
     type Error = B::Error;
-    type Service = LabelRequest<B::Service>;
+    type Service = Labeled<B::Service>;
     type DiscoverError = ();
 
     fn poll(&mut self) -> Poll<Change<Self::Key, Self::Service>, Self::DiscoverError> {
@@ -216,9 +209,9 @@ where
         };
 
         match update {
-            Update::Insert(Labeled { metric_labels, inner: addr }) => {
-                let service = self.bind.bind(&addr)
-                    .map(|svc| LabelRequest::new(metric_labels, svc))
+            Update::Insert(labeled_addr) => {
+                let service = self.bind.bind(labeled_addr.borrow())
+                    .map(|svc| labeled_addr.label(svc))
                     .map_err(|_| ())?;
 
                 Ok(Async::Ready(Change::Insert(addr, service)))
@@ -715,11 +708,25 @@ impl Labeled<SocketAddr> {
     fn from_pb(pb: WeightedAddr, set_labels: &Arc<HashMap<String, String>>)
                -> Option<Self> {
         let inner = pb.addr.and_then(pb_to_sock_addr)?;
-        let metric_labels = DstLabels {
+        let metric_labels = Some(DstLabels {
             addr: Arc::new(pb.metric_labels),
             set: set_labels.clone(),
-        };
-        Some(Labeled { inner, metric_labels })
+        });
+        Some(Labeled { metric_labels, inner, })
+    }
+}
+
+
+impl<T> Labeled<T> {
+    pub fn none(inner: T) -> Self {
+        Self { metric_labels: None, inner }
+    }
+
+    fn label<U>(&self, inner: U) -> Labeled<U> {
+        Labeled {
+            metric_labels: self.metric_labels.as_ref().cloned(),
+            inner,
+        }
     }
 }
 
@@ -736,17 +743,7 @@ impl<T> Borrow<T> for Labeled<T> {
     }
 }
 
-impl<T> LabelRequest<T> {
-    fn new(labels: DstLabels, inner: T) -> Self {
-        Self { labels: Some(labels), inner }
-    }
-
-    pub fn none(inner: T) -> Self {
-        Self { labels: None, inner }
-    }
-}
-
-impl<T, A> Service for LabelRequest<T>
+impl<T, A> Service for Labeled<T>
 where
     T: Service<Request=http::Request<A>>,
 {
@@ -761,7 +758,7 @@ where
 
     fn call(&mut self, req: Self::Request) -> Self::Future {
         let mut req = req;
-        if let Some(ref labels) = self.labels {
+        if let Some(ref labels) = self.metric_labels {
             req.extensions_mut().insert(labels.clone());
         }
         self.inner.call(req)
