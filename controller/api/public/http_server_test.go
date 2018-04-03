@@ -27,6 +27,11 @@ func (m *mockGrpcServer) Stat(ctx context.Context, req *pb.MetricRequest) (*pb.M
 	return m.ResponseToReturn.(*pb.MetricResponse), m.ErrorToReturn
 }
 
+func (m *mockGrpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
+	m.LastRequestReceived = req
+	return m.ResponseToReturn.(*pb.StatSummaryResponse), m.ErrorToReturn
+}
+
 func (m *mockGrpcServer) Version(ctx context.Context, req *pb.Empty) (*pb.VersionInfo, error) {
 	m.LastRequestReceived = req
 	return m.ResponseToReturn.(*pb.VersionInfo), m.ErrorToReturn

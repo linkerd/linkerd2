@@ -11,16 +11,21 @@ import (
 )
 
 type MockConduitApiClient struct {
-	ErrorToReturn             error
-	VersionInfoToReturn       *pb.VersionInfo
-	ListPodsResponseToReturn  *pb.ListPodsResponse
-	MetricResponseToReturn    *pb.MetricResponse
-	SelfCheckResponseToReturn *healthcheckPb.SelfCheckResponse
-	Api_TapClientToReturn     pb.Api_TapClient
+	ErrorToReturn               error
+	VersionInfoToReturn         *pb.VersionInfo
+	ListPodsResponseToReturn    *pb.ListPodsResponse
+	MetricResponseToReturn      *pb.MetricResponse
+	StatSummaryResponseToReturn *pb.StatSummaryResponse
+	SelfCheckResponseToReturn   *healthcheckPb.SelfCheckResponse
+	Api_TapClientToReturn       pb.Api_TapClient
 }
 
 func (c *MockConduitApiClient) Stat(ctx context.Context, in *pb.MetricRequest, opts ...grpc.CallOption) (*pb.MetricResponse, error) {
 	return c.MetricResponseToReturn, c.ErrorToReturn
+}
+
+func (c *MockConduitApiClient) StatSummary(ctx context.Context, in *pb.StatSummaryRequest, opts ...grpc.CallOption) (*pb.StatSummaryResponse, error) {
+	return c.StatSummaryResponseToReturn, c.ErrorToReturn
 }
 
 func (c *MockConduitApiClient) Version(ctx context.Context, in *pb.Empty, opts ...grpc.CallOption) (*pb.VersionInfo, error) {
