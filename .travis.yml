@@ -25,9 +25,9 @@ jobs:
         - (cd proxy && cargo test --locked --no-default-features)
 
     - language: go
-      # XXX; The "1.10" must be quoted or it will get intrepreted as 1.1. See
+      # Quote the version number to avoid parsing issues like
       # https://github.com/travis-ci/gimme/issues/132.
-      go: "1.10"
+      go: "1.10.1"
       go_import_path: github.com/runconduit/conduit
       cache:
         directories:
