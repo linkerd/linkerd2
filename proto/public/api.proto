@@ -126,7 +126,7 @@ message ApiError {
 
 message ResourceSpec {
   string namespace = 1;
-  string resource = 2;
+  string resource = 2; // k8s resource e.g. deploy/foo, or 'all'
 }
 
 message ResourceSelection {
@@ -177,8 +177,8 @@ message StatTable {
 
       uint64 success_count = 4;
       uint64 failure_count = 5;
-      uint64 latency_p50 = 6;
-      uint64 latency_p90 = 7;
+      uint64 latency_ms_p50 = 6;
+      uint64 latency_ms_p90 = 7;
     }
   }
 }
