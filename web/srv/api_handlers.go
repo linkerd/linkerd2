@@ -157,15 +157,18 @@ func (h *handler) handleApiPods(w http.ResponseWriter, req *http.Request, p http
 }
 
 func (h *handler) handleApiStat(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
-	timeWindowParam := req.FormValue("window")
-	resourceNameParam := req.FormValue("resourceName")
-	resourceTypeParam := req.FormValue("resourceType")
-	namespaceParam := req.FormValue("namespace")
+	timeWindow := req.FormValue("window")
+	resourceName := req.FormValue("resource_name")
+	resourceType := req.FormValue("resource_type")
+	namespace := req.FormValue("namespace")
+	outToResourceName := req.FormValue("out_to_resource_name")
+	outToResourceType := req.FormValue("out_to_resource_type")
+	outToResourceNamespace := req.FormValue("out_to_resource_namespace")
 
 	window := defaultMetricTimeWindow
-	if timeWindowParam != "" {
+	if timeWindow != "" {
 		var requestedWindow pb.TimeWindow
-		requestedWindow, err := util.GetWindow(timeWindowParam)
+		requestedWindow, err := util.GetWindow(timeWindow)
 		if err != nil {
 			renderJsonError(w, err, http.StatusInternalServerError)
 			return
@@ -176,13 +179,29 @@ func (h *handler) handleApiStat(w http.ResponseWriter, req *http.Request, p http
 	statRequest := &pb.StatSummaryRequest{
 		Resource: &pb.ResourceSelection{
 			Spec: &pb.Resource{
-				Namespace: namespaceParam,
-				Name:      resourceNameParam,
-				Type:      resourceTypeParam,
+				Namespace: namespace,
+				Name:      resourceName,
+				Type:      resourceType,
 			},
 		},
 		TimeWindow: window,
 	}
+
+	if outToResourceName != "" || outToResourceType != "" || outToResourceNamespace != "" {
+		if outToResourceNamespace == "" {
+			outToResourceNamespace = namespace
+		}
+
+		outToResource := pb.StatSummaryRequest_OutToResource{
+			OutToResource: &pb.Resource{
+				Namespace: outToResourceNamespace,
+				Type:      outToResourceType,
+				Name:      outToResourceName,
+			},
+		}
+		statRequest.Outbound = &outToResource
+	}
+
 	result, err := h.apiClient.StatSummary(req.Context(), statRequest)
 	if err != nil {
 		renderJsonError(w, err, http.StatusInternalServerError)

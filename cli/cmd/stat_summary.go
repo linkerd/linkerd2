@@ -16,9 +16,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var namespace string
-var resourceType string
-var resourceName string
+var namespace, resourceType, resourceName string
+var outToNamespace, outToType, outToName string
 
 var statSummaryCommand = &cobra.Command{
 	Use:   "statsummary [flags] deployment [RESOURCE]",
@@ -62,6 +61,10 @@ func init() {
 	// TODO: the -n flag is taken up by conduit-namespace :( we should move it to something else so this can have -n
 	statSummaryCommand.PersistentFlags().StringVarP(&namespace, "namespace", "a", "default", "namespace of the specified resource")
 	statSummaryCommand.PersistentFlags().StringVarP(&timeWindow, "time-window", "t", "1m", "Stat window.  One of: '10s', '1m', '10m', '1h'.")
+
+	statSummaryCommand.PersistentFlags().StringVarP(&outToName, "out-to", "", "", "If present, restricts outbound stats to the specified resource name")
+	statSummaryCommand.PersistentFlags().StringVarP(&outToNamespace, "out-to-namespace", "", "", "Sets the namespace used to lookup the '--out-to' resource. By default the current '--namespace' is used")
+	statSummaryCommand.PersistentFlags().StringVarP(&outToType, "out-to-resource", "", "", "If present, restricts outbound stats to the specified resource type")
 }
 
 func requestStatSummaryFromAPI(client pb.ApiClient) (string, error) {
@@ -160,7 +163,7 @@ func buildStatSummaryRequest() (*pb.StatSummaryRequest, error) {
 		return nil, err
 	}
 
-	return &pb.StatSummaryRequest{
+	request := pb.StatSummaryRequest{
 		Resource: &pb.ResourceSelection{
 			Spec: &pb.Resource{
 				Namespace: namespace,
@@ -169,7 +172,23 @@ func buildStatSummaryRequest() (*pb.StatSummaryRequest, error) {
 			},
 		},
 		TimeWindow: window,
-	}, nil
+	}
+
+	if outToName != "" || outToType != "" || outToNamespace != "" {
+		if outToNamespace == "" {
+			outToNamespace = namespace
+		}
+
+		outToResource := pb.StatSummaryRequest_OutToResource{
+			OutToResource: &pb.Resource{
+				Namespace: outToNamespace,
+				Type:      outToType,
+				Name:      outToName,
+			},
+		}
+		request.Outbound = &outToResource
+	}
+	return &request, nil
 }
 
 func getRequestRate(r pb.StatTable_PodGroup_Row) float64 {
