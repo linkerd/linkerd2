@@ -84,9 +84,7 @@ func TestEgressHttp(t *testing.T) {
 
 		output, err := TestHelper.HTTPGetURL(svcURL)
 		if err != nil {
-			t.Skip("Skipping this test until this issue is fixed: https://github.com/runconduit/conduit/issues/155")
-		} else {
-			t.Fatalf("This test was expected to fail unless https://github.com/runconduit/conduit/issues/155 is fixed. Output:\n%s\n", output)
+			t.Fatalf("Unexpected error: %v", err)
 		}
 
 	})
