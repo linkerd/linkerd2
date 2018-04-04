@@ -224,7 +224,6 @@ where
 
 impl fmt::Display for HumanDuration {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        // let precision = fmt.precision().unwrap_or(3);
         let secs = self.as_secs();
         let subsec_ms = self.subsec_nanos() as f64 / 1_000_000f64;
         if secs == 0 {
