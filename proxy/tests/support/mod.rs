@@ -30,16 +30,34 @@ use self::tower_h2::{Body, RecvBody};
 use std::net::SocketAddr;
 pub use std::time::Duration;
 
+/// Environment variable for overriding the test patience.
+pub const ENV_TEST_PATIENCE_MS: &'static str = "RUST_TEST_PATIENCE_MS";
+pub const DEFAULT_TEST_PATIENCE: u64 = 15;
+
 #[macro_export]
 macro_rules! eventually {
     ($cond:expr, retries: $retries:expr, $($arg:tt)+) => {
-        for i in 0..$retries {
-            if $cond {
-                break;
-            } else if i == $retries {
-                panic!($($arg)+)
-            } else {
-                ::std::thread::sleep(Duration::from_millis(15));
+        {
+            use std::{env, u64};
+            use std::time::{Instant, Duration};
+            use std::str::FromStr;
+            // TODO: don't do this *every* time eventually is called (lazy_static?)
+            let patience = env::var($crate::support::ENV_TEST_PATIENCE_MS).ok()
+                .and_then(|s| u64::from_str(&s).ok())
+                .unwrap_or($crate::support::DEFAULT_TEST_PATIENCE);
+            let patience = Duration::from_millis(patience);
+            let start_t = Instant::now();
+            for i in 0..($retries + 1) {
+                if $cond {
+                    break;
+                } else if i == $retries {
+                    panic!(
+                        "assertion failed after {:?} (retried {} times): {}",
+                        start_t.elapsed(), i, format_args!($($arg)+)
+                    )
+                } else {
+                    ::std::thread::sleep(patience);
+                }
             }
         }
     };
@@ -47,17 +65,10 @@ macro_rules! eventually {
         eventually!($cond, retries: 5, $($arg)+)
     };
     ($cond:expr, retries: $retries:expr) => {
-        eventually!($cond, retries: $retries,
-            "assertion failed (after {} retries): {}",
-            stringify!($retries),
-            stringify!($cond)
-        )
+        eventually!($cond, retries: $retries, stringify!($cond))
     };
     ($cond:expr) => {
-        eventually!($cond, retries: 5,
-            "assertion failed (after 5 retries): {}",
-            stringify!($cond)
-        )
+        eventually!($cond, retries: 5, stringify!($cond))
     };
 }
 
@@ -94,4 +105,10 @@ impl Stream for RecvBodyStream {
 
 pub fn s(bytes: &[u8]) -> &str {
     ::std::str::from_utf8(bytes.as_ref()).unwrap()
+}
+
+#[test]
+#[should_panic]
+fn eventually() {
+    eventually!(false)
 }
