@@ -576,7 +576,7 @@ fn metrics_endpoint_outbound_response_latency() {
     // 1000ms bucket should be incremented as well, since it counts *all*
     // bservations less than or equal to 1000ms, even if they also increment
     // other buckets.
-    assert_contains!(metrics.get("/metrics"),,
+    assert_contains!(metrics.get("/metrics"),
         "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",classification=\"success\",status_code=\"200\",le=\"1000\"} 2");
     // the histogram's total count should be 2.
     assert_contains!(metrics.get("/metrics"),
