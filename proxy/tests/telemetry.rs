@@ -514,7 +514,6 @@ fn metrics_endpoint_inbound_response_latency() {
     info!("client.get(/hey)");
     assert_eq!(client.get("/hey"), "hello");
 
-    let scrape = metrics.get("/metrics");
     // 50ms bucket should be un-changed by the request with 500ms latency.
     assert_contains!(metrics.get("/metrics"),
         "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",classification=\"success\",status_code=\"200\",le=\"50\"} 2");
@@ -557,7 +556,7 @@ fn metrics_endpoint_outbound_response_latency() {
 
     // assert the >=1000ms bucket is incremented by our request with 500ms
     // extra latency.
-    assert_contains!(metrics.get("/metrics")rape,
+    assert_contains!(metrics.get("/metrics"),
         "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",classification=\"success\",status_code=\"200\",le=\"1000\"} 1");
     // the histogram's count should be 1.
     assert_contains!(metrics.get("/metrics"),
@@ -577,7 +576,7 @@ fn metrics_endpoint_outbound_response_latency() {
     // 1000ms bucket should be incremented as well, since it counts *all*
     // bservations less than or equal to 1000ms, even if they also increment
     // other buckets.
-    assert_contains!(scrape,
+    assert_contains!(metrics.get("/metrics"),,
         "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",classification=\"success\",status_code=\"200\",le=\"1000\"} 2");
     // the histogram's total count should be 2.
     assert_contains!(metrics.get("/metrics"),
