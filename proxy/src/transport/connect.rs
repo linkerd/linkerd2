@@ -26,12 +26,15 @@ pub struct HostAndPort {
 
 #[derive(Clone, Debug)]
 pub enum Host {
-    DnsName(String),
+    DnsName(dns::Name),
     Ip(IpAddr),
 }
 
 #[derive(Clone, Copy, Debug)]
 pub enum HostAndPortError {
+    /// The host is not a valid DNS name or IP address.
+    InvalidHost,
+
     /// The port is missing.
     MissingPort,
 }
@@ -49,10 +52,13 @@ impl<'a> convert::TryFrom<&'a http::uri::Authority> for HostAndPort {
     type Err = HostAndPortError;
     fn try_from(a: &http::uri::Authority) -> Result<Self, Self::Err> {
         let host = {
-            let host = a.host();
-            match IpAddr::from_str(host) {
-                Err(_) => Host::DnsName(host.to_owned()),
-                Ok(ip) => Host::Ip(ip),
+            match dns::Name::normalize(a.host()) {
+                Ok(host) => Host::DnsName(host),
+                Err(_) => {
+                    let ip: IpAddr = IpAddr::from_str(a.host())
+                        .map_err(|_| HostAndPortError::InvalidHost)?;
+                    Host::Ip(ip)
+                },
             }
         };
         let port = a.port().ok_or_else(|| HostAndPortError::MissingPort)?;
