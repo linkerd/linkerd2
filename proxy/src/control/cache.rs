@@ -116,7 +116,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn cache_extend_reset_on_next_modification() {
+    fn extend_reset_on_next_modification() {
         let original_values = [1, 2, 3, 4].iter().cloned().collect::<HashSet<usize>>();
 
         // One original value, one new value.
@@ -145,7 +145,7 @@ mod tests {
     }
 
     #[test]
-    fn cache_remove_reset_on_next_modification() {
+    fn remove_reset_on_next_modification() {
         let original_values = [1, 2, 3, 4].iter().cloned().collect::<HashSet<usize>>();
 
         // One original value, one new value.
@@ -173,7 +173,7 @@ mod tests {
     }
 
     #[test]
-    fn cache_clear_reset_on_next_modification() {
+    fn clear_reset_on_next_modification() {
         let original_values = [1, 2, 3, 4].iter().cloned().collect::<HashSet<usize>>();
 
         {
