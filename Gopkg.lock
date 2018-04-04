@@ -618,6 +618,7 @@
 [[projects]]
   name = "k8s.io/kubernetes"
   packages = [
+    "pkg/apis/core",
     "pkg/kubectl/proxy",
     "pkg/kubectl/util"
   ]
@@ -627,6 +628,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "277daa25a9eaf67ec2836b15bf42d021ec1be189c23500cbe895320bced94ff2"
+  inputs-digest = "8dba204936682f8de0fa45f145a20a27a9edb74b632f9a4fe74e4460b6c63518"
   solver-name = "gps-cdcl"
   solver-version = 1
