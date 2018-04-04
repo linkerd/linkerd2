@@ -136,7 +136,7 @@ impl tokio_connect::Connect for LookupAddressAndConnect {
         let handle = self.handle.clone();
         let host = self.host_and_port.host.clone();
         let c = self.dns_resolver
-            .resolve_host(&self.host_and_port.host)
+            .resolve_one_ip(&self.host_and_port.host)
             .map_err(|_| {
                 io::Error::new(io::ErrorKind::NotFound, "DNS resolution failed")
             })
