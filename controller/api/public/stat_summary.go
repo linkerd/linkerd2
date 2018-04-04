@@ -99,7 +99,7 @@ func (h *handler) deploymentQuery(ctx context.Context, req *pb.StatSummaryReques
 				StatTables: []*pb.StatTable{
 					&pb.StatTable{
 						Table: &pb.StatTable_PodGroup_{
-							&pb.StatTable_PodGroup{
+							PodGroup: &pb.StatTable_PodGroup{
 								Rows: rows,
 							},
 						},
