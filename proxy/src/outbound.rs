@@ -18,7 +18,6 @@ use bind::{self, Bind, Protocol};
 use control::{self, discovery};
 use control::discovery::Bind as BindTrait;
 use ctx;
-use fully_qualified_authority::FullyQualifiedAuthority;
 use timeout::Timeout;
 use transparency::h1;
 use transport::{DnsNameAndPort, Host, HostAndPort};
@@ -28,7 +27,6 @@ type BindProtocol<B> = bind::BindProtocol<Arc<ctx::Proxy>, B>;
 pub struct Outbound<B> {
     bind: Bind<Arc<ctx::Proxy>, B>,
     discovery: control::Control,
-    default_namespace: String,
     bind_timeout: Duration,
 }
 
@@ -39,13 +37,11 @@ const MAX_IN_FLIGHT: usize = 10_000;
 impl<B> Outbound<B> {
     pub fn new(bind: Bind<Arc<ctx::Proxy>, B>,
                discovery: control::Control,
-               default_namespace: String,
                bind_timeout: Duration,)
                -> Outbound<B> {
         Self {
             bind,
             discovery,
-            default_namespace,
             bind_timeout,
         }
     }
@@ -87,15 +83,8 @@ where
         // TODO: Return error when `HostAndPort::normalize()` fails.
         let mut dest = match authority.as_ref()
             .and_then(|auth| HostAndPort::normalize(auth, Some(80)).ok()) {
-            Some(HostAndPort { host: Host::DnsName(dns_name), port }) => {
-                let authority = DnsNameAndPort { host: dns_name, port };
-                // Work around the inability of control/discovery.rs to handle unnormalized names.
-                // TODO: Remove this use of `FullyQualifiedAuthority::normalize()` and use
-                // `Destination::Hostname` for all `Host::DnsName` values once DNS machinery is
-                // added to control/discovery.rs.
-                FullyQualifiedAuthority::normalize(&authority, &self.default_namespace)
-                    .map(|_| Destination::Hostname(authority))
-            },
+            Some(HostAndPort { host: Host::DnsName(dns_name), port }) =>
+                Some(Destination::Hostname(DnsNameAndPort { host: dns_name, port })),
             Some(HostAndPort { host: Host::Ip(_), .. }) |
             None => None,
         };
