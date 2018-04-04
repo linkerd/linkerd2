@@ -39,7 +39,7 @@ macro_rules! eventually {
             } else if i == $retries {
                 panic!($($arg)+)
             } else {
-                ::std::thread::sleep(Duration::from_millis(5));
+                ::std::thread::sleep(Duration::from_millis(15));
             }
         }
     };
