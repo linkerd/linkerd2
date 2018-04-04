@@ -21,6 +21,7 @@ use fully_qualified_authority::FullyQualifiedAuthority;
 use transport::{HostAndPort, LookupAddressAndConnect};
 use timeout::{Timeout, TimeoutError};
 
+mod cache;
 pub mod discovery;
 mod observe;
 pub mod pb;
