@@ -667,19 +667,31 @@ where T: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>,
 impl DstLabels {
 
     #[inline]
-    fn new<I, S>(labels: I) -> Self
+    fn new<I, S>(labels: I) -> Option<Self>
     where
         I: IntoIterator<Item=(S, S)>,
         S: fmt::Display,
     {
-        // this could also be a `fold`, or a `map` + `collect`, but the
-        // mutable string + iteration is probably faster.
-        let mut s = String::new();
-        for (k, v) in labels {
-            write!(s, ",dst_{}=\"{}\"", k, v)
-                .expect("writing to string should not fail");
+        let mut labels = labels.into_iter();
+
+        if let Some((k, v)) = labels.next() {
+            // format the first label pair without a leading comma, since we
+            // don't know where it is in the output labels at this point.
+            let mut s = format!("dst_{}=\"{}\"", k, v);
+
+            // format subsequent label pairs with leading commas, since
+            // we know that we already formatted the first label pair.
+            for (k, v) in labels {
+                write!(s, ",dst_{}=\"{}\"", k, v)
+                    .expect("writing to string should not fail");
+            }
+
+            Some(DstLabels(Arc::from(s)))
+        } else {
+            // the iterator is empty; return None.
+            None
         }
-        DstLabels(Arc::from(s))
+
     }
 
 }
@@ -692,7 +704,11 @@ impl fmt::Display for DstLabels {
 
 }
 
+// ===== impl Labeled =====
+
 impl Labeled<SocketAddr> {
+
+    /// Construct a new labeled `SocketAddr `from a protobuf `WeightedAddr`.
     fn from_pb(pb: WeightedAddr, set_labels: &Arc<HashMap<String, String>>)
                -> Option<Self> {
         let inner = pb.addr.and_then(pb_to_sock_addr)?;
@@ -700,17 +716,19 @@ impl Labeled<SocketAddr> {
             set_labels.as_ref()
                 .iter()
                 .chain(pb.metric_labels.iter());
-        let metric_labels =  Some(DstLabels::new(label_iter));
+        let metric_labels = DstLabels::new(label_iter);
         Some(Labeled { metric_labels, inner, })
     }
 }
 
 
 impl<T> Labeled<T> {
+    /// Wrap `inner` with no `metric_labels`.
     pub fn none(inner: T) -> Self {
         Self { metric_labels: None, inner }
     }
 
+    /// Construct a new `Labeled<U>` for `inner` with the same labels as `self`.
     fn label<U>(&self, inner: U) -> Labeled<U> {
         Labeled {
             metric_labels: self.metric_labels.as_ref().cloned(),
@@ -726,6 +744,11 @@ impl<T> ops::Deref for Labeled<T> {
     }
 }
 
+// By implementing `Borrow<SocketAddr>` for `Labeled<SocketAddr>`, we
+// can now treat a `SocketAddr` as a "borrowed form" of `Labeled<SocketAddr>`.
+// While this isn't technically what it is, that allows us to use an
+// un-labeled `SocketAddr` as a lookup key for `HashMap`s or `HashSet`s of
+// `Labeled<SocketAddr>`.
 impl<T> Borrow<T> for Labeled<T> {
     fn borrow(&self) -> &T {
         &self.inner
