@@ -16,7 +16,7 @@ docker_image() {
 
 tag=$(head_root_tag)
 
-for img in proxy proxy-init controller web cli-bin ; do
+for img in cli-bin controller grafana proxy proxy-init web  ; do
     docker_image "$img" "$tag"
 done
 
