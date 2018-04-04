@@ -605,7 +605,7 @@ impl fmt::Display for ResponseLabels {
             self.status_code
         )?;
         if let Some(ref status) = self.grpc_status_code {
-            write!(f, "grpc_status_code=\"{}\"", status)?;
+            write!(f, ",grpc_status_code=\"{}\"", status)?;
         }
 
         Ok(())
