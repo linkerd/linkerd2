@@ -12,6 +12,7 @@ import (
 	"github.com/prometheus/common/model"
 	apiUtil "github.com/runconduit/conduit/controller/api/util"
 	pb "github.com/runconduit/conduit/controller/gen/public"
+	"github.com/runconduit/conduit/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	v1beta1 "k8s.io/api/apps/v1beta1"
 	apiv1 "k8s.io/api/core/v1"
@@ -30,8 +31,13 @@ type meshedCount struct {
 }
 
 func (h *handler) StatSummary(ctx context.Context, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
-	switch req.Resource.Spec.Type {
-	case "deployment": // TODO: standardize these somewhere else (deployments/deploys/deployment)
+	resourceType, err := k8s.CanonicalKubernetesNameFromFriendlyName(req.Resource.Spec.Type)
+	if err != nil {
+		return nil, err
+	}
+
+	switch resourceType {
+	case k8s.KubernetesDeployments:
 		return h.deploymentQuery(ctx, req)
 	default:
 		return nil, errors.New("Unimplemented resource type")

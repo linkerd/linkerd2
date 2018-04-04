@@ -21,12 +21,14 @@ var outToNamespace, outToType, outToName string
 
 var statSummaryCommand = &cobra.Command{
 	Use:   "statsummary [flags] deployment [RESOURCE]",
-	Short: "Display runtime summary statistics about mesh resources",
-	Long: `Display runtime summary statistics about mesh resources.
+	Short: "Display traffic stats about one or many resources",
+	Long: `Display traffic stats about one or many resources.
 
-	Only deployment resources are supported.
+Valid resource types include:
 
-	The optional [TARGET] argument can be used to target a specific deployment.`,
+	* deployment
+
+This command will hide resources that have completed, such as pods that are in the Succeeded or Failed phases.`,
 	Example: `  conduit statsummary deployments hello1 -a test `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		switch len(args) {
@@ -113,10 +115,9 @@ func writeStatTableToBuffer(resp *pb.StatSummaryResponse, w *tabwriter.Writer) {
 	for _, statTable := range resp.GetOk().StatTables {
 		table := statTable.GetPodGroup()
 		for _, r := range table.Rows {
-			var name string
-
-			if r.Spec.Name != "" {
-				name = r.Spec.Name
+			name := r.Spec.Name
+			if name == "" {
+				continue
 			}
 
 			if len(name) > maxNameLength {

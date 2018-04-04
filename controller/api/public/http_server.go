@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/golang/protobuf/jsonpb"
 	promApi "github.com/prometheus/client_golang/api"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
-	"k8s.io/client-go/kubernetes"
-
-	"github.com/golang/protobuf/jsonpb"
 	common "github.com/runconduit/conduit/controller/gen/common"
 	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 	tapPb "github.com/runconduit/conduit/controller/gen/controller/tap"
@@ -18,6 +16,7 @@ import (
 	"github.com/runconduit/conduit/controller/util"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/metadata"
+	"k8s.io/client-go/kubernetes"
 )
 
 var (
