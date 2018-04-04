@@ -2,8 +2,7 @@
 use futures::{Async, Future, Poll};
 
 use std::error::Error;
-use std::fmt;
-use std::io;
+use std::{fmt, io, ops};
 use std::time::Duration;
 
 use tokio_connect::Connect;
@@ -34,6 +33,13 @@ pub struct TimeoutFuture<F> {
     duration: Duration,
     timeout: ReactorTimeout,
 }
+
+/// Pretty-print durations as fractional seconds.
+///
+/// This may not be the ideal display format for _all_ duration values,
+/// but should be sufficient for most timeouts.
+#[derive(Copy, Clone, Debug)]
+pub struct HumanDuration(pub Duration);
 
 //===== impl Timeout =====
 
@@ -153,8 +159,9 @@ where
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             TimeoutError::Timeout(ref duration) =>
-                // TODO: format the duration nicer.
-                write!(f, "operation timed out after {:?}", duration),
+                write!(f, "operation timed out after {}",
+                    HumanDuration(*duration)
+                ),
             TimeoutError::Error(ref err) => fmt::Display::fmt(err, f),
         }
     }
@@ -210,5 +217,45 @@ where
            .field("inner", &self.inner)
            .field("duration", &self.duration)
            .finish()
+    }
+}
+
+//===== impl HumanDuration =====
+
+impl fmt::Display for HumanDuration {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        // let precision = fmt.precision().unwrap_or(3);
+        let secs = self.as_secs();
+        let subsec_ms = self.subsec_nanos() as f64 / 1_000_000f64;
+        if secs == 0 {
+            write!(fmt, "{} ms", subsec_ms)
+        } else {
+            write!(fmt, "{} s", secs as f64 + subsec_ms)
+        }
+    }
+}
+
+impl ops::Deref for HumanDuration {
+    type Target = Duration;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl ops::DerefMut for HumanDuration {
+
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl From<Duration> for HumanDuration {
+
+    #[inline]
+    fn from(d: Duration) -> Self {
+        HumanDuration(d)
     }
 }
