@@ -77,7 +77,7 @@ func (l *endpointListener) toWeightedAddrSet(endpoints []common.TcpAddress) *pb.
 			} else {
 				pod := resultingPods[0]
 				metricLabelsForPod = map[string]string{
-					"k8s_pod": pod.Name,
+					"pod": pod.Name,
 				}
 
 				namespace = pod.Namespace
@@ -92,8 +92,8 @@ func (l *endpointListener) toWeightedAddrSet(endpoints []common.TcpAddress) *pb.
 	}
 
 	globalMetricLabels := map[string]string{
-		"k8s_service":   l.serviceName,
-		"k8s_namespace": namespace,
+		"service":   l.serviceName,
+		"namespace": namespace,
 	}
 
 	return &pb.WeightedAddrSet{

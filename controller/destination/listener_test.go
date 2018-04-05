@@ -113,13 +113,13 @@ func TestEndpointListener(t *testing.T) {
 		listener.Update([]common.TcpAddress{addedAddress1, addedAddress2}, nil)
 
 		actualGlobalMetricLabels := mockGetServer.updatesReceived[0].GetAdd().MetricLabels
-		expectedGlobalMetricLabels := map[string]string{"k8s_namespace": expectedNamespace, "k8s_service": expectedServiceName}
+		expectedGlobalMetricLabels := map[string]string{"namespace": expectedNamespace, "service": expectedServiceName}
 		if !reflect.DeepEqual(actualGlobalMetricLabels, expectedGlobalMetricLabels) {
 			t.Fatalf("Expected global metric labels sent to be [%v] but was [%v]", expectedGlobalMetricLabels, actualGlobalMetricLabels)
 		}
 
 		actualAddedAddress1MetricLabels := mockGetServer.updatesReceived[0].GetAdd().Addrs[0].MetricLabels
-		expectedAddedAddress1MetricLabels := map[string]string{"k8s_pod": expectedPodName}
+		expectedAddedAddress1MetricLabels := map[string]string{"pod": expectedPodName}
 		if !reflect.DeepEqual(actualAddedAddress1MetricLabels, expectedAddedAddress1MetricLabels) {
 			t.Fatalf("Expected global metric labels sent to be [%v] but was [%v]", expectedAddedAddress1MetricLabels, actualAddedAddress1MetricLabels)
 		}

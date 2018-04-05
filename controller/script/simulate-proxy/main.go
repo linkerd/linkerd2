@@ -271,7 +271,7 @@ func newSimulatedProxy(pod v1.Pod, deployments []string, replicaSets *k8s.Replic
 		"namespace":         pod.GetNamespace(),
 		"deployment":        deploymentName,
 		"pod_template_hash": pod.GetLabels()["pod-template-hash"],
-		"pod_name":          pod.GetName(),
+		"pod":               pod.GetName(),
 
 		// TODO: support other k8s objects
 		// "daemon_set",
