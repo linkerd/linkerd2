@@ -306,12 +306,11 @@ func getSelectorFromObject(obj runtime.Object) (map[string]string, error) {
 
 func (h *handler) queryProm(ctx context.Context, query string) (model.Vector, error) {
 	log.Debugf("Query request: %+v", query)
-	end := time.Now()
 
 	// single data point (aka summary) query
-	res, err := h.prometheusAPI.Query(ctx, query, end)
+	res, err := h.prometheusAPI.Query(ctx, query, time.Time{})
 	if err != nil {
-		log.Errorf("Query(%+v, %+v) failed with: %+v", query, end, err)
+		log.Errorf("Query(%+v, %+v) failed with: %+v", query, err)
 		return nil, err
 	}
 	log.Debugf("Query response: %+v", res)

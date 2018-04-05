@@ -21,7 +21,7 @@ var outToNamespace, outToType, outToName string
 var outFromNamespace, outFromType, outFromName string
 
 var statSummaryCommand = &cobra.Command{
-	Use:   "statsummary [flags] deployment [RESOURCE]",
+	Use:   "statsummary [flags] RESOURCETYPE [RESOURCENAME]",
 	Short: "Display traffic stats about one or many resources",
 	Long: `Display traffic stats about one or many resources.
 
@@ -29,8 +29,13 @@ Valid resource types include:
 
 	* deployment
 
-This command will hide resources that have completed, such as pods that are in the Succeeded or Failed phases.`,
-	Example: `  conduit statsummary deployments hello1 -a test `,
+This command will hide resources that have completed, such as pods that are in the Succeeded or Failed phases.
+If no resource name is specified, displays stats about all resources of the specified RESOURCETYPE`,
+	Example: `   conduit statsummary deployments -a test
+conduit statsummary deployments all -a test
+conduit statsummary deployments hello1 -a test `,
+	Args:      cobra.RangeArgs(1, 2),
+	ValidArgs: []string{"deployment"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		switch len(args) {
 		case 1:
@@ -70,7 +75,7 @@ func init() {
 	statSummaryCommand.PersistentFlags().StringVarP(&outToType, "out-to-resource", "", "", "If present, restricts outbound stats to the specified resource type")
 
 	statSummaryCommand.PersistentFlags().StringVarP(&outFromName, "out-from", "", "", "If present, restricts outbound stats to the specified resource name")
-	statSummaryCommand.PersistentFlags().StringVarP(&outFromNamespace, "out-from-namespace", "", "", "Sets the namespace used to lookup the '--out-to' resource. By default the current '--namespace' is used")
+	statSummaryCommand.PersistentFlags().StringVarP(&outFromNamespace, "out-from-namespace", "", "", "Sets the namespace used to lookup the '--out-from' resource. By default the current '--namespace' is used")
 	statSummaryCommand.PersistentFlags().StringVarP(&outFromType, "out-from-resource", "", "", "If present, restricts outbound stats to the specified resource type")
 }
 
@@ -86,10 +91,10 @@ func requestStatSummaryFromAPI(client pb.ApiClient) (string, error) {
 		return "", fmt.Errorf("error calling stat with request: %v", err)
 	}
 
-	return renderStatSummary(resp)
+	return renderStatSummary(resp), nil
 }
 
-func renderStatSummary(resp *pb.StatSummaryResponse) (string, error) {
+func renderStatSummary(resp *pb.StatSummaryResponse) string {
 	var buffer bytes.Buffer
 	w := tabwriter.NewWriter(&buffer, 0, 0, padding, ' ', tabwriter.AlignRight)
 
@@ -100,7 +105,7 @@ func renderStatSummary(resp *pb.StatSummaryResponse) (string, error) {
 	out := string(buffer.Bytes()[padding:])
 	out = strings.Replace(out, "\n"+strings.Repeat(" ", padding), "\n", -1)
 
-	return out, nil
+	return out
 }
 
 type summaryRow struct {
@@ -129,13 +134,11 @@ func writeStatTableToBuffer(resp *pb.StatSummaryResponse, w *tabwriter.Writer) {
 				maxNameLength = len(name)
 			}
 
-			if _, ok := stats[name]; !ok {
-				stats[name] = &summaryRow{}
+			stats[name] = &summaryRow{
+				meshed:      strconv.FormatUint(r.MeshedPodCount, 10) + "/" + strconv.FormatUint(r.TotalPodCount, 10),
+				requestRate: getRequestRate(*r),
+				successRate: getSuccessRate(*r),
 			}
-
-			stats[name].meshed = strconv.FormatUint(r.MeshedPodCount, 10) + "/" + strconv.FormatUint(r.TotalPodCount, 10)
-			stats[name].requestRate = getRequestRate(*r)
-			stats[name].successRate = getSuccessRate(*r)
 		}
 	}
 
@@ -206,6 +209,9 @@ func buildStatSummaryRequest() (*pb.StatSummaryRequest, error) {
 				Name:      outFromName,
 			},
 		}
+
+		// you can't set both outToResource and outToResource at the same time
+		// so if the user sets both, outTo will be overridden
 		request.Outbound = &outFromResource
 	}
 
