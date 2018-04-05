@@ -34,7 +34,7 @@ pub struct TimeoutFuture<F> {
     timeout: ReactorTimeout,
 }
 
-/// Pretty-print durations as fractional seconds.
+/// A duration which pretty-prints as fractional seconds.
 ///
 /// This may not be the ideal display format for _all_ duration values,
 /// but should be sufficient for most timeouts.
@@ -158,10 +158,8 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            TimeoutError::Timeout(ref duration) =>
-                write!(f, "operation timed out after {}",
-                    HumanDuration(*duration)
-                ),
+            TimeoutError::Timeout(ref d) =>
+                write!(f, "operation timed out after {}", HumanDuration(*d)),
             TimeoutError::Error(ref err) => fmt::Display::fmt(err, f),
         }
     }
@@ -224,8 +222,8 @@ where
 
 impl fmt::Display for HumanDuration {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let secs = self.as_secs();
-        let subsec_ms = self.subsec_nanos() as f64 / 1_000_000f64;
+        let secs = self.0.as_secs();
+        let subsec_ms = self.0.subsec_nanos() as f64 / 1_000_000f64;
         if secs == 0 {
             write!(fmt, "{}ms", subsec_ms)
         } else {
