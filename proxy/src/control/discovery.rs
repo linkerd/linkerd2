@@ -398,7 +398,7 @@ impl <T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
             Exists::Yes(mut cache) => cache,
             Exists::Unknown | Exists::No => Cache::new(),
         };
-        cache.extend(
+        cache.update_union(
             addrs_to_add.map(|a| (a, ())),
             &mut |(addr, _), change| Self::on_change(&mut self.txs, authority_for_logging, addr,
                                                 change));

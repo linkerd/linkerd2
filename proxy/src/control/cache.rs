@@ -27,8 +27,12 @@ pub enum Exists<T> {
 }
 
 pub enum CacheChange {
+    /// A new key was inserted.
     Insertion,
+    /// A key-value pair was removed.
     Removal,
+    /// The value mapped to an existing key was changed.
+    Modification,
 }
 
 // ===== impl Exists =====
@@ -45,7 +49,7 @@ impl<K, V> Cache<K, V>
 where
     K: Copy + Clone,
     K: Hash + Eq,
-    V: Clone,
+    V: PartialEq + Clone,
 {
     pub fn new() -> Self {
         Cache {
@@ -62,35 +66,55 @@ where
         self.reset_on_next_modification = true;
     }
 
-    pub fn extend<I, F>(&mut self, iter: I, on_change: &mut F)
+    /// Update the cache to contain the union of its current contents and the
+    /// key-value pairs in `iter`. Pairs not present in the cache will be
+    /// inserted, and keys present in both the cache and the iterator will be
+    /// updated so that their values match those in the iterator.
+    pub fn update_union<I, F>(&mut self, iter: I, on_change: &mut F)
     where
         I: Iterator<Item = (K, V)>,
         F: FnMut((K, V), CacheChange),
     {
-        fn extend_inner<K, V, I, F>(values: &mut IndexMap<K, V>, iter: I, on_change: &mut F)
+        fn update_inner<K, V, I, F>(
+            values: &mut IndexMap<K, V>,
+            iter: I,
+            on_change: &mut F
+        )
         where
             K: Eq + Hash + Copy + Clone,
-            V: Clone,
+            V: PartialEq + Clone,
             I: Iterator<Item = (K, V)>,
             F: FnMut((K, V), CacheChange),
         {
             for (key, value) in iter {
-                if values.insert(key, value.clone()).is_none() {
-                    on_change((key, value), CacheChange::Insertion);
+                match values.insert(key, value.clone()) {
+                    // If the returned value is equal to the inserted value,
+                    // then the inserted key was already present in the map
+                    // and the value is unchanged. Do nothing.
+                    Some(ref old_value) if old_value == &value => {},
+                    // If `insert` returns `Some` with a different value than
+                    // the one we inserted, then we changed the value for that
+                    // key.
+                    Some(_) =>
+                        on_change((key, value), CacheChange::Modification),
+                    // If `insert` returns `None`, then there was no old value
+                    // previously present. Therefore, we inserted a new value
+                    // into the cache.
+                     None => on_change((key, value), CacheChange::Insertion),
                 }
             }
         }
 
         if !self.reset_on_next_modification {
-            extend_inner(&mut self.values, iter, on_change);
+            update_inner(&mut self.values, iter, on_change);
         } else {
             let to_insert = iter.collect::<IndexMap<K, V>>();
-            extend_inner(
+            update_inner(
                 &mut self.values,
-                to_insert.iter().map(|(k, v)| (k.clone(), v.clone())),
+                to_insert.iter().map(|(k, v)| (*k, v.clone())),
                 on_change,
             );
-            self.retain(&to_insert, on_change);
+            self.update_intersection(&to_insert, on_change);
         }
         self.reset_on_next_modification = false;
     }
@@ -116,21 +140,41 @@ where
     where
         F: FnMut((K, V), CacheChange),
     {
-        self.retain(&IndexMap::new(), on_change)
+        self.update_intersection(&IndexMap::new(), on_change)
     }
 
-    pub fn retain<F, Q>(&mut self, to_retain: &IndexMap<K, V>, mut on_change: F)
+    /// Update the cache to contain the intersection of its current contents
+    /// and the key-value pairs in `to_update`. Pairs not present in
+    /// `to_update` will be removed from the cache, and any keys in the cache
+    /// with different values from those in `to_update` will be ovewritten to
+    /// match `to_update`.
+    pub fn update_intersection<F, Q>(
+        &mut self,
+        to_update: &IndexMap<K, V>,
+        mut on_change: F
+    )
     where
         F: FnMut((K, V), CacheChange),
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
         self.values.retain(|key, value| {
-            let retain = to_retain.contains_key(key.borrow());
-            if !retain {
-                on_change((*key, value.clone()), CacheChange::Removal)
+            match to_update.get(key.borrow()) {
+                // New value matches old value. Do nothing.
+                Some(new_value) if new_value == value => true,
+                // If the new value isn't equal to the old value, overwrite
+                // the old value.
+                Some(new_value) =>  {
+                    let old_value = mem::replace(value, new_value.clone());
+                    on_change((*key, old_value), CacheChange::Modification);
+                    true
+                },
+                // Key doesn't exist, remove it from the map.
+                None => {
+                    on_change((*key, value.clone()), CacheChange::Removal);
+                    false
+                }
             }
-            retain
         });
         self.reset_on_next_modification = false;
     }
@@ -141,7 +185,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn extend_reset_on_next_modification() {
+    fn update_union_reset_on_next_modification() {
         let original_values = indexmap!{ 1 => (), 2 => (), 3 => (), 4 => () };
         // One original value, one new value.
         let new_values = indexmap!{3 => (), 5 => ()};
@@ -151,7 +195,7 @@ mod tests {
                 values: original_values.clone(),
                 reset_on_next_modification: true,
             };
-            cache.extend(
+            cache.update_union(
                 new_values.iter().map(|(&k, v)| (k, v.clone())),
                 &mut |_, _| (),
             );
@@ -164,7 +208,7 @@ mod tests {
                 values: original_values.clone(),
                 reset_on_next_modification: false,
             };
-            cache.extend(
+            cache.update_union(
                 new_values.iter().map(|(&k, v)| (k, v.clone())),
                 &mut |_, _| (),
             );
