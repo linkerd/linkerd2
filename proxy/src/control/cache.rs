@@ -66,7 +66,7 @@ where
     /// Update the cache to contain the union of its current contents and the
     /// key-value pairs in `iter`. Pairs not present in the cache will be
     /// inserted, and keys present in both the cache and the iterator will be
-    /// updated so that their inner match those in the iterator.
+    /// updated so that their values match those in the iterator.
     pub fn update_union<I, F>(&mut self, iter: I, on_change: &mut F)
     where
         I: Iterator<Item = (K, V)>,
@@ -282,4 +282,3 @@ mod tests {
         }
     }
 }
-

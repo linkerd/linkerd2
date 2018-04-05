@@ -1,11 +1,11 @@
 use std::borrow::Borrow;
 use std::collections::VecDeque;
 use std::collections::hash_map::{Entry, HashMap};
-use std::fmt::Write;
+use std::fmt::{self, Write};
 use std::iter::IntoIterator;
 use std::net::SocketAddr;
-use std::fmt;
 use std::time::Duration;
+use std::sync::Arc;
 
 
 use futures::{Async, Future, Poll, Stream};
@@ -123,8 +123,9 @@ enum RxError<T> {
 
 #[derive(Debug)]
 enum Update {
-    Insert(Labeled<SocketAddr>),
-    Remove(Labeled<SocketAddr>),
+    Insert(SocketAddr),
+    Remove(SocketAddr),
+    ChangeMetadata(SocketAddr),
 }
 
 /// Bind a `SocketAddr` with a protocol.
@@ -721,11 +722,15 @@ impl Labeled<SocketAddr> {
     }
 }
 
-
 impl<T> Labeled<T> {
     /// Wrap `inner` with no `metric_labels`.
     pub fn none(inner: T) -> Self {
         Self { metric_labels: None, inner }
+    }
+
+    /// Returns the `inner` value, discarding the labels.
+    pub fn into_inner(self) -> T {
+        self.inner
     }
 
     /// Construct a new `Labeled<U>` for `inner` with the same labels as `self`.
@@ -736,11 +741,12 @@ impl<T> Labeled<T> {
         }
     }
 }
-
-impl<T> ops::Deref for Labeled<T> {
-    type Target = T;
-    fn deref(&self) -> &T {
-        &self.inner
+impl<T> Labeled<T>
+where
+    T: Copy,
+{
+    pub fn inner(&self) -> T {
+        self.inner
     }
 }
 
