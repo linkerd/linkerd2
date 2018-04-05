@@ -58,7 +58,7 @@ where
         }
     }
 
-    pub fn values(&self) -> &IndexMap<K, V> {
+    pub fn as_map(&self) -> &IndexMap<K, V> {
         &self.values
     }
 
