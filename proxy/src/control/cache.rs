@@ -1,6 +1,7 @@
-use indexmap::IndexMap;
+use indexmap::{map, IndexMap};
 use std::borrow::Borrow;
 use std::hash::Hash;
+use std::iter::IntoIterator;
 use std::mem;
 
 /// A key-value cache that supports incremental updates with lazy resetting
@@ -177,6 +178,18 @@ where
             }
         });
         self.reset_on_next_modification = false;
+    }
+}
+
+impl<'a, K, V> IntoIterator for &'a Cache<K, V>
+where
+    K: Hash + Eq,
+{
+    type IntoIter = map::Iter<'a, K, V>;
+    type Item = <map::Iter<'a, K, V> as Iterator>::Item;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.values.iter()
     }
 }
 

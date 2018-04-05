@@ -271,7 +271,7 @@ where
                             // them onto the new watch first
                             match set.addrs {
                                 Exists::Yes(ref cache) => {
-                                    for (&addr, _) in cache.as_map().iter() {
+                                    for (&addr, _) in cache {
                                         tx.unbounded_send(Update::Insert(addr))
                                             .expect("unbounded_send does not fail");
                                     }
