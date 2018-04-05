@@ -338,7 +338,7 @@ where
                     client,
                     &auth,
                     "reconnect");
-                return true; // TODO: continue?
+                return true;
             } else {
                 trace!("reconnect no longer needed: {:?}", auth);
             }

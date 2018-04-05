@@ -86,7 +86,7 @@ where
             .or_else(|| h1::authority_from_host(req));
 
 
-        // TODO: Return error when try_from() fails.
+        // TODO: Return error when `HostAndPort::normalize()` fails.
         let mut dest = match authority.as_ref()
             .and_then(|auth| HostAndPort::normalize(auth, Some(80)).ok()) {
             Some(HostAndPort { host: Host::DnsName(dns_name), port }) => {
