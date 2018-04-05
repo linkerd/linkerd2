@@ -2,7 +2,7 @@
 use futures::{Async, Future, Poll};
 
 use std::error::Error;
-use std::{fmt, io, ops};
+use std::{fmt, io};
 use std::time::Duration;
 
 use tokio_connect::Connect;
@@ -231,23 +231,6 @@ impl fmt::Display for HumanDuration {
         } else {
             write!(fmt, "{}s", secs as f64 + subsec_ms)
         }
-    }
-}
-
-impl ops::Deref for HumanDuration {
-    type Target = Duration;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl ops::DerefMut for HumanDuration {
-
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
     }
 }
 
