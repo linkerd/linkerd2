@@ -75,7 +75,7 @@ where
                 F: FnMut((K, V), CacheChange)
         {
             for (key, value) in iter {
-                if values.insert(key, value.clone()).is_some() {
+                if values.insert(key, value.clone()).is_none() {
                     on_change((key, value), CacheChange::Insertion);
                 }
             }
