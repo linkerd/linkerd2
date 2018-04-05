@@ -133,19 +133,19 @@ func buildRequestLabels(req *pb.StatSummaryRequest) string {
 		direction = "outbound"
 
 		srcLabel := fmt.Sprintf("dst_namespace=\"%s\", dst_%s=\"%s\"",
-			req.Resource.Spec.Namespace,
-			req.Resource.Spec.Type,
-			req.Resource.Spec.Name,
+			req.Selector.Resource.Namespace,
+			req.Selector.Resource.Type,
+			req.Selector.Resource.Name,
 		)
 		labels = append(labels, srcLabel)
 
 		outFromNs := req.GetOutFromResource().Namespace
 		if outFromNs == "" {
-			outFromNs = req.Resource.Spec.Namespace
+			outFromNs = req.Selector.Resource.Namespace
 		}
 
 		labels = append(labels, promLabel("namespace", outFromNs))
-		if req.Resource.Spec.Name != "" {
+		if req.Selector.Resource.Name != "" {
 			labels = append(labels, promLabel(req.GetOutFromResource().Type, req.GetOutFromResource().Name))
 		}
 	default:
@@ -156,9 +156,9 @@ func buildRequestLabels(req *pb.StatSummaryRequest) string {
 	// it's weird to check this again outside the switch, but including this code
 	// in the other three switch branches is very repetitive
 	if req.GetOutFromResource() == nil {
-		labels = append(labels, promLabel("namespace", req.Resource.Spec.Namespace))
-		if req.Resource.Spec.Name != "" {
-			labels = append(labels, promLabel(req.Resource.Spec.Type, req.Resource.Spec.Name))
+		labels = append(labels, promLabel("namespace", req.Selector.Resource.Namespace))
+		if req.Selector.Resource.Name != "" {
+			labels = append(labels, promLabel(req.Selector.Resource.Type, req.Selector.Resource.Name))
 		}
 	}
 	labels = append(labels, promLabel("direction", direction))
