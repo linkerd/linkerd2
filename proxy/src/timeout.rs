@@ -227,9 +227,9 @@ impl fmt::Display for HumanDuration {
         let secs = self.as_secs();
         let subsec_ms = self.subsec_nanos() as f64 / 1_000_000f64;
         if secs == 0 {
-            write!(fmt, "{} ms", subsec_ms)
+            write!(fmt, "{}ms", subsec_ms)
         } else {
-            write!(fmt, "{} s", secs as f64 + subsec_ms)
+            write!(fmt, "{}s", secs as f64 + subsec_ms)
         }
     }
 }
