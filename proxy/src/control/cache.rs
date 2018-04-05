@@ -59,10 +59,6 @@ where
         }
     }
 
-    pub fn as_map(&self) -> &IndexMap<K, V> {
-        &self.values
-    }
-
     pub fn set_reset_on_next_modification(&mut self) {
         self.reset_on_next_modification = true;
     }
@@ -151,7 +147,7 @@ where
     /// match `to_update`.
     pub fn update_intersection<F, Q>(
         &mut self,
-        to_update: &IndexMap<K, V>,
+        to_update: &IndexMap<Q, V>,
         mut on_change: F
     )
     where
