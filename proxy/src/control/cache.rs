@@ -1,11 +1,10 @@
-
-use std::borrow::Borrow;
-use std::mem;
-use std::hash::Hash;
 use indexmap::IndexMap;
+use std::borrow::Borrow;
+use std::hash::Hash;
+use std::mem;
 
-/// A cache that supports incremental updates with lazy resetting on
-/// invalidation.
+/// A key-value cache that supports incremental updates with lazy resetting
+/// on invalidation.
 ///
 /// When the cache `c` initially becomes invalid (i.e. it becomes
 /// potentially out of sync with the data source so that incremental updates
@@ -19,9 +18,12 @@ pub struct Cache<K, V> {
 }
 
 pub enum Exists<T> {
-    Unknown, // Unknown if the item exists or not
+    /// Unknown if the item exists or not.
+    Unknown,
+    /// Affermatively known to exist.
     Yes(T),
-    No, // Affirmatively known to not exist.
+    /// Affirmatively known to not exist.
+    No,
 }
 
 pub enum CacheChange {
@@ -65,14 +67,12 @@ where
         I: Iterator<Item = (K, V)>,
         F: FnMut((K, V), CacheChange),
     {
-        fn extend_inner<K, V, I, F>(values: &mut IndexMap<K, V>,
-                                    iter: I,
-                                    on_change: &mut F)
-            where
-                K: Eq + Hash + Copy + Clone,
-                V: Clone,
-                I: Iterator<Item = (K, V)>,
-                F: FnMut((K, V), CacheChange)
+        fn extend_inner<K, V, I, F>(values: &mut IndexMap<K, V>, iter: I, on_change: &mut F)
+        where
+            K: Eq + Hash + Copy + Clone,
+            V: Clone,
+            I: Iterator<Item = (K, V)>,
+            F: FnMut((K, V), CacheChange),
         {
             for (key, value) in iter {
                 if values.insert(key, value.clone()).is_none() {
@@ -85,17 +85,20 @@ where
             extend_inner(&mut self.values, iter, on_change);
         } else {
             let to_insert = iter.collect::<IndexMap<K, V>>();
-            extend_inner(&mut self.values,
+            extend_inner(
+                &mut self.values,
                 to_insert.iter().map(|(k, v)| (k.clone(), v.clone())),
-                on_change);
+                on_change,
+            );
             self.retain(&to_insert, on_change);
         }
         self.reset_on_next_modification = false;
     }
 
     pub fn remove<I, F>(&mut self, iter: I, on_change: &mut F)
-        where I: Iterator<Item = K>,
-              F: FnMut((K, V), CacheChange)
+    where
+        I: Iterator<Item = K>,
+        F: FnMut((K, V), CacheChange),
     {
         if !self.reset_on_next_modification {
             for key in iter {
@@ -148,7 +151,10 @@ mod tests {
                 values: original_values.clone(),
                 reset_on_next_modification: true,
             };
-            cache.extend(new_values.iter().map(|(&k, v)| (k, v.clone())), &mut |_, _| ());
+            cache.extend(
+                new_values.iter().map(|(&k, v)| (k, v.clone())),
+                &mut |_, _| (),
+            );
             assert_eq!(&cache.values, &new_values);
             assert_eq!(cache.reset_on_next_modification, false);
         }
@@ -158,9 +164,14 @@ mod tests {
                 values: original_values.clone(),
                 reset_on_next_modification: false,
             };
-            cache.extend(new_values.iter().map(|(&k, v)| (k, v.clone())), &mut |_, _| ());
-            assert_eq!(&cache.values,
-                       &indexmap!{ 1 => (), 2 => (), 3 => (), 4 => (), 5 => () });
+            cache.extend(
+                new_values.iter().map(|(&k, v)| (k, v.clone())),
+                &mut |_, _| (),
+            );
+            assert_eq!(
+                &cache.values,
+                &indexmap!{ 1 => (), 2 => (), 3 => (), 4 => (), 5 => () }
+            );
             assert_eq!(cache.reset_on_next_modification, false);
         }
     }
@@ -218,4 +229,3 @@ mod tests {
         }
     }
 }
-
