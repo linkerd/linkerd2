@@ -157,67 +157,22 @@ func (h *handler) handleApiPods(w http.ResponseWriter, req *http.Request, p http
 }
 
 func (h *handler) handleApiStat(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
-	timeWindow := req.FormValue("window")
-	resourceName := req.FormValue("resource_name")
-	resourceType := req.FormValue("resource_type")
-	namespace := req.FormValue("namespace")
-	outToResourceName := req.FormValue("out_to_resource_name")
-	outToResourceType := req.FormValue("out_to_resource_type")
-	outToResourceNamespace := req.FormValue("out_to_resource_namespace")
-	outFromResourceName := req.FormValue("out_from_resource_name")
-	outFromResourceType := req.FormValue("out_from_resource_type")
-	outFromResourceNamespace := req.FormValue("out_from_resource_namespace")
+	var requestParams util.StatSummaryRequestParams
+	requestParams.TimeWindow = req.FormValue("window")
+	requestParams.ResourceName = req.FormValue("resource_name")
+	requestParams.ResourceType = req.FormValue("resource_type")
+	requestParams.Namespace = req.FormValue("namespace")
+	requestParams.OutToName = req.FormValue("out_to_name")
+	requestParams.OutToType = req.FormValue("out_to_type")
+	requestParams.OutToNamespace = req.FormValue("out_to_namespace")
+	requestParams.OutFromName = req.FormValue("out_from_name")
+	requestParams.OutFromType = req.FormValue("out_from_type")
+	requestParams.OutFromNamespace = req.FormValue("out_from_namespace")
 
-	window := defaultMetricTimeWindow
-	if timeWindow != "" {
-		var requestedWindow pb.TimeWindow
-		requestedWindow, err := util.GetWindow(timeWindow)
-		if err != nil {
-			renderJsonError(w, err, http.StatusInternalServerError)
-			return
-		}
-		window = requestedWindow
-	}
-
-	statRequest := &pb.StatSummaryRequest{
-		Selector: &pb.ResourceSelection{
-			Resource: &pb.Resource{
-				Namespace: namespace,
-				Name:      resourceName,
-				Type:      resourceType,
-			},
-		},
-		TimeWindow: window,
-	}
-
-	if outToResourceName != "" || outToResourceType != "" || outToResourceNamespace != "" {
-		if outToResourceNamespace == "" {
-			outToResourceNamespace = namespace
-		}
-
-		outToResource := pb.StatSummaryRequest_OutToResource{
-			OutToResource: &pb.Resource{
-				Namespace: outToResourceNamespace,
-				Type:      outToResourceType,
-				Name:      outToResourceName,
-			},
-		}
-		statRequest.Outbound = &outToResource
-	}
-
-	if outFromResourceName != "" || outFromResourceType != "" || outFromResourceNamespace != "" {
-		if outFromResourceNamespace == "" {
-			outFromResourceNamespace = namespace
-		}
-
-		outFromResource := pb.StatSummaryRequest_OutFromResource{
-			OutFromResource: &pb.Resource{
-				Namespace: outFromResourceNamespace,
-				Type:      outFromResourceType,
-				Name:      outFromResourceName,
-			},
-		}
-		statRequest.Outbound = &outFromResource
+	statRequest, err := util.BuildStatSummaryRequest(requestParams)
+	if err != nil {
+		renderJsonError(w, err, http.StatusInternalServerError)
+		return
 	}
 
 	result, err := h.apiClient.StatSummary(req.Context(), statRequest)

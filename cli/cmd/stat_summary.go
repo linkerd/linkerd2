@@ -167,55 +167,19 @@ func writeStatTableToBuffer(resp *pb.StatSummaryResponse, w *tabwriter.Writer) {
 }
 
 func buildStatSummaryRequest() (*pb.StatSummaryRequest, error) {
-	window, err := util.GetWindow(timeWindow)
-	if err != nil {
-		return nil, err
-	}
+	var requestParams util.StatSummaryRequestParams
+	requestParams.TimeWindow = timeWindow
+	requestParams.ResourceName = resourceName
+	requestParams.ResourceType = resourceType
+	requestParams.Namespace = namespace
+	requestParams.OutToName = outToName
+	requestParams.OutToType = outToType
+	requestParams.OutToNamespace = outToNamespace
+	requestParams.OutFromName = outFromName
+	requestParams.OutFromType = outFromType
+	requestParams.OutFromNamespace = outFromNamespace
 
-	request := pb.StatSummaryRequest{
-		Selector: &pb.ResourceSelection{
-			Resource: &pb.Resource{
-				Namespace: namespace,
-				Type:      resourceType,
-				Name:      resourceName,
-			},
-		},
-		TimeWindow: window,
-	}
-
-	if outToName != "" || outToType != "" || outToNamespace != "" {
-		if outToNamespace == "" {
-			outToNamespace = namespace
-		}
-
-		outToResource := pb.StatSummaryRequest_OutToResource{
-			OutToResource: &pb.Resource{
-				Namespace: outToNamespace,
-				Type:      outToType,
-				Name:      outToName,
-			},
-		}
-		request.Outbound = &outToResource
-	}
-	if outFromName != "" || outFromType != "" || outFromNamespace != "" {
-		if outFromNamespace == "" {
-			outFromNamespace = namespace
-		}
-
-		outFromResource := pb.StatSummaryRequest_OutFromResource{
-			OutFromResource: &pb.Resource{
-				Namespace: outFromNamespace,
-				Type:      outFromType,
-				Name:      outFromName,
-			},
-		}
-
-		// you can't set both outToResource and outToResource at the same time
-		// so if the user sets both, outTo will be overridden
-		request.Outbound = &outFromResource
-	}
-
-	return &request, nil
+	return util.BuildStatSummaryRequest(requestParams)
 }
 
 func getRequestRate(r pb.StatTable_PodGroup_Row) float64 {
