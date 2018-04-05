@@ -164,6 +164,9 @@ func (h *handler) handleApiStat(w http.ResponseWriter, req *http.Request, p http
 	outToResourceName := req.FormValue("out_to_resource_name")
 	outToResourceType := req.FormValue("out_to_resource_type")
 	outToResourceNamespace := req.FormValue("out_to_resource_namespace")
+	outFromResourceName := req.FormValue("out_from_resource_name")
+	outFromResourceType := req.FormValue("out_from_resource_type")
+	outFromResourceNamespace := req.FormValue("out_from_resource_namespace")
 
 	window := defaultMetricTimeWindow
 	if timeWindow != "" {
@@ -200,6 +203,21 @@ func (h *handler) handleApiStat(w http.ResponseWriter, req *http.Request, p http
 			},
 		}
 		statRequest.Outbound = &outToResource
+	}
+
+	if outFromResourceName != "" || outFromResourceType != "" || outFromResourceNamespace != "" {
+		if outFromResourceNamespace == "" {
+			outFromResourceNamespace = namespace
+		}
+
+		outFromResource := pb.StatSummaryRequest_OutFromResource{
+			OutFromResource: &pb.Resource{
+				Namespace: outFromResourceNamespace,
+				Type:      outFromResourceType,
+				Name:      outFromResourceName,
+			},
+		}
+		statRequest.Outbound = &outFromResource
 	}
 
 	result, err := h.apiClient.StatSummary(req.Context(), statRequest)

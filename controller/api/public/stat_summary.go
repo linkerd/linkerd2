@@ -117,18 +117,13 @@ func promLabel(key, val string) string {
 }
 
 func buildRequestLabels(req *pb.StatSummaryRequest) string {
-	labels := []string{
-		promLabel("namespace", req.Resource.Spec.Namespace),
-	}
-
-	if req.Resource.Spec.Name != "" {
-		labels = append(labels, promLabel(req.Resource.Spec.Type, req.Resource.Spec.Name))
-	}
+	labels := []string{}
 
 	var direction string
 	switch req.Outbound.(type) {
 	case *pb.StatSummaryRequest_None:
 		direction = "inbound"
+
 	case *pb.StatSummaryRequest_OutToResource:
 		direction = "outbound"
 
@@ -138,17 +133,38 @@ func buildRequestLabels(req *pb.StatSummaryRequest) string {
 			req.GetOutToResource().Name,
 		)
 		labels = append(labels, dstLabel)
+
 	case *pb.StatSummaryRequest_OutFromResource:
 		direction = "outbound"
 
-		srcLabel := fmt.Sprintf("src_namespace=\"%s\", src_%s=\"%s\"",
-			req.GetOutFromResource().Namespace, // are we going to enforce that ns/type/name are all set?
-			req.GetOutFromResource().Type,
-			req.GetOutFromResource().Name,
+		srcLabel := fmt.Sprintf("dst_namespace=\"%s\", dst_%s=\"%s\"",
+			req.Resource.Spec.Namespace,
+			req.Resource.Spec.Type,
+			req.Resource.Spec.Name,
 		)
 		labels = append(labels, srcLabel)
+
+		outFromNs := req.GetOutFromResource().Namespace
+		if outFromNs == "" {
+			outFromNs = req.Resource.Spec.Namespace
+		}
+
+		labels = append(labels, promLabel("namespace", outFromNs))
+		if req.Resource.Spec.Name != "" {
+			labels = append(labels, promLabel(req.GetOutFromResource().Type, req.GetOutFromResource().Name))
+		}
 	default:
 		direction = "inbound"
+
+	}
+
+	// it's weird to check this again outside the switch, but including this code
+	// in the other three switch branches is very repetitive
+	if req.GetOutFromResource() == nil {
+		labels = append(labels, promLabel("namespace", req.Resource.Spec.Namespace))
+		if req.Resource.Spec.Name != "" {
+			labels = append(labels, promLabel(req.Resource.Spec.Type, req.Resource.Spec.Name))
+		}
 	}
 	labels = append(labels, promLabel("direction", direction))
 
