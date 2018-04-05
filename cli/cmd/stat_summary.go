@@ -6,11 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 	"text/tabwriter"
 	"time"
 
+	"github.com/prometheus/common/log"
 	"github.com/runconduit/conduit/controller/api/util"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/spf13/cobra"
@@ -135,7 +135,7 @@ func writeStatTableToBuffer(resp *pb.StatSummaryResponse, w *tabwriter.Writer) {
 			}
 
 			stats[name] = &summaryRow{
-				meshed:      strconv.FormatUint(r.MeshedPodCount, 10) + "/" + strconv.FormatUint(r.TotalPodCount, 10),
+				meshed:      fmt.Sprintf("%d/%d", r.MeshedPodCount, r.TotalPodCount),
 				requestRate: getRequestRate(*r),
 				successRate: getSuccessRate(*r),
 			}
@@ -167,17 +167,18 @@ func writeStatTableToBuffer(resp *pb.StatSummaryResponse, w *tabwriter.Writer) {
 }
 
 func buildStatSummaryRequest() (*pb.StatSummaryRequest, error) {
-	var requestParams util.StatSummaryRequestParams
-	requestParams.TimeWindow = timeWindow
-	requestParams.ResourceName = resourceName
-	requestParams.ResourceType = resourceType
-	requestParams.Namespace = namespace
-	requestParams.OutToName = outToName
-	requestParams.OutToType = outToType
-	requestParams.OutToNamespace = outToNamespace
-	requestParams.OutFromName = outFromName
-	requestParams.OutFromType = outFromType
-	requestParams.OutFromNamespace = outFromNamespace
+	requestParams := util.StatSummaryRequestParams{
+		TimeWindow:       timeWindow,
+		ResourceName:     resourceName,
+		ResourceType:     resourceType,
+		Namespace:        namespace,
+		OutToName:        outToName,
+		OutToType:        outToType,
+		OutToNamespace:   outToNamespace,
+		OutFromName:      outFromName,
+		OutFromType:      outFromType,
+		OutFromNamespace: outFromNamespace,
+	}
 
 	return util.BuildStatSummaryRequest(requestParams)
 }
@@ -190,12 +191,14 @@ func getRequestRate(r pb.StatTable_PodGroup_Row) float64 {
 	failure := r.Stats.FailureCount
 	window, err := util.GetWindowString(r.TimeWindow)
 	if err != nil {
-		fmt.Println(err.Error())
+		log.Error(err.Error())
+		return 0.0
 	}
 
 	windowLength, err := time.ParseDuration(window)
 	if err != nil {
-		fmt.Println(err.Error())
+		log.Error(err.Error())
+		return 0.0
 	}
 	return float64(success+failure) / windowLength.Seconds()
 }

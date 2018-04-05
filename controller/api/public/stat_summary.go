@@ -25,8 +25,8 @@ const (
 )
 
 type meshedCount struct {
-	inMesh    uint64
-	notInMesh uint64
+	inMesh uint64
+	total  uint64
 }
 
 func (h *handler) StatSummary(ctx context.Context, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
@@ -82,7 +82,7 @@ func (h *handler) deploymentQuery(ctx context.Context, req *pb.StatSummaryReques
 		}
 		if count, ok := meshCount[resource.Name]; ok {
 			row.MeshedPodCount = count.inMesh
-			row.TotalPodCount = count.inMesh + count.notInMesh
+			row.TotalPodCount = count.total
 		}
 
 		rows = append(rows, &row)
@@ -116,9 +116,6 @@ func buildRequestLabels(req *pb.StatSummaryRequest) string {
 
 	var direction string
 	switch req.Outbound.(type) {
-	case *pb.StatSummaryRequest_None:
-		direction = "inbound"
-
 	case *pb.StatSummaryRequest_OutToResource:
 		direction = "outbound"
 
@@ -150,7 +147,6 @@ func buildRequestLabels(req *pb.StatSummaryRequest) string {
 		}
 	default:
 		direction = "inbound"
-
 	}
 
 	// it's weird to check this again outside the switch, but including this code
@@ -253,10 +249,9 @@ func (h *handler) getMeshedPodCount(namespace string, obj runtime.Object) (*mesh
 
 	meshCount := &meshedCount{}
 	for _, pod := range pods {
+		meshCount.total++
 		if isInMesh(pod) {
 			meshCount.inMesh++
-		} else {
-			meshCount.notInMesh++
 		}
 	}
 

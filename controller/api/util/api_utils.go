@@ -86,12 +86,11 @@ type StatSummaryRequestParams struct {
 func BuildStatSummaryRequest(p StatSummaryRequestParams) (*pb.StatSummaryRequest, error) {
 	window := defaultMetricTimeWindow
 	if p.TimeWindow != "" {
-		var requestedWindow pb.TimeWindow
-		requestedWindow, err := GetWindow(p.TimeWindow)
+		var err error
+		window, err = GetWindow(p.TimeWindow)
 		if err != nil {
 			return nil, err
 		}
-		window = requestedWindow
 	}
 
 	statRequest := &pb.StatSummaryRequest{

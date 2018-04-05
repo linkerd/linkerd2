@@ -157,17 +157,18 @@ func (h *handler) handleApiPods(w http.ResponseWriter, req *http.Request, p http
 }
 
 func (h *handler) handleApiStat(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
-	var requestParams util.StatSummaryRequestParams
-	requestParams.TimeWindow = req.FormValue("window")
-	requestParams.ResourceName = req.FormValue("resource_name")
-	requestParams.ResourceType = req.FormValue("resource_type")
-	requestParams.Namespace = req.FormValue("namespace")
-	requestParams.OutToName = req.FormValue("out_to_name")
-	requestParams.OutToType = req.FormValue("out_to_type")
-	requestParams.OutToNamespace = req.FormValue("out_to_namespace")
-	requestParams.OutFromName = req.FormValue("out_from_name")
-	requestParams.OutFromType = req.FormValue("out_from_type")
-	requestParams.OutFromNamespace = req.FormValue("out_from_namespace")
+	requestParams := util.StatSummaryRequestParams{
+		TimeWindow:       req.FormValue("window"),
+		ResourceName:     req.FormValue("resource_name"),
+		ResourceType:     req.FormValue("resource_type"),
+		Namespace:        req.FormValue("namespace"),
+		OutToName:        req.FormValue("out_to_name"),
+		OutToType:        req.FormValue("out_to_type"),
+		OutToNamespace:   req.FormValue("out_to_namespace"),
+		OutFromName:      req.FormValue("out_from_name"),
+		OutFromType:      req.FormValue("out_from_type"),
+		OutFromNamespace: req.FormValue("out_from_namespace"),
+	}
 
 	statRequest, err := util.BuildStatSummaryRequest(requestParams)
 	if err != nil {
