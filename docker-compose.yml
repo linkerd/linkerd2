@@ -112,12 +112,14 @@ services:
     - --storage.tsdb.retention=6h
 
   grafana:
-    image: grafana/grafana:5.0.4
+    build:
+      context: .
+      dockerfile: grafana/Dockerfile
     ports:
     - 3000:3000
     volumes:
-    # TODO: find a way to share the dashboard json files, currently in cli/install/*.go
     - ./grafana/dev.grafana.ini:/etc/grafana/grafana.ini:ro
+    - ./grafana/dev.dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml:ro
     - ./grafana/dev.datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
 
   simulate-proxy:

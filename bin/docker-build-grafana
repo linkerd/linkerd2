@@ -8,11 +8,11 @@ if [ $# -ne 0 ]; then
 fi
 
 bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+rootdir="$( cd $bindir/.. && pwd )"
 
-$bindir/docker-build-controller
-$bindir/docker-build-web
-$bindir/docker-build-proxy-init
-$bindir/docker-build-cli-bin
-$bindir/docker-build-grafana
+. $bindir/_docker.sh
+. $bindir/_tag.sh
 
-$bindir/docker-build-proxy
+dockerfile=$rootdir/grafana/Dockerfile
+
+docker_build grafana "$(head_root_tag)" $dockerfile
