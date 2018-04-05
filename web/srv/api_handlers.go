@@ -177,8 +177,8 @@ func (h *handler) handleApiStat(w http.ResponseWriter, req *http.Request, p http
 	}
 
 	statRequest := &pb.StatSummaryRequest{
-		Resource: &pb.ResourceSelection{
-			Spec: &pb.Resource{
+		Selector: &pb.ResourceSelection{
+			Resource: &pb.Resource{
 				Namespace: namespace,
 				Name:      resourceName,
 				Type:      resourceType,

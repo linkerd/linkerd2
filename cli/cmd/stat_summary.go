@@ -115,7 +115,7 @@ func writeStatTableToBuffer(resp *pb.StatSummaryResponse, w *tabwriter.Writer) {
 	for _, statTable := range resp.GetOk().StatTables {
 		table := statTable.GetPodGroup()
 		for _, r := range table.Rows {
-			name := r.Spec.Name
+			name := r.Resource.Name
 			if name == "" {
 				continue
 			}
@@ -165,8 +165,8 @@ func buildStatSummaryRequest() (*pb.StatSummaryRequest, error) {
 	}
 
 	request := pb.StatSummaryRequest{
-		Resource: &pb.ResourceSelection{
-			Spec: &pb.Resource{
+		Selector: &pb.ResourceSelection{
+			Resource: &pb.Resource{
 				Namespace: namespace,
 				Type:      resourceType,
 				Name:      resourceName,
@@ -193,6 +193,9 @@ func buildStatSummaryRequest() (*pb.StatSummaryRequest, error) {
 }
 
 func getRequestRate(r pb.StatTable_PodGroup_Row) float64 {
+	if r.Stats == nil {
+		return 0.0
+	}
 	success := r.Stats.SuccessCount
 	failure := r.Stats.FailureCount
 	window, err := util.GetWindowString(r.TimeWindow)
@@ -208,6 +211,10 @@ func getRequestRate(r pb.StatTable_PodGroup_Row) float64 {
 }
 
 func getSuccessRate(r pb.StatTable_PodGroup_Row) float64 {
+	if r.Stats == nil {
+		return 0.0
+	}
+
 	success := r.Stats.SuccessCount
 	failure := r.Stats.FailureCount
 

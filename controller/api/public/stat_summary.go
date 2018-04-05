@@ -7,16 +7,15 @@ import (
 	"strings"
 	"time"
 
-	"k8s.io/apimachinery/pkg/fields"
-
 	"github.com/prometheus/common/model"
 	apiUtil "github.com/runconduit/conduit/controller/api/util"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
 	log "github.com/sirupsen/logrus"
-	v1beta1 "k8s.io/api/apps/v1beta1"
+	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -31,7 +30,7 @@ type meshedCount struct {
 }
 
 func (h *handler) StatSummary(ctx context.Context, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
-	resourceType, err := k8s.CanonicalKubernetesNameFromFriendlyName(req.Resource.Spec.Type)
+	resourceType, err := k8s.CanonicalKubernetesNameFromFriendlyName(req.Selector.Resource.Type)
 	if err != nil {
 		return nil, err
 	}
@@ -46,8 +45,8 @@ func (h *handler) StatSummary(ctx context.Context, req *pb.StatSummaryRequest) (
 
 func (h *handler) deploymentQuery(ctx context.Context, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
 	rows := make([]*pb.StatTable_PodGroup_Row, 0)
-	deployments := []v1beta1.Deployment{}
-	var meshCount map[string]meshedCount
+	deployments := []appsv1.Deployment{}
+	var meshCount map[string]*meshedCount
 
 	timeWindow, err := apiUtil.GetWindowString(req.TimeWindow)
 	if err != nil {
@@ -55,10 +54,10 @@ func (h *handler) deploymentQuery(ctx context.Context, req *pb.StatSummaryReques
 	}
 
 	// TODO: parallelize the k8s api query and the prometheus query
-	if req.Resource.Spec.Name == "" || req.Resource.Spec.Name == "all" {
-		deployments, meshCount, err = h.getDeployments(req.Resource.Spec.Namespace)
+	if req.Selector.Resource.Name == "" || req.Selector.Resource.Name == "all" {
+		deployments, meshCount, err = h.getDeployments(req.Selector.Resource.Namespace)
 	} else {
-		deployments, meshCount, err = h.getDeployment(req.Resource.Spec.Namespace, req.Resource.Spec.Name)
+		deployments, meshCount, err = h.getDeployment(req.Selector.Resource.Namespace, req.Selector.Resource.Name)
 	}
 	if err != nil {
 		return nil, err
@@ -66,24 +65,20 @@ func (h *handler) deploymentQuery(ctx context.Context, req *pb.StatSummaryReques
 
 	requestLabels := buildRequestLabels(req)
 
-	requestMetrics, err := h.getRequests(ctx, requestLabels, req.Resource.Spec.Type, timeWindow)
+	requestMetrics, err := h.getRequests(ctx, requestLabels, req.Selector.Resource.Type, timeWindow)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, resource := range deployments {
 		row := pb.StatTable_PodGroup_Row{
-			Spec: &pb.Resource{
+			Resource: &pb.Resource{
 				Namespace: resource.Namespace,
-				Type:      req.Resource.Spec.Type,
+				Type:      req.Selector.Resource.Type,
 				Name:      resource.Name,
 			},
 			TimeWindow: req.TimeWindow,
-			Stats:      &pb.BasicStats{},
-		}
-		if val, ok := requestMetrics[resource.Name]; ok {
-			row.Stats.SuccessCount = val["success"]
-			row.Stats.FailureCount = val["fail"]
+			Stats:      requestMetrics[resource.Name],
 		}
 		if count, ok := meshCount[resource.Name]; ok {
 			row.MeshedPodCount = count.inMesh
@@ -118,11 +113,11 @@ func promLabel(key, val string) string {
 
 func buildRequestLabels(req *pb.StatSummaryRequest) string {
 	labels := []string{
-		promLabel("namespace", req.Resource.Spec.Namespace),
+		promLabel("namespace", req.Selector.Resource.Namespace),
 	}
 
-	if req.Resource.Spec.Name != "" {
-		labels = append(labels, promLabel(req.Resource.Spec.Type, req.Resource.Spec.Name))
+	if req.Selector.Resource.Name != "" {
+		labels = append(labels, promLabel(req.Selector.Resource.Type, req.Selector.Resource.Name))
 	}
 
 	var direction string
@@ -155,7 +150,7 @@ func buildRequestLabels(req *pb.StatSummaryRequest) string {
 	return strings.Join(labels, ",")
 }
 
-func (h *handler) getRequests(ctx context.Context, reqLabels string, groupBy string, timeWindow string) (map[string]map[string]uint64, error) {
+func (h *handler) getRequests(ctx context.Context, reqLabels string, groupBy string, timeWindow string) (map[string]*pb.BasicStats, error) {
 	requestsQuery := fmt.Sprintf(reqQuery, reqLabels, timeWindow, groupBy)
 
 	resultVector, err := h.QueryProm(ctx, requestsQuery)
@@ -165,16 +160,20 @@ func (h *handler) getRequests(ctx context.Context, reqLabels string, groupBy str
 	return processRequests(resultVector, groupBy), nil
 }
 
-func processRequests(vec model.Vector, labelSelector string) map[string]map[string]uint64 {
-	result := make(map[string]map[string]uint64, 0)
+func processRequests(vec model.Vector, labelSelector string) map[string]*pb.BasicStats {
+	result := make(map[string]*pb.BasicStats)
 	for _, sample := range vec {
 		labels := metricToMap(sample.Metric)
 		if result[labels[labelSelector]] == nil {
-			result[labels[labelSelector]] = make(map[string]uint64)
+			result[labels[labelSelector]] = &pb.BasicStats{}
 		}
 
-		// 'increase' extrapolates values, so sample.Value could be a non-integer
-		result[labels[labelSelector]][labels["classification"]] = uint64(sample.Value)
+		switch labels["classification"] {
+		case "success":
+			result[labels[labelSelector]].SuccessCount = uint64(sample.Value)
+		case "fail":
+			result[labels[labelSelector]].FailureCount = uint64(sample.Value)
+		}
 	}
 	return result
 }
@@ -187,35 +186,40 @@ func metricToMap(metric model.Metric) map[string]string {
 	return labels
 }
 
-func (h *handler) getDeployment(namespace string, name string) ([]v1beta1.Deployment, map[string]meshedCount, error) {
+func (h *handler) getDeployment(namespace string, name string) ([]appsv1.Deployment, map[string]*meshedCount, error) {
 	if namespace == "" {
 		namespace = apiv1.NamespaceDefault
 	}
 
-	deploymentsClient := h.k8sClient.AppsV1beta1().Deployments(namespace)
+	deploymentsClient := h.k8sClient.Apps().Deployments(namespace)
 	deployment, err := deploymentsClient.Get(name, metav1.GetOptions{})
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return []v1beta1.Deployment{*deployment}, nil, nil
+	meshCount, err := h.getMeshedPodCount(namespace, deployment)
+	if err != nil {
+		return nil, nil, err
+	}
+	meshMap := map[string]*meshedCount{deployment.Name: meshCount}
+	return []appsv1.Deployment{*deployment}, meshMap, nil
 }
 
-func (h *handler) getDeployments(namespace string) ([]v1beta1.Deployment, map[string]meshedCount, error) {
+func (h *handler) getDeployments(namespace string) ([]appsv1.Deployment, map[string]*meshedCount, error) {
 	if namespace == "" {
 		namespace = apiv1.NamespaceDefault
 	}
 
-	deploymentsClient := h.k8sClient.AppsV1beta1().Deployments(namespace)
+	deploymentsClient := h.k8sClient.Apps().Deployments(namespace)
 	list, err := deploymentsClient.List(metav1.ListOptions{})
 	if err != nil {
 		return nil, nil, err
 	}
 
-	meshedPodCount := make(map[string]meshedCount)
+	meshedPodCount := make(map[string]*meshedCount)
 	for _, item := range list.Items {
 		// TODO: parallelize
-		meshCount, err := h.getMeshedPodCount(namespace, item.DeepCopyObject())
+		meshCount, err := h.getMeshedPodCount(namespace, &item)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -226,15 +230,18 @@ func (h *handler) getDeployments(namespace string) ([]v1beta1.Deployment, map[st
 }
 
 // this takes a long time for namespaces with many pods
-func (h *handler) getMeshedPodCount(namespace string, obj runtime.Object) (meshedCount, error) {
-	var meshCount meshedCount
-	selector, _ := getSelectorFromObject(obj)
+func (h *handler) getMeshedPodCount(namespace string, obj runtime.Object) (*meshedCount, error) {
+	selector, err := getSelectorFromObject(obj)
+	if err != nil {
+		return nil, err
+	}
 
 	pods, err := h.getAssociatedPods(namespace, selector)
 	if err != nil {
-		return meshCount, err
+		return nil, err
 	}
 
+	meshCount := &meshedCount{}
 	for _, pod := range pods {
 		if isInMesh(pod) {
 			meshCount.inMesh++
@@ -247,7 +254,7 @@ func (h *handler) getMeshedPodCount(namespace string, obj runtime.Object) (meshe
 }
 
 func isInMesh(pod apiv1.Pod) bool {
-	_, ok := pod.Annotations["conduit.io/proxy-version"]
+	_, ok := pod.Annotations[k8s.ProxyVersionAnnotation]
 	return ok
 }
 
@@ -273,7 +280,7 @@ func (h *handler) getAssociatedPods(namespace string, selector map[string]string
 
 func getSelectorFromObject(obj runtime.Object) (map[string]string, error) {
 	switch typed := obj.(type) {
-	case *v1beta1.Deployment:
+	case *appsv1.Deployment:
 		return typed.Spec.Selector.MatchLabels, nil
 
 	default:
