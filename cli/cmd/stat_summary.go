@@ -18,6 +18,7 @@ import (
 
 var namespace, resourceType, resourceName string
 var outToNamespace, outToType, outToName string
+var outFromNamespace, outFromType, outFromName string
 
 var statSummaryCommand = &cobra.Command{
 	Use:   "statsummary [flags] deployment [RESOURCE]",
@@ -67,6 +68,10 @@ func init() {
 	statSummaryCommand.PersistentFlags().StringVarP(&outToName, "out-to", "", "", "If present, restricts outbound stats to the specified resource name")
 	statSummaryCommand.PersistentFlags().StringVarP(&outToNamespace, "out-to-namespace", "", "", "Sets the namespace used to lookup the '--out-to' resource. By default the current '--namespace' is used")
 	statSummaryCommand.PersistentFlags().StringVarP(&outToType, "out-to-resource", "", "", "If present, restricts outbound stats to the specified resource type")
+
+	statSummaryCommand.PersistentFlags().StringVarP(&outFromName, "out-from", "", "", "If present, restricts outbound stats to the specified resource name")
+	statSummaryCommand.PersistentFlags().StringVarP(&outFromNamespace, "out-from-namespace", "", "", "Sets the namespace used to lookup the '--out-to' resource. By default the current '--namespace' is used")
+	statSummaryCommand.PersistentFlags().StringVarP(&outFromType, "out-from-resource", "", "", "If present, restricts outbound stats to the specified resource type")
 }
 
 func requestStatSummaryFromAPI(client pb.ApiClient) (string, error) {
@@ -189,6 +194,21 @@ func buildStatSummaryRequest() (*pb.StatSummaryRequest, error) {
 		}
 		request.Outbound = &outToResource
 	}
+	if outFromName != "" || outFromType != "" || outFromNamespace != "" {
+		if outFromNamespace == "" {
+			outFromNamespace = namespace
+		}
+
+		outFromResource := pb.StatSummaryRequest_OutFromResource{
+			OutFromResource: &pb.Resource{
+				Namespace: outFromNamespace,
+				Type:      outFromType,
+				Name:      outFromName,
+			},
+		}
+		request.Outbound = &outFromResource
+	}
+
 	return &request, nil
 }
 
