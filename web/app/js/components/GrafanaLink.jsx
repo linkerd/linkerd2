@@ -14,7 +14,9 @@ export default class GrafanaLink extends React.Component {
         <img
           src={grafanaicon}
           width={this.props.size}
-          height={this.props.size} />
+          height={this.props.size}
+          title={`${deployment} grafana dashboard`}
+          alt={`link to ${deployment} grafana dashboard`} />
       </this.props.conduitLink>
     );
   }

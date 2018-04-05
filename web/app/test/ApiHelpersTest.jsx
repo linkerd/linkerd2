@@ -89,16 +89,6 @@ describe('ApiHelpers', () => {
       expect(conduitLink.html()).to.contain(linkProps.children[0]);
     });
 
-    it('leaves an absolute link unchanged', () => {
-      api = ApiHelpers('/my/path/prefix');
-      let linkProps = { absolute: true, to: "http://xkcd.com", children: ["Best Webcomic"] };
-      let conduitLink = mount(routerWrap(api.ConduitLink, linkProps));
-
-      expect(conduitLink.find("Link")).to.have.length(1);
-      expect(conduitLink.html()).to.contain('href="http://xkcd.com"');
-      expect(conduitLink.html()).to.contain(linkProps.children[0]);
-    });
-
     it('replaces the deployment in a pathPrefix', () => {
       api = ApiHelpers('/my/path/prefix/web:/foo');
       let linkProps = { deployment: "mydeployment", to: "/myrelpath", children: ["Informative Link Title"] };

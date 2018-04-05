@@ -43,8 +43,8 @@ const columns = {
   resourceName: (shouldLink, ConduitLink) => {
     return {
       title: "Deployment",
-      dataIndex: "name",
-      render: (_, row) => (<React.Fragment>
+      key: "name",
+      render: row => (<React.Fragment>
         {shouldLink ? <ConduitLink to={`/deployment?deploy=${row.name}`}>{row.name}</ConduitLink> : row.name}
         {row.added ? <span>&nbsp;<GrafanaLink name={row.name} size={16} conduitLink={ConduitLink} /></span> : null}
       </React.Fragment>)
