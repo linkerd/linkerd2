@@ -9,7 +9,6 @@ use std::str::FromStr;
 use http;
 
 use connection;
-use convert;
 use dns;
 
 #[derive(Debug, Clone)]
@@ -24,14 +23,24 @@ pub struct HostAndPort {
     pub port: u16,
 }
 
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct DnsNameAndPort {
+    pub host: dns::Name,
+    pub port: u16,
+}
+
+
 #[derive(Clone, Debug)]
 pub enum Host {
-    DnsName(String),
+    DnsName(dns::Name),
     Ip(IpAddr),
 }
 
 #[derive(Clone, Copy, Debug)]
 pub enum HostAndPortError {
+    /// The host is not a valid DNS name or IP address.
+    InvalidHost,
+
     /// The port is missing.
     MissingPort,
 }
@@ -45,17 +54,23 @@ pub struct LookupAddressAndConnect {
 
 // ===== impl HostAndPort =====
 
-impl<'a> convert::TryFrom<&'a http::uri::Authority> for HostAndPort {
-    type Err = HostAndPortError;
-    fn try_from(a: &http::uri::Authority) -> Result<Self, Self::Err> {
+impl HostAndPort {
+    pub fn normalize(a: &http::uri::Authority, default_port: Option<u16>)
+        -> Result<Self, HostAndPortError>
+    {
         let host = {
-            let host = a.host();
-            match IpAddr::from_str(host) {
-                Err(_) => Host::DnsName(host.to_owned()),
-                Ok(ip) => Host::Ip(ip),
+            match dns::Name::normalize(a.host()) {
+                Ok(host) => Host::DnsName(host),
+                Err(_) => {
+                    let ip: IpAddr = IpAddr::from_str(a.host())
+                        .map_err(|_| HostAndPortError::InvalidHost)?;
+                    Host::Ip(ip)
+                },
             }
         };
-        let port = a.port().ok_or_else(|| HostAndPortError::MissingPort)?;
+        let port = a.port()
+            .or(default_port)
+            .ok_or_else(|| HostAndPortError::MissingPort)?;
         Ok(HostAndPort {
             host,
             port

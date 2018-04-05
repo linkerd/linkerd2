@@ -18,9 +18,10 @@ use bind::{self, Bind, Protocol};
 use control::{self, discovery};
 use control::discovery::Bind as BindTrait;
 use ctx;
-use fully_qualified_authority::{FullyQualifiedAuthority, NamedAddress};
+use fully_qualified_authority::FullyQualifiedAuthority;
 use timeout::Timeout;
 use transparency::h1;
+use transport::{DnsNameAndPort, Host, HostAndPort};
 
 type BindProtocol<B> = bind::BindProtocol<Arc<ctx::Proxy>, B>;
 
@@ -52,24 +53,10 @@ impl<B> Outbound<B> {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Destination {
-    LocalSvc(FullyQualifiedAuthority),
-    External(SocketAddr),
+    Hostname(DnsNameAndPort),
+    ExplicitIp(SocketAddr),
+    ImplicitOriginalDst(SocketAddr),
 }
-
-impl From<FullyQualifiedAuthority> for Destination {
-    #[inline]
-    fn from(authority: FullyQualifiedAuthority) -> Self {
-        Destination::LocalSvc(authority)
-    }
-}
-
-impl From<SocketAddr> for Destination {
-    #[inline]
-    fn from(addr: SocketAddr) -> Self {
-        Destination::External(addr)
-    }
-}
-
 
 impl<B> Recognize for Outbound<B>
 where
@@ -92,38 +79,46 @@ where
         // by `NormalizeUri`, as we need to know whether the request will
         // be routed by Host/authority or by SO_ORIGINAL_DST, in order to
         // determine whether the service is reusable.
-        let local = req.uri().authority_part()
+        let authority = req.uri().authority_part()
             .cloned()
         // Therefore, we need to check the host header as well as the URI
         // for a valid authority, before we fall back to SO_ORIGINAL_DST.
-            .or_else(|| h1::authority_from_host(req))
-            .map(|authority| {
-                FullyQualifiedAuthority::normalize(
-                    &authority,
-                    &self.default_namespace)
-            });
+            .or_else(|| h1::authority_from_host(req));
 
-        // If we can't fully qualify the authority as a local service,
-        // and there is no original dst, then we have nothing! In that
-        // case, we return `None`, which results an "unrecognized" error.
-        //
-        // In practice, this shouldn't ever happen, since we expect the proxy
-        // to be run on Linux servers, with iptables setup, so there should
-        // always be an original destination.
-        let dest = if let Some(NamedAddress {
-            name,
-            use_destination_service: true
-        }) = local {
-            Destination::LocalSvc(name)
-        } else {
-            let orig_dst = req.extensions()
+
+        // TODO: Return error when `HostAndPort::normalize()` fails.
+        let mut dest = match authority.as_ref()
+            .and_then(|auth| HostAndPort::normalize(auth, Some(80)).ok()) {
+            Some(HostAndPort { host: Host::DnsName(dns_name), port }) => {
+                let authority = DnsNameAndPort { host: dns_name, port };
+                // Work around the inability of control/discovery.rs to handle unnormalized names.
+                // TODO: Remove this use of `FullyQualifiedAuthority::normalize()` and use
+                // `Destination::Hostname` for all `Host::DnsName` values once DNS machinery is
+                // added to control/discovery.rs.
+                FullyQualifiedAuthority::normalize(&authority, &self.default_namespace)
+                    .map(|_| Destination::Hostname(authority))
+            },
+            Some(HostAndPort { host: Host::Ip(ip), port }) =>
+                Some(Destination::ExplicitIp(SocketAddr::from((ip, port)))),
+            None => None
+        };
+
+        if dest.is_none() {
+            dest = req.extensions()
                 .get::<Arc<ctx::transport::Server>>()
                 .and_then(|ctx| {
                     ctx.orig_dst_if_not_local()
-                });
-            Destination::External(orig_dst?)
+                })
+                .map(Destination::ImplicitOriginalDst)
         };
 
+        // If there is no authority in the request URI or in the Host header,
+        // and there is no original dst, then we have nothing! In that case,
+        // return `None`, which results an "unrecognized" error. In practice,
+        // this shouldn't ever happen, since we expect the proxy to be run on
+        // Linux servers, with iptables setup, so there should always be an
+        // original destination.
+        let dest = dest?;
 
         Some(proto.into_key(dest))
     }
@@ -145,16 +140,15 @@ where
         debug!("building outbound {:?} client to {:?}", protocol, dest);
 
         let resolve = match *dest {
-            Destination::LocalSvc(ref authority) => {
-                Discovery::LocalSvc(self.discovery.resolve(
+            Destination::Hostname(ref authority) =>
+                Discovery::NamedSvc(self.discovery.resolve(
                     authority,
                     self.bind.clone().with_protocol(protocol.clone()),
-                ))
-            },
-            Destination::External(addr) => {
-                Discovery::External(Some((addr, self.bind.clone()
-                    .with_protocol(protocol.clone()))))
-            }
+                )),
+            Destination::ExplicitIp(addr) =>
+                Discovery::ExplicitIp((addr, self.bind.clone().with_protocol(protocol.clone()))),
+            Destination::ImplicitOriginalDst(addr) =>
+                Discovery::External(Some((addr, self.bind.clone().with_protocol(protocol.clone())))),
         };
 
         let loaded = tower_balance::load::WithPendingRequests::new(resolve);
@@ -176,7 +170,8 @@ where
 }
 
 pub enum Discovery<B> {
-    LocalSvc(discovery::Watch<BindProtocol<B>>),
+    NamedSvc(discovery::Watch<BindProtocol<B>>),
+    ExplicitIp((SocketAddr, BindProtocol<B>)),
     External(Option<(SocketAddr, BindProtocol<B>)>),
 }
 
@@ -193,8 +188,18 @@ where
 
     fn poll(&mut self) -> Poll<Change<Self::Key, Self::Service>, Self::DiscoverError> {
         match *self {
-            Discovery::LocalSvc(ref mut w) => w.poll()
+            Discovery::NamedSvc(ref mut w) => w.poll()
                 .map_err(|_| BindError::Internal),
+            Discovery::ExplicitIp((addr, ref bind)) => {
+                // This "discovers" a single address for a fixed IP address
+                // that never has another change. This can mean it floats
+                // in the Balancer forever. However, when we finally add
+                // circuit-breaking, this should be able to take care of itself,
+                // closing down when the connection is no longer usable.
+                let svc = bind.bind(&addr)
+                    .map_err(|_| BindError::External{ addr })?;
+                Ok(Async::Ready(Change::Insert(addr, svc)))
+            },
             Discovery::External(ref mut opt) => {
                 // This "discovers" a single address for an external service
                 // that never has another change. This can mean it floats
