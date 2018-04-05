@@ -169,7 +169,7 @@ func buildRequestLabels(req *pb.StatSummaryRequest) string {
 func (h *handler) getRequests(ctx context.Context, reqLabels string, groupBy string, timeWindow string) (map[string]*pb.BasicStats, error) {
 	requestsQuery := fmt.Sprintf(reqQuery, reqLabels, timeWindow, groupBy)
 
-	resultVector, err := h.QueryProm(ctx, requestsQuery)
+	resultVector, err := h.queryProm(ctx, requestsQuery)
 	if err != nil {
 		return nil, err
 	}
@@ -304,7 +304,7 @@ func getSelectorFromObject(obj runtime.Object) (map[string]string, error) {
 	}
 }
 
-func (h *handler) QueryProm(ctx context.Context, query string) (model.Vector, error) {
+func (h *handler) queryProm(ctx context.Context, query string) (model.Vector, error) {
 	log.Debugf("Query request: %+v", query)
 	end := time.Now()
 
