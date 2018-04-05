@@ -32,10 +32,27 @@ pub use std::time::Duration;
 
 /// Environment variable for overriding the test patience.
 pub const ENV_TEST_PATIENCE_MS: &'static str = "RUST_TEST_PATIENCE_MS";
-pub const DEFAULT_TEST_PATIENCE: u64 = 15;
+pub const DEFAULT_TEST_PATIENCE: Duration = Duration::from_millis(15);
 
+/// Retry an assertion up to a specified number of times, waiting
+/// `RUST_TEST_PATIENCE_MS` between retries.
+///
+/// If the assertion is successful after a retry, execution will continue
+/// normally. If all retries are exhausted and the assertion still fails,
+/// `assert_eventually!` will panic as though a regular `assert!` had failed.
+/// Note that other panics elsewhere in the code under test will not be
+/// prevented.
+///
+/// This should be used sparingly, but is often useful in end-to-end testing
+/// where a desired state may not be reached immediately. For example, when
+/// some state updates asynchronously and there's no obvious way for the test
+/// to wait for an update to occur before making assertions.
+///
+/// The `RUST_TEST_PATIENCE_MS` environment variable may be used to customize
+/// the backoff duration between retries. This may be useful for purposes such
+/// compensating for decreased performance on CI.
 #[macro_export]
-macro_rules! eventually {
+macro_rules! assert_eventually {
     ($cond:expr, retries: $retries:expr, $($arg:tt)+) => {
         {
             use std::{env, u64};
@@ -43,9 +60,15 @@ macro_rules! eventually {
             use std::str::FromStr;
             // TODO: don't do this *every* time eventually is called (lazy_static?)
             let patience = env::var($crate::support::ENV_TEST_PATIENCE_MS).ok()
-                .and_then(|s| u64::from_str(&s).ok())
+                .map(|s| {
+                    let millis = u64::from_str(&s)
+                        .expect(
+                            "Could not parse RUST_TEST_PATIENCE_MS environment \
+                             variable."
+                        );
+                    Duration::from_millis(millis)
+                })
                 .unwrap_or($crate::support::DEFAULT_TEST_PATIENCE);
-            let patience = Duration::from_millis(patience);
             let start_t = Instant::now();
             for i in 0..($retries + 1) {
                 if $cond {
@@ -62,13 +85,13 @@ macro_rules! eventually {
         }
     };
     ($cond:expr, $($arg:tt)+) => {
-        eventually!($cond, retries: 5, $($arg)+)
+        assert_eventually!($cond, retries: 5, $($arg)+)
     };
     ($cond:expr, retries: $retries:expr) => {
-        eventually!($cond, retries: $retries, stringify!($cond))
+        assert_eventually!($cond, retries: $retries, stringify!($cond))
     };
     ($cond:expr) => {
-        eventually!($cond, retries: 5, stringify!($cond))
+        assert_eventually!($cond, retries: 5, stringify!($cond))
     };
 }
 
@@ -109,6 +132,6 @@ pub fn s(bytes: &[u8]) -> &str {
 
 #[test]
 #[should_panic]
-fn eventually() {
-    eventually!(false)
+fn assert_eventually() {
+    assert_eventually!(false)
 }

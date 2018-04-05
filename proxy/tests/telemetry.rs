@@ -263,7 +263,7 @@ fn telemetry_report_errors_are_ignored() {}
 
 macro_rules! assert_contains {
     ($scrape:expr, $contains:expr) => {
-        eventually!($scrape.contains($contains), "metrics scrape:\n{:8}\ndid not contain:\n{:8}", $scrape, $contains)
+        assert_eventually!($scrape.contains($contains), "metrics scrape:\n{:8}\ndid not contain:\n{:8}", $scrape, $contains)
     }
 }
 
