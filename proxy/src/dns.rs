@@ -37,16 +37,17 @@ impl fmt::Display for Name {
 }
 
 impl Name {
+    /// Parses the input string as a DNS name, normalizing it to lowercase.
     pub fn normalize(s: &str) -> Result<Self, ()> {
         // XXX: `abstract_ns::Name::from_str()` wrongly accepts IP addresses as
         // domain names. Protect against this. TODO: Fix abstract_ns.
         if let Ok(_) = IpAddr::from_str(s) {
             return Err(());
         }
-        // XXX: `abstract_ns::Name::from_str()` doesn't accept uppercase
-        // letters. TODO: Avoid this extra allocation.
+        // XXX: `abstract_ns::Name::from_str()` doesn't accept uppercase letters.
+        //  TODO: Avoid this extra allocation.
         let s = s.to_ascii_lowercase();
-        abstract_ns::Name::from_str(&s) // TODO
+        abstract_ns::Name::from_str(&s)
             .map(Name)
             .map_err(|_| ())
     }
