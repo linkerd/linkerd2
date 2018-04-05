@@ -379,6 +379,9 @@ where
 // ===== impl DestinationServiceQuery =====
 
 impl<T: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>> DestinationServiceQuery<T> {
+    // Initiates a query `query` to the Destination service and returns it as `Some(query)` if the
+    // given authority's host is of a form suitable for using to query the Destination service.
+    // Otherwise, returns `None`.
     fn connect_maybe(
         default_destination_namespace: &str,
         client: &mut T,
