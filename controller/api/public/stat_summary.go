@@ -173,33 +173,27 @@ func (h *handler) getRequests(ctx context.Context, reqLabels string, groupBy str
 	if err != nil {
 		return nil, err
 	}
+
 	return processRequests(resultVector, groupBy), nil
 }
 
 func processRequests(vec model.Vector, labelSelector string) map[string]*pb.BasicStats {
 	result := make(map[string]*pb.BasicStats)
+
 	for _, sample := range vec {
-		labels := metricToMap(sample.Metric)
-		if result[labels[labelSelector]] == nil {
-			result[labels[labelSelector]] = &pb.BasicStats{}
+		label := string(sample.Metric[model.LabelName(labelSelector)])
+		if result[label] == nil {
+			result[label] = &pb.BasicStats{}
 		}
 
-		switch labels["classification"] {
+		switch string(sample.Metric[model.LabelName("classification")]) {
 		case "success":
-			result[labels[labelSelector]].SuccessCount = uint64(sample.Value)
+			result[label].SuccessCount = uint64(sample.Value)
 		case "fail":
-			result[labels[labelSelector]].FailureCount = uint64(sample.Value)
+			result[label].FailureCount = uint64(sample.Value)
 		}
 	}
 	return result
-}
-
-func metricToMap(metric model.Metric) map[string]string {
-	labels := make(map[string]string)
-	for k, v := range metric {
-		labels[string(k)] = string(v)
-	}
-	return labels
 }
 
 func (h *handler) getDeployment(namespace string, name string) ([]appsv1.Deployment, map[string]*meshedCount, error) {
