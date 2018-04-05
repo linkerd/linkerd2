@@ -32,12 +32,13 @@ const columnDefinitions = (sortable = true, resource, ConduitLink) => {
     {
       title: resource.title,
       dataIndex: "name",
-      key: "name",
       defaultSortOrder: 'ascend',
       width: 150,
       sorter: sortable ? (a, b) => (a.name || "").localeCompare(b.name) : false,
-      render: name => !resource.url ? name :
-        <ConduitLink to={`${resource.url}${name}`}>{name}</ConduitLink>
+      render: (_, row) => (<React.Fragment>
+        {!resource.url ? row.name : <ConduitLink to={`${resource.url}${row.name}`}>{row.name}</ConduitLink>}
+        {row.added ? <span>&nbsp;<GrafanaLink name={row.name} size={16} conduitLink={ConduitLink} /></span> : null}
+      </React.Fragment>)
     },
     {
       title: "Request Rate",
@@ -78,10 +79,7 @@ const columnDefinitions = (sortable = true, resource, ConduitLink) => {
       className: "numeric",
       sorter: sortable ? (a, b) => numericSort(a.P99, b.P99) : false,
       render: metricToFormatter["LATENCY"]
-    },
-    {
-      render: row => row.added ? <GrafanaLink name={row.name} size={16} conduitLink={ConduitLink} /> : null
-    },
+    }
   ];
 };
 

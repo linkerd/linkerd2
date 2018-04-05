@@ -44,20 +44,20 @@ const columns = {
     return {
       title: "Deployment",
       dataIndex: "name",
-      key: "name",
-      render: name => shouldLink ? <ConduitLink to={`/deployment?deploy=${name}`}>{name}</ConduitLink> : name
+      render: (_, row) => (<React.Fragment>
+        {shouldLink ? <ConduitLink to={`/deployment?deploy=${row.name}`}>{row.name}</ConduitLink> : row.name}
+        {row.added ? <span>&nbsp;<GrafanaLink name={row.name} size={16} conduitLink={ConduitLink} /></span> : null}
+      </React.Fragment>)
     };
   },
   pods: {
     title: "Pods",
-    dataIndex: "numEntities",
-    key: "numEntities"
+    dataIndex: "numEntities"
   },
   status: name => {
     return {
       title: name,
       dataIndex: "statuses",
-      key: "statuses",
       width: columnConfig[name].width,
       render: statuses => {
         let multilineDots = _.size(statuses) > columnConfig[name].wrapDotsAt;
@@ -71,12 +71,7 @@ const columns = {
         });
       }
     };
-  },
-  grafana: ConduitLink => {
-    return {
-      render: row => row.added ? <GrafanaLink name={row.name} size={16} conduitLink={ConduitLink} /> : null
-    };
-  },
+  }
 };
 
 export default class StatusTable extends React.Component {
@@ -96,8 +91,7 @@ export default class StatusTable extends React.Component {
     let tableCols = [
       columns.resourceName(this.props.shouldLink, this.props.api.ConduitLink),
       columns.pods,
-      columns.status(this.props.statusColumnTitle),
-      columns.grafana(this.props.api.ConduitLink),
+      columns.status(this.props.statusColumnTitle)
     ];
     let tableData = this.getTableData();
 

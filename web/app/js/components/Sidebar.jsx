@@ -102,7 +102,7 @@ export default class Sidebar extends React.Component {
               <ConduitLink to="/deployments">Deployments</ConduitLink>
             </Menu.Item>
             <Menu.Item className="sidebar-menu-item" key="/docs">
-              <ConduitLink to="https://conduit.io/docs/" absolute="true">Documentation</ConduitLink>
+              <ConduitLink to="https://conduit.io/docs/" absolute="true" targetBlank="true">Documentation</ConduitLink>
             </Menu.Item>
           </Menu>
 

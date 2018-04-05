@@ -140,20 +140,33 @@ export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '10m') => {
   // prefix all links in the app with `pathPrefix`
   class ConduitLink extends React.Component {
     render() {
-      let prefix = pathPrefix.replace("/web:", "/"+this.props.deployment+":");
-      let url = `${prefix}${this.props.to}`;
+      let url = this.props.to;
+
+      if (!this.props.absolute) {
+        let prefix = pathPrefix;
+        if (this.props.deployment) {
+          prefix = prefix.replace("/web:", "/"+this.props.deployment+":");
+        }
+        url = `${prefix}${url}`;
+      }
+
       return (
-        <Link to={url} {...(this.props.targetBlank ? {target:'_blank'} : {})}>{this.props.children}</Link>
+        <Link
+          to={url}
+          {...(this.props.targetBlank ? {target:'_blank'} : {})}>
+          {this.props.children}
+        </Link>
       );
     }
   }
   ConduitLink.propTypes = {
+    absolute: PropTypes.bool,
     deployment: PropTypes.string,
     targetBlank: PropTypes.bool,
     to: PropTypes.string,
   };
   ConduitLink.defaultProps = {
-    deployment: "web",
+    absolute: false,
     targetBlank: false
   };
 
