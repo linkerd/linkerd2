@@ -1,6 +1,8 @@
-use std;
-use std::collections::HashSet;
+
+use std::borrow::Borrow;
 use std::mem;
+use std::hash::Hash;
+use indexmap::IndexMap;
 
 /// A cache that supports incremental updates with lazy resetting on
 /// invalidation.
@@ -11,8 +13,8 @@ use std::mem;
 /// incremental update will then replace the entire contents of the cache,
 /// instead of incrementally augmenting it. Until that next modification,
 /// however, the stale contents of the cache will be made available.
-pub struct Cache<T> {
-    values: HashSet<T>,
+pub struct Cache<K, V> {
+    values: IndexMap<K, V>,
     reset_on_next_modification: bool,
 }
 
@@ -37,15 +39,20 @@ impl<T> Exists<T> {
 
 // ===== impl Cache =====
 
-impl<T> Cache<T> where T: Clone + Copy + Eq + std::hash::Hash {
+impl<K, V> Cache<K, V>
+where
+    K: Copy + Clone,
+    K: Hash + Eq,
+    V: Clone,
+{
     pub fn new() -> Self {
         Cache {
-            values: HashSet::new(),
+            values: IndexMap::new(),
             reset_on_next_modification: true,
         }
     }
 
-    pub fn values(&self) -> &HashSet<T> {
+    pub fn values(&self) -> &IndexMap<K, V> {
         &self.values
     }
 
@@ -54,15 +61,22 @@ impl<T> Cache<T> where T: Clone + Copy + Eq + std::hash::Hash {
     }
 
     pub fn extend<I, F>(&mut self, iter: I, on_change: &mut F)
-        where I: Iterator<Item = T>,
-              F: FnMut(T, CacheChange),
+    where
+        I: Iterator<Item = (K, V)>,
+        F: FnMut((K, V), CacheChange),
     {
-        fn extend_inner<T, I, F>(values: &mut HashSet<T>, iter: I, on_change: &mut F)
-            where T: Copy + Eq + std::hash::Hash, I: Iterator<Item = T>, F: FnMut(T, CacheChange)
+        fn extend_inner<K, V, I, F>(values: &mut IndexMap<K, V>,
+                                    iter: I,
+                                    on_change: &mut F)
+            where
+                K: Eq + Hash + Copy + Clone,
+                V: Clone,
+                I: Iterator<Item = (K, V)>,
+                F: FnMut((K, V), CacheChange)
         {
-            for value in iter {
-                if values.insert(value) {
-                    on_change(value, CacheChange::Insertion);
+            for (key, value) in iter {
+                if values.insert(key, value.clone()).is_some() {
+                    on_change((key, value), CacheChange::Insertion);
                 }
             }
         }
@@ -70,21 +84,23 @@ impl<T> Cache<T> where T: Clone + Copy + Eq + std::hash::Hash {
         if !self.reset_on_next_modification {
             extend_inner(&mut self.values, iter, on_change);
         } else {
-            let to_insert = iter.collect::<HashSet<T>>();
-            extend_inner(&mut self.values, to_insert.iter().map(|value| *value), on_change);
+            let to_insert = iter.collect::<IndexMap<K, V>>();
+            extend_inner(&mut self.values,
+                to_insert.iter().map(|(k, v)| (k.clone(), v.clone())),
+                on_change);
             self.retain(&to_insert, on_change);
         }
         self.reset_on_next_modification = false;
     }
 
     pub fn remove<I, F>(&mut self, iter: I, on_change: &mut F)
-        where I: Iterator<Item = T>,
-              F: FnMut(T, CacheChange)
+        where I: Iterator<Item = K>,
+              F: FnMut((K, V), CacheChange)
     {
         if !self.reset_on_next_modification {
-            for value in iter {
-                if self.values.remove(&value) {
-                    on_change(value, CacheChange::Removal);
+            for key in iter {
+                if let Some(value) = self.values.remove(&key) {
+                    on_change((key, value), CacheChange::Removal);
                 }
             }
         } else {
@@ -93,17 +109,23 @@ impl<T> Cache<T> where T: Clone + Copy + Eq + std::hash::Hash {
         self.reset_on_next_modification = false;
     }
 
-    pub fn clear<F>(&mut self, on_change: &mut F) where F: FnMut(T, CacheChange) {
-        self.retain(&HashSet::new(), on_change)
+    pub fn clear<F>(&mut self, on_change: &mut F)
+    where
+        F: FnMut((K, V), CacheChange),
+    {
+        self.retain(&IndexMap::new(), on_change)
     }
 
-    pub fn retain<F>(&mut self, to_retain: &HashSet<T>, mut on_change: F)
-        where F: FnMut(T, CacheChange)
+    pub fn retain<F, Q>(&mut self, to_retain: &IndexMap<K, V>, mut on_change: F)
+    where
+        F: FnMut((K, V), CacheChange),
+        K: Borrow<Q>,
+        Q: Hash + Eq,
     {
-        self.values.retain(|value| {
-            let retain = to_retain.contains(&value);
+        self.values.retain(|key, value| {
+            let retain = to_retain.contains_key(key.borrow());
             if !retain {
-                on_change(*value, CacheChange::Removal)
+                on_change((*key, value.clone()), CacheChange::Removal)
             }
             retain
         });
@@ -117,17 +139,16 @@ mod tests {
 
     #[test]
     fn extend_reset_on_next_modification() {
-        let original_values = [1, 2, 3, 4].iter().cloned().collect::<HashSet<usize>>();
-
+        let original_values = indexmap!{ 1 => (), 2 => (), 3 => (), 4 => () };
         // One original value, one new value.
-        let new_values = [3, 5].iter().cloned().collect::<HashSet<usize>>();
+        let new_values = indexmap!{3 => (), 5 => ()};
 
         {
             let mut cache = Cache {
                 values: original_values.clone(),
                 reset_on_next_modification: true,
             };
-            cache.extend(new_values.iter().cloned(), &mut |_, _| ());
+            cache.extend(new_values.iter().map(|(&k, v)| (k, v.clone())), &mut |_, _| ());
             assert_eq!(&cache.values, &new_values);
             assert_eq!(cache.reset_on_next_modification, false);
         }
@@ -137,27 +158,27 @@ mod tests {
                 values: original_values.clone(),
                 reset_on_next_modification: false,
             };
-            cache.extend(new_values.iter().cloned(), &mut |_, _| ());
+            cache.extend(new_values.iter().map(|(&k, v)| (k, v.clone())), &mut |_, _| ());
             assert_eq!(&cache.values,
-                       &[1, 2, 3, 4, 5].iter().cloned().collect::<HashSet<usize>>());
+                       &indexmap!{ 1 => (), 2 => (), 3 => (), 4 => (), 5 => () });
             assert_eq!(cache.reset_on_next_modification, false);
         }
     }
 
     #[test]
     fn remove_reset_on_next_modification() {
-        let original_values = [1, 2, 3, 4].iter().cloned().collect::<HashSet<usize>>();
+        let original_values = indexmap!{ 1 => (), 2 => (), 3 => (), 4 => () };
 
         // One original value, one new value.
-        let to_remove = [3, 5].iter().cloned().collect::<HashSet<usize>>();
+        let to_remove = indexmap!{ 3 => (), 5 => ()};
 
         {
             let mut cache = Cache {
                 values: original_values.clone(),
                 reset_on_next_modification: true,
             };
-            cache.remove(to_remove.iter().cloned(), &mut |_, _| ());
-            assert_eq!(&cache.values, &HashSet::new());
+            cache.remove(to_remove.iter().map(|(&k, _)| k), &mut |_, _| ());
+            assert_eq!(&cache.values, &IndexMap::new());
             assert_eq!(cache.reset_on_next_modification, false);
         }
 
@@ -166,15 +187,15 @@ mod tests {
                 values: original_values.clone(),
                 reset_on_next_modification: false,
             };
-            cache.remove(to_remove.iter().cloned(), &mut |_, _| ());
-            assert_eq!(&cache.values, &[1, 2, 4].iter().cloned().collect::<HashSet<usize>>());
+            cache.remove(to_remove.iter().map(|(&k, _)| k), &mut |_, _| ());
+            assert_eq!(&cache.values, &indexmap!{1 => (), 2 => (), 4 => ()});
             assert_eq!(cache.reset_on_next_modification, false);
         }
     }
 
     #[test]
     fn clear_reset_on_next_modification() {
-        let original_values = [1, 2, 3, 4].iter().cloned().collect::<HashSet<usize>>();
+        let original_values = indexmap!{ 1 => (), 2 => (), 3 => (), 4 => () };
 
         {
             let mut cache = Cache {
@@ -182,7 +203,7 @@ mod tests {
                 reset_on_next_modification: true,
             };
             cache.clear(&mut |_, _| ());
-            assert_eq!(&cache.values, &HashSet::new());
+            assert_eq!(&cache.values, &IndexMap::new());
             assert_eq!(cache.reset_on_next_modification, false);
         }
 
@@ -192,8 +213,9 @@ mod tests {
                 reset_on_next_modification: false,
             };
             cache.clear(&mut |_, _| ());
-            assert_eq!(&cache.values, &HashSet::new());
+            assert_eq!(&cache.values, &IndexMap::new());
             assert_eq!(cache.reset_on_next_modification, false);
         }
     }
 }
+
