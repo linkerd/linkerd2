@@ -7,7 +7,9 @@ import (
 	"os/signal"
 	"syscall"
 
+	promApi "github.com/prometheus/client_golang/api"
 	"github.com/runconduit/conduit/controller/api/public"
+	"github.com/runconduit/conduit/controller/k8s"
 	"github.com/runconduit/conduit/controller/tap"
 	"github.com/runconduit/conduit/controller/telemetry"
 	"github.com/runconduit/conduit/controller/util"
@@ -17,6 +19,8 @@ import (
 
 func main() {
 	addr := flag.String("addr", ":8085", "address to serve on")
+	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
+	prometheusUrl := flag.String("prometheus-url", "http://127.0.0.1:9090", "prometheus url")
 	metricsAddr := flag.String("metrics-addr", ":9995", "address to serve scrapable metrics on")
 	telemetryAddr := flag.String("telemetry-addr", "127.0.0.1:8087", "address of telemetry service")
 	tapAddr := flag.String("tap-addr", "127.0.0.1:8088", "address of tap service")
@@ -49,7 +53,17 @@ func main() {
 	}
 	defer tapConn.Close()
 
-	server := public.NewServer(*addr, telemetryClient, tapClient, *controllerNamespace)
+	k8sClient, err := k8s.NewClientSet(*kubeConfigPath)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	prometheusClient, err := promApi.NewClient(promApi.Config{Address: *prometheusUrl})
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	server := public.NewServer(*addr, k8sClient, prometheusClient, telemetryClient, tapClient, *controllerNamespace)
 
 	go func() {
 		log.Infof("starting HTTP server on %+v", *addr)

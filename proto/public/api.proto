@@ -131,17 +131,17 @@ message Resource {
 }
 
 message ResourceSelection {
-  Resource spec = 1;
+  Resource resource = 1;
   string label_selector = 2;
 }
 
 message ResourceError {
-  Resource spec = 1;
+  Resource resource = 1;
   string error = 2;
 }
 
 message StatSummaryRequest {
-  ResourceSelection resource = 1;
+  ResourceSelection selector = 1;
   TimeWindow time_window = 2;
 
   oneof outbound {
@@ -178,7 +178,7 @@ message StatTable {
     repeated Row rows = 1;
 
     message Row {
-      Resource spec = 1;
+      Resource resource = 1;
       TimeWindow time_window = 2;
 
       uint64 meshed_pod_count = 3;

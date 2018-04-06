@@ -89,7 +89,11 @@ var (
 )
 
 func newGrpcServer(telemetryClient telemPb.TelemetryClient, tapClient tapPb.TapClient, controllerNamespace string) *grpcServer {
-	return &grpcServer{telemetryClient: telemetryClient, tapClient: tapClient, controllerNamespace: controllerNamespace}
+	return &grpcServer{
+		telemetryClient:     telemetryClient,
+		tapClient:           tapClient,
+		controllerNamespace: controllerNamespace,
+	}
 }
 
 func (s *grpcServer) Stat(ctx context.Context, req *pb.MetricRequest) (*pb.MetricResponse, error) {
