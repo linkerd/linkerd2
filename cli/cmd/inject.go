@@ -322,19 +322,19 @@ func init() {
 	RootCmd.AddCommand(injectCmd)
 	addProxyConfigFlags(injectCmd)
 	injectCmd.PersistentFlags().StringVar(&initImage, "init-image", "gcr.io/runconduit/proxy-init", "Conduit init container image name")
-	injectCmd.PersistentFlags().UintVar(&inboundPort, "inbound-port", 4143, "proxy port to use for inbound traffic")
-	injectCmd.PersistentFlags().UintVar(&outboundPort, "outbound-port", 4140, "proxy port to use for outbound traffic")
-	injectCmd.PersistentFlags().UintSliceVar(&ignoreInboundPorts, "skip-inbound-ports", nil, "ports that should skip the proxy and send directly to the application")
-	injectCmd.PersistentFlags().UintSliceVar(&ignoreOutboundPorts, "skip-outbound-ports", nil, "outbound ports that should skip the proxy")
+	injectCmd.PersistentFlags().UintVar(&inboundPort, "inbound-port", 4143, "Proxy port to use for inbound traffic")
+	injectCmd.PersistentFlags().UintVar(&outboundPort, "outbound-port", 4140, "Proxy port to use for outbound traffic")
+	injectCmd.PersistentFlags().UintSliceVar(&ignoreInboundPorts, "skip-inbound-ports", nil, "Ports that should skip the proxy and send directly to the application")
+	injectCmd.PersistentFlags().UintSliceVar(&ignoreOutboundPorts, "skip-outbound-ports", nil, "Outbound ports that should skip the proxy")
 }
 
 func addProxyConfigFlags(cmd *cobra.Command) {
-	cmd.PersistentFlags().StringVarP(&conduitVersion, "conduit-version", "v", version.Version, "tag to be used for Conduit images")
+	cmd.PersistentFlags().StringVarP(&conduitVersion, "conduit-version", "v", version.Version, "Tag to be used for Conduit images")
 	cmd.PersistentFlags().StringVar(&proxyImage, "proxy-image", "gcr.io/runconduit/proxy", "Conduit proxy container image name")
 	cmd.PersistentFlags().StringVar(&imagePullPolicy, "image-pull-policy", "IfNotPresent", "Docker image pull policy")
 	cmd.PersistentFlags().Int64Var(&proxyUID, "proxy-uid", 2102, "Run the proxy under this user ID")
-	cmd.PersistentFlags().StringVar(&proxyLogLevel, "proxy-log-level", "warn,conduit_proxy=info", "log level for the proxy")
-	cmd.PersistentFlags().UintVar(&proxyAPIPort, "api-port", 8086, "port where the Conduit controller is running")
-	cmd.PersistentFlags().UintVar(&proxyControlPort, "control-port", 4190, "proxy port to use for control")
-	cmd.PersistentFlags().UintVar(&proxyMetricsPort, "metrics-port", 4191, "proxy port to serve metrics on")
+	cmd.PersistentFlags().StringVar(&proxyLogLevel, "proxy-log-level", "warn,conduit_proxy=info", "Log level for the proxy")
+	cmd.PersistentFlags().UintVar(&proxyAPIPort, "api-port", 8086, "Port where the Conduit controller is running")
+	cmd.PersistentFlags().UintVar(&proxyControlPort, "control-port", 4190, "Proxy port to use for control")
+	cmd.PersistentFlags().UintVar(&proxyMetricsPort, "metrics-port", 4191, "Proxy port to serve metrics on")
 }

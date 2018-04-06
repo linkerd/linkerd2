@@ -79,7 +79,6 @@ The TARGET argument is used to specify the pod or deployment to tap.`,
 
 func init() {
 	RootCmd.AddCommand(tapCmd)
-	addControlPlaneNetworkingArgs(tapCmd)
 	tapCmd.PersistentFlags().Float32Var(&maxRps, "max-rps", 1.0, "Maximum requests per second to tap.")
 	tapCmd.PersistentFlags().Uint32Var(&toPort, "to-port", 0, "Display requests to this port")
 	tapCmd.PersistentFlags().StringVar(&toIP, "to-ip", "", "Display requests to this IP")
