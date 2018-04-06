@@ -79,15 +79,15 @@ The TARGET argument is used to specify the pod or deployment to tap.`,
 
 func init() {
 	RootCmd.AddCommand(tapCmd)
-	tapCmd.PersistentFlags().Float32Var(&maxRps, "max-rps", 1.0, "maximum requests per second to tap.")
-	tapCmd.PersistentFlags().Uint32Var(&toPort, "to-port", 0, "display requests to this port")
-	tapCmd.PersistentFlags().StringVar(&toIP, "to-ip", "", "display requests to this IP")
-	tapCmd.PersistentFlags().Uint32Var(&fromPort, "from-port", 0, "display requests from this port")
-	tapCmd.PersistentFlags().StringVar(&fromIP, "from-ip", "", "display requests from this IP")
-	tapCmd.PersistentFlags().StringVar(&scheme, "scheme", "", "display requests with this scheme")
-	tapCmd.PersistentFlags().StringVar(&method, "method", "", "display requests with this HTTP method")
-	tapCmd.PersistentFlags().StringVar(&authority, "authority", "", "display requests with this :authority")
-	tapCmd.PersistentFlags().StringVar(&path, "path", "", "display requests with paths that start with this prefix")
+	tapCmd.PersistentFlags().Float32Var(&maxRps, "max-rps", 1.0, "Maximum requests per second to tap.")
+	tapCmd.PersistentFlags().Uint32Var(&toPort, "to-port", 0, "Display requests to this port")
+	tapCmd.PersistentFlags().StringVar(&toIP, "to-ip", "", "Display requests to this IP")
+	tapCmd.PersistentFlags().Uint32Var(&fromPort, "from-port", 0, "Display requests from this port")
+	tapCmd.PersistentFlags().StringVar(&fromIP, "from-ip", "", "Display requests from this IP")
+	tapCmd.PersistentFlags().StringVar(&scheme, "scheme", "", "Display requests with this scheme")
+	tapCmd.PersistentFlags().StringVar(&method, "method", "", "Display requests with this HTTP method")
+	tapCmd.PersistentFlags().StringVar(&authority, "authority", "", "Display requests with this :authority")
+	tapCmd.PersistentFlags().StringVar(&path, "path", "", "Display requests with paths that start with this prefix")
 }
 
 func requestTapFromApi(w io.Writer, client pb.ApiClient, targetName string, resourceType string, req *pb.TapRequest) error {

@@ -123,5 +123,5 @@ func statusCheckResultWasError(w io.Writer) error {
 func init() {
 	RootCmd.AddCommand(checkCmd)
 	checkCmd.Args = cobra.NoArgs
-	checkCmd.PersistentFlags().StringVar(&versionOverride, "expected-version", "", "overrides the version used when checking if Conduit is running the latest version (mostly for testing)")
+	checkCmd.PersistentFlags().StringVar(&versionOverride, "expected-version", "", "Overrides the version used when checking if Conduit is running the latest version (mostly for testing)")
 }

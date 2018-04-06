@@ -67,14 +67,14 @@ If no resource name is specified, displays stats about all resources of the spec
 
 func init() {
 	RootCmd.AddCommand(statSummaryCommand)
-	statSummaryCommand.PersistentFlags().StringVarP(&namespace, "namespace", "n", "default", "namespace of the specified resource")
-	statSummaryCommand.PersistentFlags().StringVarP(&timeWindow, "time-window", "t", "1m", "stat window (one of: \"10s\", \"1m\", \"10m\", \"1h\")")
-	statSummaryCommand.PersistentFlags().StringVar(&outToName, "out-to", "", "if present, restricts outbound stats to the specified resource name")
-	statSummaryCommand.PersistentFlags().StringVar(&outToNamespace, "out-to-namespace", "", "sets the namespace used to lookup the \"--out-to\" resource; by default the current \"--namespace\" is used")
-	statSummaryCommand.PersistentFlags().StringVar(&outToType, "out-to-resource", "", "if present, restricts outbound stats to the specified resource type")
-	statSummaryCommand.PersistentFlags().StringVar(&outFromName, "out-from", "", "if present, restricts outbound stats to the specified resource name")
-	statSummaryCommand.PersistentFlags().StringVar(&outFromNamespace, "out-from-namespace", "", "sets the namespace used to lookup the \"--out-from\" resource; by default the current \"--namespace\" is used")
-	statSummaryCommand.PersistentFlags().StringVar(&outFromType, "out-from-resource", "", "if present, restricts outbound stats to the specified resource type")
+	statSummaryCommand.PersistentFlags().StringVarP(&namespace, "namespace", "n", "default", "Namespace of the specified resource")
+	statSummaryCommand.PersistentFlags().StringVarP(&timeWindow, "time-window", "t", "1m", "Stat window (one of: \"10s\", \"1m\", \"10m\", \"1h\")")
+	statSummaryCommand.PersistentFlags().StringVar(&outToName, "out-to", "", "If present, restricts outbound stats to the specified resource name")
+	statSummaryCommand.PersistentFlags().StringVar(&outToNamespace, "out-to-namespace", "", "Sets the namespace used to lookup the \"--out-to\" resource; by default the current \"--namespace\" is used")
+	statSummaryCommand.PersistentFlags().StringVar(&outToType, "out-to-resource", "", "If present, restricts outbound stats to the specified resource type")
+	statSummaryCommand.PersistentFlags().StringVar(&outFromName, "out-from", "", "If present, restricts outbound stats to the specified resource name")
+	statSummaryCommand.PersistentFlags().StringVar(&outFromNamespace, "out-from-namespace", "", "Sets the namespace used to lookup the \"--out-from\" resource; by default the current \"--namespace\" is used")
+	statSummaryCommand.PersistentFlags().StringVar(&outFromType, "out-from-resource", "", "If present, restricts outbound stats to the specified resource type")
 }
 
 func requestStatSummaryFromAPI(client pb.ApiClient) (string, error) {

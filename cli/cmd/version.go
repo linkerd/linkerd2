@@ -48,8 +48,8 @@ var versionCmd = &cobra.Command{
 func init() {
 	RootCmd.AddCommand(versionCmd)
 	versionCmd.Args = cobra.NoArgs
-	versionCmd.PersistentFlags().BoolVar(&shortVersion, "short", false, "print the version number(s) only, with no additional output")
-	versionCmd.PersistentFlags().BoolVar(&onlyClientVersion, "client", false, "print the client version only")
+	versionCmd.PersistentFlags().BoolVar(&shortVersion, "short", false, "Print the version number(s) only, with no additional output")
+	versionCmd.PersistentFlags().BoolVar(&onlyClientVersion, "client", false, "Print the client version only")
 }
 
 func getServerVersion(client pb.ApiClient) string {
