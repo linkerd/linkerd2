@@ -1,5 +1,6 @@
 import _ from 'lodash';
 import { Link } from 'react-router-dom';
+import PropTypes from 'prop-types';
 import React from 'react';
 import 'whatwg-fetch';
 
@@ -137,14 +138,30 @@ export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '10m') => {
   };
 
   // prefix all links in the app with `pathPrefix`
-  const ConduitLink = props => {
-    let {to, absolute} = props;
+  class ConduitLink extends React.Component {
+    render() {
+      let prefix = pathPrefix;
+      if (this.props.deployment) {
+        prefix = prefix.replace("/web:", "/"+this.props.deployment+":");
+      }
+      let url = `${prefix}${this.props.to}`;
 
-    if (absolute) {
-      return <Link to={to} target="_blank">{props.children}</Link>;
-    } else {
-      return <Link to={`${pathPrefix}${to}`}>{props.children}</Link>;
+      return (
+        <Link
+          to={url}
+          {...(this.props.targetBlank ? {target:'_blank'} : {})}>
+          {this.props.children}
+        </Link>
+      );
     }
+  }
+  ConduitLink.propTypes = {
+    deployment: PropTypes.string,
+    targetBlank: PropTypes.bool,
+    to: PropTypes.string,
+  };
+  ConduitLink.defaultProps = {
+    targetBlank: false
   };
 
   return {

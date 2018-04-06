@@ -281,8 +281,9 @@ If you are running the public API server in Kubernetes, forward `localhost:8085`
 to the Conduit controller pod:
 
 ```bash
-POD_NAME=$(kubectl --namespace=conduit get po --selector=app=controller -o jsonpath='{.items[*].metadata.name}')
-kubectl -n conduit port-forward $POD_NAME 8085:8085
+kubectl --namespace=conduit port-forward $(
+  kubectl --namespace=conduit get po --selector=conduit.io/control-plane-component=controller -o jsonpath='{.items[*].metadata.name}'
+) 8085:8085
 ```
 
 Then connect the local web process to the forwarded port:

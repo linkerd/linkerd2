@@ -9,6 +9,7 @@ vendor
 web/web
 web/app/node_modules
 web/app/dist
+web/app/yarn-error.log
 .protoc
 .gorun
 .dep
