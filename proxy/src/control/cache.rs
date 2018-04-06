@@ -162,8 +162,8 @@ where
                 // If the new value isn't equal to the old value, overwrite
                 // the old value.
                 Some(new_value) =>  {
-                    let old_value = mem::replace(value, new_value);
-                    on_change((*key, old_value), CacheChange::Modification);
+                    let _ = mem::replace(value, new_value.clone());
+                    on_change((*key, new_value), CacheChange::Modification);
                     true
                 },
                 // Key doesn't exist, remove it from the map.

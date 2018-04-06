@@ -103,7 +103,6 @@ enum RxError<T> {
 enum Update {
     Insert(SocketAddr),
     Remove(SocketAddr),
-    ChangeMetadata(SocketAddr),
 }
 
 /// Bind a `SocketAddr` with a protocol.
@@ -192,7 +191,6 @@ where
             // TODO: handle metadata changes by changing the labeling
             // middleware to hold a `futures-watch::Watch` on the label value,
             // so it can be updated.
-            Update::ChangeMetadata(_) => unimplemented!(),
             Update::Remove(addr) => Ok(Async::Ready(Change::Remove(addr))),
         }
     }
@@ -448,12 +446,19 @@ impl <T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
                  authority_for_logging: &FullyQualifiedAuthority,
                  addr: SocketAddr,
                  change: CacheChange) {
+        if let CacheChange::Modification = change {
+            // Skip `Modification` cache change events entirely until metadata
+            // changes occur, and are handled correctly.
+            return;
+        }
         let (update_str, update_constructor): (&'static str, fn(SocketAddr) -> Update) =
             match change {
                 CacheChange::Insertion => ("insert", Update::Insert),
                 CacheChange::Removal => ("remove", Update::Remove),
-                CacheChange::Modification =>
-                    ("change metadata for", Update::ChangeMetadata),
+                CacheChange::Modification => {
+                    // TODO: generate `ChangeMetadata` events.
+                    unreachable!();
+                }
             };
         trace!("{} {:?} for {:?}", update_str, addr, authority_for_logging);
         // retain is used to drop any senders that are dead
