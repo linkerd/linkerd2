@@ -16,7 +16,7 @@
   "gnetId": null,
   "graphTooltip": 1,
   "id": null,
-  "iteration": 1522434948953,
+  "iteration": 1523048893004,
   "links": [],
   "panels": [
     {
@@ -55,7 +55,7 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 8,
+        "w": 6,
         "x": 0,
         "y": 3
       },
@@ -97,7 +97,89 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "count(count(request_total{deployment=~\"$deployment\"}) by (deployment))",
+          "expr": "count(count(request_total{namespace=~\"$namespace\"}) by (namespace))",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "thresholds": "",
+      "title": "Namespaces Monitored",
+      "type": "singlestat",
+      "valueFontSize": "200%",
+      "valueMaps": [
+        {
+          "op": "=",
+          "text": "N/A",
+          "value": "null"
+        }
+      ],
+      "valueName": "current"
+    },
+    {
+      "cacheTimeout": null,
+      "colorBackground": false,
+      "colorValue": false,
+      "colors": [
+        "#d44a3a",
+        "rgba(237, 129, 40, 0.89)",
+        "#299c46"
+      ],
+      "datasource": "prometheus",
+      "format": "none",
+      "gauge": {
+        "maxValue": 1,
+        "minValue": 0,
+        "show": false,
+        "thresholdLabels": false,
+        "thresholdMarkers": true
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 3
+      },
+      "height": "",
+      "id": 86,
+      "interval": null,
+      "links": [],
+      "mappingType": 1,
+      "mappingTypes": [
+        {
+          "name": "value to text",
+          "value": 1
+        },
+        {
+          "name": "range to text",
+          "value": 2
+        }
+      ],
+      "maxDataPoints": 100,
+      "nullPointMode": "connected",
+      "nullText": null,
+      "postfix": "",
+      "postfixFontSize": "50%",
+      "prefix": "",
+      "prefixFontSize": "50%",
+      "rangeMaps": [
+        {
+          "from": "null",
+          "text": "N/A",
+          "to": "null"
+        }
+      ],
+      "sparkline": {
+        "fillColor": "rgba(31, 118, 189, 0.18)",
+        "full": true,
+        "lineColor": "rgb(31, 120, 193)",
+        "show": false
+      },
+      "tableColumn": "",
+      "targets": [
+        {
+          "expr": "count(count(request_total{namespace=~\"$namespace\"}) by (namespace, deployment))",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "",
@@ -137,8 +219,8 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 8,
-        "x": 8,
+        "w": 6,
+        "x": 12,
         "y": 3
       },
       "height": "",
@@ -179,7 +261,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "(sum(irate(response_total{status_code=\"200\", deployment=~\"$deployment\"}[20s]))+sum(irate(response_total{grpc_status_code=\"0\", deployment=~\"$deployment\"}[20s]))) / sum(irate(response_total{deployment=~\"$deployment\"}[20s]))",
+          "expr": "sum(irate(response_total{classification=\"success\", deployment=~\"$deployment\"}[20s])) / sum(irate(response_total{deployment=~\"$deployment\"}[20s]))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "",
@@ -219,8 +301,8 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 8,
-        "x": 16,
+        "w": 6,
+        "x": 18,
         "y": 3
       },
       "height": "",
@@ -334,10 +416,10 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "(sum(irate(response_total{status_code=\"200\", deployment=~\"$deployment\"}[20s])) by (deployment) + sum(irate(response_total{grpc_status_code=\"0\", deployment=~\"$deployment\"}[20s])) by (deployment)) / sum(irate(response_total{deployment=~\"$deployment\"}[20s])) by (deployment)",
+          "expr": "sum(irate(response_total{classification=\"success\", namespace=~\"$namespace\", direction=\"inbound\"}[20s])) by (namespace) / sum(irate(response_total{namespace=~\"$namespace\", direction=\"inbound\"}[20s])) by (namespace)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "{{deployment}}",
+          "legendFormat": "{{namespace}}",
           "refId": "A"
         }
       ],
@@ -414,10 +496,10 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{deployment=~\"$deployment\"}[20s])) by (deployment)",
+          "expr": "sum(irate(request_total{namespace=~\"$namespace\", direction=\"inbound\"}[20s])) by (namespace)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "{{deployment}}",
+          "legendFormat": "{{namespace}}",
           "refId": "A"
         }
       ],
@@ -494,24 +576,24 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{deployment=~\"$deployment\"}[20s])) by (le))",
+          "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{namespace=~\"$namespace\", direction=\"inbound\"}[20s])) by (le, namespace))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "p50",
+          "legendFormat": "p50 {{namespace}}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{deployment=~\"$deployment\"}[20s])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{namespace=~\"$namespace\", direction=\"inbound\"}[20s])) by (le, namespace))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "p95",
+          "legendFormat": "p95 {{namespace}}",
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{deployment=~\"$deployment\"}[20s])) by (le))",
+          "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{namespace=~\"$namespace\", direction=\"inbound\"}[20s])) by (le, namespace))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "p99",
+          "legendFormat": "p99 {{namespace}}",
           "refId": "C"
         }
       ],
@@ -577,12 +659,12 @@
       },
       "id": 40,
       "panels": [],
-      "repeat": "deployment",
+      "repeat": "namespace",
       "title": "",
       "type": "row"
     },
     {
-      "content": "<div>\n  <img src=\"https://conduit.io/favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <a href=\"./dashboard/db/conduit-deployment?var-deployment=$deployment\">\n    <span style=\"font-size: 15px; border-image:none\">$deployment</span>\n  </a>\n</div>",
+      "content": "<div>\n  <img src=\"https://conduit.io/favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <a href=\"./dashboard/db/conduit-deployment?var-namespace=$namespace\">\n    <span style=\"font-size: 15px; border-image:none\">$namespace</span>\n  </a>\n</div>",
       "gridPos": {
         "h": 2,
         "w": 24,
@@ -634,7 +716,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "(sum(irate(response_total{status_code=\"200\", dst_deployment=\"$deployment\"}[20s])) by (deployment) + sum(irate(response_total{grpc_status_code=\"0\", dst_deployment=\"$deployment\"}[20s])) by (deployment))/ sum(irate(response_total{dst_deployment=\"$deployment\"}[20s])) by (deployment)",
+          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", direction=\"inbound\"}[20s])) by (deployment) / sum(irate(response_total{namespace=\"$namespace\", direction=\"inbound\"}[20s])) by (deployment)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{deployment}}",
@@ -714,7 +796,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{dst_deployment=\"$deployment\"}[20s])) by (deployment)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", direction=\"inbound\"}[20s])) by (deployment)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{deployment}}",
@@ -794,27 +876,27 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{dst_deployment=\"$deployment\"}[20s])) by (le))",
+          "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", direction=\"inbound\"}[20s])) by (le, deployment))",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
-          "legendFormat": "p50",
+          "legendFormat": "p50 {{deployment}}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{dst_deployment=\"$deployment\"}[20s])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", direction=\"inbound\"}[20s])) by (le, deployment))",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
-          "legendFormat": "p95",
+          "legendFormat": "p95 {{deployment}}",
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{dst_deployment=\"$deployment\"}[20s])) by (le))",
+          "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", direction=\"inbound\"}[20s])) by (le, deployment))",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
-          "legendFormat": "p99",
+          "legendFormat": "p99 {{deployment}}",
           "refId": "C"
         }
       ],
@@ -861,6 +943,26 @@
   "tags": [],
   "templating": {
     "list": [
+      {
+        "allValue": null,
+        "current": {},
+        "datasource": "prometheus",
+        "hide": 2,
+        "includeAll": true,
+        "label": null,
+        "multi": false,
+        "name": "namespace",
+        "options": [],
+        "query": "label_values(request_total{conduit_io_control_plane_component=\"\"}, namespace)",
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
       {
         "allValue": null,
         "current": {},
