@@ -21,7 +21,6 @@ pub struct RequestLabels {
 
 }
 
-
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct ResponseLabels {
 
@@ -38,7 +37,6 @@ pub struct ResponseLabels {
     classification: Classification,
 }
 
-
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 enum Classification {
     Success,
@@ -50,8 +48,6 @@ enum Direction {
     Inbound,
     Outbound,
 }
-
-
 
 // ===== impl RequestLabels =====
 
@@ -85,8 +81,6 @@ impl fmt::Display for RequestLabels {
         Ok(())
     }
 }
-
-
 
 // ===== impl ResponseLabels =====
 
@@ -172,7 +166,6 @@ impl fmt::Display for Classification {
         }
     }
 }
-
 
 // ===== impl Direction =====
 

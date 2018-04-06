@@ -6,9 +6,10 @@ use std::net::SocketAddr;
 use std::time::Duration;
 use std::sync::Arc;
 
-
 use futures::{Async, Future, Poll, Stream};
 use futures::sync::mpsc;
+use futures_watch;
+use http;
 use tokio_core::reactor::Handle;
 use tower::Service;
 use tower_h2::{HttpService, BoxBody, RecvBody};
@@ -39,6 +40,12 @@ pub struct Discovery {
 #[derive(Debug)]
 pub struct Watch<B> {
     rx: mpsc::UnboundedReceiver<Update>,
+    /// Map associating addresses with the `Store` for the watch on that
+    /// service's metric labels (as provided by the Destination service).
+    ///
+    /// This is used to update the `Labeled` middleware on those services
+    /// without requiring the service stack to be re-bound.
+    metric_labels: HashMap<SocketAddr, futures_watch::Store<Option<DstLabels>>>,
     bind: B,
 }
 
@@ -70,7 +77,7 @@ pub struct DiscoveryWork<T: HttpService<ResponseBody = RecvBody>> {
 pub struct DstLabels(Arc<str>);
 
 /// Any additional metadata describing a discovered service.
-#[derive(Clone, Debug, Default, Hash, Eq, PartialEq)]
+#[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub struct Metadata {
     /// A set of Prometheus metric labels describing the destination.
     metric_labels: Option<DstLabels>,
@@ -78,9 +85,9 @@ pub struct Metadata {
 
 /// Middleware that adds an extension containing an optional set of metric
 /// labels to requests.
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug)]
 pub struct Labeled<T> {
-    metric_labels: Option<DstLabels>,
+    metric_labels: Option<futures_watch::Watch<Option<DstLabels>>>,
     inner: T,
 }
 
@@ -187,12 +194,57 @@ impl Discovery {
 
         Watch {
             rx,
+            metric_labels: HashMap::new(),
             bind,
         }
     }
 }
 
 // ==== impl Watch =====
+
+impl<B> Watch<B> {
+    fn update_metadata(&mut self,
+                       addr: SocketAddr,
+                       meta: Metadata)
+                       -> Result<(), ()>
+    {
+        match self.metric_labels.entry(addr) {
+            // Handle changes in metadata (currently, destination
+            // labels by updating our `Store` for that service's set of
+            // labels.
+            Entry::Occupied(mut entry) => {
+                let canceled = entry.get_mut()
+                    .poll_cancel()
+                    .map_err(|_| {
+                        error!("update_metadata: label poll_cancel error");
+                    });
+                if canceled?.is_ready() {
+                    // If poll_cancel() returns `Ready`, then the
+                    // service bound to that address has been
+                    // dropped and we can safely remove it.
+                    let _ = entry.remove_entry();
+                    return Ok(());
+                };
+                // otherwise, update the store, dropping the previous value.
+                let _ = entry.get_mut().store(meta.metric_labels)
+                    .map_err(|e| {
+                        error!("update_metadata: label store error: {:?}", e);
+                    })?;
+                Ok(())
+            },
+            Entry::Vacant(_) => {
+                // The store has already been removed, so nobody cares about
+                // the metadata change.
+                warn!(
+                    "update_metadata: ignoring ChangeMetadata for {:?},
+                     the service no longer exists.",
+                    addr
+                );
+                Ok(())
+            }
+        }
+    }
+}
 
 impl<B, A> Discover for Watch<B>
 where
@@ -206,27 +258,44 @@ where
     type DiscoverError = ();
 
     fn poll(&mut self) -> Poll<Change<Self::Key, Self::Service>, Self::DiscoverError> {
-        let up = self.rx.poll();
-        trace!("watch: {:?}", up);
-        let update = match up {
-            Ok(Async::Ready(Some(update))) => update,
-            Ok(Async::Ready(None)) => unreachable!(),
-            Ok(Async::NotReady) => return Ok(Async::NotReady),
-            Err(_) => return Err(()),
-        };
+        loop {
+            let up = self.rx.poll();
+            trace!("watch: {:?}", up);
+            let update = match up {
+                Ok(Async::Ready(Some(update))) => update,
+                Ok(Async::Ready(None)) => unreachable!(),
+                Ok(Async::NotReady) => return Ok(Async::NotReady),
+                Err(_) => return Err(()),
+            };
 
-        match update {
-            Update::Insert(addr, meta) => {
-                let service = self.bind.bind(&addr)
-                    .map(|svc| meta.label(svc))
-                    .map_err(|_| ())?;
+            match update {
+                Update::Insert(addr, meta) => {
+                    // Construct a watch for the `Labeled` middleware that will
+                    // wrap the bound service, and insert the store into our map
+                    // so it can be updated later.
+                    let (watch_labels, update_labels) =
+                        futures_watch::Watch::new(meta.metric_labels);
+                    self.metric_labels.insert(addr, update_labels);
 
-                Ok(Async::Ready(Change::Insert(addr, service)))
-            },
-            // TODO: handle metadata changes by changing the labeling
-            // middleware to hold a `futures-watch::Watch` on the label value,
-            // so it can be updated.
-            Update::Remove(addr) => Ok(Async::Ready(Change::Remove(addr))),
+                    let service = self.bind.bind(&addr)
+                        .map(|svc| Labeled::new(svc, watch_labels))
+                        .map_err(|_| ())?;
+
+                    return Ok(Async::Ready(Change::Insert(addr, service)))
+                },
+                Update::ChangeMetadata(addr, meta) => {
+                    // Update metadata and continue polling `rx`.
+                    self.update_metadata(addr, meta)?;
+                },
+                Update::Remove(addr) => {
+                    // NOTE: we don't remove the `store` for the removed
+                    // service's labels from `metrics_labels` here, since the
+                    // balancer may not have removed it yet. If we see another
+                    // ChangeMetadata event for that watch and it's cancelled,
+                    // we'll remove it then.
+                    return Ok(Async::Ready(Change::Remove(addr)));
+                },
+            }
         }
     }
 }
@@ -533,7 +602,8 @@ impl<T> DestinationSet<T>
                 Ok(Async::Ready(dns::Response::Exists(ips))) => {
                     trace!("positive result of DNS query for {:?}: {:?}", authority, ips);
                     self.add(authority, ips.iter().map(|ip| {
-                        SocketAddr::from((*ip, authority.port))
+                        let no_metadata = Metadata { metric_labels: None, };
+                        (SocketAddr::from((*ip, authority.port)), no_metadata)
                     }));
                 },
                 Ok(Async::Ready(dns::Response::DoesNotExist)) => {
@@ -720,7 +790,7 @@ impl DstLabels {
 
             Some(DstLabels(Arc::from(s)))
         } else {
-            // the iterator is empty; return None.
+            // the iterator is empty; return none
             None
         }
 
@@ -739,6 +809,18 @@ impl fmt::Display for DstLabels {
 // ===== impl Labeled =====
 
 impl<T> Labeled<T> {
+
+    /// Wrap `inner` with a `Watch` on dyanmically updated labels.
+    pub fn new(inner: T,
+               watch: futures_watch::Watch<Option<DstLabels>>)
+               -> Self
+    {
+        Self {
+            metric_labels: Some(watch),
+            inner,
+        }
+    }
+
     /// Wrap `inner` with no `metric_labels`.
     pub fn none(inner: T) -> Self {
         Self { metric_labels: None, inner }
@@ -760,25 +842,14 @@ where
 
     fn call(&mut self, req: Self::Request) -> Self::Future {
         let mut req = req;
-        if let Some(ref labels) = self.metric_labels {
-            req.extensions_mut().insert(labels.clone());
+        if let Some(labels) = self.metric_labels.as_ref()
+            .and_then(|labels| (*labels.borrow()).as_ref().cloned())
+        {
+            req.extensions_mut().insert(labels);
         }
         self.inner.call(req)
     }
 
-}
-
-
-// ===== impl Metadata =====
-
-impl Metadata {
-    /// Construct a new `Labeled<U>` for `inner` with the same labels as `self`.
-    fn label<U>(&self, inner: U) -> Labeled<U> {
-        Labeled {
-            metric_labels: self.metric_labels.as_ref().cloned(),
-            inner,
-        }
-    }
 }
 
 /// Construct a new labeled `SocketAddr `from a protobuf `WeightedAddr`.
