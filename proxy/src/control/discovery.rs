@@ -344,10 +344,22 @@ where
             // Query the Destination service first. This may set or clear the DNS query.
             set.query = match set.query.take() {
                 Some(DestinationServiceQuery::ConnectedOrConnecting{ rx }) => {
-                    let new_query = set.poll_destination_service(&self.dns_resolver, auth, rx);
+                    let (new_query, found_by_destination_service) =
+                        set.poll_destination_service(auth, rx);
                     if let DestinationServiceQuery::NeedsReconnect = new_query {
                         set.reset_on_next_modification();
                         self.reconnects.push_back(auth.clone());
+                    }
+                    match found_by_destination_service {
+                        Exists::Yes(()) => {
+                            // Stop polling DNS on any active update from the Destination service.
+                            set.dns_query = None;
+                        },
+                        Exists::No => {
+                            // Fall back to DNS.
+                            set.reset_dns_query(&self.dns_resolver, Duration::from_secs(0), auth);
+                        },
+                        Exists::Unknown => (), // No change from Destination service's perspective.
                     }
                     Some(new_query)
                 },
@@ -407,13 +419,18 @@ impl<T> DestinationSet<T>
         self.dns_query = Some(dns_resolver.resolve_all_ips(delay, &authority.host));
     }
 
+    // Processes Destination service updates from `rx`, returning the new query an an indication of
+    // any *change* to whether the service exists as far as the Destination service is concerned,
+    // where `Exists::Unknown` is to be interpreted as "no change in existence" instead of
+    // "unknown".
     fn poll_destination_service(
         &mut self,
-        dns_resolver: &dns::Resolver,
         auth: &DnsNameAndPort,
         mut rx: UpdateRx<T>)
-        -> DestinationServiceQuery<T>
+        -> (DestinationServiceQuery<T>, Exists<()>)
     {
+        let mut exists = Exists::Unknown;
+
         loop {
             // Any active response from the Destination service cancels the DNS query except for a
             // positive assertion that the service doesn't exist.
@@ -426,26 +443,25 @@ impl<T> DestinationSet<T>
             match rx.poll() {
                 Ok(Async::Ready(Some(update))) => match update.update {
                     Some(PbUpdate2::Add(a_set)) => {
-                        self.dns_query = None;
+                        exists = Exists::Yes(());
                         self.add(
                             auth,
                             a_set.addrs.iter().filter_map(
                                 |addr| addr.addr.clone().and_then(pb_to_sock_addr)));
                     },
                     Some(PbUpdate2::Remove(r_set)) => {
-                        self.dns_query = None;
+                        exists = Exists::Yes(());
                         self.remove(
                             auth,
                             r_set.addrs.iter().filter_map(|addr| pb_to_sock_addr(addr.clone())));
                     },
                     Some(PbUpdate2::NoEndpoints(ref no_endpoints)) if no_endpoints.exists => {
-                        self.dns_query = None;
+                        exists = Exists::Yes(());
                         self.no_endpoints(auth, no_endpoints.exists);
                     },
                     Some(PbUpdate2::NoEndpoints(no_endpoints)) => {
                         debug_assert!(!no_endpoints.exists);
-                        // Fall back to DNS.
-                        self.reset_dns_query(dns_resolver, Duration::from_secs(0), auth);
+                        exists = Exists::No;
                     },
                     None => (),
                 },
@@ -454,14 +470,14 @@ impl<T> DestinationSet<T>
                         "Destination.Get stream ended for {:?}, must reconnect",
                         auth
                     );
-                    return DestinationServiceQuery::NeedsReconnect;
+                    return (DestinationServiceQuery::NeedsReconnect, exists);
                 },
                 Ok(Async::NotReady) => {
-                    return DestinationServiceQuery::ConnectedOrConnecting { rx };
+                    return (DestinationServiceQuery::ConnectedOrConnecting { rx }, exists);
                 },
                 Err(err) => {
                     warn!("Destination.Get stream errored for {:?}: {:?}", auth, err);
-                    return DestinationServiceQuery::NeedsReconnect;
+                    return (DestinationServiceQuery::NeedsReconnect, exists);
                 }
             };
         }
