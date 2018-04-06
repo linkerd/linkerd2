@@ -32,7 +32,7 @@ var (
 
 type handler struct {
 	grpcServer          pb.ApiServer
-	k8sClient           *kubernetes.Clientset
+	k8sClient           kubernetes.Interface
 	prometheusAPI       promv1.API
 	controllerNamespace string
 }

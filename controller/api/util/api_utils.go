@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	pb "github.com/runconduit/conduit/controller/gen/public"
+	"github.com/runconduit/conduit/pkg/k8s"
 )
 
 /*
@@ -93,12 +94,17 @@ func BuildStatSummaryRequest(p StatSummaryRequestParams) (*pb.StatSummaryRequest
 		}
 	}
 
+	resourceType, err := k8s.CanonicalKubernetesNameFromFriendlyName(p.ResourceType)
+	if err != nil {
+		return nil, err
+	}
+
 	statRequest := &pb.StatSummaryRequest{
 		Selector: &pb.ResourceSelection{
 			Resource: &pb.Resource{
 				Namespace: p.Namespace,
 				Name:      p.ResourceName,
-				Type:      p.ResourceType,
+				Type:      resourceType,
 			},
 		},
 		TimeWindow: window,
