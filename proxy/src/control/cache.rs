@@ -27,13 +27,13 @@ pub enum Exists<T> {
     No,
 }
 
-pub enum CacheChange {
+pub enum CacheChange<K, V> {
     /// A new key was inserted.
-    Insertion,
+    Insertion { key: K, value: V },
     /// A key-value pair was removed.
-    Removal,
+    Removal { key: K },
     /// The value mapped to an existing key was changed.
-    Modification,
+    Modification { key: K, new_value: V },
 }
 
 // ===== impl Exists =====
@@ -70,7 +70,7 @@ where
     pub fn update_union<I, F>(&mut self, iter: I, on_change: &mut F)
     where
         I: Iterator<Item = (K, V)>,
-        F: FnMut((K, V), CacheChange),
+        F: FnMut(CacheChange<K, V>),
     {
         fn update_inner<K, V, I, F>(
             inner: &mut IndexMap<K, V>,
@@ -81,7 +81,7 @@ where
             K: Eq + Hash + Copy + Clone,
             V: PartialEq + Clone,
             I: Iterator<Item = (K, V)>,
-            F: FnMut((K, V), CacheChange),
+            F: FnMut(CacheChange<K, V>),
         {
             for (key, value) in iter {
                 match inner.insert(key, value.clone()) {
@@ -92,12 +92,13 @@ where
                     // If `insert` returns `Some` with a different value than
                     // the one we inserted, then we changed the value for that
                     // key.
-                    Some(_) =>
-                        on_change((key, value), CacheChange::Modification),
-                    // If `insert` returns `None`, then there was no old value
+                    Some(_) => on_change(
+                        CacheChange::Modification { key, new_value: value}
+                    ),
+                    // If `insert` returns `Nonoh goe`, then there was no old value
                     // previously present. Therefore, we inserted a new value
                     // into the cache.
-                     None => on_change((key, value), CacheChange::Insertion),
+                     None => on_change(CacheChange::Insertion { key, value}),
                 }
             }
         }
@@ -119,12 +120,12 @@ where
     pub fn remove<I, F>(&mut self, iter: I, on_change: &mut F)
     where
         I: Iterator<Item = K>,
-        F: FnMut((K, V), CacheChange),
+        F: FnMut(CacheChange<K, V>),
     {
         if !self.reset_on_next_modification {
             for key in iter {
-                if let Some(value) = self.inner.remove(&key) {
-                    on_change((key, value), CacheChange::Removal);
+                if let Some(_) = self.inner.remove(&key) {
+                    on_change(CacheChange::Removal { key });
                 }
             }
         } else {
@@ -135,7 +136,7 @@ where
 
     pub fn clear<F>(&mut self, on_change: &mut F)
     where
-        F: FnMut((K, V), CacheChange),
+        F: FnMut(CacheChange<K, V>),
     {
         self.update_intersection(IndexMap::new(), on_change)
     }
@@ -151,7 +152,7 @@ where
         mut on_change: F
     )
     where
-        F: FnMut((K, V), CacheChange),
+        F: FnMut(CacheChange<K, V>),
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
@@ -163,12 +164,12 @@ where
                 // the old value.
                 Some(new_value) =>  {
                     let _ = mem::replace(value, new_value.clone());
-                    on_change((*key, new_value), CacheChange::Modification);
+                    on_change(CacheChange::Modification { key: *key, new_value });
                     true
                 },
                 // Key doesn't exist, remove it from the map.
                 None => {
-                    on_change((*key, value.clone()), CacheChange::Removal);
+                    on_change(CacheChange::Removal { key: *key });
                     false
                 }
             }
@@ -206,7 +207,7 @@ mod tests {
             };
             cache.update_union(
                 new_values.iter().map(|(&k, v)| (k, v.clone())),
-                &mut |_, _| (),
+                &mut |_| (),
             );
             assert_eq!(&cache.inner, &new_values);
             assert_eq!(cache.reset_on_next_modification, false);
@@ -219,7 +220,7 @@ mod tests {
             };
             cache.update_union(
                 new_values.iter().map(|(&k, v)| (k, v.clone())),
-                &mut |_, _| (),
+                &mut |_| (),
             );
             assert_eq!(
                 &cache.inner,
@@ -241,7 +242,7 @@ mod tests {
                 inner: original_values.clone(),
                 reset_on_next_modification: true,
             };
-            cache.remove(to_remove.iter().map(|(&k, _)| k), &mut |_, _| ());
+            cache.remove(to_remove.iter().map(|(&k, _)| k), &mut |_| ());
             assert_eq!(&cache.inner, &IndexMap::new());
             assert_eq!(cache.reset_on_next_modification, false);
         }
@@ -251,7 +252,7 @@ mod tests {
                 inner: original_values.clone(),
                 reset_on_next_modification: false,
             };
-            cache.remove(to_remove.iter().map(|(&k, _)| k), &mut |_, _| ());
+            cache.remove(to_remove.iter().map(|(&k, _)| k), &mut |_| ());
             assert_eq!(&cache.inner, &indexmap!{1 => (), 2 => (), 4 => ()});
             assert_eq!(cache.reset_on_next_modification, false);
         }
@@ -266,7 +267,7 @@ mod tests {
                 inner: original_values.clone(),
                 reset_on_next_modification: true,
             };
-            cache.clear(&mut |_, _| ());
+            cache.clear(&mut |_| ());
             assert_eq!(&cache.inner, &IndexMap::new());
             assert_eq!(cache.reset_on_next_modification, false);
         }
@@ -276,7 +277,7 @@ mod tests {
                 inner: original_values.clone(),
                 reset_on_next_modification: false,
             };
-            cache.clear(&mut |_, _| ());
+            cache.clear(&mut |_| ());
             assert_eq!(&cache.inner, &IndexMap::new());
             assert_eq!(cache.reset_on_next_modification, false);
         }
