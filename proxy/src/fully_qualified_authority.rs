@@ -1,28 +1,60 @@
-use bytes::{BytesMut};
+use bytes::BytesMut;
 
-use transport::DnsNameAndPort;
+use std::net::IpAddr;
+use std::str::FromStr;
+
+use http::uri::Authority;
 
 /// A normalized `Authority`.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct FullyQualifiedAuthority(String);
+pub struct FullyQualifiedAuthority(Authority);
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct NamedAddress {
+    pub name: FullyQualifiedAuthority,
+    pub use_destination_service: bool
+}
 
 impl FullyQualifiedAuthority {
     /// Normalizes the name according to Kubernetes service naming conventions.
     /// Case folding is not done; that is done internally inside `Authority`.
-    pub fn normalize(authority: &DnsNameAndPort, default_namespace: &str) -> Option<Self> {
-        let name: &str = authority.host.as_ref();
+    ///
+    /// This assumes the authority is syntactically valid.
+    pub fn normalize(authority: &Authority, default_namespace: &str)
+                     -> NamedAddress
+    {
+        // Don't change IP-address-based authorities.
+        if IpAddr::from_str(authority.host()).is_ok() {
+            return NamedAddress {
+                name: FullyQualifiedAuthority(authority.clone()),
+                use_destination_service: false,
+            }
+        };
+
+        // TODO: `Authority` doesn't have a way to get the serialized form of the
+        // port, so do it ourselves.
+        let (name, colon_port) = {
+            let authority = authority.as_str();
+            match authority.rfind(':') {
+                Some(p) => authority.split_at(p),
+                None => (authority, ""),
+            }
+        };
 
         // parts should have a maximum 4 of pieces (name, namespace, svc, zone)
         let mut parts = name.splitn(4, '.');
 
-        // `dns::Name` guarantees the name has at least one part.
+        // `Authority` guarantees the name has at least one part.
         assert!(parts.next().is_some());
 
         // Rewrite "$name" -> "$name.$default_namespace".
         let has_explicit_namespace = match parts.next() {
             Some("") => {
                 // "$name." is an external absolute name.
-                return None;
+                return NamedAddress {
+                    name: FullyQualifiedAuthority(authority.clone()),
+                    use_destination_service: false,
+                };
             },
             Some(_) => true,
             None => false,
@@ -37,14 +69,20 @@ impl FullyQualifiedAuthority {
         let append_svc = if let Some(part) = parts.next() {
             if !part.eq_ignore_ascii_case("svc") {
                 // If not "$name.$namespace.svc", treat as external.
-                return None;
+                return NamedAddress {
+                    name: FullyQualifiedAuthority(authority.clone()),
+                    use_destination_service: false,
+                };
             }
             false
         } else if has_explicit_namespace {
             true
         } else if namespace_to_append.is_none() {
             // We can't append ".svc" without a namespace, so treat as external.
-            return None;
+            return NamedAddress {
+                name: FullyQualifiedAuthority(authority.clone()),
+                use_destination_service: false,
+            }
         } else {
             true
         };
@@ -62,7 +100,10 @@ impl FullyQualifiedAuthority {
                 // "a.b.svc." is an external absolute name.
                 // "a.b.svc.foo" is external if the default zone is not
                 // "foo".
-                return None;
+                return NamedAddress {
+                    name: FullyQualifiedAuthority(authority.clone()),
+                    use_destination_service: false,
+                }
             }
             (None, strip_last)
         } else {
@@ -80,16 +121,17 @@ impl FullyQualifiedAuthority {
             additional_len += 1 + zone.len(); // "." + zone
         }
 
-        let port_str_len = match authority.port {
-            80 => 0, // XXX: Assumes http://, which is all we support right now.
-            p if p >= 10000 => 1 + 5,
-            p if p >= 1000 => 1 + 4,
-            p if p >= 100 => 1 + 3,
-            p if p >= 10 => 1 + 2,
-            _ => 1,
-        };
+        // If we're not going to change anything then don't allocate anything.
+        if additional_len == 0 && !strip_last {
+            return NamedAddress {
+                name: FullyQualifiedAuthority(authority.clone()),
+                use_destination_service: true,
+            }
+        }
 
-        let mut normalized = BytesMut::with_capacity(name.len() + additional_len + port_str_len);
+        // `authority.as_str().len()` includes the length of `colon_port`.
+        let mut normalized =
+            BytesMut::with_capacity(authority.as_str().len() + additional_len);
         normalized.extend_from_slice(name.as_bytes());
         if let Some(namespace) = namespace_to_append {
             normalized.extend_from_slice(b".");
@@ -102,58 +144,52 @@ impl FullyQualifiedAuthority {
             normalized.extend_from_slice(b".");
             normalized.extend_from_slice(zone.as_bytes());
         }
+        normalized.extend_from_slice(colon_port.as_bytes());
 
         if strip_last {
             let new_len = normalized.len() - 1;
             normalized.truncate(new_len);
         }
 
-        // Append the port
-        if port_str_len > 0 {
-            normalized.extend_from_slice(b":");
-            let port = authority.port.to_string();
-            normalized.extend_from_slice(port.as_ref());
+        let name = Authority::from_shared(normalized.freeze())
+            .expect("syntactically-valid authority");
+        let name = FullyQualifiedAuthority(name);
+        NamedAddress {
+            name,
+            use_destination_service: true,
         }
-
-        Some(FullyQualifiedAuthority(String::from_utf8(normalized.freeze().to_vec()).unwrap()))
     }
 
-    pub fn without_trailing_dot(&self) -> &str {
+    pub fn without_trailing_dot(&self) -> &Authority {
         &self.0
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use transport::{DnsNameAndPort, Host, HostAndPort};
-    use http::uri::Authority;
-    use std::str::FromStr;
-
     #[test]
     fn test_normalized_authority() {
-        fn dns_name_and_port_from_str(input: &str) -> DnsNameAndPort {
-            let authority = Authority::from_str(input).unwrap();
-            match HostAndPort::normalize(&authority, Some(80)) {
-                Ok(HostAndPort { host: Host::DnsName(host), port }) =>
-                    DnsNameAndPort { host, port },
-                Err(e) => {
-                    unreachable!("{:?} when parsing {:?}", e, input)
-                },
-                _ => unreachable!("Not a DNS name: {:?}", input),
-            }
-        }
-
         fn local(input: &str, default_namespace: &str) -> String {
-            let name = dns_name_and_port_from_str(input);
-            let output = super::FullyQualifiedAuthority::normalize(&name, default_namespace);
-            assert!(output.is_some(), "input: {}", input);
-            output.unwrap().without_trailing_dot().into()
+            use bytes::Bytes;
+            use http::uri::Authority;
+
+            let input = Authority::from_shared(Bytes::from(input.as_bytes()))
+                .unwrap();
+            let output = super::FullyQualifiedAuthority::normalize(
+                &input, default_namespace);
+            assert_eq!(output.use_destination_service, true, "input: {}", input);
+            output.name.without_trailing_dot().as_str().into()
         }
 
         fn external(input: &str, default_namespace: &str) {
-            let name = dns_name_and_port_from_str(input);
-            let output = super::FullyQualifiedAuthority::normalize(&name, default_namespace);
-            assert!(output.is_none(), "input: {}", input);
+            use bytes::Bytes;
+            use http::uri::Authority;
+
+            let input = Authority::from_shared(Bytes::from(input.as_bytes())).unwrap();
+            let output = super::FullyQualifiedAuthority::normalize(
+                &input, default_namespace);
+            assert_eq!(output.use_destination_service, false);
+            assert_eq!(output.name.without_trailing_dot().as_str(), input);
         }
 
         assert_eq!("name.namespace.svc.cluster.local", local("name", "namespace"));
@@ -209,10 +245,20 @@ mod tests {
                    local("name.namespace.svc.cluster.local:1234", "namespace"));
 
         // "SVC" is recognized as being equivalent to "svc"
-        assert_eq!("name.namespace.svc.cluster.local",
+        assert_eq!("name.namespace.SVC.cluster.local",
                    local("name.namespace.SVC", "namespace"));
         external("name.namespace.SVC.cluster", "namespace");
-        assert_eq!("name.namespace.svc.cluster.local",
+        assert_eq!("name.namespace.SVC.cluster.local",
                    local("name.namespace.SVC.cluster.local", "namespace"));
+
+        // IPv4 addresses are left unchanged.
+        external("1.2.3.4", "namespace");
+        external("1.2.3.4:1234", "namespace");
+        external("127.0.0.1", "namespace");
+        external("127.0.0.1:8080", "namespace");
+
+        // IPv6 addresses are left unchanged.
+        external("[::1]", "namespace");
+        external("[::1]:1234", "namespace");
     }
 }
