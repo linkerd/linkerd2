@@ -31,10 +31,7 @@ var (
 )
 
 type handler struct {
-	grpcServer          pb.ApiServer
-	k8sClient           kubernetes.Interface
-	prometheusAPI       promv1.API
-	controllerNamespace string
+	grpcServer pb.ApiServer
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -96,7 +93,8 @@ func (h *handler) handleStatSummary(w http.ResponseWriter, req *http.Request) {
 		writeErrorToHttpResponse(w, err)
 		return
 	}
-	rsp, err := h.StatSummary(req.Context(), &protoRequest)
+
+	rsp, err := h.grpcServer.StatSummary(req.Context(), &protoRequest)
 	if err != nil {
 		writeErrorToHttpResponse(w, err)
 		return
@@ -221,12 +219,22 @@ func fullUrlPathFor(method string) string {
 	return ApiRoot + ApiPrefix + method
 }
 
-func NewServer(addr string, k8sClient *kubernetes.Clientset, prometheusClient promApi.Client, telemetryClient telemPb.TelemetryClient, tapClient tapPb.TapClient, controllerNamespace string) *http.Server {
+func NewServer(
+	addr string,
+	k8sClient *kubernetes.Clientset,
+	prometheusClient promApi.Client,
+	telemetryClient telemPb.TelemetryClient,
+	tapClient tapPb.TapClient,
+	controllerNamespace string,
+) *http.Server {
 	baseHandler := &handler{
-		grpcServer:          newGrpcServer(telemetryClient, tapClient, controllerNamespace),
-		k8sClient:           k8sClient,
-		prometheusAPI:       promv1.NewAPI(prometheusClient),
-		controllerNamespace: controllerNamespace,
+		grpcServer: newGrpcServer(
+			telemetryClient,
+			tapClient,
+			k8sClient,
+			promv1.NewAPI(prometheusClient),
+			controllerNamespace,
+		),
 	}
 
 	instrumentedHandler := util.WithTelemetry(baseHandler)

@@ -32,10 +32,10 @@ Valid resource types include:
 This command will hide resources that have completed, such as pods that are in the Succeeded or Failed phases.
 If no resource name is specified, displays stats about all resources of the specified RESOURCETYPE`,
 	Example: `  # Get all deployments in the test namespace.
-  conduit statsummary deployments -a test
+  conduit statsummary deployments -n test
 
   # Get the hello1 deployment in the test namespace.
-  conduit statsummary deployments hello1 -a test`,
+  conduit statsummary deployments hello1 -n test`,
 	Args:      cobra.RangeArgs(1, 2),
 	ValidArgs: []string{"deployment"},
 	RunE: func(cmd *cobra.Command, args []string) error {

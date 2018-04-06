@@ -35,16 +35,16 @@ type meshedCount struct {
 	total  uint64
 }
 
-func (h *handler) StatSummary(ctx context.Context, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
+func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
 	switch req.Selector.Resource.Type {
 	case k8s.KubernetesDeployments:
-		return h.deploymentQuery(ctx, req)
+		return s.deploymentQuery(ctx, req)
 	default:
 		return nil, errors.New("Unimplemented resource type: " + req.Selector.Resource.Type)
 	}
 }
 
-func (h *handler) deploymentQuery(ctx context.Context, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
+func (s *grpcServer) deploymentQuery(ctx context.Context, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
 	rows := make([]*pb.StatTable_PodGroup_Row, 0)
 	deployments := []appsv1.Deployment{}
 	var meshCount map[string]*meshedCount
@@ -56,9 +56,9 @@ func (h *handler) deploymentQuery(ctx context.Context, req *pb.StatSummaryReques
 
 	// TODO: parallelize the k8s api query and the prometheus query
 	if req.Selector.Resource.Name == "" {
-		deployments, meshCount, err = h.getDeployments(req.Selector.Resource.Namespace)
+		deployments, meshCount, err = s.getDeployments(req.Selector.Resource.Namespace)
 	} else {
-		deployments, meshCount, err = h.getDeployment(req.Selector.Resource.Namespace, req.Selector.Resource.Name)
+		deployments, meshCount, err = s.getDeployment(req.Selector.Resource.Namespace, req.Selector.Resource.Name)
 	}
 	if err != nil {
 		return nil, err
@@ -70,7 +70,7 @@ func (h *handler) deploymentQuery(ctx context.Context, req *pb.StatSummaryReques
 		return nil, errors.New("Resource Type has no Prometheus equivalent: " + req.Selector.Resource.Type)
 	}
 
-	requestMetrics, err := h.getRequests(ctx, requestLabels, string(promResourceLabel), timeWindow)
+	requestMetrics, err := s.getRequests(ctx, requestLabels, string(promResourceLabel), timeWindow)
 	if err != nil {
 		return nil, err
 	}
@@ -167,10 +167,10 @@ func buildRequestLabels(req *pb.StatSummaryRequest) string {
 	return strings.Join(labels, ",")
 }
 
-func (h *handler) getRequests(ctx context.Context, reqLabels string, groupBy string, timeWindow string) (map[string]*pb.BasicStats, error) {
+func (s *grpcServer) getRequests(ctx context.Context, reqLabels string, groupBy string, timeWindow string) (map[string]*pb.BasicStats, error) {
 	requestsQuery := fmt.Sprintf(reqQuery, reqLabels, timeWindow, groupBy)
 
-	resultVector, err := h.queryProm(ctx, requestsQuery)
+	resultVector, err := s.queryProm(ctx, requestsQuery)
 	if err != nil {
 		return nil, err
 	}
@@ -197,18 +197,18 @@ func processRequests(vec model.Vector, labelSelector string) map[string]*pb.Basi
 	return result
 }
 
-func (h *handler) getDeployment(namespace string, name string) ([]appsv1.Deployment, map[string]*meshedCount, error) {
+func (s *grpcServer) getDeployment(namespace string, name string) ([]appsv1.Deployment, map[string]*meshedCount, error) {
 	if namespace == "" {
 		namespace = apiv1.NamespaceDefault
 	}
 
-	deploymentsClient := h.k8sClient.Apps().Deployments(namespace)
+	deploymentsClient := s.k8sClient.Apps().Deployments(namespace)
 	deployment, err := deploymentsClient.Get(name, metav1.GetOptions{})
 	if err != nil {
 		return nil, nil, err
 	}
 
-	meshCount, err := h.getMeshedPodCount(namespace, deployment)
+	meshCount, err := s.getMeshedPodCount(namespace, deployment)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -216,12 +216,12 @@ func (h *handler) getDeployment(namespace string, name string) ([]appsv1.Deploym
 	return []appsv1.Deployment{*deployment}, meshMap, nil
 }
 
-func (h *handler) getDeployments(namespace string) ([]appsv1.Deployment, map[string]*meshedCount, error) {
+func (s *grpcServer) getDeployments(namespace string) ([]appsv1.Deployment, map[string]*meshedCount, error) {
 	if namespace == "" {
 		namespace = apiv1.NamespaceDefault
 	}
 
-	deploymentsClient := h.k8sClient.Apps().Deployments(namespace)
+	deploymentsClient := s.k8sClient.Apps().Deployments(namespace)
 	list, err := deploymentsClient.List(metav1.ListOptions{})
 	if err != nil {
 		return nil, nil, err
@@ -230,7 +230,7 @@ func (h *handler) getDeployments(namespace string) ([]appsv1.Deployment, map[str
 	meshedPodCount := make(map[string]*meshedCount)
 	for _, item := range list.Items {
 		// TODO: parallelize
-		meshCount, err := h.getMeshedPodCount(namespace, &item)
+		meshCount, err := s.getMeshedPodCount(namespace, &item)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -241,13 +241,13 @@ func (h *handler) getDeployments(namespace string) ([]appsv1.Deployment, map[str
 }
 
 // this takes a long time for namespaces with many pods
-func (h *handler) getMeshedPodCount(namespace string, obj runtime.Object) (*meshedCount, error) {
+func (s *grpcServer) getMeshedPodCount(namespace string, obj runtime.Object) (*meshedCount, error) {
 	selector, err := getSelectorFromObject(obj)
 	if err != nil {
 		return nil, err
 	}
 
-	pods, err := h.getAssociatedPods(namespace, selector)
+	pods, err := s.getAssociatedPods(namespace, selector)
 	if err != nil {
 		return nil, err
 	}
@@ -268,7 +268,7 @@ func isInMesh(pod apiv1.Pod) bool {
 	return ok
 }
 
-func (h *handler) getAssociatedPods(namespace string, selector map[string]string) ([]apiv1.Pod, error) {
+func (s *grpcServer) getAssociatedPods(namespace string, selector map[string]string) ([]apiv1.Pod, error) {
 	var podList *apiv1.PodList
 
 	selectorSet := labels.Set(selector).AsSelector().String()
@@ -276,7 +276,7 @@ func (h *handler) getAssociatedPods(namespace string, selector map[string]string
 		return podList.Items, nil
 	}
 
-	podsClient := h.k8sClient.Core().Pods(namespace)
+	podsClient := s.k8sClient.Core().Pods(namespace)
 	podList, err := podsClient.List(metav1.ListOptions{
 		FieldSelector: fields.Everything().String(),
 		LabelSelector: selectorSet,
@@ -298,11 +298,11 @@ func getSelectorFromObject(obj runtime.Object) (map[string]string, error) {
 	}
 }
 
-func (h *handler) queryProm(ctx context.Context, query string) (model.Vector, error) {
+func (s *grpcServer) queryProm(ctx context.Context, query string) (model.Vector, error) {
 	log.Debugf("Query request: %+v", query)
 
 	// single data point (aka summary) query
-	res, err := h.prometheusAPI.Query(ctx, query, time.Time{})
+	res, err := s.prometheusAPI.Query(ctx, query, time.Time{})
 	if err != nil {
 		log.Errorf("Query(%+v, %+v) failed with: %+v", query, err)
 		return nil, err
