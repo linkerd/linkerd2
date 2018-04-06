@@ -24,22 +24,23 @@ const (
 	reqQuery = "sum(increase(response_total{%s}[%s])) by (%s, classification)"
 )
 
+var (
+	k8sResourceTypesToPromLabels = map[string]model.LabelName{
+		k8s.KubernetesDeployments: "deployment",
+	}
+)
+
 type meshedCount struct {
 	inMesh uint64
 	total  uint64
 }
 
 func (h *handler) StatSummary(ctx context.Context, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
-	resourceType, err := k8s.CanonicalKubernetesNameFromFriendlyName(req.Selector.Resource.Type)
-	if err != nil {
-		return nil, err
-	}
-
-	switch resourceType {
+	switch req.Selector.Resource.Type {
 	case k8s.KubernetesDeployments:
 		return h.deploymentQuery(ctx, req)
 	default:
-		return nil, errors.New("Unimplemented resource type")
+		return nil, errors.New("Unimplemented resource type: " + req.Selector.Resource.Type)
 	}
 }
 
@@ -54,7 +55,7 @@ func (h *handler) deploymentQuery(ctx context.Context, req *pb.StatSummaryReques
 	}
 
 	// TODO: parallelize the k8s api query and the prometheus query
-	if req.Selector.Resource.Name == "" || req.Selector.Resource.Name == "all" {
+	if req.Selector.Resource.Name == "" {
 		deployments, meshCount, err = h.getDeployments(req.Selector.Resource.Namespace)
 	} else {
 		deployments, meshCount, err = h.getDeployment(req.Selector.Resource.Namespace, req.Selector.Resource.Name)
@@ -64,8 +65,12 @@ func (h *handler) deploymentQuery(ctx context.Context, req *pb.StatSummaryReques
 	}
 
 	requestLabels := buildRequestLabels(req)
+	promResourceLabel, ok := k8sResourceTypesToPromLabels[req.Selector.Resource.Type]
+	if !ok {
+		return nil, errors.New("Resource Type has no Prometheus equivalent: " + req.Selector.Resource.Type)
+	}
 
-	requestMetrics, err := h.getRequests(ctx, requestLabels, req.Selector.Resource.Type, timeWindow)
+	requestMetrics, err := h.getRequests(ctx, requestLabels, string(promResourceLabel), timeWindow)
 	if err != nil {
 		return nil, err
 	}
