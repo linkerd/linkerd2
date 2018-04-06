@@ -75,8 +75,10 @@ macro_rules! assert_eventually {
                     break;
                 } else if i == $retries {
                     panic!(
-                        "assertion failed after {:?} (retried {} times): {}",
-                        start_t.elapsed(), i, format_args!($($arg)+)
+                        "assertion failed after {} (retried {} times): {}",
+                        timeout::HumanDuration(start_t.elapsed()),
+                        i,
+                        format_args!($($arg)+)
                     )
                 } else {
                     ::std::thread::sleep(patience);
