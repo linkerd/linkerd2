@@ -188,7 +188,7 @@ spec:
           - "--h1-server-port"
           - "8080"
           - "--url"
-          - "http://httpbin.org/anything"
+          - "https://httpbin.org/get"
           - "--method"
           - "GET"
         ports:
