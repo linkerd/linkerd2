@@ -36,7 +36,8 @@ pub enum Response {
     DoesNotExist,
 }
 
-pub struct IpAddrListFuture(Box<Future<Item=Response, Error=abstract_ns::Error>>);
+// `Box<Future>` implements `Future` so it doesn't need to be implemented manually.
+pub type IpAddrListFuture = Box<Future<Item=Response, Error=abstract_ns::Error>>;
 
 /// A DNS name.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -120,7 +121,7 @@ impl Resolver {
                     Err(e) => Err(e),
                 }
             });
-        IpAddrListFuture(Box::new(f))
+        Box::new(f)
     }
 }
 
@@ -140,15 +141,6 @@ impl Future for IpAddrFuture {
             },
             IpAddrFuture::Fixed(addr) => Ok(Async::Ready(addr)),
         }
-    }
-}
-
-impl Future for IpAddrListFuture {
-    type Item = Response;
-    type Error = abstract_ns::Error;
-
-    fn poll(&mut self) -> Result<Async<<Self as Future>::Item>, <Self as Future>::Error> {
-        self.0.poll()
     }
 }
 
