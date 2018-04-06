@@ -78,12 +78,16 @@ services:
     ports:
     - "8085:8085"
     - "9995:9995"
+    volumes:
+    - ~/.kube/config:/kubeconfig:ro
     command:
     - public-api
     - -addr=:8085
     - -metrics-addr=:9995
     - -telemetry-addr=telemetry:8087
     - -tap-addr=tap:8088
+    - -prometheus-url=http://prometheus:9090
+    - -kubeconfig=/kubeconfig
 
   web:
     build:
