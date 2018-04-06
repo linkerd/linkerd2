@@ -126,11 +126,10 @@ func isDashboardAvailable(client pb.ApiClient) (bool, error) {
 
 func init() {
 	RootCmd.AddCommand(dashboardCmd)
-	addControlPlaneNetworkingArgs(dashboardCmd)
 	dashboardCmd.Args = cobra.NoArgs
 
 	// This is identical to what `kubectl proxy --help` reports, `--port 0`
 	// indicates a random port.
-	dashboardCmd.PersistentFlags().IntVarP(&dashboardProxyPort, "port", "p", 0, "The port on which to run the proxy. When set to 0, a random port will be used.")
-	dashboardCmd.PersistentFlags().StringVar(&dashboardShow, "show", "conduit", "Open a dashboard in a browser or show URLs in the CLI. Must be one of: conduit, grafana, url.")
+	dashboardCmd.PersistentFlags().IntVarP(&dashboardProxyPort, "port", "p", 0, "the port on which to run the proxy. When set to 0, a random port will be used.")
+	dashboardCmd.PersistentFlags().StringVar(&dashboardShow, "show", "conduit", "open a dashboard in a browser or show URLs in the CLI. Must be one of: conduit, grafana, url.")
 }
