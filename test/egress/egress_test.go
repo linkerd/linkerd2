@@ -33,11 +33,14 @@ func TestEgressHttp(t *testing.T) {
 
 	prefixedNs := TestHelper.GetTestNamespace("egress-test")
 	out, err = TestHelper.KubectlApply(out, prefixedNs)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v output:\n%s", err, out)
+	}
 
-	func test(serviceName, protocolToUse, methodToUse string) {
+	test_case := func(serviceName, dnsName, protocolToUse, methodToUse string) {
 		testName := fmt.Sprintf("Can use egress to send %s request to %s (%s)", methodToUse, protocolToUse, serviceName)
 		t.Run(testName, func(t *testing.T) {
-			expectedURL := fmt.Sprintf("%s://www.httpbin.org/%s", protocolToUse, strings.ToLower(methodToUse))
+			expectedURL := fmt.Sprintf("%s://%s/%s", protocolToUse, dnsName, strings.ToLower(methodToUse))
 
 			svcURL, err := TestHelper.GetURLForService(prefixedNs, serviceName)
 			if err != nil {
@@ -64,20 +67,17 @@ func TestEgressHttp(t *testing.T) {
 				t.Fatalf("Expecting response to say egress sent [%s] request to URL [%s] but got [%s]. Response:\n%s\n", methodToUse, expectedURL, actualURL, output)
 			}
 		})
+	}
 
-	}
-	if err != nil {
-		t.Fatalf("Unexpected error: %v output:\n%s", err, out)
-	}
 	supportedProtocols := []string{"http", "https"}
 	methods := []string{"GET", "POST"}
 	for _, protocolToUse := range supportedProtocols {
 		for _, methodToUse := range methods {
 			serviceName := fmt.Sprintf("egress-test-%s-%s-svc", protocolToUse, strings.ToLower(methodToUse))
-			test(serviceName, protocolToUse, methodToUse)
+			test_case(serviceName, "www.httpbin.org", protocolToUse, methodToUse)
 		}
 	}
 
 	// Test egress for a domain with fewer than 3 segments.
-	test("egress-test-not-www-get-svc", "https", 'get')
+	test_case("egress-test-not-www-get-svc", "httpbin.org", "https", "GET")
 }
