@@ -349,7 +349,7 @@ fn parse_url(s: &str) -> Result<HostAndPort, ParseError> {
     // https://github.com/hyperium/http/issues/127. For now just ignore any
     // fragment that is there.
 
-    HostAndPort::normalize(authority, None)
+    HostAndPort::try_from(authority)
         .map_err(|e| ParseError::UrlError(UrlError::AuthorityError(e)))
 }
 
@@ -366,7 +366,7 @@ fn parse<T, Parse>(strings: &Strings, name: &str, parse: Parse) -> Result<Option
     match strings.get(name)? {
         Some(ref s) => {
             let r = parse(s).map_err(|parse_error| {
-                error!("{}={:?} is not valid: {:?}", name, s, parse_error);
+                error!("{} is not valid: {:?}", name, parse_error);
                 Error::InvalidEnvVar
             })?;
             Ok(Some(r))
