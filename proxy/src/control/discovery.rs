@@ -30,6 +30,8 @@ use transport::DnsNameAndPort;
 
 use control::cache::{Cache, CacheChange, Exists};
 
+use ::telemetry::metrics::prometheus::Labeled;
+
 /// A handle to start watching a destination for address changes.
 #[derive(Clone, Debug)]
 pub struct Discovery {
@@ -81,14 +83,6 @@ pub struct DstLabels(Arc<str>);
 pub struct Metadata {
     /// A set of Prometheus metric labels describing the destination.
     metric_labels: Option<DstLabels>,
-}
-
-/// Middleware that adds an extension containing an optional set of metric
-/// labels to requests.
-#[derive(Clone, Debug)]
-pub struct Labeled<T> {
-    metric_labels: Option<futures_watch::Watch<Option<DstLabels>>>,
-    inner: T,
 }
 
 struct DestinationSet<T: HttpService<ResponseBody = RecvBody>> {
@@ -208,40 +202,21 @@ impl<B> Watch<B> {
                        meta: Metadata)
                        -> Result<(), ()>
     {
-        match self.metric_labels.entry(addr) {
-            // Handle changes in metadata (currently, destination
-            // labels by updating our `Store` for that service's set of
-            // labels.
-            Entry::Occupied(mut entry) => {
-                let canceled = entry.get_mut()
-                    .poll_cancel()
-                    .map_err(|_| {
-                        error!("update_metadata: label poll_cancel error");
-                    });
-                if canceled?.is_ready() {
-                    // If poll_cancel() returns `Ready`, then the
-                    // service bound to that address has been
-                    // dropped and we can safely remove it.
-                    let _ = entry.remove_entry();
-                    return Ok(());
-                };
-                // otherwise, update the store, dropping the previous value.
-                let _ = entry.get_mut().store(meta.metric_labels)
-                    .map_err(|e| {
-                        error!("update_metadata: label store error: {:?}", e);
-                    })?;
-                Ok(())
-            },
-            Entry::Vacant(_) => {
-                // The store has already been removed, so nobody cares about
-                // the metadata change.
-                warn!(
-                    "update_metadata: ignoring ChangeMetadata for {:?},
-                     the service no longer exists.",
-                    addr
-                );
-                Ok(())
-            }
+        if let Some(store) = self.metric_labels.get_mut(&addr) {
+            store.store(meta.metric_labels)
+                .map_err(|e| {
+                    error!("update_metadata: label store error: {:?}", e);
+                })
+                .map(|_| ())
+        } else {
+            // The store has already been removed, so nobody cares about
+            // the metadata change.
+            warn!(
+                "update_metadata: ignoring ChangeMetadata for {:?},
+                 the service no longer exists.",
+                addr
+            );
+            Ok(())
         }
     }
 }
@@ -261,12 +236,7 @@ where
         loop {
             let up = self.rx.poll();
             trace!("watch: {:?}", up);
-            let update = match up {
-                Ok(Async::Ready(Some(update))) => update,
-                Ok(Async::Ready(None)) => unreachable!(),
-                Ok(Async::NotReady) => return Ok(Async::NotReady),
-                Err(_) => return Err(()),
-            };
+            let update = try_ready!(up).expect("discovery stream must be infinite");
 
             match update {
                 Update::Insert(addr, meta) => {
@@ -288,11 +258,11 @@ where
                     self.update_metadata(addr, meta)?;
                 },
                 Update::Remove(addr) => {
-                    // NOTE: we don't remove the `store` for the removed
-                    // service's labels from `metrics_labels` here, since the
-                    // balancer may not have removed it yet. If we see another
-                    // ChangeMetadata event for that watch and it's cancelled,
-                    // we'll remove it then.
+                    // It's safe to drop the store handle here, even if
+                    // the `Labeled` middleware using the watch handle
+                    // still exists --- it will simply read the final
+                    // value from the watch.
+                    self.metric_labels.remove(&addr);
                     return Ok(Async::Ready(Change::Remove(addr)));
                 },
             }
@@ -714,7 +684,7 @@ impl <T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
                     ("change metadata for", Update::ChangeMetadata),
             };
         trace!("{} {:?} for {:?}", update_str, addr, authority_for_logging);
-        // retain is used to drop any senders that are dead
+        // etain is used to drop any senders that are dead
         txs.retain(|tx| {
             tx.unbounded_send(update_constructor(addr, meta.clone())).is_ok()
         });
@@ -767,8 +737,6 @@ where T: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>,
 // ===== impl DstLabels ====
 
 impl DstLabels {
-
-    #[inline]
     fn new<I, S>(labels: I) -> Option<Self>
     where
         I: IntoIterator<Item=(S, S)>,
@@ -777,11 +745,11 @@ impl DstLabels {
         let mut labels = labels.into_iter();
 
         if let Some((k, v)) = labels.next() {
-            // format the first label pair without a leading comma, since we
+            // Format the first label pair without a leading comma, since we
             // don't know where it is in the output labels at this point.
             let mut s = format!("dst_{}=\"{}\"", k, v);
 
-            // format subsequent label pairs with leading commas, since
+            // Format subsequent label pairs with leading commas, since
             // we know that we already formatted the first label pair.
             for (k, v) in labels {
                 write!(s, ",dst_{}=\"{}\"", k, v)
@@ -790,66 +758,16 @@ impl DstLabels {
 
             Some(DstLabels(Arc::from(s)))
         } else {
-            // the iterator is empty; return none
+            // The iterator is empty; return None
             None
         }
-
     }
-
 }
 
 impl fmt::Display for DstLabels {
-
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
     }
-
-}
-
-// ===== impl Labeled =====
-
-impl<T> Labeled<T> {
-
-    /// Wrap `inner` with a `Watch` on dyanmically updated labels.
-    pub fn new(inner: T,
-               watch: futures_watch::Watch<Option<DstLabels>>)
-               -> Self
-    {
-        Self {
-            metric_labels: Some(watch),
-            inner,
-        }
-    }
-
-    /// Wrap `inner` with no `metric_labels`.
-    pub fn none(inner: T) -> Self {
-        Self { metric_labels: None, inner }
-    }
-}
-
-impl<T, A> Service for Labeled<T>
-where
-    T: Service<Request=http::Request<A>>,
-{
-    type Request = T::Request;
-    type Response= T::Response;
-    type Error = T::Error;
-    type Future = T::Future;
-
-    fn poll_ready(&mut self) -> Poll<(), Self::Error> {
-        self.inner.poll_ready()
-    }
-
-    fn call(&mut self, req: Self::Request) -> Self::Future {
-        let mut req = req;
-        if let Some(labels) = self.metric_labels.as_ref()
-            .and_then(|labels| (*labels.borrow()).as_ref().cloned())
-        {
-            req.extensions_mut().insert(labels);
-        }
-        self.inner.call(req)
-    }
-
 }
 
 /// Construct a new labeled `SocketAddr `from a protobuf `WeightedAddr`.

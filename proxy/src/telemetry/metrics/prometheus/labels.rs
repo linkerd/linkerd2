@@ -1,9 +1,21 @@
 
+use futures::Poll;
+use futures_watch::Watch;
 use http;
+use tower::Service;
+
 use std::fmt;
 
 use control::discovery;
 use ctx;
+
+/// Middleware that adds an extension containing an optional set of metric
+/// labels to requests.
+#[derive(Clone, Debug)]
+pub struct Labeled<T> {
+    metric_labels: Option<Watch<Option<discovery::DstLabels>>>,
+    inner: T,
+}
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct RequestLabels {
@@ -18,7 +30,6 @@ pub struct RequestLabels {
     /// The value of the `:authority` (HTTP/2) or `Host` (HTTP/1.1) header of
     /// the request.
     authority: String,
-
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -49,10 +60,59 @@ enum Direction {
     Outbound,
 }
 
+
+// ===== impl Labeled =====
+
+impl<T> Labeled<T> {
+
+    /// Wrap `inner` with a `Watch` on dyanmically updated labels.
+    pub fn new(inner: T,
+               watch: Watch<Option<discovery::DstLabels>>)
+               -> Self
+    {
+        Self {
+            metric_labels: Some(watch),
+            inner,
+        }
+    }
+
+    /// Wrap `inner` with no `metric_labels`.
+    pub fn none(inner: T) -> Self {
+        Self { metric_labels: None, inner }
+    }
+}
+
+impl<T, A> Service for Labeled<T>
+where
+    T: Service<Request=http::Request<A>>,
+{
+    type Request = T::Request;
+    type Response= T::Response;
+    type Error = T::Error;
+    type Future = T::Future;
+
+    fn poll_ready(&mut self) -> Poll<(), Self::Error> {
+        self.inner.poll_ready()
+    }
+
+    fn call(&mut self, req: Self::Request) -> Self::Future {
+        let mut req = req;
+        if let Some(labels) = self.metric_labels.as_ref()
+            .and_then(|labels| (*labels.borrow()).as_ref().cloned())
+        {
+            req.extensions_mut().insert(labels);
+        }
+        self.inner.call(req)
+    }
+
+}
+
 // ===== impl RequestLabels =====
 
 impl<'a> RequestLabels {
     pub fn new(req: &ctx::http::Request) -> Self {
+        let direction = Direction::from_context(req.server.proxy.as_ref());
+
         let outbound_labels = req.dst_labels.as_ref().cloned();
 
         let authority = req.uri
@@ -61,7 +121,7 @@ impl<'a> RequestLabels {
             .unwrap_or_else(String::new);
 
         RequestLabels {
-            direction: req.server.proxy.as_ref().into(),
+            direction,
             outbound_labels,
             authority,
         }
@@ -169,9 +229,9 @@ impl fmt::Display for Classification {
 
 // ===== impl Direction =====
 
-impl<'a> From<&'a ctx::Proxy> for Direction {
-    fn from(proxy: &'a ctx::Proxy) -> Self {
-        match proxy {
+impl Direction {
+    fn from_context(context: &ctx::Proxy) -> Self {
+        match context {
             &ctx::Proxy::Inbound(_) => Direction::Inbound,
             &ctx::Proxy::Outbound(_) => Direction::Outbound,
         }

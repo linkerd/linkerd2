@@ -9,7 +9,7 @@ use ctx;
 
 mod control;
 pub mod event;
-mod metrics;
+pub mod metrics;
 pub mod sensor;
 pub mod tap;
 

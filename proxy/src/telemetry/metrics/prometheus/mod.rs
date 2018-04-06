@@ -49,6 +49,7 @@ use super::latency::{BUCKET_BOUNDS, Histogram};
 
 mod labels;
 use self::labels::{RequestLabels, ResponseLabels};
+pub use self::labels::Labeled;
 
 #[derive(Debug, Clone)]
 struct Metrics {
