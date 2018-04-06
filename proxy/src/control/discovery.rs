@@ -56,7 +56,7 @@ pub struct DiscoveryWork<T: HttpService<ResponseBody = RecvBody>> {
 }
 
 struct DestinationSet<T: HttpService<ResponseBody = RecvBody>> {
-    addrs: Exists<Cache<SocketAddr>>,
+    addrs: Exists<Cache<SocketAddr, ()>>,
     query: DestinationServiceQuery<T>,
     txs: Vec<mpsc::UnboundedSender<Update>>,
 }
@@ -187,7 +187,10 @@ where
                 let service = self.bind.bind(&addr).map_err(|_| ())?;
 
                 Ok(Async::Ready(Change::Insert(addr, service)))
-            }
+            },
+            // TODO: handle metadata changes by changing the labeling
+            // middleware to hold a `futures-watch::Watch` on the label value,
+            // so it can be updated.
             Update::Remove(addr) => Ok(Async::Ready(Change::Remove(addr))),
         }
     }
@@ -265,7 +268,7 @@ where
                             // them onto the new watch first
                             match set.addrs {
                                 Exists::Yes(ref cache) => {
-                                    for &addr in cache.values().iter() {
+                                    for (&addr, _) in cache {
                                         tx.unbounded_send(Update::Insert(addr))
                                             .expect("unbounded_send does not fail");
                                     }
@@ -398,9 +401,9 @@ impl <T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
             Exists::Yes(mut cache) => cache,
             Exists::Unknown | Exists::No => Cache::new(),
         };
-        cache.extend(
-            addrs_to_add,
-            &mut |addr, change| Self::on_change(&mut self.txs, authority_for_logging, addr,
+        cache.update_union(
+            addrs_to_add.map(|a| (a, ())),
+            &mut |(addr, _), change| Self::on_change(&mut self.txs, authority_for_logging, addr,
                                                 change));
         self.addrs = Exists::Yes(cache);
     }
@@ -412,7 +415,7 @@ impl <T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
             Exists::Yes(mut cache) => {
                 cache.remove(
                     addrs_to_remove,
-                    &mut |addr, change| Self::on_change(&mut self.txs, authority_for_logging, addr,
+                    &mut |(addr, _), change| Self::on_change(&mut self.txs, authority_for_logging, addr,
                                                         change));
                 cache
             },
@@ -427,7 +430,7 @@ impl <T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
         match self.addrs.take() {
             Exists::Yes(mut cache) => {
                 cache.clear(
-                    &mut |addr, change| Self::on_change(&mut self.txs, authority_for_logging, addr,
+                    &mut |(addr, _), change| Self::on_change(&mut self.txs, authority_for_logging, addr,
                                                         change));
             },
             Exists::Unknown | Exists::No => (),
@@ -447,6 +450,10 @@ impl <T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
             match change {
                 CacheChange::Insertion => ("insert", Update::Insert),
                 CacheChange::Removal => ("remove", Update::Remove),
+                CacheChange::Modification => {
+                    // TODO: generate `ChangeMetadata` events.
+                    return;
+                }
             };
         trace!("{} {:?} for {:?}", update_str, addr, authority_for_logging);
         // retain is used to drop any senders that are dead
