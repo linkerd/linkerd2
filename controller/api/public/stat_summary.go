@@ -14,8 +14,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -46,7 +44,7 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 
 func (s *grpcServer) deploymentQuery(ctx context.Context, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
 	rows := make([]*pb.StatTable_PodGroup_Row, 0)
-	deployments := []appsv1.Deployment{}
+	deployments := make([]*appsv1.Deployment, 0)
 	var meshCount map[string]*meshedCount
 
 	timeWindow, err := apiUtil.GetWindowString(req.TimeWindow)
@@ -197,13 +195,12 @@ func processRequests(vec model.Vector, labelSelector string) map[string]*pb.Basi
 	return result
 }
 
-func (s *grpcServer) getDeployment(namespace string, name string) ([]appsv1.Deployment, map[string]*meshedCount, error) {
+func (s *grpcServer) getDeployment(namespace string, name string) ([]*appsv1.Deployment, map[string]*meshedCount, error) {
 	if namespace == "" {
 		namespace = apiv1.NamespaceDefault
 	}
 
-	deploymentsClient := s.k8sClient.Apps().Deployments(namespace)
-	deployment, err := deploymentsClient.Get(name, metav1.GetOptions{})
+	deployment, err := s.deployLister.Deployments(namespace).Get(name)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -213,31 +210,30 @@ func (s *grpcServer) getDeployment(namespace string, name string) ([]appsv1.Depl
 		return nil, nil, err
 	}
 	meshMap := map[string]*meshedCount{deployment.Name: meshCount}
-	return []appsv1.Deployment{*deployment}, meshMap, nil
+	return []*appsv1.Deployment{deployment}, meshMap, nil
 }
 
-func (s *grpcServer) getDeployments(namespace string) ([]appsv1.Deployment, map[string]*meshedCount, error) {
+func (s *grpcServer) getDeployments(namespace string) ([]*appsv1.Deployment, map[string]*meshedCount, error) {
 	if namespace == "" {
 		namespace = apiv1.NamespaceDefault
 	}
 
-	deploymentsClient := s.k8sClient.Apps().Deployments(namespace)
-	list, err := deploymentsClient.List(metav1.ListOptions{})
+	deployments, err := s.deployLister.Deployments(namespace).List(labels.Everything())
 	if err != nil {
 		return nil, nil, err
 	}
 
 	meshedPodCount := make(map[string]*meshedCount)
-	for _, item := range list.Items {
+	for _, deployment := range deployments {
 		// TODO: parallelize
-		meshCount, err := s.getMeshedPodCount(namespace, &item)
+		meshCount, err := s.getMeshedPodCount(namespace, deployment)
 		if err != nil {
 			return nil, nil, err
 		}
-		meshedPodCount[item.Name] = meshCount
+		meshedPodCount[deployment.Name] = meshCount
 	}
 
-	return list.Items, meshedPodCount, nil
+	return deployments, meshedPodCount, nil
 }
 
 // this takes a long time for namespaces with many pods
@@ -247,7 +243,7 @@ func (s *grpcServer) getMeshedPodCount(namespace string, obj runtime.Object) (*m
 		return nil, err
 	}
 
-	pods, err := s.getAssociatedPods(namespace, selector)
+	pods, err := s.podLister.Pods(namespace).List(selector)
 	if err != nil {
 		return nil, err
 	}
@@ -263,35 +259,15 @@ func (s *grpcServer) getMeshedPodCount(namespace string, obj runtime.Object) (*m
 	return meshCount, nil
 }
 
-func isInMesh(pod apiv1.Pod) bool {
+func isInMesh(pod *apiv1.Pod) bool {
 	_, ok := pod.Annotations[k8s.ProxyVersionAnnotation]
 	return ok
 }
 
-func (s *grpcServer) getAssociatedPods(namespace string, selector map[string]string) ([]apiv1.Pod, error) {
-	var podList *apiv1.PodList
-
-	selectorSet := labels.Set(selector).AsSelector().String()
-	if selectorSet == "" {
-		return podList.Items, nil
-	}
-
-	podsClient := s.k8sClient.Core().Pods(namespace)
-	podList, err := podsClient.List(metav1.ListOptions{
-		FieldSelector: fields.Everything().String(),
-		LabelSelector: selectorSet,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return podList.Items, nil
-}
-
-func getSelectorFromObject(obj runtime.Object) (map[string]string, error) {
+func getSelectorFromObject(obj runtime.Object) (labels.Selector, error) {
 	switch typed := obj.(type) {
 	case *appsv1.Deployment:
-		return typed.Spec.Selector.MatchLabels, nil
+		return labels.Set(typed.Spec.Selector.MatchLabels).AsSelector(), nil
 
 	default:
 		return nil, fmt.Errorf("Cannot get object selector: %v", obj)

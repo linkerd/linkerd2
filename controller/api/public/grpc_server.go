@@ -17,16 +17,18 @@ import (
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/version"
 	log "github.com/sirupsen/logrus"
-	"k8s.io/client-go/kubernetes"
+	applisters "k8s.io/client-go/listers/apps/v1"
+	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
 type (
 	grpcServer struct {
+		prometheusAPI       promv1.API
 		telemetryClient     telemPb.TelemetryClient
 		tapClient           tapPb.TapClient
+		deployLister        applisters.DeploymentLister
+		podLister           corelisters.PodLister
 		controllerNamespace string
-		k8sClient           kubernetes.Interface
-		prometheusAPI       promv1.API
 	}
 
 	successRate struct {
@@ -93,17 +95,19 @@ var (
 )
 
 func newGrpcServer(
+	promAPI promv1.API,
 	telemetryClient telemPb.TelemetryClient,
 	tapClient tapPb.TapClient,
-	k8sClient kubernetes.Interface,
-	promAPI promv1.API,
+	deployLister applisters.DeploymentLister,
+	podLister corelisters.PodLister,
 	controllerNamespace string,
 ) *grpcServer {
 	return &grpcServer{
+		prometheusAPI:       promAPI,
 		telemetryClient:     telemetryClient,
 		tapClient:           tapClient,
-		k8sClient:           k8sClient,
-		prometheusAPI:       promAPI,
+		deployLister:        deployLister,
+		podLister:           podLister,
 		controllerNamespace: controllerNamespace,
 	}
 }

@@ -16,7 +16,8 @@ import (
 	"github.com/runconduit/conduit/controller/util"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/metadata"
-	"k8s.io/client-go/kubernetes"
+	applisters "k8s.io/client-go/listers/apps/v1"
+	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
 var (
@@ -221,18 +222,20 @@ func fullUrlPathFor(method string) string {
 
 func NewServer(
 	addr string,
-	k8sClient *kubernetes.Clientset,
 	prometheusClient promApi.Client,
 	telemetryClient telemPb.TelemetryClient,
 	tapClient tapPb.TapClient,
+	deployLister applisters.DeploymentLister,
+	podLister corelisters.PodLister,
 	controllerNamespace string,
 ) *http.Server {
 	baseHandler := &handler{
 		grpcServer: newGrpcServer(
+			promv1.NewAPI(prometheusClient),
 			telemetryClient,
 			tapClient,
-			k8sClient,
-			promv1.NewAPI(prometheusClient),
+			deployLister,
+			podLister,
 			controllerNamespace,
 		),
 	}

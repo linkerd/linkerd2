@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	promApi "github.com/prometheus/client_golang/api"
 	"github.com/runconduit/conduit/controller/api/public"
@@ -15,6 +16,8 @@ import (
 	"github.com/runconduit/conduit/controller/util"
 	"github.com/runconduit/conduit/pkg/version"
 	log "github.com/sirupsen/logrus"
+	"k8s.io/client-go/informers"
+	"k8s.io/client-go/tools/cache"
 )
 
 func main() {
@@ -58,12 +61,33 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
+	sharedInformers := informers.NewSharedInformerFactory(k8sClient, 10*time.Minute)
+	deployInformer := sharedInformers.Apps().V1().Deployments()
+	deployInformerSynced := deployInformer.Informer().HasSynced
+	podInformer := sharedInformers.Core().V1().Pods()
+	podInformerSynec := podInformer.Informer().HasSynced
+
+	sharedInformers.Start(nil)
+	log.Infof("waiting for caches to sync")
+	if !cache.WaitForCacheSync(nil, deployInformerSynced, podInformerSynec) {
+		log.Fatalf("timed out wait for caches to sync")
+	}
+	log.Infof("caches synced")
+
 	prometheusClient, err := promApi.NewClient(promApi.Config{Address: *prometheusUrl})
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 
-	server := public.NewServer(*addr, k8sClient, prometheusClient, telemetryClient, tapClient, *controllerNamespace)
+	server := public.NewServer(
+		*addr,
+		prometheusClient,
+		telemetryClient,
+		tapClient,
+		deployInformer.Lister(),
+		podInformer.Lister(),
+		*controllerNamespace,
+	)
 
 	go func() {
 		log.Infof("starting HTTP server on %+v", *addr)
