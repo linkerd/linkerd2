@@ -105,13 +105,13 @@ where
         if !self.reset_on_next_modification {
             update_inner(&mut self.inner, iter, on_change);
         } else {
-            let mut to_insert = iter.collect::<IndexMap<K, V>>();
+            let to_insert = iter.collect::<IndexMap<K, V>>();
             update_inner(
                 &mut self.inner,
                 to_insert.iter().map(|(k, v)| (*k, v.clone())),
                 on_change,
             );
-            self.update_intersection(&mut to_insert, on_change);
+            self.update_intersection(to_insert, on_change);
         }
         self.reset_on_next_modification = false;
     }
@@ -137,7 +137,7 @@ where
     where
         F: FnMut((K, V), CacheChange),
     {
-        self.update_intersection(&mut IndexMap::new(), on_change)
+        self.update_intersection(IndexMap::new(), on_change)
     }
 
     /// Update the cache to contain the intersection of its current contents
@@ -147,7 +147,7 @@ where
     /// match `to_update`.
     pub fn update_intersection<F, Q>(
         &mut self,
-        to_update: &mut IndexMap<Q, V>,
+        mut to_update: IndexMap<Q, V>,
         mut on_change: F
     )
     where
