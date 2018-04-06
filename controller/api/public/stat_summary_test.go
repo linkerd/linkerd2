@@ -8,6 +8,7 @@ import (
 
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
+	tap "github.com/runconduit/conduit/controller/gen/controller/tap"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
 	"k8s.io/client-go/kubernetes/fake"
@@ -29,10 +30,13 @@ func (f *fakeProm) Series(ctx context.Context, matches []string, startTime time.
 }
 
 var (
-	fakeHandler = handler{
-		k8sClient:     fake.NewSimpleClientset(),
-		prometheusAPI: &fakeProm{},
-	}
+	fakeGrpcServer = newGrpcServer(
+		&mockTelemetry{},
+		tap.NewTapClient(nil),
+		fake.NewSimpleClientset(),
+		&fakeProm{},
+		"conduit",
+	)
 )
 
 func TestStatSummary(t *testing.T) {
@@ -62,7 +66,7 @@ func TestStatSummary(t *testing.T) {
 		}
 
 		for req, expectedRsp := range expectations {
-			rsp, err := fakeHandler.StatSummary(context.TODO(), &req)
+			rsp, err := fakeGrpcServer.StatSummary(context.TODO(), &req)
 			if err != nil {
 				t.Fatalf("Unexpected error: %s", err)
 			}
@@ -99,7 +103,7 @@ func TestStatSummary(t *testing.T) {
 		}
 
 		for req, msg := range expectations {
-			_, err := fakeHandler.StatSummary(context.TODO(), &req)
+			_, err := fakeGrpcServer.StatSummary(context.TODO(), &req)
 			if err == nil {
 				t.Fatalf("StatSummary(%+v) unexpectedly succeeded, should have returned %s", req, msg)
 			}

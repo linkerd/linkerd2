@@ -13,6 +13,7 @@ import (
 	telemetry "github.com/runconduit/conduit/controller/gen/controller/telemetry"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"google.golang.org/grpc"
+	"k8s.io/client-go/kubernetes/fake"
 )
 
 type mockTelemetry struct {
@@ -193,7 +194,13 @@ func TestStat(t *testing.T) {
 		}
 
 		for _, tr := range responses {
-			s := newGrpcServer(&mockTelemetry{test: t, tRes: tr.tRes, mReq: tr.mReq}, tap.NewTapClient(nil), "conduit")
+			s := newGrpcServer(
+				&mockTelemetry{test: t, tRes: tr.tRes, mReq: tr.mReq},
+				tap.NewTapClient(nil),
+				fake.NewSimpleClientset(),
+				&fakeProm{},
+				"conduit",
+			)
 
 			res, err := s.Stat(context.Background(), tr.mReq)
 			if err != nil {
