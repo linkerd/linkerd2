@@ -190,6 +190,20 @@ where
                 Ok(Async::Ready(Change::Insert(addr, service)))
             },
             Update::ChangeMetadata(addr) => {
+                // XXX: this is extremely wrong. we can't handle metadata
+                // changes by rebinding the service, for the following reasons:
+                //  1. rebinding the service will tear down any existing
+                //     connections, which we shouldn't have to do just to
+                //     change labels;
+                //  2. tower-balance won't honor the `Change::Insert` event for
+                //     a key that already exists; it will ignore that event
+                //     to avoid rebinding the service for the reasons discussed
+                //     above. so when metadata changes are actually meaningful,
+                //     they won't actually be reflected.
+                // TODO: we should solve the above issue by changing the
+                // labeling middleware to hold a `futures-watch::Watch` on the
+                // label value, so it can be updated without re-binding the
+                // underlying service.
                 let service = self.bind.bind(&addr).map_err(|_| ())?;
 
                 Ok(Async::Ready(Change::Insert(addr, service)))
