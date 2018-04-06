@@ -446,18 +446,13 @@ impl <T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
                  authority_for_logging: &FullyQualifiedAuthority,
                  addr: SocketAddr,
                  change: CacheChange) {
-        if let CacheChange::Modification = change {
-            // Skip `Modification` cache change events entirely until metadata
-            // changes occur, and are handled correctly.
-            return;
-        }
         let (update_str, update_constructor): (&'static str, fn(SocketAddr) -> Update) =
             match change {
                 CacheChange::Insertion => ("insert", Update::Insert),
                 CacheChange::Removal => ("remove", Update::Remove),
                 CacheChange::Modification => {
                     // TODO: generate `ChangeMetadata` events.
-                    unreachable!();
+                    return;
                 }
             };
         trace!("{} {:?} for {:?}", update_str, addr, authority_for_logging);
