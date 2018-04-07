@@ -54,7 +54,6 @@ impl<B> Outbound<B> {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Destination {
     Hostname(DnsNameAndPort),
-    ExplicitIp(SocketAddr),
     ImplicitOriginalDst(SocketAddr),
 }
 
@@ -85,7 +84,6 @@ where
         // for a valid authority, before we fall back to SO_ORIGINAL_DST.
             .or_else(|| h1::authority_from_host(req));
 
-
         // TODO: Return error when `HostAndPort::normalize()` fails.
         let mut dest = match authority.as_ref()
             .and_then(|auth| HostAndPort::normalize(auth, Some(80)).ok()) {
@@ -98,9 +96,8 @@ where
                 FullyQualifiedAuthority::normalize(&authority, &self.default_namespace)
                     .map(|_| Destination::Hostname(authority))
             },
-            Some(HostAndPort { host: Host::Ip(ip), port }) =>
-                Some(Destination::ExplicitIp(SocketAddr::from((ip, port)))),
-            None => None
+            Some(HostAndPort { host: Host::Ip(_), .. }) |
+            None => None,
         };
 
         if dest.is_none() {
@@ -140,15 +137,16 @@ where
         debug!("building outbound {:?} client to {:?}", protocol, dest);
 
         let resolve = match *dest {
-            Destination::Hostname(ref authority) =>
+            Destination::Hostname(ref authority) => {
                 Discovery::NamedSvc(self.discovery.resolve(
                     authority,
                     self.bind.clone().with_protocol(protocol.clone()),
-                )),
-            Destination::ExplicitIp(addr) =>
-                Discovery::ExplicitIp((addr, self.bind.clone().with_protocol(protocol.clone()))),
-            Destination::ImplicitOriginalDst(addr) =>
-                Discovery::External(Some((addr, self.bind.clone().with_protocol(protocol.clone())))),
+                ))
+            },
+            Destination::ImplicitOriginalDst(addr) => {
+                Discovery::ImplicitOriginalDst(Some((addr, self.bind.clone()
+                    .with_protocol(protocol.clone()))))
+            }
         };
 
         let loaded = tower_balance::load::WithPendingRequests::new(resolve);
@@ -171,8 +169,7 @@ where
 
 pub enum Discovery<B> {
     NamedSvc(discovery::Watch<BindProtocol<B>>),
-    ExplicitIp((SocketAddr, BindProtocol<B>)),
-    External(Option<(SocketAddr, BindProtocol<B>)>),
+    ImplicitOriginalDst(Option<(SocketAddr, BindProtocol<B>)>),
 }
 
 impl<B> Discover for Discovery<B>
@@ -190,17 +187,7 @@ where
         match *self {
             Discovery::NamedSvc(ref mut w) => w.poll()
                 .map_err(|_| BindError::Internal),
-            Discovery::ExplicitIp((addr, ref bind)) => {
-                // This "discovers" a single address for a fixed IP address
-                // that never has another change. This can mean it floats
-                // in the Balancer forever. However, when we finally add
-                // circuit-breaking, this should be able to take care of itself,
-                // closing down when the connection is no longer usable.
-                let svc = bind.bind(&addr)
-                    .map_err(|_| BindError::External{ addr })?;
-                Ok(Async::Ready(Change::Insert(addr, svc)))
-            },
-            Discovery::External(ref mut opt) => {
+            Discovery::ImplicitOriginalDst(ref mut opt) => {
                 // This "discovers" a single address for an external service
                 // that never has another change. This can mean it floats
                 // in the Balancer forever. However, when we finally add
