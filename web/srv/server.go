@@ -92,6 +92,7 @@ func NewServer(addr, templateDir, staticDir, uuid, controllerNamespace, webpackD
 	// webapp api routes
 	server.router.GET("/api/version", handler.handleApiVersion)
 	server.router.GET("/api/metrics", handler.handleApiMetrics)
+	server.router.GET("/api/stat", handler.handleApiStat)
 	server.router.GET("/api/pods", handler.handleApiPods)
 
 	return httpServer

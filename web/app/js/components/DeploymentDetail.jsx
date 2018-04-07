@@ -1,6 +1,7 @@
 import _ from 'lodash';
 import ConduitSpinner from "./ConduitSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
+import GrafanaLink from './GrafanaLink.jsx';
 import { incompleteMeshMessage } from './util/CopyUtils.jsx';
 import MetricsSummary from './MetricsSummary.jsx';
 import PageHeader from './PageHeader.jsx';
@@ -150,7 +151,9 @@ export default class DeploymentDetail extends React.Component {
         {
           !this.state.added ? (
             <p className="status-badge unadded">UNADDED</p>
-          ) : null
+          ) : (
+            <span>&nbsp;<GrafanaLink name={this.state.deploy} size={32} conduitLink={this.api.ConduitLink} /></span>
+          )
         }
       </div>
     );

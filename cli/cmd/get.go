@@ -53,7 +53,6 @@ Only pod resources (aka pods, po) are supported.`,
 
 func init() {
 	RootCmd.AddCommand(getCmd)
-	addControlPlaneNetworkingArgs(getCmd)
 }
 
 func getPods(apiClient pb.ApiClient) ([]string, error) {

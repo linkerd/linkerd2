@@ -74,8 +74,7 @@ The optional [TARGET] argument can be used to target a specific deployment.`,
 
 func init() {
 	RootCmd.AddCommand(statCmd)
-	addControlPlaneNetworkingArgs(statCmd)
-	statCmd.PersistentFlags().StringVarP(&timeWindow, "time-window", "t", "1m", "Stat window.  One of: '10s', '1m', '10m', '1h'.")
+	statCmd.PersistentFlags().StringVarP(&timeWindow, "time-window", "t", "1m", "Stat window (one of: \"10s\", \"1m\", \"10m\", \"1h\")")
 }
 
 var resourceTypeToAggregationType = map[string]pb.AggregationType{

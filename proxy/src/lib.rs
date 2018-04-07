@@ -21,6 +21,7 @@ extern crate libc;
 #[macro_use]
 extern crate log;
 extern crate ns_dns_tokio;
+#[cfg_attr(test, macro_use)]
 extern crate indexmap;
 extern crate prost;
 extern crate prost_types;

@@ -71,7 +71,7 @@ var dashboardCmd = &cobra.Command{
 
 		if err != nil || !dashboardAvailable {
 			fmt.Fprintf(os.Stderr, "Conduit is not running in the \"%s\" namespace\n", controlPlaneNamespace)
-			fmt.Fprintf(os.Stderr, "Install with: conduit install -n %s | kubectl apply -f -\n", controlPlaneNamespace)
+			fmt.Fprintf(os.Stderr, "Install with: conduit install --conduit-namespace %s | kubectl apply -f -\n", controlPlaneNamespace)
 			os.Exit(1)
 		}
 
@@ -126,11 +126,10 @@ func isDashboardAvailable(client pb.ApiClient) (bool, error) {
 
 func init() {
 	RootCmd.AddCommand(dashboardCmd)
-	addControlPlaneNetworkingArgs(dashboardCmd)
 	dashboardCmd.Args = cobra.NoArgs
 
 	// This is identical to what `kubectl proxy --help` reports, `--port 0`
 	// indicates a random port.
-	dashboardCmd.PersistentFlags().IntVarP(&dashboardProxyPort, "port", "p", 0, "The port on which to run the proxy. When set to 0, a random port will be used.")
-	dashboardCmd.PersistentFlags().StringVar(&dashboardShow, "show", "conduit", "Open a dashboard in a browser or show URLs in the CLI. Must be one of: conduit, grafana, url.")
+	dashboardCmd.PersistentFlags().IntVarP(&dashboardProxyPort, "port", "p", 0, "The port on which to run the proxy (when set to 0, a random port will be used)")
+	dashboardCmd.PersistentFlags().StringVar(&dashboardShow, "show", "conduit", "Open a dashboard in a browser or show URLs in the CLI (one of: conduit, grafana, url)")
 }
