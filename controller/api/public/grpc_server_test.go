@@ -198,7 +198,7 @@ func TestStat(t *testing.T) {
 				&mockTelemetry{test: t, tRes: tr.tRes, mReq: tr.mReq},
 				tap.NewTapClient(nil),
 				fake.NewSimpleClientset(),
-				&fakeProm{},
+				&MockProm{},
 				"conduit",
 			)
 

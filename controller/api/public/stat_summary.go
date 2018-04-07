@@ -190,7 +190,7 @@ func processRequests(vec model.Vector, labelSelector string) map[string]*pb.Basi
 		switch string(sample.Metric[model.LabelName("classification")]) {
 		case "success":
 			result[label].SuccessCount = uint64(sample.Value)
-		case "fail":
+		case "failure":
 			result[label].FailureCount = uint64(sample.Value)
 		}
 	}

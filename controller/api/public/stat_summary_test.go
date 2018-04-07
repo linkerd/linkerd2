@@ -2,11 +2,10 @@ package public
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"testing"
-	"time"
 
-	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 	tap "github.com/runconduit/conduit/controller/gen/controller/tap"
 	pb "github.com/runconduit/conduit/controller/gen/public"
@@ -14,48 +13,35 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 )
 
-type fakeProm struct{}
-
-func (f *fakeProm) Query(ctx context.Context, query string, ts time.Time) (model.Value, error) {
-	return model.Value(model.Vector{}), nil
+type statSumExpected struct {
+	err     error
+	promRes model.Value
+	req     pb.StatSummaryRequest
+	res     pb.StatSummaryResponse
 }
-func (f *fakeProm) QueryRange(ctx context.Context, query string, r promv1.Range) (model.Value, error) {
-	return model.Value(model.Vector{}), nil
-}
-func (f *fakeProm) LabelValues(ctx context.Context, label string) (model.LabelValues, error) {
-	return model.LabelValues{}, nil
-}
-func (f *fakeProm) Series(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) ([]model.LabelSet, error) {
-	return []model.LabelSet{}, nil
-}
-
-var (
-	fakeGrpcServer = newGrpcServer(
-		&mockTelemetry{},
-		tap.NewTapClient(nil),
-		fake.NewSimpleClientset(),
-		&fakeProm{},
-		"conduit",
-	)
-)
 
 func TestStatSummary(t *testing.T) {
 	t.Run("Successfully performs a query based on resource type", func(t *testing.T) {
-		expectations := map[pb.StatSummaryRequest]pb.StatSummaryResponse{
-			pb.StatSummaryRequest{
-				Selector: &pb.ResourceSelection{
-					Resource: &pb.Resource{
-						Type: k8s.KubernetesDeployments,
+		expectations := []statSumExpected{
+			statSumExpected{
+				err:     nil,
+				promRes: model.Value(model.Vector{}),
+				req: pb.StatSummaryRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Type: k8s.KubernetesDeployments,
+						},
 					},
 				},
-			}: pb.StatSummaryResponse{
-				Response: &pb.StatSummaryResponse_Ok_{ // https://github.com/golang/protobuf/issues/205
-					Ok: &pb.StatSummaryResponse_Ok{
-						StatTables: []*pb.StatTable{
-							&pb.StatTable{
-								Table: &pb.StatTable_PodGroup_{
-									PodGroup: &pb.StatTable_PodGroup{
-										Rows: []*pb.StatTable_PodGroup_Row{},
+				res: pb.StatSummaryResponse{
+					Response: &pb.StatSummaryResponse_Ok_{ // https://github.com/golang/protobuf/issues/205
+						Ok: &pb.StatSummaryResponse_Ok{
+							StatTables: []*pb.StatTable{
+								&pb.StatTable{
+									Table: &pb.StatTable_PodGroup_{
+										PodGroup: &pb.StatTable_PodGroup{
+											Rows: []*pb.StatTable_PodGroup_Row{},
+										},
 									},
 								},
 							},
@@ -65,51 +51,76 @@ func TestStatSummary(t *testing.T) {
 			},
 		}
 
-		for req, expectedRsp := range expectations {
-			rsp, err := fakeGrpcServer.StatSummary(context.TODO(), &req)
-			if err != nil {
-				t.Fatalf("Unexpected error: %s", err)
+		for _, exp := range expectations {
+			fakeGrpcServer := newGrpcServer(
+				&mockTelemetry{},
+				tap.NewTapClient(nil),
+				fake.NewSimpleClientset(),
+				&MockProm{Res: exp.promRes},
+				"conduit",
+			)
+
+			rsp, err := fakeGrpcServer.StatSummary(context.TODO(), &exp.req)
+			if err != exp.err {
+				t.Fatalf("Expected error: %s, Got: %s", exp.err, err)
 			}
 
-			if !reflect.DeepEqual(expectedRsp, *rsp) {
-				t.Fatalf("Expected: %+v, Got: %+v", &expectedRsp, rsp)
+			if !reflect.DeepEqual(exp.res, *rsp) {
+				t.Fatalf("Expected: %+v, Got: %+v", &exp.res, rsp)
 			}
 		}
 	})
 
 	t.Run("Given an invalid resource type, returns error", func(t *testing.T) {
-		expectations := map[pb.StatSummaryRequest]string{
-			pb.StatSummaryRequest{
-				Selector: &pb.ResourceSelection{
-					Resource: &pb.Resource{
-						Type: "badtype",
+		expectations := []statSumExpected{
+			statSumExpected{
+				err: errors.New("Unimplemented resource type: badtype"),
+				req: pb.StatSummaryRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Type: "badtype",
+						},
 					},
 				},
-			}: "Unimplemented resource type: badtype",
-			pb.StatSummaryRequest{
-				Selector: &pb.ResourceSelection{
-					Resource: &pb.Resource{
-						Type: "deployment",
+			},
+			statSumExpected{
+				err: errors.New("Unimplemented resource type: deployment"),
+				req: pb.StatSummaryRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Type: "deployment",
+						},
 					},
 				},
-			}: "Unimplemented resource type: deployment",
-			pb.StatSummaryRequest{
-				Selector: &pb.ResourceSelection{
-					Resource: &pb.Resource{
-						Type: "pod",
+			},
+			statSumExpected{
+				err: errors.New("Unimplemented resource type: pod"),
+				req: pb.StatSummaryRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Type: "pod",
+						},
 					},
 				},
-			}: "Unimplemented resource type: pod",
+			},
 		}
 
-		for req, msg := range expectations {
-			_, err := fakeGrpcServer.StatSummary(context.TODO(), &req)
-			if err == nil {
-				t.Fatalf("StatSummary(%+v) unexpectedly succeeded, should have returned %s", req, msg)
-			}
+		for _, exp := range expectations {
+			fakeGrpcServer := newGrpcServer(
+				&mockTelemetry{},
+				tap.NewTapClient(nil),
+				fake.NewSimpleClientset(),
+				&MockProm{Res: exp.promRes},
+				"conduit",
+			)
 
-			if err.Error() != msg {
-				t.Fatalf("StatSummary(%+v) should have returned: %s but got unexpected message: %s", req, msg, err)
+			_, err := fakeGrpcServer.StatSummary(context.TODO(), &exp.req)
+			if err != nil || exp.err != nil {
+				if (err == nil && exp.err != nil) ||
+					(err != nil && exp.err == nil) ||
+					(err.Error() != exp.err.Error()) {
+					t.Fatalf("Unexpected error (Expected: %s, Got: %s)", exp.err, err)
+				}
 			}
 		}
 	})
