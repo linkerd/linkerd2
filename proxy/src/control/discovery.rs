@@ -16,13 +16,14 @@ use conduit_proxy_controller_grpc::common::{Destination, TcpAddress};
 use conduit_proxy_controller_grpc::destination::Update as PbUpdate;
 use conduit_proxy_controller_grpc::destination::update::Update as PbUpdate2;
 use conduit_proxy_controller_grpc::destination::client::{Destination as DestinationSvc};
+use transport::DnsNameAndPort;
 
 use control::cache::{Cache, CacheChange, Exists};
 
 /// A handle to start watching a destination for address changes.
 #[derive(Clone, Debug)]
 pub struct Discovery {
-    tx: mpsc::UnboundedSender<(FullyQualifiedAuthority, mpsc::UnboundedSender<Update>)>,
+    tx: mpsc::UnboundedSender<(DnsNameAndPort, mpsc::UnboundedSender<Update>)>,
 }
 
 /// A `tower_discover::Discover`, given to a `tower_balance::Balance`.
@@ -35,29 +36,28 @@ pub struct Watch<B> {
 /// A background handle to eventually bind on the controller thread.
 #[derive(Debug)]
 pub struct Background {
-    rx: mpsc::UnboundedReceiver<(FullyQualifiedAuthority, mpsc::UnboundedSender<Update>)>,
+    rx: mpsc::UnboundedReceiver<(DnsNameAndPort, mpsc::UnboundedSender<Update>)>,
+    default_destination_namespace: String,
 }
 
 /// A future returned from `Background::work()`, doing the work of talking to
 /// the controller destination API.
 // TODO: debug impl
 pub struct DiscoveryWork<T: HttpService<ResponseBody = RecvBody>> {
-    destinations: HashMap<
-        FullyQualifiedAuthority,
-        DestinationSet<T>
-    >,
+    default_destination_namespace: String,
+    destinations: HashMap<DnsNameAndPort, DestinationSet<T>>,
     /// A queue of authorities that need to be reconnected.
-    reconnects: VecDeque<FullyQualifiedAuthority>,
+    reconnects: VecDeque<DnsNameAndPort>,
     /// The Destination.Get RPC client service.
     /// Each poll, records whether the rpc service was till ready.
     rpc_ready: bool,
     /// A receiver of new watch requests.
-    rx: mpsc::UnboundedReceiver<(FullyQualifiedAuthority, mpsc::UnboundedSender<Update>)>,
+    rx: mpsc::UnboundedReceiver<(DnsNameAndPort, mpsc::UnboundedSender<Update>)>,
 }
 
 struct DestinationSet<T: HttpService<ResponseBody = RecvBody>> {
     addrs: Exists<Cache<SocketAddr, ()>>,
-    query: DestinationServiceQuery<T>,
+    query: Option<DestinationServiceQuery<T>>,
     txs: Vec<mpsc::UnboundedSender<Update>>,
 }
 
@@ -129,7 +129,7 @@ pub trait Bind {
 ///
 /// The `Discovery` is used by a listener, the `Background` is consumed
 /// on the controller thread.
-pub fn new() -> (Discovery, Background) {
+pub fn new(default_destination_namespace: String) -> (Discovery, Background) {
     let (tx, rx) = mpsc::unbounded();
     (
         Discovery {
@@ -137,6 +137,7 @@ pub fn new() -> (Discovery, Background) {
         },
         Background {
             rx,
+            default_destination_namespace,
         },
     )
 }
@@ -145,7 +146,7 @@ pub fn new() -> (Discovery, Background) {
 
 impl Discovery {
     /// Start watching for address changes for a certain authority.
-    pub fn resolve<B>(&self, authority: &FullyQualifiedAuthority, bind: B) -> Watch<B> {
+    pub fn resolve<B>(&self, authority: &DnsNameAndPort, bind: B) -> Watch<B> {
         trace!("resolve; authority={:?}", authority);
         let (tx, rx) = mpsc::unbounded();
         self.tx
@@ -205,6 +206,7 @@ impl Background {
           T::Error: fmt::Debug,
     {
         DiscoveryWork {
+            default_destination_namespace: self.default_destination_namespace,
             destinations: HashMap::new(),
             reconnects: VecDeque::new(),
             rpc_ready: false,
@@ -279,7 +281,11 @@ where
                         }
                         Entry::Vacant(vac) => {
                             let query =
-                                DestinationServiceQuery::connect(client, vac.key(), "connect");
+                                DestinationServiceQuery::connect_maybe(
+                                    &self.default_destination_namespace,
+                                    client,
+                                    vac.key(),
+                                    "connect");
                             vac.insert(DestinationSet {
                                 addrs: Exists::Unknown,
                                 query,
@@ -304,7 +310,11 @@ where
 
         while let Some(auth) = self.reconnects.pop_front() {
             if let Some(set) = self.destinations.get_mut(&auth) {
-                set.query = DestinationServiceQuery::connect(client, &auth, "reconnect");
+                set.query = DestinationServiceQuery::connect_maybe(
+                    &self.default_destination_namespace,
+                    client,
+                    &auth,
+                    "reconnect");
                 return true;
             } else {
                 trace!("reconnect no longer needed: {:?}", auth);
@@ -317,10 +327,11 @@ where
         for (auth, set) in &mut self.destinations {
             let needs_reconnect = 'set: loop {
                 let poll_result = match set.query {
-                    DestinationServiceQuery::NeedsReconnect => {
+                    None |
+                    Some(DestinationServiceQuery::NeedsReconnect) => {
                         continue;
                     },
-                    DestinationServiceQuery::ConnectedOrConnecting{ ref mut rx } => {
+                    Some(DestinationServiceQuery::ConnectedOrConnecting{ ref mut rx }) => {
                         rx.poll()
                     }
                 };
@@ -356,9 +367,9 @@ where
 
             };
             if needs_reconnect {
-                set.query = DestinationServiceQuery::NeedsReconnect;
+                set.query = Some(DestinationServiceQuery::NeedsReconnect);
                 set.reset_on_next_modification();
-                self.reconnects.push_back(FullyQualifiedAuthority::clone(auth));
+                self.reconnects.push_back(auth.clone());
             }
         }
     }
@@ -368,16 +379,28 @@ where
 // ===== impl DestinationServiceQuery =====
 
 impl<T: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>> DestinationServiceQuery<T> {
-    fn connect(client: &mut T, auth: &FullyQualifiedAuthority, connect_or_reconnect: &str) -> Self {
+    // Initiates a query `query` to the Destination service and returns it as `Some(query)` if the
+    // given authority's host is of a form suitable for using to query the Destination service.
+    // Otherwise, returns `None`.
+    fn connect_maybe(
+        default_destination_namespace: &str,
+        client: &mut T,
+        auth: &DnsNameAndPort,
+        connect_or_reconnect: &str)
+        -> Option<Self>
+    {
         trace!("DestinationServiceQuery {} {:?}", connect_or_reconnect, auth);
-        let req = Destination {
-            scheme: "k8s".into(),
-            path: auth.without_trailing_dot().as_str().into(),
-        };
-        // TODO: Can grpc::Request::new be removed?
-        let mut svc = DestinationSvc::new(client.lift_ref());
-        let response = svc.get(grpc::Request::new(req));
-        DestinationServiceQuery::ConnectedOrConnecting { rx: UpdateRx::Waiting(response) }
+        FullyQualifiedAuthority::normalize(auth, default_destination_namespace)
+            .map(|auth| {
+                let req = Destination {
+                    scheme: "k8s".into(),
+                    path: auth.without_trailing_dot().to_owned(),
+                };
+                // TODO: Can grpc::Request::new be removed?
+                let mut svc = DestinationSvc::new(client.lift_ref());
+                let response = svc.get(grpc::Request::new(req));
+                DestinationServiceQuery::ConnectedOrConnecting { rx: UpdateRx::Waiting(response) }
+            })
     }
 }
 
@@ -394,7 +417,7 @@ impl <T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
         }
     }
 
-    fn add<A>(&mut self, authority_for_logging: &FullyQualifiedAuthority, addrs_to_add: A)
+    fn add<A>(&mut self, authority_for_logging: &DnsNameAndPort, addrs_to_add: A)
         where A: Iterator<Item = SocketAddr>
     {
         let mut cache = match self.addrs.take() {
@@ -408,7 +431,7 @@ impl <T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
         self.addrs = Exists::Yes(cache);
     }
 
-    fn remove<A>(&mut self, authority_for_logging: &FullyQualifiedAuthority, addrs_to_remove: A)
+    fn remove<A>(&mut self, authority_for_logging: &DnsNameAndPort, addrs_to_remove: A)
         where A: Iterator<Item = SocketAddr>
     {
         let cache = match self.addrs.take() {
@@ -424,7 +447,7 @@ impl <T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
         self.addrs = Exists::Yes(cache);
     }
 
-    fn no_endpoints(&mut self, authority_for_logging: &FullyQualifiedAuthority, exists: bool) {
+    fn no_endpoints(&mut self, authority_for_logging: &DnsNameAndPort, exists: bool) {
         trace!("no endpoints for {:?} that is known to {}", authority_for_logging,
                if exists { "exist" } else { "not exist" });
         match self.addrs.take() {
@@ -443,7 +466,7 @@ impl <T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
     }
 
     fn on_change(txs: &mut Vec<mpsc::UnboundedSender<Update>>,
-                 authority_for_logging: &FullyQualifiedAuthority,
+                 authority_for_logging: &DnsNameAndPort,
                  addr: SocketAddr,
                  change: CacheChange) {
         let (update_str, update_constructor): (&'static str, fn(SocketAddr) -> Update) =

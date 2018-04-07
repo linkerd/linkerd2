@@ -9,7 +9,6 @@ use std::str::FromStr;
 use http;
 
 use connection;
-use convert;
 use dns;
 
 #[derive(Debug, Clone)]
@@ -23,6 +22,13 @@ pub struct HostAndPort {
     pub host: Host,
     pub port: u16,
 }
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct DnsNameAndPort {
+    pub host: dns::Name,
+    pub port: u16,
+}
+
 
 #[derive(Clone, Debug)]
 pub enum Host {
@@ -48,9 +54,10 @@ pub struct LookupAddressAndConnect {
 
 // ===== impl HostAndPort =====
 
-impl<'a> convert::TryFrom<&'a http::uri::Authority> for HostAndPort {
-    type Err = HostAndPortError;
-    fn try_from(a: &http::uri::Authority) -> Result<Self, Self::Err> {
+impl HostAndPort {
+    pub fn normalize(a: &http::uri::Authority, default_port: Option<u16>)
+        -> Result<Self, HostAndPortError>
+    {
         let host = {
             match dns::Name::normalize(a.host()) {
                 Ok(host) => Host::DnsName(host),
@@ -61,7 +68,9 @@ impl<'a> convert::TryFrom<&'a http::uri::Authority> for HostAndPort {
                 },
             }
         };
-        let port = a.port().ok_or_else(|| HostAndPortError::MissingPort)?;
+        let port = a.port()
+            .or(default_port)
+            .ok_or_else(|| HostAndPortError::MissingPort)?;
         Ok(HostAndPort {
             host,
             port

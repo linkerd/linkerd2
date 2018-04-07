@@ -203,11 +203,10 @@ where
             config.metrics_flush_interval,
         );
 
-        let (control, control_bg) = control::new();
-
-        let executor = core.handle();
+        let (control, control_bg) = control::new(config.pod_namespace.clone());
 
         let dns_config = dns::Config::from_file(&config.resolv_conf_path);
+        let executor = core.handle();
 
         let bind = Bind::new(executor.clone()).with_sensors(sensors.clone());
 

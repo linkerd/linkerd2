@@ -17,8 +17,7 @@ use tower_h2;
 use tower_reconnect::{Error as ReconnectError, Reconnect};
 
 use dns;
-use fully_qualified_authority::FullyQualifiedAuthority;
-use transport::{HostAndPort, LookupAddressAndConnect};
+use transport::{DnsNameAndPort, HostAndPort, LookupAddressAndConnect};
 use timeout::{Timeout, TimeoutError};
 
 mod cache;
@@ -41,8 +40,9 @@ pub struct Background {
     disco: DiscoBg,
 }
 
-pub fn new() -> (Control, Background) {
-    let (tx, rx) = self::discovery::new();
+pub fn new(default_destination_namespace: String) -> (Control, Background)
+{
+    let (tx, rx) = self::discovery::new(default_destination_namespace);
 
     let c = Control {
         disco: tx,
@@ -58,7 +58,7 @@ pub fn new() -> (Control, Background) {
 // ===== impl Control =====
 
 impl Control {
-    pub fn resolve<B>(&self, auth: &FullyQualifiedAuthority, bind: B) -> Watch<B> {
+    pub fn resolve<B>(&self, auth: &DnsNameAndPort, bind: B) -> Watch<B> {
         self.disco.resolve(auth, bind)
     }
 }
