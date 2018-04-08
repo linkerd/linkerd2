@@ -40,9 +40,9 @@ pub struct Background {
     disco: DiscoBg,
 }
 
-pub fn new(default_destination_namespace: String) -> (Control, Background)
+pub fn new(dns_config: dns::Config, default_destination_namespace: String) -> (Control, Background)
 {
-    let (tx, rx) = self::discovery::new(default_destination_namespace);
+    let (tx, rx) = self::discovery::new(dns_config, default_destination_namespace);
 
     let c = Control {
         disco: tx,
@@ -82,11 +82,11 @@ impl Background {
             let ctx = ("controller-client", format!("{:?}", host_and_port));
             let scheme = http::uri::Scheme::from_shared(Bytes::from_static(b"http")).unwrap();
             let authority = http::uri::Authority::from(&host_and_port);
-            let dns_resolver = dns::Resolver::new(dns_config, executor);
+            let dns_resolver = dns::Resolver::new(dns_config, &executor);
             let connect = Timeout::new(
                 LookupAddressAndConnect::new(host_and_port, dns_resolver, executor),
                 Duration::from_secs(3),
-                executor,
+                &executor,
             );
 
             let h2_client = tower_h2::client::Connect::new(
@@ -103,7 +103,7 @@ impl Background {
             AddOrigin::new(scheme, authority, backoff)
         };
 
-        let mut disco = self.disco.work();
+        let mut disco = self.disco.work(executor);
         let mut telemetry = Telemetry::new(events, report_timeout, executor);
 
         let fut = future::poll_fn(move || {

@@ -1,5 +1,6 @@
 use abstract_ns;
 use abstract_ns::HostResolve;
+pub use abstract_ns::IpList;
 use domain;
 use futures::prelude::*;
 use ns_dns_tokio;
@@ -7,14 +8,18 @@ use std::fmt;
 use std::net::IpAddr;
 use std::path::Path;
 use std::str::FromStr;
-use tokio_core::reactor::Handle;
+use std::time::Duration;
+use tokio_core::reactor::{Handle, Timeout};
 use transport;
 
 #[derive(Clone, Debug)]
 pub struct Config(domain::resolv::ResolvConf);
 
 #[derive(Clone, Debug)]
-pub struct Resolver(ns_dns_tokio::DnsResolver);
+pub struct Resolver {
+    resolver: ns_dns_tokio::DnsResolver,
+    executor: Handle,
+}
 
 pub enum IpAddrFuture {
     DNS(ns_dns_tokio::HostFuture),
@@ -25,6 +30,14 @@ pub enum Error {
     NoAddressesFound,
     ResolutionFailed(<ns_dns_tokio::HostFuture as Future>::Error),
 }
+
+pub enum Response {
+    Exists(IpList),
+    DoesNotExist,
+}
+
+// `Box<Future>` implements `Future` so it doesn't need to be implemented manually.
+pub type IpAddrListFuture = Box<Future<Item=Response, Error=abstract_ns::Error>>;
 
 /// A DNS name.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -72,19 +85,43 @@ impl Config {
 
 impl Resolver {
     pub fn new(config: Config, executor: &Handle) -> Self {
-        Resolver(ns_dns_tokio::DnsResolver::new_from_resolver(
-            domain::resolv::Resolver::from_conf(executor, config.0),
-        ))
+        Resolver {
+            resolver: ns_dns_tokio::DnsResolver::new_from_resolver(
+                domain::resolv::Resolver::from_conf(executor, config.0)),
+            executor: executor.clone()
+        }
     }
 
-    pub fn resolve_host(&self, host: &transport::Host) -> IpAddrFuture {
+    pub fn resolve_one_ip(&self, host: &transport::Host) -> IpAddrFuture {
         match *host {
             transport::Host::DnsName(ref name) => {
-                trace!("resolve {}", name);
-                IpAddrFuture::DNS(self.0.resolve_host(&name.0))
+                trace!("resolve_one_ip {}", name);
+                IpAddrFuture::DNS(self.resolver.resolve_host(&name.0))
             }
             transport::Host::Ip(addr) => IpAddrFuture::Fixed(addr),
         }
+    }
+
+    pub fn resolve_all_ips(&self, delay: Duration, host: &Name) -> IpAddrListFuture {
+        let name = host.0.clone();
+        let name_clone = name.clone();
+        trace!("resolve_all_ips {}", &name);
+        let resolver = self.resolver.clone();
+        let f = Timeout::new(delay, &self.executor)
+            .expect("Timeout::new() won't fail")
+            .then(move |_| {
+                trace!("resolve_all_ips {} after delay", &name);
+                resolver.resolve_host(&name)
+            })
+            .then(move |result| {
+                trace!("resolve_all_ips {}: completed with {:?}", name_clone, &result);
+                match result {
+                    Ok(ips) => Ok(Response::Exists(ips)),
+                    Err(abstract_ns::Error::NameNotFound) => Ok(Response::DoesNotExist),
+                    Err(e) => Err(e),
+                }
+            });
+        Box::new(f)
     }
 }
 
@@ -106,7 +143,6 @@ impl Future for IpAddrFuture {
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {
