@@ -5,9 +5,9 @@ import (
 	"net"
 	"sync"
 	"time"
-
+	s "strings"
 	common "github.com/runconduit/conduit/controller/gen/common"
-	"github.com/runconduit/conduit/controller/util"
+	"github.com/xabxx/conduit/controller/util"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -112,12 +112,22 @@ func (i *informer) run() {
 		} else {
 			addresses := make([]common.TcpAddress, 0)
 			for _, addr := range addrs {
-				ip, err := util.ParseIPV4(addr)
-				if err != nil {
-					log.Printf("[%s] is not a valid IP address: %v", addr, err)
+				if (s.Contains(addr, ".")) {
+					ip, err := util.ParseIPV4(addr)
+					if err != nil {
+						log.Printf("[%s] is not valid IPv4 address %v", addr, err)
+					} else {
+						address := common.TcpAddress{Ip: ip, Port: 80}
+						addresses = append(addresses, address)
+					}
 				} else {
-					address := common.TcpAddress{Ip: ip, Port: 80}
-					addresses = append(addresses, address)
+					ip, err := util.ParseIPV6(addr)
+					if err != nil {
+						log.Printf("[%s] is not valid IPv6 address %v", addr, err)
+					} else {
+						address := common.TcpAddress{Ip: ip, Port: 80}
+						addresses = append(addresses, address)
+					}
 				}
 			}
 			i.update(addresses)
