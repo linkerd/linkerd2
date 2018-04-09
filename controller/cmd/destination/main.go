@@ -34,6 +34,7 @@ func main() {
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
 	done := make(chan struct{})
+	
 
 	server, lis, err := destination.NewServer(*addr, *kubeConfigPath, *k8sDNSZone, done)
 	if err != nil {
