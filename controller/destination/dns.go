@@ -130,6 +130,7 @@ func (i *informer) run() {
 					}
 				}
 			}
+
 			i.update(addresses)
 		}
 
