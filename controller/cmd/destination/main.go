@@ -6,8 +6,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/runconduit/conduit/controller/destination"
-	"github.com/runconduit/conduit/controller/util"
+	"github.com/xabxx/conduit/controller/destination"
+	"github.com/xabxx/conduit/controller/util"
 	"github.com/runconduit/conduit/pkg/version"
 	log "github.com/sirupsen/logrus"
 )
