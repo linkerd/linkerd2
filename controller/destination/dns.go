@@ -11,7 +11,6 @@ import (
 	"github.com/runconduit/conduit/controller/util"
 	log "github.com/sirupsen/logrus"
 )
-
 var refreshInterval = 10 * time.Second
 
 type DnsListener interface {
