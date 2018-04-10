@@ -15,6 +15,7 @@ use conduit_proxy_controller_grpc::common;
 use connection::Connection;
 use ctx::Proxy as ProxyCtx;
 use ctx::transport::{Server as ServerCtx};
+use drain;
 use telemetry::Sensors;
 use transport::GetOriginalDst;
 use super::glue::{HttpBody, HttpBodyNewSvc, HyperServerSvc};
@@ -26,12 +27,14 @@ use super::tcp;
 /// This type can `serve` new connections, determine what protocol
 /// the connection is speaking, and route it to the corresponding
 /// service.
-pub struct Server<S: NewService, B: tower_h2::Body, G>
+pub struct Server<S, B, G>
 where
     S: NewService<Request=http::Request<HttpBody>>,
     S::Future: 'static,
+    B: tower_h2::Body,
 {
     disable_protocol_detection_ports: IndexSet<u16>,
+    drain_signal: drain::Watch,
     executor: Handle,
     get_orig_dst: G,
     h1: hyper::server::Http,
@@ -51,6 +54,7 @@ where
     > + Clone + 'static,
     S::Future: 'static,
     S::Error: fmt::Debug,
+    S::InitError: fmt::Debug,
     B: tower_h2::Body + 'static,
     G: GetOriginalDst,
 {
@@ -63,12 +67,14 @@ where
         stack: S,
         tcp_connect_timeout: Duration,
         disable_protocol_detection_ports: IndexSet<u16>,
+        drain_signal: drain::Watch,
         executor: Handle,
     ) -> Self {
         let recv_body_svc = HttpBodyNewSvc::new(stack.clone());
         let tcp = tcp::Proxy::new(tcp_connect_timeout, sensors.clone(), &executor);
         Server {
             disable_protocol_detection_ports,
+            drain_signal,
             executor: executor.clone(),
             get_orig_dst,
             h1: hyper::server::Http::new(),
@@ -108,6 +114,7 @@ where
             let fut = tcp_serve(
                 &self.tcp,
                 connection,
+                self.drain_signal.clone(),
                 &self.sensors,
                 opened_at,
                 &self.proxy_ctx,
@@ -127,6 +134,7 @@ where
         let h2 = self.h2.clone();
         let tcp = self.tcp.clone();
         let new_service = self.new_service.clone();
+        let drain_signal = self.drain_signal.clone();
         let fut = connection
             .peek_future(sniff)
             .map_err(|_| ())
@@ -151,9 +159,12 @@ where
                                 .map_err(|_| ())
                                 .and_then(move |s| {
                                     let svc = HyperServerSvc::new(s, srv_ctx);
-                                    h1.serve_connection(io, svc)
+                                    drain_signal
+                                        .watch(h1.serve_connection(io, svc), |conn| {
+                                            conn.disable_keep_alive();
+                                        })
                                         .map(|_| ())
-                                        .map_err(|_| ())
+                                        .map_err(|e| trace!("http1 server error: {:?}", e))
                                 }))
                         },
                         Protocol::Http2 => {
@@ -162,7 +173,14 @@ where
                             let set_ctx = move |request: &mut http::Request<()>| {
                                 request.extensions_mut().insert(srv_ctx.clone());
                             };
-                            Box::new(h2.serve_modified(io, set_ctx).map_err(|_| ()))
+
+                            let fut = drain_signal
+                                .watch(h2.serve_modified(io, set_ctx), |conn| {
+                                    conn.graceful_shutdown();
+                                })
+                                .map_err(|e| trace!("h2 server error: {:?}", e));
+
+                            Box::new(fut)
                         }
                     }
                 } else {
@@ -170,6 +188,7 @@ where
                     tcp_serve(
                         &tcp,
                         connection,
+                        drain_signal,
                         &sensors,
                         opened_at,
                         &proxy_ctx,
@@ -195,6 +214,7 @@ struct OrigDst<'a>(&'a Option<SocketAddr>);
 fn tcp_serve(
     tcp: &tcp::Proxy,
     connection: Connection,
+    drain_signal: drain::Watch,
     sensors: &Sensors,
     opened_at: Instant,
     proxy_ctx: &Arc<ProxyCtx>,
@@ -213,5 +233,10 @@ fn tcp_serve(
     // record telemetry
     let tcp_in = sensors.accept(connection, opened_at, &srv_ctx);
 
-    tcp.serve(tcp_in, srv_ctx)
+    let fut = tcp.serve(tcp_in, srv_ctx);
+
+    // There's nothing to do when drain is signaled, we just have to hope
+    // the sockets finish soon. However, the drain signal still needs to
+    // 'watch' the TCP future so that the process doesn't close early.
+    Box::new(drain_signal.watch(fut, |_| ()))
 }

@@ -108,7 +108,7 @@ dependencies = [
  "env_logger 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-mpsc-lossy 0.3.0",
- "h2 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "h2 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "http 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "httparse 1.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.11.22 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -143,7 +143,7 @@ dependencies = [
  "bytes 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "convert 0.3.0",
  "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
- "h2 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "h2 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "http 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "prost 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "prost-derive 0.3.2 (git+https://github.com/danburkert/prost)",
@@ -249,7 +249,7 @@ dependencies = [
 
 [[package]]
 name = "h2"
-version = "0.1.3"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "byteorder 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -786,7 +786,7 @@ source = "git+https://github.com/tower-rs/tower-grpc#57d976aca89c13838b946dca9b6
 dependencies = [
  "bytes 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
- "h2 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "h2 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "http 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "prost 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -808,11 +808,11 @@ dependencies = [
 [[package]]
 name = "tower-h2"
 version = "0.1.0"
-source = "git+https://github.com/tower-rs/tower-h2#59f344f02d37a9e8596805f159bdca3af13ee7b0"
+source = "git+https://github.com/tower-rs/tower-h2#26453f5f0afe2928b47af38713f880ecf27fa85f"
 dependencies = [
  "bytes 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
- "h2 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "h2 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "http 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-connect 0.1.0 (git+https://github.com/carllerche/tokio-connect)",
@@ -957,7 +957,7 @@ dependencies = [
 "checksum fuchsia-zircon-sys 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "3dcaa9ae7725d12cdb85b3ad99a434db70b468c09ded17e012d86b5c1010f7a7"
 "checksum futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)" = "0bab5b5e94f5c31fc764ba5dd9ad16568aae5d4825538c01d6bca680c9bf94a7"
 "checksum futures-cpupool 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)" = "ab90cde24b3319636588d0c35fe03b1333857621051837ed769faefb4c2162e4"
-"checksum h2 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "771f68c296fba5783c4eddd3aab1e7d4523ac88ecc5549ffb19782b6b261981b"
+"checksum h2 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "065fb096fc65bbfb9c765d48c9f3f1a21cdb25ba0d3f82105b38f30ddffa2f7e"
 "checksum heck 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ea04fa3ead4e05e51a7c806fc07271fdbde4e246a6c6d1efd52e72230b771b82"
 "checksum http 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "75df369fd52c60635208a4d3e694777c099569b3dcf4844df8f652dc004644ab"
 "checksum httparse 1.2.4 (registry+https://github.com/rust-lang/crates.io-index)" = "c2f407128745b78abc95c0ffbe4e5d37427fdc0d45470710cfef8c44522a2e37"

@@ -65,6 +65,7 @@ mod connection;
 pub mod control;
 mod ctx;
 mod dns;
+mod drain;
 mod inbound;
 mod logging;
 mod map_err;
@@ -207,6 +208,7 @@ where
         let (control, control_bg) = control::new(dns_config.clone(), config.pod_namespace.clone());
 
         let executor = core.handle();
+        let (drain_tx, drain_rx) = drain::channel();
 
         let bind = Bind::new(executor.clone()).with_sensors(sensors.clone());
 
@@ -228,6 +230,7 @@ where
                 ctx,
                 sensors.clone(),
                 get_original_dst.clone(),
+                drain_rx.clone(),
                 &executor,
             );
             ::logging::context_future("inbound", fut)
@@ -248,6 +251,7 @@ where
                 ctx,
                 sensors,
                 get_original_dst,
+                drain_rx,
                 &executor,
             );
             ::logging::context_future("outbound", fut)
@@ -308,7 +312,12 @@ where
             .map_err(|err| error!("main error: {:?}", err));
 
         core.handle().spawn(fut);
+        let shutdown_signal = shutdown_signal.and_then(move |()| {
+            debug!("shutdown signaled");
+            drain_tx.drain()
+        });
         core.run(shutdown_signal).expect("executor");
+        debug!("shutdown complete");
     }
 }
 
@@ -320,6 +329,7 @@ fn serve<R, B, E, F, G>(
     proxy_ctx: Arc<ctx::Proxy>,
     sensors: telemetry::Sensors,
     get_orig_dst: G,
+    drain_rx: drain::Watch,
     executor: &Handle,
 ) -> Box<Future<Item = (), Error = io::Error> + 'static>
 where
@@ -368,17 +378,55 @@ where
         stack,
         tcp_connect_timeout,
         disable_protocol_detection_ports,
+        drain_rx.clone(),
         executor.clone(),
     );
 
-    bound_port.listen_and_fold(
+
+    let accept = bound_port.listen_and_fold(
         executor,
         (),
         move |(), (connection, remote_addr)| {
             server.serve(connection, remote_addr);
             Ok(())
         },
-    )
+    );
+
+    let accept_until = Cancelable {
+        future: accept,
+        canceled: false,
+    };
+
+    // As soon as we get a shutdown signal, the listener
+    // is canceled immediately.
+    Box::new(drain_rx.watch(accept_until, |accept| {
+        accept.canceled = true;
+    }))
+}
+
+/// Can cancel a future by setting a flag.
+///
+/// Used to 'watch' the accept futures, and close the listeners
+/// as soon as the shutdown signal starts.
+struct Cancelable<F> {
+    future: F,
+    canceled: bool,
+}
+
+impl<F> Future for Cancelable<F>
+where
+    F: Future<Item=()>,
+{
+    type Item = ();
+    type Error = F::Error;
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        if self.canceled {
+            Ok(().into())
+        } else {
+            self.future.poll()
+        }
+    }
 }
 
 fn serve_control<N, B>(

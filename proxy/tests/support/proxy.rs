@@ -8,7 +8,6 @@ pub fn new() -> Proxy {
     Proxy::new()
 }
 
-#[derive(Debug)]
 pub struct Proxy {
     controller: Option<controller::Listening>,
     inbound: Option<server::Listening>,
@@ -17,9 +16,10 @@ pub struct Proxy {
     metrics_flush_interval: Option<Duration>,
     inbound_disable_ports_protocol_detection: Option<Vec<u16>>,
     outbound_disable_ports_protocol_detection: Option<Vec<u16>>,
+
+    shutdown_signal: Option<Box<Future<Item=(), Error=()> + Send>>,
 }
 
-#[derive(Debug)]
 pub struct Listening {
     pub control: SocketAddr,
     pub inbound: SocketAddr,
@@ -42,6 +42,7 @@ impl Proxy {
             metrics_flush_interval: None,
             inbound_disable_ports_protocol_detection: None,
             outbound_disable_ports_protocol_detection: None,
+            shutdown_signal: None,
         }
     }
 
@@ -72,6 +73,18 @@ impl Proxy {
 
     pub fn disable_outbound_ports_protocol_detection(mut self, ports: Vec<u16>) -> Self {
         self.outbound_disable_ports_protocol_detection = Some(ports);
+        self
+    }
+
+    pub fn shutdown_signal<F>(mut self, sig: F) -> Self
+    where
+        F: Future + Send + 'static,
+    {
+        // It doesn't matter what kind of future you give us,
+        // we'll just wrap it up in a box and trigger when
+        // it triggers. The results are discarded.
+        let fut = Box::new(sig.then(|_| Ok(())));
+        self.shutdown_signal = Some(fut);
         self
     }
 
@@ -169,6 +182,10 @@ fn run(proxy: Proxy, mut env: config::TestEnv) -> Listening {
 
     let (running_tx, running_rx) = oneshot::channel();
     let (tx, mut rx) = shutdown_signal();
+
+    if let Some(fut) = proxy.shutdown_signal {
+        rx = Box::new(rx.select(fut).then(|_| Ok(())));
+    }
 
     ::std::thread::Builder::new()
         .name("support proxy".into())
