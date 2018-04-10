@@ -3,7 +3,10 @@ package public
 import (
 	"context"
 	"io"
+	"time"
 
+	"github.com/prometheus/client_golang/api/prometheus/v1"
+	"github.com/prometheus/common/model"
 	common "github.com/runconduit/conduit/controller/gen/common"
 	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 	pb "github.com/runconduit/conduit/controller/gen/public"
@@ -64,4 +67,23 @@ func (a *MockApi_TapClient) Recv() (*common.TapEvent, error) {
 	}
 
 	return &eventPopped, errorPopped
+}
+
+type MockProm struct {
+	api v1.API
+	Res model.Value
+}
+
+// satisfies v1.API
+func (m *MockProm) Query(ctx context.Context, query string, ts time.Time) (model.Value, error) {
+	return m.Res, nil
+}
+func (m *MockProm) QueryRange(ctx context.Context, query string, r v1.Range) (model.Value, error) {
+	return m.Res, nil
+}
+func (m *MockProm) LabelValues(ctx context.Context, label string) (model.LabelValues, error) {
+	return nil, nil
+}
+func (m *MockProm) Series(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) ([]model.LabelSet, error) {
+	return nil, nil
 }
