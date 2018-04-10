@@ -655,7 +655,9 @@ fn http1_response_end_of_file() {
 fn http1_one_connection_per_host() {
     let _ = env_logger::try_init();
 
-    let srv = server::http1().route("/", "hello").run();
+    let srv = server::http1()
+        .route_empty_ok("/")
+        .run();
     let ctrl = controller::new()
         .run();
     let proxy = proxy::new().controller(ctrl).inbound(srv).run();
@@ -714,7 +716,9 @@ fn http1_one_connection_per_host() {
 fn http1_requests_without_host_have_unique_connections() {
     let _ = env_logger::try_init();
 
-    let srv = server::http1().route("/", "hello").run();
+    let srv = server::http1()
+        .route_empty_ok("/")
+        .run();
     let ctrl = controller::new()
         .run();
     let proxy = proxy::new().controller(ctrl).inbound(srv).run();

@@ -14,9 +14,16 @@ extern crate tokio_core;
 pub extern crate tokio_io;
 extern crate tower;
 extern crate tower_h2;
+extern crate log;
 pub extern crate env_logger;
 
-use self::bytes::{BigEndian, Bytes, BytesMut};
+use std::net::SocketAddr;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+pub use std::time::Duration;
+
+use self::bytes::{BigEndian, BytesMut};
+pub use self::bytes::Bytes;
 pub use self::conduit_proxy::*;
 pub use self::futures::*;
 use self::futures::sync::oneshot;
@@ -27,8 +34,6 @@ use self::tokio_core::net::{TcpListener, TcpStream};
 use self::tokio_core::reactor::{Core, Handle};
 use self::tower::{NewService, Service};
 use self::tower_h2::{Body, RecvBody};
-use std::net::SocketAddr;
-pub use std::time::Duration;
 
 /// Environment variable for overriding the test patience.
 pub const ENV_TEST_PATIENCE_MS: &'static str = "RUST_TEST_PATIENCE_MS";
@@ -103,18 +108,31 @@ pub mod proxy;
 pub mod server;
 mod tcp;
 
-pub type Shutdown = oneshot::Sender<()>;
-pub type ShutdownRx = future::Then<
-    oneshot::Receiver<()>,
-    Result<(), ()>,
-    fn(Result<(), oneshot::Canceled>) -> Result<(), ()>,
->;
-
-pub fn shutdown_signal() -> (oneshot::Sender<()>, ShutdownRx) {
+pub fn shutdown_signal() -> (Shutdown, ShutdownRx) {
     let (tx, rx) = oneshot::channel();
-    (tx, rx.then(|_| { Ok(()) } as _))
+    (Shutdown { tx }, Box::new(rx.then(|_| Ok(()))))
 }
 
+pub struct Shutdown {
+    tx: oneshot::Sender<()>,
+}
+
+impl Shutdown {
+    pub fn signal(self) {
+        // a drop is enough
+    }
+}
+
+pub type ShutdownRx = Box<Future<Item=(), Error=()> + Send>;
+
+/// A channel used to signal when a Client's related connection is running or closed.
+pub fn running() -> (oneshot::Sender<()>, Running) {
+    let (tx, rx) = oneshot::channel();
+    let rx = Box::new(rx.then(|_| Ok::<(), ()>(())));
+    (tx, rx)
+}
+
+pub type Running = Box<Future<Item=(), Error=()> + Send>;
 
 struct RecvBodyStream(tower_h2::RecvBody);
 

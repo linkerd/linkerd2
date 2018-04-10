@@ -24,7 +24,6 @@ pub struct Controller {
     reports: Option<mpsc::UnboundedSender<pb::telemetry::ReportRequest>>,
 }
 
-#[derive(Debug)]
 pub struct Listening {
     pub addr: SocketAddr,
     shutdown: Shutdown,
