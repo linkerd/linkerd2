@@ -27,6 +27,7 @@ pub enum Exists<T> {
     No,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub enum CacheChange<'value, K, V: 'value> {
     /// A new key was inserted.
     Insertion { key: K, value: &'value V },
@@ -223,6 +224,81 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn update_intersection_fires_events() {
+        let mut cache = Cache {
+            inner: indexmap!{ 1 => "one",  2 => "two", 3 => "three" },
+            reset_on_next_modification: false,
+        };
+
+        let mut removals = 0;
+        let mut modifications = 0;
+
+        cache.update_intersection(
+            indexmap!{ 1 => "one", 3 => "three"},
+            &mut |change: CacheChange<usize, &str>| {
+                removals += 1;
+                assert_eq!(change, CacheChange::Removal{ key: 2, });
+            },
+        );
+        assert_eq!(cache.inner, indexmap!{ 1 => "one", 3 => "three"});
+        assert_eq!(removals, 1);
+
+        cache.update_intersection(
+            indexmap!{ 3 => "3", 4 => "four" },
+            &mut |change: CacheChange<usize, &str>| match change {
+                CacheChange::Removal { key } => {
+                    removals += 1;
+                    assert_eq!(key, 1);
+                }
+                CacheChange::Insertion { ..  } => {
+                    panic!("no insertion events should be fired");
+                }
+                CacheChange::Modification { key, new_value} => {
+                    modifications += 1;
+                    assert_eq!(key, 3);
+                    assert_eq!(new_value, &"3")
+                },
+            }
+        );
+        assert_eq!(cache.inner, indexmap!{ 3 => "3" });
+        assert_eq!(removals, 2);
+        assert_eq!(modifications, 1);
+
+        cache.update_intersection(
+            indexmap!{ 5 => "five", 6 => "six" },
+            &mut |change: CacheChange<usize, &str>| match change {
+                CacheChange::Removal { key } => {
+                    removals += 1;
+                    assert_eq!(key, 3);
+                }
+                CacheChange::Insertion { ..  } => {
+                    panic!("no insertion events should be fired");
+                }
+                CacheChange::Modification { ..  } => {
+                    panic!("no more modification events should be fired");
+                }
+            }
+        );
+
+        assert!(cache.inner.is_empty());
+        assert_eq!(removals, 3);
+        assert_eq!(modifications, 1);
+    }
+
+    #[test]
+    fn clear_fires_removal_event() {
+        let mut cache = Cache {
+            inner: indexmap!{ 1 => () },
+            reset_on_next_modification: false,
+        };
+        cache.clear(
+            &mut |change| {
+                assert_eq!(change, CacheChange::Removal{ key: 1, });
+            },
+        )
+    }
 
     #[test]
     fn update_union_reset_on_next_modification() {
