@@ -5,11 +5,13 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/prometheus/common/model"
 	tap "github.com/runconduit/conduit/controller/gen/controller/tap"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
+	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
 )
 
@@ -19,6 +21,19 @@ type statSumExpected struct {
 	req     pb.StatSummaryRequest
 	res     pb.StatSummaryResponse
 }
+
+var (
+	clientSet       = fake.NewSimpleClientset()
+	sharedInformers = informers.NewSharedInformerFactory(clientSet, 10*time.Minute)
+	fakeGrpcServer  = newGrpcServer(
+		&MockProm{},
+		&mockTelemetry{},
+		tap.NewTapClient(nil),
+		sharedInformers.Apps().V1().Deployments().Lister(),
+		sharedInformers.Core().V1().Pods().Lister(),
+		"conduit",
+	)
+)
 
 func TestStatSummary(t *testing.T) {
 	t.Run("Successfully performs a query based on resource type", func(t *testing.T) {
@@ -52,13 +67,7 @@ func TestStatSummary(t *testing.T) {
 		}
 
 		for _, exp := range expectations {
-			fakeGrpcServer := newGrpcServer(
-				&mockTelemetry{},
-				tap.NewTapClient(nil),
-				fake.NewSimpleClientset(),
-				&MockProm{Res: exp.promRes},
-				"conduit",
-			)
+			fakeGrpcServer.prometheusAPI.(*MockProm).Res = exp.promRes
 
 			rsp, err := fakeGrpcServer.StatSummary(context.TODO(), &exp.req)
 			if err != exp.err {
@@ -106,13 +115,7 @@ func TestStatSummary(t *testing.T) {
 		}
 
 		for _, exp := range expectations {
-			fakeGrpcServer := newGrpcServer(
-				&mockTelemetry{},
-				tap.NewTapClient(nil),
-				fake.NewSimpleClientset(),
-				&MockProm{Res: exp.promRes},
-				"conduit",
-			)
+			fakeGrpcServer.prometheusAPI.(*MockProm).Res = exp.promRes
 
 			_, err := fakeGrpcServer.StatSummary(context.TODO(), &exp.req)
 			if err != nil || exp.err != nil {

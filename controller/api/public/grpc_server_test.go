@@ -8,11 +8,13 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	tap "github.com/runconduit/conduit/controller/gen/controller/tap"
 	telemetry "github.com/runconduit/conduit/controller/gen/controller/telemetry"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"google.golang.org/grpc"
+	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
 )
 
@@ -194,11 +196,14 @@ func TestStat(t *testing.T) {
 		}
 
 		for _, tr := range responses {
+			clientSet := fake.NewSimpleClientset()
+			sharedInformers := informers.NewSharedInformerFactory(clientSet, 10*time.Minute)
 			s := newGrpcServer(
+				&MockProm{},
 				&mockTelemetry{test: t, tRes: tr.tRes, mReq: tr.mReq},
 				tap.NewTapClient(nil),
-				fake.NewSimpleClientset(),
-				&MockProm{},
+				sharedInformers.Apps().V1().Deployments().Lister(),
+				sharedInformers.Core().V1().Pods().Lister(),
 				"conduit",
 			)
 
