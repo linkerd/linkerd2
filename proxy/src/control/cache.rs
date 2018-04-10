@@ -1,4 +1,4 @@
-use indexmap::{map, IndexMap};
+use indexmap::{map, IndexMap, IndexSet};
 use std::borrow::Borrow;
 use std::hash::Hash;
 use std::iter::IntoIterator;
@@ -27,13 +27,13 @@ pub enum Exists<T> {
     No,
 }
 
-pub enum CacheChange<K, V> {
+pub enum CacheChange<'value, K, V: 'value> {
     /// A new key was inserted.
-    Insertion { key: K, value: V },
+    Insertion { key: K, value: &'value V },
     /// A key-value pair was removed.
     Removal { key: K },
     /// The value mapped to an existing key was changed.
-    Modification { key: K, new_value: V },
+    Modification { key: K, new_value: &'value V },
 }
 
 // ===== impl Exists =====
@@ -48,9 +48,8 @@ impl<T> Exists<T> {
 
 impl<K, V> Cache<K, V>
 where
-    K: Copy + Clone,
-    K: Hash + Eq,
-    V: PartialEq + Clone,
+    K: Copy + Hash + Eq,
+    V: PartialEq,
 {
     pub fn new() -> Self {
         Cache {
@@ -70,54 +69,69 @@ where
     pub fn update_union<I, F>(&mut self, iter: I, on_change: &mut F)
     where
         I: Iterator<Item = (K, V)>,
-        F: FnMut(CacheChange<K, V>),
+        F: for<'value> FnMut(CacheChange<'value, K, V>),
     {
-        fn update_inner<K, V, I, F>(
-            inner: &mut IndexMap<K, V>,
-            iter: I,
+        fn update_inner<K, V, F>(
+            inner: & mut IndexMap<K, V>,
+            key: K,
+            new_value: V,
             on_change: &mut F
         )
         where
-            K: Eq + Hash + Copy + Clone,
-            V: PartialEq + Clone,
-            I: Iterator<Item = (K, V)>,
-            F: FnMut(CacheChange<K, V>),
+            K: Eq + Hash + Copy,
+            V: PartialEq,
+            F: for<'value> FnMut(CacheChange<'value, K, V>),
         {
-            for (key, new_value) in iter {
-                if inner.get(&key)
-                    .map_or(false, |current| current == &new_value) {
-                    // The key is already mapped to the inserted value.
-                    // No change.
-                    continue;
-                } else {
-                    match inner.insert(key, new_value.clone()) {
-                        Some(_) => on_change(CacheChange::Modification {
-                            key,
-                            new_value
-                        }),
-                        // If `insert` returns `None`, then there was no old value
-                        // previously present. Therefore, we inserted a new value
-                        // into the cache.
-                        None => on_change(CacheChange::Insertion {
-                            key,
-                            value: new_value
-                        }),
-                    }
+            if inner.get(&key)
+                .map_or(false, |current| current == &new_value) {
+                // The key is already mapped to the inserted value.
+                // No change.
+                return;
+            } else {
+                match inner.insert(key, new_value) {
+                    Some(_) => on_change(CacheChange::Modification {
+                        key,
+                        new_value: inner.get(&key)
+                            .expect("value was just inserted")
+                    }),
+                    // If `insert` returns `None`, then there was no old value
+                    // previously present. Therefore, we inserted a new value
+                    // into the cache.
+                    None => on_change(CacheChange::Insertion {
+                        key,
+                        value: inner.get(&key)
+                            .expect("value was just inserted")
+                    }),
                 }
-
             }
         }
 
         if !self.reset_on_next_modification {
-            update_inner(&mut self.inner, iter, on_change);
+            // We don't need to invalidate the cache, so just update
+            // to add the new keys.
+            iter.for_each(|(k, v)| {
+                update_inner(&mut self.inner, k, v, on_change)
+            });
         } else {
-            let to_insert = iter.collect::<IndexMap<K, V>>();
-            update_inner(
-                &mut self.inner,
-                to_insert.iter().map(|(k, v)| (*k, v.clone())),
-                on_change,
-            );
-            self.update_intersection(to_insert, on_change);
+            // The cache was invalidated, so after updating entries present
+            // in `to_insert`, remove any keys not present in `to_insert`.
+            let retained_keys: IndexSet<K> = iter
+                .map(|(k, v)| {
+                    update_inner(&mut self.inner, k, v, on_change);
+                    k
+                })
+                .collect();
+            // This retain is similar to `update_intersection`'s removal of
+            // non-present keys but without updating values, since we've
+            // already updated any values present in `to_insert`. We do this
+            // instead of just calling `update_intersection` so we don't have
+            // to clone the values we already know were inserted here.
+            self.inner.retain(|key, _| if retained_keys.contains(key) {
+                true
+            } else {
+                on_change(CacheChange::Removal { key: *key });
+                false
+            });
         }
         self.reset_on_next_modification = false;
     }
@@ -125,7 +139,7 @@ where
     pub fn remove<I, F>(&mut self, iter: I, on_change: &mut F)
     where
         I: Iterator<Item = K>,
-        F: FnMut(CacheChange<K, V>),
+        F: for<'value> FnMut(CacheChange<'value, K, V>),
     {
         if !self.reset_on_next_modification {
             for key in iter {
@@ -141,9 +155,12 @@ where
 
     pub fn clear<F>(&mut self, on_change: &mut F)
     where
-        F: FnMut(CacheChange<K, V>),
+        F: for<'value> FnMut(CacheChange<'value, K, V>),
     {
-        self.update_intersection(IndexMap::new(), on_change)
+        for (key, _) in self.inner.drain(..) {
+            on_change(CacheChange::Removal { key })
+        };
+        self.reset_on_next_modification = false;
     }
 
     /// Update the cache to contain the intersection of its current contents
@@ -157,9 +174,10 @@ where
         mut on_change: F
     )
     where
-        F: FnMut(CacheChange<K, V>),
+        F: for<'value> FnMut(CacheChange<'value, K, V>),
         K: Borrow<Q>,
         Q: Hash + Eq,
+        V: Clone,
     {
         self.inner.retain(|key, value| {
             match to_update.remove(key.borrow()) {
@@ -168,8 +186,15 @@ where
                 // If the new value isn't equal to the old value, overwrite
                 // the old value.
                 Some(new_value) =>  {
+                    // TODO: ideally, we wouldn't clone here, but we can't
+                    // borrow the value from `self.inner` after inserting it,
+                    // as `self.inner` is already borrowed mutably by `retain`.
+                    // It would be nice to figure this out.
                     let _ = mem::replace(value, new_value.clone());
-                    on_change(CacheChange::Modification { key: *key, new_value });
+                    on_change(CacheChange::Modification {
+                        key: *key,
+                        new_value: &new_value,
+                    });
                     true
                 },
                 // Key doesn't exist, remove it from the map.
