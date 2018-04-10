@@ -24,6 +24,8 @@ func (c *collectUpdateListener) Done() <-chan struct{} {
 
 func (c *collectUpdateListener) NoEndpoints(exists bool) {}
 
+func (c *collectUpdateListener) SetServiceId(id *serviceId) {}
+
 func newCollectUpdateListener() (*collectUpdateListener, context.CancelFunc) {
 	ctx, cancelFn := context.WithCancel(context.Background())
 	return &collectUpdateListener{context: ctx}, cancelFn

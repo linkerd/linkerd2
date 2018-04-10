@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/runconduit/conduit/pkg/version"
+	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -57,8 +58,26 @@ const (
 	ProxyVersionAnnotation = "conduit.io/proxy-version"
 )
 
+var ownerLabels = map[string]string{
+	"deployment":            ProxyDeploymentLabel,
+	"replicationcontroller": ProxyReplicationControllerLabel,
+	"replicaset":            ProxyReplicaSetLabel,
+	"job":                   ProxyJobLabel,
+	"daemonset":             ProxyDaemonSetLabel,
+}
+
 // CreatedByAnnotationValue returns the value associated with
 // CreatedByAnnotation.
 func CreatedByAnnotationValue() string {
 	return fmt.Sprintf("conduit/cli %s", version.Version)
+}
+
+func GetOwnerLabels(objectMeta meta.ObjectMeta) map[string]string {
+	labels := make(map[string]string)
+	for ownerLabel, conduitLabel := range ownerLabels {
+		if labelValue, ok := objectMeta.Labels[conduitLabel]; ok {
+			labels[ownerLabel] = labelValue
+		}
+	}
+	return labels
 }

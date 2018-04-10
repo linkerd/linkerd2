@@ -321,7 +321,7 @@ func assertIsResolved(t *testing.T, resolver *k8sResolver, nameToExpectedResolve
 			t.Fatalf("Expected name [%s] to resolve to [%s], but got [%v]", name, expectedResolvedName, resolvedName)
 		}
 
-		if *resolvedName != expectedResolvedName {
+		if resolvedName.String() != expectedResolvedName {
 			t.Fatalf("Expected name [%s] to resolve to [%s], but got [%s]", name, expectedResolvedName, *resolvedName)
 		}
 	}

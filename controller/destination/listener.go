@@ -5,6 +5,7 @@ import (
 	pb "github.com/runconduit/conduit/controller/gen/proxy/destination"
 	"github.com/runconduit/conduit/controller/k8s"
 	"github.com/runconduit/conduit/controller/util"
+	pkgK8s "github.com/runconduit/conduit/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -12,17 +13,27 @@ type updateListener interface {
 	Update(add []common.TcpAddress, remove []common.TcpAddress)
 	Done() <-chan struct{}
 	NoEndpoints(exists bool)
+	SetServiceId(id *serviceId)
 }
 
 // implements the updateListener interface
 type endpointListener struct {
-	serviceName string
-	stream      pb.Destination_GetServer
-	podsByIp    k8s.PodIndex
+	stream   pb.Destination_GetServer
+	podsByIp k8s.PodIndex
+	labels   map[string]string
 }
 
 func (l *endpointListener) Done() <-chan struct{} {
 	return l.stream.Context().Done()
+}
+
+func (l *endpointListener) SetServiceId(id *serviceId) {
+	if id != nil {
+		l.labels = map[string]string{
+			"namespace": id.namespace,
+			"service":   id.name,
+		}
+	}
 }
 
 func (l *endpointListener) Update(add []common.TcpAddress, remove []common.TcpAddress) {
@@ -62,7 +73,6 @@ func (l *endpointListener) NoEndpoints(exists bool) {
 }
 
 func (l *endpointListener) toWeightedAddrSet(endpoints []common.TcpAddress) *pb.WeightedAddrSet {
-	var namespace string
 	addrs := make([]*pb.WeightedAddr, 0)
 	for i, address := range endpoints {
 		metricLabelsForPod := map[string]string{}
@@ -76,11 +86,8 @@ func (l *endpointListener) toWeightedAddrSet(endpoints []common.TcpAddress) *pb.
 				log.Errorf("Could not find pod for IP [%s], this IP will be sent with no metric labels.", ipAsString)
 			} else {
 				pod := resultingPods[0]
-				metricLabelsForPod = map[string]string{
-					"pod": pod.Name,
-				}
-
-				namespace = pod.Namespace
+				metricLabelsForPod = pkgK8s.GetOwnerLabels(pod.ObjectMeta)
+				metricLabelsForPod["pod"] = pod.Name
 			}
 		}
 
@@ -91,14 +98,9 @@ func (l *endpointListener) toWeightedAddrSet(endpoints []common.TcpAddress) *pb.
 		})
 	}
 
-	globalMetricLabels := map[string]string{
-		"service":   l.serviceName,
-		"namespace": namespace,
-	}
-
 	return &pb.WeightedAddrSet{
 		Addrs:        addrs,
-		MetricLabels: globalMetricLabels,
+		MetricLabels: l.labels,
 	}
 }
 
