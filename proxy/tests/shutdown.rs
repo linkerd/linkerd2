@@ -123,6 +123,7 @@ fn http1_closes_idle_connections() {
 }
 
 #[test]
+#[cfg_attr(not(feature = "flaky_tests"), ignore)]
 fn tcp_waits_for_proxies_to_close() {
     let _ = env_logger::try_init();
 
