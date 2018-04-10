@@ -226,6 +226,74 @@ mod tests {
     use super::*;
 
     #[test]
+    fn update_union_fires_events() {
+        let mut cache = Cache {
+            inner: indexmap!{ 1 => "one",  2 => "two", },
+            reset_on_next_modification: false,
+        };
+
+        let mut insertions = 0;
+        let mut modifications = 0;
+
+        cache.update_union(
+            indexmap!{ 1 => "one", 2 => "2", 3 => "three"}.into_iter(),
+            &mut |change: CacheChange<usize, &str>| match change {
+                CacheChange::Removal { .. } => {
+                    panic!("no removals should have been fired!");
+                },
+                CacheChange::Insertion { key, value } => {
+                    insertions += 1;
+                    assert_eq!(key, 3);
+                    assert_eq!(value, &"three");
+                },
+                CacheChange::Modification { key, new_value } => {
+                    modifications += 1;
+                    assert_eq!(key, 2);
+                    assert_eq!(new_value, &"2");
+                }
+            }
+        );
+
+        cache.update_union(
+            indexmap!{ 1 => "1", 2 => "2", 3 => "3"}.into_iter(),
+            &mut |change: CacheChange<usize, &str>| match change {
+                CacheChange::Removal { .. } => {
+                    panic!("no removals should have been fired!");
+                },
+                CacheChange::Insertion { .. } => {
+                    panic!("no insertions should have been fired!");
+                },
+                CacheChange::Modification { key, new_value } => {
+                    modifications += 1;
+                    assert!(key == 1 || key == 3);
+                    assert!(new_value == &"1" || new_value == &"3")
+                }
+            }
+        );
+        assert_eq!(insertions, 1);
+        assert_eq!(modifications, 3);
+
+        cache.update_union(
+            indexmap!{ 4 => "four", 5 => "five"}.into_iter(),
+            &mut |change: CacheChange<usize, &str>| match change {
+                CacheChange::Removal { .. } => {
+                    panic!("no removals should have been fired!");
+                },
+                CacheChange::Insertion { key, value } => {
+                    insertions += 1;
+                    assert!(key == 4 || key == 5);
+                    assert!(value == &"four" || value == &"five")
+                },
+                CacheChange::Modification { .. } => {
+                    panic!("no insertions should have been fired!");
+                }
+            }
+        );
+        assert_eq!(insertions, 3);
+        assert_eq!(modifications, 3);
+    }
+
+    #[test]
     fn update_intersection_fires_events() {
         let mut cache = Cache {
             inner: indexmap!{ 1 => "one",  2 => "two", 3 => "three" },
