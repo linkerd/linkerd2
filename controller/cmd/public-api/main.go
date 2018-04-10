@@ -65,7 +65,7 @@ func main() {
 	deployInformer := sharedInformers.Apps().V1().Deployments()
 	deployInformerSynced := deployInformer.Informer().HasSynced
 	podInformer := sharedInformers.Core().V1().Pods()
-	podInformerSynec := podInformer.Informer().HasSynced
+	podInformerSynced := podInformer.Informer().HasSynced
 
 	prometheusClient, err := promApi.NewClient(promApi.Config{Address: *prometheusUrl})
 	if err != nil {
@@ -88,7 +88,7 @@ func main() {
 		sharedInformers.Start(ctx.Done())
 
 		log.Infof("waiting for caches to sync")
-		if !cache.WaitForCacheSync(ctx.Done(), deployInformerSynced, podInformerSynec) {
+		if !cache.WaitForCacheSync(ctx.Done(), deployInformerSynced, podInformerSynced) {
 			log.Fatalf("timed out wait for caches to sync")
 		}
 		log.Infof("caches synced")
