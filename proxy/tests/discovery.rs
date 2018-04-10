@@ -139,28 +139,6 @@ macro_rules! generate_tests {
         }
 
         #[test]
-        fn outbound_uses_orig_dst_if_not_local_svc() {
-            let _ = env_logger::try_init();
-
-            let srv = $make_server()
-                .route("/", "hello")
-                .route("/bye", "bye")
-                .run();
-            let ctrl = controller::new()
-                // no controller rule for srv
-                .run();
-            let proxy = proxy::new()
-                .controller(ctrl)
-                // set outbound orig_dst to srv
-                .outbound(srv)
-                .run();
-            let client = $make_client(proxy.outbound, "versioncheck.conduit.io");
-
-            assert_eq!(client.get("/"), "hello");
-            assert_eq!(client.get("/bye"), "bye");
-        }
-
-        #[test]
         fn outbound_asks_controller_without_orig_dst() {
             let _ = env_logger::try_init();
 

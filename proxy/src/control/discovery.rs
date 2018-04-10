@@ -13,7 +13,7 @@ use tower_discover::{Change, Discover};
 use tower_grpc as grpc;
 
 use dns::{self, IpAddrListFuture};
-use fully_qualified_authority::FullyQualifiedAuthority;
+use super::fully_qualified_authority::FullyQualifiedAuthority;
 
 use conduit_proxy_controller_grpc::common::{Destination, TcpAddress};
 use conduit_proxy_controller_grpc::destination::Update as PbUpdate;

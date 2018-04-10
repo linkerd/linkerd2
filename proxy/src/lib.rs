@@ -65,7 +65,6 @@ mod connection;
 pub mod control;
 mod ctx;
 mod dns;
-mod fully_qualified_authority;
 mod inbound;
 mod logging;
 mod map_err;
@@ -239,16 +238,8 @@ where
         // to a remote service (public destination).
         let outbound = {
             let ctx = ctx::Proxy::outbound(&process_ctx);
-
             let bind = bind.clone().with_ctx(ctx.clone());
-
-            let outgoing = Outbound::new(
-                bind,
-                control,
-                config.pod_namespace.to_owned(),
-                config.bind_timeout,
-            );
-
+            let outgoing = Outbound::new(bind, control, config.bind_timeout);
             let fut = serve(
                 outbound_listener,
                 outgoing,

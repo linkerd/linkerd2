@@ -22,6 +22,7 @@ use timeout::{Timeout, TimeoutError};
 
 mod cache;
 pub mod discovery;
+mod fully_qualified_authority;
 mod observe;
 pub mod pb;
 mod telemetry;
