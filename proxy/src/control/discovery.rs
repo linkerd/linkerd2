@@ -529,7 +529,8 @@ impl<T> DestinationSet<T>
                         exists = Exists::Yes(());
                         self.remove(
                             auth,
-                            r_set.addrs.iter().filter_map(|addr| pb_to_sock_addr(addr.clone())));
+                            r_set.addrs.iter().filter_map(|addr| pb_to_sock_addr(addr.clone()))
+                        );
                     },
                     Some(PbUpdate2::NoEndpoints(ref no_endpoints)) if no_endpoints.exists => {
                         exists = Exists::Yes(());
@@ -572,8 +573,7 @@ impl<T> DestinationSet<T>
                 Ok(Async::Ready(dns::Response::Exists(ips))) => {
                     trace!("positive result of DNS query for {:?}: {:?}", authority, ips);
                     self.add(authority, ips.iter().map(|ip| {
-                        let no_metadata = Metadata { metric_labels: None, };
-                        (SocketAddr::from((*ip, authority.port)), no_metadata)
+                        (SocketAddr::from((*ip, authority.port)), Metadata::no_metadata())
                     }));
                 },
                 Ok(Async::Ready(dns::Response::DoesNotExist)) => {
@@ -767,6 +767,16 @@ impl DstLabels {
 impl fmt::Display for DstLabels {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+// ===== impl Metadata =====
+
+impl Metadata {
+    fn no_metadata() -> Self {
+        Metadata {
+            metric_labels: None,
+        }
     }
 }
 

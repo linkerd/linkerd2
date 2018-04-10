@@ -18,7 +18,7 @@ use conduit_proxy_controller_grpc;
 use conduit_proxy_router::Reuse;
 use control;
 use ctx;
-use telemetry::{self, sensor,};
+use telemetry::{self, sensor};
 use transparency::{self, HttpBody, h1};
 use transport;
 
