@@ -129,7 +129,7 @@ func TestEndpointListener(t *testing.T) {
 		actualAddedAddress1MetricLabels := mockGetServer.updatesReceived[0].GetAdd().Addrs[0].MetricLabels
 		expectedAddedAddress1MetricLabels := map[string]string{
 			"pod": expectedPodName,
-			"replicationcontroller": expectedReplicationControllerName,
+			"replication_controller": expectedReplicationControllerName,
 		}
 		if !reflect.DeepEqual(actualAddedAddress1MetricLabels, expectedAddedAddress1MetricLabels) {
 			t.Fatalf("Expected global metric labels sent to be [%v] but was [%v]", expectedAddedAddress1MetricLabels, actualAddedAddress1MetricLabels)

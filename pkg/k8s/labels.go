@@ -7,6 +7,7 @@ package k8s
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/runconduit/conduit/pkg/version"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -58,12 +59,12 @@ const (
 	ProxyVersionAnnotation = "conduit.io/proxy-version"
 )
 
-var ownerLabels = map[string]string{
-	"deployment":            ProxyDeploymentLabel,
-	"replicationcontroller": ProxyReplicationControllerLabel,
-	"replicaset":            ProxyReplicaSetLabel,
-	"job":                   ProxyJobLabel,
-	"daemonset":             ProxyDaemonSetLabel,
+var proxyLabels = []string{
+	ProxyDeploymentLabel,
+	ProxyReplicationControllerLabel,
+	ProxyReplicaSetLabel,
+	ProxyJobLabel,
+	ProxyDaemonSetLabel,
 }
 
 // CreatedByAnnotationValue returns the value associated with
@@ -72,12 +73,25 @@ func CreatedByAnnotationValue() string {
 	return fmt.Sprintf("conduit/cli %s", version.Version)
 }
 
+// GetOwnerLabels returns the set of prometheus owner labels that can be
+// extracted from the proxy labels that have been added to an injected
+// kubernetes resource
 func GetOwnerLabels(objectMeta meta.ObjectMeta) map[string]string {
 	labels := make(map[string]string)
-	for ownerLabel, conduitLabel := range ownerLabels {
-		if labelValue, ok := objectMeta.Labels[conduitLabel]; ok {
-			labels[ownerLabel] = labelValue
+	for _, label := range proxyLabels {
+		if labelValue, ok := objectMeta.Labels[label]; ok {
+			labels[toOwnerLabel(label)] = labelValue
 		}
 	}
 	return labels
+}
+
+// toOwnerLabel converts a proxy label to a prometheus label, following the
+// relabel conventions from the prometheus scrape config file
+func toOwnerLabel(proxyLabel string) string {
+	stripped := strings.TrimPrefix(proxyLabel, "conduit.io/proxy-")
+	if stripped == "job" {
+		return "k8s_job"
+	}
+	return strings.Replace(stripped, "-", "_", -1)
 }
