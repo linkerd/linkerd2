@@ -131,9 +131,17 @@ fn tcp_waits_for_proxies_to_close() {
     let msg2 = "custom tcp bye";
 
     let srv = server::tcp()
-        .accept(move |read| {
-            assert_eq!(read, msg1.as_bytes());
-            msg2
+        // Trigger a shutdown while TCP stream is busy
+        .accept_fut(move |sock| {
+            shdn.signal();
+            tokio_io::io::read(sock, vec![0; 256])
+                .and_then(move |(sock, vec, n)| {
+                    assert_eq!(&vec[..n], msg1.as_bytes());
+
+                    tokio_io::io::write_all(sock, msg2.as_bytes())
+                })
+                .map(|_| ())
+                .map_err(|e| panic!("tcp server error: {}", e))
         })
         .run();
     let ctrl = controller::new().run();
@@ -146,8 +154,6 @@ fn tcp_waits_for_proxies_to_close() {
     let client = client::tcp(proxy.inbound);
 
     let tcp_client = client.connect();
-
-    shdn.signal();
 
     tcp_client.write(msg1);
     assert_eq!(tcp_client.read(), msg2.as_bytes());
