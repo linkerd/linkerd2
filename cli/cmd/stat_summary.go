@@ -14,11 +14,13 @@ import (
 	"github.com/runconduit/conduit/controller/api/util"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/spf13/cobra"
+	"k8s.io/api/core/v1"
 )
 
 var namespace, resourceType, resourceName string
 var outToNamespace, outToType, outToName string
 var outFromNamespace, outFromType, outFromName string
+var allNamespaces bool
 
 var statSummaryCommand = &cobra.Command{
 	Use:   "statsummary [flags] RESOURCETYPE [RESOURCENAME]",
@@ -75,6 +77,7 @@ func init() {
 	statSummaryCommand.PersistentFlags().StringVar(&outFromName, "out-from", "", "If present, restricts outbound stats to the specified resource name")
 	statSummaryCommand.PersistentFlags().StringVar(&outFromNamespace, "out-from-namespace", "", "Sets the namespace used to lookup the \"--out-from\" resource; by default the current \"--namespace\" is used")
 	statSummaryCommand.PersistentFlags().StringVar(&outFromType, "out-from-resource", "", "If present, restricts outbound stats to the specified resource type")
+	statSummaryCommand.PersistentFlags().BoolVar(&allNamespaces, "all-namespaces", false, "If present, returns stats across all namespaces, ignoring the \"--namespace\" flag")
 }
 
 func requestStatSummaryFromAPI(client pb.ApiClient) (string, error) {
@@ -118,6 +121,8 @@ type summaryRow struct {
 func writeStatTableToBuffer(resp *pb.StatSummaryResponse, w *tabwriter.Writer) {
 	nameHeader := "NAME"
 	maxNameLength := len(nameHeader)
+	namespaceHeader := "NAMESPACE"
+	maxNamespaceLength := len(namespaceHeader)
 
 	stats := make(map[string]*summaryRow)
 
@@ -125,26 +130,37 @@ func writeStatTableToBuffer(resp *pb.StatSummaryResponse, w *tabwriter.Writer) {
 		table := statTable.GetPodGroup()
 		for _, r := range table.Rows {
 			name := r.Resource.Name
-			if name == "" {
-				continue
-			}
+			namespace := r.Resource.Namespace
+			key := fmt.Sprintf("%s/%s", namespace, name)
 
 			if len(name) > maxNameLength {
 				maxNameLength = len(name)
 			}
 
-			stats[name] = &summaryRow{
-				meshed:      fmt.Sprintf("%d/%d", r.MeshedPodCount, r.TotalPodCount),
-				requestRate: getRequestRate(*r),
-				successRate: getSuccessRate(*r),
-				latencyP50:  r.Stats.LatencyMsP50,
-				latencyP95:  r.Stats.LatencyMsP95,
-				latencyP99:  r.Stats.LatencyMsP99,
+			if len(namespace) > maxNamespaceLength {
+				maxNamespaceLength = len(namespace)
+			}
+
+			stats[key] = &summaryRow{
+				meshed: fmt.Sprintf("%d/%d", r.MeshedPodCount, r.TotalPodCount),
+			}
+
+			if r.Stats != nil {
+				stats[key].requestRate = getRequestRate(*r)
+				stats[key].successRate = getSuccessRate(*r)
+				stats[key].latencyP50 = r.Stats.LatencyMsP50
+				stats[key].latencyP95 = r.Stats.LatencyMsP95
+				stats[key].latencyP99 = r.Stats.LatencyMsP99
 			}
 		}
 	}
 
-	fmt.Fprintln(w, strings.Join([]string{
+	headers := make([]string, 0)
+	if allNamespaces {
+		headers = append(headers,
+			namespaceHeader+strings.Repeat(" ", maxNamespaceLength-len(namespaceHeader)))
+	}
+	headers = append(headers, []string{
 		nameHeader + strings.Repeat(" ", maxNameLength-len(nameHeader)),
 		"MESHED",
 		"SUCCESS",
@@ -152,30 +168,49 @@ func writeStatTableToBuffer(resp *pb.StatSummaryResponse, w *tabwriter.Writer) {
 		"LATENCY_P50",
 		"LATENCY_P95",
 		"LATENCY_P99\t", // trailing \t is required to format last column
-	}, "\t"))
+	}...)
+	fmt.Fprintln(w, strings.Join(headers, "\t"))
 
-	sortedNames := sortStatSummaryKeys(stats)
-	for _, name := range sortedNames {
-		fmt.Fprintf(
-			w,
-			"%s\t%s\t%.1frps\t%.2f%%\t%dms\t%dms\t%dms\t\n",
-			name+strings.Repeat(" ", maxNameLength-len(name)),
-			stats[name].meshed,
-			stats[name].successRate*100,
-			stats[name].requestRate,
-			stats[name].latencyP50,
-			stats[name].latencyP95,
-			stats[name].latencyP99,
-		)
+	sortedKeys := sortStatSummaryKeys(stats)
+	for _, key := range sortedKeys {
+		parts := strings.Split(key, "/")
+		namespace := parts[0]
+		name := parts[1]
+		values := make([]interface{}, 0)
+		templateString := "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t\n"
+
+		if allNamespaces {
+			values = append(values,
+				namespace+strings.Repeat(" ", maxNamespaceLength-len(namespace)))
+			templateString = "%s\t" + templateString
+		}
+		values = append(values, []interface{}{
+			name + strings.Repeat(" ", maxNameLength-len(name)),
+			stats[key].meshed,
+			stats[key].successRate * 100,
+			stats[key].requestRate,
+			stats[key].latencyP50,
+			stats[key].latencyP95,
+			stats[key].latencyP99,
+		}...)
+
+		fmt.Fprintf(w, templateString, values...)
 	}
 }
 
 func buildStatSummaryRequest() (*pb.StatSummaryRequest, error) {
+	targetNamespace := namespace
+	if allNamespaces {
+		targetNamespace = ""
+	} else if namespace == "" {
+		targetNamespace = v1.NamespaceDefault
+	}
+
 	requestParams := util.StatSummaryRequestParams{
 		TimeWindow:       timeWindow,
 		ResourceName:     resourceName,
 		ResourceType:     resourceType,
-		Namespace:        namespace,
+		Namespace:        targetNamespace,
 		OutToName:        outToName,
 		OutToType:        outToType,
 		OutToNamespace:   outToNamespace,
@@ -188,9 +223,6 @@ func buildStatSummaryRequest() (*pb.StatSummaryRequest, error) {
 }
 
 func getRequestRate(r pb.StatTable_PodGroup_Row) float64 {
-	if r.Stats == nil {
-		return 0.0
-	}
 	success := r.Stats.SuccessCount
 	failure := r.Stats.FailureCount
 	window, err := util.GetWindowString(r.TimeWindow)
@@ -208,10 +240,6 @@ func getRequestRate(r pb.StatTable_PodGroup_Row) float64 {
 }
 
 func getSuccessRate(r pb.StatTable_PodGroup_Row) float64 {
-	if r.Stats == nil {
-		return 0.0
-	}
-
 	success := r.Stats.SuccessCount
 	failure := r.Stats.FailureCount
 

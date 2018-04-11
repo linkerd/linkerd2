@@ -17,6 +17,7 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/cache"
 )
 
 type promType string
@@ -27,19 +28,21 @@ type promResult struct {
 }
 
 const (
-	reqQuery             = "sum(increase(response_total{%s}[%s])) by (%s, classification)"
-	latencyQuantileQuery = "histogram_quantile(%s, sum(irate(response_latency_ms_bucket{%s}[%s])) by (le, %s))"
+	reqQuery             = "sum(increase(response_total{%s}[%s])) by (%s, namespace, classification)"
+	latencyQuantileQuery = "histogram_quantile(%s, sum(irate(response_latency_ms_bucket{%s}[%s])) by (le, namespace, %s))"
 
 	promRequests   = promType("QUERY_REQUESTS")
 	promLatencyP50 = promType("0.5")
 	promLatencyP95 = promType("0.95")
 	promLatencyP99 = promType("0.99")
+
+	namespaceLabel = "namespace"
 )
 
 var (
 	promTypes = []promType{promRequests, promLatencyP50, promLatencyP95, promLatencyP99}
 
-	k8sResourceTypesToPromLabels = map[string]model.LabelName{
+	k8sResourceTypesToPromLabels = map[string]string{
 		k8s.KubernetesDeployments: "deployment",
 	}
 )
@@ -60,36 +63,31 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 
 func (s *grpcServer) deploymentQuery(ctx context.Context, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
 	rows := make([]*pb.StatTable_PodGroup_Row, 0)
-	deployments := make([]*appsv1.Deployment, 0)
-	var meshCount map[string]*meshedCount
 
 	timeWindow, err := apiUtil.GetWindowString(req.TimeWindow)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: parallelize the k8s api query and the prometheus query
-	if req.Selector.Resource.Name == "" {
-		deployments, meshCount, err = s.getDeployments(req.Selector.Resource.Namespace)
-	} else {
-		deployments, meshCount, err = s.getDeployment(req.Selector.Resource.Namespace, req.Selector.Resource.Name)
-	}
+	deployments, meshCount, err := s.getDeployments(req.Selector.Resource)
 	if err != nil {
 		return nil, err
 	}
 
 	requestLabels := buildRequestLabels(req)
-	promResourceLabel, ok := k8sResourceTypesToPromLabels[req.Selector.Resource.Type]
-	if !ok {
-		return nil, errors.New("Resource Type has no Prometheus equivalent: " + req.Selector.Resource.Type)
-	}
+	groupBy := promResourceType(req.Selector.Resource)
 
-	requestMetrics, err := s.getRequests(ctx, requestLabels, string(promResourceLabel), timeWindow)
+	requestMetrics, err := s.getRequests(ctx, requestLabels, groupBy, timeWindow)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, resource := range deployments {
+		key, err := cache.MetaNamespaceKeyFunc(resource)
+		if err != nil {
+			return nil, err
+		}
+
 		row := pb.StatTable_PodGroup_Row{
 			Resource: &pb.Resource{
 				Namespace: resource.Namespace,
@@ -97,9 +95,10 @@ func (s *grpcServer) deploymentQuery(ctx context.Context, req *pb.StatSummaryReq
 				Name:      resource.Name,
 			},
 			TimeWindow: req.TimeWindow,
-			Stats:      requestMetrics[resource.Name],
+			Stats:      requestMetrics[key],
 		}
-		if count, ok := meshCount[resource.Name]; ok {
+
+		if count, ok := meshCount[key]; ok {
 			row.MeshedPodCount = count.inMesh
 			row.TotalPodCount = count.total
 		}
@@ -130,6 +129,25 @@ func promLabel(key, val string) string {
 	return fmt.Sprintf("%s=\"%s\"", key, val)
 }
 
+func promNameLabel(resource *pb.Resource) string {
+	return promLabel(promResourceType(resource), resource.Name)
+}
+
+func promNamespaceLabel(resource *pb.Resource) string {
+	return promLabel(namespaceLabel, resource.Namespace)
+}
+
+func promDstLabels(resource *pb.Resource) []string {
+	return []string{
+		promLabel("dst_"+namespaceLabel, resource.Namespace),
+		promLabel("dst_"+promResourceType(resource), resource.Name),
+	}
+}
+
+func promResourceType(resource *pb.Resource) string {
+	return k8sResourceTypesToPromLabels[resource.Type]
+}
+
 func buildRequestLabels(req *pb.StatSummaryRequest) string {
 	labels := []string{}
 
@@ -137,33 +155,24 @@ func buildRequestLabels(req *pb.StatSummaryRequest) string {
 	switch req.Outbound.(type) {
 	case *pb.StatSummaryRequest_OutToResource:
 		direction = "outbound"
-
-		dstLabel := fmt.Sprintf("dst_namespace=\"%s\", dst_%s=\"%s\"",
-			req.GetOutToResource().Namespace,
-			req.GetOutToResource().Type,
-			req.GetOutToResource().Name,
-		)
-		labels = append(labels, dstLabel)
+		labels = append(labels, promDstLabels(req.GetOutToResource())...)
 
 	case *pb.StatSummaryRequest_OutFromResource:
 		direction = "outbound"
-
-		srcLabel := fmt.Sprintf("dst_namespace=\"%s\", dst_%s=\"%s\"",
-			req.Selector.Resource.Namespace,
-			req.Selector.Resource.Type,
-			req.Selector.Resource.Name,
-		)
-		labels = append(labels, srcLabel)
+		labels = append(labels, promDstLabels(req.Selector.Resource)...)
 
 		outFromNs := req.GetOutFromResource().Namespace
 		if outFromNs == "" {
 			outFromNs = req.Selector.Resource.Namespace
 		}
 
-		labels = append(labels, promLabel("namespace", outFromNs))
-		if req.Selector.Resource.Name != "" {
-			labels = append(labels, promLabel(req.GetOutFromResource().Type, req.GetOutFromResource().Name))
+		if outFromNs != "" {
+			labels = append(labels, promLabel(namespaceLabel, outFromNs))
 		}
+		if req.Selector.Resource.Name != "" {
+			labels = append(labels, promNameLabel(req.GetOutFromResource()))
+		}
+
 	default:
 		direction = "inbound"
 	}
@@ -171,9 +180,11 @@ func buildRequestLabels(req *pb.StatSummaryRequest) string {
 	// it's weird to check this again outside the switch, but including this code
 	// in the other three switch branches is very repetitive
 	if req.GetOutFromResource() == nil {
-		labels = append(labels, promLabel("namespace", req.Selector.Resource.Namespace))
+		if req.Selector.Resource.Namespace != "" {
+			labels = append(labels, promNamespaceLabel(req.Selector.Resource))
+		}
 		if req.Selector.Resource.Name != "" {
-			labels = append(labels, promLabel(req.Selector.Resource.Type, req.Selector.Resource.Name))
+			labels = append(labels, promNameLabel(req.Selector.Resource))
 		}
 	}
 	labels = append(labels, promLabel("direction", direction))
@@ -233,7 +244,7 @@ func processRequests(results []promResult, labelSelector string) map[string]*pb.
 
 	for _, result := range results {
 		for _, sample := range result.vec {
-			label := string(sample.Metric[model.LabelName(labelSelector)])
+			label := metricToKey(sample.Metric, labelSelector)
 			if basicStats[label] == nil {
 				basicStats[label] = &pb.BasicStats{}
 			}
@@ -261,42 +272,46 @@ func processRequests(results []promResult, labelSelector string) map[string]*pb.
 	return basicStats
 }
 
-func (s *grpcServer) getDeployment(namespace string, name string) ([]*appsv1.Deployment, map[string]*meshedCount, error) {
-	if namespace == "" {
-		namespace = apiv1.NamespaceDefault
+func metricToKey(metric model.Metric, labelSelector string) string {
+	if metric[model.LabelName(namespaceLabel)] == "" {
+		return string(metric[model.LabelName(labelSelector)])
 	}
 
-	deployment, err := s.deployLister.Deployments(namespace).Get(name)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	meshCount, err := s.getMeshedPodCount(namespace, deployment)
-	if err != nil {
-		return nil, nil, err
-	}
-	meshMap := map[string]*meshedCount{deployment.Name: meshCount}
-	return []*appsv1.Deployment{deployment}, meshMap, nil
+	return fmt.Sprintf("%s/%s",
+		metric[model.LabelName(namespaceLabel)],
+		metric[model.LabelName(labelSelector)],
+	)
 }
 
-func (s *grpcServer) getDeployments(namespace string) ([]*appsv1.Deployment, map[string]*meshedCount, error) {
-	if namespace == "" {
-		namespace = apiv1.NamespaceDefault
+func (s *grpcServer) getDeployments(res *pb.Resource) ([]*appsv1.Deployment, map[string]*meshedCount, error) {
+	var err error
+	var deployments []*appsv1.Deployment
+
+	if res.Namespace == "" {
+		deployments, err = s.deployLister.List(labels.Everything())
+	} else if res.Name == "" {
+		deployments, err = s.deployLister.Deployments(res.Namespace).List(labels.Everything())
+	} else {
+		var deployment *appsv1.Deployment
+		deployment, err = s.deployLister.Deployments(res.Namespace).Get(res.Name)
+		deployments = []*appsv1.Deployment{deployment}
 	}
 
-	deployments, err := s.deployLister.Deployments(namespace).List(labels.Everything())
 	if err != nil {
 		return nil, nil, err
 	}
 
 	meshedPodCount := make(map[string]*meshedCount)
 	for _, deployment := range deployments {
-		// TODO: parallelize
-		meshCount, err := s.getMeshedPodCount(namespace, deployment)
+		meshCount, err := s.getMeshedPodCount(deployment.Namespace, deployment)
 		if err != nil {
 			return nil, nil, err
 		}
-		meshedPodCount[deployment.Name] = meshCount
+		key, err := cache.MetaNamespaceKeyFunc(deployment)
+		if err != nil {
+			return nil, nil, err
+		}
+		meshedPodCount[key] = meshCount
 	}
 
 	return deployments, meshedPodCount, nil
