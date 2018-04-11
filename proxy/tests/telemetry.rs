@@ -685,10 +685,17 @@ mod outbound_dst_labels {
     use std::collections::HashMap;
     use std::iter::FromIterator;
 
-    #[test]
-    fn multiple_addr_labels() {
-        let _ = env_logger::try_init();
+    struct Fixture {
+        client: client::Client,
+        metrics: client::Client,
+        proxy: proxy::Listening,
+    }
 
+    fn fixture<A, B>(addr_labels: A, set_labels: B) -> Fixture
+    where
+        A: IntoIterator<Item=(String, String)>,
+        B: IntoIterator<Item=(String, String)>,
+    {
         info!("running test server");
         let srv = server::new()
             .route("/", "hello")
@@ -698,13 +705,8 @@ mod outbound_dst_labels {
             .labeled_destination(
                 "labeled-addr.test.svc.cluster.local",
                 srv.addr,
-                HashMap::from_iter(
-                    vec![
-                        (String::from("addr_label2"), String::from("bar")),
-                        (String::from("addr_label1"), String::from("foo")),
-                    ]
-                ),
-                HashMap::new(),
+                HashMap::from_iter(addr_labels),
+                HashMap::from_iter(set_labels),
             )
             .run();
         let proxy = proxy::new()
@@ -718,6 +720,21 @@ mod outbound_dst_labels {
             proxy.outbound,
             "labeled-addr.test.svc.cluster.local"
         );
+        Fixture { client, metrics, proxy }
+
+    }
+
+    #[test]
+    fn multiple_addr_labels() {
+        let _ = env_logger::try_init();
+        let Fixture { client, metrics, proxy: _proxy } = fixture (
+            vec![
+                (String::from("addr_label2"), String::from("bar")),
+                (String::from("addr_label1"), String::from("foo")),
+            ],
+            Vec::new(),
+        );
+
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
         let scrape = metrics.get("/metrics");
@@ -734,33 +751,12 @@ mod outbound_dst_labels {
     #[test]
     fn multiple_addrset_labels() {
         let _ = env_logger::try_init();
-
-        info!("running test server");
-        let srv = server::new()
-            .route("/", "hello")
-            .run();
-
-        let ctrl = controller::new()
-            .labeled_destination(
-                "labeled-set.test.svc.cluster.local",
-                srv.addr,
-                HashMap::new(),
-                HashMap::from_iter(
-                    vec![
-                        (String::from("set_label1"), String::from("foo")),
-                        (String::from("set_label2"), String::from("bar")),
-                    ])
-            )
-            .run();
-        let proxy = proxy::new()
-            .controller(ctrl)
-            .outbound(srv)
-            .metrics_flush_interval(Duration::from_millis(500))
-            .run();
-        let metrics = client::http1(proxy.metrics, "localhost");
-        let client = client::new(
-            proxy.outbound,
-            "labeled-set.test.svc.cluster.local"
+        let Fixture { client, metrics, proxy: _proxy } = fixture (
+            Vec::new(),
+            vec![
+                (String::from("set_label1"), String::from("foo")),
+                (String::from("set_label2"), String::from("bar")),
+            ])
         );
 
         info!("client.get(/)");
@@ -779,33 +775,9 @@ mod outbound_dst_labels {
     #[test]
     fn labeled_addr_and_addrset() {
         let _ = env_logger::try_init();
-
-        info!("running test server");
-        let srv = server::new()
-            .route("/", "hello")
-            .run();
-
-        let ctrl = controller::new()
-            .labeled_destination(
-                "labeled-all.test.svc.cluster.local",
-                srv.addr,
-                HashMap::from_iter(
-                    vec![(String::from("addr_label"), String::from("foo"))]
-                ),
-                HashMap::from_iter(
-                    vec![(String::from("set_label"), String::from("bar"))]
-                ))
-            .run();
-        let proxy = proxy::new()
-            .controller(ctrl)
-            .outbound(srv)
-            .metrics_flush_interval(Duration::from_millis(500))
-            .run();
-        let metrics = client::http1(proxy.metrics, "localhost");
-
-        let client = client::new(
-            proxy.outbound,
-            "labeled-all.test.svc.cluster.local"
+        let Fixture { client, metrics, proxy: _proxy } = fixture(
+            vec![(String::from("addr_label"), String::from("foo"))],
+            vec![(String::from("set_label"), String::from("bar"))],
         );
 
         info!("client.get(/)");
