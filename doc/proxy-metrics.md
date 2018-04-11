@@ -9,6 +9,8 @@ The Conduit proxy exposes metrics that describe the traffic flowing through the
 proxy.  The following metrics are available at `/metrics` on the proxy's metrics
 port (default: `:4191`) in the [Prometheus format][prom-format]:
 
+# Protocol-Level Metrics
+
 ### `request_total`
 
 A counter of the number of requests the proxy has received.  This is incremented
@@ -133,3 +135,92 @@ request_total{
 
 [prom-format]: https://prometheus.io/docs/instrumenting/exposition_formats/#format-version-0.0.4
 [pod-template-hash]: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#pod-template-hash-label
+
+# Transport-Level Metrics
+
+The following metrics are collected at the level of the underlying transport
+layer.
+
+### `connection_opens`
+
+A counter of the total number of transport connections which have been opened.
+
+### `connection_closes`
+
+A counter of the total number of transport connections which have been closed.
+
+### `connections`
+
+A gauge of the number of transport connections currently open.
+
+### `sent_bytes`
+
+A counter of the total number of sent bytes.
+
+### `received_bytes`
+
+A counter of the total number of recieved bytes.
+
+### `connection_duration_ms`
+
+A histogram of the duration of the lifetime of a connection, in milliseconds.
+
+### `connection_sent_bytes`
+
+A histogram of the number of bytes sent over the lifetime of a connection.
+This is updated when a connection closes.
+
+### `connection_recieved_bytes`
+
+A histogram of the number of bytes recieved over the lifetime of a connection.
+This is incremented when a connection closes.
+
+## Labels
+
+Each of these metrics has the following labels:
+
+* `direction`: `inbound` if the connection was to/from the proxy's Inbound router,
+               `outbound` if the connection was to/from the proxy's Outbound router.
+* `kind`: `client` if the connection was initiated by the proxy to an upstream server,
+          `server` if the connection was initiated by an upstream client to the proxy.
+* `remote_address`: the IP address and port of the remote end of the connection.
+* `protocol`: `http` if the connection corresponds to an HTTP/1 or HTTP/2 request,
+              `tcp` if the connection is proxied as a raw TCP stream.
+
+### Server Labels
+
+These labels are only applicable if `kind="server"`:
+
+* `local_address`: the address of the TCP socket for this connection.
+
+### Prometheus Collector labels
+
+The following labels are added by the Prometheus collector.
+
+* `instance`: ip:port of the pod.
+* `job`: The Prometheus job responsible for the collection, typically
+         `conduit-proxy`.
+
+#### Kubernetes labels added at collection time
+
+Kubernetes namespace, pod name, and all labels are mapped to corresponding
+Prometheus labels.
+
+* `namespace`: Kubernetes namespace that the pod belongs to.
+* `pod`: Kubernetes pod name.
+* `pod_template_hash`: Corresponds to the [pod-template-hash][pod-template-hash]
+                       Kubernetes label. This value changes during redeploys and
+                       rolling restarts.
+
+#### Conduit labels added at collection time
+
+Kubernetes labels prefixed with `conduit.io/` are added to your application at
+`conduit inject` time. More specifically, Kubernetes labels prefixed with
+`conduit.io/proxy-*` will correspond to these Prometheus labels:
+
+* `daemon_set`: The daemon set that the pod belongs to (if applicable).
+* `deployment`: The deployment that the pod belongs to (if applicable).
+* `k8s_job`: The job that the pod belongs to (if applicable).
+* `replica_set`: The replica set that the pod belongs to (if applicable).
+* `replication_controller`: The replication controller that the pod belongs to
+                            (if applicable).
