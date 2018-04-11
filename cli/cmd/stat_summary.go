@@ -110,8 +110,9 @@ type summaryRow struct {
 	meshed      string
 	requestRate float64
 	successRate float64
-	latencyP50  int64
-	latencyP99  int64
+	latencyP50  uint64
+	latencyP95  uint64
+	latencyP99  uint64
 }
 
 func writeStatTableToBuffer(resp *pb.StatSummaryResponse, w *tabwriter.Writer) {
@@ -136,6 +137,9 @@ func writeStatTableToBuffer(resp *pb.StatSummaryResponse, w *tabwriter.Writer) {
 				meshed:      fmt.Sprintf("%d/%d", r.MeshedPodCount, r.TotalPodCount),
 				requestRate: getRequestRate(*r),
 				successRate: getSuccessRate(*r),
+				latencyP50:  r.Stats.LatencyMsP50,
+				latencyP95:  r.Stats.LatencyMsP95,
+				latencyP99:  r.Stats.LatencyMsP99,
 			}
 		}
 	}
@@ -143,22 +147,24 @@ func writeStatTableToBuffer(resp *pb.StatSummaryResponse, w *tabwriter.Writer) {
 	fmt.Fprintln(w, strings.Join([]string{
 		nameHeader + strings.Repeat(" ", maxNameLength-len(nameHeader)),
 		"MESHED",
-		"IN_RPS",
-		"IN_SUCCESS",
-		"IN_LATENCY_P50",
-		"IN_LATENCY_P99\t", // trailing \t is required to format last column
+		"SUCCESS",
+		"RPS",
+		"LATENCY_P50",
+		"LATENCY_P95",
+		"LATENCY_P99\t", // trailing \t is required to format last column
 	}, "\t"))
 
 	sortedNames := sortStatSummaryKeys(stats)
 	for _, name := range sortedNames {
 		fmt.Fprintf(
 			w,
-			"%s\t%s\t%.1frps\t%.2f%%\t%dms\t%dms\t\n",
+			"%s\t%s\t%.1frps\t%.2f%%\t%dms\t%dms\t%dms\t\n",
 			name+strings.Repeat(" ", maxNameLength-len(name)),
 			stats[name].meshed,
-			stats[name].requestRate,
 			stats[name].successRate*100,
+			stats[name].requestRate,
 			stats[name].latencyP50,
+			stats[name].latencyP95,
 			stats[name].latencyP99,
 		)
 	}
