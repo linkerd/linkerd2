@@ -182,9 +182,15 @@ fn outbound_tcp() {
     let msg2 = "custom tcp bye";
 
     let srv = server::tcp()
-        .accept(move |read| {
-            assert_eq!(read, msg1.as_bytes());
-            msg2
+        .accept_fut(move |sock| {
+            tokio_io::io::read(sock, vec![0; 256])
+                .and_then(move |(sock, vec, n)| {
+                    assert_eq!(&vec[..n], msg1.as_bytes());
+
+                    tokio_io::io::write_all(sock, msg2.as_bytes())
+                })
+                .map(|_| ())
+                .map_err(|e| panic!("tcp server error: {}", e))
         })
         .run();
     let ctrl = controller::new().run();
@@ -209,9 +215,15 @@ fn inbound_tcp() {
     let msg2 = "custom tcp bye";
 
     let srv = server::tcp()
-        .accept(move |read| {
-            assert_eq!(read, msg1.as_bytes());
-            msg2
+        .accept_fut(move |sock| {
+            tokio_io::io::read(sock, vec![0; 256])
+                .and_then(move |(sock, vec, n)| {
+                    assert_eq!(&vec[..n], msg1.as_bytes());
+
+                    tokio_io::io::write_all(sock, msg2.as_bytes())
+                })
+                .map(|_| ())
+                .map_err(|e| panic!("tcp server error: {}", e))
         })
         .run();
     let ctrl = controller::new().run();
