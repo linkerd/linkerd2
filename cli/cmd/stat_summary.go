@@ -177,7 +177,7 @@ func writeStatTableToBuffer(resp *pb.StatSummaryResponse, w *tabwriter.Writer) {
 		namespace := parts[0]
 		name := parts[1]
 		values := make([]interface{}, 0)
-		templateString := "%s\t%s\t%.1frps\t%.2f%%\t%dms\t%dms\t%dms\t\n"
+		templateString := "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t\n"
 
 		if allNamespaces {
 			values = append(values,
