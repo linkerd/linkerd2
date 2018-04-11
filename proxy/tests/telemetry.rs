@@ -737,14 +737,13 @@ mod outbound_dst_labels {
 
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
-        let scrape = metrics.get("/metrics");
         // TODO: we can't make more specific assertions about the metrics
         // besides asserting that both labels are present somewhere in the
         // scrape, because testing for whole metric lines would depend on
         // the order in which the labels occur, and we can't depend on hash
         // map ordering.
-        assert_contains!(scrape, "dst_addr_label1=\"foo\"");
-        assert_contains!(scrape, "dst_addr_label2=\"bar\"");
+        assert_contains!(metrics.get("/metrics"), "dst_addr_label1=\"foo\"");
+        assert_contains!(metrics.get("/metrics"), "dst_addr_label2=\"bar\"");
 
     }
 
@@ -761,14 +760,13 @@ mod outbound_dst_labels {
 
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
-        let scrape = metrics.get("/metrics");
         // TODO: we can't make more specific assertions about the metrics
         // besides asserting that both labels are present somewhere in the
         // scrape, because testing for whole metric lines would depend on
         // the order in which the labels occur, and we can't depend on hash
         // map ordering.
-        assert_contains!(scrape, "dst_set_label1=\"foo\"");
-        assert_contains!(scrape, "dst_set_label2=\"bar\"");
+        assert_contains!(metrics.get("/metrics"), "dst_set_label1=\"foo\"");
+        assert_contains!(metrics.get("/metrics"), "dst_set_label2=\"bar\"");
 
     }
 
@@ -782,14 +780,13 @@ mod outbound_dst_labels {
 
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
-        let scrape = metrics.get("/metrics");
-        assert_contains!(scrape,
+        assert_contains!(metrics.get("/metrics"),
             "request_duration_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"bar\"} 1");
-        assert_contains!(scrape,
+        assert_contains!(metrics.get("/metrics"),
             "response_duration_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"bar\",classification=\"success\",status_code=\"200\"} 1");
-        assert_contains!(scrape,
+        assert_contains!(metrics.get("/metrics"),
             "request_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"bar\"} 1");
-        assert_contains!(scrape,
+        assert_contains!(metrics.get("/metrics"),
             "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"bar\",classification=\"success\",status_code=\"200\"} 1");
     }
 
