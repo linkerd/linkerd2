@@ -137,6 +137,7 @@ metadata:
 			sharedInformers := informers.NewSharedInformerFactory(clientSet, 10*time.Minute)
 
 			deployInformer := sharedInformers.Apps().V1().Deployments()
+			replicaSetInformer := sharedInformers.Apps().V1().ReplicaSets()
 			podInformer := sharedInformers.Core().V1().Pods()
 
 			fakeGrpcServer := newGrpcServer(
@@ -144,12 +145,19 @@ metadata:
 				&mockTelemetry{},
 				tap.NewTapClient(nil),
 				deployInformer.Lister(),
+				replicaSetInformer.Lister(),
 				podInformer.Lister(),
 				"conduit",
+				[]string{},
 			)
 			stopCh := make(chan struct{})
 			sharedInformers.Start(stopCh)
-			if !cache.WaitForCacheSync(stopCh, deployInformer.Informer().HasSynced, podInformer.Informer().HasSynced) {
+			if !cache.WaitForCacheSync(
+				stopCh,
+				deployInformer.Informer().HasSynced,
+				replicaSetInformer.Informer().HasSynced,
+				podInformer.Informer().HasSynced,
+			) {
 				t.Fatalf("timed out wait for caches to sync")
 			}
 
@@ -206,8 +214,10 @@ metadata:
 				&mockTelemetry{},
 				tap.NewTapClient(nil),
 				sharedInformers.Apps().V1().Deployments().Lister(),
+				sharedInformers.Apps().V1().ReplicaSets().Lister(),
 				sharedInformers.Core().V1().Pods().Lister(),
 				"conduit",
+				[]string{},
 			)
 
 			_, err := fakeGrpcServer.StatSummary(context.TODO(), &exp.req)
