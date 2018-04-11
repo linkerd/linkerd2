@@ -107,8 +107,7 @@ func (s *server) Get(dest *common.Destination, stream pb.Destination_GetServer) 
 }
 
 func (s *server) streamResolutionUsingCorrectResolverFor(host string, port int, stream pb.Destination_GetServer) error {
-	serviceName := fmt.Sprintf("%s:%d", host, port)
-	listener := &endpointListener{serviceName: serviceName, stream: stream, podsByIp: s.podsByIp}
+	listener := &endpointListener{stream: stream, podsByIp: s.podsByIp}
 
 	for _, resolver := range s.resolvers {
 		resolverCanResolve, err := resolver.canResolve(host, port)

@@ -60,7 +60,7 @@ The following labels are only applicable on `response_*` metrics.
 The following labels are only applicable if `direction=outbound`.
 
 * `dst_deployment`: The deployment to which this request is being sent.
-* `dst_job`: The job to which this request is being sent.
+* `dst_k8s_job`: The job to which this request is being sent.
 * `dst_replica_set`: The replica set to which this request is being sent.
 * `dst_daemon_set`: The daemon set to which this request is being sent.
 * `dst_replication_controller`: The replication controller to which this request

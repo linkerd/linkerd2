@@ -9,6 +9,7 @@ import (
 	pb "github.com/runconduit/conduit/controller/gen/proxy/destination"
 	"github.com/runconduit/conduit/controller/k8s"
 	"github.com/runconduit/conduit/controller/util"
+	pkgK8s "github.com/runconduit/conduit/pkg/k8s"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -91,6 +92,7 @@ func TestEndpointListener(t *testing.T) {
 		expectedServiceName := "service-name"
 		expectedPodName := "pod1"
 		expectedNamespace := "this-namespace"
+		expectedReplicationControllerName := "rc-name"
 
 		addedAddress1 := common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 666}}, Port: 1}
 		ipForAddr1 := util.IPToString(addedAddress1.Ip)
@@ -98,6 +100,9 @@ func TestEndpointListener(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      expectedPodName,
 				Namespace: expectedNamespace,
+				Labels: map[string]string{
+					pkgK8s.ProxyReplicationControllerLabel: expectedReplicationControllerName,
+				},
 			},
 		}
 		addedAddress2 := common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 222}}, Port: 22}
@@ -105,9 +110,12 @@ func TestEndpointListener(t *testing.T) {
 
 		mockGetServer := &mockDestination_GetServer{updatesReceived: []*pb.Update{}}
 		listener := &endpointListener{
-			podsByIp:    podIndex,
-			serviceName: expectedServiceName,
-			stream:      mockGetServer,
+			podsByIp: podIndex,
+			labels: map[string]string{
+				"service":   expectedServiceName,
+				"namespace": expectedNamespace,
+			},
+			stream: mockGetServer,
 		}
 
 		listener.Update([]common.TcpAddress{addedAddress1, addedAddress2}, nil)
@@ -119,7 +127,10 @@ func TestEndpointListener(t *testing.T) {
 		}
 
 		actualAddedAddress1MetricLabels := mockGetServer.updatesReceived[0].GetAdd().Addrs[0].MetricLabels
-		expectedAddedAddress1MetricLabels := map[string]string{"pod": expectedPodName}
+		expectedAddedAddress1MetricLabels := map[string]string{
+			"pod": expectedPodName,
+			"replication_controller": expectedReplicationControllerName,
+		}
 		if !reflect.DeepEqual(actualAddedAddress1MetricLabels, expectedAddedAddress1MetricLabels) {
 			t.Fatalf("Expected global metric labels sent to be [%v] but was [%v]", expectedAddedAddress1MetricLabels, actualAddedAddress1MetricLabels)
 		}

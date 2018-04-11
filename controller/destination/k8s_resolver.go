@@ -22,23 +22,32 @@ type k8sResolver struct {
 	dnsWatcher       DnsWatcher
 }
 
+type serviceId struct {
+	namespace string
+	name      string
+}
+
+func (s *serviceId) String() string {
+	return fmt.Sprintf("%s/%s", s.namespace, s.name)
+}
+
 func (k *k8sResolver) canResolve(host string, port int) (bool, error) {
-	name, err := k.localKubernetesServiceIdFromDNSName(host)
+	id, err := k.localKubernetesServiceIdFromDNSName(host)
 	if err != nil {
 		return false, err
 	}
 
-	return name != nil, nil
+	return id != nil, nil
 }
 
 func (k *k8sResolver) streamResolution(host string, port int, listener updateListener) error {
-	serviceName, err := k.localKubernetesServiceIdFromDNSName(host)
+	id, err := k.localKubernetesServiceIdFromDNSName(host)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
-	if serviceName == nil {
+	if id == nil {
 		// TODO: Resolve name using DNS similar to Kubernetes' ClusterFirst
 		// resolution.
 		err = fmt.Errorf("cannot resolve service that isn't a local Kubernetes service: %s", host)
@@ -46,17 +55,19 @@ func (k *k8sResolver) streamResolution(host string, port int, listener updateLis
 		return err
 	}
 
-	svc, exists, err := k.endpointsWatcher.GetService(*serviceName)
+	svc, exists, err := k.endpointsWatcher.GetService(id.String())
 	if err != nil {
-		log.Errorf("error retrieving service [%s]: %s", *serviceName, err)
+		log.Errorf("error retrieving service [%s]: %s", id.String(), err)
 		return err
 	}
+
+	listener.SetServiceId(id)
 
 	if exists && svc.Spec.Type == v1.ServiceTypeExternalName {
 		return k.resolveExternalName(svc.Spec.ExternalName, listener)
 	}
 
-	return k.resolveKubernetesService(*serviceName, port, listener)
+	return k.resolveKubernetesService(id.String(), port, listener)
 }
 
 func (k *k8sResolver) resolveKubernetesService(id string, port int, listener updateListener) error {
@@ -83,7 +94,7 @@ func (k *k8sResolver) resolveExternalName(externalName string, listener updateLi
 // "namespace-name/service-name" form if `host` is a DNS name in a form used
 // for local Kubernetes services. It returns nil if `host` isn't in such a
 // form.
-func (k *k8sResolver) localKubernetesServiceIdFromDNSName(host string) (*string, error) {
+func (k *k8sResolver) localKubernetesServiceIdFromDNSName(host string) (*serviceId, error) {
 	hostLabels, err := splitDNSName(host)
 	if err != nil {
 		return nil, err
@@ -124,11 +135,11 @@ func (k *k8sResolver) localKubernetesServiceIdFromDNSName(host string) (*string,
 	if len(hostLabels) != 2 {
 		return nil, fmt.Errorf("not a service: %s", host)
 	}
-	service := hostLabels[0]
-	namespace := hostLabels[1]
 
-	id := namespace + "/" + service
-	return &id, nil
+	return &serviceId{
+		namespace: hostLabels[1],
+		name:      hostLabels[0],
+	}, nil
 }
 
 func splitDNSName(dnsName string) ([]string, error) {
