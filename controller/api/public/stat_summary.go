@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -18,11 +19,26 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+type promType string
+type promResult struct {
+	prom promType
+	vec  model.Vector
+	err  error
+}
+
 const (
-	reqQuery = "sum(increase(response_total{%s}[%s])) by (%s, classification)"
+	reqQuery             = "sum(increase(response_total{%s}[%s])) by (%s, classification)"
+	latencyQuantileQuery = "histogram_quantile(%s, sum(irate(response_latency_ms_bucket{%s}[%s])) by (le, %s))"
+
+	promRequests   = promType("QUERY_REQUESTS")
+	promLatencyP50 = promType("0.5")
+	promLatencyP95 = promType("0.95")
+	promLatencyP99 = promType("0.99")
 )
 
 var (
+	promTypes = []promType{promRequests, promLatencyP50, promLatencyP95, promLatencyP99}
+
 	k8sResourceTypesToPromLabels = map[string]model.LabelName{
 		k8s.KubernetesDeployments: "deployment",
 	}
@@ -166,33 +182,83 @@ func buildRequestLabels(req *pb.StatSummaryRequest) string {
 }
 
 func (s *grpcServer) getRequests(ctx context.Context, reqLabels string, groupBy string, timeWindow string) (map[string]*pb.BasicStats, error) {
-	requestsQuery := fmt.Sprintf(reqQuery, reqLabels, timeWindow, groupBy)
+	resultChan := make(chan promResult)
 
-	resultVector, err := s.queryProm(ctx, requestsQuery)
+	// kick off 4 asynchronous queries: 1 request volume + 3 latency
+	go func() {
+		requestsQuery := fmt.Sprintf(reqQuery, reqLabels, timeWindow, groupBy)
+		resultVector, err := s.queryProm(ctx, requestsQuery)
+
+		resultChan <- promResult{
+			prom: promRequests,
+			vec:  resultVector,
+			err:  err,
+		}
+	}()
+
+	for _, quantile := range []promType{promLatencyP50, promLatencyP95, promLatencyP99} {
+		go func(quantile promType) {
+			latencyQuery := fmt.Sprintf(latencyQuantileQuery, quantile, reqLabels, timeWindow, groupBy)
+			latencyResult, err := s.queryProm(ctx, latencyQuery)
+
+			resultChan <- promResult{
+				prom: quantile,
+				vec:  latencyResult,
+				err:  err,
+			}
+		}(quantile)
+	}
+
+	// process results, receive one message per prometheus query type
+	var err error
+	results := []promResult{}
+	for i := 0; i < len(promTypes); i++ {
+		result := <-resultChan
+		if result.err != nil {
+			log.Errorf("queryProm failed with: %s", err)
+			err = result.err
+		} else {
+			results = append(results, result)
+		}
+	}
 	if err != nil {
 		return nil, err
 	}
 
-	return processRequests(resultVector, groupBy), nil
+	return processRequests(results, groupBy), nil
 }
 
-func processRequests(vec model.Vector, labelSelector string) map[string]*pb.BasicStats {
-	result := make(map[string]*pb.BasicStats)
+func processRequests(results []promResult, labelSelector string) map[string]*pb.BasicStats {
+	basicStats := make(map[string]*pb.BasicStats)
 
-	for _, sample := range vec {
-		label := string(sample.Metric[model.LabelName(labelSelector)])
-		if result[label] == nil {
-			result[label] = &pb.BasicStats{}
-		}
+	for _, result := range results {
+		for _, sample := range result.vec {
+			label := string(sample.Metric[model.LabelName(labelSelector)])
+			if basicStats[label] == nil {
+				basicStats[label] = &pb.BasicStats{}
+			}
 
-		switch string(sample.Metric[model.LabelName("classification")]) {
-		case "success":
-			result[label].SuccessCount = uint64(sample.Value)
-		case "failure":
-			result[label].FailureCount = uint64(sample.Value)
+			value := uint64(math.Round(float64(sample.Value)))
+
+			switch result.prom {
+			case promRequests:
+				switch string(sample.Metric[model.LabelName("classification")]) {
+				case "success":
+					basicStats[label].SuccessCount = value
+				case "failure":
+					basicStats[label].FailureCount = value
+				}
+			case promLatencyP50:
+				basicStats[label].LatencyMsP50 = value
+			case promLatencyP95:
+				basicStats[label].LatencyMsP95 = value
+			case promLatencyP99:
+				basicStats[label].LatencyMsP99 = value
+			}
 		}
 	}
-	return result
+
+	return basicStats
 }
 
 func (s *grpcServer) getDeployment(namespace string, name string) ([]*appsv1.Deployment, map[string]*meshedCount, error) {

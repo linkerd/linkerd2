@@ -11,42 +11,76 @@ import (
 	tap "github.com/runconduit/conduit/controller/gen/controller/tap"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/cache"
 )
 
 type statSumExpected struct {
 	err     error
+	k8sRes  []string
 	promRes model.Value
 	req     pb.StatSummaryRequest
 	res     pb.StatSummaryResponse
 }
 
-var (
-	clientSet       = fake.NewSimpleClientset()
-	sharedInformers = informers.NewSharedInformerFactory(clientSet, 10*time.Minute)
-	fakeGrpcServer  = newGrpcServer(
-		&MockProm{},
-		&mockTelemetry{},
-		tap.NewTapClient(nil),
-		sharedInformers.Apps().V1().Deployments().Lister(),
-		sharedInformers.Core().V1().Pods().Lister(),
-		"conduit",
-	)
-)
-
 func TestStatSummary(t *testing.T) {
 	t.Run("Successfully performs a query based on resource type", func(t *testing.T) {
 		expectations := []statSumExpected{
 			statSumExpected{
-				err:     nil,
-				promRes: model.Value(model.Vector{}),
+				err: nil,
+				k8sRes: []string{`
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: emoji
+  namespace: emojivoto
+spec:
+  selector:
+    matchLabels:
+      app: emoji-svc
+  strategy: {}
+  template:
+    spec:
+      containers:
+      - image: buoyantio/emojivoto-emoji-svc:v3
+`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+  annotations:
+    conduit.io/proxy-version: testinjectversion
+`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-not-meshed
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+`,
+				},
+				promRes: model.Vector{
+					&model.Sample{
+						Metric:    model.Metric{"deployment": "emoji", "classification": "success"},
+						Value:     123,
+						Timestamp: 456,
+					},
+				},
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
-							Type: k8s.KubernetesDeployments,
+							Namespace: "emojivoto",
+							Type:      k8s.KubernetesDeployments,
 						},
 					},
+					TimeWindow: pb.TimeWindow_ONE_MIN,
 				},
 				res: pb.StatSummaryResponse{
 					Response: &pb.StatSummaryResponse_Ok_{ // https://github.com/golang/protobuf/issues/205
@@ -55,7 +89,25 @@ func TestStatSummary(t *testing.T) {
 								&pb.StatTable{
 									Table: &pb.StatTable_PodGroup_{
 										PodGroup: &pb.StatTable_PodGroup{
-											Rows: []*pb.StatTable_PodGroup_Row{},
+											Rows: []*pb.StatTable_PodGroup_Row{
+												&pb.StatTable_PodGroup_Row{
+													Resource: &pb.Resource{
+														Namespace: "emojivoto",
+														Type:      "deployments",
+														Name:      "emoji",
+													},
+													Stats: &pb.BasicStats{
+														SuccessCount: 123,
+														FailureCount: 0,
+														LatencyMsP50: 123,
+														LatencyMsP95: 123,
+														LatencyMsP99: 123,
+													},
+													TimeWindow:     pb.TimeWindow_ONE_MIN,
+													MeshedPodCount: 1,
+													TotalPodCount:  2,
+												},
+											},
 										},
 									},
 								},
@@ -67,7 +119,35 @@ func TestStatSummary(t *testing.T) {
 		}
 
 		for _, exp := range expectations {
-			fakeGrpcServer.prometheusAPI.(*MockProm).Res = exp.promRes
+			k8sObjs := []runtime.Object{}
+			for _, res := range exp.k8sRes {
+				decode := scheme.Codecs.UniversalDeserializer().Decode
+				obj, _, err := decode([]byte(res), nil, nil)
+				if err != nil {
+					t.Fatalf("could not decode yml: %s", err)
+				}
+				k8sObjs = append(k8sObjs, obj)
+			}
+
+			clientSet := fake.NewSimpleClientset(k8sObjs...)
+			sharedInformers := informers.NewSharedInformerFactory(clientSet, 10*time.Minute)
+
+			deployInformer := sharedInformers.Apps().V1().Deployments()
+			podInformer := sharedInformers.Core().V1().Pods()
+
+			fakeGrpcServer := newGrpcServer(
+				&MockProm{Res: exp.promRes},
+				&mockTelemetry{},
+				tap.NewTapClient(nil),
+				deployInformer.Lister(),
+				podInformer.Lister(),
+				"conduit",
+			)
+			stopCh := make(chan struct{})
+			sharedInformers.Start(stopCh)
+			if !cache.WaitForCacheSync(stopCh, deployInformer.Informer().HasSynced, podInformer.Informer().HasSynced) {
+				t.Fatalf("timed out wait for caches to sync")
+			}
 
 			rsp, err := fakeGrpcServer.StatSummary(context.TODO(), &exp.req)
 			if err != exp.err {
@@ -115,7 +195,16 @@ func TestStatSummary(t *testing.T) {
 		}
 
 		for _, exp := range expectations {
-			fakeGrpcServer.prometheusAPI.(*MockProm).Res = exp.promRes
+			clientSet := fake.NewSimpleClientset()
+			sharedInformers := informers.NewSharedInformerFactory(clientSet, 10*time.Minute)
+			fakeGrpcServer := newGrpcServer(
+				&MockProm{Res: exp.promRes},
+				&mockTelemetry{},
+				tap.NewTapClient(nil),
+				sharedInformers.Apps().V1().Deployments().Lister(),
+				sharedInformers.Core().V1().Pods().Lister(),
+				"conduit",
+			)
 
 			_, err := fakeGrpcServer.StatSummary(context.TODO(), &exp.req)
 			if err != nil || exp.err != nil {
