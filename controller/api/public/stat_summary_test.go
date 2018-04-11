@@ -68,7 +68,11 @@ metadata:
 				},
 				promRes: model.Vector{
 					&model.Sample{
-						Metric:    model.Metric{"deployment": "emoji", "classification": "success"},
+						Metric: model.Metric{
+							"deployment":     "emoji",
+							"namespace":      "emojivoto",
+							"classification": "success",
+						},
 						Value:     123,
 						Timestamp: 456,
 					},
