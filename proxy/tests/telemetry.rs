@@ -685,9 +685,7 @@ mod outbound_dst_labels {
     use std::collections::HashMap;
     use std::iter::FromIterator;
 
-    // https://github.com/runconduit/conduit/issues/613
     #[test]
-    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
     fn multiple_addr_labels() {
         let _ = env_logger::try_init();
 
@@ -733,9 +731,7 @@ mod outbound_dst_labels {
 
     }
 
-    // https://github.com/runconduit/conduit/issues/613
     #[test]
-    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
     fn multiple_addrset_labels() {
         let _ = env_logger::try_init();
 
@@ -780,9 +776,7 @@ mod outbound_dst_labels {
 
     }
 
-    // https://github.com/runconduit/conduit/issues/613
     #[test]
-    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
     fn labeled_addr_and_addrset() {
         let _ = env_logger::try_init();
 
