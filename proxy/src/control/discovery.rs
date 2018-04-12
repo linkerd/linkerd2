@@ -6,7 +6,6 @@ use std::time::Duration;
 
 use futures::{Async, Future, Poll, Stream};
 use futures::sync::mpsc;
-use prost::Message;
 use tokio_core::reactor::Handle;
 use tower::Service;
 use tower_h2::{HttpService, BoxBody, RecvBody};
@@ -23,6 +22,7 @@ use conduit_proxy_controller_grpc::destination::client::{Destination as Destinat
 use transport::DnsNameAndPort;
 
 use control::cache::{Cache, CacheChange, Exists};
+use control::remote_stream::{Remote, Receiver};
 
 /// A handle to start watching a destination for address changes.
 #[derive(Clone, Debug)]
@@ -63,44 +63,9 @@ pub struct DiscoveryWork<T: HttpService<ResponseBody = RecvBody>> {
 
 struct DestinationSet<T: HttpService<ResponseBody = RecvBody>> {
     addrs: Exists<Cache<SocketAddr, ()>>,
-    query: Option<Remote<PbUpdate, T>>,
+    query: Option<Remote<PbUpdate, T::Future, T::ResponseBody>>,
     dns_query: Option<IpAddrListFuture>,
     txs: Vec<mpsc::UnboundedSender<Update>>,
-}
-
-enum Remote<M: Message + Default, T: HttpService<ResponseBody = RecvBody>> {
-    NeedsReconnect,
-    ConnectedOrConnecting {
-        rx: Receiver<M, T>
-    },
-}
-
-/// Receiver for destination set updates.
-///
-/// The destination RPC returns a `ResponseFuture` whose item is a
-/// `Response<Stream>`, so this type holds the state of that RPC call ---
-/// either we're waiting for the future, or we have a stream --- and allows
-/// us to implement `Stream` regardless of whether the RPC has returned yet
-/// or not.
-///
-/// Polling an `Receiver` polls the wrapped future while we are
-/// `Waiting`, and the `Stream` if we are `Streaming`. If the future is `Ready`,
-/// then we switch states to `Streaming`.
-enum Receiver<M: Message + Default, T: HttpService<ResponseBody = RecvBody>> {
-    Waiting(grpc::client::server_streaming::ResponseFuture<M, T::Future>),
-    Streaming(grpc::Streaming<M, T::ResponseBody>),
-}
-
-/// Wraps the error types returned by `Receiver` polls.
-///
-/// An `Receiver` error is either the error type of the `Future` in the
-/// `Receiver::Waiting` state, or the `Stream` in the `Receiver::Streaming`
-/// state.
-// TODO: impl Error?
-#[derive(Debug)]
-enum RxError<T> {
-    Future(grpc::Error<T>),
-    Stream(grpc::Error),
 }
 
 #[derive(Debug)]
@@ -391,7 +356,7 @@ where
         client: &mut T,
         auth: &DnsNameAndPort,
         connect_or_reconnect: &str)
-        -> Option<Remote<PbUpdate, T>>
+        -> Option<Remote<PbUpdate, T::Future, T::ResponseBody>>
     {
         trace!("Remote {} {:?}", connect_or_reconnect, auth);
         FullyQualifiedAuthority::normalize(auth, default_destination_namespace)
@@ -432,8 +397,8 @@ impl<T> DestinationSet<T>
     fn poll_destination_service(
         &mut self,
         auth: &DnsNameAndPort,
-        mut rx: Receiver<PbUpdate, T>)
-        -> (Remote<PbUpdate, T>, Exists<()>)
+        mut rx: Receiver<PbUpdate, T::Future, T::ResponseBody>)
+        -> (Remote<PbUpdate, T::Future, T::ResponseBody>, Exists<()>)
     {
         let mut exists = Exists::Unknown;
 
@@ -609,32 +574,6 @@ where
 
     fn bind(&self, addr: &SocketAddr) -> Result<Self::Service, Self::BindError> {
         (*self)(addr)
-    }
-}
-
-// ===== impl Receiver =====
-
-impl<M, T> Stream for Receiver<M, T>
-where M: Message + Default,
-      T: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>,
-      T::Error: fmt::Debug,
-{
-    type Item = M;
-    type Error = RxError<T::Error>;
-
-    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-        // this is not ideal.
-        let stream = match *self {
-            Receiver::Waiting(ref mut future) => match future.poll() {
-                Ok(Async::Ready(response)) => response.into_inner(),
-                Ok(Async::NotReady) => return Ok(Async::NotReady),
-                Err(e) => return Err(RxError::Future(e)),
-            },
-            Receiver::Streaming(ref mut stream) =>
-                return stream.poll().map_err(RxError::Stream),
-        };
-        *self = Receiver::Streaming(stream);
-        self.poll()
     }
 }
 
