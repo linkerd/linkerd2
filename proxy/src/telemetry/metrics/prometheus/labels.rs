@@ -287,8 +287,6 @@ impl fmt::Display for DstLabels {
 mod test {
     use super::*;
 
-    use std::sync::atomic::{AtomicUsize, Ordering};
-
     use futures::{Async, Poll, Future};
     use futures::future::{self, FutureResult};
     use http;
@@ -296,17 +294,7 @@ mod test {
 
 
     struct MockInnerService<'a> {
-        expected_labels: &'a [Option<&'a str>],
-        num_requests: AtomicUsize,
-    }
-
-    impl<'a> MockInnerService<'a> {
-        fn new(expected_labels: &'a [Option<&'a str>]) -> Self {
-            MockInnerService {
-                expected_labels,
-                num_requests: AtomicUsize::new(0),
-            }
-        }
+        expected_labels: Option<&'a str>,
     }
 
     impl<'a> Service for MockInnerService<'a> {
@@ -320,24 +308,19 @@ mod test {
         }
 
         fn call(&mut self, req: Self::Request) -> Self::Future {
-            let n = self.num_requests.fetch_add(1, Ordering::SeqCst);
-            let n = if n > self.expected_labels.len() {
-                self.expected_labels.len()
-            } else {
-                n
-            };
             let req_labels = req.extensions()
                 .get::<DstLabels>()
                 .map(|DstLabels(ref inner)| inner.as_ref());
-            assert_eq!(req_labels, self.expected_labels[n]);
+            assert_eq!(req_labels, self.expected_labels);
             future::ok(())
         }
     }
 
     #[test]
     fn no_labels() {
-        let expected_labels = [None];
-        let inner = MockInnerService::new(&expected_labels[..]);
+        let inner = MockInnerService {
+            expected_labels: None
+        };
         let mut labeled = Labeled {
             metric_labels: None,
             inner
@@ -349,8 +332,9 @@ mod test {
 
     #[test]
     fn one_label() {
-        let expected_labels = [Some("dst_foo=\"bar\"")];
-        let inner = MockInnerService::new(&expected_labels[..]);
+        let inner = MockInnerService {
+            expected_labels: Some("dst_foo=\"bar\""),
+        };
         let (watch, _) =
             Watch::new(DstLabels::new(vec![("foo", "bar")]));
         let mut labeled = Labeled {
@@ -364,22 +348,20 @@ mod test {
 
     #[test]
     fn label_updates() {
-        let expected_labels = [
-            Some("dst_foo=\"bar\""),
-            Some("dst_foo=\"baz\""),
-            Some("dst_foo=\"baz\",dst_quux=\"quuux\""),
-        ];
-        let inner = MockInnerService::new(&expected_labels[..]);
         let (watch, mut store) =
             Watch::new(DstLabels::new(vec![("foo", "bar")]));
         let mut labeled = Labeled {
             metric_labels: Some(watch),
-            inner
+            inner: MockInnerService {
+                expected_labels: Some("dst_foo=\"bar\""),
+            },
         };
+
         labeled.call(http::Request::new(())).wait().expect("first call");
 
         store.store(DstLabels::new(vec![("foo", "baz")]))
             .expect("store (\"foo\", \"baz\")");
+        labeled.inner.expected_labels = Some("dst_foo=\"baz\"");
         labeled.call(http::Request::new(())).wait().expect("second call");
 
         store.store(DstLabels::new(vec![
@@ -387,6 +369,7 @@ mod test {
             ("quux", "quuux")
         ]))
             .expect("store (\"foo\", \"baz\"), (\"quux\", \"quuux\")");
+        labeled.inner.expected_labels =  Some("dst_foo=\"baz\",dst_quux=\"quuux\"");
         labeled.call(http::Request::new(())).wait().expect("third call");
     }
 
