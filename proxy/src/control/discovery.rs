@@ -62,15 +62,15 @@ pub struct DiscoveryWork<T: HttpService<ResponseBody = RecvBody>> {
 
 struct DestinationSet<T: HttpService<ResponseBody = RecvBody>> {
     addrs: Exists<Cache<SocketAddr, ()>>,
-    query: Option<DestinationServiceQuery<T>>,
+    query: Option<Remote<T>>,
     dns_query: Option<IpAddrListFuture>,
     txs: Vec<mpsc::UnboundedSender<Update>>,
 }
 
-enum DestinationServiceQuery<T: HttpService<ResponseBody = RecvBody>> {
+enum Remote<T: HttpService<ResponseBody = RecvBody>> {
     NeedsReconnect,
     ConnectedOrConnecting {
-        rx: UpdateRx<T>
+        rx: Receiver<T>
     },
 }
 
@@ -82,10 +82,10 @@ enum DestinationServiceQuery<T: HttpService<ResponseBody = RecvBody>> {
 /// us to implement `Stream` regardless of whether the RPC has returned yet
 /// or not.
 ///
-/// Polling an `UpdateRx` polls the wrapped future while we are
+/// Polling an `Receiver` polls the wrapped future while we are
 /// `Waiting`, and the `Stream` if we are `Streaming`. If the future is `Ready`,
 /// then we switch states to `Streaming`.
-enum UpdateRx<T: HttpService<ResponseBody = RecvBody>> {
+enum Receiver<T: HttpService<ResponseBody = RecvBody>> {
     Waiting(UpdateRsp<T::Future>),
     Streaming(grpc::Streaming<PbUpdate, T::ResponseBody>),
 }
@@ -93,10 +93,10 @@ enum UpdateRx<T: HttpService<ResponseBody = RecvBody>> {
 type UpdateRsp<F> =
     grpc::client::server_streaming::ResponseFuture<PbUpdate, F>;
 
-/// Wraps the error types returned by `UpdateRx` polls.
+/// Wraps the error types returned by `Receiver` polls.
 ///
-/// An `UpdateRx` error is either the error type of the `Future` in the
-/// `UpdateRx::Waiting` state, or the `Stream` in the `UpdateRx::Streaming`
+/// An `Receiver` error is either the error type of the `Future` in the
+/// `Receiver::Waiting` state, or the `Stream` in the `Receiver::Streaming`
 /// state.
 // TODO: impl Error?
 #[derive(Debug)]
@@ -289,7 +289,7 @@ where
                         }
                         Entry::Vacant(vac) => {
                             let query =
-                                DestinationServiceQuery::connect_maybe(
+                                Self::connect_maybe(
                                     &self.default_destination_namespace,
                                     client,
                                     vac.key(),
@@ -329,7 +329,7 @@ where
 
         while let Some(auth) = self.reconnects.pop_front() {
             if let Some(set) = self.destinations.get_mut(&auth) {
-                set.query = DestinationServiceQuery::connect_maybe(
+                set.query = Self::connect_maybe(
                     &self.default_destination_namespace,
                     client,
                     &auth,
@@ -346,10 +346,10 @@ where
         for (auth, set) in &mut self.destinations {
             // Query the Destination service first.
             let (new_query, found_by_destination_service) = match set.query.take() {
-                Some(DestinationServiceQuery::ConnectedOrConnecting{ rx }) => {
+                Some(Remote::ConnectedOrConnecting{ rx }) => {
                     let (new_query, found_by_destination_service) =
                         set.poll_destination_service(auth, rx);
-                    if let DestinationServiceQuery::NeedsReconnect = new_query {
+                    if let Remote::NeedsReconnect = new_query {
                         set.reset_on_next_modification();
                         self.reconnects.push_back(auth.clone());
                     }
@@ -384,12 +384,7 @@ where
             set.poll_dns(&self.dns_resolver, auth);
         }
     }
-}
 
-
-// ===== impl DestinationServiceQuery =====
-
-impl<T: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>> DestinationServiceQuery<T> {
     // Initiates a query `query` to the Destination service and returns it as `Some(query)` if the
     // given authority's host is of a form suitable for using to query the Destination service.
     // Otherwise, returns `None`.
@@ -398,9 +393,9 @@ impl<T: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>> Destination
         client: &mut T,
         auth: &DnsNameAndPort,
         connect_or_reconnect: &str)
-        -> Option<Self>
+        -> Option<Remote<T>>
     {
-        trace!("DestinationServiceQuery {} {:?}", connect_or_reconnect, auth);
+        trace!("Remote {} {:?}", connect_or_reconnect, auth);
         FullyQualifiedAuthority::normalize(auth, default_destination_namespace)
             .map(|auth| {
                 let req = Destination {
@@ -410,7 +405,7 @@ impl<T: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>> Destination
                 // TODO: Can grpc::Request::new be removed?
                 let mut svc = DestinationSvc::new(client.lift_ref());
                 let response = svc.get(grpc::Request::new(req));
-                DestinationServiceQuery::ConnectedOrConnecting { rx: UpdateRx::Waiting(response) }
+                Remote::ConnectedOrConnecting { rx: Receiver::Waiting(response) }
             })
     }
 }
@@ -439,8 +434,8 @@ impl<T> DestinationSet<T>
     fn poll_destination_service(
         &mut self,
         auth: &DnsNameAndPort,
-        mut rx: UpdateRx<T>)
-        -> (DestinationServiceQuery<T>, Exists<()>)
+        mut rx: Receiver<T>)
+        -> (Remote<T>, Exists<()>)
     {
         let mut exists = Exists::Unknown;
 
@@ -475,14 +470,14 @@ impl<T> DestinationSet<T>
                         "Destination.Get stream ended for {:?}, must reconnect",
                         auth
                     );
-                    return (DestinationServiceQuery::NeedsReconnect, exists);
+                    return (Remote::NeedsReconnect, exists);
                 },
                 Ok(Async::NotReady) => {
-                    return (DestinationServiceQuery::ConnectedOrConnecting { rx }, exists);
+                    return (Remote::ConnectedOrConnecting { rx }, exists);
                 },
                 Err(err) => {
                     warn!("Destination.Get stream errored for {:?}: {:?}", auth, err);
-                    return (DestinationServiceQuery::NeedsReconnect, exists);
+                    return (Remote::NeedsReconnect, exists);
                 }
             };
         }
@@ -619,9 +614,9 @@ where
     }
 }
 
-// ===== impl UpdateRx =====
+// ===== impl Receiver =====
 
-impl<T> Stream for UpdateRx<T>
+impl<T> Stream for Receiver<T>
 where T: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>,
       T::Error: fmt::Debug,
 {
@@ -631,15 +626,15 @@ where T: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>,
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
         // this is not ideal.
         let stream = match *self {
-            UpdateRx::Waiting(ref mut future) => match future.poll() {
+            Receiver::Waiting(ref mut future) => match future.poll() {
                 Ok(Async::Ready(response)) => response.into_inner(),
                 Ok(Async::NotReady) => return Ok(Async::NotReady),
                 Err(e) => return Err(RxError::Future(e)),
             },
-            UpdateRx::Streaming(ref mut stream) =>
+            Receiver::Streaming(ref mut stream) =>
                 return stream.poll().map_err(RxError::Stream),
         };
-        *self = UpdateRx::Streaming(stream);
+        *self = Receiver::Streaming(stream);
         self.poll()
     }
 }
