@@ -10,13 +10,6 @@ import { Tooltip } from 'antd';
   Expects rollup and timeseries data.
 */
 
-const resourceInfo = {
-  "upstream_deployment": { title: "deployment", url: "/deployment?deploy=" },
-  "downstream_deployment": { title: "deployment", url: "/deployment?deploy=" },
-  "deployment": { title: "deployment", url: "/deployment?deploy=" },
-  "path": { title: "path", url: null }
-};
-
 const withTooltip = (d, metricName) => {
   return (
     <Tooltip
@@ -27,18 +20,22 @@ const withTooltip = (d, metricName) => {
   );
 };
 
-const columnDefinitions = (sortable = true, resource, ConduitLink) => {
+const columnDefinitions = (sortable = true, title, ConduitLink) => {
   return [
     {
-      title: resource.title,
+      title: title,
       key: "name",
       defaultSortOrder: 'ascend',
       width: 150,
       sorter: sortable ? (a, b) => (a.name || "").localeCompare(b.name) : false,
-      render: row => (<React.Fragment>
-        {!resource.url ? row.name : <ConduitLink to={`${resource.url}${row.name}`}>{row.name}</ConduitLink>}
-        {row.added ? <span>&nbsp;<GrafanaLink name={row.name} size={16} conduitLink={ConduitLink} /></span> : null}
-      </React.Fragment>)
+      render: row => {
+        return row.added ?
+          <GrafanaLink
+            name={row.name}
+            size={16}
+            conduitLink={ConduitLink}
+            text={row.name} /> : row.name;
+      }
     },
     {
       title: "Request Rate",
@@ -104,9 +101,8 @@ export default class MetricsTable extends BaseTable {
   }
 
   render() {
-    let resource = resourceInfo[this.props.resource];
     let tableData = this.preprocessMetrics();
-    let columns = _.compact(columnDefinitions(this.props.sortable, resource, this.api.ConduitLink));
+    let columns = _.compact(columnDefinitions(this.props.sortable, this.props.resource, this.api.ConduitLink));
 
     return (<BaseTable
       dataSource={tableData}

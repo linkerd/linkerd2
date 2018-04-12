@@ -71,8 +71,6 @@ export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '10m') => {
     return apiFetch(podsPath);
   };
 
-
-
   const getMetricsWindow = () => metricsWindow;
   const getMetricsWindowDisplayText = () => validMetricsWindows[metricsWindow];
 
@@ -81,42 +79,22 @@ export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '10m') => {
     metricsWindow = window;
   };
 
-  const metricsUrl = `/api/metrics?`;
+  const deploymentUrl = `/api/stat?resource_type=deployment`;
   const urlsForResource = {
-    // all deploys (default), or a given deploy if specified
+    // all deploys (default), or all deploys in a given namespace, or a given
+    // deploy if specified
     "deployment": {
       groupBy: "targetDeploy",
-      url: (deploy = null) => {
-        let rollupUrl = !deploy ? metricsUrl : `${metricsUrl}&target_deploy=${deploy}`;
-        let timeseriesUrl = !deploy ? `${metricsUrl}&timeseries=true` :
-          `${metricsUrl}&timeseries=true&target_deploy=${deploy}`;
+      url: (namespace = null, name = null) => {
+        let rollupUrl = deploymentUrl;
+        if (!_.isNull(namespace)) {
+          rollupUrl += `&namespace=${namespace}`;
+        }
+        if (!_.isNull(name)) {
+          rollupUrl += `&resource_name=${name}`;
+        }
         return {
-          ts: timeseriesUrl,
           rollup: rollupUrl
-        };
-      }
-    },
-    "upstream_deployment": {
-      // all upstreams of a given deploy
-      groupBy: "sourceDeploy",
-      url: deploy => {
-        let upstreamRollupUrl = `${metricsUrl}&aggregation=source_deploy&target_deploy=${deploy}`;
-        let upstreamTimeseriesUrl = `${upstreamRollupUrl}&timeseries=true`;
-        return {
-          ts: upstreamTimeseriesUrl,
-          rollup: upstreamRollupUrl
-        };
-      }
-    },
-    "downstream_deployment": {
-      // all downstreams of a given deploy
-      groupBy: "targetDeploy",
-      url: deploy => {
-        let downstreamRollupUrl = `${metricsUrl}&aggregation=target_deploy&source_deploy=${deploy}`;
-        let downstreamTimeseriesUrl = `${downstreamRollupUrl}&timeseries=true`;
-        return {
-          ts: downstreamTimeseriesUrl,
-          rollup: downstreamRollupUrl
         };
       }
     }

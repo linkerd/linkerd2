@@ -11,7 +11,7 @@ export default class GrafanaLink extends React.Component {
         to={`/dashboard/db/conduit-deployment?var-namespace=${namespace}&var-deployment=${deployment}`}
         deployment={"grafana"}
         targetBlank={true}>
-        <img
+        {this.props.text}&nbsp;&nbsp;<img
           src={grafanaicon}
           width={this.props.size}
           height={this.props.size}
