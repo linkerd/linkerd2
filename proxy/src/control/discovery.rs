@@ -207,7 +207,8 @@ impl<B> Watch<B> {
                 .map(|_| ())
         } else {
             // The store has already been removed, so nobody cares about
-            // the metadata change.
+            // the metadata change. We expect that this shouldn't happen,
+            // but if it does, log a warning and handle it gracefully.
             warn!(
                 "update_metadata: ignoring ChangeMetadata for {:?} \
                  because the service no longer exists.",
