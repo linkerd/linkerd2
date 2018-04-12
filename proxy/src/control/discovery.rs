@@ -309,16 +309,23 @@ where
         for (auth, set) in &mut self.destinations {
             // Query the Destination service first.
             let (new_query, found_by_destination_service) = match set.query.take() {
-                Some(Remote::ConnectedOrConnecting{ rx }) => {
-                    let (new_query, found_by_destination_service) =
-                        set.poll_destination_service(auth, rx);
-                    if let Remote::NeedsReconnect = new_query {
-                        set.reset_on_next_modification();
-                        self.reconnects.push_back(auth.clone());
+                None => (None, Exists::Unknown),
+                Some(query) => {
+                    match query.into_receiver_maybe() {
+                        None => (Some(Remote::new()), Exists::Unknown),
+                        Some(rx) => {
+                            let (new_query, found_by_destination_service) =
+                                set.poll_destination_service(auth, rx);
+
+                            if new_query.needs_reconnect() {
+                                set.reset_on_next_modification();
+                                self.reconnects.push_back(auth.clone());
+                            }
+
+                            (Some(new_query), found_by_destination_service)
+                        }
                     }
-                    (Some(new_query), found_by_destination_service)
                 },
-                query => (query, Exists::Unknown),
             };
             set.query = new_query;
 
@@ -348,30 +355,31 @@ where
         }
     }
 
-    // Initiates a query `query` to the Destination service and returns it as `Some(query)` if the
-    // given authority's host is of a form suitable for using to query the Destination service.
-    // Otherwise, returns `None`.
-    fn connect_maybe(
+    /// Initiates a query `query` to the Destination service and returns it as
+    /// `Some(query)` if the given authority's host is of a form suitable for using to
+    /// query the Destination service. Otherwise, returns `None`.
+    pub fn connect_maybe(
         default_destination_namespace: &str,
         client: &mut T,
         auth: &DnsNameAndPort,
         connect_or_reconnect: &str)
         -> Option<Remote<PbUpdate, T::Future, T::ResponseBody>>
     {
-        trace!("Remote {} {:?}", connect_or_reconnect, auth);
+        trace!("destination service query: {} {:?}", connect_or_reconnect, auth);
         FullyQualifiedAuthority::normalize(auth, default_destination_namespace)
             .map(|auth| {
                 let req = Destination {
                     scheme: "k8s".into(),
                     path: auth.without_trailing_dot().to_owned(),
                 };
-                // TODO: Can grpc::Request::new be removed?
+
                 let mut svc = DestinationSvc::new(client.lift_ref());
                 let response = svc.get(grpc::Request::new(req));
-                Remote::ConnectedOrConnecting { rx: Receiver::Waiting(response) }
+                Remote::from_future(response)
             })
     }
 }
+
 
 // ===== impl DestinationSet =====
 
@@ -433,14 +441,14 @@ impl<T> DestinationSet<T>
                         "Destination.Get stream ended for {:?}, must reconnect",
                         auth
                     );
-                    return (Remote::NeedsReconnect, exists);
+                    return (Remote::new(), exists);
                 },
                 Ok(Async::NotReady) => {
-                    return (Remote::ConnectedOrConnecting { rx }, exists);
+                    return (Remote::from_receiver(rx), exists);
                 },
                 Err(err) => {
                     warn!("Destination.Get stream errored for {:?}: {:?}", auth, err);
-                    return (Remote::NeedsReconnect, exists);
+                    return (Remote::new(), exists);
                 }
             };
         }

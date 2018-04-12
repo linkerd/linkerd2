@@ -1,73 +1,122 @@
-use std::fmt;
 
-use futures::{Async, Future, Poll, Stream};
+use futures::{Future, Poll, Stream};
 use http;
 use prost::Message;
+use std::fmt;
 use tower_h2::{Body, Data, RecvBody};
 use tower_grpc::{
     self as grpc,
     Streaming,
-    client::server_streaming::ResponseFuture
+    client::server_streaming::ResponseFuture,
 };
 
-pub enum Remote<M: Message + Default, F, B: Body = RecvBody> {
+/// Tracks the state of a remote response stream.
+///
+/// A remote may hold a `Receiver` that can be used to read `M`-typed messages from the
+/// remote stream.
+///
+/// If the Remote does not hold an active `Receiver`, `needs_reconnect()` returns true and
+/// `take_receiver()` returns `None`.
+#[derive(Debug)]
+pub struct Remote<M, F, B: Body = RecvBody>(Inner<M, F, B>);
+
+#[derive(Debug)]
+enum Inner<M, F, B: Body = RecvBody> {
     NeedsReconnect,
     ConnectedOrConnecting {
         rx: Receiver<M, F, B>
     },
 }
 
-/// Receiver for destination set updates.
+/// Receives streaming RPCs updates.
 ///
-/// The destination RPC returns a `ResponseFuture` whose item is a
-/// `Response<Stream>`, so this type holds the state of that RPC call ---
-/// either we're waiting for the future, or we have a stream --- and allows
-/// us to implement `Stream` regardless of whether the RPC has returned yet
-/// or not.
-///
-/// Polling an `Receiver` polls the wrapped future while we are
-/// `Waiting`, and the `Stream` if we are `Streaming`. If the future is `Ready`,
-/// then we switch states to `Streaming`.
-pub enum Receiver<M: Message + Default, F, B: Body = RecvBody> {
+/// Streaming gRPC endpoints return a `ResponseFuture` whose item is a `Response<Stream>`.
+/// A `Receiver` holds the state of that RPC call, exposing a `Stream` that drives both
+/// the gRPC response and its streaming body.
+#[derive(Debug)]
+pub struct Receiver<M, F, B: Body = RecvBody>(Rx<M, F, B>);
+
+#[derive(Debug)]
+enum Rx<M, F, B: Body = RecvBody> {
     Waiting(ResponseFuture<M, F>),
     Streaming(Streaming<M, B>),
 }
 
-
 /// Wraps the error types returned by `Receiver` polls.
 ///
-/// An `Receiver` error is either the error type of the `Future` in the
-/// `Receiver::Waiting` state, or the `Stream` in the `Receiver::Streaming`
-/// state.
+/// A `Receiver` error is either the error type of the response future or that of the open
+/// stream.
 #[derive(Debug)]
 pub enum Error<T> {
     Future(grpc::Error<T>),
     Stream(grpc::Error),
 }
 
+// ===== impl Remote =====
+
+impl<M, F, B> Remote<M, F, B>
+where
+    M: Message + Default,
+    B: Body<Data = Data>,
+    F: Future<Item = http::Response<B>>,
+{
+    pub fn new() -> Self {
+        Remote(Inner::NeedsReconnect)
+    }
+
+    pub fn from_future(future: ResponseFuture<M, F>) -> Self {
+        Remote(Inner::ConnectedOrConnecting {
+            rx: Receiver(Rx::Waiting(future))
+        })
+    }
+
+    pub fn from_receiver(rx: Receiver<M, F, B>) -> Self {
+        Remote(Inner::ConnectedOrConnecting { rx })
+    }
+
+    /// Returns true if there is not an active `Receiver` on this `Remote`..
+    pub fn needs_reconnect(&self) -> bool {
+        match self.0 {
+            Inner::NeedsReconnect => true,
+            _ => false,
+        }
+    }
+
+    /// Consumes the `Remote`, returning a `Receiver` if one is active.
+    pub fn into_receiver_maybe(self) -> Option<Receiver<M, F, B>> {
+        match self.0 {
+            Inner::NeedsReconnect => None,
+            Inner::ConnectedOrConnecting { rx } => Some(rx),
+        }
+    }
+}
+
 // ===== impl Receiver =====
 
 impl<M, F, B> Stream for Receiver<M, F, B>
-where M: Message + Default,
-      B: Body<Data = Data>,
-      F: Future<Item = http::Response<B>>,
-      F::Error: fmt::Debug,
+where
+    M: Message + Default,
+    B: Body<Data = Data>,
+    F: Future<Item = http::Response<B>>,
+    F::Error: fmt::Debug,
 {
     type Item = M;
     type Error = Error<F::Error>;
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-        // this is not ideal.
-        let stream = match *self {
-            Receiver::Waiting(ref mut future) => match future.poll() {
-                Ok(Async::Ready(response)) => response.into_inner(),
-                Ok(Async::NotReady) => return Ok(Async::NotReady),
-                Err(e) => return Err(Error::Future(e)),
-            },
-            Receiver::Streaming(ref mut stream) =>
-                return stream.poll().map_err(Error::Stream),
-        };
-        *self = Receiver::Streaming(stream);
-        self.poll()
+        loop {
+            let stream = match self.0 {
+                Rx::Waiting(ref mut future) => {
+                    let rsp = future.poll().map_err(Error::Future);
+                    try_ready!(rsp).into_inner()
+                }
+
+                Rx::Streaming(ref mut stream) => {
+                    return stream.poll().map_err(Error::Stream);
+                }
+            };
+
+            self.0 = Rx::Streaming(stream);
+        }
     }
 }
