@@ -747,14 +747,13 @@ mod outbound_dst_labels {
 
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
-        // TODO: we can't make more specific assertions about the metrics
+        // We can't make more specific assertions about the metrics
         // besides asserting that both labels are present somewhere in the
         // scrape, because testing for whole metric lines would depend on
         // the order in which the labels occur, and we can't depend on hash
         // map ordering.
         assert_contains!(metrics.get("/metrics"), "dst_addr_label1=\"foo\"");
         assert_contains!(metrics.get("/metrics"), "dst_addr_label2=\"bar\"");
-
     }
 
     #[test]
@@ -770,14 +769,13 @@ mod outbound_dst_labels {
 
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
-        // TODO: we can't make more specific assertions about the metrics
+        // We can't make more specific assertions about the metrics
         // besides asserting that both labels are present somewhere in the
         // scrape, because testing for whole metric lines would depend on
         // the order in which the labels occur, and we can't depend on hash
         // map ordering.
         assert_contains!(metrics.get("/metrics"), "dst_set_label1=\"foo\"");
         assert_contains!(metrics.get("/metrics"), "dst_set_label2=\"bar\"");
-
     }
 
     #[test]

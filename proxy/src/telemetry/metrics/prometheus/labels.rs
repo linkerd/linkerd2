@@ -4,16 +4,16 @@ use futures_watch::Watch;
 use http;
 use tower::Service;
 
-use std::fmt;
+use std::fmt::{self, Write};
+use std::sync::Arc;
 
-use control::discovery;
 use ctx;
 
 /// Middleware that adds an extension containing an optional set of metric
 /// labels to requests.
 #[derive(Clone, Debug)]
 pub struct Labeled<T> {
-    metric_labels: Option<Watch<Option<discovery::DstLabels>>>,
+    metric_labels: Option<Watch<Option<DstLabels>>>,
     inner: T,
 }
 
@@ -25,7 +25,7 @@ pub struct RequestLabels {
 
     // Additional labels identifying the destination service of an outbound
     // request, provided by the Conduit control plane's service discovery.
-    outbound_labels: Option<discovery::DstLabels>,
+    outbound_labels: Option<DstLabels>,
 
     /// The value of the `:authority` (HTTP/2) or `Host` (HTTP/1.1) header of
     /// the request.
@@ -60,16 +60,15 @@ enum Direction {
     Outbound,
 }
 
+#[derive(Clone, Debug, Hash, Eq, PartialEq)]
+pub struct DstLabels(Arc<str>);
 
 // ===== impl Labeled =====
 
 impl<T> Labeled<T> {
 
     /// Wrap `inner` with a `Watch` on dyanmically updated labels.
-    pub fn new(inner: T,
-               watch: Watch<Option<discovery::DstLabels>>)
-               -> Self
-    {
+    pub fn new(inner: T, watch: Watch<Option<DstLabels>>) -> Self {
         Self {
             metric_labels: Some(watch),
             inner,
@@ -244,5 +243,42 @@ impl fmt::Display for Direction {
             &Direction::Inbound => f.pad("direction=\"inbound\""),
             &Direction::Outbound => f.pad("direction=\"outbound\""),
         }
+    }
+}
+
+
+// ===== impl DstLabels ====
+
+impl DstLabels {
+    pub fn new<I, S>(labels: I) -> Option<Self>
+    where
+        I: IntoIterator<Item=(S, S)>,
+        S: fmt::Display,
+    {
+        let mut labels = labels.into_iter();
+
+        if let Some((k, v)) = labels.next() {
+            // Format the first label pair without a leading comma, since we
+            // don't know where it is in the output labels at this point.
+            let mut s = format!("dst_{}=\"{}\"", k, v);
+
+            // Format subsequent label pairs with leading commas, since
+            // we know that we already formatted the first label pair.
+            for (k, v) in labels {
+                write!(s, ",dst_{}=\"{}\"", k, v)
+                    .expect("writing to string should not fail");
+            }
+
+            Some(DstLabels(Arc::from(s)))
+        } else {
+            // The iterator is empty; return None
+            None
+        }
+    }
+}
+
+impl fmt::Display for DstLabels {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }

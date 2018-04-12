@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 use std::collections::hash_map::{Entry, HashMap};
-use std::fmt::{self, Write};
+use std::fmt;
 use std::iter::IntoIterator;
 use std::net::SocketAddr;
 use std::time::Duration;
@@ -30,7 +30,7 @@ use transport::DnsNameAndPort;
 
 use control::cache::{Cache, CacheChange, Exists};
 
-use ::telemetry::metrics::prometheus::Labeled;
+use ::telemetry::metrics::prometheus::{DstLabels, Labeled};
 
 /// A handle to start watching a destination for address changes.
 #[derive(Clone, Debug)]
@@ -74,9 +74,6 @@ pub struct DiscoveryWork<T: HttpService<ResponseBody = RecvBody>> {
     /// A receiver of new watch requests.
     rx: mpsc::UnboundedReceiver<(DnsNameAndPort, mpsc::UnboundedSender<Update>)>,
 }
-
-#[derive(Clone, Debug, Hash, Eq, PartialEq)]
-pub struct DstLabels(Arc<str>);
 
 /// Any additional metadata describing a discovered service.
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
@@ -212,8 +209,8 @@ impl<B> Watch<B> {
             // The store has already been removed, so nobody cares about
             // the metadata change.
             warn!(
-                "update_metadata: ignoring ChangeMetadata for {:?},
-                 the service no longer exists.",
+                "update_metadata: ignoring ChangeMetadata for {:?} \
+                 because the service no longer exists.",
                 addr
             );
             Ok(())
@@ -243,12 +240,12 @@ where
                     // Construct a watch for the `Labeled` middleware that will
                     // wrap the bound service, and insert the store into our map
                     // so it can be updated later.
-                    let (watch_labels, update_labels) =
+                    let (labels_watch, labels_store) =
                         futures_watch::Watch::new(meta.metric_labels);
-                    self.metric_labels.insert(addr, update_labels);
+                    self.metric_labels.insert(addr, labels_store);
 
                     let service = self.bind.bind(&addr)
-                        .map(|svc| Labeled::new(svc, watch_labels))
+                        .map(|svc| Labeled::new(svc, labels_watch))
                         .map_err(|_| ())?;
 
                     return Ok(Async::Ready(Change::Insert(addr, service)))
@@ -684,7 +681,7 @@ impl <T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
                     ("change metadata for", Update::ChangeMetadata),
             };
         trace!("{} {:?} for {:?}", update_str, addr, authority_for_logging);
-        // etain is used to drop any senders that are dead
+        // retain is used to drop any senders that are dead
         txs.retain(|tx| {
             tx.unbounded_send(update_constructor(addr, meta.clone())).is_ok()
         });
@@ -731,42 +728,6 @@ where T: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>,
         };
         *self = UpdateRx::Streaming(stream);
         self.poll()
-    }
-}
-
-// ===== impl DstLabels ====
-
-impl DstLabels {
-    fn new<I, S>(labels: I) -> Option<Self>
-    where
-        I: IntoIterator<Item=(S, S)>,
-        S: fmt::Display,
-    {
-        let mut labels = labels.into_iter();
-
-        if let Some((k, v)) = labels.next() {
-            // Format the first label pair without a leading comma, since we
-            // don't know where it is in the output labels at this point.
-            let mut s = format!("dst_{}=\"{}\"", k, v);
-
-            // Format subsequent label pairs with leading commas, since
-            // we know that we already formatted the first label pair.
-            for (k, v) in labels {
-                write!(s, ",dst_{}=\"{}\"", k, v)
-                    .expect("writing to string should not fail");
-            }
-
-            Some(DstLabels(Arc::from(s)))
-        } else {
-            // The iterator is empty; return None
-            None
-        }
-    }
-}
-
-impl fmt::Display for DstLabels {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0)
     }
 }
 
