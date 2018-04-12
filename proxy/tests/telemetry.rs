@@ -798,7 +798,12 @@ mod outbound_dst_labels {
             "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"bar\",classification=\"success\",status_code=\"200\"} 1");
     }
 
+    // Ignore this test on CI, as it may fail due to the reduced concurrency
+    // on CI containers causing the proxy to see both label updates from
+    // the mock controller before the first request has finished.
+    // See https://github.com/runconduit/conduit/issues/751
     #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
     fn controller_updates_addr_labels() {
         let _ = env_logger::try_init();
                 info!("running test server");
@@ -850,7 +855,12 @@ mod outbound_dst_labels {
             "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"unchanged\",classification=\"success\",status_code=\"200\"} 1");
     }
 
+    // Ignore this test on CI, as it may fail due to the reduced concurrency
+    // on CI containers causing the proxy to see both label updates from
+    // the mock controller before the first request has finished.
+    // See https://github.com/runconduit/conduit/issues/751
     #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
     fn controller_updates_set_labels() {
         let _ = env_logger::try_init();
                 info!("running test server");
