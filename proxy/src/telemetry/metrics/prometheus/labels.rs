@@ -282,3 +282,87 @@ impl fmt::Display for DstLabels {
         write!(f, "{}", self.0)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    use futures::{Async, Poll, Future};
+    use futures::future::{self, FutureResult};
+    use http;
+    use tower::Service;
+
+
+    struct MockInnerService;
+
+    impl Service for MockInnerService {
+        type Request = http::Request<()>;
+        type Response = Option<String>;
+        type Error = ();
+        type Future = FutureResult<Self::Response, Self::Error>;
+
+        fn poll_ready(&mut self) -> Poll<(), Self::Error> {
+            Ok(Async::Ready(()))
+        }
+
+        fn call(&mut self, req: Self::Request) -> Self::Future {
+            future::ok(req.extensions()
+                .get::<DstLabels>()
+                .map(|&DstLabels(ref inner)| inner.as_ref().to_string()))
+        }
+    }
+
+    #[test]
+    fn no_labels() {
+        let mut labeled = Labeled {
+            metric_labels: None,
+            inner: MockInnerService,
+        };
+        let labels = labeled.call(http::Request::new(()))
+            .wait().expect("call");
+        assert_eq!(None, labels);
+    }
+
+    #[test]
+    fn one_label() {
+        let (watch, _) =
+            Watch::new(DstLabels::new(vec![("foo", "bar")]));
+        let mut labeled = Labeled {
+            metric_labels: Some(watch),
+            inner: MockInnerService,
+        };
+        let labels = labeled.call(http::Request::new(()))
+            .wait().expect("call");
+        assert_eq!(Some("dst_foo=\"bar\"".to_string()), labels);
+    }
+
+    #[test]
+    fn label_updates() {
+        let (watch, mut store) =
+            Watch::new(DstLabels::new(vec![("foo", "bar")]));
+        let mut labeled = Labeled {
+            metric_labels: Some(watch),
+            inner: MockInnerService,
+        };
+
+        let labels = labeled.call(http::Request::new(()))
+            .wait().expect("first call");
+        assert_eq!(Some("dst_foo=\"bar\"".to_string()), labels);
+
+        store.store(DstLabels::new(vec![("foo", "baz")]))
+            .expect("store (\"foo\", \"baz\")");
+        let labels = labeled.call(http::Request::new(()))
+            .wait().expect("second call");
+        assert_eq!(Some("dst_foo=\"baz\"".to_string()), labels);
+
+        store.store(DstLabels::new(vec![
+            ("foo", "baz"),
+            ("quux", "quuux")
+        ]))
+            .expect("store (\"foo\", \"baz\"), (\"quux\", \"quuux\")");
+        let labels = labeled.call(http::Request::new(()))
+            .wait().expect("third call");
+        assert_eq!(Some("dst_foo=\"baz\",dst_quux=\"quuux\"".to_string()), labels);
+    }
+
+}
