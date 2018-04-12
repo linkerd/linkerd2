@@ -249,7 +249,10 @@ func processRequests(results []promResult, labelSelector string) map[string]*pb.
 				basicStats[label] = &pb.BasicStats{}
 			}
 
-			value := uint64(math.Round(float64(sample.Value)))
+			value := uint64(0)
+			if !math.IsNaN(float64(sample.Value)) {
+				value = uint64(math.Round(float64(sample.Value)))
+			}
 
 			switch result.prom {
 			case promRequests:
