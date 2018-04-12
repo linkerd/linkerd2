@@ -57,6 +57,9 @@ func main() {
 
 	sharedInformers := informers.NewSharedInformerFactory(k8sClient, 10*time.Minute)
 
+	namespaceInformer := sharedInformers.Core().V1().Namespaces()
+	namespaceInformerSynced := namespaceInformer.Informer().HasSynced
+
 	deployInformer := sharedInformers.Apps().V1beta2().Deployments()
 	deployInformerSynced := deployInformer.Informer().HasSynced
 
@@ -77,6 +80,7 @@ func main() {
 		*addr,
 		prometheusClient,
 		tapClient,
+		namespaceInformer.Lister(),
 		deployInformer.Lister(),
 		replicaSetInformer.Lister(),
 		podInformer.Lister(),
@@ -91,6 +95,7 @@ func main() {
 		log.Infof("waiting for caches to sync")
 		if !cache.WaitForCacheSync(
 			ctx.Done(),
+			namespaceInformerSynced,
 			deployInformerSynced,
 			replicaSetInformerSynced,
 			podInformerSynced,

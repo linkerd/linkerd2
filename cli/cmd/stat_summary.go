@@ -13,13 +13,14 @@ import (
 	"github.com/prometheus/common/log"
 	"github.com/runconduit/conduit/controller/api/util"
 	pb "github.com/runconduit/conduit/controller/gen/public"
+	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/spf13/cobra"
 	"k8s.io/api/core/v1"
 )
 
 var timeWindow, namespace, resourceType, resourceName string
-var outToNamespace, outToType, outToName string
-var outFromNamespace, outFromType, outFromName string
+var toNamespace, toType, toName string
+var fromNamespace, fromType, fromName string
 var allNamespaces bool
 
 var statCmd = &cobra.Command{
@@ -29,7 +30,8 @@ var statCmd = &cobra.Command{
 
 Valid resource types include:
 
-	* deployment
+	* deployments
+	* namespaces
 
 This command will hide resources that have completed, such as pods that are in the Succeeded or Failed phases.
 If no resource name is specified, displays stats about all resources of the specified RESOURCETYPE`,
@@ -37,9 +39,15 @@ If no resource name is specified, displays stats about all resources of the spec
   conduit stat deployments -n test
 
   # Get the hello1 deployment in the test namespace.
-  conduit stat deployments hello1 -n test`,
+  conduit stat deployments hello1 -n test
+
+  # Get the test namespace.
+  conduit stat namespaces test
+
+  # Get all namespaces.
+  conduit stat --all-namespaces=true namespaces`,
 	Args:      cobra.RangeArgs(1, 2),
-	ValidArgs: []string{"deployment"},
+	ValidArgs: []string{k8s.KubernetesDeployments, k8s.KubernetesNamespaces},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		switch len(args) {
 		case 1:
@@ -71,12 +79,12 @@ func init() {
 	RootCmd.AddCommand(statCmd)
 	statCmd.PersistentFlags().StringVarP(&namespace, "namespace", "n", "default", "Namespace of the specified resource")
 	statCmd.PersistentFlags().StringVarP(&timeWindow, "time-window", "t", "1m", "Stat window (one of: \"10s\", \"1m\", \"10m\", \"1h\")")
-	statCmd.PersistentFlags().StringVar(&outToName, "out-to", "", "If present, restricts outbound stats to the specified resource name")
-	statCmd.PersistentFlags().StringVar(&outToNamespace, "out-to-namespace", "", "Sets the namespace used to lookup the \"--out-to\" resource; by default the current \"--namespace\" is used")
-	statCmd.PersistentFlags().StringVar(&outToType, "out-to-resource", "", "If present, restricts outbound stats to the specified resource type")
-	statCmd.PersistentFlags().StringVar(&outFromName, "out-from", "", "If present, restricts outbound stats to the specified resource name")
-	statCmd.PersistentFlags().StringVar(&outFromNamespace, "out-from-namespace", "", "Sets the namespace used to lookup the \"--out-from\" resource; by default the current \"--namespace\" is used")
-	statCmd.PersistentFlags().StringVar(&outFromType, "out-from-resource", "", "If present, restricts outbound stats to the specified resource type")
+	statCmd.PersistentFlags().StringVar(&toName, "to", "", "If present, restricts outbound stats to the specified resource name")
+	statCmd.PersistentFlags().StringVar(&toNamespace, "to-namespace", "", "Sets the namespace used to lookup the \"--to\" resource; by default the current \"--namespace\" is used")
+	statCmd.PersistentFlags().StringVar(&toType, "to-resource", "", "Sets the resource type used to lookup the \"--to\" resource; by default the RESOURCETYPE is used")
+	statCmd.PersistentFlags().StringVar(&fromName, "from", "", "If present, restricts outbound stats from the specified resource name")
+	statCmd.PersistentFlags().StringVar(&fromNamespace, "from-namespace", "", "Sets the namespace used from lookup the \"--from\" resource; by default the current \"--namespace\" is used")
+	statCmd.PersistentFlags().StringVar(&fromType, "from-resource", "", "Sets the resource type used to lookup the \"--from\" resource; by default the RESOURCETYPE is used")
 	statCmd.PersistentFlags().BoolVar(&allNamespaces, "all-namespaces", false, "If present, returns stats across all namespaces, ignoring the \"--namespace\" flag")
 }
 
@@ -110,13 +118,17 @@ func renderStats(resp *pb.StatSummaryResponse) string {
 
 const padding = 3
 
-type row struct {
-	meshed      string
+type rowStats struct {
 	requestRate float64
 	successRate float64
 	latencyP50  uint64
 	latencyP95  uint64
 	latencyP99  uint64
+}
+
+type row struct {
+	meshed string
+	*rowStats
 }
 
 func writeStatsToBuffer(resp *pb.StatSummaryResponse, w *tabwriter.Writer) {
@@ -147,13 +159,20 @@ func writeStatsToBuffer(resp *pb.StatSummaryResponse, w *tabwriter.Writer) {
 			}
 
 			if r.Stats != nil {
-				stats[key].requestRate = getRequestRate(*r)
-				stats[key].successRate = getSuccessRate(*r)
-				stats[key].latencyP50 = r.Stats.LatencyMsP50
-				stats[key].latencyP95 = r.Stats.LatencyMsP95
-				stats[key].latencyP99 = r.Stats.LatencyMsP99
+				stats[key].rowStats = &rowStats{
+					requestRate: getRequestRate(*r),
+					successRate: getSuccessRate(*r),
+					latencyP50:  r.Stats.LatencyMsP50,
+					latencyP95:  r.Stats.LatencyMsP95,
+					latencyP99:  r.Stats.LatencyMsP99,
+				}
 			}
 		}
+	}
+
+	if len(stats) == 0 {
+		fmt.Fprintln(w, "\tNo resources found.")
+		return
 	}
 
 	headers := make([]string, 0)
@@ -170,6 +189,7 @@ func writeStatsToBuffer(resp *pb.StatSummaryResponse, w *tabwriter.Writer) {
 		"LATENCY_P95",
 		"LATENCY_P99\t", // trailing \t is required to format last column
 	}...)
+
 	fmt.Fprintln(w, strings.Join(headers, "\t"))
 
 	sortedKeys := sortStatsKeys(stats)
@@ -179,23 +199,32 @@ func writeStatsToBuffer(resp *pb.StatSummaryResponse, w *tabwriter.Writer) {
 		name := parts[1]
 		values := make([]interface{}, 0)
 		templateString := "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t\n"
+		templateStringEmpty := "%s\t%s\t-\t-\t-\t-\t-\t\n"
 
 		if allNamespaces {
 			values = append(values,
 				namespace+strings.Repeat(" ", maxNamespaceLength-len(namespace)))
 			templateString = "%s\t" + templateString
+			templateStringEmpty = "%s\t" + templateStringEmpty
 		}
 		values = append(values, []interface{}{
 			name + strings.Repeat(" ", maxNameLength-len(name)),
 			stats[key].meshed,
-			stats[key].successRate * 100,
-			stats[key].requestRate,
-			stats[key].latencyP50,
-			stats[key].latencyP95,
-			stats[key].latencyP99,
 		}...)
 
-		fmt.Fprintf(w, templateString, values...)
+		if stats[key].rowStats != nil {
+			values = append(values, []interface{}{
+				stats[key].successRate * 100,
+				stats[key].requestRate,
+				stats[key].latencyP50,
+				stats[key].latencyP95,
+				stats[key].latencyP99,
+			}...)
+
+			fmt.Fprintf(w, templateString, values...)
+		} else {
+			fmt.Fprintf(w, templateStringEmpty, values...)
+		}
 	}
 }
 
@@ -208,16 +237,16 @@ func buildStatSummaryRequest() (*pb.StatSummaryRequest, error) {
 	}
 
 	requestParams := util.StatSummaryRequestParams{
-		TimeWindow:       timeWindow,
-		ResourceName:     resourceName,
-		ResourceType:     resourceType,
-		Namespace:        targetNamespace,
-		OutToName:        outToName,
-		OutToType:        outToType,
-		OutToNamespace:   outToNamespace,
-		OutFromName:      outFromName,
-		OutFromType:      outFromType,
-		OutFromNamespace: outFromNamespace,
+		TimeWindow:    timeWindow,
+		ResourceName:  resourceName,
+		ResourceType:  resourceType,
+		Namespace:     targetNamespace,
+		ToName:        toName,
+		ToType:        toType,
+		ToNamespace:   toNamespace,
+		FromName:      fromName,
+		FromType:      fromType,
+		FromNamespace: fromNamespace,
 	}
 
 	return util.BuildStatSummaryRequest(requestParams)

@@ -166,6 +166,7 @@ spec:
 			clientSet := fake.NewSimpleClientset(k8sObjs...)
 			sharedInformers := informers.NewSharedInformerFactory(clientSet, 10*time.Minute)
 
+			namespaceInformer := sharedInformers.Core().V1().Namespaces()
 			deployInformer := sharedInformers.Apps().V1beta2().Deployments()
 			replicaSetInformer := sharedInformers.Apps().V1beta2().ReplicaSets()
 			podInformer := sharedInformers.Core().V1().Pods()
@@ -173,6 +174,7 @@ spec:
 			fakeGrpcServer := newGrpcServer(
 				&MockProm{Res: exp.promRes},
 				tap.NewTapClient(nil),
+				namespaceInformer.Lister(),
 				deployInformer.Lister(),
 				replicaSetInformer.Lister(),
 				podInformer.Lister(),
@@ -183,6 +185,7 @@ spec:
 			sharedInformers.Start(stopCh)
 			if !cache.WaitForCacheSync(
 				stopCh,
+				namespaceInformer.Informer().HasSynced,
 				deployInformer.Informer().HasSynced,
 				replicaSetInformer.Informer().HasSynced,
 				podInformer.Informer().HasSynced,

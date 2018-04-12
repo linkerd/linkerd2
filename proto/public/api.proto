@@ -80,8 +80,8 @@ message StatSummaryRequest {
 
   oneof outbound {
     Empty none = 3;
-    Resource out_to_resource   = 4;
-    Resource out_from_resource = 5;
+    Resource to_resource   = 4;
+    Resource from_resource = 5;
   }
 }
 

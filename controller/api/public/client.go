@@ -79,7 +79,7 @@ func (c *grpcOverHttpClient) Tap(ctx context.Context, req *pb.TapRequest, _ ...g
 func (c *grpcOverHttpClient) apiRequest(ctx context.Context, endpoint string, req proto.Message, protoResponse proto.Message) error {
 	url := c.endpointNameToPublicApiUrl(endpoint)
 
-	log.Debugf("Making gRPC-over-HTTP call to [%s]", url.String())
+	log.Debugf("Making gRPC-over-HTTP call to [%s] [%+v]", url.String(), req)
 	httpRsp, err := c.post(ctx, url, req)
 	if err != nil {
 		return err
