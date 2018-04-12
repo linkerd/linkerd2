@@ -293,13 +293,11 @@ mod test {
     use tower::Service;
 
 
-    struct MockInnerService<'a> {
-        expected_labels: Option<&'a str>,
-    }
+    struct MockInnerService;
 
-    impl<'a> Service for MockInnerService<'a> {
+    impl Service for MockInnerService {
         type Request = http::Request<()>;
-        type Response = ();
+        type Response = Option<String>;
         type Error = ();
         type Future = FutureResult<Self::Response, Self::Error>;
 
@@ -308,42 +306,34 @@ mod test {
         }
 
         fn call(&mut self, req: Self::Request) -> Self::Future {
-            let req_labels = req.extensions()
+            future::ok(req.extensions()
                 .get::<DstLabels>()
-                .map(|DstLabels(ref inner)| inner.as_ref());
-            assert_eq!(req_labels, self.expected_labels);
-            future::ok(())
+                .map(|DstLabels(ref inner)| inner.as_ref().to_string()))
         }
     }
 
     #[test]
     fn no_labels() {
-        let inner = MockInnerService {
-            expected_labels: None
-        };
         let mut labeled = Labeled {
             metric_labels: None,
-            inner
+            inner: MockInnerService,
         };
-        // If the request has been labeled, the assertion in
-        // `MockInnerService` will panic.
-        labeled.call(http::Request::new(())).wait().unwrap();
+        let labels = labeled.call(http::Request::new(()))
+            .wait().expect("call");
+        assert_eq!(None, labels);
     }
 
     #[test]
     fn one_label() {
-        let inner = MockInnerService {
-            expected_labels: Some("dst_foo=\"bar\""),
-        };
         let (watch, _) =
             Watch::new(DstLabels::new(vec![("foo", "bar")]));
         let mut labeled = Labeled {
             metric_labels: Some(watch),
-            inner
+            inner: MockInnerService,
         };
-        // If the request has not been labeled with `dst_foo="bar"`,
-        // the assertion in `MockInnerService` will panic.
-        labeled.call(http::Request::new(())).wait().unwrap();
+        let labels = labeled.call(http::Request::new(()))
+            .wait().expect("call");
+        assert_eq!(Some("dst_foo=\"bar\"".to_string()), labels);
     }
 
     #[test]
@@ -352,25 +342,27 @@ mod test {
             Watch::new(DstLabels::new(vec![("foo", "bar")]));
         let mut labeled = Labeled {
             metric_labels: Some(watch),
-            inner: MockInnerService {
-                expected_labels: Some("dst_foo=\"bar\""),
-            },
+            inner: MockInnerService,
         };
 
-        labeled.call(http::Request::new(())).wait().expect("first call");
+        let labels = labeled.call(http::Request::new(()))
+            .wait().expect("first call");
+        assert_eq!(Some("dst_foo=\"bar\"".to_string()), labels);
 
         store.store(DstLabels::new(vec![("foo", "baz")]))
             .expect("store (\"foo\", \"baz\")");
-        labeled.inner.expected_labels = Some("dst_foo=\"baz\"");
-        labeled.call(http::Request::new(())).wait().expect("second call");
+        let labels = labeled.call(http::Request::new(()))
+            .wait().expect("second call");
+        assert_eq!(Some("dst_foo=\"baz\"".to_string()), labels);
 
         store.store(DstLabels::new(vec![
             ("foo", "baz"),
             ("quux", "quuux")
         ]))
             .expect("store (\"foo\", \"baz\"), (\"quux\", \"quuux\")");
-        labeled.inner.expected_labels =  Some("dst_foo=\"baz\",dst_quux=\"quuux\"");
-        labeled.call(http::Request::new(())).wait().expect("third call");
+        let labels = labeled.call(http::Request::new(()))
+            .wait().expect("third call");
+        assert_eq!(Some("dst_foo=\"baz\",dst_quux=\"quuux\"".to_string()), labels);
     }
 
 }
