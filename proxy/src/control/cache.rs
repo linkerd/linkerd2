@@ -1,4 +1,5 @@
-use indexmap::{map, IndexMap, IndexSet};
+use indexmap::{IndexMap, IndexSet};
+use indexmap::map::{self, Entry};
 use std::borrow::Borrow;
 use std::hash::Hash;
 use std::iter::IntoIterator;
@@ -83,26 +84,24 @@ where
             V: PartialEq,
             F: for<'value> FnMut(CacheChange<'value, K, V>),
         {
-            if inner.get(&key)
-                .map_or(false, |current| current == &new_value) {
-                // The key is already mapped to the inserted value.
-                // No change.
-                return;
-            } else {
-                match inner.insert(key, new_value) {
-                    Some(_) => on_change(CacheChange::Modification {
+            match inner.entry(key) {
+                Entry::Occupied(ref mut entry) if *entry.get() != new_value => {
+                    on_change(CacheChange::Modification {
                         key,
-                        new_value: inner.get(&key)
-                            .expect("value was just inserted")
-                    }),
-                    // If `insert` returns `None`, then there was no old value
-                    // previously present. Therefore, we inserted a new value
-                    // into the cache.
-                    None => on_change(CacheChange::Insertion {
+                        new_value: &new_value,
+                    });
+                    entry.insert(new_value);
+                },
+                Entry::Vacant(entry) => {
+                    on_change(CacheChange::Insertion {
                         key,
-                        value: inner.get(&key)
-                            .expect("value was just inserted")
-                    }),
+                        value: &new_value,
+                    });
+                    entry.insert(new_value);
+                },
+                Entry::Occupied(_) => {
+                    // Entry is occupied but the value is the same as the new
+                    // value, so skip it.
                 }
             }
         }

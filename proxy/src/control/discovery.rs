@@ -651,10 +651,12 @@ impl <T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
                  authority_for_logging: &DnsNameAndPort,
                  change: CacheChange<SocketAddr, Metadata>) {
         let (update_str, update, addr) = match change {
-            CacheChange::Insertion { key, value } => ("insert", Update::Insert(key, value), key),
-            CacheChange::Removal { key } => ("remove", Update::Remove(key), key),
+            CacheChange::Insertion { key, value } =>
+                ("insert", Update::Insert(key, value.clone()), key),
+            CacheChange::Removal { key } =>
+                ("remove", Update::Remove(key), key),
             CacheChange::Modification { key, new_value } =>
-                ("change metadata for", Update::ChangeMetadata(key, new_value), key),
+                ("change metadata for", Update::ChangeMetadata(key, new_value.clone()), key),
         };
         trace!("{} {:?} for {:?}", update_str, addr, authority_for_logging);
         // retain is used to drop any senders that are dead
