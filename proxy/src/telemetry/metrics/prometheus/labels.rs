@@ -308,7 +308,7 @@ mod test {
         fn call(&mut self, req: Self::Request) -> Self::Future {
             future::ok(req.extensions()
                 .get::<DstLabels>()
-                .map(|DstLabels(ref inner)| inner.as_ref().to_string()))
+                .map(|&DstLabels(ref inner)| inner.as_ref().to_string()))
         }
     }
 
