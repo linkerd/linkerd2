@@ -130,7 +130,6 @@ mod response_classification {
         let proxy = proxy::new()
             .controller(ctrl.run())
             .inbound(srv)
-            .metrics_flush_interval(Duration::from_millis(500))
             .run();
         let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
         let metrics = client::http1(proxy.metrics, "localhost");
@@ -161,7 +160,6 @@ mod response_classification {
         let proxy = proxy::new()
             .controller(ctrl)
             .outbound(srv)
-            .metrics_flush_interval(Duration::from_millis(500))
             .run();
         let client = client::new(proxy.outbound, "tele.test.svc.cluster.local");
         let metrics = client::http1(proxy.metrics, "localhost");
@@ -460,7 +458,6 @@ mod outbound_dst_labels {
         let proxy = proxy::new()
             .controller(ctrl.run())
             .outbound(srv)
-            .metrics_flush_interval(Duration::from_millis(500))
             .run();
         let metrics = client::http1(proxy.metrics, "localhost");
 
