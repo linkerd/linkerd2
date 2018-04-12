@@ -6,6 +6,7 @@ use std::time::Duration;
 
 use futures::{Async, Future, Poll, Stream};
 use futures::sync::mpsc;
+use prost::Message;
 use tokio_core::reactor::Handle;
 use tower::Service;
 use tower_h2::{HttpService, BoxBody, RecvBody};
@@ -62,15 +63,15 @@ pub struct DiscoveryWork<T: HttpService<ResponseBody = RecvBody>> {
 
 struct DestinationSet<T: HttpService<ResponseBody = RecvBody>> {
     addrs: Exists<Cache<SocketAddr, ()>>,
-    query: Option<Remote<T>>,
+    query: Option<Remote<PbUpdate, T>>,
     dns_query: Option<IpAddrListFuture>,
     txs: Vec<mpsc::UnboundedSender<Update>>,
 }
 
-enum Remote<T: HttpService<ResponseBody = RecvBody>> {
+enum Remote<M: Message + Default, T: HttpService<ResponseBody = RecvBody>> {
     NeedsReconnect,
     ConnectedOrConnecting {
-        rx: Receiver<T>
+        rx: Receiver<M, T>
     },
 }
 
@@ -85,13 +86,10 @@ enum Remote<T: HttpService<ResponseBody = RecvBody>> {
 /// Polling an `Receiver` polls the wrapped future while we are
 /// `Waiting`, and the `Stream` if we are `Streaming`. If the future is `Ready`,
 /// then we switch states to `Streaming`.
-enum Receiver<T: HttpService<ResponseBody = RecvBody>> {
-    Waiting(UpdateRsp<T::Future>),
-    Streaming(grpc::Streaming<PbUpdate, T::ResponseBody>),
+enum Receiver<M: Message + Default, T: HttpService<ResponseBody = RecvBody>> {
+    Waiting(grpc::client::server_streaming::ResponseFuture<M, T::Future>),
+    Streaming(grpc::Streaming<M, T::ResponseBody>),
 }
-
-type UpdateRsp<F> =
-    grpc::client::server_streaming::ResponseFuture<PbUpdate, F>;
 
 /// Wraps the error types returned by `Receiver` polls.
 ///
@@ -393,7 +391,7 @@ where
         client: &mut T,
         auth: &DnsNameAndPort,
         connect_or_reconnect: &str)
-        -> Option<Remote<T>>
+        -> Option<Remote<PbUpdate, T>>
     {
         trace!("Remote {} {:?}", connect_or_reconnect, auth);
         FullyQualifiedAuthority::normalize(auth, default_destination_namespace)
@@ -434,8 +432,8 @@ impl<T> DestinationSet<T>
     fn poll_destination_service(
         &mut self,
         auth: &DnsNameAndPort,
-        mut rx: Receiver<T>)
-        -> (Remote<T>, Exists<()>)
+        mut rx: Receiver<PbUpdate, T>)
+        -> (Remote<PbUpdate, T>, Exists<()>)
     {
         let mut exists = Exists::Unknown;
 
@@ -616,11 +614,12 @@ where
 
 // ===== impl Receiver =====
 
-impl<T> Stream for Receiver<T>
-where T: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>,
+impl<M, T> Stream for Receiver<M, T>
+where M: Message + Default,
+      T: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>,
       T::Error: fmt::Debug,
 {
-    type Item = PbUpdate;
+    type Item = M;
     type Error = RxError<T::Error>;
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
