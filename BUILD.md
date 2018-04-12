@@ -206,6 +206,26 @@ In development you can run:
 bin/go-run cli check
 ```
 
+### Running the control plane for development
+
+Conduit's control plane is composed of several Go microservices. You can run
+these components in a Kubernetes (or Minikube) cluster, or even locally.
+
+To run an individual component locally, you can use the `go-run` command, and
+pass in valid Kubernetes credentials via the `-kubeconfig` flag. For instance,
+to run the destination service locally, run:
+
+```bash
+bin/go-run controller/cmd/destination -kubeconfig ~/.kube/config -log-level debug
+```
+
+You can send test requests to the destination service using the
+`destination-client` in the `controller/script` directory. For instance:
+
+```bash
+bin/go-run controller/script/destination-client -path hello.default.svc.cluster.local:80
+```
+
 ## Web
 
 This is a React app fronting a Go process. It uses webpack to bundle assets, and
@@ -261,8 +281,9 @@ If you are running the public API server in Kubernetes, forward `localhost:8085`
 to the Conduit controller pod:
 
 ```bash
-POD_NAME=$(kubectl --namespace=conduit get po --selector=app=controller -o jsonpath='{.items[*].metadata.name}')
-kubectl -n conduit port-forward $POD_NAME 8085:8085
+kubectl --namespace=conduit port-forward $(
+  kubectl --namespace=conduit get po --selector=conduit.io/control-plane-component=controller -o jsonpath='{.items[*].metadata.name}'
+) 8085:8085
 ```
 
 Then connect the local web process to the forwarded port:
@@ -370,14 +391,14 @@ build_architecture
     "Dockerfile-base" [color=lightblue, style=filled, shape=rect];
     "Dockerfile-go-deps" [color=lightblue, style=filled, shape=rect];
     "controller/Dockerfile" [color=lightblue, style=filled, shape=rect];
-    "cli/Dockerfile" [color=lightblue, style=filled, shape=rect];
     "cli/Dockerfile-bin" [color=lightblue, style=filled, shape=rect];
+    "grafana/Dockerfile" [color=lightblue, style=filled, shape=rect];
     "proxy/Dockerfile" [color=lightblue, style=filled, shape=rect];
     "proxy-init/Dockerfile" [color=lightblue, style=filled, shape=rect];
-    "proxy-init/integration-test/iptables/Dockerfile-tester" [color=lightblue, style=filled, shape=rect];
+    "proxy-init/integration_test/iptables/Dockerfile-tester" [color=lightblue, style=filled, shape=rect];
     "web/Dockerfile" [color=lightblue, style=filled, shape=rect];
 
-    "proxy-init/integration-test/run_tests.sh" -> "proxy-init/integration-test/iptables/Dockerfile-tester";
+    "proxy-init/integration_test/run_tests.sh" -> "proxy-init/integration_test/iptables/Dockerfile-tester";
 
     "_docker.sh" -> "_log.sh";
 
@@ -385,21 +406,19 @@ build_architecture
     "_log.sh";
     "_tag.sh";
 
+    "conduit" -> "docker-build-cli-bin";
+
     "dep";
 
+    "docker-build" -> "docker-build-cli-bin";
     "docker-build" -> "docker-build-controller";
-    "docker-build" -> "docker-build-web";
+    "docker-build" -> "docker-build-grafana";
     "docker-build" -> "docker-build-proxy";
     "docker-build" -> "docker-build-proxy-init";
-    "docker-build" -> "docker-build-cli";
+    "docker-build" -> "docker-build-web";
 
     "docker-build-base" -> "_docker.sh";
     "docker-build-base" -> "Dockerfile-base";
-
-    "docker-build-cli" -> "_docker.sh";
-    "docker-build-cli" -> "_tag.sh";
-    "docker-build-cli" -> "docker-build-cli-bin";
-    "docker-build-cli" -> "cli/Dockerfile";
 
     "docker-build-cli-bin" -> "_docker.sh";
     "docker-build-cli-bin" -> "_tag.sh";
@@ -416,6 +435,10 @@ build_architecture
     "docker-build-go-deps" -> "_docker.sh";
     "docker-build-go-deps" -> "_tag.sh";
     "docker-build-go-deps" -> "Dockerfile-go-deps";
+
+    "docker-build-grafana" -> "_docker.sh";
+    "docker-build-grafana" -> "_tag.sh";
+    "docker-build-grafana" -> "grafana/Dockerfile";
 
     "docker-build-proxy" -> "_docker.sh";
     "docker-build-proxy" -> "_tag.sh";
@@ -461,7 +484,12 @@ build_architecture
 
     "root-tag" -> "_tag.sh";
 
+    "test-cleanup";
+
+    "test-run";
+
     ".travis.yml" -> "_gcp.sh";
+    ".travis.yml" -> "_tag.sh";
     ".travis.yml" -> "dep";
     ".travis.yml" -> "docker-build";
     ".travis.yml" -> "docker-pull";

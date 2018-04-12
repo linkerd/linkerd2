@@ -28,7 +28,7 @@ type (
 		tapPort uint
 		// We use the Kubernetes API to find the IP addresses of pods to tap
 		replicaSets *k8s.ReplicaSetStore
-		pods        *k8s.PodIndex
+		pods        k8s.PodIndex
 	}
 )
 
@@ -49,7 +49,7 @@ func (s *server) Tap(req *public.TapRequest, stream pb.Tap_TapServer) error {
 	case *public.TapRequest_Deployment:
 		targetName = target.Deployment
 		var err error
-		pods, err = (*s.pods).GetPodsByIndex(target.Deployment)
+		pods, err = s.pods.GetPodsByIndex(target.Deployment)
 		if err != nil {
 			return err
 		}

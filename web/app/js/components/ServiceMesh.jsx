@@ -11,6 +11,7 @@ import { rowGutter } from './util/Utils.js';
 import StatusTable from './StatusTable.jsx';
 import { Col, Row, Table } from 'antd';
 import {
+  getComponentPods,
   getPodsByDeployment,
   processRollupMetrics,
   processTimeseriesMetrics
@@ -135,9 +136,7 @@ export default class ServiceMesh extends React.Component {
   }
 
   addedDeploymentCount() {
-    return _.size(_.filter(this.state.deploys, d => {
-      return _.every(d.pods, ["added", true]);
-    }));
+    return _.size(_.filter(this.state.deploys, ["added", true]));
   }
 
   unaddedDeploymentCount() {
@@ -178,10 +177,7 @@ export default class ServiceMesh extends React.Component {
     return _(componentNames)
       .map((name, id) => {
         let componentPods = _.get(podIndex, _.get(componentDeploys, id), []);
-        let podStatuses = _.map(componentPods, p => {
-          return { name: p.name, value: p.status === "Running" ? "good" : "bad" };
-        });
-        return { name: name, pods: _.sortBy(podStatuses, "name") };
+        return { name: name, pods: getComponentPods(componentPods) };
       })
       .sortBy("name")
       .value();

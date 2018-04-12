@@ -17,11 +17,12 @@ use tower_h2;
 use tower_reconnect::{Error as ReconnectError, Reconnect};
 
 use dns;
-use fully_qualified_authority::FullyQualifiedAuthority;
-use transport::{HostAndPort, LookupAddressAndConnect};
+use transport::{DnsNameAndPort, HostAndPort, LookupAddressAndConnect};
 use timeout::{Timeout, TimeoutError};
 
+mod cache;
 pub mod discovery;
+mod fully_qualified_authority;
 mod observe;
 pub mod pb;
 
@@ -37,8 +38,9 @@ pub struct Background {
     disco: DiscoBg,
 }
 
-pub fn new() -> (Control, Background) {
-    let (tx, rx) = self::discovery::new();
+pub fn new(dns_config: dns::Config, default_destination_namespace: String) -> (Control, Background)
+{
+    let (tx, rx) = self::discovery::new(dns_config, default_destination_namespace);
 
     let c = Control {
         disco: tx,
@@ -54,7 +56,7 @@ pub fn new() -> (Control, Background) {
 // ===== impl Control =====
 
 impl Control {
-    pub fn resolve<B>(&self, auth: &FullyQualifiedAuthority, bind: B) -> Watch<B> {
+    pub fn resolve<B>(&self, auth: &DnsNameAndPort, bind: B) -> Watch<B> {
         self.disco.resolve(auth, bind)
     }
 }
@@ -73,11 +75,11 @@ impl Background {
             let ctx = ("controller-client", format!("{:?}", host_and_port));
             let scheme = http::uri::Scheme::from_shared(Bytes::from_static(b"http")).unwrap();
             let authority = http::uri::Authority::from(&host_and_port);
-            let dns_resolver = dns::Resolver::new(dns_config, executor);
+            let dns_resolver = dns::Resolver::new(dns_config, &executor);
             let connect = Timeout::new(
                 LookupAddressAndConnect::new(host_and_port, dns_resolver, executor),
                 Duration::from_secs(3),
-                executor,
+                &executor,
             );
 
             let h2_client = tower_h2::client::Connect::new(
@@ -93,7 +95,7 @@ impl Background {
             AddOrigin::new(scheme, authority, backoff)
         };
 
-        let mut disco = self.disco.work();
+        let mut disco = self.disco.work(executor);
 
         let fut = future::poll_fn(move || {
             disco.poll_rpc(&mut client);

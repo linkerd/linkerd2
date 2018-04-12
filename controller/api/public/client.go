@@ -36,6 +36,13 @@ func (c *grpcOverHttpClient) Stat(ctx context.Context, req *pb.MetricRequest, _ 
 	return &msg, err
 }
 
+// TODO: This will replace Stat, once implemented
+func (c *grpcOverHttpClient) StatSummary(ctx context.Context, req *pb.StatSummaryRequest, _ ...grpc.CallOption) (*pb.StatSummaryResponse, error) {
+	var msg pb.StatSummaryResponse
+	err := c.apiRequest(ctx, "StatSummary", req, &msg)
+	return &msg, err
+}
+
 func (c *grpcOverHttpClient) Version(ctx context.Context, req *pb.Empty, _ ...grpc.CallOption) (*pb.VersionInfo, error) {
 	var msg pb.VersionInfo
 	err := c.apiRequest(ctx, "Version", req, &msg)

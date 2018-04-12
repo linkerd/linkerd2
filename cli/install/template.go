@@ -22,7 +22,7 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: conduit-controller
 rules:
-- apiGroups: ["extensions"]
+- apiGroups: ["extensions", "apps"]
   resources: ["deployments", "replicasets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
@@ -148,6 +148,7 @@ spec:
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
         - "public-api"
+        - "-prometheus-url=http://prometheus.{{.Namespace}}.svc.cluster.local:9090"
         - "-controller-namespace={{.Namespace}}"
         - "-log-level={{.ControllerLogLevel}}"
         - "-logtostderr=true"
@@ -386,7 +387,7 @@ data:
         target_label: namespace
       - source_labels: [__meta_kubernetes_pod_name]
         action: replace
-        target_label: pod_name
+        target_label: pod
       # special case k8s' "job" label, to not interfere with prometheus' "job"
       # label
       # __meta_kubernetes_pod_label_conduit_io_proxy_job=foo =>
@@ -455,15 +456,6 @@ spec:
             path: provisioning/datasources/datasources.yaml
           - key: dashboards.yaml
             path: provisioning/dashboards/dashboards.yaml
-      - name: grafana-dashboards
-        configMap:
-          name: grafana-dashboards
-      - name: grafana-dashboard-home
-        configMap:
-          name: grafana-dashboards
-          items:
-          - key: conduit-viz.json
-            path: home.json
       containers:
       - name: grafana
         ports:
@@ -472,12 +464,6 @@ spec:
         volumeMounts:
         - name: grafana-config
           mountPath: /etc/grafana
-          readOnly: true
-        - name: grafana-dashboards
-          mountPath: /var/lib/grafana/dashboards
-          readOnly: false
-        - name: grafana-dashboard-home
-          mountPath: /usr/share/grafana/public/dashboards
           readOnly: true
         image: {{.GrafanaImage}}
         imagePullPolicy: {{.ImagePullPolicy}}
@@ -537,30 +523,5 @@ data:
       editable: true
       options:
         path: /var/lib/grafana/dashboards
-        homeDashboardId: conduit-viz
-
-### Grafana ConfigMap ###
-# The ConfigMap below contains Grafana dashboards in the form of JSON files.
-# These JSON dashboard files constitute the majority of the "conduit install"
-# output, pushing this entire config to nearly 100kb. Open issue to explore
-# alternatives: https://github.com/runconduit/conduit/issues/567
----
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: grafana-dashboards
-  namespace: {{.Namespace}}
-  labels:
-    {{.ControllerComponentLabel}}: grafana
-  annotations:
-    {{.CreatedByAnnotation}}: {{.CliVersion}}
-data:
-  conduit-viz.json: |-
-    {{.VizDashboard}}
-
-  conduit-deployment.json: |-
-    {{.DeploymentDashboard}}
-
-  conduit-health.json: |-
-    {{.HealthDashboard}}
+        homeDashboardId: conduit-top-line
 `

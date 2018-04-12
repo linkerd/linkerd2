@@ -229,6 +229,46 @@ fn inbound_tcp() {
 }
 
 #[test]
+fn tcp_server_first() {
+    use std::sync::mpsc;
+
+    let _ = env_logger::try_init();
+
+    let msg1 = "custom tcp server starts";
+    let msg2 = "custom tcp client second";
+
+    let (tx, rx) = mpsc::channel();
+
+    let srv = server::tcp()
+        .accept_fut(move |sock| {
+            tokio_io::io::write_all(sock, msg1.as_bytes())
+                .and_then(move |(sock, _)| {
+                    tokio_io::io::read(sock, vec![0; 512])
+                })
+                .map(move |(_sock, vec, n)| {
+                    assert_eq!(&vec[..n], msg2.as_bytes());
+                    tx.send(()).unwrap();
+                })
+                .map_err(|e| panic!("tcp server error: {}", e))
+        })
+        .run();
+    let ctrl = controller::new().run();
+    let proxy = proxy::new()
+        .controller(ctrl)
+        .disable_inbound_ports_protocol_detection(vec![srv.addr.port()])
+        .inbound(srv)
+        .run();
+
+    let client = client::tcp(proxy.inbound);
+
+    let tcp_client = client.connect();
+
+    assert_eq!(tcp_client.read(), msg1.as_bytes());
+    tcp_client.write(msg2);
+    rx.recv_timeout(Duration::from_secs(5)).unwrap();
+}
+
+#[test]
 fn tcp_with_no_orig_dst() {
     let _ = env_logger::try_init();
 
@@ -615,7 +655,9 @@ fn http1_response_end_of_file() {
 fn http1_one_connection_per_host() {
     let _ = env_logger::try_init();
 
-    let srv = server::http1().route("/", "hello").run();
+    let srv = server::http1()
+        .route_empty_ok("/")
+        .run();
     let ctrl = controller::new()
         .run();
     let proxy = proxy::new().controller(ctrl).inbound(srv).run();
@@ -674,7 +716,9 @@ fn http1_one_connection_per_host() {
 fn http1_requests_without_host_have_unique_connections() {
     let _ = env_logger::try_init();
 
-    let srv = server::http1().route("/", "hello").run();
+    let srv = server::http1()
+        .route_empty_ok("/")
+        .run();
     let ctrl = controller::new()
         .run();
     let proxy = proxy::new().controller(ctrl).inbound(srv).run();

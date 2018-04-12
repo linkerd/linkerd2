@@ -5,7 +5,7 @@
 #
 # When this file is changed, run `bin/update-go-deps-shas`.
 
-FROM golang:1.10.0
+FROM golang:1.10.1
 ENV TEMP_GOPATH=/temp-gopath
 WORKDIR ${TEMP_GOPATH}/src/github.com/runconduit/conduit
 

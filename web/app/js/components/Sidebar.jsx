@@ -1,5 +1,6 @@
 import _ from 'lodash';
 import { getPodsByDeployment } from './util/MetricUtils.js';
+import { Link } from 'react-router-dom';
 import logo from './../../img/reversed_logo.png';
 import React from 'react';
 import SocialLinks from './SocialLinks.jsx';
@@ -102,7 +103,7 @@ export default class Sidebar extends React.Component {
               <ConduitLink to="/deployments">Deployments</ConduitLink>
             </Menu.Item>
             <Menu.Item className="sidebar-menu-item" key="/docs">
-              <ConduitLink to="https://conduit.io/docs/" absolute="true">Documentation</ConduitLink>
+              <Link to="https://conduit.io/docs/" target="_blank">Documentation</Link>
             </Menu.Item>
           </Menu>
 

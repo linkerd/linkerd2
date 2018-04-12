@@ -99,7 +99,7 @@ message Pod {
   string status = 4;
   bool added = 5; // true if this pod has a proxy sidecar (data plane)
   google.protobuf.Duration sinceLastReport = 6;
-  string controllerNamespace = 7; // namespace of contoller this pod reports to
+  string controllerNamespace = 7; // namespace of controller this pod reports to
   bool controlPlane = 8; // true if this pod is part of the control plane
 }
 
@@ -124,8 +124,74 @@ message ApiError {
   string error = 1;
 }
 
+message Resource {
+  string namespace = 1;
+  string type = 2;
+  string name = 3;
+}
+
+message ResourceSelection {
+  Resource resource = 1;
+  string label_selector = 2;
+}
+
+message ResourceError {
+  Resource resource = 1;
+  string error = 2;
+}
+
+message StatSummaryRequest {
+  ResourceSelection selector = 1;
+  TimeWindow time_window = 2;
+
+  oneof outbound {
+    Empty none = 3;
+    Resource out_to_resource   = 4;
+    Resource out_from_resource = 5;
+  }
+}
+
+message StatSummaryResponse {
+  oneof response {
+    Ok ok = 1;
+    ResourceError error = 2;
+  }
+
+  message Ok {
+    repeated StatTable stat_tables = 1;
+  }
+}
+
+message BasicStats {
+  uint64 success_count = 1;
+  uint64 failure_count = 2;
+  uint64 latency_ms_p50 = 3;
+  uint64 latency_ms_p95 = 4;
+  uint64 latency_ms_p99 = 5;
+}
+
+message StatTable {
+  oneof table {
+    PodGroup pod_group = 1;
+  }
+
+  message PodGroup {
+    repeated Row rows = 1;
+
+    message Row {
+      Resource resource = 1;
+      TimeWindow time_window = 2;
+
+      uint64 meshed_pod_count = 3;
+      uint64 total_pod_count = 4;
+      BasicStats stats = 5;
+    }
+  }
+}
+
 service Api {
   rpc Stat(MetricRequest) returns (MetricResponse) {}
+  rpc StatSummary(StatSummaryRequest) returns (StatSummaryResponse) {}
   rpc Version(Empty) returns (VersionInfo) {}
   rpc ListPods(Empty) returns (ListPodsResponse) {}
   rpc SelfCheck(common.healthcheck.SelfCheckRequest) returns (common.healthcheck.SelfCheckResponse) {}

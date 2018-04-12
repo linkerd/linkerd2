@@ -5,31 +5,11 @@ import (
 	"errors"
 	"reflect"
 	"testing"
-	"time"
 
-	"github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
+	"github.com/runconduit/conduit/controller/api/public"
 	read "github.com/runconduit/conduit/controller/gen/controller/telemetry"
 )
-
-type mockProm struct {
-	api v1.API
-	res model.Value
-}
-
-// satisfies v1.API
-func (m *mockProm) Query(ctx context.Context, query string, ts time.Time) (model.Value, error) {
-	return m.res, nil
-}
-func (m *mockProm) QueryRange(ctx context.Context, query string, r v1.Range) (model.Value, error) {
-	return m.res, nil
-}
-func (m *mockProm) LabelValues(ctx context.Context, label string) (model.LabelValues, error) {
-	return nil, nil
-}
-func (m *mockProm) Series(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) ([]model.LabelSet, error) {
-	return nil, nil
-}
 
 type testResponse struct {
 	err      error
@@ -157,7 +137,7 @@ func TestServerResponses(t *testing.T) {
 	t.Run("Queries return the expected responses", func(t *testing.T) {
 		for _, tr := range responses {
 			s := server{
-				prometheusAPI: &mockProm{res: tr.promRes},
+				prometheusAPI: &public.MockProm{Res: tr.promRes},
 			}
 			res, err := s.Query(context.Background(), tr.queryReq)
 			if err != nil || tr.err != nil {

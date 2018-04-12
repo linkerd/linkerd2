@@ -25,9 +25,9 @@ jobs:
         - (cd proxy && cargo test --locked --no-default-features)
 
     - language: go
-      # XXX; The "1.10" must be quoted or it will get intrepreted as 1.1. See
+      # Quote the version number to avoid parsing issues like
       # https://github.com/travis-ci/gimme/issues/132.
-      go: "1.10"
+      go: "1.10.1"
       go_import_path: github.com/runconduit/conduit
       cache:
         directories:
@@ -109,7 +109,9 @@ jobs:
       before_script:
         - gcloud docker --authorize-only
         - bin/docker-pull-deps
-        - bin/docker-pull master
+         # Pulling master helps with docker build cache, but may fail if we're
+         # adding a new image to the mix.
+        - bin/docker-pull master || echo "docker pull failed" >&2
         - |
           export CONDUIT_TAG=$(. bin/_tag.sh ; clean_head_root_tag)
           echo "CONDUIT_TAG=${CONDUIT_TAG}"

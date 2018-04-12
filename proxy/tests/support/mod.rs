@@ -14,9 +14,16 @@ extern crate tokio_core;
 pub extern crate tokio_io;
 extern crate tower;
 extern crate tower_h2;
+extern crate log;
 pub extern crate env_logger;
 
-use self::bytes::{BigEndian, Bytes, BytesMut};
+use std::net::SocketAddr;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+pub use std::time::Duration;
+
+use self::bytes::{BigEndian, BytesMut};
+pub use self::bytes::Bytes;
 pub use self::conduit_proxy::*;
 pub use self::futures::*;
 use self::futures::sync::oneshot;
@@ -27,8 +34,73 @@ use self::tokio_core::net::{TcpListener, TcpStream};
 use self::tokio_core::reactor::{Core, Handle};
 use self::tower::{NewService, Service};
 use self::tower_h2::{Body, RecvBody};
-use std::net::SocketAddr;
-pub use std::time::Duration;
+
+/// Environment variable for overriding the test patience.
+pub const ENV_TEST_PATIENCE_MS: &'static str = "RUST_TEST_PATIENCE_MS";
+pub const DEFAULT_TEST_PATIENCE: Duration = Duration::from_millis(15);
+
+/// Retry an assertion up to a specified number of times, waiting
+/// `RUST_TEST_PATIENCE_MS` between retries.
+///
+/// If the assertion is successful after a retry, execution will continue
+/// normally. If all retries are exhausted and the assertion still fails,
+/// `assert_eventually!` will panic as though a regular `assert!` had failed.
+/// Note that other panics elsewhere in the code under test will not be
+/// prevented.
+///
+/// This should be used sparingly, but is often useful in end-to-end testing
+/// where a desired state may not be reached immediately. For example, when
+/// some state updates asynchronously and there's no obvious way for the test
+/// to wait for an update to occur before making assertions.
+///
+/// The `RUST_TEST_PATIENCE_MS` environment variable may be used to customize
+/// the backoff duration between retries. This may be useful for purposes such
+/// compensating for decreased performance on CI.
+#[macro_export]
+macro_rules! assert_eventually {
+    ($cond:expr, retries: $retries:expr, $($arg:tt)+) => {
+        {
+            use std::{env, u64};
+            use std::time::{Instant, Duration};
+            use std::str::FromStr;
+            // TODO: don't do this *every* time eventually is called (lazy_static?)
+            let patience = env::var($crate::support::ENV_TEST_PATIENCE_MS).ok()
+                .map(|s| {
+                    let millis = u64::from_str(&s)
+                        .expect(
+                            "Could not parse RUST_TEST_PATIENCE_MS environment \
+                             variable."
+                        );
+                    Duration::from_millis(millis)
+                })
+                .unwrap_or($crate::support::DEFAULT_TEST_PATIENCE);
+            let start_t = Instant::now();
+            for i in 0..($retries + 1) {
+                if $cond {
+                    break;
+                } else if i == $retries {
+                    panic!(
+                        "assertion failed after {} (retried {} times): {}",
+                        timeout::HumanDuration(start_t.elapsed()),
+                        i,
+                        format_args!($($arg)+)
+                    )
+                } else {
+                    ::std::thread::sleep(patience);
+                }
+            }
+        }
+    };
+    ($cond:expr, $($arg:tt)+) => {
+        assert_eventually!($cond, retries: 5, $($arg)+)
+    };
+    ($cond:expr, retries: $retries:expr) => {
+        assert_eventually!($cond, retries: $retries, stringify!($cond))
+    };
+    ($cond:expr) => {
+        assert_eventually!($cond, retries: 5, stringify!($cond))
+    };
+}
 
 pub mod client;
 pub mod controller;
@@ -36,18 +108,31 @@ pub mod proxy;
 pub mod server;
 mod tcp;
 
-pub type Shutdown = oneshot::Sender<()>;
-pub type ShutdownRx = future::Then<
-    oneshot::Receiver<()>,
-    Result<(), ()>,
-    fn(Result<(), oneshot::Canceled>) -> Result<(), ()>,
->;
-
-pub fn shutdown_signal() -> (oneshot::Sender<()>, ShutdownRx) {
+pub fn shutdown_signal() -> (Shutdown, ShutdownRx) {
     let (tx, rx) = oneshot::channel();
-    (tx, rx.then(|_| { Ok(()) } as _))
+    (Shutdown { tx }, Box::new(rx.then(|_| Ok(()))))
 }
 
+pub struct Shutdown {
+    tx: oneshot::Sender<()>,
+}
+
+impl Shutdown {
+    pub fn signal(self) {
+        // a drop is enough
+    }
+}
+
+pub type ShutdownRx = Box<Future<Item=(), Error=()> + Send>;
+
+/// A channel used to signal when a Client's related connection is running or closed.
+pub fn running() -> (oneshot::Sender<()>, Running) {
+    let (tx, rx) = oneshot::channel();
+    let rx = Box::new(rx.then(|_| Ok::<(), ()>(())));
+    (tx, rx)
+}
+
+pub type Running = Box<Future<Item=(), Error=()> + Send>;
 
 struct RecvBodyStream(tower_h2::RecvBody);
 
@@ -63,4 +148,10 @@ impl Stream for RecvBodyStream {
 
 pub fn s(bytes: &[u8]) -> &str {
     ::std::str::from_utf8(bytes.as_ref()).unwrap()
+}
+
+#[test]
+#[should_panic]
+fn assert_eventually() {
+    assert_eventually!(false)
 }

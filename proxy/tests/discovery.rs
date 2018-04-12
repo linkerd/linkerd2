@@ -3,6 +3,8 @@ use self::support::*;
 
 macro_rules! generate_tests {
     (server: $make_server:path, client: $make_client:path) => {
+        use conduit_proxy_controller_grpc as pb;
+
         #[test]
         fn outbound_asks_controller_api() {
             let _ = env_logger::try_init();
@@ -34,8 +36,81 @@ macro_rules! generate_tests {
 
         #[test]
         #[cfg_attr(not(feature = "flaky_tests"), ignore)]
-        fn outbound_times_out() {
+        fn outbound_destinations_reset_on_reconnect_followed_by_no_endpoints_exists() {
+            outbound_destinations_reset_on_reconnect(move || {
+                Some(controller::destination_exists_with_no_endpoints())
+            })
+        }
+
+        #[test]
+        #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+        fn outbound_destinations_reset_on_reconnect_followed_by_add_none() {
+            outbound_destinations_reset_on_reconnect(move || {
+                Some(controller::destination_add_none())
+            })
+        }
+
+        #[test]
+        #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+        fn outbound_destinations_reset_on_reconnect_followed_by_remove_none() {
+            outbound_destinations_reset_on_reconnect(move || {
+                Some(controller::destination_remove_none())
+            })
+        }
+
+        fn outbound_destinations_reset_on_reconnect<F>(f: F)
+            where F: Fn() -> Option<pb::destination::Update> + Send + 'static
+        {
             use std::thread;
+            let _ = env_logger::try_init();
+            let mut env = config::TestEnv::new();
+
+            // set the bind timeout to 100 ms.
+            env.put(config::ENV_BIND_TIMEOUT, "100".to_owned());
+
+            let srv = $make_server().route("/", "hello").run();
+            let ctrl = controller::new()
+                .destination("initially-exists.ns.svc.cluster.local", srv.addr)
+                .destination_close("trigger-close.ns.svc.cluster.local")
+                .destination_fn("initially-exists.ns.svc.cluster.local", f)
+                .run();
+
+            let proxy = proxy::new()
+                .controller(ctrl)
+                .outbound(srv)
+                .run_with_test_env(env);
+
+            let initially_exists =
+                $make_client(proxy.outbound, "initially-exists.ns.svc.cluster.local");
+            assert_eq!(initially_exists.get("/"), "hello");
+
+            // Try to access a different server which will trigger the `destination_close()`
+            // above.
+            {
+                let trigger_close =
+                    $make_client(proxy.outbound, "trigger-close.ns.svc.cluster.local");
+                let mut req = trigger_close.request_builder("/");
+                let rsp = trigger_close.request(req.method("GET"));
+                // the request should time out
+                assert_eq!(rsp.status(), http::StatusCode::INTERNAL_SERVER_ERROR);
+            }
+
+            // Wait for the reconnect to happen. TODO: Replace this flaky logic.
+            thread::sleep(Duration::from_millis(1000));
+
+            // This will time out since there are no endpoints.
+            let mut req = initially_exists.request_builder("/");
+            let rsp = initially_exists.request(req.method("GET"));
+            // the request should time out
+            assert_eq!(rsp.status(), http::StatusCode::INTERNAL_SERVER_ERROR);
+        }
+
+        #[test]
+        #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+        fn outbound_times_out() {
+            use std::collections::HashMap;
+            use std::thread;
+
             let _ = env_logger::try_init();
             let mut env = config::TestEnv::new();
 
@@ -49,7 +124,11 @@ macro_rules! generate_tests {
                 // return the correct destination
                 .destination_fn("disco.test.svc.cluster.local", move || {
                     thread::sleep(Duration::from_millis(500));
-                    Some(controller::destination_update(addr))
+                    Some(controller::destination_update(
+                            addr,
+                            HashMap::new(),
+                            HashMap::new(),
+                        ))
                 })
                 .run();
 
@@ -63,28 +142,6 @@ macro_rules! generate_tests {
             let rsp = client.request(req.method("GET"));
             // the request should time out
             assert_eq!(rsp.status(), http::StatusCode::INTERNAL_SERVER_ERROR);
-        }
-
-        #[test]
-        fn outbound_uses_orig_dst_if_not_local_svc() {
-            let _ = env_logger::try_init();
-
-            let srv = $make_server()
-                .route("/", "hello")
-                .route("/bye", "bye")
-                .run();
-            let ctrl = controller::new()
-                // no controller rule for srv
-                .run();
-            let proxy = proxy::new()
-                .controller(ctrl)
-                // set outbound orig_dst to srv
-                .outbound(srv)
-                .run();
-            let client = $make_client(proxy.outbound, "versioncheck.conduit.io");
-
-            assert_eq!(client.get("/"), "hello");
-            assert_eq!(client.get("/bye"), "bye");
         }
 
         #[test]
@@ -150,7 +207,17 @@ fn outbound_updates_newer_services() {
     // the HTTP2 service starts watching first, receiving an addr
     // from the controller
     let client1 = client::http2(proxy.outbound, "disco.test.svc.cluster.local");
-    client1.get("/h2"); // 500, ignore
+
+    // This HTTP2 client tries to talk to our HTTP1 server, and the server
+    // will return an error (see above TODO).
+    //
+    // The reason to do this request at all is because the proxy will create
+    // an H2 service mapping when it sees an H2 request, and we want to test
+    // that when it sees H1 and tries to create a new mapping, the existing
+    // known Discovery information is shared with it.
+    let res = client1.request(&mut client1.request_builder("/h1"));
+    assert_eq!(res.status(), 500);
+
 
     // a new HTTP1 service needs to be build now, while the HTTP2
     // service already exists, so make sure previously sent addrs
