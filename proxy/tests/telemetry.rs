@@ -696,21 +696,31 @@ mod outbound_dst_labels {
         A: IntoIterator<Item=(String, String)>,
         B: IntoIterator<Item=(String, String)>,
     {
+        fixture_with_updates(vec![(addr_labels, set_labels)])
+    }
+
+    fn fixture_with_updates<A, B>(updates: Vec<(A, B)>) -> Fixture
+    where
+        A: IntoIterator<Item=(String, String)>,
+        B: IntoIterator<Item=(String, String)>,
+    {
         info!("running test server");
         let srv = server::new()
             .route("/", "hello")
             .run();
 
-        let ctrl = controller::new()
-            .labeled_destination(
+        let mut ctrl = controller::new();
+        for (addr_labels, set_labels) in updates {
+            ctrl = ctrl.labeled_destination(
                 "labeled.test.svc.cluster.local",
                 srv.addr,
                 HashMap::from_iter(addr_labels),
                 HashMap::from_iter(set_labels),
-            )
-            .run();
+            );
+        }
+
         let proxy = proxy::new()
-            .controller(ctrl)
+            .controller(ctrl.run())
             .outbound(srv)
             .metrics_flush_interval(Duration::from_millis(500))
             .run();
@@ -794,72 +804,96 @@ mod outbound_dst_labels {
     fn controller_updates_addr_labels() {
         let _ = env_logger::try_init();
                 info!("running test server");
-        let srv = server::new()
-            .route("/", "hello")
-            .run();
-
-        let ctrl = controller::new()
-            .labeled_destination(
-                "labeled.test.svc.cluster.local",
-                srv.addr,
-                HashMap::from_iter(
-                    vec![(String::from("addr_label"), String::from("foo"))]
+        let Fixture { client, metrics, proxy: _proxy } =
+            // the controller will update the value of `addr_label`. the value
+            // of `set_label` will remain unchanged throughout the test.
+            fixture_with_updates(vec![
+                (
+                    vec![(String::from("addr_label"), String::from("foo"))],
+                    vec![(String::from("set_label"), String::from("unchanged"))]
                 ),
-                HashMap::new()
-            )
-            .labeled_destination(
-                "labeled.test.svc.cluster.local",
-                srv.addr,
-                HashMap::from_iter(
-                    vec![(String::from("addr_label"), String::from("bar"))]
+                (
+                    vec![(String::from("addr_label"), String::from("bar"))],
+                    vec![(String::from("set_label"), String::from("unchanged"))]
                 ),
-                HashMap::new(),
-            )
-            .run();
-        let proxy = proxy::new()
-            .controller(ctrl)
-            .outbound(srv)
-            .metrics_flush_interval(Duration::from_millis(500))
-            .run();
-        let metrics = client::http1(proxy.metrics, "localhost");
-
-        let client = client::new(
-            proxy.outbound,
-            "labeled.test.svc.cluster.local"
-        );
+            ]);
 
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
         // the first request should be labeled with `dst_addr_label="foo"`
         assert_contains!(metrics.get("/metrics"),
-            "request_duration_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\"} 1");
+            "request_duration_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"unchanged\"} 1");
         assert_contains!(metrics.get("/metrics"),
-            "response_duration_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",classification=\"success\",status_code=\"200\"} 1");
+            "response_duration_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"unchanged\",classification=\"success\",status_code=\"200\"} 1");
         assert_contains!(metrics.get("/metrics"),
-            "request_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\"} 1");
+            "request_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"unchanged\"} 1");
         assert_contains!(metrics.get("/metrics"),
-            "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",classification=\"success\",status_code=\"200\"} 1");
+            "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"unchanged\",classification=\"success\",status_code=\"200\"} 1");
 
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
         // the second request should increment stats labeled with `dst_addr_label="bar"`
         assert_contains!(metrics.get("/metrics"),
-            "request_duration_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"bar\"} 1");
+            "request_duration_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"bar\",dst_set_label=\"unchanged\"} 1");
         assert_contains!(metrics.get("/metrics"),
-            "response_duration_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"bar\",classification=\"success\",status_code=\"200\"} 1");
+            "response_duration_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"bar\",dst_set_label=\"unchanged\",classification=\"success\",status_code=\"200\"} 1");
         assert_contains!(metrics.get("/metrics"),
-            "request_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"bar\"} 1");
+            "request_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"bar\",dst_set_label=\"unchanged\"} 1");
         assert_contains!(metrics.get("/metrics"),
-            "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"bar\",classification=\"success\",status_code=\"200\"} 1");
+            "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"bar\",dst_set_label=\"unchanged\",classification=\"success\",status_code=\"200\"} 1");
         // stats recorded from the first request should still be present.
         assert_contains!(metrics.get("/metrics"),
-            "request_duration_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\"} 1");
+            "request_duration_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"unchanged\"} 1");
         assert_contains!(metrics.get("/metrics"),
-            "response_duration_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",classification=\"success\",status_code=\"200\"} 1");
+            "response_duration_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"unchanged\",classification=\"success\",status_code=\"200\"} 1");
         assert_contains!(metrics.get("/metrics"),
-            "request_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\"} 1");
+            "request_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"unchanged\"} 1");
         assert_contains!(metrics.get("/metrics"),
-            "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",classification=\"success\",status_code=\"200\"} 1");
+            "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"unchanged\",classification=\"success\",status_code=\"200\"} 1");
+    }
+
+    #[test]
+    fn controller_updates_set_labels() {
+        let _ = env_logger::try_init();
+                info!("running test server");
+        let Fixture { client, metrics, proxy: _proxy } =
+            fixture_with_updates(vec![
+                (vec![], vec![(String::from("set_label"), String::from("foo"))]),
+                (vec![], vec![(String::from("set_label"), String::from("bar"))]),
+            ]);
+
+        info!("client.get(/)");
+        assert_eq!(client.get("/"), "hello");
+        // the first request should be labeled with `dst_addr_label="foo"`
+        assert_contains!(metrics.get("/metrics"),
+            "request_duration_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"foo\"} 1");
+        assert_contains!(metrics.get("/metrics"),
+            "response_duration_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"foo\",classification=\"success\",status_code=\"200\"} 1");
+        assert_contains!(metrics.get("/metrics"),
+            "request_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"foo\"} 1");
+        assert_contains!(metrics.get("/metrics"),
+            "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"foo\",classification=\"success\",status_code=\"200\"} 1");
+
+        info!("client.get(/)");
+        assert_eq!(client.get("/"), "hello");
+        // the second request should increment stats labeled with `dst_addr_label="bar"`
+        assert_contains!(metrics.get("/metrics"),
+            "request_duration_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"bar\"} 1");
+        assert_contains!(metrics.get("/metrics"),
+            "response_duration_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"bar\",classification=\"success\",status_code=\"200\"} 1");
+        assert_contains!(metrics.get("/metrics"),
+            "request_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"bar\"} 1");
+        assert_contains!(metrics.get("/metrics"),
+            "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"bar\",classification=\"success\",status_code=\"200\"} 1");
+        // stats recorded from the first request should still be present.
+        assert_contains!(metrics.get("/metrics"),
+            "request_duration_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"foo\"} 1");
+        assert_contains!(metrics.get("/metrics"),
+            "response_duration_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"foo\",classification=\"success\",status_code=\"200\"} 1");
+        assert_contains!(metrics.get("/metrics"),
+            "request_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"foo\"} 1");
+        assert_contains!(metrics.get("/metrics"),
+            "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"foo\",classification=\"success\",status_code=\"200\"} 1");
     }
 }
 
