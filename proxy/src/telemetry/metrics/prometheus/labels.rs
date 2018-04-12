@@ -1,13 +1,31 @@
 
+use futures::Poll;
+use futures_watch::Watch;
 use http;
-use std::fmt;
+use tower::Service;
+
+use std::fmt::{self, Write};
+use std::sync::Arc;
 
 use ctx;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq, Hash)]
+/// Middleware that adds an extension containing an optional set of metric
+/// labels to requests.
+#[derive(Clone, Debug)]
+pub struct Labeled<T> {
+    metric_labels: Option<Watch<Option<DstLabels>>>,
+    inner: T,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct RequestLabels {
 
-    outbound_labels: Option<OutboundLabels>,
+    /// Was the request in the inbound or outbound direction?
+    direction: Direction,
+
+    // Additional labels identifying the destination service of an outbound
+    // request, provided by the Conduit control plane's service discovery.
+    outbound_labels: Option<DstLabels>,
 
     /// The value of the `:authority` (HTTP/2) or `Host` (HTTP/1.1) header of
     /// the request.
@@ -36,48 +54,65 @@ enum Classification {
     Failure,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-// TODO: when #429 is done, this will no longer be dead code.
-#[allow(dead_code)]
-enum PodOwner {
-    /// The deployment to which this request is being sent.
-    Deployment(String),
-
-    /// The job to which this request is being sent.
-    Job(String),
-
-    /// The replica set to which this request is being sent.
-    ReplicaSet(String),
-
-    /// The replication controller to which this request is being sent.
-    ReplicationController(String),
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+enum Direction {
+    Inbound,
+    Outbound,
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq, Hash)]
-struct OutboundLabels {
-    /// The owner of the destination pod.
-    //  TODO: when #429 is done, this will no longer need to be an Option.
-    dst: Option<PodOwner>,
+#[derive(Clone, Debug, Hash, Eq, PartialEq)]
+pub struct DstLabels(Arc<str>);
 
-    ///  The namespace to which this request is being sent (if
-    /// applicable).
-    namespace: Option<String>
+// ===== impl Labeled =====
+
+impl<T> Labeled<T> {
+
+    /// Wrap `inner` with a `Watch` on dyanmically updated labels.
+    pub fn new(inner: T, watch: Watch<Option<DstLabels>>) -> Self {
+        Self {
+            metric_labels: Some(watch),
+            inner,
+        }
+    }
+
+    /// Wrap `inner` with no `metric_labels`.
+    pub fn none(inner: T) -> Self {
+        Self { metric_labels: None, inner }
+    }
 }
 
+impl<T, A> Service for Labeled<T>
+where
+    T: Service<Request=http::Request<A>>,
+{
+    type Request = T::Request;
+    type Response= T::Response;
+    type Error = T::Error;
+    type Future = T::Future;
 
+    fn poll_ready(&mut self) -> Poll<(), Self::Error> {
+        self.inner.poll_ready()
+    }
+
+    fn call(&mut self, req: Self::Request) -> Self::Future {
+        let mut req = req;
+        if let Some(labels) = self.metric_labels.as_ref()
+            .and_then(|labels| (*labels.borrow()).as_ref().cloned())
+        {
+            req.extensions_mut().insert(labels);
+        }
+        self.inner.call(req)
+    }
+
+}
 
 // ===== impl RequestLabels =====
 
 impl<'a> RequestLabels {
     pub fn new(req: &ctx::http::Request) -> Self {
-        let outbound_labels = if req.server.proxy.is_outbound() {
-            Some(OutboundLabels {
-                // TODO: when #429 is done, add appropriate destination label.
-                ..Default::default()
-            })
-        } else {
-            None
-        };
+        let direction = Direction::from_context(req.server.proxy.as_ref());
+
+        let outbound_labels = req.dst_labels.as_ref().cloned();
 
         let authority = req.uri
             .authority_part()
@@ -85,31 +120,26 @@ impl<'a> RequestLabels {
             .unwrap_or_else(String::new);
 
         RequestLabels {
+            direction,
             outbound_labels,
             authority,
-            ..Default::default()
         }
     }
 }
 
 impl fmt::Display for RequestLabels {
-
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "authority=\"{}\",", self.authority)?;
+        write!(f, "authority=\"{}\",{}", self.authority, self.direction)?;
+
         if let Some(ref outbound) = self.outbound_labels {
-            write!(f, "direction=\"outbound\"{comma}{dst}",
-                comma = if !outbound.is_empty() { "," } else { "" },
-                dst = outbound
-            )?;
-        } else {
-            write!(f, "direction=\"inbound\"")?;
+            // leading comma added between the direction label and the
+            // destination labels, if there are destination labels.
+            write!(f, ",{}", outbound)?;
         }
 
         Ok(())
     }
-
 }
-
 
 // ===== impl ResponseLabels =====
 
@@ -141,62 +171,22 @@ impl ResponseLabels {
 }
 
 impl fmt::Display for ResponseLabels {
-
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{},{},status_code=\"{}\"",
             self.request_labels,
             self.classification,
             self.status_code
         )?;
+
         if let Some(ref status) = self.grpc_status_code {
+            // leading comma added between the status code label and the
+            // gRPC status code labels, if there is a gRPC status code.
             write!(f, ",grpc_status_code=\"{}\"", status)?;
         }
 
         Ok(())
     }
-
 }
-
-// ===== impl OutboundLabels =====
-
-impl OutboundLabels {
-    fn is_empty(&self) -> bool {
-        self.namespace.is_none() && self.dst.is_none()
-    }
-}
-
-impl fmt::Display for OutboundLabels {
-
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            OutboundLabels { namespace: Some(ref ns), dst: Some(ref dst) } =>
-                 write!(f, "dst_namespace=\"{}\",dst_{}", ns, dst),
-            OutboundLabels { namespace: None, dst: Some(ref dst), } =>
-                write!(f, "dst_{}", dst),
-            OutboundLabels { namespace: Some(ref ns), dst: None, } =>
-                write!(f, "dst_namespace=\"{}\"", ns),
-            OutboundLabels { namespace: None, dst: None, } =>
-                write!(f, ""),
-        }
-    }
-
-}
-
-impl fmt::Display for PodOwner {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            PodOwner::Deployment(ref s) =>
-                write!(f, "deployment=\"{}\"", s),
-            PodOwner::Job(ref s) =>
-                write!(f, "job=\"{}\",", s),
-            PodOwner::ReplicaSet(ref s) =>
-                write!(f, "replica_set=\"{}\"", s),
-            PodOwner::ReplicationController(ref s) =>
-                write!(f, "replication_controller=\"{}\"", s),
-        }
-    }
-}
-
 
 // ===== impl Classification =====
 
@@ -228,12 +218,67 @@ impl Classification {
 }
 
 impl fmt::Display for Classification {
-
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             &Classification::Success => f.pad("classification=\"success\""),
             &Classification::Failure => f.pad("classification=\"failure\""),
         }
     }
+}
 
+// ===== impl Direction =====
+
+impl Direction {
+    fn from_context(context: &ctx::Proxy) -> Self {
+        match context {
+            &ctx::Proxy::Inbound(_) => Direction::Inbound,
+            &ctx::Proxy::Outbound(_) => Direction::Outbound,
+        }
+    }
+}
+
+impl fmt::Display for Direction {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &Direction::Inbound => f.pad("direction=\"inbound\""),
+            &Direction::Outbound => f.pad("direction=\"outbound\""),
+        }
+    }
+}
+
+
+// ===== impl DstLabels ====
+
+impl DstLabels {
+    pub fn new<I, S>(labels: I) -> Option<Self>
+    where
+        I: IntoIterator<Item=(S, S)>,
+        S: fmt::Display,
+    {
+        let mut labels = labels.into_iter();
+
+        if let Some((k, v)) = labels.next() {
+            // Format the first label pair without a leading comma, since we
+            // don't know where it is in the output labels at this point.
+            let mut s = format!("dst_{}=\"{}\"", k, v);
+
+            // Format subsequent label pairs with leading commas, since
+            // we know that we already formatted the first label pair.
+            for (k, v) in labels {
+                write!(s, ",dst_{}=\"{}\"", k, v)
+                    .expect("writing to string should not fail");
+            }
+
+            Some(DstLabels(Arc::from(s)))
+        } else {
+            // The iterator is empty; return None
+            None
+        }
+    }
+}
+
+impl fmt::Display for DstLabels {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
 }

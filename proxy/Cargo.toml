@@ -19,6 +19,7 @@ bytes = "0.4"
 domain = "0.2.3"
 env_logger = { version = "0.5", default-features = false }
 futures = "0.1"
+futures-watch = { git = "https://github.com/carllerche/better-future.git" }
 h2 = "0.1.5"
 http = "0.1"
 httparse = "1.2"

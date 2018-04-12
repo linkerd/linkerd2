@@ -1,3 +1,31 @@
+//! Aggregates and serves Prometheus metrics.
+//!
+//! # A note on label formatting
+//!
+//! Prometheus labels are represented as a comma-separated list of values
+//! Since the Conduit proxy labels its metrics with a fixed set of labels
+//! which we know in advance, we represent these labels using a number of
+//! `struct`s, all of which implement `fmt::Display`. Some of the label
+//! `struct`s contain other structs which represent a subset of the labels
+//! which can be present on metrics in that scope. In this case, the
+//! `fmt::Display` impls for those structs call the `fmt::Display` impls for
+//! the structs that they own. This has the potential to complicate the
+//! insertion of commas to separate label values.
+//!
+//! In order to ensure that commas are added correctly to separate labels,
+//! we expect the `fmt::Display` implementations for label types to behave in
+//! a consistent way: A label struct is *never* responsible for printing
+//! leading or trailing commas before or after the label values it contains.
+//! If it contains multiple labels, it *is* responsible for ensuring any
+//! labels it owns are comma-separated. This way, the `fmt::Display` impl for
+//! any struct that represents a subset of the labels are position-agnostic;
+//! they don't need to know if there are other labels before or after them in
+//! the formatted output. The owner is responsible for managing that.
+//!
+//! If this rule is followed consistently across all structs representing
+//! labels, we can add new labels or modify the existing ones without having
+//! to worry about missing commas, double commas, or trailing commas at the
+//! end of the label set (all of which will make Prometheus angry).
 use std::default::Default;
 use std::{fmt, ops, time};
 use std::hash::Hash;
@@ -21,6 +49,7 @@ use super::latency::{BUCKET_BOUNDS, Histogram};
 
 mod labels;
 use self::labels::{RequestLabels, ResponseLabels};
+pub use self::labels::{DstLabels, Labeled};
 
 #[derive(Debug, Clone)]
 struct Metrics {

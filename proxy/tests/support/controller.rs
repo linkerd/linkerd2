@@ -2,7 +2,7 @@
 
 use support::*;
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::fmt;
 use std::net::IpAddr;
 use std::sync::{Arc, Mutex};
@@ -38,7 +38,23 @@ impl Controller {
     }
 
     pub fn destination(mut self, dest: &str, addr: SocketAddr) -> Self {
-        self.destination_fn(dest, move || Some(destination_update(addr)))
+        self.destination_fn(dest, move || Some(destination_update(
+            addr,
+            HashMap::new(),
+            HashMap::new(),
+        )))
+    }
+
+    pub fn labeled_destination(mut self, dest: &str, addr: SocketAddr,
+                               addr_labels: HashMap<String, String>,
+                               set_labels:HashMap<String, String>)
+                               -> Self
+    {
+        self.destination_fn(dest, move || Some(destination_update(
+            addr,
+            addr_labels.clone(),
+            set_labels.clone(),
+        )))
     }
 
     pub fn destination_fn<F>(mut self, dest: &str, f: F) -> Self
@@ -269,7 +285,11 @@ fn run(controller: Controller) -> Listening {
     }
 }
 
-pub fn destination_update(addr: SocketAddr) -> pb::destination::Update {
+pub fn destination_update(addr: SocketAddr,
+                          set_labels: HashMap<String, String>,
+                          addr_labels: HashMap<String, String>)
+                         -> pb::destination::Update
+{
     pb::destination::Update {
         update: Some(pb::destination::update::Update::Add(
             pb::destination::WeightedAddrSet {
@@ -280,10 +300,10 @@ pub fn destination_update(addr: SocketAddr) -> pb::destination::Update {
                             port: u32::from(addr.port()),
                         }),
                         weight: 0,
-                        ..Default::default()
+                        metric_labels: addr_labels,
                     },
                 ],
-                ..Default::default()
+                metric_labels: set_labels,
             },
         )),
     }

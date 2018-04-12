@@ -108,7 +108,9 @@ macro_rules! generate_tests {
         #[test]
         #[cfg_attr(not(feature = "flaky_tests"), ignore)]
         fn outbound_times_out() {
+            use std::collections::HashMap;
             use std::thread;
+
             let _ = env_logger::try_init();
             let mut env = config::TestEnv::new();
 
@@ -122,7 +124,11 @@ macro_rules! generate_tests {
                 // return the correct destination
                 .destination_fn("disco.test.svc.cluster.local", move || {
                     thread::sleep(Duration::from_millis(500));
-                    Some(controller::destination_update(addr))
+                    Some(controller::destination_update(
+                            addr,
+                            HashMap::new(),
+                            HashMap::new(),
+                        ))
                 })
                 .run();
 

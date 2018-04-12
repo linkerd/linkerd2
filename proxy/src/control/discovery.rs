@@ -1,11 +1,15 @@
 use std::collections::VecDeque;
 use std::collections::hash_map::{Entry, HashMap};
-use std::net::SocketAddr;
 use std::fmt;
+use std::iter::IntoIterator;
+use std::net::SocketAddr;
 use std::time::Duration;
+use std::sync::Arc;
 
 use futures::{Async, Future, Poll, Stream};
 use futures::sync::mpsc;
+use futures_watch;
+use http;
 use tokio_core::reactor::Handle;
 use tower::Service;
 use tower_h2::{HttpService, BoxBody, RecvBody};
@@ -16,12 +20,17 @@ use dns::{self, IpAddrListFuture};
 use super::fully_qualified_authority::FullyQualifiedAuthority;
 
 use conduit_proxy_controller_grpc::common::{Destination, TcpAddress};
-use conduit_proxy_controller_grpc::destination::Update as PbUpdate;
+use conduit_proxy_controller_grpc::destination::{
+    Update as PbUpdate,
+    WeightedAddr,
+};
 use conduit_proxy_controller_grpc::destination::update::Update as PbUpdate2;
 use conduit_proxy_controller_grpc::destination::client::{Destination as DestinationSvc};
 use transport::DnsNameAndPort;
 
 use control::cache::{Cache, CacheChange, Exists};
+
+use ::telemetry::metrics::prometheus::{DstLabels, Labeled};
 
 /// A handle to start watching a destination for address changes.
 #[derive(Clone, Debug)]
@@ -33,6 +42,12 @@ pub struct Discovery {
 #[derive(Debug)]
 pub struct Watch<B> {
     rx: mpsc::UnboundedReceiver<Update>,
+    /// Map associating addresses with the `Store` for the watch on that
+    /// service's metric labels (as provided by the Destination service).
+    ///
+    /// This is used to update the `Labeled` middleware on those services
+    /// without requiring the service stack to be re-bound.
+    metric_labels: HashMap<SocketAddr, futures_watch::Store<Option<DstLabels>>>,
     bind: B,
 }
 
@@ -60,8 +75,15 @@ pub struct DiscoveryWork<T: HttpService<ResponseBody = RecvBody>> {
     rx: mpsc::UnboundedReceiver<(DnsNameAndPort, mpsc::UnboundedSender<Update>)>,
 }
 
+/// Any additional metadata describing a discovered service.
+#[derive(Clone, Debug, Hash, Eq, PartialEq)]
+pub struct Metadata {
+    /// A set of Prometheus metric labels describing the destination.
+    metric_labels: Option<DstLabels>,
+}
+
 struct DestinationSet<T: HttpService<ResponseBody = RecvBody>> {
-    addrs: Exists<Cache<SocketAddr, ()>>,
+    addrs: Exists<Cache<SocketAddr, Metadata>>,
     query: Option<DestinationServiceQuery<T>>,
     dns_query: Option<IpAddrListFuture>,
     txs: Vec<mpsc::UnboundedSender<Update>>,
@@ -107,8 +129,9 @@ enum RxError<T> {
 
 #[derive(Debug)]
 enum Update {
-    Insert(SocketAddr),
+    Insert(SocketAddr, Metadata),
     Remove(SocketAddr),
+    ChangeMetadata(SocketAddr, Metadata),
 }
 
 /// Bind a `SocketAddr` with a protocol.
@@ -162,6 +185,7 @@ impl Discovery {
 
         Watch {
             rx,
+            metric_labels: HashMap::new(),
             bind,
         }
     }
@@ -169,37 +193,77 @@ impl Discovery {
 
 // ==== impl Watch =====
 
-impl<B> Discover for Watch<B>
+impl<B> Watch<B> {
+    fn update_metadata(&mut self,
+                       addr: SocketAddr,
+                       meta: Metadata)
+                       -> Result<(), ()>
+    {
+        if let Some(store) = self.metric_labels.get_mut(&addr) {
+            store.store(meta.metric_labels)
+                .map_err(|e| {
+                    error!("update_metadata: label store error: {:?}", e);
+                })
+                .map(|_| ())
+        } else {
+            // The store has already been removed, so nobody cares about
+            // the metadata change. We expect that this shouldn't happen,
+            // but if it does, log a warning and handle it gracefully.
+            warn!(
+                "update_metadata: ignoring ChangeMetadata for {:?} \
+                 because the service no longer exists.",
+                addr
+            );
+            Ok(())
+        }
+    }
+}
+
+impl<B, A> Discover for Watch<B>
 where
-    B: Bind,
+    B: Bind<Request = http::Request<A>>,
 {
     type Key = SocketAddr;
     type Request = B::Request;
     type Response = B::Response;
     type Error = B::Error;
-    type Service = B::Service;
+    type Service = Labeled<B::Service>;
     type DiscoverError = ();
 
     fn poll(&mut self) -> Poll<Change<Self::Key, Self::Service>, Self::DiscoverError> {
-        let up = self.rx.poll();
-        trace!("watch: {:?}", up);
-        let update = match up {
-            Ok(Async::Ready(Some(update))) => update,
-            Ok(Async::Ready(None)) => unreachable!(),
-            Ok(Async::NotReady) => return Ok(Async::NotReady),
-            Err(_) => return Err(()),
-        };
+        loop {
+            let up = self.rx.poll();
+            trace!("watch: {:?}", up);
+            let update = try_ready!(up).expect("discovery stream must be infinite");
 
-        match update {
-            Update::Insert(addr) => {
-                let service = self.bind.bind(&addr).map_err(|_| ())?;
+            match update {
+                Update::Insert(addr, meta) => {
+                    // Construct a watch for the `Labeled` middleware that will
+                    // wrap the bound service, and insert the store into our map
+                    // so it can be updated later.
+                    let (labels_watch, labels_store) =
+                        futures_watch::Watch::new(meta.metric_labels);
+                    self.metric_labels.insert(addr, labels_store);
 
-                Ok(Async::Ready(Change::Insert(addr, service)))
-            },
-            // TODO: handle metadata changes by changing the labeling
-            // middleware to hold a `futures-watch::Watch` on the label value,
-            // so it can be updated.
-            Update::Remove(addr) => Ok(Async::Ready(Change::Remove(addr))),
+                    let service = self.bind.bind(&addr)
+                        .map(|svc| Labeled::new(svc, labels_watch))
+                        .map_err(|_| ())?;
+
+                    return Ok(Async::Ready(Change::Insert(addr, service)))
+                },
+                Update::ChangeMetadata(addr, meta) => {
+                    // Update metadata and continue polling `rx`.
+                    self.update_metadata(addr, meta)?;
+                },
+                Update::Remove(addr) => {
+                    // It's safe to drop the store handle here, even if
+                    // the `Labeled` middleware using the watch handle
+                    // still exists --- it will simply read the final
+                    // value from the watch.
+                    self.metric_labels.remove(&addr);
+                    return Ok(Async::Ready(Change::Remove(addr)));
+                },
+            }
         }
     }
 }
@@ -278,8 +342,12 @@ where
                             // them onto the new watch first
                             match set.addrs {
                                 Exists::Yes(ref cache) => {
-                                    for (&addr, _) in cache {
-                                        tx.unbounded_send(Update::Insert(addr))
+                                    for (&addr, meta) in cache {
+                                        let update = Update::Insert(
+                                            addr,
+                                            meta.clone()
+                                        );
+                                        tx.unbounded_send(update)
                                             .expect("unbounded_send does not fail");
                                     }
                                 },
@@ -448,17 +516,19 @@ impl<T> DestinationSet<T>
             match rx.poll() {
                 Ok(Async::Ready(Some(update))) => match update.update {
                     Some(PbUpdate2::Add(a_set)) => {
-                        exists = Exists::Yes(());
-                        self.add(
-                            auth,
-                            a_set.addrs.iter().filter_map(
-                                |addr| addr.addr.clone().and_then(pb_to_sock_addr)));
+                        let set_labels = Arc::new(a_set.metric_labels);
+                        let addrs = a_set.addrs.into_iter()
+                            .filter_map(|pb|
+                                pb_to_addr_meta(pb, &set_labels)
+                            );
+                        self.add(auth, addrs)
                     },
                     Some(PbUpdate2::Remove(r_set)) => {
                         exists = Exists::Yes(());
                         self.remove(
                             auth,
-                            r_set.addrs.iter().filter_map(|addr| pb_to_sock_addr(addr.clone())));
+                            r_set.addrs.iter().filter_map(|addr| pb_to_sock_addr(addr.clone()))
+                        );
                     },
                     Some(PbUpdate2::NoEndpoints(ref no_endpoints)) if no_endpoints.exists => {
                         exists = Exists::Yes(());
@@ -501,7 +571,7 @@ impl<T> DestinationSet<T>
                 Ok(Async::Ready(dns::Response::Exists(ips))) => {
                     trace!("positive result of DNS query for {:?}: {:?}", authority, ips);
                     self.add(authority, ips.iter().map(|ip| {
-                        SocketAddr::from((*ip, authority.port))
+                        (SocketAddr::from((*ip, authority.port)), Metadata::no_metadata())
                     }));
                 },
                 Ok(Async::Ready(dns::Response::DoesNotExist)) => {
@@ -533,16 +603,22 @@ impl <T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
     }
 
     fn add<A>(&mut self, authority_for_logging: &DnsNameAndPort, addrs_to_add: A)
-        where A: Iterator<Item = SocketAddr>
+        where A: Iterator<Item = (SocketAddr, Metadata)>
     {
         let mut cache = match self.addrs.take() {
             Exists::Yes(mut cache) => cache,
             Exists::Unknown | Exists::No => Cache::new(),
         };
         cache.update_union(
-            addrs_to_add.map(|a| (a, ())),
-            &mut |(addr, _), change| Self::on_change(&mut self.txs, authority_for_logging, addr,
-                                                change));
+            addrs_to_add,
+            &mut |(addr, meta), change| Self::on_change(
+                &mut self.txs,
+                authority_for_logging,
+                addr,
+                meta,
+                change,
+            )
+        );
         self.addrs = Exists::Yes(cache);
     }
 
@@ -553,8 +629,14 @@ impl <T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
             Exists::Yes(mut cache) => {
                 cache.remove(
                     addrs_to_remove,
-                    &mut |(addr, _), change| Self::on_change(&mut self.txs, authority_for_logging, addr,
-                                                        change));
+                    &mut |(addr, meta), change| Self::on_change(
+                        &mut self.txs,
+                        authority_for_logging,
+                        addr,
+                        meta,
+                        change,
+                    )
+                );
                 cache
             },
             Exists::Unknown | Exists::No => Cache::new(),
@@ -568,8 +650,14 @@ impl <T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
         match self.addrs.take() {
             Exists::Yes(mut cache) => {
                 cache.clear(
-                    &mut |(addr, _), change| Self::on_change(&mut self.txs, authority_for_logging, addr,
-                                                        change));
+                    &mut |(addr, meta), change| Self::on_change(
+                        &mut self.txs,
+                        authority_for_logging,
+                        addr,
+                        meta,
+                        change
+                    )
+                );
             },
             Exists::Unknown | Exists::No => (),
         };
@@ -583,20 +671,20 @@ impl <T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
     fn on_change(txs: &mut Vec<mpsc::UnboundedSender<Update>>,
                  authority_for_logging: &DnsNameAndPort,
                  addr: SocketAddr,
+                 meta: Metadata,
                  change: CacheChange) {
-        let (update_str, update_constructor): (&'static str, fn(SocketAddr) -> Update) =
+        let (update_str, update_constructor): (&'static str, fn(SocketAddr, Metadata) -> Update) =
             match change {
                 CacheChange::Insertion => ("insert", Update::Insert),
-                CacheChange::Removal => ("remove", Update::Remove),
-                CacheChange::Modification => {
-                    // TODO: generate `ChangeMetadata` events.
-                    return;
-                }
+                CacheChange::Removal =>
+                    ("remove", |addr, _| Update::Remove(addr)),
+                CacheChange::Modification =>
+                    ("change metadata for", Update::ChangeMetadata),
             };
         trace!("{} {:?} for {:?}", update_str, addr, authority_for_logging);
         // retain is used to drop any senders that are dead
         txs.retain(|tx| {
-            tx.unbounded_send(update_constructor(addr)).is_ok()
+            tx.unbounded_send(update_constructor(addr, meta.clone())).is_ok()
         });
     }
 }
@@ -644,7 +732,29 @@ where T: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>,
     }
 }
 
-// ===== impl RxError =====
+// ===== impl Metadata =====
+
+impl Metadata {
+    fn no_metadata() -> Self {
+        Metadata {
+            metric_labels: None,
+        }
+    }
+}
+
+/// Construct a new labeled `SocketAddr `from a protobuf `WeightedAddr`.
+fn pb_to_addr_meta(pb: WeightedAddr, set_labels: &Arc<HashMap<String, String>>)
+            -> Option<(SocketAddr, Metadata)> {
+    let addr = pb.addr.and_then(pb_to_sock_addr)?;
+    let label_iter =
+        set_labels.as_ref()
+            .iter()
+            .chain(pb.metric_labels.iter());
+    let meta = Metadata {
+        metric_labels: DstLabels::new(label_iter),
+    };
+    Some((addr, meta))
+}
 
 fn pb_to_sock_addr(pb: TcpAddress) -> Option<SocketAddr> {
     use conduit_proxy_controller_grpc::common::ip_address::Ip;
