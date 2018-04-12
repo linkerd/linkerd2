@@ -226,8 +226,10 @@ func NewServer(
 	telemetryClient telemPb.TelemetryClient,
 	tapClient tapPb.TapClient,
 	deployLister applisters.DeploymentLister,
+	replicaSetLister applisters.ReplicaSetLister,
 	podLister corelisters.PodLister,
 	controllerNamespace string,
+	ignoredNamespaces []string,
 ) *http.Server {
 	baseHandler := &handler{
 		grpcServer: newGrpcServer(
@@ -235,8 +237,10 @@ func NewServer(
 			telemetryClient,
 			tapClient,
 			deployLister,
+			replicaSetLister,
 			podLister,
 			controllerNamespace,
+			ignoredNamespaces,
 		),
 	}
 

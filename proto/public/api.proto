@@ -99,7 +99,7 @@ message Pod {
   string status = 4;
   bool added = 5; // true if this pod has a proxy sidecar (data plane)
   google.protobuf.Duration sinceLastReport = 6;
-  string controllerNamespace = 7; // namespace of contoller this pod reports to
+  string controllerNamespace = 7; // namespace of controller this pod reports to
   bool controlPlane = 8; // true if this pod is part of the control plane
 }
 
