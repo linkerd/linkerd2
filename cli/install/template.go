@@ -328,21 +328,6 @@ data:
       static_configs:
       - targets: ['localhost:9090']
 
-    - job_name: 'controller'
-      kubernetes_sd_configs:
-      - role: pod
-        namespaces:
-          names: ['{{.Namespace}}']
-      relabel_configs:
-      - source_labels: [__meta_kubernetes_pod_container_port_name]
-        action: keep
-        regex: ^admin-http$
-      - source_labels: [__meta_kubernetes_pod_container_name]
-        action: replace
-        target_label: job
-
-    # Double collect control-plane pods, In #499 we will remove the
-    # "controller" job above in favor of these two below.
     - job_name: 'conduit-controller'
       kubernetes_sd_configs:
       - role: pod
