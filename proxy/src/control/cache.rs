@@ -73,7 +73,7 @@ where
         F: for<'value> FnMut(CacheChange<'value, K, V>),
     {
         fn update_inner<K, V, F>(
-            inner: & mut IndexMap<K, V>,
+            inner: &mut IndexMap<K, V>,
             key: K,
             new_value: V,
             on_change: &mut F
