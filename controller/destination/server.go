@@ -28,7 +28,7 @@ type server struct {
 // omitted, "default" is used as a default.append
 //
 // Addresses for the given destination are fetched from the Kubernetes Endpoints
-// API, or resolved via DNS in the case of ExternalName type services.
+// API.
 func NewServer(addr, kubeconfig string, k8sDNSZone string, done chan struct{}) (*grpc.Server, net.Listener, error) {
 	clientSet, err := k8s.NewClientSet(kubeconfig)
 	if err != nil {
@@ -50,9 +50,7 @@ func NewServer(addr, kubeconfig string, k8sDNSZone string, done chan struct{}) (
 		return nil, nil, err
 	}
 
-	dnsWatcher := NewDnsWatcher()
-
-	resolvers, err := buildResolversList(k8sDNSZone, endpointsWatcher, dnsWatcher)
+	resolvers, err := buildResolversList(k8sDNSZone, endpointsWatcher)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -121,7 +119,7 @@ func (s *server) streamResolutionUsingCorrectResolverFor(host string, port int, 
 	return fmt.Errorf("cannot find resolver for host [%s] port [%d]", host, port)
 }
 
-func buildResolversList(k8sDNSZone string, endpointsWatcher k8s.EndpointsWatcher, dnsWatcher DnsWatcher) ([]streamingDestinationResolver, error) {
+func buildResolversList(k8sDNSZone string, endpointsWatcher k8s.EndpointsWatcher) ([]streamingDestinationResolver, error) {
 	var k8sDNSZoneLabels []string
 	if k8sDNSZone == "" {
 		k8sDNSZoneLabels = []string{}
@@ -133,15 +131,11 @@ func buildResolversList(k8sDNSZone string, endpointsWatcher k8s.EndpointsWatcher
 		}
 	}
 
-	ipResolver := &echoIpV4Resolver{}
-	log.Infof("Adding ipv4 name resolver")
-
 	k8sResolver := &k8sResolver{
 		k8sDNSZoneLabels: k8sDNSZoneLabels,
 		endpointsWatcher: endpointsWatcher,
-		dnsWatcher:       dnsWatcher,
 	}
 	log.Infof("Adding k8s name resolver")
 
-	return []streamingDestinationResolver{ipResolver, k8sResolver}, nil
+	return []streamingDestinationResolver{k8sResolver}, nil
 }
