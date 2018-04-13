@@ -26,7 +26,7 @@ rules:
   resources: ["deployments", "replicasets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
-  resources: ["pods", "endpoints", "services"]
+  resources: ["pods", "endpoints", "services", "namespaces"]
   verbs: ["list", "get", "watch"]
 
 ---
