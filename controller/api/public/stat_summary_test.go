@@ -32,7 +32,7 @@ func TestStatSummary(t *testing.T) {
 			statSumExpected{
 				err: nil,
 				k8sRes: []string{`
-apiVersion: apps/v1
+apiVersion: apps/v1beta2
 kind: Deployment
 metadata:
   name: emoji
@@ -136,8 +136,8 @@ metadata:
 			clientSet := fake.NewSimpleClientset(k8sObjs...)
 			sharedInformers := informers.NewSharedInformerFactory(clientSet, 10*time.Minute)
 
-			deployInformer := sharedInformers.Apps().V1().Deployments()
-			replicaSetInformer := sharedInformers.Apps().V1().ReplicaSets()
+			deployInformer := sharedInformers.Apps().V1beta2().Deployments()
+			replicaSetInformer := sharedInformers.Apps().V1beta2().ReplicaSets()
 			podInformer := sharedInformers.Core().V1().Pods()
 
 			fakeGrpcServer := newGrpcServer(
@@ -211,8 +211,8 @@ metadata:
 			fakeGrpcServer := newGrpcServer(
 				&MockProm{Res: exp.promRes},
 				tap.NewTapClient(nil),
-				sharedInformers.Apps().V1().Deployments().Lister(),
-				sharedInformers.Apps().V1().ReplicaSets().Lister(),
+				sharedInformers.Apps().V1beta2().Deployments().Lister(),
+				sharedInformers.Apps().V1beta2().ReplicaSets().Lister(),
 				sharedInformers.Core().V1().Pods().Lister(),
 				"conduit",
 				[]string{},

@@ -13,7 +13,7 @@ import (
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
 	log "github.com/sirupsen/logrus"
-	appsv1 "k8s.io/api/apps/v1"
+	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -286,18 +286,18 @@ func metricToKey(metric model.Metric, labelSelector string) string {
 	)
 }
 
-func (s *grpcServer) getDeployments(res *pb.Resource) ([]*appsv1.Deployment, map[string]*meshedCount, error) {
+func (s *grpcServer) getDeployments(res *pb.Resource) ([]*appsv1beta2.Deployment, map[string]*meshedCount, error) {
 	var err error
-	var deployments []*appsv1.Deployment
+	var deployments []*appsv1beta2.Deployment
 
 	if res.Namespace == "" {
 		deployments, err = s.deployLister.List(labels.Everything())
 	} else if res.Name == "" {
 		deployments, err = s.deployLister.Deployments(res.Namespace).List(labels.Everything())
 	} else {
-		var deployment *appsv1.Deployment
+		var deployment *appsv1beta2.Deployment
 		deployment, err = s.deployLister.Deployments(res.Namespace).Get(res.Name)
-		deployments = []*appsv1.Deployment{deployment}
+		deployments = []*appsv1beta2.Deployment{deployment}
 	}
 
 	if err != nil {
@@ -350,7 +350,7 @@ func isInMesh(pod *apiv1.Pod) bool {
 
 func getSelectorFromObject(obj runtime.Object) (labels.Selector, error) {
 	switch typed := obj.(type) {
-	case *appsv1.Deployment:
+	case *appsv1beta2.Deployment:
 		return labels.Set(typed.Spec.Selector.MatchLabels).AsSelector(), nil
 
 	default:

@@ -102,7 +102,7 @@ status:
   phase: Pending
   podIP: 4.3.2.1
 `, `
-apiVersion: apps/v1
+apiVersion: apps/v1beta2
 kind: ReplicaSet
 metadata:
   name: rs-emojivoto-meshed
@@ -116,7 +116,7 @@ spec:
     matchLabels:
       pod-template-hash: hash-meshed
 `, `
-apiVersion: apps/v1
+apiVersion: apps/v1beta2
 kind: ReplicaSet
 metadata:
   name: rs-emojivoto-not-meshed
@@ -166,8 +166,8 @@ spec:
 			clientSet := fake.NewSimpleClientset(k8sObjs...)
 			sharedInformers := informers.NewSharedInformerFactory(clientSet, 10*time.Minute)
 
-			deployInformer := sharedInformers.Apps().V1().Deployments()
-			replicaSetInformer := sharedInformers.Apps().V1().ReplicaSets()
+			deployInformer := sharedInformers.Apps().V1beta2().Deployments()
+			replicaSetInformer := sharedInformers.Apps().V1beta2().ReplicaSets()
 			podInformer := sharedInformers.Core().V1().Pods()
 
 			fakeGrpcServer := newGrpcServer(
