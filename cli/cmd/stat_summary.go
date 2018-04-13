@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -171,8 +172,8 @@ func writeStatsToBuffer(resp *pb.StatSummaryResponse, w *tabwriter.Writer) {
 	}
 
 	if len(stats) == 0 {
-		fmt.Fprintln(w, "\tNo resources found.")
-		return
+		fmt.Fprintln(os.Stderr, "No traffic found.")
+		os.Exit(0)
 	}
 
 	headers := make([]string, 0)
