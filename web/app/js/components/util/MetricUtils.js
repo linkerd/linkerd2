@@ -12,13 +12,13 @@ const getPodCategorization = pod => {
 };
 
 const getRequestRate = row => {
-  let requests = 0;
-  let seconds = 0;
-
-  if (!_.isEmpty(row.stats)) {
-    requests += parseInt(row.stats.successCount, 10);
-    requests += parseInt(row.stats.failureCount, 10);
+  if (_.isEmpty(row.stats)) {
+    return null;
   }
+
+  let success = parseInt(row.stats.successCount, 10);
+  let failure = parseInt(row.stats.failureCount, 10);
+  let seconds = 0;
 
   if (row.timeWindow === "TEN_SEC") { seconds = 10; }
   if (row.timeWindow === "ONE_MIN") { seconds = 60; }
@@ -26,26 +26,24 @@ const getRequestRate = row => {
   if (row.timeWindow === "ONE_HOUR") { seconds = 3600; }
 
   if (seconds === 0) {
-    return 0.0;
+    return null;
   } else {
-    return requests / seconds;
+    return (success + failure) / seconds;
   }
 };
 
 const getSuccessRate = row => {
-  let success = 0;
-  let requests = 0;
-
-  if (!_.isEmpty(row.stats)) {
-    success += parseInt(row.stats.successCount, 10);
-    requests += parseInt(row.stats.successCount, 10);
-    requests += parseInt(row.stats.failureCount, 10);
+  if (_.isEmpty(row.stats)) {
+    return null;
   }
 
-  if (requests === 0) {
-    return 0.0;
+  let success = parseInt(row.stats.successCount, 10);
+  let failure = parseInt(row.stats.failureCount, 10);
+
+  if (success + failure === 0) {
+    return null;
   } else {
-    return success / requests;
+    return success / (success + failure);
   }
 };
 

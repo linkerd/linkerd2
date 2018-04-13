@@ -44,14 +44,8 @@ const columns = {
     return {
       title: "Deployment",
       key: "name",
-      render: row => {
-        return shouldLink && row.added ?
-          <GrafanaLink
-            name={row.name}
-            size={16}
-            conduitLink={ConduitLink}
-            text={row.name} /> : row.name;
-      }
+      render: row => shouldLink && row.added ?
+        <GrafanaLink name={row.name} conduitLink={ConduitLink} /> : row.name
     };
   },
   pods: {

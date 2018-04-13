@@ -1,4 +1,3 @@
-import grafanaicon from './../../img/grafana_icon.svg';
 import React from 'react';
 
 export default class GrafanaLink extends React.Component {
@@ -11,12 +10,7 @@ export default class GrafanaLink extends React.Component {
         to={`/dashboard/db/conduit-deployment?var-namespace=${namespace}&var-deployment=${deployment}`}
         deployment={"grafana"}
         targetBlank={true}>
-        {this.props.text}&nbsp;&nbsp;<img
-          src={grafanaicon}
-          width={this.props.size}
-          height={this.props.size}
-          title={`${namespace}/${deployment} grafana dashboard`}
-          alt={`link to ${namespace}/${deployment} grafana dashboard`} />
+        {this.props.name}
       </this.props.conduitLink>
     );
   }

@@ -28,22 +28,8 @@ const columnDefinitions = (sortable = true, title, ConduitLink) => {
       defaultSortOrder: 'ascend',
       width: 150,
       sorter: sortable ? (a, b) => (a.name || "").localeCompare(b.name) : false,
-      render: row => {
-        return row.added ?
-          <GrafanaLink
-            name={row.name}
-            size={16}
-            conduitLink={ConduitLink}
-            text={row.name} /> : row.name;
-      }
-    },
-    {
-      title: "Request Rate",
-      dataIndex: "requestRate",
-      key: "requestRateRollup",
-      className: "numeric",
-      sorter: sortable ? (a, b) => numericSort(a.requestRate, b.requestRate) : false,
-      render: d => withTooltip(d, "REQUEST_RATE")
+      render: row => row.added ?
+        <GrafanaLink name={row.name} conduitLink={ConduitLink} /> : row.name
     },
     {
       title: "Success Rate",
@@ -52,6 +38,14 @@ const columnDefinitions = (sortable = true, title, ConduitLink) => {
       className: "numeric",
       sorter: sortable ? (a, b) => numericSort(a.successRate, b.successRate) : false,
       render: d => metricToFormatter["SUCCESS_RATE"](d)
+    },
+    {
+      title: "Request Rate",
+      dataIndex: "requestRate",
+      key: "requestRateRollup",
+      className: "numeric",
+      sorter: sortable ? (a, b) => numericSort(a.requestRate, b.requestRate) : false,
+      render: d => withTooltip(d, "REQUEST_RATE")
     },
     {
       title: "P50 Latency",

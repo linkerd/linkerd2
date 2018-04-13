@@ -247,24 +247,24 @@ describe('ApiHelpers', () => {
     });
 
     it('adds a ?window= if metricsWindow is the only param', () => {
-      api.fetchMetrics('/api/stats');
+      api.fetchMetrics('/api/stat');
 
       expect(fetchStub.calledOnce).to.be.true;
-      expect(fetchStub.args[0][0]).to.equal('/api/stats?window=10m');
+      expect(fetchStub.args[0][0]).to.equal('/api/stat?window=10m');
     });
 
     it('adds &window= if metricsWindow is not the only param', () => {
-      api.fetchMetrics('/api/stats?foo=3&bar="me"');
+      api.fetchMetrics('/api/stat?foo=3&bar="me"');
 
       expect(fetchStub.calledOnce).to.be.true;
-      expect(fetchStub.args[0][0]).to.equal('/api/stats?foo=3&bar="me"&window=10m');
+      expect(fetchStub.args[0][0]).to.equal('/api/stat?foo=3&bar="me"&window=10m');
     });
 
     it('does not add another &window= if there is already a window param', () => {
-      api.fetchMetrics('/api/stats?foo=3&window=24h&bar="me"');
+      api.fetchMetrics('/api/stat?foo=3&window=24h&bar="me"');
 
       expect(fetchStub.calledOnce).to.be.true;
-      expect(fetchStub.args[0][0]).to.equal('/api/stats?foo=3&window=24h&bar="me"');
+      expect(fetchStub.args[0][0]).to.equal('/api/stat?foo=3&window=24h&bar="me"');
     });
   });
 
