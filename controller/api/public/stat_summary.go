@@ -28,8 +28,8 @@ type promResult struct {
 }
 
 const (
-	reqQuery             = "sum(increase(response_total{%s}[%s])) by (%s, namespace, classification)"
-	latencyQuantileQuery = "histogram_quantile(%s, sum(irate(response_latency_ms_bucket{%s}[%s])) by (le, namespace, %s))"
+	reqQuery             = "sum(increase(response_total{%s}[%s])) by (%s, %s, classification)"
+	latencyQuantileQuery = "histogram_quantile(%s, sum(irate(response_latency_ms_bucket{%s}[%s])) by (le, %s, %s))"
 
 	promRequests   = promType("QUERY_REQUESTS")
 	promLatencyP50 = promType("0.5")
@@ -74,18 +74,31 @@ func (s *grpcServer) deploymentQuery(ctx context.Context, req *pb.StatSummaryReq
 		return nil, err
 	}
 
-	requestLabels := buildRequestLabels(req)
-	groupBy := promResourceType(req.Selector.Resource)
+	requestLabels, groupByName, groupByNs := buildRequestLabels(req)
 
-	requestMetrics, err := s.getRequests(ctx, requestLabels, groupBy, timeWindow)
+	requestMetrics, err := s.getRequests(ctx, requestLabels, groupByName, groupByNs, timeWindow)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, resource := range deployments {
-		key, err := cache.MetaNamespaceKeyFunc(resource)
-		if err != nil {
-			return nil, err
+	var keys []string
+
+	if req.GetOutbound() == nil || req.GetNone() != nil {
+		// if this request doesn't have outbound filtering, return all rows
+		for key := range deployments {
+			keys = append(keys, key)
+		}
+	} else {
+		// otherwise only return rows for which we have stats
+		for key := range requestMetrics {
+			keys = append(keys, key)
+		}
+	}
+
+	for _, key := range keys {
+		resource, ok := deployments[key]
+		if !ok {
+			continue
 		}
 
 		row := pb.StatTable_PodGroup_Row{
@@ -133,71 +146,83 @@ func promNameLabel(resource *pb.Resource) string {
 	return promLabel(promResourceType(resource), resource.Name)
 }
 
+func promDstNameLabel(resource *pb.Resource) string {
+	return promLabel(promDstResourceType(resource), resource.Name)
+}
+
 func promNamespaceLabel(resource *pb.Resource) string {
 	return promLabel(namespaceLabel, resource.Namespace)
 }
 
-func promDstLabels(resource *pb.Resource) []string {
-	return []string{
-		promLabel("dst_"+namespaceLabel, resource.Namespace),
-		promLabel("dst_"+promResourceType(resource), resource.Name),
-	}
+func promDstNamespaceLabel(resource *pb.Resource) string {
+	return promLabel("dst_"+namespaceLabel, resource.Namespace)
 }
 
 func promResourceType(resource *pb.Resource) string {
 	return k8sResourceTypesToPromLabels[resource.Type]
 }
 
-func buildRequestLabels(req *pb.StatSummaryRequest) string {
+func promDstResourceType(resource *pb.Resource) string {
+	return "dst_" + promResourceType(resource)
+}
+
+func buildRequestLabels(req *pb.StatSummaryRequest) (string, string, string) {
 	labels := []string{}
+	var groupByName, groupByNs string
 
-	var direction string
-	switch req.Outbound.(type) {
-	case *pb.StatSummaryRequest_OutToResource:
-		direction = "outbound"
-		labels = append(labels, promDstLabels(req.GetOutToResource())...)
+	switch out := req.Outbound.(type) {
+	case *pb.StatSummaryRequest_ToResource:
+		groupByName = promResourceType(out.ToResource)
+		groupByNs = namespaceLabel
 
-	case *pb.StatSummaryRequest_OutFromResource:
-		direction = "outbound"
-		labels = append(labels, promDstLabels(req.Selector.Resource)...)
-
-		outFromNs := req.GetOutFromResource().Namespace
-		if outFromNs == "" {
-			outFromNs = req.Selector.Resource.Namespace
+		if out.ToResource.Name != "" {
+			labels = append(labels, promDstNameLabel(out.ToResource))
 		}
-
-		if outFromNs != "" {
-			labels = append(labels, promLabel(namespaceLabel, outFromNs))
-		}
-		if req.Selector.Resource.Name != "" {
-			labels = append(labels, promNameLabel(req.GetOutFromResource()))
-		}
-
-	default:
-		direction = "inbound"
-	}
-
-	// it's weird to check this again outside the switch, but including this code
-	// in the other three switch branches is very repetitive
-	if req.GetOutFromResource() == nil {
-		if req.Selector.Resource.Namespace != "" {
-			labels = append(labels, promNamespaceLabel(req.Selector.Resource))
+		if out.ToResource.Namespace != "" {
+			labels = append(labels, promDstNamespaceLabel(out.ToResource))
 		}
 		if req.Selector.Resource.Name != "" {
 			labels = append(labels, promNameLabel(req.Selector.Resource))
 		}
-	}
-	labels = append(labels, promLabel("direction", direction))
+		if req.Selector.Resource.Namespace != "" {
+			labels = append(labels, promNamespaceLabel(req.Selector.Resource))
+		}
+		labels = append(labels, promLabel("direction", "outbound"))
 
-	return strings.Join(labels, ",")
+	case *pb.StatSummaryRequest_FromResource:
+		groupByName = promDstResourceType(out.FromResource)
+		groupByNs = "dst_" + namespaceLabel
+
+		if out.FromResource.Name != "" {
+			labels = append(labels, promNameLabel(out.FromResource))
+		}
+		if out.FromResource.Namespace != "" {
+			labels = append(labels, promNamespaceLabel(out.FromResource))
+		}
+		labels = append(labels, promLabel("direction", "outbound"))
+
+	default:
+		groupByName = promResourceType(req.Selector.Resource)
+		groupByNs = namespaceLabel
+
+		if req.Selector.Resource.Name != "" {
+			labels = append(labels, promNameLabel(req.Selector.Resource))
+		}
+		if req.Selector.Resource.Namespace != "" {
+			labels = append(labels, promNamespaceLabel(req.Selector.Resource))
+		}
+		labels = append(labels, promLabel("direction", "inbound"))
+	}
+
+	return strings.Join(labels, ","), groupByName, groupByNs
 }
 
-func (s *grpcServer) getRequests(ctx context.Context, reqLabels string, groupBy string, timeWindow string) (map[string]*pb.BasicStats, error) {
+func (s *grpcServer) getRequests(ctx context.Context, reqLabels, groupByName, groupByNs, timeWindow string) (map[string]*pb.BasicStats, error) {
 	resultChan := make(chan promResult)
 
 	// kick off 4 asynchronous queries: 1 request volume + 3 latency
 	go func() {
-		requestsQuery := fmt.Sprintf(reqQuery, reqLabels, timeWindow, groupBy)
+		requestsQuery := fmt.Sprintf(reqQuery, reqLabels, timeWindow, groupByName, groupByNs)
 		resultVector, err := s.queryProm(ctx, requestsQuery)
 
 		resultChan <- promResult{
@@ -209,7 +234,7 @@ func (s *grpcServer) getRequests(ctx context.Context, reqLabels string, groupBy 
 
 	for _, quantile := range []promType{promLatencyP50, promLatencyP95, promLatencyP99} {
 		go func(quantile promType) {
-			latencyQuery := fmt.Sprintf(latencyQuantileQuery, quantile, reqLabels, timeWindow, groupBy)
+			latencyQuery := fmt.Sprintf(latencyQuantileQuery, quantile, reqLabels, timeWindow, groupByName, groupByNs)
 			latencyResult, err := s.queryProm(ctx, latencyQuery)
 
 			resultChan <- promResult{
@@ -236,15 +261,15 @@ func (s *grpcServer) getRequests(ctx context.Context, reqLabels string, groupBy 
 		return nil, err
 	}
 
-	return processRequests(results, groupBy), nil
+	return processRequests(results, groupByName, groupByNs), nil
 }
 
-func processRequests(results []promResult, labelSelector string) map[string]*pb.BasicStats {
+func processRequests(results []promResult, groupByName, groupByNs string) map[string]*pb.BasicStats {
 	basicStats := make(map[string]*pb.BasicStats)
 
 	for _, result := range results {
 		for _, sample := range result.vec {
-			label := metricToKey(sample.Metric, labelSelector)
+			label := metricToKey(sample.Metric, groupByName, groupByNs)
 			if basicStats[label] == nil {
 				basicStats[label] = &pb.BasicStats{}
 			}
@@ -275,18 +300,18 @@ func processRequests(results []promResult, labelSelector string) map[string]*pb.
 	return basicStats
 }
 
-func metricToKey(metric model.Metric, labelSelector string) string {
-	if metric[model.LabelName(namespaceLabel)] == "" {
-		return string(metric[model.LabelName(labelSelector)])
+func metricToKey(metric model.Metric, groupByName, groupByNs string) string {
+	if metric[model.LabelName(groupByNs)] == "" {
+		return string(metric[model.LabelName(groupByName)])
 	}
 
 	return fmt.Sprintf("%s/%s",
-		metric[model.LabelName(namespaceLabel)],
-		metric[model.LabelName(labelSelector)],
+		metric[model.LabelName(groupByNs)],
+		metric[model.LabelName(groupByName)],
 	)
 }
 
-func (s *grpcServer) getDeployments(res *pb.Resource) ([]*appsv1.Deployment, map[string]*meshedCount, error) {
+func (s *grpcServer) getDeployments(res *pb.Resource) (map[string]*appsv1.Deployment, map[string]*meshedCount, error) {
 	var err error
 	var deployments []*appsv1.Deployment
 
@@ -305,19 +330,22 @@ func (s *grpcServer) getDeployments(res *pb.Resource) ([]*appsv1.Deployment, map
 	}
 
 	meshedPodCount := make(map[string]*meshedCount)
+	deploymentMap := make(map[string]*appsv1.Deployment)
 	for _, deployment := range deployments {
-		meshCount, err := s.getMeshedPodCount(deployment.Namespace, deployment)
+		key, err := cache.MetaNamespaceKeyFunc(deployment)
 		if err != nil {
 			return nil, nil, err
 		}
-		key, err := cache.MetaNamespaceKeyFunc(deployment)
+		deploymentMap[key] = deployment
+
+		meshCount, err := s.getMeshedPodCount(deployment.Namespace, deployment)
 		if err != nil {
 			return nil, nil, err
 		}
 		meshedPodCount[key] = meshCount
 	}
 
-	return deployments, meshedPodCount, nil
+	return deploymentMap, meshedPodCount, nil
 }
 
 // this takes a long time for namespaces with many pods

@@ -45,16 +45,16 @@ func GetWindowString(timeWindow pb.TimeWindow) (string, error) {
 var defaultMetricTimeWindow = pb.TimeWindow_ONE_MIN
 
 type StatSummaryRequestParams struct {
-	TimeWindow       string
-	Namespace        string
-	ResourceType     string
-	ResourceName     string
-	OutToNamespace   string
-	OutToType        string
-	OutToName        string
-	OutFromNamespace string
-	OutFromType      string
-	OutFromName      string
+	TimeWindow    string
+	Namespace     string
+	ResourceType  string
+	ResourceName  string
+	ToNamespace   string
+	ToType        string
+	ToName        string
+	FromNamespace string
+	FromType      string
+	FromName      string
 }
 
 func BuildStatSummaryRequest(p StatSummaryRequestParams) (*pb.StatSummaryRequest, error) {
@@ -83,31 +83,37 @@ func BuildStatSummaryRequest(p StatSummaryRequestParams) (*pb.StatSummaryRequest
 		TimeWindow: window,
 	}
 
-	if p.OutToName != "" || p.OutToType != "" || p.OutToNamespace != "" {
-		if p.OutToNamespace == "" {
-			p.OutToNamespace = p.Namespace
+	if p.ToName != "" || p.ToType != "" || p.ToNamespace != "" {
+		if p.ToNamespace == "" {
+			p.ToNamespace = p.Namespace
+		}
+		if p.ToType == "" {
+			p.ToType = resourceType
 		}
 
-		outToResource := pb.StatSummaryRequest_OutToResource{
-			OutToResource: &pb.Resource{
-				Namespace: p.OutToNamespace,
-				Type:      p.OutToType,
-				Name:      p.OutToName,
+		outToResource := pb.StatSummaryRequest_ToResource{
+			ToResource: &pb.Resource{
+				Namespace: p.ToNamespace,
+				Type:      p.ToType,
+				Name:      p.ToName,
 			},
 		}
 		statRequest.Outbound = &outToResource
 	}
 
-	if p.OutFromName != "" || p.OutFromType != "" || p.OutFromNamespace != "" {
-		if p.OutFromNamespace == "" {
-			p.OutFromNamespace = p.Namespace
+	if p.FromName != "" || p.FromType != "" || p.FromNamespace != "" {
+		if p.FromNamespace == "" {
+			p.FromNamespace = p.Namespace
+		}
+		if p.FromType == "" {
+			p.FromType = resourceType
 		}
 
-		outFromResource := pb.StatSummaryRequest_OutFromResource{
-			OutFromResource: &pb.Resource{
-				Namespace: p.OutFromNamespace,
-				Type:      p.OutFromType,
-				Name:      p.OutFromName,
+		outFromResource := pb.StatSummaryRequest_FromResource{
+			FromResource: &pb.Resource{
+				Namespace: p.FromNamespace,
+				Type:      p.FromType,
+				Name:      p.FromName,
 			},
 		}
 		statRequest.Outbound = &outFromResource

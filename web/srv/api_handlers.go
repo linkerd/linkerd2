@@ -71,16 +71,16 @@ func (h *handler) handleApiPods(w http.ResponseWriter, req *http.Request, p http
 
 func (h *handler) handleApiStat(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
 	requestParams := util.StatSummaryRequestParams{
-		TimeWindow:       req.FormValue("window"),
-		ResourceName:     req.FormValue("resource_name"),
-		ResourceType:     req.FormValue("resource_type"),
-		Namespace:        req.FormValue("namespace"),
-		OutToName:        req.FormValue("out_to_name"),
-		OutToType:        req.FormValue("out_to_type"),
-		OutToNamespace:   req.FormValue("out_to_namespace"),
-		OutFromName:      req.FormValue("out_from_name"),
-		OutFromType:      req.FormValue("out_from_type"),
-		OutFromNamespace: req.FormValue("out_from_namespace"),
+		TimeWindow:    req.FormValue("window"),
+		ResourceName:  req.FormValue("resource_name"),
+		ResourceType:  req.FormValue("resource_type"),
+		Namespace:     req.FormValue("namespace"),
+		ToName:        req.FormValue("out_to_name"),
+		ToType:        req.FormValue("out_to_type"),
+		ToNamespace:   req.FormValue("out_to_namespace"),
+		FromName:      req.FormValue("out_from_name"),
+		FromType:      req.FormValue("out_from_type"),
+		FromNamespace: req.FormValue("out_from_namespace"),
 	}
 
 	// default to returning deployment stats

@@ -18,8 +18,8 @@ import (
 )
 
 var timeWindow, namespace, resourceType, resourceName string
-var outToNamespace, outToType, outToName string
-var outFromNamespace, outFromType, outFromName string
+var toNamespace, toType, toName string
+var fromNamespace, fromType, fromName string
 var allNamespaces bool
 
 var statCmd = &cobra.Command{
@@ -71,12 +71,12 @@ func init() {
 	RootCmd.AddCommand(statCmd)
 	statCmd.PersistentFlags().StringVarP(&namespace, "namespace", "n", "default", "Namespace of the specified resource")
 	statCmd.PersistentFlags().StringVarP(&timeWindow, "time-window", "t", "1m", "Stat window (one of: \"10s\", \"1m\", \"10m\", \"1h\")")
-	statCmd.PersistentFlags().StringVar(&outToName, "out-to", "", "If present, restricts outbound stats to the specified resource name")
-	statCmd.PersistentFlags().StringVar(&outToNamespace, "out-to-namespace", "", "Sets the namespace used to lookup the \"--out-to\" resource; by default the current \"--namespace\" is used")
-	statCmd.PersistentFlags().StringVar(&outToType, "out-to-resource", "", "If present, restricts outbound stats to the specified resource type")
-	statCmd.PersistentFlags().StringVar(&outFromName, "out-from", "", "If present, restricts outbound stats to the specified resource name")
-	statCmd.PersistentFlags().StringVar(&outFromNamespace, "out-from-namespace", "", "Sets the namespace used to lookup the \"--out-from\" resource; by default the current \"--namespace\" is used")
-	statCmd.PersistentFlags().StringVar(&outFromType, "out-from-resource", "", "If present, restricts outbound stats to the specified resource type")
+	statCmd.PersistentFlags().StringVar(&toName, "to", "", "If present, restricts outbound stats to the specified resource name")
+	statCmd.PersistentFlags().StringVar(&toNamespace, "to-namespace", "", "Sets the namespace used to lookup the \"--to\" resource; by default the current \"--namespace\" is used")
+	statCmd.PersistentFlags().StringVar(&toType, "to-resource", "", "Sets the resource type used to lookup the \"--to\" resource; by default the RESOURCETYPE is used")
+	statCmd.PersistentFlags().StringVar(&fromName, "from", "", "If present, restricts outbound stats to the specified resource name")
+	statCmd.PersistentFlags().StringVar(&fromNamespace, "from-namespace", "", "Sets the namespace used to lookup the \"--from\" resource; by default the current \"--namespace\" is used")
+	statCmd.PersistentFlags().StringVar(&fromType, "from-resource", "", "Sets the resource type used to lookup the \"--from\" resource; by default the RESOURCETYPE is used")
 	statCmd.PersistentFlags().BoolVar(&allNamespaces, "all-namespaces", false, "If present, returns stats across all namespaces, ignoring the \"--namespace\" flag")
 }
 
@@ -208,16 +208,16 @@ func buildStatSummaryRequest() (*pb.StatSummaryRequest, error) {
 	}
 
 	requestParams := util.StatSummaryRequestParams{
-		TimeWindow:       timeWindow,
-		ResourceName:     resourceName,
-		ResourceType:     resourceType,
-		Namespace:        targetNamespace,
-		OutToName:        outToName,
-		OutToType:        outToType,
-		OutToNamespace:   outToNamespace,
-		OutFromName:      outFromName,
-		OutFromType:      outFromType,
-		OutFromNamespace: outFromNamespace,
+		TimeWindow:    timeWindow,
+		ResourceName:  resourceName,
+		ResourceType:  resourceType,
+		Namespace:     targetNamespace,
+		ToName:        toName,
+		ToType:        toType,
+		ToNamespace:   toNamespace,
+		FromName:      fromName,
+		FromType:      fromType,
+		FromNamespace: fromNamespace,
 	}
 
 	return util.BuildStatSummaryRequest(requestParams)
