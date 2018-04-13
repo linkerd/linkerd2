@@ -11,7 +11,6 @@ import (
 	common "github.com/runconduit/conduit/controller/gen/common"
 	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 	tapPb "github.com/runconduit/conduit/controller/gen/controller/tap"
-	telemPb "github.com/runconduit/conduit/controller/gen/controller/telemetry"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/controller/util"
 	log "github.com/sirupsen/logrus"
@@ -23,7 +22,6 @@ import (
 var (
 	jsonMarshaler   = jsonpb.Marshaler{EmitDefaults: true}
 	jsonUnmarshaler = jsonpb.Unmarshaler{}
-	statPath        = fullUrlPathFor("Stat")
 	statSummaryPath = fullUrlPathFor("StatSummary")
 	versionPath     = fullUrlPathFor("Version")
 	listPodsPath    = fullUrlPathFor("ListPods")
@@ -47,8 +45,6 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	// Serve request
 	switch req.URL.Path {
-	case statPath:
-		h.handleStat(w, req)
 	case statSummaryPath:
 		h.handleStatSummary(w, req)
 	case versionPath:
@@ -63,27 +59,6 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		http.NotFound(w, req)
 	}
 
-}
-
-func (h *handler) handleStat(w http.ResponseWriter, req *http.Request) {
-	var protoRequest pb.MetricRequest
-	err := httpRequestToProto(req, &protoRequest)
-	if err != nil {
-		writeErrorToHttpResponse(w, err)
-		return
-	}
-
-	rsp, err := h.grpcServer.Stat(req.Context(), &protoRequest)
-	if err != nil {
-		writeErrorToHttpResponse(w, err)
-		return
-	}
-
-	err = writeProtoToHttpResponse(w, rsp)
-	if err != nil {
-		writeErrorToHttpResponse(w, err)
-		return
-	}
 }
 
 func (h *handler) handleStatSummary(w http.ResponseWriter, req *http.Request) {
@@ -223,7 +198,6 @@ func fullUrlPathFor(method string) string {
 func NewServer(
 	addr string,
 	prometheusClient promApi.Client,
-	telemetryClient telemPb.TelemetryClient,
 	tapClient tapPb.TapClient,
 	deployLister applisters.DeploymentLister,
 	replicaSetLister applisters.ReplicaSetLister,
@@ -234,7 +208,6 @@ func NewServer(
 	baseHandler := &handler{
 		grpcServer: newGrpcServer(
 			promv1.NewAPI(prometheusClient),
-			telemetryClient,
 			tapClient,
 			deployLister,
 			replicaSetLister,

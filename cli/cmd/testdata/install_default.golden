@@ -194,21 +194,6 @@ spec:
         - containerPort: 9998
           name: admin-http
         resources: {}
-      - args:
-        - telemetry
-        - -ignore-namespaces=kube-system
-        - -prometheus-url=http://prometheus.conduit.svc.cluster.local:9090
-        - -log-level=info
-        - -logtostderr=true
-        image: gcr.io/runconduit/controller:undefined
-        imagePullPolicy: IfNotPresent
-        name: telemetry
-        ports:
-        - containerPort: 8087
-          name: grpc
-        - containerPort: 9997
-          name: admin-http
-        resources: {}
       - env:
         - name: CONDUIT_PROXY_LOG
           value: warn,conduit_proxy=info

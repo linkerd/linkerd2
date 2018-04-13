@@ -188,20 +188,6 @@ spec:
         - "tap"
         - "-log-level={{.ControllerLogLevel}}"
         - "-logtostderr=true"
-      - name: telemetry
-        ports:
-        - name: grpc
-          containerPort: 8087
-        - name: admin-http
-          containerPort: 9997
-        image: {{.ControllerImage}}
-        imagePullPolicy: {{.ImagePullPolicy}}
-        args:
-        - "telemetry"
-        - "-ignore-namespaces=kube-system"
-        - "-prometheus-url=http://prometheus.{{.Namespace}}.svc.cluster.local:9090"
-        - "-log-level={{.ControllerLogLevel}}"
-        - "-logtostderr=true"
 
 ### Web ###
 ---

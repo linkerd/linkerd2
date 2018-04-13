@@ -41,8 +41,6 @@ written in Go. The dashboard UI is a React application.
     clients such as `cli` and `web`, provides access to and control of the
     conduit service mesh.
   - [`tap`](controller/tap): Provides a live pipeline of requests.
-  - [`telemetry`](controller/telemetry): Collects and aggregates
-    metrics from `proxy` componenets.
 - [`proxy-init`](proxy-init): Adds a Kubernetes pod to join the Conduit
   Service Mesh.
 - [`web`](web): Provides a UI dashboard to view and drive the control plane.
@@ -70,7 +68,6 @@ conduit_components
     "proxy-api" [color=lightblue];
     "public-api" [color=lightblue];
     "tap" [color=lightblue];
-    "telemetry" [color=lightblue];
     "web" [color=lightblue];
 
     "proxy" [color=orange];
@@ -83,16 +80,11 @@ conduit_components
     "proxy" -> "proxy-api";
 
     "proxy-api" -> "destination";
-    "proxy-api" -> "telemetry";
 
     "public-api" -> "tap";
-    "public-api" -> "telemetry";
 
     "tap" -> "kubernetes";
     "tap" -> "proxy";
-
-    "telemetry" -> "kubernetes";
-    "telemetry" -> "prometheus";
   }
 conduit_components
 </details>
