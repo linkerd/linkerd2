@@ -21,7 +21,6 @@ struct Destination(Box<Fn() -> Option<pb::destination::Update> + Send>);
 #[derive(Debug)]
 pub struct Controller {
     destinations: VecDeque<(String, Destination)>,
-    reports: Option<mpsc::UnboundedSender<pb::telemetry::ReportRequest>>,
 }
 
 pub struct Listening {
@@ -33,7 +32,6 @@ impl Controller {
     pub fn new() -> Self {
         Controller {
             destinations: VecDeque::new(),
-            reports: None,
         }
     }
 
@@ -71,12 +69,6 @@ impl Controller {
         self.destination_fn(dest, || None)
     }
 
-    pub fn reports(&mut self) -> mpsc::UnboundedReceiver<pb::telemetry::ReportRequest> {
-        let (tx, rx) = mpsc::unbounded();
-        self.reports = Some(tx);
-        rx
-    }
-
     pub fn run(self) -> Listening {
         run(self)
     }
@@ -86,7 +78,6 @@ type Response = self::http::Response<GrpcBody>;
 type Destinations = Arc<Mutex<VecDeque<(String, Destination)>>>;
 
 const DESTINATION_GET: &str = "/conduit.proxy.destination.Destination/Get";
-const TELEMETRY_REPORT: &str = "/conduit.proxy.telemetry.Telemetry/Report";
 
 impl fmt::Debug for Destination {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -97,7 +88,6 @@ impl fmt::Debug for Destination {
 #[derive(Debug)]
 struct Svc {
     destinations: Destinations,
-    reports: Option<mpsc::UnboundedSender<pb::telemetry::ReportRequest>>,
 }
 
 impl Svc {
@@ -132,18 +122,6 @@ impl Svc {
                     buf.put_u32::<BigEndian>(len as u32);
                     update.encode(&mut buf).unwrap();
                     let body = GrpcBody::new(buf.freeze());
-                    let rsp = rsp.body(body).unwrap();
-                    Ok(rsp)
-                }))
-            }
-            TELEMETRY_REPORT => {
-                let mut reports = self.reports.clone();
-                Box::new(body.concat2().and_then(move |mut bytes| {
-                    if let Some(ref mut report) = reports {
-                        let req = Message::decode(bytes.split_off(5)).unwrap();
-                        let _ = report.unbounded_send(req);
-                    }
-                    let body = GrpcBody::new([0u8; 5][..].into());
                     let rsp = rsp.body(body).unwrap();
                     Ok(rsp)
                 }))
@@ -216,7 +194,6 @@ impl Body for GrpcBody {
 #[derive(Debug)]
 struct NewSvc {
     destinations: Destinations,
-    reports: Option<mpsc::UnboundedSender<pb::telemetry::ReportRequest>>,
 }
 impl NewService for NewSvc {
     type Request = Request<RecvBody>;
@@ -229,7 +206,6 @@ impl NewService for NewSvc {
     fn new_service(&self) -> Self::Future {
         future::ok(Svc {
             destinations: self.destinations.clone(),
-            reports: self.reports.clone(),
         })
     }
 }
@@ -246,7 +222,6 @@ fn run(controller: Controller) -> Listening {
 
             let factory = NewSvc {
                 destinations: Arc::new(Mutex::new(controller.destinations)),
-                reports: controller.reports,
             };
             let h2 = tower_h2::Server::new(factory, Default::default(), reactor.clone());
 

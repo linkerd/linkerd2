@@ -1,7 +1,4 @@
-//! Sensors and reports telemetry from the proxy.
-
 use std::sync::Arc;
-use std::time::Duration;
 
 use futures_mpsc_lossy;
 
@@ -23,22 +20,19 @@ pub use self::sensor::Sensors;
 /// that support telemetry.
 ///
 /// [`Control`] drives processing of all telemetry events for tapping as well as metrics
-/// reporting.
+/// aggregation.
 ///
 /// # Arguments
-/// - `capacity`: the number of events to aggregate.
-/// - `flush_interval`: the length of time after which a metrics report should be sent,
-///   regardless of how many events have been aggregated.
+/// - `capacity`: the size of the event queue.
 ///
 /// [`Sensors`]: struct.Sensors.html
 /// [`Control`]: struct.Control.html
 pub fn new(
     process: &Arc<ctx::Process>,
     capacity: usize,
-    flush_interval: Duration,
 ) -> (Sensors, MakeControl) {
     let (tx, rx) = futures_mpsc_lossy::channel(capacity);
     let s = Sensors::new(tx);
-    let c = MakeControl::new(rx, flush_interval, process);
+    let c = MakeControl::new(rx, process);
     (s, c)
 }
