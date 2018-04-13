@@ -104,3 +104,65 @@ where
     }
 
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use std::collections::HashMap;
+    use std::u64;
+
+    const NUM_BUCKETS: usize = 47;
+    static BOUNDS: [u64; NUM_BUCKETS] = [
+        10, 20, 30, 40, 50, 60, 70, 80, 90, 100,
+        200, 300, 400, 500, 600, 700, 800, 900, 1_000,
+        2_000, 3_000, 4_000, 5_000, 6_000, 7_000, 8_000, 9_000, 10_000,
+        20_000, 30_000, 40_000, 50_000, 60_000, 70_000, 80_000, 90_000, 100_000,
+        200_000, 300_000, 400_000, 500_000, 600_000, 700_000, 800_000, 900_000, 1_000_000,
+        u64::MAX
+    ];
+
+    quickcheck! {
+        fn prop_count_incremented(obs: u64) -> bool {
+            let mut hist = Histogram::new(
+                &BOUNDS,
+                Box::new([Counter::default(); NUM_BUCKETS])
+            );
+            hist += obs;
+            let incremented_bucket = &BOUNDS.iter()
+                .position(|bucket| &obs <= bucket)
+                .unwrap();
+            for i in 0..NUM_BUCKETS {
+                let expected = if i == *incremented_bucket { 1 } else { 0 };
+                let count: u64 = hist.buckets[i].into();
+                assert_eq!(count, expected, "(for bucket <= {})", BOUNDS[i]);
+            }
+            true
+        }
+
+        fn prop_multiple_observations(observations: Vec<u64>) -> bool {
+            let mut buckets_and_counts: HashMap<usize, u64> = HashMap::new();
+            let mut hist = Histogram::new(
+                &BOUNDS,
+                Box::new([Counter::default(); NUM_BUCKETS])
+            );
+
+            for obs in observations {
+                let incremented_bucket = &BOUNDS.iter()
+                    .position(|bucket| obs <= *bucket)
+                    .unwrap();
+                buckets_and_counts.entry(*incremented_bucket)
+                    .and_modify(|count| *count += 1)
+                    .or_insert(1);
+
+                hist += obs;
+            }
+
+            for (i, count) in hist.buckets.iter().enumerate() {
+                let count: u64 = (*count).into();
+                assert_eq!(buckets_and_counts.get(&i).unwrap_or(&0), &count);
+            }
+            true
+        }
+    }
+}
