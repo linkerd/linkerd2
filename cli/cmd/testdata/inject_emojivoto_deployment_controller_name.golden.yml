@@ -50,14 +50,6 @@ spec:
           value: tcp://127.0.0.1:4140
         - name: CONDUIT_PROXY_PUBLIC_LISTENER
           value: tcp://0.0.0.0:4143
-        - name: CONDUIT_PROXY_NODE_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.nodeName
-        - name: CONDUIT_PROXY_POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
         - name: CONDUIT_PROXY_POD_NAMESPACE
           valueFrom:
             fieldRef:
@@ -146,14 +138,6 @@ spec:
           value: tcp://127.0.0.1:4140
         - name: CONDUIT_PROXY_PUBLIC_LISTENER
           value: tcp://0.0.0.0:4143
-        - name: CONDUIT_PROXY_NODE_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.nodeName
-        - name: CONDUIT_PROXY_POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
         - name: CONDUIT_PROXY_POD_NAMESPACE
           valueFrom:
             fieldRef:

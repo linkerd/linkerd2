@@ -16,18 +16,7 @@ pub mod transport;
 /// Describes a single running proxy instance.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Process {
-    /// Identifies the logical host (or VM) that the process is running on.
-    ///
-    /// Empty if unknown.
-    pub node: String,
-
-    /// Identifies the logical instance name, as scheduled by a scheduler (like
-    /// kubernetes).
-    ///
-    /// Empty if unknown.
-    pub scheduled_instance: String,
-
-    /// Identifies the namespace for the `scheduled_instance`.
+    /// Identifies the Kubernetes namespace in which this proxy is process.
     pub scheduled_namespace: String,
 
     pub start_time: SystemTime,
@@ -48,10 +37,8 @@ pub enum Proxy {
 
 impl Process {
     #[cfg(test)]
-    pub fn test(node: &str, instance: &str, ns: &str) -> Arc<Self> {
+    pub fn test(ns: &str) -> Arc<Self> {
         Arc::new(Self {
-            node: node.into(),
-            scheduled_instance: instance.into(),
             scheduled_namespace: ns.into(),
             start_time: SystemTime::now(),
         })
@@ -60,16 +47,7 @@ impl Process {
     /// Construct a new `Process` from environment variables.
     pub fn new(config: &config::Config) -> Arc<Self> {
         let start_time = SystemTime::now();
-        fn empty_if_missing(s: &Option<String>) -> String {
-            match *s {
-                Some(ref s) => s.clone(),
-                None => "".to_owned(),
-            }
-        }
-
         Arc::new(Self {
-            node: empty_if_missing(&config.node_name),
-            scheduled_instance: empty_if_missing(&config.pod_name),
             scheduled_namespace: config.pod_namespace.clone(),
             start_time,
         })
