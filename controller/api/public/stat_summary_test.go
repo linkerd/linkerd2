@@ -142,7 +142,6 @@ metadata:
 
 			fakeGrpcServer := newGrpcServer(
 				&MockProm{Res: exp.promRes},
-				&mockTelemetry{},
 				tap.NewTapClient(nil),
 				deployInformer.Lister(),
 				replicaSetInformer.Lister(),
@@ -211,7 +210,6 @@ metadata:
 			sharedInformers := informers.NewSharedInformerFactory(clientSet, 10*time.Minute)
 			fakeGrpcServer := newGrpcServer(
 				&MockProm{Res: exp.promRes},
-				&mockTelemetry{},
 				tap.NewTapClient(nil),
 				sharedInformers.Apps().V1().Deployments().Lister(),
 				sharedInformers.Apps().V1().ReplicaSets().Lister(),

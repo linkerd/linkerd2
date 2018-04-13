@@ -28,7 +28,6 @@ func (w *stubResponseWriter) Header() http.Header {
 
 func (w *stubResponseWriter) Write(p []byte) (int, error) {
 	n, err := w.body.Write(p)
-	fmt.Print(n)
 	return n, err
 }
 
@@ -309,18 +308,14 @@ func TestDeserializePayloadFromReader(t *testing.T) {
 		}
 	})
 
-	t.Run("Can write and read  marshalled protobuf messages", func(t *testing.T) {
-		seriesToReturn := make([]*pb.MetricSeries, 0)
-		for i := 0; i < 351; i++ {
-			seriesToReturn = append(seriesToReturn, &pb.MetricSeries{Name: pb.MetricName_LATENCY})
-		}
-
-		expectedMessage := &pb.MetricResponse{
-			Metrics: seriesToReturn,
+	t.Run("Can write and read marshalled protobuf messages", func(t *testing.T) {
+		expectedMessage := &pb.VersionInfo{
+			GoVersion:      "1.9.1",
+			BuildDate:      "2017.11.17",
+			ReleaseVersion: "1.2.3",
 		}
 
 		expectedReadArray, err := proto.Marshal(expectedMessage)
-
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -349,7 +344,7 @@ func TestDeserializePayloadFromReader(t *testing.T) {
 			t.Fatalf("Expecting read byte array to be equal to written byte array, but they were different. xor: [%v]", xor)
 		}
 
-		actualMessage := &pb.MetricResponse{}
+		actualMessage := &pb.VersionInfo{}
 		err = proto.Unmarshal(actualReadArray, actualMessage)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
@@ -474,7 +469,7 @@ func TestCheckIfResponseHasError(t *testing.T) {
 	})
 
 	t.Run("returns error if response contains Conduit error but body isn't error message", func(t *testing.T) {
-		protoInBytes, err := proto.Marshal(&pb.MetricMetadata{TargetDeploy: "a"})
+		protoInBytes, err := proto.Marshal(&pb.VersionInfo{ReleaseVersion: "0.0.1"})
 		message, err := serializeAsPayload(protoInBytes)
 		response := &http.Response{
 			Header: make(http.Header),

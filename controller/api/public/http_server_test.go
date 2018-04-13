@@ -3,7 +3,6 @@ package public
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net"
 	"net/http"
 	"reflect"
@@ -20,11 +19,6 @@ type mockGrpcServer struct {
 	ResponseToReturn    proto.Message
 	TapStreamsToReturn  []*common.TapEvent
 	ErrorToReturn       error
-}
-
-func (m *mockGrpcServer) Stat(ctx context.Context, req *pb.MetricRequest) (*pb.MetricResponse, error) {
-	m.LastRequestReceived = req
-	return m.ResponseToReturn.(*pb.MetricResponse), m.ErrorToReturn
 }
 
 func (m *mockGrpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
@@ -99,19 +93,11 @@ func TestServer(t *testing.T) {
 			functionCall: func() (proto.Message, error) { return client.ListPods(context.TODO(), listPodsReq) },
 		}
 
-		statReq := &pb.MetricRequest{
-			Summarize: false,
-		}
-		seriesToReturn := make([]*pb.MetricSeries, 0)
-		for i := 0; i < 100; i++ {
-			seriesToReturn = append(seriesToReturn, &pb.MetricSeries{Name: pb.MetricName_LATENCY, Metadata: &pb.MetricMetadata{TargetDeploy: fmt.Sprintf("/%d", i)}})
-		}
-		testStat := grpcCallTestCase{
-			expectedRequest: statReq,
-			expectedResponse: &pb.MetricResponse{
-				Metrics: seriesToReturn,
-			},
-			functionCall: func() (proto.Message, error) { return client.Stat(context.TODO(), statReq) },
+		statSummaryReq := &pb.StatSummaryRequest{}
+		testStatSummary := grpcCallTestCase{
+			expectedRequest:  statSummaryReq,
+			expectedResponse: &pb.StatSummaryResponse{},
+			functionCall:     func() (proto.Message, error) { return client.StatSummary(context.TODO(), statSummaryReq) },
 		}
 
 		versionReq := &pb.Empty{}
@@ -136,7 +122,7 @@ func TestServer(t *testing.T) {
 			functionCall: func() (proto.Message, error) { return client.SelfCheck(context.TODO(), selfCheckReq) },
 		}
 
-		for _, testCase := range []grpcCallTestCase{testListPods, testStat, testVersion, testSelfCheck} {
+		for _, testCase := range []grpcCallTestCase{testListPods, testStatSummary, testVersion, testSelfCheck} {
 			assertCallWasForwarded(t, mockGrpcServer, testCase.expectedRequest, testCase.expectedResponse, testCase.functionCall)
 		}
 	})

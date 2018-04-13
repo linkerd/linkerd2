@@ -35,24 +35,6 @@ services:
     - -metrics-addr=:9998
     - -kubeconfig=/kubeconfig
 
-  telemetry:
-    build:
-      context: .
-      dockerfile: controller/Dockerfile
-      args:
-      - CONDUIT_VERSION=latest
-    ports:
-    - "8087:8087"
-    - "9997:9997"
-    volumes:
-    - ~/.kube/config:/kubeconfig:ro
-    command:
-    - telemetry
-    - -addr=:8087
-    - -metrics-addr=:9997
-    - -prometheus-url=http://prometheus:9090
-    - -kubeconfig=/kubeconfig
-
   proxy-api:
     build:
       context: .
@@ -66,7 +48,6 @@ services:
     - proxy-api
     - -addr=:8086
     - -metrics-addr=:9996
-    - -telemetry-addr=telemetry:8087
     - -destination-addr=destination:8089
 
   public-api:
@@ -84,7 +65,6 @@ services:
     - public-api
     - -addr=:8085
     - -metrics-addr=:9995
-    - -telemetry-addr=telemetry:8087
     - -tap-addr=tap:8088
     - -prometheus-url=http://prometheus:9090
     - -kubeconfig=/kubeconfig

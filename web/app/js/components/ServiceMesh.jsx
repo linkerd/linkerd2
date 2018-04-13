@@ -33,7 +33,6 @@ const componentNames = {
   "proxy-api":    "Proxy API",
   "public-api":   "Public API",
   "tap":          "Tap",
-  "telemetry":    "Telemetry",
   "web":          "Web UI"
 };
 
@@ -43,7 +42,6 @@ const componentDeploys = {
   "proxy-api":    "controller",
   "public-api":   "controller",
   "tap":          "controller",
-  "telemetry":    "controller",
   "web":          "web"
 };
 

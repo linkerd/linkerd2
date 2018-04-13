@@ -33,11 +33,11 @@ describe('ApiHelpers', () => {
 
   describe('getMetricsWindow/setMetricsWindow', () => {
     it('sets a default metricsWindow', () => {
-      expect(api.getMetricsWindow()).to.equal('10m');
+      expect(api.getMetricsWindow()).to.equal('1m');
     });
 
     it('changes the metricsWindow on valid window input', () => {
-      expect(api.getMetricsWindow()).to.equal('10m');
+      expect(api.getMetricsWindow()).to.equal('1m');
 
       api.setMetricsWindow('10s');
       expect(api.getMetricsWindow()).to.equal('10s');
@@ -47,13 +47,16 @@ describe('ApiHelpers', () => {
 
       api.setMetricsWindow('10m');
       expect(api.getMetricsWindow()).to.equal('10m');
+
+      api.setMetricsWindow('1h');
+      expect(api.getMetricsWindow()).to.equal('1h');
     });
 
     it('does not change metricsWindow on invalid window size', () => {
-      expect(api.getMetricsWindow()).to.equal('10m');
+      expect(api.getMetricsWindow()).to.equal('1m');
 
       api.setMetricsWindow('10h');
-      expect(api.getMetricsWindow()).to.equal('10m');
+      expect(api.getMetricsWindow()).to.equal('1m');
     });
   });
 
@@ -243,21 +246,21 @@ describe('ApiHelpers', () => {
       api.fetchMetrics('/my/path');
 
       expect(fetchStub.calledOnce).to.be.true;
-      expect(fetchStub.args[0][0]).to.equal('/the/prefix/my/path?window=10m');
+      expect(fetchStub.args[0][0]).to.equal('/the/prefix/my/path?window=1m');
     });
 
     it('adds a ?window= if metricsWindow is the only param', () => {
       api.fetchMetrics('/api/stat');
 
       expect(fetchStub.calledOnce).to.be.true;
-      expect(fetchStub.args[0][0]).to.equal('/api/stat?window=10m');
+      expect(fetchStub.args[0][0]).to.equal('/api/stat?window=1m');
     });
 
     it('adds &window= if metricsWindow is not the only param', () => {
       api.fetchMetrics('/api/stat?foo=3&bar="me"');
 
       expect(fetchStub.calledOnce).to.be.true;
-      expect(fetchStub.args[0][0]).to.equal('/api/stat?foo=3&bar="me"&window=10m');
+      expect(fetchStub.args[0][0]).to.equal('/api/stat?foo=3&bar="me"&window=1m');
     });
 
     it('does not add another &window= if there is already a window param', () => {

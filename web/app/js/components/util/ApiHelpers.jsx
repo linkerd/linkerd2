@@ -37,7 +37,7 @@ const makeCancelable = (promise, onSuccess) => {
   };
 };
 
-export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '10m') => {
+export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   let metricsWindow = defaultMetricsWindow;
   const podsPath = `/api/pods`;
 

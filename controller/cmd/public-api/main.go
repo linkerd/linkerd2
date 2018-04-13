@@ -13,7 +13,6 @@ import (
 	"github.com/runconduit/conduit/controller/api/public"
 	"github.com/runconduit/conduit/controller/k8s"
 	"github.com/runconduit/conduit/controller/tap"
-	"github.com/runconduit/conduit/controller/telemetry"
 	"github.com/runconduit/conduit/controller/util"
 	"github.com/runconduit/conduit/pkg/version"
 	log "github.com/sirupsen/logrus"
@@ -26,7 +25,6 @@ func main() {
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
 	prometheusUrl := flag.String("prometheus-url", "http://127.0.0.1:9090", "prometheus url")
 	metricsAddr := flag.String("metrics-addr", ":9995", "address to serve scrapable metrics on")
-	telemetryAddr := flag.String("telemetry-addr", "127.0.0.1:8087", "address of telemetry service")
 	tapAddr := flag.String("tap-addr", "127.0.0.1:8088", "address of tap service")
 	controllerNamespace := flag.String("controller-namespace", "conduit", "namespace in which Conduit is installed")
 	ignoredNamespaces := flag.String("ignore-namespaces", "kube-system", "comma separated list of namespaces to not list pods from")
@@ -45,12 +43,6 @@ func main() {
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-
-	telemetryClient, telemetryConn, err := telemetry.NewClient(*telemetryAddr)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-	defer telemetryConn.Close()
 
 	tapClient, tapConn, err := tap.NewClient(*tapAddr)
 	if err != nil {
@@ -84,7 +76,6 @@ func main() {
 	server := public.NewServer(
 		*addr,
 		prometheusClient,
-		telemetryClient,
 		tapClient,
 		deployInformer.Lister(),
 		replicaSetInformer.Lister(),

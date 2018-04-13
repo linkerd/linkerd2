@@ -4,11 +4,11 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"testing"
-	"time"
 
 	"github.com/golang/protobuf/proto"
 	pb "github.com/runconduit/conduit/controller/gen/public"
@@ -79,31 +79,41 @@ func TestFromByteStreamToProtocolBuffers(t *testing.T) {
 	})
 
 	t.Run("Correctly marshalls a large byte array", func(t *testing.T) {
-		series := pb.MetricSeries{
-			Name:       pb.MetricName_REQUEST_RATE,
-			Metadata:   &pb.MetricMetadata{},
-			Datapoints: make([]*pb.MetricDatapoint, 0),
+		rows := make([]*pb.StatTable_PodGroup_Row, 0)
+
+		numberOfResourcesInMessage := 400
+		for i := 0; i < numberOfResourcesInMessage; i++ {
+			rows = append(rows, &pb.StatTable_PodGroup_Row{
+				Resource: &pb.Resource{
+					Namespace: "default",
+					Name:      fmt.Sprintf("deployment%d", i),
+					Type:      "deployment",
+				},
+			})
 		}
 
-		numberOfDatapointsInMessage := 400
-		for i := 0; i < numberOfDatapointsInMessage; i++ {
-			datapoint := pb.MetricDatapoint{
-				Value:       &pb.MetricValue{Value: &pb.MetricValue_Gauge{Gauge: float64(i)}},
-				TimestampMs: time.Now().UnixNano() / int64(time.Millisecond),
-			}
-			series.Datapoints = append(series.Datapoints, &datapoint)
+		msg := pb.StatSummaryResponse{
+			Response: &pb.StatSummaryResponse_Ok_{
+				Ok: &pb.StatSummaryResponse_Ok{
+					StatTables: []*pb.StatTable{
+						&pb.StatTable{
+							Table: &pb.StatTable_PodGroup_{
+								PodGroup: &pb.StatTable_PodGroup{
+									Rows: rows,
+								},
+							},
+						},
+					},
+				},
+			},
 		}
-		reader := bufferedReader(t, &series)
 
-		protobufMessageToBeFilledWithData := &pb.MetricSeries{}
+		reader := bufferedReader(t, &msg)
+
+		protobufMessageToBeFilledWithData := &pb.StatSummaryResponse{}
 		err := fromByteStreamToProtocolBuffers(reader, protobufMessageToBeFilledWithData)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
-		}
-
-		actualNumberOfDatapointsMarshalled := len(protobufMessageToBeFilledWithData.Datapoints)
-		if actualNumberOfDatapointsMarshalled != numberOfDatapointsInMessage {
-			t.Fatalf("Expected marshalling to return [%d] datapoints, but got [%d]", numberOfDatapointsInMessage, actualNumberOfDatapointsMarshalled)
 		}
 	})
 
@@ -133,7 +143,7 @@ func TestFromByteStreamToProtocolBuffers(t *testing.T) {
 
 		reader := bufferedReader(t, versionInfo)
 
-		protobufMessageToBeFilledWithData := &pb.MetricSeries{}
+		protobufMessageToBeFilledWithData := &pb.StatSummaryResponse{}
 		err := fromByteStreamToProtocolBuffers(reader, protobufMessageToBeFilledWithData)
 		if err == nil {
 			t.Fatal("Expecting error, got nothing")

@@ -16,7 +16,6 @@ import (
 func main() {
 	addr := flag.String("addr", ":8086", "address to serve on")
 	metricsAddr := flag.String("metrics-addr", ":9996", "address to serve scrapable metrics on")
-	telemetryAddr := flag.String("telemetry-addr", "127.0.0.1:8087", "address of telemetry service")
 	destinationAddr := flag.String("destination-addr", "127.0.0.1:8089", "address of destination service")
 	logLevel := flag.String("log-level", log.InfoLevel.String(), "log level, must be one of: panic, fatal, error, warn, info, debug")
 	printVersion := version.VersionFlag()
@@ -34,19 +33,13 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	telemetryClient, conn, err := proxy.NewTelemetryClient(*telemetryAddr)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer conn.Close()
-
 	destinationClient, conn, err := destination.NewClient(*destinationAddr)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer conn.Close()
 
-	server, lis, err := proxy.NewServer(*addr, telemetryClient, destinationClient)
+	server, lis, err := proxy.NewServer(*addr, destinationClient)
 	if err != nil {
 		log.Fatal(err)
 	}

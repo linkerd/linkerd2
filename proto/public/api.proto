@@ -7,77 +7,11 @@ import "google/protobuf/duration.proto";
 import "common/common.proto";
 import "common/healthcheck/healthcheck.proto";
 
-enum MetricName {
-  REQUEST_RATE = 0;
-  LATENCY = 1;
-  SUCCESS_RATE = 2;
-}
-
 enum TimeWindow {
   TEN_SEC = 0;
   ONE_MIN = 1;
   TEN_MIN = 2;
   ONE_HOUR = 3;
-}
-
-enum AggregationType {
-  TARGET_DEPLOY = 0;
-  SOURCE_DEPLOY = 1;
-  MESH = 2;
-}
-
-enum HistogramLabel {
-  MIN = 0;
-  P50 = 1;
-  P95 = 2;
-  P99 = 3;
-  MAX = 4;
-}
-
-message HistogramValue {
-  HistogramLabel label = 1;
-  int64 value = 2;
-}
-
-message Histogram {
-  repeated HistogramValue values = 1;
-}
-
-message MetricValue {
-  oneof value {
-    int64 counter = 1;
-    double gauge = 2;
-    Histogram histogram = 3;
-  }
-}
-
-message MetricDatapoint {
-  MetricValue value = 1;
-  int64 timestamp_ms = 2;
-}
-
-message MetricSeries {
-  MetricName name = 1;
-  MetricMetadata metadata = 2;
-  repeated MetricDatapoint datapoints = 3;
-}
-
-message MetricMetadata {
-  string targetDeploy = 1;
-  string sourceDeploy = 2;
-  string component = 3;
-}
-
-message MetricResponse {
-  repeated MetricSeries metrics = 1;
-}
-
-message MetricRequest {
-  repeated MetricName metrics = 1;
-  TimeWindow window = 2;
-  AggregationType groupBy = 3;
-  MetricMetadata filterBy = 4;
-  bool summarize = 5;
 }
 
 message Empty {}
@@ -190,7 +124,6 @@ message StatTable {
 }
 
 service Api {
-  rpc Stat(MetricRequest) returns (MetricResponse) {}
   rpc StatSummary(StatSummaryRequest) returns (StatSummaryResponse) {}
   rpc Version(Empty) returns (VersionInfo) {}
   rpc ListPods(Empty) returns (ListPodsResponse) {}

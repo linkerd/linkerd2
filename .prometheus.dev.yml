@@ -12,7 +12,6 @@ scrape_configs:
       - 'proxy-api:9996'
       - 'public-api:9995'
       - 'tap:9998'
-      - 'telemetry:9997'
       - 'web:9994'
     relabel_configs:
     - action: labelmap
