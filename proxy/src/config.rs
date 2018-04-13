@@ -56,9 +56,7 @@ pub struct Config {
     /// Timeout after which to cancel binding a request.
     pub bind_timeout: Duration,
 
-    pub pod_name: Option<String>,
     pub pod_namespace: String,
-    pub node_name: Option<String>,
 }
 
 /// Configuration settings for binding a listener.
@@ -139,8 +137,6 @@ pub const ENV_BIND_TIMEOUT: &str = "CONDUIT_PROXY_BIND_TIMEOUT";
 pub const ENV_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION: &str = "CONDUIT_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION";
 pub const ENV_OUTBOUND_PORTS_DISABLE_PROTOCOL_DETECTION: &str = "CONDUIT_PROXY_OUTBOUND_PORTS_DISABLE_PROTOCOL_DETECTION";
 
-const ENV_NODE_NAME: &str = "CONDUIT_PROXY_NODE_NAME";
-const ENV_POD_NAME: &str = "CONDUIT_PROXY_POD_NAME";
 pub const ENV_POD_NAMESPACE: &str = "CONDUIT_PROXY_POD_NAMESPACE";
 
 pub const ENV_CONTROL_URL: &str = "CONDUIT_PROXY_CONTROL_URL";
@@ -186,7 +182,6 @@ impl<'a> TryFrom<&'a Strings> for Config {
         let bind_timeout = parse(strings, ENV_BIND_TIMEOUT, parse_number);
         let resolv_conf_path = strings.get(ENV_RESOLV_CONF);
         let event_buffer_capacity = parse(strings, ENV_EVENT_BUFFER_CAPACITY, parse_number);
-        let pod_name = strings.get(ENV_POD_NAME);
         let pod_namespace = strings.get(ENV_POD_NAMESPACE).and_then(|maybe_value| {
             // There cannot be a default pod namespace, and the pod namespace is required.
             maybe_value.ok_or_else(|| {
@@ -194,7 +189,6 @@ impl<'a> TryFrom<&'a Strings> for Config {
                 Error::InvalidEnvVar
             })
         });
-        let node_name = strings.get(ENV_NODE_NAME);
 
         // There is no default controller URL because a default would make it
         // too easy to connect to the wrong controller, which would be dangerous.
@@ -244,9 +238,7 @@ impl<'a> TryFrom<&'a Strings> for Config {
             event_buffer_capacity: event_buffer_capacity?.unwrap_or(DEFAULT_EVENT_BUFFER_CAPACITY),
             bind_timeout:
                 Duration::from_millis(bind_timeout?.unwrap_or(DEFAULT_BIND_TIMEOUT_MS)),
-            pod_name: pod_name?,
             pod_namespace: pod_namespace?,
-            node_name: node_name?,
         })
     }
 }
