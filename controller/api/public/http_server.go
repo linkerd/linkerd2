@@ -15,7 +15,7 @@ import (
 	"github.com/runconduit/conduit/controller/util"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/metadata"
-	applisters "k8s.io/client-go/listers/apps/v1"
+	applisters "k8s.io/client-go/listers/apps/v1beta2"
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
 

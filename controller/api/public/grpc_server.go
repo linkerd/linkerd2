@@ -16,7 +16,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	k8sV1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	applisters "k8s.io/client-go/listers/apps/v1"
+	applisters "k8s.io/client-go/listers/apps/v1beta2"
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
 

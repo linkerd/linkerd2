@@ -57,10 +57,10 @@ func main() {
 
 	sharedInformers := informers.NewSharedInformerFactory(k8sClient, 10*time.Minute)
 
-	deployInformer := sharedInformers.Apps().V1().Deployments()
+	deployInformer := sharedInformers.Apps().V1beta2().Deployments()
 	deployInformerSynced := deployInformer.Informer().HasSynced
 
-	replicaSetInformer := sharedInformers.Apps().V1().ReplicaSets()
+	replicaSetInformer := sharedInformers.Apps().V1beta2().ReplicaSets()
 	replicaSetInformerSynced := replicaSetInformer.Informer().HasSynced
 
 	podInformer := sharedInformers.Core().V1().Pods()
@@ -85,7 +85,7 @@ func main() {
 	)
 
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
 
 		log.Infof("waiting for caches to sync")
