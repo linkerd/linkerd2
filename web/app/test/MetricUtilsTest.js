@@ -1,71 +1,34 @@
-import _ from 'lodash';
 import deployRollupFixtures from './fixtures/deployRollup.json';
 import { expect } from 'chai';
 import multiDeployRollupFixtures from './fixtures/multiDeployRollup.json';
-import timeseriesFixtures from './fixtures/singleDeployTs.json';
-import { processRollupMetrics, processTimeseriesMetrics } from '../js/components/util/MetricUtils.js';
+import { processRollupMetrics } from '../js/components/util/MetricUtils.js';
 
 describe('MetricUtils', () => {
-  describe('processTsWithLatencyBreakdown', () => {
-    it('Converts raw metrics to plottable timeseries data', () => {
-      let deployName = 'test/potato3';
-      let histograms = ['P50', 'P95', 'P99'];
-      let result = processTimeseriesMetrics(timeseriesFixtures.metrics, "targetDeploy")[deployName];
-
-      _.each(histograms, quantile => {
-        _.each(result["LATENCY"][quantile], datum => {
-          expect(datum.timestamp).not.to.be.empty;
-          expect(datum.value).not.to.be.empty;
-          expect(datum.label).to.equal(quantile);
-        });
-      });
-
-      _.each(result["REQUEST_RATE"], datum => {
-        expect(datum.timestamp).not.to.be.empty;
-        expect(datum.value).to.exist;
-      });
-
-      _.each(result["SUCCESS_RATE"], datum => {
-        expect(datum.timestamp).not.to.be.empty;
-        expect(datum.value).to.exist;
-      });
-    });
-  });
-
-  describe('processMetrics', () => {
-    it('Extracts the values from the nested raw rollup response', () => {
-      let result = processRollupMetrics(deployRollupFixtures.metrics, "targetDeploy");
+  describe('processRollupMetrics', () => {
+    it('Extracts deploy metrics from a single response', () => {
+      let result = processRollupMetrics(deployRollupFixtures);
       let expectedResult = [
         {
-          name: 'test/potato3',
-          requestRate: 6.1,
-          successRate: 0.3770491803278688,
+          name: 'emojivoto/voting',
+          requestRate: 2.5,
+          successRate: 0.9,
           latency: {
-            P95: 953,
-            P99: 990,
-            P50: 537
-          },
-          added: true
+            P50: 1,
+            P95: 2,
+            P99: 7
+          }
         }
       ];
       expect(result).to.deep.equal(expectedResult);
     });
 
-    it('Extracts the specified entity metrics in the rollup', () => {
-      let helloResult = processRollupMetrics(multiDeployRollupFixtures.metrics, "targetDeploy");
-      let helloPodResult = processRollupMetrics(multiDeployRollupFixtures.metrics, "targetPod");
-      let meshResult = processRollupMetrics(multiDeployRollupFixtures.metrics, "component");
-      let pathResult = processRollupMetrics(multiDeployRollupFixtures.metrics, "path");
-
-      expect(helloResult).to.have.length(1);
-      expect(helloPodResult).to.have.length(1);
-      expect(meshResult).to.have.length(1);
-      expect(pathResult).to.have.length(1);
-
-      expect(helloResult[0].name).to.equal("default/hello");
-      expect(helloPodResult[0].name).to.equal("default/hello-12f3f-1e2aa");
-      expect(meshResult[0].name).to.equal("mesh");
-      expect(pathResult[0].name).to.equal("/Get/Hello");
+    it('Extracts and sorts multiple deploys from a single response', () => {
+      let result = processRollupMetrics(multiDeployRollupFixtures);
+      expect(result).to.have.length(4);
+      expect(result[0].name).to.equal("emojivoto/emoji");
+      expect(result[1].name).to.equal("emojivoto/vote-bot");
+      expect(result[2].name).to.equal("emojivoto/voting");
+      expect(result[3].name).to.equal("emojivoto/web");
     });
   });
 });

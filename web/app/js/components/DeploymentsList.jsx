@@ -5,7 +5,7 @@ import ErrorBanner from './ErrorBanner.jsx';
 import MetricsTable from './MetricsTable.jsx';
 import PageHeader from './PageHeader.jsx';
 import React from 'react';
-import { emptyMetric, getPodsByDeployment, processRollupMetrics } from './util/MetricUtils.js';
+import { getPodsByDeployment, processRollupMetrics } from './util/MetricUtils.js';
 import './../../css/deployments.css';
 import 'whatwg-fetch';
 
@@ -35,15 +35,14 @@ export default class DeploymentsList extends React.Component {
     this.api.cancelCurrentRequests();
   }
 
-  addDeploysWithNoMetrics(deploys, metrics) {
-    // also display deployments which have not been added to the service mesh
-    // (and therefore have no associated metrics)
-    let newMetrics = [];
-    let metricsByName = _.groupBy(metrics, 'name');
-    _.each(deploys, data => {
-      newMetrics.push(_.get(metricsByName, [data.name, 0], emptyMetric(data.name, data.added)));
-    });
-    return newMetrics;
+  filterDeploys(deploys, metrics) {
+    let deploysByName = _.keyBy(deploys, 'name');
+    return _.compact(_.map(metrics, metric => {
+      if (_.has(deploysByName, metric.name)) {
+        metric.added = deploysByName[metric.name].added;
+        return metric;
+      }
+    }));
   }
 
   loadFromServer() {
@@ -61,8 +60,8 @@ export default class DeploymentsList extends React.Component {
     this.serverPromise = Promise.all(this.api.getCurrentPromises())
       .then(([rollup, p]) => {
         let poByDeploy = getPodsByDeployment(p.pods);
-        let meshDeploys = processRollupMetrics(rollup.metrics, "targetDeploy");
-        let combinedMetrics = this.addDeploysWithNoMetrics(poByDeploy, meshDeploys);
+        let meshDeploys = processRollupMetrics(rollup);
+        let combinedMetrics = this.filterDeploys(poByDeploy, meshDeploys);
 
         this.setState({
           metrics: combinedMetrics,

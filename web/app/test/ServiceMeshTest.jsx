@@ -79,7 +79,6 @@ describe('ServiceMesh', () => {
       component.update();
       expect(component.find("ServiceMesh")).to.have.length(1);
       expect(component.find("ConduitSpinner")).to.have.length(0);
-      expect(component.find("DeploymentSummary")).to.have.length(3);
     });
   });
 

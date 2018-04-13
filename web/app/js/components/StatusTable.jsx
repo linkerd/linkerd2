@@ -44,10 +44,8 @@ const columns = {
     return {
       title: "Deployment",
       key: "name",
-      render: row => (<React.Fragment>
-        {shouldLink ? <ConduitLink to={`/deployment?deploy=${row.name}`}>{row.name}</ConduitLink> : row.name}
-        {row.added ? <span>&nbsp;<GrafanaLink name={row.name} size={16} conduitLink={ConduitLink} /></span> : null}
-      </React.Fragment>)
+      render: row => shouldLink && row.added ?
+        <GrafanaLink name={row.name} conduitLink={ConduitLink} /> : row.name
     };
   },
   pods: {

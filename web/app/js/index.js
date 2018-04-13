@@ -1,5 +1,4 @@
 import { ApiHelpers } from './components/util/ApiHelpers.jsx';
-import DeploymentDetail from './components/DeploymentDetail.jsx';
 import DeploymentsList from './components/DeploymentsList.jsx';
 import { Layout } from 'antd';
 import NoMatch from './components/NoMatch.jsx';
@@ -47,7 +46,6 @@ let applicationHtml = hideSidebar => (
               <Redirect exact from={`${pathPrefix}/`} to={`${pathPrefix}/servicemesh`} />
               <Route path={`${pathPrefix}/servicemesh`} render={() => <ServiceMesh api={api} releaseVersion={appData.releaseVersion} controllerNamespace={appData.controllerNamespace} />} />
               <Route path={`${pathPrefix}/deployments`} render={() => <DeploymentsList api={api} />} />
-              <Route path={`${pathPrefix}/deployment`} render={props => <DeploymentDetail api={api} location={props.location} />} />
               <Route component={NoMatch} />
             </Switch>
           </div>
