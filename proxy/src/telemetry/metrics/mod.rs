@@ -46,21 +46,27 @@ use indexmap::{IndexMap};
 use ctx;
 use telemetry::event::Event;
 
+pub mod histogram;
 mod labels;
 mod latency;
 
+use self::histogram::Histogram;
 use self::labels::{RequestLabels, ResponseLabels};
-use self::latency::{BUCKET_BOUNDS, Histogram};
+use self::latency::{BUCKET_BOUNDS, Histogram as LatencyHistogram};
 pub use self::labels::{DstLabels, Labeled};
+
+type LatencyMetric<L> = Metric<LatencyHistogram, Arc<L>>;
+
+type CounterMetric<L> = Metric<Counter, Arc<L>>;
 
 #[derive(Debug, Clone)]
 struct Metrics {
-    request_total: Metric<Counter, Arc<RequestLabels>>,
-    request_duration: Metric<Histogram, Arc<RequestLabels>>,
+    request_total: CounterMetric<RequestLabels>,
+    request_duration: LatencyMetric<RequestLabels>,
 
-    response_total: Metric<Counter, Arc<ResponseLabels>>,
-    response_duration: Metric<Histogram, Arc<ResponseLabels>>,
-    response_latency: Metric<Histogram, Arc<ResponseLabels>>,
+    response_total: CounterMetric<ResponseLabels>,
+    response_duration: LatencyMetric<ResponseLabels>,
+    response_latency: LatencyMetric<ResponseLabels>,
 
     start_time: u64,
 }
@@ -136,7 +142,7 @@ impl Metrics {
             "A counter of the number of requests the proxy has received.",
         );
 
-        let request_duration = Metric::<Histogram, Arc<RequestLabels>>::new(
+        let request_duration = LatencyMetric::<RequestLabels>::new(
             "request_duration_ms",
             "A histogram of the duration of a request. This is measured from \
              when the request headers are received to when the request \
@@ -148,14 +154,14 @@ impl Metrics {
             "A counter of the number of responses the proxy has received.",
         );
 
-        let response_duration = Metric::<Histogram, Arc<ResponseLabels>>::new(
+        let response_duration = LatencyMetric::<ResponseLabels>::new(
             "response_duration_ms",
             "A histogram of the duration of a response. This is measured from \
              when the response headers are received to when the response \
              stream has completed.",
         );
 
-        let response_latency = Metric::<Histogram, Arc<ResponseLabels>>::new(
+        let response_latency = LatencyMetric::<ResponseLabels>::new(
             "response_latency_ms",
             "A histogram of the total latency of a response. This is measured \
             from when the request headers are received to when the response \
@@ -182,7 +188,7 @@ impl Metrics {
 
     fn request_duration(&mut self,
                         labels: &Arc<RequestLabels>)
-                        -> &mut Histogram {
+                        -> &mut LatencyHistogram {
         self.request_duration.values
             .entry(labels.clone())
             .or_insert_with(Default::default)
@@ -190,7 +196,7 @@ impl Metrics {
 
     fn response_duration(&mut self,
                          labels: &Arc<ResponseLabels>)
-                         -> &mut Histogram {
+                         -> &mut LatencyHistogram {
         self.response_duration.values
             .entry(labels.clone())
             .or_insert_with(Default::default)
@@ -198,7 +204,7 @@ impl Metrics {
 
     fn response_latency(&mut self,
                         labels: &Arc<ResponseLabels>)
-                        -> &mut Histogram {
+                        -> &mut LatencyHistogram {
         self.response_latency.values
             .entry(labels.clone())
             .or_insert_with(Default::default)
@@ -298,7 +304,9 @@ where
     }
 }
 
-impl<L> fmt::Display for Metric<Histogram, L> where
+impl<'b, O, L> fmt::Display for Metric<Histogram<'b, O>, L>
+where
+    O: histogram::FormatSum,
     L: fmt::Display,
     L: Hash + Eq,
 {
@@ -339,7 +347,7 @@ impl<L> fmt::Display for Metric<Histogram, L> where
                 name = self.name,
                 labels = labels,
                 count = total_count,
-                sum = histogram.sum_in_ms(),
+                sum = O::format_sum(histogram),
             )?;
         }
 
