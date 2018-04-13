@@ -24,6 +24,7 @@ type (
 	grpcServer struct {
 		prometheusAPI       promv1.API
 		tapClient           tapPb.TapClient
+		namespaceLister     corelisters.NamespaceLister
 		deployLister        applisters.DeploymentLister
 		replicaSetLister    applisters.ReplicaSetLister
 		podLister           corelisters.PodLister
@@ -43,6 +44,7 @@ const (
 func newGrpcServer(
 	promAPI promv1.API,
 	tapClient tapPb.TapClient,
+	namespaceLister corelisters.NamespaceLister,
 	deployLister applisters.DeploymentLister,
 	replicaSetLister applisters.ReplicaSetLister,
 	podLister corelisters.PodLister,
@@ -52,6 +54,7 @@ func newGrpcServer(
 	return &grpcServer{
 		prometheusAPI:       promAPI,
 		tapClient:           tapClient,
+		namespaceLister:     namespaceLister,
 		deployLister:        deployLister,
 		replicaSetLister:    replicaSetLister,
 		podLister:           podLister,

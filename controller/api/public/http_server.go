@@ -199,6 +199,7 @@ func NewServer(
 	addr string,
 	prometheusClient promApi.Client,
 	tapClient tapPb.TapClient,
+	namespaceLister corelisters.NamespaceLister,
 	deployLister applisters.DeploymentLister,
 	replicaSetLister applisters.ReplicaSetLister,
 	podLister corelisters.PodLister,
@@ -209,6 +210,7 @@ func NewServer(
 		grpcServer: newGrpcServer(
 			promv1.NewAPI(prometheusClient),
 			tapClient,
+			namespaceLister,
 			deployLister,
 			replicaSetLister,
 			podLister,

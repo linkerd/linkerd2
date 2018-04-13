@@ -10,6 +10,7 @@ import (
 
 const (
 	KubernetesDeployments = "deployments"
+	KubernetesNamespaces  = "namespaces"
 	KubernetesPods        = "pods"
 )
 
@@ -58,6 +59,8 @@ func CanonicalKubernetesNameFromFriendlyName(friendlyName string) (string, error
 	switch friendlyName {
 	case "deploy", "deployment", "deployments":
 		return KubernetesDeployments, nil
+	case "ns", "namespace", "namespaces":
+		return KubernetesNamespaces, nil
 	case "po", "pod", "pods":
 		return KubernetesPods, nil
 	}
