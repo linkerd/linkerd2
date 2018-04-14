@@ -16,11 +16,11 @@
   "gnetId": null,
   "graphTooltip": 1,
   "id": null,
-  "iteration": 1523047156373,
+  "iteration": 1523660761961,
   "links": [],
   "panels": [
     {
-      "content": "<div>\n  <img src=\"https://conduit.io/favicon.png\" style=\"baseline; height:40px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">$deployment</span>\n</div>",
+      "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://conduit.io/favicon.png\" style=\"height:32px;\"/>&nbsp;\n  <span style=\"font-size: 32px\">deploy/$deployment</span>\n</div>",
       "gridPos": {
         "h": 2,
         "w": 24,
@@ -33,90 +33,6 @@
       "title": "",
       "transparent": true,
       "type": "text"
-    },
-    {
-      "cacheTimeout": null,
-      "colorBackground": false,
-      "colorValue": false,
-      "colors": [
-        "#299c46",
-        "rgba(237, 129, 40, 0.89)",
-        "#d44a3a"
-      ],
-      "datasource": "prometheus",
-      "decimals": null,
-      "format": "none",
-      "gauge": {
-        "maxValue": 100,
-        "minValue": 0,
-        "show": false,
-        "thresholdLabels": false,
-        "thresholdMarkers": true
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 5,
-        "x": 0,
-        "y": 2
-      },
-      "id": 4,
-      "interval": null,
-      "links": [],
-      "mappingType": 1,
-      "mappingTypes": [
-        {
-          "name": "value to text",
-          "value": 1
-        },
-        {
-          "name": "range to text",
-          "value": 2
-        }
-      ],
-      "maxDataPoints": 100,
-      "nullPointMode": "connected",
-      "nullText": null,
-      "postfix": " RPS",
-      "postfixFontSize": "100%",
-      "prefix": "",
-      "prefixFontSize": "50%",
-      "rangeMaps": [
-        {
-          "from": "null",
-          "text": "N/A",
-          "to": "null"
-        }
-      ],
-      "sparkline": {
-        "fillColor": "rgba(31, 118, 189, 0.18)",
-        "full": false,
-        "lineColor": "rgb(31, 120, 193)",
-        "show": true
-      },
-      "tableColumn": "",
-      "targets": [
-        {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[20s]))",
-          "format": "time_series",
-          "instant": false,
-          "intervalFactor": 1,
-          "legendFormat": "",
-          "refId": "A"
-        }
-      ],
-      "thresholds": "",
-      "title": "Request rate",
-      "transparent": true,
-      "type": "singlestat",
-      "valueFontSize": "100%",
-      "valueMaps": [
-        {
-          "op": "=",
-          "text": "N/A",
-          "value": "null"
-        }
-      ],
-      "valueName": "current"
     },
     {
       "cacheTimeout": null,
@@ -138,9 +54,9 @@
         "thresholdMarkers": true
       },
       "gridPos": {
-        "h": 3,
-        "w": 4,
-        "x": 5,
+        "h": 4,
+        "w": 8,
+        "x": 0,
         "y": 2
       },
       "id": 5,
@@ -173,7 +89,7 @@
       ],
       "sparkline": {
         "fillColor": "rgba(31, 118, 189, 0.18)",
-        "full": false,
+        "full": true,
         "lineColor": "rgb(31, 120, 193)",
         "show": true
       },
@@ -189,7 +105,7 @@
         }
       ],
       "thresholds": "0.9,.99",
-      "title": "Success rate",
+      "title": "SUCCESS RATE",
       "transparent": true,
       "type": "singlestat",
       "valueFontSize": "80%",
@@ -213,7 +129,7 @@
       ],
       "datasource": "prometheus",
       "decimals": null,
-      "format": "ms",
+      "format": "none",
       "gauge": {
         "maxValue": 100,
         "minValue": 0,
@@ -222,12 +138,12 @@
         "thresholdMarkers": true
       },
       "gridPos": {
-        "h": 3,
-        "w": 5,
-        "x": 9,
+        "h": 4,
+        "w": 8,
+        "x": 8,
         "y": 2
       },
-      "id": 6,
+      "id": 4,
       "interval": null,
       "links": [],
       "mappingType": 1,
@@ -244,7 +160,7 @@
       "maxDataPoints": 100,
       "nullPointMode": "connected",
       "nullText": null,
-      "postfix": "",
+      "postfix": " RPS",
       "postfixFontSize": "100%",
       "prefix": "",
       "prefixFontSize": "50%",
@@ -257,14 +173,14 @@
       ],
       "sparkline": {
         "fillColor": "rgba(31, 118, 189, 0.18)",
-        "full": false,
+        "full": true,
         "lineColor": "rgb(31, 120, 193)",
         "show": true
       },
       "tableColumn": "",
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[20s])) by (le))",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[20s]))",
           "format": "time_series",
           "instant": false,
           "intervalFactor": 1,
@@ -273,175 +189,7 @@
         }
       ],
       "thresholds": "",
-      "title": "P50 latency",
-      "transparent": true,
-      "type": "singlestat",
-      "valueFontSize": "100%",
-      "valueMaps": [
-        {
-          "op": "=",
-          "text": "N/A",
-          "value": "null"
-        }
-      ],
-      "valueName": "avg"
-    },
-    {
-      "cacheTimeout": null,
-      "colorBackground": false,
-      "colorValue": false,
-      "colors": [
-        "#299c46",
-        "rgba(237, 129, 40, 0.89)",
-        "#d44a3a"
-      ],
-      "datasource": "prometheus",
-      "decimals": null,
-      "format": "ms",
-      "gauge": {
-        "maxValue": 100,
-        "minValue": 0,
-        "show": false,
-        "thresholdLabels": false,
-        "thresholdMarkers": true
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 5,
-        "x": 14,
-        "y": 2
-      },
-      "id": 7,
-      "interval": null,
-      "links": [],
-      "mappingType": 1,
-      "mappingTypes": [
-        {
-          "name": "value to text",
-          "value": 1
-        },
-        {
-          "name": "range to text",
-          "value": 2
-        }
-      ],
-      "maxDataPoints": 100,
-      "nullPointMode": "connected",
-      "nullText": null,
-      "postfix": "",
-      "postfixFontSize": "100%",
-      "prefix": "",
-      "prefixFontSize": "50%",
-      "rangeMaps": [
-        {
-          "from": "null",
-          "text": "N/A",
-          "to": "null"
-        }
-      ],
-      "sparkline": {
-        "fillColor": "rgba(31, 118, 189, 0.18)",
-        "full": false,
-        "lineColor": "rgb(31, 120, 193)",
-        "show": true
-      },
-      "tableColumn": "",
-      "targets": [
-        {
-          "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[20s])) by (le))",
-          "format": "time_series",
-          "instant": false,
-          "intervalFactor": 1,
-          "legendFormat": "",
-          "refId": "A"
-        }
-      ],
-      "thresholds": "",
-      "title": "P95 latency",
-      "transparent": true,
-      "type": "singlestat",
-      "valueFontSize": "100%",
-      "valueMaps": [
-        {
-          "op": "=",
-          "text": "N/A",
-          "value": "null"
-        }
-      ],
-      "valueName": "current"
-    },
-    {
-      "cacheTimeout": null,
-      "colorBackground": false,
-      "colorValue": false,
-      "colors": [
-        "#299c46",
-        "rgba(237, 129, 40, 0.89)",
-        "#d44a3a"
-      ],
-      "datasource": "prometheus",
-      "decimals": null,
-      "format": "ms",
-      "gauge": {
-        "maxValue": 100,
-        "minValue": 0,
-        "show": false,
-        "thresholdLabels": false,
-        "thresholdMarkers": true
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 5,
-        "x": 19,
-        "y": 2
-      },
-      "id": 8,
-      "interval": null,
-      "links": [],
-      "mappingType": 1,
-      "mappingTypes": [
-        {
-          "name": "value to text",
-          "value": 1
-        },
-        {
-          "name": "range to text",
-          "value": 2
-        }
-      ],
-      "maxDataPoints": 100,
-      "nullPointMode": "connected",
-      "nullText": null,
-      "postfix": "",
-      "postfixFontSize": "100%",
-      "prefix": "",
-      "prefixFontSize": "50%",
-      "rangeMaps": [
-        {
-          "from": "null",
-          "text": "N/A",
-          "to": "null"
-        }
-      ],
-      "sparkline": {
-        "fillColor": "rgba(31, 118, 189, 0.18)",
-        "full": false,
-        "lineColor": "rgb(31, 120, 193)",
-        "show": true
-      },
-      "tableColumn": "",
-      "targets": [
-        {
-          "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[20s])) by (le))",
-          "format": "time_series",
-          "instant": false,
-          "intervalFactor": 1,
-          "legendFormat": "",
-          "refId": "A"
-        }
-      ],
-      "thresholds": "",
-      "title": "P99 latency",
+      "title": "REQUEST RATE",
       "transparent": true,
       "type": "singlestat",
       "valueFontSize": "100%",
@@ -474,10 +222,10 @@
         "thresholdMarkers": true
       },
       "gridPos": {
-        "h": 2,
-        "w": 12,
-        "x": 0,
-        "y": 5
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 2
       },
       "id": 11,
       "interval": null,
@@ -496,9 +244,9 @@
       "maxDataPoints": 100,
       "nullPointMode": "connected",
       "nullText": null,
-      "postfix": " inbound deployments",
+      "postfix": "",
       "postfixFontSize": "100%",
-      "prefix": "«",
+      "prefix": "",
       "prefixFontSize": "100%",
       "rangeMaps": [
         {
@@ -524,7 +272,7 @@
         }
       ],
       "thresholds": "",
-      "title": "",
+      "title": "INBOUND DEPLOYMENTS",
       "transparent": true,
       "type": "singlestat",
       "valueFontSize": "100%",
@@ -556,10 +304,10 @@
         "thresholdMarkers": true
       },
       "gridPos": {
-        "h": 2,
-        "w": 12,
-        "x": 12,
-        "y": 5
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 2
       },
       "id": 15,
       "interval": null,
@@ -578,7 +326,7 @@
       "maxDataPoints": 100,
       "nullPointMode": "connected",
       "nullText": null,
-      "postfix": " outbound deployments »",
+      "postfix": "",
       "postfixFontSize": "100%",
       "prefix": "",
       "prefixFontSize": "50%",
@@ -606,7 +354,7 @@
         }
       ],
       "thresholds": "",
-      "title": "",
+      "title": "OUTBOUND DEPLOYMENTS",
       "transparent": true,
       "type": "singlestat",
       "valueFontSize": "100%",
@@ -620,6 +368,21 @@
       "valueName": "current"
     },
     {
+      "content": "<div class=\"text-center dashboard-header\">\n  <span>INBOUND TRAFFIC</span>\n</div>",
+      "gridPos": {
+        "h": 2,
+        "w": 24,
+        "x": 0,
+        "y": 6
+      },
+      "id": 17,
+      "links": [],
+      "mode": "html",
+      "title": "",
+      "transparent": true,
+      "type": "text"
+    },
+    {
       "aliasColors": {},
       "bars": false,
       "dashLength": 10,
@@ -627,10 +390,91 @@
       "datasource": "prometheus",
       "fill": 1,
       "gridPos": {
-        "h": 9,
-        "w": 12,
+        "h": 7,
+        "w": 8,
         "x": 0,
-        "y": 7
+        "y": 8
+      },
+      "id": 67,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": false,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 2,
+      "links": [],
+      "nullPointMode": "null",
+      "percentage": false,
+      "pointradius": 5,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[20s])) by (deployment) / sum(irate(response_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[20s])) by (deployment)",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "deploy/{{deployment}}",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "SUCCESS RATE",
+      "tooltip": {
+        "shared": true,
+        "sort": 2,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "decimals": null,
+          "format": "percentunit",
+          "label": "",
+          "logBase": 1,
+          "max": "1",
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ]
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "prometheus",
+      "fill": 1,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 8
       },
       "id": 2,
       "legend": {
@@ -652,24 +496,24 @@
       "renderer": "flot",
       "seriesOverrides": [],
       "spaceLength": 10,
-      "stack": false,
+      "stack": true,
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[20s]))",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[20s])) by (deployment)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "inbound",
+          "legendFormat": "deploy/{{deployment}}",
           "refId": "A"
         }
       ],
       "thresholds": [],
       "timeFrom": null,
       "timeShift": null,
-      "title": "INBOUND REQUEST RATE",
+      "title": "REQUEST RATE",
       "tooltip": {
         "shared": true,
-        "sort": 0,
+        "sort": 2,
         "value_type": "individual"
       },
       "type": "graph",
@@ -682,11 +526,12 @@
       },
       "yaxes": [
         {
+          "decimals": null,
           "format": "rps",
-          "label": null,
+          "label": "",
           "logBase": 1,
           "max": null,
-          "min": null,
+          "min": "0",
           "show": true
         },
         {
@@ -707,12 +552,12 @@
       "datasource": "prometheus",
       "fill": 1,
       "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 12,
-        "y": 7
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 8
       },
-      "id": 9,
+      "id": 68,
       "legend": {
         "avg": false,
         "current": false,
@@ -736,20 +581,35 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\"}[20s]))",
+          "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[20s])) by (le, deployment))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "outbound",
+          "legendFormat": "p50 deploy/{{deployment}}",
           "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[20s])) by (le, deployment))",
+          "format": "time_series",
+          "hide": false,
+          "intervalFactor": 1,
+          "legendFormat": "p95 deploy/{{deployment}}",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[20s])) by (le, deployment))",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "p99 deploy/{{deployment}}",
+          "refId": "C"
         }
       ],
       "thresholds": [],
       "timeFrom": null,
       "timeShift": null,
-      "title": "OUTBOUND REQUEST RATE",
+      "title": "LATENCY",
       "tooltip": {
         "shared": true,
-        "sort": 0,
+        "sort": 2,
         "value_type": "individual"
       },
       "type": "graph",
@@ -762,8 +622,9 @@
       },
       "yaxes": [
         {
-          "format": "rps",
-          "label": null,
+          "decimals": null,
+          "format": "ms",
+          "label": "",
           "logBase": 1,
           "max": null,
           "min": null,
@@ -780,19 +641,306 @@
       ]
     },
     {
-      "content": "<div class=\"text-center dashboard-header\">\n  <span>INBOUND</span>\n</div>",
+      "content": "<div class=\"text-center dashboard-header\">\n  <span>INBOUND DEPLOYMENTS</span>\n</div>",
       "gridPos": {
         "h": 2,
         "w": 24,
         "x": 0,
-        "y": 16
+        "y": 15
       },
-      "id": 17,
+      "id": 76,
       "links": [],
       "mode": "html",
       "title": "",
       "transparent": true,
       "type": "text"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 17
+      },
+      "id": 59,
+      "panels": [
+        {
+          "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://conduit.io/favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">deploy/$inbound</span>\n</div>",
+          "gridPos": {
+            "h": 2,
+            "w": 24,
+            "x": 0,
+            "y": 18
+          },
+          "id": 39,
+          "links": [],
+          "mode": "html",
+          "title": "",
+          "transparent": true,
+          "type": "text"
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "prometheus",
+          "fill": 1,
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 0,
+            "y": 20
+          },
+          "id": 36,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": false,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
+          "nullPointMode": "null",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "sum(irate(response_total{classification=\"success\", deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (deployment, pod) / sum(irate(response_total{deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (deployment, pod)",
+              "format": "time_series",
+              "instant": false,
+              "intervalFactor": 1,
+              "legendFormat": "po/{{pod}}",
+              "refId": "A"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "SUCCESS RATE",
+          "tooltip": {
+            "shared": true,
+            "sort": 2,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "decimals": null,
+              "format": "percentunit",
+              "label": null,
+              "logBase": 1,
+              "max": "1",
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "prometheus",
+          "fill": 1,
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 8,
+            "y": 20
+          },
+          "id": 22,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": false,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
+          "nullPointMode": "null",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": true,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "sum(irate(request_total{deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (deployment, pod)",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "po/{{pod}}",
+              "refId": "A"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "REQUEST RATE",
+          "tooltip": {
+            "shared": true,
+            "sort": 2,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "decimals": null,
+              "format": "rps",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": "0",
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "prometheus",
+          "fill": 1,
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 16,
+            "y": 20
+          },
+          "id": 29,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": false,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
+          "nullPointMode": "null",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (le, deployment))",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "P50 deploy/{{deployment}}",
+              "refId": "A"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (le, deployment))",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "P95 deploy/{{deployment}}",
+              "refId": "B"
+            },
+            {
+              "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (le, deployment))",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "P99 deploy/{{deployment}}",
+              "refId": "C"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "LATENCY",
+          "tooltip": {
+            "shared": true,
+            "sort": 2,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "ms",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
+        }
+      ],
+      "repeat": "inbound",
+      "title": "deploy/$inbound",
+      "type": "row"
     },
     {
       "collapsed": false,
@@ -802,435 +950,6 @@
         "x": 0,
         "y": 18
       },
-      "id": 59,
-      "panels": [],
-      "repeat": "inbound",
-      "title": "",
-      "type": "row"
-    },
-    {
-      "content": "<div>\n  <img src=\"https://conduit.io/favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">$inbound</span>\n</div>",
-      "gridPos": {
-        "h": 2,
-        "w": 24,
-        "x": 0,
-        "y": 19
-      },
-      "id": 39,
-      "links": [],
-      "mode": "html",
-      "title": "",
-      "transparent": true,
-      "type": "text"
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "prometheus",
-      "fill": 1,
-      "gridPos": {
-        "h": 6,
-        "w": 4,
-        "x": 0,
-        "y": 21
-      },
-      "id": 22,
-      "legend": {
-        "avg": false,
-        "current": false,
-        "max": false,
-        "min": false,
-        "show": false,
-        "total": false,
-        "values": false
-      },
-      "lines": true,
-      "linewidth": 2,
-      "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "sum(irate(request_total{deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (deployment)",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{deployment}}",
-          "refId": "A"
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "REQUEST RATE",
-      "tooltip": {
-        "shared": true,
-        "sort": 2,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "rps",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ]
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "prometheus",
-      "fill": 1,
-      "gridPos": {
-        "h": 6,
-        "w": 5,
-        "x": 4,
-        "y": 21
-      },
-      "id": 36,
-      "legend": {
-        "avg": false,
-        "current": false,
-        "max": false,
-        "min": false,
-        "show": false,
-        "total": false,
-        "values": false
-      },
-      "lines": true,
-      "linewidth": 2,
-      "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "sum(irate(response_total{classification=\"success\", deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (deployment) / sum(irate(response_total{deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (deployment)",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{deployment}}",
-          "refId": "A"
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "SUCCESS RATE",
-      "tooltip": {
-        "shared": true,
-        "sort": 2,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "percentunit",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ]
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "prometheus",
-      "fill": 1,
-      "gridPos": {
-        "h": 6,
-        "w": 5,
-        "x": 9,
-        "y": 21
-      },
-      "id": 29,
-      "legend": {
-        "avg": false,
-        "current": false,
-        "max": false,
-        "min": false,
-        "show": false,
-        "total": false,
-        "values": false
-      },
-      "lines": true,
-      "linewidth": 2,
-      "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (le, deployment))",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{deployment}} P50",
-          "refId": "A"
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "P50",
-      "tooltip": {
-        "shared": true,
-        "sort": 2,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "ms",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ]
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "prometheus",
-      "fill": 1,
-      "gridPos": {
-        "h": 6,
-        "w": 5,
-        "x": 14,
-        "y": 21
-      },
-      "id": 37,
-      "legend": {
-        "avg": false,
-        "current": false,
-        "max": false,
-        "min": false,
-        "show": false,
-        "total": false,
-        "values": false
-      },
-      "lines": true,
-      "linewidth": 2,
-      "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (le, deployment))",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{deployment}} P95",
-          "refId": "A"
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "P95",
-      "tooltip": {
-        "shared": true,
-        "sort": 2,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "ms",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ]
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "prometheus",
-      "fill": 1,
-      "gridPos": {
-        "h": 6,
-        "w": 5,
-        "x": 19,
-        "y": 21
-      },
-      "id": 38,
-      "legend": {
-        "avg": false,
-        "current": false,
-        "max": false,
-        "min": false,
-        "show": false,
-        "total": false,
-        "values": false
-      },
-      "lines": true,
-      "linewidth": 2,
-      "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (le, deployment))",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{deployment}} P99",
-          "refId": "A"
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "P99",
-      "tooltip": {
-        "shared": true,
-        "sort": 2,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "ms",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ]
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 27
-      },
       "id": 34,
       "panels": [],
       "repeat": null,
@@ -1238,12 +957,12 @@
       "type": "row"
     },
     {
-      "content": "<div class=\"text-center dashboard-header\">\n  <span>OUTBOUND</span>\n</div>",
+      "content": "<div class=\"text-center dashboard-header\">\n  <span>OUTBOUND TRAFFIC</span>\n</div>",
       "gridPos": {
         "h": 2,
         "w": 24,
         "x": 0,
-        "y": 28
+        "y": 19
       },
       "id": 32,
       "links": [],
@@ -1253,35 +972,6 @@
       "type": "text"
     },
     {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 30
-      },
-      "id": 27,
-      "panels": [],
-      "repeat": "outbound",
-      "title": "",
-      "type": "row"
-    },
-    {
-      "content": "<div>\n  <img src=\"https://conduit.io/favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">$outbound</span>\n</div>",
-      "gridPos": {
-        "h": 2,
-        "w": 24,
-        "x": 0,
-        "y": 31
-      },
-      "id": 40,
-      "links": [],
-      "mode": "html",
-      "title": "",
-      "transparent": true,
-      "type": "text"
-    },
-    {
       "aliasColors": {},
       "bars": false,
       "dashLength": 10,
@@ -1289,12 +979,12 @@
       "datasource": "prometheus",
       "fill": 1,
       "gridPos": {
-        "h": 6,
-        "w": 4,
+        "h": 7,
+        "w": 8,
         "x": 0,
-        "y": 33
+        "y": 21
       },
-      "id": 35,
+      "id": 77,
       "legend": {
         "avg": false,
         "current": false,
@@ -1318,10 +1008,91 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\"}[20s])) by (dst_deployment)",
+          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (dst_deployment) / sum(irate(response_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (dst_deployment)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "{{dst_deployment}}",
+          "legendFormat": "deploy/{{dst_deployment}}",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "SUCCESS RATE",
+      "tooltip": {
+        "shared": true,
+        "sort": 2,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "decimals": null,
+          "format": "percentunit",
+          "label": "",
+          "logBase": 1,
+          "max": "1",
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ]
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "prometheus",
+      "fill": 1,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 21
+      },
+      "id": 78,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": false,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 2,
+      "links": [],
+      "nullPointMode": "null",
+      "percentage": false,
+      "pointradius": 5,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": true,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (dst_deployment)",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "deploy/{{dst_deployment}}",
           "refId": "A"
         }
       ],
@@ -1345,10 +1116,10 @@
       "yaxes": [
         {
           "format": "rps",
-          "label": null,
+          "label": "",
           "logBase": 1,
           "max": null,
-          "min": null,
+          "min": "0",
           "show": true
         },
         {
@@ -1369,12 +1140,12 @@
       "datasource": "prometheus",
       "fill": 1,
       "gridPos": {
-        "h": 6,
-        "w": 5,
-        "x": 4,
-        "y": 33
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 21
       },
-      "id": 28,
+      "id": 79,
       "legend": {
         "avg": false,
         "current": false,
@@ -1398,97 +1169,17 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\"}[20s])) by (dst_deployment) / sum(irate(response_total{namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\"}[20s])) by (dst_deployment)",
+          "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (le, dst_deployment))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "{{dst_deployment}}",
+          "legendFormat": "P95 deploy/{{dst_deployment}}",
           "refId": "A"
         }
       ],
       "thresholds": [],
       "timeFrom": null,
       "timeShift": null,
-      "title": "SUCCESS RATE",
-      "tooltip": {
-        "shared": true,
-        "sort": 2,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "percentunit",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ]
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "prometheus",
-      "fill": 1,
-      "gridPos": {
-        "h": 6,
-        "w": 5,
-        "x": 9,
-        "y": 33
-      },
-      "id": 41,
-      "legend": {
-        "avg": false,
-        "current": false,
-        "max": false,
-        "min": false,
-        "show": false,
-        "total": false,
-        "values": false
-      },
-      "lines": true,
-      "linewidth": 2,
-      "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\"}[20s])) by (le, dst_deployment))",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{dst_deployment}} P50",
-          "refId": "A"
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "P50",
+      "title": "P95 LATENCY",
       "tooltip": {
         "shared": true,
         "sort": 2,
@@ -1522,164 +1213,304 @@
       ]
     },
     {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "prometheus",
-      "fill": 1,
+      "content": "<div class=\"text-center dashboard-header\">\n  <span>OUTBOUND DEPLOYMENTS</span>\n</div>",
       "gridPos": {
-        "h": 6,
-        "w": 5,
-        "x": 14,
-        "y": 33
+        "h": 2,
+        "w": 24,
+        "x": 0,
+        "y": 28
       },
-      "id": 42,
-      "legend": {
-        "avg": false,
-        "current": false,
-        "max": false,
-        "min": false,
-        "show": false,
-        "total": false,
-        "values": false
-      },
-      "lines": true,
-      "linewidth": 2,
+      "id": 80,
       "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\"}[20s])) by (le, dst_deployment))",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{dst_deployment}} P95",
-          "refId": "A"
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "P95",
-      "tooltip": {
-        "shared": true,
-        "sort": 2,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "ms",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ]
+      "mode": "html",
+      "title": "",
+      "transparent": true,
+      "type": "text"
     },
     {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "prometheus",
-      "fill": 1,
+      "collapsed": true,
       "gridPos": {
-        "h": 6,
-        "w": 5,
-        "x": 19,
-        "y": 33
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 30
       },
-      "id": 43,
-      "legend": {
-        "avg": false,
-        "current": false,
-        "max": false,
-        "min": false,
-        "show": false,
-        "total": false,
-        "values": false
-      },
-      "lines": true,
-      "linewidth": 2,
-      "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
+      "id": 27,
+      "panels": [
         {
-          "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\"}[20s])) by (le, dst_deployment))",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{dst_deployment}} P99",
-          "refId": "A"
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "P99",
-      "tooltip": {
-        "shared": true,
-        "sort": 2,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "ms",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
+          "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://conduit.io/favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">deploy/$outbound</span>\n</div>",
+          "gridPos": {
+            "h": 2,
+            "w": 24,
+            "x": 0,
+            "y": 31
+          },
+          "id": 40,
+          "links": [],
+          "mode": "html",
+          "title": "",
+          "transparent": true,
+          "type": "text"
         },
         {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "prometheus",
+          "fill": 1,
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 0,
+            "y": 33
+          },
+          "id": 28,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": false,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
+          "nullPointMode": "null",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\"}[20s])) by (dst_deployment) / sum(irate(response_total{namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\"}[20s])) by (dst_deployment)",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "deploy/{{dst_deployment}}",
+              "refId": "A"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "SUCCESS RATE",
+          "tooltip": {
+            "shared": true,
+            "sort": 2,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "decimals": null,
+              "format": "percentunit",
+              "label": null,
+              "logBase": 1,
+              "max": "1",
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "prometheus",
+          "fill": 1,
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 8,
+            "y": 33
+          },
+          "id": 35,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": false,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
+          "nullPointMode": "null",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": true,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\"}[20s])) by (dst_deployment)",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "deploy/{{dst_deployment}}",
+              "refId": "A"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "REQUEST RATE",
+          "tooltip": {
+            "shared": true,
+            "sort": 2,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "rps",
+              "label": "",
+              "logBase": 1,
+              "max": null,
+              "min": "0",
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "prometheus",
+          "fill": 1,
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 16,
+            "y": 33
+          },
+          "id": 41,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": false,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
+          "nullPointMode": "null",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\"}[20s])) by (le, dst_deployment))",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "P50 deploy/{{dst_deployment}}",
+              "refId": "A"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\"}[20s])) by (le, dst_deployment))",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "P95 deploy/{{dst_deployment}}",
+              "refId": "B"
+            },
+            {
+              "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\"}[20s])) by (le, dst_deployment))",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "P99 deploy/{{dst_deployment}}",
+              "refId": "C"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "LATENCY",
+          "tooltip": {
+            "shared": true,
+            "sort": 2,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "ms",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
         }
-      ]
+      ],
+      "repeat": "outbound",
+      "title": "deploy/$outbound",
+      "type": "row"
     }
   ],
   "refresh": "5s",
