@@ -30,12 +30,11 @@ func (m *mockDestination_GetServer) RecvMsg(x interface{}) error  { return m.err
 
 func TestBuildResolversList(t *testing.T) {
 	endpointsWatcher := &k8s.MockEndpointsWatcher{}
-	dnsWatcher := &mockDnsWatcher{}
 
 	t.Run("Doesn't build a list if Kubernetes DNS zone isnt valid", func(t *testing.T) {
 		invalidK8sDNSZones := []string{"1", "-a", "a-", "-"}
 		for _, dsnZone := range invalidK8sDNSZones {
-			resolvers, err := buildResolversList(dsnZone, endpointsWatcher, dnsWatcher)
+			resolvers, err := buildResolversList(dsnZone, endpointsWatcher)
 			if err == nil {
 				t.Fatalf("Expecting error when k8s zone is [%s], got nothing. Resolvers: %v", dsnZone, resolvers)
 			}
@@ -43,22 +42,18 @@ func TestBuildResolversList(t *testing.T) {
 	})
 
 	t.Run("Builds list with echo IP first, then K8s resolver", func(t *testing.T) {
-		resolvers, err := buildResolversList("some.zone", endpointsWatcher, dnsWatcher)
+		resolvers, err := buildResolversList("some.zone", endpointsWatcher)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
 		actualNumResolvers := len(resolvers)
-		expectedNumResolvers := 2
+		expectedNumResolvers := 1
 		if actualNumResolvers != expectedNumResolvers {
 			t.Fatalf("Expecting [%d] resolvers, got [%d]: %v", expectedNumResolvers, actualNumResolvers, resolvers)
 		}
 
-		if _, ok := resolvers[0].(*echoIpV4Resolver); !ok {
-			t.Fatalf("Expecting first resolver to be echo IP, got [%+v]. List: %v", resolvers[0], resolvers)
-		}
-
-		if _, ok := resolvers[1].(*k8sResolver); !ok {
+		if _, ok := resolvers[0].(*k8sResolver); !ok {
 			t.Fatalf("Expecting second resolver to be k8s, got [%+v]. List: %v", resolvers[0], resolvers)
 		}
 	})
