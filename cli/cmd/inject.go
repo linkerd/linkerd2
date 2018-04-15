@@ -98,7 +98,7 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride, v
 	}
 
 	f := false
-	inboundSkipPorts := append(ignoreInboundPorts, proxyControlPort)
+	inboundSkipPorts := append(ignoreInboundPorts, proxyControlPort, proxyMetricsPort)
 	inboundSkipPortsStr := make([]string, len(inboundSkipPorts))
 	for i, p := range inboundSkipPorts {
 		inboundSkipPortsStr[i] = strconv.Itoa(int(p))

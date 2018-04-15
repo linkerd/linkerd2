@@ -74,7 +74,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - "4190"
+        - 4190,4191
         image: gcr.io/runconduit/proxy-init:testinjectversion
         imagePullPolicy: IfNotPresent
         name: conduit-init
@@ -162,7 +162,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - "4190"
+        - 4190,4191
         image: gcr.io/runconduit/proxy-init:testinjectversion
         imagePullPolicy: IfNotPresent
         name: conduit-init
