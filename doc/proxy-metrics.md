@@ -179,19 +179,29 @@ This is incremented when a connection closes.
 
 Each of these metrics has the following labels:
 
-* `direction`: `inbound` if the connection was to/from the proxy's Inbound router,
-               `outbound` if the connection was to/from the proxy's Outbound router.
-* `kind`: `client` if the connection was initiated by the proxy to an upstream server,
-          `server` if the connection was initiated by an upstream client to the proxy.
-* `remote_address`: the IP address and port of the remote end of the connection.
+* `direction`: `inbound` if the connection was established either from outside the
+                pod to the proxy, or from the proxy to the application,
+               `outbound` if the connection was established either from the
+                application to the proxy, or from the proxy to outside the pod.
+* `kind`: `client` if the connection was initiated by the proxy,
+          `server` if the connection was initiated to the proxy.
 * `protocol`: `http` if the connection corresponds to an HTTP/1 or HTTP/2 request,
               `tcp` if the connection is proxied as a raw TCP stream.
 
-### Server Labels
+### Outbound HTTP labels
 
-These labels are only applicable if `kind="server"`:
+The following labels are only applicable if `direction="outbound"`, `protocol="http",`
+_and_ `kind="server"`.
 
-* `local_address`: the address of the TCP socket for this connection.
+* `dst_deployment`: The deployment to which this request is being sent.
+* `dst_job`: The job to which this request is being sent.
+* `dst_replica_set`: The replica set to which this request is being sent.
+* `dst_daemon_set`: The daemon set to which this request is being sent.
+* `dst_replication_controller`: The replication controller to which this request
+                                is being sent.
+* `dst_namespace`: The namespace to which this request is being sent.
+* `dst_service`: The service to which this request is being sent.
+
 
 ### Prometheus Collector labels
 
