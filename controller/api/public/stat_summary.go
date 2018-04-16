@@ -198,29 +198,29 @@ func promResourceType(resource *pb.Resource) model.LabelName {
 }
 
 func buildRequestLabels(req *pb.StatSummaryRequest) (model.LabelSet, model.LabelNames) {
+	var labelNames model.LabelNames
 	labels := model.LabelSet{}
-	aggregations := model.LabelNames{}
 
 	switch out := req.Outbound.(type) {
 	case *pb.StatSummaryRequest_ToResource:
-		aggregations = promLabelNames(req.Selector.Resource)
+		labelNames = promLabelNames(req.Selector.Resource)
 		labels = labels.Merge(promDstLabels(out.ToResource))
 		labels = labels.Merge(promLabels(req.Selector.Resource))
 		labels = labels.Merge(promDirectionLabels("outbound"))
 
 	case *pb.StatSummaryRequest_FromResource:
-		aggregations = promDstLabelNames(req.Selector.Resource)
+		labelNames = promDstLabelNames(req.Selector.Resource)
 		labels = labels.Merge(promLabels(out.FromResource))
 		labels = labels.Merge(promDirectionLabels("outbound"))
 
 	default:
-		aggregations = promLabelNames(req.Selector.Resource)
+		labelNames = promLabelNames(req.Selector.Resource)
 		labels = labels.Merge(promLabels(req.Selector.Resource))
 		labels = labels.Merge(promDirectionLabels("inbound"))
 
 	}
 
-	return labels, aggregations
+	return labels, labelNames
 }
 
 func (s *grpcServer) getRequests(ctx context.Context, req *pb.StatSummaryRequest, timeWindow string) (map[string]*pb.BasicStats, error) {
@@ -445,12 +445,4 @@ func (s *grpcServer) queryProm(ctx context.Context, query string) (model.Vector,
 	}
 
 	return res.(model.Vector), nil
-}
-
-func mapKeys(m map[string]interface{}) []string {
-	res := make([]string, 0)
-	for k := range m {
-		res = append(res, k)
-	}
-	return res
 }

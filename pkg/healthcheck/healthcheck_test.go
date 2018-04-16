@@ -55,15 +55,10 @@ func TestSelfChecker(t *testing.T) {
 			observedResults = append(observedResults, r)
 		}
 
-		allChecks := make([]*healthcheckPb.CheckResult, 0)
-		allChecks = append(allChecks, workingSubsystem1.checksToReturn...)
-		allChecks = append(allChecks, workingSubsystem2.checksToReturn...)
-		allChecks = append(allChecks, failingSubsystem1.checksToReturn...)
-
 		expectedResults := make([]*healthcheckPb.CheckResult, 0)
-		for _, check := range allChecks {
-			expectedResults = append(expectedResults, check)
-		}
+		expectedResults = append(expectedResults, workingSubsystem1.checksToReturn...)
+		expectedResults = append(expectedResults, workingSubsystem2.checksToReturn...)
+		expectedResults = append(expectedResults, failingSubsystem1.checksToReturn...)
 
 		healthChecker.PerformCheck(observer)
 
