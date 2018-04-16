@@ -1,6 +1,6 @@
 ## v0.4.0
 
-Conduit 0.4.0 ovehauls Conduit's telemetry system and improves service discovery
+Conduit 0.4.0 overhauls Conduit's telemetry system and improves service discovery
 reliability.
 
 * Web UI
@@ -15,8 +15,8 @@ reliability.
   * **New** Prometheus-formatted metrics are now exposed on `:4191/metrics`, including
     rich destination labeling for outbound HTTP requests. The proxy no longer pushes
     metrics to the control plane.
-  * The proxy now gracefully handles `SIGINT` or `SIGTERM`, gracefully draining requests
-    until all are complete or `SIGQUIT` is received.
+  * The proxy now handles `SIGINT` or `SIGTERM`, gracefully draining requests until all
+    are complete or `SIGQUIT` is received.
   * SMTP and MySQL (ports 25 and 3306) are now treated as opaque TCP by default. You
     should no longer have to specify `--skip-outbound-ports` to communicate with such
     services.
