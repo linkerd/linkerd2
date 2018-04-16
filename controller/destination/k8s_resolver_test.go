@@ -119,8 +119,6 @@ func TestK8sResolver(t *testing.T) {
 			t.Fatalf("Expected listener [%v] to have been subscribed then unsubscribed to endpoint watcher, got: %+v", listener, mockEndpointsWatcher)
 		}
 	})
-
-	//TODO: Resolve name using DNS similar to Kubernetes' ClusterFirst
 }
 
 func TestLocalKubernetesServiceIdFromDNSName(t *testing.T) {
