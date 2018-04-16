@@ -235,7 +235,7 @@ func assertCallWasForwarded(t *testing.T, mockGrpcServer *mockGrpcServer, expect
 	}
 
 	mockGrpcServer.ErrorToReturn = errors.New("expected")
-	actualResponse, err = functionCall()
+	_, err = functionCall()
 	if err == nil {
 		t.Fatalf("Expecting error, got nothing")
 	}

@@ -65,7 +65,6 @@ func (a *MockApi_TapClient) Recv() (*common.TapEvent, error) {
 }
 
 type MockProm struct {
-	api v1.API
 	Res model.Value
 }
 

@@ -47,6 +47,9 @@ func TestNewInternalClient(t *testing.T) {
 		}
 
 		_, err = client.Version(context.Background(), &pb.Empty{})
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
 
 		expectedUrlRequested := "http://some-hostname/api/v1/Version"
 		actualUrlRequested := mockTransport.requestSent.URL.String()

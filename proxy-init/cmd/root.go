@@ -31,13 +31,6 @@ Find more information at https://conduit.io/.`,
 	},
 }
 
-func Execute() {
-	if err := RootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(-1)
-	}
-}
-
 func init() {
 	RootCmd.PersistentFlags().IntVarP(&incomingProxyPort, "incoming-proxy-port", "p", -1, "Port to redirect incoming traffic")
 	RootCmd.PersistentFlags().IntVarP(&outgoingProxyPort, "outgoing-proxy-port", "o", -1, "Port to redirect outgoing traffic")
