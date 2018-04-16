@@ -48,6 +48,25 @@ pub struct ResponseLabels {
     classification: Classification,
 }
 
+/// Labels describing a TCP client connection (i.e., opened by the proxy).
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct ClientTransportLabels {
+    /// Was the transport opened in the inbound or outbound direction?
+    direction: Direction,
+
+}
+
+/// Labels describing a TCP server connection (i.e., to the proxy).
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct ServerTransportLabels {
+    /// Was the transport opened in the inbound or outbound direction?
+    direction: Direction,
+
+    // Additional labels identifying the destination service of an outbound
+    // request, provided by the Conduit control plane's service discovery.
+    outbound_labels: Option<DstLabels>,
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 enum Classification {
     Success,
