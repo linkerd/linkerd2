@@ -123,7 +123,7 @@ mod tests {
     ];
 
     quickcheck! {
-        fn prop_count_incremented(obs: u64) -> bool {
+        fn bucket_incremented(obs: u64) -> bool {
             let mut hist = Histogram::new(
                 &BOUNDS,
                 Box::new([Counter::default(); NUM_BUCKETS])
@@ -140,7 +140,39 @@ mod tests {
             true
         }
 
-        fn prop_multiple_observations(observations: Vec<u64>) -> bool {
+        fn sum_equals_total_of_observations(observations: Vec<u64>) -> bool {
+            let mut hist = Histogram::new(
+                &BOUNDS,
+                Box::new([Counter::default(); NUM_BUCKETS])
+            );
+
+            let mut expected_sum = Wrapping(0u64);
+            for obs in observations {
+                expected_sum += Wrapping(obs);
+                hist += obs;
+            }
+
+            hist.sum == expected_sum
+        }
+
+        fn count_equals_number_of_observations(observations: Vec<u64>) -> bool {
+            let mut hist = Histogram::new(
+                &BOUNDS,
+                Box::new([Counter::default(); NUM_BUCKETS])
+            );
+
+            for obs in &observations {
+                hist += *obs;
+            }
+
+            let count: u64 = hist.buckets.iter().map(|&c| {
+                let count: u64 = c.into();
+                count
+            }).sum();
+            count as usize == observations.len()
+        }
+
+        fn multiple_observations_increment_buckets(observations: Vec<u64>) -> bool {
             let mut buckets_and_counts: HashMap<usize, u64> = HashMap::new();
             let mut hist = Histogram::new(
                 &BOUNDS,
