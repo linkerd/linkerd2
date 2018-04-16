@@ -22,7 +22,7 @@ request headers are received to when the request stream has completed.
 ### `response_total`
 
 A counter of the number of responses the proxy has received.  This is
-incremeneted when the response stream ends.
+incremented when the response stream ends.
 
 ### `response_duration_ms`
 

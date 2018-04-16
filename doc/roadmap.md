@@ -13,38 +13,38 @@ featureset, then to build functionality out from there. We’ll make alpha / bet
 designations based on actual community usage, and generally will err on the side of being
 overly conservative.
 
-##### Status: alpha
-## [0.3: Telemetry Stability](https://github.com/runconduit/conduit/milestone/5)
 
-#### Late February 2018
+##### Status: alpha
+## [0.4.0: Rich, Kubernetes-aware Grafana & Prometheus](https://github.com/runconduit/conduit/milestone/6)
+#### 2018-04-16
 
 ### Visibility
 
-- Stable, automatic top-line metrics for small-scale clusters.
-
-### Usability
-
-- Routing to external DNS names
+- Rich, Kubernetes-aware `conduit stat`:
+  - Works on deployments & namespaces.
+  - `--from` & `--to` flags filter stats by source & destination.
+- Proxy exposes Prometheus labeled with rich outbound stats.
+- Grafana dashboards for Kubernetes Deployments & Namespaces.
 
 ### Reliability
 
-- Least-loaded L7 load balancing
-- Improved error handling
-- Improved egress support
+- The proxy properly routes egress traffic to arbitrary DNS names.
 
-### Development
 
-- Published (this) roadmap
-- All milestones, issues, PRs, & mailing lists made public
+## [0.4.1: Rich, Kubernetes-aware debugging](https://github.com/runconduit/conduit/milestone/10)
+#### Late April 2018
 
-## [0.4: Automatic TLS; Prometheus++](https://github.com/runconduit/conduit/milestone/6)
+### Visibility
 
-#### Late March 2018
+- `conduit stat` works on many Kubernetes resources.
+  - Per-authority HTTP stats.
+  - TCP-level stats
+- `conduit tap` works on many Kubernetes resources, too.
+- `conduit wtf`: what's the failure?
 
-### Usability
 
-- Helm integration
-- Mutating webhook admission controller
+## [0.5: Stable, private communication](https://github.com/runconduit/conduit/milestone/7)
+#### Mid-May 2018
 
 ### Security
 
@@ -53,57 +53,45 @@ overly conservative.
 - Automatically provide all meshed services with cryptographic identity
 - Automatically secure all meshed communication
 
-### Visibility
-
-- Enhanced server-side metrics, including per-path and per-status-code counts & latencies.
-- Client-side metrics to surface egress traffic, etc.
-
 ### Reliability
 
-- Latency-aware load balancing
+- Stable Service Discovery semantics.
+- Latency-aware load balancing.
 
-## [0.5: Controllable Deadlines/Timeouts](https://github.com/runconduit/conduit/milestone/7)
 
-#### Early April 2018
-
-### Reliability
-
-- Controllable latency objectives to configure timeouts
-- Controllable response classes to inform circuit breaking, retryability, & success rate calculation
-- High-availability controller
-
-### Visibility
-
-- OpenTracing integration
-
-### Security
-
-- Mutual authentication
-- Key rotation
-
-## [0.6: Controllable Response Classification & Retries](https://github.com/runconduit/conduit/milestone/8)
-
-#### Late April 2018
-
-### Reliability
-
-- Automatic alerting for latency & success objectives
-- Controllable retry policies
+## [0.6: Externally accessible](https://github.com/runconduit/conduit/milestone/8)
+#### Early June 2018
 
 ### Routing
 
-- Rich ingress routing
-- Contextual route overrides
+- Kubernetes `Ingress` support
 
 ### Security
 
-- Authorization policy
+- Explicitly configured TLS for ingress
+- Server Name Indication (SNI)
 
-## And Beyond:
+### Reliability
 
-- Controller policy plugins
-- Support for non-Kubernetes services
-- Failure injection (aka "chaos chihuahua")
+- Scales to many cores.
+- High-availability controller
+- Circuit-breaking.
+
+### Usability
+
+- Helm integration
+
+
+## And then...
+
+- Mutual authentication
+- Key rotation
+- Let's Encrypt Ingress support
+- Automatic alerting for latency & success objectives
+- Controllable retry policies
+- OpenTracing integration
+- Pluggable authorization policy
+- Failure injection
 - Speculative retries
 - Dark traffic
 - gRPC payload-aware `tap`
