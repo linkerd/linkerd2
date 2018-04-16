@@ -1,3 +1,10 @@
++++
+title = "Conduit roadmap"
+docpage = true
+[menu.docs]
+  parent = "roadmap"
++++
+
 This is the planned roadmap for Conduit. Of course, as with any software project
 (especially open source) even the best of plans change rapidly as development progresses.
 
@@ -7,13 +14,13 @@ designations based on actual community usage, and generally will err on the side
 overly conservative.
 
 
-##### Status: beta
+##### Status: alpha
 ## [0.4.0: Rich, Kubernetes-aware Grafana & Prometheus](https://github.com/runconduit/conduit/milestone/6)
 #### 2018-04-16
 
 ### Visibility
 
-- Rich, Kubernets-aware `conduit stat`:
+- Rich, Kubernetes-aware `conduit stat`:
   - Works on deployments & namespaces.
   - `--from` & `--to` flags filter stats by source & destination.
 - Proxy exposes Prometheus labeled with rich outbound stats.
@@ -26,7 +33,6 @@ overly conservative.
 
 ## [0.4.1: Rich, Kubernetes-aware debugging](https://github.com/runconduit/conduit/milestones)
 #### Late April 2018
-##### Status: beta
 
 ### Visibility
 
@@ -53,7 +59,7 @@ overly conservative.
 - Latency-aware load balancing.
 
 
-## [0.6: Externaly accessible](https://github.com/runconduit/conduit/milestone/8)
+## [0.6: Externally accessible](https://github.com/runconduit/conduit/milestone/8)
 #### Early June 2018
 
 ### Routing
