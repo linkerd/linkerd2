@@ -31,7 +31,7 @@ overly conservative.
 - The proxy properly routes egress traffic to arbitrary DNS names.
 
 
-## [0.4.1: Rich, Kubernetes-aware debugging](https://github.com/runconduit/conduit/milestones)
+## [0.4.1: Rich, Kubernetes-aware debugging](https://github.com/runconduit/conduit/milestone/10)
 #### Late April 2018
 
 ### Visibility
@@ -43,7 +43,7 @@ overly conservative.
 - `conduit wtf`: what's the failure?
 
 
-## [0.5: Private, Stable communication](https://github.com/runconduit/conduit/milestone/7)
+## [0.5: Stable, private communication](https://github.com/runconduit/conduit/milestone/7)
 #### Mid-May 2018
 
 ### Security
