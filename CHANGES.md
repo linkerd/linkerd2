@@ -1,7 +1,7 @@
 ## v0.4.0
 
-Conduit 0.4.0 replaces Conduit's telemetry system, improves service discovery, and removes
-the need for specifying `--skip-(in|out)bound-ports` for MySQL and SMTP.
+Conduit 0.4.0 ovehauls Conduit's telemetry system and improves service discovery
+reliability.
 
 * Web UI
   * **New** automatically-configured Grafana dashboards for all Deployments.
