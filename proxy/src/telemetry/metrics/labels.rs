@@ -4,6 +4,9 @@ use std::hash;
 use std::sync::Arc;
 
 use http;
+use conduit_proxy_controller_grpc::common::Protocol;
+
+use ctx;
 
 use ctx;
 
@@ -38,23 +41,32 @@ pub struct ResponseLabels {
     classification: Classification,
 }
 
-/// Labels describing a TCP client connection (i.e., opened by the proxy).
+
+
+/// Labels describing a TCP connection
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub struct ClientTransportLabels {
+pub struct TransportLabels {
     /// Was the transport opened in the inbound or outbound direction?
     direction: Direction,
 
+    protocol: Protocol,
+
+    /// Was the transport a server or client connection?
+    kind: TransportKind,
 }
 
-/// Labels describing a TCP server connection (i.e., to the proxy).
+/// Labels describing a TCP connection
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub struct ServerTransportLabels {
-    /// Was the transport opened in the inbound or outbound direction?
-    direction: Direction,
+pub enum TransportKind {
+    /// TCP client connection (i.e., opened by the proxy).
+    Client,
 
-    // Additional labels identifying the destination service of an outbound
-    // request, provided by the Conduit control plane's service discovery.
-    outbound_labels: Option<DstLabels>,
+    /// Labels describing a TCP server connection (i.e., to the proxy).
+    Server {
+        // Additional labels identifying the destination service of an outbound
+        // request, provided by the Conduit control plane's service discovery.
+        outbound_labels: Option<DstLabels>,
+    },
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
@@ -252,6 +264,63 @@ impl DstLabels {
             None
         }
     }
+}
+
+// ===== impl TransportLabels =====
+
+impl TransportLabels {
+    pub fn new(ctx: &ctx::transport::Ctx) -> Self {
+        use ctx::transport::Ctx;
+        match ctx {
+            Ctx::Client(ref ctx) => TransportLabels {
+                direction: Direction::from_context(&ctx.proxy),
+                protocol: ctx.protocol,
+                kind: TransportKind::Client,
+            },
+            Ctx::Server(ref ctx) => TransportLabels {
+                direction: Direction::from_context(&ctx.proxy),
+                protocol: ctx.protocol,
+                kind: TransportKind::Server {
+                    outbound_labels: None, // TODO: implement
+                },
+            },
+        }
+    }
+}
+
+impl fmt::Display for TransportLabels {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let protocol = match self.protocol {
+            Protocol::Http => "protocol=\"http\"",
+            Protocol::Tcp => "protocol=\"tcp\"",
+        };
+        write!(f, "{},{},{}", self.direction, protocol, self.kind)
+    }
+}
+
+// ===== impl TransportKind =====
+
+impl fmt::Display for TransportKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            TransportKind::Client => f.pad("kind=\"client\""),
+            TransportKind::Server { outbound_labels: None } =>
+                f.pad("kind=\"server\""),
+            TransportKind::Server { outbound_labels: Some(ref labels) } =>
+                write!(f, "kind=\"server\",{}", labels),
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    use futures::{Async, Poll, Future};
+    use futures::future::{self, FutureResult};
+    use http;
+    use tower::Service;
+
 
     pub fn as_map(&self) -> &HashMap<String, String> {
         &self.original
