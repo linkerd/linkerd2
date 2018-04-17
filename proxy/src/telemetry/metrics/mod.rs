@@ -68,6 +68,8 @@ struct Metrics {
     tcp_connect_open_total: Metric<Counter, Arc<TransportLabels>>,
     tcp_connect_close_total: Metric<Counter, Arc<TransportLabels>>,
 
+    tcp_connection_duration: Metric<Histogram, Arc<TransportLabels>>,
+
     start_time: u64,
 }
 
@@ -192,6 +194,11 @@ impl Metrics {
              by the proxy which have been closed.",
         );
 
+        let tcp_connection_duration = Metric::<Histogram, Arc<TransportLabels>>::new(
+            "tcp_connection_duration_ms",
+            "A histogram of the duration of the lifetime of a connection, in milliseconds",
+        );
+
         Metrics {
             request_total,
             request_duration,
@@ -202,6 +209,7 @@ impl Metrics {
             tcp_accept_close_total,
             tcp_connect_open_total,
             tcp_connect_close_total,
+            tcp_connection_duration,
             start_time,
         }
     }
@@ -277,13 +285,21 @@ impl Metrics {
             .entry(labels.clone())
             .or_insert_with(Default::default)
     }
+
+        fn tcp_connection_duration(&mut self,
+                                   labels: &Arc<TransportLabels>)
+                                   -> &mut Histogram {
+            self.tcp_connection_duration.values
+                .entry(labels.clone())
+                .or_insert_with(Default::default)
+        }
 }
 
 
 impl fmt::Display for Metrics {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f,
-            "{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\nprocess_start_time_seconds {}\n",
+            "{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\nprocess_start_time_seconds {}\n",
             self.request_total,
             self.request_duration,
             self.response_total,
@@ -293,6 +309,7 @@ impl fmt::Display for Metrics {
             self.tcp_accept_close_total,
             self.tcp_connect_open_total,
             self.tcp_connect_close_total,
+            self.tcp_connection_duration,
             self.start_time,
         )
     }
@@ -497,10 +514,11 @@ impl Aggregate {
                 })
             },
 
-            Event::TransportClose(ref ctx, _) => {
+            Event::TransportClose(ref ctx, ref close) => {
+                // TODO: use the `clean` field in `close` to record whether or not
+                // there was an error.
                 let labels = Arc::new(TransportLabels::new(ctx));
                 self.update(|metrics| {
-                    // TODO: add duration to transport durations histogram.
                     match ctx.as_ref() {
                         &ctx::transport::Ctx::Server(_) => {
                             *metrics.tcp_accept_close_total(&labels).incr();
@@ -508,7 +526,8 @@ impl Aggregate {
                         &ctx::transport::Ctx::Client(_) => {
                             *metrics.tcp_connect_close_total(&labels).incr();
                         },
-                    }
+                    };
+                    *metrics.tcp_connection_duration(&labels) += close.duration;
                 })
             },
         };
