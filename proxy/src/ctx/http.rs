@@ -2,7 +2,7 @@ use http;
 use std::sync::Arc;
 
 use ctx;
-use telemetry::metrics::prometheus;
+use telemetry::metrics;
 
 /// Describes a stream's request headers.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -22,7 +22,7 @@ pub struct Request {
     /// Optional information on the request's destination service, which may
     /// be provided by the control plane for destinations lookups against its
     /// discovery API.
-    pub dst_labels: Option<prometheus::DstLabels>,
+    pub dst_labels: Option<metrics::DstLabels>,
 }
 
 /// Describes a stream's response headers.
@@ -51,7 +51,7 @@ impl Request {
         // destination labels from the control plane's discovery API.
         let dst_labels = request
             .extensions()
-            .get::<prometheus::DstLabels>()
+            .get::<metrics::DstLabels>()
             .cloned();
         let r = Self {
             id,

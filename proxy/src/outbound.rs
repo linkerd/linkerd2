@@ -18,7 +18,7 @@ use bind::{self, Bind, Protocol};
 use control::{self, discovery};
 use control::discovery::Bind as BindTrait;
 use ctx;
-use telemetry::metrics::prometheus;
+use telemetry::metrics;
 use timeout::Timeout;
 use transparency::h1;
 use transport::{DnsNameAndPort, Host, HostAndPort};
@@ -170,7 +170,7 @@ where
     type Request = http::Request<B>;
     type Response = bind::HttpResponse;
     type Error = <Self::Service as tower::Service>::Error;
-    type Service = prometheus::Labeled<bind::Service<B>>;
+    type Service = metrics::Labeled<bind::Service<B>>;
     type DiscoverError = BindError;
 
     fn poll(&mut self) -> Poll<Change<Self::Key, Self::Service>, Self::DiscoverError> {
@@ -187,7 +187,7 @@ where
                     let svc = bind.bind(&addr)
                         // The controller has no labels to add to an external
                         // service.
-                        .map(prometheus::Labeled::none)
+                        .map(metrics::Labeled::none)
                         .map_err(|_| BindError::External{ addr })?;
                     Ok(Async::Ready(Change::Insert(addr, svc)))
                 } else {

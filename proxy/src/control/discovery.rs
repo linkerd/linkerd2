@@ -30,7 +30,7 @@ use transport::DnsNameAndPort;
 
 use control::cache::{Cache, CacheChange, Exists};
 
-use ::telemetry::metrics::prometheus::{DstLabels, Labeled};
+use ::telemetry::metrics::{DstLabels, Labeled};
 
 /// A handle to start watching a destination for address changes.
 #[derive(Clone, Debug)]
