@@ -79,22 +79,18 @@ export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     metricsWindow = window;
   };
 
-  const deploymentUrl = `/api/stat?resource_type=deployment`;
   const urlsForResource = {
-    // all deploys (default), or all deploys in a given namespace, or a given
-    // deploy if specified
     "deployment": {
-      groupBy: "targetDeploy",
-      url: (namespace = null, name = null) => {
-        let rollupUrl = deploymentUrl;
-        if (!_.isNull(namespace)) {
-          rollupUrl += `&namespace=${namespace}`;
-        }
-        if (!_.isNull(name)) {
-          rollupUrl += `&resource_name=${name}`;
-        }
+      url: () => {
         return {
-          rollup: rollupUrl
+          rollup: `/api/stat?resource_type=deployment`
+        };
+      }
+    },
+    "pod": {
+      url: () => {
+        return {
+          rollup: `/api/stat?resource_type=pod`
         };
       }
     }

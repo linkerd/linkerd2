@@ -45,6 +45,7 @@ var (
 	k8sResourceTypesToPromLabels = map[string]model.LabelName{
 		k8s.KubernetesDeployments: "deployment",
 		k8s.KubernetesNamespaces:  namespaceLabel,
+		k8s.KubernetesPods:        "pod",
 	}
 )
 
@@ -63,6 +64,8 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 		objectMap, meshCount, err = s.getDeployments(req.Selector.Resource)
 	case k8s.KubernetesNamespaces:
 		objectMap, meshCount, err = s.getNamespaces(req.Selector.Resource)
+	case k8s.KubernetesPods:
+		objectMap, meshCount, err = s.getPods(req.Selector.Resource)
 	default:
 		err = fmt.Errorf("Unimplemented resource type: %v", req.Selector.Resource.Type)
 	}
@@ -379,6 +382,47 @@ func (s *grpcServer) getNamespaces(res *pb.Resource) (map[string]metav1.ObjectMe
 	}
 
 	return namespaceMap, meshedPodCount, nil
+}
+
+func (s *grpcServer) getPods(res *pb.Resource) (map[string]metav1.ObjectMeta, map[string]*meshedCount, error) {
+	var err error
+	var pods []*apiv1.Pod
+
+	if res.Namespace == "" {
+		pods, err = s.podLister.List(labels.Everything())
+	} else if res.Name == "" {
+		pods, err = s.podLister.Pods(res.Namespace).List(labels.Everything())
+	} else {
+		var pod *apiv1.Pod
+		pod, err = s.podLister.Pods(res.Namespace).Get(res.Name)
+		pods = []*apiv1.Pod{pod}
+	}
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	meshedPodCount := make(map[string]*meshedCount)
+	podMap := make(map[string]metav1.ObjectMeta)
+	for _, pod := range pods {
+		if pod.Status.Phase != apiv1.PodRunning {
+			continue
+		}
+
+		key, err := cache.MetaNamespaceKeyFunc(pod)
+		if err != nil {
+			return nil, nil, err
+		}
+		podMap[key] = pod.ObjectMeta
+
+		meshCount := &meshedCount{total: 1}
+		if isInMesh(pod) {
+			meshCount.inMesh++
+		}
+		meshedPodCount[key] = meshCount
+	}
+
+	return podMap, meshedPodCount, nil
 }
 
 func (s *grpcServer) getMeshedPodCount(namespace string, obj runtime.Object) (*meshedCount, error) {
