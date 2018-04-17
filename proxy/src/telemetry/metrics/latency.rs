@@ -1,8 +1,9 @@
 #![deny(missing_docs)]
-use std::{fmt, iter, ops, slice, u32};
-use std::num::Wrapping;
+use std::{fmt, u32};
+use std::default::Default;
 use std::time::Duration;
-use super::Counter;
+
+use super::{histogram, Counter};
 
 /// The number of buckets in a  latency histogram.
 pub const NUM_BUCKETS: usize = 26;
@@ -57,36 +58,7 @@ pub const BUCKET_BOUNDS: [Latency; NUM_BUCKETS] = [
 ];
 
 /// A series of latency values and counts.
-#[derive(Debug, Default, Clone)]
-pub struct Histogram {
-
-    /// Array of buckets in which to count latencies.
-    ///
-    /// The upper bound of a given bucket `i` is given in `BUCKET_BOUNDS[i]`.
-    buckets: [Counter; NUM_BUCKETS],
-
-    /// The total sum of all observed latency values.
-    ///
-    /// Histogram sums always explicitly wrap on overflows rather than
-    /// panicking in debug builds. Prometheus' [`rate()`] and [`irate()`]
-    /// queries handle breaks in monotonicity gracefully (see also
-    /// [`resets()`]), so wrapping is less problematic than panicking in this
-    /// case.
-    ///
-    /// Note, however, that Prometheus actually represents this using 64-bit
-    /// floating-point numbers. The correct semantics are to ensure the sum
-    /// always gets reset to zero after Prometheus reads it, before it would
-    /// ever overflow a 52-bit `f64` mantissa.
-    ///
-    /// [`rate()`]: https://prometheus.io/docs/prometheus/latest/querying/functions/#rate()
-    /// [`irate()`]: https://prometheus.io/docs/prometheus/latest/querying/functions/#irate()
-    /// [`resets()`]: https://prometheus.io/docs/prometheus/latest/querying/functions/#resets
-    ///
-    // TODO: Implement Prometheus reset semantics correctly, taking into
-    //       consideration that Prometheus represents this as `f64` and so
-    //       there are only 52 significant bits.
-    pub sum: Wrapping<u64>,
-}
+pub type Histogram = histogram::Histogram<'static, Latency>;
 
 /// A latency in tenths of a millisecond.
 #[derive(Debug, Default, Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Hash)]
@@ -95,21 +67,13 @@ pub struct Latency(u32);
 
 // ===== impl Histogram =====
 
-impl Histogram {
-
-    /// Observe a measurement
-    pub fn observe<I>(&mut self, measurement: I)
-    where
-        I: Into<Latency>,
-    {
-        let measurement = measurement.into();
-        let i = BUCKET_BOUNDS.iter()
-            .position(|max| &measurement <= max)
-            .expect("latency value greater than u32::MAX; this shouldn't be \
-                     possible.");
-        self.buckets[i].incr();
-        self.sum += Wrapping(measurement.0 as u64);
+impl Default for Histogram {
+    fn default() -> Self {
+        Histogram::new(&BUCKET_BOUNDS, Box::new([Counter::default(); NUM_BUCKETS]))
     }
+}
+
+impl<'a> histogram::Histogram<'a, Latency> {
 
     /// Return the sum value of this histogram in milliseconds.
     ///
@@ -119,35 +83,9 @@ impl Histogram {
     pub fn sum_in_ms(&self) -> f64 {
         self.sum.0 as f64 / MS_TO_TENTHS_OF_MS as f64
     }
-
-}
-
-impl<I> ops::AddAssign<I> for Histogram
-where
-    I: Into<Latency>
-{
-    #[inline]
-    fn add_assign(&mut self, measurement: I) {
-        self.observe(measurement)
-    }
-
-}
-
-impl<'a> IntoIterator for &'a Histogram {
-    type Item = u64;
-    type IntoIter = iter::Map<
-        slice::Iter<'a, Counter>,
-        fn(&'a Counter) -> u64
-    >;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.buckets.iter().map(|&count| count.into())
-    }
-
 }
 
 // ===== impl Latency =====
-
 
 const SEC_TO_MS: u32 = 1_000;
 const SEC_TO_TENTHS_OF_A_MS: u32 = SEC_TO_MS * 10;
@@ -206,6 +144,12 @@ impl Into<u32> for Latency {
     }
 }
 
+impl Into<u64> for Latency {
+    fn into(self) -> u64 {
+        self.0 as u64
+    }
+}
+
 impl fmt::Display for Latency {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.0 == u32::MAX {
@@ -225,5 +169,11 @@ impl fmt::Display for Latency {
             //       a reasonable cap on precision here.
             write!(f, "{}", self.0 / MS_TO_TENTHS_OF_MS)
         }
+    }
+}
+
+impl histogram::FormatSum for Latency {
+    fn format_sum<'a>(hist: &histogram::Histogram<'a, Latency>) -> f64 {
+        hist.sum_in_ms()
     }
 }
