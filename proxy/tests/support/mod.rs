@@ -110,7 +110,7 @@ pub mod client;
 pub mod controller;
 pub mod proxy;
 pub mod server;
-mod tcp;
+pub mod tcp;
 
 pub fn shutdown_signal() -> (Shutdown, ShutdownRx) {
     let (tx, rx) = oneshot::channel();
