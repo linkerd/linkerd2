@@ -49,7 +49,7 @@ use telemetry::event::Event;
 mod labels;
 mod latency;
 
-use self::labels::{RequestLabels, ResponseLabels};
+use self::labels::{RequestLabels, ResponseLabels, TransportLabels};
 use self::latency::{BUCKET_BOUNDS, Histogram};
 pub use self::labels::{DstLabels, Labeled};
 
@@ -61,6 +61,12 @@ struct Metrics {
     response_total: Metric<Counter, Arc<ResponseLabels>>,
     response_duration: Metric<Histogram, Arc<ResponseLabels>>,
     response_latency: Metric<Histogram, Arc<ResponseLabels>>,
+
+    tcp_accept_open_total: Metric<Counter, Arc<TransportLabels>>,
+    tcp_accept_close_total: Metric<Counter, Arc<TransportLabels>>,
+
+    tcp_connect_open_total: Metric<Counter, Arc<TransportLabels>>,
+    tcp_connect_close_total: Metric<Counter, Arc<TransportLabels>>,
 
     start_time: u64,
 }
@@ -162,12 +168,40 @@ impl Metrics {
             stream has completed.",
         );
 
+        let tcp_accept_open_total = Metric::<Counter, Arc<TransportLabels>>::new(
+            "tcp_accept_open_total",
+            "A counter of the total number of transport connections which \
+             have been accepted by the proxy.",
+        );
+
+        let tcp_accept_close_total = Metric::<Counter, Arc<TransportLabels>>::new(
+            "tcp_accept_close_total",
+            "A counter of the total number of transport connections accepted \
+             by the proxy which have been closed.",
+        );
+
+        let tcp_connect_open_total = Metric::<Counter, Arc<TransportLabels>>::new(
+            "tcp_connect_open_total",
+            "A counter of the total number of transport connections which \
+             have been opened by the proxy.",
+        );
+
+        let tcp_connect_close_total = Metric::<Counter, Arc<TransportLabels>>::new(
+            "tcp_connect_close_total",
+            "A counter of the total number of transport connections opened \
+             by the proxy which have been closed.",
+        );
+
         Metrics {
             request_total,
             request_duration,
             response_total,
             response_duration,
             response_latency,
+            tcp_accept_open_total,
+            tcp_accept_close_total,
+            tcp_connect_open_total,
+            tcp_connect_close_total,
             start_time,
         }
     }
@@ -211,17 +245,54 @@ impl Metrics {
             .entry(labels.clone())
             .or_insert_with(Default::default)
     }
+
+    fn tcp_accept_open_total(&mut self,
+                             labels: &Arc<TransportLabels>)
+                             -> &mut Counter {
+        self.tcp_accept_open_total.values
+            .entry(labels.clone())
+            .or_insert_with(Default::default)
+    }
+
+    fn tcp_accept_close_total(&mut self,
+                              labels: &Arc<TransportLabels>)
+                              -> &mut Counter {
+        self.tcp_accept_close_total.values
+            .entry(labels.clone())
+            .or_insert_with(Default::default)
+    }
+
+    fn tcp_connect_open_total(&mut self,
+                             labels: &Arc<TransportLabels>)
+                             -> &mut Counter {
+        self.tcp_connect_open_total.values
+            .entry(labels.clone())
+            .or_insert_with(Default::default)
+    }
+
+    fn tcp_connect_close_total(&mut self,
+                              labels: &Arc<TransportLabels>)
+                              -> &mut Counter {
+        self.tcp_connect_close_total.values
+            .entry(labels.clone())
+            .or_insert_with(Default::default)
+    }
 }
 
 
 impl fmt::Display for Metrics {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}\n{}\n{}\n{}\n{}\nprocess_start_time_seconds {}\n",
+        write!(f,
+            "{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\nprocess_start_time_seconds {}\n",
             self.request_total,
             self.request_duration,
             self.response_total,
             self.response_duration,
             self.response_latency,
+            self.tcp_accept_open_total,
+            self.tcp_accept_close_total,
+            self.tcp_connect_open_total,
+            self.tcp_connect_close_total,
             self.start_time,
         )
     }
@@ -414,8 +485,31 @@ impl Aggregate {
                 });
             },
 
-            Event::TransportOpen(_) | Event::TransportClose(_, _) => {
-                // TODO: we don't collect any metrics around transport events.
+            Event::TransportOpen(ref ctx) => {
+                let labels = Arc::new(TransportLabels::new(ctx));
+                self.update(|metrics| match ctx.as_ref() {
+                    ctx::transport::Ctx::Server(_) => {
+                        *metrics.tcp_accept_open_total(&labels).incr();
+                    },
+                    ctx::transport::Ctx::Client(_) => {
+                        *metrics.tcp_connect_open_total(&labels).incr();
+                    },
+                })
+            },
+
+            Event::TransportClose(ref ctx, _) => {
+                let labels = Arc::new(TransportLabels::new(ctx));
+                self.update(|metrics| {
+                    // TODO: add duration to transport durations histogram.
+                    match ctx.as_ref() {
+                        ctx::transport::Ctx::Server(_) => {
+                            *metrics.tcp_accept_close_total(&labels).incr();
+                        },
+                        ctx::transport::Ctx::Client(_) => {
+                            *metrics.tcp_connect_close_total(&labels).incr();
+                        },
+                    }
+                })
             },
         };
     }

@@ -50,8 +50,6 @@ pub struct ResponseLabels {
     classification: Classification,
 }
 
-
-
 /// Labels describing a TCP connection
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct TransportLabels {
@@ -59,23 +57,6 @@ pub struct TransportLabels {
     direction: Direction,
 
     protocol: Protocol,
-
-    /// Was the transport a server or client connection?
-    kind: TransportKind,
-}
-
-/// Labels describing a TCP connection
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub enum TransportKind {
-    /// TCP client connection (i.e., opened by the proxy).
-    Client,
-
-    /// Labels describing a TCP server connection (i.e., to the proxy).
-    Server {
-        // Additional labels identifying the destination service of an outbound
-        // request, provided by the Conduit control plane's service discovery.
-        outbound_labels: Option<DstLabels>,
-    },
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
@@ -318,20 +299,9 @@ impl fmt::Display for DstLabels {
 
 impl TransportLabels {
     pub fn new(ctx: &ctx::transport::Ctx) -> Self {
-        use ctx::transport::Ctx;
-        match ctx {
-            Ctx::Client(ref ctx) => TransportLabels {
-                direction: Direction::from_context(&ctx.proxy),
-                protocol: ctx.protocol,
-                kind: TransportKind::Client,
-            },
-            Ctx::Server(ref ctx) => TransportLabels {
-                direction: Direction::from_context(&ctx.proxy),
-                protocol: ctx.protocol,
-                kind: TransportKind::Server {
-                    outbound_labels: None, // TODO: implement
-                },
-            },
+        TransportLabels {
+            direction: Direction::from_context(&ctx.proxy()),
+            protocol: ctx.protocol(),
         }
     }
 }
@@ -342,21 +312,7 @@ impl fmt::Display for TransportLabels {
             Protocol::Http => "protocol=\"http\"",
             Protocol::Tcp => "protocol=\"tcp\"",
         };
-        write!(f, "{},{},{}", self.direction, protocol, self.kind)
-    }
-}
-
-// ===== impl TransportKind =====
-
-impl fmt::Display for TransportKind {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            TransportKind::Client => f.pad("kind=\"client\""),
-            TransportKind::Server { outbound_labels: None } =>
-                f.pad("kind=\"server\""),
-            TransportKind::Server { outbound_labels: Some(ref labels) } =>
-                write!(f, "kind=\"server\",{}", labels),
-        }
+        write!(f, "{},{}", self.direction, protocol)
     }
 }
 
