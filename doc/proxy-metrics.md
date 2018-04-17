@@ -133,23 +133,32 @@ request_total{
 }
 ```
 
-[prom-format]: https://prometheus.io/docs/instrumenting/exposition_formats/#format-version-0.0.4
-[pod-template-hash]: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#pod-template-hash-label
-
 # Transport-Level Metrics
 
 The following metrics are collected at the level of the underlying transport
 layer.
 
-### `connection_opens`
+### `tcp_accept_open_total`
 
-A counter of the total number of transport connections which have been opened.
+A counter of the total number of transport connections which have been accepted
+by the proxy.
 
-### `connection_closes`
+### `tcp_accept_close_total`
 
-A counter of the total number of transport connections which have been closed.
+A counter of the total number of transport connections accepted by the proxy
+which have been closed.
 
-### `connections`
+### `tcp_connect_open_total`
+
+A counter of the total number of transport connections which have been opened
+by the proxy.
+
+### `tcp_connect_close_total`
+
+A counter of the total number of transport connections opened by the proxy
+which have been closed.
+
+### `tcp_connections_open`
 
 A gauge of the number of transport connections currently open.
 
@@ -161,7 +170,7 @@ A counter of the total number of sent bytes.
 
 A counter of the total number of recieved bytes.
 
-### `connection_duration_ms`
+### `tcp_connection_duration_ms`
 
 A histogram of the duration of the lifetime of a connection, in milliseconds.
 
@@ -173,8 +182,6 @@ Each of these metrics has the following labels:
                 pod to the proxy, or from the proxy to the application,
                `outbound` if the connection was established either from the
                 application to the proxy, or from the proxy to outside the pod.
-* `kind`: `client` if the connection was initiated by the proxy,
-          `server` if the connection was initiated to the proxy.
 * `protocol`: `http` if the connection corresponds to an HTTP/1 or HTTP/2 request,
               `tcp` if the connection is proxied as a raw TCP stream.
 
@@ -182,16 +189,5 @@ Note that the labels described above under the heading "Prometheus Collector lab
 are also added to transport-level metrics, when applicable.
 
 
-### Outbound HTTP labels
-
-The following labels are only applicable if `direction="outbound"`, `protocol="http",`
-_and_ `kind="server"`.
-
-* `dst_deployment`: The deployment to which this request is being sent.
-* `dst_job`: The job to which this request is being sent.
-* `dst_replica_set`: The replica set to which this request is being sent.
-* `dst_daemon_set`: The daemon set to which this request is being sent.
-* `dst_replication_controller`: The replication controller to which this request
-                                is being sent.
-* `dst_namespace`: The namespace to which this request is being sent.
-* `dst_service`: The service to which this request is being sent.
+[prom-format]: https://prometheus.io/docs/instrumenting/exposition_formats/#format-version-0.0.4
+[pod-template-hash]: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#pod-template-hash-label
