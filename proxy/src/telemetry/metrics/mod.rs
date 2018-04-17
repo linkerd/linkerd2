@@ -488,10 +488,10 @@ impl Aggregate {
             Event::TransportOpen(ref ctx) => {
                 let labels = Arc::new(TransportLabels::new(ctx));
                 self.update(|metrics| match ctx.as_ref() {
-                    ctx::transport::Ctx::Server(_) => {
+                    &ctx::transport::Ctx::Server(_) => {
                         *metrics.tcp_accept_open_total(&labels).incr();
                     },
-                    ctx::transport::Ctx::Client(_) => {
+                    &ctx::transport::Ctx::Client(_) => {
                         *metrics.tcp_connect_open_total(&labels).incr();
                     },
                 })
@@ -502,10 +502,10 @@ impl Aggregate {
                 self.update(|metrics| {
                     // TODO: add duration to transport durations histogram.
                     match ctx.as_ref() {
-                        ctx::transport::Ctx::Server(_) => {
+                        &ctx::transport::Ctx::Server(_) => {
                             *metrics.tcp_accept_close_total(&labels).incr();
                         },
-                        ctx::transport::Ctx::Client(_) => {
+                        &ctx::transport::Ctx::Client(_) => {
                             *metrics.tcp_connect_close_total(&labels).incr();
                         },
                     }
