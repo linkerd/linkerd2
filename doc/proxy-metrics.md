@@ -67,6 +67,10 @@ The following labels are only applicable if `direction=outbound`.
                                 is being sent.
 * `dst_namespace`: The namespace to which this request is being sent.
 * `dst_service`: The service to which this request is being sent.
+* `dst_pod_template_hash`: The [pod-template-hash][pod-template-hash] of the pod
+                           to which this request is being sent. This label
+                           selector roughly approximates a pod's `ReplicaSet` or
+                           `ReplicationController`.
 
 ### Prometheus Collector labels
 
@@ -85,7 +89,9 @@ Prometheus labels.
 * `pod`: Kubernetes pod name.
 * `pod_template_hash`: Corresponds to the [pod-template-hash][pod-template-hash]
                        Kubernetes label. This value changes during redeploys and
-                       rolling restarts.
+                       rolling restarts. This label selector roughly
+                       approximates a pod's `ReplicaSet` or
+                       `ReplicationController`.
 
 #### Conduit labels added at collection time
 
