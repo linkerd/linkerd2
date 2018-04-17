@@ -9,7 +9,6 @@ use std::sync::{Arc, Mutex};
 
 use conduit_proxy_controller_grpc as pb;
 use self::bytes::BufMut;
-use self::futures::sync::mpsc;
 use self::prost::Message;
 
 pub fn new() -> Controller {
@@ -35,7 +34,7 @@ impl Controller {
         }
     }
 
-    pub fn destination(mut self, dest: &str, addr: SocketAddr) -> Self {
+    pub fn destination(self, dest: &str, addr: SocketAddr) -> Self {
         self.destination_fn(dest, move || Some(destination_update(
             addr,
             HashMap::new(),
@@ -43,7 +42,7 @@ impl Controller {
         )))
     }
 
-    pub fn labeled_destination(mut self, dest: &str, addr: SocketAddr,
+    pub fn labeled_destination(self, dest: &str, addr: SocketAddr,
                                addr_labels: HashMap<String, String>,
                                set_labels:HashMap<String, String>)
                                -> Self
@@ -65,7 +64,7 @@ impl Controller {
     }
 
 
-    pub fn destination_close(mut self, dest: &str) -> Self {
+    pub fn destination_close(self, dest: &str) -> Self {
         self.destination_fn(dest, || None)
     }
 

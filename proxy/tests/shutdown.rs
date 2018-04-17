@@ -1,3 +1,4 @@
+#![deny(warnings)]
 mod support;
 use self::support::*;
 
@@ -158,3 +159,4 @@ fn tcp_waits_for_proxies_to_close() {
     tcp_client.write(msg1);
     assert_eq!(tcp_client.read(), msg2.as_bytes());
 }
+

@@ -50,7 +50,7 @@ impl Proxy {
             );
             orig_dst
         } else {
-            debug!(
+            warn!(
                 "tcp accepted, no SO_ORIGINAL_DST to forward: remote={}",
                 srv_ctx.remote,
             );

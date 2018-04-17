@@ -112,7 +112,7 @@ enum Run {
 }
 
 fn run(addr: SocketAddr, version: Run) -> (Sender, Running) {
-    let (tx, mut rx) = mpsc::unbounded::<(Request, oneshot::Sender<Result<Response, String>>)>();
+    let (tx, rx) = mpsc::unbounded::<(Request, oneshot::Sender<Result<Response, String>>)>();
     let (running_tx, running_rx) = running();
 
     ::std::thread::Builder::new().name("support client".into()).spawn(move || {

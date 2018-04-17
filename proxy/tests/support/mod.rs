@@ -1,4 +1,9 @@
-#![allow(unused)]
+// The support mod is compiled for all the integration tests, which are each
+// compiled as separate crates. Each only uses a subset of this module, which
+// means some of it is unused.
+//
+// Note, lints like `unused_variable` should not be ignored.
+#![allow(dead_code)]
 
 extern crate bytes;
 pub extern crate conduit_proxy_controller_grpc;
@@ -18,8 +23,6 @@ extern crate log;
 pub extern crate env_logger;
 
 use std::net::SocketAddr;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
 pub use std::time::Duration;
 
 use self::bytes::{BigEndian, BytesMut};
