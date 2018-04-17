@@ -227,13 +227,6 @@ where
             req.extensions_mut().remove::<RequestOpen>()
         );
         let (inner, body_inner) = match metadata {
-            (ctx @ None, request_open) | (ctx, request_open @ None) => {
-                warn!(
-                    "missing metadata for a request to {:?}; ctx={:?}; request_open={:?};",
-                    req.uri(), ctx, request_open
-                );
-                (None, None)
-            },
             (Some(ctx), Some(RequestOpen(request_open))) => {
                 let id = self.next_id.fetch_add(1, Ordering::SeqCst);
                 let ctx = ctx::http::Request::new(&req, &ctx, &self.client_ctx, id);
@@ -267,7 +260,14 @@ where
                         })
                     };
                 (respond_inner, body_inner)
-            }
+            },
+            (ctx, request_open) => {
+                warn!(
+                    "missing metadata for a request to {:?}; ctx={:?}; request_open={:?};",
+                    req.uri(), ctx, request_open
+                );
+                (None, None)
+            },
         };
         let req = {
             let (parts, body) = req.into_parts();
