@@ -84,7 +84,7 @@ metadata:
 							Type:      k8s.KubernetesDeployments,
 						},
 					},
-					TimeWindow: pb.TimeWindow_ONE_MIN,
+					TimeWindow: "1m",
 				},
 				res: pb.StatSummaryResponse{
 					Response: &pb.StatSummaryResponse_Ok_{ // https://github.com/golang/protobuf/issues/205
@@ -107,7 +107,7 @@ metadata:
 														LatencyMsP95: 123,
 														LatencyMsP99: 123,
 													},
-													TimeWindow:     pb.TimeWindow_ONE_MIN,
+													TimeWindow:     "1m",
 													MeshedPodCount: 1,
 													TotalPodCount:  2,
 												},

@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/prometheus/common/model"
-	apiUtil "github.com/runconduit/conduit/controller/api/util"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
 	log "github.com/sirupsen/logrus"
@@ -82,12 +81,7 @@ func (s *grpcServer) objectQuery(
 ) (*pb.StatSummaryResponse, error) {
 	rows := make([]*pb.StatTable_PodGroup_Row, 0)
 
-	timeWindow, err := apiUtil.GetWindowString(req.TimeWindow)
-	if err != nil {
-		return nil, err
-	}
-
-	requestMetrics, err := s.getRequests(ctx, req, timeWindow)
+	requestMetrics, err := s.getRequests(ctx, req, req.TimeWindow)
 	if err != nil {
 		return nil, err
 	}
