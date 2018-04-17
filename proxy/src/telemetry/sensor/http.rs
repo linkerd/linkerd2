@@ -222,18 +222,24 @@ where
     }
 
     fn call(&mut self, mut req: Self::Request) -> Self::Future {
-        let (inner, body_inner) = match req.extensions_mut().remove::<Arc<ctx::transport::Server>>() {
-            None => (None, None),
-            Some(ctx) => {
+        let metadata = (
+            req.extensions_mut().remove::<Arc<ctx::transport::Server>>(),
+            req.extensions_mut().remove::<RequestOpen>()
+        );
+        let (inner, body_inner) = match metadata {
+            (ctx @ None, request_open) | (ctx, request_open @ None) => {
+                warn!(
+                    "missing metadata for a request to {:?}; ctx={:?}; request_open={:?};",
+                    req.uri(), ctx, request_open
+                );
+                (None, None)
+            },
+            (Some(ctx), Some(RequestOpen(request_open))) => {
                 let id = self.next_id.fetch_add(1, Ordering::SeqCst);
                 let ctx = ctx::http::Request::new(&req, &ctx, &self.client_ctx, id);
 
                 self.handle
                     .send(|| Event::StreamRequestOpen(Arc::clone(&ctx)));
-
-                let RequestOpen(request_open) = req.extensions_mut()
-                    .remove::<RequestOpen>()
-                    .expect("request open timestamp should always be inserted");
 
                 let respond_inner = Some(RespondInner {
                     ctx: ctx.clone(),
