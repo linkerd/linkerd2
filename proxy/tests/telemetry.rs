@@ -12,27 +12,71 @@ macro_rules! assert_contains {
     }
 }
 
+struct Fixture {
+    client: client::Client,
+    metrics: client::Client,
+    proxy: proxy::Listening,
+}
+
+impl Fixture {
+    fn inbound() -> Self {
+        info!("running test server");
+        Fixture::inbound_with_server(server::new()
+            .route("/", "hello")
+            .run())
+    }
+
+    fn outbound() -> Self {
+        info!("running test server");
+        Fixture::outbound_with_server(server::new()
+            .route("/", "hello")
+            .run())
+    }
+
+    fn inbound_with_server(srv: server::Listening) -> Self {
+        let ctrl = controller::new().run();
+        let proxy = proxy::new()
+            .controller(ctrl)
+            .inbound(srv)
+            .run();
+        let metrics = client::http1(proxy.metrics, "localhost");
+
+        let client = client::new(
+            proxy.inbound,
+            "tele.test.svc.cluster.local"
+        );
+        Fixture { client, metrics, proxy }
+    }
+
+    fn outbound_with_server(srv: server::Listening) -> Self {
+        let ctrl = controller::new()
+            .destination("tele.test.svc.cluster.local", srv.addr)
+            .run();
+        let proxy = proxy::new()
+            .controller(ctrl)
+            .outbound(srv)
+            .run();
+        let metrics = client::http1(proxy.metrics, "localhost");
+
+        let client = client::new(
+            proxy.outbound,
+            "tele.test.svc.cluster.local"
+        );
+        Fixture { client, metrics, proxy }
+    }
+}
+
 #[test]
 fn metrics_endpoint_inbound_request_count() {
     let _ = env_logger::try_init();
-
-    info!("running test server");
-    let srv = server::new().route("/hey", "hello").run();
-
-    let ctrl = controller::new();
-    let proxy = proxy::new()
-        .controller(ctrl.run())
-        .inbound(srv)
-        .run();
-    let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
-    let metrics = client::http1(proxy.metrics, "localhost");
+    let Fixture { client, metrics, proxy: _proxy } = Fixture::inbound();
 
     // prior to seeing any requests, request count should be empty.
     assert!(!metrics.get("/metrics")
         .contains("request_total{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\"}"));
 
-    info!("client.get(/hey)");
-    assert_eq!(client.get("/hey"), "hello");
+    info!("client.get(/)");
+    assert_eq!(client.get("/"), "hello");
 
     // after seeing a request, the request count should be 1.
     assert_contains!(metrics.get("/metrics"), "request_total{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\"} 1");
@@ -42,26 +86,14 @@ fn metrics_endpoint_inbound_request_count() {
 #[test]
 fn metrics_endpoint_outbound_request_count() {
     let _ = env_logger::try_init();
-
-    info!("running test server");
-    let srv = server::new().route("/hey", "hello").run();
-
-    let ctrl = controller::new()
-        .destination("tele.test.svc.cluster.local", srv.addr)
-        .run();
-    let proxy = proxy::new()
-        .controller(ctrl)
-        .outbound(srv)
-        .run();
-    let client = client::new(proxy.outbound, "tele.test.svc.cluster.local");
-    let metrics = client::http1(proxy.metrics, "localhost");
+    let Fixture { client, metrics, proxy: _proxy } = Fixture::outbound();
 
     // prior to seeing any requests, request count should be empty.
     assert!(!metrics.get("/metrics")
         .contains("request_total{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\"}"));
 
-    info!("client.get(/hey)");
-    assert_eq!(client.get("/hey"), "hello");
+    info!("client.get(/)");
+    assert_eq!(client.get("/"), "hello");
 
     // after seeing a request, the request count should be 1.
     assert_contains!(metrics.get("/metrics"), "request_total{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\"} 1");
@@ -70,6 +102,7 @@ fn metrics_endpoint_outbound_request_count() {
 
 mod response_classification {
     use super::support::*;
+    use super::Fixture;
 
     const REQ_STATUS_HEADER: &'static str = "x-test-status-requested";
     const REQ_GRPC_STATUS_HEADER: &'static str = "x-test-grpc-status-requested";
@@ -93,7 +126,7 @@ mod response_classification {
         )
     }
 
-    fn make_test_server() -> server::Server {
+    fn make_test_server() -> server::Listening {
         fn parse_header(headers: &http::HeaderMap, which: &str)
             -> Option<http::StatusCode>
         {
@@ -121,19 +154,14 @@ mod response_classification {
                 *rsp.status_mut() = status;
                 rsp
             })
+            .run()
     }
 
     #[test]
     fn inbound_http() {
         let _ = env_logger::try_init();
-        let srv = make_test_server().run();
-        let ctrl = controller::new();
-        let proxy = proxy::new()
-            .controller(ctrl.run())
-            .inbound(srv)
-            .run();
-        let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
-        let metrics = client::http1(proxy.metrics, "localhost");
+        let Fixture { client, metrics, proxy: _proxy } =
+            Fixture::inbound_with_server(make_test_server());
 
         for (i, status) in STATUSES.iter().enumerate() {
             let request = client.request(
@@ -154,16 +182,8 @@ mod response_classification {
     #[test]
     fn outbound_http() {
         let _ = env_logger::try_init();
-        let srv = make_test_server().run();
-        let ctrl = controller::new()
-            .destination("tele.test.svc.cluster.local", srv.addr)
-            .run();
-        let proxy = proxy::new()
-            .controller(ctrl)
-            .outbound(srv)
-            .run();
-        let client = client::new(proxy.outbound, "tele.test.svc.cluster.local");
-        let metrics = client::http1(proxy.metrics, "localhost");
+        let Fixture { client, metrics, proxy: _proxy } =
+            Fixture::outbound_with_server(make_test_server());
 
         for (i, status) in STATUSES.iter().enumerate() {
             let request = client.request(
@@ -197,13 +217,8 @@ fn metrics_endpoint_inbound_response_latency() {
         .route_with_latency("/hi", "good morning", Duration::from_millis(40))
         .run();
 
-    let ctrl = controller::new();
-    let proxy = proxy::new()
-        .controller(ctrl.run())
-        .inbound(srv)
-        .run();
-    let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
-    let metrics = client::http1(proxy.metrics, "localhost");
+    let Fixture { client, metrics, proxy: _proxy } =
+        Fixture::inbound_with_server(srv);
 
     info!("client.get(/hey)");
     assert_eq!(client.get("/hey"), "hello");
@@ -223,8 +238,6 @@ fn metrics_endpoint_inbound_response_latency() {
 
     info!("client.get(/hi)");
     assert_eq!(client.get("/hi"), "good morning");
-
-
 
     // request with 40ms extra latency should fall into the 50ms bucket.
     assert_contains!(metrics.get("/metrics"),
@@ -280,15 +293,8 @@ fn metrics_endpoint_outbound_response_latency() {
         .route_with_latency("/hi", "good morning", Duration::from_millis(40))
         .run();
 
-    let ctrl = controller::new()
-        .destination("tele.test.svc.cluster.local", srv.addr)
-        .run();
-    let proxy = proxy::new()
-        .controller(ctrl)
-        .outbound(srv)
-        .run();
-    let client = client::new(proxy.outbound, "tele.test.svc.cluster.local");
-    let metrics = client::http1(proxy.metrics, "localhost");
+    let Fixture { client, metrics, proxy: _proxy } =
+        Fixture::outbound_with_server(srv);
 
     info!("client.get(/hey)");
     assert_eq!(client.get("/hey"), "hello");
@@ -353,30 +359,18 @@ fn metrics_endpoint_outbound_response_latency() {
 #[cfg_attr(not(feature = "flaky_tests"), ignore)]
 fn metrics_endpoint_inbound_request_duration() {
     let _ = env_logger::try_init();
-
-    info!("running test server");
-    let srv = server::new()
-        .route("/hey", "hello")
-        .run();
-
-    let ctrl = controller::new();
-    let proxy = proxy::new()
-        .controller(ctrl.run())
-        .inbound(srv)
-        .run();
-    let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
-    let metrics = client::http1(proxy.metrics, "localhost");
+    let Fixture { client, metrics, proxy: _proxy } = Fixture::inbound();
 
     // request with body should increment request_duration
-    info!("client.get(/hey)");
-    assert_eq!(client.get("/hey"), "hello");
+    info!("client.get(/)");
+    assert_eq!(client.get("/"), "hello");
 
     assert_contains!(metrics.get("/metrics"),
         "request_duration_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\"} 1");
 
     // request without body should also increment request_duration
-    info!("client.get(/hey)");
-    assert_eq!(client.get("/hey"), "hello");
+    info!("client.get(/)");
+    assert_eq!(client.get("/"), "hello");
 
     assert_contains!(metrics.get("/metrics"),
         "request_duration_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\"} 2");
@@ -387,29 +381,16 @@ fn metrics_endpoint_inbound_request_duration() {
 #[cfg_attr(not(feature = "flaky_tests"), ignore)]
 fn metrics_endpoint_outbound_request_duration() {
     let _ = env_logger::try_init();
+    let Fixture { client, metrics, proxy: _proxy } = Fixture::outbound();
 
-    info!("running test server");
-    let srv = server::new()
-        .route("/hey", "hello")
-        .run();
-    let ctrl = controller::new()
-        .destination("tele.test.svc.cluster.local", srv.addr)
-        .run();
-    let proxy = proxy::new()
-        .controller(ctrl)
-        .outbound(srv)
-        .run();
-    let client = client::new(proxy.outbound, "tele.test.svc.cluster.local");
-    let metrics = client::http1(proxy.metrics, "localhost");
-
-    info!("client.get(/hey)");
-    assert_eq!(client.get("/hey"), "hello");
+    info!("client.get(/)");
+    assert_eq!(client.get("/"), "hello");
 
     assert_contains!(metrics.get("/metrics"),
         "request_duration_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\"} 1");
 
-    info!("client.get(/hey)");
-    assert_eq!(client.get("/hey"), "hello");
+    info!("client.get(/)");
+    assert_eq!(client.get("/"), "hello");
 
     assert_contains!(metrics.get("/metrics"),
         "request_duration_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\"} 2");
@@ -418,15 +399,10 @@ fn metrics_endpoint_outbound_request_duration() {
 // Tests for destination labels provided by control plane service discovery.
 mod outbound_dst_labels {
     use super::support::*;
+    use super::Fixture;
 
     use std::collections::HashMap;
     use std::iter::FromIterator;
-
-    struct Fixture {
-        client: client::Client,
-        metrics: client::Client,
-        proxy: proxy::Listening,
-    }
 
     fn fixture<A, B>(addr_labels: A, set_labels: B) -> Fixture
     where
