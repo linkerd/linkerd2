@@ -414,8 +414,31 @@ impl Aggregate {
                 });
             },
 
-            Event::TransportOpen(_) | Event::TransportClose(_, _) => {
-                // TODO: we don't collect any metrics around transport events.
+            Event::TransportOpen(ref ctx) => {
+                let labels = Arc::new(TransportLabels::new(ctx));
+                self.update(|metrics| match ctx.as_ref() {
+                    &ctx::transport::Ctx::Server(_) => {
+                        *metrics.tcp_accept_open_total(&labels).incr();
+                    },
+                    &ctx::transport::Ctx::Client(_) => {
+                        *metrics.tcp_connect_open_total(&labels).incr();
+                    },
+                })
+            },
+
+            Event::TransportClose(ref ctx, _) => {
+                let labels = Arc::new(TransportLabels::new(ctx));
+                self.update(|metrics| {
+                    // TODO: add duration to transport durations histogram.
+                    match ctx.as_ref() {
+                        &ctx::transport::Ctx::Server(_) => {
+                            *metrics.tcp_accept_close_total(&labels).incr();
+                        },
+                        &ctx::transport::Ctx::Client(_) => {
+                            *metrics.tcp_connect_close_total(&labels).incr();
+                        },
+                    }
+                })
             },
         };
     }
