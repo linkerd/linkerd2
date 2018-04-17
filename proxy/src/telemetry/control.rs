@@ -96,7 +96,6 @@ impl Control {
         match self.rx.take() {
             None => Ok(Async::Ready(None)),
             Some(mut rx) => {
-                trace!("recv.poll({:?})", rx);
                 match rx.poll() {
                     Ok(Async::Ready(None)) => Ok(Async::Ready(None)),
                     ev => {
@@ -138,7 +137,6 @@ impl Future for Control {
     type Error = ();
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        trace!("poll");
         loop {
             match try_ready!(self.recv()) {
                 Some(ev) => {
@@ -151,7 +149,7 @@ impl Future for Control {
                     self.metrics_aggregate.record_event(&ev);
                 }
                 None => {
-                    warn!("events finished");
+                    debug!("events finished");
                     return Ok(Async::Ready(()));
                 }
             };
