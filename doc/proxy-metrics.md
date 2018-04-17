@@ -165,16 +165,6 @@ A counter of the total number of recieved bytes.
 
 A histogram of the duration of the lifetime of a connection, in milliseconds.
 
-### `connection_sent_bytes`
-
-A histogram of the number of bytes sent over the lifetime of a connection.
-This is updated when a connection closes.
-
-### `connection_recieved_bytes`
-
-A histogram of the number of bytes recieved over the lifetime of a connection.
-This is incremented when a connection closes.
-
 ## Labels
 
 Each of these metrics has the following labels:
@@ -187,6 +177,10 @@ Each of these metrics has the following labels:
           `server` if the connection was initiated to the proxy.
 * `protocol`: `http` if the connection corresponds to an HTTP/1 or HTTP/2 request,
               `tcp` if the connection is proxied as a raw TCP stream.
+
+Note that the labels described above under the heading "Prometheus Collector labels"
+are also added to transport-level metrics, when applicable.
+
 
 ### Outbound HTTP labels
 
@@ -201,36 +195,3 @@ _and_ `kind="server"`.
                                 is being sent.
 * `dst_namespace`: The namespace to which this request is being sent.
 * `dst_service`: The service to which this request is being sent.
-
-
-### Prometheus Collector labels
-
-The following labels are added by the Prometheus collector.
-
-* `instance`: ip:port of the pod.
-* `job`: The Prometheus job responsible for the collection, typically
-         `conduit-proxy`.
-
-#### Kubernetes labels added at collection time
-
-Kubernetes namespace, pod name, and all labels are mapped to corresponding
-Prometheus labels.
-
-* `namespace`: Kubernetes namespace that the pod belongs to.
-* `pod`: Kubernetes pod name.
-* `pod_template_hash`: Corresponds to the [pod-template-hash][pod-template-hash]
-                       Kubernetes label. This value changes during redeploys and
-                       rolling restarts.
-
-#### Conduit labels added at collection time
-
-Kubernetes labels prefixed with `conduit.io/` are added to your application at
-`conduit inject` time. More specifically, Kubernetes labels prefixed with
-`conduit.io/proxy-*` will correspond to these Prometheus labels:
-
-* `daemon_set`: The daemon set that the pod belongs to (if applicable).
-* `deployment`: The deployment that the pod belongs to (if applicable).
-* `k8s_job`: The job that the pod belongs to (if applicable).
-* `replica_set`: The replica set that the pod belongs to (if applicable).
-* `replication_controller`: The replication controller that the pod belongs to
-                            (if applicable).
