@@ -80,6 +80,9 @@ struct Metrics {
 
     tcp_connection_duration: Metric<Histogram, Arc<TransportLabels>>,
 
+    sent_bytes: Metric<Counter, Arc<TransportLabels>>,
+    received_bytes: Metric<Counter, Arc<TransportLabels>>,
+
     start_time: u64,
 }
 
