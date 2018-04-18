@@ -715,8 +715,13 @@ mod transport {
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_open_total{direction=\"inbound\",protocol=\"http\"} 1");
-        // connection pooling means these conns aren't closed yet
+            "tcp_accept_open_total{direction=\"inbound\",protocol=\"http\"} 1"
+        );
+        // drop the client to force the connection to close.
+        drop(client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_accept_close_total{direction=\"inbound\",protocol=\"http\"} 1"
+        );
 
         // create a new client to force a new connection
         let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
@@ -724,7 +729,13 @@ mod transport {
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_open_total{direction=\"inbound\",protocol=\"http\"} 2");
+            "tcp_accept_open_total{direction=\"inbound\",protocol=\"http\"} 2"
+        );
+        // drop the client to force the connection to close.
+        drop(client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_accept_close_total{direction=\"inbound\",protocol=\"http\"} 2"
+        );
     }
 
     #[test]
@@ -755,8 +766,13 @@ mod transport {
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_open_total{direction=\"outbound\",protocol=\"http\"} 1");
-        // connection pooling means these conns aren't closed yet
+            "tcp_accept_open_total{direction=\"outbound\",protocol=\"http\"} 1"
+        );
+        // drop the client to force the connection to close.
+        drop(client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_accept_close_total{direction=\"outbound\",protocol=\"http\"} 1"
+        );
 
         // create a new client to force a new connection
         let client = client::new(proxy.outbound, "tele.test.svc.cluster.local");
@@ -764,7 +780,13 @@ mod transport {
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_open_total{direction=\"outbound\",protocol=\"http\"} 2");
+            "tcp_accept_open_total{direction=\"outbound\",protocol=\"http\"} 2"
+        );
+        // drop the client to force the connection to close.
+        drop(client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_accept_close_total{direction=\"outbound\",protocol=\"http\"} 2"
+        );
     }
 
     #[test]
