@@ -28,6 +28,7 @@ pub enum InvalidMatch {
     InvalidNetwork,
     InvalidHttpMethod,
     InvalidScheme,
+    Unimplemented,
 }
 
 #[derive(Clone, Debug)]
@@ -151,6 +152,8 @@ impl<'a> TryFrom<&'a observe_request::match_::Match> for Match {
             match_::Match::Source(ref src) => Match::Source(TcpMatch::try_from(src)?),
 
             match_::Match::Destination(ref dst) => Match::Destination(TcpMatch::try_from(dst)?),
+
+            match_::Match::DestinationLabel(..) => return Err(InvalidMatch::Unimplemented),
 
             match_::Match::Http(ref http) => Match::Http(HttpMatch::try_from(http)?),
         };
