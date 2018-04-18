@@ -1162,4 +1162,64 @@ mod transport {
         drop(tcp_client);
         assert_contains!(metrics.get("/metrics"), &expected);
     }
+
+    #[test]
+    fn inbound_tcp_connections_open() {
+        let _ = env_logger::try_init();
+        let TcpFixture { client, metrics, proxy: _proxy } =
+            TcpFixture::inbound();
+
+        let msg1 = "custom tcp hello";
+        let msg2 = "custom tcp bye";
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(msg1);
+        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_connections_open{direction=\"inbound\",protocol=\"tcp\"} 2");
+        drop(tcp_client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_connections_open{direction=\"inbound\",protocol=\"tcp\"} 0");
+        let tcp_client = client.connect();
+
+        tcp_client.write(msg1);
+        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_connections_open{direction=\"inbound\",protocol=\"tcp\"} 2");
+
+        drop(tcp_client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_connections_open{direction=\"inbound\",protocol=\"tcp\"} 0");
+    }
+
+    #[test]
+    fn outbound_tcp_connections_open() {
+        let _ = env_logger::try_init();
+        let TcpFixture { client, metrics, proxy: _proxy } =
+            TcpFixture::outbound();
+
+        let msg1 = "custom tcp hello";
+        let msg2 = "custom tcp bye";
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(msg1);
+        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_connections_open{direction=\"outbound\",protocol=\"tcp\"} 2");
+        drop(tcp_client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_connections_open{direction=\"outbound\",protocol=\"tcp\"} 0");
+        let tcp_client = client.connect();
+
+        tcp_client.write(msg1);
+        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_connections_open{direction=\"outbound\",protocol=\"tcp\"} 2");
+
+        drop(tcp_client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_connections_open{direction=\"outbound\",protocol=\"tcp\"} 0");
+    }
 }
