@@ -853,7 +853,7 @@ mod transport {
         drop(tcp_client);
         // TODO: make assertions about buckets
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connection_duration_ms_count{direction=\"inbound\",protocol=\"tcp\"} 4");
+            "tcp_connection_duration_ms_count{direction=\"inbound\",protocol=\"tcp\"} 2");
 
         let tcp_client = client.connect();
 
@@ -865,6 +865,48 @@ mod transport {
         drop(tcp_client);
         assert_contains!(metrics.get("/metrics"),
             "tcp_connection_duration_ms_count{direction=\"inbound\",protocol=\"tcp\"} 4");
+    }
+
+    #[test]
+    fn inbound_tcp_sent_bytes() {
+        let _ = env_logger::try_init();
+        let TcpFixture { client, metrics, proxy: _proxy } =
+            TcpFixture::inbound();
+
+        let msg1 = "custom tcp hello";
+        let msg2 = "custom tcp bye";
+        let expected = format!(
+            "sent_bytes{{direction=\"inbound\",protocol=\"tcp\"}} {}",
+            msg1.len() + msg2.len()
+        );
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(msg1);
+        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        drop(tcp_client);
+        assert_contains!(metrics.get("/metrics"), &expected);
+    }
+
+    #[test]
+    fn inbound_tcp_received_bytes() {
+        let _ = env_logger::try_init();
+        let TcpFixture { client, metrics, proxy: _proxy } =
+            TcpFixture::inbound();
+
+        let msg1 = "custom tcp hello";
+        let msg2 = "custom tcp bye";
+        let expected = format!(
+            "received_bytes{{direction=\"inbound\",protocol=\"tcp\"}} {}",
+            msg1.len() + msg2.len()
+        );
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(msg1);
+        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        drop(tcp_client);
+        assert_contains!(metrics.get("/metrics"), &expected);
     }
 
     #[test]
@@ -945,5 +987,47 @@ mod transport {
         drop(tcp_client);
         assert_contains!(metrics.get("/metrics"),
             "tcp_connection_duration_ms_count{direction=\"outbound\",protocol=\"tcp\"} 4");
+    }
+
+    #[test]
+    fn outbound_tcp_sent_bytes() {
+        let _ = env_logger::try_init();
+        let TcpFixture { client, metrics, proxy: _proxy } =
+            TcpFixture::outbound();
+
+        let msg1 = "custom tcp hello";
+        let msg2 = "custom tcp bye";
+        let expected = format!(
+            "sent_bytes{{direction=\"outbound\",protocol=\"tcp\"}} {}",
+            msg1.len() + msg2.len()
+        );
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(msg1);
+        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        drop(tcp_client);
+        assert_contains!(metrics.get("/metrics"), &expected);
+    }
+
+    #[test]
+    fn outbound_tcp_received_bytes() {
+        let _ = env_logger::try_init();
+        let TcpFixture { client, metrics, proxy: _proxy } =
+            TcpFixture::outbound();
+
+        let msg1 = "custom tcp hello";
+        let msg2 = "custom tcp bye";
+        let expected = format!(
+            "received_bytes{{direction=\"outbound\",protocol=\"tcp\"}} {}",
+            msg1.len() + msg2.len()
+        );
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(msg1);
+        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        drop(tcp_client);
+        assert_contains!(metrics.get("/metrics"), &expected);
     }
 }

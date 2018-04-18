@@ -70,6 +70,9 @@ struct Metrics {
 
     tcp_connection_duration: Metric<Histogram, Arc<TransportLabels>>,
 
+    sent_bytes: Metric<Counter, Arc<TransportLabels>>,
+    received_bytes: Metric<Counter, Arc<TransportLabels>>,
+
     start_time: u64,
 }
 
@@ -199,6 +202,16 @@ impl Metrics {
             "A histogram of the duration of the lifetime of a connection, in milliseconds",
         );
 
+        let received_bytes = Metric::<Counter, Arc<TransportLabels>>::new(
+            "received_bytes",
+            "A counter of the total number of recieved bytes."
+        );
+
+        let sent_bytes = Metric::<Counter, Arc<TransportLabels>>::new(
+            "sent_bytes",
+            "A counter of the total number of sent bytes."
+        );
+
         Metrics {
             request_total,
             request_duration,
@@ -210,6 +223,8 @@ impl Metrics {
             tcp_connect_open_total,
             tcp_connect_close_total,
             tcp_connection_duration,
+            received_bytes,
+            sent_bytes,
             start_time,
         }
     }
@@ -286,20 +301,36 @@ impl Metrics {
             .or_insert_with(Default::default)
     }
 
-        fn tcp_connection_duration(&mut self,
-                                   labels: &Arc<TransportLabels>)
-                                   -> &mut Histogram {
-            self.tcp_connection_duration.values
-                .entry(labels.clone())
-                .or_insert_with(Default::default)
-        }
+    fn tcp_connection_duration(&mut self,
+                                labels: &Arc<TransportLabels>)
+                                -> &mut Histogram {
+        self.tcp_connection_duration.values
+            .entry(labels.clone())
+            .or_insert_with(Default::default)
+    }
+
+    fn sent_bytes(&mut self,
+                  labels: &Arc<TransportLabels>)
+                  -> &mut Counter {
+        self.sent_bytes.values
+            .entry(labels.clone())
+            .or_insert_with(Default::default)
+    }
+
+    fn received_bytes(&mut self,
+                      labels: &Arc<TransportLabels>)
+                      -> &mut Counter {
+        self.received_bytes.values
+            .entry(labels.clone())
+            .or_insert_with(Default::default)
+    }
 }
 
 
 impl fmt::Display for Metrics {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f,
-            "{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\nprocess_start_time_seconds {}\n",
+            "{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\nprocess_start_time_seconds {}\n",
             self.request_total,
             self.request_duration,
             self.response_total,
@@ -310,6 +341,8 @@ impl fmt::Display for Metrics {
             self.tcp_connect_open_total,
             self.tcp_connect_close_total,
             self.tcp_connection_duration,
+            self.sent_bytes,
+            self.received_bytes,
             self.start_time,
         )
     }
@@ -336,6 +369,13 @@ impl ops::Add for Counter {
         Counter(self.0 + rhs)
     }
 }
+
+impl ops::AddAssign<u64> for Counter {
+    fn add_assign(&mut self, rhs: u64) {
+        (*self).0 += Wrapping(rhs)
+    }
+}
+
 
 impl Counter {
 
@@ -519,6 +559,9 @@ impl Aggregate {
                 // there was an error.
                 let labels = Arc::new(TransportLabels::new(ctx));
                 self.update(|metrics| {
+                    *metrics.tcp_connection_duration(&labels) += close.duration;
+                    *metrics.sent_bytes(&labels) += close.tx_bytes as u64;
+                    *metrics.received_bytes(&labels) += close.tx_bytes as u64;
                     match ctx.as_ref() {
                         &ctx::transport::Ctx::Server(_) => {
                             *metrics.tcp_accept_close_total(&labels).incr();
@@ -527,7 +570,6 @@ impl Aggregate {
                             *metrics.tcp_connect_close_total(&labels).incr();
                         },
                     };
-                    *metrics.tcp_connection_duration(&labels) += close.duration;
                 })
             },
         };

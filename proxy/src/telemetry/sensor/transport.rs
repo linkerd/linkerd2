@@ -18,9 +18,8 @@ struct Inner {
     ctx: Arc<ctx::transport::Ctx>,
     opened_at: Instant,
 
-    // TODO
-    //rx_bytes: usize,
-    //tx_bytes: usize,
+    rx_bytes: usize,
+    tx_bytes: usize,
 }
 
 /// Builds client transports with telemetry.
@@ -59,6 +58,8 @@ impl<T: AsyncRead + AsyncWrite> Transport<T> {
                 ctx,
                 handle,
                 opened_at,
+                rx_bytes: 0,
+                tx_bytes: 0,
             }),
         )
     }
@@ -79,6 +80,8 @@ impl<T: AsyncRead + AsyncWrite> Transport<T> {
                         mut handle,
                         ctx,
                         opened_at,
+                        rx_bytes,
+                        tx_bytes,
                     }) = self.1.take()
                     {
                         handle.send(move || {
@@ -86,6 +89,8 @@ impl<T: AsyncRead + AsyncWrite> Transport<T> {
                             let ev = event::TransportClose {
                                 duration,
                                 clean: false,
+                                rx_bytes,
+                                tx_bytes,
                             };
                             event::Event::TransportClose(ctx, ev)
                         });
@@ -104,6 +109,8 @@ impl<T> Drop for Transport<T> {
             mut handle,
             ctx,
             opened_at,
+            rx_bytes,
+            tx_bytes,
         }) = self.1.take()
         {
             handle.send(move || {
@@ -111,6 +118,8 @@ impl<T> Drop for Transport<T> {
                 let ev = event::TransportClose {
                     clean: true,
                     duration,
+                    rx_bytes,
+                    tx_bytes,
                 };
                 event::Event::TransportClose(ctx, ev)
             });
@@ -121,6 +130,12 @@ impl<T> Drop for Transport<T> {
 impl<T: AsyncRead + AsyncWrite> io::Read for Transport<T> {
     fn read(&mut self, mut buf: &mut [u8]) -> io::Result<usize> {
         self.sense_err(move |io| io.read(buf))
+            .map(|bytes| {
+                if let Some(Inner { ref mut rx_bytes, ..}) = self.1.as_mut() {
+                    *rx_bytes += bytes;
+                }
+                bytes
+            })
     }
 }
 
@@ -131,6 +146,12 @@ impl<T: AsyncRead + AsyncWrite> io::Write for Transport<T> {
 
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.sense_err(move |io| io.write(buf))
+            .map(|bytes| {
+                if let Some(Inner { ref mut tx_bytes, ..}) = self.1.as_mut() {
+                    *tx_bytes += bytes;
+                }
+                bytes
+            })
     }
 }
 
