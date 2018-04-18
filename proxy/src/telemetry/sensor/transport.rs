@@ -131,7 +131,11 @@ impl<T: AsyncRead + AsyncWrite> io::Read for Transport<T> {
     fn read(&mut self, mut buf: &mut [u8]) -> io::Result<usize> {
         self.sense_err(move |io| io.read(buf))
             .map(|bytes| {
-                if let Some(Inner { ref mut rx_bytes, ..}) = self.1.as_mut() {
+                if let Some(&mut Inner {
+                    ref mut rx_bytes,
+                    ..
+                }) = self.1.as_mut()
+                {
                     *rx_bytes += bytes;
                 }
                 bytes
@@ -147,7 +151,11 @@ impl<T: AsyncRead + AsyncWrite> io::Write for Transport<T> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.sense_err(move |io| io.write(buf))
             .map(|bytes| {
-                if let Some(Inner { ref mut tx_bytes, ..}) = self.1.as_mut() {
+                if let Some(&mut Inner {
+                    ref mut tx_bytes,
+                    ..
+                }) = self.1.as_mut()
+                {
                     *tx_bytes += bytes;
                 }
                 bytes
