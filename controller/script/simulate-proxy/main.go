@@ -169,8 +169,7 @@ func (s *simulatedProxy) generateProxyTraffic() {
 				s.inbound.responseDurationMs.With(inboundResponseLabels).Observe(latency)
 			}
 
-			// // fraction of raw tcp transports
-			// inboundTCPFraction := rand.Intn(inboundRandomCount)
+			inboundTCPOpenFraction := rand.Intn(inboundRandomCount)
 
 			// inbound TCP stats
 			s.inbound.tcpAcceptOpenTotal.
@@ -178,13 +177,13 @@ func (s *simulatedProxy) generateProxyTraffic() {
 				Add(float64(inboundRandomCount))
 			s.inbound.tcpAcceptCloseTotal.
 				With(prom.Labels{"protocol": "http", "classification": "success"}).
-				Add(float64(inboundRandomCount))
+				Add(float64(inboundRandomCount - inboundTCPOpenFraction))
 			s.inbound.tcpConnectOpenTotal.
 				With(prom.Labels{"protocol": "http"}).
 				Add(float64(inboundRandomCount))
 			s.inbound.tcpConnectCloseTotal.
 				With(prom.Labels{"protocol": "http", "classification": "success"}).
-				Add(float64(inboundRandomCount))
+				Add(float64(inboundRandomCount - inboundTCPOpenFraction))
 
 			//
 			// outbound
@@ -214,19 +213,21 @@ func (s *simulatedProxy) generateProxyTraffic() {
 				s.outbound.responseDurationMs.With(outboundResponseLabels).Observe(latency)
 			}
 
+			outboundTCPOpenFraction := rand.Intn(inboundRandomCount)
+
 			// outbound TCP stats
 			s.outbound.tcpAcceptOpenTotal.
 				With(prom.Labels{"protocol": "http"}).
 				Add(float64(outboundRandomCount))
 			s.outbound.tcpAcceptCloseTotal.
 				With(prom.Labels{"protocol": "http", "classification": "success"}).
-				Add(float64(outboundRandomCount))
+				Add(float64(outboundRandomCount - outboundTCPOpenFraction))
 			s.outbound.tcpConnectOpenTotal.
 				With(prom.Labels{"protocol": "http"}).
 				Add(float64(outboundRandomCount))
 			s.outbound.tcpConnectCloseTotal.
 				With(prom.Labels{"protocol": "http", "classification": "success"}).
-				Add(float64(outboundRandomCount))
+				Add(float64(outboundRandomCount - outboundTCPOpenFraction))
 		}
 
 		time.Sleep(s.sleep)
