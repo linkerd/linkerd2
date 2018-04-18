@@ -55,7 +55,7 @@ message TapRequest {
 }
 
 // A tap request over kubernetes resources.
-message K8sTapRequest {
+message TapByResourceRequest {
   // Describes the kubernetes pods that should be tapped.
   ResourceSelection target = 1;
 
@@ -103,13 +103,31 @@ message ApiError {
 }
 
 message Resource {
+  // The namespace the resource is in.
+  //
+  // If empty, indicates all namespaces should be considered.
   string namespace = 1;
+
+  // The type of Kubernetes resource.
+  //
+  // E.g. pod, deployment, service, ...
+  //
+  // If `all` refers, to all resource types.
   string type = 2;
+
+  // An optional Kubernetes resource name.
   string name = 3;
 }
 
 message ResourceSelection {
+  // Identifies a Kubernetes resource.
   Resource resource = 1;
+
+  // A string-formatted Kubernetes label selector as passed to `kubectl get
+  // --selector`.
+  //
+  // XXX in the future this may be superceded by a data structure that more
+  // richly describes a parsed label selector.
   string label_selector = 2;
 }
 
@@ -172,8 +190,11 @@ service Api {
 
   rpc ListPods(Empty) returns (ListPodsResponse) {}
 
+  // Superceded by `TapByResource`.
   rpc Tap(TapRequest) returns (stream common.TapEvent) {}
-  rpc K8sTap(K8sTapRequest) returns (stream common.TapEvent) {}
+
+  // Executes tapping over Kubernetes resources.
+  rpc TapByResource(TapByResourceRequest) returns (stream common.TapEvent) {}
 
   rpc Version(Empty) returns (VersionInfo) {}
   rpc SelfCheck(common.healthcheck.SelfCheckRequest) returns (common.healthcheck.SelfCheckResponse) {}
