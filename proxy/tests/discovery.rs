@@ -1,3 +1,4 @@
+#![deny(warnings)]
 mod support;
 use self::support::*;
 

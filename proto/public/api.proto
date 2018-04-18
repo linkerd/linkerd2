@@ -7,13 +7,6 @@ import "google/protobuf/duration.proto";
 import "common/common.proto";
 import "common/healthcheck/healthcheck.proto";
 
-enum TimeWindow {
-  TEN_SEC = 0;
-  ONE_MIN = 1;
-  TEN_MIN = 2;
-  ONE_HOUR = 3;
-}
-
 message Empty {}
 
 message VersionInfo {
@@ -138,7 +131,7 @@ message ResourceError {
 
 message StatSummaryRequest {
   ResourceSelection selector = 1;
-  TimeWindow time_window = 2;
+  string time_window = 2;
 
   oneof outbound {
     Empty none = 3;
@@ -176,7 +169,7 @@ message StatTable {
 
     message Row {
       Resource resource = 1;
-      TimeWindow time_window = 2;
+      string time_window = 2;
 
       uint64 meshed_pod_count = 3;
       uint64 total_pod_count = 4;

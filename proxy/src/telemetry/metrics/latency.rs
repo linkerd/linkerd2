@@ -2,8 +2,7 @@
 use std::{fmt, iter, ops, slice, u32};
 use std::num::Wrapping;
 use std::time::Duration;
-
-use super::prometheus;
+use super::Counter;
 
 /// The number of buckets in a  latency histogram.
 pub const NUM_BUCKETS: usize = 26;
@@ -64,7 +63,7 @@ pub struct Histogram {
     /// Array of buckets in which to count latencies.
     ///
     /// The upper bound of a given bucket `i` is given in `BUCKET_BOUNDS[i]`.
-    buckets: [prometheus::Counter; NUM_BUCKETS],
+    buckets: [Counter; NUM_BUCKETS],
 
     /// The total sum of all observed latency values.
     ///
@@ -137,8 +136,8 @@ where
 impl<'a> IntoIterator for &'a Histogram {
     type Item = u64;
     type IntoIter = iter::Map<
-        slice::Iter<'a, prometheus::Counter>,
-        fn(&'a prometheus::Counter) -> u64
+        slice::Iter<'a, Counter>,
+        fn(&'a Counter) -> u64
     >;
 
     fn into_iter(self) -> Self::IntoIter {

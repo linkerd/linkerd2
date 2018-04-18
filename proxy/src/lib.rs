@@ -349,7 +349,7 @@ where
         let router = router.clone();
 
         // Map errors to appropriate response error codes.
-        MapErr::new(router, |e| {
+        let map_err = MapErr::new(router, |e| {
             match e {
                 RouteError::Route(r) => {
                     error!(" turning route error: {} into 500", r);
@@ -364,7 +364,12 @@ where
                     http::StatusCode::INTERNAL_SERVER_ERROR
                 }
             }
-        })
+        });
+
+        // Install the request open timestamp module at the very top
+        // of the stack, in order to take the timestamp as close as
+        // possible to the beginning of the request's lifetime.
+        telemetry::sensor::http::TimestampRequestOpen::new(map_err)
     }));
 
     let listen_addr = bound_port.local_addr();

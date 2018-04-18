@@ -62,7 +62,7 @@ impl TcpClient {
 }
 
 impl TcpServer {
-    pub fn accept<F, U>(mut self, cb: F) -> Self
+    pub fn accept<F, U>(self, cb: F) -> Self
     where
         F: FnOnce(Vec<u8>) -> U + Send + 'static,
         U: Into<Vec<u8>>,
@@ -122,7 +122,7 @@ impl TcpConn {
 
 fn run_client(addr: SocketAddr) -> TcpSender {
     let (tx, rx) = mpsc::unbounded();
-    ::std::thread::Builder::new().name("support client".into()).spawn(move || {
+    ::std::thread::Builder::new().name("support tcp client".into()).spawn(move || {
         let mut core = Core::new().unwrap();
         let handle = core.handle();
 
@@ -186,7 +186,7 @@ fn run_server(tcp: TcpServer) -> server::Listening {
     let (addr_tx, addr_rx) = oneshot::channel();
     let conn_count = Arc::new(AtomicUsize::from(0));
     let srv_conn_count = Arc::clone(&conn_count);
-    ::std::thread::Builder::new().name("support server".into()).spawn(move || {
+    ::std::thread::Builder::new().name("support tcp server".into()).spawn(move || {
         let mut core = Core::new().unwrap();
         let reactor = core.handle();
 
@@ -198,17 +198,21 @@ fn run_server(tcp: TcpServer) -> server::Listening {
 
         let mut accepts = tcp.accepts;
 
-        let work = bind.incoming().for_each(move |(sock, _)| {
-            let cb = accepts.pop_front().expect("no more accepts");
-            srv_conn_count.fetch_add(1, Ordering::Release);
+        let listen = bind
+            .incoming()
+            .for_each(move |(sock, _)| {
+                let cb = accepts.pop_front().expect("no more accepts");
+                srv_conn_count.fetch_add(1, Ordering::Release);
 
-            let fut = cb.call_box(sock);
+                let fut = cb.call_box(sock);
 
-            reactor.spawn(fut);
-            Ok(())
-        });
+                reactor.spawn(fut);
+                Ok(())
+            })
+            .map_err(|e| panic!("tcp accept error: {}", e));
 
-        core.run(work).unwrap();
+        core.handle().spawn(listen);
+        core.run(rx).unwrap();
     }).unwrap();
 
     let addr = addr_rx.wait().expect("addr");

@@ -6,7 +6,7 @@ use futures_mpsc_lossy::Receiver;
 use tokio_core::reactor::Handle;
 
 use super::event::Event;
-use super::metrics::prometheus;
+use super::metrics;
 use super::tap::Taps;
 use connection;
 use ctx;
@@ -34,10 +34,10 @@ pub struct MakeControl {
 #[derive(Debug)]
 pub struct Control {
     /// Aggregates scrapable metrics.
-    metrics_aggregate: prometheus::Aggregate,
+    metrics_aggregate: metrics::Aggregate,
 
     /// Serves scrapable metrics.
-    metrics_service: prometheus::Serve,
+    metrics_service: metrics::Serve,
 
     /// Receives telemetry events.
     rx: Option<Receiver<Event>>,
@@ -77,7 +77,7 @@ impl MakeControl {
     /// - `Err(io::Error)` if the timeout could not be created.
     pub fn make_control(self, taps: &Arc<Mutex<Taps>>, handle: &Handle) -> io::Result<Control> {
         let (metrics_aggregate, metrics_service) =
-            prometheus::new(&self.process_ctx);
+            metrics::new(&self.process_ctx);
 
         Ok(Control {
             metrics_aggregate,
@@ -96,7 +96,6 @@ impl Control {
         match self.rx.take() {
             None => Ok(Async::Ready(None)),
             Some(mut rx) => {
-                trace!("recv.poll({:?})", rx);
                 match rx.poll() {
                     Ok(Async::Ready(None)) => Ok(Async::Ready(None)),
                     ev => {
@@ -138,7 +137,6 @@ impl Future for Control {
     type Error = ();
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        trace!("poll");
         loop {
             match try_ready!(self.recv()) {
                 Some(ev) => {
@@ -151,7 +149,7 @@ impl Future for Control {
                     self.metrics_aggregate.record_event(&ev);
                 }
                 None => {
-                    warn!("events finished");
+                    debug!("events finished");
                     return Ok(Async::Ready(()));
                 }
             };

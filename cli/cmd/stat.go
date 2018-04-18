@@ -79,7 +79,7 @@ If no resource name is specified, displays stats about all resources of the spec
 func init() {
 	RootCmd.AddCommand(statCmd)
 	statCmd.PersistentFlags().StringVarP(&namespace, "namespace", "n", "default", "Namespace of the specified resource")
-	statCmd.PersistentFlags().StringVarP(&timeWindow, "time-window", "t", "1m", "Stat window (one of: \"10s\", \"1m\", \"10m\", \"1h\")")
+	statCmd.PersistentFlags().StringVarP(&timeWindow, "time-window", "t", "1m", "Stat window (for example: \"10s\", \"1m\", \"10m\", \"1h\")")
 	statCmd.PersistentFlags().StringVar(&toName, "to", "", "If present, restricts outbound stats to the specified resource name")
 	statCmd.PersistentFlags().StringVar(&toNamespace, "to-namespace", "", "Sets the namespace used to lookup the \"--to\" resource; by default the current \"--namespace\" is used")
 	statCmd.PersistentFlags().StringVar(&toType, "to-resource", "", "Sets the resource type used to lookup the \"--to\" resource; by default the RESOURCETYPE is used")
@@ -256,13 +256,7 @@ func buildStatSummaryRequest() (*pb.StatSummaryRequest, error) {
 func getRequestRate(r pb.StatTable_PodGroup_Row) float64 {
 	success := r.Stats.SuccessCount
 	failure := r.Stats.FailureCount
-	window, err := util.GetWindowString(r.TimeWindow)
-	if err != nil {
-		log.Error(err.Error())
-		return 0.0
-	}
-
-	windowLength, err := time.ParseDuration(window)
+	windowLength, err := time.ParseDuration(r.TimeWindow)
 	if err != nil {
 		log.Error(err.Error())
 		return 0.0

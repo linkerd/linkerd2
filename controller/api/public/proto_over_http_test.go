@@ -450,7 +450,15 @@ func TestCheckIfResponseHasError(t *testing.T) {
 	t.Run("returns error in body if response contains Conduit error", func(t *testing.T) {
 		expectedErrorMessage := "expected error message"
 		protoInBytes, err := proto.Marshal(&pb.ApiError{Error: expectedErrorMessage})
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
 		message, err := serializeAsPayload(protoInBytes)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
 		response := &http.Response{
 			Header: make(http.Header),
 			Body:   ioutil.NopCloser(bytes.NewReader(message)),
@@ -470,7 +478,15 @@ func TestCheckIfResponseHasError(t *testing.T) {
 
 	t.Run("returns error if response contains Conduit error but body isn't error message", func(t *testing.T) {
 		protoInBytes, err := proto.Marshal(&pb.VersionInfo{ReleaseVersion: "0.0.1"})
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
 		message, err := serializeAsPayload(protoInBytes)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
 		response := &http.Response{
 			Header: make(http.Header),
 			Body:   ioutil.NopCloser(bytes.NewReader(message)),

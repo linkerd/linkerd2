@@ -1,8 +1,7 @@
 package util
 
 import (
-	"errors"
-	"fmt"
+	"time"
 
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
@@ -12,37 +11,7 @@ import (
   Shared utilities for interacting with the controller public api
 */
 
-func GetWindow(timeWindowFriendlyName string) (pb.TimeWindow, error) {
-	switch timeWindowFriendlyName {
-	case "10s":
-		return pb.TimeWindow_TEN_SEC, nil
-	case "1m":
-		return pb.TimeWindow_ONE_MIN, nil
-	case "10m":
-		return pb.TimeWindow_TEN_MIN, nil
-	case "1h":
-		return pb.TimeWindow_ONE_HOUR, nil
-	default:
-		return pb.TimeWindow_ONE_MIN, errors.New("invalid time-window " + timeWindowFriendlyName)
-	}
-}
-
-func GetWindowString(timeWindow pb.TimeWindow) (string, error) {
-	switch timeWindow {
-	case pb.TimeWindow_TEN_SEC:
-		return "10s", nil
-	case pb.TimeWindow_ONE_MIN:
-		return "1m", nil
-	case pb.TimeWindow_TEN_MIN:
-		return "10m", nil
-	case pb.TimeWindow_ONE_HOUR:
-		return "1h", nil
-	default:
-		return "", fmt.Errorf("invalid time-window %v", timeWindow)
-	}
-}
-
-var defaultMetricTimeWindow = pb.TimeWindow_ONE_MIN
+var defaultMetricTimeWindow = "1m"
 
 type StatSummaryRequestParams struct {
 	TimeWindow    string
@@ -60,11 +29,11 @@ type StatSummaryRequestParams struct {
 func BuildStatSummaryRequest(p StatSummaryRequestParams) (*pb.StatSummaryRequest, error) {
 	window := defaultMetricTimeWindow
 	if p.TimeWindow != "" {
-		var err error
-		window, err = GetWindow(p.TimeWindow)
+		_, err := time.ParseDuration(p.TimeWindow)
 		if err != nil {
 			return nil, err
 		}
+		window = p.TimeWindow
 	}
 
 	resourceType, err := k8s.CanonicalKubernetesNameFromFriendlyName(p.ResourceType)

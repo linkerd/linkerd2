@@ -85,7 +85,7 @@ impl Proxy {
         self.run_with_test_env(config::TestEnv::new())
     }
 
-    pub fn run_with_test_env(self, mut env: config::TestEnv) -> Listening {
+    pub fn run_with_test_env(self, env: config::TestEnv) -> Listening {
         run(self, env)
     }
 }
@@ -163,7 +163,7 @@ fn run(proxy: Proxy, mut env: config::TestEnv) -> Listening {
         );
     }
 
-    let mut config = config::Config::try_from(&env).unwrap();
+    let config = config::Config::try_from(&env).unwrap();
 
     let (running_tx, running_rx) = oneshot::channel();
     let (tx, mut rx) = shutdown_signal();

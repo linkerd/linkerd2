@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/prometheus/common/model"
-	apiUtil "github.com/runconduit/conduit/controller/api/util"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
 	log "github.com/sirupsen/logrus"
@@ -82,12 +81,7 @@ func (s *grpcServer) objectQuery(
 ) (*pb.StatSummaryResponse, error) {
 	rows := make([]*pb.StatTable_PodGroup_Row, 0)
 
-	timeWindow, err := apiUtil.GetWindowString(req.TimeWindow)
-	if err != nil {
-		return nil, err
-	}
-
-	requestMetrics, err := s.getRequests(ctx, req, timeWindow)
+	requestMetrics, err := s.getRequests(ctx, req, req.TimeWindow)
 	if err != nil {
 		return nil, err
 	}
@@ -198,29 +192,29 @@ func promResourceType(resource *pb.Resource) model.LabelName {
 }
 
 func buildRequestLabels(req *pb.StatSummaryRequest) (model.LabelSet, model.LabelNames) {
+	var labelNames model.LabelNames
 	labels := model.LabelSet{}
-	aggregations := model.LabelNames{}
 
 	switch out := req.Outbound.(type) {
 	case *pb.StatSummaryRequest_ToResource:
-		aggregations = promLabelNames(req.Selector.Resource)
+		labelNames = promLabelNames(req.Selector.Resource)
 		labels = labels.Merge(promDstLabels(out.ToResource))
 		labels = labels.Merge(promLabels(req.Selector.Resource))
 		labels = labels.Merge(promDirectionLabels("outbound"))
 
 	case *pb.StatSummaryRequest_FromResource:
-		aggregations = promDstLabelNames(req.Selector.Resource)
+		labelNames = promDstLabelNames(req.Selector.Resource)
 		labels = labels.Merge(promLabels(out.FromResource))
 		labels = labels.Merge(promDirectionLabels("outbound"))
 
 	default:
-		aggregations = promLabelNames(req.Selector.Resource)
+		labelNames = promLabelNames(req.Selector.Resource)
 		labels = labels.Merge(promLabels(req.Selector.Resource))
 		labels = labels.Merge(promDirectionLabels("inbound"))
 
 	}
 
-	return labels, aggregations
+	return labels, labelNames
 }
 
 func (s *grpcServer) getRequests(ctx context.Context, req *pb.StatSummaryRequest, timeWindow string) (map[string]*pb.BasicStats, error) {
@@ -445,12 +439,4 @@ func (s *grpcServer) queryProm(ctx context.Context, query string) (model.Vector,
 	}
 
 	return res.(model.Vector), nil
-}
-
-func mapKeys(m map[string]interface{}) []string {
-	res := make([]string, 0)
-	for k := range m {
-		res = append(res, k)
-	}
-	return res
 }

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/golang/protobuf/jsonpb"
 	promApi "github.com/prometheus/client_golang/api"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	common "github.com/runconduit/conduit/controller/gen/common"
@@ -20,8 +19,6 @@ import (
 )
 
 var (
-	jsonMarshaler   = jsonpb.Marshaler{EmitDefaults: true}
-	jsonUnmarshaler = jsonpb.Unmarshaler{}
 	statSummaryPath = fullUrlPathFor("StatSummary")
 	versionPath     = fullUrlPathFor("Version")
 	listPodsPath    = fullUrlPathFor("ListPods")
@@ -186,13 +183,13 @@ func (s tapServer) Send(msg *common.TapEvent) error {
 // satisfy the pb.Api_TapServer interface
 func (s tapServer) SetHeader(metadata.MD) error  { return nil }
 func (s tapServer) SendHeader(metadata.MD) error { return nil }
-func (s tapServer) SetTrailer(metadata.MD)       { return }
+func (s tapServer) SetTrailer(metadata.MD)       {}
 func (s tapServer) Context() context.Context     { return s.req.Context() }
 func (s tapServer) SendMsg(interface{}) error    { return nil }
 func (s tapServer) RecvMsg(interface{}) error    { return nil }
 
 func fullUrlPathFor(method string) string {
-	return ApiRoot + ApiPrefix + method
+	return apiRoot + apiPrefix + method
 }
 
 func NewServer(

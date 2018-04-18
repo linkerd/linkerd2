@@ -19,9 +19,9 @@ import (
 )
 
 const (
-	ApiRoot                 = "/" // Must be absolute (with a leading slash).
-	ApiVersion              = "v1"
-	ApiPrefix               = "api/" + ApiVersion + "/" // Must be relative (without a leading slash).
+	apiRoot                 = "/" // Must be absolute (with a leading slash).
+	apiVersion              = "v1"
+	apiPrefix               = "api/" + apiVersion + "/" // Must be relative (without a leading slash).
 	ConduitApiSubsystemName = "conduit-api"
 )
 
@@ -172,7 +172,7 @@ func newClient(apiURL *url.URL, httpClientToUse *http.Client) (pb.ApiClient, err
 		return nil, fmt.Errorf("server URL must be absolute, was [%s]", apiURL.String())
 	}
 
-	serverUrl := apiURL.ResolveReference(&url.URL{Path: ApiPrefix})
+	serverUrl := apiURL.ResolveReference(&url.URL{Path: apiPrefix})
 
 	log.Debugf("Expecting Conduit Public API to be served over [%s]", serverUrl)
 
