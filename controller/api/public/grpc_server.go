@@ -194,6 +194,29 @@ func (s *grpcServer) Tap(req *pb.TapRequest, stream pb.Api_TapServer) error {
 	}
 }
 
+// Pass through to tap service
+func (s *grpcServer) TapByResource(req *pb.TapByResourceRequest, stream pb.Api_TapByResourceServer) error {
+	tapStream := stream.(tapServer)
+	tapClient, err := s.tapClient.TapByResource(tapStream.Context(), req)
+	if err != nil {
+		//TODO: why not return the error?
+		log.Errorf("Unexpected error tapping [%v]: %v", req, err)
+		return nil
+	}
+	for {
+		select {
+		case <-tapStream.Context().Done():
+			return nil
+		default:
+			event, err := tapClient.Recv()
+			if err != nil {
+				return err
+			}
+			tapStream.Send(event)
+		}
+	}
+}
+
 func (s *grpcServer) shouldIgnore(pod *k8sV1.Pod) bool {
 	for _, namespace := range s.ignoredNamespaces {
 		if pod.Namespace == namespace {

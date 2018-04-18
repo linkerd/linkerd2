@@ -14,12 +14,13 @@ import (
 )
 
 type MockConduitApiClient struct {
-	ErrorToReturn               error
-	VersionInfoToReturn         *pb.VersionInfo
-	ListPodsResponseToReturn    *pb.ListPodsResponse
-	StatSummaryResponseToReturn *pb.StatSummaryResponse
-	SelfCheckResponseToReturn   *healthcheckPb.SelfCheckResponse
-	Api_TapClientToReturn       pb.Api_TapClient
+	ErrorToReturn                   error
+	VersionInfoToReturn             *pb.VersionInfo
+	ListPodsResponseToReturn        *pb.ListPodsResponse
+	StatSummaryResponseToReturn     *pb.StatSummaryResponse
+	SelfCheckResponseToReturn       *healthcheckPb.SelfCheckResponse
+	Api_TapClientToReturn           pb.Api_TapClient
+	Api_TapByResourceClientToReturn pb.Api_TapByResourceClient
 }
 
 func (c *MockConduitApiClient) StatSummary(ctx context.Context, in *pb.StatSummaryRequest, opts ...grpc.CallOption) (*pb.StatSummaryResponse, error) {
@@ -36,6 +37,10 @@ func (c *MockConduitApiClient) ListPods(ctx context.Context, in *pb.Empty, opts 
 
 func (c *MockConduitApiClient) Tap(ctx context.Context, in *pb.TapRequest, opts ...grpc.CallOption) (pb.Api_TapClient, error) {
 	return c.Api_TapClientToReturn, c.ErrorToReturn
+}
+
+func (c *MockConduitApiClient) TapByResource(ctx context.Context, in *pb.TapByResourceRequest, opts ...grpc.CallOption) (pb.Api_TapByResourceClient, error) {
+	return c.Api_TapByResourceClientToReturn, c.ErrorToReturn
 }
 
 func (c *MockConduitApiClient) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckRequest, _ ...grpc.CallOption) (*healthcheckPb.SelfCheckResponse, error) {
