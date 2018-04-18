@@ -10,6 +10,7 @@ use std::sync::Arc;
 use conduit_proxy_controller_grpc::common::Protocol;
 
 use ctx;
+use telemetry::event;
 
 /// Middleware that adds an extension containing an optional set of metric
 /// labels to requests.
@@ -57,6 +58,14 @@ pub struct TransportLabels {
     direction: Direction,
 
     protocol: Protocol,
+}
+
+/// Labels describing the end of a TCP connection
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct TransportCloseLabels {
+    transport: TransportLabels,
+
+    classification: Classification,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
@@ -226,6 +235,14 @@ impl Classification {
             .unwrap_or_else(|| Classification::http_status(&rsp.status))
     }
 
+    fn transport_close(close: &event::TransportClose) -> Self {
+        if close.clean {
+            Classification::Success
+        } else {
+            Classification::Failure
+        }
+    }
+
 }
 
 impl fmt::Display for Classification {
@@ -313,6 +330,25 @@ impl fmt::Display for TransportLabels {
             Protocol::Tcp => "protocol=\"tcp\"",
         };
         write!(f, "{},{}", self.direction, protocol)
+    }
+}
+
+// ===== impl TransportCloseLabels =====
+
+impl TransportCloseLabels {
+    pub fn new(ctx: &ctx::transport::Ctx,
+               close: &event::TransportClose)
+               -> Self {
+        TransportCloseLabels {
+            transport: TransportLabels::new(ctx),
+            classification: Classification::transport_close(close),
+        }
+    }
+}
+
+impl fmt::Display for TransportCloseLabels {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{},{}", self.transport, self.classification)
     }
 }
 
