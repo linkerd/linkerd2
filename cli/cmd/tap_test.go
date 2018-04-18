@@ -193,7 +193,7 @@ func TestEventToString(t *testing.T) {
 				Ip:   util.IPV4(1, 2, 3, 4),
 				Port: 5555,
 			},
-			Target: &common.TcpAddress{
+			Destination: &common.TcpAddress{
 				Ip:   util.IPV4(2, 3, 4, 5),
 				Port: 6666,
 			},
@@ -344,7 +344,7 @@ func createEvent(event_http *common.TapEvent_Http) common.TapEvent {
 				},
 			},
 		},
-		Target: &common.TcpAddress{
+		Destination: &common.TcpAddress{
 			Ip: &common.IPAddress{
 				Ip: &common.IPAddress_Ipv4{
 					Ipv4: uint32(9),

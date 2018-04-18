@@ -66,10 +66,16 @@ message Eos {
 
 message TapEvent {
   TcpAddress source = 1;
-  TcpAddress target = 2;
+
+  TcpAddress   destination      = 2;
+  EndpointMeta destination_meta = 4;
 
   oneof event {
     Http http = 3;
+  }
+
+  message EndpointMeta {
+    map<string, string> labels = 1;
   }
 
   message Http {

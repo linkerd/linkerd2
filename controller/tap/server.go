@@ -89,6 +89,10 @@ func (s *server) Tap(req *public.TapRequest, stream pb.Tap_TapServer) error {
 	return nil
 }
 
+func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_TapByResourceServer) error {
+	return fmt.Errorf("unimplemented")
+}
+
 func validatePort(port uint32) error {
 	if port > 65535 {
 		return fmt.Errorf("Port number of range: %d", port)

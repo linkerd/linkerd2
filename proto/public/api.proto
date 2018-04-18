@@ -47,18 +47,80 @@ message TapRequest {
   string path = 11;
 }
 
+// A tap request over kubernetes resources.
+message TapByResourceRequest {
+  // Describes the kubernetes pods that should be tapped.
+  ResourceSelection target = 1;
+
+  // Selects over events to be reported.
+  Match match = 2;
+
+  // Limits the number of events to be inspected.
+  float maxRps = 3;
+
+  message Match {
+    oneof match {
+      // If empty, matches all messages.
+      Seq all = 1;
+
+      // If empty, matches no messages.
+      Seq any = 2;
+
+      // Inverts the inner match.
+      Match not = 3;
+
+      // Matches events being sent to any of the selected destinations.
+      ResourceSelection destinations = 4;
+
+      // Matches HTTP requests by their metadata.
+      Http http = 5;
+    }
+
+    message Seq {
+      repeated Match matches = 1;
+    }
+
+    message Http {
+      oneof match {
+        string scheme = 1;
+        string method = 2;
+        string authority = 3;
+        string path = 4;
+      }
+    }
+  }
+}
+
 message ApiError {
   string error = 1;
 }
 
 message Resource {
+  // The namespace the resource is in.
+  //
+  // If empty, indicates all namespaces should be considered.
   string namespace = 1;
+
+  // The type of Kubernetes resource.
+  //
+  // E.g. pod, deployment, service, ...
+  //
+  // If `all` refers, to all resource types.
   string type = 2;
+
+  // An optional Kubernetes resource name.
   string name = 3;
 }
 
 message ResourceSelection {
+  // Identifies a Kubernetes resource.
   Resource resource = 1;
+
+  // A string-formatted Kubernetes label selector as passed to `kubectl get
+  // --selector`.
+  //
+  // XXX in the future this may be superceded by a data structure that more
+  // richly describes a parsed label selector.
   string label_selector = 2;
 }
 
@@ -118,8 +180,15 @@ message StatTable {
 
 service Api {
   rpc StatSummary(StatSummaryRequest) returns (StatSummaryResponse) {}
-  rpc Version(Empty) returns (VersionInfo) {}
+
   rpc ListPods(Empty) returns (ListPodsResponse) {}
-  rpc SelfCheck(common.healthcheck.SelfCheckRequest) returns (common.healthcheck.SelfCheckResponse) {}
+
+  // Superceded by `TapByResource`.
   rpc Tap(TapRequest) returns (stream common.TapEvent) {}
+
+  // Executes tapping over Kubernetes resources.
+  rpc TapByResource(TapByResourceRequest) returns (stream common.TapEvent) {}
+
+  rpc Version(Empty) returns (VersionInfo) {}
+  rpc SelfCheck(common.healthcheck.SelfCheckRequest) returns (common.healthcheck.SelfCheckResponse) {}
 }

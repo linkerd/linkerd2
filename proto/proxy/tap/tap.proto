@@ -29,6 +29,13 @@ message ObserveRequest {
       Tcp source  = 4;
       Tcp destination = 5;
       Http http = 6;
+
+      Label destination_label = 7;
+    }
+
+    message Label {
+      string key   = 1;
+      string value = 2;
     }
 
     message Tcp {
