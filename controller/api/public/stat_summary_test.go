@@ -157,6 +157,7 @@ status:
 			replicaSetInformer := sharedInformers.Apps().V1beta2().ReplicaSets()
 			podInformer := sharedInformers.Core().V1().Pods()
 			replicationControllerInformer := sharedInformers.Core().V1().ReplicationControllers()
+			serviceInformer := sharedInformers.Core().V1().Services()
 
 			fakeGrpcServer := newGrpcServer(
 				&MockProm{Res: exp.promRes},
@@ -166,6 +167,7 @@ status:
 				replicaSetInformer.Lister(),
 				podInformer.Lister(),
 				replicationControllerInformer.Lister(),
+				serviceInformer.Lister(),
 				"conduit",
 				[]string{},
 			)
@@ -178,6 +180,7 @@ status:
 				replicaSetInformer.Informer().HasSynced,
 				podInformer.Informer().HasSynced,
 				replicationControllerInformer.Informer().HasSynced,
+				serviceInformer.Informer().HasSynced,
 			) {
 				t.Fatalf("timed out wait for caches to sync")
 			}
@@ -238,6 +241,7 @@ status:
 				sharedInformers.Apps().V1beta2().ReplicaSets().Lister(),
 				sharedInformers.Core().V1().Pods().Lister(),
 				sharedInformers.Core().V1().ReplicationControllers().Lister(),
+				sharedInformers.Core().V1().Services().Lister(),
 				"conduit",
 				[]string{},
 			)

@@ -13,7 +13,31 @@ import (
   Shared utilities for interacting with the controller public api
 */
 
-var defaultMetricTimeWindow = "1m"
+var (
+	defaultMetricTimeWindow = "1m"
+
+	// ValidTargets specifies resource types allowed as a target:
+	// target resource on an inbound query
+	// target resource on an outbound 'to' query
+	// destination resource on an outbound 'from' query
+	ValidTargets = []string{
+		k8s.KubernetesDeployments,
+		k8s.KubernetesNamespaces,
+		k8s.KubernetesPods,
+		k8s.KubernetesReplicationControllers,
+	}
+
+	// validDestinations specifies resource types allowed as a destination:
+	// destination resource on an outbound 'to' query
+	// target resource on an outbound 'from' query
+	validDestinations = []string{
+		k8s.KubernetesDeployments,
+		k8s.KubernetesNamespaces,
+		k8s.KubernetesPods,
+		k8s.KubernetesReplicationControllers,
+		k8s.KubernetesServices,
+	}
+)
 
 type StatSummaryRequestParams struct {
 	TimeWindow    string
