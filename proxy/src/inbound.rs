@@ -74,7 +74,9 @@ where
         let &(ref addr, ref proto) = key;
         debug!("building inbound {:?} client to {}", proto, addr);
 
-        Buffer::new(self.bind.bind_service(addr, proto), self.bind.executor())
+        let endpoint = (*addr).into();
+        let bind = self.bind.bind_service(&endpoint, proto);
+        Buffer::new(bind, self.bind.executor())
             .map(|buffer| {
                 InFlightLimit::new(buffer, MAX_IN_FLIGHT)
             })
