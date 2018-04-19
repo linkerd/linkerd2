@@ -42,6 +42,7 @@ type proxyMetricCollectors struct {
 	tcpAcceptCloseTotal  *prom.CounterVec
 	tcpConnectOpenTotal  *prom.CounterVec
 	tcpConnectCloseTotal *prom.CounterVec
+	tcpConnectionsOpen   *prom.GaugeVec
 }
 
 const (
@@ -169,21 +170,7 @@ func (s *simulatedProxy) generateProxyTraffic() {
 				s.inbound.responseDurationMs.With(inboundResponseLabels).Observe(latency)
 			}
 
-			inboundTCPOpenFraction := rand.Intn(inboundRandomCount)
-
-			// inbound TCP stats
-			s.inbound.tcpAcceptOpenTotal.
-				With(prom.Labels{"protocol": "http"}).
-				Add(float64(inboundRandomCount))
-			s.inbound.tcpAcceptCloseTotal.
-				With(prom.Labels{"protocol": "http", "classification": "success"}).
-				Add(float64(inboundRandomCount - inboundTCPOpenFraction))
-			s.inbound.tcpConnectOpenTotal.
-				With(prom.Labels{"protocol": "http"}).
-				Add(float64(inboundRandomCount))
-			s.inbound.tcpConnectCloseTotal.
-				With(prom.Labels{"protocol": "http", "classification": "success"}).
-				Add(float64(inboundRandomCount - inboundTCPOpenFraction))
+			s.inbound.generateTCPStats(inboundRandomCount)
 
 			//
 			// outbound
@@ -213,25 +200,69 @@ func (s *simulatedProxy) generateProxyTraffic() {
 				s.outbound.responseDurationMs.With(outboundResponseLabels).Observe(latency)
 			}
 
-			outboundTCPOpenFraction := rand.Intn(inboundRandomCount)
-
-			// outbound TCP stats
-			s.outbound.tcpAcceptOpenTotal.
-				With(prom.Labels{"protocol": "http"}).
-				Add(float64(outboundRandomCount))
-			s.outbound.tcpAcceptCloseTotal.
-				With(prom.Labels{"protocol": "http", "classification": "success"}).
-				Add(float64(outboundRandomCount - outboundTCPOpenFraction))
-			s.outbound.tcpConnectOpenTotal.
-				With(prom.Labels{"protocol": "http"}).
-				Add(float64(outboundRandomCount))
-			s.outbound.tcpConnectCloseTotal.
-				With(prom.Labels{"protocol": "http", "classification": "success"}).
-				Add(float64(outboundRandomCount - outboundTCPOpenFraction))
+			s.outbound.generateTCPStats(outboundRandomCount)
 		}
 
 		time.Sleep(s.sleep)
 	}
+}
+
+func (p *proxyMetricCollectors) generateTCPStats(randomCount int) {
+	logCtx := log.WithFields(log.Fields{"randomCount": randomCount})
+	if randomCount <= 0 {
+		logCtx.Debugln("generateTCPStats: randomCount <= 0; skipping")
+		return
+	}
+	http := prom.Labels{"protocol": "http"}
+
+	// jitter the accept/connect counts a little bit to simulate connection pooling etc.
+	acceptCount := jitter(randomCount, 0.1)
+	acceptOpenCount := rand.Intn(acceptCount)
+
+	p.tcpAcceptOpenTotal.With(http).Add(float64(acceptCount))
+	p.tcpAcceptCloseTotal.
+		With(prom.Labels{"protocol": "http", "classification": "success"}).
+		Add(float64(acceptCount - acceptOpenCount))
+
+	connectCount := jitter(randomCount, 0.1)
+	connectOpenCount := rand.Intn(connectCount)
+
+	p.tcpConnectOpenTotal.With(http).Add(float64(connectCount))
+	p.tcpConnectCloseTotal.
+		With(prom.Labels{"protocol": "http", "classification": "success"}).
+		Add(float64(connectCount - connectOpenCount))
+
+	p.tcpConnectionsOpen.With(http).Set(float64(acceptOpenCount + connectOpenCount))
+}
+
+func jitter(toJitter int, frac float64) int {
+	logCtx := log.WithFields(log.Fields{
+		"toJitter": toJitter,
+		"frac":     frac,
+	})
+	if toJitter <= 0 {
+		logCtx.Debugln("jitter(): toJitter <= 0; returning 0")
+		return 0
+	}
+
+	sign := rand.Intn(2)
+	if sign == 0 {
+		sign = -1
+	}
+
+	amount := int(float64(toJitter)*frac) + 1
+	jitter := rand.Intn(amount) * sign
+	jittered := toJitter + jitter
+
+	if jittered <= 0 {
+		logCtx.WithFields(log.Fields{
+			"amount":   amount,
+			"jitter":   jitter,
+			"jittered": jittered,
+		}).Debugln("jitter(): jittered <= 0; returning 1")
+		return 1
+	}
+	return jittered
 }
 
 func randomResponseLabels() prom.Labels {
@@ -328,6 +359,7 @@ func newSimulatedProxy(pod v1.Pod, deployments []string, replicaSets *k8s.Replic
 		// "k8s_job",
 		// "replication_controller",
 		// "replica_set",
+
 	}
 
 	requestLabels := []string{
@@ -421,6 +453,12 @@ func newSimulatedProxy(pod v1.Pod, deployments []string, replicaSets *k8s.Replic
 				Help:        "A counter of the total number of transport connections opened by the proxy which have been closed.",
 				ConstLabels: constTCPLabels,
 			}, tcpCloseLabels),
+		tcpConnectionsOpen: prom.NewGaugeVec(
+			prom.GaugeOpts{
+				Name:        "tcp_connections_open",
+				Help:        "A gauge of the number of transport connections currently open.",
+				ConstLabels: constTCPLabels,
+			}, tcpLabels),
 	}
 
 	inboundLabels := prom.Labels{
@@ -455,6 +493,7 @@ func newSimulatedProxy(pod v1.Pod, deployments []string, replicaSets *k8s.Replic
 			tcpAcceptCloseTotal:  proxyMetrics.tcpAcceptCloseTotal.MustCurryWith(inboundTCPLabels),
 			tcpConnectOpenTotal:  proxyMetrics.tcpConnectOpenTotal.MustCurryWith(inboundTCPLabels),
 			tcpConnectCloseTotal: proxyMetrics.tcpConnectCloseTotal.MustCurryWith(inboundTCPLabels),
+			tcpConnectionsOpen:   proxyMetrics.tcpConnectionsOpen.MustCurryWith(inboundTCPLabels),
 		},
 		outbound: &proxyMetricCollectors{
 			requestTotals:        proxyMetrics.requestTotals.MustCurryWith(outboundLabels),
@@ -466,6 +505,7 @@ func newSimulatedProxy(pod v1.Pod, deployments []string, replicaSets *k8s.Replic
 			tcpAcceptCloseTotal:  proxyMetrics.tcpAcceptCloseTotal.MustCurryWith(outboundLabels),
 			tcpConnectOpenTotal:  proxyMetrics.tcpConnectOpenTotal.MustCurryWith(outboundLabels),
 			tcpConnectCloseTotal: proxyMetrics.tcpConnectCloseTotal.MustCurryWith(outboundLabels),
+			tcpConnectionsOpen:   proxyMetrics.tcpConnectionsOpen.MustCurryWith(outboundLabels),
 		},
 	}
 
@@ -479,6 +519,7 @@ func newSimulatedProxy(pod v1.Pod, deployments []string, replicaSets *k8s.Replic
 		proxyMetrics.tcpAcceptCloseTotal,
 		proxyMetrics.tcpConnectOpenTotal,
 		proxyMetrics.tcpConnectCloseTotal,
+		proxyMetrics.tcpConnectionsOpen,
 	)
 	return &proxy
 }
