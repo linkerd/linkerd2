@@ -134,6 +134,9 @@ enum Update {
 
 /// Bind a `SocketAddr` with a protocol.
 pub trait Bind {
+    /// The type of endpoint upon which a `Service` is bound.
+    type Endpoint;
+
     /// Requests handled by the discovered services
     type Request;
 
@@ -148,8 +151,8 @@ pub trait Bind {
     /// The discovered `Service` instance.
     type Service: Service<Request = Self::Request, Response = Self::Response, Error = Self::Error>;
 
-    /// Bind a socket address with a service.
-    fn bind(&self, addr: &SocketAddr) -> Result<Self::Service, Self::BindError>;
+    /// Bind a service from an endpoint.
+    fn bind(&self, addr: &Self::Endpoint) -> Result<Self::Service, Self::BindError>;
 }
 
 /// Creates a "channel" of `Discovery` to `Background` handles.
@@ -215,7 +218,7 @@ impl<B> Watch<B> {
 
 impl<B, A> Discover for Watch<B>
 where
-    B: Bind<Request = http::Request<A>>,
+    B: Bind<Endpoint = SocketAddr, Request = http::Request<A>>,
 {
     type Key = SocketAddr;
     type Request = B::Request;
@@ -655,24 +658,6 @@ impl <T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
         txs.retain(|tx| {
             tx.unbounded_send(update.clone()).is_ok()
         });
-    }
-}
-
-// ===== impl Bind =====
-
-impl<F, S, E> Bind for F
-where
-    F: Fn(&SocketAddr) -> Result<S, E>,
-    S: Service,
-{
-    type Request = S::Request;
-    type Response = S::Response;
-    type Error = S::Error;
-    type Service = S;
-    type BindError = E;
-
-    fn bind(&self, addr: &SocketAddr) -> Result<Self::Service, Self::BindError> {
-        (*self)(addr)
     }
 }
 

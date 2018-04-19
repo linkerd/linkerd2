@@ -231,6 +231,7 @@ impl<B> control::discovery::Bind for BindProtocol<Arc<ctx::Proxy>, B>
 where
     B: tower_h2::Body + 'static,
 {
+    type Endpoint = SocketAddr;
     type Request = http::Request<B>;
     type Response = HttpResponse;
     type Error = <Service<B> as tower::Service>::Error;
