@@ -96,9 +96,9 @@ impl pb::server::Destination for Controller {
             if let Some((dst, updates)) = calls.pop_front() {
                 if &dst == req.get_ref() {
                     return future::ok(grpc::Response::new(updates));
-                } else {
-                    calls.push_front((dst, updates));
                 }
+
+                calls.push_front((dst, updates));
             }
         }
 
