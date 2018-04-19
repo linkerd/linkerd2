@@ -186,12 +186,13 @@ where
             &self.ctx,
             &addr,
             conduit_proxy_controller_grpc::common::Protocol::Http,
+            ep.dst_labels().cloned(),
         );
 
         // Map a socket address to a connection.
         let connect = self.sensors.connect(
             transport::Connect::new(addr, &self.executor),
-            &client_ctx
+            &client_ctx,
         );
 
         let client = transparency::Client::new(

@@ -1,6 +1,6 @@
+use std::{cmp, fmt, hash};
 use std::collections::VecDeque;
 use std::collections::hash_map::{Entry, HashMap};
-use std::fmt;
 use std::iter::IntoIterator;
 use std::net::SocketAddr;
 use std::time::Duration;
@@ -37,10 +37,13 @@ pub struct Discovery {
     tx: mpsc::UnboundedSender<(DnsNameAndPort, mpsc::UnboundedSender<Update>)>,
 }
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct Endpoint {
     address: SocketAddr,
+    dst_labels: Option<DstLabelsWatch>,
 }
+
+pub type DstLabelsWatch = futures_watch::Watch<Option<DstLabels>>;
 
 /// A `tower_discover::Discover`, given to a `tower_balance::Balance`.
 #[derive(Debug)]
@@ -200,8 +203,19 @@ impl Discovery {
 // ==== impl Endpoint =====
 
 impl Endpoint {
+    pub fn new(address: SocketAddr, dst_labels: DstLabelsWatch) -> Self {
+        Self {
+            address,
+            dst_labels: Some(dst_labels),
+        }
+    }
+
     pub fn address(&self) -> SocketAddr {
         self.address
+    }
+
+    pub fn dst_labels(&self) -> Option<&DstLabelsWatch> {
+        self.dst_labels.as_ref()
     }
 }
 
@@ -209,9 +223,24 @@ impl From<SocketAddr> for Endpoint {
     fn from(address: SocketAddr) -> Self {
         Self {
             address,
+            dst_labels: None,
         }
     }
 }
+
+impl hash::Hash for Endpoint {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.address.hash(state)
+    }
+}
+
+impl cmp::PartialEq for Endpoint {
+    fn eq(&self, other: &Self) -> bool {
+        self.address.eq(&other.address)
+    }
+}
+
+impl cmp::Eq for Endpoint {}
 
 // ==== impl Watch =====
 
@@ -263,8 +292,7 @@ where
                         futures_watch::Watch::new(meta.metric_labels);
                     self.metric_labels.insert(addr, labels_store);
 
-                    // TODO store labels_watch on `endpoint`.
-                    let endpoint = addr.into();
+                    let endpoint = Endpoint::new(addr, labels_watch.clone());
 
                     let service = self.bind.bind(&endpoint)
                         .map(|svc| Labeled::new(svc, labels_watch))

@@ -61,6 +61,7 @@ impl Proxy {
             &srv_ctx.proxy,
             &orig_dst,
             common::Protocol::Tcp,
+            None,
         );
         let c = Timeout::new(
             transport::Connect::new(orig_dst, &self.executor),

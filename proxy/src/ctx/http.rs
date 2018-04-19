@@ -1,8 +1,10 @@
 use http;
 use std::sync::Arc;
 
+use control::discovery::DstLabelsWatch;
 use ctx;
-use telemetry::metrics;
+use telemetry::metrics::DstLabels;
+
 
 /// Describes a stream's request headers.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -22,7 +24,7 @@ pub struct Request {
     /// Optional information on the request's destination service, which may
     /// be provided by the control plane for destinations lookups against its
     /// discovery API.
-    pub dst_labels: Option<metrics::DstLabels>,
+    pub dst_labels: Option<DstLabels>,
 }
 
 /// Describes a stream's response headers.
@@ -51,7 +53,7 @@ impl Request {
         // destination labels from the control plane's discovery API.
         let dst_labels = request
             .extensions()
-            .get::<metrics::DstLabels>()
+            .get::<DstLabels>()
             .cloned();
         let r = Self {
             id,
@@ -63,6 +65,10 @@ impl Request {
         };
 
         Arc::new(r)
+    }
+
+    pub fn dst_labels(&self) -> Option<&DstLabelsWatch> {
+        self.client.dst_labels.as_ref()
     }
 }
 
