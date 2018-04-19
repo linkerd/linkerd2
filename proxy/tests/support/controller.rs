@@ -3,23 +3,27 @@
 use support::*;
 
 use std::collections::{HashMap, VecDeque};
-use std::fmt;
 use std::net::IpAddr;
 use std::sync::{Arc, Mutex};
 
-use conduit_proxy_controller_grpc as pb;
-use self::bytes::BufMut;
-use self::prost::Message;
+use conduit_proxy_controller_grpc::common::{self, Destination};
+use conduit_proxy_controller_grpc::destination as pb;
 
 pub fn new() -> Controller {
     Controller::new()
 }
 
-struct Destination(Box<Fn() -> Option<pb::destination::Update> + Send>);
+pub type Labels = HashMap<String, String>;
 
 #[derive(Debug)]
+pub struct DstReceiver(sync::mpsc::UnboundedReceiver<pb::Update>);
+
+#[derive(Clone, Debug)]
+pub struct DstSender(sync::mpsc::UnboundedSender<pb::Update>);
+
+#[derive(Clone, Debug, Default)]
 pub struct Controller {
-    destinations: VecDeque<(String, Destination)>,
+    expect_dst_calls: Arc<Mutex<VecDeque<(Destination, DstReceiver)>>>,
 }
 
 pub struct Listening {
@@ -29,43 +33,30 @@ pub struct Listening {
 
 impl Controller {
     pub fn new() -> Self {
-        Controller {
-            destinations: VecDeque::new(),
-        }
+        Self::default()
     }
 
-    pub fn destination(self, dest: &str, addr: SocketAddr) -> Self {
-        self.destination_fn(dest, move || Some(destination_update(
-            addr,
-            HashMap::new(),
-            HashMap::new(),
-        )))
+    pub fn destination_tx(&self, dest: &str) -> DstSender {
+        let (tx, rx) = sync::mpsc::unbounded();
+        let dst = common::Destination {
+            scheme: "k8s".into(),
+            path: dest.into(),
+        };
+        self.expect_dst_calls
+            .lock()
+            .unwrap()
+            .push_back((dst, DstReceiver(rx)));
+        DstSender(tx)
     }
 
-    pub fn labeled_destination(self, dest: &str, addr: SocketAddr,
-                               addr_labels: HashMap<String, String>,
-                               set_labels:HashMap<String, String>)
-                               -> Self
-    {
-        self.destination_fn(dest, move || Some(destination_update(
-            addr,
-            addr_labels.clone(),
-            set_labels.clone(),
-        )))
-    }
-
-    pub fn destination_fn<F>(mut self, dest: &str, f: F) -> Self
-    where
-        F: Fn() -> Option<pb::destination::Update> + Send + 'static,
-    {
-        self.destinations
-            .push_back((dest.into(), Destination(Box::new(f))));
+    pub fn destination_and_close(self, dest: &str, addr: SocketAddr) -> Self {
+        self.destination_tx(dest).send_addr(addr);
         self
     }
 
-
     pub fn destination_close(self, dest: &str) -> Self {
-        self.destination_fn(dest, || None)
+        drop(self.destination_tx(dest));
+        self
     }
 
     pub fn run(self) -> Listening {
@@ -73,139 +64,44 @@ impl Controller {
     }
 }
 
-type Response = self::http::Response<GrpcBody>;
-type Destinations = Arc<Mutex<VecDeque<(String, Destination)>>>;
-
-const DESTINATION_GET: &str = "/conduit.proxy.destination.Destination/Get";
-
-impl fmt::Debug for Destination {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Destination")
+impl Stream for DstReceiver {
+    type Item = pb::Update;
+    type Error = grpc::Error;
+    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
+        self.0.poll().map_err(|_| grpc::Error::Grpc(grpc::Status::INTERNAL))
     }
 }
 
-#[derive(Debug)]
-struct Svc {
-    destinations: Destinations,
+impl DstSender {
+    pub fn send(&self, up: pb::Update) {
+        self.0.unbounded_send(up).expect("send dst update")
+    }
+
+    pub fn send_addr(&self, addr: SocketAddr) {
+        self.send(destination_add(addr))
+    }
+
+    pub fn send_labeled(&self, addr: SocketAddr, addr_labels: Labels, parent_labels: Labels) {
+        self.send(destination_add_labeled(addr, addr_labels, parent_labels));
+    }
 }
 
-impl Svc {
-    fn route(
-        &self,
-        path: &str,
-        body: RecvBodyStream,
-    ) -> Box<Future<Item = Response, Error = h2::Error>> {
-        let mut rsp = http::Response::builder();
-        rsp.version(http::Version::HTTP_2);
+impl pb::server::Destination for Controller {
+    type GetStream = DstReceiver;
+    type GetFuture = future::FutureResult<grpc::Response<Self::GetStream>, grpc::Error>;
 
-        match path {
-            DESTINATION_GET => {
-                let destinations = self.destinations.clone();
-                Box::new(body.concat2().and_then(move |_bytes| {
-                    let update = {
-                        let next = {
-                            let mut queue = destinations.lock().unwrap();
-                            queue.pop_front()
-                        };
-                        // The test cases's entry may evaluate to `None` when it wants to close
-                        // the connection. If there is no entry then that's equivalent to an
-                        // implicit `destination_close()`.
-                        //
-                        // TODO: decode `_bytes` and compare with `_name`
-                        next.and_then(|(_name, Destination(f))| f())
-                            .unwrap_or_default()
-                    };
-                    let len = update.encoded_len();
-                    let mut buf = BytesMut::with_capacity(len + 5);
-                    buf.put(0u8);
-                    buf.put_u32::<BigEndian>(len as u32);
-                    update.encode(&mut buf).unwrap();
-                    let body = GrpcBody::new(buf.freeze());
-                    let rsp = rsp.body(body).unwrap();
-                    Ok(rsp)
-                }))
-            }
-            unknown => {
-                println!("unknown route: {:?}", unknown);
-                let body = GrpcBody::unimplemented();
-                let rsp = rsp.body(body).unwrap();
-                Box::new(future::ok(rsp))
+    fn get(&mut self, req: grpc::Request<Destination>) -> Self::GetFuture {
+        if let Ok(mut calls) = self.expect_dst_calls.lock() {
+            if let Some((dst, updates)) = calls.pop_front() {
+                if &dst == req.get_ref() {
+                    return future::ok(grpc::Response::new(updates));
+                }
+
+                calls.push_front((dst, updates));
             }
         }
-    }
-}
 
-impl Service for Svc {
-    type Request = Request<RecvBody>;
-    type Response = Response;
-    type Error = h2::Error;
-    type Future = Box<Future<Item = Response, Error = h2::Error>>;
-
-    fn poll_ready(&mut self) -> Poll<(), Self::Error> {
-        Ok(Async::Ready(()))
-    }
-
-    fn call(&mut self, req: Request<RecvBody>) -> Self::Future {
-        let (head, body) = req.into_parts();
-        self.route(head.uri.path(), RecvBodyStream(body))
-    }
-}
-
-struct GrpcBody {
-    message: Bytes,
-    status: &'static str,
-}
-
-impl GrpcBody {
-    fn new(body: Bytes) -> Self {
-        GrpcBody {
-            message: body,
-            status: "0",
-        }
-    }
-
-    fn unimplemented() -> Self {
-        GrpcBody {
-            message: Bytes::new(),
-            status: "12",
-        }
-    }
-}
-
-
-impl Body for GrpcBody {
-    type Data = Bytes;
-
-    fn poll_data(&mut self) -> Poll<Option<Bytes>, self::h2::Error> {
-        let data = self.message.split_off(0);
-        let data = if data.is_empty() { None } else { Some(data) };
-
-        Ok(Async::Ready(data))
-    }
-
-    fn poll_trailers(&mut self) -> Poll<Option<HeaderMap>, self::h2::Error> {
-        let mut map = HeaderMap::new();
-        map.insert("grpc-status", HeaderValue::from_static(self.status));
-        Ok(Async::Ready(Some(map)))
-    }
-}
-
-#[derive(Debug)]
-struct NewSvc {
-    destinations: Destinations,
-}
-impl NewService for NewSvc {
-    type Request = Request<RecvBody>;
-    type Response = Response;
-    type Error = h2::Error;
-    type InitError = ::std::io::Error;
-    type Service = Svc;
-    type Future = future::FutureResult<Svc, Self::InitError>;
-
-    fn new_service(&self) -> Self::Future {
-        future::ok(Svc {
-            destinations: self.destinations.clone(),
-        })
+        future::err(grpc::Error::Grpc(grpc::Status::INTERNAL))
     }
 }
 
@@ -219,10 +115,8 @@ fn run(controller: Controller) -> Listening {
             let mut core = Core::new().unwrap();
             let reactor = core.handle();
 
-            let factory = NewSvc {
-                destinations: Arc::new(Mutex::new(controller.destinations)),
-            };
-            let h2 = tower_h2::Server::new(factory, Default::default(), reactor.clone());
+            let new = pb::server::DestinationServer::new(controller);
+            let h2 = tower_h2::Server::new(new, Default::default(), reactor.clone());
 
             let addr = ([127, 0, 0, 1], 0).into();
             let bind = TcpListener::bind(&addr, &reactor).expect("bind");
@@ -259,17 +153,22 @@ fn run(controller: Controller) -> Listening {
     }
 }
 
-pub fn destination_update(addr: SocketAddr,
-                          set_labels: HashMap<String, String>,
-                          addr_labels: HashMap<String, String>)
-                         -> pb::destination::Update
+pub fn destination_add(addr: SocketAddr) -> pb::Update {
+    destination_add_labeled(addr, HashMap::new(), HashMap::new())
+}
+
+pub fn destination_add_labeled(
+    addr: SocketAddr,
+    set_labels: HashMap<String, String>,
+    addr_labels: HashMap<String, String>)
+    -> pb::Update
 {
-    pb::destination::Update {
-        update: Some(pb::destination::update::Update::Add(
-            pb::destination::WeightedAddrSet {
+    pb::Update {
+        update: Some(pb::update::Update::Add(
+            pb::WeightedAddrSet {
                 addrs: vec![
-                    pb::destination::WeightedAddr {
-                        addr: Some(pb::common::TcpAddress {
+                    pb::WeightedAddr {
+                        addr: Some(common::TcpAddress {
                             ip: Some(ip_conv(addr.ip())),
                             port: u32::from(addr.port()),
                         }),
@@ -283,10 +182,10 @@ pub fn destination_update(addr: SocketAddr,
     }
 }
 
-pub fn destination_add_none() -> pb::destination::Update {
-    pb::destination::Update {
-        update: Some(pb::destination::update::Update::Add(
-            pb::destination::WeightedAddrSet {
+pub fn destination_add_none() -> pb::Update {
+    pb::Update {
+        update: Some(pb::update::Update::Add(
+            pb::WeightedAddrSet {
                 addrs: Vec::new(),
                 ..Default::default()
             },
@@ -294,10 +193,10 @@ pub fn destination_add_none() -> pb::destination::Update {
     }
 }
 
-pub fn destination_remove_none() -> pb::destination::Update {
-    pb::destination::Update {
-        update: Some(pb::destination::update::Update::Remove(
-            pb::destination::AddrSet {
+pub fn destination_remove_none() -> pb::Update {
+    pb::Update {
+        update: Some(pb::update::Update::Remove(
+            pb::AddrSet {
                 addrs: Vec::new(),
                 ..Default::default()
             },
@@ -305,23 +204,23 @@ pub fn destination_remove_none() -> pb::destination::Update {
     }
 }
 
-pub fn destination_exists_with_no_endpoints() -> pb::destination::Update {
-    pb::destination::Update {
-        update: Some(pb::destination::update::Update::NoEndpoints (
-            pb::destination::NoEndpoints { exists: true }
+pub fn destination_exists_with_no_endpoints() -> pb::Update {
+    pb::Update {
+        update: Some(pb::update::Update::NoEndpoints(
+            pb::NoEndpoints { exists: true }
         )),
     }
 }
 
-fn ip_conv(ip: IpAddr) -> pb::common::IpAddress {
+fn ip_conv(ip: IpAddr) -> common::IpAddress {
     match ip {
-        IpAddr::V4(v4) => pb::common::IpAddress {
-            ip: Some(pb::common::ip_address::Ip::Ipv4(v4.into())),
+        IpAddr::V4(v4) => common::IpAddress {
+            ip: Some(common::ip_address::Ip::Ipv4(v4.into())),
         },
         IpAddr::V6(v6) => {
             let (first, last) = octets_to_u64s(v6.octets());
-            pb::common::IpAddress {
-                ip: Some(pb::common::ip_address::Ip::Ipv6(pb::common::IPv6 {
+            common::IpAddress {
+                ip: Some(common::ip_address::Ip::Ipv6(common::IPv6 {
                     first,
                     last,
                 })),

@@ -56,6 +56,8 @@ metadata:
     app: emoji-svc
   annotations:
     conduit.io/proxy-version: testinjectversion
+status:
+  phase: Running
 `, `
 apiVersion: v1
 kind: Pod
@@ -64,6 +66,20 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
+status:
+  phase: Running
+`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed-not-running
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+  annotations:
+    conduit.io/proxy-version: testinjectversion
+status:
+  phase: Completed
 `,
 				},
 				promRes: model.Vector{
@@ -140,6 +156,7 @@ metadata:
 			deployInformer := sharedInformers.Apps().V1beta2().Deployments()
 			replicaSetInformer := sharedInformers.Apps().V1beta2().ReplicaSets()
 			podInformer := sharedInformers.Core().V1().Pods()
+			replicationControllerInformer := sharedInformers.Core().V1().ReplicationControllers()
 
 			fakeGrpcServer := newGrpcServer(
 				&MockProm{Res: exp.promRes},
@@ -148,6 +165,7 @@ metadata:
 				deployInformer.Lister(),
 				replicaSetInformer.Lister(),
 				podInformer.Lister(),
+				replicationControllerInformer.Lister(),
 				"conduit",
 				[]string{},
 			)
@@ -159,6 +177,7 @@ metadata:
 				deployInformer.Informer().HasSynced,
 				replicaSetInformer.Informer().HasSynced,
 				podInformer.Informer().HasSynced,
+				replicationControllerInformer.Informer().HasSynced,
 			) {
 				t.Fatalf("timed out wait for caches to sync")
 			}
@@ -218,6 +237,7 @@ metadata:
 				sharedInformers.Apps().V1beta2().Deployments().Lister(),
 				sharedInformers.Apps().V1beta2().ReplicaSets().Lister(),
 				sharedInformers.Core().V1().Pods().Lister(),
+				sharedInformers.Core().V1().ReplicationControllers().Lister(),
 				"conduit",
 				[]string{},
 			)

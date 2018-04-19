@@ -50,7 +50,7 @@ impl Fixture {
 
     fn outbound_with_server(srv: server::Listening) -> Self {
         let ctrl = controller::new()
-            .destination("tele.test.svc.cluster.local", srv.addr)
+            .destination_and_close("tele.test.svc.cluster.local", srv.addr)
             .run();
         let proxy = proxy::new()
             .controller(ctrl)
@@ -400,37 +400,18 @@ fn metrics_endpoint_outbound_request_duration() {
 mod outbound_dst_labels {
     use super::support::*;
     use super::Fixture;
+    use controller::DstSender;
 
-    use std::collections::HashMap;
-    use std::iter::FromIterator;
-
-    fn fixture<A, B>(addr_labels: A, set_labels: B) -> Fixture
-    where
-        A: IntoIterator<Item=(String, String)>,
-        B: IntoIterator<Item=(String, String)>,
-    {
-        fixture_with_updates(vec![(addr_labels, set_labels)])
-    }
-
-    fn fixture_with_updates<A, B>(updates: Vec<(A, B)>) -> Fixture
-    where
-        A: IntoIterator<Item=(String, String)>,
-        B: IntoIterator<Item=(String, String)>,
-    {
+    fn fixture(dest: &str) -> (Fixture, SocketAddr, DstSender) {
         info!("running test server");
         let srv = server::new()
             .route("/", "hello")
             .run();
 
-        let mut ctrl = controller::new();
-        for (addr_labels, set_labels) in updates {
-            ctrl = ctrl.labeled_destination(
-                "labeled.test.svc.cluster.local",
-                srv.addr,
-                HashMap::from_iter(addr_labels),
-                HashMap::from_iter(set_labels),
-            );
-        }
+        let addr = srv.addr;
+
+        let ctrl = controller::new();
+        let dst_tx = ctrl.destination_tx(dest);
 
         let proxy = proxy::new()
             .controller(ctrl.run())
@@ -440,22 +421,26 @@ mod outbound_dst_labels {
 
         let client = client::new(
             proxy.outbound,
-            "labeled.test.svc.cluster.local"
+            dest,
         );
-        Fixture { client, metrics, proxy }
 
+        let f = Fixture { client, metrics, proxy };
+
+        (f, addr, dst_tx)
     }
 
     #[test]
     fn multiple_addr_labels() {
         let _ = env_logger::try_init();
-        let Fixture { client, metrics, proxy: _proxy } = fixture (
-            vec![
-                (String::from("addr_label2"), String::from("bar")),
-                (String::from("addr_label1"), String::from("foo")),
-            ],
-            Vec::new(),
-        );
+        let (Fixture { client, metrics, proxy: _proxy }, addr, dst_tx) =
+            fixture("labeled.test.svc.cluster.local");
+
+        {
+            let mut labels = HashMap::new();
+            labels.insert("addr_label1".to_owned(), "foo".to_owned());
+            labels.insert("addr_label2".to_owned(), "bar".to_owned());
+            dst_tx.send_labeled(addr, labels, HashMap::new());
+        }
 
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
@@ -471,13 +456,16 @@ mod outbound_dst_labels {
     #[test]
     fn multiple_addrset_labels() {
         let _ = env_logger::try_init();
-        let Fixture { client, metrics, proxy: _proxy } = fixture (
-            Vec::new(),
-            vec![
-                (String::from("set_label1"), String::from("foo")),
-                (String::from("set_label2"), String::from("bar")),
-            ]
-        );
+        let (Fixture { client, metrics, proxy: _proxy }, addr, dst_tx) =
+            fixture("labeled.test.svc.cluster.local");
+
+        {
+            let mut labels = HashMap::new();
+            labels.insert("set_label1".to_owned(), "foo".to_owned());
+            labels.insert("set_label2".to_owned(), "bar".to_owned());
+            dst_tx.send_labeled(addr, HashMap::new(), labels);
+        }
+
 
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
@@ -493,10 +481,16 @@ mod outbound_dst_labels {
     #[test]
     fn labeled_addr_and_addrset() {
         let _ = env_logger::try_init();
-        let Fixture { client, metrics, proxy: _proxy } = fixture(
-            vec![(String::from("addr_label"), String::from("foo"))],
-            vec![(String::from("set_label"), String::from("bar"))],
-        );
+        let (Fixture { client, metrics, proxy: _proxy }, addr, dst_tx) =
+            fixture("labeled.test.svc.cluster.local");
+
+        {
+            let mut alabels = HashMap::new();
+            alabels.insert("addr_label".to_owned(), "foo".to_owned());
+            let mut slabels = HashMap::new();
+            slabels.insert("set_label".to_owned(), "bar".to_owned());
+            dst_tx.send_labeled(addr, alabels, slabels);
+        }
 
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
@@ -519,19 +513,17 @@ mod outbound_dst_labels {
     fn controller_updates_addr_labels() {
         let _ = env_logger::try_init();
                 info!("running test server");
-        let Fixture { client, metrics, proxy: _proxy } =
-            // the controller will update the value of `addr_label`. the value
-            // of `set_label` will remain unchanged throughout the test.
-            fixture_with_updates(vec![
-                (
-                    vec![(String::from("addr_label"), String::from("foo"))],
-                    vec![(String::from("set_label"), String::from("unchanged"))]
-                ),
-                (
-                    vec![(String::from("addr_label"), String::from("bar"))],
-                    vec![(String::from("set_label"), String::from("unchanged"))]
-                ),
-            ]);
+
+        let (Fixture { client, metrics, proxy: _proxy }, addr, dst_tx) =
+            fixture("labeled.test.svc.cluster.local");
+
+        {
+            let mut alabels = HashMap::new();
+            alabels.insert("addr_label".to_owned(), "foo".to_owned());
+            let mut slabels = HashMap::new();
+            slabels.insert("set_label".to_owned(), "unchanged".to_owned());
+            dst_tx.send_labeled(addr, alabels, slabels);
+        }
 
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
@@ -544,6 +536,14 @@ mod outbound_dst_labels {
             "request_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"unchanged\"} 1");
         assert_contains!(metrics.get("/metrics"),
             "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"unchanged\",classification=\"success\",status_code=\"200\"} 1");
+
+        {
+            let mut alabels = HashMap::new();
+            alabels.insert("addr_label".to_owned(), "bar".to_owned());
+            let mut slabels = HashMap::new();
+            slabels.insert("set_label".to_owned(), "unchanged".to_owned());
+            dst_tx.send_labeled(addr, alabels, slabels);
+        }
 
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
@@ -576,11 +576,15 @@ mod outbound_dst_labels {
     fn controller_updates_set_labels() {
         let _ = env_logger::try_init();
                 info!("running test server");
-        let Fixture { client, metrics, proxy: _proxy } =
-            fixture_with_updates(vec![
-                (vec![], vec![(String::from("set_label"), String::from("foo"))]),
-                (vec![], vec![(String::from("set_label"), String::from("bar"))]),
-            ]);
+        let (Fixture { client, metrics, proxy: _proxy }, addr, dst_tx) =
+            fixture("labeled.test.svc.cluster.local");
+
+        {
+            let alabels = HashMap::new();
+            let mut slabels = HashMap::new();
+            slabels.insert("set_label".to_owned(), "foo".to_owned());
+            dst_tx.send_labeled(addr, alabels, slabels);
+        }
 
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
@@ -593,6 +597,13 @@ mod outbound_dst_labels {
             "request_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"foo\"} 1");
         assert_contains!(metrics.get("/metrics"),
             "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"foo\",classification=\"success\",status_code=\"200\"} 1");
+
+        {
+            let alabels = HashMap::new();
+            let mut slabels = HashMap::new();
+            slabels.insert("set_label".to_owned(), "bar".to_owned());
+            dst_tx.send_labeled(addr, alabels, slabels);
+        }
 
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
@@ -627,7 +638,7 @@ fn metrics_have_no_double_commas() {
     let outbound_srv = server::new().route("/hey", "hello").run();
 
     let ctrl = controller::new()
-        .destination("tele.test.svc.cluster.local", outbound_srv.addr)
+        .destination_and_close("tele.test.svc.cluster.local", outbound_srv.addr)
         .run();
     let proxy = proxy::new()
         .controller(ctrl)
