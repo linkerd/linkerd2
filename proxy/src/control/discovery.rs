@@ -4,7 +4,6 @@ use std::fmt;
 use std::iter::IntoIterator;
 use std::net::SocketAddr;
 use std::time::Duration;
-use std::sync::Arc;
 
 use futures::{Async, Future, Poll, Stream};
 use futures::sync::mpsc;
@@ -61,7 +60,6 @@ pub struct Background {
 
 /// A future returned from `Background::work()`, doing the work of talking to
 /// the controller destination API.
-// TODO: debug impl
 pub struct DiscoveryWork<T: HttpService<ResponseBody = RecvBody>> {
     dns_resolver: dns::Resolver,
     default_destination_namespace: String,
@@ -77,7 +75,7 @@ pub struct DiscoveryWork<T: HttpService<ResponseBody = RecvBody>> {
 
 /// Any additional metadata describing a discovered service.
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
-pub struct Metadata {
+struct Metadata {
     /// A set of Prometheus metric labels describing the destination.
     metric_labels: Option<DstLabels>,
 }
@@ -194,11 +192,7 @@ impl Discovery {
 // ==== impl Watch =====
 
 impl<B> Watch<B> {
-    fn update_metadata(&mut self,
-                       addr: SocketAddr,
-                       meta: Metadata)
-                       -> Result<(), ()>
-    {
+    fn update_metadata(&mut self, addr: SocketAddr, meta: Metadata) -> Result<(), ()> {
         if let Some(store) = self.metric_labels.get_mut(&addr) {
             store.store(meta.metric_labels)
                 .map_err(|e| {
@@ -516,11 +510,9 @@ impl<T> DestinationSet<T>
             match rx.poll() {
                 Ok(Async::Ready(Some(update))) => match update.update {
                     Some(PbUpdate2::Add(a_set)) => {
-                        let set_labels = Arc::new(a_set.metric_labels);
+                        let set_labels = a_set.metric_labels;
                         let addrs = a_set.addrs.into_iter()
-                            .filter_map(|pb|
-                                pb_to_addr_meta(pb, &set_labels)
-                            );
+                            .filter_map(|pb| pb_to_addr_meta(pb, &set_labels));
                         self.add(auth, addrs)
                     },
                     Some(PbUpdate2::Remove(r_set)) => {
@@ -720,13 +712,10 @@ impl Metadata {
 }
 
 /// Construct a new labeled `SocketAddr `from a protobuf `WeightedAddr`.
-fn pb_to_addr_meta(pb: WeightedAddr, set_labels: &Arc<HashMap<String, String>>)
+fn pb_to_addr_meta(pb: WeightedAddr, set_labels: &HashMap<String, String>)
             -> Option<(SocketAddr, Metadata)> {
     let addr = pb.addr.and_then(pb_to_sock_addr)?;
-    let label_iter =
-        set_labels.as_ref()
-            .iter()
-            .chain(pb.metric_labels.iter());
+    let label_iter = set_labels.iter().chain(pb.metric_labels.iter());
     let meta = Metadata {
         metric_labels: DstLabels::new(label_iter),
     };
