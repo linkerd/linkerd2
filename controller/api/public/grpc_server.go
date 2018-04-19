@@ -22,19 +22,20 @@ import (
 
 type (
 	grpcServer struct {
-		prometheusAPI       promv1.API
-		tapClient           tapPb.TapClient
-		namespaceLister     corelisters.NamespaceLister
-		deployLister        applisters.DeploymentLister
-		replicaSetLister    applisters.ReplicaSetLister
-		podLister           corelisters.PodLister
-		controllerNamespace string
-		ignoredNamespaces   []string
+		prometheusAPI               promv1.API
+		tapClient                   tapPb.TapClient
+		namespaceLister             corelisters.NamespaceLister
+		deployLister                applisters.DeploymentLister
+		replicaSetLister            applisters.ReplicaSetLister
+		podLister                   corelisters.PodLister
+		replicationControllerLister corelisters.ReplicationControllerLister
+		controllerNamespace         string
+		ignoredNamespaces           []string
 	}
 )
 
 const (
-	podQuery                   = "sum(request_total) by (pod)"
+	podQuery                   = "count(process_start_time_seconds) by (pod)"
 	K8sClientSubsystemName     = "kubernetes"
 	K8sClientCheckDescription  = "control plane can talk to Kubernetes"
 	PromClientSubsystemName    = "prometheus"
@@ -48,18 +49,20 @@ func newGrpcServer(
 	deployLister applisters.DeploymentLister,
 	replicaSetLister applisters.ReplicaSetLister,
 	podLister corelisters.PodLister,
+	replicationControllerLister corelisters.ReplicationControllerLister,
 	controllerNamespace string,
 	ignoredNamespaces []string,
 ) *grpcServer {
 	return &grpcServer{
-		prometheusAPI:       promAPI,
-		tapClient:           tapClient,
-		namespaceLister:     namespaceLister,
-		deployLister:        deployLister,
-		replicaSetLister:    replicaSetLister,
-		podLister:           podLister,
-		controllerNamespace: controllerNamespace,
-		ignoredNamespaces:   ignoredNamespaces,
+		prometheusAPI:               promAPI,
+		tapClient:                   tapClient,
+		namespaceLister:             namespaceLister,
+		deployLister:                deployLister,
+		replicaSetLister:            replicaSetLister,
+		podLister:                   podLister,
+		replicationControllerLister: replicationControllerLister,
+		controllerNamespace:         controllerNamespace,
+		ignoredNamespaces:           ignoredNamespaces,
 	}
 }
 
