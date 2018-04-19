@@ -1,6 +1,8 @@
 package util
 
 import (
+	"errors"
+	"strings"
 	"time"
 
 	pb "github.com/runconduit/conduit/controller/gen/public"
@@ -99,4 +101,47 @@ func BuildStatSummaryRequest(p StatSummaryRequestParams) (*pb.StatSummaryRequest
 	}
 
 	return statRequest, nil
+}
+
+// BuildResource parses input strings, typically from CLI flags, to build a
+// Resource object for use in the Conduit Public API.
+func BuildResource(namespace string, args ...string) (pb.Resource, error) {
+	switch len(args) {
+	case 0:
+		return pb.Resource{}, errors.New("No resource arguments provided")
+	case 1:
+		elems := strings.Split(args[0], "/")
+		switch len(elems) {
+		case 1:
+			// --namespace my-ns deploy
+			return buildResource(namespace, elems[0], "")
+		case 2:
+			// --namespace my-ns deploy/foo
+			return buildResource(namespace, elems[0], elems[1])
+		default:
+			return pb.Resource{}, errors.New("Invalid resource string: " + args[0])
+		}
+	case 2:
+		// --namespace my-ns deploy foo
+		return buildResource(namespace, args[0], args[1])
+	default:
+		return pb.Resource{}, errors.New("Too many arguments provided for resource: " + strings.Join(args, "/"))
+	}
+}
+
+func buildResource(namespace string, resType string, name string) (pb.Resource, error) {
+	canonicalType, err := k8s.CanonicalKubernetesNameFromFriendlyName(resType)
+	if err != nil {
+		return pb.Resource{}, err
+	}
+	if canonicalType == k8s.KubernetesNamespaces {
+		// ignore --namespace flags if type is namespace
+		namespace = ""
+	}
+
+	return pb.Resource{
+		Namespace: namespace,
+		Type:      canonicalType,
+		Name:      name,
+	}, nil
 }

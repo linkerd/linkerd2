@@ -13,6 +13,10 @@ import (
 	"google.golang.org/grpc"
 )
 
+//
+// Conduit Public API client
+//
+
 type MockConduitApiClient struct {
 	ErrorToReturn                   error
 	VersionInfoToReturn             *pb.VersionInfo
@@ -68,6 +72,32 @@ func (a *MockApi_TapClient) Recv() (*common.TapEvent, error) {
 
 	return &eventPopped, errorPopped
 }
+
+type MockApi_TapByResourceClient struct {
+	TapEventsToReturn []common.TapEvent
+	ErrorsToReturn    []error
+	grpc.ClientStream
+}
+
+func (a *MockApi_TapByResourceClient) Recv() (*common.TapEvent, error) {
+	var eventPopped common.TapEvent
+	var errorPopped error
+	if len(a.TapEventsToReturn) == 0 && len(a.ErrorsToReturn) == 0 {
+		return nil, io.EOF
+	}
+	if len(a.TapEventsToReturn) != 0 {
+		eventPopped, a.TapEventsToReturn = a.TapEventsToReturn[0], a.TapEventsToReturn[1:]
+	}
+	if len(a.ErrorsToReturn) != 0 {
+		errorPopped, a.ErrorsToReturn = a.ErrorsToReturn[0], a.ErrorsToReturn[1:]
+	}
+
+	return &eventPopped, errorPopped
+}
+
+//
+// Prometheus client
+//
 
 type MockProm struct {
 	Res model.Value
