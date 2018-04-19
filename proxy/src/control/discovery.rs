@@ -37,6 +37,11 @@ pub struct Discovery {
     tx: mpsc::UnboundedSender<(DnsNameAndPort, mpsc::UnboundedSender<Update>)>,
 }
 
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+pub struct Endpoint {
+    address: SocketAddr,
+}
+
 /// A `tower_discover::Discover`, given to a `tower_balance::Balance`.
 #[derive(Debug)]
 pub struct Watch<B> {
@@ -192,6 +197,22 @@ impl Discovery {
     }
 }
 
+// ==== impl Endpoint =====
+
+impl Endpoint {
+    pub fn address(&self) -> SocketAddr {
+        self.address
+    }
+}
+
+impl From<SocketAddr> for Endpoint {
+    fn from(address: SocketAddr) -> Self {
+        Self {
+            address,
+        }
+    }
+}
+
 // ==== impl Watch =====
 
 impl<B> Watch<B> {
@@ -218,7 +239,7 @@ impl<B> Watch<B> {
 
 impl<B, A> Discover for Watch<B>
 where
-    B: Bind<Endpoint = SocketAddr, Request = http::Request<A>>,
+    B: Bind<Endpoint = Endpoint, Request = http::Request<A>>,
 {
     type Key = SocketAddr;
     type Request = B::Request;
@@ -242,7 +263,10 @@ where
                         futures_watch::Watch::new(meta.metric_labels);
                     self.metric_labels.insert(addr, labels_store);
 
-                    let service = self.bind.bind(&addr)
+                    // TODO store labels_watch on `endpoint`.
+                    let endpoint = addr.into();
+
+                    let service = self.bind.bind(&endpoint)
                         .map(|svc| Labeled::new(svc, labels_watch))
                         .map_err(|_| ())?;
 
@@ -658,25 +682,6 @@ impl <T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
         txs.retain(|tx| {
             tx.unbounded_send(update.clone()).is_ok()
         });
-    }
-}
-
-// ===== impl Bind =====
-
-impl<F, S, E> Bind for F
-where
-    F: Fn(&SocketAddr) -> Result<S, E>,
-    S: Service,
-{
-    type Endpoint = SocketAddr;
-    type Request = S::Request;
-    type Response = S::Response;
-    type Error = S::Error;
-    type Service = S;
-    type BindError = E;
-
-    fn bind(&self, addr: &SocketAddr) -> Result<Self::Service, Self::BindError> {
-        (*self)(addr)
     }
 }
 

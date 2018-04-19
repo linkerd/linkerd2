@@ -2,7 +2,6 @@ use std::error::Error;
 use std::fmt;
 use std::default::Default;
 use std::marker::PhantomData;
-use std::net::SocketAddr;
 use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
 
@@ -16,7 +15,9 @@ use tower_reconnect::Reconnect;
 
 use conduit_proxy_controller_grpc;
 use conduit_proxy_router::Reuse;
+
 use control;
+use control::discovery::Endpoint;
 use ctx;
 use telemetry::{self, sensor};
 use transparency::{self, HttpBody, h1};
@@ -178,17 +179,18 @@ impl<B> Bind<Arc<ctx::Proxy>, B>
 where
     B: tower_h2::Body + 'static,
 {
-    pub fn bind_service(&self, addr: &SocketAddr, protocol: &Protocol) -> Service<B> {
-        trace!("bind_service addr={}, protocol={:?}", addr, protocol);
+    pub fn bind_service(&self, ep: &Endpoint, protocol: &Protocol) -> Service<B> {
+        trace!("bind_service endpoint={:?}, protocol={:?}", ep, protocol);
+        let addr = ep.address();
         let client_ctx = ctx::transport::Client::new(
             &self.ctx,
-            addr,
+            &addr,
             conduit_proxy_controller_grpc::common::Protocol::Http,
         );
 
         // Map a socket address to a connection.
         let connect = self.sensors.connect(
-            transport::Connect::new(*addr, &self.executor),
+            transport::Connect::new(addr, &self.executor),
             &client_ctx
         );
 
@@ -231,15 +233,15 @@ impl<B> control::discovery::Bind for BindProtocol<Arc<ctx::Proxy>, B>
 where
     B: tower_h2::Body + 'static,
 {
-    type Endpoint = SocketAddr;
+    type Endpoint = Endpoint;
     type Request = http::Request<B>;
     type Response = HttpResponse;
     type Error = <Service<B> as tower::Service>::Error;
     type Service = Service<B>;
     type BindError = ();
 
-    fn bind(&self, addr: &SocketAddr) -> Result<Self::Service, Self::BindError> {
-        Ok(self.bind.bind_service(addr, &self.protocol))
+    fn bind(&self, ep: &Endpoint) -> Result<Self::Service, Self::BindError> {
+        Ok(self.bind.bind_service(ep, &self.protocol))
     }
 }
 

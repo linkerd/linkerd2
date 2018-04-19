@@ -184,7 +184,7 @@ where
                 // circuit-breaking, this should be able to take care of itself,
                 // closing down when the connection is no longer usable.
                 if let Some((addr, bind)) = opt.take() {
-                    let svc = bind.bind(&addr)
+                    let svc = bind.bind(&addr.into())
                         // The controller has no labels to add to an external
                         // service.
                         .map(metrics::Labeled::none)
