@@ -719,6 +719,7 @@ mod transport {
     use super::*;
 
     #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
     fn inbound_http_accept() {
         let _ = env_logger::try_init();
         let Fixture { client, metrics, proxy } = Fixture::inbound();
@@ -750,6 +751,7 @@ mod transport {
     }
 
     #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
     fn inbound_http_connect() {
         let _ = env_logger::try_init();
         let Fixture { client, metrics, proxy } = Fixture::inbound();
@@ -770,6 +772,7 @@ mod transport {
     }
 
     #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
     fn outbound_http_accept() {
         let _ = env_logger::try_init();
         let Fixture { client, metrics, proxy } = Fixture::outbound();
@@ -801,6 +804,7 @@ mod transport {
     }
 
     #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
     fn outbound_http_connect() {
         let _ = env_logger::try_init();
         let Fixture { client, metrics, proxy } = Fixture::outbound();
@@ -821,6 +825,7 @@ mod transport {
     }
 
     #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
     fn inbound_tcp_connect() {
         let _ = env_logger::try_init();
         let TcpFixture { client, metrics, proxy: _proxy } =
@@ -838,6 +843,7 @@ mod transport {
     }
 
     #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
     fn inbound_tcp_accept() {
         let _ = env_logger::try_init();
         let TcpFixture { client, metrics, proxy: _proxy } =
@@ -871,6 +877,7 @@ mod transport {
     }
 
     #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
     fn inbound_tcp_duration() {
         let _ = env_logger::try_init();
         let TcpFixture { client, metrics, proxy: _proxy } =
@@ -901,6 +908,7 @@ mod transport {
     }
 
     #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
     fn inbound_tcp_sent_bytes() {
         let _ = env_logger::try_init();
         let TcpFixture { client, metrics, proxy: _proxy } =
@@ -922,6 +930,7 @@ mod transport {
     }
 
     #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
     fn inbound_tcp_received_bytes() {
         let _ = env_logger::try_init();
         let TcpFixture { client, metrics, proxy: _proxy } =
@@ -943,6 +952,7 @@ mod transport {
     }
 
     #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
     fn outbound_tcp_connect() {
         let _ = env_logger::try_init();
         let TcpFixture { client, metrics, proxy: _proxy } =
@@ -960,6 +970,7 @@ mod transport {
     }
 
     #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
     fn outbound_tcp_accept() {
         let _ = env_logger::try_init();
         let TcpFixture { client, metrics, proxy: _proxy } =
@@ -993,6 +1004,7 @@ mod transport {
     }
 
     #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
     fn outbound_tcp_duration() {
         let _ = env_logger::try_init();
         let TcpFixture { client, metrics, proxy: _proxy } =
@@ -1023,6 +1035,7 @@ mod transport {
     }
 
     #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
     fn outbound_tcp_sent_bytes() {
         let _ = env_logger::try_init();
         let TcpFixture { client, metrics, proxy: _proxy } =
@@ -1044,6 +1057,7 @@ mod transport {
     }
 
     #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
     fn outbound_tcp_received_bytes() {
         let _ = env_logger::try_init();
         let TcpFixture { client, metrics, proxy: _proxy } =

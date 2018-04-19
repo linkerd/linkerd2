@@ -4,9 +4,6 @@ use std::hash;
 use std::sync::Arc;
 
 use http;
-use conduit_proxy_controller_grpc::common::Protocol;
-
-use ctx;
 
 use ctx;
 
@@ -40,8 +37,6 @@ pub struct ResponseLabels {
     /// Was the response a success or failure?
     classification: Classification,
 }
-
-
 
 /// Labels describing a TCP connection
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -280,6 +275,6 @@ impl TransportLabels {
 
 impl fmt::Display for TransportLabels {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{},{}", self.direction, protocol)
+        write!(f, "{}", self.direction)
     }
 }

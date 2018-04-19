@@ -49,7 +49,7 @@ use telemetry::event::Event;
 mod labels;
 mod latency;
 
-use self::labels::{RequestLabels, ResponseLabels};
+use self::labels::{RequestLabels, ResponseLabels, TransportLabels};
 use self::latency::{BUCKET_BOUNDS, Histogram};
 pub use self::labels::DstLabels;
 
@@ -234,7 +234,7 @@ impl Metrics {
                      -> &mut Counter {
         self.request_total.values
             .entry(labels.clone())
-            .or_insert_with(Default::default)
+            .or_insert_with(Counter::default)
     }
 
     fn request_duration(&mut self,
@@ -242,7 +242,7 @@ impl Metrics {
                         -> &mut Histogram {
         self.request_duration.values
             .entry(labels.clone())
-            .or_insert_with(Default::default)
+            .or_insert_with(Histogram::default)
     }
 
     fn response_duration(&mut self,
@@ -250,7 +250,7 @@ impl Metrics {
                          -> &mut Histogram {
         self.response_duration.values
             .entry(labels.clone())
-            .or_insert_with(Default::default)
+            .or_insert_with(Histogram::default)
     }
 
     fn response_latency(&mut self,
@@ -258,7 +258,7 @@ impl Metrics {
                         -> &mut Histogram {
         self.response_latency.values
             .entry(labels.clone())
-            .or_insert_with(Default::default)
+            .or_insert_with(Histogram::default)
     }
 
     fn response_total(&mut self,
@@ -266,7 +266,7 @@ impl Metrics {
                       -> &mut Counter {
         self.response_total.values
             .entry(labels.clone())
-            .or_insert_with(Default::default)
+            .or_insert_with(Counter::default)
     }
 
     fn tcp_accept_open_total(&mut self,
@@ -274,7 +274,7 @@ impl Metrics {
                              -> &mut Counter {
         self.tcp_accept_open_total.values
             .entry(labels.clone())
-            .or_insert_with(Default::default)
+            .or_insert_with(Counter::default)
     }
 
     fn tcp_accept_close_total(&mut self,
@@ -282,7 +282,7 @@ impl Metrics {
                               -> &mut Counter {
         self.tcp_accept_close_total.values
             .entry(labels.clone())
-            .or_insert_with(Default::default)
+            .or_insert_with(Counter::default)
     }
 
     fn tcp_connect_open_total(&mut self,
@@ -290,7 +290,7 @@ impl Metrics {
                              -> &mut Counter {
         self.tcp_connect_open_total.values
             .entry(labels.clone())
-            .or_insert_with(Default::default)
+            .or_insert_with(Counter::default)
     }
 
     fn tcp_connect_close_total(&mut self,
@@ -298,7 +298,7 @@ impl Metrics {
                               -> &mut Counter {
         self.tcp_connect_close_total.values
             .entry(labels.clone())
-            .or_insert_with(Default::default)
+            .or_insert_with(Counter::default)
     }
 
     fn tcp_connection_duration(&mut self,
@@ -306,7 +306,7 @@ impl Metrics {
                                 -> &mut Histogram {
         self.tcp_connection_duration.values
             .entry(labels.clone())
-            .or_insert_with(Default::default)
+            .or_insert_with(Histogram::default)
     }
 
     fn sent_bytes(&mut self,
@@ -314,7 +314,7 @@ impl Metrics {
                   -> &mut Counter {
         self.sent_bytes.values
             .entry(labels.clone())
-            .or_insert_with(Default::default)
+            .or_insert_with(Counter::default)
     }
 
     fn received_bytes(&mut self,
@@ -322,28 +322,26 @@ impl Metrics {
                       -> &mut Counter {
         self.received_bytes.values
             .entry(labels.clone())
-            .or_insert_with(Default::default)
+            .or_insert_with(Counter::default)
     }
 }
 
 impl fmt::Display for Metrics {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f,
-            "{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\nprocess_start_time_seconds {}\n",
-            self.request_total,
-            self.request_duration,
-            self.response_total,
-            self.response_duration,
-            self.response_latency,
-            self.tcp_accept_open_total,
-            self.tcp_accept_close_total,
-            self.tcp_connect_open_total,
-            self.tcp_connect_close_total,
-            self.tcp_connection_duration,
-            self.sent_bytes,
-            self.received_bytes,
-            self.start_time,
-        )
+        writeln!(f, "{}", self.request_total)?;
+        writeln!(f, "{}", self.request_duration)?;
+        writeln!(f, "{}", self.response_total)?;
+        writeln!(f, "{}", self.response_duration)?;
+        writeln!(f, "{}", self.response_latency)?;
+        writeln!(f, "{}", self.tcp_accept_open_total)?;
+        writeln!(f, "{}", self.tcp_accept_close_total)?;
+        writeln!(f, "{}", self.tcp_connect_open_total)?;
+        writeln!(f, "{}", self.tcp_connect_close_total)?;
+        writeln!(f, "{}", self.tcp_connection_duration)?;
+        writeln!(f, "{}", self.sent_bytes)?;
+        writeln!(f, "{}", self.received_bytes)?;
+        writeln!(f, "{}", self.start_time)?;
+        Ok(())
     }
 }
 

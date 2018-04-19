@@ -129,13 +129,13 @@ impl<T> Drop for Transport<T> {
 
 impl<T: AsyncRead + AsyncWrite> io::Read for Transport<T> {
     fn read(&mut self, mut buf: &mut [u8]) -> io::Result<usize> {
-        self.sense_err(move |io| io.read(buf))
-            .map(|bytes| {
-                self.1.as_mut().map(|inner| {
-                     inner.rx_bytes += bytes as u64;
-                });
-                bytes
-            })
+        let bytes = self.sense_err(move |io| io.read(buf))?;
+
+        if let Some(inner) = self.1.as_mut() {
+                inner.rx_bytes += bytes as u64;
+        }
+
+        Ok(bytes)
     }
 }
 
@@ -145,13 +145,13 @@ impl<T: AsyncRead + AsyncWrite> io::Write for Transport<T> {
     }
 
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.sense_err(move |io| io.write(buf))
-            .map(|bytes| {
-                self.1.as_mut().map(|inner| {
-                     inner.tx_bytes += bytes as u64;
-                });
-                bytes
-            })
+        let bytes = self.sense_err(move |io| io.write(buf))?;
+
+        if let Some(inner) = self.1.as_mut() {
+                inner.tx_bytes += bytes as u64;
+        }
+
+        Ok(bytes)
     }
 }
 
