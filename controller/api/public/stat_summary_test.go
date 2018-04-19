@@ -56,6 +56,8 @@ metadata:
     app: emoji-svc
   annotations:
     conduit.io/proxy-version: testinjectversion
+status:
+  phase: Running
 `, `
 apiVersion: v1
 kind: Pod
@@ -64,6 +66,20 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
+status:
+  phase: Running
+`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed-not-running
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+  annotations:
+    conduit.io/proxy-version: testinjectversion
+status:
+  phase: Completed
 `,
 				},
 				promRes: model.Vector{
@@ -107,7 +123,9 @@ metadata:
 														LatencyMsP95: 123,
 														LatencyMsP99: 123,
 													},
-													TimeWindow: "1m",
+													TimeWindow:     "1m",
+													MeshedPodCount: 1,
+													TotalPodCount:  2,
 												},
 											},
 										},
