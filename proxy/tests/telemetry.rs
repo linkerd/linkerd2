@@ -726,12 +726,12 @@ mod transport {
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_open_total{direction=\"inbound\",protocol=\"http\"} 1"
+            "tcp_accept_open_total{direction=\"inbound\"} 1"
         );
         // drop the client to force the connection to close.
         drop(client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_close_total{direction=\"inbound\",protocol=\"http\"} 1"
+            "tcp_accept_close_total{direction=\"inbound\"} 1"
         );
 
         // create a new client to force a new connection
@@ -740,12 +740,12 @@ mod transport {
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_open_total{direction=\"inbound\",protocol=\"http\"} 2"
+            "tcp_accept_open_total{direction=\"inbound\"} 2"
         );
         // drop the client to force the connection to close.
         drop(client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_close_total{direction=\"inbound\",protocol=\"http\"} 2"
+            "tcp_accept_close_total{direction=\"inbound\"} 2"
         );
     }
 
@@ -757,7 +757,7 @@ mod transport {
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connect_open_total{direction=\"inbound\",protocol=\"http\"} 1");
+            "tcp_connect_open_total{direction=\"inbound\"} 1");
 
         // create a new client to force a new connection
         let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
@@ -766,7 +766,7 @@ mod transport {
         assert_eq!(client.get("/"), "hello");
         // server connection should be pooled
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connect_open_total{direction=\"inbound\",protocol=\"http\"} 1");
+            "tcp_connect_open_total{direction=\"inbound\"} 1");
     }
 
     #[test]
@@ -777,12 +777,12 @@ mod transport {
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_open_total{direction=\"outbound\",protocol=\"http\"} 1"
+            "tcp_accept_open_total{direction=\"outbound\"} 1"
         );
         // drop the client to force the connection to close.
         drop(client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_close_total{direction=\"outbound\",protocol=\"http\"} 1"
+            "tcp_accept_close_total{direction=\"outbound\"} 1"
         );
 
         // create a new client to force a new connection
@@ -791,12 +791,12 @@ mod transport {
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_open_total{direction=\"outbound\",protocol=\"http\"} 2"
+            "tcp_accept_open_total{direction=\"outbound\"} 2"
         );
         // drop the client to force the connection to close.
         drop(client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_close_total{direction=\"outbound\",protocol=\"http\"} 2"
+            "tcp_accept_close_total{direction=\"outbound\"} 2"
         );
     }
 
@@ -808,7 +808,7 @@ mod transport {
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connect_open_total{direction=\"outbound\",protocol=\"http\"} 1");
+            "tcp_connect_open_total{direction=\"outbound\"} 1");
 
         // create a new client to force a new connection
         let client2 = client::new(proxy.outbound, "tele.test.svc.cluster.local");
@@ -817,7 +817,7 @@ mod transport {
         assert_eq!(client2.get("/"), "hello");
         // server connection should be pooled
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connect_open_total{direction=\"outbound\",protocol=\"http\"} 1");
+            "tcp_connect_open_total{direction=\"outbound\"} 1");
     }
 
     #[test]
@@ -834,7 +834,7 @@ mod transport {
         tcp_client.write(msg1);
         assert_eq!(tcp_client.read(), msg2.as_bytes());
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connect_open_total{direction=\"inbound\",protocol=\"tcp\"} 1");
+            "tcp_connect_open_total{direction=\"inbound\"} 1");
     }
 
     #[test]
@@ -852,11 +852,11 @@ mod transport {
         assert_eq!(tcp_client.read(), msg2.as_bytes());
 
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_open_total{direction=\"inbound\",protocol=\"tcp\"} 1");
+            "tcp_accept_open_total{direction=\"inbound\"} 1");
 
         drop(tcp_client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_close_total{direction=\"inbound\",protocol=\"tcp\"} 1");
+            "tcp_accept_close_total{direction=\"inbound\"} 1");
 
         let tcp_client = client.connect();
 
@@ -864,10 +864,10 @@ mod transport {
         assert_eq!(tcp_client.read(), msg2.as_bytes());
 
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_open_total{direction=\"inbound\",protocol=\"tcp\"} 2");
+            "tcp_accept_open_total{direction=\"inbound\"} 2");
         drop(tcp_client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_close_total{direction=\"inbound\",protocol=\"tcp\"} 2");
+            "tcp_accept_close_total{direction=\"inbound\"} 2");
     }
 
     #[test]
@@ -886,18 +886,18 @@ mod transport {
         drop(tcp_client);
         // TODO: make assertions about buckets
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connection_duration_ms_count{direction=\"inbound\",protocol=\"tcp\"} 2");
+            "tcp_connection_duration_ms_count{direction=\"inbound\"} 2");
 
         let tcp_client = client.connect();
 
         tcp_client.write(msg1);
         assert_eq!(tcp_client.read(), msg2.as_bytes());
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connection_duration_ms_count{direction=\"inbound\",protocol=\"tcp\"} 2");
+            "tcp_connection_duration_ms_count{direction=\"inbound\"} 2");
 
         drop(tcp_client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connection_duration_ms_count{direction=\"inbound\",protocol=\"tcp\"} 4");
+            "tcp_connection_duration_ms_count{direction=\"inbound\"} 4");
     }
 
     #[test]
@@ -909,7 +909,7 @@ mod transport {
         let msg1 = "custom tcp hello";
         let msg2 = "custom tcp bye";
         let expected = format!(
-            "sent_bytes{{direction=\"inbound\",protocol=\"tcp\"}} {}",
+            "sent_bytes{{direction=\"inbound\"}} {}",
             msg1.len() + msg2.len()
         );
 
@@ -930,7 +930,7 @@ mod transport {
         let msg1 = "custom tcp hello";
         let msg2 = "custom tcp bye";
         let expected = format!(
-            "received_bytes{{direction=\"inbound\",protocol=\"tcp\"}} {}",
+            "received_bytes{{direction=\"inbound\"}} {}",
             msg1.len() + msg2.len()
         );
 
@@ -956,7 +956,7 @@ mod transport {
         tcp_client.write(msg1);
         assert_eq!(tcp_client.read(), msg2.as_bytes());
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connect_open_total{direction=\"outbound\",protocol=\"tcp\"} 1");
+            "tcp_connect_open_total{direction=\"outbound\"} 1");
     }
 
     #[test]
@@ -974,11 +974,11 @@ mod transport {
         assert_eq!(tcp_client.read(), msg2.as_bytes());
 
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_open_total{direction=\"outbound\",protocol=\"tcp\"} 1");
+            "tcp_accept_open_total{direction=\"outbound\"} 1");
 
         drop(tcp_client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_close_total{direction=\"outbound\",protocol=\"tcp\"} 1");
+            "tcp_accept_close_total{direction=\"outbound\"} 1");
 
         let tcp_client = client.connect();
 
@@ -986,10 +986,10 @@ mod transport {
         assert_eq!(tcp_client.read(), msg2.as_bytes());
 
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_open_total{direction=\"outbound\",protocol=\"tcp\"} 2");
+            "tcp_accept_open_total{direction=\"outbound\"} 2");
         drop(tcp_client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_close_total{direction=\"outbound\",protocol=\"tcp\"} 2");
+            "tcp_accept_close_total{direction=\"outbound\"} 2");
     }
 
     #[test]
@@ -1008,18 +1008,18 @@ mod transport {
         drop(tcp_client);
         // TODO: make assertions about buckets
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connection_duration_ms_count{direction=\"outbound\",protocol=\"tcp\"} 2");
+            "tcp_connection_duration_ms_count{direction=\"outbound\"} 2");
 
         let tcp_client = client.connect();
 
         tcp_client.write(msg1);
         assert_eq!(tcp_client.read(), msg2.as_bytes());
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connection_duration_ms_count{direction=\"outbound\",protocol=\"tcp\"} 2");
+            "tcp_connection_duration_ms_count{direction=\"outbound\"} 2");
 
         drop(tcp_client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connection_duration_ms_count{direction=\"outbound\",protocol=\"tcp\"} 4");
+            "tcp_connection_duration_ms_count{direction=\"outbound\"} 4");
     }
 
     #[test]
@@ -1031,7 +1031,7 @@ mod transport {
         let msg1 = "custom tcp hello";
         let msg2 = "custom tcp bye";
         let expected = format!(
-            "sent_bytes{{direction=\"outbound\",protocol=\"tcp\"}} {}",
+            "sent_bytes{{direction=\"outbound\"}} {}",
             msg1.len() + msg2.len()
         );
 
@@ -1052,7 +1052,7 @@ mod transport {
         let msg1 = "custom tcp hello";
         let msg2 = "custom tcp bye";
         let expected = format!(
-            "received_bytes{{direction=\"outbound\",protocol=\"tcp\"}} {}",
+            "received_bytes{{direction=\"outbound\"}} {}",
             msg1.len() + msg2.len()
         );
 
