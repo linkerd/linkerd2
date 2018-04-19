@@ -476,7 +476,6 @@ mod outbound_dst_labels {
         // map ordering.
         assert_contains!(metrics.get("/metrics"), "dst_set_label1=\"foo\"");
         assert_contains!(metrics.get("/metrics"), "dst_set_label2=\"bar\"");
-        drop(dst_tx)
     }
 
     #[test]
