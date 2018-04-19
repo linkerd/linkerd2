@@ -253,7 +253,7 @@ func (p *proxyMetricCollectors) generateTCPStats(randomCount int) {
 	if connectClosedCount >= 2 {
 		connectFailedCount = rand.Intn(connectClosedCount / 2)
 		connectClosedCount -= connectFailedCount
-		p.tcpAcceptCloseTotal.With(failLabels).Add(float64(connectFailedCount))
+		p.tcpConnectCloseTotal.With(failLabels).Add(float64(connectFailedCount))
 	}
 
 	p.tcpConnectCloseTotal.With(closeLabels).Add(float64(connectClosedCount))
