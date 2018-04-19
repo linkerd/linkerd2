@@ -617,7 +617,7 @@ impl<T> DestinationSet<T>
                 Ok(Async::Ready(dns::Response::Exists(ips))) => {
                     trace!("positive result of DNS query for {:?}: {:?}", authority, ips);
                     self.add(authority, ips.iter().map(|ip| {
-                        (SocketAddr::from((*ip, authority.port)), Metadata::no_metadata())
+                        (SocketAddr::from((ip, authority.port)), Metadata::no_metadata())
                     }));
                 },
                 Ok(Async::Ready(dns::Response::DoesNotExist)) => {
