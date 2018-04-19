@@ -217,24 +217,43 @@ func (p *proxyMetricCollectors) generateTCPStats(randomCount int) {
 
 	// TODO: throw in some raw TCP connections
 	openLabels := prom.Labels{"protocol": "http"}
-	// TODO: throw in a few failures
 	closeLabels := prom.Labels{"protocol": "http", "classification": "success"}
+	failLabels := prom.Labels{"protocol": "http", "classification": "failure"}
 
 	// jitter the accept/connect counts a little bit to simulate connection pooling etc.
 	acceptCount := jitter(randomCount, 0.1)
+
+	p.tcpAcceptOpenTotal.With(openLabels).Add(float64(acceptCount))
+
 	// up to acceptCount accepted connections remain open...
 	acceptOpenCount := rand.Intn(acceptCount)
 	// ...and the rest have been closed.
 	acceptClosedCount := acceptCount - acceptOpenCount
 
-	p.tcpAcceptOpenTotal.With(openLabels).Add(float64(acceptCount))
+	// simulate some failures
+	acceptFailedCount := 0
+	if acceptClosedCount >= 2 {
+		acceptFailedCount = rand.Intn(acceptClosedCount / 2)
+		acceptClosedCount -= acceptFailedCount
+		p.tcpAcceptCloseTotal.With(failLabels).Add(float64(acceptFailedCount))
+	}
+
 	p.tcpAcceptCloseTotal.With(closeLabels).Add(float64(acceptClosedCount))
 
 	connectCount := jitter(randomCount, 0.1)
-	connectOpenCount := rand.Intn(connectCount)
-	connectClosedCount := connectCount - connectOpenCount
 
 	p.tcpConnectOpenTotal.With(openLabels).Add(float64(connectCount))
+
+	connectOpenCount := rand.Intn(connectCount)
+	connectClosedCount := connectCount - connectOpenCount
+	connectFailedCount := 0
+
+	if connectClosedCount >= 2 {
+		connectFailedCount = rand.Intn(connectClosedCount / 2)
+		connectClosedCount -= connectFailedCount
+		p.tcpAcceptCloseTotal.With(failLabels).Add(float64(connectFailedCount))
+	}
+
 	p.tcpConnectCloseTotal.With(closeLabels).Add(float64(connectClosedCount))
 
 	p.tcpConnectionsOpen.With(openLabels).Set(float64(acceptOpenCount + connectOpenCount))
@@ -244,6 +263,13 @@ func (p *proxyMetricCollectors) generateTCPStats(randomCount int) {
 	for _, latency := range randomLatencies(totalClosed) {
 		p.tcpConnectionDurationMs.With(closeLabels).Observe(latency)
 	}
+
+	// durations for simulated failures
+	totalFailed := acceptFailedCount + connectFailedCount
+	for _, latency := range randomLatencies(totalFailed) {
+		p.tcpConnectionDurationMs.With(failLabels).Observe(latency)
+	}
+
 }
 
 func jitter(toJitter int, frac float64) int {
