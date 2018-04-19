@@ -6,7 +6,6 @@ use std::collections::{HashMap, VecDeque};
 use std::net::IpAddr;
 use std::sync::{Arc, Mutex};
 
-//use conduit_proxy_controller_grpc as pb;
 use conduit_proxy_controller_grpc::common::{self, Destination};
 use conduit_proxy_controller_grpc::destination as pb;
 
