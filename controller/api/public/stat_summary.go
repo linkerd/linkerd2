@@ -35,7 +35,11 @@ const (
 	promLatencyP95 = promType("0.95")
 	promLatencyP99 = promType("0.99")
 
-	namespaceLabel    = model.LabelName("namespace")
+	deploymentLabel            = model.LabelName("deployment")
+	namespaceLabel             = model.LabelName("namespace")
+	podLabel                   = model.LabelName("pod")
+	replicationControllerLabel = model.LabelName("replication_controller")
+
 	dstNamespaceLabel = model.LabelName("dst_namespace")
 )
 
@@ -43,9 +47,10 @@ var (
 	promTypes = []promType{promRequests, promLatencyP50, promLatencyP95, promLatencyP99}
 
 	k8sResourceTypesToPromLabels = map[string]model.LabelName{
-		k8s.KubernetesDeployments: "deployment",
-		k8s.KubernetesNamespaces:  namespaceLabel,
-		k8s.KubernetesPods:        "pod",
+		k8s.KubernetesDeployments:            deploymentLabel,
+		k8s.KubernetesNamespaces:             namespaceLabel,
+		k8s.KubernetesPods:                   podLabel,
+		k8s.KubernetesReplicationControllers: replicationControllerLabel,
 	}
 )
 
@@ -66,6 +71,8 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 		objectMap, meshCount, err = s.getNamespaces(req.Selector.Resource)
 	case k8s.KubernetesPods:
 		objectMap, meshCount, err = s.getPods(req.Selector.Resource)
+	case k8s.KubernetesReplicationControllers:
+		objectMap, meshCount, err = s.getReplicationControllers(req.Selector.Resource)
 	default:
 		err = fmt.Errorf("Unimplemented resource type: %v", req.Selector.Resource.Type)
 	}
@@ -405,7 +412,7 @@ func (s *grpcServer) getPods(res *pb.Resource) (map[string]metav1.ObjectMeta, ma
 	meshedPodCount := make(map[string]*meshedCount)
 	podMap := make(map[string]metav1.ObjectMeta)
 	for _, pod := range pods {
-		if pod.Status.Phase != apiv1.PodRunning {
+		if !isPendingOrRunning(pod) {
 			continue
 		}
 
@@ -425,6 +432,43 @@ func (s *grpcServer) getPods(res *pb.Resource) (map[string]metav1.ObjectMeta, ma
 	return podMap, meshedPodCount, nil
 }
 
+func (s *grpcServer) getReplicationControllers(res *pb.Resource) (map[string]metav1.ObjectMeta, map[string]*meshedCount, error) {
+	var err error
+	var rcs []*apiv1.ReplicationController
+
+	if res.Namespace == "" {
+		rcs, err = s.replicationControllerLister.List(labels.Everything())
+	} else if res.Name == "" {
+		rcs, err = s.replicationControllerLister.ReplicationControllers(res.Namespace).List(labels.Everything())
+	} else {
+		var rc *apiv1.ReplicationController
+		rc, err = s.replicationControllerLister.ReplicationControllers(res.Namespace).Get(res.Name)
+		rcs = []*apiv1.ReplicationController{rc}
+	}
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	meshedPodCount := make(map[string]*meshedCount)
+	rcMap := make(map[string]metav1.ObjectMeta)
+	for _, rc := range rcs {
+		key, err := cache.MetaNamespaceKeyFunc(rc)
+		if err != nil {
+			return nil, nil, err
+		}
+		rcMap[key] = rc.ObjectMeta
+
+		meshCount, err := s.getMeshedPodCount(rc.Namespace, rc)
+		if err != nil {
+			return nil, nil, err
+		}
+		meshedPodCount[key] = meshCount
+	}
+
+	return rcMap, meshedPodCount, nil
+}
+
 func (s *grpcServer) getMeshedPodCount(namespace string, obj runtime.Object) (*meshedCount, error) {
 	selector, err := getSelectorFromObject(obj)
 	if err != nil {
@@ -438,6 +482,10 @@ func (s *grpcServer) getMeshedPodCount(namespace string, obj runtime.Object) (*m
 
 	meshCount := &meshedCount{}
 	for _, pod := range pods {
+		if !isPendingOrRunning(pod) {
+			continue
+		}
+
 		meshCount.total++
 		if isInMesh(pod) {
 			meshCount.inMesh++
@@ -452,6 +500,13 @@ func isInMesh(pod *apiv1.Pod) bool {
 	return ok
 }
 
+func isPendingOrRunning(pod *apiv1.Pod) bool {
+	pending := pod.Status.Phase == apiv1.PodPending
+	running := pod.Status.Phase == apiv1.PodRunning
+	terminating := pod.DeletionTimestamp != nil
+	return (pending || running) && !terminating
+}
+
 func getSelectorFromObject(obj runtime.Object) (labels.Selector, error) {
 	switch typed := obj.(type) {
 	case *apiv1.Namespace:
@@ -459,6 +514,9 @@ func getSelectorFromObject(obj runtime.Object) (labels.Selector, error) {
 
 	case *appsv1beta2.Deployment:
 		return labels.Set(typed.Spec.Selector.MatchLabels).AsSelector(), nil
+
+	case *apiv1.ReplicationController:
+		return labels.Set(typed.Spec.Selector).AsSelector(), nil
 
 	default:
 		return nil, fmt.Errorf("Cannot get object selector: %v", obj)

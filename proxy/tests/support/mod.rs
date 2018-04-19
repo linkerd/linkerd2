@@ -19,24 +19,25 @@ extern crate tokio_core;
 pub extern crate tokio_io;
 extern crate tower;
 extern crate tower_h2;
+extern crate tower_grpc;
 extern crate log;
 pub extern crate env_logger;
 
-use std::net::SocketAddr;
+pub use std::collections::HashMap;
+pub use std::net::SocketAddr;
 pub use std::time::Duration;
 
-use self::bytes::{BigEndian, BytesMut};
 pub use self::bytes::Bytes;
 pub use self::conduit_proxy::*;
 pub use self::futures::*;
 use self::futures::sync::oneshot;
 pub use self::http::{HeaderMap, Request, Response, StatusCode};
-use self::http::header::HeaderValue;
 use self::tokio_connect::Connect;
 use self::tokio_core::net::{TcpListener, TcpStream};
 use self::tokio_core::reactor::{Core, Handle};
 use self::tower::{NewService, Service};
 use self::tower_h2::{Body, RecvBody};
+use self::tower_grpc as grpc;
 
 /// Environment variable for overriding the test patience.
 pub const ENV_TEST_PATIENCE_MS: &'static str = "RUST_TEST_PATIENCE_MS";
