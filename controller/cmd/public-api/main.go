@@ -69,6 +69,9 @@ func main() {
 	podInformer := sharedInformers.Core().V1().Pods()
 	podInformerSynced := podInformer.Informer().HasSynced
 
+	replicationControllerInformer := sharedInformers.Core().V1().ReplicationControllers()
+	replicationControllerInformerSynced := replicationControllerInformer.Informer().HasSynced
+
 	sharedInformers.Start(nil)
 
 	prometheusClient, err := promApi.NewClient(promApi.Config{Address: *prometheusUrl})
@@ -84,6 +87,7 @@ func main() {
 		deployInformer.Lister(),
 		replicaSetInformer.Lister(),
 		podInformer.Lister(),
+		replicationControllerInformer.Lister(),
 		*controllerNamespace,
 		strings.Split(*ignoredNamespaces, ","),
 	)
@@ -99,6 +103,7 @@ func main() {
 			deployInformerSynced,
 			replicaSetInformerSynced,
 			podInformerSynced,
+			replicationControllerInformerSynced,
 		) {
 			log.Fatalf("timed out wait for caches to sync")
 		}

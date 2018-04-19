@@ -107,9 +107,7 @@ metadata:
 														LatencyMsP95: 123,
 														LatencyMsP99: 123,
 													},
-													TimeWindow:     "1m",
-													MeshedPodCount: 1,
-													TotalPodCount:  2,
+													TimeWindow: "1m",
 												},
 											},
 										},
@@ -140,6 +138,7 @@ metadata:
 			deployInformer := sharedInformers.Apps().V1beta2().Deployments()
 			replicaSetInformer := sharedInformers.Apps().V1beta2().ReplicaSets()
 			podInformer := sharedInformers.Core().V1().Pods()
+			replicationControllerInformer := sharedInformers.Core().V1().ReplicationControllers()
 
 			fakeGrpcServer := newGrpcServer(
 				&MockProm{Res: exp.promRes},
@@ -148,6 +147,7 @@ metadata:
 				deployInformer.Lister(),
 				replicaSetInformer.Lister(),
 				podInformer.Lister(),
+				replicationControllerInformer.Lister(),
 				"conduit",
 				[]string{},
 			)
@@ -159,6 +159,7 @@ metadata:
 				deployInformer.Informer().HasSynced,
 				replicaSetInformer.Informer().HasSynced,
 				podInformer.Informer().HasSynced,
+				replicationControllerInformer.Informer().HasSynced,
 			) {
 				t.Fatalf("timed out wait for caches to sync")
 			}
@@ -218,6 +219,7 @@ metadata:
 				sharedInformers.Apps().V1beta2().Deployments().Lister(),
 				sharedInformers.Apps().V1beta2().ReplicaSets().Lister(),
 				sharedInformers.Core().V1().Pods().Lister(),
+				sharedInformers.Core().V1().ReplicationControllers().Lister(),
 				"conduit",
 				[]string{},
 			)
