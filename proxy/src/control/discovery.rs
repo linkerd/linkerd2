@@ -669,25 +669,6 @@ impl <T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
     }
 }
 
-// ===== impl Bind =====
-
-impl<F, S, E> Bind for F
-where
-    F: Fn(&SocketAddr) -> Result<S, E>,
-    S: Service,
-{
-    type Endpoint = SocketAddr;
-    type Request = S::Request;
-    type Response = S::Response;
-    type Error = S::Error;
-    type Service = S;
-    type BindError = E;
-
-    fn bind(&self, addr: &SocketAddr) -> Result<Self::Service, Self::BindError> {
-        (*self)(addr)
-    }
-}
-
 // ===== impl UpdateRx =====
 
 impl<T> Stream for UpdateRx<T>
