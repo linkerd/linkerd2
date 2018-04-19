@@ -1,11 +1,10 @@
 use std::{cmp, hash};
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
-use futures_watch::Watch;
 
 use conduit_proxy_controller_grpc::common::Protocol;
 
-use ::telemetry::metrics::DstLabels;
+use control::discovery::DstLabelsWatch;
 use ctx;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -30,7 +29,7 @@ pub struct Client {
     pub proxy: Arc<ctx::Proxy>,
     pub remote: SocketAddr,
     pub protocol: Protocol,
-    pub dst_labels: Option<Watch<Option<DstLabels>>>,
+    pub dst_labels: Option<DstLabelsWatch>,
 }
 
 impl Ctx {
@@ -90,7 +89,7 @@ impl Client {
         proxy: &Arc<ctx::Proxy>,
         remote: &SocketAddr,
         protocol: Protocol,
-        dst_labels: Option<Watch<Option<DstLabels>>>,
+        dst_labels: Option<DstLabelsWatch>,
     ) -> Arc<Client> {
         let c = Client {
             proxy: Arc::clone(proxy),

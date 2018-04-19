@@ -40,8 +40,10 @@ pub struct Discovery {
 #[derive(Clone, Debug)]
 pub struct Endpoint {
     address: SocketAddr,
-    dst_labels: Option<futures_watch::Watch<Option<DstLabels>>>,
+    dst_labels: Option<DstLabelsWatch>,
 }
+
+pub type DstLabelsWatch = futures_watch::Watch<Option<DstLabels>>;
 
 /// A `tower_discover::Discover`, given to a `tower_balance::Balance`.
 #[derive(Debug)]
@@ -201,10 +203,7 @@ impl Discovery {
 // ==== impl Endpoint =====
 
 impl Endpoint {
-    pub fn new(
-        address: SocketAddr,
-        dst_labels: futures_watch::Watch<Option<DstLabels>>
-    ) -> Self {
+    pub fn new(address: SocketAddr, dst_labels: DstLabelsWatch) -> Self {
         Self {
             address,
             dst_labels: Some(dst_labels),
@@ -215,7 +214,7 @@ impl Endpoint {
         self.address
     }
 
-    pub fn dst_labels(&self) -> Option<&futures_watch::Watch<Option<DstLabels>>> {
+    pub fn dst_labels(&self) -> Option<&DstLabelsWatch> {
         self.dst_labels.as_ref()
     }
 }
