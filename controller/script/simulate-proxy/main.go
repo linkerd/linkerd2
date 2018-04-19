@@ -44,6 +44,8 @@ type proxyMetricCollectors struct {
 	tcpConnectCloseTotal    *prom.CounterVec
 	tcpConnectionsOpen      *prom.GaugeVec
 	tcpConnectionDurationMs *prom.HistogramVec
+	receivedBytes           *prom.CounterVec
+	sentBytes               *prom.CounterVec
 }
 
 const (
@@ -258,16 +260,22 @@ func (p *proxyMetricCollectors) generateTCPStats(randomCount int) {
 
 	p.tcpConnectionsOpen.With(openLabels).Set(float64(acceptOpenCount + connectOpenCount))
 
-	// connect durations
+	// connect durations + bytes sent/received
 	totalClosed := acceptClosedCount + connectClosedCount
 	for _, latency := range randomLatencies(totalClosed) {
 		p.tcpConnectionDurationMs.With(closeLabels).Observe(latency)
+		// XXX: are these reasonable values for sent/received bytes?
+		p.sentBytes.With(closeLabels).Add(float64(rand.Intn(50000) + 1024))
+		p.receivedBytes.With(closeLabels).Add(float64(rand.Intn(50000) + 1024))
 	}
 
 	// durations for simulated failures
 	totalFailed := acceptFailedCount + connectFailedCount
 	for _, latency := range randomLatencies(totalFailed) {
 		p.tcpConnectionDurationMs.With(failLabels).Observe(latency)
+		// XXX: are these reasonable values for sent/received bytes?
+		p.sentBytes.With(failLabels).Add(float64(rand.Intn(50000)))
+		p.receivedBytes.With(failLabels).Add(float64(rand.Intn(50000)))
 	}
 
 }
@@ -503,6 +511,18 @@ func newSimulatedProxy(pod v1.Pod, deployments []string, replicaSets *k8s.Replic
 				ConstLabels: constTCPLabels,
 				Buckets:     latencyBucketBounds,
 			}, tcpCloseLabels),
+		sentBytes: prom.NewCounterVec(
+			prom.CounterOpts{
+				Name:        "sent_bytes",
+				Help:        "A counter of the total number of sent bytes.",
+				ConstLabels: constTCPLabels,
+			}, tcpCloseLabels),
+		receivedBytes: prom.NewCounterVec(
+			prom.CounterOpts{
+				Name:        "received_bytes",
+				Help:        "A counter of the total number of recieved bytes.",
+				ConstLabels: constTCPLabels,
+			}, tcpCloseLabels),
 	}
 
 	inboundLabels := prom.Labels{
@@ -539,6 +559,8 @@ func newSimulatedProxy(pod v1.Pod, deployments []string, replicaSets *k8s.Replic
 			tcpConnectCloseTotal:    proxyMetrics.tcpConnectCloseTotal.MustCurryWith(inboundTCPLabels),
 			tcpConnectionsOpen:      proxyMetrics.tcpConnectionsOpen.MustCurryWith(inboundTCPLabels),
 			tcpConnectionDurationMs: proxyMetrics.tcpConnectionDurationMs.MustCurryWith(inboundTCPLabels).(*prom.HistogramVec),
+			sentBytes:               proxyMetrics.sentBytes.MustCurryWith(inboundTCPLabels),
+			receivedBytes:           proxyMetrics.receivedBytes.MustCurryWith(inboundTCPLabels),
 		},
 		outbound: &proxyMetricCollectors{
 			requestTotals:           proxyMetrics.requestTotals.MustCurryWith(outboundLabels),
@@ -552,6 +574,8 @@ func newSimulatedProxy(pod v1.Pod, deployments []string, replicaSets *k8s.Replic
 			tcpConnectCloseTotal:    proxyMetrics.tcpConnectCloseTotal.MustCurryWith(outboundLabels),
 			tcpConnectionsOpen:      proxyMetrics.tcpConnectionsOpen.MustCurryWith(outboundLabels),
 			tcpConnectionDurationMs: proxyMetrics.tcpConnectionDurationMs.MustCurryWith(outboundLabels).(*prom.HistogramVec),
+			sentBytes:               proxyMetrics.sentBytes.MustCurryWith(outboundLabels),
+			receivedBytes:           proxyMetrics.receivedBytes.MustCurryWith(outboundLabels),
 		},
 	}
 
@@ -567,6 +591,8 @@ func newSimulatedProxy(pod v1.Pod, deployments []string, replicaSets *k8s.Replic
 		proxyMetrics.tcpConnectCloseTotal,
 		proxyMetrics.tcpConnectionsOpen,
 		proxyMetrics.tcpConnectionDurationMs,
+		proxyMetrics.sentBytes,
+		proxyMetrics.receivedBytes,
 	)
 	return &proxy
 }
