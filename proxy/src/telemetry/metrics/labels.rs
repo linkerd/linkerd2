@@ -1,21 +1,9 @@
-
-use futures::Poll;
-use futures_watch::Watch;
-use http;
-use tower::Service;
-
 use std::fmt::{self, Write};
 use std::sync::Arc;
 
-use ctx;
+use http;
 
-/// Middleware that adds an extension containing an optional set of metric
-/// labels to requests.
-#[derive(Clone, Debug)]
-pub struct Labeled<T> {
-    metric_labels: Option<Watch<Option<DstLabels>>>,
-    inner: T,
-}
+use ctx;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct RequestLabels {
@@ -63,56 +51,14 @@ enum Direction {
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub struct DstLabels(Arc<str>);
 
-// ===== impl Labeled =====
-
-impl<T> Labeled<T> {
-
-    /// Wrap `inner` with a `Watch` on dyanmically updated labels.
-    pub fn new(inner: T, watch: Watch<Option<DstLabels>>) -> Self {
-        Self {
-            metric_labels: Some(watch),
-            inner,
-        }
-    }
-
-    /// Wrap `inner` with no `metric_labels`.
-    pub fn none(inner: T) -> Self {
-        Self { metric_labels: None, inner }
-    }
-}
-
-impl<T, A> Service for Labeled<T>
-where
-    T: Service<Request=http::Request<A>>,
-{
-    type Request = T::Request;
-    type Response= T::Response;
-    type Error = T::Error;
-    type Future = T::Future;
-
-    fn poll_ready(&mut self) -> Poll<(), Self::Error> {
-        self.inner.poll_ready()
-    }
-
-    fn call(&mut self, req: Self::Request) -> Self::Future {
-        let mut req = req;
-        if let Some(labels) = self.metric_labels.as_ref()
-            .and_then(|labels| (*labels.borrow()).as_ref().cloned())
-        {
-            req.extensions_mut().insert(labels);
-        }
-        self.inner.call(req)
-    }
-
-}
-
 // ===== impl RequestLabels =====
 
 impl<'a> RequestLabels {
     pub fn new(req: &ctx::http::Request) -> Self {
         let direction = Direction::from_context(req.server.proxy.as_ref());
 
-        let outbound_labels = req.dst_labels.as_ref().cloned();
+        let outbound_labels = req.dst_labels()
+            .and_then(|b| b.borrow().clone());
 
         let authority = req.uri
             .authority_part()
@@ -281,88 +227,4 @@ impl fmt::Display for DstLabels {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
     }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    use futures::{Async, Poll, Future};
-    use futures::future::{self, FutureResult};
-    use http;
-    use tower::Service;
-
-
-    struct MockInnerService;
-
-    impl Service for MockInnerService {
-        type Request = http::Request<()>;
-        type Response = Option<String>;
-        type Error = ();
-        type Future = FutureResult<Self::Response, Self::Error>;
-
-        fn poll_ready(&mut self) -> Poll<(), Self::Error> {
-            Ok(Async::Ready(()))
-        }
-
-        fn call(&mut self, req: Self::Request) -> Self::Future {
-            future::ok(req.extensions()
-                .get::<DstLabels>()
-                .map(|&DstLabels(ref inner)| inner.as_ref().to_string()))
-        }
-    }
-
-    #[test]
-    fn no_labels() {
-        let mut labeled = Labeled {
-            metric_labels: None,
-            inner: MockInnerService,
-        };
-        let labels = labeled.call(http::Request::new(()))
-            .wait().expect("call");
-        assert_eq!(None, labels);
-    }
-
-    #[test]
-    fn one_label() {
-        let (watch, _) =
-            Watch::new(DstLabels::new(vec![("foo", "bar")]));
-        let mut labeled = Labeled {
-            metric_labels: Some(watch),
-            inner: MockInnerService,
-        };
-        let labels = labeled.call(http::Request::new(()))
-            .wait().expect("call");
-        assert_eq!(Some("dst_foo=\"bar\"".to_string()), labels);
-    }
-
-    #[test]
-    fn label_updates() {
-        let (watch, mut store) =
-            Watch::new(DstLabels::new(vec![("foo", "bar")]));
-        let mut labeled = Labeled {
-            metric_labels: Some(watch),
-            inner: MockInnerService,
-        };
-
-        let labels = labeled.call(http::Request::new(()))
-            .wait().expect("first call");
-        assert_eq!(Some("dst_foo=\"bar\"".to_string()), labels);
-
-        store.store(DstLabels::new(vec![("foo", "baz")]))
-            .expect("store (\"foo\", \"baz\")");
-        let labels = labeled.call(http::Request::new(()))
-            .wait().expect("second call");
-        assert_eq!(Some("dst_foo=\"baz\"".to_string()), labels);
-
-        store.store(DstLabels::new(vec![
-            ("foo", "baz"),
-            ("quux", "quuux")
-        ]))
-            .expect("store (\"foo\", \"baz\"), (\"quux\", \"quuux\")");
-        let labels = labeled.call(http::Request::new(()))
-            .wait().expect("third call");
-        assert_eq!(Some("dst_foo=\"baz\",dst_quux=\"quuux\"".to_string()), labels);
-    }
-
 }

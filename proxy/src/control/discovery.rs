@@ -29,7 +29,7 @@ use transport::DnsNameAndPort;
 
 use control::cache::{Cache, CacheChange, Exists};
 
-use ::telemetry::metrics::{DstLabels, Labeled};
+use ::telemetry::metrics::DstLabels;
 
 /// A handle to start watching a destination for address changes.
 #[derive(Clone, Debug)]
@@ -274,7 +274,7 @@ where
     type Request = B::Request;
     type Response = B::Response;
     type Error = B::Error;
-    type Service = Labeled<B::Service>;
+    type Service = B::Service;
     type DiscoverError = ();
 
     fn poll(&mut self) -> Poll<Change<Self::Key, Self::Service>, Self::DiscoverError> {
@@ -295,7 +295,6 @@ where
                     let endpoint = Endpoint::new(addr, labels_watch.clone());
 
                     let service = self.bind.bind(&endpoint)
-                        .map(|svc| Labeled::new(svc, labels_watch))
                         .map_err(|_| ())?;
 
                     return Ok(Async::Ready(Change::Insert(addr, service)))
