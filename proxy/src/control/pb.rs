@@ -46,7 +46,7 @@ impl event::StreamResponseEnd {
         };
 
         let destination_meta = ctx.dst_labels()
-            .and_then(|b| b.borrow().cloned())
+            .and_then(|b| b.borrow().clone())
             .map(|d| tap_event::EndpointMeta {
                 labels: d.as_map().clone(),
             });
