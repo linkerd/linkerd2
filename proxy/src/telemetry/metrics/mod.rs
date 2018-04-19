@@ -51,7 +51,7 @@ mod latency;
 
 use self::labels::{RequestLabels, ResponseLabels};
 use self::latency::{BUCKET_BOUNDS, Histogram};
-pub use self::labels::{DstLabels, Labeled};
+pub use self::labels::DstLabels;
 
 #[derive(Debug, Clone)]
 struct Metrics {
