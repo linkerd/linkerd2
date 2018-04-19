@@ -14,15 +14,16 @@ import (
 	"github.com/prometheus/common/log"
 	"github.com/runconduit/conduit/controller/api/util"
 	pb "github.com/runconduit/conduit/controller/gen/public"
-	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/spf13/cobra"
 	"k8s.io/api/core/v1"
 )
 
-var timeWindow, namespace, resourceType, resourceName string
-var toNamespace, toType, toName string
-var fromNamespace, fromType, fromName string
-var allNamespaces bool
+var (
+	timeWindow, namespace, resourceType, resourceName string
+	toNamespace, toType, toName                       string
+	fromNamespace, fromType, fromName                 string
+	allNamespaces                                     bool
+)
 
 var statCmd = &cobra.Command{
 	Use:   "stat [flags] RESOURCETYPE [RESOURCENAME]",
@@ -35,6 +36,7 @@ Valid resource types include:
 	* namespaces
 	* pods
 	* replicationcontrollers
+	* services (only supported if a "--from-resource" is also specified, or as a "--to-resource")
 
 This command will hide resources that have completed, such as pods that are in the Succeeded or Failed phases.
 If no resource name is specified, displays stats about all resources of the specified RESOURCETYPE`,
@@ -48,14 +50,15 @@ If no resource name is specified, displays stats about all resources of the spec
   conduit stat namespaces
 
   # Get all pods in all namespaces that call the hello1 deployment in the test namesapce.
-  conduit stat pods --to hello1 --to-resource deployment --to-namespace test --all-namespaces`,
-	Args: cobra.RangeArgs(1, 2),
-	ValidArgs: []string{
-		k8s.KubernetesDeployments,
-		k8s.KubernetesNamespaces,
-		k8s.KubernetesPods,
-		k8s.KubernetesReplicationControllers,
-	},
+  conduit stat pods --to hello1 --to-resource deployment --to-namespace test --all-namespaces
+
+  # Get all pods in all namespaces that call the hello1 service in the test namesapce.
+  conduit stat pods --to hello1 --to-resource svc --to-namespace test --all-namespaces
+
+  # Get all services in all namespaces that receive calls from hello1 deployment in the test namesapce.
+  conduit stat services --from hello1 --from-resource deployment --from-namespace test --all-namespaces`,
+	Args:      cobra.RangeArgs(1, 2),
+	ValidArgs: util.ValidTargets,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		switch len(args) {
 		case 1:

@@ -13,6 +13,7 @@ const (
 	KubernetesNamespaces             = "namespaces"
 	KubernetesPods                   = "pods"
 	KubernetesReplicationControllers = "replicationcontrollers"
+	KubernetesServices               = "services"
 )
 
 func generateKubernetesApiBaseUrlFor(schemeHostAndPort string, namespace string, extraPathStartingWithSlash string) (*url.URL, error) {
@@ -66,6 +67,8 @@ func CanonicalKubernetesNameFromFriendlyName(friendlyName string) (string, error
 		return KubernetesPods, nil
 	case "rc", "replicationcontroller", "replicationcontrollers":
 		return KubernetesReplicationControllers, nil
+	case "svc", "service", "services":
+		return KubernetesServices, nil
 	}
 
 	return "", fmt.Errorf("cannot find Kubernetes canonical name from friendly name [%s]", friendlyName)

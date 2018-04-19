@@ -29,6 +29,7 @@ type (
 		replicaSetLister            applisters.ReplicaSetLister
 		podLister                   corelisters.PodLister
 		replicationControllerLister corelisters.ReplicationControllerLister
+		serviceLister               corelisters.ServiceLister
 		controllerNamespace         string
 		ignoredNamespaces           []string
 	}
@@ -50,6 +51,7 @@ func newGrpcServer(
 	replicaSetLister applisters.ReplicaSetLister,
 	podLister corelisters.PodLister,
 	replicationControllerLister corelisters.ReplicationControllerLister,
+	serviceLister corelisters.ServiceLister,
 	controllerNamespace string,
 	ignoredNamespaces []string,
 ) *grpcServer {
@@ -61,6 +63,7 @@ func newGrpcServer(
 		replicaSetLister:            replicaSetLister,
 		podLister:                   podLister,
 		replicationControllerLister: replicationControllerLister,
+		serviceLister:               serviceLister,
 		controllerNamespace:         controllerNamespace,
 		ignoredNamespaces:           ignoredNamespaces,
 	}

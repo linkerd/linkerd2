@@ -39,6 +39,7 @@ const (
 	namespaceLabel             = model.LabelName("namespace")
 	podLabel                   = model.LabelName("pod")
 	replicationControllerLabel = model.LabelName("replication_controller")
+	serviceLabel               = model.LabelName("service")
 
 	dstNamespaceLabel = model.LabelName("dst_namespace")
 )
@@ -51,6 +52,7 @@ var (
 		k8s.KubernetesNamespaces:             namespaceLabel,
 		k8s.KubernetesPods:                   podLabel,
 		k8s.KubernetesReplicationControllers: replicationControllerLabel,
+		k8s.KubernetesServices:               serviceLabel,
 	}
 )
 
@@ -73,6 +75,15 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 		objectMap, meshCount, err = s.getPods(req.Selector.Resource)
 	case k8s.KubernetesReplicationControllers:
 		objectMap, meshCount, err = s.getReplicationControllers(req.Selector.Resource)
+	case k8s.KubernetesServices:
+
+		switch req.Outbound.(type) {
+		case *pb.StatSummaryRequest_FromResource:
+			objectMap, meshCount, err = s.getServices(req.Selector.Resource)
+		default:
+			err = fmt.Errorf("Service only supported as a target on 'from' queries, or as a destination on 'to' queries.")
+		}
+
 	default:
 		err = fmt.Errorf("Unimplemented resource type: %v", req.Selector.Resource.Type)
 	}
@@ -469,6 +480,43 @@ func (s *grpcServer) getReplicationControllers(res *pb.Resource) (map[string]met
 	return rcMap, meshedPodCount, nil
 }
 
+func (s *grpcServer) getServices(res *pb.Resource) (map[string]metav1.ObjectMeta, map[string]*meshedCount, error) {
+	var err error
+	var services []*apiv1.Service
+
+	if res.Namespace == "" {
+		services, err = s.serviceLister.List(labels.Everything())
+	} else if res.Name == "" {
+		services, err = s.serviceLister.Services(res.Namespace).List(labels.Everything())
+	} else {
+		var svc *apiv1.Service
+		svc, err = s.serviceLister.Services(res.Namespace).Get(res.Name)
+		services = []*apiv1.Service{svc}
+	}
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	meshedPodCount := make(map[string]*meshedCount)
+	svcMap := make(map[string]metav1.ObjectMeta)
+	for _, svc := range services {
+		key, err := cache.MetaNamespaceKeyFunc(svc)
+		if err != nil {
+			return nil, nil, err
+		}
+		svcMap[key] = svc.ObjectMeta
+
+		meshCount, err := s.getMeshedPodCount(svc.Namespace, svc)
+		if err != nil {
+			return nil, nil, err
+		}
+		meshedPodCount[key] = meshCount
+	}
+
+	return svcMap, meshedPodCount, nil
+}
+
 func (s *grpcServer) getMeshedPodCount(namespace string, obj runtime.Object) (*meshedCount, error) {
 	selector, err := getSelectorFromObject(obj)
 	if err != nil {
@@ -516,6 +564,9 @@ func getSelectorFromObject(obj runtime.Object) (labels.Selector, error) {
 		return labels.Set(typed.Spec.Selector.MatchLabels).AsSelector(), nil
 
 	case *apiv1.ReplicationController:
+		return labels.Set(typed.Spec.Selector).AsSelector(), nil
+
+	case *apiv1.Service:
 		return labels.Set(typed.Spec.Selector).AsSelector(), nil
 
 	default:

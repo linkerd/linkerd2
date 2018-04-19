@@ -171,6 +171,7 @@ spec:
 			replicaSetInformer := sharedInformers.Apps().V1beta2().ReplicaSets()
 			podInformer := sharedInformers.Core().V1().Pods()
 			replicationControllerInformer := sharedInformers.Core().V1().ReplicationControllers()
+			serviceInformer := sharedInformers.Core().V1().Services()
 
 			fakeGrpcServer := newGrpcServer(
 				&MockProm{Res: exp.promRes},
@@ -180,6 +181,7 @@ spec:
 				replicaSetInformer.Lister(),
 				podInformer.Lister(),
 				replicationControllerInformer.Lister(),
+				serviceInformer.Lister(),
 				"conduit",
 				[]string{},
 			)
