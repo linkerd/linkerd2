@@ -506,7 +506,7 @@ func newSimulatedProxy(pod v1.Pod, deployments []string, replicaSets *k8s.Replic
 			}, tcpLabels),
 		tcpConnectionDurationMs: prom.NewHistogramVec(
 			prom.HistogramOpts{
-				Name:        "tcp_connection_close_ms",
+				Name:        "tcp_connection_duration_ms",
 				Help:        "A histogram of the duration of the lifetime of a connection, in milliseconds.",
 				ConstLabels: constTCPLabels,
 				Buckets:     latencyBucketBounds,
