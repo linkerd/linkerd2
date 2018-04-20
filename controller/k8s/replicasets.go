@@ -19,7 +19,7 @@ type ReplicaSetStore struct {
 	stopCh    chan struct{}
 }
 
-func NewReplicaSetStore(clientset *kubernetes.Clientset) (*ReplicaSetStore, error) {
+func NewReplicaSetStore(clientset kubernetes.Interface) (*ReplicaSetStore, error) {
 	store := cache.NewStore(cache.MetaNamespaceKeyFunc)
 
 	replicatSetListWatcher := cache.NewListWatchFromClient(

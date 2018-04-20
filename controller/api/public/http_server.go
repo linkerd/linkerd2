@@ -19,11 +19,12 @@ import (
 )
 
 var (
-	statSummaryPath = fullUrlPathFor("StatSummary")
-	versionPath     = fullUrlPathFor("Version")
-	listPodsPath    = fullUrlPathFor("ListPods")
-	tapPath         = fullUrlPathFor("Tap")
-	selfCheckPath   = fullUrlPathFor("SelfCheck")
+	statSummaryPath   = fullUrlPathFor("StatSummary")
+	versionPath       = fullUrlPathFor("Version")
+	listPodsPath      = fullUrlPathFor("ListPods")
+	tapPath           = fullUrlPathFor("Tap")
+	tapByResourcePath = fullUrlPathFor("TapByResource")
+	selfCheckPath     = fullUrlPathFor("SelfCheck")
 )
 
 type handler struct {
@@ -50,6 +51,8 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		h.handleListPods(w, req)
 	case tapPath:
 		h.handleTap(w, req)
+	case tapByResourcePath:
+		h.handleTapByResource(w, req)
 	case selfCheckPath:
 		h.handleSelfCheck(w, req)
 	default:
@@ -158,6 +161,28 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request) {
 
 	server := tapServer{w: flushableWriter, req: req}
 	err = h.grpcServer.Tap(&protoRequest, server)
+	if err != nil {
+		writeErrorToHttpResponse(w, err)
+		return
+	}
+}
+
+func (h *handler) handleTapByResource(w http.ResponseWriter, req *http.Request) {
+	flushableWriter, err := newStreamingWriter(w)
+	if err != nil {
+		writeErrorToHttpResponse(w, err)
+		return
+	}
+
+	var protoRequest pb.TapByResourceRequest
+	err = httpRequestToProto(req, &protoRequest)
+	if err != nil {
+		writeErrorToHttpResponse(w, err)
+		return
+	}
+
+	server := tapServer{w: flushableWriter, req: req}
+	err = h.grpcServer.TapByResource(&protoRequest, server)
 	if err != nil {
 		writeErrorToHttpResponse(w, err)
 		return
