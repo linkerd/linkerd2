@@ -51,6 +51,49 @@ func ParseIPV4(ip string) (*pb.IPAddress, error) {
 	return IPV4(octets[0], octets[1], octets[2], octets[3]), nil
 }
 
+//1. check if :: occurs twice, if yes, invalid IPV6 addr.
+//2. check if has 8 segments (including 0000s, or ::)
+//3. check if in between 0000 - FFFF
+func ParseIPV6(ip string) (*pb.IPAddress, error) {
+	segments := strings.Split(ip, ":")
+	zeros := false
+	hextets := [8]uint64{0, 0, 0, 0, 0, 0, 0, 0}
+	zerosIndex := 0
+	lastIndex := 0
+	for i, segment := range segments {
+		if segment == "" && !zeros{
+			zeros = true
+			hextets[i] = 0000
+			zerosIndex = i
+			continue
+		} else if segment == "" && zeros {
+			return nil, fmt.Errorf("Invalid IP6 addr")
+		}
+		hextet, err := strconv.ParseUint(segment, 16, 16)
+		if err != nil {
+			return nil, fmt.Errorf("Invalid IP6 segment: %v", err)
+		}
+		lastIndex = i
+		hextets[i] = hextet
+	}
+	hextets = formatIPV6(hextets, zerosIndex, lastIndex)
+	return nil, nil
+}
+
+func formatIPV6(hextets [8]uint64, zerosIndex int, lastIndex int) [8]uint64{
+	last := len(hextets) - 1
+	for lastIndex > zerosIndex {
+		hextets[last] = hextets[lastIndex]
+		last--
+		lastIndex--
+	}
+	for zerosIndex <= last {
+		hextets[zerosIndex] = 0000
+		zerosIndex++
+	}
+	return hextets
+}
+
 func decodeIPToOctets(ip uint32) [4]uint8 {
 	return [4]uint8{
 		uint8(ip >> 24 & 255),
