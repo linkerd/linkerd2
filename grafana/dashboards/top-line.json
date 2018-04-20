@@ -269,7 +269,7 @@
         }
       ],
       "thresholds": "",
-      "title": "Namespaces Monitored",
+      "title": "NAMESPACES MONITORED",
       "type": "singlestat",
       "valueFontSize": "200%",
       "valueMaps": [
@@ -351,7 +351,7 @@
         }
       ],
       "thresholds": "",
-      "title": "Deployments Monitored",
+      "title": "DEPLOYMENTS MONITORED",
       "type": "singlestat",
       "valueFontSize": "200%",
       "valueMaps": [

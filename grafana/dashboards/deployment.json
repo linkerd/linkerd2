@@ -264,7 +264,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "count(request_total{dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"})",
+          "expr": "count(count(request_total{dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}) by (namespace, deployment))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "",
@@ -346,7 +346,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "count(request_total{namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=~\"$outbound\", direction=\"outbound\"})",
+          "expr": "count(count(request_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\"}) by (namespace, dst_deployment))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "",
