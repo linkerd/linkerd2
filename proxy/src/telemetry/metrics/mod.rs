@@ -31,15 +31,13 @@ use std::{fmt, time};
 use std::hash::Hash;
 use std::num::Wrapping;
 use std::sync::{Arc, Mutex};
-use std::io::{self, Write};
-use std::ops::{self, Deref};
+use std::io::Write;
+use std::ops;
 
 use deflate::Compression;
 use deflate::write::GzEncoder;
-use futures::{Async, AsyncSink, Future, Poll, Sink};
 use futures::future::{self, FutureResult};
-use futures::sync::mpsc;
-use hyper::{self, Body, Chunk, StatusCode};
+use hyper::{self, Body, StatusCode};
 use hyper::header::{AcceptEncoding, ContentEncoding, ContentType, Encoding, QualityItem};
 use hyper::server::{
     Request as HyperRequest,
@@ -48,7 +46,6 @@ use hyper::server::{
 };
 use indexmap::{IndexMap};
 use tokio_core::reactor;
-use tokio_io;
 
 use ctx;
 use telemetry::event::Event;
@@ -128,11 +125,6 @@ pub struct Aggregate {
 pub struct Serve {
     metrics: Arc<Mutex<Metrics>>,
     handle: reactor::Handle,
-}
-
-#[derive(Clone, Debug)]
-pub struct WriteBody {
-    tx: mpsc::Sender<Result<Chunk, hyper::Error>>,
 }
 
 /// Construct the Prometheus metrics.
@@ -628,106 +620,29 @@ impl HyperService for Serve {
         }
 
         let metrics = self.metrics.lock()
-            .expect("metrics lock poisoned")
-            .deref()
-            .clone();
+            .expect("metrics lock poisoned");
 
-        let is_gzip = is_gzip(&req);
-        let (writer, body) = WriteBody::new();
-        let work = future::lazy(move || {
-            if is_gzip {
-                let mut writer = GzEncoder::new(Vec::<u8>::new(), Compression::Default);
-                write!(writer, "{}", metrics)
-                    .and_then(move |()| {
-                        trace!("gzipping metrics");
-                        writer.finish()
-                    })
-            } else {
-                let mut writer = Vec::<u8>::new();
-                write!(writer, "{}", metrics).map(|_| writer)
-            }
-        })
-        .and_then(|text| tokio_io::io::write_all(writer, text))
-        .and_then(|(w, _)| tokio_io::io::shutdown(w))
-        .map(|_| ())
-        .map_err(|e| {
-            error!("error writing metrics: {:?}", e);
-        });
-
-        self.handle.spawn(work);
-        let encoding = if is_gzip {
-            Encoding::Gzip
+        let resp = if is_gzip(&req) {
+            trace!("gzipping metrics");
+            let mut writer = GzEncoder::new(Vec::<u8>::new(), Compression::Default);
+            write!(&mut writer, "{}", *metrics)
+                .and_then(|_| writer.finish())
+                .map(|body| {
+                    HyperResponse::new()
+                        .with_header(ContentEncoding(vec![Encoding::Gzip]))
+                        .with_header(ContentType::plaintext())
+                        .with_body(Body::from(body))
+                })
         } else {
-            Encoding::Identity
+            let mut writer = Vec::<u8>::new();
+            write!(&mut writer, "{}", *metrics)
+                .map(|_| {
+                    HyperResponse::new()
+                        .with_header(ContentType::plaintext())
+                        .with_body(Body::from(writer))
+                })
         };
 
-        future::ok(HyperResponse::new()
-            .with_header(ContentEncoding(vec![encoding]))
-            .with_header(ContentType::plaintext())
-            .with_body(body))
-    }
-}
-
-
-// ==== impl WriteBody =====
-
-impl WriteBody {
-    pub fn new() -> (Self, Body) {
-        let (tx, rx) = Body::pair();
-        let writer = WriteBody {
-            tx,
-        };
-        (writer, rx)
-    }
-}
-
-impl Write for WriteBody {
-
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        poll_to_result(self.tx.poll_ready())?;
-        match self.tx.start_send(Ok(Chunk::from(Vec::from(buf)))) {
-            Ok(AsyncSink::NotReady(_)) => {
-                trace!("WriteBody::write: start_send -> NotReady");
-                Err(io::Error::from(io::ErrorKind::WouldBlock))?
-            },
-            Err(e) => {
-                trace!("WriteBody::write: start_send -> Err");
-                Err(io::Error::new(io::ErrorKind::Other, e))?
-            },
-            Ok(AsyncSink::Ready) => {
-                trace!("WriteBody::write: start_send {:?} bytes", buf.len());
-            },
-        }
-        poll_to_result(self.tx.poll_complete())?;
-        Ok(buf.len())
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        poll_to_result(self.tx.poll_complete())
-    }
-}
-
-
-impl tokio_io::AsyncWrite for WriteBody {
-    fn shutdown(&mut self) -> Poll<(), io::Error> {
-        trace!("WriteBody::shutdown;");
-        self.tx.poll_complete()
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
-    }
-}
-
-#[inline]
-fn poll_to_result<T>(poll: Poll<(), mpsc::SendError<T>>) -> io::Result<()>
-where
-    T: Send + Sync + 'static,
-{
-    match poll {
-        Ok(Async::Ready(_)) => Ok(()),
-        // If the sender is not ready, return WouldBlock to
-        // signal that we're not ready.
-        Ok(Async::NotReady) => Err(io::Error::from(io::ErrorKind::WouldBlock)),
-        // SendError is returned if the body went away unexpectedly.
-        // This is bad news.
-        Err(e) => Err(io::Error::new(io::ErrorKind::Other, e)),
+        future::result(resp.map_err(hyper::Error::Io))
     }
 }
