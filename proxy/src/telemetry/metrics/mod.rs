@@ -345,7 +345,7 @@ impl fmt::Display for Metrics {
         writeln!(f, "{}", self.tcp_connection_duration)?;
         writeln!(f, "{}", self.sent_bytes)?;
         writeln!(f, "{}", self.received_bytes)?;
-        writeln!(f, "{}", self.start_time)?;
+        writeln!(f, "process_start_time_seconds {}", self.start_time)?;
         Ok(())
     }
 }
