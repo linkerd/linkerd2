@@ -34,16 +34,16 @@ pub enum InvalidMatch {
 }
 
 #[derive(Clone, Debug)]
+pub(super) struct LabelMatch {
+    key: String,
+    value: String,
+}
+
+#[derive(Clone, Debug)]
 pub(super) enum TcpMatch {
     // Inclusive
     PortRange(u16, u16),
     Net(NetMatch),
-}
-
-#[derive(Clone, Debug)]
-pub(super) struct LabelMatch {
-    pub key: String,
-    pub value: String,
 }
 
 #[derive(Clone, Debug)]
