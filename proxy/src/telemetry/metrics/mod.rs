@@ -61,10 +61,8 @@ pub use self::labels::DstLabels;
 #[derive(Debug, Clone)]
 struct Metrics {
     request_total: Metric<Counter, Arc<RequestLabels>>,
-    request_duration: Metric<Histogram, Arc<RequestLabels>>,
 
     response_total: Metric<Counter, Arc<ResponseLabels>>,
-    response_duration: Metric<Histogram, Arc<ResponseLabels>>,
     response_latency: Metric<Histogram, Arc<ResponseLabels>>,
 
     tcp_accept_open_total: Metric<Counter, Arc<TransportLabels>>,
@@ -152,23 +150,9 @@ impl Metrics {
             "A counter of the number of requests the proxy has received.",
         );
 
-        let request_duration = Metric::<Histogram, Arc<RequestLabels>>::new(
-            "request_duration_ms",
-            "A histogram of the duration of a request. This is measured from \
-             when the request headers are received to when the request \
-             stream has completed.",
-        );
-
         let response_total = Metric::<Counter, Arc<ResponseLabels>>::new(
             "response_total",
             "A counter of the number of responses the proxy has received.",
-        );
-
-        let response_duration = Metric::<Histogram, Arc<ResponseLabels>>::new(
-            "response_duration_ms",
-            "A histogram of the duration of a response. This is measured from \
-             when the response headers are received to when the response \
-             stream has completed.",
         );
 
         let response_latency = Metric::<Histogram, Arc<ResponseLabels>>::new(
@@ -219,9 +203,7 @@ impl Metrics {
 
         Metrics {
             request_total,
-            request_duration,
             response_total,
-            response_duration,
             response_latency,
             tcp_accept_open_total,
             tcp_accept_close_total,
@@ -240,22 +222,6 @@ impl Metrics {
         self.request_total.values
             .entry(labels.clone())
             .or_insert_with(Counter::default)
-    }
-
-    fn request_duration(&mut self,
-                        labels: &Arc<RequestLabels>)
-                        -> &mut Histogram {
-        self.request_duration.values
-            .entry(labels.clone())
-            .or_insert_with(Histogram::default)
-    }
-
-    fn response_duration(&mut self,
-                         labels: &Arc<ResponseLabels>)
-                         -> &mut Histogram {
-        self.response_duration.values
-            .entry(labels.clone())
-            .or_insert_with(Histogram::default)
     }
 
     fn response_latency(&mut self,
@@ -334,9 +300,7 @@ impl Metrics {
 impl fmt::Display for Metrics {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "{}", self.request_total)?;
-        writeln!(f, "{}", self.request_duration)?;
         writeln!(f, "{}", self.response_total)?;
-        writeln!(f, "{}", self.response_duration)?;
         writeln!(f, "{}", self.response_latency)?;
         writeln!(f, "{}", self.tcp_accept_open_total)?;
         writeln!(f, "{}", self.tcp_accept_close_total)?;
@@ -504,21 +468,17 @@ impl Aggregate {
                 //  when the stream *finishes*.
             },
 
-            Event::StreamRequestFail(ref req, ref fail) => {
+            Event::StreamRequestFail(ref req, _) => {
                 let labels = Arc::new(RequestLabels::new(req));
                 self.update(|metrics| {
-                    *metrics.request_duration(&labels) +=
-                        fail.since_request_open;
                     *metrics.request_total(&labels).incr();
                 })
             },
 
-            Event::StreamRequestEnd(ref req, ref end) => {
+            Event::StreamRequestEnd(ref req, _) => {
                 let labels = Arc::new(RequestLabels::new(req));
                 self.update(|metrics| {
                     *metrics.request_total(&labels).incr();
-                    *metrics.request_duration(&labels) +=
-                        end.since_request_open;
                 })
             },
 
@@ -529,7 +489,6 @@ impl Aggregate {
                 ));
                 self.update(|metrics| {
                     *metrics.response_total(&labels).incr();
-                    *metrics.response_duration(&labels) +=  end.since_response_open;
                     *metrics.response_latency(&labels) += end.since_request_open;
                 });
             },
@@ -539,7 +498,6 @@ impl Aggregate {
                 let labels = Arc::new(ResponseLabels::fail(res));
                 self.update(|metrics| {
                     *metrics.response_total(&labels).incr();
-                    *metrics.response_duration(&labels) += fail.since_response_open;
                     *metrics.response_latency(&labels) += fail.since_request_open;
                 });
             },
