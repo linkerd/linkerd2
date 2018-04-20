@@ -833,7 +833,7 @@ mod transport {
         assert_eq!(client2.get("/"), "hello");
         // server connection should be pooled
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connect_open_total{direction=\"outbound\",classification=\"success\"} 1");
+            "tcp_connect_open_total{direction=\"outbound\"} 1");
     }
 
     #[test]
