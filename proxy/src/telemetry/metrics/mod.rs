@@ -34,7 +34,7 @@ use std::sync::{Arc, Mutex};
 use std::io::Write;
 use std::ops;
 
-use deflate::Compression;
+use deflate::CompressionOptions;
 use deflate::write::GzEncoder;
 use futures::future::{self, FutureResult};
 use hyper::{self, Body, StatusCode};
@@ -624,7 +624,7 @@ impl HyperService for Serve {
 
         let resp = if is_gzip(&req) {
             trace!("gzipping metrics");
-            let mut writer = GzEncoder::new(Vec::<u8>::new(), Compression::Default);
+            let mut writer = GzEncoder::new(Vec::<u8>::new(), CompressionOptions::fast());
             write!(&mut writer, "{}", *metrics)
                 .and_then(|_| writer.finish())
                 .map(|body| {
