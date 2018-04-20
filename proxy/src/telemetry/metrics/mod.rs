@@ -74,15 +74,10 @@ struct Metrics {
     tcp_connect_close_total: Metric<Counter, Arc<TransportCloseLabels>>,
 
     tcp_connection_duration: Metric<Histogram, Arc<TransportCloseLabels>>,
+    tcp_connections_open: Metric<Gauge, Arc<TransportLabels>>,
 
     sent_bytes: Metric<Counter, Arc<TransportCloseLabels>>,
     received_bytes: Metric<Counter, Arc<TransportCloseLabels>>,
-
-    tcp_connection_duration: Metric<Histogram, Arc<TransportLabels>>,
-    tcp_connections_open: Metric<Gauge, Arc<TransportLabels>>,
-
-    sent_bytes: Metric<Counter, Arc<TransportLabels>>,
-    received_bytes: Metric<Counter, Arc<TransportLabels>>,
 
     start_time: u64,
 }
@@ -217,6 +212,11 @@ impl Metrics {
             "A histogram of the duration of the lifetime of a connection, in milliseconds",
         );
 
+        let tcp_connections_open = Metric::<Gauge, Arc<TransportLabels>>::new(
+            "tcp_connections_open",
+            "A gauge of the number of transport connections currently open.",
+        );
+
         let received_bytes = Metric::<Counter, Arc<TransportCloseLabels>>::new(
             "received_bytes",
             "A counter of the total number of recieved bytes."
@@ -330,7 +330,7 @@ impl Metrics {
                             -> &mut Gauge {
         self.tcp_connections_open.values
             .entry(labels.clone())
-            .or_insert_with(Default::default)
+            .or_insert_with(Gauge::default)
     }
 
     fn sent_bytes(&mut self,
@@ -362,6 +362,7 @@ impl fmt::Display for Metrics {
         writeln!(f, "{}", self.tcp_connect_open_total)?;
         writeln!(f, "{}", self.tcp_connect_close_total)?;
         writeln!(f, "{}", self.tcp_connection_duration)?;
+        writeln!(f, "{}", self.tcp_connections_open)?;
         writeln!(f, "{}", self.sent_bytes)?;
         writeln!(f, "{}", self.received_bytes)?;
         writeln!(f, "process_start_time_seconds {}", self.start_time)?;
@@ -636,7 +637,19 @@ impl Aggregate {
             Event::TransportClose(ref ctx, ref close) => {
                 let labels = Arc::new(TransportCloseLabels::new(ctx, close));
                 self.update(|metrics| {
-                    *metrics.tcp_connections_open(&labels).decr();
+                    // We don't use the accessor method here like we do for all
+                    // the other metrics so that we can just use the transport
+                    // open labels in `labels` without having to ref-count it
+                    // separately. Since we're handling a close event, we expect
+                    // those labels to already be in the map from when the
+                    // transport was opened.
+                    *metrics.tcp_connections_open.values
+                        .get_mut(&labels.transport)
+                        .expect(
+                            "observed TransportClose event for a transport \
+                             that was not counted"
+                        )
+                        .decr();
                     *metrics.tcp_connection_duration(&labels) += close.duration;
                     *metrics.sent_bytes(&labels) += close.tx_bytes as u64;
                     *metrics.received_bytes(&labels) += close.tx_bytes as u64;
