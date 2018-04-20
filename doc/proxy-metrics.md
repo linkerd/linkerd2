@@ -182,8 +182,6 @@ Each of these metrics has the following labels:
                 pod to the proxy, or from the proxy to the application,
                `outbound` if the connection was established either from the
                 application to the proxy, or from the proxy to outside the pod.
-* `protocol`: `http` if the connection corresponds to an HTTP/1 or HTTP/2 request,
-              `tcp` if the connection is proxied as a raw TCP stream.
 
 Note that the labels described above under the heading "Prometheus Collector labels"
 are also added to transport-level metrics, when applicable.
