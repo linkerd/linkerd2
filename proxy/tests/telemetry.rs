@@ -18,6 +18,12 @@ struct Fixture {
     proxy: proxy::Listening,
 }
 
+struct TcpFixture {
+    client: tcp::TcpClient,
+    metrics: client::Client,
+    proxy: proxy::Listening,
+}
+
 impl Fixture {
     fn inbound() -> Self {
         info!("running test server");
@@ -63,6 +69,48 @@ impl Fixture {
             "tele.test.svc.cluster.local"
         );
         Fixture { client, metrics, proxy }
+    }
+}
+
+impl TcpFixture {
+    fn server() -> server::Listening {
+        let msg1 = "custom tcp hello";
+        let msg2 = "custom tcp bye";
+
+        server::tcp()
+            .accept(move |read| {
+                assert_eq!(read, msg1.as_bytes());
+                msg2
+            })
+            .accept(move |read| {
+                assert_eq!(read, msg1.as_bytes());
+                msg2
+            })
+            .run()
+    }
+
+    fn inbound() -> Self {
+        let ctrl = controller::new().run();
+        let proxy = proxy::new()
+            .controller(ctrl)
+            .inbound(TcpFixture::server())
+            .run();
+
+        let client = client::tcp(proxy.inbound);
+        let metrics = client::http1(proxy.metrics, "localhost");
+        TcpFixture { client, metrics, proxy }
+    }
+
+    fn outbound() -> Self {
+        let ctrl = controller::new().run();
+        let proxy = proxy::new()
+            .controller(ctrl)
+            .outbound(TcpFixture::server())
+            .run();
+
+        let client = client::tcp(proxy.outbound);
+        let metrics = client::http1(proxy.metrics, "localhost");
+        TcpFixture { client, metrics, proxy }
     }
 }
 
@@ -664,4 +712,369 @@ fn metrics_have_no_double_commas() {
 
     let scrape = metrics.get("/metrics");
     assert!(!scrape.contains(",,"), "outbound metrics had double comma");
+}
+
+mod transport {
+    use super::support::*;
+    use super::*;
+
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn inbound_http_accept() {
+        let _ = env_logger::try_init();
+        let Fixture { client, metrics, proxy } = Fixture::inbound();
+
+        info!("client.get(/)");
+        assert_eq!(client.get("/"), "hello");
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_accept_open_total{direction=\"inbound\"} 1"
+        );
+        // drop the client to force the connection to close.
+        drop(client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_accept_close_total{direction=\"inbound\"} 1"
+        );
+
+        // create a new client to force a new connection
+        let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
+
+        info!("client.get(/)");
+        assert_eq!(client.get("/"), "hello");
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_accept_open_total{direction=\"inbound\"} 2"
+        );
+        // drop the client to force the connection to close.
+        drop(client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_accept_close_total{direction=\"inbound\"} 2"
+        );
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn inbound_http_connect() {
+        let _ = env_logger::try_init();
+        let Fixture { client, metrics, proxy } = Fixture::inbound();
+
+        info!("client.get(/)");
+        assert_eq!(client.get("/"), "hello");
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_connect_open_total{direction=\"inbound\"} 1");
+
+        // create a new client to force a new connection
+        let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
+
+        info!("client.get(/)");
+        assert_eq!(client.get("/"), "hello");
+        // server connection should be pooled
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_connect_open_total{direction=\"inbound\"} 1");
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn outbound_http_accept() {
+        let _ = env_logger::try_init();
+        let Fixture { client, metrics, proxy } = Fixture::outbound();
+
+        info!("client.get(/)");
+        assert_eq!(client.get("/"), "hello");
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_accept_open_total{direction=\"outbound\"} 1"
+        );
+        // drop the client to force the connection to close.
+        drop(client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_accept_close_total{direction=\"outbound\"} 1"
+        );
+
+        // create a new client to force a new connection
+        let client = client::new(proxy.outbound, "tele.test.svc.cluster.local");
+
+        info!("client.get(/)");
+        assert_eq!(client.get("/"), "hello");
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_accept_open_total{direction=\"outbound\"} 2"
+        );
+        // drop the client to force the connection to close.
+        drop(client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_accept_close_total{direction=\"outbound\"} 2"
+        );
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn outbound_http_connect() {
+        let _ = env_logger::try_init();
+        let Fixture { client, metrics, proxy } = Fixture::outbound();
+
+        info!("client.get(/)");
+        assert_eq!(client.get("/"), "hello");
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_connect_open_total{direction=\"outbound\"} 1");
+
+        // create a new client to force a new connection
+        let client2 = client::new(proxy.outbound, "tele.test.svc.cluster.local");
+
+        info!("client.get(/)");
+        assert_eq!(client2.get("/"), "hello");
+        // server connection should be pooled
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_connect_open_total{direction=\"outbound\"} 1");
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn inbound_tcp_connect() {
+        let _ = env_logger::try_init();
+        let TcpFixture { client, metrics, proxy: _proxy } =
+            TcpFixture::inbound();
+
+        let msg1 = "custom tcp hello";
+        let msg2 = "custom tcp bye";
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(msg1);
+        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_connect_open_total{direction=\"inbound\"} 1");
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn inbound_tcp_accept() {
+        let _ = env_logger::try_init();
+        let TcpFixture { client, metrics, proxy: _proxy } =
+            TcpFixture::inbound();
+
+        let msg1 = "custom tcp hello";
+        let msg2 = "custom tcp bye";
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(msg1);
+        assert_eq!(tcp_client.read(), msg2.as_bytes());
+
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_accept_open_total{direction=\"inbound\"} 1");
+
+        drop(tcp_client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_accept_close_total{direction=\"inbound\"} 1");
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(msg1);
+        assert_eq!(tcp_client.read(), msg2.as_bytes());
+
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_accept_open_total{direction=\"inbound\"} 2");
+        drop(tcp_client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_accept_close_total{direction=\"inbound\"} 2");
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn inbound_tcp_duration() {
+        let _ = env_logger::try_init();
+        let TcpFixture { client, metrics, proxy: _proxy } =
+            TcpFixture::inbound();
+
+        let msg1 = "custom tcp hello";
+        let msg2 = "custom tcp bye";
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(msg1);
+        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        drop(tcp_client);
+        // TODO: make assertions about buckets
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_connection_duration_ms_count{direction=\"inbound\"} 2");
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(msg1);
+        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_connection_duration_ms_count{direction=\"inbound\"} 2");
+
+        drop(tcp_client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_connection_duration_ms_count{direction=\"inbound\"} 4");
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn inbound_tcp_sent_bytes() {
+        let _ = env_logger::try_init();
+        let TcpFixture { client, metrics, proxy: _proxy } =
+            TcpFixture::inbound();
+
+        let msg1 = "custom tcp hello";
+        let msg2 = "custom tcp bye";
+        let expected = format!(
+            "sent_bytes{{direction=\"inbound\"}} {}",
+            msg1.len() + msg2.len()
+        );
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(msg1);
+        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        drop(tcp_client);
+        assert_contains!(metrics.get("/metrics"), &expected);
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn inbound_tcp_received_bytes() {
+        let _ = env_logger::try_init();
+        let TcpFixture { client, metrics, proxy: _proxy } =
+            TcpFixture::inbound();
+
+        let msg1 = "custom tcp hello";
+        let msg2 = "custom tcp bye";
+        let expected = format!(
+            "received_bytes{{direction=\"inbound\"}} {}",
+            msg1.len() + msg2.len()
+        );
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(msg1);
+        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        drop(tcp_client);
+        assert_contains!(metrics.get("/metrics"), &expected);
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn outbound_tcp_connect() {
+        let _ = env_logger::try_init();
+        let TcpFixture { client, metrics, proxy: _proxy } =
+            TcpFixture::outbound();
+
+        let msg1 = "custom tcp hello";
+        let msg2 = "custom tcp bye";
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(msg1);
+        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_connect_open_total{direction=\"outbound\"} 1");
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn outbound_tcp_accept() {
+        let _ = env_logger::try_init();
+        let TcpFixture { client, metrics, proxy: _proxy } =
+            TcpFixture::outbound();
+
+        let msg1 = "custom tcp hello";
+        let msg2 = "custom tcp bye";
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(msg1);
+        assert_eq!(tcp_client.read(), msg2.as_bytes());
+
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_accept_open_total{direction=\"outbound\"} 1");
+
+        drop(tcp_client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_accept_close_total{direction=\"outbound\"} 1");
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(msg1);
+        assert_eq!(tcp_client.read(), msg2.as_bytes());
+
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_accept_open_total{direction=\"outbound\"} 2");
+        drop(tcp_client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_accept_close_total{direction=\"outbound\"} 2");
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn outbound_tcp_duration() {
+        let _ = env_logger::try_init();
+        let TcpFixture { client, metrics, proxy: _proxy } =
+            TcpFixture::outbound();
+
+        let msg1 = "custom tcp hello";
+        let msg2 = "custom tcp bye";
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(msg1);
+        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        drop(tcp_client);
+        // TODO: make assertions about buckets
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_connection_duration_ms_count{direction=\"outbound\"} 2");
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(msg1);
+        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_connection_duration_ms_count{direction=\"outbound\"} 2");
+
+        drop(tcp_client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_connection_duration_ms_count{direction=\"outbound\"} 4");
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn outbound_tcp_sent_bytes() {
+        let _ = env_logger::try_init();
+        let TcpFixture { client, metrics, proxy: _proxy } =
+            TcpFixture::outbound();
+
+        let msg1 = "custom tcp hello";
+        let msg2 = "custom tcp bye";
+        let expected = format!(
+            "sent_bytes{{direction=\"outbound\"}} {}",
+            msg1.len() + msg2.len()
+        );
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(msg1);
+        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        drop(tcp_client);
+        assert_contains!(metrics.get("/metrics"), &expected);
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn outbound_tcp_received_bytes() {
+        let _ = env_logger::try_init();
+        let TcpFixture { client, metrics, proxy: _proxy } =
+            TcpFixture::outbound();
+
+        let msg1 = "custom tcp hello";
+        let msg2 = "custom tcp bye";
+        let expected = format!(
+            "received_bytes{{direction=\"outbound\"}} {}",
+            msg1.len() + msg2.len()
+        );
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(msg1);
+        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        drop(tcp_client);
+        assert_contains!(metrics.get("/metrics"), &expected);
+    }
 }

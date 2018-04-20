@@ -38,6 +38,13 @@ pub struct ResponseLabels {
     classification: Classification,
 }
 
+/// Labels describing a TCP connection
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct TransportLabels {
+    /// Was the transport opened in the inbound or outbound direction?
+    direction: Direction,
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 enum Classification {
     Success,
@@ -253,5 +260,21 @@ impl hash::Hash for DstLabels {
 impl fmt::Display for DstLabels {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.formatted.fmt(f)
+    }
+}
+
+// ===== impl TransportLabels =====
+
+impl TransportLabels {
+    pub fn new(ctx: &ctx::transport::Ctx) -> Self {
+        TransportLabels {
+            direction: Direction::from_context(&ctx.proxy()),
+        }
+    }
+}
+
+impl fmt::Display for TransportLabels {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.direction)
     }
 }
