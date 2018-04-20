@@ -1,0 +1,29 @@
+
+macro_rules! assert_metrics {
+    (
+        $metrics:ident,
+        $label_1:ident = $value_1:ident,
+        $($label_n:ident = $value_n:ident),*
+        => $($rest:tt)+
+    ) => {
+        assert_metrics!(@inner $metrics,
+            concat!(
+                stringify!($label_1), "=\"", stringify!($value_1), "\"",
+                $(",", stringify!($label_n), "=\"", stringify!($value_n), "\""),*,
+            ) => $($rest)+
+        );
+    };
+    (@inner $metrics:ident, $labels:expr =>
+     $($metric_name:ident = $metric_value:expr),+) => {
+        $(
+            assert_contains!(
+                $metrics.get("/metrics"),
+                concat!(
+                    stringify!($metric_name),
+                    "{", $labels, "} ",
+                    stringify!($metric_value)
+                )
+            );
+        )+
+    };
+}

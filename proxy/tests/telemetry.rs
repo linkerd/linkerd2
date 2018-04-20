@@ -1,6 +1,7 @@
 #![deny(warnings)]
 #[macro_use]
 extern crate log;
+extern crate regex;
 
 #[macro_use]
 mod support;
@@ -714,6 +715,17 @@ fn metrics_have_no_double_commas() {
     assert!(!scrape.contains(",,"), "outbound metrics had double comma");
 }
 
+
+#[test]
+fn metrics_has_start_time() {
+    let Fixture { metrics, proxy: _proxy, .. } = Fixture::inbound();
+    let uptime_regex = regex::Regex::new(r"process_start_time_seconds \d+")
+        .expect("compiling regex shouldn't fail");
+    assert_eventually!(
+        uptime_regex.find(&metrics.get("/metrics")).is_some()
+    )
+}
+
 mod transport {
     use super::support::*;
     use super::*;
@@ -727,7 +739,7 @@ mod transport {
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_open_total{direction=\"inbound\"} 1"
+            "{direction=\"inbound\"} 1"
         );
         // drop the client to force the connection to close.
         drop(client);

@@ -58,3 +58,4 @@ libc = "0.2"
 [dev-dependencies]
 quickcheck = { version = "0.6", default-features = false }
 conduit-proxy-controller-grpc = { path = "./controller-grpc" , features = ["arbitrary"] }
+regex = "0.2"
