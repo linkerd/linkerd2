@@ -403,6 +403,15 @@ mod tests {
     use super::*;
     use conduit_proxy_controller_grpc::*;
 
+    impl Arbitrary for LabelMatch {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            Self {
+                key: Arbitrary::arbitrary(g),
+                value: Arbitrary::arbitrary(g),
+            }
+        }
+    }
+
     impl Arbitrary for TcpMatch {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             if g.gen::<bool>() {
@@ -466,6 +475,22 @@ mod tests {
             };
 
             m.matches(&addr) == matches
+        }
+
+        fn labels_from_proto(label: observe_request::match_::Label) -> bool {
+            let err: Option<InvalidMatch> =
+                if label.key.is_empty() || label.value.is_empty() {
+                    Some(InvalidMatch::Empty)
+                } else {
+                    None
+                };
+
+            err == LabelMatch::try_from(&label).err()
+        }
+
+        fn label_matches(l: LabelMatch, labels: HashMap<String, String>) -> bool {
+            let matches = labels.get(&l.key) == Some(&l.value);
+            l.matches(&labels) == matches
         }
 
         fn http_from_proto(http: observe_request::match_::Http) -> bool {
