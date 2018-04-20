@@ -1101,18 +1101,7 @@ mod transport {
 fn metrics_compression() {
     let _ = env_logger::try_init();
 
-    info!("running test server");
-    let srv = server::new().route("/hey", "hello").run();
-
-    let ctrl = controller::new()
-        .destination("tele.test.svc.cluster.local", srv.addr)
-        .run();
-    let proxy = proxy::new()
-        .controller(ctrl)
-        .inbound(srv)
-        .run();
-    let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
-    let metrics = client::http1(proxy.metrics, "localhost");
+    let Fixture { client, metrics, proxy: _proxy } = Fixture::inbound();
 
     let do_scrape = |encoding: &str| {
         let resp = metrics.request(
@@ -1156,21 +1145,19 @@ fn metrics_compression() {
         "brotli,gzip,deflate"
     ];
 
-    info!("inbound.get(/hey)");
-    assert_eq!(client.get("/hey"), "hello");
+    info!("client.get(/)");
+    assert_eq!(client.get("/"), "hello");
 
     for &encoding in encodings {
-        let scrape = do_scrape(encoding);
-        assert_contains!(scrape,
+        assert_contains!(do_scrape(encoding),
             "request_duration_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\"} 1");
     }
 
-    info!("outbound.get(/hey)");
-    assert_eq!(client.get("/hey"), "hello");
+    info!("client.get(/)");
+    assert_eq!(client.get("/"), "hello");
 
     for &encoding in encodings {
-        let scrape = do_scrape(encoding);
-        assert_contains!(scrape,
+        assert_contains!(do_scrape(encoding),
             "request_duration_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\"} 2");
     }
 }
