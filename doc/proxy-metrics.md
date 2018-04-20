@@ -186,6 +186,14 @@ Each of these metrics has the following labels:
 Note that the labels described above under the heading "Prometheus Collector labels"
 are also added to transport-level metrics, when applicable.
 
+### Connection Close Labels
+
+The following labels are added only to metrics which are updated when a connection closes
+(`tcp_accept_close_total`, `tcp_connect_close_total`, `sent_bytes`, `received_bytes`, and 
+`tcp_connection_duration_ms`):
+
++ `classification`: `success` if the connection terminated cleanly, `failure` if the
+                    connection closed due to a connection failure.
 
 [prom-format]: https://prometheus.io/docs/instrumenting/exposition_formats/#format-version-0.0.4
 [pod-template-hash]: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#pod-template-hash-label
