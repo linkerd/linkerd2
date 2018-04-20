@@ -54,6 +54,15 @@ impl Arbitrary for observe_request::match_::Seq {
     }
 }
 
+impl Arbitrary for observe_request::match_::Label {
+    fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        observe_request::match_::Label {
+            key: Arbitrary::arbitrary(g),
+            value: Arbitrary::arbitrary(g),
+        }
+    }
+}
+
 impl Arbitrary for observe_request::match_::Tcp {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         observe_request::match_::Tcp {
