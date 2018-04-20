@@ -76,6 +76,10 @@ func (c *grpcOverHttpClient) Tap(ctx context.Context, req *pb.TapRequest, _ ...g
 	return &tapClient{ctx: ctx, reader: bufio.NewReader(httpRsp.Body)}, nil
 }
 
+func (c *grpcOverHttpClient) TapByResource(ctx context.Context, req *pb.TapByResourceRequest, _ ...grpc.CallOption) (pb.Api_TapByResourceClient, error) {
+	return nil, fmt.Errorf("Unimplemented")
+}
+
 func (c *grpcOverHttpClient) apiRequest(ctx context.Context, endpoint string, req proto.Message, protoResponse proto.Message) error {
 	url := c.endpointNameToPublicApiUrl(endpoint)
 

@@ -18,7 +18,6 @@ use bind::{self, Bind, Protocol};
 use control::{self, discovery};
 use control::discovery::Bind as BindTrait;
 use ctx;
-use telemetry::metrics;
 use timeout::Timeout;
 use transparency::h1;
 use transport::{DnsNameAndPort, Host, HostAndPort};
@@ -170,7 +169,7 @@ where
     type Request = http::Request<B>;
     type Response = bind::HttpResponse;
     type Error = <Self::Service as tower::Service>::Error;
-    type Service = metrics::Labeled<bind::Service<B>>;
+    type Service = bind::Service<B>;
     type DiscoverError = BindError;
 
     fn poll(&mut self) -> Poll<Change<Self::Key, Self::Service>, Self::DiscoverError> {
@@ -184,10 +183,7 @@ where
                 // circuit-breaking, this should be able to take care of itself,
                 // closing down when the connection is no longer usable.
                 if let Some((addr, bind)) = opt.take() {
-                    let svc = bind.bind(&addr)
-                        // The controller has no labels to add to an external
-                        // service.
-                        .map(metrics::Labeled::none)
+                    let svc = bind.bind(&addr.into())
                         .map_err(|_| BindError::External{ addr })?;
                     Ok(Async::Ready(Change::Insert(addr, svc)))
                 } else {

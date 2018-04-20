@@ -45,9 +45,16 @@ impl event::StreamResponseEnd {
             eos,
         };
 
+        let destination_meta = ctx.dst_labels()
+            .and_then(|b| b.borrow().clone())
+            .map(|d| tap_event::EndpointMeta {
+                labels: d.as_map().clone(),
+            });
+
         common::TapEvent {
             source: Some((&ctx.server.remote).into()),
-            target: Some((&ctx.client.remote).into()),
+            destination: Some((&ctx.client.remote).into()),
+            destination_meta,
             event: Some(tap_event::Event::Http(tap_event::Http {
                 event: Some(tap_event::http::Event::ResponseEnd(end)),
             })),
@@ -72,7 +79,8 @@ impl event::StreamResponseFail {
 
         common::TapEvent {
             source: Some((&ctx.server.remote).into()),
-            target: Some((&ctx.client.remote).into()),
+            destination: Some((&ctx.client.remote).into()),
+            destination_meta: None,
             event: Some(tap_event::Event::Http(tap_event::Http {
                 event: Some(tap_event::http::Event::ResponseEnd(end)),
             })),
@@ -97,7 +105,8 @@ impl event::StreamRequestFail {
 
         common::TapEvent {
             source: Some((&ctx.server.remote).into()),
-            target: Some((&ctx.client.remote).into()),
+            destination: Some((&ctx.client.remote).into()),
+            destination_meta: None,
             event: Some(tap_event::Event::Http(tap_event::Http {
                 event: Some(tap_event::http::Event::ResponseEnd(end)),
             })),
@@ -130,7 +139,8 @@ impl<'a> TryFrom<&'a Event> for common::TapEvent {
 
                 common::TapEvent {
                     source: Some((&ctx.server.remote).into()),
-                    target: Some((&ctx.client.remote).into()),
+                    destination: Some((&ctx.client.remote).into()),
+                    destination_meta: None,
                     event: Some(tap_event::Event::Http(tap_event::Http {
                         event: Some(tap_event::http::Event::RequestInit(init)),
                     })),
@@ -150,7 +160,8 @@ impl<'a> TryFrom<&'a Event> for common::TapEvent {
 
                 common::TapEvent {
                     source: Some((&ctx.request.server.remote).into()),
-                    target: Some((&ctx.request.client.remote).into()),
+                    destination: Some((&ctx.request.client.remote).into()),
+                    destination_meta: None,
                     event: Some(tap_event::Event::Http(tap_event::Http {
                         event: Some(tap_event::http::Event::ResponseInit(init)),
                     })),

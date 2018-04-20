@@ -7,6 +7,7 @@ import (
 	"github.com/runconduit/conduit/controller/util"
 	pkgK8s "github.com/runconduit/conduit/pkg/k8s"
 	log "github.com/sirupsen/logrus"
+	coreV1 "k8s.io/api/core/v1"
 )
 
 type updateListener interface {
@@ -74,33 +75,42 @@ func (l *endpointListener) NoEndpoints(exists bool) {
 
 func (l *endpointListener) toWeightedAddrSet(endpoints []common.TcpAddress) *pb.WeightedAddrSet {
 	addrs := make([]*pb.WeightedAddr, 0)
-	for i, address := range endpoints {
-		metricLabelsForPod := map[string]string{}
-
-		ipAsString := util.IPToString(address.Ip)
-		resultingPods, err := l.podsByIp.GetPodsByIndex(ipAsString)
-		if err != nil {
-			log.Errorf("Error while finding pod for IP [%s], this IP will be sent with no metric labels: %v", ipAsString, err)
-		} else {
-			if len(resultingPods) == 0 || resultingPods[0] == nil {
-				log.Errorf("Could not find pod for IP [%s], this IP will be sent with no metric labels.", ipAsString)
-			} else {
-				pod := resultingPods[0]
-				metricLabelsForPod = pkgK8s.GetOwnerLabels(pod.ObjectMeta)
-				metricLabelsForPod["pod"] = pod.Name
-			}
-		}
-
-		addrs = append(addrs, &pb.WeightedAddr{
-			Addr:         &endpoints[i],
-			Weight:       1,
-			MetricLabels: metricLabelsForPod,
-		})
+	for _, address := range endpoints {
+		addrs = append(addrs, l.toWeightedAddr(address))
 	}
 
 	return &pb.WeightedAddrSet{
 		Addrs:        addrs,
 		MetricLabels: l.labels,
+	}
+}
+
+func (l *endpointListener) toWeightedAddr(address common.TcpAddress) *pb.WeightedAddr {
+	metricLabelsForPod := map[string]string{}
+	ipAsString := util.IPToString(address.Ip)
+
+	resultingPods, err := l.podsByIp.GetPodsByIndex(ipAsString)
+	if err != nil {
+		log.Errorf("Error while finding pod for IP [%s], this IP will be sent with no metric labels: %v", ipAsString, err)
+	} else {
+		podFound := false
+		for _, pod := range resultingPods {
+			if pod.Status.Phase == coreV1.PodRunning {
+				podFound = true
+				metricLabelsForPod = pkgK8s.GetOwnerLabels(pod.ObjectMeta)
+				metricLabelsForPod["pod"] = pod.Name
+				break
+			}
+		}
+		if !podFound {
+			log.Errorf("Could not find running pod for IP [%s], this IP will be sent with no metric labels.", ipAsString)
+		}
+	}
+
+	return &pb.WeightedAddr{
+		Addr:         &address,
+		Weight:       1,
+		MetricLabels: metricLabelsForPod,
 	}
 }
 

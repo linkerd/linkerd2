@@ -1,10 +1,18 @@
 package util
 
 import (
+	"reflect"
 	"testing"
 
+	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
 )
+
+type resourceExp struct {
+	namespace string
+	args      []string
+	resource  pb.Resource
+}
 
 func TestBuildStatSummaryRequest(t *testing.T) {
 	t.Run("Maps Kubernetes friendly names to canonical names", func(t *testing.T) {
@@ -93,6 +101,69 @@ func TestBuildStatSummaryRequest(t *testing.T) {
 			}
 			if err.Error() != msg {
 				t.Fatalf("BuildStatSummaryRequest(%s) should have returned: %s but got unexpected message: %s", input, msg, err)
+			}
+		}
+	})
+}
+
+func TestBuildResource(t *testing.T) {
+	t.Run("Correctly parses Kubernetes resources from the command line", func(t *testing.T) {
+		expectations := []resourceExp{
+			resourceExp{
+				namespace: "test-ns",
+				args:      []string{"deployments"},
+				resource: pb.Resource{
+					Namespace: "test-ns",
+					Type:      k8s.KubernetesDeployments,
+					Name:      "",
+				},
+			},
+			resourceExp{
+				namespace: "",
+				args:      []string{"deploy/foo"},
+				resource: pb.Resource{
+					Namespace: "",
+					Type:      k8s.KubernetesDeployments,
+					Name:      "foo",
+				},
+			},
+			resourceExp{
+				namespace: "foo-ns",
+				args:      []string{"po", "foo"},
+				resource: pb.Resource{
+					Namespace: "foo-ns",
+					Type:      k8s.KubernetesPods,
+					Name:      "foo",
+				},
+			},
+			resourceExp{
+				namespace: "foo-ns",
+				args:      []string{"ns", "foo-ns2"},
+				resource: pb.Resource{
+					Namespace: "",
+					Type:      k8s.KubernetesNamespaces,
+					Name:      "foo-ns2",
+				},
+			},
+			resourceExp{
+				namespace: "foo-ns",
+				args:      []string{"ns/foo-ns2"},
+				resource: pb.Resource{
+					Namespace: "",
+					Type:      k8s.KubernetesNamespaces,
+					Name:      "foo-ns2",
+				},
+			},
+		}
+
+		for _, exp := range expectations {
+			res, err := BuildResource(exp.namespace, exp.args...)
+			if err != nil {
+				t.Fatalf("Unexpected error from BuildResource(%+v) => %s", exp, err)
+			}
+
+			if !reflect.DeepEqual(exp.resource, res) {
+				t.Fatalf("Expected resource to be [%+v] but was [%+v]", exp.resource, res)
 			}
 		}
 	})

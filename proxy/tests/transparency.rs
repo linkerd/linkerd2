@@ -8,7 +8,7 @@ fn outbound_http1() {
 
     let srv = server::http1().route("/", "hello h1").run();
     let ctrl = controller::new()
-        .destination("transparency.test.svc.cluster.local", srv.addr)
+        .destination_and_close("transparency.test.svc.cluster.local", srv.addr)
         .run();
     let proxy = proxy::new().controller(ctrl).outbound(srv).run();
     let client = client::http1(proxy.outbound, "transparency.test.svc.cluster.local");

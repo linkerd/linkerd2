@@ -170,6 +170,8 @@ spec:
 			deployInformer := sharedInformers.Apps().V1beta2().Deployments()
 			replicaSetInformer := sharedInformers.Apps().V1beta2().ReplicaSets()
 			podInformer := sharedInformers.Core().V1().Pods()
+			replicationControllerInformer := sharedInformers.Core().V1().ReplicationControllers()
+			serviceInformer := sharedInformers.Core().V1().Services()
 
 			fakeGrpcServer := newGrpcServer(
 				&MockProm{Res: exp.promRes},
@@ -178,6 +180,8 @@ spec:
 				deployInformer.Lister(),
 				replicaSetInformer.Lister(),
 				podInformer.Lister(),
+				replicationControllerInformer.Lister(),
+				serviceInformer.Lister(),
 				"conduit",
 				[]string{},
 			)
@@ -189,6 +193,7 @@ spec:
 				deployInformer.Informer().HasSynced,
 				replicaSetInformer.Informer().HasSynced,
 				podInformer.Informer().HasSynced,
+				replicationControllerInformer.Informer().HasSynced,
 			) {
 				t.Fatalf("timed out wait for caches to sync")
 			}

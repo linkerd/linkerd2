@@ -147,7 +147,7 @@ func writeTapEventsToBuffer(tapClient pb.Api_TapClient, w *tabwriter.Writer) err
 func renderTapEvent(event *common.TapEvent) string {
 	flow := fmt.Sprintf("src=%s dst=%s",
 		util.AddressToString(event.GetSource()),
-		util.AddressToString(event.GetTarget()),
+		util.AddressToString(event.GetDestination()),
 	)
 
 	http := event.GetHttp()

@@ -1,15 +1,14 @@
 import _ from 'lodash';
-import CallToAction from './CallToAction.jsx';
 import ConduitSpinner from "./ConduitSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
 import MetricsTable from './MetricsTable.jsx';
 import PageHeader from './PageHeader.jsx';
+import { processRollupMetrics } from './util/MetricUtils.js';
 import React from 'react';
-import { getPodsByDeployment, processRollupMetrics } from './util/MetricUtils.js';
 import './../../css/list.css';
 import 'whatwg-fetch';
 
-export default class DeploymentsList extends React.Component {
+export default class PodsList extends React.Component {
   constructor(props) {
     super(props);
     this.api = this.props.api;
@@ -35,11 +34,12 @@ export default class DeploymentsList extends React.Component {
     this.api.cancelCurrentRequests();
   }
 
-  filterDeploys(deploys, metrics) {
-    let deploysByName = _.keyBy(deploys, 'name');
+  filterPods(pods, metrics) {
+    let podsByName = _.keyBy(pods, 'name');
     return _.compact(_.map(metrics, metric => {
-      if (_.has(deploysByName, metric.name)) {
-        metric.added = deploysByName[metric.name].added;
+      let pod = podsByName[metric.name];
+      if (pod && !pod.controlPlane) {
+        metric.added = pod.added;
         return metric;
       }
     }));
@@ -52,15 +52,14 @@ export default class DeploymentsList extends React.Component {
     this.setState({ pendingRequests: true });
 
     this.api.setCurrentRequests([
-      this.api.fetchMetrics(this.api.urlsForResource["deployment"].url().rollup),
+      this.api.fetchMetrics(this.api.urlsForResource["pod"].url().rollup),
       this.api.fetchPods()
     ]);
 
     Promise.all(this.api.getCurrentPromises())
-      .then(([rollup, p]) => {
-        let poByDeploy = getPodsByDeployment(p.pods);
-        let meshDeploys = processRollupMetrics(rollup);
-        let combinedMetrics = this.filterDeploys(poByDeploy, meshDeploys);
+      .then(([rollup, pods]) => {
+        let meshPods = processRollupMetrics(rollup);
+        let combinedMetrics = this.filterPods(pods.pods, meshPods);
 
         this.setState({
           metrics: combinedMetrics,
@@ -89,12 +88,12 @@ export default class DeploymentsList extends React.Component {
         { !this.state.error ? null : <ErrorBanner message={this.state.error} /> }
         { !this.state.loaded ? <ConduitSpinner />  :
           <div>
-            <PageHeader header="Deployments" api={this.api} />
+            <PageHeader header="Pods" api={this.api} />
             { _.isEmpty(this.state.metrics) ?
-              <CallToAction numDeployments={_.size(this.state.metrics)} /> :
-              <div className="deployments-list">
+              <div>No pods found</div> :
+              <div className="pods-list">
                 <MetricsTable
-                  resource="deployment"
+                  resource="pod"
                   metrics={this.state.metrics}
                   api={this.api} />
               </div>

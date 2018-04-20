@@ -200,6 +200,8 @@ func NewServer(
 	deployLister applisters.DeploymentLister,
 	replicaSetLister applisters.ReplicaSetLister,
 	podLister corelisters.PodLister,
+	replicationControllerLister corelisters.ReplicationControllerLister,
+	serviceLister corelisters.ServiceLister,
 	controllerNamespace string,
 	ignoredNamespaces []string,
 ) *http.Server {
@@ -211,6 +213,8 @@ func NewServer(
 			deployLister,
 			replicaSetLister,
 			podLister,
+			replicationControllerLister,
+			serviceLister,
 			controllerNamespace,
 			ignoredNamespaces,
 		),

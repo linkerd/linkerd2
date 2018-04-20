@@ -1,10 +1,9 @@
+use std::{cmp, fmt, hash};
 use std::collections::VecDeque;
 use std::collections::hash_map::{Entry, HashMap};
-use std::fmt;
 use std::iter::IntoIterator;
 use std::net::SocketAddr;
 use std::time::Duration;
-use std::sync::Arc;
 
 use futures::{Async, Future, Poll, Stream};
 use futures::sync::mpsc;
@@ -30,13 +29,21 @@ use transport::DnsNameAndPort;
 
 use control::cache::{Cache, CacheChange, Exists};
 
-use ::telemetry::metrics::{DstLabels, Labeled};
+use ::telemetry::metrics::DstLabels;
 
 /// A handle to start watching a destination for address changes.
 #[derive(Clone, Debug)]
 pub struct Discovery {
     tx: mpsc::UnboundedSender<(DnsNameAndPort, mpsc::UnboundedSender<Update>)>,
 }
+
+#[derive(Clone, Debug)]
+pub struct Endpoint {
+    address: SocketAddr,
+    dst_labels: Option<DstLabelsWatch>,
+}
+
+pub type DstLabelsWatch = futures_watch::Watch<Option<DstLabels>>;
 
 /// A `tower_discover::Discover`, given to a `tower_balance::Balance`.
 #[derive(Debug)]
@@ -61,7 +68,6 @@ pub struct Background {
 
 /// A future returned from `Background::work()`, doing the work of talking to
 /// the controller destination API.
-// TODO: debug impl
 pub struct DiscoveryWork<T: HttpService<ResponseBody = RecvBody>> {
     dns_resolver: dns::Resolver,
     default_destination_namespace: String,
@@ -77,7 +83,7 @@ pub struct DiscoveryWork<T: HttpService<ResponseBody = RecvBody>> {
 
 /// Any additional metadata describing a discovered service.
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
-pub struct Metadata {
+struct Metadata {
     /// A set of Prometheus metric labels describing the destination.
     metric_labels: Option<DstLabels>,
 }
@@ -136,6 +142,9 @@ enum Update {
 
 /// Bind a `SocketAddr` with a protocol.
 pub trait Bind {
+    /// The type of endpoint upon which a `Service` is bound.
+    type Endpoint;
+
     /// Requests handled by the discovered services
     type Request;
 
@@ -150,8 +159,8 @@ pub trait Bind {
     /// The discovered `Service` instance.
     type Service: Service<Request = Self::Request, Response = Self::Response, Error = Self::Error>;
 
-    /// Bind a socket address with a service.
-    fn bind(&self, addr: &SocketAddr) -> Result<Self::Service, Self::BindError>;
+    /// Bind a service from an endpoint.
+    fn bind(&self, addr: &Self::Endpoint) -> Result<Self::Service, Self::BindError>;
 }
 
 /// Creates a "channel" of `Discovery` to `Background` handles.
@@ -191,14 +200,52 @@ impl Discovery {
     }
 }
 
+// ==== impl Endpoint =====
+
+impl Endpoint {
+    pub fn new(address: SocketAddr, dst_labels: DstLabelsWatch) -> Self {
+        Self {
+            address,
+            dst_labels: Some(dst_labels),
+        }
+    }
+
+    pub fn address(&self) -> SocketAddr {
+        self.address
+    }
+
+    pub fn dst_labels(&self) -> Option<&DstLabelsWatch> {
+        self.dst_labels.as_ref()
+    }
+}
+
+impl From<SocketAddr> for Endpoint {
+    fn from(address: SocketAddr) -> Self {
+        Self {
+            address,
+            dst_labels: None,
+        }
+    }
+}
+
+impl hash::Hash for Endpoint {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.address.hash(state)
+    }
+}
+
+impl cmp::PartialEq for Endpoint {
+    fn eq(&self, other: &Self) -> bool {
+        self.address.eq(&other.address)
+    }
+}
+
+impl cmp::Eq for Endpoint {}
+
 // ==== impl Watch =====
 
 impl<B> Watch<B> {
-    fn update_metadata(&mut self,
-                       addr: SocketAddr,
-                       meta: Metadata)
-                       -> Result<(), ()>
-    {
+    fn update_metadata(&mut self, addr: SocketAddr, meta: Metadata) -> Result<(), ()> {
         if let Some(store) = self.metric_labels.get_mut(&addr) {
             store.store(meta.metric_labels)
                 .map_err(|e| {
@@ -221,13 +268,13 @@ impl<B> Watch<B> {
 
 impl<B, A> Discover for Watch<B>
 where
-    B: Bind<Request = http::Request<A>>,
+    B: Bind<Endpoint = Endpoint, Request = http::Request<A>>,
 {
     type Key = SocketAddr;
     type Request = B::Request;
     type Response = B::Response;
     type Error = B::Error;
-    type Service = Labeled<B::Service>;
+    type Service = B::Service;
     type DiscoverError = ();
 
     fn poll(&mut self) -> Poll<Change<Self::Key, Self::Service>, Self::DiscoverError> {
@@ -245,8 +292,9 @@ where
                         futures_watch::Watch::new(meta.metric_labels);
                     self.metric_labels.insert(addr, labels_store);
 
-                    let service = self.bind.bind(&addr)
-                        .map(|svc| Labeled::new(svc, labels_watch))
+                    let endpoint = Endpoint::new(addr, labels_watch.clone());
+
+                    let service = self.bind.bind(&endpoint)
                         .map_err(|_| ())?;
 
                     return Ok(Async::Ready(Change::Insert(addr, service)))
@@ -516,11 +564,9 @@ impl<T> DestinationSet<T>
             match rx.poll() {
                 Ok(Async::Ready(Some(update))) => match update.update {
                     Some(PbUpdate2::Add(a_set)) => {
-                        let set_labels = Arc::new(a_set.metric_labels);
+                        let set_labels = a_set.metric_labels;
                         let addrs = a_set.addrs.into_iter()
-                            .filter_map(|pb|
-                                pb_to_addr_meta(pb, &set_labels)
-                            );
+                            .filter_map(|pb| pb_to_addr_meta(pb, &set_labels));
                         self.add(auth, addrs)
                     },
                     Some(PbUpdate2::Remove(r_set)) => {
@@ -666,24 +712,6 @@ impl <T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
     }
 }
 
-// ===== impl Bind =====
-
-impl<F, S, E> Bind for F
-where
-    F: Fn(&SocketAddr) -> Result<S, E>,
-    S: Service,
-{
-    type Request = S::Request;
-    type Response = S::Response;
-    type Error = S::Error;
-    type Service = S;
-    type BindError = E;
-
-    fn bind(&self, addr: &SocketAddr) -> Result<Self::Service, Self::BindError> {
-        (*self)(addr)
-    }
-}
-
 // ===== impl UpdateRx =====
 
 impl<T> Stream for UpdateRx<T>
@@ -720,13 +748,10 @@ impl Metadata {
 }
 
 /// Construct a new labeled `SocketAddr `from a protobuf `WeightedAddr`.
-fn pb_to_addr_meta(pb: WeightedAddr, set_labels: &Arc<HashMap<String, String>>)
+fn pb_to_addr_meta(pb: WeightedAddr, set_labels: &HashMap<String, String>)
             -> Option<(SocketAddr, Metadata)> {
     let addr = pb.addr.and_then(pb_to_sock_addr)?;
-    let label_iter =
-        set_labels.as_ref()
-            .iter()
-            .chain(pb.metric_labels.iter());
+    let label_iter = set_labels.iter().chain(pb.metric_labels.iter());
     let meta = Metadata {
         metric_labels: DstLabels::new(label_iter),
     };
