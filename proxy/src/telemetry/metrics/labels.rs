@@ -6,6 +6,7 @@ use std::sync::Arc;
 use http;
 
 use ctx;
+use telemetry::event;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct RequestLabels {
@@ -43,6 +44,14 @@ pub struct ResponseLabels {
 pub struct TransportLabels {
     /// Was the transport opened in the inbound or outbound direction?
     direction: Direction,
+}
+
+/// Labels describing the end of a TCP connection
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct TransportCloseLabels {
+    transport: TransportLabels,
+
+    classification: Classification,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
@@ -173,6 +182,14 @@ impl Classification {
             .unwrap_or_else(|| Classification::http_status(&rsp.status))
     }
 
+    fn transport_close(close: &event::TransportClose) -> Self {
+        if close.clean {
+            Classification::Success
+        } else {
+            Classification::Failure
+        }
+    }
+
 }
 
 impl fmt::Display for Classification {
@@ -263,6 +280,7 @@ impl fmt::Display for DstLabels {
     }
 }
 
+
 // ===== impl TransportLabels =====
 
 impl TransportLabels {
@@ -275,6 +293,26 @@ impl TransportLabels {
 
 impl fmt::Display for TransportLabels {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.direction)
+        fmt::Display::fmt(&self.direction, f)
     }
 }
+
+// ===== impl TransportCloseLabels =====
+
+impl TransportCloseLabels {
+    pub fn new(ctx: &ctx::transport::Ctx,
+               close: &event::TransportClose)
+               -> Self {
+        TransportCloseLabels {
+            transport: TransportLabels::new(ctx),
+            classification: Classification::transport_close(close),
+        }
+    }
+}
+
+impl fmt::Display for TransportCloseLabels {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{},{}", self.transport, self.classification)
+    }
+}
+

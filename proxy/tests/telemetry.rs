@@ -732,7 +732,7 @@ mod transport {
         // drop the client to force the connection to close.
         drop(client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_close_total{direction=\"inbound\"} 1"
+            "tcp_accept_close_total{direction=\"inbound\",classification=\"success\"} 1"
         );
 
         // create a new client to force a new connection
@@ -746,7 +746,7 @@ mod transport {
         // drop the client to force the connection to close.
         drop(client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_close_total{direction=\"inbound\"} 2"
+            "tcp_accept_close_total{direction=\"inbound\",classification=\"success\"} 2"
         );
     }
 
@@ -785,7 +785,7 @@ mod transport {
         // drop the client to force the connection to close.
         drop(client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_close_total{direction=\"outbound\"} 1"
+            "tcp_accept_close_total{direction=\"outbound\",classification=\"success\"} 1"
         );
 
         // create a new client to force a new connection
@@ -799,7 +799,7 @@ mod transport {
         // drop the client to force the connection to close.
         drop(client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_close_total{direction=\"outbound\"} 2"
+            "tcp_accept_close_total{direction=\"outbound\",classification=\"success\"} 2"
         );
     }
 
@@ -821,7 +821,7 @@ mod transport {
         assert_eq!(client2.get("/"), "hello");
         // server connection should be pooled
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connect_open_total{direction=\"outbound\"} 1");
+            "tcp_connect_open_total{direction=\"outbound\",classification=\"success\"} 1");
     }
 
     #[test]
@@ -843,7 +843,6 @@ mod transport {
     }
 
     #[test]
-    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
     fn inbound_tcp_accept() {
         let _ = env_logger::try_init();
         let TcpFixture { client, metrics, proxy: _proxy } =
@@ -862,7 +861,7 @@ mod transport {
 
         drop(tcp_client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_close_total{direction=\"inbound\"} 1");
+            "tcp_accept_close_total{direction=\"inbound\",classification=\"success\"} 1");
 
         let tcp_client = client.connect();
 
@@ -873,11 +872,10 @@ mod transport {
             "tcp_accept_open_total{direction=\"inbound\"} 2");
         drop(tcp_client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_close_total{direction=\"inbound\"} 2");
+            "tcp_accept_close_total{direction=\"inbound\",classification=\"success\"} 2");
     }
 
     #[test]
-    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
     fn inbound_tcp_duration() {
         let _ = env_logger::try_init();
         let TcpFixture { client, metrics, proxy: _proxy } =
@@ -893,18 +891,18 @@ mod transport {
         drop(tcp_client);
         // TODO: make assertions about buckets
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connection_duration_ms_count{direction=\"inbound\"} 2");
+            "tcp_connection_duration_ms_count{direction=\"inbound\",classification=\"success\"} 2");
 
         let tcp_client = client.connect();
 
         tcp_client.write(msg1);
         assert_eq!(tcp_client.read(), msg2.as_bytes());
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connection_duration_ms_count{direction=\"inbound\"} 2");
+            "tcp_connection_duration_ms_count{direction=\"inbound\",classification=\"success\"} 2");
 
         drop(tcp_client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connection_duration_ms_count{direction=\"inbound\"} 4");
+            "tcp_connection_duration_ms_count{direction=\"inbound\",classification=\"success\"} 4");
     }
 
     #[test]
@@ -917,7 +915,7 @@ mod transport {
         let msg1 = "custom tcp hello";
         let msg2 = "custom tcp bye";
         let expected = format!(
-            "sent_bytes{{direction=\"inbound\"}} {}",
+            "sent_bytes{{direction=\"inbound\",classification=\"success\"}} {}",
             msg1.len() + msg2.len()
         );
 
@@ -939,7 +937,7 @@ mod transport {
         let msg1 = "custom tcp hello";
         let msg2 = "custom tcp bye";
         let expected = format!(
-            "received_bytes{{direction=\"inbound\"}} {}",
+            "sent_bytes{{direction=\"inbound\",classification=\"success\"}} {}",
             msg1.len() + msg2.len()
         );
 
@@ -989,7 +987,7 @@ mod transport {
 
         drop(tcp_client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_close_total{direction=\"outbound\"} 1");
+            "tcp_accept_close_total{direction=\"outbound\",classification=\"success\"} 1");
 
         let tcp_client = client.connect();
 
@@ -1000,7 +998,7 @@ mod transport {
             "tcp_accept_open_total{direction=\"outbound\"} 2");
         drop(tcp_client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_close_total{direction=\"outbound\"} 2");
+            "tcp_accept_close_total{direction=\"outbound\",classification=\"success\"} 2");
     }
 
     #[test]
@@ -1020,18 +1018,18 @@ mod transport {
         drop(tcp_client);
         // TODO: make assertions about buckets
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connection_duration_ms_count{direction=\"outbound\"} 2");
+            "tcp_connection_duration_ms_count{direction=\"outbound\",classification=\"success\"} 2");
 
         let tcp_client = client.connect();
 
         tcp_client.write(msg1);
         assert_eq!(tcp_client.read(), msg2.as_bytes());
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connection_duration_ms_count{direction=\"outbound\"} 2");
+            "tcp_connection_duration_ms_count{direction=\"outbound\",classification=\"success\"} 2");
 
         drop(tcp_client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connection_duration_ms_count{direction=\"outbound\"} 4");
+            "tcp_connection_duration_ms_count{direction=\"outbound\",classification=\"success\"} 4");
     }
 
     #[test]
@@ -1044,7 +1042,7 @@ mod transport {
         let msg1 = "custom tcp hello";
         let msg2 = "custom tcp bye";
         let expected = format!(
-            "sent_bytes{{direction=\"outbound\"}} {}",
+            "sent_bytes{{direction=\"outbound\",classification=\"success\"}} {}",
             msg1.len() + msg2.len()
         );
 
@@ -1066,7 +1064,7 @@ mod transport {
         let msg1 = "custom tcp hello";
         let msg2 = "custom tcp bye";
         let expected = format!(
-            "received_bytes{{direction=\"outbound\"}} {}",
+            "received_bytes{{direction=\"outbound\",classification=\"success\"}} {}",
             msg1.len() + msg2.len()
         );
 
