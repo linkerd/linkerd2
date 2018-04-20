@@ -318,7 +318,7 @@ func randomResponseLabels() prom.Labels {
 	labelMap["status_code"] = fmt.Sprintf("%d", httpCode)
 
 	if grpcCode != uint32(codes.OK) || httpCode != http.StatusOK {
-		labelMap["classification"] = "fail"
+		labelMap["classification"] = "failure"
 	}
 
 	return labelMap
