@@ -16,7 +16,7 @@
   "gnetId": null,
   "graphTooltip": 1,
   "id": null,
-  "iteration": 1524251097897,
+  "iteration": 1524268513784,
   "links": [],
   "panels": [
     {
@@ -694,7 +694,7 @@
       "thresholds": [],
       "timeFrom": null,
       "timeShift": null,
-      "title": "TCP CONNECTIONS CLOSED PER SECOND",
+      "title": "CONNECTIONS CLOSED PER SECOND",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -715,7 +715,7 @@
           "label": "",
           "logBase": 1,
           "max": null,
-          "min": null,
+          "min": "0",
           "show": true
         },
         {
@@ -802,7 +802,7 @@
           "label": null,
           "logBase": 1,
           "max": null,
-          "min": null,
+          "min": "0",
           "show": true
         },
         {
@@ -947,13 +947,6 @@
           "id": 39,
           "links": [],
           "mode": "html",
-          "scopedVars": {
-            "inbound": {
-              "selected": false,
-              "text": "controller",
-              "value": "controller"
-            }
-          },
           "title": "",
           "transparent": true,
           "type": "text"
@@ -989,13 +982,6 @@
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
-          "scopedVars": {
-            "inbound": {
-              "selected": false,
-              "text": "controller",
-              "value": "controller"
-            }
-          },
           "seriesOverrides": [],
           "spaceLength": 10,
           "stack": false,
@@ -1078,13 +1064,6 @@
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
-          "scopedVars": {
-            "inbound": {
-              "selected": false,
-              "text": "controller",
-              "value": "controller"
-            }
-          },
           "seriesOverrides": [],
           "spaceLength": 10,
           "stack": true,
@@ -1166,13 +1145,6 @@
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
-          "scopedVars": {
-            "inbound": {
-              "selected": false,
-              "text": "controller",
-              "value": "controller"
-            }
-          },
           "seriesOverrides": [],
           "spaceLength": 10,
           "stack": false,
@@ -1512,283 +1484,12 @@
       ]
     },
     {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "prometheus",
-      "fill": 1,
-      "gridPos": {
-        "h": 7,
-        "w": 8,
-        "x": 0,
-        "y": 35
-      },
-      "id": 183,
-      "legend": {
-        "avg": false,
-        "current": false,
-        "max": false,
-        "min": false,
-        "show": false,
-        "total": false,
-        "values": false
-      },
-      "lines": true,
-      "linewidth": 2,
-      "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": true,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "irate(tcp_accept_close_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\"}[20s])",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "accept {{classification}}",
-          "refId": "A"
-        },
-        {
-          "expr": "irate(tcp_connect_close_total{classification=\"success\", namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\"}[20s])",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "connect {{classification}}",
-          "refId": "B"
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "TCP CONNECTIONS CLOSED PER SECOND",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "decimals": null,
-          "format": "none",
-          "label": "",
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ]
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "prometheus",
-      "fill": 1,
-      "gridPos": {
-        "h": 7,
-        "w": 8,
-        "x": 8,
-        "y": 35
-      },
-      "id": 184,
-      "legend": {
-        "avg": false,
-        "current": false,
-        "max": false,
-        "min": false,
-        "show": false,
-        "total": false,
-        "values": false
-      },
-      "lines": true,
-      "linewidth": 2,
-      "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "irate(sent_bytes{classification=\"success\",namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\"}[20s])",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "sent",
-          "refId": "A"
-        },
-        {
-          "expr": "irate(received_bytes{classification=\"success\",namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\"}[20s])",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "received",
-          "refId": "B"
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "BYTES PER SECOND",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "Bps",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ]
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "prometheus",
-      "fill": 1,
-      "gridPos": {
-        "h": 7,
-        "w": 8,
-        "x": 16,
-        "y": 35
-      },
-      "id": 185,
-      "legend": {
-        "avg": false,
-        "current": false,
-        "max": false,
-        "min": false,
-        "show": false,
-        "total": false,
-        "values": false
-      },
-      "lines": true,
-      "linewidth": 2,
-      "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "histogram_quantile(0.5, sum(irate(tcp_connection_duration_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (le, deployment))",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "p50 deploy/{{deployment}}",
-          "refId": "A"
-        },
-        {
-          "expr": "histogram_quantile(0.95, sum(irate(tcp_connection_duration_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (le, deployment))",
-          "format": "time_series",
-          "hide": false,
-          "intervalFactor": 1,
-          "legendFormat": "p95 deploy/{{deployment}}",
-          "refId": "B"
-        },
-        {
-          "expr": "histogram_quantile(0.99, sum(irate(tcp_connection_duration_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (le, deployment))",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "p99 deploy/{{deployment}}",
-          "refId": "C"
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "TCP CONNECTION DURATION",
-      "tooltip": {
-        "shared": true,
-        "sort": 2,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "decimals": null,
-          "format": "ms",
-          "label": "",
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ]
-    },
-    {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>OUTBOUND DEPLOYMENTS</span>\n</div>",
       "gridPos": {
         "h": 2,
         "w": 24,
         "x": 0,
-        "y": 42
+        "y": 35
       },
       "id": 80,
       "links": [],
@@ -1803,7 +1504,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 44
+        "y": 37
       },
       "id": 27,
       "panels": [
@@ -1818,13 +1519,6 @@
           "id": 40,
           "links": [],
           "mode": "html",
-          "scopedVars": {
-            "outbound": {
-              "selected": false,
-              "text": "controller",
-              "value": "controller"
-            }
-          },
           "title": "",
           "transparent": true,
           "type": "text"
@@ -1860,13 +1554,6 @@
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
-          "scopedVars": {
-            "outbound": {
-              "selected": false,
-              "text": "controller",
-              "value": "controller"
-            }
-          },
           "seriesOverrides": [],
           "spaceLength": 10,
           "stack": false,
@@ -1948,13 +1635,6 @@
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
-          "scopedVars": {
-            "outbound": {
-              "selected": false,
-              "text": "controller",
-              "value": "controller"
-            }
-          },
           "seriesOverrides": [],
           "spaceLength": 10,
           "stack": true,
@@ -2035,13 +1715,6 @@
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
-          "scopedVars": {
-            "outbound": {
-              "selected": false,
-              "text": "controller",
-              "value": "controller"
-            }
-          },
           "seriesOverrides": [],
           "spaceLength": 10,
           "stack": false,
