@@ -2,7 +2,8 @@
 
 :balloon: Welcome to the Conduit development guide! :wave:
 
-This document will help you build, run, and test Conduit from source.
+This document will help you build and run Conduit from source. More information
+about testing from source can be found in the [TEST.md](TEST.md) guide.
 
 # Table of contents
 
@@ -40,8 +41,6 @@ written in Go. The dashboard UI is a React application.
     clients such as `cli` and `web`, provides access to and control of the
     conduit service mesh.
   - [`tap`](controller/tap): Provides a live pipeline of requests.
-  - [`telemetry`](controller/telemetry): Collects and aggregates
-    metrics from `proxy` componenets.
 - [`proxy-init`](proxy-init): Adds a Kubernetes pod to join the Conduit
   Service Mesh.
 - [`web`](web): Provides a UI dashboard to view and drive the control plane.
@@ -49,8 +48,8 @@ written in Go. The dashboard UI is a React application.
 
 ## Data Plane (Rust)
 
-  - [`proxy`](proxy): High-performance data plane, injected as a sidecar with
-    every service.
+- [`proxy`](proxy): High-performance data plane, injected as a sidecar with
+  every service.
 
 # Components
 
@@ -69,7 +68,6 @@ conduit_components
     "proxy-api" [color=lightblue];
     "public-api" [color=lightblue];
     "tap" [color=lightblue];
-    "telemetry" [color=lightblue];
     "web" [color=lightblue];
 
     "proxy" [color=orange];
@@ -82,16 +80,11 @@ conduit_components
     "proxy" -> "proxy-api";
 
     "proxy-api" -> "destination";
-    "proxy-api" -> "telemetry";
 
     "public-api" -> "tap";
-    "public-api" -> "telemetry";
 
     "tap" -> "kubernetes";
     "tap" -> "proxy";
-
-    "telemetry" -> "kubernetes";
-    "telemetry" -> "prometheus";
   }
 conduit_components
 </details>
@@ -167,18 +160,12 @@ traffic to the docker-compose environment:
 ```bash
 # confirm you are connected to Kubernetes
 kubectl version
-
-# simulate traffic
-bin/go-run controller/script/simulate-proxy --kubeconfig ~/.kube/config --addr $DOCKER_IP:8086 --max-pods 10 --sleep 10ms
 ```
 
-### Testing
-
-```bash
-bin/dep ensure
-go test -race ./...
-go vet ./...
-```
+Note that the Kubernetes cluster your system is configured to talk to must not
+be referenced via `localhost` in your Kubernetes config file, as
+`simulate-proxy` will not be able to connect to it.  This includes Kubernetes on
+Docker For Mac.
 
 ### A note about Go run
 
@@ -211,6 +198,26 @@ In development you can run:
 bin/go-run cli check
 ```
 
+### Running the control plane for development
+
+Conduit's control plane is composed of several Go microservices. You can run
+these components in a Kubernetes (or Minikube) cluster, or even locally.
+
+To run an individual component locally, you can use the `go-run` command, and
+pass in valid Kubernetes credentials via the `-kubeconfig` flag. For instance,
+to run the destination service locally, run:
+
+```bash
+bin/go-run controller/cmd/destination -kubeconfig ~/.kube/config -log-level debug
+```
+
+You can send test requests to the destination service using the
+`destination-client` in the `controller/script` directory. For instance:
+
+```bash
+bin/go-run controller/script/destination-client -path hello.default.svc.cluster.local:80
+```
+
 ## Web
 
 This is a React app fronting a Go process. It uses webpack to bundle assets, and
@@ -240,8 +247,8 @@ cd ..
 
 The web server will be running on `localhost:8084`.
 
-Note the `web` process depends on a `public-api` server, for which you have three
-options:
+Note the `web` process depends on a `public-api` server, for which you have
+three options:
 
 #### 1. Connect to `public-api` locally
 
@@ -266,8 +273,9 @@ If you are running the public API server in Kubernetes, forward `localhost:8085`
 to the Conduit controller pod:
 
 ```bash
-POD_NAME=$(kubectl --namespace=conduit get po --selector=app=controller -o jsonpath='{.items[*].metadata.name}')
-kubectl -n conduit port-forward $POD_NAME 8085:8085
+kubectl --namespace=conduit port-forward $(
+  kubectl --namespace=conduit get po --selector=conduit.io/control-plane-component=controller -o jsonpath='{.items[*].metadata.name}'
+) 8085:8085
 ```
 
 Then connect the local web process to the forwarded port:
@@ -298,14 +306,6 @@ To add a JS dependency:
 ```bash
 cd web/app
 yarn add [dep]
-```
-
-### Testing
-
-```bash
-cd web/app
-yarn && yarn webpack
-yarn karma start --single-run
 ```
 
 ## Rust
@@ -348,22 +348,6 @@ It supports two environment variables:
 - `PROXY_SKIP_TESTS` -- When set and non-empty, prevents the proxy's tests from being run
   during the build. Changing this setting will not invalidate Docker's cache.
 
-
-### Testing
-
-To build the Rust code and run tests, run:
-
-```bash
-cargo test
-```
-
-To analyze the Rust code and report errors, without building object files or
-running tests, run:
-
-```bash
-cargo check
-```
-
 # Dependencies
 
 ## Updating protobuf dependencies
@@ -399,14 +383,14 @@ build_architecture
     "Dockerfile-base" [color=lightblue, style=filled, shape=rect];
     "Dockerfile-go-deps" [color=lightblue, style=filled, shape=rect];
     "controller/Dockerfile" [color=lightblue, style=filled, shape=rect];
-    "cli/Dockerfile" [color=lightblue, style=filled, shape=rect];
     "cli/Dockerfile-bin" [color=lightblue, style=filled, shape=rect];
+    "grafana/Dockerfile" [color=lightblue, style=filled, shape=rect];
     "proxy/Dockerfile" [color=lightblue, style=filled, shape=rect];
     "proxy-init/Dockerfile" [color=lightblue, style=filled, shape=rect];
-    "proxy-init/integration-test/iptables/Dockerfile-tester" [color=lightblue, style=filled, shape=rect];
+    "proxy-init/integration_test/iptables/Dockerfile-tester" [color=lightblue, style=filled, shape=rect];
     "web/Dockerfile" [color=lightblue, style=filled, shape=rect];
 
-    "proxy-init/integration-test/run_tests.sh" -> "proxy-init/integration-test/iptables/Dockerfile-tester";
+    "proxy-init/integration_test/run_tests.sh" -> "proxy-init/integration_test/iptables/Dockerfile-tester";
 
     "_docker.sh" -> "_log.sh";
 
@@ -414,21 +398,19 @@ build_architecture
     "_log.sh";
     "_tag.sh";
 
+    "conduit" -> "docker-build-cli-bin";
+
     "dep";
 
+    "docker-build" -> "docker-build-cli-bin";
     "docker-build" -> "docker-build-controller";
-    "docker-build" -> "docker-build-web";
+    "docker-build" -> "docker-build-grafana";
     "docker-build" -> "docker-build-proxy";
     "docker-build" -> "docker-build-proxy-init";
-    "docker-build" -> "docker-build-cli";
+    "docker-build" -> "docker-build-web";
 
     "docker-build-base" -> "_docker.sh";
     "docker-build-base" -> "Dockerfile-base";
-
-    "docker-build-cli" -> "_docker.sh";
-    "docker-build-cli" -> "_tag.sh";
-    "docker-build-cli" -> "docker-build-cli-bin";
-    "docker-build-cli" -> "cli/Dockerfile";
 
     "docker-build-cli-bin" -> "_docker.sh";
     "docker-build-cli-bin" -> "_tag.sh";
@@ -445,6 +427,10 @@ build_architecture
     "docker-build-go-deps" -> "_docker.sh";
     "docker-build-go-deps" -> "_tag.sh";
     "docker-build-go-deps" -> "Dockerfile-go-deps";
+
+    "docker-build-grafana" -> "_docker.sh";
+    "docker-build-grafana" -> "_tag.sh";
+    "docker-build-grafana" -> "grafana/Dockerfile";
 
     "docker-build-proxy" -> "_docker.sh";
     "docker-build-proxy" -> "_tag.sh";
@@ -490,7 +476,12 @@ build_architecture
 
     "root-tag" -> "_tag.sh";
 
+    "test-cleanup";
+
+    "test-run";
+
     ".travis.yml" -> "_gcp.sh";
+    ".travis.yml" -> "_tag.sh";
     ".travis.yml" -> "dep";
     ".travis.yml" -> "docker-build";
     ".travis.yml" -> "docker-pull";

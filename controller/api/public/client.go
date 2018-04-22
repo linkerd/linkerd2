@@ -19,9 +19,9 @@ import (
 )
 
 const (
-	ApiRoot                 = "/" // Must be absolute (with a leading slash).
-	ApiVersion              = "v1"
-	ApiPrefix               = "api/" + ApiVersion + "/" // Must be relative (without a leading slash).
+	apiRoot                 = "/" // Must be absolute (with a leading slash).
+	apiVersion              = "v1"
+	apiPrefix               = "api/" + apiVersion + "/" // Must be relative (without a leading slash).
 	ConduitApiSubsystemName = "conduit-api"
 )
 
@@ -30,9 +30,10 @@ type grpcOverHttpClient struct {
 	httpClient *http.Client
 }
 
-func (c *grpcOverHttpClient) Stat(ctx context.Context, req *pb.MetricRequest, _ ...grpc.CallOption) (*pb.MetricResponse, error) {
-	var msg pb.MetricResponse
-	err := c.apiRequest(ctx, "Stat", req, &msg)
+// TODO: This will replace Stat, once implemented
+func (c *grpcOverHttpClient) StatSummary(ctx context.Context, req *pb.StatSummaryRequest, _ ...grpc.CallOption) (*pb.StatSummaryResponse, error) {
+	var msg pb.StatSummaryResponse
+	err := c.apiRequest(ctx, "StatSummary", req, &msg)
 	return &msg, err
 }
 
@@ -75,10 +76,14 @@ func (c *grpcOverHttpClient) Tap(ctx context.Context, req *pb.TapRequest, _ ...g
 	return &tapClient{ctx: ctx, reader: bufio.NewReader(httpRsp.Body)}, nil
 }
 
+func (c *grpcOverHttpClient) TapByResource(ctx context.Context, req *pb.TapByResourceRequest, _ ...grpc.CallOption) (pb.Api_TapByResourceClient, error) {
+	return nil, fmt.Errorf("Unimplemented")
+}
+
 func (c *grpcOverHttpClient) apiRequest(ctx context.Context, endpoint string, req proto.Message, protoResponse proto.Message) error {
 	url := c.endpointNameToPublicApiUrl(endpoint)
 
-	log.Debugf("Making gRPC-over-HTTP call to [%s]", url.String())
+	log.Debugf("Making gRPC-over-HTTP call to [%s] [%+v]", url.String(), req)
 	httpRsp, err := c.post(ctx, url, req)
 	if err != nil {
 		return err
@@ -167,7 +172,7 @@ func newClient(apiURL *url.URL, httpClientToUse *http.Client) (pb.ApiClient, err
 		return nil, fmt.Errorf("server URL must be absolute, was [%s]", apiURL.String())
 	}
 
-	serverUrl := apiURL.ResolveReference(&url.URL{Path: ApiPrefix})
+	serverUrl := apiURL.ResolveReference(&url.URL{Path: apiPrefix})
 
 	log.Debugf("Expecting Conduit Public API to be served over [%s]", serverUrl)
 

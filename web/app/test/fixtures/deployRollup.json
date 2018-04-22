@@ -1,76 +1,29 @@
 {
-  "metrics": [
-    {
-      "name": "REQUEST_RATE",
-      "metadata": {
-        "targetPod": "",
-        "targetDeploy": "test/potato3",
-        "sourcePod": "",
-        "sourceDeploy": "",
-        "component": "",
-        "path": ""
-      },
-      "datapoints": [
-        {
-          "value": {
-            "gauge": 6.10122024404881
-          },
-          "timestampMs": "1513211893354"
-        }
-      ]
-    },
-    {
-      "name": "SUCCESS_RATE",
-      "metadata": {
-        "targetPod": "",
-        "targetDeploy": "test/potato3",
-        "sourcePod": "",
-        "sourceDeploy": "",
-        "component": "",
-        "path": ""
-      },
-      "datapoints": [
-        {
-          "value": {
-            "gauge": 0.3770491803278688
-          },
-          "timestampMs": "1513211893530"
-        }
-      ]
-    },
-    {
-      "name": "LATENCY",
-      "metadata": {
-        "targetPod": "",
-        "targetDeploy": "test/potato3",
-        "sourcePod": "",
-        "sourceDeploy": "",
-        "component": "",
-        "path": ""
-      },
-      "datapoints": [
-        {
-          "value": {
-            "histogram": {
-              "values": [
-                {
-                  "label": "P95",
-                  "value": "953"
-                },
-                {
-                  "label": "P99",
-                  "value": "990"
-                },
-                {
-                  "label": "P50",
-                  "value": "537"
-                }
-              ]
+  "ok": {
+    "statTables": [
+      {
+        "podGroup": {
+          "rows": [
+            {
+              "meshedPodCount": "1",
+              "resource": {
+                "name": "voting",
+                "namespace": "emojivoto",
+                "type": "deployments"
+              },
+              "stats": {
+                "failureCount": "15",
+                "latencyMsP50": "1",
+                "latencyMsP95": "2",
+                "latencyMsP99": "7",
+                "successCount": "135"
+              },
+              "timeWindow": "1m",
+              "totalPodCount": "1"
             }
-          },
-          "timestampMs": "1513211893983"
+          ]
         }
-      ]
-    }
-  ]
+      }
+    ]
+  }
 }

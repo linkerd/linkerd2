@@ -4,30 +4,35 @@ global:
   scrape_interval:     10s
 
 scrape_configs:
-  - job_name: 'prometheus'
+  - job_name: 'conduit-controller'
     static_configs:
-      - targets: ['localhost:9090']
+    - targets:
+      - 'destination:9999'
+      - 'prometheus:9090'
+      - 'proxy-api:9996'
+      - 'public-api:9995'
+      - 'tap:9998'
+      - 'web:9994'
+    relabel_configs:
+    - action: labelmap
+      regex: __address__
+      replacement: component
+    - action: replace
+      source_labels: [component]
+      regex: ^(.*):.*$
+      target_label: component
 
-  - job_name: 'web'
+  - job_name: 'conduit-proxy'
     static_configs:
-      - targets: ['web:9994']
-
-  - job_name: 'public-api'
-    static_configs:
-      - targets: ['public-api:9995']
-
-  - job_name: 'proxy-api'
-    static_configs:
-      - targets: ['proxy-api:9996']
-
-  - job_name: 'telemetry'
-    static_configs:
-      - targets: ['telemetry:9997']
-
-  - job_name: 'tap'
-    static_configs:
-      - targets: ['tap:9998']
-
-  - job_name: 'destination'
-    static_configs:
-      - targets: ['destination:9999']
+    # use this to generate: https://play.golang.org/p/e7uvgT5sUo9
+    - targets:
+      - 'simulate-proxy:10000'
+      - 'simulate-proxy:10001'
+      - 'simulate-proxy:10002'
+      - 'simulate-proxy:10003'
+      - 'simulate-proxy:10004'
+      - 'simulate-proxy:10005'
+      - 'simulate-proxy:10006'
+      - 'simulate-proxy:10007'
+      - 'simulate-proxy:10008'
+      - 'simulate-proxy:10009'

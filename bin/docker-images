@@ -16,11 +16,8 @@ docker_image() {
 
 tag=$(head_root_tag)
 
-docker_image controller   "${tag}"
-docker_image proxy        "${tag}"
-docker_image proxy-init   "${tag}"
-docker_image web          "${tag}"
-docker_image cli          "${tag}"
-docker_image cli-bin      "${tag}"
+for img in cli-bin controller grafana proxy proxy-init web  ; do
+    docker_image "$img" "$tag"
+done
 
 docker_image go-deps      "$(go_deps_sha)"

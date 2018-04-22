@@ -2,8 +2,7 @@
 use futures::{Async, Future, Poll};
 
 use std::error::Error;
-use std::fmt;
-use std::io;
+use std::{fmt, io};
 use std::time::Duration;
 
 use tokio_connect::Connect;
@@ -34,6 +33,13 @@ pub struct TimeoutFuture<F> {
     duration: Duration,
     timeout: ReactorTimeout,
 }
+
+/// A duration which pretty-prints as fractional seconds.
+///
+/// This may not be the ideal display format for _all_ duration values,
+/// but should be sufficient for most timeouts.
+#[derive(Copy, Clone, Debug)]
+pub struct HumanDuration(pub Duration);
 
 //===== impl Timeout =====
 
@@ -152,9 +158,8 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            TimeoutError::Timeout(ref duration) =>
-                // TODO: format the duration nicer.
-                write!(f, "operation timed out after {:?}", duration),
+            TimeoutError::Timeout(ref d) =>
+                write!(f, "operation timed out after {}", HumanDuration(*d)),
             TimeoutError::Error(ref err) => fmt::Display::fmt(err, f),
         }
     }
@@ -210,5 +215,27 @@ where
            .field("inner", &self.inner)
            .field("duration", &self.duration)
            .finish()
+    }
+}
+
+//===== impl HumanDuration =====
+
+impl fmt::Display for HumanDuration {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        let secs = self.0.as_secs();
+        let subsec_ms = self.0.subsec_nanos() as f64 / 1_000_000f64;
+        if secs == 0 {
+            write!(fmt, "{}ms", subsec_ms)
+        } else {
+            write!(fmt, "{}s", secs as f64 + subsec_ms)
+        }
+    }
+}
+
+impl From<Duration> for HumanDuration {
+
+    #[inline]
+    fn from(d: Duration) -> Self {
+        HumanDuration(d)
     }
 }

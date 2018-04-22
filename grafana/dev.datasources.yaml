@@ -1,0 +1,15 @@
+# this file is intended for the docker-compose development environment, more info:
+# http://docs.grafana.org/v5.0/administration/provisioning/#datasources
+
+apiVersion: 1
+datasources:
+- name: prometheus
+  type: prometheus
+  access: proxy
+  orgId: 1
+  url: http://prometheus:9090
+  isDefault: true
+  jsonData:
+    timeInterval: "5s"
+  version: 1
+  editable: true

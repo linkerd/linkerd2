@@ -5,26 +5,30 @@ use hyper;
 use tokio_connect::Connect;
 use tokio_core::reactor::Handle;
 use tower::{Service, NewService};
-use tower_h2;
+use tower_h2::{self, Body};
 
 use bind;
+use telemetry::sensor::http::RequestBody;
 use super::glue::{BodyStream, HttpBody, HyperConnect};
 use super::h1::UriIsAbsoluteForm;
+
+type HyperClient<C, B> =
+    hyper::Client<HyperConnect<C>, BodyStream<RequestBody<B>>>;
 
 /// A `NewService` that can speak either HTTP/1 or HTTP/2.
 pub struct Client<C, B>
 where
-    B: tower_h2::Body,
+    B: tower_h2::Body + 'static,
 {
     inner: ClientInner<C, B>,
 }
 
 enum ClientInner<C, B>
 where
-    B: tower_h2::Body,
+    B: tower_h2::Body + 'static,
 {
-    Http1(hyper::Client<HyperConnect<C>, BodyStream<B>>),
-    Http2(tower_h2::client::Connect<C, Handle, B>),
+    Http1(HyperClient<C, B>),
+    Http2(tower_h2::client::Connect<C, Handle, RequestBody<B>>),
 }
 
 /// A `Future` returned from `Client::new_service()`.
@@ -41,14 +45,14 @@ where
     B: tower_h2::Body + 'static,
     C: Connect + 'static,
 {
-    Http1(Option<hyper::Client<HyperConnect<C>, BodyStream<B>>>),
-    Http2(tower_h2::client::ConnectFuture<C, Handle, B>),
+    Http1(Option<HyperClient<C, B>>),
+    Http2(tower_h2::client::ConnectFuture<C, Handle, RequestBody<B>>),
 }
 
 /// The `Service` yielded by `Client::new_service()`.
 pub struct ClientService<C, B>
 where
-    B: tower_h2::Body,
+    B: tower_h2::Body + 'static,
     C: Connect,
 {
     inner: ClientServiceInner<C, B>,
@@ -56,14 +60,14 @@ where
 
 enum ClientServiceInner<C, B>
 where
-    B: tower_h2::Body,
+    B: tower_h2::Body + 'static,
     C: Connect
 {
-    Http1(hyper::Client<HyperConnect<C>, BodyStream<B>>),
+    Http1(HyperClient<C, B>),
     Http2(tower_h2::client::Connection<
         <C as Connect>::Connected,
         Handle,
-        B
+        RequestBody<B>,
     >),
 }
 
@@ -113,7 +117,7 @@ where
     C::Future: 'static,
     B: tower_h2::Body + 'static,
 {
-    type Request = http::Request<B>;
+    type Request = bind::HttpRequest<B>;
     type Response = http::Response<HttpBody>;
     type Error = tower_h2::client::Error;
     type InitError = tower_h2::client::ConnectError<C::Error>;
@@ -164,7 +168,7 @@ where
     C::Future: 'static,
     B: tower_h2::Body + 'static,
 {
-    type Request = http::Request<B>;
+    type Request = bind::HttpRequest<B>;
     type Response = http::Response<HttpBody>;
     type Error = tower_h2::client::Error;
     type Future = ClientServiceFuture;

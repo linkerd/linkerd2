@@ -35,24 +35,6 @@ services:
     - -metrics-addr=:9998
     - -kubeconfig=/kubeconfig
 
-  telemetry:
-    build:
-      context: .
-      dockerfile: controller/Dockerfile
-      args:
-      - CONDUIT_VERSION=latest
-    ports:
-    - "8087:8087"
-    - "9997:9997"
-    volumes:
-    - ~/.kube/config:/kubeconfig:ro
-    command:
-    - telemetry
-    - -addr=:8087
-    - -metrics-addr=:9997
-    - -prometheus-url=http://prometheus:9090
-    - -kubeconfig=/kubeconfig
-
   proxy-api:
     build:
       context: .
@@ -66,7 +48,6 @@ services:
     - proxy-api
     - -addr=:8086
     - -metrics-addr=:9996
-    - -telemetry-addr=telemetry:8087
     - -destination-addr=destination:8089
 
   public-api:
@@ -78,12 +59,15 @@ services:
     ports:
     - "8085:8085"
     - "9995:9995"
+    volumes:
+    - ~/.kube/config:/kubeconfig:ro
     command:
     - public-api
     - -addr=:8085
     - -metrics-addr=:9995
-    - -telemetry-addr=telemetry:8087
     - -tap-addr=tap:8088
+    - -prometheus-url=http://prometheus:9090
+    - -kubeconfig=/kubeconfig
 
   web:
     build:
@@ -102,7 +86,7 @@ services:
     - -template-dir=/templates
 
   prometheus:
-    image: prom/prometheus:v2.1.0
+    image: prom/prometheus:v2.2.1
     ports:
     - 9090:9090
     volumes:
@@ -110,3 +94,29 @@ services:
     command:
     - --config.file=/etc/prometheus/prometheus.yml
     - --storage.tsdb.retention=6h
+
+  grafana:
+    build:
+      context: .
+      dockerfile: grafana/Dockerfile
+    ports:
+    - 3000:3000
+    volumes:
+    - ./grafana/dev.grafana.ini:/etc/grafana/grafana.ini:ro
+    - ./grafana/dev.dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml:ro
+    - ./grafana/dev.datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
+
+  simulate-proxy:
+    image: golang:1.10.0-alpine3.7
+    ports:
+    - 10000-10009:10000-10009
+    volumes:
+    - .:/go/src/github.com/runconduit/conduit
+    - ~/.kube/config:/kubeconfig:ro
+    command:
+    - go
+    - run
+    - /go/src/github.com/runconduit/conduit/controller/script/simulate-proxy/main.go
+    - --metric-ports=10000-10009
+    - --kubeconfig=/kubeconfig
+    - --sleep=3s

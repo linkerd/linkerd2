@@ -1,157 +1,169 @@
 package util
 
 import (
+	"reflect"
 	"testing"
 
 	pb "github.com/runconduit/conduit/controller/gen/public"
+	"github.com/runconduit/conduit/pkg/k8s"
 )
 
-func TestGetWindow(t *testing.T) {
-	t.Run("Returns valid windows", func(t *testing.T) {
-		expectations := map[string]pb.TimeWindow{
-			"10s": pb.TimeWindow_TEN_SEC,
-			"1m":  pb.TimeWindow_ONE_MIN,
-			"10m": pb.TimeWindow_TEN_MIN,
-			"1h":  pb.TimeWindow_ONE_HOUR,
+type resourceExp struct {
+	namespace string
+	args      []string
+	resource  pb.Resource
+}
+
+func TestBuildStatSummaryRequest(t *testing.T) {
+	t.Run("Maps Kubernetes friendly names to canonical names", func(t *testing.T) {
+		expectations := map[string]string{
+			"deployments": k8s.KubernetesDeployments,
+			"deployment":  k8s.KubernetesDeployments,
+			"deploy":      k8s.KubernetesDeployments,
+			"pods":        k8s.KubernetesPods,
+			"pod":         k8s.KubernetesPods,
+			"po":          k8s.KubernetesPods,
 		}
 
-		for windowFriendlyName, expectedTimeWindow := range expectations {
-			actualTimeWindow, err := GetWindow(windowFriendlyName)
+		for friendly, canonical := range expectations {
+			statSummaryRequest, err := BuildStatSummaryRequest(
+				StatSummaryRequestParams{
+					ResourceType: friendly,
+				},
+			)
 			if err != nil {
-				t.Fatalf("Unexpected error when resolving time window friendly name [%s]: %v",
-					windowFriendlyName, err)
+				t.Fatalf("Unexpected error from BuildStatSummaryRequest [%s => %s]: %s", friendly, canonical, err)
 			}
-
-			if actualTimeWindow != expectedTimeWindow {
-				t.Fatalf("Expected resolving friendly name [%s] to return timw window [%v], but got [%v]",
-					windowFriendlyName, expectedTimeWindow, actualTimeWindow)
+			if statSummaryRequest.Selector.Resource.Type != canonical {
+				t.Fatalf("Unexpected resource type from BuildStatSummaryRequest [%s => %s]: %s", friendly, canonical, statSummaryRequest.Selector.Resource.Type)
 			}
 		}
 	})
 
-	t.Run("Returns error and default value if unknown friendly name for TimeWindow", func(t *testing.T) {
-		invalidNames := []string{
-			"10seconds", "10sec", "9s",
-			"10minutes", "10min", "9m",
-			"1minute", "1min", "0s", "2s",
-			"1hour", "0h", "2h",
-			"10", ""}
-		defaultTimeWindow := pb.TimeWindow_ONE_MIN
+	t.Run("Parses valid time windows", func(t *testing.T) {
+		expectations := []string{
+			"1m",
+			"60s",
+			"1m",
+		}
 
-		for _, invalidName := range invalidNames {
-			window, err := GetWindow(invalidName)
-			if err == nil {
-				t.Fatalf("Expected invalid friendly name [%s] to generate error, but got no error and result [%v]",
-					invalidName, window)
+		for _, timeWindow := range expectations {
+			statSummaryRequest, err := BuildStatSummaryRequest(
+				StatSummaryRequestParams{
+					TimeWindow:   timeWindow,
+					ResourceType: k8s.KubernetesDeployments,
+				},
+			)
+			if err != nil {
+				t.Fatalf("Unexpected error from BuildStatSummaryRequest [%s => %s]", timeWindow, err)
 			}
+			if statSummaryRequest.TimeWindow != timeWindow {
+				t.Fatalf("Unexpected TimeWindow from BuildStatSummaryRequest [%s => %s]", timeWindow, statSummaryRequest.TimeWindow)
+			}
+		}
+	})
 
-			if window != defaultTimeWindow {
-				t.Fatalf("Expected invalid friendly name resolution to return default window [%v], but got [%v]",
-					defaultTimeWindow, window)
+	t.Run("Rejects invalid time windows", func(t *testing.T) {
+		expectations := map[string]string{
+			"1": "time: missing unit in duration 1",
+			"s": "time: invalid duration s",
+		}
+
+		for timeWindow, msg := range expectations {
+			_, err := BuildStatSummaryRequest(
+				StatSummaryRequestParams{
+					TimeWindow: timeWindow,
+				},
+			)
+			if err == nil {
+				t.Fatalf("BuildStatSummaryRequest(%s) unexpectedly succeeded, should have returned %s", timeWindow, msg)
+			}
+			if err.Error() != msg {
+				t.Fatalf("BuildStatSummaryRequest(%s) should have returned: %s but got unexpected message: %s", timeWindow, msg, err)
+			}
+		}
+	})
+
+	t.Run("Rejects invalid Kubernetes resource types", func(t *testing.T) {
+		expectations := map[string]string{
+			"foo": "cannot find Kubernetes canonical name from friendly name [foo]",
+			"":    "cannot find Kubernetes canonical name from friendly name []",
+		}
+
+		for input, msg := range expectations {
+			_, err := BuildStatSummaryRequest(
+				StatSummaryRequestParams{
+					ResourceType: input,
+				},
+			)
+			if err == nil {
+				t.Fatalf("BuildStatSummaryRequest(%s) unexpectedly succeeded, should have returned %s", input, msg)
+			}
+			if err.Error() != msg {
+				t.Fatalf("BuildStatSummaryRequest(%s) should have returned: %s but got unexpected message: %s", input, msg, err)
 			}
 		}
 	})
 }
 
-func TestGetWindowString(t *testing.T) {
-	t.Run("Returns names for valid windows", func(t *testing.T) {
-		expectations := map[pb.TimeWindow]string{
-			pb.TimeWindow_TEN_SEC:  "10s",
-			pb.TimeWindow_ONE_MIN:  "1m",
-			pb.TimeWindow_TEN_MIN:  "10m",
-			pb.TimeWindow_ONE_HOUR: "1h",
+func TestBuildResource(t *testing.T) {
+	t.Run("Correctly parses Kubernetes resources from the command line", func(t *testing.T) {
+		expectations := []resourceExp{
+			resourceExp{
+				namespace: "test-ns",
+				args:      []string{"deployments"},
+				resource: pb.Resource{
+					Namespace: "test-ns",
+					Type:      k8s.KubernetesDeployments,
+					Name:      "",
+				},
+			},
+			resourceExp{
+				namespace: "",
+				args:      []string{"deploy/foo"},
+				resource: pb.Resource{
+					Namespace: "",
+					Type:      k8s.KubernetesDeployments,
+					Name:      "foo",
+				},
+			},
+			resourceExp{
+				namespace: "foo-ns",
+				args:      []string{"po", "foo"},
+				resource: pb.Resource{
+					Namespace: "foo-ns",
+					Type:      k8s.KubernetesPods,
+					Name:      "foo",
+				},
+			},
+			resourceExp{
+				namespace: "foo-ns",
+				args:      []string{"ns", "foo-ns2"},
+				resource: pb.Resource{
+					Namespace: "",
+					Type:      k8s.KubernetesNamespaces,
+					Name:      "foo-ns2",
+				},
+			},
+			resourceExp{
+				namespace: "foo-ns",
+				args:      []string{"ns/foo-ns2"},
+				resource: pb.Resource{
+					Namespace: "",
+					Type:      k8s.KubernetesNamespaces,
+					Name:      "foo-ns2",
+				},
+			},
 		}
 
-		for window, expectedName := range expectations {
-			actualName, err := GetWindowString(window)
+		for _, exp := range expectations {
+			res, err := BuildResource(exp.namespace, exp.args...)
 			if err != nil {
-				t.Fatalf("Unexpected error when resolving name for window [%v]: %v", window, err)
+				t.Fatalf("Unexpected error from BuildResource(%+v) => %s", exp, err)
 			}
 
-			if actualName != expectedName {
-				t.Fatalf("Expected window [%v] to resolve to name [%s], but got [%s]", window, expectedName, actualName)
-			}
-		}
-	})
-}
-
-func TestGetMetricName(t *testing.T) {
-	t.Run("Returns valid metrics from name", func(t *testing.T) {
-		expectations := map[string]pb.MetricName{
-			"requests":    pb.MetricName_REQUEST_RATE,
-			"latency":     pb.MetricName_LATENCY,
-			"successRate": pb.MetricName_SUCCESS_RATE,
-		}
-
-		for metricFriendlyName, expectedMetricName := range expectations {
-			actualMetricName, err := GetMetricName(metricFriendlyName)
-			if err != nil {
-				t.Fatalf("Unexpected error when resolving metric friendly name [%s]: %v",
-					metricFriendlyName, err)
-			}
-
-			if actualMetricName != expectedMetricName {
-				t.Fatalf("Expected resolving metric friendly name [%s] to return metric [%v], but got [%v]",
-					metricFriendlyName, expectedMetricName, actualMetricName)
-			}
-		}
-	})
-
-	t.Run("Returns error and default value if unknown friendly name for TimeWindow", func(t *testing.T) {
-		invalidNames := []string{"failureRate", ""}
-		defaultMetricName := pb.MetricName_REQUEST_RATE
-
-		for _, invalidName := range invalidNames {
-			window, err := GetMetricName(invalidName)
-			if err == nil {
-				t.Fatalf("Expected invalid friendly name [%s] to generate error, but got no error and result [%v]",
-					invalidName, window)
-			}
-
-			if window != defaultMetricName {
-				t.Fatalf("Expected invalid friendly name resolution to return default name [%v], but got [%v]",
-					defaultMetricName, window)
-			}
-		}
-	})
-}
-
-func TestGetAggregationType(t *testing.T) {
-	t.Run("Returns valid metrics from name", func(t *testing.T) {
-		expectations := map[string]pb.AggregationType{
-			"target_deploy": pb.AggregationType_TARGET_DEPLOY,
-			"source_deploy": pb.AggregationType_SOURCE_DEPLOY,
-			"mesh":          pb.AggregationType_MESH,
-		}
-
-		for aggregationFriendlyName, expectedAggregation := range expectations {
-			actualAggregation, err := GetAggregationType(aggregationFriendlyName)
-			if err != nil {
-				t.Fatalf("Unexpected error when resolving friendly name [%s]: %v",
-					aggregationFriendlyName, err)
-			}
-
-			if actualAggregation != expectedAggregation {
-				t.Fatalf("Expected resolving friendly name [%s] to return [%v], but got [%v]",
-					aggregationFriendlyName, expectedAggregation, actualAggregation)
-			}
-		}
-	})
-
-	t.Run("Returns error and default value if unknown friendly name for TimeWindow", func(t *testing.T) {
-		invalidNames := []string{"service", "target_service", "target_mesh", ""}
-		defaultAggregation := pb.AggregationType_TARGET_DEPLOY
-
-		for _, invalidName := range invalidNames {
-			aggregation, err := GetAggregationType(invalidName)
-			if err == nil {
-				t.Fatalf("Expected invalid friendly name [%s] to generate error, but got no error and result [%v]",
-					invalidName, aggregation)
-			}
-
-			if aggregation != defaultAggregation {
-				t.Fatalf("Expected invalid friendly name resolution to return default [%v], but got [%v]",
-					defaultAggregation, aggregation)
+			if !reflect.DeepEqual(exp.resource, res) {
+				t.Fatalf("Expected resource to be [%+v] but was [%+v]", exp.resource, res)
 			}
 		}
 	})

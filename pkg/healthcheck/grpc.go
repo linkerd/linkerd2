@@ -3,6 +3,7 @@ package healthcheck
 import (
 	"context"
 	"fmt"
+	"time"
 
 	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 	"google.golang.org/grpc"
@@ -24,7 +25,10 @@ func (proxy *statusCheckerProxy) SelfCheck() []*healthcheckPb.CheckResult {
 		CheckDescription: "can query the Conduit API",
 	}
 
-	selfCheckResponse, err := proxy.delegate.SelfCheck(context.Background(), &healthcheckPb.SelfCheckRequest{})
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	selfCheckResponse, err := proxy.delegate.SelfCheck(ctx, &healthcheckPb.SelfCheckRequest{})
 	if err != nil {
 		canConnectViaGrpcCheck.Status = healthcheckPb.CheckStatus_ERROR
 		canConnectViaGrpcCheck.FriendlyMessageToUser = err.Error()

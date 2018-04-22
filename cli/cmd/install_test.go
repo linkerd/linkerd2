@@ -26,8 +26,6 @@ func TestRender(t *testing.T) {
 		WebImage:                 "WebImage",
 		PrometheusImage:          "PrometheusImage",
 		GrafanaImage:             "GrafanaImage",
-		VizDashboard:             "VizDashboard",
-		HealthDashboard:          "HealthDashboard",
 		ControllerReplicas:       1,
 		WebReplicas:              2,
 		PrometheusReplicas:       3,

@@ -1,19 +1,14 @@
 import _ from 'lodash';
+import BaseTable from './BaseTable.jsx';
+import GrafanaLink from './GrafanaLink.jsx';
 import { metricToFormatter } from './util/Utils.js';
 import React from 'react';
-import { Table, Tooltip } from 'antd';
+import { Tooltip } from 'antd';
 
 /*
   Table to display Success Rate, Requests and Latency in tabs.
   Expects rollup and timeseries data.
 */
-
-const resourceInfo = {
-  "upstream_deployment": { title: "deployment", url: "/deployment?deploy=" },
-  "downstream_deployment": { title: "deployment", url: "/deployment?deploy=" },
-  "deployment": { title: "deployment", url: "/deployment?deploy=" },
-  "path": { title: "path", url: null }
-};
 
 const withTooltip = (d, metricName) => {
   return (
@@ -28,22 +23,13 @@ const withTooltip = (d, metricName) => {
 const columnDefinitions = (sortable = true, resource, ConduitLink) => {
   return [
     {
-      title: resource.title,
-      dataIndex: "name",
+      title: resource,
       key: "name",
       defaultSortOrder: 'ascend',
       width: 150,
       sorter: sortable ? (a, b) => (a.name || "").localeCompare(b.name) : false,
-      render: name => !resource.url ? name :
-        <ConduitLink to={`${resource.url}${name}`}>{name}</ConduitLink>
-    },
-    {
-      title: "Request Rate",
-      dataIndex: "requestRate",
-      key: "requestRateRollup",
-      className: "numeric",
-      sorter: sortable ? (a, b) => numericSort(a.requestRate, b.requestRate) : false,
-      render: d => withTooltip(d, "REQUEST_RATE")
+      render: row => row.added ?
+        <GrafanaLink name={row.name} resource={resource} conduitLink={ConduitLink} /> : row.name
     },
     {
       title: "Success Rate",
@@ -52,6 +38,14 @@ const columnDefinitions = (sortable = true, resource, ConduitLink) => {
       className: "numeric",
       sorter: sortable ? (a, b) => numericSort(a.successRate, b.successRate) : false,
       render: d => metricToFormatter["SUCCESS_RATE"](d)
+    },
+    {
+      title: "Request Rate",
+      dataIndex: "requestRate",
+      key: "requestRateRollup",
+      className: "numeric",
+      sorter: sortable ? (a, b) => numericSort(a.requestRate, b.requestRate) : false,
+      render: d => withTooltip(d, "REQUEST_RATE")
     },
     {
       title: "P50 Latency",
@@ -82,7 +76,7 @@ const columnDefinitions = (sortable = true, resource, ConduitLink) => {
 
 const numericSort = (a, b) => (_.isNil(a) ? -1 : a) - (_.isNil(b) ? -1 : b);
 
-export default class MetricsTable extends React.Component {
+export default class MetricsTable extends BaseTable {
   constructor(props) {
     super(props);
     this.api = this.props.api;
@@ -101,11 +95,10 @@ export default class MetricsTable extends React.Component {
   }
 
   render() {
-    let resource = resourceInfo[this.props.resource];
     let tableData = this.preprocessMetrics();
-    let columns = _.compact(columnDefinitions(this.props.sortable, resource, this.api.ConduitLink));
+    let columns = _.compact(columnDefinitions(this.props.sortable, this.props.resource, this.api.ConduitLink));
 
-    return (<Table
+    return (<BaseTable
       dataSource={tableData}
       columns={columns}
       pagination={false}

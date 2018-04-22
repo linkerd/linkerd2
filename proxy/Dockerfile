@@ -7,7 +7,7 @@
 # When PROXY_SKIP_TESTS is set and not empty, tests are not run. Otherwise, tests are run
 # against either unoptimized or optimized proxy code, according to PROXY_UNOPTIMIZED.
 
-ARG RUST_IMAGE=rust:1.24.0
+ARG RUST_IMAGE=rust:1.25.0
 ARG RUNTIME_IMAGE=gcr.io/runconduit/base:2017-10-30.01
 
 ## Builds the proxy as incrementally as possible.
@@ -41,8 +41,9 @@ RUN if [ -n "$PROXY_UNOPTIMIZED" ]; \
     fi
 
 # Build gRPC bindings, leaving the proxy mocked out.
-COPY proto                  proto
-COPY proxy/controller-grpc  proxy/controller-grpc
+COPY proto/proxy proto/proxy
+COPY proto/common proto/common
+COPY proxy/controller-grpc proxy/controller-grpc
 RUN if [ -n "$PROXY_UNOPTIMIZED" ]; \
     then cargo build -p conduit-proxy-controller-grpc --features=arbitrary --frozen ; \
     else cargo build -p conduit-proxy-controller-grpc --features=arbitrary --frozen --release ; \
@@ -59,8 +60,8 @@ ARG PROXY_SKIP_TESTS
 RUN if [ -n "$PROXY_SKIP_TESTS" ]; \
     then echo "tests skipped" ; \
     elif [ -n "$PROXY_UNOPTIMIZED" ]; \
-    then cargo test -p conduit-proxy --frozen --no-default-features ; \
-    else cargo test -p conduit-proxy --frozen --release --no-default-features ; \
+    then (cd proxy && cargo test --frozen --no-default-features) ; \
+    else (cd proxy && cargo test --frozen --release --no-default-features) ; \
     fi
 RUN if [ -n "$PROXY_UNOPTIMIZED" ]; \
     then mv target/debug/conduit-proxy   target/conduit-proxy ; \

@@ -11,6 +11,7 @@ extern crate env_logger;
 #[macro_use]
 extern crate futures;
 extern crate futures_mpsc_lossy;
+extern crate futures_watch;
 extern crate h2;
 extern crate http;
 extern crate httparse;
@@ -21,6 +22,7 @@ extern crate libc;
 #[macro_use]
 extern crate log;
 extern crate ns_dns_tokio;
+#[cfg_attr(test, macro_use)]
 extern crate indexmap;
 extern crate prost;
 extern crate prost_types;
@@ -51,6 +53,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
+use indexmap::IndexSet;
 use tokio_core::reactor::{Core, Handle};
 use tower::NewService;
 use tower_fn::*;
@@ -63,7 +66,7 @@ mod connection;
 pub mod control;
 mod ctx;
 mod dns;
-mod fully_qualified_authority;
+mod drain;
 mod inbound;
 mod logging;
 mod map_err;
@@ -101,6 +104,7 @@ pub struct Main<G> {
     control_listener: BoundPort,
     inbound_listener: BoundPort,
     outbound_listener: BoundPort,
+    metrics_listener: BoundPort,
 
     get_original_dst: G,
 
@@ -121,12 +125,15 @@ where
             .expect("private listener bind");
 
         let reactor = Core::new().expect("reactor");
-        
+
+        let metrics_listener = BoundPort::new(config.metrics_listener.addr)
+            .expect("metrics listener bind");
         Main {
             config,
             control_listener,
             inbound_listener,
             outbound_listener,
+            metrics_listener,
             get_original_dst,
             reactor,
         }
@@ -149,6 +156,10 @@ where
         self.reactor.handle()
     }
 
+    pub fn metrics_addr(&self) -> SocketAddr {
+        self.metrics_listener.local_addr()
+    }
+
     pub fn run_until<F>(self, shutdown_signal: F)
     where
         F: Future<Item = (), Error = ()>,
@@ -160,6 +171,7 @@ where
             control_listener,
             inbound_listener,
             outbound_listener,
+            metrics_listener,
             get_original_dst,
             reactor: mut core,
         } = self;
@@ -173,18 +185,30 @@ where
             inbound_listener.local_addr(),
             config.private_forward
         );
+        info!(
+            "serving Prometheus metrics on {:?}",
+            metrics_listener.local_addr(),
+        );
+        info!(
+            "protocol detection disabled for inbound ports {:?}",
+            config.inbound_ports_disable_protocol_detection,
+        );
+        info!(
+            "protocol detection disabled for outbound ports {:?}",
+            config.outbound_ports_disable_protocol_detection,
+        );
 
         let (sensors, telemetry) = telemetry::new(
             &process_ctx,
             config.event_buffer_capacity,
-            config.metrics_flush_interval,
         );
 
-        let (control, control_bg) = control::new();
+        let dns_config = dns::Config::from_file(&config.resolv_conf_path);
+
+        let (control, control_bg) = control::new(dns_config.clone(), config.pod_namespace.clone());
 
         let executor = core.handle();
-
-        let dns_config = dns::Config::from_file(&config.resolv_conf_path);
+        let (drain_tx, drain_rx) = drain::channel();
 
         let bind = Bind::new(executor.clone()).with_sensors(sensors.clone());
 
@@ -202,9 +226,11 @@ where
                 inbound_listener,
                 Inbound::new(default_addr, bind),
                 config.private_connect_timeout,
+                config.inbound_ports_disable_protocol_detection,
                 ctx,
                 sensors.clone(),
                 get_original_dst.clone(),
+                drain_rx.clone(),
                 &executor,
             );
             ::logging::context_future("inbound", fut)
@@ -215,23 +241,17 @@ where
         // to a remote service (public destination).
         let outbound = {
             let ctx = ctx::Proxy::outbound(&process_ctx);
-
             let bind = bind.clone().with_ctx(ctx.clone());
-
-            let outgoing = Outbound::new(
-                bind,
-                control,
-                config.default_destination_namespace().to_owned(),
-                config.bind_timeout,
-            );
-
+            let outgoing = Outbound::new(bind, control, config.bind_timeout);
             let fut = serve(
                 outbound_listener,
                 outgoing,
                 config.public_connect_timeout,
+                config.outbound_ports_disable_protocol_detection,
                 ctx,
                 sensors,
                 get_original_dst,
+                drain_rx,
                 &executor,
             );
             ::logging::context_future("outbound", fut)
@@ -262,15 +282,20 @@ where
                         .make_control(&taps, &executor)
                         .expect("bad news in telemetry town");
 
+                    let metrics_server = telemetry
+                        .serve_metrics(metrics_listener);
+
                     let client = control_bg.bind(
-                        telemetry,
                         control_host_and_port,
                         dns_config,
-                        config.report_timeout,
                         &executor
                     );
 
-                    let fut = client.join(server.map_err(|_| {})).map(|_| {});
+                    let fut = client.join4(
+                        server.map_err(|_| {}),
+                        telemetry,
+                        metrics_server.map_err(|_| {}),
+                    ).map(|_| {});
                     executor.spawn(::logging::context_future("controller-client", fut));
 
                     let shutdown = controller_shutdown_signal.then(|_| Ok::<(), ()>(()));
@@ -285,7 +310,12 @@ where
             .map_err(|err| error!("main error: {:?}", err));
 
         core.handle().spawn(fut);
+        let shutdown_signal = shutdown_signal.and_then(move |()| {
+            debug!("shutdown signaled");
+            drain_tx.drain()
+        });
         core.run(shutdown_signal).expect("executor");
+        debug!("shutdown complete");
     }
 }
 
@@ -293,9 +323,11 @@ fn serve<R, B, E, F, G>(
     bound_port: BoundPort,
     recognize: R,
     tcp_connect_timeout: Duration,
+    disable_protocol_detection_ports: IndexSet<u16>,
     proxy_ctx: Arc<ctx::Proxy>,
     sensors: telemetry::Sensors,
     get_orig_dst: G,
+    drain_rx: drain::Watch,
     executor: &Handle,
 ) -> Box<Future<Item = (), Error = io::Error> + 'static>
 where
@@ -317,7 +349,7 @@ where
         let router = router.clone();
 
         // Map errors to appropriate response error codes.
-        MapErr::new(router, |e| {
+        let map_err = MapErr::new(router, |e| {
             match e {
                 RouteError::Route(r) => {
                     error!(" turning route error: {} into 500", r);
@@ -332,7 +364,12 @@ where
                     http::StatusCode::INTERNAL_SERVER_ERROR
                 }
             }
-        })
+        });
+
+        // Install the request open timestamp module at the very top
+        // of the stack, in order to take the timestamp as close as
+        // possible to the beginning of the request's lifetime.
+        telemetry::sensor::http::TimestampRequestOpen::new(map_err)
     }));
 
     let listen_addr = bound_port.local_addr();
@@ -343,17 +380,56 @@ where
         get_orig_dst,
         stack,
         tcp_connect_timeout,
+        disable_protocol_detection_ports,
+        drain_rx.clone(),
         executor.clone(),
     );
 
-    bound_port.listen_and_fold(
+
+    let accept = bound_port.listen_and_fold(
         executor,
         (),
         move |(), (connection, remote_addr)| {
             server.serve(connection, remote_addr);
             Ok(())
         },
-    )
+    );
+
+    let accept_until = Cancelable {
+        future: accept,
+        canceled: false,
+    };
+
+    // As soon as we get a shutdown signal, the listener
+    // is canceled immediately.
+    Box::new(drain_rx.watch(accept_until, |accept| {
+        accept.canceled = true;
+    }))
+}
+
+/// Can cancel a future by setting a flag.
+///
+/// Used to 'watch' the accept futures, and close the listeners
+/// as soon as the shutdown signal starts.
+struct Cancelable<F> {
+    future: F,
+    canceled: bool,
+}
+
+impl<F> Future for Cancelable<F>
+where
+    F: Future<Item=()>,
+{
+    type Item = ();
+    type Error = F::Error;
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        if self.canceled {
+            Ok(().into())
+        } else {
+            self.future.poll()
+        }
+    }
 }
 
 fn serve_control<N, B>(
@@ -374,6 +450,7 @@ where
             let s = server.serve(session).map_err(|_| ());
 
             executor.spawn(::logging::context_future("serve_control", s));
+
 
             future::ok((server, executor))
         },

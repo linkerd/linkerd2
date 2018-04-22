@@ -22,11 +22,11 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: conduit-controller
 rules:
-- apiGroups: ["extensions"]
+- apiGroups: ["extensions", "apps"]
   resources: ["deployments", "replicasets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
-  resources: ["pods", "endpoints", "services"]
+  resources: ["pods", "endpoints", "services", "namespaces", "replicationcontrollers"]
   verbs: ["list", "get", "watch"]
 
 ---
@@ -148,6 +148,7 @@ spec:
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
         - "public-api"
+        - "-prometheus-url=http://prometheus.{{.Namespace}}.svc.cluster.local:9090"
         - "-controller-namespace={{.Namespace}}"
         - "-log-level={{.ControllerLogLevel}}"
         - "-logtostderr=true"
@@ -185,20 +186,6 @@ spec:
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
         - "tap"
-        - "-log-level={{.ControllerLogLevel}}"
-        - "-logtostderr=true"
-      - name: telemetry
-        ports:
-        - name: grpc
-          containerPort: 8087
-        - name: admin-http
-          containerPort: 9997
-        image: {{.ControllerImage}}
-        imagePullPolicy: {{.ImagePullPolicy}}
-        args:
-        - "telemetry"
-        - "-ignore-namespaces=kube-system"
-        - "-prometheus-url=http://prometheus.{{.Namespace}}.svc.cluster.local:9090"
         - "-log-level={{.ControllerLogLevel}}"
         - "-logtostderr=true"
 
@@ -277,7 +264,7 @@ spec:
   selector:
     {{.ControllerComponentLabel}}: prometheus
   ports:
-  - name: http
+  - name: admin-http
     port: 9090
     targetPort: 9090
 
@@ -308,7 +295,7 @@ spec:
       containers:
       - name: prometheus
         ports:
-        - name: http
+        - name: admin-http
           containerPort: 9090
         volumeMounts:
         - name: prometheus-config
@@ -341,18 +328,54 @@ data:
       static_configs:
       - targets: ['localhost:9090']
 
-    - job_name: 'controller'
+    - job_name: 'conduit-controller'
       kubernetes_sd_configs:
       - role: pod
         namespaces:
           names: ['{{.Namespace}}']
+      # TODO: do something with "conduit.io/control-plane-component"
       relabel_configs:
-      - source_labels: [__meta_kubernetes_pod_container_port_name]
+      - source_labels:
+        - __meta_kubernetes_pod_label_conduit_io_control_plane_component
+        - __meta_kubernetes_pod_container_port_name
         action: keep
-        regex: ^admin-http$
+        regex: (.*);admin-http$
       - source_labels: [__meta_kubernetes_pod_container_name]
         action: replace
-        target_label: job
+        target_label: component
+
+    - job_name: 'conduit-proxy'
+      kubernetes_sd_configs:
+      - role: pod
+      relabel_configs:
+      - source_labels:
+        - __meta_kubernetes_pod_container_name
+        - __meta_kubernetes_pod_container_port_name
+        action: keep
+        regex: ^conduit-proxy;conduit-metrics$
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: pod
+      # special case k8s' "job" label, to not interfere with prometheus' "job"
+      # label
+      # __meta_kubernetes_pod_label_conduit_io_proxy_job=foo =>
+      # k8s_job=foo
+      - source_labels: [__meta_kubernetes_pod_label_conduit_io_proxy_job]
+        action: replace
+        target_label: k8s_job
+      # __meta_kubernetes_pod_label_conduit_io_proxy_deployment=foo =>
+      # deployment=foo
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_conduit_io_proxy_(.+)
+      # drop all labels that we just made copies of in the previous labelmap
+      - action: labeldrop
+        regex: __meta_kubernetes_pod_label_conduit_io_proxy_(.+)
+      # __meta_kubernetes_pod_label_foo=bar => foo=bar
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
 
 ### Grafana ###
 ---
@@ -404,15 +427,6 @@ spec:
             path: provisioning/datasources/datasources.yaml
           - key: dashboards.yaml
             path: provisioning/dashboards/dashboards.yaml
-      - name: grafana-dashboards
-        configMap:
-          name: grafana-dashboards
-      - name: grafana-dashboard-home
-        configMap:
-          name: grafana-dashboards
-          items:
-          - key: conduit-viz.json
-            path: home.json
       containers:
       - name: grafana
         ports:
@@ -421,12 +435,6 @@ spec:
         volumeMounts:
         - name: grafana-config
           mountPath: /etc/grafana
-          readOnly: true
-        - name: grafana-dashboards
-          mountPath: /var/lib/grafana/dashboards
-          readOnly: false
-        - name: grafana-dashboard-home
-          mountPath: /usr/share/grafana/public/dashboards
           readOnly: true
         image: {{.GrafanaImage}}
         imagePullPolicy: {{.ImagePullPolicy}}
@@ -444,6 +452,9 @@ metadata:
 data:
   grafana.ini: |-
     instance_name = conduit-grafana
+
+    [server]
+    root_url = %(protocol)s://%(domain)s:/api/v1/namespaces/{{.Namespace}}/services/grafana:http/proxy/
 
     [auth]
     disable_login_form = true
@@ -483,22 +494,5 @@ data:
       editable: true
       options:
         path: /var/lib/grafana/dashboards
-        homeDashboardId: conduit-viz
-
----
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: grafana-dashboards
-  namespace: {{.Namespace}}
-  labels:
-    {{.ControllerComponentLabel}}: grafana
-  annotations:
-    {{.CreatedByAnnotation}}: {{.CliVersion}}
-data:
-  conduit-viz.json: |-
-    {{.VizDashboard}}
-
-  conduit-health.json: |-
-    {{.HealthDashboard}}
+        homeDashboardId: conduit-top-line
 `

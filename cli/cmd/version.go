@@ -40,16 +40,14 @@ var versionCmd = &cobra.Command{
 				fmt.Printf("Server version: %s\n", serverVersion)
 			}
 		}
-
-		return
 	},
 }
 
 func init() {
 	RootCmd.AddCommand(versionCmd)
+	versionCmd.Args = cobra.NoArgs
 	versionCmd.PersistentFlags().BoolVar(&shortVersion, "short", false, "Print the version number(s) only, with no additional output")
 	versionCmd.PersistentFlags().BoolVar(&onlyClientVersion, "client", false, "Print the client version only")
-	addControlPlaneNetworkingArgs(versionCmd)
 }
 
 func getServerVersion(client pb.ApiClient) string {

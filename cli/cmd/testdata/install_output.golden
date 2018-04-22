@@ -19,11 +19,11 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: conduit-controller
 rules:
-- apiGroups: ["extensions"]
+- apiGroups: ["extensions", "apps"]
   resources: ["deployments", "replicasets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
-  resources: ["pods", "endpoints", "services"]
+  resources: ["pods", "endpoints", "services", "namespaces", "replicationcontrollers"]
   verbs: ["list", "get", "watch"]
 
 ---
@@ -138,10 +138,12 @@ spec:
       labels:
         ControllerComponentLabel: controller
         conduit.io/control-plane-ns: Namespace
+        conduit.io/proxy-deployment: controller
     spec:
       containers:
       - args:
         - public-api
+        - -prometheus-url=http://prometheus.Namespace.svc.cluster.local:9090
         - -controller-namespace=Namespace
         - -log-level=ControllerLogLevel
         - -logtostderr=true
@@ -193,21 +195,6 @@ spec:
         - containerPort: 9998
           name: admin-http
         resources: {}
-      - args:
-        - telemetry
-        - -ignore-namespaces=kube-system
-        - -prometheus-url=http://prometheus.Namespace.svc.cluster.local:9090
-        - -log-level=ControllerLogLevel
-        - -logtostderr=true
-        image: ControllerImage
-        imagePullPolicy: ImagePullPolicy
-        name: telemetry
-        ports:
-        - containerPort: 8087
-          name: grpc
-        - containerPort: 9997
-          name: admin-http
-        resources: {}
       - env:
         - name: CONDUIT_PROXY_LOG
           value: warn,conduit_proxy=info
@@ -215,18 +202,12 @@ spec:
           value: tcp://localhost:8086
         - name: CONDUIT_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
+        - name: CONDUIT_PROXY_METRICS_LISTENER
+          value: tcp://0.0.0.0:4191
         - name: CONDUIT_PROXY_PRIVATE_LISTENER
           value: tcp://127.0.0.1:4140
         - name: CONDUIT_PROXY_PUBLIC_LISTENER
           value: tcp://0.0.0.0:4143
-        - name: CONDUIT_PROXY_NODE_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.nodeName
-        - name: CONDUIT_PROXY_POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
         - name: CONDUIT_PROXY_POD_NAMESPACE
           valueFrom:
             fieldRef:
@@ -237,6 +218,8 @@ spec:
         ports:
         - containerPort: 4143
           name: conduit-proxy
+        - containerPort: 4191
+          name: conduit-metrics
         resources: {}
         securityContext:
           runAsUser: 2102
@@ -249,7 +232,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - "4190"
+        - 4190,4191
         image: gcr.io/runconduit/proxy-init:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-init
@@ -307,6 +290,7 @@ spec:
       labels:
         ControllerComponentLabel: web
         conduit.io/control-plane-ns: Namespace
+        conduit.io/proxy-deployment: web
     spec:
       containers:
       - args:
@@ -332,18 +316,12 @@ spec:
           value: tcp://proxy-api.Namespace.svc.cluster.local:8086
         - name: CONDUIT_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
+        - name: CONDUIT_PROXY_METRICS_LISTENER
+          value: tcp://0.0.0.0:4191
         - name: CONDUIT_PROXY_PRIVATE_LISTENER
           value: tcp://127.0.0.1:4140
         - name: CONDUIT_PROXY_PUBLIC_LISTENER
           value: tcp://0.0.0.0:4143
-        - name: CONDUIT_PROXY_NODE_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.nodeName
-        - name: CONDUIT_PROXY_POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
         - name: CONDUIT_PROXY_POD_NAMESPACE
           valueFrom:
             fieldRef:
@@ -354,6 +332,8 @@ spec:
         ports:
         - containerPort: 4143
           name: conduit-proxy
+        - containerPort: 4191
+          name: conduit-metrics
         resources: {}
         securityContext:
           runAsUser: 2102
@@ -366,7 +346,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - "4190"
+        - 4190,4191
         image: gcr.io/runconduit/proxy-init:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-init
@@ -392,7 +372,7 @@ spec:
   selector:
     ControllerComponentLabel: prometheus
   ports:
-  - name: http
+  - name: admin-http
     port: 9090
     targetPort: 9090
 
@@ -420,6 +400,7 @@ spec:
       labels:
         ControllerComponentLabel: prometheus
         conduit.io/control-plane-ns: Namespace
+        conduit.io/proxy-deployment: prometheus
     spec:
       containers:
       - args:
@@ -430,7 +411,7 @@ spec:
         name: prometheus
         ports:
         - containerPort: 9090
-          name: http
+          name: admin-http
         resources: {}
         volumeMounts:
         - mountPath: /etc/prometheus
@@ -443,18 +424,12 @@ spec:
           value: tcp://proxy-api.Namespace.svc.cluster.local:8086
         - name: CONDUIT_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
+        - name: CONDUIT_PROXY_METRICS_LISTENER
+          value: tcp://0.0.0.0:4191
         - name: CONDUIT_PROXY_PRIVATE_LISTENER
           value: tcp://127.0.0.1:4140
         - name: CONDUIT_PROXY_PUBLIC_LISTENER
           value: tcp://0.0.0.0:4143
-        - name: CONDUIT_PROXY_NODE_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.nodeName
-        - name: CONDUIT_PROXY_POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
         - name: CONDUIT_PROXY_POD_NAMESPACE
           valueFrom:
             fieldRef:
@@ -465,6 +440,8 @@ spec:
         ports:
         - containerPort: 4143
           name: conduit-proxy
+        - containerPort: 4191
+          name: conduit-metrics
         resources: {}
         securityContext:
           runAsUser: 2102
@@ -477,7 +454,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - "4190"
+        - 4190,4191
         image: gcr.io/runconduit/proxy-init:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-init
@@ -514,18 +491,54 @@ data:
       static_configs:
       - targets: ['localhost:9090']
 
-    - job_name: 'controller'
+    - job_name: 'conduit-controller'
       kubernetes_sd_configs:
       - role: pod
         namespaces:
           names: ['Namespace']
+      # TODO: do something with "conduit.io/control-plane-component"
       relabel_configs:
-      - source_labels: [__meta_kubernetes_pod_container_port_name]
+      - source_labels:
+        - __meta_kubernetes_pod_label_conduit_io_control_plane_component
+        - __meta_kubernetes_pod_container_port_name
         action: keep
-        regex: ^admin-http$
+        regex: (.*);admin-http$
       - source_labels: [__meta_kubernetes_pod_container_name]
         action: replace
-        target_label: job
+        target_label: component
+
+    - job_name: 'conduit-proxy'
+      kubernetes_sd_configs:
+      - role: pod
+      relabel_configs:
+      - source_labels:
+        - __meta_kubernetes_pod_container_name
+        - __meta_kubernetes_pod_container_port_name
+        action: keep
+        regex: ^conduit-proxy;conduit-metrics$
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: pod
+      # special case k8s' "job" label, to not interfere with prometheus' "job"
+      # label
+      # __meta_kubernetes_pod_label_conduit_io_proxy_job=foo =>
+      # k8s_job=foo
+      - source_labels: [__meta_kubernetes_pod_label_conduit_io_proxy_job]
+        action: replace
+        target_label: k8s_job
+      # __meta_kubernetes_pod_label_conduit_io_proxy_deployment=foo =>
+      # deployment=foo
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_conduit_io_proxy_(.+)
+      # drop all labels that we just made copies of in the previous labelmap
+      - action: labeldrop
+        regex: __meta_kubernetes_pod_label_conduit_io_proxy_(.+)
+      # __meta_kubernetes_pod_label_foo=bar => foo=bar
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
 
 ### Grafana ###
 ---
@@ -571,6 +584,7 @@ spec:
       labels:
         ControllerComponentLabel: grafana
         conduit.io/control-plane-ns: Namespace
+        conduit.io/proxy-deployment: grafana
     spec:
       containers:
       - image: GrafanaImage
@@ -584,11 +598,6 @@ spec:
         - mountPath: /etc/grafana
           name: grafana-config
           readOnly: true
-        - mountPath: /var/lib/grafana/dashboards
-          name: grafana-dashboards
-        - mountPath: /usr/share/grafana/public/dashboards
-          name: grafana-dashboard-home
-          readOnly: true
       - env:
         - name: CONDUIT_PROXY_LOG
           value: warn,conduit_proxy=info
@@ -596,18 +605,12 @@ spec:
           value: tcp://proxy-api.Namespace.svc.cluster.local:8086
         - name: CONDUIT_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
+        - name: CONDUIT_PROXY_METRICS_LISTENER
+          value: tcp://0.0.0.0:4191
         - name: CONDUIT_PROXY_PRIVATE_LISTENER
           value: tcp://127.0.0.1:4140
         - name: CONDUIT_PROXY_PUBLIC_LISTENER
           value: tcp://0.0.0.0:4143
-        - name: CONDUIT_PROXY_NODE_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.nodeName
-        - name: CONDUIT_PROXY_POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
         - name: CONDUIT_PROXY_POD_NAMESPACE
           valueFrom:
             fieldRef:
@@ -618,6 +621,8 @@ spec:
         ports:
         - containerPort: 4143
           name: conduit-proxy
+        - containerPort: 4191
+          name: conduit-metrics
         resources: {}
         securityContext:
           runAsUser: 2102
@@ -630,7 +635,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - "4190"
+        - 4190,4191
         image: gcr.io/runconduit/proxy-init:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-init
@@ -651,15 +656,6 @@ spec:
             path: provisioning/dashboards/dashboards.yaml
           name: grafana-config
         name: grafana-config
-      - configMap:
-          name: grafana-dashboards
-        name: grafana-dashboards
-      - configMap:
-          items:
-          - key: conduit-viz.json
-            path: home.json
-          name: grafana-dashboards
-        name: grafana-dashboard-home
 status: {}
 ---
 kind: ConfigMap
@@ -674,6 +670,9 @@ metadata:
 data:
   grafana.ini: |-
     instance_name = conduit-grafana
+
+    [server]
+    root_url = %(protocol)s://%(domain)s:/api/v1/namespaces/Namespace/services/grafana:http/proxy/
 
     [auth]
     disable_login_form = true
@@ -713,22 +712,5 @@ data:
       editable: true
       options:
         path: /var/lib/grafana/dashboards
-        homeDashboardId: conduit-viz
-
----
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: grafana-dashboards
-  namespace: Namespace
-  labels:
-    ControllerComponentLabel: grafana
-  annotations:
-    CreatedByAnnotation: CliVersion
-data:
-  conduit-viz.json: |-
-    VizDashboard
-
-  conduit-health.json: |-
-    HealthDashboard
+        homeDashboardId: conduit-top-line
 ---

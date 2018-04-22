@@ -3,7 +3,7 @@ use std::io;
 use std::time::{Duration, Instant};
 
 use bytes::Bytes;
-use futures::{future, Async, Future, Poll, Stream};
+use futures::{future, Async, Future, Poll};
 use h2;
 use http;
 use tokio_core::reactor::{
@@ -17,20 +17,18 @@ use tower_h2;
 use tower_reconnect::{Error as ReconnectError, Reconnect};
 
 use dns;
-use fully_qualified_authority::FullyQualifiedAuthority;
-use transport::{HostAndPort, LookupAddressAndConnect};
+use transport::{DnsNameAndPort, HostAndPort, LookupAddressAndConnect};
 use timeout::{Timeout, TimeoutError};
 
+mod cache;
 pub mod discovery;
+mod fully_qualified_authority;
 mod observe;
 pub mod pb;
-mod telemetry;
 
 use self::discovery::{Background as DiscoBg, Discovery, Watch};
 pub use self::discovery::Bind;
 pub use self::observe::Observe;
-use conduit_proxy_controller_grpc::telemetry::ReportRequest;
-use self::telemetry::Telemetry;
 
 pub struct Control {
     disco: Discovery,
@@ -40,8 +38,9 @@ pub struct Background {
     disco: DiscoBg,
 }
 
-pub fn new() -> (Control, Background) {
-    let (tx, rx) = self::discovery::new();
+pub fn new(dns_config: dns::Config, default_destination_namespace: String) -> (Control, Background)
+{
+    let (tx, rx) = self::discovery::new(dns_config, default_destination_namespace);
 
     let c = Control {
         disco: tx,
@@ -57,7 +56,7 @@ pub fn new() -> (Control, Background) {
 // ===== impl Control =====
 
 impl Control {
-    pub fn resolve<B>(&self, auth: &FullyQualifiedAuthority, bind: B) -> Watch<B> {
+    pub fn resolve<B>(&self, auth: &DnsNameAndPort, bind: B) -> Watch<B> {
         self.disco.resolve(auth, bind)
     }
 }
@@ -65,27 +64,22 @@ impl Control {
 // ===== impl Background =====
 
 impl Background {
-    pub fn bind<S>(
+    pub fn bind(
         self,
-        events: S,
         host_and_port: HostAndPort,
         dns_config: dns::Config,
-        report_timeout: Duration,
         executor: &Handle,
-    ) -> Box<Future<Item = (), Error = ()>>
-    where
-        S: Stream<Item = ReportRequest, Error = ()> + 'static,
-    {
+    ) -> Box<Future<Item = (), Error = ()>> {
         // Build up the Controller Client Stack
         let mut client = {
             let ctx = ("controller-client", format!("{:?}", host_and_port));
             let scheme = http::uri::Scheme::from_shared(Bytes::from_static(b"http")).unwrap();
             let authority = http::uri::Authority::from(&host_and_port);
-            let dns_resolver = dns::Resolver::new(dns_config, executor);
+            let dns_resolver = dns::Resolver::new(dns_config, &executor);
             let connect = Timeout::new(
                 LookupAddressAndConnect::new(host_and_port, dns_resolver, executor),
                 Duration::from_secs(3),
-                executor,
+                &executor,
             );
 
             let h2_client = tower_h2::client::Connect::new(
@@ -94,7 +88,6 @@ impl Background {
                 ::logging::context_executor(ctx, executor.clone()),
             );
 
-
             let reconnect = Reconnect::new(h2_client);
             let log_errors = LogErrors::new(reconnect);
             let backoff = Backoff::new(log_errors, Duration::from_secs(5), executor);
@@ -102,12 +95,10 @@ impl Background {
             AddOrigin::new(scheme, authority, backoff)
         };
 
-        let mut disco = self.disco.work();
-        let mut telemetry = Telemetry::new(events, report_timeout, executor);
+        let mut disco = self.disco.work(executor);
 
         let fut = future::poll_fn(move || {
             disco.poll_rpc(&mut client);
-            telemetry.poll_rpc(&mut client);
 
             Ok(Async::NotReady)
         });

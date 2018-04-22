@@ -19,21 +19,8 @@ type (
 )
 
 var (
-	defaultMetricTimeWindow      = pb.TimeWindow_ONE_MIN
-	defaultMetricAggregationType = pb.AggregationType_TARGET_DEPLOY
-
-	allMetrics = []pb.MetricName{
-		pb.MetricName_REQUEST_RATE,
-		pb.MetricName_SUCCESS_RATE,
-		pb.MetricName_LATENCY,
-	}
-
-	meshMetrics = []pb.MetricName{
-		pb.MetricName_REQUEST_RATE,
-		pb.MetricName_SUCCESS_RATE,
-	}
-
-	pbMarshaler = jsonpb.Marshaler{EmitDefaults: true}
+	defaultResourceType = "deployments"
+	pbMarshaler         = jsonpb.Marshaler{EmitDefaults: true}
 )
 
 func renderJsonError(w http.ResponseWriter, err error, status int) {
@@ -72,80 +59,6 @@ func (h *handler) handleApiVersion(w http.ResponseWriter, req *http.Request, p h
 	renderJson(w, resp)
 }
 
-func validateMetricParams(metricNameParam, aggParam, timeWindowParam string) (
-	metrics []pb.MetricName,
-	groupBy pb.AggregationType,
-	window pb.TimeWindow,
-	err error,
-) {
-	groupBy = defaultMetricAggregationType
-	if aggParam != "" {
-		groupBy, err = util.GetAggregationType(aggParam)
-		if err != nil {
-			return
-		}
-	}
-
-	metrics = allMetrics
-	if metricNameParam != "" {
-		var requestedMetricName pb.MetricName
-		requestedMetricName, err = util.GetMetricName(metricNameParam)
-		if err != nil {
-			return
-		}
-		metrics = []pb.MetricName{requestedMetricName}
-	} else if groupBy == pb.AggregationType_MESH {
-		metrics = meshMetrics
-	}
-
-	window = defaultMetricTimeWindow
-	if timeWindowParam != "" {
-		var requestedWindow pb.TimeWindow
-		requestedWindow, err = util.GetWindow(timeWindowParam)
-		if err != nil {
-			return
-		}
-		window = requestedWindow
-	}
-
-	return
-}
-
-func (h *handler) handleApiMetrics(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
-	metricNameParam := req.FormValue("metric")
-	timeWindowParam := req.FormValue("window")
-	aggParam := req.FormValue("aggregation")
-	timeseries := req.FormValue("timeseries") == "true"
-
-	filterBy := pb.MetricMetadata{
-		TargetDeploy: req.FormValue("target_deploy"),
-		SourceDeploy: req.FormValue("source_deploy"),
-		Component:    req.FormValue("component"),
-	}
-
-	metrics, groupBy, window, err := validateMetricParams(metricNameParam, aggParam, timeWindowParam)
-	if err != nil {
-		renderJsonError(w, err, http.StatusBadRequest)
-		return
-	}
-
-	metricsRequest := &pb.MetricRequest{
-		Metrics:   metrics,
-		Window:    window,
-		FilterBy:  &filterBy,
-		GroupBy:   groupBy,
-		Summarize: !timeseries,
-	}
-
-	metricsResponse, err := h.apiClient.Stat(req.Context(), metricsRequest)
-	if err != nil {
-		renderJsonError(w, err, http.StatusInternalServerError)
-		return
-	}
-
-	renderJsonPb(w, metricsResponse)
-}
-
 func (h *handler) handleApiPods(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
 	pods, err := h.apiClient.ListPods(req.Context(), &pb.Empty{})
 	if err != nil {
@@ -154,4 +67,37 @@ func (h *handler) handleApiPods(w http.ResponseWriter, req *http.Request, p http
 	}
 
 	renderJsonPb(w, pods)
+}
+
+func (h *handler) handleApiStat(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
+	requestParams := util.StatSummaryRequestParams{
+		TimeWindow:    req.FormValue("window"),
+		ResourceName:  req.FormValue("resource_name"),
+		ResourceType:  req.FormValue("resource_type"),
+		Namespace:     req.FormValue("namespace"),
+		ToName:        req.FormValue("to_name"),
+		ToType:        req.FormValue("to_type"),
+		ToNamespace:   req.FormValue("to_namespace"),
+		FromName:      req.FormValue("from_name"),
+		FromType:      req.FormValue("from_type"),
+		FromNamespace: req.FormValue("from_namespace"),
+	}
+
+	// default to returning deployment stats
+	if requestParams.ResourceType == "" {
+		requestParams.ResourceType = defaultResourceType
+	}
+
+	statRequest, err := util.BuildStatSummaryRequest(requestParams)
+	if err != nil {
+		renderJsonError(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	result, err := h.apiClient.StatSummary(req.Context(), statRequest)
+	if err != nil {
+		renderJsonError(w, err, http.StatusInternalServerError)
+		return
+	}
+	renderJsonPb(w, result)
 }

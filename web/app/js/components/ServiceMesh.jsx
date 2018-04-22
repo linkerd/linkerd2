@@ -1,19 +1,16 @@
 import _ from 'lodash';
 import CallToAction from './CallToAction.jsx';
 import ConduitSpinner from "./ConduitSpinner.jsx";
-import DeploymentSummary from './DeploymentSummary.jsx';
 import ErrorBanner from './ErrorBanner.jsx';
 import { incompleteMeshMessage } from './util/CopyUtils.jsx';
 import Metric from './Metric.jsx';
 import PageHeader from './PageHeader.jsx';
 import React from 'react';
-import { rowGutter } from './util/Utils.js';
 import StatusTable from './StatusTable.jsx';
 import { Col, Row, Table } from 'antd';
 import {
+  getComponentPods,
   getPodsByDeployment,
-  processRollupMetrics,
-  processTimeseriesMetrics
 } from './util/MetricUtils.js';
 import './../../css/service-mesh.css';
 
@@ -36,12 +33,7 @@ const componentNames = {
   "proxy-api":    "Proxy API",
   "public-api":   "Public API",
   "tap":          "Tap",
-  "telemetry":    "Telemetry",
   "web":          "Web UI"
-};
-
-const componentGraphTitles = {
-  "telemetry": "Telemetry requests"
 };
 
 const componentDeploys = {
@@ -50,12 +42,7 @@ const componentDeploys = {
   "proxy-api":    "controller",
   "public-api":   "controller",
   "tap":          "controller",
-  "telemetry":    "controller",
   "web":          "web"
-};
-const componentsToGraph = ["proxy-api", "telemetry", "public-api"];
-const noData = {
-  timeseries: { requestRate: [], successRate: [] }
 };
 
 export default class ServiceMesh extends React.Component {
@@ -93,25 +80,16 @@ export default class ServiceMesh extends React.Component {
     }
     this.setState({ pendingRequests: true });
 
-    let rollupPath = `/api/metrics?aggregation=mesh`;
-    let timeseriesPath = `${rollupPath}&timeseries=true`;
-
     this.api.setCurrentRequests([
-      this.api.fetchMetrics(rollupPath),
-      this.api.fetchMetrics(timeseriesPath),
       this.api.fetchPods()
     ]);
 
     this.serverPromise = Promise.all(this.api.getCurrentPromises())
-      .then(([metrics, ts, pods]) => {
-        let m = processRollupMetrics(metrics.metrics, "component");
-        let tsByComponent = processTimeseriesMetrics(ts.metrics, "component");
+      .then(([pods]) => {
         let podsByDeploy = getPodsByDeployment(pods.pods);
         let controlPlanePods = this.processComponents(pods.pods);
 
         this.setState({
-          metrics: m,
-          timeseriesByComponent: tsByComponent,
           deploys: podsByDeploy,
           components: controlPlanePods,
           lastUpdated: Date.now(),
@@ -135,9 +113,7 @@ export default class ServiceMesh extends React.Component {
   }
 
   addedDeploymentCount() {
-    return _.size(_.filter(this.state.deploys, d => {
-      return _.every(d.pods, ["added", true]);
-    }));
+    return _.size(_.filter(this.state.deploys, ["added", true]));
   }
 
   unaddedDeploymentCount() {
@@ -178,39 +154,10 @@ export default class ServiceMesh extends React.Component {
     return _(componentNames)
       .map((name, id) => {
         let componentPods = _.get(podIndex, _.get(componentDeploys, id), []);
-        let podStatuses = _.map(componentPods, p => {
-          return { name: p.name, value: p.status === "Running" ? "good" : "bad" };
-        });
-        return { name: name, pods: _.sortBy(podStatuses, "name") };
+        return { name: name, pods: getComponentPods(componentPods) };
       })
       .sortBy("name")
       .value();
-  }
-
-  renderControllerHealth() {
-    return (
-      <div className="mesh-section">
-        <div className="subsection-header">Control plane status</div>
-        <Row gutter={rowGutter}>
-          {
-            _.map(componentsToGraph, meshComponent => {
-              let data = _.cloneDeep(_.find(this.state.metrics, ["name", meshComponent]) || noData);
-              data.id = meshComponent;
-              data.name = componentGraphTitles[meshComponent] || componentNames[meshComponent];
-              return (<Col span={8} key={`col-${data.id}`}>
-                <DeploymentSummary
-                  api={this.api}
-                  key={data.id}
-                  lastUpdated={this.state.lastUpdated}
-                  data={data}
-                  requestTs={_.get(this.state.timeseriesByComponent,[meshComponent, "REQUEST_RATE"], [])}
-                  noLink={true} />
-              </Col>);
-            })
-          }
-        </Row>
-      </div>
-    );
   }
 
   renderControlPlaneDetails() {
@@ -319,8 +266,6 @@ export default class ServiceMesh extends React.Component {
   renderOverview() {
     if (this.proxyCount() === 0) {
       return <CallToAction numDeployments={this.deployCount()} />;
-    } else {
-      return this.renderControllerHealth();
     }
   }
 

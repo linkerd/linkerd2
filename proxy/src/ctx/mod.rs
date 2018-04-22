@@ -8,7 +8,7 @@
 //! be stored in `http::Extensions`, for instance. Furthermore, because these contexts
 //! will be sent to a telemetry processing thread, we want to avoid excessive cloning.
 use config;
-use conduit_proxy_controller_grpc::telemetry as proto;
+use std::time::SystemTime;
 use std::sync::Arc;
 pub mod http;
 pub mod transport;
@@ -16,19 +16,10 @@ pub mod transport;
 /// Describes a single running proxy instance.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Process {
-    /// Identifies the logical host (or VM) that the process is running on.
-    ///
-    /// Empty if unknown.
-    pub node: String,
-
-    /// Identifies the logical instance name, as scheduled by a scheduler (like
-    /// kubernetes).
-    ///
-    /// Empty if unknown.
-    pub scheduled_instance: String,
-
-    /// Identifies the namespace for the `scheduled_instance`.
+    /// Identifies the Kubernetes namespace in which this proxy is process.
     pub scheduled_namespace: String,
+
+    pub start_time: SystemTime,
 }
 
 /// Indicates the orientation of traffic, relative to a sidecar proxy.
@@ -46,39 +37,20 @@ pub enum Proxy {
 
 impl Process {
     #[cfg(test)]
-    pub fn test(node: &str, instance: &str, ns: &str) -> Arc<Self> {
+    pub fn test(ns: &str) -> Arc<Self> {
         Arc::new(Self {
-            node: node.into(),
-            scheduled_instance: instance.into(),
             scheduled_namespace: ns.into(),
+            start_time: SystemTime::now(),
         })
     }
 
     /// Construct a new `Process` from environment variables.
     pub fn new(config: &config::Config) -> Arc<Self> {
-        fn empty_if_missing(s: &Option<String>) -> String {
-            match *s {
-                Some(ref s) => s.clone(),
-                None => "".to_owned(),
-            }
-        }
-
+        let start_time = SystemTime::now();
         Arc::new(Self {
-            node: empty_if_missing(&config.node_name),
-            scheduled_instance: empty_if_missing(&config.pod_name),
             scheduled_namespace: config.pod_namespace.clone(),
+            start_time,
         })
-    }
-}
-
-impl<'a> Into<proto::Process> for &'a Process {
-    fn into(self) -> proto::Process {
-        // TODO: can this be implemented without cloning Strings?
-        proto::Process {
-            node: self.node.clone(),
-            scheduled_instance: self.scheduled_instance.clone(),
-            scheduled_namespace: self.scheduled_namespace.clone(),
-        }
     }
 }
 

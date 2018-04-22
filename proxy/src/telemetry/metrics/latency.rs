@@ -1,7 +1,8 @@
 #![deny(missing_docs)]
-use std::{ops, slice, u32};
-use std::default::Default;
+use std::{fmt, iter, ops, slice, u32};
+use std::num::Wrapping;
 use std::time::Duration;
+use super::Counter;
 
 /// The number of buckets in a  latency histogram.
 pub const NUM_BUCKETS: usize = 26;
@@ -56,8 +57,36 @@ pub const BUCKET_BOUNDS: [Latency; NUM_BUCKETS] = [
 ];
 
 /// A series of latency values and counts.
-#[derive(Debug)]
-pub struct Histogram([u32; NUM_BUCKETS]);
+#[derive(Debug, Default, Clone)]
+pub struct Histogram {
+
+    /// Array of buckets in which to count latencies.
+    ///
+    /// The upper bound of a given bucket `i` is given in `BUCKET_BOUNDS[i]`.
+    buckets: [Counter; NUM_BUCKETS],
+
+    /// The total sum of all observed latency values.
+    ///
+    /// Histogram sums always explicitly wrap on overflows rather than
+    /// panicking in debug builds. Prometheus' [`rate()`] and [`irate()`]
+    /// queries handle breaks in monotonicity gracefully (see also
+    /// [`resets()`]), so wrapping is less problematic than panicking in this
+    /// case.
+    ///
+    /// Note, however, that Prometheus actually represents this using 64-bit
+    /// floating-point numbers. The correct semantics are to ensure the sum
+    /// always gets reset to zero after Prometheus reads it, before it would
+    /// ever overflow a 52-bit `f64` mantissa.
+    ///
+    /// [`rate()`]: https://prometheus.io/docs/prometheus/latest/querying/functions/#rate()
+    /// [`irate()`]: https://prometheus.io/docs/prometheus/latest/querying/functions/#irate()
+    /// [`resets()`]: https://prometheus.io/docs/prometheus/latest/querying/functions/#resets
+    ///
+    // TODO: Implement Prometheus reset semantics correctly, taking into
+    //       consideration that Prometheus represents this as `f64` and so
+    //       there are only 52 significant bits.
+    pub sum: Wrapping<u64>,
+}
 
 /// A latency in tenths of a millisecond.
 #[derive(Debug, Default, Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Hash)]
@@ -78,12 +107,17 @@ impl Histogram {
             .position(|max| &measurement <= max)
             .expect("latency value greater than u32::MAX; this shouldn't be \
                      possible.");
-        self.0[i] += 1;
+        self.buckets[i].incr();
+        self.sum += Wrapping(measurement.0 as u64);
     }
 
-    /// Construct a new, empty `Histogram`.
-    pub fn new() -> Self {
-        Histogram([0; NUM_BUCKETS])
+    /// Return the sum value of this histogram in milliseconds.
+    ///
+    /// The sum is returned as a floating-point value, as it's
+    /// internally recorded in tenths of milliseconds, which could
+    /// represent a number of milliseconds with a fractional part.
+    pub fn sum_in_ms(&self) -> f64 {
+        self.sum.0 as f64 / MS_TO_TENTHS_OF_MS as f64
     }
 
 }
@@ -99,23 +133,17 @@ where
 
 }
 
-
 impl<'a> IntoIterator for &'a Histogram {
-    type Item = &'a u32;
-    type IntoIter = slice::Iter<'a, u32>;
+    type Item = u64;
+    type IntoIter = iter::Map<
+        slice::Iter<'a, Counter>,
+        fn(&'a Counter) -> u64
+    >;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.0.iter()
+        self.buckets.iter().map(|&count| count.into())
     }
 
-}
-
-
-impl Default for Histogram {
-    #[inline]
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 // ===== impl Latency =====
@@ -124,6 +152,7 @@ impl Default for Histogram {
 const SEC_TO_MS: u32 = 1_000;
 const SEC_TO_TENTHS_OF_A_MS: u32 = SEC_TO_MS * 10;
 const TENTHS_OF_MS_TO_NS: u32 =  MS_TO_NS / 10;
+const MS_TO_TENTHS_OF_MS: u32 = 10;
 /// Conversion ratio from milliseconds to nanoseconds.
 pub const MS_TO_NS: u32 = 1_000_000;
 
@@ -161,6 +190,7 @@ impl From<Duration> for Latency {
         };
         Latency(tenths_of_ms)
     }
+
 }
 
 impl From<u32> for Latency {
@@ -173,5 +203,27 @@ impl From<u32> for Latency {
 impl Into<u32> for Latency {
     fn into(self) -> u32 {
         self.0
+    }
+}
+
+impl fmt::Display for Latency {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.0 == u32::MAX {
+            // Prometheus requires that text representations of numbers be in
+            // a format understandable by Go's strconv package. In particular,
+            // `-Inf`, `+Inf`, and `Nan` are used as the textual
+            // representations of floating point special values.
+            //
+            // We're representing latency buckets with u32s rather than floats,
+            // so we won't encounter these special values, but we want to treat
+            // the u32::MAX upper bound as the infinity bucket, so special case
+            // the formatting for u32::MAX.
+            write!(f, "+Inf")
+        } else {
+            // NOTE: if bucket values are changed so that they're no longer
+            //       evenly divisible by ten, we may want to ensure that there's
+            //       a reasonable cap on precision here.
+            write!(f, "{}", self.0 / MS_TO_TENTHS_OF_MS)
+        }
     }
 }

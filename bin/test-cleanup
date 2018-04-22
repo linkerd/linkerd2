@@ -1,0 +1,15 @@
+#!/bin/bash
+
+conduit_namespace=$1
+
+if [ -z "$conduit_namespace" ]; then
+    echo "usage: $(basename "$0") <namespace>" >&2
+    exit 64
+fi
+
+echo "cleaning up namespace [${conduit_namespace}] and associated test namespaces"
+
+kubectl delete ns "$conduit_namespace"
+for ns in $(kubectl get ns | grep "^$conduit_namespace-" | cut -f1 -d ' '); do
+  kubectl delete ns "$ns"
+done

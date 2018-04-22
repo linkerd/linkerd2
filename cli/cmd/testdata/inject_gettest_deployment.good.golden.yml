@@ -14,6 +14,7 @@ spec:
       labels:
         app: get-test
         conduit.io/control-plane-ns: conduit
+        conduit.io/proxy-deployment: get-test-deploy-injected-1
     spec:
       containers:
       - args:
@@ -45,18 +46,12 @@ spec:
           value: tcp://proxy-api.conduit.svc.cluster.local:8086
         - name: CONDUIT_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
+        - name: CONDUIT_PROXY_METRICS_LISTENER
+          value: tcp://0.0.0.0:4191
         - name: CONDUIT_PROXY_PRIVATE_LISTENER
           value: tcp://127.0.0.1:4140
         - name: CONDUIT_PROXY_PUBLIC_LISTENER
           value: tcp://0.0.0.0:4143
-        - name: CONDUIT_PROXY_NODE_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.nodeName
-        - name: CONDUIT_PROXY_POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
         - name: CONDUIT_PROXY_POD_NAMESPACE
           valueFrom:
             fieldRef:
@@ -67,6 +62,8 @@ spec:
         ports:
         - containerPort: 4143
           name: conduit-proxy
+        - containerPort: 4191
+          name: conduit-metrics
         resources: {}
         securityContext:
           runAsUser: 2102
@@ -79,7 +76,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - "4190"
+        - 4190,4191
         image: gcr.io/runconduit/proxy-init:testinjectversion
         imagePullPolicy: IfNotPresent
         name: conduit-init
@@ -107,6 +104,7 @@ spec:
       labels:
         app: get-test
         conduit.io/control-plane-ns: conduit
+        conduit.io/proxy-deployment: get-test-deploy-injected-2
     spec:
       containers:
       - args:
@@ -138,18 +136,12 @@ spec:
           value: tcp://proxy-api.conduit.svc.cluster.local:8086
         - name: CONDUIT_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
+        - name: CONDUIT_PROXY_METRICS_LISTENER
+          value: tcp://0.0.0.0:4191
         - name: CONDUIT_PROXY_PRIVATE_LISTENER
           value: tcp://127.0.0.1:4140
         - name: CONDUIT_PROXY_PUBLIC_LISTENER
           value: tcp://0.0.0.0:4143
-        - name: CONDUIT_PROXY_NODE_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.nodeName
-        - name: CONDUIT_PROXY_POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
         - name: CONDUIT_PROXY_POD_NAMESPACE
           valueFrom:
             fieldRef:
@@ -160,6 +152,8 @@ spec:
         ports:
         - containerPort: 4143
           name: conduit-proxy
+        - containerPort: 4191
+          name: conduit-metrics
         resources: {}
         securityContext:
           runAsUser: 2102
@@ -172,7 +166,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - "4190"
+        - 4190,4191
         image: gcr.io/runconduit/proxy-init:testinjectversion
         imagePullPolicy: IfNotPresent
         name: conduit-init

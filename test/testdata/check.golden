@@ -1,0 +1,10 @@
+kubernetes-api: can initialize the client..................................[ok]
+kubernetes-api: can query the Kubernetes API...............................[ok]
+kubernetes-api: is running the minimum Kubernetes API version..............[ok]
+conduit-api: can query the Conduit API.....................................[ok]
+conduit-api[kubernetes]: control plane can talk to Kubernetes..............[ok]
+conduit-api[prometheus]: control plane can talk to Prometheus..............[ok]
+conduit-version: cli is up-to-date.........................................[ok]
+conduit-version: control plane is up-to-date...............................[ok]
+
+Status check results are [ok]

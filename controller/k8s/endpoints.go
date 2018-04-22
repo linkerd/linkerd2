@@ -22,11 +22,20 @@ const (
 
 type EndpointsListener interface {
 	Update(add []common.TcpAddress, remove []common.TcpAddress)
+	NoEndpoints(exists bool)
 }
 
 /// EndpointsWatcher ///
 
-type EndpointsWatcher struct {
+type EndpointsWatcher interface {
+	GetService(service string) (*v1.Service, bool, error)
+	Subscribe(service string, port uint32, listener EndpointsListener) error
+	Unsubscribe(service string, port uint32, listener EndpointsListener) error
+	Run() error
+	Stop()
+}
+
+type endpointsWatcher struct {
 	endpointInformer informer
 	serviceInformer  informer
 	// a map of service -> service port -> servicePort
@@ -41,12 +50,12 @@ type EndpointsWatcher struct {
 // cluster.  Listeners can subscribe to a particular service and port and
 // EndpointsWatcher will publish the address set and all future changes for
 // that service:port.
-func NewEndpointsWatcher(clientset *kubernetes.Clientset) *EndpointsWatcher {
+func NewEndpointsWatcher(clientset *kubernetes.Clientset) EndpointsWatcher {
 
 	servicePorts := make(map[string]*map[uint32]*servicePort)
 	mutex := sync.RWMutex{}
 
-	return &EndpointsWatcher{
+	return &endpointsWatcher{
 		endpointInformer: newEndpointInformer(clientset, &servicePorts, &mutex),
 		serviceInformer:  newServiceInformer(clientset, &servicePorts, &mutex),
 		servicePorts:     &servicePorts,
@@ -54,7 +63,7 @@ func NewEndpointsWatcher(clientset *kubernetes.Clientset) *EndpointsWatcher {
 	}
 }
 
-func (e *EndpointsWatcher) Run() error {
+func (e *endpointsWatcher) Run() error {
 	err := e.endpointInformer.run()
 	if err != nil {
 		return err
@@ -62,7 +71,7 @@ func (e *EndpointsWatcher) Run() error {
 	return e.serviceInformer.run()
 }
 
-func (e *EndpointsWatcher) Stop() {
+func (e *endpointsWatcher) Stop() {
 	e.endpointInformer.stop()
 	e.serviceInformer.stop()
 }
@@ -70,7 +79,7 @@ func (e *EndpointsWatcher) Stop() {
 // Subscribe to a service and service port.
 // The provided listener will be updated each time the address set for the
 // given service port is changed.
-func (e *EndpointsWatcher) Subscribe(service string, port uint32, listener EndpointsListener) error {
+func (e *endpointsWatcher) Subscribe(service string, port uint32, listener EndpointsListener) error {
 
 	log.Printf("Establishing watch on endpoint %s:%d", service, port)
 
@@ -93,11 +102,12 @@ func (e *EndpointsWatcher) Subscribe(service string, port uint32, listener Endpo
 		(*svc)[port] = svcPort
 	}
 
-	svcPort.subscribe(listener)
+	_, exists, _ := e.GetService(service)
+	svcPort.subscribe(exists, listener)
 	return nil
 }
 
-func (e *EndpointsWatcher) Unsubscribe(service string, port uint32, listener EndpointsListener) error {
+func (e *endpointsWatcher) Unsubscribe(service string, port uint32, listener EndpointsListener) error {
 
 	log.Printf("Stopping watch on endpoint %s:%d", service, port)
 
@@ -118,8 +128,8 @@ func (e *EndpointsWatcher) Unsubscribe(service string, port uint32, listener End
 	return nil
 }
 
-func (e *EndpointsWatcher) GetService(service string) (*v1.Service, bool, error) {
-	obj, exists, err := (*e.serviceInformer.store).GetByKey(service)
+func (e *endpointsWatcher) GetService(service string) (*v1.Service, bool, error) {
+	obj, exists, err := e.serviceInformer.store.GetByKey(service)
 	if err != nil || !exists {
 		return nil, exists, err
 	}
@@ -131,7 +141,7 @@ func (e *EndpointsWatcher) GetService(service string) (*v1.Service, bool, error)
 // Watches a Kubernetes resource type
 type informer struct {
 	informer cache.Controller
-	store    *cache.Store
+	store    cache.Store
 	stopCh   chan struct{}
 }
 
@@ -215,7 +225,7 @@ func newEndpointInformer(clientset *kubernetes.Clientset, servicePorts *map[stri
 
 	return informer{
 		informer: inf,
-		store:    &store,
+		store:    store,
 		stopCh:   stopCh,
 	}
 }
@@ -245,22 +255,6 @@ func newServiceInformer(clientset *kubernetes.Clientset, servicePorts *map[strin
 				}
 				mutex.RUnlock()
 			},
-			DeleteFunc: func(obj interface{}) {
-				service := obj.(*v1.Service)
-				if service.Namespace == kubeSystem {
-					return
-				}
-				id := service.Namespace + "/" + service.Name
-
-				mutex.RLock()
-				svc, ok := (*servicePorts)[id]
-				if ok {
-					for _, sp := range *svc {
-						sp.deleteService()
-					}
-				}
-				mutex.RUnlock()
-			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				service := newObj.(*v1.Service)
 				if service.Namespace == kubeSystem {
@@ -284,7 +278,7 @@ func newServiceInformer(clientset *kubernetes.Clientset, servicePorts *map[strin
 
 	return informer{
 		informer: inf,
-		store:    &store,
+		store:    store,
 		stopCh:   stopCh,
 	}
 }
@@ -310,9 +304,9 @@ type servicePort struct {
 	mutex sync.Mutex
 }
 
-func newServicePort(service string, port uint32, e *EndpointsWatcher) (*servicePort, error) {
+func newServicePort(service string, port uint32, e *endpointsWatcher) (*servicePort, error) {
 	endpoints := &v1.Endpoints{}
-	obj, exists, err := (*e.endpointInformer.store).GetByKey(service)
+	obj, exists, err := e.endpointInformer.store.GetByKey(service)
 	if err != nil {
 		return nil, err
 	}
@@ -322,7 +316,7 @@ func newServicePort(service string, port uint32, e *EndpointsWatcher) (*serviceP
 
 	// Use the service port as the target port by default.
 	targetPort := intstr.FromInt(int(port))
-	obj, exists, err = (*e.serviceInformer.store).GetByKey(service)
+	obj, exists, err = e.serviceInformer.store.GetByKey(service)
 	if err != nil {
 		return nil, err
 	}
@@ -354,16 +348,8 @@ func (sp *servicePort) updateEndpoints(newEndpoints *v1.Endpoints) {
 	defer sp.mutex.Unlock()
 
 	newAddresses := addresses(newEndpoints, sp.targetPort)
-
-	log.Debugf("Updating %s:%d to %s", sp.service, sp.port, util.AddressesToString(newAddresses))
-
-	add, remove := util.DiffAddresses(sp.addresses, newAddresses)
-	for _, listener := range sp.listeners {
-		listener.Update(add, remove)
-	}
-
+	sp.updateAddresses(newAddresses)
 	sp.endpoints = newEndpoints
-	sp.addresses = newAddresses
 }
 
 func (sp *servicePort) deleteEndpoints() {
@@ -373,7 +359,7 @@ func (sp *servicePort) deleteEndpoints() {
 	log.Debugf("Deleting %s:%d", sp.service, sp.port)
 
 	for _, listener := range sp.listeners {
-		listener.Update(nil, sp.addresses)
+		listener.NoEndpoints(false)
 	}
 	sp.endpoints = &v1.Endpoints{}
 	sp.addresses = []common.TcpAddress{}
@@ -395,43 +381,38 @@ func (sp *servicePort) updateService(newService *v1.Service) {
 	}
 	if newTargetPort != sp.targetPort {
 		newAddresses := addresses(sp.endpoints, newTargetPort)
+		sp.updateAddresses(newAddresses)
+		sp.targetPort = newTargetPort
+	}
+}
 
-		log.Debugf("Updating %s:%d to %s", sp.service, sp.port, util.AddressesToString(newAddresses))
-
+func (sp *servicePort) updateAddresses(newAddresses []common.TcpAddress) {
+	log.Debugf("Updating %s:%d to %s", sp.service, sp.port, util.AddressesToString(newAddresses))
+	if len(newAddresses) == 0 {
+		for _, listener := range sp.listeners {
+			listener.NoEndpoints(true)
+		}
+	} else {
 		add, remove := util.DiffAddresses(sp.addresses, newAddresses)
 		for _, listener := range sp.listeners {
 			listener.Update(add, remove)
 		}
-		sp.targetPort = newTargetPort
-		sp.addresses = newAddresses
 	}
+	sp.addresses = newAddresses
 }
 
-func (sp *servicePort) deleteService() {
-	sp.mutex.Lock()
-	defer sp.mutex.Unlock()
-
-	newTargetPort := intstr.FromInt(int(sp.port))
-	if newTargetPort != sp.targetPort {
-		newAddresses := addresses(sp.endpoints, newTargetPort)
-
-		log.Debugf("Updating %s:%d to %s", sp.service, sp.port, util.AddressesToString(newAddresses))
-
-		add, remove := util.DiffAddresses(sp.addresses, newAddresses)
-		for _, listener := range sp.listeners {
-			listener.Update(add, remove)
-		}
-		sp.targetPort = newTargetPort
-		sp.addresses = newAddresses
-	}
-}
-
-func (sp *servicePort) subscribe(listener EndpointsListener) {
+func (sp *servicePort) subscribe(exists bool, listener EndpointsListener) {
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
 
 	sp.listeners = append(sp.listeners, listener)
-	listener.Update(sp.addresses, nil)
+	if !exists {
+		listener.NoEndpoints(false)
+	} else if len(sp.addresses) == 0 {
+		listener.NoEndpoints(true)
+	} else {
+		listener.Update(sp.addresses, nil)
+	}
 }
 
 // true iff the listener was found and removed
