@@ -23,23 +23,23 @@ validate_go_deps_tag $dockerfile
 ) >/dev/null
 
 CURRENT_PLATFORM=$(uname)
-target_platform="windows"
+host_platform="windows"
 if [ "$CURRENT_PLATFORM" = 'Darwin' ]; then
-    target_platform="darwin"
+    host_platform="darwin"
 elif [ "$CURRENT_PLATFORM" = 'Linux' ]; then
-    target_platform="linux"
+    host_platform="linux"
 fi
 
 tag="$(head_root_tag)"
-docker_build cli-bin $tag $dockerfile --build-arg CONDUIT_VERSION=$tag
+docker_build cli-bin $tag $dockerfile --build-arg CONDUIT_VERSION=$tag --build-arg PLATFORMS=$host_platform
 IMG=$(docker_repo cli-bin):$tag
 ID=$(docker create "$IMG")
 
 # copy the newly built conduit cli binaries to the local system
-DIR="${rootdir}/target/cli/$target_platform"
+DIR="${rootdir}/target/cli/$host_platform"
 mkdir -p "$DIR"
 
-if docker cp "$ID:/out/conduit-$target_platform" "$DIR/conduit" ; then
+if docker cp "$ID:/out/conduit-$host_platform" "$DIR/conduit" ; then
     echo "$DIR/conduit"
 else
     docker rm "$ID" >/dev/null
