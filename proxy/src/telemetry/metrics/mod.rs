@@ -622,10 +622,10 @@ impl Aggregate {
             Event::TransportOpen(ref ctx) => {
                 let labels = Arc::new(TransportLabels::new(ctx));
                 self.update(|metrics| {
-                    *metrics.tcp_connections_open(&labels).incr();
                     match ctx.as_ref() {
                         &ctx::transport::Ctx::Server(_) => {
                             *metrics.tcp_accept_open_total(&labels).incr();
+                            *metrics.tcp_connections_open(&labels).incr();
                         },
                         &ctx::transport::Ctx::Client(_) => {
                             *metrics.tcp_connect_open_total(&labels).incr();
@@ -637,25 +637,26 @@ impl Aggregate {
             Event::TransportClose(ref ctx, ref close) => {
                 let labels = Arc::new(TransportCloseLabels::new(ctx, close));
                 self.update(|metrics| {
-                    // We don't use the accessor method here like we do for all
-                    // the other metrics so that we can just use the transport
-                    // open labels in `labels` without having to ref-count it
-                    // separately. Since we're handling a close event, we expect
-                    // those labels to already be in the map from when the
-                    // transport was opened.
-                    *metrics.tcp_connections_open.values
-                        .get_mut(&labels.transport)
-                        .expect(
-                            "observed TransportClose event for a transport \
-                             that was not counted"
-                        )
-                        .decr();
                     *metrics.tcp_connection_duration(&labels) += close.duration;
                     *metrics.sent_bytes(&labels) += close.tx_bytes as u64;
                     *metrics.received_bytes(&labels) += close.tx_bytes as u64;
                     match ctx.as_ref() {
                         &ctx::transport::Ctx::Server(_) => {
                             *metrics.tcp_accept_close_total(&labels).incr();
+                            // We don't use the accessor method here like we do
+                            // for all the other metrics so that we can just
+                            // use the transport open labels in `labels`
+                            // without having to ref-count it separately. Since
+                            // we're handling a close event, we expect those
+                            // labels to already be in the map from when the
+                            // transport was opened.
+                            *metrics.tcp_connections_open.values
+                                .get_mut(&labels.transport)
+                                .expect(
+                                    "observed TransportClose event for a \
+                                     transport that was not counted"
+                                )
+                                .decr();
                         },
                         &ctx::transport::Ctx::Client(_) => {
                             *metrics.tcp_connect_close_total(&labels).incr();

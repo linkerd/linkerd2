@@ -1106,7 +1106,7 @@ mod transport {
         tcp_client.write(msg1);
         assert_eq!(tcp_client.read(), msg2.as_bytes());
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connections_open{direction=\"outbound\"} 2");
+            "tcp_connections_open{direction=\"outbound\"} 1");
         drop(tcp_client);
         assert_contains!(metrics.get("/metrics"),
             "tcp_connections_open{direction=\"outbound\"} 0");
@@ -1115,9 +1115,38 @@ mod transport {
         tcp_client.write(msg1);
         assert_eq!(tcp_client.read(), msg2.as_bytes());
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connections_open{direction=\"outbound\"} 2");
+            "tcp_connections_open{direction=\"outbound\"} 1");
 
         drop(tcp_client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_connections_open{direction=\"outbound\"} 0");
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn outbound_http_tcp_connections_open() {
+        let _ = env_logger::try_init();
+        let Fixture { client, metrics, proxy } =
+            Fixture::outbound();
+
+        info!("client.get(/)");
+        assert_eq!(client.get("/"), "hello");
+
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_connections_open{direction=\"outbound\"} 1");
+        drop(client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_connections_open{direction=\"outbound\"} 0");
+
+        // create a new client to force a new connection
+        let client = client::new(proxy.outbound, "tele.test.svc.cluster.local");
+
+        info!("client.get(/)");
+        assert_eq!(client.get("/"), "hello");
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_connections_open{direction=\"outbound\"} 1");
+
+        drop(client);
         assert_contains!(metrics.get("/metrics"),
             "tcp_connections_open{direction=\"outbound\"} 0");
     }
