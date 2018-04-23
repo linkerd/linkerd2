@@ -194,6 +194,7 @@ spec:
 				replicaSetInformer.Informer().HasSynced,
 				podInformer.Informer().HasSynced,
 				replicationControllerInformer.Informer().HasSynced,
+				serviceInformer.Informer().HasSynced,
 			) {
 				t.Fatalf("timed out wait for caches to sync")
 			}
