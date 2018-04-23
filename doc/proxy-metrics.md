@@ -14,20 +14,10 @@ port (default: `:4191`) in the [Prometheus format][prom-format]:
 A counter of the number of requests the proxy has received.  This is incremented
 when the request stream begins.
 
-### `request_duration_ms`
-
-A histogram of the duration of a request.  This is measured from when the
-request headers are received to when the request stream has completed.
-
 ### `response_total`
 
 A counter of the number of responses the proxy has received.  This is
 incremented when the response stream ends.
-
-### `response_duration_ms`
-
-A histogram of the duration of a response.  This is measured from when the
-response headers are received to when the response stream has completed.
 
 ### `response_latency_ms`
 

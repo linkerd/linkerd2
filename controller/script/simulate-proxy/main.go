@@ -35,9 +35,7 @@ type simulatedProxy struct {
 type proxyMetricCollectors struct {
 	requestTotals           *prom.CounterVec
 	responseTotals          *prom.CounterVec
-	requestDurationMs       *prom.HistogramVec
 	responseLatencyMs       *prom.HistogramVec
-	responseDurationMs      *prom.HistogramVec
 	tcpAcceptOpenTotal      prom.Counter
 	tcpAcceptCloseTotal     *prom.CounterVec
 	tcpConnectOpenTotal     prom.Counter
@@ -159,18 +157,12 @@ func (s *simulatedProxy) generateProxyTraffic() {
 
 			// inbound requests
 			s.inbound.requestTotals.With(prom.Labels{}).Add(float64(inboundRandomCount))
-			for _, latency := range randomLatencies(inboundRandomCount) {
-				s.inbound.requestDurationMs.With(prom.Labels{}).Observe(latency)
-			}
 
 			// inbound responses
 			inboundResponseLabels := randomResponseLabels()
 			s.inbound.responseTotals.With(inboundResponseLabels).Add(float64(inboundRandomCount))
 			for _, latency := range randomLatencies(inboundRandomCount) {
 				s.inbound.responseLatencyMs.With(inboundResponseLabels).Observe(latency)
-			}
-			for _, latency := range randomLatencies(inboundRandomCount) {
-				s.inbound.responseDurationMs.With(inboundResponseLabels).Observe(latency)
 			}
 
 			s.inbound.generateTCPStats(inboundRandomCount)
@@ -186,9 +178,6 @@ func (s *simulatedProxy) generateProxyTraffic() {
 
 			// outbound requests
 			s.outbound.requestTotals.With(outboundLabels).Add(float64(outboundRandomCount))
-			for _, latency := range randomLatencies(outboundRandomCount) {
-				s.outbound.requestDurationMs.With(outboundLabels).Observe(latency)
-			}
 
 			// outbound resposnes
 			outboundResponseLabels := outboundLabels
@@ -198,9 +187,6 @@ func (s *simulatedProxy) generateProxyTraffic() {
 			s.outbound.responseTotals.With(outboundResponseLabels).Add(float64(outboundRandomCount))
 			for _, latency := range randomLatencies(outboundRandomCount) {
 				s.outbound.responseLatencyMs.With(outboundResponseLabels).Observe(latency)
-			}
-			for _, latency := range randomLatencies(outboundRandomCount) {
-				s.outbound.responseDurationMs.With(outboundResponseLabels).Observe(latency)
 			}
 
 			s.outbound.generateTCPStats(outboundRandomCount)
@@ -449,24 +435,10 @@ func newSimulatedProxy(pod v1.Pod, deployments []string, replicaSets *k8s.Replic
 			Help:        "A counter of the number of responses the proxy has received",
 			ConstLabels: constLabels,
 		}, responseLabels)
-	requestDurationMs := prom.NewHistogramVec(
-		prom.HistogramOpts{
-			Name:        "request_duration_ms",
-			Help:        "A histogram of the duration of a request",
-			ConstLabels: constLabels,
-			Buckets:     latencyBucketBounds,
-		}, requestLabels)
 	responseLatencyMs := prom.NewHistogramVec(
 		prom.HistogramOpts{
 			Name:        "response_latency_ms",
 			Help:        "A histogram of the total latency of a response",
-			ConstLabels: constLabels,
-			Buckets:     latencyBucketBounds,
-		}, responseLabels)
-	responseDurationMs := prom.NewHistogramVec(
-		prom.HistogramOpts{
-			Name:        "response_duration_ms",
-			Help:        "A histogram of the duration of a response",
 			ConstLabels: constLabels,
 			Buckets:     latencyBucketBounds,
 		}, responseLabels)
@@ -545,9 +517,7 @@ func newSimulatedProxy(pod v1.Pod, deployments []string, replicaSets *k8s.Replic
 		inbound: &proxyMetricCollectors{
 			requestTotals:           requestTotals.MustCurryWith(inboundLabels),
 			responseTotals:          responseTotals.MustCurryWith(inboundLabels),
-			requestDurationMs:       requestDurationMs.MustCurryWith(inboundLabels).(*prom.HistogramVec),
 			responseLatencyMs:       responseLatencyMs.MustCurryWith(inboundLabels).(*prom.HistogramVec),
-			responseDurationMs:      responseDurationMs.MustCurryWith(inboundLabels).(*prom.HistogramVec),
 			tcpAcceptOpenTotal:      tcpAcceptOpenTotal.With(inboundTCPLabels),
 			tcpAcceptCloseTotal:     tcpAcceptCloseTotal.MustCurryWith(inboundTCPLabels),
 			tcpConnectOpenTotal:     tcpConnectOpenTotal.With(inboundTCPLabels),
@@ -560,9 +530,7 @@ func newSimulatedProxy(pod v1.Pod, deployments []string, replicaSets *k8s.Replic
 		outbound: &proxyMetricCollectors{
 			requestTotals:           requestTotals.MustCurryWith(outboundLabels),
 			responseTotals:          responseTotals.MustCurryWith(outboundLabels),
-			requestDurationMs:       requestDurationMs.MustCurryWith(outboundLabels).(*prom.HistogramVec),
 			responseLatencyMs:       responseLatencyMs.MustCurryWith(outboundLabels).(*prom.HistogramVec),
-			responseDurationMs:      responseDurationMs.MustCurryWith(outboundLabels).(*prom.HistogramVec),
 			tcpAcceptOpenTotal:      tcpAcceptOpenTotal.With(outboundLabels),
 			tcpAcceptCloseTotal:     tcpAcceptCloseTotal.MustCurryWith(outboundLabels),
 			tcpConnectOpenTotal:     tcpConnectOpenTotal.With(outboundLabels),
@@ -577,9 +545,7 @@ func newSimulatedProxy(pod v1.Pod, deployments []string, replicaSets *k8s.Replic
 	proxy.registerer.MustRegister(
 		requestTotals,
 		responseTotals,
-		requestDurationMs,
 		responseLatencyMs,
-		responseDurationMs,
 		tcpAcceptOpenTotal,
 		tcpAcceptCloseTotal,
 		tcpConnectOpenTotal,
