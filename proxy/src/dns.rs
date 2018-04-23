@@ -90,7 +90,7 @@ impl Resolver {
         match *host {
             transport::Host::DnsName(ref name) => {
                 trace!("resolve_one_ip {}", name);
-                IpAddrFuture::DNS(self.lookup_ip(name))
+                IpAddrFuture::DNS(self.clone().lookup_ip(name))
             }
             transport::Host::Ip(addr) => IpAddrFuture::Fixed(addr),
         }
@@ -123,10 +123,12 @@ impl Resolver {
         Box::new(f)
     }
 
-    fn lookup_ip(&self, &Name(ref name): &Name) -> LookupIpFuture {
+    // `ResolverFuture` can only be used for one lookup, so we have to clone all
+    // the state during each resolution
+    fn lookup_ip(self, &Name(ref name): &Name) -> LookupIpFuture {
         let resolver = ResolverFuture::new(
-            self.config.config.clone(),
-            self.config.opts.clone(),
+            self.config.config,
+            self.config.opts,
             &self.executor);
         resolver.lookup_ip(name)
     }
