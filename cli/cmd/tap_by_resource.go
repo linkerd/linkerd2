@@ -8,18 +8,7 @@ import (
 
 	"github.com/runconduit/conduit/controller/api/util"
 	pb "github.com/runconduit/conduit/controller/gen/public"
-	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/spf13/cobra"
-)
-
-var (
-	toResource string
-	validArgs  = []string{
-		k8s.KubernetesDeployments,
-		k8s.KubernetesNamespaces,
-		k8s.KubernetesPods,
-		k8s.KubernetesReplicationControllers,
-	}
 )
 
 var tapByResourceCmd = &cobra.Command{
@@ -27,8 +16,10 @@ var tapByResourceCmd = &cobra.Command{
 	Short: "Listen to a traffic stream",
 	Long: `Listen to a traffic stream.
 
-  The RESOURCE argument specifies the resource to tap, for example:
+  The RESOURCE argument specifies the target resource(s) to tap:
+  (TYPE [NAME] | TYPE/NAME)
 
+  Examples:
   * deploy
   * deploy/my-deploy
   * deploy my-deploy
@@ -39,7 +30,8 @@ var tapByResourceCmd = &cobra.Command{
   * deployments
   * namespaces
   * pods
-  * replicationcontrollers`,
+  * replicationcontrollers
+  * services (only supported as a "--to" resource)`,
 	Example: `  # tap the web deployment in the default namespace
   conduit tapByResource deploy/web
 
@@ -49,7 +41,7 @@ var tapByResourceCmd = &cobra.Command{
   # tap the test namespace, filter by request to prod namespace
   conduit tapByResource ns/test --to ns/prod`,
 	Args:      cobra.RangeArgs(1, 2),
-	ValidArgs: validArgs,
+	ValidArgs: util.ValidTargets,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		req, err := buildTapByResourceRequest(
 			args, namespace,
@@ -101,7 +93,7 @@ func buildTapByResourceRequest(
 	if err != nil {
 		return nil, fmt.Errorf("target resource invalid: %s", err)
 	}
-	if !contains(validArgs, target.Type) {
+	if !contains(util.ValidTargets, target.Type) {
 		return nil, fmt.Errorf("unsupported resource type [%s]", target.Type)
 	}
 
@@ -111,6 +103,9 @@ func buildTapByResourceRequest(
 		destination, err := util.BuildResource(toNamespace, toResource)
 		if err != nil {
 			return nil, fmt.Errorf("destination resource invalid: %s", err)
+		}
+		if !contains(util.ValidDestinations, destination.Type) {
+			return nil, fmt.Errorf("unsupported resource type [%s]", target.Type)
 		}
 
 		match := pb.TapByResourceRequest_Match{

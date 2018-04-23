@@ -27,10 +27,10 @@ var (
 		k8s.KubernetesReplicationControllers,
 	}
 
-	// validDestinations specifies resource types allowed as a destination:
+	// ValidDestinations specifies resource types allowed as a destination:
 	// destination resource on an outbound 'to' query
 	// target resource on an outbound 'from' query
-	validDestinations = []string{
+	ValidDestinations = []string{
 		k8s.KubernetesDeployments,
 		k8s.KubernetesNamespaces,
 		k8s.KubernetesPods,
