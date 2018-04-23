@@ -3,7 +3,6 @@ package cmd
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -19,24 +18,34 @@ import (
 )
 
 var (
-	timeWindow, namespace, resourceType, resourceName string
-	toNamespace, toType, toName                       string
-	fromNamespace, fromType, fromName                 string
-	allNamespaces                                     bool
+	timeWindow                  string
+	namespace                   string
+	toNamespace, toResource     string
+	fromNamespace, fromResource string
+	allNamespaces               bool
 )
 
 var statCmd = &cobra.Command{
-	Use:   "stat [flags] RESOURCETYPE [RESOURCENAME]",
+	Use:   "stat [flags] (RESOURCE)",
 	Short: "Display traffic stats about one or many resources",
 	Long: `Display traffic stats about one or many resources.
 
+  The RESOURCE argument specifies the target resource(s) to aggregate stats over:
+  (TYPE [NAME] | TYPE/NAME)
+
+  Examples:
+  * deploy
+  * deploy/my-deploy
+  * deploy my-deploy
+  * ns/my-ns
+
 Valid resource types include:
 
-	* deployments
-	* namespaces
-	* pods
-	* replicationcontrollers
-	* services (only supported if a "--from-resource" is also specified, or as a "--to-resource")
+  * deployments
+  * namespaces
+  * pods
+  * replicationcontrollers
+  * services (only supported if a "--from" is also specified, or as a "--to")
 
 This command will hide resources that have completed, such as pods that are in the Succeeded or Failed phases.
 If no resource name is specified, displays stats about all resources of the specified RESOURCETYPE`,
@@ -49,33 +58,36 @@ If no resource name is specified, displays stats about all resources of the spec
   # Get all namespaces.
   conduit stat namespaces
 
+  # Get all inbound stats to the web deployment.
+  conduit stat deploy/web
+
   # Get all pods in all namespaces that call the hello1 deployment in the test namesapce.
-  conduit stat pods --to hello1 --to-resource deployment --to-namespace test --all-namespaces
+  conduit stat pods --to deploy/hello1 --to-namespace test --all-namespaces
 
   # Get all pods in all namespaces that call the hello1 service in the test namesapce.
-  conduit stat pods --to hello1 --to-resource svc --to-namespace test --all-namespaces
+  conduit stat pods --to svc/hello1 --to-namespace test --all-namespaces
 
   # Get all services in all namespaces that receive calls from hello1 deployment in the test namesapce.
-  conduit stat services --from hello1 --from-resource deployment --from-namespace test --all-namespaces`,
+  conduit stat services --from deploy/hello1 --from-namespace test --all-namespaces`,
 	Args:      cobra.RangeArgs(1, 2),
 	ValidArgs: util.ValidTargets,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		switch len(args) {
-		case 1:
-			resourceType = args[0]
-		case 2:
-			resourceType = args[0]
-			resourceName = args[1]
-		default:
-			return errors.New("please specify one resource only")
-		}
-
 		client, err := newPublicAPIClient()
 		if err != nil {
 			return fmt.Errorf("error creating api client while making stats request: %v", err)
 		}
 
-		output, err := requestStatsFromApi(client)
+		req, err := buildStatSummaryRequest(
+			timeWindow, allNamespaces,
+			args, namespace,
+			toResource, toNamespace,
+			fromResource, fromNamespace,
+		)
+		if err != nil {
+			return fmt.Errorf("error creating metrics request while making stats request: %v", err)
+		}
+
+		output, err := requestStatsFromAPI(client, req)
 		if err != nil {
 			return err
 		}
@@ -90,22 +102,14 @@ func init() {
 	RootCmd.AddCommand(statCmd)
 	statCmd.PersistentFlags().StringVarP(&namespace, "namespace", "n", "default", "Namespace of the specified resource")
 	statCmd.PersistentFlags().StringVarP(&timeWindow, "time-window", "t", "1m", "Stat window (for example: \"10s\", \"1m\", \"10m\", \"1h\")")
-	statCmd.PersistentFlags().StringVar(&toName, "to", "", "If present, restricts outbound stats to the specified resource name")
+	statCmd.PersistentFlags().StringVar(&toResource, "to", "", "If present, restricts outbound stats to the specified resource name")
 	statCmd.PersistentFlags().StringVar(&toNamespace, "to-namespace", "", "Sets the namespace used to lookup the \"--to\" resource; by default the current \"--namespace\" is used")
-	statCmd.PersistentFlags().StringVar(&toType, "to-resource", "", "Sets the resource type used to lookup the \"--to\" resource; by default the RESOURCETYPE is used")
-	statCmd.PersistentFlags().StringVar(&fromName, "from", "", "If present, restricts outbound stats from the specified resource name")
+	statCmd.PersistentFlags().StringVar(&fromResource, "from", "", "If present, restricts outbound stats from the specified resource name")
 	statCmd.PersistentFlags().StringVar(&fromNamespace, "from-namespace", "", "Sets the namespace used from lookup the \"--from\" resource; by default the current \"--namespace\" is used")
-	statCmd.PersistentFlags().StringVar(&fromType, "from-resource", "", "Sets the resource type used to lookup the \"--from\" resource; by default the RESOURCETYPE is used")
 	statCmd.PersistentFlags().BoolVar(&allNamespaces, "all-namespaces", false, "If present, returns stats across all namespaces, ignoring the \"--namespace\" flag")
 }
 
-func requestStatsFromApi(client pb.ApiClient) (string, error) {
-	req, err := buildStatSummaryRequest()
-
-	if err != nil {
-		return "", fmt.Errorf("error creating metrics request while making stats request: %v", err)
-	}
-
+func requestStatsFromAPI(client pb.ApiClient, req *pb.StatSummaryRequest) (string, error) {
 	resp, err := client.StatSummary(context.Background(), req)
 	if err != nil {
 		return "", fmt.Errorf("error calling stat with request: %v", err)
@@ -239,7 +243,12 @@ func writeStatsToBuffer(resp *pb.StatSummaryResponse, w *tabwriter.Writer) {
 	}
 }
 
-func buildStatSummaryRequest() (*pb.StatSummaryRequest, error) {
+func buildStatSummaryRequest(
+	timeWindow string, allNamespaces bool,
+	resource []string, namespace string,
+	toResource, toNamespace string,
+	fromResource, fromNamespace string,
+) (*pb.StatSummaryRequest, error) {
 	targetNamespace := namespace
 	if allNamespaces {
 		targetNamespace = ""
@@ -247,16 +256,35 @@ func buildStatSummaryRequest() (*pb.StatSummaryRequest, error) {
 		targetNamespace = v1.NamespaceDefault
 	}
 
+	target, err := util.BuildResource(targetNamespace, resource...)
+	if err != nil {
+		return nil, err
+	}
+
+	var toRes, fromRes pb.Resource
+	if toResource != "" {
+		toRes, err = util.BuildResource(toNamespace, toResource)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if fromResource != "" {
+		fromRes, err = util.BuildResource(fromNamespace, fromResource)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	requestParams := util.StatSummaryRequestParams{
 		TimeWindow:    timeWindow,
-		ResourceName:  resourceName,
-		ResourceType:  resourceType,
+		ResourceName:  target.Name,
+		ResourceType:  target.Type,
 		Namespace:     targetNamespace,
-		ToName:        toName,
-		ToType:        toType,
+		ToName:        toRes.Name,
+		ToType:        toRes.Type,
 		ToNamespace:   toNamespace,
-		FromName:      fromName,
-		FromType:      fromType,
+		FromName:      fromRes.Name,
+		FromType:      fromRes.Type,
 		FromNamespace: fromNamespace,
 	}
 
