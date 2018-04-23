@@ -855,6 +855,7 @@ mod transport {
     }
 
     #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
     fn inbound_tcp_accept() {
         let _ = env_logger::try_init();
         let TcpFixture { client, metrics, proxy: _proxy } =
@@ -887,7 +888,9 @@ mod transport {
             "tcp_accept_close_total{direction=\"inbound\",classification=\"success\"} 2");
     }
 
+    // https://github.com/runconduit/conduit/issues/831
     #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
     fn inbound_tcp_duration() {
         let _ = env_logger::try_init();
         let TcpFixture { client, metrics, proxy: _proxy } =
