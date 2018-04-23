@@ -41,9 +41,7 @@ impl Fixture {
     }
 
     fn inbound_with_server(srv: server::Listening) -> Self {
-        let ctrl = controller::new().run();
         let proxy = proxy::new()
-            .controller(ctrl)
             .inbound(srv)
             .run();
         let metrics = client::http1(proxy.metrics, "localhost");
@@ -91,9 +89,7 @@ impl TcpFixture {
     }
 
     fn inbound() -> Self {
-        let ctrl = controller::new().run();
         let proxy = proxy::new()
-            .controller(ctrl)
             .inbound(TcpFixture::server())
             .run();
 
@@ -103,9 +99,7 @@ impl TcpFixture {
     }
 
     fn outbound() -> Self {
-        let ctrl = controller::new().run();
         let proxy = proxy::new()
-            .controller(ctrl)
             .outbound(TcpFixture::server())
             .run();
 
