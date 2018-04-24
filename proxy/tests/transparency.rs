@@ -21,9 +21,7 @@ fn inbound_http1() {
     let _ = env_logger::try_init();
 
     let srv = server::http1().route("/", "hello h1").run();
-    let ctrl = controller::new().run();
     let proxy = proxy::new()
-        .controller(ctrl)
         .inbound(srv)
         .run();
     let client = client::http1(proxy.inbound, "transparency.test.svc.cluster.local");
@@ -37,9 +35,7 @@ fn http1_connect_not_supported() {
 
     let srv = server::tcp()
         .run();
-    let ctrl = controller::new().run();
     let proxy = proxy::new()
-        .controller(ctrl)
         .inbound(srv)
         .run();
 
@@ -66,9 +62,7 @@ fn http1_removes_connection_headers() {
                 .unwrap()
         })
         .run();
-    let ctrl = controller::new().run();
     let proxy = proxy::new()
-        .controller(ctrl)
         .inbound(srv)
         .run();
     let client = client::http1(proxy.inbound, "transparency.test.svc.cluster.local");
@@ -96,9 +90,7 @@ fn http10_with_host() {
                 .unwrap()
         })
         .run();
-    let ctrl = controller::new().run();
     let proxy = proxy::new()
-        .controller(ctrl)
         .inbound(srv)
         .run();
     let client = client::http1(proxy.inbound, host);
@@ -126,10 +118,7 @@ fn http10_without_host() {
                 .unwrap()
         })
         .run();
-    let ctrl = controller::new()
-        .run();
     let proxy = proxy::new()
-        .controller(ctrl)
         .inbound(srv)
         .run();
 
@@ -160,9 +149,7 @@ fn http11_absolute_uri_differs_from_host() {
             Response::new("".into())
         })
         .run();
-    let ctrl = controller::new().run();
     let proxy = proxy::new()
-        .controller(ctrl)
         .inbound(srv)
         .run();
     let client = client::http1_absolute_uris(proxy.inbound, auth);
@@ -188,9 +175,7 @@ fn outbound_tcp() {
             msg2
         })
         .run();
-    let ctrl = controller::new().run();
     let proxy = proxy::new()
-        .controller(ctrl)
         .outbound(srv)
         .run();
 
@@ -215,9 +200,7 @@ fn inbound_tcp() {
             msg2
         })
         .run();
-    let ctrl = controller::new().run();
     let proxy = proxy::new()
-        .controller(ctrl)
         .inbound(srv)
         .run();
 
@@ -253,9 +236,7 @@ fn tcp_server_first() {
                 .map_err(|e| panic!("tcp server error: {}", e))
         })
         .run();
-    let ctrl = controller::new().run();
     let proxy = proxy::new()
-        .controller(ctrl)
         .disable_inbound_ports_protocol_detection(vec![srv.addr.port()])
         .inbound(srv)
         .run();
@@ -276,9 +257,7 @@ fn tcp_with_no_orig_dst() {
     let srv = server::tcp()
         .accept(move |_| "don't read me")
         .run();
-    let ctrl = controller::new().run();
     let proxy = proxy::new()
-        .controller(ctrl)
         .inbound(srv)
         .run();
 
@@ -324,9 +303,7 @@ fn tcp_connections_close_if_client_closes() {
                 .map_err(|e| panic!("tcp server error: {}", e))
         })
         .run();
-    let ctrl = controller::new().run();
     let proxy = proxy::new()
-        .controller(ctrl)
         .inbound(srv)
         .run();
 
@@ -374,9 +351,7 @@ fn http11_upgrade_not_supported() {
             msg2
         })
         .run();
-    let ctrl = controller::new().run();
     let proxy = proxy::new()
-        .controller(ctrl)
         .inbound(srv)
         .run();
 
@@ -408,9 +383,7 @@ fn http1_requests_without_body_doesnt_add_transfer_encoding() {
             res
         })
         .run();
-    let ctrl = controller::new().run();
     let proxy = proxy::new()
-        .controller(ctrl)
         .inbound(srv)
         .run();
     let client = client::http1(proxy.inbound, "transparency.test.svc.cluster.local");
@@ -453,9 +426,7 @@ fn http1_content_length_zero_is_preserved() {
                 .unwrap()
         })
         .run();
-    let ctrl = controller::new().run();
     let proxy = proxy::new()
-        .controller(ctrl)
         .inbound(srv)
         .run();
     let client = client::http1(proxy.inbound, "transparency.test.svc.cluster.local");
@@ -507,9 +478,7 @@ fn http1_bodyless_responses() {
                 .unwrap()
         })
         .run();
-    let ctrl = controller::new().run();
     let proxy = proxy::new()
-        .controller(ctrl)
         .inbound(srv)
         .run();
     let client = client::http1(proxy.inbound, "transparency.test.svc.cluster.local");
@@ -566,9 +535,7 @@ fn http1_head_responses() {
                 .unwrap()
         })
         .run();
-    let ctrl = controller::new().run();
     let proxy = proxy::new()
-        .controller(ctrl)
         .inbound(srv)
         .run();
     let client = client::http1(proxy.inbound, "transparency.test.svc.cluster.local");
@@ -611,9 +578,7 @@ fn http1_response_end_of_file() {
             "
         })
         .run();
-    let ctrl = controller::new().run();
     let proxy = proxy::new()
-        .controller(ctrl)
         .inbound(srv)
         .run();
 
@@ -659,9 +624,7 @@ fn http1_one_connection_per_host() {
     let srv = server::http1()
         .route_empty_ok("/")
         .run();
-    let ctrl = controller::new()
-        .run();
-    let proxy = proxy::new().controller(ctrl).inbound(srv).run();
+    let proxy = proxy::new().inbound(srv).run();
 
     let client = client::http1(proxy.inbound, "foo.bar");
 
@@ -720,9 +683,7 @@ fn http1_requests_without_host_have_unique_connections() {
     let srv = server::http1()
         .route_empty_ok("/")
         .run();
-    let ctrl = controller::new()
-        .run();
-    let proxy = proxy::new().controller(ctrl).inbound(srv).run();
+    let proxy = proxy::new().inbound(srv).run();
 
     let client = client::http1(proxy.inbound, "foo.bar");
 
