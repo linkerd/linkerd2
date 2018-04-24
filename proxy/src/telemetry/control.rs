@@ -77,7 +77,7 @@ impl MakeControl {
     /// - `Err(io::Error)` if the timeout could not be created.
     pub fn make_control(self, taps: &Arc<Mutex<Taps>>, handle: &Handle) -> io::Result<Control> {
         let (metrics_aggregate, metrics_service) =
-            metrics::new(&self.process_ctx, handle);
+            metrics::new(&self.process_ctx);
 
         Ok(Control {
             metrics_aggregate,
