@@ -771,7 +771,7 @@ mod transport {
         assert_eq!(client2.get("/"), "hello");
         // server connection should be pooled
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connect_open_total{direction=\"outbound\",classification=\"success\"} 1");
+            "tcp_connect_open_total{direction=\"outbound\"} 1");
     }
 
     #[test]
@@ -1027,5 +1027,65 @@ mod transport {
         assert_eq!(tcp_client.read(), msg2.as_bytes());
         drop(tcp_client);
         assert_contains!(metrics.get("/metrics"), &expected);
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn outbound_tcp_connections_open() {
+        let _ = env_logger::try_init();
+        let TcpFixture { client, metrics, proxy: _proxy } =
+            TcpFixture::outbound();
+
+        let msg1 = "custom tcp hello";
+        let msg2 = "custom tcp bye";
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(msg1);
+        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_connections_open{direction=\"outbound\"} 1");
+        drop(tcp_client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_connections_open{direction=\"outbound\"} 0");
+        let tcp_client = client.connect();
+
+        tcp_client.write(msg1);
+        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_connections_open{direction=\"outbound\"} 1");
+
+        drop(tcp_client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_connections_open{direction=\"outbound\"} 0");
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn outbound_http_tcp_connections_open() {
+        let _ = env_logger::try_init();
+        let Fixture { client, metrics, proxy } =
+            Fixture::outbound();
+
+        info!("client.get(/)");
+        assert_eq!(client.get("/"), "hello");
+
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_connections_open{direction=\"outbound\"} 1");
+        drop(client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_connections_open{direction=\"outbound\"} 0");
+
+        // create a new client to force a new connection
+        let client = client::new(proxy.outbound, "tele.test.svc.cluster.local");
+
+        info!("client.get(/)");
+        assert_eq!(client.get("/"), "hello");
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_connections_open{direction=\"outbound\"} 1");
+
+        drop(client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_connections_open{direction=\"outbound\"} 0");
     }
 }

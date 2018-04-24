@@ -49,8 +49,10 @@ pub struct TransportLabels {
 /// Labels describing the end of a TCP connection
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct TransportCloseLabels {
-    transport: TransportLabels,
+    /// Labels describing the TCP connection that closed.
+    pub(super) transport: TransportLabels,
 
+    /// Was the transport closed successfully?
     classification: Classification,
 }
 
