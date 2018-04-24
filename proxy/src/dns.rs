@@ -148,7 +148,7 @@ impl Future for IpAddrFuture {
                             Ok(Async::Ready(ip))
                         },
                         None => {
-                            trace!("DNS resolution did not find: anything");
+                            trace!("DNS resolution did not find anything");
                             Err(Error::NoAddressesFound)
                         }
                     }
