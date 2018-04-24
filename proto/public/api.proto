@@ -22,7 +22,10 @@ message ListPodsResponse {
 message Pod {
   string name = 1;
   string podIP = 2;
-  string deployment = 3;
+  oneof owner {
+    string deployment = 3;
+    string replication_controller = 9;
+  }
   string status = 4;
   bool added = 5; // true if this pod has a proxy sidecar (data plane)
   google.protobuf.Duration sinceLastReport = 6;

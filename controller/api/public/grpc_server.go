@@ -103,10 +103,26 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.Empty) (*pb.ListPodsR
 			continue
 		}
 
+		var deployment, rc string
+		var err2 error
 		deployment, err := s.getDeploymentFor(pod)
-		if err != nil {
-			log.Debugf("Cannot get deployment for pod %s: %s", pod.Name, err)
+		if deployment == "" {
+			rc, err2 = s.getReplicationControllerFor(pod)
+		}
+
+		if rc != "" && deployment != "" {
+			log.Debugf("Got nonzero values for both rc (%s) and deployment (%s)", rc, deployment)
+			continue
+		}
+		if rc == "" && deployment == "" {
+			log.Debugf("Both replication controller and deployment are blank")
+			continue
+		}
+
+		if err != nil && err2 != nil {
+			log.Debugf("Cannot get deployment or replication controller for pod %s: %s, %s", pod.Name, err, err2)
 			deployment = ""
+			rc = ""
 		}
 
 		updated, added := reports[pod.Name]
@@ -121,13 +137,20 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.Empty) (*pb.ListPodsR
 
 		item := &pb.Pod{
 			Name:                pod.Namespace + "/" + pod.Name,
-			Deployment:          deployment, // TODO: this is of the form `namespace/deployment`, it should just be `deployment`
 			Status:              status,
 			PodIP:               pod.Status.PodIP,
 			Added:               added,
 			ControllerNamespace: controllerNS,
 			ControlPlane:        controllerComponent != "",
 		}
+		if deployment != "" {
+			// TODO: this is of the form `namespace/deployment`, it should just be `deployment`
+			item.Owner = &pb.Pod_Deployment{Deployment: deployment}
+		}
+		if rc != "" {
+			item.Owner = &pb.Pod_ReplicationController{ReplicationController: rc}
+		}
+
 		if added {
 			since := time.Since(updated)
 			item.SinceLastReport = &duration.Duration{
@@ -257,6 +280,34 @@ func (s *grpcServer) getDeploymentFor(pod *k8sV1.Pod) (string, error) {
 				return namespace + "/" + owner.Name, nil
 			}
 		}
+	}
+
+	return "", fmt.Errorf("Pod %s owner is not a Deployment", pod.Name)
+}
+
+func (s *grpcServer) getReplicationControllerFor(pod *k8sV1.Pod) (string, error) {
+	namespace := pod.Namespace
+	if len(pod.GetOwnerReferences()) == 0 {
+		return "", fmt.Errorf("Pod %s has no owner", pod.Name)
+	}
+	parent := pod.GetOwnerReferences()[0]
+
+	if parent.Kind != "ReplicationController" {
+		return "", fmt.Errorf("Pod %s parent is not a ReplicationController", pod.Name)
+	}
+
+	rc, err := s.replicationControllerLister.GetPodControllers(pod)
+	if err != nil {
+		return "", err
+	}
+
+	if len(rc) == 0 {
+		return "", fmt.Errorf("Pod %s has no replication controller", pod.Name)
+	}
+
+	for _, r := range rc {
+		// why do we go through the checking of r.GetOwnerReferences in getDeploymentFor?
+		return namespace + "/" + r.Name, nil
 	}
 
 	return "", fmt.Errorf("Pod %s owner is not a Deployment", pod.Name)

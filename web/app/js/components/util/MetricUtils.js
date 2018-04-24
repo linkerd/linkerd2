@@ -59,10 +59,11 @@ const getLatency = row => {
   }
 };
 
-export const getPodsByDeployment = pods => {
+export const getPodsByDeployment = pods => getPodsByResource(pods, "deployment");
+export const getPodsByResource = (pods, resource = "deployment") => {
   return _(pods)
-    .reject(p => _.isEmpty(p.deployment) || p.controlPlane)
-    .groupBy('deployment')
+    .reject(p => _.isEmpty(p[resource]) || p.controlPlane)
+    .groupBy(resource)
     .map((componentPods, name) => {
       let podsWithStatus = _.chain(componentPods)
         .map(p => {

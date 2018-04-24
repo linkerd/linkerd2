@@ -23,7 +23,7 @@ const withTooltip = (d, metricName) => {
 const columnDefinitions = (sortable = true, resource, ConduitLink) => {
   return [
     {
-      title: resource,
+      title: resource === "Replication Controller" ? "RC" : resource, // hack fix for long title
       key: "name",
       defaultSortOrder: 'ascend',
       width: 150,

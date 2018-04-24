@@ -11,6 +11,7 @@ import { Col, Row, Table } from 'antd';
 import {
   getComponentPods,
   getPodsByDeployment,
+  getPodsByResource,
 } from './util/MetricUtils.js';
 import './../../css/service-mesh.css';
 
@@ -87,10 +88,12 @@ export default class ServiceMesh extends React.Component {
     this.serverPromise = Promise.all(this.api.getCurrentPromises())
       .then(([pods]) => {
         let podsByDeploy = getPodsByDeployment(pods.pods);
+        let podsByReplicationController = getPodsByResource(pods.pods, "replicationController");
         let controlPlanePods = this.processComponents(pods.pods);
 
         this.setState({
           deploys: podsByDeploy,
+          replicationControllers: podsByReplicationController,
           components: controlPlanePods,
           lastUpdated: Date.now(),
           pendingRequests: false,
@@ -112,16 +115,20 @@ export default class ServiceMesh extends React.Component {
     });
   }
 
-  addedDeploymentCount() {
-    return _.size(_.filter(this.state.deploys, ["added", true]));
+  addedCount(resource) {
+    return _.size(_.filter(this.state[resource], ["added", true]));
   }
 
-  unaddedDeploymentCount() {
-    return this.deployCount() - this.addedDeploymentCount();
+  unaddedCount(resource) {
+    return this.resourceCount(resource) - this.addedCount(resource);
   }
 
   proxyCount() {
-    return _.sum(_.map(this.state.deploys, d => {
+    return this.resourceProxyCount("deploys") + this.resourceProxyCount("replicationControllers");
+  }
+
+  resourceProxyCount(resource) {
+    return _.sum(_.map(this.state[resource], d => {
       return _.size(_.filter(d.pods, ["value", "good"]));
     }));
   }
@@ -130,8 +137,8 @@ export default class ServiceMesh extends React.Component {
     return _.size(this.state.components);
   }
 
-  deployCount() {
-    return _.size(this.state.deploys);
+  resourceCount(resource) {
+    return _.size(this.state[resource]);
   }
 
   getServiceMeshDetails() {
@@ -139,9 +146,11 @@ export default class ServiceMesh extends React.Component {
       { key: 1, name: "Conduit version", value: this.props.releaseVersion },
       { key: 2, name: "Conduit namespace", value: this.props.controllerNamespace },
       { key: 3, name: "Control plane components", value: this.componentCount() },
-      { key: 4, name: "Added deployments", value: this.addedDeploymentCount() },
-      { key: 5, name: "Unadded deployments", value: this.unaddedDeploymentCount() },
-      { key: 6, name: "Data plane proxies", value: this.proxyCount() }
+      { key: 4, name: "Added deployments", value: this.addedCount("deploys") },
+      { key: 5, name: "Unadded deployments", value: this.unaddedCount("deploys") },
+      { key: 6, name: "Added replication controllers", value: this.addedCount("replicationControllers") },
+      { key: 7, name: "Unadded replication controllers", value: this.unaddedCount("replicationControllers") },
+      { key: 8, name: "Data plane proxies", value: this.proxyCount() }
     ];
   }
 
@@ -181,13 +190,27 @@ export default class ServiceMesh extends React.Component {
     return (
       <div className="mesh-section">
         <div className="clearfix header-with-metric">
-          <div className="subsection-header">Data plane</div>
-          <Metric title="Proxies" value={this.proxyCount()} className="metric-large" />
-          <Metric title="Deployments" value={this.deployCount()} className="metric-large" />
+          <div className="subsection-header">Data plane: deployments</div>
+          <Metric title="Proxies" value={this.resourceProxyCount("deploys")} className="metric-large" />
+          <Metric title="Deployments" value={this.resourceCount("deploys")} className="metric-large" />
         </div>
 
         <StatusTable
           data={this.state.deploys}
+          resource="Deployment"
+          statusColumnTitle="Proxy Status"
+          shouldLink={true}
+          api={this.api}  />
+
+        <div className="clearfix header-with-metric">
+          <div className="subsection-header">Data plane: Replication Controllers</div>
+          <Metric title="Proxies" value={this.resourceProxyCount("replicationControllers")} className="metric-large" />
+          <Metric title="RCs" value={this.resourceCount("replicationControllers")} className="metric-large" />
+        </div>
+
+        <StatusTable
+          data={this.state.replicationControllers}
+          resource="Replication Controller"
           statusColumnTitle="Proxy Status"
           shouldLink={true}
           api={this.api}  />
@@ -215,33 +238,70 @@ export default class ServiceMesh extends React.Component {
   }
 
   renderAddDeploymentsMessage() {
-    if (this.deployCount() === 0) {
+    if (this.resourceCount("deploys") === 0 && this.resourceCount("replicationControllers") === 0) {
       return (
         <div className="mesh-completion-message">
-          No deployments detected. {incompleteMeshMessage()}
+          No deployments or replication controllers detected. {incompleteMeshMessage()}
         </div>
       );
     } else {
-      switch (this.unaddedDeploymentCount()) {
+      let needsIncompleteMessage = false;
+      let deployMessage;
+      let rcMessage;
+
+      switch (this.unaddedCount("deploys")) {
       case 0:
-        return (
-          <div className="mesh-completion-message">
+        deployMessage = (
+          <div>
             All deployments have been added to the service mesh.
           </div>
         );
+        break;
       case 1:
-        return (
-          <div className="mesh-completion-message">
-            1 deployment has not been added to the service mesh. {incompleteMeshMessage()}
+        needsIncompleteMessage = true;
+        deployMessage =  (
+          <div>
+            1 deployment has not been added to the service mesh.
           </div>
         );
+        break;
       default:
-        return (
-          <div className="mesh-completion-message">
-            {this.unaddedDeploymentCount()} deployments have not been added to the service mesh. {incompleteMeshMessage()}
-          </div>
+        needsIncompleteMessage = true;
+        deployMessage = (
+          <p>{this.unaddedCount("deploys")} deployments have not been added to the service mesh.</p>
         );
       }
+
+      switch (this.unaddedCount("replicationControllers")) {
+      case 0:
+        rcMessage = (
+          <div>
+              All resource controllers have been added to the service mesh.
+          </div>
+        );
+        break;
+      case 1:
+        needsIncompleteMessage = true;
+        rcMessage =  (
+          <div>
+              1 resource controller has not been added to the service mesh.
+          </div>
+        );
+        break;
+      default:
+        needsIncompleteMessage = true;
+        rcMessage = (
+          <p>{this.unaddedCount("replicationControllers")} replication controllers have not been added to the service mesh.</p>
+        );
+      }
+
+      return (
+        <div className="mesh-completion-message">
+          {deployMessage}<br />
+          {rcMessage}<br />
+          {needsIncompleteMessage ? incompleteMeshMessage("", "resource") : null}
+        </div>
+      );
     }
   }
 
@@ -265,7 +325,10 @@ export default class ServiceMesh extends React.Component {
 
   renderOverview() {
     if (this.proxyCount() === 0) {
-      return <CallToAction numDeployments={this.deployCount()} />;
+      return (<CallToAction
+        resource="resource"
+        numDeployments={this.resourceCount("deploys")}
+        numReplicationControllers={this.resourceCount("replicationControllers")} />);
     }
   }
 

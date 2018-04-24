@@ -40,12 +40,12 @@ const StatusDot = ({status, multilineDots, columnName}) => (
 );
 
 const columns = {
-  resourceName: (shouldLink, ConduitLink) => {
+  resourceName: (name, shouldLink, ConduitLink) => {
     return {
-      title: "Deployment",
+      title: name,
       key: "name",
       render: row => shouldLink && row.added ?
-        <GrafanaLink name={row.name} resource="deployment" conduitLink={ConduitLink} /> : row.name
+        <GrafanaLink name={row.name} resource={name} conduitLink={ConduitLink} /> : row.name
     };
   },
   pods: {
@@ -87,7 +87,7 @@ export default class StatusTable extends React.Component {
 
   render() {
     let tableCols = [
-      columns.resourceName(this.props.shouldLink, this.props.api.ConduitLink),
+      columns.resourceName(this.props.resource, this.props.shouldLink, this.props.api.ConduitLink),
       columns.pods,
       columns.status(this.props.statusColumnTitle)
     ];

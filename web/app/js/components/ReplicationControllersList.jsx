@@ -5,11 +5,11 @@ import ErrorBanner from './ErrorBanner.jsx';
 import MetricsTable from './MetricsTable.jsx';
 import PageHeader from './PageHeader.jsx';
 import React from 'react';
-import { getPodsByDeployment, processRollupMetrics } from './util/MetricUtils.js';
+import { getPodsByResource, processRollupMetrics } from './util/MetricUtils.js';
 import './../../css/list.css';
 import 'whatwg-fetch';
 
-export default class DeploymentsList extends React.Component {
+export default class ReplicationControllersList extends React.Component {
   constructor(props) {
     super(props);
     this.api = this.props.api;
@@ -35,13 +35,13 @@ export default class DeploymentsList extends React.Component {
     this.api.cancelCurrentRequests();
   }
 
-  filterDeploys(deploys, metrics) {
-    let deploysByName = _.keyBy(deploys, 'name');
+  filterResources(resourceList, metrics) {
+    let resourcesByName = _.keyBy(resourceList, 'name');
     return _.compact(_.map(metrics, metric => {
-      if (_.has(deploysByName, metric.name)) {
-        metric.added = deploysByName[metric.name].added;
-        return metric;
+      if (_.has(resourcesByName, metric.name)) {
+        metric.added = resourcesByName[metric.name].added;
       }
+      return metric;
     }));
   }
 
@@ -52,15 +52,15 @@ export default class DeploymentsList extends React.Component {
     this.setState({ pendingRequests: true });
 
     this.api.setCurrentRequests([
-      this.api.fetchMetrics(this.api.urlsForResource["deployment"].url().rollup),
+      this.api.fetchMetrics(this.api.urlsForResource["replication_controller"].url().rollup),
       this.api.fetchPods()
     ]);
 
     Promise.all(this.api.getCurrentPromises())
       .then(([rollup, p]) => {
-        let poByDeploy = getPodsByDeployment(p.pods);
-        let meshDeploys = processRollupMetrics(rollup);
-        let combinedMetrics = this.filterDeploys(poByDeploy, meshDeploys);
+        let poByResource = getPodsByResource(p.pods, "replicationController");
+        let meshResources = processRollupMetrics(rollup);
+        let combinedMetrics = this.filterResources(poByResource, meshResources);
 
         this.setState({
           metrics: combinedMetrics,
@@ -89,11 +89,11 @@ export default class DeploymentsList extends React.Component {
         { !this.state.error ? null : <ErrorBanner message={this.state.error} /> }
         { !this.state.loaded ? <ConduitSpinner />  :
           <div>
-            <PageHeader header="Deployments" api={this.api} />
+            <PageHeader header="Replication Controllers" api={this.api} />
             { _.isEmpty(this.state.metrics) ?
               <CallToAction /> :
               <MetricsTable
-                resource="deployment"
+                resource="Replication Controller"
                 metrics={this.state.metrics}
                 api={this.api} />
             }
