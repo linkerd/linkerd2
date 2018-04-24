@@ -92,12 +92,12 @@ func init() {
 
 func requestTapFromApi(w io.Writer, client pb.ApiClient, targetName string, resourceType string, req *pb.TapRequest) error {
 	switch resourceType {
-	case k8s.KubernetesDeployments:
+	case k8s.Deployments:
 		req.Target = &pb.TapRequest_Deployment{
 			Deployment: targetName,
 		}
 
-	case k8s.KubernetesPods:
+	case k8s.Pods:
 		req.Target = &pb.TapRequest_Pod{
 			Pod: targetName,
 		}

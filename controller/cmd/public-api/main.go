@@ -7,7 +7,6 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
-	"time"
 
 	promApi "github.com/prometheus/client_golang/api"
 	"github.com/runconduit/conduit/controller/api/public"
@@ -16,8 +15,6 @@ import (
 	"github.com/runconduit/conduit/controller/util"
 	"github.com/runconduit/conduit/pkg/version"
 	log "github.com/sirupsen/logrus"
-	"k8s.io/client-go/informers"
-	"k8s.io/client-go/tools/cache"
 )
 
 func main() {
@@ -55,27 +52,7 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
-	sharedInformers := informers.NewSharedInformerFactory(k8sClient, 10*time.Minute)
-
-	namespaceInformer := sharedInformers.Core().V1().Namespaces()
-	namespaceInformerSynced := namespaceInformer.Informer().HasSynced
-
-	deployInformer := sharedInformers.Apps().V1beta2().Deployments()
-	deployInformerSynced := deployInformer.Informer().HasSynced
-
-	replicaSetInformer := sharedInformers.Apps().V1beta2().ReplicaSets()
-	replicaSetInformerSynced := replicaSetInformer.Informer().HasSynced
-
-	podInformer := sharedInformers.Core().V1().Pods()
-	podInformerSynced := podInformer.Informer().HasSynced
-
-	replicationControllerInformer := sharedInformers.Core().V1().ReplicationControllers()
-	replicationControllerInformerSynced := replicationControllerInformer.Informer().HasSynced
-
-	serviceInformer := sharedInformers.Core().V1().Services()
-	serviceInformerSynced := serviceInformer.Informer().HasSynced
-
-	sharedInformers.Start(nil)
+	lister := k8s.NewLister(k8sClient)
 
 	prometheusClient, err := promApi.NewClient(promApi.Config{Address: *prometheusUrl})
 	if err != nil {
@@ -86,33 +63,16 @@ func main() {
 		*addr,
 		prometheusClient,
 		tapClient,
-		namespaceInformer.Lister(),
-		deployInformer.Lister(),
-		replicaSetInformer.Lister(),
-		podInformer.Lister(),
-		replicationControllerInformer.Lister(),
-		serviceInformer.Lister(),
+		lister,
 		*controllerNamespace,
 		strings.Split(*ignoredNamespaces, ","),
 	)
 
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-		defer cancel()
-
-		log.Infof("waiting for caches to sync")
-		if !cache.WaitForCacheSync(
-			ctx.Done(),
-			namespaceInformerSynced,
-			deployInformerSynced,
-			replicaSetInformerSynced,
-			podInformerSynced,
-			replicationControllerInformerSynced,
-			serviceInformerSynced,
-		) {
-			log.Fatalf("timed out wait for caches to sync")
+		err := lister.Sync()
+		if err != nil {
+			log.Fatalf("timed out wait for caches to sync: %s", err)
 		}
-		log.Infof("caches synced")
 	}()
 
 	go func() {
