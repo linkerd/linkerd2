@@ -267,6 +267,16 @@ high-level health metrics of deployments in the data plane.
 ### DEPLOYMENTS
 Lists all deployments by requests, success rate, and latency.
 
+### PODS
+Lists all pods by requests, success rate, and latency.
+
+### REPLICATION CONTROLLER
+Lists all replications controllers by requests, success rate, and latency.
+
+### GRAFANA
+For detailed metrics on all of the above resources, click any resource to browse
+to a dynamically-generated Grafana dashboard.
+
 ___
 
 ## Using the CLI 💻
@@ -275,30 +285,31 @@ happening in the Conduit service mesh. The CLI provides several interesting and
 powerful commands that you should experiment with, including `conduit stat` and `conduit tap`.
 
 ### To view details per deployment, run:
-#### `conduit stat deployments`
+#### `conduit -n emojivoto stat deploy`
 
 ### Which should display:
 ```
-NAME                   REQUEST_RATE   SUCCESS_RATE   P50_LATENCY   P99_LATENCY
-emojivoto/emoji              2.0rps        100.00%           0ms           0ms
-emojivoto/voting             0.6rps         66.67%           0ms           0ms
-emojivoto/web                2.0rps         95.00%           0ms           0ms
+NAME       MESHED   SUCCESS      RPS   LATENCY_P50   LATENCY_P95   LATENCY_P99
+emoji         1/1   100.00%   2.0rps           1ms           2ms           3ms
+vote-bot      1/1         -        -             -             -             -
+voting        1/1    81.36%   1.0rps           1ms           1ms           2ms
+web           1/1    90.68%   2.0rps           4ms           5ms           5ms
 ```
 
 &nbsp;
 
 ### To see a live pipeline of requests for your application, run:
-#### `conduit tap deploy emojivoto/voting`
+#### `conduit -n emojivoto tap deploy`
 
 ### Which should display:
 ```
-req id=0:127 src=172.17.0.11:50992 dst=172.17.0.10:8080 :method=POST :authority=voting-svc.emojivoto:8080 :path=/emojivoto.v1.VotingService/VoteManInTuxedo
-rsp id=0:127 src=172.17.0.11:50992 dst=172.17.0.10:8080 :status=200 latency=588µs
-end id=0:127 src=172.17.0.11:50992 dst=172.17.0.10:8080 grpc-status=OK duration=9µs response-length=5B
-req id=0:128 src=172.17.0.11:50992 dst=172.17.0.10:8080 :method=POST :authority=voting-svc.emojivoto:8080 :path=/emojivoto.v1.VotingService/VotePager
-rsp id=0:128 src=172.17.0.11:50992 dst=172.17.0.10:8080 :status=200 latency=601µs
-end id=0:128 src=172.17.0.11:50992 dst=172.17.0.10:8080 grpc-status=OK duration=11µs response-length=5B
-req id=0:129 src=172.17.0.11:50992 dst=172.17.0.10:8080 :method=POST :authority=voting-svc.emojivoto:8080 :path=/emojivoto.v1.VotingService/VotePoop
+req id=0:2900 src=10.1.8.151:51978 dst=10.1.8.150:80 :method=GET :authority=web-svc.emojivoto:80 :path=/api/list
+req id=0:2901 src=10.1.8.150:49246 dst=emoji-664486dccb-97kws :method=POST :authority=emoji-svc.emojivoto:8080 :path=/emojivoto.v1.EmojiService/ListAll
+rsp id=0:2901 src=10.1.8.150:49246 dst=emoji-664486dccb-97kws :status=200 latency=2146µs
+end id=0:2901 src=10.1.8.150:49246 dst=emoji-664486dccb-97kws grpc-status=OK duration=27µs response-length=2161B
+rsp id=0:2900 src=10.1.8.151:51978 dst=10.1.8.150:80 :status=200 latency=5698µs
+end id=0:2900 src=10.1.8.151:51978 dst=10.1.8.150:80 duration=112µs response-length=4558B
+req id=0:2902 src=10.1.8.151:51978 dst=10.1.8.150:80 :method=GET :authority=web-svc.emojivoto:80 :path=/api/vote
 ...
 ```
 

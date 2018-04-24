@@ -333,7 +333,6 @@ data:
       - role: pod
         namespaces:
           names: ['{{.Namespace}}']
-      # TODO: do something with "conduit.io/control-plane-component"
       relabel_configs:
       - source_labels:
         - __meta_kubernetes_pod_label_conduit_io_control_plane_component
