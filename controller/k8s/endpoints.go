@@ -86,23 +86,34 @@ func (e *endpointsWatcher) Subscribe(service string, port uint32, listener Endpo
 	e.mutex.Lock() // Acquire write-lock on servicePorts data structure.
 	defer e.mutex.Unlock()
 
-	svc, ok := (*e.servicePorts)[service]
+	svcPorts, ok := (*e.servicePorts)[service]
 	if !ok {
 		ports := make(map[uint32]*servicePort)
 		(*e.servicePorts)[service] = &ports
-		svc = &ports
+		svcPorts = &ports
 	}
-	svcPort, ok := (*svc)[port]
+	svcPort, ok := (*svcPorts)[port]
 	if !ok {
 		var err error
 		svcPort, err = newServicePort(service, port, e)
 		if err != nil {
 			return err
 		}
-		(*svc)[port] = svcPort
+		(*svcPorts)[port] = svcPort
 	}
 
-	_, exists, _ := e.GetService(service)
+	svc, exists, _ := e.GetService(service)
+
+	if exists && svc.Spec.Type == v1.ServiceTypeExternalName {
+		// XXX: The proxy will use DNS to discover the service if it is told
+		// the service doesn't exist. An external service is represented in DNS
+		// as a CNAME, which the proxy will correctly resolve. Thus, there's no
+		// benefit (yet) to distinguishing between "the service exists but it
+		// is an ExternalName service so use DNS anyway" and "the service does
+		// not exist."
+		exists = false
+	}
+
 	svcPort.subscribe(exists, listener)
 	return nil
 }
