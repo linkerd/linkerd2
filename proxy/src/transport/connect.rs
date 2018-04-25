@@ -58,16 +58,9 @@ impl HostAndPort {
     pub fn normalize(a: &http::uri::Authority, default_port: Option<u16>)
         -> Result<Self, HostAndPortError>
     {
-        let host = {
-            match dns::Name::normalize(a.host()) {
-                Ok(host) => Host::DnsName(host),
-                Err(_) => {
-                    let ip: IpAddr = IpAddr::from_str(a.host())
-                        .map_err(|_| HostAndPortError::InvalidHost)?;
-                    Host::Ip(ip)
-                },
-            }
-        };
+        let host = IpAddr::from_str(a.host())
+            .map(Host::Ip)
+            .unwrap_or_else(|_| Host::DnsName(dns::Name::from(a.host())));
         let port = a.port()
             .or(default_port)
             .ok_or_else(|| HostAndPortError::MissingPort)?;

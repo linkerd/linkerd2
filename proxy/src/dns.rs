@@ -1,47 +1,48 @@
-use abstract_ns;
-use abstract_ns::HostResolve;
-pub use abstract_ns::IpList;
-use domain;
 use futures::prelude::*;
-use ns_dns_tokio;
 use std::fmt;
 use std::net::IpAddr;
-use std::path::Path;
-use std::str::FromStr;
 use std::time::Duration;
 use tokio_core::reactor::{Handle, Timeout};
 use transport;
+use trust_dns_resolver;
+use trust_dns_resolver::config::{ResolverConfig, ResolverOpts};
+use trust_dns_resolver::error::{ResolveError, ResolveErrorKind};
+use trust_dns_resolver::ResolverFuture;
+use trust_dns_resolver::lookup_ip::{LookupIp, LookupIpFuture};
 
 #[derive(Clone, Debug)]
-pub struct Config(domain::resolv::ResolvConf);
+pub struct Config {
+    config: ResolverConfig,
+    opts: ResolverOpts,
+}
 
 #[derive(Clone, Debug)]
 pub struct Resolver {
-    resolver: ns_dns_tokio::DnsResolver,
+    config: Config,
     executor: Handle,
 }
 
 pub enum IpAddrFuture {
-    DNS(ns_dns_tokio::HostFuture),
+    DNS(LookupIpFuture),
     Fixed(IpAddr),
 }
 
 pub enum Error {
     NoAddressesFound,
-    ResolutionFailed(<ns_dns_tokio::HostFuture as Future>::Error),
+    ResolutionFailed(ResolveError),
 }
 
 pub enum Response {
-    Exists(IpList),
+    Exists(LookupIp),
     DoesNotExist,
 }
 
 // `Box<Future>` implements `Future` so it doesn't need to be implemented manually.
-pub type IpAddrListFuture = Box<Future<Item=Response, Error=abstract_ns::Error>>;
+pub type IpAddrListFuture = Box<Future<Item=Response, Error=ResolveError>>;
 
 /// A DNS name.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct Name(abstract_ns::Name);
+pub struct Name(String);
 
 impl fmt::Display for Name {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
@@ -49,20 +50,11 @@ impl fmt::Display for Name {
     }
 }
 
-impl Name {
-    /// Parses the input string as a DNS name, normalizing it to lowercase.
-    pub fn normalize(s: &str) -> Result<Self, ()> {
-        // XXX: `abstract_ns::Name::from_str()` wrongly accepts IP addresses as
-        // domain names. Protect against this. TODO: Fix abstract_ns.
-        if let Ok(_) = IpAddr::from_str(s) {
-            return Err(());
-        }
-        // XXX: `abstract_ns::Name::from_str()` doesn't accept uppercase letters.
-        //  TODO: Avoid this extra allocation.
-        let s = s.to_ascii_lowercase();
-        abstract_ns::Name::from_str(&s)
-            .map(Name)
-            .map_err(|_| ())
+impl<'a> From<&'a str> for Name {
+    fn from(s: &str) -> Self {
+        // TODO: Verify the name is a valid DNS name.
+        // TODO: Avoid this extra allocation.
+        Name(s.to_ascii_lowercase())
     }
 }
 
@@ -73,22 +65,23 @@ impl AsRef<str> for Name {
 }
 
 impl Config {
-    /// Note that this ignores any errors reading or parsing the resolve.conf
-    /// file, just like the `domain` crate does.
-    pub fn from_file(resolve_conf_path: &Path) -> Self {
-        let mut resolv_conf = domain::resolv::ResolvConf::new();
-        let _ = resolv_conf.parse_file(resolve_conf_path);
-        resolv_conf.finalize();
-        Config(resolv_conf)
+    /// TODO: Make this infallible, like it is in the `domain` crate.
+    pub fn from_system_config() -> Result<Self, ResolveError> {
+        let (config, opts) = trust_dns_resolver::system_conf::read_system_conf()?;
+        trace!("DNS config: {:?}", &config);
+        trace!("DNS opts: {:?}", &opts);
+        Ok(Config {
+            config,
+            opts
+        })
     }
 }
 
 impl Resolver {
     pub fn new(config: Config, executor: &Handle) -> Self {
         Resolver {
-            resolver: ns_dns_tokio::DnsResolver::new_from_resolver(
-                domain::resolv::Resolver::from_conf(executor, config.0)),
-            executor: executor.clone()
+            config,
+            executor: executor.clone(),
         }
     }
 
@@ -96,37 +89,51 @@ impl Resolver {
         match *host {
             transport::Host::DnsName(ref name) => {
                 trace!("resolve_one_ip {}", name);
-                IpAddrFuture::DNS(self.resolver.resolve_host(&name.0))
+                IpAddrFuture::DNS(self.clone().lookup_ip(name))
             }
             transport::Host::Ip(addr) => IpAddrFuture::Fixed(addr),
         }
     }
 
     pub fn resolve_all_ips(&self, delay: Duration, host: &Name) -> IpAddrListFuture {
-        let name = host.0.clone();
+        let name = host.clone();
         let name_clone = name.clone();
         trace!("resolve_all_ips {}", &name);
-        let resolver = self.resolver.clone();
-        let f = Timeout::new(delay, &self.executor)
+        let resolver = self.clone();
+        let f = Timeout::new(delay, &resolver.executor)
             .expect("Timeout::new() won't fail")
             .then(move |_| {
                 trace!("resolve_all_ips {} after delay", &name);
-                resolver.resolve_host(&name)
+                resolver.lookup_ip(&name)
             })
             .then(move |result| {
                 trace!("resolve_all_ips {}: completed with {:?}", name_clone, &result);
                 match result {
                     Ok(ips) => Ok(Response::Exists(ips)),
-                    Err(abstract_ns::Error::NameNotFound) => Ok(Response::DoesNotExist),
-                    Err(e) => Err(e),
+                    Err(e) => {
+                        if let &ResolveErrorKind::NoRecordsFound(_) = e.kind() {
+                            Ok(Response::DoesNotExist)
+                        } else {
+                            Err(e)
+                        }
+                    }
                 }
             });
         Box::new(f)
     }
+
+    // `ResolverFuture` can only be used for one lookup, so we have to clone all
+    // the state during each resolution.
+    fn lookup_ip(self, &Name(ref name): &Name) -> LookupIpFuture {
+        let resolver = ResolverFuture::new(
+            self.config.config,
+            self.config.opts,
+            &self.executor);
+        resolver.lookup_ip(name)
+    }
 }
 
 impl Future for IpAddrFuture {
-    // TODO: Return the IpList so the user can try all of them.
     type Item = IpAddr;
     type Error = Error;
 
@@ -134,9 +141,18 @@ impl Future for IpAddrFuture {
         match *self {
             IpAddrFuture::DNS(ref mut inner) => match inner.poll() {
                 Ok(Async::NotReady) => Ok(Async::NotReady),
-                Ok(Async::Ready(ips)) => ips.pick_one()
-                    .map(Async::Ready)
-                    .ok_or(Error::NoAddressesFound),
+                Ok(Async::Ready(ips)) => {
+                    match ips.iter().next() {
+                        Some(ip) => {
+                            trace!("DNS resolution found: {:?}", ip);
+                            Ok(Async::Ready(ip))
+                        },
+                        None => {
+                            trace!("DNS resolution did not find anything");
+                            Err(Error::NoAddressesFound)
+                        }
+                    }
+                },
                 Err(e) => Err(Error::ResolutionFailed(e)),
             },
             IpAddrFuture::Fixed(addr) => Ok(Async::Ready(addr)),
@@ -171,23 +187,8 @@ mod tests {
         ];
 
         for case in VALID {
-            let name = Name::normalize(case.input).expect("is a valid DNS name");
+            let name = Name::from(case.input);
             assert_eq!(name.as_ref(), case.output);
-        }
-
-        static INVALID: &[&str] = &[
-            "",
-            "1.2.3.4",
-            "::1",
-            "[::1]",
-            ":1234",
-            "1.2.3.4:11234",
-            "abc.com:1234",
-        ];
-
-        for case in INVALID {
-            assert!(Name::normalize(case).is_err(),
-                    "{} is invalid", case);
         }
     }
 }
