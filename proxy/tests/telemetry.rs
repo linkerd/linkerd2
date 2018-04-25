@@ -75,18 +75,18 @@ impl Fixture {
 }
 
 impl TcpFixture {
-    fn server() -> server::Listening {
-        let msg1 = "custom tcp hello";
-        let msg2 = "custom tcp bye";
+    const HELLO_MSG: &'static str = "custom tcp hello";
+    const BYE_MSG: &'static str = "custom tcp bye";
 
+    fn server() -> server::Listening {
         server::tcp()
             .accept(move |read| {
-                assert_eq!(read, msg1.as_bytes());
-                msg2
+                assert_eq!(read, Self::HELLO_MSG.as_bytes());
+                TcpFixture::BYE_MSG
             })
             .accept(move |read| {
-                assert_eq!(read, msg1.as_bytes());
-                msg2
+                assert_eq!(read, Self::HELLO_MSG.as_bytes());
+                TcpFixture::BYE_MSG
             })
             .run()
     }
@@ -680,12 +680,12 @@ mod transport {
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
         assert_contains!(metrics.get("/metrics"),
-            "{direction=\"inbound\"} 1"
+            "tcp_open_total{direction=\"inbound\",peer=\"src\"} 1"
         );
         // drop the client to force the connection to close.
         drop(client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_close_total{direction=\"inbound\",classification=\"success\"} 1"
+            "tcp_close_total{direction=\"inbound\",peer=\"src\",classification=\"success\"} 1"
         );
 
         // create a new client to force a new connection
@@ -694,12 +694,12 @@ mod transport {
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_open_total{direction=\"inbound\"} 2"
+            "tcp_open_total{direction=\"inbound\",peer=\"src\"} 2"
         );
         // drop the client to force the connection to close.
         drop(client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_close_total{direction=\"inbound\",classification=\"success\"} 2"
+            "tcp_close_total{direction=\"inbound\",peer=\"src\",classification=\"success\"} 2"
         );
     }
 
@@ -712,7 +712,7 @@ mod transport {
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connect_open_total{direction=\"inbound\"} 1");
+            "tcp_open_total{direction=\"inbound\",peer=\"dst\"} 1");
 
         // create a new client to force a new connection
         let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
@@ -721,7 +721,7 @@ mod transport {
         assert_eq!(client.get("/"), "hello");
         // server connection should be pooled
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connect_open_total{direction=\"inbound\"} 1");
+            "tcp_open_total{direction=\"inbound\",peer=\"dst\"} 1");
     }
 
     #[test]
@@ -733,12 +733,12 @@ mod transport {
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_open_total{direction=\"outbound\"} 1"
+            "tcp_open_total{direction=\"outbound\",peer=\"src\"} 1"
         );
         // drop the client to force the connection to close.
         drop(client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_close_total{direction=\"outbound\",classification=\"success\"} 1"
+            "tcp_close_total{direction=\"outbound\",peer=\"src\",classification=\"success\"} 1"
         );
 
         // create a new client to force a new connection
@@ -747,12 +747,12 @@ mod transport {
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_open_total{direction=\"outbound\"} 2"
+            "tcp_open_total{direction=\"outbound\",peer=\"src\"} 2"
         );
         // drop the client to force the connection to close.
         drop(client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_close_total{direction=\"outbound\",classification=\"success\"} 2"
+            "tcp_close_total{direction=\"outbound\",peer=\"src\",classification=\"success\"} 2"
         );
     }
 
@@ -765,7 +765,7 @@ mod transport {
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connect_open_total{direction=\"outbound\"} 1");
+            "tcp_open_total{direction=\"outbound\",peer=\"dst\"} 1");
 
         // create a new client to force a new connection
         let client2 = client::new(proxy.outbound, "tele.test.svc.cluster.local");
@@ -774,7 +774,7 @@ mod transport {
         assert_eq!(client2.get("/"), "hello");
         // server connection should be pooled
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connect_open_total{direction=\"outbound\"} 1");
+            "tcp_open_total{direction=\"outbound\",peer=\"dst\"} 1");
     }
 
     #[test]
@@ -784,15 +784,12 @@ mod transport {
         let TcpFixture { client, metrics, proxy: _proxy } =
             TcpFixture::inbound();
 
-        let msg1 = "custom tcp hello";
-        let msg2 = "custom tcp bye";
-
         let tcp_client = client.connect();
 
-        tcp_client.write(msg1);
-        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        tcp_client.write(TcpFixture::HELLO_MSG);
+        assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connect_open_total{direction=\"inbound\"} 1");
+            "tcp_open_total{direction=\"inbound\",peer=\"dst\"} 1");
     }
 
     #[test]
@@ -802,31 +799,28 @@ mod transport {
         let TcpFixture { client, metrics, proxy: _proxy } =
             TcpFixture::inbound();
 
-        let msg1 = "custom tcp hello";
-        let msg2 = "custom tcp bye";
-
         let tcp_client = client.connect();
 
-        tcp_client.write(msg1);
-        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        tcp_client.write(TcpFixture::HELLO_MSG);
+        assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
 
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_open_total{direction=\"inbound\"} 1");
+            "tcp_open_total{direction=\"inbound\",peer=\"src\"} 1");
 
         drop(tcp_client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_close_total{direction=\"inbound\",classification=\"success\"} 1");
+            "tcp_close_total{direction=\"inbound\",peer=\"src\",classification=\"success\"} 1");
 
         let tcp_client = client.connect();
 
-        tcp_client.write(msg1);
-        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        tcp_client.write(TcpFixture::HELLO_MSG);
+        assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
 
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_open_total{direction=\"inbound\"} 2");
+            "tcp_open_total{direction=\"inbound\",peer=\"src\"} 2");
         drop(tcp_client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_close_total{direction=\"inbound\",classification=\"success\"} 2");
+            "tcp_close_total{direction=\"inbound\",peer=\"src\",classification=\"success\"} 2");
     }
 
     // https://github.com/runconduit/conduit/issues/831
@@ -837,73 +831,85 @@ mod transport {
         let TcpFixture { client, metrics, proxy: _proxy } =
             TcpFixture::inbound();
 
-        let msg1 = "custom tcp hello";
-        let msg2 = "custom tcp bye";
-
         let tcp_client = client.connect();
 
-        tcp_client.write(msg1);
-        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        tcp_client.write(TcpFixture::HELLO_MSG);
+        assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
         drop(tcp_client);
         // TODO: make assertions about buckets
-        assert_contains!(metrics.get("/metrics"),
-            "tcp_connection_duration_ms_count{direction=\"inbound\",classification=\"success\"} 2");
+        let out = metrics.get("/metrics");
+        assert_contains!(out,
+            "tcp_connection_duration_ms_count{direction=\"inbound\",peer=\"src\",classification=\"success\"} 1");
+        assert_contains!(out,
+            "tcp_connection_duration_ms_count{direction=\"inbound\",peer=\"dst\",classification=\"success\"} 1");
 
         let tcp_client = client.connect();
 
-        tcp_client.write(msg1);
-        assert_eq!(tcp_client.read(), msg2.as_bytes());
-        assert_contains!(metrics.get("/metrics"),
-            "tcp_connection_duration_ms_count{direction=\"inbound\",classification=\"success\"} 2");
+        tcp_client.write(TcpFixture::HELLO_MSG);
+        assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
+        let out = metrics.get("/metrics");
+        assert_contains!(out,
+            "tcp_connection_duration_ms_count{direction=\"inbound\",peer=\"src\",classification=\"success\"} 1");
+        assert_contains!(out,
+            "tcp_connection_duration_ms_count{direction=\"inbound\",peer=\"dst\",classification=\"success\"} 1");
 
         drop(tcp_client);
-        assert_contains!(metrics.get("/metrics"),
-            "tcp_connection_duration_ms_count{direction=\"inbound\",classification=\"success\"} 4");
-    }
+        let out = metrics.get("/metrics");
+        assert_contains!(out,
+            "tcp_connection_duration_ms_count{direction=\"inbound\",peer=\"src\",classification=\"success\"} 2");
+        assert_contains!(out,
+            "tcp_connection_duration_ms_count{direction=\"inbound\",peer=\"dst\",classification=\"success\"} 2");    }
 
     #[test]
     #[cfg_attr(not(feature = "flaky_tests"), ignore)]
-    fn inbound_tcp_sent_bytes() {
+    fn inbound_tcp_write_bytes_total() {
         let _ = env_logger::try_init();
         let TcpFixture { client, metrics, proxy: _proxy } =
             TcpFixture::inbound();
-
-        let msg1 = "custom tcp hello";
-        let msg2 = "custom tcp bye";
-        let expected = format!(
-            "sent_bytes{{direction=\"inbound\",classification=\"success\"}} {}",
-            msg1.len() + msg2.len()
+        let src_expected = format!(
+            "tcp_write_bytes_total{{direction=\"inbound\",peer=\"src\"}} {}",
+            TcpFixture::BYE_MSG.len()
+        );
+        let dst_expected = format!(
+            "tcp_write_bytes_total{{direction=\"inbound\",peer=\"dst\"}} {}",
+            TcpFixture::HELLO_MSG.len()
         );
 
         let tcp_client = client.connect();
 
-        tcp_client.write(msg1);
-        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        tcp_client.write(TcpFixture::HELLO_MSG);
+        assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
         drop(tcp_client);
-        assert_contains!(metrics.get("/metrics"), &expected);
+
+        let out = metrics.get("/metrics");
+        assert_contains!(out, &src_expected);
+        assert_contains!(out, &dst_expected);
     }
 
     #[test]
     #[cfg_attr(not(feature = "flaky_tests"), ignore)]
-    fn inbound_tcp_received_bytes() {
+    fn inbound_tcp_read_bytes_total() {
         let _ = env_logger::try_init();
         let TcpFixture { client, metrics, proxy: _proxy } =
             TcpFixture::inbound();
-
-        let msg1 = "custom tcp hello";
-        let msg2 = "custom tcp bye";
-        let expected = format!(
-            "sent_bytes{{direction=\"inbound\",classification=\"success\"}} {}",
-            msg1.len() + msg2.len()
+        let src_expected = format!(
+            "tcp_read_bytes_total{{direction=\"inbound\",peer=\"src\"}} {}",
+            TcpFixture::HELLO_MSG.len()
+        );
+        let dst_expected = format!(
+            "tcp_read_bytes_total{{direction=\"inbound\",peer=\"dst\"}} {}",
+            TcpFixture::BYE_MSG.len()
         );
 
         let tcp_client = client.connect();
 
-        tcp_client.write(msg1);
-        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        tcp_client.write(TcpFixture::HELLO_MSG);
+        assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
         drop(tcp_client);
-        assert_contains!(metrics.get("/metrics"), &expected);
-    }
+
+        let out = metrics.get("/metrics");
+        assert_contains!(out, &src_expected);
+        assert_contains!(out, &dst_expected);    }
 
     #[test]
     #[cfg_attr(not(feature = "flaky_tests"), ignore)]
@@ -912,15 +918,12 @@ mod transport {
         let TcpFixture { client, metrics, proxy: _proxy } =
             TcpFixture::outbound();
 
-        let msg1 = "custom tcp hello";
-        let msg2 = "custom tcp bye";
-
         let tcp_client = client.connect();
 
-        tcp_client.write(msg1);
-        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        tcp_client.write(TcpFixture::HELLO_MSG);
+        assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connect_open_total{direction=\"outbound\"} 1");
+            "tcp_open_total{direction=\"outbound\",peer=\"dst\"} 1");
     }
 
     #[test]
@@ -930,31 +933,28 @@ mod transport {
         let TcpFixture { client, metrics, proxy: _proxy } =
             TcpFixture::outbound();
 
-        let msg1 = "custom tcp hello";
-        let msg2 = "custom tcp bye";
-
         let tcp_client = client.connect();
 
-        tcp_client.write(msg1);
-        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        tcp_client.write(TcpFixture::HELLO_MSG);
+        assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
 
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_open_total{direction=\"outbound\"} 1");
+            "tcp_open_total{direction=\"outbound\",peer=\"src\"} 1");
 
         drop(tcp_client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_close_total{direction=\"outbound\",classification=\"success\"} 1");
+            "tcp_close_total{direction=\"outbound\",peer=\"src\",classification=\"success\"} 1");
 
         let tcp_client = client.connect();
 
-        tcp_client.write(msg1);
-        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        tcp_client.write(TcpFixture::HELLO_MSG);
+        assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
 
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_open_total{direction=\"outbound\"} 2");
+            "tcp_open_total{direction=\"outbound\",peer=\"src\"} 2");
         drop(tcp_client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_accept_close_total{direction=\"outbound\",classification=\"success\"} 2");
+            "tcp_close_total{direction=\"outbound\",peer=\"src\",classification=\"success\"} 2");
     }
 
     #[test]
@@ -964,108 +964,118 @@ mod transport {
         let TcpFixture { client, metrics, proxy: _proxy } =
             TcpFixture::outbound();
 
-        let msg1 = "custom tcp hello";
-        let msg2 = "custom tcp bye";
-
         let tcp_client = client.connect();
 
-        tcp_client.write(msg1);
-        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        tcp_client.write(TcpFixture::HELLO_MSG);
+        assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
         drop(tcp_client);
         // TODO: make assertions about buckets
-        assert_contains!(metrics.get("/metrics"),
-            "tcp_connection_duration_ms_count{direction=\"outbound\",classification=\"success\"} 2");
+        let out = metrics.get("/metrics");
+        assert_contains!(out,
+            "tcp_connection_duration_ms_count{direction=\"outbound\",peer=\"src\",classification=\"success\"} 1");
+        assert_contains!(out,
+            "tcp_connection_duration_ms_count{direction=\"outbound\",peer=\"dst\",classification=\"success\"} 1");
 
         let tcp_client = client.connect();
 
-        tcp_client.write(msg1);
-        assert_eq!(tcp_client.read(), msg2.as_bytes());
-        assert_contains!(metrics.get("/metrics"),
-            "tcp_connection_duration_ms_count{direction=\"outbound\",classification=\"success\"} 2");
+        tcp_client.write(TcpFixture::HELLO_MSG);
+        assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
+        let out = metrics.get("/metrics");
+        assert_contains!(out,
+            "tcp_connection_duration_ms_count{direction=\"outbound\",peer=\"src\",classification=\"success\"} 1");
+        assert_contains!(out,
+            "tcp_connection_duration_ms_count{direction=\"outbound\",peer=\"dst\",classification=\"success\"} 1");
 
         drop(tcp_client);
-        assert_contains!(metrics.get("/metrics"),
-            "tcp_connection_duration_ms_count{direction=\"outbound\",classification=\"success\"} 4");
+        let out = metrics.get("/metrics");
+        assert_contains!(out,
+            "tcp_connection_duration_ms_count{direction=\"outbound\",peer=\"src\",classification=\"success\"} 2");
+        assert_contains!(out,
+            "tcp_connection_duration_ms_count{direction=\"outbound\",peer=\"dst\",classification=\"success\"} 2");
     }
 
     #[test]
     #[cfg_attr(not(feature = "flaky_tests"), ignore)]
-    fn outbound_tcp_sent_bytes() {
+    fn outbound_tcp_write_bytes_total() {
         let _ = env_logger::try_init();
         let TcpFixture { client, metrics, proxy: _proxy } =
             TcpFixture::outbound();
-
-        let msg1 = "custom tcp hello";
-        let msg2 = "custom tcp bye";
-        let expected = format!(
-            "sent_bytes{{direction=\"outbound\",classification=\"success\"}} {}",
-            msg1.len() + msg2.len()
+        let src_expected = format!(
+            "tcp_write_bytes_total{{direction=\"outbound\",peer=\"src\"}} {}",
+            TcpFixture::BYE_MSG.len()
+        );
+        let dst_expected = format!(
+            "tcp_write_bytes_total{{direction=\"outbound\",peer=\"dst\"}} {}",
+            TcpFixture::HELLO_MSG.len()
         );
 
         let tcp_client = client.connect();
 
-        tcp_client.write(msg1);
-        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        tcp_client.write(TcpFixture::HELLO_MSG);
+        assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
         drop(tcp_client);
-        assert_contains!(metrics.get("/metrics"), &expected);
-    }
+
+        let out = metrics.get("/metrics");
+        assert_contains!(out, &src_expected);
+        assert_contains!(out, &dst_expected);    }
 
     #[test]
     #[cfg_attr(not(feature = "flaky_tests"), ignore)]
-    fn outbound_tcp_received_bytes() {
+    fn outbound_tcp_read_bytes_total() {
         let _ = env_logger::try_init();
         let TcpFixture { client, metrics, proxy: _proxy } =
             TcpFixture::outbound();
-
-        let msg1 = "custom tcp hello";
-        let msg2 = "custom tcp bye";
-        let expected = format!(
-            "received_bytes{{direction=\"outbound\",classification=\"success\"}} {}",
-            msg1.len() + msg2.len()
+        let src_expected = format!(
+            "tcp_read_bytes_total{{direction=\"outbound\",peer=\"src\"}} {}",
+            TcpFixture::HELLO_MSG.len()
+        );
+        let dst_expected = format!(
+            "tcp_read_bytes_total{{direction=\"outbound\",peer=\"dst\"}} {}",
+            TcpFixture::BYE_MSG.len()
         );
 
         let tcp_client = client.connect();
 
-        tcp_client.write(msg1);
-        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        tcp_client.write(TcpFixture::HELLO_MSG);
+        assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
         drop(tcp_client);
-        assert_contains!(metrics.get("/metrics"), &expected);
+
+        let out = metrics.get("/metrics");
+        assert_contains!(out, &src_expected);
+        assert_contains!(out, &dst_expected);
     }
 
     #[test]
     #[cfg_attr(not(feature = "flaky_tests"), ignore)]
-    fn outbound_tcp_connections_open() {
+    fn outbound_tcp_open_connections() {
         let _ = env_logger::try_init();
         let TcpFixture { client, metrics, proxy: _proxy } =
             TcpFixture::outbound();
 
-        let msg1 = "custom tcp hello";
-        let msg2 = "custom tcp bye";
-
         let tcp_client = client.connect();
 
-        tcp_client.write(msg1);
-        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        tcp_client.write(TcpFixture::HELLO_MSG);
+        assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connections_open{direction=\"outbound\"} 1");
+            "tcp_open_connections{direction=\"outbound\",peer=\"src\"} 1");
         drop(tcp_client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connections_open{direction=\"outbound\"} 0");
+            "tcp_open_connections{direction=\"outbound\",peer=\"src\"} 0");
         let tcp_client = client.connect();
 
-        tcp_client.write(msg1);
-        assert_eq!(tcp_client.read(), msg2.as_bytes());
+        tcp_client.write(TcpFixture::HELLO_MSG);
+        assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connections_open{direction=\"outbound\"} 1");
+            "tcp_open_connections{direction=\"outbound\",peer=\"src\"} 1");
 
         drop(tcp_client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connections_open{direction=\"outbound\"} 0");
+            "tcp_open_connections{direction=\"outbound\",peer=\"src\"} 0");
     }
 
     #[test]
     #[cfg_attr(not(feature = "flaky_tests"), ignore)]
-    fn outbound_http_tcp_connections_open() {
+    fn outbound_http_tcp_open_connections() {
         let _ = env_logger::try_init();
         let Fixture { client, metrics, proxy } =
             Fixture::outbound();
@@ -1074,10 +1084,10 @@ mod transport {
         assert_eq!(client.get("/"), "hello");
 
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connections_open{direction=\"outbound\"} 1");
+            "tcp_open_connections{direction=\"outbound\",peer=\"src\"} 1");
         drop(client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connections_open{direction=\"outbound\"} 0");
+            "tcp_open_connections{direction=\"outbound\",peer=\"src\"} 0");
 
         // create a new client to force a new connection
         let client = client::new(proxy.outbound, "tele.test.svc.cluster.local");
@@ -1085,11 +1095,11 @@ mod transport {
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connections_open{direction=\"outbound\"} 1");
+            "tcp_open_connections{direction=\"outbound\",peer=\"src\"} 1");
 
         drop(client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_connections_open{direction=\"outbound\"} 0");
+            "tcp_open_connections{direction=\"outbound\",peer=\"src\"} 0");
     }
 }
 
