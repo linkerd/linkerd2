@@ -576,11 +576,6 @@ impl Aggregate {
                     *metrics.tcp().connection_duration(&close_labels) += close.duration;
                     *metrics.tcp().close_total(&close_labels).incr();
 
-                    // We don't use the accessor method here like we do for all the other
-                    // metrics so that we can just use the transport open labels in
-                    // `labels` without having to ref-count it separately. Since we're
-                    // handling a close event, we expect those labels to already be in the
-                    // map from when the transport was opened.
                     let metrics = metrics.tcp().open_connections.values.get_mut(&labels);
                     debug_assert!(metrics.is_some());
                     match metrics {
