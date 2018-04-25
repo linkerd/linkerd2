@@ -17,6 +17,7 @@ conduit-proxy-router            = { path = "./router" }
 
 bytes = "0.4"
 domain = "0.2.3"
+deflate = {version = "0.7.18", features = ["gzip"] }
 env_logger = { version = "0.5", default-features = false }
 futures = "0.1"
 futures-watch = { git = "https://github.com/carllerche/better-future.git" }
@@ -59,3 +60,4 @@ libc = "0.2"
 quickcheck = { version = "0.6", default-features = false }
 conduit-proxy-controller-grpc = { path = "./controller-grpc" , features = ["arbitrary"] }
 regex = "0.2"
+flate2 = { version = "1.0.1", default-features = false, features = ["rust_backend"] }

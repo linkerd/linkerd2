@@ -8,6 +8,7 @@ extern crate conduit_proxy_controller_grpc;
 extern crate convert;
 extern crate domain;
 extern crate env_logger;
+extern crate deflate;
 #[macro_use]
 extern crate futures;
 extern crate futures_mpsc_lossy;

@@ -2,10 +2,13 @@
 #[macro_use]
 extern crate log;
 extern crate regex;
+extern crate flate2;
 
 #[macro_use]
 mod support;
 use self::support::*;
+use support::bytes::IntoBuf;
+use std::io::Read;
 
 macro_rules! assert_contains {
     ($scrape:expr, $contains:expr) => {
@@ -1087,5 +1090,72 @@ mod transport {
         drop(client);
         assert_contains!(metrics.get("/metrics"),
             "tcp_connections_open{direction=\"outbound\"} 0");
+    }
+}
+
+// https://github.com/runconduit/conduit/issues/613
+#[test]
+#[cfg_attr(not(feature = "flaky_tests"), ignore)]
+fn metrics_compression() {
+    let _ = env_logger::try_init();
+
+    let Fixture { client, metrics, proxy: _proxy } = Fixture::inbound();
+
+    let do_scrape = |encoding: &str| {
+        let resp = metrics.request(
+            metrics.request_builder("/metrics")
+                .method("GET")
+                .header("Accept-Encoding", encoding)
+        );
+
+        {
+            // create a new scope so we can release our borrow on `resp` before
+            // getting the body
+            let content_encoding = resp.headers()
+                .get("content-encoding")
+                .as_ref()
+                .map(|val| val
+                    .to_str()
+                    .expect("content-encoding value should be ascii")
+                );
+            assert_eq!(content_encoding, Some("gzip"),
+                "unexpected Content-Encoding {:?} (requested Accept-Encoding: {})", content_encoding, encoding);
+        }
+
+        let body = resp.into_body()
+            .concat2()
+            .wait()
+            .expect("response body concat");
+        let mut decoder = flate2::read::GzDecoder::new(body.into_buf());
+        let mut scrape = String::new();
+        decoder.read_to_string(&mut scrape)
+            .expect(&format!(
+                "decode gzip (requested Accept-Encoding: {})",
+                encoding
+            ));
+        scrape
+    };
+
+    let encodings = &[
+        "gzip",
+        "deflate, gzip",
+        "gzip,deflate",
+        "brotli,gzip,deflate"
+    ];
+
+    info!("client.get(/)");
+    assert_eq!(client.get("/"), "hello");
+
+    for &encoding in encodings {
+        assert_contains!(do_scrape(encoding),
+            "request_duration_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\"} 1");
+    }
+
+    info!("client.get(/)");
+    assert_eq!(client.get("/"), "hello");
+
+    for &encoding in encodings {
+        assert_contains!(do_scrape(encoding),
+            "request_duration_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\"} 2");
     }
 }

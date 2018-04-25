@@ -27,19 +27,22 @@
 //! to worry about missing commas, double commas, or trailing commas at the
 //! end of the label set (all of which will make Prometheus angry).
 use std::default::Default;
-use std::{fmt, ops, time};
+use std::{fmt, time};
 use std::hash::Hash;
 use std::num::Wrapping;
 use std::sync::{Arc, Mutex};
+use std::io::Write;
+use std::ops;
 
+use deflate::CompressionOptions;
+use deflate::write::GzEncoder;
 use futures::future::{self, FutureResult};
-use hyper;
-use hyper::header::{ContentLength, ContentType};
-use hyper::StatusCode;
+use hyper::{self, Body, StatusCode};
+use hyper::header::{AcceptEncoding, ContentEncoding, ContentType, Encoding, QualityItem};
 use hyper::server::{
-    Service as HyperService,
+    Response as HyperResponse,
     Request as HyperRequest,
-    Response as HyperResponse
+    Service as HyperService,
 };
 use indexmap::{IndexMap};
 
@@ -131,7 +134,7 @@ pub struct Serve {
 /// is a Hyper service which can be used to create the server for the
 /// scrape endpoint, while the `Aggregate` side can receive updates to the
 /// metrics by calling `record_event`.
-pub fn new(process: &Arc<ctx::Process>) -> (Aggregate, Serve) {
+pub fn new(process: &Arc<ctx::Process>) -> (Aggregate, Serve){
     let metrics = Arc::new(Mutex::new(Metrics::new(process)));
     (Aggregate::new(&metrics), Serve::new(&metrics))
 }
@@ -631,8 +634,22 @@ impl Aggregate {
 
 impl Serve {
     fn new(metrics: &Arc<Mutex<Metrics>>) -> Self {
-        Serve { metrics: metrics.clone() }
+        Serve {
+            metrics: metrics.clone(),
+        }
     }
+}
+
+fn is_gzip(req: &HyperRequest) -> bool {
+    if let Some(accept_encodings) = req
+        .headers()
+        .get::<AcceptEncoding>()
+    {
+        return accept_encodings
+            .iter()
+            .any(|&QualityItem { ref item, .. }| item == &Encoding::Gzip)
+    }
+    false
 }
 
 impl HyperService for Serve {
@@ -647,14 +664,30 @@ impl HyperService for Serve {
                 .with_status(StatusCode::NotFound));
         }
 
-        let body = {
-            let metrics = self.metrics.lock()
-                .expect("metrics lock poisoned");
-            format!("{}", *metrics)
+        let metrics = self.metrics.lock()
+            .expect("metrics lock poisoned");
+
+        let resp = if is_gzip(&req) {
+            trace!("gzipping metrics");
+            let mut writer = GzEncoder::new(Vec::<u8>::new(), CompressionOptions::fast());
+            write!(&mut writer, "{}", *metrics)
+                .and_then(|_| writer.finish())
+                .map(|body| {
+                    HyperResponse::new()
+                        .with_header(ContentEncoding(vec![Encoding::Gzip]))
+                        .with_header(ContentType::plaintext())
+                        .with_body(Body::from(body))
+                })
+        } else {
+            let mut writer = Vec::<u8>::new();
+            write!(&mut writer, "{}", *metrics)
+                .map(|_| {
+                    HyperResponse::new()
+                        .with_header(ContentType::plaintext())
+                        .with_body(Body::from(writer))
+                })
         };
-        future::ok(HyperResponse::new()
-            .with_header(ContentLength(body.len() as u64))
-            .with_header(ContentType::plaintext())
-            .with_body(body))
+
+        future::result(resp.map_err(hyper::Error::Io))
     }
 }
