@@ -152,15 +152,18 @@ A gauge of the number of transport connections currently open.
 
 ### `tcp_write_bytes_total`
 
-A counter of the total number of sent bytes.
+A counter of the total number of sent bytes. This is updated when the 
+connection closes.
 
 ### `tcp_read_bytes_total`
 
-A counter of the total number of recieved bytes.
+A counter of the total number of recieved bytes. This is updated when the 
+connection closes.
 
 ### `tcp_connection_duration_ms`
 
-A histogram of the duration of the lifetime of a connection, in milliseconds.
+A histogram of the duration of the lifetime of a connection, in milliseconds. 
+This is updated when the connection closes.
 
 ## Labels
 
@@ -179,8 +182,7 @@ are also added to transport-level metrics, when applicable.
 ### Connection Close Labels
 
 The following labels are added only to metrics which are updated when a connection closes
-(`tcp_accept_close_total`, `tcp_connect_close_total`, `sent_bytes`, `received_bytes`, and
-`tcp_connection_duration_ms`):
+(`tcp_close_total` and `tcp_connection_duration_ms`):
 
 + `classification`: `success` if the connection terminated cleanly, `failure` if the
                     connection closed due to a connection failure.
