@@ -145,9 +145,15 @@ func writeTapEventsToBuffer(tapClient pb.Api_TapClient, w *tabwriter.Writer) err
 }
 
 func renderTapEvent(event *common.TapEvent) string {
+	dst := util.AddressToString(event.GetDestination())
+	dstPod := event.GetDestinationMeta().GetLabels()["pod"]
+	if dstPod != "" {
+		dst = dstPod
+	}
+
 	flow := fmt.Sprintf("src=%s dst=%s",
 		util.AddressToString(event.GetSource()),
-		util.AddressToString(event.GetDestination()),
+		dst,
 	)
 
 	http := event.GetHttp()
