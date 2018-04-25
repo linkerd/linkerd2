@@ -44,7 +44,12 @@ pub struct ResponseLabels {
 pub struct TransportLabels {
     /// Was the transport opened in the inbound or outbound direction?
     direction: Direction,
+
+    peer: Peer,
 }
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub enum Peer { Src, Dst }
 
 /// Labels describing the end of a TCP connection
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -289,13 +294,21 @@ impl TransportLabels {
     pub fn new(ctx: &ctx::transport::Ctx) -> Self {
         TransportLabels {
             direction: Direction::from_context(&ctx.proxy()),
+            peer: match *ctx {
+                ctx::transport::Ctx::Server(_) => Peer::Src,
+                ctx::transport::Ctx::Client(_) => Peer::Dst,
+            },
         }
     }
 }
 
 impl fmt::Display for TransportLabels {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.direction, f)
+        fmt::Display::fmt(&self.direction, f)?;
+        f.pad(match self.peer {
+            Peer::Src => ",peer=\"src\"",
+            Peer::Dst => ",peer=\"dst\"",
+        })
     }
 }
 
