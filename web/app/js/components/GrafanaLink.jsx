@@ -2,7 +2,7 @@ import React from 'react';
 
 export default class GrafanaLink extends React.Component {
   render() {
-    let resource = this.props.resource.toLowerCase().replace(" ", "-");
+    let resource = this.props.resource.toLowerCase().replace(" ", "_");
     let ownerInfo = this.props.name.split("/");
     let namespace = ownerInfo[0];
     let name = ownerInfo[1];
