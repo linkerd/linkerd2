@@ -80,6 +80,13 @@ export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   };
 
   const urlsForResource = {
+    "replication_controller": {
+      url: () => {
+        return {
+          rollup: `/api/stat?resource_type=replicationcontroller`
+        };
+      }
+    },
     "deployment": {
       url: () => {
         return {

@@ -102,6 +102,9 @@ export default class Sidebar extends React.Component {
             <Menu.Item className="sidebar-menu-item" key="/deployments">
               <ConduitLink to="/deployments">Deployments</ConduitLink>
             </Menu.Item>
+            <Menu.Item className="sidebar-menu-item" key="/replicationcontrollers">
+              <ConduitLink to="/replicationcontrollers">Replication Controllers</ConduitLink>
+            </Menu.Item>
             <Menu.Item className="sidebar-menu-item" key="/pods">
               <ConduitLink to="/pods">Pods</ConduitLink>
             </Menu.Item>
