@@ -15,6 +15,8 @@ import (
 	pkgK8s "github.com/runconduit/conduit/pkg/k8s"
 	"github.com/runconduit/conduit/pkg/version"
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	k8sV1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -161,27 +163,8 @@ func (s *grpcServer) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckR
 	return response, nil
 }
 
-// Pass through to tap service
 func (s *grpcServer) Tap(req *pb.TapRequest, stream pb.Api_TapServer) error {
-	tapStream := stream.(tapServer)
-	tapClient, err := s.tapClient.Tap(tapStream.Context(), req)
-	if err != nil {
-		//TODO: why not return the error?
-		log.Errorf("Unexpected error tapping [%v]: %v", req, err)
-		return nil
-	}
-	for {
-		select {
-		case <-tapStream.Context().Done():
-			return nil
-		default:
-			event, err := tapClient.Recv()
-			if err != nil {
-				return err
-			}
-			tapStream.Send(event)
-		}
-	}
+	return status.Error(codes.Unimplemented, "Tap is deprecated, use TapByResource")
 }
 
 // Pass through to tap service

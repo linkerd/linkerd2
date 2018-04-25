@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -12,7 +11,6 @@ import (
 	"github.com/runconduit/conduit/controller/util"
 	"github.com/runconduit/conduit/pkg/version"
 	log "github.com/sirupsen/logrus"
-	"k8s.io/api/core/v1"
 )
 
 func main() {
@@ -40,42 +38,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to create Kubernetes client: %s", err)
 	}
-
-	replicaSets, err := k8s.NewReplicaSetStore(clientSet)
-	if err != nil {
-		log.Fatalf("NewReplicaSetStore failed: %s", err)
-	}
-	err = replicaSets.Run()
-	if err != nil {
-		log.Fatalf("replicaSets.Run() failed: %s", err)
-	}
-
-	// index pods by deployment
-	deploymentIndex := func(obj interface{}) ([]string, error) {
-		pod, ok := obj.(*v1.Pod)
-		if !ok {
-			return nil, fmt.Errorf("object is not a Pod")
-		}
-		deployment, err := replicaSets.GetDeploymentForPod(pod)
-		if err != nil {
-			log.Debugf("Cannot get deployment for pod %s: %s", pod.Name, err)
-			return []string{}, nil
-		}
-		return []string{deployment}, nil
-	}
-
-	pods, err := k8s.NewPodIndex(clientSet, deploymentIndex)
-	if err != nil {
-		log.Fatalf("NewPodIndex failed: %s", err)
-	}
-	err = pods.Run()
-	if err != nil {
-		log.Fatalf("pods.Run() failed: %s", err)
-	}
-
 	lister := k8s.NewLister(clientSet)
 
-	server, lis, err := tap.NewServer(*addr, *tapPort, replicaSets, pods, lister)
+	server, lis, err := tap.NewServer(*addr, *tapPort, lister)
 	if err != nil {
 		log.Fatal(err.Error())
 	}

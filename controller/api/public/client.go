@@ -15,7 +15,9 @@ import (
 	"github.com/runconduit/conduit/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 const (
@@ -56,24 +58,7 @@ func (c *grpcOverHttpClient) ListPods(ctx context.Context, req *pb.Empty, _ ...g
 }
 
 func (c *grpcOverHttpClient) Tap(ctx context.Context, req *pb.TapRequest, _ ...grpc.CallOption) (pb.Api_TapClient, error) {
-	url := c.endpointNameToPublicApiUrl("Tap")
-	httpRsp, err := c.post(ctx, url, req)
-	if err != nil {
-		return nil, err
-	}
-
-	if err = checkIfResponseHasConduitError(httpRsp); err != nil {
-		httpRsp.Body.Close()
-		return nil, err
-	}
-
-	go func() {
-		<-ctx.Done()
-		log.Debug("Closing response body after context marked as done")
-		httpRsp.Body.Close()
-	}()
-
-	return &tapClient{ctx: ctx, reader: bufio.NewReader(httpRsp.Body)}, nil
+	return nil, status.Error(codes.Unimplemented, "Tap is deprecated, use TapByResource")
 }
 
 func (c *grpcOverHttpClient) TapByResource(ctx context.Context, req *pb.TapByResourceRequest, _ ...grpc.CallOption) (pb.Api_TapByResourceClient, error) {

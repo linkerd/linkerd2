@@ -21,7 +21,6 @@ var (
 	statSummaryPath   = fullUrlPathFor("StatSummary")
 	versionPath       = fullUrlPathFor("Version")
 	listPodsPath      = fullUrlPathFor("ListPods")
-	tapPath           = fullUrlPathFor("Tap")
 	tapByResourcePath = fullUrlPathFor("TapByResource")
 	selfCheckPath     = fullUrlPathFor("SelfCheck")
 )
@@ -48,8 +47,6 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		h.handleVersion(w, req)
 	case listPodsPath:
 		h.handleListPods(w, req)
-	case tapPath:
-		h.handleTap(w, req)
 	case tapByResourcePath:
 		h.handleTapByResource(w, req)
 	case selfCheckPath:
@@ -138,28 +135,6 @@ func (h *handler) handleListPods(w http.ResponseWriter, req *http.Request) {
 	}
 
 	err = writeProtoToHttpResponse(w, rsp)
-	if err != nil {
-		writeErrorToHttpResponse(w, err)
-		return
-	}
-}
-
-func (h *handler) handleTap(w http.ResponseWriter, req *http.Request) {
-	flushableWriter, err := newStreamingWriter(w)
-	if err != nil {
-		writeErrorToHttpResponse(w, err)
-		return
-	}
-
-	var protoRequest pb.TapRequest
-	err = httpRequestToProto(req, &protoRequest)
-	if err != nil {
-		writeErrorToHttpResponse(w, err)
-		return
-	}
-
-	server := tapServer{w: flushableWriter, req: req}
-	err = h.grpcServer.Tap(&protoRequest, server)
 	if err != nil {
 		writeErrorToHttpResponse(w, err)
 		return
