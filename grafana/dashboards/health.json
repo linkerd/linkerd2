@@ -16,7 +16,7 @@
   "gnetId": null,
   "graphTooltip": 1,
   "id": null,
-  "iteration": 1524694552523,
+  "iteration": 1524697499292,
   "links": [],
   "panels": [
     {
@@ -422,7 +422,7 @@
               "label": null,
               "logBase": 1,
               "max": null,
-              "min": null,
+              "min": "0",
               "show": true
             },
             {
@@ -502,7 +502,7 @@
               "label": null,
               "logBase": 1,
               "max": null,
-              "min": null,
+              "min": "0",
               "show": true
             },
             {
@@ -542,6 +542,13 @@
             "show": false
           },
           "links": [],
+          "scopedVars": {
+            "deployment": {
+              "selected": false,
+              "text": "controller",
+              "value": "controller"
+            }
+          },
           "targets": [
             {
               "expr": "tcp_connection_duration_ms_bucket{deployment=\"$deployment\", direction=\"inbound\"}",
@@ -1419,5 +1426,5 @@
   "timezone": "",
   "title": "Conduit Health",
   "uid": "Og9nanzmk",
-  "version": 6
+  "version": 2
 }
