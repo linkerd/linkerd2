@@ -138,35 +138,23 @@ request_total{
 The following metrics are collected at the level of the underlying transport
 layer.
 
-### `tcp_accept_open_total`
+### `tcp_open_total`
 
-A counter of the total number of transport connections which have been accepted
-by the proxy.
+A counter of the total number of opened transport connections.
 
-### `tcp_accept_close_total`
+### `tcp_close_total`
 
-A counter of the total number of transport connections accepted by the proxy
-which have been closed.
+A counter of the total number of transport connections which have closed.
 
-### `tcp_connect_open_total`
-
-A counter of the total number of transport connections which have been opened
-by the proxy.
-
-### `tcp_connect_close_total`
-
-A counter of the total number of transport connections opened by the proxy
-which have been closed.
-
-### `tcp_connections_open`
+### `tcp_open_connections`
 
 A gauge of the number of transport connections currently open.
 
-### `sent_bytes`
+### `tcp_write_bytes_total`
 
 A counter of the total number of sent bytes.
 
-### `received_bytes`
+### `tcp_read_bytes_total`
 
 A counter of the total number of recieved bytes.
 
@@ -182,6 +170,8 @@ Each of these metrics has the following labels:
                 pod to the proxy, or from the proxy to the application,
                `outbound` if the connection was established either from the
                 application to the proxy, or from the proxy to outside the pod.
+* `peer`: `src` if the connection was accepted by the proxy from the source,
+          `dst` if the connection was opened by the proxy to the destination.
 
 Note that the labels described above under the heading "Prometheus Collector labels"
 are also added to transport-level metrics, when applicable.
@@ -189,7 +179,7 @@ are also added to transport-level metrics, when applicable.
 ### Connection Close Labels
 
 The following labels are added only to metrics which are updated when a connection closes
-(`tcp_accept_close_total`, `tcp_connect_close_total`, `sent_bytes`, `received_bytes`, and 
+(`tcp_accept_close_total`, `tcp_connect_close_total`, `sent_bytes`, `received_bytes`, and
 `tcp_connection_duration_ms`):
 
 + `classification`: `success` if the connection terminated cleanly, `failure` if the
