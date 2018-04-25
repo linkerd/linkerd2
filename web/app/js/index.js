@@ -5,6 +5,7 @@ import NoMatch from './components/NoMatch.jsx';
 import PodsList from './components/PodsList.jsx';
 import React from 'react';
 import ReactDOM from 'react-dom';
+import ReplicationControllersList from './components/ReplicationControllersList.jsx';
 import ServiceMesh from './components/ServiceMesh.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import { BrowserRouter, Redirect, Route, Switch } from 'react-router-dom';
@@ -47,6 +48,7 @@ let applicationHtml = hideSidebar => (
               <Redirect exact from={`${pathPrefix}/`} to={`${pathPrefix}/servicemesh`} />
               <Route path={`${pathPrefix}/servicemesh`} render={() => <ServiceMesh api={api} releaseVersion={appData.releaseVersion} controllerNamespace={appData.controllerNamespace} />} />
               <Route path={`${pathPrefix}/deployments`} render={() => <DeploymentsList api={api} />} />
+              <Route path={`${pathPrefix}/replicationcontrollers`} render={() => <ReplicationControllersList api={api} />} />
               <Route path={`${pathPrefix}/pods`} render={() => <PodsList api={api} />} />
               <Route component={NoMatch} />
             </Switch>

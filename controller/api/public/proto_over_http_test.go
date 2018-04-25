@@ -59,7 +59,7 @@ func TestHttpRequestToProto(t *testing.T) {
 		expectedProtoMessage := pb.Pod{
 			Name:                "some-name",
 			PodIP:               "some-name",
-			Deployment:          "some-name",
+			Owner:               &pb.Pod_Deployment{Deployment: "some-name"},
 			Status:              "some-name",
 			Added:               false,
 			ControllerNamespace: "some-name",
