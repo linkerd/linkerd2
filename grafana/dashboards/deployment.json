@@ -16,7 +16,7 @@
   "gnetId": null,
   "graphTooltip": 1,
   "id": null,
-  "iteration": 1523660761961,
+  "iteration": 1524697688078,
   "links": [],
   "panels": [
     {
@@ -641,12 +641,258 @@
       ]
     },
     {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 15
+      },
+      "id": 148,
+      "panels": [
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "prometheus",
+          "fill": 1,
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 0,
+            "y": 16
+          },
+          "id": 167,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": false,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
+          "nullPointMode": "null",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "tcp_close_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\",classification=\"failure\"}",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "{{peer}} {{classification}}",
+              "refId": "A"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "TCP CONNECTION FAILURES",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "decimals": null,
+              "format": "none",
+              "label": "",
+              "logBase": 1,
+              "max": null,
+              "min": "0",
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": null,
+          "fill": 1,
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 8,
+            "y": 16
+          },
+          "id": 168,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": false,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
+          "nullPointMode": "null",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": true,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "tcp_open_connections{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "{{peer}}",
+              "refId": "A"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "TCP CONNECTIONS OPEN",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "label": "",
+              "logBase": 1,
+              "max": null,
+              "min": "0",
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
+        },
+        {
+          "cards": {
+            "cardPadding": null,
+            "cardRound": null
+          },
+          "color": {
+            "cardColor": "#b4ff00",
+            "colorScale": "sqrt",
+            "colorScheme": "interpolateOranges",
+            "exponent": 0.5,
+            "mode": "spectrum"
+          },
+          "dataFormat": "timeseries",
+          "datasource": null,
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 16,
+            "y": 16
+          },
+          "heatmap": {},
+          "highlightCards": true,
+          "id": 169,
+          "legend": {
+            "show": false
+          },
+          "links": [],
+          "targets": [
+            {
+              "expr": "tcp_connection_duration_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "refId": "A"
+            }
+          ],
+          "title": "TCP CONNECTION DURATION",
+          "tooltip": {
+            "show": true,
+            "showHistogram": true
+          },
+          "type": "heatmap",
+          "xAxis": {
+            "show": true
+          },
+          "xBucketNumber": null,
+          "xBucketSize": null,
+          "yAxis": {
+            "decimals": null,
+            "format": "dtdurationms",
+            "logBase": 1,
+            "max": null,
+            "min": "0",
+            "show": true,
+            "splitFactor": null
+          },
+          "yBucketNumber": null,
+          "yBucketSize": null
+        }
+      ],
+      "title": "Inbound TCP Metrics",
+      "type": "row"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "id": 152,
+      "panels": [],
+      "title": "",
+      "type": "row"
+    },
+    {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>INBOUND DEPLOYMENTS</span>\n</div>",
       "gridPos": {
         "h": 2,
         "w": 24,
         "x": 0,
-        "y": 15
+        "y": 17
       },
       "id": 76,
       "links": [],
@@ -661,7 +907,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 17
+        "y": 19
       },
       "id": 59,
       "panels": [
@@ -671,7 +917,7 @@
             "h": 2,
             "w": 24,
             "x": 0,
-            "y": 18
+            "y": 43
           },
           "id": 39,
           "links": [],
@@ -691,7 +937,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 20
+            "y": 45
           },
           "id": 36,
           "legend": {
@@ -773,7 +1019,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 20
+            "y": 45
           },
           "id": 22,
           "legend": {
@@ -854,7 +1100,7 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 20
+            "y": 45
           },
           "id": 29,
           "legend": {
@@ -948,7 +1194,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 18
+        "y": 20
       },
       "id": 34,
       "panels": [],
@@ -962,7 +1208,7 @@
         "h": 2,
         "w": 24,
         "x": 0,
-        "y": 19
+        "y": 21
       },
       "id": 32,
       "links": [],
@@ -982,7 +1228,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 21
+        "y": 23
       },
       "id": 77,
       "legend": {
@@ -1063,7 +1309,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 21
+        "y": 23
       },
       "id": 78,
       "legend": {
@@ -1143,7 +1389,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 21
+        "y": 23
       },
       "id": 79,
       "legend": {
@@ -1213,12 +1459,258 @@
       ]
     },
     {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 30
+      },
+      "id": 154,
+      "panels": [
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "prometheus",
+          "fill": 1,
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 0,
+            "y": 31
+          },
+          "id": 157,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": false,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
+          "nullPointMode": "null",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "tcp_close_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\",classification=\"failure\"}",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "{{peer}} {{classification}}",
+              "refId": "A"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "TCP CONNECTION FAILURES",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "decimals": null,
+              "format": "none",
+              "label": "",
+              "logBase": 1,
+              "max": null,
+              "min": "0",
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": null,
+          "fill": 1,
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 8,
+            "y": 31
+          },
+          "id": 166,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": false,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
+          "nullPointMode": "null",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": true,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "tcp_open_connections{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\"}",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "{{peer}}",
+              "refId": "A"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "TCP CONNECTIONS OPEN",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "label": "",
+              "logBase": 1,
+              "max": null,
+              "min": "0",
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
+        },
+        {
+          "cards": {
+            "cardPadding": null,
+            "cardRound": null
+          },
+          "color": {
+            "cardColor": "#b4ff00",
+            "colorScale": "sqrt",
+            "colorScheme": "interpolateOranges",
+            "exponent": 0.5,
+            "mode": "spectrum"
+          },
+          "dataFormat": "timeseries",
+          "datasource": null,
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 16,
+            "y": 31
+          },
+          "heatmap": {},
+          "highlightCards": true,
+          "id": 160,
+          "legend": {
+            "show": false
+          },
+          "links": [],
+          "targets": [
+            {
+              "expr": "tcp_connection_duration_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\"}",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "refId": "A"
+            }
+          ],
+          "title": "TCP CONNECTION DURATION",
+          "tooltip": {
+            "show": true,
+            "showHistogram": true
+          },
+          "type": "heatmap",
+          "xAxis": {
+            "show": true
+          },
+          "xBucketNumber": null,
+          "xBucketSize": null,
+          "yAxis": {
+            "decimals": null,
+            "format": "dtdurationms",
+            "logBase": 1,
+            "max": null,
+            "min": "0",
+            "show": true,
+            "splitFactor": null
+          },
+          "yBucketNumber": null,
+          "yBucketSize": null
+        }
+      ],
+      "title": "Outbound TCP Metrics",
+      "type": "row"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 31
+      },
+      "id": 156,
+      "panels": [],
+      "title": "",
+      "type": "row"
+    },
+    {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>OUTBOUND DEPLOYMENTS</span>\n</div>",
       "gridPos": {
         "h": 2,
         "w": 24,
         "x": 0,
-        "y": 28
+        "y": 32
       },
       "id": 80,
       "links": [],
@@ -1233,7 +1725,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 30
+        "y": 34
       },
       "id": 27,
       "panels": [
@@ -1633,5 +2125,5 @@
   "timezone": "",
   "title": "Conduit Deployment",
   "uid": "6svnwykmk",
-  "version": 1
+  "version": 3
 }
