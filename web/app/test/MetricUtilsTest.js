@@ -9,7 +9,8 @@ describe('MetricUtils', () => {
       let result = processRollupMetrics(deployRollupFixtures);
       let expectedResult = [
         {
-          name: 'emojivoto/voting',
+          name: 'voting',
+          namespace: 'emojivoto',
           requestRate: 2.5,
           successRate: 0.9,
           latency: {
@@ -26,10 +27,14 @@ describe('MetricUtils', () => {
     it('Extracts and sorts multiple deploys from a single response', () => {
       let result = processRollupMetrics(multiDeployRollupFixtures);
       expect(result).to.have.length(4);
-      expect(result[0].name).to.equal("emojivoto/emoji");
-      expect(result[1].name).to.equal("emojivoto/vote-bot");
-      expect(result[2].name).to.equal("emojivoto/voting");
-      expect(result[3].name).to.equal("emojivoto/web");
+      expect(result[0].name).to.equal("emoji");
+      expect(result[0].namespace).to.equal("emojivoto");
+      expect(result[1].name).to.equal("vote-bot");
+      expect(result[1].namespace).to.equal("emojivoto");
+      expect(result[2].name).to.equal("voting");
+      expect(result[2].namespace).to.equal("emojivoto");
+      expect(result[3].name).to.equal("web");
+      expect(result[3].namespace).to.equal("emojivoto");
     });
   });
 });

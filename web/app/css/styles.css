@@ -241,6 +241,14 @@ a.button.primary:active {
     padding-right: 0;
   }
 
+  & tr > th.long-header div {
+    float: left;
+
+    &.ant-table-column-sorter {
+      padding-top: 12px;
+    }
+  }
+
   & .ant-table-tbody > tr:hover > td {
     background: rgba(47, 128, 237, .1);
   }

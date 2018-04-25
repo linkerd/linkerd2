@@ -107,7 +107,8 @@ export const processRollupMetrics = (rawMetrics, controllerNamespace) => {
         return null;
       }
       return {
-        name: row.resource.namespace + "/" + row.resource.name,
+        name: row.resource.name,
+        namespace: row.resource.namespace,
         requestRate: getRequestRate(row),
         successRate: getSuccessRate(row),
         latency: getLatency(row),
