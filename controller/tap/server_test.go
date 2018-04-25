@@ -8,10 +8,8 @@ import (
 	public "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/controller/k8s"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/cache"
 )
 
 type tapExpected struct {
@@ -179,24 +177,9 @@ status:
 				t.Fatalf("NewReplicaSetStore failed: %s", err)
 			}
 
-			sharedInformers := informers.NewSharedInformerFactory(clientSet, 10*time.Minute)
+			lister := k8s.NewLister(clientSet)
 
-			namespaceInformer := sharedInformers.Core().V1().Namespaces()
-			deployInformer := sharedInformers.Apps().V1beta2().Deployments()
-			replicaSetInformer := sharedInformers.Apps().V1beta2().ReplicaSets()
-			podInformer := sharedInformers.Core().V1().Pods()
-			replicationControllerInformer := sharedInformers.Core().V1().ReplicationControllers()
-			serviceInformer := sharedInformers.Core().V1().Services()
-
-			server, listener, err := NewServer(
-				"localhost:0", 0, replicaSets, k8s.NewEmptyPodIndex(),
-				namespaceInformer.Lister(),
-				deployInformer.Lister(),
-				replicaSetInformer.Lister(),
-				podInformer.Lister(),
-				replicationControllerInformer.Lister(),
-				serviceInformer.Lister(),
-			)
+			server, listener, err := NewServer("localhost:0", 0, replicaSets, k8s.NewEmptyPodIndex(), lister)
 			if err != nil {
 				t.Fatalf("NewServer error: %s", err)
 			}
@@ -204,18 +187,9 @@ status:
 			go func() { server.Serve(listener) }()
 			defer server.GracefulStop()
 
-			stopCh := make(chan struct{})
-			sharedInformers.Start(stopCh)
-			if !cache.WaitForCacheSync(
-				stopCh,
-				namespaceInformer.Informer().HasSynced,
-				deployInformer.Informer().HasSynced,
-				replicaSetInformer.Informer().HasSynced,
-				podInformer.Informer().HasSynced,
-				replicationControllerInformer.Informer().HasSynced,
-				serviceInformer.Informer().HasSynced,
-			) {
-				t.Fatalf("timed out wait for caches to sync")
+			err = lister.Sync()
+			if err != nil {
+				t.Fatalf("timed out wait for caches to sync: %s", err)
 			}
 
 			client, conn, err := NewClient(listener.Addr().String())

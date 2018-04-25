@@ -21,7 +21,7 @@ func TestRequestTapFromApi(t *testing.T) {
 	t.Run("Should render busy response if everything went well", func(t *testing.T) {
 		authority := "localhost"
 		targetName := "pod-666"
-		resourceType := k8s.KubernetesPods
+		resourceType := k8s.Pods
 		scheme := "https"
 		method := "GET"
 		path := "/some/path"
@@ -95,7 +95,7 @@ func TestRequestTapFromApi(t *testing.T) {
 	t.Run("Should render empty response if no events returned", func(t *testing.T) {
 		authority := "localhost"
 		targetName := "pod-666"
-		resourceType := k8s.KubernetesPods
+		resourceType := k8s.Pods
 		scheme := "https"
 		method := "GET"
 		path := "/some/path"
@@ -140,7 +140,7 @@ func TestRequestTapFromApi(t *testing.T) {
 		t.SkipNow()
 		authority := "localhost"
 		targetName := "pod-666"
-		resourceType := k8s.KubernetesPods
+		resourceType := k8s.Pods
 		scheme := "https"
 		method := "GET"
 		path := "/some/path"

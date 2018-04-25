@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	apiUtil "github.com/runconduit/conduit/controller/api/util"
 	common "github.com/runconduit/conduit/controller/gen/common"
 	pb "github.com/runconduit/conduit/controller/gen/controller/tap"
 	proxy "github.com/runconduit/conduit/controller/gen/proxy/tap"
@@ -19,14 +20,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	apiv1 "k8s.io/api/core/v1"
-	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
-	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
-	applisters "k8s.io/client-go/listers/apps/v1beta2"
-	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
 type (
@@ -37,27 +31,12 @@ type (
 		replicaSets *k8s.ReplicaSetStore
 		pods        k8s.PodIndex
 
-		// TODO: factor out with public-api
-		namespaceLister             corelisters.NamespaceLister
-		deployLister                applisters.DeploymentLister
-		replicaSetLister            applisters.ReplicaSetLister
-		podLister                   corelisters.PodLister
-		replicationControllerLister corelisters.ReplicationControllerLister
-		serviceLister               corelisters.ServiceLister
+		lister *k8s.Lister
 	}
 )
 
 var (
 	tapInterval = 10 * time.Second
-
-	// TODO: factor out with public-api
-	k8sResourceTypesToDestinationLabels = map[string]string{
-		pkgK8s.KubernetesDeployments:            "deployment",
-		pkgK8s.KubernetesNamespaces:             "namespace",
-		pkgK8s.KubernetesPods:                   "pod",
-		pkgK8s.KubernetesReplicationControllers: "replication_controller",
-		pkgK8s.KubernetesServices:               "service",
-	}
 )
 
 func (s *server) Tap(req *public.TapRequest, stream pb.Tap_TapServer) error {
@@ -71,7 +50,7 @@ func (s *server) Tap(req *public.TapRequest, stream pb.Tap_TapServer) error {
 		targetName = target.Pod
 		pod, err := s.pods.GetPod(target.Pod)
 		if err != nil {
-			return status.Errorf(codes.NotFound, err.Error())
+			return apiUtil.GRPCError(err)
 		}
 		pods = []*apiv1.Pod{pod}
 	case *public.TapRequest_Deployment:
@@ -125,16 +104,19 @@ func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_T
 		return status.Errorf(codes.InvalidArgument, "TapByResource received nil target ResourceSelection: %+v", *req)
 	}
 
-	pods, err := s.getPodsFor(*req.Target)
+	objects, err := s.lister.GetObjects(req.Target.Resource.Namespace, req.Target.Resource.Type, req.Target.Resource.Name)
 	if err != nil {
-		if status.Code(err) == codes.Unknown {
-			if k8sErrors.ReasonForError(err) == metaV1.StatusReasonNotFound {
-				err = status.Errorf(codes.NotFound, err.Error())
-			} else {
-				err = status.Errorf(codes.Internal, err.Error())
-			}
+		return apiUtil.GRPCError(err)
+	}
+
+	pods := []*apiv1.Pod{}
+	for _, object := range objects {
+		podsFor, err := s.lister.GetPodsFor(object)
+		if err != nil {
+			return apiUtil.GRPCError(err)
 		}
-		return err
+
+		pods = append(pods, podsFor...)
 	}
 
 	if len(pods) == 0 {
@@ -158,10 +140,7 @@ func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_T
 
 	match, err := makeByResourceMatch(req.Match)
 	if err != nil {
-		if status.Code(err) == codes.Unknown {
-			err = status.Errorf(codes.Internal, err.Error())
-		}
-		return err
+		return apiUtil.GRPCError(err)
 	}
 
 	for _, pod := range pods {
@@ -173,10 +152,7 @@ func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_T
 	for event := range events {
 		err := stream.Send(event)
 		if err != nil {
-			if status.Code(err) == codes.Unknown {
-				err = status.Errorf(codes.Internal, err.Error())
-			}
-			return err
+			return apiUtil.GRPCError(err)
 		}
 	}
 	return nil
@@ -453,9 +429,9 @@ func makeByResourceMatch(match *public.TapByResourceRequest_Match) (*proxy.Obser
 func destinationLabels(resource *public.Resource) map[string]string {
 	dstLabels := map[string]string{}
 	if resource.Name != "" {
-		dstLabels[k8sResourceTypesToDestinationLabels[resource.Type]] = resource.Name
+		dstLabels[pkgK8s.ResourceTypesToProxyLabels[resource.Type]] = resource.Name
 	}
-	if resource.Type != pkgK8s.KubernetesNamespaces && resource.Namespace != "" {
+	if resource.Type != pkgK8s.Namespaces && resource.Namespace != "" {
 		dstLabels["namespace"] = resource.Namespace
 	}
 	return dstLabels
@@ -509,228 +485,13 @@ func (s *server) tapProxy(ctx context.Context, maxRps float32, match *proxy.Obse
 	}
 }
 
-//
-// TODO: factor all these functions out of public-api into a shared k8s lister/resource module
-//
-
-func (s *server) getPodsFor(res public.ResourceSelection) ([]*apiv1.Pod, error) {
-	var err error
-	namespace := res.Resource.Namespace
-	objects := []runtime.Object{}
-
-	switch res.Resource.Type {
-	case pkgK8s.KubernetesDeployments:
-		objects, err = s.getDeployments(res.Resource)
-	case pkgK8s.KubernetesNamespaces:
-		namespace = res.Resource.Name // special case for namespace
-		objects, err = s.getNamespaces(res.Resource)
-	case pkgK8s.KubernetesReplicationControllers:
-		objects, err = s.getReplicationControllers(res.Resource)
-	case pkgK8s.KubernetesServices:
-		objects, err = s.getServices(res.Resource)
-
-	// special case for pods
-	case pkgK8s.KubernetesPods:
-		return s.getPods(res.Resource)
-
-	default:
-		err = status.Errorf(codes.Unimplemented, "unimplemented resource type: %v", res.Resource.Type)
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	allPods := []*apiv1.Pod{}
-	for _, obj := range objects {
-		selector, err := getSelectorFromObject(obj)
-		if err != nil {
-			return nil, err
-		}
-
-		// TODO: special case namespace
-		pods, err := s.podLister.Pods(namespace).List(selector)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, pod := range pods {
-			if isPendingOrRunning(pod) {
-				allPods = append(allPods, pod)
-			}
-		}
-	}
-
-	return allPods, nil
-}
-
-func isPendingOrRunning(pod *apiv1.Pod) bool {
-	pending := pod.Status.Phase == apiv1.PodPending
-	running := pod.Status.Phase == apiv1.PodRunning
-	terminating := pod.DeletionTimestamp != nil
-	return (pending || running) && !terminating
-}
-
-func getSelectorFromObject(obj runtime.Object) (labels.Selector, error) {
-	switch typed := obj.(type) {
-	case *apiv1.Namespace:
-		return labels.Everything(), nil
-
-	case *appsv1beta2.Deployment:
-		return labels.Set(typed.Spec.Selector.MatchLabels).AsSelector(), nil
-
-	case *apiv1.ReplicationController:
-		return labels.Set(typed.Spec.Selector).AsSelector(), nil
-
-	case *apiv1.Service:
-		return labels.Set(typed.Spec.Selector).AsSelector(), nil
-
-	default:
-		return nil, status.Errorf(codes.Unimplemented, "cannot get object selector: %v", obj)
-	}
-}
-
-func (s *server) getDeployments(res *public.Resource) ([]runtime.Object, error) {
-	var err error
-	var deployments []*appsv1beta2.Deployment
-
-	if res.Namespace == "" {
-		deployments, err = s.deployLister.List(labels.Everything())
-	} else if res.Name == "" {
-		deployments, err = s.deployLister.Deployments(res.Namespace).List(labels.Everything())
-	} else {
-		var deployment *appsv1beta2.Deployment
-		deployment, err = s.deployLister.Deployments(res.Namespace).Get(res.Name)
-		deployments = []*appsv1beta2.Deployment{deployment}
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	objects := []runtime.Object{}
-	for _, deploy := range deployments {
-		objects = append(objects, deploy)
-	}
-
-	return objects, nil
-}
-
-func (s *server) getNamespaces(res *public.Resource) ([]runtime.Object, error) {
-	var err error
-	var namespaces []*apiv1.Namespace
-
-	if res.Name == "" {
-		namespaces, err = s.namespaceLister.List(labels.Everything())
-	} else {
-		var namespace *apiv1.Namespace
-		namespace, err = s.namespaceLister.Get(res.Name)
-		namespaces = []*apiv1.Namespace{namespace}
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	objects := []runtime.Object{}
-	for _, ns := range namespaces {
-		objects = append(objects, ns)
-	}
-
-	return objects, nil
-}
-
-func (s *server) getPods(res *public.Resource) ([]*apiv1.Pod, error) {
-	var err error
-	var pods []*apiv1.Pod
-
-	if res.Namespace == "" {
-		pods, err = s.podLister.List(labels.Everything())
-	} else if res.Name == "" {
-		pods, err = s.podLister.Pods(res.Namespace).List(labels.Everything())
-	} else {
-		var pod *apiv1.Pod
-		pod, err = s.podLister.Pods(res.Namespace).Get(res.Name)
-		pods = []*apiv1.Pod{pod}
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	var runningPods []*apiv1.Pod
-	for _, pod := range pods {
-		if isPendingOrRunning(pod) {
-			runningPods = append(runningPods, pod)
-		}
-	}
-
-	return runningPods, nil
-}
-
-func (s *server) getReplicationControllers(res *public.Resource) ([]runtime.Object, error) {
-	var err error
-	var rcs []*apiv1.ReplicationController
-
-	if res.Namespace == "" {
-		rcs, err = s.replicationControllerLister.List(labels.Everything())
-	} else if res.Name == "" {
-		rcs, err = s.replicationControllerLister.ReplicationControllers(res.Namespace).List(labels.Everything())
-	} else {
-		var rc *apiv1.ReplicationController
-		rc, err = s.replicationControllerLister.ReplicationControllers(res.Namespace).Get(res.Name)
-		rcs = []*apiv1.ReplicationController{rc}
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	objects := []runtime.Object{}
-	for _, rc := range rcs {
-		objects = append(objects, rc)
-	}
-
-	return objects, nil
-}
-
-func (s *server) getServices(res *public.Resource) ([]runtime.Object, error) {
-	var err error
-	var services []*apiv1.Service
-
-	if res.Namespace == "" {
-		services, err = s.serviceLister.List(labels.Everything())
-	} else if res.Name == "" {
-		services, err = s.serviceLister.Services(res.Namespace).List(labels.Everything())
-	} else {
-		var svc *apiv1.Service
-		svc, err = s.serviceLister.Services(res.Namespace).Get(res.Name)
-		services = []*apiv1.Service{svc}
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	objects := []runtime.Object{}
-	for _, svc := range services {
-		objects = append(objects, svc)
-	}
-
-	return objects, nil
-}
-
+// NewServer creates a new gRPC Tap server
 func NewServer(
 	addr string,
 	tapPort uint,
 	replicaSets *k8s.ReplicaSetStore,
 	pods k8s.PodIndex,
-	namespaceLister corelisters.NamespaceLister,
-	deployLister applisters.DeploymentLister,
-	replicaSetLister applisters.ReplicaSetLister,
-	podLister corelisters.PodLister,
-	replicationControllerLister corelisters.ReplicationControllerLister,
-	serviceLister corelisters.ServiceLister,
+	lister *k8s.Lister,
 ) (*grpc.Server, net.Listener, error) {
 
 	lis, err := net.Listen("tcp", addr)
@@ -740,15 +501,10 @@ func NewServer(
 
 	s := util.NewGrpcServer()
 	srv := server{
-		tapPort:                     tapPort,
-		replicaSets:                 replicaSets,
-		pods:                        pods,
-		namespaceLister:             namespaceLister,
-		deployLister:                deployLister,
-		replicaSetLister:            replicaSetLister,
-		podLister:                   podLister,
-		replicationControllerLister: replicationControllerLister,
-		serviceLister:               serviceLister,
+		tapPort:     tapPort,
+		replicaSets: replicaSets,
+		pods:        pods,
+		lister:      lister,
 	}
 	pb.RegisterTapServer(s, &srv)
 

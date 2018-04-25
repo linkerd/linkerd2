@@ -14,7 +14,7 @@ import (
 
 func TestRequestTapByResourceFromAPI(t *testing.T) {
 	t.Run("Should render busy response if everything went well", func(t *testing.T) {
-		resourceType := k8s.KubernetesPods
+		resourceType := k8s.Pods
 		targetName := "pod-666"
 		scheme := "https"
 		method := "GET"
@@ -83,7 +83,7 @@ func TestRequestTapByResourceFromAPI(t *testing.T) {
 	})
 
 	t.Run("Should render empty response if no events returned", func(t *testing.T) {
-		resourceType := k8s.KubernetesPods
+		resourceType := k8s.Pods
 		targetName := "pod-666"
 		scheme := "https"
 		method := "GET"
@@ -123,7 +123,7 @@ func TestRequestTapByResourceFromAPI(t *testing.T) {
 
 	t.Run("Should return error if stream returned error", func(t *testing.T) {
 		t.SkipNow()
-		resourceType := k8s.KubernetesPods
+		resourceType := k8s.Pods
 		targetName := "pod-666"
 		scheme := "https"
 		method := "GET"

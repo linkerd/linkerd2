@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/runconduit/conduit/pkg/k8s"
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -92,6 +95,27 @@ func (l *Lister) Sync() error {
 	return nil
 }
 
+// GetObjects returns a list of Kubernetes objects, given a namespace, type, and name.
+// If namespace is an empty string, match objects in all namespaces.
+// If name is an empty string, match all objects of the given type.
+func (l *Lister) GetObjects(namespace, restype, name string) ([]runtime.Object, error) {
+	switch restype {
+	case k8s.Namespaces:
+		return l.getNamespaces(name)
+	case k8s.Deployments:
+		return l.getDeployments(namespace, name)
+	case k8s.Pods:
+		return l.getPods(namespace, name)
+	case k8s.ReplicationControllers:
+		return l.getRCs(namespace, name)
+	case k8s.Services:
+		return l.getServices(namespace, name)
+	default:
+		// TODO: ReplicaSet
+		return nil, status.Errorf(codes.Unimplemented, "unimplemented resource type: %s", restype)
+	}
+}
+
 // GetPodsFor returns all running and pending Pods associated with a given
 // Kubernetes object.
 func (l *Lister) GetPodsFor(obj runtime.Object) ([]*apiv1.Pod, error) {
@@ -140,6 +164,134 @@ func (l *Lister) GetPodsFor(obj runtime.Object) ([]*apiv1.Pod, error) {
 	}
 
 	return allPods, nil
+}
+
+func (l *Lister) getNamespaces(name string) ([]runtime.Object, error) {
+	var err error
+	var namespaces []*apiv1.Namespace
+
+	if name == "" {
+		namespaces, err = l.NS.List(labels.Everything())
+	} else {
+		var namespace *apiv1.Namespace
+		namespace, err = l.NS.Get(name)
+		namespaces = []*apiv1.Namespace{namespace}
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	objects := []runtime.Object{}
+	for _, ns := range namespaces {
+		objects = append(objects, ns)
+	}
+
+	return objects, nil
+}
+
+func (l *Lister) getDeployments(namespace, name string) ([]runtime.Object, error) {
+	var err error
+	var deploys []*appsv1beta2.Deployment
+
+	if namespace == "" {
+		deploys, err = l.Deploy.List(labels.Everything())
+	} else if name == "" {
+		deploys, err = l.Deploy.Deployments(namespace).List(labels.Everything())
+	} else {
+		var deploy *appsv1beta2.Deployment
+		deploy, err = l.Deploy.Deployments(namespace).Get(name)
+		deploys = []*appsv1beta2.Deployment{deploy}
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	objects := []runtime.Object{}
+	for _, deploy := range deploys {
+		objects = append(objects, deploy)
+	}
+
+	return objects, nil
+}
+
+func (l *Lister) getPods(namespace, name string) ([]runtime.Object, error) {
+	var err error
+	var pods []*apiv1.Pod
+
+	if namespace == "" {
+		pods, err = l.Pod.List(labels.Everything())
+	} else if name == "" {
+		pods, err = l.Pod.Pods(namespace).List(labels.Everything())
+	} else {
+		var pod *apiv1.Pod
+		pod, err = l.Pod.Pods(namespace).Get(name)
+		pods = []*apiv1.Pod{pod}
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	objects := []runtime.Object{}
+	for _, pod := range pods {
+		objects = append(objects, pod)
+	}
+
+	return objects, nil
+}
+
+func (l *Lister) getRCs(namespace, name string) ([]runtime.Object, error) {
+	var err error
+	var rcs []*apiv1.ReplicationController
+
+	if namespace == "" {
+		rcs, err = l.RC.List(labels.Everything())
+	} else if name == "" {
+		rcs, err = l.RC.ReplicationControllers(namespace).List(labels.Everything())
+	} else {
+		var rc *apiv1.ReplicationController
+		rc, err = l.RC.ReplicationControllers(namespace).Get(name)
+		rcs = []*apiv1.ReplicationController{rc}
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	objects := []runtime.Object{}
+	for _, rc := range rcs {
+		objects = append(objects, rc)
+	}
+
+	return objects, nil
+}
+
+func (l *Lister) getServices(namespace, name string) ([]runtime.Object, error) {
+	var err error
+	var services []*apiv1.Service
+
+	if namespace == "" {
+		services, err = l.Svc.List(labels.Everything())
+	} else if name == "" {
+		services, err = l.Svc.Services(namespace).List(labels.Everything())
+	} else {
+		var svc *apiv1.Service
+		svc, err = l.Svc.Services(namespace).Get(name)
+		services = []*apiv1.Service{svc}
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	objects := []runtime.Object{}
+	for _, svc := range services {
+		objects = append(objects, svc)
+	}
+
+	return objects, nil
 }
 
 func isPendingOrRunning(pod *apiv1.Pod) bool {
