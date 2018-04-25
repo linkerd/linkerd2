@@ -16,7 +16,8 @@ describe('MetricUtils', () => {
             P50: 1,
             P95: 2,
             P99: 7
-          }
+          },
+          added: true
         }
       ];
       expect(result).to.deep.equal(expectedResult);

@@ -92,18 +92,26 @@ export const getComponentPods = componentPods => {
     .value();
 };
 
-export const processRollupMetrics = rawMetrics => {
+const kubernetesNs = "kube-system";
+const defaultControllerNs = "conduit";
+export const processRollupMetrics = (rawMetrics, controllerNamespace) => {
   if (_.isEmpty(rawMetrics.ok) || _.isEmpty(rawMetrics.ok.statTables)) {
     return [];
   }
-
+  if (_.isEmpty(controllerNamespace)) {
+    controllerNamespace = defaultControllerNs;
+  }
   let metrics = _.flatMap(rawMetrics.ok.statTables, table => {
     return _.map(table.podGroup.rows, row => {
+      if (row.resource.namespace === kubernetesNs || row.resource.namespace === controllerNamespace) {
+        return null;
+      }
       return {
         name: row.resource.namespace + "/" + row.resource.name,
         requestRate: getRequestRate(row),
         successRate: getSuccessRate(row),
-        latency: getLatency(row)
+        latency: getLatency(row),
+        added: row.meshedPodCount === row.totalPodCount
       };
     });
   });
