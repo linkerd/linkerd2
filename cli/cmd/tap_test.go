@@ -8,26 +8,30 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/ptypes/duration"
-	google_protobuf "github.com/golang/protobuf/ptypes/duration"
 	"github.com/runconduit/conduit/controller/api/public"
 	common "github.com/runconduit/conduit/controller/gen/common"
-	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/controller/util"
 	"github.com/runconduit/conduit/pkg/k8s"
 	"google.golang.org/grpc/codes"
 )
 
-func TestRequestTapFromApi(t *testing.T) {
+func TestRequestTapByResourceFromAPI(t *testing.T) {
 	t.Run("Should render busy response if everything went well", func(t *testing.T) {
-		authority := "localhost"
-		targetName := "pod-666"
 		resourceType := k8s.Pods
+		targetName := "pod-666"
 		scheme := "https"
 		method := "GET"
+		authority := "localhost"
 		path := "/some/path"
-		sourceIp := "234.234.234.234"
-		targetIp := "123.123.123.123"
-		mockApiClient := &public.MockConduitApiClient{}
+
+		req, err := buildTapByResourceRequest(
+			[]string{resourceType, targetName},
+			"", "", "", 0,
+			scheme, method, authority, path,
+		)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
 
 		event1 := createEvent(
 			&common.TapEvent_Http{
@@ -53,10 +57,10 @@ func TestRequestTapFromApi(t *testing.T) {
 						Eos: &common.Eos{
 							End: &common.Eos_GrpcStatusCode{GrpcStatusCode: 666},
 						},
-						SinceRequestInit: &google_protobuf.Duration{
+						SinceRequestInit: &duration.Duration{
 							Seconds: 10,
 						},
-						SinceResponseInit: &google_protobuf.Duration{
+						SinceResponseInit: &duration.Duration{
 							Seconds: 100,
 						},
 						ResponseBytes: 1337,
@@ -65,24 +69,13 @@ func TestRequestTapFromApi(t *testing.T) {
 			},
 			map[string]string{},
 		)
-		mockApiClient.Api_TapClientToReturn = &public.MockApi_TapClient{
+		mockApiClient := &public.MockConduitApiClient{}
+		mockApiClient.Api_TapByResourceClientToReturn = &public.MockApi_TapByResourceClient{
 			TapEventsToReturn: []common.TapEvent{event1, event2},
 		}
 
-		partialReq := &pb.TapRequest{
-			MaxRps:    0,
-			ToPort:    8080,
-			ToIP:      targetIp,
-			FromPort:  90,
-			FromIP:    sourceIp,
-			Scheme:    scheme,
-			Method:    method,
-			Authority: authority,
-			Path:      path,
-		}
-
 		writer := bytes.NewBufferString("")
-		err := requestTapFromApi(writer, mockApiClient, targetName, resourceType, partialReq)
+		err = requestTapByResourceFromAPI(writer, mockApiClient, req)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -99,34 +92,29 @@ func TestRequestTapFromApi(t *testing.T) {
 	})
 
 	t.Run("Should render empty response if no events returned", func(t *testing.T) {
-		authority := "localhost"
-		targetName := "pod-666"
 		resourceType := k8s.Pods
+		targetName := "pod-666"
 		scheme := "https"
 		method := "GET"
+		authority := "localhost"
 		path := "/some/path"
-		sourceIp := "234.234.234.234"
-		targetIp := "123.123.123.123"
-		mockApiClient := &public.MockConduitApiClient{}
 
-		mockApiClient.Api_TapClientToReturn = &public.MockApi_TapClient{
+		req, err := buildTapByResourceRequest(
+			[]string{resourceType, targetName},
+			"", "", "", 0,
+			scheme, method, authority, path,
+		)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		mockApiClient := &public.MockConduitApiClient{}
+		mockApiClient.Api_TapByResourceClientToReturn = &public.MockApi_TapByResourceClient{
 			TapEventsToReturn: []common.TapEvent{},
 		}
 
-		partialReq := &pb.TapRequest{
-			MaxRps:    0,
-			ToPort:    8080,
-			ToIP:      targetIp,
-			FromPort:  90,
-			FromIP:    sourceIp,
-			Scheme:    scheme,
-			Method:    method,
-			Authority: authority,
-			Path:      path,
-		}
 		writer := bytes.NewBufferString("")
-
-		err := requestTapFromApi(writer, mockApiClient, targetName, resourceType, partialReq)
+		err = requestTapByResourceFromAPI(writer, mockApiClient, req)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -144,36 +132,31 @@ func TestRequestTapFromApi(t *testing.T) {
 
 	t.Run("Should return error if stream returned error", func(t *testing.T) {
 		t.SkipNow()
-		authority := "localhost"
-		targetName := "pod-666"
 		resourceType := k8s.Pods
+		targetName := "pod-666"
 		scheme := "https"
 		method := "GET"
+		authority := "localhost"
 		path := "/some/path"
-		sourceIp := "234.234.234.234"
-		targetIp := "123.123.123.123"
+
+		req, err := buildTapByResourceRequest(
+			[]string{resourceType, targetName},
+			"", "", "", 0,
+			scheme, method, authority, path,
+		)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
 		mockApiClient := &public.MockConduitApiClient{}
-		mockApiClient.Api_TapClientToReturn = &public.MockApi_TapClient{
+		mockApiClient.Api_TapByResourceClientToReturn = &public.MockApi_TapByResourceClient{
 			ErrorsToReturn: []error{errors.New("expected")},
 		}
 
-		partialReq := &pb.TapRequest{
-			MaxRps:    0,
-			ToPort:    8080,
-			ToIP:      targetIp,
-			FromPort:  90,
-			FromIP:    sourceIp,
-			Scheme:    scheme,
-			Method:    method,
-			Authority: authority,
-			Path:      path,
-		}
 		writer := bytes.NewBufferString("")
-
-		err := requestTapFromApi(writer, mockApiClient, targetName, resourceType, partialReq)
-		output := writer.String()
+		err = requestTapByResourceFromAPI(writer, mockApiClient, req)
 		if err == nil {
-			t.Fatalf("Expecting error, got nothing but outpus [%s]", output)
+			t.Fatalf("Expecting error, got nothing but output [%s]", writer.String())
 		}
 	})
 }

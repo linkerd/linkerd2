@@ -31,6 +31,8 @@ message Pod {
 }
 
 message TapRequest {
+  option deprecated = true;
+
   oneof target {
     string pod = 1;
     string deployment = 2;
@@ -184,7 +186,7 @@ service Api {
   rpc ListPods(Empty) returns (ListPodsResponse) {}
 
   // Superceded by `TapByResource`.
-  rpc Tap(TapRequest) returns (stream common.TapEvent) {}
+  rpc Tap(TapRequest) returns (stream common.TapEvent) { option deprecated = true; }
 
   // Executes tapping over Kubernetes resources.
   rpc TapByResource(TapByResourceRequest) returns (stream common.TapEvent) {}

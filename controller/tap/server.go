@@ -26,12 +26,7 @@ import (
 type (
 	server struct {
 		tapPort uint
-		// We use the Kubernetes API to find the IP addresses of pods to tap
-		// TODO: remove these when TapByResource replaces tap
-		replicaSets *k8s.ReplicaSetStore
-		pods        k8s.PodIndex
-
-		lister *k8s.Lister
+		lister  *k8s.Lister
 	}
 )
 
@@ -40,60 +35,7 @@ var (
 )
 
 func (s *server) Tap(req *public.TapRequest, stream pb.Tap_TapServer) error {
-
-	// TODO: Allow a configurable aperture A.
-	//       If the target contains more than A pods, select A of them at random.
-	var pods []*apiv1.Pod
-	var targetName string
-	switch target := req.Target.(type) {
-	case *public.TapRequest_Pod:
-		targetName = target.Pod
-		pod, err := s.pods.GetPod(target.Pod)
-		if err != nil {
-			return apiUtil.GRPCError(err)
-		}
-		pods = []*apiv1.Pod{pod}
-	case *public.TapRequest_Deployment:
-		targetName = target.Deployment
-		var err error
-		pods, err = s.pods.GetPodsByIndex(target.Deployment)
-		if err != nil {
-			return err
-		}
-	}
-
-	log.Infof("Tapping %d pods for target %s", len(pods), targetName)
-
-	events := make(chan *common.TapEvent)
-
-	go func() { // Stop sending back events if the request is cancelled
-		<-stream.Context().Done()
-		close(events)
-	}()
-
-	// divide the rps evenly between all pods to tap
-	rpsPerPod := req.MaxRps / float32(len(pods))
-	if rpsPerPod < 1 {
-		rpsPerPod = 1
-	}
-
-	for _, pod := range pods {
-		// initiate a tap on the pod
-		match, err := makeMatch(req)
-		if err != nil {
-			return err
-		}
-		go s.tapProxy(stream.Context(), rpsPerPod, match, pod.Status.PodIP, events)
-	}
-
-	// read events from the taps and send them back
-	for event := range events {
-		err := stream.Send(event)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return status.Error(codes.Unimplemented, "Tap is deprecated, use TapByResource")
 }
 
 func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_TapByResourceServer) error {
@@ -156,154 +98,6 @@ func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_T
 		}
 	}
 	return nil
-}
-
-func validatePort(port uint32) error {
-	if port > 65535 {
-		return status.Errorf(codes.InvalidArgument, "port number of range: %d", port)
-	}
-	return nil
-}
-
-func makeMatch(req *public.TapRequest) (*proxy.ObserveRequest_Match, error) {
-	matches := make([]*proxy.ObserveRequest_Match, 0)
-	if req.FromIP != "" {
-		ip, err := util.ParseIPV4(req.FromIP)
-		if err != nil {
-			return nil, err
-		}
-		matches = append(matches, &proxy.ObserveRequest_Match{
-			Match: &proxy.ObserveRequest_Match_Source{
-				Source: &proxy.ObserveRequest_Match_Tcp{
-					Match: &proxy.ObserveRequest_Match_Tcp_Netmask_{
-						Netmask: &proxy.ObserveRequest_Match_Tcp_Netmask{
-							Ip:   ip,
-							Mask: 32,
-						},
-					},
-				},
-			},
-		})
-	}
-
-	if req.FromPort != 0 {
-		if err := validatePort(req.FromPort); err != nil {
-			return nil, err
-		}
-		matches = append(matches, &proxy.ObserveRequest_Match{
-			Match: &proxy.ObserveRequest_Match_Source{
-				Source: &proxy.ObserveRequest_Match_Tcp{
-					Match: &proxy.ObserveRequest_Match_Tcp_Ports{
-						Ports: &proxy.ObserveRequest_Match_Tcp_PortRange{
-							Min: req.FromPort,
-						},
-					},
-				},
-			},
-		})
-	}
-
-	if req.ToIP != "" {
-		ip, err := util.ParseIPV4(req.ToIP)
-		if err != nil {
-			return nil, err
-		}
-		matches = append(matches, &proxy.ObserveRequest_Match{
-			Match: &proxy.ObserveRequest_Match_Destination{
-				Destination: &proxy.ObserveRequest_Match_Tcp{
-					Match: &proxy.ObserveRequest_Match_Tcp_Netmask_{
-						Netmask: &proxy.ObserveRequest_Match_Tcp_Netmask{
-							Ip:   ip,
-							Mask: 32,
-						},
-					},
-				},
-			},
-		})
-	}
-
-	if req.ToPort != 0 {
-		if err := validatePort(req.ToPort); err != nil {
-			return nil, err
-		}
-		matches = append(matches, &proxy.ObserveRequest_Match{
-			Match: &proxy.ObserveRequest_Match_Destination{
-				Destination: &proxy.ObserveRequest_Match_Tcp{
-					Match: &proxy.ObserveRequest_Match_Tcp_Ports{
-						Ports: &proxy.ObserveRequest_Match_Tcp_PortRange{
-							Min: req.ToPort,
-						},
-					},
-				},
-			},
-		})
-	}
-
-	if req.Scheme != "" {
-		matches = append(matches, &proxy.ObserveRequest_Match{
-			Match: &proxy.ObserveRequest_Match_Http_{
-				Http: &proxy.ObserveRequest_Match_Http{
-					Match: &proxy.ObserveRequest_Match_Http_Scheme{
-						Scheme: parseScheme(req.Scheme),
-					},
-				},
-			},
-		})
-	}
-
-	if req.Method != "" {
-		matches = append(matches, &proxy.ObserveRequest_Match{
-			Match: &proxy.ObserveRequest_Match_Http_{
-				Http: &proxy.ObserveRequest_Match_Http{
-					Match: &proxy.ObserveRequest_Match_Http_Method{
-						Method: parseMethod(req.Method),
-					},
-				},
-			},
-		})
-	}
-
-	// exact match
-	if req.Authority != "" {
-		matches = append(matches, &proxy.ObserveRequest_Match{
-			Match: &proxy.ObserveRequest_Match_Http_{
-				Http: &proxy.ObserveRequest_Match_Http{
-					Match: &proxy.ObserveRequest_Match_Http_Authority{
-						Authority: &proxy.ObserveRequest_Match_Http_StringMatch{
-							Match: &proxy.ObserveRequest_Match_Http_StringMatch_Exact{
-								Exact: req.Authority,
-							},
-						},
-					},
-				},
-			},
-		})
-	}
-
-	// prefix match
-	if req.Path != "" {
-		matches = append(matches, &proxy.ObserveRequest_Match{
-			Match: &proxy.ObserveRequest_Match_Http_{
-				Http: &proxy.ObserveRequest_Match_Http{
-					Match: &proxy.ObserveRequest_Match_Http_Path{
-						Path: &proxy.ObserveRequest_Match_Http_StringMatch{
-							Match: &proxy.ObserveRequest_Match_Http_StringMatch_Prefix{
-								Prefix: req.Path,
-							},
-						},
-					},
-				},
-			},
-		})
-	}
-
-	return &proxy.ObserveRequest_Match{
-		Match: &proxy.ObserveRequest_Match_All{
-			All: &proxy.ObserveRequest_Match_Seq{
-				Matches: matches,
-			},
-		},
-	}, nil
 }
 
 // TODO: validate scheme
@@ -489,8 +283,6 @@ func (s *server) tapProxy(ctx context.Context, maxRps float32, match *proxy.Obse
 func NewServer(
 	addr string,
 	tapPort uint,
-	replicaSets *k8s.ReplicaSetStore,
-	pods k8s.PodIndex,
 	lister *k8s.Lister,
 ) (*grpc.Server, net.Listener, error) {
 
@@ -501,14 +293,10 @@ func NewServer(
 
 	s := util.NewGrpcServer()
 	srv := server{
-		tapPort:     tapPort,
-		replicaSets: replicaSets,
-		pods:        pods,
-		lister:      lister,
+		tapPort: tapPort,
+		lister:  lister,
 	}
 	pb.RegisterTapServer(s, &srv)
-
-	// TODO: register shutdown hook to call pods.Stop() and replicatSets.Stop()
 
 	return s, lis, nil
 }

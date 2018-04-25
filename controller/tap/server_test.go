@@ -171,15 +171,9 @@ status:
 			}
 
 			clientSet := fake.NewSimpleClientset(k8sObjs...)
-
-			replicaSets, err := k8s.NewReplicaSetStore(clientSet)
-			if err != nil {
-				t.Fatalf("NewReplicaSetStore failed: %s", err)
-			}
-
 			lister := k8s.NewLister(clientSet)
 
-			server, listener, err := NewServer("localhost:0", 0, replicaSets, k8s.NewEmptyPodIndex(), lister)
+			server, listener, err := NewServer("localhost:0", 0, lister)
 			if err != nil {
 				t.Fatalf("NewServer error: %s", err)
 			}

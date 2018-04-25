@@ -6,6 +6,6 @@ import "common/common.proto";
 import "public/api.proto";
 
 service Tap {
-  rpc Tap(public.TapRequest) returns (stream common.TapEvent) {}
+  rpc Tap(public.TapRequest) returns (stream common.TapEvent) { option deprecated = true; }
   rpc TapByResource(public.TapByResourceRequest) returns (stream common.TapEvent) {}
 }
