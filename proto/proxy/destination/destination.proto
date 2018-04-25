@@ -21,11 +21,7 @@ import "common/common.proto";
 // the service.
 //
 // The controller is expected to send an Update every time there is a
-// change in service discovery.  The controller is also expected to send an
-// update at least once every ADDRESS_UPDATE_INTERVAL to indicate that the
-// controller is still healthy.  If no service discovery updates have taken
-// place, the controller can simply send an empty `add`.  The controller may
-// determine the value of ADDRESS_UPDATE_INTERVAL.
+// change in service discovery.
 //
 // The client MUST be prepared to receive messages in any order and the client
 // MUST be able to cope with the presence or absence of redundant messages.

@@ -72,14 +72,10 @@ func TestWatcher(t *testing.T) {
 		watcher := newWatcher(resource, "resourcestring", testWatchInit, stopCh)
 		watcher.timeout = 500 * time.Millisecond
 		_ = watcher.run()
-		select {
-		case <-stopCh:
-			calls := atomic.LoadInt32(&watchInitNumOfCalls)
-			if calls != expectedWatchInitNumOfCalls {
-				t.Fatalf("expected [%d] calls but observed [%d]", expectedWatchInitNumOfCalls, watchInitNumOfCalls)
-			}
-
+		<-stopCh
+		calls := atomic.LoadInt32(&watchInitNumOfCalls)
+		if calls != expectedWatchInitNumOfCalls {
+			t.Fatalf("expected [%d] calls but observed [%d]", expectedWatchInitNumOfCalls, watchInitNumOfCalls)
 		}
-
 	})
 }

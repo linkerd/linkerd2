@@ -27,9 +27,8 @@ pub struct TransportClose {
 
     pub duration: Duration,
 
-    // TODO
-    //pub rx_bytes: usize,
-    //pub tx_bytes: usize,
+    pub rx_bytes: u64,
+    pub tx_bytes: u64,
 }
 
 #[derive(Clone, Debug)]

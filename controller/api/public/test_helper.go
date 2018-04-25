@@ -13,13 +13,18 @@ import (
 	"google.golang.org/grpc"
 )
 
+//
+// Conduit Public API client
+//
+
 type MockConduitApiClient struct {
-	ErrorToReturn               error
-	VersionInfoToReturn         *pb.VersionInfo
-	ListPodsResponseToReturn    *pb.ListPodsResponse
-	StatSummaryResponseToReturn *pb.StatSummaryResponse
-	SelfCheckResponseToReturn   *healthcheckPb.SelfCheckResponse
-	Api_TapClientToReturn       pb.Api_TapClient
+	ErrorToReturn                   error
+	VersionInfoToReturn             *pb.VersionInfo
+	ListPodsResponseToReturn        *pb.ListPodsResponse
+	StatSummaryResponseToReturn     *pb.StatSummaryResponse
+	SelfCheckResponseToReturn       *healthcheckPb.SelfCheckResponse
+	Api_TapClientToReturn           pb.Api_TapClient
+	Api_TapByResourceClientToReturn pb.Api_TapByResourceClient
 }
 
 func (c *MockConduitApiClient) StatSummary(ctx context.Context, in *pb.StatSummaryRequest, opts ...grpc.CallOption) (*pb.StatSummaryResponse, error) {
@@ -36,6 +41,10 @@ func (c *MockConduitApiClient) ListPods(ctx context.Context, in *pb.Empty, opts 
 
 func (c *MockConduitApiClient) Tap(ctx context.Context, in *pb.TapRequest, opts ...grpc.CallOption) (pb.Api_TapClient, error) {
 	return c.Api_TapClientToReturn, c.ErrorToReturn
+}
+
+func (c *MockConduitApiClient) TapByResource(ctx context.Context, in *pb.TapByResourceRequest, opts ...grpc.CallOption) (pb.Api_TapByResourceClient, error) {
+	return c.Api_TapByResourceClientToReturn, c.ErrorToReturn
 }
 
 func (c *MockConduitApiClient) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckRequest, _ ...grpc.CallOption) (*healthcheckPb.SelfCheckResponse, error) {
@@ -64,8 +73,33 @@ func (a *MockApi_TapClient) Recv() (*common.TapEvent, error) {
 	return &eventPopped, errorPopped
 }
 
+type MockApi_TapByResourceClient struct {
+	TapEventsToReturn []common.TapEvent
+	ErrorsToReturn    []error
+	grpc.ClientStream
+}
+
+func (a *MockApi_TapByResourceClient) Recv() (*common.TapEvent, error) {
+	var eventPopped common.TapEvent
+	var errorPopped error
+	if len(a.TapEventsToReturn) == 0 && len(a.ErrorsToReturn) == 0 {
+		return nil, io.EOF
+	}
+	if len(a.TapEventsToReturn) != 0 {
+		eventPopped, a.TapEventsToReturn = a.TapEventsToReturn[0], a.TapEventsToReturn[1:]
+	}
+	if len(a.ErrorsToReturn) != 0 {
+		errorPopped, a.ErrorsToReturn = a.ErrorsToReturn[0], a.ErrorsToReturn[1:]
+	}
+
+	return &eventPopped, errorPopped
+}
+
+//
+// Prometheus client
+//
+
 type MockProm struct {
-	api v1.API
 	Res model.Value
 }
 

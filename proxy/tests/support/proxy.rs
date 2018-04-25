@@ -44,6 +44,9 @@ impl Proxy {
         }
     }
 
+    /// Pass a customized support `Controller` for this proxy to use.
+    ///
+    /// If not used, a default controller will be used.
     pub fn controller(mut self, c: controller::Listening) -> Self {
         self.controller = Some(c);
         self
@@ -85,7 +88,7 @@ impl Proxy {
         self.run_with_test_env(config::TestEnv::new())
     }
 
-    pub fn run_with_test_env(self, mut env: config::TestEnv) -> Listening {
+    pub fn run_with_test_env(self, env: config::TestEnv) -> Listening {
         run(self, env)
     }
 }
@@ -122,7 +125,7 @@ impl conduit_proxy::GetOriginalDst for MockOriginalDst {
 fn run(proxy: Proxy, mut env: config::TestEnv) -> Listening {
     use self::conduit_proxy::config;
 
-    let controller = proxy.controller.expect("proxy controller missing");
+    let controller = proxy.controller.unwrap_or_else(|| controller::new().run());
     let inbound = proxy.inbound;
     let outbound = proxy.outbound;
     let mut mock_orig_dst = DstInner::default();
@@ -163,7 +166,7 @@ fn run(proxy: Proxy, mut env: config::TestEnv) -> Listening {
         );
     }
 
-    let mut config = config::Config::try_from(&env).unwrap();
+    let config = config::Config::try_from(&env).unwrap();
 
     let (running_tx, running_rx) = oneshot::channel();
     let (tx, mut rx) = shutdown_signal();

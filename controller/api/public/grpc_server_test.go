@@ -4,17 +4,15 @@ import (
 	"context"
 	"sort"
 	"testing"
-	"time"
 
 	"github.com/golang/protobuf/ptypes/duration"
 	"github.com/prometheus/common/model"
 	tap "github.com/runconduit/conduit/controller/gen/controller/tap"
 	pb "github.com/runconduit/conduit/controller/gen/public"
+	"github.com/runconduit/conduit/controller/k8s"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/cache"
 )
 
 type listPodsExpected struct {
@@ -164,29 +162,17 @@ spec:
 			}
 
 			clientSet := fake.NewSimpleClientset(k8sObjs...)
-			sharedInformers := informers.NewSharedInformerFactory(clientSet, 10*time.Minute)
-
-			deployInformer := sharedInformers.Apps().V1beta2().Deployments()
-			replicaSetInformer := sharedInformers.Apps().V1beta2().ReplicaSets()
-			podInformer := sharedInformers.Core().V1().Pods()
+			lister := k8s.NewLister(clientSet)
 
 			fakeGrpcServer := newGrpcServer(
 				&MockProm{Res: exp.promRes},
 				tap.NewTapClient(nil),
-				deployInformer.Lister(),
-				replicaSetInformer.Lister(),
-				podInformer.Lister(),
+				lister,
 				"conduit",
 				[]string{},
 			)
-			stopCh := make(chan struct{})
-			sharedInformers.Start(stopCh)
-			if !cache.WaitForCacheSync(
-				stopCh,
-				deployInformer.Informer().HasSynced,
-				replicaSetInformer.Informer().HasSynced,
-				podInformer.Informer().HasSynced,
-			) {
+			err := lister.Sync()
+			if err != nil {
 				t.Fatalf("timed out wait for caches to sync")
 			}
 

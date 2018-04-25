@@ -52,6 +52,17 @@ func (m *mockGrpcServer) Tap(req *pb.TapRequest, tapServer pb.Api_TapServer) err
 	return m.ErrorToReturn
 }
 
+func (m *mockGrpcServer) TapByResource(req *pb.TapByResourceRequest, tapServer pb.Api_TapByResourceServer) error {
+	m.LastRequestReceived = req
+	if m.ErrorToReturn == nil {
+		for _, msg := range m.TapStreamsToReturn {
+			tapServer.Send(msg)
+		}
+	}
+
+	return m.ErrorToReturn
+}
+
 type grpcCallTestCase struct {
 	expectedRequest  proto.Message
 	expectedResponse proto.Message
@@ -152,14 +163,14 @@ func TestServer(t *testing.T) {
 
 		expectedTapResponses := []*common.TapEvent{
 			{
-				Target: &common.TcpAddress{
+				Destination: &common.TcpAddress{
 					Port: 9999,
 				},
 				Source: &common.TcpAddress{
 					Port: 6666,
 				},
 			}, {
-				Target: &common.TcpAddress{
+				Destination: &common.TcpAddress{
 					Port: 2102,
 				},
 				Source: &common.TcpAddress{
@@ -170,7 +181,7 @@ func TestServer(t *testing.T) {
 		mockGrpcServer.TapStreamsToReturn = expectedTapResponses
 		mockGrpcServer.ErrorToReturn = nil
 
-		tapClient, err := client.Tap(context.TODO(), &pb.TapRequest{})
+		tapClient, err := client.TapByResource(context.TODO(), &pb.TapByResourceRequest{})
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -235,7 +246,7 @@ func assertCallWasForwarded(t *testing.T, mockGrpcServer *mockGrpcServer, expect
 	}
 
 	mockGrpcServer.ErrorToReturn = errors.New("expected")
-	actualResponse, err = functionCall()
+	_, err = functionCall()
 	if err == nil {
 		t.Fatalf("Expecting error, got nothing")
 	}

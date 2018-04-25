@@ -11,29 +11,28 @@ import (
 	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 	tapPb "github.com/runconduit/conduit/controller/gen/controller/tap"
 	pb "github.com/runconduit/conduit/controller/gen/public"
+	"github.com/runconduit/conduit/controller/k8s"
 	pkgK8s "github.com/runconduit/conduit/pkg/k8s"
 	"github.com/runconduit/conduit/pkg/version"
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	k8sV1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	applisters "k8s.io/client-go/listers/apps/v1beta2"
-	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
 type (
 	grpcServer struct {
 		prometheusAPI       promv1.API
 		tapClient           tapPb.TapClient
-		deployLister        applisters.DeploymentLister
-		replicaSetLister    applisters.ReplicaSetLister
-		podLister           corelisters.PodLister
+		lister              *k8s.Lister
 		controllerNamespace string
 		ignoredNamespaces   []string
 	}
 )
 
 const (
-	podQuery                   = "sum(request_total) by (pod)"
+	podQuery                   = "count(process_start_time_seconds) by (pod)"
 	K8sClientSubsystemName     = "kubernetes"
 	K8sClientCheckDescription  = "control plane can talk to Kubernetes"
 	PromClientSubsystemName    = "prometheus"
@@ -43,24 +42,20 @@ const (
 func newGrpcServer(
 	promAPI promv1.API,
 	tapClient tapPb.TapClient,
-	deployLister applisters.DeploymentLister,
-	replicaSetLister applisters.ReplicaSetLister,
-	podLister corelisters.PodLister,
+	lister *k8s.Lister,
 	controllerNamespace string,
 	ignoredNamespaces []string,
 ) *grpcServer {
 	return &grpcServer{
 		prometheusAPI:       promAPI,
 		tapClient:           tapClient,
-		deployLister:        deployLister,
-		replicaSetLister:    replicaSetLister,
-		podLister:           podLister,
+		lister:              lister,
 		controllerNamespace: controllerNamespace,
 		ignoredNamespaces:   ignoredNamespaces,
 	}
 }
 
-func (_ *grpcServer) Version(ctx context.Context, req *pb.Empty) (*pb.VersionInfo, error) {
+func (*grpcServer) Version(ctx context.Context, req *pb.Empty) (*pb.VersionInfo, error) {
 	return &pb.VersionInfo{GoVersion: runtime.Version(), ReleaseVersion: version.Version, BuildDate: "1970-01-01T00:00:00Z"}, nil
 }
 
@@ -83,7 +78,7 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.Empty) (*pb.ListPodsR
 		reports[pod] = time.Unix(0, int64(timestamp)*int64(time.Millisecond))
 	}
 
-	pods, err := s.podLister.List(labels.Everything())
+	pods, err := s.lister.Pod.List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +137,7 @@ func (s *grpcServer) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckR
 		CheckDescription: K8sClientCheckDescription,
 		Status:           healthcheckPb.CheckStatus_OK,
 	}
-	_, err := s.podLister.List(labels.Everything())
+	_, err := s.lister.Pod.List(labels.Everything())
 	if err != nil {
 		k8sClientCheck.Status = healthcheckPb.CheckStatus_ERROR
 		k8sClientCheck.FriendlyMessageToUser = fmt.Sprintf("Error talking to Kubernetes from control plane: %s", err.Error())
@@ -168,10 +163,14 @@ func (s *grpcServer) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckR
 	return response, nil
 }
 
-// Pass through to tap service
 func (s *grpcServer) Tap(req *pb.TapRequest, stream pb.Api_TapServer) error {
+	return status.Error(codes.Unimplemented, "Tap is deprecated, use TapByResource")
+}
+
+// Pass through to tap service
+func (s *grpcServer) TapByResource(req *pb.TapByResourceRequest, stream pb.Api_TapByResourceServer) error {
 	tapStream := stream.(tapServer)
-	tapClient, err := s.tapClient.Tap(tapStream.Context(), req)
+	tapClient, err := s.tapClient.TapByResource(tapStream.Context(), req)
 	if err != nil {
 		//TODO: why not return the error?
 		log.Errorf("Unexpected error tapping [%v]: %v", req, err)
@@ -210,7 +209,7 @@ func (s *grpcServer) getDeploymentFor(pod *k8sV1.Pod) (string, error) {
 		return "", fmt.Errorf("Pod %s parent is not a ReplicaSet", pod.Name)
 	}
 
-	rs, err := s.replicaSetLister.GetPodReplicaSets(pod)
+	rs, err := s.lister.RS.GetPodReplicaSets(pod)
 	if err != nil {
 		return "", err
 	}

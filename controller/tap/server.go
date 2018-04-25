@@ -8,54 +8,64 @@ import (
 	"strings"
 	"time"
 
+	apiUtil "github.com/runconduit/conduit/controller/api/util"
 	common "github.com/runconduit/conduit/controller/gen/common"
 	pb "github.com/runconduit/conduit/controller/gen/controller/tap"
 	proxy "github.com/runconduit/conduit/controller/gen/proxy/tap"
 	public "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/controller/k8s"
 	"github.com/runconduit/conduit/controller/util"
+	pkgK8s "github.com/runconduit/conduit/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"k8s.io/api/core/v1"
+	apiv1 "k8s.io/api/core/v1"
 )
-
-var tapInterval = 10 * time.Second
 
 type (
 	server struct {
 		tapPort uint
-		// We use the Kubernetes API to find the IP addresses of pods to tap
-		replicaSets *k8s.ReplicaSetStore
-		pods        k8s.PodIndex
+		lister  *k8s.Lister
 	}
 )
 
-func (s *server) Tap(req *public.TapRequest, stream pb.Tap_TapServer) error {
+var (
+	tapInterval = 10 * time.Second
+)
 
-	// TODO: Allow a configurable aperture A.
-	//       If the target contains more than A pods, select A of them at random.
-	var pods []*v1.Pod
-	var targetName string
-	switch target := req.Target.(type) {
-	case *public.TapRequest_Pod:
-		targetName = target.Pod
-		pod, err := s.pods.GetPod(target.Pod)
-		if err != nil {
-			return status.Errorf(codes.NotFound, err.Error())
-		}
-		pods = []*v1.Pod{pod}
-	case *public.TapRequest_Deployment:
-		targetName = target.Deployment
-		var err error
-		pods, err = s.pods.GetPodsByIndex(target.Deployment)
-		if err != nil {
-			return err
-		}
+func (s *server) Tap(req *public.TapRequest, stream pb.Tap_TapServer) error {
+	return status.Error(codes.Unimplemented, "Tap is deprecated, use TapByResource")
+}
+
+func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_TapByResourceServer) error {
+	if req == nil {
+		return status.Error(codes.InvalidArgument, "TapByResource received nil TapByResourceRequest")
+	}
+	if req.Target == nil {
+		return status.Errorf(codes.InvalidArgument, "TapByResource received nil target ResourceSelection: %+v", *req)
 	}
 
-	log.Printf("Tapping %d pods for target %s", len(pods), targetName)
+	objects, err := s.lister.GetObjects(req.Target.Resource.Namespace, req.Target.Resource.Type, req.Target.Resource.Name)
+	if err != nil {
+		return apiUtil.GRPCError(err)
+	}
+
+	pods := []*apiv1.Pod{}
+	for _, object := range objects {
+		podsFor, err := s.lister.GetPodsFor(object)
+		if err != nil {
+			return apiUtil.GRPCError(err)
+		}
+
+		pods = append(pods, podsFor...)
+	}
+
+	if len(pods) == 0 {
+		return status.Errorf(codes.NotFound, "no pods found for ResourceSelection: %+v", *req.Target)
+	}
+
+	log.Infof("Tapping %d pods for target: %+v", len(pods), *req.Target.Resource)
 
 	events := make(chan *common.TapEvent)
 
@@ -70,12 +80,13 @@ func (s *server) Tap(req *public.TapRequest, stream pb.Tap_TapServer) error {
 		rpsPerPod = 1
 	}
 
+	match, err := makeByResourceMatch(req.Match)
+	if err != nil {
+		return apiUtil.GRPCError(err)
+	}
+
 	for _, pod := range pods {
 		// initiate a tap on the pod
-		match, err := makeMatch(req)
-		if err != nil {
-			return nil
-		}
 		go s.tapProxy(stream.Context(), rpsPerPod, match, pod.Status.PodIP, events)
 	}
 
@@ -83,158 +94,10 @@ func (s *server) Tap(req *public.TapRequest, stream pb.Tap_TapServer) error {
 	for event := range events {
 		err := stream.Send(event)
 		if err != nil {
-			return err
+			return apiUtil.GRPCError(err)
 		}
 	}
 	return nil
-}
-
-func validatePort(port uint32) error {
-	if port > 65535 {
-		return fmt.Errorf("Port number of range: %d", port)
-	}
-	return nil
-}
-
-func makeMatch(req *public.TapRequest) (*proxy.ObserveRequest_Match, error) {
-	matches := make([]*proxy.ObserveRequest_Match, 0)
-	if req.FromIP != "" {
-		ip, err := util.ParseIPV4(req.FromIP)
-		if err != nil {
-			return nil, err
-		}
-		matches = append(matches, &proxy.ObserveRequest_Match{
-			Match: &proxy.ObserveRequest_Match_Source{
-				Source: &proxy.ObserveRequest_Match_Tcp{
-					Match: &proxy.ObserveRequest_Match_Tcp_Netmask_{
-						Netmask: &proxy.ObserveRequest_Match_Tcp_Netmask{
-							Ip:   ip,
-							Mask: 32,
-						},
-					},
-				},
-			},
-		})
-	}
-
-	if req.FromPort != 0 {
-		if err := validatePort(req.FromPort); err != nil {
-			return nil, err
-		}
-		matches = append(matches, &proxy.ObserveRequest_Match{
-			Match: &proxy.ObserveRequest_Match_Source{
-				Source: &proxy.ObserveRequest_Match_Tcp{
-					Match: &proxy.ObserveRequest_Match_Tcp_Ports{
-						Ports: &proxy.ObserveRequest_Match_Tcp_PortRange{
-							Min: req.FromPort,
-						},
-					},
-				},
-			},
-		})
-	}
-
-	if req.ToIP != "" {
-		ip, err := util.ParseIPV4(req.ToIP)
-		if err != nil {
-			return nil, err
-		}
-		matches = append(matches, &proxy.ObserveRequest_Match{
-			Match: &proxy.ObserveRequest_Match_Destination{
-				Destination: &proxy.ObserveRequest_Match_Tcp{
-					Match: &proxy.ObserveRequest_Match_Tcp_Netmask_{
-						Netmask: &proxy.ObserveRequest_Match_Tcp_Netmask{
-							Ip:   ip,
-							Mask: 32,
-						},
-					},
-				},
-			},
-		})
-	}
-
-	if req.ToPort != 0 {
-		if err := validatePort(req.ToPort); err != nil {
-			return nil, err
-		}
-		matches = append(matches, &proxy.ObserveRequest_Match{
-			Match: &proxy.ObserveRequest_Match_Destination{
-				Destination: &proxy.ObserveRequest_Match_Tcp{
-					Match: &proxy.ObserveRequest_Match_Tcp_Ports{
-						Ports: &proxy.ObserveRequest_Match_Tcp_PortRange{
-							Min: req.ToPort,
-						},
-					},
-				},
-			},
-		})
-	}
-
-	if req.Scheme != "" {
-		matches = append(matches, &proxy.ObserveRequest_Match{
-			Match: &proxy.ObserveRequest_Match_Http_{
-				Http: &proxy.ObserveRequest_Match_Http{
-					Match: &proxy.ObserveRequest_Match_Http_Scheme{
-						Scheme: parseScheme(req.Scheme),
-					},
-				},
-			},
-		})
-	}
-
-	if req.Method != "" {
-		matches = append(matches, &proxy.ObserveRequest_Match{
-			Match: &proxy.ObserveRequest_Match_Http_{
-				Http: &proxy.ObserveRequest_Match_Http{
-					Match: &proxy.ObserveRequest_Match_Http_Method{
-						Method: parseMethod(req.Method),
-					},
-				},
-			},
-		})
-	}
-
-	// exact match
-	if req.Authority != "" {
-		matches = append(matches, &proxy.ObserveRequest_Match{
-			Match: &proxy.ObserveRequest_Match_Http_{
-				Http: &proxy.ObserveRequest_Match_Http{
-					Match: &proxy.ObserveRequest_Match_Http_Authority{
-						Authority: &proxy.ObserveRequest_Match_Http_StringMatch{
-							Match: &proxy.ObserveRequest_Match_Http_StringMatch_Exact{
-								Exact: req.Authority,
-							},
-						},
-					},
-				},
-			},
-		})
-	}
-
-	// prefix match
-	if req.Path != "" {
-		matches = append(matches, &proxy.ObserveRequest_Match{
-			Match: &proxy.ObserveRequest_Match_Http_{
-				Http: &proxy.ObserveRequest_Match_Http{
-					Match: &proxy.ObserveRequest_Match_Http_Path{
-						Path: &proxy.ObserveRequest_Match_Http_StringMatch{
-							Match: &proxy.ObserveRequest_Match_Http_StringMatch_Prefix{
-								Prefix: req.Path,
-							},
-						},
-					},
-				},
-			},
-		})
-	}
-
-	return &proxy.ObserveRequest_Match{
-		Match: &proxy.ObserveRequest_Match_All{
-			All: &proxy.ObserveRequest_Match_Seq{
-				Matches: matches,
-			},
-		},
-	}, nil
 }
 
 // TODO: validate scheme
@@ -271,6 +134,103 @@ func parseMethod(method string) *common.HttpMethod {
 	}
 }
 
+func makeByResourceMatch(match *public.TapByResourceRequest_Match) (*proxy.ObserveRequest_Match, error) {
+	// TODO: for now assume it's always a single, flat `All` match list
+	seq := match.GetAll()
+	if seq == nil {
+		return nil, status.Errorf(codes.Unimplemented, "unexpected match specified: %+v", match)
+	}
+
+	matches := []*proxy.ObserveRequest_Match{}
+
+	for _, reqMatch := range seq.Matches {
+		switch typed := reqMatch.Match.(type) {
+		case *public.TapByResourceRequest_Match_Destinations:
+
+			for k, v := range destinationLabels(typed.Destinations.Resource) {
+				matches = append(matches, &proxy.ObserveRequest_Match{
+					Match: &proxy.ObserveRequest_Match_DestinationLabel{
+						DestinationLabel: &proxy.ObserveRequest_Match_Label{
+							Key:   k,
+							Value: v,
+						},
+					},
+				})
+			}
+
+		case *public.TapByResourceRequest_Match_Http_:
+
+			httpMatch := proxy.ObserveRequest_Match_Http{}
+
+			switch httpTyped := typed.Http.Match.(type) {
+			case *public.TapByResourceRequest_Match_Http_Scheme:
+				httpMatch = proxy.ObserveRequest_Match_Http{
+					Match: &proxy.ObserveRequest_Match_Http_Scheme{
+						Scheme: parseScheme(httpTyped.Scheme),
+					},
+				}
+			case *public.TapByResourceRequest_Match_Http_Method:
+				httpMatch = proxy.ObserveRequest_Match_Http{
+					Match: &proxy.ObserveRequest_Match_Http_Method{
+						Method: parseMethod(httpTyped.Method),
+					},
+				}
+			case *public.TapByResourceRequest_Match_Http_Authority:
+				httpMatch = proxy.ObserveRequest_Match_Http{
+					Match: &proxy.ObserveRequest_Match_Http_Authority{
+						Authority: &proxy.ObserveRequest_Match_Http_StringMatch{
+							Match: &proxy.ObserveRequest_Match_Http_StringMatch_Exact{
+								Exact: httpTyped.Authority,
+							},
+						},
+					},
+				}
+			case *public.TapByResourceRequest_Match_Http_Path:
+				httpMatch = proxy.ObserveRequest_Match_Http{
+					Match: &proxy.ObserveRequest_Match_Http_Path{
+						Path: &proxy.ObserveRequest_Match_Http_StringMatch{
+							Match: &proxy.ObserveRequest_Match_Http_StringMatch_Prefix{
+								Prefix: httpTyped.Path,
+							},
+						},
+					},
+				}
+			default:
+				return nil, status.Errorf(codes.Unimplemented, "unknown HTTP match type: %v", httpTyped)
+			}
+
+			matches = append(matches, &proxy.ObserveRequest_Match{
+				Match: &proxy.ObserveRequest_Match_Http_{
+					Http: &httpMatch,
+				},
+			})
+
+		default:
+			return nil, status.Errorf(codes.Unimplemented, "unknown match type: %v", typed)
+		}
+	}
+
+	return &proxy.ObserveRequest_Match{
+		Match: &proxy.ObserveRequest_Match_All{
+			All: &proxy.ObserveRequest_Match_Seq{
+				Matches: matches,
+			},
+		},
+	}, nil
+}
+
+// TODO: factor out with `promLabels` in public-api
+func destinationLabels(resource *public.Resource) map[string]string {
+	dstLabels := map[string]string{}
+	if resource.Name != "" {
+		dstLabels[pkgK8s.ResourceTypesToProxyLabels[resource.Type]] = resource.Name
+	}
+	if resource.Type != pkgK8s.Namespaces && resource.Namespace != "" {
+		dstLabels["namespace"] = resource.Namespace
+	}
+	return dstLabels
+}
+
 // Tap a pod.
 // This method will run continuously until an error is encountered or the
 // request is cancelled via the context.  Thus it should be called as a
@@ -281,10 +241,10 @@ func parseMethod(method string) *common.HttpMethod {
 // again.
 func (s *server) tapProxy(ctx context.Context, maxRps float32, match *proxy.ObserveRequest_Match, addr string, events chan *common.TapEvent) {
 	tapAddr := fmt.Sprintf("%s:%d", addr, s.tapPort)
-	log.Printf("Establishing tap on %s", tapAddr)
+	log.Infof("Establishing tap on %s", tapAddr)
 	conn, err := grpc.DialContext(ctx, tapAddr, grpc.WithInsecure())
 	if err != nil {
-		log.Println(err)
+		log.Error(err)
 		return
 	}
 	client := proxy.NewTapClient(conn)
@@ -299,7 +259,7 @@ func (s *server) tapProxy(ctx context.Context, maxRps float32, match *proxy.Obse
 		windowEnd := windowStart.Add(tapInterval)
 		rsp, err := client.Observe(ctx, req)
 		if err != nil {
-			log.Println(err)
+			log.Error(err)
 			return
 		}
 		for { // Stream loop
@@ -308,7 +268,7 @@ func (s *server) tapProxy(ctx context.Context, maxRps float32, match *proxy.Obse
 				break
 			}
 			if err != nil {
-				log.Println(err)
+				log.Error(err)
 				return
 			}
 			events <- event
@@ -319,44 +279,12 @@ func (s *server) tapProxy(ctx context.Context, maxRps float32, match *proxy.Obse
 	}
 }
 
-func NewServer(addr string, tapPort uint, kubeconfig string) (*grpc.Server, net.Listener, error) {
-
-	clientSet, err := k8s.NewClientSet(kubeconfig)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	replicaSets, err := k8s.NewReplicaSetStore(clientSet)
-	if err != nil {
-		return nil, nil, err
-	}
-	err = replicaSets.Run()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// index pods by deployment
-	deploymentIndex := func(obj interface{}) ([]string, error) {
-		pod, ok := obj.(*v1.Pod)
-		if !ok {
-			return nil, fmt.Errorf("object is not a Pod")
-		}
-		deployment, err := replicaSets.GetDeploymentForPod(pod)
-		if err != nil {
-			log.Debugf("Cannot get deployment for pod %s: %s", pod.Name, err)
-			return []string{}, nil
-		}
-		return []string{deployment}, nil
-	}
-
-	pods, err := k8s.NewPodIndex(clientSet, deploymentIndex)
-	if err != nil {
-		return nil, nil, err
-	}
-	err = pods.Run()
-	if err != nil {
-		return nil, nil, err
-	}
+// NewServer creates a new gRPC Tap server
+func NewServer(
+	addr string,
+	tapPort uint,
+	lister *k8s.Lister,
+) (*grpc.Server, net.Listener, error) {
 
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -365,13 +293,10 @@ func NewServer(addr string, tapPort uint, kubeconfig string) (*grpc.Server, net.
 
 	s := util.NewGrpcServer()
 	srv := server{
-		tapPort:     tapPort,
-		replicaSets: replicaSets,
-		pods:        pods,
+		tapPort: tapPort,
+		lister:  lister,
 	}
 	pb.RegisterTapServer(s, &srv)
-
-	// TODO: register shutdown hook to call pods.Stop() and replicatSets.Stop()
 
 	return s, lis, nil
 }

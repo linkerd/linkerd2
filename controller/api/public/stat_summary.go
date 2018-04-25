@@ -2,20 +2,21 @@ package public
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math"
 	"strings"
 	"time"
 
 	"github.com/prometheus/common/model"
-	apiUtil "github.com/runconduit/conduit/controller/api/util"
+	"github.com/runconduit/conduit/controller/api/util"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
 	log "github.com/sirupsen/logrus"
-	appsv1beta2 "k8s.io/api/apps/v1beta2"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	apiv1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/cache"
 )
@@ -28,24 +29,19 @@ type promResult struct {
 }
 
 const (
-	reqQuery             = "sum(increase(response_total{%s}[%s])) by (%s, namespace, classification)"
-	latencyQuantileQuery = "histogram_quantile(%s, sum(irate(response_latency_ms_bucket{%s}[%s])) by (le, namespace, %s))"
+	reqQuery             = "sum(increase(response_total%s[%s])) by (%s, classification)"
+	latencyQuantileQuery = "histogram_quantile(%s, sum(irate(response_latency_ms_bucket%s[%s])) by (le, %s))"
 
 	promRequests   = promType("QUERY_REQUESTS")
 	promLatencyP50 = promType("0.5")
 	promLatencyP95 = promType("0.95")
 	promLatencyP99 = promType("0.99")
 
-	namespaceLabel = "namespace"
+	namespaceLabel    = model.LabelName("namespace")
+	dstNamespaceLabel = model.LabelName("dst_namespace")
 )
 
-var (
-	promTypes = []promType{promRequests, promLatencyP50, promLatencyP95, promLatencyP99}
-
-	k8sResourceTypesToPromLabels = map[string]string{
-		k8s.KubernetesDeployments: "deployment",
-	}
-)
+var promTypes = []promType{promRequests, promLatencyP50, promLatencyP95, promLatencyP99}
 
 type meshedCount struct {
 	inMesh uint64
@@ -53,46 +49,87 @@ type meshedCount struct {
 }
 
 func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
-	switch req.Selector.Resource.Type {
-	case k8s.KubernetesDeployments:
-		return s.deploymentQuery(ctx, req)
-	default:
-		return nil, errors.New("Unimplemented resource type: " + req.Selector.Resource.Type)
+	// special case to check for services as outbound only
+	if req.Selector.Resource.Type == k8s.Services &&
+		req.Outbound.(*pb.StatSummaryRequest_FromResource) == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "service only supported as a target on 'from' queries, or as a destination on 'to' queries.")
 	}
+
+	objects, err := s.lister.GetObjects(req.Selector.Resource.Namespace, req.Selector.Resource.Type, req.Selector.Resource.Name)
+	if err != nil {
+		return nil, util.GRPCError(err)
+	}
+
+	// TODO: make these one struct:
+	// string => {metav1.ObjectMeta, meshedCount}
+	objectMap := map[string]metav1.Object{}
+	meshCountMap := map[string]*meshedCount{}
+
+	for _, object := range objects {
+		key, err := cache.MetaNamespaceKeyFunc(object)
+		if err != nil {
+			return nil, util.GRPCError(err)
+		}
+		metaObj, err := meta.Accessor(object)
+		if err != nil {
+			return nil, util.GRPCError(err)
+		}
+
+		objectMap[key] = metaObj
+
+		meshCount, err := s.getMeshedPodCount(object)
+		if err != nil {
+			return nil, util.GRPCError(err)
+		}
+		meshCountMap[key] = meshCount
+	}
+
+	res, err := s.objectQuery(ctx, req, objectMap, meshCountMap)
+	if err != nil {
+		return nil, util.GRPCError(err)
+	}
+
+	return res, nil
 }
 
-func (s *grpcServer) deploymentQuery(ctx context.Context, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
+func (s *grpcServer) objectQuery(
+	ctx context.Context,
+	req *pb.StatSummaryRequest,
+	objects map[string]metav1.Object,
+	meshCount map[string]*meshedCount,
+) (*pb.StatSummaryResponse, error) {
 	rows := make([]*pb.StatTable_PodGroup_Row, 0)
 
-	timeWindow, err := apiUtil.GetWindowString(req.TimeWindow)
+	requestMetrics, err := s.getRequests(ctx, req, req.TimeWindow)
 	if err != nil {
 		return nil, err
 	}
 
-	deployments, meshCount, err := s.getDeployments(req.Selector.Resource)
-	if err != nil {
-		return nil, err
+	var keys []string
+
+	if req.GetOutbound() == nil || req.GetNone() != nil {
+		// if this request doesn't have outbound filtering, return all rows
+		for key := range objects {
+			keys = append(keys, key)
+		}
+	} else {
+		// otherwise only return rows for which we have stats
+		for key := range requestMetrics {
+			keys = append(keys, key)
+		}
 	}
 
-	requestLabels := buildRequestLabels(req)
-	groupBy := promResourceType(req.Selector.Resource)
-
-	requestMetrics, err := s.getRequests(ctx, requestLabels, groupBy, timeWindow)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, resource := range deployments {
-		key, err := cache.MetaNamespaceKeyFunc(resource)
-		if err != nil {
-			return nil, err
+	for _, key := range keys {
+		resource, ok := objects[key]
+		if !ok {
+			continue
 		}
 
 		row := pb.StatTable_PodGroup_Row{
 			Resource: &pb.Resource{
-				Namespace: resource.Namespace,
+				Namespace: resource.GetNamespace(),
 				Type:      req.Selector.Resource.Type,
-				Name:      resource.Name,
+				Name:      resource.GetName(),
 			},
 			TimeWindow: req.TimeWindow,
 			Stats:      requestMetrics[key],
@@ -125,74 +162,82 @@ func (s *grpcServer) deploymentQuery(ctx context.Context, req *pb.StatSummaryReq
 	return &rsp, nil
 }
 
-func promLabel(key, val string) string {
-	return fmt.Sprintf("%s=\"%s\"", key, val)
+func promLabelNames(resource *pb.Resource) model.LabelNames {
+	names := model.LabelNames{namespaceLabel}
+	if resource.Type != k8s.Namespaces {
+		names = append(names, promResourceType(resource))
+	}
+	return names
 }
 
-func promNameLabel(resource *pb.Resource) string {
-	return promLabel(promResourceType(resource), resource.Name)
+func promDstLabelNames(resource *pb.Resource) model.LabelNames {
+	names := model.LabelNames{dstNamespaceLabel}
+	if resource.Type != k8s.Namespaces {
+		names = append(names, "dst_"+promResourceType(resource))
+	}
+	return names
 }
 
-func promNamespaceLabel(resource *pb.Resource) string {
-	return promLabel(namespaceLabel, resource.Namespace)
+func promLabels(resource *pb.Resource) model.LabelSet {
+	set := model.LabelSet{}
+	if resource.Name != "" {
+		set[promResourceType(resource)] = model.LabelValue(resource.Name)
+	}
+	if resource.Type != k8s.Namespaces && resource.Namespace != "" {
+		set[namespaceLabel] = model.LabelValue(resource.Namespace)
+	}
+	return set
 }
 
-func promDstLabels(resource *pb.Resource) []string {
-	return []string{
-		promLabel("dst_"+namespaceLabel, resource.Namespace),
-		promLabel("dst_"+promResourceType(resource), resource.Name),
+func promDstLabels(resource *pb.Resource) model.LabelSet {
+	set := model.LabelSet{}
+	if resource.Name != "" {
+		set["dst_"+promResourceType(resource)] = model.LabelValue(resource.Name)
+	}
+	if resource.Type != k8s.Namespaces && resource.Namespace != "" {
+		set[dstNamespaceLabel] = model.LabelValue(resource.Namespace)
+	}
+	return set
+}
+
+func promDirectionLabels(direction string) model.LabelSet {
+	return model.LabelSet{
+		model.LabelName("direction"): model.LabelValue(direction),
 	}
 }
 
-func promResourceType(resource *pb.Resource) string {
-	return k8sResourceTypesToPromLabels[resource.Type]
+func promResourceType(resource *pb.Resource) model.LabelName {
+	return model.LabelName(k8s.ResourceTypesToProxyLabels[resource.Type])
 }
 
-func buildRequestLabels(req *pb.StatSummaryRequest) string {
-	labels := []string{}
+func buildRequestLabels(req *pb.StatSummaryRequest) (model.LabelSet, model.LabelNames) {
+	var labelNames model.LabelNames
+	labels := model.LabelSet{}
 
-	var direction string
-	switch req.Outbound.(type) {
-	case *pb.StatSummaryRequest_OutToResource:
-		direction = "outbound"
-		labels = append(labels, promDstLabels(req.GetOutToResource())...)
+	switch out := req.Outbound.(type) {
+	case *pb.StatSummaryRequest_ToResource:
+		labelNames = promLabelNames(req.Selector.Resource)
+		labels = labels.Merge(promDstLabels(out.ToResource))
+		labels = labels.Merge(promLabels(req.Selector.Resource))
+		labels = labels.Merge(promDirectionLabels("outbound"))
 
-	case *pb.StatSummaryRequest_OutFromResource:
-		direction = "outbound"
-		labels = append(labels, promDstLabels(req.Selector.Resource)...)
-
-		outFromNs := req.GetOutFromResource().Namespace
-		if outFromNs == "" {
-			outFromNs = req.Selector.Resource.Namespace
-		}
-
-		if outFromNs != "" {
-			labels = append(labels, promLabel(namespaceLabel, outFromNs))
-		}
-		if req.Selector.Resource.Name != "" {
-			labels = append(labels, promNameLabel(req.GetOutFromResource()))
-		}
+	case *pb.StatSummaryRequest_FromResource:
+		labelNames = promDstLabelNames(req.Selector.Resource)
+		labels = labels.Merge(promLabels(out.FromResource))
+		labels = labels.Merge(promDirectionLabels("outbound"))
 
 	default:
-		direction = "inbound"
+		labelNames = promLabelNames(req.Selector.Resource)
+		labels = labels.Merge(promLabels(req.Selector.Resource))
+		labels = labels.Merge(promDirectionLabels("inbound"))
+
 	}
 
-	// it's weird to check this again outside the switch, but including this code
-	// in the other three switch branches is very repetitive
-	if req.GetOutFromResource() == nil {
-		if req.Selector.Resource.Namespace != "" {
-			labels = append(labels, promNamespaceLabel(req.Selector.Resource))
-		}
-		if req.Selector.Resource.Name != "" {
-			labels = append(labels, promNameLabel(req.Selector.Resource))
-		}
-	}
-	labels = append(labels, promLabel("direction", direction))
-
-	return strings.Join(labels, ",")
+	return labels, labelNames
 }
 
-func (s *grpcServer) getRequests(ctx context.Context, reqLabels string, groupBy string, timeWindow string) (map[string]*pb.BasicStats, error) {
+func (s *grpcServer) getRequests(ctx context.Context, req *pb.StatSummaryRequest, timeWindow string) (map[string]*pb.BasicStats, error) {
+	reqLabels, groupBy := buildRequestLabels(req)
 	resultChan := make(chan promResult)
 
 	// kick off 4 asynchronous queries: 1 request volume + 3 latency
@@ -226,7 +271,7 @@ func (s *grpcServer) getRequests(ctx context.Context, reqLabels string, groupBy 
 	for i := 0; i < len(promTypes); i++ {
 		result := <-resultChan
 		if result.err != nil {
-			log.Errorf("queryProm failed with: %s", err)
+			log.Errorf("queryProm failed with: %s", result.err)
 			err = result.err
 		} else {
 			results = append(results, result)
@@ -239,12 +284,12 @@ func (s *grpcServer) getRequests(ctx context.Context, reqLabels string, groupBy 
 	return processRequests(results, groupBy), nil
 }
 
-func processRequests(results []promResult, labelSelector string) map[string]*pb.BasicStats {
+func processRequests(results []promResult, groupBy model.LabelNames) map[string]*pb.BasicStats {
 	basicStats := make(map[string]*pb.BasicStats)
 
 	for _, result := range results {
 		for _, sample := range result.vec {
-			label := metricToKey(sample.Metric, labelSelector)
+			label := metricToKey(sample.Metric, groupBy)
 			if basicStats[label] == nil {
 				basicStats[label] = &pb.BasicStats{}
 			}
@@ -275,59 +320,16 @@ func processRequests(results []promResult, labelSelector string) map[string]*pb.
 	return basicStats
 }
 
-func metricToKey(metric model.Metric, labelSelector string) string {
-	if metric[model.LabelName(namespaceLabel)] == "" {
-		return string(metric[model.LabelName(labelSelector)])
+func metricToKey(metric model.Metric, groupBy model.LabelNames) string {
+	values := []string{}
+	for _, k := range groupBy {
+		values = append(values, string(metric[k]))
 	}
-
-	return fmt.Sprintf("%s/%s",
-		metric[model.LabelName(namespaceLabel)],
-		metric[model.LabelName(labelSelector)],
-	)
+	return strings.Join(values, "/")
 }
 
-func (s *grpcServer) getDeployments(res *pb.Resource) ([]*appsv1beta2.Deployment, map[string]*meshedCount, error) {
-	var err error
-	var deployments []*appsv1beta2.Deployment
-
-	if res.Namespace == "" {
-		deployments, err = s.deployLister.List(labels.Everything())
-	} else if res.Name == "" {
-		deployments, err = s.deployLister.Deployments(res.Namespace).List(labels.Everything())
-	} else {
-		var deployment *appsv1beta2.Deployment
-		deployment, err = s.deployLister.Deployments(res.Namespace).Get(res.Name)
-		deployments = []*appsv1beta2.Deployment{deployment}
-	}
-
-	if err != nil {
-		return nil, nil, err
-	}
-
-	meshedPodCount := make(map[string]*meshedCount)
-	for _, deployment := range deployments {
-		meshCount, err := s.getMeshedPodCount(deployment.Namespace, deployment)
-		if err != nil {
-			return nil, nil, err
-		}
-		key, err := cache.MetaNamespaceKeyFunc(deployment)
-		if err != nil {
-			return nil, nil, err
-		}
-		meshedPodCount[key] = meshCount
-	}
-
-	return deployments, meshedPodCount, nil
-}
-
-// this takes a long time for namespaces with many pods
-func (s *grpcServer) getMeshedPodCount(namespace string, obj runtime.Object) (*meshedCount, error) {
-	selector, err := getSelectorFromObject(obj)
-	if err != nil {
-		return nil, err
-	}
-
-	pods, err := s.podLister.Pods(namespace).List(selector)
+func (s *grpcServer) getMeshedPodCount(obj runtime.Object) (*meshedCount, error) {
+	pods, err := s.lister.GetPodsFor(obj)
 	if err != nil {
 		return nil, err
 	}
@@ -348,23 +350,13 @@ func isInMesh(pod *apiv1.Pod) bool {
 	return ok
 }
 
-func getSelectorFromObject(obj runtime.Object) (labels.Selector, error) {
-	switch typed := obj.(type) {
-	case *appsv1beta2.Deployment:
-		return labels.Set(typed.Spec.Selector.MatchLabels).AsSelector(), nil
-
-	default:
-		return nil, fmt.Errorf("Cannot get object selector: %v", obj)
-	}
-}
-
 func (s *grpcServer) queryProm(ctx context.Context, query string) (model.Vector, error) {
 	log.Debugf("Query request: %+v", query)
 
 	// single data point (aka summary) query
 	res, err := s.prometheusAPI.Query(ctx, query, time.Time{})
 	if err != nil {
-		log.Errorf("Query(%+v, %+v) failed with: %+v", query, err)
+		log.Errorf("Query(%+v) failed with: %+v", query, err)
 		return nil, err
 	}
 	log.Debugf("Query response: %+v", res)
@@ -376,12 +368,4 @@ func (s *grpcServer) queryProm(ctx context.Context, query string) (model.Vector,
 	}
 
 	return res.(model.Vector), nil
-}
-
-func mapKeys(m map[string]interface{}) []string {
-	res := make([]string, 0)
-	for k := range m {
-		res = append(res, k)
-	}
-	return res
 }

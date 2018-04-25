@@ -5,17 +5,15 @@ import (
 	"errors"
 	"reflect"
 	"testing"
-	"time"
 
 	"github.com/prometheus/common/model"
 	tap "github.com/runconduit/conduit/controller/gen/controller/tap"
 	pb "github.com/runconduit/conduit/controller/gen/public"
-	"github.com/runconduit/conduit/pkg/k8s"
+	"github.com/runconduit/conduit/controller/k8s"
+	pkgK8s "github.com/runconduit/conduit/pkg/k8s"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/cache"
 )
 
 type statSumExpected struct {
@@ -56,6 +54,8 @@ metadata:
     app: emoji-svc
   annotations:
     conduit.io/proxy-version: testinjectversion
+status:
+  phase: Running
 `, `
 apiVersion: v1
 kind: Pod
@@ -64,6 +64,20 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
+status:
+  phase: Running
+`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed-not-running
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+  annotations:
+    conduit.io/proxy-version: testinjectversion
+status:
+  phase: Completed
 `,
 				},
 				promRes: model.Vector{
@@ -81,10 +95,10 @@ metadata:
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Namespace: "emojivoto",
-							Type:      k8s.KubernetesDeployments,
+							Type:      pkgK8s.Deployments,
 						},
 					},
-					TimeWindow: pb.TimeWindow_ONE_MIN,
+					TimeWindow: "1m",
 				},
 				res: pb.StatSummaryResponse{
 					Response: &pb.StatSummaryResponse_Ok_{ // https://github.com/golang/protobuf/issues/205
@@ -107,7 +121,7 @@ metadata:
 														LatencyMsP95: 123,
 														LatencyMsP99: 123,
 													},
-													TimeWindow:     pb.TimeWindow_ONE_MIN,
+													TimeWindow:     "1m",
 													MeshedPodCount: 1,
 													TotalPodCount:  2,
 												},
@@ -134,29 +148,17 @@ metadata:
 			}
 
 			clientSet := fake.NewSimpleClientset(k8sObjs...)
-			sharedInformers := informers.NewSharedInformerFactory(clientSet, 10*time.Minute)
-
-			deployInformer := sharedInformers.Apps().V1beta2().Deployments()
-			replicaSetInformer := sharedInformers.Apps().V1beta2().ReplicaSets()
-			podInformer := sharedInformers.Core().V1().Pods()
+			lister := k8s.NewLister(clientSet)
 
 			fakeGrpcServer := newGrpcServer(
 				&MockProm{Res: exp.promRes},
 				tap.NewTapClient(nil),
-				deployInformer.Lister(),
-				replicaSetInformer.Lister(),
-				podInformer.Lister(),
+				lister,
 				"conduit",
 				[]string{},
 			)
-			stopCh := make(chan struct{})
-			sharedInformers.Start(stopCh)
-			if !cache.WaitForCacheSync(
-				stopCh,
-				deployInformer.Informer().HasSynced,
-				replicaSetInformer.Informer().HasSynced,
-				podInformer.Informer().HasSynced,
-			) {
+			err := lister.Sync()
+			if err != nil {
 				t.Fatalf("timed out wait for caches to sync")
 			}
 
@@ -174,7 +176,7 @@ metadata:
 	t.Run("Given an invalid resource type, returns error", func(t *testing.T) {
 		expectations := []statSumExpected{
 			statSumExpected{
-				err: errors.New("Unimplemented resource type: badtype"),
+				err: errors.New("rpc error: code = Unimplemented desc = unimplemented resource type: badtype"),
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
@@ -184,7 +186,7 @@ metadata:
 				},
 			},
 			statSumExpected{
-				err: errors.New("Unimplemented resource type: deployment"),
+				err: errors.New("rpc error: code = Unimplemented desc = unimplemented resource type: deployment"),
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
@@ -194,7 +196,7 @@ metadata:
 				},
 			},
 			statSumExpected{
-				err: errors.New("Unimplemented resource type: pod"),
+				err: errors.New("rpc error: code = Unimplemented desc = unimplemented resource type: pod"),
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
@@ -207,13 +209,11 @@ metadata:
 
 		for _, exp := range expectations {
 			clientSet := fake.NewSimpleClientset()
-			sharedInformers := informers.NewSharedInformerFactory(clientSet, 10*time.Minute)
+			lister := k8s.NewLister(clientSet)
 			fakeGrpcServer := newGrpcServer(
 				&MockProm{Res: exp.promRes},
 				tap.NewTapClient(nil),
-				sharedInformers.Apps().V1beta2().Deployments().Lister(),
-				sharedInformers.Apps().V1beta2().ReplicaSets().Lister(),
-				sharedInformers.Core().V1().Pods().Lister(),
+				lister,
 				"conduit",
 				[]string{},
 			)

@@ -23,7 +23,7 @@ rules:
   resources: ["deployments", "replicasets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
-  resources: ["pods", "endpoints", "services"]
+  resources: ["pods", "endpoints", "services", "namespaces", "replicationcontrollers"]
   verbs: ["list", "get", "watch"]
 
 ---
@@ -208,14 +208,6 @@ spec:
           value: tcp://127.0.0.1:4140
         - name: CONDUIT_PROXY_PUBLIC_LISTENER
           value: tcp://0.0.0.0:4143
-        - name: CONDUIT_PROXY_NODE_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.nodeName
-        - name: CONDUIT_PROXY_POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
         - name: CONDUIT_PROXY_POD_NAMESPACE
           valueFrom:
             fieldRef:
@@ -240,7 +232,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - "4190"
+        - 4190,4191
         image: gcr.io/runconduit/proxy-init:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-init
@@ -330,14 +322,6 @@ spec:
           value: tcp://127.0.0.1:4140
         - name: CONDUIT_PROXY_PUBLIC_LISTENER
           value: tcp://0.0.0.0:4143
-        - name: CONDUIT_PROXY_NODE_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.nodeName
-        - name: CONDUIT_PROXY_POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
         - name: CONDUIT_PROXY_POD_NAMESPACE
           valueFrom:
             fieldRef:
@@ -362,7 +346,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - "4190"
+        - 4190,4191
         image: gcr.io/runconduit/proxy-init:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-init
@@ -446,14 +430,6 @@ spec:
           value: tcp://127.0.0.1:4140
         - name: CONDUIT_PROXY_PUBLIC_LISTENER
           value: tcp://0.0.0.0:4143
-        - name: CONDUIT_PROXY_NODE_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.nodeName
-        - name: CONDUIT_PROXY_POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
         - name: CONDUIT_PROXY_POD_NAMESPACE
           valueFrom:
             fieldRef:
@@ -478,7 +454,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - "4190"
+        - 4190,4191
         image: gcr.io/runconduit/proxy-init:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-init
@@ -635,14 +611,6 @@ spec:
           value: tcp://127.0.0.1:4140
         - name: CONDUIT_PROXY_PUBLIC_LISTENER
           value: tcp://0.0.0.0:4143
-        - name: CONDUIT_PROXY_NODE_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.nodeName
-        - name: CONDUIT_PROXY_POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
         - name: CONDUIT_PROXY_POD_NAMESPACE
           valueFrom:
             fieldRef:
@@ -667,7 +635,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - "4190"
+        - 4190,4191
         image: gcr.io/runconduit/proxy-init:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-init

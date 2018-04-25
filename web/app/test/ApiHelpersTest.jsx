@@ -284,8 +284,14 @@ describe('ApiHelpers', () => {
   describe('urlsForResource', () => {
     it('returns the correct rollup url for deployment overviews', () => {
       api = ApiHelpers('/go/my/own/way');
-      let deploymentUrls = api.urlsForResource["deployment"].url("myNamespace", "myDeploy");
-      expect(deploymentUrls.rollup).to.equal('/api/stat?resource_type=deployment&namespace=myNamespace&resource_name=myDeploy');
+      let deploymentUrls = api.urlsForResource["deployment"].url();
+      expect(deploymentUrls.rollup).to.equal('/api/stat?resource_type=deployment');
+    });
+
+    it('returns the correct rollup url for pod overviews', () => {
+      api = ApiHelpers('/go/my/own/way');
+      let deploymentUrls = api.urlsForResource["pod"].url();
+      expect(deploymentUrls.rollup).to.equal('/api/stat?resource_type=pod');
     });
   });
 });

@@ -7,13 +7,6 @@ import "google/protobuf/duration.proto";
 import "common/common.proto";
 import "common/healthcheck/healthcheck.proto";
 
-enum TimeWindow {
-  TEN_SEC = 0;
-  ONE_MIN = 1;
-  TEN_MIN = 2;
-  ONE_HOUR = 3;
-}
-
 message Empty {}
 
 message VersionInfo {
@@ -38,6 +31,8 @@ message Pod {
 }
 
 message TapRequest {
+  option deprecated = true;
+
   oneof target {
     string pod = 1;
     string deployment = 2;
@@ -54,18 +49,80 @@ message TapRequest {
   string path = 11;
 }
 
+// A tap request over kubernetes resources.
+message TapByResourceRequest {
+  // Describes the kubernetes pods that should be tapped.
+  ResourceSelection target = 1;
+
+  // Selects over events to be reported.
+  Match match = 2;
+
+  // Limits the number of events to be inspected.
+  float maxRps = 3;
+
+  message Match {
+    oneof match {
+      // If empty, matches all messages.
+      Seq all = 1;
+
+      // If empty, matches no messages.
+      Seq any = 2;
+
+      // Inverts the inner match.
+      Match not = 3;
+
+      // Matches events being sent to any of the selected destinations.
+      ResourceSelection destinations = 4;
+
+      // Matches HTTP requests by their metadata.
+      Http http = 5;
+    }
+
+    message Seq {
+      repeated Match matches = 1;
+    }
+
+    message Http {
+      oneof match {
+        string scheme = 1;
+        string method = 2;
+        string authority = 3;
+        string path = 4;
+      }
+    }
+  }
+}
+
 message ApiError {
   string error = 1;
 }
 
 message Resource {
+  // The namespace the resource is in.
+  //
+  // If empty, indicates all namespaces should be considered.
   string namespace = 1;
+
+  // The type of Kubernetes resource.
+  //
+  // E.g. pod, deployment, service, ...
+  //
+  // If `all` refers, to all resource types.
   string type = 2;
+
+  // An optional Kubernetes resource name.
   string name = 3;
 }
 
 message ResourceSelection {
+  // Identifies a Kubernetes resource.
   Resource resource = 1;
+
+  // A string-formatted Kubernetes label selector as passed to `kubectl get
+  // --selector`.
+  //
+  // XXX in the future this may be superceded by a data structure that more
+  // richly describes a parsed label selector.
   string label_selector = 2;
 }
 
@@ -76,12 +133,12 @@ message ResourceError {
 
 message StatSummaryRequest {
   ResourceSelection selector = 1;
-  TimeWindow time_window = 2;
+  string time_window = 2;
 
   oneof outbound {
     Empty none = 3;
-    Resource out_to_resource   = 4;
-    Resource out_from_resource = 5;
+    Resource to_resource   = 4;
+    Resource from_resource = 5;
   }
 }
 
@@ -114,7 +171,7 @@ message StatTable {
 
     message Row {
       Resource resource = 1;
-      TimeWindow time_window = 2;
+      string time_window = 2;
 
       uint64 meshed_pod_count = 3;
       uint64 total_pod_count = 4;
@@ -125,8 +182,15 @@ message StatTable {
 
 service Api {
   rpc StatSummary(StatSummaryRequest) returns (StatSummaryResponse) {}
-  rpc Version(Empty) returns (VersionInfo) {}
+
   rpc ListPods(Empty) returns (ListPodsResponse) {}
+
+  // Superceded by `TapByResource`.
+  rpc Tap(TapRequest) returns (stream common.TapEvent) { option deprecated = true; }
+
+  // Executes tapping over Kubernetes resources.
+  rpc TapByResource(TapByResourceRequest) returns (stream common.TapEvent) {}
+
+  rpc Version(Empty) returns (VersionInfo) {}
   rpc SelfCheck(common.healthcheck.SelfCheckRequest) returns (common.healthcheck.SelfCheckResponse) {}
-  rpc Tap(TapRequest) returns (stream common.TapEvent) {}
 }

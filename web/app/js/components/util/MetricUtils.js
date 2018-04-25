@@ -20,10 +20,10 @@ const getRequestRate = row => {
   let failure = parseInt(row.stats.failureCount, 10);
   let seconds = 0;
 
-  if (row.timeWindow === "TEN_SEC") { seconds = 10; }
-  if (row.timeWindow === "ONE_MIN") { seconds = 60; }
-  if (row.timeWindow === "TEN_MIN") { seconds = 600; }
-  if (row.timeWindow === "ONE_HOUR") { seconds = 3600; }
+  if (row.timeWindow === "10s") { seconds = 10; }
+  if (row.timeWindow === "1m") { seconds = 60; }
+  if (row.timeWindow === "10m") { seconds = 600; }
+  if (row.timeWindow === "1h") { seconds = 3600; }
 
   if (seconds === 0) {
     return null;

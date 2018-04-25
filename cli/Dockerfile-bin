@@ -1,8 +1,9 @@
 ## compile binaries
-FROM gcr.io/runconduit/go-deps:611ce7bf as golang
+FROM gcr.io/runconduit/go-deps:e7d5fcae as golang
 ARG CONDUIT_VERSION
 WORKDIR /go/src/github.com/runconduit/conduit
 COPY cli cli
+COPY controller/k8s controller/k8s
 COPY controller/api controller/api
 COPY controller/gen controller/gen
 COPY controller/util controller/util

@@ -1,3 +1,4 @@
+#![deny(warnings)]
 mod support;
 use self::support::*;
 
@@ -8,9 +9,7 @@ fn h2_goaways_connections() {
     let (shdn, rx) = shutdown_signal();
 
     let srv = server::http2().route("/", "hello").run();
-    let ctrl = controller::new().run();
     let proxy = proxy::new()
-        .controller(ctrl)
         .inbound(srv)
         .shutdown_signal(rx)
         .run();
@@ -40,9 +39,7 @@ fn h2_exercise_goaways_connections() {
                 .unwrap()
         })
         .run();
-    let ctrl = controller::new().run();
     let proxy = proxy::new()
-        .controller(ctrl)
         .inbound(srv)
         .shutdown_signal(rx)
         .run();
@@ -108,9 +105,7 @@ fn http1_closes_idle_connections() {
                 .unwrap()
         })
         .run();
-    let ctrl = controller::new().run();
     let proxy = proxy::new()
-        .controller(ctrl)
         .inbound(srv)
         .shutdown_signal(rx)
         .run();
@@ -144,9 +139,7 @@ fn tcp_waits_for_proxies_to_close() {
                 .map_err(|e| panic!("tcp server error: {}", e))
         })
         .run();
-    let ctrl = controller::new().run();
     let proxy = proxy::new()
-        .controller(ctrl)
         .inbound(srv)
         .shutdown_signal(rx)
         .run();
@@ -158,3 +151,4 @@ fn tcp_waits_for_proxies_to_close() {
     tcp_client.write(msg1);
     assert_eq!(tcp_client.read(), msg2.as_bytes());
 }
+

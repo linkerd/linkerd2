@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/runconduit/conduit/controller/k8s"
 	"github.com/runconduit/conduit/controller/tap"
 	"github.com/runconduit/conduit/controller/util"
 	"github.com/runconduit/conduit/pkg/version"
@@ -33,10 +34,23 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	server, lis, err := tap.NewServer(*addr, *tapPort, *kubeConfigPath)
+	clientSet, err := k8s.NewClientSet(*kubeConfigPath)
+	if err != nil {
+		log.Fatalf("failed to create Kubernetes client: %s", err)
+	}
+	lister := k8s.NewLister(clientSet)
+
+	server, lis, err := tap.NewServer(*addr, *tapPort, lister)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
+
+	go func() {
+		err := lister.Sync()
+		if err != nil {
+			log.Fatalf("timed out wait for caches to sync: %s", err)
+		}
+	}()
 
 	go func() {
 		log.Println("starting gRPC server on", *addr)

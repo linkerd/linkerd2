@@ -1,5 +1,5 @@
 use bytes::{Buf, IntoBuf};
-use futures::{Async, Future, Poll, Stream};
+use futures::{future, Async, Future, Poll, Stream};
 use h2;
 use http;
 use std::default::Default;
@@ -14,6 +14,25 @@ use ctx;
 use telemetry::event::{self, Event};
 
 const GRPC_STATUS: &str = "grpc-status";
+
+/// A `RequestOpen` timestamp.
+///
+/// This is added to a request's `Extensions` by the `TimestampRequestOpen`
+/// middleware. It's a newtype in order to distinguish it from other
+/// `Instant`s that may be added as request extensions.
+#[derive(Copy, Clone, Debug)]
+pub struct RequestOpen(pub Instant);
+
+/// Middleware that adds a `RequestOpen` timestamp to requests.
+///
+/// This is a separate middleware from `sensor::Http`, because we want
+/// to install it at the earliest point in the stack. This is in order
+/// to ensure that request latency metrics cover the overhead added by
+/// the proxy as accurately as possible.
+#[derive(Copy, Clone, Debug)]
+pub struct TimestampRequestOpen<S> {
+    inner: S,
+}
 
 pub struct NewHttp<N, A, B> {
     next_id: Arc<AtomicUsize>,
@@ -203,16 +222,17 @@ where
     }
 
     fn call(&mut self, mut req: Self::Request) -> Self::Future {
-        let (inner, body_inner) = match req.extensions_mut().remove::<Arc<ctx::transport::Server>>() {
-            None => (None, None),
-            Some(ctx) => {
+        let metadata = (
+            req.extensions_mut().remove::<Arc<ctx::transport::Server>>(),
+            req.extensions_mut().remove::<RequestOpen>()
+        );
+        let (inner, body_inner) = match metadata {
+            (Some(ctx), Some(RequestOpen(request_open))) => {
                 let id = self.next_id.fetch_add(1, Ordering::SeqCst);
                 let ctx = ctx::http::Request::new(&req, &ctx, &self.client_ctx, id);
 
                 self.handle
                     .send(|| Event::StreamRequestOpen(Arc::clone(&ctx)));
-
-                let request_open = Instant::now();
 
                 let respond_inner = Some(RespondInner {
                     ctx: ctx.clone(),
@@ -240,7 +260,14 @@ where
                         })
                     };
                 (respond_inner, body_inner)
-            }
+            },
+            (ctx, request_open) => {
+                warn!(
+                    "missing metadata for a request to {:?}; ctx={:?}; request_open={:?};",
+                    req.uri(), ctx, request_open
+                );
+                (None, None)
+            },
         };
         let req = {
             let (parts, body) = req.into_parts();
@@ -572,5 +599,50 @@ impl BodySensor for RequestBodyInner {
 
     fn bytes_sent(&mut self) -> &mut u64 {
         &mut self.bytes_sent
+    }
+}
+
+impl<S> TimestampRequestOpen<S> {
+    pub fn new(inner: S) -> Self {
+        Self { inner }
+    }
+}
+
+impl<S, B> Service for TimestampRequestOpen<S>
+where
+    S: Service<Request = http::Request<B>>,
+{
+    type Request = http::Request<B>;
+    type Response = S::Response;
+    type Error = S::Error;
+    type Future = S::Future;
+
+    fn poll_ready(&mut self) -> Poll<(), Self::Error> {
+        self.inner.poll_ready()
+    }
+
+    fn call(&mut self, mut req: Self::Request) -> Self::Future {
+        let request_open = Instant::now();
+        req.extensions_mut().insert(RequestOpen(request_open));
+        self.inner.call(req)
+    }
+}
+
+impl<S, B> NewService for TimestampRequestOpen<S>
+where
+    S: NewService<Request = http::Request<B>>,
+{
+    type Request = S::Request;
+    type Response = S::Response;
+    type Error = S::Error;
+    type InitError = S::InitError;
+    type Future = future::Map<
+        S::Future,
+        fn(S::Service) -> Self::Service
+    >;
+    type Service = TimestampRequestOpen<S::Service>;
+
+    fn new_service(&self) -> Self::Future {
+        self.inner.new_service().map(TimestampRequestOpen::new)
     }
 }

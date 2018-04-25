@@ -86,7 +86,7 @@ services:
     - -template-dir=/templates
 
   prometheus:
-    image: prom/prometheus:v2.1.0
+    image: prom/prometheus:v2.2.1
     ports:
     - 9090:9090
     volumes:

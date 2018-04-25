@@ -20,7 +20,7 @@
   "links": [],
   "panels": [
     {
-      "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://conduit.io/favicon.png\" style=\"height:32px;\"/>&nbsp;\n  <span style=\"font-size: 32px\">deploy/$deployment</span>\n</div>",
+      "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://conduit.io/favicon.png\" style=\"height:32px;\"/>&nbsp;\n  <span style=\"font-size: 32px\">rc/$replication_controller</span>\n</div>",
       "gridPos": {
         "h": 2,
         "w": 24,
@@ -96,7 +96,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[20s])) / sum(irate(response_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[20s]))",
+          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"inbound\"}[20s])) / sum(irate(response_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"inbound\"}[20s]))",
           "format": "time_series",
           "instant": false,
           "intervalFactor": 1,
@@ -180,7 +180,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[20s]))",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"inbound\"}[20s]))",
           "format": "time_series",
           "instant": false,
           "intervalFactor": 1,
@@ -264,7 +264,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "count(count(request_total{dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}) by (namespace, deployment))",
+          "expr": "count(count(request_total{dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}) by (namespace, replication_controller))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "",
@@ -272,7 +272,7 @@
         }
       ],
       "thresholds": "",
-      "title": "INBOUND DEPLOYMENTS",
+      "title": "INBOUND REPLICATION CONTROLLERS",
       "transparent": true,
       "type": "singlestat",
       "valueFontSize": "100%",
@@ -346,7 +346,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "count(count(request_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\"}) by (namespace, dst_deployment))",
+          "expr": "count(count(request_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"outbound\"}) by (namespace, dst_replication_controller))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "",
@@ -354,7 +354,7 @@
         }
       ],
       "thresholds": "",
-      "title": "OUTBOUND DEPLOYMENTS",
+      "title": "OUTBOUND REPLICATION CONTROLLERS",
       "transparent": true,
       "type": "singlestat",
       "valueFontSize": "100%",
@@ -419,10 +419,10 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[20s])) by (deployment) / sum(irate(response_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[20s])) by (deployment)",
+          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"inbound\"}[20s])) by (replication_controller) / sum(irate(response_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"inbound\"}[20s])) by (replication_controller)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "deploy/{{deployment}}",
+          "legendFormat": "rc/{{replication_controller}}",
           "refId": "A"
         }
       ],
@@ -500,10 +500,10 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[20s])) by (deployment)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"inbound\"}[20s])) by (replication_controller)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "deploy/{{deployment}}",
+          "legendFormat": "rc/{{replication_controller}}",
           "refId": "A"
         }
       ],
@@ -581,25 +581,25 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[20s])) by (le, deployment))",
+          "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"inbound\"}[20s])) by (le, replication_controller))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "p50 deploy/{{deployment}}",
+          "legendFormat": "p50 rc/{{replication_controller}}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[20s])) by (le, deployment))",
+          "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"inbound\"}[20s])) by (le, replication_controller))",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
-          "legendFormat": "p95 deploy/{{deployment}}",
+          "legendFormat": "p95 rc/{{replication_controller}}",
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[20s])) by (le, deployment))",
+          "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"inbound\"}[20s])) by (le, replication_controller))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "p99 deploy/{{deployment}}",
+          "legendFormat": "p99 rc/{{replication_controller}}",
           "refId": "C"
         }
       ],
@@ -641,7 +641,7 @@
       ]
     },
     {
-      "content": "<div class=\"text-center dashboard-header\">\n  <span>INBOUND DEPLOYMENTS</span>\n</div>",
+      "content": "<div class=\"text-center dashboard-header\">\n  <span>INBOUND REPLICATION CONTROLLERS</span>\n</div>",
       "gridPos": {
         "h": 2,
         "w": 24,
@@ -666,7 +666,7 @@
       "id": 59,
       "panels": [
         {
-          "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://conduit.io/favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">deploy/$inbound</span>\n</div>",
+          "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://conduit.io/favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">rc/$inbound</span>\n</div>",
           "gridPos": {
             "h": 2,
             "w": 24,
@@ -717,7 +717,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(response_total{classification=\"success\", deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (deployment, pod) / sum(irate(response_total{deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (deployment, pod)",
+              "expr": "sum(irate(response_total{classification=\"success\", replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}[20s])) by (replication_controller, pod) / sum(irate(response_total{replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}[20s])) by (replication_controller, pod)",
               "format": "time_series",
               "instant": false,
               "intervalFactor": 1,
@@ -799,7 +799,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(request_total{deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (deployment, pod)",
+              "expr": "sum(irate(request_total{replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}[20s])) by (replication_controller, pod)",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "po/{{pod}}",
@@ -880,24 +880,24 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (le, deployment))",
+              "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}[20s])) by (le, replication_controller))",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "P50 deploy/{{deployment}}",
+              "legendFormat": "P50 rc/{{replication_controller}}",
               "refId": "A"
             },
             {
-              "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (le, deployment))",
+              "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}[20s])) by (le, replication_controller))",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "P95 deploy/{{deployment}}",
+              "legendFormat": "P95 rc/{{replication_controller}}",
               "refId": "B"
             },
             {
-              "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (le, deployment))",
+              "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}[20s])) by (le, replication_controller))",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "P99 deploy/{{deployment}}",
+              "legendFormat": "P99 rc/{{replication_controller}}",
               "refId": "C"
             }
           ],
@@ -939,7 +939,7 @@
         }
       ],
       "repeat": "inbound",
-      "title": "deploy/$inbound",
+      "title": "rc/$inbound",
       "type": "row"
     },
     {
@@ -1008,10 +1008,10 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (dst_deployment) / sum(irate(response_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (dst_deployment)",
+          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"outbound\"}[20s])) by (dst_replication_controller) / sum(irate(response_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"outbound\"}[20s])) by (dst_replication_controller)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "deploy/{{dst_deployment}}",
+          "legendFormat": "rc/{{dst_replication_controller}}",
           "refId": "A"
         }
       ],
@@ -1089,10 +1089,10 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (dst_deployment)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"outbound\"}[20s])) by (dst_replication_controller)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "deploy/{{dst_deployment}}",
+          "legendFormat": "rc/{{dst_replication_controller}}",
           "refId": "A"
         }
       ],
@@ -1169,10 +1169,10 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (le, dst_deployment))",
+          "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"outbound\"}[20s])) by (le, dst_replication_controller))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "P95 deploy/{{dst_deployment}}",
+          "legendFormat": "P95 rc/{{dst_replication_controller}}",
           "refId": "A"
         }
       ],
@@ -1213,7 +1213,7 @@
       ]
     },
     {
-      "content": "<div class=\"text-center dashboard-header\">\n  <span>OUTBOUND DEPLOYMENTS</span>\n</div>",
+      "content": "<div class=\"text-center dashboard-header\">\n  <span>OUTBOUND REPLICATION CONTROLLERS</span>\n</div>",
       "gridPos": {
         "h": 2,
         "w": 24,
@@ -1238,7 +1238,7 @@
       "id": 27,
       "panels": [
         {
-          "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://conduit.io/favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">deploy/$outbound</span>\n</div>",
+          "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://conduit.io/favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">rc/$outbound</span>\n</div>",
           "gridPos": {
             "h": 2,
             "w": 24,
@@ -1289,10 +1289,10 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\"}[20s])) by (dst_deployment) / sum(irate(response_total{namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\"}[20s])) by (dst_deployment)",
+              "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", replication_controller=\"$replication_controller\", dst_replication_controller=\"$outbound\", direction=\"outbound\"}[20s])) by (dst_replication_controller) / sum(irate(response_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", dst_replication_controller=\"$outbound\", direction=\"outbound\"}[20s])) by (dst_replication_controller)",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "deploy/{{dst_deployment}}",
+              "legendFormat": "rc/{{dst_replication_controller}}",
               "refId": "A"
             }
           ],
@@ -1370,10 +1370,10 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\"}[20s])) by (dst_deployment)",
+              "expr": "sum(irate(request_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", dst_replication_controller=\"$outbound\", direction=\"outbound\"}[20s])) by (dst_replication_controller)",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "deploy/{{dst_deployment}}",
+              "legendFormat": "rc/{{dst_replication_controller}}",
               "refId": "A"
             }
           ],
@@ -1450,24 +1450,24 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\"}[20s])) by (le, dst_deployment))",
+              "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", replication_controller=\"$replication_controller\", dst_replication_controller=\"$outbound\", direction=\"outbound\"}[20s])) by (le, dst_replication_controller))",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "P50 deploy/{{dst_deployment}}",
+              "legendFormat": "P50 rc/{{dst_replication_controller}}",
               "refId": "A"
             },
             {
-              "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\"}[20s])) by (le, dst_deployment))",
+              "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", replication_controller=\"$replication_controller\", dst_replication_controller=\"$outbound\", direction=\"outbound\"}[20s])) by (le, dst_replication_controller))",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "P95 deploy/{{dst_deployment}}",
+              "legendFormat": "P95 rc/{{dst_replication_controller}}",
               "refId": "B"
             },
             {
-              "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\"}[20s])) by (le, dst_deployment))",
+              "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", replication_controller=\"$replication_controller\", dst_replication_controller=\"$outbound\", direction=\"outbound\"}[20s])) by (le, dst_replication_controller))",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "P99 deploy/{{dst_deployment}}",
+              "legendFormat": "P99 rc/{{dst_replication_controller}}",
               "refId": "C"
             }
           ],
@@ -1509,7 +1509,7 @@
         }
       ],
       "repeat": "outbound",
-      "title": "deploy/$outbound",
+      "title": "rc/$outbound",
       "type": "row"
     }
   ],
@@ -1545,11 +1545,11 @@
         "datasource": "prometheus",
         "hide": 0,
         "includeAll": false,
-        "label": "Deployment",
+        "label": "Replication Controller",
         "multi": false,
-        "name": "deployment",
+        "name": "replication_controller",
         "options": [],
-        "query": "label_values(request_total{namespace=\"$namespace\", conduit_io_control_plane_component=\"\"}, deployment)",
+        "query": "label_values(request_total{namespace=\"$namespace\", conduit_io_control_plane_component=\"\"}, replication_controller)",
         "refresh": 2,
         "regex": "",
         "sort": 1,
@@ -1569,7 +1569,7 @@
         "multi": false,
         "name": "inbound",
         "options": [],
-        "query": "label_values(request_total{dst_namespace=\"$namespace\", dst_deployment=\"$deployment\"}, deployment)",
+        "query": "label_values(request_total{dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\"}, replication_controller)",
         "refresh": 2,
         "regex": "",
         "sort": 1,
@@ -1589,7 +1589,7 @@
         "multi": false,
         "name": "outbound",
         "options": [],
-        "query": "label_values(request_total{namespace=\"$namespace\", deployment=\"$deployment\"}, dst_deployment)",
+        "query": "label_values(request_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\"}, dst_replication_controller)",
         "refresh": 2,
         "regex": "",
         "sort": 1,
@@ -1631,7 +1631,7 @@
     ]
   },
   "timezone": "",
-  "title": "Conduit Deployment",
-  "uid": "6svnwykmk",
+  "title": "Conduit Replication Controller",
+  "uid": "eIYYYkGmz",
   "version": 1
 }

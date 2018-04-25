@@ -20,16 +20,16 @@ const withTooltip = (d, metricName) => {
   );
 };
 
-const columnDefinitions = (sortable = true, title, ConduitLink) => {
+const columnDefinitions = (sortable = true, resource, ConduitLink) => {
   return [
     {
-      title: title,
+      title: resource,
       key: "name",
       defaultSortOrder: 'ascend',
       width: 150,
       sorter: sortable ? (a, b) => (a.name || "").localeCompare(b.name) : false,
       render: row => row.added ?
-        <GrafanaLink name={row.name} conduitLink={ConduitLink} /> : row.name
+        <GrafanaLink name={row.name} resource={resource} conduitLink={ConduitLink} /> : row.name
     },
     {
       title: "Success Rate",

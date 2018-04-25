@@ -14,20 +14,10 @@ port (default: `:4191`) in the [Prometheus format][prom-format]:
 A counter of the number of requests the proxy has received.  This is incremented
 when the request stream begins.
 
-### `request_duration_ms`
-
-A histogram of the duration of a request.  This is measured from when the
-request headers are received to when the request stream has completed.
-
 ### `response_total`
 
 A counter of the number of responses the proxy has received.  This is
-incremeneted when the response stream ends.
-
-### `response_duration_ms`
-
-A histogram of the duration of a response.  This is measured from when the
-response headers are received to when the response stream has completed.
+incremented when the response stream ends.
 
 ### `response_latency_ms`
 
@@ -67,6 +57,10 @@ The following labels are only applicable if `direction=outbound`.
                                 is being sent.
 * `dst_namespace`: The namespace to which this request is being sent.
 * `dst_service`: The service to which this request is being sent.
+* `dst_pod_template_hash`: The [pod-template-hash][pod-template-hash] of the pod
+                           to which this request is being sent. This label
+                           selector roughly approximates a pod's `ReplicaSet` or
+                           `ReplicationController`.
 
 ### Prometheus Collector labels
 
@@ -85,7 +79,9 @@ Prometheus labels.
 * `pod`: Kubernetes pod name.
 * `pod_template_hash`: Corresponds to the [pod-template-hash][pod-template-hash]
                        Kubernetes label. This value changes during redeploys and
-                       rolling restarts.
+                       rolling restarts. This label selector roughly
+                       approximates a pod's `ReplicaSet` or
+                       `ReplicationController`.
 
 #### Conduit labels added at collection time
 

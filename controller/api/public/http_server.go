@@ -5,28 +5,24 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/golang/protobuf/jsonpb"
 	promApi "github.com/prometheus/client_golang/api"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	common "github.com/runconduit/conduit/controller/gen/common"
 	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 	tapPb "github.com/runconduit/conduit/controller/gen/controller/tap"
 	pb "github.com/runconduit/conduit/controller/gen/public"
+	"github.com/runconduit/conduit/controller/k8s"
 	"github.com/runconduit/conduit/controller/util"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/metadata"
-	applisters "k8s.io/client-go/listers/apps/v1beta2"
-	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
 var (
-	jsonMarshaler   = jsonpb.Marshaler{EmitDefaults: true}
-	jsonUnmarshaler = jsonpb.Unmarshaler{}
-	statSummaryPath = fullUrlPathFor("StatSummary")
-	versionPath     = fullUrlPathFor("Version")
-	listPodsPath    = fullUrlPathFor("ListPods")
-	tapPath         = fullUrlPathFor("Tap")
-	selfCheckPath   = fullUrlPathFor("SelfCheck")
+	statSummaryPath   = fullUrlPathFor("StatSummary")
+	versionPath       = fullUrlPathFor("Version")
+	listPodsPath      = fullUrlPathFor("ListPods")
+	tapByResourcePath = fullUrlPathFor("TapByResource")
+	selfCheckPath     = fullUrlPathFor("SelfCheck")
 )
 
 type handler struct {
@@ -51,8 +47,8 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		h.handleVersion(w, req)
 	case listPodsPath:
 		h.handleListPods(w, req)
-	case tapPath:
-		h.handleTap(w, req)
+	case tapByResourcePath:
+		h.handleTapByResource(w, req)
 	case selfCheckPath:
 		h.handleSelfCheck(w, req)
 	default:
@@ -145,14 +141,14 @@ func (h *handler) handleListPods(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (h *handler) handleTap(w http.ResponseWriter, req *http.Request) {
+func (h *handler) handleTapByResource(w http.ResponseWriter, req *http.Request) {
 	flushableWriter, err := newStreamingWriter(w)
 	if err != nil {
 		writeErrorToHttpResponse(w, err)
 		return
 	}
 
-	var protoRequest pb.TapRequest
+	var protoRequest pb.TapByResourceRequest
 	err = httpRequestToProto(req, &protoRequest)
 	if err != nil {
 		writeErrorToHttpResponse(w, err)
@@ -160,7 +156,7 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request) {
 	}
 
 	server := tapServer{w: flushableWriter, req: req}
-	err = h.grpcServer.Tap(&protoRequest, server)
+	err = h.grpcServer.TapByResource(&protoRequest, server)
 	if err != nil {
 		writeErrorToHttpResponse(w, err)
 		return
@@ -186,22 +182,20 @@ func (s tapServer) Send(msg *common.TapEvent) error {
 // satisfy the pb.Api_TapServer interface
 func (s tapServer) SetHeader(metadata.MD) error  { return nil }
 func (s tapServer) SendHeader(metadata.MD) error { return nil }
-func (s tapServer) SetTrailer(metadata.MD)       { return }
+func (s tapServer) SetTrailer(metadata.MD)       {}
 func (s tapServer) Context() context.Context     { return s.req.Context() }
 func (s tapServer) SendMsg(interface{}) error    { return nil }
 func (s tapServer) RecvMsg(interface{}) error    { return nil }
 
 func fullUrlPathFor(method string) string {
-	return ApiRoot + ApiPrefix + method
+	return apiRoot + apiPrefix + method
 }
 
 func NewServer(
 	addr string,
 	prometheusClient promApi.Client,
 	tapClient tapPb.TapClient,
-	deployLister applisters.DeploymentLister,
-	replicaSetLister applisters.ReplicaSetLister,
-	podLister corelisters.PodLister,
+	lister *k8s.Lister,
 	controllerNamespace string,
 	ignoredNamespaces []string,
 ) *http.Server {
@@ -209,9 +203,7 @@ func NewServer(
 		grpcServer: newGrpcServer(
 			promv1.NewAPI(prometheusClient),
 			tapClient,
-			deployLister,
-			replicaSetLister,
-			podLister,
+			lister,
 			controllerNamespace,
 			ignoredNamespaces,
 		),

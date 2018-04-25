@@ -1,8 +1,9 @@
 use http;
 use std::sync::Arc;
 
+use control::discovery::DstLabelsWatch;
 use ctx;
-use telemetry::metrics::prometheus;
+
 
 /// Describes a stream's request headers.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -18,11 +19,6 @@ pub struct Request {
 
     /// Identifies the proxy client that dispatched the request.
     pub client: Arc<ctx::transport::Client>,
-
-    /// Optional information on the request's destination service, which may
-    /// be provided by the control plane for destinations lookups against its
-    /// discovery API.
-    pub dst_labels: Option<prometheus::DstLabels>,
 }
 
 /// Describes a stream's response headers.
@@ -47,22 +43,19 @@ impl Request {
         client: &Arc<ctx::transport::Client>,
         id: usize,
     ) -> Arc<Self> {
-        // Look up whether the request has been extended with optional
-        // destination labels from the control plane's discovery API.
-        let dst_labels = request
-            .extensions()
-            .get::<prometheus::DstLabels>()
-            .cloned();
         let r = Self {
             id,
             uri: request.uri().clone(),
             method: request.method().clone(),
             server: Arc::clone(server),
             client: Arc::clone(client),
-            dst_labels,
         };
 
         Arc::new(r)
+    }
+
+    pub fn dst_labels(&self) -> Option<&DstLabelsWatch> {
+        self.client.dst_labels.as_ref()
     }
 }
 
