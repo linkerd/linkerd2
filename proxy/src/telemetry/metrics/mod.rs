@@ -27,19 +27,22 @@
 //! to worry about missing commas, double commas, or trailing commas at the
 //! end of the label set (all of which will make Prometheus angry).
 use std::default::Default;
-use std::{fmt, ops, time};
+use std::{fmt, time};
 use std::hash::Hash;
 use std::num::Wrapping;
 use std::sync::{Arc, Mutex};
+use std::io::Write;
+use std::ops;
 
+use deflate::CompressionOptions;
+use deflate::write::GzEncoder;
 use futures::future::{self, FutureResult};
-use hyper;
-use hyper::header::{ContentLength, ContentType};
-use hyper::StatusCode;
+use hyper::{self, Body, StatusCode};
+use hyper::header::{AcceptEncoding, ContentEncoding, ContentType, Encoding, QualityItem};
 use hyper::server::{
-    Service as HyperService,
+    Response as HyperResponse,
     Request as HyperRequest,
-    Response as HyperResponse
+    Service as HyperService,
 };
 use indexmap::{IndexMap};
 
@@ -49,29 +52,33 @@ use telemetry::event::Event;
 mod labels;
 mod latency;
 
-use self::labels::{RequestLabels, ResponseLabels, TransportLabels};
+use self::labels::{
+    RequestLabels,
+    ResponseLabels,
+    TransportLabels,
+    TransportCloseLabels
+};
 use self::latency::{BUCKET_BOUNDS, Histogram};
 pub use self::labels::DstLabels;
 
 #[derive(Debug, Clone)]
 struct Metrics {
     request_total: Metric<Counter, Arc<RequestLabels>>,
-    request_duration: Metric<Histogram, Arc<RequestLabels>>,
 
     response_total: Metric<Counter, Arc<ResponseLabels>>,
-    response_duration: Metric<Histogram, Arc<ResponseLabels>>,
     response_latency: Metric<Histogram, Arc<ResponseLabels>>,
 
     tcp_accept_open_total: Metric<Counter, Arc<TransportLabels>>,
-    tcp_accept_close_total: Metric<Counter, Arc<TransportLabels>>,
+    tcp_accept_close_total: Metric<Counter, Arc<TransportCloseLabels>>,
 
     tcp_connect_open_total: Metric<Counter, Arc<TransportLabels>>,
-    tcp_connect_close_total: Metric<Counter, Arc<TransportLabels>>,
+    tcp_connect_close_total: Metric<Counter, Arc<TransportCloseLabels>>,
 
-    tcp_connection_duration: Metric<Histogram, Arc<TransportLabels>>,
+    tcp_connection_duration: Metric<Histogram, Arc<TransportCloseLabels>>,
+    tcp_connections_open: Metric<Gauge, Arc<TransportLabels>>,
 
-    sent_bytes: Metric<Counter, Arc<TransportLabels>>,
-    received_bytes: Metric<Counter, Arc<TransportLabels>>,
+    sent_bytes: Metric<Counter, Arc<TransportCloseLabels>>,
+    received_bytes: Metric<Counter, Arc<TransportCloseLabels>>,
 
     start_time: u64,
 }
@@ -105,6 +112,10 @@ struct Metric<M, L: Hash + Eq> {
 #[derive(Copy, Debug, Default, Clone, Eq, PartialEq)]
 pub struct Counter(Wrapping<u64>);
 
+/// A Prometheus gauge
+#[derive(Copy, Debug, Default, Clone, Eq, PartialEq)]
+pub struct Gauge(u64);
+
 /// Tracks Prometheus metrics
 #[derive(Debug)]
 pub struct Aggregate {
@@ -123,7 +134,7 @@ pub struct Serve {
 /// is a Hyper service which can be used to create the server for the
 /// scrape endpoint, while the `Aggregate` side can receive updates to the
 /// metrics by calling `record_event`.
-pub fn new(process: &Arc<ctx::Process>) -> (Aggregate, Serve) {
+pub fn new(process: &Arc<ctx::Process>) -> (Aggregate, Serve){
     let metrics = Arc::new(Mutex::new(Metrics::new(process)));
     (Aggregate::new(&metrics), Serve::new(&metrics))
 }
@@ -147,23 +158,9 @@ impl Metrics {
             "A counter of the number of requests the proxy has received.",
         );
 
-        let request_duration = Metric::<Histogram, Arc<RequestLabels>>::new(
-            "request_duration_ms",
-            "A histogram of the duration of a request. This is measured from \
-             when the request headers are received to when the request \
-             stream has completed.",
-        );
-
         let response_total = Metric::<Counter, Arc<ResponseLabels>>::new(
             "response_total",
             "A counter of the number of responses the proxy has received.",
-        );
-
-        let response_duration = Metric::<Histogram, Arc<ResponseLabels>>::new(
-            "response_duration_ms",
-            "A histogram of the duration of a response. This is measured from \
-             when the response headers are received to when the response \
-             stream has completed.",
         );
 
         let response_latency = Metric::<Histogram, Arc<ResponseLabels>>::new(
@@ -179,7 +176,7 @@ impl Metrics {
              have been accepted by the proxy.",
         );
 
-        let tcp_accept_close_total = Metric::<Counter, Arc<TransportLabels>>::new(
+        let tcp_accept_close_total = Metric::<Counter, Arc<TransportCloseLabels>>::new(
             "tcp_accept_close_total",
             "A counter of the total number of transport connections accepted \
              by the proxy which have been closed.",
@@ -191,38 +188,42 @@ impl Metrics {
              have been opened by the proxy.",
         );
 
-        let tcp_connect_close_total = Metric::<Counter, Arc<TransportLabels>>::new(
+        let tcp_connect_close_total = Metric::<Counter, Arc<TransportCloseLabels>>::new(
             "tcp_connect_close_total",
             "A counter of the total number of transport connections opened \
              by the proxy which have been closed.",
         );
 
-        let tcp_connection_duration = Metric::<Histogram, Arc<TransportLabels>>::new(
+        let tcp_connection_duration = Metric::<Histogram, Arc<TransportCloseLabels>>::new(
             "tcp_connection_duration_ms",
             "A histogram of the duration of the lifetime of a connection, in milliseconds",
         );
 
-        let received_bytes = Metric::<Counter, Arc<TransportLabels>>::new(
+        let tcp_connections_open = Metric::<Gauge, Arc<TransportLabels>>::new(
+            "tcp_connections_open",
+            "A gauge of the number of transport connections currently open.",
+        );
+
+        let received_bytes = Metric::<Counter, Arc<TransportCloseLabels>>::new(
             "received_bytes",
             "A counter of the total number of recieved bytes."
         );
 
-        let sent_bytes = Metric::<Counter, Arc<TransportLabels>>::new(
+        let sent_bytes = Metric::<Counter, Arc<TransportCloseLabels>>::new(
             "sent_bytes",
             "A counter of the total number of sent bytes."
         );
 
         Metrics {
             request_total,
-            request_duration,
             response_total,
-            response_duration,
             response_latency,
             tcp_accept_open_total,
             tcp_accept_close_total,
             tcp_connect_open_total,
             tcp_connect_close_total,
             tcp_connection_duration,
+            tcp_connections_open,
             received_bytes,
             sent_bytes,
             start_time,
@@ -235,22 +236,6 @@ impl Metrics {
         self.request_total.values
             .entry(labels.clone())
             .or_insert_with(Counter::default)
-    }
-
-    fn request_duration(&mut self,
-                        labels: &Arc<RequestLabels>)
-                        -> &mut Histogram {
-        self.request_duration.values
-            .entry(labels.clone())
-            .or_insert_with(Histogram::default)
-    }
-
-    fn response_duration(&mut self,
-                         labels: &Arc<ResponseLabels>)
-                         -> &mut Histogram {
-        self.response_duration.values
-            .entry(labels.clone())
-            .or_insert_with(Histogram::default)
     }
 
     fn response_latency(&mut self,
@@ -274,11 +259,11 @@ impl Metrics {
                              -> &mut Counter {
         self.tcp_accept_open_total.values
             .entry(labels.clone())
-            .or_insert_with(Counter::default)
+            .or_insert_with(Default::default)
     }
 
     fn tcp_accept_close_total(&mut self,
-                              labels: &Arc<TransportLabels>)
+                              labels: &Arc<TransportCloseLabels>)
                               -> &mut Counter {
         self.tcp_accept_close_total.values
             .entry(labels.clone())
@@ -290,11 +275,11 @@ impl Metrics {
                              -> &mut Counter {
         self.tcp_connect_open_total.values
             .entry(labels.clone())
-            .or_insert_with(Counter::default)
+            .or_insert_with(Default::default)
     }
 
     fn tcp_connect_close_total(&mut self,
-                              labels: &Arc<TransportLabels>)
+                              labels: &Arc<TransportCloseLabels>)
                               -> &mut Counter {
         self.tcp_connect_close_total.values
             .entry(labels.clone())
@@ -302,15 +287,23 @@ impl Metrics {
     }
 
     fn tcp_connection_duration(&mut self,
-                                labels: &Arc<TransportLabels>)
+                                labels: &Arc<TransportCloseLabels>)
                                 -> &mut Histogram {
         self.tcp_connection_duration.values
             .entry(labels.clone())
             .or_insert_with(Histogram::default)
     }
 
+    fn tcp_connections_open(&mut self,
+                            labels: &Arc<TransportLabels>)
+                            -> &mut Gauge {
+        self.tcp_connections_open.values
+            .entry(labels.clone())
+            .or_insert_with(Gauge::default)
+    }
+
     fn sent_bytes(&mut self,
-                  labels: &Arc<TransportLabels>)
+                  labels: &Arc<TransportCloseLabels>)
                   -> &mut Counter {
         self.sent_bytes.values
             .entry(labels.clone())
@@ -318,7 +311,7 @@ impl Metrics {
     }
 
     fn received_bytes(&mut self,
-                      labels: &Arc<TransportLabels>)
+                      labels: &Arc<TransportCloseLabels>)
                       -> &mut Counter {
         self.received_bytes.values
             .entry(labels.clone())
@@ -329,18 +322,17 @@ impl Metrics {
 impl fmt::Display for Metrics {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "{}", self.request_total)?;
-        writeln!(f, "{}", self.request_duration)?;
         writeln!(f, "{}", self.response_total)?;
-        writeln!(f, "{}", self.response_duration)?;
         writeln!(f, "{}", self.response_latency)?;
         writeln!(f, "{}", self.tcp_accept_open_total)?;
         writeln!(f, "{}", self.tcp_accept_close_total)?;
         writeln!(f, "{}", self.tcp_connect_open_total)?;
         writeln!(f, "{}", self.tcp_connect_close_total)?;
         writeln!(f, "{}", self.tcp_connection_duration)?;
+        writeln!(f, "{}", self.tcp_connections_open)?;
         writeln!(f, "{}", self.sent_bytes)?;
         writeln!(f, "{}", self.received_bytes)?;
-        writeln!(f, "{}", self.start_time)?;
+        writeln!(f, "process_start_time_seconds {}", self.start_time)?;
         Ok(())
     }
 }
@@ -385,6 +377,37 @@ impl Counter {
     }
 }
 
+// ===== impl Gauge =====
+
+impl fmt::Display for Gauge {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl Gauge {
+    /// Increment the gauge by one.
+    pub fn incr(&mut self) -> &mut Self {
+        if let Some(new_value) = self.0.checked_add(1) {
+            (*self).0 = new_value;
+        } else {
+            warn!("Gauge::incr() would wrap!");
+        }
+        self
+    }
+
+    /// Decrement the gauge by one.
+    pub fn decr(&mut self) -> &mut Self {
+        if let Some(new_value) = self.0.checked_sub(1) {
+            (*self).0 = new_value;
+        } else {
+            warn!("Gauge::decr() called on a gauge with value 0");
+        }
+        self
+    }
+
+}
+
 // ===== impl Metric =====
 
 impl<M, L: Hash + Eq> Metric<M, L> {
@@ -407,6 +430,30 @@ where
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f,
             "# HELP {name} {help}\n# TYPE {name} counter\n",
+            name = self.name,
+            help = self.help,
+        )?;
+
+        for (labels, value) in &self.values {
+            write!(f, "{name}{{{labels}}} {value}\n",
+                name = self.name,
+                labels = labels,
+                value = value,
+            )?;
+        }
+
+        Ok(())
+    }
+}
+
+impl<L> fmt::Display for Metric<Gauge, L>
+where
+    L: fmt::Display,
+    L: Hash + Eq,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f,
+            "# HELP {name} {help}\n# TYPE {name} gauge\n",
             name = self.name,
             help = self.help,
         )?;
@@ -499,21 +546,17 @@ impl Aggregate {
                 //  when the stream *finishes*.
             },
 
-            Event::StreamRequestFail(ref req, ref fail) => {
+            Event::StreamRequestFail(ref req, _) => {
                 let labels = Arc::new(RequestLabels::new(req));
                 self.update(|metrics| {
-                    *metrics.request_duration(&labels) +=
-                        fail.since_request_open;
                     *metrics.request_total(&labels).incr();
                 })
             },
 
-            Event::StreamRequestEnd(ref req, ref end) => {
+            Event::StreamRequestEnd(ref req, _) => {
                 let labels = Arc::new(RequestLabels::new(req));
                 self.update(|metrics| {
                     *metrics.request_total(&labels).incr();
-                    *metrics.request_duration(&labels) +=
-                        end.since_request_open;
                 })
             },
 
@@ -524,7 +567,6 @@ impl Aggregate {
                 ));
                 self.update(|metrics| {
                     *metrics.response_total(&labels).incr();
-                    *metrics.response_duration(&labels) +=  end.since_response_open;
                     *metrics.response_latency(&labels) += end.since_request_open;
                 });
             },
@@ -534,27 +576,27 @@ impl Aggregate {
                 let labels = Arc::new(ResponseLabels::fail(res));
                 self.update(|metrics| {
                     *metrics.response_total(&labels).incr();
-                    *metrics.response_duration(&labels) += fail.since_response_open;
                     *metrics.response_latency(&labels) += fail.since_request_open;
                 });
             },
 
             Event::TransportOpen(ref ctx) => {
                 let labels = Arc::new(TransportLabels::new(ctx));
-                self.update(|metrics| match ctx.as_ref() {
-                    &ctx::transport::Ctx::Server(_) => {
-                        *metrics.tcp_accept_open_total(&labels).incr();
-                    },
-                    &ctx::transport::Ctx::Client(_) => {
-                        *metrics.tcp_connect_open_total(&labels).incr();
-                    },
+                self.update(|metrics| {
+                    match ctx.as_ref() {
+                        &ctx::transport::Ctx::Server(_) => {
+                            *metrics.tcp_accept_open_total(&labels).incr();
+                            *metrics.tcp_connections_open(&labels).incr();
+                        },
+                        &ctx::transport::Ctx::Client(_) => {
+                            *metrics.tcp_connect_open_total(&labels).incr();
+                        },
+                    }
                 })
             },
 
             Event::TransportClose(ref ctx, ref close) => {
-                // TODO: use the `clean` field in `close` to record whether or not
-                // there was an error.
-                let labels = Arc::new(TransportLabels::new(ctx));
+                let labels = Arc::new(TransportCloseLabels::new(ctx, close));
                 self.update(|metrics| {
                     *metrics.tcp_connection_duration(&labels) += close.duration;
                     *metrics.sent_bytes(&labels) += close.tx_bytes as u64;
@@ -562,6 +604,20 @@ impl Aggregate {
                     match ctx.as_ref() {
                         &ctx::transport::Ctx::Server(_) => {
                             *metrics.tcp_accept_close_total(&labels).incr();
+                            // We don't use the accessor method here like we do
+                            // for all the other metrics so that we can just
+                            // use the transport open labels in `labels`
+                            // without having to ref-count it separately. Since
+                            // we're handling a close event, we expect those
+                            // labels to already be in the map from when the
+                            // transport was opened.
+                            *metrics.tcp_connections_open.values
+                                .get_mut(&labels.transport)
+                                .expect(
+                                    "observed TransportClose event for a \
+                                     transport that was not counted"
+                                )
+                                .decr();
                         },
                         &ctx::transport::Ctx::Client(_) => {
                             *metrics.tcp_connect_close_total(&labels).incr();
@@ -578,8 +634,22 @@ impl Aggregate {
 
 impl Serve {
     fn new(metrics: &Arc<Mutex<Metrics>>) -> Self {
-        Serve { metrics: metrics.clone() }
+        Serve {
+            metrics: metrics.clone(),
+        }
     }
+}
+
+fn is_gzip(req: &HyperRequest) -> bool {
+    if let Some(accept_encodings) = req
+        .headers()
+        .get::<AcceptEncoding>()
+    {
+        return accept_encodings
+            .iter()
+            .any(|&QualityItem { ref item, .. }| item == &Encoding::Gzip)
+    }
+    false
 }
 
 impl HyperService for Serve {
@@ -594,14 +664,30 @@ impl HyperService for Serve {
                 .with_status(StatusCode::NotFound));
         }
 
-        let body = {
-            let metrics = self.metrics.lock()
-                .expect("metrics lock poisoned");
-            format!("{}", *metrics)
+        let metrics = self.metrics.lock()
+            .expect("metrics lock poisoned");
+
+        let resp = if is_gzip(&req) {
+            trace!("gzipping metrics");
+            let mut writer = GzEncoder::new(Vec::<u8>::new(), CompressionOptions::fast());
+            write!(&mut writer, "{}", *metrics)
+                .and_then(|_| writer.finish())
+                .map(|body| {
+                    HyperResponse::new()
+                        .with_header(ContentEncoding(vec![Encoding::Gzip]))
+                        .with_header(ContentType::plaintext())
+                        .with_body(Body::from(body))
+                })
+        } else {
+            let mut writer = Vec::<u8>::new();
+            write!(&mut writer, "{}", *metrics)
+                .map(|_| {
+                    HyperResponse::new()
+                        .with_header(ContentType::plaintext())
+                        .with_body(Body::from(writer))
+                })
         };
-        future::ok(HyperResponse::new()
-            .with_header(ContentLength(body.len() as u64))
-            .with_header(ContentType::plaintext())
-            .with_body(body))
+
+        future::result(resp.map_err(hyper::Error::Io))
     }
 }

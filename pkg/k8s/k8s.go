@@ -9,12 +9,22 @@ import (
 )
 
 const (
-	KubernetesDeployments            = "deployments"
-	KubernetesNamespaces             = "namespaces"
-	KubernetesPods                   = "pods"
-	KubernetesReplicationControllers = "replicationcontrollers"
-	KubernetesServices               = "services"
+	Deployments            = "deployments"
+	Namespaces             = "namespaces"
+	Pods                   = "pods"
+	ReplicationControllers = "replicationcontrollers"
+	Services               = "services"
 )
+
+// ResourceTypesToProxyLabels maps Kubernetes resource type names to keys
+// understood by the proxy, specifically Destination and Prometheus labels.
+var ResourceTypesToProxyLabels = map[string]string{
+	Deployments: "deployment",
+	Namespaces:  "namespace",
+	Pods:        "pod",
+	ReplicationControllers: "replication_controller",
+	Services:               "service",
+}
 
 func generateKubernetesApiBaseUrlFor(schemeHostAndPort string, namespace string, extraPathStartingWithSlash string) (*url.URL, error) {
 	if string(extraPathStartingWithSlash[0]) != "/" {
@@ -60,15 +70,15 @@ func getConfig(fpath string) (*rest.Config, error) {
 func CanonicalKubernetesNameFromFriendlyName(friendlyName string) (string, error) {
 	switch friendlyName {
 	case "deploy", "deployment", "deployments":
-		return KubernetesDeployments, nil
+		return Deployments, nil
 	case "ns", "namespace", "namespaces":
-		return KubernetesNamespaces, nil
+		return Namespaces, nil
 	case "po", "pod", "pods":
-		return KubernetesPods, nil
+		return Pods, nil
 	case "rc", "replicationcontroller", "replicationcontrollers":
-		return KubernetesReplicationControllers, nil
+		return ReplicationControllers, nil
 	case "svc", "service", "services":
-		return KubernetesServices, nil
+		return Services, nil
 	}
 
 	return "", fmt.Errorf("cannot find Kubernetes canonical name from friendly name [%s]", friendlyName)

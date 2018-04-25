@@ -39,6 +39,13 @@ impl Ctx {
             Ctx::Server(ref ctx) => &ctx.proxy,
         }
     }
+
+    pub fn protocol(&self) -> Protocol {
+        match *self {
+            Ctx::Client(ref ctx) => ctx.protocol,
+            Ctx::Server(ref ctx) => ctx.protocol,
+        }
+    }
 }
 
 impl Server {

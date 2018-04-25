@@ -5,17 +5,15 @@ import (
 	"errors"
 	"reflect"
 	"testing"
-	"time"
 
 	"github.com/prometheus/common/model"
 	tap "github.com/runconduit/conduit/controller/gen/controller/tap"
 	pb "github.com/runconduit/conduit/controller/gen/public"
-	"github.com/runconduit/conduit/pkg/k8s"
+	"github.com/runconduit/conduit/controller/k8s"
+	pkgK8s "github.com/runconduit/conduit/pkg/k8s"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/cache"
 )
 
 type statSumExpected struct {
@@ -97,7 +95,7 @@ status:
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Namespace: "emojivoto",
-							Type:      k8s.KubernetesDeployments,
+							Type:      pkgK8s.Deployments,
 						},
 					},
 					TimeWindow: "1m",
@@ -150,38 +148,17 @@ status:
 			}
 
 			clientSet := fake.NewSimpleClientset(k8sObjs...)
-			sharedInformers := informers.NewSharedInformerFactory(clientSet, 10*time.Minute)
-
-			namespaceInformer := sharedInformers.Core().V1().Namespaces()
-			deployInformer := sharedInformers.Apps().V1beta2().Deployments()
-			replicaSetInformer := sharedInformers.Apps().V1beta2().ReplicaSets()
-			podInformer := sharedInformers.Core().V1().Pods()
-			replicationControllerInformer := sharedInformers.Core().V1().ReplicationControllers()
-			serviceInformer := sharedInformers.Core().V1().Services()
+			lister := k8s.NewLister(clientSet)
 
 			fakeGrpcServer := newGrpcServer(
 				&MockProm{Res: exp.promRes},
 				tap.NewTapClient(nil),
-				namespaceInformer.Lister(),
-				deployInformer.Lister(),
-				replicaSetInformer.Lister(),
-				podInformer.Lister(),
-				replicationControllerInformer.Lister(),
-				serviceInformer.Lister(),
+				lister,
 				"conduit",
 				[]string{},
 			)
-			stopCh := make(chan struct{})
-			sharedInformers.Start(stopCh)
-			if !cache.WaitForCacheSync(
-				stopCh,
-				namespaceInformer.Informer().HasSynced,
-				deployInformer.Informer().HasSynced,
-				replicaSetInformer.Informer().HasSynced,
-				podInformer.Informer().HasSynced,
-				replicationControllerInformer.Informer().HasSynced,
-				serviceInformer.Informer().HasSynced,
-			) {
+			err := lister.Sync()
+			if err != nil {
 				t.Fatalf("timed out wait for caches to sync")
 			}
 
@@ -199,7 +176,7 @@ status:
 	t.Run("Given an invalid resource type, returns error", func(t *testing.T) {
 		expectations := []statSumExpected{
 			statSumExpected{
-				err: errors.New("Unimplemented resource type: badtype"),
+				err: errors.New("rpc error: code = Unimplemented desc = unimplemented resource type: badtype"),
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
@@ -209,7 +186,7 @@ status:
 				},
 			},
 			statSumExpected{
-				err: errors.New("Unimplemented resource type: deployment"),
+				err: errors.New("rpc error: code = Unimplemented desc = unimplemented resource type: deployment"),
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
@@ -219,7 +196,7 @@ status:
 				},
 			},
 			statSumExpected{
-				err: errors.New("Unimplemented resource type: pod"),
+				err: errors.New("rpc error: code = Unimplemented desc = unimplemented resource type: pod"),
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
@@ -232,16 +209,11 @@ status:
 
 		for _, exp := range expectations {
 			clientSet := fake.NewSimpleClientset()
-			sharedInformers := informers.NewSharedInformerFactory(clientSet, 10*time.Minute)
+			lister := k8s.NewLister(clientSet)
 			fakeGrpcServer := newGrpcServer(
 				&MockProm{Res: exp.promRes},
 				tap.NewTapClient(nil),
-				sharedInformers.Core().V1().Namespaces().Lister(),
-				sharedInformers.Apps().V1beta2().Deployments().Lister(),
-				sharedInformers.Apps().V1beta2().ReplicaSets().Lister(),
-				sharedInformers.Core().V1().Pods().Lister(),
-				sharedInformers.Core().V1().ReplicationControllers().Lister(),
-				sharedInformers.Core().V1().Services().Lister(),
+				lister,
 				"conduit",
 				[]string{},
 			)

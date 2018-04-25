@@ -21,7 +21,7 @@ func TestRequestTapFromApi(t *testing.T) {
 	t.Run("Should render busy response if everything went well", func(t *testing.T) {
 		authority := "localhost"
 		targetName := "pod-666"
-		resourceType := k8s.KubernetesPods
+		resourceType := k8s.Pods
 		scheme := "https"
 		method := "GET"
 		path := "/some/path"
@@ -29,36 +29,42 @@ func TestRequestTapFromApi(t *testing.T) {
 		targetIp := "123.123.123.123"
 		mockApiClient := &public.MockConduitApiClient{}
 
-		event1 := createEvent(&common.TapEvent_Http{
-			Event: &common.TapEvent_Http_RequestInit_{
-				RequestInit: &common.TapEvent_Http_RequestInit{
-					Id: &common.TapEvent_Http_StreamId{
-						Base: 1,
+		event1 := createEvent(
+			&common.TapEvent_Http{
+				Event: &common.TapEvent_Http_RequestInit_{
+					RequestInit: &common.TapEvent_Http_RequestInit{
+						Id: &common.TapEvent_Http_StreamId{
+							Base: 1,
+						},
+						Authority: authority,
+						Path:      path,
 					},
-					Authority: authority,
-					Path:      path,
 				},
 			},
-		})
-		event2 := createEvent(&common.TapEvent_Http{
-			Event: &common.TapEvent_Http_ResponseEnd_{
-				ResponseEnd: &common.TapEvent_Http_ResponseEnd{
-					Id: &common.TapEvent_Http_StreamId{
-						Base: 1,
+			map[string]string{"pod": "my-pod"},
+		)
+		event2 := createEvent(
+			&common.TapEvent_Http{
+				Event: &common.TapEvent_Http_ResponseEnd_{
+					ResponseEnd: &common.TapEvent_Http_ResponseEnd{
+						Id: &common.TapEvent_Http_StreamId{
+							Base: 1,
+						},
+						Eos: &common.Eos{
+							End: &common.Eos_GrpcStatusCode{GrpcStatusCode: 666},
+						},
+						SinceRequestInit: &google_protobuf.Duration{
+							Seconds: 10,
+						},
+						SinceResponseInit: &google_protobuf.Duration{
+							Seconds: 100,
+						},
+						ResponseBytes: 1337,
 					},
-					Eos: &common.Eos{
-						End: &common.Eos_GrpcStatusCode{GrpcStatusCode: 666},
-					},
-					SinceRequestInit: &google_protobuf.Duration{
-						Seconds: 10,
-					},
-					SinceResponseInit: &google_protobuf.Duration{
-						Seconds: 100,
-					},
-					ResponseBytes: 1337,
 				},
 			},
-		})
+			map[string]string{},
+		)
 		mockApiClient.Api_TapClientToReturn = &public.MockApi_TapClient{
 			TapEventsToReturn: []common.TapEvent{event1, event2},
 		}
@@ -95,7 +101,7 @@ func TestRequestTapFromApi(t *testing.T) {
 	t.Run("Should render empty response if no events returned", func(t *testing.T) {
 		authority := "localhost"
 		targetName := "pod-666"
-		resourceType := k8s.KubernetesPods
+		resourceType := k8s.Pods
 		scheme := "https"
 		method := "GET"
 		path := "/some/path"
@@ -140,7 +146,7 @@ func TestRequestTapFromApi(t *testing.T) {
 		t.SkipNow()
 		authority := "localhost"
 		targetName := "pod-666"
-		resourceType := k8s.KubernetesPods
+		resourceType := k8s.Pods
 		scheme := "https"
 		method := "GET"
 		path := "/some/path"
@@ -335,7 +341,7 @@ func TestEventToString(t *testing.T) {
 	})
 }
 
-func createEvent(event_http *common.TapEvent_Http) common.TapEvent {
+func createEvent(event_http *common.TapEvent_Http, dstMeta map[string]string) common.TapEvent {
 	event := common.TapEvent{
 		Source: &common.TcpAddress{
 			Ip: &common.IPAddress{
@@ -353,6 +359,9 @@ func createEvent(event_http *common.TapEvent_Http) common.TapEvent {
 		},
 		Event: &common.TapEvent_Http_{
 			Http: event_http,
+		},
+		DestinationMeta: &common.TapEvent_EndpointMeta{
+			Labels: dstMeta,
 		},
 	}
 	return event

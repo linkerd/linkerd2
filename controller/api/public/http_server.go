@@ -11,19 +11,19 @@ import (
 	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 	tapPb "github.com/runconduit/conduit/controller/gen/controller/tap"
 	pb "github.com/runconduit/conduit/controller/gen/public"
+	"github.com/runconduit/conduit/controller/k8s"
 	"github.com/runconduit/conduit/controller/util"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/metadata"
-	applisters "k8s.io/client-go/listers/apps/v1beta2"
-	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
 var (
-	statSummaryPath = fullUrlPathFor("StatSummary")
-	versionPath     = fullUrlPathFor("Version")
-	listPodsPath    = fullUrlPathFor("ListPods")
-	tapPath         = fullUrlPathFor("Tap")
-	selfCheckPath   = fullUrlPathFor("SelfCheck")
+	statSummaryPath   = fullUrlPathFor("StatSummary")
+	versionPath       = fullUrlPathFor("Version")
+	listPodsPath      = fullUrlPathFor("ListPods")
+	tapPath           = fullUrlPathFor("Tap")
+	tapByResourcePath = fullUrlPathFor("TapByResource")
+	selfCheckPath     = fullUrlPathFor("SelfCheck")
 )
 
 type handler struct {
@@ -50,6 +50,8 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		h.handleListPods(w, req)
 	case tapPath:
 		h.handleTap(w, req)
+	case tapByResourcePath:
+		h.handleTapByResource(w, req)
 	case selfCheckPath:
 		h.handleSelfCheck(w, req)
 	default:
@@ -164,6 +166,28 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func (h *handler) handleTapByResource(w http.ResponseWriter, req *http.Request) {
+	flushableWriter, err := newStreamingWriter(w)
+	if err != nil {
+		writeErrorToHttpResponse(w, err)
+		return
+	}
+
+	var protoRequest pb.TapByResourceRequest
+	err = httpRequestToProto(req, &protoRequest)
+	if err != nil {
+		writeErrorToHttpResponse(w, err)
+		return
+	}
+
+	server := tapServer{w: flushableWriter, req: req}
+	err = h.grpcServer.TapByResource(&protoRequest, server)
+	if err != nil {
+		writeErrorToHttpResponse(w, err)
+		return
+	}
+}
+
 type tapServer struct {
 	w   flushableResponseWriter
 	req *http.Request
@@ -196,12 +220,7 @@ func NewServer(
 	addr string,
 	prometheusClient promApi.Client,
 	tapClient tapPb.TapClient,
-	namespaceLister corelisters.NamespaceLister,
-	deployLister applisters.DeploymentLister,
-	replicaSetLister applisters.ReplicaSetLister,
-	podLister corelisters.PodLister,
-	replicationControllerLister corelisters.ReplicationControllerLister,
-	serviceLister corelisters.ServiceLister,
+	lister *k8s.Lister,
 	controllerNamespace string,
 	ignoredNamespaces []string,
 ) *http.Server {
@@ -209,12 +228,7 @@ func NewServer(
 		grpcServer: newGrpcServer(
 			promv1.NewAPI(prometheusClient),
 			tapClient,
-			namespaceLister,
-			deployLister,
-			replicaSetLister,
-			podLister,
-			replicationControllerLister,
-			serviceLister,
+			lister,
 			controllerNamespace,
 			ignoredNamespaces,
 		),

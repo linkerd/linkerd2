@@ -17,7 +17,9 @@ import (
 	"github.com/runconduit/conduit/controller/k8s"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
+	"k8s.io/api/apps/v1beta2"
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	// Load all the auth plugins for the cloud providers.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
@@ -35,14 +37,12 @@ type simulatedProxy struct {
 type proxyMetricCollectors struct {
 	requestTotals           *prom.CounterVec
 	responseTotals          *prom.CounterVec
-	requestDurationMs       *prom.HistogramVec
 	responseLatencyMs       *prom.HistogramVec
-	responseDurationMs      *prom.HistogramVec
-	tcpAcceptOpenTotal      *prom.CounterVec
+	tcpAcceptOpenTotal      prom.Counter
 	tcpAcceptCloseTotal     *prom.CounterVec
-	tcpConnectOpenTotal     *prom.CounterVec
+	tcpConnectOpenTotal     prom.Counter
 	tcpConnectCloseTotal    *prom.CounterVec
-	tcpConnectionsOpen      *prom.GaugeVec
+	tcpConnectionsOpen      prom.Gauge
 	tcpConnectionDurationMs *prom.HistogramVec
 	receivedBytes           *prom.CounterVec
 	sentBytes               *prom.CounterVec
@@ -159,18 +159,12 @@ func (s *simulatedProxy) generateProxyTraffic() {
 
 			// inbound requests
 			s.inbound.requestTotals.With(prom.Labels{}).Add(float64(inboundRandomCount))
-			for _, latency := range randomLatencies(inboundRandomCount) {
-				s.inbound.requestDurationMs.With(prom.Labels{}).Observe(latency)
-			}
 
 			// inbound responses
 			inboundResponseLabels := randomResponseLabels()
 			s.inbound.responseTotals.With(inboundResponseLabels).Add(float64(inboundRandomCount))
 			for _, latency := range randomLatencies(inboundRandomCount) {
 				s.inbound.responseLatencyMs.With(inboundResponseLabels).Observe(latency)
-			}
-			for _, latency := range randomLatencies(inboundRandomCount) {
-				s.inbound.responseDurationMs.With(inboundResponseLabels).Observe(latency)
 			}
 
 			s.inbound.generateTCPStats(inboundRandomCount)
@@ -186,9 +180,6 @@ func (s *simulatedProxy) generateProxyTraffic() {
 
 			// outbound requests
 			s.outbound.requestTotals.With(outboundLabels).Add(float64(outboundRandomCount))
-			for _, latency := range randomLatencies(outboundRandomCount) {
-				s.outbound.requestDurationMs.With(outboundLabels).Observe(latency)
-			}
 
 			// outbound resposnes
 			outboundResponseLabels := outboundLabels
@@ -198,9 +189,6 @@ func (s *simulatedProxy) generateProxyTraffic() {
 			s.outbound.responseTotals.With(outboundResponseLabels).Add(float64(outboundRandomCount))
 			for _, latency := range randomLatencies(outboundRandomCount) {
 				s.outbound.responseLatencyMs.With(outboundResponseLabels).Observe(latency)
-			}
-			for _, latency := range randomLatencies(outboundRandomCount) {
-				s.outbound.responseDurationMs.With(outboundResponseLabels).Observe(latency)
 			}
 
 			s.outbound.generateTCPStats(outboundRandomCount)
@@ -217,15 +205,13 @@ func (p *proxyMetricCollectors) generateTCPStats(randomCount int) {
 		return
 	}
 
-	// TODO: throw in some raw TCP connections
-	openLabels := prom.Labels{"protocol": "http"}
-	closeLabels := prom.Labels{"protocol": "http", "classification": "success"}
-	failLabels := prom.Labels{"protocol": "http", "classification": "failure"}
+	closeLabels := prom.Labels{"classification": "success"}
+	failLabels := prom.Labels{"classification": "failure"}
 
 	// jitter the accept/connect counts a little bit to simulate connection pooling etc.
 	acceptCount := jitter(randomCount, 0.1)
 
-	p.tcpAcceptOpenTotal.With(openLabels).Add(float64(acceptCount))
+	p.tcpAcceptOpenTotal.Add(float64(acceptCount))
 
 	// up to acceptCount accepted connections remain open...
 	acceptOpenCount := rand.Intn(acceptCount)
@@ -244,7 +230,7 @@ func (p *proxyMetricCollectors) generateTCPStats(randomCount int) {
 
 	connectCount := jitter(randomCount, 0.1)
 
-	p.tcpConnectOpenTotal.With(openLabels).Add(float64(connectCount))
+	p.tcpConnectOpenTotal.Add(float64(connectCount))
 
 	connectOpenCount := rand.Intn(connectCount)
 	connectClosedCount := connectCount - connectOpenCount
@@ -258,7 +244,7 @@ func (p *proxyMetricCollectors) generateTCPStats(randomCount int) {
 
 	p.tcpConnectCloseTotal.With(closeLabels).Add(float64(connectClosedCount))
 
-	p.tcpConnectionsOpen.With(openLabels).Set(float64(acceptOpenCount + connectOpenCount))
+	p.tcpConnectionsOpen.Set(float64(acceptOpenCount + connectOpenCount))
 
 	// connect durations + bytes sent/received
 	totalClosed := acceptClosedCount + connectClosedCount
@@ -320,7 +306,7 @@ func randomResponseLabels() prom.Labels {
 	labelMap["status_code"] = fmt.Sprintf("%d", httpCode)
 
 	if grpcCode != uint32(codes.OK) || httpCode != http.StatusOK {
-		labelMap["classification"] = "fail"
+		labelMap["classification"] = "failure"
 	}
 
 	return labelMap
@@ -351,37 +337,29 @@ func randomLatencies(count int) []float64 {
 	return latencies
 }
 
-func podIndexFunc(obj interface{}) ([]string, error) {
-	return nil, nil
+func randomDeployments(deployments []string, count int) []string {
+	randomDeployments := []string{}
+	length := int32(len(deployments))
+
+	for i := 0; i < count; i++ {
+		randomDeployments = append(randomDeployments, deployments[rand.Int31n(length)])
+	}
+	return randomDeployments
 }
 
-func filterDeployments(deployments []string, excludeDeployments map[string]struct{}, max int) []string {
-	filteredDeployments := []string{}
-
-	for _, deployment := range deployments {
-		if _, ok := excludeDeployments[deployment]; !ok {
-			filteredDeployments = append(filteredDeployments, deployment)
-			if len(filteredDeployments) == max {
-				break
-			}
-		}
-	}
-	return filteredDeployments
-}
-
-func newSimulatedProxy(pod v1.Pod, deployments []string, replicaSets *k8s.ReplicaSetStore, sleep *time.Duration, maxDst int) *simulatedProxy {
-	ownerInfo, err := replicaSets.GetDeploymentForPod(&pod)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-	// GetDeploymentForPod returns "namespace/deployment"
-	deploymentName := strings.Split(ownerInfo, "/")[1]
-	dstDeployments := filterDeployments(deployments, map[string]struct{}{deploymentName: {}}, maxDst)
+func newSimulatedProxy(
+	pod *v1.Pod,
+	deploy *v1beta2.Deployment,
+	deployments []string,
+	sleep *time.Duration,
+	maxDst int,
+) *simulatedProxy {
+	dstDeployments := randomDeployments(deployments, maxDst)
 
 	constTCPLabels := prom.Labels{
 		// TCP metrics won't be labeled with an authority.
 		"namespace":         pod.GetNamespace(),
-		"deployment":        deploymentName,
+		"deployment":        deploy.Name,
 		"pod_template_hash": pod.GetLabels()["pod-template-hash"],
 		"pod":               pod.GetName(),
 
@@ -395,7 +373,7 @@ func newSimulatedProxy(pod v1.Pod, deployments []string, replicaSets *k8s.Replic
 	constLabels := prom.Labels{
 		"authority":         "fakeauthority:123",
 		"namespace":         pod.GetNamespace(),
-		"deployment":        deploymentName,
+		"deployment":        deploy.Name,
 		"pod_template_hash": pod.GetLabels()["pod-template-hash"],
 		"pod":               pod.GetName(),
 
@@ -432,7 +410,6 @@ func newSimulatedProxy(pod v1.Pod, deployments []string, replicaSets *k8s.Replic
 
 	tcpLabels := []string{
 		"direction",
-		"protocol",
 	}
 
 	tcpCloseLabels := append(
@@ -440,90 +417,74 @@ func newSimulatedProxy(pod v1.Pod, deployments []string, replicaSets *k8s.Replic
 		[]string{"classification"}...,
 	)
 
-	proxyMetrics := proxyMetricCollectors{
-		requestTotals: prom.NewCounterVec(
-			prom.CounterOpts{
-				Name:        "request_total",
-				Help:        "A counter of the number of requests the proxy has received",
-				ConstLabels: constLabels,
-			}, requestLabels),
-		responseTotals: prom.NewCounterVec(
-			prom.CounterOpts{
-				Name:        "response_total",
-				Help:        "A counter of the number of responses the proxy has received",
-				ConstLabels: constLabels,
-			}, responseLabels),
-		requestDurationMs: prom.NewHistogramVec(
-			prom.HistogramOpts{
-				Name:        "request_duration_ms",
-				Help:        "A histogram of the duration of a request",
-				ConstLabels: constLabels,
-				Buckets:     latencyBucketBounds,
-			}, requestLabels),
-		responseLatencyMs: prom.NewHistogramVec(
-			prom.HistogramOpts{
-				Name:        "response_latency_ms",
-				Help:        "A histogram of the total latency of a response",
-				ConstLabels: constLabels,
-				Buckets:     latencyBucketBounds,
-			}, responseLabels),
-		responseDurationMs: prom.NewHistogramVec(
-			prom.HistogramOpts{
-				Name:        "response_duration_ms",
-				Help:        "A histogram of the duration of a response",
-				ConstLabels: constLabels,
-				Buckets:     latencyBucketBounds,
-			}, responseLabels),
-		tcpAcceptOpenTotal: prom.NewCounterVec(
-			prom.CounterOpts{
-				Name:        "tcp_accept_open_total",
-				Help:        "A counter of the total number of transport connections which have been accepted by the proxy.",
-				ConstLabels: constTCPLabels,
-			}, tcpLabels),
-		tcpAcceptCloseTotal: prom.NewCounterVec(
-			prom.CounterOpts{
-				Name:        "tcp_accept_close_total",
-				Help:        "A counter of the total number of transport connections accepted by the proxy which have been closed.",
-				ConstLabels: constTCPLabels,
-			}, tcpCloseLabels),
-		tcpConnectOpenTotal: prom.NewCounterVec(
-			prom.CounterOpts{
-				Name:        "tcp_connect_open_total",
-				Help:        "A counter of the total number of transport connections which have been opened by the proxy.",
-				ConstLabels: constTCPLabels,
-			}, tcpLabels),
-		tcpConnectCloseTotal: prom.NewCounterVec(
-			prom.CounterOpts{
-				Name:        "tcp_connect_close_total",
-				Help:        "A counter of the total number of transport connections opened by the proxy which have been closed.",
-				ConstLabels: constTCPLabels,
-			}, tcpCloseLabels),
-		tcpConnectionsOpen: prom.NewGaugeVec(
-			prom.GaugeOpts{
-				Name:        "tcp_connections_open",
-				Help:        "A gauge of the number of transport connections currently open.",
-				ConstLabels: constTCPLabels,
-			}, tcpLabels),
-		tcpConnectionDurationMs: prom.NewHistogramVec(
-			prom.HistogramOpts{
-				Name:        "tcp_connection_duration_ms",
-				Help:        "A histogram of the duration of the lifetime of a connection, in milliseconds.",
-				ConstLabels: constTCPLabels,
-				Buckets:     latencyBucketBounds,
-			}, tcpCloseLabels),
-		sentBytes: prom.NewCounterVec(
-			prom.CounterOpts{
-				Name:        "sent_bytes",
-				Help:        "A counter of the total number of sent bytes.",
-				ConstLabels: constTCPLabels,
-			}, tcpCloseLabels),
-		receivedBytes: prom.NewCounterVec(
-			prom.CounterOpts{
-				Name:        "received_bytes",
-				Help:        "A counter of the total number of recieved bytes.",
-				ConstLabels: constTCPLabels,
-			}, tcpCloseLabels),
-	}
+	requestTotals := prom.NewCounterVec(
+		prom.CounterOpts{
+			Name:        "request_total",
+			Help:        "A counter of the number of requests the proxy has received",
+			ConstLabels: constLabels,
+		}, requestLabels)
+	responseTotals := prom.NewCounterVec(
+		prom.CounterOpts{
+			Name:        "response_total",
+			Help:        "A counter of the number of responses the proxy has received",
+			ConstLabels: constLabels,
+		}, responseLabels)
+	responseLatencyMs := prom.NewHistogramVec(
+		prom.HistogramOpts{
+			Name:        "response_latency_ms",
+			Help:        "A histogram of the total latency of a response",
+			ConstLabels: constLabels,
+			Buckets:     latencyBucketBounds,
+		}, responseLabels)
+	tcpAcceptOpenTotal := prom.NewCounterVec(
+		prom.CounterOpts{
+			Name:        "tcp_accept_open_total",
+			Help:        "A counter of the total number of transport connections which have been accepted by the proxy.",
+			ConstLabels: constTCPLabels,
+		}, tcpLabels)
+	tcpAcceptCloseTotal := prom.NewCounterVec(
+		prom.CounterOpts{
+			Name:        "tcp_accept_close_total",
+			Help:        "A counter of the total number of transport connections accepted by the proxy which have been closed.",
+			ConstLabels: constTCPLabels,
+		}, tcpCloseLabels)
+	tcpConnectOpenTotal := prom.NewCounterVec(
+		prom.CounterOpts{
+			Name:        "tcp_connect_open_total",
+			Help:        "A counter of the total number of transport connections which have been opened by the proxy.",
+			ConstLabels: constTCPLabels,
+		}, tcpLabels)
+	tcpConnectCloseTotal := prom.NewCounterVec(
+		prom.CounterOpts{
+			Name:        "tcp_connect_close_total",
+			Help:        "A counter of the total number of transport connections opened by the proxy which have been closed.",
+			ConstLabels: constTCPLabels,
+		}, tcpCloseLabels)
+	tcpConnectionsOpen := prom.NewGaugeVec(
+		prom.GaugeOpts{
+			Name:        "tcp_connections_open",
+			Help:        "A gauge of the number of transport connections currently open.",
+			ConstLabels: constTCPLabels,
+		}, tcpLabels)
+	tcpConnectionDurationMs := prom.NewHistogramVec(
+		prom.HistogramOpts{
+			Name:        "tcp_connection_duration_ms",
+			Help:        "A histogram of the duration of the lifetime of a connection, in milliseconds.",
+			ConstLabels: constTCPLabels,
+			Buckets:     latencyBucketBounds,
+		}, tcpCloseLabels)
+	sentBytes := prom.NewCounterVec(
+		prom.CounterOpts{
+			Name:        "sent_bytes",
+			Help:        "A counter of the total number of sent bytes.",
+			ConstLabels: constTCPLabels,
+		}, tcpCloseLabels)
+	receivedBytes := prom.NewCounterVec(
+		prom.CounterOpts{
+			Name:        "received_bytes",
+			Help:        "A counter of the total number of recieved bytes.",
+			ConstLabels: constTCPLabels,
+		}, tcpCloseLabels)
 
 	inboundLabels := prom.Labels{
 		"direction": "inbound",
@@ -548,78 +509,75 @@ func newSimulatedProxy(pod v1.Pod, deployments []string, replicaSets *k8s.Replic
 		deployments: dstDeployments,
 		registerer:  prom.NewRegistry(),
 		inbound: &proxyMetricCollectors{
-			requestTotals:           proxyMetrics.requestTotals.MustCurryWith(inboundLabels),
-			responseTotals:          proxyMetrics.responseTotals.MustCurryWith(inboundLabels),
-			requestDurationMs:       proxyMetrics.requestDurationMs.MustCurryWith(inboundLabels).(*prom.HistogramVec),
-			responseLatencyMs:       proxyMetrics.responseLatencyMs.MustCurryWith(inboundLabels).(*prom.HistogramVec),
-			responseDurationMs:      proxyMetrics.responseDurationMs.MustCurryWith(inboundLabels).(*prom.HistogramVec),
-			tcpAcceptOpenTotal:      proxyMetrics.tcpAcceptOpenTotal.MustCurryWith(inboundTCPLabels),
-			tcpAcceptCloseTotal:     proxyMetrics.tcpAcceptCloseTotal.MustCurryWith(inboundTCPLabels),
-			tcpConnectOpenTotal:     proxyMetrics.tcpConnectOpenTotal.MustCurryWith(inboundTCPLabels),
-			tcpConnectCloseTotal:    proxyMetrics.tcpConnectCloseTotal.MustCurryWith(inboundTCPLabels),
-			tcpConnectionsOpen:      proxyMetrics.tcpConnectionsOpen.MustCurryWith(inboundTCPLabels),
-			tcpConnectionDurationMs: proxyMetrics.tcpConnectionDurationMs.MustCurryWith(inboundTCPLabels).(*prom.HistogramVec),
-			sentBytes:               proxyMetrics.sentBytes.MustCurryWith(inboundTCPLabels),
-			receivedBytes:           proxyMetrics.receivedBytes.MustCurryWith(inboundTCPLabels),
+			requestTotals:           requestTotals.MustCurryWith(inboundLabels),
+			responseTotals:          responseTotals.MustCurryWith(inboundLabels),
+			responseLatencyMs:       responseLatencyMs.MustCurryWith(inboundLabels).(*prom.HistogramVec),
+			tcpAcceptOpenTotal:      tcpAcceptOpenTotal.With(inboundTCPLabels),
+			tcpAcceptCloseTotal:     tcpAcceptCloseTotal.MustCurryWith(inboundTCPLabels),
+			tcpConnectOpenTotal:     tcpConnectOpenTotal.With(inboundTCPLabels),
+			tcpConnectCloseTotal:    tcpConnectCloseTotal.MustCurryWith(inboundTCPLabels),
+			tcpConnectionsOpen:      tcpConnectionsOpen.With(inboundTCPLabels),
+			tcpConnectionDurationMs: tcpConnectionDurationMs.MustCurryWith(inboundTCPLabels).(*prom.HistogramVec),
+			sentBytes:               sentBytes.MustCurryWith(inboundTCPLabels),
+			receivedBytes:           receivedBytes.MustCurryWith(inboundTCPLabels),
 		},
 		outbound: &proxyMetricCollectors{
-			requestTotals:           proxyMetrics.requestTotals.MustCurryWith(outboundLabels),
-			responseTotals:          proxyMetrics.responseTotals.MustCurryWith(outboundLabels),
-			requestDurationMs:       proxyMetrics.requestDurationMs.MustCurryWith(outboundLabels).(*prom.HistogramVec),
-			responseLatencyMs:       proxyMetrics.responseLatencyMs.MustCurryWith(outboundLabels).(*prom.HistogramVec),
-			responseDurationMs:      proxyMetrics.responseDurationMs.MustCurryWith(outboundLabels).(*prom.HistogramVec),
-			tcpAcceptOpenTotal:      proxyMetrics.tcpAcceptOpenTotal.MustCurryWith(outboundLabels),
-			tcpAcceptCloseTotal:     proxyMetrics.tcpAcceptCloseTotal.MustCurryWith(outboundLabels),
-			tcpConnectOpenTotal:     proxyMetrics.tcpConnectOpenTotal.MustCurryWith(outboundLabels),
-			tcpConnectCloseTotal:    proxyMetrics.tcpConnectCloseTotal.MustCurryWith(outboundLabels),
-			tcpConnectionsOpen:      proxyMetrics.tcpConnectionsOpen.MustCurryWith(outboundLabels),
-			tcpConnectionDurationMs: proxyMetrics.tcpConnectionDurationMs.MustCurryWith(outboundLabels).(*prom.HistogramVec),
-			sentBytes:               proxyMetrics.sentBytes.MustCurryWith(outboundLabels),
-			receivedBytes:           proxyMetrics.receivedBytes.MustCurryWith(outboundLabels),
+			requestTotals:           requestTotals.MustCurryWith(outboundLabels),
+			responseTotals:          responseTotals.MustCurryWith(outboundLabels),
+			responseLatencyMs:       responseLatencyMs.MustCurryWith(outboundLabels).(*prom.HistogramVec),
+			tcpAcceptOpenTotal:      tcpAcceptOpenTotal.With(outboundLabels),
+			tcpAcceptCloseTotal:     tcpAcceptCloseTotal.MustCurryWith(outboundLabels),
+			tcpConnectOpenTotal:     tcpConnectOpenTotal.With(outboundLabels),
+			tcpConnectCloseTotal:    tcpConnectCloseTotal.MustCurryWith(outboundLabels),
+			tcpConnectionsOpen:      tcpConnectionsOpen.With(outboundLabels),
+			tcpConnectionDurationMs: tcpConnectionDurationMs.MustCurryWith(outboundLabels).(*prom.HistogramVec),
+			sentBytes:               sentBytes.MustCurryWith(outboundLabels),
+			receivedBytes:           receivedBytes.MustCurryWith(outboundLabels),
 		},
 	}
 
 	proxy.registerer.MustRegister(
-		proxyMetrics.requestTotals,
-		proxyMetrics.responseTotals,
-		proxyMetrics.requestDurationMs,
-		proxyMetrics.responseLatencyMs,
-		proxyMetrics.responseDurationMs,
-		proxyMetrics.tcpAcceptOpenTotal,
-		proxyMetrics.tcpAcceptCloseTotal,
-		proxyMetrics.tcpConnectOpenTotal,
-		proxyMetrics.tcpConnectCloseTotal,
-		proxyMetrics.tcpConnectionsOpen,
-		proxyMetrics.tcpConnectionDurationMs,
-		proxyMetrics.sentBytes,
-		proxyMetrics.receivedBytes,
+		requestTotals,
+		responseTotals,
+		responseLatencyMs,
+		tcpAcceptOpenTotal,
+		tcpAcceptCloseTotal,
+		tcpConnectOpenTotal,
+		tcpConnectCloseTotal,
+		tcpConnectionsOpen,
+		tcpConnectionDurationMs,
+		sentBytes,
+		receivedBytes,
 	)
 	return &proxy
 }
 
-func getK8sObjects(podList []*v1.Pod, replicaSets *k8s.ReplicaSetStore, maxPods int) ([]*v1.Pod, []string) {
-	allPods := make([]*v1.Pod, 0)
-	deploymentSet := make(map[string]struct{})
-	for _, pod := range podList {
-		if pod.Status.PodIP != "" && !strings.HasPrefix(pod.GetNamespace(), "kube-") {
-			allPods = append(allPods, pod)
-			deploymentName, err := replicaSets.GetDeploymentForPod(pod)
-			if err != nil {
-				log.Fatal(err.Error())
-			}
-			deploymentSet[deploymentName] = struct{}{}
+func getDeploymentByPod(lister *k8s.Lister, maxPods int) map[*v1.Pod]*v1beta2.Deployment {
+	deployList, err := lister.Deploy.List(labels.Everything())
+	if err != nil {
+		log.Fatal(err.Error())
+	}
 
-			if maxPods != 0 && len(allPods) == maxPods {
-				break
+	allPods := map[*v1.Pod]*v1beta2.Deployment{}
+
+	for _, deploy := range deployList {
+		pods, err := lister.GetPodsFor(deploy)
+		if err != nil {
+			log.Fatalf("GetPodsFor failed with %s", err)
+			return map[*v1.Pod]*v1beta2.Deployment{}
+		}
+
+		for _, pod := range pods {
+			if pod.Status.PodIP != "" && !strings.HasPrefix(pod.GetNamespace(), "kube-") {
+				allPods[pod] = deploy
+				if maxPods != 0 && len(allPods) == maxPods {
+					return allPods
+				}
 			}
 		}
 	}
 
-	deployments := make([]string, 0)
-	for deployment := range deploymentSet {
-		deployments = append(deployments, deployment)
-	}
-	return allPods, deployments
+	return allPods
 }
 
 func main() {
@@ -652,52 +610,46 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
-	pods, err := k8s.NewPodIndex(clientSet, podIndexFunc)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-
-	replicaSets, err := k8s.NewReplicaSetStore(clientSet)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-
-	err = pods.Run()
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-
-	err = replicaSets.Run()
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-
-	podList, err := pods.List()
+	lister := k8s.NewLister(clientSet)
+	err = lister.Sync()
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 
 	proxyCount := endPort - startPort + 1
-	simulatedPods, deployments := getK8sObjects(podList, replicaSets, proxyCount)
+	simulatedPods := getDeploymentByPod(lister, proxyCount)
 	podsFound := len(simulatedPods)
 	if podsFound < proxyCount {
 		log.Warnf("Found only %d pods to simulate %d proxies, creating %d fake pods.", podsFound, proxyCount, proxyCount-podsFound)
-		for i := 0; i < proxyCount-podsFound; i++ {
-			pod := simulatedPods[i%podsFound].DeepCopy()
-			name := fmt.Sprintf("%s-fake-%d", pod.GetName(), i)
-			pod.SetName(name)
-			simulatedPods = append(simulatedPods, pod)
+		needed := proxyCount - podsFound
+		for needed > 0 {
+			for pod, deploy := range simulatedPods {
+				fakePod := pod.DeepCopy()
+				fakePod.SetName(fmt.Sprintf("%s-fake", pod.GetName()))
+				simulatedPods[fakePod] = deploy
+
+				needed--
+				if needed == 0 {
+					break
+				}
+			}
 		}
 	}
 
 	stopCh := make(chan os.Signal)
 	signal.Notify(stopCh, os.Interrupt, os.Kill)
 
-	// simulate network topology of N * sqrt(N) request paths
-	maxDst := int(math.Sqrt(float64(len(deployments)))) + 1
+	deployments := []string{}
+	for _, deploy := range simulatedPods {
+		deployments = append(deployments, fmt.Sprintf("%s/%s", deploy.Namespace, deploy.Name))
+	}
 
-	for port := startPort; port <= endPort; port++ {
-		proxy := newSimulatedProxy(*simulatedPods[port-startPort], deployments, replicaSets, sleep, maxDst)
+	// simulate network topology of N * sqrt(N) request paths
+	maxDst := int(math.Sqrt(float64(len(simulatedPods)))) + 1
+
+	port := startPort
+	for pod, deploy := range simulatedPods {
+		proxy := newSimulatedProxy(pod, deploy, deployments, sleep, maxDst)
 
 		addr := fmt.Sprintf("0.0.0.0:%d", port)
 		server := &http.Server{
@@ -707,6 +659,7 @@ func main() {
 		log.Infof("serving scrapable metrics on %s", addr)
 		go server.ListenAndServe()
 		go proxy.generateProxyTraffic()
+		port++
 	}
 	<-stopCh
 }

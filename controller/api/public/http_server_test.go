@@ -181,7 +181,7 @@ func TestServer(t *testing.T) {
 		mockGrpcServer.TapStreamsToReturn = expectedTapResponses
 		mockGrpcServer.ErrorToReturn = nil
 
-		tapClient, err := client.Tap(context.TODO(), &pb.TapRequest{})
+		tapClient, err := client.TapByResource(context.TODO(), &pb.TapByResourceRequest{})
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}

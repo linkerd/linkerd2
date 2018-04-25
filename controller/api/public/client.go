@@ -77,7 +77,24 @@ func (c *grpcOverHttpClient) Tap(ctx context.Context, req *pb.TapRequest, _ ...g
 }
 
 func (c *grpcOverHttpClient) TapByResource(ctx context.Context, req *pb.TapByResourceRequest, _ ...grpc.CallOption) (pb.Api_TapByResourceClient, error) {
-	return nil, fmt.Errorf("Unimplemented")
+	url := c.endpointNameToPublicApiUrl("TapByResource")
+	httpRsp, err := c.post(ctx, url, req)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = checkIfResponseHasConduitError(httpRsp); err != nil {
+		httpRsp.Body.Close()
+		return nil, err
+	}
+
+	go func() {
+		<-ctx.Done()
+		log.Debug("Closing response body after context marked as done")
+		httpRsp.Body.Close()
+	}()
+
+	return &tapClient{ctx: ctx, reader: bufio.NewReader(httpRsp.Body)}, nil
 }
 
 func (c *grpcOverHttpClient) apiRequest(ctx context.Context, endpoint string, req proto.Message, protoResponse proto.Message) error {

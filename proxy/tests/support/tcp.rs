@@ -2,6 +2,7 @@ use support::*;
 
 use std::collections::VecDeque;
 use std::io;
+use std::net::TcpListener as StdTcpListener;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -14,6 +15,7 @@ type TcpConnSender = mpsc::UnboundedSender<(Option<Vec<u8>>, oneshot::Sender<io:
 pub fn client(addr: SocketAddr) -> TcpClient {
     let tx = run_client(addr);
     TcpClient {
+        addr,
         tx,
     }
 }
@@ -25,6 +27,7 @@ pub fn server() -> TcpServer {
 }
 
 pub struct TcpClient {
+    addr: SocketAddr,
     tx: TcpSender,
 }
 
@@ -45,6 +48,7 @@ pub struct TcpServer {
 }
 
 pub struct TcpConn {
+    addr: SocketAddr,
     tx: TcpConnSender,
 }
 
@@ -56,6 +60,7 @@ impl TcpClient {
             .wait()
             .unwrap();
         TcpConn {
+            addr: self.addr,
             tx,
         }
     }
@@ -97,7 +102,11 @@ impl TcpServer {
 
 impl TcpConn {
     pub fn read(&self) -> Vec<u8> {
-        self.try_read().expect("read")
+        self
+            .try_read()
+            .unwrap_or_else(|e| {
+                panic!("TcpConn(addr={}) read() error: {:?}", self.addr, e)
+            })
     }
 
     pub fn try_read(&self) -> io::Result<Vec<u8>> {
@@ -122,7 +131,8 @@ impl TcpConn {
 
 fn run_client(addr: SocketAddr) -> TcpSender {
     let (tx, rx) = mpsc::unbounded();
-    ::std::thread::Builder::new().name("support tcp client".into()).spawn(move || {
+    let thread_name = format!("support tcp client (addr={})", addr);
+    ::std::thread::Builder::new().name(thread_name).spawn(move || {
         let mut core = Core::new().unwrap();
         let handle = core.handle();
 
@@ -183,18 +193,23 @@ fn run_client(addr: SocketAddr) -> TcpSender {
 
 fn run_server(tcp: TcpServer) -> server::Listening {
     let (tx, rx) = shutdown_signal();
-    let (addr_tx, addr_rx) = oneshot::channel();
+    let (started_tx, started_rx) = oneshot::channel();
     let conn_count = Arc::new(AtomicUsize::from(0));
     let srv_conn_count = Arc::clone(&conn_count);
-    ::std::thread::Builder::new().name("support tcp server".into()).spawn(move || {
+    let any_port = SocketAddr::from(([127, 0, 0, 1], 0));
+    let std_listener = StdTcpListener::bind(&any_port).expect("bind");
+    let addr = std_listener.local_addr().expect("local_addr");
+    let thread_name = format!("support tcp server (addr={})", addr);
+    ::std::thread::Builder::new().name(thread_name).spawn(move || {
         let mut core = Core::new().unwrap();
         let reactor = core.handle();
 
-        let addr = ([127, 0, 0, 1], 0).into();
-        let bind = TcpListener::bind(&addr, &reactor).expect("bind");
+        let bind = TcpListener::from_listener(
+            std_listener,
+            &addr,
+            &reactor
+        ).expect("from_listener");
 
-        let local_addr = bind.local_addr().expect("local_addr");
-        let _ = addr_tx.send(local_addr);
 
         let mut accepts = tcp.accepts;
 
@@ -212,10 +227,12 @@ fn run_server(tcp: TcpServer) -> server::Listening {
             .map_err(|e| panic!("tcp accept error: {}", e));
 
         core.handle().spawn(listen);
+
+        let _ = started_tx.send(());
         core.run(rx).unwrap();
     }).unwrap();
 
-    let addr = addr_rx.wait().expect("addr");
+    started_rx.wait().expect("support tcp server started");
     server::Listening {
         addr,
         shutdown: tx,

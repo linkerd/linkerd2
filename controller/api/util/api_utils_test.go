@@ -1,28 +1,51 @@
 package util
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	k8sError "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-type resourceExp struct {
-	namespace string
-	args      []string
-	resource  pb.Resource
+func TestGRPCError(t *testing.T) {
+	t.Run("Maps errors to gRPC errors", func(t *testing.T) {
+		expectations := map[error]error{
+			nil: nil,
+			errors.New("normal erro"):                                                                   errors.New("rpc error: code = Unknown desc = normal erro"),
+			status.Error(codes.NotFound, "grpc not found"):                                              errors.New("rpc error: code = NotFound desc = grpc not found"),
+			k8sError.NewNotFound(schema.GroupResource{Group: "foo", Resource: "bar"}, "http not found"): errors.New("rpc error: code = NotFound desc = bar.foo \"http not found\" not found"),
+			k8sError.NewServiceUnavailable("unavailable"):                                               errors.New("rpc error: code = Unavailable desc = unavailable"),
+			k8sError.NewGone("gone"):                                                                    errors.New("rpc error: code = Internal desc = gone"),
+		}
+
+		for in, out := range expectations {
+			err := GRPCError(in)
+			if err != nil || out != nil {
+				if (err == nil && out != nil) ||
+					(err != nil && out == nil) ||
+					(err.Error() != out.Error()) {
+					t.Fatalf("Expected GRPCError to return [%s], got: [%s]", out, GRPCError(in))
+				}
+			}
+		}
+	})
 }
 
 func TestBuildStatSummaryRequest(t *testing.T) {
 	t.Run("Maps Kubernetes friendly names to canonical names", func(t *testing.T) {
 		expectations := map[string]string{
-			"deployments": k8s.KubernetesDeployments,
-			"deployment":  k8s.KubernetesDeployments,
-			"deploy":      k8s.KubernetesDeployments,
-			"pods":        k8s.KubernetesPods,
-			"pod":         k8s.KubernetesPods,
-			"po":          k8s.KubernetesPods,
+			"deployments": k8s.Deployments,
+			"deployment":  k8s.Deployments,
+			"deploy":      k8s.Deployments,
+			"pods":        k8s.Pods,
+			"pod":         k8s.Pods,
+			"po":          k8s.Pods,
 		}
 
 		for friendly, canonical := range expectations {
@@ -51,7 +74,7 @@ func TestBuildStatSummaryRequest(t *testing.T) {
 			statSummaryRequest, err := BuildStatSummaryRequest(
 				StatSummaryRequestParams{
 					TimeWindow:   timeWindow,
-					ResourceType: k8s.KubernetesDeployments,
+					ResourceType: k8s.Deployments,
 				},
 			)
 			if err != nil {
@@ -107,6 +130,12 @@ func TestBuildStatSummaryRequest(t *testing.T) {
 }
 
 func TestBuildResource(t *testing.T) {
+	type resourceExp struct {
+		namespace string
+		args      []string
+		resource  pb.Resource
+	}
+
 	t.Run("Correctly parses Kubernetes resources from the command line", func(t *testing.T) {
 		expectations := []resourceExp{
 			resourceExp{
@@ -114,7 +143,7 @@ func TestBuildResource(t *testing.T) {
 				args:      []string{"deployments"},
 				resource: pb.Resource{
 					Namespace: "test-ns",
-					Type:      k8s.KubernetesDeployments,
+					Type:      k8s.Deployments,
 					Name:      "",
 				},
 			},
@@ -123,7 +152,7 @@ func TestBuildResource(t *testing.T) {
 				args:      []string{"deploy/foo"},
 				resource: pb.Resource{
 					Namespace: "",
-					Type:      k8s.KubernetesDeployments,
+					Type:      k8s.Deployments,
 					Name:      "foo",
 				},
 			},
@@ -132,7 +161,7 @@ func TestBuildResource(t *testing.T) {
 				args:      []string{"po", "foo"},
 				resource: pb.Resource{
 					Namespace: "foo-ns",
-					Type:      k8s.KubernetesPods,
+					Type:      k8s.Pods,
 					Name:      "foo",
 				},
 			},
@@ -141,7 +170,7 @@ func TestBuildResource(t *testing.T) {
 				args:      []string{"ns", "foo-ns2"},
 				resource: pb.Resource{
 					Namespace: "",
-					Type:      k8s.KubernetesNamespaces,
+					Type:      k8s.Namespaces,
 					Name:      "foo-ns2",
 				},
 			},
@@ -150,7 +179,7 @@ func TestBuildResource(t *testing.T) {
 				args:      []string{"ns/foo-ns2"},
 				resource: pb.Resource{
 					Namespace: "",
-					Type:      k8s.KubernetesNamespaces,
+					Type:      k8s.Namespaces,
 					Name:      "foo-ns2",
 				},
 			},

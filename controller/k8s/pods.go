@@ -26,7 +26,7 @@ type podIndex struct {
 	stopCh    chan struct{}
 }
 
-func NewPodIndex(clientset *kubernetes.Clientset, index cache.IndexFunc) (PodIndex, error) {
+func NewPodIndex(clientset kubernetes.Interface, index cache.IndexFunc) (PodIndex, error) {
 	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{"index": index})
 
 	podListWatcher := cache.NewListWatchFromClient(

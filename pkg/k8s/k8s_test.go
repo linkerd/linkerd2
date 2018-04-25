@@ -82,10 +82,10 @@ func TestGetConfig(t *testing.T) {
 func TestCanonicalKubernetesNameFromFriendlyName(t *testing.T) {
 	t.Run("Returns canonical name for all known variants", func(t *testing.T) {
 		expectations := map[string]string{
-			"po":          KubernetesPods,
-			"pod":         KubernetesPods,
-			"deployment":  KubernetesDeployments,
-			"deployments": KubernetesDeployments,
+			"po":          Pods,
+			"pod":         Pods,
+			"deployment":  Deployments,
+			"deployments": Deployments,
 		}
 
 		for input, expectedName := range expectations {
