@@ -34,17 +34,6 @@ export default class PodsList extends React.Component {
     this.api.cancelCurrentRequests();
   }
 
-  filterPods(pods, metrics) {
-    let podsByName = _.keyBy(pods, 'name');
-    return _.compact(_.map(metrics, metric => {
-      let pod = podsByName[metric.name];
-      if (pod && !pod.controlPlane) {
-        metric.added = pod.added;
-        return metric;
-      }
-    }));
-  }
-
   loadFromServer() {
     if (this.state.pendingRequests) {
       return; // don't make more requests if the ones we sent haven't completed
@@ -52,17 +41,15 @@ export default class PodsList extends React.Component {
     this.setState({ pendingRequests: true });
 
     this.api.setCurrentRequests([
-      this.api.fetchMetrics(this.api.urlsForResource["pod"].url().rollup),
-      this.api.fetchPods()
+      this.api.fetchMetrics(this.api.urlsForResource["pod"].url().rollup)
     ]);
 
     Promise.all(this.api.getCurrentPromises())
-      .then(([rollup, pods]) => {
-        let meshPods = processRollupMetrics(rollup);
-        let combinedMetrics = this.filterPods(pods.pods, meshPods);
+      .then(([rollup]) => {
+        let processedMetrics = processRollupMetrics(rollup);
 
         this.setState({
-          metrics: combinedMetrics,
+          metrics: processedMetrics,
           loaded: true,
           pendingRequests: false,
           error: ''
