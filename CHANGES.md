@@ -1,3 +1,35 @@
+## v0.4.1
+
+Conduit 0.4.1 builds on the telemetry work from 0.4.0, providing rich,
+Kubernetes-aware observability and debugging.
+
+* Web UI
+  * **New** Automatically-configured Grafana dashboards for Services, Pods,
+    ReplicationControllers, and Conduit mesh health.
+  * **New** `conduit dashboard` Pod and ReplicationController views.
+* Command-line interface
+  * **Breaking change** `conduit tap` now operates on most Kubernetes resources.
+  * `conduit stat` and `conduit tap` now both support kubectl-style resource
+    strings (`deploy`, `deploy/web`, and `deploy web`), specifically:
+    * `namespaces`
+    * `deployments`
+    * `replicationcontrollers`
+    * `services`
+    * `pods`
+* Telemetry
+  * **New** Tap support for filtering by and exporting destination metadata. Now
+    you can sample requests from A to B, where A and B are any resource or group
+    of resources.
+  * **New** TCP-level stats, including connection counts and durations, and
+    throughput, wired through to Grafana dashboards.
+* Service Discovery
+  * The proxy now uses the [trust-dns] DNS resolver. This fixes a number of DNS
+    correctness issues.
+  * The Destination service could sometimes return incorrect, stale, labels for an
+    endpoint. This has been fixed!
+
+[trust-dns]: https://github.com/bluejekyll/trust-dns
+
 ## v0.4.0
 
 Conduit 0.4.0 overhauls Conduit's telemetry system and improves service discovery

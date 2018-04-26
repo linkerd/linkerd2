@@ -15,24 +15,8 @@ overly conservative.
 
 
 ##### Status: alpha
-## [0.4.0: Rich, Kubernetes-aware Grafana & Prometheus](https://github.com/runconduit/conduit/milestone/6)
-#### 2018-04-16
-
-### Visibility
-
-- Rich, Kubernetes-aware `conduit stat`:
-  - Works on deployments & namespaces.
-  - `--from` & `--to` flags filter stats by source & destination.
-- Proxy exposes Prometheus labeled with rich outbound stats.
-- Grafana dashboards for Kubernetes Deployments & Namespaces.
-
-### Reliability
-
-- The proxy properly routes egress traffic to arbitrary DNS names.
-
-
 ## [0.4.1: Rich, Kubernetes-aware debugging](https://github.com/runconduit/conduit/milestone/10)
-#### Late April 2018
+#### 2018-04-26
 
 ### Visibility
 
@@ -40,8 +24,7 @@ overly conservative.
   - Per-authority HTTP stats.
   - TCP-level stats
 - `conduit tap` works on many Kubernetes resources, too.
-- `conduit wtf`: what's the failure?
-
+- Grafana dashboards for Kubernetes Pods, Services, & Replication Controllers.
 
 ## [0.5: Stable, private communication](https://github.com/runconduit/conduit/milestone/7)
 #### Mid-May 2018
@@ -57,6 +40,10 @@ overly conservative.
 
 - Stable Service Discovery semantics.
 - Latency-aware load balancing.
+
+### Visibility
+
+- `conduit wtf`: what's the failure?
 
 
 ## [0.6: Externally accessible](https://github.com/runconduit/conduit/milestone/8)
