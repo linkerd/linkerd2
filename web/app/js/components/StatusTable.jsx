@@ -48,8 +48,9 @@ const columns = {
         let ownerInfo = row.name.split("/");
         return shouldLink && row.added ?
           <GrafanaLink
-            name={ownerInfo[0]}
-            namespace={ownerInfo[1]}
+            name={ownerInfo[1]}
+            namespace={ownerInfo[0]}
+            displayName={row.name}
             resource="deployment"
             conduitLink={ConduitLink} /> : row.name;
       }

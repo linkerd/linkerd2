@@ -32,6 +32,12 @@ const formatLongTitles = title => {
 const columnDefinitions = (sortable = true, resource, ConduitLink) => {
   return [
     {
+      title: "Namespace",
+      key: "namespace",
+      dataIndex: "namespace",
+      sorter: sortable ? (a, b) => (a.namespace || "").localeCompare(b.namespace) : false
+    },
+    {
       title: resource,
       key: "name",
       defaultSortOrder: 'ascend',
@@ -41,12 +47,6 @@ const columnDefinitions = (sortable = true, resource, ConduitLink) => {
         namespace={row.namespace}
         resource={resource}
         conduitLink={ConduitLink} /> : row.name
-    },
-    {
-      title: "Namespace",
-      key: "namespace",
-      dataIndex: "namespace",
-      sorter: sortable ? (a, b) => (a.namespace || "").localeCompare(b.namespace) : false
     },
     {
       title: formatLongTitles("Success Rate"),
