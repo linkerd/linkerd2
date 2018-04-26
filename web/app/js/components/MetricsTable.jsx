@@ -36,8 +36,11 @@ const columnDefinitions = (sortable = true, resource, ConduitLink) => {
       key: "name",
       defaultSortOrder: 'ascend',
       sorter: sortable ? (a, b) => (a.name || "").localeCompare(b.name) : false,
-      render: row => row.added ?
-        <GrafanaLink name={row.name} resource={resource} conduitLink={ConduitLink} /> : row.name
+      render: row => row.added ? <GrafanaLink
+        name={row.name}
+        namespace={row.namespace}
+        resource={resource}
+        conduitLink={ConduitLink} /> : row.name
     },
     {
       title: "Namespace",
