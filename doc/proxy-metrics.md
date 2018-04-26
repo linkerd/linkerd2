@@ -9,6 +9,8 @@ The Conduit proxy exposes metrics that describe the traffic flowing through the
 proxy.  The following metrics are available at `/metrics` on the proxy's metrics
 port (default: `:4191`) in the [Prometheus format][prom-format]:
 
+# Protocol-Level Metrics
+
 ### `request_total`
 
 A counter of the number of requests the proxy has received.  This is incremented
@@ -126,6 +128,60 @@ request_total{
   job="conduit-proxy"
 }
 ```
+
+# Transport-Level Metrics
+
+The following metrics are collected at the level of the underlying transport
+layer.
+
+### `tcp_open_total`
+
+A counter of the total number of opened transport connections.
+
+### `tcp_close_total`
+
+A counter of the total number of transport connections which have closed.
+
+### `tcp_open_connections`
+
+A gauge of the number of transport connections currently open.
+
+### `tcp_write_bytes_total`
+
+A counter of the total number of sent bytes. This is updated when the 
+connection closes.
+
+### `tcp_read_bytes_total`
+
+A counter of the total number of recieved bytes. This is updated when the 
+connection closes.
+
+### `tcp_connection_duration_ms`
+
+A histogram of the duration of the lifetime of a connection, in milliseconds. 
+This is updated when the connection closes.
+
+## Labels
+
+Each of these metrics has the following labels:
+
+* `direction`: `inbound` if the connection was established either from outside the
+                pod to the proxy, or from the proxy to the application,
+               `outbound` if the connection was established either from the
+                application to the proxy, or from the proxy to outside the pod.
+* `peer`: `src` if the connection was accepted by the proxy from the source,
+          `dst` if the connection was opened by the proxy to the destination.
+
+Note that the labels described above under the heading "Prometheus Collector labels"
+are also added to transport-level metrics, when applicable.
+
+### Connection Close Labels
+
+The following labels are added only to metrics which are updated when a connection closes
+(`tcp_close_total` and `tcp_connection_duration_ms`):
+
++ `classification`: `success` if the connection terminated cleanly, `failure` if the
+                    connection closed due to a connection failure.
 
 [prom-format]: https://prometheus.io/docs/instrumenting/exposition_formats/#format-version-0.0.4
 [pod-template-hash]: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#pod-template-hash-label
