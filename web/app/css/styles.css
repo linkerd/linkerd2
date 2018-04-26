@@ -241,11 +241,16 @@ a.button.primary:active {
     padding-right: 0;
   }
 
-  & tr > th.long-header div {
-    float: left;
+  & tr > th.long-header > span {
+    display: inline-block;
+    margin-right: 0;
 
-    &.ant-table-column-sorter {
-      padding-top: 12px;
+    & div {
+      float: left;
+
+      &.ant-table-column-sorter {
+        padding-top: 12px;
+      }
     }
   }
 
