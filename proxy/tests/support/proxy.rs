@@ -175,8 +175,9 @@ fn run(proxy: Proxy, mut env: config::TestEnv) -> Listening {
         rx = Box::new(rx.select(fut).then(|_| Ok(())));
     }
 
+    let tname = format!("support proxy (test={})", thread_name());
     ::std::thread::Builder::new()
-        .name("support proxy".into())
+        .name(tname)
         .spawn(move || {
             let _c = controller;
 
@@ -219,6 +220,23 @@ fn run(proxy: Proxy, mut env: config::TestEnv) -> Listening {
 
     let (control_addr, inbound_addr, outbound_addr, metrics_addr) =
         running_rx.wait().unwrap();
+
+    // printlns will show if the test fails...
+    println!(
+        "proxy running; control={}, inbound={}{}, outbound={}{}, metrics={}",
+        control_addr,
+        inbound_addr,
+        inbound
+            .as_ref()
+            .map(|i| format!(" (SO_ORIGINAL_DST={})", i.addr))
+            .unwrap_or_else(String::new),
+        outbound_addr,
+        outbound
+            .as_ref()
+            .map(|o| format!(" (SO_ORIGINAL_DST={})", o.addr))
+            .unwrap_or_else(String::new),
+        metrics_addr,
+    );
 
     Listening {
         control: control_addr,

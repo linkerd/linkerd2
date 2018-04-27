@@ -1,10 +1,12 @@
-use futures::{Future, Poll};
+use bytes::Buf;
+use futures::{Async, Future, Poll};
 use std::io;
 use std::sync::Arc;
 use std::time::Instant;
 use tokio_connect;
 use tokio_io::{AsyncRead, AsyncWrite};
 
+use connection::Peek;
 use ctx;
 use telemetry::event;
 
@@ -132,7 +134,7 @@ impl<T: AsyncRead + AsyncWrite> io::Read for Transport<T> {
         let bytes = self.sense_err(move |io| io.read(buf))?;
 
         if let Some(inner) = self.1.as_mut() {
-                inner.rx_bytes += bytes as u64;
+            inner.rx_bytes += bytes as u64;
         }
 
         Ok(bytes)
@@ -148,7 +150,7 @@ impl<T: AsyncRead + AsyncWrite> io::Write for Transport<T> {
         let bytes = self.sense_err(move |io| io.write(buf))?;
 
         if let Some(inner) = self.1.as_mut() {
-                inner.tx_bytes += bytes as u64;
+            inner.tx_bytes += bytes as u64;
         }
 
         Ok(bytes)
@@ -164,6 +166,22 @@ impl<T: AsyncRead + AsyncWrite> AsyncRead for Transport<T> {
 impl<T: AsyncRead + AsyncWrite> AsyncWrite for Transport<T> {
     fn shutdown(&mut self) -> Poll<(), io::Error> {
         self.sense_err(|io| io.shutdown())
+    }
+
+    fn write_buf<B: Buf>(&mut self, buf: &mut B) -> Poll<usize, io::Error> {
+        let bytes = try_ready!(self.sense_err(|io| io.write_buf(buf)));
+
+        if let Some(inner) = self.1.as_mut() {
+            inner.tx_bytes += bytes as u64;
+        }
+
+        Ok(Async::Ready(bytes))
+    }
+}
+
+impl<T: AsyncRead + AsyncWrite + Peek> Peek for Transport<T> {
+    fn peek(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.sense_err(|io| io.peek(buf))
     }
 }
 

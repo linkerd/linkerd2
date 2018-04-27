@@ -154,6 +154,17 @@ pub fn s(bytes: &[u8]) -> &str {
     ::std::str::from_utf8(bytes.as_ref()).unwrap()
 }
 
+/// The Rust test runner creates a thread per unit test, naming it after
+/// the function name. If still in that thread, this can be useful to allow
+/// associating test logs with a specific test, since tests *can* be run in
+/// parallel.
+pub fn thread_name() -> String {
+    ::std::thread::current()
+        .name()
+        .unwrap_or("<no-name>")
+        .to_owned()
+}
+
 #[test]
 #[should_panic]
 fn assert_eventually() {

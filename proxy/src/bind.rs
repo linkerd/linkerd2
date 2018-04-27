@@ -13,7 +13,6 @@ use tower;
 use tower_h2;
 use tower_reconnect::Reconnect;
 
-use conduit_proxy_controller_grpc;
 use conduit_proxy_router::Reuse;
 
 use control;
@@ -185,7 +184,6 @@ where
         let client_ctx = ctx::transport::Client::new(
             &self.ctx,
             &addr,
-            conduit_proxy_controller_grpc::common::Protocol::Http,
             ep.dst_labels().cloned(),
         );
 

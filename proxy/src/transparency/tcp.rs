@@ -8,7 +8,6 @@ use tokio_connect::Connect;
 use tokio_core::reactor::Handle;
 use tokio_io::{AsyncRead, AsyncWrite};
 
-use conduit_proxy_controller_grpc::common;
 use ctx::transport::{Client as ClientCtx, Server as ServerCtx};
 use telemetry::Sensors;
 use timeout::Timeout;
@@ -60,7 +59,6 @@ impl Proxy {
         let client_ctx = ClientCtx::new(
             &srv_ctx.proxy,
             &orig_dst,
-            common::Protocol::Tcp,
             None,
         );
         let c = Timeout::new(
@@ -74,7 +72,7 @@ impl Proxy {
             .map_err(|e| debug!("tcp connect error: {:?}", e))
             .and_then(move |tcp_out| {
                 Duplex::new(tcp_in, tcp_out)
-                    .map_err(|e| debug!("tcp error: {}", e))
+                    .map_err(|e| error!("tcp duplex error: {}", e))
             });
         Box::new(fut)
     }
