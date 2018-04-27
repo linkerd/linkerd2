@@ -37,6 +37,7 @@ var (
 	proxyMetricsPort    uint
 	proxyAPIPort        uint
 	proxyLogLevel       string
+	proxyBindTimeout    uint
 )
 
 var injectCmd = &cobra.Command{
@@ -161,6 +162,7 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride, v
 		},
 		Env: []v1.EnvVar{
 			v1.EnvVar{Name: "CONDUIT_PROXY_LOG", Value: proxyLogLevel},
+			v1.EnvVar{Name: "CONDUIT_PROXY_BIND_TIMEOUT", Value: strconv.Itoa(int(proxyBindTimeout))},
 			v1.EnvVar{
 				Name:  "CONDUIT_PROXY_CONTROL_URL",
 				Value: fmt.Sprintf("tcp://%s:%d", controlPlaneDNS, proxyAPIPort),
@@ -326,6 +328,7 @@ func addProxyConfigFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVar(&imagePullPolicy, "image-pull-policy", "IfNotPresent", "Docker image pull policy")
 	cmd.PersistentFlags().Int64Var(&proxyUID, "proxy-uid", 2102, "Run the proxy under this user ID")
 	cmd.PersistentFlags().StringVar(&proxyLogLevel, "proxy-log-level", "warn,conduit_proxy=info", "Log level for the proxy")
+	cmd.PersistentFlags().UintVar(&proxyBindTimeout, "proxy-bind-timeout", 10000, "Timeout the proxy will use in ms")
 	cmd.PersistentFlags().UintVar(&proxyAPIPort, "api-port", 8086, "Port where the Conduit controller is running")
 	cmd.PersistentFlags().UintVar(&proxyControlPort, "control-port", 4190, "Proxy port to use for control")
 	cmd.PersistentFlags().UintVar(&proxyMetricsPort, "metrics-port", 4191, "Proxy port to serve metrics on")
