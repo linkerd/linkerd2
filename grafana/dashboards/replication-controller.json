@@ -16,13 +16,13 @@
   "gnetId": null,
   "graphTooltip": 1,
   "id": null,
-  "iteration": 1523660761961,
+  "iteration": 1524963428641,
   "links": [],
   "panels": [
     {
       "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://conduit.io/favicon.png\" style=\"height:32px;\"/>&nbsp;\n  <span style=\"font-size: 32px\">rc/$replication_controller</span>\n</div>",
       "gridPos": {
-        "h": 2,
+        "h": 2.4,
         "w": 24,
         "x": 0,
         "y": 0
@@ -57,7 +57,7 @@
         "h": 4,
         "w": 8,
         "x": 0,
-        "y": 2
+        "y": 2.4
       },
       "id": 5,
       "interval": null,
@@ -141,7 +141,7 @@
         "h": 4,
         "w": 8,
         "x": 8,
-        "y": 2
+        "y": 2.4
       },
       "id": 4,
       "interval": null,
@@ -225,7 +225,7 @@
         "h": 4,
         "w": 4,
         "x": 16,
-        "y": 2
+        "y": 2.4
       },
       "id": 11,
       "interval": null,
@@ -264,7 +264,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "count(count(request_total{dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}) by (namespace, replication_controller))",
+          "expr": "count(count(request_total{dst_namespace=\"$namespace\", replication_controller!=\"\", dst_replication_controller!=\"\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}) by (namespace, replication_controller))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "",
@@ -307,7 +307,7 @@
         "h": 4,
         "w": 4,
         "x": 20,
-        "y": 2
+        "y": 2.4
       },
       "id": 15,
       "interval": null,
@@ -370,10 +370,10 @@
     {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>INBOUND TRAFFIC</span>\n</div>",
       "gridPos": {
-        "h": 2,
+        "h": 2.2,
         "w": 24,
         "x": 0,
-        "y": 6
+        "y": 6.4
       },
       "id": 17,
       "links": [],
@@ -393,7 +393,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 8
+        "y": 8.6
       },
       "id": 67,
       "legend": {
@@ -461,7 +461,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -474,7 +478,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 8
+        "y": 8.6
       },
       "id": 2,
       "legend": {
@@ -542,7 +546,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -555,7 +563,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 8
+        "y": 8.6
       },
       "id": 68,
       "legend": {
@@ -638,15 +646,19 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>INBOUND REPLICATION CONTROLLERS</span>\n</div>",
       "gridPos": {
-        "h": 2,
+        "h": 2.2,
         "w": 24,
         "x": 0,
-        "y": 15
+        "y": 15.6
       },
       "id": 76,
       "links": [],
@@ -661,7 +673,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 17
+        "y": 17.8
       },
       "id": 59,
       "panels": [
@@ -671,7 +683,7 @@
             "h": 2,
             "w": 24,
             "x": 0,
-            "y": 18
+            "y": 18.6
           },
           "id": 39,
           "links": [],
@@ -691,7 +703,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 20
+            "y": 20.6
           },
           "id": 36,
           "legend": {
@@ -717,7 +729,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(response_total{classification=\"success\", replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}[20s])) by (replication_controller, pod) / sum(irate(response_total{replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}[20s])) by (replication_controller, pod)",
+              "expr": "sum(irate(response_total{classification=\"success\", replication_controller!=\"\", replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}[20s])) by (replication_controller, pod) / sum(irate(response_total{replication_controller!=\"\", replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}[20s])) by (replication_controller, pod)",
               "format": "time_series",
               "instant": false,
               "intervalFactor": 1,
@@ -760,7 +772,11 @@
               "min": null,
               "show": true
             }
-          ]
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
         },
         {
           "aliasColors": {},
@@ -773,7 +789,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 20
+            "y": 20.6
           },
           "id": 22,
           "legend": {
@@ -799,7 +815,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(request_total{replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}[20s])) by (replication_controller, pod)",
+              "expr": "sum(irate(request_total{replication_controller!=\"\", replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}[20s])) by (replication_controller, pod)",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "po/{{pod}}",
@@ -841,7 +857,11 @@
               "min": null,
               "show": true
             }
-          ]
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
         },
         {
           "aliasColors": {},
@@ -854,7 +874,7 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 20
+            "y": 20.6
           },
           "id": 29,
           "legend": {
@@ -880,21 +900,21 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}[20s])) by (le, replication_controller))",
+              "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{replication_controller!=\"\", replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}[20s])) by (le, replication_controller))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "P50 rc/{{replication_controller}}",
               "refId": "A"
             },
             {
-              "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}[20s])) by (le, replication_controller))",
+              "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{replication_controller!=\"\", replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}[20s])) by (le, replication_controller))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "P95 rc/{{replication_controller}}",
               "refId": "B"
             },
             {
-              "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}[20s])) by (le, replication_controller))",
+              "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{replication_controller!=\"\", replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}[20s])) by (le, replication_controller))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "P99 rc/{{replication_controller}}",
@@ -935,7 +955,11 @@
               "min": null,
               "show": true
             }
-          ]
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
         }
       ],
       "repeat": "inbound",
@@ -948,7 +972,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 18
+        "y": 18.8
       },
       "id": 34,
       "panels": [],
@@ -959,10 +983,10 @@
     {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>OUTBOUND TRAFFIC</span>\n</div>",
       "gridPos": {
-        "h": 2,
+        "h": 2.2,
         "w": 24,
         "x": 0,
-        "y": 19
+        "y": 19.8
       },
       "id": 32,
       "links": [],
@@ -982,7 +1006,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 21
+        "y": 22
       },
       "id": 77,
       "legend": {
@@ -1050,7 +1074,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -1063,7 +1091,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 21
+        "y": 22
       },
       "id": 78,
       "legend": {
@@ -1130,7 +1158,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -1143,7 +1175,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 21
+        "y": 22
       },
       "id": 79,
       "legend": {
@@ -1210,15 +1242,19 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>OUTBOUND REPLICATION CONTROLLERS</span>\n</div>",
       "gridPos": {
-        "h": 2,
+        "h": 2.2,
         "w": 24,
         "x": 0,
-        "y": 28
+        "y": 29
       },
       "id": 80,
       "links": [],
@@ -1233,7 +1269,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 30
+        "y": 31.2
       },
       "id": 27,
       "panels": [
@@ -1243,7 +1279,7 @@
             "h": 2,
             "w": 24,
             "x": 0,
-            "y": 31
+            "y": 32
           },
           "id": 40,
           "links": [],
@@ -1263,7 +1299,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 33
+            "y": 34
           },
           "id": 28,
           "legend": {
@@ -1331,7 +1367,11 @@
               "min": null,
               "show": true
             }
-          ]
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
         },
         {
           "aliasColors": {},
@@ -1344,7 +1384,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 33
+            "y": 34
           },
           "id": 35,
           "legend": {
@@ -1411,7 +1451,11 @@
               "min": null,
               "show": true
             }
-          ]
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
         },
         {
           "aliasColors": {},
@@ -1424,7 +1468,7 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 33
+            "y": 34
           },
           "id": 41,
           "legend": {
@@ -1505,7 +1549,11 @@
               "min": null,
               "show": true
             }
-          ]
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
         }
       ],
       "repeat": "outbound",
@@ -1529,7 +1577,7 @@
         "multi": false,
         "name": "namespace",
         "options": [],
-        "query": "label_values(request_total{conduit_io_control_plane_component=\"\"}, namespace)",
+        "query": "label_values(request_total{conduit_io_control_plane_component=\"\", replication_controller!=\"\"}, namespace)",
         "refresh": 2,
         "regex": "",
         "sort": 1,
@@ -1569,7 +1617,7 @@
         "multi": false,
         "name": "inbound",
         "options": [],
-        "query": "label_values(request_total{dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\"}, replication_controller)",
+        "query": "label_values(request_total{dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", conduit_io_control_plane_component=\"\"}, replication_controller)",
         "refresh": 2,
         "regex": "",
         "sort": 1,
@@ -1589,7 +1637,7 @@
         "multi": false,
         "name": "outbound",
         "options": [],
-        "query": "label_values(request_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\"}, dst_replication_controller)",
+        "query": "label_values(request_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", conduit_io_control_plane_component=\"\"}, dst_replication_controller)",
         "refresh": 2,
         "regex": "",
         "sort": 1,
