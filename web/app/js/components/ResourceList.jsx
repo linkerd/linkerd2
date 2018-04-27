@@ -9,7 +9,7 @@ import React from 'react';
 import './../../css/list.css';
 import 'whatwg-fetch';
 
-export default class PodOwnerList extends React.Component {
+export default class ResourceList extends React.Component {
   constructor(props) {
     super(props);
     this.api = this.props.api;

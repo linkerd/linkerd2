@@ -1,7 +1,7 @@
 import { ApiHelpers } from './components/util/ApiHelpers.jsx';
 import { Layout } from 'antd';
 import NoMatch from './components/NoMatch.jsx';
-import PodOwnerList from './components/PodOwnerList.jsx';
+import ResourceList from './components/ResourceList.jsx';
 import PodsList from './components/PodsList.jsx';
 import React from 'react';
 import ReactDOM from 'react-dom';
@@ -46,8 +46,8 @@ let applicationHtml = hideSidebar => (
             <Switch>
               <Redirect exact from={`${pathPrefix}/`} to={`${pathPrefix}/servicemesh`} />
               <Route path={`${pathPrefix}/servicemesh`} render={() => <ServiceMesh api={api} releaseVersion={appData.releaseVersion} controllerNamespace={appData.controllerNamespace} />} />
-              <Route path={`${pathPrefix}/deployments`} render={() => <PodOwnerList resource="deployment" api={api} controllerNamespace={appData.controllerNamespace} />} />
-              <Route path={`${pathPrefix}/replicationcontrollers`} render={() => <PodOwnerList resource="replication_controller" api={api} controllerNamespace={appData.controllerNamespace} />} />
+              <Route path={`${pathPrefix}/deployments`} render={() => <ResourceList resource="deployment" api={api} controllerNamespace={appData.controllerNamespace} />} />
+              <Route path={`${pathPrefix}/replicationcontrollers`} render={() => <ResourceList resource="replication_controller" api={api} controllerNamespace={appData.controllerNamespace} />} />
               <Route path={`${pathPrefix}/pods`} render={() => <PodsList api={api} />} />
               <Route component={NoMatch} />
             </Switch>
