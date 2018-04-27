@@ -43,7 +43,7 @@ pub const BOUNDS: &Bounds = &Bounds(&[
 
 /// A duration in milliseconds.
 #[derive(Debug, Default, Clone)]
-pub struct Ms(pub Duration);
+pub struct Ms(Duration);
 
 // /// A duration in microseconds.
 // #[derive(Debug, Default, Clone)]
@@ -53,6 +53,12 @@ impl Into<u64> for Ms {
     fn into(self) -> u64 {
         self.0.as_secs().saturating_mul(1_000)
             .saturating_add(u64::from(self.0.subsec_nanos()) / 1_000_000)
+    }
+}
+
+impl From<Duration> for Ms {
+    fn from(d: Duration) -> Self {
+        Ms(d)
     }
 }
 
