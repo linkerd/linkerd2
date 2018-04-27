@@ -96,19 +96,6 @@ impl<'a, V: Into<u64>> IntoIterator for &'a Histogram<V> {
     }
 }
 
-// ===== impl Bounds =====
-
-impl Bounds {
-    pub fn new(buckets: &'static [Bucket]) -> Self {
-        let mut prior = &Bucket::Le(0);
-        for bound in buckets {
-            assert!(prior < bound);
-            prior = bound;
-        }
-        Bounds(buckets)
-    }
-}
-
 // ===== impl Bucket =====
 
 impl fmt::Display for Bucket {
