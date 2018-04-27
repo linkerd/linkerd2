@@ -94,7 +94,6 @@ mod tests {
     use conduit_proxy_router::Recognize;
 
     use super::Inbound;
-    use conduit_proxy_controller_grpc::common::Protocol;
     use bind::{self, Bind, Host};
     use ctx;
 
@@ -114,7 +113,7 @@ mod tests {
 
             let inbound = new_inbound(None, &ctx);
 
-            let srv_ctx = ctx::transport::Server::new(&ctx, &local, &remote, &Some(orig_dst), Protocol::Http);
+            let srv_ctx = ctx::transport::Server::new(&ctx, &local, &remote, &Some(orig_dst));
 
             let rec = srv_ctx.orig_dst_if_not_local().map(|addr|
                 bind::Protocol::Http1(Host::NoAuthority).into_key(addr)
@@ -143,7 +142,6 @@ mod tests {
                     &local,
                     &remote,
                     &None,
-                    Protocol::Http,
                 ));
 
             inbound.recognize(&req) == default.map(|addr|
@@ -179,7 +177,6 @@ mod tests {
                     &local,
                     &remote,
                     &Some(local),
-                    Protocol::Http,
                 ));
 
             inbound.recognize(&req) == default.map(|addr|

@@ -59,6 +59,7 @@ impl TcpClient {
         let tx = rx.map_err(|_| panic!("tcp connect dropped"))
             .wait()
             .unwrap();
+        println!("tcp client (addr={}): connected", self.addr);
         TcpConn {
             addr: self.addr,
             tx,
@@ -110,6 +111,7 @@ impl TcpConn {
     }
 
     pub fn try_read(&self) -> io::Result<Vec<u8>> {
+        println!("tcp client (addr={}): read", self.addr);
         let (tx, rx) = oneshot::channel();
         let _ = self.tx.unbounded_send((None, tx));
         rx.map_err(|_| panic!("tcp read dropped"))
@@ -119,6 +121,7 @@ impl TcpConn {
     }
 
     pub fn write<T: Into<Vec<u8>>>(&self, buf: T) {
+        println!("tcp client (addr={}): write", self.addr);
         let (tx, rx) = oneshot::channel();
         let _ = self.tx.unbounded_send((Some(buf.into()), tx));
         rx.map_err(|_| panic!("tcp write dropped"))
@@ -131,8 +134,8 @@ impl TcpConn {
 
 fn run_client(addr: SocketAddr) -> TcpSender {
     let (tx, rx) = mpsc::unbounded();
-    let thread_name = format!("support tcp client (addr={})", addr);
-    ::std::thread::Builder::new().name(thread_name).spawn(move || {
+    let tname = format!("support tcp client (addr={})", addr);
+    ::std::thread::Builder::new().name(tname).spawn(move || {
         let mut core = Core::new().unwrap();
         let handle = core.handle();
 
@@ -188,6 +191,8 @@ fn run_client(addr: SocketAddr) -> TcpSender {
         }).map_err(|e| println!("client error: {:?}", e));
         core.run(work).unwrap();
     }).unwrap();
+
+    println!("tcp client (addr={}) thread running", addr);
     tx
 }
 
@@ -199,8 +204,8 @@ fn run_server(tcp: TcpServer) -> server::Listening {
     let any_port = SocketAddr::from(([127, 0, 0, 1], 0));
     let std_listener = StdTcpListener::bind(&any_port).expect("bind");
     let addr = std_listener.local_addr().expect("local_addr");
-    let thread_name = format!("support tcp server (addr={})", addr);
-    ::std::thread::Builder::new().name(thread_name).spawn(move || {
+    let tname = format!("support tcp server (addr={})", addr);
+    ::std::thread::Builder::new().name(tname).spawn(move || {
         let mut core = Core::new().unwrap();
         let reactor = core.handle();
 
@@ -233,6 +238,10 @@ fn run_server(tcp: TcpServer) -> server::Listening {
     }).unwrap();
 
     started_rx.wait().expect("support tcp server started");
+
+    // printlns will show if the test fails...
+    println!("tcp server (addr={}): running", addr);
+
     server::Listening {
         addr,
         shutdown: tx,

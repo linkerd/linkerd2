@@ -36,6 +36,17 @@ pub enum Connection {
     Plain(PlaintextSocket),
 }
 
+/// A trait describing that a type can peek (such as MSG_PEEK).
+pub trait Peek {
+    fn peek(&mut self, buf: &mut [u8]) -> io::Result<usize>;
+}
+
+/// A future of when some `Peek` fulfills with some bytes.
+#[derive(Debug)]
+pub struct PeekFuture<T, B> {
+    inner: Option<(T, B)>,
+}
+
 // ===== impl BoundPort =====
 
 impl BoundPort {
@@ -103,12 +114,6 @@ impl Connection {
 
     pub fn local_addr(&self) -> Result<SocketAddr, std::io::Error> {
         self.socket().local_addr()
-    }
-
-    pub fn peek_future<T: AsMut<[u8]>>(self, buf: T) -> Peek<T> {
-        Peek {
-            inner: Some((self, buf))
-        }
     }
 
     // This must never be made public so that in the future `Connection` can
@@ -190,23 +195,37 @@ impl AsyncWrite for Connection {
     }
 }
 
-// impl Peek
+impl Peek for Connection {
+    fn peek(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        use self::Connection::*;
 
-pub struct Peek<T> {
-    inner: Option<(Connection, T)>,
+        match *self {
+            Plain(ref mut t) => t.peek(buf),
+        }
+    }
 }
 
-impl<T: AsMut<[u8]>> Future for Peek<T> {
-    type Item = (Connection, T, usize);
+// impl PeekFuture
+
+impl<T: Peek, B: AsMut<[u8]>> PeekFuture<T, B> {
+    pub fn new(io: T, buf: B) -> Self {
+        PeekFuture {
+            inner: Some((io, buf)),
+        }
+    }
+}
+
+impl<T: Peek, B: AsMut<[u8]>> Future for PeekFuture<T, B> {
+    type Item = (T, B, usize);
     type Error = std::io::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        let (conn, mut buf) = self.inner.take().expect("polled after completed");
-        match conn.socket().peek(buf.as_mut()) {
-            Ok(n) => Ok(Async::Ready((conn, buf, n))),
+        let (mut io, mut buf) = self.inner.take().expect("polled after completed");
+        match io.peek(buf.as_mut()) {
+            Ok(n) => Ok(Async::Ready((io, buf, n))),
             Err(e) => match e.kind() {
                 std::io::ErrorKind::WouldBlock => {
-                    self.inner = Some((conn, buf));
+                    self.inner = Some((io, buf));
                     Ok(Async::NotReady)
                 },
                 _ => Err(e)
