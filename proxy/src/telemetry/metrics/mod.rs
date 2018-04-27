@@ -49,18 +49,19 @@ use telemetry::event::Event;
 
 mod counter;
 mod gauge;
+mod histogram;
 mod labels;
 mod latency;
 
 use self::counter::Counter;
 use self::gauge::Gauge;
+use self::histogram::Histogram;
 use self::labels::{
     RequestLabels,
     ResponseLabels,
     TransportLabels,
     TransportCloseLabels
 };
-use self::latency::{BUCKET_BOUNDS, Histogram};
 pub use self::labels::DstLabels;
 
 #[derive(Debug, Clone)]
@@ -68,7 +69,7 @@ struct Metrics {
     request_total: Metric<Counter, Arc<RequestLabels>>,
 
     response_total: Metric<Counter, Arc<ResponseLabels>>,
-    response_latency: Metric<Histogram, Arc<ResponseLabels>>,
+    response_latency: Metric<Histogram<latency::Ms>, Arc<ResponseLabels>>,
 
     tcp: TcpMetrics,
 
@@ -80,7 +81,7 @@ struct TcpMetrics {
     open_total: Metric<Counter, Arc<TransportLabels>>,
     close_total: Metric<Counter, Arc<TransportCloseLabels>>,
 
-    connection_duration: Metric<Histogram, Arc<TransportCloseLabels>>,
+    connection_duration: Metric<Histogram<latency::Ms>, Arc<TransportCloseLabels>>,
     open_connections: Metric<Gauge, Arc<TransportLabels>>,
 
     write_bytes_total: Metric<Counter, Arc<TransportLabels>>,
@@ -141,7 +142,7 @@ impl Metrics {
             "A counter of the number of responses the proxy has received.",
         );
 
-        let response_latency = Metric::<Histogram, Arc<ResponseLabels>>::new(
+        let response_latency = Metric::<Histogram<latency::Ms>, Arc<ResponseLabels>>::new(
             "response_latency_ms",
             "A histogram of the total latency of a response. This is measured \
             from when the request headers are received to when the response \
@@ -167,7 +168,7 @@ impl Metrics {
 
     fn response_latency(&mut self,
                         labels: &Arc<ResponseLabels>)
-                        -> &mut Histogram {
+                        -> &mut Histogram<latency::Ms> {
         self.response_latency.values
             .entry(labels.clone())
             .or_insert_with(Histogram::default)
@@ -212,7 +213,7 @@ impl TcpMetrics {
             "A counter of the total number of transport connections.",
         );
 
-        let connection_duration = Metric::<Histogram, Arc<TransportCloseLabels>>::new(
+        let connection_duration = Metric::<Histogram<latency::Ms>, Arc<TransportCloseLabels>>::new(
             "tcp_connection_duration_ms",
             "A histogram of the duration of the lifetime of connections, in milliseconds",
         );
@@ -254,7 +255,7 @@ impl TcpMetrics {
             .or_insert_with(Counter::default)
     }
 
-    fn connection_duration(&mut self, labels: &Arc<TransportCloseLabels>) -> &mut Histogram {
+    fn connection_duration(&mut self, labels: &Arc<TransportCloseLabels>) -> &mut Histogram<latency::Ms> {
         self.connection_duration.values
             .entry(labels.clone())
             .or_insert_with(Histogram::default)
@@ -354,9 +355,10 @@ where
     }
 }
 
-impl<L> fmt::Display for Metric<Histogram, L> where
+impl<L, V> fmt::Display for Metric<Histogram<V>, L> where
     L: fmt::Display,
     L: Hash + Eq,
+    V: Into<u64>,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f,
@@ -366,19 +368,13 @@ impl<L> fmt::Display for Metric<Histogram, L> where
         )?;
 
         for (labels, histogram) in &self.values {
-            // Look up the bucket numbers against the BUCKET_BOUNDS array
-            // to turn them into upper bounds.
-            let bounds_and_counts = histogram.into_iter()
-                .enumerate()
-                .map(|(num, count)| (BUCKET_BOUNDS[num], count));
-
-            // Since Prometheus expects each bucket's value to be the sum of
-            // the number of values in this bucket and all lower buckets,
-            // track the total count here.
-            let mut total_count = 0;
-            for (le, count) in bounds_and_counts {
+            // Since Prometheus expects each bucket's value to be the sum of the number of
+            // values in this bucket and all lower buckets, track the total count here.
+            let mut total_count = 0u64;
+            for (le, count) in histogram.into_iter() {
                 // Add this bucket's count to the total count.
-                total_count += count;
+                let c: u64 = (*count).into();
+                total_count += c;
                 write!(f, "{name}_bucket{{{labels},le=\"{le}\"}} {count}\n",
                     name = self.name,
                     labels = labels,
@@ -395,7 +391,7 @@ impl<L> fmt::Display for Metric<Histogram, L> where
                 name = self.name,
                 labels = labels,
                 count = total_count,
-                sum = histogram.sum_in_ms(),
+                sum = histogram.sum(),
             )?;
         }
 
@@ -451,7 +447,7 @@ impl Aggregate {
                 ));
                 self.update(|metrics| {
                     metrics.response_total(&labels).incr();
-                    *metrics.response_latency(&labels) += end.since_request_open;
+                    metrics.response_latency(&labels).add(latency::Ms(end.since_request_open));
                 });
             },
 
@@ -460,7 +456,7 @@ impl Aggregate {
                 let labels = Arc::new(ResponseLabels::fail(res));
                 self.update(|metrics| {
                     metrics.response_total(&labels).incr();
-                    *metrics.response_latency(&labels) += fail.since_request_open;
+                    metrics.response_latency(&labels).add(latency::Ms(fail.since_request_open));
                 });
             },
 
@@ -479,7 +475,8 @@ impl Aggregate {
                     *metrics.tcp().write_bytes_total(&labels) += close.tx_bytes as u64;
                     *metrics.tcp().read_bytes_total(&labels) += close.rx_bytes as u64;
 
-                    *metrics.tcp().connection_duration(&close_labels) += close.duration;
+                    metrics.tcp().connection_duration(&close_labels)
+                        .add(latency::Ms(close.duration));
                     metrics.tcp().close_total(&close_labels).incr();
 
                     let metrics = metrics.tcp().open_connections.values.get_mut(&labels);
