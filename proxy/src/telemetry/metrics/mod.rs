@@ -67,10 +67,10 @@ pub use self::record::Record;
 
 #[derive(Debug, Clone)]
 struct Metrics {
-    request_total: Metric<Counter, Arc<RequestLabels>>,
+    request_total: Metric<Counter, RequestLabels>,
 
-    response_total: Metric<Counter, Arc<ResponseLabels>>,
-    response_latency: Metric<Histogram<latency::Ms>, Arc<ResponseLabels>>,
+    response_total: Metric<Counter, ResponseLabels>,
+    response_latency: Metric<Histogram<latency::Ms>,  ResponseLabels>,
 
     tcp: TcpMetrics,
 
@@ -127,17 +127,17 @@ impl Metrics {
             )
             .as_secs();
 
-        let request_total = Metric::<Counter, Arc<RequestLabels>>::new(
+        let request_total = Metric::<Counter, RequestLabels>::new(
             "request_total",
             "A counter of the number of requests the proxy has received.",
         );
 
-        let response_total = Metric::<Counter, Arc<ResponseLabels>>::new(
+        let response_total = Metric::<Counter, ResponseLabels>::new(
             "response_total",
             "A counter of the number of responses the proxy has received.",
         );
 
-        let response_latency = Metric::<Histogram<latency::Ms>, Arc<ResponseLabels>>::new(
+        let response_latency = Metric::<Histogram<latency::Ms>, ResponseLabels>::new(
             "response_latency_ms",
             "A histogram of the total latency of a response. This is measured \
             from when the request headers are received to when the response \
@@ -154,26 +154,26 @@ impl Metrics {
     }
 
     fn request_total(&mut self,
-                     labels: &Arc<RequestLabels>)
+                     labels: RequestLabels)
                      -> &mut Counter {
         self.request_total.values
-            .entry(labels.clone())
+            .entry(labels)
             .or_insert_with(Counter::default)
     }
 
     fn response_latency(&mut self,
-                        labels: &Arc<ResponseLabels>)
+                        labels: ResponseLabels)
                         -> &mut Histogram<latency::Ms> {
         self.response_latency.values
-            .entry(labels.clone())
+            .entry(labels)
             .or_insert_with(Histogram::default)
     }
 
     fn response_total(&mut self,
-                      labels: &Arc<ResponseLabels>)
+                      labels: ResponseLabels)
                       -> &mut Counter {
         self.response_total.values
-            .entry(labels.clone())
+            .entry(labels)
             .or_insert_with(Counter::default)
     }
 
