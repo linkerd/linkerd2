@@ -183,6 +183,7 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride st
 		},
 		Env: []v1.EnvVar{
 			{Name: "CONDUIT_PROXY_LOG", Value: options.proxyLogLevel},
+			{Name: "CONDUIT_PROXY_BIND_TIMEOUT", Value: strconv.Itoa(int(option.proxyBindTimeout))},
 			{
 				Name:  "CONDUIT_PROXY_CONTROL_URL",
 				Value: fmt.Sprintf("tcp://%s:%d", controlPlaneDNS, options.proxyAPIPort),
