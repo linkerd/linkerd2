@@ -1,10 +1,9 @@
 import { ApiHelpers } from './components/util/ApiHelpers.jsx';
 import { Layout } from 'antd';
 import NoMatch from './components/NoMatch.jsx';
-import ResourceList from './components/ResourceList.jsx';
-import PodsList from './components/PodsList.jsx';
 import React from 'react';
 import ReactDOM from 'react-dom';
+import ResourceList from './components/ResourceList.jsx';
 import ServiceMesh from './components/ServiceMesh.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import { BrowserRouter, Redirect, Route, Switch } from 'react-router-dom';
@@ -48,7 +47,7 @@ let applicationHtml = hideSidebar => (
               <Route path={`${pathPrefix}/servicemesh`} render={() => <ServiceMesh api={api} releaseVersion={appData.releaseVersion} controllerNamespace={appData.controllerNamespace} />} />
               <Route path={`${pathPrefix}/deployments`} render={() => <ResourceList resource="deployment" api={api} controllerNamespace={appData.controllerNamespace} />} />
               <Route path={`${pathPrefix}/replicationcontrollers`} render={() => <ResourceList resource="replication_controller" api={api} controllerNamespace={appData.controllerNamespace} />} />
-              <Route path={`${pathPrefix}/pods`} render={() => <PodsList api={api} />} />
+              <Route path={`${pathPrefix}/pods`} render={() => <ResourceList resource="pod" api={api} controllerNamespace={appData.controllerNamespace} />} />
               <Route component={NoMatch} />
             </Switch>
           </div>
