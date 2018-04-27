@@ -17,12 +17,15 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 )
 
 const (
+	// LocalhostDNSNameOverride allows override of the controlPlaneDNS
 	LocalhostDNSNameOverride = "localhost"
-	ControlPlanePodName      = "controller"
+	// ControlPlanePodName default control plane pod name.
+	ControlPlanePodName = "controller"
 )
 
 var (
@@ -150,26 +153,26 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride, v
 			RunAsUser: &proxyUID,
 		},
 		Ports: []v1.ContainerPort{
-			v1.ContainerPort{
+			{
 				Name:          "conduit-proxy",
 				ContainerPort: int32(inboundPort),
 			},
-			v1.ContainerPort{
+			{
 				Name:          "conduit-metrics",
 				ContainerPort: int32(proxyMetricsPort),
 			},
 		},
 		Env: []v1.EnvVar{
-			v1.EnvVar{Name: "CONDUIT_PROXY_LOG", Value: proxyLogLevel},
-			v1.EnvVar{
+			{Name: "CONDUIT_PROXY_LOG", Value: proxyLogLevel},
+			{
 				Name:  "CONDUIT_PROXY_CONTROL_URL",
 				Value: fmt.Sprintf("tcp://%s:%d", controlPlaneDNS, proxyAPIPort),
 			},
-			v1.EnvVar{Name: "CONDUIT_PROXY_CONTROL_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", proxyControlPort)},
-			v1.EnvVar{Name: "CONDUIT_PROXY_METRICS_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", proxyMetricsPort)},
-			v1.EnvVar{Name: "CONDUIT_PROXY_PRIVATE_LISTENER", Value: fmt.Sprintf("tcp://127.0.0.1:%d", outboundPort)},
-			v1.EnvVar{Name: "CONDUIT_PROXY_PUBLIC_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", inboundPort)},
-			v1.EnvVar{
+			{Name: "CONDUIT_PROXY_CONTROL_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", proxyControlPort)},
+			{Name: "CONDUIT_PROXY_METRICS_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", proxyMetricsPort)},
+			{Name: "CONDUIT_PROXY_PRIVATE_LISTENER", Value: fmt.Sprintf("tcp://127.0.0.1:%d", outboundPort)},
+			{Name: "CONDUIT_PROXY_PUBLIC_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", inboundPort)},
+			{
 				Name:      "CONDUIT_PROXY_POD_NAMESPACE",
 				ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
 			},
@@ -196,8 +199,10 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride, v
 	return true
 }
 
+// InjectYAML takes an input stream of YAML, outputing injected YAML to out.
 func InjectYAML(in io.Reader, out io.Writer, version string) error {
 	reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(in, 4096))
+
 	// Iterate over all YAML objects in the input
 	for {
 		// Read a single YAML object
@@ -209,105 +214,135 @@ func InjectYAML(in io.Reader, out io.Writer, version string) error {
 			return err
 		}
 
-		// The Kuberentes API is versioned and each version has an API modeled
-		// with its own distinct Go types. If we tell `yaml.Unmarshal()` which
-		// version we support then it will provide a representation of that
-		// object using the given type if possible. However, it only allows us
-		// to supply one object (of one type), so first we have to determine
-		// what kind of object `bytes` represents so we can pass an object of
-		// the correct type to `yaml.Unmarshal()`.
-
-		// Unmarshal the object enough to read the Kind field
-		var meta metaV1.TypeMeta
-		if err := yaml.Unmarshal(bytes, &meta); err != nil {
+		result, err := injectResource(bytes, version)
+		if err != nil {
 			return err
 		}
 
-		// obj and podTemplateSpec will reference zero or one the following
-		// objects, depending on the type.
-		var obj interface{}
-		var podTemplateSpec *v1.PodTemplateSpec
-		var DNSNameOverride string
-		k8sLabels := map[string]string{}
-
-		// When injecting the conduit proxy into a conduit controller pod. The conduit proxy's
-		// CONDUIT_PROXY_CONTROL_URL variable must be set to localhost for the following reasons:
-		//	1. According to https://github.com/kubernetes/minikube/issues/1568, minikube has an issue
-		//     where pods are unable to connect to themselves through their associated service IP.
-		//     Setting the CONDUIT_PROXY_CONTROL_URL to localhost allows the proxy to bypass kube DNS
-		//     name resolution as a workaround to this issue.
-		//  2. We avoid the TLS overhead in encrypting and decrypting intra-pod traffic i.e. traffic
-		//     between containers in the same pod.
-		//  3. Using a Service IP instead of localhost would mean intra-pod traffic would be load-balanced
-		//     across all controller pod replicas. This is undesirable as we would want all traffic between
-		//	   containers to be self contained.
-		//  4. We skip recording telemetry for intra-pod traffic within the control plane.
-		switch meta.Kind {
-		case "Deployment":
-			var deployment v1beta1.Deployment
-			err = yaml.Unmarshal(bytes, &deployment)
-			if err != nil {
-				return err
-			}
-			if deployment.Name == ControlPlanePodName && deployment.Namespace == controlPlaneNamespace {
-				DNSNameOverride = LocalhostDNSNameOverride
-			}
-			obj = &deployment
-			k8sLabels[k8s.ProxyDeploymentLabel] = deployment.Name
-			podTemplateSpec = &deployment.Spec.Template
-		case "ReplicationController":
-			var rc v1.ReplicationController
-			err = yaml.Unmarshal(bytes, &rc)
-			if err != nil {
-				return err
-			}
-			obj = &rc
-			k8sLabels[k8s.ProxyReplicationControllerLabel] = rc.Name
-			podTemplateSpec = rc.Spec.Template
-		case "ReplicaSet":
-			var rs v1beta1.ReplicaSet
-			err = yaml.Unmarshal(bytes, &rs)
-			if err != nil {
-				return err
-			}
-			obj = &rs
-			k8sLabels[k8s.ProxyReplicaSetLabel] = rs.Name
-			podTemplateSpec = &rs.Spec.Template
-		case "Job":
-			var job batchV1.Job
-			err = yaml.Unmarshal(bytes, &job)
-			if err != nil {
-				return err
-			}
-			obj = &job
-			k8sLabels[k8s.ProxyJobLabel] = job.Name
-			podTemplateSpec = &job.Spec.Template
-		case "DaemonSet":
-			var ds v1beta1.DaemonSet
-			err = yaml.Unmarshal(bytes, &ds)
-			if err != nil {
-				return err
-			}
-			obj = &ds
-			k8sLabels[k8s.ProxyDaemonSetLabel] = ds.Name
-			podTemplateSpec = &ds.Spec.Template
-		}
-
-		// If we don't inject anything into the pod template then output the
-		// original serialization of the original object. Otherwise, output the
-		// serialization of the modified object.
-		output := bytes
-		if podTemplateSpec != nil && injectPodTemplateSpec(podTemplateSpec, DNSNameOverride, version, k8sLabels) {
-			output, err = yaml.Marshal(obj)
-			if err != nil {
-				return err
-			}
-		}
-
-		out.Write(output)
+		out.Write(result)
 		out.Write([]byte("---\n"))
 	}
+
 	return nil
+}
+
+func injectResource(bytes []byte, version string) ([]byte, error) {
+	// The Kuberentes API is versioned and each version has an API modeled
+	// with its own distinct Go types. If we tell `yaml.Unmarshal()` which
+	// version we support then it will provide a representation of that
+	// object using the given type if possible. However, it only allows us
+	// to supply one object (of one type), so first we have to determine
+	// what kind of object `bytes` represents so we can pass an object of
+	// the correct type to `yaml.Unmarshal()`.
+
+	// Unmarshal the object enough to read the Kind field
+	var meta metaV1.TypeMeta
+	if err := yaml.Unmarshal(bytes, &meta); err != nil {
+		return nil, err
+	}
+
+	// obj and podTemplateSpec will reference zero or one the following
+	// objects, depending on the type.
+	var obj interface{}
+	var podTemplateSpec *v1.PodTemplateSpec
+	var DNSNameOverride string
+	k8sLabels := map[string]string{}
+
+	// When injecting the conduit proxy into a conduit controller pod. The conduit proxy's
+	// CONDUIT_PROXY_CONTROL_URL variable must be set to localhost for the following reasons:
+	//	1. According to https://github.com/kubernetes/minikube/issues/1568, minikube has an issue
+	//     where pods are unable to connect to themselves through their associated service IP.
+	//     Setting the CONDUIT_PROXY_CONTROL_URL to localhost allows the proxy to bypass kube DNS
+	//     name resolution as a workaround to this issue.
+	//  2. We avoid the TLS overhead in encrypting and decrypting intra-pod traffic i.e. traffic
+	//     between containers in the same pod.
+	//  3. Using a Service IP instead of localhost would mean intra-pod traffic would be load-balanced
+	//     across all controller pod replicas. This is undesirable as we would want all traffic between
+	//	   containers to be self contained.
+	//  4. We skip recording telemetry for intra-pod traffic within the control plane.
+	switch meta.Kind {
+	case "Deployment":
+		var deployment v1beta1.Deployment
+		if err := yaml.Unmarshal(bytes, &deployment); err != nil {
+			return nil, err
+		}
+
+		if deployment.Name == ControlPlanePodName && deployment.Namespace == controlPlaneNamespace {
+			DNSNameOverride = LocalhostDNSNameOverride
+		}
+
+		obj = &deployment
+		k8sLabels[k8s.ProxyDeploymentLabel] = deployment.Name
+		podTemplateSpec = &deployment.Spec.Template
+	case "List":
+		var sourceList v1.List
+		if err := yaml.Unmarshal(bytes, &sourceList); err != nil {
+			return nil, err
+		}
+
+		items := []runtime.RawExtension{}
+
+		for _, item := range sourceList.Items {
+			resource, err := injectResource(item.Raw, version)
+			if err != nil {
+				return nil, err
+			}
+
+			items = append(items, runtime.RawExtension{Raw: resource})
+		}
+
+		obj = &v1.List{Items: items}
+	case "ReplicationController":
+		var rc v1.ReplicationController
+		if err := yaml.Unmarshal(bytes, &rc); err != nil {
+			return nil, err
+		}
+
+		obj = &rc
+		k8sLabels[k8s.ProxyReplicationControllerLabel] = rc.Name
+		podTemplateSpec = rc.Spec.Template
+	case "ReplicaSet":
+		var rs v1beta1.ReplicaSet
+		if err := yaml.Unmarshal(bytes, &rs); err != nil {
+			return nil, err
+		}
+
+		obj = &rs
+		k8sLabels[k8s.ProxyReplicaSetLabel] = rs.Name
+		podTemplateSpec = &rs.Spec.Template
+	case "Job":
+		var job batchV1.Job
+		if err := yaml.Unmarshal(bytes, &job); err != nil {
+			return nil, err
+		}
+
+		obj = &job
+		k8sLabels[k8s.ProxyJobLabel] = job.Name
+		podTemplateSpec = &job.Spec.Template
+	case "DaemonSet":
+		var ds v1beta1.DaemonSet
+		if err := yaml.Unmarshal(bytes, &ds); err != nil {
+			return nil, err
+		}
+
+		obj = &ds
+		k8sLabels[k8s.ProxyDaemonSetLabel] = ds.Name
+		podTemplateSpec = &ds.Spec.Template
+	}
+
+	// If we don't inject anything into the pod template then output the
+	// original serialization of the original object. Otherwise, output the
+	// serialization of the modified object.
+	output := bytes
+	if podTemplateSpec != nil && injectPodTemplateSpec(podTemplateSpec, DNSNameOverride, version, k8sLabels) {
+		var err error
+		output, err = yaml.Marshal(obj)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return output, nil
 }
 
 func init() {
