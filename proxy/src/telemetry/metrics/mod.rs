@@ -370,10 +370,11 @@ impl<L, V> fmt::Display for Metric<Histogram<V>, L> where
         for (labels, histogram) in &self.values {
             // Since Prometheus expects each bucket's value to be the sum of the number of
             // values in this bucket and all lower buckets, track the total count here.
-            let mut total_count = 0;
+            let mut total_count = 0u64;
             for (le, count) in histogram.into_iter() {
                 // Add this bucket's count to the total count.
-                total_count += count;
+                let c: u64 = (*count).into();
+                total_count += c;
                 write!(f, "{name}_bucket{{{labels},le=\"{le}\"}} {count}\n",
                     name = self.name,
                     labels = labels,

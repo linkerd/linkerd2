@@ -7,7 +7,8 @@ use super::Counter;
 /// A series of latency values and counts.
 #[derive(Debug, Clone)]
 pub struct Histogram<V: Into<u64>> {
-    buckets: Vec<(Bucket, Counter)>,
+    bounds: &'static Bounds,
+    buckets: Box<[Counter]>,
 
     /// The total sum of all observed latency values.
     ///
@@ -31,7 +32,7 @@ pub struct Histogram<V: Into<u64>> {
     //       bits.
     pub sum: Wrapping<u64>,
 
-    _p: PhantomData<(V)>,
+    _p: PhantomData<V>,
 }
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone, Hash)]
@@ -41,22 +42,24 @@ pub enum Bucket {
 }
 
 /// A series of increasing Buckets values.
+#[derive(Debug)]
 pub struct Bounds(pub &'static [Bucket]);
 
 // ===== impl Histogram =====
 
 impl<V: Into<u64>> Histogram<V> {
-    pub fn new(bounds: &Bounds) -> Self {
-        let mut buckets = Vec::with_capacity(bounds.0.len() + 1);
+    pub fn new(bounds: &'static Bounds) -> Self {
+        let mut buckets = Vec::with_capacity(bounds.0.len());
         let mut prior = &Bucket::Le(0);
-        for bound in bounds.0 {
+        for bound in bounds.0.iter() {
             assert!(prior < bound);
-            buckets.push((bound.clone(), Counter::default()));
+            buckets.push(Counter::default());
             prior = bound;
         }
 
         Self {
-            buckets,
+            bounds,
+            buckets: buckets.into_boxed_slice(),
             sum: Wrapping(0),
             _p: PhantomData,
         }
@@ -64,20 +67,16 @@ impl<V: Into<u64>> Histogram<V> {
 
     pub fn add(&mut self, v: V) {
         let value = v.into();
-        self.sum += Wrapping(value);
 
-        for &mut (ref b, ref mut c) in &mut self.buckets {
-            let ok = match *b {
+        let idx = self.bounds.0.iter()
+            .position(|b| match *b {
                 Bucket::Le(ceiling) => value <= ceiling,
                 Bucket::Inf => true,
-            };
-            if ok {
-                c.incr();
-                return;
-            }
-        }
+            })
+            .expect("all values must fit into a bucket");
 
-        unreachable!("buckets must be terminated by Buckets::Inf");
+        self.buckets[idx].incr();
+        self.sum += Wrapping(value);
     }
 
     pub fn sum(&self) -> u64 {
@@ -86,18 +85,31 @@ impl<V: Into<u64>> Histogram<V> {
 }
 
 impl<'a, V: Into<u64>> IntoIterator for &'a Histogram<V> {
-    type Item = (Bucket, u64);
-    type IntoIter = iter::Map<
-        slice::Iter<'a, (Bucket, Counter)>,
-        fn(&'a (Bucket, Counter)) -> (Bucket, u64)
+    type Item = (&'a Bucket, &'a Counter);
+    type IntoIter = iter::Zip<
+        slice::Iter<'a, Bucket>,
+        slice::Iter<'a, Counter>,
     >;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.buckets.iter().map(|&(b, c)| (b.clone(), c.into()))
+        self.bounds.0.iter().zip(self.buckets.iter())
     }
 }
 
-// ===== impl Histogram =====
+// ===== impl Bounds =====
+
+impl Bounds {
+    pub fn new(buckets: &'static [Bucket]) -> Self {
+        let mut prior = &Bucket::Le(0);
+        for bound in buckets {
+            assert!(prior < bound);
+            prior = bound;
+        }
+        Bounds(buckets)
+    }
+}
+
+// ===== impl Bucket =====
 
 impl fmt::Display for Bucket {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

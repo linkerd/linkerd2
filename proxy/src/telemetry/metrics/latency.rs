@@ -4,7 +4,7 @@ use super::histogram::{Bounds, Bucket, Histogram};
 
 /// The maximum value (inclusive) for each latency bucket in
 /// tenths of a millisecond.
-pub const BOUNDS: Bounds = Bounds(&[
+pub const BOUNDS: &Bounds = &Bounds(&[
     // The controller telemetry server creates 5 sets of 5 linear buckets
     // each:
     // prometheus.LinearBuckets(1, 1, 5),
@@ -58,7 +58,7 @@ impl Into<u64> for Ms {
 
 impl Default for Histogram<Ms> {
     fn default() -> Self {
-        Histogram::new(&BOUNDS)
+        Histogram::new(BOUNDS)
     }
 }
 
