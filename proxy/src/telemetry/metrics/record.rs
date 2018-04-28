@@ -53,10 +53,7 @@ impl Record {
 
             Event::StreamResponseEnd(ref res, ref end) => {
                 self.update(|metrics| {
-                    let labels = ResponseLabels::new(
-                        res,
-                        end.grpc_status,
-                    );
+                    let labels = ResponseLabels::new(res, end.grpc_status);
                     metrics.response_total(labels.clone()).incr();
                     metrics.response_latency(labels).add(end.since_request_open);
                 });

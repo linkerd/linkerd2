@@ -70,7 +70,7 @@ struct Metrics {
     request_total: Metric<Counter, RequestLabels>,
 
     response_total: Metric<Counter, ResponseLabels>,
-    response_latency: Metric<Histogram<latency::Ms>,  ResponseLabels>,
+    response_latency: Metric<Histogram<latency::Ms>, ResponseLabels>,
 
     tcp: TcpMetrics,
 
