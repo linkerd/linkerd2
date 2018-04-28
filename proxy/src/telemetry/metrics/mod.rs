@@ -26,11 +26,12 @@
 //! labels, we can add new labels or modify the existing ones without having
 //! to worry about missing commas, double commas, or trailing commas at the
 //! end of the label set (all of which will make Prometheus angry).
-use std::default::Default;
 use std::{fmt, time};
+use std::default::Default;
 use std::hash::Hash;
-use std::sync::{Arc, Mutex};
 use std::io::Write;
+use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
 use deflate::CompressionOptions;
 use deflate::write::GzEncoder;
@@ -65,35 +66,47 @@ use self::labels::{
 pub use self::labels::DstLabels;
 pub use self::record::Record;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 struct Metrics {
-    request_total: Metric<Counter, Arc<RequestLabels>>,
+    request: Labeled<Arc<RequestLabels>, RequestMetrics>,
+    response: Labeled<Arc<ResponseLabels>, ResponseMetrics>,
+    transport: Labeled<Arc<TransportLabels>, TransportMetrics>,
+    transport_close: Labeled<Arc<TransportCloseLabels>, TransportCloseMetrics>,
 
-    response_total: Metric<Counter, Arc<ResponseLabels>>,
-    response_latency: Metric<Histogram<latency::Ms>, Arc<ResponseLabels>>,
+    start_time: Gauge,
+}
 
-    tcp: TcpMetrics,
+#[derive(Debug, Default, Clone)]
+struct Labeled<L: fmt::Display + Hash + Eq, M> {
+    values: IndexMap<L, Stamped<M>>,
+}
 
-    start_time: u64,
+struct Stamped<M> {
+    instant: Instant,
+    metric: M,
+}
+
+struct RequestMetrics {
+    total: Counter,
+}
+
+struct ResponseMetrics {
+    total: Counter,
+    latency: Histogram<latency::Ms>,
 }
 
 #[derive(Debug, Clone)]
-struct TcpMetrics {
-    open_total: Metric<Counter, Arc<TransportLabels>>,
-    close_total: Metric<Counter, Arc<TransportCloseLabels>>,
-
-    connection_duration: Metric<Histogram<latency::Ms>, Arc<TransportCloseLabels>>,
-    open_connections: Metric<Gauge, Arc<TransportLabels>>,
-
-    write_bytes_total: Metric<Counter, Arc<TransportLabels>>,
-    read_bytes_total: Metric<Counter, Arc<TransportLabels>>,
+struct TransportMetrics {
+    open_total: Counter,
+    open_connections: Gauge,
+    write_bytes_total: Counter,
+    read_bytes_total: Counter,
 }
 
 #[derive(Debug, Clone)]
-struct Metric<M, L: Hash + Eq> {
-    name: &'static str,
-    help: &'static str,
-    values: IndexMap<L, M>
+struct TransportCloseMetrics {
+    close_total: Counter,
+    connection_duration: Histogram<latency::Ms>,
 }
 
 /// Serve Prometheues metrics.
