@@ -33,8 +33,8 @@ pub struct MakeControl {
 /// Limit the amount of memory that may be consumed for metrics aggregation.
 #[derive(Debug)]
 pub struct Control {
-    /// Aggregates scrapable metrics.
-    metrics_aggregate: metrics::Aggregate,
+    /// Records telemetry events.
+    metrics_record: metrics::Record,
 
     /// Serves scrapable metrics.
     metrics_service: metrics::Serve,
@@ -76,11 +76,11 @@ impl MakeControl {
     /// - `Ok(())` if the timeout was successfully created.
     /// - `Err(io::Error)` if the timeout could not be created.
     pub fn make_control(self, taps: &Arc<Mutex<Taps>>, handle: &Handle) -> io::Result<Control> {
-        let (metrics_aggregate, metrics_service) =
+        let (metrics_record, metrics_service) =
             metrics::new(&self.process_ctx);
 
         Ok(Control {
-            metrics_aggregate,
+            metrics_record,
             metrics_service,
             rx: Some(self.rx),
             taps: Some(taps.clone()),
@@ -146,7 +146,7 @@ impl Future for Control {
                         }
                     }
 
-                    self.metrics_aggregate.record_event(&ev);
+                    self.metrics_record.record_event(&ev);
                 }
                 None => {
                     debug!("events finished");
