@@ -65,8 +65,9 @@ impl<V: Into<u64>> Histogram<V> {
         }
     }
 
-    pub fn add(&mut self, v: V) {
-        let value = v.into();
+    pub fn add<U: Into<V>>(&mut self, u: U) {
+        let v: V = u.into();
+        let value: u64 = v.into();
 
         let idx = self.bounds.0.iter()
             .position(|b| match *b {
@@ -184,7 +185,7 @@ mod tests {
 
     quickcheck! {
         fn bucket_incremented(obs: u64) -> bool {
-            let mut hist = Histogram::new(&BOUNDS);
+            let mut hist = Histogram::<u64>::new(&BOUNDS);
             hist.add(obs);
             let incremented_bucket = &BOUNDS.0.iter()
                 .position(|bucket| match *bucket {
@@ -201,7 +202,7 @@ mod tests {
         }
 
         fn sum_equals_total_of_observations(observations: Vec<u64>) -> bool {
-            let mut hist = Histogram::new(&BOUNDS);
+            let mut hist = Histogram::<u64>::new(&BOUNDS);
 
             let mut expected_sum = Wrapping(0u64);
             for obs in observations {
@@ -213,7 +214,7 @@ mod tests {
         }
 
         fn count_equals_number_of_observations(observations: Vec<u64>) -> bool {
-            let mut hist = Histogram::new(&BOUNDS);
+            let mut hist = Histogram::<u64>::new(&BOUNDS);
 
             for obs in &observations {
                 hist.add(*obs);
@@ -228,7 +229,7 @@ mod tests {
 
         fn multiple_observations_increment_buckets(observations: Vec<u64>) -> bool {
             let mut buckets_and_counts: HashMap<usize, u64> = HashMap::new();
-            let mut hist = Histogram::new(&BOUNDS);
+            let mut hist = Histogram::<u64>::new(&BOUNDS);
 
             for obs in observations {
                 let incremented_bucket = &BOUNDS.0.iter()

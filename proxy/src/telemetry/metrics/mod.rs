@@ -447,7 +447,7 @@ impl Aggregate {
                 ));
                 self.update(|metrics| {
                     metrics.response_total(&labels).incr();
-                    metrics.response_latency(&labels).add(latency::Ms(end.since_request_open));
+                    metrics.response_latency(&labels).add(end.since_request_open);
                 });
             },
 
@@ -456,7 +456,7 @@ impl Aggregate {
                 let labels = Arc::new(ResponseLabels::fail(res));
                 self.update(|metrics| {
                     metrics.response_total(&labels).incr();
-                    metrics.response_latency(&labels).add(latency::Ms(fail.since_request_open));
+                    metrics.response_latency(&labels).add(fail.since_request_open);
                 });
             },
 
@@ -475,8 +475,7 @@ impl Aggregate {
                     *metrics.tcp().write_bytes_total(&labels) += close.tx_bytes as u64;
                     *metrics.tcp().read_bytes_total(&labels) += close.rx_bytes as u64;
 
-                    metrics.tcp().connection_duration(&close_labels)
-                        .add(latency::Ms(close.duration));
+                    metrics.tcp().connection_duration(&close_labels).add(close.duration);
                     metrics.tcp().close_total(&close_labels).incr();
 
                     let metrics = metrics.tcp().open_connections.values.get_mut(&labels);
