@@ -15,7 +15,7 @@ pub struct Record {
     metrics: Arc<Mutex<Metrics>>,
 }
 
-// ===== impl Recprd =====
+// ===== impl Record =====
 
 impl Record {
     pub(super) fn new(metrics: &Arc<Mutex<Metrics>>) -> Self {
