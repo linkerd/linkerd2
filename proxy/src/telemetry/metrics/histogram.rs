@@ -65,8 +65,9 @@ impl<V: Into<u64>> Histogram<V> {
         }
     }
 
-    pub fn add(&mut self, v: V) {
-        let value = v.into();
+    pub fn add<U: Into<V>>(&mut self, u: U) {
+        let v: V = u.into();
+        let value: u64 = v.into();
 
         let idx = self.bounds.0.iter()
             .position(|b| match *b {
