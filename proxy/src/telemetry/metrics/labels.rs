@@ -40,7 +40,7 @@ pub struct ResponseLabels {
 }
 
 /// Labels describing a TCP connection
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct TransportLabels {
     /// Was the transport opened in the inbound or outbound direction?
     direction: Direction,
@@ -48,11 +48,11 @@ pub struct TransportLabels {
     peer: Peer,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum Peer { Src, Dst }
 
 /// Labels describing the end of a TCP connection
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct TransportCloseLabels {
     /// Labels describing the TCP connection that closed.
     pub(super) transport: TransportLabels,
