@@ -94,61 +94,58 @@ fn record_response_end(b: &mut Bencher) {
 }
 
 #[bench]
-fn record_one_conn_many_reqs(b: &mut Bencher) {
+fn record_one_conn_request(b: &mut Bencher) {
     let process = process();
     let proxy = ctx::Proxy::outbound(&process);
     let server = server(&proxy);
-    let server_transport = Arc::new(ctx::transport::Ctx::Server(server.clone()));
 
     let client = client(&proxy, vec![
         ("service", "draymond"),
         ("deployment", "durant"),
         ("pod", "klay"),
     ]);
-    let client_transport = Arc::new(ctx::transport::Ctx::Client(client.clone()));
 
-    let requests = (0..REQUESTS).map(|n| request("http://buoyant.io", &server, &client, n));
+    let (req, rsp) = request("http://buoyant.io", &server, &client, 1);
+
+    let server_transport = Arc::new(ctx::transport::Ctx::Server(server));
+    let client_transport = Arc::new(ctx::transport::Ctx::Client(client));
+
+    use Event::*;
+    let events = vec![
+        TransportOpen(server_transport.clone()),
+        TransportOpen(client_transport.clone()),
+        StreamRequestOpen(req.clone()),
+        StreamRequestEnd(req.clone(), event::StreamRequestEnd {
+            since_request_open: Duration::from_millis(10),
+        }),
+
+        StreamResponseOpen(rsp.clone(), event::StreamResponseOpen {
+            since_request_open: Duration::from_millis(300),
+        }),
+        StreamResponseEnd(rsp.clone(), event::StreamResponseEnd {
+            grpc_status: None,
+            since_request_open: Duration::from_millis(300),
+            since_response_open: Duration::from_millis(0),
+            bytes_sent: 0,
+            frames_sent: 0,
+        }),
+
+        TransportClose(server_transport.clone(), event::TransportClose {
+            clean: true,
+            duration: Duration::from_secs(30_000),
+            rx_bytes: 4321,
+            tx_bytes: 4321,
+        }),
+        TransportClose(client_transport.clone(), event::TransportClose {
+            clean: true,
+            duration: Duration::from_secs(30_000),
+            rx_bytes: 4321,
+            tx_bytes: 4321,
+        }),
+    ];
 
     let (mut r, _) = metrics::new(&process);
-    b.iter(|| {
-        use Event::*;
-
-        r.record_event(&TransportOpen(server_transport.clone()));
-        r.record_event(&TransportOpen(client_transport.clone()));
-
-        for (req, rsp) in requests.clone() {
-            r.record_event(&StreamRequestOpen(req.clone()));
-
-            r.record_event(&StreamRequestEnd(req.clone(), event::StreamRequestEnd {
-                since_request_open: Duration::from_millis(10),
-            }));
-
-            r.record_event(&StreamResponseOpen(rsp.clone(), event::StreamResponseOpen {
-                since_request_open: Duration::from_millis(300),
-            }));
-
-            r.record_event(&StreamResponseEnd(rsp.clone(), event::StreamResponseEnd {
-                grpc_status: None,
-                since_request_open: Duration::from_millis(300),
-                since_response_open: Duration::from_millis(0),
-                bytes_sent: 0,
-                frames_sent: 0,
-            }));
-        }
-
-        r.record_event(&TransportClose(server_transport.clone(), event::TransportClose {
-            clean: true,
-            duration: Duration::from_secs(30_000),
-            rx_bytes: 4321,
-            tx_bytes: 4321,
-        }));
-        r.record_event(&TransportClose(client_transport.clone(), event::TransportClose {
-            clean: true,
-            duration: Duration::from_secs(30_000),
-            rx_bytes: 4321,
-            tx_bytes: 4321,
-        }));
-    });
+    b.iter(|| for e in &events { r.record_event(e); });
 }
 
 #[bench]
@@ -158,58 +155,53 @@ fn record_many_dsts(b: &mut Bencher) {
     let server = server(&proxy);
     let server_transport = Arc::new(ctx::transport::Ctx::Server(server.clone()));
 
-    let requests = (0..REQUESTS).map(|n| {
+    use Event::*;
+    let mut events = Vec::new();
+    events.push(TransportOpen(server_transport.clone()));
+
+    for n in 0..REQUESTS {
         let client = client(&proxy, vec![
             ("service".into(), format!("svc{}", n)),
             ("deployment".into(), format!("dep{}", n)),
             ("pod".into(), format!("pod{}", n)),
         ]);
-        let client_transport = Arc::new(ctx::transport::Ctx::Client(client.clone()));
         let uri = format!("http://test{}.local", n);
         let (req, rsp) = request(&uri, &server, &client, 1);
-        (client_transport, req, rsp)
-    });
+        let client_transport = Arc::new(ctx::transport::Ctx::Client(client));
 
-    let (mut r, _) = metrics::new(&process);
-    b.iter(|| {
-        use Event::*;
+        events.push(TransportOpen(client_transport.clone()));
 
-        r.record_event(&TransportOpen(server_transport.clone()));
+        events.push(StreamRequestOpen(req.clone()));
+        events.push(StreamRequestEnd(req.clone(), event::StreamRequestEnd {
+            since_request_open: Duration::from_millis(10),
+        }));
 
-        for (client_transport, req, rsp) in requests.clone() {
-            r.record_event(&TransportOpen(client_transport.clone()));
+        events.push(StreamResponseOpen(rsp.clone(), event::StreamResponseOpen {
+            since_request_open: Duration::from_millis(300),
+        }));
+        events.push(StreamResponseEnd(rsp.clone(), event::StreamResponseEnd {
+            grpc_status: None,
+            since_request_open: Duration::from_millis(300),
+            since_response_open: Duration::from_millis(0),
+            bytes_sent: 0,
+            frames_sent: 0,
+        }));
 
-            r.record_event(&StreamRequestOpen(req.clone()));
-
-            r.record_event(&StreamRequestEnd(req.clone(), event::StreamRequestEnd {
-                since_request_open: Duration::from_millis(10),
-            }));
-
-            r.record_event(&StreamResponseOpen(rsp.clone(), event::StreamResponseOpen {
-                since_request_open: Duration::from_millis(300),
-            }));
-
-            r.record_event(&StreamResponseEnd(rsp.clone(), event::StreamResponseEnd {
-                grpc_status: None,
-                since_request_open: Duration::from_millis(300),
-                since_response_open: Duration::from_millis(0),
-                bytes_sent: 0,
-                frames_sent: 0,
-            }));
-
-            r.record_event(&TransportClose(client_transport.clone(), event::TransportClose {
-                clean: true,
-                duration: Duration::from_secs(30_000),
-                rx_bytes: 4321,
-                tx_bytes: 4321,
-            }));
-        }
-
-        r.record_event(&TransportClose(server_transport.clone(), event::TransportClose {
+        events.push(TransportClose(client_transport.clone(), event::TransportClose {
             clean: true,
             duration: Duration::from_secs(30_000),
             rx_bytes: 4321,
             tx_bytes: 4321,
         }));
-    });
+    }
+
+    events.push(TransportClose(server_transport.clone(), event::TransportClose {
+        clean: true,
+        duration: Duration::from_secs(30_000),
+        rx_bytes: 4321,
+        tx_bytes: 4321,
+    }));
+
+    let (mut r, _) = metrics::new(&process);
+    b.iter(|| for e in &events { r.record_event(e); });
 }
