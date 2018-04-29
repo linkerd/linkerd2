@@ -67,10 +67,10 @@ pub use self::record::Record;
 
 #[derive(Debug, Clone)]
 struct Metrics {
-    request_total: Metric<Counter, Arc<RequestLabels>>,
+    request_total: Metric<Counter, RequestLabels>,
 
-    response_total: Metric<Counter, Arc<ResponseLabels>>,
-    response_latency: Metric<Histogram<latency::Ms>, Arc<ResponseLabels>>,
+    response_total: Metric<Counter, ResponseLabels>,
+    response_latency: Metric<Histogram<latency::Ms>, ResponseLabels>,
 
     tcp: TcpMetrics,
 
@@ -79,14 +79,14 @@ struct Metrics {
 
 #[derive(Debug, Clone)]
 struct TcpMetrics {
-    open_total: Metric<Counter, Arc<TransportLabels>>,
-    close_total: Metric<Counter, Arc<TransportCloseLabels>>,
+    open_total: Metric<Counter, TransportLabels>,
+    close_total: Metric<Counter, TransportCloseLabels>,
 
-    connection_duration: Metric<Histogram<latency::Ms>, Arc<TransportCloseLabels>>,
-    open_connections: Metric<Gauge, Arc<TransportLabels>>,
+    connection_duration: Metric<Histogram<latency::Ms>, TransportCloseLabels>,
+    open_connections: Metric<Gauge, TransportLabels>,
 
-    write_bytes_total: Metric<Counter, Arc<TransportLabels>>,
-    read_bytes_total: Metric<Counter, Arc<TransportLabels>>,
+    write_bytes_total: Metric<Counter, TransportLabels>,
+    read_bytes_total: Metric<Counter, TransportLabels>,
 }
 
 #[derive(Debug, Clone)]
@@ -127,17 +127,17 @@ impl Metrics {
             )
             .as_secs();
 
-        let request_total = Metric::<Counter, Arc<RequestLabels>>::new(
+        let request_total = Metric::<Counter, RequestLabels>::new(
             "request_total",
             "A counter of the number of requests the proxy has received.",
         );
 
-        let response_total = Metric::<Counter, Arc<ResponseLabels>>::new(
+        let response_total = Metric::<Counter, ResponseLabels>::new(
             "response_total",
             "A counter of the number of responses the proxy has received.",
         );
 
-        let response_latency = Metric::<Histogram<latency::Ms>, Arc<ResponseLabels>>::new(
+        let response_latency = Metric::<Histogram<latency::Ms>, ResponseLabels>::new(
             "response_latency_ms",
             "A histogram of the total latency of a response. This is measured \
             from when the request headers are received to when the response \
@@ -154,26 +154,26 @@ impl Metrics {
     }
 
     fn request_total(&mut self,
-                     labels: &Arc<RequestLabels>)
+                     labels: RequestLabels)
                      -> &mut Counter {
         self.request_total.values
-            .entry(labels.clone())
+            .entry(labels)
             .or_insert_with(Counter::default)
     }
 
     fn response_latency(&mut self,
-                        labels: &Arc<ResponseLabels>)
+                        labels: ResponseLabels)
                         -> &mut Histogram<latency::Ms> {
         self.response_latency.values
-            .entry(labels.clone())
+            .entry(labels)
             .or_insert_with(Histogram::default)
     }
 
     fn response_total(&mut self,
-                      labels: &Arc<ResponseLabels>)
+                      labels: ResponseLabels)
                       -> &mut Counter {
         self.response_total.values
-            .entry(labels.clone())
+            .entry(labels)
             .or_insert_with(Counter::default)
     }
 
@@ -198,32 +198,32 @@ impl fmt::Display for Metrics {
 
 impl TcpMetrics {
     pub fn new() -> TcpMetrics {
-        let open_total = Metric::<Counter, Arc<TransportLabels>>::new(
+        let open_total = Metric::<Counter, TransportLabels>::new(
             "tcp_open_total",
             "A counter of the total number of transport connections.",
         );
 
-        let close_total = Metric::<Counter, Arc<TransportCloseLabels>>::new(
+        let close_total = Metric::<Counter, TransportCloseLabels>::new(
             "tcp_close_total",
             "A counter of the total number of transport connections.",
         );
 
-        let connection_duration = Metric::<Histogram<latency::Ms>, Arc<TransportCloseLabels>>::new(
+        let connection_duration = Metric::<Histogram<latency::Ms>, TransportCloseLabels>::new(
             "tcp_connection_duration_ms",
             "A histogram of the duration of the lifetime of connections, in milliseconds",
         );
 
-        let open_connections = Metric::<Gauge, Arc<TransportLabels>>::new(
+        let open_connections = Metric::<Gauge, TransportLabels>::new(
             "tcp_open_connections",
             "A gauge of the number of transport connections currently open.",
         );
 
-        let read_bytes_total = Metric::<Counter, Arc<TransportLabels>>::new(
+        let read_bytes_total = Metric::<Counter, TransportLabels>::new(
             "tcp_read_bytes_total",
             "A counter of the total number of recieved bytes."
         );
 
-        let write_bytes_total = Metric::<Counter, Arc<TransportLabels>>::new(
+        let write_bytes_total = Metric::<Counter, TransportLabels>::new(
             "tcp_write_bytes_total",
             "A counter of the total number of sent bytes."
         );
@@ -238,39 +238,39 @@ impl TcpMetrics {
         }
     }
 
-    fn open_total(&mut self, labels: &Arc<TransportLabels>) -> &mut Counter {
+    fn open_total(&mut self, labels: TransportLabels) -> &mut Counter {
         self.open_total.values
-            .entry(labels.clone())
+            .entry(labels)
             .or_insert_with(Default::default)
     }
 
-    fn close_total(&mut self, labels: &Arc<TransportCloseLabels>) -> &mut Counter {
+    fn close_total(&mut self, labels: TransportCloseLabels) -> &mut Counter {
         self.close_total.values
-            .entry(labels.clone())
+            .entry(labels)
             .or_insert_with(Counter::default)
     }
 
-    fn connection_duration(&mut self, labels: &Arc<TransportCloseLabels>) -> &mut Histogram<latency::Ms> {
+    fn connection_duration(&mut self, labels: TransportCloseLabels) -> &mut Histogram<latency::Ms> {
         self.connection_duration.values
-            .entry(labels.clone())
+            .entry(labels)
             .or_insert_with(Histogram::default)
     }
 
-    fn open_connections(&mut self, labels: &Arc<TransportLabels>) -> &mut Gauge {
+    fn open_connections(&mut self, labels: TransportLabels) -> &mut Gauge {
         self.open_connections.values
-            .entry(labels.clone())
+            .entry(labels)
             .or_insert_with(Gauge::default)
     }
 
-    fn write_bytes_total(&mut self, labels: &Arc<TransportLabels>) -> &mut Counter {
+    fn write_bytes_total(&mut self, labels: TransportLabels) -> &mut Counter {
         self.write_bytes_total.values
-            .entry(labels.clone())
+            .entry(labels)
             .or_insert_with(Counter::default)
     }
 
-    fn read_bytes_total(&mut self, labels: &Arc<TransportLabels>) -> &mut Counter {
+    fn read_bytes_total(&mut self, labels: TransportLabels) -> &mut Counter {
         self.read_bytes_total.values
-            .entry(labels.clone())
+            .entry(labels)
             .or_insert_with(Counter::default)
     }
 }

@@ -20,7 +20,7 @@ pub struct RequestLabels {
 
     /// The value of the `:authority` (HTTP/2) or `Host` (HTTP/1.1) header of
     /// the request.
-    authority: String,
+    authority: Option<http::uri::Authority>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -40,7 +40,7 @@ pub struct ResponseLabels {
 }
 
 /// Labels describing a TCP connection
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct TransportLabels {
     /// Was the transport opened in the inbound or outbound direction?
     direction: Direction,
@@ -48,11 +48,11 @@ pub struct TransportLabels {
     peer: Peer,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum Peer { Src, Dst }
 
 /// Labels describing the end of a TCP connection
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct TransportCloseLabels {
     /// Labels describing the TCP connection that closed.
     pub(super) transport: TransportLabels,
@@ -90,8 +90,7 @@ impl<'a> RequestLabels {
 
         let authority = req.uri
             .authority_part()
-            .map(http::uri::Authority::to_string)
-            .unwrap_or_else(String::new);
+            .cloned();
 
         RequestLabels {
             direction,
@@ -103,7 +102,12 @@ impl<'a> RequestLabels {
 
 impl fmt::Display for RequestLabels {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "authority=\"{}\",{}", self.authority, self.direction)?;
+        match self.authority {
+            Some(ref authority) =>
+                write!(f, "authority=\"{}\",{}", authority, self.direction),
+            None =>
+                write!(f, "authority=\"\",{}", self.direction),
+        }?;
 
         if let Some(ref outbound) = self.outbound_labels {
             // leading comma added between the direction label and the

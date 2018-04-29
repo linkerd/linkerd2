@@ -40,56 +40,51 @@ impl Record {
             },
 
             Event::StreamRequestFail(ref req, _) => {
-                let labels = Arc::new(RequestLabels::new(req));
                 self.update(|metrics| {
-                    metrics.request_total(&labels).incr();
+                    metrics.request_total(RequestLabels::new(req)).incr();
                 })
             },
 
             Event::StreamRequestEnd(ref req, _) => {
-                let labels = Arc::new(RequestLabels::new(req));
                 self.update(|metrics| {
-                    metrics.request_total(&labels).incr();
+                    metrics.request_total(RequestLabels::new(req)).incr();
                 })
             },
 
             Event::StreamResponseEnd(ref res, ref end) => {
-                let labels = Arc::new(ResponseLabels::new(
-                    res,
-                    end.grpc_status,
-                ));
                 self.update(|metrics| {
-                    metrics.response_total(&labels).incr();
-                    metrics.response_latency(&labels).add(end.since_request_open);
+                    let labels = ResponseLabels::new(res, end.grpc_status);
+                    metrics.response_total(labels.clone()).incr();
+                    metrics.response_latency(labels).add(end.since_request_open);
                 });
             },
 
             Event::StreamResponseFail(ref res, ref fail) => {
-                // TODO: do we care about the failure's error code here?
-                let labels = Arc::new(ResponseLabels::fail(res));
                 self.update(|metrics| {
-                    metrics.response_total(&labels).incr();
-                    metrics.response_latency(&labels).add(fail.since_request_open);
+                    // TODO: do we care about the failure's error code here?
+                    let labels = ResponseLabels::fail(res);
+                    metrics.response_total(labels.clone()).incr();
+                    metrics.response_latency(labels).add(fail.since_request_open);
                 });
             },
 
             Event::TransportOpen(ref ctx) => {
-                let labels = Arc::new(TransportLabels::new(ctx));
+                let labels = TransportLabels::new(ctx);
                 self.update(|metrics| {
-                    metrics.tcp().open_total(&labels).incr();
-                    metrics.tcp().open_connections(&labels).incr();
+                    metrics.tcp().open_total(labels).incr();
+                    metrics.tcp().open_connections(labels).incr();
                 })
             },
 
             Event::TransportClose(ref ctx, ref close) => {
-                let labels = Arc::new(TransportLabels::new(ctx));
-                let close_labels = Arc::new(TransportCloseLabels::new(ctx, close));
+                let labels = TransportLabels::new(ctx);
+                let close_labels = TransportCloseLabels::new(ctx, close);
                 self.update(|metrics| {
-                    *metrics.tcp().write_bytes_total(&labels) += close.tx_bytes as u64;
-                    *metrics.tcp().read_bytes_total(&labels) += close.rx_bytes as u64;
+                    *metrics.tcp().write_bytes_total(labels) += close.tx_bytes as u64;
+                    *metrics.tcp().read_bytes_total(labels) += close.rx_bytes as u64;
 
-                    metrics.tcp().connection_duration(&close_labels).add(close.duration);
-                    metrics.tcp().close_total(&close_labels).incr();
+                    metrics.tcp().connection_duration(close_labels).add(close.duration);
+                    metrics.tcp().close_total(close_labels).incr();
 
                     let metrics = metrics.tcp().open_connections.values.get_mut(&labels);
                     debug_assert!(metrics.is_some());
