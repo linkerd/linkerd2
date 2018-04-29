@@ -26,12 +26,11 @@
 //! labels, we can add new labels or modify the existing ones without having
 //! to worry about missing commas, double commas, or trailing commas at the
 //! end of the label set (all of which will make Prometheus angry).
-use std::{fmt, time};
 use std::default::Default;
 use std::hash::Hash;
 use std::io::Write;
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
+use std::time;
 
 use deflate::CompressionOptions;
 use deflate::write::GzEncoder;
@@ -76,14 +75,18 @@ struct Metrics {
     start_time: Gauge,
 }
 
-#[derive(Debug, Default, Clone)]
-struct Labeled<L: fmt::Display + Hash + Eq, M> {
-    values: IndexMap<L, Stamped<M>>,
+trait FmtHelp {
+    fn fmt_help<N: Display, H: Display>(name: N, help: H) -> fmt::Result;
 }
 
-struct Stamped<M> {
-    instant: Instant,
-    metric: M,
+trait FmtMetric {
+    fn fmt_metric<N: Display>(&self, name: N) -> fmt::Result;
+    fn fmt_metric_labeled<N: Display, L: Display>(&self, name: N, labels: L) -> fmt::Result;
+}
+
+#[derive(Debug, Default, Clone)]
+struct Labeled<L: fmt::Display + Hash + Eq, M> {
+    values: IndexMap<L, M>,
 }
 
 struct RequestMetrics {
@@ -129,40 +132,15 @@ pub fn new(process: &Arc<ctx::Process>) -> (Record, Serve){
 // ===== impl Metrics =====
 
 impl Metrics {
-
     pub fn new(process: &Arc<ctx::Process>) -> Self {
-
         let start_time = process.start_time
             .duration_since(time::UNIX_EPOCH)
-            .expect(
-                "process start time should not be before the beginning \
-                 of the Unix epoch"
-            )
+            .expect("process start time")
             .as_secs();
 
-        let request_total = Metric::<Counter, Arc<RequestLabels>>::new(
-            "request_total",
-            "A counter of the number of requests the proxy has received.",
-        );
-
-        let response_total = Metric::<Counter, Arc<ResponseLabels>>::new(
-            "response_total",
-            "A counter of the number of responses the proxy has received.",
-        );
-
-        let response_latency = Metric::<Histogram<latency::Ms>, Arc<ResponseLabels>>::new(
-            "response_latency_ms",
-            "A histogram of the total latency of a response. This is measured \
-            from when the request headers are received to when the response \
-            stream has completed.",
-        );
-
         Metrics {
-            request_total,
-            response_total,
-            response_latency,
-            tcp: TcpMetrics::new(),
             start_time,
+            .. Metrics::default(),
         }
     }
 
@@ -189,21 +167,49 @@ impl Metrics {
             .entry(labels.clone())
             .or_insert_with(Counter::default)
     }
-
-    fn tcp(&mut self) -> &mut TcpMetrics {
-        &mut self.tcp
-    }
 }
 
 impl fmt::Display for Metrics {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.start_time.fmt_metric(f, "process_start_time_seconds")?;
+
+        Ok(())
+    }
+}
+
+impl fmt::Display for RequestMetrics {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Counter::fmt_help(
+            f,
+            "request_total",
+            "A counter of the number of requests the proxy has received."
+        )?;
+        self.request_total.fmt_labeled_metric(f, "request_total", self)?;
+
+        Ok(())
+    }
+}
+
+impl fmt::Display for ResponseMetrics {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.response_total.fmt_labeled(
+        let response_total = Metric::<Counter, Arc<ResponseLabels>>::new(
+            "response_total",
+            "A counter of the number of responses the proxy has received.",
+        );
+
+        let response_latency = Metric::<Histogram<latency::Ms>, Arc<ResponseLabels>>::new(
+            "response_latency_ms",
+            "A histogram of the total latency of a response. This is measured \
+            from when the request headers are received to when the response \
+            stream has completed.",
+        );
+
         writeln!(f, "{}", self.request_total)?;
         writeln!(f, "{}", self.response_total)?;
         writeln!(f, "{}", self.response_latency)?;
         writeln!(f, "{}", self.tcp)?;
 
-        writeln!(f, "process_start_time_seconds {}", self.start_time)?;
-        Ok(())
     }
 }
 
@@ -211,6 +217,7 @@ impl fmt::Display for Metrics {
 
 impl TcpMetrics {
     pub fn new() -> TcpMetrics {
+
         let open_total = Metric::<Counter, Arc<TransportLabels>>::new(
             "tcp_open_total",
             "A counter of the total number of transport connections.",
