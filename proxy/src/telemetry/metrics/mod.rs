@@ -195,6 +195,10 @@ impl<L: Display + Hash + Eq, M> Default for Scopes<L, M> {
 
 impl fmt::Display for RequestScopes {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.scopes.is_empty() {
+            return Ok(());
+        }
+
         fmt_help(f, "request_total", "counter", "Total count of routed HTTP requests.")?;
         for (labels, scope) in &self.scopes {
             scope.total.fmt_metric_labeled(f, "request_total", labels)?;
@@ -208,6 +212,10 @@ impl fmt::Display for RequestScopes {
 
 impl fmt::Display for ResponseScopes {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.scopes.is_empty() {
+            return Ok(());
+        }
+
         fmt_help(f, "response_total", "counter", "Total count of HTTP responses")?;
         for (labels, scope) in &self.scopes {
             scope.total.fmt_metric_labeled(f, "response_total", labels)?;
@@ -228,6 +236,10 @@ impl fmt::Display for ResponseScopes {
 
 impl fmt::Display for TransportScopes {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.scopes.is_empty() {
+            return Ok(());
+        }
+
         fmt_help(f, "tcp_open_total", "counter", "Total count of opened connections")?;
         for (labels, scope) in &self.scopes {
             scope.open_total.fmt_metric_labeled(f, "tcp_open_total", labels)?;
@@ -256,6 +268,10 @@ impl fmt::Display for TransportScopes {
 
 impl fmt::Display for TransportCloseScopes {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.scopes.is_empty() {
+            return Ok(());
+        }
+
         fmt_help(f, "tcp_close_total", "counter", "Total count of closed connections")?;
         for (labels, scope) in &self.scopes {
             scope.close_total.fmt_metric_labeled(f, "tcp_close_total", labels)?;
