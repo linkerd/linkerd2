@@ -30,18 +30,7 @@ use std::default::Default;
 use std::{fmt, time};
 use std::hash::Hash;
 use std::sync::{Arc, Mutex};
-use std::io::Write;
 
-use deflate::CompressionOptions;
-use deflate::write::GzEncoder;
-use futures::future::{self, FutureResult};
-use hyper::{self, Body, StatusCode};
-use hyper::header::{AcceptEncoding, ContentEncoding, ContentType, Encoding, QualityItem};
-use hyper::server::{
-    Response as HyperResponse,
-    Request as HyperRequest,
-    Service as HyperService,
-};
 use indexmap::IndexMap;
 
 use ctx;
@@ -52,6 +41,7 @@ mod histogram;
 mod labels;
 mod latency;
 mod record;
+mod serve;
 
 use self::counter::Counter;
 use self::gauge::Gauge;
@@ -64,6 +54,7 @@ use self::labels::{
 };
 pub use self::labels::DstLabels;
 pub use self::record::Record;
+pub use self::serve::Serve;
 
 #[derive(Debug, Clone)]
 struct Metrics {
@@ -94,12 +85,6 @@ struct Metric<M, L: Hash + Eq> {
     name: &'static str,
     help: &'static str,
     values: IndexMap<L, M>
-}
-
-/// Serve Prometheues metrics.
-#[derive(Debug, Clone)]
-pub struct Serve {
-    metrics: Arc<Mutex<Metrics>>,
 }
 
 /// Construct the Prometheus metrics.
@@ -391,67 +376,5 @@ impl<L, V> fmt::Display for Metric<Histogram<V>, L> where
         }
 
         Ok(())
-    }
-}
-
-// ===== impl Serve =====
-
-impl Serve {
-    fn new(metrics: &Arc<Mutex<Metrics>>) -> Self {
-        Serve {
-            metrics: metrics.clone(),
-        }
-    }
-}
-
-fn is_gzip(req: &HyperRequest) -> bool {
-    if let Some(accept_encodings) = req
-        .headers()
-        .get::<AcceptEncoding>()
-    {
-        return accept_encodings
-            .iter()
-            .any(|&QualityItem { ref item, .. }| item == &Encoding::Gzip)
-    }
-    false
-}
-
-impl HyperService for Serve {
-    type Request = HyperRequest;
-    type Response = HyperResponse;
-    type Error = hyper::Error;
-    type Future = FutureResult<Self::Response, Self::Error>;
-
-    fn call(&self, req: Self::Request) -> Self::Future {
-        if req.path() != "/metrics" {
-            return future::ok(HyperResponse::new()
-                .with_status(StatusCode::NotFound));
-        }
-
-        let metrics = self.metrics.lock()
-            .expect("metrics lock poisoned");
-
-        let resp = if is_gzip(&req) {
-            trace!("gzipping metrics");
-            let mut writer = GzEncoder::new(Vec::<u8>::new(), CompressionOptions::fast());
-            write!(&mut writer, "{}", *metrics)
-                .and_then(|_| writer.finish())
-                .map(|body| {
-                    HyperResponse::new()
-                        .with_header(ContentEncoding(vec![Encoding::Gzip]))
-                        .with_header(ContentType::plaintext())
-                        .with_body(Body::from(body))
-                })
-        } else {
-            let mut writer = Vec::<u8>::new();
-            write!(&mut writer, "{}", *metrics)
-                .map(|_| {
-                    HyperResponse::new()
-                        .with_header(ContentType::plaintext())
-                        .with_body(Body::from(writer))
-                })
-        };
-
-        future::result(resp.map_err(hyper::Error::Io))
     }
 }
