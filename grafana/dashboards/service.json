@@ -16,13 +16,13 @@
   "gnetId": null,
   "graphTooltip": 1,
   "id": null,
-  "iteration": 1524170189431,
+  "iteration": 1524963590602,
   "links": [],
   "panels": [
     {
       "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://conduit.io/favicon.png\" style=\"height:32px;\"/>&nbsp;\n  <span style=\"font-size: 32px\">svc/$service</span>\n</div>",
       "gridPos": {
-        "h": 2,
+        "h": 2.4,
         "w": 24,
         "x": 0,
         "y": 0
@@ -57,7 +57,7 @@
         "h": 4,
         "w": 8,
         "x": 0,
-        "y": 2
+        "y": 2.4
       },
       "id": 5,
       "interval": null,
@@ -141,7 +141,7 @@
         "h": 4,
         "w": 8,
         "x": 8,
-        "y": 2
+        "y": 2.4
       },
       "id": 4,
       "interval": null,
@@ -225,7 +225,7 @@
         "h": 4,
         "w": 8,
         "x": 16,
-        "y": 2
+        "y": 2.4
       },
       "id": 81,
       "interval": null,
@@ -289,10 +289,10 @@
     {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>TOP-LINE TRAFFIC</span>\n</div>",
       "gridPos": {
-        "h": 2,
+        "h": 2.2,
         "w": 24,
         "x": 0,
-        "y": 6
+        "y": 6.4
       },
       "id": 17,
       "links": [],
@@ -312,7 +312,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 8
+        "y": 8.6
       },
       "id": 67,
       "legend": {
@@ -380,7 +380,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -393,7 +397,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 8
+        "y": 8.6
       },
       "id": 2,
       "legend": {
@@ -461,7 +465,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -474,7 +482,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 8
+        "y": 8.6
       },
       "id": 68,
       "legend": {
@@ -557,15 +565,19 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>INBOUND TRAFFIC BY DEPLOYMENT</span>\n</div>",
       "gridPos": {
-        "h": 2,
+        "h": 2.2,
         "w": 24,
         "x": 0,
-        "y": 15
+        "y": 15.6
       },
       "id": 32,
       "links": [],
@@ -585,7 +597,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 17
+        "y": 17.8
       },
       "id": 77,
       "legend": {
@@ -653,7 +665,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -666,7 +682,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 17
+        "y": 17.8
       },
       "id": 78,
       "legend": {
@@ -733,7 +749,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -746,7 +766,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 17
+        "y": 17.8
       },
       "id": 79,
       "legend": {
@@ -813,15 +833,19 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>INBOUND TRAFFIC BY POD</span>\n</div>",
       "gridPos": {
-        "h": 2,
+        "h": 2.2,
         "w": 24,
         "x": 0,
-        "y": 24
+        "y": 24.8
       },
       "id": 82,
       "links": [],
@@ -841,7 +865,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 26
+        "y": 27
       },
       "id": 83,
       "legend": {
@@ -909,7 +933,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -922,7 +950,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 26
+        "y": 27
       },
       "id": 84,
       "legend": {
@@ -989,7 +1017,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -1002,7 +1034,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 26
+        "y": 27
       },
       "id": 85,
       "legend": {
@@ -1069,7 +1101,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     }
   ],
   "refresh": "5s",
@@ -1128,7 +1164,7 @@
         "multi": false,
         "name": "inbound",
         "options": [],
-        "query": "label_values(request_total{dst_namespace=\"$namespace\", dst_service=\"$service\"}, deployment)",
+        "query": "label_values(request_total{dst_namespace=\"$namespace\", dst_service=\"$service\", conduit_io_control_plane_component=\"\"}, deployment)",
         "refresh": 2,
         "regex": "",
         "sort": 1,
@@ -1148,7 +1184,7 @@
         "multi": false,
         "name": "outbound",
         "options": [],
-        "query": "label_values(request_total{namespace=\"$namespace\", deployment=\"$deployment\"}, dst_deployment)",
+        "query": "label_values(request_total{namespace=\"$namespace\", deployment=\"$deployment\", conduit_io_control_plane_component=\"\"}, dst_deployment)",
         "refresh": 2,
         "regex": "",
         "sort": 1,

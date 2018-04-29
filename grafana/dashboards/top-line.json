@@ -16,7 +16,7 @@
   "gnetId": null,
   "graphTooltip": 1,
   "id": null,
-  "iteration": 1523665070192,
+  "iteration": 1524861055004,
   "links": [],
   "panels": [
     {
@@ -366,7 +366,7 @@
     {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>TOP LINE</span>\n</div>",
       "gridPos": {
-        "h": 2,
+        "h": 2.2,
         "w": 24,
         "x": 0,
         "y": 7
@@ -390,7 +390,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 9
+        "y": 9.2
       },
       "id": 21,
       "legend": {
@@ -457,7 +457,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -470,7 +474,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 9
+        "y": 9.2
       },
       "id": 22,
       "legend": {
@@ -537,7 +541,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -550,7 +558,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 9
+        "y": 9.2
       },
       "id": 23,
       "legend": {
@@ -617,15 +625,19 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>NAMESPACES</span>\n</div>",
       "gridPos": {
-        "h": 2,
+        "h": 2.2,
         "w": 24,
         "x": 0,
-        "y": 16
+        "y": 16.2
       },
       "height": "1px",
       "id": 19,
@@ -641,7 +653,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 18
+        "y": 18.4
       },
       "id": 40,
       "panels": [],
@@ -655,7 +667,7 @@
         "h": 2,
         "w": 24,
         "x": 0,
-        "y": 19
+        "y": 19.4
       },
       "height": "1px",
       "id": 13,
@@ -676,7 +688,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 21
+        "y": 21.4
       },
       "id": 6,
       "legend": {
@@ -743,7 +755,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -756,7 +772,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 21
+        "y": 21.4
       },
       "id": 8,
       "legend": {
@@ -823,7 +839,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -836,7 +856,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 21
+        "y": 21.4
       },
       "id": 9,
       "legend": {
@@ -904,7 +924,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     }
   ],
   "refresh": "5s",
@@ -943,7 +967,7 @@
         "multi": false,
         "name": "deployment",
         "options": [],
-        "query": "label_values(request_total{conduit_io_control_plane_component=\"\"}, deployment)",
+        "query": "label_values(request_total{conduit_io_control_plane_component=\"\", deployment!=\"\"}, deployment)",
         "refresh": 2,
         "regex": "",
         "sort": 1,
