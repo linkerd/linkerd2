@@ -1,5 +1,8 @@
-use std::{fmt, ops};
+use std::fmt::{self, Display};
 use std::num::Wrapping;
+use std::ops;
+
+use super::FmtMetric;
 
 /// A Prometheus counter is represented by a `Wrapping` unsigned 64-bit int.
 ///
@@ -53,8 +56,26 @@ impl ops::AddAssign<u64> for Counter {
     }
 }
 
-impl fmt::Display for Counter {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(f)
+impl ops::AddAssign<Self> for Counter {
+    fn add_assign(&mut self, Counter(rhs): Self) {
+        (*self).0 += rhs
+    }
+}
+
+impl FmtMetric for Counter {
+    fn fmt_metric<N: Display>(&self, f: &mut fmt::Formatter, name: N) -> fmt::Result {
+        writeln!(f, "{} {}", name, self.0)
+    }
+
+    fn fmt_metric_labeled<N, L>(&self, f: &mut fmt::Formatter, name: N, labels: L) -> fmt::Result
+    where
+        L: Display,
+        N: Display,
+    {
+        writeln!(f, "{name}{{{labels}}} {value}",
+            name = name,
+            labels = labels,
+            value = self.0,
+        )
     }
 }

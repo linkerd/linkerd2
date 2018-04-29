@@ -1,8 +1,8 @@
-use std::{cmp, fmt, iter, slice};
-use std::num::Wrapping;
+use std::cmp;
+use std::fmt::{self, Display};
 use std::marker::PhantomData;
 
-use super::Counter;
+use super::{Counter, FmtMetric};
 
 /// A series of latency values and counts.
 #[derive(Debug, Clone)]
@@ -30,7 +30,7 @@ pub struct Histogram<V: Into<u64>> {
     // TODO: Implement Prometheus reset semantics correctly, taking into consideration
     //       that Prometheus represents this as `f64` and so there are only 52 significant
     //       bits.
-    pub sum: Wrapping<u64>,
+    sum: Counter,
 
     _p: PhantomData<V>,
 }
@@ -44,6 +44,9 @@ pub enum Bucket {
 /// A series of increasing Buckets values.
 #[derive(Debug)]
 pub struct Bounds(pub &'static [Bucket]);
+
+/// Helper that lazily formats metric keys as {0}_{1}.
+struct Key<'a, P: Display + 'a>(&'a P, &'a str);
 
 // ===== impl Histogram =====
 
@@ -60,7 +63,7 @@ impl<V: Into<u64>> Histogram<V> {
         Self {
             bounds,
             buckets: buckets.into_boxed_slice(),
-            sum: Wrapping(0),
+            sum: Counter::default(),
             _p: PhantomData,
         }
     }
@@ -77,23 +80,46 @@ impl<V: Into<u64>> Histogram<V> {
             .expect("all values must fit into a bucket");
 
         self.buckets[idx].incr();
-        self.sum += Wrapping(value);
-    }
-
-    pub fn sum(&self) -> u64 {
-        self.sum.0
+        self.sum += value;
     }
 }
 
-impl<'a, V: Into<u64>> IntoIterator for &'a Histogram<V> {
-    type Item = (&'a Bucket, &'a Counter);
-    type IntoIter = iter::Zip<
-        slice::Iter<'a, Bucket>,
-        slice::Iter<'a, Counter>,
-    >;
+impl<V: Into<u64>> FmtMetric for Histogram<V> {
+    fn fmt_metric<N: Display>(&self, f: &mut fmt::Formatter, name: N) -> fmt::Result {
+        let mut total = Counter::default();
+        for (le, count) in self.bounds.0.iter().zip(self.buckets.iter()) {
+            total += *count;
+            total.fmt_metric_labeled(f, Key(&name, "bucket"), format!("le=\"{}\"", le))?;
+        }
+        total.fmt_metric(f, Key(&name, "count"))?;
+        self.sum.fmt_metric(f, Key(&name, "sum"))?;
 
-    fn into_iter(self) -> Self::IntoIter {
-        self.bounds.0.iter().zip(self.buckets.iter())
+        Ok(())
+    }
+
+    fn fmt_metric_labeled<N, L>(&self, f: &mut fmt::Formatter, name: N, labels: L) -> fmt::Result
+    where
+        N: Display,
+        L: Display,
+    {
+        let mut total = Counter::default();
+        for (le, count) in self.bounds.0.iter().zip(self.buckets.iter()) {
+            total += *count;
+            total.fmt_metric_labeled(f, Key(&name, "bucket"),
+                format!("{},le=\"{}\"", labels, le))?;
+        }
+        total.fmt_metric_labeled(f, Key(&name, "count"), &labels)?;
+        self.sum.fmt_metric_labeled(f, Key(&name, "sum"), &labels)?;
+
+        Ok(())
+    }
+}
+
+// ===== impl Key =====
+
+impl<'a, P: Display> fmt::Display for Key<'a, P> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}_{}", self.0, self.1)
     }
 }
 
@@ -129,8 +155,8 @@ impl cmp::Ord for Bucket {
 mod tests {
     use super::*;
 
-    use std::collections::HashMap;
     use std::u64;
+    use std::collections::HashMap;
 
     const NUM_BUCKETS: usize = 47;
     static BOUNDS: &'static Bounds = &Bounds(&[
@@ -204,9 +230,9 @@ mod tests {
         fn sum_equals_total_of_observations(observations: Vec<u64>) -> bool {
             let mut hist = Histogram::<u64>::new(&BOUNDS);
 
-            let mut expected_sum = Wrapping(0u64);
+            let mut expected_sum = Counter::default();
             for obs in observations {
-                expected_sum += Wrapping(obs);
+                expected_sum += obs;
                 hist.add(obs);
             }
 
