@@ -81,14 +81,20 @@ struct Scopes<L: Display + Hash + Eq, M> {
     scopes: IndexMap<L, M>,
 }
 
-type RequestScopes = Scopes<RequestLabels, RequestMetrics>;
+#[derive(Debug)]
+struct Stamped<T> {
+    stamp: time::Instant,
+    inner: T,
+}
+
+type RequestScopes = Scopes<RequestLabels, Stamped<RequestMetrics>>;
 
 #[derive(Debug, Default)]
 struct RequestMetrics {
     total: Counter,
 }
 
-type ResponseScopes = Scopes<ResponseLabels, ResponseMetrics>;
+type ResponseScopes = Scopes<ResponseLabels, Stamped<ResponseMetrics>>;
 
 #[derive(Debug, Default)]
 struct ResponseMetrics {
@@ -96,7 +102,7 @@ struct ResponseMetrics {
     latency: Histogram<latency::Ms>,
 }
 
-type TransportScopes = Scopes<TransportLabels, TransportMetrics>;
+type TransportScopes = Scopes<TransportLabels, Stamped<TransportMetrics>>;
 
 #[derive(Debug, Default)]
 struct TransportMetrics {
@@ -106,7 +112,7 @@ struct TransportMetrics {
     read_bytes_total: Counter,
 }
 
-type TransportCloseScopes = Scopes<TransportCloseLabels, TransportCloseMetrics>;
+type TransportCloseScopes = Scopes<TransportCloseLabels, Stamped<TransportCloseMetrics>>;
 
 #[derive(Debug, Default)]
 struct TransportCloseMetrics {
@@ -142,22 +148,26 @@ impl Root {
 
     fn request(&mut self, labels: RequestLabels) -> &mut RequestMetrics {
         self.requests.scopes.entry(labels)
-            .or_insert_with(RequestMetrics::default)
+            .or_insert_with(Stamped::default)
+            .stamped()
     }
 
     fn response(&mut self, labels: ResponseLabels) -> &mut ResponseMetrics {
         self.responses.scopes.entry(labels)
-            .or_insert_with(ResponseMetrics::default)
+            .or_insert_with(Stamped::default)
+            .stamped()
     }
 
     fn transport(&mut self, labels: TransportLabels) -> &mut TransportMetrics {
         self.transports.scopes.entry(labels)
-            .or_insert_with(TransportMetrics::default)
+            .or_insert_with(Stamped::default)
+            .stamped()
     }
 
     fn transport_close(&mut self, labels: TransportCloseLabels) -> &mut TransportCloseMetrics {
         self.transport_closes.scopes.entry(labels)
-            .or_insert_with(TransportCloseMetrics::default)
+            .or_insert_with(Stamped::default)
+            .stamped()
     }
 }
 
@@ -180,6 +190,37 @@ impl fmt::Display for Root {
         self.start_time.fmt_metric(f, "process_start_time_seconds")?;
 
         Ok(())
+    }
+}
+
+// ===== impl Stamped =====
+
+impl<T> Stamped<T> {
+    fn stamped(&mut self) -> &mut T {
+        self.stamp = time::Instant::now();
+        &mut self.inner
+    }
+}
+
+impl<T> From<T> for Stamped<T> {
+    fn from(inner: T) -> Stamped<T> {
+        Stamped {
+            inner,
+            stamp: time::Instant::now(),
+        }
+    }
+}
+
+impl<T: Default> Default for Stamped<T> {
+    fn default() -> Self {
+        T::default().into()
+    }
+}
+
+impl<T> ::std::ops::Deref for Stamped<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
     }
 }
 
