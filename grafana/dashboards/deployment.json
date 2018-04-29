@@ -16,13 +16,13 @@
   "gnetId": null,
   "graphTooltip": 1,
   "id": null,
-  "iteration": 1524697688078,
+  "iteration": 1524965907080,
   "links": [],
   "panels": [
     {
       "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://conduit.io/favicon.png\" style=\"height:32px;\"/>&nbsp;\n  <span style=\"font-size: 32px\">deploy/$deployment</span>\n</div>",
       "gridPos": {
-        "h": 2,
+        "h": 2.4,
         "w": 24,
         "x": 0,
         "y": 0
@@ -57,7 +57,7 @@
         "h": 4,
         "w": 8,
         "x": 0,
-        "y": 2
+        "y": 2.4
       },
       "id": 5,
       "interval": null,
@@ -141,7 +141,7 @@
         "h": 4,
         "w": 8,
         "x": 8,
-        "y": 2
+        "y": 2.4
       },
       "id": 4,
       "interval": null,
@@ -225,7 +225,7 @@
         "h": 4,
         "w": 4,
         "x": 16,
-        "y": 2
+        "y": 2.4
       },
       "id": 11,
       "interval": null,
@@ -264,7 +264,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "count(count(request_total{dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}) by (namespace, deployment))",
+          "expr": "count(count(request_total{dst_namespace=\"$namespace\", deployment!=\"\", dst_deployment!=\"\", dst_deployment=\"$deployment\", direction=\"outbound\"}) by (namespace, deployment))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "",
@@ -307,7 +307,7 @@
         "h": 4,
         "w": 4,
         "x": 20,
-        "y": 2
+        "y": 2.4
       },
       "id": 15,
       "interval": null,
@@ -370,10 +370,10 @@
     {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>INBOUND TRAFFIC</span>\n</div>",
       "gridPos": {
-        "h": 2,
+        "h": 2.2,
         "w": 24,
         "x": 0,
-        "y": 6
+        "y": 6.4
       },
       "id": 17,
       "links": [],
@@ -393,7 +393,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 8
+        "y": 8.6
       },
       "id": 67,
       "legend": {
@@ -461,7 +461,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -474,7 +478,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 8
+        "y": 8.6
       },
       "id": 2,
       "legend": {
@@ -542,7 +546,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -555,7 +563,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 8
+        "y": 8.6
       },
       "id": 68,
       "legend": {
@@ -638,7 +646,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "collapsed": true,
@@ -646,7 +658,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 15
+        "y": 15.6
       },
       "id": 148,
       "panels": [
@@ -879,7 +891,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 16
+        "y": 16.6
       },
       "id": 152,
       "panels": [],
@@ -889,10 +901,10 @@
     {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>INBOUND DEPLOYMENTS</span>\n</div>",
       "gridPos": {
-        "h": 2,
+        "h": 2.2,
         "w": 24,
         "x": 0,
-        "y": 17
+        "y": 17.6
       },
       "id": 76,
       "links": [],
@@ -907,7 +919,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 19
+        "y": 19.8
       },
       "id": 59,
       "panels": [
@@ -963,7 +975,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(response_total{classification=\"success\", deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (deployment, pod) / sum(irate(response_total{deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (deployment, pod)",
+              "expr": "sum(irate(response_total{classification=\"success\", deployment!=\"\", deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (deployment, pod) / sum(irate(response_total{deployment!=\"\", deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (deployment, pod)",
               "format": "time_series",
               "instant": false,
               "intervalFactor": 1,
@@ -1045,7 +1057,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(request_total{deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (deployment, pod)",
+              "expr": "sum(irate(request_total{deployment!=\"\", deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (deployment, pod)",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "po/{{pod}}",
@@ -1126,21 +1138,21 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (le, deployment))",
+              "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{deployment!=\"\", deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (le, deployment))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "P50 deploy/{{deployment}}",
               "refId": "A"
             },
             {
-              "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (le, deployment))",
+              "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{deployment!=\"\", deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (le, deployment))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "P95 deploy/{{deployment}}",
               "refId": "B"
             },
             {
-              "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (le, deployment))",
+              "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{deployment!=\"\", deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (le, deployment))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "P99 deploy/{{deployment}}",
@@ -1194,7 +1206,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 20
+        "y": 20.8
       },
       "id": 34,
       "panels": [],
@@ -1205,10 +1217,10 @@
     {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>OUTBOUND TRAFFIC</span>\n</div>",
       "gridPos": {
-        "h": 2,
+        "h": 2.2,
         "w": 24,
         "x": 0,
-        "y": 21
+        "y": 21.8
       },
       "id": 32,
       "links": [],
@@ -1228,7 +1240,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 23
+        "y": 24
       },
       "id": 77,
       "legend": {
@@ -1296,7 +1308,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -1309,7 +1325,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 23
+        "y": 24
       },
       "id": 78,
       "legend": {
@@ -1376,7 +1392,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -1389,7 +1409,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 23
+        "y": 24
       },
       "id": 79,
       "legend": {
@@ -1456,7 +1476,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "collapsed": true,
@@ -1464,7 +1488,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 30
+        "y": 31
       },
       "id": 154,
       "panels": [
@@ -1479,7 +1503,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 31
+            "y": 32
           },
           "id": 157,
           "legend": {
@@ -1547,7 +1571,11 @@
               "min": null,
               "show": true
             }
-          ]
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
         },
         {
           "aliasColors": {},
@@ -1560,7 +1588,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 31
+            "y": 32
           },
           "id": 166,
           "legend": {
@@ -1627,7 +1655,11 @@
               "min": null,
               "show": true
             }
-          ]
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
         },
         {
           "cards": {
@@ -1647,7 +1679,7 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 31
+            "y": 32
           },
           "heatmap": {},
           "highlightCards": true,
@@ -1684,6 +1716,7 @@
             "show": true,
             "splitFactor": null
           },
+          "yBucketBound": "auto",
           "yBucketNumber": null,
           "yBucketSize": null
         }
@@ -1697,7 +1730,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 31
+        "y": 32
       },
       "id": 156,
       "panels": [],
@@ -1707,10 +1740,10 @@
     {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>OUTBOUND DEPLOYMENTS</span>\n</div>",
       "gridPos": {
-        "h": 2,
+        "h": 2.2,
         "w": 24,
         "x": 0,
-        "y": 32
+        "y": 33
       },
       "id": 80,
       "links": [],
@@ -1725,7 +1758,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 34
+        "y": 35.2
       },
       "id": 27,
       "panels": [
@@ -1735,7 +1768,7 @@
             "h": 2,
             "w": 24,
             "x": 0,
-            "y": 31
+            "y": 36.2
           },
           "id": 40,
           "links": [],
@@ -1755,7 +1788,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 33
+            "y": 38.2
           },
           "id": 28,
           "legend": {
@@ -1823,7 +1856,11 @@
               "min": null,
               "show": true
             }
-          ]
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
         },
         {
           "aliasColors": {},
@@ -1836,7 +1873,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 33
+            "y": 38.2
           },
           "id": 35,
           "legend": {
@@ -1903,7 +1940,11 @@
               "min": null,
               "show": true
             }
-          ]
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
         },
         {
           "aliasColors": {},
@@ -1916,7 +1957,7 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 33
+            "y": 38.2
           },
           "id": 41,
           "legend": {
@@ -1997,7 +2038,11 @@
               "min": null,
               "show": true
             }
-          ]
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
         }
       ],
       "repeat": "outbound",
@@ -2021,7 +2066,7 @@
         "multi": false,
         "name": "namespace",
         "options": [],
-        "query": "label_values(request_total{conduit_io_control_plane_component=\"\"}, namespace)",
+        "query": "label_values(request_total{conduit_io_control_plane_component=\"\", deployment!=\"\"}, namespace)",
         "refresh": 2,
         "regex": "",
         "sort": 1,
@@ -2061,7 +2106,7 @@
         "multi": false,
         "name": "inbound",
         "options": [],
-        "query": "label_values(request_total{dst_namespace=\"$namespace\", dst_deployment=\"$deployment\"}, deployment)",
+        "query": "label_values(request_total{dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", conduit_io_control_plane_component=\"\"}, deployment)",
         "refresh": 2,
         "regex": "",
         "sort": 1,
@@ -2081,7 +2126,7 @@
         "multi": false,
         "name": "outbound",
         "options": [],
-        "query": "label_values(request_total{namespace=\"$namespace\", deployment=\"$deployment\"}, dst_deployment)",
+        "query": "label_values(request_total{namespace=\"$namespace\", deployment=\"$deployment\", conduit_io_control_plane_component=\"\"}, dst_deployment)",
         "refresh": 2,
         "regex": "",
         "sort": 1,
@@ -2125,5 +2170,5 @@
   "timezone": "",
   "title": "Conduit Deployment",
   "uid": "6svnwykmk",
-  "version": 3
+  "version": 1
 }
