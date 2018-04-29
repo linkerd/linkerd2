@@ -74,3 +74,61 @@ impl Proxy {
         !self.is_inbound()
     }
 }
+
+#[cfg(test)]
+pub mod test_util {
+    use http;
+    use futures_watch;
+    use std::{
+        fmt,
+        net::SocketAddr,
+        sync::Arc,
+        time::SystemTime,
+    };
+
+    use ctx;
+    use telemetry::metrics::DstLabels;
+
+    fn addr() -> SocketAddr {
+        ([1, 2, 3, 4], 5678).into()
+    }
+
+    pub fn process() -> Arc<ctx::Process> {
+        Arc::new(ctx::Process {
+            scheduled_namespace: "test".into(),
+            start_time: SystemTime::now(),
+        })
+    }
+
+    pub fn server(proxy: &Arc<ctx::Proxy>) -> Arc<ctx::transport::Server> {
+        ctx::transport::Server::new(&proxy, &addr(), &addr(), &Some(addr()))
+    }
+
+    pub fn client<L, S>(proxy: &Arc<ctx::Proxy>, labels: L) -> Arc<ctx::transport::Client>
+    where
+        L: IntoIterator<Item=(S, S)>,
+        S: fmt::Display,
+    {
+        let (labels_watch, _store) = futures_watch::Watch::new(DstLabels::new(labels));
+        ctx::transport::Client::new(&proxy, &addr(), Some(labels_watch))
+    }
+
+    pub fn request(
+        uri: &str,
+        server: &Arc<ctx::transport::Server>,
+        client: &Arc<ctx::transport::Client>,
+        id: usize
+    ) -> (Arc<ctx::http::Request>, Arc<ctx::http::Response>) {
+        let req = ctx::http::Request::new(
+            &http::Request::get(uri).body(()).unwrap(),
+            &server,
+            &client,
+            id,
+        );
+        let rsp = ctx::http::Response::new(
+            &http::Response::builder().status(http::StatusCode::OK).body(()).unwrap(),
+            &req,
+        );
+        (req, rsp)
+    }
+}

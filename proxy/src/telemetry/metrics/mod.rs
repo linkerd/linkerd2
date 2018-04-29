@@ -30,7 +30,7 @@ use std::default::Default;
 use std::hash::Hash;
 use std::fmt::{self, Display};
 use std::sync::{Arc, Mutex};
-use std::time;
+use std::time::{UNIX_EPOCH, Duration, Instant};
 
 use indexmap::IndexMap;
 
@@ -83,7 +83,7 @@ struct Scopes<L: Display + Hash + Eq, M> {
 
 #[derive(Debug)]
 struct Stamped<T> {
-    stamp: time::Instant,
+    stamp: Instant,
     inner: T,
 }
 
@@ -136,7 +136,7 @@ pub fn new(process: &Arc<ctx::Process>) -> (Record, Serve){
 impl Root {
     pub fn new(process: &Arc<ctx::Process>) -> Self {
         let t0 = process.start_time
-            .duration_since(time::UNIX_EPOCH)
+            .duration_since(UNIX_EPOCH)
             .expect("process start time")
             .as_secs();
 
@@ -169,6 +169,13 @@ impl Root {
             .or_insert_with(Stamped::default)
             .stamped()
     }
+
+    fn retain_since(&mut self, epoch: Instant) {
+        self.requests.retain_since(epoch);
+        self.responses.retain_since(epoch);
+        self.transports.retain_since(epoch);
+        self.transport_closes.retain_since(epoch);
+    }
 }
 
 fn fmt_help(f: &mut fmt::Formatter, name: &str, kind: &str, help: &str) -> fmt::Result {
@@ -197,16 +204,16 @@ impl fmt::Display for Root {
 
 impl<T> Stamped<T> {
     fn stamped(&mut self) -> &mut T {
-        self.stamp = time::Instant::now();
+        self.stamp = Instant::now();
         &mut self.inner
     }
 }
 
 impl<T> From<T> for Stamped<T> {
-    fn from(inner: T) -> Stamped<T> {
-        Stamped {
+    fn from(inner: T) -> Self {
+        Self {
             inner,
-            stamp: time::Instant::now(),
+            stamp: Instant::now(),
         }
     }
 }
@@ -232,6 +239,12 @@ impl<L: Display + Hash + Eq, M> Default for Scopes<L, M> {
     }
 }
 
+impl<L: Display + Hash + Eq, M> Scopes<L, Stamped<M>> {
+    fn retain_since(&mut self, epoch: Instant) {
+        self.scopes.retain(|_, v| v.stamp >= epoch);
+    }
+}
+
 // ===== impl RequestScopes =====
 
 impl fmt::Display for RequestScopes {
@@ -246,6 +259,14 @@ impl fmt::Display for RequestScopes {
         }
 
         Ok(())
+    }
+}
+
+// ===== impl RequestMetrics =====
+
+impl RequestMetrics {
+    fn end(&mut self) {
+        self.total.incr();
     }
 }
 
@@ -270,6 +291,15 @@ impl fmt::Display for ResponseScopes {
         }
 
         Ok(())
+    }
+}
+
+// ===== impl ResponseMetrics =====
+
+impl ResponseMetrics {
+    fn end(&mut self, duration: Duration) {
+        self.total.incr();
+        self.latency.add(duration);
     }
 }
 
@@ -305,6 +335,21 @@ impl fmt::Display for TransportScopes {
     }
 }
 
+// ===== impl TransportMetrics =====
+
+impl TransportMetrics {
+    fn open(&mut self) {
+        self.open_total.incr();
+        self.open_connections.incr();
+    }
+
+    fn close(&mut self, rx: u64, tx: u64) {
+        self.open_connections.decr();
+        self.read_bytes_total += rx;
+        self.write_bytes_total += tx;
+    }
+}
+
 // ===== impl TransportCloseScopes =====
 
 impl fmt::Display for TransportCloseScopes {
@@ -324,5 +369,90 @@ impl fmt::Display for TransportCloseScopes {
         }
 
         Ok(())
+    }
+}
+
+// ===== impl TransportCloseMetrics =====
+
+impl TransportCloseMetrics {
+    fn close(&mut self, duration: Duration) {
+        self.close_total.incr();
+        self.connection_duration.add(duration);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use ctx::test_util::*;
+    use telemetry::event;
+    use super::*;
+
+    fn mock_route(
+        root: &mut Root,
+        proxy: &Arc<ctx::Proxy>,
+        server: &Arc<ctx::transport::Server>,
+        team: &str
+    ) {
+        let client = client(&proxy, vec![("team", team)]);
+        let (req, rsp) = request("http://nba.com", &server, &client, 1);
+
+        let client_transport = Arc::new(ctx::transport::Ctx::Client(client));
+        let transport = TransportLabels::new(&client_transport);
+        root.transport(transport.clone()).open();
+
+        root.request(RequestLabels::new(&req)).end();
+        root.response(ResponseLabels::new(&rsp, None)).end(Duration::from_millis(10));
+        root.transport(transport).close(100, 200);
+
+        let end = TransportCloseLabels::new(&client_transport, &event::TransportClose {
+            clean: true,
+            duration: Duration::from_millis(15),
+            rx_bytes: 40,
+            tx_bytes: 0,
+        });
+        root.transport_close(end).close(Duration::from_millis(15));
+    }
+
+    #[test]
+    fn expiry() {
+        let process = process();
+        let proxy = ctx::Proxy::outbound(&process);
+
+        let server = server(&proxy);
+        let server_transport = Arc::new(ctx::transport::Ctx::Server(server.clone()));
+
+        let mut root = Root::default();
+
+        let t0 = Instant::now();
+        root.transport(TransportLabels::new(&server_transport)).open();
+
+        mock_route(&mut root, &proxy, &server, "warriors");
+        let t1 = Instant::now();
+
+        mock_route(&mut root, &proxy, &server, "sixers");
+        let t2 = Instant::now();
+
+        assert_eq!(root.requests.scopes.len(), 2);
+        assert_eq!(root.responses.scopes.len(), 2);
+        assert_eq!(root.transports.scopes.len(), 2);
+        assert_eq!(root.transport_closes.scopes.len(), 1);
+
+        root.retain_since(t0);
+        assert_eq!(root.requests.scopes.len(), 2);
+        assert_eq!(root.responses.scopes.len(), 2);
+        assert_eq!(root.transports.scopes.len(), 2);
+        assert_eq!(root.transport_closes.scopes.len(), 1);
+
+        root.retain_since(t1);
+        assert_eq!(root.requests.scopes.len(), 1);
+        assert_eq!(root.responses.scopes.len(), 1);
+        assert_eq!(root.transports.scopes.len(), 1);
+        assert_eq!(root.transport_closes.scopes.len(), 1);
+
+        root.retain_since(t2);
+        assert_eq!(root.requests.scopes.len(), 0);
+        assert_eq!(root.responses.scopes.len(), 0);
+        assert_eq!(root.transports.scopes.len(), 0);
+        assert_eq!(root.transport_closes.scopes.len(), 0);
     }
 }

@@ -81,7 +81,7 @@ pub struct DstLabels {
 
 // ===== impl RequestLabels =====
 
-impl<'a> RequestLabels {
+impl RequestLabels {
     pub fn new(req: &ctx::http::Request) -> Self {
         let direction = Direction::from_context(req.server.proxy.as_ref());
 

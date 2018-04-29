@@ -6,8 +6,12 @@ use hyper::header::{AcceptEncoding, ContentEncoding, ContentType, Encoding, Qual
 use hyper::server::{Request, Response, Service};
 use std::io::Write;
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use super::Root;
+
+const MINUTE: u64 = 60;
+const METRICS_RETAIN_IDLE: u64 = 10 * MINUTE;
 
 /// Serve Prometheues metrics.
 #[derive(Debug, Clone)]
@@ -49,8 +53,11 @@ impl Service for Serve {
                 .with_status(StatusCode::NotFound));
         }
 
-        let metrics = self.metrics.lock()
+        let mut metrics = self.metrics.lock()
             .expect("metrics lock poisoned");
+
+        metrics.retain_since(Instant::now() - Duration::from_secs(METRICS_RETAIN_IDLE));
+        let metrics = metrics;
 
         let resp = if Self::is_gzip(&req) {
             trace!("gzipping metrics");
