@@ -28,20 +28,10 @@
 //! end of the label set (all of which will make Prometheus angry).
 use std::default::Default;
 use std::hash::Hash;
-use std::io::Write;
+use std::fmt::{self, Display};
 use std::sync::{Arc, Mutex};
 use std::time;
 
-use deflate::CompressionOptions;
-use deflate::write::GzEncoder;
-use futures::future::{self, FutureResult};
-use hyper::{self, Body, StatusCode};
-use hyper::header::{AcceptEncoding, ContentEncoding, ContentType, Encoding, QualityItem};
-use hyper::server::{
-    Response as HyperResponse,
-    Request as HyperRequest,
-    Service as HyperService,
-};
 use indexmap::IndexMap;
 
 use ctx;
@@ -52,6 +42,7 @@ mod histogram;
 mod labels;
 mod latency;
 mod record;
+mod serve;
 
 use self::counter::Counter;
 use self::gauge::Gauge;
@@ -64,41 +55,50 @@ use self::labels::{
 };
 pub use self::labels::DstLabels;
 pub use self::record::Record;
+pub use self::serve::Serve;
 
-#[derive(Debug, Default, Clone)]
-struct Metrics {
-    request: Labeled<Arc<RequestLabels>, RequestMetrics>,
-    response: Labeled<Arc<ResponseLabels>, ResponseMetrics>,
-    transport: Labeled<Arc<TransportLabels>, TransportMetrics>,
-    transport_close: Labeled<Arc<TransportCloseLabels>, TransportCloseMetrics>,
+trait FmtMetric {
+    fn fmt_metric<N: Display>(&self, f: &mut fmt::Formatter, name: N) -> fmt::Result;
+
+    fn fmt_metric_labeled<N, L>(&self, f: &mut fmt::Formatter, name: N, labels: L) -> fmt::Result
+    where
+        N: Display,
+        L: Display;
+}
+
+#[derive(Debug, Default)]
+struct Root {
+    requests: RequestScopes,
+    responses: ResponseScopes,
+    transports: TransportScopes,
+    transport_closes: TransportCloseScopes,
 
     start_time: Gauge,
 }
 
-trait FmtHelp {
-    fn fmt_help<N: Display, H: Display>(name: N, help: H) -> fmt::Result;
+#[derive(Debug)]
+struct Scopes<L: Display + Hash + Eq, M> {
+    scopes: IndexMap<L, M>,
 }
 
-trait FmtMetric {
-    fn fmt_metric<N: Display>(&self, name: N) -> fmt::Result;
-    fn fmt_metric_labeled<N: Display, L: Display>(&self, name: N, labels: L) -> fmt::Result;
-}
+type RequestScopes = Scopes<RequestLabels, RequestMetrics>;
 
-#[derive(Debug, Default, Clone)]
-struct Labeled<L: fmt::Display + Hash + Eq, M> {
-    values: IndexMap<L, M>,
-}
-
+#[derive(Debug, Default)]
 struct RequestMetrics {
     total: Counter,
 }
 
+type ResponseScopes = Scopes<ResponseLabels, ResponseMetrics>;
+
+#[derive(Debug, Default)]
 struct ResponseMetrics {
     total: Counter,
     latency: Histogram<latency::Ms>,
 }
 
-#[derive(Debug, Clone)]
+type TransportScopes = Scopes<TransportLabels, TransportMetrics>;
+
+#[derive(Debug, Default)]
 struct TransportMetrics {
     open_total: Counter,
     open_connections: Gauge,
@@ -106,16 +106,12 @@ struct TransportMetrics {
     read_bytes_total: Counter,
 }
 
-#[derive(Debug, Clone)]
+type TransportCloseScopes = Scopes<TransportCloseLabels, TransportCloseMetrics>;
+
+#[derive(Debug, Default)]
 struct TransportCloseMetrics {
     close_total: Counter,
     connection_duration: Histogram<latency::Ms>,
-}
-
-/// Serve Prometheues metrics.
-#[derive(Debug, Clone)]
-pub struct Serve {
-    metrics: Arc<Mutex<Metrics>>,
 }
 
 /// Construct the Prometheus metrics.
@@ -125,353 +121,151 @@ pub struct Serve {
 /// scrape endpoint, while the `Record` side can receive updates to the
 /// metrics by calling `record_event`.
 pub fn new(process: &Arc<ctx::Process>) -> (Record, Serve){
-    let metrics = Arc::new(Mutex::new(Metrics::new(process)));
+    let metrics = Arc::new(Mutex::new(Root::new(process)));
     (Record::new(&metrics), Serve::new(&metrics))
 }
 
-// ===== impl Metrics =====
+// ===== impl Root =====
 
-impl Metrics {
+impl Root {
     pub fn new(process: &Arc<ctx::Process>) -> Self {
-        let start_time = process.start_time
+        let t0 = process.start_time
             .duration_since(time::UNIX_EPOCH)
             .expect("process start time")
             .as_secs();
 
-        Metrics {
-            start_time,
-            .. Metrics::default(),
+        Self {
+            start_time: t0.into(),
+            .. Root::default()
         }
     }
 
-    fn request_total(&mut self,
-                     labels: &Arc<RequestLabels>)
-                     -> &mut Counter {
-        self.request_total.values
-            .entry(labels.clone())
-            .or_insert_with(Counter::default)
+    fn request(&mut self, labels: RequestLabels) -> &mut RequestMetrics {
+        self.requests.scopes.entry(labels)
+            .or_insert_with(RequestMetrics::default)
     }
 
-    fn response_latency(&mut self,
-                        labels: &Arc<ResponseLabels>)
-                        -> &mut Histogram<latency::Ms> {
-        self.response_latency.values
-            .entry(labels.clone())
-            .or_insert_with(Histogram::default)
+    fn response(&mut self, labels: ResponseLabels) -> &mut ResponseMetrics {
+        self.responses.scopes.entry(labels)
+            .or_insert_with(ResponseMetrics::default)
     }
 
-    fn response_total(&mut self,
-                      labels: &Arc<ResponseLabels>)
-                      -> &mut Counter {
-        self.response_total.values
-            .entry(labels.clone())
-            .or_insert_with(Counter::default)
+    fn transport(&mut self, labels: TransportLabels) -> &mut TransportMetrics {
+        self.transports.scopes.entry(labels)
+            .or_insert_with(TransportMetrics::default)
+    }
+
+    fn transport_close(&mut self, labels: TransportCloseLabels) -> &mut TransportCloseMetrics {
+        self.transport_closes.scopes.entry(labels)
+            .or_insert_with(TransportCloseMetrics::default)
     }
 }
 
-impl fmt::Display for Metrics {
+fn fmt_help(f: &mut fmt::Formatter, name: &str, kind: &str, help: &str) -> fmt::Result {
+    writeln!(f, "# HELP {} {}", name, help)?;
+    writeln!(f, "# TYPE {} {}", name, kind)?;
+
+    Ok(())
+}
+
+impl fmt::Display for Root {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.requests.fmt(f)?;
+        self.responses.fmt(f)?;
+        self.transports.fmt(f)?;
+        self.transport_closes.fmt(f)?;
+
+        fmt_help(f, "process_start_time_seconds", "gauge",
+            "The time this process started in seconds since the UNIX epoch")?;
         self.start_time.fmt_metric(f, "process_start_time_seconds")?;
 
         Ok(())
     }
 }
 
-impl fmt::Display for RequestMetrics {
+// ===== impl Scopes =====
+
+impl<L: Display + Hash + Eq, M> Default for Scopes<L, M> {
+    fn default() -> Self {
+        Scopes { scopes: IndexMap::default(), }
+    }
+}
+
+// ===== impl RequestScopes =====
+
+impl fmt::Display for RequestScopes {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Counter::fmt_help(
-            f,
-            "request_total",
-            "A counter of the number of requests the proxy has received."
-        )?;
-        self.request_total.fmt_labeled_metric(f, "request_total", self)?;
-
-        Ok(())
-    }
-}
-
-impl fmt::Display for ResponseMetrics {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.response_total.fmt_labeled(
-        let response_total = Metric::<Counter, Arc<ResponseLabels>>::new(
-            "response_total",
-            "A counter of the number of responses the proxy has received.",
-        );
-
-        let response_latency = Metric::<Histogram<latency::Ms>, Arc<ResponseLabels>>::new(
-            "response_latency_ms",
-            "A histogram of the total latency of a response. This is measured \
-            from when the request headers are received to when the response \
-            stream has completed.",
-        );
-
-        writeln!(f, "{}", self.request_total)?;
-        writeln!(f, "{}", self.response_total)?;
-        writeln!(f, "{}", self.response_latency)?;
-        writeln!(f, "{}", self.tcp)?;
-
-    }
-}
-
-// ===== impl TcpMetrics =====
-
-impl TcpMetrics {
-    pub fn new() -> TcpMetrics {
-
-        let open_total = Metric::<Counter, Arc<TransportLabels>>::new(
-            "tcp_open_total",
-            "A counter of the total number of transport connections.",
-        );
-
-        let close_total = Metric::<Counter, Arc<TransportCloseLabels>>::new(
-            "tcp_close_total",
-            "A counter of the total number of transport connections.",
-        );
-
-        let connection_duration = Metric::<Histogram<latency::Ms>, Arc<TransportCloseLabels>>::new(
-            "tcp_connection_duration_ms",
-            "A histogram of the duration of the lifetime of connections, in milliseconds",
-        );
-
-        let open_connections = Metric::<Gauge, Arc<TransportLabels>>::new(
-            "tcp_open_connections",
-            "A gauge of the number of transport connections currently open.",
-        );
-
-        let read_bytes_total = Metric::<Counter, Arc<TransportLabels>>::new(
-            "tcp_read_bytes_total",
-            "A counter of the total number of recieved bytes."
-        );
-
-        let write_bytes_total = Metric::<Counter, Arc<TransportLabels>>::new(
-            "tcp_write_bytes_total",
-            "A counter of the total number of sent bytes."
-        );
-
-         Self {
-            open_total,
-            close_total,
-            connection_duration,
-            open_connections,
-            read_bytes_total,
-            write_bytes_total,
-        }
-    }
-
-    fn open_total(&mut self, labels: &Arc<TransportLabels>) -> &mut Counter {
-        self.open_total.values
-            .entry(labels.clone())
-            .or_insert_with(Default::default)
-    }
-
-    fn close_total(&mut self, labels: &Arc<TransportCloseLabels>) -> &mut Counter {
-        self.close_total.values
-            .entry(labels.clone())
-            .or_insert_with(Counter::default)
-    }
-
-    fn connection_duration(&mut self, labels: &Arc<TransportCloseLabels>) -> &mut Histogram<latency::Ms> {
-        self.connection_duration.values
-            .entry(labels.clone())
-            .or_insert_with(Histogram::default)
-    }
-
-    fn open_connections(&mut self, labels: &Arc<TransportLabels>) -> &mut Gauge {
-        self.open_connections.values
-            .entry(labels.clone())
-            .or_insert_with(Gauge::default)
-    }
-
-    fn write_bytes_total(&mut self, labels: &Arc<TransportLabels>) -> &mut Counter {
-        self.write_bytes_total.values
-            .entry(labels.clone())
-            .or_insert_with(Counter::default)
-    }
-
-    fn read_bytes_total(&mut self, labels: &Arc<TransportLabels>) -> &mut Counter {
-        self.read_bytes_total.values
-            .entry(labels.clone())
-            .or_insert_with(Counter::default)
-    }
-}
-
-impl fmt::Display for TcpMetrics {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{}", self.open_total)?;
-        writeln!(f, "{}", self.close_total)?;
-        writeln!(f, "{}", self.connection_duration)?;
-        writeln!(f, "{}", self.open_connections)?;
-        writeln!(f, "{}", self.write_bytes_total)?;
-        writeln!(f, "{}", self.read_bytes_total)?;
-
-        Ok(())
-    }
-}
-
-// ===== impl Metric =====
-
-impl<M, L: Hash + Eq> Metric<M, L> {
-
-    pub fn new(name: &'static str, help: &'static str) -> Self {
-        Metric {
-            name,
-            help,
-            values: IndexMap::new(),
-        }
-    }
-
-}
-
-impl<L> fmt::Display for Metric<Counter, L>
-where
-    L: fmt::Display,
-    L: Hash + Eq,
-{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f,
-            "# HELP {name} {help}\n# TYPE {name} counter\n",
-            name = self.name,
-            help = self.help,
-        )?;
-
-        for (labels, value) in &self.values {
-            write!(f, "{name}{{{labels}}} {value}\n",
-                name = self.name,
-                labels = labels,
-                value = value,
-            )?;
+        fmt_help(f, "request_total", "counter", "Total count of routed HTTP requests.")?;
+        for (labels, scope) in &self.scopes {
+            scope.total.fmt_metric_labeled(f, "request_total", labels)?;
         }
 
         Ok(())
     }
 }
 
-impl<L> fmt::Display for Metric<Gauge, L>
-where
-    L: fmt::Display,
-    L: Hash + Eq,
-{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f,
-            "# HELP {name} {help}\n# TYPE {name} gauge\n",
-            name = self.name,
-            help = self.help,
-        )?;
+// ===== impl ResponseScopes =====
 
-        for (labels, value) in &self.values {
-            write!(f, "{name}{{{labels}}} {value}\n",
-                name = self.name,
-                labels = labels,
-                value = value,
-            )?;
+impl fmt::Display for ResponseScopes {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt_help(f, "response_total", "counter", "Total count of HTTP responses")?;
+        for (labels, scope) in &self.scopes {
+            scope.total.fmt_metric_labeled(f, "response_total", labels)?;
+        }
+
+        fmt_help(f, "response_latency_ms", "histogram",
+            "Elapsed times between a request's headers being received \
+            and its response stream completing")?;
+        for (labels, scope) in &self.scopes {
+            scope.latency.fmt_metric_labeled(f, "response_latency_ms", labels)?;
         }
 
         Ok(())
     }
 }
 
-impl<L, V> fmt::Display for Metric<Histogram<V>, L> where
-    L: fmt::Display,
-    L: Hash + Eq,
-    V: Into<u64>,
-{
+// ===== impl TransportScopes =====
+
+impl fmt::Display for TransportScopes {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f,
-            "# HELP {name} {help}\n# TYPE {name} histogram\n",
-            name = self.name,
-            help = self.help,
-        )?;
+        fmt_help(f, "tcp_open_total", "counter", "Total count of opened connections")?;
+        for (labels, scope) in &self.scopes {
+            scope.open_total.fmt_metric_labeled(f, "tcp_open_total", labels)?;
+        }
 
-        for (labels, histogram) in &self.values {
-            // Since Prometheus expects each bucket's value to be the sum of the number of
-            // values in this bucket and all lower buckets, track the total count here.
-            let mut total_count = 0u64;
-            for (le, count) in histogram.into_iter() {
-                // Add this bucket's count to the total count.
-                let c: u64 = (*count).into();
-                total_count += c;
-                write!(f, "{name}_bucket{{{labels},le=\"{le}\"}} {count}\n",
-                    name = self.name,
-                    labels = labels,
-                    le = le,
-                    // Print the total count *as of this iteration*.
-                    count = total_count,
-                )?;
-            }
+        fmt_help(f, "tcp_open_connections", "gauge", "Number of currently-open connections")?;
+        for (labels, scope) in &self.scopes {
+            scope.open_connections.fmt_metric_labeled(f, "tcp_open_connections", labels)?;
+        }
 
-            // Print the total count and histogram sum stats.
-            write!(f,
-                "{name}_count{{{labels}}} {count}\n\
-                 {name}_sum{{{labels}}} {sum}\n",
-                name = self.name,
-                labels = labels,
-                count = total_count,
-                sum = histogram.sum(),
-            )?;
+        fmt_help(f, "tcp_read_bytes_total", "counter", "Total count of bytes read")?;
+        for (labels, scope) in &self.scopes {
+            scope.read_bytes_total.fmt_metric_labeled(f, "tcp_read_bytes_total", labels)?;
+        }
+
+        fmt_help(f, "tcp_write_bytes_total", "counter", "Total count of bytes written")?;
+        for (labels, scope) in &self.scopes {
+            scope.write_bytes_total.fmt_metric_labeled(f, "tcp_write_bytes_total", labels)?;
         }
 
         Ok(())
     }
 }
 
-// ===== impl Serve =====
+// ===== impl TransportCloseScopes =====
 
-impl Serve {
-    fn new(metrics: &Arc<Mutex<Metrics>>) -> Self {
-        Serve {
-            metrics: metrics.clone(),
-        }
-    }
-}
-
-fn is_gzip(req: &HyperRequest) -> bool {
-    if let Some(accept_encodings) = req
-        .headers()
-        .get::<AcceptEncoding>()
-    {
-        return accept_encodings
-            .iter()
-            .any(|&QualityItem { ref item, .. }| item == &Encoding::Gzip)
-    }
-    false
-}
-
-impl HyperService for Serve {
-    type Request = HyperRequest;
-    type Response = HyperResponse;
-    type Error = hyper::Error;
-    type Future = FutureResult<Self::Response, Self::Error>;
-
-    fn call(&self, req: Self::Request) -> Self::Future {
-        if req.path() != "/metrics" {
-            return future::ok(HyperResponse::new()
-                .with_status(StatusCode::NotFound));
+impl fmt::Display for TransportCloseScopes {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt_help(f, "tcp_close_total", "counter", "Total count of closed connections")?;
+        for (labels, scope) in &self.scopes {
+            scope.close_total.fmt_metric_labeled(f, "tcp_close_total", labels)?;
         }
 
-        let metrics = self.metrics.lock()
-            .expect("metrics lock poisoned");
+        fmt_help(f, "tcp_connection_duration_ms", "histogram", "Connection lifetimes")?;
+        for (labels, scope) in &self.scopes {
+            scope.connection_duration.fmt_metric_labeled(f, "tcp_connection_duration_ms", labels)?;
+        }
 
-        let resp = if is_gzip(&req) {
-            trace!("gzipping metrics");
-            let mut writer = GzEncoder::new(Vec::<u8>::new(), CompressionOptions::fast());
-            write!(&mut writer, "{}", *metrics)
-                .and_then(|_| writer.finish())
-                .map(|body| {
-                    HyperResponse::new()
-                        .with_header(ContentEncoding(vec![Encoding::Gzip]))
-                        .with_header(ContentType::plaintext())
-                        .with_body(Body::from(body))
-                })
-        } else {
-            let mut writer = Vec::<u8>::new();
-            write!(&mut writer, "{}", *metrics)
-                .map(|_| {
-                    HyperResponse::new()
-                        .with_header(ContentType::plaintext())
-                        .with_body(Body::from(writer))
-                })
-        };
-
-        future::result(resp.map_err(hyper::Error::Io))
+        Ok(())
     }
 }
