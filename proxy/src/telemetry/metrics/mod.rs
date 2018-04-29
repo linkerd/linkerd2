@@ -30,7 +30,7 @@ use std::default::Default;
 use std::hash::Hash;
 use std::fmt::{self, Display};
 use std::sync::{Arc, Mutex};
-use std::time;
+use std::time::{UNIX_EPOCH, Duration};
 
 use indexmap::IndexMap;
 
@@ -130,7 +130,7 @@ pub fn new(process: &Arc<ctx::Process>) -> (Record, Serve){
 impl Root {
     pub fn new(process: &Arc<ctx::Process>) -> Self {
         let t0 = process.start_time
-            .duration_since(time::UNIX_EPOCH)
+            .duration_since(UNIX_EPOCH)
             .expect("process start time")
             .as_secs();
 
@@ -208,6 +208,14 @@ impl fmt::Display for RequestScopes {
     }
 }
 
+// ===== impl RequestMetrics =====
+
+impl RequestMetrics {
+    fn end(&mut self) {
+        self.total.incr();
+    }
+}
+
 // ===== impl ResponseScopes =====
 
 impl fmt::Display for ResponseScopes {
@@ -229,6 +237,15 @@ impl fmt::Display for ResponseScopes {
         }
 
         Ok(())
+    }
+}
+
+// ===== impl ResponseMetrics =====
+
+impl ResponseMetrics {
+    fn end(&mut self, duration: Duration) {
+        self.total.incr();
+        self.latency.add(duration);
     }
 }
 
@@ -264,6 +281,21 @@ impl fmt::Display for TransportScopes {
     }
 }
 
+// ===== impl TransportMetrics =====
+
+impl TransportMetrics {
+    fn open(&mut self) {
+        self.open_total.incr();
+        self.open_connections.incr();
+    }
+
+    fn close(&mut self, rx: u64, tx: u64) {
+        self.open_connections.decr();
+        self.read_bytes_total += rx;
+        self.write_bytes_total += tx;
+    }
+}
+
 // ===== impl TransportCloseScopes =====
 
 impl fmt::Display for TransportCloseScopes {
@@ -283,5 +315,14 @@ impl fmt::Display for TransportCloseScopes {
         }
 
         Ok(())
+    }
+}
+
+// ===== impl TransportCloseMetrics =====
+
+impl TransportCloseMetrics {
+    fn close(&mut self, duration: Duration) {
+        self.close_total.incr();
+        self.connection_duration.add(duration);
     }
 }

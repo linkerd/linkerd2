@@ -38,13 +38,13 @@ impl Record {
 
             Event::StreamRequestFail(ref req, _) => {
                 self.update(|metrics| {
-                    metrics.request(RequestLabels::new(req)).total.incr();
+                    metrics.request(RequestLabels::new(req)).end();
                 })
             },
 
             Event::StreamRequestEnd(ref req, _) => {
                 self.update(|metrics| {
-                    metrics.request(RequestLabels::new(req)).total.incr();
+                    metrics.request(RequestLabels::new(req)).end();
                 })
             },
 
@@ -52,42 +52,31 @@ impl Record {
 
             Event::StreamResponseEnd(ref res, ref end) => {
                 self.update(|metrics| {
-                    let r = metrics.response(ResponseLabels::new(res, end.grpc_status));
-                    r.total.incr();
-                    r.latency.add(end.since_request_open);
+                    metrics.response(ResponseLabels::new(res, end.grpc_status))
+                        .end(end.since_request_open);
                 });
             },
 
             Event::StreamResponseFail(ref res, ref fail) => {
                 // TODO: do we care about the failure's error code here?
                 self.update(|metrics| {
-                    let r = metrics.response(ResponseLabels::fail(res));
-                    r.total.incr();
-                    r.latency.add(fail.since_request_open);
+                    metrics.response(ResponseLabels::fail(res)).end(fail.since_request_open)
                 });
             },
 
             Event::TransportOpen(ref ctx) => {
                 self.update(|metrics| {
-                    let t = metrics.transport(TransportLabels::new(ctx));
-                    t.open_total.incr();
-                    t.open_connections.incr();
+                    metrics.transport(TransportLabels::new(ctx)).open();
                 })
             },
 
             Event::TransportClose(ref ctx, ref close) => {
                 self.update(|metrics| {
-                    {
-                        let t = metrics.transport(TransportLabels::new(ctx));
-                        t.read_bytes_total += close.rx_bytes as u64;
-                        t.write_bytes_total += close.tx_bytes as u64;
-                        t.open_connections.decr();
-                    }
-                    {
-                        let c = metrics.transport_close(TransportCloseLabels::new(ctx, close));
-                        c.connection_duration.add(close.duration);
-                        c.close_total.incr();
-                    }
+                    metrics.transport(TransportLabels::new(ctx))
+                        .close(close.rx_bytes, close.tx_bytes);
+
+                    metrics.transport_close(TransportCloseLabels::new(ctx, close))
+                        .close(close.duration);
                 })
             },
         };
