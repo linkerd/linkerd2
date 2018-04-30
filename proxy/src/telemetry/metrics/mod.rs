@@ -58,77 +58,17 @@ pub use self::labels::DstLabels;
 pub use self::record::Record;
 pub use self::serve::Serve;
 
-mod metrics {
-    use super::*;
-
-    macro_rules! metrics {
-        { $( $name:ident : $kind:ty { $help:expr } ),+ } => {
-            $(
-                #[allow(non_upper_case_globals)]
-                pub(super) const $name: Metric<$kind> = Metric {
-                    name: stringify!($name),
-                    help: $help,
-                    _p: PhantomData,
-                };
-            )+
-        }
+macro_rules! metrics {
+    { $( $name:ident : $kind:ty { $help:expr } ),+ } => {
+        $(
+            #[allow(non_upper_case_globals)]
+            const $name: Metric<'static, $kind> = Metric {
+                name: stringify!($name),
+                help: $help,
+                _p: PhantomData,
+            };
+        )+
     }
-
-    metrics! {
-        process_start_time_seconds: Gauge {
-            "Time that the process started (in seconds since the UNIX epoch)"
-        },
-
-        request_total: Counter { "Total count of HTTP requests." },
-        response_total: Counter { "Total count of HTTP responses" },
-
-        response_latency_ms: Histogram<latency::Ms> {
-            "Elapsed times between a request's headers being received \
-            and its response stream completing"
-        },
-
-        tcp_open_total: Counter { "Total count of opened connections" },
-        tcp_close_total: Counter { "Total count of closed connections" },
-
-        tcp_open_connections: Gauge { "Number of currently-open connections" },
-
-        tcp_read_bytes_total: Counter { "Total count of bytes read from peers" },
-        tcp_write_bytes_total: Counter { "Total count of bytes written to peers" },
-
-        tcp_connection_duration_ms: Histogram<latency::Ms> { "Connection lifetimes" }
-    }
-
-    pub(super) struct Metric<'a, M: FmtMetric> {
-        name: &'a str,
-        help: &'a str,
-        _p: PhantomData<M>,
-    }
-
-    impl<'a, M: FmtMetric> Metric<'a, M> {
-        pub fn fmt_help(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            writeln!(f, "# HELP {} {}", self.name, self.help)?;
-            writeln!(f, "# TYPE {} {}", self.name, M::kind())?;
-            Ok(())
-        }
-
-        pub fn fmt_metric(&self, f: &mut fmt::Formatter, metric: M) -> fmt::Result {
-            metric.fmt_metric(f, self.name)
-        }
-
-        pub fn fmt_scopes<L: Display + Hash + Eq, S, F: Fn(&S) -> &M>(
-            &self,
-            f: &mut fmt::Formatter,
-            scopes: &Scopes<L, S>,
-            to_metric: F
-        )-> fmt::Result {
-            for (labels, scope) in &scopes.scopes {
-                to_metric(scope).fmt_metric_labeled(f, self.name, labels)?;
-            }
-
-            Ok(())
-        }
-    }
-
 }
 
 trait FmtMetric {
@@ -140,6 +80,12 @@ trait FmtMetric {
     where
         N: Display,
         L: Display;
+}
+
+struct Metric<'a, M: FmtMetric> {
+    name: &'a str,
+    help: &'a str,
+    _p: PhantomData<M>,
 }
 
 #[derive(Debug, Default)]
@@ -201,9 +147,42 @@ pub fn new(process: &Arc<ctx::Process>) -> (Record, Serve){
     (Record::new(&metrics), Serve::new(&metrics))
 }
 
+// ===== impl Metric =====
+
+impl<'a, M: FmtMetric> Metric<'a, M> {
+    pub fn fmt_help(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "# HELP {} {}", self.name, self.help)?;
+        writeln!(f, "# TYPE {} {}", self.name, M::kind())?;
+        Ok(())
+    }
+
+    pub fn fmt_metric(&self, f: &mut fmt::Formatter, metric: M) -> fmt::Result {
+        metric.fmt_metric(f, self.name)
+    }
+
+    pub fn fmt_scopes<L: Display + Hash + Eq, S, F: Fn(&S) -> &M>(
+        &self,
+        f: &mut fmt::Formatter,
+        scopes: &Scopes<L, S>,
+        to_metric: F
+    )-> fmt::Result {
+        for (labels, scope) in &scopes.scopes {
+            to_metric(scope).fmt_metric_labeled(f, self.name, labels)?;
+        }
+
+        Ok(())
+    }
+}
+
 // ===== impl Root =====
 
 impl Root {
+    metrics! {
+        process_start_time_seconds: Gauge {
+            "Time that the process started (in seconds since the UNIX epoch)"
+        }
+    }
+
     pub fn new(process: &Arc<ctx::Process>) -> Self {
         let t0 = process.start_time
             .duration_since(UNIX_EPOCH)
@@ -244,8 +223,8 @@ impl fmt::Display for Root {
         self.transports.fmt(f)?;
         self.transport_closes.fmt(f)?;
 
-        metrics::process_start_time_seconds.fmt_help(f)?;
-        metrics::process_start_time_seconds.fmt_metric(f, self.start_time)?;
+        Self::process_start_time_seconds.fmt_help(f)?;
+        Self::process_start_time_seconds.fmt_metric(f, self.start_time)?;
 
         Ok(())
     }
@@ -261,14 +240,20 @@ impl<L: Display + Hash + Eq, M> Default for Scopes<L, M> {
 
 // ===== impl RequestScopes =====
 
+impl RequestScopes {
+    metrics! {
+        request_total: Counter { "Total count of HTTP requests." }
+    }
+}
+
 impl fmt::Display for RequestScopes {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.scopes.is_empty() {
             return Ok(());
         }
 
-        metrics::request_total.fmt_help(f)?;
-        metrics::request_total.fmt_scopes(f, &self, |s| &s.total)?;
+        Self::request_total.fmt_help(f)?;
+        Self::request_total.fmt_scopes(f, &self, |s| &s.total)?;
 
         Ok(())
     }
@@ -284,17 +269,27 @@ impl RequestMetrics {
 
 // ===== impl ResponseScopes =====
 
+impl ResponseScopes {
+    metrics! {
+        response_total: Counter { "Total count of HTTP responses" },
+        response_latency_ms: Histogram<latency::Ms> {
+            "Elapsed times between a request's headers being received \
+            and its response stream completing"
+        }
+    }
+}
+
 impl fmt::Display for ResponseScopes {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.scopes.is_empty() {
             return Ok(());
         }
 
-        metrics::response_total.fmt_help(f)?;
-        metrics::response_total.fmt_scopes(f, &self, |s| &s.total)?;
+        Self::response_total.fmt_help(f)?;
+        Self::response_total.fmt_scopes(f, &self, |s| &s.total)?;
 
-        metrics::response_latency_ms.fmt_help(f)?;
-        metrics::response_latency_ms.fmt_scopes(f, &self, |s| &s.latency)?;
+        Self::response_latency_ms.fmt_help(f)?;
+        Self::response_latency_ms.fmt_scopes(f, &self, |s| &s.latency)?;
 
         Ok(())
     }
@@ -311,23 +306,32 @@ impl ResponseMetrics {
 
 // ===== impl TransportScopes =====
 
+impl TransportScopes {
+    metrics! {
+        tcp_open_total: Counter { "Total count of opened connections" },
+        tcp_open_connections: Gauge { "Number of currently-open connections" },
+        tcp_read_bytes_total: Counter { "Total count of bytes read from peers" },
+        tcp_write_bytes_total: Counter { "Total count of bytes written to peers" }
+    }
+}
+
 impl fmt::Display for TransportScopes {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.scopes.is_empty() {
             return Ok(());
         }
 
-        metrics::tcp_open_total.fmt_help(f)?;
-        metrics::tcp_open_total.fmt_scopes(f, &self, |s| &s.open_total)?;
+        Self::tcp_open_total.fmt_help(f)?;
+        Self::tcp_open_total.fmt_scopes(f, &self, |s| &s.open_total)?;
 
-        metrics::tcp_open_connections.fmt_help(f)?;
-        metrics::tcp_open_connections.fmt_scopes(f, &self, |s| &s.open_connections)?;
+        Self::tcp_open_connections.fmt_help(f)?;
+        Self::tcp_open_connections.fmt_scopes(f, &self, |s| &s.open_connections)?;
 
-        metrics::tcp_read_bytes_total.fmt_help(f)?;
-        metrics::tcp_read_bytes_total.fmt_scopes(f, &self, |s| &s.read_bytes_total)?;
+        Self::tcp_read_bytes_total.fmt_help(f)?;
+        Self::tcp_read_bytes_total.fmt_scopes(f, &self, |s| &s.read_bytes_total)?;
 
-        metrics::tcp_write_bytes_total.fmt_help(f)?;
-        metrics::tcp_write_bytes_total.fmt_scopes(f, &self, |s| &s.write_bytes_total)?;
+        Self::tcp_write_bytes_total.fmt_help(f)?;
+        Self::tcp_write_bytes_total.fmt_scopes(f, &self, |s| &s.write_bytes_total)?;
 
         Ok(())
     }
@@ -350,17 +354,24 @@ impl TransportMetrics {
 
 // ===== impl TransportCloseScopes =====
 
+impl TransportCloseScopes {
+    metrics! {
+        tcp_close_total: Counter { "Total count of closed connections" },
+        tcp_connection_duration_ms: Histogram<latency::Ms> { "Connection lifetimes" }
+    }
+}
+
 impl fmt::Display for TransportCloseScopes {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.scopes.is_empty() {
             return Ok(());
         }
 
-        metrics::tcp_close_total.fmt_help(f)?;
-        metrics::tcp_close_total.fmt_scopes(f, &self, |s| &s.close_total)?;
+        Self::tcp_close_total.fmt_help(f)?;
+        Self::tcp_close_total.fmt_scopes(f, &self, |s| &s.close_total)?;
 
-        metrics::tcp_connection_duration_ms.fmt_help(f)?;
-        metrics::tcp_connection_duration_ms.fmt_scopes(f, &self, |s| &s.connection_duration)?;
+        Self::tcp_connection_duration_ms.fmt_help(f)?;
+        Self::tcp_connection_duration_ms.fmt_scopes(f, &self, |s| &s.connection_duration)?;
 
         Ok(())
     }
