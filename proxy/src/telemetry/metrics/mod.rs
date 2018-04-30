@@ -31,7 +31,7 @@ use std::fmt::{self, Display};
 use std::hash::Hash;
 use std::marker::PhantomData;
 use std::sync::{Arc, Mutex};
-use std::time::UNIX_EPOCH;
+use std::time::{UNIX_EPOCH, Duration, Instant};
 
 use indexmap::IndexMap;
 
@@ -120,15 +120,21 @@ struct Scopes<L: Display + Hash + Eq, S> {
     scopes: IndexMap<L, S>,
 }
 
+#[derive(Debug)]
+struct Stamped<T> {
+    stamp: Instant,
+    inner: T,
+}
+
 /// Construct the Prometheus metrics.
 ///
 /// Returns the `Record` and `Serve` sides. The `Serve` side
 /// is a Hyper service which can be used to create the server for the
 /// scrape endpoint, while the `Record` side can receive updates to the
 /// metrics by calling `record_event`.
-pub fn new(process: &Arc<ctx::Process>) -> (Record, Serve){
+pub fn new(process: &Arc<ctx::Process>, idle_retain: Duration) -> (Record, Serve){
     let metrics = Arc::new(Mutex::new(Root::new(process)));
-    (Record::new(&metrics), Serve::new(&metrics))
+    (Record::new(&metrics), Serve::new(&metrics, idle_retain))
 }
 
 // ===== impl Metric =====
@@ -184,22 +190,33 @@ impl Root {
 
     fn request(&mut self, labels: RequestLabels) -> &mut http::RequestMetrics {
         self.requests.scopes.entry(labels)
-            .or_insert_with(http::RequestMetrics::default)
+            .or_insert_with(|| http::RequestMetrics::default().into())
+            .stamped()
     }
 
     fn response(&mut self, labels: ResponseLabels) -> &mut http::ResponseMetrics {
         self.responses.scopes.entry(labels)
-            .or_insert_with(http::ResponseMetrics::default)
+            .or_insert_with(|| http::ResponseMetrics::default().into())
+            .stamped()
     }
 
     fn transport(&mut self, labels: TransportLabels) -> &mut transport::OpenMetrics {
         self.transports.scopes.entry(labels)
-            .or_insert_with(transport::OpenMetrics::default)
+            .or_insert_with(|| transport::OpenMetrics::default().into())
+            .stamped()
     }
 
     fn transport_close(&mut self, labels: TransportCloseLabels) -> &mut transport::CloseMetrics {
         self.transport_closes.scopes.entry(labels)
-            .or_insert_with(transport::CloseMetrics::default)
+            .or_insert_with(|| transport::CloseMetrics::default().into())
+            .stamped()
+    }
+
+    fn retain_since(&mut self, epoch: Instant) {
+        self.requests.retain_since(epoch);
+        self.responses.retain_since(epoch);
+        self.transports.retain_since(epoch);
+        self.transport_closes.retain_since(epoch);
     }
 }
 
@@ -217,10 +234,117 @@ impl fmt::Display for Root {
     }
 }
 
+// ===== impl Stamped =====
+
+impl<T> Stamped<T> {
+    fn stamped(&mut self) -> &mut T {
+        self.stamp = Instant::now();
+        &mut self.inner
+    }
+}
+
+impl<T> From<T> for Stamped<T> {
+    fn from(inner: T) -> Self {
+        Self {
+            inner,
+            stamp: Instant::now(),
+        }
+    }
+}
+
+impl<T> ::std::ops::Deref for Stamped<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
 // ===== impl Scopes =====
 
-impl<L: Display + Hash + Eq, M> Default for Scopes<L, M> {
+impl<L: Display + Hash + Eq, S> Default for Scopes<L, S> {
     fn default() -> Self {
         Scopes { scopes: IndexMap::default(), }
+    }
+}
+
+impl<L: Display + Hash + Eq, S> Scopes<L, Stamped<S>> {
+    fn retain_since(&mut self, epoch: Instant) {
+        self.scopes.retain(|_, v| v.stamp >= epoch);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use ctx::test_util::*;
+    use telemetry::event;
+    use super::*;
+
+    fn mock_route(
+        root: &mut Root,
+        proxy: &Arc<ctx::Proxy>,
+        server: &Arc<ctx::transport::Server>,
+        team: &str
+    ) {
+        let client = client(&proxy, vec![("team", team)]);
+        let (req, rsp) = request("http://nba.com", &server, &client, 1);
+
+        let client_transport = Arc::new(ctx::transport::Ctx::Client(client));
+        let transport = TransportLabels::new(&client_transport);
+        root.transport(transport.clone()).open();
+
+        root.request(RequestLabels::new(&req)).end();
+        root.response(ResponseLabels::new(&rsp, None)).end(Duration::from_millis(10));
+        root.transport(transport).close(100, 200);
+
+        let end = TransportCloseLabels::new(&client_transport, &event::TransportClose {
+            clean: true,
+            duration: Duration::from_millis(15),
+            rx_bytes: 40,
+            tx_bytes: 0,
+        });
+        root.transport_close(end).close(Duration::from_millis(15));
+    }
+
+    #[test]
+    fn expiry() {
+        let process = process();
+        let proxy = ctx::Proxy::outbound(&process);
+
+        let server = server(&proxy);
+        let server_transport = Arc::new(ctx::transport::Ctx::Server(server.clone()));
+
+        let mut root = Root::default();
+
+        let t0 = Instant::now();
+        root.transport(TransportLabels::new(&server_transport)).open();
+
+        mock_route(&mut root, &proxy, &server, "warriors");
+        let t1 = Instant::now();
+
+        mock_route(&mut root, &proxy, &server, "sixers");
+        let t2 = Instant::now();
+
+        assert_eq!(root.requests.scopes.len(), 2);
+        assert_eq!(root.responses.scopes.len(), 2);
+        assert_eq!(root.transports.scopes.len(), 2);
+        assert_eq!(root.transport_closes.scopes.len(), 1);
+
+        root.retain_since(t0);
+        assert_eq!(root.requests.scopes.len(), 2);
+        assert_eq!(root.responses.scopes.len(), 2);
+        assert_eq!(root.transports.scopes.len(), 2);
+        assert_eq!(root.transport_closes.scopes.len(), 1);
+
+        root.retain_since(t1);
+        assert_eq!(root.requests.scopes.len(), 1);
+        assert_eq!(root.responses.scopes.len(), 1);
+        assert_eq!(root.transports.scopes.len(), 1);
+        assert_eq!(root.transport_closes.scopes.len(), 1);
+
+        root.retain_since(t2);
+        assert_eq!(root.requests.scopes.len(), 0);
+        assert_eq!(root.responses.scopes.len(), 0);
+        assert_eq!(root.transports.scopes.len(), 0);
+        assert_eq!(root.transport_closes.scopes.len(), 0);
     }
 }

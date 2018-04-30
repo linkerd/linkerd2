@@ -8,17 +8,18 @@ use super::{
     Metric,
     RequestLabels,
     ResponseLabels,
-    Scopes
+    Scopes,
+    Stamped,
 };
 
-pub(super) type RequestScopes = Scopes<RequestLabels, RequestMetrics>;
+pub(super) type RequestScopes = Scopes<RequestLabels, Stamped<RequestMetrics>>;
 
 #[derive(Debug, Default)]
 pub(super) struct RequestMetrics {
     total: Counter,
 }
 
-pub(super) type ResponseScopes = Scopes<ResponseLabels, ResponseMetrics>;
+pub(super) type ResponseScopes = Scopes<ResponseLabels, Stamped<ResponseMetrics>>;
 
 #[derive(Debug, Default)]
 pub struct ResponseMetrics {

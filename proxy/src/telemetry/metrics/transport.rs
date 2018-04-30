@@ -9,10 +9,11 @@ use super::{
     Metric,
     TransportLabels,
     TransportCloseLabels,
-    Scopes
+    Scopes,
+    Stamped,
 };
 
-pub(super) type OpenScopes = Scopes<TransportLabels, OpenMetrics>;
+pub(super) type OpenScopes = Scopes<TransportLabels, Stamped<OpenMetrics>>;
 
 #[derive(Debug, Default)]
 pub(super) struct OpenMetrics {
@@ -22,7 +23,7 @@ pub(super) struct OpenMetrics {
     read_bytes_total: Counter,
 }
 
-pub(super) type CloseScopes = Scopes<TransportCloseLabels, CloseMetrics>;
+pub(super) type CloseScopes = Scopes<TransportCloseLabels, Stamped<CloseMetrics>>;
 
 #[derive(Debug, Default)]
 pub(super) struct CloseMetrics {

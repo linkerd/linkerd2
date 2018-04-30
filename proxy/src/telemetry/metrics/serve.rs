@@ -6,6 +6,7 @@ use hyper::header::{AcceptEncoding, ContentEncoding, ContentType, Encoding, Qual
 use hyper::server::{Request, Response, Service};
 use std::io::Write;
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use super::Root;
 
@@ -13,14 +14,16 @@ use super::Root;
 #[derive(Debug, Clone)]
 pub struct Serve {
     metrics: Arc<Mutex<Root>>,
+    idle_retain: Duration,
 }
 
 // ===== impl Serve =====
 
 impl Serve {
-    pub(super) fn new(metrics: &Arc<Mutex<Root>>) -> Self {
+    pub(super) fn new(metrics: &Arc<Mutex<Root>>, idle_retain: Duration) -> Self {
         Serve {
             metrics: metrics.clone(),
+            idle_retain,
         }
     }
 
@@ -49,8 +52,11 @@ impl Service for Serve {
                 .with_status(StatusCode::NotFound));
         }
 
-        let metrics = self.metrics.lock()
+        let mut metrics = self.metrics.lock()
             .expect("metrics lock poisoned");
+
+        metrics.retain_since(Instant::now() - self.idle_retain);
+        let metrics = metrics;
 
         let resp = if Self::is_gzip(&req) {
             trace!("gzipping metrics");
