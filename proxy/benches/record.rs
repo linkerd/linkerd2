@@ -89,7 +89,7 @@ fn record_response_end(b: &mut Bencher) {
         frames_sent: 0,
     };
 
-    let (mut r, _) = metrics::new(&process);
+    let (mut r, _) = metrics::new(&process, Duration::from_secs(1000));
     b.iter(|| r.record_event(&Event::StreamResponseEnd(rsp.clone(), end.clone())));
 }
 
@@ -144,7 +144,7 @@ fn record_one_conn_request(b: &mut Bencher) {
         }),
     ];
 
-    let (mut r, _) = metrics::new(&process);
+    let (mut r, _) = metrics::new(&process, Duration::from_secs(1000));
     b.iter(|| for e in &events { r.record_event(e); });
 }
 
@@ -202,6 +202,6 @@ fn record_many_dsts(b: &mut Bencher) {
         tx_bytes: 4321,
     }));
 
-    let (mut r, _) = metrics::new(&process);
+    let (mut r, _) = metrics::new(&process, Duration::from_secs(1000));
     b.iter(|| for e in &events { r.record_event(e); });
 }
