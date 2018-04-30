@@ -252,12 +252,6 @@ impl<T> From<T> for Stamped<T> {
     }
 }
 
-impl<T: Default> Default for Stamped<T> {
-    fn default() -> Self {
-        T::default().into()
-    }
-}
-
 impl<T> ::std::ops::Deref for Stamped<T> {
     type Target = T;
     fn deref(&self) -> &Self::Target {
