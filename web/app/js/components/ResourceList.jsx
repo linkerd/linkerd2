@@ -9,7 +9,7 @@ import React from 'react';
 import './../../css/list.css';
 import 'whatwg-fetch';
 
-export default class PodOwnerList extends React.Component {
+export default class ResourceList extends React.Component {
   constructor(props) {
     super(props);
     this.api = this.props.api;
@@ -35,8 +35,7 @@ export default class PodOwnerList extends React.Component {
   }
 
   componentWillReceiveProps() {
-    // React won't unmount this component when switching between Deployments and
-    // Replication Controllers, so we need to clear state
+    // React won't unmount this component when switching resource pages so we need to clear state
     this.api.cancelCurrentRequests();
     this.setState(this.getInitialState());
   }
@@ -80,6 +79,12 @@ export default class PodOwnerList extends React.Component {
     });
   }
 
+  renderEmptyMessage(resource) {
+    return this.props.resource === "deployment" ?
+      <CallToAction numDeployments={_.size(this.state.metrics)} /> :
+      <div>No {resource}s found</div>;
+  }
+
   render() {
     let friendlyTitle = _.startCase(this.props.resource);
     return (
@@ -89,7 +94,7 @@ export default class PodOwnerList extends React.Component {
           <div>
             <PageHeader header={friendlyTitle + "s"} api={this.api} />
             { _.isEmpty(this.state.metrics) ?
-              <CallToAction numDeployments={_.size(this.state.metrics)} /> :
+              this.renderEmptyMessage(friendlyTitle) :
               <MetricsTable
                 resource={friendlyTitle}
                 metrics={this.state.metrics}
