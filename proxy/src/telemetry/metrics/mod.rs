@@ -80,7 +80,7 @@ pub use self::serve::Serve;
 /// counter for each bucket, as well as a count and total sum.
 trait FmtMetric {
     /// The metric type.
-    fn kind() -> &'static str;
+    const KIND: &'static str;
 
     /// Writes a metric with the given name and no labels.
     fn fmt_metric<N: Display>(&self, f: &mut fmt::Formatter, name: N) -> fmt::Result;
@@ -135,7 +135,7 @@ pub fn new(process: &Arc<ctx::Process>, idle_retain: Duration) -> (Record, Serve
 impl<'a, M: FmtMetric> Metric<'a, M> {
     pub fn fmt_help(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "# HELP {} {}", self.name, self.help)?;
-        writeln!(f, "# TYPE {} {}", self.name, M::kind())?;
+        writeln!(f, "# TYPE {} {}", self.name, M::KIND)?;
         Ok(())
     }
 
