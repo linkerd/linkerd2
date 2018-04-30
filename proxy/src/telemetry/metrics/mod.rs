@@ -27,8 +27,8 @@
 //! to worry about missing commas, double commas, or trailing commas at the
 //! end of the label set (all of which will make Prometheus angry).
 use std::default::Default;
-use std::hash::Hash;
 use std::fmt::{self, Display};
+use std::hash::Hash;
 use std::marker::PhantomData;
 use std::sync::{Arc, Mutex};
 use std::time::{UNIX_EPOCH, Duration};

@@ -1,4 +1,4 @@
-use std::cmp;
+use std::{cmp, iter, slice};
 use std::fmt::{self, Display};
 use std::marker::PhantomData;
 
@@ -46,7 +46,13 @@ pub enum Bucket {
 pub struct Bounds(pub &'static [Bucket]);
 
 /// Helper that lazily formats metric keys as {0}_{1}.
-struct Key<'a, P: Display + 'a>(&'a P, &'a str);
+struct Key<A: Display, B: Display>(A, B);
+
+/// Helper that lazily formats comma-separated labels `A,B`.
+struct Labels<A: Display, B: Display>(A, B);
+
+/// Helper that lazily formats an `{K}="{V}"`" label.
+struct Label<K: Display, V: Display>(K, V);
 
 // ===== impl Histogram =====
 
@@ -84,6 +90,18 @@ impl<V: Into<u64>> Histogram<V> {
     }
 }
 
+impl<'a, V: Into<u64>> IntoIterator for &'a Histogram<V> {
+    type Item = (&'a Bucket, &'a Counter);
+    type IntoIter = iter::Zip<
+        slice::Iter<'a, Bucket>,
+        slice::Iter<'a, Counter>,
+    >;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.bounds.0.iter().zip(self.buckets.iter())
+    }
+}
+
 impl<V: Into<u64>> FmtMetric for Histogram<V> {
     fn kind() -> &'static str {
         "histogram"
@@ -91,9 +109,9 @@ impl<V: Into<u64>> FmtMetric for Histogram<V> {
 
     fn fmt_metric<N: Display>(&self, f: &mut fmt::Formatter, name: N) -> fmt::Result {
         let mut total = Counter::default();
-        for (le, count) in self.bounds.0.iter().zip(self.buckets.iter()) {
+        for (le, count) in self {
             total += *count;
-            total.fmt_metric_labeled(f, Key(&name, "bucket"), format!("le=\"{}\"", le))?;
+            total.fmt_metric_labeled(f, Key(&name, "bucket"), Label("le", le))?;
         }
         total.fmt_metric(f, Key(&name, "count"))?;
         self.sum.fmt_metric(f, Key(&name, "sum"))?;
@@ -107,10 +125,9 @@ impl<V: Into<u64>> FmtMetric for Histogram<V> {
         L: Display,
     {
         let mut total = Counter::default();
-        for (le, count) in self.bounds.0.iter().zip(self.buckets.iter()) {
+        for (le, count) in self {
             total += *count;
-            total.fmt_metric_labeled(f, Key(&name, "bucket"),
-                format!("{},le=\"{}\"", labels, le))?;
+            total.fmt_metric_labeled(f, Key(&name, "bucket"), Labels(&labels, Label("le", le)))?;
         }
         total.fmt_metric_labeled(f, Key(&name, "count"), &labels)?;
         self.sum.fmt_metric_labeled(f, Key(&name, "sum"), &labels)?;
@@ -121,9 +138,25 @@ impl<V: Into<u64>> FmtMetric for Histogram<V> {
 
 // ===== impl Key =====
 
-impl<'a, P: Display> fmt::Display for Key<'a, P> {
+impl<A: Display, B: Display> fmt::Display for Key<A, B> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}_{}", self.0, self.1)
+    }
+}
+
+// ===== impl Label =====
+
+impl<K: Display, V: Display> fmt::Display for Label<K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}=\"{}\"", self.0, self.1)
+    }
+}
+
+// ===== impl Labels =====
+
+impl<A: Display, B: Display> fmt::Display for Labels<A, B> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{},{}", self.0, self.1)
     }
 }
 
