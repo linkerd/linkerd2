@@ -243,7 +243,7 @@ impl<'a> TryFrom<&'a Strings> for Config {
 
             event_buffer_capacity: event_buffer_capacity?.unwrap_or(DEFAULT_EVENT_BUFFER_CAPACITY),
             metrics_retain_idle: Duration::from_millis(
-                metrics_retain_idle?.unwrap_or_else(|| DEFAULT_METRICS_RETAIN_IDLE)
+                metrics_retain_idle?.unwrap_or(DEFAULT_METRICS_RETAIN_IDLE)
             ),
 
             bind_timeout:
