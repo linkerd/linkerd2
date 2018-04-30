@@ -27,9 +27,10 @@
 //! to worry about missing commas, double commas, or trailing commas at the
 //! end of the label set (all of which will make Prometheus angry).
 use std::default::Default;
-use std::{fmt, time};
+use std::fmt::{self, Display};
 use std::hash::Hash;
 use std::sync::{Arc, Mutex};
+use std::time;
 
 use indexmap::IndexMap;
 
@@ -55,6 +56,22 @@ use self::labels::{
 pub use self::labels::DstLabels;
 pub use self::record::Record;
 pub use self::serve::Serve;
+
+/// Writes a metric in prometheus-formatted output.
+///
+/// This trait is implemented by `Counter`, `Gauge`, and `Histogram` to account for the
+/// differences in formatting each type of metric. Specifically, `Histogram` formats a
+/// counter for each bucket, as well as a count and total sum.
+trait FmtMetric {
+    /// Writes a metric with the given name and no labels.
+    fn fmt_metric<N: Display>(&self, f: &mut fmt::Formatter, name: N) -> fmt::Result;
+
+    /// Writes a metric with the given name and labels.
+    fn fmt_metric_labeled<N, L>(&self, f: &mut fmt::Formatter, name: N, labels: L) -> fmt::Result
+    where
+        N: Display,
+        L: Display;
+}
 
 #[derive(Debug, Clone)]
 struct Metrics {
@@ -300,11 +317,7 @@ where
         )?;
 
         for (labels, value) in &self.values {
-            write!(f, "{name}{{{labels}}} {value}\n",
-                name = self.name,
-                labels = labels,
-                value = value,
-            )?;
+            value.fmt_metric_labeled(f, self.name, labels)?;
         }
 
         Ok(())
@@ -324,11 +337,7 @@ where
         )?;
 
         for (labels, value) in &self.values {
-            write!(f, "{name}{{{labels}}} {value}\n",
-                name = self.name,
-                labels = labels,
-                value = value,
-            )?;
+            value.fmt_metric_labeled(f, self.name, labels)?;
         }
 
         Ok(())
@@ -348,31 +357,7 @@ impl<L, V> fmt::Display for Metric<Histogram<V>, L> where
         )?;
 
         for (labels, histogram) in &self.values {
-            // Since Prometheus expects each bucket's value to be the sum of the number of
-            // values in this bucket and all lower buckets, track the total count here.
-            let mut total_count = 0u64;
-            for (le, count) in histogram.into_iter() {
-                // Add this bucket's count to the total count.
-                let c: u64 = (*count).into();
-                total_count += c;
-                write!(f, "{name}_bucket{{{labels},le=\"{le}\"}} {count}\n",
-                    name = self.name,
-                    labels = labels,
-                    le = le,
-                    // Print the total count *as of this iteration*.
-                    count = total_count,
-                )?;
-            }
-
-            // Print the total count and histogram sum stats.
-            write!(f,
-                "{name}_count{{{labels}}} {count}\n\
-                 {name}_sum{{{labels}}} {sum}\n",
-                name = self.name,
-                labels = labels,
-                count = total_count,
-                sum = histogram.sum(),
-            )?;
+            histogram.fmt_metric_labeled(f, self.name, labels)?;
         }
 
         Ok(())

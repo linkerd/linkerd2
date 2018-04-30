@@ -1,8 +1,8 @@
-use std::{cmp, fmt, iter, slice};
-use std::num::Wrapping;
+use std::{cmp, iter, slice};
+use std::fmt::{self, Display};
 use std::marker::PhantomData;
 
-use super::Counter;
+use super::{Counter, FmtMetric};
 
 /// A series of latency values and counts.
 #[derive(Debug, Clone)]
@@ -30,7 +30,7 @@ pub struct Histogram<V: Into<u64>> {
     // TODO: Implement Prometheus reset semantics correctly, taking into consideration
     //       that Prometheus represents this as `f64` and so there are only 52 significant
     //       bits.
-    pub sum: Wrapping<u64>,
+    sum: Counter,
 
     _p: PhantomData<V>,
 }
@@ -44,6 +44,15 @@ pub enum Bucket {
 /// A series of increasing Buckets values.
 #[derive(Debug)]
 pub struct Bounds(pub &'static [Bucket]);
+
+/// Helper that lazily formats metric keys as {0}_{1}.
+struct Key<A: Display, B: Display>(A, B);
+
+/// Helper that lazily formats comma-separated labels `A,B`.
+struct Labels<A: Display, B: Display>(A, B);
+
+/// Helper that lazily formats an `{K}="{V}"`" label.
+struct Label<K: Display, V: Display>(K, V);
 
 // ===== impl Histogram =====
 
@@ -60,7 +69,7 @@ impl<V: Into<u64>> Histogram<V> {
         Self {
             bounds,
             buckets: buckets.into_boxed_slice(),
-            sum: Wrapping(0),
+            sum: Counter::default(),
             _p: PhantomData,
         }
     }
@@ -77,11 +86,7 @@ impl<V: Into<u64>> Histogram<V> {
             .expect("all values must fit into a bucket");
 
         self.buckets[idx].incr();
-        self.sum += Wrapping(value);
-    }
-
-    pub fn sum(&self) -> u64 {
-        self.sum.0
+        self.sum += value;
     }
 }
 
@@ -94,6 +99,60 @@ impl<'a, V: Into<u64>> IntoIterator for &'a Histogram<V> {
 
     fn into_iter(self) -> Self::IntoIter {
         self.bounds.0.iter().zip(self.buckets.iter())
+    }
+}
+
+impl<V: Into<u64>> FmtMetric for Histogram<V> {
+    fn fmt_metric<N: Display>(&self, f: &mut fmt::Formatter, name: N) -> fmt::Result {
+        let mut total = Counter::default();
+        for (le, count) in self {
+            total += *count;
+            total.fmt_metric_labeled(f, Key(&name, "bucket"), Label("le", le))?;
+        }
+        total.fmt_metric(f, Key(&name, "count"))?;
+        self.sum.fmt_metric(f, Key(&name, "sum"))?;
+
+        Ok(())
+    }
+
+    fn fmt_metric_labeled<N, L>(&self, f: &mut fmt::Formatter, name: N, labels: L) -> fmt::Result
+    where
+        N: Display,
+        L: Display,
+    {
+        let mut total = Counter::default();
+        for (le, count) in self {
+            total += *count;
+            total.fmt_metric_labeled(f, Key(&name, "bucket"), Labels(&labels, Label("le", le)))?;
+        }
+        total.fmt_metric_labeled(f, Key(&name, "count"), &labels)?;
+        self.sum.fmt_metric_labeled(f, Key(&name, "sum"), &labels)?;
+
+        Ok(())
+    }
+}
+
+// ===== impl Key =====
+
+impl<A: Display, B: Display> fmt::Display for Key<A, B> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}_{}", self.0, self.1)
+    }
+}
+
+// ===== impl Label =====
+
+impl<K: Display, V: Display> fmt::Display for Label<K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}=\"{}\"", self.0, self.1)
+    }
+}
+
+// ===== impl Labels =====
+
+impl<A: Display, B: Display> fmt::Display for Labels<A, B> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{},{}", self.0, self.1)
     }
 }
 
@@ -129,8 +188,8 @@ impl cmp::Ord for Bucket {
 mod tests {
     use super::*;
 
-    use std::collections::HashMap;
     use std::u64;
+    use std::collections::HashMap;
 
     const NUM_BUCKETS: usize = 47;
     static BOUNDS: &'static Bounds = &Bounds(&[
@@ -204,9 +263,9 @@ mod tests {
         fn sum_equals_total_of_observations(observations: Vec<u64>) -> bool {
             let mut hist = Histogram::<u64>::new(&BOUNDS);
 
-            let mut expected_sum = Wrapping(0u64);
+            let mut expected_sum = Counter::default();
             for obs in observations {
-                expected_sum += Wrapping(obs);
+                expected_sum += obs;
                 hist.add(obs);
             }
 
