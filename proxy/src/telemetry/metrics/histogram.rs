@@ -85,6 +85,10 @@ impl<V: Into<u64>> Histogram<V> {
 }
 
 impl<V: Into<u64>> FmtMetric for Histogram<V> {
+    fn kind() -> &'static str {
+        "histogram"
+    }
+
     fn fmt_metric<N: Display>(&self, f: &mut fmt::Formatter, name: N) -> fmt::Result {
         let mut total = Counter::default();
         for (le, count) in self.bounds.0.iter().zip(self.buckets.iter()) {
