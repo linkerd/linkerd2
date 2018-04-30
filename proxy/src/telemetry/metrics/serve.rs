@@ -7,18 +7,18 @@ use hyper::server::{Request, Response, Service};
 use std::io::Write;
 use std::sync::{Arc, Mutex};
 
-use super::Metrics;
+use super::Root;
 
 /// Serve Prometheues metrics.
 #[derive(Debug, Clone)]
 pub struct Serve {
-    metrics: Arc<Mutex<Metrics>>,
+    metrics: Arc<Mutex<Root>>,
 }
 
 // ===== impl Serve =====
 
 impl Serve {
-    pub(super) fn new(metrics: &Arc<Mutex<Metrics>>) -> Self {
+    pub(super) fn new(metrics: &Arc<Mutex<Root>>) -> Self {
         Serve {
             metrics: metrics.clone(),
         }

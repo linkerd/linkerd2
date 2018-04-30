@@ -103,6 +103,8 @@ impl<'a, V: Into<u64>> IntoIterator for &'a Histogram<V> {
 }
 
 impl<V: Into<u64>> FmtMetric for Histogram<V> {
+    const KIND: &'static str = "histogram";
+
     fn fmt_metric<N: Display>(&self, f: &mut fmt::Formatter, name: N) -> fmt::Result {
         let mut total = Counter::default();
         for (le, count) in self {

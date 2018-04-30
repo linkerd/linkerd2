@@ -39,6 +39,8 @@ impl Into<u64> for Gauge {
 }
 
 impl FmtMetric for Gauge {
+    const KIND: &'static str = "gauge";
+
     fn fmt_metric<N: Display>(&self, f: &mut fmt::Formatter, name: N) -> fmt::Result {
         writeln!(f, "{} {}", name, self.0)
     }

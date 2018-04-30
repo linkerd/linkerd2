@@ -63,6 +63,8 @@ impl ops::AddAssign<Self> for Counter {
 }
 
 impl FmtMetric for Counter {
+    const KIND: &'static str = "counter";
+
     fn fmt_metric<N: Display>(&self, f: &mut fmt::Formatter, name: N) -> fmt::Result {
         writeln!(f, "{} {}", name, self.0)
     }
