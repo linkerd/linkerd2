@@ -1,4 +1,4 @@
-use std::cmp;
+use std::{cmp, iter, slice};
 use std::fmt::{self, Display};
 use std::marker::PhantomData;
 
@@ -84,10 +84,22 @@ impl<V: Into<u64>> Histogram<V> {
     }
 }
 
+impl<'a, V: Into<u64>> IntoIterator for &'a Histogram<V> {
+    type Item = (&'a Bucket, &'a Counter);
+    type IntoIter = iter::Zip<
+        slice::Iter<'a, Bucket>,
+        slice::Iter<'a, Counter>,
+    >;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.bounds.0.iter().zip(self.buckets.iter())
+    }
+}
+
 impl<V: Into<u64>> FmtMetric for Histogram<V> {
     fn fmt_metric<N: Display>(&self, f: &mut fmt::Formatter, name: N) -> fmt::Result {
         let mut total = Counter::default();
-        for (le, count) in self.bounds.0.iter().zip(self.buckets.iter()) {
+        for (le, count) in self {
             total += *count;
             total.fmt_metric_labeled(f, Key(&name, "bucket"), format!("le=\"{}\"", le))?;
         }
@@ -103,7 +115,7 @@ impl<V: Into<u64>> FmtMetric for Histogram<V> {
         L: Display,
     {
         let mut total = Counter::default();
-        for (le, count) in self.bounds.0.iter().zip(self.buckets.iter()) {
+        for (le, count) in self {
             total += *count;
             total.fmt_metric_labeled(f, Key(&name, "bucket"),
                 format!("{},le=\"{}\"", labels, le))?;
