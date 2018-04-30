@@ -1,6 +1,15 @@
 use std::fmt;
+use std::time::Duration;
 
-use telemetry::metrics::*;
+use super::{
+    latency,
+    Counter,
+    Histogram,
+    Metric,
+    RequestLabels,
+    ResponseLabels,
+    Scopes
+};
 
 pub(super) type RequestScopes = Scopes<RequestLabels, RequestMetrics>;
 

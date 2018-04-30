@@ -31,7 +31,7 @@ use std::fmt::{self, Display};
 use std::hash::Hash;
 use std::marker::PhantomData;
 use std::sync::{Arc, Mutex};
-use std::time::{UNIX_EPOCH, Duration};
+use std::time::UNIX_EPOCH;
 
 use indexmap::IndexMap;
 
@@ -44,7 +44,7 @@ macro_rules! metrics {
             const $name: Metric<'static, $kind> = Metric {
                 name: stringify!($name),
                 help: $help,
-                _p: PhantomData,
+                _p: ::std::marker::PhantomData,
             };
         )+
     }
