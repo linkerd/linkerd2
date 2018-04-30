@@ -37,13 +37,28 @@ use indexmap::IndexMap;
 
 use ctx;
 
+macro_rules! metrics {
+    { $( $name:ident : $kind:ty { $help:expr } ),+ } => {
+        $(
+            #[allow(non_upper_case_globals)]
+            const $name: Metric<'static, $kind> = Metric {
+                name: stringify!($name),
+                help: $help,
+                _p: PhantomData,
+            };
+        )+
+    }
+}
+
 mod counter;
 mod gauge;
 mod histogram;
+mod http;
 mod labels;
 mod latency;
 mod record;
 mod serve;
+mod transport;
 
 use self::counter::Counter;
 use self::gauge::Gauge;
@@ -57,19 +72,6 @@ use self::labels::{
 pub use self::labels::DstLabels;
 pub use self::record::Record;
 pub use self::serve::Serve;
-
-macro_rules! metrics {
-    { $( $name:ident : $kind:ty { $help:expr } ),+ } => {
-        $(
-            #[allow(non_upper_case_globals)]
-            const $name: Metric<'static, $kind> = Metric {
-                name: stringify!($name),
-                help: $help,
-                _p: PhantomData,
-            };
-        )+
-    }
-}
 
 trait FmtMetric {
     fn kind() -> &'static str;
@@ -90,10 +92,10 @@ struct Metric<'a, M: FmtMetric> {
 
 #[derive(Debug, Default)]
 struct Root {
-    requests: RequestScopes,
-    responses: ResponseScopes,
-    transports: TransportScopes,
-    transport_closes: TransportCloseScopes,
+    requests: http::RequestScopes,
+    responses: http::ResponseScopes,
+    transports: transport::OpenScopes,
+    transport_closes: transport::CloseScopes,
 
     start_time: Gauge,
 }
@@ -101,39 +103,6 @@ struct Root {
 #[derive(Debug)]
 struct Scopes<L: Display + Hash + Eq, M> {
     scopes: IndexMap<L, M>,
-}
-
-type RequestScopes = Scopes<RequestLabels, RequestMetrics>;
-
-#[derive(Debug, Default)]
-struct RequestMetrics {
-    total: Counter,
-}
-
-type ResponseScopes = Scopes<ResponseLabels, ResponseMetrics>;
-
-#[derive(Debug, Default)]
-struct ResponseMetrics {
-    total: Counter,
-    latency: Histogram<latency::Ms>,
-}
-
-type TransportScopes = Scopes<TransportLabels, TransportMetrics>;
-
-#[derive(Debug, Default)]
-struct TransportMetrics {
-    open_total: Counter,
-    open_connections: Gauge,
-    write_bytes_total: Counter,
-    read_bytes_total: Counter,
-}
-
-type TransportCloseScopes = Scopes<TransportCloseLabels, TransportCloseMetrics>;
-
-#[derive(Debug, Default)]
-struct TransportCloseMetrics {
-    close_total: Counter,
-    connection_duration: Histogram<latency::Ms>,
 }
 
 /// Construct the Prometheus metrics.
@@ -195,24 +164,24 @@ impl Root {
         }
     }
 
-    fn request(&mut self, labels: RequestLabels) -> &mut RequestMetrics {
+    fn request(&mut self, labels: RequestLabels) -> &mut http::RequestMetrics {
         self.requests.scopes.entry(labels)
-            .or_insert_with(RequestMetrics::default)
+            .or_insert_with(http::RequestMetrics::default)
     }
 
-    fn response(&mut self, labels: ResponseLabels) -> &mut ResponseMetrics {
+    fn response(&mut self, labels: ResponseLabels) -> &mut http::ResponseMetrics {
         self.responses.scopes.entry(labels)
-            .or_insert_with(ResponseMetrics::default)
+            .or_insert_with(http::ResponseMetrics::default)
     }
 
-    fn transport(&mut self, labels: TransportLabels) -> &mut TransportMetrics {
+    fn transport(&mut self, labels: TransportLabels) -> &mut transport::OpenMetrics {
         self.transports.scopes.entry(labels)
-            .or_insert_with(TransportMetrics::default)
+            .or_insert_with(transport::OpenMetrics::default)
     }
 
-    fn transport_close(&mut self, labels: TransportCloseLabels) -> &mut TransportCloseMetrics {
+    fn transport_close(&mut self, labels: TransportCloseLabels) -> &mut transport::CloseMetrics {
         self.transport_closes.scopes.entry(labels)
-            .or_insert_with(TransportCloseMetrics::default)
+            .or_insert_with(transport::CloseMetrics::default)
     }
 }
 
@@ -235,153 +204,5 @@ impl fmt::Display for Root {
 impl<L: Display + Hash + Eq, M> Default for Scopes<L, M> {
     fn default() -> Self {
         Scopes { scopes: IndexMap::default(), }
-    }
-}
-
-// ===== impl RequestScopes =====
-
-impl RequestScopes {
-    metrics! {
-        request_total: Counter { "Total count of HTTP requests." }
-    }
-}
-
-impl fmt::Display for RequestScopes {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.scopes.is_empty() {
-            return Ok(());
-        }
-
-        Self::request_total.fmt_help(f)?;
-        Self::request_total.fmt_scopes(f, &self, |s| &s.total)?;
-
-        Ok(())
-    }
-}
-
-// ===== impl RequestMetrics =====
-
-impl RequestMetrics {
-    fn end(&mut self) {
-        self.total.incr();
-    }
-}
-
-// ===== impl ResponseScopes =====
-
-impl ResponseScopes {
-    metrics! {
-        response_total: Counter { "Total count of HTTP responses" },
-        response_latency_ms: Histogram<latency::Ms> {
-            "Elapsed times between a request's headers being received \
-            and its response stream completing"
-        }
-    }
-}
-
-impl fmt::Display for ResponseScopes {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.scopes.is_empty() {
-            return Ok(());
-        }
-
-        Self::response_total.fmt_help(f)?;
-        Self::response_total.fmt_scopes(f, &self, |s| &s.total)?;
-
-        Self::response_latency_ms.fmt_help(f)?;
-        Self::response_latency_ms.fmt_scopes(f, &self, |s| &s.latency)?;
-
-        Ok(())
-    }
-}
-
-// ===== impl ResponseMetrics =====
-
-impl ResponseMetrics {
-    fn end(&mut self, duration: Duration) {
-        self.total.incr();
-        self.latency.add(duration);
-    }
-}
-
-// ===== impl TransportScopes =====
-
-impl TransportScopes {
-    metrics! {
-        tcp_open_total: Counter { "Total count of opened connections" },
-        tcp_open_connections: Gauge { "Number of currently-open connections" },
-        tcp_read_bytes_total: Counter { "Total count of bytes read from peers" },
-        tcp_write_bytes_total: Counter { "Total count of bytes written to peers" }
-    }
-}
-
-impl fmt::Display for TransportScopes {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.scopes.is_empty() {
-            return Ok(());
-        }
-
-        Self::tcp_open_total.fmt_help(f)?;
-        Self::tcp_open_total.fmt_scopes(f, &self, |s| &s.open_total)?;
-
-        Self::tcp_open_connections.fmt_help(f)?;
-        Self::tcp_open_connections.fmt_scopes(f, &self, |s| &s.open_connections)?;
-
-        Self::tcp_read_bytes_total.fmt_help(f)?;
-        Self::tcp_read_bytes_total.fmt_scopes(f, &self, |s| &s.read_bytes_total)?;
-
-        Self::tcp_write_bytes_total.fmt_help(f)?;
-        Self::tcp_write_bytes_total.fmt_scopes(f, &self, |s| &s.write_bytes_total)?;
-
-        Ok(())
-    }
-}
-
-// ===== impl TransportMetrics =====
-
-impl TransportMetrics {
-    fn open(&mut self) {
-        self.open_total.incr();
-        self.open_connections.incr();
-    }
-
-    fn close(&mut self, rx: u64, tx: u64) {
-        self.open_connections.decr();
-        self.read_bytes_total += rx;
-        self.write_bytes_total += tx;
-    }
-}
-
-// ===== impl TransportCloseScopes =====
-
-impl TransportCloseScopes {
-    metrics! {
-        tcp_close_total: Counter { "Total count of closed connections" },
-        tcp_connection_duration_ms: Histogram<latency::Ms> { "Connection lifetimes" }
-    }
-}
-
-impl fmt::Display for TransportCloseScopes {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.scopes.is_empty() {
-            return Ok(());
-        }
-
-        Self::tcp_close_total.fmt_help(f)?;
-        Self::tcp_close_total.fmt_scopes(f, &self, |s| &s.close_total)?;
-
-        Self::tcp_connection_duration_ms.fmt_help(f)?;
-        Self::tcp_connection_duration_ms.fmt_scopes(f, &self, |s| &s.connection_duration)?;
-
-        Ok(())
-    }
-}
-
-// ===== impl TransportCloseMetrics =====
-
-impl TransportCloseMetrics {
-    fn close(&mut self, duration: Duration) {
-        self.close_total.incr();
-        self.connection_duration.add(duration);
     }
 }
