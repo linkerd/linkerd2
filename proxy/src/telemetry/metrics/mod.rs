@@ -57,9 +57,16 @@ pub use self::labels::DstLabels;
 pub use self::record::Record;
 pub use self::serve::Serve;
 
+/// Writes a metric in prometheus-formatted output.
+///
+/// This trait is implemented by `Counter`, `Gauge`, and `Histogram` to account for the
+/// differences in formatting each type of metric. Specifically, `Histogram` formats a
+/// counter for each bucket, as well as a count and total sum.
 trait FmtMetric {
+    /// Writes a metric with the given name and no labels.
     fn fmt_metric<N: Display>(&self, f: &mut fmt::Formatter, name: N) -> fmt::Result;
 
+    /// Writes a metric with the given name and labels.
     fn fmt_metric_labeled<N, L>(&self, f: &mut fmt::Formatter, name: N, labels: L) -> fmt::Result
     where
         N: Display,
