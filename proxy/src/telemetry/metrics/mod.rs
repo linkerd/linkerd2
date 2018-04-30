@@ -27,8 +27,8 @@
 //! to worry about missing commas, double commas, or trailing commas at the
 //! end of the label set (all of which will make Prometheus angry).
 use std::default::Default;
-use std::hash::Hash;
 use std::fmt::{self, Display};
+use std::hash::Hash;
 use std::marker::PhantomData;
 use std::sync::{Arc, Mutex};
 use std::time::{UNIX_EPOCH, Duration, Instant};
@@ -73,11 +73,19 @@ pub use self::labels::DstLabels;
 pub use self::record::Record;
 pub use self::serve::Serve;
 
+/// Writes a metric in prometheus-formatted output.
+///
+/// This trait is implemented by `Counter`, `Gauge`, and `Histogram` to account for the
+/// differences in formatting each type of metric. Specifically, `Histogram` formats a
+/// counter for each bucket, as well as a count and total sum.
 trait FmtMetric {
+    /// The metric type.
     fn kind() -> &'static str;
 
+    /// Writes a metric with the given name and no labels.
     fn fmt_metric<N: Display>(&self, f: &mut fmt::Formatter, name: N) -> fmt::Result;
 
+    /// Writes a metric with the given name and labels.
     fn fmt_metric_labeled<N, L>(&self, f: &mut fmt::Formatter, name: N, labels: L) -> fmt::Result
     where
         N: Display,
