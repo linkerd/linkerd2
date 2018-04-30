@@ -1,5 +1,6 @@
 use std::io;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use futures::{future, Async, Future, Poll, Stream};
 use futures_mpsc_lossy::Receiver;
@@ -18,6 +19,8 @@ pub struct MakeControl {
     rx: Receiver<Event>,
 
     process_ctx: Arc<ctx::Process>,
+
+    metrics_retain_idle: Duration,
 }
 
 /// Handles the receipt of events.
@@ -59,10 +62,12 @@ impl MakeControl {
     pub(super) fn new(
         rx: Receiver<Event>,
         process_ctx: &Arc<ctx::Process>,
+        metrics_retain_idle: Duration,
     ) -> Self {
         Self {
             rx,
             process_ctx: Arc::clone(process_ctx),
+            metrics_retain_idle,
         }
     }
 
@@ -77,7 +82,7 @@ impl MakeControl {
     /// - `Err(io::Error)` if the timeout could not be created.
     pub fn make_control(self, taps: &Arc<Mutex<Taps>>, handle: &Handle) -> io::Result<Control> {
         let (metrics_record, metrics_service) =
-            metrics::new(&self.process_ctx);
+            metrics::new(&self.process_ctx, self.metrics_retain_idle);
 
         Ok(Control {
             metrics_record,

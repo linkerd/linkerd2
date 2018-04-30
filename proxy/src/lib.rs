@@ -200,6 +200,7 @@ where
         let (sensors, telemetry) = telemetry::new(
             &process_ctx,
             config.event_buffer_capacity,
+            config.metrics_retain_idle,
         );
 
         let dns_config = dns::Config::from_system_config()
