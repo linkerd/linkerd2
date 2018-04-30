@@ -1,9 +1,9 @@
 import _ from 'lodash';
 import BaseTable from './BaseTable.jsx';
 import GrafanaLink from './GrafanaLink.jsx';
-import { metricToFormatter } from './util/Utils.js';
 import React from 'react';
 import { Tooltip } from 'antd';
+import { metricToFormatter, numericSort } from './util/Utils.js';
 
 /*
   Table to display Success Rate, Requests and Latency in tabs.
@@ -103,8 +103,6 @@ const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick,
     }
   ];
 };
-
-const numericSort = (a, b) => (_.isNil(a) ? -1 : a) - (_.isNil(b) ? -1 : b);
 
 export default class MetricsTable extends BaseTable {
   constructor(props) {

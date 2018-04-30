@@ -72,6 +72,10 @@ h2, h3, h4, h5, h6 {
   float: right;
 }
 
+.page-section {
+  margin-bottom: calc(var(--base-width) * 3);
+}
+
 .subsection-header {
   text-transform: uppercase;
   font-size: 14px;

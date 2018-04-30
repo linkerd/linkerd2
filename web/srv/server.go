@@ -83,6 +83,7 @@ func NewServer(addr, templateDir, staticDir, uuid, controllerNamespace, webpackD
 	// webapp routes
 	server.router.GET("/", handler.handleIndex)
 	server.router.GET("/servicemesh", handler.handleIndex)
+	server.router.GET("/namespaces", handler.handleIndex)
 	server.router.GET("/deployments", handler.handleIndex)
 	server.router.GET("/replicationcontrollers", handler.handleIndex)
 	server.router.GET("/pods", handler.handleIndex)

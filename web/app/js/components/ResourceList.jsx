@@ -79,10 +79,12 @@ export default class ResourceList extends React.Component {
     });
   }
 
-  renderEmptyMessage(resource) {
-    return this.props.resource === "deployment" ?
-      <CallToAction numDeployments={_.size(this.state.metrics)} /> :
-      <div>No {resource}s found</div>;
+  renderEmptyMessage() {
+    let shortResource = this.props.resource === "replication_controller" ?
+      "RC" : this.props.resource;
+    return (<CallToAction
+      resource={shortResource}
+      numResources={_.size(this.state.metrics)} />);
   }
 
   render() {
