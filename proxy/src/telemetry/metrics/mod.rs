@@ -151,25 +151,25 @@ impl Root {
 
     fn request(&mut self, labels: RequestLabels) -> &mut RequestMetrics {
         self.requests.scopes.entry(labels)
-            .or_insert_with(Stamped::default)
+            .or_insert_with(|| RequestMetrics::default().into())
             .stamped()
     }
 
     fn response(&mut self, labels: ResponseLabels) -> &mut ResponseMetrics {
         self.responses.scopes.entry(labels)
-            .or_insert_with(Stamped::default)
+            .or_insert_with(|| ResponseMetrics::default().into())
             .stamped()
     }
 
     fn transport(&mut self, labels: TransportLabels) -> &mut TransportMetrics {
         self.transports.scopes.entry(labels)
-            .or_insert_with(Stamped::default)
+            .or_insert_with(|| TransportMetrics::default().into())
             .stamped()
     }
 
     fn transport_close(&mut self, labels: TransportCloseLabels) -> &mut TransportCloseMetrics {
         self.transport_closes.scopes.entry(labels)
-            .or_insert_with(Stamped::default)
+            .or_insert_with(|| TransportCloseMetrics::default().into())
             .stamped()
     }
 
