@@ -1,6 +1,17 @@
 use std::fmt;
+use std::time::Duration;
 
-use telemetry::metrics::*;
+use super::{
+    latency,
+    Counter,
+    Gauge,
+    Histogram,
+    Metric,
+    TransportLabels,
+    TransportCloseLabels,
+    Scopes,
+    Stamped,
+};
 
 pub(super) type OpenScopes = Scopes<TransportLabels, Stamped<OpenMetrics>>;
 

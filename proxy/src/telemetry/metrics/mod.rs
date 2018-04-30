@@ -44,7 +44,7 @@ macro_rules! metrics {
             const $name: Metric<'static, $kind> = Metric {
                 name: stringify!($name),
                 help: $help,
-                _p: PhantomData,
+                _p: ::std::marker::PhantomData,
             };
         )+
     }
@@ -79,7 +79,7 @@ pub use self::serve::Serve;
 /// differences in formatting each type of metric. Specifically, `Histogram` formats a
 /// counter for each bucket, as well as a count and total sum.
 trait FmtMetric {
-    /// The metric type.
+    /// The metric's `TYPE` in help messages.
     const KIND: &'static str;
 
     /// Writes a metric with the given name and no labels.
@@ -92,12 +92,16 @@ trait FmtMetric {
         L: Display;
 }
 
+/// Describes a metric statically.
+///
+/// Formats help messages and metric values for prometheus output.
 struct Metric<'a, M: FmtMetric> {
     name: &'a str,
     help: &'a str,
     _p: PhantomData<M>,
 }
 
+/// The root scope for all runtime metrics.
 #[derive(Debug, Default)]
 struct Root {
     requests: http::RequestScopes,
@@ -108,6 +112,9 @@ struct Root {
     start_time: Gauge,
 }
 
+/// Holds an `S`-typed scope for each `L`-typed label set.
+///
+/// An `S` type typically holds one or more metrics.
 #[derive(Debug)]
 struct Scopes<L: Display + Hash + Eq, S> {
     scopes: IndexMap<L, S>,
@@ -133,16 +140,19 @@ pub fn new(process: &Arc<ctx::Process>, idle_retain: Duration) -> (Record, Serve
 // ===== impl Metric =====
 
 impl<'a, M: FmtMetric> Metric<'a, M> {
+    /// Formats help messages for this metric.
     pub fn fmt_help(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "# HELP {} {}", self.name, self.help)?;
         writeln!(f, "# TYPE {} {}", self.name, M::KIND)?;
         Ok(())
     }
 
+    /// Formats a single metric without labels.
     pub fn fmt_metric(&self, f: &mut fmt::Formatter, metric: M) -> fmt::Result {
         metric.fmt_metric(f, self.name)
     }
 
+    /// Formats a single metric across labeled scopes.
     pub fn fmt_scopes<L: Display + Hash + Eq, S, F: Fn(&S) -> &M>(
         &self,
         f: &mut fmt::Formatter,
