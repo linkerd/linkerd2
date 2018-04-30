@@ -61,37 +61,6 @@ pub use self::serve::Serve;
 mod metrics {
     use super::*;
 
-    pub(super) struct Metric<'a, M: FmtMetric> {
-        name: &'a str,
-        help: &'a str,
-        _p: PhantomData<M>,
-    }
-
-    impl<'a, M: FmtMetric> Metric<'a, M> {
-        pub fn fmt_help(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            writeln!(f, "# HELP {} {}", self.name, self.help)?;
-            writeln!(f, "# TYPE {} {}", self.name, M::kind())?;
-            Ok(())
-        }
-
-        pub fn fmt_metric(&self, f: &mut fmt::Formatter, metric: M) -> fmt::Result {
-            metric.fmt_metric(f, self.name)
-        }
-
-        pub fn fmt_scopes<L: Display + Hash + Eq, S, F: Fn(&S) -> &M>(
-            &self,
-            f: &mut fmt::Formatter,
-            scopes: &Scopes<L, S>,
-            to_metric: F
-        )-> fmt::Result {
-            for (labels, scope) in &scopes.scopes {
-                to_metric(scope).fmt_metric_labeled(f, self.name, labels)?;
-            }
-
-            Ok(())
-        }
-    }
-
     macro_rules! metrics {
         { $( $name:ident : $kind:ty { $help:expr } ),+ } => {
             $(
@@ -128,6 +97,38 @@ mod metrics {
 
         tcp_connection_duration_ms: Histogram<latency::Ms> { "Connection lifetimes" }
     }
+
+    pub(super) struct Metric<'a, M: FmtMetric> {
+        name: &'a str,
+        help: &'a str,
+        _p: PhantomData<M>,
+    }
+
+    impl<'a, M: FmtMetric> Metric<'a, M> {
+        pub fn fmt_help(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            writeln!(f, "# HELP {} {}", self.name, self.help)?;
+            writeln!(f, "# TYPE {} {}", self.name, M::kind())?;
+            Ok(())
+        }
+
+        pub fn fmt_metric(&self, f: &mut fmt::Formatter, metric: M) -> fmt::Result {
+            metric.fmt_metric(f, self.name)
+        }
+
+        pub fn fmt_scopes<L: Display + Hash + Eq, S, F: Fn(&S) -> &M>(
+            &self,
+            f: &mut fmt::Formatter,
+            scopes: &Scopes<L, S>,
+            to_metric: F
+        )-> fmt::Result {
+            for (labels, scope) in &scopes.scopes {
+                to_metric(scope).fmt_metric_labeled(f, self.name, labels)?;
+            }
+
+            Ok(())
+        }
+    }
+
 }
 
 trait FmtMetric {
