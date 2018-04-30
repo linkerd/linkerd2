@@ -115,16 +115,12 @@ mod metrics {
             metric.fmt_metric(f, self.name)
         }
 
-        pub fn fmt_scopes<L, S, F>(
+        pub fn fmt_scopes<L: Display + Hash + Eq, S, F: Fn(&S) -> &M>(
             &self,
             f: &mut fmt::Formatter,
             scopes: &Scopes<L, S>,
             to_metric: F
-        ) -> fmt::Result
-        where
-            L: Display + Hash + Eq,
-            F: Fn(&S) -> &M,
-        {
+        )-> fmt::Result {
             for (labels, scope) in &scopes.scopes {
                 to_metric(scope).fmt_metric_labeled(f, self.name, labels)?;
             }
