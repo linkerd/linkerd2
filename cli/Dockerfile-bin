@@ -1,6 +1,7 @@
 ## compile binaries
 FROM gcr.io/runconduit/go-deps:e7d5fcae as golang
 ARG CONDUIT_VERSION
+ARG PLATFORMS="darwin linux windows"
 WORKDIR /go/src/github.com/runconduit/conduit
 COPY cli cli
 COPY controller/k8s controller/k8s
@@ -10,9 +11,9 @@ COPY controller/util controller/util
 COPY pkg pkg
 RUN mkdir -p /out
 ENV GO_LDFLAGS="-s -w -X github.com/runconduit/conduit/pkg/version.Version=${CONDUIT_VERSION}"
-RUN CGO_ENABLED=0 GOOS=darwin  go build -installsuffix cgo -o /out/conduit-darwin  -ldflags "${GO_LDFLAGS}" ./cli
-RUN CGO_ENABLED=0 GOOS=linux   go build -installsuffix cgo -o /out/conduit-linux   -ldflags "${GO_LDFLAGS}" ./cli
-RUN CGO_ENABLED=0 GOOS=windows go build -installsuffix cgo -o /out/conduit-windows -ldflags "${GO_LDFLAGS}" ./cli
+RUN case "$PLATFORMS" in *darwin*) CGO_ENABLED=0 GOOS=darwin  go build -installsuffix cgo -o /out/conduit-darwin  -ldflags "${GO_LDFLAGS}" ./cli ;; esac
+RUN case "$PLATFORMS" in *linux*) CGO_ENABLED=0 GOOS=linux   go build -installsuffix cgo -o /out/conduit-linux   -ldflags "${GO_LDFLAGS}" ./cli ;; esac
+RUN case "$PLATFORMS" in *windows*) CGO_ENABLED=0 GOOS=windows go build -installsuffix cgo -o /out/conduit-windows -ldflags "${GO_LDFLAGS}" ./cli ;; esac
 
 ## export without sources & dependencies
 FROM scratch

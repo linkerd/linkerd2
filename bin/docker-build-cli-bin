@@ -22,22 +22,28 @@ validate_go_deps_tag $dockerfile
     $bindir/docker-build-go-deps
 ) >/dev/null
 
+CURRENT_PLATFORM=$(uname)
+host_platform="windows"
+if [ "$CURRENT_PLATFORM" = 'Darwin' ]; then
+    host_platform="darwin"
+elif [ "$CURRENT_PLATFORM" = 'Linux' ]; then
+    host_platform="linux"
+fi
+
 tag="$(head_root_tag)"
-docker_build cli-bin $tag $dockerfile --build-arg CONDUIT_VERSION=$tag
+docker_build cli-bin $tag $dockerfile --build-arg CONDUIT_VERSION=$tag --build-arg PLATFORMS=$host_platform
 IMG=$(docker_repo cli-bin):$tag
 ID=$(docker create "$IMG")
 
 # copy the newly built conduit cli binaries to the local system
-for OS in darwin linux windows ; do
-    DIR="${rootdir}/target/cli/${OS}"
-    mkdir -p "$DIR"
+DIR="${rootdir}/target/cli/$host_platform"
+mkdir -p "$DIR"
 
-    if docker cp "$ID:/out/conduit-${OS}" "$DIR/conduit" ; then
-        echo "$DIR/conduit"
-    else
-        docker rm "$ID" >/dev/null
-        exit 1
-    fi
-done
+if docker cp "$ID:/out/conduit-$host_platform" "$DIR/conduit" ; then
+    echo "$DIR/conduit"
+else
+    docker rm "$ID" >/dev/null
+    exit 1
+fi
 
 docker rm "$ID" >/dev/null
