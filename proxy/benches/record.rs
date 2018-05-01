@@ -155,6 +155,8 @@ fn record_many_dsts(b: &mut Bencher) {
     let server = server(&proxy);
     let server_transport = Arc::new(ctx::transport::Ctx::Server(server.clone()));
 
+    panic!("fail test intentionally");
+
     use Event::*;
     let mut events = Vec::new();
     events.push(TransportOpen(server_transport.clone()));
