@@ -16,7 +16,7 @@ pub(super) type RequestScopes = Scopes<RequestLabels, Stamped<RequestMetrics>>;
 
 #[derive(Debug, Default)]
 pub(super) struct RequestMetrics {
-    total: Counter,
+    pub(super) total: Counter,
 }
 
 pub(super) type ResponseScopes = Scopes<ResponseLabels, Stamped<ResponseMetrics>>;

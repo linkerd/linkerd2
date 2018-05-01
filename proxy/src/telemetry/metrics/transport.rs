@@ -17,18 +17,18 @@ pub(super) type OpenScopes = Scopes<TransportLabels, Stamped<OpenMetrics>>;
 
 #[derive(Debug, Default)]
 pub(super) struct OpenMetrics {
-    open_total: Counter,
-    open_connections: Gauge,
-    write_bytes_total: Counter,
-    read_bytes_total: Counter,
+    pub open_total: Counter,
+    pub open_connections: Gauge,
+    pub write_bytes_total: Counter,
+    pub read_bytes_total: Counter,
 }
 
 pub(super) type CloseScopes = Scopes<TransportCloseLabels, Stamped<CloseMetrics>>;
 
 #[derive(Debug, Default)]
 pub(super) struct CloseMetrics {
-    close_total: Counter,
-    connection_duration: Histogram<latency::Ms>,
+    pub close_total: Counter,
+    pub connection_duration: Histogram<latency::Ms>,
 }
 
 // ===== impl OpenScopes =====
