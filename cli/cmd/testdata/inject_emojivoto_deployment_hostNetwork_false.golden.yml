@@ -41,6 +41,8 @@ spec:
       - env:
         - name: CONDUIT_PROXY_LOG
           value: warn,conduit_proxy=info
+        - name: CONDUIT_PROXY_BIND_TIMEOUT
+          value: "10000"
         - name: CONDUIT_PROXY_CONTROL_URL
           value: tcp://proxy-api.conduit.svc.cluster.local:8086
         - name: CONDUIT_PROXY_CONTROL_LISTENER
