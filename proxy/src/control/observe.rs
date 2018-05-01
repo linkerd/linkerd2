@@ -47,7 +47,7 @@ impl server::Tap for Observe {
     type ObserveFuture = future::FutureResult<Response<Self::ObserveStream>, grpc::Error>;
 
     fn observe(&mut self, req: grpc::Request<ObserveRequest>) -> Self::ObserveFuture {
-        if self.next_id.load(Ordering::SeqCst) == ::std::usize::MAX {
+        if self.next_id.load(Ordering::Acquire) == ::std::usize::MAX {
             return future::err(grpc::Error::Grpc(grpc::Status::INTERNAL));
         }
 
@@ -65,7 +65,7 @@ impl server::Tap for Observe {
 
         let tap_id = match self.taps.lock() {
             Ok(mut taps) => {
-                let tap_id = self.next_id.fetch_add(1, Ordering::SeqCst);
+                let tap_id = self.next_id.fetch_add(1, Ordering::AcqRel);
                 let _ = (*taps).insert(tap_id, tap);
                 tap_id
             }
