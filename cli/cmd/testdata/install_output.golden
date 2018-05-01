@@ -23,7 +23,7 @@ rules:
   resources: ["deployments", "replicasets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
-  resources: ["pods", "endpoints", "services"]
+  resources: ["pods", "endpoints", "services", "namespaces", "replicationcontrollers"]
   verbs: ["list", "get", "watch"]
 
 ---
@@ -195,21 +195,6 @@ spec:
         - containerPort: 9998
           name: admin-http
         resources: {}
-      - args:
-        - telemetry
-        - -ignore-namespaces=kube-system
-        - -prometheus-url=http://prometheus.Namespace.svc.cluster.local:9090
-        - -log-level=ControllerLogLevel
-        - -logtostderr=true
-        image: ControllerImage
-        imagePullPolicy: ImagePullPolicy
-        name: telemetry
-        ports:
-        - containerPort: 8087
-          name: grpc
-        - containerPort: 9997
-          name: admin-http
-        resources: {}
       - env:
         - name: CONDUIT_PROXY_LOG
           value: warn,conduit_proxy=info
@@ -223,14 +208,6 @@ spec:
           value: tcp://127.0.0.1:4140
         - name: CONDUIT_PROXY_PUBLIC_LISTENER
           value: tcp://0.0.0.0:4143
-        - name: CONDUIT_PROXY_NODE_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.nodeName
-        - name: CONDUIT_PROXY_POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
         - name: CONDUIT_PROXY_POD_NAMESPACE
           valueFrom:
             fieldRef:
@@ -255,7 +232,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - "4190"
+        - 4190,4191
         image: gcr.io/runconduit/proxy-init:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-init
@@ -345,14 +322,6 @@ spec:
           value: tcp://127.0.0.1:4140
         - name: CONDUIT_PROXY_PUBLIC_LISTENER
           value: tcp://0.0.0.0:4143
-        - name: CONDUIT_PROXY_NODE_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.nodeName
-        - name: CONDUIT_PROXY_POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
         - name: CONDUIT_PROXY_POD_NAMESPACE
           valueFrom:
             fieldRef:
@@ -377,7 +346,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - "4190"
+        - 4190,4191
         image: gcr.io/runconduit/proxy-init:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-init
@@ -461,14 +430,6 @@ spec:
           value: tcp://127.0.0.1:4140
         - name: CONDUIT_PROXY_PUBLIC_LISTENER
           value: tcp://0.0.0.0:4143
-        - name: CONDUIT_PROXY_NODE_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.nodeName
-        - name: CONDUIT_PROXY_POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
         - name: CONDUIT_PROXY_POD_NAMESPACE
           valueFrom:
             fieldRef:
@@ -493,7 +454,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - "4190"
+        - 4190,4191
         image: gcr.io/runconduit/proxy-init:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-init
@@ -530,27 +491,11 @@ data:
       static_configs:
       - targets: ['localhost:9090']
 
-    - job_name: 'controller'
-      kubernetes_sd_configs:
-      - role: pod
-        namespaces:
-          names: ['Namespace']
-      relabel_configs:
-      - source_labels: [__meta_kubernetes_pod_container_port_name]
-        action: keep
-        regex: ^admin-http$
-      - source_labels: [__meta_kubernetes_pod_container_name]
-        action: replace
-        target_label: job
-
-    # Double collect control-plane pods, In #499 we will remove the
-    # "controller" job above in favor of these two below.
     - job_name: 'conduit-controller'
       kubernetes_sd_configs:
       - role: pod
         namespaces:
           names: ['Namespace']
-      # TODO: do something with "conduit.io/control-plane-component"
       relabel_configs:
       - source_labels:
         - __meta_kubernetes_pod_label_conduit_io_control_plane_component
@@ -665,14 +610,6 @@ spec:
           value: tcp://127.0.0.1:4140
         - name: CONDUIT_PROXY_PUBLIC_LISTENER
           value: tcp://0.0.0.0:4143
-        - name: CONDUIT_PROXY_NODE_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.nodeName
-        - name: CONDUIT_PROXY_POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
         - name: CONDUIT_PROXY_POD_NAMESPACE
           valueFrom:
             fieldRef:
@@ -697,7 +634,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - "4190"
+        - 4190,4191
         image: gcr.io/runconduit/proxy-init:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-init

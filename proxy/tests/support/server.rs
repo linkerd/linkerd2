@@ -38,6 +38,12 @@ impl Listening {
     }
 }
 
+impl Drop for Listening {
+    fn drop(&mut self) {
+        println!("server Listening dropped; addr={}", self.addr);
+    }
+}
+
 impl Server {
     fn new(run: Run) -> Self {
         Server {
@@ -103,7 +109,13 @@ impl Server {
         let (addr_tx, addr_rx) = oneshot::channel();
         let conn_count = Arc::new(AtomicUsize::from(0));
         let srv_conn_count = Arc::clone(&conn_count);
-        ::std::thread::Builder::new().name("support server".into()).spawn(move || {
+        let version = self.version;
+        let tname = format!(
+            "support {:?} server (test={})",
+            version,
+            thread_name(),
+        );
+        ::std::thread::Builder::new().name(tname).spawn(move || {
             let mut core = Core::new().unwrap();
             let reactor = core.handle();
 
@@ -172,6 +184,13 @@ impl Server {
 
         let addr = addr_rx.wait().expect("addr");
 
+        // printlns will show if the test fails...
+        println!(
+            "{:?} server running; addr={}",
+            version,
+            addr,
+        );
+
         Listening {
             addr,
             shutdown: tx,
@@ -180,7 +199,7 @@ impl Server {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 enum Run {
     Http1,
     Http2,

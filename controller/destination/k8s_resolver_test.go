@@ -60,11 +60,9 @@ func TestK8sResolver(t *testing.T) {
 			},
 		}
 
-		mockDnsWatcher := &mockDnsWatcher{}
 		resolver := k8sResolver{
 			k8sDNSZoneLabels: someKubernetesDNSZone,
 			endpointsWatcher: mockEndpointsWatcher,
-			dnsWatcher:       mockDnsWatcher,
 		}
 
 		host := "name1.ns.svc.some.namespace"
@@ -86,10 +84,6 @@ func TestK8sResolver(t *testing.T) {
 		if mockEndpointsWatcher.ListenerSubscribed != listener || mockEndpointsWatcher.ListenerUnsubscribed != listener {
 			t.Fatalf("Expected listener [%v] to have been subscribed then unsubscribed to endpoint watcher, got: %+v", listener, mockEndpointsWatcher)
 		}
-
-		if mockDnsWatcher.ListenerSubscribed != nil || mockDnsWatcher.ListenerUnsubscribed != nil {
-			t.Fatalf("Did not expect listener [%v] to have been subscribed then unsubscribed to dns watcher, got: %+v", listener, mockDnsWatcher)
-		}
 	})
 
 	t.Run("subscribes the listener to resolve external services", func(t *testing.T) {
@@ -100,12 +94,9 @@ func TestK8sResolver(t *testing.T) {
 			},
 		}
 
-		mockDnsWatcher := &mockDnsWatcher{}
-
 		resolver := k8sResolver{
 			k8sDNSZoneLabels: someKubernetesDNSZone,
 			endpointsWatcher: mockEndpointsWatcher,
-			dnsWatcher:       mockDnsWatcher,
 		}
 
 		host := "name32.ns.svc.some.namespace"
@@ -124,16 +115,10 @@ func TestK8sResolver(t *testing.T) {
 		cancelFn()
 		<-done
 
-		if mockDnsWatcher.ListenerSubscribed != listener || mockDnsWatcher.ListenerUnsubscribed != listener {
+		if mockEndpointsWatcher.ListenerSubscribed != listener || mockEndpointsWatcher.ListenerUnsubscribed != listener {
 			t.Fatalf("Expected listener [%v] to have been subscribed then unsubscribed to endpoint watcher, got: %+v", listener, mockEndpointsWatcher)
 		}
-
-		if mockEndpointsWatcher.ListenerSubscribed != nil || mockEndpointsWatcher.ListenerUnsubscribed != nil {
-			t.Fatalf("Did not expect listener [%v] to have been subscribed then unsubscribed to dns watcher, got: %+v", listener, mockEndpointsWatcher)
-		}
 	})
-
-	//TODO: Resolve name using DNS similar to Kubernetes' ClusterFirst
 }
 
 func TestLocalKubernetesServiceIdFromDNSName(t *testing.T) {

@@ -26,7 +26,7 @@ rules:
   resources: ["deployments", "replicasets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
-  resources: ["pods", "endpoints", "services"]
+  resources: ["pods", "endpoints", "services", "namespaces", "replicationcontrollers"]
   verbs: ["list", "get", "watch"]
 
 ---
@@ -188,20 +188,6 @@ spec:
         - "tap"
         - "-log-level={{.ControllerLogLevel}}"
         - "-logtostderr=true"
-      - name: telemetry
-        ports:
-        - name: grpc
-          containerPort: 8087
-        - name: admin-http
-          containerPort: 9997
-        image: {{.ControllerImage}}
-        imagePullPolicy: {{.ImagePullPolicy}}
-        args:
-        - "telemetry"
-        - "-ignore-namespaces=kube-system"
-        - "-prometheus-url=http://prometheus.{{.Namespace}}.svc.cluster.local:9090"
-        - "-log-level={{.ControllerLogLevel}}"
-        - "-logtostderr=true"
 
 ### Web ###
 ---
@@ -342,27 +328,11 @@ data:
       static_configs:
       - targets: ['localhost:9090']
 
-    - job_name: 'controller'
-      kubernetes_sd_configs:
-      - role: pod
-        namespaces:
-          names: ['{{.Namespace}}']
-      relabel_configs:
-      - source_labels: [__meta_kubernetes_pod_container_port_name]
-        action: keep
-        regex: ^admin-http$
-      - source_labels: [__meta_kubernetes_pod_container_name]
-        action: replace
-        target_label: job
-
-    # Double collect control-plane pods, In #499 we will remove the
-    # "controller" job above in favor of these two below.
     - job_name: 'conduit-controller'
       kubernetes_sd_configs:
       - role: pod
         namespaces:
           names: ['{{.Namespace}}']
-      # TODO: do something with "conduit.io/control-plane-component"
       relabel_configs:
       - source_labels:
         - __meta_kubernetes_pod_label_conduit_io_control_plane_component

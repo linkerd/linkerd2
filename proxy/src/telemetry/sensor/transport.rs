@@ -1,10 +1,12 @@
-use futures::{Future, Poll};
+use bytes::Buf;
+use futures::{Async, Future, Poll};
 use std::io;
 use std::sync::Arc;
 use std::time::Instant;
 use tokio_connect;
 use tokio_io::{AsyncRead, AsyncWrite};
 
+use connection::Peek;
 use ctx;
 use telemetry::event;
 
@@ -18,9 +20,8 @@ struct Inner {
     ctx: Arc<ctx::transport::Ctx>,
     opened_at: Instant,
 
-    // TODO
-    //rx_bytes: usize,
-    //tx_bytes: usize,
+    rx_bytes: u64,
+    tx_bytes: u64,
 }
 
 /// Builds client transports with telemetry.
@@ -59,6 +60,8 @@ impl<T: AsyncRead + AsyncWrite> Transport<T> {
                 ctx,
                 handle,
                 opened_at,
+                rx_bytes: 0,
+                tx_bytes: 0,
             }),
         )
     }
@@ -79,6 +82,8 @@ impl<T: AsyncRead + AsyncWrite> Transport<T> {
                         mut handle,
                         ctx,
                         opened_at,
+                        rx_bytes,
+                        tx_bytes,
                     }) = self.1.take()
                     {
                         handle.send(move || {
@@ -86,6 +91,8 @@ impl<T: AsyncRead + AsyncWrite> Transport<T> {
                             let ev = event::TransportClose {
                                 duration,
                                 clean: false,
+                                rx_bytes,
+                                tx_bytes,
                             };
                             event::Event::TransportClose(ctx, ev)
                         });
@@ -104,6 +111,8 @@ impl<T> Drop for Transport<T> {
             mut handle,
             ctx,
             opened_at,
+            rx_bytes,
+            tx_bytes,
         }) = self.1.take()
         {
             handle.send(move || {
@@ -111,6 +120,8 @@ impl<T> Drop for Transport<T> {
                 let ev = event::TransportClose {
                     clean: true,
                     duration,
+                    rx_bytes,
+                    tx_bytes,
                 };
                 event::Event::TransportClose(ctx, ev)
             });
@@ -120,7 +131,13 @@ impl<T> Drop for Transport<T> {
 
 impl<T: AsyncRead + AsyncWrite> io::Read for Transport<T> {
     fn read(&mut self, mut buf: &mut [u8]) -> io::Result<usize> {
-        self.sense_err(move |io| io.read(buf))
+        let bytes = self.sense_err(move |io| io.read(buf))?;
+
+        if let Some(inner) = self.1.as_mut() {
+            inner.rx_bytes += bytes as u64;
+        }
+
+        Ok(bytes)
     }
 }
 
@@ -130,7 +147,13 @@ impl<T: AsyncRead + AsyncWrite> io::Write for Transport<T> {
     }
 
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.sense_err(move |io| io.write(buf))
+        let bytes = self.sense_err(move |io| io.write(buf))?;
+
+        if let Some(inner) = self.1.as_mut() {
+            inner.tx_bytes += bytes as u64;
+        }
+
+        Ok(bytes)
     }
 }
 
@@ -143,6 +166,22 @@ impl<T: AsyncRead + AsyncWrite> AsyncRead for Transport<T> {
 impl<T: AsyncRead + AsyncWrite> AsyncWrite for Transport<T> {
     fn shutdown(&mut self) -> Poll<(), io::Error> {
         self.sense_err(|io| io.shutdown())
+    }
+
+    fn write_buf<B: Buf>(&mut self, buf: &mut B) -> Poll<usize, io::Error> {
+        let bytes = try_ready!(self.sense_err(|io| io.write_buf(buf)));
+
+        if let Some(inner) = self.1.as_mut() {
+            inner.tx_bytes += bytes as u64;
+        }
+
+        Ok(Async::Ready(bytes))
+    }
+}
+
+impl<T: AsyncRead + AsyncWrite + Peek> Peek for Transport<T> {
+    fn peek(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.sense_err(|io| io.peek(buf))
     }
 }
 

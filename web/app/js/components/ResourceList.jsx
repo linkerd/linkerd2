@@ -4,19 +4,23 @@ import ConduitSpinner from "./ConduitSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
 import MetricsTable from './MetricsTable.jsx';
 import PageHeader from './PageHeader.jsx';
+import { processRollupMetrics } from './util/MetricUtils.js';
 import React from 'react';
-import { emptyMetric, getPodsByDeployment, processRollupMetrics } from './util/MetricUtils.js';
-import './../../css/deployments.css';
+import './../../css/list.css';
 import 'whatwg-fetch';
 
-export default class DeploymentsList extends React.Component {
+export default class ResourceList extends React.Component {
   constructor(props) {
     super(props);
     this.api = this.props.api;
     this.handleApiError = this.handleApiError.bind(this);
     this.loadFromServer = this.loadFromServer.bind(this);
 
-    this.state = {
+    this.state = this.getInitialState();
+  }
+
+  getInitialState() {
+    return {
       pollingInterval: 2000, // TODO: poll based on metricsWindow size
       metrics: [],
       pendingRequests: false,
@@ -30,20 +34,15 @@ export default class DeploymentsList extends React.Component {
     this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
   }
 
+  componentWillReceiveProps() {
+    // React won't unmount this component when switching resource pages so we need to clear state
+    this.api.cancelCurrentRequests();
+    this.setState(this.getInitialState());
+  }
+
   componentWillUnmount() {
     window.clearInterval(this.timerId);
     this.api.cancelCurrentRequests();
-  }
-
-  addDeploysWithNoMetrics(deploys, metrics) {
-    // also display deployments which have not been added to the service mesh
-    // (and therefore have no associated metrics)
-    let newMetrics = [];
-    let metricsByName = _.groupBy(metrics, 'name');
-    _.each(deploys, data => {
-      newMetrics.push(_.get(metricsByName, [data.name, 0], emptyMetric(data.name, data.added)));
-    });
-    return newMetrics;
   }
 
   loadFromServer() {
@@ -53,19 +52,14 @@ export default class DeploymentsList extends React.Component {
     this.setState({ pendingRequests: true });
 
     this.api.setCurrentRequests([
-      this.api.fetchMetrics(this.api.urlsForResource["deployment"].url().rollup),
-      this.api.fetchPods()
+      this.api.fetchMetrics(this.api.urlsForResource[this.props.resource].url().rollup)
     ]);
 
-    // expose serverPromise for testing
-    this.serverPromise = Promise.all(this.api.getCurrentPromises())
-      .then(([rollup, p]) => {
-        let poByDeploy = getPodsByDeployment(p.pods);
-        let meshDeploys = processRollupMetrics(rollup.metrics, "targetDeploy");
-        let combinedMetrics = this.addDeploysWithNoMetrics(poByDeploy, meshDeploys);
-
+    Promise.all(this.api.getCurrentPromises())
+      .then(([rollup]) => {
+        let processedMetrics = processRollupMetrics(rollup, this.props.controllerNamespace);
         this.setState({
-          metrics: combinedMetrics,
+          metrics: processedMetrics,
           loaded: true,
           pendingRequests: false,
           error: ''
@@ -85,21 +79,26 @@ export default class DeploymentsList extends React.Component {
     });
   }
 
+  renderEmptyMessage(resource) {
+    return this.props.resource === "deployment" ?
+      <CallToAction numDeployments={_.size(this.state.metrics)} /> :
+      <div>No {resource}s found</div>;
+  }
+
   render() {
+    let friendlyTitle = _.startCase(this.props.resource);
     return (
       <div className="page-content">
         { !this.state.error ? null : <ErrorBanner message={this.state.error} /> }
         { !this.state.loaded ? <ConduitSpinner />  :
           <div>
-            <PageHeader header="Deployments" api={this.api} />
+            <PageHeader header={friendlyTitle + "s"} api={this.api} />
             { _.isEmpty(this.state.metrics) ?
-              <CallToAction numDeployments={_.size(this.state.metrics)} /> :
-              <div className="deployments-list">
-                <MetricsTable
-                  resource="deployment"
-                  metrics={this.state.metrics}
-                  api={this.api} />
-              </div>
+              this.renderEmptyMessage(friendlyTitle) :
+              <MetricsTable
+                resource={friendlyTitle}
+                metrics={this.state.metrics}
+                api={this.api} />
             }
           </div>
         }

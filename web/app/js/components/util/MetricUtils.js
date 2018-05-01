@@ -1,31 +1,5 @@
 import _ from 'lodash';
 
-const gaugeAccessor = ["datapoints", 0, "value", "gauge"];
-const latencyAccessor = ["datapoints", 0, "value", "histogram", "values"];
-
-const convertTs = rawTs => {
-  return _.map(rawTs, metric => {
-    return {
-      timestamp: metric.timestampMs,
-      value: _.get(metric, "value.gauge")
-    };
-  });
-};
-
-const convertLatencyTs = rawTs => {
-  let latencies = _.flatMap(rawTs, metric => {
-    return _.map(_.get(metric, ["value", "histogram", "values"]), hist => {
-      return {
-        timestamp: metric.timestampMs,
-        value: hist.value,
-        label: hist.label
-      };
-    });
-  });
-  // this could be made more efficient by combining this with the map
-  return _.groupBy(latencies, 'label');
-};
-
 const getPodCategorization = pod => {
   if (pod.added && pod.status === "Running") {
     return "good";
@@ -35,6 +9,54 @@ const getPodCategorization = pod => {
     return "bad";
   }
   return ""; // Terminating | Succeeded | Unknown
+};
+
+const getRequestRate = row => {
+  if (_.isEmpty(row.stats)) {
+    return null;
+  }
+
+  let success = parseInt(row.stats.successCount, 10);
+  let failure = parseInt(row.stats.failureCount, 10);
+  let seconds = 0;
+
+  if (row.timeWindow === "10s") { seconds = 10; }
+  if (row.timeWindow === "1m") { seconds = 60; }
+  if (row.timeWindow === "10m") { seconds = 600; }
+  if (row.timeWindow === "1h") { seconds = 3600; }
+
+  if (seconds === 0) {
+    return null;
+  } else {
+    return (success + failure) / seconds;
+  }
+};
+
+const getSuccessRate = row => {
+  if (_.isEmpty(row.stats)) {
+    return null;
+  }
+
+  let success = parseInt(row.stats.successCount, 10);
+  let failure = parseInt(row.stats.failureCount, 10);
+
+  if (success + failure === 0) {
+    return null;
+  } else {
+    return success / (success + failure);
+  }
+};
+
+const getLatency = row => {
+  if (_.isEmpty(row.stats)) {
+    return {};
+  } else {
+    return {
+      P50: parseInt(row.stats.latencyMsP50, 10),
+      P95: parseInt(row.stats.latencyMsP95, 10),
+      P99: parseInt(row.stats.latencyMsP99, 10),
+    };
+  }
 };
 
 export const getPodsByDeployment = pods => {
@@ -70,62 +92,30 @@ export const getComponentPods = componentPods => {
     .value();
 };
 
-export const processTimeseriesMetrics = (rawTs, targetEntity) => {
-  let tsbyEntity = _.groupBy(rawTs, "metadata." + targetEntity);
-  return _.reduce(tsbyEntity, (mem, metrics, entity) => {
-    mem[entity] = mem[entity] || {};
-    _.each(metrics, metric => {
-      if (metric.name !== "LATENCY") {
-        mem[entity][metric.name] = convertTs(metric.datapoints);
-      } else {
-        mem[entity][metric.name] = convertLatencyTs(metric.datapoints);
+const kubernetesNs = "kube-system";
+const defaultControllerNs = "conduit";
+export const processRollupMetrics = (rawMetrics, controllerNamespace) => {
+  if (_.isEmpty(rawMetrics.ok) || _.isEmpty(rawMetrics.ok.statTables)) {
+    return [];
+  }
+  if (_.isEmpty(controllerNamespace)) {
+    controllerNamespace = defaultControllerNs;
+  }
+  let metrics = _.flatMap(rawMetrics.ok.statTables, table => {
+    return _.map(table.podGroup.rows, row => {
+      if (row.resource.namespace === kubernetesNs || row.resource.namespace === controllerNamespace) {
+        return null;
       }
+      return {
+        name: row.resource.name,
+        namespace: row.resource.namespace,
+        requestRate: getRequestRate(row),
+        successRate: getSuccessRate(row),
+        latency: getLatency(row),
+        added: row.meshedPodCount === row.totalPodCount
+      };
     });
-    return mem;
-  }, {});
-};
-
-export const processRollupMetrics = (rawMetrics, targetEntity) => {
-  let byEntity = _.groupBy(rawMetrics, "metadata." + targetEntity);
-  let metrics = _.map(byEntity, (data, entity) => {
-    if (!entity) return;
-
-    let requestRate = 0;
-    let successRate = 0;
-    let latency = {};
-
-    _.each(data, datum => {
-      if (datum.name === "REQUEST_RATE") {
-        requestRate = _.round(_.get(datum, gaugeAccessor, 0), 2);
-      } else if (datum.name === "SUCCESS_RATE") {
-        successRate = _.get(datum, gaugeAccessor);
-      } else if (datum.name === "LATENCY") {
-        let latencies = _.get(datum, latencyAccessor);
-        latency = _.reduce(latencies, (mem, ea) => {
-          mem[ea.label] = _.isNil(ea.value) ? null : parseInt(ea.value, 10);
-          return mem;
-        }, {});
-      }
-    });
-
-    return {
-      name: entity,
-      requestRate: requestRate,
-      successRate: successRate,
-      latency: latency,
-      added: true
-    };
   });
 
   return _.compact(_.sortBy(metrics, "name"));
-};
-
-export const emptyMetric = (name, added) => {
-  return {
-    name: name,
-    requestRate: null,
-    successRate: null,
-    latency: null,
-    added: added
-  };
 };

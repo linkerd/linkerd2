@@ -82,16 +82,16 @@ func NewServer(addr, templateDir, staticDir, uuid, controllerNamespace, webpackD
 
 	// webapp routes
 	server.router.GET("/", handler.handleIndex)
-	server.router.GET("/deployment", handler.handleIndex)
-	server.router.GET("/deployments", handler.handleIndex)
 	server.router.GET("/servicemesh", handler.handleIndex)
+	server.router.GET("/deployments", handler.handleIndex)
+	server.router.GET("/replicationcontrollers", handler.handleIndex)
+	server.router.GET("/pods", handler.handleIndex)
 	server.router.ServeFiles(
 		"/dist/*filepath", // add catch-all parameter to match all files in dir
 		filesonly.FileSystem(server.staticDir))
 
 	// webapp api routes
 	server.router.GET("/api/version", handler.handleApiVersion)
-	server.router.GET("/api/metrics", handler.handleApiMetrics)
 	server.router.GET("/api/stat", handler.handleApiStat)
 	server.router.GET("/api/pods", handler.handleApiPods)
 

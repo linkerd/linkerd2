@@ -53,18 +53,13 @@ pub struct Config {
     /// Event queue capacity.
     pub event_buffer_capacity: usize,
 
-    /// Interval after which to flush metrics.
-    pub metrics_flush_interval: Duration,
-
-    /// Timeout after which to cancel telemetry reports.
-    pub report_timeout: Duration,
+    /// Age after which metrics may be dropped.
+    pub metrics_retain_idle: Duration,
 
     /// Timeout after which to cancel binding a request.
     pub bind_timeout: Duration,
 
-    pub pod_name: Option<String>,
     pub pod_namespace: String,
-    pub node_name: Option<String>,
 }
 
 /// Configuration settings for binding a listener.
@@ -131,13 +126,12 @@ pub struct TestEnv {
 
 // Environment variables to look at when loading the configuration
 const ENV_EVENT_BUFFER_CAPACITY: &str = "CONDUIT_PROXY_EVENT_BUFFER_CAPACITY";
-pub const ENV_METRICS_FLUSH_INTERVAL_SECS: &str = "CONDUIT_PROXY_METRICS_FLUSH_INTERVAL_SECS";
-const ENV_REPORT_TIMEOUT_SECS: &str = "CONDUIT_PROXY_REPORT_TIMEOUT_SECS";
 pub const ENV_PRIVATE_LISTENER: &str = "CONDUIT_PROXY_PRIVATE_LISTENER";
 pub const ENV_PRIVATE_FORWARD: &str = "CONDUIT_PROXY_PRIVATE_FORWARD";
 pub const ENV_PUBLIC_LISTENER: &str = "CONDUIT_PROXY_PUBLIC_LISTENER";
 pub const ENV_CONTROL_LISTENER: &str = "CONDUIT_PROXY_CONTROL_LISTENER";
 pub const ENV_METRICS_LISTENER: &str = "CONDUIT_PROXY_METRICS_LISTENER";
+pub const ENV_METRICS_RETAIN_IDLE: &str = "CONDUIT_PROXY_METRICS_RETAIN_IDLE";
 const ENV_PRIVATE_CONNECT_TIMEOUT: &str = "CONDUIT_PROXY_PRIVATE_CONNECT_TIMEOUT";
 const ENV_PUBLIC_CONNECT_TIMEOUT: &str = "CONDUIT_PROXY_PUBLIC_CONNECT_TIMEOUT";
 pub const ENV_BIND_TIMEOUT: &str = "CONDUIT_PROXY_BIND_TIMEOUT";
@@ -147,8 +141,6 @@ pub const ENV_BIND_TIMEOUT: &str = "CONDUIT_PROXY_BIND_TIMEOUT";
 pub const ENV_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION: &str = "CONDUIT_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION";
 pub const ENV_OUTBOUND_PORTS_DISABLE_PROTOCOL_DETECTION: &str = "CONDUIT_PROXY_OUTBOUND_PORTS_DISABLE_PROTOCOL_DETECTION";
 
-const ENV_NODE_NAME: &str = "CONDUIT_PROXY_NODE_NAME";
-const ENV_POD_NAME: &str = "CONDUIT_PROXY_POD_NAME";
 pub const ENV_POD_NAMESPACE: &str = "CONDUIT_PROXY_POD_NAMESPACE";
 
 pub const ENV_CONTROL_URL: &str = "CONDUIT_PROXY_CONTROL_URL";
@@ -156,12 +148,11 @@ const ENV_RESOLV_CONF: &str = "CONDUIT_RESOLV_CONF";
 
 // Default values for various configuration fields
 const DEFAULT_EVENT_BUFFER_CAPACITY: usize = 10_000; // FIXME
-const DEFAULT_METRICS_FLUSH_INTERVAL_SECS: u64 = 10;
-const DEFAULT_REPORT_TIMEOUT_SECS: u64 = 10; // TODO: is this a reasonable default?
 const DEFAULT_PRIVATE_LISTENER: &str = "tcp://127.0.0.1:4140";
 const DEFAULT_PUBLIC_LISTENER: &str = "tcp://0.0.0.0:4143";
 const DEFAULT_CONTROL_LISTENER: &str = "tcp://0.0.0.0:4190";
 const DEFAULT_METRICS_LISTENER: &str = "tcp://127.0.0.1:4191";
+const DEFAULT_METRICS_RETAIN_IDLE: u64 = 10 * 60; // Ten minutes
 const DEFAULT_PRIVATE_CONNECT_TIMEOUT_MS: u64 = 20;
 const DEFAULT_PUBLIC_CONNECT_TIMEOUT_MS: u64 = 300;
 const DEFAULT_BIND_TIMEOUT_MS: u64 = 10_000; // ten seconds, as in Linkerd.
@@ -196,10 +187,7 @@ impl<'a> TryFrom<&'a Strings> for Config {
         let bind_timeout = parse(strings, ENV_BIND_TIMEOUT, parse_number);
         let resolv_conf_path = strings.get(ENV_RESOLV_CONF);
         let event_buffer_capacity = parse(strings, ENV_EVENT_BUFFER_CAPACITY, parse_number);
-        let metrics_flush_interval_secs =
-            parse(strings, ENV_METRICS_FLUSH_INTERVAL_SECS, parse_number);
-        let report_timeout = parse(strings, ENV_REPORT_TIMEOUT_SECS, parse_number);
-        let pod_name = strings.get(ENV_POD_NAME);
+        let metrics_retain_idle = parse(strings, ENV_METRICS_RETAIN_IDLE, parse_number);
         let pod_namespace = strings.get(ENV_POD_NAMESPACE).and_then(|maybe_value| {
             // There cannot be a default pod namespace, and the pod namespace is required.
             maybe_value.ok_or_else(|| {
@@ -207,7 +195,6 @@ impl<'a> TryFrom<&'a Strings> for Config {
                 Error::InvalidEnvVar
             })
         });
-        let node_name = strings.get(ENV_NODE_NAME);
 
         // There is no default controller URL because a default would make it
         // too easy to connect to the wrong controller, which would be dangerous.
@@ -255,16 +242,13 @@ impl<'a> TryFrom<&'a Strings> for Config {
             control_host_and_port: control_host_and_port?,
 
             event_buffer_capacity: event_buffer_capacity?.unwrap_or(DEFAULT_EVENT_BUFFER_CAPACITY),
-            metrics_flush_interval:
-                Duration::from_secs(metrics_flush_interval_secs?
-                                        .unwrap_or(DEFAULT_METRICS_FLUSH_INTERVAL_SECS)),
-            report_timeout:
-                Duration::from_secs(report_timeout?.unwrap_or(DEFAULT_REPORT_TIMEOUT_SECS)),
+            metrics_retain_idle: Duration::from_millis(
+                metrics_retain_idle?.unwrap_or(DEFAULT_METRICS_RETAIN_IDLE)
+            ),
+
             bind_timeout:
                 Duration::from_millis(bind_timeout?.unwrap_or(DEFAULT_BIND_TIMEOUT_MS)),
-            pod_name: pod_name?,
             pod_namespace: pod_namespace?,
-            node_name: node_name?,
         })
     }
 }

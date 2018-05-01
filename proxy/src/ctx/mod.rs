@@ -8,7 +8,6 @@
 //! be stored in `http::Extensions`, for instance. Furthermore, because these contexts
 //! will be sent to a telemetry processing thread, we want to avoid excessive cloning.
 use config;
-use conduit_proxy_controller_grpc::telemetry as proto;
 use std::time::SystemTime;
 use std::sync::Arc;
 pub mod http;
@@ -17,18 +16,7 @@ pub mod transport;
 /// Describes a single running proxy instance.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Process {
-    /// Identifies the logical host (or VM) that the process is running on.
-    ///
-    /// Empty if unknown.
-    pub node: String,
-
-    /// Identifies the logical instance name, as scheduled by a scheduler (like
-    /// kubernetes).
-    ///
-    /// Empty if unknown.
-    pub scheduled_instance: String,
-
-    /// Identifies the namespace for the `scheduled_instance`.
+    /// Identifies the Kubernetes namespace in which this proxy is process.
     pub scheduled_namespace: String,
 
     pub start_time: SystemTime,
@@ -49,10 +37,8 @@ pub enum Proxy {
 
 impl Process {
     #[cfg(test)]
-    pub fn test(node: &str, instance: &str, ns: &str) -> Arc<Self> {
+    pub fn test(ns: &str) -> Arc<Self> {
         Arc::new(Self {
-            node: node.into(),
-            scheduled_instance: instance.into(),
             scheduled_namespace: ns.into(),
             start_time: SystemTime::now(),
         })
@@ -61,30 +47,10 @@ impl Process {
     /// Construct a new `Process` from environment variables.
     pub fn new(config: &config::Config) -> Arc<Self> {
         let start_time = SystemTime::now();
-        fn empty_if_missing(s: &Option<String>) -> String {
-            match *s {
-                Some(ref s) => s.clone(),
-                None => "".to_owned(),
-            }
-        }
-
         Arc::new(Self {
-            node: empty_if_missing(&config.node_name),
-            scheduled_instance: empty_if_missing(&config.pod_name),
             scheduled_namespace: config.pod_namespace.clone(),
             start_time,
         })
-    }
-}
-
-impl<'a> Into<proto::Process> for &'a Process {
-    fn into(self) -> proto::Process {
-        // TODO: can this be implemented without cloning Strings?
-        proto::Process {
-            node: self.node.clone(),
-            scheduled_instance: self.scheduled_instance.clone(),
-            scheduled_namespace: self.scheduled_namespace.clone(),
-        }
     }
 }
 
@@ -106,5 +72,63 @@ impl Proxy {
 
     pub fn is_outbound(&self) -> bool {
         !self.is_inbound()
+    }
+}
+
+#[cfg(test)]
+pub mod test_util {
+    use http;
+    use futures_watch;
+    use std::{
+        fmt,
+        net::SocketAddr,
+        sync::Arc,
+        time::SystemTime,
+    };
+
+    use ctx;
+    use telemetry::metrics::DstLabels;
+
+    fn addr() -> SocketAddr {
+        ([1, 2, 3, 4], 5678).into()
+    }
+
+    pub fn process() -> Arc<ctx::Process> {
+        Arc::new(ctx::Process {
+            scheduled_namespace: "test".into(),
+            start_time: SystemTime::now(),
+        })
+    }
+
+    pub fn server(proxy: &Arc<ctx::Proxy>) -> Arc<ctx::transport::Server> {
+        ctx::transport::Server::new(&proxy, &addr(), &addr(), &Some(addr()))
+    }
+
+    pub fn client<L, S>(proxy: &Arc<ctx::Proxy>, labels: L) -> Arc<ctx::transport::Client>
+    where
+        L: IntoIterator<Item=(S, S)>,
+        S: fmt::Display,
+    {
+        let (labels_watch, _store) = futures_watch::Watch::new(DstLabels::new(labels));
+        ctx::transport::Client::new(&proxy, &addr(), Some(labels_watch))
+    }
+
+    pub fn request(
+        uri: &str,
+        server: &Arc<ctx::transport::Server>,
+        client: &Arc<ctx::transport::Client>,
+        id: usize
+    ) -> (Arc<ctx::http::Request>, Arc<ctx::http::Response>) {
+        let req = ctx::http::Request::new(
+            &http::Request::get(uri).body(()).unwrap(),
+            &server,
+            &client,
+            id,
+        );
+        let rsp = ctx::http::Response::new(
+            &http::Response::builder().status(http::StatusCode::OK).body(()).unwrap(),
+            &req,
+        );
+        (req, rsp)
     }
 }

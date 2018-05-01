@@ -3,65 +3,91 @@ package cmd
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/runconduit/conduit/controller/api/util"
 	pb "github.com/runconduit/conduit/controller/gen/public"
-	"github.com/runconduit/conduit/pkg/k8s"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"k8s.io/api/core/v1"
 )
 
-const ConduitPaths = "paths"
-
-var target string
-var timeWindow string
+var (
+	timeWindow                  string
+	namespace                   string
+	toNamespace, toResource     string
+	fromNamespace, fromResource string
+	allNamespaces               bool
+)
 
 var statCmd = &cobra.Command{
-	Use:   "stat [flags] deployment [TARGET]",
-	Short: "Display runtime statistics about mesh resources",
-	Long: `Display runtime statistics about mesh resources.
+	Use:   "stat [flags] (RESOURCE)",
+	Short: "Display traffic stats about one or many resources",
+	Long: `Display traffic stats about one or many resources.
 
-Only deployment resources (aka deployments, deploy) are supported.
+  The RESOURCE argument specifies the target resource(s) to aggregate stats over:
+  (TYPE [NAME] | TYPE/NAME)
 
-The optional [TARGET] argument can be used to target a specific deployment.`,
-	Example: `  # get stats for all deployments
-  conduit stat deployments
+  Examples:
+  * deploy
+  * deploy/my-deploy
+  * deploy my-deploy
+  * ns/my-ns
 
-  # get stats for the web deployment in the default namespace
-  conduit stat deploy default/web`,
+Valid resource types include:
+
+  * deployments
+  * namespaces
+  * pods
+  * replicationcontrollers
+  * services (only supported if a "--from" is also specified, or as a "--to")
+
+This command will hide resources that have completed, such as pods that are in the Succeeded or Failed phases.
+If no resource name is specified, displays stats about all resources of the specified RESOURCETYPE`,
+	Example: `  # Get all deployments in the test namespace.
+  conduit stat deployments -n test
+
+  # Get the hello1 replication controller in the test namespace.
+  conduit stat replicationcontrollers hello1 -n test
+
+  # Get all namespaces.
+  conduit stat namespaces
+
+  # Get all inbound stats to the web deployment.
+  conduit stat deploy/web
+
+  # Get all pods in all namespaces that call the hello1 deployment in the test namesapce.
+  conduit stat pods --to deploy/hello1 --to-namespace test --all-namespaces
+
+  # Get all pods in all namespaces that call the hello1 service in the test namesapce.
+  conduit stat pods --to svc/hello1 --to-namespace test --all-namespaces
+
+  # Get all services in all namespaces that receive calls from hello1 deployment in the test namesapce.
+  conduit stat services --from deploy/hello1 --from-namespace test --all-namespaces`,
+	Args:      cobra.RangeArgs(1, 2),
+	ValidArgs: util.ValidTargets,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		var friendlyNameForResourceType string
-
-		switch len(args) {
-		case 1:
-			friendlyNameForResourceType = args[0]
-		case 2:
-			friendlyNameForResourceType = args[0]
-			target = args[1]
-		default:
-			return errors.New("please specify a resource type")
-		}
-
-		validatedResourceType, err := k8s.CanonicalKubernetesNameFromFriendlyName(friendlyNameForResourceType)
-		if err != nil {
-			return fmt.Errorf("invalid resource type %s, only %v are allowed as resource types", friendlyNameForResourceType, []string{k8s.KubernetesDeployments})
-		} else {
-			switch friendlyNameForResourceType {
-			case "pods", "pod", "po", "paths", "path", "pa":
-				return fmt.Errorf("invalid resource type %s, only %v are allowed as resource types", friendlyNameForResourceType, []string{k8s.KubernetesDeployments})
-			default:
-			}
-		}
 		client, err := newPublicAPIClient()
 		if err != nil {
 			return fmt.Errorf("error creating api client while making stats request: %v", err)
 		}
 
-		output, err := requestStatsFromApi(client, validatedResourceType)
+		req, err := buildStatSummaryRequest(
+			timeWindow, allNamespaces,
+			args, namespace,
+			toResource, toNamespace,
+			fromResource, fromNamespace,
+		)
+		if err != nil {
+			return fmt.Errorf("error creating metrics request while making stats request: %v", err)
+		}
+
+		output, err := requestStatsFromAPI(client, req)
 		if err != nil {
 			return err
 		}
@@ -74,29 +100,25 @@ The optional [TARGET] argument can be used to target a specific deployment.`,
 
 func init() {
 	RootCmd.AddCommand(statCmd)
-	statCmd.PersistentFlags().StringVarP(&timeWindow, "time-window", "t", "1m", "Stat window (one of: \"10s\", \"1m\", \"10m\", \"1h\")")
+	statCmd.PersistentFlags().StringVarP(&namespace, "namespace", "n", "default", "Namespace of the specified resource")
+	statCmd.PersistentFlags().StringVarP(&timeWindow, "time-window", "t", "1m", "Stat window (for example: \"10s\", \"1m\", \"10m\", \"1h\")")
+	statCmd.PersistentFlags().StringVar(&toResource, "to", "", "If present, restricts outbound stats to the specified resource name")
+	statCmd.PersistentFlags().StringVar(&toNamespace, "to-namespace", "", "Sets the namespace used to lookup the \"--to\" resource; by default the current \"--namespace\" is used")
+	statCmd.PersistentFlags().StringVar(&fromResource, "from", "", "If present, restricts outbound stats from the specified resource name")
+	statCmd.PersistentFlags().StringVar(&fromNamespace, "from-namespace", "", "Sets the namespace used from lookup the \"--from\" resource; by default the current \"--namespace\" is used")
+	statCmd.PersistentFlags().BoolVar(&allNamespaces, "all-namespaces", false, "If present, returns stats across all namespaces, ignoring the \"--namespace\" flag")
 }
 
-var resourceTypeToAggregationType = map[string]pb.AggregationType{
-	k8s.KubernetesDeployments: pb.AggregationType_TARGET_DEPLOY,
-}
-
-func requestStatsFromApi(client pb.ApiClient, resourceType string) (string, error) {
-	aggType := resourceTypeToAggregationType[resourceType]
-	req, err := buildMetricRequest(aggType)
-	if err != nil {
-		return "", fmt.Errorf("error creating metrics request while making stats request: %v", err)
-	}
-
-	resp, err := client.Stat(context.Background(), req)
+func requestStatsFromAPI(client pb.ApiClient, req *pb.StatSummaryRequest) (string, error) {
+	resp, err := client.StatSummary(context.Background(), req)
 	if err != nil {
 		return "", fmt.Errorf("error calling stat with request: %v", err)
 	}
 
-	return renderStats(resp)
+	return renderStats(resp), nil
 }
 
-func renderStats(resp *pb.MetricResponse) (string, error) {
+func renderStats(resp *pb.StatSummaryResponse) string {
 	var buffer bytes.Buffer
 	w := tabwriter.NewWriter(&buffer, 0, 0, padding, ' ', tabwriter.AlignRight)
 	writeStatsToBuffer(resp, w)
@@ -106,107 +128,193 @@ func renderStats(resp *pb.MetricResponse) (string, error) {
 	out := string(buffer.Bytes()[padding:])
 	out = strings.Replace(out, "\n"+strings.Repeat(" ", padding), "\n", -1)
 
-	return out, nil
+	return out
 }
 
 const padding = 3
 
-type row struct {
+type rowStats struct {
 	requestRate float64
 	successRate float64
-	latencyP50  int64
-	latencyP99  int64
+	latencyP50  uint64
+	latencyP95  uint64
+	latencyP99  uint64
 }
 
-func writeStatsToBuffer(resp *pb.MetricResponse, w *tabwriter.Writer) {
+type row struct {
+	meshed string
+	*rowStats
+}
+
+func writeStatsToBuffer(resp *pb.StatSummaryResponse, w *tabwriter.Writer) {
 	nameHeader := "NAME"
 	maxNameLength := len(nameHeader)
+	namespaceHeader := "NAMESPACE"
+	maxNamespaceLength := len(namespaceHeader)
 
 	stats := make(map[string]*row)
-	for _, metric := range resp.Metrics {
-		if len(metric.Datapoints) == 0 {
-			continue
-		}
 
-		metadata := *metric.Metadata
-		var name string
-		if metadata.TargetDeploy != "" {
-			name = metadata.TargetDeploy
-		}
+	for _, statTable := range resp.GetOk().StatTables {
+		table := statTable.GetPodGroup()
+		for _, r := range table.Rows {
+			name := r.Resource.Name
+			namespace := r.Resource.Namespace
+			key := fmt.Sprintf("%s/%s", namespace, name)
 
-		if len(name) > maxNameLength {
-			maxNameLength = len(name)
-		}
+			if len(name) > maxNameLength {
+				maxNameLength = len(name)
+			}
 
-		if _, ok := stats[name]; !ok {
-			stats[name] = &row{}
-		}
+			if len(namespace) > maxNamespaceLength {
+				maxNamespaceLength = len(namespace)
+			}
 
-		switch metric.Name {
-		case pb.MetricName_REQUEST_RATE:
-			stats[name].requestRate = metric.Datapoints[0].Value.GetGauge()
-		case pb.MetricName_SUCCESS_RATE:
-			stats[name].successRate = metric.Datapoints[0].Value.GetGauge()
-		case pb.MetricName_LATENCY:
-			for _, v := range metric.Datapoints[0].Value.GetHistogram().Values {
-				switch v.Label {
-				case pb.HistogramLabel_P50:
-					stats[name].latencyP50 = v.Value
-				case pb.HistogramLabel_P99:
-					stats[name].latencyP99 = v.Value
+			stats[key] = &row{
+				meshed: fmt.Sprintf("%d/%d", r.MeshedPodCount, r.TotalPodCount),
+			}
+
+			if r.Stats != nil {
+				stats[key].rowStats = &rowStats{
+					requestRate: getRequestRate(*r),
+					successRate: getSuccessRate(*r),
+					latencyP50:  r.Stats.LatencyMsP50,
+					latencyP95:  r.Stats.LatencyMsP95,
+					latencyP99:  r.Stats.LatencyMsP99,
 				}
 			}
 		}
 	}
 
-	fmt.Fprintln(w, strings.Join([]string{
-		nameHeader + strings.Repeat(" ", maxNameLength-len(nameHeader)),
-		"REQUEST_RATE",
-		"SUCCESS_RATE",
-		"P50_LATENCY",
-		"P99_LATENCY\t", // trailing \t is required to format last column
-	}, "\t"))
+	if len(stats) == 0 {
+		fmt.Fprintln(os.Stderr, "No traffic found.")
+		os.Exit(0)
+	}
 
-	sortedNames := sortStatsKeys(stats)
-	for _, name := range sortedNames {
-		fmt.Fprintf(
-			w,
-			"%s\t%.1frps\t%.2f%%\t%dms\t%dms\t\n",
-			name+strings.Repeat(" ", maxNameLength-len(name)),
-			stats[name].requestRate,
-			stats[name].successRate*100,
-			stats[name].latencyP50,
-			stats[name].latencyP99,
-		)
+	headers := make([]string, 0)
+	if allNamespaces {
+		headers = append(headers,
+			namespaceHeader+strings.Repeat(" ", maxNamespaceLength-len(namespaceHeader)))
+	}
+	headers = append(headers, []string{
+		nameHeader + strings.Repeat(" ", maxNameLength-len(nameHeader)),
+		"MESHED",
+		"SUCCESS",
+		"RPS",
+		"LATENCY_P50",
+		"LATENCY_P95",
+		"LATENCY_P99\t", // trailing \t is required to format last column
+	}...)
+
+	fmt.Fprintln(w, strings.Join(headers, "\t"))
+
+	sortedKeys := sortStatsKeys(stats)
+	for _, key := range sortedKeys {
+		parts := strings.Split(key, "/")
+		namespace := parts[0]
+		name := parts[1]
+		values := make([]interface{}, 0)
+		templateString := "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t\n"
+		templateStringEmpty := "%s\t%s\t-\t-\t-\t-\t-\t\n"
+
+		if allNamespaces {
+			values = append(values,
+				namespace+strings.Repeat(" ", maxNamespaceLength-len(namespace)))
+			templateString = "%s\t" + templateString
+			templateStringEmpty = "%s\t" + templateStringEmpty
+		}
+		values = append(values, []interface{}{
+			name + strings.Repeat(" ", maxNameLength-len(name)),
+			stats[key].meshed,
+		}...)
+
+		if stats[key].rowStats != nil {
+			values = append(values, []interface{}{
+				stats[key].successRate * 100,
+				stats[key].requestRate,
+				stats[key].latencyP50,
+				stats[key].latencyP95,
+				stats[key].latencyP99,
+			}...)
+
+			fmt.Fprintf(w, templateString, values...)
+		} else {
+			fmt.Fprintf(w, templateStringEmpty, values...)
+		}
 	}
 }
 
-func buildMetricRequest(aggregationType pb.AggregationType) (*pb.MetricRequest, error) {
-	var filterBy pb.MetricMetadata
-	window, err := util.GetWindow(timeWindow)
+func buildStatSummaryRequest(
+	timeWindow string, allNamespaces bool,
+	resource []string, namespace string,
+	toResource, toNamespace string,
+	fromResource, fromNamespace string,
+) (*pb.StatSummaryRequest, error) {
+	targetNamespace := namespace
+	if allNamespaces {
+		targetNamespace = ""
+	} else if namespace == "" {
+		targetNamespace = v1.NamespaceDefault
+	}
+
+	target, err := util.BuildResource(targetNamespace, resource...)
 	if err != nil {
 		return nil, err
 	}
-	if target != "all" && aggregationType == pb.AggregationType_TARGET_DEPLOY {
-		filterBy.TargetDeploy = target
+
+	var toRes, fromRes pb.Resource
+	if toResource != "" {
+		toRes, err = util.BuildResource(toNamespace, toResource)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if fromResource != "" {
+		fromRes, err = util.BuildResource(fromNamespace, fromResource)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return &pb.MetricRequest{
-		Metrics: []pb.MetricName{
-			pb.MetricName_REQUEST_RATE,
-			pb.MetricName_SUCCESS_RATE,
-			pb.MetricName_LATENCY,
-		},
-		Window:    window,
-		FilterBy:  &filterBy,
-		GroupBy:   aggregationType,
-		Summarize: true,
-	}, nil
+	requestParams := util.StatSummaryRequestParams{
+		TimeWindow:    timeWindow,
+		ResourceName:  target.Name,
+		ResourceType:  target.Type,
+		Namespace:     targetNamespace,
+		ToName:        toRes.Name,
+		ToType:        toRes.Type,
+		ToNamespace:   toNamespace,
+		FromName:      fromRes.Name,
+		FromType:      fromRes.Type,
+		FromNamespace: fromNamespace,
+	}
+
+	return util.BuildStatSummaryRequest(requestParams)
+}
+
+func getRequestRate(r pb.StatTable_PodGroup_Row) float64 {
+	success := r.Stats.SuccessCount
+	failure := r.Stats.FailureCount
+	windowLength, err := time.ParseDuration(r.TimeWindow)
+	if err != nil {
+		log.Error(err.Error())
+		return 0.0
+	}
+	return float64(success+failure) / windowLength.Seconds()
+}
+
+func getSuccessRate(r pb.StatTable_PodGroup_Row) float64 {
+	success := r.Stats.SuccessCount
+	failure := r.Stats.FailureCount
+
+	if success+failure == 0 {
+		return 0.0
+	}
+	return float64(success) / float64(success+failure)
 }
 
 func sortStatsKeys(stats map[string]*row) []string {
 	var sortedKeys []string
-	for key, _ := range stats {
+	for key := range stats {
 		sortedKeys = append(sortedKeys, key)
 	}
 	sort.Strings(sortedKeys)

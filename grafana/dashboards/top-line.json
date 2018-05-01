@@ -16,7 +16,7 @@
   "gnetId": null,
   "graphTooltip": 1,
   "id": null,
-  "iteration": 1523048893004,
+  "iteration": 1524861055004,
   "links": [],
   "panels": [
     {
@@ -38,170 +38,6 @@
     {
       "cacheTimeout": null,
       "colorBackground": false,
-      "colorValue": false,
-      "colors": [
-        "#d44a3a",
-        "rgba(237, 129, 40, 0.89)",
-        "#299c46"
-      ],
-      "datasource": "prometheus",
-      "format": "none",
-      "gauge": {
-        "maxValue": 1,
-        "minValue": 0,
-        "show": false,
-        "thresholdLabels": false,
-        "thresholdMarkers": true
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 0,
-        "y": 3
-      },
-      "height": "",
-      "id": 30,
-      "interval": null,
-      "links": [],
-      "mappingType": 1,
-      "mappingTypes": [
-        {
-          "name": "value to text",
-          "value": 1
-        },
-        {
-          "name": "range to text",
-          "value": 2
-        }
-      ],
-      "maxDataPoints": 100,
-      "nullPointMode": "connected",
-      "nullText": null,
-      "postfix": "",
-      "postfixFontSize": "50%",
-      "prefix": "",
-      "prefixFontSize": "50%",
-      "rangeMaps": [
-        {
-          "from": "null",
-          "text": "N/A",
-          "to": "null"
-        }
-      ],
-      "sparkline": {
-        "fillColor": "rgba(31, 118, 189, 0.18)",
-        "full": true,
-        "lineColor": "rgb(31, 120, 193)",
-        "show": false
-      },
-      "tableColumn": "",
-      "targets": [
-        {
-          "expr": "count(count(request_total{namespace=~\"$namespace\"}) by (namespace))",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "",
-          "refId": "A"
-        }
-      ],
-      "thresholds": "",
-      "title": "Namespaces Monitored",
-      "type": "singlestat",
-      "valueFontSize": "200%",
-      "valueMaps": [
-        {
-          "op": "=",
-          "text": "N/A",
-          "value": "null"
-        }
-      ],
-      "valueName": "current"
-    },
-    {
-      "cacheTimeout": null,
-      "colorBackground": false,
-      "colorValue": false,
-      "colors": [
-        "#d44a3a",
-        "rgba(237, 129, 40, 0.89)",
-        "#299c46"
-      ],
-      "datasource": "prometheus",
-      "format": "none",
-      "gauge": {
-        "maxValue": 1,
-        "minValue": 0,
-        "show": false,
-        "thresholdLabels": false,
-        "thresholdMarkers": true
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 6,
-        "y": 3
-      },
-      "height": "",
-      "id": 86,
-      "interval": null,
-      "links": [],
-      "mappingType": 1,
-      "mappingTypes": [
-        {
-          "name": "value to text",
-          "value": 1
-        },
-        {
-          "name": "range to text",
-          "value": 2
-        }
-      ],
-      "maxDataPoints": 100,
-      "nullPointMode": "connected",
-      "nullText": null,
-      "postfix": "",
-      "postfixFontSize": "50%",
-      "prefix": "",
-      "prefixFontSize": "50%",
-      "rangeMaps": [
-        {
-          "from": "null",
-          "text": "N/A",
-          "to": "null"
-        }
-      ],
-      "sparkline": {
-        "fillColor": "rgba(31, 118, 189, 0.18)",
-        "full": true,
-        "lineColor": "rgb(31, 120, 193)",
-        "show": false
-      },
-      "tableColumn": "",
-      "targets": [
-        {
-          "expr": "count(count(request_total{namespace=~\"$namespace\"}) by (namespace, deployment))",
-          "format": "time_series",
-          "intervalFactor": 2,
-          "legendFormat": "",
-          "refId": "A"
-        }
-      ],
-      "thresholds": "",
-      "title": "Deployments Monitored",
-      "type": "singlestat",
-      "valueFontSize": "200%",
-      "valueMaps": [
-        {
-          "op": "=",
-          "text": "N/A",
-          "value": "null"
-        }
-      ],
-      "valueName": "current"
-    },
-    {
-      "cacheTimeout": null,
-      "colorBackground": false,
       "colorValue": true,
       "colors": [
         "#d44a3a",
@@ -219,8 +55,8 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 6,
-        "x": 12,
+        "w": 8,
+        "x": 0,
         "y": 3
       },
       "height": "",
@@ -269,7 +105,7 @@
         }
       ],
       "thresholds": ".9,.99",
-      "title": "Global Success Rate",
+      "title": "GLOBAL SUCCESS RATE",
       "type": "singlestat",
       "valueFontSize": "80%",
       "valueMaps": [
@@ -301,8 +137,8 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 6,
-        "x": 18,
+        "w": 8,
+        "x": 8,
         "y": 3
       },
       "height": "",
@@ -351,7 +187,7 @@
         }
       ],
       "thresholds": "",
-      "title": "Global Request Volume",
+      "title": "GLOBAL REQUEST VOLUME",
       "type": "singlestat",
       "valueFontSize": "80%",
       "valueMaps": [
@@ -364,9 +200,173 @@
       "valueName": "current"
     },
     {
+      "cacheTimeout": null,
+      "colorBackground": false,
+      "colorValue": false,
+      "colors": [
+        "#d44a3a",
+        "rgba(237, 129, 40, 0.89)",
+        "#299c46"
+      ],
+      "datasource": "prometheus",
+      "format": "none",
+      "gauge": {
+        "maxValue": 1,
+        "minValue": 0,
+        "show": false,
+        "thresholdLabels": false,
+        "thresholdMarkers": true
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 3
+      },
+      "height": "",
+      "id": 30,
+      "interval": null,
+      "links": [],
+      "mappingType": 1,
+      "mappingTypes": [
+        {
+          "name": "value to text",
+          "value": 1
+        },
+        {
+          "name": "range to text",
+          "value": 2
+        }
+      ],
+      "maxDataPoints": 100,
+      "nullPointMode": "connected",
+      "nullText": null,
+      "postfix": "",
+      "postfixFontSize": "50%",
+      "prefix": "",
+      "prefixFontSize": "50%",
+      "rangeMaps": [
+        {
+          "from": "null",
+          "text": "N/A",
+          "to": "null"
+        }
+      ],
+      "sparkline": {
+        "fillColor": "rgba(31, 118, 189, 0.18)",
+        "full": true,
+        "lineColor": "rgb(31, 120, 193)",
+        "show": false
+      },
+      "tableColumn": "",
+      "targets": [
+        {
+          "expr": "count(count(request_total{namespace=~\"$namespace\"}) by (namespace))",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "thresholds": "",
+      "title": "NAMESPACES MONITORED",
+      "type": "singlestat",
+      "valueFontSize": "200%",
+      "valueMaps": [
+        {
+          "op": "=",
+          "text": "N/A",
+          "value": "null"
+        }
+      ],
+      "valueName": "current"
+    },
+    {
+      "cacheTimeout": null,
+      "colorBackground": false,
+      "colorValue": false,
+      "colors": [
+        "#d44a3a",
+        "rgba(237, 129, 40, 0.89)",
+        "#299c46"
+      ],
+      "datasource": "prometheus",
+      "format": "none",
+      "gauge": {
+        "maxValue": 1,
+        "minValue": 0,
+        "show": false,
+        "thresholdLabels": false,
+        "thresholdMarkers": true
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 3
+      },
+      "height": "",
+      "id": 86,
+      "interval": null,
+      "links": [],
+      "mappingType": 1,
+      "mappingTypes": [
+        {
+          "name": "value to text",
+          "value": 1
+        },
+        {
+          "name": "range to text",
+          "value": 2
+        }
+      ],
+      "maxDataPoints": 100,
+      "nullPointMode": "connected",
+      "nullText": null,
+      "postfix": "",
+      "postfixFontSize": "50%",
+      "prefix": "",
+      "prefixFontSize": "50%",
+      "rangeMaps": [
+        {
+          "from": "null",
+          "text": "N/A",
+          "to": "null"
+        }
+      ],
+      "sparkline": {
+        "fillColor": "rgba(31, 118, 189, 0.18)",
+        "full": true,
+        "lineColor": "rgb(31, 120, 193)",
+        "show": false
+      },
+      "tableColumn": "",
+      "targets": [
+        {
+          "expr": "count(count(request_total{namespace=~\"$namespace\"}) by (namespace, deployment))",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "thresholds": "",
+      "title": "DEPLOYMENTS MONITORED",
+      "type": "singlestat",
+      "valueFontSize": "200%",
+      "valueMaps": [
+        {
+          "op": "=",
+          "text": "N/A",
+          "value": "null"
+        }
+      ],
+      "valueName": "current"
+    },
+    {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>TOP LINE</span>\n</div>",
       "gridPos": {
-        "h": 2,
+        "h": 2.2,
         "w": 24,
         "x": 0,
         "y": 7
@@ -390,7 +390,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 9
+        "y": 9.2
       },
       "id": 21,
       "legend": {
@@ -419,14 +419,14 @@
           "expr": "sum(irate(response_total{classification=\"success\", namespace=~\"$namespace\", direction=\"inbound\"}[20s])) by (namespace) / sum(irate(response_total{namespace=~\"$namespace\", direction=\"inbound\"}[20s])) by (namespace)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "{{namespace}}",
+          "legendFormat": "ns/{{namespace}}",
           "refId": "A"
         }
       ],
       "thresholds": [],
       "timeFrom": null,
       "timeShift": null,
-      "title": "Success Rate",
+      "title": "SUCCESS RATE",
       "tooltip": {
         "shared": true,
         "sort": 2,
@@ -445,7 +445,7 @@
           "format": "percentunit",
           "label": null,
           "logBase": 1,
-          "max": null,
+          "max": 1,
           "min": null,
           "show": true
         },
@@ -457,7 +457,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -470,7 +474,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 9
+        "y": 9.2
       },
       "id": 22,
       "legend": {
@@ -499,14 +503,14 @@
           "expr": "sum(irate(request_total{namespace=~\"$namespace\", direction=\"inbound\"}[20s])) by (namespace)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "{{namespace}}",
+          "legendFormat": "ns/{{namespace}}",
           "refId": "A"
         }
       ],
       "thresholds": [],
       "timeFrom": null,
       "timeShift": null,
-      "title": "Request Volume",
+      "title": "REQUEST VOLUME",
       "tooltip": {
         "shared": true,
         "sort": 1,
@@ -526,7 +530,7 @@
           "label": null,
           "logBase": 1,
           "max": null,
-          "min": null,
+          "min": 0,
           "show": true
         },
         {
@@ -537,7 +541,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -550,7 +558,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 9
+        "y": 9.2
       },
       "id": 23,
       "legend": {
@@ -576,31 +584,17 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{namespace=~\"$namespace\", direction=\"inbound\"}[20s])) by (le, namespace))",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "p50 {{namespace}}",
-          "refId": "A"
-        },
-        {
           "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{namespace=~\"$namespace\", direction=\"inbound\"}[20s])) by (le, namespace))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "p95 {{namespace}}",
-          "refId": "B"
-        },
-        {
-          "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{namespace=~\"$namespace\", direction=\"inbound\"}[20s])) by (le, namespace))",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "p99 {{namespace}}",
-          "refId": "C"
+          "legendFormat": "p95 ns/{{namespace}}",
+          "refId": "A"
         }
       ],
       "thresholds": [],
       "timeFrom": null,
       "timeShift": null,
-      "title": "Latency",
+      "title": "P95 LATENCY",
       "tooltip": {
         "shared": true,
         "sort": 2,
@@ -631,15 +625,19 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
-      "content": "<div class=\"text-center dashboard-header\">\n  <span>SERVICE METRICS</span>\n</div>",
+      "content": "<div class=\"text-center dashboard-header\">\n  <span>NAMESPACES</span>\n</div>",
       "gridPos": {
-        "h": 2,
+        "h": 2.2,
         "w": 24,
         "x": 0,
-        "y": 16
+        "y": 16.2
       },
       "height": "1px",
       "id": 19,
@@ -655,7 +653,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 18
+        "y": 18.4
       },
       "id": 40,
       "panels": [],
@@ -664,12 +662,12 @@
       "type": "row"
     },
     {
-      "content": "<div>\n  <img src=\"https://conduit.io/favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <a href=\"./dashboard/db/conduit-deployment?var-namespace=$namespace\">\n    <span style=\"font-size: 15px; border-image:none\">$namespace</span>\n  </a>\n</div>",
+      "content": "<div>\n  <img src=\"https://conduit.io/favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <a href=\"./dashboard/db/conduit-deployment?var-namespace=$namespace\">\n    <span style=\"font-size: 15px; border-image:none\">ns/$namespace</span>\n  </a>\n</div>",
       "gridPos": {
         "h": 2,
         "w": 24,
         "x": 0,
-        "y": 19
+        "y": 19.4
       },
       "height": "1px",
       "id": 13,
@@ -690,7 +688,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 21
+        "y": 21.4
       },
       "id": 6,
       "legend": {
@@ -719,14 +717,14 @@
           "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", direction=\"inbound\"}[20s])) by (deployment) / sum(irate(response_total{namespace=\"$namespace\", direction=\"inbound\"}[20s])) by (deployment)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "{{deployment}}",
+          "legendFormat": "deploy/{{deployment}}",
           "refId": "A"
         }
       ],
       "thresholds": [],
       "timeFrom": null,
       "timeShift": null,
-      "title": "Success Rate",
+      "title": "SUCCESS RATE",
       "tooltip": {
         "shared": true,
         "sort": 2,
@@ -745,7 +743,7 @@
           "format": "percentunit",
           "label": null,
           "logBase": 1,
-          "max": null,
+          "max": 1,
           "min": null,
           "show": true
         },
@@ -757,7 +755,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -770,7 +772,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 21
+        "y": 21.4
       },
       "id": 8,
       "legend": {
@@ -792,21 +794,21 @@
       "renderer": "flot",
       "seriesOverrides": [],
       "spaceLength": 10,
-      "stack": false,
+      "stack": true,
       "steppedLine": false,
       "targets": [
         {
           "expr": "sum(irate(request_total{namespace=\"$namespace\", direction=\"inbound\"}[20s])) by (deployment)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "{{deployment}}",
+          "legendFormat": "deploy/{{deployment}}",
           "refId": "A"
         }
       ],
       "thresholds": [],
       "timeFrom": null,
       "timeShift": null,
-      "title": "Request Volume",
+      "title": "REQUEST VOLUME",
       "tooltip": {
         "shared": true,
         "sort": 2,
@@ -826,7 +828,7 @@
           "label": null,
           "logBase": 1,
           "max": null,
-          "min": null,
+          "min": 0,
           "show": true
         },
         {
@@ -837,7 +839,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -850,7 +856,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 21
+        "y": 21.4
       },
       "id": 9,
       "legend": {
@@ -876,34 +882,18 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", direction=\"inbound\"}[20s])) by (le, deployment))",
-          "format": "time_series",
-          "hide": false,
-          "intervalFactor": 1,
-          "legendFormat": "p50 {{deployment}}",
-          "refId": "A"
-        },
-        {
           "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", direction=\"inbound\"}[20s])) by (le, deployment))",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
-          "legendFormat": "p95 {{deployment}}",
-          "refId": "B"
-        },
-        {
-          "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", direction=\"inbound\"}[20s])) by (le, deployment))",
-          "format": "time_series",
-          "hide": false,
-          "intervalFactor": 1,
-          "legendFormat": "p99 {{deployment}}",
-          "refId": "C"
+          "legendFormat": "p95 deploy/{{deployment}}",
+          "refId": "A"
         }
       ],
       "thresholds": [],
       "timeFrom": null,
       "timeShift": null,
-      "title": "Latency",
+      "title": "P95 LATENCY",
       "tooltip": {
         "shared": true,
         "sort": 2,
@@ -934,7 +924,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     }
   ],
   "refresh": "5s",
@@ -973,7 +967,7 @@
         "multi": false,
         "name": "deployment",
         "options": [],
-        "query": "label_values(request_total{conduit_io_control_plane_component=\"\"}, deployment)",
+        "query": "label_values(request_total{conduit_io_control_plane_component=\"\", deployment!=\"\"}, deployment)",
         "refresh": 2,
         "regex": "",
         "sort": 1,

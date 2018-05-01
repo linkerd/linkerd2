@@ -16,10 +16,11 @@ futures-mpsc-lossy              = { path = "./futures-mpsc-lossy" }
 conduit-proxy-router            = { path = "./router" }
 
 bytes = "0.4"
-domain = "0.2.3"
+deflate = {version = "0.7.18", features = ["gzip"] }
 env_logger = { version = "0.5", default-features = false }
 futures = "0.1"
-h2 = "0.1.5"
+futures-watch = { git = "https://github.com/carllerche/better-future.git" }
+h2 = "0.1.6"
 http = "0.1"
 httparse = "1.2"
 hyper = { version = "0.11.22", default-features = false, features = ["compat"] }
@@ -35,8 +36,7 @@ tokio-signal = "0.1"
 prost = "0.3.0"
 prost-types = "0.3.0"
 
-abstract-ns = "0.4"
-ns-dns-tokio = "0.4"
+trust-dns-resolver = { version = "0.8.2", default-features = false, git = "https://github.com/bluejekyll/trust-dns", branch = "0.8_release" }
 
 #futures-watch   = { git = "https://github.com/carllerche/better-future" }
 
@@ -57,3 +57,5 @@ libc = "0.2"
 [dev-dependencies]
 quickcheck = { version = "0.6", default-features = false }
 conduit-proxy-controller-grpc = { path = "./controller-grpc" , features = ["arbitrary"] }
+regex = "0.2"
+flate2 = { version = "1.0.1", default-features = false, features = ["rust_backend"] }

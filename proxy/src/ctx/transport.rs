@@ -1,8 +1,8 @@
+use std::{cmp, hash};
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 
-use conduit_proxy_controller_grpc::common::Protocol;
-
+use control::discovery::DstLabelsWatch;
 use ctx;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -18,15 +18,14 @@ pub struct Server {
     pub remote: SocketAddr,
     pub local: SocketAddr,
     pub orig_dst: Option<SocketAddr>,
-    pub protocol: Protocol,
 }
 
 /// Identifies a connection from the proxy to another process.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug)]
 pub struct Client {
     pub proxy: Arc<ctx::Proxy>,
     pub remote: SocketAddr,
-    pub protocol: Protocol,
+    pub dst_labels: Option<DstLabelsWatch>,
 }
 
 impl Ctx {
@@ -44,14 +43,12 @@ impl Server {
         local: &SocketAddr,
         remote: &SocketAddr,
         orig_dst: &Option<SocketAddr>,
-        protocol: Protocol,
     ) -> Arc<Server> {
         let s = Server {
             proxy: Arc::clone(proxy),
             local: *local,
             remote: *remote,
             orig_dst: *orig_dst,
-            protocol: protocol,
         };
 
         Arc::new(s)
@@ -85,17 +82,34 @@ impl Client {
     pub fn new(
         proxy: &Arc<ctx::Proxy>,
         remote: &SocketAddr,
-        protocol: Protocol,
+        dst_labels: Option<DstLabelsWatch>,
     ) -> Arc<Client> {
         let c = Client {
             proxy: Arc::clone(proxy),
             remote: *remote,
-            protocol: protocol,
+            dst_labels,
         };
 
         Arc::new(c)
     }
 }
+
+impl hash::Hash for Client {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.proxy.hash(state);
+        self.remote.hash(state);
+        // ignore dst_labels
+    }
+}
+
+impl cmp::PartialEq for Client {
+    fn eq(&self, other: &Self) -> bool {
+        self.proxy.eq(&other.proxy) &&
+        self.remote.eq(&other.remote)
+    }
+}
+
+impl cmp::Eq for Client {}
 
 impl From<Arc<Client>> for Ctx {
     fn from(c: Arc<Client>) -> Self {

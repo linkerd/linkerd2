@@ -2,17 +2,15 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os"
-	"strings"
 	"text/tabwriter"
 
+	apiUtil "github.com/runconduit/conduit/controller/api/util"
 	common "github.com/runconduit/conduit/controller/gen/common"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/controller/util"
-	"github.com/runconduit/conduit/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/codes"
@@ -20,10 +18,6 @@ import (
 
 var (
 	maxRps    float32
-	toPort    uint32
-	toIP      string
-	fromPort  uint32
-	fromIP    string
 	scheme    string
 	method    string
 	authority string
@@ -31,41 +25,45 @@ var (
 )
 
 var tapCmd = &cobra.Command{
-	Use:   "tap [flags] (deployment|pod) TARGET",
+	Use:   "tap [flags] (RESOURCE)",
 	Short: "Listen to a traffic stream",
 	Long: `Listen to a traffic stream.
 
-Only deployment resources (aka deployments, deploy) and pod resources
-(aka pods, po) are supported.
+  The RESOURCE argument specifies the target resource(s) to tap:
+  (TYPE [NAME] | TYPE/NAME)
 
-The TARGET argument is used to specify the pod or deployment to tap.`,
+  Examples:
+  * deploy
+  * deploy/my-deploy
+  * deploy my-deploy
+  * ns/my-ns
+
+  Valid resource types include:
+
+  * deployments
+  * namespaces
+  * pods
+  * replicationcontrollers
+  * services (only supported as a "--to" resource)`,
 	Example: `  # tap the web deployment in the default namespace
-  conduit tap deploy default/web
+  conduit tap deploy/web
 
   # tap the web-dlbvj pod in the default namespace
-  conduit tap pod default/web-dlbvj`,
+  conduit tap pod/web-dlbvj
+
+  # tap the test namespace, filter by request to prod namespace
+  conduit tap ns/test --to ns/prod`,
+	Args:      cobra.RangeArgs(1, 2),
+	ValidArgs: apiUtil.ValidTargets,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) != 2 {
-			return errors.New("please specify a resource type and target")
-		}
-
-		// We don't validate inputs because they are validated on the server.
-		partialReq := &pb.TapRequest{
-			MaxRps:    maxRps,
-			ToPort:    toPort,
-			ToIP:      toIP,
-			FromPort:  fromPort,
-			FromIP:    fromIP,
-			Scheme:    scheme,
-			Method:    method,
-			Authority: authority,
-			Path:      path,
-		}
-
-		friendlyNameForResourceType := strings.ToLower(args[0])
-		validatedResourceType, err := k8s.CanonicalKubernetesNameFromFriendlyName(friendlyNameForResourceType)
+		req, err := buildTapByResourceRequest(
+			args, namespace,
+			toResource, toNamespace,
+			maxRps,
+			scheme, method, authority, path,
+		)
 		if err != nil {
-			return fmt.Errorf("unsupported resource type [%s]", friendlyNameForResourceType)
+			return err
 		}
 
 		client, err := newPublicAPIClient()
@@ -73,39 +71,125 @@ The TARGET argument is used to specify the pod or deployment to tap.`,
 			return err
 		}
 
-		return requestTapFromApi(os.Stdout, client, args[1], validatedResourceType, partialReq)
+		return requestTapByResourceFromAPI(os.Stdout, client, req)
 	},
 }
 
 func init() {
 	RootCmd.AddCommand(tapCmd)
-	tapCmd.PersistentFlags().Float32Var(&maxRps, "max-rps", 1.0, "Maximum requests per second to tap.")
-	tapCmd.PersistentFlags().Uint32Var(&toPort, "to-port", 0, "Display requests to this port")
-	tapCmd.PersistentFlags().StringVar(&toIP, "to-ip", "", "Display requests to this IP")
-	tapCmd.PersistentFlags().Uint32Var(&fromPort, "from-port", 0, "Display requests from this port")
-	tapCmd.PersistentFlags().StringVar(&fromIP, "from-ip", "", "Display requests from this IP")
-	tapCmd.PersistentFlags().StringVar(&scheme, "scheme", "", "Display requests with this scheme")
-	tapCmd.PersistentFlags().StringVar(&method, "method", "", "Display requests with this HTTP method")
-	tapCmd.PersistentFlags().StringVar(&authority, "authority", "", "Display requests with this :authority")
-	tapCmd.PersistentFlags().StringVar(&path, "path", "", "Display requests with paths that start with this prefix")
+	tapCmd.PersistentFlags().StringVarP(&namespace, "namespace", "n", "default",
+		"Namespace of the specified resource")
+	tapCmd.PersistentFlags().StringVar(&toResource, "to", "",
+		"Display requests to this resource")
+	tapCmd.PersistentFlags().StringVar(&toNamespace, "to-namespace", "",
+		"Sets the namespace used to lookup the \"--to\" resource; by default the current \"--namespace\" is used")
+	tapCmd.PersistentFlags().Float32Var(&maxRps, "max-rps", 1.0,
+		"Maximum requests per second to tap.")
+	tapCmd.PersistentFlags().StringVar(&scheme, "scheme", "",
+		"Display requests with this scheme")
+	tapCmd.PersistentFlags().StringVar(&method, "method", "",
+		"Display requests with this HTTP method")
+	tapCmd.PersistentFlags().StringVar(&authority, "authority", "",
+		"Display requests with this :authority")
+	tapCmd.PersistentFlags().StringVar(&path, "path", "",
+		"Display requests with paths that start with this prefix")
 }
 
-func requestTapFromApi(w io.Writer, client pb.ApiClient, targetName string, resourceType string, req *pb.TapRequest) error {
-	switch resourceType {
-	case k8s.KubernetesDeployments:
-		req.Target = &pb.TapRequest_Deployment{
-			Deployment: targetName,
-		}
+func buildTapByResourceRequest(
+	resource []string, namespace string,
+	toResource, toNamespace string,
+	maxRps float32,
+	scheme, method, authority, path string,
+) (*pb.TapByResourceRequest, error) {
 
-	case k8s.KubernetesPods:
-		req.Target = &pb.TapRequest_Pod{
-			Pod: targetName,
-		}
-	default:
-		return fmt.Errorf("unsupported resource type [%s]", resourceType)
+	target, err := apiUtil.BuildResource(namespace, resource...)
+	if err != nil {
+		return nil, fmt.Errorf("target resource invalid: %s", err)
+	}
+	if !contains(apiUtil.ValidTargets, target.Type) {
+		return nil, fmt.Errorf("unsupported resource type [%s]", target.Type)
 	}
 
-	rsp, err := client.Tap(context.Background(), req)
+	matches := []*pb.TapByResourceRequest_Match{}
+
+	if toResource != "" {
+		destination, err := apiUtil.BuildResource(toNamespace, toResource)
+		if err != nil {
+			return nil, fmt.Errorf("destination resource invalid: %s", err)
+		}
+		if !contains(apiUtil.ValidDestinations, destination.Type) {
+			return nil, fmt.Errorf("unsupported resource type [%s]", target.Type)
+		}
+
+		match := pb.TapByResourceRequest_Match{
+			Match: &pb.TapByResourceRequest_Match_Destinations{
+				Destinations: &pb.ResourceSelection{
+					Resource: &destination,
+				},
+			},
+		}
+		matches = append(matches, &match)
+	}
+
+	if scheme != "" {
+		match := buildMatchHTTP(&pb.TapByResourceRequest_Match_Http{
+			Match: &pb.TapByResourceRequest_Match_Http_Scheme{Scheme: scheme},
+		})
+		matches = append(matches, &match)
+	}
+	if method != "" {
+		match := buildMatchHTTP(&pb.TapByResourceRequest_Match_Http{
+			Match: &pb.TapByResourceRequest_Match_Http_Method{Method: method},
+		})
+		matches = append(matches, &match)
+	}
+	if authority != "" {
+		match := buildMatchHTTP(&pb.TapByResourceRequest_Match_Http{
+			Match: &pb.TapByResourceRequest_Match_Http_Authority{Authority: authority},
+		})
+		matches = append(matches, &match)
+	}
+	if path != "" {
+		match := buildMatchHTTP(&pb.TapByResourceRequest_Match_Http{
+			Match: &pb.TapByResourceRequest_Match_Http_Path{Path: path},
+		})
+		matches = append(matches, &match)
+	}
+
+	return &pb.TapByResourceRequest{
+		Target: &pb.ResourceSelection{
+			Resource: &target,
+		},
+		MaxRps: maxRps,
+		Match: &pb.TapByResourceRequest_Match{
+			Match: &pb.TapByResourceRequest_Match_All{
+				All: &pb.TapByResourceRequest_Match_Seq{
+					Matches: matches,
+				},
+			},
+		},
+	}, nil
+}
+
+func contains(list []string, s string) bool {
+	for _, elem := range list {
+		if s == elem {
+			return true
+		}
+	}
+	return false
+}
+
+func buildMatchHTTP(match *pb.TapByResourceRequest_Match_Http) pb.TapByResourceRequest_Match {
+	return pb.TapByResourceRequest_Match{
+		Match: &pb.TapByResourceRequest_Match_Http_{
+			Http: match,
+		},
+	}
+}
+
+func requestTapByResourceFromAPI(w io.Writer, client pb.ApiClient, req *pb.TapByResourceRequest) error {
+	rsp, err := client.TapByResource(context.Background(), req)
 	if err != nil {
 		return err
 	}
@@ -113,7 +197,7 @@ func requestTapFromApi(w io.Writer, client pb.ApiClient, targetName string, reso
 	return renderTap(w, rsp)
 }
 
-func renderTap(w io.Writer, tapClient pb.Api_TapClient) error {
+func renderTap(w io.Writer, tapClient pb.Api_TapByResourceClient) error {
 	tableWriter := tabwriter.NewWriter(w, 0, 0, 0, ' ', tabwriter.AlignRight)
 	err := writeTapEventsToBuffer(tapClient, tableWriter)
 	if err != nil {
@@ -124,7 +208,7 @@ func renderTap(w io.Writer, tapClient pb.Api_TapClient) error {
 	return nil
 }
 
-func writeTapEventsToBuffer(tapClient pb.Api_TapClient, w *tabwriter.Writer) error {
+func writeTapEventsToBuffer(tapClient pb.Api_TapByResourceClient, w *tabwriter.Writer) error {
 	for {
 		log.Debug("Waiting for data...")
 		event, err := tapClient.Recv()
@@ -145,9 +229,15 @@ func writeTapEventsToBuffer(tapClient pb.Api_TapClient, w *tabwriter.Writer) err
 }
 
 func renderTapEvent(event *common.TapEvent) string {
+	dst := util.AddressToString(event.GetDestination())
+	dstPod := event.GetDestinationMeta().GetLabels()["pod"]
+	if dstPod != "" {
+		dst = dstPod
+	}
+
 	flow := fmt.Sprintf("src=%s dst=%s",
 		util.AddressToString(event.GetSource()),
-		util.AddressToString(event.GetTarget()),
+		dst,
 	)
 
 	http := event.GetHttp()

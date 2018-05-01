@@ -13,7 +13,6 @@ pub struct Proxy {
     inbound: Option<server::Listening>,
     outbound: Option<server::Listening>,
 
-    metrics_flush_interval: Option<Duration>,
     inbound_disable_ports_protocol_detection: Option<Vec<u16>>,
     outbound_disable_ports_protocol_detection: Option<Vec<u16>>,
 
@@ -39,13 +38,15 @@ impl Proxy {
             inbound: None,
             outbound: None,
 
-            metrics_flush_interval: None,
             inbound_disable_ports_protocol_detection: None,
             outbound_disable_ports_protocol_detection: None,
             shutdown_signal: None,
         }
     }
 
+    /// Pass a customized support `Controller` for this proxy to use.
+    ///
+    /// If not used, a default controller will be used.
     pub fn controller(mut self, c: controller::Listening) -> Self {
         self.controller = Some(c);
         self
@@ -58,11 +59,6 @@ impl Proxy {
 
     pub fn outbound(mut self, s: server::Listening) -> Self {
         self.outbound = Some(s);
-        self
-    }
-
-    pub fn metrics_flush_interval(mut self, dur: Duration) -> Self {
-        self.metrics_flush_interval = Some(dur);
         self
     }
 
@@ -92,7 +88,7 @@ impl Proxy {
         self.run_with_test_env(config::TestEnv::new())
     }
 
-    pub fn run_with_test_env(self, mut env: config::TestEnv) -> Listening {
+    pub fn run_with_test_env(self, env: config::TestEnv) -> Listening {
         run(self, env)
     }
 }
@@ -129,7 +125,7 @@ impl conduit_proxy::GetOriginalDst for MockOriginalDst {
 fn run(proxy: Proxy, mut env: config::TestEnv) -> Listening {
     use self::conduit_proxy::config;
 
-    let controller = proxy.controller.expect("proxy controller missing");
+    let controller = proxy.controller.unwrap_or_else(|| controller::new().run());
     let inbound = proxy.inbound;
     let outbound = proxy.outbound;
     let mut mock_orig_dst = DstInner::default();
@@ -170,15 +166,7 @@ fn run(proxy: Proxy, mut env: config::TestEnv) -> Listening {
         );
     }
 
-    let mut config = config::Config::try_from(&env).unwrap();
-
-    // TODO: We currently can't use `config::ENV_METRICS_FLUSH_INTERVAL_SECS`
-    // because we need to be able to set the flush interval to a fraction of a
-    // second. We should change config::ENV_METRICS_FLUSH_INTERVAL_SECS so that
-    // it can support this.
-    if let Some(dur) = proxy.metrics_flush_interval {
-        config.metrics_flush_interval = dur;
-    }
+    let config = config::Config::try_from(&env).unwrap();
 
     let (running_tx, running_rx) = oneshot::channel();
     let (tx, mut rx) = shutdown_signal();
@@ -187,8 +175,9 @@ fn run(proxy: Proxy, mut env: config::TestEnv) -> Listening {
         rx = Box::new(rx.select(fut).then(|_| Ok(())));
     }
 
+    let tname = format!("support proxy (test={})", thread_name());
     ::std::thread::Builder::new()
-        .name("support proxy".into())
+        .name(tname)
         .spawn(move || {
             let _c = controller;
 
@@ -231,6 +220,23 @@ fn run(proxy: Proxy, mut env: config::TestEnv) -> Listening {
 
     let (control_addr, inbound_addr, outbound_addr, metrics_addr) =
         running_rx.wait().unwrap();
+
+    // printlns will show if the test fails...
+    println!(
+        "proxy running; control={}, inbound={}{}, outbound={}{}, metrics={}",
+        control_addr,
+        inbound_addr,
+        inbound
+            .as_ref()
+            .map(|i| format!(" (SO_ORIGINAL_DST={})", i.addr))
+            .unwrap_or_else(String::new),
+        outbound_addr,
+        outbound
+            .as_ref()
+            .map(|o| format!(" (SO_ORIGINAL_DST={})", o.addr))
+            .unwrap_or_else(String::new),
+        metrics_addr,
+    );
 
     Listening {
         control: control_addr,

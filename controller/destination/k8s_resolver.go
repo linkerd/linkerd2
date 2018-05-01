@@ -9,7 +9,6 @@ import (
 
 	"github.com/runconduit/conduit/controller/k8s"
 	log "github.com/sirupsen/logrus"
-	"k8s.io/api/core/v1"
 )
 
 var dnsCharactersRegexp = regexp.MustCompile("^[a-zA-Z0-9_-]{0,63}$")
@@ -19,7 +18,6 @@ var containsAlphaRegexp = regexp.MustCompile("[a-zA-Z]")
 type k8sResolver struct {
 	k8sDNSZoneLabels []string
 	endpointsWatcher k8s.EndpointsWatcher
-	dnsWatcher       DnsWatcher
 }
 
 type serviceId struct {
@@ -48,24 +46,12 @@ func (k *k8sResolver) streamResolution(host string, port int, listener updateLis
 	}
 
 	if id == nil {
-		// TODO: Resolve name using DNS similar to Kubernetes' ClusterFirst
-		// resolution.
 		err = fmt.Errorf("cannot resolve service that isn't a local Kubernetes service: %s", host)
 		log.Error(err)
 		return err
 	}
 
-	svc, exists, err := k.endpointsWatcher.GetService(id.String())
-	if err != nil {
-		log.Errorf("error retrieving service [%s]: %s", id.String(), err)
-		return err
-	}
-
 	listener.SetServiceId(id)
-
-	if exists && svc.Spec.Type == v1.ServiceTypeExternalName {
-		return k.resolveExternalName(svc.Spec.ExternalName, listener)
-	}
 
 	return k.resolveKubernetesService(id.String(), port, listener)
 }
@@ -76,16 +62,6 @@ func (k *k8sResolver) resolveKubernetesService(id string, port int, listener upd
 	<-listener.Done()
 
 	k.endpointsWatcher.Unsubscribe(id, uint32(port), listener)
-
-	return nil
-}
-
-func (k *k8sResolver) resolveExternalName(externalName string, listener updateListener) error {
-	k.dnsWatcher.Subscribe(externalName, listener)
-
-	<-listener.Done()
-
-	k.dnsWatcher.Unsubscribe(externalName, listener)
 
 	return nil
 }

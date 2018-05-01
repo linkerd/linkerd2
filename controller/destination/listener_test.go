@@ -14,6 +14,20 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type podExpected struct {
+	pod                   string
+	namespace             string
+	replicationController string
+	phase                 v1.PodPhase
+}
+
+type listenerExpected struct {
+	pods           []podExpected
+	address        common.TcpAddress
+	listenerLabels map[string]string
+	addressLabels  map[string]string
+}
+
 func TestEndpointListener(t *testing.T) {
 	t.Run("Sends one update for add and another for remove", func(t *testing.T) {
 		mockGetServer := &mockDestination_GetServer{updatesReceived: []*pb.Update{}}
@@ -104,9 +118,12 @@ func TestEndpointListener(t *testing.T) {
 					pkgK8s.ProxyReplicationControllerLabel: expectedReplicationControllerName,
 				},
 			},
+			Status: v1.PodStatus{
+				Phase: v1.PodRunning,
+			},
 		}
 		addedAddress2 := common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 222}}, Port: 22}
-		podIndex := &k8s.InMemoryPodIndex{BackingMap: map[string]*v1.Pod{ipForAddr1: podForAddedAddress1}}
+		podIndex := &k8s.InMemoryPodIndex{BackingMap: map[string][]*v1.Pod{ipForAddr1: []*v1.Pod{podForAddedAddress1}}}
 
 		mockGetServer := &mockDestination_GetServer{updatesReceived: []*pb.Update{}}
 		listener := &endpointListener{
@@ -136,23 +153,97 @@ func TestEndpointListener(t *testing.T) {
 		}
 	})
 
-	t.Run("It returns when the underlying context is done", func(t *testing.T) {
-		context, cancelFn := context.WithCancel(context.Background())
-		mockGetServer := &mockDestination_GetServer{updatesReceived: []*pb.Update{}, contextToReturn: context}
-		listener := &endpointListener{stream: mockGetServer, podsByIp: k8s.NewEmptyPodIndex()}
+	t.Run("It only returns pods in a running state", func(t *testing.T) {
+		expectations := []listenerExpected{
+			listenerExpected{
+				pods: []podExpected{
+					podExpected{
+						pod:                   "pod1",
+						namespace:             "this-namespace",
+						replicationController: "rc-name",
+						phase: v1.PodPending,
+					},
+				},
+				address: common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 666}}, Port: 1},
+				listenerLabels: map[string]string{
+					"service":   "service-name",
+					"namespace": "this-namespace",
+				},
+				addressLabels: map[string]string{},
+			},
+			listenerExpected{
+				pods: []podExpected{
+					podExpected{
+						pod:                   "pod1",
+						namespace:             "this-namespace",
+						replicationController: "rc-name",
+						phase: v1.PodPending,
+					},
+					podExpected{
+						pod:                   "pod2",
+						namespace:             "this-namespace",
+						replicationController: "rc-name",
+						phase: v1.PodRunning,
+					},
+					podExpected{
+						pod:                   "pod3",
+						namespace:             "this-namespace",
+						replicationController: "rc-name",
+						phase: v1.PodSucceeded,
+					},
+				},
+				address: common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 666}}, Port: 1},
+				listenerLabels: map[string]string{
+					"service":   "service-name",
+					"namespace": "this-namespace",
+				},
+				addressLabels: map[string]string{
+					"pod": "pod2",
+					"replication_controller": "rc-name",
+				},
+			},
+		}
 
-		completed := make(chan bool)
-		go func() {
-			<-listener.Done()
-			completed <- true
-		}()
+		for _, exp := range expectations {
+			backingMap := map[string][]*v1.Pod{}
 
-		cancelFn()
+			for _, pod := range exp.pods {
+				ipForAddr := util.IPToString(exp.address.Ip)
+				podForAddedAddress := &v1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      pod.pod,
+						Namespace: pod.namespace,
+						Labels: map[string]string{
+							pkgK8s.ProxyReplicationControllerLabel: pod.replicationController,
+						},
+					},
+					Status: v1.PodStatus{
+						Phase: pod.phase,
+					},
+				}
 
-		c := <-completed
+				backingMap[ipForAddr] = append(backingMap[ipForAddr], podForAddedAddress)
+			}
+			podIndex := &k8s.InMemoryPodIndex{BackingMap: backingMap}
 
-		if !c {
-			t.Fatalf("Expected function to be completed after the cancel()")
+			mockGetServer := &mockDestination_GetServer{updatesReceived: []*pb.Update{}}
+			listener := &endpointListener{
+				podsByIp: podIndex,
+				labels:   exp.listenerLabels,
+				stream:   mockGetServer,
+			}
+
+			listener.Update([]common.TcpAddress{exp.address}, nil)
+
+			actualGlobalMetricLabels := mockGetServer.updatesReceived[0].GetAdd().MetricLabels
+			if !reflect.DeepEqual(actualGlobalMetricLabels, exp.listenerLabels) {
+				t.Fatalf("Expected global metric labels sent to be [%v] but was [%v]", exp.listenerLabels, actualGlobalMetricLabels)
+			}
+
+			actualAddedAddressMetricLabels := mockGetServer.updatesReceived[0].GetAdd().Addrs[0].MetricLabels
+			if !reflect.DeepEqual(actualAddedAddressMetricLabels, exp.addressLabels) {
+				t.Fatalf("Expected global metric labels sent to be [%v] but was [%v]", exp.addressLabels, actualAddedAddressMetricLabels)
+			}
 		}
 	})
 }

@@ -2,15 +2,15 @@
 #![cfg_attr(feature = "cargo-clippy", allow(new_without_default_derive))]
 #![deny(warnings)]
 
-extern crate abstract_ns;
 extern crate bytes;
 extern crate conduit_proxy_controller_grpc;
 extern crate convert;
-extern crate domain;
 extern crate env_logger;
+extern crate deflate;
 #[macro_use]
 extern crate futures;
 extern crate futures_mpsc_lossy;
+extern crate futures_watch;
 extern crate h2;
 extern crate http;
 extern crate httparse;
@@ -20,7 +20,6 @@ extern crate ipnet;
 extern crate libc;
 #[macro_use]
 extern crate log;
-extern crate ns_dns_tokio;
 #[cfg_attr(test, macro_use)]
 extern crate indexmap;
 extern crate prost;
@@ -42,6 +41,7 @@ extern crate tower_reconnect;
 extern crate conduit_proxy_router;
 extern crate tower_util;
 extern crate tower_in_flight_limit;
+extern crate trust_dns_resolver;
 
 use futures::*;
 
@@ -63,14 +63,14 @@ mod bind;
 pub mod config;
 mod connection;
 pub mod control;
-mod ctx;
+pub mod ctx;
 mod dns;
 mod drain;
 mod inbound;
 mod logging;
 mod map_err;
 mod outbound;
-mod telemetry;
+pub mod telemetry;
 mod transparency;
 mod transport;
 pub mod timeout;
@@ -200,10 +200,14 @@ where
         let (sensors, telemetry) = telemetry::new(
             &process_ctx,
             config.event_buffer_capacity,
-            config.metrics_flush_interval,
+            config.metrics_retain_idle,
         );
 
-        let dns_config = dns::Config::from_file(&config.resolv_conf_path);
+        let dns_config = dns::Config::from_system_config()
+            .unwrap_or_else(|e| {
+                // TODO: Make DNS configuration infallible.
+                panic!("invalid DNS configuration: {:?}", e);
+            });
 
         let (control, control_bg) = control::new(dns_config.clone(), config.pod_namespace.clone());
 
@@ -261,7 +265,6 @@ where
 
         let (_tx, controller_shutdown_signal) = futures::sync::oneshot::channel::<()>();
         {
-            let report_timeout = config.report_timeout;
             thread::Builder::new()
                 .name("controller-client".into())
                 .spawn(move || {
@@ -287,15 +290,14 @@ where
                         .serve_metrics(metrics_listener);
 
                     let client = control_bg.bind(
-                        telemetry,
                         control_host_and_port,
                         dns_config,
-                        report_timeout,
                         &executor
                     );
 
-                    let fut = client.join3(
+                    let fut = client.join4(
                         server.map_err(|_| {}),
+                        telemetry,
                         metrics_server.map_err(|_| {}),
                     ).map(|_| {});
                     executor.spawn(::logging::context_future("controller-client", fut));
@@ -351,7 +353,7 @@ where
         let router = router.clone();
 
         // Map errors to appropriate response error codes.
-        MapErr::new(router, |e| {
+        let map_err = MapErr::new(router, |e| {
             match e {
                 RouteError::Route(r) => {
                     error!(" turning route error: {} into 500", r);
@@ -366,7 +368,12 @@ where
                     http::StatusCode::INTERNAL_SERVER_ERROR
                 }
             }
-        })
+        });
+
+        // Install the request open timestamp module at the very top
+        // of the stack, in order to take the timestamp as close as
+        // possible to the beginning of the request's lifetime.
+        telemetry::sensor::http::TimestampRequestOpen::new(map_err)
     }));
 
     let listen_addr = bound_port.local_addr();

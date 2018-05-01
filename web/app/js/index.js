@@ -1,10 +1,9 @@
 import { ApiHelpers } from './components/util/ApiHelpers.jsx';
-import DeploymentDetail from './components/DeploymentDetail.jsx';
-import DeploymentsList from './components/DeploymentsList.jsx';
 import { Layout } from 'antd';
 import NoMatch from './components/NoMatch.jsx';
 import React from 'react';
 import ReactDOM from 'react-dom';
+import ResourceList from './components/ResourceList.jsx';
 import ServiceMesh from './components/ServiceMesh.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import { BrowserRouter, Redirect, Route, Switch } from 'react-router-dom';
@@ -46,8 +45,9 @@ let applicationHtml = hideSidebar => (
             <Switch>
               <Redirect exact from={`${pathPrefix}/`} to={`${pathPrefix}/servicemesh`} />
               <Route path={`${pathPrefix}/servicemesh`} render={() => <ServiceMesh api={api} releaseVersion={appData.releaseVersion} controllerNamespace={appData.controllerNamespace} />} />
-              <Route path={`${pathPrefix}/deployments`} render={() => <DeploymentsList api={api} />} />
-              <Route path={`${pathPrefix}/deployment`} render={props => <DeploymentDetail api={api} location={props.location} />} />
+              <Route path={`${pathPrefix}/deployments`} render={() => <ResourceList resource="deployment" api={api} controllerNamespace={appData.controllerNamespace} />} />
+              <Route path={`${pathPrefix}/replicationcontrollers`} render={() => <ResourceList resource="replication_controller" api={api} controllerNamespace={appData.controllerNamespace} />} />
+              <Route path={`${pathPrefix}/pods`} render={() => <ResourceList resource="pod" api={api} controllerNamespace={appData.controllerNamespace} />} />
               <Route component={NoMatch} />
             </Switch>
           </div>

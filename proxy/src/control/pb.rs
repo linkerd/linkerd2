@@ -45,9 +45,16 @@ impl event::StreamResponseEnd {
             eos,
         };
 
+        let destination_meta = ctx.dst_labels()
+            .and_then(|b| b.borrow().clone())
+            .map(|d| tap_event::EndpointMeta {
+                labels: d.as_map().clone(),
+            });
+
         common::TapEvent {
             source: Some((&ctx.server.remote).into()),
-            target: Some((&ctx.client.remote).into()),
+            destination: Some((&ctx.client.remote).into()),
+            destination_meta,
             event: Some(tap_event::Event::Http(tap_event::Http {
                 event: Some(tap_event::http::Event::ResponseEnd(end)),
             })),
@@ -70,9 +77,16 @@ impl event::StreamResponseFail {
             eos: Some(self.error.into()),
         };
 
+        let destination_meta = ctx.dst_labels()
+            .and_then(|b| b.borrow().clone())
+            .map(|d| tap_event::EndpointMeta {
+                labels: d.as_map().clone(),
+            });
+
         common::TapEvent {
             source: Some((&ctx.server.remote).into()),
-            target: Some((&ctx.client.remote).into()),
+            destination: Some((&ctx.client.remote).into()),
+            destination_meta,
             event: Some(tap_event::Event::Http(tap_event::Http {
                 event: Some(tap_event::http::Event::ResponseEnd(end)),
             })),
@@ -95,9 +109,16 @@ impl event::StreamRequestFail {
             eos: Some(self.error.into()),
         };
 
+        let destination_meta = ctx.dst_labels()
+            .and_then(|b| b.borrow().clone())
+            .map(|d| tap_event::EndpointMeta {
+                labels: d.as_map().clone(),
+            });
+
         common::TapEvent {
             source: Some((&ctx.server.remote).into()),
-            target: Some((&ctx.client.remote).into()),
+            destination: Some((&ctx.client.remote).into()),
+            destination_meta,
             event: Some(tap_event::Event::Http(tap_event::Http {
                 event: Some(tap_event::http::Event::ResponseEnd(end)),
             })),
@@ -128,9 +149,16 @@ impl<'a> TryFrom<&'a Event> for common::TapEvent {
                     path: ctx.uri.path().into(),
                 };
 
+                let destination_meta = ctx.dst_labels()
+                    .and_then(|b| b.borrow().clone())
+                    .map(|d| tap_event::EndpointMeta {
+                        labels: d.as_map().clone(),
+                    });
+
                 common::TapEvent {
                     source: Some((&ctx.server.remote).into()),
-                    target: Some((&ctx.client.remote).into()),
+                    destination: Some((&ctx.client.remote).into()),
+                    destination_meta,
                     event: Some(tap_event::Event::Http(tap_event::Http {
                         event: Some(tap_event::http::Event::RequestInit(init)),
                     })),
@@ -148,9 +176,16 @@ impl<'a> TryFrom<&'a Event> for common::TapEvent {
                     http_status: u32::from(ctx.status.as_u16()),
                 };
 
+                let destination_meta = ctx.request.dst_labels()
+                    .and_then(|b| b.borrow().clone())
+                    .map(|d| tap_event::EndpointMeta {
+                        labels: d.as_map().clone(),
+                    });
+
                 common::TapEvent {
                     source: Some((&ctx.request.server.remote).into()),
-                    target: Some((&ctx.request.client.remote).into()),
+                    destination: Some((&ctx.request.client.remote).into()),
+                    destination_meta,
                     event: Some(tap_event::Event::Http(tap_event::Http {
                         event: Some(tap_event::http::Event::ResponseInit(init)),
                     })),

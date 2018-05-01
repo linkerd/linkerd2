@@ -1,265 +1,14 @@
+#![deny(warnings)]
 #[macro_use]
 extern crate log;
+extern crate regex;
+extern crate flate2;
 
 #[macro_use]
 mod support;
 use self::support::*;
-
-#[test]
-fn inbound_sends_telemetry() {
-    let _ = env_logger::try_init();
-
-    info!("running test server");
-    let srv = server::new().route("/hey", "hello").run();
-
-    let mut ctrl = controller::new();
-    let reports = ctrl.reports();
-    let proxy = proxy::new()
-        .controller(ctrl.run())
-        .inbound(srv)
-        .metrics_flush_interval(Duration::from_millis(500))
-        .run();
-    let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
-
-    info!("client.get(/hey)");
-    assert_eq!(client.get("/hey"), "hello");
-
-    info!("awaiting report");
-    let report = reports.wait().next().unwrap().unwrap();
-    // proxy inbound
-    assert_eq!(report.proxy, 0);
-    // process
-    assert_eq!(report.process.as_ref().unwrap().node, "");
-    assert_eq!(report.process.as_ref().unwrap().scheduled_instance, "");
-    assert_eq!(report.process.as_ref().unwrap().scheduled_namespace, "test");
-    // requests
-    assert_eq!(report.requests.len(), 1);
-    let req = &report.requests[0];
-    assert_eq!(req.ctx.as_ref().unwrap().authority, "tele.test.svc.cluster.local");
-    //assert_eq!(req.ctx.as_ref().unwrap().method, GET);
-    assert_eq!(req.count, 1);
-    assert_eq!(req.responses.len(), 1);
-    // responses
-    let res = &req.responses[0];
-    assert_eq!(res.ctx.as_ref().unwrap().http_status_code, 200);
-    // response latencies should always have a length equal to the number
-    // of latency buckets in the latency histogram.
-    assert_eq!(
-        res.response_latency_counts.len(),
-        report.histogram_bucket_bounds_tenth_ms.len()
-    );
-    assert_eq!(res.ends.len(), 1);
-    // ends
-    let ends = &res.ends[0];
-    assert_eq!(ends.streams, 1);
-}
-
-
-#[test]
-fn http1_inbound_sends_telemetry() {
-    let _ = env_logger::try_init();
-
-    info!("running test server");
-    let srv = server::http1().route("/hey", "hello").run();
-
-    let mut ctrl = controller::new();
-    let reports = ctrl.reports();
-    let proxy = proxy::new()
-        .controller(ctrl.run())
-        .inbound(srv)
-        .metrics_flush_interval(Duration::from_millis(500))
-        .run();
-    let client = client::http1(proxy.inbound, "tele.test.svc.cluster.local");
-
-    info!("client.get(/hey)");
-    assert_eq!(client.get("/hey"), "hello");
-
-    info!("awaiting report");
-    let report = reports.wait().next().unwrap().unwrap();
-    // proxy inbound
-    assert_eq!(report.proxy, 0);
-    // requests
-    assert_eq!(report.requests.len(), 1);
-    let req = &report.requests[0];
-    assert_eq!(req.ctx.as_ref().unwrap().authority, "tele.test.svc.cluster.local");
-    //assert_eq!(req.ctx.as_ref().unwrap().method, GET);
-    assert_eq!(req.count, 1);
-    assert_eq!(req.responses.len(), 1);
-    // responses
-    let res = &req.responses[0];
-    assert_eq!(res.ctx.as_ref().unwrap().http_status_code, 200);
-    // response latencies should always have a length equal to the number
-    // of latency buckets in the latency histogram.
-    assert_eq!(
-        res.response_latency_counts.len(),
-        report.histogram_bucket_bounds_tenth_ms.len()
-    );
-    assert_eq!(res.ends.len(), 1);
-    // ends
-    let ends = &res.ends[0];
-    assert_eq!(ends.streams, 1);
-}
-
-
-#[test]
-fn inbound_aggregates_telemetry_over_several_requests() {
-    let _ = env_logger::try_init();
-
-    info!("running test server");
-    let srv = server::new()
-        .route("/hey", "hello")
-        .route("/hi", "good morning")
-        .run();
-
-    let mut ctrl = controller::new();
-    let reports = ctrl.reports();
-    let proxy = proxy::new()
-        .controller(ctrl.run())
-        .inbound(srv)
-        .metrics_flush_interval(Duration::from_millis(500))
-        .run();
-    let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
-
-    info!("client.get(/hey)");
-    assert_eq!(client.get("/hey"), "hello");
-
-    info!("client.get(/hi)");
-    assert_eq!(client.get("/hi"), "good morning");
-    assert_eq!(client.get("/hi"), "good morning");
-
-    info!("awaiting report");
-    let report = reports.wait().next().unwrap().unwrap();
-    // proxy inbound
-    assert_eq!(report.proxy, 0);
-
-    // requests -----------------------
-    assert_eq!(report.requests.len(), 2);
-
-    // -- first request -----------------
-    let req = &report.requests[0];
-    assert_eq!(req.ctx.as_ref().unwrap().authority, "tele.test.svc.cluster.local");
-    assert_eq!(req.count, 1);
-    assert_eq!(req.responses.len(), 1);
-    // ---- response --------------------
-    let res = &req.responses[0];
-    assert_eq!(res.ctx.as_ref().unwrap().http_status_code, 200);
-    // response latencies should always have a length equal to the number
-    // of latency buckets in the latency histogram.
-    assert_eq!(
-        res.response_latency_counts.len(),
-        report.histogram_bucket_bounds_tenth_ms.len()
-    );
-    assert_eq!(res.ends.len(), 1);
-
-    // ------ ends ----------------------
-    let ends = &res.ends[0];
-    assert_eq!(ends.streams, 1);
-
-    // -- second request ----------------
-    let req = &report.requests[1];
-    assert_eq!(req.ctx.as_ref().unwrap().authority, "tele.test.svc.cluster.local");
-    // repeated twice
-    assert_eq!(req.count, 2);
-    assert_eq!(req.responses.len(), 1);
-    // ---- response  -------------------
-    let res = &req.responses[0];
-    assert_eq!(res.ctx.as_ref().unwrap().http_status_code, 200);
-    // response latencies should always have a length equal to the number
-    // of latency buckets in the latency histogram.
-    assert_eq!(
-        res.response_latency_counts.len(),
-        report.histogram_bucket_bounds_tenth_ms.len()
-    );
-    assert_eq!(res.ends.len(), 1);
-
-    // ------ ends ----------------------
-    let ends = &res.ends[0];
-    assert_eq!(ends.streams, 2);
-
-}
-
-// Ignore this test on CI, because our method of adding latency to requests
-// (calling `thread::sleep`) is likely to be flakey on Travis.
-// Eventually, we can add some kind of mock timer system for simulating latency
-// more reliably, and re-enable this test.
-#[test]
-#[cfg_attr(not(feature = "flaky_tests"), ignore)]
-fn records_latency_statistics() {
-    let _ = env_logger::try_init();
-
-    info!("running test server");
-    let srv = server::new()
-        .route_with_latency("/hey", "hello", Duration::from_millis(500))
-        .route_with_latency("/hi", "good morning", Duration::from_millis(40))
-        .run();
-
-    let mut ctrl = controller::new();
-    let reports = ctrl.reports();
-    let proxy = proxy::new()
-        .controller(ctrl.run())
-        .inbound(srv)
-        .metrics_flush_interval(Duration::from_secs(5))
-        .run();
-    let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
-
-    info!("client.get(/hey)");
-    assert_eq!(client.get("/hey"), "hello");
-
-    info!("client.get(/hi)");
-    assert_eq!(client.get("/hi"), "good morning");
-    assert_eq!(client.get("/hi"), "good morning");
-
-    info!("awaiting report");
-    let report = reports.wait().next().unwrap().unwrap();
-
-    // requests -----------------------
-    assert_eq!(report.requests.len(), 2);
-    // first request
-    let req = &report.requests[0];
-    assert_eq!(req.ctx.as_ref().unwrap().authority, "tele.test.svc.cluster.local");
-    let res = &req.responses[0];
-    // response latencies should always have a length equal to the number
-    // of latency buckets in the latency histogram.
-    assert_eq!(
-        res.response_latency_counts.len(),
-        report.histogram_bucket_bounds_tenth_ms.len()
-    );
-    for (idx, bucket) in res.response_latency_counts.iter().enumerate() {
-        // 500 ms of extra latency should put us in the 500-1000
-        // millisecond bucket (the 15th bucket)
-        if idx == 15 {
-            assert_eq!(*bucket, 1, "poorly bucketed latencies: {:?}", res.response_latency_counts);
-        } else {
-            assert_eq!(*bucket, 0, "poorly bucketed latencies: {:?}", res.response_latency_counts);
-        }
-    }
-
-    // second request
-    let req = &report.requests.get(1).expect("second report");
-    assert_eq!(req.ctx.as_ref().unwrap().authority, "tele.test.svc.cluster.local");
-    assert_eq!(req.count, 2);
-    assert_eq!(req.responses.len(), 1);
-    let res = req.responses.get(0).expect("responses[0]");
-    // response latencies should always have a length equal to the number
-    // of latency buckets in the latency histogram.
-    assert_eq!(
-        res.response_latency_counts.len(),
-        report.histogram_bucket_bounds_tenth_ms.len()
-    );
-    for (idx, bucket) in res.response_latency_counts.iter().enumerate() {
-        // 40 ms of extra latency should put us in the 40-50
-        // millisecond bucket (the 10th bucket)
-        if idx == 9 {
-            assert_eq!(*bucket, 2, "poorly bucketed latencies: {:?}", res.response_latency_counts);
-        } else {
-            assert_eq!(*bucket, 0, "poorly bucketed latencies: {:?}", res.response_latency_counts);
-        }
-    }
-
-}
-
-#[test]
-fn telemetry_report_errors_are_ignored() {}
+use support::bytes::IntoBuf;
+use std::io::Read;
 
 macro_rules! assert_contains {
     ($scrape:expr, $contains:expr) => {
@@ -267,28 +16,113 @@ macro_rules! assert_contains {
     }
 }
 
+struct Fixture {
+    client: client::Client,
+    metrics: client::Client,
+    proxy: proxy::Listening,
+}
+
+struct TcpFixture {
+    client: tcp::TcpClient,
+    metrics: client::Client,
+    proxy: proxy::Listening,
+}
+
+impl Fixture {
+    fn inbound() -> Self {
+        info!("running test server");
+        Fixture::inbound_with_server(server::new()
+            .route("/", "hello")
+            .run())
+    }
+
+    fn outbound() -> Self {
+        info!("running test server");
+        Fixture::outbound_with_server(server::new()
+            .route("/", "hello")
+            .run())
+    }
+
+    fn inbound_with_server(srv: server::Listening) -> Self {
+        let proxy = proxy::new()
+            .inbound(srv)
+            .run();
+        let metrics = client::http1(proxy.metrics, "localhost");
+
+        let client = client::new(
+            proxy.inbound,
+            "tele.test.svc.cluster.local"
+        );
+        Fixture { client, metrics, proxy }
+    }
+
+    fn outbound_with_server(srv: server::Listening) -> Self {
+        let ctrl = controller::new()
+            .destination_and_close("tele.test.svc.cluster.local", srv.addr)
+            .run();
+        let proxy = proxy::new()
+            .controller(ctrl)
+            .outbound(srv)
+            .run();
+        let metrics = client::http1(proxy.metrics, "localhost");
+
+        let client = client::new(
+            proxy.outbound,
+            "tele.test.svc.cluster.local"
+        );
+        Fixture { client, metrics, proxy }
+    }
+}
+
+impl TcpFixture {
+    const HELLO_MSG: &'static str = "custom tcp hello";
+    const BYE_MSG: &'static str = "custom tcp bye";
+
+    fn server() -> server::Listening {
+        server::tcp()
+            .accept(move |read| {
+                assert_eq!(read, Self::HELLO_MSG.as_bytes());
+                TcpFixture::BYE_MSG
+            })
+            .accept(move |read| {
+                assert_eq!(read, Self::HELLO_MSG.as_bytes());
+                TcpFixture::BYE_MSG
+            })
+            .run()
+    }
+
+    fn inbound() -> Self {
+        let proxy = proxy::new()
+            .inbound(TcpFixture::server())
+            .run();
+
+        let client = client::tcp(proxy.inbound);
+        let metrics = client::http1(proxy.metrics, "localhost");
+        TcpFixture { client, metrics, proxy }
+    }
+
+    fn outbound() -> Self {
+        let proxy = proxy::new()
+            .outbound(TcpFixture::server())
+            .run();
+
+        let client = client::tcp(proxy.outbound);
+        let metrics = client::http1(proxy.metrics, "localhost");
+        TcpFixture { client, metrics, proxy }
+    }
+}
+
 #[test]
 fn metrics_endpoint_inbound_request_count() {
     let _ = env_logger::try_init();
-
-    info!("running test server");
-    let srv = server::new().route("/hey", "hello").run();
-
-    let ctrl = controller::new();
-    let proxy = proxy::new()
-        .controller(ctrl.run())
-        .inbound(srv)
-        .metrics_flush_interval(Duration::from_millis(500))
-        .run();
-    let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
-    let metrics = client::http1(proxy.metrics, "localhost");
+    let Fixture { client, metrics, proxy: _proxy } = Fixture::inbound();
 
     // prior to seeing any requests, request count should be empty.
     assert!(!metrics.get("/metrics")
         .contains("request_total{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\"}"));
 
-    info!("client.get(/hey)");
-    assert_eq!(client.get("/hey"), "hello");
+    info!("client.get(/)");
+    assert_eq!(client.get("/"), "hello");
 
     // after seeing a request, the request count should be 1.
     assert_contains!(metrics.get("/metrics"), "request_total{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\"} 1");
@@ -298,27 +132,14 @@ fn metrics_endpoint_inbound_request_count() {
 #[test]
 fn metrics_endpoint_outbound_request_count() {
     let _ = env_logger::try_init();
-
-    info!("running test server");
-    let srv = server::new().route("/hey", "hello").run();
-
-    let ctrl = controller::new()
-        .destination("tele.test.svc.cluster.local", srv.addr)
-        .run();
-    let proxy = proxy::new()
-        .controller(ctrl)
-        .outbound(srv)
-        .metrics_flush_interval(Duration::from_millis(500))
-        .run();
-    let client = client::new(proxy.outbound, "tele.test.svc.cluster.local");
-    let metrics = client::http1(proxy.metrics, "localhost");
+    let Fixture { client, metrics, proxy: _proxy } = Fixture::outbound();
 
     // prior to seeing any requests, request count should be empty.
     assert!(!metrics.get("/metrics")
         .contains("request_total{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\"}"));
 
-    info!("client.get(/hey)");
-    assert_eq!(client.get("/hey"), "hello");
+    info!("client.get(/)");
+    assert_eq!(client.get("/"), "hello");
 
     // after seeing a request, the request count should be 1.
     assert_contains!(metrics.get("/metrics"), "request_total{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\"} 1");
@@ -327,6 +148,7 @@ fn metrics_endpoint_outbound_request_count() {
 
 mod response_classification {
     use super::support::*;
+    use super::Fixture;
 
     const REQ_STATUS_HEADER: &'static str = "x-test-status-requested";
     const REQ_GRPC_STATUS_HEADER: &'static str = "x-test-grpc-status-requested";
@@ -350,7 +172,7 @@ mod response_classification {
         )
     }
 
-    fn make_test_server() -> server::Server {
+    fn make_test_server() -> server::Listening {
         fn parse_header(headers: &http::HeaderMap, which: &str)
             -> Option<http::StatusCode>
         {
@@ -378,20 +200,14 @@ mod response_classification {
                 *rsp.status_mut() = status;
                 rsp
             })
+            .run()
     }
 
     #[test]
     fn inbound_http() {
         let _ = env_logger::try_init();
-        let srv = make_test_server().run();
-        let ctrl = controller::new();
-        let proxy = proxy::new()
-            .controller(ctrl.run())
-            .inbound(srv)
-            .metrics_flush_interval(Duration::from_millis(500))
-            .run();
-        let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
-        let metrics = client::http1(proxy.metrics, "localhost");
+        let Fixture { client, metrics, proxy: _proxy } =
+            Fixture::inbound_with_server(make_test_server());
 
         for (i, status) in STATUSES.iter().enumerate() {
             let request = client.request(
@@ -412,17 +228,8 @@ mod response_classification {
     #[test]
     fn outbound_http() {
         let _ = env_logger::try_init();
-        let srv = make_test_server().run();
-        let ctrl = controller::new()
-            .destination("tele.test.svc.cluster.local", srv.addr)
-            .run();
-        let proxy = proxy::new()
-            .controller(ctrl)
-            .outbound(srv)
-            .metrics_flush_interval(Duration::from_millis(500))
-            .run();
-        let client = client::new(proxy.outbound, "tele.test.svc.cluster.local");
-        let metrics = client::http1(proxy.metrics, "localhost");
+        let Fixture { client, metrics, proxy: _proxy } =
+            Fixture::outbound_with_server(make_test_server());
 
         for (i, status) in STATUSES.iter().enumerate() {
             let request = client.request(
@@ -456,14 +263,8 @@ fn metrics_endpoint_inbound_response_latency() {
         .route_with_latency("/hi", "good morning", Duration::from_millis(40))
         .run();
 
-    let ctrl = controller::new();
-    let proxy = proxy::new()
-        .controller(ctrl.run())
-        .inbound(srv)
-        .metrics_flush_interval(Duration::from_millis(500))
-        .run();
-    let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
-    let metrics = client::http1(proxy.metrics, "localhost");
+    let Fixture { client, metrics, proxy: _proxy } =
+        Fixture::inbound_with_server(srv);
 
     info!("client.get(/hey)");
     assert_eq!(client.get("/hey"), "hello");
@@ -483,8 +284,6 @@ fn metrics_endpoint_inbound_response_latency() {
 
     info!("client.get(/hi)");
     assert_eq!(client.get("/hi"), "good morning");
-
-
 
     // request with 40ms extra latency should fall into the 50ms bucket.
     assert_contains!(metrics.get("/metrics"),
@@ -540,16 +339,8 @@ fn metrics_endpoint_outbound_response_latency() {
         .route_with_latency("/hi", "good morning", Duration::from_millis(40))
         .run();
 
-    let ctrl = controller::new()
-        .destination("tele.test.svc.cluster.local", srv.addr)
-        .run();
-    let proxy = proxy::new()
-        .controller(ctrl)
-        .outbound(srv)
-        .metrics_flush_interval(Duration::from_millis(500))
-        .run();
-    let client = client::new(proxy.outbound, "tele.test.svc.cluster.local");
-    let metrics = client::http1(proxy.metrics, "localhost");
+    let Fixture { client, metrics, proxy: _proxy } =
+        Fixture::outbound_with_server(srv);
 
     info!("client.get(/hey)");
     assert_eq!(client.get("/hey"), "hello");
@@ -609,73 +400,222 @@ fn metrics_endpoint_outbound_response_latency() {
         "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",classification=\"success\",status_code=\"200\"} 4");
 }
 
-// https://github.com/runconduit/conduit/issues/613
-#[test]
-#[cfg_attr(not(feature = "flaky_tests"), ignore)]
-fn metrics_endpoint_inbound_request_duration() {
-    let _ = env_logger::try_init();
+// Tests for destination labels provided by control plane service discovery.
+mod outbound_dst_labels {
+    use super::support::*;
+    use super::Fixture;
+    use controller::DstSender;
 
-    info!("running test server");
-    let srv = server::new()
-        .route("/hey", "hello")
-        .run();
+    fn fixture(dest: &str) -> (Fixture, SocketAddr, DstSender) {
+        info!("running test server");
+        let srv = server::new()
+            .route("/", "hello")
+            .run();
 
-    let ctrl = controller::new();
-    let proxy = proxy::new()
-        .controller(ctrl.run())
-        .inbound(srv)
-        .metrics_flush_interval(Duration::from_millis(500))
-        .run();
-    let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
-    let metrics = client::http1(proxy.metrics, "localhost");
+        let addr = srv.addr;
 
-    // request with body should increment request_duration
-    info!("client.get(/hey)");
-    assert_eq!(client.get("/hey"), "hello");
+        let ctrl = controller::new();
+        let dst_tx = ctrl.destination_tx(dest);
 
-    assert_contains!(metrics.get("/metrics"),
-        "request_duration_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\"} 1");
+        let proxy = proxy::new()
+            .controller(ctrl.run())
+            .outbound(srv)
+            .run();
+        let metrics = client::http1(proxy.metrics, "localhost");
 
-    // request without body should also increment request_duration
-    info!("client.get(/hey)");
-    assert_eq!(client.get("/hey"), "hello");
+        let client = client::new(
+            proxy.outbound,
+            dest,
+        );
 
-    assert_contains!(metrics.get("/metrics"),
-        "request_duration_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\"} 2");
-}
+        let f = Fixture { client, metrics, proxy };
 
-// https://github.com/runconduit/conduit/issues/613
-#[test]
-#[cfg_attr(not(feature = "flaky_tests"), ignore)]
-fn metrics_endpoint_outbound_request_duration() {
-    let _ = env_logger::try_init();
+        (f, addr, dst_tx)
+    }
 
-    info!("running test server");
-    let srv = server::new()
-        .route("/hey", "hello")
-        .run();
-    let ctrl = controller::new()
-        .destination("tele.test.svc.cluster.local", srv.addr)
-        .run();
-    let proxy = proxy::new()
-        .controller(ctrl)
-        .outbound(srv)
-        .metrics_flush_interval(Duration::from_millis(500))
-        .run();
-    let client = client::new(proxy.outbound, "tele.test.svc.cluster.local");
-    let metrics = client::http1(proxy.metrics, "localhost");
+    #[test]
+    fn multiple_addr_labels() {
+        let _ = env_logger::try_init();
+        let (Fixture { client, metrics, proxy: _proxy }, addr, dst_tx) =
+            fixture("labeled.test.svc.cluster.local");
 
-    info!("client.get(/hey)");
-    assert_eq!(client.get("/hey"), "hello");
+        {
+            let mut labels = HashMap::new();
+            labels.insert("addr_label1".to_owned(), "foo".to_owned());
+            labels.insert("addr_label2".to_owned(), "bar".to_owned());
+            dst_tx.send_labeled(addr, labels, HashMap::new());
+        }
 
-    assert_contains!(metrics.get("/metrics"),
-        "request_duration_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\"} 1");
+        info!("client.get(/)");
+        assert_eq!(client.get("/"), "hello");
+        // We can't make more specific assertions about the metrics
+        // besides asserting that both labels are present somewhere in the
+        // scrape, because testing for whole metric lines would depend on
+        // the order in which the labels occur, and we can't depend on hash
+        // map ordering.
+        assert_contains!(metrics.get("/metrics"), "dst_addr_label1=\"foo\"");
+        assert_contains!(metrics.get("/metrics"), "dst_addr_label2=\"bar\"");
+    }
 
-    info!("client.get(/hey)");
-    assert_eq!(client.get("/hey"), "hello");
+    #[test]
+    fn multiple_addrset_labels() {
+        let _ = env_logger::try_init();
+        let (Fixture { client, metrics, proxy: _proxy }, addr, dst_tx) =
+            fixture("labeled.test.svc.cluster.local");
 
-    assert_contains!(metrics.get("/metrics"),
-        "request_duration_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\"} 2");
+        {
+            let mut labels = HashMap::new();
+            labels.insert("set_label1".to_owned(), "foo".to_owned());
+            labels.insert("set_label2".to_owned(), "bar".to_owned());
+            dst_tx.send_labeled(addr, HashMap::new(), labels);
+        }
+
+
+        info!("client.get(/)");
+        assert_eq!(client.get("/"), "hello");
+        // We can't make more specific assertions about the metrics
+        // besides asserting that both labels are present somewhere in the
+        // scrape, because testing for whole metric lines would depend on
+        // the order in which the labels occur, and we can't depend on hash
+        // map ordering.
+        assert_contains!(metrics.get("/metrics"), "dst_set_label1=\"foo\"");
+        assert_contains!(metrics.get("/metrics"), "dst_set_label2=\"bar\"");
+    }
+
+    #[test]
+    fn labeled_addr_and_addrset() {
+        let _ = env_logger::try_init();
+        let (Fixture { client, metrics, proxy: _proxy }, addr, dst_tx) =
+            fixture("labeled.test.svc.cluster.local");
+
+        {
+            let mut alabels = HashMap::new();
+            alabels.insert("addr_label".to_owned(), "foo".to_owned());
+            let mut slabels = HashMap::new();
+            slabels.insert("set_label".to_owned(), "bar".to_owned());
+            dst_tx.send_labeled(addr, alabels, slabels);
+        }
+
+        info!("client.get(/)");
+        assert_eq!(client.get("/"), "hello");
+        assert_contains!(metrics.get("/metrics"),
+            "response_latency_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"bar\",classification=\"success\",status_code=\"200\"} 1");
+        assert_contains!(metrics.get("/metrics"),
+            "request_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"bar\"} 1");
+        assert_contains!(metrics.get("/metrics"),
+            "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"bar\",classification=\"success\",status_code=\"200\"} 1");
+    }
+
+    // Ignore this test on CI, as it may fail due to the reduced concurrency
+    // on CI containers causing the proxy to see both label updates from
+    // the mock controller before the first request has finished.
+    // See https://github.com/runconduit/conduit/issues/751
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn controller_updates_addr_labels() {
+        let _ = env_logger::try_init();
+                info!("running test server");
+
+        let (Fixture { client, metrics, proxy: _proxy }, addr, dst_tx) =
+            fixture("labeled.test.svc.cluster.local");
+
+        {
+            let mut alabels = HashMap::new();
+            alabels.insert("addr_label".to_owned(), "foo".to_owned());
+            let mut slabels = HashMap::new();
+            slabels.insert("set_label".to_owned(), "unchanged".to_owned());
+            dst_tx.send_labeled(addr, alabels, slabels);
+        }
+
+        info!("client.get(/)");
+        assert_eq!(client.get("/"), "hello");
+        // the first request should be labeled with `dst_addr_label="foo"`
+        assert_contains!(metrics.get("/metrics"),
+            "response_latency_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"unchanged\",classification=\"success\",status_code=\"200\"} 1");
+        assert_contains!(metrics.get("/metrics"),
+            "request_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"unchanged\"} 1");
+        assert_contains!(metrics.get("/metrics"),
+            "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"unchanged\",classification=\"success\",status_code=\"200\"} 1");
+
+        {
+            let mut alabels = HashMap::new();
+            alabels.insert("addr_label".to_owned(), "bar".to_owned());
+            let mut slabels = HashMap::new();
+            slabels.insert("set_label".to_owned(), "unchanged".to_owned());
+            dst_tx.send_labeled(addr, alabels, slabels);
+        }
+
+        info!("client.get(/)");
+        assert_eq!(client.get("/"), "hello");
+        // the second request should increment stats labeled with `dst_addr_label="bar"`
+        assert_contains!(metrics.get("/metrics"),
+            "response_latency_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"bar\",dst_set_label=\"unchanged\",classification=\"success\",status_code=\"200\"} 1");
+        assert_contains!(metrics.get("/metrics"),
+            "request_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"bar\",dst_set_label=\"unchanged\"} 1");
+        assert_contains!(metrics.get("/metrics"),
+            "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"bar\",dst_set_label=\"unchanged\",classification=\"success\",status_code=\"200\"} 1");
+        // stats recorded from the first request should still be present.
+        assert_contains!(metrics.get("/metrics"),
+            "response_latency_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"unchanged\",classification=\"success\",status_code=\"200\"} 1");
+        assert_contains!(metrics.get("/metrics"),
+            "request_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"unchanged\"} 1");
+        assert_contains!(metrics.get("/metrics"),
+            "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"unchanged\",classification=\"success\",status_code=\"200\"} 1");
+    }
+
+    // Ignore this test on CI, as it may fail due to the reduced concurrency
+    // on CI containers causing the proxy to see both label updates from
+    // the mock controller before the first request has finished.
+    // See https://github.com/runconduit/conduit/issues/751
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn controller_updates_set_labels() {
+        let _ = env_logger::try_init();
+                info!("running test server");
+        let (Fixture { client, metrics, proxy: _proxy }, addr, dst_tx) =
+            fixture("labeled.test.svc.cluster.local");
+
+        {
+            let alabels = HashMap::new();
+            let mut slabels = HashMap::new();
+            slabels.insert("set_label".to_owned(), "foo".to_owned());
+            dst_tx.send_labeled(addr, alabels, slabels);
+        }
+
+        info!("client.get(/)");
+        assert_eq!(client.get("/"), "hello");
+        // the first request should be labeled with `dst_addr_label="foo"`
+        assert_contains!(metrics.get("/metrics"),
+            "response_latency_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"foo\",classification=\"success\",status_code=\"200\"} 1");
+        assert_contains!(metrics.get("/metrics"),
+            "request_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"foo\"} 1");
+        assert_contains!(metrics.get("/metrics"),
+            "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"foo\",classification=\"success\",status_code=\"200\"} 1");
+
+        {
+            let alabels = HashMap::new();
+            let mut slabels = HashMap::new();
+            slabels.insert("set_label".to_owned(), "bar".to_owned());
+            dst_tx.send_labeled(addr, alabels, slabels);
+        }
+
+        info!("client.get(/)");
+        assert_eq!(client.get("/"), "hello");
+        // the second request should increment stats labeled with `dst_addr_label="bar"`
+        assert_contains!(metrics.get("/metrics"),
+            "response_latency_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"bar\",classification=\"success\",status_code=\"200\"} 1");
+        assert_contains!(metrics.get("/metrics"),
+            "request_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"bar\"} 1");
+        assert_contains!(metrics.get("/metrics"),
+            "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"bar\",classification=\"success\",status_code=\"200\"} 1");
+        // stats recorded from the first request should still be present.
+        assert_contains!(metrics.get("/metrics"),
+            "response_latency_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"foo\",classification=\"success\",status_code=\"200\"} 1");
+        assert_contains!(metrics.get("/metrics"),
+            "request_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"foo\"} 1");
+        assert_contains!(metrics.get("/metrics"),
+            "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"foo\",classification=\"success\",status_code=\"200\"} 1");
+    }
 }
 
 #[test]
@@ -688,13 +628,12 @@ fn metrics_have_no_double_commas() {
     let outbound_srv = server::new().route("/hey", "hello").run();
 
     let ctrl = controller::new()
-        .destination("tele.test.svc.cluster.local", outbound_srv.addr)
+        .destination_and_close("tele.test.svc.cluster.local", outbound_srv.addr)
         .run();
     let proxy = proxy::new()
         .controller(ctrl)
         .inbound(inbound_srv)
         .outbound(outbound_srv)
-        .metrics_flush_interval(Duration::from_millis(500))
         .run();
     let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
     let metrics = client::http1(proxy.metrics, "localhost");
@@ -715,5 +654,518 @@ fn metrics_have_no_double_commas() {
 
     let scrape = metrics.get("/metrics");
     assert!(!scrape.contains(",,"), "outbound metrics had double comma");
+}
 
+
+#[test]
+fn metrics_has_start_time() {
+    let Fixture { metrics, proxy: _proxy, .. } = Fixture::inbound();
+    let uptime_regex = regex::Regex::new(r"process_start_time_seconds \d+")
+        .expect("compiling regex shouldn't fail");
+    assert_eventually!(
+        uptime_regex.find(&metrics.get("/metrics")).is_some()
+    )
+}
+
+mod transport {
+    use super::support::*;
+    use super::*;
+
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn inbound_http_accept() {
+        let _ = env_logger::try_init();
+        let Fixture { client, metrics, proxy } = Fixture::inbound();
+
+        info!("client.get(/)");
+        assert_eq!(client.get("/"), "hello");
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_open_total{direction=\"inbound\",peer=\"src\"} 1"
+        );
+        // drop the client to force the connection to close.
+        drop(client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_close_total{direction=\"inbound\",peer=\"src\",classification=\"success\"} 1"
+        );
+
+        // create a new client to force a new connection
+        let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
+
+        info!("client.get(/)");
+        assert_eq!(client.get("/"), "hello");
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_open_total{direction=\"inbound\",peer=\"src\"} 2"
+        );
+        // drop the client to force the connection to close.
+        drop(client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_close_total{direction=\"inbound\",peer=\"src\",classification=\"success\"} 2"
+        );
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn inbound_http_connect() {
+        let _ = env_logger::try_init();
+        let Fixture { client, metrics, proxy } = Fixture::inbound();
+
+        info!("client.get(/)");
+        assert_eq!(client.get("/"), "hello");
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_open_total{direction=\"inbound\",peer=\"dst\"} 1");
+
+        // create a new client to force a new connection
+        let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
+
+        info!("client.get(/)");
+        assert_eq!(client.get("/"), "hello");
+        // server connection should be pooled
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_open_total{direction=\"inbound\",peer=\"dst\"} 1");
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn outbound_http_accept() {
+        let _ = env_logger::try_init();
+        let Fixture { client, metrics, proxy } = Fixture::outbound();
+
+        info!("client.get(/)");
+        assert_eq!(client.get("/"), "hello");
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_open_total{direction=\"outbound\",peer=\"src\"} 1"
+        );
+        // drop the client to force the connection to close.
+        drop(client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_close_total{direction=\"outbound\",peer=\"src\",classification=\"success\"} 1"
+        );
+
+        // create a new client to force a new connection
+        let client = client::new(proxy.outbound, "tele.test.svc.cluster.local");
+
+        info!("client.get(/)");
+        assert_eq!(client.get("/"), "hello");
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_open_total{direction=\"outbound\",peer=\"src\"} 2"
+        );
+        // drop the client to force the connection to close.
+        drop(client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_close_total{direction=\"outbound\",peer=\"src\",classification=\"success\"} 2"
+        );
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn outbound_http_connect() {
+        let _ = env_logger::try_init();
+        let Fixture { client, metrics, proxy } = Fixture::outbound();
+
+        info!("client.get(/)");
+        assert_eq!(client.get("/"), "hello");
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_open_total{direction=\"outbound\",peer=\"dst\"} 1");
+
+        // create a new client to force a new connection
+        let client2 = client::new(proxy.outbound, "tele.test.svc.cluster.local");
+
+        info!("client.get(/)");
+        assert_eq!(client2.get("/"), "hello");
+        // server connection should be pooled
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_open_total{direction=\"outbound\",peer=\"dst\"} 1");
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn inbound_tcp_connect() {
+        let _ = env_logger::try_init();
+        let TcpFixture { client, metrics, proxy: _proxy } =
+            TcpFixture::inbound();
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(TcpFixture::HELLO_MSG);
+        assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_open_total{direction=\"inbound\",peer=\"dst\"} 1");
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn inbound_tcp_accept() {
+        let _ = env_logger::try_init();
+        let TcpFixture { client, metrics, proxy: _proxy } =
+            TcpFixture::inbound();
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(TcpFixture::HELLO_MSG);
+        assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
+
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_open_total{direction=\"inbound\",peer=\"src\"} 1");
+
+        drop(tcp_client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_close_total{direction=\"inbound\",peer=\"src\",classification=\"success\"} 1");
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(TcpFixture::HELLO_MSG);
+        assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
+
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_open_total{direction=\"inbound\",peer=\"src\"} 2");
+        drop(tcp_client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_close_total{direction=\"inbound\",peer=\"src\",classification=\"success\"} 2");
+    }
+
+    // https://github.com/runconduit/conduit/issues/831
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn inbound_tcp_duration() {
+        let _ = env_logger::try_init();
+        let TcpFixture { client, metrics, proxy: _proxy } =
+            TcpFixture::inbound();
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(TcpFixture::HELLO_MSG);
+        assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
+        drop(tcp_client);
+        // TODO: make assertions about buckets
+        let out = metrics.get("/metrics");
+        assert_contains!(out,
+            "tcp_connection_duration_ms_count{direction=\"inbound\",peer=\"src\",classification=\"success\"} 1");
+        assert_contains!(out,
+            "tcp_connection_duration_ms_count{direction=\"inbound\",peer=\"dst\",classification=\"success\"} 1");
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(TcpFixture::HELLO_MSG);
+        assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
+        let out = metrics.get("/metrics");
+        assert_contains!(out,
+            "tcp_connection_duration_ms_count{direction=\"inbound\",peer=\"src\",classification=\"success\"} 1");
+        assert_contains!(out,
+            "tcp_connection_duration_ms_count{direction=\"inbound\",peer=\"dst\",classification=\"success\"} 1");
+
+        drop(tcp_client);
+        let out = metrics.get("/metrics");
+        assert_contains!(out,
+            "tcp_connection_duration_ms_count{direction=\"inbound\",peer=\"src\",classification=\"success\"} 2");
+        assert_contains!(out,
+            "tcp_connection_duration_ms_count{direction=\"inbound\",peer=\"dst\",classification=\"success\"} 2");    }
+
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn inbound_tcp_write_bytes_total() {
+        let _ = env_logger::try_init();
+        let TcpFixture { client, metrics, proxy: _proxy } =
+            TcpFixture::inbound();
+        let src_expected = format!(
+            "tcp_write_bytes_total{{direction=\"inbound\",peer=\"src\"}} {}",
+            TcpFixture::BYE_MSG.len()
+        );
+        let dst_expected = format!(
+            "tcp_write_bytes_total{{direction=\"inbound\",peer=\"dst\"}} {}",
+            TcpFixture::HELLO_MSG.len()
+        );
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(TcpFixture::HELLO_MSG);
+        assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
+        drop(tcp_client);
+
+        let out = metrics.get("/metrics");
+        assert_contains!(out, &src_expected);
+        assert_contains!(out, &dst_expected);
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn inbound_tcp_read_bytes_total() {
+        let _ = env_logger::try_init();
+        let TcpFixture { client, metrics, proxy: _proxy } =
+            TcpFixture::inbound();
+        let src_expected = format!(
+            "tcp_read_bytes_total{{direction=\"inbound\",peer=\"src\"}} {}",
+            TcpFixture::HELLO_MSG.len()
+        );
+        let dst_expected = format!(
+            "tcp_read_bytes_total{{direction=\"inbound\",peer=\"dst\"}} {}",
+            TcpFixture::BYE_MSG.len()
+        );
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(TcpFixture::HELLO_MSG);
+        assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
+        drop(tcp_client);
+
+        let out = metrics.get("/metrics");
+        assert_contains!(out, &src_expected);
+        assert_contains!(out, &dst_expected);    }
+
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn outbound_tcp_connect() {
+        let _ = env_logger::try_init();
+        let TcpFixture { client, metrics, proxy: _proxy } =
+            TcpFixture::outbound();
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(TcpFixture::HELLO_MSG);
+        assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_open_total{direction=\"outbound\",peer=\"dst\"} 1");
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn outbound_tcp_accept() {
+        let _ = env_logger::try_init();
+        let TcpFixture { client, metrics, proxy: _proxy } =
+            TcpFixture::outbound();
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(TcpFixture::HELLO_MSG);
+        assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
+
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_open_total{direction=\"outbound\",peer=\"src\"} 1");
+
+        drop(tcp_client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_close_total{direction=\"outbound\",peer=\"src\",classification=\"success\"} 1");
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(TcpFixture::HELLO_MSG);
+        assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
+
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_open_total{direction=\"outbound\",peer=\"src\"} 2");
+        drop(tcp_client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_close_total{direction=\"outbound\",peer=\"src\",classification=\"success\"} 2");
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn outbound_tcp_duration() {
+        let _ = env_logger::try_init();
+        let TcpFixture { client, metrics, proxy: _proxy } =
+            TcpFixture::outbound();
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(TcpFixture::HELLO_MSG);
+        assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
+        drop(tcp_client);
+        // TODO: make assertions about buckets
+        let out = metrics.get("/metrics");
+        assert_contains!(out,
+            "tcp_connection_duration_ms_count{direction=\"outbound\",peer=\"src\",classification=\"success\"} 1");
+        assert_contains!(out,
+            "tcp_connection_duration_ms_count{direction=\"outbound\",peer=\"dst\",classification=\"success\"} 1");
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(TcpFixture::HELLO_MSG);
+        assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
+        let out = metrics.get("/metrics");
+        assert_contains!(out,
+            "tcp_connection_duration_ms_count{direction=\"outbound\",peer=\"src\",classification=\"success\"} 1");
+        assert_contains!(out,
+            "tcp_connection_duration_ms_count{direction=\"outbound\",peer=\"dst\",classification=\"success\"} 1");
+
+        drop(tcp_client);
+        let out = metrics.get("/metrics");
+        assert_contains!(out,
+            "tcp_connection_duration_ms_count{direction=\"outbound\",peer=\"src\",classification=\"success\"} 2");
+        assert_contains!(out,
+            "tcp_connection_duration_ms_count{direction=\"outbound\",peer=\"dst\",classification=\"success\"} 2");
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn outbound_tcp_write_bytes_total() {
+        let _ = env_logger::try_init();
+        let TcpFixture { client, metrics, proxy: _proxy } =
+            TcpFixture::outbound();
+        let src_expected = format!(
+            "tcp_write_bytes_total{{direction=\"outbound\",peer=\"src\"}} {}",
+            TcpFixture::BYE_MSG.len()
+        );
+        let dst_expected = format!(
+            "tcp_write_bytes_total{{direction=\"outbound\",peer=\"dst\"}} {}",
+            TcpFixture::HELLO_MSG.len()
+        );
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(TcpFixture::HELLO_MSG);
+        assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
+        drop(tcp_client);
+
+        let out = metrics.get("/metrics");
+        assert_contains!(out, &src_expected);
+        assert_contains!(out, &dst_expected);    }
+
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn outbound_tcp_read_bytes_total() {
+        let _ = env_logger::try_init();
+        let TcpFixture { client, metrics, proxy: _proxy } =
+            TcpFixture::outbound();
+        let src_expected = format!(
+            "tcp_read_bytes_total{{direction=\"outbound\",peer=\"src\"}} {}",
+            TcpFixture::HELLO_MSG.len()
+        );
+        let dst_expected = format!(
+            "tcp_read_bytes_total{{direction=\"outbound\",peer=\"dst\"}} {}",
+            TcpFixture::BYE_MSG.len()
+        );
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(TcpFixture::HELLO_MSG);
+        assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
+        drop(tcp_client);
+
+        let out = metrics.get("/metrics");
+        assert_contains!(out, &src_expected);
+        assert_contains!(out, &dst_expected);
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn outbound_tcp_open_connections() {
+        let _ = env_logger::try_init();
+        let TcpFixture { client, metrics, proxy: _proxy } =
+            TcpFixture::outbound();
+
+        let tcp_client = client.connect();
+
+        tcp_client.write(TcpFixture::HELLO_MSG);
+        assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_open_connections{direction=\"outbound\",peer=\"src\"} 1");
+        drop(tcp_client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_open_connections{direction=\"outbound\",peer=\"src\"} 0");
+        let tcp_client = client.connect();
+
+        tcp_client.write(TcpFixture::HELLO_MSG);
+        assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_open_connections{direction=\"outbound\",peer=\"src\"} 1");
+
+        drop(tcp_client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_open_connections{direction=\"outbound\",peer=\"src\"} 0");
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "flaky_tests"), ignore)]
+    fn outbound_http_tcp_open_connections() {
+        let _ = env_logger::try_init();
+        let Fixture { client, metrics, proxy } =
+            Fixture::outbound();
+
+        info!("client.get(/)");
+        assert_eq!(client.get("/"), "hello");
+
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_open_connections{direction=\"outbound\",peer=\"src\"} 1");
+        drop(client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_open_connections{direction=\"outbound\",peer=\"src\"} 0");
+
+        // create a new client to force a new connection
+        let client = client::new(proxy.outbound, "tele.test.svc.cluster.local");
+
+        info!("client.get(/)");
+        assert_eq!(client.get("/"), "hello");
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_open_connections{direction=\"outbound\",peer=\"src\"} 1");
+
+        drop(client);
+        assert_contains!(metrics.get("/metrics"),
+            "tcp_open_connections{direction=\"outbound\",peer=\"src\"} 0");
+    }
+}
+
+// https://github.com/runconduit/conduit/issues/613
+#[test]
+#[cfg_attr(not(feature = "flaky_tests"), ignore)]
+fn metrics_compression() {
+    let _ = env_logger::try_init();
+
+    let Fixture { client, metrics, proxy: _proxy } = Fixture::inbound();
+
+    let do_scrape = |encoding: &str| {
+        let resp = metrics.request(
+            metrics.request_builder("/metrics")
+                .method("GET")
+                .header("Accept-Encoding", encoding)
+        );
+
+        {
+            // create a new scope so we can release our borrow on `resp` before
+            // getting the body
+            let content_encoding = resp.headers()
+                .get("content-encoding")
+                .as_ref()
+                .map(|val| val
+                    .to_str()
+                    .expect("content-encoding value should be ascii")
+                );
+            assert_eq!(content_encoding, Some("gzip"),
+                "unexpected Content-Encoding {:?} (requested Accept-Encoding: {})", content_encoding, encoding);
+        }
+
+        let body = resp.into_body()
+            .concat2()
+            .wait()
+            .expect("response body concat");
+        let mut decoder = flate2::read::GzDecoder::new(body.into_buf());
+        let mut scrape = String::new();
+        decoder.read_to_string(&mut scrape)
+            .expect(&format!(
+                "decode gzip (requested Accept-Encoding: {})",
+                encoding
+            ));
+        scrape
+    };
+
+    let encodings = &[
+        "gzip",
+        "deflate, gzip",
+        "gzip,deflate",
+        "brotli,gzip,deflate"
+    ];
+
+    info!("client.get(/)");
+    assert_eq!(client.get("/"), "hello");
+
+    for &encoding in encodings {
+        assert_contains!(do_scrape(encoding),
+            "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",classification=\"success\",status_code=\"200\"} 1");
+    }
+
+    info!("client.get(/)");
+    assert_eq!(client.get("/"), "hello");
+
+    for &encoding in encodings {
+        assert_contains!(do_scrape(encoding),
+            "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",classification=\"success\",status_code=\"200\"} 2");
+    }
 }

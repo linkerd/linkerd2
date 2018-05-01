@@ -8,11 +8,11 @@ use http;
 use hyper;
 use indexmap::IndexSet;
 use tokio_core::reactor::Handle;
+use tokio_io::{AsyncRead, AsyncWrite};
 use tower::NewService;
 use tower_h2;
 
-use conduit_proxy_controller_grpc::common;
-use connection::Connection;
+use connection::{Connection, PeekFuture};
 use ctx::Proxy as ProxyCtx;
 use ctx::transport::{Server as ServerCtx};
 use drain;
@@ -99,6 +99,15 @@ where
         // create Server context
         let orig_dst = connection.original_dst_addr(&self.get_orig_dst);
         let local_addr = connection.local_addr().unwrap_or(self.listen_addr);
+        let srv_ctx = ServerCtx::new(
+            &self.proxy_ctx,
+            &local_addr,
+            &remote_addr,
+            &orig_dst,
+        );
+
+        // record telemetry
+        let io = self.sensors.accept(connection, opened_at, &srv_ctx);
 
         // We are using the port from the connection's SO_ORIGINAL_DST to
         // determine whether to skip protocol detection, not any port that
@@ -113,44 +122,25 @@ where
             trace!("protocol detection disabled for {:?}", orig_dst);
             let fut = tcp_serve(
                 &self.tcp,
-                connection,
+                io,
+                srv_ctx,
                 self.drain_signal.clone(),
-                &self.sensors,
-                opened_at,
-                &self.proxy_ctx,
-                LocalAddr(&local_addr),
-                RemoteAddr(&remote_addr),
-                OrigDst(&orig_dst),
             );
             self.executor.spawn(fut);
             return;
         }
 
         // try to sniff protocol
-        let proxy_ctx = self.proxy_ctx.clone();
         let sniff = [0u8; 32];
-        let sensors = self.sensors.clone();
         let h1 = self.h1.clone();
         let h2 = self.h2.clone();
         let tcp = self.tcp.clone();
         let new_service = self.new_service.clone();
         let drain_signal = self.drain_signal.clone();
-        let fut = connection
-            .peek_future(sniff)
-            .map_err(|_| ())
-            .and_then(move |(connection, sniff, n)| -> Box<Future<Item=(), Error=()>> {
+        let fut = PeekFuture::new(io, sniff)
+            .map_err(|e| debug!("peek error: {}", e))
+            .and_then(move |(io, sniff, n)| -> Box<Future<Item=(), Error=()>> {
                 if let Some(proto) = Protocol::detect(&sniff[..n]) {
-                    let srv_ctx = ServerCtx::new(
-                        &proxy_ctx,
-                        &local_addr,
-                        &remote_addr,
-                        &orig_dst,
-                        common::Protocol::Http,
-                    );
-
-                    // record telemetry
-                    let io = sensors.accept(connection, opened_at, &srv_ctx);
-
                     match proto {
                         Protocol::Http1 => {
                             trace!("transparency detected HTTP/1");
@@ -187,14 +177,9 @@ where
                     trace!("transparency did not detect protocol, treating as TCP");
                     tcp_serve(
                         &tcp,
-                        connection,
+                        io,
+                        srv_ctx,
                         drain_signal,
-                        &sensors,
-                        opened_at,
-                        &proxy_ctx,
-                        LocalAddr(&local_addr),
-                        RemoteAddr(&remote_addr),
-                        OrigDst(&orig_dst),
                     )
                 }
             });
@@ -203,37 +188,13 @@ where
     }
 }
 
-// These newtypes act as a form of keyword arguments.
-//
-// It should be easier to notice when wrapping `LocalAddr(remote_addr)` at
-// the call site, then simply passing multiple socket addr arguments.
-struct LocalAddr<'a>(&'a SocketAddr);
-struct RemoteAddr<'a>(&'a SocketAddr);
-struct OrigDst<'a>(&'a Option<SocketAddr>);
-
-fn tcp_serve(
+fn tcp_serve<T: AsyncRead + AsyncWrite + 'static>(
     tcp: &tcp::Proxy,
-    connection: Connection,
+    io: T,
+    srv_ctx: Arc<ServerCtx>,
     drain_signal: drain::Watch,
-    sensors: &Sensors,
-    opened_at: Instant,
-    proxy_ctx: &Arc<ProxyCtx>,
-    local_addr: LocalAddr,
-    remote_addr: RemoteAddr,
-    orig_dst: OrigDst,
 ) -> Box<Future<Item=(), Error=()>> {
-    let srv_ctx = ServerCtx::new(
-        proxy_ctx,
-        local_addr.0,
-        remote_addr.0,
-        orig_dst.0,
-        common::Protocol::Tcp,
-    );
-
-    // record telemetry
-    let tcp_in = sensors.accept(connection, opened_at, &srv_ctx);
-
-    let fut = tcp.serve(tcp_in, srv_ctx);
+    let fut = tcp.serve(io, srv_ctx);
 
     // There's nothing to do when drain is signaled, we just have to hope
     // the sockets finish soon. However, the drain signal still needs to

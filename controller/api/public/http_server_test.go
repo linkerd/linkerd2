@@ -3,7 +3,6 @@ package public
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net"
 	"net/http"
 	"reflect"
@@ -20,11 +19,6 @@ type mockGrpcServer struct {
 	ResponseToReturn    proto.Message
 	TapStreamsToReturn  []*common.TapEvent
 	ErrorToReturn       error
-}
-
-func (m *mockGrpcServer) Stat(ctx context.Context, req *pb.MetricRequest) (*pb.MetricResponse, error) {
-	m.LastRequestReceived = req
-	return m.ResponseToReturn.(*pb.MetricResponse), m.ErrorToReturn
 }
 
 func (m *mockGrpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
@@ -48,6 +42,17 @@ func (m *mockGrpcServer) SelfCheck(ctx context.Context, req *healcheckPb.SelfChe
 }
 
 func (m *mockGrpcServer) Tap(req *pb.TapRequest, tapServer pb.Api_TapServer) error {
+	m.LastRequestReceived = req
+	if m.ErrorToReturn == nil {
+		for _, msg := range m.TapStreamsToReturn {
+			tapServer.Send(msg)
+		}
+	}
+
+	return m.ErrorToReturn
+}
+
+func (m *mockGrpcServer) TapByResource(req *pb.TapByResourceRequest, tapServer pb.Api_TapByResourceServer) error {
 	m.LastRequestReceived = req
 	if m.ErrorToReturn == nil {
 		for _, msg := range m.TapStreamsToReturn {
@@ -99,19 +104,11 @@ func TestServer(t *testing.T) {
 			functionCall: func() (proto.Message, error) { return client.ListPods(context.TODO(), listPodsReq) },
 		}
 
-		statReq := &pb.MetricRequest{
-			Summarize: false,
-		}
-		seriesToReturn := make([]*pb.MetricSeries, 0)
-		for i := 0; i < 100; i++ {
-			seriesToReturn = append(seriesToReturn, &pb.MetricSeries{Name: pb.MetricName_LATENCY, Metadata: &pb.MetricMetadata{TargetDeploy: fmt.Sprintf("/%d", i)}})
-		}
-		testStat := grpcCallTestCase{
-			expectedRequest: statReq,
-			expectedResponse: &pb.MetricResponse{
-				Metrics: seriesToReturn,
-			},
-			functionCall: func() (proto.Message, error) { return client.Stat(context.TODO(), statReq) },
+		statSummaryReq := &pb.StatSummaryRequest{}
+		testStatSummary := grpcCallTestCase{
+			expectedRequest:  statSummaryReq,
+			expectedResponse: &pb.StatSummaryResponse{},
+			functionCall:     func() (proto.Message, error) { return client.StatSummary(context.TODO(), statSummaryReq) },
 		}
 
 		versionReq := &pb.Empty{}
@@ -136,7 +133,7 @@ func TestServer(t *testing.T) {
 			functionCall: func() (proto.Message, error) { return client.SelfCheck(context.TODO(), selfCheckReq) },
 		}
 
-		for _, testCase := range []grpcCallTestCase{testListPods, testStat, testVersion, testSelfCheck} {
+		for _, testCase := range []grpcCallTestCase{testListPods, testStatSummary, testVersion, testSelfCheck} {
 			assertCallWasForwarded(t, mockGrpcServer, testCase.expectedRequest, testCase.expectedResponse, testCase.functionCall)
 		}
 	})
@@ -166,14 +163,14 @@ func TestServer(t *testing.T) {
 
 		expectedTapResponses := []*common.TapEvent{
 			{
-				Target: &common.TcpAddress{
+				Destination: &common.TcpAddress{
 					Port: 9999,
 				},
 				Source: &common.TcpAddress{
 					Port: 6666,
 				},
 			}, {
-				Target: &common.TcpAddress{
+				Destination: &common.TcpAddress{
 					Port: 2102,
 				},
 				Source: &common.TcpAddress{
@@ -184,7 +181,7 @@ func TestServer(t *testing.T) {
 		mockGrpcServer.TapStreamsToReturn = expectedTapResponses
 		mockGrpcServer.ErrorToReturn = nil
 
-		tapClient, err := client.Tap(context.TODO(), &pb.TapRequest{})
+		tapClient, err := client.TapByResource(context.TODO(), &pb.TapByResourceRequest{})
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -249,7 +246,7 @@ func assertCallWasForwarded(t *testing.T, mockGrpcServer *mockGrpcServer, expect
 	}
 
 	mockGrpcServer.ErrorToReturn = errors.New("expected")
-	actualResponse, err = functionCall()
+	_, err = functionCall()
 	if err == nil {
 		t.Fatalf("Expecting error, got nothing")
 	}

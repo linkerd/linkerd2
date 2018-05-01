@@ -74,7 +74,9 @@ where
         let &(ref addr, ref proto) = key;
         debug!("building inbound {:?} client to {}", proto, addr);
 
-        Buffer::new(self.bind.bind_service(addr, proto), self.bind.executor())
+        let endpoint = (*addr).into();
+        let bind = self.bind.bind_service(&endpoint, proto);
+        Buffer::new(bind, self.bind.executor())
             .map(|buffer| {
                 InFlightLimit::new(buffer, MAX_IN_FLIGHT)
             })
@@ -92,7 +94,6 @@ mod tests {
     use conduit_proxy_router::Recognize;
 
     use super::Inbound;
-    use conduit_proxy_controller_grpc::common::Protocol;
     use bind::{self, Bind, Host};
     use ctx;
 
@@ -108,11 +109,11 @@ mod tests {
             local: net::SocketAddr,
             remote: net::SocketAddr
         ) -> bool {
-            let ctx = ctx::Proxy::inbound(&ctx::Process::test("test", "test", "test"));
+            let ctx = ctx::Proxy::inbound(&ctx::Process::test("test"));
 
             let inbound = new_inbound(None, &ctx);
 
-            let srv_ctx = ctx::transport::Server::new(&ctx, &local, &remote, &Some(orig_dst), Protocol::Http);
+            let srv_ctx = ctx::transport::Server::new(&ctx, &local, &remote, &Some(orig_dst));
 
             let rec = srv_ctx.orig_dst_if_not_local().map(|addr|
                 bind::Protocol::Http1(Host::NoAuthority).into_key(addr)
@@ -130,7 +131,7 @@ mod tests {
             local: net::SocketAddr,
             remote: net::SocketAddr
         ) -> bool {
-            let ctx = ctx::Proxy::inbound(&ctx::Process::test("test", "test", "test"));
+            let ctx = ctx::Proxy::inbound(&ctx::Process::test("test"));
 
             let inbound = new_inbound(default, &ctx);
 
@@ -141,7 +142,6 @@ mod tests {
                     &local,
                     &remote,
                     &None,
-                    Protocol::Http,
                 ));
 
             inbound.recognize(&req) == default.map(|addr|
@@ -150,7 +150,7 @@ mod tests {
         }
 
         fn recognize_default_no_ctx(default: Option<net::SocketAddr>) -> bool {
-            let ctx = ctx::Proxy::inbound(&ctx::Process::test("test", "test", "test"));
+            let ctx = ctx::Proxy::inbound(&ctx::Process::test("test"));
 
             let inbound = new_inbound(default, &ctx);
 
@@ -166,7 +166,7 @@ mod tests {
             local: net::SocketAddr,
             remote: net::SocketAddr
         ) -> bool {
-            let ctx = ctx::Proxy::inbound(&ctx::Process::test("test", "test", "test"));
+            let ctx = ctx::Proxy::inbound(&ctx::Process::test("test"));
 
             let inbound = new_inbound(default, &ctx);
 
@@ -177,7 +177,6 @@ mod tests {
                     &local,
                     &remote,
                     &Some(local),
-                    Protocol::Http,
                 ));
 
             inbound.recognize(&req) == default.map(|addr|

@@ -40,8 +40,6 @@ var versionCmd = &cobra.Command{
 				fmt.Printf("Server version: %s\n", serverVersion)
 			}
 		}
-
-		return
 	},
 }
 

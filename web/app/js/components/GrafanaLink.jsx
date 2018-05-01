@@ -1,22 +1,16 @@
-import grafanaicon from './../../img/grafana_icon.svg';
 import React from 'react';
 
 export default class GrafanaLink extends React.Component {
   render() {
-    let ownerInfo = this.props.name.split("/");
-    let namespace = ownerInfo[0];
-    let deployment = ownerInfo[1];
+    let resourceVariableName = this.props.resource.toLowerCase().replace(" ", "_");
+    let dashboardName = this.props.resource.toLowerCase().replace(" ", "-");
+
     return (
       <this.props.conduitLink
-        to={`/dashboard/db/conduit-deployment?var-namespace=${namespace}&var-deployment=${deployment}`}
+        to={`/dashboard/db/conduit-${dashboardName}?var-namespace=${this.props.namespace}&var-${resourceVariableName}=${this.props.name}`}
         deployment={"grafana"}
         targetBlank={true}>
-        <img
-          src={grafanaicon}
-          width={this.props.size}
-          height={this.props.size}
-          title={`${namespace}/${deployment} grafana dashboard`}
-          alt={`link to ${namespace}/${deployment} grafana dashboard`} />
+        {this.props.displayName || this.props.name}&nbsp;&nbsp;<i className="fa fa-external-link" />
       </this.props.conduitLink>
     );
   }

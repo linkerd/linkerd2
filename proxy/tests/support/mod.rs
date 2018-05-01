@@ -1,6 +1,11 @@
-#![allow(unused)]
+// The support mod is compiled for all the integration tests, which are each
+// compiled as separate crates. Each only uses a subset of this module, which
+// means some of it is unused.
+//
+// Note, lints like `unused_variable` should not be ignored.
+#![allow(dead_code)]
 
-extern crate bytes;
+pub extern crate bytes;
 pub extern crate conduit_proxy_controller_grpc;
 extern crate conduit_proxy;
 pub extern crate convert;
@@ -14,26 +19,25 @@ extern crate tokio_core;
 pub extern crate tokio_io;
 extern crate tower;
 extern crate tower_h2;
+extern crate tower_grpc;
 extern crate log;
 pub extern crate env_logger;
 
-use std::net::SocketAddr;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+pub use std::collections::HashMap;
+pub use std::net::SocketAddr;
 pub use std::time::Duration;
 
-use self::bytes::{BigEndian, BytesMut};
 pub use self::bytes::Bytes;
 pub use self::conduit_proxy::*;
 pub use self::futures::*;
 use self::futures::sync::oneshot;
 pub use self::http::{HeaderMap, Request, Response, StatusCode};
-use self::http::header::HeaderValue;
 use self::tokio_connect::Connect;
 use self::tokio_core::net::{TcpListener, TcpStream};
 use self::tokio_core::reactor::{Core, Handle};
 use self::tower::{NewService, Service};
 use self::tower_h2::{Body, RecvBody};
+use self::tower_grpc as grpc;
 
 /// Environment variable for overriding the test patience.
 pub const ENV_TEST_PATIENCE_MS: &'static str = "RUST_TEST_PATIENCE_MS";
@@ -106,7 +110,7 @@ pub mod client;
 pub mod controller;
 pub mod proxy;
 pub mod server;
-mod tcp;
+pub mod tcp;
 
 pub fn shutdown_signal() -> (Shutdown, ShutdownRx) {
     let (tx, rx) = oneshot::channel();
@@ -148,6 +152,17 @@ impl Stream for RecvBodyStream {
 
 pub fn s(bytes: &[u8]) -> &str {
     ::std::str::from_utf8(bytes.as_ref()).unwrap()
+}
+
+/// The Rust test runner creates a thread per unit test, naming it after
+/// the function name. If still in that thread, this can be useful to allow
+/// associating test logs with a specific test, since tests *can* be run in
+/// parallel.
+pub fn thread_name() -> String {
+    ::std::thread::current()
+        .name()
+        .unwrap_or("<no-name>")
+        .to_owned()
 }
 
 #[test]

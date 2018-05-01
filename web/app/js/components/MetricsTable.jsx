@@ -10,13 +10,6 @@ import { Tooltip } from 'antd';
   Expects rollup and timeseries data.
 */
 
-const resourceInfo = {
-  "upstream_deployment": { title: "deployment", url: "/deployment?deploy=" },
-  "downstream_deployment": { title: "deployment", url: "/deployment?deploy=" },
-  "deployment": { title: "deployment", url: "/deployment?deploy=" },
-  "path": { title: "path", url: null }
-};
-
 const withTooltip = (d, metricName) => {
   return (
     <Tooltip
@@ -27,56 +20,79 @@ const withTooltip = (d, metricName) => {
   );
 };
 
-const columnDefinitions = (sortable = true, resource, ConduitLink) => {
+const narrowColumnWidth = 100;
+const formatLongTitles = title => {
+  let words = title.split(" ");
+  if (words.length === 2) {
+    return (<div className="table-long-title">{words[0]}<br />{words[1]}</div>);
+  } else {
+    return words;
+  }
+};
+const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick, ConduitLink) => {
   return [
     {
-      title: resource.title,
+      title: "Namespace",
+      key: "namespace",
+      dataIndex: "namespace",
+      filters: namespaces,
+      onFilterDropdownVisibleChange: onFilterClick,
+      onFilter: (value, row) => row.namespace.indexOf(value) === 0,
+      sorter: sortable ? (a, b) => (a.namespace || "").localeCompare(b.namespace) : false
+    },
+    {
+      title: resource,
       key: "name",
       defaultSortOrder: 'ascend',
-      width: 150,
       sorter: sortable ? (a, b) => (a.name || "").localeCompare(b.name) : false,
-      render: row => (<React.Fragment>
-        {!resource.url ? row.name : <ConduitLink to={`${resource.url}${row.name}`}>{row.name}</ConduitLink>}
-        {row.added ? <span>&nbsp;<GrafanaLink name={row.name} size={16} conduitLink={ConduitLink} /></span> : null}
-      </React.Fragment>)
+      render: row => row.added ? <GrafanaLink
+        name={row.name}
+        namespace={row.namespace}
+        resource={resource}
+        conduitLink={ConduitLink} /> : row.name
     },
     {
-      title: "Request Rate",
-      dataIndex: "requestRate",
-      key: "requestRateRollup",
-      className: "numeric",
-      sorter: sortable ? (a, b) => numericSort(a.requestRate, b.requestRate) : false,
-      render: d => withTooltip(d, "REQUEST_RATE")
-    },
-    {
-      title: "Success Rate",
+      title: formatLongTitles("Success Rate"),
       dataIndex: "successRate",
       key: "successRateRollup",
-      className: "numeric",
+      className: "numeric long-header",
+      width: narrowColumnWidth,
       sorter: sortable ? (a, b) => numericSort(a.successRate, b.successRate) : false,
       render: d => metricToFormatter["SUCCESS_RATE"](d)
     },
     {
-      title: "P50 Latency",
+      title: formatLongTitles("Request Rate"),
+      dataIndex: "requestRate",
+      key: "requestRateRollup",
+      className: "numeric long-header",
+      width: narrowColumnWidth,
+      sorter: sortable ? (a, b) => numericSort(a.requestRate, b.requestRate) : false,
+      render: d => withTooltip(d, "REQUEST_RATE")
+    },
+    {
+      title: formatLongTitles("P50 Latency"),
       dataIndex: "P50",
       key: "p50LatencyRollup",
-      className: "numeric",
+      className: "numeric long-header",
+      width: narrowColumnWidth,
       sorter: sortable ? (a, b) => numericSort(a.P50, b.P50) : false,
       render: metricToFormatter["LATENCY"]
     },
     {
-      title: "P95 Latency",
+      title: formatLongTitles("P95 Latency"),
       dataIndex: "P95",
       key: "p95LatencyRollup",
-      className: "numeric",
+      className: "numeric long-header",
+      width: narrowColumnWidth,
       sorter: sortable ? (a, b) => numericSort(a.P95, b.P95) : false,
       render: metricToFormatter["LATENCY"]
     },
     {
-      title: "P99 Latency",
+      title: formatLongTitles("P99 Latency"),
       dataIndex: "P99",
       key: "p99LatencyRollup",
-      className: "numeric",
+      className: "numeric long-header",
+      width: narrowColumnWidth,
       sorter: sortable ? (a, b) => numericSort(a.P99, b.P99) : false,
       render: metricToFormatter["LATENCY"]
     }
@@ -89,27 +105,56 @@ export default class MetricsTable extends BaseTable {
   constructor(props) {
     super(props);
     this.api = this.props.api;
+    this.onFilterDropdownVisibleChange = this.onFilterDropdownVisibleChange.bind(this);
+    this.state = {
+      preventTableUpdates: false
+    };
   }
 
   preprocessMetrics() {
     let tableData = _.cloneDeep(this.props.metrics);
+    let namespaces = [];
 
     _.each(tableData, datum => {
+      namespaces.push(datum.namespace);
       _.each(datum.latency, (value, quantile) => {
         datum[quantile] = value;
       });
     });
 
-    return tableData;
+    return {
+      rows: tableData,
+      namespaces: _.uniq(namespaces)
+    };
+  }
+
+  shouldComponentUpdate() {
+    // prevent the table from updating if the filter dropdown menu is open
+    // this is because if the table updates, the filters will reset which
+    // makes it impossible to select a filter
+    return !this.state.preventTableUpdates;
+  }
+
+  onFilterDropdownVisibleChange(dropdownVisible) {
+    this.setState({ preventTableUpdates: dropdownVisible});
   }
 
   render() {
-    let resource = resourceInfo[this.props.resource];
     let tableData = this.preprocessMetrics();
-    let columns = _.compact(columnDefinitions(this.props.sortable, resource, this.api.ConduitLink));
+    let namespaceFilterText = _.map(tableData.namespaces, ns => {
+      return { text: ns, value: ns };
+    });
+
+    let columns = _.compact(columnDefinitions(
+      this.props.sortable,
+      this.props.resource,
+      namespaceFilterText,
+      this.onFilterDropdownVisibleChange,
+      this.api.ConduitLink
+    ));
 
     return (<BaseTable
-      dataSource={tableData}
+      dataSource={tableData.rows}
       columns={columns}
       pagination={false}
       className="conduit-table"

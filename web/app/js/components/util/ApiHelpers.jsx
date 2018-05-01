@@ -37,7 +37,7 @@ const makeCancelable = (promise, onSuccess) => {
   };
 };
 
-export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '10m') => {
+export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   let metricsWindow = defaultMetricsWindow;
   const podsPath = `/api/pods`;
 
@@ -71,8 +71,6 @@ export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '10m') => {
     return apiFetch(podsPath);
   };
 
-
-
   const getMetricsWindow = () => metricsWindow;
   const getMetricsWindowDisplayText = () => validMetricsWindows[metricsWindow];
 
@@ -81,42 +79,25 @@ export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '10m') => {
     metricsWindow = window;
   };
 
-  const metricsUrl = `/api/metrics?`;
   const urlsForResource = {
-    // all deploys (default), or a given deploy if specified
+    "replication_controller": {
+      url: () => {
+        return {
+          rollup: `/api/stat?resource_type=replicationcontroller`
+        };
+      }
+    },
     "deployment": {
-      groupBy: "targetDeploy",
-      url: (deploy = null) => {
-        let rollupUrl = !deploy ? metricsUrl : `${metricsUrl}&target_deploy=${deploy}`;
-        let timeseriesUrl = !deploy ? `${metricsUrl}&timeseries=true` :
-          `${metricsUrl}&timeseries=true&target_deploy=${deploy}`;
+      url: () => {
         return {
-          ts: timeseriesUrl,
-          rollup: rollupUrl
+          rollup: `/api/stat?resource_type=deployment`
         };
       }
     },
-    "upstream_deployment": {
-      // all upstreams of a given deploy
-      groupBy: "sourceDeploy",
-      url: deploy => {
-        let upstreamRollupUrl = `${metricsUrl}&aggregation=source_deploy&target_deploy=${deploy}`;
-        let upstreamTimeseriesUrl = `${upstreamRollupUrl}&timeseries=true`;
+    "pod": {
+      url: () => {
         return {
-          ts: upstreamTimeseriesUrl,
-          rollup: upstreamRollupUrl
-        };
-      }
-    },
-    "downstream_deployment": {
-      // all downstreams of a given deploy
-      groupBy: "targetDeploy",
-      url: deploy => {
-        let downstreamRollupUrl = `${metricsUrl}&aggregation=target_deploy&source_deploy=${deploy}`;
-        let downstreamTimeseriesUrl = `${downstreamRollupUrl}&timeseries=true`;
-        return {
-          ts: downstreamTimeseriesUrl,
-          rollup: downstreamRollupUrl
+          rollup: `/api/stat?resource_type=pod`
         };
       }
     }

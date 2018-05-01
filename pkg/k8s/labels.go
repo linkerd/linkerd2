@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/runconduit/conduit/pkg/version"
+	k8sV1 "k8s.io/api/apps/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -65,6 +66,7 @@ var proxyLabels = []string{
 	ProxyReplicaSetLabel,
 	ProxyJobLabel,
 	ProxyDaemonSetLabel,
+	k8sV1.DefaultDeploymentUniqueLabelKey,
 }
 
 // CreatedByAnnotationValue returns the value associated with

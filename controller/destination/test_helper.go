@@ -30,19 +30,3 @@ func newCollectUpdateListener() (*collectUpdateListener, context.CancelFunc) {
 	ctx, cancelFn := context.WithCancel(context.Background())
 	return &collectUpdateListener{context: ctx}, cancelFn
 }
-
-type mockDnsWatcher struct {
-	ListenerSubscribed   DnsListener
-	ListenerUnsubscribed DnsListener
-	errToReturn          error
-}
-
-func (m *mockDnsWatcher) Subscribe(host string, listener DnsListener) error {
-	m.ListenerSubscribed = listener
-	return m.errToReturn
-}
-
-func (m *mockDnsWatcher) Unsubscribe(host string, listener DnsListener) error {
-	m.ListenerUnsubscribed = listener
-	return m.errToReturn
-}

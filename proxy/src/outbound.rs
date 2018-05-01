@@ -168,7 +168,7 @@ where
     type Key = SocketAddr;
     type Request = http::Request<B>;
     type Response = bind::HttpResponse;
-    type Error = <bind::Service<B> as tower::Service>::Error;
+    type Error = <Self::Service as tower::Service>::Error;
     type Service = bind::Service<B>;
     type DiscoverError = BindError;
 
@@ -183,7 +183,7 @@ where
                 // circuit-breaking, this should be able to take care of itself,
                 // closing down when the connection is no longer usable.
                 if let Some((addr, bind)) = opt.take() {
-                    let svc = bind.bind(&addr)
+                    let svc = bind.bind(&addr.into())
                         .map_err(|_| BindError::External{ addr })?;
                     Ok(Async::Ready(Change::Insert(addr, svc)))
                 } else {

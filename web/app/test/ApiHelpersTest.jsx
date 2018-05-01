@@ -21,7 +21,7 @@ describe('ApiHelpers', () => {
     fetchStub = sinon.stub(window, 'fetch');
     fetchStub.returnsPromise().resolves({
       ok: true,
-      json: () => Promise.resolve({ metrics: [] })
+      json: () => Promise.resolve({})
     });
     api = ApiHelpers('');
   });
@@ -33,11 +33,11 @@ describe('ApiHelpers', () => {
 
   describe('getMetricsWindow/setMetricsWindow', () => {
     it('sets a default metricsWindow', () => {
-      expect(api.getMetricsWindow()).to.equal('10m');
+      expect(api.getMetricsWindow()).to.equal('1m');
     });
 
     it('changes the metricsWindow on valid window input', () => {
-      expect(api.getMetricsWindow()).to.equal('10m');
+      expect(api.getMetricsWindow()).to.equal('1m');
 
       api.setMetricsWindow('10s');
       expect(api.getMetricsWindow()).to.equal('10s');
@@ -47,13 +47,16 @@ describe('ApiHelpers', () => {
 
       api.setMetricsWindow('10m');
       expect(api.getMetricsWindow()).to.equal('10m');
+
+      api.setMetricsWindow('1h');
+      expect(api.getMetricsWindow()).to.equal('1h');
     });
 
     it('does not change metricsWindow on invalid window size', () => {
-      expect(api.getMetricsWindow()).to.equal('10m');
+      expect(api.getMetricsWindow()).to.equal('1m');
 
       api.setMetricsWindow('10h');
-      expect(api.getMetricsWindow()).to.equal('10m');
+      expect(api.getMetricsWindow()).to.equal('1m');
     });
   });
 
@@ -243,28 +246,28 @@ describe('ApiHelpers', () => {
       api.fetchMetrics('/my/path');
 
       expect(fetchStub.calledOnce).to.be.true;
-      expect(fetchStub.args[0][0]).to.equal('/the/prefix/my/path?window=10m');
+      expect(fetchStub.args[0][0]).to.equal('/the/prefix/my/path?window=1m');
     });
 
     it('adds a ?window= if metricsWindow is the only param', () => {
-      api.fetchMetrics('/metrics');
+      api.fetchMetrics('/api/stat');
 
       expect(fetchStub.calledOnce).to.be.true;
-      expect(fetchStub.args[0][0]).to.equal('/metrics?window=10m');
+      expect(fetchStub.args[0][0]).to.equal('/api/stat?window=1m');
     });
 
     it('adds &window= if metricsWindow is not the only param', () => {
-      api.fetchMetrics('/metrics?foo=3&bar="me"');
+      api.fetchMetrics('/api/stat?foo=3&bar="me"');
 
       expect(fetchStub.calledOnce).to.be.true;
-      expect(fetchStub.args[0][0]).to.equal('/metrics?foo=3&bar="me"&window=10m');
+      expect(fetchStub.args[0][0]).to.equal('/api/stat?foo=3&bar="me"&window=1m');
     });
 
     it('does not add another &window= if there is already a window param', () => {
-      api.fetchMetrics('/metrics?foo=3&window=24h&bar="me"');
+      api.fetchMetrics('/api/stat?foo=3&window=24h&bar="me"');
 
       expect(fetchStub.calledOnce).to.be.true;
-      expect(fetchStub.args[0][0]).to.equal('/metrics?foo=3&window=24h&bar="me"');
+      expect(fetchStub.args[0][0]).to.equal('/api/stat?foo=3&window=24h&bar="me"');
     });
   });
 
@@ -279,19 +282,16 @@ describe('ApiHelpers', () => {
   });
 
   describe('urlsForResource', () => {
-    it('returns the correct timeseries and metric rollup urls for deployment overviews', () => {
+    it('returns the correct rollup url for deployment overviews', () => {
       api = ApiHelpers('/go/my/own/way');
-      let deploymentUrls = api.urlsForResource["deployment"].url("myDeploy");
-
-      expect(deploymentUrls.ts).to.equal('/api/metrics?&timeseries=true&target_deploy=myDeploy');
-      expect(deploymentUrls.rollup).to.equal('/api/metrics?&target_deploy=myDeploy');
+      let deploymentUrls = api.urlsForResource["deployment"].url();
+      expect(deploymentUrls.rollup).to.equal('/api/stat?resource_type=deployment');
     });
 
-    it('returns the correct timeseries and metric rollup urls for upstream deployments', () => {
-      let deploymentUrls = api.urlsForResource["upstream_deployment"].url("farUp");
-
-      expect(deploymentUrls.ts).to.equal('/api/metrics?&aggregation=source_deploy&target_deploy=farUp&timeseries=true');
-      expect(deploymentUrls.rollup).to.equal('/api/metrics?&aggregation=source_deploy&target_deploy=farUp');
+    it('returns the correct rollup url for pod overviews', () => {
+      api = ApiHelpers('/go/my/own/way');
+      let deploymentUrls = api.urlsForResource["pod"].url();
+      expect(deploymentUrls.rollup).to.equal('/api/stat?resource_type=pod');
     });
   });
 });

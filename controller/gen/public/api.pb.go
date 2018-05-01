@@ -8,19 +8,12 @@ It is generated from these files:
 	public/api.proto
 
 It has these top-level messages:
-	HistogramValue
-	Histogram
-	MetricValue
-	MetricDatapoint
-	MetricSeries
-	MetricMetadata
-	MetricResponse
-	MetricRequest
 	Empty
 	VersionInfo
 	ListPodsResponse
 	Pod
 	TapRequest
+	TapByResourceRequest
 	ApiError
 	Resource
 	ResourceSelection
@@ -55,450 +48,13 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
-type MetricName int32
-
-const (
-	MetricName_REQUEST_RATE MetricName = 0
-	MetricName_LATENCY      MetricName = 1
-	MetricName_SUCCESS_RATE MetricName = 2
-)
-
-var MetricName_name = map[int32]string{
-	0: "REQUEST_RATE",
-	1: "LATENCY",
-	2: "SUCCESS_RATE",
-}
-var MetricName_value = map[string]int32{
-	"REQUEST_RATE": 0,
-	"LATENCY":      1,
-	"SUCCESS_RATE": 2,
-}
-
-func (x MetricName) String() string {
-	return proto.EnumName(MetricName_name, int32(x))
-}
-func (MetricName) EnumDescriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
-
-type TimeWindow int32
-
-const (
-	TimeWindow_TEN_SEC  TimeWindow = 0
-	TimeWindow_ONE_MIN  TimeWindow = 1
-	TimeWindow_TEN_MIN  TimeWindow = 2
-	TimeWindow_ONE_HOUR TimeWindow = 3
-)
-
-var TimeWindow_name = map[int32]string{
-	0: "TEN_SEC",
-	1: "ONE_MIN",
-	2: "TEN_MIN",
-	3: "ONE_HOUR",
-}
-var TimeWindow_value = map[string]int32{
-	"TEN_SEC":  0,
-	"ONE_MIN":  1,
-	"TEN_MIN":  2,
-	"ONE_HOUR": 3,
-}
-
-func (x TimeWindow) String() string {
-	return proto.EnumName(TimeWindow_name, int32(x))
-}
-func (TimeWindow) EnumDescriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
-
-type AggregationType int32
-
-const (
-	AggregationType_TARGET_DEPLOY AggregationType = 0
-	AggregationType_SOURCE_DEPLOY AggregationType = 1
-	AggregationType_MESH          AggregationType = 2
-)
-
-var AggregationType_name = map[int32]string{
-	0: "TARGET_DEPLOY",
-	1: "SOURCE_DEPLOY",
-	2: "MESH",
-}
-var AggregationType_value = map[string]int32{
-	"TARGET_DEPLOY": 0,
-	"SOURCE_DEPLOY": 1,
-	"MESH":          2,
-}
-
-func (x AggregationType) String() string {
-	return proto.EnumName(AggregationType_name, int32(x))
-}
-func (AggregationType) EnumDescriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
-
-type HistogramLabel int32
-
-const (
-	HistogramLabel_MIN HistogramLabel = 0
-	HistogramLabel_P50 HistogramLabel = 1
-	HistogramLabel_P95 HistogramLabel = 2
-	HistogramLabel_P99 HistogramLabel = 3
-	HistogramLabel_MAX HistogramLabel = 4
-)
-
-var HistogramLabel_name = map[int32]string{
-	0: "MIN",
-	1: "P50",
-	2: "P95",
-	3: "P99",
-	4: "MAX",
-}
-var HistogramLabel_value = map[string]int32{
-	"MIN": 0,
-	"P50": 1,
-	"P95": 2,
-	"P99": 3,
-	"MAX": 4,
-}
-
-func (x HistogramLabel) String() string {
-	return proto.EnumName(HistogramLabel_name, int32(x))
-}
-func (HistogramLabel) EnumDescriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
-
-type HistogramValue struct {
-	Label HistogramLabel `protobuf:"varint,1,opt,name=label,enum=conduit.public.HistogramLabel" json:"label,omitempty"`
-	Value int64          `protobuf:"varint,2,opt,name=value" json:"value,omitempty"`
-}
-
-func (m *HistogramValue) Reset()                    { *m = HistogramValue{} }
-func (m *HistogramValue) String() string            { return proto.CompactTextString(m) }
-func (*HistogramValue) ProtoMessage()               {}
-func (*HistogramValue) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
-
-func (m *HistogramValue) GetLabel() HistogramLabel {
-	if m != nil {
-		return m.Label
-	}
-	return HistogramLabel_MIN
-}
-
-func (m *HistogramValue) GetValue() int64 {
-	if m != nil {
-		return m.Value
-	}
-	return 0
-}
-
-type Histogram struct {
-	Values []*HistogramValue `protobuf:"bytes,1,rep,name=values" json:"values,omitempty"`
-}
-
-func (m *Histogram) Reset()                    { *m = Histogram{} }
-func (m *Histogram) String() string            { return proto.CompactTextString(m) }
-func (*Histogram) ProtoMessage()               {}
-func (*Histogram) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
-
-func (m *Histogram) GetValues() []*HistogramValue {
-	if m != nil {
-		return m.Values
-	}
-	return nil
-}
-
-type MetricValue struct {
-	// Types that are valid to be assigned to Value:
-	//	*MetricValue_Counter
-	//	*MetricValue_Gauge
-	//	*MetricValue_Histogram
-	Value isMetricValue_Value `protobuf_oneof:"value"`
-}
-
-func (m *MetricValue) Reset()                    { *m = MetricValue{} }
-func (m *MetricValue) String() string            { return proto.CompactTextString(m) }
-func (*MetricValue) ProtoMessage()               {}
-func (*MetricValue) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
-
-type isMetricValue_Value interface{ isMetricValue_Value() }
-
-type MetricValue_Counter struct {
-	Counter int64 `protobuf:"varint,1,opt,name=counter,oneof"`
-}
-type MetricValue_Gauge struct {
-	Gauge float64 `protobuf:"fixed64,2,opt,name=gauge,oneof"`
-}
-type MetricValue_Histogram struct {
-	Histogram *Histogram `protobuf:"bytes,3,opt,name=histogram,oneof"`
-}
-
-func (*MetricValue_Counter) isMetricValue_Value()   {}
-func (*MetricValue_Gauge) isMetricValue_Value()     {}
-func (*MetricValue_Histogram) isMetricValue_Value() {}
-
-func (m *MetricValue) GetValue() isMetricValue_Value {
-	if m != nil {
-		return m.Value
-	}
-	return nil
-}
-
-func (m *MetricValue) GetCounter() int64 {
-	if x, ok := m.GetValue().(*MetricValue_Counter); ok {
-		return x.Counter
-	}
-	return 0
-}
-
-func (m *MetricValue) GetGauge() float64 {
-	if x, ok := m.GetValue().(*MetricValue_Gauge); ok {
-		return x.Gauge
-	}
-	return 0
-}
-
-func (m *MetricValue) GetHistogram() *Histogram {
-	if x, ok := m.GetValue().(*MetricValue_Histogram); ok {
-		return x.Histogram
-	}
-	return nil
-}
-
-// XXX_OneofFuncs is for the internal use of the proto package.
-func (*MetricValue) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
-	return _MetricValue_OneofMarshaler, _MetricValue_OneofUnmarshaler, _MetricValue_OneofSizer, []interface{}{
-		(*MetricValue_Counter)(nil),
-		(*MetricValue_Gauge)(nil),
-		(*MetricValue_Histogram)(nil),
-	}
-}
-
-func _MetricValue_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
-	m := msg.(*MetricValue)
-	// value
-	switch x := m.Value.(type) {
-	case *MetricValue_Counter:
-		b.EncodeVarint(1<<3 | proto.WireVarint)
-		b.EncodeVarint(uint64(x.Counter))
-	case *MetricValue_Gauge:
-		b.EncodeVarint(2<<3 | proto.WireFixed64)
-		b.EncodeFixed64(math.Float64bits(x.Gauge))
-	case *MetricValue_Histogram:
-		b.EncodeVarint(3<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.Histogram); err != nil {
-			return err
-		}
-	case nil:
-	default:
-		return fmt.Errorf("MetricValue.Value has unexpected type %T", x)
-	}
-	return nil
-}
-
-func _MetricValue_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
-	m := msg.(*MetricValue)
-	switch tag {
-	case 1: // value.counter
-		if wire != proto.WireVarint {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeVarint()
-		m.Value = &MetricValue_Counter{int64(x)}
-		return true, err
-	case 2: // value.gauge
-		if wire != proto.WireFixed64 {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeFixed64()
-		m.Value = &MetricValue_Gauge{math.Float64frombits(x)}
-		return true, err
-	case 3: // value.histogram
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(Histogram)
-		err := b.DecodeMessage(msg)
-		m.Value = &MetricValue_Histogram{msg}
-		return true, err
-	default:
-		return false, nil
-	}
-}
-
-func _MetricValue_OneofSizer(msg proto.Message) (n int) {
-	m := msg.(*MetricValue)
-	// value
-	switch x := m.Value.(type) {
-	case *MetricValue_Counter:
-		n += proto.SizeVarint(1<<3 | proto.WireVarint)
-		n += proto.SizeVarint(uint64(x.Counter))
-	case *MetricValue_Gauge:
-		n += proto.SizeVarint(2<<3 | proto.WireFixed64)
-		n += 8
-	case *MetricValue_Histogram:
-		s := proto.Size(x.Histogram)
-		n += proto.SizeVarint(3<<3 | proto.WireBytes)
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case nil:
-	default:
-		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
-	}
-	return n
-}
-
-type MetricDatapoint struct {
-	Value       *MetricValue `protobuf:"bytes,1,opt,name=value" json:"value,omitempty"`
-	TimestampMs int64        `protobuf:"varint,2,opt,name=timestamp_ms,json=timestampMs" json:"timestamp_ms,omitempty"`
-}
-
-func (m *MetricDatapoint) Reset()                    { *m = MetricDatapoint{} }
-func (m *MetricDatapoint) String() string            { return proto.CompactTextString(m) }
-func (*MetricDatapoint) ProtoMessage()               {}
-func (*MetricDatapoint) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
-
-func (m *MetricDatapoint) GetValue() *MetricValue {
-	if m != nil {
-		return m.Value
-	}
-	return nil
-}
-
-func (m *MetricDatapoint) GetTimestampMs() int64 {
-	if m != nil {
-		return m.TimestampMs
-	}
-	return 0
-}
-
-type MetricSeries struct {
-	Name       MetricName         `protobuf:"varint,1,opt,name=name,enum=conduit.public.MetricName" json:"name,omitempty"`
-	Metadata   *MetricMetadata    `protobuf:"bytes,2,opt,name=metadata" json:"metadata,omitempty"`
-	Datapoints []*MetricDatapoint `protobuf:"bytes,3,rep,name=datapoints" json:"datapoints,omitempty"`
-}
-
-func (m *MetricSeries) Reset()                    { *m = MetricSeries{} }
-func (m *MetricSeries) String() string            { return proto.CompactTextString(m) }
-func (*MetricSeries) ProtoMessage()               {}
-func (*MetricSeries) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
-
-func (m *MetricSeries) GetName() MetricName {
-	if m != nil {
-		return m.Name
-	}
-	return MetricName_REQUEST_RATE
-}
-
-func (m *MetricSeries) GetMetadata() *MetricMetadata {
-	if m != nil {
-		return m.Metadata
-	}
-	return nil
-}
-
-func (m *MetricSeries) GetDatapoints() []*MetricDatapoint {
-	if m != nil {
-		return m.Datapoints
-	}
-	return nil
-}
-
-type MetricMetadata struct {
-	TargetDeploy string `protobuf:"bytes,1,opt,name=targetDeploy" json:"targetDeploy,omitempty"`
-	SourceDeploy string `protobuf:"bytes,2,opt,name=sourceDeploy" json:"sourceDeploy,omitempty"`
-	Component    string `protobuf:"bytes,3,opt,name=component" json:"component,omitempty"`
-}
-
-func (m *MetricMetadata) Reset()                    { *m = MetricMetadata{} }
-func (m *MetricMetadata) String() string            { return proto.CompactTextString(m) }
-func (*MetricMetadata) ProtoMessage()               {}
-func (*MetricMetadata) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
-
-func (m *MetricMetadata) GetTargetDeploy() string {
-	if m != nil {
-		return m.TargetDeploy
-	}
-	return ""
-}
-
-func (m *MetricMetadata) GetSourceDeploy() string {
-	if m != nil {
-		return m.SourceDeploy
-	}
-	return ""
-}
-
-func (m *MetricMetadata) GetComponent() string {
-	if m != nil {
-		return m.Component
-	}
-	return ""
-}
-
-type MetricResponse struct {
-	Metrics []*MetricSeries `protobuf:"bytes,1,rep,name=metrics" json:"metrics,omitempty"`
-}
-
-func (m *MetricResponse) Reset()                    { *m = MetricResponse{} }
-func (m *MetricResponse) String() string            { return proto.CompactTextString(m) }
-func (*MetricResponse) ProtoMessage()               {}
-func (*MetricResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
-
-func (m *MetricResponse) GetMetrics() []*MetricSeries {
-	if m != nil {
-		return m.Metrics
-	}
-	return nil
-}
-
-type MetricRequest struct {
-	Metrics   []MetricName    `protobuf:"varint,1,rep,packed,name=metrics,enum=conduit.public.MetricName" json:"metrics,omitempty"`
-	Window    TimeWindow      `protobuf:"varint,2,opt,name=window,enum=conduit.public.TimeWindow" json:"window,omitempty"`
-	GroupBy   AggregationType `protobuf:"varint,3,opt,name=groupBy,enum=conduit.public.AggregationType" json:"groupBy,omitempty"`
-	FilterBy  *MetricMetadata `protobuf:"bytes,4,opt,name=filterBy" json:"filterBy,omitempty"`
-	Summarize bool            `protobuf:"varint,5,opt,name=summarize" json:"summarize,omitempty"`
-}
-
-func (m *MetricRequest) Reset()                    { *m = MetricRequest{} }
-func (m *MetricRequest) String() string            { return proto.CompactTextString(m) }
-func (*MetricRequest) ProtoMessage()               {}
-func (*MetricRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
-
-func (m *MetricRequest) GetMetrics() []MetricName {
-	if m != nil {
-		return m.Metrics
-	}
-	return nil
-}
-
-func (m *MetricRequest) GetWindow() TimeWindow {
-	if m != nil {
-		return m.Window
-	}
-	return TimeWindow_TEN_SEC
-}
-
-func (m *MetricRequest) GetGroupBy() AggregationType {
-	if m != nil {
-		return m.GroupBy
-	}
-	return AggregationType_TARGET_DEPLOY
-}
-
-func (m *MetricRequest) GetFilterBy() *MetricMetadata {
-	if m != nil {
-		return m.FilterBy
-	}
-	return nil
-}
-
-func (m *MetricRequest) GetSummarize() bool {
-	if m != nil {
-		return m.Summarize
-	}
-	return false
-}
-
 type Empty struct {
 }
 
 func (m *Empty) Reset()                    { *m = Empty{} }
 func (m *Empty) String() string            { return proto.CompactTextString(m) }
 func (*Empty) ProtoMessage()               {}
-func (*Empty) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
+func (*Empty) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
 type VersionInfo struct {
 	GoVersion      string `protobuf:"bytes,1,opt,name=goVersion" json:"goVersion,omitempty"`
@@ -509,7 +65,7 @@ type VersionInfo struct {
 func (m *VersionInfo) Reset()                    { *m = VersionInfo{} }
 func (m *VersionInfo) String() string            { return proto.CompactTextString(m) }
 func (*VersionInfo) ProtoMessage()               {}
-func (*VersionInfo) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
+func (*VersionInfo) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
 
 func (m *VersionInfo) GetGoVersion() string {
 	if m != nil {
@@ -539,7 +95,7 @@ type ListPodsResponse struct {
 func (m *ListPodsResponse) Reset()                    { *m = ListPodsResponse{} }
 func (m *ListPodsResponse) String() string            { return proto.CompactTextString(m) }
 func (*ListPodsResponse) ProtoMessage()               {}
-func (*ListPodsResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{10} }
+func (*ListPodsResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
 
 func (m *ListPodsResponse) GetPods() []*Pod {
 	if m != nil {
@@ -562,7 +118,7 @@ type Pod struct {
 func (m *Pod) Reset()                    { *m = Pod{} }
 func (m *Pod) String() string            { return proto.CompactTextString(m) }
 func (*Pod) ProtoMessage()               {}
-func (*Pod) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{11} }
+func (*Pod) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
 
 func (m *Pod) GetName() string {
 	if m != nil {
@@ -640,7 +196,7 @@ type TapRequest struct {
 func (m *TapRequest) Reset()                    { *m = TapRequest{} }
 func (m *TapRequest) String() string            { return proto.CompactTextString(m) }
 func (*TapRequest) ProtoMessage()               {}
-func (*TapRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{12} }
+func (*TapRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
 
 type isTapRequest_Target interface{ isTapRequest_Target() }
 
@@ -804,6 +360,439 @@ func _TapRequest_OneofSizer(msg proto.Message) (n int) {
 	return n
 }
 
+// A tap request over kubernetes resources.
+type TapByResourceRequest struct {
+	// Describes the kubernetes pods that should be tapped.
+	Target *ResourceSelection `protobuf:"bytes,1,opt,name=target" json:"target,omitempty"`
+	// Selects over events to be reported.
+	Match *TapByResourceRequest_Match `protobuf:"bytes,2,opt,name=match" json:"match,omitempty"`
+	// Limits the number of events to be inspected.
+	MaxRps float32 `protobuf:"fixed32,3,opt,name=maxRps" json:"maxRps,omitempty"`
+}
+
+func (m *TapByResourceRequest) Reset()                    { *m = TapByResourceRequest{} }
+func (m *TapByResourceRequest) String() string            { return proto.CompactTextString(m) }
+func (*TapByResourceRequest) ProtoMessage()               {}
+func (*TapByResourceRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
+
+func (m *TapByResourceRequest) GetTarget() *ResourceSelection {
+	if m != nil {
+		return m.Target
+	}
+	return nil
+}
+
+func (m *TapByResourceRequest) GetMatch() *TapByResourceRequest_Match {
+	if m != nil {
+		return m.Match
+	}
+	return nil
+}
+
+func (m *TapByResourceRequest) GetMaxRps() float32 {
+	if m != nil {
+		return m.MaxRps
+	}
+	return 0
+}
+
+type TapByResourceRequest_Match struct {
+	// Types that are valid to be assigned to Match:
+	//	*TapByResourceRequest_Match_All
+	//	*TapByResourceRequest_Match_Any
+	//	*TapByResourceRequest_Match_Not
+	//	*TapByResourceRequest_Match_Destinations
+	//	*TapByResourceRequest_Match_Http_
+	Match isTapByResourceRequest_Match_Match `protobuf_oneof:"match"`
+}
+
+func (m *TapByResourceRequest_Match) Reset()                    { *m = TapByResourceRequest_Match{} }
+func (m *TapByResourceRequest_Match) String() string            { return proto.CompactTextString(m) }
+func (*TapByResourceRequest_Match) ProtoMessage()               {}
+func (*TapByResourceRequest_Match) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5, 0} }
+
+type isTapByResourceRequest_Match_Match interface{ isTapByResourceRequest_Match_Match() }
+
+type TapByResourceRequest_Match_All struct {
+	All *TapByResourceRequest_Match_Seq `protobuf:"bytes,1,opt,name=all,oneof"`
+}
+type TapByResourceRequest_Match_Any struct {
+	Any *TapByResourceRequest_Match_Seq `protobuf:"bytes,2,opt,name=any,oneof"`
+}
+type TapByResourceRequest_Match_Not struct {
+	Not *TapByResourceRequest_Match `protobuf:"bytes,3,opt,name=not,oneof"`
+}
+type TapByResourceRequest_Match_Destinations struct {
+	Destinations *ResourceSelection `protobuf:"bytes,4,opt,name=destinations,oneof"`
+}
+type TapByResourceRequest_Match_Http_ struct {
+	Http *TapByResourceRequest_Match_Http `protobuf:"bytes,5,opt,name=http,oneof"`
+}
+
+func (*TapByResourceRequest_Match_All) isTapByResourceRequest_Match_Match()          {}
+func (*TapByResourceRequest_Match_Any) isTapByResourceRequest_Match_Match()          {}
+func (*TapByResourceRequest_Match_Not) isTapByResourceRequest_Match_Match()          {}
+func (*TapByResourceRequest_Match_Destinations) isTapByResourceRequest_Match_Match() {}
+func (*TapByResourceRequest_Match_Http_) isTapByResourceRequest_Match_Match()        {}
+
+func (m *TapByResourceRequest_Match) GetMatch() isTapByResourceRequest_Match_Match {
+	if m != nil {
+		return m.Match
+	}
+	return nil
+}
+
+func (m *TapByResourceRequest_Match) GetAll() *TapByResourceRequest_Match_Seq {
+	if x, ok := m.GetMatch().(*TapByResourceRequest_Match_All); ok {
+		return x.All
+	}
+	return nil
+}
+
+func (m *TapByResourceRequest_Match) GetAny() *TapByResourceRequest_Match_Seq {
+	if x, ok := m.GetMatch().(*TapByResourceRequest_Match_Any); ok {
+		return x.Any
+	}
+	return nil
+}
+
+func (m *TapByResourceRequest_Match) GetNot() *TapByResourceRequest_Match {
+	if x, ok := m.GetMatch().(*TapByResourceRequest_Match_Not); ok {
+		return x.Not
+	}
+	return nil
+}
+
+func (m *TapByResourceRequest_Match) GetDestinations() *ResourceSelection {
+	if x, ok := m.GetMatch().(*TapByResourceRequest_Match_Destinations); ok {
+		return x.Destinations
+	}
+	return nil
+}
+
+func (m *TapByResourceRequest_Match) GetHttp() *TapByResourceRequest_Match_Http {
+	if x, ok := m.GetMatch().(*TapByResourceRequest_Match_Http_); ok {
+		return x.Http
+	}
+	return nil
+}
+
+// XXX_OneofFuncs is for the internal use of the proto package.
+func (*TapByResourceRequest_Match) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
+	return _TapByResourceRequest_Match_OneofMarshaler, _TapByResourceRequest_Match_OneofUnmarshaler, _TapByResourceRequest_Match_OneofSizer, []interface{}{
+		(*TapByResourceRequest_Match_All)(nil),
+		(*TapByResourceRequest_Match_Any)(nil),
+		(*TapByResourceRequest_Match_Not)(nil),
+		(*TapByResourceRequest_Match_Destinations)(nil),
+		(*TapByResourceRequest_Match_Http_)(nil),
+	}
+}
+
+func _TapByResourceRequest_Match_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
+	m := msg.(*TapByResourceRequest_Match)
+	// match
+	switch x := m.Match.(type) {
+	case *TapByResourceRequest_Match_All:
+		b.EncodeVarint(1<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.All); err != nil {
+			return err
+		}
+	case *TapByResourceRequest_Match_Any:
+		b.EncodeVarint(2<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Any); err != nil {
+			return err
+		}
+	case *TapByResourceRequest_Match_Not:
+		b.EncodeVarint(3<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Not); err != nil {
+			return err
+		}
+	case *TapByResourceRequest_Match_Destinations:
+		b.EncodeVarint(4<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Destinations); err != nil {
+			return err
+		}
+	case *TapByResourceRequest_Match_Http_:
+		b.EncodeVarint(5<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Http); err != nil {
+			return err
+		}
+	case nil:
+	default:
+		return fmt.Errorf("TapByResourceRequest_Match.Match has unexpected type %T", x)
+	}
+	return nil
+}
+
+func _TapByResourceRequest_Match_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
+	m := msg.(*TapByResourceRequest_Match)
+	switch tag {
+	case 1: // match.all
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(TapByResourceRequest_Match_Seq)
+		err := b.DecodeMessage(msg)
+		m.Match = &TapByResourceRequest_Match_All{msg}
+		return true, err
+	case 2: // match.any
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(TapByResourceRequest_Match_Seq)
+		err := b.DecodeMessage(msg)
+		m.Match = &TapByResourceRequest_Match_Any{msg}
+		return true, err
+	case 3: // match.not
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(TapByResourceRequest_Match)
+		err := b.DecodeMessage(msg)
+		m.Match = &TapByResourceRequest_Match_Not{msg}
+		return true, err
+	case 4: // match.destinations
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(ResourceSelection)
+		err := b.DecodeMessage(msg)
+		m.Match = &TapByResourceRequest_Match_Destinations{msg}
+		return true, err
+	case 5: // match.http
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(TapByResourceRequest_Match_Http)
+		err := b.DecodeMessage(msg)
+		m.Match = &TapByResourceRequest_Match_Http_{msg}
+		return true, err
+	default:
+		return false, nil
+	}
+}
+
+func _TapByResourceRequest_Match_OneofSizer(msg proto.Message) (n int) {
+	m := msg.(*TapByResourceRequest_Match)
+	// match
+	switch x := m.Match.(type) {
+	case *TapByResourceRequest_Match_All:
+		s := proto.Size(x.All)
+		n += proto.SizeVarint(1<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case *TapByResourceRequest_Match_Any:
+		s := proto.Size(x.Any)
+		n += proto.SizeVarint(2<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case *TapByResourceRequest_Match_Not:
+		s := proto.Size(x.Not)
+		n += proto.SizeVarint(3<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case *TapByResourceRequest_Match_Destinations:
+		s := proto.Size(x.Destinations)
+		n += proto.SizeVarint(4<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case *TapByResourceRequest_Match_Http_:
+		s := proto.Size(x.Http)
+		n += proto.SizeVarint(5<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case nil:
+	default:
+		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
+	}
+	return n
+}
+
+type TapByResourceRequest_Match_Seq struct {
+	Matches []*TapByResourceRequest_Match `protobuf:"bytes,1,rep,name=matches" json:"matches,omitempty"`
+}
+
+func (m *TapByResourceRequest_Match_Seq) Reset()         { *m = TapByResourceRequest_Match_Seq{} }
+func (m *TapByResourceRequest_Match_Seq) String() string { return proto.CompactTextString(m) }
+func (*TapByResourceRequest_Match_Seq) ProtoMessage()    {}
+func (*TapByResourceRequest_Match_Seq) Descriptor() ([]byte, []int) {
+	return fileDescriptor0, []int{5, 0, 0}
+}
+
+func (m *TapByResourceRequest_Match_Seq) GetMatches() []*TapByResourceRequest_Match {
+	if m != nil {
+		return m.Matches
+	}
+	return nil
+}
+
+type TapByResourceRequest_Match_Http struct {
+	// Types that are valid to be assigned to Match:
+	//	*TapByResourceRequest_Match_Http_Scheme
+	//	*TapByResourceRequest_Match_Http_Method
+	//	*TapByResourceRequest_Match_Http_Authority
+	//	*TapByResourceRequest_Match_Http_Path
+	Match isTapByResourceRequest_Match_Http_Match `protobuf_oneof:"match"`
+}
+
+func (m *TapByResourceRequest_Match_Http) Reset()         { *m = TapByResourceRequest_Match_Http{} }
+func (m *TapByResourceRequest_Match_Http) String() string { return proto.CompactTextString(m) }
+func (*TapByResourceRequest_Match_Http) ProtoMessage()    {}
+func (*TapByResourceRequest_Match_Http) Descriptor() ([]byte, []int) {
+	return fileDescriptor0, []int{5, 0, 1}
+}
+
+type isTapByResourceRequest_Match_Http_Match interface{ isTapByResourceRequest_Match_Http_Match() }
+
+type TapByResourceRequest_Match_Http_Scheme struct {
+	Scheme string `protobuf:"bytes,1,opt,name=scheme,oneof"`
+}
+type TapByResourceRequest_Match_Http_Method struct {
+	Method string `protobuf:"bytes,2,opt,name=method,oneof"`
+}
+type TapByResourceRequest_Match_Http_Authority struct {
+	Authority string `protobuf:"bytes,3,opt,name=authority,oneof"`
+}
+type TapByResourceRequest_Match_Http_Path struct {
+	Path string `protobuf:"bytes,4,opt,name=path,oneof"`
+}
+
+func (*TapByResourceRequest_Match_Http_Scheme) isTapByResourceRequest_Match_Http_Match()    {}
+func (*TapByResourceRequest_Match_Http_Method) isTapByResourceRequest_Match_Http_Match()    {}
+func (*TapByResourceRequest_Match_Http_Authority) isTapByResourceRequest_Match_Http_Match() {}
+func (*TapByResourceRequest_Match_Http_Path) isTapByResourceRequest_Match_Http_Match()      {}
+
+func (m *TapByResourceRequest_Match_Http) GetMatch() isTapByResourceRequest_Match_Http_Match {
+	if m != nil {
+		return m.Match
+	}
+	return nil
+}
+
+func (m *TapByResourceRequest_Match_Http) GetScheme() string {
+	if x, ok := m.GetMatch().(*TapByResourceRequest_Match_Http_Scheme); ok {
+		return x.Scheme
+	}
+	return ""
+}
+
+func (m *TapByResourceRequest_Match_Http) GetMethod() string {
+	if x, ok := m.GetMatch().(*TapByResourceRequest_Match_Http_Method); ok {
+		return x.Method
+	}
+	return ""
+}
+
+func (m *TapByResourceRequest_Match_Http) GetAuthority() string {
+	if x, ok := m.GetMatch().(*TapByResourceRequest_Match_Http_Authority); ok {
+		return x.Authority
+	}
+	return ""
+}
+
+func (m *TapByResourceRequest_Match_Http) GetPath() string {
+	if x, ok := m.GetMatch().(*TapByResourceRequest_Match_Http_Path); ok {
+		return x.Path
+	}
+	return ""
+}
+
+// XXX_OneofFuncs is for the internal use of the proto package.
+func (*TapByResourceRequest_Match_Http) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
+	return _TapByResourceRequest_Match_Http_OneofMarshaler, _TapByResourceRequest_Match_Http_OneofUnmarshaler, _TapByResourceRequest_Match_Http_OneofSizer, []interface{}{
+		(*TapByResourceRequest_Match_Http_Scheme)(nil),
+		(*TapByResourceRequest_Match_Http_Method)(nil),
+		(*TapByResourceRequest_Match_Http_Authority)(nil),
+		(*TapByResourceRequest_Match_Http_Path)(nil),
+	}
+}
+
+func _TapByResourceRequest_Match_Http_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
+	m := msg.(*TapByResourceRequest_Match_Http)
+	// match
+	switch x := m.Match.(type) {
+	case *TapByResourceRequest_Match_Http_Scheme:
+		b.EncodeVarint(1<<3 | proto.WireBytes)
+		b.EncodeStringBytes(x.Scheme)
+	case *TapByResourceRequest_Match_Http_Method:
+		b.EncodeVarint(2<<3 | proto.WireBytes)
+		b.EncodeStringBytes(x.Method)
+	case *TapByResourceRequest_Match_Http_Authority:
+		b.EncodeVarint(3<<3 | proto.WireBytes)
+		b.EncodeStringBytes(x.Authority)
+	case *TapByResourceRequest_Match_Http_Path:
+		b.EncodeVarint(4<<3 | proto.WireBytes)
+		b.EncodeStringBytes(x.Path)
+	case nil:
+	default:
+		return fmt.Errorf("TapByResourceRequest_Match_Http.Match has unexpected type %T", x)
+	}
+	return nil
+}
+
+func _TapByResourceRequest_Match_Http_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
+	m := msg.(*TapByResourceRequest_Match_Http)
+	switch tag {
+	case 1: // match.scheme
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		x, err := b.DecodeStringBytes()
+		m.Match = &TapByResourceRequest_Match_Http_Scheme{x}
+		return true, err
+	case 2: // match.method
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		x, err := b.DecodeStringBytes()
+		m.Match = &TapByResourceRequest_Match_Http_Method{x}
+		return true, err
+	case 3: // match.authority
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		x, err := b.DecodeStringBytes()
+		m.Match = &TapByResourceRequest_Match_Http_Authority{x}
+		return true, err
+	case 4: // match.path
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		x, err := b.DecodeStringBytes()
+		m.Match = &TapByResourceRequest_Match_Http_Path{x}
+		return true, err
+	default:
+		return false, nil
+	}
+}
+
+func _TapByResourceRequest_Match_Http_OneofSizer(msg proto.Message) (n int) {
+	m := msg.(*TapByResourceRequest_Match_Http)
+	// match
+	switch x := m.Match.(type) {
+	case *TapByResourceRequest_Match_Http_Scheme:
+		n += proto.SizeVarint(1<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(len(x.Scheme)))
+		n += len(x.Scheme)
+	case *TapByResourceRequest_Match_Http_Method:
+		n += proto.SizeVarint(2<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(len(x.Method)))
+		n += len(x.Method)
+	case *TapByResourceRequest_Match_Http_Authority:
+		n += proto.SizeVarint(3<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(len(x.Authority)))
+		n += len(x.Authority)
+	case *TapByResourceRequest_Match_Http_Path:
+		n += proto.SizeVarint(4<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(len(x.Path)))
+		n += len(x.Path)
+	case nil:
+	default:
+		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
+	}
+	return n
+}
+
 type ApiError struct {
 	Error string `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
 }
@@ -811,7 +800,7 @@ type ApiError struct {
 func (m *ApiError) Reset()                    { *m = ApiError{} }
 func (m *ApiError) String() string            { return proto.CompactTextString(m) }
 func (*ApiError) ProtoMessage()               {}
-func (*ApiError) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{13} }
+func (*ApiError) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
 
 func (m *ApiError) GetError() string {
 	if m != nil {
@@ -821,15 +810,24 @@ func (m *ApiError) GetError() string {
 }
 
 type Resource struct {
+	// The namespace the resource is in.
+	//
+	// If empty, indicates all namespaces should be considered.
 	Namespace string `protobuf:"bytes,1,opt,name=namespace" json:"namespace,omitempty"`
-	Type      string `protobuf:"bytes,2,opt,name=type" json:"type,omitempty"`
-	Name      string `protobuf:"bytes,3,opt,name=name" json:"name,omitempty"`
+	// The type of Kubernetes resource.
+	//
+	// E.g. pod, deployment, service, ...
+	//
+	// If `all` refers, to all resource types.
+	Type string `protobuf:"bytes,2,opt,name=type" json:"type,omitempty"`
+	// An optional Kubernetes resource name.
+	Name string `protobuf:"bytes,3,opt,name=name" json:"name,omitempty"`
 }
 
 func (m *Resource) Reset()                    { *m = Resource{} }
 func (m *Resource) String() string            { return proto.CompactTextString(m) }
 func (*Resource) ProtoMessage()               {}
-func (*Resource) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{14} }
+func (*Resource) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
 
 func (m *Resource) GetNamespace() string {
 	if m != nil {
@@ -853,14 +851,20 @@ func (m *Resource) GetName() string {
 }
 
 type ResourceSelection struct {
-	Resource      *Resource `protobuf:"bytes,1,opt,name=resource" json:"resource,omitempty"`
-	LabelSelector string    `protobuf:"bytes,2,opt,name=label_selector,json=labelSelector" json:"label_selector,omitempty"`
+	// Identifies a Kubernetes resource.
+	Resource *Resource `protobuf:"bytes,1,opt,name=resource" json:"resource,omitempty"`
+	// A string-formatted Kubernetes label selector as passed to `kubectl get
+	// --selector`.
+	//
+	// XXX in the future this may be superceded by a data structure that more
+	// richly describes a parsed label selector.
+	LabelSelector string `protobuf:"bytes,2,opt,name=label_selector,json=labelSelector" json:"label_selector,omitempty"`
 }
 
 func (m *ResourceSelection) Reset()                    { *m = ResourceSelection{} }
 func (m *ResourceSelection) String() string            { return proto.CompactTextString(m) }
 func (*ResourceSelection) ProtoMessage()               {}
-func (*ResourceSelection) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{15} }
+func (*ResourceSelection) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
 
 func (m *ResourceSelection) GetResource() *Resource {
 	if m != nil {
@@ -884,7 +888,7 @@ type ResourceError struct {
 func (m *ResourceError) Reset()                    { *m = ResourceError{} }
 func (m *ResourceError) String() string            { return proto.CompactTextString(m) }
 func (*ResourceError) ProtoMessage()               {}
-func (*ResourceError) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{16} }
+func (*ResourceError) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
 
 func (m *ResourceError) GetResource() *Resource {
 	if m != nil {
@@ -902,34 +906,34 @@ func (m *ResourceError) GetError() string {
 
 type StatSummaryRequest struct {
 	Selector   *ResourceSelection `protobuf:"bytes,1,opt,name=selector" json:"selector,omitempty"`
-	TimeWindow TimeWindow         `protobuf:"varint,2,opt,name=time_window,json=timeWindow,enum=conduit.public.TimeWindow" json:"time_window,omitempty"`
+	TimeWindow string             `protobuf:"bytes,2,opt,name=time_window,json=timeWindow" json:"time_window,omitempty"`
 	// Types that are valid to be assigned to Outbound:
 	//	*StatSummaryRequest_None
-	//	*StatSummaryRequest_OutToResource
-	//	*StatSummaryRequest_OutFromResource
+	//	*StatSummaryRequest_ToResource
+	//	*StatSummaryRequest_FromResource
 	Outbound isStatSummaryRequest_Outbound `protobuf_oneof:"outbound"`
 }
 
 func (m *StatSummaryRequest) Reset()                    { *m = StatSummaryRequest{} }
 func (m *StatSummaryRequest) String() string            { return proto.CompactTextString(m) }
 func (*StatSummaryRequest) ProtoMessage()               {}
-func (*StatSummaryRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{17} }
+func (*StatSummaryRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{10} }
 
 type isStatSummaryRequest_Outbound interface{ isStatSummaryRequest_Outbound() }
 
 type StatSummaryRequest_None struct {
 	None *Empty `protobuf:"bytes,3,opt,name=none,oneof"`
 }
-type StatSummaryRequest_OutToResource struct {
-	OutToResource *Resource `protobuf:"bytes,4,opt,name=out_to_resource,json=outToResource,oneof"`
+type StatSummaryRequest_ToResource struct {
+	ToResource *Resource `protobuf:"bytes,4,opt,name=to_resource,json=toResource,oneof"`
 }
-type StatSummaryRequest_OutFromResource struct {
-	OutFromResource *Resource `protobuf:"bytes,5,opt,name=out_from_resource,json=outFromResource,oneof"`
+type StatSummaryRequest_FromResource struct {
+	FromResource *Resource `protobuf:"bytes,5,opt,name=from_resource,json=fromResource,oneof"`
 }
 
-func (*StatSummaryRequest_None) isStatSummaryRequest_Outbound()            {}
-func (*StatSummaryRequest_OutToResource) isStatSummaryRequest_Outbound()   {}
-func (*StatSummaryRequest_OutFromResource) isStatSummaryRequest_Outbound() {}
+func (*StatSummaryRequest_None) isStatSummaryRequest_Outbound()         {}
+func (*StatSummaryRequest_ToResource) isStatSummaryRequest_Outbound()   {}
+func (*StatSummaryRequest_FromResource) isStatSummaryRequest_Outbound() {}
 
 func (m *StatSummaryRequest) GetOutbound() isStatSummaryRequest_Outbound {
 	if m != nil {
@@ -945,11 +949,11 @@ func (m *StatSummaryRequest) GetSelector() *ResourceSelection {
 	return nil
 }
 
-func (m *StatSummaryRequest) GetTimeWindow() TimeWindow {
+func (m *StatSummaryRequest) GetTimeWindow() string {
 	if m != nil {
 		return m.TimeWindow
 	}
-	return TimeWindow_TEN_SEC
+	return ""
 }
 
 func (m *StatSummaryRequest) GetNone() *Empty {
@@ -959,16 +963,16 @@ func (m *StatSummaryRequest) GetNone() *Empty {
 	return nil
 }
 
-func (m *StatSummaryRequest) GetOutToResource() *Resource {
-	if x, ok := m.GetOutbound().(*StatSummaryRequest_OutToResource); ok {
-		return x.OutToResource
+func (m *StatSummaryRequest) GetToResource() *Resource {
+	if x, ok := m.GetOutbound().(*StatSummaryRequest_ToResource); ok {
+		return x.ToResource
 	}
 	return nil
 }
 
-func (m *StatSummaryRequest) GetOutFromResource() *Resource {
-	if x, ok := m.GetOutbound().(*StatSummaryRequest_OutFromResource); ok {
-		return x.OutFromResource
+func (m *StatSummaryRequest) GetFromResource() *Resource {
+	if x, ok := m.GetOutbound().(*StatSummaryRequest_FromResource); ok {
+		return x.FromResource
 	}
 	return nil
 }
@@ -977,8 +981,8 @@ func (m *StatSummaryRequest) GetOutFromResource() *Resource {
 func (*StatSummaryRequest) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
 	return _StatSummaryRequest_OneofMarshaler, _StatSummaryRequest_OneofUnmarshaler, _StatSummaryRequest_OneofSizer, []interface{}{
 		(*StatSummaryRequest_None)(nil),
-		(*StatSummaryRequest_OutToResource)(nil),
-		(*StatSummaryRequest_OutFromResource)(nil),
+		(*StatSummaryRequest_ToResource)(nil),
+		(*StatSummaryRequest_FromResource)(nil),
 	}
 }
 
@@ -991,14 +995,14 @@ func _StatSummaryRequest_OneofMarshaler(msg proto.Message, b *proto.Buffer) erro
 		if err := b.EncodeMessage(x.None); err != nil {
 			return err
 		}
-	case *StatSummaryRequest_OutToResource:
+	case *StatSummaryRequest_ToResource:
 		b.EncodeVarint(4<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.OutToResource); err != nil {
+		if err := b.EncodeMessage(x.ToResource); err != nil {
 			return err
 		}
-	case *StatSummaryRequest_OutFromResource:
+	case *StatSummaryRequest_FromResource:
 		b.EncodeVarint(5<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.OutFromResource); err != nil {
+		if err := b.EncodeMessage(x.FromResource); err != nil {
 			return err
 		}
 	case nil:
@@ -1019,21 +1023,21 @@ func _StatSummaryRequest_OneofUnmarshaler(msg proto.Message, tag, wire int, b *p
 		err := b.DecodeMessage(msg)
 		m.Outbound = &StatSummaryRequest_None{msg}
 		return true, err
-	case 4: // outbound.out_to_resource
+	case 4: // outbound.to_resource
 		if wire != proto.WireBytes {
 			return true, proto.ErrInternalBadWireType
 		}
 		msg := new(Resource)
 		err := b.DecodeMessage(msg)
-		m.Outbound = &StatSummaryRequest_OutToResource{msg}
+		m.Outbound = &StatSummaryRequest_ToResource{msg}
 		return true, err
-	case 5: // outbound.out_from_resource
+	case 5: // outbound.from_resource
 		if wire != proto.WireBytes {
 			return true, proto.ErrInternalBadWireType
 		}
 		msg := new(Resource)
 		err := b.DecodeMessage(msg)
-		m.Outbound = &StatSummaryRequest_OutFromResource{msg}
+		m.Outbound = &StatSummaryRequest_FromResource{msg}
 		return true, err
 	default:
 		return false, nil
@@ -1049,13 +1053,13 @@ func _StatSummaryRequest_OneofSizer(msg proto.Message) (n int) {
 		n += proto.SizeVarint(3<<3 | proto.WireBytes)
 		n += proto.SizeVarint(uint64(s))
 		n += s
-	case *StatSummaryRequest_OutToResource:
-		s := proto.Size(x.OutToResource)
+	case *StatSummaryRequest_ToResource:
+		s := proto.Size(x.ToResource)
 		n += proto.SizeVarint(4<<3 | proto.WireBytes)
 		n += proto.SizeVarint(uint64(s))
 		n += s
-	case *StatSummaryRequest_OutFromResource:
-		s := proto.Size(x.OutFromResource)
+	case *StatSummaryRequest_FromResource:
+		s := proto.Size(x.FromResource)
 		n += proto.SizeVarint(5<<3 | proto.WireBytes)
 		n += proto.SizeVarint(uint64(s))
 		n += s
@@ -1076,7 +1080,7 @@ type StatSummaryResponse struct {
 func (m *StatSummaryResponse) Reset()                    { *m = StatSummaryResponse{} }
 func (m *StatSummaryResponse) String() string            { return proto.CompactTextString(m) }
 func (*StatSummaryResponse) ProtoMessage()               {}
-func (*StatSummaryResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{18} }
+func (*StatSummaryResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{11} }
 
 type isStatSummaryResponse_Response interface{ isStatSummaryResponse_Response() }
 
@@ -1192,7 +1196,7 @@ type StatSummaryResponse_Ok struct {
 func (m *StatSummaryResponse_Ok) Reset()                    { *m = StatSummaryResponse_Ok{} }
 func (m *StatSummaryResponse_Ok) String() string            { return proto.CompactTextString(m) }
 func (*StatSummaryResponse_Ok) ProtoMessage()               {}
-func (*StatSummaryResponse_Ok) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{18, 0} }
+func (*StatSummaryResponse_Ok) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{11, 0} }
 
 func (m *StatSummaryResponse_Ok) GetStatTables() []*StatTable {
 	if m != nil {
@@ -1212,7 +1216,7 @@ type BasicStats struct {
 func (m *BasicStats) Reset()                    { *m = BasicStats{} }
 func (m *BasicStats) String() string            { return proto.CompactTextString(m) }
 func (*BasicStats) ProtoMessage()               {}
-func (*BasicStats) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{19} }
+func (*BasicStats) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{12} }
 
 func (m *BasicStats) GetSuccessCount() uint64 {
 	if m != nil {
@@ -1258,7 +1262,7 @@ type StatTable struct {
 func (m *StatTable) Reset()                    { *m = StatTable{} }
 func (m *StatTable) String() string            { return proto.CompactTextString(m) }
 func (*StatTable) ProtoMessage()               {}
-func (*StatTable) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{20} }
+func (*StatTable) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{13} }
 
 type isStatTable_Table interface{ isStatTable_Table() }
 
@@ -1344,7 +1348,7 @@ type StatTable_PodGroup struct {
 func (m *StatTable_PodGroup) Reset()                    { *m = StatTable_PodGroup{} }
 func (m *StatTable_PodGroup) String() string            { return proto.CompactTextString(m) }
 func (*StatTable_PodGroup) ProtoMessage()               {}
-func (*StatTable_PodGroup) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{20, 0} }
+func (*StatTable_PodGroup) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{13, 0} }
 
 func (m *StatTable_PodGroup) GetRows() []*StatTable_PodGroup_Row {
 	if m != nil {
@@ -1355,7 +1359,7 @@ func (m *StatTable_PodGroup) GetRows() []*StatTable_PodGroup_Row {
 
 type StatTable_PodGroup_Row struct {
 	Resource       *Resource   `protobuf:"bytes,1,opt,name=resource" json:"resource,omitempty"`
-	TimeWindow     TimeWindow  `protobuf:"varint,2,opt,name=time_window,json=timeWindow,enum=conduit.public.TimeWindow" json:"time_window,omitempty"`
+	TimeWindow     string      `protobuf:"bytes,2,opt,name=time_window,json=timeWindow" json:"time_window,omitempty"`
 	MeshedPodCount uint64      `protobuf:"varint,3,opt,name=meshed_pod_count,json=meshedPodCount" json:"meshed_pod_count,omitempty"`
 	TotalPodCount  uint64      `protobuf:"varint,4,opt,name=total_pod_count,json=totalPodCount" json:"total_pod_count,omitempty"`
 	Stats          *BasicStats `protobuf:"bytes,5,opt,name=stats" json:"stats,omitempty"`
@@ -1364,7 +1368,7 @@ type StatTable_PodGroup_Row struct {
 func (m *StatTable_PodGroup_Row) Reset()                    { *m = StatTable_PodGroup_Row{} }
 func (m *StatTable_PodGroup_Row) String() string            { return proto.CompactTextString(m) }
 func (*StatTable_PodGroup_Row) ProtoMessage()               {}
-func (*StatTable_PodGroup_Row) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{20, 0, 0} }
+func (*StatTable_PodGroup_Row) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{13, 0, 0} }
 
 func (m *StatTable_PodGroup_Row) GetResource() *Resource {
 	if m != nil {
@@ -1373,11 +1377,11 @@ func (m *StatTable_PodGroup_Row) GetResource() *Resource {
 	return nil
 }
 
-func (m *StatTable_PodGroup_Row) GetTimeWindow() TimeWindow {
+func (m *StatTable_PodGroup_Row) GetTimeWindow() string {
 	if m != nil {
 		return m.TimeWindow
 	}
-	return TimeWindow_TEN_SEC
+	return ""
 }
 
 func (m *StatTable_PodGroup_Row) GetMeshedPodCount() uint64 {
@@ -1402,19 +1406,15 @@ func (m *StatTable_PodGroup_Row) GetStats() *BasicStats {
 }
 
 func init() {
-	proto.RegisterType((*HistogramValue)(nil), "conduit.public.HistogramValue")
-	proto.RegisterType((*Histogram)(nil), "conduit.public.Histogram")
-	proto.RegisterType((*MetricValue)(nil), "conduit.public.MetricValue")
-	proto.RegisterType((*MetricDatapoint)(nil), "conduit.public.MetricDatapoint")
-	proto.RegisterType((*MetricSeries)(nil), "conduit.public.MetricSeries")
-	proto.RegisterType((*MetricMetadata)(nil), "conduit.public.MetricMetadata")
-	proto.RegisterType((*MetricResponse)(nil), "conduit.public.MetricResponse")
-	proto.RegisterType((*MetricRequest)(nil), "conduit.public.MetricRequest")
 	proto.RegisterType((*Empty)(nil), "conduit.public.Empty")
 	proto.RegisterType((*VersionInfo)(nil), "conduit.public.VersionInfo")
 	proto.RegisterType((*ListPodsResponse)(nil), "conduit.public.ListPodsResponse")
 	proto.RegisterType((*Pod)(nil), "conduit.public.Pod")
 	proto.RegisterType((*TapRequest)(nil), "conduit.public.TapRequest")
+	proto.RegisterType((*TapByResourceRequest)(nil), "conduit.public.TapByResourceRequest")
+	proto.RegisterType((*TapByResourceRequest_Match)(nil), "conduit.public.TapByResourceRequest.Match")
+	proto.RegisterType((*TapByResourceRequest_Match_Seq)(nil), "conduit.public.TapByResourceRequest.Match.Seq")
+	proto.RegisterType((*TapByResourceRequest_Match_Http)(nil), "conduit.public.TapByResourceRequest.Match.Http")
 	proto.RegisterType((*ApiError)(nil), "conduit.public.ApiError")
 	proto.RegisterType((*Resource)(nil), "conduit.public.Resource")
 	proto.RegisterType((*ResourceSelection)(nil), "conduit.public.ResourceSelection")
@@ -1426,10 +1426,6 @@ func init() {
 	proto.RegisterType((*StatTable)(nil), "conduit.public.StatTable")
 	proto.RegisterType((*StatTable_PodGroup)(nil), "conduit.public.StatTable.PodGroup")
 	proto.RegisterType((*StatTable_PodGroup_Row)(nil), "conduit.public.StatTable.PodGroup.Row")
-	proto.RegisterEnum("conduit.public.MetricName", MetricName_name, MetricName_value)
-	proto.RegisterEnum("conduit.public.TimeWindow", TimeWindow_name, TimeWindow_value)
-	proto.RegisterEnum("conduit.public.AggregationType", AggregationType_name, AggregationType_value)
-	proto.RegisterEnum("conduit.public.HistogramLabel", HistogramLabel_name, HistogramLabel_value)
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -1443,12 +1439,14 @@ const _ = grpc.SupportPackageIsVersion4
 // Client API for Api service
 
 type ApiClient interface {
-	Stat(ctx context.Context, in *MetricRequest, opts ...grpc.CallOption) (*MetricResponse, error)
 	StatSummary(ctx context.Context, in *StatSummaryRequest, opts ...grpc.CallOption) (*StatSummaryResponse, error)
-	Version(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*VersionInfo, error)
 	ListPods(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*ListPodsResponse, error)
-	SelfCheck(ctx context.Context, in *conduit_common_healthcheck.SelfCheckRequest, opts ...grpc.CallOption) (*conduit_common_healthcheck.SelfCheckResponse, error)
+	// Superceded by `TapByResource`.
 	Tap(ctx context.Context, in *TapRequest, opts ...grpc.CallOption) (Api_TapClient, error)
+	// Executes tapping over Kubernetes resources.
+	TapByResource(ctx context.Context, in *TapByResourceRequest, opts ...grpc.CallOption) (Api_TapByResourceClient, error)
+	Version(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*VersionInfo, error)
+	SelfCheck(ctx context.Context, in *conduit_common_healthcheck.SelfCheckRequest, opts ...grpc.CallOption) (*conduit_common_healthcheck.SelfCheckResponse, error)
 }
 
 type apiClient struct {
@@ -1457,15 +1455,6 @@ type apiClient struct {
 
 func NewApiClient(cc *grpc.ClientConn) ApiClient {
 	return &apiClient{cc}
-}
-
-func (c *apiClient) Stat(ctx context.Context, in *MetricRequest, opts ...grpc.CallOption) (*MetricResponse, error) {
-	out := new(MetricResponse)
-	err := grpc.Invoke(ctx, "/conduit.public.Api/Stat", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *apiClient) StatSummary(ctx context.Context, in *StatSummaryRequest, opts ...grpc.CallOption) (*StatSummaryResponse, error) {
@@ -1477,27 +1466,9 @@ func (c *apiClient) StatSummary(ctx context.Context, in *StatSummaryRequest, opt
 	return out, nil
 }
 
-func (c *apiClient) Version(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*VersionInfo, error) {
-	out := new(VersionInfo)
-	err := grpc.Invoke(ctx, "/conduit.public.Api/Version", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *apiClient) ListPods(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*ListPodsResponse, error) {
 	out := new(ListPodsResponse)
 	err := grpc.Invoke(ctx, "/conduit.public.Api/ListPods", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *apiClient) SelfCheck(ctx context.Context, in *conduit_common_healthcheck.SelfCheckRequest, opts ...grpc.CallOption) (*conduit_common_healthcheck.SelfCheckResponse, error) {
-	out := new(conduit_common_healthcheck.SelfCheckResponse)
-	err := grpc.Invoke(ctx, "/conduit.public.Api/SelfCheck", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1536,37 +1507,71 @@ func (x *apiTapClient) Recv() (*conduit_common.TapEvent, error) {
 	return m, nil
 }
 
+func (c *apiClient) TapByResource(ctx context.Context, in *TapByResourceRequest, opts ...grpc.CallOption) (Api_TapByResourceClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_Api_serviceDesc.Streams[1], c.cc, "/conduit.public.Api/TapByResource", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &apiTapByResourceClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type Api_TapByResourceClient interface {
+	Recv() (*conduit_common.TapEvent, error)
+	grpc.ClientStream
+}
+
+type apiTapByResourceClient struct {
+	grpc.ClientStream
+}
+
+func (x *apiTapByResourceClient) Recv() (*conduit_common.TapEvent, error) {
+	m := new(conduit_common.TapEvent)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *apiClient) Version(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*VersionInfo, error) {
+	out := new(VersionInfo)
+	err := grpc.Invoke(ctx, "/conduit.public.Api/Version", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *apiClient) SelfCheck(ctx context.Context, in *conduit_common_healthcheck.SelfCheckRequest, opts ...grpc.CallOption) (*conduit_common_healthcheck.SelfCheckResponse, error) {
+	out := new(conduit_common_healthcheck.SelfCheckResponse)
+	err := grpc.Invoke(ctx, "/conduit.public.Api/SelfCheck", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // Server API for Api service
 
 type ApiServer interface {
-	Stat(context.Context, *MetricRequest) (*MetricResponse, error)
 	StatSummary(context.Context, *StatSummaryRequest) (*StatSummaryResponse, error)
-	Version(context.Context, *Empty) (*VersionInfo, error)
 	ListPods(context.Context, *Empty) (*ListPodsResponse, error)
-	SelfCheck(context.Context, *conduit_common_healthcheck.SelfCheckRequest) (*conduit_common_healthcheck.SelfCheckResponse, error)
+	// Superceded by `TapByResource`.
 	Tap(*TapRequest, Api_TapServer) error
+	// Executes tapping over Kubernetes resources.
+	TapByResource(*TapByResourceRequest, Api_TapByResourceServer) error
+	Version(context.Context, *Empty) (*VersionInfo, error)
+	SelfCheck(context.Context, *conduit_common_healthcheck.SelfCheckRequest) (*conduit_common_healthcheck.SelfCheckResponse, error)
 }
 
 func RegisterApiServer(s *grpc.Server, srv ApiServer) {
 	s.RegisterService(&_Api_serviceDesc, srv)
-}
-
-func _Api_Stat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MetricRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ApiServer).Stat(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/conduit.public.Api/Stat",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ApiServer).Stat(ctx, req.(*MetricRequest))
-	}
-	return interceptor(ctx, in, info, handler)
 }
 
 func _Api_StatSummary_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -1587,24 +1592,6 @@ func _Api_StatSummary_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Api_Version_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ApiServer).Version(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/conduit.public.Api/Version",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ApiServer).Version(ctx, req.(*Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _Api_ListPods_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Empty)
 	if err := dec(in); err != nil {
@@ -1619,24 +1606,6 @@ func _Api_ListPods_Handler(srv interface{}, ctx context.Context, dec func(interf
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ApiServer).ListPods(ctx, req.(*Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Api_SelfCheck_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(conduit_common_healthcheck.SelfCheckRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ApiServer).SelfCheck(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/conduit.public.Api/SelfCheck",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ApiServer).SelfCheck(ctx, req.(*conduit_common_healthcheck.SelfCheckRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1662,25 +1631,78 @@ func (x *apiTapServer) Send(m *conduit_common.TapEvent) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _Api_TapByResource_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(TapByResourceRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(ApiServer).TapByResource(m, &apiTapByResourceServer{stream})
+}
+
+type Api_TapByResourceServer interface {
+	Send(*conduit_common.TapEvent) error
+	grpc.ServerStream
+}
+
+type apiTapByResourceServer struct {
+	grpc.ServerStream
+}
+
+func (x *apiTapByResourceServer) Send(m *conduit_common.TapEvent) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _Api_Version_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ApiServer).Version(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/conduit.public.Api/Version",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ApiServer).Version(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Api_SelfCheck_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(conduit_common_healthcheck.SelfCheckRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ApiServer).SelfCheck(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/conduit.public.Api/SelfCheck",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ApiServer).SelfCheck(ctx, req.(*conduit_common_healthcheck.SelfCheckRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _Api_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "conduit.public.Api",
 	HandlerType: (*ApiServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Stat",
-			Handler:    _Api_Stat_Handler,
-		},
-		{
 			MethodName: "StatSummary",
 			Handler:    _Api_StatSummary_Handler,
 		},
 		{
-			MethodName: "Version",
-			Handler:    _Api_Version_Handler,
-		},
-		{
 			MethodName: "ListPods",
 			Handler:    _Api_ListPods_Handler,
+		},
+		{
+			MethodName: "Version",
+			Handler:    _Api_Version_Handler,
 		},
 		{
 			MethodName: "SelfCheck",
@@ -1693,6 +1715,11 @@ var _Api_serviceDesc = grpc.ServiceDesc{
 			Handler:       _Api_Tap_Handler,
 			ServerStreams: true,
 		},
+		{
+			StreamName:    "TapByResource",
+			Handler:       _Api_TapByResource_Handler,
+			ServerStreams: true,
+		},
 	},
 	Metadata: "public/api.proto",
 }
@@ -1700,112 +1727,91 @@ var _Api_serviceDesc = grpc.ServiceDesc{
 func init() { proto.RegisterFile("public/api.proto", fileDescriptor0) }
 
 var fileDescriptor0 = []byte{
-	// 1697 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x57, 0xcd, 0x73, 0x23, 0x47,
-	0x15, 0xd7, 0x8c, 0x64, 0x4b, 0x7a, 0xb2, 0x6c, 0x6d, 0x6f, 0x48, 0x29, 0x22, 0x59, 0x9c, 0x49,
-	0x58, 0x5c, 0x0b, 0x68, 0x8d, 0x59, 0xa7, 0xf0, 0xa6, 0xb6, 0x82, 0x2c, 0x2b, 0x2b, 0x57, 0xf9,
-	0x43, 0xb4, 0xb4, 0x21, 0x29, 0xa8, 0x52, 0xb5, 0x67, 0xda, 0xd2, 0xe0, 0x99, 0xe9, 0xc9, 0x74,
-	0xcf, 0x1a, 0x71, 0xe7, 0xca, 0x99, 0x1b, 0x37, 0xfe, 0x09, 0xce, 0x54, 0xf1, 0x07, 0xc0, 0x91,
-	0xff, 0x84, 0x03, 0xd5, 0x1f, 0x33, 0xfa, 0xb0, 0xbc, 0xd9, 0xda, 0x9c, 0xd4, 0xfd, 0xeb, 0xdf,
-	0x7b, 0xfd, 0xbe, 0xfa, 0xe9, 0x0d, 0x34, 0xe2, 0xf4, 0x2a, 0xf0, 0xdd, 0xa7, 0x24, 0xf6, 0xdb,
-	0x71, 0xc2, 0x04, 0x43, 0xdb, 0x2e, 0x8b, 0xbc, 0xd4, 0x17, 0x6d, 0x7d, 0xd2, 0x7a, 0x34, 0x61,
-	0x6c, 0x12, 0xd0, 0xa7, 0xea, 0xf4, 0x2a, 0xbd, 0x7e, 0xea, 0xa5, 0x09, 0x11, 0x3e, 0x8b, 0x34,
-	0xbf, 0xf5, 0xd0, 0x65, 0x61, 0xc8, 0xa2, 0xa7, 0xfa, 0xc7, 0x80, 0x9f, 0x1a, 0x70, 0x4a, 0x49,
-	0x20, 0xa6, 0xee, 0x94, 0xba, 0x37, 0x8b, 0x6b, 0xcd, 0x72, 0x7e, 0x0f, 0xdb, 0x7d, 0x9f, 0x0b,
-	0x36, 0x49, 0x48, 0xf8, 0x15, 0x09, 0x52, 0x8a, 0x9e, 0xc1, 0x46, 0x40, 0xae, 0x68, 0xd0, 0xb4,
-	0x76, 0xad, 0xbd, 0xed, 0x83, 0x47, 0xed, 0x65, 0x63, 0xda, 0x39, 0xfd, 0x4c, 0xb2, 0xb0, 0x26,
-	0xa3, 0xf7, 0x60, 0xe3, 0xb5, 0x14, 0x6f, 0xda, 0xbb, 0xd6, 0x5e, 0x11, 0xeb, 0x8d, 0xd3, 0x85,
-	0x6a, 0x4e, 0x47, 0x9f, 0xc1, 0xa6, 0x42, 0x79, 0xd3, 0xda, 0x2d, 0xee, 0xd5, 0xde, 0xa0, 0x59,
-	0x19, 0x82, 0x0d, 0xdb, 0xf9, 0xb3, 0x05, 0xb5, 0x73, 0x2a, 0x12, 0xdf, 0xd5, 0x06, 0xb6, 0xa0,
-	0xec, 0xb2, 0x34, 0x12, 0x34, 0x51, 0x26, 0x16, 0xfb, 0x05, 0x9c, 0x01, 0xe8, 0x7d, 0xd8, 0x98,
-	0x90, 0x74, 0xa2, 0xcd, 0xb0, 0xfa, 0x05, 0xac, 0xb7, 0xe8, 0x08, 0xaa, 0xd3, 0x4c, 0x7b, 0xb3,
-	0xb8, 0x6b, 0xed, 0xd5, 0x0e, 0x3e, 0xb8, 0xf7, 0xfa, 0x7e, 0x01, 0xcf, 0xd9, 0xc7, 0x65, 0xe3,
-	0x99, 0x33, 0x81, 0x1d, 0x6d, 0xc6, 0x09, 0x11, 0x24, 0x66, 0x7e, 0x24, 0xd0, 0x2f, 0x32, 0xaf,
-	0x2d, 0xa5, 0xf2, 0x87, 0xab, 0x2a, 0x17, 0xcc, 0x36, 0x21, 0x41, 0x1f, 0xc3, 0x96, 0xf0, 0x43,
-	0xca, 0x05, 0x09, 0xe3, 0x71, 0xc8, 0x4d, 0xbc, 0x6a, 0x39, 0x76, 0xce, 0x9d, 0x7f, 0x58, 0xb0,
-	0xa5, 0x25, 0x87, 0x34, 0xf1, 0x29, 0x47, 0x6d, 0x28, 0x45, 0x24, 0xa4, 0x26, 0x23, 0xad, 0xf5,
-	0xb7, 0x5c, 0x90, 0x90, 0x62, 0xc5, 0x43, 0xcf, 0xa1, 0x12, 0x52, 0x41, 0x3c, 0x22, 0x88, 0xd2,
-	0xbf, 0x26, 0xd6, 0x5a, 0xe6, 0xdc, 0xb0, 0x70, 0xce, 0x47, 0x5f, 0x00, 0x78, 0x99, 0x7f, 0xbc,
-	0x59, 0x54, 0x99, 0xfa, 0xd1, 0x7a, 0xe9, 0x3c, 0x0e, 0x78, 0x41, 0xc4, 0x79, 0x0d, 0xdb, 0xcb,
-	0xca, 0x91, 0x03, 0x5b, 0x82, 0x24, 0x13, 0x2a, 0x4e, 0x68, 0x1c, 0xb0, 0x99, 0x72, 0xa3, 0x8a,
-	0x97, 0x30, 0xc9, 0xe1, 0x2c, 0x4d, 0x5c, 0x6a, 0x38, 0xb6, 0xe6, 0x2c, 0x62, 0xe8, 0x43, 0xa8,
-	0xba, 0x2c, 0x8c, 0x59, 0x44, 0x23, 0xa1, 0x92, 0x58, 0xc5, 0x73, 0xc0, 0xe9, 0x67, 0xf7, 0x62,
-	0xca, 0x63, 0x16, 0x71, 0x8a, 0x3e, 0x83, 0x72, 0xa8, 0x90, 0xac, 0xe2, 0x3e, 0x5c, 0xef, 0x87,
-	0x8e, 0x32, 0xce, 0xc8, 0xce, 0x5f, 0x6c, 0xa8, 0x67, 0xaa, 0xbe, 0x4d, 0x29, 0x17, 0xe8, 0xd9,
-	0xb2, 0xa6, 0x37, 0xe7, 0x20, 0xa3, 0xa2, 0x03, 0xd8, 0xbc, 0xf5, 0x23, 0x8f, 0xdd, 0x2a, 0x6f,
-	0xd6, 0x08, 0x8d, 0xfc, 0x90, 0xfe, 0x56, 0x31, 0xb0, 0x61, 0xa2, 0x23, 0x28, 0x4f, 0x12, 0x96,
-	0xc6, 0xc7, 0x33, 0xe5, 0xe1, 0xf6, 0xdd, 0xd8, 0x77, 0x26, 0x93, 0x84, 0x4e, 0xd4, 0xf3, 0x1f,
-	0xcd, 0x62, 0x8a, 0x33, 0xbe, 0xcc, 0xfa, 0xb5, 0x1f, 0x08, 0x9a, 0x1c, 0xcf, 0x9a, 0xa5, 0xb7,
-	0xcb, 0x7a, 0xc6, 0x97, 0xa1, 0xe5, 0x69, 0x18, 0x92, 0xc4, 0xff, 0x13, 0x6d, 0x6e, 0xec, 0x5a,
-	0x7b, 0x15, 0x3c, 0x07, 0x9c, 0x32, 0x6c, 0xf4, 0xc2, 0x58, 0xcc, 0x9c, 0x6f, 0xa1, 0xf6, 0x15,
-	0x4d, 0xb8, 0xcf, 0xa2, 0xd3, 0xe8, 0x9a, 0x49, 0xa9, 0x09, 0x33, 0x80, 0xc9, 0xea, 0x1c, 0x90,
-	0xa7, 0x57, 0xa9, 0x1f, 0x78, 0x27, 0x44, 0x50, 0x93, 0xcf, 0x39, 0x80, 0x1e, 0xc3, 0x76, 0x42,
-	0x03, 0x4a, 0x38, 0xcd, 0x14, 0xe8, 0x8c, 0xae, 0xa0, 0xce, 0xe7, 0xd0, 0x38, 0xf3, 0xb9, 0x18,
-	0x30, 0x8f, 0xe7, 0x89, 0xfd, 0x09, 0x94, 0x62, 0xe6, 0x65, 0x59, 0x7d, 0xb8, 0xea, 0xe5, 0x80,
-	0x79, 0x58, 0x11, 0x9c, 0xbf, 0xda, 0x50, 0x1c, 0x30, 0x0f, 0xa1, 0x85, 0x07, 0x54, 0x35, 0x8f,
-	0xe4, 0x3d, 0xd8, 0x88, 0x99, 0x77, 0x3a, 0x30, 0xa6, 0xe9, 0x0d, 0x7a, 0x04, 0xe0, 0xa9, 0x6a,
-	0x0b, 0xe7, 0x45, 0xb6, 0x80, 0xa0, 0xf7, 0x61, 0x93, 0x0b, 0x22, 0x52, 0xae, 0x42, 0x5c, 0xc5,
-	0x66, 0x27, 0xb5, 0x11, 0xcf, 0xa3, 0x9e, 0x09, 0x9e, 0xde, 0xa0, 0x2e, 0xec, 0x70, 0x3f, 0x72,
-	0xe9, 0x19, 0xe1, 0x02, 0xd3, 0x98, 0x25, 0xa2, 0xb9, 0x69, 0x9a, 0x8f, 0x6e, 0xe9, 0xed, 0xac,
-	0xa5, 0xb7, 0x4f, 0x4c, 0x4b, 0xc7, 0xab, 0x12, 0x68, 0x1f, 0x1e, 0xba, 0x2c, 0x12, 0x09, 0x0b,
-	0x02, 0x9a, 0xc8, 0x0a, 0xe3, 0x31, 0x71, 0x69, 0xb3, 0xac, 0xee, 0x5f, 0x77, 0x24, 0x1f, 0x93,
-	0x81, 0x07, 0x01, 0x89, 0x68, 0xb3, 0xa2, 0x6c, 0x5a, 0xc2, 0x9c, 0xbf, 0xdb, 0x00, 0x23, 0x12,
-	0x67, 0x15, 0x8e, 0xa0, 0x18, 0x33, 0x4f, 0x07, 0xa8, 0x5f, 0xc0, 0x72, 0x83, 0x76, 0x97, 0x62,
-	0x61, 0x9b, 0xa3, 0x95, 0x68, 0x84, 0xe4, 0x8f, 0x38, 0xe6, 0x2a, 0x52, 0x36, 0x36, 0x3b, 0x89,
-	0x0b, 0x36, 0x90, 0xee, 0xca, 0x28, 0xd5, 0xb1, 0xd9, 0xc9, 0x3c, 0x08, 0x76, 0x3a, 0x50, 0x41,
-	0xaa, 0x62, 0xb5, 0x46, 0x2d, 0xa8, 0x5c, 0x27, 0x2c, 0x1c, 0x64, 0xc1, 0xa9, 0xe3, 0x7c, 0x2f,
-	0xf5, 0xc8, 0xf5, 0xe9, 0xc0, 0x78, 0x6b, 0x76, 0x2a, 0x0b, 0xee, 0x94, 0x86, 0xda, 0x35, 0x99,
-	0x05, 0xb5, 0x53, 0xf6, 0x50, 0x31, 0x65, 0x5e, 0xb3, 0xaa, 0x71, 0xbd, 0x93, 0xa5, 0x48, 0x52,
-	0x31, 0x65, 0x89, 0x2f, 0x66, 0x4d, 0xd0, 0xa5, 0x98, 0x03, 0xd2, 0xaa, 0x98, 0x88, 0x69, 0xb3,
-	0xa6, 0xad, 0x92, 0xeb, 0xe3, 0x0a, 0x6c, 0xea, 0xfe, 0xe4, 0xec, 0x42, 0xa5, 0x13, 0xfb, 0xbd,
-	0x24, 0x61, 0x89, 0xcc, 0x32, 0x95, 0x0b, 0x53, 0x48, 0x7a, 0xe3, 0x0c, 0xa0, 0x82, 0xa9, 0xee,
-	0x54, 0xf2, 0xa6, 0x28, 0x4f, 0x91, 0x79, 0x12, 0x39, 0xa0, 0xfc, 0x9f, 0xc5, 0xd9, 0x6b, 0x50,
-	0xeb, 0xbc, 0x36, 0x8b, 0xf3, 0xda, 0x74, 0x62, 0x78, 0x90, 0x69, 0x1c, 0xd2, 0x80, 0xba, 0xb2,
-	0x30, 0xd0, 0x33, 0xa8, 0x24, 0x06, 0x34, 0xff, 0x37, 0xcd, 0xd5, 0xca, 0xcf, 0x84, 0x70, 0xce,
-	0x44, 0x3f, 0x86, 0x6d, 0xf5, 0x0f, 0x3d, 0xe6, 0x4a, 0x11, 0x4b, 0xcc, 0xe5, 0x75, 0x85, 0x0e,
-	0x0d, 0xe8, 0xfc, 0x0e, 0xea, 0x99, 0xb0, 0x76, 0xf5, 0xdd, 0x6e, 0xcb, 0x03, 0x64, 0x2f, 0x06,
-	0xe8, 0x3f, 0x36, 0xa0, 0xa1, 0x20, 0x62, 0xa8, 0x3a, 0xca, 0x2c, 0xab, 0xb9, 0x17, 0x50, 0xc9,
-	0x8d, 0xd2, 0x57, 0x7c, 0x7c, 0xdf, 0x15, 0x79, 0x14, 0x70, 0x2e, 0x82, 0x3e, 0x07, 0xf5, 0xaf,
-	0x39, 0x7e, 0xeb, 0x1e, 0x0b, 0x22, 0x5f, 0xa3, 0x9f, 0x42, 0x29, 0x62, 0x11, 0x35, 0xb3, 0xc0,
-	0x0f, 0x56, 0xa5, 0x54, 0xbb, 0xeb, 0x17, 0xb0, 0x22, 0xa1, 0x63, 0xd8, 0x61, 0xa9, 0x18, 0x0b,
-	0x36, 0xce, 0x43, 0x52, 0x7a, 0x73, 0x48, 0xfa, 0x05, 0x5c, 0x67, 0xa9, 0x18, 0xb1, 0xbc, 0x30,
-	0xbe, 0x84, 0x07, 0x52, 0x87, 0x2c, 0xe0, 0xb9, 0x96, 0x8d, 0xef, 0xd4, 0x22, 0x2f, 0xfe, 0x32,
-	0x61, 0x61, 0x06, 0x1d, 0x03, 0x54, 0x58, 0x2a, 0xae, 0x58, 0x1a, 0x79, 0xce, 0xbf, 0x2d, 0x78,
-	0xb8, 0x14, 0x57, 0xd3, 0x1f, 0x7f, 0x05, 0x36, 0xbb, 0x31, 0x21, 0x7d, 0xbc, 0xaa, 0x7c, 0x8d,
-	0x40, 0xfb, 0xf2, 0xa6, 0x5f, 0xc0, 0x36, 0xbb, 0x41, 0x87, 0x8b, 0xf9, 0xab, 0x1d, 0x7c, 0x74,
-	0x9f, 0x65, 0xaa, 0x46, 0xe4, 0x78, 0xa5, 0xd8, 0xad, 0x5f, 0x83, 0x7d, 0x79, 0x83, 0x9e, 0x43,
-	0x4d, 0x76, 0xc3, 0xb1, 0x20, 0x57, 0x41, 0x3e, 0xe5, 0x7d, 0xb0, 0xee, 0xfe, 0x91, 0x64, 0x60,
-	0xe0, 0xd9, 0x92, 0x4b, 0xb7, 0x12, 0x63, 0x8d, 0xf3, 0x2f, 0x0b, 0xe0, 0x98, 0x70, 0xdf, 0x95,
-	0x54, 0x8e, 0x3e, 0x81, 0x3a, 0x4f, 0x5d, 0x97, 0x72, 0x3e, 0x56, 0x63, 0x9e, 0x72, 0xac, 0x84,
-	0xb7, 0x0c, 0xd8, 0x95, 0x98, 0x24, 0x5d, 0x13, 0x3f, 0x48, 0x13, 0x6a, 0x48, 0xb6, 0x26, 0x19,
-	0x50, 0x93, 0x3e, 0x95, 0x6f, 0x41, 0xd0, 0xc8, 0x9d, 0x8d, 0x43, 0x3e, 0x8e, 0x0f, 0xf7, 0x55,
-	0xfa, 0x4b, 0x78, 0xcb, 0xa0, 0xe7, 0x7c, 0x70, 0xb8, 0xbf, 0xca, 0x3a, 0x3a, 0x54, 0xc9, 0x5e,
-	0x62, 0x1d, 0x1d, 0xde, 0x61, 0x1d, 0xa9, 0x64, 0x2e, 0xb3, 0x8e, 0x9c, 0xbf, 0x15, 0xa1, 0x9a,
-	0x3b, 0x8c, 0x3a, 0x50, 0x8d, 0x99, 0x37, 0x56, 0x7f, 0xd8, 0x26, 0x3d, 0xce, 0xbd, 0xe1, 0x91,
-	0x7f, 0x63, 0x2f, 0x25, 0xb3, 0x5f, 0xc0, 0x95, 0xd8, 0xac, 0x5b, 0xff, 0xb4, 0xa1, 0x92, 0x1d,
-	0xa0, 0xe7, 0x50, 0x4a, 0xd8, 0x6d, 0x16, 0xe9, 0xc7, 0xdf, 0xad, 0xaa, 0x8d, 0xd9, 0x2d, 0x56,
-	0x32, 0xad, 0xff, 0x59, 0x50, 0xc4, 0xec, 0xf6, 0x1d, 0xdf, 0xf9, 0xf7, 0x7a, 0x7b, 0x7b, 0xd0,
-	0x08, 0x29, 0x9f, 0x52, 0x6f, 0x2c, 0xa3, 0xa1, 0xd3, 0xa5, 0x13, 0xb1, 0xad, 0xf1, 0x01, 0xf3,
-	0x74, 0xc2, 0x1e, 0xc3, 0x8e, 0x60, 0x82, 0x04, 0x0b, 0x44, 0x9d, 0x8b, 0xba, 0x82, 0x73, 0xde,
-	0x3e, 0x6c, 0xc8, 0x5a, 0xe2, 0xe6, 0x41, 0xdd, 0x31, 0x64, 0x5e, 0x4d, 0x58, 0x13, 0xe5, 0x54,
-	0xaf, 0xca, 0xf4, 0xc9, 0x0b, 0x80, 0xf9, 0xec, 0x86, 0x1a, 0xb0, 0x85, 0x7b, 0xbf, 0x79, 0xd5,
-	0x1b, 0x8e, 0xc6, 0xb8, 0x33, 0xea, 0x35, 0x0a, 0xa8, 0x06, 0xe5, 0xb3, 0xce, 0xa8, 0x77, 0xd1,
-	0xfd, 0xa6, 0x61, 0xc9, 0xe3, 0xe1, 0xab, 0x6e, 0xb7, 0x37, 0x1c, 0xea, 0x63, 0xfb, 0x49, 0x07,
-	0x60, 0xee, 0xa5, 0x24, 0x8f, 0x7a, 0x17, 0xe3, 0x61, 0xaf, 0xab, 0x25, 0x2f, 0x2f, 0x7a, 0xe3,
-	0xf3, 0xd3, 0x8b, 0x86, 0x95, 0x9d, 0xc8, 0x8d, 0x8d, 0xb6, 0xa0, 0x22, 0x4f, 0xfa, 0x97, 0xaf,
-	0x70, 0xa3, 0xf8, 0xa4, 0x03, 0x3b, 0x2b, 0x33, 0x1d, 0x7a, 0x00, 0xf5, 0x51, 0x07, 0xbf, 0xec,
-	0x8d, 0xc6, 0x27, 0xbd, 0xc1, 0xd9, 0xe5, 0x37, 0x8d, 0x82, 0x84, 0x86, 0x97, 0xaf, 0x70, 0xb7,
-	0x97, 0x41, 0x16, 0xaa, 0x40, 0xe9, 0xbc, 0x37, 0xec, 0x37, 0xec, 0x27, 0x2f, 0x16, 0xbe, 0xe2,
-	0xd4, 0x67, 0x19, 0x2a, 0x43, 0x51, 0xde, 0x55, 0x90, 0x8b, 0xc1, 0xe1, 0x7e, 0xc3, 0x52, 0x8b,
-	0xa3, 0xc3, 0x86, 0xad, 0x17, 0x47, 0x8d, 0xa2, 0xe2, 0x74, 0xbe, 0x6e, 0x94, 0x0e, 0xfe, 0x5b,
-	0x84, 0x62, 0x27, 0xf6, 0xd1, 0x4b, 0x28, 0xc9, 0x20, 0xa1, 0x8f, 0xd6, 0xcf, 0x8d, 0xa6, 0x6f,
-	0xb7, 0x1e, 0xdd, 0x77, 0x6c, 0xde, 0x6f, 0x01, 0x7d, 0x0d, 0xb5, 0x85, 0x36, 0x83, 0x9c, 0x37,
-	0xf6, 0x20, 0xad, 0xf4, 0x93, 0xb7, 0xe8, 0x53, 0x4e, 0x01, 0x7d, 0x01, 0xe5, 0x6c, 0xbe, 0x5c,
-	0xdf, 0xb4, 0x5b, 0x77, 0x3e, 0xc2, 0x16, 0x26, 0x56, 0xa7, 0x80, 0x7a, 0x50, 0xc9, 0xe6, 0xc9,
-	0xfb, 0x34, 0xec, 0xae, 0xc2, 0xab, 0x03, 0xa8, 0x53, 0x40, 0x7f, 0x80, 0xea, 0x90, 0x06, 0xd7,
-	0x5d, 0xf9, 0x29, 0x8d, 0x7e, 0x96, 0x0b, 0x98, 0x2f, 0xf0, 0xc5, 0xef, 0xec, 0x9c, 0x96, 0x79,
-	0xfa, 0xf3, 0xb7, 0x64, 0x2f, 0xf8, 0x5c, 0x1c, 0x91, 0x18, 0xdd, 0x7d, 0x5e, 0xf9, 0xf8, 0xd6,
-	0x6a, 0xae, 0xea, 0x1c, 0x91, 0xb8, 0xf7, 0x5a, 0x7e, 0x16, 0x15, 0xf6, 0xad, 0xab, 0x4d, 0x35,
-	0x65, 0xfe, 0xf2, 0xff, 0x01, 0x00, 0x00, 0xff, 0xff, 0xec, 0x4b, 0xec, 0x2d, 0x6a, 0x10, 0x00,
+	// 1361 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x9c, 0x57, 0xdf, 0x72, 0xdb, 0xc4,
+	0x1a, 0xb7, 0x25, 0x3b, 0x71, 0x3e, 0xc7, 0x69, 0xcf, 0xa6, 0xe7, 0x8c, 0xea, 0x73, 0x4e, 0x31,
+	0x6a, 0x09, 0x19, 0xfe, 0x38, 0x19, 0x43, 0x66, 0x48, 0x3b, 0xd0, 0x36, 0x6d, 0xa6, 0xce, 0xd0,
+	0x52, 0xcf, 0x3a, 0x03, 0xcc, 0x70, 0xe1, 0x59, 0x4b, 0x9b, 0x58, 0x44, 0xd2, 0x6e, 0xb4, 0x2b,
+	0x82, 0xaf, 0xb9, 0xe1, 0x11, 0x78, 0x05, 0xe0, 0x86, 0xc7, 0xe0, 0x01, 0xb8, 0x66, 0x78, 0x00,
+	0x1e, 0x82, 0xd9, 0x3f, 0x52, 0x6c, 0x37, 0x69, 0xd3, 0x5e, 0x79, 0xbf, 0xdf, 0xfe, 0xbe, 0xdd,
+	0xef, 0xff, 0x5a, 0x70, 0x9d, 0xe7, 0xe3, 0x38, 0x0a, 0xb6, 0x08, 0x8f, 0xba, 0x3c, 0x63, 0x92,
+	0xa1, 0xb5, 0x80, 0xa5, 0x61, 0x1e, 0xc9, 0xae, 0xd9, 0x69, 0xdf, 0x3a, 0x66, 0xec, 0x38, 0xa6,
+	0x5b, 0x7a, 0x77, 0x9c, 0x1f, 0x6d, 0x85, 0x79, 0x46, 0x64, 0xc4, 0x52, 0xc3, 0x6f, 0xaf, 0x07,
+	0x2c, 0x49, 0x58, 0xba, 0x65, 0x7e, 0x2c, 0x78, 0xc7, 0x82, 0x13, 0x4a, 0x62, 0x39, 0x09, 0x26,
+	0x34, 0x38, 0x99, 0x5d, 0x1b, 0x96, 0xbf, 0x0c, 0xf5, 0xfd, 0x84, 0xcb, 0xa9, 0x7f, 0x0a, 0xcd,
+	0x2f, 0x69, 0x26, 0x22, 0x96, 0x1e, 0xa4, 0x47, 0x0c, 0xfd, 0x0f, 0x56, 0x8e, 0x99, 0x05, 0xbc,
+	0x6a, 0xa7, 0xba, 0xb9, 0x82, 0xcf, 0x01, 0xb5, 0x3b, 0xce, 0xa3, 0x38, 0x7c, 0x4c, 0x24, 0xf5,
+	0x1c, 0xb3, 0x5b, 0x02, 0x68, 0x03, 0xd6, 0x32, 0x1a, 0x53, 0x22, 0x68, 0x71, 0x80, 0xab, 0x29,
+	0x0b, 0xa8, 0x7f, 0x0f, 0xae, 0x3f, 0x8d, 0x84, 0x1c, 0xb0, 0x50, 0x60, 0x2a, 0x38, 0x4b, 0x05,
+	0x45, 0xef, 0x42, 0x8d, 0xb3, 0x50, 0x78, 0xd5, 0x8e, 0xbb, 0xd9, 0xec, 0xad, 0x77, 0xe7, 0x23,
+	0xd1, 0x1d, 0xb0, 0x10, 0x6b, 0x82, 0xff, 0x93, 0x03, 0xee, 0x80, 0x85, 0x08, 0x41, 0x2d, 0x25,
+	0x09, 0xb5, 0x36, 0xea, 0x35, 0xba, 0x01, 0x75, 0xce, 0xc2, 0x83, 0x81, 0x35, 0xcd, 0x08, 0xe8,
+	0x16, 0x40, 0x48, 0x79, 0xcc, 0xa6, 0x09, 0x4d, 0xa5, 0x35, 0x69, 0x06, 0x41, 0xff, 0x81, 0x25,
+	0x21, 0x89, 0xcc, 0x85, 0x57, 0xd3, 0x7b, 0x56, 0x52, 0xa7, 0x91, 0x30, 0xa4, 0xa1, 0x57, 0xef,
+	0x54, 0x37, 0x1b, 0xd8, 0x08, 0xe8, 0x11, 0x5c, 0x13, 0x51, 0x1a, 0xd0, 0xa7, 0x44, 0x48, 0x4c,
+	0x39, 0xcb, 0xa4, 0xb7, 0xd4, 0xa9, 0x6e, 0x36, 0x7b, 0x37, 0xbb, 0x26, 0x5b, 0xdd, 0x22, 0x5b,
+	0xdd, 0xc7, 0x36, 0x5b, 0x78, 0x51, 0x03, 0x6d, 0xc3, 0x7a, 0xc0, 0x52, 0x99, 0xb1, 0x38, 0xa6,
+	0xd9, 0x17, 0x24, 0xa1, 0x82, 0x93, 0x80, 0x7a, 0xcb, 0xfa, 0xfe, 0x8b, 0xb6, 0x90, 0x0f, 0xab,
+	0x16, 0x1e, 0xc4, 0x24, 0xa5, 0x5e, 0x43, 0xdb, 0x34, 0x87, 0xf9, 0xbf, 0x38, 0x00, 0x87, 0x84,
+	0x63, 0x7a, 0x9a, 0x53, 0x21, 0x11, 0x02, 0x97, 0xb3, 0xd0, 0x04, 0xa8, 0x5f, 0xc1, 0x4a, 0x40,
+	0x9d, 0xb9, 0x58, 0x38, 0x76, 0x6b, 0x21, 0x1a, 0x09, 0xf9, 0x1e, 0x73, 0xa1, 0x23, 0xe5, 0x60,
+	0x2b, 0x29, 0x5c, 0xb2, 0x81, 0x72, 0x57, 0x45, 0xa9, 0x85, 0xad, 0xa4, 0xf2, 0x20, 0xd9, 0xc1,
+	0x40, 0x07, 0x69, 0x05, 0xeb, 0x35, 0x6a, 0x43, 0xe3, 0x28, 0x63, 0xc9, 0xa0, 0x08, 0x4e, 0x0b,
+	0x97, 0xb2, 0x3a, 0x47, 0xad, 0x0f, 0x06, 0xd6, 0x5b, 0x2b, 0xe9, 0x2c, 0x04, 0x13, 0x9a, 0x18,
+	0xd7, 0x54, 0x16, 0xb4, 0xa4, 0xed, 0xa1, 0x72, 0xc2, 0x42, 0x6f, 0xc5, 0xe0, 0x46, 0x52, 0xa5,
+	0x48, 0x72, 0x39, 0x61, 0x59, 0x24, 0xa7, 0x1e, 0x98, 0x52, 0x2c, 0x01, 0x65, 0x15, 0x27, 0x72,
+	0xe2, 0x35, 0x8d, 0x55, 0x6a, 0x7d, 0xd7, 0xf1, 0xaa, 0x7b, 0x0d, 0x58, 0x92, 0x24, 0x3b, 0xa6,
+	0xd2, 0xff, 0xb3, 0x0e, 0x37, 0x0e, 0x09, 0xdf, 0x9b, 0x62, 0x2a, 0x58, 0x9e, 0x05, 0xb4, 0x08,
+	0xdb, 0x6e, 0x41, 0xd1, 0x91, 0x6b, 0xf6, 0xde, 0x5e, 0xac, 0xc5, 0x42, 0x61, 0x48, 0x63, 0x1a,
+	0xe8, 0xfc, 0x5a, 0x05, 0xf4, 0x00, 0xea, 0x09, 0x91, 0xc1, 0x44, 0x07, 0xb6, 0xd9, 0x7b, 0x6f,
+	0x51, 0xf3, 0xa2, 0xfb, 0xba, 0xcf, 0x94, 0x06, 0x36, 0x8a, 0x97, 0x45, 0xbf, 0xfd, 0x5b, 0x0d,
+	0xea, 0x9a, 0x88, 0xf6, 0xc0, 0x25, 0x71, 0x6c, 0x6d, 0xeb, 0x5e, 0xfd, 0x86, 0xee, 0x90, 0x9e,
+	0xaa, 0x2a, 0x20, 0x71, 0xac, 0xcf, 0x48, 0xa7, 0xd6, 0xca, 0x37, 0x39, 0x23, 0x9d, 0xa2, 0xcf,
+	0xc0, 0x4d, 0x99, 0x69, 0xa7, 0xd7, 0xf2, 0x54, 0xe9, 0xa7, 0x4c, 0xa2, 0x27, 0xb0, 0x1a, 0x52,
+	0x21, 0xa3, 0x54, 0xb7, 0x88, 0xe9, 0xbd, 0xab, 0x04, 0xbb, 0x5f, 0xc1, 0x73, 0x8a, 0x68, 0x1f,
+	0x6a, 0x13, 0x29, 0xb9, 0x2e, 0xc0, 0x66, 0x6f, 0xeb, 0x35, 0xbc, 0xe9, 0x4b, 0xc9, 0xfb, 0x15,
+	0xac, 0xd5, 0xdb, 0x9f, 0x83, 0x3b, 0xa4, 0xa7, 0xe8, 0x31, 0x2c, 0xeb, 0x4c, 0xd0, 0x62, 0x14,
+	0xbd, 0x4e, 0x12, 0x0b, 0xd5, 0xf6, 0x14, 0x6a, 0xea, 0x70, 0xe4, 0x95, 0x45, 0x5d, 0x74, 0x61,
+	0x51, 0xd6, 0x5e, 0x59, 0xd6, 0x45, 0x13, 0x16, 0x85, 0x7d, 0x6b, 0xb6, 0xb0, 0x5d, 0xbb, 0x39,
+	0x53, 0xda, 0x37, 0x6c, 0x69, 0xd7, 0xec, 0x96, 0x96, 0xf6, 0x96, 0x6d, 0xe9, 0x95, 0x0b, 0xbf,
+	0x03, 0x8d, 0x87, 0x3c, 0xda, 0xcf, 0x32, 0x96, 0xa9, 0x51, 0x46, 0xd5, 0xc2, 0x4e, 0x4b, 0x23,
+	0xf8, 0x03, 0x68, 0x14, 0x7e, 0xa8, 0x76, 0x4a, 0xcb, 0x39, 0x64, 0xe7, 0x7e, 0x09, 0xe8, 0x26,
+	0x9f, 0xf2, 0x62, 0xe4, 0xeb, 0x75, 0x39, 0x80, 0xdd, 0xf3, 0x01, 0xec, 0x73, 0xf8, 0xd7, 0x0b,
+	0x09, 0x43, 0x1f, 0x43, 0x23, 0xb3, 0xa0, 0x2d, 0x5b, 0xef, 0xb2, 0x2c, 0xe3, 0x92, 0x89, 0xde,
+	0x81, 0xb5, 0x98, 0x8c, 0x69, 0x3c, 0x12, 0xfa, 0x20, 0x96, 0xd9, 0xcb, 0x5b, 0x1a, 0x1d, 0x5a,
+	0xd0, 0xff, 0x06, 0x5a, 0x85, 0xb2, 0x71, 0xf5, 0xcd, 0x6e, 0x2b, 0x03, 0xe4, 0xcc, 0x06, 0xe8,
+	0x57, 0x07, 0xd0, 0x50, 0x12, 0x39, 0xcc, 0x93, 0x84, 0x64, 0xd3, 0x62, 0x42, 0x7c, 0x0a, 0x8d,
+	0xd2, 0xa8, 0x2b, 0xcf, 0x88, 0x52, 0x05, 0xbd, 0x05, 0x4d, 0x19, 0x25, 0x74, 0x74, 0x16, 0xa5,
+	0x21, 0x3b, 0xb3, 0x37, 0x82, 0x82, 0xbe, 0xd2, 0x08, 0x7a, 0x1f, 0x6a, 0x29, 0x4b, 0xa9, 0xed,
+	0xad, 0x7f, 0x2f, 0x9e, 0xad, 0xdf, 0x6d, 0x95, 0x78, 0x45, 0x42, 0xf7, 0xa0, 0x29, 0xd9, 0xa8,
+	0x74, 0xb9, 0xf6, 0x72, 0x97, 0xd5, 0xb0, 0x97, 0xac, 0xcc, 0xfa, 0x7d, 0x68, 0xa9, 0xf1, 0x7b,
+	0xae, 0x5e, 0x7f, 0xa5, 0xfa, 0xaa, 0x52, 0x28, 0xe4, 0x3d, 0x80, 0x06, 0xcb, 0xe5, 0x98, 0xe5,
+	0x69, 0xe8, 0xff, 0x51, 0x85, 0xf5, 0xb9, 0x68, 0xd9, 0xa7, 0xfd, 0x13, 0x70, 0xd8, 0x89, 0x0d,
+	0xd4, 0xc6, 0xe2, 0xc9, 0x17, 0x28, 0x74, 0x9f, 0x9f, 0xf4, 0x2b, 0xd8, 0x61, 0x27, 0x68, 0x67,
+	0x36, 0x2b, 0xcd, 0xde, 0xff, 0x2f, 0x33, 0x4b, 0x67, 0xbe, 0x5f, 0xb1, 0x69, 0x6b, 0x3f, 0x00,
+	0xe7, 0xf9, 0x09, 0xba, 0x0b, 0x4d, 0xf5, 0x90, 0x8f, 0x24, 0x19, 0xc7, 0x65, 0x37, 0xdf, 0xbc,
+	0xe8, 0xfe, 0x43, 0xc5, 0xc0, 0x20, 0x8a, 0xa5, 0x50, 0x6e, 0x65, 0xd6, 0x1a, 0xff, 0xf7, 0x2a,
+	0xc0, 0x1e, 0x11, 0x51, 0xa0, 0xa8, 0x02, 0xdd, 0x86, 0x96, 0xc8, 0x83, 0x80, 0x0a, 0x31, 0x0a,
+	0x58, 0x9e, 0x9a, 0x57, 0xa2, 0x86, 0x57, 0x2d, 0xf8, 0x48, 0x61, 0x8a, 0x74, 0x44, 0xa2, 0x38,
+	0xcf, 0xa8, 0x25, 0x39, 0x86, 0x64, 0x41, 0x43, 0xba, 0xa3, 0x2a, 0x5c, 0xd2, 0x34, 0x98, 0x8e,
+	0x12, 0x31, 0xe2, 0x3b, 0xdb, 0x3a, 0xe1, 0x35, 0xbc, 0x6a, 0xd1, 0x67, 0x62, 0xb0, 0xb3, 0xbd,
+	0xc8, 0xda, 0xdd, 0xd1, 0x29, 0x9e, 0x63, 0xed, 0xee, 0xbc, 0xc0, 0xda, 0xd5, 0x99, 0x9c, 0x67,
+	0xed, 0xfa, 0x3f, 0xb8, 0xb0, 0x52, 0x3a, 0x8c, 0x1e, 0xc2, 0x0a, 0x67, 0xe1, 0xe8, 0x38, 0x63,
+	0x39, 0xb7, 0xe9, 0xf1, 0x2f, 0x0d, 0x8f, 0xfa, 0x07, 0xf6, 0x44, 0x31, 0xfb, 0x15, 0xdc, 0xe0,
+	0x76, 0xdd, 0xfe, 0xd9, 0x81, 0x46, 0xb1, 0x81, 0xee, 0x42, 0x2d, 0x63, 0x67, 0x45, 0xa4, 0x37,
+	0x5e, 0x7d, 0x54, 0x17, 0xb3, 0x33, 0xac, 0x75, 0xda, 0x7f, 0x55, 0xc1, 0xc5, 0xec, 0xec, 0x0d,
+	0xbb, 0xf7, 0x95, 0x1d, 0xb5, 0x09, 0xd7, 0x13, 0x2a, 0x26, 0x34, 0x1c, 0x29, 0x8f, 0x4d, 0x4a,
+	0x4c, 0xb0, 0xd7, 0x0c, 0x3e, 0x60, 0xa1, 0x49, 0xca, 0x06, 0x5c, 0x93, 0x4c, 0x92, 0x78, 0x86,
+	0x68, 0xe2, 0xdd, 0xd2, 0x70, 0xc9, 0xdb, 0x86, 0xba, 0xaa, 0x17, 0x61, 0x3b, 0xa6, 0xbd, 0x68,
+	0xe5, 0x79, 0xc5, 0x60, 0x43, 0x54, 0x83, 0x59, 0x97, 0x62, 0xef, 0x6f, 0x17, 0xdc, 0x87, 0x3c,
+	0x42, 0x5f, 0x43, 0x73, 0xa6, 0xfa, 0x91, 0xff, 0xd2, 0xd6, 0xd0, 0x93, 0xa7, 0x7d, 0xfb, 0x0a,
+	0xed, 0xe3, 0x57, 0xd0, 0x3e, 0x34, 0x8a, 0x3f, 0xd8, 0xe8, 0xe2, 0xf1, 0xd1, 0xee, 0x2c, 0xc2,
+	0x8b, 0xff, 0xc8, 0xfd, 0x8a, 0xfa, 0x9b, 0x70, 0x48, 0x38, 0x6a, 0x5f, 0xf0, 0x02, 0x16, 0x06,
+	0x9d, 0x67, 0xc7, 0x7e, 0x83, 0x1c, 0x12, 0xbe, 0xff, 0x1d, 0x4d, 0xa5, 0xef, 0xfe, 0xe8, 0x54,
+	0xb7, 0xab, 0x68, 0x08, 0xad, 0xb9, 0x07, 0x13, 0xdd, 0xb9, 0xca, 0x7b, 0xfa, 0x92, 0x73, 0x2b,
+	0xdb, 0x55, 0x74, 0x1f, 0x96, 0x8b, 0x2f, 0x92, 0x4b, 0xdc, 0xfb, 0xef, 0x22, 0x3c, 0xf3, 0x8d,
+	0xe3, 0x57, 0xd0, 0xb7, 0xb0, 0x32, 0xa4, 0xf1, 0xd1, 0x23, 0xf5, 0x41, 0x84, 0x3e, 0x58, 0xbc,
+	0x6b, 0xf6, 0x6b, 0xa9, 0xa4, 0x15, 0x96, 0x7d, 0x78, 0x45, 0x76, 0x11, 0xc5, 0xf1, 0x92, 0xfe,
+	0x1e, 0xf8, 0xe8, 0x9f, 0x00, 0x00, 0x00, 0xff, 0xff, 0xa8, 0x53, 0x6f, 0xc1, 0xef, 0x0d, 0x00,
 	0x00,
 }

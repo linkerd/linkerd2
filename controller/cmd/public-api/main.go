@@ -5,19 +5,16 @@ import (
 	"flag"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
-	"time"
 
 	promApi "github.com/prometheus/client_golang/api"
 	"github.com/runconduit/conduit/controller/api/public"
 	"github.com/runconduit/conduit/controller/k8s"
 	"github.com/runconduit/conduit/controller/tap"
-	"github.com/runconduit/conduit/controller/telemetry"
 	"github.com/runconduit/conduit/controller/util"
 	"github.com/runconduit/conduit/pkg/version"
 	log "github.com/sirupsen/logrus"
-	"k8s.io/client-go/informers"
-	"k8s.io/client-go/tools/cache"
 )
 
 func main() {
@@ -25,9 +22,9 @@ func main() {
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
 	prometheusUrl := flag.String("prometheus-url", "http://127.0.0.1:9090", "prometheus url")
 	metricsAddr := flag.String("metrics-addr", ":9995", "address to serve scrapable metrics on")
-	telemetryAddr := flag.String("telemetry-addr", "127.0.0.1:8087", "address of telemetry service")
 	tapAddr := flag.String("tap-addr", "127.0.0.1:8088", "address of tap service")
 	controllerNamespace := flag.String("controller-namespace", "conduit", "namespace in which Conduit is installed")
+	ignoredNamespaces := flag.String("ignore-namespaces", "kube-system", "comma separated list of namespaces to not list pods from")
 	logLevel := flag.String("log-level", log.InfoLevel.String(), "log level, must be one of: panic, fatal, error, warn, info, debug")
 	printVersion := version.VersionFlag()
 	flag.Parse()
@@ -44,12 +41,6 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	telemetryClient, telemetryConn, err := telemetry.NewClient(*telemetryAddr)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-	defer telemetryConn.Close()
-
 	tapClient, tapConn, err := tap.NewClient(*tapAddr)
 	if err != nil {
 		log.Fatal(err.Error())
@@ -61,11 +52,7 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
-	sharedInformers := informers.NewSharedInformerFactory(k8sClient, 10*time.Minute)
-	deployInformer := sharedInformers.Apps().V1().Deployments()
-	deployInformerSynced := deployInformer.Informer().HasSynced
-	podInformer := sharedInformers.Core().V1().Pods()
-	podInformerSynced := podInformer.Informer().HasSynced
+	lister := k8s.NewLister(k8sClient)
 
 	prometheusClient, err := promApi.NewClient(promApi.Config{Address: *prometheusUrl})
 	if err != nil {
@@ -75,23 +62,17 @@ func main() {
 	server := public.NewServer(
 		*addr,
 		prometheusClient,
-		telemetryClient,
 		tapClient,
-		deployInformer.Lister(),
-		podInformer.Lister(),
+		lister,
 		*controllerNamespace,
+		strings.Split(*ignoredNamespaces, ","),
 	)
 
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		sharedInformers.Start(ctx.Done())
-
-		log.Infof("waiting for caches to sync")
-		if !cache.WaitForCacheSync(ctx.Done(), deployInformerSynced, podInformerSynced) {
-			log.Fatalf("timed out wait for caches to sync")
+		err := lister.Sync()
+		if err != nil {
+			log.Fatalf("timed out wait for caches to sync: %s", err)
 		}
-		log.Infof("caches synced")
 	}()
 
 	go func() {

@@ -41,7 +41,7 @@ var completionCmd = &cobra.Command{
 			return err
 		}
 
-		fmt.Printf(out)
+		fmt.Print(out)
 		return nil
 	},
 }
