@@ -22,10 +22,10 @@ jobs:
       rust: stable
       cache: cargo
       script:
-        - (cd proxy && cargo test --locked --no-default-features --release)
+        - (cd proxy && cargo test --locked --no-default-features)
 
-    # Compile the application and run tests.
     - language: rust
+      # Run proxy benchmarks. Requires nightly. Failures are non-fatal
       rust: nightly
       cache: cargo
       script:
