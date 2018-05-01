@@ -24,6 +24,14 @@ jobs:
       script:
         - (cd proxy && cargo test --locked --no-default-features)
 
+    - language: rust
+      # Run proxy benchmarks in development mode. Requires nightly.
+      # Failures are not fatal.
+      rust: nightly
+      cache: cargo
+      script:
+        - (cd proxy && cargo test --benches --locked --no-default-features)
+
     - language: go
       # Quote the version number to avoid parsing issues like
       # https://github.com/travis-ci/gimme/issues/132.
@@ -128,6 +136,10 @@ jobs:
         - bin/docker-retag-all $CONDUIT_TAG master && bin/docker-push master
         - target/cli/linux/conduit install --conduit-version=$CONDUIT_TAG |tee conduit.yml
         - kubectl -n conduit apply -f conduit.yml --prune --selector='conduit.io/control-plane-component'
+
+  allow_failures:
+    - rust: nightly
+  fast_finish: true
 
 notifications:
   email:
