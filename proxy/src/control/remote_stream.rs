@@ -10,7 +10,7 @@ use tower_grpc::{
     client::server_streaming::ResponseFuture,
 };
 
-/// Tracks the state of a remote response stream.
+/// Tracks the state of a gRPC response stream from a remote.
 ///
 /// A remote may hold a `Receiver` that can be used to read `M`-typed messages from the
 /// remote stream.
