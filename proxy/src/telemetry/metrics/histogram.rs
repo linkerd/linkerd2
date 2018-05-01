@@ -95,12 +95,7 @@ impl<V: Into<u64>> Histogram<V> {
     #[cfg(test)]
     pub fn assert_bucket_at_least(&self, le: u64, at_least: u64) {
         for (&bucket, &count) in self {
-            let is_le = if let Bucket::Le(ceiling) = bucket {
-                le <= ceiling
-            } else {
-                true
-            };
-            if is_le {
+            if bucket >= le {
                 let count: u64 = count.into();
                 assert!(
                     count >= at_least,
@@ -115,12 +110,7 @@ impl<V: Into<u64>> Histogram<V> {
     #[cfg(test)]
     pub fn assert_bucket_exactly(&self, le: u64, exactly: u64) -> &Self {
         for (&bucket, &count) in self {
-            let is_le = if let Bucket::Le(ceiling) = bucket {
-                le <= ceiling
-            } else {
-                true
-            };
-            if is_le {
+            if bucket >= le {
                 let count: u64 = count.into();
                 assert_eq!(
                     count, exactly,
@@ -142,21 +132,16 @@ impl<V: Into<u64>> Histogram<V> {
 
                 let next = self.bounds.0.get(i + 1)
                     .expect("Bucket::Le may not be the last in `bounds`!");
-                let le_next = if let &Bucket::Le(next_ceiling) = next {
-                    value <= next_ceiling
-                } else {
-                    true
-                };
 
-                if value <= ceiling || le_next {
+                if value <= ceiling || next >= &value  {
                     break;
                 }
 
                 let count: u64 = self.buckets[i].into();
                 assert_eq!(
                     count, exactly,
-                    "bucket={:?}; value={:?}; le_next={:?};",
-                    bucket, value, le_next
+                    "bucket={:?}; value={:?};",
+                    bucket, value,
                 );
 
             } else {
@@ -170,17 +155,17 @@ impl<V: Into<u64>> Histogram<V> {
     /// counts of exactly `exactly`.
     #[cfg(test)]
     pub fn assert_gt_exactly(&self, value: u64, exactly: u64) -> &Self {
+        // We set this to true after we've iterated past the first bucket
+        // whose upper bound is >= `value`.
         let mut past_le = false;
         for (&bucket, &count) in self {
-            if let Bucket::Le(ceiling) = bucket {
-                if value > ceiling {
-                    continue;
-                }
+            if bucket < value {
+                continue;
+            }
 
-                if value <= ceiling && !past_le {
-                    past_le = true;
-                    continue;
-                }
+            if bucket >= value && !past_le {
+                past_le = true;
+                continue;
             }
 
             if past_le {
@@ -279,6 +264,28 @@ impl fmt::Display for Bucket {
 impl cmp::PartialOrd<Bucket> for Bucket {
     fn partial_cmp(&self, rhs: &Bucket) -> Option<cmp::Ordering> {
         Some(self.cmp(rhs))
+    }
+}
+
+impl cmp::PartialEq<u64> for Bucket {
+    fn eq(&self, rhs: &u64) -> bool {
+        if let Bucket::Le(ref ceiling) = *self {
+            ceiling == rhs
+        } else {
+            // `self` is `Bucket::Inf`.
+            false
+        }
+    }
+}
+
+impl cmp::PartialOrd<u64> for Bucket {
+    fn partial_cmp(&self, rhs: &u64) -> Option<cmp::Ordering> {
+        if let Bucket::Le(ref ceiling) = *self {
+            ceiling.partial_cmp(rhs)
+        } else {
+            // `self` is `Bucket::Inf`.
+            Some(cmp::Ordering::Greater)
+        }
     }
 }
 
