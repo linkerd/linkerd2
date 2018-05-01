@@ -87,7 +87,7 @@ impl Record {
 mod test {
     use telemetry::{
         event,
-        metrics::{self, histogram, labels},
+        metrics::{self, labels},
         Event,
     };
     use ctx::{self, test_util::* };
@@ -134,17 +134,12 @@ mod test {
                 .get(&labels)
                 .expect("scope should be some after event");
 
-            assert_eq!(u64::from(scope.total), 1);
+            let total: u64 = scope.total.into();
+            assert_eq!(total, 1);
 
-            for (le, count) in &scope.latency {
-                if let &histogram::Bucket::Le(le) = le {
-                    if le >= 300 {
-                        assert_eq!(u64::from(count), 1);
-                    } else {
-                        assert_eq!(u64::from(count), 0);
-                    }
-                }
-            }
+            scope.latency.assert_bucket_exactly(300, 1);
+            scope.latency.assert_lt_exactly(300, 0);
+            scope.latency.assert_gt_exactly(300, 0);
         }
 
     }
