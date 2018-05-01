@@ -1,4 +1,3 @@
-
 use futures::{Future, Poll, Stream};
 use prost::Message;
 use std::fmt;
