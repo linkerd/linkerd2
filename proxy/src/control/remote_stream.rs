@@ -32,16 +32,6 @@ enum Rx<M, S: HttpService> {
     Streaming(Streaming<M, S::ResponseBody>),
 }
 
-/// Wraps the error types returned by `Receiver` polls.
-///
-/// A `Receiver` error is either the error type of the response future or that of the open
-/// stream.
-#[derive(Debug)]
-pub enum Error<T> {
-    Future(grpc::Error<T>),
-    Stream(grpc::Error),
-}
-
 // ===== impl Remote =====
 
 impl<M: Message + Default, S: HttpService> Remote<M, S> {
@@ -64,18 +54,20 @@ where
     S::Error: fmt::Debug,
 {
     type Item = M;
-    type Error = Error<S::Error>;
+    type Error = grpc::Error<S::Error>;
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
         loop {
             let stream = match self.0 {
                 Rx::Waiting(ref mut future) => {
-                    let rsp = future.poll().map_err(Error::Future);
-                    try_ready!(rsp).into_inner()
+                    try_ready!(future.poll()).into_inner()
                 }
 
                 Rx::Streaming(ref mut stream) => {
-                    return stream.poll().map_err(Error::Stream);
+                    return stream.poll().map_err(|e| grpc::Error::Grpc(match e {
+                        grpc::Error::Inner(()) => grpc::Status::UNKNOWN,
+                        grpc::Error::Grpc(status) => status,
+                    }));
                 }
             };
 
