@@ -14,5 +14,4 @@ rootdir="$( cd $bindir/.. && pwd )"
 . $bindir/_tag.sh
 
 docker_build proxy "$(head_root_tag)" $rootdir/proxy/Dockerfile \
-    --build-arg="PROXY_SKIP_TESTS=${PROXY_SKIP_TESTS:-}" \
     --build-arg="PROXY_UNOPTIMIZED=${PROXY_UNOPTIMIZED:-}"

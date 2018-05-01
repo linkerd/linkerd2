@@ -3,9 +3,6 @@
 # When PROXY_UNOPTIMIZED is set and not empty, unoptimized rust artifacts are produced.
 # This reduces build time and produces binaries with debug symbols, at the expense of
 # runtime perforamnce.
-#
-# When PROXY_SKIP_TESTS is set and not empty, tests are not run. Otherwise, tests are run
-# against either unoptimized or optimized proxy code, according to PROXY_UNOPTIMIZED.
 
 ARG RUST_IMAGE=rust:1.25.0
 ARG RUNTIME_IMAGE=gcr.io/runconduit/base:2017-10-30.01
@@ -56,13 +53,7 @@ RUN if [ -n "$PROXY_UNOPTIMIZED" ]; \
     then cargo build -p conduit-proxy --bin conduit-proxy --frozen ; \
     else cargo build -p conduit-proxy --bin conduit-proxy --frozen --release ; \
     fi
-ARG PROXY_SKIP_TESTS
-RUN if [ -n "$PROXY_SKIP_TESTS" ]; \
-    then echo "tests skipped" ; \
-    elif [ -n "$PROXY_UNOPTIMIZED" ]; \
-    then (cd proxy && cargo test --frozen --no-default-features) ; \
-    else (cd proxy && cargo test --frozen --release --no-default-features) ; \
-    fi
+
 RUN if [ -n "$PROXY_UNOPTIMIZED" ]; \
     then mv target/debug/conduit-proxy   target/conduit-proxy ; \
     else mv target/release/conduit-proxy target/conduit-proxy ; \
