@@ -25,11 +25,12 @@ jobs:
         - (cd proxy && cargo test --locked --no-default-features)
 
     - language: rust
-      # Run proxy benchmarks. Requires nightly. Failures are non-fatal
+      # Run proxy benchmarks in development mode. Requires nightly.
+      # Failures are not fatal.
       rust: nightly
       cache: cargo
       script:
-        - (cd proxy && cargo bench --locked --no-default-features)
+        - (cd proxy && cargo test --benches --locked --no-default-features)
 
     - language: go
       # Quote the version number to avoid parsing issues like
