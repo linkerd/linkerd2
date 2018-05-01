@@ -23,8 +23,8 @@ pub(super) type ResponseScopes = Scopes<ResponseLabels, Stamped<ResponseMetrics>
 
 #[derive(Debug, Default)]
 pub struct ResponseMetrics {
-    total: Counter,
-    latency: Histogram<latency::Ms>,
+    pub(super) total: Counter,
+    pub(super) latency: Histogram<latency::Ms>,
 }
 
 // ===== impl RequestScopes =====

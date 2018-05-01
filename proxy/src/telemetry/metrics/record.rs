@@ -82,3 +82,72 @@ impl Record {
         };
     }
 }
+
+#[cfg(test)]
+mod test {
+    use telemetry::{
+        event,
+        metrics::{self, histogram, labels},
+        Event,
+    };
+    use ctx::{self, test_util::* };
+    use std::time::Duration;
+
+    #[test]
+    fn record_response_end() {
+        let process = process();
+        let proxy = ctx::Proxy::outbound(&process);
+        let server = server(&proxy);
+
+        let client = client(&proxy, vec![
+            ("service", "draymond"),
+            ("deployment", "durant"),
+            ("pod", "klay"),
+        ]);
+
+        let (_, rsp) = request("http://buoyant.io", &server, &client, 1);
+
+        let end = event::StreamResponseEnd {
+            grpc_status: None,
+            since_request_open: Duration::from_millis(300),
+            since_response_open: Duration::from_millis(0),
+            bytes_sent: 0,
+            frames_sent: 0,
+        };
+
+        let (mut r, _) = metrics::new(&process, Duration::from_secs(100));
+        let ev = Event::StreamResponseEnd(rsp.clone(), end.clone());
+        let labels = labels::ResponseLabels::new(&rsp, None);
+
+        assert!(r.metrics.lock()
+            .expect("lock")
+            .responses.scopes
+            .get(&labels)
+            .is_none()
+        );
+
+        r.record_event(&ev);
+        {
+            let lock = r.metrics.lock()
+                .expect("lock");
+            let scope = lock.responses.scopes
+                .get(&labels)
+                .expect("scope should be some after event");
+
+            assert_eq!(u64::from(scope.total), 1);
+
+            for (le, count) in &scope.latency {
+                if let &histogram::Bucket::Le(le) = le {
+                    if le >= 300 {
+                        assert_eq!(u64::from(count), 1);
+                    } else {
+                        assert_eq!(u64::from(count), 0);
+                    }
+                }
+            }
+        }
+
+    }
+
+
+}
