@@ -426,19 +426,16 @@ where
         for (auth, set) in &mut self.destinations {
             // Query the Destination service first.
             let (new_query, found_by_destination_service) = match set.query.take() {
-                None => (None, Exists::Unknown),
-                Some(Remote::NeedsReconnect) => (Some(Remote::NeedsReconnect), Exists::Unknown),
                 Some(Remote::ConnectedOrConnecting { rx }) => {
                     let (new_query, found_by_destination_service) =
                         set.poll_destination_service(auth, rx);
-
-                    if new_query.needs_reconnect() {
+                    if let Remote::NeedsReconnect = new_query {
                         set.reset_on_next_modification();
                         self.reconnects.push_back(auth.clone());
                     }
-
                     (Some(new_query), found_by_destination_service)
                 },
+                query => (querty, Exists::Unknown),
             };
             set.query = new_query;
 
@@ -488,7 +485,7 @@ where
 
                 let mut svc = DestinationSvc::new(client.lift_ref());
                 let response = svc.get(grpc::Request::new(req));
-                Remote::connecting_future(response)
+                Remote::connecting(response)
             })
     }
 }
@@ -557,7 +554,7 @@ impl<T> DestinationSet<T>
                     return (Remote::NeedsReconnect, exists);
                 },
                 Ok(Async::NotReady) => {
-                    return (Remote::connected_receiver(rx), exists);
+                    return (Remote::connected(rx), exists);
                 },
                 Err(err) => {
                     warn!("Destination.Get stream errored for {:?}: {:?}", auth, err);

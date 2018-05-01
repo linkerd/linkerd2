@@ -57,22 +57,14 @@ where
     B: Body<Data = Data>,
     F: Future<Item = http::Response<B>>,
 {
-    pub fn connecting_future(future: ResponseFuture<M, F>) -> Self {
+    pub fn connecting(future: ResponseFuture<M, F>) -> Self {
         Remote::ConnectedOrConnecting {
             rx: Receiver(Rx::Waiting(future))
         }
     }
 
-    pub fn connected_receiver(rx: Receiver<M, F, B>) -> Self {
+    pub fn connected(rx: Receiver<M, F, B>) -> Self {
         Remote::ConnectedOrConnecting { rx }
-    }
-
-    /// Returns true if there is not an active `Receiver` on this `Remote`..
-    pub fn needs_reconnect(&self) -> bool {
-        match *self {
-            Remote::NeedsReconnect => true,
-            _ => false,
-        }
     }
 }
 
