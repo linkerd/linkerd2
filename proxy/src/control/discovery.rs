@@ -46,7 +46,8 @@ pub struct Endpoint {
 
 pub type DstLabelsWatch = futures_watch::Watch<Option<DstLabels>>;
 
-type DestinationQuery<F, B> = Remote<PbUpdate, F, B>;
+type DestinationServiceQuery<T> = Remote<PbUpdate, T>;
+type UpdateRx<T> = Receiver<PbUpdate, T>;
 
 /// A `tower_discover::Discover`, given to a `tower_balance::Balance`.
 #[derive(Debug)]
@@ -93,7 +94,7 @@ struct Metadata {
 
 struct DestinationSet<T: HttpService<ResponseBody = RecvBody>> {
     addrs: Exists<Cache<SocketAddr, Metadata>>,
-    query: Option<DestinationQuery<T::Future, T::ResponseBody>>,
+    query: Option<DestinationServiceQuery<T>>,
     dns_query: Option<IpAddrListFuture>,
     txs: Vec<mpsc::UnboundedSender<Update>>,
 }
@@ -426,7 +427,7 @@ where
         for (auth, set) in &mut self.destinations {
             // Query the Destination service first.
             let (new_query, found_by_destination_service) = match set.query.take() {
-                Some(Remote::ConnectedOrConnecting { rx }) => {
+                Some(Remote::ConnectedOrConnecting{ rx }) => {
                     let (new_query, found_by_destination_service) =
                         set.poll_destination_service(auth, rx);
                     if let Remote::NeedsReconnect = new_query {
@@ -435,7 +436,7 @@ where
                     }
                     (Some(new_query), found_by_destination_service)
                 },
-                query => (querty, Exists::Unknown),
+                query => (query, Exists::Unknown),
             };
             set.query = new_query;
 
@@ -473,23 +474,21 @@ where
         client: &mut T,
         auth: &DnsNameAndPort,
         connect_or_reconnect: &str)
-        -> Option<DestinationQuery<T::Future, T::ResponseBody>>
+        -> Option<DestinationServiceQuery<T>>
     {
-        trace!("destination service query: {} {:?}", connect_or_reconnect, auth);
+        trace!("DestinationServiceQuery {} {:?}", connect_or_reconnect, auth);
         FullyQualifiedAuthority::normalize(auth, default_destination_namespace)
             .map(|auth| {
                 let req = Destination {
                     scheme: "k8s".into(),
                     path: auth.without_trailing_dot().to_owned(),
                 };
-
                 let mut svc = DestinationSvc::new(client.lift_ref());
                 let response = svc.get(grpc::Request::new(req));
                 Remote::connecting(response)
             })
     }
 }
-
 
 // ===== impl DestinationSet =====
 
@@ -515,8 +514,8 @@ impl<T> DestinationSet<T>
     fn poll_destination_service(
         &mut self,
         auth: &DnsNameAndPort,
-        mut rx: Receiver<PbUpdate, T::Future, T::ResponseBody>)
-        -> (DestinationQuery<T::Future, T::ResponseBody>, Exists<()>)
+        mut rx: UpdateRx<T>)
+        -> (DestinationServiceQuery<T>, Exists<()>)
     {
         let mut exists = Exists::Unknown;
 

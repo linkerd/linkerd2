@@ -1,9 +1,8 @@
 
 use futures::{Future, Poll, Stream};
-use http;
 use prost::Message;
 use std::fmt;
-use tower_h2::{Body, Data, RecvBody};
+use tower_h2::{HttpService, Body, Data};
 use tower_grpc::{
     self as grpc,
     Streaming,
@@ -14,14 +13,10 @@ use tower_grpc::{
 ///
 /// A remote may hold a `Receiver` that can be used to read `M`-typed messages from the
 /// remote stream.
-///
-/// If the Remote does not hold an active `Receiver`, `needs_reconnect()` returns true and
-/// `take_receiver()` returns `None`.
-#[derive(Debug)]
-pub enum Remote<M, F, B: Body = RecvBody> {
+pub enum Remote<M, S: HttpService> {
     NeedsReconnect,
     ConnectedOrConnecting {
-        rx: Receiver<M, F, B>
+        rx: Receiver<M, S>
     },
 }
 
@@ -30,13 +25,11 @@ pub enum Remote<M, F, B: Body = RecvBody> {
 /// Streaming gRPC endpoints return a `ResponseFuture` whose item is a `Response<Stream>`.
 /// A `Receiver` holds the state of that RPC call, exposing a `Stream` that drives both
 /// the gRPC response and its streaming body.
-#[derive(Debug)]
-pub struct Receiver<M, F, B: Body = RecvBody>(Rx<M, F, B>);
+pub struct Receiver<M, S: HttpService>(Rx<M, S>);
 
-#[derive(Debug)]
-enum Rx<M, F, B: Body = RecvBody> {
-    Waiting(ResponseFuture<M, F>),
-    Streaming(Streaming<M, B>),
+enum Rx<M, S: HttpService> {
+    Waiting(ResponseFuture<M, S::Future>),
+    Streaming(Streaming<M, S::ResponseBody>),
 }
 
 /// Wraps the error types returned by `Receiver` polls.
@@ -51,34 +44,27 @@ pub enum Error<T> {
 
 // ===== impl Remote =====
 
-impl<M, F, B> Remote<M, F, B>
-where
-    M: Message + Default,
-    B: Body<Data = Data>,
-    F: Future<Item = http::Response<B>>,
-{
-    pub fn connecting(future: ResponseFuture<M, F>) -> Self {
+impl<M: Message + Default, S: HttpService> Remote<M, S> {
+    pub fn connecting(future: ResponseFuture<M, S::Future>) -> Self {
         Remote::ConnectedOrConnecting {
             rx: Receiver(Rx::Waiting(future))
         }
     }
 
-    pub fn connected(rx: Receiver<M, F, B>) -> Self {
+    pub fn connected(rx: Receiver<M, S>) -> Self {
         Remote::ConnectedOrConnecting { rx }
     }
 }
 
 // ===== impl Receiver =====
 
-impl<M, F, B> Stream for Receiver<M, F, B>
+impl<M: Message + Default, S: HttpService> Stream for Receiver<M, S>
 where
-    M: Message + Default,
-    B: Body<Data = Data>,
-    F: Future<Item = http::Response<B>>,
-    F::Error: fmt::Debug,
+    S::ResponseBody: Body<Data = Data>,
+    S::Error: fmt::Debug,
 {
     type Item = M;
-    type Error = Error<F::Error>;
+    type Error = Error<S::Error>;
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
         loop {
