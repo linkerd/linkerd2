@@ -17,18 +17,18 @@ pub(super) type OpenScopes = Scopes<TransportLabels, Stamped<OpenMetrics>>;
 
 #[derive(Debug, Default)]
 pub(super) struct OpenMetrics {
-    pub open_total: Counter,
-    pub open_connections: Gauge,
-    pub write_bytes_total: Counter,
-    pub read_bytes_total: Counter,
+    open_total: Counter,
+    open_connections: Gauge,
+    write_bytes_total: Counter,
+    read_bytes_total: Counter,
 }
 
 pub(super) type CloseScopes = Scopes<TransportCloseLabels, Stamped<CloseMetrics>>;
 
 #[derive(Debug, Default)]
 pub(super) struct CloseMetrics {
-    pub close_total: Counter,
-    pub connection_duration: Histogram<latency::Ms>,
+    close_total: Counter,
+    connection_duration: Histogram<latency::Ms>,
 }
 
 // ===== impl OpenScopes =====
@@ -77,6 +77,24 @@ impl OpenMetrics {
         self.read_bytes_total += rx;
         self.write_bytes_total += tx;
     }
+
+    /// Test-only accessor for `open_total`.
+    #[cfg(test)]
+    pub(super) fn open_total(&self) -> u64 {
+        self.open_total.into()
+    }
+
+    /// Test-only accessor for `read_bytes_total`.
+    #[cfg(test)]
+    pub(super) fn read_bytes_total(&self) -> u64 {
+        self.read_bytes_total.into()
+    }
+
+    /// Test-only accessor for `write_bytes_total`.
+    #[cfg(test)]
+    pub(super) fn write_bytes_total(&self) -> u64 {
+        self.write_bytes_total.into()
+    }
 }
 
 // ===== impl CloseScopes =====
@@ -110,5 +128,18 @@ impl CloseMetrics {
     pub(super) fn close(&mut self, duration: Duration) {
         self.close_total.incr();
         self.connection_duration.add(duration);
+    }
+
+
+    /// Test-only accessor for `close_total`.
+    #[cfg(test)]
+    pub(super) fn close_total(&self) -> u64 {
+        self.close_total.into()
+    }
+
+    /// Test-only accessor for `connection_duration`.
+    #[cfg(test)]
+    pub(super) fn connection_duration(&self) -> &Histogram<latency::Ms> {
+        &self.connection_duration
     }
 }

@@ -16,15 +16,15 @@ pub(super) type RequestScopes = Scopes<RequestLabels, Stamped<RequestMetrics>>;
 
 #[derive(Debug, Default)]
 pub(super) struct RequestMetrics {
-    pub(super) total: Counter,
+    total: Counter,
 }
 
 pub(super) type ResponseScopes = Scopes<ResponseLabels, Stamped<ResponseMetrics>>;
 
 #[derive(Debug, Default)]
 pub struct ResponseMetrics {
-    pub(super) total: Counter,
-    pub(super) latency: Histogram<latency::Ms>,
+    total: Counter,
+    latency: Histogram<latency::Ms>,
 }
 
 // ===== impl RequestScopes =====
@@ -53,6 +53,12 @@ impl fmt::Display for RequestScopes {
 impl RequestMetrics {
     pub fn end(&mut self) {
         self.total.incr();
+    }
+
+    /// Test-only accessor for `total`.
+    #[cfg(test)]
+    pub(super) fn total(&self) -> u64 {
+        self.total.into()
     }
 }
 
@@ -90,5 +96,17 @@ impl ResponseMetrics {
     pub fn end(&mut self, duration: Duration) {
         self.total.incr();
         self.latency.add(duration);
+    }
+
+    /// Test-only accessor for `total`.
+    #[cfg(test)]
+    pub(super) fn total(&self) -> u64 {
+        self.total.into()
+    }
+
+    /// Test-only accessor for `latency`.
+    #[cfg(test)]
+    pub(super) fn latency(&self) -> &Histogram<latency::Ms> {
+        &self.latency
     }
 }

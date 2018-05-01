@@ -134,12 +134,11 @@ mod test {
                 .get(&labels)
                 .expect("scope should be some after event");
 
-            let total: u64 = scope.total.into();
-            assert_eq!(total, 1);
+            assert_eq!(scope.total(), 1);
 
-            scope.latency.assert_bucket_exactly(300, 1);
-            scope.latency.assert_lt_exactly(300, 0);
-            scope.latency.assert_gt_exactly(300, 0);
+            scope.latency().assert_bucket_exactly(300, 1);
+            scope.latency().assert_lt_exactly(300, 0);
+            scope.latency().assert_gt_exactly(300, 0);
         }
 
     }
@@ -235,21 +234,21 @@ mod test {
                 .expect("lock");
 
             // === request scope ====================================
-            let request_total: Option<u64> = lock
-                .requests.scopes
-                .get(&req_labels)
-                .map(|scope| scope.total.into());
-            assert_eq!(request_total, Some(1));
+            assert_eq!(
+                lock.requests.scopes
+                    .get(&req_labels)
+                    .map(|scope| scope.total()),
+                Some(1)
+            );
 
             // === response scope ===================================
             let response_scope = lock
                 .responses.scopes
                 .get(&rsp_labels)
                 .expect("response scope missing");
-            let response_total: u64 = response_scope.total.into();
-            assert_eq!(response_total, 1);
+            assert_eq!(response_scope.total(), 1);
 
-            response_scope.latency
+            response_scope.latency()
                 .assert_bucket_exactly(300, 1)
                 .assert_gt_exactly(300, 0)
                 .assert_lt_exactly(300, 0);
@@ -259,30 +258,18 @@ mod test {
                 .transports.scopes
                 .get(&srv_open_labels)
                 .expect("server transport scope missing");
-            let srv_tcp_open_total: u64 = srv_transport_scope
-                .open_total.into();
-            assert_eq!(srv_tcp_open_total, 1);
-            let srv_tcp_write_total: u64 = srv_transport_scope
-                .write_bytes_total.into();
-            assert_eq!(srv_tcp_write_total, 4321);
-            let srv_tcp_read_total: u64 = srv_transport_scope
-                .read_bytes_total.into();
-            assert_eq!(srv_tcp_read_total, 4321);
+            assert_eq!(srv_transport_scope.open_total(), 1);
+            assert_eq!(srv_transport_scope.write_bytes_total(), 4321);
+            assert_eq!(srv_transport_scope.read_bytes_total(), 4321);
 
             // === client transport open scope ======================
             let client_transport_scope = lock
                 .transports.scopes
                 .get(&client_open_labels)
                 .expect("client transport scope missing");
-            let client_tcp_open_total: u64 = client_transport_scope
-                .open_total.into();
-            assert_eq!(client_tcp_open_total, 1);
-            let client_tcp_write_total: u64 = client_transport_scope
-                .write_bytes_total.into();
-            assert_eq!(client_tcp_write_total, 4321);
-            let client_tcp_read_total: u64 = client_transport_scope
-                .read_bytes_total.into();
-            assert_eq!(client_tcp_read_total, 4321);
+            assert_eq!(client_transport_scope.open_total(), 1);
+            assert_eq!(client_transport_scope.write_bytes_total(), 4321);
+            assert_eq!(client_transport_scope.read_bytes_total(), 4321);
 
             let transport_duration: u64 = 30_000 * 1_000;
 
@@ -291,10 +278,8 @@ mod test {
                 .transport_closes.scopes
                 .get(&srv_close_labels)
                 .expect("server transport close scope missing");
-            let srv_tcp_close_total: u64 = srv_transport_close_scope
-                .close_total.into();
-            assert_eq!(srv_tcp_close_total, 1);
-            srv_transport_close_scope.connection_duration
+            assert_eq!(srv_transport_close_scope.close_total(), 1);
+            srv_transport_close_scope.connection_duration()
                 .assert_bucket_exactly(transport_duration, 1)
                 .assert_gt_exactly(transport_duration, 0)
                 .assert_lt_exactly(transport_duration, 0);
@@ -304,10 +289,8 @@ mod test {
                 .transport_closes.scopes
                 .get(&client_close_labels)
                 .expect("client transport close scope missing");
-            let client_tcp_close_total: u64 = client_transport_close_scope
-                .close_total.into();
-            assert_eq!(client_tcp_close_total, 1);
-            client_transport_close_scope.connection_duration
+            assert_eq!(client_transport_close_scope.close_total(), 1);
+            client_transport_close_scope.connection_duration()
                 .assert_bucket_exactly(transport_duration, 1)
                 .assert_gt_exactly(transport_duration, 0)
                 .assert_lt_exactly(transport_duration, 0);
