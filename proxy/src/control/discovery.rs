@@ -369,12 +369,11 @@ where
                             set.txs.push(tx);
                         }
                         Entry::Vacant(vac) => {
-                            let query =
-                                Self::connect_maybe(
-                                    &self.default_destination_namespace,
-                                    client,
-                                    vac.key(),
-                                    "connect");
+                            let query = Self::query_dst_service_if_valid_auth(
+                                &self.default_destination_namespace,
+                                client,
+                                vac.key(),
+                                "connect");
                             let mut set = DestinationSet {
                                 addrs: Exists::Unknown,
                                 query,
@@ -410,7 +409,7 @@ where
 
         while let Some(auth) = self.reconnects.pop_front() {
             if let Some(set) = self.destinations.get_mut(&auth) {
-                set.query = Self::connect_maybe(
+                set.query = Self::query_dst_service_if_valid_auth(
                     &self.default_destination_namespace,
                     client,
                     &auth,
@@ -428,21 +427,17 @@ where
             // Query the Destination service first.
             let (new_query, found_by_destination_service) = match set.query.take() {
                 None => (None, Exists::Unknown),
-                Some(query) => {
-                    match query.into_receiver_maybe() {
-                        None => (Some(Remote::new()), Exists::Unknown),
-                        Some(rx) => {
-                            let (new_query, found_by_destination_service) =
-                                set.poll_destination_service(auth, rx);
+                Some(Remote::NeedsReconnect) => (Some(Remote::NeedsReconnect), Exists::Unknown),
+                Some(Remote::ConnectedOrConnecting { rx }) => {
+                    let (new_query, found_by_destination_service) =
+                        set.poll_destination_service(auth, rx);
 
-                            if new_query.needs_reconnect() {
-                                set.reset_on_next_modification();
-                                self.reconnects.push_back(auth.clone());
-                            }
-
-                            (Some(new_query), found_by_destination_service)
-                        }
+                    if new_query.needs_reconnect() {
+                        set.reset_on_next_modification();
+                        self.reconnects.push_back(auth.clone());
                     }
+
+                    (Some(new_query), found_by_destination_service)
                 },
             };
             set.query = new_query;
@@ -476,7 +471,7 @@ where
     /// Initiates a query `query` to the Destination service and returns it as
     /// `Some(query)` if the given authority's host is of a form suitable for using to
     /// query the Destination service. Otherwise, returns `None`.
-    pub fn connect_maybe(
+    fn query_dst_service_if_valid_auth(
         default_destination_namespace: &str,
         client: &mut T,
         auth: &DnsNameAndPort,
@@ -493,7 +488,7 @@ where
 
                 let mut svc = DestinationSvc::new(client.lift_ref());
                 let response = svc.get(grpc::Request::new(req));
-                Remote::from_future(response)
+                Remote::connecting_future(response)
             })
     }
 }
@@ -559,14 +554,14 @@ impl<T> DestinationSet<T>
                         "Destination.Get stream ended for {:?}, must reconnect",
                         auth
                     );
-                    return (Remote::new(), exists);
+                    return (Remote::NeedsReconnect, exists);
                 },
                 Ok(Async::NotReady) => {
-                    return (Remote::from_receiver(rx), exists);
+                    return (Remote::connected_receiver(rx), exists);
                 },
                 Err(err) => {
                     warn!("Destination.Get stream errored for {:?}: {:?}", auth, err);
-                    return (Remote::new(), exists);
+                    return (Remote::NeedsReconnect, exists);
                 }
             };
         }

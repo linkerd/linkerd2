@@ -57,17 +57,13 @@ where
     B: Body<Data = Data>,
     F: Future<Item = http::Response<B>>,
 {
-    pub fn new() -> Self {
-        Remote::NeedsReconnect
-    }
-
-    pub fn from_future(future: ResponseFuture<M, F>) -> Self {
+    pub fn connecting_future(future: ResponseFuture<M, F>) -> Self {
         Remote::ConnectedOrConnecting {
             rx: Receiver(Rx::Waiting(future))
         }
     }
 
-    pub fn from_receiver(rx: Receiver<M, F, B>) -> Self {
+    pub fn connected_receiver(rx: Receiver<M, F, B>) -> Self {
         Remote::ConnectedOrConnecting { rx }
     }
 
@@ -76,14 +72,6 @@ where
         match *self {
             Remote::NeedsReconnect => true,
             _ => false,
-        }
-    }
-
-    /// Consumes the `Remote`, returning a `Receiver` if one is active.
-    pub fn into_receiver_maybe(self) -> Option<Receiver<M, F, B>> {
-        match self {
-            Remote::NeedsReconnect => None,
-            Remote::ConnectedOrConnecting { rx } => Some(rx),
         }
     }
 }
