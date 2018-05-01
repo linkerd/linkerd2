@@ -26,34 +26,43 @@ struct Ended;
 
 impl Taps {
     pub fn insert(&mut self, id: usize, tap: Tap) -> Option<Tap> {
+        debug!("insert id={} tap={:?}", id, tap);
         self.by_id.insert(id, tap)
     }
 
     pub fn remove(&mut self, id: usize) -> Option<Tap> {
+        debug!("remove id={}", id);
         self.by_id.swap_remove(&id)
     }
 
     ///
     pub(super) fn inspect(&mut self, ev: &Event) {
-        if !ev.is_http() {
+        if !ev.is_http() || self.by_id.is_empty() {
             return;
         }
+        debug!("inspect taps={:?} event={:?}", self.by_id.keys().collect::<Vec<_>>(), ev);
 
         // Iterate through taps by index so that items may be removed.
         let mut idx = 0;
         while idx < self.by_id.len() {
-            let ended = {
-                let (_, tap) = self.by_id.get_index(idx).unwrap();
-                tap.inspect(ev).is_err()
+            let (tap_id, inspect) = {
+                let (id, tap) = self.by_id.get_index(idx).unwrap();
+                (*id, tap.inspect(ev))
             };
 
             // If the tap is no longer receiving events, remove it. The index is only
             // incremented on successs so that, when an item is removed, the swapped item
             // is inspected on the next iteration OR, if the last item has been removed,
             // `len()` will return `idx` and a subsequent iteration will not occur.
-            if ended {
-                self.by_id.swap_remove_index(idx);
-                continue;
+            match inspect {
+                Ok(matched) => {
+                    debug!("inspect tap={} match={}", tap_id, matched);
+                }
+                Err(Ended) => {
+                    debug!("ended tap={}", tap_id);
+                    self.by_id.swap_remove_index(idx);
+                    continue;
+                }
             }
 
             idx += 1;
@@ -76,8 +85,6 @@ impl Tap {
     }
 
     fn inspect(&self, ev: &Event) -> Result<bool, Ended> {
-        debug!("inspect event={:?} with tap={:?}", ev, self);
-
         if self.match_.matches(ev) {
             return self.tx
                 .lossy_send(ev.clone())
