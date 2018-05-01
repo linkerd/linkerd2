@@ -46,6 +46,8 @@ pub struct Endpoint {
 
 pub type DstLabelsWatch = futures_watch::Watch<Option<DstLabels>>;
 
+type DestinationQuery<F, B> = Remote<PbUpdate, F, B>;
+
 /// A `tower_discover::Discover`, given to a `tower_balance::Balance`.
 #[derive(Debug)]
 pub struct Watch<B> {
@@ -91,7 +93,7 @@ struct Metadata {
 
 struct DestinationSet<T: HttpService<ResponseBody = RecvBody>> {
     addrs: Exists<Cache<SocketAddr, Metadata>>,
-    query: Option<Remote<PbUpdate, T::Future, T::ResponseBody>>,
+    query: Option<DestinationQuery<T::Future, T::ResponseBody>>,
     dns_query: Option<IpAddrListFuture>,
     txs: Vec<mpsc::UnboundedSender<Update>>,
 }
@@ -479,7 +481,7 @@ where
         client: &mut T,
         auth: &DnsNameAndPort,
         connect_or_reconnect: &str)
-        -> Option<Remote<PbUpdate, T::Future, T::ResponseBody>>
+        -> Option<DestinationQuery<T::Future, T::ResponseBody>>
     {
         trace!("destination service query: {} {:?}", connect_or_reconnect, auth);
         FullyQualifiedAuthority::normalize(auth, default_destination_namespace)
@@ -522,7 +524,7 @@ impl<T> DestinationSet<T>
         &mut self,
         auth: &DnsNameAndPort,
         mut rx: Receiver<PbUpdate, T::Future, T::ResponseBody>)
-        -> (Remote<PbUpdate, T::Future, T::ResponseBody>, Exists<()>)
+        -> (DestinationQuery<T::Future, T::ResponseBody>, Exists<()>)
     {
         let mut exists = Exists::Unknown;
 
