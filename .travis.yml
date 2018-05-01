@@ -22,7 +22,14 @@ jobs:
       rust: stable
       cache: cargo
       script:
-        - (cd proxy && cargo test --locked --no-default-features)
+        - (cd proxy && cargo test --locked --no-default-features --release)
+
+    # Compile the application and run tests.
+    - language: rust
+      rust: nightly
+      cache: cargo
+      script:
+        - (cd proxy && rustup run nightly cargo bench --locked --no-default-features)
 
     - language: go
       # Quote the version number to avoid parsing issues like
@@ -128,6 +135,10 @@ jobs:
         - bin/docker-retag-all $CONDUIT_TAG master && bin/docker-push master
         - target/cli/linux/conduit install --conduit-version=$CONDUIT_TAG |tee conduit.yml
         - kubectl -n conduit apply -f conduit.yml --prune --selector='conduit.io/control-plane-component'
+
+  allow_failures:
+    - rust: nightly
+
 
 notifications:
   email:
