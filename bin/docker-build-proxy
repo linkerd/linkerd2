@@ -13,5 +13,14 @@ rootdir="$( cd $bindir/.. && pwd )"
 . $bindir/_docker.sh
 . $bindir/_tag.sh
 
+# The proxy's build stage may be useful to preserve, especially in CI. We tag this stage
+# separately. The subsequent runtime build is trivial.
+docker_build proxy-build cache $rootdir/proxy/Dockerfile \
+    --build-arg="PROXY_UNOPTIMIZED=${PROXY_UNOPTIMIZED:-}" \
+    --cache-from="$(docker_repo proxy-build):cache" \
+    --target build
+
 docker_build proxy "$(head_root_tag)" $rootdir/proxy/Dockerfile \
-    --build-arg="PROXY_UNOPTIMIZED=${PROXY_UNOPTIMIZED:-}"
+    --build-arg="PROXY_UNOPTIMIZED=${PROXY_UNOPTIMIZED:-}" \
+    --cache-from="$(docker_repo proxy-build):cache" \
+    --target runtime
