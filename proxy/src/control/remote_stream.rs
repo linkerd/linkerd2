@@ -18,10 +18,7 @@ use tower_grpc::{
 /// If the Remote does not hold an active `Receiver`, `needs_reconnect()` returns true and
 /// `take_receiver()` returns `None`.
 #[derive(Debug)]
-pub struct Remote<M, F, B: Body = RecvBody>(Inner<M, F, B>);
-
-#[derive(Debug)]
-enum Inner<M, F, B: Body = RecvBody> {
+pub enum Remote<M, F, B: Body = RecvBody> {
     NeedsReconnect,
     ConnectedOrConnecting {
         rx: Receiver<M, F, B>
@@ -61,32 +58,32 @@ where
     F: Future<Item = http::Response<B>>,
 {
     pub fn new() -> Self {
-        Remote(Inner::NeedsReconnect)
+        Remote::NeedsReconnect
     }
 
     pub fn from_future(future: ResponseFuture<M, F>) -> Self {
-        Remote(Inner::ConnectedOrConnecting {
+        Remote::ConnectedOrConnecting {
             rx: Receiver(Rx::Waiting(future))
-        })
+        }
     }
 
     pub fn from_receiver(rx: Receiver<M, F, B>) -> Self {
-        Remote(Inner::ConnectedOrConnecting { rx })
+        Remote::ConnectedOrConnecting { rx }
     }
 
     /// Returns true if there is not an active `Receiver` on this `Remote`..
     pub fn needs_reconnect(&self) -> bool {
-        match self.0 {
-            Inner::NeedsReconnect => true,
+        match *self {
+            Remote::NeedsReconnect => true,
             _ => false,
         }
     }
 
     /// Consumes the `Remote`, returning a `Receiver` if one is active.
     pub fn into_receiver_maybe(self) -> Option<Receiver<M, F, B>> {
-        match self.0 {
-            Inner::NeedsReconnect => None,
-            Inner::ConnectedOrConnecting { rx } => Some(rx),
+        match self {
+            Remote::NeedsReconnect => None,
+            Remote::ConnectedOrConnecting { rx } => Some(rx),
         }
     }
 }
