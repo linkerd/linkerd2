@@ -171,7 +171,12 @@ impl<C: Clone, B> Clone for Bind<C, B> {
 
 
 impl<C, B> Bind<C, B> {
-    pub fn executor(&self) -> &Handle {
+
+    // pub fn ctx(&self) -> &C {
+    //     &self.ctx
+    // }
+
+    pub fn executor(&self) -> &TaskExecutor {
         &self.executor
     }
 }
