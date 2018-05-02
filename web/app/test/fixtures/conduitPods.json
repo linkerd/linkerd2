@@ -1,0 +1,68 @@
+{
+  "ok": {
+    "statTables": [
+      {
+        "podGroup": {
+          "rows": [
+            {
+              "resource": {
+                "namespace": "conduit",
+                "type": "pods",
+                "name": "web-5f97578cf6-597sr"
+              },
+              "timeWindow": "1m",
+              "meshedPodCount": "4",
+              "totalPodCount": "4",
+              "stats": {
+                "successCount": "6",
+                "failureCount": "0",
+                "latencyMsP50": "5",
+                "latencyMsP95": "9",
+                "latencyMsP99": "10"
+              }
+            },
+            {
+              "resource": {
+                "namespace": "conduit",
+                "type": "pods",
+                "name": "controller-795dd8df6-tjdt6"
+              },
+              "timeWindow": "1m",
+              "meshedPodCount": "4",
+              "totalPodCount": "4",
+              "stats": {
+                "successCount": "24",
+                "failureCount": "0",
+                "latencyMsP50": "7",
+                "latencyMsP95": "18",
+                "latencyMsP99": "20"
+              }
+            },
+            {
+              "resource": {
+                "namespace": "conduit",
+                "type": "pods",
+                "name": "prometheus-595785446-r7rlq"
+              },
+              "timeWindow": "1m",
+              "meshedPodCount": "4",
+              "totalPodCount": "4",
+              "stats": null
+            },
+            {
+              "resource": {
+                "namespace": "conduit",
+                "type": "pods",
+                "name": "grafana-78cdb656bf-v8lsj"
+              },
+              "timeWindow": "1m",
+              "meshedPodCount": "4",
+              "totalPodCount": "4",
+              "stats": null
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

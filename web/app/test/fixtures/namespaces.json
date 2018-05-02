@@ -1,0 +1,62 @@
+{
+  "ok": {
+    "statTables": [
+      {
+        "podGroup": {
+          "rows": [
+            {
+              "resource": {
+                "namespace": "",
+                "type": "namespaces",
+                "name": "conduit"
+              },
+              "timeWindow": "1m",
+              "meshedPodCount": "4",
+              "totalPodCount": "4",
+              "stats": {
+                "successCount": "30",
+                "failureCount": "0",
+                "latencyMsP50": "5",
+                "latencyMsP95": "10",
+                "latencyMsP99": "10"
+              }
+            },
+            {
+              "resource": {
+                "namespace": "",
+                "type": "namespaces",
+                "name": "kube-system"
+              },
+              "timeWindow": "1m",
+              "meshedPodCount": "0",
+              "totalPodCount": "9",
+              "stats": null
+            },
+            {
+              "resource": {
+                "namespace": "",
+                "type": "namespaces",
+                "name": "default"
+              },
+              "timeWindow": "1m",
+              "meshedPodCount": "0",
+              "totalPodCount": "0",
+              "stats": null
+            },
+            {
+              "resource": {
+                "namespace": "",
+                "type": "namespaces",
+                "name": "kube-public"
+              },
+              "timeWindow": "1m",
+              "meshedPodCount": "0",
+              "totalPodCount": "0",
+              "stats": null
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

@@ -23,7 +23,7 @@ export default class CallToAction extends React.Component {
             <div className="icon-container">
               <i className="fa fa-check-circle" aria-hidden="true" />
             </div>
-            <div className="message">{_.isNil(this.props.numResources) ? "Unadded" : this.props.numResources} {resource}s detected</div>
+            <div className="message">{_.isNil(this.props.numResources) ? "No" : this.props.numResources} {resource}s detected</div>
           </div>
 
           <div className="step-container incomplete">

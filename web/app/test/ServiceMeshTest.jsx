@@ -1,9 +1,10 @@
 import _ from 'lodash';
 import Adapter from 'enzyme-adapter-react-16';
+import conduitPodFixtures from './fixtures/conduitPods.json';
 import Enzyme from 'enzyme';
 import { expect } from 'chai';
 import { mount } from 'enzyme';
-import podFixtures from './fixtures/pods.json';
+import nsFixtures from './fixtures/namespaces.json';
 import { routerWrap } from './testHelpers.jsx';
 import ServiceMesh from '../js/components/ServiceMesh.jsx';
 import sinon from 'sinon';
@@ -66,12 +67,9 @@ describe('ServiceMesh', () => {
   });
 
   it("renders controller component summaries", () => {
-    let addedPods = _.cloneDeep(podFixtures.pods);
-    _.set(addedPods[1], "added", true);
-
     fetchStub.resolves({
       ok: true,
-      json: () => Promise.resolve({ pods: addedPods})
+      json: () => Promise.resolve(conduitPodFixtures)
     });
     component = mount(routerWrap(ServiceMesh));
 
@@ -129,59 +127,71 @@ describe('ServiceMesh', () => {
   });
 
   describe("renderAddDeploymentsMessage", () => {
-    it("displays when no deployments are in the mesh", () => {
+    it("displays when no resources are in the mesh", () => {
       fetchStub.resolves({
         ok: true,
-        json: () => Promise.resolve({ pods: []})
+        json: () => Promise.resolve({})
       });
       component = mount(routerWrap(ServiceMesh));
 
       return withPromise(() => {
-        expect(component.html()).to.include("No deployments detected.");
+        expect(component.html()).to.include("No resources detected");
       });
     });
 
-    it("displays a message if >1 deployment has not been added to the mesh", () => {
+    it("displays a message if >1 resource has not been added to the mesh", () => {
+      let nsAllResourcesAdded = _.cloneDeep(nsFixtures);
+      nsAllResourcesAdded.ok.statTables[0].podGroup.rows.push({
+        "resource":{
+          "namespace":"",
+          "type":"namespaces",
+          "name":"test-1"
+        },
+        "timeWindow": "1m",
+        "meshedPodCount": "0",
+        "totalPodCount": "5",
+        "stats": null
+      });
+
       fetchStub.resolves({
         ok: true,
-        json: () => Promise.resolve({ pods: podFixtures.pods})
+        json: () => Promise.resolve(nsAllResourcesAdded)
       });
       component = mount(routerWrap(ServiceMesh));
 
       return withPromise(() => {
-        expect(component.html()).to.include("deployments have not been added to the service mesh.");
+        expect(component.html()).to.include("2 namespaces have no meshed resources.");
       });
     });
 
-    it("displays a message if 1 deployment has not added to servicemesh", () => {
-      let addedPods = _.cloneDeep(podFixtures.pods);
-      _.set(addedPods[0], "added", true);
-
+    it("displays a message if 1 resource has not added to servicemesh", () => {
       fetchStub.resolves({
         ok: true,
-        json: () => Promise.resolve({ pods: addedPods})
+        json: () => Promise.resolve(nsFixtures)
       });
       component = mount(routerWrap(ServiceMesh));
 
       return withPromise(() => {
-        expect(component.html()).to.include("1 deployment has not been added to the service mesh.");
+        expect(component.html()).to.include("1 namespace has no meshed resources.");
       });
     });
 
-    it("displays a message if all deployments have been added to servicemesh", () => {
-      let addedPods = _.cloneDeep(podFixtures.pods);
-      _.forEach(addedPods, pod => {
-        _.set(pod, "added", true);
+    it("displays a message if all resource have been added to servicemesh", () => {
+      let nsAllResourcesAdded = _.cloneDeep(nsFixtures);
+      _.each(nsAllResourcesAdded.ok.statTables[0].podGroup.rows, row => {
+        if (row.resource.name === "default") {
+          row.meshedPodCount = "10";
+          row.totalPodCount = "10";
+        }
       });
-
       fetchStub.resolves({
         ok: true,
-        json: () => Promise.resolve({ pods: addedPods})
+        json: () => Promise.resolve(nsAllResourcesAdded)
       });
       component = mount(routerWrap(ServiceMesh));
 
       return withPromise(() => {
-        expect(component.html()).to.include("All deployments have been added to the service mesh.");
+        expect(component.html()).to.include("All namespaces have a conduit install.");
       });
     });
   });

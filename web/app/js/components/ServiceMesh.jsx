@@ -125,7 +125,10 @@ export default class ServiceMesh extends React.Component {
 
   extractNsStatuses(nsData) {
     let podsByNs = _.get(nsData, ["ok", "statTables", 0, "podGroup", "rows"], []);
-    return _.map(podsByNs, ns => {
+    let dataPlaneNamepaces = _.map(podsByNs, ns => {
+      if (ns.resource.name.indexOf("kube-") === 0) {
+        return;
+      }
       let meshedPods = parseInt(ns.meshedPodCount, 10);
       let totalPods = parseInt(ns.totalPodCount, 10);
 
@@ -137,6 +140,7 @@ export default class ServiceMesh extends React.Component {
         totalPods
       };
     });
+    return _.compact(dataPlaneNamepaces);
   }
 
   processComponents(conduitPods) {
@@ -249,12 +253,30 @@ export default class ServiceMesh extends React.Component {
     );
   }
 
-  renderAddDeploymentsMessage() {
-    return (
-      <div className="mesh-completion-message">
-        Some resources have not been added to the service mesh. {incompleteMeshMessage()}
-      </div>
-    );
+  renderAddResourcesMessage() {
+    if (_.isEmpty(this.state.nsStatuses)) {
+      return <div className="mesh-completion-message">No resources detected.</div>;
+    }
+
+    let meshedCount = _.countBy(this.state.nsStatuses, pod => {
+      return pod.meshedPercent.get() > 0;
+    });
+    let numUnadded = meshedCount["false"] || 0;
+
+    if (numUnadded === 0) {
+      return (
+        <div className="mesh-completion-message">
+          All namespaces have a conduit install.
+        </div>
+      );
+    } else {
+      return (
+        <div className="mesh-completion-message">
+          {numUnadded} {numUnadded === 1 ? "namespace has" : "namespaces have"} no meshed resources.
+          {incompleteMeshMessage()}
+        </div>
+      );
+    }
   }
 
   renderNamespaceStatusTable() {
@@ -275,7 +297,7 @@ export default class ServiceMesh extends React.Component {
               pagination={false}
               size="middle" />
           </Col>
-          <Col span={8}>{this.renderAddDeploymentsMessage()}</Col>
+          <Col span={8}>{this.renderAddResourcesMessage()}</Col>
         </Row>
       </div>
     );
@@ -292,7 +314,10 @@ export default class ServiceMesh extends React.Component {
               hideButtons={this.proxyCount() === 0}
               api={this.api} />
 
-            {this.proxyCount() === 0 ? <CallToAction /> : null}
+            {this.proxyCount() === 0 ?
+              <CallToAction
+                numResources={_.size(this.state.nsStatuses)}
+                resource="namespace" /> : null}
 
             <Row gutter={16}>
               <Col span={16}>{this.renderControlPlaneDetails()}</Col>
