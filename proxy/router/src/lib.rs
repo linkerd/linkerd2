@@ -133,8 +133,8 @@ where T: Recognize,
         // Is the bound service for that key reusable? If `recognize`
         // returned `SingleUse`, that indicates that the service may
         // not be used to serve multiple requests.
-        if let Reuse::Reusable(ref key) = key {
-            if let Some(service) = inner.routes.get_mut(key) {
+        if let Reuse::Reusable(ref k) = key {
+            if let Some(service) = inner.routes.get_mut(k) {
                 let response = service.call(request);
                 return ResponseFuture { state: State::Inner(response) };
             }
@@ -148,8 +148,8 @@ where T: Recognize,
         };
 
         let response = service.call(request);
-        if let Reuse::Reusable(key) = key {
-            inner.routes.insert(key.clone(), service);
+        if let Reuse::Reusable(k) = key {
+            inner.routes.insert(k.clone(), service);
         }
         ResponseFuture { state: State::Inner(response) }
     }
