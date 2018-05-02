@@ -53,7 +53,7 @@ use std::thread;
 use std::time::Duration;
 
 use indexmap::IndexSet;
-use tokio::reactor::{Reactor, Handle};
+use tokio::runtime::{Runtime, TaskExecutor};
 use tower_service::NewService;
 use tower_fn::*;
 use conduit_proxy_router::{Recognize, Router, Error as RouteError};

@@ -4,7 +4,7 @@ use std;
 use std::cmp;
 use std::io;
 use std::net::SocketAddr;
-use tokio::net::{TcpListener, TcpStreamNew, TcpStream};
+use tokio::net::{TcpListener, TcpStream};
 use tokio::reactor::Handle;
 use tokio::io::{AsyncRead, AsyncWrite};
 

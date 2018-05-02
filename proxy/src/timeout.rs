@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use tokio_connect::Connect;
 use tokio::reactor::{Timeout as ReactorTimeout, Handle};
-use tokio::io;
+use tokio::io::{AsyncRead, AsyncWrite};
 use tower_service::Service;
 
 /// A timeout that wraps an underlying operation.
@@ -125,18 +125,18 @@ where
     }
 }
 
-impl<C> tokio::io::AsyncRead for Timeout<C>
+impl<C> AsyncRead for Timeout<C>
 where
-    C: tokio::io::AsyncRead,
+    C: AsyncRead,
 {
     unsafe fn prepare_uninitialized_buffer(&self, buf: &mut [u8]) -> bool {
         self.inner.prepare_uninitialized_buffer(buf)
     }
 }
 
-impl<C> tokio::io::AsyncWrite for Timeout<C>
+impl<C> AsyncWrite for Timeout<C>
 where
-    C: tokio::io::AsyncWrite,
+    C: AsyncWrite,
 {
     fn shutdown(&mut self) -> Poll<(), io::Error> {
         self.inner.shutdown()
