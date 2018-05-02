@@ -68,7 +68,7 @@ impl Stream for DstReceiver {
     type Item = pb::Update;
     type Error = grpc::Error;
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-        self.0.poll().map_err(|_| grpc::Error::Grpc(grpc::Status::INTERNAL))
+        self.0.poll().map_err(|_| grpc::Error::Grpc(grpc::Status::INTERNAL, HeaderMap::new()))
     }
 }
 
@@ -101,7 +101,7 @@ impl pb::server::Destination for Controller {
             }
         }
 
-        future::err(grpc::Error::Grpc(grpc::Status::INTERNAL))
+        future::err(grpc::Error::Grpc(grpc::Status::INTERNAL, HeaderMap::new()))
     }
 }
 
