@@ -149,7 +149,7 @@ where T: Recognize,
 
         let response = service.call(request);
         if let Reuse::Reusable(k) = key {
-            inner.routes.insert(k.clone(), service);
+            inner.routes.insert(k, service);
         }
         ResponseFuture { state: State::Inner(response) }
     }
