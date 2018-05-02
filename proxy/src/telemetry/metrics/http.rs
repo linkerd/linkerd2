@@ -55,7 +55,6 @@ impl RequestMetrics {
         self.total.incr();
     }
 
-    /// Test-only accessor for `total`.
     #[cfg(test)]
     pub(super) fn total(&self) -> u64 {
         self.total.into()
@@ -98,13 +97,11 @@ impl ResponseMetrics {
         self.latency.add(duration);
     }
 
-    /// Test-only accessor for `total`.
     #[cfg(test)]
     pub(super) fn total(&self) -> u64 {
         self.total.into()
     }
 
-    /// Test-only accessor for `latency`.
     #[cfg(test)]
     pub(super) fn latency(&self) -> &Histogram<latency::Ms> {
         &self.latency

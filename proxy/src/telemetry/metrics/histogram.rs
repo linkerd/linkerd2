@@ -128,25 +128,23 @@ impl<V: Into<u64>> Histogram<V> {
     #[cfg(test)]
     pub fn assert_lt_exactly(&self, value: u64, exactly: u64) -> &Self {
         for (i, &bucket) in self.bounds.0.iter().enumerate() {
-            if let Bucket::Le(ceiling) = bucket {
+            let ceiling = match bucket {
+                Bucket::Le(c) => c,
+                Bucket::Inf => break,
+            };
+            let next = self.bounds.0.get(i + 1)
+                .expect("Bucket::Le may not be the last in `bounds`!");
 
-                let next = self.bounds.0.get(i + 1)
-                    .expect("Bucket::Le may not be the last in `bounds`!");
-
-                if value <= ceiling || next >= &value  {
-                    break;
-                }
-
-                let count: u64 = self.buckets[i].into();
-                assert_eq!(
-                    count, exactly,
-                    "bucket={:?}; value={:?};",
-                    bucket, value,
-                );
-
-            } else {
+            if value <= ceiling || next >= &value  {
                 break;
             }
+
+            let count: u64 = self.buckets[i].into();
+            assert_eq!(
+                count, exactly,
+                "bucket={:?}; value={:?};",
+                bucket, value,
+            );
         }
         self
     }

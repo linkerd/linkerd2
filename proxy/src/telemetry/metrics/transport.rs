@@ -78,19 +78,16 @@ impl OpenMetrics {
         self.write_bytes_total += tx;
     }
 
-    /// Test-only accessor for `open_total`.
     #[cfg(test)]
     pub(super) fn open_total(&self) -> u64 {
         self.open_total.into()
     }
 
-    /// Test-only accessor for `read_bytes_total`.
     #[cfg(test)]
     pub(super) fn read_bytes_total(&self) -> u64 {
         self.read_bytes_total.into()
     }
 
-    /// Test-only accessor for `write_bytes_total`.
     #[cfg(test)]
     pub(super) fn write_bytes_total(&self) -> u64 {
         self.write_bytes_total.into()
@@ -130,14 +127,11 @@ impl CloseMetrics {
         self.connection_duration.add(duration);
     }
 
-
-    /// Test-only accessor for `close_total`.
     #[cfg(test)]
     pub(super) fn close_total(&self) -> u64 {
         self.close_total.into()
     }
 
-    /// Test-only accessor for `connection_duration`.
     #[cfg(test)]
     pub(super) fn connection_duration(&self) -> &Histogram<latency::Ms> {
         &self.connection_duration
