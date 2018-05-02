@@ -41,7 +41,7 @@ trust-dns-resolver = { version = "0.8.2", default-features = false, git = "https
 #futures-watch   = { git = "https://github.com/carllerche/better-future" }
 
 tokio-connect         = { git = "https://github.com/carllerche/tokio-connect" }
-tower                 = { git = "https://github.com/tower-rs/tower" }
+tower-service         = { git = "https://github.com/tower-rs/tower" }
 tower-balance         = { git = "https://github.com/tower-rs/tower" }
 tower-buffer          = { git = "https://github.com/tower-rs/tower" }
 tower-discover        = { git = "https://github.com/tower-rs/tower" }

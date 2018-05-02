@@ -1,10 +1,10 @@
 extern crate futures;
 extern crate indexmap;
-extern crate tower;
+extern crate tower_service;
 
 use futures::{Future, Poll};
 use indexmap::IndexMap;
-use tower::Service;
+use tower_service::Service;
 
 use std::{error, fmt, mem};
 use std::convert::AsRef;

@@ -3,6 +3,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use futures::{future, Poll, Stream};
 use futures_mpsc_lossy;
+use http::HeaderMap;
 use indexmap::IndexMap;
 use tower_grpc::{self as grpc, Response};
 
@@ -48,7 +49,10 @@ impl server::Tap for Observe {
 
     fn observe(&mut self, req: grpc::Request<ObserveRequest>) -> Self::ObserveFuture {
         if self.next_id.load(Ordering::Acquire) == ::std::usize::MAX {
-            return future::err(grpc::Error::Grpc(grpc::Status::INTERNAL));
+            return future::err(grpc::Error::Grpc(
+                grpc::Status::INTERNAL,
+                HeaderMap::new(),
+            ));
         }
 
         let req = req.into_inner();
@@ -59,6 +63,7 @@ impl server::Tap for Observe {
             None => {
                 return future::err(grpc::Error::Grpc(
                     grpc::Status::INVALID_ARGUMENT,
+                    HeaderMap::new(),
                 ));
             }
         };
@@ -70,7 +75,10 @@ impl server::Tap for Observe {
                 tap_id
             }
             Err(_) => {
-                return future::err(grpc::Error::Grpc(grpc::Status::INTERNAL));
+                return future::err(grpc::Error::Grpc(
+                    grpc::Status::INTERNAL,
+                    HeaderMap::new(),
+                ));
             }
         };
 

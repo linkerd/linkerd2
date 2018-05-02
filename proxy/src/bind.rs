@@ -9,7 +9,7 @@ use futures::{Future, Poll};
 use futures::future::Map;
 use http::{self, uri};
 use tokio_core::reactor::Handle;
-use tower;
+use tower_service as tower;
 use tower_h2;
 use tower_reconnect::Reconnect;
 

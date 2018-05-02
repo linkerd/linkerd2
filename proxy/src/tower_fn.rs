@@ -1,5 +1,5 @@
 use futures::future::{self, FutureResult};
-use tower::{NewService, Service};
+use tower_service::{NewService, Service};
 
 pub struct NewServiceFn<T> {
     f: T,

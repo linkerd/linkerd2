@@ -10,7 +10,7 @@ use futures::sync::mpsc;
 use futures_watch;
 use http;
 use tokio_core::reactor::Handle;
-use tower::Service;
+use tower_service::Service;
 use tower_h2::{HttpService, BoxBody, RecvBody};
 use tower_discover::{Change, Discover};
 use tower_grpc as grpc;

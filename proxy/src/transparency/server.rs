@@ -9,7 +9,7 @@ use hyper;
 use indexmap::IndexSet;
 use tokio_core::reactor::Handle;
 use tokio_io::{AsyncRead, AsyncWrite};
-use tower::NewService;
+use tower_service::NewService;
 use tower_h2;
 
 use connection::{Connection, PeekFuture};
