@@ -1,21 +1,20 @@
 // #![deny(missing_docs)]
-use futures::{Async, Future, Poll};
+use futures::{Future, Poll};
 
 use std::error::Error;
 use std::{fmt, io};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use tokio_connect::Connect;
-use tokio::reactor::{Timeout as ReactorTimeout, Handle};
+use tokio::timer::{self, Deadline, DeadlineError};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tower_service::Service;
 
 /// A timeout that wraps an underlying operation.
 #[derive(Debug, Clone)]
-pub struct Timeout<U> {
-    inner: U,
+pub struct Timeout<T> {
+    inner: T,
     duration: Duration,
-    handle: Handle,
 }
 
 /// An error representing that an operation timed out.
@@ -25,14 +24,10 @@ pub enum TimeoutError<E> {
     Timeout(Duration),
     /// Indicates that the underlying operation failed.
     Error(E),
+    // Indicates that the timer returned an error.
+    Timer(timer::Error)
 }
 
-/// A `Future` wrapped with a `Timeout`.
-pub struct TimeoutFuture<F> {
-    inner: F,
-    duration: Duration,
-    timeout: ReactorTimeout,
-}
 
 /// A duration which pretty-prints as fractional seconds.
 ///
@@ -43,16 +38,14 @@ pub struct HumanDuration(pub Duration);
 
 //===== impl Timeout =====
 
-impl<U> Timeout<U> {
+impl<T> Timeout<T> {
     /// Construct a new `Timeout` wrapping `inner`.
-    pub fn new(inner: U, duration: Duration, handle: &Handle) -> Self {
+    pub fn new(inner: T, duration: Duration,) -> Self {
         Timeout {
             inner,
             duration,
-            handle: handle.clone(),
         }
     }
-
 }
 
 impl<S, T, E> Service for Timeout<S>
@@ -62,7 +55,7 @@ where
     type Request = S::Request;
     type Response = T;
     type Error = TimeoutError<E>;
-    type Future = TimeoutFuture<S::Future>;
+    type Future = Timeout<Deadline<S::Future>>;
 
     fn poll_ready(&mut self) -> Poll<(), Self::Error> {
         self.inner.poll_ready().map_err(Self::Error::from)
@@ -70,13 +63,11 @@ where
 
     fn call(&mut self, req: Self::Request) -> Self::Future {
         let duration = self.duration;
-        let timeout = ReactorTimeout::new(duration, &self.handle)
-            .expect("reactor gone");
-        let inner = self.inner.call(req);
-        TimeoutFuture {
+        let deadline = Instant::now() + duration;
+        let inner = Deadline::new(self.inner.call(req), deadline);
+        Timeout {
             inner,
-            duration,
-            timeout,
+            duration: self.duration,
         }
     }
 }
@@ -88,20 +79,31 @@ where
 {
     type Connected = C::Connected;
     type Error = TimeoutError<C::Error>;
-    type Future = TimeoutFuture<C::Future>;
+    type Future = Timeout<Deadline<C::Future>>;
 
     fn connect(&self) -> Self::Future {
-        let duration = self.duration;
-        let timeout = ReactorTimeout::new(duration, &self.handle)
-            .expect("reactor gone");
-        let inner = self.inner.connect();
-        TimeoutFuture {
+        let deadline = Instant::now() + self.duration;
+        let inner = Deadline::new(self.inner.connect(), deadline);
+        Timeout {
             inner,
-            duration,
-            timeout,
+            duration: self.duration,
         }
     }
 }
+
+impl<F> Future for Timeout<Deadline<F>>
+where
+    F: Future,
+    // F::Error: Error,
+{
+    type Item = F::Item;
+    type Error = TimeoutError<F::Error>;
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        self.inner.poll()
+            .map_err(|err| TimeoutError::from_deadline_error(err, self.duration))
+    }
+}
+
 
 impl<C> io::Read for Timeout<C>
 where
@@ -145,10 +147,16 @@ where
 
 //===== impl TimeoutError =====
 
-impl<E> From<E> for TimeoutError<E> {
+impl<E> TimeoutError<E> {
     #[inline]
-    fn from(error: E) -> Self {
-        TimeoutError::Error(error)
+    fn from_deadline_error(error: DeadlineError<E>, duration: Duration) -> Self {
+        match error {
+            _ if error.is_timer() =>
+                TimeoutError::Timer(error.into_timer().unwrap()),
+            _ if error.is_elapsed() =>
+                TimeoutError::Timeout(duration),
+            _ => TimeoutError::Inner(error.into_inner()),
+        }
     }
 }
 
@@ -160,6 +168,8 @@ where
         match *self {
             TimeoutError::Timeout(ref d) =>
                 write!(f, "operation timed out after {}", HumanDuration(*d)),
+            TimeoutError::Timer(ref err) =>
+                write!(f, "timer error: {}", err),
             TimeoutError::Error(ref err) => fmt::Display::fmt(err, f),
         }
     }
@@ -172,6 +182,7 @@ where
     fn cause(&self) -> Option<&Error> {
         match *self {
             TimeoutError::Error(ref err) => Some(err),
+            TimeoutError::Timer(ref err) => Some(err),
             _ => None,
         }
     }
@@ -180,41 +191,8 @@ where
         match *self {
             TimeoutError::Timeout(_) => "operation timed out",
             TimeoutError::Error(ref err) => err.description(),
+            TimeoutError::Timer(ref err) => err.description(),
         }
-    }
-}
-
-//===== impl TimeoutFuture =====
-
-impl<F> Future for TimeoutFuture<F>
-where
-    F: Future,
-    // F::Error: Error,
-{
-    type Item = F::Item;
-    type Error = TimeoutError<F::Error>;
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        if let Async::Ready(item) = self.inner.poll().map_err(TimeoutError::from)? {
-            Ok(Async::Ready(item))
-        } else if let Async::Ready(_) = self.timeout.poll().expect("timer failed") {
-            Err(TimeoutError::Timeout(self.duration))
-        } else {
-            Ok(Async::NotReady)
-        }
-    }
-}
-
-// We have to provide a custom implementation of Debug, because
-// tokio::reactor::Timeout is not Debug.
-impl<F> fmt::Debug for TimeoutFuture<F>
-where
-    F: fmt::Debug
-{
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.debug_struct("TimeoutFuture")
-           .field("inner", &self.inner)
-           .field("duration", &self.duration)
-           .finish()
     }
 }
 
