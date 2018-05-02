@@ -121,69 +121,36 @@ where T: Recognize,
     }
 
     fn call(&mut self, request: Self::Request) -> Self::Future {
-        let mut inner = self.inner.lock().unwrap();
-        let inner = &mut *inner;
+        let inner = &mut *self.inner.lock().expect("lock router cache");
 
-        // This insanity is to make the borrow checker happy...
-
-        // These vars will be used to insert a new service in the cache.
-        let new_key;
-        let mut new_service;
-
-        // This loop is used to create a borrow checker scope as well as being
-        // able to call `break` to jump out of it.
-        loop {
-            let service;
-
-            if let Some(key) = inner.recognize.recognize(&request) {
-                // Is the bound service for that key reusable? If `recognize`
-                // returned `SingleUse`, that indicates that the service may
-                // not be used to serve multiple requests.
-                let cached = if let Reuse::Reusable(ref key) = key {
-                    // The key is reusable --- look in the cache.
-                    inner.routes.get_mut(key)
-                } else {
-                    None
-                };
-                if let Some(s) = cached {
-                    // The service for the authority is already cached.
-                    service = s;
-                } else {
-                    // The authority does not match an existing route, try to
-                    // recognize it.
-                    match inner.recognize.bind_service(key.as_ref()) {
-                        Ok(s) => {
-                            // A new service has been matched. Set the outer
-                            // variables and jump out o the loop.
-                            new_key = key.clone();
-                            new_service = s;
-                            break;
-                        }
-                        Err(e) => {
-                            // Route recognition failed.
-                            return ResponseFuture { state: State::RouteError(e) };
-                        }
-                    }
-                }
-            } else {
-                // The request has no authority.
+        let key = match inner.recognize.recognize(&request) {
+            Some(k) => k,
+            None => {
                 return ResponseFuture { state: State::NotRecognized };
             }
+        };
 
-            // Route to the cached service.
-            let response = service.call(request);
-            return ResponseFuture { state: State::Inner(response) };
+        // Is the bound service for that key reusable? If `recognize`
+        // returned `SingleUse`, that indicates that the service may
+        // not be used to serve multiple requests.
+        if let Reuse::Reusable(ref k) = key {
+            if let Some(service) = inner.routes.get_mut(k) {
+                let response = service.call(request);
+                return ResponseFuture { state: State::Inner(response) };
+            }
+        };
+
+        let mut service = match inner.recognize.bind_service(key.as_ref()) {
+            Ok(s) => s,
+            Err(e) => {
+                return ResponseFuture { state: State::RouteError(e) };
+            }
+        };
+
+        let response = service.call(request);
+        if let Reuse::Reusable(k) = key {
+            inner.routes.insert(k, service);
         }
-
-        // First, route the request to the new service.
-        let response = new_service.call(request);
-
-        // Now, cache the new service.
-        if let Reuse::Reusable(new_key) = new_key {
-            inner.routes.insert(new_key, new_service);
-        }
-
-        // And finally, return the response.
         ResponseFuture { state: State::Inner(response) }
     }
 }
