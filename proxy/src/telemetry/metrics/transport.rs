@@ -77,6 +77,21 @@ impl OpenMetrics {
         self.read_bytes_total += rx;
         self.write_bytes_total += tx;
     }
+
+    #[cfg(test)]
+    pub(super) fn open_total(&self) -> u64 {
+        self.open_total.into()
+    }
+
+    #[cfg(test)]
+    pub(super) fn read_bytes_total(&self) -> u64 {
+        self.read_bytes_total.into()
+    }
+
+    #[cfg(test)]
+    pub(super) fn write_bytes_total(&self) -> u64 {
+        self.write_bytes_total.into()
+    }
 }
 
 // ===== impl CloseScopes =====
@@ -110,5 +125,15 @@ impl CloseMetrics {
     pub(super) fn close(&mut self, duration: Duration) {
         self.close_total.incr();
         self.connection_duration.add(duration);
+    }
+
+    #[cfg(test)]
+    pub(super) fn close_total(&self) -> u64 {
+        self.close_total.into()
+    }
+
+    #[cfg(test)]
+    pub(super) fn connection_duration(&self) -> &Histogram<latency::Ms> {
+        &self.connection_duration
     }
 }
