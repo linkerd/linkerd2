@@ -1,6 +1,6 @@
 use futures::Future;
 use tokio_connect;
-use tokio_core::reactor::Handle;
+use tokio::reactor::Handle;
 
 use std::io;
 use std::net::{IpAddr, SocketAddr};

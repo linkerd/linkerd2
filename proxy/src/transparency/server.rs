@@ -7,8 +7,8 @@ use futures::Future;
 use http;
 use hyper;
 use indexmap::IndexSet;
-use tokio_core::reactor::Handle;
-use tokio_io::{AsyncRead, AsyncWrite};
+use tokio::reactor::Handle;
+use tokio::io::{AsyncRead, AsyncWrite};
 use tower_service::NewService;
 use tower_h2;
 

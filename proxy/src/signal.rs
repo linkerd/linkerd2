@@ -5,7 +5,7 @@ extern crate tokio_core;
 extern crate tokio_signal;
 
 use self::futures::Future;
-use self::tokio_core::reactor::Handle;
+use self::tokio::reactor::Handle;
 
 type ShutdownSignal = Box<Future<Item=(), Error=()> + Send>;
 

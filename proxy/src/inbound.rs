@@ -90,7 +90,7 @@ mod tests {
     use std::sync::Arc;
 
     use http;
-    use tokio_core::reactor::Core;
+    use tokio::reactor::Core;
     use conduit_proxy_router::Recognize;
 
     use super::Inbound;

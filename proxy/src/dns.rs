@@ -2,7 +2,7 @@ use futures::prelude::*;
 use std::fmt;
 use std::net::IpAddr;
 use std::time::Duration;
-use tokio_core::reactor::{Handle, Timeout};
+use tokio::reactor::{Handle, Timeout};
 use transport;
 use trust_dns_resolver;
 use trust_dns_resolver::config::{ResolverConfig, ResolverOpts};

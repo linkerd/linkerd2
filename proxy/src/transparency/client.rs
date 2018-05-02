@@ -3,7 +3,7 @@ use h2;
 use http;
 use hyper;
 use tokio_connect::Connect;
-use tokio_core::reactor::Handle;
+use tokio::reactor::Handle;
 use tower_service::{Service, NewService};
 use tower_h2::{self, Body};
 

@@ -4,9 +4,9 @@ use std;
 use std::cmp;
 use std::io;
 use std::net::SocketAddr;
-use tokio_core::net::{TcpListener, TcpStreamNew, TcpStream};
-use tokio_core::reactor::Handle;
-use tokio_io::{AsyncRead, AsyncWrite};
+use tokio::net::{TcpListener, TcpStreamNew, TcpStream};
+use tokio::reactor::Handle;
+use tokio::io::{AsyncRead, AsyncWrite};
 
 use config::Addr;
 use transport::GetOriginalDst;

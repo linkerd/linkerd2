@@ -6,8 +6,8 @@ use std::{fmt, io};
 use std::time::Duration;
 
 use tokio_connect::Connect;
-use tokio_core::reactor::{Timeout as ReactorTimeout, Handle};
-use tokio_io;
+use tokio::reactor::{Timeout as ReactorTimeout, Handle};
+use tokio::io;
 use tower_service::Service;
 
 /// A timeout that wraps an underlying operation.
@@ -125,18 +125,18 @@ where
     }
 }
 
-impl<C> tokio_io::AsyncRead for Timeout<C>
+impl<C> tokio::io::AsyncRead for Timeout<C>
 where
-    C: tokio_io::AsyncRead,
+    C: tokio::io::AsyncRead,
 {
     unsafe fn prepare_uninitialized_buffer(&self, buf: &mut [u8]) -> bool {
         self.inner.prepare_uninitialized_buffer(buf)
     }
 }
 
-impl<C> tokio_io::AsyncWrite for Timeout<C>
+impl<C> tokio::io::AsyncWrite for Timeout<C>
 where
-    C: tokio_io::AsyncWrite,
+    C: tokio::io::AsyncWrite,
 {
     fn shutdown(&mut self) -> Poll<(), io::Error> {
         self.inner.shutdown()
@@ -205,7 +205,7 @@ where
 }
 
 // We have to provide a custom implementation of Debug, because
-// tokio_core::reactor::Timeout is not Debug.
+// tokio::reactor::Timeout is not Debug.
 impl<F> fmt::Debug for TimeoutFuture<F>
 where
     F: fmt::Debug

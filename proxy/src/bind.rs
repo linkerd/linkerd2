@@ -7,7 +7,7 @@ use std::sync::atomic::AtomicUsize;
 
 use futures::{Future, Poll, future};
 use http::{self, uri};
-use tokio_core::reactor::Handle;
+use tokio::reactor::Handle;
 use tower_service as tower;
 use tower_h2;
 use tower_reconnect::Reconnect;

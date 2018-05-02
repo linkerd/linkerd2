@@ -9,7 +9,7 @@ use futures::{Async, Future, Poll, Stream};
 use futures::sync::mpsc;
 use futures_watch;
 use http;
-use tokio_core::reactor::Handle;
+use tokio::reactor::Handle;
 use tower_service::Service;
 use tower_h2::{HttpService, BoxBody, RecvBody};
 use tower_discover::{Change, Discover};

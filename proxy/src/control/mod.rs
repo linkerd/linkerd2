@@ -6,7 +6,7 @@ use bytes::Bytes;
 use futures::{future, Async, Future, Poll};
 use h2;
 use http;
-use tokio_core::reactor::{
+use tokio::reactor::{
     Handle,
     // TODO: would rather just have Backoff in a separate file so this
     //       renaming import is not necessary.

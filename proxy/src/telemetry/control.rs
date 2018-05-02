@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use futures::{future, Async, Future, Poll, Stream};
 use futures_mpsc_lossy::Receiver;
-use tokio_core::reactor::Handle;
+use tokio::reactor::Handle;
 
 use super::event::Event;
 use super::metrics;

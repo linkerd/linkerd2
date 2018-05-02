@@ -5,8 +5,8 @@ use std::time::Duration;
 use bytes::{Buf, BufMut};
 use futures::{future, Async, Future, Poll};
 use tokio_connect::Connect;
-use tokio_core::reactor::Handle;
-use tokio_io::{AsyncRead, AsyncWrite};
+use tokio::reactor::Handle;
+use tokio::io::{AsyncRead, AsyncWrite};
 
 use ctx::transport::{Client as ClientCtx, Server as ServerCtx};
 use telemetry::Sensors;
@@ -272,7 +272,7 @@ mod tests {
     use std::io::{Error, Read, Write, Result};
     use std::sync::atomic::{AtomicBool, Ordering};
 
-    use tokio_io::{AsyncRead, AsyncWrite};
+    use tokio::io::{AsyncRead, AsyncWrite};
     use futures::{Async, Poll};
     use super::*;
 
