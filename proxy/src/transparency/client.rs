@@ -4,7 +4,7 @@ use http;
 use hyper;
 use tokio_connect::Connect;
 use tokio_core::reactor::Handle;
-use tower::{Service, NewService};
+use tower_service::{Service, NewService};
 use tower_h2::{self, Body};
 
 use bind;

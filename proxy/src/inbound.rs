@@ -2,7 +2,7 @@ use std::net::{SocketAddr};
 use std::sync::Arc;
 
 use http;
-use tower;
+use tower_service as tower;
 use tower_buffer::{self, Buffer};
 use tower_in_flight_limit::{self, InFlightLimit};
 use tower_h2;

@@ -31,13 +31,13 @@ extern crate rand;
 extern crate tokio_connect;
 extern crate tokio_core;
 extern crate tokio_io;
-extern crate tower;
 extern crate tower_balance;
 extern crate tower_buffer;
 extern crate tower_discover;
 extern crate tower_grpc;
 extern crate tower_h2;
 extern crate tower_reconnect;
+extern crate tower_service;
 extern crate conduit_proxy_router;
 extern crate tower_util;
 extern crate tower_in_flight_limit;
@@ -54,7 +54,7 @@ use std::time::Duration;
 
 use indexmap::IndexSet;
 use tokio_core::reactor::{Core, Handle};
-use tower::NewService;
+use tower_service::NewService;
 use tower_fn::*;
 use conduit_proxy_router::{Recognize, Router, Error as RouteError};
 
