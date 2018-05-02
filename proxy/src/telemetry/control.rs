@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use futures::{future, Async, Future, Poll, Stream};
 use futures_mpsc_lossy::Receiver;
-use tokio::reactor::Handle;
+use tokio::runtime::TaskExecutor;
 
 use super::event::Event;
 use super::metrics;
@@ -48,7 +48,7 @@ pub struct Control {
     /// Holds the current state of tap observations, as configured by an external source.
     taps: Option<Arc<Mutex<Taps>>>,
 
-    handle: Handle,
+    executor: TaskExecutor,
 }
 
 // ===== impl MakeControl =====
@@ -74,13 +74,13 @@ impl MakeControl {
     /// Bind a `Control` with a reactor core.
     ///
     /// # Arguments
-    /// - `handle`: a `Handle` on an event loop that will track the timeout.
+    /// - `executor`: a `Handle` on an event loop that will track the timeout.
     /// - `taps`: shares a `Taps` instance.
     ///
     /// # Returns
     /// - `Ok(())` if the timeout was successfully created.
     /// - `Err(io::Error)` if the timeout could not be created.
-    pub fn make_control(self, taps: &Arc<Mutex<Taps>>, handle: &Handle) -> io::Result<Control> {
+    pub fn make_control(self, taps: &Arc<Mutex<Taps>>, executor: &TaskExecutor) -> io::Result<Control> {
         let (metrics_record, metrics_service) =
             metrics::new(&self.process_ctx, self.metrics_retain_idle);
 
@@ -89,7 +89,7 @@ impl MakeControl {
             metrics_service,
             rx: Some(self.rx),
             taps: Some(taps.clone()),
-            handle: handle.clone(),
+            executor: executor.clone(),
         })
     }
 }
@@ -119,8 +119,8 @@ impl Control {
         let service = self.metrics_service.clone();
         let hyper = hyper::server::Http::<hyper::Chunk>::new();
         bound_port.listen_and_fold(
-            &self.handle,
-            (hyper, self.handle.clone()),
+            &self.executor,
+            (hyper, self.executor.clone()),
             move |(hyper, executor), (conn, _)| {
                 let service = service.clone();
                 let serve = hyper.serve_connection(conn, service)

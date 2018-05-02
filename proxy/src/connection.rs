@@ -4,8 +4,8 @@ use std;
 use std::cmp;
 use std::io;
 use std::net::SocketAddr;
-use tokio::net::{TcpListener, TcpStream};
-use tokio::reactor::Handle;
+use tokio::net::{TcpListener,TcpStream};
+use tokio::runtime::TaskExecutor;
 use tokio::io::{AsyncRead, AsyncWrite};
 
 use config::Addr;
@@ -19,7 +19,7 @@ pub struct BoundPort {
 }
 
 /// Initiates a client connection to the given address.
-pub fn connect(addr: &SocketAddr, executor: &Handle) -> Connecting {
+pub fn connect(addr: &SocketAddr, executor: &TaskExecutor) -> Connecting {
     Connecting(PlaintextSocket::connect(addr, executor))
 }
 
@@ -98,7 +98,7 @@ impl BoundPort {
     // This ensures that every incoming connection has the correct options set.
     // In the future it will also ensure that the connection is upgraded with
     // TLS when needed.
-    pub fn listen_and_fold<T, F, Fut>(self, executor: &Handle, initial: T, f: F)
+    pub fn listen_and_fold<T, F, Fut>(self, executor: &TaskExecutor, initial: T, f: F)
         -> Box<Future<Item = (), Error = io::Error> + 'static>
         where
         F: Fn(T, (Connection, SocketAddr)) -> Fut + 'static,

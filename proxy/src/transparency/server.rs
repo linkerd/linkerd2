@@ -7,7 +7,7 @@ use futures::Future;
 use http;
 use hyper;
 use indexmap::IndexSet;
-use tokio::reactor::Handle;
+use tokio::runtime::TaskExecutor;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tower_service::NewService;
 use tower_h2;
@@ -35,10 +35,10 @@ where
 {
     disable_protocol_detection_ports: IndexSet<u16>,
     drain_signal: drain::Watch,
-    executor: Handle,
+    executor: TaskExecutor,
     get_orig_dst: G,
     h1: hyper::server::Http,
-    h2: tower_h2::Server<HttpBodyNewSvc<S>, Handle, B>,
+    h2: tower_h2::Server<HttpBodyNewSvc<S>, TaskExecutor, B>,
     listen_addr: SocketAddr,
     new_service: S,
     proxy_ctx: Arc<ProxyCtx>,
@@ -68,7 +68,7 @@ where
         tcp_connect_timeout: Duration,
         disable_protocol_detection_ports: IndexSet<u16>,
         drain_signal: drain::Watch,
-        executor: Handle,
+        executor: TaskExecutor,
     ) -> Self {
         let recv_body_svc = HttpBodyNewSvc::new(stack.clone());
         let tcp = tcp::Proxy::new(tcp_connect_timeout, sensors.clone(), &executor);

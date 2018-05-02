@@ -90,7 +90,7 @@ mod tests {
     use std::sync::Arc;
 
     use http;
-    use tokio::reactor::Core;
+    use tokio::runtime::Runtime;
     use conduit_proxy_router::Recognize;
 
     use super::Inbound;
@@ -98,8 +98,8 @@ mod tests {
     use ctx;
 
     fn new_inbound(default: Option<net::SocketAddr>, ctx: &Arc<ctx::Proxy>) -> Inbound<()> {
-        let core = Core::new().unwrap();
-        let bind = Bind::new(core.handle()).with_ctx(ctx.clone());
+        let core = Runtime::new().unwrap();
+        let bind = Bind::new(core.executor()).with_ctx(ctx.clone());
         Inbound::new(default, bind)
     }
 

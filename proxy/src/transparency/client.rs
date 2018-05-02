@@ -3,7 +3,7 @@ use h2;
 use http;
 use hyper;
 use tokio_connect::Connect;
-use tokio::reactor::Handle;
+use tokio::runtime::TaskExecutor;
 use tower_service::{Service, NewService};
 use tower_h2::{self, Body};
 
@@ -28,7 +28,7 @@ where
     B: tower_h2::Body + 'static,
 {
     Http1(HyperClient<C, B>),
-    Http2(tower_h2::client::Connect<C, Handle, RequestBody<B>>),
+    Http2(tower_h2::client::Connect<C, TaskExecutor, RequestBody<B>>),
 }
 
 /// A `Future` returned from `Client::new_service()`.
@@ -46,7 +46,7 @@ where
     C: Connect + 'static,
 {
     Http1(Option<HyperClient<C, B>>),
-    Http2(tower_h2::client::ConnectFuture<C, Handle, RequestBody<B>>),
+    Http2(tower_h2::client::ConnectFuture<C, TaskExecutor, RequestBody<B>>),
 }
 
 /// The `Service` yielded by `Client::new_service()`.
@@ -66,7 +66,7 @@ where
     Http1(HyperClient<C, B>),
     Http2(tower_h2::client::Connection<
         <C as Connect>::Connected,
-        Handle,
+        TaskExecutor,
         RequestBody<B>,
     >),
 }
@@ -80,7 +80,7 @@ where
     /// Create a new `Client`, bound to a specific protocol (HTTP/1 or HTTP/2).
     pub fn new(protocol: &bind::Protocol,
                connect: C,
-               executor: Handle)
+               executor: TaskExecutor)
                -> Self
     {
         match *protocol {

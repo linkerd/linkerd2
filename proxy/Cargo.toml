@@ -40,7 +40,7 @@ tokio-signal = "0.1"
 prost = "0.3.0"
 prost-types = "0.3.0"
 
-trust-dns-resolver = { version = "0.8.2", default-features = false, git = "https://github.com/bluejekyll/trust-dns", branch = "0.8_release" }
+trust-dns-resolver = { default-features = false, git = "https://github.com/bluejekyll/trust-dns", branch = "master" }
 
 #futures-watch   = { git = "https://github.com/carllerche/better-future" }
 

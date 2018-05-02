@@ -1,6 +1,6 @@
 #![cfg_attr(feature = "cargo-clippy", allow(clone_on_ref_ptr))]
 #![cfg_attr(feature = "cargo-clippy", allow(new_without_default_derive))]
-#![deny(warnings)]
+// #![deny(warnings)]
 
 extern crate bytes;
 extern crate conduit_proxy_controller_grpc;
@@ -107,7 +107,7 @@ pub struct Main<G> {
 
     get_original_dst: G,
 
-    reactor: Core,
+    runtime: Runtime,
 }
 
 impl<G> Main<G>
@@ -123,7 +123,7 @@ where
         let outbound_listener = BoundPort::new(config.private_listener.addr)
             .expect("private listener bind");
 
-        let reactor = Core::new().expect("reactor");
+        let runtime = Runtime::new().expect("runtime");
 
         let metrics_listener = BoundPort::new(config.metrics_listener.addr)
             .expect("metrics listener bind");
@@ -134,7 +134,7 @@ where
             outbound_listener,
             metrics_listener,
             get_original_dst,
-            reactor,
+            runtime,
         }
     }
 
@@ -151,8 +151,8 @@ where
         self.outbound_listener.local_addr()
     }
 
-    pub fn handle(&self) -> Handle {
-        self.reactor.handle()
+    pub fn handle(&self) -> TaskExecutor {
+        self.runtime.executor()
     }
 
     pub fn metrics_addr(&self) -> SocketAddr {
@@ -172,7 +172,7 @@ where
             outbound_listener,
             metrics_listener,
             get_original_dst,
-            reactor: mut core,
+            runtime: mut core,
         } = self;
 
         let control_host_and_port = config.control_host_and_port.clone();
@@ -272,8 +272,8 @@ where
                 .spawn(move || {
                     use conduit_proxy_controller_grpc::tap::server::TapServer;
 
-                    let mut core = Core::new().expect("initialize controller core");
-                    let executor = core.handle();
+                    let mut core = Runtime::new().expect("initialize controller core");
+                    let executor = core.executor();
 
                     let (taps, observe) = control::Observe::new(100);
                     let new_service = TapServer::new(observe);
@@ -335,7 +335,7 @@ fn serve<R, B, E, F, G>(
     sensors: telemetry::Sensors,
     get_orig_dst: G,
     drain_rx: drain::Watch,
-    executor: &Handle,
+    executor: &TaskExecutor,
 ) -> Box<Future<Item = (), Error = io::Error> + 'static>
 where
     B: tower_h2::Body + Default + 'static,
@@ -448,7 +448,7 @@ where
 fn serve_control<N, B>(
     bound_port: BoundPort,
     new_service: N,
-    executor: &Handle,
+    executor: &TaskExecutor,
 ) -> Box<Future<Item = (), Error = io::Error> + 'static>
 where
     B: tower_h2::Body + 'static,

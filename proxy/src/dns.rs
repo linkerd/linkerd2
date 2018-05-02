@@ -2,7 +2,7 @@ use futures::prelude::*;
 use std::fmt;
 use std::net::IpAddr;
 use std::time::Duration;
-use tokio::reactor::{Handle, Timeout};
+use tokio::timer::Delay;
 use transport;
 use trust_dns_resolver;
 use trust_dns_resolver::config::{ResolverConfig, ResolverOpts};
@@ -19,7 +19,6 @@ pub struct Config {
 #[derive(Clone, Debug)]
 pub struct Resolver {
     config: Config,
-    executor: Handle,
 }
 
 pub enum IpAddrFuture {
@@ -78,10 +77,9 @@ impl Config {
 }
 
 impl Resolver {
-    pub fn new(config: Config, executor: &Handle) -> Self {
+    pub fn new(config: Config) -> Self {
         Resolver {
             config,
-            executor: executor.clone(),
         }
     }
 
@@ -100,8 +98,7 @@ impl Resolver {
         let name_clone = name.clone();
         trace!("resolve_all_ips {}", &name);
         let resolver = self.clone();
-        let f = Timeout::new(delay, &resolver.executor)
-            .expect("Timeout::new() won't fail")
+        let f = Delay::new(delay)
             .then(move |_| {
                 trace!("resolve_all_ips {} after delay", &name);
                 resolver.lookup_ip(&name)
