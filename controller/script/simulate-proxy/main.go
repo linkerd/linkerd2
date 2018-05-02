@@ -561,7 +561,7 @@ func getDeploymentByPod(lister *k8s.Lister, maxPods int) map[*v1.Pod]*v1beta2.De
 	allPods := map[*v1.Pod]*v1beta2.Deployment{}
 
 	for _, deploy := range deployList {
-		pods, err := lister.GetPodsFor(deploy)
+		pods, err := lister.GetPodsFor(deploy, false)
 		if err != nil {
 			log.Fatalf("GetPodsFor failed with %s", err)
 			return map[*v1.Pod]*v1beta2.Deployment{}

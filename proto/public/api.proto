@@ -175,6 +175,8 @@ message StatTable {
 
       uint64 meshed_pod_count = 3;
       uint64 total_pod_count = 4;
+      uint64 errored_conduit_pod_count = 6;
+
       BasicStats stats = 5;
     }
   }

@@ -43,9 +43,10 @@ const (
 
 var promTypes = []promType{promRequests, promLatencyP50, promLatencyP95, promLatencyP99}
 
-type meshedCount struct {
-	inMesh uint64
-	total  uint64
+type podCount struct {
+	inMesh       uint64
+	total        uint64
+	conduitError uint64
 }
 
 func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
@@ -61,9 +62,9 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 	}
 
 	// TODO: make these one struct:
-	// string => {metav1.ObjectMeta, meshedCount}
+	// string => {metav1.ObjectMeta, podCount}
 	objectMap := map[string]metav1.Object{}
-	meshCountMap := map[string]*meshedCount{}
+	meshCountMap := map[string]*podCount{}
 
 	for _, object := range objects {
 		key, err := cache.MetaNamespaceKeyFunc(object)
@@ -96,7 +97,7 @@ func (s *grpcServer) objectQuery(
 	ctx context.Context,
 	req *pb.StatSummaryRequest,
 	objects map[string]metav1.Object,
-	meshCount map[string]*meshedCount,
+	meshCount map[string]*podCount,
 ) (*pb.StatSummaryResponse, error) {
 	rows := make([]*pb.StatTable_PodGroup_Row, 0)
 
@@ -138,6 +139,7 @@ func (s *grpcServer) objectQuery(
 		if count, ok := meshCount[key]; ok {
 			row.MeshedPodCount = count.inMesh
 			row.TotalPodCount = count.total
+			row.ErroredConduitPodCount = count.conduitError
 		}
 
 		rows = append(rows, &row)
@@ -328,17 +330,24 @@ func metricToKey(metric model.Metric, groupBy model.LabelNames) string {
 	return strings.Join(values, "/")
 }
 
-func (s *grpcServer) getMeshedPodCount(obj runtime.Object) (*meshedCount, error) {
-	pods, err := s.lister.GetPodsFor(obj)
+func (s *grpcServer) getMeshedPodCount(obj runtime.Object) (*podCount, error) {
+	pods, err := s.lister.GetPodsFor(obj, true)
 	if err != nil {
 		return nil, err
 	}
 
-	meshCount := &meshedCount{}
+	meshCount := &podCount{}
 	for _, pod := range pods {
 		meshCount.total++
 		if isInMesh(pod) {
 			meshCount.inMesh++
+		}
+
+		// count the number of conduit pods that have errors
+		if isControllerPod(pod) {
+			if pod.Status.Phase == apiv1.PodFailed {
+				meshCount.conduitError++
+			}
 		}
 	}
 
@@ -347,6 +356,11 @@ func (s *grpcServer) getMeshedPodCount(obj runtime.Object) (*meshedCount, error)
 
 func isInMesh(pod *apiv1.Pod) bool {
 	_, ok := pod.Annotations[k8s.ProxyVersionAnnotation]
+	return ok
+}
+
+func isControllerPod(pod *apiv1.Pod) bool {
+	_, ok := pod.Labels[k8s.ControllerComponentLabel]
 	return ok
 }
 
