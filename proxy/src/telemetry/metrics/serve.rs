@@ -57,7 +57,7 @@ impl Service for Serve {
     type Error = ServeError;
     type Future = FutureResult<Response<Body>, Self::Error>;
 
-    fn call(&self, req: Request<Body>) -> Self::Future {
+    fn call(&mut self, req: Request<Body>) -> Self::Future {
         if req.uri().path() != "/metrics" {
             return future::result(Response::builder()
                 .status(StatusCode::NOT_FOUND)

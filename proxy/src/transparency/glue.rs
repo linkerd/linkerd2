@@ -198,6 +198,7 @@ impl<B> BodyStream<B> {
 impl<B> hyper::body::Payload for BodyStream<B>
 where
     B: tower_h2::Body + Send + 'static,
+    B::Data: Send,
     <B::Data as ::bytes::IntoBuf>::Buf: Send,
     BufAsRef<<B::Data as ::bytes::IntoBuf>::Buf>: Send,
 {
@@ -252,6 +253,7 @@ where
     >,
     S::Error: fmt::Debug,
     B: tower_h2::Body + Default + Send + 'static,
+    B::Data: Send,
     <B::Data as ::bytes::IntoBuf>::Buf: Send,
     BufAsRef<<B::Data as ::bytes::IntoBuf>::Buf>: Send,
 {

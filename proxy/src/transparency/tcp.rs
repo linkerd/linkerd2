@@ -32,9 +32,10 @@ impl Proxy {
     }
 
     /// Serve a TCP connection, trying to forward it to its destination.
-    pub fn serve<T>(&self, tcp_in: T, srv_ctx: Arc<ServerCtx>) -> Box<Future<Item=(), Error=()>>
+    pub fn serve<T>(&self, tcp_in: T, srv_ctx: Arc<ServerCtx>)
+        -> Box<Future<Item=(), Error=()> + Send>
     where
-        T: AsyncRead + AsyncWrite + 'static,
+        T: AsyncRead + AsyncWrite + Send + 'static,
     {
         let orig_dst = srv_ctx.orig_dst_if_not_local();
 
@@ -62,7 +63,7 @@ impl Proxy {
             None,
         );
         let c = Timeout::new(
-            transport::Connect::new(orig_dst, ),
+            transport::Connect::new(orig_dst),
             self.connect_timeout,
         );
         let connect = self.sensors.connect(c, &client_ctx);

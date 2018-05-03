@@ -129,9 +129,11 @@ where
 
 impl<C, E, B> NewService for Client<C, E, B>
 where
-    C: Connect + Clone + 'static,
-    C::Future: 'static,
-    B: tower_h2::Body + 'static,
+    C: Connect + Clone + Send + Sync + 'static,
+    C::Future: Send + 'static,
+    C::Connected: Send,
+    B: tower_h2::Body + Send + 'static,
+    <<B as tower_h2::Body>::Data as IntoBuf>::Buf: Send,
     E: Executor<tower_h2::client::Background<C::Connected, RequestBody<B>>>,
     E: Clone,
     // tower_h2::client::Connect<C, E, RequestBody<B>>: NewService<Future=ConnectFuture<C, E, RequestBody<B>>>,

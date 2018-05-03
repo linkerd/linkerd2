@@ -37,7 +37,7 @@ where
     drain_signal: drain::Watch,
     executor: TaskExecutor,
     get_orig_dst: G,
-    h1: hyper::server::Http,
+    h1: hyper::server::conn::Http,
     h2: tower_h2::Server<HttpBodyNewSvc<S>, TaskExecutor, B>,
     listen_addr: SocketAddr,
     new_service: S,
@@ -51,11 +51,15 @@ where
     S: NewService<
         Request = http::Request<HttpBody>,
         Response = http::Response<B>
-    > + Clone + 'static,
-    S::Future: 'static,
-    S::Error: fmt::Debug,
-    S::InitError: fmt::Debug,
-    B: tower_h2::Body + 'static,
+    > + Clone + Send + 'static,
+    <S as NewService>::Service: Send,
+    <<S as NewService>::Service as ::tower_service::Service>::Future: Send,
+    S::Future: Send + 'static,
+    S::Error: Send + fmt::Debug,
+    S::InitError: Send + fmt::Debug,
+    B: tower_h2::Body + Default + Send + 'static,
+    B::Data: Send,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
     G: GetOriginalDst,
 {
     /// Creates a new `Server`.
@@ -77,7 +81,7 @@ where
             drain_signal,
             executor: executor.clone(),
             get_orig_dst,
-            h1: hyper::server::Http::new(),
+            h1: hyper::server::conn::Http::new(),
             h2: tower_h2::Server::new(recv_body_svc, Default::default(), executor),
             listen_addr,
             new_service: stack,
@@ -138,7 +142,7 @@ where
         let drain_signal = self.drain_signal.clone();
         let fut = io.peek()
             .map_err(|e| debug!("peek error: {}", e))
-            .and_then(move |io| -> Box<Future<Item=(), Error=()>> {
+            .and_then(move |io| -> Box<Future<Item=(), Error=()> + Send> {
                 if let Some(proto) = Protocol::detect(io.peeked()) {
                     match proto {
                         Protocol::Http1 => {
@@ -150,7 +154,7 @@ where
                                     let svc = HyperServerSvc::new(s, srv_ctx);
                                     drain_signal
                                         .watch(h1.serve_connection(io, svc), |conn| {
-                                            conn.disable_keep_alive();
+                                            // conn.disable_keep_alive();
                                         })
                                         .map(|_| ())
                                         .map_err(|e| trace!("http1 server error: {:?}", e))
@@ -183,16 +187,16 @@ where
                 }
             });
 
-        self.executor.spawn(fut);
+        self.executor.spawn(Box::new(fut));
     }
 }
 
-fn tcp_serve<T: AsyncRead + AsyncWrite + 'static>(
+fn tcp_serve<T: AsyncRead + AsyncWrite + Send + 'static>(
     tcp: &tcp::Proxy,
     io: T,
     srv_ctx: Arc<ServerCtx>,
     drain_signal: drain::Watch,
-) -> Box<Future<Item=(), Error=()>> {
+) -> Box<Future<Item=(), Error=()> + Send> {
     let fut = tcp.serve(io, srv_ctx);
 
     // There's nothing to do when drain is signaled, we just have to hope

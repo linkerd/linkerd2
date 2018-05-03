@@ -72,9 +72,9 @@ impl Background {
             let ctx = ("controller-client", format!("{:?}", host_and_port));
             let scheme = http::uri::Scheme::from_shared(Bytes::from_static(b"http")).unwrap();
             let authority = http::uri::Authority::from(&host_and_port);
-            let dns_resolver = dns::Resolver::new(dns_config, &executor);
+            let dns_resolver = dns::Resolver::new(dns_config);
             let connect = Timeout::new(
-                LookupAddressAndConnect::new(host_and_port, dns_resolver, executor),
+                LookupAddressAndConnect::new(host_and_port, dns_resolver),
                 Duration::from_secs(3),
             );
 
@@ -118,7 +118,7 @@ impl<S> Backoff<S> {
     fn new(inner: S, wait_dur: Duration,) -> Self {
         Backoff {
             inner,
-            timer: Delay::new(wait_dur),
+            timer: Delay::new(Instant::now() + wait_dur),
             waiting: false,
             wait_dur,
         }

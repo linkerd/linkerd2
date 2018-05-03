@@ -55,7 +55,9 @@ pub enum Destination {
 
 impl<B> Recognize for Outbound<B>
 where
-    B: tower_h2::Body + 'static,
+    B: tower_h2::Body + Send + 'static,
+    B::Data: Send,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
     type Request = http::Request<B>;
     type Response = bind::HttpResponse;
@@ -163,7 +165,9 @@ pub enum Discovery<B> {
 
 impl<B> Discover for Discovery<B>
 where
-    B: tower_h2::Body + 'static,
+    B: tower_h2::Body + Send + 'static,
+    B::Data: Send,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
     type Key = SocketAddr;
     type Request = http::Request<B>;

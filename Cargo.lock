@@ -140,7 +140,7 @@ dependencies = [
  "tower-buffer 0.1.0 (git+https://github.com/tower-rs/tower)",
  "tower-discover 0.1.0 (git+https://github.com/tower-rs/tower)",
  "tower-grpc 0.1.0 (git+https://github.com/tower-rs/tower-grpc)",
- "tower-h2 0.1.0 (git+https://github.com/tower-rs/tower-h2?branch=eliza/new-tokio)",
+ "tower-h2 0.1.0 (git+https://github.com/hawkw/tower-h2?branch=eliza/new-tokio)",
  "tower-in-flight-limit 0.1.0 (git+https://github.com/tower-rs/tower)",
  "tower-reconnect 0.1.0 (git+https://github.com/tower-rs/tower)",
  "tower-service 0.1.0 (git+https://github.com/tower-rs/tower)",
@@ -163,7 +163,7 @@ dependencies = [
  "quickcheck 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "tower-grpc 0.1.0 (git+https://github.com/tower-rs/tower-grpc)",
  "tower-grpc-build 0.1.0 (git+https://github.com/tower-rs/tower-grpc)",
- "tower-h2 0.1.0 (git+https://github.com/tower-rs/tower-h2)",
+ "tower-h2 0.1.0 (git+https://github.com/hawkw/tower-h2?branch=eliza/new-tokio)",
 ]
 
 [[package]]
@@ -1074,7 +1074,7 @@ dependencies = [
  "http 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "prost 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "tower-h2 0.1.0 (git+https://github.com/tower-rs/tower-h2)",
+ "tower-h2 0.1.0 (git+https://github.com/hawkw/tower-h2?branch=eliza/new-tokio)",
  "tower-service 0.1.0 (git+https://github.com/tower-rs/tower)",
 ]
 
@@ -1091,7 +1091,7 @@ dependencies = [
 [[package]]
 name = "tower-h2"
 version = "0.1.0"
-source = "git+https://github.com/tower-rs/tower-h2?branch=eliza/new-tokio#fde50d7e00f8ee8150435f28424060df06066929"
+source = "git+https://github.com/hawkw/tower-h2?branch=eliza/new-tokio#fde50d7e00f8ee8150435f28424060df06066929"
 dependencies = [
  "bytes 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1099,22 +1099,6 @@ dependencies = [
  "http 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-connect 0.1.0 (git+https://github.com/carllerche/tokio-connect)",
- "tokio-io 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "tower-service 0.1.0 (git+https://github.com/tower-rs/tower)",
-]
-
-[[package]]
-name = "tower-h2"
-version = "0.1.0"
-source = "git+https://github.com/tower-rs/tower-h2#1ce770cdda5e9665759ea543992ecc5e40140ae3"
-dependencies = [
- "bytes 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "futures 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
- "h2 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "http 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "tokio-connect 0.1.0 (git+https://github.com/carllerche/tokio-connect)",
- "tokio-core 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-io 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "tower-service 0.1.0 (git+https://github.com/tower-rs/tower)",
 ]
@@ -1452,8 +1436,7 @@ dependencies = [
 "checksum tower-discover 0.1.0 (git+https://github.com/tower-rs/tower)" = "<none>"
 "checksum tower-grpc 0.1.0 (git+https://github.com/tower-rs/tower-grpc)" = "<none>"
 "checksum tower-grpc-build 0.1.0 (git+https://github.com/tower-rs/tower-grpc)" = "<none>"
-"checksum tower-h2 0.1.0 (git+https://github.com/tower-rs/tower-h2)" = "<none>"
-"checksum tower-h2 0.1.0 (git+https://github.com/tower-rs/tower-h2?branch=eliza/new-tokio)" = "<none>"
+"checksum tower-h2 0.1.0 (git+https://github.com/hawkw/tower-h2?branch=eliza/new-tokio)" = "<none>"
 "checksum tower-in-flight-limit 0.1.0 (git+https://github.com/tower-rs/tower)" = "<none>"
 "checksum tower-reconnect 0.1.0 (git+https://github.com/tower-rs/tower)" = "<none>"
 "checksum tower-service 0.1.0 (git+https://github.com/tower-rs/tower)" = "<none>"

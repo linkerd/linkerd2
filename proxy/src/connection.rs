@@ -4,8 +4,8 @@ use std;
 use std::cmp;
 use std::io;
 use std::net::SocketAddr;
-use tokio::net::{TcpListener,TcpStream};
-use tokio::runtime::TaskExecutor;
+use tokio::net::{TcpListener, TcpStream, ConnectFuture};
+use tokio::reactor::Handle;
 use tokio::io::{AsyncRead, AsyncWrite};
 
 use config::Addr;
@@ -19,12 +19,12 @@ pub struct BoundPort {
 }
 
 /// Initiates a client connection to the given address.
-pub fn connect(addr: &SocketAddr, executor: &TaskExecutor) -> Connecting {
-    Connecting(PlaintextSocket::connect(addr, executor))
+pub fn connect(addr: &SocketAddr) -> Connecting {
+    Connecting(PlaintextSocket::connect(addr))
 }
 
 /// A socket that is in the process of connecting.
-pub struct Connecting(TcpStreamNew);
+pub struct Connecting(ConnectFuture);
 
 /// Abstracts a plaintext socket vs. a TLS decorated one.
 ///
@@ -98,16 +98,18 @@ impl BoundPort {
     // This ensures that every incoming connection has the correct options set.
     // In the future it will also ensure that the connection is upgraded with
     // TLS when needed.
-    pub fn listen_and_fold<T, F, Fut>(self, executor: &TaskExecutor, initial: T, f: F)
+    pub fn listen_and_fold<T, F, Fut>(self, handle: &Handle, initial: T, f: F)
         -> Box<Future<Item = (), Error = io::Error> + 'static>
         where
         F: Fn(T, (Connection, SocketAddr)) -> Fut + 'static,
         T: 'static,
         Fut: IntoFuture<Item = T, Error = std::io::Error> + 'static {
-        let fut = TcpListener::from_listener(self.inner, &self.local_addr, &executor)
+        let fut = TcpListener::from_std(self.inner, &handle)
             .expect("from_listener") // TODO: get rid of this `expect()`.
             .incoming()
-            .fold(initial, move |b, (socket, remote_addr)| {
+            .fold(initial, move |b, socket| {
+                let remote_addr = socket.peer_addr()
+                    .expect("couldn't get remote addr!");
                 // TODO: On Linux and most other platforms it would be better
                 // to set the `TCP_NODELAY` option on the bound socket and
                 // then have the listening sockets inherit it. However, that

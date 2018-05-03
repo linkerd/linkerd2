@@ -1,7 +1,7 @@
 use futures::prelude::*;
 use std::fmt;
 use std::net::IpAddr;
-use std::time::Duration;
+use std::time::{Instant, Duration};
 use tokio::timer::Delay;
 use transport;
 use trust_dns_resolver;
@@ -98,7 +98,7 @@ impl Resolver {
         let name_clone = name.clone();
         trace!("resolve_all_ips {}", &name);
         let resolver = self.clone();
-        let f = Delay::new(delay)
+        let f = Delay::new(Instant::now() + delay)
             .then(move |_| {
                 trace!("resolve_all_ips {} after delay", &name);
                 resolver.lookup_ip(&name)

@@ -33,7 +33,9 @@ impl<B> Inbound<B> {
 
 impl<B> Recognize for Inbound<B>
 where
-    B: tower_h2::Body + 'static,
+    B: tower_h2::Body + Send + 'static,
+    B::Data: Send,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
     type Request = http::Request<B>;
     type Response = bind::HttpResponse;

@@ -29,6 +29,7 @@ use transport;
 pub struct Bind<C, B> {
     ctx: C,
     sensors: telemetry::Sensors,
+    // TODO: make this generic over executor?
     executor: TaskExecutor,
     req_ids: Arc<AtomicUsize>,
     _p: PhantomData<B>,
@@ -100,7 +101,12 @@ pub type HttpResponse = http::Response<sensor::http::ResponseBody<HttpBody>>;
 
 pub type HttpRequest<B> = http::Request<sensor::http::RequestBody<B>>;
 
-pub type Client<B> = transparency::Client<sensor::Connect<transport::Connect>, B>;
+pub type Client<B> = transparency::Client<
+    sensor::Connect<transport::Connect>,
+    // TODO: make this generic over executor?
+    TaskExecutor,
+    B,
+>;
 
 #[derive(Copy, Clone, Debug)]
 pub enum BufferSpawnError {
@@ -183,7 +189,9 @@ impl<C, B> Bind<C, B> {
 
 impl<B> Bind<Arc<ctx::Proxy>, B>
 where
-    B: tower_h2::Body + 'static,
+    B: tower_h2::Body + Send + 'static,
+    B::Data: Send,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
     fn bind_stack(&self, ep: &Endpoint, protocol: &Protocol) -> Stack<B> {
         debug!("bind_stack endpoint={:?}, protocol={:?}", ep, protocol);
@@ -196,7 +204,7 @@ where
 
         // Map a socket address to a connection.
         let connect = self.sensors.connect(
-            transport::Connect::new(addr, &self.executor),
+            transport::Connect::new(addr),
             &client_ctx,
         );
 
@@ -250,7 +258,9 @@ impl<C, B> Bind<C, B> {
 
 impl<B> control::discovery::Bind for BindProtocol<Arc<ctx::Proxy>, B>
 where
-    B: tower_h2::Body + 'static,
+    B: tower_h2::Body + Send + 'static,
+    B::Data: Send,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
     type Endpoint = Endpoint;
     type Request = http::Request<B>;
@@ -285,7 +295,10 @@ where
         Response=HttpResponse,
     >,
     NormalizeUri<S::Service>: tower::Service,
-    B: tower_h2::Body,
+    S::Service: Send,
+    B: tower_h2::Body + Send,
+    B::Data: Send,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
     type Request = <Self::Service as tower::Service>::Request;
     type Response = <Self::Service as tower::Service>::Response;
@@ -307,7 +320,9 @@ where
         Request=http::Request<B>,
         Response=HttpResponse,
     >,
-    B: tower_h2::Body,
+    B: tower_h2::Body + Send,
+    B::Data: Send,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
     type Request = S::Request;
     type Response = HttpResponse;

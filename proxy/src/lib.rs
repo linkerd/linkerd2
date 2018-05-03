@@ -211,7 +211,7 @@ where
 
         let (control, control_bg) = control::new(dns_config.clone(), config.pod_namespace.clone());
 
-        let executor = core.handle();
+        let executor = core.executor();
         let (drain_tx, drain_rx) = drain::channel();
 
         let bind = Bind::new(executor.clone()).with_sensors(sensors.clone());
@@ -285,7 +285,7 @@ where
                     );
 
                     let telemetry = telemetry
-                        .make_control(&taps, &executor)
+                        .make_control(&taps, &executor, core.reactor())
                         .expect("bad news in telemetry town");
 
                     let metrics_server = telemetry
@@ -305,7 +305,7 @@ where
                     executor.spawn(::logging::context_future("controller-client", fut));
 
                     let shutdown = controller_shutdown_signal.then(|_| Ok::<(), ()>(()));
-                    core.run(shutdown).expect("controller api");
+                    tokio::run(shutdown).expect("controller api");
                 })
                 .expect("initialize controller api thread");
         }
@@ -315,12 +315,12 @@ where
             .map(|_| ())
             .map_err(|err| error!("main error: {:?}", err));
 
-        core.handle().spawn(fut);
+        core.spawn(fut);
         let shutdown_signal = shutdown_signal.and_then(move |()| {
             debug!("shutdown signaled");
             drain_tx.drain()
         });
-        core.run(shutdown_signal).expect("executor");
+        tokio::run(shutdown_signal).expect("executor");
         debug!("shutdown complete");
     }
 }
@@ -338,16 +338,19 @@ fn serve<R, B, E, F, G>(
     executor: &TaskExecutor,
 ) -> Box<Future<Item = (), Error = io::Error> + 'static>
 where
-    B: tower_h2::Body + Default + 'static,
-    E: Error + 'static,
-    F: Error + 'static,
+    B: tower_h2::Body + Send + Default + 'static,
+    B::Data: Send,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
+    E: Error + Send + 'static,
+    F: Error + Send + 'static,
     R: Recognize<
         Request = http::Request<HttpBody>,
         Response = http::Response<telemetry::sensor::http::ResponseBody<B>>,
         Error = E,
         RouteError = F,
     >
-        + 'static,
+        + Send + 'static,
+    R::Service: Send,
     G: GetOriginalDst + 'static,
 {
     let router = Router::new(recognize, router_capacity);
