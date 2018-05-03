@@ -52,6 +52,8 @@ impl Serve {
 }
 
 impl Service for Serve {
+    type ReqBody = Body;
+    type ResBody = Body;
     type Error = ServeError;
     type Future = FutureResult<Response<Body>, Self::Error>;
 

@@ -62,9 +62,8 @@ impl Proxy {
             None,
         );
         let c = Timeout::new(
-            transport::Connect::new(orig_dst, &self.executor),
+            transport::Connect::new(orig_dst, ),
             self.connect_timeout,
-            &self.executor,
         );
         let connect = self.sensors.connect(c, &client_ctx);
 

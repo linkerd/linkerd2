@@ -1,11 +1,16 @@
-use futures::{Async, Future, Poll};
+use bytes::IntoBuf;
+use futures::{
+    future::Executor,
+    Async,
+    Future,
+    Poll,
+};
 use h2;
 use http;
 use hyper;
 use tokio_connect::Connect;
-use tokio::runtime::TaskExecutor;
 use tower_service::{Service, NewService};
-use tower_h2::{self, Body};
+use tower_h2;
 
 use bind;
 use telemetry::sensor::http::RequestBody;
@@ -16,82 +21,93 @@ type HyperClient<C, B> =
     hyper::Client<HyperConnect<C>, BodyStream<RequestBody<B>>>;
 
 /// A `NewService` that can speak either HTTP/1 or HTTP/2.
-pub struct Client<C, B>
+pub struct Client<C, E, B>
 where
     B: tower_h2::Body + 'static,
 {
-    inner: ClientInner<C, B>,
+    inner: ClientInner<C, E, B>,
 }
 
-enum ClientInner<C, B>
+enum ClientInner<C, E, B>
 where
     B: tower_h2::Body + 'static,
 {
     Http1(HyperClient<C, B>),
-    Http2(tower_h2::client::Connect<C, TaskExecutor, RequestBody<B>>),
+    Http2(tower_h2::client::Connect<C, E, RequestBody<B>>),
 }
 
 /// A `Future` returned from `Client::new_service()`.
-pub struct ClientNewServiceFuture<C, B>
+pub struct ClientNewServiceFuture<C, E, B>
 where
     B: tower_h2::Body + 'static,
     C: Connect + 'static,
+    E: Executor<tower_h2::client::Background<C::Connected, RequestBody<B>>>,
+    E: Clone,
 {
-    inner: ClientNewServiceFutureInner<C, B>,
+    inner: ClientNewServiceFutureInner<C, E, B>,
 }
 
-enum ClientNewServiceFutureInner<C, B>
+enum ClientNewServiceFutureInner<C, E, B>
 where
     B: tower_h2::Body + 'static,
     C: Connect + 'static,
+    E: Executor<tower_h2::client::Background<C::Connected, RequestBody<B>>>,
+    E: Clone,
 {
     Http1(Option<HyperClient<C, B>>),
-    Http2(tower_h2::client::ConnectFuture<C, TaskExecutor, RequestBody<B>>),
+    Http2(tower_h2::client::ConnectFuture<C, E, RequestBody<B>>),
 }
 
 /// The `Service` yielded by `Client::new_service()`.
-pub struct ClientService<C, B>
+pub struct ClientService<C, E, B>
 where
     B: tower_h2::Body + 'static,
     C: Connect,
+    E: Executor<tower_h2::client::Background<C::Connected, RequestBody<B>>>,
+    E: Clone,
 {
-    inner: ClientServiceInner<C, B>,
+    inner: ClientServiceInner<C, E, B>,
 }
 
-enum ClientServiceInner<C, B>
+enum ClientServiceInner<C, E, B>
 where
     B: tower_h2::Body + 'static,
-    C: Connect
+    C: Connect,
+    E: Executor<tower_h2::client::Background<C::Connected, RequestBody<B>>>,
+    E: Clone,
 {
     Http1(HyperClient<C, B>),
     Http2(tower_h2::client::Connection<
         <C as Connect>::Connected,
-        TaskExecutor,
+        E,
         RequestBody<B>,
     >),
 }
 
-impl<C, B> Client<C, B>
+impl<C, E, B> Client<C, E, B>
 where
-    C: Connect + Clone + 'static,
-    C::Future: 'static,
-    B: tower_h2::Body + 'static,
+    C: Connect + Clone + Send + Sync + 'static,
+    C::Future: Send + 'static,
+    C::Connected: Send,
+    B: tower_h2::Body + Send + 'static,
+    <<B as tower_h2::Body>::Data as IntoBuf>::Buf: Send + 'static,
+    E: Executor<Box<Future<Item = (), Error = ()> + Send>>,
+    E: Executor<tower_h2::client::Background<C::Connected, RequestBody<B>>>,
+    E: Clone + Send + Sync + 'static,
 {
     /// Create a new `Client`, bound to a specific protocol (HTTP/1 or HTTP/2).
     pub fn new(protocol: &bind::Protocol,
                connect: C,
-               executor: TaskExecutor)
-               -> Self
-    {
+               executor: E)
+               -> Self {
         match *protocol {
             bind::Protocol::Http1(_) => {
-                let h1 = hyper::Client::configure()
-                    .connector(HyperConnect::new(connect))
-                    .body()
+                let h1 = hyper::Client::builder()
+                    .executor(executor)
                     // hyper should never try to automatically set the Host
                     // header, instead always just passing whatever we received.
                     .set_host(false)
-                    .build(&executor);
+                    .build(HyperConnect::new(connect));
                 Client {
                     inner: ClientInner::Http1(h1),
                 }
@@ -111,18 +127,21 @@ where
     }
 }
 
-impl<C, B> NewService for Client<C, B>
+impl<C, E, B> NewService for Client<C, E, B>
 where
     C: Connect + Clone + 'static,
     C::Future: 'static,
     B: tower_h2::Body + 'static,
+    E: Executor<tower_h2::client::Background<C::Connected, RequestBody<B>>>,
+    E: Clone,
+    // tower_h2::client::Connect<C, E, RequestBody<B>>: NewService<Future=ConnectFuture<C, E, RequestBody<B>>>,
 {
     type Request = bind::HttpRequest<B>;
     type Response = http::Response<HttpBody>;
     type Error = tower_h2::client::Error;
     type InitError = tower_h2::client::ConnectError<C::Error>;
-    type Service = ClientService<C, B>;
-    type Future = ClientNewServiceFuture<C, B>;
+    type Service = ClientService<C, E, B>;
+    type Future = ClientNewServiceFuture<C, E, B>;
 
     fn new_service(&self) -> Self::Future {
         let inner = match self.inner {
@@ -130,7 +149,8 @@ where
                 ClientNewServiceFutureInner::Http1(Some(h1.clone()))
             },
             ClientInner::Http2(ref h2) => {
-                ClientNewServiceFutureInner::Http2(h2.new_service())                        },
+                ClientNewServiceFutureInner::Http2(h2.new_service())
+            },
         };
         ClientNewServiceFuture {
             inner,
@@ -138,12 +158,15 @@ where
     }
 }
 
-impl<C, B> Future for ClientNewServiceFuture<C, B>
+impl<C, E, B> Future for ClientNewServiceFuture<C, E, B>
 where
     C: Connect + 'static,
+    C::Future: Future,
     B: tower_h2::Body + 'static,
+    E: Executor<tower_h2::client::Background<C::Connected, RequestBody<B>>>,
+    E: Clone,
 {
-    type Item = ClientService<C, B>;
+    type Item = ClientService<C, E, B>;
     type Error = tower_h2::client::ConnectError<C::Error>;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
@@ -162,11 +185,15 @@ where
     }
 }
 
-impl<C, B> Service for ClientService<C, B>
+impl<C, E, B> Service for ClientService<C, E, B>
 where
-    C: Connect + 'static,
-    C::Future: 'static,
-    B: tower_h2::Body + 'static,
+    C: Connect + Send + Sync + 'static,
+    C::Connected: Send,
+    C::Future: Send + 'static,
+    B: tower_h2::Body + Send + 'static,
+    <<B as tower_h2::Body>::Data as IntoBuf>::Buf: Send,
+    E: Executor<tower_h2::client::Background<C::Connected, RequestBody<B>>>,
+    E: Clone,
 {
     type Request = bind::HttpRequest<B>;
     type Response = http::Response<HttpBody>;
@@ -181,7 +208,7 @@ where
     }
 
     fn call(&mut self, req: Self::Request) -> Self::Future {
-        use http::header::CONTENT_LENGTH;
+        // use http::header::CONTENT_LENGTH;
 
         match self.inner {
             ClientServiceInner::Http1(ref h1) => {
@@ -214,13 +241,13 @@ where
                 // body could have come from h2, where there is no `Transfer-Encoding`.
                 // Instead, it has been replaced by `DATA` frames. The
                 // `HttpBody::is_end_stream()` manages that distinction for us.
-                let should_take_body = req.body().is_end_stream()
-                    && !req.headers().contains_key(CONTENT_LENGTH);
+                // let should_take_body = req.body().is_end_stream()
+                //     && !req.headers().contains_key(CONTENT_LENGTH);
                 let mut req = hyper::Request::from(req.map(BodyStream::new));
-                if should_take_body {
-                    req.body_mut().take();
-                }
-                req.set_proxy(was_absolute_form);
+                // if should_take_body {
+                //     req.body_mut().take();
+                // }
+                // req.set_proxy(was_absolute_form);
                 ClientServiceFuture::Http1(h1.request(req))
             },
             ClientServiceInner::Http2(ref mut h2) => {
