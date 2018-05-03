@@ -152,11 +152,19 @@ impl<E> TimeoutError<E> {
     fn from_deadline_error(error: DeadlineError<E>, duration: Duration) -> Self {
         match error {
             _ if error.is_timer() =>
-                TimeoutError::Timer(error.into_timer().unwrap()),
+                TimeoutError::Timer(error.into_timer()
+                    .expect("error.into_timer() must succeed if error.is_timer()")),
             _ if error.is_elapsed() =>
                 TimeoutError::Timeout(duration),
-            _ => TimeoutError::Inner(error.into_inner()),
+            _ => TimeoutError::Error(error.into_inner()
+                .expect("if error is not elapsed or timer, must be inner")),
         }
+    }
+}
+
+impl<E> From<E> for TimeoutError<E> {
+    fn from(error: E) -> Self {
+        TimeoutError::Error(error)
     }
 }
 
