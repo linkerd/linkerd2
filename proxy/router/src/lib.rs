@@ -69,6 +69,7 @@ pub enum Error<T, U> {
     Inner(T),
     Route(U),
     NotRecognized,
+    OutOfCapacity,
 }
 
 pub struct ResponseFuture<T: Recognize> {
@@ -211,6 +212,7 @@ impl<T: Recognize> Future for ResponseFuture<T> {
                 }
             }
             NotRecognized => Err(Error::NotRecognized),
+            OutOfCapacity => Err(Error::OutOfCapacity),
             Invalid => panic!(),
         }
     }
@@ -229,6 +231,7 @@ where
             Error::Route(ref why) =>
                 write!(f, "route recognition failed: {}", why),
             Error::NotRecognized => f.pad("route not recognized"),
+            Error::OutOfCapacity => f.pad("router out of capacity"),
         }
     }
 }
@@ -251,6 +254,7 @@ where
             Error::Inner(_) => "inner service error",
             Error::Route(_) => "route recognition failed",
             Error::NotRecognized => "route not recognized",
+            Error::OutOfCapacity => "router out of capacity",
         }
     }
 }

@@ -229,7 +229,7 @@ where
             let fut = serve(
                 inbound_listener,
                 Inbound::new(default_addr, bind),
-                100,
+                config.inbound_router_capacity,
                 config.private_connect_timeout,
                 config.inbound_ports_disable_protocol_detection,
                 ctx,
@@ -251,7 +251,7 @@ where
             let fut = serve(
                 outbound_listener,
                 outgoing,
-                1_000,
+                config.outbound_router_capacity,
                 config.public_connect_timeout,
                 config.outbound_ports_disable_protocol_detection,
                 ctx,
@@ -369,6 +369,10 @@ where
                 RouteError::NotRecognized => {
                     error!("turning route not recognized error into 500");
                     http::StatusCode::INTERNAL_SERVER_ERROR
+                }
+                RouteError::OutOfCapacity => {
+                    error!("turning router capacity exhaustion into 503");
+                    http::StatusCode::SERVICE_UNAVAILABLE
                 }
             }
         });
