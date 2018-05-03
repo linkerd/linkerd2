@@ -44,9 +44,9 @@ const (
 var promTypes = []promType{promRequests, promLatencyP50, promLatencyP95, promLatencyP99}
 
 type podCount struct {
-	inMesh       uint64
-	total        uint64
-	conduitError uint64
+	inMesh  uint64
+	total   uint64
+	errored uint64
 }
 
 func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
@@ -139,7 +139,7 @@ func (s *grpcServer) objectQuery(
 		if count, ok := meshCount[key]; ok {
 			row.MeshedPodCount = count.inMesh
 			row.TotalPodCount = count.total
-			row.ErroredConduitPodCount = count.conduitError
+			row.ErroredPodCount = count.errored
 		}
 
 		rows = append(rows, &row)
@@ -343,11 +343,8 @@ func (s *grpcServer) getMeshedPodCount(obj runtime.Object) (*podCount, error) {
 			meshCount.inMesh++
 		}
 
-		// count the number of conduit pods that have errors
-		if isControllerPod(pod) {
-			if pod.Status.Phase == apiv1.PodFailed {
-				meshCount.conduitError++
-			}
+		if pod.Status.Phase == apiv1.PodFailed {
+			meshCount.errored++
 		}
 	}
 
@@ -356,11 +353,6 @@ func (s *grpcServer) getMeshedPodCount(obj runtime.Object) (*podCount, error) {
 
 func isInMesh(pod *apiv1.Pod) bool {
 	_, ok := pod.Annotations[k8s.ProxyVersionAnnotation]
-	return ok
-}
-
-func isControllerPod(pod *apiv1.Pod) bool {
-	_, ok := pod.Labels[k8s.ControllerComponentLabel]
 	return ok
 }
 
