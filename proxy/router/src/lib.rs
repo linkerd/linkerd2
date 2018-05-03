@@ -71,34 +71,27 @@ pub enum Error<T, U> {
     NotRecognized,
 }
 
-pub struct ResponseFuture<T>
-where T: Recognize,
-{
+pub struct ResponseFuture<T: Recognize> {
     state: State<T>,
 }
 
-struct Inner<T>
-where T: Recognize,
-{
+struct Inner<T: Recognize> {
     routes: IndexMap<T::Key, T::Service>,
     recognize: T,
     capacity: usize,
 }
 
-enum State<T>
-where T: Recognize,
-{
+enum State<T: Recognize> {
     Inner(<T::Service as Service>::Future),
     RouteError(T::RouteError),
     NotRecognized,
+    OutOfCapacity,
     Invalid,
 }
 
 // ===== impl Router =====
 
-impl<T> Router<T>
-where T: Recognize
-{
+impl<T: Recognize> Router<T> {
     pub fn new(recognize: T, capacity: usize,) -> Self {
         Router {
             inner: Arc::new(Mutex::new(Inner {
@@ -121,21 +114,7 @@ macro_rules! try_bind {
     }
 }
 
-macro_rules! respond {
-    ( $call:expr ) => {
-        ResponseFuture { state: State::Inner($call) }
-        match $bind {
-            Ok(svc) => svc,
-            Err(e) => {
-                return ResponseFuture { state: State::RouteError(e) };
-            }
-        }
-    }
-}
-
-impl<T> Service for Router<T>
-where T: Recognize,
-{
+impl<T: Recognize> Service for Router<T> {
     type Request = T::Request;
     type Response = T::Response;
     type Error = Error<T::Error, T::RouteError>;
@@ -151,35 +130,33 @@ where T: Recognize,
             None => ResponseFuture { state: State::NotRecognized },
             Some(Reuse::SingleUse(key)) => {
                 let mut service = try_bind!(inner.recognize.bind_service(&key));
-                let response = service.call(request);
-                ResponseFuture { state: State::Inner(response) }
+                ResponseFuture::new(service.call(request))
             }
             Some(Reuse::Reusable(key)) => {
                 if let Some(service) = inner.routes.get_mut(&key) {
                     let response = service.call(request);
-                    return ResponseFuture { state: State::Inner(response) };
+                    return ResponseFuture::new(response);
                 }
 
-                // TODO check capacity.
+                if inner.routes.len() == inner.capacity {
+                    // TODO attempt to evict old instances.
+                    return ResponseFuture::out_of_capacity();
+                }
 
                 let mut service = try_bind!(inner.recognize.bind_service(&key));
                 let response = service.call(request);
                 inner.routes.insert(key, service);
-                ResponseFuture { state: State::Inner(response) }
+                ResponseFuture::new(response)
             }
         }
     }
 }
 
-impl<T> Clone for Router<T>
-where T: Recognize,
-{
+impl<T: Recognize> Clone for Router<T> {
     fn clone(&self) -> Self {
         Router { inner: self.inner.clone() }
     }
 }
-
-// ===== impl Recognize =====
 
 // ===== impl Single =====
 
@@ -208,9 +185,17 @@ impl<S: Service> Recognize for Single<S> {
 
 // ===== impl ResponseFuture =====
 
-impl<T> Future for ResponseFuture<T>
-where T: Recognize,
-{
+impl<T: Recognize> ResponseFuture<T> {
+    fn new(future: <T::Service as Service>::Future) -> Self {
+        ResponseFuture { state: State::Inner(future) }
+    }
+
+    fn out_of_capacity() -> Self {
+        ResponseFuture { state: State::OutOfCapacity }
+    }
+}
+
+impl<T: Recognize> Future for ResponseFuture<T> {
     type Item = T::Response;
     type Error = Error<T::Error, T::RouteError>;
 
