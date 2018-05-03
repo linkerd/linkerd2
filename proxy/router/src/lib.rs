@@ -82,6 +82,7 @@ where T: Recognize,
 {
     routes: IndexMap<T::Key, T::Service>,
     recognize: T,
+    capacity: usize,
 }
 
 enum State<T>
@@ -98,11 +99,12 @@ where T: Recognize,
 impl<T> Router<T>
 where T: Recognize
 {
-    pub fn new(recognize: T) -> Self {
+    pub fn new(recognize: T, capacity: usize,) -> Self {
         Router {
             inner: Arc::new(Mutex::new(Inner {
                 routes: Default::default(),
                 recognize,
+                capacity,
             })),
         }
     }
@@ -110,6 +112,18 @@ where T: Recognize
 
 macro_rules! try_bind {
     ( $bind:expr ) => {
+        match $bind {
+            Ok(svc) => svc,
+            Err(e) => {
+                return ResponseFuture { state: State::RouteError(e) };
+            }
+        }
+    }
+}
+
+macro_rules! respond {
+    ( $call:expr ) => {
+        ResponseFuture { state: State::Inner($call) }
         match $bind {
             Ok(svc) => svc,
             Err(e) => {
