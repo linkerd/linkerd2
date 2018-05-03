@@ -173,8 +173,12 @@ message StatTable {
       Resource resource = 1;
       string time_window = 2;
 
+      // number of pods in this resource that have conduit injected
       uint64 meshed_pod_count = 3;
+      // number of pods in this resource
       uint64 total_pod_count = 4;
+      // number of pods belonging to the conduit control plane that
+      // have Phase PodFailed
       uint64 errored_conduit_pod_count = 6;
 
       BasicStats stats = 5;
