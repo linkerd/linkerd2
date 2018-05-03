@@ -108,6 +108,17 @@ where T: Recognize
     }
 }
 
+macro_rules! try_bind {
+    ( $bind:expr ) => {
+        match $bind {
+            Ok(svc) => svc,
+            Err(e) => {
+                return ResponseFuture { state: State::RouteError(e) };
+            }
+        }
+    }
+}
+
 impl<T> Service for Router<T>
 where T: Recognize,
 {
@@ -122,36 +133,27 @@ where T: Recognize,
 
     fn call(&mut self, request: Self::Request) -> Self::Future {
         let inner = &mut *self.inner.lock().expect("lock router cache");
-
-        let key = match inner.recognize.recognize(&request) {
-            Some(k) => k,
-            None => {
-                return ResponseFuture { state: State::NotRecognized };
-            }
-        };
-
-        // Is the bound service for that key reusable? If `recognize`
-        // returned `SingleUse`, that indicates that the service may
-        // not be used to serve multiple requests.
-        if let Reuse::Reusable(ref k) = key {
-            if let Some(service) = inner.routes.get_mut(k) {
+        match inner.recognize.recognize(&request) {
+            None => ResponseFuture { state: State::NotRecognized },
+            Some(Reuse::SingleUse(key)) => {
+                let mut service = try_bind!(inner.recognize.bind_service(&key));
                 let response = service.call(request);
-                return ResponseFuture { state: State::Inner(response) };
+                ResponseFuture { state: State::Inner(response) }
             }
-        };
+            Some(Reuse::Reusable(key)) => {
+                if let Some(service) = inner.routes.get_mut(&key) {
+                    let response = service.call(request);
+                    return ResponseFuture { state: State::Inner(response) };
+                }
 
-        let mut service = match inner.recognize.bind_service(key.as_ref()) {
-            Ok(s) => s,
-            Err(e) => {
-                return ResponseFuture { state: State::RouteError(e) };
+                // TODO check capacity.
+
+                let mut service = try_bind!(inner.recognize.bind_service(&key));
+                let response = service.call(request);
+                inner.routes.insert(key, service);
+                ResponseFuture { state: State::Inner(response) }
             }
-        };
-
-        let response = service.call(request);
-        if let Reuse::Reusable(k) = key {
-            inner.routes.insert(k, service);
         }
-        ResponseFuture { state: State::Inner(response) }
     }
 }
 
