@@ -1,12 +1,13 @@
 import Adapter from 'enzyme-adapter-react-16';
+import { ApiHelpers } from '../js/components/util/ApiHelpers.jsx';
 import { BrowserRouter } from 'react-router-dom';
 import Enzyme from 'enzyme';
 import { expect } from 'chai';
 import { mount } from 'enzyme';
 import React from 'react';
+import Sidebar from '../js/components/Sidebar.jsx';
 import sinon from 'sinon';
 import sinonStubPromise from 'sinon-stub-promise';
-import Version from '../js/components/Version.jsx';
 
 Enzyme.configure({ adapter: new Adapter() });
 sinonStubPromise(sinon);
@@ -16,9 +17,10 @@ describe('Version', () => {
   let newVer = "v2.3.4";
 
   let component, fetchStub;
+  let apiHelpers = ApiHelpers("");
 
   function withPromise(fn) {
-    return component.find("Version").instance().serverPromise.then(fn);
+    return component.find("Sidebar").instance().serverPromise.then(fn);
   }
 
   beforeEach(() => {
@@ -30,19 +32,32 @@ describe('Version', () => {
     window.fetch.restore();
   });
 
-  it('renders initial loading message', () => {
+  const expandSidebar = component => {
+    // click trigger to expand the sidebar
+    component.find(".ant-layout-sider-trigger").simulate('click');
+  };
+
+  it('is hidden when the sidebar is collapsed', () => {
     fetchStub.returnsPromise().resolves({
       ok: true,
+      json: () => Promise.resolve({ version: curVer })
     });
 
     component = mount(
       <BrowserRouter>
-        <Version />
+        <Sidebar
+          location={{ pathname: ""}}
+          api={apiHelpers}
+          releaseVersion={curVer}
+          uuid="fakeuuid" />
       </BrowserRouter>
     );
 
-    expect(component.find("Version")).to.have.length(1);
-    expect(component.html()).to.include("Performing version check...");
+    return withPromise(() => {
+      expect(component.html()).not.to.include("Conduit is up to date");
+      expandSidebar(component);
+      expect(component.html()).to.include("Conduit is up to date");
+    });
   });
 
   it('renders up to date message when versions match', () => {
@@ -53,11 +68,15 @@ describe('Version', () => {
 
     component = mount(
       <BrowserRouter>
-        <Version
+        <Sidebar
+          location={{ pathname: ""}}
+          api={apiHelpers}
           releaseVersion={curVer}
           uuid="fakeuuid" />
       </BrowserRouter>
     );
+
+    expandSidebar(component);
 
     return withPromise(() => {
       expect(component.html()).to.include("Conduit is up to date");
@@ -72,11 +91,15 @@ describe('Version', () => {
 
     component = mount(
       <BrowserRouter>
-        <Version
+        <Sidebar
+          location={{ pathname: ""}}
+          api={apiHelpers}
           releaseVersion={curVer}
           uuid="fakeuuid" />
       </BrowserRouter>
     );
+
+    expandSidebar(component);
 
     return withPromise(() => {
       expect(component.html()).to.include("A new version (");
@@ -95,9 +118,13 @@ describe('Version', () => {
 
     component = mount(
       <BrowserRouter>
-        <Version />
+        <Sidebar
+          location={{ pathname: ""}}
+          api={apiHelpers} />
       </BrowserRouter>
     );
+
+    expandSidebar(component);
 
     return withPromise(() => {
       expect(component.html()).to.include("Version check failed");
