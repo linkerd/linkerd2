@@ -370,10 +370,10 @@ where
                     error!("turning route not recognized error into 500");
                     http::StatusCode::INTERNAL_SERVER_ERROR
                 }
-                RouteError::OutOfCapacity => {
+                RouteError::NoCapacity(capacity) => {
                     // TODO For H2 streams, we should probably signal a protocol-level
                     // capacity change.
-                    error!("turning router capacity exhaustion into 503");
+                    error!("router at capacity ({}); returning a 503", capacity);
                     http::StatusCode::SERVICE_UNAVAILABLE
                 }
             }
