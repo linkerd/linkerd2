@@ -167,8 +167,11 @@ const DEFAULT_PRIVATE_CONNECT_TIMEOUT_MS: u64 = 20;
 const DEFAULT_PUBLIC_CONNECT_TIMEOUT_MS: u64 = 300;
 const DEFAULT_BIND_TIMEOUT_MS: u64 = 10_000; // ten seconds, as in Linkerd.
 const DEFAULT_RESOLV_CONF: &str = "/etc/resolv.conf";
+
+/// It's assumed that a typical proxy can serve inbound traffic for up to 100 pod-local
+/// HTTP services and may communicate with up to 10K external HTTP domains.
 const DEFAULT_INBOUND_ROUTER_CAPACITY: usize = 100;
-const DEFAULT_OUTBOUND_ROUTER_CAPACITY: usize = 1_000;
+const DEFAULT_OUTBOUND_ROUTER_CAPACITY: usize = 10_000;
 
 // By default, we keep a list of known assigned ports of server-first protocols.
 //
