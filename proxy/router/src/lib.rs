@@ -73,8 +73,8 @@ pub enum Reuse<T> {
 pub enum Error<T, U> {
     Inner(T),
     Route(U),
+    NoCapacity(usize),
     NotRecognized,
-    OutOfCapacity,
 }
 
 pub struct ResponseFuture<T>
@@ -96,8 +96,8 @@ where T: Recognize,
 {
     Inner(<T::Service as Service>::Future),
     RouteError(T::RouteError),
+    NoCapacity(usize),
     NotRecognized,
-    OutOfCapacity,
     Invalid,
 }
 
@@ -173,7 +173,7 @@ where T: Recognize,
                 if inner.routes.len() == inner.capacity {
                     // TODO If the cache is full, evict the oldest inactive route. If all
                     // routes are active, fail the request.
-                    return ResponseFuture::out_of_capacity();
+                    return ResponseFuture::no_capacity(inner.capacity);
                 }
 
                 // Bind a new route, send the request on the route, and cache the route.
@@ -232,8 +232,8 @@ where T: Recognize,
         ResponseFuture { state: State::NotRecognized }
     }
 
-    fn out_of_capacity() -> Self {
-        ResponseFuture { state: State::OutOfCapacity }
+    fn no_capacity(capacity: usize) -> Self {
+        ResponseFuture { state: State::NoCapacity(capacity) }
     }
 }
 
@@ -255,7 +255,7 @@ where T: Recognize,
                 }
             }
             NotRecognized => Err(Error::NotRecognized),
-            OutOfCapacity => Err(Error::OutOfCapacity),
+            NoCapacity(capacity) => Err(Error::NoCapacity(capacity)),
             Invalid => panic!(),
         }
     }
@@ -274,7 +274,7 @@ where
             Error::Route(ref why) =>
                 write!(f, "route recognition failed: {}", why),
             Error::NotRecognized => f.pad("route not recognized"),
-            Error::OutOfCapacity => f.pad("router out of capacity"),
+            Error::NoCapacity(capacity) => write!(f, "router capacity reached ({})", capacity),
         }
     }
 }
@@ -296,8 +296,8 @@ where
         match *self {
             Error::Inner(_) => "inner service error",
             Error::Route(_) => "route recognition failed",
+            Error::NoCapacity(_) => "router capacity reached",
             Error::NotRecognized => "route not recognized",
-            Error::OutOfCapacity => "router out of capacity",
         }
     }
 }
@@ -397,7 +397,7 @@ mod tests {
         assert_eq!(rsp, 2);
 
         let rsp = router.call_err(Request::Reusable(3));
-        assert_eq!(rsp, Error::OutOfCapacity);
+        assert_eq!(rsp, Error::NoCapacity(1));
     }
 
     #[test]
