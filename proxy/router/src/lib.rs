@@ -315,7 +315,7 @@ mod tests {
 
     struct Recognize;
 
-    struct MultEq(usize);
+    struct MultiplyAndAssign(usize);
 
     enum Request {
         NotRecognized,
@@ -329,7 +329,7 @@ mod tests {
         type Error = ();
         type Key = usize;
         type RouteError = ();
-        type Service = MultEq;
+        type Service = MultiplyAndAssign;
 
         fn recognize(&self, req: &Self::Request) -> Option<Reuse<Self::Key>> {
             match *req {
@@ -340,11 +340,11 @@ mod tests {
         }
 
         fn bind_service(&mut self, _: &Self::Key) -> Result<Self::Service, Self::RouteError> {
-            Ok(MultEq(1))
+            Ok(MultiplyAndAssign(1))
         }
     }
 
-    impl Service for MultEq {
+    impl Service for MultiplyAndAssign {
         type Request = Request;
         type Response = usize;
         type Error = ();
@@ -356,7 +356,7 @@ mod tests {
 
         fn call(&mut self, req: Self::Request) -> Self::Future {
             let n = match req {
-                Request::NotRecognized => return future::err(()),
+                Request::NotRecognized => unreachable!(),
                 Request::Reusable(n) => n,
                 Request::SingleUse(n) => n,
             };
@@ -366,11 +366,11 @@ mod tests {
     }
 
     impl Router<Recognize> {
-        fn route_ok(&mut self, req: Request) -> usize {
+        fn call_ok(&mut self, req: Request) -> usize {
             self.call(req).wait().expect("should route")
         }
 
-        fn route_err(&mut self, req: Request) -> super::Error<(), ()> {
+        fn call_err(&mut self, req: Request) -> super::Error<(), ()> {
             self.call(req).wait().expect_err("should not route")
         }
     }
@@ -379,7 +379,7 @@ mod tests {
     fn invalid() {
         let mut router = Router::new(Recognize, 1);
 
-        let rsp = router.route_err(Request::NotRecognized);
+        let rsp = router.call_err(Request::NotRecognized);
         assert_eq!(rsp, Error::NotRecognized);
     }
 
@@ -387,10 +387,10 @@ mod tests {
     fn reuse_limited_by_capacity() {
         let mut router = Router::new(Recognize, 1);
 
-        let rsp = router.route_ok(Request::Reusable(2));
+        let rsp = router.call_ok(Request::Reusable(2));
         assert_eq!(rsp, 2);
 
-        let rsp = router.route_err(Request::Reusable(3));
+        let rsp = router.call_err(Request::Reusable(3));
         assert_eq!(rsp, Error::OutOfCapacity);
     }
 
@@ -398,10 +398,10 @@ mod tests {
     fn reuse_shares_service() {
         let mut router = Router::new(Recognize, 1);
 
-        let rsp = router.route_ok(Request::Reusable(2));
+        let rsp = router.call_ok(Request::Reusable(2));
         assert_eq!(rsp, 2);
 
-        let rsp = router.route_ok(Request::Reusable(2));
+        let rsp = router.call_ok(Request::Reusable(2));
         assert_eq!(rsp, 4);
     }
 
@@ -409,10 +409,10 @@ mod tests {
     fn single_use_does_not_share_service() {
         let mut router = Router::new(Recognize, 1);
 
-        let rsp = router.route_ok(Request::SingleUse(2));
+        let rsp = router.call_ok(Request::SingleUse(2));
         assert_eq!(rsp, 2);
 
-        let rsp = router.route_ok(Request::SingleUse(2));
+        let rsp = router.call_ok(Request::SingleUse(2));
         assert_eq!(rsp, 2);
     }
 
@@ -420,10 +420,10 @@ mod tests {
     fn single_use_not_cached() {
         let mut router = Router::new(Recognize, 2);
 
-        let rsp = router.route_ok(Request::Reusable(2));
+        let rsp = router.call_ok(Request::Reusable(2));
         assert_eq!(rsp, 2);
 
-        let rsp = router.route_ok(Request::SingleUse(2));
+        let rsp = router.call_ok(Request::SingleUse(2));
         assert_eq!(rsp, 2);
     }
 
@@ -431,10 +431,10 @@ mod tests {
     fn single_use_not_limited_by_capacity() {
         let mut router = Router::new(Recognize, 1);
 
-        let rsp = router.route_ok(Request::Reusable(2));
+        let rsp = router.call_ok(Request::Reusable(2));
         assert_eq!(rsp, 2);
 
-        let rsp = router.route_ok(Request::SingleUse(7));
+        let rsp = router.call_ok(Request::SingleUse(7));
         assert_eq!(rsp, 7);
     }
 }
