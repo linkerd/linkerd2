@@ -145,7 +145,7 @@ func (l *Lister) GetPodsFor(obj runtime.Object) ([]*apiv1.Pod, error) {
 
 	case *apiv1.Pod:
 		namespace = typed.Namespace
-		selector = labels.Everything()
+		selector = labels.Set(typed.Labels).AsSelector()
 
 	default:
 		return nil, fmt.Errorf("Cannot get object selector: %v", obj)
