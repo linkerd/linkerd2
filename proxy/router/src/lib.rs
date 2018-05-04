@@ -426,7 +426,7 @@ mod tests {
     fn single_use_not_cached() {
         let mut router = Router::new(Recognize, 2);
 
-        let rsp = router.call_ok(Request::SingleUse(2));
+        let rsp = router.call_ok(Request::Reusable(2));
         assert_eq!(rsp, 2);
 
         let rsp = router.call_ok(Request::SingleUse(2));
