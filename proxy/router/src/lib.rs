@@ -163,7 +163,7 @@ where T: Recognize,
             }
 
             Some(Reuse::Reusable(key)) => {
-                // First, try to load a cached rute for `key`.
+                // First, try to load a cached route for `key`.
                 if let Some(service) = inner.routes.get_mut(&key) {
                     return ResponseFuture::new(service.call(request));
                 }
