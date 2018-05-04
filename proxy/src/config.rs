@@ -44,6 +44,10 @@ pub struct Config {
 
     pub outbound_ports_disable_protocol_detection: IndexSet<u16>,
 
+    pub inbound_router_capacity: usize,
+
+    pub outbound_router_capacity: usize,
+
     /// The path to "/etc/resolv.conf"
     pub resolv_conf_path: PathBuf,
 
@@ -136,6 +140,12 @@ const ENV_PRIVATE_CONNECT_TIMEOUT: &str = "CONDUIT_PROXY_PRIVATE_CONNECT_TIMEOUT
 const ENV_PUBLIC_CONNECT_TIMEOUT: &str = "CONDUIT_PROXY_PUBLIC_CONNECT_TIMEOUT";
 pub const ENV_BIND_TIMEOUT: &str = "CONDUIT_PROXY_BIND_TIMEOUT";
 
+// Limits the number of HTTP routes that may be active in the proxy at any time. There is
+// an inbound route for each local port that receives connections. There is an outbound
+// route for each protocol and authority.
+pub const ENV_INBOUND_ROUTER_CAPACITY: &str = "CONDUIT_PROXY_INBOUND_ROUTER_CAPACITY";
+pub const ENV_OUTBOUND_ROUTER_CAPACITY: &str = "CONDUIT_PROXY_OUTBOUND_ROUTER_CAPACITY";
+
 // These *disable* our protocol detection for connections whose SO_ORIGINAL_DST
 // has a port in the provided list.
 pub const ENV_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION: &str = "CONDUIT_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION";
@@ -157,6 +167,11 @@ const DEFAULT_PRIVATE_CONNECT_TIMEOUT_MS: u64 = 20;
 const DEFAULT_PUBLIC_CONNECT_TIMEOUT_MS: u64 = 300;
 const DEFAULT_BIND_TIMEOUT_MS: u64 = 10_000; // ten seconds, as in Linkerd.
 const DEFAULT_RESOLV_CONF: &str = "/etc/resolv.conf";
+
+/// It's assumed that a typical proxy can serve inbound traffic for up to 100 pod-local
+/// HTTP services and may communicate with up to 10K external HTTP domains.
+const DEFAULT_INBOUND_ROUTER_CAPACITY: usize = 100;
+const DEFAULT_OUTBOUND_ROUTER_CAPACITY: usize = 10_000;
 
 // By default, we keep a list of known assigned ports of server-first protocols.
 //
@@ -184,6 +199,8 @@ impl<'a> TryFrom<&'a Strings> for Config {
         let private_connect_timeout = parse(strings, ENV_PRIVATE_CONNECT_TIMEOUT, parse_number);
         let inbound_disable_ports = parse(strings, ENV_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION, parse_port_set);
         let outbound_disable_ports = parse(strings, ENV_OUTBOUND_PORTS_DISABLE_PROTOCOL_DETECTION, parse_port_set);
+        let inbound_router_capacity = parse(strings, ENV_INBOUND_ROUTER_CAPACITY, parse_number);
+        let outbound_router_capacity = parse(strings, ENV_OUTBOUND_ROUTER_CAPACITY, parse_number);
         let bind_timeout = parse(strings, ENV_BIND_TIMEOUT, parse_number);
         let resolv_conf_path = strings.get(ENV_RESOLV_CONF);
         let event_buffer_capacity = parse(strings, ENV_EVENT_BUFFER_CAPACITY, parse_number);
@@ -236,6 +253,12 @@ impl<'a> TryFrom<&'a Strings> for Config {
                 .unwrap_or_else(|| default_disable_ports_protocol_detection()),
             outbound_ports_disable_protocol_detection: outbound_disable_ports?
                 .unwrap_or_else(|| default_disable_ports_protocol_detection()),
+
+            inbound_router_capacity: inbound_router_capacity?
+                .unwrap_or(DEFAULT_INBOUND_ROUTER_CAPACITY),
+            outbound_router_capacity: outbound_router_capacity?
+                .unwrap_or(DEFAULT_OUTBOUND_ROUTER_CAPACITY),
+
             resolv_conf_path: resolv_conf_path?
                 .unwrap_or(DEFAULT_RESOLV_CONF.into())
                 .into(),

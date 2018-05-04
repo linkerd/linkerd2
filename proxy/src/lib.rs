@@ -229,6 +229,7 @@ where
             let fut = serve(
                 inbound_listener,
                 Inbound::new(default_addr, bind),
+                config.inbound_router_capacity,
                 config.private_connect_timeout,
                 config.inbound_ports_disable_protocol_detection,
                 ctx,
@@ -250,6 +251,7 @@ where
             let fut = serve(
                 outbound_listener,
                 outgoing,
+                config.outbound_router_capacity,
                 config.public_connect_timeout,
                 config.outbound_ports_disable_protocol_detection,
                 ctx,
@@ -326,6 +328,7 @@ where
 fn serve<R, B, E, F, G>(
     bound_port: BoundPort,
     recognize: R,
+    router_capacity: usize,
     tcp_connect_timeout: Duration,
     disable_protocol_detection_ports: IndexSet<u16>,
     proxy_ctx: Arc<ctx::Proxy>,
@@ -347,7 +350,7 @@ where
         + 'static,
     G: GetOriginalDst + 'static,
 {
-    let router = Router::new(recognize);
+    let router = Router::new(recognize, router_capacity);
     let stack = Arc::new(NewServiceFn::new(move || {
         // Clone the router handle
         let router = router.clone();
@@ -366,6 +369,12 @@ where
                 RouteError::NotRecognized => {
                     error!("turning route not recognized error into 500");
                     http::StatusCode::INTERNAL_SERVER_ERROR
+                }
+                RouteError::NoCapacity(capacity) => {
+                    // TODO For H2 streams, we should probably signal a protocol-level
+                    // capacity change.
+                    error!("router at capacity ({}); returning a 503", capacity);
+                    http::StatusCode::SERVICE_UNAVAILABLE
                 }
             }
         });
