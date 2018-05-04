@@ -124,8 +124,7 @@ impl Resolver {
     fn lookup_ip(self, &Name(ref name): &Name) -> LookupIpFuture {
         let resolver = ResolverFuture::new(
             self.config.config,
-            self.config.opts,
-            &self.executor);
+            self.config.opts,);
         resolver.lookup_ip(name)
     }
 }

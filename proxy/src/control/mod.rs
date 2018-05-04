@@ -3,11 +3,18 @@ use std::io;
 use std::time::{Duration, Instant};
 
 use bytes::Bytes;
-use futures::{future, Async, Future, Poll};
+use futures::{
+    future::{self, Executor},
+    Async,
+    Future,
+    Poll
+};
 use h2;
 use http;
-use tokio::runtime::TaskExecutor;
-use tokio::timer::Delay;
+use tokio::{
+    executor::current_thread,
+    timer::Delay,
+};
 use tower_service::Service;
 use tower_h2;
 use tower_reconnect::{Error as ReconnectError, Reconnect};
@@ -65,8 +72,13 @@ impl Background {
         self,
         host_and_port: HostAndPort,
         dns_config: dns::Config,
-        executor: &TaskExecutor,
-    ) -> Box<Future<Item = (), Error = ()>> {
+        executor: &current_thread::TaskExecutor,
+    ) -> Box<Future<Item = (), Error = ()>>
+    // where
+    //     E: Executor<Box<Future<Item = (), Error = ()>>>,
+        // E: Executor<tower_h2::client::Background<tower_h2::client::Connection, _>>,
+
+    {
         // Build up the Controller Client Stack
         let mut client = {
             let ctx = ("controller-client", format!("{:?}", host_and_port));

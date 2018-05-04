@@ -90,7 +90,7 @@ impl Watch {
     /// should be used to trigger any shutdown process for it.
     pub fn watch<A, F>(self, future: A, on_drain: F) -> Watching<A, F>
     where
-        A: Future + Send,
+        A: Future,
         F: FnOnce(&mut A),
     {
         Watching {

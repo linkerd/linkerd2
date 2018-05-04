@@ -7,6 +7,7 @@ use std::sync::atomic::AtomicUsize;
 
 use futures::{Future, Poll, future};
 use http::{self, uri};
+// use tokio::executor::current_thread::TaskExecutor;
 use tokio::runtime::TaskExecutor;
 use tower_service as tower;
 use tower_h2;
@@ -295,10 +296,11 @@ where
         Response=HttpResponse,
     >,
     NormalizeUri<S::Service>: tower::Service,
-    S::Service: Send,
-    B: tower_h2::Body + Send,
-    B::Data: Send,
-    <B::Data as ::bytes::IntoBuf>::Buf: Send,
+    // S::Service: Send,
+    B: tower_h2::Body,
+    // B: Send,
+    // B::Data: Send,
+    // <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
     type Request = <Self::Service as tower::Service>::Request;
     type Response = <Self::Service as tower::Service>::Response;

@@ -2,9 +2,15 @@ use std::io;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use futures::{future, Async, Future, Poll, Stream};
+use futures::{
+    future::{self, Executor},
+    Async,
+    Future,
+    Poll,
+    Stream,
+};
 use futures_mpsc_lossy::Receiver;
-use tokio::{ reactor, runtime::TaskExecutor};
+use tokio::{ reactor, executor::current_thread };
 
 use super::event::Event;
 use super::metrics;
@@ -48,12 +54,8 @@ pub struct Control {
     /// Holds the current state of tap observations, as configured by an external source.
     taps: Option<Arc<Mutex<Taps>>>,
 
-    /// For `TcpListener::from_std`.
+    /// Handle on the event loop in which to bind sockets.
     handle: reactor::Handle,
-
-    /// Spawns tasks.
-    // TODO: change to generic executor?
-    executor: TaskExecutor,
 }
 
 // ===== impl MakeControl =====
@@ -88,8 +90,6 @@ impl MakeControl {
     pub fn make_control(
         self,
         taps: &Arc<Mutex<Taps>>,
-        // XXX: it's regrettable that we have to pass _both_ of these...
-        executor: &TaskExecutor,
         handle: &reactor::Handle,
     ) -> io::Result<Control> {
         let (metrics_record, metrics_service) =
@@ -101,7 +101,6 @@ impl MakeControl {
             rx: Some(self.rx),
             taps: Some(taps.clone()),
             handle: handle.clone(),
-            executor: executor.clone(),
         })
     }
 }
@@ -125,23 +124,25 @@ impl Control {
     }
 
     pub fn serve_metrics(&self, bound_port: connection::BoundPort)
-        -> Box<Future<Item = (), Error = io::Error> + 'static>
+        -> Box<Future<Item = (), Error = io::Error>>
     {
         use hyper;
         let service = self.metrics_service.clone();
         let hyper = hyper::server::conn::Http::new();
+        let executor = current_thread::TaskExecutor::current();
+        let handle = &self.handle;
         bound_port.listen_and_fold(
-            &self.handle,
-            (hyper, self.executor.clone()),
+            handle,
+            (hyper, executor),
             move |(hyper, executor), (conn, _)| {
                 let service = service.clone();
                 let serve = hyper.serve_connection(conn, service)
-                    .map(|_| {})
                     .map_err(|e| {
                         error!("error serving prometheus metrics: {:?}", e);
                     });
+                let f = ::logging::context_future("serve_metrics", serve);
 
-                executor.spawn(::logging::context_future("serve_metrics", serve));
+                executor.spawn_local(Box::new(f));
 
                 future::ok((hyper, executor))
             })

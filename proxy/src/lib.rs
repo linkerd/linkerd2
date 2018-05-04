@@ -1,6 +1,7 @@
 #![cfg_attr(feature = "cargo-clippy", allow(clone_on_ref_ptr))]
 #![cfg_attr(feature = "cargo-clippy", allow(new_without_default_derive))]
 // #![deny(warnings)]
+#![recursion_limit="128"]
 
 extern crate bytes;
 extern crate conduit_proxy_controller_grpc;
@@ -31,6 +32,9 @@ extern crate rand;
 extern crate regex;
 extern crate tokio_connect;
 extern crate tokio;
+extern crate tokio_executor;
+extern crate tokio_timer;
+extern crate tokio_reactor;
 extern crate tower_balance;
 extern crate tower_buffer;
 extern crate tower_discover;
@@ -44,6 +48,7 @@ extern crate tower_in_flight_limit;
 extern crate trust_dns_resolver;
 
 use futures::*;
+use futures::future::Executor;
 
 use std::error::Error;
 use std::io;
@@ -53,7 +58,14 @@ use std::thread;
 use std::time::Duration;
 
 use indexmap::IndexSet;
-use tokio::runtime::{Runtime, TaskExecutor};
+use tokio::{
+    executor::current_thread::{
+        self, CurrentThread,
+    },
+    reactor,
+    runtime::{Runtime, TaskExecutor},
+};
+use tokio_timer::timer;
 use tower_service::NewService;
 use tower_fn::*;
 use conduit_proxy_router::{Recognize, Router, Error as RouteError};
@@ -107,7 +119,8 @@ pub struct Main<G> {
 
     get_original_dst: G,
 
-    runtime: Runtime,
+    runtime: CurrentThread<tokio_timer::Timer<tokio_reactor::Reactor>>,
+    handle: reactor::Handle,
 }
 
 impl<G> Main<G>
@@ -123,7 +136,14 @@ where
         let outbound_listener = BoundPort::new(config.private_listener.addr)
             .expect("private listener bind");
 
-        let runtime = Runtime::new().expect("runtime");
+        let reactor = reactor::Reactor::new()
+            .expect("reactor");
+        // The reactor itself will get consumed by timer,
+        // so we keep a handle to communicate with it.
+        let handle = reactor.handle();
+        let timer = timer::Timer::new(reactor);
+        let timer_handle = timer.handle();
+        let mut runtime = CurrentThread::new_with_park(timer);
 
         let metrics_listener = BoundPort::new(config.metrics_listener.addr)
             .expect("metrics listener bind");
@@ -135,6 +155,7 @@ where
             metrics_listener,
             get_original_dst,
             runtime,
+            handle,
         }
     }
 
@@ -152,7 +173,8 @@ where
     }
 
     pub fn handle(&self) -> TaskExecutor {
-        self.runtime.executor()
+        // self.runtime.executor()
+        unimplemented!()
     }
 
     pub fn metrics_addr(&self) -> SocketAddr {
@@ -173,6 +195,7 @@ where
             metrics_listener,
             get_original_dst,
             runtime: mut core,
+            handle,
         } = self;
 
         let control_host_and_port = config.control_host_and_port.clone();
@@ -211,10 +234,10 @@ where
 
         let (control, control_bg) = control::new(dns_config.clone(), config.pod_namespace.clone());
 
-        let executor = core.executor();
+        let mut executor = current_thread::TaskExecutor::current();
         let (drain_tx, drain_rx) = drain::channel();
 
-        let bind = Bind::new(executor.clone()).with_sensors(sensors.clone());
+        let bind = Bind::new(core.executor().clone()).with_sensors(sensors.clone());
 
         // Setup the public listener. This will listen on a publicly accessible
         // address and listen for inbound connections that should be forwarded
@@ -236,7 +259,7 @@ where
                 sensors.clone(),
                 get_original_dst.clone(),
                 drain_rx.clone(),
-                &executor,
+                &handle,
             );
             ::logging::context_future("inbound", fut)
         };
@@ -258,7 +281,7 @@ where
                 sensors,
                 get_original_dst,
                 drain_rx,
-                &executor,
+                &handle,
             );
             ::logging::context_future("outbound", fut)
         };
@@ -271,41 +294,55 @@ where
                 .name("controller-client".into())
                 .spawn(move || {
                     use conduit_proxy_controller_grpc::tap::server::TapServer;
+                    let mut enter = tokio_executor::enter()
+                        .expect("multiple executors on control thread");
+                    let reactor = reactor::Reactor::new()
+                        .expect("initialize controller reactor");
+                    let handle = reactor.handle();
+                    let timer = timer::Timer::new(reactor);
+                    let timer_handle = timer.handle();
+                    // Use the `CurrentThread` executor to ensure that all the
+                    // controller client's tasks stay on this thread.
+                    let mut rt = CurrentThread::new_with_park(timer);
 
-                    let mut core = Runtime::new().expect("initialize controller core");
-                    let executor = core.executor();
+                    // Configure the default tokio runtime for the control thread.
+                    tokio_reactor::with_default(&handle, &mut enter, |enter| {
+                        timer::with_default(&timer_handle, enter, |enter| {
+                            let mut executor = current_thread::TaskExecutor::current();
+                            let (taps, observe) = control::Observe::new(100);
+                            let new_service = TapServer::new(observe);
 
-                    let (taps, observe) = control::Observe::new(100);
-                    let new_service = TapServer::new(observe);
+                            let server = serve_control(
+                                control_listener,
+                                new_service,
+                                &handle,
+                            );
 
-                    let server = serve_control(
-                        control_listener,
-                        new_service,
-                        &executor,
-                    );
+                            let telemetry = telemetry
+                                .make_control(&taps, &handle)
+                                .expect("bad news in telemetry town");
 
-                    let telemetry = telemetry
-                        .make_control(&taps, &executor, core.reactor())
-                        .expect("bad news in telemetry town");
+                            let metrics_server = telemetry
+                                .serve_metrics(metrics_listener);
 
-                    let metrics_server = telemetry
-                        .serve_metrics(metrics_listener);
+                            let client = control_bg.bind(
+                                control_host_and_port,
+                                dns_config,
+                                &executor
+                            );
 
-                    let client = control_bg.bind(
-                        control_host_and_port,
-                        dns_config,
-                        &executor
-                    );
+                            let fut = client.join4(
+                                server.map_err(|_| {}),
+                                telemetry,
+                                metrics_server.map_err(|_| {}),
+                            ).map(|_| {});
+                            let fut = ::logging::context_future("controller-client", fut);
+                            executor.spawn_local(Box::new(fut));
 
-                    let fut = client.join4(
-                        server.map_err(|_| {}),
-                        telemetry,
-                        metrics_server.map_err(|_| {}),
-                    ).map(|_| {});
-                    executor.spawn(::logging::context_future("controller-client", fut));
-
-                    let shutdown = controller_shutdown_signal.then(|_| Ok::<(), ()>(()));
-                    tokio::run(shutdown).expect("controller api");
+                            let shutdown = controller_shutdown_signal.then(|_| Ok::<(), ()>(()));
+                            rt.enter(enter).block_on(shutdown).expect("controller api")
+                        })
+                    })
                 })
                 .expect("initialize controller api thread");
         }
@@ -315,12 +352,12 @@ where
             .map(|_| ())
             .map_err(|err| error!("main error: {:?}", err));
 
-        core.spawn(fut);
+        executor.spawn_local(Box::new(fut));
         let shutdown_signal = shutdown_signal.and_then(move |()| {
             debug!("shutdown signaled");
             drain_tx.drain()
         });
-        tokio::run(shutdown_signal).expect("executor");
+        core.block_on(shutdown_signal).expect("executor");
         debug!("shutdown complete");
     }
 }
@@ -335,22 +372,21 @@ fn serve<R, B, E, F, G>(
     sensors: telemetry::Sensors,
     get_orig_dst: G,
     drain_rx: drain::Watch,
-    executor: &TaskExecutor,
+    handle: &reactor::Handle,
 ) -> Box<Future<Item = (), Error = io::Error> + 'static>
 where
-    B: tower_h2::Body + Send + Default + 'static,
-    B::Data: Send,
-    <B::Data as ::bytes::IntoBuf>::Buf: Send,
-    E: Error + Send + 'static,
-    F: Error + Send + 'static,
+    B: tower_h2::Body + Default + 'static,
+    // B::Data: Send,
+    // <B::Data as ::bytes::IntoBuf>::Buf: Send,
+    E: Error + 'static,
+    F: Error + 'static,
     R: Recognize<
         Request = http::Request<HttpBody>,
         Response = http::Response<telemetry::sensor::http::ResponseBody<B>>,
         Error = E,
         RouteError = F,
     >
-        + Send + 'static,
-    R::Service: Send,
+        + 'static,
     G: GetOriginalDst + 'static,
 {
     let router = Router::new(recognize, router_capacity);
@@ -398,12 +434,11 @@ where
         tcp_connect_timeout,
         disable_protocol_detection_ports,
         drain_rx.clone(),
-        executor.clone(),
     );
 
 
     let accept = bound_port.listen_and_fold(
-        executor,
+        handle,
         (),
         move |(), (connection, remote_addr)| {
             server.serve(connection, remote_addr);
@@ -451,21 +486,23 @@ where
 fn serve_control<N, B>(
     bound_port: BoundPort,
     new_service: N,
-    executor: &TaskExecutor,
+    handle: &reactor::Handle,
 ) -> Box<Future<Item = (), Error = io::Error> + 'static>
 where
     B: tower_h2::Body + 'static,
     N: NewService<Request = http::Request<tower_h2::RecvBody>, Response = http::Response<B>> + 'static,
 {
+    let executor = current_thread::TaskExecutor::current();
     let h2_builder = h2::server::Builder::default();
     let server = tower_h2::Server::new(new_service, h2_builder, executor.clone());
     bound_port.listen_and_fold(
-        executor,
+        handle,
         (server, executor.clone()),
         move |(server, executor), (session, _)| {
             let s = server.serve(session).map_err(|_| ());
+            let s = ::logging::context_future("serve_control", s);
 
-            executor.spawn(::logging::context_future("serve_control", s));
+            executor.execute(Box::new(s));
 
 
             future::ok((server, executor))

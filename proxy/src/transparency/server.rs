@@ -7,7 +7,7 @@ use futures::Future;
 use http;
 use hyper;
 use indexmap::IndexSet;
-use tokio::runtime::TaskExecutor;
+use tokio::executor::current_thread;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tower_service::NewService;
 use tower_h2;
@@ -35,10 +35,10 @@ where
 {
     disable_protocol_detection_ports: IndexSet<u16>,
     drain_signal: drain::Watch,
-    executor: TaskExecutor,
+    // executor: TaskExecutor,
     get_orig_dst: G,
     h1: hyper::server::conn::Http,
-    h2: tower_h2::Server<HttpBodyNewSvc<S>, TaskExecutor, B>,
+    h2: tower_h2::Server<HttpBodyNewSvc<S>, current_thread::TaskExecutor, B>,
     listen_addr: SocketAddr,
     new_service: S,
     proxy_ctx: Arc<ProxyCtx>,
@@ -51,15 +51,15 @@ where
     S: NewService<
         Request = http::Request<HttpBody>,
         Response = http::Response<B>
-    > + Clone + Send + 'static,
-    <S as NewService>::Service: Send,
-    <<S as NewService>::Service as ::tower_service::Service>::Future: Send,
-    S::Future: Send + 'static,
-    S::Error: Send + fmt::Debug,
-    S::InitError: Send + fmt::Debug,
-    B: tower_h2::Body + Default + Send + 'static,
-    B::Data: Send,
-    <B::Data as ::bytes::IntoBuf>::Buf: Send,
+    > + Clone + 'static,
+    // <S as NewService>::Service: Send,
+    // <<S as NewService>::Service as ::tower_service::Service>::Future: Send,
+    S::Future:'static,
+    S::Error: fmt::Debug,
+    S::InitError: fmt::Debug,
+    B: tower_h2::Body + Default + 'static,
+    // B::Data: Send,
+    // <B::Data as ::bytes::IntoBuf>::Buf: Send,
     G: GetOriginalDst,
 {
     /// Creates a new `Server`.
@@ -72,17 +72,21 @@ where
         tcp_connect_timeout: Duration,
         disable_protocol_detection_ports: IndexSet<u16>,
         drain_signal: drain::Watch,
-        executor: TaskExecutor,
+        // executor: TaskExecutor,
     ) -> Self {
         let recv_body_svc = HttpBodyNewSvc::new(stack.clone());
-        let tcp = tcp::Proxy::new(tcp_connect_timeout, sensors.clone(), &executor);
+        let tcp = tcp::Proxy::new(tcp_connect_timeout, sensors.clone(),
+            // &executor
+            );
         Server {
             disable_protocol_detection_ports,
             drain_signal,
-            executor: executor.clone(),
+            // executor: executor.clone(),
             get_orig_dst,
             h1: hyper::server::conn::Http::new(),
-            h2: tower_h2::Server::new(recv_body_svc, Default::default(), executor),
+            h2: tower_h2::Server::new(recv_body_svc, Default::default(),
+                current_thread::TaskExecutor::current()
+            ),
             listen_addr,
             new_service: stack,
             proxy_ctx,
@@ -122,6 +126,8 @@ where
             })
             .unwrap_or(false);
 
+        let mut executor = current_thread::TaskExecutor::current();
+
         if disable_protocol_detection {
             trace!("protocol detection disabled for {:?}", orig_dst);
             let fut = tcp_serve(
@@ -130,7 +136,7 @@ where
                 srv_ctx,
                 self.drain_signal.clone(),
             );
-            self.executor.spawn(fut);
+            executor.spawn_local(fut);
             return;
         }
 
@@ -187,16 +193,16 @@ where
                 }
             });
 
-        self.executor.spawn(Box::new(fut));
+        executor.spawn_local(Box::new(fut));
     }
 }
 
-fn tcp_serve<T: AsyncRead + AsyncWrite + Send + 'static>(
+fn tcp_serve<T: AsyncRead + AsyncWrite + 'static>(
     tcp: &tcp::Proxy,
     io: T,
     srv_ctx: Arc<ServerCtx>,
     drain_signal: drain::Watch,
-) -> Box<Future<Item=(), Error=()> + Send> {
+) -> Box<Future<Item=(), Error=()>> {
     let fut = tcp.serve(io, srv_ctx);
 
     // There's nothing to do when drain is signaled, we just have to hope
