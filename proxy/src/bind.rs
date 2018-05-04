@@ -351,15 +351,14 @@ impl<B: tower_h2::Body + 'static> tower::Service for Binding<B> {
             // Dispatch the request immediately.
             Binding::Bound(ref mut svc) => svc.call(request),
 
-            // `poll_ready` was not called, so attempt to bind a new stack and dispatch
-            // the request immediately.
-            Binding::BindsPerRequest { ref endpoint, ref protocol, ref bind, next: None } => {
-                bind.bind_stack(endpoint, protocol).call(request)
-            }
-
-            // A service has already been bound, so consume it and send the request to it.
-            Binding::BindsPerRequest { ref mut next, .. } => {
-                next.take().unwrap().call(request)
+            Binding::BindsPerRequest { ref endpoint, ref protocol, ref bind, ref mut next } => {
+                match next.take() {
+                    // `poll_ready` was not called, so attempt to bind a new stack and dispatch
+                    // the request immediately.
+                    None => bind.bind_stack(endpoint, protocol).call(request),
+                    // A service has already been bound, so consume it and send the request to it.
+                    Some(mut svc) => svc.call(request),
+                }
             }
         }
     }
