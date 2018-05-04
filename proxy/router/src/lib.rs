@@ -147,7 +147,7 @@ where T: Recognize,
 
     /// Routes the request through an underlying service.
     ///
-    /// The response fails when the request cannot be routed.
+    /// The response fails if the request cannot be routed.
     fn call(&mut self, request: Self::Request) -> Self::Future {
         let inner = &mut *self.inner.lock().expect("lock router cache");
 
