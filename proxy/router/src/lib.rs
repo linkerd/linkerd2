@@ -11,13 +11,19 @@ use std::convert::AsRef;
 use std::hash::Hash;
 use std::sync::{Arc, Mutex};
 
-/// Routes requests
+/// Routes requests based on a configurable `Key`.
 pub struct Router<T>
 where T: Recognize,
 {
     inner: Arc<Mutex<Inner<T>>>,
 }
 
+/// Provides a strategy for routing a Request to a Service.
+///
+/// Implementors must provide a `Key` type that identifies each unique route. The
+/// `recognize()` method is used to determine the key for a given request. This key is
+/// used to look up a route in a cache (i.e. in `Router`), or can be passed to
+/// `bind_service` to instantiate the identified route.
 pub trait Recognize {
     /// Requests handled by the discovered services
     type Request;
