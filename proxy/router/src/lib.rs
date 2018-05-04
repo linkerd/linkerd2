@@ -45,7 +45,7 @@ pub trait Recognize {
                          Response = Self::Response,
                             Error = Self::Error>;
 
-    /// Determines a route to handle the given request.
+    /// Determines the key for a route to handle the given request.
     fn recognize(&self, req: &Self::Request) -> Option<Reuse<Self::Key>>;
 
     /// Return a `Service` to handle requests.
