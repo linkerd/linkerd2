@@ -371,6 +371,8 @@ where
                     http::StatusCode::INTERNAL_SERVER_ERROR
                 }
                 RouteError::OutOfCapacity => {
+                    // TODO For H2 streams, we should probably signal a protocol-level
+                    // capacity change.
                     error!("turning router capacity exhaustion into 503");
                     http::StatusCode::SERVICE_UNAVAILABLE
                 }

@@ -167,8 +167,8 @@ const DEFAULT_PRIVATE_CONNECT_TIMEOUT_MS: u64 = 20;
 const DEFAULT_PUBLIC_CONNECT_TIMEOUT_MS: u64 = 300;
 const DEFAULT_BIND_TIMEOUT_MS: u64 = 10_000; // ten seconds, as in Linkerd.
 const DEFAULT_RESOLV_CONF: &str = "/etc/resolv.conf";
-const DEFAULT_INBOUND_ROUTER_CAPACITY = 100;
-const DEFAULT_OUTBOUND_ROUTER_CAPACITY = 1_000;
+const DEFAULT_INBOUND_ROUTER_CAPACITY: usize = 100;
+const DEFAULT_OUTBOUND_ROUTER_CAPACITY: usize = 1_000;
 
 // By default, we keep a list of known assigned ports of server-first protocols.
 //
@@ -197,7 +197,7 @@ impl<'a> TryFrom<&'a Strings> for Config {
         let inbound_disable_ports = parse(strings, ENV_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION, parse_port_set);
         let outbound_disable_ports = parse(strings, ENV_OUTBOUND_PORTS_DISABLE_PROTOCOL_DETECTION, parse_port_set);
         let inbound_router_capacity = parse(strings, ENV_INBOUND_ROUTER_CAPACITY, parse_number);
-        let inbound_router_capacity = parse(strings, ENV_OUTBOUND_ROUTER_CAPACITY, parse_number);
+        let outbound_router_capacity = parse(strings, ENV_OUTBOUND_ROUTER_CAPACITY, parse_number);
         let bind_timeout = parse(strings, ENV_BIND_TIMEOUT, parse_number);
         let resolv_conf_path = strings.get(ENV_RESOLV_CONF);
         let event_buffer_capacity = parse(strings, ENV_EVENT_BUFFER_CAPACITY, parse_number);

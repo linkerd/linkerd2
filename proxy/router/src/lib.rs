@@ -72,17 +72,23 @@ pub enum Error<T, U> {
     OutOfCapacity,
 }
 
-pub struct ResponseFuture<T: Recognize> {
+pub struct ResponseFuture<T>
+where T: Recognize,
+{
     state: State<T>,
 }
 
-struct Inner<T: Recognize> {
+struct Inner<T>
+where T: Recognize,
+{
     routes: IndexMap<T::Key, T::Service>,
     recognize: T,
     capacity: usize,
 }
 
-enum State<T: Recognize> {
+enum State<T>
+where T: Recognize,
+{
     Inner(<T::Service as Service>::Future),
     RouteError(T::RouteError),
     NotRecognized,
@@ -92,7 +98,9 @@ enum State<T: Recognize> {
 
 // ===== impl Router =====
 
-impl<T: Recognize> Router<T> {
+impl<T> Router<T>
+where T: Recognize
+{
     pub fn new(recognize: T, capacity: usize,) -> Self {
         Router {
             inner: Arc::new(Mutex::new(Inner {
@@ -104,47 +112,67 @@ impl<T: Recognize> Router<T> {
     }
 }
 
-macro_rules! try_bind {
+macro_rules! try_route {
     ( $bind:expr ) => {
         match $bind {
             Ok(svc) => svc,
-            Err(e) => {
-                return ResponseFuture { state: State::RouteError(e) };
-            }
+            Err(e) => return ResponseFuture { state: State::RouteError(e) },
         }
     }
 }
 
-impl<T: Recognize> Service for Router<T> {
+impl<T> Service for Router<T>
+where T: Recognize,
+{
     type Request = T::Request;
     type Response = T::Response;
     type Error = Error<T::Error, T::RouteError>;
     type Future = ResponseFuture<T>;
 
+    /// Always ready to serve.
+    ///
+    /// Graceful backpressure is **not** supported at this level, since each request may
+    /// be routed to different resources. Instead, requests should be issued and each
+    /// route should support a queue of requests.
+    ///
+    /// TODO Attempt to free capacity in the router.
     fn poll_ready(&mut self) -> Poll<(), Self::Error> {
         Ok(().into())
     }
 
     fn call(&mut self, request: Self::Request) -> Self::Future {
         let inner = &mut *self.inner.lock().expect("lock router cache");
+
         match inner.recognize.recognize(&request) {
-            None => ResponseFuture { state: State::NotRecognized },
+            None => ResponseFuture::not_recognized(),
+
             Some(Reuse::SingleUse(key)) => {
-                let mut service = try_bind!(inner.recognize.bind_service(&key));
+                // TODO Keep SingleUse services in the cache as well, so that their
+                // capacity is considered. To do this, we should move the Reuse logic into
+                // the returned service (and not the key).
+                let mut service = try_route!(inner.recognize.bind_service(&key));
                 ResponseFuture::new(service.call(request))
             }
+
             Some(Reuse::Reusable(key)) => {
+                // First, try to load a cached service for `key`.
                 if let Some(service) = inner.routes.get_mut(&key) {
                     let response = service.call(request);
                     return ResponseFuture::new(response);
                 }
 
+                // Since there wasn't a cached route, ensure that there is capacity for a
+                // new one.
+                //
+                // Each route is responsible for queueing.
                 if inner.routes.len() == inner.capacity {
-                    // TODO attempt to evict old instances.
+                    // TODO If the cache is full, evict the oldest inactive route. If all
+                    // routes are active, fail the request.
                     return ResponseFuture::out_of_capacity();
                 }
 
-                let mut service = try_bind!(inner.recognize.bind_service(&key));
+                // Bind a new route, send the request on the route, and cache the route.
+                let mut service = try_route!(inner.recognize.bind_service(&key));
                 let response = service.call(request);
                 inner.routes.insert(key, service);
                 ResponseFuture::new(response)
@@ -153,7 +181,9 @@ impl<T: Recognize> Service for Router<T> {
     }
 }
 
-impl<T: Recognize> Clone for Router<T> {
+impl<T> Clone for Router<T>
+where T: Recognize,
+{
     fn clone(&self) -> Self {
         Router { inner: self.inner.clone() }
     }
@@ -186,9 +216,15 @@ impl<S: Service> Recognize for Single<S> {
 
 // ===== impl ResponseFuture =====
 
-impl<T: Recognize> ResponseFuture<T> {
-    fn new(future: <T::Service as Service>::Future) -> Self {
-        ResponseFuture { state: State::Inner(future) }
+impl<T> ResponseFuture<T>
+where T: Recognize,
+{
+    fn new(inner: <T::Service as Service>::Future) -> Self {
+        ResponseFuture { state: State::Inner(inner) }
+    }
+
+    fn not_recognized() -> Self {
+        ResponseFuture { state: State::NotRecognized }
     }
 
     fn out_of_capacity() -> Self {
@@ -196,7 +232,9 @@ impl<T: Recognize> ResponseFuture<T> {
     }
 }
 
-impl<T: Recognize> Future for ResponseFuture<T> {
+impl<T> Future for ResponseFuture<T>
+where T: Recognize,
+{
     type Item = T::Response;
     type Error = Error<T::Error, T::RouteError>;
 
