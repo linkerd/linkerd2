@@ -101,8 +101,9 @@ mod tests {
 
     fn new_inbound(default: Option<net::SocketAddr>, ctx: &Arc<ctx::Proxy>) -> Inbound<()> {
         let core = Runtime::new().unwrap();
-        let bind = Bind::new(core.executor()).with_ctx(ctx.clone());
-        Inbound::new(default, bind)
+        // let bind = Bind::new(core.executor()).with_ctx(ctx.clone());
+        unimplemented!() // todo: fix
+        // Inbound::new(default, bind)
     }
 
     quickcheck! {

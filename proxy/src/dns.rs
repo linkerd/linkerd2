@@ -125,7 +125,7 @@ impl Resolver {
         let resolver = ResolverFuture::new(
             self.config.config,
             self.config.opts,);
-        resolver.lookup_ip(name)
+        resolver.lookup_ip(name.as_str())
     }
 }
 

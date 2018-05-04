@@ -59,8 +59,9 @@ use std::time::Duration;
 
 use indexmap::IndexSet;
 use tokio::{
-    executor::current_thread::{
-        self, CurrentThread,
+    executor::{
+        current_thread::{self, CurrentThread},
+        thread_pool::{self, ThreadPool, Sender},
     },
     reactor,
     runtime::{Runtime, TaskExecutor},
@@ -119,13 +120,13 @@ pub struct Main<G> {
 
     get_original_dst: G,
 
-    runtime: CurrentThread<tokio_timer::Timer<tokio_reactor::Reactor>>,
-    handle: reactor::Handle,
+    // runtime: CurrentThread<tokio_timer::Timer<tokio_reactor::Reactor>>,
+    // handle: reactor::Handle,
 }
 
 impl<G> Main<G>
 where
-    G: GetOriginalDst + Clone + 'static,
+    G: GetOriginalDst + Clone + Send + 'static,
 {
     pub fn new(config: config::Config, get_original_dst: G) -> Self {
 
@@ -136,14 +137,14 @@ where
         let outbound_listener = BoundPort::new(config.private_listener.addr)
             .expect("private listener bind");
 
-        let reactor = reactor::Reactor::new()
-            .expect("reactor");
-        // The reactor itself will get consumed by timer,
-        // so we keep a handle to communicate with it.
-        let handle = reactor.handle();
-        let timer = timer::Timer::new(reactor);
-        let timer_handle = timer.handle();
-        let mut runtime = CurrentThread::new_with_park(timer);
+        // let reactor = reactor::Reactor::new()
+        //     .expect("reactor");
+        // // The reactor itself will get consumed by timer,
+        // // so we keep a handle to communicate with it.
+        // let handle = reactor.handle();
+        // let timer = timer::Timer::new(reactor);
+        // let timer_handle = timer.handle();
+        // let mut runtime = CurrentThread::new_with_park(timer);
 
         let metrics_listener = BoundPort::new(config.metrics_listener.addr)
             .expect("metrics listener bind");
@@ -154,8 +155,8 @@ where
             outbound_listener,
             metrics_listener,
             get_original_dst,
-            runtime,
-            handle,
+            // runtime,
+            // handle,
         }
     }
 
@@ -172,10 +173,10 @@ where
         self.outbound_listener.local_addr()
     }
 
-    pub fn handle(&self) -> TaskExecutor {
-        // self.runtime.executor()
-        unimplemented!()
-    }
+    // pub fn handle(&self) -> TaskExecutor {
+    //     // self.runtime.executor()
+    //     unimplemented!()
+    // }
 
     pub fn metrics_addr(&self) -> SocketAddr {
         self.metrics_listener.local_addr()
@@ -183,7 +184,8 @@ where
 
     pub fn run_until<F>(self, shutdown_signal: F)
     where
-        F: Future<Item = (), Error = ()>,
+        F: Future<Item = (), Error = ()> + 'static,
+        F: Send,
     {
         let process_ctx = ctx::Process::new(&self.config);
 
@@ -194,9 +196,20 @@ where
             outbound_listener,
             metrics_listener,
             get_original_dst,
-            runtime: mut core,
-            handle,
+            // runtime: mut core,
+            // handle,
         } = self;
+
+
+        let reactor = reactor::Reactor::new()
+            .expect("reactor");
+        // The reactor itself will get consumed by timer,
+        // so we keep a handle to communicate with it.
+        let handle = reactor.handle();
+        let timer = timer::Timer::new(reactor);
+        let timer_handle = timer.handle();
+        // TODO: customize the thread pool w/ Builder.
+        let mut pool = ThreadPool::new();
 
         let control_host_and_port = config.control_host_and_port.clone();
 
@@ -234,10 +247,10 @@ where
 
         let (control, control_bg) = control::new(dns_config.clone(), config.pod_namespace.clone());
 
-        let mut executor = current_thread::TaskExecutor::current();
+        let mut executor = pool.sender();
         let (drain_tx, drain_rx) = drain::channel();
 
-        let bind = Bind::new(core.executor().clone()).with_sensors(sensors.clone());
+        let bind = Bind::new(executor.clone()).with_sensors(sensors.clone());
 
         // Setup the public listener. This will listen on a publicly accessible
         // address and listen for inbound connections that should be forwarded
@@ -260,6 +273,7 @@ where
                 get_original_dst.clone(),
                 drain_rx.clone(),
                 &handle,
+                &executor,
             );
             ::logging::context_future("inbound", fut)
         };
@@ -282,6 +296,7 @@ where
                 get_original_dst,
                 drain_rx,
                 &handle,
+                &executor,
             );
             ::logging::context_future("outbound", fut)
         };
@@ -340,7 +355,7 @@ where
                             executor.spawn_local(Box::new(fut));
 
                             let shutdown = controller_shutdown_signal.then(|_| Ok::<(), ()>(()));
-                            rt.enter(enter).block_on(shutdown).expect("controller api")
+                            rt.enter(enter).block_on(shutdown).expect("controller api");
                         })
                     })
                 })
@@ -352,12 +367,12 @@ where
             .map(|_| ())
             .map_err(|err| error!("main error: {:?}", err));
 
-        executor.spawn_local(Box::new(fut));
+        executor.spawn(Box::new(fut));
         let shutdown_signal = shutdown_signal.and_then(move |()| {
             debug!("shutdown signaled");
             drain_tx.drain()
         });
-        core.block_on(shutdown_signal).expect("executor");
+        executor.spawn(shutdown_signal).expect("executor");
         debug!("shutdown complete");
     }
 }
@@ -373,21 +388,25 @@ fn serve<R, B, E, F, G>(
     get_orig_dst: G,
     drain_rx: drain::Watch,
     handle: &reactor::Handle,
-) -> Box<Future<Item = (), Error = io::Error> + 'static>
+    executor: &Sender,
+) -> Box<Future<Item = (), Error = io::Error> + Send + 'static>
 where
-    B: tower_h2::Body + Default + 'static,
-    // B::Data: Send,
-    // <B::Data as ::bytes::IntoBuf>::Buf: Send,
-    E: Error + 'static,
-    F: Error + 'static,
+    B: tower_h2::Body + Send + Default + 'static,
+    B::Data: Send,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
+    E: Error + Send + 'static,
+    F: Error + Send + 'static,
     R: Recognize<
         Request = http::Request<HttpBody>,
         Response = http::Response<telemetry::sensor::http::ResponseBody<B>>,
         Error = E,
         RouteError = F,
     >
-        + 'static,
-    G: GetOriginalDst + 'static,
+        + Send + 'static,
+    R::Service: Send,
+    R::Key: Send,
+    <R::Service as tower_service::Service>::Future: Send,
+    G: GetOriginalDst + Send + 'static,
 {
     let router = Router::new(recognize, router_capacity);
     let stack = Arc::new(NewServiceFn::new(move || {
@@ -434,6 +453,7 @@ where
         tcp_connect_timeout,
         disable_protocol_detection_ports,
         drain_rx.clone(),
+        executor.clone(),
     );
 
 
@@ -495,7 +515,7 @@ where
     let executor = current_thread::TaskExecutor::current();
     let h2_builder = h2::server::Builder::default();
     let server = tower_h2::Server::new(new_service, h2_builder, executor.clone());
-    bound_port.listen_and_fold(
+    bound_port.listen_and_fold_local(
         handle,
         (server, executor.clone()),
         move |(server, executor), (session, _)| {

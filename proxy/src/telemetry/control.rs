@@ -129,12 +129,12 @@ impl Control {
         use hyper;
         let service = self.metrics_service.clone();
         let hyper = hyper::server::conn::Http::new();
-        let executor = current_thread::TaskExecutor::current();
+        // let executor = current_thread::TaskExecutor::current();
         let handle = &self.handle;
         bound_port.listen_and_fold(
             handle,
-            (hyper, executor),
-            move |(hyper, executor), (conn, _)| {
+            hyper,
+            move |hyper, (conn, _)| {
                 let service = service.clone();
                 let serve = hyper.serve_connection(conn, service)
                     .map_err(|e| {
@@ -142,9 +142,10 @@ impl Control {
                     });
                 let f = ::logging::context_future("serve_metrics", serve);
 
-                executor.spawn_local(Box::new(f));
+                current_thread::TaskExecutor::current()
+                    .spawn_local(Box::new(f));
 
-                future::ok((hyper, executor))
+                future::ok(hyper)
             })
     }
 

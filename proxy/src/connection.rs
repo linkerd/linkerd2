@@ -99,6 +99,34 @@ impl BoundPort {
     // In the future it will also ensure that the connection is upgraded with
     // TLS when needed.
     pub fn listen_and_fold<T, F, Fut>(self, handle: &Handle, initial: T, f: F)
+        -> Box<Future<Item = (), Error = io::Error> + Send + 'static>
+        where
+        F: Fn(T, (Connection, SocketAddr)) -> Fut + Send + 'static,
+        T: Send + 'static,
+        Fut: IntoFuture<Item = T, Error = std::io::Error> + 'static,
+        <Fut as IntoFuture>::Future: Send, {
+        let fut = TcpListener::from_std(self.inner, &handle)
+            .expect("from_listener") // TODO: get rid of this `expect()`.
+            .incoming()
+            .fold(initial, move |b, socket| {
+                let remote_addr = socket.peer_addr()
+                    .expect("couldn't get remote addr!");
+                // TODO: On Linux and most other platforms it would be better
+                // to set the `TCP_NODELAY` option on the bound socket and
+                // then have the listening sockets inherit it. However, that
+                // doesn't work on all platforms and also the underlying
+                // libraries don't have the necessary API for that, so just
+                // do it here.
+                set_nodelay_or_warn(&socket);
+                f(b, (Connection::Plain(socket), remote_addr))
+            });
+
+        Box::new(fut.map(|_| ()))
+    }
+
+    /// Like `listen_and_fold` but not `Send`.
+    // TODO: i hate this & wish it could be gotten rid of.
+    pub fn listen_and_fold_local<T, F, Fut>(self, handle: &Handle, initial: T, f: F)
         -> Box<Future<Item = (), Error = io::Error> + 'static>
         where
         F: Fn(T, (Connection, SocketAddr)) -> Fut + 'static,

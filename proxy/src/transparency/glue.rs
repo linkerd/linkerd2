@@ -257,7 +257,7 @@ where
     <B::Data as ::bytes::IntoBuf>::Buf: Send,
     BufAsRef<<B::Data as ::bytes::IntoBuf>::Buf>: Send,
 {
-    type ReqBody = HttpBody;
+    type ReqBody = hyper::Body;
     type ResBody = BodyStream<B>;
     type Error = h2::Error;
     type Future = Either<
@@ -265,7 +265,7 @@ where
         future::FutureResult<hyper::Response<BodyStream<B>>, Self::Error>,
     >;
 
-    fn call(&mut self, req: hyper::Request<HttpBody>) -> Self::Future {
+    fn call(&mut self, req: hyper::Request<hyper::Body>) -> Self::Future {
         if let &hyper::Method::CONNECT = req.method() {
             debug!("HTTP/1.1 CONNECT not supported");
             let res = hyper::Response::builder()
@@ -277,12 +277,11 @@ where
         }
 
         // let mut req: http::Request<hyper::Body> = req.into();
-        let mut req = req;
         req.extensions_mut().insert(self.srv_ctx.clone());
 
         h1::strip_connection_headers(req.headers_mut());
 
-        // let req = req.map(|b| HttpBody::Http1(b));
+        let req = req.map(|b| HttpBody::Http1(b));
         let f = HyperServerSvcFuture {
             inner: self.service.borrow_mut().call(req),
         };
@@ -301,7 +300,7 @@ where
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         let mut res = try_ready!(self.inner.poll().map_err(|e| {
             debug!("h2 error: {:?}", e);
-            e
+            h2::Error::from(io::Error::from(io::ErrorKind::Other))
         }));
 
         h1::strip_connection_headers(res.headers_mut());
@@ -416,8 +415,8 @@ where
     type Error = io::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        let transport = try_ready!(self.inner.poll()
-            .map_err(|_| io::ErrorKind::Other.into()));
+        let transport: F::Item = try_ready!(self.inner.poll()
+            .map_err(|_| io::Error::from(io::ErrorKind::Other)));
         Ok(Async::Ready((transport, hyper_connect::Connected::new())))
     }
 }

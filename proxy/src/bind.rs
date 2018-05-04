@@ -7,8 +7,7 @@ use std::sync::atomic::AtomicUsize;
 
 use futures::{Future, Poll, future};
 use http::{self, uri};
-// use tokio::executor::current_thread::TaskExecutor;
-use tokio::runtime::TaskExecutor;
+use tokio::executor::thread_pool::Sender;
 use tower_service as tower;
 use tower_h2;
 use tower_reconnect::Reconnect;
@@ -31,7 +30,7 @@ pub struct Bind<C, B> {
     ctx: C,
     sensors: telemetry::Sensors,
     // TODO: make this generic over executor?
-    executor: TaskExecutor,
+    executor: Sender,
     req_ids: Arc<AtomicUsize>,
     _p: PhantomData<B>,
 }
@@ -105,7 +104,7 @@ pub type HttpRequest<B> = http::Request<sensor::http::RequestBody<B>>;
 pub type Client<B> = transparency::Client<
     sensor::Connect<transport::Connect>,
     // TODO: make this generic over executor?
-    TaskExecutor,
+    Sender,
     B,
 >;
 
@@ -136,7 +135,7 @@ impl Error for BufferSpawnError {
 }
 
 impl<B> Bind<(), B> {
-    pub fn new(executor: TaskExecutor) -> Self {
+    pub fn new(executor: Sender) -> Self {
         Self {
             executor,
             ctx: (),
@@ -183,7 +182,7 @@ impl<C, B> Bind<C, B> {
     //     &self.ctx
     // }
 
-    pub fn executor(&self) -> &TaskExecutor {
+    pub fn executor(&self) -> &Sender {
         &self.executor
     }
 }
@@ -296,11 +295,11 @@ where
         Response=HttpResponse,
     >,
     NormalizeUri<S::Service>: tower::Service,
-    // S::Service: Send,
+    S::Service: Send,
     B: tower_h2::Body,
-    // B: Send,
-    // B::Data: Send,
-    // <B::Data as ::bytes::IntoBuf>::Buf: Send,
+    B: Send,
+    B::Data: Send,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
     type Request = <Self::Service as tower::Service>::Request;
     type Response = <Self::Service as tower::Service>::Response;

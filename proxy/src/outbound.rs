@@ -66,7 +66,7 @@ where
     type RouteError = bind::BufferSpawnError;
     type Service = InFlightLimit<Timeout<Buffer<Balance<
         load::WithPendingRequests<Discovery<B>>,
-        choose::PowerOfTwoChoices<rand::ThreadRng>
+        choose::PowerOfTwoChoices<rand::StdRng>
     >>>>;
 
     fn recognize(&self, req: &Self::Request) -> Option<Self::Key> {
@@ -142,7 +142,12 @@ where
 
         let loaded = tower_balance::load::WithPendingRequests::new(resolve);
 
-        let balance = tower_balance::power_of_two_choices(loaded, rand::thread_rng());
+        // we can't use `rand::thread_rng` here because the returned `Service`
+        // needs to be `Send`.
+        // XXX: StdRng::new() is very expensive. figure out another way to get
+        //      a RNG that impls `Send` but is less slow.
+        let rng = rand::StdRng::new().expect("rng::new");
+        let balance = tower_balance::power_of_two_choices(loaded, rng);
 
         // use the same executor as the underlying `Bind` for the `Buffer` and
         // `Timeout`.

@@ -86,11 +86,11 @@ where
 
 impl<C, E, B> Client<C, E, B>
 where
-    C: Connect + Clone + 'static,
-    C::Future: 'static,
-    // C::Connected: Send,
-    B: tower_h2::Body + 'static,
-    // <<B as tower_h2::Body>::Data as IntoBuf>::Buf: Send + 'static,
+    C: Connect + Send + Sync + Clone + 'static,
+    C::Future: Send + 'static,
+    C::Connected: Send,
+    B: tower_h2::Body + Send + 'static,
+    <<B as tower_h2::Body>::Data as IntoBuf>::Buf: Send + 'static,
     E: Executor<Box<Future<Item = (), Error = ()> + Send>>,
     E: Executor<tower_h2::client::Background<C::Connected, RequestBody<B>>>,
     E: Clone + Send + Sync + 'static,

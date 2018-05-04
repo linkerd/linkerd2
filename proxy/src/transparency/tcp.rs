@@ -5,7 +5,7 @@ use std::time::Duration;
 use bytes::{Buf, BufMut};
 use futures::{future, Async, Future, Poll};
 use tokio_connect::Connect;
-use tokio::executor::current_thread::TaskExecutor;
+use tokio::executor::thread_pool::Sender;
 use tokio::io::{AsyncRead, AsyncWrite};
 
 use ctx::transport::{Client as ClientCtx, Server as ServerCtx};
@@ -17,16 +17,16 @@ use transport;
 #[derive(Debug, Clone)]
 pub struct Proxy {
     connect_timeout: Duration,
-    executor: TaskExecutor,
+    executor: Sender,
     sensors: Sensors,
 }
 
 impl Proxy {
     /// Create a new TCP `Proxy`.
-    pub fn new(connect_timeout: Duration, sensors: Sensors,) -> Self {
+    pub fn new(connect_timeout: Duration, sensors: Sensors, executor: &Sender) -> Self {
         Self {
             connect_timeout,
-            executor: TaskExecutor::current(),
+            executor: executor.clone(),
             sensors,
         }
     }
