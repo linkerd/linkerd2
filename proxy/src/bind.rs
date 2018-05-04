@@ -43,12 +43,13 @@ pub struct BindProtocol<C, B> {
 /// A type of service binding
 ///
 /// Some services, for various reasons, may not be able to be used to serve multiple
-/// requests. The `LazyOneoff` binding ensures that a new stack is bound for each request.
+/// requests. The `BindsPerRequest` binding ensures that a new stack is bound for each
+/// request.
 ///
-/// `EagerReusable` serivces may be used to process an arbitrary number of requests.
+/// `Bound` serivces may be used to process an arbitrary number of requests.
 pub enum Binding<B: tower_h2::Body + 'static> {
-    EagerReusable(Stack<B>),
-    LazyOneoff {
+    Bound(Stack<B>),
+    BindsPerRequest {
         endpoint: Endpoint,
         protocol: Protocol,
         bind: Bind<Arc<ctx::Proxy>, B>,
@@ -218,9 +219,9 @@ where
 
     pub fn new_binding(&self, ep: &Endpoint, protocol: &Protocol) -> Binding<B> {
         if protocol.can_reuse_clients() {
-            Binding::EagerReusable(self.bind_stack(ep, protocol))
+            Binding::Bound(self.bind_stack(ep, protocol))
         } else {
-            Binding::LazyOneoff {
+            Binding::BindsPerRequest {
                 endpoint: ep.clone(),
                 protocol: protocol.clone(),
                 bind: self.clone(),
@@ -331,12 +332,12 @@ impl<B: tower_h2::Body + 'static> tower::Service for Binding<B> {
     fn poll_ready(&mut self) -> Poll<(), Self::Error> {
         match *self {
             // A service is already bound, so poll its readiness.
-            Binding::EagerReusable(ref mut svc) |
-            Binding::LazyOneoff { next: Some(ref mut svc), .. } => svc.poll_ready(),
+            Binding::Bound(ref mut svc) |
+            Binding::BindsPerRequest { next: Some(ref mut svc), .. } => svc.poll_ready(),
 
             // If no stack has been bound, bind it now so that its readiness can be
             // checked. Store it so it can be consumed to dispatch the next request.
-            Binding::LazyOneoff { ref endpoint, ref protocol, ref bind, ref mut next } => {
+            Binding::BindsPerRequest { ref endpoint, ref protocol, ref bind, ref mut next } => {
                 let mut svc = bind.bind_stack(endpoint, protocol);
                 let ready = svc.poll_ready()?;
                 *next = Some(svc);
@@ -348,16 +349,16 @@ impl<B: tower_h2::Body + 'static> tower::Service for Binding<B> {
     fn call(&mut self, request: Self::Request) -> Self::Future {
         match *self {
             // Dispatch the request immediately.
-            Binding::EagerReusable(ref mut svc) => svc.call(request),
+            Binding::Bound(ref mut svc) => svc.call(request),
 
             // `poll_ready` was not called, so attempt to bind a new stack and dispatch
             // the request immediately.
-            Binding::LazyOneoff { ref endpoint, ref protocol, ref bind, next: None } => {
+            Binding::BindsPerRequest { ref endpoint, ref protocol, ref bind, next: None } => {
                 bind.bind_stack(endpoint, protocol).call(request)
             }
 
             // A service has already been bound, so consume it and send the request to it.
-            Binding::LazyOneoff { ref mut next, .. } => {
+            Binding::BindsPerRequest { ref mut next, .. } => {
                 next.take().unwrap().call(request)
             }
         }
