@@ -423,24 +423,13 @@ mod tests {
     }
 
     #[test]
-    fn single_use_not_cached() {
-        let mut router = Router::new(Recognize, 2);
+    fn single_use_not_cached_or_limited_by_capacity() {
+        let mut router = Router::new(Recognize, 1);
 
         let rsp = router.call_ok(Request::Reusable(2));
         assert_eq!(rsp, 2);
 
         let rsp = router.call_ok(Request::SingleUse(2));
         assert_eq!(rsp, 2);
-    }
-
-    #[test]
-    fn single_use_not_limited_by_capacity() {
-        let mut router = Router::new(Recognize, 1);
-
-        let rsp = router.call_ok(Request::Reusable(2));
-        assert_eq!(rsp, 2);
-
-        let rsp = router.call_ok(Request::SingleUse(7));
-        assert_eq!(rsp, 7);
     }
 }
