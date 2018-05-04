@@ -25,7 +25,7 @@ pub struct Serve {
 }
 
 #[derive(Debug)]
-enum ServeError {
+pub enum ServeError {
     Http(http::Error),
     Io(io::Error),
 }

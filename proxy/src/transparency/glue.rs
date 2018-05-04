@@ -32,7 +32,7 @@ pub(super) struct BodyStream<B> {
 
 /// Glue for the `Data` part of a `tower_h2::Body` to be used as an `AsRef` in `BodyStream`.
 #[derive(Debug)]
-pub(super) struct BufAsRef<B>(B);
+pub struct BufAsRef<B>(B);
 
 /// Glue for a `tower::Service` to used as a `hyper::server::Service`.
 #[derive(Debug)]
@@ -265,7 +265,7 @@ where
         future::FutureResult<hyper::Response<BodyStream<B>>, Self::Error>,
     >;
 
-    fn call(&mut self, req: hyper::Request<hyper::Body>) -> Self::Future {
+    fn call(&mut self, mut req: hyper::Request<hyper::Body>) -> Self::Future {
         if let &hyper::Method::CONNECT = req.method() {
             debug!("HTTP/1.1 CONNECT not supported");
             let res = hyper::Response::builder()

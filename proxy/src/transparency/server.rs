@@ -51,7 +51,7 @@ where
     S: NewService<
         Request = http::Request<HttpBody>,
         Response = http::Response<B>
-    > + Clone + 'static,
+    > + Clone + Send + 'static,
     <S as NewService>::Service: Send,
     <<S as NewService>::Service as ::tower_service::Service>::Future: Send,
     S::Future: Send + 'static,
