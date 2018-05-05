@@ -348,17 +348,12 @@ impl<B: tower_h2::Body + 'static> tower::Service for Binding<B> {
 
     fn call(&mut self, request: Self::Request) -> Self::Future {
         match *self {
-            // Dispatch the request immediately.
             Binding::Bound(ref mut svc) => svc.call(request),
-
             Binding::BindsPerRequest { ref endpoint, ref protocol, ref bind, ref mut next } => {
-                match next.take() {
-                    // `poll_ready` was not called, so attempt to bind a new stack and dispatch
-                    // the request immediately.
-                    None => bind.bind_stack(endpoint, protocol).call(request),
-                    // A service has already been bound, so consume it and send the request to it.
-                    Some(mut svc) => svc.call(request),
-                }
+                // If a service has already been bound in `poll_ready`, consume it.
+                // Otherwise, bind a new service on-the-spot.
+                let mut svc = next.take().unwrap_or_else(|| bind.bind_stack(endpoint, protocol));
+                svc.call(request)
             }
         }
     }
