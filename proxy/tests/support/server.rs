@@ -284,13 +284,13 @@ impl Service for Svc {
     }
 }
 
-impl hyper::server::Service for Svc {
-    type Request = hyper::server::Request;
-    type Response = hyper::server::Response<hyper::Body>;
+impl hyper::service::Service for Svc {
+    type ReqBody = hyper::Body;
+    type ResBody = hyper::Body;
     type Error = hyper::Error;
-    type Future = future::FutureResult<hyper::server::Response<hyper::Body>, hyper::Error>;
+    type Future = future::FutureResult<hyper::Response<hyper::Body>, hyper::Error>;
 
-    fn call(&self, req: Self::Request) -> Self::Future {
+    fn call(&mut self, req: hyper::Request<hyper::Body>) -> Self::Future {
 
         let rsp = match self.0.get(req.uri().path()) {
             Some(route) => {
@@ -300,10 +300,10 @@ impl hyper::server::Service for Svc {
             }
             None => {
                 println!("server 404: {:?}", req.uri().path());
-                let rsp = hyper::server::Response::new();
+                let rsp = hyper::Response::builder();
                 let body = hyper::Body::empty();
-                rsp.with_status(hyper::NotFound)
-                    .with_body(body)
+                rsp.status(hyper::status::Status::NOT_FOUND)
+                    .body(body)
             }
         };
         future::ok(rsp)

@@ -9,6 +9,7 @@ use std::sync::{Arc, Mutex};
 use conduit_proxy_controller_grpc::common::{self, Destination};
 use conduit_proxy_controller_grpc::destination as pb;
 
+
 pub fn new() -> Controller {
     Controller::new()
 }
@@ -112,37 +113,38 @@ fn run(controller: Controller) -> Listening {
     ::std::thread::Builder::new()
         .name("support controller".into())
         .spawn(move || {
-            let mut core = Core::new().unwrap();
-            let reactor = core.handle();
+            let mut core = runtime::current_thread::Runtime::new()
+                .expect("controller runtime new");
 
             let new = pb::server::DestinationServer::new(controller);
-            let h2 = tower_h2::Server::new(new, Default::default(), reactor.clone());
+            let h2 = tower_h2::Server::new(new, Default::default(),
+                executor::current_thread::TaskExecutor::current());
 
             let addr = ([127, 0, 0, 1], 0).into();
-            let bind = TcpListener::bind(&addr, &reactor).expect("bind");
+            let bind = TcpListener::bind(&addr).expect("bind");
 
             let _ = addr_tx.send(bind.local_addr().expect("addr"));
 
             let serve = bind.incoming()
-                .fold((h2, reactor), |(h2, reactor), (sock, _)| {
+                .fold(h2, |h2, sock| {
                     if let Err(e) = sock.set_nodelay(true) {
                         return Err(e);
                     }
 
                     let serve = h2.serve(sock);
-                    reactor.spawn(serve.map_err(|e| println!("controller error: {:?}", e)));
+                    core.spawn(serve.map_err(|e| println!("controller error: {:?}", e)));
 
-                    Ok((h2, reactor))
+                    Ok(h2)
                 });
 
 
-            core.handle().spawn(
+            core.spawn(
                 serve
                     .map(|_| ())
                     .map_err(|e| println!("controller error: {}", e)),
             );
 
-            core.run(rx).unwrap();
+            core.block_on(rx).unwrap();
         })
         .unwrap();
 

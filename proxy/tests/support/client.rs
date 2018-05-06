@@ -3,8 +3,11 @@ use support::*;
 use std::cell::RefCell;
 use std::io;
 
-use self::futures::sync::{mpsc, oneshot};
-use self::tokio_core::net::TcpStream;
+use self::futures::{
+    future::Executor,
+    sync::{mpsc, oneshot},
+};
+use self::tokio::net::TcpStream;
 use self::tokio_io::{AsyncRead, AsyncWrite};
 
 type Request = http::Request<()>;
@@ -116,28 +119,28 @@ fn run(addr: SocketAddr, version: Run) -> (Sender, Running) {
     let (running_tx, running_rx) = running();
 
     ::std::thread::Builder::new().name("support client".into()).spawn(move || {
-        let mut core = Core::new().expect("client core new");
-        let reactor = core.handle();
+        let mut core = tokio::runtime::current_thread::Runtime::new()
+            .expect("client runtime new");
+        let mut executor = executor::current_thread::TaskExecutor::current();
 
         let conn = Conn {
             addr,
-            handle: reactor.clone(),
             running: RefCell::new(Some(running_tx)),
         };
 
         let work: Box<Future<Item=(), Error=()>> = match version {
             Run::Http1 { absolute_uris } => {
-                let client = hyper::Client::configure()
-                    .connector(conn)
-                    .build(&reactor);
+                let client = hyper::Client::builder()
+                    // .executor(&executor)
+                    .build(conn);
                 Box::new(rx.for_each(move |(req, cb)| {
-                    let mut req = hyper::Request::from(req.map(|()| hyper::Body::empty()));
-                    if !req.headers().has::<hyper::header::ContentLength>() {
+                    let mut req = req;
+                    if req.headers().get(http::header::CONTENT_LENGTH).is_none() {
                         assert!(req.body_mut().take().unwrap().is_empty());
                     }
-                    if absolute_uris {
-                        req.set_proxy(true);
-                    }
+                    // if absolute_uris {
+                    //     req.set_proxy(true);
+                    // }
                     let fut = client.request(req).then(move |result| {
                         let result = result
                             .map(|res| {
@@ -151,16 +154,16 @@ fn run(addr: SocketAddr, version: Run) -> (Sender, Running) {
                         let _ = cb.send(result);
                         Ok(())
                     });
-                    reactor.spawn(fut);
+                    executor.spawn_local(fut);
                     Ok(())
                 })
                     .map_err(|e| println!("client error: {:?}", e)))
             },
             Run::Http2 => {
-                let connect = tower_h2::client::Connect::<Conn, Handle, ()>::new(
+                let connect = tower_h2::client::Connect::new(
                     conn,
                     Default::default(),
-                    reactor.clone(),
+                    executor.clone(),
                 );
 
                 Box::new(connect.new_service()
@@ -178,7 +181,7 @@ fn run(addr: SocketAddr, version: Run) -> (Sender, Running) {
                                 let _ = cb.send(result);
                                 Ok(())
                             });
-                            reactor.spawn(fut);
+                            executor.execute(fut);
                             Ok(())
                         })
                     })
@@ -187,7 +190,7 @@ fn run(addr: SocketAddr, version: Run) -> (Sender, Running) {
             }
         };
 
-        core.run(work).expect("support client core run");
+        core.block_on(work).expect("support client core run");
     }).expect("support client thread spawn");
     (tx, running_rx)
 }
@@ -196,18 +199,15 @@ fn run(addr: SocketAddr, version: Run) -> (Sender, Running) {
 /// when all connections are finally closed.
 struct Conn {
     addr: SocketAddr,
-    handle: Handle,
     /// When this Sender drops, that should mean the connection is closed.
-    running: RefCell<Option<oneshot::Sender<()>>>,
+    running: mpsc::Sender<()>,
 }
 
 impl Conn {
     fn connect_(&self) -> Box<Future<Item = RunningIo, Error = ::std::io::Error>> {
-        let running = self.running
-            .borrow_mut()
-            .take()
-            .expect("connected more than once");
-        let c = TcpStream::connect(&self.addr, &self.handle)
+        let running = &self.running
+            .clone();
+        let c = TcpStream::connect(&self.addr)
             .and_then(|tcp| tcp.set_nodelay(true).map(move |_| tcp))
             .map(move |tcp| RunningIo {
                 inner: tcp,
@@ -227,13 +227,15 @@ impl Connect for Conn {
     }
 }
 
-impl hyper::client::Service for Conn {
-    type Request = hyper::Uri;
-    type Response = RunningIo;
-    type Future = Box<Future<Item = Self::Response, Error = ::std::io::Error>>;
+impl hyper::client::connect::Connect for Conn {
+    type Transport = RunningIo;
+    type Future = Box<Future<
+        Item = (Self::Transport, hyper::client::connect::Connected),
+        Error = ::std::io::Error,
+    > + Send>;
     type Error = ::std::io::Error;
-    fn call(&self, _: hyper::Uri) -> <Self as hyper::client::Service>::Future {
-        self.connect_()
+    fn connect(&self, _: hyper::client::connect::Destination) -> Self::Future {
+        Box::new(self.connect_().map(|t| (t, hyper::client::connect::Connected::new())))
     }
 }
 

@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use self::futures::sync::{mpsc, oneshot};
-use self::tokio_core::net::TcpStream;
+use self::tokio::net::TcpStream;
 
 type TcpSender = mpsc::UnboundedSender<oneshot::Sender<TcpConnSender>>;
 type TcpConnSender = mpsc::UnboundedSender<(Option<Vec<u8>>, oneshot::Sender<io::Result<Option<Vec<u8>>>>)>;
