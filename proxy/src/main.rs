@@ -19,6 +19,6 @@ fn main() {
         }
     };
     let main = conduit_proxy::Main::new(config, conduit_proxy::SoOriginalDst);
-    let shutdown_signal = signal::shutdown(&main.handle());
+    let shutdown_signal = signal::shutdown();
     main.run_until(shutdown_signal);
 }
