@@ -98,7 +98,7 @@ export default class Namespaces extends React.Component {
     }
     return (
       <div className="page-section">
-        <h1>{friendlyTitle}</h1>
+        <h1>{friendlyTitle}s</h1>
         <MetricsTable
           resource={friendlyTitle}
           metrics={metrics}
@@ -117,9 +117,9 @@ export default class Namespaces extends React.Component {
           <div>
             <PageHeader header={"Namespace: " + this.state.ns} api={this.api} />
             { noMetrics ? <CallToAction /> : null}
-            {this.renderResourceSection("Deployments", this.state.metrics.deploy)}
-            {this.renderResourceSection("Replication Controllers", this.state.metrics.rc)}
-            {this.renderResourceSection("Pods", this.state.metrics.pod)}
+            {this.renderResourceSection("Deployment", this.state.metrics.deploy)}
+            {this.renderResourceSection("Replication Controller", this.state.metrics.rc)}
+            {this.renderResourceSection("Pod", this.state.metrics.pod)}
           </div>
         }
       </div>);
