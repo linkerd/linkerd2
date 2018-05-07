@@ -116,14 +116,14 @@ impl Server {
             thread_name(),
         );
         ::std::thread::Builder::new().name(tname).spawn(move || {
-            let mut core = Core::new().unwrap();
-            let reactor = core.handle();
+            let mut core = runtime::current_thread::Runtime::new()
+                .expect("server Runtime::new");
 
             let new_svc = NewSvc(Arc::new(self.routes));
 
             let srv: Box<Fn(TcpStream) -> Box<Future<Item=(), Error=()>>> = match self.version {
                 Run::Http1 => {
-                    let h1 = hyper::server::Http::<hyper::Chunk>::new();
+                    let h1 = hyper::server::conn::Http::new();
 
                     Box::new(move |sock| {
                         let h1_clone = h1.clone();
@@ -132,10 +132,12 @@ impl Server {
                             .inspect(move |_| {
                                 srv_conn_count.fetch_add(1, Ordering::Release);
                             })
-                            .from_err()
-                            .and_then(move |svc| h1_clone.serve_connection(sock, svc))
-                            .map(|_| ())
-                            .map_err(|e| println!("server h1 error: {}", e));
+                            .map_err(|e| println!("server new_service error: {}", e))
+                            .and_then(move |svc|
+                                h1_clone.serve_connection(sock, svc)
+                                    .map_err(|e| println!("server h1 error: {}", e))
+                            )
+                            .map(|_| ());
                         Box::new(conn)
                     })
                 },
@@ -143,7 +145,7 @@ impl Server {
                     let h2 = tower_h2::Server::new(
                         new_svc,
                         Default::default(),
-                        reactor.clone(),
+                        executor::current_thread::TaskExecutor::current(),
                     );
                     Box::new(move |sock| {
                         let srv_conn_count = Arc::clone(&srv_conn_count);
@@ -158,28 +160,28 @@ impl Server {
             };
 
             let addr = ([127, 0, 0, 1], 0).into();
-            let bind = TcpListener::bind(&addr, &reactor).expect("bind");
+            let bind = TcpListener::bind(&addr).expect("bind");
 
             let local_addr = bind.local_addr().expect("local_addr");
             let _ = addr_tx.send(local_addr);
 
             let serve = bind.incoming()
-                .fold((srv, reactor), move |(srv, reactor), (sock, _)| {
+                .fold(srv, move |srv, sock| {
                     if let Err(e) = sock.set_nodelay(true) {
                         return Err(e);
                     }
-                    reactor.spawn(srv(sock));
+                    core.spawn(srv(sock));
 
-                    Ok((srv, reactor))
+                    Ok(srv)
                 });
 
-            core.handle().spawn(
+            core.spawn(
                 serve
                     .map(|_| ())
                     .map_err(|e| println!("server error: {}", e)),
             );
 
-            core.run(rx).unwrap();
+            core.block_on(rx).unwrap();
         }).unwrap();
 
         let addr = addr_rx.wait().expect("addr");
@@ -287,26 +289,27 @@ impl Service for Svc {
 impl hyper::service::Service for Svc {
     type ReqBody = hyper::Body;
     type ResBody = hyper::Body;
-    type Error = hyper::Error;
-    type Future = future::FutureResult<hyper::Response<hyper::Body>, hyper::Error>;
+    type Error = http::Error;
+    type Future = future::FutureResult<hyper::Response<hyper::Body>, Self::Error>;
 
     fn call(&mut self, req: hyper::Request<hyper::Body>) -> Self::Future {
 
         let rsp = match self.0.get(req.uri().path()) {
             Some(route) => {
-                (route.0)(Request::from(req).map(|_| ()))
-                    .map(|s| hyper::Body::from(s))
-                    .into()
+                let rsp = (route.0)(Request::from(req).map(|_| ()))
+                    .map(|s| hyper::Body::from(s));
+                Ok(rsp)
             }
             None => {
                 println!("server 404: {:?}", req.uri().path());
                 let rsp = hyper::Response::builder();
                 let body = hyper::Body::empty();
-                rsp.status(hyper::status::Status::NOT_FOUND)
+                rsp.status(StatusCode::NOT_FOUND)
                     .body(body)
             }
         };
-        future::ok(rsp)
+
+        future::result(rsp)
     }
 }
 

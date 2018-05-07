@@ -114,7 +114,7 @@ fn run(controller: Controller) -> Listening {
         .name("support controller".into())
         .spawn(move || {
             let mut core = runtime::current_thread::Runtime::new()
-                .expect("controller runtime new");
+                .expect("controller Runtime::new");
 
             let new = pb::server::DestinationServer::new(controller);
             let h2 = tower_h2::Server::new(new, Default::default(),
