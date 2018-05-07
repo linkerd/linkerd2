@@ -178,7 +178,7 @@ message StatTable {
       // number of pods in this resource
       uint64 total_pod_count = 4;
       // number of pods in this resource that have Phase PodFailed
-      uint64 errored_pod_count = 6;
+      uint64 failed_pod_count = 6;
 
       BasicStats stats = 5;
     }

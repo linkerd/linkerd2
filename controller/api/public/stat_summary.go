@@ -44,9 +44,9 @@ const (
 var promTypes = []promType{promRequests, promLatencyP50, promLatencyP95, promLatencyP99}
 
 type podCount struct {
-	inMesh  uint64
-	total   uint64
-	errored uint64
+	inMesh uint64
+	total  uint64
+	failed uint64
 }
 
 func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
@@ -139,7 +139,7 @@ func (s *grpcServer) objectQuery(
 		if count, ok := meshCount[key]; ok {
 			row.MeshedPodCount = count.inMesh
 			row.TotalPodCount = count.total
-			row.ErroredPodCount = count.errored
+			row.FailedPodCount = count.failed
 		}
 
 		rows = append(rows, &row)
@@ -338,13 +338,13 @@ func (s *grpcServer) getMeshedPodCount(obj runtime.Object) (*podCount, error) {
 
 	meshCount := &podCount{}
 	for _, pod := range pods {
-		meshCount.total++
-		if isInMesh(pod) {
-			meshCount.inMesh++
-		}
-
 		if pod.Status.Phase == apiv1.PodFailed {
-			meshCount.errored++
+			meshCount.failed++
+		} else {
+			meshCount.total++
+			if isInMesh(pod) {
+				meshCount.inMesh++
+			}
 		}
 	}
 
