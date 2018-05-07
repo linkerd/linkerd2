@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::io;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
@@ -170,9 +171,13 @@ impl Server {
                     if let Err(e) = sock.set_nodelay(true) {
                         return Err(e);
                     }
-                    core.spawn(srv(sock));
-
-                    Ok(srv)
+                    current_thread::TaskExecutor::current()
+                        .execute(srv(sock))
+                        .map_err(|e| {
+                            println!("server execute error: {:?}", e);
+                            io::Error::from(io::ErrorKind::Other)
+                        })
+                        .map(|_| srv)
                 });
 
             core.spawn(
@@ -302,7 +307,7 @@ impl hyper::service::Service for Svc {
             }
             None => {
                 println!("server 404: {:?}", req.uri().path());
-                let rsp = hyper::Response::builder();
+                let mut rsp = hyper::Response::builder();
                 let body = hyper::Body::empty();
                 rsp.status(StatusCode::NOT_FOUND)
                     .body(body)

@@ -30,15 +30,15 @@ pub use std::time::Duration;
 
 pub use self::bytes::Bytes;
 pub use self::conduit_proxy::*;
-pub use self::futures::*;
-use self::futures::sync::oneshot;
+pub use self::futures::{future::Executor, *,};
+use self::futures::sync::{mpsc, oneshot};
 pub use self::http::{HeaderMap, Request, Response, StatusCode};
-use self::tokio_connect::Connect;
 use self::tokio::{
-    executor,
+    executor::{self, current_thread},
     net::{TcpListener, TcpStream},
     runtime,
 };
+use self::tokio_connect::Connect;
 use self::tokio_reactor::Handle;
 use self::tower_h2::{Body, RecvBody};
 use self::tower_grpc as grpc;
@@ -135,9 +135,9 @@ impl Shutdown {
 pub type ShutdownRx = Box<Future<Item=(), Error=()> + Send>;
 
 /// A channel used to signal when a Client's related connection is running or closed.
-pub fn running() -> (oneshot::Sender<()>, Running) {
-    let (tx, rx) = oneshot::channel();
-    let rx = Box::new(rx.then(|_| Ok::<(), ()>(())));
+pub fn running() -> (mpsc::Sender<()>, Running) {
+    let (tx, rx) = mpsc::channel(1);
+    let rx = Box::new(rx.into_future().then(|_| Ok::<(), ()>(())));
     (tx, rx)
 }
 

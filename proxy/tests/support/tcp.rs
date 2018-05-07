@@ -185,8 +185,12 @@ fn run_client(addr: SocketAddr) -> TcpSender {
                         .map_err(|_| ())
                 });
 
-            core.spawn(fut);
-            Ok(())
+            current_thread::TaskExecutor::current()
+                .execute(fut)
+                .map_err(|e| {
+                    println!("tcp client execute error: {:?}", e);
+                })
+                .map(|_| ())
 
         }).map_err(|e| println!("client error: {:?}", e));
         core.block_on(work).unwrap();
@@ -225,8 +229,13 @@ fn run_server(tcp: TcpServer) -> server::Listening {
 
                 let fut = cb.call_box(sock);
 
-                core.spawn(fut);
-                Ok(())
+                current_thread::TaskExecutor::current()
+                    .execute(fut)
+                    .map_err(|e| {
+                        println!("tcp execute error: {:?}", e);
+                        io::Error::from(io::ErrorKind::Other)
+                    })
+                    .map(|_| ())
             })
             .map_err(|e| panic!("tcp accept error: {}", e));
 

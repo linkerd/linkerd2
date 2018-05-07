@@ -1,8 +1,10 @@
 #![cfg_attr(feature = "cargo-clippy", allow(clone_on_ref_ptr))]
 
 use support::*;
+use support::futures::future::Executor;
 
 use std::collections::{HashMap, VecDeque};
+use std::io;
 use std::net::IpAddr;
 use std::sync::{Arc, Mutex};
 
@@ -132,9 +134,13 @@ fn run(controller: Controller) -> Listening {
                     }
 
                     let serve = h2.serve(sock);
-                    core.spawn(serve.map_err(|e| println!("controller error: {:?}", e)));
-
-                    Ok(h2)
+                    current_thread::TaskExecutor::current()
+                        .execute(serve.map_err(|e| println!("controller error: {:?}", e)))
+                        .map_err(|e| {
+                            println!("controller execute error: {:?}", e);
+                            io::Error::from(io::ErrorKind::Other)
+                        })
+                        .map(|_| h2)
                 });
 
 

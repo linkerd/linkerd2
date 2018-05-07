@@ -1,6 +1,5 @@
 use support::*;
 
-use std::cell::RefCell;
 use std::io;
 
 use self::futures::{
@@ -121,26 +120,26 @@ fn run(addr: SocketAddr, version: Run) -> (Sender, Running) {
     ::std::thread::Builder::new().name("support client".into()).spawn(move || {
         let mut core = tokio::runtime::current_thread::Runtime::new()
             .expect("client runtime new");
-        let mut executor = executor::current_thread::TaskExecutor::current();
+        let executor = executor::current_thread::TaskExecutor::current();
 
         let conn = Conn {
             addr,
-            running: RefCell::new(Some(running_tx)),
+            running: running_tx,
         };
 
         let work: Box<Future<Item=(), Error=()>> = match version {
             Run::Http1 { absolute_uris } => {
                 let client = hyper::Client::builder()
                     // .executor(&executor)
-                    .build(conn);
+                    .build::<Conn, hyper::Body>(conn);
                 Box::new(rx.for_each(move |(req, cb)| {
-                    let mut req = req;
+                    let req = req.map(|_| hyper::Body::empty());
                     if req.headers().get(http::header::CONTENT_LENGTH).is_none() {
-                        assert!(req.body_mut().take().unwrap().is_empty());
+                        // assert!(req.body_mut().take().unwrap().is_empty());
                     }
-                    // if absolute_uris {
-                    //     req.set_proxy(true);
-                    // }
+                    if absolute_uris {
+                        // req.set_proxy(true);
+                    }
                     let fut = client.request(req).then(move |result| {
                         let result = result
                             .map(|res| {
@@ -154,8 +153,8 @@ fn run(addr: SocketAddr, version: Run) -> (Sender, Running) {
                         let _ = cb.send(result);
                         Ok(())
                     });
-                    executor.spawn_local(fut);
-                    Ok(())
+                    executor.execute(fut)
+                        .map_err(|e| println!("client spawn error: {:?}", e))
                 })
                     .map_err(|e| println!("client error: {:?}", e)))
             },
@@ -181,8 +180,8 @@ fn run(addr: SocketAddr, version: Run) -> (Sender, Running) {
                                 let _ = cb.send(result);
                                 Ok(())
                             });
-                            executor.execute(fut);
-                            Ok(())
+                            executor.execute(fut)
+                                .map_err(|e| println!("client spawn error: {:?}", e))
                         })
                     })
                     .map(|_| ())
@@ -204,8 +203,8 @@ struct Conn {
 }
 
 impl Conn {
-    fn connect_(&self) -> Box<Future<Item = RunningIo, Error = ::std::io::Error>> {
-        let running = &self.running
+    fn connect_(&self) -> Box<Future<Item = RunningIo, Error = ::std::io::Error> + Send> {
+        let running = self.running
             .clone();
         let c = TcpStream::connect(&self.addr)
             .and_then(|tcp| tcp.set_nodelay(true).map(move |_| tcp))
@@ -245,7 +244,7 @@ struct RunningIo {
     inner: TcpStream,
     /// When this drops, the related Receiver is notified that the connection
     /// is closed.
-    running: oneshot::Sender<()>,
+    running: mpsc::Sender<()>,
 }
 
 impl io::Read for RunningIo {
