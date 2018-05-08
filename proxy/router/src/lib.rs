@@ -104,15 +104,6 @@ where T: Recognize
     }
 }
 
-macro_rules! try_bind_route {
-    ( $bind:expr ) => {
-        match $bind {
-            Ok(svc) => svc,
-            Err(e) => return ResponseFuture { state: State::RouteError(e) },
-        }
-    }
-}
-
 impl<T> Service for Router<T>
 where T: Recognize,
 {
@@ -157,7 +148,11 @@ where T: Recognize,
         }
 
         // Bind a new route, send the request on the route, and cache the route.
-        let mut service = try_bind_route!(inner.recognize.bind_service(&key));
+        let mut service = match inner.recognize.bind_service(&key) {
+            Ok(svc) => svc,
+            Err(e) => return ResponseFuture { state: State::RouteError(e) },
+        };
+
         let response = service.call(request);
         inner.routes.insert(key, service);
         ResponseFuture::new(response)
