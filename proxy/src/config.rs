@@ -465,4 +465,15 @@ mod tests {
         let units = ["d", "day", "days"];
         test_units(&units, |v| Duration::from_secs(v * 60 * 60 * 24));
     }
+
+    #[test]
+    fn parse_float_numbers_are_invalid() {
+        assert_eq!(parse_duration(".123 hours"), Err(ParseError::NotADuration));
+        assert_eq!(parse_duration("1.23 hours"), Err(ParseError::NotADuration));
+    }
+
+    #[test]
+    fn parse_invalid_unit() {
+        assert_eq!(parse_duration("12 moons"), Err(ParseError::NotADuration));
+    }
 }
