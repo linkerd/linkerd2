@@ -54,7 +54,7 @@ use futures::future::Executor;
 use std::error::Error;
 use std::io;
 use std::net::SocketAddr;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
@@ -201,18 +201,66 @@ where
             // handle,
         } = self;
 
+
+
+        // The reactor will (eventually) run on this thread. Our "pool" of
+        // one worker thread will use this reactor.
+        let pool_reactor = reactor::Reactor::new()
+            .expect("initialize main reactor")
+            .background()
+            .expect("start main reactor");
+        let reactor_handle = pool_reactor.handle().clone();
+
+        // Since we're using a single worker thread, we only need to create
+        // one timer.
+        // We have to construct the timer in the closure passed to
+        // `custom_park`, since we can't move it into the closure, and the closure
+        // has to return the `Park` instance, so we'll use this to hold it
+        // temporarily until it's created. This is basically the same as what
+        // `tokio::runtime::Builder::build()` does:
+        // https://github.com/tokio-rs/tokio/blob/363b207f2b6c25857c70d76b303356db87212f59/src/runtime/builder.rs#L90-L119
+        // XXX: This is rather convoluted and I wish we didn't have to do it....
+        let take_timer_handle: Arc<Mutex<Option<timer::Handle>>> =
+            Arc::new(Mutex::new(None));
+        let put_timer_handle = take_timer_handle.clone();
+
         // XXX: We would prefer to use the `CurrentThread` executor; however,
         // Hyper requires executors that are `Send`, so we have to use the
         // theadpool, as its' `Sender` implements `Send`, whicih
         // `CurrentThread::TaskExecutor` does not.
         let mut pool = thread_pool::Builder::new()
             .name_prefix("conduit-worker-")
+            // TODO: eventually, we may want to make the size of the threadpool
+            //       configurable to support use cases such as ingress.
             .pool_size(1)
-            .custom_park(|_| {
+            .around_worker(move |w, enter| {
+                // Take the timer handle that should have already been created in
+                // the `custom_park` closure.
+                let timer_handle = take_timer_handle
+                    .lock().expect("lock lazy timer handle in around_worker")
+                    .take().expect("timer should already have been initialized");
+                // Set our timer and reactor as the default timer and reactor
+                // for the(single) worker thread in the "pool".
+                // NOTE: if we wanted to run more than one worker thread in our
+                //       threadpool (read: if we made the pool size
+                //       configurable), we will probably want each worker to
+                //       have its own timer instead.
+                tokio_reactor::with_default(&reactor_handle, enter, |enter| {
+                    timer::with_default(&timer_handle, enter, |_| {
+                        w.run();
+                    })
+                });
+            })
+            .custom_park(move |_| {
                 use tokio_threadpool::park::DefaultPark;
-                // we have to make sure the pool has timers, because we can't just use
-                // runtime as we need the `Sender` handle to placate `hyper`.
-                timer::Timer::new(DefaultPark::new())
+                let timer = timer::Timer::new(DefaultPark::new());
+                // Put the timer handle in the mutex so it can be passed
+                // to `around_worker`.
+                let mut handle = put_timer_handle
+                    .lock()
+                    .expect("lock lazy timer handle in custom_park");
+                *handle = Some(timer.handle());
+                timer
             })
             .build();
 
