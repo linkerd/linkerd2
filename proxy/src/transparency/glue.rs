@@ -153,46 +153,6 @@ impl<B> BodyStream<B> {
     }
 }
 
-// impl<B> Stream for BodyStream<B>
-// where
-//     B: tower_h2::Body,
-// {
-//     type Item = BufAsRef<<B::Data as ::bytes::IntoBuf>::Buf>;
-//     type Error = h2::Error;
-
-//     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-//         loop {
-//             if self.poll_trailers {
-//                 return match self.body.poll_trailers() {
-//                     // we don't care about actual trailers, just that the poll
-//                     // was ready. now we can tell hyper the stream is done
-//                     Ok(Async::Ready(_)) => Ok(Async::Ready(None)),
-//                     Ok(Async::NotReady) => Ok(Async::NotReady),
-//                     Err(e) => {
-//                         trace!("h2 trailers error: {:?}", e);
-//                         Err(e)
-//                     }
-//                 };
-//             } else {
-//                 match self.body.poll_data() {
-//                     Ok(Async::Ready(Some(buf))) => return Ok(Async::Ready(Some(BufAsRef(buf.into_buf())))),
-//                     Ok(Async::Ready(None)) => {
-//                         // when the data is empty, even though hyper can't use the trailers,
-//                         // we need to poll for them, to allow the stream to mark itself as
-//                         // completed successfully.
-//                         self.poll_trailers = true;
-//                     },
-//                     Ok(Async::NotReady) => return Ok(Async::NotReady),
-//                     Err(e) => {
-//                         trace!("h2 body error: {:?}", e);
-//                         return Err(e);
-//                     }
-//                 }
-//             }
-//         }
-//     }
-// }
-
 // NOTE: I think it's possible the `BodyStream` type can be removed in favour
 //       of the `Body::Wrap_stream` constructor that's available on the master
 //       version of `hyper`. However, this will box the wrapped stream, so I'm
@@ -278,7 +238,6 @@ where
 
         }
 
-        // let mut req: http::Request<hyper::Body> = req.into();
         req.extensions_mut().insert(self.srv_ctx.clone());
 
         h1::strip_connection_headers(req.headers_mut());

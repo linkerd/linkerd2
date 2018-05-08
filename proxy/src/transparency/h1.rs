@@ -10,9 +10,6 @@ use ctx::transport::{Server as ServerCtx};
 
 /// Tries to make sure the `Uri` of the request is in a form needed by
 /// hyper's Client.
-///
-/// Also sets the `UriIsAbsoluteForm` extension if received `Uri` was
-/// already in absolute-form.
 pub fn normalize_our_view_of_uri<B>(req: &mut http::Request<B>) {
 
     // try to parse the Host header
