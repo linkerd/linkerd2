@@ -149,7 +149,7 @@ describe('ServiceMesh', () => {
         },
         "timeWindow": "1m",
         "meshedPodCount": "0",
-        "totalPodCount": "5",
+        "runningPodCount": "5",
         "stats": null
       });
 
@@ -181,7 +181,7 @@ describe('ServiceMesh', () => {
       _.each(nsAllResourcesAdded.ok.statTables[0].podGroup.rows, row => {
         if (row.resource.name === "default") {
           row.meshedPodCount = "10";
-          row.totalPodCount = "10";
+          row.runningPodCount = "10";
         }
       });
       fetchStub.resolves({

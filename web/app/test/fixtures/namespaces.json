@@ -12,7 +12,7 @@
               },
               "timeWindow": "1m",
               "meshedPodCount": "4",
-              "totalPodCount": "4",
+              "runningPodCount": "4",
               "stats": {
                 "successCount": "30",
                 "failureCount": "0",
@@ -29,7 +29,7 @@
               },
               "timeWindow": "1m",
               "meshedPodCount": "0",
-              "totalPodCount": "9",
+              "runningPodCount": "9",
               "stats": null
             },
             {
@@ -40,7 +40,7 @@
               },
               "timeWindow": "1m",
               "meshedPodCount": "0",
-              "totalPodCount": "0",
+              "runningPodCount": "0",
               "stats": null
             },
             {
@@ -51,7 +51,7 @@
               },
               "timeWindow": "1m",
               "meshedPodCount": "0",
-              "totalPodCount": "0",
+              "runningPodCount": "0",
               "stats": null
             }
           ]
