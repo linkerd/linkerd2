@@ -25,6 +25,7 @@ pub mod discovery;
 mod fully_qualified_authority;
 mod observe;
 pub mod pb;
+mod remote_stream;
 
 use self::discovery::{Background as DiscoBg, Discovery, Watch};
 pub use self::discovery::Bind;
