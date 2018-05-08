@@ -1,4 +1,5 @@
 use futures::{Future, Poll, Stream};
+use http::HeaderMap;
 use prost::Message;
 use std::fmt;
 use tower_h2::{HttpService, Body, Data};
@@ -47,6 +48,28 @@ impl<M: Message + Default, S: HttpService> Remote<M, S> {
 
 // ===== impl Receiver =====
 
+impl<M: Message + Default, S: HttpService> Receiver<M, S>
+where
+    S::ResponseBody: Body<Data = Data>,
+    S::Error: fmt::Debug,
+{
+    // Coerces the stream's Error<()> to an Error<S::Error>.
+    fn coerce_stream_err(e: grpc::Error<()>) -> grpc::Error<S::Error> {
+        match e {
+            grpc::Error::Grpc(s, h) => grpc::Error::Grpc(s, h),
+            grpc::Error::Decode(e) => grpc::Error::Decode(e),
+            grpc::Error::Protocol(e) => grpc::Error::Protocol(e),
+            grpc::Error::Inner(()) => {
+                // `stream.poll` shouldn't return this variant. If it for
+                // some reason does, we report this as an unknown error.
+                warn!("unexpected gRPC stream error");
+                debug_assert!(false);
+                grpc::Error::Grpc(grpc::Status::UNKNOWN, HeaderMap::new())
+            }
+        }
+    }
+}
+
 impl<M: Message + Default, S: HttpService> Stream for Receiver<M, S>
 where
     S::ResponseBody: Body<Data = Data>,
@@ -63,10 +86,7 @@ where
                 }
 
                 Rx::Streaming(ref mut stream) => {
-                    return stream.poll().map_err(|e| grpc::Error::Grpc(match e {
-                        grpc::Error::Inner(()) => grpc::Status::UNKNOWN,
-                        grpc::Error::Grpc(status) => status,
-                    }));
+                    return stream.poll().map_err(Self::coerce_stream_err);
                 }
             };
 
