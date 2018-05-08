@@ -134,7 +134,8 @@ where
                 srv_ctx,
                 self.drain_signal.clone(),
             );
-            self.executor.spawn(fut);
+            self.executor.spawn(fut)
+                .expect("spawn TCP server task");
             return;
         }
 
@@ -191,7 +192,8 @@ where
                 }
             });
 
-        self.executor.spawn(Box::new(fut));
+        self.executor.spawn(Box::new(fut))
+            .expect("spawn server task");
     }
 }
 

@@ -118,7 +118,7 @@ impl Control {
     }
 
     pub fn serve_metrics(&self, bound_port: connection::BoundPort)
-        -> Box<Future<Item = (), Error = io::Error>>
+        -> Box<Future<Item = (), Error = ::io::Error>>
     {
         use hyper;
         let service = self.metrics_service.clone();
@@ -136,11 +136,13 @@ impl Control {
                     });
                 let f = ::logging::context_future("serve_metrics", serve);
 
-                current_thread::TaskExecutor::current()
-                    .spawn_local(Box::new(f));
-
-                future::ok(hyper)
+                future::result(current_thread::TaskExecutor::current()
+                    .spawn_local(Box::new(f))
+                    .map(move |_| hyper)
+                    .map_err(|e| io::Error::new(io::ErrorKind::Other, ::TaskError::from(e)))
+                )
             })
+
     }
 
 }

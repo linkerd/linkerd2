@@ -48,9 +48,14 @@ extern crate tower_in_flight_limit;
 extern crate trust_dns_resolver;
 
 use futures::*;
-use futures::future::Executor;
+use futures::future::{
+    ExecuteError,
+    ExecuteErrorKind,
+    Executor
+};
 
 use std::error::Error;
+use std::fmt;
 use std::io;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
@@ -62,6 +67,7 @@ use tokio::{
     executor::{
         current_thread::{self, CurrentThread},
         thread_pool::{self, Sender},
+        SpawnError,
     },
     reactor,
 };
@@ -121,6 +127,21 @@ pub struct Main<G> {
 
     // runtime: CurrentThread<tokio_timer::Timer<tokio_reactor::Reactor>>,
     // handle: reactor::Handle,
+}
+
+/// Like a `SpawnError` or `ExecuteError`, but with an implementation
+/// of `std::error::Error`.
+#[derive(Debug, Clone)]
+pub enum TaskError {
+    /// The executor has shut down and will no longer spawn new tasks.
+    Shutdown,
+    /// The executor had no capacity to run more futures.
+    NoCapacity,
+    /// An unknown error occurred.
+    ///
+    /// This indicates that `tokio` or `futures-rs` has
+    /// added additional error types that we are not aware of.
+    Unknown,
 }
 
 impl<G> Main<G>
@@ -323,7 +344,6 @@ where
                 sensors.clone(),
                 get_original_dst.clone(),
                 drain_rx.clone(),
-                // &handle,
                 &executor,
             );
             ::logging::context_future("inbound", fut)
@@ -572,6 +592,7 @@ where
     }
 }
 
+
 fn serve_control<N, B>(
     bound_port: BoundPort,
     new_service: N,
@@ -591,10 +612,64 @@ where
             let s = server.serve(session).map_err(|_| ());
             let s = ::logging::context_future("serve_control", s);
 
-            executor.execute(Box::new(s));
-
-
-            future::ok((server, executor))
+            future::result(executor.execute(Box::new(s))
+                .map(move |_| (server, executor))
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, TaskError::from(e)))
+            )
         },
     )
+}
+
+//===== impl TaskError =====
+
+impl From<SpawnError> for TaskError {
+    fn from(spawn_error: SpawnError) -> Self {
+        if spawn_error.is_shutdown() {
+            TaskError::Shutdown
+        } else if spawn_error.is_at_capacity() {
+            TaskError::NoCapacity
+        } else {
+            warn!(
+                "TaskError::from: unknown SpawnError '{:?}'\n\
+                 This indicates a change in Tokio's API surface that should\n\
+                 be handled.",
+                 spawn_error,
+            );
+            TaskError::Unknown
+        }
+    }
+}
+
+impl<F> From<ExecuteError<F>> for TaskError {
+    fn from(exec_error: ExecuteError<F>) -> Self {
+        match exec_error.kind() {
+            ExecuteErrorKind::Shutdown => TaskError::Shutdown,
+            ExecuteErrorKind::NoCapacity => TaskError::NoCapacity,
+            _ => {
+                warn!(
+                    "TaskError::from: unknown ExecuteError '{:?}'\n\
+                    This indicates a change in the futures-rs API surface\n\
+                    that should be handled.",
+                    exec_error,
+                );
+                TaskError::Unknown
+            }
+        }
+    }
+}
+impl fmt::Display for  TaskError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.description().fmt(f)
+    }
+}
+
+impl Error for TaskError {
+    fn description(&self) -> &str {
+        match *self {
+            TaskError::Shutdown => "executor has shut down",
+            TaskError::NoCapacity => "executor has no more capacity",
+            TaskError::Unknown => "unknown error executing future",
+        }
+    }
+
 }
