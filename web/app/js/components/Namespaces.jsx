@@ -108,7 +108,7 @@ export default class Namespaces extends React.Component {
   }
 
   render() {
-    let noMetrics = _.isEmpty(this.state.metrics.deploy) && _.isEmpty(this.state.metrics.rc);
+    let noMetrics = _.isEmpty(this.state.metrics.pod);
 
     return (
       <div className="page-content">
