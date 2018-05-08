@@ -125,13 +125,13 @@ jobs:
           export CONDUIT_TAG=$(. bin/_tag.sh ; clean_head_root_tag)
           echo "CONDUIT_TAG=${CONDUIT_TAG}"
         - export BUILD_DEBUG=1 DOCKER_TRACE=1
-        - export DOCKER_CACHE="$HOME/.cache/docker.tgz" ; if [ -f "$DOCKER_CACHE" ]; then gunzip -c "$DOCKER_CACHE" | docker load ; fi
-        - docker image ls gcr.io/runconduit/proxy-build:cache
+        - export DOCKER_CACHE="$HOME/.cache/docker.tgz"
+        - if [ -f "$DOCKER_CACHE" ]; then gunzip -c "$DOCKER_CACHE" | docker load ; docker image ls gcr.io/runconduit/proxy-build:cache ; fi
 
       script:
         - bin/docker-build
         # The proxy's build cache is preserved so it can be reused on subsequent runs.
-        - docker save gcr.io/runconduit/proxy-build:cache | gzip >"$DOCKER_CACHE"
+        - docker save gcr.io/runconduit/proxy-build:cache | gzip -9 >"$DOCKER_CACHE"
 
       after_success:
         - bin/docker-push-deps
