@@ -32,20 +32,6 @@ enum Rx<M, S: HttpService> {
     Streaming(Streaming<M, S::ResponseBody>),
 }
 
-// ===== impl Remote =====
-
-impl<M: Message + Default, S: HttpService> Remote<M, S> {
-    pub fn connecting(future: ResponseFuture<M, S::Future>) -> Self {
-        Remote::ConnectedOrConnecting {
-            rx: Receiver(Rx::Waiting(future))
-        }
-    }
-
-    pub fn connected(rx: Receiver<M, S>) -> Self {
-        Remote::ConnectedOrConnecting { rx }
-    }
-}
-
 // ===== impl Receiver =====
 
 impl<M: Message + Default, S: HttpService> Receiver<M, S>
@@ -53,6 +39,10 @@ where
     S::ResponseBody: Body<Data = Data>,
     S::Error: fmt::Debug,
 {
+    pub fn new(future: ResponseFuture<M, S::Future>) -> Self {
+        Receiver(Rx::Waiting(future))
+    }
+
     // Coerces the stream's Error<()> to an Error<S::Error>.
     fn coerce_stream_err(e: grpc::Error<()>) -> grpc::Error<S::Error> {
         match e {

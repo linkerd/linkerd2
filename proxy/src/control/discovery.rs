@@ -485,7 +485,7 @@ where
                 };
                 let mut svc = DestinationSvc::new(client.lift_ref());
                 let response = svc.get(grpc::Request::new(req));
-                Remote::connecting(response)
+                Remote::ConnectedOrConnecting { rx: Receiver::new(response) }
             })
     }
 }
@@ -553,7 +553,7 @@ impl<T> DestinationSet<T>
                     return (Remote::NeedsReconnect, exists);
                 },
                 Ok(Async::NotReady) => {
-                    return (Remote::connected(rx), exists);
+                    return (Remote::ConnectedOrConnecting { rx }, exists);
                 },
                 Err(err) => {
                     warn!("Destination.Get stream errored for {:?}: {:?}", auth, err);
