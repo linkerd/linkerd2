@@ -463,6 +463,7 @@ mod tests {
     #[test]
     fn parse_duration_invalid_unit() {
         assert_eq!(parse_duration("12 moons"), Err(ParseError::NotADuration));
+        assert_eq!(parse_duration("12y"), Err(ParseError::NotADuration));
     }
 
     #[test]
