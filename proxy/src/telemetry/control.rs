@@ -2,13 +2,7 @@ use std::io;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use futures::{
-    future::{self, Executor},
-    Async,
-    Future,
-    Poll,
-    Stream,
-};
+use futures::{future, Async, Future, Poll, Stream};
 use futures_mpsc_lossy::Receiver;
 use tokio::{ reactor, executor::current_thread };
 

@@ -15,7 +15,6 @@ use tower_h2;
 use bind;
 use telemetry::sensor::http::RequestBody;
 use super::glue::{BodyStream, HttpBody, HyperConnect};
-use super::h1::UriIsAbsoluteForm;
 
 type HyperClient<C, B> =
     hyper::Client<HyperConnect<C>, BodyStream<RequestBody<B>>>;

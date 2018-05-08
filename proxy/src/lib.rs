@@ -1,7 +1,6 @@
 #![cfg_attr(feature = "cargo-clippy", allow(clone_on_ref_ptr))]
 #![cfg_attr(feature = "cargo-clippy", allow(new_without_default_derive))]
 // #![deny(warnings)]
-#![recursion_limit="128"]
 
 extern crate bytes;
 extern crate conduit_proxy_controller_grpc;
@@ -62,10 +61,9 @@ use indexmap::IndexSet;
 use tokio::{
     executor::{
         current_thread::{self, CurrentThread},
-        thread_pool::{self, ThreadPool, Sender},
+        thread_pool::{self, Sender},
     },
     reactor,
-    runtime::{Runtime, TaskExecutor},
 };
 use tokio_timer::timer;
 use tower_service::NewService;
@@ -228,7 +226,7 @@ where
         // Hyper requires executors that are `Send`, so we have to use the
         // theadpool, as its' `Sender` implements `Send`, whicih
         // `CurrentThread::TaskExecutor` does not.
-        let mut pool = thread_pool::Builder::new()
+        let pool = thread_pool::Builder::new()
             .name_prefix("conduit-worker-")
             // TODO: eventually, we may want to make the size of the threadpool
             //       configurable to support use cases such as ingress.
@@ -300,7 +298,7 @@ where
 
         let (control, control_bg) = control::new(dns_config.clone(), config.pod_namespace.clone());
 
-        let mut executor = pool.sender().clone();
+        let executor = pool.sender().clone();
         let (drain_tx, drain_rx) = drain::channel();
 
         let bind = Bind::new(executor.clone()).with_sensors(sensors.clone());

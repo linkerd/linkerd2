@@ -8,10 +8,6 @@ use http::header::HOST;
 use http::uri::{Authority, Parts, Scheme, Uri};
 use ctx::transport::{Server as ServerCtx};
 
-/// Sentinel extension to signal that we should tell hyper to serialize
-/// the `Uri` in absolute-form.
-pub struct UriIsAbsoluteForm;
-
 /// Tries to make sure the `Uri` of the request is in a form needed by
 /// hyper's Client.
 ///

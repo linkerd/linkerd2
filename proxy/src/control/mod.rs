@@ -3,12 +3,7 @@ use std::io;
 use std::time::{Duration, Instant};
 
 use bytes::Bytes;
-use futures::{
-    future::{self, Executor},
-    Async,
-    Future,
-    Poll
-};
+use futures::{future, Async, Future, Poll};
 use h2;
 use http;
 use tokio::{
