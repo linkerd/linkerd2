@@ -20,19 +20,29 @@ const withTooltip = (d, metricName) => {
   );
 };
 
-const narrowColumnWidth = 100;
-const formatLongTitles = title => {
+const formatTitle = (title, tooltipText) => {
   let words = title.split(" ");
+  let content = title;
   if (words.length === 2) {
-    return (<div className="table-long-title">{words[0]}<br />{words[1]}</div>);
-  } else {
-    return words;
+    content = (<div className="table-long-title">{words[0]}<br />{words[1]}</div>);
   }
+
+  if (!tooltipText) {
+    return content;
+  } else {
+    return (
+      <Tooltip
+        title={tooltipText}>
+        {content}
+      </Tooltip>
+    );
+  }
+
 };
 const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick, ConduitLink) => {
   return [
     {
-      title: "Namespace",
+      title: formatTitle("Namespace"),
       key: "namespace",
       dataIndex: "namespace",
       filters: namespaces,
@@ -41,7 +51,7 @@ const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick,
       sorter: sortable ? (a, b) => (a.namespace || "").localeCompare(b.namespace) : false
     },
     {
-      title: resource,
+      title: formatTitle(resource),
       key: "name",
       defaultSortOrder: 'ascend',
       sorter: sortable ? (a, b) => (a.name || "").localeCompare(b.name) : false,
@@ -52,47 +62,42 @@ const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick,
         conduitLink={ConduitLink} /> : row.name
     },
     {
-      title: formatLongTitles("Success Rate"),
+      title: formatTitle("SR", "Success Rate"),
       dataIndex: "successRate",
       key: "successRateRollup",
       className: "numeric long-header",
-      width: narrowColumnWidth,
       sorter: sortable ? (a, b) => numericSort(a.successRate, b.successRate) : false,
       render: d => metricToFormatter["SUCCESS_RATE"](d)
     },
     {
-      title: formatLongTitles("Request Rate"),
+      title: formatTitle("RPS", "Request Rate"),
       dataIndex: "requestRate",
       key: "requestRateRollup",
       className: "numeric long-header",
-      width: narrowColumnWidth,
       sorter: sortable ? (a, b) => numericSort(a.requestRate, b.requestRate) : false,
       render: d => withTooltip(d, "REQUEST_RATE")
     },
     {
-      title: formatLongTitles("P50 Latency"),
+      title: formatTitle("P50", "P50 Latency"),
       dataIndex: "P50",
       key: "p50LatencyRollup",
       className: "numeric long-header",
-      width: narrowColumnWidth,
       sorter: sortable ? (a, b) => numericSort(a.P50, b.P50) : false,
       render: metricToFormatter["LATENCY"]
     },
     {
-      title: formatLongTitles("P95 Latency"),
+      title: formatTitle("P95", "P95 Latency"),
       dataIndex: "P95",
       key: "p95LatencyRollup",
       className: "numeric long-header",
-      width: narrowColumnWidth,
       sorter: sortable ? (a, b) => numericSort(a.P95, b.P95) : false,
       render: metricToFormatter["LATENCY"]
     },
     {
-      title: formatLongTitles("P99 Latency"),
+      title: formatTitle("P99", "P99 Latency"),
       dataIndex: "P99",
       key: "p99LatencyRollup",
       className: "numeric long-header",
-      width: narrowColumnWidth,
       sorter: sortable ? (a, b) => numericSort(a.P99, b.P99) : false,
       render: metricToFormatter["LATENCY"]
     }

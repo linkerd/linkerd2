@@ -20,25 +20,17 @@ if (proxyPathMatch) {
 
 let api = ApiHelpers(pathPrefix);
 
-let applicationHtml = hideSidebar => (
+let applicationHtml = (
   <BrowserRouter>
     <Layout>
-      <Layout.Sider
-        width="310"
-        breakpoint="lg"
-        collapsible={true}
-        collapsedWidth={0}
-        onCollapse={onSidebarCollapse}>
-        <Route
-          render={routeProps => (<Sidebar
-            {...routeProps}
-            goVersion={appData.goVersion}
-            releaseVersion={appData.releaseVersion}
-            api={api}
-            collapsed={hideSidebar}
-            pathPrefix={pathPrefix}
-            uuid={appData.uuid} />)} />
-      </Layout.Sider>
+      <Route
+        render={routeProps => (<Sidebar
+          {...routeProps}
+          goVersion={appData.goVersion}
+          releaseVersion={appData.releaseVersion}
+          api={api}
+          pathPrefix={pathPrefix}
+          uuid={appData.uuid} />)} />
       <Layout>
         <Layout.Content style={{ margin: '0 0', padding: 0, background: '#fff' }}>
           <div className="main-content">
@@ -57,8 +49,4 @@ let applicationHtml = hideSidebar => (
   </BrowserRouter>
 );
 
-const onSidebarCollapse = isHidden => {
-  ReactDOM.render(applicationHtml(isHidden), appMain);
-};
-
-ReactDOM.render(applicationHtml(false), appMain);
+ReactDOM.render(applicationHtml, appMain);
