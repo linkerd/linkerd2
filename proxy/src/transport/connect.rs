@@ -36,7 +36,7 @@ pub enum Host {
     Ip(IpAddr),
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum HostAndPortError {
     /// The host is not a valid DNS name or IP address.
     InvalidHost,

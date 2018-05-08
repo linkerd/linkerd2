@@ -86,16 +86,17 @@ pub enum Error {
     InvalidEnvVar
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ParseError {
     EnvironmentUnsupported,
+    NotADuration,
     NotANumber,
     HostIsNotAnIpAddress,
     NotUnicode,
     UrlError(UrlError),
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum UrlError {
     /// The URl is syntactically invalid according to general URL parsing rules.
     SyntaxError,
@@ -195,16 +196,16 @@ impl<'a> TryFrom<&'a Strings> for Config {
         let control_listener_addr = parse(strings, ENV_CONTROL_LISTENER, str::parse);
         let metrics_listener_addr = parse(strings, ENV_METRICS_LISTENER, str::parse);
         let private_forward = parse(strings, ENV_PRIVATE_FORWARD, str::parse);
-        let public_connect_timeout = parse(strings, ENV_PUBLIC_CONNECT_TIMEOUT, parse_number);
-        let private_connect_timeout = parse(strings, ENV_PRIVATE_CONNECT_TIMEOUT, parse_number);
+        let public_connect_timeout = parse(strings, ENV_PUBLIC_CONNECT_TIMEOUT, parse_duration);
+        let private_connect_timeout = parse(strings, ENV_PRIVATE_CONNECT_TIMEOUT, parse_duration);
         let inbound_disable_ports = parse(strings, ENV_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION, parse_port_set);
         let outbound_disable_ports = parse(strings, ENV_OUTBOUND_PORTS_DISABLE_PROTOCOL_DETECTION, parse_port_set);
         let inbound_router_capacity = parse(strings, ENV_INBOUND_ROUTER_CAPACITY, parse_number);
         let outbound_router_capacity = parse(strings, ENV_OUTBOUND_ROUTER_CAPACITY, parse_number);
-        let bind_timeout = parse(strings, ENV_BIND_TIMEOUT, parse_number);
+        let bind_timeout = parse(strings, ENV_BIND_TIMEOUT, parse_duration);
         let resolv_conf_path = strings.get(ENV_RESOLV_CONF);
         let event_buffer_capacity = parse(strings, ENV_EVENT_BUFFER_CAPACITY, parse_number);
-        let metrics_retain_idle = parse(strings, ENV_METRICS_RETAIN_IDLE, parse_number);
+        let metrics_retain_idle = parse(strings, ENV_METRICS_RETAIN_IDLE, parse_duration);
         let pod_namespace = strings.get(ENV_POD_NAMESPACE).and_then(|maybe_value| {
             // There cannot be a default pod namespace, and the pod namespace is required.
             maybe_value.ok_or_else(|| {
@@ -243,9 +244,9 @@ impl<'a> TryFrom<&'a Strings> for Config {
             },
             private_forward: private_forward?,
 
-            public_connect_timeout: public_connect_timeout?.map(Duration::from_millis)
+            public_connect_timeout: public_connect_timeout?
                 .unwrap_or(DEFAULT_PUBLIC_CONNECT_TIMEOUT),
-            private_connect_timeout: private_connect_timeout?.map(Duration::from_millis)
+            private_connect_timeout: private_connect_timeout?
                 .unwrap_or(DEFAULT_PRIVATE_CONNECT_TIMEOUT),
 
             inbound_ports_disable_protocol_detection: inbound_disable_ports?
@@ -264,11 +265,9 @@ impl<'a> TryFrom<&'a Strings> for Config {
             control_host_and_port: control_host_and_port?,
 
             event_buffer_capacity: event_buffer_capacity?.unwrap_or(DEFAULT_EVENT_BUFFER_CAPACITY),
-            metrics_retain_idle: metrics_retain_idle?.map(Duration::from_secs)
-                .unwrap_or(DEFAULT_METRICS_RETAIN_IDLE),
+            metrics_retain_idle: metrics_retain_idle?.unwrap_or(DEFAULT_METRICS_RETAIN_IDLE),
 
-            bind_timeout: bind_timeout?.map(Duration::from_millis)
-                .unwrap_or(DEFAULT_BIND_TIMEOUT),
+            bind_timeout: bind_timeout?.unwrap_or(DEFAULT_BIND_TIMEOUT),
 
             pod_namespace: pod_namespace?,
         })
@@ -340,6 +339,27 @@ fn parse_number<T>(s: &str) -> Result<T, ParseError> where T: FromStr {
     s.parse().map_err(|_| ParseError::NotANumber)
 }
 
+fn parse_duration(s: &str) -> Result<Duration, ParseError> {
+    use regex::Regex;
+
+    let re = Regex::new(r"^\s*(\d+)(ms|s|m|h|d)?\s*$")
+        .expect("duration regex");
+
+    let cap = re.captures(s)
+        .ok_or(ParseError::NotADuration)?;
+
+    let magnitude = parse_number(&cap[1])?;
+    match cap.get(2).map(|m| m.as_str()) {
+        None if magnitude == 0 => Ok(Duration::from_secs(0)),
+        Some("ms") => Ok(Duration::from_millis(magnitude)),
+        Some("s") => Ok(Duration::from_secs(magnitude)),
+        Some("m") => Ok(Duration::from_secs(magnitude * 60)),
+        Some("h") => Ok(Duration::from_secs(magnitude * 60 * 60)),
+        Some("d") => Ok(Duration::from_secs(magnitude * 60 * 60 * 24)),
+        _ => Err(ParseError::NotADuration),
+    }
+}
+
 fn parse_url(s: &str) -> Result<HostAndPort, ParseError> {
     let url = s.parse::<http::Uri>().map_err(|_| ParseError::UrlError(UrlError::SyntaxError))?;
     if url.scheme_part().map(|s| s.as_str()) != Some("tcp") {
@@ -378,5 +398,78 @@ fn parse<T, Parse>(strings: &Strings, name: &str, parse: Parse) -> Result<Option
             Ok(Some(r))
         },
         None => Ok(None),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_unit<F: Fn(u64) -> Duration>(unit: &str, to_duration: F) {
+        for v in &[0, 1, 23, 456_789] {
+            let d = to_duration(*v);
+            let text = format!("{}{}", v, unit);
+            assert_eq!(parse_duration(&text), Ok(d), "text=\"{}\"", text);
+
+            let text = format!(" {}{}\t", v, unit);
+            assert_eq!(parse_duration(&text), Ok(d), "text=\"{}\"", text);
+        }
+    }
+
+    #[test]
+    fn parse_duration_unit_ms() {
+        test_unit("ms", |v| Duration::from_millis(v));
+    }
+
+    #[test]
+    fn parse_duration_unit_s() {
+        test_unit("s", |v| Duration::from_secs(v));
+    }
+
+    #[test]
+    fn parse_duration_unit_m() {
+        test_unit("m", |v| Duration::from_secs(v * 60));
+    }
+
+    #[test]
+    fn parse_duration_unit_h() {
+        test_unit("h", |v| Duration::from_secs(v * 60 * 60));
+    }
+
+    #[test]
+    fn parse_duration_unit_d() {
+        test_unit("d", |v| Duration::from_secs(v * 60 * 60 * 24));
+    }
+
+    #[test]
+    fn parse_duration_floats_invalid() {
+        assert_eq!(parse_duration(".123h"), Err(ParseError::NotADuration));
+        assert_eq!(parse_duration("1.23h"), Err(ParseError::NotADuration));
+    }
+
+    #[test]
+    fn parse_duration_space_before_unit_invalid() {
+        assert_eq!(parse_duration("1 ms"), Err(ParseError::NotADuration));
+    }
+
+    #[test]
+    fn parse_duration_overflows_invalid() {
+        assert_eq!(parse_duration("123456789012345678901234567890ms"), Err(ParseError::NotANumber));
+    }
+
+    #[test]
+    fn parse_duration_invalid_unit() {
+        assert_eq!(parse_duration("12moons"), Err(ParseError::NotADuration));
+        assert_eq!(parse_duration("12y"), Err(ParseError::NotADuration));
+    }
+
+    #[test]
+    fn parse_duration_zero_without_unit() {
+        assert_eq!(parse_duration("0"), Ok(Duration::from_secs(0)));
+    }
+
+    #[test]
+    fn parse_duration_number_without_unit_is_invalid() {
+        assert_eq!(parse_duration("1"), Err(ParseError::NotADuration));
     }
 }

@@ -29,6 +29,9 @@ log = "0.4.1"
 indexmap = "1.0.0"
 rand = "0.4"
 
+# for config parsing
+regex = "1.0.0"
+
 tokio-core = "0.1"
 tokio-io = "0.1"
 tokio-signal = "0.1"
@@ -57,5 +60,4 @@ libc = "0.2"
 [dev-dependencies]
 quickcheck = { version = "0.6", default-features = false }
 conduit-proxy-controller-grpc = { path = "./controller-grpc" , features = ["arbitrary"] }
-regex = "0.2"
 flate2 = { version = "1.0.1", default-features = false, features = ["rust_backend"] }
