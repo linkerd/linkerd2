@@ -43,9 +43,10 @@ const (
 
 var promTypes = []promType{promRequests, promLatencyP50, promLatencyP95, promLatencyP99}
 
-type meshedCount struct {
+type podCount struct {
 	inMesh uint64
 	total  uint64
+	failed uint64
 }
 
 func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
@@ -61,9 +62,9 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 	}
 
 	// TODO: make these one struct:
-	// string => {metav1.ObjectMeta, meshedCount}
+	// string => {metav1.ObjectMeta, podCount}
 	objectMap := map[string]metav1.Object{}
-	meshCountMap := map[string]*meshedCount{}
+	meshCountMap := map[string]*podCount{}
 
 	for _, object := range objects {
 		key, err := cache.MetaNamespaceKeyFunc(object)
@@ -96,7 +97,7 @@ func (s *grpcServer) objectQuery(
 	ctx context.Context,
 	req *pb.StatSummaryRequest,
 	objects map[string]metav1.Object,
-	meshCount map[string]*meshedCount,
+	meshCount map[string]*podCount,
 ) (*pb.StatSummaryResponse, error) {
 	rows := make([]*pb.StatTable_PodGroup_Row, 0)
 
@@ -137,7 +138,8 @@ func (s *grpcServer) objectQuery(
 
 		if count, ok := meshCount[key]; ok {
 			row.MeshedPodCount = count.inMesh
-			row.TotalPodCount = count.total
+			row.RunningPodCount = count.total
+			row.FailedPodCount = count.failed
 		}
 
 		rows = append(rows, &row)
@@ -328,17 +330,21 @@ func metricToKey(metric model.Metric, groupBy model.LabelNames) string {
 	return strings.Join(values, "/")
 }
 
-func (s *grpcServer) getMeshedPodCount(obj runtime.Object) (*meshedCount, error) {
-	pods, err := s.lister.GetPodsFor(obj)
+func (s *grpcServer) getMeshedPodCount(obj runtime.Object) (*podCount, error) {
+	pods, err := s.lister.GetPodsFor(obj, true)
 	if err != nil {
 		return nil, err
 	}
 
-	meshCount := &meshedCount{}
+	meshCount := &podCount{}
 	for _, pod := range pods {
-		meshCount.total++
-		if isInMesh(pod) {
-			meshCount.inMesh++
+		if pod.Status.Phase == apiv1.PodFailed {
+			meshCount.failed++
+		} else {
+			meshCount.total++
+			if isInMesh(pod) {
+				meshCount.inMesh++
+			}
 		}
 	}
 

@@ -260,7 +260,7 @@ status:
 				t.Fatalf("lister.Sync() returned an error: %s", err)
 			}
 
-			pods, err := lister.GetPodsFor(k8sInputObj)
+			pods, err := lister.GetPodsFor(k8sInputObj, false)
 			if err != exp.err {
 				t.Fatalf("lister.GetPodsFor() unexpected error, expected [%s] got: [%s]", exp.err, err)
 			}
