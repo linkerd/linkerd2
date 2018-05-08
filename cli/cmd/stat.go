@@ -170,7 +170,7 @@ func writeStatsToBuffer(resp *pb.StatSummaryResponse, w *tabwriter.Writer) {
 			}
 
 			stats[key] = &row{
-				meshed: fmt.Sprintf("%d/%d", r.MeshedPodCount, r.TotalPodCount),
+				meshed: fmt.Sprintf("%d/%d", r.MeshedPodCount, r.RunningPodCount),
 			}
 
 			if r.Stats != nil {
