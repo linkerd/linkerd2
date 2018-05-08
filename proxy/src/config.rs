@@ -44,6 +44,10 @@ pub struct Config {
 
     pub outbound_ports_disable_protocol_detection: IndexSet<u16>,
 
+    pub inbound_router_capacity: usize,
+
+    pub outbound_router_capacity: usize,
+
     /// The path to "/etc/resolv.conf"
     pub resolv_conf_path: PathBuf,
 
@@ -136,6 +140,12 @@ const ENV_PRIVATE_CONNECT_TIMEOUT: &str = "CONDUIT_PROXY_PRIVATE_CONNECT_TIMEOUT
 const ENV_PUBLIC_CONNECT_TIMEOUT: &str = "CONDUIT_PROXY_PUBLIC_CONNECT_TIMEOUT";
 pub const ENV_BIND_TIMEOUT: &str = "CONDUIT_PROXY_BIND_TIMEOUT";
 
+// Limits the number of HTTP routes that may be active in the proxy at any time. There is
+// an inbound route for each local port that receives connections. There is an outbound
+// route for each protocol and authority.
+pub const ENV_INBOUND_ROUTER_CAPACITY: &str = "CONDUIT_PROXY_INBOUND_ROUTER_CAPACITY";
+pub const ENV_OUTBOUND_ROUTER_CAPACITY: &str = "CONDUIT_PROXY_OUTBOUND_ROUTER_CAPACITY";
+
 // These *disable* our protocol detection for connections whose SO_ORIGINAL_DST
 // has a port in the provided list.
 pub const ENV_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION: &str = "CONDUIT_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION";
@@ -152,11 +162,16 @@ const DEFAULT_PRIVATE_LISTENER: &str = "tcp://127.0.0.1:4140";
 const DEFAULT_PUBLIC_LISTENER: &str = "tcp://0.0.0.0:4143";
 const DEFAULT_CONTROL_LISTENER: &str = "tcp://0.0.0.0:4190";
 const DEFAULT_METRICS_LISTENER: &str = "tcp://127.0.0.1:4191";
-const DEFAULT_METRICS_RETAIN_IDLE: u64 = 10 * 60; // Ten minutes
-const DEFAULT_PRIVATE_CONNECT_TIMEOUT_MS: u64 = 20;
-const DEFAULT_PUBLIC_CONNECT_TIMEOUT_MS: u64 = 300;
-const DEFAULT_BIND_TIMEOUT_MS: u64 = 10_000; // ten seconds, as in Linkerd.
+const DEFAULT_METRICS_RETAIN_IDLE: Duration = Duration::from_secs(10 * 60);
+const DEFAULT_PRIVATE_CONNECT_TIMEOUT: Duration = Duration::from_millis(20);
+const DEFAULT_PUBLIC_CONNECT_TIMEOUT: Duration = Duration::from_millis(300);
+const DEFAULT_BIND_TIMEOUT: Duration = Duration::from_secs(10); // same as in Linkerd
 const DEFAULT_RESOLV_CONF: &str = "/etc/resolv.conf";
+
+/// It's assumed that a typical proxy can serve inbound traffic for up to 100 pod-local
+/// HTTP services and may communicate with up to 10K external HTTP domains.
+const DEFAULT_INBOUND_ROUTER_CAPACITY: usize = 100;
+const DEFAULT_OUTBOUND_ROUTER_CAPACITY: usize = 10_000;
 
 // By default, we keep a list of known assigned ports of server-first protocols.
 //
@@ -184,6 +199,8 @@ impl<'a> TryFrom<&'a Strings> for Config {
         let private_connect_timeout = parse(strings, ENV_PRIVATE_CONNECT_TIMEOUT, parse_number);
         let inbound_disable_ports = parse(strings, ENV_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION, parse_port_set);
         let outbound_disable_ports = parse(strings, ENV_OUTBOUND_PORTS_DISABLE_PROTOCOL_DETECTION, parse_port_set);
+        let inbound_router_capacity = parse(strings, ENV_INBOUND_ROUTER_CAPACITY, parse_number);
+        let outbound_router_capacity = parse(strings, ENV_OUTBOUND_ROUTER_CAPACITY, parse_number);
         let bind_timeout = parse(strings, ENV_BIND_TIMEOUT, parse_number);
         let resolv_conf_path = strings.get(ENV_RESOLV_CONF);
         let event_buffer_capacity = parse(strings, ENV_EVENT_BUFFER_CAPACITY, parse_number);
@@ -225,29 +242,34 @@ impl<'a> TryFrom<&'a Strings> for Config {
                     .unwrap_or_else(|| Addr::from_str(DEFAULT_METRICS_LISTENER).unwrap()),
             },
             private_forward: private_forward?,
-            public_connect_timeout: Duration::from_millis(
-                public_connect_timeout?
-                    .unwrap_or(DEFAULT_PUBLIC_CONNECT_TIMEOUT_MS)
-            ),
-            private_connect_timeout:
-                Duration::from_millis(private_connect_timeout?
-                                          .unwrap_or(DEFAULT_PRIVATE_CONNECT_TIMEOUT_MS)),
+
+            public_connect_timeout: public_connect_timeout?.map(Duration::from_millis)
+                .unwrap_or(DEFAULT_PUBLIC_CONNECT_TIMEOUT),
+            private_connect_timeout: private_connect_timeout?.map(Duration::from_millis)
+                .unwrap_or(DEFAULT_PRIVATE_CONNECT_TIMEOUT),
+
             inbound_ports_disable_protocol_detection: inbound_disable_ports?
                 .unwrap_or_else(|| default_disable_ports_protocol_detection()),
             outbound_ports_disable_protocol_detection: outbound_disable_ports?
                 .unwrap_or_else(|| default_disable_ports_protocol_detection()),
+
+            inbound_router_capacity: inbound_router_capacity?
+                .unwrap_or(DEFAULT_INBOUND_ROUTER_CAPACITY),
+            outbound_router_capacity: outbound_router_capacity?
+                .unwrap_or(DEFAULT_OUTBOUND_ROUTER_CAPACITY),
+
             resolv_conf_path: resolv_conf_path?
                 .unwrap_or(DEFAULT_RESOLV_CONF.into())
                 .into(),
             control_host_and_port: control_host_and_port?,
 
             event_buffer_capacity: event_buffer_capacity?.unwrap_or(DEFAULT_EVENT_BUFFER_CAPACITY),
-            metrics_retain_idle: Duration::from_millis(
-                metrics_retain_idle?.unwrap_or(DEFAULT_METRICS_RETAIN_IDLE)
-            ),
+            metrics_retain_idle: metrics_retain_idle?.map(Duration::from_secs)
+                .unwrap_or(DEFAULT_METRICS_RETAIN_IDLE),
 
-            bind_timeout:
-                Duration::from_millis(bind_timeout?.unwrap_or(DEFAULT_BIND_TIMEOUT_MS)),
+            bind_timeout: bind_timeout?.map(Duration::from_millis)
+                .unwrap_or(DEFAULT_BIND_TIMEOUT),
+
             pod_namespace: pod_namespace?,
         })
     }

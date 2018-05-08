@@ -10,7 +10,7 @@ use h2;
 use http;
 use hyper;
 use tokio_connect::Connect;
-use tower::{Service, NewService};
+use tower_service::{Service, NewService};
 use tower_h2;
 
 use ctx::transport::{Server as ServerCtx};

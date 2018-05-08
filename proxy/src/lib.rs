@@ -31,13 +31,13 @@ extern crate rand;
 extern crate tokio_connect;
 extern crate tokio_core;
 extern crate tokio_io;
-extern crate tower;
 extern crate tower_balance;
 extern crate tower_buffer;
 extern crate tower_discover;
 extern crate tower_grpc;
 extern crate tower_h2;
 extern crate tower_reconnect;
+extern crate tower_service;
 extern crate conduit_proxy_router;
 extern crate tower_util;
 extern crate tower_in_flight_limit;
@@ -54,7 +54,7 @@ use std::time::Duration;
 
 use indexmap::IndexSet;
 use tokio_core::reactor::{Core, Handle};
-use tower::NewService;
+use tower_service::NewService;
 use tower_fn::*;
 use conduit_proxy_router::{Recognize, Router, Error as RouteError};
 
@@ -229,6 +229,7 @@ where
             let fut = serve(
                 inbound_listener,
                 Inbound::new(default_addr, bind),
+                config.inbound_router_capacity,
                 config.private_connect_timeout,
                 config.inbound_ports_disable_protocol_detection,
                 ctx,
@@ -250,6 +251,7 @@ where
             let fut = serve(
                 outbound_listener,
                 outgoing,
+                config.outbound_router_capacity,
                 config.public_connect_timeout,
                 config.outbound_ports_disable_protocol_detection,
                 ctx,
@@ -326,6 +328,7 @@ where
 fn serve<R, B, E, F, G>(
     bound_port: BoundPort,
     recognize: R,
+    router_capacity: usize,
     tcp_connect_timeout: Duration,
     disable_protocol_detection_ports: IndexSet<u16>,
     proxy_ctx: Arc<ctx::Proxy>,
@@ -347,7 +350,7 @@ where
         + 'static,
     G: GetOriginalDst + 'static,
 {
-    let router = Router::new(recognize);
+    let router = Router::new(recognize, router_capacity);
     let stack = Arc::new(NewServiceFn::new(move || {
         // Clone the router handle
         let router = router.clone();
@@ -366,6 +369,12 @@ where
                 RouteError::NotRecognized => {
                     error!("turning route not recognized error into 500");
                     http::StatusCode::INTERNAL_SERVER_ERROR
+                }
+                RouteError::NoCapacity(capacity) => {
+                    // TODO For H2 streams, we should probably signal a protocol-level
+                    // capacity change.
+                    error!("router at capacity ({}); returning a 503", capacity);
+                    http::StatusCode::SERVICE_UNAVAILABLE
                 }
             }
         });

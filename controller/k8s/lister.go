@@ -117,8 +117,8 @@ func (l *Lister) GetObjects(namespace, restype, name string) ([]runtime.Object, 
 }
 
 // GetPodsFor returns all running and pending Pods associated with a given
-// Kubernetes object.
-func (l *Lister) GetPodsFor(obj runtime.Object) ([]*apiv1.Pod, error) {
+// Kubernetes object. Use includeFailed to also get failed Pods
+func (l *Lister) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*apiv1.Pod, error) {
 	var namespace string
 	var selector labels.Selector
 
@@ -158,7 +158,7 @@ func (l *Lister) GetPodsFor(obj runtime.Object) ([]*apiv1.Pod, error) {
 
 	allPods := []*apiv1.Pod{}
 	for _, pod := range pods {
-		if isPendingOrRunning(pod) {
+		if isPendingOrRunning(pod) || (includeFailed && isFailed(pod)) {
 			allPods = append(allPods, pod)
 		}
 	}
@@ -299,4 +299,8 @@ func isPendingOrRunning(pod *apiv1.Pod) bool {
 	running := pod.Status.Phase == apiv1.PodRunning
 	terminating := pod.DeletionTimestamp != nil
 	return (pending || running) && !terminating
+}
+
+func isFailed(pod *apiv1.Pod) bool {
+	return pod.Status.Phase == apiv1.PodFailed
 }

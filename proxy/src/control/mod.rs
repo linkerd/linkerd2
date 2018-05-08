@@ -12,7 +12,7 @@ use tokio_core::reactor::{
     //       renaming import is not necessary.
     Timeout as ReactorTimeout
 };
-use tower::Service;
+use tower_service::Service;
 use tower_h2;
 use tower_reconnect::{Error as ReconnectError, Reconnect};
 
