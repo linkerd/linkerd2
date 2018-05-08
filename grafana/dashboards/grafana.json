@@ -12,219 +12,62 @@
       }
     ]
   },
+  "description": "Metrics about Grafana",
   "editable": true,
   "gnetId": null,
-  "graphTooltip": 1,
+  "graphTooltip": 0,
   "id": null,
-  "iteration": 1524861055004,
-  "links": [],
-  "panels": [
+  "links": [
     {
-      "content": "<div>\n  <div style=\"position: absolute; top: 0, left: 0\">\n    <a href=\"https://conduit.io\" target=\"_blank\"><img src=\"https://conduit.io/images/conduit-primary-white.svg\" style=\"height: 30px;\"></a>\n  </div>\n  <div style=\"position: absolute; top: 0; right: 0; font-size: 15px\">\n    <a href=\"https://conduit.io\" target=\"_blank\">Conduit</a> is a next-generation ultralight service mesh for Kubernetes.\n    <br>\n    Need help? Visit <a href=\"https://conduit.io\" target=\"_blank\">conduit.io</a>.\n  </div>\n</div>",
-      "gridPos": {
-        "h": 3,
-        "w": 24,
-        "x": 0,
-        "y": 0
-      },
-      "height": "1px",
-      "id": 14,
-      "links": [],
-      "mode": "html",
-      "title": "",
-      "transparent": true,
-      "type": "text"
+      "icon": "external link",
+      "tags": [],
+      "targetBlank": true,
+      "title": "Available metrics",
+      "type": "link",
+      "url": "/metrics"
     },
+    {
+      "icon": "external link",
+      "tags": [],
+      "title": "Grafana docs",
+      "type": "link",
+      "url": "http://docs.grafana.org/"
+    },
+    {
+      "icon": "external link",
+      "tags": [],
+      "title": "Prometheus docs",
+      "type": "link",
+      "url": "http://prometheus.io/docs/introduction/overview/"
+    }
+  ],
+  "panels": [
     {
       "cacheTimeout": null,
       "colorBackground": false,
       "colorValue": true,
       "colors": [
-        "#d44a3a",
-        "rgba(237, 129, 40, 0.89)",
-        "#299c46"
+        "rgba(222, 3, 3, 0.9)",
+        "rgb(234, 245, 234)",
+        "rgb(235, 244, 235)"
       ],
       "datasource": "prometheus",
-      "format": "percentunit",
-      "gauge": {
-        "maxValue": 1,
-        "minValue": 0,
-        "show": true,
-        "thresholdLabels": false,
-        "thresholdMarkers": true
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 8,
-        "x": 0,
-        "y": 3
-      },
-      "height": "",
-      "id": 28,
-      "interval": null,
-      "links": [],
-      "mappingType": 1,
-      "mappingTypes": [
-        {
-          "name": "value to text",
-          "value": 1
-        },
-        {
-          "name": "range to text",
-          "value": 2
-        }
-      ],
-      "maxDataPoints": 100,
-      "nullPointMode": "connected",
-      "nullText": null,
-      "postfix": "",
-      "postfixFontSize": "50%",
-      "prefix": "",
-      "prefixFontSize": "50%",
-      "rangeMaps": [
-        {
-          "from": "null",
-          "text": "N/A",
-          "to": "null"
-        }
-      ],
-      "sparkline": {
-        "fillColor": "rgba(31, 118, 189, 0.18)",
-        "full": true,
-        "lineColor": "rgb(31, 120, 193)",
-        "show": true
-      },
-      "tableColumn": "",
-      "targets": [
-        {
-          "expr": "sum(irate(response_total{classification=\"success\", deployment=~\"$deployment\"}[20s])) / sum(irate(response_total{deployment=~\"$deployment\"}[20s]))",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "",
-          "refId": "A"
-        }
-      ],
-      "thresholds": ".9,.99",
-      "title": "GLOBAL SUCCESS RATE",
-      "type": "singlestat",
-      "valueFontSize": "80%",
-      "valueMaps": [
-        {
-          "op": "=",
-          "text": "N/A",
-          "value": "null"
-        }
-      ],
-      "valueName": "current"
-    },
-    {
-      "cacheTimeout": null,
-      "colorBackground": false,
-      "colorValue": false,
-      "colors": [
-        "#d44a3a",
-        "rgba(237, 129, 40, 0.89)",
-        "#299c46"
-      ],
-      "datasource": "prometheus",
-      "format": "rps",
-      "gauge": {
-        "maxValue": 1,
-        "minValue": 0,
-        "show": false,
-        "thresholdLabels": false,
-        "thresholdMarkers": true
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 8,
-        "x": 8,
-        "y": 3
-      },
-      "height": "",
-      "id": 29,
-      "interval": null,
-      "links": [],
-      "mappingType": 1,
-      "mappingTypes": [
-        {
-          "name": "value to text",
-          "value": 1
-        },
-        {
-          "name": "range to text",
-          "value": 2
-        }
-      ],
-      "maxDataPoints": 100,
-      "nullPointMode": "connected",
-      "nullText": null,
-      "postfix": "",
-      "postfixFontSize": "50%",
-      "prefix": "",
-      "prefixFontSize": "50%",
-      "rangeMaps": [
-        {
-          "from": "null",
-          "text": "N/A",
-          "to": "null"
-        }
-      ],
-      "sparkline": {
-        "fillColor": "rgba(31, 118, 189, 0.18)",
-        "full": true,
-        "lineColor": "rgb(31, 120, 193)",
-        "show": true
-      },
-      "tableColumn": "",
-      "targets": [
-        {
-          "expr": "sum(irate(request_total{deployment=~\"$deployment\"}[20s]))",
-          "format": "time_series",
-          "intervalFactor": 2,
-          "legendFormat": "",
-          "refId": "A"
-        }
-      ],
-      "thresholds": "",
-      "title": "GLOBAL REQUEST VOLUME",
-      "type": "singlestat",
-      "valueFontSize": "80%",
-      "valueMaps": [
-        {
-          "op": "=",
-          "text": "N/A",
-          "value": "null"
-        }
-      ],
-      "valueName": "current"
-    },
-    {
-      "cacheTimeout": null,
-      "colorBackground": false,
-      "colorValue": false,
-      "colors": [
-        "#d44a3a",
-        "rgba(237, 129, 40, 0.89)",
-        "#299c46"
-      ],
-      "datasource": "prometheus",
+      "decimals": 0,
       "format": "none",
       "gauge": {
-        "maxValue": 1,
+        "maxValue": 100,
         "minValue": 0,
         "show": false,
         "thresholdLabels": false,
         "thresholdMarkers": true
       },
       "gridPos": {
-        "h": 4,
+        "h": 5,
         "w": 4,
-        "x": 16,
-        "y": 3
+        "x": 0,
+        "y": 0
       },
-      "height": "",
-      "id": 30,
+      "id": 4,
       "interval": null,
       "links": [],
       "mappingType": 1,
@@ -254,24 +97,107 @@
       ],
       "sparkline": {
         "fillColor": "rgba(31, 118, 189, 0.18)",
-        "full": true,
+        "full": false,
         "lineColor": "rgb(31, 120, 193)",
         "show": false
       },
       "tableColumn": "",
       "targets": [
         {
-          "expr": "count(count(request_total{namespace=~\"$namespace\"}) by (namespace))",
+          "expr": "up{job=\"grafana\"}",
           "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "",
-          "refId": "A"
+          "instant": true,
+          "intervalFactor": 2,
+          "refId": "A",
+          "step": 60
+        }
+      ],
+      "thresholds": "1, 10000",
+      "title": "Active instances",
+      "type": "singlestat",
+      "valueFontSize": "120%",
+      "valueMaps": [
+        {
+          "op": "=",
+          "text": ":(",
+          "value": "0"
+        }
+      ],
+      "valueName": "avg"
+    },
+    {
+      "cacheTimeout": null,
+      "colorBackground": false,
+      "colorValue": false,
+      "colors": [
+        "rgba(245, 54, 54, 0.9)",
+        "rgba(237, 129, 40, 0.89)",
+        "rgba(50, 172, 45, 0.97)"
+      ],
+      "datasource": "prometheus",
+      "format": "none",
+      "gauge": {
+        "maxValue": 100,
+        "minValue": 0,
+        "show": false,
+        "thresholdLabels": false,
+        "thresholdMarkers": true
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 4,
+        "y": 0
+      },
+      "id": 8,
+      "interval": null,
+      "links": [],
+      "mappingType": 1,
+      "mappingTypes": [
+        {
+          "name": "value to text",
+          "value": 1
+        },
+        {
+          "name": "range to text",
+          "value": 2
+        }
+      ],
+      "maxDataPoints": 100,
+      "nullPointMode": "connected",
+      "nullText": null,
+      "postfix": "",
+      "postfixFontSize": "50%",
+      "prefix": "",
+      "prefixFontSize": "50%",
+      "rangeMaps": [
+        {
+          "from": "null",
+          "text": "N/A",
+          "to": "null"
+        }
+      ],
+      "sparkline": {
+        "fillColor": "rgba(31, 118, 189, 0.18)",
+        "full": false,
+        "lineColor": "rgb(31, 120, 193)",
+        "show": false
+      },
+      "tableColumn": "",
+      "targets": [
+        {
+          "expr": "grafana_stat_totals_dashboard",
+          "format": "time_series",
+          "instant": true,
+          "intervalFactor": 2,
+          "refId": "A",
+          "step": 60
         }
       ],
       "thresholds": "",
-      "title": "NAMESPACES MONITORED",
+      "title": "Dashboard count",
       "type": "singlestat",
-      "valueFontSize": "200%",
+      "valueFontSize": "120%",
       "valueMaps": [
         {
           "op": "=",
@@ -279,157 +205,303 @@
           "value": "null"
         }
       ],
-      "valueName": "current"
+      "valueName": "avg"
     },
     {
       "cacheTimeout": null,
       "colorBackground": false,
       "colorValue": false,
       "colors": [
-        "#d44a3a",
+        "rgba(245, 54, 54, 0.9)",
         "rgba(237, 129, 40, 0.89)",
-        "#299c46"
+        "rgba(50, 172, 45, 0.97)"
       ],
       "datasource": "prometheus",
       "format": "none",
       "gauge": {
-        "maxValue": 1,
+        "maxValue": 100,
         "minValue": 0,
         "show": false,
         "thresholdLabels": false,
         "thresholdMarkers": true
       },
       "gridPos": {
-        "h": 4,
+        "h": 5,
+        "w": 4,
+        "x": 8,
+        "y": 0
+      },
+      "id": 9,
+      "interval": null,
+      "links": [],
+      "mappingType": 1,
+      "mappingTypes": [
+        {
+          "name": "value to text",
+          "value": 1
+        },
+        {
+          "name": "range to text",
+          "value": 2
+        }
+      ],
+      "maxDataPoints": 100,
+      "nullPointMode": "connected",
+      "nullText": null,
+      "postfix": "",
+      "postfixFontSize": "50%",
+      "prefix": "",
+      "prefixFontSize": "50%",
+      "rangeMaps": [
+        {
+          "from": "null",
+          "text": "N/A",
+          "to": "null"
+        }
+      ],
+      "sparkline": {
+        "fillColor": "rgba(31, 118, 189, 0.18)",
+        "full": false,
+        "lineColor": "rgb(31, 120, 193)",
+        "show": false
+      },
+      "tableColumn": "",
+      "targets": [
+        {
+          "expr": "grafana_stat_total_users",
+          "format": "time_series",
+          "instant": true,
+          "intervalFactor": 2,
+          "refId": "A",
+          "step": 60
+        }
+      ],
+      "thresholds": "",
+      "title": "User count",
+      "type": "singlestat",
+      "valueFontSize": "120%",
+      "valueMaps": [
+        {
+          "op": "=",
+          "text": "N/A",
+          "value": "null"
+        }
+      ],
+      "valueName": "avg"
+    },
+    {
+      "cacheTimeout": null,
+      "colorBackground": false,
+      "colorValue": false,
+      "colors": [
+        "rgba(245, 54, 54, 0.9)",
+        "rgba(237, 129, 40, 0.89)",
+        "rgba(50, 172, 45, 0.97)"
+      ],
+      "datasource": "prometheus",
+      "format": "none",
+      "gauge": {
+        "maxValue": 100,
+        "minValue": 0,
+        "show": false,
+        "thresholdLabels": false,
+        "thresholdMarkers": true
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 12,
+        "y": 0
+      },
+      "id": 10,
+      "interval": null,
+      "links": [],
+      "mappingType": 1,
+      "mappingTypes": [
+        {
+          "name": "value to text",
+          "value": 1
+        },
+        {
+          "name": "range to text",
+          "value": 2
+        }
+      ],
+      "maxDataPoints": 100,
+      "nullPointMode": "connected",
+      "nullText": null,
+      "postfix": "",
+      "postfixFontSize": "50%",
+      "prefix": "",
+      "prefixFontSize": "50%",
+      "rangeMaps": [
+        {
+          "from": "null",
+          "text": "N/A",
+          "to": "null"
+        }
+      ],
+      "sparkline": {
+        "fillColor": "rgba(31, 118, 189, 0.18)",
+        "full": false,
+        "lineColor": "rgb(31, 120, 193)",
+        "show": false
+      },
+      "tableColumn": "",
+      "targets": [
+        {
+          "expr": "grafana_stat_total_playlists",
+          "format": "time_series",
+          "instant": true,
+          "intervalFactor": 2,
+          "refId": "A",
+          "step": 60
+        }
+      ],
+      "thresholds": "",
+      "title": "Playlist count",
+      "type": "singlestat",
+      "valueFontSize": "120%",
+      "valueMaps": [
+        {
+          "op": "=",
+          "text": "N/A",
+          "value": "null"
+        }
+      ],
+      "valueName": "avg"
+    },
+    {
+      "columns": [],
+      "datasource": "prometheus",
+      "fontSize": "100%",
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 16,
+        "y": 0
+      },
+      "id": 17,
+      "links": [],
+      "pageSize": null,
+      "scroll": false,
+      "showHeader": true,
+      "sort": {
+        "col": 0,
+        "desc": true
+      },
+      "styles": [
+        {
+          "alias": "Time",
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "link": false,
+          "pattern": "Time",
+          "type": "hidden"
+        },
+        {
+          "alias": "",
+          "colorMode": null,
+          "colors": [
+            "rgba(245, 54, 54, 0.9)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(50, 172, 45, 0.97)"
+          ],
+          "decimals": 0,
+          "pattern": "/.*/",
+          "thresholds": [],
+          "type": "number",
+          "unit": "short"
+        }
+      ],
+      "targets": [
+        {
+          "expr": "topk(1, grafana_info)",
+          "format": "time_series",
+          "instant": true,
+          "intervalFactor": 2,
+          "legendFormat": "{{version}}",
+          "refId": "A",
+          "step": 20
+        }
+      ],
+      "title": "Grafana version",
+      "transform": "timeseries_to_rows",
+      "type": "table"
+    },
+    {
+      "content": "<br />\n<br />\n<center>\n<img src=\"public/img/grafana_icon.svg\"  style=\"height: 60px;\">\n<span style=\"color: red;font-size:3rem;line-height: 2rem;\">💖</span>\n<img src=\"public/app/plugins/datasource/prometheus/img/prometheus_logo.svg\" alt=\"Prometheus logo\" style=\"height: 60px;\">\n</center>",
+      "gridPos": {
+        "h": 5,
         "w": 4,
         "x": 20,
-        "y": 3
+        "y": 0
+      },
+      "id": 16,
+      "links": [],
+      "mode": "html",
+      "title": "",
+      "transparent": true,
+      "type": "text"
+    },
+    {
+      "aliasColors": {
+        "400": "#447EBC",
+        "500": "#BF1B00"
+      },
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "prometheus",
+      "fill": 1,
+      "gridPos": {
+        "h": 10,
+        "w": 10,
+        "x": 0,
+        "y": 5
       },
       "height": "",
-      "id": 86,
-      "interval": null,
-      "links": [],
-      "mappingType": 1,
-      "mappingTypes": [
-        {
-          "name": "value to text",
-          "value": 1
-        },
-        {
-          "name": "range to text",
-          "value": 2
-        }
-      ],
-      "maxDataPoints": 100,
-      "nullPointMode": "connected",
-      "nullText": null,
-      "postfix": "",
-      "postfixFontSize": "50%",
-      "prefix": "",
-      "prefixFontSize": "50%",
-      "rangeMaps": [
-        {
-          "from": "null",
-          "text": "N/A",
-          "to": "null"
-        }
-      ],
-      "sparkline": {
-        "fillColor": "rgba(31, 118, 189, 0.18)",
-        "full": true,
-        "lineColor": "rgb(31, 120, 193)",
-        "show": false
-      },
-      "tableColumn": "",
-      "targets": [
-        {
-          "expr": "count(count(request_total{namespace=~\"$namespace\"}) by (namespace, deployment))",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "",
-          "refId": "A"
-        }
-      ],
-      "thresholds": "",
-      "title": "DEPLOYMENTS MONITORED",
-      "type": "singlestat",
-      "valueFontSize": "200%",
-      "valueMaps": [
-        {
-          "op": "=",
-          "text": "N/A",
-          "value": "null"
-        }
-      ],
-      "valueName": "current"
-    },
-    {
-      "content": "<div class=\"text-center dashboard-header\">\n  <span>TOP LINE</span>\n</div>",
-      "gridPos": {
-        "h": 2.2,
-        "w": 24,
-        "x": 0,
-        "y": 7
-      },
-      "height": "1px",
-      "id": 20,
-      "links": [],
-      "mode": "html",
-      "title": "",
-      "transparent": true,
-      "type": "text"
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "prometheus",
-      "fill": 1,
-      "gridPos": {
-        "h": 7,
-        "w": 8,
-        "x": 0,
-        "y": 9.2
-      },
-      "id": 21,
+      "id": 15,
       "legend": {
         "avg": false,
         "current": false,
         "max": false,
         "min": false,
-        "show": false,
+        "show": true,
         "total": false,
         "values": false
       },
       "lines": true,
       "linewidth": 2,
       "links": [],
-      "nullPointMode": "null",
+      "nullPointMode": "null as zero",
       "percentage": false,
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {}
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(response_total{classification=\"success\", namespace=~\"$namespace\", direction=\"inbound\"}[20s])) by (namespace) / sum(irate(response_total{namespace=~\"$namespace\", direction=\"inbound\"}[20s])) by (namespace)",
+          "expr": "sum by (statuscode) (irate(http_request_total{job='grafana'}[5m]))",
           "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "ns/{{namespace}}",
-          "refId": "A"
+          "intervalFactor": 3,
+          "legendFormat": "{{statuscode}}",
+          "refId": "B",
+          "step": 15,
+          "target": "dev.grafana.cb-office.alerting.active_alerts"
         }
       ],
       "thresholds": [],
       "timeFrom": null,
       "timeShift": null,
-      "title": "SUCCESS RATE",
+      "title": "http status codes",
       "tooltip": {
         "shared": true,
-        "sort": 2,
+        "sort": 0,
         "value_type": "individual"
       },
       "type": "graph",
@@ -442,10 +514,10 @@
       },
       "yaxes": [
         {
-          "format": "percentunit",
+          "format": "short",
           "label": null,
           "logBase": 1,
-          "max": 1,
+          "max": null,
           "min": null,
           "show": true
         },
@@ -464,140 +536,79 @@
       }
     },
     {
-      "aliasColors": {},
+      "aliasColors": {
+        "400": "#447EBC",
+        "500": "#BF1B00"
+      },
       "bars": false,
       "dashLength": 10,
       "dashes": false,
       "datasource": "prometheus",
       "fill": 1,
       "gridPos": {
-        "h": 7,
-        "w": 8,
-        "x": 8,
-        "y": 9.2
+        "h": 10,
+        "w": 10,
+        "x": 10,
+        "y": 5
       },
-      "id": 22,
+      "height": "",
+      "id": 11,
       "legend": {
         "avg": false,
         "current": false,
         "max": false,
         "min": false,
-        "show": false,
-        "total": false,
-        "values": false
-      },
-      "lines": true,
-      "linewidth": 2,
-      "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": true,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "sum(irate(request_total{namespace=~\"$namespace\", direction=\"inbound\"}[20s])) by (namespace)",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "ns/{{namespace}}",
-          "refId": "A"
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "REQUEST VOLUME",
-      "tooltip": {
-        "shared": true,
-        "sort": 1,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
         "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "rps",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": 0,
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "prometheus",
-      "fill": 1,
-      "gridPos": {
-        "h": 7,
-        "w": 8,
-        "x": 16,
-        "y": 9.2
-      },
-      "id": 23,
-      "legend": {
-        "avg": false,
-        "current": false,
-        "max": false,
-        "min": false,
-        "show": false,
         "total": false,
         "values": false
       },
       "lines": true,
       "linewidth": 2,
       "links": [],
-      "nullPointMode": "null",
+      "nullPointMode": "null as zero",
       "percentage": false,
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {}
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{namespace=~\"$namespace\", direction=\"inbound\"}[20s])) by (le, namespace))",
+          "expr": "sum(irate(grafana_api_response_status_total[5m]))",
           "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "p95 ns/{{namespace}}",
-          "refId": "A"
+          "intervalFactor": 4,
+          "legendFormat": "api",
+          "refId": "A",
+          "step": 20
+        },
+        {
+          "expr": "sum(irate(grafana_proxy_response_status_total[5m]))",
+          "format": "time_series",
+          "intervalFactor": 4,
+          "legendFormat": "proxy",
+          "refId": "B",
+          "step": 20
+        },
+        {
+          "expr": "sum(irate(grafana_page_response_status_total[5m]))",
+          "format": "time_series",
+          "intervalFactor": 4,
+          "legendFormat": "web",
+          "refId": "C",
+          "step": 20
         }
       ],
       "thresholds": [],
       "timeFrom": null,
       "timeShift": null,
-      "title": "P95 LATENCY",
+      "title": "Requests by routing group",
       "tooltip": {
         "shared": true,
-        "sort": 2,
+        "sort": 0,
         "value_type": "individual"
       },
       "type": "graph",
@@ -610,7 +621,7 @@
       },
       "yaxes": [
         {
-          "format": "ms",
+          "format": "short",
           "label": null,
           "logBase": 1,
           "max": null,
@@ -632,63 +643,78 @@
       }
     },
     {
-      "content": "<div class=\"text-center dashboard-header\">\n  <span>NAMESPACES</span>\n</div>",
+      "columns": [],
+      "datasource": "prometheus",
+      "fontSize": "100%",
       "gridPos": {
-        "h": 2.2,
-        "w": 24,
-        "x": 0,
-        "y": 16.2
+        "h": 10,
+        "w": 4,
+        "x": 20,
+        "y": 5
       },
-      "height": "1px",
-      "id": 19,
+      "height": "",
+      "id": 12,
       "links": [],
-      "mode": "html",
-      "title": "",
-      "transparent": true,
-      "type": "text"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 18.4
+      "pageSize": null,
+      "scroll": true,
+      "showHeader": true,
+      "sort": {
+        "col": 0,
+        "desc": true
       },
-      "id": 40,
-      "panels": [],
-      "repeat": "namespace",
-      "title": "",
-      "type": "row"
+      "styles": [
+        {
+          "alias": "Time",
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "link": false,
+          "pattern": "Time",
+          "type": "hidden"
+        },
+        {
+          "alias": "",
+          "colorMode": null,
+          "colors": [
+            "rgba(245, 54, 54, 0.9)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(50, 172, 45, 0.97)"
+          ],
+          "decimals": 0,
+          "pattern": "/.*/",
+          "thresholds": [],
+          "type": "number",
+          "unit": "short"
+        }
+      ],
+      "targets": [
+        {
+          "expr": "sort(topk(8, sum by (handler) (http_request_total{job=\"grafana\"})))",
+          "format": "time_series",
+          "instant": true,
+          "intervalFactor": 10,
+          "legendFormat": "{{handler}}",
+          "refId": "A",
+          "step": 100
+        }
+      ],
+      "title": "Most used handlers",
+      "transform": "timeseries_to_rows",
+      "type": "table"
     },
     {
-      "content": "<div>\n  <img src=\"https://conduit.io/favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <a href=\"./dashboard/db/conduit-deployment?var-namespace=$namespace\">\n    <span style=\"font-size: 15px; border-image:none\">ns/$namespace</span>\n  </a>\n</div>",
-      "gridPos": {
-        "h": 2,
-        "w": 24,
-        "x": 0,
-        "y": 19.4
+      "aliasColors": {
+        "alerting": "#890F02",
+        "ok": "#7EB26D"
       },
-      "height": "1px",
-      "id": 13,
-      "links": [],
-      "mode": "html",
-      "title": "",
-      "transparent": true,
-      "type": "text"
-    },
-    {
-      "aliasColors": {},
       "bars": false,
       "dashLength": 10,
       "dashes": false,
       "datasource": "prometheus",
       "fill": 1,
       "gridPos": {
-        "h": 7,
-        "w": 8,
+        "h": 5,
+        "w": 12,
         "x": 0,
-        "y": 21.4
+        "y": 15
       },
       "id": 6,
       "legend": {
@@ -696,91 +722,7 @@
         "current": false,
         "max": false,
         "min": false,
-        "show": false,
-        "total": false,
-        "values": false
-      },
-      "lines": true,
-      "linewidth": 2,
-      "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", direction=\"inbound\"}[20s])) by (deployment) / sum(irate(response_total{namespace=\"$namespace\", direction=\"inbound\"}[20s])) by (deployment)",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "deploy/{{deployment}}",
-          "refId": "A"
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "SUCCESS RATE",
-      "tooltip": {
-        "shared": true,
-        "sort": 2,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
         "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "percentunit",
-          "label": null,
-          "logBase": 1,
-          "max": 1,
-          "min": null,
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "prometheus",
-      "fill": 1,
-      "gridPos": {
-        "h": 7,
-        "w": 8,
-        "x": 8,
-        "y": 21.4
-      },
-      "id": 8,
-      "legend": {
-        "avg": false,
-        "current": false,
-        "max": false,
-        "min": false,
-        "show": false,
         "total": false,
         "values": false
       },
@@ -798,20 +740,21 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", direction=\"inbound\"}[20s])) by (deployment)",
+          "expr": "increase(grafana_alerting_result_total[1m])",
           "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "deploy/{{deployment}}",
-          "refId": "A"
+          "intervalFactor": 3,
+          "legendFormat": "{{state}}",
+          "refId": "A",
+          "step": 15
         }
       ],
       "thresholds": [],
       "timeFrom": null,
       "timeShift": null,
-      "title": "REQUEST VOLUME",
+      "title": "Grafana alert results",
       "tooltip": {
         "shared": true,
-        "sort": 2,
+        "sort": 0,
         "value_type": "individual"
       },
       "type": "graph",
@@ -824,11 +767,106 @@
       },
       "yaxes": [
         {
-          "format": "rps",
+          "format": "short",
           "label": null,
           "logBase": 1,
           "max": null,
-          "min": 0,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {
+        "alerting": "#890F02",
+        "alertname": "#BF1B00",
+        "firing alerts": "#BF1B00",
+        "ok": "#7EB26D"
+      },
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "prometheus",
+      "fill": 1,
+      "gridPos": {
+        "h": 5,
+        "w": 12,
+        "x": 12,
+        "y": 15
+      },
+      "id": 18,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 2,
+      "links": [],
+      "nullPointMode": "null",
+      "percentage": false,
+      "pointradius": 5,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [
+        {
+          "alias": "Firing alerts",
+          "yaxis": 1
+        }
+      ],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": " sum (ALERTS)",
+          "format": "time_series",
+          "intervalFactor": 3,
+          "legendFormat": "firing alerts",
+          "refId": "A",
+          "step": 15
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "Prometheus alerts",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
           "show": true
         },
         {
@@ -851,20 +889,21 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "prometheus",
+      "description": "Aggregated over all Grafana nodes.",
       "fill": 1,
       "gridPos": {
         "h": 7,
-        "w": 8,
-        "x": 16,
-        "y": 21.4
+        "w": 24,
+        "x": 0,
+        "y": 20
       },
-      "id": 9,
+      "id": 7,
       "legend": {
         "avg": false,
         "current": false,
         "max": false,
         "min": false,
-        "show": false,
+        "show": true,
         "total": false,
         "values": false
       },
@@ -876,27 +915,59 @@
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "avg gc duration",
+          "yaxis": 2
+        },
+        {
+          "alias": "127.0.0.1:3000",
+          "yaxis": 1
+        },
+        {
+          "alias": "allocated memory",
+          "yaxis": 2
+        },
+        {
+          "alias": "used memory",
+          "yaxis": 2
+        },
+        {
+          "alias": "memory usage",
+          "yaxis": 2
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", direction=\"inbound\"}[20s])) by (le, deployment))",
+          "expr": "sum(go_goroutines{job=\"grafana\"})",
           "format": "time_series",
           "hide": false,
-          "intervalFactor": 1,
-          "legendFormat": "p95 deploy/{{deployment}}",
-          "refId": "A"
+          "intervalFactor": 4,
+          "legendFormat": "go routines",
+          "refId": "A",
+          "step": 8,
+          "target": "select metric",
+          "type": "timeserie"
+        },
+        {
+          "expr": "sum(process_resident_memory_bytes{job=\"grafana\"})",
+          "format": "time_series",
+          "intervalFactor": 4,
+          "legendFormat": "memory usage",
+          "refId": "B",
+          "step": 8
         }
       ],
       "thresholds": [],
       "timeFrom": null,
       "timeShift": null,
-      "title": "P95 LATENCY",
+      "title": "Grafana performance",
       "tooltip": {
         "shared": true,
-        "sort": 2,
+        "sort": 0,
         "value_type": "individual"
       },
       "type": "graph",
@@ -909,7 +980,7 @@
       },
       "yaxes": [
         {
-          "format": "ms",
+          "format": "short",
           "label": null,
           "logBase": 1,
           "max": null,
@@ -917,7 +988,7 @@
           "show": true
         },
         {
-          "format": "short",
+          "format": "decbytes",
           "label": null,
           "logBase": 1,
           "max": null,
@@ -931,58 +1002,18 @@
       }
     }
   ],
-  "refresh": "5s",
+  "revision": "1.0",
   "schemaVersion": 16,
   "style": "dark",
   "tags": [
-    "conduit"
+    "grafana",
+    "prometheus"
   ],
   "templating": {
-    "list": [
-      {
-        "allValue": null,
-        "current": {},
-        "datasource": "prometheus",
-        "hide": 2,
-        "includeAll": true,
-        "label": null,
-        "multi": false,
-        "name": "namespace",
-        "options": [],
-        "query": "label_values(request_total{conduit_io_control_plane_component=\"\"}, namespace)",
-        "refresh": 2,
-        "regex": "",
-        "sort": 1,
-        "tagValuesQuery": "",
-        "tags": [],
-        "tagsQuery": "",
-        "type": "query",
-        "useTags": false
-      },
-      {
-        "allValue": null,
-        "current": {},
-        "datasource": "prometheus",
-        "hide": 2,
-        "includeAll": true,
-        "label": null,
-        "multi": false,
-        "name": "deployment",
-        "options": [],
-        "query": "label_values(request_total{conduit_io_control_plane_component=\"\", deployment!=\"\"}, deployment)",
-        "refresh": 2,
-        "regex": "",
-        "sort": 1,
-        "tagValuesQuery": "",
-        "tags": [],
-        "tagsQuery": "",
-        "type": "query",
-        "useTags": false
-      }
-    ]
+    "list": []
   },
   "time": {
-    "from": "now-5m",
+    "from": "now-6h",
     "to": "now"
   },
   "timepicker": {
@@ -1011,7 +1042,7 @@
     ]
   },
   "timezone": "",
-  "title": "Conduit Top Line",
-  "uid": "XKy9QWRmz",
+  "title": "Grafana metrics",
+  "uid": "U3t5kkniz",
   "version": 1
 }
