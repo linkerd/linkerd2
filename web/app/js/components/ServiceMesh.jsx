@@ -157,10 +157,11 @@ export default class ServiceMesh extends React.Component {
       return {
         name: title,
         pods: _.map(matchingPods, p => {
+          let isRunning = parseInt(p.runningPodCount, 10) > 0;
+          let isFailed = parseInt(p.failedPodCount, 10) !== 0;
           return {
             name: p.resource.name,
-            // we need an endpoint to return the k8s status of these pods
-            value: _.size(matchingPods) > 0 ? "good" : "neutral"
+            value: isFailed ? "poor" : isRunning ? "good" : "neutral"
           };
         })
       };
