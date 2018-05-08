@@ -138,7 +138,7 @@ func (s *grpcServer) objectQuery(
 
 		if count, ok := meshCount[key]; ok {
 			row.MeshedPodCount = count.inMesh
-			row.TotalPodCount = count.total
+			row.RunningPodCount = count.total
 			row.FailedPodCount = count.failed
 		}
 
