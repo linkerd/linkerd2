@@ -79,27 +79,27 @@ export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     metricsWindow = window;
   };
 
+  const genResourceUrl = type => {
+    return namespace => {
+      let baseUrl = '/api/stat?resource_type=' + type;
+      return {
+        rollup: !namespace ? baseUrl : baseUrl + '&namespace=' + namespace
+      };
+    };
+  };
+
   const urlsForResource = {
+    "namespace": {
+      url: genResourceUrl("namespace")
+    },
     "replication_controller": {
-      url: () => {
-        return {
-          rollup: `/api/stat?resource_type=replicationcontroller`
-        };
-      }
+      url: genResourceUrl("replicationcontroller")
     },
     "deployment": {
-      url: () => {
-        return {
-          rollup: `/api/stat?resource_type=deployment`
-        };
-      }
+      url: genResourceUrl("deployment")
     },
     "pod": {
-      url: () => {
-        return {
-          rollup: `/api/stat?resource_type=pod`
-        };
-      }
+      url: genResourceUrl("pod")
     }
   };
 

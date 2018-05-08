@@ -1,9 +1,9 @@
 import _ from 'lodash';
 import BaseTable from './BaseTable.jsx';
 import GrafanaLink from './GrafanaLink.jsx';
-import { metricToFormatter } from './util/Utils.js';
 import React from 'react';
 import { Tooltip } from 'antd';
+import { metricToFormatter, numericSort } from './util/Utils.js';
 
 /*
   Table to display Success Rate, Requests and Latency in tabs.
@@ -40,7 +40,7 @@ const formatTitle = (title, tooltipText) => {
 
 };
 const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick, ConduitLink) => {
-  return [
+  let nsColumn = [
     {
       title: formatTitle("Namespace"),
       key: "namespace",
@@ -49,17 +49,29 @@ const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick,
       onFilterDropdownVisibleChange: onFilterClick,
       onFilter: (value, row) => row.namespace.indexOf(value) === 0,
       sorter: sortable ? (a, b) => (a.namespace || "").localeCompare(b.namespace) : false
-    },
+    }
+  ];
+  let columns = [
     {
       title: formatTitle(resource),
       key: "name",
       defaultSortOrder: 'ascend',
       sorter: sortable ? (a, b) => (a.name || "").localeCompare(b.name) : false,
-      render: row => row.added ? <GrafanaLink
-        name={row.name}
-        namespace={row.namespace}
-        resource={resource}
-        conduitLink={ConduitLink} /> : row.name
+      render: row => {
+        if (resource.toLowerCase() === "namespace") {
+          return <ConduitLink to={"/namespaces/" + row.name}>{row.name}</ConduitLink>;
+        } else if (!row.added) {
+          return row.name;
+        } else {
+          return (
+            <GrafanaLink
+              name={row.name}
+              namespace={row.namespace}
+              resource={resource}
+              conduitLink={ConduitLink} />
+          );
+        }
+      }
     },
     {
       title: formatTitle("SR", "Success Rate"),
@@ -102,9 +114,13 @@ const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick,
       render: metricToFormatter["LATENCY"]
     }
   ];
-};
 
-const numericSort = (a, b) => (_.isNil(a) ? -1 : a) - (_.isNil(b) ? -1 : b);
+  if (resource.toLowerCase() === "namespace") {
+    return columns;
+  } else {
+    return _.concat(nsColumn, columns);
+  }
+};
 
 export default class MetricsTable extends BaseTable {
   constructor(props) {
