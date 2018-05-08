@@ -130,11 +130,11 @@ export default class ServiceMesh extends React.Component {
         return;
       }
       let meshedPods = parseInt(ns.meshedPodCount, 10);
-      let totalPods = parseInt(ns.totalPodCount, 10);
+      let totalPods = parseInt(ns.runningPodCount, 10);
 
       return {
         namespace: ns.resource.name,
-        meshedPodsStr: ns.meshedPodCount + "/" + ns.totalPodCount,
+        meshedPodsStr: ns.meshedPodCount + "/" + ns.runningPodCount,
         meshedPercent: new Percentage(meshedPods, totalPods),
         meshedPods,
         totalPods

@@ -40,6 +40,7 @@ let applicationHtml = (
             <Switch>
               <Redirect exact from={`${pathPrefix}/`} to={`${pathPrefix}/servicemesh`} />
               <Route path={`${pathPrefix}/servicemesh`} render={() => <ServiceMesh api={api} releaseVersion={appData.releaseVersion} controllerNamespace={controllerNs} />} />
+              <Route path={`${pathPrefix}/namespaces`} render={() => <ResourceList resource="namespace" api={api} controllerNamespace={controllerNs} />} />
               <Route path={`${pathPrefix}/deployments`} render={() => <ResourceList resource="deployment" api={api} controllerNamespace={controllerNs} />} />
               <Route path={`${pathPrefix}/replicationcontrollers`} render={() => <ResourceList resource="replication_controller" api={api} controllerNamespace={controllerNs} />} />
               <Route path={`${pathPrefix}/pods`} render={() => <ResourceList resource="pod" api={api} controllerNamespace={controllerNs} />} />

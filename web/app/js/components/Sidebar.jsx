@@ -96,6 +96,11 @@ export default class Sidebar extends React.Component {
               <span><ConduitLink to="/servicemesh">Service mesh</ConduitLink></span>
             </Menu.Item>
 
+            <Menu.Item className="sidebar-menu-item" key="/namespaces">
+              <Icon><ConduitLink to="/namespaces"><Icon>N</Icon></ConduitLink></Icon>
+              <span><ConduitLink to="/namespaces">Namespaces</ConduitLink></span>
+            </Menu.Item>
+
             <Menu.Item className="sidebar-menu-item" key="/deployments">
               <Icon><ConduitLink to="/deployments"><Icon>D</Icon></ConduitLink></Icon>
               <span><ConduitLink to="/deployments">Deployments</ConduitLink></span>

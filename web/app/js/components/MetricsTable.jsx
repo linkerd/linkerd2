@@ -40,7 +40,7 @@ const formatTitle = (title, tooltipText) => {
 
 };
 const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick, ConduitLink) => {
-  return [
+  let nsColumn = [
     {
       title: formatTitle("Namespace"),
       key: "namespace",
@@ -49,7 +49,9 @@ const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick,
       onFilterDropdownVisibleChange: onFilterClick,
       onFilter: (value, row) => row.namespace.indexOf(value) === 0,
       sorter: sortable ? (a, b) => (a.namespace || "").localeCompare(b.namespace) : false
-    },
+    }
+  ];
+  let columns = [
     {
       title: formatTitle(resource),
       key: "name",
@@ -102,6 +104,12 @@ const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick,
       render: metricToFormatter["LATENCY"]
     }
   ];
+
+  if (resource.toLowerCase() === "namespace") {
+    return columns;
+  } else {
+    return _.concat(nsColumn, columns);
+  }
 };
 
 export default class MetricsTable extends BaseTable {
