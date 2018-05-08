@@ -370,7 +370,7 @@ where
                             set.txs.push(tx);
                         }
                         Entry::Vacant(vac) => {
-                            let query = Self::query_destination_service_if_valid_auth(
+                            let query = Self::query_destination_service_if_relevant(
                                 &self.default_destination_namespace,
                                 client,
                                 vac.key(),
@@ -410,7 +410,7 @@ where
 
         while let Some(auth) = self.reconnects.pop_front() {
             if let Some(set) = self.destinations.get_mut(&auth) {
-                set.query = Self::query_destination_service_if_valid_auth(
+                set.query = Self::query_destination_service_if_relevant(
                     &self.default_destination_namespace,
                     client,
                     &auth,
@@ -469,7 +469,7 @@ where
     /// Initiates a query `query` to the Destination service and returns it as
     /// `Some(query)` if the given authority's host is of a form suitable for using to
     /// query the Destination service. Otherwise, returns `None`.
-    fn query_destination_service_if_valid_auth(
+    fn query_destination_service_if_relevant(
         default_destination_namespace: &str,
         client: &mut T,
         auth: &DnsNameAndPort,
