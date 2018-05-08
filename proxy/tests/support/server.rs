@@ -116,9 +116,7 @@ impl Server {
             version,
             thread_name(),
         );
-        ::std::thread::Builder::new().name(tname).spawn(move || {
-            let mut core = runtime::current_thread::Runtime::new()
-                .expect("server Runtime::new");
+        with_rt(tname, move |mut entered| {
 
             let new_svc = NewSvc(Arc::new(self.routes));
 
@@ -180,14 +178,15 @@ impl Server {
                         .map(|_| srv)
                 });
 
-            core.spawn(
-                serve
+            entered.spawn(
+                Box::new(serve
                     .map(|_| ())
-                    .map_err(|e| println!("server error: {}", e)),
+                    .map_err(|e| println!("server error: {}", e))
+                )
             );
 
-            core.block_on(rx).unwrap();
-        }).unwrap();
+            entered.block_on(rx).expect("block on");
+        });
 
         let addr = addr_rx.wait().expect("addr");
 

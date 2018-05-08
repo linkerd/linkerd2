@@ -200,16 +200,14 @@ where
             // handle,
         } = self;
 
-
-        let reactor = reactor::Reactor::new()
-            .expect("reactor");
-        // The reactor itself will get consumed by timer,
-        // so we keep a handle to communicate with it.
-        let handle = reactor.handle();
-        let timer = timer::Timer::new(reactor);
-        let timer_handle = timer.handle();
-        // TODO: customize the thread pool w/ Builder.
-        let mut pool = ThreadPool::new();
+        // XXX: We would prefer to use the `CurrentThread` executor; however,
+        // Hyper requires executors that are `Send`, so we have to use the
+        // theadpool, as its' `Sender` implements `Send`, whicih
+        // `CurrentThread::TaskExecutor` does not.
+        let mut pool = thread_pool::Builder::new()
+            .name_prefix("conduit-worker-")
+            .pool_size(1)
+            .build();
 
         let control_host_and_port = config.control_host_and_port.clone();
 
@@ -247,7 +245,7 @@ where
 
         let (control, control_bg) = control::new(dns_config.clone(), config.pod_namespace.clone());
 
-        let mut executor = pool.sender();
+        let mut executor = pool.sender().clone();
         let (drain_tx, drain_rx) = drain::channel();
 
         let bind = Bind::new(executor.clone()).with_sensors(sensors.clone());
@@ -272,7 +270,7 @@ where
                 sensors.clone(),
                 get_original_dst.clone(),
                 drain_rx.clone(),
-                &handle,
+                // &handle,
                 &executor,
             );
             ::logging::context_future("inbound", fut)
@@ -295,7 +293,7 @@ where
                 sensors,
                 get_original_dst,
                 drain_rx,
-                &handle,
+                // &handle,
                 &executor,
             );
             ::logging::context_future("outbound", fut)
@@ -323,57 +321,75 @@ where
                     // Configure the default tokio runtime for the control thread.
                     tokio_reactor::with_default(&handle, &mut enter, |enter| {
                         timer::with_default(&timer_handle, enter, |enter| {
-                            let mut executor = current_thread::TaskExecutor::current();
-                            let (taps, observe) = control::Observe::new(100);
-                            let new_service = TapServer::new(observe);
+                            let mut default_executor = current_thread::TaskExecutor::current();
+                            tokio_executor::with_default(&mut default_executor, enter, |enter| {
+                                let (taps, observe) = control::Observe::new(100);
+                                let new_service = TapServer::new(observe);
 
-                            let server = serve_control(
-                                control_listener,
-                                new_service,
-                                &handle,
-                            );
+                                let server = serve_control(
+                                    control_listener,
+                                    new_service,
+                                    &handle,
+                                );
 
-                            let telemetry = telemetry
-                                .make_control(&taps, &handle)
-                                .expect("bad news in telemetry town");
+                                let telemetry = telemetry
+                                    .make_control(&taps, &handle)
+                                    .expect("bad news in telemetry town");
 
-                            let metrics_server = telemetry
-                                .serve_metrics(metrics_listener);
+                                let metrics_server = telemetry
+                                    .serve_metrics(metrics_listener);
 
-                            let client = control_bg.bind(
-                                control_host_and_port,
-                                dns_config,
-                                &executor
-                            );
+                                let client = control_bg.bind(
+                                    control_host_and_port,
+                                    dns_config,
+                                    &current_thread::TaskExecutor::current(),
+                                );
 
-                            let fut = client.join4(
-                                server.map_err(|_| {}),
-                                telemetry,
-                                metrics_server.map_err(|_| {}),
-                            ).map(|_| {});
-                            let fut = ::logging::context_future("controller-client", fut);
-                            executor.spawn_local(Box::new(fut));
-
-                            let shutdown = controller_shutdown_signal.then(|_| Ok::<(), ()>(()));
-                            rt.enter(enter).block_on(shutdown).expect("controller api");
+                                let fut = client.join4(
+                                    server.map_err(|_| {}),
+                                    telemetry,
+                                    metrics_server.map_err(|_| {}),
+                                ).map(|_| {});
+                                let fut = ::logging::context_future("controller-client", fut);
+                                rt.spawn(Box::new(fut));
+                                trace!("controller client: spawned everything except for shutdown");
+                                let shutdown = controller_shutdown_signal.then(|_| {
+                                    trace!("controller shutdown signal fired");
+                                    Ok::<(), ()>(())
+                                });
+                                rt.enter(enter).block_on(shutdown).expect("controller api");
+                                trace!("controller client over")
+                            })
                         })
                     })
                 })
                 .expect("initialize controller api thread");
         }
+        trace!("controller thread spawned");
+        // let mut enter = tokio_executor::enter()
+        //     .expect("multiple executors on main thread");
+
+        // tokio_reactor::with_default(&handle, &mut enter, |enter| {
+        //     timer::with_default(&timer_handle, enter, |enter| {
+        //         let mut default_executor = pool.sender().clone();
+        //         tokio_executor::with_default(&mut default_executor, enter, |enter| {
 
         let fut = inbound
             .join(outbound)
             .map(|_| ())
             .map_err(|err| error!("main error: {:?}", err));
 
-        executor.spawn(Box::new(fut));
+        pool.spawn(Box::new(fut));
+        trace!("main task spawned");
+        //         })
+        //     })
+        // });
         let shutdown_signal = shutdown_signal.and_then(move |()| {
             debug!("shutdown signaled");
-            drain_tx.drain()
+            drain_tx.drain().and_then(|()| pool.shutdown())
         });
-        executor.spawn(shutdown_signal).expect("executor");
-        debug!("shutdown complete");
+        shutdown_signal.wait().unwrap();
+        trace!("shutdown complete");
     }
 }
 
@@ -387,7 +403,7 @@ fn serve<R, B, E, F, G>(
     sensors: telemetry::Sensors,
     get_orig_dst: G,
     drain_rx: drain::Watch,
-    handle: &reactor::Handle,
+    // handle: &reactor::Handle,
     executor: &Sender,
 ) -> Box<Future<Item = (), Error = io::Error> + Send + 'static>
 where
@@ -458,7 +474,7 @@ where
 
 
     let accept = bound_port.listen_and_fold(
-        handle,
+        &tokio::reactor::Handle::current(),
         (),
         move |(), (connection, remote_addr)| {
             server.serve(connection, remote_addr);

@@ -2,6 +2,7 @@
 
 use support::*;
 use support::futures::future::Executor;
+// use support::tokio::executor::Executor as _TokioExecutor;
 
 use std::collections::{HashMap, VecDeque};
 use std::io;
@@ -111,48 +112,44 @@ impl pb::server::Destination for Controller {
 fn run(controller: Controller) -> Listening {
     let (tx, rx) = shutdown_signal();
     let (addr_tx, addr_rx) = oneshot::channel();
+    with_rt("support controller", move |mut entered| {
+        let new = pb::server::DestinationServer::new(controller);
+        let executor = executor::current_thread::TaskExecutor::current();
+        let h2 = tower_h2::Server::new(new,
+            Default::default(),
+            executor.clone(),
+        );
 
-    ::std::thread::Builder::new()
-        .name("support controller".into())
-        .spawn(move || {
-            let mut core = runtime::current_thread::Runtime::new()
-                .expect("controller Runtime::new");
+        let addr = ([127, 0, 0, 1], 0).into();
+        let bind = TcpListener::bind(&addr).expect("bind");
 
-            let new = pb::server::DestinationServer::new(controller);
-            let h2 = tower_h2::Server::new(new, Default::default(),
-                executor::current_thread::TaskExecutor::current());
+        let _ = addr_tx.send(bind.local_addr().expect("addr"));
 
-            let addr = ([127, 0, 0, 1], 0).into();
-            let bind = TcpListener::bind(&addr).expect("bind");
+        let serve = bind.incoming()
+            .fold(h2, |h2, sock| {
+                if let Err(e) = sock.set_nodelay(true) {
+                    return Err(e);
+                }
 
-            let _ = addr_tx.send(bind.local_addr().expect("addr"));
-
-            let serve = bind.incoming()
-                .fold(h2, |h2, sock| {
-                    if let Err(e) = sock.set_nodelay(true) {
-                        return Err(e);
-                    }
-
-                    let serve = h2.serve(sock);
-                    current_thread::TaskExecutor::current()
-                        .execute(serve.map_err(|e| println!("controller error: {:?}", e)))
-                        .map_err(|e| {
-                            println!("controller execute error: {:?}", e);
-                            io::Error::from(io::ErrorKind::Other)
-                        })
-                        .map(|_| h2)
-                });
+                let serve = h2.serve(sock);
+                current_thread::TaskExecutor::current()
+                    .execute(serve.map_err(|e| println!("controller error: {:?}", e)))
+                    .map_err(|e| {
+                        println!("controller execute error: {:?}", e);
+                        io::Error::from(io::ErrorKind::Other)
+                    })
+                    .map(|_| h2)
+            });
 
 
-            core.spawn(
-                serve
-                    .map(|_| ())
-                    .map_err(|e| println!("controller error: {}", e)),
-            );
-
-            core.block_on(rx).unwrap();
-        })
-        .unwrap();
+        entered.spawn(Box::new(
+            serve
+                .map(|_| ())
+                .map_err(|e| println!("controller error: {}", e)),
+        ));
+        entered.block_on(rx).expect("support controller run");
+    });
+        // .unwrap();
 
     let addr = addr_rx.wait().expect("addr");
     Listening {

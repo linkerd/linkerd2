@@ -1,6 +1,7 @@
 use support::*;
 
 use std::io;
+use std::cell::RefCell;
 
 use self::futures::{
     future::Executor,
@@ -117,14 +118,12 @@ fn run(addr: SocketAddr, version: Run) -> (Sender, Running) {
     let (tx, rx) = mpsc::unbounded::<(Request, oneshot::Sender<Result<Response, String>>)>();
     let (running_tx, running_rx) = running();
 
-    ::std::thread::Builder::new().name("support client".into()).spawn(move || {
-        let mut core = tokio::runtime::current_thread::Runtime::new()
-            .expect("client runtime new");
+    with_rt("support client", move |mut entered| {
         let executor = executor::current_thread::TaskExecutor::current();
 
         let conn = Conn {
             addr,
-            running: running_tx,
+            running: RefCell::new(Some(running_tx)),
         };
 
         let work: Box<Future<Item=(), Error=()>> = match version {
@@ -189,8 +188,8 @@ fn run(addr: SocketAddr, version: Run) -> (Sender, Running) {
             }
         };
 
-        core.block_on(work).expect("support client core run");
-    }).expect("support client thread spawn");
+        entered.block_on(work).expect("support client core run");
+    });
     (tx, running_rx)
 }
 
@@ -199,13 +198,15 @@ fn run(addr: SocketAddr, version: Run) -> (Sender, Running) {
 struct Conn {
     addr: SocketAddr,
     /// When this Sender drops, that should mean the connection is closed.
-    running: mpsc::Sender<()>,
+    running: RefCell<Option<oneshot::Sender<()>>>,
 }
 
 impl Conn {
     fn connect_(&self) -> Box<Future<Item = RunningIo, Error = ::std::io::Error> + Send> {
         let running = self.running
-            .clone();
+            .borrow_mut()
+            .take()
+            .expect("connected more than once");
         let c = TcpStream::connect(&self.addr)
             .and_then(|tcp| tcp.set_nodelay(true).map(move |_| tcp))
             .map(move |tcp| RunningIo {
@@ -238,13 +239,19 @@ impl hyper::client::connect::Connect for Conn {
     }
 }
 
+// Hyper requires that implementors of `Connect` be `Sync`; and the `RefCell`
+// in `Conn` makes it `!Sync`. However, since we're using the current thread
+// executor, we know this type will never be sent between threads.
+// TODO: I would really prefer to not have to do this.
+unsafe impl Sync for Conn {}
+
 /// A wrapper around a TcpStream, allowing us to signal when the connection
 /// is dropped.
 struct RunningIo {
     inner: TcpStream,
     /// When this drops, the related Receiver is notified that the connection
     /// is closed.
-    running: mpsc::Sender<()>,
+    running: oneshot::Sender<()>,
 }
 
 impl io::Read for RunningIo {

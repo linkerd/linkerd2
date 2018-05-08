@@ -103,7 +103,7 @@ where
         match *protocol {
             bind::Protocol::Http1(_) => {
                 let h1 = hyper::Client::builder()
-                    .executor(executor)
+                    // .executor(executor)
                     // hyper should never try to automatically set the Host
                     // header, instead always just passing whatever we received.
                     .set_host(false)
