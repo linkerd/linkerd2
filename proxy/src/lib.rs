@@ -16,8 +16,6 @@ extern crate http;
 extern crate httparse;
 extern crate hyper;
 extern crate ipnet;
-#[macro_use]
-extern crate lazy_static;
 #[cfg(target_os = "linux")]
 extern crate libc;
 #[macro_use]

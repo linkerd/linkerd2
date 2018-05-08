@@ -341,26 +341,21 @@ fn parse_number<T>(s: &str) -> Result<T, ParseError> where T: FromStr {
 
 fn parse_duration(s: &str) -> Result<Duration, ParseError> {
     use regex::Regex;
-    lazy_static! {
-        static ref RE: Regex = Regex::new(r"(?x)^
-            \s* (\d+) \s* ( ms | s | m | h | d ) \s*
-        $").expect("duration regex");
-    }
 
-    let cap = RE.captures(s)
+    let re = Regex::new(r"^\s*(\d+)(ms|s|m|h|d)?\s*$")
+        .expect("duration regex");
+
+    let cap = re.captures(s)
         .ok_or(ParseError::NotADuration)?;
 
     let magnitude = parse_number(&cap[1])?;
-
-    let unit = &cap[2];
-    debug_assert!(unit.len() >= 1);
-
-    match unit {
-        "ms" => Ok(Duration::from_millis(magnitude)),
-        "s" => Ok(Duration::from_secs(magnitude)),
-        "m" => Ok(Duration::from_secs(magnitude * 60)),
-        "h" => Ok(Duration::from_secs(magnitude * 60 * 60)),
-        "d" => Ok(Duration::from_secs(magnitude * 60 * 60 * 24)),
+    match cap.get(2).map(|m| m.as_str()) {
+        None if magnitude == 0 => Ok(Duration::from_secs(0)),
+        Some("ms") => Ok(Duration::from_millis(magnitude)),
+        Some("s") => Ok(Duration::from_secs(magnitude)),
+        Some("m") => Ok(Duration::from_secs(magnitude * 60)),
+        Some("h") => Ok(Duration::from_secs(magnitude * 60 * 60)),
+        Some("d") => Ok(Duration::from_secs(magnitude * 60 * 60 * 24)),
         _ => Err(ParseError::NotADuration),
     }
 }
@@ -416,58 +411,65 @@ mod tests {
             let text = format!("{}{}", v, unit);
             assert_eq!(parse_duration(&text), Ok(d), "text=\"{}\"", text);
 
-            let text = format!("{} {}", v, unit);
-            assert_eq!(parse_duration(&text), Ok(d), "text=\"{}\"", text);
-
-            let text = format!(" {}  {} ", v, unit);
+            let text = format!(" {}{}\t", v, unit);
             assert_eq!(parse_duration(&text), Ok(d), "text=\"{}\"", text);
         }
     }
 
     #[test]
-    fn parse_duration_ms() {
+    fn parse_duration_unit_ms() {
         test_unit("ms", |v| Duration::from_millis(v));
     }
 
     #[test]
-    fn parse_duration_s() {
+    fn parse_duration_unit_s() {
         test_unit("s", |v| Duration::from_secs(v));
     }
 
     #[test]
-    fn parse_duration_m() {
+    fn parse_duration_unit_m() {
         test_unit("m", |v| Duration::from_secs(v * 60));
     }
 
     #[test]
-    fn parse_duration_h() {
+    fn parse_duration_unit_h() {
         test_unit("h", |v| Duration::from_secs(v * 60 * 60));
     }
 
     #[test]
-    fn parse_duration_d() {
+    fn parse_duration_unit_d() {
         test_unit("d", |v| Duration::from_secs(v * 60 * 60 * 24));
     }
 
     #[test]
     fn parse_duration_floats_invalid() {
-        assert_eq!(parse_duration(".123 h"), Err(ParseError::NotADuration));
-        assert_eq!(parse_duration("1.23 h"), Err(ParseError::NotADuration));
+        assert_eq!(parse_duration(".123h"), Err(ParseError::NotADuration));
+        assert_eq!(parse_duration("1.23h"), Err(ParseError::NotADuration));
     }
 
     #[test]
-    fn parse_overflows_invalid() {
-        assert_eq!(parse_duration("123456789012345678901234567890 ms"), Err(ParseError::NotANumber));
+    fn parse_duration_space_before_unit_invalid() {
+        assert_eq!(parse_duration("1 ms"), Err(ParseError::NotADuration));
+    }
+
+    #[test]
+    fn parse_duration_overflows_invalid() {
+        assert_eq!(parse_duration("123456789012345678901234567890ms"), Err(ParseError::NotANumber));
     }
 
     #[test]
     fn parse_duration_invalid_unit() {
-        assert_eq!(parse_duration("12 moons"), Err(ParseError::NotADuration));
+        assert_eq!(parse_duration("12moons"), Err(ParseError::NotADuration));
         assert_eq!(parse_duration("12y"), Err(ParseError::NotADuration));
     }
 
     #[test]
-    fn parse_duration_zero_without_unit_is_invalid() {
-        assert_eq!(parse_duration("0"), Err(ParseError::NotADuration));
+    fn parse_duration_zero_without_unit() {
+        assert_eq!(parse_duration("0"), Ok(Duration::from_secs(0)));
+    }
+
+    #[test]
+    fn parse_duration_number_without_unit_is_invalid() {
+        assert_eq!(parse_duration("1"), Err(ParseError::NotADuration));
     }
 }
