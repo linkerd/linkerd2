@@ -12,7 +12,7 @@ use tower_buffer::Buffer;
 use tower_discover::{Change, Discover};
 use tower_in_flight_limit::InFlightLimit;
 use tower_h2;
-use conduit_proxy_router::{Reuse, Recognize};
+use conduit_proxy_router::Recognize;
 
 use bind::{self, Bind, Protocol};
 use control::{self, discovery};
@@ -67,7 +67,7 @@ where
         choose::PowerOfTwoChoices<rand::ThreadRng>
     >>>>;
 
-    fn recognize(&self, req: &Self::Request) -> Option<Reuse<Self::Key>> {
+    fn recognize(&self, req: &Self::Request) -> Option<Self::Key> {
         let proto = bind::Protocol::detect(req);
 
         // The request URI and Host: header have not yet been normalized
@@ -106,7 +106,7 @@ where
         // original destination.
         let dest = dest?;
 
-        Some(proto.into_key(dest))
+        Some((dest, proto))
     }
 
     /// Builds a dynamic, load balancing service.
