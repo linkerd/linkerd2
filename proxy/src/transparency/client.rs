@@ -101,13 +101,13 @@ where
                executor: E)
                -> Self {
         match *protocol {
-            bind::Protocol::Http1(_) => {
+            bind::Protocol::Http1 { was_absolute_form, .. } => {
                 let h1 = hyper::Client::builder()
-                    // .executor(executor)
+                    .executor(executor)
                     // hyper should never try to automatically set the Host
                     // header, instead always just passing whatever we received.
                     .set_host(false)
-                    .build(HyperConnect::new(connect));
+                    .build(HyperConnect::new(connect, was_absolute_form));
                 Client {
                     inner: ClientInner::Http1(h1),
                 }
@@ -214,12 +214,6 @@ where
 
         match self.inner {
             ClientServiceInner::Http1(ref h1) => {
-                // This sentinel may be set in h1::normalize_our_view_of_uri
-                // when the original request-target was in absolute-form. In
-                // that case, for hyper 0.11.x, we need to call `req.set_proxy`.
-                let was_absolute_form = req.extensions()
-                    .get::<UriIsAbsoluteForm>()
-                    .is_some();
                 // As of hyper 0.11.x, a set body implies a body must be sent.
                 // If there is no content-length header, hyper adds a
                 // transfer-encoding: chunked header, since it has no other way
@@ -249,7 +243,6 @@ where
                 // if should_take_body {
                 //     req.body_mut().take();
                 // }
-                // req.set_proxy(was_absolute_form);
                 ClientServiceFuture::Http1(h1.request(req))
             },
             ClientServiceInner::Http2(ref mut h2) => {

@@ -18,10 +18,6 @@ pub struct UriIsAbsoluteForm;
 /// Also sets the `UriIsAbsoluteForm` extension if received `Uri` was
 /// already in absolute-form.
 pub fn normalize_our_view_of_uri<B>(req: &mut http::Request<B>) {
-    if req.uri().authority_part().is_some() {
-        req.extensions_mut().insert(UriIsAbsoluteForm);
-        return;
-    }
 
     // try to parse the Host header
     if let Some(auth) = authority_from_host(&req) {

@@ -67,11 +67,13 @@ pub(super) struct HttpBodyNewSvcFuture<F> {
 #[derive(Debug, Clone)]
 pub(super) struct HyperConnect<C> {
     connect: C,
+    absolute_form: bool,
 }
 
 /// Future returned by `HyperConnect`.
 pub(super) struct HyperConnectFuture<F> {
     inner: F,
+    absolute_form: bool,
 }
 
 // ===== impl HttpBody =====
@@ -382,9 +384,10 @@ where
     C: Connect,
     C::Future: 'static,
 {
-    pub fn new(connect: C) -> Self {
+    pub fn new(connect: C, absolute_form: bool) -> Self {
         HyperConnect {
             connect,
+            absolute_form,
         }
     }
 }
@@ -403,6 +406,7 @@ where
     fn connect(&self, _dst: hyper_connect::Destination) -> Self::Future {
         HyperConnectFuture {
             inner: self.connect.connect(),
+            absolute_form: self.absolute_form,
         }
     }
 }
@@ -417,6 +421,8 @@ where
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         let transport: F::Item = try_ready!(self.inner.poll()
             .map_err(|_| io::Error::from(io::ErrorKind::Other)));
-        Ok(Async::Ready((transport, hyper_connect::Connected::new())))
+        let connected = hyper_connect::Connected::new()
+            .proxy(self.absolute_form);
+        Ok(Async::Ready((transport, connected)))
     }
 }

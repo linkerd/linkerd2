@@ -121,13 +121,19 @@ fn run(addr: SocketAddr, version: Run) -> (Sender, Running) {
     with_rt("support client", move |mut entered| {
         let executor = executor::current_thread::TaskExecutor::current();
 
+        let absolute_uris = if let Run::Http1 { absolute_uris } = version {
+            absolute_uris
+        } else {
+            false
+        };
         let conn = Conn {
             addr,
             running: RefCell::new(Some(running_tx)),
+            absolute_uris,
         };
 
         let work: Box<Future<Item=(), Error=()>> = match version {
-            Run::Http1 { absolute_uris } => {
+            Run::Http1 { .. } => {
                 let client = hyper::Client::builder()
                     // .executor(&executor)
                     .build::<Conn, hyper::Body>(conn);
@@ -135,9 +141,6 @@ fn run(addr: SocketAddr, version: Run) -> (Sender, Running) {
                     let req = req.map(|_| hyper::Body::empty());
                     if req.headers().get(http::header::CONTENT_LENGTH).is_none() {
                         // assert!(req.body_mut().take().unwrap().is_empty());
-                    }
-                    if absolute_uris {
-                        // req.set_proxy(true);
                     }
                     let fut = client.request(req).then(move |result| {
                         let result = result
@@ -199,6 +202,7 @@ struct Conn {
     addr: SocketAddr,
     /// When this Sender drops, that should mean the connection is closed.
     running: RefCell<Option<oneshot::Sender<()>>>,
+    absolute_uris: bool,
 }
 
 impl Conn {
@@ -235,7 +239,9 @@ impl hyper::client::connect::Connect for Conn {
     > + Send>;
     type Error = ::std::io::Error;
     fn connect(&self, _: hyper::client::connect::Destination) -> Self::Future {
-        Box::new(self.connect_().map(|t| (t, hyper::client::connect::Connected::new())))
+        let connected = hyper::client::connect::Connected::new()
+            .proxy(self.absolute_uris);
+        Box::new(self.connect_().map(|t| (t, connected)))
     }
 }
 
