@@ -1,6 +1,6 @@
 import { ApiHelpers } from './components/util/ApiHelpers.jsx';
 import { Layout } from 'antd';
-import Namespaces from './components/Namespaces.jsx';
+import Namespace from './components/Namespace.jsx';
 import NoMatch from './components/NoMatch.jsx';
 import React from 'react';
 import ReactDOM from 'react-dom';
@@ -40,11 +40,11 @@ let applicationHtml = (
             <Switch>
               <Redirect exact from={`${pathPrefix}/`} to={`${pathPrefix}/servicemesh`} />
               <Route path={`${pathPrefix}/servicemesh`} render={() => <ServiceMesh api={api} releaseVersion={appData.releaseVersion} controllerNamespace={controllerNs} />} />
+              <Route path={`${pathPrefix}/namespaces/:namespace`} render={props => <Namespace resource="namespace" api={api} controllerNamespace={controllerNs} params={props.match.params} />} />
               <Route path={`${pathPrefix}/namespaces`} render={() => <ResourceList resource="namespace" api={api} controllerNamespace={controllerNs} />} />
               <Route path={`${pathPrefix}/deployments`} render={() => <ResourceList resource="deployment" api={api} controllerNamespace={controllerNs} />} />
               <Route path={`${pathPrefix}/replicationcontrollers`} render={() => <ResourceList resource="replication_controller" api={api} controllerNamespace={controllerNs} />} />
               <Route path={`${pathPrefix}/pods`} render={() => <ResourceList resource="pod" api={api} controllerNamespace={controllerNs} />} />
-              <Route path={`${pathPrefix}/namespaces`} render={props => <Namespaces resource="pod" api={api} controllerNamespace={controllerNs} location={props.location} />} />
               <Route component={NoMatch} />
             </Switch>
           </div>

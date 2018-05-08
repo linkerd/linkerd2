@@ -41,7 +41,7 @@ const namespacesColumns = ConduitLink => [
     key: "namespace",
     defaultSortOrder: "ascend",
     sorter: (a, b) => (a.namespace || "").localeCompare(b.namespace),
-    render: d => <ConduitLink to={"/namespaces?ns=" + d}>{d}</ConduitLink>
+    render: d => <ConduitLink to={"/namespaces/" + d}>{d}</ConduitLink>
   },
   {
     title: "Meshed pods",

@@ -15,13 +15,11 @@ export default class Namespaces extends React.Component {
     this.api = this.props.api;
     this.handleApiError = this.handleApiError.bind(this);
     this.loadFromServer = this.loadFromServer.bind(this);
-    this.state = this.getInitialState(this.props.location);
+    this.state = this.getInitialState(this.props.params);
   }
 
-  getInitialState(location) {
-    location = location || {};
-    let urlParams = new URLSearchParams(location.search);
-    let ns = urlParams.get("ns") || "default";
+  getInitialState(params) {
+    let ns = _.get(params, "namespace", "default");
 
     return {
       ns: ns,
@@ -41,7 +39,7 @@ export default class Namespaces extends React.Component {
   componentWillReceiveProps() {
     // React won't unmount this component when switching resource pages so we need to clear state
     this.api.cancelCurrentRequests();
-    this.setState(this.getInitialState(this.props.location));
+    this.setState(this.getInitialState(this.props.params));
   }
 
   componentWillUnmount() {
