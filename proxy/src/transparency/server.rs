@@ -158,7 +158,7 @@ where
                                     let svc = HyperServerSvc::new(s, srv_ctx);
                                     drain_signal
                                         .watch(h1.serve_connection(io, svc), |conn| {
-                                            // conn.disable_keep_alive();
+                                            conn.graceful_shutdown();
                                         })
                                         .map(|_| ())
                                         .map_err(|e| trace!("http1 server error: {:?}", e))
