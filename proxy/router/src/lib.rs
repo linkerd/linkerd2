@@ -11,10 +11,12 @@ use std::hash::Hash;
 use std::sync::{Arc, Mutex};
 
 /// Routes requests based on a configurable `Key`.
+#[derive(Clone)]
 pub struct Router<T>
 where T: Recognize,
 {
     inner: Arc<Mutex<Inner<T>>>,
+    recognize: T,
 }
 
 /// Provides a strategy for routing a Request to a Service.
@@ -23,7 +25,7 @@ where T: Recognize,
 /// `recognize()` method is used to determine the key for a given request. This key is
 /// used to look up a route in a cache (i.e. in `Router`), or can be passed to
 /// `bind_service` to instantiate the identified route.
-pub trait Recognize {
+pub trait Recognize: Clone {
     /// Requests handled by the discovered services
     type Request;
 
@@ -74,7 +76,6 @@ struct Inner<T>
 where T: Recognize,
 {
     routes: IndexMap<T::Key, T::Service>,
-    recognize: T,
     capacity: usize,
 }
 
@@ -95,9 +96,9 @@ where T: Recognize
 {
     pub fn new(recognize: T, capacity: usize) -> Self {
         Router {
+            recognize,
             inner: Arc::new(Mutex::new(Inner {
                 routes: IndexMap::default(),
-                recognize,
                 capacity,
             })),
         }
@@ -136,12 +137,12 @@ where T: Recognize,
     ///
     /// The response fails when the request cannot be routed.
     fn call(&mut self, request: Self::Request) -> Self::Future {
-        let inner = &mut *self.inner.lock().expect("lock router cache");
-
-        let key = match inner.recognize.recognize(&request) {
+        let key = match self.recognize.recognize(&request) {
             Some(key) => key,
             None => return ResponseFuture::not_recognized(),
         };
+
+        let inner = &mut *self.inner.lock().expect("lock router cache");
 
         // First, try to load a cached route for `key`.
         if let Some(service) = inner.routes.get_mut(&key) {
@@ -157,43 +158,10 @@ where T: Recognize,
         }
 
         // Bind a new route, send the request on the route, and cache the route.
-        let mut service = try_bind_route!(inner.recognize.bind_service(&key));
+        let mut service = try_bind_route!(self.recognize.bind_service(&key));
         let response = service.call(request);
         inner.routes.insert(key, service);
         ResponseFuture::new(response)
-    }
-}
-
-impl<T> Clone for Router<T>
-where T: Recognize,
-{
-    fn clone(&self) -> Self {
-        Router { inner: self.inner.clone() }
-    }
-}
-
-// ===== impl Single =====
-
-impl<S: Service> Single<S> {
-    pub fn new(svc: S) -> Self {
-        Single(Some(svc))
-    }
-}
-
-impl<S: Service> Recognize for Single<S> {
-    type Request = S::Request;
-    type Response = S::Response;
-    type Error = S::Error;
-    type Key = ();
-    type RouteError = ();
-    type Service = S;
-
-    fn recognize(&self, _: &Self::Request) -> Option<Self::Key> {
-        Some(())
-    }
-
-    fn bind_service(&mut self, _: &Self::Key) -> Result<S, Self::RouteError> {
-        Ok(self.0.take().expect("static route bound twice"))
     }
 }
 
@@ -286,6 +254,7 @@ mod tests {
     use tower_service::Service;
     use super::{Error, Router};
 
+    #[derive(Clone)]
     struct Recognize;
 
     struct MultiplyAndAssign(usize);
