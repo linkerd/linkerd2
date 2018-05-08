@@ -117,10 +117,12 @@ func (l *Lister) GetObjects(namespace, restype, name string) ([]runtime.Object, 
 }
 
 // GetPodsFor returns all running and pending Pods associated with a given
-// Kubernetes object.
-func (l *Lister) GetPodsFor(obj runtime.Object) ([]*apiv1.Pod, error) {
+// Kubernetes object. Use includeFailed to also get failed Pods
+func (l *Lister) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*apiv1.Pod, error) {
 	var namespace string
 	var selector labels.Selector
+	var pods []*apiv1.Pod
+	var err error
 
 	switch typed := obj.(type) {
 	case *apiv1.Namespace:
@@ -144,21 +146,31 @@ func (l *Lister) GetPodsFor(obj runtime.Object) ([]*apiv1.Pod, error) {
 		selector = labels.Set(typed.Spec.Selector).AsSelector()
 
 	case *apiv1.Pod:
+		// Special case for pods:
+		// GetPodsFor a pod should just return the pod itself
 		namespace = typed.Namespace
-		selector = labels.Everything()
+		pod, err := l.Pod.Pods(typed.Namespace).Get(typed.Name)
+		if err != nil {
+			return nil, err
+		}
+		pods = []*apiv1.Pod{pod}
 
 	default:
 		return nil, fmt.Errorf("Cannot get object selector: %v", obj)
 	}
 
-	pods, err := l.Pod.Pods(namespace).List(selector)
-	if err != nil {
-		return nil, err
+	// if obj.(type) is Pod, we've already retrieved it and put it in pods
+	// for the other types, pods will still be empty
+	if len(pods) == 0 {
+		pods, err = l.Pod.Pods(namespace).List(selector)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	allPods := []*apiv1.Pod{}
 	for _, pod := range pods {
-		if isPendingOrRunning(pod) {
+		if isPendingOrRunning(pod) || (includeFailed && isFailed(pod)) {
 			allPods = append(allPods, pod)
 		}
 	}
@@ -299,4 +311,8 @@ func isPendingOrRunning(pod *apiv1.Pod) bool {
 	running := pod.Status.Phase == apiv1.PodRunning
 	terminating := pod.DeletionTimestamp != nil
 	return (pending || running) && !terminating
+}
+
+func isFailed(pod *apiv1.Pod) bool {
+	return pod.Status.Phase == apiv1.PodFailed
 }

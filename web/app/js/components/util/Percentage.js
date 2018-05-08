@@ -13,6 +13,6 @@ Percentage.prototype.prettyRate = function() {
   if (this.decimal < 0) {
     return "N/A";
   } else {
-    return (100*this.decimal).toFixed(3) + "%";
+    return (100*this.decimal).toFixed(1) + "%";
   }
 };

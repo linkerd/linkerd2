@@ -42,8 +42,8 @@ COPY proto/proxy proto/proxy
 COPY proto/common proto/common
 COPY proxy/controller-grpc proxy/controller-grpc
 RUN if [ -n "$PROXY_UNOPTIMIZED" ]; \
-    then cargo build -p conduit-proxy-controller-grpc --features=arbitrary --frozen ; \
-    else cargo build -p conduit-proxy-controller-grpc --features=arbitrary --frozen --release ; \
+    then cargo build -p conduit-proxy-controller-grpc --frozen ; \
+    else cargo build -p conduit-proxy-controller-grpc --frozen --release ; \
     fi
 
 # Build the proxy binary using pre-built dependencies.

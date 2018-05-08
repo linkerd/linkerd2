@@ -5,7 +5,7 @@ use futures::{Future, Poll};
 use h2;
 use http;
 use http::header::CONTENT_LENGTH;
-use tower::Service;
+use tower_service::Service;
 
 /// Map an HTTP service's error to an appropriate 500 response.
 pub struct MapErr<T, E, F> {

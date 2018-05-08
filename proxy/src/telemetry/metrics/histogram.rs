@@ -88,6 +88,96 @@ impl<V: Into<u64>> Histogram<V> {
         self.buckets[idx].incr();
         self.sum += value;
     }
+
+    // ===== Test-only methods to help with assertions about histograms. =====
+
+    /// Assert the bucket containing `le` has a count of at least `at_least`.
+    #[cfg(test)]
+    pub fn assert_bucket_at_least(&self, le: u64, at_least: u64) {
+        for (&bucket, &count) in self {
+            if bucket >= le {
+                let count: u64 = count.into();
+                assert!(
+                    count >= at_least,
+                    "le={:?}; bucket={:?};", le, bucket
+                );
+                break;
+            }
+        }
+    }
+
+    /// Assert the bucket containing `le` has a count of exactly `exactly`.
+    #[cfg(test)]
+    pub fn assert_bucket_exactly(&self, le: u64, exactly: u64) -> &Self {
+        for (&bucket, &count) in self {
+            if bucket >= le {
+                let count: u64 = count.into();
+                assert_eq!(
+                    count, exactly,
+                    "le={:?}; bucket={:?}; buckets={:#?};",
+                    le, bucket, self.buckets,
+                );
+                break;
+            }
+        }
+        self
+    }
+
+    /// Assert all buckets less than the one containing `value` have
+    /// counts of exactly `exactly`.
+    #[cfg(test)]
+    pub fn assert_lt_exactly(&self, value: u64, exactly: u64) -> &Self {
+        for (i, &bucket) in self.bounds.0.iter().enumerate() {
+            let ceiling = match bucket {
+                Bucket::Le(c) => c,
+                Bucket::Inf => break,
+            };
+            let next = self.bounds.0.get(i + 1)
+                .expect("Bucket::Le may not be the last in `bounds`!");
+
+            if value <= ceiling || next >= &value  {
+                break;
+            }
+
+            let count: u64 = self.buckets[i].into();
+            assert_eq!(
+                count, exactly,
+                "bucket={:?}; value={:?};",
+                bucket, value,
+            );
+        }
+        self
+    }
+
+    /// Assert all buckets greater than the one containing `value` have
+    /// counts of exactly `exactly`.
+    #[cfg(test)]
+    pub fn assert_gt_exactly(&self, value: u64, exactly: u64) -> &Self {
+        // We set this to true after we've iterated past the first bucket
+        // whose upper bound is >= `value`.
+        let mut past_le = false;
+        for (&bucket, &count) in self {
+            if bucket < value {
+                continue;
+            }
+
+            if bucket >= value && !past_le {
+                past_le = true;
+                continue;
+            }
+
+            if past_le {
+                let count: u64 = count.into();
+                assert_eq!(
+                    count, exactly,
+                    "bucket={:?}; value={:?};",
+                    bucket, value,
+                );
+            }
+        }
+        self
+    }
+
 }
 
 impl<'a, V: Into<u64>> IntoIterator for &'a Histogram<V> {
@@ -175,6 +265,28 @@ impl cmp::PartialOrd<Bucket> for Bucket {
     }
 }
 
+impl cmp::PartialEq<u64> for Bucket {
+    fn eq(&self, rhs: &u64) -> bool {
+        if let Bucket::Le(ref ceiling) = *self {
+            ceiling == rhs
+        } else {
+            // `self` is `Bucket::Inf`.
+            false
+        }
+    }
+}
+
+impl cmp::PartialOrd<u64> for Bucket {
+    fn partial_cmp(&self, rhs: &u64) -> Option<cmp::Ordering> {
+        if let Bucket::Le(ref ceiling) = *self {
+            ceiling.partial_cmp(rhs)
+        } else {
+            // `self` is `Bucket::Inf`.
+            Some(cmp::Ordering::Greater)
+        }
+    }
+}
+
 impl cmp::Ord for Bucket {
     fn cmp(&self, rhs: &Bucket) -> cmp::Ordering {
         match (*self, *rhs) {
@@ -193,7 +305,6 @@ mod tests {
     use std::u64;
     use std::collections::HashMap;
 
-    const NUM_BUCKETS: usize = 47;
     static BOUNDS: &'static Bounds = &Bounds(&[
         Bucket::Le(10),
         Bucket::Le(20),
@@ -248,17 +359,14 @@ mod tests {
         fn bucket_incremented(obs: u64) -> bool {
             let mut hist = Histogram::<u64>::new(&BOUNDS);
             hist.add(obs);
-            let incremented_bucket = &BOUNDS.0.iter()
-                .position(|bucket| match *bucket {
-                    Bucket::Le(ceiling) => obs <= ceiling,
-                    Bucket::Inf => true,
-                })
-                .unwrap();
-            for i in 0..NUM_BUCKETS {
-                let expected = if i == *incremented_bucket { 1 } else { 0 };
-                let count: u64 = hist.buckets[i].into();
-                assert_eq!(count, expected, "(for bucket <= {})", BOUNDS.0[i]);
-            }
+            // The bucket containing `obs` must have count 1.
+            hist.assert_bucket_exactly(obs, 1)
+                // All buckets less than the one containing `obs` must have
+                // counts of exactly 0.
+                .assert_lt_exactly(obs, 0)
+                // All buckets greater than the one containing `obs` must
+                // have counts of exactly 0.
+                .assert_gt_exactly(obs, 0);
             true
         }
 

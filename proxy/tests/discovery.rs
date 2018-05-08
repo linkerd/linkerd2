@@ -69,7 +69,7 @@ macro_rules! generate_tests {
             let mut env = config::TestEnv::new();
 
             // set the bind timeout to 100 ms.
-            env.put(config::ENV_BIND_TIMEOUT, "100".to_owned());
+            env.put(config::ENV_BIND_TIMEOUT, "100ms".to_owned());
 
             let srv = $make_server().route("/", "hello").run();
             let ctrl = controller::new();
@@ -111,7 +111,7 @@ macro_rules! generate_tests {
             let mut env = config::TestEnv::new();
 
             // set the bind timeout to 100 ms.
-            env.put(config::ENV_BIND_TIMEOUT, "100".to_owned());
+            env.put(config::ENV_BIND_TIMEOUT, "100ms".to_owned());
 
             let srv = $make_server().route("/hi", "hello").run();
             let ctrl = controller::new();

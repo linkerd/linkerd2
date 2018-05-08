@@ -9,20 +9,22 @@ import React from 'react';
 import './../../css/list.css';
 import 'whatwg-fetch';
 
-export default class ResourceList extends React.Component {
+export default class Namespaces extends React.Component {
   constructor(props) {
     super(props);
     this.api = this.props.api;
     this.handleApiError = this.handleApiError.bind(this);
     this.loadFromServer = this.loadFromServer.bind(this);
-
-    this.state = this.getInitialState();
+    this.state = this.getInitialState(this.props.params);
   }
 
-  getInitialState() {
+  getInitialState(params) {
+    let ns = _.get(params, "namespace", "default");
+
     return {
-      pollingInterval: 2000, // TODO: poll based on metricsWindow size
-      metrics: [],
+      ns: ns,
+      pollingInterval: 2000,
+      metrics: {},
       pendingRequests: false,
       loaded: false,
       error: ''
@@ -37,7 +39,7 @@ export default class ResourceList extends React.Component {
   componentWillReceiveProps() {
     // React won't unmount this component when switching resource pages so we need to clear state
     this.api.cancelCurrentRequests();
-    this.setState(this.getInitialState());
+    this.setState(this.getInitialState(this.props.params));
   }
 
   componentWillUnmount() {
@@ -51,15 +53,24 @@ export default class ResourceList extends React.Component {
     }
     this.setState({ pendingRequests: true });
 
-    this.api.setCurrentRequests([
-      this.api.fetchMetrics(this.api.urlsForResource[this.props.resource].url().rollup)
-    ]);
+    this.api.setCurrentRequests(
+      _.map(["deployment", "replication_controller", "pod"], resource =>
+        this.api.fetchMetrics(this.api.urlsForResource[resource].url(this.state.ns).rollup))
+    );
 
     Promise.all(this.api.getCurrentPromises())
-      .then(([rollup]) => {
-        let processedMetrics = processRollupMetrics(rollup, this.props.controllerNamespace);
+      .then(([deployRollup, rcRollup, podRollup]) => {
+        let includeConduitStats = this.state.ns === this.props.controllerNamespace; // allow us to get stats on the conduit ns
+        let deploys = processRollupMetrics(deployRollup, this.props.controllerNamespace, includeConduitStats);
+        let rcs = processRollupMetrics(rcRollup, this.props.controllerNamespace, includeConduitStats);
+        let pods = processRollupMetrics(podRollup, this.props.controllerNamespace, includeConduitStats);
+
         this.setState({
-          metrics: processedMetrics,
+          metrics: {
+            deploy: deploys,
+            rc: rcs,
+            pod: pods
+          },
           loaded: true,
           pendingRequests: false,
           error: ''
@@ -79,29 +90,34 @@ export default class ResourceList extends React.Component {
     });
   }
 
-  renderEmptyMessage() {
-    let shortResource = this.props.resource === "replication_controller" ?
-      "RC" : this.props.resource;
-    return (<CallToAction
-      resource={shortResource}
-      numResources={_.size(this.state.metrics)} />);
+  renderResourceSection(friendlyTitle, metrics) {
+    if (_.isEmpty(metrics)) {
+      return null;
+    }
+    return (
+      <div className="page-section">
+        <h1>{friendlyTitle}s</h1>
+        <MetricsTable
+          resource={friendlyTitle}
+          metrics={metrics}
+          api={this.api} />
+      </div>
+    );
   }
 
   render() {
-    let friendlyTitle = _.startCase(this.props.resource);
+    let noMetrics = _.isEmpty(this.state.metrics.pod);
+
     return (
       <div className="page-content">
         { !this.state.error ? null : <ErrorBanner message={this.state.error} /> }
         { !this.state.loaded ? <ConduitSpinner />  :
           <div>
-            <PageHeader header={friendlyTitle + "s"} api={this.api} />
-            { _.isEmpty(this.state.metrics) ?
-              this.renderEmptyMessage(friendlyTitle) :
-              <MetricsTable
-                resource={friendlyTitle}
-                metrics={this.state.metrics}
-                api={this.api} />
-            }
+            <PageHeader header={"Namespace: " + this.state.ns} api={this.api} />
+            { noMetrics ? <CallToAction /> : null}
+            {this.renderResourceSection("Deployment", this.state.metrics.deploy)}
+            {this.renderResourceSection("Replication Controller", this.state.metrics.rc)}
+            {this.renderResourceSection("Pod", this.state.metrics.pod)}
           </div>
         }
       </div>);

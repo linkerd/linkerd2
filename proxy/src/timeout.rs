@@ -8,7 +8,7 @@ use std::time::Duration;
 use tokio_connect::Connect;
 use tokio_core::reactor::{Timeout as ReactorTimeout, Handle};
 use tokio_io;
-use tower::Service;
+use tower_service::Service;
 
 /// A timeout that wraps an underlying operation.
 #[derive(Debug, Clone)]

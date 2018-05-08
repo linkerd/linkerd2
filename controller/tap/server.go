@@ -53,7 +53,7 @@ func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_T
 
 	pods := []*apiv1.Pod{}
 	for _, object := range objects {
-		podsFor, err := s.lister.GetPodsFor(object)
+		podsFor, err := s.lister.GetPodsFor(object, false)
 		if err != nil {
 			return apiUtil.GRPCError(err)
 		}

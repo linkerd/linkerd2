@@ -1,5 +1,4 @@
 import _ from 'lodash';
-import GrafanaLink from './GrafanaLink.jsx';
 import React from 'react';
 import { Table, Tooltip } from 'antd';
 
@@ -40,21 +39,10 @@ const StatusDot = ({status, multilineDots, columnName}) => (
 );
 
 const columns = {
-  resourceName: (shouldLink, ConduitLink) => {
-    return {
-      title: "Deployment",
-      key: "name",
-      render: row => {
-        let ownerInfo = row.name.split("/");
-        return shouldLink && row.added ?
-          <GrafanaLink
-            name={ownerInfo[1]}
-            namespace={ownerInfo[0]}
-            displayName={row.name}
-            resource="deployment"
-            conduitLink={ConduitLink} /> : row.name;
-      }
-    };
+  resourceName: {
+    title: "Deployment",
+    dataIndex: "name",
+    key: "name"
   },
   pods: {
     title: "Pods",
@@ -95,7 +83,7 @@ export default class StatusTable extends React.Component {
 
   render() {
     let tableCols = [
-      columns.resourceName(this.props.shouldLink, this.props.api.ConduitLink),
+      columns.resourceName,
       columns.pods,
       columns.status(this.props.statusColumnTitle)
     ];

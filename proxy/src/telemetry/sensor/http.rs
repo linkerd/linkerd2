@@ -7,7 +7,7 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
-use tower::{NewService, Service};
+use tower_service::{NewService, Service};
 use tower_h2::{client, Body};
 
 use ctx;

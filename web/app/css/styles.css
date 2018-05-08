@@ -1,5 +1,3 @@
-
-
 :root {
   --white: #fff;
   --royalblue: #2F80ED;
@@ -56,7 +54,7 @@ h2, h3, h4, h5, h6 {
 }
 
 .main-content {
-  max-width: 970px;
+  max-width: 1164px;
   width: 100%;
   padding: 40px;
   float: left;
@@ -72,6 +70,10 @@ h2, h3, h4, h5, h6 {
 
 .time-window-btns {
   float: right;
+}
+
+.page-section {
+  margin-bottom: calc(var(--base-width) * 3);
 }
 
 .subsection-header {
@@ -239,19 +241,6 @@ a.button.primary:active {
   & tr > th, & tr > td {
     padding-left: 0;
     padding-right: 0;
-  }
-
-  & tr > th.long-header > span {
-    display: inline-block;
-    margin-right: 0;
-
-    & div {
-      float: left;
-
-      &.ant-table-column-sorter {
-        padding-top: 12px;
-      }
-    }
   }
 
   & .ant-table-tbody > tr:hover > td {
