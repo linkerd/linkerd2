@@ -421,7 +421,7 @@ mod tests {
     use super::*;
 
     fn test_units<F: Fn(u64) -> Duration>(units: &[&str], to_duration: F) {
-        for v in &[1, 10, 10_000] {
+        for v in &[1, 23, 456_789] {
             let d = to_duration(*v);
             for u in units {
                 let text = format!("{}{}", v, u);

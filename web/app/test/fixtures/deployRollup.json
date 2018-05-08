@@ -19,7 +19,8 @@
                 "successCount": "135"
               },
               "timeWindow": "1m",
-              "totalPodCount": "1"
+              "runningPodCount": "1",
+              "failedPodCount": null
             }
           ]
         }

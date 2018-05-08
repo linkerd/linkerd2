@@ -6,7 +6,7 @@ use tower_service as tower;
 use tower_buffer::{self, Buffer};
 use tower_in_flight_limit::{self, InFlightLimit};
 use tower_h2;
-use conduit_proxy_router::{Reuse, Recognize};
+use conduit_proxy_router::Recognize;
 
 use bind;
 use ctx;
@@ -46,7 +46,7 @@ where
     type RouteError = bind::BufferSpawnError;
     type Service = InFlightLimit<Buffer<bind::Service<B>>>;
 
-    fn recognize(&self, req: &Self::Request) -> Option<Reuse<Self::Key>> {
+    fn recognize(&self, req: &Self::Request) -> Option<Self::Key> {
         let key = req.extensions()
             .get::<Arc<ctx::transport::Server>>()
             .and_then(|ctx| {
@@ -57,7 +57,7 @@ where
 
         let proto = bind::Protocol::detect(req);
 
-        let key = key.map(move|addr| proto.into_key(addr));
+        let key = key.map(move |addr| (addr, proto));
         trace!("recognize key={:?}", key);
 
 
@@ -75,8 +75,8 @@ where
         debug!("building inbound {:?} client to {}", proto, addr);
 
         let endpoint = (*addr).into();
-        let bind = self.bind.bind_service(&endpoint, proto);
-        Buffer::new(bind, self.bind.executor())
+        let binding = self.bind.new_binding(&endpoint, proto);
+        Buffer::new(binding, self.bind.executor())
             .map(|buffer| {
                 InFlightLimit::new(buffer, MAX_IN_FLIGHT)
             })
@@ -116,7 +116,7 @@ mod tests {
             let srv_ctx = ctx::transport::Server::new(&ctx, &local, &remote, &Some(orig_dst));
 
             let rec = srv_ctx.orig_dst_if_not_local().map(|addr|
-                bind::Protocol::Http1(Host::NoAuthority).into_key(addr)
+                (addr, bind::Protocol::Http1(Host::NoAuthority))
             );
 
             let mut req = http::Request::new(());
@@ -145,7 +145,7 @@ mod tests {
                 ));
 
             inbound.recognize(&req) == default.map(|addr|
-                bind::Protocol::Http1(Host::NoAuthority).into_key(addr)
+                (addr, bind::Protocol::Http1(Host::NoAuthority))
             )
         }
 
@@ -157,7 +157,7 @@ mod tests {
             let req = http::Request::new(());
 
             inbound.recognize(&req) == default.map(|addr|
-                bind::Protocol::Http1(Host::NoAuthority).into_key(addr)
+                (addr, bind::Protocol::Http1(Host::NoAuthority))
             )
         }
 
@@ -180,7 +180,7 @@ mod tests {
                 ));
 
             inbound.recognize(&req) == default.map(|addr|
-                bind::Protocol::Http1(Host::NoAuthority).into_key(addr)
+                (addr, bind::Protocol::Http1(Host::NoAuthority))
             )
         }
     }

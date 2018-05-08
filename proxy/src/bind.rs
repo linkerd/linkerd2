@@ -5,15 +5,12 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
 
-use futures::{Future, Poll};
-use futures::future::Map;
+use futures::{Future, Poll, future};
 use http::{self, uri};
 use tokio_core::reactor::Handle;
 use tower_service as tower;
 use tower_h2;
 use tower_reconnect::Reconnect;
-
-use conduit_proxy_router::Reuse;
 
 use control;
 use control::discovery::Endpoint;
@@ -41,6 +38,26 @@ pub struct Bind<C, B> {
 pub struct BindProtocol<C, B> {
     bind: Bind<C, B>,
     protocol: Protocol,
+}
+
+/// A type of service binding
+///
+/// Some services, for various reasons, may not be able to be used to serve multiple
+/// requests. The `BindsPerRequest` binding ensures that a new stack is bound for each
+/// request.
+///
+/// `Bound` serivces may be used to process an arbitrary number of requests.
+pub enum Binding<B: tower_h2::Body + 'static> {
+    Bound(Stack<B>),
+    BindsPerRequest {
+        endpoint: Endpoint,
+        protocol: Protocol,
+        bind: Bind<Arc<ctx::Proxy>, B>,
+        // When `poll_ready` is called, the _next_ service to be used may be bound
+        // ahead-of-time. This stack is used only to serve the next request to this
+        // service.
+        next: Option<Stack<B>>
+    },
 }
 
 /// Protocol portion of the `Recognize` key for a request.
@@ -73,7 +90,9 @@ pub struct NormalizeUri<S> {
     inner: S
 }
 
-pub type Service<B> = Reconnect<NormalizeUri<NewHttp<B>>>;
+pub type Service<B> = Binding<B>;
+
+pub type Stack<B> = Reconnect<NormalizeUri<NewHttp<B>>>;
 
 pub type NewHttp<B> = sensor::NewHttp<Client<B>, B, HttpBody>;
 
@@ -81,10 +100,7 @@ pub type HttpResponse = http::Response<sensor::http::ResponseBody<HttpBody>>;
 
 pub type HttpRequest<B> = http::Request<sensor::http::RequestBody<B>>;
 
-pub type Client<B> = transparency::Client<
-    sensor::Connect<transport::Connect>,
-    B,
->;
+pub type Client<B> = transparency::Client<sensor::Connect<transport::Connect>, B>;
 
 #[derive(Copy, Clone, Debug)]
 pub enum BufferSpawnError {
@@ -155,31 +171,17 @@ impl<C: Clone, B> Clone for Bind<C, B> {
 
 
 impl<C, B> Bind<C, B> {
-
-    // pub fn ctx(&self) -> &C {
-    //     &self.ctx
-    // }
-
     pub fn executor(&self) -> &Handle {
         &self.executor
     }
-
-    // pub fn req_ids(&self) -> &Arc<AtomicUsize> {
-    //     &self.req_ids
-    // }
-
-    // pub fn sensors(&self) -> &telemetry::Sensors {
-    //     &self.sensors
-    // }
-
 }
 
 impl<B> Bind<Arc<ctx::Proxy>, B>
 where
     B: tower_h2::Body + 'static,
 {
-    pub fn bind_service(&self, ep: &Endpoint, protocol: &Protocol) -> Service<B> {
-        trace!("bind_service endpoint={:?}, protocol={:?}", ep, protocol);
+    fn bind_stack(&self, ep: &Endpoint, protocol: &Protocol) -> Stack<B> {
+        debug!("bind_stack endpoint={:?}, protocol={:?}", ep, protocol);
         let addr = ep.address();
         let client_ctx = ctx::transport::Client::new(
             &self.ctx,
@@ -196,7 +198,7 @@ where
         let client = transparency::Client::new(
             protocol,
             connect,
-            self.executor.clone(),
+            self.executor.clone()
         );
 
         let sensors = self.sensors.http(
@@ -213,6 +215,19 @@ where
         //
         // TODO: Add some sort of backoff logic.
         Reconnect::new(proxy)
+    }
+
+    pub fn new_binding(&self, ep: &Endpoint, protocol: &Protocol) -> Binding<B> {
+        if protocol.can_reuse_clients() {
+            Binding::Bound(self.bind_stack(ep, protocol))
+        } else {
+            Binding::BindsPerRequest {
+                endpoint: ep.clone(),
+                protocol: protocol.clone(),
+                bind: self.clone(),
+                next: None
+            }
+        }
     }
 }
 
@@ -240,7 +255,7 @@ where
     type BindError = ();
 
     fn bind(&self, ep: &Endpoint) -> Result<Self::Service, Self::BindError> {
-        Ok(self.bind.bind_service(ep, &self.protocol))
+        Ok(self.bind.new_binding(ep, &self.protocol))
     }
 }
 
@@ -272,7 +287,7 @@ where
     type Error = <Self::Service as tower::Service>::Error;
     type Service = NormalizeUri<S::Service>;
     type InitError = S::InitError;
-    type Future = Map<
+    type Future = future::Map<
         S::Future,
         fn(S::Service) -> NormalizeUri<S::Service>
     >;
@@ -306,6 +321,44 @@ where
     }
 }
 
+// ===== impl Binding =====
+
+impl<B: tower_h2::Body + 'static> tower::Service for Binding<B> {
+    type Request = <Stack<B> as tower::Service>::Request;
+    type Response = <Stack<B> as tower::Service>::Response;
+    type Error = <Stack<B> as tower::Service>::Error;
+    type Future = <Stack<B> as tower::Service>::Future;
+
+    fn poll_ready(&mut self) -> Poll<(), Self::Error> {
+        match *self {
+            // A service is already bound, so poll its readiness.
+            Binding::Bound(ref mut svc) |
+            Binding::BindsPerRequest { next: Some(ref mut svc), .. } => svc.poll_ready(),
+
+            // If no stack has been bound, bind it now so that its readiness can be
+            // checked. Store it so it can be consumed to dispatch the next request.
+            Binding::BindsPerRequest { ref endpoint, ref protocol, ref bind, ref mut next } => {
+                let mut svc = bind.bind_stack(endpoint, protocol);
+                let ready = svc.poll_ready()?;
+                *next = Some(svc);
+                Ok(ready)
+            }
+        }
+    }
+
+    fn call(&mut self, request: Self::Request) -> Self::Future {
+        match *self {
+            Binding::Bound(ref mut svc) => svc.call(request),
+            Binding::BindsPerRequest { ref endpoint, ref protocol, ref bind, ref mut next } => {
+                // If a service has already been bound in `poll_ready`, consume it.
+                // Otherwise, bind a new service on-the-spot.
+                let mut svc = next.take().unwrap_or_else(|| bind.bind_stack(endpoint, protocol));
+                svc.call(request)
+            }
+        }
+    }
+}
+
 // ===== impl Protocol =====
 
 
@@ -327,18 +380,10 @@ impl Protocol {
         Protocol::Http1(host)
     }
 
-    pub fn is_cachable(&self) -> bool {
+    pub fn can_reuse_clients(&self) -> bool {
         match *self {
             Protocol::Http2 | Protocol::Http1(Host::Authority(_)) => true,
             _ => false,
-        }
-    }
-
-    pub fn into_key<T>(self, key: T) -> Reuse<(T, Protocol)> {
-        if self.is_cachable() {
-            Reuse::Reusable((key, self))
-        } else {
-            Reuse::SingleUse((key, self))
         }
     }
 }

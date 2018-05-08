@@ -106,13 +106,14 @@ export const processRollupMetrics = (rawMetrics, controllerNamespace) => {
       if (row.resource.namespace === kubernetesNs || row.resource.namespace === controllerNamespace) {
         return null;
       }
+
       return {
         name: row.resource.name,
         namespace: row.resource.namespace,
         requestRate: getRequestRate(row),
         successRate: getSuccessRate(row),
         latency: getLatency(row),
-        added: row.meshedPodCount === row.totalPodCount
+        added: row.meshedPodCount === row.runningPodCount
       };
     });
   });
