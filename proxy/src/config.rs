@@ -343,13 +343,7 @@ fn parse_duration(s: &str) -> Result<Duration, ParseError> {
     use regex::Regex;
     lazy_static! {
         static ref RE: Regex = Regex::new(r"(?x)^
-            \s* (\d+) \s*
-            ( ms | msecs? | millis?  | milliseconds?
-            | s  | secs?  | seconds?
-            | m  | mins?  | minutes?
-            | h  | hours?
-            | d  | days?
-            ) \s*
+            \s* (\d+) \s* ( ms | s | m | h | d ) \s*
         $").expect("duration regex");
     }
 
@@ -361,18 +355,14 @@ fn parse_duration(s: &str) -> Result<Duration, ParseError> {
     let unit = &cap[2];
     debug_assert!(unit.len() >= 1);
 
-    if unit.starts_with("ms") || unit.starts_with("mil") {
-        return Ok(Duration::from_millis(magnitude));
+    match unit {
+        "ms" => Ok(Duration::from_millis(magnitude)),
+        "s" => Ok(Duration::from_secs(magnitude)),
+        "m" => Ok(Duration::from_secs(magnitude * 60)),
+        "h" => Ok(Duration::from_secs(magnitude * 60 * 60)),
+        "d" => Ok(Duration::from_secs(magnitude * 60 * 60 * 24)),
+        _ => Err(ParseError::NotADuration),
     }
-
-    let to_secs = match unit.chars().next() {
-        Some('s') => 1,
-        Some('m') => 60,
-        Some('h') => 60 * 60,
-        Some('d') => 60 * 60 * 24,
-        _ => return Err(ParseError::NotADuration),
-    };
-    Ok(Duration::from_secs(magnitude * to_secs))
 }
 
 fn parse_url(s: &str) -> Result<HostAndPort, ParseError> {
@@ -420,60 +410,63 @@ fn parse<T, Parse>(strings: &Strings, name: &str, parse: Parse) -> Result<Option
 mod tests {
     use super::*;
 
-    fn test_units<F: Fn(u64) -> Duration>(units: &[&str], to_duration: F) {
-        for v in &[1, 23, 456_789] {
+    fn test_unit<F: Fn(u64) -> Duration>(unit: &str, to_duration: F) {
+        for v in &[0, 1, 23, 456_789] {
             let d = to_duration(*v);
-            for u in units {
-                let text = format!("{}{}", v, u);
-                assert_eq!(parse_duration(&text), Ok(d), "text=\"{}\"", text);
+            let text = format!("{}{}", v, unit);
+            assert_eq!(parse_duration(&text), Ok(d), "text=\"{}\"", text);
 
-                let text = format!("{} {}", v, u);
-                assert_eq!(parse_duration(&text), Ok(d), "text=\"{}\"", text);
+            let text = format!("{} {}", v, unit);
+            assert_eq!(parse_duration(&text), Ok(d), "text=\"{}\"", text);
 
-                let text = format!(" {}  {} ", v, u);
-                assert_eq!(parse_duration(&text), Ok(d), "text=\"{}\"", text);
-            }
+            let text = format!(" {}  {} ", v, unit);
+            assert_eq!(parse_duration(&text), Ok(d), "text=\"{}\"", text);
         }
     }
 
     #[test]
-    fn parse_duration_milliseconds() {
-        let units = ["ms", "msec", "msecs", "milli", "millis", "millisecond", "milliseconds"];
-        test_units(&units, |v| Duration::from_millis(v));
+    fn parse_duration_ms() {
+        test_unit("ms", |v| Duration::from_millis(v));
     }
 
     #[test]
-    fn parse_duration_seconds() {
-        let units = ["s", "sec", "secs", "second", "seconds"];
-        test_units(&units, |v| Duration::from_secs(v));
+    fn parse_duration_s() {
+        test_unit("s", |v| Duration::from_secs(v));
     }
 
     #[test]
-    fn parse_duration_minutes() {
-        let units = ["m", "min", "mins", "minute", "minutes"];
-        test_units(&units, |v| Duration::from_secs(v * 60));
+    fn parse_duration_m() {
+        test_unit("m", |v| Duration::from_secs(v * 60));
     }
 
     #[test]
-    fn parse_duration_hours() {
-        let units = ["h", "hour", "hours"];
-        test_units(&units, |v| Duration::from_secs(v * 60 * 60));
+    fn parse_duration_h() {
+        test_unit("h", |v| Duration::from_secs(v * 60 * 60));
     }
 
     #[test]
-    fn parse_duration_days() {
-        let units = ["d", "day", "days"];
-        test_units(&units, |v| Duration::from_secs(v * 60 * 60 * 24));
+    fn parse_duration_d() {
+        test_unit("d", |v| Duration::from_secs(v * 60 * 60 * 24));
     }
 
     #[test]
-    fn parse_float_numbers_are_invalid() {
-        assert_eq!(parse_duration(".123 hours"), Err(ParseError::NotADuration));
-        assert_eq!(parse_duration("1.23 hours"), Err(ParseError::NotADuration));
+    fn parse_duration_floats_invalid() {
+        assert_eq!(parse_duration(".123 h"), Err(ParseError::NotADuration));
+        assert_eq!(parse_duration("1.23 h"), Err(ParseError::NotADuration));
     }
 
     #[test]
-    fn parse_invalid_unit() {
+    fn parse_overflows_invalid() {
+        assert_eq!(parse_duration("123456789012345678901234567890 ms"), Err(ParseError::NotANumber));
+    }
+
+    #[test]
+    fn parse_duration_invalid_unit() {
         assert_eq!(parse_duration("12 moons"), Err(ParseError::NotADuration));
+    }
+
+    #[test]
+    fn parse_duration_zero_without_unit_is_invalid() {
+        assert_eq!(parse_duration("0"), Err(ParseError::NotADuration));
     }
 }
