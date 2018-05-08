@@ -121,6 +121,8 @@ func (l *Lister) GetObjects(namespace, restype, name string) ([]runtime.Object, 
 func (l *Lister) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*apiv1.Pod, error) {
 	var namespace string
 	var selector labels.Selector
+	var pods []*apiv1.Pod
+	var err error
 
 	switch typed := obj.(type) {
 	case *apiv1.Namespace:
@@ -144,16 +146,26 @@ func (l *Lister) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*apiv1.Po
 		selector = labels.Set(typed.Spec.Selector).AsSelector()
 
 	case *apiv1.Pod:
+		// Special case for pods:
+		// GetPodsFor a pod should just return the pod itself
 		namespace = typed.Namespace
-		selector = labels.Everything()
+		pod, err := l.Pod.Pods(typed.Namespace).Get(typed.Name)
+		if err != nil {
+			return nil, err
+		}
+		pods = []*apiv1.Pod{pod}
 
 	default:
 		return nil, fmt.Errorf("Cannot get object selector: %v", obj)
 	}
 
-	pods, err := l.Pod.Pods(namespace).List(selector)
-	if err != nil {
-		return nil, err
+	// if obj.(type) is Pod, we've already retrieved it and put it in pods
+	// for the other types, pods will still be empty
+	if len(pods) == 0 {
+		pods, err = l.Pod.Pods(namespace).List(selector)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	allPods := []*apiv1.Pod{}

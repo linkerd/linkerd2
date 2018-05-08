@@ -14,6 +14,15 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 )
 
+// append to a list of runtime.Object, if the object is not already in the list
+func appendUnique(objs []runtime.Object, obj runtime.Object) []runtime.Object {
+	for _, o := range objs {
+		if reflect.DeepEqual(o, obj) {
+			return objs
+		}
+	}
+	return append(objs, obj)
+}
 func TestGetObjects(t *testing.T) {
 
 	type getObjectsExpected struct {
@@ -113,7 +122,7 @@ metadata:
 				if err != nil {
 					t.Fatalf("could not decode yml: %s", err)
 				}
-				k8sObjs = append(k8sObjs, obj)
+				k8sObjs = appendUnique(k8sObjs, obj)
 				k8sResults = append(k8sResults, obj)
 			}
 
@@ -222,6 +231,41 @@ status:
   phase: Finished`,
 				},
 			},
+			getPodsForExpected{
+				err: nil,
+				k8sResInput: `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+status:
+  phase: Running`,
+				k8sResResults: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+status:
+  phase: Running`,
+				},
+				k8sResMisc: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed_2
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+status:
+  phase: Running`,
+				},
+			},
 		}
 
 		for _, exp := range expectations {
@@ -240,7 +284,7 @@ status:
 				if err != nil {
 					t.Fatalf("could not decode yml: %s", err)
 				}
-				k8sObjs = append(k8sObjs, obj)
+				k8sObjs = appendUnique(k8sObjs, obj)
 				k8sResultPods = append(k8sResultPods, obj.(*apiv1.Pod))
 			}
 
@@ -250,7 +294,7 @@ status:
 				if err != nil {
 					t.Fatalf("could not decode yml: %s", err)
 				}
-				k8sObjs = append(k8sObjs, obj)
+				k8sObjs = appendUnique(k8sObjs, obj)
 			}
 
 			clientSet := fake.NewSimpleClientset(k8sObjs...)
