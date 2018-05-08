@@ -162,10 +162,10 @@ const DEFAULT_PRIVATE_LISTENER: &str = "tcp://127.0.0.1:4140";
 const DEFAULT_PUBLIC_LISTENER: &str = "tcp://0.0.0.0:4143";
 const DEFAULT_CONTROL_LISTENER: &str = "tcp://0.0.0.0:4190";
 const DEFAULT_METRICS_LISTENER: &str = "tcp://127.0.0.1:4191";
-const DEFAULT_METRICS_RETAIN_IDLE: u64 = 10 * 60; // Ten minutes
-const DEFAULT_PRIVATE_CONNECT_TIMEOUT_MS: u64 = 20;
-const DEFAULT_PUBLIC_CONNECT_TIMEOUT_MS: u64 = 300;
-const DEFAULT_BIND_TIMEOUT_MS: u64 = 10_000; // ten seconds, as in Linkerd.
+const DEFAULT_METRICS_RETAIN_IDLE: Duration = Duration::from_secs(10 * 60);
+const DEFAULT_PRIVATE_CONNECT_TIMEOUT: Duration = Duration::from_millis(20);
+const DEFAULT_PUBLIC_CONNECT_TIMEOUT: Duration = Duration::from_millis(300);
+const DEFAULT_BIND_TIMEOUT: Duration = Duration::from_secs(10); // same as in Linkerd
 const DEFAULT_RESOLV_CONF: &str = "/etc/resolv.conf";
 
 /// It's assumed that a typical proxy can serve inbound traffic for up to 100 pod-local
@@ -242,13 +242,12 @@ impl<'a> TryFrom<&'a Strings> for Config {
                     .unwrap_or_else(|| Addr::from_str(DEFAULT_METRICS_LISTENER).unwrap()),
             },
             private_forward: private_forward?,
-            public_connect_timeout: Duration::from_millis(
-                public_connect_timeout?
-                    .unwrap_or(DEFAULT_PUBLIC_CONNECT_TIMEOUT_MS)
-            ),
-            private_connect_timeout:
-                Duration::from_millis(private_connect_timeout?
-                                          .unwrap_or(DEFAULT_PRIVATE_CONNECT_TIMEOUT_MS)),
+
+            public_connect_timeout: public_connect_timeout?.map(Duration::from_millis)
+                .unwrap_or(DEFAULT_PUBLIC_CONNECT_TIMEOUT),
+            private_connect_timeout: private_connect_timeout?.map(Duration::from_millis)
+                .unwrap_or(DEFAULT_PRIVATE_CONNECT_TIMEOUT),
+
             inbound_ports_disable_protocol_detection: inbound_disable_ports?
                 .unwrap_or_else(|| default_disable_ports_protocol_detection()),
             outbound_ports_disable_protocol_detection: outbound_disable_ports?
@@ -265,12 +264,12 @@ impl<'a> TryFrom<&'a Strings> for Config {
             control_host_and_port: control_host_and_port?,
 
             event_buffer_capacity: event_buffer_capacity?.unwrap_or(DEFAULT_EVENT_BUFFER_CAPACITY),
-            metrics_retain_idle: Duration::from_millis(
-                metrics_retain_idle?.unwrap_or(DEFAULT_METRICS_RETAIN_IDLE)
-            ),
+            metrics_retain_idle: metrics_retain_idle?.map(Duration::from_secs)
+                .unwrap_or(DEFAULT_METRICS_RETAIN_IDLE),
 
-            bind_timeout:
-                Duration::from_millis(bind_timeout?.unwrap_or(DEFAULT_BIND_TIMEOUT_MS)),
+            bind_timeout: bind_timeout?.map(Duration::from_millis)
+                .unwrap_or(DEFAULT_BIND_TIMEOUT),
+
             pod_namespace: pod_namespace?,
         })
     }
