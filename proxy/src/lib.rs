@@ -157,15 +157,6 @@ where
         let outbound_listener = BoundPort::new(config.private_listener.addr)
             .expect("private listener bind");
 
-        // let reactor = reactor::Reactor::new()
-        //     .expect("reactor");
-        // // The reactor itself will get consumed by timer,
-        // // so we keep a handle to communicate with it.
-        // let handle = reactor.handle();
-        // let timer = timer::Timer::new(reactor);
-        // let timer_handle = timer.handle();
-        // let mut runtime = CurrentThread::new_with_park(timer);
-
         let metrics_listener = BoundPort::new(config.metrics_listener.addr)
             .expect("metrics listener bind");
         Main {
@@ -175,8 +166,6 @@ where
             outbound_listener,
             metrics_listener,
             get_original_dst,
-            // runtime,
-            // handle,
         }
     }
 
@@ -192,11 +181,6 @@ where
     pub fn outbound_addr(&self) -> SocketAddr {
         self.outbound_listener.local_addr()
     }
-
-    // pub fn handle(&self) -> TaskExecutor {
-    //     // self.runtime.executor()
-    //     unimplemented!()
-    // }
 
     pub fn metrics_addr(&self) -> SocketAddr {
         self.metrics_listener.local_addr()
@@ -216,18 +200,15 @@ where
             outbound_listener,
             metrics_listener,
             get_original_dst,
-            // runtime: mut core,
-            // handle,
         } = self;
 
 
 
-        // The reactor will (eventually) run on this thread. Our "pool" of
-        // one worker thread will use this reactor.
+        // Our "pool" of one worker thread will use this reactor.
         let pool_reactor = reactor::Reactor::new()
             .expect("initialize main reactor")
             .background()
-            .expect("start main reactor");
+            .expect("run main reactor");
         let reactor_handle = pool_reactor.handle().clone();
 
         // Since we're using a single worker thread, we only need to create
@@ -366,7 +347,6 @@ where
                 sensors,
                 get_original_dst,
                 drain_rx,
-                // &handle,
                 &executor,
             );
             ::logging::context_future("outbound", fut)
@@ -399,14 +379,10 @@ where
                                 let (taps, observe) = control::Observe::new(100);
                                 let new_service = TapServer::new(observe);
 
-                                let server = serve_control(
-                                    control_listener,
-                                    new_service,
-                                    &handle,
-                                );
+                                let server = serve_control(control_listener, new_service);
 
                                 let telemetry = telemetry
-                                    .make_control(&taps, &handle)
+                                    .make_control(&taps)
                                     .expect("bad news in telemetry town");
 
                                 let metrics_server = telemetry
@@ -415,7 +391,6 @@ where
                                 let client = control_bg.bind(
                                     control_host_and_port,
                                     dns_config,
-                                    &current_thread::TaskExecutor::current(),
                                 );
 
                                 let fut = client.join4(
@@ -424,14 +399,15 @@ where
                                     metrics_server.map_err(|_| {}),
                                 ).map(|_| {});
                                 let fut = ::logging::context_future("controller-client", fut);
+
                                 rt.spawn(Box::new(fut));
-                                trace!("controller client: spawned everything except for shutdown");
+
                                 let shutdown = controller_shutdown_signal.then(|_| {
-                                    trace!("controller shutdown signal fired");
+                                    trace!("controller client: shutdown");
                                     Ok::<(), ()>(())
                                 });
                                 rt.enter(enter).block_on(shutdown).expect("controller api");
-                                trace!("controller client over")
+                                trace!("controller client: task finished")
                             })
                         })
                     })
@@ -439,13 +415,6 @@ where
                 .expect("initialize controller api thread");
         }
         trace!("controller thread spawned");
-        // let mut enter = tokio_executor::enter()
-        //     .expect("multiple executors on main thread");
-
-        // tokio_reactor::with_default(&handle, &mut enter, |enter| {
-        //     timer::with_default(&timer_handle, enter, |enter| {
-        //         let mut default_executor = pool.sender().clone();
-        //         tokio_executor::with_default(&mut default_executor, enter, |enter| {
 
         let fut = inbound
             .join(outbound)
@@ -454,9 +423,7 @@ where
 
         pool.spawn(Box::new(fut));
         trace!("main task spawned");
-        //         })
-        //     })
-        // });
+
         let shutdown_signal = shutdown_signal.and_then(move |()| {
             debug!("shutdown signaled");
             drain_tx.drain().and_then(|()| pool.shutdown())
@@ -476,7 +443,6 @@ fn serve<R, B, E, F, G>(
     sensors: telemetry::Sensors,
     get_orig_dst: G,
     drain_rx: drain::Watch,
-    // handle: &reactor::Handle,
     executor: &Sender,
 ) -> Box<Future<Item = (), Error = io::Error> + Send + 'static>
 where
@@ -596,7 +562,6 @@ where
 fn serve_control<N, B>(
     bound_port: BoundPort,
     new_service: N,
-    handle: &reactor::Handle,
 ) -> Box<Future<Item = (), Error = io::Error> + 'static>
 where
     B: tower_h2::Body + 'static,
@@ -606,13 +571,13 @@ where
     let h2_builder = h2::server::Builder::default();
     let server = tower_h2::Server::new(new_service, h2_builder, executor.clone());
     bound_port.listen_and_fold_local(
-        handle,
+        &reactor::Handle::current(),
         (server, executor.clone()),
         move |(server, executor), (session, _)| {
             let s = server.serve(session).map_err(|_| ());
             let s = ::logging::context_future("serve_control", s);
 
-            future::result(executor.execute(Box::new(s))
+            future::result(executor.execute(s)
                 .map(move |_| (server, executor))
                 .map_err(|e| io::Error::new(io::ErrorKind::Other, TaskError::from(e)))
             )

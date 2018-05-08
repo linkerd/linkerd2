@@ -67,12 +67,7 @@ impl Background {
         self,
         host_and_port: HostAndPort,
         dns_config: dns::Config,
-        executor: &current_thread::TaskExecutor,
     ) -> Box<Future<Item = (), Error = ()>>
-    // where
-    //     E: Executor<Box<Future<Item = (), Error = ()>>>,
-        // E: Executor<tower_h2::client::Background<tower_h2::client::Connection, _>>,
-
     {
         // Build up the Controller Client Stack
         let mut client = {
@@ -88,7 +83,10 @@ impl Background {
             let h2_client = tower_h2::client::Connect::new(
                 connect,
                 h2::client::Builder::default(),
-                ::logging::context_executor(ctx, executor.clone()),
+                ::logging::context_executor(
+                    ctx,
+                    current_thread::TaskExecutor::current()
+                ),
             );
 
             let reconnect = Reconnect::new(h2_client);

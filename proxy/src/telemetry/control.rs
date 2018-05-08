@@ -47,9 +47,6 @@ pub struct Control {
 
     /// Holds the current state of tap observations, as configured by an external source.
     taps: Option<Arc<Mutex<Taps>>>,
-
-    /// Handle on the event loop in which to bind sockets.
-    handle: reactor::Handle,
 }
 
 // ===== impl MakeControl =====
@@ -84,7 +81,6 @@ impl MakeControl {
     pub fn make_control(
         self,
         taps: &Arc<Mutex<Taps>>,
-        handle: &reactor::Handle,
     ) -> io::Result<Control> {
         let (metrics_record, metrics_service) =
             metrics::new(&self.process_ctx, self.metrics_retain_idle);
@@ -94,7 +90,6 @@ impl MakeControl {
             metrics_service,
             rx: Some(self.rx),
             taps: Some(taps.clone()),
-            handle: handle.clone(),
         })
     }
 }
@@ -123,10 +118,8 @@ impl Control {
         use hyper;
         let service = self.metrics_service.clone();
         let hyper = hyper::server::conn::Http::new();
-        // let executor = current_thread::TaskExecutor::current();
-        let handle = &self.handle;
         bound_port.listen_and_fold(
-            handle,
+            &reactor::Handle::current(),
             hyper,
             move |hyper, (conn, _)| {
                 let service = service.clone();
