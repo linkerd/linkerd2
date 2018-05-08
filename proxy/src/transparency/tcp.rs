@@ -65,7 +65,8 @@ impl Proxy {
         let c = Timeout::new(
             transport::Connect::new(orig_dst),
             self.connect_timeout,
-        );
+        )
+        .named("TCP client connection");
         let connect = self.sensors.connect(c, &client_ctx);
 
         let fut = connect.connect()

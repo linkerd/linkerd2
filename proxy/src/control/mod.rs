@@ -88,7 +88,7 @@ impl Background {
             let connect = Timeout::new(
                 LookupAddressAndConnect::new(host_and_port, dns_resolver),
                 Duration::from_secs(3),
-            );
+            ).named("looking up controller address and connecting");
 
             let h2_client = tower_h2::client::Connect::new(
                 connect,
