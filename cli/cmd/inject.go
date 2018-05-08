@@ -13,6 +13,7 @@ import (
 	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/runconduit/conduit/pkg/version"
 	"github.com/spf13/cobra"
+	appsV1 "k8s.io/api/apps/v1"
 	batchV1 "k8s.io/api/batch/v1"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
@@ -342,6 +343,15 @@ func injectResource(bytes []byte, version string) ([]byte, error) {
 		obj = &ds
 		k8sLabels[k8s.ProxyDaemonSetLabel] = ds.Name
 		podTemplateSpec = &ds.Spec.Template
+	case "StatefulSet":
+		var statefulset appsV1.StatefulSet
+		if err := yaml.Unmarshal(bytes, &statefulset); err != nil {
+			return nil, err
+		}
+
+		obj = &statefulset
+		k8sLabels[k8s.ProxyStatefulSetLabel] = statefulset.Name
+		podTemplateSpec = &statefulset.Spec.Template
 	case "List":
 		// Lists are a little different than the other types. There's no immediate
 		// pod template. Because of this, we do a recursive call for each element
