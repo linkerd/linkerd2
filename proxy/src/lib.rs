@@ -34,6 +34,7 @@ extern crate tokio_connect;
 extern crate tokio;
 extern crate tokio_executor;
 extern crate tokio_timer;
+extern crate tokio_threadpool;
 extern crate tokio_reactor;
 extern crate tower_balance;
 extern crate tower_buffer;
@@ -207,6 +208,12 @@ where
         let mut pool = thread_pool::Builder::new()
             .name_prefix("conduit-worker-")
             .pool_size(1)
+            .custom_park(|_| {
+                use tokio_threadpool::park::DefaultPark;
+                // we have to make sure the pool has timers, because we can't just use
+                // runtime as we need the `Sender` handle to placate `hyper`.
+                timer::Timer::new(DefaultPark::new())
+            })
             .build();
 
         let control_host_and_port = config.control_host_and_port.clone();
