@@ -180,8 +180,12 @@ impl<T: AsyncRead + AsyncWrite> AsyncWrite for Transport<T> {
 }
 
 impl<T: AsyncRead + AsyncWrite + Peek> Peek for Transport<T> {
-    fn peek(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        self.sense_err(|io| io.peek(buf))
+    fn poll_peek(&mut self) -> Poll<usize, io::Error> {
+        self.sense_err(|io| io.poll_peek())
+    }
+
+    fn peeked(&self) -> &[u8] {
+        self.0.peeked()
     }
 }
 
