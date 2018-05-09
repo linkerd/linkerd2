@@ -26,10 +26,10 @@ const serviceMeshDetailsColumns = [
   }
 ];
 
-const barColor = (percentMeshed, failedPodCount) => {
+const getClassification = (meshedPodCount, failedPodCount) => {
   if (failedPodCount > 0) {
     return "poor";
-  } else if (percentMeshed <= 0) {
+  } else if (meshedPodCount === 0) {
     return "neutral";
   } else {
     return "good";
@@ -60,7 +60,7 @@ const namespacesColumns = ConduitLink => [
       let containerWidth = 132;
       let percent = row.meshedPercent.get();
       let barWidth = percent < 0 ? 0 : Math.round(percent * containerWidth);
-      let barType = barColor(percent, row.failedPods);
+      let barType = getClassification(row.meshedPods, row.failedPods);
 
       return (
         <Tooltip
@@ -157,11 +157,9 @@ export default class ServiceMesh extends React.Component {
       return {
         name: title,
         pods: _.map(matchingPods, p => {
-          let isRunning = parseInt(p.runningPodCount, 10) > 0;
-          let isFailed = parseInt(p.failedPodCount, 10) !== 0;
           return {
             name: p.resource.name,
-            value: isFailed ? "poor" : isRunning ? "good" : "neutral"
+            value: getClassification(parseInt(p.meshedPodCount, 10), parseInt(p.failedPodCount, 10))
           };
         })
       };
