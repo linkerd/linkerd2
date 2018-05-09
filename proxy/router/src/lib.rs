@@ -8,6 +8,7 @@ use tower_service::Service;
 use std::{error, fmt, mem};
 use std::hash::Hash;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 mod cache;
 
@@ -89,10 +90,10 @@ where T: Recognize,
 impl<T> Router<T>
 where T: Recognize
 {
-    pub fn new(recognize: T, capacity: usize) -> Self {
+    pub fn new(recognize: T, capacity: usize, min_idle_age: Duration) -> Self {
         Router {
             recognize,
-            cache: Arc::new(Mutex::new(Cache::new(capacity))),
+            cache: Arc::new(Mutex::new(Cache::new(capacity, min_idle_age))),
         }
     }
 }
@@ -137,7 +138,7 @@ where T: Recognize,
         let cache = &mut *self.cache.lock().expect("lock router cache");
 
         // First, try to load a cached route for `key`.
-        if let Some(service) = cache.access(&key) {
+        if let Some(mut service) = cache.access(&key) {
             return ResponseFuture::new(service.call(request));
         }
 
@@ -255,18 +256,22 @@ where
 
 #[cfg(test)]
 mod test_util {
-    use futures::{Poll, Future, future};
+    use futures::{Poll, future};
     use tower_service::Service;
 
-    #[derive(Clone)]
+    #[derive(Clone, Debug)]
     pub struct Recognize;
 
+    #[derive(Debug)]
     pub struct MultiplyAndAssign(usize);
 
+    #[derive(Debug)]
     pub enum Request {
         NotRecognized,
         Recognized(usize),
     }
+
+    // ===== impl Recognize =====
 
     impl super::Recognize for Recognize {
         type Request = Request;
@@ -285,6 +290,14 @@ mod test_util {
 
         fn bind_service(&mut self, _: &Self::Key) -> Result<Self::Service, Self::RouteError> {
             Ok(MultiplyAndAssign(1))
+        }
+    }
+
+    // ===== impl MultiplyAndAssign =====
+
+    impl Default for MultiplyAndAssign {
+        fn default() -> Self {
+            MultiplyAndAssign(1)
         }
     }
 
@@ -308,31 +321,36 @@ mod test_util {
         }
     }
 
-    impl Default for MultiplyAndAssign {
-        fn default() -> Self {
-            MultiplyAndAssign(1)
-        }
-    }
+    // ===== impl Request =====
 
-    impl super::Router<Recognize> {
-        pub fn call_ok(&mut self, req: Request) -> usize {
-            self.call(req).wait().expect("should route")
-        }
-
-        pub fn call_err(&mut self, req: Request) -> super::Error<(), ()> {
-            self.call(req).wait().expect_err("should not route")
+    impl From<usize> for Request {
+        fn from(n: usize) -> Self {
+            Request::Recognized(n)
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use futures::Future;
+    use std::time::Duration;
     use test_util::*;
+    use tower_service::Service;
     use super::{Error, Router};
+
+    impl Router<Recognize> {
+        fn call_ok(&mut self, req: Request) -> usize {
+            self.call(req).wait().expect("should route")
+        }
+
+        fn call_err(&mut self, req: Request) -> super::Error<(), ()> {
+            self.call(req).wait().expect_err("should not route")
+        }
+    }
 
     #[test]
     fn invalid() {
-        let mut router = Router::new(Recognize, 1);
+        let mut router = Router::new(Recognize, 1, Duration::from_secs(0));
 
         let rsp = router.call_err(Request::NotRecognized);
         assert_eq!(rsp, Error::NotRecognized);
@@ -340,7 +358,7 @@ mod tests {
 
     #[test]
     fn cache_limited_by_capacity() {
-        let mut router = Router::new(Recognize, 1);
+        let mut router = Router::new(Recognize, 1, Duration::from_secs(1));
 
         let rsp = router.call_ok(Request::Recognized(2));
         assert_eq!(rsp, 2);
@@ -351,7 +369,7 @@ mod tests {
 
     #[test]
     fn services_cached() {
-        let mut router = Router::new(Recognize, 1);
+        let mut router = Router::new(Recognize, 1, Duration::from_secs(0));
 
         let rsp = router.call_ok(Request::Recognized(2));
         assert_eq!(rsp, 2);
