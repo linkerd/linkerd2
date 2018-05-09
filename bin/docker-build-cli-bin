@@ -31,7 +31,7 @@ else
     elif [ "$sys" = "Linux" ]; then
         OS="linux"
     else
-        echo "unknown OS: $OS" >&2
+        echo "unknown OS: $sys" >&2
         exit 1
     fi
 fi
