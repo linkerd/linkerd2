@@ -12,7 +12,7 @@ use tokio_io::{AsyncRead, AsyncWrite};
 use tower_service::NewService;
 use tower_h2;
 
-use connection::{Connection, PeekFuture};
+use connection::{Connection, Peek};
 use ctx::Proxy as ProxyCtx;
 use ctx::transport::{Server as ServerCtx};
 use drain;
@@ -131,16 +131,15 @@ where
         }
 
         // try to sniff protocol
-        let sniff = [0u8; 32];
         let h1 = self.h1.clone();
         let h2 = self.h2.clone();
         let tcp = self.tcp.clone();
         let new_service = self.new_service.clone();
         let drain_signal = self.drain_signal.clone();
-        let fut = PeekFuture::new(io, sniff)
+        let fut = io.peek()
             .map_err(|e| debug!("peek error: {}", e))
-            .and_then(move |(io, sniff, n)| -> Box<Future<Item=(), Error=()>> {
-                if let Some(proto) = Protocol::detect(&sniff[..n]) {
+            .and_then(move |io| -> Box<Future<Item=(), Error=()>> {
+                if let Some(proto) = Protocol::detect(io.peeked()) {
                     match proto {
                         Protocol::Http1 => {
                             trace!("transparency detected HTTP/1");
