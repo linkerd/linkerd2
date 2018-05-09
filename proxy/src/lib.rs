@@ -227,10 +227,14 @@ where
 
             let default_addr = config.private_forward.map(|a| a.into());
 
-            let fut = serve(
-                inbound_listener,
+            let router = Router::new(
                 Inbound::new(default_addr, bind),
                 config.inbound_router_capacity,
+                config.inbound_router_max_idle_age,
+            );
+            let fut = serve(
+                inbound_listener,
+                router,
                 config.private_connect_timeout,
                 config.inbound_ports_disable_protocol_detection,
                 ctx,
@@ -248,11 +252,14 @@ where
         let outbound = {
             let ctx = ctx::Proxy::outbound(&process_ctx);
             let bind = bind.clone().with_ctx(ctx.clone());
-            let outgoing = Outbound::new(bind, control, config.bind_timeout);
+            let router = Router::new(
+                Outbound::new(bind, control, config.bind_timeout),
+                config.outbound_router_capacity,
+                config.outbound_router_max_idle_age,
+            );
             let fut = serve(
                 outbound_listener,
-                outgoing,
-                config.outbound_router_capacity,
+                router,
                 config.public_connect_timeout,
                 config.outbound_ports_disable_protocol_detection,
                 ctx,
@@ -328,8 +335,7 @@ where
 
 fn serve<R, B, E, F, G>(
     bound_port: BoundPort,
-    recognize: R,
-    router_capacity: usize,
+    router: Router<R>,
     tcp_connect_timeout: Duration,
     disable_protocol_detection_ports: IndexSet<u16>,
     proxy_ctx: Arc<ctx::Proxy>,
@@ -351,7 +357,6 @@ where
         + 'static,
     G: GetOriginalDst + 'static,
 {
-    let router = Router::new(recognize, router_capacity);
     let stack = Arc::new(NewServiceFn::new(move || {
         // Clone the router handle
         let router = router.clone();
