@@ -11,6 +11,7 @@ use super::metrics;
 use super::tap::Taps;
 use connection;
 use ctx;
+use task::TaskError;
 
 /// A `Control` which has been configured but not initialized.
 #[derive(Debug)]
@@ -132,7 +133,7 @@ impl Control {
                 future::result(current_thread::TaskExecutor::current()
                     .spawn_local(Box::new(f))
                     .map(move |_| hyper)
-                    .map_err(|e| io::Error::new(io::ErrorKind::Other, ::TaskError::from(e)))
+                    .map_err(TaskError::into_io)
                 )
             })
 
