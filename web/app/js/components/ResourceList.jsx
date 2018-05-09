@@ -16,7 +16,7 @@ export default class ResourceList extends React.Component {
     this.handleApiError = this.handleApiError.bind(this);
     this.loadFromServer = this.loadFromServer.bind(this);
 
-    this.state = this.getInitialState();
+    this.state = this.getInitialState(this.props);
   }
 
   getInitialState() {
@@ -30,29 +30,39 @@ export default class ResourceList extends React.Component {
   }
 
   componentDidMount() {
-    this.loadFromServer();
-    this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
+    this.startServerPolling();
   }
 
-  componentWillReceiveProps() {
+  componentWillReceiveProps(newProps) {
     // React won't unmount this component when switching resource pages so we need to clear state
-    this.api.cancelCurrentRequests();
-    this.setState(this.getInitialState());
+    this.stopServerPolling();
+    this.setState(this.getInitialState(newProps));
+    this.startServerPolling(newProps.resource);
   }
 
   componentWillUnmount() {
+    this.stopServerPolling();
+  }
+
+  startServerPolling(resource) {
+    this.loadFromServer(resource);
+    this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
+  }
+
+  stopServerPolling() {
     window.clearInterval(this.timerId);
     this.api.cancelCurrentRequests();
   }
 
-  loadFromServer() {
+  loadFromServer(resource) {
+    resource = resource || this.props.resource;
     if (this.state.pendingRequests) {
       return; // don't make more requests if the ones we sent haven't completed
     }
     this.setState({ pendingRequests: true });
 
     this.api.setCurrentRequests([
-      this.api.fetchMetrics(this.api.urlsForResource[this.props.resource].url().rollup)
+      this.api.fetchMetrics(this.api.urlsForResource[resource].url().rollup)
     ]);
 
     Promise.all(this.api.getCurrentPromises())
