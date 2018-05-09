@@ -82,7 +82,7 @@ mod inbound;
 mod logging;
 mod map_err;
 mod outbound;
-mod task;
+pub mod task;
 pub mod telemetry;
 mod transparency;
 mod transport;

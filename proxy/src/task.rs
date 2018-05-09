@@ -1,9 +1,33 @@
 //! Task execution utilities.
-use futures::future::{ExecuteError, ExecuteErrorKind};
-use tokio::executor::SpawnError;
+use futures::future::{
+    Future,
+    ExecuteError,
+    ExecuteErrorKind,
+    Executor,
+};
+use tokio::executor::{
+    current_thread,
+    Executor as TokioExecutor,
+    SpawnError,
+};
 
 use std::error::Error;
 use std::{fmt, io};
+
+/// An empty, `Send + Sync` type which implements `Executor` by lazily calling
+/// `tokio::executor::CurrentThread::execute`.
+///
+/// Unlike `DefaultExecutor` or `current_thread::TaskExecutor`, this can be
+/// used as a type parameter of types which are required to be `Send` but
+/// wish to use the `CurrentThread` executor, and can execute `!Send` futures.
+/// However, note that this should _not_ be be sent to threads which lack an
+/// execution context, as `spawn`ing will fail.
+///
+/// This is used primarily to pass to `tower_h2::client::Connect`, which is
+/// parameterized over a generic `Executor` but we use as a field in structs
+/// which Hyper requires to implement `Send`.
+#[derive(Copy, Clone, Debug, Default)]
+pub struct LazyCurrentThread;
 
 /// Like a `SpawnError` or `ExecuteError`, but with an implementation
 /// of `std::error::Error`.
@@ -18,6 +42,38 @@ pub enum TaskError {
     /// This indicates that `tokio` or `futures-rs` has
     /// added additional error types that we are not aware of.
     Unknown,
+}
+
+//===== impl LazyCurrentThread =====;
+
+impl LazyCurrentThread {
+    /// Spawn a future onto the current `CurrentThread` instance.
+    fn spawn_local(&mut self, future: Box<Future<Item = (), Error = ()>>)
+        -> Result<(), SpawnError>
+    {
+        current_thread::TaskExecutor::current().spawn_local(future)
+    }
+}
+
+impl TokioExecutor for LazyCurrentThread {
+    fn spawn(&mut self, future: Box<Future<Item = (), Error = ()> + Send>)
+        -> Result<(), SpawnError>
+    {
+        current_thread::TaskExecutor::current().spawn(future)
+    }
+
+    fn status(&self) -> Result<(), SpawnError> {
+        current_thread::TaskExecutor::current().status()
+    }
+}
+
+impl<F> Executor for LazyCurrentThread
+where
+    F: Future<Item = (), Error = ()> + 'static,
+{
+    fn execute(&self, future: F) -> Result<(), ExecuteError<F>> {
+        current_thread::TaskExecutor::current().execute(future)
+    }
 }
 
 
@@ -84,5 +140,4 @@ impl Error for TaskError {
             TaskError::Unknown => "unknown error executing future",
         }
     }
-
 }
