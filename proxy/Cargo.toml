@@ -33,12 +33,6 @@ rand = "0.4"
 regex = "1.0.0"
 
 tokio = "0.1.6"
-# tokio-core = "0.1"
-# tokio-io = "0.1"
-tokio-executor = "0.1.2"
-tokio-timer = "0.2"
-tokio-threadpool = "0.1.3"
-tokio-reactor = "0.1.1"
 tokio-signal = { git = "https://github.com/alexcrichton/tokio-signal.git", rev = "7ecaa90dfe21edb1afa48c0173cbee6c3c210130"}
 
 prost = "0.3.0"
