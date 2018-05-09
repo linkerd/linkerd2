@@ -18,7 +18,7 @@ use bind::{self, Bind, Protocol};
 use control::{self, discovery};
 use control::discovery::Bind as BindTrait;
 use ctx;
-use task::LazyExecutor;
+use task::{LazyExecutor, LazyRng};
 use timeout::Timeout;
 use transparency::h1;
 use transport::{DnsNameAndPort, Host, HostAndPort};
@@ -67,7 +67,7 @@ where
     type RouteError = bind::BufferSpawnError;
     type Service = InFlightLimit<Timeout<Buffer<Balance<
         load::WithPendingRequests<Discovery<B>>,
-        choose::PowerOfTwoChoices<rand::StdRng>
+        choose::PowerOfTwoChoices<LazyRng>
     >>>>;
 
     fn recognize(&self, req: &Self::Request) -> Option<Self::Key> {
@@ -143,12 +143,10 @@ where
 
         let loaded = tower_balance::load::WithPendingRequests::new(resolve);
 
-        // we can't use `rand::thread_rng` here because the returned `Service`
-        // needs to be `Send`.
-        // XXX: StdRng::new() is very expensive. figure out another way to get
-        //      a RNG that impls `Send` but is less slow.
-        let rng = rand::StdRng::new().expect("rng::new");
-        let balance = tower_balance::power_of_two_choices(loaded, rng);
+        // We can't use `rand::thread_rng` here because the returned `Service`
+        // needs to be `Send`, so instead, we use `LazyRng`, which calls
+        // `rand::thread_rng()` when it is *used*.
+        let balance = tower_balance::power_of_two_choices(loaded, LazyRng);
 
         let buffer = Buffer::new(balance, &LazyExecutor)
             .map_err(|_| bind::BufferSpawnError::Outbound)?;
