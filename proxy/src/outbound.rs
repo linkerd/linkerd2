@@ -5,7 +5,6 @@ use std::sync::Arc;
 
 use http;
 use futures::{Async, Poll};
-use rand;
 use tower_service as tower;
 use tower_balance::{self, choose, load, Balance};
 use tower_buffer::Buffer;
