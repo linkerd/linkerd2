@@ -60,7 +60,7 @@ use std::time::Duration;
 use indexmap::IndexSet;
 use tokio::{
     executor,
-    runtime::current_thread,
+    runtime::{self as thread_pool, current_thread},
     reactor,
 };
 use tower_service::NewService;
@@ -107,7 +107,6 @@ use outbound::Outbound;
 ///
 /// The private listener routes requests to service-discovery-aware load-balancer.
 ///
-
 pub struct Main<G> {
     config: config::Config,
 
@@ -118,15 +117,32 @@ pub struct Main<G> {
 
     get_original_dst: G,
 
-    // runtime: CurrentThread<tokio_timer::Timer<tokio_reactor::Reactor>>,
-    // handle: reactor::Handle,
+    rt: MainRuntime,
+}
+
+/// Indicates which Tokio `Runtime` should be used for the main proxy.
+///
+/// This is either a `tokio::runtime::current_thread::Runtime`, or a
+/// `tokio::runtime::Runtime` (thread pool). This type simply allows
+/// both runtimes to present a unified interface, so that they can be
+/// used to construct a `Main`.
+///
+/// This allows the runtime used for the proxy to be customized based
+/// on the application: for a sidecar proxy, we use the current thread
+/// runtime, but for an ingress proxy, we would prefer the thread pool.
+pub enum MainRuntime {
+    CurrentThread(current_thread::Runtime),
+    ThreadPool(thread_pool::Runtime),
 }
 
 impl<G> Main<G>
 where
     G: GetOriginalDst + Clone + Send + 'static,
 {
-    pub fn new(config: config::Config, get_original_dst: G) -> Self {
+    pub fn new<R>(config: config::Config, get_original_dst: G, rt: R) -> Self
+    where
+        R: Into<MainRuntime>,
+    {
 
         let control_listener = BoundPort::new(config.control_listener.addr)
             .expect("controller listener bind");
@@ -144,6 +160,7 @@ where
             outbound_listener,
             metrics_listener,
             get_original_dst,
+            rt: rt.into(),
         }
     }
 
@@ -178,12 +195,8 @@ where
             outbound_listener,
             metrics_listener,
             get_original_dst,
+            mut rt,
         } = self;
-
-        // TODO: `Main::run_until` should be able to use the `current_thread`
-        //       OR `thread_pool` runtimes.
-        let mut rt = current_thread::Runtime::new()
-            .expect("initialize main runtime");
 
         let control_host_and_port = config.control_host_and_port.clone();
 
@@ -330,7 +343,7 @@ where
             debug!("shutdown signaled");
             drain_tx.drain()
         });
-        rt.block_on(shutdown_signal).expect("main runtime");
+        rt.run_until(shutdown_signal).expect("main runtime");
         trace!("shutdown complete");
     }
 }
@@ -457,6 +470,51 @@ where
     }
 }
 
+
+// ===== impl MainRuntime =====
+
+impl MainRuntime {
+    /// Spawn a task on this runtime.
+    pub fn spawn<F>(&mut self, future: F) -> &mut Self
+    where
+        F: Future<Item = (), Error = ()> + Send + 'static,
+    {
+        match *self {
+            MainRuntime::CurrentThread(ref mut rt) => { rt.spawn(future); }
+            MainRuntime::ThreadPool(ref mut rt) => {  rt.spawn(future); }
+        };
+        self
+    }
+
+    /// Runs `self` until `shutdown_signal` completes.
+    fn run_until<F>(self, shutdown_signal: F)  -> Result<(), ()>
+    where
+        F: Future<Item = (), Error = ()> + Send + 'static,
+    {
+        match self {
+            MainRuntime::CurrentThread(mut rt) =>
+                rt.block_on(shutdown_signal),
+            MainRuntime::ThreadPool(rt) =>
+                shutdown_signal
+                    .and_then(move |()| rt.shutdown_now())
+                    .wait(),
+        }
+    }
+}
+
+impl From<current_thread::Runtime> for MainRuntime {
+    fn from(rt: current_thread::Runtime) -> Self {
+        debug!("creating single-threaded proxy");
+        MainRuntime::CurrentThread(rt)
+    }
+}
+
+impl From<thread_pool::Runtime> for MainRuntime {
+    fn from(rt: thread_pool::Runtime) -> Self {
+        debug!("creating proxy with threadpool");
+        MainRuntime::ThreadPool(rt)
+    }
+}
 
 fn serve_control<N, B>(
     bound_port: BoundPort,
