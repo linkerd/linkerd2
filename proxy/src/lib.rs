@@ -61,7 +61,7 @@ use indexmap::IndexSet;
 use tokio::{
     executor::{
         current_thread::{self, CurrentThread},
-        thread_pool::{self, Sender},
+        thread_pool,
     },
     reactor,
 };
@@ -281,7 +281,6 @@ where
 
         let (control, control_bg) = control::new(dns_config.clone(), config.pod_namespace.clone());
 
-        let executor = pool.sender().clone();
         let (drain_tx, drain_rx) = drain::channel();
 
         let bind = Bind::new().with_sensors(sensors.clone());
@@ -306,7 +305,6 @@ where
                 sensors.clone(),
                 get_original_dst.clone(),
                 drain_rx.clone(),
-                &executor,
             );
             ::logging::context_future("inbound", fut)
         };
@@ -328,7 +326,6 @@ where
                 sensors,
                 get_original_dst,
                 drain_rx,
-                &executor,
             );
             ::logging::context_future("outbound", fut)
         };
@@ -424,7 +421,6 @@ fn serve<R, B, E, F, G>(
     sensors: telemetry::Sensors,
     get_orig_dst: G,
     drain_rx: drain::Watch,
-    executor: &Sender,
 ) -> Box<Future<Item = (), Error = io::Error> + Send + 'static>
 where
     B: tower_h2::Body + Send + Default + 'static,
@@ -489,9 +485,7 @@ where
         tcp_connect_timeout,
         disable_protocol_detection_ports,
         drain_rx.clone(),
-        executor.clone(),
     );
-
 
     let accept = bound_port.listen_and_fold(
         &tokio::reactor::Handle::current(),

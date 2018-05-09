@@ -7,7 +7,7 @@ use futures::Future;
 use http;
 use hyper;
 use indexmap::IndexSet;
-use tokio::executor::thread_pool::Sender;
+use tokio::executor::{Executor, DefaultExecutor};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tower_service::NewService;
 use tower_h2;
@@ -16,6 +16,7 @@ use connection::{Connection, Peek};
 use ctx::Proxy as ProxyCtx;
 use ctx::transport::{Server as ServerCtx};
 use drain;
+use task::LazyExecutor;
 use telemetry::Sensors;
 use transport::GetOriginalDst;
 use super::glue::{HttpBody, HttpBodyNewSvc, HyperServerSvc};
@@ -35,10 +36,9 @@ where
 {
     disable_protocol_detection_ports: IndexSet<u16>,
     drain_signal: drain::Watch,
-    executor: Sender,
     get_orig_dst: G,
     h1: hyper::server::conn::Http,
-    h2: tower_h2::Server<HttpBodyNewSvc<S>, Sender, B>,
+    h2: tower_h2::Server<HttpBodyNewSvc<S>, LazyExecutor, B>,
     listen_addr: SocketAddr,
     new_service: S,
     proxy_ctx: Arc<ProxyCtx>,
@@ -72,20 +72,18 @@ where
         tcp_connect_timeout: Duration,
         disable_protocol_detection_ports: IndexSet<u16>,
         drain_signal: drain::Watch,
-        executor: Sender,
     ) -> Self {
         let recv_body_svc = HttpBodyNewSvc::new(stack.clone());
-        let tcp = tcp::Proxy::new(tcp_connect_timeout, sensors.clone(),
-            &executor
-            );
+        let tcp = tcp::Proxy::new(tcp_connect_timeout, sensors.clone());
         Server {
             disable_protocol_detection_ports,
             drain_signal,
-            executor: executor.clone(),
             get_orig_dst,
             h1: hyper::server::conn::Http::new(),
-            h2: tower_h2::Server::new(recv_body_svc, Default::default(),
-                executor.clone(),
+            h2: tower_h2::Server::new(
+                recv_body_svc,
+                Default::default(),
+                LazyExecutor,
             ),
             listen_addr,
             new_service: stack,
@@ -134,7 +132,8 @@ where
                 srv_ctx,
                 self.drain_signal.clone(),
             );
-            self.executor.spawn(fut)
+            DefaultExecutor::current()
+                .spawn(fut)
                 .expect("spawn TCP server task");
             return;
         }
@@ -192,7 +191,8 @@ where
                 }
             });
 
-        self.executor.spawn(Box::new(fut))
+        DefaultExecutor::current()
+            .spawn(Box::new(fut))
             .expect("spawn server task");
     }
 }
