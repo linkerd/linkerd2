@@ -45,7 +45,6 @@ extern crate tower_in_flight_limit;
 extern crate trust_dns_resolver;
 
 use futures::*;
-use futures::future::Executor;
 use std::error::Error;
 use std::io;
 use std::net::SocketAddr;
@@ -517,23 +516,37 @@ fn serve_control<N, B>(
     new_service: N,
 ) -> Box<Future<Item = (), Error = io::Error> + 'static>
 where
-    B: tower_h2::Body + 'static,
+    B: tower_h2::Body + Send + 'static,
+    B::Data: Send,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
     N: NewService<Request = http::Request<tower_h2::RecvBody>, Response = http::Response<B>> + 'static,
+    N: Send,
+    tower_h2::server::Connection<
+        connection::Connection,
+        N,
+        task::LazyExecutor,
+        B,
+        ()
+    >: Future<Item = ()>,
 {
-    let executor = executor::current_thread::TaskExecutor::current();
     let h2_builder = h2::server::Builder::default();
-    let server = tower_h2::Server::new(new_service, h2_builder, executor.clone());
-    bound_port.listen_and_fold_local(
+    let server = tower_h2::Server::new(
+        new_service,
+        h2_builder,
+        task::LazyExecutor
+    );
+    bound_port.listen_and_fold(
         &reactor::Handle::current(),
-        (server, executor.clone()),
-        move |(server, executor), (session, _)| {
+        server,
+        move |server, (session, _)| {
             let s = server.serve(session).map_err(|_| ());
             let s = ::logging::context_future("serve_control", s);
 
-            future::result(executor.execute(s)
-                .map(move |_| (server, executor))
-                .map_err(TaskError::into_io)
-            )
+            let r = executor::current_thread::TaskExecutor::current()
+                .spawn_local(Box::new(s))
+                .map(move |_| server)
+                .map_err(TaskError::into_io);
+            future::result(r)
         },
     )
 }
