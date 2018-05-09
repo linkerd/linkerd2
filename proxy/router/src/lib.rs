@@ -143,16 +143,17 @@ where T: Recognize,
 
         // Since there wasn't a cached route, ensure that there is capacity for a
         // new one.
-        if let Err(cache::CapacityExhausted { capacity }) = cache.reserve() {
-            return ResponseFuture::no_capacity(capacity);
-        }
+        let reserve = match cache.reserve() {
+            Ok(r) => r,
+            Err(cache::CapacityExhausted { capacity }) => {
+                return ResponseFuture::no_capacity(capacity);
+            }
+        };
 
         // Bind a new route, send the request on the route, and cache the route.
         let mut service = try_bind_route!(self.recognize.bind_service(&key));
         let response = service.call(request);
-
-        cache.store(key, service)
-            .expect("router cache capacity");
+        reserve.store(key, service);
 
         ResponseFuture::new(response)
     }

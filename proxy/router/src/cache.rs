@@ -22,6 +22,8 @@ pub struct Cache<K: Hash + Eq, V> {
     capacity: usize,
 }
 
+pub struct Reserve<'a, K: Hash + Eq + 'a, V: 'a>(&'a mut Cache<K, V>);
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct CapacityExhausted {
     pub capacity: usize,
@@ -44,21 +46,11 @@ impl<K: Hash + Eq, V> Cache<K, V> {
         self.vals.get_mut(key)
     }
 
-    /// Stores a route in the cache.
-    ///
-    /// If no capacity can be obtained an error is returned.
-    pub fn store(&mut self, key: K, val: V) -> Result<(), CapacityExhausted> {
-        self.reserve()?;
-        self.vals.insert(key, val);
-
-        Ok(())
-    }
-
     /// Ensures that there is capacity to store an additional route.
     ///
     /// An error is returned if there is no available capacity.
     // TODO evict old entries
-    pub fn reserve(&mut self) -> Result<usize, CapacityExhausted> {
+    pub fn reserve(&mut self) -> Result<Reserve<K, V>, CapacityExhausted> {
         let avail = self.capacity - self.vals.len();
         if avail == 0 {
             // TODO If the cache is full, evict the oldest inactive route. If all
@@ -68,7 +60,20 @@ impl<K: Hash + Eq, V> Cache<K, V> {
             });
         }
 
-        Ok(avail)
+        Ok(Reserve(self))
+    }
+}
+
+impl<'a, K, V> Reserve<'a, K, V>
+where
+    K: Hash + Eq + 'a,
+    V: 'a,
+{
+    /// Stores a route in the cache.
+    ///
+    /// If no capacity can be obtained an error is returned.
+    pub fn store(self, key: K, val: V) {
+        self.0.vals.insert(key, val);
     }
 }
 
@@ -81,21 +86,16 @@ mod tests {
     fn reserve_and_store() {
         let mut cache = Cache::<_, MultiplyAndAssign>::new(2);
 
-        assert_eq!(cache.reserve(), Ok(2));
-        assert_eq!(cache.vals.len(), 0);
-
-        assert_eq!(cache.store(1, MultiplyAndAssign::default()), Ok(()));
-        assert_eq!(cache.reserve(), Ok(1));
+        cache.reserve().expect("reserve")
+            .store(1, MultiplyAndAssign::default());
         assert_eq!(cache.vals.len(), 1);
 
-        assert_eq!(cache.store(2, MultiplyAndAssign::default()), Ok(()));
-        assert_eq!(cache.reserve(), Err(CapacityExhausted { capacity: 2 }));
+        cache.reserve().expect("reserve")
+            .store(2, MultiplyAndAssign::default());
         assert_eq!(cache.vals.len(), 2);
 
-        assert_eq!(
-            cache.store(3, MultiplyAndAssign::default()),
-            Err(CapacityExhausted { capacity: 2 })
-        );
+        assert_eq!(cache.reserve().err(), Some(CapacityExhausted { capacity: 2 }));
+        assert_eq!(cache.vals.len(), 2);
     }
 
     #[test]
@@ -105,11 +105,13 @@ mod tests {
         assert!(cache.access(&1).is_none());
         assert!(cache.access(&2).is_none());
 
-        assert!(cache.store(1, MultiplyAndAssign::default()).is_ok());
+        cache.reserve().expect("reserve")
+            .store(1, MultiplyAndAssign::default());
         assert!(cache.access(&1).is_some());
         assert!(cache.access(&2).is_none());
 
-        assert_eq!(cache.store(2, MultiplyAndAssign::default()), Ok(()));
+        cache.reserve().expect("reserve")
+            .store(2, MultiplyAndAssign::default());
         assert!(cache.access(&1).is_some());
         assert!(cache.access(&2).is_some());
     }
