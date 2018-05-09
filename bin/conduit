@@ -8,17 +8,22 @@ rootdir="$( cd $bindir/.. && pwd )"
 system=$(uname -s)
 
 if [ "$system" = "Darwin" ]; then
-  bin=$rootdir/target/cli/darwin/conduit
+  OS="darwin"
 elif [ "$system" = "Linux" ]; then
-  bin=$rootdir/target/cli/linux/conduit
+  OS="linux"
 else
   echo "unknown system: $system" >&2
   exit 1
 fi
 
+. $bindir/_tag.sh
+
+tag="$(head_root_tag)"
+bin="$rootdir/target/cli/${OS}/conduit"
+
 # build conduit executable if it does not exist
 if [ ! -f $bin ]; then
-  $bindir/docker-build-cli-bin >/dev/null
+  CLI_EXPORT=1 CLI_OS="$OS" $bindir/docker-build-cli-bin >/dev/null
 fi
 
 exec $bin "$@"
