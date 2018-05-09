@@ -62,10 +62,10 @@ type proxyConfigOptions struct {
 	imagePullPolicy  string
 	proxyUID         int64
 	proxyLogLevel    string
+	proxyBindTimeout string
 	proxyAPIPort     uint
 	proxyControlPort uint
 	proxyMetricsPort uint
-	proxyBindTimeout uint
 }
 
 func newProxyConfigOptions() *proxyConfigOptions {
@@ -87,7 +87,7 @@ func addProxyConfigFlags(cmd *cobra.Command, options *proxyConfigOptions) {
 	cmd.PersistentFlags().StringVar(&options.imagePullPolicy, "image-pull-policy", options.imagePullPolicy, "Docker image pull policy")
 	cmd.PersistentFlags().Int64Var(&options.proxyUID, "proxy-uid", options.proxyUID, "Run the proxy under this user ID")
 	cmd.PersistentFlags().StringVar(&options.proxyLogLevel, "proxy-log-level", options.proxyLogLevel, "Log level for the proxy")
-	cmd.PersistentFlags().UintVar(&options.proxyBindTimeout, "proxy-bind-timeout", 10000, "Timeout the proxy will use in ms")
+	cmd.PersistentFlags().StringVar(&options.proxyBindTimeout, "proxy-bind-timeout", "10s", "Timeout the proxy will use")
 	cmd.PersistentFlags().UintVar(&options.proxyAPIPort, "api-port", options.proxyAPIPort, "Port where the Conduit controller is running")
 	cmd.PersistentFlags().UintVar(&options.proxyControlPort, "control-port", options.proxyControlPort, "Proxy port to use for control")
 	cmd.PersistentFlags().UintVar(&options.proxyMetricsPort, "metrics-port", options.proxyMetricsPort, "Proxy port to serve metrics on")
