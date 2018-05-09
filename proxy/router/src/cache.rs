@@ -24,7 +24,7 @@ pub struct Cache<K: Hash + Eq, V> {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CapacityExhausted {
-    pub capacity: usize
+    pub capacity: usize,
 }
 
 impl<K: Hash + Eq, V> Cache<K, V> {
@@ -60,21 +60,22 @@ impl<K: Hash + Eq, V> Cache<K, V> {
     // TODO evict old entries
     pub fn reserve(&mut self) -> Result<usize, CapacityExhausted> {
         let avail = self.capacity - self.vals.len();
-        if avail == 0{
+        if avail == 0 {
             // TODO If the cache is full, evict the oldest inactive route. If all
             // routes are active, fail the request.
-            return Err(CapacityExhausted { capacity: self.capacity });
+            return Err(CapacityExhausted {
+                capacity: self.capacity,
+            });
         }
 
         Ok(avail)
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use test_util::MultiplyAndAssign;
     use super::*;
+    use test_util::MultiplyAndAssign;
 
     #[test]
     fn store_and_reserve() {
@@ -93,7 +94,8 @@ mod tests {
 
         assert_eq!(
             cache.store(3, MultiplyAndAssign::default()),
-            Err(CapacityExhausted { capacity: 2 }));
+            Err(CapacityExhausted { capacity: 2 })
+        );
     }
 
     #[test]
