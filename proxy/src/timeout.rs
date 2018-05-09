@@ -4,14 +4,13 @@ use futures::{Future, Poll};
 use std::error::Error;
 use std::{fmt, io};
 use std::time::{Duration, Instant};
-use std::sync::Arc;
 
 use tokio_connect::Connect;
 use tokio::timer::{self, Deadline, DeadlineError};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tower_service::Service;
 
-pub type Name = Option<Arc<str>>;
+pub type Name = Option<&'static str>;
 
 /// A timeout that wraps an underlying operation.
 #[derive(Debug, Clone)]
@@ -59,7 +58,7 @@ impl<T> Timeout<T> {
         }
     }
 
-    pub fn named<I: Into<Arc<str>>>(mut self, name: I) -> Self {
+    pub fn named<I: Into<&'static str>>(mut self, name: I) -> Self {
         self.name = Some(name.into());
         self
     }
@@ -109,7 +108,7 @@ where
         Timeout {
             inner,
             duration: self.duration,
-            name: self.name.as_ref().cloned(),
+            name: self.name,
         }
     }
 }
@@ -129,7 +128,7 @@ where
         Timeout {
             inner,
             duration: self.duration,
-            name: self.name.as_ref().map(Arc::clone),
+            name: self.name,
         }
     }
 }
