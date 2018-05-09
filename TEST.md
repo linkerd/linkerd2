@@ -64,8 +64,7 @@ Javascript dependencies are managed via [yarn](https://yarnpkg.com/) and
 
 ```bash
 cd web/app
-yarn && yarn webpack
-yarn karma start --single-run
+make test
 ```
 
 # Integration tests

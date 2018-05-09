@@ -240,9 +240,7 @@ yarn
 
 ```bash
 cd web/app
-yarn && yarn webpack
-cd ..
-../bin/go-run .
+make run
 ```
 
 The web server will be running on `localhost:8084`.
@@ -291,14 +289,7 @@ To develop with a webpack dev server, start the server in a separate window:
 
 ```bash
 cd web/app
-yarn webpack-dev-server
-```
-
-And then set the `--webpack-dev-server` flag when running the web server:
-
-```bash
-cd web
-../bin/go-run . --webpack-dev-server=http://localhost:8080
+make dev
 ```
 
 To add a JS dependency:
