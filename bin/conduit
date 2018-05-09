@@ -19,11 +19,19 @@ fi
 . $bindir/_tag.sh
 
 tag="$(head_root_tag)"
-bin="$rootdir/target/cli/${OS}/conduit"
+bin="$rootdir/target/cli-${tag}/${OS}/conduit"
 
 # build conduit executable if it does not exist
 if [ ! -f $bin ]; then
   CLI_EXPORT=1 CLI_OS="$OS" $bindir/docker-build-cli-bin >/dev/null
 fi
+
+for d in $(ls -d $rootdir/target/cli-*) ; do
+  if [ -d "$d" ]; then
+    if [ "$d" != "$rootdir/target/cli-${tag}" ]; then
+      rm -rf "$d"
+    fi
+  fi
+done
 
 exec $bin "$@"
