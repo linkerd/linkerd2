@@ -36,7 +36,7 @@ impl<K: Hash + Eq, V> Cache<K, V> {
     }
 
     /// Accesses a route.
-    // TODO track access times for each entrys.
+    // TODO track access times for each entry.
     pub fn access<Q>(&mut self, key: &Q) -> Option<&mut V>
     where
         Q: Hash + Equivalent<K>,
@@ -78,7 +78,7 @@ mod tests {
     use test_util::MultiplyAndAssign;
 
     #[test]
-    fn store_and_reserve() {
+    fn reserve_and_store() {
         let mut cache = Cache::<_, MultiplyAndAssign>::new(2);
 
         assert_eq!(cache.reserve(), Ok(2));
