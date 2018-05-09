@@ -10,6 +10,7 @@ use conduit_proxy_router::Recognize;
 
 use bind;
 use ctx;
+use task::LazyExecutor;
 
 type Bind<B> = bind::Bind<Arc<ctx::Proxy>, B>;
 
@@ -77,8 +78,8 @@ where
         debug!("building inbound {:?} client to {}", proto, addr);
 
         let endpoint = (*addr).into();
-        let binding = self.bind.new_binding(&endpoint, proto);
-        Buffer::new(binding, self.bind.executor())
+        let bind = self.bind.bind_service(&endpoint, proto);
+        Buffer::new(bind, &LazyExecutor)
             .map(|buffer| {
                 InFlightLimit::new(buffer, MAX_IN_FLIGHT)
             })
@@ -92,7 +93,6 @@ mod tests {
     use std::sync::Arc;
 
     use http;
-    use tokio::executor::thread_pool::ThreadPool;
     use conduit_proxy_router::Recognize;
 
     use super::Inbound;
@@ -100,8 +100,7 @@ mod tests {
     use ctx;
 
     fn new_inbound(default: Option<net::SocketAddr>, ctx: &Arc<ctx::Proxy>) -> Inbound<()> {
-        let pool = ThreadPool::new();
-        let bind = Bind::new(pool.sender().clone()).with_ctx(ctx.clone());
+        let bind = Bind::new().with_ctx(ctx.clone());
         Inbound::new(default, bind)
     }
 

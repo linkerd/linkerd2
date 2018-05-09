@@ -1,6 +1,7 @@
 #![cfg_attr(feature = "cargo-clippy", allow(clone_on_ref_ptr))]
 #![cfg_attr(feature = "cargo-clippy", allow(new_without_default_derive))]
 #![deny(warnings)]
+#![recursion_limit="128"]
 
 extern crate bytes;
 extern crate conduit_proxy_controller_grpc;
@@ -50,7 +51,6 @@ extern crate trust_dns_resolver;
 use futures::*;
 use futures::future::Executor;
 use std::error::Error;
-use std::fmt;
 use std::io;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
@@ -284,7 +284,7 @@ where
         let executor = pool.sender().clone();
         let (drain_tx, drain_rx) = drain::channel();
 
-        let bind = Bind::new(executor.clone()).with_sensors(sensors.clone());
+        let bind = Bind::new().with_sensors(sensors.clone());
 
         // Setup the public listener. This will listen on a publicly accessible
         // address and listen for inbound connections that should be forwarded

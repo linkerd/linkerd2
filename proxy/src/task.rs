@@ -6,7 +6,7 @@ use futures::future::{
     Executor,
 };
 use tokio::executor::{
-    current_thread,
+    DefaultExecutor,
     Executor as TokioExecutor,
     SpawnError,
 };
@@ -14,20 +14,19 @@ use tokio::executor::{
 use std::error::Error;
 use std::{fmt, io};
 
-/// An empty, `Send + Sync` type which implements `Executor` by lazily calling
-/// `tokio::executor::CurrentThread::execute`.
+
+/// An empty type which implements `Executor` by lazily  calling
+/// `tokio::executor::DefaultExecutor::current().execute(...)`.
 ///
-/// Unlike `DefaultExecutor` or `current_thread::TaskExecutor`, this can be
-/// used as a type parameter of types which are required to be `Send` but
-/// wish to use the `CurrentThread` executor, and can execute `!Send` futures.
-/// However, note that this should _not_ be be sent to threads which lack an
-/// execution context, as `spawn`ing will fail.
+/// This can be used when we would simply like to call `tokio::spawn` rather
+/// than explicitly using a particular executor, but need an `Executor` for
+/// a generic type or to pass to a function which expects one.
 ///
-/// This is used primarily to pass to `tower_h2::client::Connect`, which is
-/// parameterized over a generic `Executor` but we use as a field in structs
-/// which Hyper requires to implement `Send`.
+/// Note that this uses `DefaultExecutor` rather than `tokio::spawn`, as we
+/// would prefer for our `Executor` implementation to pass errors rather than
+/// panicking (as `tokio::spawn` does).
 #[derive(Copy, Clone, Debug, Default)]
-pub struct LazyCurrentThread;
+pub struct LazyExecutor;
 
 /// Like a `SpawnError` or `ExecuteError`, but with an implementation
 /// of `std::error::Error`.
@@ -44,35 +43,44 @@ pub enum TaskError {
     Unknown,
 }
 
-//===== impl LazyCurrentThread =====;
+//===== impl LazyExecutor =====;
 
-impl LazyCurrentThread {
-    /// Spawn a future onto the current `CurrentThread` instance.
-    fn spawn_local(&mut self, future: Box<Future<Item = (), Error = ()>>)
-        -> Result<(), SpawnError>
+impl TokioExecutor for LazyExecutor {
+    fn spawn(
+        &mut self,
+        future: Box<Future<Item = (), Error = ()> + 'static + Send>
+    ) -> Result<(), SpawnError>
     {
-        current_thread::TaskExecutor::current().spawn_local(future)
-    }
-}
-
-impl TokioExecutor for LazyCurrentThread {
-    fn spawn(&mut self, future: Box<Future<Item = (), Error = ()> + Send>)
-        -> Result<(), SpawnError>
-    {
-        current_thread::TaskExecutor::current().spawn(future)
+        DefaultExecutor::current().spawn(future)
     }
 
     fn status(&self) -> Result<(), SpawnError> {
-        current_thread::TaskExecutor::current().status()
+        DefaultExecutor::current().status()
     }
 }
 
-impl<F> Executor for LazyCurrentThread
+impl<F> Executor<F> for LazyExecutor
 where
-    F: Future<Item = (), Error = ()> + 'static,
+    F: Future<Item = (), Error = ()> + 'static + Send,
 {
     fn execute(&self, future: F) -> Result<(), ExecuteError<F>> {
-        current_thread::TaskExecutor::current().execute(future)
+        let mut executor = DefaultExecutor::current();
+        // Check the status of the executor first, so that we can return the
+        // future in the `ExecuteError`. If we just called `spawn` and
+        // `map_err`ed the error into an `ExecuteError`, we'd have to move the
+        // future into the closure, but it was already moved into `spawn`.
+        if let Err(e) = executor.status() {
+            if e.is_at_capacity() {
+                return Err(ExecuteError::new(ExecuteErrorKind::NoCapacity, future));
+            } else if e.is_shutdown() {
+                return Err(ExecuteError::new(ExecuteErrorKind::Shutdown, future));
+            } else {
+                panic!("unexpected `SpawnError`: {:?}", e);
+            }
+        };
+        executor.spawn(Box::new(future))
+            .expect("spawn() errored but status() was Ok");
+        Ok(())
     }
 }
 

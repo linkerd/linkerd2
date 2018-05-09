@@ -7,7 +7,6 @@ use std::sync::atomic::AtomicUsize;
 
 use futures::{Future, Poll, future};
 use http::{self, uri};
-use tokio::executor::thread_pool::Sender;
 use tower_service as tower;
 use tower_h2;
 use tower_reconnect::Reconnect;
@@ -29,8 +28,6 @@ use transport;
 pub struct Bind<C, B> {
     ctx: C,
     sensors: telemetry::Sensors,
-    // TODO: make this generic over executor?
-    executor: Sender,
     req_ids: Arc<AtomicUsize>,
     _p: PhantomData<B>,
 }
@@ -104,8 +101,6 @@ pub type HttpRequest<B> = http::Request<sensor::http::RequestBody<B>>;
 
 pub type Client<B> = transparency::Client<
     sensor::Connect<transport::Connect>,
-    // TODO: make this generic over executor?
-    Sender,
     B,
 >;
 
@@ -136,9 +131,8 @@ impl Error for BufferSpawnError {
 }
 
 impl<B> Bind<(), B> {
-    pub fn new(executor: Sender) -> Self {
+    pub fn new() -> Self {
         Self {
-            executor,
             ctx: (),
             sensors: telemetry::Sensors::null(),
             req_ids: Default::default(),
@@ -157,7 +151,6 @@ impl<B> Bind<(), B> {
         Bind {
             ctx,
             sensors: self.sensors,
-            executor: self.executor,
             req_ids: self.req_ids,
             _p: PhantomData,
         }
@@ -169,22 +162,9 @@ impl<C: Clone, B> Clone for Bind<C, B> {
         Self {
             ctx: self.ctx.clone(),
             sensors: self.sensors.clone(),
-            executor: self.executor.clone(),
             req_ids: self.req_ids.clone(),
             _p: PhantomData,
         }
-    }
-}
-
-
-impl<C, B> Bind<C, B> {
-
-    // pub fn ctx(&self) -> &C {
-    //     &self.ctx
-    // }
-
-    pub fn executor(&self) -> &Sender {
-        &self.executor
     }
 }
 
@@ -212,7 +192,6 @@ where
         let client = transparency::Client::new(
             protocol,
             connect,
-            self.executor.clone()
         );
 
         let sensors = self.sensors.http(

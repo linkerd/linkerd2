@@ -18,6 +18,7 @@ use bind::{self, Bind, Protocol};
 use control::{self, discovery};
 use control::discovery::Bind as BindTrait;
 use ctx;
+use task::LazyExecutor;
 use timeout::Timeout;
 use transparency::h1;
 use transport::{DnsNameAndPort, Host, HostAndPort};
@@ -149,11 +150,7 @@ where
         let rng = rand::StdRng::new().expect("rng::new");
         let balance = tower_balance::power_of_two_choices(loaded, rng);
 
-        // use the same executor as the underlying `Bind` for the `Buffer` and
-        // `Timeout`.
-        let handle = self.bind.executor();
-
-        let buffer = Buffer::new(balance, handle)
+        let buffer = Buffer::new(balance, &LazyExecutor)
             .map_err(|_| bind::BufferSpawnError::Outbound)?;
 
         let timeout = Timeout::new(buffer, self.bind_timeout)
