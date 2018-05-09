@@ -25,7 +25,7 @@ pub struct Serve {
 }
 
 #[derive(Debug)]
-pub enum ServeError {
+enum ServeError {
     Http(http::Error),
     Io(io::Error),
 }
@@ -54,15 +54,16 @@ impl Serve {
 impl Service for Serve {
     type ReqBody = Body;
     type ResBody = Body;
-    type Error = ServeError;
+    type Error = io::Error;
     type Future = FutureResult<Response<Body>, Self::Error>;
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
         if req.uri().path() != "/metrics" {
-            return future::result(Response::builder()
+            let rsp = Response::builder()
                 .status(StatusCode::NOT_FOUND)
                 .body(Body::empty())
-                .map_err(ServeError::from));
+                .expect("builder with known status code should not fail");
+            return future::ok(rsp);
         }
 
         let mut metrics = self.metrics.lock()
@@ -84,6 +85,7 @@ impl Service for Serve {
                         .body(Body::from(body))
                         .map_err(ServeError::from)
                 })
+
         } else {
             let mut writer = Vec::<u8>::new();
             write!(&mut writer, "{}", *metrics)
@@ -96,7 +98,14 @@ impl Service for Serve {
                 })
         };
 
-        future::result(resp)
+        let resp = resp.unwrap_or_else(|e| {
+            error!("{}", e);
+            Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Body::empty())
+                .expect("builder with known status code should not fail")
+        });
+        future::ok(resp)
     }
 }
 
@@ -127,7 +136,7 @@ impl Error for ServeError {
     fn description(&self) -> &str {
         match *self {
             ServeError::Http(_) => "error constructing HTTP response",
-            ServeError::Io(_) => "error "
+            ServeError::Io(_) => "error writing metrics"
         }
     }
 
