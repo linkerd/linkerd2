@@ -98,9 +98,13 @@ func BuildStatSummaryRequest(p StatSummaryRequestParams) (*pb.StatSummaryRequest
 		window = p.TimeWindow
 	}
 
-	resourceType, err := k8s.CanonicalKubernetesNameFromFriendlyName(p.ResourceType)
-	if err != nil {
-		return nil, err
+	resourceType := p.ResourceType
+	var err error
+	if resourceType != "all" {
+		resourceType, err = k8s.CanonicalKubernetesNameFromFriendlyName(p.ResourceType)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	statRequest := &pb.StatSummaryRequest{
