@@ -60,9 +60,11 @@ use std::time::Duration;
 use indexmap::IndexSet;
 use tokio::{
     executor::{
-        current_thread::{self, CurrentThread},
+        self,
+        // current_thread::{self, CurrentThread},
         thread_pool,
     },
+    runtime::current_thread,
     reactor,
 };
 use tokio_timer::timer;
@@ -338,57 +340,41 @@ where
                 .name("controller-client".into())
                 .spawn(move || {
                     use conduit_proxy_controller_grpc::tap::server::TapServer;
-                    let mut enter = tokio_executor::enter()
-                        .expect("multiple executors on control thread");
-                    let reactor = reactor::Reactor::new()
-                        .expect("initialize controller reactor");
-                    let handle = reactor.handle();
-                    let timer = timer::Timer::new(reactor);
-                    let timer_handle = timer.handle();
-                    // Use the `CurrentThread` executor to ensure that all the
-                    // controller client's tasks stay on this thread.
-                    let mut rt = CurrentThread::new_with_park(timer);
+                    let mut rt = current_thread::Runtime::new()
+                        .expect("initialize controller client runtime");
 
-                    // Configure the default tokio runtime for the control thread.
-                    tokio_reactor::with_default(&handle, &mut enter, |enter| {
-                        timer::with_default(&timer_handle, enter, |enter| {
-                            let mut default_executor = current_thread::TaskExecutor::current();
-                            tokio_executor::with_default(&mut default_executor, enter, |enter| {
-                                let (taps, observe) = control::Observe::new(100);
-                                let new_service = TapServer::new(observe);
+                    let (taps, observe) = control::Observe::new(100);
+                    let new_service = TapServer::new(observe);
 
-                                let server = serve_control(control_listener, new_service);
+                    let server = serve_control(control_listener, new_service);
 
-                                let telemetry = telemetry
-                                    .make_control(&taps)
-                                    .expect("bad news in telemetry town");
+                    let telemetry = telemetry
+                        .make_control(&taps)
+                        .expect("bad news in telemetry town");
 
-                                let metrics_server = telemetry
-                                    .serve_metrics(metrics_listener);
+                    let metrics_server = telemetry
+                        .serve_metrics(metrics_listener);
 
-                                let client = control_bg.bind(
-                                    control_host_and_port,
-                                    dns_config,
-                                );
+                    let client = control_bg.bind(
+                        control_host_and_port,
+                        dns_config,
+                    );
 
-                                let fut = client.join4(
-                                    server.map_err(|_| {}),
-                                    telemetry,
-                                    metrics_server.map_err(|_| {}),
-                                ).map(|_| {});
-                                let fut = ::logging::context_future("controller-client", fut);
+                    let fut = client.join4(
+                        server.map_err(|_| {}),
+                        telemetry,
+                        metrics_server.map_err(|_| {}),
+                    ).map(|_| {});
+                    let fut = ::logging::context_future("controller-client", fut);
 
-                                rt.spawn(Box::new(fut));
+                    rt.spawn(Box::new(fut));
 
-                                let shutdown = controller_shutdown_signal.then(|_| {
-                                    trace!("controller client: shutdown");
-                                    Ok::<(), ()>(())
-                                });
-                                rt.enter(enter).block_on(shutdown).expect("controller api");
-                                trace!("controller client: task finished")
-                            })
-                        })
-                    })
+                    let shutdown = controller_shutdown_signal.then(|_| {
+                        trace!("controller client: shutdown");
+                        Ok::<(), ()>(())
+                    });
+                    rt.block_on(shutdown).expect("controller api");
+                    trace!("controller client: finished")
                 })
                 .expect("initialize controller api thread");
         }
@@ -542,7 +528,7 @@ where
     B: tower_h2::Body + 'static,
     N: NewService<Request = http::Request<tower_h2::RecvBody>, Response = http::Response<B>> + 'static,
 {
-    let executor = current_thread::TaskExecutor::current();
+    let executor = executor::current_thread::TaskExecutor::current();
     let h2_builder = h2::server::Builder::default();
     let server = tower_h2::Server::new(new_service, h2_builder, executor.clone());
     bound_port.listen_and_fold_local(
