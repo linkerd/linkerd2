@@ -103,7 +103,7 @@ mod tests {
         let mut cache = Cache::<_, MultiplyAndAssign>::new(2);
 
         assert!(cache.access(&1).is_none());
-        assert!(cache.access(&1).is_none());
+        assert!(cache.access(&2).is_none());
 
         assert!(cache.store(1, MultiplyAndAssign::default()).is_ok());
         assert!(cache.access(&1).is_some());
