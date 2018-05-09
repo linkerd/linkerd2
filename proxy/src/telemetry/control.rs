@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use futures::{future, Async, Future, Poll, Stream};
 use futures_mpsc_lossy::Receiver;
-use tokio::{ reactor, executor::current_thread };
+use tokio::executor::current_thread ;
 
 use super::event::Event;
 use super::metrics;
@@ -120,7 +120,6 @@ impl Control {
         let service = self.metrics_service.clone();
         let hyper = hyper::server::conn::Http::new();
         bound_port.listen_and_fold(
-            &reactor::Handle::current(),
             hyper,
             move |hyper, (conn, _)| {
                 let service = service.clone();

@@ -6,15 +6,13 @@ use bytes::Bytes;
 use futures::{future, Async, Future, Poll};
 use h2;
 use http;
-use tokio::{
-    executor::current_thread,
-    timer::Delay,
-};
+use tokio::timer::Delay;
 use tower_service::Service;
 use tower_h2;
 use tower_reconnect::{Error as ReconnectError, Reconnect};
 
 use dns;
+use task::LazyExecutor;
 use transport::{DnsNameAndPort, HostAndPort, LookupAddressAndConnect};
 use timeout::{Timeout, TimeoutError};
 
@@ -85,7 +83,7 @@ impl Background {
                 h2::client::Builder::default(),
                 ::logging::context_executor(
                     ctx,
-                    current_thread::TaskExecutor::current()
+                    LazyExecutor,
                 ),
             );
 

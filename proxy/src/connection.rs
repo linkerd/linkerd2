@@ -98,15 +98,15 @@ impl BoundPort {
     // This ensures that every incoming connection has the correct options set.
     // In the future it will also ensure that the connection is upgraded with
     // TLS when needed.
-    pub fn listen_and_fold<T, F, Fut>(self, handle: &Handle, initial: T, f: F)
+    pub fn listen_and_fold<T, F, Fut>(self, initial: T, f: F)
         -> Box<Future<Item = (), Error = io::Error> + Send + 'static>
         where
         F: Fn(T, (Connection, SocketAddr)) -> Fut + Send + 'static,
         T: Send + 'static,
         Fut: IntoFuture<Item = T, Error = std::io::Error> + 'static,
         <Fut as IntoFuture>::Future: Send, {
-        let fut = TcpListener::from_std(self.inner, &handle)
-            .expect("from_listener") // TODO: get rid of this `expect()`.
+        let fut = TcpListener::from_std(self.inner, &Handle::current())
+            .expect("Listener::from_std") // TODO: get rid of this `expect()`.
             .incoming()
             .fold(initial, move |b, socket| {
                 let remote_addr = socket.peer_addr()

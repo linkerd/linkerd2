@@ -56,7 +56,6 @@ use indexmap::IndexSet;
 use tokio::{
     executor,
     runtime::{self as thread_pool, current_thread},
-    reactor,
 };
 use tower_service::NewService;
 use tower_fn::*;
@@ -420,7 +419,6 @@ where
     );
 
     let accept = bound_port.listen_and_fold(
-        &tokio::reactor::Handle::current(),
         (),
         move |(), (connection, remote_addr)| {
             server.serve(connection, remote_addr);
@@ -536,7 +534,6 @@ where
         task::LazyExecutor
     );
     bound_port.listen_and_fold(
-        &reactor::Handle::current(),
         server,
         move |server, (session, _)| {
             let s = server.serve(session).map_err(|_| ());
