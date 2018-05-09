@@ -16,10 +16,7 @@ extern crate hyper;
 extern crate prost;
 extern crate tokio;
 extern crate tokio_connect;
-extern crate tokio_executor;
 pub extern crate tokio_io;
-extern crate tokio_reactor;
-extern crate tokio_timer;
 extern crate tower_h2;
 extern crate tower_grpc;
 extern crate tower_service;
@@ -32,18 +29,17 @@ pub use std::time::Duration;
 
 pub use self::bytes::Bytes;
 pub use self::conduit_proxy::*;
+pub use self::conduit_proxy::task::LazyExecutor;
 pub use self::futures::{future::Executor, *,};
 use self::futures::sync::oneshot;
 pub use self::http::{HeaderMap, Request, Response, StatusCode};
 use self::tokio::{
-    executor::{self, current_thread},
+    executor::current_thread,
     net::{TcpListener, TcpStream},
     runtime,
     reactor,
 };
 use self::tokio_connect::Connect;
-use self::tokio_reactor::Handle;
-use self::tokio_timer::timer;
 use self::tower_h2::{Body, RecvBody};
 use self::tower_grpc as grpc;
 use self::tower_service::{NewService, Service};
@@ -178,37 +174,4 @@ pub fn thread_name() -> String {
 #[should_panic]
 fn assert_eventually() {
     assert_eventually!(false)
-}
-
-fn with_rt<F, I>(name: I, f: F)
-where
-    F: FnOnce(current_thread::Entered<tokio_timer::Timer<reactor::Reactor>>) + Send + 'static,
-    I: Into<String>,
-{
-    let name = name.into();
-    ::std::thread::Builder::new()
-        .name(name.clone())
-        .spawn(move || {
-            let mut enter = tokio_executor::enter()
-                .expect("multiple executors on thread");
-            let reactor = reactor::Reactor::new()
-                .expect("initialize reactor");
-            let handle = reactor.handle();
-            let timer = timer::Timer::new(reactor);
-            let timer_handle = timer.handle();
-            let mut executor = executor::current_thread::CurrentThread::new_with_park(timer);
-
-            tokio_reactor::with_default(&handle, &mut enter, |enter| {
-                timer::with_default(&timer_handle, enter, |enter| {
-                    let mut default_executor =
-                        current_thread::TaskExecutor::current();
-                    tokio_executor::with_default(
-                        &mut default_executor,
-                        enter,
-                        |enter| {
-                            f(executor.enter(enter))
-                        })
-                })
-            })
-        }).expect(&format!("spawn '{}'", &name));
 }

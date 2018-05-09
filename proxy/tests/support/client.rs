@@ -7,8 +7,10 @@ use self::futures::{
     future::Executor,
     sync::{mpsc, oneshot},
 };
-use self::tokio::net::TcpStream;
-use self::tokio_io::{AsyncRead, AsyncWrite};
+use self::tokio::{
+    net::TcpStream,
+    io::{AsyncRead, AsyncWrite},
+};
 
 type Request = http::Request<()>;
 type Response = http::Response<BodyStream>;
@@ -118,8 +120,11 @@ fn run(addr: SocketAddr, version: Run) -> (Sender, Running) {
     let (tx, rx) = mpsc::unbounded::<(Request, oneshot::Sender<Result<Response, String>>)>();
     let (running_tx, running_rx) = running();
 
-    with_rt("support client", move |mut entered| {
-        let executor = executor::current_thread::TaskExecutor::current();
+    ::std::thread::Builder::new()
+        .name("support client".into())
+        .spawn(move || {
+        let mut runtime = runtime::current_thread::Runtime::new()
+            .expect("initialize support client runtime");
 
         let absolute_uris = if let Run::Http1 { absolute_uris } = version {
             absolute_uris
@@ -135,7 +140,6 @@ fn run(addr: SocketAddr, version: Run) -> (Sender, Running) {
         let work: Box<Future<Item=(), Error=()>> = match version {
             Run::Http1 { .. } => {
                 let client = hyper::Client::builder()
-                    // .executor(&executor)
                     .build::<Conn, hyper::Body>(conn);
                 Box::new(rx.for_each(move |(req, cb)| {
                     let req = req.map(|_| hyper::Body::empty());
@@ -155,7 +159,7 @@ fn run(addr: SocketAddr, version: Run) -> (Sender, Running) {
                         let _ = cb.send(result);
                         Ok(())
                     });
-                    executor.execute(fut)
+                    current_thread::TaskExecutor::current().execute(fut)
                         .map_err(|e| println!("client spawn error: {:?}", e))
                 })
                     .map_err(|e| println!("client error: {:?}", e)))
@@ -164,7 +168,7 @@ fn run(addr: SocketAddr, version: Run) -> (Sender, Running) {
                 let connect = tower_h2::client::Connect::new(
                     conn,
                     Default::default(),
-                    executor.clone(),
+                    LazyExecutor,
                 );
 
                 Box::new(connect.new_service()
@@ -182,7 +186,7 @@ fn run(addr: SocketAddr, version: Run) -> (Sender, Running) {
                                 let _ = cb.send(result);
                                 Ok(())
                             });
-                            executor.execute(fut)
+                            current_thread::TaskExecutor::current().execute(fut)
                                 .map_err(|e| println!("client spawn error: {:?}", e))
                         })
                     })
@@ -191,8 +195,8 @@ fn run(addr: SocketAddr, version: Run) -> (Sender, Running) {
             }
         };
 
-        entered.block_on(work).expect("support client core run");
-    });
+        runtime.block_on(work).expect("support client runtime");
+    }).unwrap();
     (tx, running_rx)
 }
 

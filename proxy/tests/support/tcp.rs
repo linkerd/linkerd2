@@ -137,7 +137,7 @@ fn run_client(addr: SocketAddr) -> TcpSender {
     let tname = format!("support tcp client (addr={})", addr);
     ::std::thread::Builder::new().name(tname).spawn(move || {
         let mut core = runtime::current_thread::Runtime::new()
-            .expect("support tcp client Runtime::new");
+            .expect("support tcp client runtime");
 
         let work = rx.for_each(|cb: oneshot::Sender<_>| {
             let fut = TcpStream::connect(&addr)
@@ -215,7 +215,7 @@ fn run_server(tcp: TcpServer) -> server::Listening {
 
         let bind = TcpListener::from_std(
             std_listener,
-            &Handle::current(),
+            &reactor::Handle::current(),
         ).expect("TcpListener::from_std");
 
 

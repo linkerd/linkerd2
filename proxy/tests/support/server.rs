@@ -116,77 +116,81 @@ impl Server {
             version,
             thread_name(),
         );
-        with_rt(tname, move |mut entered| {
+        ::std::thread::Builder::new()
+            .name(tname)
+            .spawn(move || {
+                let mut runtime = runtime::current_thread::Runtime::new()
+                    .expect("initialize support server runtime");
 
-            let new_svc = NewSvc(Arc::new(self.routes));
+                let new_svc = NewSvc(Arc::new(self.routes));
 
-            let srv: Box<Fn(TcpStream) -> Box<Future<Item=(), Error=()>>> = match self.version {
-                Run::Http1 => {
-                    let h1 = hyper::server::conn::Http::new();
+                let srv: Box<Fn(TcpStream) -> Box<Future<Item=(), Error=()>>> = match self.version {
+                    Run::Http1 => {
+                        let h1 = hyper::server::conn::Http::new();
 
-                    Box::new(move |sock| {
-                        let h1_clone = h1.clone();
-                        let srv_conn_count = Arc::clone(&srv_conn_count);
-                        let conn = new_svc.new_service()
-                            .inspect(move |_| {
-                                srv_conn_count.fetch_add(1, Ordering::Release);
-                            })
-                            .map_err(|e| println!("server new_service error: {}", e))
-                            .and_then(move |svc|
-                                h1_clone.serve_connection(sock, svc)
-                                    .map_err(|e| println!("server h1 error: {}", e))
-                            )
-                            .map(|_| ());
-                        Box::new(conn)
-                    })
-                },
-                Run::Http2 => {
-                    let h2 = tower_h2::Server::new(
-                        new_svc,
-                        Default::default(),
-                        executor::current_thread::TaskExecutor::current(),
-                    );
-                    Box::new(move |sock| {
-                        let srv_conn_count = Arc::clone(&srv_conn_count);
-                        let conn = h2.serve(sock)
-                            .map_err(|e| println!("server h2 error: {:?}", e))
-                            .inspect(move |_| {
-                                srv_conn_count.fetch_add(1, Ordering::Release);
-                            });
-                        Box::new(conn)
-                    })
-                },
-            };
-
-            let addr = ([127, 0, 0, 1], 0).into();
-            let bind = TcpListener::bind(&addr).expect("bind");
-
-            let local_addr = bind.local_addr().expect("local_addr");
-            let _ = addr_tx.send(local_addr);
-
-            let serve = bind.incoming()
-                .fold(srv, move |srv, sock| {
-                    if let Err(e) = sock.set_nodelay(true) {
-                        return Err(e);
-                    }
-                    current_thread::TaskExecutor::current()
-                        .execute(srv(sock))
-                        .map_err(|e| {
-                            println!("server execute error: {:?}", e);
-                            io::Error::from(io::ErrorKind::Other)
+                        Box::new(move |sock| {
+                            let h1_clone = h1.clone();
+                            let srv_conn_count = Arc::clone(&srv_conn_count);
+                            let conn = new_svc.new_service()
+                                .inspect(move |_| {
+                                    srv_conn_count.fetch_add(1, Ordering::Release);
+                                })
+                                .map_err(|e| println!("server new_service error: {}", e))
+                                .and_then(move |svc|
+                                    h1_clone.serve_connection(sock, svc)
+                                        .map_err(|e| println!("server h1 error: {}", e))
+                                )
+                                .map(|_| ());
+                            Box::new(conn)
                         })
-                        .map(|_| srv)
-                });
+                    },
+                    Run::Http2 => {
+                        let h2 = tower_h2::Server::new(
+                            new_svc,
+                            Default::default(),
+                            LazyExecutor,
+                        );
+                        Box::new(move |sock| {
+                            let srv_conn_count = Arc::clone(&srv_conn_count);
+                            let conn = h2.serve(sock)
+                                .map_err(|e| println!("server h2 error: {:?}", e))
+                                .inspect(move |_| {
+                                    srv_conn_count.fetch_add(1, Ordering::Release);
+                                });
+                            Box::new(conn)
+                        })
+                    },
+                };
 
-            entered.spawn(
-                Box::new(serve
-                    .map(|_| ())
-                    .map_err(|e| println!("server error: {}", e))
-                )
-            );
+                let addr = ([127, 0, 0, 1], 0).into();
+                let bind = TcpListener::bind(&addr).expect("bind");
 
-            entered.block_on(rx).expect("block on");
-        });
+                let local_addr = bind.local_addr().expect("local_addr");
+                let _ = addr_tx.send(local_addr);
+
+                let serve = bind.incoming()
+                    .fold(srv, move |srv, sock| {
+                        if let Err(e) = sock.set_nodelay(true) {
+                            return Err(e);
+                        }
+                        current_thread::TaskExecutor::current()
+                            .execute(srv(sock))
+                            .map_err(|e| {
+                                println!("server execute error: {:?}", e);
+                                io::Error::from(io::ErrorKind::Other)
+                            })
+                            .map(|_| srv)
+                    });
+
+                runtime.spawn(
+                    Box::new(serve
+                        .map(|_| ())
+                        .map_err(|e| println!("server error: {}", e))
+                    )
+                );
+
+                runtime.block_on(rx).expect("block on");
+            }).unwrap();
 
         let addr = addr_rx.wait().expect("addr");
 
