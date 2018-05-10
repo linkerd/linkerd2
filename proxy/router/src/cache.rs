@@ -22,6 +22,7 @@ pub struct Cache<K: Hash + Eq, V> {
     capacity: usize,
 }
 
+/// A handle to a `Cache` that has capacity for at least one additional value.
 pub struct Reserve<'a, K: Hash + Eq + 'a, V: 'a> {
     vals: &'a mut IndexMap<K, V>,
 }
