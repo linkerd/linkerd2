@@ -70,7 +70,7 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 
 	statTables := make([]*pb.StatTable, 0)
 
-	if req.Selector.Resource.Type == "all" {
+	if req.Selector.Resource.Type == k8s.All {
 		// request stats for all resourceTypes, in parallel
 		resultChan := make(chan resourceResult)
 

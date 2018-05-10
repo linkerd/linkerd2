@@ -100,7 +100,7 @@ func BuildStatSummaryRequest(p StatSummaryRequestParams) (*pb.StatSummaryRequest
 
 	resourceType := p.ResourceType
 	var err error
-	if resourceType != "all" {
+	if resourceType != k8s.All {
 		resourceType, err = k8s.CanonicalKubernetesNameFromFriendlyName(p.ResourceType)
 		if err != nil {
 			return nil, err
@@ -194,7 +194,13 @@ func BuildResource(namespace string, args ...string) (pb.Resource, error) {
 }
 
 func buildResource(namespace string, resType string, name string) (pb.Resource, error) {
-	canonicalType, err := k8s.CanonicalKubernetesNameFromFriendlyName(resType)
+	canonicalType := resType
+	var err error
+
+	if canonicalType != k8s.All {
+		canonicalType, err = k8s.CanonicalKubernetesNameFromFriendlyName(resType)
+	}
+
 	if err != nil {
 		return pb.Resource{}, err
 	}

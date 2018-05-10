@@ -14,6 +14,7 @@ const (
 	Pods                   = "pods"
 	ReplicationControllers = "replicationcontrollers"
 	Services               = "services"
+	All                    = "all"
 )
 
 // ResourceTypesToProxyLabels maps Kubernetes resource type names to keys
