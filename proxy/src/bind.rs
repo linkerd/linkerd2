@@ -45,7 +45,12 @@ pub struct BindProtocol<C, B> {
 /// request.
 ///
 /// `Bound` serivces may be used to process an arbitrary number of requests.
-pub enum Binding<B: tower_h2::Body + 'static> {
+pub enum Binding<B>
+where
+    B: tower_h2::Body + Send + 'static,
+    B::Data: Send,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
+{
     Bound(Stack<B>),
     BindsPerRequest {
         endpoint: Endpoint,
@@ -340,7 +345,12 @@ where
 
 // ===== impl Binding =====
 
-impl<B: tower_h2::Body + 'static> tower::Service for Binding<B> {
+impl<B> tower::Service for Binding<B>
+where
+    B: tower_h2::Body + Send + 'static,
+    B::Data: Send,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
+{
     type Request = <Stack<B> as tower::Service>::Request;
     type Response = <Stack<B> as tower::Service>::Response;
     type Error = <Stack<B> as tower::Service>::Error;

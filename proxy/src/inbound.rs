@@ -78,7 +78,7 @@ where
         debug!("building inbound {:?} client to {}", proto, addr);
 
         let endpoint = (*addr).into();
-        let bind = self.bind.bind_service(&endpoint, proto);
+        let bind = self.bind.new_binding(&endpoint, proto);
         Buffer::new(bind, &LazyExecutor)
             .map(|buffer| {
                 InFlightLimit::new(buffer, MAX_IN_FLIGHT)
@@ -117,10 +117,10 @@ mod tests {
             let srv_ctx = ctx::transport::Server::new(&ctx, &local, &remote, &Some(orig_dst));
 
             let rec = srv_ctx.orig_dst_if_not_local().map(|addr|
-                bind::Protocol::Http1 {
+                (addr, bind::Protocol::Http1 {
                     host: Host::NoAuthority,
                     was_absolute_form: false,
-                }.into_key(addr)
+                })
             );
 
             let mut req = http::Request::new(());
@@ -149,10 +149,10 @@ mod tests {
                 ));
 
             inbound.recognize(&req) == default.map(|addr|
-                bind::Protocol::Http1 {
+                (addr, bind::Protocol::Http1 {
                     host: Host::NoAuthority,
                     was_absolute_form: false,
-                }.into_key(addr)
+                })
             )
         }
 
@@ -164,10 +164,10 @@ mod tests {
             let req = http::Request::new(());
 
             inbound.recognize(&req) == default.map(|addr|
-                bind::Protocol::Http1 {
+                (addr, bind::Protocol::Http1 {
                     host: Host::NoAuthority,
                     was_absolute_form: false,
-                }.into_key(addr)
+                })
             )
         }
 
@@ -190,10 +190,10 @@ mod tests {
                 ));
 
             inbound.recognize(&req) == default.map(|addr|
-                bind::Protocol::Http1 {
+                (addr, bind::Protocol::Http1 {
                     host: Host::NoAuthority,
                     was_absolute_form: false,
-                }.into_key(addr)
+                })
             )
         }
     }

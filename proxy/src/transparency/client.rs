@@ -199,7 +199,7 @@ where
 }
 
 pub enum ClientServiceFuture {
-    Http1(hyper::client::FutureResponse),
+    Http1(hyper::client::ResponseFuture),
     Http2(tower_h2::client::ResponseFuture),
 }
 

@@ -30,10 +30,6 @@ pub(super) struct BodyStream<B> {
     body: B,
 }
 
-/// Glue for the `Data` part of a `tower_h2::Body` to be used as an `AsRef` in `BodyStream`.
-#[derive(Debug)]
-pub struct BufAsRef<B>(B);
-
 /// Glue for a `tower::Service` to used as a `hyper::server::Service`.
 #[derive(Debug)]
 pub(super) struct HyperServerSvc<S> {
@@ -121,7 +117,7 @@ impl Default for HttpBody {
 }
 
 impl hyper::body::Payload for HttpBody {
-    type Data = BufAsRef<<Bytes as ::bytes::IntoBuf>::Buf>;
+    type Data = <Bytes as ::bytes::IntoBuf>::Buf;
     type Error = h2::Error;
 
     fn is_end_stream(&self) -> bool {
@@ -131,7 +127,7 @@ impl hyper::body::Payload for HttpBody {
     fn poll_data(&mut self) -> Poll<Option<Self::Data>, h2::Error> {
         tower_h2::Body::poll_data(self).map(|async| {
             async.map(|opt|
-                opt.map(|buf| BufAsRef(buf.into_buf()))
+                opt.map(Bytes::into_buf)
             )
         })
     }
@@ -160,18 +156,17 @@ impl<B> BodyStream<B> {
 impl<B> hyper::body::Payload for BodyStream<B>
 where
     B: tower_h2::Body + Send + 'static,
-    B::Data: Send,
+    B::Data: ::bytes::IntoBuf + Send,
     <B::Data as ::bytes::IntoBuf>::Buf: Send,
-    BufAsRef<<B::Data as ::bytes::IntoBuf>::Buf>: Send,
 {
-    type Data = BufAsRef<<B::Data as ::bytes::IntoBuf>::Buf>;
+    type Data = <B::Data as ::bytes::IntoBuf>::Buf;
     type Error = h2::Error;
 
     #[inline]
     fn poll_data(&mut self) -> Poll<Option<Self::Data>, Self::Error> {
         self.body.poll_data().map(|async| {
             async.map(|opt|
-                opt.map(|buf| BufAsRef(buf.into_buf()))
+                opt.map(B::Data::into_buf)
             )
         })
     }
@@ -186,14 +181,6 @@ where
         self.body.poll_trailers()
     }
 
-}
-
-// ===== impl BufAsRef =====
-
-impl<B: ::bytes::Buf> AsRef<[u8]> for BufAsRef<B> {
-    fn as_ref(&self) -> &[u8] {
-        ::bytes::Buf::bytes(&self.0)
-    }
 }
 
 // ===== impl HyperServerSvc =====
@@ -217,7 +204,6 @@ where
     B: tower_h2::Body + Default + Send + 'static,
     B::Data: Send,
     <B::Data as ::bytes::IntoBuf>::Buf: Send,
-    BufAsRef<<B::Data as ::bytes::IntoBuf>::Buf>: Send,
 {
     type ReqBody = hyper::Body;
     type ResBody = BodyStream<B>;

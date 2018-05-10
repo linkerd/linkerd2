@@ -118,7 +118,7 @@ impl BoundPort {
                 // libraries don't have the necessary API for that, so just
                 // do it here.
                 set_nodelay_or_warn(&socket);
-                f(b, (Connection::Plain(socket), remote_addr))
+                f(b, (Connection::plain(socket), remote_addr))
             });
 
         Box::new(fut.map(|_| ()))
@@ -242,11 +242,14 @@ impl AsyncWrite for Connection {
 }
 
 impl Peek for Connection {
-    fn poll_peek(&mut self, buf: &mut [u8]) -> Poll<usize, io::Error> {
-        use self::Connection::*;
-
-        match *self {
-            Plain(ref mut t) => t.poll_peek(buf),
+    fn poll_peek(&mut self) -> Poll<usize, io::Error> {
+        if self.peek_buf.is_empty() {
+            self.peek_buf.reserve(8192);
+            match self.io {
+                Io::Plain(ref mut t) => t.read_buf(&mut self.peek_buf),
+            }
+        } else {
+            Ok(Async::Ready(self.peek_buf.len()))
         }
     }
 
