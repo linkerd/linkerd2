@@ -30,7 +30,7 @@ export default class ResourceList extends React.Component {
   }
 
   componentDidMount() {
-    this.startServerPolling();
+    this.startServerPolling(this.props.resource);
   }
 
   componentWillReceiveProps(newProps) {
@@ -46,7 +46,7 @@ export default class ResourceList extends React.Component {
 
   startServerPolling(resource) {
     this.loadFromServer(resource);
-    this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
+    this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval, resource);
   }
 
   stopServerPolling() {
@@ -55,7 +55,6 @@ export default class ResourceList extends React.Component {
   }
 
   loadFromServer(resource) {
-    resource = resource || this.props.resource;
     if (this.state.pendingRequests) {
       return; // don't make more requests if the ones we sent haven't completed
     }
