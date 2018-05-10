@@ -17,8 +17,7 @@ use self::cache::Cache;
 pub struct Router<T>
 where T: Recognize,
 {
-    recognize: T,
-    cache: Arc<Mutex<Cache<T::Key, T::Service>>>,
+    inner: Arc<Inner<T>>,
 }
 
 /// Provides a strategy for routing a Request to a Service.
@@ -55,10 +54,8 @@ pub trait Recognize: Clone {
     ///
     /// The returned service must always be in the ready state (i.e.
     /// `poll_ready` must always return `Ready` or `Err`).
-    fn bind_service(&mut self, key: &Self::Key) -> Result<Self::Service, Self::RouteError>;
+    fn bind_service(&self, key: &Self::Key) -> Result<Self::Service, Self::RouteError>;
 }
-
-pub struct Single<S>(Option<S>);
 
 #[derive(Debug, PartialEq)]
 pub enum Error<T, U> {
@@ -72,6 +69,13 @@ pub struct ResponseFuture<T>
 where T: Recognize,
 {
     state: State<T>,
+}
+
+struct Inner<T>
+where T: Recognize,
+{
+    recognize: T,
+    cache: Mutex<Cache<T::Key, T::Service>>,
 }
 
 enum State<T>
@@ -91,17 +95,10 @@ where T: Recognize
 {
     pub fn new(recognize: T, capacity: usize) -> Self {
         Router {
-            recognize,
-            cache: Arc::new(Mutex::new(Cache::new(capacity))),
-        }
-    }
-}
-
-macro_rules! try_bind_route {
-    ( $bind:expr ) => {
-        match $bind {
-            Ok(svc) => svc,
-            Err(e) => return ResponseFuture { state: State::RouteError(e) },
+            inner: Arc::new(Inner {
+                recognize,
+                cache: Mutex::new(Cache::new(capacity)),
+            }),
         }
     }
 }
@@ -129,12 +126,12 @@ where T: Recognize,
     ///
     /// The response fails when the request cannot be routed.
     fn call(&mut self, request: Self::Request) -> Self::Future {
-        let key = match self.recognize.recognize(&request) {
+        let key = match self.inner.recognize.recognize(&request) {
             Some(key) => key,
             None => return ResponseFuture::not_recognized(),
         };
 
-        let cache = &mut *self.cache.lock().expect("lock router cache");
+        let cache = &mut *self.inner.cache.lock().expect("lock router cache");
 
         // First, try to load a cached route for `key`.
         if let Some(service) = cache.access(&key) {
@@ -151,7 +148,11 @@ where T: Recognize,
         };
 
         // Bind a new route, send the request on the route, and cache the route.
-        let mut service = try_bind_route!(self.recognize.bind_service(&key));
+        let mut service = match self.inner.recognize.bind_service(&key) {
+            Ok(svc) => svc,
+            Err(e) => return ResponseFuture { state: State::RouteError(e) },
+        };
+
         let response = service.call(request);
         reserve.store(key, service);
 
@@ -163,10 +164,7 @@ impl<T> Clone for Router<T>
 where T: Recognize
 {
     fn clone(&self) -> Self {
-        Self {
-            cache: self.cache.clone(),
-            recognize: self.recognize.clone(),
-        }
+        Router { inner: self.inner.clone() }
     }
 }
 
@@ -283,7 +281,7 @@ mod test_util {
             }
         }
 
-        fn bind_service(&mut self, _: &Self::Key) -> Result<Self::Service, Self::RouteError> {
+        fn bind_service(&self, _: &Self::Key) -> Result<Self::Service, Self::RouteError> {
             Ok(MultiplyAndAssign(1))
         }
     }

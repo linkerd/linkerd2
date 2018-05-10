@@ -69,7 +69,7 @@ impl Proxy {
         let connect = self.sensors.connect(c, &client_ctx);
 
         let fut = connect.connect()
-            .map_err(|e| debug!("tcp connect error: {:?}", e))
+            .map_err(move |e| error!("tcp connect error to {}: {:?}", orig_dst, e))
             .and_then(move |tcp_out| {
                 Duplex::new(tcp_in, tcp_out)
                     .map_err(|e| error!("tcp duplex error: {}", e))

@@ -55,6 +55,7 @@ The following labels are only applicable if `direction=outbound`.
 * `dst_k8s_job`: The job to which this request is being sent.
 * `dst_replica_set`: The replica set to which this request is being sent.
 * `dst_daemon_set`: The daemon set to which this request is being sent.
+* `dst_stateful_set`: The stateful set to which this request is being sent.
 * `dst_replication_controller`: The replication controller to which this request
                                 is being sent.
 * `dst_namespace`: The namespace to which this request is being sent.
@@ -97,6 +98,7 @@ Kubernetes labels prefixed with `conduit.io/` are added to your application at
 * `replica_set`: The replica set that the pod belongs to (if applicable).
 * `replication_controller`: The replication controller that the pod belongs to
                             (if applicable).
+* `stateful_set`: The stateful set that the pod belongs to (if applicable).
 
 ### Example
 

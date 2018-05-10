@@ -13,11 +13,15 @@ RUN $HOME/.yarn/bin/yarn webpack
 
 ## compile go server
 FROM gcr.io/runconduit/go-deps:e7d5fcae as golang
-ARG CONDUIT_VERSION
 WORKDIR /go/src/github.com/runconduit/conduit
 COPY web web
 COPY controller controller
 COPY pkg pkg
+
+# Cache a build without version info
+RUN CGO_ENABLED=0 GOOS=linux go build -installsuffix cgo -o web/web ./web
+
+ARG CONDUIT_VERSION
 RUN CGO_ENABLED=0 GOOS=linux go build -installsuffix cgo -o web/web -ldflags "-X github.com/runconduit/conduit/pkg/version.Version=$CONDUIT_VERSION" ./web
 
 ## package it all up

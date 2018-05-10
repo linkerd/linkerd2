@@ -26,8 +26,10 @@ const serviceMeshDetailsColumns = [
   }
 ];
 
-const barColor = percentMeshed => {
-  if (percentMeshed <= 0) {
+const getClassification = (meshedPodCount, failedPodCount) => {
+  if (failedPodCount > 0) {
+    return "poor";
+  } else if (meshedPodCount === 0) {
     return "neutral";
   } else {
     return "good";
@@ -51,22 +53,23 @@ const namespacesColumns = ConduitLink => [
     sorter: (a, b) => numericSort(a.totalPods, b.totalPods),
   },
   {
-    title: "Mesh completion",
+    title: "Meshed Status",
     key: "meshification",
     sorter: (a, b) => numericSort(a.meshedPercent.get(), b.meshedPercent.get()),
     render: row => {
       let containerWidth = 132;
       let percent = row.meshedPercent.get();
       let barWidth = percent < 0 ? 0 : Math.round(percent * containerWidth);
-      let barType = barColor(percent);
+      let barType = getClassification(row.meshedPods, row.failedPods);
 
       return (
         <Tooltip
           overlayStyle={{ fontSize: "12px" }}
           title={<div>
             <div>
-              {`${row.meshedPods} / ${row.totalPods} pods in mesh (${row.meshedPercent.prettyRate()})`}
+              {`${row.meshedPods} out of ${row.totalPods} running or pending pods are in the mesh (${row.meshedPercent.prettyRate()})`}
             </div>
+            {row.failedPods === 0 ? null : <div>{ `${row.failedPods} failed pods` }</div>}
           </div>}>
           <div className={"container-bar " + barType} style={{width: containerWidth}}>
             <div className={"inner-bar " + barType} style={{width: barWidth}}>&nbsp;</div>
@@ -131,13 +134,15 @@ export default class ServiceMesh extends React.Component {
       }
       let meshedPods = parseInt(ns.meshedPodCount, 10);
       let totalPods = parseInt(ns.runningPodCount, 10);
+      let failedPods = parseInt(ns.failedPodCount, 10);
 
       return {
         namespace: ns.resource.name,
         meshedPodsStr: ns.meshedPodCount + "/" + ns.runningPodCount,
         meshedPercent: new Percentage(meshedPods, totalPods),
         meshedPods,
-        totalPods
+        totalPods,
+        failedPods
       };
     });
     return _.compact(dataPlaneNamepaces);
@@ -154,8 +159,7 @@ export default class ServiceMesh extends React.Component {
         pods: _.map(matchingPods, p => {
           return {
             name: p.resource.name,
-            // we need an endpoint to return the k8s status of these pods
-            value: _.size(matchingPods) > 0 ? "good" : "neutral"
+            value: getClassification(parseInt(p.meshedPodCount, 10), parseInt(p.failedPodCount, 10))
           };
         })
       };
