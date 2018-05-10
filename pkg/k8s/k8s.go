@@ -80,6 +80,8 @@ func CanonicalKubernetesNameFromFriendlyName(friendlyName string) (string, error
 		return ReplicationControllers, nil
 	case "svc", "service", "services":
 		return Services, nil
+	case "all":
+		return All, nil
 	}
 
 	return "", fmt.Errorf("cannot find Kubernetes canonical name from friendly name [%s]", friendlyName)

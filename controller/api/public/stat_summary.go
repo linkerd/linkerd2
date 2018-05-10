@@ -66,6 +66,16 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 				},
 			},
 		}, nil
+
+	switch req.Outbound.(type) {
+	case *pb.StatSummaryRequest_ToResource:
+		if req.Outbound.(*pb.StatSummaryRequest_ToResource).ToResource.Type == k8s.All {
+			return nil, status.Errorf(codes.InvalidArgument, "resource type 'all' is not supported as a filter")
+		}
+	case *pb.StatSummaryRequest_FromResource:
+		if req.Outbound.(*pb.StatSummaryRequest_FromResource).FromResource.Type == k8s.All {
+			return nil, status.Errorf(codes.InvalidArgument, "resource type 'all' is not supported as a filter")
+		}
 	}
 
 	statTables := make([]*pb.StatTable, 0)
