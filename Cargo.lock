@@ -416,7 +416,7 @@ dependencies = [
 [[package]]
 name = "hyper"
 version = "0.12.0-pre.0"
-source = "git+https://github.com/hyperium/hyper#18f4dd240631df55064696de865b6d818cb76ba7"
+source = "git+https://github.com/hyperium/hyper#bc6af88a32e29e5a4f3719d8abc664f9ab10dddd"
 dependencies = [
  "bytes 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
