@@ -64,6 +64,12 @@ pub enum Error<T, U> {
     NotRecognized,
 }
 
+pub struct ResponseFuture<T>
+where T: Recognize,
+{
+    state: State<T>,
+}
+
 struct Inner<T>
 where T: Recognize,
 {
@@ -75,12 +81,6 @@ struct Cache<K: Hash + Eq, V>
 {
     routes: IndexMap<K, V>,
     capacity: usize,
-}
-
-pub struct ResponseFuture<T>
-where T: Recognize,
-{
-    state: State<T>,
 }
 
 enum State<T>
@@ -172,10 +172,35 @@ where T: Recognize,
 }
 
 impl<T> Clone for Router<T>
-where T: Recognize
+where T: Recognize,
 {
     fn clone(&self) -> Self {
-        Self { inner: self.inner.clone() }
+        Router { inner: self.inner.clone() }
+    }
+}
+
+// ===== impl Single =====
+
+impl<S: Service> Single<S> {
+    pub fn new(svc: S) -> Self {
+        Single(Some(svc))
+    }
+}
+
+impl<S: Service> Recognize for Single<S> {
+    type Request = S::Request;
+    type Response = S::Response;
+    type Error = S::Error;
+    type Key = ();
+    type RouteError = ();
+    type Service = S;
+
+    fn recognize(&self, _: &Self::Request) -> Option<Self::Key> {
+        Some(())
+    }
+
+    fn bind_service(&mut self, _: &Self::Key) -> Result<S, Self::RouteError> {
+        Ok(self.0.take().expect("static route bound twice"))
     }
 }
 
@@ -268,7 +293,6 @@ mod tests {
     use tower_service::Service;
     use super::{Error, Router};
 
-    #[derive(Clone)]
     struct Recognize;
 
     struct MultiplyAndAssign(usize);
