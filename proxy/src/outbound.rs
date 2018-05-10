@@ -32,12 +32,6 @@ pub struct Outbound<B> {
 
 const MAX_IN_FLIGHT: usize = 10_000;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum Destination {
-    Hostname(DnsNameAndPort),
-    ImplicitOriginalDst(SocketAddr),
-}
-
 // ===== impl Outbound =====
 
 impl<B> Outbound<B> {
@@ -51,6 +45,12 @@ impl<B> Outbound<B> {
             bind_timeout,
         }
     }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Destination {
+    Hostname(DnsNameAndPort),
+    ImplicitOriginalDst(SocketAddr),
 }
 
 impl<B> Recognize for Outbound<B>
