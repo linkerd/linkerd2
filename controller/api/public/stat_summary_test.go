@@ -223,6 +223,16 @@ spec:
       - image: buoyantio/emojivoto-emoji-svc:v3
 `, `
 apiVersion: v1
+kind: Service
+metadata:
+  name: emoji-svc
+  namespace: emojivoto
+spec:
+  clusterIP: None
+  selector:
+    app: emoji-svc
+`, `
+apiVersion: v1
 kind: Pod
 metadata:
   name: emojivoto-pod-1
@@ -281,13 +291,6 @@ status:
 								&pb.StatTable{
 									Table: &pb.StatTable_PodGroup_{
 										PodGroup: &pb.StatTable_PodGroup{
-											Rows: []*pb.StatTable_PodGroup_Row{},
-										},
-									},
-								},
-								&pb.StatTable{
-									Table: &pb.StatTable_PodGroup_{
-										PodGroup: &pb.StatTable_PodGroup{
 											Rows: []*pb.StatTable_PodGroup_Row{
 												&pb.StatTable_PodGroup_Row{
 													Resource: &pb.Resource{
@@ -319,6 +322,24 @@ status:
 														Namespace: "emojivoto",
 														Type:      "pods",
 														Name:      "emojivoto-pod-2",
+													},
+													TimeWindow:      "1m",
+													MeshedPodCount:  1,
+													RunningPodCount: 1,
+												},
+											},
+										},
+									},
+								},
+								&pb.StatTable{
+									Table: &pb.StatTable_PodGroup_{
+										PodGroup: &pb.StatTable_PodGroup{
+											Rows: []*pb.StatTable_PodGroup_Row{
+												&pb.StatTable_PodGroup_Row{
+													Resource: &pb.Resource{
+														Namespace: "emojivoto",
+														Type:      "services",
+														Name:      "emoji-svc",
 													},
 													TimeWindow:      "1m",
 													MeshedPodCount:  1,
