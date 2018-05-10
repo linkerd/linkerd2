@@ -17,6 +17,12 @@ pub use indexmap::Equivalent;
 /// - `access` computes in O(1) time (amortized average).
 /// - `store` computes in O(1) time (average).
 /// - `reserve` computes in O(n) time (average) when capacity is not available,
+///
+/// ### TODO
+///
+/// The underlying datstructure could be improved somewhat so that `reserve` can evict
+/// unused nodes more efficiently. Given that eviction is intended to be rare, this is
+/// probably not a very high priority.
 pub struct Cache<K: Hash + Eq, V, N: Now = ()> {
     vals: IndexMap<K, Node<V>>,
     capacity: usize,
@@ -95,8 +101,11 @@ impl<K: Hash + Eq, V, N: Now> Cache<K, V, N> {
     /// An error is returned if there is no available capacity.
     pub fn reserve(&mut self) -> Result<Reserve<K, V, N>, CapacityExhausted> {
         if self.vals.len() == self.capacity {
-            let epoch = self.now.now() - self.max_idle_age;
-            self.vals.retain(|_, n| epoch <= n.last_access());
+            // Only whole seconds are used to determine whether a node should be retained.
+            // This is intended to prevent the need for repetitive reservations when
+            // entries are clustered in tight time ranges.
+            let epoch = (self.now.now() - self.max_idle_age).as_secs();
+            self.vals.retain(|_, n| epoch <= n.last_access().as_secs());
 
             if self.vals.len() == self.capacity {
                 return Err(CapacityExhausted {
