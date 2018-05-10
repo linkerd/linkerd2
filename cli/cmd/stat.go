@@ -149,20 +149,29 @@ type row struct {
 	*rowStats
 }
 
-func writeStatsToBuffer(resp *pb.StatSummaryResponse, w *tabwriter.Writer) {
-	nameHeader := "NAME"
-	maxNameLength := len(nameHeader)
-	namespaceHeader := "NAMESPACE"
-	maxNamespaceLength := len(namespaceHeader)
+var (
+	nameHeader         = "NAME"
+	maxNameLength      = len(nameHeader)
+	namespaceHeader    = "NAMESPACE"
+	maxNamespaceLength = len(namespaceHeader)
+)
 
-	stats := make(map[string]*row)
+func writeStatsToBuffer(resp *pb.StatSummaryResponse, w *tabwriter.Writer) {
+
+	statTables := make(map[string]map[string]*row)
 
 	for _, statTable := range resp.GetOk().StatTables {
 		table := statTable.GetPodGroup()
+
 		for _, r := range table.Rows {
 			name := r.Resource.Name
 			namespace := r.Resource.Namespace
 			key := fmt.Sprintf("%s/%s", namespace, name)
+			resourceKey := r.Resource.Type
+
+			if _, ok := statTables[resourceKey]; !ok {
+				statTables[resourceKey] = make(map[string]*row)
+			}
 
 			if len(name) > maxNameLength {
 				maxNameLength = len(name)
@@ -172,12 +181,12 @@ func writeStatsToBuffer(resp *pb.StatSummaryResponse, w *tabwriter.Writer) {
 				maxNamespaceLength = len(namespace)
 			}
 
-			stats[key] = &row{
+			statTables[resourceKey][key] = &row{
 				meshed: fmt.Sprintf("%d/%d", r.MeshedPodCount, r.RunningPodCount),
 			}
 
 			if r.Stats != nil {
-				stats[key].rowStats = &rowStats{
+				statTables[resourceKey][key].rowStats = &rowStats{
 					requestRate: getRequestRate(*r),
 					successRate: getSuccessRate(*r),
 					latencyP50:  r.Stats.LatencyMsP50,
@@ -188,6 +197,14 @@ func writeStatsToBuffer(resp *pb.StatSummaryResponse, w *tabwriter.Writer) {
 		}
 	}
 
+	fmt.Fprint(w, "\n\n")
+	for resourceType, stats := range statTables {
+		fmt.Fprintf(w, "\n%s\n\n", resourceType)
+		printStatTable(stats, w)
+	}
+}
+
+func printStatTable(stats map[string]*row, w *tabwriter.Writer) {
 	if len(stats) == 0 {
 		fmt.Fprintln(os.Stderr, "No traffic found.")
 		os.Exit(0)
