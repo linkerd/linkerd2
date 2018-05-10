@@ -151,14 +151,13 @@ type row struct {
 }
 
 var (
-	nameHeader         = "NAME"
-	namespaceHeader    = "NAMESPACE"
-	maxNameLength      = len(nameHeader)
-	maxNamespaceLength = len(namespaceHeader)
+	nameHeader      = "NAME"
+	namespaceHeader = "NAMESPACE"
 )
 
 func writeStatsToBuffer(resp *pb.StatSummaryResponse, reqResourceType string, w *tabwriter.Writer) {
-
+	maxNameLength := len(nameHeader)
+	maxNamespaceLength := len(namespaceHeader)
 	statTables := make(map[string]map[string]*row)
 
 	for _, statTable := range resp.GetOk().StatTables {
@@ -206,15 +205,15 @@ func writeStatsToBuffer(resp *pb.StatSummaryResponse, reqResourceType string, w 
 	for resourceType, stats := range statTables {
 
 		if reqResourceType == k8s.All {
-			printStatTable(stats, resourceType, w)
+			printStatTable(stats, resourceType, w, maxNameLength, maxNamespaceLength)
 		} else {
-			printStatTable(stats, "", w)
+			printStatTable(stats, "", w, maxNameLength, maxNamespaceLength)
 		}
 		fmt.Fprint(w, "\n")
 	}
 }
 
-func printStatTable(stats map[string]*row, resourceType string, w *tabwriter.Writer) {
+func printStatTable(stats map[string]*row, resourceType string, w *tabwriter.Writer, maxNameLength int, maxNamespaceLength int) {
 	if len(stats) == 0 {
 		fmt.Fprintln(os.Stderr, "No traffic found.")
 		os.Exit(0)
