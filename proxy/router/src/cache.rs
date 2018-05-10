@@ -104,9 +104,12 @@ impl<K: Hash + Eq, V, N: Now> Cache<K, V, N> {
             // Only whole seconds are used to determine whether a node should be retained.
             // This is intended to prevent the need for repetitive reservations when
             // entries are clustered in tight time ranges.
+            // NOTE: the `as_secs()` could be removed if we *know* `self.max_idle_age`
+            //       is always a whole number of seconds.
+            let max_idle_secs = self.max_idle_age.as_secs();
             self.vals.retain(|_, n| {
                 let since_last_access = n.last_access().elapsed().as_secs();
-                since_last_access <= self.max_idle_age.as_secs()
+                since_last_access <= max_idle_secs
             });
 
             if self.vals.len() == self.capacity {
