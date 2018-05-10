@@ -129,11 +129,8 @@ jobs:
         - if [ -f "$DOCKER_CACHE" ]; then gunzip -c "$DOCKER_CACHE" | docker load ; docker image ls "$PROXY_BUILD_CACHE_IMAGE" ; fi
 
       script:
-        - docker build . -f $rootdir/proxy/Dockerfile \
-            --build-arg="PROXY_UNOPTIMIZED=${PROXY_UNOPTIMIZED:-}" \
-            --cache-from="$PROXY_BUILD_CACHE_IMAGE" \
-            --tag "$PROXY_BUILD_CACHE_IMAGE" \
-            --target build
+        # Build the proxy so that its build stage can be cached for reuse.
+        - docker build . -f ./proxy/Dockerfile --build-arg="PROXY_UNOPTIMIZED=${PROXY_UNOPTIMIZED:-}" --cache-from="$PROXY_BUILD_CACHE_IMAGE" --tag "$PROXY_BUILD_CACHE_IMAGE" --target build
         # bin/docker-build-proxy uses PROXY_BUILD_CACHE_IMAGE.
         - bin/docker-build
         # The proxy's build cache is preserved so it can be reused on subsequent runs.
