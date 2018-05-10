@@ -8,7 +8,7 @@ use trust_dns_resolver;
 use trust_dns_resolver::config::{ResolverConfig, ResolverOpts};
 use trust_dns_resolver::error::{ResolveError, ResolveErrorKind};
 use trust_dns_resolver::ResolverFuture;
-use trust_dns_resolver::lookup_ip::{LookupIp, LookupIpFuture};
+use trust_dns_resolver::lookup_ip::LookupIp;
 
 #[derive(Clone, Debug)]
 pub struct Config {
@@ -22,7 +22,7 @@ pub struct Resolver {
 }
 
 pub enum IpAddrFuture {
-    DNS(LookupIpFuture),
+    DNS(Box<Future<Item = LookupIp, Error = ResolveError>>),
     Fixed(IpAddr),
 }
 
@@ -121,11 +121,14 @@ impl Resolver {
 
     // `ResolverFuture` can only be used for one lookup, so we have to clone all
     // the state during each resolution.
-    fn lookup_ip(self, &Name(ref name): &Name) -> LookupIpFuture {
+    fn lookup_ip(self, &Name(ref name): &Name)
+        // TODO: unbox me
+        -> Box<Future<Item = LookupIp, Error = ResolveError>> {
+        let name = name.clone();
         let resolver = ResolverFuture::new(
             self.config.config,
             self.config.opts,);
-        resolver.lookup_ip(name.as_str())
+        Box::new(resolver.and_then(move |r| r.lookup_ip(name.as_str())))
     }
 }
 
