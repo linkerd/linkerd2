@@ -31,6 +31,7 @@ use self::discovery::{Background as DiscoBg, Discovery, Watch};
 pub use self::discovery::Bind;
 pub use self::observe::Observe;
 
+#[derive(Clone)]
 pub struct Control {
     disco: Discovery,
 }

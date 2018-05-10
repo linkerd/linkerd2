@@ -119,7 +119,7 @@ where
     /// Buffering is currently unbounded and does not apply timeouts. This must be
     /// changed.
     fn bind_service(
-        &mut self,
+        &self,
         key: &Self::Key,
     ) -> Result<Self::Service, Self::RouteError> {
         let &(ref dest, ref protocol) = key;
