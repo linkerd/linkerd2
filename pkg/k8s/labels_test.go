@@ -17,6 +17,7 @@ func TestGetOwnerLabels(t *testing.T) {
 				ProxyReplicaSetLabel:                  "test-replica-set",
 				ProxyJobLabel:                         "test-job",
 				ProxyDaemonSetLabel:                   "test-daemon-set",
+				ProxyStatefulSetLabel:                 "test-stateful-set",
 				k8sV1.DefaultDeploymentUniqueLabelKey: "test-pth",
 			},
 		}
@@ -27,6 +28,7 @@ func TestGetOwnerLabels(t *testing.T) {
 			"replica_set":            "test-replica-set",
 			"k8s_job":                "test-job",
 			"daemon_set":             "test-daemon-set",
+			"stateful_set":           "test-stateful-set",
 			"pod_template_hash":      "test-pth",
 		}
 

@@ -50,8 +50,8 @@ pub struct Access<'a, T: 'a, N: Now + 'a = ()> {
     now: &'a N,
 }
 
-#[derive(Debug)]
-pub struct Reserve<'a, K: Hash + Eq + 'a, V: 'a, N: 'a> {
+/// A handle to a `Cache` that has capacity for at least one additional value.
+pub struct Reserve<'a, K: Hash + Eq + 'a, V: 'a, N: Now + 'a> {
     vals: &'a mut IndexMap<K, Node<V>>,
     now: &'a N,
 }

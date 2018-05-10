@@ -18,8 +18,7 @@ use self::cache::Cache;
 pub struct Router<T>
 where T: Recognize,
 {
-    recognize: T,
-    cache: Arc<Mutex<Cache<T::Key, T::Service>>>,
+    inner: Arc<Inner<T>>,
 }
 
 /// Provides a strategy for routing a Request to a Service.
@@ -28,7 +27,7 @@ where T: Recognize,
 /// `recognize()` method is used to determine the key for a given request. This key is
 /// used to look up a route in a cache (i.e. in `Router`), or can be passed to
 /// `bind_service` to instantiate the identified route.
-pub trait Recognize: Clone {
+pub trait Recognize {
     /// Requests handled by the discovered services
     type Request;
 
@@ -56,10 +55,8 @@ pub trait Recognize: Clone {
     ///
     /// The returned service must always be in the ready state (i.e.
     /// `poll_ready` must always return `Ready` or `Err`).
-    fn bind_service(&mut self, key: &Self::Key) -> Result<Self::Service, Self::RouteError>;
+    fn bind_service(&self, key: &Self::Key) -> Result<Self::Service, Self::RouteError>;
 }
-
-pub struct Single<S>(Option<S>);
 
 #[derive(Debug, PartialEq)]
 pub enum Error<T, U> {
@@ -73,6 +70,13 @@ pub struct ResponseFuture<T>
 where T: Recognize,
 {
     state: State<T>,
+}
+
+struct Inner<T>
+where T: Recognize,
+{
+    recognize: T,
+    cache: Mutex<Cache<T::Key, T::Service>>,
 }
 
 enum State<T>
@@ -92,17 +96,10 @@ where T: Recognize
 {
     pub fn new(recognize: T, capacity: usize, min_idle_age: Duration) -> Self {
         Router {
-            recognize,
-            cache: Arc::new(Mutex::new(Cache::new(capacity, min_idle_age))),
-        }
-    }
-}
-
-macro_rules! try_bind_route {
-    ( $bind:expr ) => {
-        match $bind {
-            Ok(svc) => svc,
-            Err(e) => return ResponseFuture { state: State::RouteError(e) },
+            inner: Arc::new(Inner {
+                recognize,
+                cache: Mutex::new(Cache::new(capacity, min_idle_age)),
+            }),
         }
     }
 }
@@ -130,12 +127,12 @@ where T: Recognize,
     ///
     /// The response fails when the request cannot be routed.
     fn call(&mut self, request: Self::Request) -> Self::Future {
-        let key = match self.recognize.recognize(&request) {
+        let key = match self.inner.recognize.recognize(&request) {
             Some(key) => key,
             None => return ResponseFuture::not_recognized(),
         };
 
-        let cache = &mut *self.cache.lock().expect("lock router cache");
+        let cache = &mut *self.inner.cache.lock().expect("lock router cache");
 
         // First, try to load a cached route for `key`.
         if let Some(mut service) = cache.access(&key) {
@@ -152,7 +149,11 @@ where T: Recognize,
         };
 
         // Bind a new route, send the request on the route, and cache the route.
-        let mut service = try_bind_route!(self.recognize.bind_service(&key));
+        let mut service = match self.inner.recognize.bind_service(&key) {
+            Ok(svc) => svc,
+            Err(e) => return ResponseFuture { state: State::RouteError(e) },
+        };
+
         let response = service.call(request);
         reserve.store(key, service);
 
@@ -164,10 +165,7 @@ impl<T> Clone for Router<T>
 where T: Recognize
 {
     fn clone(&self) -> Self {
-        Self {
-            cache: self.cache.clone(),
-            recognize: self.recognize.clone(),
-        }
+        Router { inner: self.inner.clone() }
     }
 }
 
@@ -259,13 +257,10 @@ mod test_util {
     use futures::{Poll, future};
     use tower_service::Service;
 
-    #[derive(Clone, Debug)]
     pub struct Recognize;
 
-    #[derive(Debug)]
     pub struct MultiplyAndAssign(usize);
 
-    #[derive(Debug)]
     pub enum Request {
         NotRecognized,
         Recognized(usize),
@@ -288,7 +283,7 @@ mod test_util {
             }
         }
 
-        fn bind_service(&mut self, _: &Self::Key) -> Result<Self::Service, Self::RouteError> {
+        fn bind_service(&self, _: &Self::Key) -> Result<Self::Service, Self::RouteError> {
             Ok(MultiplyAndAssign(1))
         }
     }
@@ -324,7 +319,7 @@ mod test_util {
     // ===== impl Request =====
 
     impl From<usize> for Request {
-        fn from(n: usize) -> Self {
+        fn from(n: usize) -> Request {
             Request::Recognized(n)
         }
     }
@@ -338,7 +333,7 @@ mod tests {
     use tower_service::Service;
     use super::{Error, Router};
 
-    impl Router<Recognize> {
+    impl super::Router<Recognize> {
         fn call_ok(&mut self, req: Request) -> usize {
             self.call(req).wait().expect("should route")
         }
@@ -360,10 +355,10 @@ mod tests {
     fn cache_limited_by_capacity() {
         let mut router = Router::new(Recognize, 1, Duration::from_secs(1));
 
-        let rsp = router.call_ok(Request::Recognized(2));
+        let rsp = router.call_ok(2.into());
         assert_eq!(rsp, 2);
 
-        let rsp = router.call_err(Request::Recognized(3));
+        let rsp = router.call_err(3.into());
         assert_eq!(rsp, Error::NoCapacity(1));
     }
 
@@ -371,10 +366,10 @@ mod tests {
     fn services_cached() {
         let mut router = Router::new(Recognize, 1, Duration::from_secs(0));
 
-        let rsp = router.call_ok(Request::Recognized(2));
+        let rsp = router.call_ok(2.into());
         assert_eq!(rsp, 2);
 
-        let rsp = router.call_ok(Request::Recognized(2));
+        let rsp = router.call_ok(2.into());
         assert_eq!(rsp, 4);
     }
 }

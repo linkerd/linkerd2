@@ -47,6 +47,10 @@ const (
 	// DaemonSet that this proxy belongs to.
 	ProxyDaemonSetLabel = "conduit.io/proxy-daemon-set"
 
+	// ProxyStatefulSetLabel is injected into mesh-enabled apps, identifying the
+	// StatefulSet that this proxy belongs to.
+	ProxyStatefulSetLabel = "conduit.io/proxy-stateful-set"
+
 	/*
 	 * Annotations
 	 */
@@ -66,6 +70,7 @@ var proxyLabels = []string{
 	ProxyReplicaSetLabel,
 	ProxyJobLabel,
 	ProxyDaemonSetLabel,
+	ProxyStatefulSetLabel,
 	k8sV1.DefaultDeploymentUniqueLabelKey,
 }
 
