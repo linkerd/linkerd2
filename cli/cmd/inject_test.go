@@ -16,6 +16,7 @@ func TestInjectYAML(t *testing.T) {
 		goldenFileName string
 	}{
 		{"inject_emojivoto_deployment.input.yml", "inject_emojivoto_deployment.golden.yml"},
+		{"inject_emojivoto_list.input.yml", "inject_emojivoto_list.golden.yml"},
 		{"inject_emojivoto_deployment_hostNetwork_false.input.yml", "inject_emojivoto_deployment_hostNetwork_false.golden.yml"},
 		{"inject_emojivoto_deployment_hostNetwork_true.input.yml", "inject_emojivoto_deployment_hostNetwork_true.golden.yml"},
 		{"inject_emojivoto_deployment_controller_name.input.yml", "inject_emojivoto_deployment_controller_name.golden.yml"},
