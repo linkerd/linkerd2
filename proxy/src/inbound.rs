@@ -31,6 +31,18 @@ impl<B> Inbound<B> {
     }
 }
 
+impl<B> Clone for Inbound<B>
+where
+    B: tower_h2::Body + 'static,
+{
+    fn clone(&self) -> Self {
+        Self {
+            bind: self.bind.clone(),
+            default_addr: self.default_addr.clone(),
+        }
+    }
+}
+
 impl<B> Recognize for Inbound<B>
 where
     B: tower_h2::Body + 'static,

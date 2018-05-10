@@ -32,6 +32,12 @@ pub struct Outbound<B> {
 
 const MAX_IN_FLIGHT: usize = 10_000;
 
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Destination {
+    Hostname(DnsNameAndPort),
+    ImplicitOriginalDst(SocketAddr),
+}
+
 // ===== impl Outbound =====
 
 impl<B> Outbound<B> {
@@ -47,10 +53,17 @@ impl<B> Outbound<B> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum Destination {
-    Hostname(DnsNameAndPort),
-    ImplicitOriginalDst(SocketAddr),
+impl<B> Clone for Outbound<B>
+where
+    B: tower_h2::Body + 'static,
+{
+    fn clone(&self) -> Self {
+        Self {
+            bind: self.bind.clone(),
+            discovery: self.discovery.clone(),
+            bind_timeout: self.bind_timeout.clone(),
+        }
+    }
 }
 
 impl<B> Recognize for Outbound<B>

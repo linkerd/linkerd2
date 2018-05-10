@@ -3,12 +3,15 @@ extern crate indexmap;
 extern crate tower_service;
 
 use futures::{Future, Poll};
-use indexmap::IndexMap;
 use tower_service::Service;
 
 use std::{error, fmt, mem};
 use std::hash::Hash;
 use std::sync::{Arc, Mutex};
+
+mod cache;
+
+use self::cache::Cache;
 
 /// Routes requests based on a configurable `Key`.
 pub struct Router<T>
@@ -75,12 +78,6 @@ where T: Recognize,
     cache: Mutex<Cache<T::Key, T::Service>>,
 }
 
-struct Cache<K: Hash + Eq, V>
-{
-    routes: IndexMap<K, V>,
-    capacity: usize,
-}
-
 enum State<T>
 where T: Recognize,
 {
@@ -100,10 +97,7 @@ where T: Recognize
         Router {
             inner: Arc::new(Inner {
                 recognize,
-                cache: Mutex::new(Cache {
-                    routes: IndexMap::default(),
-                    capacity,
-                }),
+                cache: Mutex::new(Cache::new(capacity)),
             }),
         }
     }
@@ -140,17 +134,18 @@ where T: Recognize,
         let cache = &mut *self.inner.cache.lock().expect("lock router cache");
 
         // First, try to load a cached route for `key`.
-        if let Some(service) = cache.routes.get_mut(&key) {
+        if let Some(service) = cache.access(&key) {
             return ResponseFuture::new(service.call(request));
         }
 
         // Since there wasn't a cached route, ensure that there is capacity for a
         // new one.
-        if cache.routes.len() == cache.capacity {
-            // TODO If the cache is full, evict the oldest inactive route. If all
-            // routes are active, fail the request.
-            return ResponseFuture::no_capacity(cache.capacity);
-        }
+        let reserve = match cache.reserve() {
+            Ok(r) => r,
+            Err(cache::CapacityExhausted { capacity }) => {
+                return ResponseFuture::no_capacity(capacity);
+            }
+        };
 
         // Bind a new route, send the request on the route, and cache the route.
         let mut service = match self.inner.recognize.bind_service(&key) {
@@ -159,7 +154,8 @@ where T: Recognize,
         };
 
         let response = service.call(request);
-        cache.routes.insert(key, service);
+        reserve.store(key, service);
+
         ResponseFuture::new(response)
     }
 }
@@ -256,18 +252,17 @@ where
 }
 
 #[cfg(test)]
-mod tests {
+mod test_util {
     use futures::{Poll, Future, future};
     use tower_service::Service;
-    use super::{Error, Router};
 
-    struct Recognize;
+    pub struct Recognize;
 
-    struct MultiplyAndAssign(usize);
+    pub struct MultiplyAndAssign(usize);
 
-    enum Request {
+    pub enum Request {
         NotRecognized,
-        Recgonized(usize),
+        Recognized(usize),
     }
 
     impl super::Recognize for Recognize {
@@ -281,7 +276,7 @@ mod tests {
         fn recognize(&self, req: &Self::Request) -> Option<Self::Key> {
             match *req {
                 Request::NotRecognized => None,
-                Request::Recgonized(n) => Some(n),
+                Request::Recognized(n) => Some(n),
             }
         }
 
@@ -303,22 +298,40 @@ mod tests {
         fn call(&mut self, req: Self::Request) -> Self::Future {
             let n = match req {
                 Request::NotRecognized => unreachable!(),
-                Request::Recgonized(n) => n,
+                Request::Recognized(n) => n,
             };
             self.0 *= n;
             future::ok(self.0)
         }
     }
 
-    impl Router<Recognize> {
-        fn call_ok(&mut self, req: Request) -> usize {
+    impl From<usize> for Request {
+        fn from(n: usize) -> Request {
+            Request::Recognized(n)
+        }
+    }
+
+    impl Default for MultiplyAndAssign {
+        fn default() -> Self {
+            MultiplyAndAssign(1)
+        }
+    }
+
+    impl super::Router<Recognize> {
+        pub fn call_ok(&mut self, req: Request) -> usize {
             self.call(req).wait().expect("should route")
         }
 
-        fn call_err(&mut self, req: Request) -> super::Error<(), ()> {
+        pub fn call_err(&mut self, req: Request) -> super::Error<(), ()> {
             self.call(req).wait().expect_err("should not route")
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use test_util::*;
+    use super::{Error, Router};
 
     #[test]
     fn invalid() {
@@ -332,10 +345,10 @@ mod tests {
     fn cache_limited_by_capacity() {
         let mut router = Router::new(Recognize, 1);
 
-        let rsp = router.call_ok(Request::Recgonized(2));
+        let rsp = router.call_ok(2.into());
         assert_eq!(rsp, 2);
 
-        let rsp = router.call_err(Request::Recgonized(3));
+        let rsp = router.call_err(3.into());
         assert_eq!(rsp, Error::NoCapacity(1));
     }
 
@@ -343,10 +356,10 @@ mod tests {
     fn services_cached() {
         let mut router = Router::new(Recognize, 1);
 
-        let rsp = router.call_ok(Request::Recgonized(2));
+        let rsp = router.call_ok(2.into());
         assert_eq!(rsp, 2);
 
-        let rsp = router.call_ok(Request::Recgonized(2));
+        let rsp = router.call_ok(2.into());
         assert_eq!(rsp, 4);
     }
 }
