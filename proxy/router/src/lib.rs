@@ -26,7 +26,7 @@ where T: Recognize,
 /// `recognize()` method is used to determine the key for a given request. This key is
 /// used to look up a route in a cache (i.e. in `Router`), or can be passed to
 /// `bind_service` to instantiate the identified route.
-pub trait Recognize: Clone {
+pub trait Recognize {
     /// Requests handled by the discovered services
     type Request;
 
@@ -161,7 +161,7 @@ where T: Recognize,
 }
 
 impl<T> Clone for Router<T>
-where T: Recognize
+where T: Recognize,
 {
     fn clone(&self) -> Self {
         Router { inner: self.inner.clone() }
@@ -256,7 +256,6 @@ mod test_util {
     use futures::{Poll, Future, future};
     use tower_service::Service;
 
-    #[derive(Clone)]
     pub struct Recognize;
 
     pub struct MultiplyAndAssign(usize);
@@ -306,6 +305,12 @@ mod test_util {
         }
     }
 
+    impl From<usize> for Request {
+        fn from(n: usize) -> Request {
+            Request::Recognized(n)
+        }
+    }
+
     impl Default for MultiplyAndAssign {
         fn default() -> Self {
             MultiplyAndAssign(1)
@@ -340,10 +345,10 @@ mod tests {
     fn cache_limited_by_capacity() {
         let mut router = Router::new(Recognize, 1);
 
-        let rsp = router.call_ok(Request::Recognized(2));
+        let rsp = router.call_ok(2.into());
         assert_eq!(rsp, 2);
 
-        let rsp = router.call_err(Request::Recognized(3));
+        let rsp = router.call_err(3.into());
         assert_eq!(rsp, Error::NoCapacity(1));
     }
 
@@ -351,10 +356,10 @@ mod tests {
     fn services_cached() {
         let mut router = Router::new(Recognize, 1);
 
-        let rsp = router.call_ok(Request::Recognized(2));
+        let rsp = router.call_ok(2.into());
         assert_eq!(rsp, 2);
 
-        let rsp = router.call_ok(Request::Recognized(2));
+        let rsp = router.call_ok(2.into());
         assert_eq!(rsp, 4);
     }
 }
