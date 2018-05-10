@@ -31,7 +31,7 @@ pub trait Now {
     fn now(&self) -> Instant;
 }
 
-/// Wraps values
+/// Wraps cache values so that each tracks its last access time.
 #[derive(Debug, PartialEq)]
 pub struct Node<T> {
     value: T,
