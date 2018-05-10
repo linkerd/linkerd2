@@ -80,37 +80,35 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 
 	statTables := make([]*pb.StatTable, 0)
 
+	var resourcesToQuery []string
 	if req.Selector.Resource.Type == k8s.All {
-		// request stats for all resourceTypes, in parallel
-		resultChan := make(chan resourceResult)
-
-		for _, resource := range resourceTypes {
-			req := &pb.StatSummaryRequest{
-				Selector: &pb.ResourceSelection{
-					Resource: &pb.Resource{
-						Type:      resource,
-						Namespace: req.Selector.Resource.Namespace,
-					},
-					LabelSelector: req.Selector.LabelSelector,
-				},
-				TimeWindow: req.TimeWindow,
-			}
-
-			go func() {
-				resultChan <- s.resourceQuery(ctx, req)
-			}()
-		}
-
-		for i := 0; i < len(resourceTypes); i++ {
-			result := <-resultChan
-			if result.err != nil {
-				return nil, util.GRPCError(result.err)
-			}
-			statTables = append(statTables, result.res)
-		}
+		resourcesToQuery = resourceTypes
 	} else {
-		// get stats for a single resourceType
-		result := s.resourceQuery(ctx, req)
+		resourcesToQuery = []string{req.Selector.Resource.Type}
+	}
+
+	// request stats for the resourcesToQuery, in parallel
+	resultChan := make(chan resourceResult)
+
+	for _, resource := range resourcesToQuery {
+		statReq := &pb.StatSummaryRequest{
+			Selector: &pb.ResourceSelection{
+				Resource: &pb.Resource{
+					Type:      resource,
+					Namespace: req.Selector.Resource.Namespace,
+				},
+				LabelSelector: req.Selector.LabelSelector,
+			},
+			TimeWindow: req.TimeWindow,
+		}
+
+		go func() {
+			resultChan <- s.resourceQuery(ctx, statReq)
+		}()
+	}
+
+	for i := 0; i < len(resourcesToQuery); i++ {
+		result := <-resultChan
 		if result.err != nil {
 			return nil, util.GRPCError(result.err)
 		}
