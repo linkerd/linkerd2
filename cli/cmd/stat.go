@@ -12,6 +12,7 @@ import (
 
 	"github.com/runconduit/conduit/controller/api/util"
 	pb "github.com/runconduit/conduit/controller/gen/public"
+	"github.com/runconduit/conduit/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"k8s.io/api/core/v1"
@@ -118,13 +119,13 @@ func requestStatsFromAPI(client pb.ApiClient, req *pb.StatSummaryRequest) (strin
 		return "", fmt.Errorf("StatSummary API response error: %v", e.Error)
 	}
 
-	return renderStats(resp), nil
+	return renderStats(resp, req.Selector.Resource.Type), nil
 }
 
-func renderStats(resp *pb.StatSummaryResponse) string {
+func renderStats(resp *pb.StatSummaryResponse, resourceType string) string {
 	var buffer bytes.Buffer
 	w := tabwriter.NewWriter(&buffer, 0, 0, padding, ' ', tabwriter.AlignRight)
-	writeStatsToBuffer(resp, w)
+	writeStatsToBuffer(resp, resourceType, w)
 	w.Flush()
 
 	// strip left padding on the first column
@@ -151,12 +152,12 @@ type row struct {
 
 var (
 	nameHeader         = "NAME"
-	maxNameLength      = len(nameHeader)
 	namespaceHeader    = "NAMESPACE"
+	maxNameLength      = len(nameHeader)
 	maxNamespaceLength = len(namespaceHeader)
 )
 
-func writeStatsToBuffer(resp *pb.StatSummaryResponse, w *tabwriter.Writer) {
+func writeStatsToBuffer(resp *pb.StatSummaryResponse, reqResourceType string, w *tabwriter.Writer) {
 
 	statTables := make(map[string]map[string]*row)
 
@@ -165,6 +166,11 @@ func writeStatsToBuffer(resp *pb.StatSummaryResponse, w *tabwriter.Writer) {
 
 		for _, r := range table.Rows {
 			name := r.Resource.Name
+			nameWithPrefix := name
+			if reqResourceType == k8s.All {
+				nameWithPrefix = getNamePrefix(r.Resource.Type) + nameWithPrefix
+			}
+
 			namespace := r.Resource.Namespace
 			key := fmt.Sprintf("%s/%s", namespace, name)
 			resourceKey := r.Resource.Type
@@ -173,8 +179,8 @@ func writeStatsToBuffer(resp *pb.StatSummaryResponse, w *tabwriter.Writer) {
 				statTables[resourceKey] = make(map[string]*row)
 			}
 
-			if len(name) > maxNameLength {
-				maxNameLength = len(name)
+			if len(nameWithPrefix) > maxNameLength {
+				maxNameLength = len(nameWithPrefix)
 			}
 
 			if len(namespace) > maxNamespaceLength {
@@ -197,14 +203,18 @@ func writeStatsToBuffer(resp *pb.StatSummaryResponse, w *tabwriter.Writer) {
 		}
 	}
 
-	fmt.Fprint(w, "\n\n")
 	for resourceType, stats := range statTables {
-		fmt.Fprintf(w, "\n%s\n\n", resourceType)
-		printStatTable(stats, w)
+
+		if reqResourceType == k8s.All {
+			printStatTable(stats, resourceType, w)
+		} else {
+			printStatTable(stats, "", w)
+		}
+		fmt.Fprint(w, "\n")
 	}
 }
 
-func printStatTable(stats map[string]*row, w *tabwriter.Writer) {
+func printStatTable(stats map[string]*row, resourceType string, w *tabwriter.Writer) {
 	if len(stats) == 0 {
 		fmt.Fprintln(os.Stderr, "No traffic found.")
 		os.Exit(0)
@@ -227,11 +237,13 @@ func printStatTable(stats map[string]*row, w *tabwriter.Writer) {
 
 	fmt.Fprintln(w, strings.Join(headers, "\t"))
 
+	namePrefix := getNamePrefix(resourceType)
+
 	sortedKeys := sortStatsKeys(stats)
 	for _, key := range sortedKeys {
 		parts := strings.Split(key, "/")
 		namespace := parts[0]
-		name := parts[1]
+		name := namePrefix + parts[1]
 		values := make([]interface{}, 0)
 		templateString := "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t\n"
 		templateStringEmpty := "%s\t%s\t-\t-\t-\t-\t-\t\n"
@@ -260,6 +272,14 @@ func printStatTable(stats map[string]*row, w *tabwriter.Writer) {
 		} else {
 			fmt.Fprintf(w, templateStringEmpty, values...)
 		}
+	}
+}
+
+func getNamePrefix(resourceType string) string {
+	if resourceType == "" {
+		return ""
+	} else {
+		return k8s.ShortNameFromCanonicalKubernetesName(resourceType) + "/"
 	}
 }
 

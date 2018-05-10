@@ -86,3 +86,22 @@ func CanonicalKubernetesNameFromFriendlyName(friendlyName string) (string, error
 
 	return "", fmt.Errorf("cannot find Kubernetes canonical name from friendly name [%s]", friendlyName)
 }
+
+// Return a the shortest name for a k8s canonical name.
+// Essentially the reverse of CanonicalKubernetesNameFromFriendlyName
+func ShortNameFromCanonicalKubernetesName(canonicalName string) string {
+	switch canonicalName {
+	case Deployments:
+		return "deploy"
+	case Namespaces:
+		return "ns"
+	case Pods:
+		return "po"
+	case ReplicationControllers:
+		return "rc"
+	case Services:
+		return "svc"
+	default:
+		return ""
+	}
+}
