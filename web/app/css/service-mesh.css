@@ -78,7 +78,7 @@ td .status-dot {
   &.status-dot-good {
     background-color: var(--green);
   }
-  &.status-dot-bad {
+  &.status-dot-poor {
     background-color: var(--siennared);
   }
   &.status-dot-neutral {
