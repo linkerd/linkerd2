@@ -11,12 +11,10 @@ use std::hash::Hash;
 use std::sync::{Arc, Mutex};
 
 /// Routes requests based on a configurable `Key`.
-#[derive(Clone)]
 pub struct Router<T>
 where T: Recognize,
 {
-    inner: Arc<Mutex<Inner<T>>>,
-    recognize: T,
+    inner: Arc<Inner<T>>,
 }
 
 /// Provides a strategy for routing a Request to a Service.
@@ -25,7 +23,7 @@ where T: Recognize,
 /// `recognize()` method is used to determine the key for a given request. This key is
 /// used to look up a route in a cache (i.e. in `Router`), or can be passed to
 /// `bind_service` to instantiate the identified route.
-pub trait Recognize: Clone {
+pub trait Recognize {
     /// Requests handled by the discovered services
     type Request;
 
@@ -53,7 +51,7 @@ pub trait Recognize: Clone {
     ///
     /// The returned service must always be in the ready state (i.e.
     /// `poll_ready` must always return `Ready` or `Err`).
-    fn bind_service(&mut self, key: &Self::Key) -> Result<Self::Service, Self::RouteError>;
+    fn bind_service(&self, key: &Self::Key) -> Result<Self::Service, Self::RouteError>;
 }
 
 pub struct Single<S>(Option<S>);
@@ -66,17 +64,23 @@ pub enum Error<T, U> {
     NotRecognized,
 }
 
+struct Inner<T>
+where T: Recognize,
+{
+    recognize: T,
+    cache: Mutex<Cache<T::Key, T::Service>>,
+}
+
+struct Cache<K: Hash + Eq, V>
+{
+    routes: IndexMap<K, V>,
+    capacity: usize,
+}
+
 pub struct ResponseFuture<T>
 where T: Recognize,
 {
     state: State<T>,
-}
-
-struct Inner<T>
-where T: Recognize,
-{
-    routes: IndexMap<T::Key, T::Service>,
-    capacity: usize,
 }
 
 enum State<T>
@@ -96,11 +100,13 @@ where T: Recognize
 {
     pub fn new(recognize: T, capacity: usize) -> Self {
         Router {
-            recognize,
-            inner: Arc::new(Mutex::new(Inner {
-                routes: IndexMap::default(),
-                capacity,
-            })),
+            inner: Arc::new(Inner {
+                recognize,
+                cache: Mutex::new(Cache {
+                    routes: IndexMap::default(),
+                    capacity,
+                }),
+            }),
         }
     }
 }
@@ -137,12 +143,12 @@ where T: Recognize,
     ///
     /// The response fails when the request cannot be routed.
     fn call(&mut self, request: Self::Request) -> Self::Future {
-        let key = match self.recognize.recognize(&request) {
+        let key = match self.inner.recognize.recognize(&request) {
             Some(key) => key,
             None => return ResponseFuture::not_recognized(),
         };
 
-        let inner = &mut *self.inner.lock().expect("lock router cache");
+        let inner = &mut *self.inner.cache.lock().expect("lock router cache");
 
         // First, try to load a cached route for `key`.
         if let Some(service) = inner.routes.get_mut(&key) {
@@ -158,10 +164,18 @@ where T: Recognize,
         }
 
         // Bind a new route, send the request on the route, and cache the route.
-        let mut service = try_bind_route!(self.recognize.bind_service(&key));
+        let mut service = try_bind_route!(self.inner.recognize.bind_service(&key));
         let response = service.call(request);
         inner.routes.insert(key, service);
         ResponseFuture::new(response)
+    }
+}
+
+impl<T> Clone for Router<T>
+where T: Recognize
+{
+    fn clone(&self) -> Self {
+        Self { inner: self.inner.clone() }
     }
 }
 
@@ -279,7 +293,7 @@ mod tests {
             }
         }
 
-        fn bind_service(&mut self, _: &Self::Key) -> Result<Self::Service, Self::RouteError> {
+        fn bind_service(&self, _: &Self::Key) -> Result<Self::Service, Self::RouteError> {
             Ok(MultiplyAndAssign(1))
         }
     }
