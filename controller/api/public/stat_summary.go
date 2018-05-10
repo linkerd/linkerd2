@@ -12,8 +12,6 @@ import (
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
 	log "github.com/sirupsen/logrus"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -51,9 +49,15 @@ type podCount struct {
 
 func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
 	// special case to check for services as outbound only
-	if req.Selector.Resource.Type == k8s.Services &&
-		req.Outbound.(*pb.StatSummaryRequest_FromResource) == nil {
-		return nil, status.Errorf(codes.InvalidArgument, "service only supported as a target on 'from' queries, or as a destination on 'to' queries.")
+	if isInvalidServiceRequest(req) {
+		return &pb.StatSummaryResponse{
+			Response: &pb.StatSummaryResponse_Error{
+				Error: &pb.ResourceError{
+					Resource: req.Selector.Resource,
+					Error:    "service only supported as a target on 'from' queries, or as a destination on 'to' queries",
+				},
+			},
+		}, nil
 	}
 
 	objects, err := s.lister.GetObjects(req.Selector.Resource.Namespace, req.Selector.Resource.Type, req.Selector.Resource.Name)
@@ -354,6 +358,15 @@ func (s *grpcServer) getMeshedPodCount(obj runtime.Object) (*podCount, error) {
 func isInMesh(pod *apiv1.Pod) bool {
 	_, ok := pod.Annotations[k8s.ProxyVersionAnnotation]
 	return ok
+}
+
+func isInvalidServiceRequest(req *pb.StatSummaryRequest) bool {
+	fromResource := req.GetFromResource()
+	if fromResource != nil {
+		return fromResource.Type == k8s.Services
+	} else {
+		return req.Selector.Resource.Type == k8s.Services
+	}
 }
 
 func (s *grpcServer) queryProm(ctx context.Context, query string) (model.Vector, error) {

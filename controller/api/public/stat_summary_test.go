@@ -228,4 +228,103 @@ status:
 			}
 		}
 	})
+
+	t.Run("Validates service stat requests", func(t *testing.T) {
+		clientSet := fake.NewSimpleClientset()
+		lister := k8s.NewLister(clientSet)
+		fakeGrpcServer := newGrpcServer(
+			&MockProm{Res: model.Vector{}},
+			tap.NewTapClient(nil),
+			lister,
+			"conduit",
+			[]string{},
+		)
+
+		invalidRequests := []statSumExpected{
+			statSumExpected{
+				req: pb.StatSummaryRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Type: "services",
+						},
+					},
+				},
+			},
+			statSumExpected{
+				req: pb.StatSummaryRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Type: "services",
+						},
+					},
+					Outbound: &pb.StatSummaryRequest_ToResource{
+						ToResource: &pb.Resource{
+							Type: "pods",
+						},
+					},
+				},
+			},
+			statSumExpected{
+				req: pb.StatSummaryRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Type: "pods",
+						},
+					},
+					Outbound: &pb.StatSummaryRequest_FromResource{
+						FromResource: &pb.Resource{
+							Type: "services",
+						},
+					},
+				},
+			},
+		}
+
+		for _, invalid := range invalidRequests {
+			rsp, err := fakeGrpcServer.StatSummary(context.TODO(), &invalid.req)
+
+			if err != nil || rsp.GetError() == nil {
+				t.Fatalf("Expected validation error on StatSummaryResponse, got %v, %v", rsp, err)
+			}
+		}
+
+		validRequests := []statSumExpected{
+			statSumExpected{
+				req: pb.StatSummaryRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Type: "pods",
+						},
+					},
+					Outbound: &pb.StatSummaryRequest_ToResource{
+						ToResource: &pb.Resource{
+							Type: "services",
+						},
+					},
+				},
+			},
+			statSumExpected{
+				req: pb.StatSummaryRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Type: "services",
+						},
+					},
+					Outbound: &pb.StatSummaryRequest_FromResource{
+						FromResource: &pb.Resource{
+							Type: "pods",
+						},
+					},
+				},
+			},
+		}
+
+		for _, valid := range validRequests {
+			rsp, err := fakeGrpcServer.StatSummary(context.TODO(), &valid.req)
+
+			if err != nil || rsp.GetError() != nil {
+				t.Fatalf("Did not expect validation error on StatSummaryResponse, got %v, %v", rsp, err)
+			}
+		}
+	})
 }

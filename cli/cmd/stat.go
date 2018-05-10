@@ -89,7 +89,8 @@ If no resource name is specified, displays stats about all resources of the spec
 
 		output, err := requestStatsFromAPI(client, req)
 		if err != nil {
-			return err
+			fmt.Fprintln(os.Stderr, err.Error())
+			os.Exit(1)
 		}
 
 		_, err = fmt.Print(output)
@@ -112,7 +113,10 @@ func init() {
 func requestStatsFromAPI(client pb.ApiClient, req *pb.StatSummaryRequest) (string, error) {
 	resp, err := client.StatSummary(context.Background(), req)
 	if err != nil {
-		return "", fmt.Errorf("error calling stat with request: %v", err)
+		return "", fmt.Errorf("StatSummary API error: %v", err)
+	}
+	if e := resp.GetError(); e != nil {
+		return "", fmt.Errorf("StatSummary API error: %v", e.Error)
 	}
 
 	return renderStats(resp), nil
