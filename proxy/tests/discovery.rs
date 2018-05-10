@@ -185,8 +185,6 @@ mod http1 {
 fn outbound_updates_newer_services() {
     let _ = env_logger::try_init();
 
-    //TODO: when the support server can listen on both http1 and http2
-    //at the same time, do that here
     let srv = server::http1().route("/h1", "hello h1").run();
 
     let ctrl = controller::new()
@@ -201,20 +199,9 @@ fn outbound_updates_newer_services() {
     // from the controller
     let client1 = client::http2(proxy.outbound, "disco.test.svc.cluster.local");
 
-    // This HTTP2 client tries to talk to our HTTP1 server, and the server
-    // will return an error (see above TODO).
-    //
-    // The reason to do this request at all is because the proxy will create
-    // an H2 service mapping when it sees an H2 request, and we want to test
-    // that when it sees H1 and tries to create a new mapping, the existing
-    // known Discovery information is shared with it.
     let res = client1.request(&mut client1.request_builder("/h1"));
-    assert_eq!(res.status(), 500);
+    assert_eq!(res.status(), 200);
 
-
-    // a new HTTP1 service needs to be build now, while the HTTP2
-    // service already exists, so make sure previously sent addrs
-    // get into the newer service
     let client2 = client::http1(proxy.outbound, "disco.test.svc.cluster.local");
     assert_eq!(client2.get("/h1"), "hello h1");
 }
