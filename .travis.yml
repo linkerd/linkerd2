@@ -10,8 +10,8 @@ branches:
 
 stages:
   - name: test
-  - name: docker-deploy
     if: branch = master AND type != pull_request
+  - name: docker-deploy
 
 jobs:
   include:
