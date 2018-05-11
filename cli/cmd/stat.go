@@ -202,23 +202,28 @@ func writeStatsToBuffer(resp *pb.StatSummaryResponse, reqResourceType string, w 
 		}
 	}
 
-	for resourceType, stats := range statTables {
+	if len(statTables) == 0 {
+		fmt.Fprintln(os.Stderr, "No traffic found.")
+		os.Exit(0)
+	}
 
+	lastDisplayedStat := true // don't print a newline after the final stat
+	for resourceType, stats := range statTables {
+		if !lastDisplayedStat {
+
+			fmt.Fprint(w, "\n")
+		}
+		lastDisplayedStat = false
 		if reqResourceType == k8s.All {
 			printStatTable(stats, resourceType, w, maxNameLength, maxNamespaceLength)
 		} else {
 			printStatTable(stats, "", w, maxNameLength, maxNamespaceLength)
 		}
-		fmt.Fprint(w, "\n")
+
 	}
 }
 
 func printStatTable(stats map[string]*row, resourceType string, w *tabwriter.Writer, maxNameLength int, maxNamespaceLength int) {
-	if len(stats) == 0 {
-		fmt.Fprintln(os.Stderr, "No traffic found.")
-		os.Exit(0)
-	}
-
 	headers := make([]string, 0)
 	if allNamespaces {
 		headers = append(headers,
