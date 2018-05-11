@@ -115,6 +115,7 @@ mod tests {
         Inbound::new(default, bind)
     }
 
+
     quickcheck! {
         fn recognize_orig_dst(
             orig_dst: net::SocketAddr,
@@ -128,7 +129,10 @@ mod tests {
             let srv_ctx = ctx::transport::Server::new(&ctx, &local, &remote, &Some(orig_dst));
 
             let rec = srv_ctx.orig_dst_if_not_local().map(|addr|
-                (addr, bind::Protocol::Http1(Host::NoAuthority))
+                (addr, bind::Protocol::Http1 {
+                    host: Host::NoAuthority,
+                    was_absolute_form: false,
+                })
             );
 
             let mut req = http::Request::new(());
@@ -157,7 +161,10 @@ mod tests {
                 ));
 
             inbound.recognize(&req) == default.map(|addr|
-                (addr, bind::Protocol::Http1(Host::NoAuthority))
+                (addr, bind::Protocol::Http1 {
+                    host: Host::NoAuthority,
+                    was_absolute_form: false,
+                })
             )
         }
 
@@ -169,7 +176,10 @@ mod tests {
             let req = http::Request::new(());
 
             inbound.recognize(&req) == default.map(|addr|
-                (addr, bind::Protocol::Http1(Host::NoAuthority))
+                (addr, bind::Protocol::Http1 {
+                    host: Host::NoAuthority,
+                    was_absolute_form: false,
+                })
             )
         }
 
@@ -192,7 +202,10 @@ mod tests {
                 ));
 
             inbound.recognize(&req) == default.map(|addr|
-                (addr, bind::Protocol::Http1(Host::NoAuthority))
+                (addr, bind::Protocol::Http1 {
+                    host: Host::NoAuthority,
+                    was_absolute_form: false,
+                })
             )
         }
     }

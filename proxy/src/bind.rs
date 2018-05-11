@@ -67,7 +67,7 @@ pub enum Binding<B: tower_h2::Body + 'static> {
 /// that each host receives its own connection.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Protocol {
-    Http1(Host),
+    Http1 { host: Host, was_absolute_form: bool },
     Http2
 }
 
@@ -87,7 +87,8 @@ pub enum Host {
 ///   request's original destination according to `SO_ORIGINAL_DST`.
 #[derive(Copy, Clone, Debug)]
 pub struct NormalizeUri<S> {
-    inner: S
+    inner: S,
+    was_absolute_form: bool,
 }
 
 pub type Service<B> = Binding<B>;
@@ -209,7 +210,12 @@ where
 
         // Rewrite the HTTP/1 URI, if the authorities in the Host header
         // and request URI are not in agreement, or are not present.
-        let proxy = NormalizeUri::new(sensors);
+        // Rewrite the HTTP/1 URI, if the authorities in the Host header
+        // and request URI are not in agreement, or are not present.
+        let proxy = NormalizeUri::new(
+            sensors,
+            protocol.was_absolute_form()
+        );
 
         // Automatically perform reconnects if the connection fails.
         //
@@ -264,8 +270,8 @@ where
 
 
 impl<S> NormalizeUri<S> {
-    fn new (inner: S) -> Self {
-        Self { inner }
+    fn new(inner: S, was_absolute_form: bool) -> Self {
+        Self { inner, was_absolute_form }
     }
 }
 
@@ -292,7 +298,16 @@ where
         fn(S::Service) -> NormalizeUri<S::Service>
     >;
     fn new_service(&self) -> Self::Future {
-        self.inner.new_service().map(NormalizeUri::new)
+        let s = self.inner.new_service();
+        // This weird dance is so that the closure doesn't have to
+        // capture `self` and can just be a `fn` (so the `Map`)
+        // can be returned unboxed.
+        if self.was_absolute_form {
+            s.map(|inner| NormalizeUri::new(inner, true))
+        } else {
+            s.map(|inner| NormalizeUri::new(inner, false))
+        }
+
     }
 }
 
@@ -315,12 +330,14 @@ where
 
     fn call(&mut self, mut request: S::Request) -> Self::Future {
         if request.version() != http::Version::HTTP_2 {
-            h1::normalize_our_view_of_uri(&mut request);
+            h1::normalize_our_view_of_uri(
+                &mut request,
+                self.was_absolute_form
+            );
         }
         self.inner.call(request)
     }
 }
-
 // ===== impl Binding =====
 
 impl<B: tower_h2::Body + 'static> tower::Service for Binding<B> {
@@ -363,26 +380,40 @@ impl<B: tower_h2::Body + 'static> tower::Service for Binding<B> {
 
 
 impl Protocol {
+    /// Returns true if the request was originally received in absolute form.
+    pub fn was_absolute_form(&self) -> bool {
+        match self {
+            &Protocol::Http1 { was_absolute_form, .. } => was_absolute_form,
+            _ => false,
+        }
+    }
 
     pub fn detect<B>(req: &http::Request<B>) -> Self {
         if req.version() == http::Version::HTTP_2 {
             return Protocol::Http2
         }
 
+        let authority_part = req.uri().authority_part();
+        let was_absolute_form = authority_part.is_some();
+        trace!(
+            "Protocol::detect(); req.uri='{:?}'; was_absolute_form={:?};",
+            req.uri(), was_absolute_form
+        );
         // If the request has an authority part, use that as the host part of
         // the key for an HTTP/1.x request.
-        let host = req.uri().authority_part()
+        let host = authority_part
             .cloned()
             .or_else(|| h1::authority_from_host(req))
             .map(Host::Authority)
             .unwrap_or_else(|| Host::NoAuthority);
 
-        Protocol::Http1(host)
+
+        Protocol::Http1 { host, was_absolute_form }
     }
 
     pub fn can_reuse_clients(&self) -> bool {
         match *self {
-            Protocol::Http2 | Protocol::Http1(Host::Authority(_)) => true,
+            Protocol::Http2 | Protocol::Http1 { host: Host::Authority(_), .. } => true,
             _ => false,
         }
     }

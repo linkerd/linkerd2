@@ -17,8 +17,11 @@ pub struct UriIsAbsoluteForm;
 ///
 /// Also sets the `UriIsAbsoluteForm` extension if received `Uri` was
 /// already in absolute-form.
-pub fn normalize_our_view_of_uri<B>(req: &mut http::Request<B>) {
-    if req.uri().authority_part().is_some() {
+pub fn normalize_our_view_of_uri<B>(
+    req: &mut http::Request<B>,
+    was_absolute_form: bool
+) {
+    if was_absolute_form {
         req.extensions_mut().insert(UriIsAbsoluteForm);
         return;
     }
