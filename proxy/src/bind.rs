@@ -29,7 +29,6 @@ use transport;
 pub struct Bind<C, B> {
     ctx: C,
     sensors: telemetry::Sensors,
-    executor: Handle,
     req_ids: Arc<AtomicUsize>,
     _p: PhantomData<B>,
 }
@@ -139,9 +138,8 @@ impl Error for BufferSpawnError {
 }
 
 impl<B> Bind<(), B> {
-    pub fn new(executor: Handle) -> Self {
+    pub fn new() -> Self {
         Self {
-            executor,
             ctx: (),
             sensors: telemetry::Sensors::null(),
             req_ids: Default::default(),
@@ -160,7 +158,6 @@ impl<B> Bind<(), B> {
         Bind {
             ctx,
             sensors: self.sensors,
-            executor: self.executor,
             req_ids: self.req_ids,
             _p: PhantomData,
         }
@@ -172,17 +169,9 @@ impl<C: Clone, B> Clone for Bind<C, B> {
         Self {
             ctx: self.ctx.clone(),
             sensors: self.sensors.clone(),
-            executor: self.executor.clone(),
             req_ids: self.req_ids.clone(),
             _p: PhantomData,
         }
-    }
-}
-
-
-impl<C, B> Bind<C, B> {
-    pub fn executor(&self) -> &Handle {
-        &self.executor
     }
 }
 
@@ -208,7 +197,6 @@ where
         let client = transparency::Client::new(
             protocol,
             connect,
-            self.executor.clone()
         );
 
         let sensors = self.sensors.http(

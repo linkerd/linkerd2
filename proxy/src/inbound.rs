@@ -10,6 +10,7 @@ use conduit_proxy_router::Recognize;
 
 use bind;
 use ctx;
+use task::LazyExecutor;
 
 type Bind<B> = bind::Bind<Arc<ctx::Proxy>, B>;
 
@@ -45,7 +46,8 @@ where
 
 impl<B> Recognize for Inbound<B>
 where
-    B: tower_h2::Body + 'static,
+    B: tower_h2::Body + Send + 'static,
+    B::Data: Send,
 {
     type Request = http::Request<B>;
     type Response = bind::HttpResponse;
@@ -87,7 +89,7 @@ where
 
         let endpoint = (*addr).into();
         let binding = self.bind.new_binding(&endpoint, proto);
-        Buffer::new(binding, self.bind.executor())
+        Buffer::new(binding, &LazyExecutor)
             .map(|buffer| {
                 InFlightLimit::new(buffer, MAX_IN_FLIGHT)
             })
@@ -109,8 +111,7 @@ mod tests {
     use ctx;
 
     fn new_inbound(default: Option<net::SocketAddr>, ctx: &Arc<ctx::Proxy>) -> Inbound<()> {
-        let core = Core::new().unwrap();
-        let bind = Bind::new(core.handle()).with_ctx(ctx.clone());
+        let bind = Bind::new().with_ctx(ctx.clone());
         Inbound::new(default, bind)
     }
 
