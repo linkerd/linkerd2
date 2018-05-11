@@ -314,6 +314,7 @@ where
         } else {
             s.map(|inner| NormalizeUri::new(inner, false))
         }
+    }
 }
 
 impl<S, B> tower::Service for NormalizeUri<S>
