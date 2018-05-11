@@ -380,7 +380,6 @@ impl<B: tower_h2::Body + 'static> tower::Service for Binding<B> {
 
 
 impl Protocol {
-
     pub fn detect<B>(req: &http::Request<B>) -> Self {
         if req.version() == http::Version::HTTP_2 {
             return Protocol::Http2
