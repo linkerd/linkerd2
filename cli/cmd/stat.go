@@ -112,7 +112,10 @@ func init() {
 func requestStatsFromAPI(client pb.ApiClient, req *pb.StatSummaryRequest) (string, error) {
 	resp, err := client.StatSummary(context.Background(), req)
 	if err != nil {
-		return "", fmt.Errorf("error calling stat with request: %v", err)
+		return "", fmt.Errorf("StatSummary API error: %v", err)
+	}
+	if e := resp.GetError(); e != nil {
+		return "", fmt.Errorf("StatSummary API response error: %v", e.Error)
 	}
 
 	return renderStats(resp), nil
