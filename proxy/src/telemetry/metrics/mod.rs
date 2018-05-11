@@ -56,6 +56,7 @@ mod histogram;
 mod http;
 mod labels;
 mod latency;
+mod process;
 mod record;
 mod serve;
 mod transport;
@@ -226,6 +227,11 @@ impl fmt::Display for Root {
         self.responses.fmt(f)?;
         self.transports.fmt(f)?;
         self.transport_closes.fmt(f)?;
+
+        match process::ProcessMetrics::collect() {
+            Ok(process) => process.fmt(f)?,
+            Err(e) => warn!("error collecting process metrics: {:?}", e),
+        }
 
         Self::process_start_time_seconds.fmt_help(f)?;
         Self::process_start_time_seconds.fmt_metric(f, self.start_time)?;
