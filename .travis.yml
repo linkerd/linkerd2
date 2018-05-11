@@ -132,15 +132,18 @@ jobs:
             export PROXY_BUILD_CACHE_IMAGE="gcr.io/runconduit/proxy-build:$(cat $BUILD_CACHE_SHA_FILE)"
             docker pull $PROXY_BUILD_CACHE_IMAGE
             docker image ls $PROXY_BUILD_CACHE_IMAGE
+          else
+            echo "Cache SHA file does not exist ($BUILD_CACHE_SHA_FILE)" >&2
           fi
 
       script:
         - |
           # If there was a prior cache image, it will be used as the basis for new cache.
-          bin/docker-build-proxy-build
+          export PROXY_BUILD_CACHE_IMAGE=$(bin/docker-build-proxy-build)
           # Save off the proxy build cache so it can be reused
           docker push "$PROXY_BUILD_CACHE_IMAGE"
           bin/root-tag >$BUILD_CACHE_SHA_FILE
+          echo "Proxy build cache: ${PROXY_BUILD_CACHE_IMAGE}" >&2
         - bin/docker-build
 
       after_success:
