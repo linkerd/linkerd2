@@ -47,7 +47,7 @@ where
 impl<B> Recognize for Inbound<B>
 where
     B: tower_h2::Body + Send + 'static,
-    B::Data: Send,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
     type Request = http::Request<B>;
     type Response = bind::HttpResponse;
@@ -103,7 +103,6 @@ mod tests {
     use std::sync::Arc;
 
     use http;
-    use tokio_core::reactor::Core;
     use conduit_proxy_router::Recognize;
 
     use super::Inbound;

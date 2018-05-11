@@ -182,8 +182,14 @@ fn run(proxy: Proxy, mut env: config::TestEnv) -> Listening {
             let _c = controller;
 
             let mock_orig_dst = MockOriginalDst(Arc::new(Mutex::new(mock_orig_dst)));
-
-            let main = conduit_proxy::Main::new(config, mock_orig_dst.clone());
+            // TODO: a mock timer could be injected here?
+            let runtime = tokio::runtime::current_thread::Runtime::new()
+                .expect("initialize main runtime");
+            let main = conduit_proxy::Main::new(
+                config,
+                mock_orig_dst.clone(),
+                runtime,
+            );
 
             let control_addr = main.control_addr();
             let inbound_addr = main.inbound_addr();

@@ -11,7 +11,6 @@ use bind;
 use task::LazyExecutor;
 use telemetry::sensor::http::RequestBody;
 use super::glue::{BodyStream, HttpBody, HyperConnect};
-use super::h1::UriIsAbsoluteForm;
 
 type HyperClient<C, B> =
     hyper::Client<HyperConnect<C>, BodyStream<RequestBody<B>>>;
@@ -74,7 +73,7 @@ where
 
 impl<C, B> Client<C, B>
 where
-    C: Connect + Clone + Send + 'static,
+    C: Connect + Clone + Send + Sync + 'static,
     C::Future: Send + 'static,
     C::Connected: Send,
     B: tower_h2::Body + Send + 'static,
@@ -84,12 +83,12 @@ where
     pub fn new(protocol: &bind::Protocol, connect: C) -> Self {
         match *protocol {
             bind::Protocol::Http1 { was_absolute_form, .. } => {
-                let h1 = hyper::Client::configure()
+                let h1 = hyper::Client::builder()
                     .executor(LazyExecutor)
                     // hyper should never try to automatically set the Host
                     // header, instead always just passing whatever we received.
                     .set_host(false)
-                    .build(HyperConnect::new(connect, was_absolute_form);
+                    .build(HyperConnect::new(connect, was_absolute_form));
                 Client {
                     inner: ClientInner::Http1(h1),
                 }
@@ -111,7 +110,7 @@ where
 
 impl<C, B> NewService for Client<C, B>
 where
-    C: Connect + Clone + Send + 'static,
+    C: Connect + Clone + Send + Sync + 'static,
     C::Future: Send + 'static,
     C::Connected: Send,
     B: tower_h2::Body + Send + 'static,
@@ -168,7 +167,7 @@ where
 
 impl<C, B> Service for ClientService<C, B>
 where
-    C: Connect + Send + 'static,
+    C: Connect + Send + Sync + 'static,
     C::Connected: Send,
     C::Future: Send + 'static,
     B: tower_h2::Body + Send + 'static,
@@ -187,8 +186,6 @@ where
     }
 
     fn call(&mut self, req: Self::Request) -> Self::Future {
-        use http::header::CONTENT_LENGTH;
-
         match self.inner {
             ClientServiceInner::Http1(ref h1) => {
                 let mut req = hyper::Request::from(req.map(BodyStream::new));

@@ -1,13 +1,17 @@
 #![cfg_attr(feature = "cargo-clippy", allow(clone_on_ref_ptr))]
 
 use support::*;
+use support::futures::future::Executor;
+// use support::tokio::executor::Executor as _TokioExecutor;
 
 use std::collections::{HashMap, VecDeque};
+use std::io;
 use std::net::IpAddr;
 use std::sync::{Arc, Mutex};
 
 use conduit_proxy_controller_grpc::common::{self, Destination};
 use conduit_proxy_controller_grpc::destination as pb;
+
 
 pub fn new() -> Controller {
     Controller::new()
@@ -108,43 +112,46 @@ impl pb::server::Destination for Controller {
 fn run(controller: Controller) -> Listening {
     let (tx, rx) = shutdown_signal();
     let (addr_tx, addr_rx) = oneshot::channel();
-
     ::std::thread::Builder::new()
         .name("support controller".into())
         .spawn(move || {
-            let mut core = Core::new().unwrap();
-            let reactor = core.handle();
-
             let new = pb::server::DestinationServer::new(controller);
-            let h2 = tower_h2::Server::new(new, Default::default(), reactor.clone());
+            let mut runtime = runtime::current_thread::Runtime::new()
+                .expect("support controller runtime");
+            let h2 = tower_h2::Server::new(new,
+                Default::default(),
+                LazyExecutor,
+            );
 
             let addr = ([127, 0, 0, 1], 0).into();
-            let bind = TcpListener::bind(&addr, &reactor).expect("bind");
+            let bind = TcpListener::bind(&addr).expect("bind");
 
             let _ = addr_tx.send(bind.local_addr().expect("addr"));
 
             let serve = bind.incoming()
-                .fold((h2, reactor), |(h2, reactor), (sock, _)| {
+                .fold(h2, |h2, sock| {
                     if let Err(e) = sock.set_nodelay(true) {
                         return Err(e);
                     }
 
                     let serve = h2.serve(sock);
-                    reactor.spawn(serve.map_err(|e| println!("controller error: {:?}", e)));
-
-                    Ok((h2, reactor))
+                    current_thread::TaskExecutor::current()
+                        .execute(serve.map_err(|e| println!("controller error: {:?}", e)))
+                        .map_err(|e| {
+                            println!("controller execute error: {:?}", e);
+                            io::Error::from(io::ErrorKind::Other)
+                        })
+                        .map(|_| h2)
                 });
 
 
-            core.handle().spawn(
+            runtime.spawn(Box::new(
                 serve
                     .map(|_| ())
                     .map_err(|e| println!("controller error: {}", e)),
-            );
-
-            core.run(rx).unwrap();
-        })
-        .unwrap();
+            ));
+            runtime.block_on(rx).expect("support controller run");
+        }).unwrap();
 
     let addr = addr_rx.wait().expect("addr");
     Listening {

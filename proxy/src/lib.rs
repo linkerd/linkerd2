@@ -167,7 +167,7 @@ where
 
     pub fn run_until<F>(self, shutdown_signal: F)
     where
-        F: Future<Item = (), Error = ()>,
+        F: Future<Item = (), Error = ()> + Send + 'static,
     {
         let process_ctx = ctx::Process::new(&self.config);
 
@@ -282,7 +282,7 @@ where
                 .spawn(move || {
                     use conduit_proxy_controller_grpc::tap::server::TapServer;
 
-                    let mut rt = current_thread::Runtiem::new()
+                    let mut rt = current_thread::Runtime::new()
                         .expect("initialize controller-client thread runtime");
 
                     let (taps, observe) = control::Observe::new(100);
@@ -344,11 +344,11 @@ fn serve<R, B, E, F, G>(
     proxy_ctx: Arc<ctx::Proxy>,
     sensors: telemetry::Sensors,
     get_orig_dst: G,
-    drain_rx: drain::Watch,=
-) -> impl Future<Item = (), Error = io::Error> + Send + 'static
+    drain_rx: drain::Watch,
+) -> Box<Future<Item = (), Error = io::Error> + Send + 'static>
 where
     B: tower_h2::Body + Default + Send + 'static,
-    B::Data: Send,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
     E: Error + Send + 'static,
     F: Error + Send + 'static,
     R: Recognize<
@@ -357,7 +357,11 @@ where
         Error = E,
         RouteError = F,
     >
-        + Send + 'static,
+        + Send + Sync + 'static,
+    R::Key: Send,
+    R::Service: Send,
+    <R::Service as tower_service::Service>::Future: Send,
+    Router<R>: Send,
     G: GetOriginalDst + Send + 'static,
 {
     let stack = Arc::new(NewServiceFn::new(move || {
@@ -404,12 +408,10 @@ where
         tcp_connect_timeout,
         disable_protocol_detection_ports,
         drain_rx.clone(),
-        executor.clone(),
     );
 
 
     let accept = bound_port.listen_and_fold(
-        executor,
         (),
         move |(), (connection, remote_addr)| {
             server.serve(connection, remote_addr);
@@ -457,21 +459,28 @@ where
 fn serve_control<N, B>(
     bound_port: BoundPort,
     new_service: N,
-) -> impl Future<Item = (), Error = io::Error> + Send + 'static
+) -> Box<Future<Item = (), Error = io::Error> + Send + 'static>
 where
     B: tower_h2::Body + Send + 'static,
-    B::Data: Send,
+    <B::Data as bytes::IntoBuf>::Buf: Send,
     N: NewService<
         Request = http::Request<tower_h2::RecvBody>,
         Response = http::Response<B>
     >
         + Send + 'static,
+    tower_h2::server::Connection<
+        connection::Connection,
+        N,
+        task::LazyExecutor,
+        B,
+        ()
+    >: Future<Item = ()>,
 {
     let h2_builder = h2::server::Builder::default();
     let server = tower_h2::Server::new(
         new_service,
         h2_builder,
-        LazyExecutor
+        task::LazyExecutor
     );
     bound_port.listen_and_fold(
         server,
@@ -479,7 +488,7 @@ where
             let s = server.serve(session).map_err(|_| ());
             let s = ::logging::context_future("serve_control", s);
 
-            let r = current_thread::TaskExecutor::current()
+            let r = executor::current_thread::TaskExecutor::current()
                 .spawn_local(Box::new(s))
                 .map(move |_| server)
                 .map_err(TaskError::into_io);

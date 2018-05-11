@@ -7,7 +7,6 @@ use std::sync::atomic::AtomicUsize;
 
 use futures::{Future, Poll, future};
 use http::{self, uri};
-use tokio_core::reactor::Handle;
 use tower_service as tower;
 use tower_h2;
 use tower_reconnect::Reconnect;
@@ -46,7 +45,11 @@ pub struct BindProtocol<C, B> {
 /// request.
 ///
 /// `Bound` serivces may be used to process an arbitrary number of requests.
-pub enum Binding<B: tower_h2::Body + 'static> {
+pub enum Binding<B>
+where
+    B: tower_h2::Body + Send + 'static,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
+{
     Bound(Stack<B>),
     BindsPerRequest {
         endpoint: Endpoint,
@@ -177,7 +180,8 @@ impl<C: Clone, B> Clone for Bind<C, B> {
 
 impl<B> Bind<Arc<ctx::Proxy>, B>
 where
-    B: tower_h2::Body + 'static,
+    B: tower_h2::Body + Send + 'static,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
     fn bind_stack(&self, ep: &Endpoint, protocol: &Protocol) -> Stack<B> {
         debug!("bind_stack endpoint={:?}, protocol={:?}", ep, protocol);
@@ -190,7 +194,7 @@ where
 
         // Map a socket address to a connection.
         let connect = self.sensors.connect(
-            transport::Connect::new(addr, &self.executor),
+            transport::Connect::new(addr),
             &client_ctx,
         );
 
@@ -229,6 +233,12 @@ where
     }
 }
 
+// As a `Bind` instance does not actually contain a value of type `B` (it's
+// just `PhantomData<(B)>`, `Bind` can be `Send` or `Sync` as long as `C`
+// is `Send` or `Sync`, regardless of `B`.
+unsafe impl<C: Send, B> Send for Bind<C, B> {}
+unsafe impl<C: Sync, B> Sync for Bind<C, B> {}
+
 // ===== impl BindProtocol =====
 
 
@@ -243,7 +253,8 @@ impl<C, B> Bind<C, B> {
 
 impl<B> control::discovery::Bind for BindProtocol<Arc<ctx::Proxy>, B>
 where
-    B: tower_h2::Body + 'static,
+    B: tower_h2::Body + Send + 'static,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
     type Endpoint = Endpoint;
     type Request = http::Request<B>;
@@ -320,15 +331,25 @@ where
     }
 
     fn call(&mut self, mut request: S::Request) -> Self::Future {
-        if request.version() != http::Version::HTTP_2 {
-            h1::normalize_our_view_of_uri(&mut request, self.was_absolute_form);
+        if request.version() != http::Version::HTTP_2 &&
+            // Skip normalizing the URI if it was received in
+            // absolute form.
+            // TODO: we could probably skip this service altogether, if we
+            //       wrote some kind of `futures::Either` for services?
+            !self.was_absolute_form
+        {
+            h1::normalize_our_view_of_uri(&mut request);
         }
         self.inner.call(request)
     }
 }
 // ===== impl Binding =====
 
-impl<B: tower_h2::Body + 'static> tower::Service for Binding<B> {
+impl<B> tower::Service for Binding<B>
+where
+    B: tower_h2::Body + Send + 'static,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
+{
     type Request = <Stack<B> as tower::Service>::Request;
     type Response = <Stack<B> as tower::Service>::Response;
     type Error = <Stack<B> as tower::Service>::Error;

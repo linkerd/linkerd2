@@ -70,7 +70,8 @@ where
 
 impl<B> Recognize for Outbound<B>
 where
-    B: tower_h2::Body + 'static,
+    B: tower_h2::Body + Send + 'static,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
     type Request = http::Request<B>;
     type Response = bind::HttpResponse;
@@ -164,7 +165,7 @@ where
         let buffer = Buffer::new(balance, &LazyExecutor)
             .map_err(|_| bind::BufferSpawnError::Outbound)?;
 
-        let timeout = Timeout::new(buffer, self.bind_timeout, handle);
+        let timeout = Timeout::new(buffer, self.bind_timeout);
 
         Ok(InFlightLimit::new(timeout, MAX_IN_FLIGHT))
 
@@ -179,7 +180,7 @@ pub enum Discovery<B> {
 impl<B> Discover for Discovery<B>
 where
     B: tower_h2::Body + Send + 'static,
-    B::Data: Send,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
     type Key = SocketAddr;
     type Request = http::Request<B>;

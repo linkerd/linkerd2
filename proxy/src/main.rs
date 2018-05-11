@@ -3,6 +3,7 @@
 extern crate conduit_proxy;
 
 #[macro_use] extern crate log;
+extern crate tokio;
 
 use std::process;
 

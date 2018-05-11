@@ -5,7 +5,6 @@ use futures::future::{
     ExecuteErrorKind,
     Executor,
 };
-use rand;
 use tokio::{
     executor::{
         DefaultExecutor,
