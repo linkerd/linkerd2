@@ -232,7 +232,7 @@ where
                 Inbound::new(default_addr, bind),
                 config.inbound_router_capacity,
                 config.inbound_router_max_idle_age,
-                http_active::RetainActive::default(),
+                http_active::RetainHttpActive::default(),
             );
             let fut = serve(
                 inbound_listener,
@@ -258,7 +258,7 @@ where
                 Outbound::new(bind, control, config.bind_timeout),
                 config.outbound_router_capacity,
                 config.outbound_router_max_idle_age,
-                http_active::RetainActive::default(),
+                http_active::RetainHttpActive::default(),
             );
             let fut = serve(
                 outbound_listener,

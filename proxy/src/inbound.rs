@@ -95,7 +95,7 @@ where
         let binding = self.bind.new_binding(&endpoint, proto);
         Buffer::new(binding, self.bind.executor())
             .map(|buffer| {
-                HttpActive::from(InFlightLimit::new(buffer, MAX_IN_FLIGHT))
+                HttpActive::new(InFlightLimit::new(buffer, MAX_IN_FLIGHT))
             })
             .map_err(|_| bind::BufferSpawnError::Inbound)
     }

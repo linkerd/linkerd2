@@ -169,7 +169,7 @@ where
 
         let timeout = Timeout::new(buffer, self.bind_timeout, handle);
 
-        Ok(HttpActive::from(InFlightLimit::new(timeout, MAX_IN_FLIGHT)))
+        Ok(HttpActive::new(InFlightLimit::new(timeout, MAX_IN_FLIGHT)))
 
     }
 }

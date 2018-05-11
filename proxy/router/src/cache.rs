@@ -48,7 +48,7 @@ pub trait Now {
 
 /// Wraps cache values so that each tracks its last access time.
 #[derive(Debug, PartialEq)]
-pub struct Node<T> {
+struct Node<T> {
     value: T,
     last_access: Instant,
 }
