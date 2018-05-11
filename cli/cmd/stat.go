@@ -39,6 +39,7 @@ var statCmd = &cobra.Command{
   * deploy/my-deploy
   * deploy my-deploy
   * ns/my-ns
+  * all
 
 Valid resource types include:
 
@@ -47,6 +48,7 @@ Valid resource types include:
   * pods
   * replicationcontrollers
   * services (only supported if a "--from" is also specified, or as a "--to")
+  * all (all resource types, not supported in --from or --to)
 
 This command will hide resources that have completed, such as pods that are in the Succeeded or Failed phases.
 If no resource name is specified, displays stats about all resources of the specified RESOURCETYPE`,
