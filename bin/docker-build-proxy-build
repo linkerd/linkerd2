@@ -16,11 +16,13 @@ rootdir="$( cd $bindir/.. && pwd )"
 if [ -z "${PROXY_BUILD_CACHE_IMAGE:-}" ]; then
     # If a cache is not specified use the default docker cache.
     docker_build proxy-build "$(head_root_tag)" $rootdir/proxy/Dockerfile \
-        --build-arg="PROXY_UNOPTIMIZED=${PROXY_UNOPTIMIZED:-}"
+        --build-arg="PROXY_UNOPTIMIZED=${PROXY_UNOPTIMIZED:-}" \
+        --target=build
 
 else
     # Otherwise, if a cache image is specified, use it.
     docker_build proxy-build "$(head_root_tag)" $rootdir/proxy/Dockerfile \
         --build-arg="PROXY_UNOPTIMIZED=${PROXY_UNOPTIMIZED:-}" \
-        --cache-from="$PROXY_BUILD_CACHE_IMAGE"
+        --cache-from="$PROXY_BUILD_CACHE_IMAGE" \
+        --target=build
 fi
