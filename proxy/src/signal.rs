@@ -1,17 +1,15 @@
 //! Unix signal handling for the proxy binary.
 
 extern crate futures;
-extern crate tokio_core;
 extern crate tokio_signal;
 
 use self::futures::Future;
-use self::tokio_core::reactor::Handle;
 
 type ShutdownSignal = Box<Future<Item=(), Error=()> + Send>;
 
 /// Returns a `Future` that completes when the proxy should start to shutdown.
-pub fn shutdown(handle: &Handle) -> ShutdownSignal {
-    imp::shutdown(handle)
+pub fn shutdown() -> ShutdownSignal {
+    imp::shutdown()
 }
 
 #[cfg(unix)]
@@ -20,9 +18,9 @@ mod imp {
 
     use super::futures::{future, Future, Stream};
     use super::tokio_signal::unix::{Signal, SIGINT, SIGTERM};
-    use super::{Handle, ShutdownSignal};
+    use super::ShutdownSignal;
 
-    pub(super) fn shutdown(handle: &Handle) -> ShutdownSignal {
+    pub(super) fn shutdown() -> ShutdownSignal {
         // SIGTERM - Kubernetes sends this to start a graceful shutdown.
         // SIGINT  - To allow Ctrl-c to emulate SIGTERM while developing.
         //
@@ -33,7 +31,7 @@ mod imp {
             .map(|&sig| {
                 // Create a Future that completes the first
                 // time the process receives 'sig'.
-                Signal::new(sig, handle)
+                Signal::new(sig)
                     .flatten_stream()
                     .into_future()
                     .map(move |_| {
@@ -75,12 +73,12 @@ mod imp {
     use super::{tokio_signal, Handle, ShutdownSignal};
     use super::futures::{Future, Stream};
 
-    pub(super) fn shutdown(handle: &Handle) -> ShutdownSignal {
+    pub(super) fn shutdown() -> ShutdownSignal {
         // On Windows, we don't have all the signals, but Windows also
         // isn't our expected deployment target. This implementation allows
         // developers on Windows to simulate proxy graceful shutdown
         // by pressing Ctrl-C.
-        let on_ctrl_c = tokio_signal::ctrl_c(handle)
+        let on_ctrl_c = tokio_signal::ctrl_c()
             .flatten_stream()
             .into_future()
             .map(|_| {

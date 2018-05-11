@@ -10,6 +10,7 @@ use conduit_proxy_router::Recognize;
 
 use bind;
 use ctx;
+use task::LazyExecutor;
 
 type Bind<B> = bind::Bind<Arc<ctx::Proxy>, B>;
 
@@ -45,7 +46,9 @@ where
 
 impl<B> Recognize for Inbound<B>
 where
-    B: tower_h2::Body + 'static,
+    B: tower_h2::Body + Send + 'static,
+    B::Data: Send,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
     type Request = http::Request<B>;
     type Response = bind::HttpResponse;
@@ -87,8 +90,8 @@ where
         debug!("building inbound {:?} client to {}", proto, addr);
 
         let endpoint = (*addr).into();
-        let binding = self.bind.new_binding(&endpoint, proto);
-        Buffer::new(binding, self.bind.executor())
+        let bind = self.bind.new_binding(&endpoint, proto);
+        Buffer::new(bind, &LazyExecutor)
             .map(|buffer| {
                 InFlightLimit::new(buffer, MAX_IN_FLIGHT)
             })
@@ -102,7 +105,6 @@ mod tests {
     use std::sync::Arc;
 
     use http;
-    use tokio_core::reactor::Core;
     use conduit_proxy_router::Recognize;
 
     use super::Inbound;
@@ -110,8 +112,7 @@ mod tests {
     use ctx;
 
     fn new_inbound(default: Option<net::SocketAddr>, ctx: &Arc<ctx::Proxy>) -> Inbound<()> {
-        let core = Core::new().unwrap();
-        let bind = Bind::new(core.handle()).with_ctx(ctx.clone());
+        let bind = Bind::new().with_ctx(ctx.clone());
         Inbound::new(default, bind)
     }
 
@@ -128,7 +129,10 @@ mod tests {
             let srv_ctx = ctx::transport::Server::new(&ctx, &local, &remote, &Some(orig_dst));
 
             let rec = srv_ctx.orig_dst_if_not_local().map(|addr|
-                (addr, bind::Protocol::Http1(Host::NoAuthority))
+                (addr, bind::Protocol::Http1 {
+                    host: Host::NoAuthority,
+                    was_absolute_form: false,
+                })
             );
 
             let mut req = http::Request::new(());
@@ -157,7 +161,10 @@ mod tests {
                 ));
 
             inbound.recognize(&req) == default.map(|addr|
-                (addr, bind::Protocol::Http1(Host::NoAuthority))
+                (addr, bind::Protocol::Http1 {
+                    host: Host::NoAuthority,
+                    was_absolute_form: false,
+                })
             )
         }
 
@@ -169,7 +176,10 @@ mod tests {
             let req = http::Request::new(());
 
             inbound.recognize(&req) == default.map(|addr|
-                (addr, bind::Protocol::Http1(Host::NoAuthority))
+                (addr, bind::Protocol::Http1 {
+                    host: Host::NoAuthority,
+                    was_absolute_form: false,
+                })
             )
         }
 
@@ -192,7 +202,10 @@ mod tests {
                 ));
 
             inbound.recognize(&req) == default.map(|addr|
-                (addr, bind::Protocol::Http1(Host::NoAuthority))
+                (addr, bind::Protocol::Http1 {
+                    host: Host::NoAuthority,
+                    was_absolute_form: false,
+                })
             )
         }
     }

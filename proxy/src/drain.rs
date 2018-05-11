@@ -90,8 +90,8 @@ impl Watch {
     /// should be used to trigger any shutdown process for it.
     pub fn watch<A, F>(self, future: A, on_drain: F) -> Watching<A, F>
     where
-        A: Future,
-        F: FnOnce(&mut A),
+        A: Future + Send,
+        F: FnOnce(&mut A) + Send,
     {
         Watching {
             future,
@@ -105,8 +105,8 @@ impl Watch {
 
 impl<A, F> Future for Watching<A, F>
 where
-    A: Future,
-    F: FnOnce(&mut A),
+    A: Future + Send,
+    F: FnOnce(&mut A) + Send,
 {
     type Item = A::Item;
     type Error = A::Error;

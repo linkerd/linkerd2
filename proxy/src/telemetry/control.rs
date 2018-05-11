@@ -4,13 +4,14 @@ use std::time::Duration;
 
 use futures::{future, Async, Future, Poll, Stream};
 use futures_mpsc_lossy::Receiver;
-use tokio_core::reactor::Handle;
+use tokio::executor::current_thread ;
 
 use super::event::Event;
 use super::metrics;
 use super::tap::Taps;
 use connection;
 use ctx;
+use task::TaskError;
 
 /// A `Control` which has been configured but not initialized.
 #[derive(Debug)]
@@ -47,8 +48,6 @@ pub struct Control {
 
     /// Holds the current state of tap observations, as configured by an external source.
     taps: Option<Arc<Mutex<Taps>>>,
-
-    handle: Handle,
 }
 
 // ===== impl MakeControl =====
@@ -74,13 +73,16 @@ impl MakeControl {
     /// Bind a `Control` with a reactor core.
     ///
     /// # Arguments
-    /// - `handle`: a `Handle` on an event loop that will track the timeout.
+    /// - `executor`: a `Handle` on an event loop that will track the timeout.
     /// - `taps`: shares a `Taps` instance.
     ///
     /// # Returns
     /// - `Ok(())` if the timeout was successfully created.
     /// - `Err(io::Error)` if the timeout could not be created.
-    pub fn make_control(self, taps: &Arc<Mutex<Taps>>, handle: &Handle) -> io::Result<Control> {
+    pub fn make_control(
+        self,
+        taps: &Arc<Mutex<Taps>>,
+    ) -> io::Result<Control> {
         let (metrics_record, metrics_service) =
             metrics::new(&self.process_ctx, self.metrics_retain_idle);
 
@@ -89,7 +91,6 @@ impl MakeControl {
             metrics_service,
             rx: Some(self.rx),
             taps: Some(taps.clone()),
-            handle: handle.clone(),
         })
     }
 }
@@ -113,26 +114,28 @@ impl Control {
     }
 
     pub fn serve_metrics(&self, bound_port: connection::BoundPort)
-        -> Box<Future<Item = (), Error = io::Error> + 'static>
+        -> Box<Future<Item = (), Error = ::io::Error>>
     {
         use hyper;
         let service = self.metrics_service.clone();
-        let hyper = hyper::server::Http::<hyper::Chunk>::new();
+        let hyper = hyper::server::conn::Http::new();
         bound_port.listen_and_fold(
-            &self.handle,
-            (hyper, self.handle.clone()),
-            move |(hyper, executor), (conn, _)| {
+            hyper,
+            move |hyper, (conn, _)| {
                 let service = service.clone();
                 let serve = hyper.serve_connection(conn, service)
-                    .map(|_| {})
                     .map_err(|e| {
                         error!("error serving prometheus metrics: {:?}", e);
                     });
+                let f = ::logging::context_future("serve_metrics", serve);
 
-                executor.spawn(::logging::context_future("serve_metrics", serve));
-
-                future::ok((hyper, executor))
+                future::result(current_thread::TaskExecutor::current()
+                    .spawn_local(Box::new(f))
+                    .map(move |_| hyper)
+                    .map_err(TaskError::into_io)
+                )
             })
+
     }
 
 }

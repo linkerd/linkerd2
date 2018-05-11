@@ -4,7 +4,7 @@ use std::io;
 use std::sync::Arc;
 use std::time::Instant;
 use tokio_connect;
-use tokio_io::{AsyncRead, AsyncWrite};
+use tokio::io::{AsyncRead, AsyncWrite};
 
 use connection::Peek;
 use ctx;

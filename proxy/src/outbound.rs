@@ -5,7 +5,6 @@ use std::sync::Arc;
 
 use http;
 use futures::{Async, Poll};
-use rand;
 use tower_service as tower;
 use tower_balance::{self, choose, load, Balance};
 use tower_buffer::Buffer;
@@ -18,6 +17,7 @@ use bind::{self, Bind, Protocol};
 use control::{self, discovery};
 use control::discovery::Bind as BindTrait;
 use ctx;
+use task::{LazyExecutor, LazyRng};
 use timeout::Timeout;
 use transparency::h1;
 use transport::{DnsNameAndPort, Host, HostAndPort};
@@ -68,7 +68,9 @@ where
 
 impl<B> Recognize for Outbound<B>
 where
-    B: tower_h2::Body + 'static,
+    B: tower_h2::Body + Send + 'static,
+    B::Data: Send,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
     type Request = http::Request<B>;
     type Response = bind::HttpResponse;
@@ -77,7 +79,7 @@ where
     type RouteError = bind::BufferSpawnError;
     type Service = InFlightLimit<Timeout<Buffer<Balance<
         load::WithPendingRequests<Discovery<B>>,
-        choose::PowerOfTwoChoices<rand::ThreadRng>
+        choose::PowerOfTwoChoices<LazyRng>
     >>>>;
 
     fn recognize(&self, req: &Self::Request) -> Option<Self::Key> {
@@ -153,16 +155,16 @@ where
 
         let loaded = tower_balance::load::WithPendingRequests::new(resolve);
 
-        let balance = tower_balance::power_of_two_choices(loaded, rand::thread_rng());
+        // We can't use `rand::thread_rng` here because the returned `Service`
+        // needs to be `Send`, so instead, we use `LazyRng`, which calls
+        // `rand::thread_rng()` when it is *used*.
+        let balance = tower_balance::power_of_two_choices(loaded, LazyRng);
 
-        // use the same executor as the underlying `Bind` for the `Buffer` and
-        // `Timeout`.
-        let handle = self.bind.executor();
-
-        let buffer = Buffer::new(balance, handle)
+        let buffer = Buffer::new(balance, &LazyExecutor)
             .map_err(|_| bind::BufferSpawnError::Outbound)?;
 
-        let timeout = Timeout::new(buffer, self.bind_timeout, handle);
+        let timeout = Timeout::new(buffer, self.bind_timeout)
+            .named("binding outbound client");
 
         Ok(InFlightLimit::new(timeout, MAX_IN_FLIGHT))
 
@@ -176,7 +178,9 @@ pub enum Discovery<B> {
 
 impl<B> Discover for Discovery<B>
 where
-    B: tower_h2::Body + 'static,
+    B: tower_h2::Body + Send + 'static,
+    B::Data: Send,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
     type Key = SocketAddr;
     type Request = http::Request<B>;
