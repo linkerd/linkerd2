@@ -212,7 +212,6 @@ func writeStatsToBuffer(resp *pb.StatSummaryResponse, reqResourceType string, w 
 	lastDisplayedStat := true // don't print a newline after the final stat
 	for resourceType, stats := range statTables {
 		if !lastDisplayedStat {
-
 			fmt.Fprint(w, "\n")
 		}
 		lastDisplayedStat = false
@@ -221,7 +220,6 @@ func writeStatsToBuffer(resp *pb.StatSummaryResponse, reqResourceType string, w 
 		} else {
 			printStatTable(stats, "", w, maxNameLength, maxNamespaceLength)
 		}
-
 	}
 }
 

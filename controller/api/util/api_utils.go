@@ -191,7 +191,6 @@ func BuildResource(namespace string, args ...string) (pb.Resource, error) {
 
 func buildResource(namespace string, resType string, name string) (pb.Resource, error) {
 	canonicalType, err := k8s.CanonicalKubernetesNameFromFriendlyName(resType)
-
 	if err != nil {
 		return pb.Resource{}, err
 	}
