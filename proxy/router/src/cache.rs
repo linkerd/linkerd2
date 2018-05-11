@@ -115,11 +115,7 @@ impl<K: Hash + Eq, V, R: Retain<K, V>, N: Now> Cache<K, V, R, N> {
                 let retain = &self.retain;
                 self.vals.retain(|ref k, ref mut n| {
                     let age = now - n.last_access();
-                    if age.as_secs() <= max_age {
-                        true
-                    } else {
-                        retain.retain(k, n)
-                    }
+                    (age.as_secs() <= max_age) || retain.retain(k, n)
                 });
             }
 
