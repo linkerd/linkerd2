@@ -5,7 +5,7 @@ use std::time::Instant;
 use futures_mpsc_lossy::Sender;
 use http::{Request, Response};
 use tokio_connect;
-use tokio_io::{AsyncRead, AsyncWrite};
+use tokio::io::{AsyncRead, AsyncWrite};
 use tower_service::NewService;
 use tower_h2::{client, Body};
 

@@ -9,7 +9,6 @@ use futures::{Async, Future, Poll, Stream};
 use futures::sync::mpsc;
 use futures_watch;
 use http;
-use tokio_core::reactor::Handle;
 use tower_service::Service;
 use tower_h2::{HttpService, BoxBody, RecvBody};
 use tower_discover::{Change, Discover};
@@ -286,12 +285,12 @@ where
 
 impl Background {
     /// Bind this handle to start talking to the controller API.
-    pub fn work<T>(self, executor: &Handle) -> DiscoveryWork<T>
+    pub fn work<T>(self) -> DiscoveryWork<T>
     where T: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>,
           T::Error: fmt::Debug,
     {
         DiscoveryWork {
-            dns_resolver: dns::Resolver::new(self.dns_config, executor),
+            dns_resolver: dns::Resolver::new(self.dns_config),
             default_destination_namespace: self.default_destination_namespace,
             destinations: HashMap::new(),
             reconnects: VecDeque::new(),

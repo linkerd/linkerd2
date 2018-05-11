@@ -6,15 +6,17 @@ use futures::future::{
     Executor,
 };
 use rand;
-use tokio::executor::{
-    DefaultExecutor,
-    Executor as TokioExecutor,
-    SpawnError,
+use tokio::{
+    executor::{
+        DefaultExecutor,
+        Executor as TokioExecutor,
+        SpawnError,
+    },
+    runtime::{self as thread_pool, current_thread},
 };
 
 use std::error::Error;
 use std::{fmt, io};
-
 
 /// An empty type which implements `Executor` by lazily  calling
 /// `tokio::executor::DefaultExecutor::current().execute(...)`.
@@ -28,6 +30,21 @@ use std::{fmt, io};
 /// panicking (as `tokio::spawn` does).
 #[derive(Copy, Clone, Debug, Default)]
 pub struct LazyExecutor;
+
+/// Indicates which Tokio `Runtime` should be used for the main proxy.
+///
+/// This is either a `tokio::runtime::current_thread::Runtime`, or a
+/// `tokio::runtime::Runtime` (thread pool). This type simply allows
+/// both runtimes to present a unified interface, so that they can be
+/// used to construct a `Main`.
+///
+/// This allows the runtime used for the proxy to be customized based
+/// on the application: for a sidecar proxy, we use the current thread
+/// runtime, but for an ingress proxy, we would prefer the thread pool.
+pub enum MainRuntime {
+    CurrentThread(current_thread::Runtime),
+    ThreadPool(thread_pool::Runtime),
+}
 
 /// Like a `SpawnError` or `ExecuteError`, but with an implementation
 /// of `std::error::Error`.
@@ -85,20 +102,48 @@ where
     }
 }
 
-// ===== impl LazyRng =====
+// ===== impl MainRuntime =====
 
-impl rand::Rng for LazyRng {
-    fn next_u32(&mut self) -> u32 {
-        rand::thread_rng().next_u32()
+impl MainRuntime {
+    /// Spawn a task on this runtime.
+    pub fn spawn<F>(&mut self, future: F) -> &mut Self
+    where
+        F: Future<Item = (), Error = ()> + Send + 'static,
+    {
+        match *self {
+            MainRuntime::CurrentThread(ref mut rt) => { rt.spawn(future); }
+            MainRuntime::ThreadPool(ref mut rt) => {  rt.spawn(future); }
+        };
+        self
     }
 
-    fn next_u64(&mut self) -> u64 {
-        rand::thread_rng().next_u64()
+    /// Runs `self` until `shutdown_signal` completes.
+    pub fn run_until<F>(self, shutdown_signal: F)  -> Result<(), ()>
+    where
+        F: Future<Item = (), Error = ()> + Send + 'static,
+    {
+        match self {
+            MainRuntime::CurrentThread(mut rt) =>
+                rt.block_on(shutdown_signal),
+            MainRuntime::ThreadPool(rt) =>
+                shutdown_signal
+                    .and_then(move |()| rt.shutdown_now())
+                    .wait(),
+        }
     }
+}
 
-    #[inline]
-    fn fill_bytes(&mut self, bytes: &mut [u8]) {
-        rand::thread_rng().fill_bytes(bytes)
+impl From<current_thread::Runtime> for MainRuntime {
+    fn from(rt: current_thread::Runtime) -> Self {
+        debug!("creating single-threaded proxy");
+        MainRuntime::CurrentThread(rt)
+    }
+}
+
+impl From<thread_pool::Runtime> for MainRuntime {
+    fn from(rt: thread_pool::Runtime) -> Self {
+        debug!("creating proxy with threadpool");
+        MainRuntime::ThreadPool(rt)
     }
 }
 
