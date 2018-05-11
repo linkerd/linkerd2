@@ -15,10 +15,12 @@ mod cache;
 use self::cache::Cache;
 
 /// Routes requests based on a configurable `Key`.
-pub struct Router<T>
-where T: Recognize,
+pub struct Router<T, R>
+where
+    T: Recognize,
+    R: Retain<T::Key, T::Service>,
 {
-    inner: Arc<Inner<T>>,
+    inner: Arc<Inner<T, R>>,
 }
 
 /// Provides a strategy for routing a Request to a Service.
@@ -58,6 +60,17 @@ pub trait Recognize {
     fn bind_service(&self, key: &Self::Key) -> Result<Self::Service, Self::RouteError>;
 }
 
+/// A strategy for determining whether a route may be evicted from the cache.
+///
+/// When the cache is at capacity, it attemps to remove all routes that have not been
+/// accessed recently. However, cache-access may not be the only relevant factor for a
+/// given application. For example, an HTTP router may opt to retain routes that are still
+/// transferring data (i.e. long-lived streams).
+pub trait Retain<K, V> {
+    /// Returns true iff the router must retain the provided route.
+    fn retain(&self, key: &K, route: &mut V) -> bool;
+}
+
 #[derive(Debug, PartialEq)]
 pub enum Error<T, U> {
     Inner(T),
@@ -72,11 +85,13 @@ where T: Recognize,
     state: State<T>,
 }
 
-struct Inner<T>
-where T: Recognize,
+struct Inner<T, R>
+where
+    T: Recognize,
+    R: Retain<T::Key, T::Service>,
 {
     recognize: T,
-    cache: Mutex<Cache<T::Key, T::Service>>,
+    cache: Mutex<Cache<T::Key, T::Service, R>>,
 }
 
 enum State<T>
@@ -91,21 +106,21 @@ where T: Recognize,
 
 // ===== impl Router =====
 
-impl<T> Router<T>
-where T: Recognize
+impl<T, R> Router<T, R>
+where
+    T: Recognize,
+    R: Retain<T::Key, T::Service>,
 {
-    pub fn new(recognize: T, capacity: usize, max_idle_age: Duration) -> Self {
-        Router {
-            inner: Arc::new(Inner {
-                recognize,
-                cache: Mutex::new(Cache::new(capacity, max_idle_age)),
-            }),
-        }
+    pub fn new(recognize: T, capacity: usize, max_idle_age: Duration, retain: R) -> Self {
+        let cache = Mutex::new(Cache::new(capacity, max_idle_age).with_retain(retain));
+        Self { inner: Arc::new(Inner { recognize, cache }) }
     }
 }
 
-impl<T> Service for Router<T>
-where T: Recognize,
+impl<T, R> Service for Router<T, R>
+where
+    T: Recognize,
+    R: Retain<T::Key, T::Service>,
 {
     type Request = T::Request;
     type Response = T::Response;
@@ -161,8 +176,10 @@ where T: Recognize,
     }
 }
 
-impl<T> Clone for Router<T>
-where T: Recognize,
+impl<T, R> Clone for Router<T, R>
+where
+    T: Recognize,
+    R: Retain<T::Key, T::Service>,
 {
     fn clone(&self) -> Self {
         Router { inner: self.inner.clone() }
@@ -333,7 +350,11 @@ mod tests {
     use tower_service::Service;
     use super::{Error, Router};
 
-    impl Router<Recognize> {
+    impl Router<Recognize, ()> {
+        fn mk(cap: usize, idle: Duration) -> Self {
+            Router::new(Recognize, cap, idle, ())
+        }
+
         fn call_ok(&mut self, req: Request) -> usize {
             self.call(req).wait().expect("should route")
         }
@@ -345,7 +366,7 @@ mod tests {
 
     #[test]
     fn invalid() {
-        let mut router = Router::new(Recognize, 1, Duration::from_secs(0));
+        let mut router = Router::mk(1, Duration::from_secs(0));
 
         let rsp = router.call_err(Request::NotRecognized);
         assert_eq!(rsp, Error::NotRecognized);
@@ -353,7 +374,7 @@ mod tests {
 
     #[test]
     fn cache_limited_by_capacity() {
-        let mut router = Router::new(Recognize, 1, Duration::from_secs(1));
+        let mut router = Router::mk(1, Duration::from_secs(1));
 
         let rsp = router.call_ok(2.into());
         assert_eq!(rsp, 2);
@@ -364,7 +385,7 @@ mod tests {
 
     #[test]
     fn services_cached() {
-        let mut router = Router::new(Recognize, 1, Duration::from_secs(0));
+        let mut router = Router::mk(1, Duration::from_secs(0));
 
         let rsp = router.call_ok(2.into());
         assert_eq!(rsp, 2);

@@ -57,7 +57,7 @@ use indexmap::IndexSet;
 use tokio_core::reactor::{Core, Handle};
 use tower_service::NewService;
 use tower_fn::*;
-use conduit_proxy_router::{Recognize, Router, Error as RouteError};
+use conduit_proxy_router::{Recognize, Retain, Router, Error as RouteError};
 
 pub mod app;
 mod bind;
@@ -67,6 +67,7 @@ pub mod control;
 pub mod ctx;
 mod dns;
 mod drain;
+mod http_active;
 mod inbound;
 mod logging;
 mod map_err;
@@ -231,6 +232,7 @@ where
                 Inbound::new(default_addr, bind),
                 config.inbound_router_capacity,
                 config.inbound_router_max_idle_age,
+                http_active::RetainHttpActive::default(),
             );
             let fut = serve(
                 inbound_listener,
@@ -256,6 +258,7 @@ where
                 Outbound::new(bind, control, config.bind_timeout),
                 config.outbound_router_capacity,
                 config.outbound_router_max_idle_age,
+                http_active::RetainHttpActive::default(),
             );
             let fut = serve(
                 outbound_listener,
@@ -333,9 +336,9 @@ where
     }
 }
 
-fn serve<R, B, E, F, G>(
+fn serve<R, K, B, E, F, G>(
     bound_port: BoundPort,
-    router: Router<R>,
+    router: Router<R, K>,
     tcp_connect_timeout: Duration,
     disable_protocol_detection_ports: IndexSet<u16>,
     proxy_ctx: Arc<ctx::Proxy>,
@@ -355,6 +358,7 @@ where
         RouteError = F,
     >
         + 'static,
+    K: Retain<R::Key, R::Service> + 'static,
     G: GetOriginalDst + 'static,
 {
     let stack = Arc::new(NewServiceFn::new(move || {

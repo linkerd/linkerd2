@@ -18,6 +18,7 @@ use bind::{self, Bind, Protocol};
 use control::{self, discovery};
 use control::discovery::Bind as BindTrait;
 use ctx;
+use http_active::HttpActive;
 use timeout::Timeout;
 use transparency::h1;
 use transport::{DnsNameAndPort, Host, HostAndPort};
@@ -75,10 +76,14 @@ where
     type Error = <Self::Service as tower::Service>::Error;
     type Key = (Destination, Protocol);
     type RouteError = bind::BufferSpawnError;
-    type Service = InFlightLimit<Timeout<Buffer<Balance<
-        load::WithPendingRequests<Discovery<B>>,
-        choose::PowerOfTwoChoices<rand::ThreadRng>
-    >>>>;
+    type Service = HttpActive<
+        InFlightLimit<Timeout<Buffer<Balance<
+            load::WithPendingRequests<Discovery<B>>,
+            choose::PowerOfTwoChoices<rand::ThreadRng>,
+        >>>>,
+        B,
+        bind::HttpResponseBody,
+    >;
 
     fn recognize(&self, req: &Self::Request) -> Option<Self::Key> {
         let proto = bind::Protocol::detect(req);
@@ -164,7 +169,7 @@ where
 
         let timeout = Timeout::new(buffer, self.bind_timeout, handle);
 
-        Ok(InFlightLimit::new(timeout, MAX_IN_FLIGHT))
+        Ok(HttpActive::new(InFlightLimit::new(timeout, MAX_IN_FLIGHT)))
 
     }
 }

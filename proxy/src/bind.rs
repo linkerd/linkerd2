@@ -96,7 +96,8 @@ pub type Stack<B> = Reconnect<NormalizeUri<NewHttp<B>>>;
 
 pub type NewHttp<B> = sensor::NewHttp<Client<B>, B, HttpBody>;
 
-pub type HttpResponse = http::Response<sensor::http::ResponseBody<HttpBody>>;
+pub type HttpResponseBody = sensor::http::ResponseBody<HttpBody>;
+pub type HttpResponse = http::Response<HttpResponseBody>;
 
 pub type HttpRequest<B> = http::Request<sensor::http::RequestBody<B>>;
 

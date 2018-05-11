@@ -4,7 +4,15 @@ use std::{hash::Hash, ops::{Deref, DerefMut}, time::{Duration, Instant}};
 // Reexported so IndexMap isn't exposed.
 pub use indexmap::Equivalent;
 
-/// An LRU cache
+use Retain;
+
+/// An LRU-ish cache
+///
+/// `Cache` stores a bounded map of key-values. The last-access time for each entry is
+/// tracked so that, when `reserve` is called and the cache is at capacity, nodes that
+/// have not been accessed in `max_idle_age` are dropped. Additionally, an `R`-typed
+/// `Retain` may prevent old nodes from being evicted (i.e. to allow for graceful shutdown
+/// of routes).
 ///
 /// ## Assumptions
 ///
@@ -23,10 +31,11 @@ pub use indexmap::Equivalent;
 /// The underlying datastructure could be improved somewhat so that `reserve` can evict
 /// unused nodes more efficiently. Given that eviction is intended to be rare, this is
 /// probably not a very high priority.
-pub struct Cache<K: Hash + Eq, V, N: Now = ()> {
+pub struct Cache<K: Hash + Eq, V, R: Retain<K, V> = (), N: Now = ()> {
     vals: IndexMap<K, Node<V>>,
     capacity: usize,
     max_idle_age: Duration,
+    retain: R,
 
     /// The time source.
     now: N,
@@ -39,7 +48,7 @@ pub trait Now {
 
 /// Wraps cache values so that each tracks its last access time.
 #[derive(Debug, PartialEq)]
-pub struct Node<T> {
+struct Node<T> {
     value: T,
     last_access: Instant,
 }
@@ -68,20 +77,31 @@ pub struct CapacityExhausted {
     pub capacity: usize,
 }
 
+// ===== impl Retain =====
+
+// By default, nodes are not retained.
+impl<K, V> Retain<K, V> for () {
+    fn retain(&self, _: &K, _: &mut V) -> bool {
+        false
+    }
+}
+
 // ===== impl Cache =====
 
-impl<K: Hash + Eq, V> Cache<K, V, ()> {
+impl<K: Hash + Eq, V> Cache<K, V, (), ()> {
     pub fn new(capacity: usize, max_idle_age: Duration) -> Self {
+        assert!(capacity != 0, "cache requires non-zero capacity");
         Self {
             capacity,
             vals: IndexMap::default(),
             max_idle_age,
+            retain: (),
             now: (),
         }
     }
 }
 
-impl<K: Hash + Eq, V, N: Now> Cache<K, V, N> {
+impl<K: Hash + Eq, V, R: Retain<K, V>, N: Now> Cache<K, V, R, N> {
     /// Accesses a route.
     ///
     /// A mutable reference to the route is wrapped in the returned `Access` to
@@ -105,12 +125,15 @@ impl<K: Hash + Eq, V, N: Now> Cache<K, V, N> {
             // Only whole seconds are used to determine whether a node should be retained.
             // This is intended to prevent the need for repetitive reservations when
             // entries are clustered in tight time ranges.
-            let max_age = self.max_idle_age.as_secs();
-            let now = self.now.now();
-            self.vals.retain(|_, n| {
-                let age = now - n.last_access();
-                age.as_secs() <= max_age
-            });
+            {
+                let max_age = self.max_idle_age.as_secs();
+                let now = self.now.now();
+                let retain = &self.retain;
+                self.vals.retain(|ref k, ref mut n| {
+                    let age = now - n.last_access();
+                    (age.as_secs() <= max_age) || retain.retain(k, n)
+                });
+            }
 
             if self.vals.len() == self.capacity {
                 return Err(CapacityExhausted {
@@ -125,14 +148,28 @@ impl<K: Hash + Eq, V, N: Now> Cache<K, V, N> {
         })
     }
 
+    /// Sets the retain policy for the cache.
+    ///
+    /// The provided `Retain` can prevent nodes from being evicted in `reserve`.
+    pub fn with_retain<S: Retain<K, V>>(self, retain: S) -> Cache<K, V, S, N> {
+        Cache {
+            retain,
+            capacity: self.capacity,
+            vals: self.vals,
+            max_idle_age: self.max_idle_age,
+            now: self.now,
+        }
+    }
+
     /// Overrides the time source for tests.
     #[cfg(test)]
-    fn with_clock<M: Now>(self, now: M) -> Cache<K, V, M> {
+    fn with_clock<M: Now>(self, now: M) -> Cache<K, V, R, M> {
         Cache {
             now,
             vals: self.vals,
             capacity: self.capacity,
             max_idle_age: self.max_idle_age,
+            retain: self.retain,
         }
     }
 }
