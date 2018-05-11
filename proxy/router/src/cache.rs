@@ -6,7 +6,13 @@ pub use indexmap::Equivalent;
 
 use Retain;
 
-/// An LRU cache
+/// An LRU-ish cache
+///
+/// `Cache` stores a bounded map of key-values. The last-access time for each entry is
+/// tracked so that, when `reserve` is called and the cache is at capacity, nodes that
+/// have not been accessed in `max_idle_age` are dropped. Additionally, an `R`-typed
+/// `Retain` may prevent old nodes from being evicted (i.e. to allow for graceful shutdown
+/// of routes).
 ///
 /// ## Assumptions
 ///
@@ -71,10 +77,20 @@ pub struct CapacityExhausted {
     pub capacity: usize,
 }
 
+// ===== impl Retain =====
+
+// By default, nodes are not retained.
+impl<K, V> Retain<K, V> for () {
+    fn retain(&self, _: &K, _: &mut V) -> bool {
+        false
+    }
+}
+
 // ===== impl Cache =====
 
 impl<K: Hash + Eq, V> Cache<K, V, (), ()> {
     pub fn new(capacity: usize, max_idle_age: Duration) -> Self {
+        assert!(capacity != 0, "cache requires non-zero capacity");
         Self {
             capacity,
             vals: IndexMap::default(),
@@ -132,6 +148,9 @@ impl<K: Hash + Eq, V, R: Retain<K, V>, N: Now> Cache<K, V, R, N> {
         })
     }
 
+    /// Sets the retain policy for the cache.
+    ///
+    /// The provided `Retain` can prevent nodes from being evicted in `reserve`.
     pub fn with_retain<S: Retain<K, V>>(self, retain: S) -> Cache<K, V, S, N> {
         Cache {
             retain,

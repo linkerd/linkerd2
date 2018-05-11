@@ -60,8 +60,15 @@ pub trait Recognize {
     fn bind_service(&self, key: &Self::Key) -> Result<Self::Service, Self::RouteError>;
 }
 
+/// A strategy for determining whether a route may be evicted from the cache.
+///
+/// When the cache is at capacity, it attemps to remove all routes that have not been
+/// accessed recently. However, cache-access may not be the only relevant factor for a
+/// given application. For example, an HTTP router may opt to retain routes that are still
+/// transferring data (i.e. long-lived streams).
 pub trait Retain<K, V> {
-    fn retain(&self, key: &K, val: &mut V) -> bool;
+    /// Returns true iff the router must retain the provided route.
+    fn retain(&self, key: &K, route: &mut V) -> bool;
 }
 
 #[derive(Debug, PartialEq)]
@@ -105,12 +112,8 @@ where
     R: Retain<T::Key, T::Service>,
 {
     pub fn new(recognize: T, capacity: usize, max_idle_age: Duration, retain: R) -> Self {
-        Self {
-            inner: Arc::new(Inner {
-                recognize,
-                cache: Mutex::new(Cache::new(capacity, max_idle_age).with_retain(retain)),
-            }),
-        }
+        let cache = Mutex::new(Cache::new(capacity, max_idle_age).with_retain(retain));
+        Self { inner: Arc::new(Inner { recognize, cache }) }
     }
 }
 
@@ -263,13 +266,6 @@ where
             Error::NoCapacity(_) => "router capacity reached",
             Error::NotRecognized => "route not recognized",
         }
-    }
-}
-
-// By default, nodes are not retained.
-impl<K, V> Retain<K, V> for () {
-    fn retain(&self, _: &K, _: &mut V) -> bool {
-        false
     }
 }
 
