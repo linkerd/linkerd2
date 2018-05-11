@@ -206,6 +206,9 @@ fn outbound_updates_newer_services() {
     let _res = client1.request(&mut client1.request_builder("/h1"));
     // assert_eq!(res.status(), 200);
 
+    // a new HTTP1 service needs to be build now, while the HTTP2
+    // service already exists, so make sure previously sent addrs
+    // get into the newer service
     let client2 = client::http1(proxy.outbound, "disco.test.svc.cluster.local");
     assert_eq!(client2.get("/h1"), "hello h1");
 }
