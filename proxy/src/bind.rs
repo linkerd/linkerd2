@@ -219,8 +219,6 @@ where
 
         // Rewrite the HTTP/1 URI, if the authorities in the Host header
         // and request URI are not in agreement, or are not present.
-        // Rewrite the HTTP/1 URI, if the authorities in the Host header
-        // and request URI are not in agreement, or are not present.
         let proxy = NormalizeUri::new(
             sensors,
             protocol.was_absolute_form()
@@ -308,15 +306,8 @@ where
     >;
     fn new_service(&self) -> Self::Future {
         let s = self.inner.new_service();
-        // This weird dance is so that the closure doesn't have to
-        // capture `self` and can just be a `fn` (so the `Map`)
-        // can be returned unboxed.
-        if self.was_absolute_form {
-            s.map(|inner| NormalizeUri::new(inner, true))
-        } else {
-            s.map(|inner| NormalizeUri::new(inner, false))
-        }
-
+        let was_absolute_form = self.was_absolute_form;
+        s.map(|inner| NormalizeUri::new(inner, was_absolute_form))
     }
 }
 
@@ -389,13 +380,6 @@ impl<B: tower_h2::Body + 'static> tower::Service for Binding<B> {
 
 
 impl Protocol {
-    /// Returns true if the request was originally received in absolute form.
-    pub fn was_absolute_form(&self) -> bool {
-        match self {
-            &Protocol::Http1 { was_absolute_form, .. } => was_absolute_form,
-            _ => false,
-        }
-    }
 
     pub fn detect<B>(req: &http::Request<B>) -> Self {
         if req.version() == http::Version::HTTP_2 {
@@ -418,6 +402,14 @@ impl Protocol {
 
 
         Protocol::Http1 { host, was_absolute_form }
+    }
+
+    /// Returns true if the request was originally received in absolute form.
+    pub fn was_absolute_form(&self) -> bool {
+        match self {
+            &Protocol::Http1 { was_absolute_form, .. } => was_absolute_form,
+            _ => false,
+        }
     }
 
     pub fn can_reuse_clients(&self) -> bool {
