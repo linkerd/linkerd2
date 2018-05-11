@@ -58,23 +58,17 @@ type podCount struct {
 func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
 	// special case to check for services as outbound only
 	if isInvalidServiceRequest(req) {
-		return &pb.StatSummaryResponse{
-			Response: &pb.StatSummaryResponse_Error{
-				Error: &pb.ResourceError{
-					Resource: req.Selector.Resource,
-					Error:    "service only supported as a target on 'from' queries, or as a destination on 'to' queries",
-				},
-			},
-		}, nil
+		return statSummaryError(req, "service only supported as a target on 'from' queries, or as a destination on 'to' queries"), nil
+	}
 
 	switch req.Outbound.(type) {
 	case *pb.StatSummaryRequest_ToResource:
 		if req.Outbound.(*pb.StatSummaryRequest_ToResource).ToResource.Type == k8s.All {
-			return nil, status.Errorf(codes.InvalidArgument, "resource type 'all' is not supported as a filter")
+			return statSummaryError(req, "resource type 'all' is not supported as a filter"), nil
 		}
 	case *pb.StatSummaryRequest_FromResource:
 		if req.Outbound.(*pb.StatSummaryRequest_FromResource).FromResource.Type == k8s.All {
-			return nil, status.Errorf(codes.InvalidArgument, "resource type 'all' is not supported as a filter")
+			return statSummaryError(req, "resource type 'all' is not supported as a filter"), nil
 		}
 	}
 
@@ -124,6 +118,17 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 	}
 
 	return &rsp, nil
+}
+
+func statSummaryError(req *pb.StatSummaryRequest, message string) *pb.StatSummaryResponse {
+	return &pb.StatSummaryResponse{
+		Response: &pb.StatSummaryResponse_Error{
+			Error: &pb.ResourceError{
+				Resource: req.Selector.Resource,
+				Error:    message,
+			},
+		},
+	}
 }
 
 func (s *grpcServer) resourceQuery(ctx context.Context, req *pb.StatSummaryRequest) resourceResult {
