@@ -76,6 +76,7 @@ mod transparency;
 mod transport;
 pub mod timeout;
 mod tower_fn; // TODO: move to tower-fn
+mod rng;
 
 use bind::Bind;
 use connection::BoundPort;
