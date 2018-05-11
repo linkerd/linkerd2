@@ -66,7 +66,7 @@ impl Background {
         self,
         host_and_port: HostAndPort,
         dns_config: dns::Config,
-    ) -> impl Future<Item = (), Error = ()> {
+    ) -> Box<Future<Item = (), Error = ()>> {
         // Build up the Controller Client Stack
         let mut client = {
             let ctx = ("controller-client", format!("{:?}", host_and_port));
@@ -76,7 +76,6 @@ impl Background {
             let connect = Timeout::new(
                 LookupAddressAndConnect::new(host_and_port, dns_resolver),
                 Duration::from_secs(3),
-                &executor,
             );
 
             let h2_client = tower_h2::client::Connect::new(

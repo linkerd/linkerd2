@@ -52,6 +52,25 @@ impl<T> Timeout<T> {
             duration,
         }
     }
+
+    fn error<E>(&self, error: E) -> TimeoutError<E> {
+        TimeoutError {
+            kind: TimeoutErrorKind::Error(error),
+        }
+    }
+
+    fn deadline_error<E>(&self, error: DeadlineError<E>) -> TimeoutError<E> {
+        let kind = match error {
+            _ if error.is_timer() =>
+                TimeoutErrorKind::Timer(error.into_timer()
+                    .expect("error.into_timer() must succeed if error.is_timer()")),
+            _ if error.is_elapsed() =>
+                TimeoutErrorKind::Timeout(self.duration),
+            _ => TimeoutErrorKind::Error(error.into_inner()
+                .expect("if error is not elapsed or timer, must be inner")),
+        };
+        TimeoutError { kind }
+    }
 }
 
 impl<S, T, E> Service for Timeout<S>
@@ -64,7 +83,7 @@ where
     type Future = Timeout<Deadline<S::Future>>;
 
     fn poll_ready(&mut self) -> Poll<(), Self::Error> {
-        self.inner.poll_ready().map_err(TimeoutError::error)
+        self.inner.poll_ready().map_err(|e| self.error(e))
     }
 
     fn call(&mut self, req: Self::Request) -> Self::Future {
@@ -105,7 +124,7 @@ where
     type Item = F::Item;
     type Error = TimeoutError<F::Error>;
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        self.inner.poll().map_err(TimeoutError::deadline_error)
+        self.inner.poll().map_err(|e| self.deadline_error(e))
     }
 }
 
@@ -152,33 +171,12 @@ where
 
 //===== impl TimeoutError =====
 
-impl<E> TimeoutError<E> {
-    fn error<E>(error: E) -> Self {
-        TimeoutError {
-            kind: TimeoutErrorKind::Error(error),
-        }
-    }
-
-    fn deadline_error<E>(error: DeadlineError<E>) -> Self {
-        let kind = match error {
-            _ if error.is_timer() =>
-                TimeoutErrorKind::Timer(error.into_timer()
-                    .expect("error.into_timer() must succeed if error.is_timer()")),
-            _ if error.is_elapsed() =>
-                TimeoutErrorKind::Timeout(self.duration),
-            _ => TimeoutErrorKind::Error(error.into_inner()
-                .expect("if error is not elapsed or timer, must be inner")),
-        };
-        TimeoutError { kind }
-    }
-}
-
 impl<E> fmt::Display for TimeoutError<E>
 where
     E: fmt::Display
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self.kind {
+        match self.kind {
             TimeoutErrorKind::Timeout(ref d) =>
                 write!(f, "operation timed out after {}", HumanDuration(*d)),
             TimeoutErrorKind::Timer(ref err) => write!(f, "timer failed: {}", err),

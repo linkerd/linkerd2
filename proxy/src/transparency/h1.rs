@@ -8,24 +8,9 @@ use http::header::HOST;
 use http::uri::{Authority, Parts, Scheme, Uri};
 use ctx::transport::{Server as ServerCtx};
 
-/// Sentinel extension to signal that we should tell hyper to serialize
-/// the `Uri` in absolute-form.
-pub struct UriIsAbsoluteForm;
-
 /// Tries to make sure the `Uri` of the request is in a form needed by
 /// hyper's Client.
-///
-/// Also sets the `UriIsAbsoluteForm` extension if received `Uri` was
-/// already in absolute-form.
-pub fn normalize_our_view_of_uri<B>(
-    req: &mut http::Request<B>,
-    was_absolute_form: bool
-) {
-    if was_absolute_form {
-        req.extensions_mut().insert(UriIsAbsoluteForm);
-        return;
-    }
-
+pub fn normalize_our_view_of_uri<B>(req: &mut http::Request<B>) {
     // try to parse the Host header
     if let Some(auth) = authority_from_host(&req) {
         set_authority(req.uri_mut(), auth);

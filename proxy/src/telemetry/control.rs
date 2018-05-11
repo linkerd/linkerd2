@@ -111,12 +111,12 @@ impl Control {
     }
 
     pub fn serve_metrics(&self, bound_port: connection::BoundPort)
-        -> impl Future<Item = (), Error = io::Error>
+        -> Box<Future<Item = (), Error = io::Error>>
     {
         use hyper;
         let service = self.metrics_service.clone();
         bound_port.listen_and_fold(
-            hyper::server::conn::Http::new()
+            hyper::server::conn::Http::new(),
             move |hyper, (conn, _)| {
                 let service = service.clone();
                 let serve = hyper.serve_connection(conn, service)
