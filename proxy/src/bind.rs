@@ -67,7 +67,16 @@ pub enum Binding<B: tower_h2::Body + 'static> {
 /// that each host receives its own connection.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Protocol {
-    Http1 { host: Host, was_absolute_form: bool },
+    Http1 {
+        host: Host,
+        /// Whether or not the request URI was in absolute form.
+        ///
+        /// This is used to configure Hyper's behaviour at the connection
+        /// level, so it's necessary that requests with and without
+        /// absolute URIs be bound to separate service stacks. It is also
+        /// used to determine what URI normalization will be necessary.
+        was_absolute_form: bool,
+    },
     Http2
 }
 
