@@ -10,6 +10,7 @@ use conduit_proxy_router::Recognize;
 
 use bind;
 use ctx;
+use http_active::HttpActive;
 
 type Bind<B> = bind::Bind<Arc<ctx::Proxy>, B>;
 
@@ -56,7 +57,11 @@ where
     >;
     type Key = (SocketAddr, bind::Protocol);
     type RouteError = bind::BufferSpawnError;
-    type Service = InFlightLimit<Buffer<bind::Service<B>>>;
+    type Service = HttpActive<
+        InFlightLimit<Buffer<bind::Service<B>>>,
+        B,
+        bind::HttpResponseBody,
+    >;
 
     fn recognize(&self, req: &Self::Request) -> Option<Self::Key> {
         let key = req.extensions()
@@ -90,7 +95,7 @@ where
         let binding = self.bind.new_binding(&endpoint, proto);
         Buffer::new(binding, self.bind.executor())
             .map(|buffer| {
-                InFlightLimit::new(buffer, MAX_IN_FLIGHT)
+                HttpActive::from(InFlightLimit::new(buffer, MAX_IN_FLIGHT))
             })
             .map_err(|_| bind::BufferSpawnError::Inbound)
     }
