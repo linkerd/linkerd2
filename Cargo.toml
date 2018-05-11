@@ -10,3 +10,5 @@ members = [
 [patch.crates-io]
 prost-derive = { git = "https://github.com/danburkert/prost" }
 
+[patch."https://github.com/tower-rs/tower-h2"]
+tower-h2 = { git = "https://github.com/hawkw/tower-h2", branch = "eliza/new-tokio" }
