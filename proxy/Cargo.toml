@@ -33,7 +33,7 @@ rand = "0.4"
 regex = "1.0.0"
 
 tokio = "0.1.6"
-tokio-signal = { git = "https://github.com/alexcrichton/tokio-signal.git", rev = "7ecaa90dfe21edb1afa48c0173cbee6c3c210130"}
+tokio-signal = "0.2"
 
 prost = "0.3.0"
 prost-types = "0.3.0"
