@@ -87,14 +87,14 @@ mod imp {
         Ok(metrics)
     }
 
-    fn open_fds(pid: pid_t) -> io::Result<Counter> {
-        fs::read_dir(format!("/proc/{}/fd", pid))?
-            .filter_map(|f| if !f.ok()?.file_type().ok()?.is_dir() {
-                Some(1)
-            } else {
-                None
-            })
-            .sum()
+    fn open_fds(pid: pid_t) -> io::Result<Gauge> {
+        let mut open = 0;
+        for f in fs::read_dir(format!("/proc/{}/fd", pid))? {
+            if !f?.file_type()?.is_dir() {
+                open += 1;
+            }
+        }
+        Ok(Gauge::from(open))
     }
 }
 
