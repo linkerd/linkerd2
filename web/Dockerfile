@@ -9,7 +9,7 @@ WORKDIR $PACKAGEDIR
 # node dependencies
 RUN $HOME/.yarn/bin/yarn install --pure-lockfile
 # frontend assets
-RUN $HOME/.yarn/bin/yarn webpack
+RUN $HOME/.yarn/bin/yarn webpack -p
 
 ## compile go server
 FROM gcr.io/runconduit/go-deps:e7d5fcae as golang
