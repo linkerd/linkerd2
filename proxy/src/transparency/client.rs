@@ -87,7 +87,7 @@ where
             bind::Protocol::Http1 { .. } => {
                 let h1 = hyper::Client::configure()
                     // TODO: when using the latest version of Hyper, we'll want
-                    // to con figure the connector with whether or not the
+                    // to configure the connector with whether or not the
                     // request URI is in absolute form, since this will be
                     // handled at the connection level soon.
                     .connector(HyperConnect::new(connect))
