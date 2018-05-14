@@ -4,12 +4,36 @@ import ErrorBanner from './ErrorBanner.jsx';
 import MetricsTable from './MetricsTable.jsx';
 import PageHeader from './PageHeader.jsx';
 import { processMultiResourceRollup } from './util/MetricUtils.js';
+import PropTypes from 'prop-types';
 import React from 'react';
 import { withContext } from './util/AppContext.jsx';
 import './../../css/list.css';
 import 'whatwg-fetch';
 
 class Namespaces extends React.Component {
+  static defaultProps = {
+    match: {
+      params: {
+        namespace: 'default',
+      },
+    },
+  }
+
+  static propTypes = {
+    api: PropTypes.shape({
+      cancelCurrentRequests: PropTypes.func.isRequired,
+      fetchMetrics: PropTypes.func.isRequired,
+      getCurrentPromises: PropTypes.func.isRequired,
+      setCurrentRequests: PropTypes.func.isRequired,
+      urlsForResource: PropTypes.func.isRequired,
+    }).isRequired,
+    match: PropTypes.shape({
+      params: PropTypes.shape({
+        namespace: PropTypes.string,
+      }),
+    }),
+  }
+
   constructor(props) {
     super(props);
     this.api = this.props.api;
@@ -115,3 +139,4 @@ class Namespaces extends React.Component {
 }
 
 export default withContext(Namespaces);
+

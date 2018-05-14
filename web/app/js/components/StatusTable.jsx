@@ -1,4 +1,5 @@
 import _ from 'lodash';
+import PropTypes from 'prop-types';
 import React from 'react';
 import { Table, Tooltip } from 'antd';
 
@@ -43,6 +44,15 @@ const StatusDot = ({status, multilineDots, columnName}) => (
   </Tooltip>
 );
 
+StatusDot.propTypes = {
+  columnName: PropTypes.string.isRequired,
+  multilineDots: PropTypes.bool.isRequired,
+  status: PropTypes.shape({
+    name: PropTypes.string.isRequired,
+    value: PropTypes.string.isRequired,
+  }).isRequired,
+};
+
 const columns = {
   resourceName: {
     title: "Deployment",
@@ -75,7 +85,16 @@ const columns = {
   }
 };
 
-export default class StatusTable extends React.Component {
+class StatusTable extends React.Component {
+  static propTypes = {
+    data: PropTypes.arrayOf(PropTypes.shape({
+      name: PropTypes.string.isRequired,
+      pods: PropTypes.arrayOf(PropTypes.object).isRequired, // TODO: What's the real shape here.
+      added: PropTypes.bool,
+    })).isRequired,
+    statusColumnTitle: PropTypes.string.isRequired,
+  }
+
   getTableData() {
     let tableData = _.map(this.props.data, datum => {
       return {
@@ -107,3 +126,5 @@ export default class StatusTable extends React.Component {
     );
   }
 }
+
+export default StatusTable;

@@ -13,11 +13,16 @@ import Enzyme, { shallow } from 'enzyme';
 Enzyme.configure({ adapter: new Adapter() });
 
 describe('Tests for <ResourceListBase>', () => {
+  const defaultProps = {
+    resource: 'pods',
+  };
+
   it('displays an error if the api call fails', () => {
     const msg = 'foobar';
 
     const component = shallow(
       <ResourceListBase
+        {...defaultProps}
         data={[]}
         error={msg}
         loading={false} />
@@ -35,6 +40,7 @@ describe('Tests for <ResourceListBase>', () => {
   it('shows a loading spinner', () => {
     const component = shallow(
       <ResourceListBase
+        {...defaultProps}
         data={[]}
         loading={true} />
     );
@@ -48,6 +54,7 @@ describe('Tests for <ResourceListBase>', () => {
   it('handles empty content', () => {
     const component = shallow(
       <ResourceListBase
+        {...defaultProps}
         data={[]}
         loading={false} />
     );
@@ -62,6 +69,7 @@ describe('Tests for <ResourceListBase>', () => {
     const resource = 'deployment';
     const component = shallow(
       <ResourceListBase
+        {...defaultProps}
         data={[deployRollup]}
         loading={false}
         resource={resource} />

@@ -1,10 +1,15 @@
 import _ from 'lodash';
+import PropTypes from 'prop-types';
 import React from 'react';
 import { Col, Row } from 'antd';
 
 const defaultErrorMsg = "An error has occurred";
 
-export default class ErrorMessage extends React.Component {
+class ErrorMessage extends React.Component {
+  static propTypes = {
+    message: PropTypes.string.isRequired,
+  }
+
   constructor(props) {
     super(props);
     this.hideMessage = this.hideMessage.bind(this);
@@ -40,3 +45,5 @@ export default class ErrorMessage extends React.Component {
     );
   }
 }
+
+export default ErrorMessage;

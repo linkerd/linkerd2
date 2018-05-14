@@ -1,17 +1,25 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 
-export default class GrafanaLink extends React.Component {
-  render() {
-    let resourceVariableName = this.props.resource.toLowerCase().replace(" ", "_");
-    let dashboardName = this.props.resource.toLowerCase().replace(" ", "-");
+const GrafanaLink = ({ConduitLink, name, namespace, resource}) => {
+  let resourceVariableName = resource.toLowerCase().replace(" ", "_");
+  let dashboardName = resource.toLowerCase().replace(" ", "-");
 
-    return (
-      <this.props.conduitLink
-        to={`/dashboard/db/conduit-${dashboardName}?var-namespace=${this.props.namespace}&var-${resourceVariableName}=${this.props.name}`}
-        deployment="grafana"
-        targetBlank={true}>
-        {this.props.displayName || this.props.name}&nbsp;&nbsp;<i className="fa fa-external-link" />
-      </this.props.conduitLink>
-    );
-  }
-}
+  return (
+    <ConduitLink
+      to={`/dashboard/db/conduit-${dashboardName}?var-namespace=${namespace}&var-${resourceVariableName}=${name}`}
+      deployment="grafana"
+      targetBlank={true}>
+      {name}&nbsp;&nbsp;<i className="fa fa-external-link" />
+    </ConduitLink>
+  );
+};
+
+GrafanaLink.propTypes = {
+  ConduitLink: PropTypes.func.isRequired,
+  name: PropTypes.string.isRequired,
+  namespace: PropTypes.string.isRequired,
+  resource: PropTypes.string.isRequired,
+};
+
+export default GrafanaLink;

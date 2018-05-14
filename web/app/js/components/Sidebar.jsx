@@ -2,7 +2,9 @@ import _ from 'lodash';
 import ApiHelpers from './util/ApiHelpers.jsx';
 import { Link } from 'react-router-dom';
 import logo from './../../img/logo_only.png';
+import PropTypes from 'prop-types';
 import React from 'react';
+import ReactRouterPropTypes from 'react-router-prop-types';
 import SocialLinks from './SocialLinks.jsx';
 import Version from './Version.jsx';
 import { withContext } from './util/AppContext.jsx';
@@ -11,6 +13,16 @@ import { Icon, Layout, Menu } from 'antd';
 import './../../css/sidebar.css';
 
 class Sidebar extends React.Component {
+  static propTypes = {
+    api: PropTypes.shape({
+      ConduitLink: PropTypes.func.isRequired,
+    }).isRequired,
+    location: ReactRouterPropTypes.location.isRequired,
+    pathPrefix: PropTypes.string.isRequired,
+    releaseVersion: PropTypes.string.isRequired,
+    uuid: PropTypes.string.isRequired,
+  }
+
   constructor(props) {
     super(props);
     this.api= this.props.api;
@@ -28,7 +40,7 @@ class Sidebar extends React.Component {
       initialCollapse: true,
       collapsed: true,
       error: null,
-      latest: null,
+      latestVersion: '',
       isLatest: true,
       pendingRequests: false
     };
@@ -190,7 +202,7 @@ class Sidebar extends React.Component {
               <SocialLinks />
               <Version
                 isLatest={this.state.isLatest}
-                latest={this.state.latestVersion}
+                latestVersion={this.state.latestVersion}
                 releaseVersion={this.props.releaseVersion}
                 error={this.state.error}
                 uuid={this.props.uuid} />

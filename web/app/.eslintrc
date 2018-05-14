@@ -55,7 +55,6 @@
       }
     ],
     "react/prefer-stateless-function": 0, // TODO: convert to stateless functions and enable
-    "react/prop-types": 0, // TODO: https://github.com/runconduit/conduit/pull/993
     "react/sort-prop-types": 2,
     "semi": [2, "always"],
     "sort-imports": [2, { "ignoreCase": true, "memberSyntaxSortOrder": ["single", "multiple", "all", "none"] }],
