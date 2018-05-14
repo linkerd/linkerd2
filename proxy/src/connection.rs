@@ -107,23 +107,31 @@ impl BoundPort {
         T: Send + 'static,
         Fut: IntoFuture<Item = T, Error = std::io::Error> + Send + 'static,
         <Fut as IntoFuture>::Future: Send, {
-        let fut = TcpListener::from_std(self.inner, &Handle::current())
-            .expect("TcpListener::FromStd") // TODO: get rid of this `expect()`.
-            .incoming()
-            .fold(initial, move |b, socket,| {
-                let remote_addr = socket.peer_addr()
-                    .expect("couldn't get remote addr!");
-                // TODO: On Linux and most other platforms it would be better
-                // to set the `TCP_NODELAY` option on the bound socket and
-                // then have the listening sockets inherit it. However, that
-                // doesn't work on all platforms and also the underlying
-                // libraries don't have the necessary API for that, so just
-                // do it here.
-                set_nodelay_or_warn(&socket);
-                f(b, (Connection::plain(socket), remote_addr))
-            });
+        let fut = future::lazy(move || {
+            // Create the TCP listener lazily, so that it's not bound to a
+            // reactor until the future is run. This will avoid
+            // `Handle::current()` creating a mew thread for the global
+            // background reactor if `listen_and_fold` is called before we've
+            // initialized the runtime.
+            TcpListener::from_std(self.inner, &Handle::current())
+        }).and_then(|listener|
+            listener.incoming()
+                .fold(initial, move |b, socket,| {
+                    let remote_addr = socket.peer_addr()
+                        .expect("couldn't get remote addr!");
+                    // TODO: On Linux and most other platforms it would be better
+                    // to set the `TCP_NODELAY` option on the bound socket and
+                    // then have the listening sockets inherit it. However, that
+                    // doesn't work on all platforms and also the underlying
+                    // libraries don't have the necessary API for that, so just
+                    // do it here.
+                    set_nodelay_or_warn(&socket);
+                    f(b, (Connection::plain(socket), remote_addr))
+                })
+        )
+        .map(|_| ());
 
-        Box::new(fut.map(|_| ()))
+        Box::new(fut)
     }
 }
 
