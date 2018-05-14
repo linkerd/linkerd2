@@ -1,4 +1,5 @@
 import { ApiHelpers } from './components/util/ApiHelpers.jsx';
+import AppContext from './components/util/AppContext.jsx';
 import { Layout } from 'antd';
 import Namespace from './components/Namespace.jsx';
 import NoMatch from './components/NoMatch.jsx';
@@ -21,37 +22,45 @@ if (proxyPathMatch) {
 
 let controllerNs = appData.controllerNamespace || "conduit";
 
-let api = ApiHelpers(pathPrefix);
+const context = {
+  api: ApiHelpers(pathPrefix),
+  controllerNamespace: controllerNs,
+  pathPrefix: pathPrefix,
+  ...appData,
+};
 
 let applicationHtml = (
-  <BrowserRouter>
-    <Layout>
-      <Route
-        render={routeProps => (<Sidebar
-          {...routeProps}
-          goVersion={appData.goVersion}
-          releaseVersion={appData.releaseVersion}
-          api={api}
-          pathPrefix={pathPrefix}
-          uuid={appData.uuid} />)} />
+  <AppContext.Provider value={context}>
+    <BrowserRouter>
       <Layout>
-        <Layout.Content style={{ margin: '0 0', padding: 0, background: '#fff' }}>
-          <div className="main-content">
-            <Switch>
-              <Redirect exact from={`${pathPrefix}/`} to={`${pathPrefix}/servicemesh`} />
-              <Route path={`${pathPrefix}/servicemesh`} render={() => <ServiceMesh api={api} releaseVersion={appData.releaseVersion} controllerNamespace={controllerNs} />} />
-              <Route path={`${pathPrefix}/namespaces/:namespace`} render={props => <Namespace resource="namespace" api={api} controllerNamespace={controllerNs} params={props.match.params} />} />
-              <Route path={`${pathPrefix}/namespaces`} render={() => <ResourceList resource="namespace" api={api} controllerNamespace={controllerNs} />} />
-              <Route path={`${pathPrefix}/deployments`} render={() => <ResourceList resource="deployment" api={api} controllerNamespace={controllerNs} />} />
-              <Route path={`${pathPrefix}/replicationcontrollers`} render={() => <ResourceList resource="replication_controller" api={api} controllerNamespace={controllerNs} />} />
-              <Route path={`${pathPrefix}/pods`} render={() => <ResourceList resource="pod" api={api} controllerNamespace={controllerNs} />} />
-              <Route component={NoMatch} />
-            </Switch>
-          </div>
-        </Layout.Content>
+        <Route component={Sidebar} />
+        <Layout>
+          <Layout.Content style={{ margin: '0 0', padding: 0, background: '#fff' }}>
+            <div className="main-content">
+              <Switch>
+                <Redirect exact from={`${pathPrefix}/`} to={`${pathPrefix}/servicemesh`} />
+                <Route path={`${pathPrefix}/servicemesh`} component={ServiceMesh} />
+                <Route path={`${pathPrefix}/namespaces/:namespace`} component={Namespace} />
+                <Route
+                  path={`${pathPrefix}/namespaces`}
+                  render={() => <ResourceList resource="namespace" />} />
+                <Route
+                  path={`${pathPrefix}/deployments`}
+                  render={() => <ResourceList resource="deployment" />} />
+                <Route
+                  path={`${pathPrefix}/replicationcontrollers`}
+                  render={() => <ResourceList resource="replication_controller" />} />
+                <Route
+                  path={`${pathPrefix}/pods`}
+                  render={() => <ResourceList resource="pod" />} />
+                <Route component={NoMatch} />
+              </Switch>
+            </div>
+          </Layout.Content>
+        </Layout>
       </Layout>
-    </Layout>
-  </BrowserRouter>
+    </BrowserRouter>
+  </AppContext.Provider>
 );
 
 ReactDOM.render(applicationHtml, appMain);

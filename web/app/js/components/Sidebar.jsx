@@ -5,11 +5,12 @@ import logo from './../../img/logo_only.png';
 import React from 'react';
 import SocialLinks from './SocialLinks.jsx';
 import Version from './Version.jsx';
+import { withContext } from './util/AppContext.jsx';
 import wordLogo from './../../img/reversed_logo.png';
 import { Icon, Menu } from 'antd';
 import './../../css/sidebar.css';
 
-export default class Sidebar extends React.Component {
+class Sidebar extends React.Component {
   constructor(props) {
     super(props);
     this.api= this.props.api;
@@ -167,3 +168,5 @@ export default class Sidebar extends React.Component {
     );
   }
 }
+
+export default withContext(Sidebar);

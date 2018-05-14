@@ -3,6 +3,7 @@ import BaseTable from './BaseTable.jsx';
 import GrafanaLink from './GrafanaLink.jsx';
 import React from 'react';
 import { Tooltip } from 'antd';
+import { withContext } from './util/AppContext.jsx';
 import { metricToFormatter, numericSort } from './util/Utils.js';
 
 /*
@@ -122,7 +123,7 @@ const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick,
   }
 };
 
-export default class MetricsTable extends BaseTable {
+class MetricsTable extends BaseTable {
   constructor(props) {
     super(props);
     this.api = this.props.api;
@@ -183,3 +184,5 @@ export default class MetricsTable extends BaseTable {
       size="middle" />);
   }
 }
+
+export default withContext(MetricsTable);

@@ -9,6 +9,7 @@ import PageHeader from './PageHeader.jsx';
 import Percentage from './util/Percentage.js';
 import React from 'react';
 import StatusTable from './StatusTable.jsx';
+import { withContext } from './util/AppContext.jsx';
 import { Col, Row, Table, Tooltip } from 'antd';
 import './../../css/service-mesh.css';
 
@@ -98,7 +99,7 @@ const componentDeploys = {
   "web":          "web"
 };
 
-export default class ServiceMesh extends React.Component {
+class ServiceMesh extends React.Component {
   constructor(props) {
     super(props);
     this.loadFromServer = this.loadFromServer.bind(this);
@@ -315,8 +316,7 @@ export default class ServiceMesh extends React.Component {
           <div>
             <PageHeader
               header="Service mesh overview"
-              hideButtons={this.proxyCount() === 0}
-              api={this.api} />
+              hideButtons={this.proxyCount() === 0} />
 
             {this.proxyCount() === 0 ?
               <CallToAction
@@ -335,3 +335,5 @@ export default class ServiceMesh extends React.Component {
     );
   }
 }
+
+export default withContext(ServiceMesh);

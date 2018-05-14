@@ -1,8 +1,9 @@
 import _ from 'lodash';
 import React from 'react';
+import { withContext } from './util/AppContext.jsx';
 import { Col, Radio, Row } from 'antd';
 
-export default class PageHeader extends React.Component {
+class PageHeader extends React.Component {
   constructor(props) {
     super(props);
     this.onTimeWindowClick = this.onTimeWindowClick.bind(this);
@@ -55,3 +56,5 @@ export default class PageHeader extends React.Component {
     );
   }
 }
+
+export default withContext(PageHeader);
