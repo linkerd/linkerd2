@@ -14,13 +14,10 @@ of your application will not be affected.
 
 * Applications that use WebSockets or HTTP tunneling/proxying (use of the HTTP
   `CONNECT` method), or plaintext MySQL, SMTP, or other protocols where the server
-  sends data before the client sends data, require additional configuration. See
-  the [Protocol Support](#protocol-support) section below.
+  sends data before the client sends data, may require additional configuration.
+  See the [Protocol Support](#protocol-support) section below.
 * gRPC applications that use grpc-go must use grpc-go version 1.3 or later due
   to a [bug](https://github.com/grpc/grpc-go/issues/1120) in earlier versions.
-* Conduit doesn't yet support external DNS lookups (e.g. proxying a call to a
-  third-party API). This will be addressed in an [upcoming
-  release](https://github.com/runconduit/conduit/issues/155).
 
 ## Adding your service
 
