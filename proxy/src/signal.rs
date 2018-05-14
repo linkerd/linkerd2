@@ -26,9 +26,13 @@ mod imp {
         //
         // If you add to this list, you should also update DisplaySignal below
         // to output nicer signal names.
-        let signals = [SIGINT, SIGTERM]
-            .into_iter()
-            .map(|&sig| {
+        let on_any_signal = future::lazy(|| {
+            // Do everything lazily to prevent `Signal::new()` from calling
+            // `Handle::current()` and starting the background reactor when
+            // we haven't initialized the runtime yet.
+            Ok([SIGINT, SIGTERM].into_iter())
+        }).and_then(|signals| {
+            let signals = signals.map(|&sig| {
                 // Create a Future that completes the first
                 // time the process receives 'sig'.
                 Signal::new(sig)
@@ -43,13 +47,13 @@ mod imp {
                         );
                     })
             });
-
-        // With a list of Futures that could notify us,
-        // we just want to know when the first one triggers,
-        // so select over them all.
-        let on_any_signal = future::select_all(signals)
-            .map(|_| ())
-            .map_err(|_| unreachable!("Signal never returns an error"));
+            // With a list of Futures that could notify us,
+            // we just want to know when the first one triggers,
+            // so select over them all.
+            future::select_all(signals)
+                .map(|_| ())
+                .map_err(|_| unreachable!("Signal never returns an error"))
+        });
 
         Box::new(on_any_signal)
     }
