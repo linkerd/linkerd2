@@ -1,5 +1,9 @@
 use std::collections::HashMap;
 use std::net::SocketAddr;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 
 use futures::sync::mpsc;
 use futures::{Async, Poll, Stream};
@@ -26,13 +30,20 @@ pub struct Resolver {
 #[derive(Debug)]
 struct ResolveRequest {
     authority: DnsNameAndPort,
+    respond: Respond,
+}
+
+#[derive(Debug)]
+struct Respond {
     update_tx: mpsc::UnboundedSender<Update>,
+    receiver_gone: Arc<AtomicBool>,
 }
 
 /// A `tower_discover::Discover`, given to a `tower_balance::Balance`.
 #[derive(Debug)]
 pub struct Resolution<B> {
     update_rx: mpsc::UnboundedReceiver<Update>,
+    receiver_gone: Arc<AtomicBool>,
     /// Map associating addresses with the `Store` for the watch on that
     /// service's metric labels (as provided by the Destination service).
     ///
@@ -100,11 +111,15 @@ impl Resolver {
     pub fn resolve<B>(&self, authority: &DnsNameAndPort, bind: B) -> Resolution<B> {
         trace!("resolve; authority={:?}", authority);
         let (update_tx, update_rx) = mpsc::unbounded();
+        let receiver_gone = Arc::new(AtomicBool::new(false));
         let req = {
             let authority = authority.clone();
             ResolveRequest {
                 authority,
-                update_tx,
+                respond: Respond {
+                    update_tx,
+                    receiver_gone: receiver_gone.clone(),
+                },
             }
         };
         self.request_tx
@@ -113,6 +128,7 @@ impl Resolver {
 
         Resolution {
             update_rx,
+            receiver_gone: receiver_gone,
             metric_labels: HashMap::new(),
             bind,
         }
@@ -141,6 +157,12 @@ impl<B> Resolution<B> {
             );
             Ok(())
         }
+    }
+}
+
+impl<B> Drop for Resolution<B> {
+    fn drop(&mut self) {
+        self.receiver_gone.store(true, Ordering::Release);
     }
 }
 

@@ -7,6 +7,7 @@ use std::collections::{
 use std::fmt;
 use std::iter::IntoIterator;
 use std::net::SocketAddr;
+use std::sync::atomic::Ordering;
 use std::time::Duration;
 use tokio_core::reactor::Handle;
 use tower_grpc as grpc;
@@ -17,7 +18,7 @@ use conduit_proxy_controller_grpc::destination::client::Destination as Destinati
 use conduit_proxy_controller_grpc::destination::update::Update as PbUpdate2;
 use conduit_proxy_controller_grpc::destination::{Update as PbUpdate, WeightedAddr};
 
-use super::{Metadata, ResolveRequest, Update};
+use super::{Metadata, ResolveRequest, Respond, Update};
 use control::cache::{Cache, CacheChange, Exists};
 use control::fully_qualified_authority::FullyQualifiedAuthority;
 use control::remote_stream::{Receiver, Remote};
@@ -60,7 +61,7 @@ struct DestinationSet<T: HttpService<ResponseBody = RecvBody>> {
     addrs: Exists<Cache<SocketAddr, Metadata>>,
     query: Option<DestinationServiceQuery<T>>,
     dns_query: Option<IpAddrListFuture>,
-    txs: Vec<mpsc::UnboundedSender<Update>>,
+    responds: Vec<Respond>,
 }
 
 // ==== impl Config =====
@@ -108,6 +109,7 @@ where
         // be reconnected now, otherwise the task would just sleep...
         loop {
             self.poll_new_watches(client);
+            self.retain_active_destinations();
             self.poll_destinations();
 
             if self.reconnects.is_empty() || !self.rpc_ready {
@@ -219,6 +221,16 @@ where
         false
     }
 
+    /// Ensures that `destinations` is updated to only maintain active resolutions.
+    ///
+    /// If there are no active resolutions for a destination, the destination is removed.
+    fn retain_active_destinations(&mut self) {
+        self.destinations.retain(|_, ref mut dst| {
+            dst.retain_responds();
+            dst.responds.len() > 0
+        })
+    }
+
     fn poll_destinations(&mut self) {
         for (auth, set) in &mut self.destinations {
             // Query the Destination service first.
@@ -312,10 +324,10 @@ where
         self.dns_query = Some(dns_resolver.resolve_all_ips(delay, &authority.host));
     }
 
-    // Processes Destination service updates from `rx`, returning the new query an an indication of
-    // any *change* to whether the service exists as far as the Destination service is concerned,
-    // where `Exists::Unknown` is to be interpreted as "no change in existence" instead of
-    // "unknown".
+    // Processes Destination service updates from `request_rx`, returning the new query
+    // and an indication of any *change* to whether the service exists as far as the
+    // Destination service is concerned, where `Exists::Unknown` is to be interpreted as
+    // "no change in existence" instead of "unknown".
     fn poll_destination_service(
         &mut self,
         auth: &DnsNameAndPort,
@@ -437,7 +449,7 @@ impl<T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
             Exists::Unknown | Exists::No => Cache::new(),
         };
         cache.update_union(addrs_to_add, &mut |change| {
-            Self::on_change(&mut self.txs, authority_for_logging, change)
+            Self::on_change(&mut self.responds, authority_for_logging, change)
         });
         self.addrs = Exists::Yes(cache);
     }
@@ -449,7 +461,7 @@ impl<T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
         let cache = match self.addrs.take() {
             Exists::Yes(mut cache) => {
                 cache.remove(addrs_to_remove, &mut |change| {
-                    Self::on_change(&mut self.txs, authority_for_logging, change)
+                    Self::on_change(&mut self.responds, authority_for_logging, change)
                 });
                 cache
             },
@@ -467,7 +479,7 @@ impl<T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
         match self.addrs.take() {
             Exists::Yes(mut cache) => {
                 cache.clear(&mut |change| {
-                    Self::on_change(&mut self.txs, authority_for_logging, change)
+                    Self::on_change(&mut self.responds, authority_for_logging, change)
                 });
             },
             Exists::Unknown | Exists::No => (),
@@ -480,7 +492,7 @@ impl<T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
     }
 
     fn on_change(
-        txs: &mut Vec<mpsc::UnboundedSender<Update>>,
+        responds: &mut Vec<Respond>,
         authority_for_logging: &DnsNameAndPort,
         change: CacheChange<SocketAddr, Metadata>,
     ) {
@@ -497,7 +509,16 @@ impl<T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
         };
         trace!("{} {:?} for {:?}", update_str, addr, authority_for_logging);
         // retain is used to drop any senders that are dead
-        txs.retain(|tx| tx.unbounded_send(update.clone()).is_ok());
+        responds.retain(|r| {
+            let sent = r.update_tx.unbounded_send(update.clone());
+            sent.is_ok()
+        });
+    }
+
+    /// Ensures that `responds` only includes active receivers.
+    fn retain_responds(&mut self) {
+        self.responds
+            .retain(|r| !r.receiver_gone.load(Ordering::Acquire))
     }
 }
 
