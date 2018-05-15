@@ -3,14 +3,14 @@ use std::net::SocketAddr;
 
 use futures::{Async, Poll, Stream};
 use futures::sync::mpsc;
-use futures_watch::{Watch, Store};
+use futures_watch::{Store, Watch};
 use http;
-use tower_service::Service;
 use tower_discover::{Change, Discover};
+use tower_service::Service;
 
-use ::dns;
-use ::telemetry::metrics::DstLabels;
-use ::transport::DnsNameAndPort;
+use dns;
+use telemetry::metrics::DstLabels;
+use transport::DnsNameAndPort;
 
 pub mod background;
 mod endpoint;
@@ -83,7 +83,10 @@ pub trait Bind {
 ///
 /// The `Resolver` is used by a listener, the `Background` is consumed
 /// on the controller thread.
-pub fn new(dns_config: dns::Config, default_destination_namespace: String) -> (Resolver, background::Config) {
+pub fn new(
+    dns_config: dns::Config,
+    default_destination_namespace: String,
+) -> (Resolver, background::Config) {
     let (tx, rx) = mpsc::unbounded();
     let disco = Resolver { tx };
     let bg = background::Config::new(rx, dns_config, default_destination_namespace);
@@ -99,10 +102,12 @@ impl Resolver {
         let (response_tx, rx) = mpsc::unbounded();
         let req = {
             let authority = authority.clone();
-            ResolveRequest { authority, response_tx }
+            ResolveRequest {
+                authority,
+                response_tx,
+            }
         };
-        self.tx.unbounded_send(req)
-            .expect("unbounded can't fail");
+        self.tx.unbounded_send(req).expect("unbounded can't fail");
 
         Resolution {
             rx,
@@ -117,7 +122,8 @@ impl Resolver {
 impl<B> Resolution<B> {
     fn update_metadata(&mut self, addr: SocketAddr, meta: Metadata) -> Result<(), ()> {
         if let Some(store) = self.metric_labels.get_mut(&addr) {
-            store.store(meta.metric_labels)
+            store
+                .store(meta.metric_labels)
                 .map_err(|e| {
                     error!("update_metadata: label store error: {:?}", e);
                 })
@@ -127,8 +133,8 @@ impl<B> Resolution<B> {
             // the metadata change. We expect that this shouldn't happen,
             // but if it does, log a warning and handle it gracefully.
             warn!(
-                "update_metadata: ignoring ChangeMetadata for {:?} \
-                 because the service no longer exists.",
+                "update_metadata: ignoring ChangeMetadata for {:?} because the service no longer \
+                 exists.",
                 addr
             );
             Ok(())
@@ -163,10 +169,9 @@ where
 
                     let endpoint = Endpoint::new(addr, labels_watch.clone());
 
-                    let service = self.bind.bind(&endpoint)
-                        .map_err(|_| ())?;
+                    let service = self.bind.bind(&endpoint).map_err(|_| ())?;
 
-                    return Ok(Async::Ready(Change::Insert(addr, service)))
+                    return Ok(Async::Ready(Change::Insert(addr, service)));
                 },
                 Update::ChangeMetadata(addr, meta) => {
                     // Update metadata and continue polling `rx`.
