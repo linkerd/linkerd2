@@ -27,17 +27,17 @@ mod observe;
 pub mod pb;
 mod remote_stream;
 
-use self::destination::{Background as DiscoBg, Discovery, Watch};
+use self::destination::{Resolver, Resolution};
 pub use self::destination::Bind;
 pub use self::observe::Observe;
 
 #[derive(Clone)]
 pub struct Control {
-    disco: Discovery,
+    disco: Resolver,
 }
 
 pub struct Background {
-    disco: DiscoBg,
+    disco: destination::background::Config,
 }
 
 pub fn new(dns_config: dns::Config, default_destination_namespace: String) -> (Control, Background)
@@ -58,7 +58,7 @@ pub fn new(dns_config: dns::Config, default_destination_namespace: String) -> (C
 // ===== impl Control =====
 
 impl Control {
-    pub fn resolve<B>(&self, auth: &DnsNameAndPort, bind: B) -> Watch<B> {
+    pub fn resolve<B>(&self, auth: &DnsNameAndPort, bind: B) -> Resolution<B> {
         self.disco.resolve(auth, bind)
     }
 }
@@ -97,7 +97,7 @@ impl Background {
             AddOrigin::new(scheme, authority, backoff)
         };
 
-        let mut disco = self.disco.work(executor);
+        let mut disco = self.disco.process(executor);
 
         let fut = future::poll_fn(move || {
             disco.poll_rpc(&mut client);
