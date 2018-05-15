@@ -114,7 +114,7 @@ mod tests {
         Inbound::new(default, bind)
     }
 
-    fn make_key_http1(addr: SocketAddr) -> (SocketAddr, bind::Protocol) {
+    fn make_key_http1(addr: net::SocketAddr) -> (net::SocketAddr, bind::Protocol) {
         let protocol = bind::Protocol::Http1 {
             host: Host::NoAuthority,
             was_absolute_form: false,
