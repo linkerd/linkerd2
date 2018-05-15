@@ -434,12 +434,23 @@ where
 
     fn poll_data(&mut self) -> Poll<Option<Self::Data>, h2::Error> {
         let frame = try_ready!(self.sense_err(|b| b.poll_data()));
+        let is_eos = self.is_end_stream();
         let frame = frame.map(|frame| {
             let frame = frame.into_buf();
-            if let Some(ref mut inner) = self.inner {
+            self.inner = self.inner.take().and_then(|mut inner| {
                 *inner.frames_sent() += 1;
                 *inner.bytes_sent() += frame.remaining() as u64;
-            }
+                if is_eos {
+                    // If the stream was ended from a DATA frame, we have to
+                    // send the end event.
+                    inner.end(None);
+                    None
+                } else {
+                    // If we're not at the end of the stream yet, put
+                    // `inner` back for the next frame.
+                    Some(inner)
+                }
+            });
             frame
         });
         Ok(Async::Ready(frame))
