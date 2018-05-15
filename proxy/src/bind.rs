@@ -219,10 +219,7 @@ where
 
         // Rewrite the HTTP/1 URI, if the authorities in the Host header
         // and request URI are not in agreement, or are not present.
-        let proxy = NormalizeUri::new(
-            sensors,
-            protocol.was_absolute_form()
-        );
+        let proxy = NormalizeUri::new(sensors, protocol.was_absolute_form());
 
         // Automatically perform reconnects if the connection fails.
         //
@@ -336,10 +333,7 @@ where
 
     fn call(&mut self, mut request: S::Request) -> Self::Future {
         if request.version() != http::Version::HTTP_2 {
-            h1::normalize_our_view_of_uri(
-                &mut request,
-                self.was_absolute_form
-            );
+            h1::normalize_our_view_of_uri(&mut request, self.was_absolute_form);
         }
         self.inner.call(request)
     }
