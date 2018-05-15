@@ -76,7 +76,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "byteorder"
-version = "1.2.2"
+version = "1.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -84,7 +84,7 @@ name = "bytes"
 version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "byteorder 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "byteorder 1.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "iovec 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -233,7 +233,7 @@ version = "0.7.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "adler32 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "byteorder 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "byteorder 1.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "gzip-header 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -362,7 +362,7 @@ name = "h2"
 version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "byteorder 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "byteorder 1.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "bytes 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "fnv 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -675,7 +675,7 @@ name = "prost"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "byteorder 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "byteorder 1.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "bytes 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -705,7 +705,7 @@ dependencies = [
  "itertools 0.7.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "proc-macro2 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "quote 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "syn 0.13.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "syn 0.13.10 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -841,7 +841,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "syn"
-version = "0.13.9"
+version = "0.13.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "proc-macro2 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1046,7 +1046,7 @@ dependencies = [
 [[package]]
 name = "tower-balance"
 version = "0.1.0"
-source = "git+https://github.com/tower-rs/tower#295ae583d473c57a6d51d251b87c3e20266a60b1"
+source = "git+https://github.com/tower-rs/tower#6cdc8d0ab594f8c8c06e74f78e2ee37abd3fd8bb"
 dependencies = [
  "futures 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "indexmap 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1059,7 +1059,7 @@ dependencies = [
 [[package]]
 name = "tower-buffer"
 version = "0.1.0"
-source = "git+https://github.com/tower-rs/tower#295ae583d473c57a6d51d251b87c3e20266a60b1"
+source = "git+https://github.com/tower-rs/tower#6cdc8d0ab594f8c8c06e74f78e2ee37abd3fd8bb"
 dependencies = [
  "futures 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "tower-service 0.1.0 (git+https://github.com/tower-rs/tower)",
@@ -1068,7 +1068,7 @@ dependencies = [
 [[package]]
 name = "tower-discover"
 version = "0.1.0"
-source = "git+https://github.com/tower-rs/tower#295ae583d473c57a6d51d251b87c3e20266a60b1"
+source = "git+https://github.com/tower-rs/tower#6cdc8d0ab594f8c8c06e74f78e2ee37abd3fd8bb"
 dependencies = [
  "futures 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "tower-service 0.1.0 (git+https://github.com/tower-rs/tower)",
@@ -1118,7 +1118,7 @@ dependencies = [
 [[package]]
 name = "tower-in-flight-limit"
 version = "0.1.0"
-source = "git+https://github.com/tower-rs/tower#295ae583d473c57a6d51d251b87c3e20266a60b1"
+source = "git+https://github.com/tower-rs/tower#6cdc8d0ab594f8c8c06e74f78e2ee37abd3fd8bb"
 dependencies = [
  "futures 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "tower-service 0.1.0 (git+https://github.com/tower-rs/tower)",
@@ -1127,7 +1127,7 @@ dependencies = [
 [[package]]
 name = "tower-reconnect"
 version = "0.1.0"
-source = "git+https://github.com/tower-rs/tower#295ae583d473c57a6d51d251b87c3e20266a60b1"
+source = "git+https://github.com/tower-rs/tower#6cdc8d0ab594f8c8c06e74f78e2ee37abd3fd8bb"
 dependencies = [
  "futures 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1137,7 +1137,7 @@ dependencies = [
 [[package]]
 name = "tower-service"
 version = "0.1.0"
-source = "git+https://github.com/tower-rs/tower#295ae583d473c57a6d51d251b87c3e20266a60b1"
+source = "git+https://github.com/tower-rs/tower#6cdc8d0ab594f8c8c06e74f78e2ee37abd3fd8bb"
 dependencies = [
  "futures 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -1145,7 +1145,7 @@ dependencies = [
 [[package]]
 name = "tower-util"
 version = "0.1.0"
-source = "git+https://github.com/tower-rs/tower#295ae583d473c57a6d51d251b87c3e20266a60b1"
+source = "git+https://github.com/tower-rs/tower#6cdc8d0ab594f8c8c06e74f78e2ee37abd3fd8bb"
 dependencies = [
  "futures 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "tower-service 0.1.0 (git+https://github.com/tower-rs/tower)",
@@ -1154,9 +1154,9 @@ dependencies = [
 [[package]]
 name = "trust-dns-proto"
 version = "0.3.2"
-source = "git+https://github.com/bluejekyll/trust-dns#4b1c518f55625ece97006414f06a32bf7e3f54c4"
+source = "git+https://github.com/bluejekyll/trust-dns#2f22e5a76eaed85665b9bf34cdd057c785ff1c8b"
 dependencies = [
- "byteorder 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "byteorder 1.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "error-chain 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "idna 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1177,7 +1177,7 @@ dependencies = [
 [[package]]
 name = "trust-dns-resolver"
 version = "0.8.1"
-source = "git+https://github.com/bluejekyll/trust-dns#4b1c518f55625ece97006414f06a32bf7e3f54c4"
+source = "git+https://github.com/bluejekyll/trust-dns#2f22e5a76eaed85665b9bf34cdd057c785ff1c8b"
 dependencies = [
  "cfg-if 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "error-chain 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1340,7 +1340,7 @@ dependencies = [
 "checksum backtrace-sys 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)" = "44585761d6161b0f57afc49482ab6bd067e4edef48c12a152c237eb0203f7661"
 "checksum bitflags 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "d0c54bb8f454c567f21197eefcdbf5679d0bd99f2ddbe52e84c77061952e6789"
 "checksum build_const 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "39092a32794787acd8525ee150305ff051b0aa6cc2abaf193924f5ab05425f39"
-"checksum byteorder 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "73b5bdfe7ee3ad0b99c9801d58807a9dbc9e09196365b0203853b99889ab3c87"
+"checksum byteorder 1.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "74c0b906e9446b0a2e4f760cdb3fa4b2c48cdc6db8766a845c54b6ff063fd2e9"
 "checksum bytes 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)" = "2f1d50c876fb7545f5f289cd8b2aee3f359d073ae819eed5d6373638e2c61e59"
 "checksum cc 1.0.15 (registry+https://github.com/rust-lang/crates.io-index)" = "0ebb87d1116151416c0cf66a0e3fb6430cccd120fd6300794b4dfaa050ac40ba"
 "checksum cfg-if 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "405216fd8fe65f718daa7102ea808a946b6ce40c742998fbfd3463645552de18"
@@ -1424,7 +1424,7 @@ dependencies = [
 "checksum smallvec 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)" = "03dab98ab5ded3a8b43b2c80751194608d0b2aa0f1d46cf95d1c35e192844aa7"
 "checksum socket2 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)" = "ff606e0486e88f5fc6cfeb3966e434fb409abbc7a3ab495238f70a1ca97f789d"
 "checksum string 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "31f98b200e7caca9efca50fc0aa69cd58a5ec81d5f6e75b2f3ecaad2e998972a"
-"checksum syn 0.13.9 (registry+https://github.com/rust-lang/crates.io-index)" = "505550dded6ff93eb63bd9d0ada380ffccd9f51c046a5e80a3078d53fcef0038"
+"checksum syn 0.13.10 (registry+https://github.com/rust-lang/crates.io-index)" = "77961dcdac942fa8bc033c16f3a790b311c8a27d00811b878ebd8cf9b7ba39d5"
 "checksum tempdir 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)" = "15f2b5fb00ccdf689e0149d1b1b3c03fead81c2b37735d812fa8bddbbf41b6d8"
 "checksum termcolor 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)" = "adc4587ead41bf016f11af03e55a624c06568b5a19db4e90fde573d805074f83"
 "checksum termion 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "689a3bdfaab439fd92bc87df5c4c78417d3cbe537487274e9b0b2dce76e92096"
