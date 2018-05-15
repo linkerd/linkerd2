@@ -72,7 +72,6 @@ where
         let key = key.map(move |addr| (addr, proto));
         trace!("recognize key={:?}", key);
 
-
         key
     }
 
@@ -115,6 +114,14 @@ mod tests {
         Inbound::new(default, bind)
     }
 
+    fn make_key_http1(addr: net::SocketAddr) -> (net::SocketAddr, bind::Protocol) {
+        let protocol = bind::Protocol::Http1 {
+            host: Host::NoAuthority,
+            was_absolute_form: false,
+        };
+        (addr, protocol)
+    }
+
     quickcheck! {
         fn recognize_orig_dst(
             orig_dst: net::SocketAddr,
@@ -127,9 +134,7 @@ mod tests {
 
             let srv_ctx = ctx::transport::Server::new(&ctx, &local, &remote, &Some(orig_dst));
 
-            let rec = srv_ctx.orig_dst_if_not_local().map(|addr|
-                (addr, bind::Protocol::Http1(Host::NoAuthority))
-            );
+            let rec = srv_ctx.orig_dst_if_not_local().map(make_key_http1);
 
             let mut req = http::Request::new(());
             req.extensions_mut()
@@ -156,9 +161,7 @@ mod tests {
                     &None,
                 ));
 
-            inbound.recognize(&req) == default.map(|addr|
-                (addr, bind::Protocol::Http1(Host::NoAuthority))
-            )
+            inbound.recognize(&req) == default.map(make_key_http1)
         }
 
         fn recognize_default_no_ctx(default: Option<net::SocketAddr>) -> bool {
@@ -168,9 +171,7 @@ mod tests {
 
             let req = http::Request::new(());
 
-            inbound.recognize(&req) == default.map(|addr|
-                (addr, bind::Protocol::Http1(Host::NoAuthority))
-            )
+            inbound.recognize(&req) == default.map(make_key_http1)
         }
 
         fn recognize_default_no_loop(
@@ -191,9 +192,7 @@ mod tests {
                     &Some(local),
                 ));
 
-            inbound.recognize(&req) == default.map(|addr|
-                (addr, bind::Protocol::Http1(Host::NoAuthority))
-            )
+            inbound.recognize(&req) == default.map(make_key_http1)
         }
     }
 }
