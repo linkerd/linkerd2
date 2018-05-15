@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::net::SocketAddr;
 
-use futures::{Async, Poll, Stream};
 use futures::sync::mpsc;
+use futures::{Async, Poll, Stream};
 use futures_watch::{Store, Watch};
 use http;
 use tower_discover::{Change, Discover};
@@ -20,19 +20,19 @@ pub use self::endpoint::{DstLabelsWatch, Endpoint};
 /// A handle to request resolutions from a `Background`.
 #[derive(Clone, Debug)]
 pub struct Resolver {
-    tx: mpsc::UnboundedSender<ResolveRequest>,
+    request_tx: mpsc::UnboundedSender<ResolveRequest>,
 }
 
 #[derive(Debug)]
 struct ResolveRequest {
     authority: DnsNameAndPort,
-    response_tx: mpsc::UnboundedSender<Update>,
+    update_tx: mpsc::UnboundedSender<Update>,
 }
 
 /// A `tower_discover::Discover`, given to a `tower_balance::Balance`.
 #[derive(Debug)]
 pub struct Resolution<B> {
-    rx: mpsc::UnboundedReceiver<Update>,
+    update_rx: mpsc::UnboundedReceiver<Update>,
     /// Map associating addresses with the `Store` for the watch on that
     /// service's metric labels (as provided by the Destination service).
     ///
@@ -87,8 +87,8 @@ pub fn new(
     dns_config: dns::Config,
     default_destination_namespace: String,
 ) -> (Resolver, background::Config) {
-    let (tx, rx) = mpsc::unbounded();
-    let disco = Resolver { tx };
+    let (request_tx, rx) = mpsc::unbounded();
+    let disco = Resolver { request_tx };
     let bg = background::Config::new(rx, dns_config, default_destination_namespace);
     (disco, bg)
 }
@@ -99,18 +99,20 @@ impl Resolver {
     /// Start watching for address changes for a certain authority.
     pub fn resolve<B>(&self, authority: &DnsNameAndPort, bind: B) -> Resolution<B> {
         trace!("resolve; authority={:?}", authority);
-        let (response_tx, rx) = mpsc::unbounded();
+        let (update_tx, update_rx) = mpsc::unbounded();
         let req = {
             let authority = authority.clone();
             ResolveRequest {
                 authority,
-                response_tx,
+                update_tx,
             }
         };
-        self.tx.unbounded_send(req).expect("unbounded can't fail");
+        self.request_tx
+            .unbounded_send(req)
+            .expect("unbounded can't fail");
 
         Resolution {
-            rx,
+            update_rx,
             metric_labels: HashMap::new(),
             bind,
         }
@@ -155,7 +157,7 @@ where
 
     fn poll(&mut self) -> Poll<Change<Self::Key, Self::Service>, Self::DiscoverError> {
         loop {
-            let up = self.rx.poll();
+            let up = self.update_rx.poll();
             trace!("watch: {:?}", up);
             let update = try_ready!(up).expect("destination stream must be infinite");
 

@@ -1,6 +1,9 @@
-use futures::{Async, Future, Stream};
 use futures::sync::mpsc;
-use std::collections::{VecDeque, hash_map::{Entry, HashMap}};
+use futures::{Async, Future, Stream};
+use std::collections::{
+    hash_map::{Entry, HashMap},
+    VecDeque,
+};
 use std::fmt;
 use std::iter::IntoIterator;
 use std::net::SocketAddr;
@@ -10,9 +13,9 @@ use tower_grpc as grpc;
 use tower_h2::{BoxBody, HttpService, RecvBody};
 
 use conduit_proxy_controller_grpc::common::{Destination, TcpAddress};
-use conduit_proxy_controller_grpc::destination::{Update as PbUpdate, WeightedAddr};
 use conduit_proxy_controller_grpc::destination::client::Destination as DestinationSvc;
 use conduit_proxy_controller_grpc::destination::update::Update as PbUpdate2;
+use conduit_proxy_controller_grpc::destination::{Update as PbUpdate, WeightedAddr};
 
 use super::{Metadata, ResolveRequest, Update};
 use control::cache::{Cache, CacheChange, Exists};
@@ -28,15 +31,15 @@ type UpdateRx<T> = Receiver<PbUpdate, T>;
 /// Stores the configuration for a destination background worker.
 #[derive(Debug)]
 pub struct Config {
-    rx: mpsc::UnboundedReceiver<ResolveRequest>,
+    request_rx: mpsc::UnboundedReceiver<ResolveRequest>,
     dns_config: dns::Config,
     default_destination_namespace: String,
 }
 
-/// Satisfies resolutions as requested via `rx`.
+/// Satisfies resolutions as requested via `request_rx`.
 ///
 /// As `Process` is polled with a client to Destination service, if the client to the
-/// service is healthy, it reads requests from `rx`, determines how to resolve the
+/// service is healthy, it reads requests from `request_rx`, determines how to resolve the
 /// provided authority to a set of addresses, and ensures that resolution updates are
 /// propagated to all requesters.
 pub struct Process<T: HttpService<ResponseBody = RecvBody>> {
@@ -49,7 +52,7 @@ pub struct Process<T: HttpService<ResponseBody = RecvBody>> {
     /// Each poll, records whether the rpc service was till ready.
     rpc_ready: bool,
     /// A receiver of new watch requests.
-    rx: mpsc::UnboundedReceiver<ResolveRequest>,
+    request_rx: mpsc::UnboundedReceiver<ResolveRequest>,
 }
 
 /// Holds the state of a single resolution.
@@ -64,12 +67,12 @@ struct DestinationSet<T: HttpService<ResponseBody = RecvBody>> {
 
 impl Config {
     pub(super) fn new(
-        rx: mpsc::UnboundedReceiver<ResolveRequest>,
+        request_rx: mpsc::UnboundedReceiver<ResolveRequest>,
         dns_config: dns::Config,
         default_destination_namespace: String,
     ) -> Self {
         Self {
-            rx,
+            request_rx,
             dns_config,
             default_destination_namespace,
         }
@@ -87,7 +90,7 @@ impl Config {
             destinations: HashMap::new(),
             reconnects: VecDeque::new(),
             rpc_ready: false,
-            rx: self.rx,
+            request_rx: self.request_rx,
         }
     }
 }
@@ -137,10 +140,10 @@ where
             }
 
             // check for any new watches
-            match self.rx.poll() {
+            match self.request_rx.poll() {
                 Ok(Async::Ready(Some(ResolveRequest {
                     authority,
-                    response_tx,
+                    update_tx,
                 }))) => {
                     trace!("Destination.Get {:?}", authority);
                     match self.destinations.entry(authority) {
@@ -151,13 +154,13 @@ where
                             match set.addrs {
                                 Exists::Yes(ref cache) => for (&addr, meta) in cache {
                                     let update = Update::Insert(addr, meta.clone());
-                                    response_tx
+                                    update_tx
                                         .unbounded_send(update)
                                         .expect("unbounded_send does not fail");
                                 },
                                 Exists::No | Exists::Unknown => (),
                             }
-                            set.txs.push(response_tx);
+                            set.txs.push(update_tx);
                         },
                         Entry::Vacant(vac) => {
                             let query = Self::query_destination_service_if_relevant(
@@ -170,7 +173,7 @@ where
                                 addrs: Exists::Unknown,
                                 query,
                                 dns_query: None,
-                                txs: vec![response_tx],
+                                txs: vec![update_tx],
                             };
                             // If the authority is one for which the Destination service is never
                             // relevant (e.g. an absolute name that doesn't end in ".svc.$zone." in
