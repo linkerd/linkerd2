@@ -14,8 +14,8 @@ use tower_h2;
 use conduit_proxy_router::Recognize;
 
 use bind::{self, Bind, Protocol};
-use control::{self, discovery};
-use control::discovery::Bind as BindTrait;
+use control::{self, destination};
+use control::destination::Bind as BindTrait;
 use ctx;
 use timeout::Timeout;
 use transparency::h1;
@@ -170,7 +170,7 @@ where
 }
 
 pub enum Discovery<B> {
-    NamedSvc(discovery::Watch<BindProtocol<B>>),
+    NamedSvc(destination::Watch<BindProtocol<B>>),
     ImplicitOriginalDst(Option<(SocketAddr, BindProtocol<B>)>),
 }
 

@@ -21,14 +21,14 @@ use transport::{DnsNameAndPort, HostAndPort, LookupAddressAndConnect};
 use timeout::{Timeout, TimeoutError};
 
 mod cache;
-pub mod discovery;
+pub mod destination;
 mod fully_qualified_authority;
 mod observe;
 pub mod pb;
 mod remote_stream;
 
-use self::discovery::{Background as DiscoBg, Discovery, Watch};
-pub use self::discovery::Bind;
+use self::destination::{Background as DiscoBg, Discovery, Watch};
+pub use self::destination::Bind;
 pub use self::observe::Observe;
 
 #[derive(Clone)]
@@ -42,7 +42,7 @@ pub struct Background {
 
 pub fn new(dns_config: dns::Config, default_destination_namespace: String) -> (Control, Background)
 {
-    let (tx, rx) = self::discovery::new(dns_config, default_destination_namespace);
+    let (tx, rx) = self::destination::new(dns_config, default_destination_namespace);
 
     let c = Control {
         disco: tx,

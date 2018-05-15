@@ -1,7 +1,7 @@
 use http;
 use std::sync::Arc;
 
-use control::discovery::DstLabelsWatch;
+use control::destination::DstLabelsWatch;
 use ctx;
 
 

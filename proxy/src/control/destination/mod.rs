@@ -247,7 +247,7 @@ where
         loop {
             let up = self.rx.poll();
             trace!("watch: {:?}", up);
-            let update = try_ready!(up).expect("discovery stream must be infinite");
+            let update = try_ready!(up).expect("destination stream must be infinite");
 
             match update {
                 Update::Insert(addr, meta) => {
