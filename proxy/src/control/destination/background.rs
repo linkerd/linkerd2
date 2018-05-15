@@ -1,26 +1,26 @@
 use futures::{Async, Future, Stream};
 use futures::sync::mpsc;
-use std::fmt;
 use std::collections::{VecDeque, hash_map::{Entry, HashMap}};
+use std::fmt;
 use std::iter::IntoIterator;
 use std::net::SocketAddr;
 use std::time::Duration;
 use tokio_core::reactor::Handle;
-use tower_h2::{HttpService, BoxBody, RecvBody};
 use tower_grpc as grpc;
+use tower_h2::{BoxBody, HttpService, RecvBody};
 
 use conduit_proxy_controller_grpc::common::{Destination, TcpAddress};
 use conduit_proxy_controller_grpc::destination::{Update as PbUpdate, WeightedAddr};
+use conduit_proxy_controller_grpc::destination::client::Destination as DestinationSvc;
 use conduit_proxy_controller_grpc::destination::update::Update as PbUpdate2;
-use conduit_proxy_controller_grpc::destination::client::{Destination as DestinationSvc};
 
-use dns::{self, IpAddrListFuture};
-use ::telemetry::metrics::DstLabels;
-use transport::DnsNameAndPort;
+use super::{Metadata, ResolveRequest, Update};
 use control::cache::{Cache, CacheChange, Exists};
 use control::fully_qualified_authority::FullyQualifiedAuthority;
-use control::remote_stream::{Remote, Receiver};
-use super::{ResolveRequest, Metadata, Update};
+use control::remote_stream::{Receiver, Remote};
+use dns::{self, IpAddrListFuture};
+use telemetry::metrics::DstLabels;
+use transport::DnsNameAndPort;
 
 type DestinationServiceQuery<T> = Remote<PbUpdate, T>;
 type UpdateRx<T> = Receiver<PbUpdate, T>;
@@ -68,13 +68,18 @@ impl Config {
         dns_config: dns::Config,
         default_destination_namespace: String,
     ) -> Self {
-        Self { rx, dns_config, default_destination_namespace }
+        Self {
+            rx,
+            dns_config,
+            default_destination_namespace,
+        }
     }
 
     /// Bind this handle to start talking to the controller API.
     pub fn process<T>(self, executor: &Handle) -> Process<T>
-    where T: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>,
-          T::Error: fmt::Debug,
+    where
+        T: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>,
+        T::Error: fmt::Debug,
     {
         Process {
             dns_resolver: dns::Resolver::new(self.dns_config, executor),
@@ -114,16 +119,16 @@ where
             match client.poll_ready() {
                 Ok(Async::Ready(())) => {
                     self.rpc_ready = true;
-                }
+                },
                 Ok(Async::NotReady) => {
                     self.rpc_ready = false;
                     break;
-                }
+                },
                 Err(err) => {
                     warn!("Destination.Get poll_ready error: {:?}", err);
                     self.rpc_ready = false;
                     break;
-                }
+                },
             }
 
             // handle any pending reconnects first
@@ -133,7 +138,10 @@ where
 
             // check for any new watches
             match self.rx.poll() {
-                Ok(Async::Ready(Some(ResolveRequest { authority, response_tx }))) => {
+                Ok(Async::Ready(Some(ResolveRequest {
+                    authority,
+                    response_tx,
+                }))) => {
                     trace!("Destination.Get {:?}", authority);
                     match self.destinations.entry(authority) {
                         Entry::Occupied(mut occ) => {
@@ -141,26 +149,23 @@ where
                             // we may already know of some addresses here, so push
                             // them onto the new watch first
                             match set.addrs {
-                                Exists::Yes(ref cache) => {
-                                    for (&addr, meta) in cache {
-                                        let update = Update::Insert(
-                                            addr,
-                                            meta.clone()
-                                        );
-                                        response_tx.unbounded_send(update)
-                                            .expect("unbounded_send does not fail");
-                                    }
+                                Exists::Yes(ref cache) => for (&addr, meta) in cache {
+                                    let update = Update::Insert(addr, meta.clone());
+                                    response_tx
+                                        .unbounded_send(update)
+                                        .expect("unbounded_send does not fail");
                                 },
                                 Exists::No | Exists::Unknown => (),
                             }
                             set.txs.push(response_tx);
-                        }
+                        },
                         Entry::Vacant(vac) => {
                             let query = Self::query_destination_service_if_relevant(
                                 &self.default_destination_namespace,
                                 client,
                                 vac.key(),
-                                "connect");
+                                "connect",
+                            );
                             let mut set = DestinationSet {
                                 addrs: Exists::Unknown,
                                 query,
@@ -174,16 +179,17 @@ where
                                 set.reset_dns_query(
                                     &self.dns_resolver,
                                     Duration::from_secs(0),
-                                    vac.key());
+                                    vac.key(),
+                                );
                             }
                             vac.insert(set);
-                        }
+                        },
                     }
-                }
+                },
                 Ok(Async::Ready(None)) => {
                     trace!("Discover tx is dropped, shutdown?");
                     return;
-                }
+                },
                 Ok(Async::NotReady) => break,
                 Err(_) => unreachable!("unbounded receiver doesn't error"),
             }
@@ -200,7 +206,8 @@ where
                     &self.default_destination_namespace,
                     client,
                     &auth,
-                    "reconnect");
+                    "reconnect",
+                );
                 return true;
             } else {
                 trace!("reconnect no longer needed: {:?}", auth);
@@ -213,7 +220,7 @@ where
         for (auth, set) in &mut self.destinations {
             // Query the Destination service first.
             let (new_query, found_by_destination_service) = match set.query.take() {
-                Some(Remote::ConnectedOrConnecting{ rx }) => {
+                Some(Remote::ConnectedOrConnecting { rx }) => {
                     let (new_query, found_by_destination_service) =
                         set.poll_destination_service(auth, rx);
                     if let Remote::NeedsReconnect = new_query {
@@ -259,36 +266,45 @@ where
         default_destination_namespace: &str,
         client: &mut T,
         auth: &DnsNameAndPort,
-        connect_or_reconnect: &str)
-        -> Option<DestinationServiceQuery<T>>
-    {
-        trace!("DestinationServiceQuery {} {:?}", connect_or_reconnect, auth);
-        FullyQualifiedAuthority::normalize(auth, default_destination_namespace)
-            .map(|auth| {
-                let req = Destination {
-                    scheme: "k8s".into(),
-                    path: auth.without_trailing_dot().to_owned(),
-                };
-                let mut svc = DestinationSvc::new(client.lift_ref());
-                let response = svc.get(grpc::Request::new(req));
-                Remote::ConnectedOrConnecting { rx: Receiver::new(response) }
-            })
+        connect_or_reconnect: &str,
+    ) -> Option<DestinationServiceQuery<T>> {
+        trace!(
+            "DestinationServiceQuery {} {:?}",
+            connect_or_reconnect,
+            auth
+        );
+        FullyQualifiedAuthority::normalize(auth, default_destination_namespace).map(|auth| {
+            let req = Destination {
+                scheme: "k8s".into(),
+                path: auth.without_trailing_dot().to_owned(),
+            };
+            let mut svc = DestinationSvc::new(client.lift_ref());
+            let response = svc.get(grpc::Request::new(req));
+            Remote::ConnectedOrConnecting {
+                rx: Receiver::new(response),
+            }
+        })
     }
 }
 
 // ===== impl DestinationSet =====
 
 impl<T> DestinationSet<T>
-    where T: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>,
-          T::Error: fmt::Debug
+where
+    T: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>,
+    T::Error: fmt::Debug,
 {
     fn reset_dns_query(
         &mut self,
         dns_resolver: &dns::Resolver,
         delay: Duration,
-        authority: &DnsNameAndPort)
-    {
-        trace!("resetting DNS query for {} with delay {:?}", authority.host, delay);
+        authority: &DnsNameAndPort,
+    ) {
+        trace!(
+            "resetting DNS query for {} with delay {:?}",
+            authority.host,
+            delay
+        );
         self.reset_on_next_modification();
         self.dns_query = Some(dns_resolver.resolve_all_ips(delay, &authority.host));
     }
@@ -300,9 +316,8 @@ impl<T> DestinationSet<T>
     fn poll_destination_service(
         &mut self,
         auth: &DnsNameAndPort,
-        mut rx: UpdateRx<T>)
-        -> (DestinationServiceQuery<T>, Exists<()>)
-    {
+        mut rx: UpdateRx<T>,
+    ) -> (DestinationServiceQuery<T>, Exists<()>) {
         let mut exists = Exists::Unknown;
 
         loop {
@@ -310,7 +325,9 @@ impl<T> DestinationSet<T>
                 Ok(Async::Ready(Some(update))) => match update.update {
                     Some(PbUpdate2::Add(a_set)) => {
                         let set_labels = a_set.metric_labels;
-                        let addrs = a_set.addrs.into_iter()
+                        let addrs = a_set
+                            .addrs
+                            .into_iter()
                             .filter_map(|pb| pb_to_addr_meta(pb, &set_labels));
                         self.add(auth, addrs)
                     },
@@ -318,7 +335,10 @@ impl<T> DestinationSet<T>
                         exists = Exists::Yes(());
                         self.remove(
                             auth,
-                            r_set.addrs.iter().filter_map(|addr| pb_to_sock_addr(addr.clone()))
+                            r_set
+                                .addrs
+                                .iter()
+                                .filter_map(|addr| pb_to_sock_addr(addr.clone())),
                         );
                     },
                     Some(PbUpdate2::NoEndpoints(ref no_endpoints)) if no_endpoints.exists => {
@@ -344,7 +364,7 @@ impl<T> DestinationSet<T>
                 Err(err) => {
                     warn!("Destination.Get stream errored for {:?}: {:?}", auth, err);
                     return (Remote::NeedsReconnect, exists);
-                }
+                },
             };
         }
     }
@@ -360,13 +380,26 @@ impl<T> DestinationSet<T>
                     return;
                 },
                 Ok(Async::Ready(dns::Response::Exists(ips))) => {
-                    trace!("positive result of DNS query for {:?}: {:?}", authority, ips);
-                    self.add(authority, ips.iter().map(|ip| {
-                        (SocketAddr::from((ip, authority.port)), Metadata::no_metadata())
-                    }));
+                    trace!(
+                        "positive result of DNS query for {:?}: {:?}",
+                        authority,
+                        ips
+                    );
+                    self.add(
+                        authority,
+                        ips.iter().map(|ip| {
+                            (
+                                SocketAddr::from((ip, authority.port)),
+                                Metadata::no_metadata(),
+                            )
+                        }),
+                    );
                 },
                 Ok(Async::Ready(dns::Response::DoesNotExist)) => {
-                    trace!("negative result (NXDOMAIN) of DNS query for {:?}", authority);
+                    trace!(
+                        "negative result (NXDOMAIN) of DNS query for {:?}",
+                        authority
+                    );
                     self.no_endpoints(authority, false);
                 },
                 Err(e) => {
@@ -382,38 +415,39 @@ impl<T> DestinationSet<T>
     }
 }
 
-impl <T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
+impl<T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
     fn reset_on_next_modification(&mut self) {
         match self.addrs {
             Exists::Yes(ref mut cache) => {
                 cache.set_reset_on_next_modification();
             },
-            Exists::No |
-            Exists::Unknown => (),
+            Exists::No | Exists::Unknown => (),
         }
     }
 
     fn add<A>(&mut self, authority_for_logging: &DnsNameAndPort, addrs_to_add: A)
-        where A: Iterator<Item = (SocketAddr, Metadata)>
+    where
+        A: Iterator<Item = (SocketAddr, Metadata)>,
     {
         let mut cache = match self.addrs.take() {
             Exists::Yes(mut cache) => cache,
             Exists::Unknown | Exists::No => Cache::new(),
         };
-        cache.update_union(
-            addrs_to_add,
-            &mut |change| Self::on_change(&mut self.txs, authority_for_logging, change));
+        cache.update_union(addrs_to_add, &mut |change| {
+            Self::on_change(&mut self.txs, authority_for_logging, change)
+        });
         self.addrs = Exists::Yes(cache);
     }
 
     fn remove<A>(&mut self, authority_for_logging: &DnsNameAndPort, addrs_to_remove: A)
-        where A: Iterator<Item = SocketAddr>
+    where
+        A: Iterator<Item = SocketAddr>,
     {
         let cache = match self.addrs.take() {
             Exists::Yes(mut cache) => {
-                cache.remove(
-                    addrs_to_remove,
-                    &mut |change| Self::on_change(&mut self.txs, authority_for_logging, change));
+                cache.remove(addrs_to_remove, &mut |change| {
+                    Self::on_change(&mut self.txs, authority_for_logging, change)
+                });
                 cache
             },
             Exists::Unknown | Exists::No => Cache::new(),
@@ -422,12 +456,16 @@ impl <T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
     }
 
     fn no_endpoints(&mut self, authority_for_logging: &DnsNameAndPort, exists: bool) {
-        trace!("no endpoints for {:?} that is known to {}", authority_for_logging,
-               if exists { "exist" } else { "not exist" });
+        trace!(
+            "no endpoints for {:?} that is known to {}",
+            authority_for_logging,
+            if exists { "exist" } else { "not exist" }
+        );
         match self.addrs.take() {
             Exists::Yes(mut cache) => {
-                cache.clear(
-                    &mut |change| Self::on_change(&mut self.txs, authority_for_logging, change));
+                cache.clear(&mut |change| {
+                    Self::on_change(&mut self.txs, authority_for_logging, change)
+                });
             },
             Exists::Unknown | Exists::No => (),
         };
@@ -438,28 +476,33 @@ impl <T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
         };
     }
 
-    fn on_change(txs: &mut Vec<mpsc::UnboundedSender<Update>>,
-                 authority_for_logging: &DnsNameAndPort,
-                 change: CacheChange<SocketAddr, Metadata>) {
+    fn on_change(
+        txs: &mut Vec<mpsc::UnboundedSender<Update>>,
+        authority_for_logging: &DnsNameAndPort,
+        change: CacheChange<SocketAddr, Metadata>,
+    ) {
         let (update_str, update, addr) = match change {
-            CacheChange::Insertion { key, value } =>
-                ("insert", Update::Insert(key, value.clone()), key),
-            CacheChange::Removal { key } =>
-                ("remove", Update::Remove(key), key),
-            CacheChange::Modification { key, new_value } =>
-                ("change metadata for", Update::ChangeMetadata(key, new_value.clone()), key),
+            CacheChange::Insertion { key, value } => {
+                ("insert", Update::Insert(key, value.clone()), key)
+            },
+            CacheChange::Removal { key } => ("remove", Update::Remove(key), key),
+            CacheChange::Modification { key, new_value } => (
+                "change metadata for",
+                Update::ChangeMetadata(key, new_value.clone()),
+                key,
+            ),
         };
         trace!("{} {:?} for {:?}", update_str, addr, authority_for_logging);
         // retain is used to drop any senders that are dead
-        txs.retain(|tx| {
-            tx.unbounded_send(update.clone()).is_ok()
-        });
+        txs.retain(|tx| tx.unbounded_send(update.clone()).is_ok());
     }
 }
 
 /// Construct a new labeled `SocketAddr `from a protobuf `WeightedAddr`.
-fn pb_to_addr_meta(pb: WeightedAddr, set_labels: &HashMap<String, String>)
-            -> Option<(SocketAddr, Metadata)> {
+fn pb_to_addr_meta(
+    pb: WeightedAddr,
+    set_labels: &HashMap<String, String>,
+) -> Option<(SocketAddr, Metadata)> {
     let addr = pb.addr.and_then(pb_to_sock_addr)?;
     let label_iter = set_labels.iter().chain(pb.metric_labels.iter());
     let meta = Metadata {
@@ -491,7 +534,7 @@ fn pb_to_sock_addr(pb: TcpAddress) -> Option<SocketAddr> {
             Some(Ip::Ipv4(octets)) => {
                 let ipv4 = Ipv4Addr::from(octets);
                 Some(SocketAddr::from((ipv4, pb.port as u16)))
-            }
+            },
             Some(Ip::Ipv6(v6)) => {
                 let octets = [
                     (v6.first >> 56) as u8,
@@ -513,7 +556,7 @@ fn pb_to_sock_addr(pb: TcpAddress) -> Option<SocketAddr> {
                 ];
                 let ipv6 = Ipv6Addr::from(octets);
                 Some(SocketAddr::from((ipv6, pb.port as u16)))
-            }
+            },
             None => None,
         },
         None => None,

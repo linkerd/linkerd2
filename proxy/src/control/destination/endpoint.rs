@@ -1,7 +1,7 @@
 use futures_watch;
 use std::{cmp, hash, net::SocketAddr};
 
-use ::telemetry::metrics::DstLabels;
+use telemetry::metrics::DstLabels;
 
 pub type DstLabelsWatch = futures_watch::Watch<Option<DstLabels>>;
 
