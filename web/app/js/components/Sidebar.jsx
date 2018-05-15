@@ -92,39 +92,54 @@ export default class Sidebar extends React.Component {
             selectedKeys={[normalizedPath]}>
 
             <Menu.Item className="sidebar-menu-item" key="/servicemesh">
-              <Icon><ConduitLink to="/servicemesh"><Icon type="home" /></ConduitLink></Icon>
-              <span><ConduitLink to="/servicemesh">Service mesh</ConduitLink></span>
+              <ConduitLink to="/servicemesh">
+                <Icon type="home" />
+                <span>Service mesh</span>
+              </ConduitLink>
             </Menu.Item>
 
             <Menu.Item className="sidebar-menu-item" key="/namespaces">
-              <Icon><ConduitLink to="/namespaces"><Icon>N</Icon></ConduitLink></Icon>
-              <span><ConduitLink to="/namespaces">Namespaces</ConduitLink></span>
+              <ConduitLink to="/namespaces">
+                <Icon>N</Icon>
+                <span>Namespaces</span>
+              </ConduitLink>
             </Menu.Item>
 
             <Menu.Item className="sidebar-menu-item" key="/deployments">
-              <Icon><ConduitLink to="/deployments"><Icon>D</Icon></ConduitLink></Icon>
-              <span><ConduitLink to="/deployments">Deployments</ConduitLink></span>
+              <ConduitLink to="/deployments">
+                <Icon>D</Icon>
+                <span>Deployments</span>
+              </ConduitLink>
             </Menu.Item>
 
             <Menu.Item className="sidebar-menu-item" key="/replicationcontrollers">
-              <Icon><ConduitLink to="/replicationcontrollers"><Icon>R</Icon></ConduitLink></Icon>
-              <span><ConduitLink to="/replicationcontrollers">Replication Controllers</ConduitLink></span>
+              <ConduitLink to="/replicationcontrollers">
+                <Icon>R</Icon>
+                <span>Replication Controllers</span>
+              </ConduitLink>
             </Menu.Item>
 
             <Menu.Item className="sidebar-menu-item" key="/pods">
-              <Icon><ConduitLink to="/pods"><Icon>P</Icon></ConduitLink></Icon>
-              <span><ConduitLink to="/pods">Pods</ConduitLink></span>
+              <ConduitLink to="/pods">
+                <Icon>P</Icon>
+                <span>Pods</span>
+              </ConduitLink>
             </Menu.Item>
 
+
             <Menu.Item className="sidebar-menu-item" key="/docs">
-              <Icon><Link to="https://conduit.io/docs/" target="_blank"><Icon type="solution" /></Link></Icon>
-              <span><Link to="https://conduit.io/docs/" target="_blank">Documentation</Link></span>
+              <Link to="https://conduit.io/docs/" target="_blank">
+                <Icon type="solution" />
+                <span>Documentation</span>
+              </Link>
             </Menu.Item>
 
             { this.state.isLatest ? null :
               <Menu.Item className="sidebar-menu-item" key="/update">
-                <Icon><Link to="https://versioncheck.conduit.io/update" target="_blank"><Icon type="exclamation-circle-o" className="update" /></Link></Icon>
-                <span><Link to="https://versioncheck.conduit.io/update" target="_blank">Update Conduit</Link></span>
+                <Link to="https://versioncheck.conduit.io/update" target="_blank">
+                  <Icon type="exclamation-circle-o" className="update" />
+                  <span>Update Conduit</span>
+                </Link>
               </Menu.Item>
             }
           </Menu>
