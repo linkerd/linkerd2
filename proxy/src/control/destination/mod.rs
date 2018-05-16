@@ -26,12 +26,14 @@ pub struct Resolver {
     request_tx: mpsc::UnboundedSender<ResolveRequest>,
 }
 
+/// Requests that resolution updaes for `authority` be sent on `responder`.
 #[derive(Debug)]
 struct ResolveRequest {
     authority: DnsNameAndPort,
     responder: Responder,
 }
 
+/// A handle through which response updates may be sent.
 #[derive(Debug)]
 struct Responder {
     /// Sends updates from the controller to a `Resoliution`.
