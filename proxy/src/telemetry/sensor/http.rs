@@ -442,6 +442,15 @@ where
             }
             frame
         });
+
+        // If the frame ended the stream, send the end of stream event now,
+        // as we may not be polled again.
+        if self.is_end_stream() {
+            if let Some(inner) = self.inner.take() {
+                inner.end(None);
+            }
+        }
+
         Ok(Async::Ready(frame))
     }
 
