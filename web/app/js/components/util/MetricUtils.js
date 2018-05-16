@@ -94,32 +94,55 @@ export const getComponentPods = componentPods => {
 
 const kubernetesNs = "kube-system";
 const defaultControllerNs = "conduit";
-export const processRollupMetrics = (rawMetrics, controllerNamespace, includeConduit) => {
-  if (_.isEmpty(rawMetrics.ok) || _.isEmpty(rawMetrics.ok.statTables)) {
-    return [];
+
+const processStatTable = (table, controllerNamespace, includeConduit) => {
+  return _(table.podGroup.rows).map(row => {
+    if (row.resource.namespace === kubernetesNs) {
+      return null;
+    }
+    if (row.resource.namespace === controllerNamespace && !includeConduit) {
+      return null;
+    }
+
+    return {
+      name: row.resource.name,
+      namespace: row.resource.namespace,
+      requestRate: getRequestRate(row),
+      successRate: getSuccessRate(row),
+      latency: getLatency(row),
+      added: row.meshedPodCount === row.runningPodCount
+    };
+  })
+    .compact()
+    .sortBy("name")
+    .value();
+};
+
+export const processSingleResourceRollup = (rawMetrics, controllerNamespace, includeConduit) => {
+  let result = processMultiResourceRollup(rawMetrics, controllerNamespace, includeConduit);
+  if (_.size(result) > 1) {
+    console.error("Multi metric returned; expected single metric.");
   }
+  return _.values(result)[0];
+};
+
+export const processMultiResourceRollup = (rawMetrics, controllerNamespace, includeConduit) => {
+  if (_.isEmpty(rawMetrics.ok) || _.isEmpty(rawMetrics.ok.statTables)) {
+    return {};
+  }
+
   if (_.isEmpty(controllerNamespace)) {
     controllerNamespace = defaultControllerNs;
   }
-  let metrics = _.flatMap(rawMetrics.ok.statTables, table => {
-    return _.map(table.podGroup.rows, row => {
-      if (row.resource.namespace === kubernetesNs) {
-        return null;
-      }
-      if (row.resource.namespace === controllerNamespace && !includeConduit) {
-        return null;
-      }
 
-      return {
-        name: row.resource.name,
-        namespace: row.resource.namespace,
-        requestRate: getRequestRate(row),
-        successRate: getSuccessRate(row),
-        latency: getLatency(row),
-        added: row.meshedPodCount === row.runningPodCount
-      };
-    });
+  let metricsByResource = {};
+  _.each(rawMetrics.ok.statTables, table => {
+    if (_.isEmpty(table.podGroup.rows)) {
+      return;
+    }
+
+    let resource = _.get(table, ["podGroup", "rows", 0, "resource", "type"]);
+    metricsByResource[resource] = processStatTable(table, controllerNamespace, includeConduit);
   });
-
-  return _.compact(_.sortBy(metrics, "name"));
+  return metricsByResource;
 };

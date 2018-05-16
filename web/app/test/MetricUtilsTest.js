@@ -1,12 +1,17 @@
+import _ from 'lodash';
 import deployRollupFixtures from './fixtures/deployRollup.json';
 import { expect } from 'chai';
 import multiDeployRollupFixtures from './fixtures/multiDeployRollup.json';
-import { processRollupMetrics } from '../js/components/util/MetricUtils.js';
+import multiResourceRollupFixtures from './fixtures/allRollup.json';
+import {
+  processMultiResourceRollup,
+  processSingleResourceRollup
+} from '../js/components/util/MetricUtils.js';
 
 describe('MetricUtils', () => {
-  describe('processRollupMetrics', () => {
+  describe('processSingleResourceRollup', () => {
     it('Extracts deploy metrics from a single response', () => {
-      let result = processRollupMetrics(deployRollupFixtures);
+      let result = processSingleResourceRollup(deployRollupFixtures);
       let expectedResult = [
         {
           name: 'voting',
@@ -25,7 +30,7 @@ describe('MetricUtils', () => {
     });
 
     it('Extracts and sorts multiple deploys from a single response', () => {
-      let result = processRollupMetrics(multiDeployRollupFixtures);
+      let result = processSingleResourceRollup(multiDeployRollupFixtures);
       expect(result).to.have.length(4);
       expect(result[0].name).to.equal("emoji");
       expect(result[0].namespace).to.equal("emojivoto");
@@ -35,6 +40,26 @@ describe('MetricUtils', () => {
       expect(result[2].namespace).to.equal("emojivoto");
       expect(result[3].name).to.equal("web");
       expect(result[3].namespace).to.equal("emojivoto");
+    });
+  });
+
+  describe('processMultiResourceRollup', () => {
+    it('Extracts metrics and groups them by resource type', () => {
+      let result = processMultiResourceRollup(multiResourceRollupFixtures);
+      expect(_.size(result)).to.equal(2);
+
+      expect(result["deployments"]).to.have.length(1);
+      expect(result["pods"]).to.have.length(3);
+      expect(result["replicationcontrollers"]).to.be.undefined;
+    });
+
+    it('Respects the includeConduit flag', () => {
+      let result = processMultiResourceRollup(multiResourceRollupFixtures, "conduit-other", true);
+      expect(_.size(result)).to.equal(2);
+
+      expect(result["deployments"]).to.have.length(1);
+      expect(result["pods"]).to.have.length(4);
+      expect(result["replicationcontrollers"]).to.be.undefined;
     });
   });
 });

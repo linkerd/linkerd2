@@ -4,7 +4,7 @@ import ConduitSpinner from "./ConduitSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
 import MetricsTable from './MetricsTable.jsx';
 import PageHeader from './PageHeader.jsx';
-import { processRollupMetrics } from './util/MetricUtils.js';
+import { processSingleResourceRollup } from './util/MetricUtils.js';
 import React from 'react';
 import './../../css/list.css';
 import 'whatwg-fetch';
@@ -66,7 +66,8 @@ export default class ResourceList extends React.Component {
 
     Promise.all(this.api.getCurrentPromises())
       .then(([rollup]) => {
-        let processedMetrics = processRollupMetrics(rollup, this.props.controllerNamespace);
+        let processedMetrics = processSingleResourceRollup(rollup, this.props.controllerNamespace);
+
         this.setState({
           metrics: processedMetrics,
           loaded: true,

@@ -89,6 +89,9 @@ export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   };
 
   const urlsForResource = {
+    "all": {
+      url: genResourceUrl("all")
+    },
     "namespace": {
       url: genResourceUrl("namespace")
     },
