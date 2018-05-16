@@ -7,7 +7,6 @@ use std::collections::{
 use std::fmt;
 use std::iter::IntoIterator;
 use std::net::SocketAddr;
-use std::sync::atomic::Ordering;
 use std::time::Duration;
 use tokio_core::reactor::Handle;
 use tower_grpc as grpc;
@@ -145,7 +144,7 @@ where
             match self.request_rx.poll() {
                 Ok(Async::Ready(Some(ResolveRequest {
                     authority,
-                    update_tx,
+                    respond,
                 }))) => {
                     trace!("Destination.Get {:?}", authority);
                     match self.destinations.entry(authority) {
@@ -156,13 +155,13 @@ where
                             match set.addrs {
                                 Exists::Yes(ref cache) => for (&addr, meta) in cache {
                                     let update = Update::Insert(addr, meta.clone());
-                                    update_tx
+                                    respond.update_tx
                                         .unbounded_send(update)
                                         .expect("unbounded_send does not fail");
                                 },
                                 Exists::No | Exists::Unknown => (),
                             }
-                            set.txs.push(update_tx);
+                            set.responds.push(respond);
                         },
                         Entry::Vacant(vac) => {
                             let query = Self::query_destination_service_if_relevant(
@@ -175,7 +174,7 @@ where
                                 addrs: Exists::Unknown,
                                 query,
                                 dns_query: None,
-                                txs: vec![update_tx],
+                                responds: vec![respond],
                             };
                             // If the authority is one for which the Destination service is never
                             // relevant (e.g. an absolute name that doesn't end in ".svc.$zone." in
@@ -226,7 +225,7 @@ where
     /// If there are no active resolutions for a destination, the destination is removed.
     fn retain_active_destinations(&mut self) {
         self.destinations.retain(|_, ref mut dst| {
-            dst.retain_responds();
+            dst.responds.retain(|r| r.is_active());
             dst.responds.len() > 0
         })
     }
@@ -513,12 +512,6 @@ impl<T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
             let sent = r.update_tx.unbounded_send(update.clone());
             sent.is_ok()
         });
-    }
-
-    /// Ensures that `responds` only includes active receivers.
-    fn retain_responds(&mut self) {
-        self.responds
-            .retain(|r| !r.receiver_gone.load(Ordering::Acquire))
     }
 }
 

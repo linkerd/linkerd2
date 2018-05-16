@@ -35,21 +35,30 @@ struct ResolveRequest {
 
 #[derive(Debug)]
 struct Respond {
+    /// Sends updates from the controller to a `Resoliution`.
     update_tx: mpsc::UnboundedSender<Update>,
-    receiver_gone: Arc<AtomicBool>,
+
+    /// Indicates whether the corresponding `Resolution` is still active.
+    active: Arc<AtomicBool>,
 }
 
 /// A `tower_discover::Discover`, given to a `tower_balance::Balance`.
 #[derive(Debug)]
 pub struct Resolution<B> {
+    /// Receives updates from the controller.
     update_rx: mpsc::UnboundedReceiver<Update>,
-    receiver_gone: Arc<AtomicBool>,
+
+    /// Is set to `false` when `self` is dropped.
+    active: Arc<AtomicBool>,
+
     /// Map associating addresses with the `Store` for the watch on that
     /// service's metric labels (as provided by the Destination service).
     ///
     /// This is used to update the `Labeled` middleware on those services
     /// without requiring the service stack to be re-bound.
     metric_labels: HashMap<SocketAddr, Store<Option<DstLabels>>>,
+
+    /// Binds an update endpoint to a Service.
     bind: B,
 }
 
@@ -111,14 +120,14 @@ impl Resolver {
     pub fn resolve<B>(&self, authority: &DnsNameAndPort, bind: B) -> Resolution<B> {
         trace!("resolve; authority={:?}", authority);
         let (update_tx, update_rx) = mpsc::unbounded();
-        let receiver_gone = Arc::new(AtomicBool::new(false));
+        let active = Arc::new(AtomicBool::new(true));
         let req = {
             let authority = authority.clone();
             ResolveRequest {
                 authority,
                 respond: Respond {
                     update_tx,
-                    receiver_gone: receiver_gone.clone(),
+                    active: active.clone(),
                 },
             }
         };
@@ -128,7 +137,7 @@ impl Resolver {
 
         Resolution {
             update_rx,
-            receiver_gone: receiver_gone,
+            active,
             metric_labels: HashMap::new(),
             bind,
         }
@@ -162,7 +171,7 @@ impl<B> Resolution<B> {
 
 impl<B> Drop for Resolution<B> {
     fn drop(&mut self) {
-        self.receiver_gone.store(true, Ordering::Release);
+        self.active.store(false, Ordering::Release);
     }
 }
 
@@ -211,6 +220,14 @@ where
                 },
             }
         }
+    }
+}
+
+// ===== impl Respond =====
+
+impl Respond {
+    fn is_active(&self) -> bool {
+        self.active.load(Ordering::Acquire)
     }
 }
 
