@@ -107,7 +107,7 @@ where
         // in `poll_destinations` while the `rpc` service is ready should
         // be reconnected now, otherwise the task would just sleep...
         loop {
-            self.poll_new_watches(client);
+            self.poll_resolve_requests(client);
             self.retain_active_destinations();
             self.poll_destinations();
 
@@ -117,7 +117,7 @@ where
         }
     }
 
-    fn poll_new_watches(&mut self, client: &mut T) {
+    fn poll_resolve_requests(&mut self, client: &mut T) {
         loop {
             // if rpc service isn't ready, not much we can do...
             match client.poll_ready() {
