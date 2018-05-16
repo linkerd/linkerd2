@@ -485,20 +485,8 @@ data:
     groups:
     - name: conduit-rules
       rules:
-      - record: request_total:irate30s
-        expr: irate(request_total[30s])
-      - record: response_total:irate30s
-        expr: irate(response_total[30s])
-      - record: response_latency_ms_bucket:irate30s
-        expr: irate(response_latency_ms_bucket[30s])
-      - record: tcp_close_total:irate30s
-        expr: irate(tcp_close_total[30s])
-      - record: tcp_open_total:irate30s
-        expr: irate(tcp_open_total[30s])
-      - record: tcp_read_bytes_total:irate30s
-        expr: irate(tcp_read_bytes_total[30s])
-      - record: tcp_write_bytes_total:irate30s
-        expr: irate(tcp_write_bytes_total[30s])
+      - record: kube_dst_pod_owner
+        expr: label_replace(kube_pod_owner, "dst_pod", "$1", "pod", "(.*)")
 
   prometheus.yml: |-
     global:
