@@ -11,11 +11,9 @@
 {{ end }}
 
 {{ define "script-tags" }}
-  {{with .Context}}
-    {{ if .WebpackDevServer}}
-      <script type="text/javascript" src="{{.WebpackDevServer}}/dist/index_bundle.js" async></script>
-    {{else}}
-      <script type="text/javascript" src="dist/index_bundle.js" async></script>
-    {{end}}
+  {{ if .Context.WebpackDevServer }}
+    <script type="text/javascript" src="{{.Context.WebpackDevServer}}/dist/index_bundle.js" async></script>
+  {{else}}
+    <script type="text/javascript" src="{{.Contents.PathPrefix}}dist/index_bundle.js" async></script>
   {{end}}
 {{end}}
