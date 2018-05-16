@@ -24,9 +24,7 @@
 
 use std::collections::HashMap;
 use std::net::SocketAddr;
-use std::sync::{
-    Arc, Weak,
-};
+use std::sync::{Arc, Weak};
 
 use futures::sync::mpsc;
 use futures::{Async, Poll, Stream};
@@ -74,6 +72,9 @@ pub struct Resolution<B> {
     update_rx: mpsc::UnboundedReceiver<Update>,
 
     /// Allows `Responder` to detect when its `Resolution` has been lost.
+    ///
+    /// `Responder` holds the corresponding `Arc` and can determine when this weak
+    /// reference has been dropped.
     _active: Weak<()>,
 
     /// Map associating addresses with the `Store` for the watch on that
@@ -151,10 +152,7 @@ impl Resolver {
             let authority = authority.clone();
             ResolveRequest {
                 authority,
-                responder: Responder {
-                    update_tx,
-                    active: active,
-                },
+                responder: Responder { update_tx, active },
             }
         };
         self.request_tx
