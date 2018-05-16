@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
+    Arc, Weak,
 };
 
 use futures::sync::mpsc;
@@ -30,16 +29,16 @@ pub struct Resolver {
 #[derive(Debug)]
 struct ResolveRequest {
     authority: DnsNameAndPort,
-    respond: Respond,
+    responder: Responder,
 }
 
 #[derive(Debug)]
-struct Respond {
+struct Responder {
     /// Sends updates from the controller to a `Resoliution`.
     update_tx: mpsc::UnboundedSender<Update>,
 
     /// Indicates whether the corresponding `Resolution` is still active.
-    active: Arc<AtomicBool>,
+    active: Arc<()>,
 }
 
 /// A `tower_discover::Discover`, given to a `tower_balance::Balance`.
@@ -48,8 +47,8 @@ pub struct Resolution<B> {
     /// Receives updates from the controller.
     update_rx: mpsc::UnboundedReceiver<Update>,
 
-    /// Is set to `false` when `self` is dropped.
-    active: Arc<AtomicBool>,
+    /// Allows `Responder` to detect when its `Resolution` has been lost.
+    _active: Weak<()>,
 
     /// Map associating addresses with the `Store` for the watch on that
     /// service's metric labels (as provided by the Destination service).
@@ -120,14 +119,15 @@ impl Resolver {
     pub fn resolve<B>(&self, authority: &DnsNameAndPort, bind: B) -> Resolution<B> {
         trace!("resolve; authority={:?}", authority);
         let (update_tx, update_rx) = mpsc::unbounded();
-        let active = Arc::new(AtomicBool::new(true));
+        let active = Arc::new(());
+        let weak_active = Arc::downgrade(&active);
         let req = {
             let authority = authority.clone();
             ResolveRequest {
                 authority,
-                respond: Respond {
+                responder: Responder {
                     update_tx,
-                    active: active.clone(),
+                    active: active,
                 },
             }
         };
@@ -137,7 +137,7 @@ impl Resolver {
 
         Resolution {
             update_rx,
-            active,
+            _active: weak_active,
             metric_labels: HashMap::new(),
             bind,
         }
@@ -166,12 +166,6 @@ impl<B> Resolution<B> {
             );
             Ok(())
         }
-    }
-}
-
-impl<B> Drop for Resolution<B> {
-    fn drop(&mut self) {
-        self.active.store(false, Ordering::Release);
     }
 }
 
@@ -223,11 +217,13 @@ where
     }
 }
 
-// ===== impl Respond =====
+// ===== impl Responder =====
 
-impl Respond {
+impl Responder {
     fn is_active(&self) -> bool {
-        self.active.load(Ordering::Acquire)
+        let weak = Arc::weak_count(&self.active);
+        debug_assert!(weak == 0 || weak == 1);
+        weak > 0
     }
 }
 
