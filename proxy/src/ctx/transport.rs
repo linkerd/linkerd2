@@ -2,7 +2,7 @@ use std::{cmp, hash};
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 
-use control::discovery::DstLabelsWatch;
+use control::destination::DstLabelsWatch;
 use ctx;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

@@ -42,6 +42,7 @@ type (
 		ControllerNamespace string
 		Error               bool
 		ErrorMessage        string
+		PathPrefix          string
 	}
 )
 
