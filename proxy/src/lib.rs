@@ -178,7 +178,7 @@ where
             outbound_listener,
             metrics_listener,
             get_original_dst,
-            runtime: mut rt,
+            mut runtime,
         } = self;
 
         let control_host_and_port = config.control_host_and_port.clone();
@@ -324,14 +324,14 @@ where
             .map(|_| ())
             .map_err(|err| error!("main error: {:?}", err));
 
-        rt.spawn(Box::new(fut));
+        runtime.spawn(Box::new(fut));
         trace!("main task spawned");
 
         let shutdown_signal = shutdown_signal.and_then(move |()| {
             debug!("shutdown signaled");
             drain_tx.drain()
         });
-        rt.run_until(shutdown_signal).expect("executor");
+        runtime.run_until(shutdown_signal).expect("executor");
         debug!("shutdown complete");
     }
 }
