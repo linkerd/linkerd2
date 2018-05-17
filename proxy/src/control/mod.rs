@@ -9,8 +9,6 @@ use tower_service::Service;
 use tower_h2;
 use tower_reconnect::{Error as ReconnectError};
 
-use dns;
-use transport::{DnsNameAndPort, HostAndPort, };
 use timeout::TimeoutError;
 
 mod cache;
@@ -20,43 +18,8 @@ mod observe;
 pub mod pb;
 mod remote_stream;
 
-use self::destination::{Resolver, Resolution};
-pub use self::destination::Bind;
+pub use self::destination::{new, Bind, Resolver as Control};
 pub use self::observe::Observe;
-
-#[derive(Clone)]
-pub struct Control {
-    disco: Resolver,
-}
-
-/// Returns a new `Control` handle and a future that drives the
-/// corresponding background work.
-pub fn new(
-    dns_resolver: dns::Resolver,
-    default_destination_namespace: String,
-    host_and_port: HostAndPort,
-) -> (Control, impl Future<Item = (), Error = ()>)
-{
-    let (tx, b) = self::destination::new(
-        dns_resolver,
-        default_destination_namespace,
-        host_and_port
-    );
-
-    let c = Control {
-        disco: tx,
-    };
-
-    (c, b)
-}
-
-// ===== impl Control =====
-
-impl Control {
-    pub fn resolve<B>(&self, auth: &DnsNameAndPort, bind: B) -> Resolution<B> {
-        self.disco.resolve(auth, bind)
-    }
-}
 
 
 // ===== Backoff =====
