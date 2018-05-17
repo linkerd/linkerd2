@@ -29,7 +29,7 @@ pub struct Bind<C, B> {
     ctx: C,
     sensors: telemetry::Sensors,
     req_ids: Arc<AtomicUsize>,
-    _p: PhantomData<B>,
+    _p: PhantomData<fn() -> B>,
 }
 
 /// Binds a `Service` from a `SocketAddr` for a pre-determined protocol.
@@ -232,12 +232,6 @@ where
         }
     }
 }
-
-// As a `Bind` instance does not actually contain a value of type `B` (it's
-// just `PhantomData<(B)>`, `Bind` can be `Send` or `Sync` as long as `C`
-// is `Send` or `Sync`, regardless of `B`.
-unsafe impl<C: Send, B> Send for Bind<C, B> {}
-unsafe impl<C: Sync, B> Sync for Bind<C, B> {}
 
 // ===== impl BindProtocol =====
 
