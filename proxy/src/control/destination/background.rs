@@ -46,7 +46,7 @@ type UpdateRx<T> = Receiver<PbUpdate, T>;
 /// service is healthy, it reads requests from `request_rx`, determines how to resolve the
 /// provided authority to a set of addresses, and ensures that resolution updates are
 /// propagated to all requesters.
-pub struct Background<T: HttpService<ResponseBody = RecvBody>> {
+struct Background<T: HttpService<ResponseBody = RecvBody>> {
     dns_resolver: dns::Resolver,
     default_destination_namespace: String,
     destinations: HashMap<DnsNameAndPort, DestinationSet<T>>,
@@ -119,7 +119,7 @@ where
     T: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>,
     T::Error: fmt::Debug,
 {
-    pub(super) fn new(
+    fn new(
         request_rx: mpsc::UnboundedReceiver<ResolveRequest>,
         dns_resolver: dns::Resolver,
         default_destination_namespace: String,
@@ -134,7 +134,7 @@ where
         }
     }
 
-    pub fn poll_rpc(&mut self, client: &mut T) {
+   fn poll_rpc(&mut self, client: &mut T) {
         // This loop is make sure any streams that were found disconnected
         // in `poll_destinations` while the `rpc` service is ready should
         // be reconnected now, otherwise the task would just sleep...
