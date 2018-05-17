@@ -126,11 +126,6 @@ where
     ///
     /// Resolves the authority in service discovery and initializes a service that buffers
     /// and load balances requests across.
-    ///
-    /// # TODO
-    ///
-    /// Buffering is currently unbounded and does not apply timeouts. This must be
-    /// changed.
     fn bind_service(
         &self,
         key: &Self::Key,

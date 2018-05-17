@@ -1,6 +1,13 @@
 #![deny(warnings)]
+#[macro_use]
 mod support;
 use self::support::*;
+
+macro_rules! assert_contains {
+    ($scrape:expr, $contains:expr) => {
+        assert_eventually!($scrape.contains($contains), "metrics scrape:\n{:8}\ndid not contain:\n{:8}", $scrape, $contains)
+    }
+}
 
 #[test]
 fn outbound_http1() {
@@ -728,4 +735,34 @@ fn http1_requests_without_host_have_unique_connections() {
     assert_eq!(res.status(), http::StatusCode::OK);
     assert_eq!(res.version(), http::Version::HTTP_11);
     assert_eq!(inbound.connections(), 4);
+}
+
+#[test]
+#[cfg_attr(not(feature = "flaky_tests"), ignore)]
+fn retry_reconnect_errors() {
+    let _ = env_logger::try_init();
+
+    // Used to delay `listen` in the server, to force connection refused errors.
+    let (tx, rx) = oneshot::channel();
+
+    let srv = server::http2()
+        .route("/", "hello retry")
+        .delay_listen(rx.map_err(|_| ()));
+    let proxy = proxy::new().inbound(srv).run();
+    let client = client::http2(proxy.inbound, "transparency.test.svc.cluster.local");
+    let metrics = client::http1(proxy.metrics, "localhost");
+
+    let fut = client.request_async(client.request_builder("/")
+        .version(http::Version::HTTP_2));
+
+    // wait until metrics has seen our connection, this can be flaky depending on
+    // all the other threads currently running...
+    assert_contains!(
+        metrics.get("/metrics"),
+        "tcp_open_total{direction=\"inbound\",peer=\"src\"} 1"
+    );
+
+    drop(tx); // start `listen` now
+    let res = fut.wait().expect("response");
+    assert_eq!(res.status(), http::StatusCode::OK);
 }
