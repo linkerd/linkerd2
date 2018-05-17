@@ -1,5 +1,5 @@
 use bytes::{Buf, IntoBuf};
-use futures::{future, Async, Future, Poll, Stream};
+use futures::{Async, Future, Poll, Stream};
 use h2;
 use http;
 use std::default::Default;
@@ -11,6 +11,7 @@ use tower_service::{NewService, Service};
 use tower_h2::{client, Body};
 
 use ctx;
+use now::{Now, SystemNow};
 use telemetry::event::{self, Event};
 
 const GRPC_STATUS: &str = "grpc-status";
@@ -30,40 +31,45 @@ pub struct RequestOpen(pub Instant);
 /// to ensure that request latency metrics cover the overhead added by
 /// the proxy as accurately as possible.
 #[derive(Copy, Clone, Debug)]
-pub struct TimestampRequestOpen<S> {
+pub struct TimestampRequestOpen<S, T: Now = SystemNow> {
     inner: S,
+    now: T,
 }
 
-pub struct NewHttp<N, A, B> {
+pub struct NewHttp<N, A, B, T: Now = SystemNow> {
     next_id: Arc<AtomicUsize>,
     new_service: N,
     handle: super::Handle,
     client_ctx: Arc<ctx::transport::Client>,
+    now: T,
     _p: PhantomData<(A, B)>,
 }
 
-pub struct Init<F, A, B> {
+pub struct Init<F, A, B, T: Now = SystemNow> {
     next_id: Arc<AtomicUsize>,
     future: F,
     handle: super::Handle,
     client_ctx: Arc<ctx::transport::Client>,
+    now: T,
     _p: PhantomData<(A, B)>,
 }
 
 /// Wraps a transport with telemetry.
 #[derive(Debug)]
-pub struct Http<S, A, B> {
+pub struct Http<S, A, B, T: Now = SystemNow> {
     next_id: Arc<AtomicUsize>,
     service: S,
     handle: super::Handle,
     client_ctx: Arc<ctx::transport::Client>,
+    now: T,
     _p: PhantomData<(A, B)>,
 }
 
 #[derive(Debug)]
-pub struct Respond<F, B> {
+pub struct Respond<F, B, T: Now = SystemNow> {
     future: F,
     inner: Option<RespondInner>,
+    now: T,
     _p: PhantomData<(B)>,
 }
 
@@ -115,7 +121,7 @@ pub struct RequestBodyInner {
 
 // === NewHttp ===
 
-impl<N, A, B> NewHttp<N, A, B>
+impl<N, A, B> NewHttp<N, A, B, SystemNow>
 where
     A: Body + 'static,
     B: Body + 'static,
@@ -137,15 +143,17 @@ where
             new_service,
             handle: handle.clone(),
             client_ctx: Arc::clone(client_ctx),
+            now: SystemNow,
             _p: PhantomData,
         }
     }
 }
 
-impl<N, A, B> NewService for NewHttp<N, A, B>
+impl<N, A, B, T> NewService for NewHttp<N, A, B, T>
 where
     A: Body + 'static,
     B: Body + 'static,
+    T: Now,
     N: NewService<
         Request = http::Request<RequestBody<A>>,
         Response = http::Response<B>,
@@ -157,8 +165,8 @@ where
     type Response = http::Response<ResponseBody<B>>;
     type Error = N::Error;
     type InitError = N::InitError;
-    type Future = Init<N::Future, A, B>;
-    type Service = Http<N::Service, A, B>;
+    type Future = Init<N::Future, A, B, T>;
+    type Service = Http<N::Service, A, B, T>;
 
     fn new_service(&self) -> Self::Future {
         Init {
@@ -166,6 +174,7 @@ where
             future: self.new_service.new_service(),
             handle: self.handle.clone(),
             client_ctx: Arc::clone(&self.client_ctx),
+            now: self.now.clone(),
             _p: PhantomData,
         }
     }
@@ -173,17 +182,18 @@ where
 
 // === Init ===
 
-impl<F, A, B> Future for Init<F, A, B>
+impl<F, A, B, T> Future for Init<F, A, B, T>
 where
     A: Body + 'static,
     B: Body + 'static,
     F: Future,
+    T: Now,
     F::Item: Service<
         Request = http::Request<RequestBody<A>>,
         Response = http::Response<B>
     >,
 {
-    type Item = Http<F::Item, A, B>;
+    type Item = Http<F::Item, A, B, T>;
     type Error = F::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
@@ -194,6 +204,7 @@ where
             handle: self.handle.clone(),
             next_id: self.next_id.clone(),
             client_ctx: self.client_ctx.clone(),
+            now: self.now.clone(),
             _p: PhantomData,
         }))
     }
@@ -201,10 +212,11 @@ where
 
 // === Http ===
 
-impl<S, A, B> Service for Http<S, A, B>
+impl<S, A, B, T> Service for Http<S, A, B, T>
 where
     A: Body + 'static,
     B: Body + 'static,
+    T: Now,
     S: Service<
         Request = http::Request<RequestBody<A>>,
         Response = http::Response<B>,
@@ -215,7 +227,7 @@ where
     type Request = http::Request<A>;
     type Response = http::Response<ResponseBody<B>>;
     type Error = S::Error;
-    type Future = Respond<S::Future, B>;
+    type Future = Respond<S::Future, B, T>;
 
     fn poll_ready(&mut self) -> Poll<(), Self::Error> {
         self.service.poll_ready()
@@ -280,6 +292,7 @@ where
         Respond {
             future,
             inner,
+            now: self.now.clone(),
             _p: PhantomData,
         }
     }
@@ -287,10 +300,11 @@ where
 
 // === Measured ===
 
-impl<F, B> Future for Respond<F, B>
+impl<F, B, T> Future for Respond<F, B, T>
 where
     F: Future<Item = http::Response<B>, Error=client::Error>,
     B: Body + 'static,
+    T: Now,
 {
     type Item = http::Response<ResponseBody<B>>;
     type Error = F::Error;
@@ -345,7 +359,7 @@ where
                             bytes_sent: 0,
                             frames_sent: 0,
                             request_open,
-                            response_open: Instant::now(),
+                            response_open: self.now.now(),
                         })
                     }
                 });
@@ -611,15 +625,24 @@ impl BodySensor for RequestBodyInner {
     }
 }
 
-impl<S> TimestampRequestOpen<S> {
+// ===== impl TimestampRequestOpen =====
+
+impl<S> TimestampRequestOpen<S, SystemNow> {
     pub fn new(inner: S) -> Self {
-        Self { inner }
+        Self { inner, now: SystemNow }
     }
 }
 
-impl<S, B> Service for TimestampRequestOpen<S>
+impl<S> TimestampRequestOpen<S, SystemNow> {
+    fn with_time<T: Now>(self, now: T) -> TimestampRequestOpen<S, T> {
+        TimestampRequestOpen { now, inner: self.inner, }
+    }
+}
+
+impl<S, B, T> Service for TimestampRequestOpen<S, T>
 where
     S: Service<Request = http::Request<B>>,
+    T: Now,
 {
     type Request = http::Request<B>;
     type Response = S::Response;
@@ -631,27 +654,29 @@ where
     }
 
     fn call(&mut self, mut req: Self::Request) -> Self::Future {
-        let request_open = Instant::now();
+        let request_open = self.now.now();
         req.extensions_mut().insert(RequestOpen(request_open));
         self.inner.call(req)
     }
 }
 
-impl<S, B> NewService for TimestampRequestOpen<S>
+impl<S, B, T> NewService for TimestampRequestOpen<S, T>
 where
-    S: NewService<Request = http::Request<B>>,
+    S: NewService<Request = http::Request<B>> + 'static,
+    T: Now + 'static,
 {
     type Request = S::Request;
     type Response = S::Response;
     type Error = S::Error;
     type InitError = S::InitError;
-    type Future = future::Map<
-        S::Future,
-        fn(S::Service) -> Self::Service
-    >;
-    type Service = TimestampRequestOpen<S::Service>;
+    type Future = Box<Future<Item = Self::Service, Error = S::InitError>>;
+    type Service = TimestampRequestOpen<S::Service, T>;
 
     fn new_service(&self) -> Self::Future {
-        self.inner.new_service().map(TimestampRequestOpen::new)
+        let now = self.now.clone();
+        let f = self.inner.new_service().map(|s| {
+            TimestampRequestOpen::new(s).with_time(now)
+        });
+        Box::new(f)
     }
 }
