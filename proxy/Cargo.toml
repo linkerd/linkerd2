@@ -58,6 +58,7 @@ tower-util            = { git = "https://github.com/tower-rs/tower" }
 libc = "0.2"
 
 [dev-dependencies]
+net2 = "0.2"
 quickcheck = { version = "0.6", default-features = false }
 conduit-proxy-controller-grpc = { path = "./controller-grpc" , features = ["arbitrary"] }
 flate2 = { version = "1.0.1", default-features = false, features = ["rust_backend"] }

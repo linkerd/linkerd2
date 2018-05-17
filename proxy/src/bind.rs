@@ -5,12 +5,12 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
 
-use futures::{Future, Poll, future};
+use futures::{Async, Future, Poll, future, task};
 use http::{self, uri};
 use tokio_core::reactor::Handle;
 use tower_service as tower;
 use tower_h2;
-use tower_reconnect::Reconnect;
+use tower_reconnect::{Reconnect, Error as ReconnectError};
 
 use control;
 use control::destination::Endpoint;
@@ -40,19 +40,35 @@ pub struct BindProtocol<C, B> {
     protocol: Protocol,
 }
 
-/// A type of service binding
+/// A bound service that can re-bind itself on demand.
+///
+/// Reasons this would need to re-bind:
+///
+/// - `BindsPerRequest` can only service 1 request, and then needs to bind a
+///   new service.
+/// - If there is an error in the inner service (such as a connect error), we
+///   need to throw it away and bind a new service.
+pub struct BoundService<B: tower_h2::Body + 'static> {
+    bind: Bind<Arc<ctx::Proxy>, B>,
+    binding: Binding<B>,
+    /// Prevents logging repeated connect errors.
+    ///
+    /// Set back to false after a connect succeeds, to log about future errors.
+    debounce_connect_error_log: bool,
+    endpoint: Endpoint,
+    protocol: Protocol,
+}
+
+/// A type of service binding.
 ///
 /// Some services, for various reasons, may not be able to be used to serve multiple
 /// requests. The `BindsPerRequest` binding ensures that a new stack is bound for each
 /// request.
 ///
 /// `Bound` serivces may be used to process an arbitrary number of requests.
-pub enum Binding<B: tower_h2::Body + 'static> {
+enum Binding<B: tower_h2::Body + 'static> {
     Bound(Stack<B>),
     BindsPerRequest {
-        endpoint: Endpoint,
-        protocol: Protocol,
-        bind: Bind<Arc<ctx::Proxy>, B>,
         // When `poll_ready` is called, the _next_ service to be used may be bound
         // ahead-of-time. This stack is used only to serve the next request to this
         // service.
@@ -100,7 +116,7 @@ pub struct NormalizeUri<S> {
     was_absolute_form: bool,
 }
 
-pub type Service<B> = Binding<B>;
+pub type Service<B> = BoundService<B>;
 
 pub type Stack<B> = Reconnect<NormalizeUri<NewHttp<B>>>;
 
@@ -227,16 +243,21 @@ where
         Reconnect::new(proxy)
     }
 
-    pub fn new_binding(&self, ep: &Endpoint, protocol: &Protocol) -> Binding<B> {
-        if protocol.can_reuse_clients() {
+    pub fn bind_service(&self, ep: &Endpoint, protocol: &Protocol) -> BoundService<B> {
+        let binding = if protocol.can_reuse_clients() {
             Binding::Bound(self.bind_stack(ep, protocol))
         } else {
             Binding::BindsPerRequest {
-                endpoint: ep.clone(),
-                protocol: protocol.clone(),
-                bind: self.clone(),
                 next: None
             }
+        };
+
+        BoundService {
+            bind: self.clone(),
+            binding,
+            debounce_connect_error_log: false,
+            endpoint: ep.clone(),
+            protocol: protocol.clone(),
         }
     }
 }
@@ -265,7 +286,7 @@ where
     type BindError = ();
 
     fn bind(&self, ep: &Endpoint) -> Result<Self::Service, Self::BindError> {
-        Ok(self.bind.new_binding(ep, &self.protocol))
+        Ok(self.bind.bind_service(ep, &self.protocol))
     }
 }
 
@@ -340,36 +361,84 @@ where
 }
 // ===== impl Binding =====
 
-impl<B: tower_h2::Body + 'static> tower::Service for Binding<B> {
+impl<B: tower_h2::Body + 'static> tower::Service for BoundService<B> {
     type Request = <Stack<B> as tower::Service>::Request;
     type Response = <Stack<B> as tower::Service>::Response;
     type Error = <Stack<B> as tower::Service>::Error;
     type Future = <Stack<B> as tower::Service>::Future;
 
     fn poll_ready(&mut self) -> Poll<(), Self::Error> {
-        match *self {
+        let ready = match self.binding {
             // A service is already bound, so poll its readiness.
             Binding::Bound(ref mut svc) |
-            Binding::BindsPerRequest { next: Some(ref mut svc), .. } => svc.poll_ready(),
+            Binding::BindsPerRequest { next: Some(ref mut svc) } => svc.poll_ready(),
 
             // If no stack has been bound, bind it now so that its readiness can be
             // checked. Store it so it can be consumed to dispatch the next request.
-            Binding::BindsPerRequest { ref endpoint, ref protocol, ref bind, ref mut next } => {
-                let mut svc = bind.bind_stack(endpoint, protocol);
-                let ready = svc.poll_ready()?;
+            Binding::BindsPerRequest { ref mut next } => {
+                let mut svc = self.bind.bind_stack(&self.endpoint, &self.protocol);
+                let ready = svc.poll_ready();
                 *next = Some(svc);
-                Ok(ready)
+                ready
             }
+        };
+
+        // If there was a connect error, don't terminate this BoundService
+        // completely. Instead, simply clean up the inner service, prepare to
+        // make a new one, and tell our caller that we could maybe be ready
+        // if they call `poll_ready` again.
+        //
+        // If they *don't* call `poll_ready` again, that's ok, we won't ever
+        // try to connect again.
+        match ready {
+            Err(ReconnectError::Connect(err)) => {
+                if !self.debounce_connect_error_log {
+                    self.debounce_connect_error_log = true;
+                    warn!("connect error to {:?}: {}", self.endpoint, err);
+                }
+                match self.binding {
+                    Binding::Bound(ref mut svc) => {
+                        *svc = self.bind.bind_stack(&self.endpoint, &self.protocol);
+                    },
+                    Binding::BindsPerRequest { ref mut next } => {
+                        next.take();
+                    }
+                }
+
+                // So, this service isn't "ready" yet. Instead of trying to make
+                // it ready, schedule the task for notification so the caller can
+                // determine whether readiness is still necessary (i.e. whether
+                // there are still requests to be sent).
+                //
+                // But, to return NotReady, we must notify the task. So,
+                // this notifies the task immediately, and figures that
+                // whoever owns this service will call `poll_ready` if they
+                // are still interested.
+                task::current().notify();
+                Ok(Async::NotReady)
+            }
+            // don't debounce on NotReady...
+            Ok(Async::NotReady) => Ok(Async::NotReady),
+            other => {
+                self.debounce_connect_error_log = false;
+                other
+            },
         }
     }
 
     fn call(&mut self, request: Self::Request) -> Self::Future {
-        match *self {
+        match self.binding {
             Binding::Bound(ref mut svc) => svc.call(request),
-            Binding::BindsPerRequest { ref endpoint, ref protocol, ref bind, ref mut next } => {
+            Binding::BindsPerRequest { ref mut next } => {
                 // If a service has already been bound in `poll_ready`, consume it.
                 // Otherwise, bind a new service on-the-spot.
-                let mut svc = next.take().unwrap_or_else(|| bind.bind_stack(endpoint, protocol));
+                let bind = &self.bind;
+                let endpoint = &self.endpoint;
+                let protocol = &self.protocol;
+                let mut svc = next.take()
+                    .unwrap_or_else(|| {
+                        bind.bind_stack(endpoint, protocol)
+                    });
                 svc.call(request)
             }
         }

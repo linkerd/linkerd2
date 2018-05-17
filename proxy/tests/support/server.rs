@@ -104,9 +104,21 @@ impl Server {
         self
     }
 
+    pub fn delay_listen<F>(self, f: F) -> Listening
+    where
+        F: Future<Item=(), Error=()> + Send + 'static,
+    {
+        self.run_inner(Some(Box::new(f.then(|_| Ok(())))))
+    }
+
     pub fn run(self) -> Listening {
+        self.run_inner(None)
+    }
+
+    fn run_inner(self, delay: Option<Box<Future<Item=(), Error=()> + Send>>) -> Listening {
         let (tx, rx) = shutdown_signal();
-        let (addr_tx, addr_rx) = oneshot::channel();
+        let (listening_tx, listening_rx) = oneshot::channel();
+        let mut listening_tx = Some(listening_tx);
         let conn_count = Arc::new(AtomicUsize::from(0));
         let srv_conn_count = Arc::clone(&conn_count);
         let version = self.version;
@@ -115,7 +127,19 @@ impl Server {
             version,
             thread_name(),
         );
+
+        let addr = SocketAddr::from(([127, 0, 0, 1], 0));
+        let listener = net2::TcpBuilder::new_v4().expect("Tcp::new_v4");
+        listener.bind(addr).expect("Tcp::bind");
+        let addr = listener.local_addr().expect("Tcp::local_addr");
+
         ::std::thread::Builder::new().name(tname).spawn(move || {
+            if let Some(delay) = delay {
+                let _ = listening_tx.take().unwrap().send(());
+                delay.wait().expect("support server delay wait");
+            }
+            let listener = listener.listen(1024).expect("Tcp::listen");
+
             let mut core = Core::new().unwrap();
             let reactor = core.handle();
 
@@ -157,11 +181,11 @@ impl Server {
                 },
             };
 
-            let addr = ([127, 0, 0, 1], 0).into();
-            let bind = TcpListener::bind(&addr, &reactor).expect("bind");
+            let bind = TcpListener::from_listener(listener, &addr, &reactor).expect("from_listener");
 
-            let local_addr = bind.local_addr().expect("local_addr");
-            let _ = addr_tx.send(local_addr);
+            if let Some(listening_tx) = listening_tx {
+                let _ = listening_tx.send(());
+            }
 
             let serve = bind.incoming()
                 .fold((srv, reactor), move |(srv, reactor), (sock, _)| {
@@ -182,7 +206,7 @@ impl Server {
             core.run(rx).unwrap();
         }).unwrap();
 
-        let addr = addr_rx.wait().expect("addr");
+        listening_rx.wait().expect("listening_rx");
 
         // printlns will show if the test fails...
         println!(
