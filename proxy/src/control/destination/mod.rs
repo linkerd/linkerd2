@@ -8,7 +8,9 @@
 //!
 //! The number of active resolutions is not currently bounded by this module. Instead, we
 //! trust that callers of `Resolver` enforce such a constraint (for example, via
-//! `conduit_proxy_router`'s LRU cache).
+//! `conduit_proxy_router`'s LRU cache). Additionally, users of this module must ensure
+//! they consume resolutions as they are sent so that the response channels don't grow
+//! without bounds.
 //!
 //! Furthermore, there are not currently any bounds on the number of endpoints that may be
 //! returned for a single resolution. It is expected that the Destination service enforce
@@ -58,7 +60,7 @@ struct ResolveRequest {
 /// A handle through which response updates may be sent.
 #[derive(Debug)]
 struct Responder {
-    /// Sends updates from the controller to a `Resoliution`.
+    /// Sends updates from the controller to a `Resolution`.
     update_tx: mpsc::UnboundedSender<Update>,
 
     /// Indicates whether the corresponding `Resolution` is still active.
