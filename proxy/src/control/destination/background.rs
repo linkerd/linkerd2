@@ -42,7 +42,7 @@ type UpdateRx<T> = Receiver<PbUpdate, T>;
 
 /// Satisfies resolutions as requested via `request_rx`.
 ///
-/// As `Process` is polled with a client to Destination service, if the client to the
+/// As the `Background` is polled with a client to Destination service, if the client to the
 /// service is healthy, it reads requests from `request_rx`, determines how to resolve the
 /// provided authority to a set of addresses, and ensures that resolution updates are
 /// propagated to all requesters.

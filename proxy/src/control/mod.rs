@@ -29,6 +29,8 @@ pub struct Control {
     disco: Resolver,
 }
 
+/// Returns a new `Control` handle and a future that drives the
+/// corresponding background work.
 pub fn new(
     dns_resolver: dns::Resolver,
     default_destination_namespace: String,

@@ -49,7 +49,7 @@ mod endpoint;
 
 pub use self::endpoint::{DstLabelsWatch, Endpoint};
 
-/// A handle to request resolutions from a `Background`.
+/// A handle to request resolutions from the background discovery task.
 #[derive(Clone, Debug)]
 pub struct Resolver {
     request_tx: mpsc::UnboundedSender<ResolveRequest>,
@@ -132,10 +132,11 @@ pub trait Bind {
     fn bind(&self, addr: &Self::Endpoint) -> Result<Self::Service, Self::BindError>;
 }
 
-/// Creates a "channel" of `Resolver` to `Background` handles.
+/// Returns a `Resolver` and a background task future.
 ///
-/// The `Resolver` is used by a listener, the `Background` is consumed
-/// on the controller thread.
+/// The `Resolver` is used by a listener to request resolutions, while
+/// the background future is executed on the controller thread's executor
+/// to drive the background task.
 pub fn new(
     dns_resolver: dns::Resolver,
     default_destination_namespace: String,
