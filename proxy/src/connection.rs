@@ -4,9 +4,11 @@ use std;
 use std::cmp;
 use std::io;
 use std::net::SocketAddr;
-use tokio_core::net::{TcpListener, TcpStreamNew, TcpStream};
-use tokio_core::reactor::Handle;
-use tokio_io::{AsyncRead, AsyncWrite};
+use tokio::{
+    io::{AsyncRead, AsyncWrite},
+    net::{TcpListener, TcpStream, ConnectFuture},
+    reactor::Handle,
+};
 
 use config::Addr;
 use transport::GetOriginalDst;
@@ -19,12 +21,12 @@ pub struct BoundPort {
 }
 
 /// Initiates a client connection to the given address.
-pub fn connect(addr: &SocketAddr, executor: &Handle) -> Connecting {
-    Connecting(PlaintextSocket::connect(addr, executor))
+pub fn connect(addr: &SocketAddr) -> Connecting {
+    Connecting(PlaintextSocket::connect(addr))
 }
 
 /// A socket that is in the process of connecting.
-pub struct Connecting(TcpStreamNew);
+pub struct Connecting(ConnectFuture);
 
 /// Abstracts a plaintext socket vs. a TLS decorated one.
 ///
@@ -98,27 +100,38 @@ impl BoundPort {
     // This ensures that every incoming connection has the correct options set.
     // In the future it will also ensure that the connection is upgraded with
     // TLS when needed.
-    pub fn listen_and_fold<T, F, Fut>(self, executor: &Handle, initial: T, f: F)
-        -> Box<Future<Item = (), Error = io::Error> + 'static>
-        where
-        F: Fn(T, (Connection, SocketAddr)) -> Fut + 'static,
-        T: 'static,
-        Fut: IntoFuture<Item = T, Error = std::io::Error> + 'static {
-        let fut = TcpListener::from_listener(self.inner, &self.local_addr, &executor)
-            .expect("from_listener") // TODO: get rid of this `expect()`.
-            .incoming()
-            .fold(initial, move |b, (socket, remote_addr)| {
-                // TODO: On Linux and most other platforms it would be better
-                // to set the `TCP_NODELAY` option on the bound socket and
-                // then have the listening sockets inherit it. However, that
-                // doesn't work on all platforms and also the underlying
-                // libraries don't have the necessary API for that, so just
-                // do it here.
-                set_nodelay_or_warn(&socket);
-                f(b, (Connection::plain(socket), remote_addr))
-            });
+    pub fn listen_and_fold<T, F, Fut>(self, initial: T, f: F)
+        -> Box<Future<Item = (), Error = io::Error> + Send + 'static>
+    where
+        F: Fn(T, (Connection, SocketAddr)) -> Fut + Send + 'static,
+        T: Send + 'static,
+        Fut: IntoFuture<Item = T, Error = std::io::Error> + Send + 'static,
+        <Fut as IntoFuture>::Future: Send, {
+        let fut = future::lazy(move || {
+            // Create the TCP listener lazily, so that it's not bound to a
+            // reactor until the future is run. This will avoid
+            // `Handle::current()` creating a mew thread for the global
+            // background reactor if `listen_and_fold` is called before we've
+            // initialized the runtime.
+            TcpListener::from_std(self.inner, &Handle::current())
+        }).and_then(|listener|
+            listener.incoming()
+                .fold(initial, move |b, socket,| {
+                    let remote_addr = socket.peer_addr()
+                        .expect("couldn't get remote addr!");
+                    // TODO: On Linux and most other platforms it would be better
+                    // to set the `TCP_NODELAY` option on the bound socket and
+                    // then have the listening sockets inherit it. However, that
+                    // doesn't work on all platforms and also the underlying
+                    // libraries don't have the necessary API for that, so just
+                    // do it here.
+                    set_nodelay_or_warn(&socket);
+                    f(b, (Connection::plain(socket), remote_addr))
+                })
+        )
+        .map(|_| ());
 
-        Box::new(fut.map(|_| ()))
+        Box::new(fut)
     }
 }
 

@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::env;
 use std::io::Write;
 use std::fmt;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use env_logger;
 use futures::{Future, Poll};
@@ -69,7 +69,7 @@ pub fn context_future<T, F>(context: T, future: F) -> ContextualFuture<T, F> {
 /// value, inserting it into all logs created by this future.
 pub fn context_executor<T, E>(context: T, executor: E) -> ContextualExecutor<T, E> {
     ContextualExecutor {
-        context: Rc::new(context),
+        context: Arc::new(context),
         executor,
     }
 }
@@ -97,14 +97,14 @@ where
 
 #[derive(Clone, Debug)]
 pub struct ContextualExecutor<T, E> {
-    context: Rc<T>,
+    context: Arc<T>,
     executor: E,
 }
 
 impl<T, E, F> Executor<F> for ContextualExecutor<T, E>
 where
     T: ::std::fmt::Debug + 'static,
-    E: Executor<ContextualFuture<Rc<T>, F>>,
+    E: Executor<ContextualFuture<Arc<T>, F>>,
     F: Future<Item = (), Error = ()>,
 {
     fn execute(&self, future: F) -> Result<(), ExecuteError<F>> {

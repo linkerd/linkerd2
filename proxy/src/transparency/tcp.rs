@@ -5,8 +5,7 @@ use std::time::Duration;
 use bytes::{Buf, BufMut};
 use futures::{future, Async, Future, Poll};
 use tokio_connect::Connect;
-use tokio_core::reactor::Handle;
-use tokio_io::{AsyncRead, AsyncWrite};
+use tokio::io::{AsyncRead, AsyncWrite};
 
 use ctx::transport::{Client as ClientCtx, Server as ServerCtx};
 use telemetry::Sensors;
@@ -17,24 +16,23 @@ use transport;
 #[derive(Debug, Clone)]
 pub struct Proxy {
     connect_timeout: Duration,
-    executor: Handle,
     sensors: Sensors,
 }
 
 impl Proxy {
     /// Create a new TCP `Proxy`.
-    pub fn new(connect_timeout: Duration, sensors: Sensors, executor: &Handle) -> Self {
+    pub fn new(connect_timeout: Duration, sensors: Sensors) -> Self {
         Self {
             connect_timeout,
-            executor: executor.clone(),
             sensors,
         }
     }
 
     /// Serve a TCP connection, trying to forward it to its destination.
-    pub fn serve<T>(&self, tcp_in: T, srv_ctx: Arc<ServerCtx>) -> Box<Future<Item=(), Error=()>>
+    pub fn serve<T>(&self, tcp_in: T, srv_ctx: Arc<ServerCtx>)
+        -> Box<Future<Item=(), Error=()> + Send>
     where
-        T: AsyncRead + AsyncWrite + 'static,
+        T: AsyncRead + AsyncWrite + Send + 'static,
     {
         let orig_dst = srv_ctx.orig_dst_if_not_local();
 
@@ -62,9 +60,8 @@ impl Proxy {
             None,
         );
         let c = Timeout::new(
-            transport::Connect::new(orig_dst, &self.executor),
+            transport::Connect::new(orig_dst),
             self.connect_timeout,
-            &self.executor,
         );
         let connect = self.sensors.connect(c, &client_ctx);
 
@@ -272,7 +269,7 @@ mod tests {
     use std::io::{Error, Read, Write, Result};
     use std::sync::atomic::{AtomicBool, Ordering};
 
-    use tokio_io::{AsyncRead, AsyncWrite};
+    use tokio::io::{AsyncRead, AsyncWrite};
     use futures::{Async, Poll};
     use super::*;
 

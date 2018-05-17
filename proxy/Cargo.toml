@@ -20,10 +20,10 @@ deflate = {version = "0.7.18", features = ["gzip"] }
 env_logger = { version = "0.5", default-features = false }
 futures = "0.1"
 futures-watch = { git = "https://github.com/carllerche/better-future.git" }
-h2 = "0.1.6"
+h2 = "0.1.7"
 http = "0.1"
 httparse = "1.2"
-hyper = { version = "0.11.22", default-features = false, features = ["compat"] }
+hyper = { git = "https://github.com/hyperium/hyper" }
 ipnet = "1.0"
 log = "0.4.1"
 indexmap = "1.0.0"
@@ -32,14 +32,13 @@ rand = "0.4"
 # for config parsing
 regex = "1.0.0"
 
-tokio-core = "0.1"
-tokio-io = "0.1"
-tokio-signal = "0.1"
+tokio = "0.1.6"
+tokio-signal = "0.2"
 
 prost = "0.3.0"
 prost-types = "0.3.0"
 
-trust-dns-resolver = { version = "0.8.2", default-features = false, git = "https://github.com/bluejekyll/trust-dns", branch = "0.8_release" }
+trust-dns-resolver = { default-features = false, git = "https://github.com/bluejekyll/trust-dns", branch = "master" }
 
 #futures-watch   = { git = "https://github.com/carllerche/better-future" }
 
@@ -62,3 +61,6 @@ net2 = "0.2"
 quickcheck = { version = "0.6", default-features = false }
 conduit-proxy-controller-grpc = { path = "./controller-grpc" , features = ["arbitrary"] }
 flate2 = { version = "1.0.1", default-features = false, features = ["rust_backend"] }
+# `tokio-io` is needed for TCP tests, because `tokio::io` doesn't re-export
+# the `read` function.
+tokio-io = "0.1.6"

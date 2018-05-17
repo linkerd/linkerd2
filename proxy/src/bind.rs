@@ -7,7 +7,6 @@ use std::sync::atomic::AtomicUsize;
 
 use futures::{Async, Future, Poll, future, task};
 use http::{self, uri};
-use tokio_core::reactor::Handle;
 use tower_service as tower;
 use tower_h2;
 use tower_reconnect::{Reconnect, Error as ReconnectError};
@@ -29,9 +28,8 @@ use transport;
 pub struct Bind<C, B> {
     ctx: C,
     sensors: telemetry::Sensors,
-    executor: Handle,
     req_ids: Arc<AtomicUsize>,
-    _p: PhantomData<B>,
+    _p: PhantomData<fn() -> B>,
 }
 
 /// Binds a `Service` from a `SocketAddr` for a pre-determined protocol.
@@ -48,7 +46,11 @@ pub struct BindProtocol<C, B> {
 ///   new service.
 /// - If there is an error in the inner service (such as a connect error), we
 ///   need to throw it away and bind a new service.
-pub struct BoundService<B: tower_h2::Body + 'static> {
+pub struct BoundService<B>
+where
+    B: tower_h2::Body + Send + 'static,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
+{
     bind: Bind<Arc<ctx::Proxy>, B>,
     binding: Binding<B>,
     /// Prevents logging repeated connect errors.
@@ -66,7 +68,11 @@ pub struct BoundService<B: tower_h2::Body + 'static> {
 /// request.
 ///
 /// `Bound` serivces may be used to process an arbitrary number of requests.
-enum Binding<B: tower_h2::Body + 'static> {
+pub enum Binding<B>
+where
+    B: tower_h2::Body + Send + 'static,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
+{
     Bound(Stack<B>),
     BindsPerRequest {
         // When `poll_ready` is called, the _next_ service to be used may be bound
@@ -155,9 +161,8 @@ impl Error for BufferSpawnError {
 }
 
 impl<B> Bind<(), B> {
-    pub fn new(executor: Handle) -> Self {
+    pub fn new() -> Self {
         Self {
-            executor,
             ctx: (),
             sensors: telemetry::Sensors::null(),
             req_ids: Default::default(),
@@ -176,7 +181,6 @@ impl<B> Bind<(), B> {
         Bind {
             ctx,
             sensors: self.sensors,
-            executor: self.executor,
             req_ids: self.req_ids,
             _p: PhantomData,
         }
@@ -188,23 +192,16 @@ impl<C: Clone, B> Clone for Bind<C, B> {
         Self {
             ctx: self.ctx.clone(),
             sensors: self.sensors.clone(),
-            executor: self.executor.clone(),
             req_ids: self.req_ids.clone(),
             _p: PhantomData,
         }
     }
 }
 
-
-impl<C, B> Bind<C, B> {
-    pub fn executor(&self) -> &Handle {
-        &self.executor
-    }
-}
-
 impl<B> Bind<Arc<ctx::Proxy>, B>
 where
-    B: tower_h2::Body + 'static,
+    B: tower_h2::Body + Send + 'static,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
     fn bind_stack(&self, ep: &Endpoint, protocol: &Protocol) -> Stack<B> {
         debug!("bind_stack endpoint={:?}, protocol={:?}", ep, protocol);
@@ -217,14 +214,13 @@ where
 
         // Map a socket address to a connection.
         let connect = self.sensors.connect(
-            transport::Connect::new(addr, &self.executor),
+            transport::Connect::new(addr),
             &client_ctx,
         );
 
         let client = transparency::Client::new(
             protocol,
             connect,
-            self.executor.clone()
         );
 
         let sensors = self.sensors.http(
@@ -276,7 +272,8 @@ impl<C, B> Bind<C, B> {
 
 impl<B> control::destination::Bind for BindProtocol<Arc<ctx::Proxy>, B>
 where
-    B: tower_h2::Body + 'static,
+    B: tower_h2::Body + Send + 'static,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
     type Endpoint = Endpoint;
     type Request = http::Request<B>;
@@ -353,15 +350,23 @@ where
     }
 
     fn call(&mut self, mut request: S::Request) -> Self::Future {
-        if request.version() != http::Version::HTTP_2 {
-            h1::normalize_our_view_of_uri(&mut request, self.was_absolute_form);
+        if request.version() != http::Version::HTTP_2 &&
+            // Skip normalizing the URI if it was received in
+            // absolute form.
+            !self.was_absolute_form
+        {
+            h1::normalize_our_view_of_uri(&mut request);
         }
         self.inner.call(request)
     }
 }
 // ===== impl Binding =====
 
-impl<B: tower_h2::Body + 'static> tower::Service for BoundService<B> {
+impl<B> tower::Service for BoundService<B>
+where
+    B: tower_h2::Body + Send + 'static,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
+{
     type Request = <Stack<B> as tower::Service>::Request;
     type Response = <Stack<B> as tower::Service>::Response;
     type Error = <Stack<B> as tower::Service>::Error;
@@ -449,7 +454,6 @@ impl<B: tower_h2::Body + 'static> tower::Service for BoundService<B> {
 
 
 impl Protocol {
-
     pub fn detect<B>(req: &http::Request<B>) -> Self {
         if req.version() == http::Version::HTTP_2 {
             return Protocol::Http2

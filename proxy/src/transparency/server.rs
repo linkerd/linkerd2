@@ -7,8 +7,8 @@ use futures::Future;
 use http;
 use hyper;
 use indexmap::IndexSet;
-use tokio_core::reactor::Handle;
-use tokio_io::{AsyncRead, AsyncWrite};
+use tokio::executor::{Executor, DefaultExecutor};
+use tokio::io::{AsyncRead, AsyncWrite};
 use tower_service::NewService;
 use tower_h2;
 
@@ -16,6 +16,7 @@ use connection::{Connection, Peek};
 use ctx::Proxy as ProxyCtx;
 use ctx::transport::{Server as ServerCtx};
 use drain;
+use task::LazyExecutor;
 use telemetry::Sensors;
 use transport::GetOriginalDst;
 use super::glue::{HttpBody, HttpBodyNewSvc, HyperServerSvc};
@@ -35,10 +36,9 @@ where
 {
     disable_protocol_detection_ports: IndexSet<u16>,
     drain_signal: drain::Watch,
-    executor: Handle,
     get_orig_dst: G,
-    h1: hyper::server::Http,
-    h2: tower_h2::Server<HttpBodyNewSvc<S>, Handle, B>,
+    h1: hyper::server::conn::Http,
+    h2: tower_h2::Server<HttpBodyNewSvc<S>, LazyExecutor, B>,
     listen_addr: SocketAddr,
     new_service: S,
     proxy_ctx: Arc<ProxyCtx>,
@@ -51,14 +51,23 @@ where
     S: NewService<
         Request = http::Request<HttpBody>,
         Response = http::Response<B>
-    > + Clone + 'static,
+    > + Clone + Send + 'static,
     S::Future: 'static,
+    <S as NewService>::Service: Send,
     S::Error: fmt::Debug,
+    <<S as NewService>::Service as ::tower_service::Service>::Future: Send,
     S::InitError: fmt::Debug,
+    S::Future: Send + 'static,
     B: tower_h2::Body + 'static,
+    S::Error: Send + fmt::Debug,
+    S::InitError: Send + fmt::Debug,
+    B: tower_h2::Body + Send + Default + 'static,
+    B::Data: Send,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
     G: GetOriginalDst,
 {
-    /// Creates a new `Server`.
+
+   /// Creates a new `Server`.
     pub fn new(
         listen_addr: SocketAddr,
         proxy_ctx: Arc<ProxyCtx>,
@@ -68,17 +77,19 @@ where
         tcp_connect_timeout: Duration,
         disable_protocol_detection_ports: IndexSet<u16>,
         drain_signal: drain::Watch,
-        executor: Handle,
     ) -> Self {
         let recv_body_svc = HttpBodyNewSvc::new(stack.clone());
-        let tcp = tcp::Proxy::new(tcp_connect_timeout, sensors.clone(), &executor);
+        let tcp = tcp::Proxy::new(tcp_connect_timeout, sensors.clone());
         Server {
             disable_protocol_detection_ports,
             drain_signal,
-            executor: executor.clone(),
             get_orig_dst,
-            h1: hyper::server::Http::new(),
-            h2: tower_h2::Server::new(recv_body_svc, Default::default(), executor),
+            h1: hyper::server::conn::Http::new(),
+            h2: tower_h2::Server::new(
+                recv_body_svc,
+                Default::default(),
+                LazyExecutor,
+            ),
             listen_addr,
             new_service: stack,
             proxy_ctx,
@@ -126,7 +137,10 @@ where
                 srv_ctx,
                 self.drain_signal.clone(),
             );
-            self.executor.spawn(fut);
+
+            DefaultExecutor::current()
+                .spawn(fut)
+                .expect("spawn TCP server task");
             return;
         }
 
@@ -138,7 +152,7 @@ where
         let drain_signal = self.drain_signal.clone();
         let fut = io.peek()
             .map_err(|e| debug!("peek error: {}", e))
-            .and_then(move |io| -> Box<Future<Item=(), Error=()>> {
+            .and_then(move |io| -> Box<Future<Item=(), Error=()> + Send> {
                 if let Some(proto) = Protocol::detect(io.peeked()) {
                     match proto {
                         Protocol::Http1 => {
@@ -150,7 +164,7 @@ where
                                     let svc = HyperServerSvc::new(s, srv_ctx);
                                     drain_signal
                                         .watch(h1.serve_connection(io, svc), |conn| {
-                                            conn.disable_keep_alive();
+                                            conn.graceful_shutdown();
                                         })
                                         .map(|_| ())
                                         .map_err(|e| trace!("http1 server error: {:?}", e))
@@ -183,16 +197,18 @@ where
                 }
             });
 
-        self.executor.spawn(fut);
+        DefaultExecutor::current()
+            .spawn(Box::new(fut))
+            .expect("spawn transparent server task")
     }
 }
 
-fn tcp_serve<T: AsyncRead + AsyncWrite + 'static>(
+fn tcp_serve<T: AsyncRead + AsyncWrite + Send + 'static>(
     tcp: &tcp::Proxy,
     io: T,
     srv_ctx: Arc<ServerCtx>,
     drain_signal: drain::Watch,
-) -> Box<Future<Item=(), Error=()>> {
+) -> Box<Future<Item=(), Error=()> + Send + 'static> {
     let fut = tcp.serve(io, srv_ctx);
 
     // There's nothing to do when drain is signaled, we just have to hope

@@ -9,6 +9,7 @@ use futures::future::Either;
 use h2;
 use http;
 use hyper;
+use hyper::client::connect as hyper_connect;
 use tokio_connect::Connect;
 use tower_service::{Service, NewService};
 use tower_h2;
@@ -27,12 +28,7 @@ pub enum HttpBody {
 #[derive(Debug)]
 pub(super) struct BodyStream<B> {
     body: B,
-    poll_trailers: bool,
 }
-
-/// Glue for the `Data` part of a `tower_h2::Body` to be used as an `AsRef` in `BodyStream`.
-#[derive(Debug)]
-pub(super) struct BufAsRef<B>(B);
 
 /// Glue for a `tower::Service` to used as a `hyper::server::Service`.
 #[derive(Debug)]
@@ -67,11 +63,13 @@ pub(super) struct HttpBodyNewSvcFuture<F> {
 #[derive(Debug, Clone)]
 pub(super) struct HyperConnect<C> {
     connect: C,
+    absolute_form: bool,
 }
 
 /// Future returned by `HyperConnect`.
 pub(super) struct HyperConnectFuture<F> {
     inner: F,
+    absolute_form: bool,
 }
 
 // ===== impl HttpBody =====
@@ -111,6 +109,28 @@ impl tower_h2::Body for HttpBody {
     }
 }
 
+impl hyper::body::Payload for HttpBody {
+    type Data = <Bytes as IntoBuf>::Buf;
+    type Error = h2::Error;
+
+    fn is_end_stream(&self) -> bool {
+        tower_h2::Body::is_end_stream(self)
+    }
+
+    fn poll_data(&mut self) -> Poll<Option<Self::Data>, h2::Error> {
+        tower_h2::Body::poll_data(self).map(|async| {
+            async.map(|opt|
+                opt.map(Bytes::into_buf)
+            )
+        })
+    }
+
+    fn poll_trailers(&mut self) -> Poll<Option<http::HeaderMap>, h2::Error> {
+        tower_h2::Body::poll_trailers(self)
+    }
+}
+
+
 impl Default for HttpBody {
     fn default() -> HttpBody {
         HttpBody::Http2(Default::default())
@@ -124,57 +144,37 @@ impl<B> BodyStream<B> {
     pub fn new(body: B) -> Self {
         BodyStream {
             body,
-            poll_trailers: false,
         }
     }
 }
 
-impl<B> Stream for BodyStream<B>
+impl<B> hyper::body::Payload for BodyStream<B>
 where
-    B: tower_h2::Body,
+    B: tower_h2::Body + Send + 'static,
+    <B::Data as IntoBuf>::Buf: Send,
 {
-    type Item = BufAsRef<<B::Data as ::bytes::IntoBuf>::Buf>;
-    type Error = hyper::Error;
+    type Data = <B::Data as IntoBuf>::Buf;
+    type Error = h2::Error;
 
-    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-        loop {
-            if self.poll_trailers {
-                return match self.body.poll_trailers() {
-                    // we don't care about actual trailers, just that the poll
-                    // was ready. now we can tell hyper the stream is done
-                    Ok(Async::Ready(_)) => Ok(Async::Ready(None)),
-                    Ok(Async::NotReady) => Ok(Async::NotReady),
-                    Err(e) => {
-                        trace!("h2 trailers error: {:?}", e);
-                        Err(hyper::Error::Io(io::ErrorKind::Other.into()))
-                    }
-                };
-            } else {
-                match self.body.poll_data() {
-                    Ok(Async::Ready(Some(buf))) => return Ok(Async::Ready(Some(BufAsRef(buf.into_buf())))),
-                    Ok(Async::Ready(None)) => {
-                        // when the data is empty, even though hyper can't use the trailers,
-                        // we need to poll for them, to allow the stream to mark itself as
-                        // completed successfully.
-                        self.poll_trailers = true;
-                    },
-                    Ok(Async::NotReady) => return Ok(Async::NotReady),
-                    Err(e) => {
-                        trace!("h2 body error: {:?}", e);
-                        return Err(hyper::Error::Io(io::ErrorKind::Other.into()))
-                    }
-                }
-            }
-        }
+    #[inline]
+    fn poll_data(&mut self) -> Poll<Option<Self::Data>, Self::Error> {
+        self.body.poll_data().map(|async| {
+            async.map(|opt|
+                opt.map(B::Data::into_buf)
+            )
+        })
     }
-}
 
-// ===== impl BufAsRef =====
-
-impl<B: ::bytes::Buf> AsRef<[u8]> for BufAsRef<B> {
-    fn as_ref(&self) -> &[u8] {
-        ::bytes::Buf::bytes(&self.0)
+    #[inline]
+    fn is_end_stream(&self) -> bool {
+        self.body.is_end_stream()
     }
+
+    #[inline]
+    fn poll_trailers(&mut self) -> Poll<Option<http::HeaderMap>, Self::Error> {
+        self.body.poll_trailers()
+    }
+
 }
 
 // ===== impl HyperServerSvc =====
@@ -188,33 +188,34 @@ impl<S> HyperServerSvc<S> {
     }
 }
 
-impl<S, B> hyper::server::Service for HyperServerSvc<S>
+impl<S, B> hyper::service::Service for HyperServerSvc<S>
 where
     S: Service<
         Request=http::Request<HttpBody>,
         Response=http::Response<B>,
     >,
     S::Error: fmt::Debug,
-    B: tower_h2::Body + 'static,
+    B: tower_h2::Body + Default + Send + 'static,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
-    type Request = hyper::server::Request;
-    type Response = hyper::server::Response<BodyStream<B>>;
-    type Error = hyper::Error;
+    type ReqBody = hyper::Body;
+    type ResBody = BodyStream<B>;
+    type Error = h2::Error;
     type Future = Either<
         HyperServerSvcFuture<S::Future>,
-        future::FutureResult<Self::Response, Self::Error>,
+        future::FutureResult<http::Response<Self::ResBody>, Self::Error>,
     >;
 
-    fn call(&self, req: Self::Request) -> Self::Future {
-        if let &hyper::Method::Connect = req.method() {
+    fn call(&mut self, req: http::Request<Self::ReqBody>) -> Self::Future {
+        if let &hyper::Method::CONNECT = req.method() {
             debug!("HTTP/1.1 CONNECT not supported");
-            let res = hyper::Response::new()
-                .with_status(hyper::StatusCode::BadGateway);
+            let res = hyper::Response::builder()
+                .status(hyper::StatusCode::BAD_GATEWAY)
+                .body(BodyStream::new(Default::default()))
+                .expect("building response with empty body should not error!");
             return Either::B(future::ok(res));
-
         }
-
-        let mut req: http::Request<hyper::Body> = req.into();
+        let mut req = req;
         req.extensions_mut().insert(self.srv_ctx.clone());
 
         h1::strip_connection_headers(req.headers_mut());
@@ -232,13 +233,13 @@ where
     F: Future<Item=http::Response<B>>,
     F::Error: fmt::Debug,
 {
-    type Item = hyper::server::Response<BodyStream<B>>;
-    type Error = hyper::Error;
+    type Item = hyper::Response<BodyStream<B>>;
+    type Error = h2::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         let mut res = try_ready!(self.inner.poll().map_err(|e| {
             debug!("h2 error: {:?}", e);
-            hyper::Error::Io(io::ErrorKind::Other.into())
+            h2::Error::from(io::Error::from(io::ErrorKind::Other))
         }));
 
         h1::strip_connection_headers(res.headers_mut());
@@ -320,26 +321,28 @@ where
     C: Connect,
     C::Future: 'static,
 {
-    pub fn new(connect: C) -> Self {
+    pub fn new(connect: C, absolute_form: bool) -> Self {
         HyperConnect {
             connect,
+            absolute_form,
         }
     }
 }
 
-impl<C> hyper::client::Service for HyperConnect<C>
+impl<C> hyper_connect::Connect for HyperConnect<C>
 where
-    C: Connect,
-    C::Future: 'static,
+    C: Connect + Send + Sync,
+    C::Future: Send + 'static,
+    C::Connected: Send + 'static,
 {
-    type Request = hyper::Uri;
-    type Response = C::Connected;
+    type Transport = C::Connected;
     type Error = io::Error;
     type Future = HyperConnectFuture<C::Future>;
 
-    fn call(&self, _uri: Self::Request) -> Self::Future {
+    fn connect(&self, _dst: hyper_connect::Destination) -> Self::Future {
         HyperConnectFuture {
             inner: self.connect.connect(),
+            absolute_form: self.absolute_form,
         }
     }
 }
@@ -348,11 +351,16 @@ impl<F> Future for HyperConnectFuture<F>
 where
     F: Future,
 {
-    type Item = F::Item;
+    type Item = (F::Item, hyper_connect::Connected);
     type Error = io::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        self.inner.poll()
-            .map_err(|_| io::ErrorKind::Other.into())
+        let transport = try_ready!(
+            self.inner.poll()
+                .map_err(|_| io::Error::from(io::ErrorKind::Other))
+        );
+        let connected = hyper_connect::Connected::new()
+            .proxy(self.absolute_form);
+        Ok(Async::Ready((transport, connected)))
     }
 }

@@ -15,8 +15,8 @@ pub extern crate http;
 extern crate hyper;
 pub extern crate net2;
 extern crate prost;
+extern crate tokio;
 extern crate tokio_connect;
-extern crate tokio_core;
 pub extern crate tokio_io;
 extern crate tower_h2;
 extern crate tower_grpc;
@@ -30,12 +30,17 @@ pub use std::time::Duration;
 
 pub use self::bytes::Bytes;
 pub use self::conduit_proxy::*;
-pub use self::futures::*;
+pub use self::conduit_proxy::task::LazyExecutor;
+pub use self::futures::{future::Executor, *,};
 pub use self::futures::sync::oneshot;
 pub use self::http::{HeaderMap, Request, Response, StatusCode};
+use self::tokio::{
+    executor::current_thread,
+    net::{TcpListener, TcpStream},
+    runtime,
+    reactor,
+};
 use self::tokio_connect::Connect;
-use self::tokio_core::net::{TcpListener, TcpStream};
-use self::tokio_core::reactor::{Core, Handle};
 use self::tower_h2::{Body, RecvBody};
 use self::tower_grpc as grpc;
 use self::tower_service::{NewService, Service};

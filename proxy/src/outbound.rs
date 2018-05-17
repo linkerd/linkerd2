@@ -17,6 +17,7 @@ use bind::{self, Bind, Protocol};
 use control;
 use control::destination::{Bind as BindTrait, Resolution};
 use ctx;
+use task::LazyExecutor;
 use timeout::Timeout;
 use transparency::h1;
 use transport::{DnsNameAndPort, Host, HostAndPort};
@@ -43,7 +44,7 @@ pub enum Destination {
 impl<B> Outbound<B> {
     pub fn new(bind: Bind<Arc<ctx::Proxy>, B>,
                discovery: control::Control,
-               bind_timeout: Duration,)
+               bind_timeout: Duration)
                -> Outbound<B> {
         Self {
             bind,
@@ -55,7 +56,8 @@ impl<B> Outbound<B> {
 
 impl<B> Clone for Outbound<B>
 where
-    B: tower_h2::Body + 'static,
+    B: tower_h2::Body + Send + 'static,
+    B::Data: Send,
 {
     fn clone(&self) -> Self {
         Self {
@@ -68,7 +70,8 @@ where
 
 impl<B> Recognize for Outbound<B>
 where
-    B: tower_h2::Body + 'static,
+    B: tower_h2::Body + Send + 'static,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
     type Request = http::Request<B>;
     type Response = bind::HttpResponse;
@@ -148,16 +151,16 @@ where
 
         let loaded = tower_balance::load::WithPendingRequests::new(resolve);
 
+
+        // We can't use `rand::thread_rng` here because the returned `Service`
+        // needs to be `Send`, so instead, we use `LazyRng`, which calls
+        // `rand::thread_rng()` when it is *used*.
         let balance = tower_balance::power_of_two_choices(loaded, LazyThreadRng);
 
-        // use the same executor as the underlying `Bind` for the `Buffer` and
-        // `Timeout`.
-        let handle = self.bind.executor();
-
-        let buffer = Buffer::new(balance, handle)
+        let buffer = Buffer::new(balance, &LazyExecutor)
             .map_err(|_| bind::BufferSpawnError::Outbound)?;
 
-        let timeout = Timeout::new(buffer, self.bind_timeout, handle);
+        let timeout = Timeout::new(buffer, self.bind_timeout);
 
         Ok(InFlightLimit::new(timeout, MAX_IN_FLIGHT))
 
@@ -171,7 +174,8 @@ pub enum Discovery<B> {
 
 impl<B> Discover for Discovery<B>
 where
-    B: tower_h2::Body + 'static,
+    B: tower_h2::Body + Send + 'static,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
     type Key = SocketAddr;
     type Request = http::Request<B>;

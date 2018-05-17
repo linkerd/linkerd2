@@ -1,14 +1,14 @@
 use futures::prelude::*;
 use std::fmt;
 use std::net::IpAddr;
-use std::time::Duration;
-use tokio_core::reactor::{Handle, Timeout};
+use std::time::{Instant, Duration};
+use tokio::timer::Delay;
 use transport;
 use trust_dns_resolver;
 use trust_dns_resolver::config::{ResolverConfig, ResolverOpts};
 use trust_dns_resolver::error::{ResolveError, ResolveErrorKind};
 use trust_dns_resolver::ResolverFuture;
-use trust_dns_resolver::lookup_ip::{LookupIp, LookupIpFuture};
+use trust_dns_resolver::lookup_ip::LookupIp;
 
 #[derive(Clone, Debug)]
 pub struct Config {
@@ -19,11 +19,10 @@ pub struct Config {
 #[derive(Clone, Debug)]
 pub struct Resolver {
     config: Config,
-    executor: Handle,
 }
 
 pub enum IpAddrFuture {
-    DNS(LookupIpFuture),
+    DNS(Box<Future<Item = LookupIp, Error = ResolveError>>),
     Fixed(IpAddr),
 }
 
@@ -78,10 +77,9 @@ impl Config {
 }
 
 impl Resolver {
-    pub fn new(config: Config, executor: &Handle) -> Self {
+    pub fn new(config: Config) -> Self {
         Resolver {
             config,
-            executor: executor.clone(),
         }
     }
 
@@ -89,7 +87,7 @@ impl Resolver {
         match *host {
             transport::Host::DnsName(ref name) => {
                 trace!("resolve_one_ip {}", name);
-                IpAddrFuture::DNS(self.clone().lookup_ip(name))
+                IpAddrFuture::DNS(Box::new(self.clone().lookup_ip(name)))
             }
             transport::Host::Ip(addr) => IpAddrFuture::Fixed(addr),
         }
@@ -100,8 +98,7 @@ impl Resolver {
         let name_clone = name.clone();
         trace!("resolve_all_ips {}", &name);
         let resolver = self.clone();
-        let f = Timeout::new(delay, &resolver.executor)
-            .expect("Timeout::new() won't fail")
+        let f = Delay::new(Instant::now() + delay)
             .then(move |_| {
                 trace!("resolve_all_ips {} after delay", &name);
                 resolver.lookup_ip(&name)
@@ -124,12 +121,15 @@ impl Resolver {
 
     // `ResolverFuture` can only be used for one lookup, so we have to clone all
     // the state during each resolution.
-    fn lookup_ip(self, &Name(ref name): &Name) -> LookupIpFuture {
+    fn lookup_ip(self, &Name(ref name): &Name)
+        -> impl Future<Item = LookupIp, Error = ResolveError>
+    {
+        let name = name.clone(); // TODO: ref-count names.
         let resolver = ResolverFuture::new(
             self.config.config,
-            self.config.opts,
-            &self.executor);
-        resolver.lookup_ip(name)
+            self.config.opts
+        );
+        resolver.and_then(move |r| r.lookup_ip(name.as_str()))
     }
 }
 

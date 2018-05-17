@@ -1,6 +1,5 @@
 use futures::Future;
 use tokio_connect;
-use tokio_core::reactor::Handle;
 
 use std::io;
 use std::net::{IpAddr, SocketAddr};
@@ -14,7 +13,6 @@ use dns;
 #[derive(Debug, Clone)]
 pub struct Connect {
     addr: SocketAddr,
-    handle: Handle,
 }
 
 #[derive(Clone, Debug)]
@@ -49,7 +47,6 @@ pub enum HostAndPortError {
 pub struct LookupAddressAndConnect {
     host_and_port: HostAndPort,
     dns_resolver: dns::Resolver,
-    handle: Handle,
 }
 
 // ===== impl HostAndPort =====
@@ -84,11 +81,10 @@ impl<'a> From<&'a HostAndPort> for http::uri::Authority {
 // ===== impl Connect =====
 
 impl Connect {
-    /// Returns a `Connect` to `addr` and `handle`.
-    pub fn new(addr: SocketAddr, handle: &Handle) -> Self {
+    /// Returns a `Connect` to `addr`.
+    pub fn new(addr: SocketAddr) -> Self {
         Self {
             addr,
-            handle: handle.clone(),
         }
     }
 }
@@ -99,7 +95,7 @@ impl tokio_connect::Connect for Connect {
     type Future = connection::Connecting;
 
     fn connect(&self) -> Self::Future {
-        connection::connect(&self.addr, &self.handle)
+        connection::connect(&self.addr)
     }
 }
 
@@ -109,12 +105,10 @@ impl LookupAddressAndConnect {
     pub fn new(
         host_and_port: HostAndPort,
         dns_resolver: dns::Resolver,
-        handle: &Handle,
     ) -> Self {
         Self {
             host_and_port,
             dns_resolver,
-            handle: handle.clone(),
         }
     }
 }
@@ -126,7 +120,6 @@ impl tokio_connect::Connect for LookupAddressAndConnect {
 
     fn connect(&self) -> Self::Future {
         let port = self.host_and_port.port;
-        let handle = self.handle.clone();
         let host = self.host_and_port.host.clone();
         let c = self.dns_resolver
             .resolve_one_ip(&self.host_and_port.host)
@@ -137,7 +130,7 @@ impl tokio_connect::Connect for LookupAddressAndConnect {
                 info!("DNS resolved {:?} to {}", host, ip_addr);
                 let addr = SocketAddr::from((ip_addr, port));
                 trace!("connect {}", addr);
-                connection::connect(&addr, &handle)
+                connection::connect(&addr)
             });
         Box::new(c)
     }

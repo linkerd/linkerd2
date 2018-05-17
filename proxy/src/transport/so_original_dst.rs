@@ -1,5 +1,5 @@
 use std::net::SocketAddr;
-use tokio_core::net::TcpStream;
+use tokio::net::TcpStream;
 
 /// A generic way to get the original destination address of a socket.
 ///

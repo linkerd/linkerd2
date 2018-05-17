@@ -8,7 +8,6 @@ use std::fmt;
 use std::iter::IntoIterator;
 use std::net::SocketAddr;
 use std::time::Duration;
-use tokio_core::reactor::Handle;
 use tower_grpc as grpc;
 use tower_h2::{BoxBody, HttpService, RecvBody};
 
@@ -79,13 +78,13 @@ impl Config {
     }
 
     /// Bind this handle to start talking to the controller API.
-    pub fn process<T>(self, executor: &Handle) -> Process<T>
+    pub fn process<T>(self) -> Process<T>
     where
         T: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>,
         T::Error: fmt::Debug,
     {
         Process {
-            dns_resolver: dns::Resolver::new(self.dns_config, executor),
+            dns_resolver: dns::Resolver::new(self.dns_config),
             default_destination_namespace: self.default_destination_namespace,
             destinations: HashMap::new(),
             reconnects: VecDeque::new(),

@@ -1,11 +1,16 @@
 use support::*;
 
-use std::cell::RefCell;
 use std::io;
+use std::cell::RefCell;
 
-use self::futures::sync::{mpsc, oneshot};
-use self::tokio_core::net::TcpStream;
-use self::tokio_io::{AsyncRead, AsyncWrite};
+use self::futures::{
+    future::Executor,
+    sync::{mpsc, oneshot},
+};
+use self::tokio::{
+    net::TcpStream,
+    io::{AsyncRead, AsyncWrite},
+};
 
 type Request = http::Request<()>;
 type Response = http::Response<BodyStream>;
@@ -115,28 +120,31 @@ fn run(addr: SocketAddr, version: Run) -> (Sender, Running) {
     let (tx, rx) = mpsc::unbounded::<(Request, oneshot::Sender<Result<Response, String>>)>();
     let (running_tx, running_rx) = running();
 
-    ::std::thread::Builder::new().name("support client".into()).spawn(move || {
-        let mut core = Core::new().expect("client core new");
-        let reactor = core.handle();
+    ::std::thread::Builder::new()
+        .name("support client".into())
+        .spawn(move || {
+        let mut runtime = runtime::current_thread::Runtime::new()
+            .expect("initialize support client runtime");
 
+        let absolute_uris = if let Run::Http1 { absolute_uris } = version {
+            absolute_uris
+        } else {
+            false
+        };
         let conn = Conn {
             addr,
-            handle: reactor.clone(),
             running: RefCell::new(Some(running_tx)),
+            absolute_uris,
         };
 
         let work: Box<Future<Item=(), Error=()>> = match version {
-            Run::Http1 { absolute_uris } => {
-                let client = hyper::Client::configure()
-                    .connector(conn)
-                    .build(&reactor);
+            Run::Http1 { .. } => {
+                let client = hyper::Client::builder()
+                    .build::<Conn, hyper::Body>(conn);
                 Box::new(rx.for_each(move |(req, cb)| {
-                    let mut req = hyper::Request::from(req.map(|()| hyper::Body::empty()));
-                    if !req.headers().has::<hyper::header::ContentLength>() {
-                        assert!(req.body_mut().take().unwrap().is_empty());
-                    }
-                    if absolute_uris {
-                        req.set_proxy(true);
+                    let req = req.map(|_| hyper::Body::empty());
+                    if req.headers().get(http::header::CONTENT_LENGTH).is_none() {
+                        // assert!(req.body_mut().take().unwrap().is_empty());
                     }
                     let fut = client.request(req).then(move |result| {
                         let result = result
@@ -151,16 +159,16 @@ fn run(addr: SocketAddr, version: Run) -> (Sender, Running) {
                         let _ = cb.send(result);
                         Ok(())
                     });
-                    reactor.spawn(fut);
-                    Ok(())
+                    current_thread::TaskExecutor::current().execute(fut)
+                        .map_err(|e| println!("client spawn error: {:?}", e))
                 })
                     .map_err(|e| println!("client error: {:?}", e)))
             },
             Run::Http2 => {
-                let connect = tower_h2::client::Connect::<Conn, Handle, ()>::new(
+                let connect = tower_h2::client::Connect::new(
                     conn,
                     Default::default(),
-                    reactor.clone(),
+                    LazyExecutor,
                 );
 
                 Box::new(connect.new_service()
@@ -178,8 +186,8 @@ fn run(addr: SocketAddr, version: Run) -> (Sender, Running) {
                                 let _ = cb.send(result);
                                 Ok(())
                             });
-                            reactor.spawn(fut);
-                            Ok(())
+                            current_thread::TaskExecutor::current().execute(fut)
+                                .map_err(|e| println!("client spawn error: {:?}", e))
                         })
                     })
                     .map(|_| ())
@@ -187,8 +195,8 @@ fn run(addr: SocketAddr, version: Run) -> (Sender, Running) {
             }
         };
 
-        core.run(work).expect("support client core run");
-    }).expect("support client thread spawn");
+        runtime.block_on(work).expect("support client runtime");
+    }).unwrap();
     (tx, running_rx)
 }
 
@@ -196,18 +204,18 @@ fn run(addr: SocketAddr, version: Run) -> (Sender, Running) {
 /// when all connections are finally closed.
 struct Conn {
     addr: SocketAddr,
-    handle: Handle,
     /// When this Sender drops, that should mean the connection is closed.
     running: RefCell<Option<oneshot::Sender<()>>>,
+    absolute_uris: bool,
 }
 
 impl Conn {
-    fn connect_(&self) -> Box<Future<Item = RunningIo, Error = ::std::io::Error>> {
+    fn connect_(&self) -> Box<Future<Item = RunningIo, Error = ::std::io::Error> + Send> {
         let running = self.running
             .borrow_mut()
             .take()
             .expect("connected more than once");
-        let c = TcpStream::connect(&self.addr, &self.handle)
+        let c = TcpStream::connect(&self.addr)
             .and_then(|tcp| tcp.set_nodelay(true).map(move |_| tcp))
             .map(move |tcp| RunningIo {
                 inner: tcp,
@@ -227,15 +235,25 @@ impl Connect for Conn {
     }
 }
 
-impl hyper::client::Service for Conn {
-    type Request = hyper::Uri;
-    type Response = RunningIo;
-    type Future = Box<Future<Item = Self::Response, Error = ::std::io::Error>>;
+impl hyper::client::connect::Connect for Conn {
+    type Transport = RunningIo;
+    type Future = Box<Future<
+        Item = (Self::Transport, hyper::client::connect::Connected),
+        Error = ::std::io::Error,
+    > + Send>;
     type Error = ::std::io::Error;
-    fn call(&self, _: hyper::Uri) -> <Self as hyper::client::Service>::Future {
-        self.connect_()
+    fn connect(&self, _: hyper::client::connect::Destination) -> Self::Future {
+        let connected = hyper::client::connect::Connected::new()
+            .proxy(self.absolute_uris);
+        Box::new(self.connect_().map(|t| (t, connected)))
     }
 }
+
+// Hyper requires that implementors of `Connect` be `Sync`; and the `RefCell`
+// in `Conn` makes it `!Sync`. However, since we're using the current thread
+// executor, we know this type will never be sent between threads.
+// TODO: I would really prefer to not have to do this.
+unsafe impl Sync for Conn {}
 
 /// A wrapper around a TcpStream, allowing us to signal when the connection
 /// is dropped.

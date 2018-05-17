@@ -6,17 +6,13 @@ use bytes::Bytes;
 use futures::{future, Async, Future, Poll};
 use h2;
 use http;
-use tokio_core::reactor::{
-    Handle,
-    // TODO: would rather just have Backoff in a separate file so this
-    //       renaming import is not necessary.
-    Timeout as ReactorTimeout
-};
+use tokio::timer::Delay;
 use tower_service::Service;
 use tower_h2;
 use tower_reconnect::{Error as ReconnectError, Reconnect};
 
 use dns;
+use task::LazyExecutor;
 use transport::{DnsNameAndPort, HostAndPort, LookupAddressAndConnect};
 use timeout::{Timeout, TimeoutError};
 
@@ -70,34 +66,32 @@ impl Background {
         self,
         host_and_port: HostAndPort,
         dns_config: dns::Config,
-        executor: &Handle,
     ) -> Box<Future<Item = (), Error = ()>> {
         // Build up the Controller Client Stack
         let mut client = {
             let ctx = ("controller-client", format!("{:?}", host_and_port));
             let scheme = http::uri::Scheme::from_shared(Bytes::from_static(b"http")).unwrap();
             let authority = http::uri::Authority::from(&host_and_port);
-            let dns_resolver = dns::Resolver::new(dns_config, &executor);
+            let dns_resolver = dns::Resolver::new(dns_config);
             let connect = Timeout::new(
-                LookupAddressAndConnect::new(host_and_port, dns_resolver, executor),
+                LookupAddressAndConnect::new(host_and_port, dns_resolver),
                 Duration::from_secs(3),
-                &executor,
             );
 
             let h2_client = tower_h2::client::Connect::new(
                 connect,
                 h2::client::Builder::default(),
-                ::logging::context_executor(ctx, executor.clone()),
+                ::logging::context_executor(ctx, LazyExecutor),
             );
 
             let reconnect = Reconnect::new(h2_client);
             let log_errors = LogErrors::new(reconnect);
-            let backoff = Backoff::new(log_errors, Duration::from_secs(5), executor);
+            let backoff = Backoff::new(log_errors, Duration::from_secs(5));
             // TODO: Use AddOrigin in tower-http
             AddOrigin::new(scheme, authority, backoff)
         };
 
-        let mut disco = self.disco.process(executor);
+        let mut disco = self.disco.process();
 
         let fut = future::poll_fn(move || {
             disco.poll_rpc(&mut client);
@@ -115,16 +109,16 @@ impl Background {
 //TODO: move to tower-backoff
 struct Backoff<S> {
     inner: S,
-    timer: ReactorTimeout,
+    timer: Delay,
     waiting: bool,
     wait_dur: Duration,
 }
 
 impl<S> Backoff<S> {
-    fn new(inner: S, wait_dur: Duration, handle: &Handle) -> Self {
+    fn new(inner: S, wait_dur: Duration) -> Self {
         Backoff {
             inner,
-            timer: ReactorTimeout::new(wait_dur, handle).unwrap(),
+            timer: Delay::new(Instant::now() + wait_dur),
             waiting: false,
             wait_dur,
         }

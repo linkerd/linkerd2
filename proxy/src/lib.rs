@@ -29,9 +29,8 @@ extern crate prost_types;
 extern crate quickcheck;
 extern crate rand;
 extern crate regex;
+extern crate tokio;
 extern crate tokio_connect;
-extern crate tokio_core;
-extern crate tokio_io;
 extern crate tower_balance;
 extern crate tower_buffer;
 extern crate tower_discover;
@@ -54,7 +53,7 @@ use std::thread;
 use std::time::Duration;
 
 use indexmap::IndexSet;
-use tokio_core::reactor::{Core, Handle};
+use tokio::{executor, runtime::current_thread};
 use tower_service::NewService;
 use tower_fn::*;
 use conduit_proxy_router::{Recognize, Router, Error as RouteError};
@@ -71,6 +70,7 @@ mod inbound;
 mod logging;
 mod map_err;
 mod outbound;
+pub mod task;
 pub mod telemetry;
 mod transparency;
 mod transport;
@@ -82,6 +82,7 @@ use bind::Bind;
 use connection::BoundPort;
 use inbound::Inbound;
 use map_err::MapErr;
+use task::MainRuntime;
 use transparency::{HttpBody, Server};
 pub use transport::{GetOriginalDst, SoOriginalDst};
 use outbound::Outbound;
@@ -109,14 +110,21 @@ pub struct Main<G> {
 
     get_original_dst: G,
 
-    reactor: Core,
+    runtime: MainRuntime,
 }
 
 impl<G> Main<G>
 where
-    G: GetOriginalDst + Clone + 'static,
+    G: GetOriginalDst + Clone + Send + 'static,
 {
-    pub fn new(config: config::Config, get_original_dst: G) -> Self {
+    pub fn new<R>(
+        config: config::Config,
+        get_original_dst: G,
+        runtime: R
+    ) -> Self
+    where
+        R: Into<MainRuntime>,
+    {
 
         let control_listener = BoundPort::new(config.control_listener.addr)
             .expect("controller listener bind");
@@ -125,7 +133,7 @@ where
         let outbound_listener = BoundPort::new(config.private_listener.addr)
             .expect("private listener bind");
 
-        let reactor = Core::new().expect("reactor");
+        let runtime = runtime.into();
 
         let metrics_listener = BoundPort::new(config.metrics_listener.addr)
             .expect("metrics listener bind");
@@ -136,7 +144,7 @@ where
             outbound_listener,
             metrics_listener,
             get_original_dst,
-            reactor,
+            runtime,
         }
     }
 
@@ -153,17 +161,13 @@ where
         self.outbound_listener.local_addr()
     }
 
-    pub fn handle(&self) -> Handle {
-        self.reactor.handle()
-    }
-
     pub fn metrics_addr(&self) -> SocketAddr {
         self.metrics_listener.local_addr()
     }
 
     pub fn run_until<F>(self, shutdown_signal: F)
     where
-        F: Future<Item = (), Error = ()>,
+        F: Future<Item = (), Error = ()> + Send + 'static,
     {
         let process_ctx = ctx::Process::new(&self.config);
 
@@ -174,7 +178,7 @@ where
             outbound_listener,
             metrics_listener,
             get_original_dst,
-            reactor: mut core,
+            mut runtime,
         } = self;
 
         let control_host_and_port = config.control_host_and_port.clone();
@@ -213,10 +217,9 @@ where
 
         let (control, control_bg) = control::new(dns_config.clone(), config.pod_namespace.clone());
 
-        let executor = core.handle();
         let (drain_tx, drain_rx) = drain::channel();
 
-        let bind = Bind::new(executor.clone()).with_sensors(sensors.clone());
+        let bind = Bind::new().with_sensors(sensors.clone());
 
         // Setup the public listener. This will listen on a publicly accessible
         // address and listen for inbound connections that should be forwarded
@@ -242,7 +245,6 @@ where
                 sensors.clone(),
                 get_original_dst.clone(),
                 drain_rx.clone(),
-                &executor,
             );
             ::logging::context_future("inbound", fut)
         };
@@ -267,7 +269,6 @@ where
                 sensors,
                 get_original_dst,
                 drain_rx,
-                &executor,
             );
             ::logging::context_future("outbound", fut)
         };
@@ -281,20 +282,16 @@ where
                 .spawn(move || {
                     use conduit_proxy_controller_grpc::tap::server::TapServer;
 
-                    let mut core = Core::new().expect("initialize controller core");
-                    let executor = core.handle();
+                    let mut rt = current_thread::Runtime::new()
+                        .expect("initialize controller-client thread runtime");
 
                     let (taps, observe) = control::Observe::new(100);
                     let new_service = TapServer::new(observe);
 
-                    let server = serve_control(
-                        control_listener,
-                        new_service,
-                        &executor,
-                    );
+                    let server = serve_control(control_listener, new_service);
 
                     let telemetry = telemetry
-                        .make_control(&taps, &executor)
+                        .make_control(&taps)
                         .expect("bad news in telemetry town");
 
                     let metrics_server = telemetry
@@ -303,7 +300,6 @@ where
                     let client = control_bg.bind(
                         control_host_and_port,
                         dns_config,
-                        &executor
                     );
 
                     let fut = client.join4(
@@ -311,12 +307,16 @@ where
                         telemetry,
                         metrics_server.map_err(|_| {}),
                     ).map(|_| {});
-                    executor.spawn(::logging::context_future("controller-client", fut));
+                    let fut = ::logging::context_future("controller-client", fut);
+
+                    rt.spawn(Box::new(fut));
 
                     let shutdown = controller_shutdown_signal.then(|_| Ok::<(), ()>(()));
-                    core.run(shutdown).expect("controller api");
+                    rt.block_on(shutdown).expect("controller api");
+                    trace!("controller client shutdown finished");
                 })
                 .expect("initialize controller api thread");
+            trace!("controller client thread spawned");
         }
 
         let fut = inbound
@@ -324,12 +324,14 @@ where
             .map(|_| ())
             .map_err(|err| error!("main error: {:?}", err));
 
-        core.handle().spawn(fut);
+        runtime.spawn(Box::new(fut));
+        trace!("main task spawned");
+
         let shutdown_signal = shutdown_signal.and_then(move |()| {
             debug!("shutdown signaled");
             drain_tx.drain()
         });
-        core.run(shutdown_signal).expect("executor");
+        runtime.run_until(shutdown_signal).expect("executor");
         debug!("shutdown complete");
     }
 }
@@ -343,20 +345,24 @@ fn serve<R, B, E, F, G>(
     sensors: telemetry::Sensors,
     get_orig_dst: G,
     drain_rx: drain::Watch,
-    executor: &Handle,
-) -> Box<Future<Item = (), Error = io::Error> + 'static>
+) -> Box<Future<Item = (), Error = io::Error> + Send + 'static>
 where
-    B: tower_h2::Body + Default + 'static,
-    E: Error + 'static,
-    F: Error + 'static,
+    B: tower_h2::Body + Default + Send + 'static,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
+    E: Error + Send + 'static,
+    F: Error + Send + 'static,
     R: Recognize<
         Request = http::Request<HttpBody>,
         Response = http::Response<telemetry::sensor::http::ResponseBody<B>>,
         Error = E,
         RouteError = F,
     >
-        + 'static,
-    G: GetOriginalDst + 'static,
+        + Send + Sync + 'static,
+    R::Key: Send,
+    R::Service: Send,
+    <R::Service as tower_service::Service>::Future: Send,
+    Router<R>: Send,
+    G: GetOriginalDst + Send + 'static,
 {
     let stack = Arc::new(NewServiceFn::new(move || {
         // Clone the router handle
@@ -402,12 +408,10 @@ where
         tcp_connect_timeout,
         disable_protocol_detection_ports,
         drain_rx.clone(),
-        executor.clone(),
     );
 
 
     let accept = bound_port.listen_and_fold(
-        executor,
         (),
         move |(), (connection, remote_addr)| {
             server.serve(connection, remote_addr);
@@ -455,24 +459,40 @@ where
 fn serve_control<N, B>(
     bound_port: BoundPort,
     new_service: N,
-    executor: &Handle,
 ) -> Box<Future<Item = (), Error = io::Error> + 'static>
 where
-    B: tower_h2::Body + 'static,
-    N: NewService<Request = http::Request<tower_h2::RecvBody>, Response = http::Response<B>> + 'static,
+    B: tower_h2::Body + Send + 'static,
+    <B::Data as bytes::IntoBuf>::Buf: Send,
+    N: NewService<
+        Request = http::Request<tower_h2::RecvBody>,
+        Response = http::Response<B>
+    >
+        + Send + 'static,
+    tower_h2::server::Connection<
+        connection::Connection,
+        N,
+        task::LazyExecutor,
+        B,
+        ()
+    >: Future<Item = ()>,
 {
     let h2_builder = h2::server::Builder::default();
-    let server = tower_h2::Server::new(new_service, h2_builder, executor.clone());
+    let server = tower_h2::Server::new(
+        new_service,
+        h2_builder,
+        task::LazyExecutor
+    );
     bound_port.listen_and_fold(
-        executor,
-        (server, executor.clone()),
-        move |(server, executor), (session, _)| {
+        server,
+        move |server, (session, _)| {
             let s = server.serve(session).map_err(|_| ());
+            let s = ::logging::context_future("serve_control", s);
 
-            executor.spawn(::logging::context_future("serve_control", s));
-
-
-            future::ok((server, executor))
+            let r = executor::current_thread::TaskExecutor::current()
+                .spawn_local(Box::new(s))
+                .map(move |_| server)
+                .map_err(task::Error::into_io);
+            future::result(r)
         },
     )
 }
