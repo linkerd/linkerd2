@@ -217,7 +217,11 @@ where
                 panic!("invalid DNS configuration: {:?}", e);
             });
 
-        let (control, control_bg) = control::new(dns_resolver.clone(), config.pod_namespace.clone());
+        let (control, control_bg) = control::new(
+            dns_resolver.clone(),
+            config.pod_namespace.clone(),
+            control_host_and_port
+        );
 
         let (drain_tx, drain_rx) = drain::channel();
 
@@ -294,12 +298,7 @@ where
                     let metrics_server = telemetry
                         .serve_metrics(metrics_listener);
 
-                    let client = control_bg.bind(
-                        control_host_and_port,
-                        dns_resolver,
-                    );
-
-                    let fut = client.join4(
+                    let fut = control_bg.join4(
                         server.map_err(|_| {}),
                         telemetry,
                         metrics_server.map_err(|_| {}),

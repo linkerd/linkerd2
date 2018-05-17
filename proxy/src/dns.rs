@@ -17,7 +17,7 @@ pub struct Resolver {
 }
 
 pub enum IpAddrFuture {
-    DNS(Box<Future<Item = LookupIp, Error = ResolveError>>),
+    DNS(Box<Future<Item = LookupIp, Error = ResolveError> + Send>),
     Fixed(IpAddr),
 }
 
@@ -32,7 +32,7 @@ pub enum Response {
 }
 
 // `Box<Future>` implements `Future` so it doesn't need to be implemented manually.
-pub type IpAddrListFuture = Box<Future<Item=Response, Error=ResolveError>>;
+pub type IpAddrListFuture = Box<Future<Item=Response, Error=ResolveError> + Send>;
 
 /// A DNS name.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]

@@ -28,8 +28,13 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::{Arc, Weak};
 
-use futures::sync::mpsc;
-use futures::{Async, Poll, Stream};
+use futures::{
+    sync::mpsc,
+    Future,
+    Async,
+    Poll,
+    Stream
+};
 use futures_watch::{Store, Watch};
 use http;
 use tower_discover::{Change, Discover};
@@ -37,7 +42,7 @@ use tower_service::Service;
 
 use dns;
 use telemetry::metrics::DstLabels;
-use transport::DnsNameAndPort;
+use transport::{DnsNameAndPort, HostAndPort};
 
 pub mod background;
 mod endpoint;
@@ -134,10 +139,16 @@ pub trait Bind {
 pub fn new(
     dns_resolver: dns::Resolver,
     default_destination_namespace: String,
-) -> (Resolver, background::Config) {
+    host_and_port: HostAndPort,
+) -> (Resolver, impl Future<Item = (), Error = ()>) {
     let (request_tx, rx) = mpsc::unbounded();
     let disco = Resolver { request_tx };
-    let bg = background::Config::new(rx, dns_resolver, default_destination_namespace);
+    let bg = background::task(
+        rx,
+        dns_resolver,
+        default_destination_namespace,
+        host_and_port,
+    );
     (disco, bg)
 }
 

@@ -2,19 +2,16 @@ use std::fmt;
 use std::io;
 use std::time::{Duration, Instant};
 
-use bytes::Bytes;
-use futures::{future, Async, Future, Poll};
-use h2;
+use futures::{Async, Future, Poll};
 use http;
 use tokio::timer::Delay;
 use tower_service::Service;
 use tower_h2;
-use tower_reconnect::{Error as ReconnectError, Reconnect};
+use tower_reconnect::{Error as ReconnectError};
 
 use dns;
-use task::LazyExecutor;
-use transport::{DnsNameAndPort, HostAndPort, LookupAddressAndConnect};
-use timeout::{Timeout, TimeoutError};
+use transport::{DnsNameAndPort, HostAndPort, };
+use timeout::TimeoutError;
 
 mod cache;
 pub mod destination;
@@ -32,20 +29,20 @@ pub struct Control {
     disco: Resolver,
 }
 
-pub struct Background {
-    disco: destination::background::Config,
-}
-
-pub fn new(dns_resolver: dns::Resolver, default_destination_namespace: String) -> (Control, Background)
+pub fn new(
+    dns_resolver: dns::Resolver,
+    default_destination_namespace: String,
+    host_and_port: HostAndPort,
+) -> (Control, impl Future<Item = (), Error = ()>)
 {
-    let (tx, rx) = self::destination::new(dns_resolver, default_destination_namespace);
+    let (tx, b) = self::destination::new(
+        dns_resolver,
+        default_destination_namespace,
+        host_and_port
+    );
 
     let c = Control {
         disco: tx,
-    };
-
-    let b = Background {
-        disco: rx,
     };
 
     (c, b)
@@ -59,48 +56,6 @@ impl Control {
     }
 }
 
-// ===== impl Background =====
-
-impl Background {
-    pub fn bind(
-        self,
-        host_and_port: HostAndPort,
-        dns_resolver: dns::Resolver,
-    ) -> Box<Future<Item = (), Error = ()>> {
-        // Build up the Controller Client Stack
-        let mut client = {
-            let ctx = ("controller-client", format!("{:?}", host_and_port));
-            let scheme = http::uri::Scheme::from_shared(Bytes::from_static(b"http")).unwrap();
-            let authority = http::uri::Authority::from(&host_and_port);
-            let connect = Timeout::new(
-                LookupAddressAndConnect::new(host_and_port, dns_resolver),
-                Duration::from_secs(3),
-            );
-
-            let h2_client = tower_h2::client::Connect::new(
-                connect,
-                h2::client::Builder::default(),
-                ::logging::context_executor(ctx, LazyExecutor),
-            );
-
-            let reconnect = Reconnect::new(h2_client);
-            let log_errors = LogErrors::new(reconnect);
-            let backoff = Backoff::new(log_errors, Duration::from_secs(5));
-            // TODO: Use AddOrigin in tower-http
-            AddOrigin::new(scheme, authority, backoff)
-        };
-
-        let mut disco = self.disco.process();
-
-        let fut = future::poll_fn(move || {
-            disco.poll_rpc(&mut client);
-
-            Ok(Async::NotReady)
-        });
-
-        Box::new(fut)
-    }
-}
 
 // ===== Backoff =====
 
