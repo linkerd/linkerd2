@@ -203,10 +203,12 @@ where
             config.outbound_ports_disable_protocol_detection,
         );
 
+        let (taps, observe) = control::Observe::new(100);
         let (sensors, telemetry) = telemetry::new(
             &process_ctx,
             config.event_buffer_capacity,
             config.metrics_retain_idle,
+            &taps,
         );
 
         let dns_config = dns::Config::from_system_config()
@@ -285,14 +287,9 @@ where
                     let mut rt = current_thread::Runtime::new()
                         .expect("initialize controller-client thread runtime");
 
-                    let (taps, observe) = control::Observe::new(100);
                     let new_service = TapServer::new(observe);
 
                     let server = serve_control(control_listener, new_service);
-
-                    let telemetry = telemetry
-                        .make_control(&taps)
-                        .expect("bad news in telemetry town");
 
                     let metrics_server = telemetry
                         .serve_metrics(metrics_listener);
