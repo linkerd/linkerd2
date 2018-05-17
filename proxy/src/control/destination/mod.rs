@@ -1,5 +1,32 @@
+//! A client for the controller's Destination service.
+//!
+//! This client is split into two primary components: A `Resolver`, that routers use to
+//! initiate service discovery for a given name, and a `background::Process` that
+//! satisfies these resolution requests. These components are separated by a channel so
+//! that the thread responsible for proxying data need not also do this administrative
+//! work of communicating with the control plane.
+//!
+//! The number of active resolutions is not currently bounded by this module. Instead, we
+//! trust that callers of `Resolver` enforce such a constraint (for example, via
+//! `conduit_proxy_router`'s LRU cache). Additionally, users of this module must ensure
+//! they consume resolutions as they are sent so that the response channels don't grow
+//! without bounds.
+//!
+//! Furthermore, there are not currently any bounds on the number of endpoints that may be
+//! returned for a single resolution. It is expected that the Destination service enforce
+//! some reasonable upper bounds.
+//!
+//! ## TODO
+//!
+//! - Given that the underlying gRPC client has some max number of concurrent streams, we
+//!   actually do have an upper bound on concurrent resolutions. This needs to be made
+//!   more explicit.
+//! - We need some means to limit the number of endpoints that can be returned for a
+//!   single resolution so that `control::Cache` is not effectively unbounded.
+
 use std::collections::HashMap;
 use std::net::SocketAddr;
+use std::sync::{Arc, Weak};
 
 use futures::sync::mpsc;
 use futures::{Async, Poll, Stream};
@@ -23,22 +50,43 @@ pub struct Resolver {
     request_tx: mpsc::UnboundedSender<ResolveRequest>,
 }
 
+/// Requests that resolution updaes for `authority` be sent on `responder`.
 #[derive(Debug)]
 struct ResolveRequest {
     authority: DnsNameAndPort,
+    responder: Responder,
+}
+
+/// A handle through which response updates may be sent.
+#[derive(Debug)]
+struct Responder {
+    /// Sends updates from the controller to a `Resolution`.
     update_tx: mpsc::UnboundedSender<Update>,
+
+    /// Indicates whether the corresponding `Resolution` is still active.
+    active: Weak<()>,
 }
 
 /// A `tower_discover::Discover`, given to a `tower_balance::Balance`.
 #[derive(Debug)]
 pub struct Resolution<B> {
+    /// Receives updates from the controller.
     update_rx: mpsc::UnboundedReceiver<Update>,
+
+    /// Allows `Responder` to detect when its `Resolution` has been lost.
+    ///
+    /// `Responder` holds a weak reference to this `Arc` and can determine when this
+    /// reference has been dropped.
+    _active: Arc<()>,
+
     /// Map associating addresses with the `Store` for the watch on that
     /// service's metric labels (as provided by the Destination service).
     ///
     /// This is used to update the `Labeled` middleware on those services
     /// without requiring the service stack to be re-bound.
     metric_labels: HashMap<SocketAddr, Store<Option<DstLabels>>>,
+
+    /// Binds an update endpoint to a Service.
     bind: B,
 }
 
@@ -100,11 +148,15 @@ impl Resolver {
     pub fn resolve<B>(&self, authority: &DnsNameAndPort, bind: B) -> Resolution<B> {
         trace!("resolve; authority={:?}", authority);
         let (update_tx, update_rx) = mpsc::unbounded();
+        let active = Arc::new(());
         let req = {
             let authority = authority.clone();
             ResolveRequest {
                 authority,
-                update_tx,
+                responder: Responder {
+                    update_tx,
+                    active: Arc::downgrade(&active),
+                },
             }
         };
         self.request_tx
@@ -113,6 +165,7 @@ impl Resolver {
 
         Resolution {
             update_rx,
+            _active: active,
             metric_labels: HashMap::new(),
             bind,
         }
@@ -189,6 +242,14 @@ where
                 },
             }
         }
+    }
+}
+
+// ===== impl Responder =====
+
+impl Responder {
+    fn is_active(&self) -> bool {
+        self.active.upgrade().is_some()
     }
 }
 

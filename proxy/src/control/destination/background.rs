@@ -17,7 +17,7 @@ use conduit_proxy_controller_grpc::destination::client::Destination as Destinati
 use conduit_proxy_controller_grpc::destination::update::Update as PbUpdate2;
 use conduit_proxy_controller_grpc::destination::{Update as PbUpdate, WeightedAddr};
 
-use super::{Metadata, ResolveRequest, Update};
+use super::{Metadata, ResolveRequest, Responder, Update};
 use control::cache::{Cache, CacheChange, Exists};
 use control::fully_qualified_authority::FullyQualifiedAuthority;
 use control::remote_stream::{Receiver, Remote};
@@ -60,7 +60,7 @@ struct DestinationSet<T: HttpService<ResponseBody = RecvBody>> {
     addrs: Exists<Cache<SocketAddr, Metadata>>,
     query: Option<DestinationServiceQuery<T>>,
     dns_query: Option<IpAddrListFuture>,
-    txs: Vec<mpsc::UnboundedSender<Update>>,
+    responders: Vec<Responder>,
 }
 
 // ==== impl Config =====
@@ -107,7 +107,8 @@ where
         // in `poll_destinations` while the `rpc` service is ready should
         // be reconnected now, otherwise the task would just sleep...
         loop {
-            self.poll_new_watches(client);
+            self.poll_resolve_requests(client);
+            self.retain_active_destinations();
             self.poll_destinations();
 
             if self.reconnects.is_empty() || !self.rpc_ready {
@@ -116,7 +117,7 @@ where
         }
     }
 
-    fn poll_new_watches(&mut self, client: &mut T) {
+    fn poll_resolve_requests(&mut self, client: &mut T) {
         loop {
             // if rpc service isn't ready, not much we can do...
             match client.poll_ready() {
@@ -141,12 +142,9 @@ where
 
             // check for any new watches
             match self.request_rx.poll() {
-                Ok(Async::Ready(Some(ResolveRequest {
-                    authority,
-                    update_tx,
-                }))) => {
-                    trace!("Destination.Get {:?}", authority);
-                    match self.destinations.entry(authority) {
+                Ok(Async::Ready(Some(resolve))) => {
+                    trace!("Destination.Get {:?}", resolve.authority);
+                    match self.destinations.entry(resolve.authority) {
                         Entry::Occupied(mut occ) => {
                             let set = occ.get_mut();
                             // we may already know of some addresses here, so push
@@ -154,13 +152,13 @@ where
                             match set.addrs {
                                 Exists::Yes(ref cache) => for (&addr, meta) in cache {
                                     let update = Update::Insert(addr, meta.clone());
-                                    update_tx
+                                    resolve.responder.update_tx
                                         .unbounded_send(update)
                                         .expect("unbounded_send does not fail");
                                 },
                                 Exists::No | Exists::Unknown => (),
                             }
-                            set.txs.push(update_tx);
+                            set.responders.push(resolve.responder);
                         },
                         Entry::Vacant(vac) => {
                             let query = Self::query_destination_service_if_relevant(
@@ -173,7 +171,7 @@ where
                                 addrs: Exists::Unknown,
                                 query,
                                 dns_query: None,
-                                txs: vec![update_tx],
+                                responders: vec![resolve.responder],
                             };
                             // If the authority is one for which the Destination service is never
                             // relevant (e.g. an absolute name that doesn't end in ".svc.$zone." in
@@ -217,6 +215,16 @@ where
             }
         }
         false
+    }
+
+    /// Ensures that `destinations` is updated to only maintain active resolutions.
+    ///
+    /// If there are no active resolutions for a destination, the destination is removed.
+    fn retain_active_destinations(&mut self) {
+        self.destinations.retain(|_, ref mut dst| {
+            dst.responders.retain(|r| r.is_active());
+            dst.responders.len() > 0
+        })
     }
 
     fn poll_destinations(&mut self) {
@@ -312,10 +320,10 @@ where
         self.dns_query = Some(dns_resolver.resolve_all_ips(delay, &authority.host));
     }
 
-    // Processes Destination service updates from `rx`, returning the new query an an indication of
-    // any *change* to whether the service exists as far as the Destination service is concerned,
-    // where `Exists::Unknown` is to be interpreted as "no change in existence" instead of
-    // "unknown".
+    // Processes Destination service updates from `request_rx`, returning the new query
+    // and an indication of any *change* to whether the service exists as far as the
+    // Destination service is concerned, where `Exists::Unknown` is to be interpreted as
+    // "no change in existence" instead of "unknown".
     fn poll_destination_service(
         &mut self,
         auth: &DnsNameAndPort,
@@ -437,7 +445,7 @@ impl<T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
             Exists::Unknown | Exists::No => Cache::new(),
         };
         cache.update_union(addrs_to_add, &mut |change| {
-            Self::on_change(&mut self.txs, authority_for_logging, change)
+            Self::on_change(&mut self.responders, authority_for_logging, change)
         });
         self.addrs = Exists::Yes(cache);
     }
@@ -449,7 +457,7 @@ impl<T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
         let cache = match self.addrs.take() {
             Exists::Yes(mut cache) => {
                 cache.remove(addrs_to_remove, &mut |change| {
-                    Self::on_change(&mut self.txs, authority_for_logging, change)
+                    Self::on_change(&mut self.responders, authority_for_logging, change)
                 });
                 cache
             },
@@ -467,7 +475,7 @@ impl<T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
         match self.addrs.take() {
             Exists::Yes(mut cache) => {
                 cache.clear(&mut |change| {
-                    Self::on_change(&mut self.txs, authority_for_logging, change)
+                    Self::on_change(&mut self.responders, authority_for_logging, change)
                 });
             },
             Exists::Unknown | Exists::No => (),
@@ -480,7 +488,7 @@ impl<T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
     }
 
     fn on_change(
-        txs: &mut Vec<mpsc::UnboundedSender<Update>>,
+        responders: &mut Vec<Responder>,
         authority_for_logging: &DnsNameAndPort,
         change: CacheChange<SocketAddr, Metadata>,
     ) {
@@ -497,7 +505,10 @@ impl<T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
         };
         trace!("{} {:?} for {:?}", update_str, addr, authority_for_logging);
         // retain is used to drop any senders that are dead
-        txs.retain(|tx| tx.unbounded_send(update.clone()).is_ok());
+        responders.retain(|r| {
+            let sent = r.update_tx.unbounded_send(update.clone());
+            sent.is_ok()
+        });
     }
 }
 
