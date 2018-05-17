@@ -13,6 +13,7 @@ extern crate futures;
 extern crate h2;
 pub extern crate http;
 extern crate hyper;
+pub extern crate net2;
 extern crate prost;
 extern crate tokio;
 extern crate tokio_connect;

@@ -65,6 +65,7 @@ const (
 )
 
 var proxyLabels = []string{
+	ControllerNSLabel,
 	ProxyDeploymentLabel,
 	ProxyReplicationControllerLabel,
 	ProxyReplicaSetLabel,
@@ -96,6 +97,9 @@ func GetOwnerLabels(objectMeta meta.ObjectMeta) map[string]string {
 // toOwnerLabel converts a proxy label to a prometheus label, following the
 // relabel conventions from the prometheus scrape config file
 func toOwnerLabel(proxyLabel string) string {
+	if proxyLabel == ControllerNSLabel {
+		return "conduit_io_control_plane_ns"
+	}
 	stripped := strings.TrimPrefix(proxyLabel, "conduit.io/proxy-")
 	if stripped == "job" {
 		return "k8s_job"

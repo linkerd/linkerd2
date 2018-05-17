@@ -105,9 +105,21 @@ impl Server {
         self
     }
 
+    pub fn delay_listen<F>(self, f: F) -> Listening
+    where
+        F: Future<Item=(), Error=()> + Send + 'static,
+    {
+        self.run_inner(Some(Box::new(f.then(|_| Ok(())))))
+    }
+
     pub fn run(self) -> Listening {
+        self.run_inner(None)
+    }
+
+    fn run_inner(self, delay: Option<Box<Future<Item=(), Error=()> + Send>>) -> Listening {
         let (tx, rx) = shutdown_signal();
-        let (addr_tx, addr_rx) = oneshot::channel();
+        let (listening_tx, listening_rx) = oneshot::channel();
+        let mut listening_tx = Some(listening_tx);
         let conn_count = Arc::new(AtomicUsize::from(0));
         let srv_conn_count = Arc::clone(&conn_count);
         let version = self.version;
@@ -192,7 +204,7 @@ impl Server {
                 runtime.block_on(rx).expect("block on");
             }).unwrap();
 
-        let addr = addr_rx.wait().expect("addr");
+        listening_rx.wait().expect("listening_rx");
 
         // printlns will show if the test fails...
         println!(

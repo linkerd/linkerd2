@@ -83,7 +83,14 @@ export default class Sidebar extends React.Component {
         <div className="sidebar">
 
           <div className={`sidebar-menu-header ${this.state.collapsed ? "collapsed" : ""}`}>
-            <ConduitLink to="/servicemesh"><img src={this.state.collapsed ? logo : wordLogo} /></ConduitLink>
+            <ConduitLink to="/servicemesh">
+              <img
+                src={this.state.collapsed ? logo : wordLogo}
+                onError={e => {
+                  // awful hack to deal with the fact that we don't serve assets off absolute paths
+                  e.target.src = e.target.src.replace(/(.*)(\/[a-zA-Z]*)(\/dist)(.*)/, "$1$3$4");
+                }} />
+            </ConduitLink>
           </div>
 
           <Menu

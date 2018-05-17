@@ -35,7 +35,7 @@ jobs:
     - language: go
       # Quote the version number to avoid parsing issues like
       # https://github.com/travis-ci/gimme/issues/132.
-      go: "1.10.1"
+      go: "1.10.2"
       go_import_path: github.com/runconduit/conduit
       cache:
         directories:
