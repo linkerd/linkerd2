@@ -1107,6 +1107,7 @@ mod transport {
 #[test]
 #[cfg_attr(not(feature = "flaky_tests"), ignore)]
 fn metrics_compression() {
+    use std::str;
     let _ = env_logger::try_init();
 
     let Fixture { client, metrics, proxy: _proxy } = Fixture::inbound();
@@ -1146,26 +1147,78 @@ fn metrics_compression() {
         scrape
     };
 
+    let do_scrape_uncompressed = |encoding: &str| {
+        let resp = metrics.request(
+            metrics.request_builder("/metrics")
+                .method("GET")
+                .header("Accept-Encoding", encoding)
+        );
+
+        {
+            // create a new scope so we can release our borrow on `resp` before
+            // getting the body
+            let content_encoding = resp.headers()
+                .get("content-encoding")
+                .as_ref()
+                .map(|val| val
+                    .to_str()
+                    .expect("content-encoding value should be ascii")
+                );
+            assert!(content_encoding != Some("gzip"),
+                "unexpected GZIP encoding (requested Accept-Encoding: {:?})", encoding);
+        }
+
+        resp.into_body()
+            .concat2()
+            .map(|body| str::from_utf8(&body).unwrap().to_string())
+            .wait()
+            .expect("response body concat")
+    };
+
     let encodings = &[
         "gzip",
         "deflate, gzip",
         "gzip,deflate",
-        "brotli,gzip,deflate"
+        "brotli,gzip,deflate",
+        "gzip;q=1, brotli;q=0.3",
+        "gzip;q=0.4,deflate;q=0.2",
+        "*",
+        // if gzip is acceptable at all, we want to use it.
+        "brotli;q=0.7, gzip;q=0.3, *;q=0.1",
+        "deflate;q=0.9, gzip;q=0.2",
+        "brotli;q=0.5,deflate;q=0.3,*;q=0.2",
+    ];
+
+    let uncompressed_encodings = &[
+        "brotli, deflate",
+        "identity",
+        "gzip;q=0, brotli;q=1, deflate;q=0.3",
+        "gzip;q=0, identity",
     ];
 
     info!("client.get(/)");
     assert_eq!(client.get("/"), "hello");
 
+    let expected =
+        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",classification=\"success\",status_code=\"200\"} 1";
+
     for &encoding in encodings {
-        assert_contains!(do_scrape(encoding),
-            "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",classification=\"success\",status_code=\"200\"} 1");
+        assert_contains!(do_scrape(encoding), expected);
+    }
+    for &encoding in uncompressed_encodings {
+        assert_contains!(do_scrape_uncompressed(encoding), expected);
     }
 
     info!("client.get(/)");
     assert_eq!(client.get("/"), "hello");
 
+    let expected =
+        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",classification=\"success\",status_code=\"200\"} 2";
+
     for &encoding in encodings {
-        assert_contains!(do_scrape(encoding),
-            "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",classification=\"success\",status_code=\"200\"} 2");
+        assert_contains!(do_scrape(encoding), expected);
+    }
+    for &encoding in uncompressed_encodings {
+        assert_contains!(do_scrape_uncompressed(encoding), expected);
     }
 }

@@ -45,7 +45,15 @@ impl Serve {
             .get_all(header::ACCEPT_ENCODING).iter()
             .any(|value| {
                 value.to_str().ok()
-                    .map(|value| value.contains("gzip"))
+                    .map(|value| value.split(",").any(|item| {
+                            match item.trim()  {
+                                // q=0 means that the encoding is *disallowed*.
+                                "gzip;q=0" | "*;q=0" => false,
+                                "gzip" | "*" => true,
+                                item => item.starts_with("gzip;q=") || item.starts_with("*")
+                            }
+                        })
+                    )
                     .unwrap_or(false)
             })
     }
