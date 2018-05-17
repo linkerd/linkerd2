@@ -32,7 +32,7 @@ pub use self::bytes::Bytes;
 pub use self::conduit_proxy::*;
 pub use self::conduit_proxy::task::LazyExecutor;
 pub use self::futures::{future::Executor, *,};
-use self::futures::sync::oneshot;
+pub use self::futures::sync::oneshot;
 pub use self::http::{HeaderMap, Request, Response, StatusCode};
 use self::tokio::{
     executor::current_thread,
