@@ -62,7 +62,7 @@ struct Responder {
     update_tx: mpsc::UnboundedSender<Update>,
 
     /// Indicates whether the corresponding `Resolution` is still active.
-    active: Arc<()>,
+    active: Weak<()>,
 }
 
 /// A `tower_discover::Discover`, given to a `tower_balance::Balance`.
@@ -73,9 +73,9 @@ pub struct Resolution<B> {
 
     /// Allows `Responder` to detect when its `Resolution` has been lost.
     ///
-    /// `Responder` holds the corresponding `Arc` and can determine when this weak
+    /// `Responder` holds a weak reference to this `Arc` and can determine when this
     /// reference has been dropped.
-    _active: Weak<()>,
+    _active: Arc<()>,
 
     /// Map associating addresses with the `Store` for the watch on that
     /// service's metric labels (as provided by the Destination service).
@@ -147,12 +147,14 @@ impl Resolver {
         trace!("resolve; authority={:?}", authority);
         let (update_tx, update_rx) = mpsc::unbounded();
         let active = Arc::new(());
-        let weak_active = Arc::downgrade(&active);
         let req = {
             let authority = authority.clone();
             ResolveRequest {
                 authority,
-                responder: Responder { update_tx, active },
+                responder: Responder {
+                    update_tx,
+                    active: Arc::downgrade(&active),
+                },
             }
         };
         self.request_tx
@@ -161,7 +163,7 @@ impl Resolver {
 
         Resolution {
             update_rx,
-            _active: weak_active,
+            _active: active,
             metric_labels: HashMap::new(),
             bind,
         }
@@ -245,9 +247,7 @@ where
 
 impl Responder {
     fn is_active(&self) -> bool {
-        let weak = Arc::weak_count(&self.active);
-        debug_assert!(weak == 0 || weak == 1);
-        weak > 0
+        self.active.upgrade().is_some()
     }
 }
 
