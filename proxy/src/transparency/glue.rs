@@ -148,10 +148,6 @@ impl<B> BodyStream<B> {
     }
 }
 
-// NOTE: I think it's possible the `BodyStream` type can be removed in favour
-//       of the `Body::Wrap_stream` constructor that's available on the master
-//       version of `hyper`. However, this will box the wrapped stream, so I'm
-//       not sure if we want to use it.
 impl<B> hyper::body::Payload for BodyStream<B>
 where
     B: tower_h2::Body + Send + 'static,
