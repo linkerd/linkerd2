@@ -65,6 +65,7 @@ const (
 )
 
 var proxyLabels = []string{
+	ControllerNSLabel,
 	ProxyDeploymentLabel,
 	ProxyReplicationControllerLabel,
 	ProxyReplicaSetLabel,

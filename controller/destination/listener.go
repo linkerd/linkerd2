@@ -99,9 +99,6 @@ func (l *endpointListener) toWeightedAddr(address common.TcpAddress) *pb.Weighte
 				podFound = true
 				metricLabelsForPod = pkgK8s.GetOwnerLabels(pod.ObjectMeta)
 				metricLabelsForPod["pod"] = pod.Name
-				if pod.Labels[pkgK8s.ControllerNSLabel] != "" {
-					metricLabelsForPod["conduit_io_control_plane_ns"] = pod.Labels[pkgK8s.ControllerNSLabel]
-				}
 				break
 			}
 		}
