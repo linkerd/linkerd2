@@ -27,7 +27,7 @@ type BindProtocol<B> = bind::BindProtocol<Arc<ctx::Proxy>, B>;
 
 pub struct Outbound<B> {
     bind: Bind<Arc<ctx::Proxy>, B>,
-    discovery: control::Control,
+    discovery: control::Resolver,
     bind_timeout: Duration,
 }
 
@@ -43,7 +43,7 @@ pub enum Destination {
 
 impl<B> Outbound<B> {
     pub fn new(bind: Bind<Arc<ctx::Proxy>, B>,
-               discovery: control::Control,
+               discovery: control::Resolver,
                bind_timeout: Duration)
                -> Outbound<B> {
         Self {
