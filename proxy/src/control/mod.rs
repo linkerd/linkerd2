@@ -36,9 +36,9 @@ pub struct Background {
     disco: destination::background::Config,
 }
 
-pub fn new(dns_config: dns::Config, default_destination_namespace: String) -> (Control, Background)
+pub fn new(dns_resolver: dns::Resolver, default_destination_namespace: String) -> (Control, Background)
 {
-    let (tx, rx) = self::destination::new(dns_config, default_destination_namespace);
+    let (tx, rx) = self::destination::new(dns_resolver, default_destination_namespace);
 
     let c = Control {
         disco: tx,
@@ -65,14 +65,13 @@ impl Background {
     pub fn bind(
         self,
         host_and_port: HostAndPort,
-        dns_config: dns::Config,
+        dns_resolver: dns::Resolver,
     ) -> Box<Future<Item = (), Error = ()>> {
         // Build up the Controller Client Stack
         let mut client = {
             let ctx = ("controller-client", format!("{:?}", host_and_port));
             let scheme = http::uri::Scheme::from_shared(Bytes::from_static(b"http")).unwrap();
             let authority = http::uri::Authority::from(&host_and_port);
-            let dns_resolver = dns::Resolver::new(dns_config);
             let connect = Timeout::new(
                 LookupAddressAndConnect::new(host_and_port, dns_resolver),
                 Duration::from_secs(3),

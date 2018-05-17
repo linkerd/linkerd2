@@ -211,13 +211,13 @@ where
             &taps,
         );
 
-        let dns_config = dns::Config::from_system_config()
+        let dns_resolver = dns::Resolver::from_system_config()
             .unwrap_or_else(|e| {
                 // TODO: Make DNS configuration infallible.
                 panic!("invalid DNS configuration: {:?}", e);
             });
 
-        let (control, control_bg) = control::new(dns_config.clone(), config.pod_namespace.clone());
+        let (control, control_bg) = control::new(dns_resolver.clone(), config.pod_namespace.clone());
 
         let (drain_tx, drain_rx) = drain::channel();
 
@@ -296,7 +296,7 @@ where
 
                     let client = control_bg.bind(
                         control_host_and_port,
-                        dns_config,
+                        dns_resolver,
                     );
 
                     let fut = client.join4(

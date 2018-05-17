@@ -31,7 +31,7 @@ type UpdateRx<T> = Receiver<PbUpdate, T>;
 #[derive(Debug)]
 pub struct Config {
     request_rx: mpsc::UnboundedReceiver<ResolveRequest>,
-    dns_config: dns::Config,
+    dns_resolver: dns::Resolver,
     default_destination_namespace: String,
 }
 
@@ -67,12 +67,12 @@ struct DestinationSet<T: HttpService<ResponseBody = RecvBody>> {
 impl Config {
     pub(super) fn new(
         request_rx: mpsc::UnboundedReceiver<ResolveRequest>,
-        dns_config: dns::Config,
+        dns_resolver: dns::Resolver,
         default_destination_namespace: String,
     ) -> Self {
         Self {
             request_rx,
-            dns_config,
+            dns_resolver,
             default_destination_namespace,
         }
     }
@@ -84,7 +84,7 @@ impl Config {
         T::Error: fmt::Debug,
     {
         Process {
-            dns_resolver: dns::Resolver::new(self.dns_config),
+            dns_resolver: self.dns_resolver,
             default_destination_namespace: self.default_destination_namespace,
             destinations: HashMap::new(),
             reconnects: VecDeque::new(),

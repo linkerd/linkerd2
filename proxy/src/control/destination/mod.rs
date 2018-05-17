@@ -132,12 +132,12 @@ pub trait Bind {
 /// The `Resolver` is used by a listener, the `Background` is consumed
 /// on the controller thread.
 pub fn new(
-    dns_config: dns::Config,
+    dns_resolver: dns::Resolver,
     default_destination_namespace: String,
 ) -> (Resolver, background::Config) {
     let (request_tx, rx) = mpsc::unbounded();
     let disco = Resolver { request_tx };
-    let bg = background::Config::new(rx, dns_config, default_destination_namespace);
+    let bg = background::Config::new(rx, dns_resolver, default_destination_namespace);
     (disco, bg)
 }
 
