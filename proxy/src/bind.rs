@@ -334,8 +334,6 @@ where
         if request.version() != http::Version::HTTP_2 &&
             // Skip normalizing the URI if it was received in
             // absolute form.
-            // TODO: we could probably skip this service altogether, if we
-            //       wrote some kind of `futures::Either` for services?
             !self.was_absolute_form
         {
             h1::normalize_our_view_of_uri(&mut request);

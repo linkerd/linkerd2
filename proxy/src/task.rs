@@ -14,8 +14,11 @@ use tokio::{
     runtime::{self as thread_pool, current_thread},
 };
 
-use std::error::Error;
-use std::{fmt, io};
+use std::{
+    error::Error as StdError,
+    fmt,
+    io,
+};
 
 /// An empty type which implements `Executor` by lazily  calling
 /// `tokio::executor::DefaultExecutor::current().execute(...)`.
@@ -48,7 +51,7 @@ pub enum MainRuntime {
 /// Like a `SpawnError` or `ExecuteError`, but with an implementation
 /// of `std::error::Error`.
 #[derive(Debug, Clone)]
-pub enum TaskError {
+pub enum Error {
     /// The executor has shut down and will no longer spawn new tasks.
     Shutdown,
     /// The executor had no capacity to run more futures.
@@ -146,67 +149,67 @@ impl From<thread_pool::Runtime> for MainRuntime {
     }
 }
 
-// ===== impl TaskError =====
+// ===== impl Error =====
 
-impl TaskError {
+impl Error {
 
     /// Wrap a `SpawnError` or `ExecuteError` in an `io::Error`.
     ///
     /// The returned `io::Error` will have `ErrorKind::Other`. Wrapping
-    /// the error in `TaskError` is necessary as the type passed to
+    /// the error in `Error` is necessary as the type passed to
     /// `io::Error::new` must implement `std::error::Error`.
-    pub fn into_io<I: Into<TaskError>>(inner: I) -> io::Error {
+    pub fn into_io<I: Into<Self>>(inner: I) -> io::Error {
         io::Error::new(io::ErrorKind::Other, inner.into())
     }
 }
 
-impl From<SpawnError> for TaskError {
+impl From<SpawnError> for Error {
     fn from(spawn_error: SpawnError) -> Self {
         if spawn_error.is_shutdown() {
-            TaskError::Shutdown
+            Error::Shutdown
         } else if spawn_error.is_at_capacity() {
-            TaskError::NoCapacity
+            Error::NoCapacity
         } else {
             warn!(
-                "TaskError::from: unknown SpawnError '{:?}'\n\
+                "Error::from: unknown SpawnError '{:?}'\n\
                  This indicates a change in Tokio's API surface that should\n\
                  be handled.",
                  spawn_error,
             );
-            TaskError::Unknown
+            Error::Unknown
         }
     }
 }
 
-impl<F> From<ExecuteError<F>> for TaskError {
+impl<F> From<ExecuteError<F>> for Error {
     fn from(exec_error: ExecuteError<F>) -> Self {
         match exec_error.kind() {
-            ExecuteErrorKind::Shutdown => TaskError::Shutdown,
-            ExecuteErrorKind::NoCapacity => TaskError::NoCapacity,
+            ExecuteErrorKind::Shutdown => Error::Shutdown,
+            ExecuteErrorKind::NoCapacity => Error::NoCapacity,
             _ => {
                 warn!(
-                    "TaskError::from: unknown ExecuteError '{:?}'\n\
+                    "Error::from: unknown ExecuteError '{:?}'\n\
                     This indicates a change in the futures-rs API surface\n\
                     that should be handled.",
                     exec_error,
                 );
-                TaskError::Unknown
+                Error::Unknown
             }
         }
     }
 }
-impl fmt::Display for  TaskError {
+impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.description().fmt(f)
     }
 }
 
-impl Error for TaskError {
+impl StdError for Error {
     fn description(&self) -> &str {
         match *self {
-            TaskError::Shutdown => "executor has shut down",
-            TaskError::NoCapacity => "executor has no more capacity",
-            TaskError::Unknown => "unknown error executing future",
+            Error::Shutdown => "executor has shut down",
+            Error::NoCapacity => "executor has no more capacity",
+            Error::Unknown => "unknown error executing future",
         }
     }
 }

@@ -44,7 +44,7 @@ pub enum Destination {
 impl<B> Outbound<B> {
     pub fn new(bind: Bind<Arc<ctx::Proxy>, B>,
                discovery: control::Control,
-               bind_timeout: Duration,)
+               bind_timeout: Duration)
                -> Outbound<B> {
         Self {
             bind,

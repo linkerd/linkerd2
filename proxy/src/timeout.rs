@@ -46,7 +46,7 @@ pub struct HumanDuration(pub Duration);
 
 impl<T> Timeout<T> {
     /// Construct a new `Timeout` wrapping `inner`.
-    pub fn new(inner: T, duration: Duration,) -> Self {
+    pub fn new(inner: T, duration: Duration) -> Self {
         Timeout {
             inner,
             duration,

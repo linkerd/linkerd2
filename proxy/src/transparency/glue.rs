@@ -278,7 +278,7 @@ impl<N> HttpBodyNewSvc<N>
 where
     N: NewService<Request=http::Request<HttpBody>>,
 {
-    pub fn new(new_service: N,) -> Self {
+    pub fn new(new_service: N) -> Self {
         HttpBodyNewSvc {
             new_service,
         }
@@ -325,7 +325,7 @@ where
     C: Connect,
     C::Future: 'static,
 {
-    pub fn new(connect: C, absolute_form: bool,) -> Self {
+    pub fn new(connect: C, absolute_form: bool) -> Self {
         HyperConnect {
             connect,
             absolute_form,

@@ -77,7 +77,7 @@ impl Config {
 }
 
 impl Resolver {
-    pub fn new(config: Config,) -> Self {
+    pub fn new(config: Config) -> Self {
         Resolver {
             config,
         }

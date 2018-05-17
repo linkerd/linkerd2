@@ -82,7 +82,7 @@ use bind::Bind;
 use connection::BoundPort;
 use inbound::Inbound;
 use map_err::MapErr;
-use task::{MainRuntime, TaskError};
+use task::MainRuntime;
 use transparency::{HttpBody, Server};
 pub use transport::{GetOriginalDst, SoOriginalDst};
 use outbound::Outbound;
@@ -491,7 +491,7 @@ where
             let r = executor::current_thread::TaskExecutor::current()
                 .spawn_local(Box::new(s))
                 .map(move |_| server)
-                .map_err(TaskError::into_io);
+                .map_err(task::Error::into_io);
             future::result(r)
         },
     )
