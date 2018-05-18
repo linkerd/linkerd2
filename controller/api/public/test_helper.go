@@ -3,6 +3,7 @@ package public
 import (
 	"context"
 	"io"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/api/prometheus/v1"
@@ -100,14 +101,22 @@ func (a *MockApi_TapByResourceClient) Recv() (*common.TapEvent, error) {
 //
 
 type MockProm struct {
-	Res model.Value
+	Res             model.Value
+	QueriesExecuted []string // expose the queries our Mock Prometheus receives, to test query generation
+	rwLock          sync.Mutex
 }
 
 // satisfies v1.API
 func (m *MockProm) Query(ctx context.Context, query string, ts time.Time) (model.Value, error) {
+	m.rwLock.Lock()
+	defer m.rwLock.Unlock()
+	m.QueriesExecuted = append(m.QueriesExecuted, query)
 	return m.Res, nil
 }
 func (m *MockProm) QueryRange(ctx context.Context, query string, r v1.Range) (model.Value, error) {
+	m.rwLock.Lock()
+	defer m.rwLock.Unlock()
+	m.QueriesExecuted = append(m.QueriesExecuted, query)
 	return m.Res, nil
 }
 func (m *MockProm) LabelValues(ctx context.Context, label string) (model.LabelValues, error) {
