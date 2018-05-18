@@ -18,11 +18,12 @@ import (
 )
 
 type statSumExpected struct {
-	err     error
-	k8sRes  []string
-	promRes model.Value
-	req     pb.StatSummaryRequest
-	res     pb.StatSummaryResponse
+	err                       error
+	k8sRes                    []string
+	promRes                   model.Value
+	expectedPrometheusQueries []string
+	req                       pb.StatSummaryRequest
+	res                       pb.StatSummaryResponse
 }
 
 func testStatSummary(t *testing.T, expectations []statSumExpected) {
@@ -40,8 +41,9 @@ func testStatSummary(t *testing.T, expectations []statSumExpected) {
 		clientSet := fake.NewSimpleClientset(k8sObjs...)
 		lister := k8s.NewLister(clientSet)
 
+		mockProm := &MockProm{Res: exp.promRes}
 		fakeGrpcServer := newGrpcServer(
-			&MockProm{Res: exp.promRes},
+			mockProm,
 			tap.NewTapClient(nil),
 			lister,
 			"conduit",
@@ -57,11 +59,19 @@ func testStatSummary(t *testing.T, expectations []statSumExpected) {
 			t.Fatalf("Expected error: %s, Got: %s", exp.err, err)
 		}
 
+		if len(exp.expectedPrometheusQueries) > 0 {
+			sort.Strings(exp.expectedPrometheusQueries)
+			sort.Strings(mockProm.QueriesExecuted)
+			if !reflect.DeepEqual(exp.expectedPrometheusQueries, mockProm.QueriesExecuted) {
+				t.Fatalf("Prometheus queries incorrect. \nExpected: %+v \nGot: %+v", exp.expectedPrometheusQueries, mockProm.QueriesExecuted)
+			}
+		}
+
 		unsortedStatTables := rsp.GetOk().StatTables
 		sort.Sort(byStatResult(unsortedStatTables))
 
 		if !reflect.DeepEqual(exp.res.GetOk().StatTables, unsortedStatTables) {
-			t.Fatalf("Expected: %+v, Got: %+v", &exp.res, rsp)
+			t.Fatalf("Expected: %+v\n Got: %+v", &exp.res, rsp)
 		}
 	}
 }
@@ -187,6 +197,112 @@ status:
 													TimeWindow:      "1m",
 													MeshedPodCount:  1,
 													RunningPodCount: 2,
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		testStatSummary(t, expectations)
+	})
+
+	t.Run("Successfully performs a query based on resource name", func(t *testing.T) {
+		expectations := []statSumExpected{
+			statSumExpected{
+				err: nil,
+				k8sRes: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-1
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+  annotations:
+    conduit.io/proxy-version: testinjectversion
+status:
+  phase: Running
+`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-2
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+status:
+  phase: Running
+`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed-not-running
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+  annotations:
+    conduit.io/proxy-version: testinjectversion
+status:
+  phase: Running
+`,
+				},
+				promRes: model.Vector{
+					&model.Sample{
+						Metric: model.Metric{
+							"pod":            "emojivoto-1",
+							"namespace":      "emojivoto",
+							"classification": "success",
+						},
+						Value:     123,
+						Timestamp: 456,
+					},
+				},
+				req: pb.StatSummaryRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Name:      "emojivoto-1",
+							Namespace: "emojivoto",
+							Type:      pkgK8s.Pods,
+						},
+					},
+					TimeWindow: "1m",
+				},
+				expectedPrometheusQueries: []string{
+					`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
+					`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
+					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
+					`sum(increase(response_total{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod, classification)`,
+				},
+				res: pb.StatSummaryResponse{
+					Response: &pb.StatSummaryResponse_Ok_{ // https://github.com/golang/protobuf/issues/205
+						Ok: &pb.StatSummaryResponse_Ok{
+							StatTables: []*pb.StatTable{
+								&pb.StatTable{
+									Table: &pb.StatTable_PodGroup_{
+										PodGroup: &pb.StatTable_PodGroup{
+											Rows: []*pb.StatTable_PodGroup_Row{
+												&pb.StatTable_PodGroup_Row{
+													Resource: &pb.Resource{
+														Namespace: "emojivoto",
+														Type:      "pods",
+														Name:      "emojivoto-1",
+													},
+													Stats: &pb.BasicStats{
+														SuccessCount: 123,
+														FailureCount: 0,
+														LatencyMsP50: 123,
+														LatencyMsP95: 123,
+														LatencyMsP99: 123,
+													},
+													TimeWindow:      "1m",
+													MeshedPodCount:  1,
+													RunningPodCount: 1,
 												},
 											},
 										},

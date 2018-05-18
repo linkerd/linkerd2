@@ -88,12 +88,22 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 		statReq := &pb.StatSummaryRequest{
 			Selector: &pb.ResourceSelection{
 				Resource: &pb.Resource{
-					Type:      resource,
 					Namespace: req.Selector.Resource.Namespace,
+					Type:      resource,
+					Name:      req.Selector.Resource.Name,
 				},
 				LabelSelector: req.Selector.LabelSelector,
 			},
 			TimeWindow: req.TimeWindow,
+		}
+		if req.GetFromResource() != nil {
+			statReq.Outbound = &pb.StatSummaryRequest_FromResource{
+				FromResource: req.GetFromResource(),
+			}
+		} else if req.GetToResource() != nil {
+			statReq.Outbound = &pb.StatSummaryRequest_ToResource{
+				ToResource: req.GetToResource(),
+			}
 		}
 
 		go func() {
@@ -300,7 +310,6 @@ func buildRequestLabels(req *pb.StatSummaryRequest) (model.LabelSet, model.Label
 		labelNames = promLabelNames(req.Selector.Resource)
 		labels = labels.Merge(promLabels(req.Selector.Resource))
 		labels = labels.Merge(promDirectionLabels("inbound"))
-
 	}
 
 	return labels, labelNames
