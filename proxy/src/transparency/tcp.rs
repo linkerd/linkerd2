@@ -30,7 +30,7 @@ impl Proxy {
 
     /// Serve a TCP connection, trying to forward it to its destination.
     pub fn serve<T>(&self, tcp_in: T, srv_ctx: Arc<ServerCtx>)
-        -> Box<Future<Item=(), Error=()> + Send>
+        -> impl Future<Item=(), Error=()> + Send
     where
         T: AsyncRead + AsyncWrite + Send + 'static,
     {
@@ -51,7 +51,7 @@ impl Proxy {
                 "tcp accepted, no SO_ORIGINAL_DST to forward: remote={}",
                 srv_ctx.remote,
             );
-            return Box::new(future::ok(()));
+            return future::Either::B(future::ok(()));
         };
 
         let client_ctx = ClientCtx::new(
@@ -65,13 +65,12 @@ impl Proxy {
         );
         let connect = self.sensors.connect(c, &client_ctx);
 
-        let fut = connect.connect()
+        future::Either::A(connect.connect()
             .map_err(move |e| error!("tcp connect error to {}: {:?}", orig_dst, e))
             .and_then(move |tcp_out| {
                 Duplex::new(tcp_in, tcp_out)
                     .map_err(|e| error!("tcp duplex error: {}", e))
-            });
-        Box::new(fut)
+            }))
     }
 }
 
