@@ -19,29 +19,97 @@ import (
 
 type statSumExpected struct {
 	err                       error
-	k8sRes                    []string
-	promRes                   model.Value
-	expectedPrometheusQueries []string
-	req                       pb.StatSummaryRequest
-	res                       pb.StatSummaryResponse
+	k8sConfigs                []string               // k8s objects to seed the lister
+	mockPromResponse          model.Value            // mock out a prometheus query response
+	expectedPrometheusQueries []string               // queries we expect public-api to issue to prometheus
+	req                       pb.StatSummaryRequest  // the request we would like to test
+	expectedResponse          pb.StatSummaryResponse // the stat response we expect
+}
+
+func prometheusMetric(resName string, resType string, resNs string, classification string) model.Vector {
+	return model.Vector{
+		genPromSample(resName, resType, resNs, classification),
+	}
+}
+
+func genPromSample(resName string, resType string, resNs string, classification string) *model.Sample {
+	return &model.Sample{
+		Metric: model.Metric{
+			model.LabelName(resType): model.LabelValue(resName),
+			"namespace":              model.LabelValue(resNs),
+			"classification":         model.LabelValue(classification),
+		},
+		Value:     123,
+		Timestamp: 456,
+	}
+}
+
+func genStatSummaryResponse(resName, resType, resNs string, meshedPods uint64, runningPods uint64) pb.StatSummaryResponse {
+	return pb.StatSummaryResponse{
+		Response: &pb.StatSummaryResponse_Ok_{ // https://github.com/golang/protobuf/issues/205
+			Ok: &pb.StatSummaryResponse_Ok{
+				StatTables: []*pb.StatTable{
+					&pb.StatTable{
+						Table: &pb.StatTable_PodGroup_{
+							PodGroup: &pb.StatTable_PodGroup{
+								Rows: []*pb.StatTable_PodGroup_Row{
+									&pb.StatTable_PodGroup_Row{
+										Resource: &pb.Resource{
+											Namespace: resNs,
+											Type:      resType,
+											Name:      resName,
+										},
+										Stats: &pb.BasicStats{
+											SuccessCount: 123,
+											FailureCount: 0,
+											LatencyMsP50: 123,
+											LatencyMsP95: 123,
+											LatencyMsP99: 123,
+										},
+										TimeWindow:      "1m",
+										MeshedPodCount:  meshedPods,
+										RunningPodCount: runningPods,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func genEmptyResponse() pb.StatSummaryResponse {
+	return pb.StatSummaryResponse{
+		Response: &pb.StatSummaryResponse_Ok_{ // https://github.com/golang/protobuf/issues/205
+			Ok: &pb.StatSummaryResponse_Ok{
+				StatTables: []*pb.StatTable{},
+			},
+		},
+	}
+}
+
+func createFakeLister(t *testing.T, k8sConfigs []string) *k8s.Lister {
+	k8sObjs := []runtime.Object{}
+	for _, res := range k8sConfigs {
+		decode := scheme.Codecs.UniversalDeserializer().Decode
+		obj, _, err := decode([]byte(res), nil, nil)
+		if err != nil {
+			t.Fatalf("could not decode yml: %s", err)
+		}
+		k8sObjs = append(k8sObjs, obj)
+	}
+
+	clientSet := fake.NewSimpleClientset(k8sObjs...)
+	return k8s.NewLister(clientSet)
 }
 
 func testStatSummary(t *testing.T, expectations []statSumExpected) {
 	for _, exp := range expectations {
-		k8sObjs := []runtime.Object{}
-		for _, res := range exp.k8sRes {
-			decode := scheme.Codecs.UniversalDeserializer().Decode
-			obj, _, err := decode([]byte(res), nil, nil)
-			if err != nil {
-				t.Fatalf("could not decode yml: %s", err)
-			}
-			k8sObjs = append(k8sObjs, obj)
-		}
+		lister := createFakeLister(t, exp.k8sConfigs)
 
-		clientSet := fake.NewSimpleClientset(k8sObjs...)
-		lister := k8s.NewLister(clientSet)
-
-		mockProm := &MockProm{Res: exp.promRes}
+		mockProm := &MockProm{Res: exp.mockPromResponse}
 		fakeGrpcServer := newGrpcServer(
 			mockProm,
 			tap.NewTapClient(nil),
@@ -62,16 +130,20 @@ func testStatSummary(t *testing.T, expectations []statSumExpected) {
 		if len(exp.expectedPrometheusQueries) > 0 {
 			sort.Strings(exp.expectedPrometheusQueries)
 			sort.Strings(mockProm.QueriesExecuted)
+
 			if !reflect.DeepEqual(exp.expectedPrometheusQueries, mockProm.QueriesExecuted) {
-				t.Fatalf("Prometheus queries incorrect. \nExpected: %+v \nGot: %+v", exp.expectedPrometheusQueries, mockProm.QueriesExecuted)
+				t.Fatalf("Prometheus queries incorrect. \nExpected: %+v \nGot: %+v",
+					exp.expectedPrometheusQueries, mockProm.QueriesExecuted)
 			}
 		}
 
-		unsortedStatTables := rsp.GetOk().StatTables
-		sort.Sort(byStatResult(unsortedStatTables))
+		if len(exp.expectedResponse.GetOk().StatTables) > 0 {
+			unsortedStatTables := rsp.GetOk().StatTables
+			sort.Sort(byStatResult(unsortedStatTables))
 
-		if !reflect.DeepEqual(exp.res.GetOk().StatTables, unsortedStatTables) {
-			t.Fatalf("Expected: %+v\n Got: %+v", &exp.res, rsp)
+			if !reflect.DeepEqual(exp.expectedResponse.GetOk().StatTables, unsortedStatTables) {
+				t.Fatalf("Expected: %+v\n Got: %+v", &exp.expectedResponse, rsp)
+			}
 		}
 	}
 }
@@ -102,7 +174,7 @@ func TestStatSummary(t *testing.T) {
 		expectations := []statSumExpected{
 			statSumExpected{
 				err: nil,
-				k8sRes: []string{`
+				k8sConfigs: []string{`
 apiVersion: apps/v1beta2
 kind: Deployment
 metadata:
@@ -153,17 +225,7 @@ status:
   phase: Completed
 `,
 				},
-				promRes: model.Vector{
-					&model.Sample{
-						Metric: model.Metric{
-							"deployment":     "emoji",
-							"namespace":      "emojivoto",
-							"classification": "success",
-						},
-						Value:     123,
-						Timestamp: 456,
-					},
-				},
+				mockPromResponse: prometheusMetric("emoji", "deployment", "emojivoto", "success"),
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
@@ -173,50 +235,18 @@ status:
 					},
 					TimeWindow: "1m",
 				},
-				res: pb.StatSummaryResponse{
-					Response: &pb.StatSummaryResponse_Ok_{ // https://github.com/golang/protobuf/issues/205
-						Ok: &pb.StatSummaryResponse_Ok{
-							StatTables: []*pb.StatTable{
-								&pb.StatTable{
-									Table: &pb.StatTable_PodGroup_{
-										PodGroup: &pb.StatTable_PodGroup{
-											Rows: []*pb.StatTable_PodGroup_Row{
-												&pb.StatTable_PodGroup_Row{
-													Resource: &pb.Resource{
-														Namespace: "emojivoto",
-														Type:      "deployments",
-														Name:      "emoji",
-													},
-													Stats: &pb.BasicStats{
-														SuccessCount: 123,
-														FailureCount: 0,
-														LatencyMsP50: 123,
-														LatencyMsP95: 123,
-														LatencyMsP99: 123,
-													},
-													TimeWindow:      "1m",
-													MeshedPodCount:  1,
-													RunningPodCount: 2,
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
+				expectedResponse: genStatSummaryResponse("emoji", "deployments", "emojivoto", 1, 2),
 			},
 		}
 
 		testStatSummary(t, expectations)
 	})
 
-	t.Run("Successfully performs a query based on resource name", func(t *testing.T) {
+	t.Run("Queries prometheus for a specific resource if name is specified", func(t *testing.T) {
 		expectations := []statSumExpected{
 			statSumExpected{
 				err: nil,
-				k8sRes: []string{`
+				k8sConfigs: []string{`
 apiVersion: v1
 kind: Pod
 metadata:
@@ -228,41 +258,9 @@ metadata:
     conduit.io/proxy-version: testinjectversion
 status:
   phase: Running
-`, `
-apiVersion: v1
-kind: Pod
-metadata:
-  name: emojivoto-2
-  namespace: emojivoto
-  labels:
-    app: emoji-svc
-status:
-  phase: Running
-`, `
-apiVersion: v1
-kind: Pod
-metadata:
-  name: emojivoto-meshed-not-running
-  namespace: emojivoto
-  labels:
-    app: emoji-svc
-  annotations:
-    conduit.io/proxy-version: testinjectversion
-status:
-  phase: Running
 `,
 				},
-				promRes: model.Vector{
-					&model.Sample{
-						Metric: model.Metric{
-							"pod":            "emojivoto-1",
-							"namespace":      "emojivoto",
-							"classification": "success",
-						},
-						Value:     123,
-						Timestamp: 456,
-					},
-				},
+				mockPromResponse: prometheusMetric("emojivoto-1", "pod", "emojivoto", "success"),
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
@@ -279,39 +277,58 @@ status:
 					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
 					`sum(increase(response_total{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod, classification)`,
 				},
-				res: pb.StatSummaryResponse{
-					Response: &pb.StatSummaryResponse_Ok_{ // https://github.com/golang/protobuf/issues/205
-						Ok: &pb.StatSummaryResponse_Ok{
-							StatTables: []*pb.StatTable{
-								&pb.StatTable{
-									Table: &pb.StatTable_PodGroup_{
-										PodGroup: &pb.StatTable_PodGroup{
-											Rows: []*pb.StatTable_PodGroup_Row{
-												&pb.StatTable_PodGroup_Row{
-													Resource: &pb.Resource{
-														Namespace: "emojivoto",
-														Type:      "pods",
-														Name:      "emojivoto-1",
-													},
-													Stats: &pb.BasicStats{
-														SuccessCount: 123,
-														FailureCount: 0,
-														LatencyMsP50: 123,
-														LatencyMsP95: 123,
-														LatencyMsP99: 123,
-													},
-													TimeWindow:      "1m",
-													MeshedPodCount:  1,
-													RunningPodCount: 1,
-												},
-											},
-										},
-									},
-								},
-							},
+				expectedResponse: genStatSummaryResponse("emojivoto-1", "pods", "emojivoto", 1, 1),
+			},
+		}
+
+		testStatSummary(t, expectations)
+	})
+
+	t.Run("Queries prometheus for outbound metrics if from resource is specified, ignores resource name", func(t *testing.T) {
+		expectations := []statSumExpected{
+			statSumExpected{
+				err: nil,
+				k8sConfigs: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-1
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+  annotations:
+    conduit.io/proxy-version: testinjectversion
+status:
+  phase: Running
+`,
+				},
+				mockPromResponse: model.Vector{
+					genPromSample("emojivoto-2", "pod", "emojivoto", "success"),
+				},
+				req: pb.StatSummaryRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Name:      "emojivoto-1",
+							Namespace: "emojivoto",
+							Type:      pkgK8s.Pods,
+						},
+					},
+					TimeWindow: "1m",
+					Outbound: &pb.StatSummaryRequest_FromResource{
+						FromResource: &pb.Resource{
+							Name:      "emojivoto-2",
+							Namespace: "emojivoto",
+							Type:      pkgK8s.Pods,
 						},
 					},
 				},
+				expectedPrometheusQueries: []string{
+					`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="outbound", namespace="emojivoto", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
+					`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="outbound", namespace="emojivoto", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
+					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="outbound", namespace="emojivoto", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
+					`sum(increase(response_total{direction="outbound", namespace="emojivoto", pod="emojivoto-2"}[1m])) by (dst_namespace, dst_pod, classification)`,
+				},
+				expectedResponse: genEmptyResponse(),
 			},
 		}
 
@@ -322,7 +339,7 @@ status:
 		expectations := []statSumExpected{
 			statSumExpected{
 				err: nil,
-				k8sRes: []string{`
+				k8sConfigs: []string{`
 apiVersion: apps/v1beta2
 kind: Deployment
 metadata:
@@ -373,17 +390,7 @@ status:
   phase: Running
 `,
 				},
-				promRes: model.Vector{
-					&model.Sample{
-						Metric: model.Metric{
-							"deployment":     "emoji-deploy",
-							"namespace":      "emojivoto",
-							"classification": "success",
-						},
-						Value:     123,
-						Timestamp: 456,
-					},
-				},
+				mockPromResponse: prometheusMetric("emoji-deploy", "deployment", "emojivoto", "success"),
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
@@ -393,7 +400,7 @@ status:
 					},
 					TimeWindow: "1m",
 				},
-				res: pb.StatSummaryResponse{
+				expectedResponse: pb.StatSummaryResponse{
 					Response: &pb.StatSummaryResponse_Ok_{ // https://github.com/golang/protobuf/issues/205
 						Ok: &pb.StatSummaryResponse_Ok{
 							StatTables: []*pb.StatTable{
@@ -513,7 +520,7 @@ status:
 			clientSet := fake.NewSimpleClientset()
 			lister := k8s.NewLister(clientSet)
 			fakeGrpcServer := newGrpcServer(
-				&MockProm{Res: exp.promRes},
+				&MockProm{Res: exp.mockPromResponse},
 				tap.NewTapClient(nil),
 				lister,
 				"conduit",
