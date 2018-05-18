@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	proto "github.com/golang/protobuf/proto"
 	"github.com/prometheus/common/model"
 	"github.com/runconduit/conduit/controller/api/util"
 	pb "github.com/runconduit/conduit/controller/gen/public"
@@ -85,26 +86,8 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 	resultChan := make(chan resourceResult)
 
 	for _, resource := range resourcesToQuery {
-		statReq := &pb.StatSummaryRequest{
-			Selector: &pb.ResourceSelection{
-				Resource: &pb.Resource{
-					Namespace: req.Selector.Resource.Namespace,
-					Type:      resource,
-					Name:      req.Selector.Resource.Name,
-				},
-				LabelSelector: req.Selector.LabelSelector,
-			},
-			TimeWindow: req.TimeWindow,
-		}
-		if req.GetFromResource() != nil {
-			statReq.Outbound = &pb.StatSummaryRequest_FromResource{
-				FromResource: req.GetFromResource(),
-			}
-		} else if req.GetToResource() != nil {
-			statReq.Outbound = &pb.StatSummaryRequest_ToResource{
-				ToResource: req.GetToResource(),
-			}
-		}
+		statReq := proto.Clone(req).(*pb.StatSummaryRequest)
+		statReq.Selector.Resource.Type = resource
 
 		go func() {
 			resultChan <- s.resourceQuery(ctx, statReq)
