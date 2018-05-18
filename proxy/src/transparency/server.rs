@@ -3,7 +3,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use futures::Future;
+use futures::{future::Either, Future};
 use http;
 use hyper;
 use indexmap::IndexSet;
@@ -139,7 +139,7 @@ where
             );
 
             DefaultExecutor::current()
-                .spawn(fut)
+                .spawn(Box::new(fut))
                 .expect("spawn TCP server task");
             return;
         }
@@ -152,13 +152,13 @@ where
         let drain_signal = self.drain_signal.clone();
         let fut = io.peek()
             .map_err(|e| debug!("peek error: {}", e))
-            .and_then(move |io| -> Box<Future<Item=(), Error=()> + Send> {
+            .and_then(move |io| {
                 if let Some(proto) = Protocol::detect(io.peeked()) {
-                    match proto {
+                    Either::A(match proto {
                         Protocol::Http1 => {
                             trace!("transparency detected HTTP/1");
 
-                            Box::new(new_service.new_service()
+                            let fut = new_service.new_service()
                                 .map_err(|_| ())
                                 .and_then(move |s| {
                                     let svc = HyperServerSvc::new(s, srv_ctx);
@@ -168,7 +168,8 @@ where
                                         })
                                         .map(|_| ())
                                         .map_err(|e| trace!("http1 server error: {:?}", e))
-                                }))
+                                });
+                            Either::A(fut)
                         },
                         Protocol::Http2 => {
                             trace!("transparency detected HTTP/2");
@@ -183,17 +184,17 @@ where
                                 })
                                 .map_err(|e| trace!("h2 server error: {:?}", e));
 
-                            Box::new(fut)
+                            Either::B(fut)
                         }
-                    }
+                    })
                 } else {
                     trace!("transparency did not detect protocol, treating as TCP");
-                    tcp_serve(
+                    Either::B(tcp_serve(
                         &tcp,
                         io,
                         srv_ctx,
                         drain_signal,
-                    )
+                    ))
                 }
             });
 
@@ -208,11 +209,11 @@ fn tcp_serve<T: AsyncRead + AsyncWrite + Send + 'static>(
     io: T,
     srv_ctx: Arc<ServerCtx>,
     drain_signal: drain::Watch,
-) -> Box<Future<Item=(), Error=()> + Send + 'static> {
+) -> impl Future<Item=(), Error=()> + Send + 'static {
     let fut = tcp.serve(io, srv_ctx);
 
     // There's nothing to do when drain is signaled, we just have to hope
     // the sockets finish soon. However, the drain signal still needs to
     // 'watch' the TCP future so that the process doesn't close early.
-    Box::new(drain_signal.watch(fut, |_| ()))
+    drain_signal.watch(fut, |_| ())
 }
