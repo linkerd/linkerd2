@@ -219,6 +219,7 @@ where
 
         let (control, control_bg) = control::destination::new(
             dns_resolver.clone(),
+            config.dns_min_ttl,
             config.pod_namespace.clone(),
             control_host_and_port
         );

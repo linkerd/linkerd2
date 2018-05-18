@@ -27,6 +27,7 @@
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::{Arc, Weak};
+use std::time::Duration;
 
 use futures::{
     sync::mpsc,
@@ -139,6 +140,7 @@ pub trait Bind {
 /// to drive the background task.
 pub fn new(
     dns_resolver: dns::Resolver,
+    dns_min_ttl: Option<Duration>,
     default_destination_namespace: String,
     host_and_port: HostAndPort,
 ) -> (Resolver, impl Future<Item = (), Error = ()>) {
@@ -147,6 +149,7 @@ pub fn new(
     let bg = background::task(
         rx,
         dns_resolver,
+        dns_min_ttl,
         default_destination_namespace,
         host_and_port,
     );
