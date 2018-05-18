@@ -53,7 +53,7 @@ export default class Namespaces extends React.Component {
     }
     this.setState({ pendingRequests: true });
 
-    this.api.setCurrentRequests([this.api.fetchMetrics(this.api.urlsForResource["all"].url(this.state.ns).rollup)]);
+    this.api.setCurrentRequests([this.api.fetchMetrics(this.api.urlsForResource("all", this.state.ns))]);
 
     Promise.all(this.api.getCurrentPromises())
       .then(([allRollup]) => {

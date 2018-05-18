@@ -141,7 +141,9 @@ export const processMultiResourceRollup = (rawMetrics, controllerNamespace, incl
       return;
     }
 
+    // assumes all rows in a podGroup have the same resource type
     let resource = _.get(table, ["podGroup", "rows", 0, "resource", "type"]);
+
     metricsByResource[resource] = processStatTable(table, controllerNamespace, includeConduit);
   });
   return metricsByResource;

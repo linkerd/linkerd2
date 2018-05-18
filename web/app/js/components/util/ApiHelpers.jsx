@@ -79,31 +79,13 @@ export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     metricsWindow = window;
   };
 
-  const genResourceUrl = type => {
-    return namespace => {
-      let baseUrl = '/api/stat?resource_type=' + type;
-      return {
-        rollup: !namespace ? baseUrl : baseUrl + '&namespace=' + namespace
-      };
-    };
-  };
-
-  const urlsForResource = {
-    "all": {
-      url: genResourceUrl("all")
-    },
-    "namespace": {
-      url: genResourceUrl("namespace")
-    },
-    "replication_controller": {
-      url: genResourceUrl("replicationcontroller")
-    },
-    "deployment": {
-      url: genResourceUrl("deployment")
-    },
-    "pod": {
-      url: genResourceUrl("pod")
+  const urlsForResource = (type, namespace) => {
+    if (type === "replication_controller") {
+      type = "replicationcontroller";
     }
+
+    let baseUrl = '/api/stat?resource_type=' + type;
+    return !namespace ? baseUrl : baseUrl + '&namespace=' + namespace;
   };
 
   // maintain a list of a component's requests,
@@ -156,7 +138,7 @@ export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     setMetricsWindow,
     getValidMetricsWindows: () => _.keys(validMetricsWindows),
     getMetricsWindowDisplayText,
-    urlsForResource: urlsForResource,
+    urlsForResource,
     ConduitLink,
     setCurrentRequests,
     getCurrentPromises,

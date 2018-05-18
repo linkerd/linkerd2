@@ -61,7 +61,7 @@ export default class ResourceList extends React.Component {
     this.setState({ pendingRequests: true });
 
     this.api.setCurrentRequests([
-      this.api.fetchMetrics(this.api.urlsForResource[resource].url().rollup)
+      this.api.fetchMetrics(this.api.urlsForResource(resource))
     ]);
 
     Promise.all(this.api.getCurrentPromises())
