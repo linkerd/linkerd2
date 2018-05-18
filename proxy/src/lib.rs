@@ -459,7 +459,7 @@ where
 fn serve_control<N, B>(
     bound_port: BoundPort,
     new_service: N,
-) -> Box<Future<Item = (), Error = io::Error> + 'static>
+) -> impl Future<Item = (), Error = io::Error> + 'static
 where
     B: tower_h2::Body + Send + 'static,
     <B::Data as bytes::IntoBuf>::Buf: Send,

@@ -101,13 +101,13 @@ impl BoundPort {
     // In the future it will also ensure that the connection is upgraded with
     // TLS when needed.
     pub fn listen_and_fold<T, F, Fut>(self, initial: T, f: F)
-        -> Box<Future<Item = (), Error = io::Error> + Send + 'static>
+        -> impl Future<Item = (), Error = io::Error> + Send + 'static
     where
         F: Fn(T, (Connection, SocketAddr)) -> Fut + Send + 'static,
         T: Send + 'static,
         Fut: IntoFuture<Item = T, Error = std::io::Error> + Send + 'static,
         <Fut as IntoFuture>::Future: Send, {
-        let fut = future::lazy(move || {
+        future::lazy(move || {
             // Create the TCP listener lazily, so that it's not bound to a
             // reactor until the future is run. This will avoid
             // `Handle::current()` creating a mew thread for the global
@@ -129,9 +129,7 @@ impl BoundPort {
                     f(b, (Connection::plain(socket), remote_addr))
                 })
         )
-        .map(|_| ());
-
-        Box::new(fut)
+        .map(|_| ())
     }
 }
 
