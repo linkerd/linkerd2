@@ -1,7 +1,7 @@
 use futures::prelude::*;
 use std::fmt;
 use std::net::IpAddr;
-use std::time::{Instant, Duration};
+use std::time::Instant;
 use tokio::timer::Delay;
 use transport;
 use trust_dns_resolver;
@@ -84,12 +84,12 @@ impl Resolver {
         }
     }
 
-    pub fn resolve_all_ips(&self, delay: Duration, host: &Name) -> IpAddrListFuture {
+    pub fn resolve_all_ips(&self, deadline: Instant, host: &Name) -> IpAddrListFuture {
         let name = host.clone();
         let name_clone = name.clone();
         trace!("resolve_all_ips {}", &name);
         let resolver = self.clone();
-        let f = Delay::new(Instant::now() + delay)
+        let f = Delay::new(deadline)
             .then(move |_| {
                 trace!("resolve_all_ips {} after delay", &name);
                 resolver.lookup_ip(&name)

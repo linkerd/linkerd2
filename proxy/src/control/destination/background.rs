@@ -5,7 +5,7 @@ use std::collections::{
 use std::fmt;
 use std::iter::IntoIterator;
 use std::net::SocketAddr;
-use std::time::Duration;
+use std::time::{Instant, Duration};
 
 use bytes::Bytes;
 use futures::{
@@ -39,6 +39,10 @@ use timeout::Timeout;
 
 type DestinationServiceQuery<T> = Remote<PbUpdate, T>;
 type UpdateRx<T> = Receiver<PbUpdate, T>;
+
+/// Duration to wait before polling DNS again for a negative result.
+// TODO: should this be a config option?
+const NEGATIVE_RESULT_TTL: Duration = Duration::from_secs(5);
 
 /// Satisfies resolutions as requested via `request_rx`.
 ///
@@ -211,7 +215,7 @@ where
                             if set.query.is_none() {
                                 set.reset_dns_query(
                                     &self.dns_resolver,
-                                    Duration::from_secs(0),
+                                    Instant::now(),
                                     vac.key(),
                                 );
                             }
@@ -291,7 +295,7 @@ where
                 },
                 Exists::No => {
                     // Fall back to DNS.
-                    set.reset_dns_query(&self.dns_resolver, Duration::from_secs(0), auth);
+                    set.reset_dns_query(&self.dns_resolver, Instant::now(), auth);
                 },
                 Exists::Unknown => (), // No change from Destination service's perspective.
             }
@@ -340,16 +344,16 @@ where
     fn reset_dns_query(
         &mut self,
         dns_resolver: &dns::Resolver,
-        delay: Duration,
+        deadline: Instant,
         authority: &DnsNameAndPort,
     ) {
         trace!(
-            "resetting DNS query for {} with delay {:?}",
+            "resetting DNS query for {} at {:?}",
             authority.host,
-            delay
+            deadline
         );
         self.reset_on_next_modification();
-        self.dns_query = Some(dns_resolver.resolve_all_ips(delay, &authority.host));
+        self.dns_query = Some(dns_resolver.resolve_all_ips(deadline, &authority.host));
     }
 
     // Processes Destination service updates from `request_rx`, returning the new query
@@ -416,7 +420,10 @@ where
         trace!("checking DNS for {:?}", authority);
         while let Some(mut query) = self.dns_query.take() {
             trace!("polling DNS for {:?}", authority);
-            match query.poll() {
+            // If the query returned a positive result, it will have a deadline
+            // after which we should poll again. Otherwise, we'll wait for
+            // NEGATIVE_RESULT_TTL before polling DNS again.
+            let deadline = match query.poll() {
                 Ok(Async::NotReady) => {
                     trace!("DNS query not ready {:?}", authority);
                     self.dns_query = Some(query);
@@ -437,6 +444,16 @@ where
                             )
                         }),
                     );
+
+                    // Poll again after the deadline on the DNS response.
+                    // TODO: clamp to min_ttl
+                    // NOTE: it would be nice if we could choose the time source used for the
+                    //       current time to start the deadline (for testing), however
+                    //       `TRust-DNS`' API allows us to only get the deadline (an `Instant`)
+                    //       rather than the TTL (a `Duration`). If tokio-timer allowed access
+                    //       to the current `Now` instance, as discussed in the TODO comment
+                    //       below, `Trust-DNS` could use that rather than `Instant::now()`...
+                    ips.valid_until()
                 },
                 Ok(Async::Ready(dns::Response::DoesNotExist)) => {
                     trace!(
@@ -444,16 +461,23 @@ where
                         authority
                     );
                     self.no_endpoints(authority, false);
+
+                    // A negative result has no TTL; poll again after the default wait time.
+                    // TODO: use the `Now` configured on our current tokio `Timer` instance
+                    //       so that the time source can be mocked. This will require
+                    //       support for getting the current `Now` instance in tokio.
+                    Instant::now() + NEGATIVE_RESULT_TTL
                 },
                 Err(e) => {
-                    trace!("DNS resolution failed for {}: {}", &authority.host, e);
                     // Do nothing so that the most recent non-error response is used until a
-                    // non-error response is received.
+                    // non-error response is received
+                    trace!("DNS resolution failed for {}: {}", &authority.host, e);
+
+                    // Poll again after the default wait time.
+                    Instant::now() + NEGATIVE_RESULT_TTL
                 },
             };
-            // TODO: When we have a TTL to use, we should use that TTL instead of hard-coding this
-            // delay.
-            self.reset_dns_query(dns_resolver, Duration::from_secs(5), &authority)
+            self.reset_dns_query(dns_resolver, deadline, &authority)
         }
     }
 }
