@@ -482,8 +482,67 @@ data:
     groups:
     - name: conduit-rules
       rules:
-      - record: kube_dst_pod_owner
-        expr: label_replace(kube_pod_owner, "dst_pod", "$1", "pod", "(.*)")
+      # copy pod/namespace/owner_kind/owner_name labels to dst_* equivalents for easier matching with outbound metrics
+      - record: kube_pod_owner_ex
+        expr: |
+          label_replace(
+            label_replace(
+              label_replace(
+                label_replace(
+                  kube_pod_owner,
+                  "dst_pod", "$1", "pod", "(.*)"
+                ),
+                "dst_namespace", "$1", "namespace", "(.*)"
+              ),
+              "dst_owner_kind", "$1", "owner_kind", "(.*)"
+            ),
+            "dst_owner_name", "$1", "owner_name", "(.*)"
+          )
+      # copy owner_kind and owner_name into request_total metric,
+      # if owner_kind="ReplicaSet", infer Deployment name in "ksm_deployment" label
+      # nest for dst_* info
+      - record: request_total_ex
+        expr: |
+          # this drops metrics that satisfy request_total{pod=""}, how is that possible?
+          label_replace(
+            (
+              # this drops metrics that satisfy request_total{direction="outbound", dst_pod=""}, how is that possible?
+              label_replace(
+                request_total{direction="outbound"}
+                * on(dst_namespace, dst_pod) group_left(dst_owner_kind, dst_owner_name)
+                kube_pod_owner_ex{dst_owner_kind="ReplicaSet"},
+                "ksm_dst_deployment", "$1", "dst_owner_name", "(.*)-.*"
+              )
+              or on (dst_namespace, dst_pod)(
+                request_total{direction="outbound"}
+                * on(dst_namespace, dst_pod) group_left(dst_owner_kind, dst_owner_name)
+                kube_pod_owner_ex
+              )
+              or request_total{direction="inbound"}
+            )
+            * on(namespace, pod) group_left(owner_kind, owner_name)
+            kube_pod_owner{owner_kind="ReplicaSet"},
+            "ksm_deployment", "$1", "owner_name", "(.*)-.*"
+          )
+          or on (namespace, pod)(
+            (
+              # this drops metrics that satisfy request_total{direction="outbound", dst_pod=""}, how is that possible?
+              label_replace(
+                request_total{direction="outbound"}
+                * on(dst_namespace, dst_pod) group_left(dst_owner_kind, dst_owner_name)
+                kube_pod_owner_ex{dst_owner_kind="ReplicaSet"},
+                "ksm_dst_deployment", "$1", "dst_owner_name", "(.*)-.*"
+              )
+              or on (dst_namespace, dst_pod)(
+                request_total{direction="outbound"}
+                * on(dst_namespace, dst_pod) group_left(dst_owner_kind, dst_owner_name)
+                kube_pod_owner_ex
+              )
+              or request_total{direction="inbound"}
+            )
+            * on(namespace, pod) group_left(owner_kind, owner_name)
+            kube_pod_owner
+          )
 
   prometheus.yml: |-
     global:

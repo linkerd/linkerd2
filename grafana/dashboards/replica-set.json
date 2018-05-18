@@ -1322,7 +1322,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(response_total{direction=\"outbound\", pod=~\"$pod\", classification=\"success\"}[30s]) * on(namespace, dst_pod) group_left (owner_kind, owner_name) kube_dst_pod_owner{namespace=\"$namespace\", owner_kind=\"ReplicaSet\"}) by (owner_name)\n/\nsum(irate(response_total{direction=\"outbound\", pod=~\"$pod\"}[30s]) * on(namespace, dst_pod) group_left (owner_kind, owner_name) kube_dst_pod_owner{namespace=\"$namespace\", owner_kind=\"ReplicaSet\"}) by (owner_name)",
+          "expr": "sum(irate(response_total{direction=\"outbound\", pod=~\"$pod\", classification=\"success\"}[30s]) * on(namespace, dst_pod) group_left (owner_kind, owner_name) kube_pod_owner_ex{namespace=\"$namespace\", owner_kind=\"ReplicaSet\"}) by (owner_name)\n/\nsum(irate(response_total{direction=\"outbound\", pod=~\"$pod\"}[30s]) * on(namespace, dst_pod) group_left (owner_kind, owner_name) kube_pod_owner_ex{namespace=\"$namespace\", owner_kind=\"ReplicaSet\"}) by (owner_name)",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
@@ -1408,7 +1408,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{direction=\"outbound\", pod=~\"$pod\"}[30s]) * on(namespace, dst_pod) group_left (owner_kind, owner_name) kube_dst_pod_owner{namespace=\"$namespace\", owner_kind=\"ReplicaSet\"}) by (owner_name)",
+          "expr": "sum(irate(request_total{direction=\"outbound\", pod=~\"$pod\"}[30s]) * on(namespace, dst_pod) group_left (owner_kind, owner_name) kube_pod_owner_ex{namespace=\"$namespace\", owner_kind=\"ReplicaSet\"}) by (owner_name)",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
@@ -1493,7 +1493,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction=\"outbound\", pod=~\"$pod\"}[30s]) * on(namespace, dst_pod) group_left (owner_kind, owner_name) kube_dst_pod_owner{namespace=\"$namespace\", owner_kind=\"ReplicaSet\"}) by (le, owner_name))",
+          "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction=\"outbound\", pod=~\"$pod\"}[30s]) * on(namespace, dst_pod) group_left (owner_kind, owner_name) kube_pod_owner_ex{namespace=\"$namespace\", owner_kind=\"ReplicaSet\"}) by (le, owner_name))",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
@@ -1874,7 +1874,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(response_total{direction=\"outbound\", pod=~\"$pod\", classification=\"success\"}[30s]) * on(namespace, dst_pod) group_left (owner_kind, owner_name) kube_dst_pod_owner{namespace=\"$namespace\", owner_kind=\"ReplicaSet\", owner_name=\"$outbound\"}) by (owner_name)\n/\nsum(irate(response_total{direction=\"outbound\", pod=~\"$pod\"}[30s]) * on(namespace, dst_pod) group_left (owner_kind, owner_name) kube_dst_pod_owner{namespace=\"$namespace\", owner_kind=\"ReplicaSet\", owner_name=\"$outbound\"}) by (owner_name)",
+              "expr": "sum(irate(response_total{direction=\"outbound\", pod=~\"$pod\", classification=\"success\"}[30s]) * on(namespace, dst_pod) group_left (owner_kind, owner_name) kube_pod_owner_ex{namespace=\"$namespace\", owner_kind=\"ReplicaSet\", owner_name=\"$outbound\"}) by (owner_name)\n/\nsum(irate(response_total{direction=\"outbound\", pod=~\"$pod\"}[30s]) * on(namespace, dst_pod) group_left (owner_kind, owner_name) kube_pod_owner_ex{namespace=\"$namespace\", owner_kind=\"ReplicaSet\", owner_name=\"$outbound\"}) by (owner_name)",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "rs/{{owner_name}}",
@@ -1959,7 +1959,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(request_total{direction=\"outbound\", pod=~\"$pod\"}[30s]) * on(namespace, dst_pod) group_left (owner_kind, owner_name) kube_dst_pod_owner{namespace=\"$namespace\", owner_kind=\"ReplicaSet\", owner_name=\"$outbound\"}) by (owner_name)",
+              "expr": "sum(irate(request_total{direction=\"outbound\", pod=~\"$pod\"}[30s]) * on(namespace, dst_pod) group_left (owner_kind, owner_name) kube_pod_owner_ex{namespace=\"$namespace\", owner_kind=\"ReplicaSet\", owner_name=\"$outbound\"}) by (owner_name)",
               "format": "time_series",
               "hide": false,
               "intervalFactor": 1,
@@ -2044,21 +2044,21 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction=\"outbound\", pod=~\"$pod\"}[30s]) * on(namespace, dst_pod) group_left (owner_kind, owner_name) kube_dst_pod_owner{namespace=\"$namespace\", owner_kind=\"ReplicaSet\", owner_name=\"$outbound\"}) by (le, owner_name))",
+              "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction=\"outbound\", pod=~\"$pod\"}[30s]) * on(namespace, dst_pod) group_left (owner_kind, owner_name) kube_pod_owner_ex{namespace=\"$namespace\", owner_kind=\"ReplicaSet\", owner_name=\"$outbound\"}) by (le, owner_name))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "P50 rs/{{owner_name}}",
               "refId": "A"
             },
             {
-              "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction=\"outbound\", pod=~\"$pod\"}[30s]) * on(namespace, dst_pod) group_left (owner_kind, owner_name) kube_dst_pod_owner{namespace=\"$namespace\", owner_kind=\"ReplicaSet\", owner_name=\"$outbound\"}) by (le, owner_name))",
+              "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction=\"outbound\", pod=~\"$pod\"}[30s]) * on(namespace, dst_pod) group_left (owner_kind, owner_name) kube_pod_owner_ex{namespace=\"$namespace\", owner_kind=\"ReplicaSet\", owner_name=\"$outbound\"}) by (le, owner_name))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "P95 rs/{{owner_name}}",
               "refId": "B"
             },
             {
-              "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction=\"outbound\", pod=~\"$pod\"}[30s]) * on(namespace, dst_pod) group_left (owner_kind, owner_name) kube_dst_pod_owner{namespace=\"$namespace\", owner_kind=\"ReplicaSet\", owner_name=\"$outbound\"}) by (le, owner_name))",
+              "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction=\"outbound\", pod=~\"$pod\"}[30s]) * on(namespace, dst_pod) group_left (owner_kind, owner_name) kube_pod_owner_ex{namespace=\"$namespace\", owner_kind=\"ReplicaSet\", owner_name=\"$outbound\"}) by (le, owner_name))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "P99 rs/{{owner_name}}",
