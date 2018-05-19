@@ -345,7 +345,7 @@ fn serve<R, B, E, F, G>(
     sensors: telemetry::Sensors,
     get_orig_dst: G,
     drain_rx: drain::Watch,
-) -> Box<Future<Item = (), Error = io::Error> + Send + 'static>
+) -> impl Future<Item = (), Error = io::Error> + Send + 'static
 where
     B: tower_h2::Body + Default + Send + 'static,
     <B::Data as ::bytes::IntoBuf>::Buf: Send,
@@ -426,9 +426,9 @@ where
 
     // As soon as we get a shutdown signal, the listener
     // is canceled immediately.
-    Box::new(drain_rx.watch(accept_until, |accept| {
+    drain_rx.watch(accept_until, |accept| {
         accept.canceled = true;
-    }))
+    })
 }
 
 /// Can cancel a future by setting a flag.
@@ -459,7 +459,7 @@ where
 fn serve_control<N, B>(
     bound_port: BoundPort,
     new_service: N,
-) -> Box<Future<Item = (), Error = io::Error> + 'static>
+) -> impl Future<Item = (), Error = io::Error> + 'static
 where
     B: tower_h2::Body + Send + 'static,
     <B::Data as bytes::IntoBuf>::Buf: Send,
