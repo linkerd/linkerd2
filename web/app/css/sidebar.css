@@ -1,7 +1,6 @@
 @import 'styles.css';
 
 .sidebar {
-  padding: 0px 10% 0px 10%;
   background-color: #091B39;
   color: white;
   min-height: 100vh;
@@ -14,38 +13,20 @@
   }
 
   & .sidebar-menu-item {
-    padding-left: 9px;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: var(--font-weight-bold);
+
     & a {
       color: white;
+    }
+
+    & .update {
+      color: var(--siennared);
     }
   }
 
   & img {
     height: 36px;
-  }
-
-  & .sidebar-headers {
-    padding: 27px 0px;
-  }
-
-  & .ant.menu {
-    line-height: 0;
-  }
-
-  & .ant-menu-item {
-    line-height: 1.4;
-    margin-bottom: 4px;
-  }
-
-  & .ant-menu-item {
-    padding: 8px 0px 11px 14px;
-  }
-
-  & .ant-menu-item {
-    border-radius: 4px;
-    margin-right: 8px;
   }
 
   & .ant-menu-item:hover {
@@ -54,41 +35,43 @@
 
   & .ant-menu-item-active, & .ant-menu:not(.ant-menu-horizontal) .ant-menu-item-selected {
     background: #007EFF;
-  }
-
-  & .social-links {
-    padding: 0 0 0 9px;
-    position: fixed;
-    height: 40px;
-    bottom: calc(var(--base-width)*16);
 
     & a {
-      margin-right: calc(var(--base-width)*2);
+      text-decoration: none;
     }
   }
-}
 
-.call-to-action .action {
-  font-size: inherit;
-}
+  & .sidebar-menu-header {
+    padding: calc(var(--base-width)*2) 14px;
 
-.conduit-autocomplete {
-  margin-bottom: calc(2 * var(--base-width));
-
-  & .ant-select-selection__placeholder {
-    color: #7395C8;
-    font-size: 12px;
+    &.collapsed {
+      text-align: center;
+    }
   }
 
-  & .ant-select-search {
-    background: #1B3358;
-  }
+  & .sidebar-menu-footer {
+    position: fixed;
+    bottom: 120px;
+    margin-left: calc(var(--base-width)*2);
 
-  & .ant-input {
-    border: 1px solid #7395C8;
+    @media only screen and (max-height: 560px) {
+      display: none;
+    }
 
-    &.ant-select-search__field {
-      color: white;
+    & .social-links {
+      padding: 0 0 0 9px;
+
+      & a {
+        margin-right: calc(var(--base-width)*2);
+      }
+    }
+
+    & .version {
+      padding: 0 0 0 9px;
+      font-size: 13px;
+      font-weight: var(--font-weight-bold);
+      line-height: 2;
+      height: 40px;
     }
   }
 }

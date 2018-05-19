@@ -5,22 +5,23 @@ use std::sync::Arc;
 
 use http;
 use futures::{Async, Poll};
-use rand;
-use tower;
+use tower_service as tower;
 use tower_balance::{self, choose, load, Balance};
 use tower_buffer::Buffer;
 use tower_discover::{Change, Discover};
 use tower_in_flight_limit::InFlightLimit;
 use tower_h2;
-use conduit_proxy_router::{Reuse, Recognize};
+use conduit_proxy_router::Recognize;
 
 use bind::{self, Bind, Protocol};
-use control::{self, discovery};
-use control::discovery::Bind as BindTrait;
+use control;
+use control::destination::{Bind as BindTrait, Resolution};
 use ctx;
+use task::LazyExecutor;
 use timeout::Timeout;
 use transparency::h1;
 use transport::{DnsNameAndPort, Host, HostAndPort};
+use rng::LazyThreadRng;
 
 type BindProtocol<B> = bind::BindProtocol<Arc<ctx::Proxy>, B>;
 
@@ -32,12 +33,18 @@ pub struct Outbound<B> {
 
 const MAX_IN_FLIGHT: usize = 10_000;
 
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Destination {
+    Hostname(DnsNameAndPort),
+    ImplicitOriginalDst(SocketAddr),
+}
+
 // ===== impl Outbound =====
 
 impl<B> Outbound<B> {
     pub fn new(bind: Bind<Arc<ctx::Proxy>, B>,
                discovery: control::Control,
-               bind_timeout: Duration,)
+               bind_timeout: Duration)
                -> Outbound<B> {
         Self {
             bind,
@@ -47,15 +54,24 @@ impl<B> Outbound<B> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum Destination {
-    Hostname(DnsNameAndPort),
-    ImplicitOriginalDst(SocketAddr),
+impl<B> Clone for Outbound<B>
+where
+    B: tower_h2::Body + Send + 'static,
+    B::Data: Send,
+{
+    fn clone(&self) -> Self {
+        Self {
+            bind: self.bind.clone(),
+            discovery: self.discovery.clone(),
+            bind_timeout: self.bind_timeout.clone(),
+        }
+    }
 }
 
 impl<B> Recognize for Outbound<B>
 where
-    B: tower_h2::Body + 'static,
+    B: tower_h2::Body + Send + 'static,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
     type Request = http::Request<B>;
     type Response = bind::HttpResponse;
@@ -64,10 +80,10 @@ where
     type RouteError = bind::BufferSpawnError;
     type Service = InFlightLimit<Timeout<Buffer<Balance<
         load::WithPendingRequests<Discovery<B>>,
-        choose::PowerOfTwoChoices<rand::ThreadRng>
+        choose::PowerOfTwoChoices<LazyThreadRng>
     >>>>;
 
-    fn recognize(&self, req: &Self::Request) -> Option<Reuse<Self::Key>> {
+    fn recognize(&self, req: &Self::Request) -> Option<Self::Key> {
         let proto = bind::Protocol::detect(req);
 
         // The request URI and Host: header have not yet been normalized
@@ -106,20 +122,15 @@ where
         // original destination.
         let dest = dest?;
 
-        Some(proto.into_key(dest))
+        Some((dest, proto))
     }
 
     /// Builds a dynamic, load balancing service.
     ///
     /// Resolves the authority in service discovery and initializes a service that buffers
     /// and load balances requests across.
-    ///
-    /// # TODO
-    ///
-    /// Buffering is currently unbounded and does not apply timeouts. This must be
-    /// changed.
     fn bind_service(
-        &mut self,
+        &self,
         key: &Self::Key,
     ) -> Result<Self::Service, Self::RouteError> {
         let &(ref dest, ref protocol) = key;
@@ -140,16 +151,16 @@ where
 
         let loaded = tower_balance::load::WithPendingRequests::new(resolve);
 
-        let balance = tower_balance::power_of_two_choices(loaded, rand::thread_rng());
 
-        // use the same executor as the underlying `Bind` for the `Buffer` and
-        // `Timeout`.
-        let handle = self.bind.executor();
+        // We can't use `rand::thread_rng` here because the returned `Service`
+        // needs to be `Send`, so instead, we use `LazyRng`, which calls
+        // `rand::thread_rng()` when it is *used*.
+        let balance = tower_balance::power_of_two_choices(loaded, LazyThreadRng);
 
-        let buffer = Buffer::new(balance, handle)
+        let buffer = Buffer::new(balance, &LazyExecutor)
             .map_err(|_| bind::BufferSpawnError::Outbound)?;
 
-        let timeout = Timeout::new(buffer, self.bind_timeout, handle);
+        let timeout = Timeout::new(buffer, self.bind_timeout);
 
         Ok(InFlightLimit::new(timeout, MAX_IN_FLIGHT))
 
@@ -157,13 +168,14 @@ where
 }
 
 pub enum Discovery<B> {
-    NamedSvc(discovery::Watch<BindProtocol<B>>),
+    NamedSvc(Resolution<BindProtocol<B>>),
     ImplicitOriginalDst(Option<(SocketAddr, BindProtocol<B>)>),
 }
 
 impl<B> Discover for Discovery<B>
 where
-    B: tower_h2::Body + 'static,
+    B: tower_h2::Body + Send + 'static,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
     type Key = SocketAddr;
     type Request = http::Request<B>;

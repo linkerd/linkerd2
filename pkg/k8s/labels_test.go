@@ -12,22 +12,26 @@ func TestGetOwnerLabels(t *testing.T) {
 	t.Run("Maps proxy labels to prometheus labels", func(t *testing.T) {
 		metadata := meta.ObjectMeta{
 			Labels: map[string]string{
+				ControllerNSLabel:                     "conduit-namespace",
 				ProxyDeploymentLabel:                  "test-deployment",
 				ProxyReplicationControllerLabel:       "test-replication-controller",
 				ProxyReplicaSetLabel:                  "test-replica-set",
 				ProxyJobLabel:                         "test-job",
 				ProxyDaemonSetLabel:                   "test-daemon-set",
+				ProxyStatefulSetLabel:                 "test-stateful-set",
 				k8sV1.DefaultDeploymentUniqueLabelKey: "test-pth",
 			},
 		}
 
 		expectedLabels := map[string]string{
-			"deployment":             "test-deployment",
-			"replication_controller": "test-replication-controller",
-			"replica_set":            "test-replica-set",
-			"k8s_job":                "test-job",
-			"daemon_set":             "test-daemon-set",
-			"pod_template_hash":      "test-pth",
+			"conduit_io_control_plane_ns": "conduit-namespace",
+			"deployment":                  "test-deployment",
+			"replication_controller":      "test-replication-controller",
+			"replica_set":                 "test-replica-set",
+			"k8s_job":                     "test-job",
+			"daemon_set":                  "test-daemon-set",
+			"stateful_set":                "test-stateful-set",
+			"pod_template_hash":           "test-pth",
 		}
 
 		ownerLabels := GetOwnerLabels(metadata)

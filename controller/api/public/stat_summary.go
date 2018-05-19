@@ -7,13 +7,12 @@ import (
 	"strings"
 	"time"
 
+	proto "github.com/golang/protobuf/proto"
 	"github.com/prometheus/common/model"
 	"github.com/runconduit/conduit/controller/api/util"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
 	log "github.com/sirupsen/logrus"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,6 +25,11 @@ type promResult struct {
 	prom promType
 	vec  model.Vector
 	err  error
+}
+
+type resourceResult struct {
+	res *pb.StatTable
+	err error
 }
 
 const (
@@ -43,61 +47,127 @@ const (
 
 var promTypes = []promType{promRequests, promLatencyP50, promLatencyP95, promLatencyP99}
 
-type meshedCount struct {
+// resources to query when Resource.Type is "all"
+var resourceTypes = []string{k8s.Pods, k8s.Deployments, k8s.ReplicationControllers, k8s.Services}
+
+type podCount struct {
 	inMesh uint64
 	total  uint64
+	failed uint64
 }
 
 func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
 	// special case to check for services as outbound only
-	if req.Selector.Resource.Type == k8s.Services &&
-		req.Outbound.(*pb.StatSummaryRequest_FromResource) == nil {
-		return nil, status.Errorf(codes.InvalidArgument, "service only supported as a target on 'from' queries, or as a destination on 'to' queries.")
+	if isInvalidServiceRequest(req) {
+		return statSummaryError(req, "service only supported as a target on 'from' queries, or as a destination on 'to' queries"), nil
 	}
 
+	switch req.Outbound.(type) {
+	case *pb.StatSummaryRequest_ToResource:
+		if req.Outbound.(*pb.StatSummaryRequest_ToResource).ToResource.Type == k8s.All {
+			return statSummaryError(req, "resource type 'all' is not supported as a filter"), nil
+		}
+	case *pb.StatSummaryRequest_FromResource:
+		if req.Outbound.(*pb.StatSummaryRequest_FromResource).FromResource.Type == k8s.All {
+			return statSummaryError(req, "resource type 'all' is not supported as a filter"), nil
+		}
+	}
+
+	statTables := make([]*pb.StatTable, 0)
+
+	var resourcesToQuery []string
+	if req.Selector.Resource.Type == k8s.All {
+		resourcesToQuery = resourceTypes
+	} else {
+		resourcesToQuery = []string{req.Selector.Resource.Type}
+	}
+
+	// request stats for the resourcesToQuery, in parallel
+	resultChan := make(chan resourceResult)
+
+	for _, resource := range resourcesToQuery {
+		statReq := proto.Clone(req).(*pb.StatSummaryRequest)
+		statReq.Selector.Resource.Type = resource
+
+		go func() {
+			resultChan <- s.resourceQuery(ctx, statReq)
+		}()
+	}
+
+	for i := 0; i < len(resourcesToQuery); i++ {
+		result := <-resultChan
+		if result.err != nil {
+			return nil, util.GRPCError(result.err)
+		}
+		statTables = append(statTables, result.res)
+	}
+
+	rsp := pb.StatSummaryResponse{
+		Response: &pb.StatSummaryResponse_Ok_{ // https://github.com/golang/protobuf/issues/205
+			Ok: &pb.StatSummaryResponse_Ok{
+				StatTables: statTables,
+			},
+		},
+	}
+
+	return &rsp, nil
+}
+
+func statSummaryError(req *pb.StatSummaryRequest, message string) *pb.StatSummaryResponse {
+	return &pb.StatSummaryResponse{
+		Response: &pb.StatSummaryResponse_Error{
+			Error: &pb.ResourceError{
+				Resource: req.Selector.Resource,
+				Error:    message,
+			},
+		},
+	}
+}
+
+func (s *grpcServer) resourceQuery(ctx context.Context, req *pb.StatSummaryRequest) resourceResult {
 	objects, err := s.lister.GetObjects(req.Selector.Resource.Namespace, req.Selector.Resource.Type, req.Selector.Resource.Name)
 	if err != nil {
-		return nil, util.GRPCError(err)
+		return resourceResult{res: nil, err: err}
 	}
 
 	// TODO: make these one struct:
-	// string => {metav1.ObjectMeta, meshedCount}
+	// string => {metav1.ObjectMeta, podCount}
 	objectMap := map[string]metav1.Object{}
-	meshCountMap := map[string]*meshedCount{}
+	meshCountMap := map[string]*podCount{}
 
 	for _, object := range objects {
 		key, err := cache.MetaNamespaceKeyFunc(object)
 		if err != nil {
-			return nil, util.GRPCError(err)
+			return resourceResult{res: nil, err: err}
 		}
 		metaObj, err := meta.Accessor(object)
 		if err != nil {
-			return nil, util.GRPCError(err)
+			return resourceResult{res: nil, err: err}
 		}
 
 		objectMap[key] = metaObj
 
 		meshCount, err := s.getMeshedPodCount(object)
 		if err != nil {
-			return nil, util.GRPCError(err)
+			return resourceResult{res: nil, err: err}
 		}
 		meshCountMap[key] = meshCount
 	}
 
 	res, err := s.objectQuery(ctx, req, objectMap, meshCountMap)
 	if err != nil {
-		return nil, util.GRPCError(err)
+		return resourceResult{res: nil, err: err}
 	}
 
-	return res, nil
+	return resourceResult{res: res, err: nil}
 }
 
 func (s *grpcServer) objectQuery(
 	ctx context.Context,
 	req *pb.StatSummaryRequest,
 	objects map[string]metav1.Object,
-	meshCount map[string]*meshedCount,
-) (*pb.StatSummaryResponse, error) {
+	meshCount map[string]*podCount,
+) (*pb.StatTable, error) {
 	rows := make([]*pb.StatTable_PodGroup_Row, 0)
 
 	requestMetrics, err := s.getRequests(ctx, req, req.TimeWindow)
@@ -137,24 +207,17 @@ func (s *grpcServer) objectQuery(
 
 		if count, ok := meshCount[key]; ok {
 			row.MeshedPodCount = count.inMesh
-			row.TotalPodCount = count.total
+			row.RunningPodCount = count.total
+			row.FailedPodCount = count.failed
 		}
 
 		rows = append(rows, &row)
 	}
 
-	rsp := pb.StatSummaryResponse{
-		Response: &pb.StatSummaryResponse_Ok_{ // https://github.com/golang/protobuf/issues/205
-			Ok: &pb.StatSummaryResponse_Ok{
-				StatTables: []*pb.StatTable{
-					&pb.StatTable{
-						Table: &pb.StatTable_PodGroup_{
-							PodGroup: &pb.StatTable_PodGroup{
-								Rows: rows,
-							},
-						},
-					},
-				},
+	rsp := pb.StatTable{
+		Table: &pb.StatTable_PodGroup_{
+			PodGroup: &pb.StatTable_PodGroup{
+				Rows: rows,
 			},
 		},
 	}
@@ -230,7 +293,6 @@ func buildRequestLabels(req *pb.StatSummaryRequest) (model.LabelSet, model.Label
 		labelNames = promLabelNames(req.Selector.Resource)
 		labels = labels.Merge(promLabels(req.Selector.Resource))
 		labels = labels.Merge(promDirectionLabels("inbound"))
-
 	}
 
 	return labels, labelNames
@@ -328,17 +390,21 @@ func metricToKey(metric model.Metric, groupBy model.LabelNames) string {
 	return strings.Join(values, "/")
 }
 
-func (s *grpcServer) getMeshedPodCount(obj runtime.Object) (*meshedCount, error) {
-	pods, err := s.lister.GetPodsFor(obj)
+func (s *grpcServer) getMeshedPodCount(obj runtime.Object) (*podCount, error) {
+	pods, err := s.lister.GetPodsFor(obj, true)
 	if err != nil {
 		return nil, err
 	}
 
-	meshCount := &meshedCount{}
+	meshCount := &podCount{}
 	for _, pod := range pods {
-		meshCount.total++
-		if isInMesh(pod) {
-			meshCount.inMesh++
+		if pod.Status.Phase == apiv1.PodFailed {
+			meshCount.failed++
+		} else {
+			meshCount.total++
+			if isInMesh(pod) {
+				meshCount.inMesh++
+			}
 		}
 	}
 
@@ -348,6 +414,15 @@ func (s *grpcServer) getMeshedPodCount(obj runtime.Object) (*meshedCount, error)
 func isInMesh(pod *apiv1.Pod) bool {
 	_, ok := pod.Annotations[k8s.ProxyVersionAnnotation]
 	return ok
+}
+
+func isInvalidServiceRequest(req *pb.StatSummaryRequest) bool {
+	fromResource := req.GetFromResource()
+	if fromResource != nil {
+		return fromResource.Type == k8s.Services
+	} else {
+		return req.Selector.Resource.Type == k8s.Services
+	}
 }
 
 func (s *grpcServer) queryProm(ctx context.Context, query string) (model.Vector, error) {

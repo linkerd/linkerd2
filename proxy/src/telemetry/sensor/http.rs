@@ -7,7 +7,7 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
-use tower::{NewService, Service};
+use tower_service::{NewService, Service};
 use tower_h2::{client, Body};
 
 use ctx;
@@ -442,6 +442,15 @@ where
             }
             frame
         });
+
+        // If the frame ended the stream, send the end of stream event now,
+        // as we may not be polled again.
+        if self.is_end_stream() {
+            if let Some(inner) = self.inner.take() {
+                inner.end(None);
+            }
+        }
+
         Ok(Async::Ready(frame))
     }
 

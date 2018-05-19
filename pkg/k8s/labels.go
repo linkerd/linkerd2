@@ -47,6 +47,10 @@ const (
 	// DaemonSet that this proxy belongs to.
 	ProxyDaemonSetLabel = "conduit.io/proxy-daemon-set"
 
+	// ProxyStatefulSetLabel is injected into mesh-enabled apps, identifying the
+	// StatefulSet that this proxy belongs to.
+	ProxyStatefulSetLabel = "conduit.io/proxy-stateful-set"
+
 	/*
 	 * Annotations
 	 */
@@ -61,11 +65,13 @@ const (
 )
 
 var proxyLabels = []string{
+	ControllerNSLabel,
 	ProxyDeploymentLabel,
 	ProxyReplicationControllerLabel,
 	ProxyReplicaSetLabel,
 	ProxyJobLabel,
 	ProxyDaemonSetLabel,
+	ProxyStatefulSetLabel,
 	k8sV1.DefaultDeploymentUniqueLabelKey,
 }
 
@@ -91,6 +97,9 @@ func GetOwnerLabels(objectMeta meta.ObjectMeta) map[string]string {
 // toOwnerLabel converts a proxy label to a prometheus label, following the
 // relabel conventions from the prometheus scrape config file
 func toOwnerLabel(proxyLabel string) string {
+	if proxyLabel == ControllerNSLabel {
+		return "conduit_io_control_plane_ns"
+	}
 	stripped := strings.TrimPrefix(proxyLabel, "conduit.io/proxy-")
 	if stripped == "job" {
 		return "k8s_job"

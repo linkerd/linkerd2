@@ -4,14 +4,12 @@ import ConduitSpinner from "./ConduitSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
 import { incompleteMeshMessage } from './util/CopyUtils.jsx';
 import Metric from './Metric.jsx';
+import { numericSort } from './util/Utils.js';
 import PageHeader from './PageHeader.jsx';
+import Percentage from './util/Percentage.js';
 import React from 'react';
 import StatusTable from './StatusTable.jsx';
-import { Col, Row, Table } from 'antd';
-import {
-  getComponentPods,
-  getPodsByDeployment,
-} from './util/MetricUtils.js';
+import { Col, Row, Table, Tooltip } from 'antd';
 import './../../css/service-mesh.css';
 
 const serviceMeshDetailsColumns = [
@@ -27,6 +25,61 @@ const serviceMeshDetailsColumns = [
     className: "numeric"
   }
 ];
+
+const getClassification = (meshedPodCount, failedPodCount) => {
+  if (failedPodCount > 0) {
+    return "poor";
+  } else if (meshedPodCount === 0) {
+    return "neutral";
+  } else {
+    return "good";
+  }
+};
+
+const namespacesColumns = ConduitLink => [
+  {
+    title: "Namespace",
+    dataIndex: "namespace",
+    key: "namespace",
+    defaultSortOrder: "ascend",
+    sorter: (a, b) => (a.namespace || "").localeCompare(b.namespace),
+    render: d => <ConduitLink to={"/namespaces/" + d}>{d}</ConduitLink>
+  },
+  {
+    title: "Meshed pods",
+    dataIndex: "meshedPodsStr",
+    key: "meshedPodsStr",
+    className: "numeric",
+    sorter: (a, b) => numericSort(a.totalPods, b.totalPods),
+  },
+  {
+    title: "Meshed Status",
+    key: "meshification",
+    sorter: (a, b) => numericSort(a.meshedPercent.get(), b.meshedPercent.get()),
+    render: row => {
+      let containerWidth = 132;
+      let percent = row.meshedPercent.get();
+      let barWidth = percent < 0 ? 0 : Math.round(percent * containerWidth);
+      let barType = getClassification(row.meshedPods, row.failedPods);
+
+      return (
+        <Tooltip
+          overlayStyle={{ fontSize: "12px" }}
+          title={<div>
+            <div>
+              {`${row.meshedPods} out of ${row.totalPods} running or pending pods are in the mesh (${row.meshedPercent.prettyRate()})`}
+            </div>
+            {row.failedPods === 0 ? null : <div>{ `${row.failedPods} failed pods` }</div>}
+          </div>}>
+          <div className={"container-bar " + barType} style={{width: containerWidth}}>
+            <div className={"inner-bar " + barType} style={{width: barWidth}}>&nbsp;</div>
+          </div>
+        </Tooltip>
+      );
+    }
+  }
+];
+
 const componentNames = {
   "prometheus":   "Prometheus",
   "destination":  "Destination",
@@ -55,7 +108,6 @@ export default class ServiceMesh extends React.Component {
     this.state = {
       pollingInterval: 2000,
       metrics: [],
-      deploys: [],
       components: [],
       lastUpdated: 0,
       pendingRequests: false,
@@ -74,6 +126,46 @@ export default class ServiceMesh extends React.Component {
     this.api.cancelCurrentRequests();
   }
 
+  extractNsStatuses(nsData) {
+    let podsByNs = _.get(nsData, ["ok", "statTables", 0, "podGroup", "rows"], []);
+    let dataPlaneNamepaces = _.map(podsByNs, ns => {
+      if (ns.resource.name.indexOf("kube-") === 0) {
+        return;
+      }
+      let meshedPods = parseInt(ns.meshedPodCount, 10);
+      let totalPods = parseInt(ns.runningPodCount, 10);
+      let failedPods = parseInt(ns.failedPodCount, 10);
+
+      return {
+        namespace: ns.resource.name,
+        meshedPodsStr: ns.meshedPodCount + "/" + ns.runningPodCount,
+        meshedPercent: new Percentage(meshedPods, totalPods),
+        meshedPods,
+        totalPods,
+        failedPods
+      };
+    });
+    return _.compact(dataPlaneNamepaces);
+  }
+
+  processComponents(conduitPods) {
+    let pods = _.get(conduitPods, ["ok", "statTables", 0, "podGroup", "rows"], 0);
+    return _.map(componentNames, (title, name) => {
+      let deployName = componentDeploys[name];
+      let matchingPods = _.filter(pods, p => p.resource.name.split("-")[0] === deployName);
+
+      return {
+        name: title,
+        pods: _.map(matchingPods, p => {
+          return {
+            name: p.resource.name,
+            value: getClassification(parseInt(p.meshedPodCount, 10), parseInt(p.failedPodCount, 10))
+          };
+        })
+      };
+    });
+  }
+
   loadFromServer() {
     if (this.state.pendingRequests) {
       return; // don't make more requests if the ones we sent haven't completed
@@ -81,17 +173,15 @@ export default class ServiceMesh extends React.Component {
     this.setState({ pendingRequests: true });
 
     this.api.setCurrentRequests([
-      this.api.fetchPods()
+      this.api.fetchMetrics(this.api.urlsForResource["pod"].url(this.props.controllerNamespace).rollup),
+      this.api.fetchMetrics(this.api.urlsForResource["namespace"].url().rollup)
     ]);
 
     this.serverPromise = Promise.all(this.api.getCurrentPromises())
-      .then(([pods]) => {
-        let podsByDeploy = getPodsByDeployment(pods.pods);
-        let controlPlanePods = this.processComponents(pods.pods);
-
+      .then(([conduitPods, nsStats]) => {
         this.setState({
-          deploys: podsByDeploy,
-          components: controlPlanePods,
+          components: this.processComponents(conduitPods),
+          nsStatuses: this.extractNsStatuses(nsStats),
           lastUpdated: Date.now(),
           pendingRequests: false,
           loaded: true,
@@ -112,26 +202,14 @@ export default class ServiceMesh extends React.Component {
     });
   }
 
-  addedDeploymentCount() {
-    return _.size(_.filter(this.state.deploys, ["added", true]));
-  }
-
-  unaddedDeploymentCount() {
-    return this.deployCount() - this.addedDeploymentCount();
-  }
-
-  proxyCount() {
-    return _.sum(_.map(this.state.deploys, d => {
-      return _.size(_.filter(d.pods, ["value", "good"]));
-    }));
-  }
-
   componentCount() {
     return _.size(this.state.components);
   }
 
-  deployCount() {
-    return _.size(this.state.deploys);
+  proxyCount() {
+    return _.sumBy(this.state.nsStatuses, d => {
+      return d.namespace === this.props.controllerNamespace ? 0 : d.meshedPods;
+    });
   }
 
   getServiceMeshDetails() {
@@ -139,25 +217,8 @@ export default class ServiceMesh extends React.Component {
       { key: 1, name: "Conduit version", value: this.props.releaseVersion },
       { key: 2, name: "Conduit namespace", value: this.props.controllerNamespace },
       { key: 3, name: "Control plane components", value: this.componentCount() },
-      { key: 4, name: "Added deployments", value: this.addedDeploymentCount() },
-      { key: 5, name: "Unadded deployments", value: this.unaddedDeploymentCount() },
-      { key: 6, name: "Data plane proxies", value: this.proxyCount() }
+      { key: 4, name: "Data plane proxies", value: this.proxyCount() }
     ];
-  }
-
-  processComponents(pods) {
-    let podIndex = _(pods)
-      .filter(p => p.controlPlane)
-      .groupBy(p => _.last(_.split(p.deployment, "/")))
-      .value();
-
-    return _(componentNames)
-      .map((name, id) => {
-        let componentPods = _.get(podIndex, _.get(componentDeploys, id), []);
-        return { name: name, pods: getComponentPods(componentPods) };
-      })
-      .sortBy("name")
-      .value();
   }
 
   renderControlPlaneDetails() {
@@ -173,24 +234,6 @@ export default class ServiceMesh extends React.Component {
           statusColumnTitle="Pod Status"
           shouldLink={false}
           api={this.api} />
-      </div>
-    );
-  }
-
-  renderDataPlaneDetails() {
-    return (
-      <div className="mesh-section">
-        <div className="clearfix header-with-metric">
-          <div className="subsection-header">Data plane</div>
-          <Metric title="Proxies" value={this.proxyCount()} className="metric-large" />
-          <Metric title="Deployments" value={this.deployCount()} className="metric-large" />
-        </div>
-
-        <StatusTable
-          data={this.state.deploys}
-          statusColumnTitle="Proxy Status"
-          shouldLink={true}
-          api={this.api}  />
       </div>
     );
   }
@@ -214,59 +257,54 @@ export default class ServiceMesh extends React.Component {
     );
   }
 
-  renderAddDeploymentsMessage() {
-    if (this.deployCount() === 0) {
+  renderAddResourcesMessage() {
+    if (_.isEmpty(this.state.nsStatuses)) {
+      return <div className="mesh-completion-message">No resources detected.</div>;
+    }
+
+    let meshedCount = _.countBy(this.state.nsStatuses, pod => {
+      return pod.meshedPercent.get() > 0;
+    });
+    let numUnadded = meshedCount["false"] || 0;
+
+    if (numUnadded === 0) {
       return (
         <div className="mesh-completion-message">
-          No deployments detected. {incompleteMeshMessage()}
+          All namespaces have a conduit install.
         </div>
       );
     } else {
-      switch (this.unaddedDeploymentCount()) {
-      case 0:
-        return (
-          <div className="mesh-completion-message">
-            All deployments have been added to the service mesh.
-          </div>
-        );
-      case 1:
-        return (
-          <div className="mesh-completion-message">
-            1 deployment has not been added to the service mesh. {incompleteMeshMessage()}
-          </div>
-        );
-      default:
-        return (
-          <div className="mesh-completion-message">
-            {this.unaddedDeploymentCount()} deployments have not been added to the service mesh. {incompleteMeshMessage()}
-          </div>
-        );
-      }
+      return (
+        <div className="mesh-completion-message">
+          {numUnadded} {numUnadded === 1 ? "namespace has" : "namespaces have"} no meshed resources.
+          {incompleteMeshMessage()}
+        </div>
+      );
     }
   }
 
-  renderControlPlane() {
-    return (
-      <Row gutter={16}>
-        <Col span={16}>{this.renderControlPlaneDetails()}</Col>
-        <Col span={8}>{this.renderServiceMeshDetails()}</Col>
-      </Row>
-    );
-  }
+  renderNamespaceStatusTable() {
+    let rowCn = row => {
+      return row.meshedPercent.get() > 0.9 ? "good" : "neutral";
+    };
 
-  renderDataPlane() {
     return (
-      <Row gutter={16}>
-        <Col span={16}>{this.renderDataPlaneDetails()}</Col>
-        <Col span={8}>{this.renderAddDeploymentsMessage()}</Col>
-      </Row>
+      <div className="mesh-section">
+        <Row gutter={16}>
+          <Col span={16}>
+            <Table
+              className="conduit-table service-mesh-table mesh-completion-table"
+              dataSource={this.state.nsStatuses}
+              columns={namespacesColumns(this.api.ConduitLink)}
+              rowKey="namespace"
+              rowClassName={rowCn}
+              pagination={false}
+              size="middle" />
+          </Col>
+          <Col span={8}>{this.renderAddResourcesMessage()}</Col>
+        </Row>
+      </div>
     );
-  }
-
-  renderOverview() {
-    if (this.proxyCount() === 0) {
-      return <CallToAction numDeployments={this.deployCount()} />;
-    }
   }
 
   render() {
@@ -279,9 +317,18 @@ export default class ServiceMesh extends React.Component {
               header="Service mesh overview"
               hideButtons={this.proxyCount() === 0}
               api={this.api} />
-            {this.renderOverview()}
-            {this.renderControlPlane()}
-            {this.renderDataPlane()}
+
+            {this.proxyCount() === 0 ?
+              <CallToAction
+                numResources={_.size(this.state.nsStatuses)}
+                resource="namespace" /> : null}
+
+            <Row gutter={16}>
+              <Col span={16}>{this.renderControlPlaneDetails()}</Col>
+              <Col span={8}>{this.renderServiceMeshDetails()}</Col>
+            </Row>
+
+            {this.renderNamespaceStatusTable()}
           </div>
         }
       </div>

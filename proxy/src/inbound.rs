@@ -2,14 +2,15 @@ use std::net::{SocketAddr};
 use std::sync::Arc;
 
 use http;
-use tower;
+use tower_service as tower;
 use tower_buffer::{self, Buffer};
 use tower_in_flight_limit::{self, InFlightLimit};
 use tower_h2;
-use conduit_proxy_router::{Reuse, Recognize};
+use conduit_proxy_router::Recognize;
 
 use bind;
 use ctx;
+use task::LazyExecutor;
 
 type Bind<B> = bind::Bind<Arc<ctx::Proxy>, B>;
 
@@ -31,9 +32,22 @@ impl<B> Inbound<B> {
     }
 }
 
-impl<B> Recognize for Inbound<B>
+impl<B> Clone for Inbound<B>
 where
     B: tower_h2::Body + 'static,
+{
+    fn clone(&self) -> Self {
+        Self {
+            bind: self.bind.clone(),
+            default_addr: self.default_addr.clone(),
+        }
+    }
+}
+
+impl<B> Recognize for Inbound<B>
+where
+    B: tower_h2::Body + Send + 'static,
+    <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
     type Request = http::Request<B>;
     type Response = bind::HttpResponse;
@@ -46,7 +60,7 @@ where
     type RouteError = bind::BufferSpawnError;
     type Service = InFlightLimit<Buffer<bind::Service<B>>>;
 
-    fn recognize(&self, req: &Self::Request) -> Option<Reuse<Self::Key>> {
+    fn recognize(&self, req: &Self::Request) -> Option<Self::Key> {
         let key = req.extensions()
             .get::<Arc<ctx::transport::Server>>()
             .and_then(|ctx| {
@@ -57,9 +71,8 @@ where
 
         let proto = bind::Protocol::detect(req);
 
-        let key = key.map(move|addr| proto.into_key(addr));
+        let key = key.map(move |addr| (addr, proto));
         trace!("recognize key={:?}", key);
-
 
         key
     }
@@ -68,15 +81,14 @@ where
     ///
     /// # TODO
     ///
-    /// Buffering is currently unbounded and does not apply timeouts. This must be
-    /// changed.
-    fn bind_service(&mut self, key: &Self::Key) -> Result<Self::Service, Self::RouteError> {
+    /// Buffering does not apply timeouts.
+    fn bind_service(&self, key: &Self::Key) -> Result<Self::Service, Self::RouteError> {
         let &(ref addr, ref proto) = key;
         debug!("building inbound {:?} client to {}", proto, addr);
 
         let endpoint = (*addr).into();
-        let bind = self.bind.bind_service(&endpoint, proto);
-        Buffer::new(bind, self.bind.executor())
+        let binding = self.bind.bind_service(&endpoint, proto);
+        Buffer::new(binding, &LazyExecutor)
             .map(|buffer| {
                 InFlightLimit::new(buffer, MAX_IN_FLIGHT)
             })
@@ -90,7 +102,6 @@ mod tests {
     use std::sync::Arc;
 
     use http;
-    use tokio_core::reactor::Core;
     use conduit_proxy_router::Recognize;
 
     use super::Inbound;
@@ -98,9 +109,16 @@ mod tests {
     use ctx;
 
     fn new_inbound(default: Option<net::SocketAddr>, ctx: &Arc<ctx::Proxy>) -> Inbound<()> {
-        let core = Core::new().unwrap();
-        let bind = Bind::new(core.handle()).with_ctx(ctx.clone());
+        let bind = Bind::new().with_ctx(ctx.clone());
         Inbound::new(default, bind)
+    }
+
+    fn make_key_http1(addr: net::SocketAddr) -> (net::SocketAddr, bind::Protocol) {
+        let protocol = bind::Protocol::Http1 {
+            host: Host::NoAuthority,
+            was_absolute_form: false,
+        };
+        (addr, protocol)
     }
 
     quickcheck! {
@@ -115,9 +133,7 @@ mod tests {
 
             let srv_ctx = ctx::transport::Server::new(&ctx, &local, &remote, &Some(orig_dst));
 
-            let rec = srv_ctx.orig_dst_if_not_local().map(|addr|
-                bind::Protocol::Http1(Host::NoAuthority).into_key(addr)
-            );
+            let rec = srv_ctx.orig_dst_if_not_local().map(make_key_http1);
 
             let mut req = http::Request::new(());
             req.extensions_mut()
@@ -144,9 +160,7 @@ mod tests {
                     &None,
                 ));
 
-            inbound.recognize(&req) == default.map(|addr|
-                bind::Protocol::Http1(Host::NoAuthority).into_key(addr)
-            )
+            inbound.recognize(&req) == default.map(make_key_http1)
         }
 
         fn recognize_default_no_ctx(default: Option<net::SocketAddr>) -> bool {
@@ -156,9 +170,7 @@ mod tests {
 
             let req = http::Request::new(());
 
-            inbound.recognize(&req) == default.map(|addr|
-                bind::Protocol::Http1(Host::NoAuthority).into_key(addr)
-            )
+            inbound.recognize(&req) == default.map(make_key_http1)
         }
 
         fn recognize_default_no_loop(
@@ -179,9 +191,7 @@ mod tests {
                     &Some(local),
                 ));
 
-            inbound.recognize(&req) == default.map(|addr|
-                bind::Protocol::Http1(Host::NoAuthority).into_key(addr)
-            )
+            inbound.recognize(&req) == default.map(make_key_http1)
         }
     }
 }

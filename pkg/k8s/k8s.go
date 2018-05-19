@@ -14,6 +14,7 @@ const (
 	Pods                   = "pods"
 	ReplicationControllers = "replicationcontrollers"
 	Services               = "services"
+	All                    = "all"
 )
 
 // ResourceTypesToProxyLabels maps Kubernetes resource type names to keys
@@ -79,7 +80,28 @@ func CanonicalKubernetesNameFromFriendlyName(friendlyName string) (string, error
 		return ReplicationControllers, nil
 	case "svc", "service", "services":
 		return Services, nil
+	case "all":
+		return All, nil
 	}
 
 	return "", fmt.Errorf("cannot find Kubernetes canonical name from friendly name [%s]", friendlyName)
+}
+
+// Return a the shortest name for a k8s canonical name.
+// Essentially the reverse of CanonicalKubernetesNameFromFriendlyName
+func ShortNameFromCanonicalKubernetesName(canonicalName string) string {
+	switch canonicalName {
+	case Deployments:
+		return "deploy"
+	case Namespaces:
+		return "ns"
+	case Pods:
+		return "po"
+	case ReplicationControllers:
+		return "rc"
+	case Services:
+		return "svc"
+	default:
+		return ""
+	}
 }

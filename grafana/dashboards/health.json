@@ -36,7 +36,7 @@
     {
       "content": "<div>\n  <img src=\"https://conduit.io/favicon.png\" style=\"baseline; height:40px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">deploy/$deployment</span>\n</div>",
       "gridPos": {
-        "h": 2,
+        "h": 2.2,
         "w": 24,
         "x": 0,
         "y": 1
@@ -59,7 +59,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 3
+        "y": 3.2
       },
       "id": 23,
       "legend": {
@@ -126,7 +126,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -139,7 +143,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 3
+        "y": 3.2
       },
       "id": 24,
       "legend": {
@@ -206,7 +210,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -219,7 +227,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 3
+        "y": 3.2
       },
       "id": 25,
       "legend": {
@@ -300,7 +308,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "collapsed": false,
@@ -308,7 +320,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 10
+        "y": 10.2
       },
       "id": 339,
       "panels": [],
@@ -318,10 +330,10 @@
     {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>Control-Plane TCP Metrics</span>\n</div>",
       "gridPos": {
-        "h": 2,
+        "h": 2.2,
         "w": 24,
         "x": 0,
-        "y": 11
+        "y": 11.2
       },
       "id": 340,
       "links": [],
@@ -336,17 +348,17 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 13
+        "y": 13.4
       },
       "id": 179,
       "panels": [
         {
           "content": "<div>\n  <img src=\"https://conduit.io/favicon.png\" style=\"baseline; height:40px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">deploy/$deployment</span>\n</div>",
           "gridPos": {
-            "h": 2,
+            "h": 2.2,
             "w": 24,
             "x": 0,
-            "y": 44
+            "y": 34.8
           },
           "id": 282,
           "links": [],
@@ -367,7 +379,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 46
+            "y": 37
           },
           "id": 227,
           "legend": {
@@ -433,7 +445,11 @@
               "min": null,
               "show": true
             }
-          ]
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
         },
         {
           "aliasColors": {},
@@ -446,7 +462,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 46
+            "y": 37
           },
           "id": 132,
           "legend": {
@@ -513,7 +529,11 @@
               "min": null,
               "show": true
             }
-          ]
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
         },
         {
           "cards": {
@@ -533,7 +553,7 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 46
+            "y": 37
           },
           "heatmap": {},
           "highlightCards": true,
@@ -577,6 +597,7 @@
             "show": true,
             "splitFactor": null
           },
+          "yBucketBound": "auto",
           "yBucketNumber": null,
           "yBucketSize": null
         }
@@ -591,7 +612,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 14
+        "y": 14.4
       },
       "id": 90,
       "panels": [],
@@ -601,10 +622,10 @@
     {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>Control-Plane Telemetry</span>\n</div>",
       "gridPos": {
-        "h": 2,
+        "h": 2.2,
         "w": 24,
         "x": 0,
-        "y": 15
+        "y": 15.4
       },
       "id": 27,
       "links": [],
@@ -624,7 +645,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 17
+        "y": 17.6
       },
       "id": 2,
       "legend": {
@@ -691,7 +712,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -704,7 +729,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 17
+        "y": 17.6
       },
       "id": 5,
       "legend": {
@@ -778,7 +803,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -791,7 +820,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 17
+        "y": 17.6
       },
       "id": 7,
       "legend": {
@@ -858,7 +887,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -871,7 +904,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 24
+        "y": 24.6
       },
       "id": 9,
       "legend": {
@@ -938,7 +971,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -951,7 +988,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 24
+        "y": 24.6
       },
       "id": 12,
       "legend": {
@@ -1032,7 +1069,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "collapsed": false,
@@ -1040,7 +1081,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 31
+        "y": 31.6
       },
       "id": 29,
       "panels": [],
@@ -1051,10 +1092,10 @@
     {
       "content": "<div>\n  <img src=\"https://conduit.io/favicon.png\" style=\"baseline; height:40px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">$component</span>\n</div>",
       "gridPos": {
-        "h": 2,
+        "h": 2.2,
         "w": 24,
         "x": 0,
-        "y": 32
+        "y": 32.6
       },
       "id": 30,
       "links": [],
@@ -1074,7 +1115,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 34
+        "y": 34.8
       },
       "id": 6,
       "legend": {
@@ -1162,7 +1203,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -1175,7 +1220,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 34
+        "y": 34.8
       },
       "id": 8,
       "legend": {
@@ -1256,7 +1301,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -1269,7 +1318,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 34
+        "y": 34.8
       },
       "id": 14,
       "legend": {
@@ -1343,13 +1392,19 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     }
   ],
   "refresh": "5s",
   "schemaVersion": 16,
   "style": "dark",
-  "tags": [],
+  "tags": [
+    "conduit"
+  ],
   "templating": {
     "list": [
       {

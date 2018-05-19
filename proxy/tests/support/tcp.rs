@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use self::futures::sync::{mpsc, oneshot};
-use self::tokio_core::net::TcpStream;
+use self::tokio::net::TcpStream;
 
 type TcpSender = mpsc::UnboundedSender<oneshot::Sender<TcpConnSender>>;
 type TcpConnSender = mpsc::UnboundedSender<(Option<Vec<u8>>, oneshot::Sender<io::Result<Option<Vec<u8>>>>)>;
@@ -136,11 +136,11 @@ fn run_client(addr: SocketAddr) -> TcpSender {
     let (tx, rx) = mpsc::unbounded();
     let tname = format!("support tcp client (addr={})", addr);
     ::std::thread::Builder::new().name(tname).spawn(move || {
-        let mut core = Core::new().unwrap();
-        let handle = core.handle();
+        let mut core = runtime::current_thread::Runtime::new()
+            .expect("support tcp client runtime");
 
         let work = rx.for_each(|cb: oneshot::Sender<_>| {
-            let fut = TcpStream::connect(&addr, &handle)
+            let fut = TcpStream::connect(&addr)
                 .map_err(|e| panic!("connect error: {}", e))
                 .and_then(move |tcp| {
                     let (tx, rx) = mpsc::unbounded();
@@ -185,11 +185,15 @@ fn run_client(addr: SocketAddr) -> TcpSender {
                         .map_err(|_| ())
                 });
 
-            handle.spawn(fut);
-            Ok(())
+            current_thread::TaskExecutor::current()
+                .execute(fut)
+                .map_err(|e| {
+                    println!("tcp client execute error: {:?}", e);
+                })
+                .map(|_| ())
 
         }).map_err(|e| println!("client error: {:?}", e));
-        core.run(work).unwrap();
+        core.block_on(work).unwrap();
     }).unwrap();
 
     println!("tcp client (addr={}) thread running", addr);
@@ -206,35 +210,39 @@ fn run_server(tcp: TcpServer) -> server::Listening {
     let addr = std_listener.local_addr().expect("local_addr");
     let tname = format!("support tcp server (addr={})", addr);
     ::std::thread::Builder::new().name(tname).spawn(move || {
-        let mut core = Core::new().unwrap();
-        let reactor = core.handle();
+        let mut core = runtime::current_thread::Runtime::new()
+            .expect("support tcp server Runtime::new");
 
-        let bind = TcpListener::from_listener(
+        let bind = TcpListener::from_std(
             std_listener,
-            &addr,
-            &reactor
-        ).expect("from_listener");
+            &reactor::Handle::current(),
+        ).expect("TcpListener::from_std");
 
 
         let mut accepts = tcp.accepts;
 
         let listen = bind
             .incoming()
-            .for_each(move |(sock, _)| {
+            .for_each(move |sock| {
                 let cb = accepts.pop_front().expect("no more accepts");
                 srv_conn_count.fetch_add(1, Ordering::Release);
 
                 let fut = cb.call_box(sock);
 
-                reactor.spawn(fut);
-                Ok(())
+                current_thread::TaskExecutor::current()
+                    .execute(fut)
+                    .map_err(|e| {
+                        println!("tcp execute error: {:?}", e);
+                        io::Error::from(io::ErrorKind::Other)
+                    })
+                    .map(|_| ())
             })
             .map_err(|e| panic!("tcp accept error: {}", e));
 
-        core.handle().spawn(listen);
+        core.spawn(listen);
 
         let _ = started_tx.send(());
-        core.run(rx).unwrap();
+        core.block_on(rx).unwrap();
     }).unwrap();
 
     started_rx.wait().expect("support tcp server started");

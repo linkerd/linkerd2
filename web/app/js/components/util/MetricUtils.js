@@ -94,7 +94,7 @@ export const getComponentPods = componentPods => {
 
 const kubernetesNs = "kube-system";
 const defaultControllerNs = "conduit";
-export const processRollupMetrics = (rawMetrics, controllerNamespace) => {
+export const processRollupMetrics = (rawMetrics, controllerNamespace, includeConduit) => {
   if (_.isEmpty(rawMetrics.ok) || _.isEmpty(rawMetrics.ok.statTables)) {
     return [];
   }
@@ -103,16 +103,20 @@ export const processRollupMetrics = (rawMetrics, controllerNamespace) => {
   }
   let metrics = _.flatMap(rawMetrics.ok.statTables, table => {
     return _.map(table.podGroup.rows, row => {
-      if (row.resource.namespace === kubernetesNs || row.resource.namespace === controllerNamespace) {
+      if (row.resource.namespace === kubernetesNs) {
         return null;
       }
+      if (row.resource.namespace === controllerNamespace && !includeConduit) {
+        return null;
+      }
+
       return {
         name: row.resource.name,
         namespace: row.resource.namespace,
         requestRate: getRequestRate(row),
         successRate: getSuccessRate(row),
         latency: getLatency(row),
-        added: row.meshedPodCount === row.totalPodCount
+        added: row.meshedPodCount === row.runningPodCount
       };
     });
   });

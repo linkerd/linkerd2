@@ -1,7 +1,9 @@
 use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use futures::{future, Poll, Stream};
 use futures_mpsc_lossy;
+use http::HeaderMap;
 use indexmap::IndexMap;
 use tower_grpc::{self as grpc, Response};
 
@@ -14,7 +16,7 @@ use telemetry::tap::{Tap, Taps};
 
 #[derive(Clone, Debug)]
 pub struct Observe {
-    next_id: usize,
+    next_id: Arc<AtomicUsize>,
     taps: Arc<Mutex<Taps>>,
     tap_capacity: usize,
 }
@@ -32,7 +34,7 @@ impl Observe {
         let taps = Arc::new(Mutex::new(Taps::default()));
 
         let observe = Observe {
-            next_id: 0,
+            next_id: Arc::new(AtomicUsize::new(0)),
             tap_capacity,
             taps: taps.clone(),
         };
@@ -46,8 +48,11 @@ impl server::Tap for Observe {
     type ObserveFuture = future::FutureResult<Response<Self::ObserveStream>, grpc::Error>;
 
     fn observe(&mut self, req: grpc::Request<ObserveRequest>) -> Self::ObserveFuture {
-        if self.next_id == ::std::usize::MAX {
-            return future::err(grpc::Error::Grpc(grpc::Status::INTERNAL));
+        if self.next_id.load(Ordering::Acquire) == ::std::usize::MAX {
+            return future::err(grpc::Error::Grpc(
+                grpc::Status::INTERNAL,
+                HeaderMap::new(),
+            ));
         }
 
         let req = req.into_inner();
@@ -58,19 +63,22 @@ impl server::Tap for Observe {
             None => {
                 return future::err(grpc::Error::Grpc(
                     grpc::Status::INVALID_ARGUMENT,
+                    HeaderMap::new(),
                 ));
             }
         };
 
         let tap_id = match self.taps.lock() {
             Ok(mut taps) => {
-                let tap_id = self.next_id;
-                self.next_id += 1;
+                let tap_id = self.next_id.fetch_add(1, Ordering::AcqRel);
                 let _ = (*taps).insert(tap_id, tap);
                 tap_id
             }
             Err(_) => {
-                return future::err(grpc::Error::Grpc(grpc::Status::INTERNAL));
+                return future::err(grpc::Error::Grpc(
+                    grpc::Status::INTERNAL,
+                    HeaderMap::new(),
+                ));
             }
         };
 

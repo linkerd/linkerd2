@@ -54,6 +54,11 @@ impl RequestMetrics {
     pub fn end(&mut self) {
         self.total.incr();
     }
+
+    #[cfg(test)]
+    pub(super) fn total(&self) -> u64 {
+        self.total.into()
+    }
 }
 
 // ===== impl ResponseScopes =====
@@ -90,5 +95,15 @@ impl ResponseMetrics {
     pub fn end(&mut self, duration: Duration) {
         self.total.incr();
         self.latency.add(duration);
+    }
+
+    #[cfg(test)]
+    pub(super) fn total(&self) -> u64 {
+        self.total.into()
+    }
+
+    #[cfg(test)]
+    pub(super) fn latency(&self) -> &Histogram<latency::Ms> {
+        &self.latency
     }
 }
