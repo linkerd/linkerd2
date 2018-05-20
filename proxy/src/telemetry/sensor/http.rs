@@ -21,7 +21,7 @@ const GRPC_STATUS: &str = "grpc-status";
 /// This is added to a request's `Extensions` by the `TimestampRequestOpen`
 /// middleware. It's a newtype in order to distinguish it from other
 /// `Instant`s that may be added as request extensions.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct RequestOpen(pub Instant);
 
 /// Middleware that adds a `RequestOpen` timestamp to requests.
@@ -654,8 +654,8 @@ where
     }
 
     fn call(&mut self, mut req: Self::Request) -> Self::Future {
-        let request_open = self.now.now();
-        req.extensions_mut().insert(RequestOpen(request_open));
+        let request_open = RequestOpen(self.now.now());
+        req.extensions_mut().insert(request_open);
         self.inner.call(req)
     }
 }
@@ -678,5 +678,57 @@ where
             TimestampRequestOpen::new(s).with_time(now)
         });
         Box::new(f)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use futures::{future, Poll};
+    use now::test_util::Clock;
+    use tower_service::Service;
+    use super::*;
+
+    #[test]
+    fn timestamp_request_open_service() {
+        struct Svc;
+
+        impl Service for Svc {
+            type Request = http::Request<()>;
+            type Response = http::Response<()>;
+            type Error = ();
+            type Future = future::FutureResult<Self::Response, ()>;
+
+            fn poll_ready(&mut self) -> Poll<(), Self::Error> {
+                Ok(().into())
+            }
+
+            fn call(&mut self, mut req: Self::Request) -> Self::Future {
+                let mut rsp = http::Response::new(());
+                if let Some(open) = req.extensions_mut().remove::<RequestOpen>() {
+                    rsp.extensions_mut().insert(open);
+                }
+                future::ok(rsp)
+            }
+        }
+
+        impl  TimestampRequestOpen<Svc, Clock> {
+            fn open(&mut self) -> Option<Instant> {
+                let req = http::Request::new(());
+                self.call(req).wait().expect("call")
+                    .extensions_mut()
+                    .remove::<RequestOpen>()
+                    .map(|RequestOpen(t)| t)
+            }
+        }
+
+        let clock = Clock::default();
+        let mut svc = TimestampRequestOpen::new(Svc).with_time(clock.clone());
+
+        let t0 = clock.now();
+        assert_eq!(svc.open(), Some(t0));
+
+        clock.advance(Duration::from_millis(1));
+        let t1 = clock.now();
+        assert_eq!(svc.open(), Some(t1));
     }
 }

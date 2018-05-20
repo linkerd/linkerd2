@@ -31,7 +31,7 @@ impl<T: Now> ::tokio_timer::timer::Now for Tokio<T> {
 
 /// A mocked instance of `Now` to drive tests.
 #[cfg(test)]
-mod test_util {
+pub mod test_util {
     use super::Now;
     use std::sync::{Arc, Mutex};
     use std::time::{Duration, Instant};
