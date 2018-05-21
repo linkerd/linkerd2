@@ -74,6 +74,7 @@ problems were found.`,
 		},
 	}
 
+	cmd.Args = cobra.NoArgs
 	cmd.PersistentFlags().StringVar(&options.versionOverride, "expected-version", options.versionOverride, "Overrides the version used when checking if Conduit is running the latest version (mostly for testing)")
 
 	return cmd
