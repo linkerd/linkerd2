@@ -217,7 +217,7 @@ where
                 panic!("invalid DNS configuration: {:?}", e);
             });
 
-        let (control, control_bg) = control::new(
+        let (control, control_bg) = control::destination::new(
             dns_resolver.clone(),
             config.pod_namespace.clone(),
             control_host_and_port
