@@ -53,6 +53,8 @@ jobs:
     - language: node_js
       node_js:
         - "8"
+      env:
+        - BABEL_ENV=development
       cache:
         directories:
           - web/app/node_modules
