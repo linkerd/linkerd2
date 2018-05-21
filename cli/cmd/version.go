@@ -28,32 +28,32 @@ func newCmdVersion() *cobra.Command {
 	options := newVersionOptions()
 
 	cmd := &cobra.Command{
-	Use:   "version",
-	Short: "Print the client and server version information",
-	Run: func(cmd *cobra.Command, args []string) {
-		clientVersion := version.Version
-		if options.shortVersion {
-			fmt.Println(clientVersion)
-		} else {
-			fmt.Printf("Client version: %s\n", clientVersion)
-		}
-
-		conduitApiClient, err := newPublicAPIClient()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error connecting to server: %s\n", err)
-			os.Exit(1)
-		}
-
-		if !options.onlyClientVersion {
-			serverVersion := getServerVersion(conduitApiClient)
+		Use:   "version",
+		Short: "Print the client and server version information",
+		Run: func(cmd *cobra.Command, args []string) {
+			clientVersion := version.Version
 			if options.shortVersion {
-				fmt.Println(serverVersion)
+				fmt.Println(clientVersion)
 			} else {
-				fmt.Printf("Server version: %s\n", serverVersion)
+				fmt.Printf("Client version: %s\n", clientVersion)
 			}
-		}
-	},
-}
+
+			conduitApiClient, err := newPublicAPIClient()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error connecting to server: %s\n", err)
+				os.Exit(1)
+			}
+
+			if !options.onlyClientVersion {
+				serverVersion := getServerVersion(conduitApiClient)
+				if options.shortVersion {
+					fmt.Println(serverVersion)
+				} else {
+					fmt.Printf("Server version: %s\n", serverVersion)
+				}
+			}
+		},
+	}
 
 	cmd.Args = cobra.NoArgs
 	cmd.PersistentFlags().BoolVar(&options.shortVersion, "short", options.shortVersion, "Print the version number(s) only, with no additional output")

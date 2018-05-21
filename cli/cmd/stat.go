@@ -44,9 +44,9 @@ func newCmdStat() *cobra.Command {
 	options := newStatOptions()
 
 	cmd := &cobra.Command{
-	Use:   "stat [flags] (RESOURCE)",
-	Short: "Display traffic stats about one or many resources",
-	Long: `Display traffic stats about one or many resources.
+		Use:   "stat [flags] (RESOURCE)",
+		Short: "Display traffic stats about one or many resources",
+		Long: `Display traffic stats about one or many resources.
 
   The RESOURCE argument specifies the target resource(s) to aggregate stats over:
   (TYPE [NAME] | TYPE/NAME)
@@ -69,7 +69,7 @@ Valid resource types include:
 
 This command will hide resources that have completed, such as pods that are in the Succeeded or Failed phases.
 If no resource name is specified, displays stats about all resources of the specified RESOURCETYPE`,
-	Example: `  # Get all deployments in the test namespace.
+		Example: `  # Get all deployments in the test namespace.
   conduit stat deployments -n test
 
   # Get the hello1 replication controller in the test namespace.
@@ -89,29 +89,29 @@ If no resource name is specified, displays stats about all resources of the spec
 
   # Get all services in all namespaces that receive calls from hello1 deployment in the test namesapce.
   conduit stat services --from deploy/hello1 --from-namespace test --all-namespaces`,
-	Args:      cobra.RangeArgs(1, 2),
-	ValidArgs: util.ValidTargets,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := newPublicAPIClient()
-		if err != nil {
-			return fmt.Errorf("error creating api client while making stats request: %v", err)
-		}
+		Args:      cobra.RangeArgs(1, 2),
+		ValidArgs: util.ValidTargets,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, err := newPublicAPIClient()
+			if err != nil {
+				return fmt.Errorf("error creating api client while making stats request: %v", err)
+			}
 
-		req, err := buildStatSummaryRequest(args, options)
-		if err != nil {
-			return fmt.Errorf("error creating metrics request while making stats request: %v", err)
-		}
+			req, err := buildStatSummaryRequest(args, options)
+			if err != nil {
+				return fmt.Errorf("error creating metrics request while making stats request: %v", err)
+			}
 
-		output, err := requestStatsFromAPI(client, req, options)
-		if err != nil {
+			output, err := requestStatsFromAPI(client, req, options)
+			if err != nil {
+				return err
+			}
+
+			_, err = fmt.Print(output)
+
 			return err
-		}
-
-		_, err = fmt.Print(output)
-
-		return err
-	},
-}
+		},
+	}
 
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of the specified resource")
 	cmd.PersistentFlags().StringVarP(&options.timeWindow, "time-window", "t", options.timeWindow, "Stat window (for example: \"10s\", \"1m\", \"10m\", \"1h\")")

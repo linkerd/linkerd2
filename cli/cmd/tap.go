@@ -44,9 +44,9 @@ func newCmdTap() *cobra.Command {
 	options := newTapOptions()
 
 	cmd := &cobra.Command{
-	Use:   "tap [flags] (RESOURCE)",
-	Short: "Listen to a traffic stream",
-	Long: `Listen to a traffic stream.
+		Use:   "tap [flags] (RESOURCE)",
+		Short: "Listen to a traffic stream",
+		Long: `Listen to a traffic stream.
 
   The RESOURCE argument specifies the target resource(s) to tap:
   (TYPE [NAME] | TYPE/NAME)
@@ -64,7 +64,7 @@ func newCmdTap() *cobra.Command {
   * pods
   * replicationcontrollers
   * services (only supported as a "--to" resource)`,
-	Example: `  # tap the web deployment in the default namespace
+		Example: `  # tap the web deployment in the default namespace
   conduit tap deploy/web
 
   # tap the web-dlbvj pod in the default namespace
@@ -72,22 +72,22 @@ func newCmdTap() *cobra.Command {
 
   # tap the test namespace, filter by request to prod namespace
   conduit tap ns/test --to ns/prod`,
-	Args:      cobra.RangeArgs(1, 2),
-	ValidArgs: apiUtil.ValidTargets,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		req, err := buildTapByResourceRequest(args, options)
-		if err != nil {
-			return err
-		}
+		Args:      cobra.RangeArgs(1, 2),
+		ValidArgs: apiUtil.ValidTargets,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			req, err := buildTapByResourceRequest(args, options)
+			if err != nil {
+				return err
+			}
 
-		client, err := newPublicAPIClient()
-		if err != nil {
-			return err
-		}
+			client, err := newPublicAPIClient()
+			if err != nil {
+				return err
+			}
 
-		return requestTapByResourceFromAPI(os.Stdout, client, req)
-	},
-}
+			return requestTapByResourceFromAPI(os.Stdout, client, req)
+		},
+	}
 
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace,
 		"Namespace of the specified resource")

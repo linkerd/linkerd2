@@ -52,34 +52,34 @@ func newCmdInject() *cobra.Command {
 	options := newInjectOptions()
 
 	cmd := &cobra.Command{
-	Use:   "inject [flags] CONFIG-FILE",
-	Short: "Add the Conduit proxy to a Kubernetes config",
-	Long: `Add the Conduit proxy to a Kubernetes config.
+		Use:   "inject [flags] CONFIG-FILE",
+		Short: "Add the Conduit proxy to a Kubernetes config",
+		Long: `Add the Conduit proxy to a Kubernetes config.
 
 You can use a config file from stdin by using the '-' argument
 with 'conduit inject'. e.g. curl http://url.to/yml | conduit inject -
 	`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 
-		if len(args) < 1 {
-			return fmt.Errorf("please specify a kubernetes resource file")
-		}
-
-		var in io.Reader
-		var err error
-
-		if args[0] == "-" {
-			in = os.Stdin
-		} else {
-			if in, err = os.Open(args[0]); err != nil {
-				return err
+			if len(args) < 1 {
+				return fmt.Errorf("please specify a kubernetes resource file")
 			}
-		}
-		exitCode := runInjectCmd(in, os.Stderr, os.Stdout, options)
-		os.Exit(exitCode)
-		return nil
-	},
-}
+
+			var in io.Reader
+			var err error
+
+			if args[0] == "-" {
+				in = os.Stdin
+			} else {
+				if in, err = os.Open(args[0]); err != nil {
+					return err
+				}
+			}
+			exitCode := runInjectCmd(in, os.Stderr, os.Stdout, options)
+			os.Exit(exitCode)
+			return nil
+		},
+	}
 
 	addProxyConfigFlags(cmd, options.proxyConfigOptions)
 	cmd.PersistentFlags().StringVar(&options.initImage, "init-image", options.initImage, "Conduit init container image name")

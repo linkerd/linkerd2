@@ -30,22 +30,22 @@ func newCmdCompletion() *cobra.Command {
   conduit completion zsh > "${fpath[1]}/_conduit"`
 
 	cmd := &cobra.Command{
-	Use:       "completion [bash|zsh]",
-	Short:     "Shell completion",
-	Long:      "Output completion code for the specified shell (bash or zsh).",
-	Example:   example,
-	Args:      cobra.ExactArgs(1),
-	ValidArgs: []string{"bash", "zsh"},
-	RunE: func(cmd *cobra.Command, args []string) error {
-		out, err := getCompletion(args[0], cmd.Parent())
-		if err != nil {
-			return err
-		}
+		Use:       "completion [bash|zsh]",
+		Short:     "Shell completion",
+		Long:      "Output completion code for the specified shell (bash or zsh).",
+		Example:   example,
+		Args:      cobra.ExactArgs(1),
+		ValidArgs: []string{"bash", "zsh"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			out, err := getCompletion(args[0], cmd.Parent())
+			if err != nil {
+				return err
+			}
 
-		fmt.Print(out)
-		return nil
-	},
-}
+			fmt.Print(out)
+			return nil
+		},
+	}
 
 	return cmd
 }

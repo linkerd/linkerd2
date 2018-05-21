@@ -56,17 +56,17 @@ func newCmdInstall() *cobra.Command {
 	options := newInstallOptions()
 
 	cmd := &cobra.Command{
-	Use:   "install [flags]",
-	Short: "Output Kubernetes configs to install Conduit",
-	Long:  "Output Kubernetes configs to install Conduit.",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		config, err := validateAndBuildConfig(options)
-		if err != nil {
-			return err
-		}
-		return render(*config, os.Stdout, options)
-	},
-}
+		Use:   "install [flags]",
+		Short: "Output Kubernetes configs to install Conduit",
+		Long:  "Output Kubernetes configs to install Conduit.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			config, err := validateAndBuildConfig(options)
+			if err != nil {
+				return err
+			}
+			return render(*config, os.Stdout, options)
+		},
+	}
 
 	addProxyConfigFlags(cmd, options.proxyConfigOptions)
 	cmd.PersistentFlags().StringVar(&options.dockerRegistry, "registry", options.dockerRegistry, "Docker registry to pull images from")
