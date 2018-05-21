@@ -32,7 +32,8 @@ const formatTitle = (title, tooltipText) => {
   } else {
     return (
       <Tooltip
-        title={tooltipText}>
+        title={tooltipText}
+        overlayStyle={{ fontSize: "12px" }}>
         {content}
       </Tooltip>
     );
@@ -49,6 +50,16 @@ const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick,
       onFilterDropdownVisibleChange: onFilterClick,
       onFilter: (value, row) => row.namespace.indexOf(value) === 0,
       sorter: sortable ? (a, b) => (a.namespace || "").localeCompare(b.namespace) : false
+    }
+  ];
+  let percentMeshedColumn = [
+    {
+      title: formatTitle("Secured", "Percent of traffic originating and terminating within the mesh"),
+      key: "securedTraffic",
+      dataIndex: "intraMeshRequestPercent",
+      className: "numeric",
+      sorter: sortable ? (a, b) => numericSort(a.intraMeshRequestPercent.get(), b.intraMeshRequestPercent.get()) : false,
+      render: d => _.isNil(d) ? "---" : d.prettyRate()
     }
   ];
   let columns = [
@@ -77,7 +88,7 @@ const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick,
       title: formatTitle("SR", "Success Rate"),
       dataIndex: "successRate",
       key: "successRateRollup",
-      className: "numeric long-header",
+      className: "numeric",
       sorter: sortable ? (a, b) => numericSort(a.successRate, b.successRate) : false,
       render: d => metricToFormatter["SUCCESS_RATE"](d)
     },
@@ -85,7 +96,7 @@ const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick,
       title: formatTitle("RPS", "Request Rate"),
       dataIndex: "requestRate",
       key: "requestRateRollup",
-      className: "numeric long-header",
+      className: "numeric",
       sorter: sortable ? (a, b) => numericSort(a.requestRate, b.requestRate) : false,
       render: d => withTooltip(d, "REQUEST_RATE")
     },
@@ -93,7 +104,7 @@ const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick,
       title: formatTitle("P50", "P50 Latency"),
       dataIndex: "P50",
       key: "p50LatencyRollup",
-      className: "numeric long-header",
+      className: "numeric",
       sorter: sortable ? (a, b) => numericSort(a.P50, b.P50) : false,
       render: metricToFormatter["LATENCY"]
     },
@@ -101,7 +112,7 @@ const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick,
       title: formatTitle("P95", "P95 Latency"),
       dataIndex: "P95",
       key: "p95LatencyRollup",
-      className: "numeric long-header",
+      className: "numeric",
       sorter: sortable ? (a, b) => numericSort(a.P95, b.P95) : false,
       render: metricToFormatter["LATENCY"]
     },
@@ -109,7 +120,7 @@ const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick,
       title: formatTitle("P99", "P99 Latency"),
       dataIndex: "P99",
       key: "p99LatencyRollup",
-      className: "numeric long-header",
+      className: "numeric",
       sorter: sortable ? (a, b) => numericSort(a.P99, b.P99) : false,
       render: metricToFormatter["LATENCY"]
     }
@@ -118,7 +129,7 @@ const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick,
   if (resource.toLowerCase() === "namespace") {
     return columns;
   } else {
-    return _.concat(nsColumn, columns);
+    return _.concat(nsColumn, columns, percentMeshedColumn);
   }
 };
 
