@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use futures_mpsc_lossy;
@@ -32,9 +32,10 @@ pub fn new(
     process: &Arc<ctx::Process>,
     capacity: usize,
     metrics_retain_idle: Duration,
-) -> (Sensors, MakeControl) {
+    taps: &Arc<Mutex<tap::Taps>>,
+) -> (Sensors, Control) {
     let (tx, rx) = futures_mpsc_lossy::channel(capacity);
     let s = Sensors::new(tx);
-    let c = MakeControl::new(rx, process, metrics_retain_idle);
+    let c = Control::new(rx, process, metrics_retain_idle, taps);
     (s, c)
 }

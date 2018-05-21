@@ -1,5 +1,3 @@
-use futures::sync::mpsc;
-use futures::{Async, Future, Stream};
 use std::collections::{
     hash_map::{Entry, HashMap},
     VecDeque,
@@ -8,8 +6,18 @@ use std::fmt;
 use std::iter::IntoIterator;
 use std::net::SocketAddr;
 use std::time::Duration;
+
+use bytes::Bytes;
+use futures::{
+    future,
+    sync::mpsc,
+    Async, Future, Stream,
+};
+use h2;
+use http;
 use tower_grpc as grpc;
-use tower_h2::{BoxBody, HttpService, RecvBody};
+use tower_h2::{self, BoxBody, HttpService, RecvBody};
+use tower_reconnect::Reconnect;
 
 use conduit_proxy_controller_grpc::common::{Destination, TcpAddress};
 use conduit_proxy_controller_grpc::destination::client::Destination as DestinationSvc;
@@ -17,31 +25,28 @@ use conduit_proxy_controller_grpc::destination::update::Update as PbUpdate2;
 use conduit_proxy_controller_grpc::destination::{Update as PbUpdate, WeightedAddr};
 
 use super::{Metadata, ResolveRequest, Responder, Update};
-use control::cache::{Cache, CacheChange, Exists};
-use control::fully_qualified_authority::FullyQualifiedAuthority;
-use control::remote_stream::{Receiver, Remote};
+use control::{
+    cache::{Cache, CacheChange, Exists},
+    fully_qualified_authority::FullyQualifiedAuthority,
+    remote_stream::{Receiver, Remote},
+    AddOrigin, Backoff, LogErrors
+};
 use dns::{self, IpAddrListFuture};
+use task::LazyExecutor;
 use telemetry::metrics::DstLabels;
-use transport::DnsNameAndPort;
+use transport::{DnsNameAndPort, HostAndPort, LookupAddressAndConnect};
+use timeout::Timeout;
 
 type DestinationServiceQuery<T> = Remote<PbUpdate, T>;
 type UpdateRx<T> = Receiver<PbUpdate, T>;
 
-/// Stores the configuration for a destination background worker.
-#[derive(Debug)]
-pub struct Config {
-    request_rx: mpsc::UnboundedReceiver<ResolveRequest>,
-    dns_config: dns::Config,
-    default_destination_namespace: String,
-}
-
 /// Satisfies resolutions as requested via `request_rx`.
 ///
-/// As `Process` is polled with a client to Destination service, if the client to the
+/// As the `Background` is polled with a client to Destination service, if the client to the
 /// service is healthy, it reads requests from `request_rx`, determines how to resolve the
 /// provided authority to a set of addresses, and ensures that resolution updates are
 /// propagated to all requesters.
-pub struct Process<T: HttpService<ResponseBody = RecvBody>> {
+struct Background<T: HttpService<ResponseBody = RecvBody>> {
     dns_resolver: dns::Resolver,
     default_destination_namespace: String,
     destinations: HashMap<DnsNameAndPort, DestinationSet<T>>,
@@ -62,46 +67,74 @@ struct DestinationSet<T: HttpService<ResponseBody = RecvBody>> {
     responders: Vec<Responder>,
 }
 
-// ==== impl Config =====
 
-impl Config {
-    pub(super) fn new(
-        request_rx: mpsc::UnboundedReceiver<ResolveRequest>,
-        dns_config: dns::Config,
-        default_destination_namespace: String,
-    ) -> Self {
-        Self {
-            request_rx,
-            dns_config,
-            default_destination_namespace,
-        }
-    }
+/// Returns a new discovery background task.
+pub(super) fn task(
+    request_rx: mpsc::UnboundedReceiver<ResolveRequest>,
+    dns_resolver: dns::Resolver,
+    default_destination_namespace: String,
+    host_and_port: HostAndPort,
+) -> impl Future<Item = (), Error = ()>
+{
+    // Build up the Controller Client Stack
+    let mut client = {
+        let ctx = ("controller-client", format!("{:?}", host_and_port));
+        let scheme = http::uri::Scheme::from_shared(Bytes::from_static(b"http")).unwrap();
+        let authority = http::uri::Authority::from(&host_and_port);
+        let connect = Timeout::new(
+            LookupAddressAndConnect::new(host_and_port, dns_resolver.clone()),
+            Duration::from_secs(3),
+        );
 
-    /// Bind this handle to start talking to the controller API.
-    pub fn process<T>(self) -> Process<T>
-    where
-        T: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>,
-        T::Error: fmt::Debug,
-    {
-        Process {
-            dns_resolver: dns::Resolver::new(self.dns_config),
-            default_destination_namespace: self.default_destination_namespace,
-            destinations: HashMap::new(),
-            reconnects: VecDeque::new(),
-            rpc_ready: false,
-            request_rx: self.request_rx,
-        }
-    }
+        let h2_client = tower_h2::client::Connect::new(
+            connect,
+            h2::client::Builder::default(),
+            ::logging::context_executor(ctx, LazyExecutor),
+        );
+
+        let reconnect = Reconnect::new(h2_client);
+        let log_errors = LogErrors::new(reconnect);
+        let backoff = Backoff::new(log_errors, Duration::from_secs(5));
+        // TODO: Use AddOrigin in tower-http
+        AddOrigin::new(scheme, authority, backoff)
+    };
+
+    let mut disco = Background::new(
+        request_rx,
+        dns_resolver,
+        default_destination_namespace,
+    );
+
+    future::poll_fn(move || {
+        disco.poll_rpc(&mut client);
+
+        Ok(Async::NotReady)
+    })
 }
 
-// ==== impl Process =====
+// ==== impl Background =====
 
-impl<T> Process<T>
+impl<T> Background<T>
 where
     T: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>,
     T::Error: fmt::Debug,
 {
-    pub fn poll_rpc(&mut self, client: &mut T) {
+    fn new(
+        request_rx: mpsc::UnboundedReceiver<ResolveRequest>,
+        dns_resolver: dns::Resolver,
+        default_destination_namespace: String,
+    ) -> Self {
+        Self {
+            dns_resolver,
+            default_destination_namespace,
+            destinations: HashMap::new(),
+            reconnects: VecDeque::new(),
+            rpc_ready: false,
+            request_rx,
+        }
+    }
+
+   fn poll_rpc(&mut self, client: &mut T) {
         // This loop is make sure any streams that were found disconnected
         // in `poll_destinations` while the `rpc` service is ready should
         // be reconnected now, otherwise the task would just sleep...

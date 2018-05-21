@@ -116,7 +116,7 @@ impl LookupAddressAndConnect {
 impl tokio_connect::Connect for LookupAddressAndConnect {
     type Connected = connection::Connection;
     type Error = io::Error;
-    type Future = Box<Future<Item = connection::Connection, Error = io::Error>>;
+    type Future = Box<Future<Item = connection::Connection, Error = io::Error> + Send>;
 
     fn connect(&self) -> Self::Future {
         let port = self.host_and_port.port;

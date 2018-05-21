@@ -203,19 +203,25 @@ where
             config.outbound_ports_disable_protocol_detection,
         );
 
+        let (taps, observe) = control::Observe::new(100);
         let (sensors, telemetry) = telemetry::new(
             &process_ctx,
             config.event_buffer_capacity,
             config.metrics_retain_idle,
+            &taps,
         );
 
-        let dns_config = dns::Config::from_system_config()
+        let dns_resolver = dns::Resolver::from_system_config()
             .unwrap_or_else(|e| {
                 // TODO: Make DNS configuration infallible.
                 panic!("invalid DNS configuration: {:?}", e);
             });
 
-        let (control, control_bg) = control::new(dns_config.clone(), config.pod_namespace.clone());
+        let (control, control_bg) = control::destination::new(
+            dns_resolver.clone(),
+            config.pod_namespace.clone(),
+            control_host_and_port
+        );
 
         let (drain_tx, drain_rx) = drain::channel();
 
@@ -285,24 +291,14 @@ where
                     let mut rt = current_thread::Runtime::new()
                         .expect("initialize controller-client thread runtime");
 
-                    let (taps, observe) = control::Observe::new(100);
                     let new_service = TapServer::new(observe);
 
                     let server = serve_control(control_listener, new_service);
 
-                    let telemetry = telemetry
-                        .make_control(&taps)
-                        .expect("bad news in telemetry town");
-
                     let metrics_server = telemetry
                         .serve_metrics(metrics_listener);
 
-                    let client = control_bg.bind(
-                        control_host_and_port,
-                        dns_config,
-                    );
-
-                    let fut = client.join4(
+                    let fut = control_bg.join4(
                         server.map_err(|_| {}),
                         telemetry,
                         metrics_server.map_err(|_| {}),

@@ -51,50 +51,32 @@ pub struct Control {
 
 }
 
-// ===== impl MakeControl =====
+// ===== impl Control =====
 
-impl MakeControl {
-    /// Constructs a type that can instantiate a `Control`.
+impl Control {
+
+    /// Returns a new `Control`.
     ///
     /// # Arguments
     /// - `rx`: the `Receiver` side of the channel on which events are sent.
     /// - `process_ctx`: runtime process metadata.
+    /// - `taps`: shares a `Taps` instance.
     pub(super) fn new(
         rx: Receiver<Event>,
         process_ctx: &Arc<ctx::Process>,
         metrics_retain_idle: Duration,
+        taps: &Arc<Mutex<Taps>>
     ) -> Self {
+        let (metrics_record, metrics_service) =
+            metrics::new(&process_ctx, metrics_retain_idle);
         Self {
-            rx,
-            process_ctx: Arc::clone(process_ctx),
-            metrics_retain_idle,
+            metrics_record,
+            metrics_service,
+            rx: Some(rx),
+            taps: Some(taps.clone()),
         }
     }
 
-    /// Bind a `Control` with the current task executor.
-    ///
-    /// # Arguments
-    /// - `taps`: shares a `Taps` instance.
-    ///
-    /// # Returns
-    /// - `Ok(())` if the timeout was successfully created.
-    /// - `Err(io::Error)` if the timeout could not be created.
-    pub fn make_control(self, taps: &Arc<Mutex<Taps>>) -> io::Result<Control> {
-        let (metrics_record, metrics_service) =
-            metrics::new(&self.process_ctx, self.metrics_retain_idle);
-
-        Ok(Control {
-            metrics_record,
-            metrics_service,
-            rx: Some(self.rx),
-            taps: Some(taps.clone()),
-        })
-    }
-}
-
-// ===== impl Control =====
-
-impl Control {
     fn recv(&mut self) -> Poll<Option<Event>, ()> {
         match self.rx.take() {
             None => Ok(Async::Ready(None)),

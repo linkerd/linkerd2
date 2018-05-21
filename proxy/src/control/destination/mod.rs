@@ -28,8 +28,13 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::{Arc, Weak};
 
-use futures::sync::mpsc;
-use futures::{Async, Poll, Stream};
+use futures::{
+    sync::mpsc,
+    Future,
+    Async,
+    Poll,
+    Stream
+};
 use futures_watch::{Store, Watch};
 use http;
 use tower_discover::{Change, Discover};
@@ -37,14 +42,14 @@ use tower_service::Service;
 
 use dns;
 use telemetry::metrics::DstLabels;
-use transport::DnsNameAndPort;
+use transport::{DnsNameAndPort, HostAndPort};
 
 pub mod background;
 mod endpoint;
 
 pub use self::endpoint::{DstLabelsWatch, Endpoint};
 
-/// A handle to request resolutions from a `Background`.
+/// A handle to request resolutions from the background discovery task.
 #[derive(Clone, Debug)]
 pub struct Resolver {
     request_tx: mpsc::UnboundedSender<ResolveRequest>,
@@ -127,17 +132,24 @@ pub trait Bind {
     fn bind(&self, addr: &Self::Endpoint) -> Result<Self::Service, Self::BindError>;
 }
 
-/// Creates a "channel" of `Resolver` to `Background` handles.
+/// Returns a `Resolver` and a background task future.
 ///
-/// The `Resolver` is used by a listener, the `Background` is consumed
-/// on the controller thread.
+/// The `Resolver` is used by a listener to request resolutions, while
+/// the background future is executed on the controller thread's executor
+/// to drive the background task.
 pub fn new(
-    dns_config: dns::Config,
+    dns_resolver: dns::Resolver,
     default_destination_namespace: String,
-) -> (Resolver, background::Config) {
+    host_and_port: HostAndPort,
+) -> (Resolver, impl Future<Item = (), Error = ()>) {
     let (request_tx, rx) = mpsc::unbounded();
     let disco = Resolver { request_tx };
-    let bg = background::Config::new(rx, dns_config, default_destination_namespace);
+    let bg = background::task(
+        rx,
+        dns_resolver,
+        default_destination_namespace,
+        host_and_port,
+    );
     (disco, bg)
 }
 

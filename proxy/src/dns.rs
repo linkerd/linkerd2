@@ -11,18 +11,13 @@ use trust_dns_resolver::ResolverFuture;
 use trust_dns_resolver::lookup_ip::LookupIp;
 
 #[derive(Clone, Debug)]
-pub struct Config {
+pub struct Resolver {
     config: ResolverConfig,
     opts: ResolverOpts,
 }
 
-#[derive(Clone, Debug)]
-pub struct Resolver {
-    config: Config,
-}
-
 pub enum IpAddrFuture {
-    DNS(Box<Future<Item = LookupIp, Error = ResolveError>>),
+    DNS(Box<Future<Item = LookupIp, Error = ResolveError> + Send>),
     Fixed(IpAddr),
 }
 
@@ -37,7 +32,7 @@ pub enum Response {
 }
 
 // `Box<Future>` implements `Future` so it doesn't need to be implemented manually.
-pub type IpAddrListFuture = Box<Future<Item=Response, Error=ResolveError>>;
+pub type IpAddrListFuture = Box<Future<Item=Response, Error=ResolveError> + Send>;
 
 /// A DNS name.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -63,23 +58,19 @@ impl AsRef<str> for Name {
     }
 }
 
-impl Config {
+impl Resolver {
     /// TODO: Make this infallible, like it is in the `domain` crate.
     pub fn from_system_config() -> Result<Self, ResolveError> {
         let (config, opts) = trust_dns_resolver::system_conf::read_system_conf()?;
         trace!("DNS config: {:?}", &config);
         trace!("DNS opts: {:?}", &opts);
-        Ok(Config {
-            config,
-            opts
-        })
+        Ok(Self::new(config, opts))
     }
-}
 
-impl Resolver {
-    pub fn new(config: Config) -> Self {
+    pub fn new(config: ResolverConfig,  opts: ResolverOpts) -> Self {
         Resolver {
             config,
+            opts,
         }
     }
 
@@ -126,8 +117,8 @@ impl Resolver {
     {
         let name = name.clone(); // TODO: ref-count names.
         let resolver = ResolverFuture::new(
-            self.config.config,
-            self.config.opts
+            self.config,
+            self.opts
         );
         resolver.and_then(move |r| r.lookup_ip(name.as_str()))
     }

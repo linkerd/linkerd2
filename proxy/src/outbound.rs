@@ -14,8 +14,7 @@ use tower_h2;
 use conduit_proxy_router::Recognize;
 
 use bind::{self, Bind, Protocol};
-use control;
-use control::destination::{Bind as BindTrait, Resolution};
+use control::destination::{self, Bind as BindTrait, Resolution};
 use ctx;
 use task::LazyExecutor;
 use timeout::Timeout;
@@ -27,7 +26,7 @@ type BindProtocol<B> = bind::BindProtocol<Arc<ctx::Proxy>, B>;
 
 pub struct Outbound<B> {
     bind: Bind<Arc<ctx::Proxy>, B>,
-    discovery: control::Control,
+    discovery: destination::Resolver,
     bind_timeout: Duration,
 }
 
@@ -43,7 +42,7 @@ pub enum Destination {
 
 impl<B> Outbound<B> {
     pub fn new(bind: Bind<Arc<ctx::Proxy>, B>,
-               discovery: control::Control,
+               discovery: destination::Resolver,
                bind_timeout: Duration)
                -> Outbound<B> {
         Self {
