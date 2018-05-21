@@ -684,51 +684,96 @@ where
 #[cfg(test)]
 mod tests {
     use futures::{future, Poll};
-    use now::test_util::Clock;
+    use futures_mpsc_lossy;
     use tower_service::Service;
+
+    use now::test_util::Clock;
+    use ctx::test_util::process as process_ctx;
+
     use super::*;
 
-    #[test]
-    fn timestamp_request_open_service() {
-        struct Svc;
+    struct SimulateLatency {
+        clock: Clock,
+        latency: Duration,
+    }
 
-        impl Service for Svc {
-            type Request = http::Request<()>;
-            type Response = http::Response<()>;
-            type Error = ();
-            type Future = future::FutureResult<Self::Response, ()>;
+    impl Service for SimulateLatency {
+        type Request = http::Request<()>;
+        type Response = http::Response<()>;
+        type Error = ();
+        type Future = future::FutureResult<Self::Response, ()>;
 
-            fn poll_ready(&mut self) -> Poll<(), Self::Error> {
-                Ok(().into())
+        fn poll_ready(&mut self) -> Poll<(), Self::Error> {
+            Ok(().into())
+        }
+
+        fn call(&mut self, _: Self::Request) -> Self::Future {
+            self.clock.advance(self.latency);
+            future::ok(http::Response::new(()))
+        }
+    }
+
+    impl<A, B> Http<SimulateLatency, A, B, Clock> {
+        fn call_ok(&mut self, req: http::Request<A>) -> http::Response<B> {
+            self.call(req).wait()
+        }
+    }
+
+    macro_rules! event {
+        ($evs:ident) => {
+            match $evs.poll().expect("telemetry event") {
+                Async::Ready(Some(ev)) => ev,
+                _ => panic!("no telemetry events"),
             }
+        };
+    }
 
-            fn call(&mut self, mut req: Self::Request) -> Self::Future {
-                let mut rsp = http::Response::new(());
-                if let Some(open) = req.extensions_mut().remove::<RequestOpen>() {
-                    rsp.extensions_mut().insert(open);
+    quickcheck! {
+
+        fn http_records_latency(latency: Duration) -> bool {
+            let process = process_ctx();
+            let proxy = ctx::Proxy::outbound(&process);
+
+            let clock = Clock::default();
+
+            let (tx, events) = futures_mpsc_lossy::channel(4);
+
+            let mut http = {
+                Http {
+                    next_id: Default::default(),
+                    service: SimulateLatency {
+                        clock: clock.clone(),
+                        latency,
+                    },
+                    handle: super::super::Handle(tx),
+                    client_ctx: ctx::test_util::client(&proxy, None),
+                    now: clock.clone(),
+                    _p: PhantomData,
                 }
-                future::ok(rsp)
+            };
+
+            let _ = http.call_ok(http::Request::new(()));
+            match event!(events) {
+                Event::StreamRequestOpen(_) => {}
+                ev => panic!("unexpected event: {:?}", ev),
             }
+            match event!(events) {
+                Event::StreamRequestEnd(_, _) => {}
+                ev => panic!("unexpected event: {:?}", ev),
+            }
+            match event!(events) {
+                Event::StreamResponseOpen(_, _) => {}
+                ev => panic!("unexpected event: {:?}", ev),
+            }
+
+            match event!(events) {
+                Event::StreamResponseEnd(_, _) => {}
+                ev => panic!("unexpected event: {:?}", ev),
+            }
+
+
+            true
         }
 
-        impl  TimestampRequestOpen<Svc, Clock> {
-            fn open(&mut self) -> Option<Instant> {
-                let req = http::Request::new(());
-                self.call(req).wait().expect("call")
-                    .extensions_mut()
-                    .remove::<RequestOpen>()
-                    .map(|RequestOpen(t)| t)
-            }
-        }
-
-        let clock = Clock::default();
-        let mut svc = TimestampRequestOpen::new(Svc).with_time(clock.clone());
-
-        let t0 = clock.now();
-        assert_eq!(svc.open(), Some(t0));
-
-        clock.advance(Duration::from_millis(1));
-        let t1 = clock.now();
-        assert_eq!(svc.open(), Some(t1));
     }
 }
