@@ -19,15 +19,16 @@ func TestRequestTapByResourceFromAPI(t *testing.T) {
 	t.Run("Should render busy response if everything went well", func(t *testing.T) {
 		resourceType := k8s.Pods
 		targetName := "pod-666"
-		scheme := "https"
-		method := "GET"
-		authority := "localhost"
-		path := "/some/path"
+		options := &tapOptions{
+			scheme:    "https",
+			method:    "GET",
+			authority: "localhost",
+			path:      "/some/path",
+		}
 
 		req, err := buildTapByResourceRequest(
 			[]string{resourceType, targetName},
-			"", "", "", 0,
-			scheme, method, authority, path,
+			options,
 		)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
@@ -40,8 +41,8 @@ func TestRequestTapByResourceFromAPI(t *testing.T) {
 						Id: &common.TapEvent_Http_StreamId{
 							Base: 1,
 						},
-						Authority: authority,
-						Path:      path,
+						Authority: options.authority,
+						Path:      options.path,
 					},
 				},
 			},
@@ -94,15 +95,16 @@ func TestRequestTapByResourceFromAPI(t *testing.T) {
 	t.Run("Should render empty response if no events returned", func(t *testing.T) {
 		resourceType := k8s.Pods
 		targetName := "pod-666"
-		scheme := "https"
-		method := "GET"
-		authority := "localhost"
-		path := "/some/path"
+		options := &tapOptions{
+			scheme:    "https",
+			method:    "GET",
+			authority: "localhost",
+			path:      "/some/path",
+		}
 
 		req, err := buildTapByResourceRequest(
 			[]string{resourceType, targetName},
-			"", "", "", 0,
-			scheme, method, authority, path,
+			options,
 		)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
@@ -134,15 +136,16 @@ func TestRequestTapByResourceFromAPI(t *testing.T) {
 		t.SkipNow()
 		resourceType := k8s.Pods
 		targetName := "pod-666"
-		scheme := "https"
-		method := "GET"
-		authority := "localhost"
-		path := "/some/path"
+		options := &tapOptions{
+			scheme:    "https",
+			method:    "GET",
+			authority: "localhost",
+			path:      "/some/path",
+		}
 
 		req, err := buildTapByResourceRequest(
 			[]string{resourceType, targetName},
-			"", "", "", 0,
-			scheme, method, authority, path,
+			options,
 		)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)

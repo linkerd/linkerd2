@@ -12,7 +12,8 @@ func TestRender(t *testing.T) {
 	// The default configuration, with the random UUID overridden with a fixed
 	// value to facilitate testing.
 	defaultControlPlaneNamespace := controlPlaneNamespace
-	defaultConfig, err := validateAndBuildConfig()
+	defaultOptions := newInstallOptions()
+	defaultConfig, err := validateAndBuildConfig(defaultOptions)
 	if err != nil {
 		t.Fatalf("Unexpected error from validateAndBuildConfig(): %v", err)
 	}
@@ -51,7 +52,7 @@ func TestRender(t *testing.T) {
 			controlPlaneNamespace = tc.controlPlaneNamespace
 
 			var buf bytes.Buffer
-			err := render(tc.config, &buf)
+			err := render(tc.config, &buf, defaultOptions)
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}

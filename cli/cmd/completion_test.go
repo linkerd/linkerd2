@@ -8,12 +8,12 @@ import (
 func TestCompletion(t *testing.T) {
 	t.Run("Returns completion code", func(t *testing.T) {
 
-		bash, err := getCompletion("bash")
+		bash, err := getCompletion("bash", RootCmd)
 		if err != nil {
 			t.Fatalf("Unexpected error: %+v", err)
 		}
 
-		zsh, err := getCompletion("zsh")
+		zsh, err := getCompletion("zsh", RootCmd)
 		if err != nil {
 			t.Fatalf("Unexpected error: %+v", err)
 		}
@@ -28,7 +28,7 @@ func TestCompletion(t *testing.T) {
 	})
 
 	t.Run("Fails with invalid shell type", func(t *testing.T) {
-		out, err := getCompletion("foo")
+		out, err := getCompletion("foo", RootCmd)
 		if err == nil {
 			t.Fatalf("Unexpected success for invalid shell type: %+v", out)
 		}

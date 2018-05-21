@@ -32,52 +32,75 @@ type installConfig struct {
 	CreatedByAnnotation      string
 }
 
-var (
-	conduitVersion     string
+type installOptions struct {
 	dockerRegistry     string
 	controllerReplicas uint
 	webReplicas        uint
 	prometheusReplicas uint
-	imagePullPolicy    string
 	controllerLogLevel string
-)
+	*proxyConfigOptions
+}
 
-var installCmd = &cobra.Command{
+func newInstallOptions() *installOptions {
+	return &installOptions{
+		dockerRegistry:     "gcr.io/runconduit",
+		controllerReplicas: 1,
+		webReplicas:        1,
+		prometheusReplicas: 1,
+		controllerLogLevel: "info",
+		proxyConfigOptions: newProxyConfigOptions(),
+	}
+}
+
+func newCmdInstall() *cobra.Command {
+	options := newInstallOptions()
+
+	cmd := &cobra.Command{
 	Use:   "install [flags]",
 	Short: "Output Kubernetes configs to install Conduit",
 	Long:  "Output Kubernetes configs to install Conduit.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		config, err := validateAndBuildConfig()
+		config, err := validateAndBuildConfig(options)
 		if err != nil {
 			return err
 		}
-		return render(*config, os.Stdout)
+		return render(*config, os.Stdout, options)
 	},
 }
 
-func validateAndBuildConfig() (*installConfig, error) {
-	if err := validate(); err != nil {
+	addProxyConfigFlags(cmd, options.proxyConfigOptions)
+	cmd.PersistentFlags().StringVar(&options.dockerRegistry, "registry", options.dockerRegistry, "Docker registry to pull images from")
+	cmd.PersistentFlags().UintVar(&options.controllerReplicas, "controller-replicas", options.controllerReplicas, "Replicas of the controller to deploy")
+	cmd.PersistentFlags().UintVar(&options.webReplicas, "web-replicas", options.webReplicas, "Replicas of the web server to deploy")
+	cmd.PersistentFlags().UintVar(&options.prometheusReplicas, "prometheus-replicas", options.prometheusReplicas, "Replicas of prometheus to deploy")
+	cmd.PersistentFlags().StringVar(&options.controllerLogLevel, "controller-log-level", options.controllerLogLevel, "Log level for the controller and web components")
+
+	return cmd
+}
+
+func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
+	if err := validate(options); err != nil {
 		return nil, err
 	}
 	return &installConfig{
 		Namespace:                controlPlaneNamespace,
-		ControllerImage:          fmt.Sprintf("%s/controller:%s", dockerRegistry, conduitVersion),
-		WebImage:                 fmt.Sprintf("%s/web:%s", dockerRegistry, conduitVersion),
+		ControllerImage:          fmt.Sprintf("%s/controller:%s", options.dockerRegistry, options.conduitVersion),
+		WebImage:                 fmt.Sprintf("%s/web:%s", options.dockerRegistry, options.conduitVersion),
 		PrometheusImage:          "prom/prometheus:v2.2.1",
-		GrafanaImage:             fmt.Sprintf("%s/grafana:%s", dockerRegistry, conduitVersion),
-		ControllerReplicas:       controllerReplicas,
-		WebReplicas:              webReplicas,
-		PrometheusReplicas:       prometheusReplicas,
-		ImagePullPolicy:          imagePullPolicy,
+		GrafanaImage:             fmt.Sprintf("%s/grafana:%s", options.dockerRegistry, options.conduitVersion),
+		ControllerReplicas:       options.controllerReplicas,
+		WebReplicas:              options.webReplicas,
+		PrometheusReplicas:       options.prometheusReplicas,
+		ImagePullPolicy:          options.imagePullPolicy,
 		UUID:                     uuid.NewV4().String(),
 		CliVersion:               k8s.CreatedByAnnotationValue(),
-		ControllerLogLevel:       controllerLogLevel,
+		ControllerLogLevel:       options.controllerLogLevel,
 		ControllerComponentLabel: k8s.ControllerComponentLabel,
 		CreatedByAnnotation:      k8s.CreatedByAnnotation,
 	}, nil
 }
 
-func render(config installConfig, w io.Writer) error {
+func render(config installConfig, w io.Writer, options *installOptions) error {
 	template, err := template.New("conduit").Parse(install.Template)
 	if err != nil {
 		return err
@@ -87,40 +110,32 @@ func render(config installConfig, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	return InjectYAML(buf, w, conduitVersion)
+	injectOptions := newInjectOptions()
+	injectOptions.proxyConfigOptions = options.proxyConfigOptions
+	return InjectYAML(buf, w, injectOptions)
 }
 
 var alphaNumDash = regexp.MustCompile("^[a-zA-Z0-9-]+$")
 var alphaNumDashDot = regexp.MustCompile("^[\\.a-zA-Z0-9-]+$")
 var alphaNumDashDotSlash = regexp.MustCompile("^[\\./a-zA-Z0-9-]+$")
 
-func validate() error {
+func validate(options *installOptions) error {
 	// These regexs are not as strict as they could be, but are a quick and dirty
 	// sanity check against illegal characters.
 	if !alphaNumDash.MatchString(controlPlaneNamespace) {
 		return fmt.Errorf("%s is not a valid namespace", controlPlaneNamespace)
 	}
-	if !alphaNumDashDot.MatchString(conduitVersion) {
-		return fmt.Errorf("%s is not a valid version", conduitVersion)
+	if !alphaNumDashDot.MatchString(options.conduitVersion) {
+		return fmt.Errorf("%s is not a valid version", options.conduitVersion)
 	}
-	if !alphaNumDashDotSlash.MatchString(dockerRegistry) {
-		return fmt.Errorf("%s is not a valid Docker registry", dockerRegistry)
+	if !alphaNumDashDotSlash.MatchString(options.dockerRegistry) {
+		return fmt.Errorf("%s is not a valid Docker registry", options.dockerRegistry)
 	}
-	if imagePullPolicy != "Always" && imagePullPolicy != "IfNotPresent" && imagePullPolicy != "Never" {
+	if options.imagePullPolicy != "Always" && options.imagePullPolicy != "IfNotPresent" && options.imagePullPolicy != "Never" {
 		return fmt.Errorf("--image-pull-policy must be one of: Always, IfNotPresent, Never")
 	}
-	if _, err := log.ParseLevel(controllerLogLevel); err != nil {
+	if _, err := log.ParseLevel(options.controllerLogLevel); err != nil {
 		return fmt.Errorf("--controller-log-level must be one of: panic, fatal, error, warn, info, debug")
 	}
 	return nil
-}
-
-func init() {
-	RootCmd.AddCommand(installCmd)
-	addProxyConfigFlags(installCmd)
-	installCmd.PersistentFlags().StringVar(&dockerRegistry, "registry", "gcr.io/runconduit", "Docker registry to pull images from")
-	installCmd.PersistentFlags().UintVar(&controllerReplicas, "controller-replicas", 1, "Replicas of the controller to deploy")
-	installCmd.PersistentFlags().UintVar(&webReplicas, "web-replicas", 1, "Replicas of the web server to deploy")
-	installCmd.PersistentFlags().UintVar(&prometheusReplicas, "prometheus-replicas", 1, "Replicas of prometheus to deploy")
-	installCmd.PersistentFlags().StringVar(&controllerLogLevel, "controller-log-level", "info", "Log level for the controller and web components")
 }

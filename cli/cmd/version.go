@@ -12,15 +12,27 @@ import (
 
 const DefaultVersionString = "unavailable"
 
-var shortVersion bool
-var onlyClientVersion bool
+type versionOptions struct {
+	shortVersion      bool
+	onlyClientVersion bool
+}
 
-var versionCmd = &cobra.Command{
+func newVersionOptions() *versionOptions {
+	return &versionOptions{
+		shortVersion:      false,
+		onlyClientVersion: false,
+	}
+}
+
+func newCmdVersion() *cobra.Command {
+	options := newVersionOptions()
+
+	cmd := &cobra.Command{
 	Use:   "version",
 	Short: "Print the client and server version information",
 	Run: func(cmd *cobra.Command, args []string) {
 		clientVersion := version.Version
-		if shortVersion {
+		if options.shortVersion {
 			fmt.Println(clientVersion)
 		} else {
 			fmt.Printf("Client version: %s\n", clientVersion)
@@ -32,9 +44,9 @@ var versionCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		if !onlyClientVersion {
+		if !options.onlyClientVersion {
 			serverVersion := getServerVersion(conduitApiClient)
-			if shortVersion {
+			if options.shortVersion {
 				fmt.Println(serverVersion)
 			} else {
 				fmt.Printf("Server version: %s\n", serverVersion)
@@ -43,11 +55,11 @@ var versionCmd = &cobra.Command{
 	},
 }
 
-func init() {
-	RootCmd.AddCommand(versionCmd)
-	versionCmd.Args = cobra.NoArgs
-	versionCmd.PersistentFlags().BoolVar(&shortVersion, "short", false, "Print the version number(s) only, with no additional output")
-	versionCmd.PersistentFlags().BoolVar(&onlyClientVersion, "client", false, "Print the client version only")
+	cmd.Args = cobra.NoArgs
+	cmd.PersistentFlags().BoolVar(&options.shortVersion, "short", options.shortVersion, "Print the version number(s) only, with no additional output")
+	cmd.PersistentFlags().BoolVar(&options.onlyClientVersion, "client", options.onlyClientVersion, "Print the client version only")
+
+	return cmd
 }
 
 func getServerVersion(client pb.ApiClient) string {

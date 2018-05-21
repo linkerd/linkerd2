@@ -18,15 +18,32 @@ import (
 	"k8s.io/api/core/v1"
 )
 
-var (
-	timeWindow                  string
-	namespace                   string
-	toNamespace, toResource     string
-	fromNamespace, fromResource string
-	allNamespaces               bool
-)
+type statOptions struct {
+	namespace     string
+	timeWindow    string
+	toNamespace   string
+	toResource    string
+	fromNamespace string
+	fromResource  string
+	allNamespaces bool
+}
 
-var statCmd = &cobra.Command{
+func newStatOptions() *statOptions {
+	return &statOptions{
+		namespace:     "default",
+		timeWindow:    "1m",
+		toNamespace:   "",
+		toResource:    "",
+		fromNamespace: "",
+		fromResource:  "",
+		allNamespaces: false,
+	}
+}
+
+func newCmdStat() *cobra.Command {
+	options := newStatOptions()
+
+	cmd := &cobra.Command{
 	Use:   "stat [flags] (RESOURCE)",
 	Short: "Display traffic stats about one or many resources",
 	Long: `Display traffic stats about one or many resources.
@@ -80,17 +97,12 @@ If no resource name is specified, displays stats about all resources of the spec
 			return fmt.Errorf("error creating api client while making stats request: %v", err)
 		}
 
-		req, err := buildStatSummaryRequest(
-			timeWindow, allNamespaces,
-			args, namespace,
-			toResource, toNamespace,
-			fromResource, fromNamespace,
-		)
+		req, err := buildStatSummaryRequest(args, options)
 		if err != nil {
 			return fmt.Errorf("error creating metrics request while making stats request: %v", err)
 		}
 
-		output, err := requestStatsFromAPI(client, req)
+		output, err := requestStatsFromAPI(client, req, options)
 		if err != nil {
 			return err
 		}
@@ -101,18 +113,18 @@ If no resource name is specified, displays stats about all resources of the spec
 	},
 }
 
-func init() {
-	RootCmd.AddCommand(statCmd)
-	statCmd.PersistentFlags().StringVarP(&namespace, "namespace", "n", "default", "Namespace of the specified resource")
-	statCmd.PersistentFlags().StringVarP(&timeWindow, "time-window", "t", "1m", "Stat window (for example: \"10s\", \"1m\", \"10m\", \"1h\")")
-	statCmd.PersistentFlags().StringVar(&toResource, "to", "", "If present, restricts outbound stats to the specified resource name")
-	statCmd.PersistentFlags().StringVar(&toNamespace, "to-namespace", "", "Sets the namespace used to lookup the \"--to\" resource; by default the current \"--namespace\" is used")
-	statCmd.PersistentFlags().StringVar(&fromResource, "from", "", "If present, restricts outbound stats from the specified resource name")
-	statCmd.PersistentFlags().StringVar(&fromNamespace, "from-namespace", "", "Sets the namespace used from lookup the \"--from\" resource; by default the current \"--namespace\" is used")
-	statCmd.PersistentFlags().BoolVar(&allNamespaces, "all-namespaces", false, "If present, returns stats across all namespaces, ignoring the \"--namespace\" flag")
+	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of the specified resource")
+	cmd.PersistentFlags().StringVarP(&options.timeWindow, "time-window", "t", options.timeWindow, "Stat window (for example: \"10s\", \"1m\", \"10m\", \"1h\")")
+	cmd.PersistentFlags().StringVar(&options.toResource, "to", options.toResource, "If present, restricts outbound stats to the specified resource name")
+	cmd.PersistentFlags().StringVar(&options.toNamespace, "to-namespace", options.toNamespace, "Sets the namespace used to lookup the \"--to\" resource; by default the current \"--namespace\" is used")
+	cmd.PersistentFlags().StringVar(&options.fromResource, "from", options.fromResource, "If present, restricts outbound stats from the specified resource name")
+	cmd.PersistentFlags().StringVar(&options.fromNamespace, "from-namespace", options.fromNamespace, "Sets the namespace used from lookup the \"--from\" resource; by default the current \"--namespace\" is used")
+	cmd.PersistentFlags().BoolVar(&options.allNamespaces, "all-namespaces", options.allNamespaces, "If present, returns stats across all namespaces, ignoring the \"--namespace\" flag")
+
+	return cmd
 }
 
-func requestStatsFromAPI(client pb.ApiClient, req *pb.StatSummaryRequest) (string, error) {
+func requestStatsFromAPI(client pb.ApiClient, req *pb.StatSummaryRequest, options *statOptions) (string, error) {
 	resp, err := client.StatSummary(context.Background(), req)
 	if err != nil {
 		return "", fmt.Errorf("StatSummary API error: %v", err)
@@ -121,13 +133,13 @@ func requestStatsFromAPI(client pb.ApiClient, req *pb.StatSummaryRequest) (strin
 		return "", fmt.Errorf("StatSummary API response error: %v", e.Error)
 	}
 
-	return renderStats(resp, req.Selector.Resource.Type), nil
+	return renderStats(resp, req.Selector.Resource.Type, options), nil
 }
 
-func renderStats(resp *pb.StatSummaryResponse, resourceType string) string {
+func renderStats(resp *pb.StatSummaryResponse, resourceType string, options *statOptions) string {
 	var buffer bytes.Buffer
 	w := tabwriter.NewWriter(&buffer, 0, 0, padding, ' ', tabwriter.AlignRight)
-	writeStatsToBuffer(resp, resourceType, w)
+	writeStatsToBuffer(resp, resourceType, w, options)
 	w.Flush()
 
 	// strip left padding on the first column
@@ -157,7 +169,7 @@ var (
 	namespaceHeader = "NAMESPACE"
 )
 
-func writeStatsToBuffer(resp *pb.StatSummaryResponse, reqResourceType string, w *tabwriter.Writer) {
+func writeStatsToBuffer(resp *pb.StatSummaryResponse, reqResourceType string, w *tabwriter.Writer, options *statOptions) {
 	maxNameLength := len(nameHeader)
 	maxNamespaceLength := len(namespaceHeader)
 	statTables := make(map[string]map[string]*row)
@@ -216,16 +228,16 @@ func writeStatsToBuffer(resp *pb.StatSummaryResponse, reqResourceType string, w 
 		}
 		lastDisplayedStat = false
 		if reqResourceType == k8s.All {
-			printStatTable(stats, resourceType, w, maxNameLength, maxNamespaceLength)
+			printStatTable(stats, resourceType, w, maxNameLength, maxNamespaceLength, options)
 		} else {
-			printStatTable(stats, "", w, maxNameLength, maxNamespaceLength)
+			printStatTable(stats, "", w, maxNameLength, maxNamespaceLength, options)
 		}
 	}
 }
 
-func printStatTable(stats map[string]*row, resourceType string, w *tabwriter.Writer, maxNameLength int, maxNamespaceLength int) {
+func printStatTable(stats map[string]*row, resourceType string, w *tabwriter.Writer, maxNameLength int, maxNamespaceLength int, options *statOptions) {
 	headers := make([]string, 0)
-	if allNamespaces {
+	if options.allNamespaces {
 		headers = append(headers,
 			namespaceHeader+strings.Repeat(" ", maxNamespaceLength-len(namespaceHeader)))
 	}
@@ -252,7 +264,7 @@ func printStatTable(stats map[string]*row, resourceType string, w *tabwriter.Wri
 		templateString := "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t\n"
 		templateStringEmpty := "%s\t%s\t-\t-\t-\t-\t-\t\n"
 
-		if allNamespaces {
+		if options.allNamespaces {
 			values = append(values,
 				namespace+strings.Repeat(" ", maxNamespaceLength-len(namespace)))
 			templateString = "%s\t" + templateString
@@ -287,16 +299,11 @@ func getNamePrefix(resourceType string) string {
 	}
 }
 
-func buildStatSummaryRequest(
-	timeWindow string, allNamespaces bool,
-	resource []string, namespace string,
-	toResource, toNamespace string,
-	fromResource, fromNamespace string,
-) (*pb.StatSummaryRequest, error) {
-	targetNamespace := namespace
-	if allNamespaces {
+func buildStatSummaryRequest(resource []string, options *statOptions) (*pb.StatSummaryRequest, error) {
+	targetNamespace := options.namespace
+	if options.allNamespaces {
 		targetNamespace = ""
-	} else if namespace == "" {
+	} else if options.namespace == "" {
 		targetNamespace = v1.NamespaceDefault
 	}
 
@@ -306,30 +313,30 @@ func buildStatSummaryRequest(
 	}
 
 	var toRes, fromRes pb.Resource
-	if toResource != "" {
-		toRes, err = util.BuildResource(toNamespace, toResource)
+	if options.toResource != "" {
+		toRes, err = util.BuildResource(options.toNamespace, options.toResource)
 		if err != nil {
 			return nil, err
 		}
 	}
-	if fromResource != "" {
-		fromRes, err = util.BuildResource(fromNamespace, fromResource)
+	if options.fromResource != "" {
+		fromRes, err = util.BuildResource(options.fromNamespace, options.fromResource)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	requestParams := util.StatSummaryRequestParams{
-		TimeWindow:    timeWindow,
+		TimeWindow:    options.timeWindow,
 		ResourceName:  target.Name,
 		ResourceType:  target.Type,
 		Namespace:     targetNamespace,
 		ToName:        toRes.Name,
 		ToType:        toRes.Type,
-		ToNamespace:   toNamespace,
+		ToNamespace:   options.toNamespace,
 		FromName:      fromRes.Name,
 		FromType:      fromRes.Type,
-		FromNamespace: fromNamespace,
+		FromNamespace: options.fromNamespace,
 	}
 
 	return util.BuildStatSummaryRequest(requestParams)

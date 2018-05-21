@@ -25,22 +25,35 @@ const (
 	showURL = "url"
 )
 
-var dashboardProxyPort int
-var dashboardShow string
+type dashboardOptions struct {
+	dashboardProxyPort int
+	dashboardShow      string
+}
 
-var dashboardCmd = &cobra.Command{
+func newDashboardOptions() *dashboardOptions {
+	return &dashboardOptions{
+		dashboardProxyPort: 0,
+		dashboardShow:      "conduit",
+	}
+}
+
+func newCmdDashboard() *cobra.Command {
+	options := newDashboardOptions()
+
+	cmd := &cobra.Command{
 	Use:   "dashboard [flags]",
 	Short: "Open the Conduit dashboard in a web browser",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if dashboardProxyPort < 0 {
-			return fmt.Errorf("port must be greater than or equal to zero, was %d", dashboardProxyPort)
+		if options.dashboardProxyPort < 0 {
+			return fmt.Errorf("port must be greater than or equal to zero, was %d", options.dashboardProxyPort)
 		}
 
-		if dashboardShow != showConduit && dashboardShow != showGrafana && dashboardShow != showURL {
-			return fmt.Errorf("unknown value for 'show' param, was: %s, must be one of: %s, %s, %s", dashboardShow, showConduit, showGrafana, showURL)
+		if options.dashboardShow != showConduit && options.dashboardShow != showGrafana && options.dashboardShow != showURL {
+			return fmt.Errorf("unknown value for 'show' param, was: %s, must be one of: %s, %s, %s",
+				options.dashboardShow, showConduit, showGrafana, showURL)
 		}
 
-		kubernetesProxy, err := k8s.NewProxy(kubeconfigPath, dashboardProxyPort)
+		kubernetesProxy, err := k8s.NewProxy(kubeconfigPath, options.dashboardProxyPort)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to initialize proxy: %s\n", err)
 			os.Exit(1)
@@ -78,7 +91,7 @@ var dashboardCmd = &cobra.Command{
 		fmt.Printf("Conduit dashboard available at:\n%s\n", url.String())
 		fmt.Printf("Grafana dashboard available at:\n%s\n", grafanaUrl.String())
 
-		switch dashboardShow {
+		switch options.dashboardShow {
 		case showConduit:
 			fmt.Println("Opening Conduit dashboard in the default browser")
 
@@ -110,6 +123,14 @@ var dashboardCmd = &cobra.Command{
 	},
 }
 
+	cmd.Args = cobra.NoArgs
+	// This is identical to what `kubectl proxy --help` reports, `--port 0` indicates a random port.
+	cmd.PersistentFlags().IntVarP(&options.dashboardProxyPort, "port", "p", options.dashboardProxyPort, "The port on which to run the proxy (when set to 0, a random port will be used)")
+	cmd.PersistentFlags().StringVar(&options.dashboardShow, "show", options.dashboardShow, "Open a dashboard in a browser or show URLs in the CLI (one of: conduit, grafana, url)")
+
+	return cmd
+}
+
 func isDashboardAvailable(client pb.ApiClient) (bool, error) {
 	res, err := client.SelfCheck(context.Background(), &healthcheckPb.SelfCheckRequest{})
 	if err != nil {
@@ -122,14 +143,4 @@ func isDashboardAvailable(client pb.ApiClient) (bool, error) {
 		}
 	}
 	return true, nil
-}
-
-func init() {
-	RootCmd.AddCommand(dashboardCmd)
-	dashboardCmd.Args = cobra.NoArgs
-
-	// This is identical to what `kubectl proxy --help` reports, `--port 0`
-	// indicates a random port.
-	dashboardCmd.PersistentFlags().IntVarP(&dashboardProxyPort, "port", "p", 0, "The port on which to run the proxy (when set to 0, a random port will be used)")
-	dashboardCmd.PersistentFlags().StringVar(&dashboardShow, "show", "conduit", "Open a dashboard in a browser or show URLs in the CLI (one of: conduit, grafana, url)")
 }

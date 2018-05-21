@@ -10,7 +10,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var getCmd = &cobra.Command{
+func newCmdGet() *cobra.Command {
+	cmd := &cobra.Command{
 	Use:   "get [flags] pods",
 	Short: "Display one or many mesh resources",
 	Long: `Display one or many mesh resources.
@@ -51,8 +52,7 @@ Only pod resources (aka pods, po) are supported.`,
 	},
 }
 
-func init() {
-	RootCmd.AddCommand(getCmd)
+	return cmd
 }
 
 func getPods(apiClient pb.ApiClient) ([]string, error) {
