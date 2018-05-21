@@ -246,7 +246,6 @@ impl<'a> TryFrom<&'a Strings> for Config {
             Err(e) => Err(e),
         };
 
-
         Ok(Config {
             private_listener: Listener {
                 addr: private_listener_addr?
