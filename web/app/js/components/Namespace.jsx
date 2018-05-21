@@ -4,7 +4,7 @@ import ConduitSpinner from "./ConduitSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
 import MetricsTable from './MetricsTable.jsx';
 import PageHeader from './PageHeader.jsx';
-import { processRollupMetrics } from './util/MetricUtils.js';
+import { processMultiResourceRollup } from './util/MetricUtils.js';
 import React from 'react';
 import './../../css/list.css';
 import 'whatwg-fetch';
@@ -53,24 +53,15 @@ export default class Namespaces extends React.Component {
     }
     this.setState({ pendingRequests: true });
 
-    this.api.setCurrentRequests(
-      _.map(["deployment", "replication_controller", "pod"], resource =>
-        this.api.fetchMetrics(this.api.urlsForResource[resource].url(this.state.ns).rollup))
-    );
+    this.api.setCurrentRequests([this.api.fetchMetrics(this.api.urlsForResource("all", this.state.ns))]);
 
     Promise.all(this.api.getCurrentPromises())
-      .then(([deployRollup, rcRollup, podRollup]) => {
+      .then(([allRollup]) => {
         let includeConduitStats = this.state.ns === this.props.controllerNamespace; // allow us to get stats on the conduit ns
-        let deploys = processRollupMetrics(deployRollup, this.props.controllerNamespace, includeConduitStats);
-        let rcs = processRollupMetrics(rcRollup, this.props.controllerNamespace, includeConduitStats);
-        let pods = processRollupMetrics(podRollup, this.props.controllerNamespace, includeConduitStats);
+        let metrics = processMultiResourceRollup(allRollup, this.props.controllerNamespace, includeConduitStats);
 
         this.setState({
-          metrics: {
-            deploy: deploys,
-            rc: rcs,
-            pod: pods
-          },
+          metrics: metrics,
           loaded: true,
           pendingRequests: false,
           error: ''
@@ -106,7 +97,7 @@ export default class Namespaces extends React.Component {
   }
 
   render() {
-    let noMetrics = _.isEmpty(this.state.metrics.pod);
+    let noMetrics = _.isEmpty(this.state.metrics.pods);
 
     return (
       <div className="page-content">
@@ -115,9 +106,9 @@ export default class Namespaces extends React.Component {
           <div>
             <PageHeader header={"Namespace: " + this.state.ns} api={this.api} />
             { noMetrics ? <CallToAction /> : null}
-            {this.renderResourceSection("Deployment", this.state.metrics.deploy)}
-            {this.renderResourceSection("Replication Controller", this.state.metrics.rc)}
-            {this.renderResourceSection("Pod", this.state.metrics.pod)}
+            {this.renderResourceSection("Deployment", this.state.metrics.deployments)}
+            {this.renderResourceSection("Replication Controller", this.state.metrics.replicationcontrollers)}
+            {this.renderResourceSection("Pod", this.state.metrics.pods)}
           </div>
         }
       </div>);

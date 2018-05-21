@@ -173,8 +173,8 @@ export default class ServiceMesh extends React.Component {
     this.setState({ pendingRequests: true });
 
     this.api.setCurrentRequests([
-      this.api.fetchMetrics(this.api.urlsForResource["pod"].url(this.props.controllerNamespace).rollup),
-      this.api.fetchMetrics(this.api.urlsForResource["namespace"].url().rollup)
+      this.api.fetchMetrics(this.api.urlsForResource("pod", this.props.controllerNamespace)),
+      this.api.fetchMetrics(this.api.urlsForResource("namespace"))
     ]);
 
     this.serverPromise = Promise.all(this.api.getCurrentPromises())

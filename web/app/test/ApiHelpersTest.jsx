@@ -284,14 +284,20 @@ describe('ApiHelpers', () => {
   describe('urlsForResource', () => {
     it('returns the correct rollup url for deployment overviews', () => {
       api = ApiHelpers('/go/my/own/way');
-      let deploymentUrls = api.urlsForResource["deployment"].url();
-      expect(deploymentUrls.rollup).to.equal('/api/stat?resource_type=deployment');
+      let deploymentUrl = api.urlsForResource("deployment");
+      expect(deploymentUrl).to.equal('/api/stat?resource_type=deployment');
     });
 
     it('returns the correct rollup url for pod overviews', () => {
       api = ApiHelpers('/go/my/own/way');
-      let deploymentUrls = api.urlsForResource["pod"].url();
-      expect(deploymentUrls.rollup).to.equal('/api/stat?resource_type=pod');
+      let deploymentUrls = api.urlsForResource("pod");
+      expect(deploymentUrls).to.equal('/api/stat?resource_type=pod');
+    });
+
+    it('scopes the query to the provided namespace', () => {
+      api = ApiHelpers('/go/my/own/way');
+      let deploymentUrls = api.urlsForResource("pod", "my-ns");
+      expect(deploymentUrls).to.equal('/api/stat?resource_type=pod&namespace=my-ns');
     });
   });
 });
