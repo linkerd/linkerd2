@@ -33,6 +33,7 @@ rand = "0.4"
 regex = "1.0.0"
 
 tokio = "0.1.6"
+tokio-timer = "0.2"  # `tokio_timer::timer::Now` is not exposed by `tokio`
 tokio-signal = "0.2"
 
 prost = "0.3.0"
