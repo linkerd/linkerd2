@@ -23,8 +23,9 @@ incremented when the response stream ends.
 
 ### `response_latency_ms`
 
-A histogram of the total latency of a response.  This is measured from when the
-request headers are received to when the response stream has completed.
+A histogram of the total latency of a response.  This is measured from when the request
+headers are received to when the first response body frame is received or, if no body
+frames are sent in the stream, to the first EOS frame.
 
 ## Labels
 
