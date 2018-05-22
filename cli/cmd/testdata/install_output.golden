@@ -111,8 +111,8 @@ spec:
     ControllerComponentLabel: controller
   ports:
   - name: grpc
-    port: 8086
-    targetPort: 8086
+    port: 123
+    targetPort: 123
 
 ---
 apiVersion: extensions/v1beta1
@@ -171,13 +171,14 @@ spec:
         resources: {}
       - args:
         - proxy-api
+        - -addr=:123
         - -log-level=ControllerLogLevel
         - -logtostderr=true
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy
         name: proxy-api
         ports:
-        - containerPort: 8086
+        - containerPort: 123
           name: grpc
         - containerPort: 9996
           name: admin-http

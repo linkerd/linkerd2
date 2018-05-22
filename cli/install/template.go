@@ -114,8 +114,8 @@ spec:
     {{.ControllerComponentLabel}}: controller
   ports:
   - name: grpc
-    port: 8086
-    targetPort: 8086
+    port: {{.ProxyAPIPort}}
+    targetPort: {{.ProxyAPIPort}}
 
 ---
 kind: Deployment
@@ -167,13 +167,14 @@ spec:
       - name: proxy-api
         ports:
         - name: grpc
-          containerPort: 8086
+          containerPort: {{.ProxyAPIPort}}
         - name: admin-http
           containerPort: 9996
         image: {{.ControllerImage}}
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
         - "proxy-api"
+        - "-addr=:{{.ProxyAPIPort}}"
         - "-log-level={{.ControllerLogLevel}}"
         - "-logtostderr=true"
       - name: tap
