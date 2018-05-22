@@ -159,8 +159,8 @@ message BasicStats {
   uint64 latency_ms_p50 = 3;
   uint64 latency_ms_p95 = 4;
   uint64 latency_ms_p99 = 5;
-  // has the request started and ended inside the mesh
-  bool intra_mesh = 6;
+  // count of requests that started and ended inside the mesh
+  uint64 intra_mesh_request_count = 6;
 }
 
 message StatTable {
