@@ -34,15 +34,13 @@ impl event::StreamResponseEnd {
             .map(Eos::from_grpc_status)
             ;
 
-        let since_request_open = self.response_end_at - self.request_open_at;
-        let since_response_open = self.response_end_at - self.response_open_at;
         let end = tap_event::http::ResponseEnd {
             id: Some(tap_event::http::StreamId {
                 base: 0, // TODO FIXME
                 stream: ctx.id as u64,
             }),
-            since_request_init: Some(pb_duration(&since_request_open)),
-            since_response_init: Some(pb_duration(&since_response_open)),
+            since_request_init: Some(pb_elapsed(self.request_open_at, self.response_end_at)),
+            since_response_init: Some(pb_elapsed(self.response_open_at, self.response_end_at)),
             response_bytes: self.bytes_sent,
             eos,
         };
@@ -68,15 +66,13 @@ impl event::StreamResponseFail {
     fn to_tap_event(&self, ctx: &Arc<ctx::http::Request>) -> common::TapEvent {
         use self::common::tap_event;
 
-        let since_request_open = self.response_fail_at - self.request_open_at;
-        let since_response_open = self.response_fail_at - self.response_open_at;
         let end = tap_event::http::ResponseEnd {
             id: Some(tap_event::http::StreamId {
                 base: 0, // TODO FIXME
                 stream: ctx.id as u64,
             }),
-            since_request_init: Some(pb_duration(&since_request_open)),
-            since_response_init: Some(pb_duration(&since_response_open)),
+            since_request_init: Some(pb_elapsed(self.request_open_at, self.response_fail_at)),
+            since_response_init: Some(pb_elapsed(self.response_open_at, self.response_fail_at)),
             response_bytes: self.bytes_sent,
             eos: Some(self.error.into()),
         };
@@ -102,13 +98,12 @@ impl event::StreamRequestFail {
     fn to_tap_event(&self, ctx: &Arc<ctx::http::Request>) -> common::TapEvent {
         use self::common::tap_event;
 
-        let since_request_open = self.request_fail_at - self.request_open_at;
         let end = tap_event::http::ResponseEnd {
             id: Some(tap_event::http::StreamId {
                 base: 0, // TODO FIXME
                 stream: ctx.id as u64,
             }),
-            since_request_init: Some(pb_duration(&since_request_open)),
+            since_request_init: Some(pb_elapsed(self.request_open_at, self.request_fail_at)),
             since_response_init: None,
             response_bytes: 0,
             eos: Some(self.error.into()),
@@ -171,14 +166,13 @@ impl<'a> TryFrom<&'a Event> for common::TapEvent {
             }
 
             Event::StreamResponseOpen(ref ctx, ref rsp) => {
-                let since_request_open = rsp.response_open_at - rsp.request_open_at;
                 let init = tap_event::http::ResponseInit {
                     id: Some(tap_event::http::StreamId {
                         base: 0,
                         // TODO FIXME
                         stream: ctx.request.id as u64,
                     }),
-                    since_request_init: Some(pb_duration(&since_request_open)),
+                    since_request_init: Some(pb_elapsed(rsp.request_open_at, rsp.response_open_at)),
                     http_status: u32::from(ctx.status.as_u16()),
                 };
 
