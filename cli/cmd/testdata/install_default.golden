@@ -170,6 +170,7 @@ spec:
         resources: {}
       - args:
         - proxy-api
+        - -addr=:8086
         - -log-level=info
         - -logtostderr=true
         image: gcr.io/runconduit/controller:undefined

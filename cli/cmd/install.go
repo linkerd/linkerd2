@@ -30,6 +30,7 @@ type installConfig struct {
 	ControllerLogLevel       string
 	ControllerComponentLabel string
 	CreatedByAnnotation      string
+	ProxyAPIPort             uint
 }
 
 type installOptions struct {
@@ -97,6 +98,7 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		ControllerLogLevel:       options.controllerLogLevel,
 		ControllerComponentLabel: k8s.ControllerComponentLabel,
 		CreatedByAnnotation:      k8s.CreatedByAnnotation,
+		ProxyAPIPort:             options.proxyAPIPort,
 	}, nil
 }
 
