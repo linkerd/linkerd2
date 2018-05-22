@@ -6,7 +6,7 @@ use std::default::Default;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use tower_service::{NewService, Service};
 use tower_h2::{client, Body};
 
@@ -71,7 +71,7 @@ pub struct Respond<F, B> {
 struct RespondInner {
     handle: super::Handle,
     ctx: Arc<ctx::http::Request>,
-    request_open: Instant,
+    request_open_at: Instant,
 }
 
 pub type ResponseBody<B> = MeasuredBody<B, ResponseBodyInner>;
@@ -99,8 +99,8 @@ pub struct ResponseBodyInner {
     ctx: Arc<ctx::http::Response>,
     bytes_sent: u64,
     frames_sent: u32,
-    request_open: Instant,
-    response_open: Instant,
+    request_open_at: Instant,
+    response_open_at: Instant,
 }
 
 
@@ -110,7 +110,7 @@ pub struct RequestBodyInner {
     ctx: Arc<ctx::http::Request>,
     bytes_sent: u64,
     frames_sent: u32,
-    request_open: Instant,
+    request_open_at: Instant,
 }
 
 // === NewHttp ===
@@ -227,7 +227,7 @@ where
             req.extensions_mut().remove::<RequestOpen>()
         );
         let (inner, body_inner) = match metadata {
-            (Some(ctx), Some(RequestOpen(request_open))) => {
+            (Some(ctx), Some(RequestOpen(request_open_at))) => {
                 let id = self.next_id.fetch_add(1, Ordering::SeqCst);
                 let ctx = ctx::http::Request::new(&req, &ctx, &self.client_ctx, id);
 
@@ -237,7 +237,7 @@ where
                 let respond_inner = Some(RespondInner {
                     ctx: ctx.clone(),
                     handle: self.handle.clone(),
-                    request_open,
+                    request_open_at,
                 });
                 let body_inner =
                     if req.body().is_end_stream() {
@@ -245,7 +245,8 @@ where
                             Event::StreamRequestEnd(
                                 Arc::clone(&ctx),
                                 event::StreamRequestEnd {
-                                    since_request_open: request_open.elapsed(),
+                                    request_open_at,
+                                    request_end_at: request_open_at,
                                 },
                             )
                         });
@@ -254,17 +255,17 @@ where
                         Some(RequestBodyInner {
                             ctx,
                             handle: self.handle.clone(),
-                            request_open,
+                            request_open_at,
                             frames_sent: 0,
                             bytes_sent: 0,
                         })
                     };
                 (respond_inner, body_inner)
             },
-            (ctx, request_open) => {
+            (ctx, request_open_at) => {
                 warn!(
-                    "missing metadata for a request to {:?}; ctx={:?}; request_open={:?};",
-                    req.uri(), ctx, request_open
+                    "missing metadata for a request to {:?}; ctx={:?}; request_open_at={:?};",
+                    req.uri(), ctx, request_open_at
                 );
                 (None, None)
             },
@@ -304,16 +305,18 @@ where
                     let RespondInner {
                         ctx,
                         mut handle,
-                        request_open,
+                        request_open_at,
                     } = i;
 
                     let ctx = ctx::http::Response::new(&rsp, &ctx);
 
+                    let response_open_at = Instant::now();
                     handle.send(|| {
                         Event::StreamResponseOpen(
                             Arc::clone(&ctx),
                             event::StreamResponseOpen {
-                                since_request_open: request_open.elapsed(),
+                                request_open_at,
+                                response_open_at,
                             },
                         )
                     });
@@ -329,8 +332,9 @@ where
                                 Arc::clone(&ctx),
                                 event::StreamResponseEnd {
                                     grpc_status,
-                                    since_request_open: request_open.elapsed(),
-                                    since_response_open: Duration::default(),
+                                    response_end_at: response_open_at,
+                                    request_open_at,
+                                    response_open_at,
                                     bytes_sent: 0,
                                     frames_sent: 0,
                                 },
@@ -344,8 +348,8 @@ where
                             ctx,
                             bytes_sent: 0,
                             frames_sent: 0,
-                            request_open,
-                            response_open: Instant::now(),
+                            request_open_at,
+                            response_open_at,
                         })
                     }
                 });
@@ -365,7 +369,7 @@ where
                         let RespondInner {
                             ctx,
                             mut handle,
-                            request_open,
+                            request_open_at,
                         } = i;
 
                         handle.send(|| {
@@ -373,7 +377,8 @@ where
                                 Arc::clone(&ctx),
                                 event::StreamRequestFail {
                                     error,
-                                    since_request_open: request_open.elapsed(),
+                                    request_open_at,
+                                    request_fail_at: Instant::now(),
                                 },
                             )
                         });
@@ -509,8 +514,8 @@ impl BodySensor for ResponseBodyInner {
         let ResponseBodyInner {
             ctx,
             mut handle,
-            request_open,
-            response_open,
+            request_open_at,
+            response_open_at,
             bytes_sent,
             frames_sent,
             ..
@@ -521,8 +526,9 @@ impl BodySensor for ResponseBodyInner {
                 Arc::clone(&ctx),
                 event::StreamResponseFail {
                     error,
-                    since_request_open: request_open.elapsed(),
-                    since_response_open: response_open.elapsed(),
+                    request_open_at,
+                    response_open_at,
+                    response_fail_at: Instant::now(),
                     bytes_sent,
                     frames_sent,
                 },
@@ -534,8 +540,8 @@ impl BodySensor for ResponseBodyInner {
         let ResponseBodyInner {
             ctx,
             mut handle,
-            request_open,
-            response_open,
+            request_open_at,
+            response_open_at,
             bytes_sent,
             frames_sent,
         } = self;
@@ -545,8 +551,9 @@ impl BodySensor for ResponseBodyInner {
                 Arc::clone(&ctx),
                 event::StreamResponseEnd {
                     grpc_status,
-                    since_request_open: request_open.elapsed(),
-                    since_response_open: response_open.elapsed(),
+                    request_open_at,
+                    response_open_at,
+                    response_end_at: Instant::now(),
                     bytes_sent,
                     frames_sent,
                 },
@@ -569,7 +576,7 @@ impl BodySensor for RequestBodyInner {
         let RequestBodyInner {
             ctx,
             mut handle,
-            request_open,
+            request_open_at,
             ..
         } = self;
 
@@ -578,7 +585,8 @@ impl BodySensor for RequestBodyInner {
                 Arc::clone(&ctx),
                 event::StreamRequestFail {
                     error,
-                    since_request_open: request_open.elapsed(),
+                    request_open_at,
+                    request_fail_at: Instant::now(),
                 },
             )
         )
@@ -588,7 +596,7 @@ impl BodySensor for RequestBodyInner {
         let RequestBodyInner {
             ctx,
             mut handle,
-            request_open,
+            request_open_at,
             ..
         } = self;
 
@@ -596,7 +604,8 @@ impl BodySensor for RequestBodyInner {
             event::Event::StreamRequestEnd(
                 Arc::clone(&ctx),
                 event::StreamRequestEnd {
-                    since_request_open: request_open.elapsed(),
+                    request_open_at,
+                    request_end_at: Instant::now(),
                 },
             )
         )
@@ -631,8 +640,7 @@ where
     }
 
     fn call(&mut self, mut req: Self::Request) -> Self::Future {
-        let request_open = Instant::now();
-        req.extensions_mut().insert(RequestOpen(request_open));
+        req.extensions_mut().insert(RequestOpen(Instant::now()));
         self.inner.call(req)
     }
 }
