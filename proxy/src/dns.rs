@@ -67,7 +67,13 @@ impl Resolver {
         Ok(Self::new(config, opts))
     }
 
-    pub fn new(config: ResolverConfig,  opts: ResolverOpts) -> Self {
+    pub fn new(config: ResolverConfig,  mut opts: ResolverOpts) -> Self {
+        // Disable Trust-DNS's caching.
+        // NOTE: testing the `lru-cache` crate that Trust-DNS depends on
+        //       to implement the LRU cache indicates that setting the
+        //       cache size to 0 is sufficient to prevent it from retaining
+        //       any entries.
+        opts.cache_size = 0;
         Resolver {
             config,
             opts,
