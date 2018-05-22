@@ -87,10 +87,9 @@ pub struct MeasuredBody<B, I: BodySensor> {
 /// The `inner` portion of a `MeasuredBody`, with differing implementations
 /// for request and response streams.
 pub trait BodySensor: Sized {
+    fn frame(&mut self, bytes: usize);
     fn fail(self, reason: h2::Reason);
     fn end(self, grpc_status: Option<u32>);
-    fn frames_sent(&mut self) -> &mut u32;
-    fn bytes_sent(&mut self) -> &mut u64;
 }
 
 #[derive(Debug)]
@@ -101,6 +100,7 @@ pub struct ResponseBodyInner {
     frames_sent: u32,
     request_open_at: Instant,
     response_open_at: Instant,
+    response_first_frame_at: Option<Instant>,
 }
 
 
@@ -332,9 +332,10 @@ where
                                 Arc::clone(&ctx),
                                 event::StreamResponseEnd {
                                     grpc_status,
-                                    response_end_at: response_open_at,
                                     request_open_at,
                                     response_open_at,
+                                    response_first_frame_at: response_open_at,
+                                    response_end_at: response_open_at,
                                     bytes_sent: 0,
                                     frames_sent: 0,
                                 },
@@ -350,6 +351,7 @@ where
                             frames_sent: 0,
                             request_open_at,
                             response_open_at,
+                            response_first_frame_at: None,
                         })
                     }
                 });
@@ -438,15 +440,14 @@ where
     }
 
     fn poll_data(&mut self) -> Poll<Option<Self::Data>, h2::Error> {
-        let frame = try_ready!(self.sense_err(|b| b.poll_data()));
-        let frame = frame.map(|frame| {
-            let frame = frame.into_buf();
+        let frame = try_ready!(self.sense_err(|b| b.poll_data()))
+            .map(|f| f.into_buf());
+
+        if let Some(ref f) = frame {
             if let Some(ref mut inner) = self.inner {
-                *inner.frames_sent() += 1;
-                *inner.bytes_sent() += frame.remaining() as u64;
+                inner.frame(f.remaining());
             }
-            frame
-        });
+        }
 
         // If the frame ended the stream, send the end of stream event now,
         // as we may not be polled again.
@@ -510,12 +511,21 @@ where
 
 impl BodySensor for ResponseBodyInner {
 
+    fn frame(&mut self, bytes: usize) {
+        self.frames_sent += 1;
+        self.bytes_sent += bytes as u64;
+        if self.response_first_frame_at.is_none() {
+            self.response_first_frame_at = Some(Instant::now());
+        }
+    }
+
     fn fail(self, error: h2::Reason) {
         let ResponseBodyInner {
             ctx,
             mut handle,
             request_open_at,
             response_open_at,
+            response_first_frame_at,
             bytes_sent,
             frames_sent,
             ..
@@ -528,6 +538,7 @@ impl BodySensor for ResponseBodyInner {
                     error,
                     request_open_at,
                     response_open_at,
+                    response_first_frame_at,
                     response_fail_at: Instant::now(),
                     bytes_sent,
                     frames_sent,
@@ -542,9 +553,11 @@ impl BodySensor for ResponseBodyInner {
             mut handle,
             request_open_at,
             response_open_at,
+            response_first_frame_at,
             bytes_sent,
             frames_sent,
         } = self;
+        let response_end_at =  Instant::now();
 
         handle.send(||
             event::Event::StreamResponseEnd(
@@ -553,24 +566,22 @@ impl BodySensor for ResponseBodyInner {
                     grpc_status,
                     request_open_at,
                     response_open_at,
-                    response_end_at: Instant::now(),
+                    response_first_frame_at: response_first_frame_at.unwrap_or(response_end_at),
+                    response_end_at,
                     bytes_sent,
                     frames_sent,
                 },
             )
         )
     }
-
-    fn frames_sent(&mut self) -> &mut u32 {
-        &mut self.frames_sent
-    }
-
-    fn bytes_sent(&mut self) -> &mut u64 {
-        &mut self.bytes_sent
-    }
 }
 
 impl BodySensor for RequestBodyInner {
+
+    fn frame(&mut self, bytes: usize) {
+        self.frames_sent += 1;
+        self.bytes_sent += bytes as u64;
+    }
 
     fn fail(self, error: h2::Reason) {
         let RequestBodyInner {
@@ -609,14 +620,6 @@ impl BodySensor for RequestBodyInner {
                 },
             )
         )
-    }
-
-    fn frames_sent(&mut self) -> &mut u32 {
-        &mut self.frames_sent
-    }
-
-    fn bytes_sent(&mut self) -> &mut u64 {
-        &mut self.bytes_sent
     }
 }
 

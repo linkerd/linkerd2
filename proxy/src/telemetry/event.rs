@@ -54,6 +54,7 @@ pub struct StreamResponseOpen {
 pub struct StreamResponseFail {
     pub request_open_at: Instant,
     pub response_open_at: Instant,
+    pub response_first_frame_at: Option<Instant>,
     pub response_fail_at: Instant,
     pub error: h2::Reason,
     pub bytes_sent: u64,
@@ -64,6 +65,7 @@ pub struct StreamResponseFail {
 pub struct StreamResponseEnd {
     pub request_open_at: Instant,
     pub response_open_at: Instant,
+    pub response_first_frame_at: Instant,
     pub response_end_at: Instant,
     pub grpc_status: Option<u32>,
     pub bytes_sent: u64,

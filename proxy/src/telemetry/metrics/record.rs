@@ -110,12 +110,15 @@ mod test {
         let (_, rsp) = request("http://buoyant.io", &server, &client, 1);
 
         let request_open_at = Instant::now();
-        let response_open_at = request_open_at + Duration::from_millis(300);
+        let response_open_at = request_open_at + Duration::from_millis(100);
+        let response_first_frame_at = response_open_at + Duration::from_millis(100);
+        let response_end_at = response_first_frame_at + Duration::from_millis(100);
         let end = event::StreamResponseEnd {
             grpc_status: None,
             request_open_at,
             response_open_at,
-            response_end_at: response_open_at,
+            response_first_frame_at,
+            response_end_at,
             bytes_sent: 0,
             frames_sent: 0,
         };
@@ -178,8 +181,9 @@ mod test {
 
         let request_open_at = Instant::now();
         let request_end_at = request_open_at + Duration::from_millis(10);
-        let response_open_at = request_open_at + Duration::from_millis(300);
-        let response_end_at = response_open_at;
+        let response_open_at = request_open_at + Duration::from_millis(100);
+        let response_first_frame_at = response_open_at + Duration::from_millis(100);
+        let response_end_at = response_first_frame_at + Duration::from_millis(100);
         let events = vec![
             TransportOpen(server_transport.clone()),
             TransportOpen(client_transport.clone()),
@@ -197,6 +201,7 @@ mod test {
                 grpc_status: None,
                 request_open_at,
                 response_open_at,
+                response_first_frame_at,
                 response_end_at,
                 bytes_sent: 0,
                 frames_sent: 0,

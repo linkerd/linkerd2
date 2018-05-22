@@ -82,12 +82,15 @@ fn record_response_end(b: &mut Bencher) {
     let (_, rsp) = request("http://buoyant.io", &server, &client, 1);
 
     let request_open_at = Instant::now();
-    let response_open_at = request_open_at + Duration::from_millis(300);
+    let response_open_at = request_open_at + Duration::from_millis(100);
+    let response_first_frame_at = response_open_at + Duration::from_millis(100);
+    let response_end_at = response_open_at + Duration::from_millis(100);
     let end = event::StreamResponseEnd {
         grpc_status: None,
         request_open_at,
         response_open_at,
-        response_end_at: response_open_at,
+        response_first_frame_at,
+        response_end_at,
         bytes_sent: 0,
         frames_sent: 0,
     };
@@ -115,8 +118,9 @@ fn record_one_conn_request(b: &mut Bencher) {
 
     let request_open_at = Instant::now();
     let request_end_at = request_open_at + Duration::from_millis(10);
-    let response_open_at = request_open_at + Duration::from_millis(300);
-    let response_end_at = response_open_at;
+    let response_open_at = request_open_at + Duration::from_millis(100);
+    let response_first_frame_at = response_open_at + Duration::from_millis(100);
+    let response_end_at = response_open_at + Duration::from_millis(100);
 
     use Event::*;
     let events = vec![
@@ -136,6 +140,7 @@ fn record_one_conn_request(b: &mut Bencher) {
             grpc_status: None,
             request_open_at,
             response_open_at,
+            response_first_frame_at,
             response_end_at,
             bytes_sent: 0,
             frames_sent: 0,
@@ -172,8 +177,9 @@ fn record_many_dsts(b: &mut Bencher) {
 
     let request_open_at = Instant::now();
     let request_end_at = request_open_at + Duration::from_millis(10);
-    let response_open_at = request_open_at + Duration::from_millis(300);
-    let response_end_at = response_open_at;
+    let response_open_at = request_open_at + Duration::from_millis(100);
+    let response_first_frame_at = response_open_at + Duration::from_millis(100);
+    let response_end_at = response_open_at + Duration::from_millis(100);
 
     for n in 0..REQUESTS {
         let client = client(&proxy, vec![
@@ -201,6 +207,7 @@ fn record_many_dsts(b: &mut Bencher) {
             grpc_status: None,
             request_open_at,
             response_open_at,
+            response_first_frame_at,
             response_end_at,
             bytes_sent: 0,
             frames_sent: 0,
