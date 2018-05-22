@@ -73,18 +73,26 @@ conduit_components
     "proxy" [color=orange];
 
     "cli" -> "public-api";
-    "web" -> "public-api";
 
-    "destination" -> "kubernetes";
+    "web" -> "public-api";
+    "web" -> "grafana";
+
+    "public-api" -> "tap";
+    "public-api" -> "kubernetes api";
+    "public-api" -> "prometheus";
+
+    "tap" -> "kubernetes api";
+    "tap" -> "proxy";
 
     "proxy" -> "proxy-api";
 
     "proxy-api" -> "destination";
 
-    "public-api" -> "tap";
+    "destination" -> "kubernetes api";
 
-    "tap" -> "kubernetes";
-    "tap" -> "proxy";
+    "grafana" -> "prometheus";
+    "prometheus" -> "kubernetes api";
+    "prometheus" -> "proxy";
   }
 conduit_components
 </details>
