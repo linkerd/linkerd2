@@ -23,9 +23,16 @@ incremented when the response stream ends.
 
 ### `response_latency_ms`
 
-A histogram of the total latency of a response.  This is measured from when the request
-headers are received to when the first response body frame is received or, if no body
-frames are sent in the stream, to the first EOS frame.
+A histogram of response latencies. This measurement reflects the
+[time-to-first-byte][ttfb] (TTFB) by recording the elapsed time between the proxy
+processing a request's headers and the first data frame of the response. If a response
+does not include any data, the end-of-stream event is used. The TTFB measurement is used
+so that Conduit accurately reflects application behavior when a server provides response
+headers immediately but is slow to begin serving the response body.
+
+Note that latency measurements are not exported to prometheus until the stream
+_completes_. This is necessary so that latencies can be labeled with the appropriate
+[response classification](#rsp-class).
 
 ## Labels
 
@@ -40,6 +47,7 @@ Each of these metrics has the following labels:
 
 The following labels are only applicable on `response_*` metrics.
 
+<a name="rsp-class"></a>
 * `classification`: `success` if the response was successful, or `failure` if
                     a server error occurred. This classification is based on
                     the gRPC status code if one is present, and on the HTTP
@@ -188,3 +196,4 @@ The following labels are added only to metrics which are updated when a connecti
 
 [prom-format]: https://prometheus.io/docs/instrumenting/exposition_formats/#format-version-0.0.4
 [pod-template-hash]: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#pod-template-hash-label
+[ttfb]: https://en.wikipedia.org/wiki/Time_to_first_byte
