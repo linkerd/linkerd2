@@ -25,89 +25,110 @@ const (
 	showURL = "url"
 )
 
-var dashboardProxyPort int
-var dashboardShow string
+type dashboardOptions struct {
+	dashboardProxyPort int
+	dashboardShow      string
+}
 
-var dashboardCmd = &cobra.Command{
-	Use:   "dashboard [flags]",
-	Short: "Open the Conduit dashboard in a web browser",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		if dashboardProxyPort < 0 {
-			return fmt.Errorf("port must be greater than or equal to zero, was %d", dashboardProxyPort)
-		}
+func newDashboardOptions() *dashboardOptions {
+	return &dashboardOptions{
+		dashboardProxyPort: 0,
+		dashboardShow:      "conduit",
+	}
+}
 
-		if dashboardShow != showConduit && dashboardShow != showGrafana && dashboardShow != showURL {
-			return fmt.Errorf("unknown value for 'show' param, was: %s, must be one of: %s, %s, %s", dashboardShow, showConduit, showGrafana, showURL)
-		}
+func newCmdDashboard() *cobra.Command {
+	options := newDashboardOptions()
 
-		kubernetesProxy, err := k8s.NewProxy(kubeconfigPath, dashboardProxyPort)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to initialize proxy: %s\n", err)
-			os.Exit(1)
-		}
+	cmd := &cobra.Command{
+		Use:   "dashboard [flags]",
+		Short: "Open the Conduit dashboard in a web browser",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if options.dashboardProxyPort < 0 {
+				return fmt.Errorf("port must be greater than or equal to zero, was %d", options.dashboardProxyPort)
+			}
 
-		url, err := kubernetesProxy.URLFor(controlPlaneNamespace, "/services/web:http/proxy/")
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to generate URL for dashboard: %s\n", err)
-			os.Exit(1)
-		}
+			if options.dashboardShow != showConduit && options.dashboardShow != showGrafana && options.dashboardShow != showURL {
+				return fmt.Errorf("unknown value for 'show' param, was: %s, must be one of: %s, %s, %s",
+					options.dashboardShow, showConduit, showGrafana, showURL)
+			}
 
-		grafanaUrl, err := kubernetesProxy.URLFor(controlPlaneNamespace, "/services/grafana:http/proxy/")
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to generate URL for Grafana: %s\n", err)
-			os.Exit(1)
-		}
-
-		client, err := newPublicAPIClient()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to initialize Conduit API client: %+v\n", err)
-			os.Exit(1)
-		}
-
-		dashboardAvailable, err := isDashboardAvailable(client)
-		if err != nil {
-			log.Debugf("Error checking dashboard availability: %s", err)
-		}
-
-		if err != nil || !dashboardAvailable {
-			fmt.Fprintf(os.Stderr, "Conduit is not running in the \"%s\" namespace\n", controlPlaneNamespace)
-			fmt.Fprintf(os.Stderr, "Install with: conduit install --conduit-namespace %s | kubectl apply -f -\n", controlPlaneNamespace)
-			os.Exit(1)
-		}
-
-		fmt.Printf("Conduit dashboard available at:\n%s\n", url.String())
-		fmt.Printf("Grafana dashboard available at:\n%s\n", grafanaUrl.String())
-
-		switch dashboardShow {
-		case showConduit:
-			fmt.Println("Opening Conduit dashboard in the default browser")
-
-			err = browser.OpenURL(url.String())
+			kubernetesProxy, err := k8s.NewProxy(kubeconfigPath, options.dashboardProxyPort)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to open Conduit URL %s in the default browser: %s", url, err)
+				fmt.Fprintf(os.Stderr, "Failed to initialize proxy: %s\n", err)
 				os.Exit(1)
 			}
-		case showGrafana:
-			fmt.Println("Opening Grafana dashboard in the default browser")
 
-			err = browser.OpenURL(grafanaUrl.String())
+			url, err := kubernetesProxy.URLFor(controlPlaneNamespace, "/services/web:http/proxy/")
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to open Grafana URL %s in the default browser: %s", grafanaUrl, err)
+				fmt.Fprintf(os.Stderr, "Failed to generate URL for dashboard: %s\n", err)
 				os.Exit(1)
 			}
-		case showURL:
-			// no-op, we already printed the URLs
-		}
 
-		// blocks until killed
-		err = kubernetesProxy.Run()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error running proxy: %s", err)
-			os.Exit(1)
-		}
+			grafanaUrl, err := kubernetesProxy.URLFor(controlPlaneNamespace, "/services/grafana:http/proxy/")
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to generate URL for Grafana: %s\n", err)
+				os.Exit(1)
+			}
 
-		return nil
-	},
+			client, err := newPublicAPIClient()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to initialize Conduit API client: %+v\n", err)
+				os.Exit(1)
+			}
+
+			dashboardAvailable, err := isDashboardAvailable(client)
+			if err != nil {
+				log.Debugf("Error checking dashboard availability: %s", err)
+			}
+
+			if err != nil || !dashboardAvailable {
+				fmt.Fprintf(os.Stderr, "Conduit is not running in the \"%s\" namespace\n", controlPlaneNamespace)
+				fmt.Fprintf(os.Stderr, "Install with: conduit install --conduit-namespace %s | kubectl apply -f -\n", controlPlaneNamespace)
+				os.Exit(1)
+			}
+
+			fmt.Printf("Conduit dashboard available at:\n%s\n", url.String())
+			fmt.Printf("Grafana dashboard available at:\n%s\n", grafanaUrl.String())
+
+			switch options.dashboardShow {
+			case showConduit:
+				fmt.Println("Opening Conduit dashboard in the default browser")
+
+				err = browser.OpenURL(url.String())
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Failed to open Conduit URL %s in the default browser: %s", url, err)
+					os.Exit(1)
+				}
+			case showGrafana:
+				fmt.Println("Opening Grafana dashboard in the default browser")
+
+				err = browser.OpenURL(grafanaUrl.String())
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Failed to open Grafana URL %s in the default browser: %s", grafanaUrl, err)
+					os.Exit(1)
+				}
+			case showURL:
+				// no-op, we already printed the URLs
+			}
+
+			// blocks until killed
+			err = kubernetesProxy.Run()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error running proxy: %s", err)
+				os.Exit(1)
+			}
+
+			return nil
+		},
+	}
+
+	cmd.Args = cobra.NoArgs
+	// This is identical to what `kubectl proxy --help` reports, `--port 0` indicates a random port.
+	cmd.PersistentFlags().IntVarP(&options.dashboardProxyPort, "port", "p", options.dashboardProxyPort, "The port on which to run the proxy (when set to 0, a random port will be used)")
+	cmd.PersistentFlags().StringVar(&options.dashboardShow, "show", options.dashboardShow, "Open a dashboard in a browser or show URLs in the CLI (one of: conduit, grafana, url)")
+
+	return cmd
 }
 
 func isDashboardAvailable(client pb.ApiClient) (bool, error) {
@@ -122,14 +143,4 @@ func isDashboardAvailable(client pb.ApiClient) (bool, error) {
 		}
 	}
 	return true, nil
-}
-
-func init() {
-	RootCmd.AddCommand(dashboardCmd)
-	dashboardCmd.Args = cobra.NoArgs
-
-	// This is identical to what `kubectl proxy --help` reports, `--port 0`
-	// indicates a random port.
-	dashboardCmd.PersistentFlags().IntVarP(&dashboardProxyPort, "port", "p", 0, "The port on which to run the proxy (when set to 0, a random port will be used)")
-	dashboardCmd.PersistentFlags().StringVar(&dashboardShow, "show", "conduit", "Open a dashboard in a browser or show URLs in the CLI (one of: conduit, grafana, url)")
 }

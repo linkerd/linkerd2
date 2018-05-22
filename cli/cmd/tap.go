@@ -16,18 +16,37 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-var (
-	maxRps    float32
-	scheme    string
-	method    string
-	authority string
-	path      string
-)
+type tapOptions struct {
+	namespace   string
+	toResource  string
+	toNamespace string
+	maxRps      float32
+	scheme      string
+	method      string
+	authority   string
+	path        string
+}
 
-var tapCmd = &cobra.Command{
-	Use:   "tap [flags] (RESOURCE)",
-	Short: "Listen to a traffic stream",
-	Long: `Listen to a traffic stream.
+func newTapOptions() *tapOptions {
+	return &tapOptions{
+		namespace:   "default",
+		toResource:  "",
+		toNamespace: "",
+		maxRps:      1.0,
+		scheme:      "",
+		method:      "",
+		authority:   "",
+		path:        "",
+	}
+}
+
+func newCmdTap() *cobra.Command {
+	options := newTapOptions()
+
+	cmd := &cobra.Command{
+		Use:   "tap [flags] (RESOURCE)",
+		Short: "Listen to a traffic stream",
+		Long: `Listen to a traffic stream.
 
   The RESOURCE argument specifies the target resource(s) to tap:
   (TYPE [NAME] | TYPE/NAME)
@@ -45,7 +64,7 @@ var tapCmd = &cobra.Command{
   * pods
   * replicationcontrollers
   * services (only supported as a "--to" resource)`,
-	Example: `  # tap the web deployment in the default namespace
+		Example: `  # tap the web deployment in the default namespace
   conduit tap deploy/web
 
   # tap the web-dlbvj pod in the default namespace
@@ -53,56 +72,49 @@ var tapCmd = &cobra.Command{
 
   # tap the test namespace, filter by request to prod namespace
   conduit tap ns/test --to ns/prod`,
-	Args:      cobra.RangeArgs(1, 2),
-	ValidArgs: apiUtil.ValidTargets,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		req, err := buildTapByResourceRequest(
-			args, namespace,
-			toResource, toNamespace,
-			maxRps,
-			scheme, method, authority, path,
-		)
-		if err != nil {
-			return err
-		}
+		Args:      cobra.RangeArgs(1, 2),
+		ValidArgs: apiUtil.ValidTargets,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			req, err := buildTapByResourceRequest(args, options)
+			if err != nil {
+				return err
+			}
 
-		client, err := newPublicAPIClient()
-		if err != nil {
-			return err
-		}
+			client, err := newPublicAPIClient()
+			if err != nil {
+				return err
+			}
 
-		return requestTapByResourceFromAPI(os.Stdout, client, req)
-	},
-}
+			return requestTapByResourceFromAPI(os.Stdout, client, req)
+		},
+	}
 
-func init() {
-	RootCmd.AddCommand(tapCmd)
-	tapCmd.PersistentFlags().StringVarP(&namespace, "namespace", "n", "default",
+	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace,
 		"Namespace of the specified resource")
-	tapCmd.PersistentFlags().StringVar(&toResource, "to", "",
+	cmd.PersistentFlags().StringVar(&options.toResource, "to", options.toResource,
 		"Display requests to this resource")
-	tapCmd.PersistentFlags().StringVar(&toNamespace, "to-namespace", "",
+	cmd.PersistentFlags().StringVar(&options.toNamespace, "to-namespace", options.toNamespace,
 		"Sets the namespace used to lookup the \"--to\" resource; by default the current \"--namespace\" is used")
-	tapCmd.PersistentFlags().Float32Var(&maxRps, "max-rps", 1.0,
+	cmd.PersistentFlags().Float32Var(&options.maxRps, "max-rps", options.maxRps,
 		"Maximum requests per second to tap.")
-	tapCmd.PersistentFlags().StringVar(&scheme, "scheme", "",
+	cmd.PersistentFlags().StringVar(&options.scheme, "scheme", options.scheme,
 		"Display requests with this scheme")
-	tapCmd.PersistentFlags().StringVar(&method, "method", "",
+	cmd.PersistentFlags().StringVar(&options.method, "method", options.method,
 		"Display requests with this HTTP method")
-	tapCmd.PersistentFlags().StringVar(&authority, "authority", "",
+	cmd.PersistentFlags().StringVar(&options.authority, "authority", options.authority,
 		"Display requests with this :authority")
-	tapCmd.PersistentFlags().StringVar(&path, "path", "",
+	cmd.PersistentFlags().StringVar(&options.path, "path", options.path,
 		"Display requests with paths that start with this prefix")
+
+	return cmd
 }
 
 func buildTapByResourceRequest(
-	resource []string, namespace string,
-	toResource, toNamespace string,
-	maxRps float32,
-	scheme, method, authority, path string,
+	resource []string,
+	options *tapOptions,
 ) (*pb.TapByResourceRequest, error) {
 
-	target, err := apiUtil.BuildResource(namespace, resource...)
+	target, err := apiUtil.BuildResource(options.namespace, resource...)
 	if err != nil {
 		return nil, fmt.Errorf("target resource invalid: %s", err)
 	}
@@ -112,8 +124,8 @@ func buildTapByResourceRequest(
 
 	matches := []*pb.TapByResourceRequest_Match{}
 
-	if toResource != "" {
-		destination, err := apiUtil.BuildResource(toNamespace, toResource)
+	if options.toResource != "" {
+		destination, err := apiUtil.BuildResource(options.toNamespace, options.toResource)
 		if err != nil {
 			return nil, fmt.Errorf("destination resource invalid: %s", err)
 		}
@@ -131,27 +143,27 @@ func buildTapByResourceRequest(
 		matches = append(matches, &match)
 	}
 
-	if scheme != "" {
+	if options.scheme != "" {
 		match := buildMatchHTTP(&pb.TapByResourceRequest_Match_Http{
-			Match: &pb.TapByResourceRequest_Match_Http_Scheme{Scheme: scheme},
+			Match: &pb.TapByResourceRequest_Match_Http_Scheme{Scheme: options.scheme},
 		})
 		matches = append(matches, &match)
 	}
-	if method != "" {
+	if options.method != "" {
 		match := buildMatchHTTP(&pb.TapByResourceRequest_Match_Http{
-			Match: &pb.TapByResourceRequest_Match_Http_Method{Method: method},
+			Match: &pb.TapByResourceRequest_Match_Http_Method{Method: options.method},
 		})
 		matches = append(matches, &match)
 	}
-	if authority != "" {
+	if options.authority != "" {
 		match := buildMatchHTTP(&pb.TapByResourceRequest_Match_Http{
-			Match: &pb.TapByResourceRequest_Match_Http_Authority{Authority: authority},
+			Match: &pb.TapByResourceRequest_Match_Http_Authority{Authority: options.authority},
 		})
 		matches = append(matches, &match)
 	}
-	if path != "" {
+	if options.path != "" {
 		match := buildMatchHTTP(&pb.TapByResourceRequest_Match_Http{
-			Match: &pb.TapByResourceRequest_Match_Http_Path{Path: path},
+			Match: &pb.TapByResourceRequest_Match_Http_Path{Path: options.path},
 		})
 		matches = append(matches, &match)
 	}
@@ -160,7 +172,7 @@ func buildTapByResourceRequest(
 		Target: &pb.ResourceSelection{
 			Resource: &target,
 		},
-		MaxRps: maxRps,
+		MaxRps: options.maxRps,
 		Match: &pb.TapByResourceRequest_Match{
 			Match: &pb.TapByResourceRequest_Match_All{
 				All: &pb.TapByResourceRequest_Match_Seq{

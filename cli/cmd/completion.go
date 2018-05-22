@@ -8,7 +8,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var example = `  # bash <= 3.2
+func newCmdCompletion() *cobra.Command {
+	example := `  # bash <= 3.2
   source /dev/stdin <<< "$(conduit completion bash)"
 
   # bash >= 4.0
@@ -28,37 +29,36 @@ var example = `  # bash <= 3.2
   # zsh on osx / oh-my-zsh
   conduit completion zsh > "${fpath[1]}/_conduit"`
 
-var completionCmd = &cobra.Command{
-	Use:       "completion [bash|zsh]",
-	Short:     "Shell completion",
-	Long:      "Output completion code for the specified shell (bash or zsh).",
-	Example:   example,
-	Args:      cobra.ExactArgs(1),
-	ValidArgs: []string{"bash", "zsh"},
-	RunE: func(cmd *cobra.Command, args []string) error {
-		out, err := getCompletion(args[0])
-		if err != nil {
-			return err
-		}
+	cmd := &cobra.Command{
+		Use:       "completion [bash|zsh]",
+		Short:     "Shell completion",
+		Long:      "Output completion code for the specified shell (bash or zsh).",
+		Example:   example,
+		Args:      cobra.ExactArgs(1),
+		ValidArgs: []string{"bash", "zsh"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			out, err := getCompletion(args[0], cmd.Parent())
+			if err != nil {
+				return err
+			}
 
-		fmt.Print(out)
-		return nil
-	},
+			fmt.Print(out)
+			return nil
+		},
+	}
+
+	return cmd
 }
 
-func init() {
-	RootCmd.AddCommand(completionCmd)
-}
-
-func getCompletion(sh string) (string, error) {
+func getCompletion(sh string, parent *cobra.Command) (string, error) {
 	var err error
 	var buf bytes.Buffer
 
 	switch sh {
 	case "bash":
-		err = RootCmd.GenBashCompletion(&buf)
+		err = parent.GenBashCompletion(&buf)
 	case "zsh":
-		err = RootCmd.GenZshCompletion(&buf)
+		err = parent.GenZshCompletion(&buf)
 	default:
 		err = errors.New("unsupported shell type (must be bash or zsh): " + sh)
 	}
