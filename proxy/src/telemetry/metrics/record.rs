@@ -51,16 +51,18 @@ impl Record {
             Event::StreamResponseOpen(_, _) => {},
 
             Event::StreamResponseEnd(ref res, ref end) => {
+                let request_open_at = end.response_end_at - end.request_open_at;
                 self.update(|metrics| {
                     metrics.response(ResponseLabels::new(res, end.grpc_status))
-                        .end(end.since_request_open);
+                        .end(request_open_at);
                 });
             },
 
             Event::StreamResponseFail(ref res, ref fail) => {
                 // TODO: do we care about the failure's error code here?
+                let request_open_at = fail.response_fail_at - fail.request_open_at;
                 self.update(|metrics| {
-                    metrics.response(ResponseLabels::fail(res)).end(fail.since_request_open)
+                    metrics.response(ResponseLabels::fail(res)).end(request_open_at)
                 });
             },
 
@@ -91,7 +93,7 @@ mod test {
         Event,
     };
     use ctx::{self, test_util::* };
-    use std::time::Duration;
+    use std::time::{Duration, Instant};
 
     #[test]
     fn record_response_end() {
@@ -107,10 +109,13 @@ mod test {
 
         let (_, rsp) = request("http://buoyant.io", &server, &client, 1);
 
+        let request_open_at = Instant::now();
+        let response_open_at = request_open_at + Duration::from_millis(300);
         let end = event::StreamResponseEnd {
             grpc_status: None,
-            since_request_open: Duration::from_millis(300),
-            since_response_open: Duration::from_millis(0),
+            request_open_at,
+            response_open_at,
+            response_end_at: response_open_at,
             bytes_sent: 0,
             frames_sent: 0,
         };
@@ -171,25 +176,32 @@ mod test {
             tx_bytes: 4321,
         };
 
+        let request_open_at = Instant::now();
+        let request_end_at = request_open_at + Duration::from_millis(10);
+        let response_open_at = request_open_at + Duration::from_millis(300);
+        let response_end_at = response_open_at;
         let events = vec![
             TransportOpen(server_transport.clone()),
             TransportOpen(client_transport.clone()),
             StreamRequestOpen(req.clone()),
             StreamRequestEnd(req.clone(), event::StreamRequestEnd {
-                since_request_open: Duration::from_millis(10),
+                request_open_at,
+                request_end_at,
             }),
 
             StreamResponseOpen(rsp.clone(), event::StreamResponseOpen {
-                since_request_open: Duration::from_millis(300),
+                request_open_at,
+                response_open_at,
             }),
             StreamResponseEnd(rsp.clone(), event::StreamResponseEnd {
                 grpc_status: None,
-                since_request_open: Duration::from_millis(300),
-                since_response_open: Duration::from_millis(0),
+                request_open_at,
+                response_open_at,
+                response_end_at,
                 bytes_sent: 0,
                 frames_sent: 0,
             }),
-           TransportClose(
+            TransportClose(
                 server_transport.clone(),
                 transport_close.clone(),
             ),

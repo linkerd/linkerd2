@@ -39,8 +39,8 @@ impl event::StreamResponseEnd {
                 base: 0, // TODO FIXME
                 stream: ctx.id as u64,
             }),
-            since_request_init: Some(pb_duration(&self.since_request_open)),
-            since_response_init: Some(pb_duration(&self.since_response_open)),
+            since_request_init: Some(pb_elapsed(self.request_open_at, self.response_end_at)),
+            since_response_init: Some(pb_elapsed(self.response_open_at, self.response_end_at)),
             response_bytes: self.bytes_sent,
             eos,
         };
@@ -71,8 +71,8 @@ impl event::StreamResponseFail {
                 base: 0, // TODO FIXME
                 stream: ctx.id as u64,
             }),
-            since_request_init: Some(pb_duration(&self.since_request_open)),
-            since_response_init: Some(pb_duration(&self.since_response_open)),
+            since_request_init: Some(pb_elapsed(self.request_open_at, self.response_fail_at)),
+            since_response_init: Some(pb_elapsed(self.response_open_at, self.response_fail_at)),
             response_bytes: self.bytes_sent,
             eos: Some(self.error.into()),
         };
@@ -103,7 +103,7 @@ impl event::StreamRequestFail {
                 base: 0, // TODO FIXME
                 stream: ctx.id as u64,
             }),
-            since_request_init: Some(pb_duration(&self.since_request_open)),
+            since_request_init: Some(pb_elapsed(self.request_open_at, self.request_fail_at)),
             since_response_init: None,
             response_bytes: 0,
             eos: Some(self.error.into()),
@@ -172,7 +172,7 @@ impl<'a> TryFrom<&'a Event> for common::TapEvent {
                         // TODO FIXME
                         stream: ctx.request.id as u64,
                     }),
-                    since_request_init: Some(pb_duration(&rsp.since_request_open)),
+                    since_request_init: Some(pb_elapsed(rsp.request_open_at, rsp.response_open_at)),
                     http_status: u32::from(ctx.status.as_u16()),
                 };
 

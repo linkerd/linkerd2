@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use h2;
 
@@ -33,24 +33,28 @@ pub struct TransportClose {
 
 #[derive(Clone, Debug)]
 pub struct StreamRequestFail {
-    pub since_request_open: Duration,
+    pub request_open_at: Instant,
+    pub request_fail_at: Instant,
     pub error: h2::Reason,
 }
 
 #[derive(Clone, Debug)]
 pub struct StreamRequestEnd {
-    pub since_request_open: Duration,
+    pub request_open_at: Instant,
+    pub request_end_at: Instant,
 }
 
 #[derive(Clone, Debug)]
 pub struct StreamResponseOpen {
-    pub since_request_open: Duration,
+    pub request_open_at: Instant,
+    pub response_open_at: Instant,
 }
 
 #[derive(Clone, Debug)]
 pub struct StreamResponseFail {
-    pub since_request_open: Duration,
-    pub since_response_open: Duration,
+    pub request_open_at: Instant,
+    pub response_open_at: Instant,
+    pub response_fail_at: Instant,
     pub error: h2::Reason,
     pub bytes_sent: u64,
     pub frames_sent: u32,
@@ -58,9 +62,10 @@ pub struct StreamResponseFail {
 
 #[derive(Clone, Debug)]
 pub struct StreamResponseEnd {
+    pub request_open_at: Instant,
+    pub response_open_at: Instant,
+    pub response_end_at: Instant,
     pub grpc_status: Option<u32>,
-    pub since_request_open: Duration,
-    pub since_response_open: Duration,
     pub bytes_sent: u64,
     pub frames_sent: u32,
 }

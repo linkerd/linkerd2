@@ -34,8 +34,12 @@ mod gen {
     }
 }
 
+pub fn pb_elapsed(t0: ::std::time::Instant, t1: ::std::time::Instant) -> ::prost_types::Duration {
+    pb_duration(t1 - t0)
+}
+
 /// Converts a Rust Duration to a Protobuf Duration.
-pub fn pb_duration(d: &::std::time::Duration) -> ::prost_types::Duration {
+pub fn pb_duration(d: ::std::time::Duration) -> ::prost_types::Duration {
     let seconds = if d.as_secs() > ::std::i64::MAX as u64 {
         ::std::i64::MAX
     } else {
