@@ -53,11 +53,12 @@ const getSuccessRate = row => {
   }
 };
 
-const getSecuredTrafficPercentage = row => {
+const getMeshedTrafficPercentage = row => {
+  // assume all meshed traffic is secured by default
   if (_.isEmpty(row.stats)) {
     return null;
   }
-  let meshedRequests = parseInt(_.get(row, ["stats", "securedRequestCount"], 0), 10);
+  let meshedRequests = parseInt(_.get(row, ["stats", "meshedRequestCount"], 0), 10);
   return new Percentage(meshedRequests, getTotalRequests(row));
 };
 
@@ -125,7 +126,7 @@ const processStatTable = (table, controllerNamespace, includeConduit) => {
       requestRate: getRequestRate(row),
       successRate: getSuccessRate(row),
       latency: getLatency(row),
-      securedRequestPercent: getSecuredTrafficPercentage(row),
+      meshedRequestPercent: getMeshedTrafficPercentage(row),
       added: row.meshedPodCount === row.runningPodCount
     };
   })
