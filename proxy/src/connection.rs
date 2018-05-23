@@ -1,5 +1,5 @@
 use bytes::{Buf, BytesMut};
-use futures::*;
+use futures::{*, future::Either};
 use std;
 use std::cmp;
 use std::io;
@@ -11,8 +11,7 @@ use tokio::{
 };
 
 use config::Addr;
-use transport::GetOriginalDst;
-use transport::Io;
+use transport::{GetOriginalDst, Io, tls};
 
 pub type PlaintextSocket = TcpStream;
 
@@ -96,7 +95,11 @@ impl BoundPort {
     // This ensures that every incoming connection has the correct options set.
     // In the future it will also ensure that the connection is upgraded with
     // TLS when needed.
-    pub fn listen_and_fold<T, F, Fut>(self, initial: T, f: F)
+    pub fn listen_and_fold<T, F, Fut>(
+        self,
+        tls_config: Option<tls::ServerConfig>,
+        initial: T,
+        f: F)
         -> impl Future<Item = (), Error = io::Error> + Send + 'static
     where
         F: Fn(T, (Connection, SocketAddr)) -> Fut + Send + 'static,
@@ -122,9 +125,22 @@ impl BoundPort {
                     // libraries don't have the necessary API for that, so just
                     // do it here.
                     set_nodelay_or_warn(&socket);
-                    let connection = Connection::plain(socket);
-                    future::ok((connection, remote_addr))
+                    match tls_config.clone() {
+                        Some(tls_config) => {
+                            Either::A(
+                                tls::accept_tls_connection(socket, tls_config)
+                                    .map(move |tls| (Connection::new(Box::new(tls)), remote_addr)))
+                        },
+                        None => Either::B(future::ok((Connection::new(Box::new(socket)), remote_addr))),
+                    }
                 })
+                .map(Some)
+                .or_else(|err| {
+                    debug!("error handshaking: {}", err);
+                    let r: Option<(Connection, SocketAddr)> = None;
+                    future::ok(r)
+                })
+                .filter_map(|x| x) // Strip `None`s (skip connections with errors).
                 .fold(initial, f)
         )
         .map(|_| ())
@@ -140,7 +156,7 @@ impl Future for Connecting {
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         let socket = try_ready!(self.0.poll());
         set_nodelay_or_warn(&socket);
-        Ok(Async::Ready(Connection::plain(socket)))
+        Ok(Async::Ready(Connection::new(Box::new(socket))))
     }
 }
 
@@ -148,9 +164,9 @@ impl Future for Connecting {
 
 impl Connection {
     /// A constructor of `Connection` with a plain text TCP socket.
-    pub fn plain(socket: PlaintextSocket) -> Self {
+    fn new(io: Box<Io>) -> Self {
         Connection {
-            io: Box::new(socket),
+            io,
             peek_buf: BytesMut::new(),
         }
     }

@@ -86,7 +86,7 @@ use inbound::Inbound;
 use map_err::MapErr;
 use task::MainRuntime;
 use transparency::{HttpBody, Server};
-pub use transport::{AddrInfo, GetOriginalDst, SoOriginalDst};
+pub use transport::{AddrInfo, GetOriginalDst, SoOriginalDst, tls};
 use outbound::Outbound;
 
 /// Runs a sidecar proxy.
@@ -233,6 +233,15 @@ where
         // address and listen for inbound connections that should be forwarded
         // to the managed application (private destination).
         let inbound = {
+            let tls_config = config.inbound_tls.and_then(|config| {
+                match config.load_from_disk() {
+                    Ok(config) => Some(config),
+                    Err(e) => {
+                        error!("Error loading inbound TLS configuration: {:?}", e);
+                        None
+                    }
+                }
+            });
             let ctx = ctx::Proxy::inbound(&process_ctx);
 
             let bind = bind.clone().with_ctx(ctx.clone());
@@ -246,6 +255,7 @@ where
             );
             serve(
                 inbound_listener,
+                tls_config,
                 router,
                 config.private_connect_timeout,
                 config.inbound_ports_disable_protocol_detection,
@@ -269,6 +279,7 @@ where
             );
             serve(
                 outbound_listener,
+                None, // No TLS
                 router,
                 config.public_connect_timeout,
                 config.outbound_ports_disable_protocol_detection,
@@ -331,6 +342,7 @@ where
 
 fn serve<R, B, E, F, G>(
     bound_port: BoundPort,
+    tls_config: Option<tls::ServerConfig>,
     router: Router<R>,
     tcp_connect_timeout: Duration,
     disable_protocol_detection_ports: IndexSet<u16>,
@@ -406,6 +418,7 @@ where
 
     let accept = {
         let fut = bound_port.listen_and_fold(
+            tls_config,
             (),
             move |(), (connection, remote_addr)| {
                 let s = server.serve(connection, remote_addr);
@@ -488,6 +501,7 @@ where
     let fut = {
         let log = log.clone();
         bound_port.listen_and_fold(
+            None, // No TLS
             server,
             move |server, (session, remote)| {
                 let log = log.clone().with_remote(remote);
