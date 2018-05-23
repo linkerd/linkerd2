@@ -33,15 +33,13 @@ type resourceResult struct {
 }
 
 const (
-	reqQuery             = "sum(increase(response_total%s[%s])) by (%s, classification)"
-	meshReqQuery         = "sum(increase(response_total%s[%s])) by (%s)"
+	reqQuery             = "sum(increase(response_total%s[%s])) by (%s, classification, secured)"
 	latencyQuantileQuery = "histogram_quantile(%s, sum(irate(response_latency_ms_bucket%s[%s])) by (le, %s))"
 
-	promRequests     = promType("QUERY_REQUESTS")
-	promMeshRequests = promType("QUERY_MESH_REQUESTS")
-	promLatencyP50   = promType("0.5")
-	promLatencyP95   = promType("0.95")
-	promLatencyP99   = promType("0.99")
+	promRequests   = promType("QUERY_REQUESTS")
+	promLatencyP50 = promType("0.5")
+	promLatencyP95 = promType("0.95")
+	promLatencyP99 = promType("0.99")
 
 	namespaceLabel           = model.LabelName("namespace")
 	dstNamespaceLabel        = model.LabelName("dst_namespace")
@@ -54,7 +52,7 @@ var controlPlaneNsLabels = []model.LabelName{
 	dstConduitControlPlaneNs,
 }
 
-var promTypes = []promType{promRequests, promMeshRequests, promLatencyP50, promLatencyP95, promLatencyP99}
+var promTypes = []promType{promRequests, promLatencyP50, promLatencyP95, promLatencyP99}
 
 // resources to query when Resource.Type is "all"
 var resourceTypes = []string{k8s.Pods, k8s.Deployments, k8s.ReplicationControllers, k8s.Services}
@@ -287,12 +285,9 @@ func promResourceType(resource *pb.Resource) model.LabelName {
 	return model.LabelName(k8s.ResourceTypesToProxyLabels[resource.Type])
 }
 
-func buildRequestLabels(req *pb.StatSummaryRequest) (labels, dstLabels model.LabelSet, labelNames, dstLabelNames model.LabelNames) {
+func buildRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labelNames model.LabelNames) {
 	// labelNames: the group by in the prometheus query
-	// labels: the labels we query prometheus for metrics about
-	// dstLabels: set the objects we're interested in as dsts, to determine incoming meshed traffic
-	// dstLabelnames: the group by for the dstLabels query
-	dstLabels = dstLabels.Merge(promDirectionLabels("outbound"))
+	// labels: the labels for the resource we want to query for
 
 	switch out := req.Outbound.(type) {
 	case *pb.StatSummaryRequest_ToResource:
@@ -302,34 +297,25 @@ func buildRequestLabels(req *pb.StatSummaryRequest) (labels, dstLabels model.Lab
 		labels = labels.Merge(promLabels(req.Selector.Resource))
 		labels = labels.Merge(promDirectionLabels("outbound"))
 
-		dstLabels = labels
-		dstLabelNames = appendControlPlaneLabels(promLabelNames(req.Selector.Resource))
-
 	case *pb.StatSummaryRequest_FromResource:
 		labelNames = promDstLabelNames(req.Selector.Resource)
 		labels = labels.Merge(promLabels(out.FromResource))
 		labels = labels.Merge(promDirectionLabels("outbound"))
 
-		dstLabels = labels
-		dstLabelNames = appendControlPlaneLabels(promDstLabelNames(req.Selector.Resource))
-
 	default:
 		labelNames = promLabelNames(req.Selector.Resource)
 		labels = labels.Merge(promLabels(req.Selector.Resource))
 		labels = labels.Merge(promDirectionLabels("inbound"))
-
-		dstLabels = dstLabels.Merge(promDstLabels(req.Selector.Resource))
-		dstLabelNames = appendControlPlaneLabels(promDstLabelNames(req.Selector.Resource))
 	}
 
 	return
 }
 
 func (s *grpcServer) getPrometheusMetrics(ctx context.Context, req *pb.StatSummaryRequest, timeWindow string) (map[string]*pb.BasicStats, error) {
-	reqLabels, dstLabels, groupBy, dstGroupBy := buildRequestLabels(req)
+	reqLabels, groupBy := buildRequestLabels(req)
 	resultChan := make(chan promResult)
 
-	// kick off 5 asynchronous queries: 2 request volume + 3 latency
+	// kick off 4 asynchronous queries: 1 request volume + 3 latency
 	go func() {
 		// success/failure counts
 		requestsQuery := fmt.Sprintf(reqQuery, reqLabels, timeWindow, groupBy)
@@ -337,19 +323,6 @@ func (s *grpcServer) getPrometheusMetrics(ctx context.Context, req *pb.StatSumma
 
 		resultChan <- promResult{
 			prom: promRequests,
-			vec:  resultVector,
-			err:  err,
-		}
-	}()
-
-	go func() {
-		// find out what percentage of traffic reaching this target started in the mesh
-		// so query with this target as the dst (in outbound), and count requests
-		meshRequestsQuery := fmt.Sprintf(meshReqQuery, dstLabels, timeWindow, dstGroupBy)
-		resultVector, err := s.queryProm(ctx, meshRequestsQuery)
-
-		resultChan <- promResult{
-			prom: promMeshRequests,
 			vec:  resultVector,
 			err:  err,
 		}
@@ -384,31 +357,10 @@ func (s *grpcServer) getPrometheusMetrics(ctx context.Context, req *pb.StatSumma
 		return nil, err
 	}
 
-	stats := processPrometheusMetrics(results, groupBy, dstGroupBy)
-
-	// add in the results from the dst queries, after we've constructed our result map
-	// note that we coudl store the results in a map[promType]result instead to
-	// avoid having to loop through results again
-	for _, result := range results {
-		for _, sample := range result.vec {
-			if result.prom == promMeshRequests {
-				dstLabel := metricToKey(sample.Metric, dstGroupBy)
-
-				// check if traffic started and ended in the mesh
-				if sample.Metric[conduitControlPlaneNs] == sample.Metric[dstConduitControlPlaneNs] {
-					if basicStats, ok := stats[dstLabel]; ok {
-						value := extractSampleValue(sample)
-						basicStats.IntraMeshRequestCount = value
-					}
-				}
-			}
-		}
-	}
-
-	return stats, nil
+	return processPrometheusMetrics(results, groupBy), nil
 }
 
-func processPrometheusMetrics(results []promResult, groupBy model.LabelNames, dstGroupBy model.LabelNames) map[string]*pb.BasicStats {
+func processPrometheusMetrics(results []promResult, groupBy model.LabelNames) map[string]*pb.BasicStats {
 	basicStats := make(map[string]*pb.BasicStats)
 
 	for _, result := range results {
