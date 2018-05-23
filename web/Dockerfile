@@ -21,7 +21,7 @@ RUN $ROOT/bin/web setup --pure-lockfile
 # set the env to production *after* yarn has done an install, to make sure all
 # libraries required for building are included.
 ENV NODE_ENV production
-RUN yarn webpack
+RUN $ROOT/bin/web build
 
 ## compile go server
 FROM gcr.io/runconduit/go-deps:69ba71ed as golang
