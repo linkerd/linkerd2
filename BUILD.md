@@ -259,8 +259,7 @@ address of the public API server that's running in your docker environment:
 
 ```bash
 docker-compose stop web
-cd web
-../bin/go-run . --api-addr=$DOCKER_IP:8085
+bin/web run --api-addr=$DOCKER_IP:8085
 ```
 
 #### 3. Connect to `public-api` in Kubernetes
@@ -283,8 +282,7 @@ bin/web port-forward
 Then connect the local web process to the forwarded port:
 
 ```bash
-cd web
-../bin/go-run . --api-addr=localhost:8085
+bin/web run --api-addr=localhost:8085
 ```
 
 ### Webpack dev server

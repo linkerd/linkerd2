@@ -24,7 +24,7 @@ USAGE
 }; function --help { -h ;}
 
 function dev {
-  setup
+  build
 
   while getopts "p:" opt; do
     case "$opt" in
@@ -36,7 +36,7 @@ function dev {
 
   cd $ROOT/web/app && yarn webpack-dev-server --port $DEV_PORT &
   cd $ROOT/web && \
-    ../bin/go-run . --webpack-dev-server=http://localhost:$DEV_PORT
+    ../bin/go-run . --webpack-dev-server=http://localhost:$DEV_PORT $*
 }
 
 function build {
@@ -58,7 +58,7 @@ function run {
   port-forward &
 
   cd $ROOT/web
-  ../bin/go-run .
+  ../bin/go-run . $*
 }
 
 function setup {
@@ -67,8 +67,6 @@ function setup {
 }
 
 function test {
-  setup
-
   cd $ROOT/web/app
   yarn karma start --single-run $*
 }
