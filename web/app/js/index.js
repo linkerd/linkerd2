@@ -1,3 +1,4 @@
+import _ from 'lodash';
 import { ApiHelpers } from './components/util/ApiHelpers.jsx';
 import AppContext from './components/util/AppContext.jsx';
 import { Layout } from 'antd';
@@ -20,13 +21,12 @@ if (proxyPathMatch) {
   pathPrefix = proxyPathMatch[0];
 }
 
-let controllerNs = appData.controllerNamespace || "conduit";
+if (_.isEmpty(appData.controllerNamespace)) appData.controllerNamespace = 'conduit';
 
 const context = {
-  api: ApiHelpers(pathPrefix),
-  controllerNamespace: controllerNs,
-  pathPrefix: pathPrefix,
   ...appData,
+  api: ApiHelpers(pathPrefix),
+  pathPrefix: pathPrefix,
 };
 
 let applicationHtml = (
