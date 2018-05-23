@@ -232,17 +232,13 @@ Install [Yarn](https://yarnpkg.com) and use it to install dependencies:
 
 ```bash
 brew install yarn
-cd web/app
-yarn
+bin/web setup
 ```
 
 ### Run web standalone
 
 ```bash
-cd web/app
-yarn && yarn webpack
-cd ..
-../bin/go-run .
+bin/web run
 ```
 
 The web server will be running on `localhost:8084`.
@@ -278,6 +274,12 @@ kubectl --namespace=conduit port-forward $(
 ) 8085:8085
 ```
 
+Note: you can also do this via:
+
+```bash
+bin/web port-forward
+```
+
 Then connect the local web process to the forwarded port:
 
 ```bash
@@ -287,18 +289,10 @@ cd web
 
 ### Webpack dev server
 
-To develop with a webpack dev server, start the server in a separate window:
+To develop with a webpack dev server, run:
 
 ```bash
-cd web/app
-yarn webpack-dev-server
-```
-
-And then set the `--webpack-dev-server` flag when running the web server:
-
-```bash
-cd web
-../bin/go-run . --webpack-dev-server=http://localhost:8080
+bin/web dev
 ```
 
 To add a JS dependency:
