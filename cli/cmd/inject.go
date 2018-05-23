@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/ghodss/yaml"
 	"github.com/runconduit/conduit/pkg/k8s"
@@ -63,6 +64,10 @@ with 'conduit inject'. e.g. curl http://url.to/yml | conduit inject -
 
 			if len(args) < 1 {
 				return fmt.Errorf("please specify a kubernetes resource file")
+			}
+
+			if _, err := time.ParseDuration(options.proxyBindTimeout); err != nil {
+				return fmt.Errorf("Invalid duration '%s' for --proxy-bind-timeout flag", options.proxyBindTimeout)
 			}
 
 			var in io.Reader

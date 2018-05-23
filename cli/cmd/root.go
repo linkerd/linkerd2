@@ -75,6 +75,7 @@ func newProxyConfigOptions() *proxyConfigOptions {
 		imagePullPolicy:  "IfNotPresent",
 		proxyUID:         2102,
 		proxyLogLevel:    "warn,conduit_proxy=info",
+		proxyBindTimeout: "10s",
 		proxyAPIPort:     8086,
 		proxyControlPort: 4190,
 		proxyMetricsPort: 4191,
