@@ -25,7 +25,7 @@ fi
 if which parallel >/dev/null; then
   cmd="parallel $bindir/docker-build-{}"
 else
-  printf "Install parallel to speed the build up (brew install parallel)\n"
+  printf "Install parallel to speed the build up (brew install parallel)\n" >&2
   cmd="xargs -I{} /bin/sh -c $bindir/docker-build-{}"
 fi
 
