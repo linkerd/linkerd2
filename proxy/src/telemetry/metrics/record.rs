@@ -51,18 +51,19 @@ impl Record {
             Event::StreamResponseOpen(_, _) => {},
 
             Event::StreamResponseEnd(ref res, ref end) => {
-                let request_open_at = end.response_end_at - end.request_open_at;
+                let latency = end.response_first_frame_at - end.request_open_at;
                 self.update(|metrics| {
                     metrics.response(ResponseLabels::new(res, end.grpc_status))
-                        .end(request_open_at);
+                        .end(latency);
                 });
             },
 
             Event::StreamResponseFail(ref res, ref fail) => {
                 // TODO: do we care about the failure's error code here?
-                let request_open_at = fail.response_fail_at - fail.request_open_at;
+                let first_frame_at = fail.response_first_frame_at.unwrap_or(fail.response_fail_at);
+                let latency = first_frame_at - fail.request_open_at;
                 self.update(|metrics| {
-                    metrics.response(ResponseLabels::fail(res)).end(request_open_at)
+                    metrics.response(ResponseLabels::fail(res)).end(latency)
                 });
             },
 
@@ -110,12 +111,15 @@ mod test {
         let (_, rsp) = request("http://buoyant.io", &server, &client, 1);
 
         let request_open_at = Instant::now();
-        let response_open_at = request_open_at + Duration::from_millis(300);
+        let response_open_at = request_open_at + Duration::from_millis(100);
+        let response_first_frame_at = response_open_at + Duration::from_millis(100);
+        let response_end_at = response_first_frame_at + Duration::from_millis(100);
         let end = event::StreamResponseEnd {
             grpc_status: None,
             request_open_at,
             response_open_at,
-            response_end_at: response_open_at,
+            response_first_frame_at,
+            response_end_at,
             bytes_sent: 0,
             frames_sent: 0,
         };
@@ -141,9 +145,9 @@ mod test {
 
             assert_eq!(scope.total(), 1);
 
-            scope.latency().assert_bucket_exactly(300, 1);
-            scope.latency().assert_lt_exactly(300, 0);
-            scope.latency().assert_gt_exactly(300, 0);
+            scope.latency().assert_bucket_exactly(200, 1);
+            scope.latency().assert_lt_exactly(200, 0);
+            scope.latency().assert_gt_exactly(200, 0);
         }
 
     }
@@ -178,8 +182,9 @@ mod test {
 
         let request_open_at = Instant::now();
         let request_end_at = request_open_at + Duration::from_millis(10);
-        let response_open_at = request_open_at + Duration::from_millis(300);
-        let response_end_at = response_open_at;
+        let response_open_at = request_open_at + Duration::from_millis(100);
+        let response_first_frame_at = response_open_at + Duration::from_millis(100);
+        let response_end_at = response_first_frame_at + Duration::from_millis(100);
         let events = vec![
             TransportOpen(server_transport.clone()),
             TransportOpen(client_transport.clone()),
@@ -197,6 +202,7 @@ mod test {
                 grpc_status: None,
                 request_open_at,
                 response_open_at,
+                response_first_frame_at,
                 response_end_at,
                 bytes_sent: 0,
                 frames_sent: 0,
@@ -261,9 +267,9 @@ mod test {
             assert_eq!(response_scope.total(), 1);
 
             response_scope.latency()
-                .assert_bucket_exactly(300, 1)
-                .assert_gt_exactly(300, 0)
-                .assert_lt_exactly(300, 0);
+                .assert_bucket_exactly(200, 1)
+                .assert_gt_exactly(200, 0)
+                .assert_lt_exactly(200, 0);
 
             // === server transport open scope ======================
             let srv_transport_scope = lock
