@@ -551,6 +551,9 @@ status:
 
 		invalidRequests := []statSumExpected{
 			statSumExpected{
+				req: pb.StatSummaryRequest{},
+			},
+			statSumExpected{
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{

@@ -42,6 +42,9 @@ Each of these metrics has the following labels:
                header of the request.
 * `direction`: `inbound` if the request originated from outside of the pod,
                `outbound` if the request originated from inside of the pod.
+* `meshed`: `false` if the request's source and destination were not in the
+                    mesh,
+            `true` if the request's source and destination were in the mesh.
 
 ### Response Labels
 
@@ -159,17 +162,17 @@ A gauge of the number of transport connections currently open.
 
 ### `tcp_write_bytes_total`
 
-A counter of the total number of sent bytes. This is updated when the 
+A counter of the total number of sent bytes. This is updated when the
 connection closes.
 
 ### `tcp_read_bytes_total`
 
-A counter of the total number of recieved bytes. This is updated when the 
+A counter of the total number of recieved bytes. This is updated when the
 connection closes.
 
 ### `tcp_connection_duration_ms`
 
-A histogram of the duration of the lifetime of a connection, in milliseconds. 
+A histogram of the duration of the lifetime of a connection, in milliseconds.
 This is updated when the connection closes.
 
 ## Labels

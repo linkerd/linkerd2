@@ -60,9 +60,9 @@ jobs:
         - curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.3.2
         - export PATH="$HOME/.yarn/bin:$PATH"
       install:
-        - cd web/app && yarn && yarn webpack
+        - ./bin/web
       script:
-        - yarn karma start --single-run --reporters dots
+        - ./bin/web test --reporters dots
 
     - language: generic
       script:

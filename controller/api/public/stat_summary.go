@@ -57,6 +57,12 @@ type podCount struct {
 }
 
 func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
+
+	// check for well-formed request
+	if req.GetSelector().GetResource() == nil {
+		return statSummaryError(req, "StatSummary request missing Selector Resource"), nil
+	}
+
 	// special case to check for services as outbound only
 	if isInvalidServiceRequest(req) {
 		return statSummaryError(req, "service only supported as a target on 'from' queries, or as a destination on 'to' queries"), nil
@@ -117,7 +123,7 @@ func statSummaryError(req *pb.StatSummaryRequest, message string) *pb.StatSummar
 	return &pb.StatSummaryResponse{
 		Response: &pb.StatSummaryResponse_Error{
 			Error: &pb.ResourceError{
-				Resource: req.Selector.Resource,
+				Resource: req.GetSelector().GetResource(),
 				Error:    message,
 			},
 		},

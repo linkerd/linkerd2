@@ -1,0 +1,86 @@
+#!/bin/bash
+
+set -o errexit -o nounset -o pipefail
+
+ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )"/.. && pwd )"
+
+DEV_PORT=8080
+export NODE_ENV=${NODE_ENV:=development}
+
+function -h {
+cat <<USAGE
+USAGE: web <command>
+
+  * build - build the assets
+  * dev - run a dev server (with live reloading). Options:
+      -p $DEV_PORT
+  * port-forward - forward the controller from a running k8s cluster to localhost
+  * run - run a local server (sans. reloading)
+  * setup - get the environment setup for development
+      Note: any command line options are passed on to yarn
+  * test - run the tests
+      Note: any command line options are passed on to karma
+USAGE
+}; function --help { -h ;}
+
+function dev {
+  build
+
+  while getopts "p:" opt; do
+    case "$opt" in
+      p) DEV_PORT=$OPTARG
+    esac
+  done
+
+  port-forward &
+
+  cd $ROOT/web/app && yarn webpack-dev-server --port $DEV_PORT &
+  cd $ROOT/web && \
+    ../bin/go-run . --webpack-dev-server=http://localhost:$DEV_PORT $*
+}
+
+function build {
+  cd $ROOT/web/app
+  yarn webpack
+}
+
+function port-forward {
+  nc -z localhost 8085 || kubectl --namespace=conduit port-forward $(
+    kubectl --namespace=conduit get po \
+      --selector=conduit.io/control-plane-component=controller \
+      -o jsonpath='{.items[*].metadata.name}'
+  ) 8085:8085
+}
+
+function run {
+  build
+
+  port-forward &
+
+  cd $ROOT/web
+  ../bin/go-run . $*
+}
+
+function setup {
+  cd $ROOT/web/app
+  yarn $*
+}
+
+function test {
+  cd $ROOT/web/app
+  yarn karma start --single-run $*
+}
+
+function main {
+  setup
+  build
+}
+
+function msg { out "$*" >&2 ;}
+function err { local x=$? ; msg "$*" ; return $(( $x == 0 ? 1 : $x )) ;}
+function out { printf '%s\n' "$*" ;}
+
+if [[ ${1:-} ]] && declare -F | cut -d' ' -f3 | grep -Fqx -- "${1:-}"
+then "$@"
+else main "$@"
+fi

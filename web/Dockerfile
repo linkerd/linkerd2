@@ -1,15 +1,27 @@
 ## bundle web assets
 FROM node:6.7.0 as webpack-bundle
 RUN curl -o- -L https://yarnpkg.com/install.sh | bash
+
+ENV HOME /root
+ENV PATH $HOME/.yarn/bin:$PATH
 ENV GOPATH /go
-ENV PACKAGE github.com/runconduit/conduit/web/app
+ENV PROJECT github.com/runconduit/conduit
+ENV PACKAGE $PROJECT/web/app
+ENV ROOT $GOPATH/src/$PROJECT
 ENV PACKAGEDIR $GOPATH/src/$PACKAGE
+
 COPY web/app $PACKAGEDIR
+COPY bin $ROOT/bin
 WORKDIR $PACKAGEDIR
+
 # node dependencies
-RUN $HOME/.yarn/bin/yarn install --pure-lockfile
+RUN $ROOT/bin/web setup --pure-lockfile
+
 # frontend assets
-RUN $HOME/.yarn/bin/yarn webpack -p
+# set the env to production *after* yarn has done an install, to make sure all
+# libraries required for building are included.
+ENV NODE_ENV production
+RUN $ROOT/bin/web build
 
 ## compile go server
 FROM gcr.io/runconduit/go-deps:69ba71ed as golang
