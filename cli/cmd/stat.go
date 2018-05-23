@@ -264,7 +264,7 @@ func printStatTable(stats map[string]*row, resourceType string, w *tabwriter.Wri
 		namespace := parts[0]
 		name := namePrefix + parts[1]
 		values := make([]interface{}, 0)
-		templateString := "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%.2f%%\t\n"
+		templateString := "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%.f%%\t\n"
 		templateStringEmpty := "%s\t%s\t-\t-\t-\t-\t-\t-\t\n"
 
 		if options.allNamespaces {
