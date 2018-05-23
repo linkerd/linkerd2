@@ -53,11 +53,11 @@ const getSuccessRate = row => {
   }
 };
 
-const getMeshedTrafficPercentage = row => {
+const getSecuredTrafficPercentage = row => {
   if (_.isEmpty(row.stats)) {
     return null;
   }
-  let meshedRequests = parseInt(_.get(row, ["stats", "intraMeshRequestCount"], 0), 10);
+  let meshedRequests = parseInt(_.get(row, ["stats", "securedRequestCount"], 0), 10);
   return new Percentage(meshedRequests, getTotalRequests(row));
 };
 
@@ -125,7 +125,7 @@ const processStatTable = (table, controllerNamespace, includeConduit) => {
       requestRate: getRequestRate(row),
       successRate: getSuccessRate(row),
       latency: getLatency(row),
-      intraMeshRequestPercent: getMeshedTrafficPercentage(row),
+      securedRequestPercent: getSecuredTrafficPercentage(row),
       added: row.meshedPodCount === row.runningPodCount
     };
   })

@@ -364,9 +364,13 @@ func processPrometheusMetrics(results []promResult, groupBy model.LabelNames) ma
 			case promRequests:
 				switch string(sample.Metric[model.LabelName("classification")]) {
 				case "success":
-					basicStats[label].SuccessCount = value
+					basicStats[label].SuccessCount += value
 				case "failure":
-					basicStats[label].FailureCount = value
+					basicStats[label].FailureCount += value
+				}
+				switch string(sample.Metric[model.LabelName("secured")]) {
+				case "true":
+					basicStats[label].SecuredRequestCount += value
 				}
 			case promLatencyP50:
 				basicStats[label].LatencyMsP50 = value

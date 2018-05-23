@@ -54,11 +54,11 @@ const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick,
   ];
   let percentMeshedColumn = [
     {
-      title: formatTitle("Secured", "Percent of traffic originating and terminating within the mesh"),
+      title: formatTitle("Secured", "Percent of traffic that is TLSed"),
       key: "securedTraffic",
-      dataIndex: "intraMeshRequestPercent",
+      dataIndex: "securedRequestPercent",
       className: "numeric",
-      sorter: sortable ? (a, b) => numericSort(a.intraMeshRequestPercent.get(), b.intraMeshRequestPercent.get()) : false,
+      sorter: sortable ? (a, b) => numericSort(a.securedRequestPercent.get(), b.securedRequestPercent.get()) : false,
       render: d => _.isNil(d) ? "---" : d.prettyRate()
     }
   ];
