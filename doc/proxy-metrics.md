@@ -30,7 +30,7 @@ does not include any data, the end-of-stream event is used. The TTFB measurement
 so that Conduit accurately reflects application behavior when a server provides response
 headers immediately but is slow to begin serving the response body.
 
-Note that latency measurements are not exported to prometheus until the stream
+Note that latency measurements are not exported to Prometheus until the stream
 _completes_. This is necessary so that latencies can be labeled with the appropriate
 [response classification](#rsp-class).
 
