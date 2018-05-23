@@ -46,7 +46,11 @@ func TestRequestTapByResourceFromAPI(t *testing.T) {
 					},
 				},
 			},
-			map[string]string{"pod": "my-pod"},
+			map[string]string{
+				"pod": "my-pod",
+				"conduit_io_control_plane_ns":     "my-con",
+				"dst_conduit_io_control_plane_ns": "my-con",
+			},
 		)
 		event2 := createEvent(
 			&common.TapEvent_Http{
@@ -213,7 +217,7 @@ func TestEventToString(t *testing.T) {
 			},
 		})
 
-		expectedOutput := "req id=7:8 src=1.2.3.4:5555 dst=2.3.4.5:6666 :method=POST :authority=hello.default:7777 :path=/hello.v1.HelloService/Hello"
+		expectedOutput := "req id=7:8 src=1.2.3.4:5555 dst=2.3.4.5:6666 :method=POST :authority=hello.default:7777 :path=/hello.v1.HelloService/Hello secured=no"
 		output := renderTapEvent(event)
 		if output != expectedOutput {
 			t.Fatalf("Expecting command output to be [%s], got [%s]", expectedOutput, output)
@@ -230,7 +234,7 @@ func TestEventToString(t *testing.T) {
 			},
 		})
 
-		expectedOutput := "rsp id=7:8 src=1.2.3.4:5555 dst=2.3.4.5:6666 :status=200 latency=999µs"
+		expectedOutput := "rsp id=7:8 src=1.2.3.4:5555 dst=2.3.4.5:6666 :status=200 latency=999µs secured=no"
 		output := renderTapEvent(event)
 		if output != expectedOutput {
 			t.Fatalf("Expecting command output to be [%s], got [%s]", expectedOutput, output)
@@ -251,7 +255,7 @@ func TestEventToString(t *testing.T) {
 			},
 		})
 
-		expectedOutput := "end id=7:8 src=1.2.3.4:5555 dst=2.3.4.5:6666 grpc-status=OK duration=888µs response-length=111B"
+		expectedOutput := "end id=7:8 src=1.2.3.4:5555 dst=2.3.4.5:6666 grpc-status=OK duration=888µs response-length=111B secured=no"
 		output := renderTapEvent(event)
 		if output != expectedOutput {
 			t.Fatalf("Expecting command output to be [%s], got [%s]", expectedOutput, output)
@@ -272,7 +276,7 @@ func TestEventToString(t *testing.T) {
 			},
 		})
 
-		expectedOutput := "end id=7:8 src=1.2.3.4:5555 dst=2.3.4.5:6666 reset-error=123 duration=888µs response-length=111B"
+		expectedOutput := "end id=7:8 src=1.2.3.4:5555 dst=2.3.4.5:6666 reset-error=123 duration=888µs response-length=111B secured=no"
 		output := renderTapEvent(event)
 		if output != expectedOutput {
 			t.Fatalf("Expecting command output to be [%s], got [%s]", expectedOutput, output)
@@ -291,7 +295,7 @@ func TestEventToString(t *testing.T) {
 			},
 		})
 
-		expectedOutput := "end id=7:8 src=1.2.3.4:5555 dst=2.3.4.5:6666 duration=888µs response-length=111B"
+		expectedOutput := "end id=7:8 src=1.2.3.4:5555 dst=2.3.4.5:6666 duration=888µs response-length=111B secured=no"
 		output := renderTapEvent(event)
 		if output != expectedOutput {
 			t.Fatalf("Expecting command output to be [%s], got [%s]", expectedOutput, output)
@@ -309,7 +313,7 @@ func TestEventToString(t *testing.T) {
 			},
 		})
 
-		expectedOutput := "end id=7:8 src=1.2.3.4:5555 dst=2.3.4.5:6666 duration=888µs response-length=111B"
+		expectedOutput := "end id=7:8 src=1.2.3.4:5555 dst=2.3.4.5:6666 duration=888µs response-length=111B secured=no"
 		output := renderTapEvent(event)
 		if output != expectedOutput {
 			t.Fatalf("Expecting command output to be [%s], got [%s]", expectedOutput, output)
