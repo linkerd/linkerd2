@@ -40,8 +40,6 @@ function dev {
 }
 
 function build {
-  setup
-
   cd $ROOT/web/app
   yarn webpack
 }
