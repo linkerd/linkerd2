@@ -41,16 +41,9 @@ const (
 	promLatencyP95 = promType("0.95")
 	promLatencyP99 = promType("0.99")
 
-	namespaceLabel           = model.LabelName("namespace")
-	dstNamespaceLabel        = model.LabelName("dst_namespace")
-	conduitControlPlaneNs    = model.LabelName("conduit_io_control_plane_ns")
-	dstConduitControlPlaneNs = model.LabelName("dst_conduit_io_control_plane_ns")
+	namespaceLabel    = model.LabelName("namespace")
+	dstNamespaceLabel = model.LabelName("dst_namespace")
 )
-
-var controlPlaneNsLabels = []model.LabelName{
-	conduitControlPlaneNs,
-	dstConduitControlPlaneNs,
-}
 
 var promTypes = []promType{promRequests, promLatencyP50, promLatencyP95, promLatencyP99}
 
@@ -248,11 +241,6 @@ func promDstLabelNames(resource *pb.Resource) model.LabelNames {
 	return names
 }
 
-func appendControlPlaneLabels(labels model.LabelNames) model.LabelNames {
-	// add these labels so that we can tell which traffic is wholly inside the mesh
-	return append(labels, controlPlaneNsLabels...)
-}
-
 func promLabels(resource *pb.Resource) model.LabelSet {
 	set := model.LabelSet{}
 	if resource.Name != "" {
@@ -406,9 +394,7 @@ func metricToKey(metric model.Metric, groupBy model.LabelNames) string {
 	values := []string{}
 	for _, k := range groupBy {
 		// need to return namespace/resourceType
-		if k != conduitControlPlaneNs && k != dstConduitControlPlaneNs {
-			values = append(values, string(metric[k]))
-		}
+		values = append(values, string(metric[k]))
 	}
 	return strings.Join(values, "/")
 }
