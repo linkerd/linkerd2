@@ -57,6 +57,7 @@ impl<B> Clone for Outbound<B>
 where
     B: tower_h2::Body + Send + 'static,
     B::Data: Send,
+    B: ::std::fmt::Debug,
 {
     fn clone(&self) -> Self {
         Self {
@@ -70,6 +71,7 @@ where
 impl<B> Recognize for Outbound<B>
 where
     B: tower_h2::Body + Send + 'static,
+    B: ::std::fmt::Debug,
     <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
     type Request = http::Request<B>;
@@ -174,6 +176,7 @@ pub enum Discovery<B> {
 impl<B> Discover for Discovery<B>
 where
     B: tower_h2::Body + Send + 'static,
+    B: ::std::fmt::Debug,
     <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
     type Key = SocketAddr;

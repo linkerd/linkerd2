@@ -78,7 +78,11 @@ pub type ResponseBody<B> = MeasuredBody<B, ResponseBodyInner>;
 pub type RequestBody<B> = MeasuredBody<B, RequestBodyInner>;
 
 #[derive(Debug)]
-pub struct MeasuredBody<B, I: BodySensor> {
+pub struct MeasuredBody<B, I: BodySensor>
+where
+    B: ::std::fmt::Debug,
+    I: ::std::fmt::Debug,
+{
     body: B,
     inner: Option<I>,
     _p: PhantomData<(B)>,
@@ -118,7 +122,9 @@ pub struct RequestBodyInner {
 impl<N, A, B> NewHttp<N, A, B>
 where
     A: Body + 'static,
+    A: ::std::fmt::Debug,
     B: Body + 'static,
+    B: ::std::fmt::Debug,
     N: NewService<
         Request = http::Request<RequestBody<A>>,
         Response = http::Response<B>,
@@ -145,7 +151,9 @@ where
 impl<N, A, B> NewService for NewHttp<N, A, B>
 where
     A: Body + 'static,
+    A: ::std::fmt::Debug,
     B: Body + 'static,
+    B: ::std::fmt::Debug,
     N: NewService<
         Request = http::Request<RequestBody<A>>,
         Response = http::Response<B>,
@@ -176,7 +184,9 @@ where
 impl<F, A, B> Future for Init<F, A, B>
 where
     A: Body + 'static,
+    A: ::std::fmt::Debug,
     B: Body + 'static,
+    B: ::std::fmt::Debug,
     F: Future,
     F::Item: Service<
         Request = http::Request<RequestBody<A>>,
@@ -204,7 +214,9 @@ where
 impl<S, A, B> Service for Http<S, A, B>
 where
     A: Body + 'static,
+    A: ::std::fmt::Debug,
     B: Body + 'static,
+    B: ::std::fmt::Debug,
     S: Service<
         Request = http::Request<RequestBody<A>>,
         Response = http::Response<B>,
@@ -292,6 +304,7 @@ impl<F, B> Future for Respond<F, B>
 where
     F: Future<Item = http::Response<B>, Error=client::Error>,
     B: Body + 'static,
+    B: ::std::fmt::Debug,
 {
     type Item = http::Response<ResponseBody<B>>;
     type Error = F::Error;
@@ -395,7 +408,11 @@ where
 
 // === MeasuredBody ===
 
-impl<B, I: BodySensor> MeasuredBody<B, I> {
+impl<B, I: BodySensor> MeasuredBody<B, I>
+where
+    B: ::std::fmt::Debug,
+    I: ::std::fmt::Debug,
+{
     pub fn new(body: B, inner: Option<I>) -> Self {
         Self {
             body,
@@ -430,7 +447,9 @@ impl<B, I: BodySensor> MeasuredBody<B, I> {
 impl<B, I> Body for MeasuredBody<B, I>
 where
     B: Body + 'static,
+    B: ::std::fmt::Debug,
     I: BodySensor,
+    I: ::std::fmt::Debug,
 {
     /// The body chunk type
     type Data = <B::Data as IntoBuf>::Buf;
@@ -482,7 +501,9 @@ where
 impl<B, I> Default for MeasuredBody<B, I>
 where
     B: Default,
+    B: ::std::fmt::Debug,
     I: BodySensor,
+    I: ::std::fmt::Debug,
 {
     fn default() -> Self {
         Self {
@@ -496,7 +517,9 @@ where
 impl<B, I> Stream for MeasuredBody<B, I>
 where
     B: Stream,
+    B: ::std::fmt::Debug,
     I: BodySensor,
+    I: ::std::fmt::Debug,
 {
     type Item = B::Item;
     type Error = B::Error;
@@ -565,7 +588,7 @@ impl BodySensor for ResponseBodyInner {
             bytes_sent,
             frames_sent,
         } = self;
-        let response_end_at =  Instant::now();
+        let response_end_at = Instant::now();
 
         handle.send(||
             event::Event::StreamResponseEnd(

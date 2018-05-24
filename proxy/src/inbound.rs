@@ -47,6 +47,7 @@ where
 impl<B> Recognize for Inbound<B>
 where
     B: tower_h2::Body + Send + 'static,
+    B: ::std::fmt::Debug,
     <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
     type Request = http::Request<B>;

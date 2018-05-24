@@ -83,7 +83,9 @@ impl Sensors {
     ) -> NewHttp<N, A, B>
     where
         A: Body + 'static,
+        A: ::std::fmt::Debug,
         B: Body + 'static,
+        B: ::std::fmt::Debug,
         N: NewService<
             Request = Request<http::RequestBody<A>>,
             Response = Response<B>,
