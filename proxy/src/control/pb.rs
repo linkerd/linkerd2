@@ -46,8 +46,7 @@ impl event::StreamResponseEnd {
         };
 
         let destination_meta = ctx.dst_labels()
-            .and_then(|b| b.borrow().clone())
-            .map(|d| tap_event::EndpointMeta {
+            .map(|ref d| tap_event::EndpointMeta {
                 labels: d.as_map().clone(),
             });
 
@@ -78,8 +77,7 @@ impl event::StreamResponseFail {
         };
 
         let destination_meta = ctx.dst_labels()
-            .and_then(|b| b.borrow().clone())
-            .map(|d| tap_event::EndpointMeta {
+            .map(|ref d| tap_event::EndpointMeta {
                 labels: d.as_map().clone(),
             });
 
@@ -110,8 +108,7 @@ impl event::StreamRequestFail {
         };
 
         let destination_meta = ctx.dst_labels()
-            .and_then(|b| b.borrow().clone())
-            .map(|d| tap_event::EndpointMeta {
+            .map(|ref d| tap_event::EndpointMeta {
                 labels: d.as_map().clone(),
             });
 
@@ -150,8 +147,7 @@ impl<'a> TryFrom<&'a Event> for common::TapEvent {
                 };
 
                 let destination_meta = ctx.dst_labels()
-                    .and_then(|b| b.borrow().clone())
-                    .map(|d| tap_event::EndpointMeta {
+                    .map(|ref d| tap_event::EndpointMeta {
                         labels: d.as_map().clone(),
                     });
 
@@ -176,9 +172,8 @@ impl<'a> TryFrom<&'a Event> for common::TapEvent {
                     http_status: u32::from(ctx.status.as_u16()),
                 };
 
-                let destination_meta = ctx.request.dst_labels()
-                    .and_then(|b| b.borrow().clone())
-                    .map(|d| tap_event::EndpointMeta {
+                let destination_meta = ctx.dst_labels()
+                    .map(|ref d| tap_event::EndpointMeta {
                         labels: d.as_map().clone(),
                     });
 
