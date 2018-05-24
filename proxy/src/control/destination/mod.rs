@@ -88,7 +88,7 @@ pub struct Resolution<B> {
 
 /// Metadata describing an endpoint.
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
-struct Metadata {
+pub struct Metadata {
     /// A set of Prometheus metric labels describing the destination.
     dst_labels: Option<DstLabels>,
 
@@ -210,7 +210,7 @@ where
                     // by replacing the old endpoint with the new one, so
                     // insertions of new endpoints and metadata changes for
                     // existing ones can be handled in the same way.
-                    let endpoint = Endpoint::new(addr, meta.dst_labels.clone());
+                    let endpoint = Endpoint::new(addr, meta);
 
                     let service = self.bind.bind(&endpoint).map_err(|_| ())?;
 
@@ -242,7 +242,7 @@ impl Default for Metadata {
 
 impl Metadata {
     /// Construct a Metadata struct representing an endpoint with no metadata.
-    fn no_metadata() -> Self {
+    pub fn no_metadata() -> Self {
         Metadata {
             dst_labels: None,
             // If we have no metadata on an endpoint, assume it does not support TLS.

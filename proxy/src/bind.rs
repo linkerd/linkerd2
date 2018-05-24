@@ -214,7 +214,7 @@ where
         let client_ctx = ctx::transport::Client::new(
             &self.ctx,
             &addr,
-            ep.dst_labels().cloned(),
+            ep.metadata().clone(),
         );
 
         // Map a socket address to a connection.

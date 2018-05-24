@@ -1,6 +1,7 @@
 use std::net::SocketAddr;
 
 use telemetry::metrics::DstLabels;
+use super::Metadata;
 
 
 /// An individual traffic target.
@@ -9,16 +10,16 @@ use telemetry::metrics::DstLabels;
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Endpoint {
     address: SocketAddr,
-    dst_labels: Option<DstLabels>,
+    metadata: Metadata,
 }
 
 // ==== impl Endpoint =====
 
 impl Endpoint {
-    pub fn new(address: SocketAddr, dst_labels: Option<DstLabels>) -> Self {
+    pub fn new(address: SocketAddr, metadata: Metadata) -> Self {
         Self {
             address,
-            dst_labels,
+            metadata,
         }
     }
 
@@ -26,8 +27,12 @@ impl Endpoint {
         self.address
     }
 
+    pub fn metadata(&self) -> &Metadata {
+        &self.metadata
+    }
+
     pub fn dst_labels(&self) -> Option<&DstLabels> {
-        self.dst_labels.as_ref()
+        self.metadata.dst_labels()
     }
 }
 
@@ -35,7 +40,7 @@ impl From<SocketAddr> for Endpoint {
     fn from(address: SocketAddr) -> Self {
         Self {
             address,
-            dst_labels: None,
+            metadata: Metadata::no_metadata()
         }
     }
 }

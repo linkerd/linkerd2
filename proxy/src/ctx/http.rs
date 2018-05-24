@@ -53,8 +53,12 @@ impl Request {
         Arc::new(r)
     }
 
+    pub fn supports_tls(&self) -> bool {
+        self.client.supports_tls()
+    }
+
     pub fn dst_labels(&self) -> Option<&DstLabels> {
-        self.client.dst_labels.as_ref()
+        self.client.dst_labels()
     }
 }
 
@@ -66,6 +70,10 @@ impl Response {
         };
 
         Arc::new(r)
+    }
+
+    pub fn supports_tls(&self) -> bool {
+        self.request.supports_tls()
     }
 
     pub fn dst_labels(&self) -> Option<&DstLabels> {
