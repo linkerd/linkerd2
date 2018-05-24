@@ -1,3 +1,4 @@
+import _ from 'lodash';
 import { ApiHelpers } from './util/ApiHelpers.jsx';
 import { Layout } from 'antd';
 import { Link } from 'react-router-dom';
@@ -18,7 +19,13 @@ class Sidebar extends React.Component {
     this.loadFromServer = this.loadFromServer.bind(this);
     this.handleApiError = this.handleApiError.bind(this);
 
-    this.state = {
+    this.state = this.getInitialState();
+  }
+
+  getInitialState() {
+    return {
+      pollingInterval: 12000,
+      maxNsItemsToShow: 8,
       initialCollapse: true,
       collapsed: true,
       error: null,
@@ -27,10 +34,25 @@ class Sidebar extends React.Component {
       pendingRequests: false
     };
   }
-
   componentDidMount() {
-    this.loadFromServer();
+    this.startServerPolling();
   }
+
+  componentWillUnmount() {
+    // the Sidebar never unmounts, but if something ever does, we should take care of it
+    this.stopServerPolling();
+  }
+
+  startServerPolling() {
+    this.loadFromServer();
+    this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
+  }
+
+  stopServerPolling() {
+    window.clearInterval(this.timerId);
+    this.api.cancelCurrentRequests();
+  }
+
 
   loadFromServer() {
     if (this.state.pendingRequests) {
@@ -39,13 +61,22 @@ class Sidebar extends React.Component {
     this.setState({ pendingRequests: true });
 
     let versionUrl = `https://versioncheck.conduit.io/version.json?version=${this.props.releaseVersion}?uuid=${this.props.uuid}`;
-    let versionFetch = ApiHelpers("").fetch(versionUrl);
+    this.api.setCurrentRequests([
+      ApiHelpers("").fetch(versionUrl),
+      this.api.fetchMetrics(this.api.urlsForResource("namespace"))
+    ]);
+
     // expose serverPromise for testing
-    this.serverPromise = versionFetch.promise
-      .then(resp => {
+    this.serverPromise = Promise.all(this.api.getCurrentPromises())
+      .then(([versionRsp, nsRsp]) => {
+        let nsStats = _.get(nsRsp, ["ok", "statTables", 0, "podGroup", "rows"], []);
+        let namespaces = _(nsStats).map(r => r.resource.name)
+          .sortBy().take(this.state.maxNsItemsToShow).value();
+
         this.setState({
-          latestVersion: resp.version,
-          isLatest: resp.version === this.props.releaseVersion,
+          latestVersion: versionRsp.version,
+          isLatest: versionRsp.version === this.props.releaseVersion,
+          namespaces,
           pendingRequests: false,
         });
       }).catch(this.handleApiError);
@@ -108,32 +139,23 @@ class Sidebar extends React.Component {
 
             <Menu.Item className="sidebar-menu-item" key="/namespaces">
               <ConduitLink to="/namespaces">
-                <Icon>N</Icon>
+                <Icon type="dashboard" />
                 <span>Namespaces</span>
               </ConduitLink>
             </Menu.Item>
 
-            <Menu.Item className="sidebar-menu-item" key="/deployments">
-              <ConduitLink to="/deployments">
-                <Icon>D</Icon>
-                <span>Deployments</span>
-              </ConduitLink>
-            </Menu.Item>
-
-            <Menu.Item className="sidebar-menu-item" key="/replicationcontrollers">
-              <ConduitLink to="/replicationcontrollers">
-                <Icon>R</Icon>
-                <span>Replication Controllers</span>
-              </ConduitLink>
-            </Menu.Item>
-
-            <Menu.Item className="sidebar-menu-item" key="/pods">
-              <ConduitLink to="/pods">
-                <Icon>P</Icon>
-                <span>Pods</span>
-              </ConduitLink>
-            </Menu.Item>
-
+            {
+              _.map(this.state.namespaces, ns => {
+                return (
+                  <Menu.Item className="sidebar-submenu-item" key={ns}>
+                    <ConduitLink to={`/namespaces/${ns}`}>
+                      <Icon>{_.take(ns, 2)}</Icon>
+                      <span>{ns} {this.state.collapsed ? "namespace" : ""}</span>
+                    </ConduitLink>
+                  </Menu.Item>
+                );
+              })
+            }
 
             <Menu.Item className="sidebar-menu-item" key="/docs">
               <Link to="https://conduit.io/docs/" target="_blank">
