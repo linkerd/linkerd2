@@ -59,6 +59,7 @@ func newPublicAPIClient() (pb.ApiClient, error) {
 type proxyConfigOptions struct {
 	conduitVersion   string
 	proxyImage       string
+	initImage        string
 	imagePullPolicy  string
 	proxyUID         int64
 	proxyLogLevel    string
@@ -71,6 +72,7 @@ func newProxyConfigOptions() *proxyConfigOptions {
 	return &proxyConfigOptions{
 		conduitVersion:   version.Version,
 		proxyImage:       "gcr.io/runconduit/proxy",
+		initImage:        "gcr.io/runconduit/proxy-init",
 		imagePullPolicy:  "IfNotPresent",
 		proxyUID:         2102,
 		proxyLogLevel:    "warn,conduit_proxy=info",
@@ -82,6 +84,7 @@ func newProxyConfigOptions() *proxyConfigOptions {
 
 func addProxyConfigFlags(cmd *cobra.Command, options *proxyConfigOptions) {
 	cmd.PersistentFlags().StringVarP(&options.conduitVersion, "conduit-version", "v", options.conduitVersion, "Tag to be used for Conduit images")
+	cmd.PersistentFlags().StringVar(&options.initImage, "init-image", options.initImage, "Conduit init container image name")
 	cmd.PersistentFlags().StringVar(&options.proxyImage, "proxy-image", options.proxyImage, "Conduit proxy container image name")
 	cmd.PersistentFlags().StringVar(&options.imagePullPolicy, "image-pull-policy", options.imagePullPolicy, "Docker image pull policy")
 	cmd.PersistentFlags().Int64Var(&options.proxyUID, "proxy-uid", options.proxyUID, "Run the proxy under this user ID")

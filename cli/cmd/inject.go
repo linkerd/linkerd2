@@ -29,7 +29,6 @@ const (
 )
 
 type injectOptions struct {
-	initImage           string
 	inboundPort         uint
 	outboundPort        uint
 	ignoreInboundPorts  []uint
@@ -39,7 +38,6 @@ type injectOptions struct {
 
 func newInjectOptions() *injectOptions {
 	return &injectOptions{
-		initImage:           "gcr.io/runconduit/proxy-init",
 		inboundPort:         4143,
 		outboundPort:        4140,
 		ignoreInboundPorts:  nil,
@@ -82,7 +80,6 @@ with 'conduit inject'. e.g. curl http://url.to/yml | conduit inject -
 	}
 
 	addProxyConfigFlags(cmd, options.proxyConfigOptions)
-	cmd.PersistentFlags().StringVar(&options.initImage, "init-image", options.initImage, "Conduit init container image name")
 	cmd.PersistentFlags().UintVar(&options.inboundPort, "inbound-port", options.inboundPort, "Proxy port to use for inbound traffic")
 	cmd.PersistentFlags().UintVar(&options.outboundPort, "outbound-port", options.outboundPort, "Proxy port to use for outbound traffic")
 	cmd.PersistentFlags().UintSliceVar(&options.ignoreInboundPorts, "skip-inbound-ports", options.ignoreInboundPorts, "Ports that should skip the proxy and send directly to the application")
