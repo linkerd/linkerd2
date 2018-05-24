@@ -6,10 +6,11 @@ import MetricsTable from './MetricsTable.jsx';
 import PageHeader from './PageHeader.jsx';
 import { processSingleResourceRollup } from './util/MetricUtils.js';
 import React from 'react';
+import { withContext } from './util/AppContext.jsx';
 import './../../css/list.css';
 import 'whatwg-fetch';
 
-export default class ResourceList extends React.Component {
+class ResourceList extends React.Component {
   constructor(props) {
     super(props);
     this.api = this.props.api;
@@ -104,16 +105,17 @@ export default class ResourceList extends React.Component {
         { !this.state.error ? null : <ErrorBanner message={this.state.error} /> }
         { !this.state.loaded ? <ConduitSpinner />  :
           <div>
-            <PageHeader header={friendlyTitle + "s"} api={this.api} />
+            <PageHeader header={friendlyTitle + "s"} />
             { _.isEmpty(this.state.metrics) ?
               this.renderEmptyMessage(friendlyTitle) :
               <MetricsTable
                 resource={friendlyTitle}
-                metrics={this.state.metrics}
-                api={this.api} />
+                metrics={this.state.metrics} />
             }
           </div>
         }
       </div>);
   }
 }
+
+export default withContext(ResourceList);

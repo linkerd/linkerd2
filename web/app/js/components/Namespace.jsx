@@ -6,16 +6,17 @@ import MetricsTable from './MetricsTable.jsx';
 import PageHeader from './PageHeader.jsx';
 import { processMultiResourceRollup } from './util/MetricUtils.js';
 import React from 'react';
+import { withContext } from './util/AppContext.jsx';
 import './../../css/list.css';
 import 'whatwg-fetch';
 
-export default class Namespaces extends React.Component {
+class Namespaces extends React.Component {
   constructor(props) {
     super(props);
     this.api = this.props.api;
     this.handleApiError = this.handleApiError.bind(this);
     this.loadFromServer = this.loadFromServer.bind(this);
-    this.state = this.getInitialState(this.props.params);
+    this.state = this.getInitialState(this.props.match.params);
   }
 
   getInitialState(params) {
@@ -39,7 +40,7 @@ export default class Namespaces extends React.Component {
   componentWillReceiveProps() {
     // React won't unmount this component when switching resource pages so we need to clear state
     this.api.cancelCurrentRequests();
-    this.setState(this.getInitialState(this.props.params));
+    this.setState(this.getInitialState(this.props.match.params));
   }
 
   componentWillUnmount() {
@@ -90,8 +91,7 @@ export default class Namespaces extends React.Component {
         <h1>{friendlyTitle}s</h1>
         <MetricsTable
           resource={friendlyTitle}
-          metrics={metrics}
-          api={this.api} />
+          metrics={metrics} />
       </div>
     );
   }
@@ -104,7 +104,7 @@ export default class Namespaces extends React.Component {
         { !this.state.error ? null : <ErrorBanner message={this.state.error} /> }
         { !this.state.loaded ? <ConduitSpinner />  :
           <div>
-            <PageHeader header={"Namespace: " + this.state.ns} api={this.api} />
+            <PageHeader header={`Namespace: ${this.state.ns}`} />
             { noMetrics ? <CallToAction /> : null}
             {this.renderResourceSection("Deployment", this.state.metrics.deployments)}
             {this.renderResourceSection("Replication Controller", this.state.metrics.replicationcontrollers)}
@@ -114,3 +114,5 @@ export default class Namespaces extends React.Component {
       </div>);
   }
 }
+
+export default withContext(Namespaces);
