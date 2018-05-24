@@ -245,10 +245,9 @@ func renderTapEvent(event *common.TapEvent) string {
 	dstLabels := event.GetDestinationMeta().GetLabels()
 	dstPod := dstLabels["pod"]
 	isSecured := "no"
-	controllerNs := dstLabels["conduit_io_control_plane_ns"]
-	controllerDstNs := dstLabels["dst_conduit_io_control_plane_ns"]
 
-	if controllerNs != "" && controllerNs == controllerDstNs {
+	if dstLabels["meshed"] == "true" {
+		// assumption: meshed traffic is secured by default
 		isSecured = "yes"
 	}
 

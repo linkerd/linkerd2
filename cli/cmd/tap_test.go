@@ -47,9 +47,8 @@ func TestRequestTapByResourceFromAPI(t *testing.T) {
 				},
 			},
 			map[string]string{
-				"pod": "my-pod",
-				"conduit_io_control_plane_ns":     "my-con",
-				"dst_conduit_io_control_plane_ns": "my-con",
+				"pod":    "my-pod",
+				"meshed": "true",
 			},
 		)
 		event2 := createEvent(
