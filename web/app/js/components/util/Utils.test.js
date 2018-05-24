@@ -1,15 +1,12 @@
-import { expect } from 'chai';
-import { metricToFormatter, styleNum, toClassName } from '../js/components/util/Utils.js';
+import { metricToFormatter, styleNum, toClassName } from './Utils.js';
 
 // introduce some binary floating point rounding errors, like ya do
-function float(num) {
-  return num * 0.1 * 10;
-}
+const float = num => num * 0.1 * 10;
 
 describe('Utils', () => {
   describe('styleNum', () => {
     it('properly formats numbers', () => {
-      let compare = (f, s) => expect(styleNum(float(f))).to.equal(s);
+      let compare = (f, s) => expect(styleNum(float(f))).toEqual(s);
       compare(          1,          "1"       );
       compare(          2.20,       "2.2"     );
       compare(          3,          "3"       );
@@ -30,7 +27,7 @@ describe('Utils', () => {
     });
 
     it('properly formats numbers with units and no truncation', () => {
-      let compare = (f, s) => expect(styleNum(float(f), " RPS", false)).to.equal(s);
+      let compare = (f, s) => expect(styleNum(float(f), " RPS", false)).toEqual(s);
       compare(          1,          "1 RPS"               );
       compare(          2.20,       "2.2 RPS"             );
       compare(          3,          "3 RPS"               );
@@ -54,52 +51,52 @@ describe('Utils', () => {
   describe('Metric Formatters', () => {
     it('formats undefined input', () => {
       let undefinedMetric;
-      expect(metricToFormatter["REQUEST_RATE"](undefinedMetric)).to.equal('---');
-      expect(metricToFormatter["SUCCESS_RATE"](undefinedMetric)).to.equal('---');
-      expect(metricToFormatter["LATENCY"](undefinedMetric)).to.equal('---');
+      expect(metricToFormatter["REQUEST_RATE"](undefinedMetric)).toEqual('---');
+      expect(metricToFormatter["SUCCESS_RATE"](undefinedMetric)).toEqual('---');
+      expect(metricToFormatter["LATENCY"](undefinedMetric)).toEqual('---');
     });
 
     it('formats requests with rounding and unit', () => {
-      expect(metricToFormatter["REQUEST_RATE"](99)).to.equal('99 RPS');
-      expect(metricToFormatter["REQUEST_RATE"](999)).to.equal('999 RPS');
-      expect(metricToFormatter["REQUEST_RATE"](1000)).to.equal('1k RPS');
-      expect(metricToFormatter["REQUEST_RATE"](4444)).to.equal('4.444k RPS');
-      expect(metricToFormatter["REQUEST_RATE"](9999)).to.equal('9.999k RPS');
-      expect(metricToFormatter["REQUEST_RATE"](99999)).to.equal('99.999k RPS');
+      expect(metricToFormatter["REQUEST_RATE"](99)).toEqual('99 RPS');
+      expect(metricToFormatter["REQUEST_RATE"](999)).toEqual('999 RPS');
+      expect(metricToFormatter["REQUEST_RATE"](1000)).toEqual('1k RPS');
+      expect(metricToFormatter["REQUEST_RATE"](4444)).toEqual('4.444k RPS');
+      expect(metricToFormatter["REQUEST_RATE"](9999)).toEqual('9.999k RPS');
+      expect(metricToFormatter["REQUEST_RATE"](99999)).toEqual('99.999k RPS');
     });
 
     it('formats subsecond latency as ms', () => {
-      expect(metricToFormatter["LATENCY"](99)).to.equal('99 ms');
-      expect(metricToFormatter["LATENCY"](999)).to.equal('999 ms');
+      expect(metricToFormatter["LATENCY"](99)).toEqual('99 ms');
+      expect(metricToFormatter["LATENCY"](999)).toEqual('999 ms');
     });
 
     it('formats latency greater than 1s as s', () => {
-      expect(metricToFormatter["LATENCY"](1000)).to.equal('1.000 s');
-      expect(metricToFormatter["LATENCY"](9999)).to.equal('9.999 s');
-      expect(metricToFormatter["LATENCY"](99999)).to.equal('99.999 s');
+      expect(metricToFormatter["LATENCY"](1000)).toEqual('1.000 s');
+      expect(metricToFormatter["LATENCY"](9999)).toEqual('9.999 s');
+      expect(metricToFormatter["LATENCY"](99999)).toEqual('99.999 s');
     });
 
     it('formats success rate', () => {
-      expect(metricToFormatter["SUCCESS_RATE"](0.012345)).to.equal('1.23%');
-      expect(metricToFormatter["SUCCESS_RATE"](0.01)).to.equal('1.00%');
-      expect(metricToFormatter["SUCCESS_RATE"](0.1)).to.equal('10.00%');
-      expect(metricToFormatter["SUCCESS_RATE"](0.9999)).to.equal('99.99%');
-      expect(metricToFormatter["SUCCESS_RATE"](4)).to.equal('400.00%');
+      expect(metricToFormatter["SUCCESS_RATE"](0.012345)).toEqual('1.23%');
+      expect(metricToFormatter["SUCCESS_RATE"](0.01)).toEqual('1.00%');
+      expect(metricToFormatter["SUCCESS_RATE"](0.1)).toEqual('10.00%');
+      expect(metricToFormatter["SUCCESS_RATE"](0.9999)).toEqual('99.99%');
+      expect(metricToFormatter["SUCCESS_RATE"](4)).toEqual('400.00%');
     });
   });
 
   describe('toClassName', () => {
     it('converts a string to a valid class name', () => {
-      expect(toClassName('')).to.equal('');
-      expect(toClassName('---')).to.equal('');
-      expect(toClassName('foo/bar/baz')).to.equal('foo_bar_baz');
-      expect(toClassName('FOOBAR')).to.equal('foobar');
-      expect(toClassName('FooBar')).to.equal('foo_bar');
+      expect(toClassName('')).toEqual('');
+      expect(toClassName('---')).toEqual('');
+      expect(toClassName('foo/bar/baz')).toEqual('foo_bar_baz');
+      expect(toClassName('FOOBAR')).toEqual('foobar');
+      expect(toClassName('FooBar')).toEqual('foo_bar');
 
       // the perhaps unexpected number of spaces here are due to the fact that
       // _.lowerCase returns space separated words
-      expect(toClassName('potato123yam0squash')).to.equal('potato_123_yam_0_squash');
-      expect(toClassName('test/potato-e1af21-f3f3')).to.equal('test_potato_e_1_af_21_f_3_f_3');
+      expect(toClassName('potato123yam0squash')).toEqual('potato_123_yam_0_squash');
+      expect(toClassName('test/potato-e1af21-f3f3')).toEqual('test_potato_e_1_af_21_f_3_f_3');
     });
   });
 });

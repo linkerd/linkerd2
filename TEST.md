@@ -63,9 +63,29 @@ Javascript dependencies are managed via [yarn](https://yarnpkg.com/) and
 [webpack](https://webpack.js.org/). To fetch dependencies and run tests, run:
 
 ```bash
-cd web/app
-yarn && yarn webpack
-yarn karma start --single-run
+bin/web setup
+bin/web test
+```
+
+We use [jest](https://facebook.github.io/jest) for tests. It has some convenient options to speed up test times.
+
+Run tests related to changed files (git):
+
+```bash
+bin/web test -o
+```
+
+Run tests that match a spec name (regex):
+
+```bash
+bin/web test -t name-of-spec
+```
+
+Run watch mode:
+
+```bash
+bin/web test --watch # runs -o by default
+bin/web test --watchAll # runs all tests
 ```
 
 # Integration tests

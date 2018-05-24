@@ -1,7 +1,8 @@
 {
   "plugins": [
     "eslint-plugin-react", // https://github.com/yannickcr/eslint-plugin-react
-    "eslint-plugin-promise"
+    "eslint-plugin-promise",
+    "eslint-plugin-jest"
   ],
   "parser": "babel-eslint",
   "parserOptions": {
@@ -13,9 +14,14 @@
   "env": {
     "browser": true,
     "es6": true,
-    "mocha": true
+    "jest": true
   },
-  "extends" : ["eslint:recommended", "plugin:react/recommended"],
+  "extends" : [
+    "eslint:recommended",
+    "plugin:react/recommended",
+    "plugin:jest/recommended",
+    "jest-enzyme"
+  ],
   "rules": {
     "arrow-parens": [1, "as-needed"],
     "comma-dangle": [0], // babel removes dangling commas for us

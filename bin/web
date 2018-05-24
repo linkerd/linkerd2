@@ -68,7 +68,7 @@ function setup {
 
 function test {
   cd $ROOT/web/app
-  yarn karma start --single-run $*
+  yarn jest "$*"
 }
 
 function main {

@@ -1,17 +1,13 @@
 /* eslint-disable */
 import _ from 'lodash';
 import 'raf/polyfill'; // the polyfill import must be first
-import Adapter from 'enzyme-adapter-react-16';
-import { ApiHelpers } from '../js/components/util/ApiHelpers.jsx';
-import Enzyme from 'enzyme';
-import { expect } from 'chai';
+import { ApiHelpers } from './ApiHelpers.jsx';
 import { mount } from 'enzyme';
-import { routerWrap } from './testHelpers.jsx';
+import { routerWrap } from '../../test/helpers.jsx';
 import sinon from 'sinon';
 import sinonStubPromise from 'sinon-stub-promise';
 /* eslint-enable */
 
-Enzyme.configure({ adapter: new Adapter() });
 sinonStubPromise(sinon);
 
 describe('ApiHelpers', () => {
@@ -33,30 +29,30 @@ describe('ApiHelpers', () => {
 
   describe('getMetricsWindow/setMetricsWindow', () => {
     it('sets a default metricsWindow', () => {
-      expect(api.getMetricsWindow()).to.equal('1m');
+      expect(api.getMetricsWindow()).toEqual('1m');
     });
 
     it('changes the metricsWindow on valid window input', () => {
-      expect(api.getMetricsWindow()).to.equal('1m');
+      expect(api.getMetricsWindow()).toEqual('1m');
 
       api.setMetricsWindow('10s');
-      expect(api.getMetricsWindow()).to.equal('10s');
+      expect(api.getMetricsWindow()).toEqual('10s');
 
       api.setMetricsWindow('1m');
-      expect(api.getMetricsWindow()).to.equal('1m');
+      expect(api.getMetricsWindow()).toEqual('1m');
 
       api.setMetricsWindow('10m');
-      expect(api.getMetricsWindow()).to.equal('10m');
+      expect(api.getMetricsWindow()).toEqual('10m');
 
       api.setMetricsWindow('1h');
-      expect(api.getMetricsWindow()).to.equal('1h');
+      expect(api.getMetricsWindow()).toEqual('1h');
     });
 
     it('does not change metricsWindow on invalid window size', () => {
-      expect(api.getMetricsWindow()).to.equal('1m');
+      expect(api.getMetricsWindow()).toEqual('1m');
 
       api.setMetricsWindow('10h');
-      expect(api.getMetricsWindow()).to.equal('1m');
+      expect(api.getMetricsWindow()).toEqual('1m');
     });
   });
 
@@ -66,10 +62,12 @@ describe('ApiHelpers', () => {
       let linkProps = { to: "/myrelpath", children: ["Informative Link Title"] };
       let conduitLink = mount(routerWrap(api.ConduitLink, linkProps));
 
-      expect(conduitLink.find("Link")).to.have.length(1);
-      expect(conduitLink.html()).to.contain('href="/my/path/prefix/web:/foo/myrelpath"');
-      expect(conduitLink.html()).to.not.contain('target="_blank"');
-      expect(conduitLink.html()).to.contain(linkProps.children[0]);
+      expect(conduitLink.find("Link")).toHaveLength(1);
+      expect(conduitLink.find('a')).toHaveProp(
+        'href', '/my/path/prefix/web:/foo/myrelpath');
+      expect(conduitLink.find('a')).not.toHaveProp(
+        'target', '_blank');
+      expect(conduitLink).toIncludeText(linkProps.children[0]);
     });
 
     it('wraps a relative link with the pathPrefix', () => {
@@ -77,9 +75,10 @@ describe('ApiHelpers', () => {
       let linkProps = { to: "/myrelpath", children: ["Informative Link Title"] };
       let conduitLink = mount(routerWrap(api.ConduitLink, linkProps));
 
-      expect(conduitLink.find("Link")).to.have.length(1);
-      expect(conduitLink.html()).to.contain('href="/my/path/prefix/myrelpath"');
-      expect(conduitLink.html()).to.contain(linkProps.children[0]);
+      expect(conduitLink.find("Link")).toHaveLength(1);
+      expect(conduitLink.find('a')).toHaveProp(
+        'href', '/my/path/prefix/myrelpath');
+      expect(conduitLink).toIncludeText(linkProps.children[0]);
     });
 
     it('wraps a relative link with no pathPrefix', () => {
@@ -87,29 +86,38 @@ describe('ApiHelpers', () => {
       let linkProps = { to: "/myrelpath", children: ["Informative Link Title"] };
       let conduitLink = mount(routerWrap(api.ConduitLink, linkProps));
 
-      expect(conduitLink.find("Link")).to.have.length(1);
-      expect(conduitLink.html()).to.contain('href="/myrelpath"');
-      expect(conduitLink.html()).to.contain(linkProps.children[0]);
+      expect(conduitLink.find("Link")).toHaveLength(1);
+      expect(conduitLink.find('a')).toHaveProp('href', '/myrelpath');
+      expect(conduitLink).toIncludeText(linkProps.children[0]);
     });
 
     it('replaces the deployment in a pathPrefix', () => {
       api = ApiHelpers('/my/path/prefix/web:/foo');
-      let linkProps = { deployment: "mydeployment", to: "/myrelpath", children: ["Informative Link Title"] };
+      let linkProps = {
+        deployment: "mydeployment",
+        to: "/myrelpath",
+        children: ["Informative Link Title"],
+      };
       let conduitLink = mount(routerWrap(api.ConduitLink, linkProps));
 
-      expect(conduitLink.find("Link")).to.have.length(1);
-      expect(conduitLink.html()).to.contain('href="/my/path/prefix/mydeployment:/foo/myrelpath"');
-      expect(conduitLink.html()).to.contain(linkProps.children[0]);
+      expect(conduitLink.find("Link")).toHaveLength(1);
+      expect(conduitLink.find('a')).toHaveProp(
+        'href', '/my/path/prefix/mydeployment:/foo/myrelpath');
+      expect(conduitLink).toIncludeText(linkProps.children[0]);
     });
 
     it('sets target=blank', () => {
       api = ApiHelpers('/my/path/prefix');
-      let linkProps = { targetBlank: true, to: "/myrelpath", children: ["Informative Link Title"] };
+      let linkProps = {
+        targetBlank: true,
+        to: "/myrelpath",
+        children: ["Informative Link Title"],
+      };
       let conduitLink = mount(routerWrap(api.ConduitLink, linkProps));
 
-      expect(conduitLink.find("Link")).to.have.length(1);
-      expect(conduitLink.html()).to.contain('target="_blank"');
-      expect(conduitLink.html()).to.contain(linkProps.children[0]);
+      expect(conduitLink.find("Link")).toHaveLength(1);
+      expect(conduitLink.find('a')).toHaveProp('target', '_blank');
+      expect(conduitLink).toIncludeText(linkProps.children[0]);
     });
   });
 
@@ -120,7 +128,7 @@ describe('ApiHelpers', () => {
 
       return cancelablePromise.promise
         .then(resp => {
-          expect(resp.result).to.equal('my response');
+          expect(resp.result).toEqual('my response');
         });
     });
 
@@ -133,7 +141,7 @@ describe('ApiHelpers', () => {
           return Promise.reject('Expected method to reject.');
         })
         .catch(e => {
-          expect(e).to.deep.equal({ rejectionReason: 'it is bad' });
+          expect(e).toEqual({ rejectionReason: 'it is bad' });
         });
     });
 
@@ -147,7 +155,7 @@ describe('ApiHelpers', () => {
           return Promise.reject('Expected method to reject.');
         })
         .catch(e => {
-          expect(e).to.deep.equal(reason);
+          expect(e).toEqual(reason);
         });
     });
 
@@ -159,8 +167,8 @@ describe('ApiHelpers', () => {
 
       return cancelablePromise.promise
         .then(() => {
-          expect(onSuccess.calledOnce).to.be.true;
-          expect(onSuccess.args[0][0]).to.deep.equal(fakeFetchResults);
+          expect(onSuccess.calledOnce).toBeTruthy();
+          expect(onSuccess.args[0][0]).toEqual(fakeFetchResults);
         });
     });
 
@@ -173,7 +181,7 @@ describe('ApiHelpers', () => {
         .then(() => {
           return Promise.reject('Expected method to reject.');
         }).catch(resp => {
-          expect(resp.isCanceled).to.be.true;
+          expect(resp.isCanceled).toBeTruthy();
         });
     });
   });
@@ -183,16 +191,16 @@ describe('ApiHelpers', () => {
       api = ApiHelpers('/the/path/prefix');
       api.fetch('/resource/foo');
 
-      expect(fetchStub.calledOnce).to.be.true;
-      expect(fetchStub.args[0][0]).to.equal('/the/path/prefix/resource/foo');
+      expect(fetchStub.calledOnce).toBeTruthy();
+      expect(fetchStub.args[0][0]).toEqual('/the/path/prefix/resource/foo');
     });
 
     it('requests from / when there is no path prefix', () => {
       api = ApiHelpers('');
       api.fetch('/resource/foo');
 
-      expect(fetchStub.calledOnce).to.be.true;
-      expect(fetchStub.args[0][0]).to.equal('/resource/foo');
+      expect(fetchStub.calledOnce).toBeTruthy();
+      expect(fetchStub.args[0][0]).toEqual('/resource/foo');
     });
 
     it('throws an error if response status is not "ok"', () => {
@@ -212,8 +220,8 @@ describe('ApiHelpers', () => {
           return Promise.reject('Expected method to reject.');
         }, errorHandler)
         .then(() => {
-          expect(errorHandler.args[0][0].message).to.equal(errorMessage);
-          expect(errorHandler.calledOnce).to.be.true;
+          expect(errorHandler.args[0][0].message).toEqual(errorMessage);
+          expect(errorHandler.calledOnce).toBeTruthy();
         });
     });
 
@@ -233,9 +241,9 @@ describe('ApiHelpers', () => {
           return Promise.reject('Expected method to reject.');
         }, rejectHandler)
         .then(() => {
-          expect(rejectHandler.args[0][0]).to.have.own.property('myReason');
-          expect(rejectHandler.args[0][0].myReason).to.equal(rejectionMessage);
-          expect(rejectHandler.calledOnce).to.be.true;
+          expect(rejectHandler.args[0][0]).toHaveProperty('myReason');
+          expect(rejectHandler.args[0][0].myReason).toEqual(rejectionMessage);
+          expect(rejectHandler.calledOnce).toBeTruthy();
         });
     });
   });
@@ -245,29 +253,29 @@ describe('ApiHelpers', () => {
       api = ApiHelpers('/the/prefix');
       api.fetchMetrics('/my/path');
 
-      expect(fetchStub.calledOnce).to.be.true;
-      expect(fetchStub.args[0][0]).to.equal('/the/prefix/my/path?window=1m');
+      expect(fetchStub.calledOnce).toBeTruthy();
+      expect(fetchStub.args[0][0]).toEqual('/the/prefix/my/path?window=1m');
     });
 
     it('adds a ?window= if metricsWindow is the only param', () => {
       api.fetchMetrics('/api/stat');
 
-      expect(fetchStub.calledOnce).to.be.true;
-      expect(fetchStub.args[0][0]).to.equal('/api/stat?window=1m');
+      expect(fetchStub.calledOnce).toBeTruthy();
+      expect(fetchStub.args[0][0]).toEqual('/api/stat?window=1m');
     });
 
     it('adds &window= if metricsWindow is not the only param', () => {
       api.fetchMetrics('/api/stat?foo=3&bar="me"');
 
-      expect(fetchStub.calledOnce).to.be.true;
-      expect(fetchStub.args[0][0]).to.equal('/api/stat?foo=3&bar="me"&window=1m');
+      expect(fetchStub.calledOnce).toBeTruthy();
+      expect(fetchStub.args[0][0]).toEqual('/api/stat?foo=3&bar="me"&window=1m');
     });
 
     it('does not add another &window= if there is already a window param', () => {
       api.fetchMetrics('/api/stat?foo=3&window=24h&bar="me"');
 
-      expect(fetchStub.calledOnce).to.be.true;
-      expect(fetchStub.args[0][0]).to.equal('/api/stat?foo=3&window=24h&bar="me"');
+      expect(fetchStub.calledOnce).toBeTruthy();
+      expect(fetchStub.args[0][0]).toEqual('/api/stat?foo=3&window=24h&bar="me"');
     });
   });
 
@@ -276,8 +284,8 @@ describe('ApiHelpers', () => {
       api = ApiHelpers("/random/prefix");
       api.fetchPods();
 
-      expect(fetchStub.calledOnce).to.be.true;
-      expect(fetchStub.args[0][0]).to.equal('/random/prefix/api/pods');
+      expect(fetchStub.calledOnce).toBeTruthy();
+      expect(fetchStub.args[0][0]).toEqual('/random/prefix/api/pods');
     });
   });
 
@@ -285,19 +293,19 @@ describe('ApiHelpers', () => {
     it('returns the correct rollup url for deployment overviews', () => {
       api = ApiHelpers('/go/my/own/way');
       let deploymentUrl = api.urlsForResource("deployment");
-      expect(deploymentUrl).to.equal('/api/stat?resource_type=deployment');
+      expect(deploymentUrl).toEqual('/api/stat?resource_type=deployment');
     });
 
     it('returns the correct rollup url for pod overviews', () => {
       api = ApiHelpers('/go/my/own/way');
       let deploymentUrls = api.urlsForResource("pod");
-      expect(deploymentUrls).to.equal('/api/stat?resource_type=pod');
+      expect(deploymentUrls).toEqual('/api/stat?resource_type=pod');
     });
 
     it('scopes the query to the provided namespace', () => {
       api = ApiHelpers('/go/my/own/way');
       let deploymentUrls = api.urlsForResource("pod", "my-ns");
-      expect(deploymentUrls).to.equal('/api/stat?resource_type=pod&namespace=my-ns');
+      expect(deploymentUrls).toEqual('/api/stat?resource_type=pod&namespace=my-ns');
     });
   });
 });
