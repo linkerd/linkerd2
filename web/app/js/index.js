@@ -21,7 +21,9 @@ if (proxyPathMatch) {
   pathPrefix = proxyPathMatch[0];
 }
 
-if (_.isEmpty(appData.controllerNamespace)) appData.controllerNamespace = 'conduit';
+if (_.isEmpty(appData.controllerNamespace)) {
+  appData.controllerNamespace = 'conduit';
+}
 
 const context = {
   ...appData,
