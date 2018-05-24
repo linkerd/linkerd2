@@ -507,6 +507,14 @@ where
 
 }
 
+impl<B, I: BodySensor> Drop for MeasuredBody<B, I> {
+    fn drop(&mut self) {
+        if let Some(inner) = self.inner.take() {
+            inner.end(None);
+        }
+    }
+}
+
 // ===== impl BodySensor =====
 
 impl BodySensor for ResponseBodyInner {
