@@ -345,6 +345,7 @@ fn serve<R, B, E, F, G>(
 where
     B: tower_h2::Body + Default + Send + 'static,
     <B::Data as ::bytes::IntoBuf>::Buf: Send,
+    B: ::std::fmt::Debug,
     E: Error + Send + 'static,
     F: Error + Send + 'static,
     R: Recognize<

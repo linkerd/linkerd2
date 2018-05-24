@@ -19,6 +19,7 @@ type HyperClient<C, B> =
 pub struct Client<C, B>
 where
     B: tower_h2::Body + 'static,
+    B: ::std::fmt::Debug,
 {
     inner: ClientInner<C, B>,
 }
@@ -26,6 +27,7 @@ where
 enum ClientInner<C, B>
 where
     B: tower_h2::Body + 'static,
+    B: ::std::fmt::Debug,
 {
     Http1(HyperClient<C, B>),
     Http2(tower_h2::client::Connect<C, LazyExecutor, RequestBody<B>>),
@@ -35,6 +37,7 @@ where
 pub struct ClientNewServiceFuture<C, B>
 where
     B: tower_h2::Body + 'static,
+    B: ::std::fmt::Debug,
     C: Connect + 'static,
 {
     inner: ClientNewServiceFutureInner<C, B>,
@@ -43,6 +46,7 @@ where
 enum ClientNewServiceFutureInner<C, B>
 where
     B: tower_h2::Body + 'static,
+    B: ::std::fmt::Debug,
     C: Connect + 'static,
 {
     Http1(Option<HyperClient<C, B>>),
@@ -53,6 +57,7 @@ where
 pub struct ClientService<C, B>
 where
     B: tower_h2::Body + 'static,
+    B: ::std::fmt::Debug,
     C: Connect,
 {
     inner: ClientServiceInner<C, B>,
@@ -61,6 +66,7 @@ where
 enum ClientServiceInner<C, B>
 where
     B: tower_h2::Body + 'static,
+    B: ::std::fmt::Debug,
     C: Connect
 {
     Http1(HyperClient<C, B>),
@@ -78,6 +84,7 @@ where
     C::Connected: Send,
     B: tower_h2::Body + Send + 'static,
    <B::Data as IntoBuf>::Buf: Send + 'static,
+    B: ::std::fmt::Debug,
 {
     /// Create a new `Client`, bound to a specific protocol (HTTP/1 or HTTP/2).
     pub fn new(protocol: &bind::Protocol, connect: C) -> Self {
@@ -114,6 +121,7 @@ where
     C::Future: Send + 'static,
     C::Connected: Send,
     B: tower_h2::Body + Send + 'static,
+    B: ::std::fmt::Debug,
    <B::Data as IntoBuf>::Buf: Send + 'static,
 {
     type Request = bind::HttpRequest<B>;
@@ -144,6 +152,7 @@ where
     C::Connected: Send,
     C::Future: Send + 'static,
     B: tower_h2::Body + Send + 'static,
+    B: ::std::fmt::Debug,
    <B::Data as IntoBuf>::Buf: Send + 'static,
 {
     type Item = ClientService<C, B>;
@@ -171,6 +180,7 @@ where
     C::Connected: Send,
     C::Future: Send + 'static,
     B: tower_h2::Body + Send + 'static,
+    B: ::std::fmt::Debug,
    <B::Data as IntoBuf>::Buf: Send + 'static,
 {
     type Request = bind::HttpRequest<B>;

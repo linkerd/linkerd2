@@ -50,6 +50,7 @@ pub struct BoundService<B>
 where
     B: tower_h2::Body + Send + 'static,
     <B::Data as ::bytes::IntoBuf>::Buf: Send,
+    B: ::std::fmt::Debug,
 {
     bind: Bind<Arc<ctx::Proxy>, B>,
     binding: Binding<B>,
@@ -72,6 +73,7 @@ pub enum Binding<B>
 where
     B: tower_h2::Body + Send + 'static,
     <B::Data as ::bytes::IntoBuf>::Buf: Send,
+    B: ::std::fmt::Debug,
 {
     Bound(Stack<B>),
     BindsPerRequest {
@@ -202,6 +204,7 @@ impl<B> Bind<Arc<ctx::Proxy>, B>
 where
     B: tower_h2::Body + Send + 'static,
     <B::Data as ::bytes::IntoBuf>::Buf: Send,
+    B: ::std::fmt::Debug,
 {
     fn bind_stack(&self, ep: &Endpoint, protocol: &Protocol) -> Stack<B> {
         debug!("bind_stack endpoint={:?}, protocol={:?}", ep, protocol);
@@ -274,6 +277,7 @@ impl<B> control::destination::Bind for BindProtocol<Arc<ctx::Proxy>, B>
 where
     B: tower_h2::Body + Send + 'static,
     <B::Data as ::bytes::IntoBuf>::Buf: Send,
+    B: ::std::fmt::Debug,
 {
     type Endpoint = Endpoint;
     type Request = http::Request<B>;
@@ -309,6 +313,7 @@ where
     >,
     NormalizeUri<S::Service>: tower::Service,
     B: tower_h2::Body,
+    B: ::std::fmt::Debug,
 {
     type Request = <Self::Service as tower::Service>::Request;
     type Response = <Self::Service as tower::Service>::Response;
@@ -339,6 +344,7 @@ where
         Response=HttpResponse,
     >,
     B: tower_h2::Body,
+    B: ::std::fmt::Debug,
 {
     type Request = S::Request;
     type Response = HttpResponse;
@@ -365,6 +371,7 @@ where
 impl<B> tower::Service for BoundService<B>
 where
     B: tower_h2::Body + Send + 'static,
+    B: ::std::fmt::Debug,
     <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
     type Request = <Stack<B> as tower::Service>::Request;
