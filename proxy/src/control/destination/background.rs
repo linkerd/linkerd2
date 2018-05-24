@@ -6,6 +6,7 @@ use std::fmt;
 use std::iter::IntoIterator;
 use std::net::SocketAddr;
 use std::time::Duration;
+use std::sync::Arc;
 
 use bytes::Bytes;
 use futures::{
@@ -22,9 +23,13 @@ use tower_reconnect::Reconnect;
 use conduit_proxy_controller_grpc::common::{Destination, TcpAddress};
 use conduit_proxy_controller_grpc::destination::client::Destination as DestinationSvc;
 use conduit_proxy_controller_grpc::destination::update::Update as PbUpdate2;
-use conduit_proxy_controller_grpc::destination::{Update as PbUpdate, WeightedAddr};
+use conduit_proxy_controller_grpc::destination::{
+    Update as PbUpdate,
+    TlsVerification as TlsVerificationPb,
+    WeightedAddr,
+};
 
-use super::{Metadata, ResolveRequest, Responder, Update};
+use super::{TlsVerification, Metadata, ResolveRequest, Responder, Update};
 use control::{
     cache::{Cache, CacheChange, Exists},
     fully_qualified_authority::FullyQualifiedAuthority,
@@ -554,10 +559,28 @@ fn pb_to_addr_meta(
         .chain(pb.metric_labels.iter())
         .collect::<Vec<_>>();
     labels.sort_by(|(k0, _), (k1, _)| k0.cmp(k1));
+    let tls = pb.tls_verification.and_then(TlsVerification::from_pb);
 
-    let meta = Metadata::from_labels(DstLabels::new(labels.into_iter());
+    let meta = Metadata::from_destination(DstLabels::new(labels.into_iter()), tls);
     Some((addr, meta))
 }
+
+impl TlsVerification {
+    pub fn from_pb(pb: TlsVerificationPb) -> Option<Self> {
+        use conduit_proxy_controller_grpc::destination::{
+            tls_verification::Strategy,
+            K8sPodNamespace,
+        };
+        pb.strategy.map(|strategy| match strategy {
+            Strategy::K8sPodNamespace(K8sPodNamespace { pod_name, namespace }) =>
+                TlsVerification::K8sPodNamespace {
+                    pod_name: Arc::from(pod_name),
+                    namespace: Arc::from(namespace),
+                },
+        })
+    }
+}
+
 
 fn pb_to_sock_addr(pb: TcpAddress) -> Option<SocketAddr> {
     use conduit_proxy_controller_grpc::common::ip_address::Ip;

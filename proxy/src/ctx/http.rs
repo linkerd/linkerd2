@@ -2,6 +2,7 @@ use http;
 use std::sync::Arc;
 
 use ctx;
+use control::destination;
 use telemetry::metrics::DstLabels;
 
 /// Describes a stream's request headers.
@@ -53,8 +54,8 @@ impl Request {
         Arc::new(r)
     }
 
-    pub fn supports_tls(&self) -> bool {
-        self.client.supports_tls()
+    pub fn tls_verification(&self) -> Option<&destination::TlsVerification> {
+        self.client.tls_verification()
     }
 
     pub fn dst_labels(&self) -> Option<&DstLabels> {
@@ -72,8 +73,8 @@ impl Response {
         Arc::new(r)
     }
 
-    pub fn supports_tls(&self) -> bool {
-        self.request.supports_tls()
+    pub fn tls_verification(&self) -> Option<&destination::TlsVerification> {
+        self.request.tls_verification()
     }
 
     pub fn dst_labels(&self) -> Option<&DstLabels> {

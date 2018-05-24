@@ -92,12 +92,19 @@ pub struct Metadata {
     /// A set of Prometheus metric labels describing the destination.
     dst_labels: Option<DstLabels>,
 
-    /// Whether or not this endpoint supports TLS.
-    ///
-    /// Currently, this is true IFF the `meshed="true"` label was
-    /// present in the labels added by the control plane.
-    supports_tls: bool,
+    /// How to verify TLS for the endpoint.
+    tls_verification: Option<TlsVerification>,
 }
+
+/// How to verify TLS for an endpoint.
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+pub enum TlsVerification {
+    K8sPodNamespace {
+        pod_name: Arc<str>,
+        namespace: Arc<str>,
+    },
+}
+
 
 #[derive(Debug, Clone)]
 enum Update {
@@ -246,30 +253,28 @@ impl Metadata {
         Metadata {
             dst_labels: None,
             // If we have no metadata on an endpoint, assume it does not support TLS.
-            supports_tls: false,
+            tls_verification: None,
         }
     }
 
     /// Construct a new Metadata with a set of labels from the Destination service.
-    pub fn from_labels(dst_labels: Option<DstLabels>) -> Self {
-        let supports_tls = dst_labels.as_ref()
-            .and_then(|labels| labels.as_map()
-                .get("meshed")
-                .map(|value| value == "true")
-            ).unwrap_or(false);
+    pub fn from_destination(
+        dst_labels: Option<DstLabels>,
+        tls_verification: Option<TlsVerification>
+    ) -> Self {
         Metadata {
             dst_labels,
-            supports_tls,
+            tls_verification,
         }
-    }
-
-    /// Returns `true` if the endpoint supports TLS.
-    pub fn supports_tls(&self) -> bool {
-        self.supports_tls
     }
 
     /// Returns the endpoint's labels from the destination service, if it has them.
     pub fn dst_labels(&self) -> Option<&DstLabels> {
         self.dst_labels.as_ref()
+    }
+
+    /// Returns the endpoint's TLS verification strategy
+    pub fn tls_verification(&self) -> Option<&TlsVerification> {
+        self.tls_verification.as_ref()
     }
 }

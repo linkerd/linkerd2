@@ -61,7 +61,7 @@ impl Proxy {
             destination::Metadata::no_metadata(),
         );
         let c = Timeout::new(
-            transport::Connect::new(orig_dst),
+            transport::Connect::new(orig_dst, None),
             self.connect_timeout,
         );
         let connect = self.sensors.connect(c, &client_ctx);

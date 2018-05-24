@@ -219,7 +219,7 @@ where
 
         // Map a socket address to a connection.
         let connect = self.sensors.connect(
-            transport::Connect::new(addr),
+            transport::Connect::new(addr, ep.tls_verification()),
             &client_ctx,
         );
 

@@ -93,8 +93,8 @@ impl Client {
         Arc::new(c)
     }
 
-    pub fn supports_tls(&self) -> bool {
-        self.metadata.supports_tls()
+    pub fn tls_verification(&self) -> Option<&destination::TlsVerification> {
+        self.metadata.tls_verification()
     }
 
     pub fn dst_labels(&self) -> Option<&DstLabels> {
