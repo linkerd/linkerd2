@@ -130,9 +130,6 @@ class ServiceMesh extends React.Component {
   extractNsStatuses(nsData) {
     let podsByNs = _.get(nsData, ["ok", "statTables", 0, "podGroup", "rows"], []);
     let dataPlaneNamepaces = _.map(podsByNs, ns => {
-      if (ns.resource.name.indexOf("kube-") === 0) {
-        return;
-      }
       let meshedPods = parseInt(ns.meshedPodCount, 10);
       let totalPods = parseInt(ns.runningPodCount, 10);
       let failedPods = parseInt(ns.failedPodCount, 10);

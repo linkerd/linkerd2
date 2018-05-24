@@ -67,7 +67,7 @@ class ResourceList extends React.Component {
 
     Promise.all(this.api.getCurrentPromises())
       .then(([rollup]) => {
-        let processedMetrics = processSingleResourceRollup(rollup, this.props.controllerNamespace);
+        let processedMetrics = processSingleResourceRollup(rollup);
 
         this.setState({
           metrics: processedMetrics,

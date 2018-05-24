@@ -58,8 +58,7 @@ class Namespaces extends React.Component {
 
     Promise.all(this.api.getCurrentPromises())
       .then(([allRollup]) => {
-        let includeConduitStats = this.state.ns === this.props.controllerNamespace; // allow us to get stats on the conduit ns
-        let metrics = processMultiResourceRollup(allRollup, this.props.controllerNamespace, includeConduitStats);
+        let metrics = processMultiResourceRollup(allRollup);
 
         this.setState({
           metrics: metrics,
