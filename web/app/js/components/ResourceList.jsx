@@ -10,26 +10,53 @@ import './../../css/list.css';
 import 'whatwg-fetch';
 
 export class ResourceList extends React.Component {
+  banner = () => {
+    const {error} = this.props;
+
+    if (!error) {
+      return;
+    }
+
+    return <ErrorBanner message={error} />;
+  }
+
+  content = () => {
+    const {data, loading} = this.props;
+
+    if (loading) {
+      return <ConduitSpinner />;
+    }
+
+    let processedMetrics = [];
+    if (_.has(data, '[0].ok')) {
+      processedMetrics = processSingleResourceRollup(data[0]);
+    }
+
+    if (_.isEmpty(processedMetrics)) {
+      return this.renderEmptyMessage();
+    }
+
+    const friendlyTitle = _.startCase(this.props.resource);
+
+    return (
+      <MetricsTable
+        resource={friendlyTitle}
+        metrics={processedMetrics}
+        linkifyNsColumn={true} />
+    );
+  }
+
   render() {
-    const {api, data, error, loading, resource} = this.props;
-
-    if (error) return  <ErrorBanner message={error} />;
-    if (loading) return <ConduitSpinner />;
-
-    const processedMetrics = processSingleResourceRollup(data[0]);
+    const {api, resource} = this.props;
 
     const friendlyTitle = _.startCase(resource);
+
     return (
       <div className="page-content">
         <div>
+          {this.banner()}
           <PageHeader header={`${friendlyTitle}s`} api={api} />
-          { _.isEmpty(processedMetrics) ?
-            this.renderEmptyMessage(processedMetrics) :
-            <MetricsTable
-              resource={friendlyTitle}
-              metrics={processedMetrics}
-              linkifyNsColumn={true} />
-          }
+          {this.content()}
         </div>
       </div>
     );
