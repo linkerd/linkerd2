@@ -1,4 +1,5 @@
 import _ from 'lodash';
+import Percentage from './Percentage';
 
 const getPodCategorization = pod => {
   if (pod.added && pod.status === "Running") {
@@ -11,13 +12,18 @@ const getPodCategorization = pod => {
   return ""; // Terminating | Succeeded | Unknown
 };
 
+const getTotalRequests = row => {
+  let success = parseInt(_.get(row, ["stats", "successCount"], 0), 10);
+  let failure = parseInt(_.get(row, ["stats", "failureCount"], 0), 10);
+
+  return success + failure;
+};
+
 const getRequestRate = row => {
   if (_.isEmpty(row.stats)) {
     return null;
   }
 
-  let success = parseInt(row.stats.successCount, 10);
-  let failure = parseInt(row.stats.failureCount, 10);
   let seconds = 0;
 
   if (row.timeWindow === "10s") { seconds = 10; }
@@ -28,7 +34,7 @@ const getRequestRate = row => {
   if (seconds === 0) {
     return null;
   } else {
-    return (success + failure) / seconds;
+    return getTotalRequests(row) / seconds;
   }
 };
 
@@ -45,6 +51,15 @@ const getSuccessRate = row => {
   } else {
     return success / (success + failure);
   }
+};
+
+const getMeshedTrafficPercentage = row => {
+  // assume all meshed traffic is secured by default
+  if (_.isEmpty(row.stats)) {
+    return null;
+  }
+  let meshedRequests = parseInt(_.get(row, ["stats", "meshedRequestCount"], 0), 10);
+  return new Percentage(meshedRequests, getTotalRequests(row));
 };
 
 const getLatency = row => {
@@ -107,9 +122,11 @@ const processStatTable = (table, controllerNamespace, includeConduit) => {
     return {
       name: row.resource.name,
       namespace: row.resource.namespace,
+      totalRequests: getTotalRequests(row),
       requestRate: getRequestRate(row),
       successRate: getSuccessRate(row),
       latency: getLatency(row),
+      meshedRequestPercent: getMeshedTrafficPercentage(row),
       added: row.meshedPodCount === row.runningPodCount
     };
   })
