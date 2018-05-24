@@ -555,9 +555,7 @@ fn pb_to_addr_meta(
         .collect::<Vec<_>>();
     labels.sort_by(|(k0, _), (k1, _)| k0.cmp(k1));
 
-    let meta = Metadata {
-        metric_labels: DstLabels::new(labels.into_iter()),
-    };
+    let meta = Metadata::from_labels(DstLabels::new(labels.into_iter());
     Some((addr, meta))
 }
 

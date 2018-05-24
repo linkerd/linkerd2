@@ -90,7 +90,13 @@ pub struct Resolution<B> {
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 struct Metadata {
     /// A set of Prometheus metric labels describing the destination.
-    metric_labels: Option<DstLabels>,
+    dst_labels: Option<DstLabels>,
+
+    /// Whether or not this endpoint supports TLS.
+    ///
+    /// Currently, this is true IFF the `meshed="true"` label was
+    /// present in the labels added by the control plane.
+    supports_tls: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -204,7 +210,7 @@ where
                     // by replacing the old endpoint with the new one, so
                     // insertions of new endpoints and metadata changes for
                     // existing ones can be handled in the same way.
-                    let endpoint = Endpoint::new(addr, meta.metric_labels.clone());
+                    let endpoint = Endpoint::new(addr, meta.dst_labels.clone());
 
                     let service = self.bind.bind(&endpoint).map_err(|_| ())?;
 
@@ -228,10 +234,42 @@ impl Responder {
 
 // ===== impl Metadata =====
 
+impl Default for Metadata {
+    fn default() -> Self {
+        Self::no_metadata()
+    }
+}
+
 impl Metadata {
+    /// Construct a Metadata struct representing an endpoint with no metadata.
     fn no_metadata() -> Self {
         Metadata {
-            metric_labels: None,
+            dst_labels: None,
+            // If we have no metadata on an endpoint, assume it does not support TLS.
+            supports_tls: false,
         }
+    }
+
+    /// Construct a new Metadata with a set of labels from the Destination service.
+    pub fn from_labels(dst_labels: Option<DstLabels>) -> Self {
+        let supports_tls = dst_labels.as_ref()
+            .and_then(|labels| labels.as_map()
+                .get("meshed")
+                .map(|value| value == "true")
+            ).unwrap_or(false);
+        Metadata {
+            dst_labels,
+            supports_tls,
+        }
+    }
+
+    /// Returns `true` if the endpoint supports TLS.
+    pub fn supports_tls(&self) -> bool {
+        self.supports_tls
+    }
+
+    /// Returns the endpoint's labels from the destination service, if it has them.
+    pub fn dst_labels(&self) -> Option<&DstLabels> {
+        self.dst_labels.as_ref()
     }
 }
