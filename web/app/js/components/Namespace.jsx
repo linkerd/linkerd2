@@ -1,5 +1,4 @@
 import _ from 'lodash';
-import CallToAction from './CallToAction.jsx';
 import ConduitSpinner from "./ConduitSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
 import MetricsTable from './MetricsTable.jsx';
@@ -104,7 +103,7 @@ class Namespaces extends React.Component {
         { !this.state.loaded ? <ConduitSpinner />  :
           <div>
             <PageHeader header={`Namespace: ${this.state.ns}`} />
-            { noMetrics ? <CallToAction /> : null}
+            { noMetrics ? <div>No resources detected.</div> : null}
             {this.renderResourceSection("Deployment", this.state.metrics.deployments)}
             {this.renderResourceSection("Replication Controller", this.state.metrics.replicationcontrollers)}
             {this.renderResourceSection("Pod", this.state.metrics.pods)}

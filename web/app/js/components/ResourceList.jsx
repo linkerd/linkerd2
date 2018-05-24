@@ -1,5 +1,4 @@
 import _ from 'lodash';
-import CallToAction from './CallToAction.jsx';
 import ConduitSpinner from "./ConduitSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
 import MetricsTable from './MetricsTable.jsx';
@@ -90,28 +89,18 @@ class ResourceList extends React.Component {
     });
   }
 
-  renderEmptyMessage() {
-    let shortResource = this.props.resource === "replication_controller" ?
-      "RC" : this.props.resource;
-    return (<CallToAction
-      resource={shortResource}
-      numResources={_.size(this.state.metrics)} />);
-  }
-
   render() {
     let friendlyTitle = _.startCase(this.props.resource);
+
     return (
       <div className="page-content">
         { !this.state.error ? null : <ErrorBanner message={this.state.error} /> }
         { !this.state.loaded ? <ConduitSpinner />  :
           <div>
             <PageHeader header={friendlyTitle + "s"} />
-            { _.isEmpty(this.state.metrics) ?
-              this.renderEmptyMessage(friendlyTitle) :
-              <MetricsTable
-                resource={friendlyTitle}
-                metrics={this.state.metrics} />
-            }
+            <MetricsTable
+              resource={friendlyTitle}
+              metrics={this.state.metrics} />
           </div>
         }
       </div>);

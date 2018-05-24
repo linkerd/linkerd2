@@ -22,20 +22,14 @@ const withTooltip = (d, metricName) => {
 };
 
 const formatTitle = (title, tooltipText) => {
-  let words = title.split(" ");
-  let content = title;
-  if (words.length === 2) {
-    content = (<div className="table-long-title">{words[0]}<br />{words[1]}</div>);
-  }
-
   if (!tooltipText) {
-    return content;
+    return title;
   } else {
     return (
       <Tooltip
         title={tooltipText}
         overlayStyle={{ fontSize: "12px" }}>
-        {content}
+        {title}
       </Tooltip>
     );
   }
@@ -186,12 +180,17 @@ class MetricsTable extends BaseTable {
       this.api.ConduitLink
     ));
 
+    let locale = {
+      emptyText: `No ${this.props.resource}s detected.`
+    };
+
     return (<BaseTable
       dataSource={tableData.rows}
       columns={columns}
       pagination={false}
       className="conduit-table"
-      rowKey={r => r.name}
+      rowKey={r => `${r.namespace}/${r.name}`}
+      locale={locale}
       size="middle" />);
   }
 }
