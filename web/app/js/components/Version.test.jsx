@@ -1,15 +1,11 @@
-import Adapter from 'enzyme-adapter-react-16';
-import { ApiHelpers } from '../js/components/util/ApiHelpers.jsx';
+import { ApiHelpers } from './util/ApiHelpers.jsx';
 import { BrowserRouter } from 'react-router-dom';
-import Enzyme from 'enzyme';
-import { expect } from 'chai';
 import { mount } from 'enzyme';
 import React from 'react';
-import Sidebar from '../js/components/Sidebar.jsx';
+import Sidebar from './Sidebar.jsx';
 import sinon from 'sinon';
 import sinonStubPromise from 'sinon-stub-promise';
 
-Enzyme.configure({ adapter: new Adapter() });
 sinonStubPromise(sinon);
 
 describe('Version', () => {
@@ -54,9 +50,9 @@ describe('Version', () => {
     );
 
     return withPromise(() => {
-      expect(component.html()).not.to.include("Conduit is up to date");
+      expect(component).not.toIncludeText("Conduit is up to date");
       expandSidebar(component);
-      expect(component.html()).to.include("Conduit is up to date");
+      expect(component).toIncludeText("Conduit is up to date");
     });
   });
 
@@ -79,7 +75,7 @@ describe('Version', () => {
     expandSidebar(component);
 
     return withPromise(() => {
-      expect(component.html()).to.include("Conduit is up to date");
+      expect(component).toIncludeText("Conduit is up to date");
     });
   });
 
@@ -102,9 +98,8 @@ describe('Version', () => {
     expandSidebar(component);
 
     return withPromise(() => {
-      expect(component.html()).to.include("A new version (");
-      expect(component.html()).to.include(newVer);
-      expect(component.html()).to.include(") is available");
+      expect(component).toIncludeText(
+        `A new version (${newVer}) is available`);
     });
   });
 
@@ -127,8 +122,8 @@ describe('Version', () => {
     expandSidebar(component);
 
     return withPromise(() => {
-      expect(component.html()).to.include("Version check failed");
-      expect(component.html()).to.include(errMsg);
+      expect(component).toIncludeText("Version check failed");
+      expect(component).toIncludeText(errMsg);
     });
   });
 });
