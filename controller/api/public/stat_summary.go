@@ -439,7 +439,7 @@ func isInvalidServiceRequest(req *pb.StatSummaryRequest) bool {
 }
 
 func (s *grpcServer) queryProm(ctx context.Context, query string) (model.Vector, error) {
-	log.Debugf("Query request:\n %+v", query)
+	log.Debugf("Query request:\n\t%+v", query)
 
 	// single data point (aka summary) query
 	res, err := s.prometheusAPI.Query(ctx, query, time.Time{})
@@ -447,7 +447,7 @@ func (s *grpcServer) queryProm(ctx context.Context, query string) (model.Vector,
 		log.Errorf("Query(%+v) failed with: %+v", query, err)
 		return nil, err
 	}
-	log.Debugf("Query response:\n %+v", res)
+	log.Debugf("Query response:\n\t%+v", res)
 
 	if res.Type() != model.ValVector {
 		err = fmt.Errorf("Unexpected query result type (expected Vector): %s", res.Type())
