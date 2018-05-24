@@ -29,6 +29,7 @@ type rowStat struct {
 	p50Latency string
 	p95Latency string
 	p99Latency string
+	secured    string
 }
 
 //////////////////////
@@ -51,7 +52,7 @@ func TestCliStatForConduitNamespace(t *testing.T) {
 			t.Fatalf("Unexpected stat error: %v", err)
 		}
 
-		rowStats, err := parseRowStats(out)
+		rowStats, err := parseRows(out)
 		if err != nil {
 			return err
 		}
@@ -70,7 +71,7 @@ func TestCliStatForConduitNamespace(t *testing.T) {
 
 }
 
-func parseRowStats(out string) (map[string]*rowStat, error) {
+func parseRows(out string) (map[string]*rowStat, error) {
 	rows := strings.Split(out, "\n")
 	rows = rows[1 : len(rows)-1] // strip header and trailing newline
 
@@ -85,7 +86,7 @@ func parseRowStats(out string) (map[string]*rowStat, error) {
 	for _, row := range rows {
 		fields := strings.Fields(row)
 
-		expectedColumnCount := 7
+		expectedColumnCount := 8
 		if len(fields) != expectedColumnCount {
 			return nil, fmt.Errorf(
 				"Expected [%d] columns in stat output, got [%d]; full output:\n%s",
@@ -100,6 +101,7 @@ func parseRowStats(out string) (map[string]*rowStat, error) {
 			p50Latency: fields[4],
 			p95Latency: fields[5],
 			p99Latency: fields[6],
+			secured:    fields[7],
 		}
 	}
 
@@ -142,6 +144,13 @@ func validateRowStats(name string, rowStats map[string]*rowStat) error {
 	if !strings.HasSuffix(stat.p99Latency, "ms") {
 		return fmt.Errorf("Unexpected p99 latency for [%s], got [%s]",
 			name, stat.p99Latency)
+	}
+
+	// this should be 100.00% when control plane is secure by default
+	expectedSecuredRate := "0%"
+	if stat.secured != expectedSecuredRate {
+		return fmt.Errorf("Expected secured rate [%s] for [%s], got [%s]",
+			expectedSecuredRate, name, stat.secured)
 	}
 
 	return nil
