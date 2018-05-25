@@ -151,3 +151,7 @@ export const processMultiResourceRollup = rawMetrics => {
   });
   return metricsByResource;
 };
+
+export const countUnadded = processedMetrics => {
+  return _.countBy(processedMetrics, "added")["false"] || 0;
+};

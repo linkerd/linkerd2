@@ -125,6 +125,16 @@ h2, h3, h4, h5, h6 {
   color: var(--neutralgrey);
 }
 
+.add-resources-message {
+  margin-bottom: calc(var(--base-width) * 2);
+  background-color: var(--silver);
+  color: white;
+  padding: calc(var(--base-width) * 2);
+  font-size: 16;
+  border-radius: calc(var(--base-width) / 2);
+  font-weight: var(--font-weight-extra-bold);
+}
+
 .action {
   font-size: 14px;
   font-weight: var(--font-weight-bold);

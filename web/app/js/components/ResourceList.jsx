@@ -1,9 +1,10 @@
 import _ from 'lodash';
+import AddResourcesMessage from "./AddResourcesMessage.jsx";
 import ConduitSpinner from "./ConduitSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
 import MetricsTable from './MetricsTable.jsx';
 import PageHeader from './PageHeader.jsx';
-import { processSingleResourceRollup } from './util/MetricUtils.js';
+import { countUnadded, processSingleResourceRollup } from './util/MetricUtils.js';
 import React from 'react';
 import { withContext } from './util/AppContext.jsx';
 import './../../css/list.css';
@@ -91,6 +92,7 @@ class ResourceList extends React.Component {
 
   render() {
     let friendlyTitle = _.startCase(this.props.resource);
+    let unadded = countUnadded(this.state.metrics);
 
     return (
       <div className="page-content">
@@ -98,6 +100,7 @@ class ResourceList extends React.Component {
         { !this.state.loaded ? <ConduitSpinner />  :
           <div>
             <PageHeader header={friendlyTitle + "s"} />
+            <AddResourcesMessage unadded={unadded} resource={friendlyTitle} />
             <MetricsTable
               resource={friendlyTitle}
               metrics={this.state.metrics}
