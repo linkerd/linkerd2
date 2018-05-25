@@ -1,9 +1,10 @@
 import _ from 'lodash';
+import AddResourcesMessage from "./AddResourcesMessage.jsx";
 import ConduitSpinner from "./ConduitSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
 import MetricsTable from './MetricsTable.jsx';
 import PageHeader from './PageHeader.jsx';
-import { processMultiResourceRollup } from './util/MetricUtils.js';
+import { countUnadded, processMultiResourceRollup } from './util/MetricUtils.js';
 import React from 'react';
 import { withContext } from './util/AppContext.jsx';
 import './../../css/list.css';
@@ -96,6 +97,8 @@ class Namespaces extends React.Component {
 
   render() {
     let noMetrics = _.isEmpty(this.state.metrics.pods);
+    let unaddedResources = countUnadded(this.state.metrics.deployments) +
+      countUnadded(this.state.metrics.replicationcontrollers);
 
     return (
       <div className="page-content">
@@ -104,6 +107,8 @@ class Namespaces extends React.Component {
           <div>
             <PageHeader header={`Namespace: ${this.state.ns}`} />
             { noMetrics ? <div>No resources detected.</div> : null}
+            <AddResourcesMessage unadded={unaddedResources} resource="resource" />
+
             {this.renderResourceSection("Deployment", this.state.metrics.deployments)}
             {this.renderResourceSection("Replication Controller", this.state.metrics.replicationcontrollers)}
             {this.renderResourceSection("Pod", this.state.metrics.pods)}
