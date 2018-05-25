@@ -85,7 +85,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(response_total{classification=\"success\", deployment=\"$deployment\", direction=\"inbound\"}[20s])) by (deployment, pod) / sum(irate(response_total{deployment=\"$deployment\", direction=\"inbound\"}[20s])) by (deployment, pod)",
+          "expr": "sum(irate(response_total{classification=\"success\", deployment=\"$deployment\", direction=\"inbound\"}[30s])) by (deployment, pod) / sum(irate(response_total{deployment=\"$deployment\", direction=\"inbound\"}[30s])) by (deployment, pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "po/{{pod}}",
@@ -169,7 +169,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{deployment=\"$deployment\", direction=\"inbound\"}[20s])) by (deployment, pod)",
+          "expr": "sum(irate(request_total{deployment=\"$deployment\", direction=\"inbound\"}[30s])) by (deployment, pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "po/{{pod}}",
@@ -253,21 +253,21 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{deployment=\"$deployment\", direction=\"inbound\"}[20s])) by (le, deployment, pod))",
+          "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{deployment=\"$deployment\", direction=\"inbound\"}[30s])) by (le, deployment, pod))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "p50 po/{{pod}}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{deployment=\"$deployment\", direction=\"inbound\"}[20s])) by (le, deployment, pod))",
+          "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{deployment=\"$deployment\", direction=\"inbound\"}[30s])) by (le, deployment, pod))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "p95 po/{{pod}}",
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{deployment=\"$deployment\", direction=\"inbound\"}[20s])) by (le, deployment, pod))",
+          "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{deployment=\"$deployment\", direction=\"inbound\"}[30s])) by (le, deployment, pod))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "p99 po/{{pod}}",
@@ -1014,21 +1014,21 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, sum(rate(http_request_duration_seconds_bucket{job=\"conduit-controller\"}[20s])) by (le, component, code))",
+          "expr": "histogram_quantile(0.5, sum(rate(http_request_duration_seconds_bucket{job=\"conduit-controller\"}[30s])) by (le, component, code))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "P50 {{component}}/{{code}}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"conduit-controller\"}[20s])) by (le, component, code))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"conduit-controller\"}[30s])) by (le, component, code))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "P95 {{component}}/{{code}}",
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"conduit-controller\"}[20s])) by (le, component, code))",
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"conduit-controller\"}[30s])) by (le, component, code))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "P99 {{component}}/{{code}}",
@@ -1148,7 +1148,7 @@
           "refId": "A"
         },
         {
-          "expr": "irate(go_memstats_alloc_bytes_total{job=\"conduit-controller\", component=\"$component\"}[20s])",
+          "expr": "irate(go_memstats_alloc_bytes_total{job=\"conduit-controller\", component=\"$component\"}[30s])",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "alloc rate/{{component}}",
@@ -1344,14 +1344,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "irate(grpc_server_msg_sent_total{job=\"conduit-controller\", component=\"$component\"}[20s])",
+          "expr": "irate(grpc_server_msg_sent_total{job=\"conduit-controller\", component=\"$component\"}[30s])",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "sent/{{component}}/{{grpc_method}}",
           "refId": "A"
         },
         {
-          "expr": "irate(grpc_server_msg_received_total{job=\"conduit-controller\", component=\"$component\"}[20s])",
+          "expr": "irate(grpc_server_msg_received_total{job=\"conduit-controller\", component=\"$component\"}[30s])",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "received/{{component}}/{{grpc_method}}",
