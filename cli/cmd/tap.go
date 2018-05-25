@@ -242,7 +242,15 @@ func writeTapEventsToBuffer(tapClient pb.Api_TapByResourceClient, w *tabwriter.W
 
 func renderTapEvent(event *common.TapEvent) string {
 	dst := util.AddressToString(event.GetDestination())
-	dstPod := event.GetDestinationMeta().GetLabels()["pod"]
+	dstLabels := event.GetDestinationMeta().GetLabels()
+	dstPod := dstLabels["pod"]
+	isSecured := "no"
+
+	if dstLabels["meshed"] == "true" {
+		// assumption: meshed traffic is secured by default
+		isSecured = "yes"
+	}
+
 	if dstPod != "" {
 		dst = dstPod
 	}
@@ -256,43 +264,47 @@ func renderTapEvent(event *common.TapEvent) string {
 	httpEvent := http.Event
 	switch ev := httpEvent.(type) {
 	case *common.TapEvent_Http_RequestInit_:
-		return fmt.Sprintf("req id=%d:%d %s :method=%s :authority=%s :path=%s",
+		return fmt.Sprintf("req id=%d:%d %s :method=%s :authority=%s :path=%s secured=%s",
 			ev.RequestInit.Id.Base,
 			ev.RequestInit.Id.Stream,
 			flow,
 			ev.RequestInit.Method.GetRegistered().String(),
 			ev.RequestInit.Authority,
 			ev.RequestInit.Path,
+			isSecured,
 		)
 	case *common.TapEvent_Http_ResponseInit_:
-		return fmt.Sprintf("rsp id=%d:%d %s :status=%d latency=%dµs",
+		return fmt.Sprintf("rsp id=%d:%d %s :status=%d latency=%dµs secured=%s",
 			ev.ResponseInit.Id.Base,
 			ev.ResponseInit.Id.Stream,
 			flow,
 			ev.ResponseInit.GetHttpStatus(),
 			ev.ResponseInit.GetSinceRequestInit().Nanos/1000,
+			isSecured,
 		)
 	case *common.TapEvent_Http_ResponseEnd_:
 
 		if ev.ResponseEnd.Eos != nil {
 			switch eos := ev.ResponseEnd.Eos.End.(type) {
 			case *common.Eos_GrpcStatusCode:
-				return fmt.Sprintf("end id=%d:%d %s grpc-status=%s duration=%dµs response-length=%dB",
+				return fmt.Sprintf("end id=%d:%d %s grpc-status=%s duration=%dµs response-length=%dB secured=%s",
 					ev.ResponseEnd.Id.Base,
 					ev.ResponseEnd.Id.Stream,
 					flow,
 					codes.Code(eos.GrpcStatusCode),
 					ev.ResponseEnd.GetSinceResponseInit().Nanos/1000,
 					ev.ResponseEnd.GetResponseBytes(),
+					isSecured,
 				)
 			case *common.Eos_ResetErrorCode:
-				return fmt.Sprintf("end id=%d:%d %s reset-error=%+v duration=%dµs response-length=%dB",
+				return fmt.Sprintf("end id=%d:%d %s reset-error=%+v duration=%dµs response-length=%dB secured=%s",
 					ev.ResponseEnd.Id.Base,
 					ev.ResponseEnd.Id.Stream,
 					flow,
 					eos.ResetErrorCode,
 					ev.ResponseEnd.GetSinceResponseInit().Nanos/1000,
 					ev.ResponseEnd.GetResponseBytes(),
+					isSecured,
 				)
 			}
 		}
@@ -300,12 +312,13 @@ func renderTapEvent(event *common.TapEvent) string {
 		// this catchall handles 2 cases:
 		// 1) ev.ResponseEnd.Eos == nil
 		// 2) ev.ResponseEnd.Eos.End == nil
-		return fmt.Sprintf("end id=%d:%d %s duration=%dµs response-length=%dB",
+		return fmt.Sprintf("end id=%d:%d %s duration=%dµs response-length=%dB secured=%s",
 			ev.ResponseEnd.Id.Base,
 			ev.ResponseEnd.Id.Stream,
 			flow,
 			ev.ResponseEnd.GetSinceResponseInit().Nanos/1000,
 			ev.ResponseEnd.GetResponseBytes(),
+			isSecured,
 		)
 
 	default:
