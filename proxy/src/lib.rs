@@ -53,7 +53,10 @@ use std::thread;
 use std::time::Duration;
 
 use indexmap::IndexSet;
-use tokio::{executor, runtime::current_thread};
+use tokio::{
+    executor::{self, DefaultExecutor, Executor},
+    runtime::current_thread,
+};
 use tower_service::NewService;
 use tower_fn::*;
 use conduit_proxy_router::{Recognize, Router, Error as RouteError};
@@ -242,7 +245,8 @@ where
                 config.inbound_router_capacity,
                 config.inbound_router_max_idle_age,
             );
-            let fut = serve(
+            serve(
+                "inbound",
                 inbound_listener,
                 router,
                 config.private_connect_timeout,
@@ -251,8 +255,7 @@ where
                 sensors.clone(),
                 get_original_dst.clone(),
                 drain_rx.clone(),
-            );
-            ::logging::context_future("inbound", fut)
+            )
         };
 
         // Setup the private listener. This will listen on a locally accessible
@@ -266,7 +269,8 @@ where
                 config.outbound_router_capacity,
                 config.outbound_router_max_idle_age,
             );
-            let fut = serve(
+            serve(
+                "outbound",
                 outbound_listener,
                 router,
                 config.public_connect_timeout,
@@ -275,8 +279,7 @@ where
                 sensors,
                 get_original_dst,
                 drain_rx,
-            );
-            ::logging::context_future("outbound", fut)
+            )
         };
 
         trace!("running");
@@ -333,6 +336,7 @@ where
 }
 
 fn serve<R, B, E, F, G>(
+    name: &'static str,
     bound_port: BoundPort,
     router: Router<R>,
     tcp_connect_timeout: Duration,
@@ -410,10 +414,15 @@ where
     let accept = bound_port.listen_and_fold(
         (),
         move |(), (connection, remote_addr)| {
-            server.serve(connection, remote_addr);
-            Ok(())
+            let s = server.serve(connection, remote_addr);
+            let s = ::logging::context_future((name, remote_addr), s);
+            let r = DefaultExecutor::current()
+                .spawn(Box::new(s))
+                .map_err(task::Error::into_io);
+            future::result(r)
         },
     );
+    let accept = ::logging::context_future(name, accept);
 
     let accept_until = Cancelable {
         future: accept,
