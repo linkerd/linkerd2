@@ -116,7 +116,7 @@ impl BoundPort {
             TcpListener::from_std(self.inner, &Handle::current())
         }).and_then(|listener|
             listener.incoming()
-                .fold(initial, move |b, socket,| {
+                .and_then(move |socket| {
                     let remote_addr = socket.peer_addr()
                         .expect("couldn't get remote addr!");
                     // TODO: On Linux and most other platforms it would be better
@@ -126,8 +126,10 @@ impl BoundPort {
                     // libraries don't have the necessary API for that, so just
                     // do it here.
                     set_nodelay_or_warn(&socket);
-                    f(b, (Connection::plain(socket), remote_addr))
+                    let connection = Connection::plain(socket);
+                    future::ok((connection, remote_addr))
                 })
+                .fold(initial, f)
         )
         .map(|_| ())
     }
