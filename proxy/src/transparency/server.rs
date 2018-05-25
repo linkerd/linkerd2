@@ -7,7 +7,6 @@ use futures::{future::Either, Future};
 use http;
 use hyper;
 use indexmap::IndexSet;
-use tokio::executor::{Executor, DefaultExecutor};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tower_service::NewService;
 use tower_h2;
@@ -104,7 +103,9 @@ where
     /// what protocol the connection is speaking. From there, the connection
     /// will be mapped into respective services, and spawned into an
     /// executor.
-    pub fn serve(&self, connection: Connection, remote_addr: SocketAddr) {
+    pub fn serve(&self, connection: Connection, remote_addr: SocketAddr)
+        -> impl Future<Item=(), Error=()>
+    {
         let opened_at = Instant::now();
 
         // create Server context
@@ -138,10 +139,7 @@ where
                 self.drain_signal.clone(),
             );
 
-            DefaultExecutor::current()
-                .spawn(Box::new(fut))
-                .expect("spawn TCP server task");
-            return;
+            return Either::B(fut);
         }
 
         // try to sniff protocol
@@ -150,7 +148,7 @@ where
         let tcp = self.tcp.clone();
         let new_service = self.new_service.clone();
         let drain_signal = self.drain_signal.clone();
-        let fut = io.peek()
+        Either::A(io.peek()
             .map_err(|e| debug!("peek error: {}", e))
             .and_then(move |io| {
                 if let Some(proto) = Protocol::detect(io.peeked()) {
@@ -196,11 +194,7 @@ where
                         drain_signal,
                     ))
                 }
-            });
-
-        DefaultExecutor::current()
-            .spawn(Box::new(fut))
-            .expect("spawn transparent server task")
+            }))
     }
 }
 
