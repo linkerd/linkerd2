@@ -1,9 +1,9 @@
 mod connect;
-mod so_original_dst;
+mod addr_info;
 
 pub use self::connect::{
     Connect,
     DnsNameAndPort, Host, HostAndPort, HostAndPortError,
     LookupAddressAndConnect,
 };
-pub use self::so_original_dst::{GetOriginalDst, SoOriginalDst};
+pub use self::addr_info::{GetOriginalDst, SoOriginalDst};
