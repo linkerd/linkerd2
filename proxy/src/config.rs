@@ -71,6 +71,9 @@ pub struct Config {
 
     /// Optional minimum TTL for DNS lookups.
     pub dns_min_ttl: Option<Duration>,
+
+    /// Optional maximum TTL for DNS lookups.
+    pub dns_max_ttl: Option<Duration>,
 }
 
 /// Configuration settings for binding a listener.
@@ -171,6 +174,10 @@ const ENV_RESOLV_CONF: &str = "CONDUIT_RESOLV_CONF";
 ///
 /// Lookups with TTLs below this value will use this value instead.
 const ENV_DNS_MIN_TTL: &str = "CONDUIT_PROXY_DNS_MIN_TTL";
+/// Configures a maximum value for the TTL of DNS lookups.
+///
+/// Lookups with TTLs above this value will use this value instead.
+const ENV_DNS_MAX_TTL: &str = "CONDUIT_PROXY_DNS_MAX_TTL";
 
 // Default values for various configuration fields
 const DEFAULT_EVENT_BUFFER_CAPACITY: usize = 10_000; // FIXME
@@ -227,6 +234,7 @@ impl<'a> TryFrom<&'a Strings> for Config {
         let event_buffer_capacity = parse(strings, ENV_EVENT_BUFFER_CAPACITY, parse_number);
         let metrics_retain_idle = parse(strings, ENV_METRICS_RETAIN_IDLE, parse_duration);
         let dns_min_ttl = parse(strings, ENV_DNS_MIN_TTL, parse_duration);
+        let dns_max_ttl = parse(strings, ENV_DNS_MAX_TTL, parse_duration);
         let pod_namespace = strings.get(ENV_POD_NAMESPACE).and_then(|maybe_value| {
             // There cannot be a default pod namespace, and the pod namespace is required.
             maybe_value.ok_or_else(|| {
@@ -298,6 +306,8 @@ impl<'a> TryFrom<&'a Strings> for Config {
             pod_namespace: pod_namespace?,
 
             dns_min_ttl: dns_min_ttl?,
+
+            dns_max_ttl: dns_max_ttl?,
         })
     }
 }
