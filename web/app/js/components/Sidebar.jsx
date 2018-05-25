@@ -147,7 +147,7 @@ class Sidebar extends React.Component {
             {
               _.map(_.take(this.state.namespaces, this.state.maxNsItemsToShow), ns => {
                 return (
-                  <Menu.Item className="sidebar-submenu-item" key={ns}>
+                  <Menu.Item className="sidebar-submenu-item" key={`/namespaces/${ns}`}>
                     <ConduitLink to={`/namespaces/${ns}`}>
                       <Icon>{this.state.collapsed ? _.take(ns, 2) : <span>&nbsp;&nbsp;</span> }</Icon>
                       <span>{ns} {this.state.collapsed ? "namespace" : ""}</span>
