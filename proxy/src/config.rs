@@ -8,6 +8,7 @@ use std::time::Duration;
 
 use http;
 use indexmap::IndexSet;
+use trust_dns_resolver::config::ResolverOpts;
 
 use transport::{Host, HostAndPort, HostAndPortError};
 use convert::TryFrom;
@@ -208,6 +209,22 @@ const DEFAULT_PORTS_DISABLE_PROTOCOL_DETECTION: &[u16] = &[
 ];
 
 // ===== impl Config =====
+
+impl Config {
+    /// Modify a `trust-dns-resolver::config::ResolverOpts` to reflect
+    /// the configured minimum and maximum DNS TTL values.
+    pub fn configure_resolver_opts(&self, mut opts: ResolverOpts) -> ResolverOpts {
+        opts.min_positive_ttl = self.dns_min_ttl;
+        // TODO: When the Trust-DNS PR that adds support for maximum TTLs
+        //       is merged, use that as well.
+        // opts.positive_max_ttl = self.dns_max_ttl;
+        // TODO: Do we want to allow the positive and negative TTLs to be
+        //       configured separately?
+        opts.min_negative_ttl = self.dns_min_ttl;
+        // opts.negative_max_ttl = self.dns_max_ttl;
+        opts
+    }
+}
 
 impl<'a> TryFrom<&'a Strings> for Config {
     type Err = Error;

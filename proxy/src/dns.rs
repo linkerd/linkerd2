@@ -10,6 +10,8 @@ use trust_dns_resolver::error::{ResolveError, ResolveErrorKind};
 use trust_dns_resolver::ResolverFuture;
 use trust_dns_resolver::lookup_ip::LookupIp;
 
+use config::Config;
+
 #[derive(Clone, Debug)]
 pub struct Resolver {
     config: ResolverConfig,
@@ -28,7 +30,7 @@ pub enum Error {
 
 pub enum Response {
     Exists(LookupIp),
-    DoesNotExist,
+    DoesNotExist(Option<Instant>),
 }
 
 // `Box<Future>` implements `Future` so it doesn't need to be implemented manually.
@@ -59,9 +61,13 @@ impl AsRef<str> for Name {
 }
 
 impl Resolver {
+    /// Construct a new `Resolver` from the system configuration and Conduit's
+    /// environment variables.
+    ///
     /// TODO: Make this infallible, like it is in the `domain` crate.
-    pub fn from_system_config() -> Result<Self, ResolveError> {
+    pub fn from_system_config_and_env(env_config: &Config) -> Result<Self, ResolveError> {
         let (config, opts) = trust_dns_resolver::system_conf::read_system_conf()?;
+        let opts = env_config.configure_resolver_opts(opts);
         trace!("DNS config: {:?}", &config);
         trace!("DNS opts: {:?}", &opts);
         Ok(Self::new(config, opts))
@@ -69,10 +75,9 @@ impl Resolver {
 
     pub fn new(config: ResolverConfig,  mut opts: ResolverOpts) -> Self {
         // Disable Trust-DNS's caching.
-        // NOTE: testing the `lru-cache` crate that Trust-DNS depends on
-        //       to implement the LRU cache indicates that setting the
-        //       cache size to 0 is sufficient to prevent it from retaining
-        //       any entries.
+        // NOTE: Trust-DNS' integration tests indicate that the resolver
+        //       functions correctly with cache_size = 0, so this is
+        //       sufficient to disable its' caching.
         opts.cache_size = 0;
         Resolver {
             config,
@@ -105,8 +110,8 @@ impl Resolver {
                 match result {
                     Ok(ips) => Ok(Response::Exists(ips)),
                     Err(e) => {
-                        if let &ResolveErrorKind::NoRecordsFound(_) = e.kind() {
-                            Ok(Response::DoesNotExist)
+                        if let &ResolveErrorKind::NoRecordsFound { valid_until, .. } = e.kind() {
+                            Ok(Response::DoesNotExist(valid_until))
                         } else {
                             Err(e)
                         }

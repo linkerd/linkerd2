@@ -40,9 +40,11 @@ use timeout::Timeout;
 type DestinationServiceQuery<T> = Remote<PbUpdate, T>;
 type UpdateRx<T> = Receiver<PbUpdate, T>;
 
-/// Duration to wait before polling DNS again for a negative result.
+/// Duration to wait before polling DNS again after an error
+/// (or a NXDOMAIN response with no TTL).
+///
 // TODO: should this be a config option?
-const NEGATIVE_RESULT_TTL: Duration = Duration::from_secs(5);
+const DNS_DEFAULT_TTL: Duration = Duration::from_secs(5);
 
 /// Satisfies resolutions as requested via `request_rx`.
 ///
@@ -52,7 +54,6 @@ const NEGATIVE_RESULT_TTL: Duration = Duration::from_secs(5);
 /// propagated to all requesters.
 struct Background<T: HttpService<ResponseBody = RecvBody>> {
     dns_resolver: dns::Resolver,
-    dns_min_ttl: Option<Duration>,
     default_destination_namespace: String,
     destinations: HashMap<DnsNameAndPort, DestinationSet<T>>,
     /// A queue of authorities that need to be reconnected.
@@ -69,7 +70,6 @@ struct DestinationSet<T: HttpService<ResponseBody = RecvBody>> {
     addrs: Exists<Cache<SocketAddr, Metadata>>,
     query: Option<DestinationServiceQuery<T>>,
     dns_query: Option<IpAddrListFuture>,
-    dns_min_ttl: Option<Duration>,
     responders: Vec<Responder>,
 }
 
@@ -78,7 +78,6 @@ struct DestinationSet<T: HttpService<ResponseBody = RecvBody>> {
 pub(super) fn task(
     request_rx: mpsc::UnboundedReceiver<ResolveRequest>,
     dns_resolver: dns::Resolver,
-    dns_min_ttl: Option<Duration>,
     default_destination_namespace: String,
     host_and_port: HostAndPort,
 ) -> impl Future<Item = (), Error = ()>
@@ -109,7 +108,6 @@ pub(super) fn task(
     let mut disco = Background::new(
         request_rx,
         dns_resolver,
-        dns_min_ttl,
         default_destination_namespace,
     );
 
@@ -130,12 +128,10 @@ where
     fn new(
         request_rx: mpsc::UnboundedReceiver<ResolveRequest>,
         dns_resolver: dns::Resolver,
-        dns_min_ttl: Option<Duration>,
         default_destination_namespace: String,
     ) -> Self {
         Self {
             dns_resolver,
-            dns_min_ttl,
             default_destination_namespace,
             destinations: HashMap::new(),
             reconnects: VecDeque::new(),
@@ -213,7 +209,6 @@ where
                                 addrs: Exists::Unknown,
                                 query,
                                 dns_query: None,
-                                dns_min_ttl: self.dns_min_ttl,
                                 responders: vec![resolve.responder],
                             };
                             // If the authority is one for which the Destination service is never
@@ -354,17 +349,6 @@ where
         deadline: Instant,
         authority: &DnsNameAndPort,
     ) {
-        // clamp the deadline down to the minimum TTL.
-        let deadline = if let Some(min_ttl) = self.dns_min_ttl {
-            let min_deadline = Instant::now() + min_ttl;
-            if deadline < min_deadline {
-                min_deadline
-            } else {
-                deadline
-            }
-        } else {
-            deadline
-        };
         trace!(
             "resetting DNS query for {} at {:?}",
             authority.host,
@@ -438,9 +422,6 @@ where
         trace!("checking DNS for {:?}", authority);
         while let Some(mut query) = self.dns_query.take() {
             trace!("polling DNS for {:?}", authority);
-            // If the query returned a positive result, it will have a deadline
-            // after which we should poll again. Otherwise, we'll wait for
-            // NEGATIVE_RESULT_TTL before polling DNS again.
             let deadline = match query.poll() {
                 Ok(Async::NotReady) => {
                     trace!("DNS query not ready {:?}", authority);
@@ -464,26 +445,17 @@ where
                     );
 
                     // Poll again after the deadline on the DNS response.
-                    // NOTE: it would be nice if we could choose the time source used for the
-                    //       current time to start the deadline (for testing), however
-                    //       `TRust-DNS`' API allows us to only get the deadline (an `Instant`)
-                    //       rather than the TTL (a `Duration`). If tokio-timer allowed access
-                    //       to the current `Now` instance, as discussed in the TODO comment
-                    //       below, `Trust-DNS` could use that rather than `Instant::now()`...
                     ips.valid_until()
                 },
-                Ok(Async::Ready(dns::Response::DoesNotExist)) => {
+                Ok(Async::Ready(dns::Response::DoesNotExist(until))) => {
                     trace!(
                         "negative result (NXDOMAIN) of DNS query for {:?}",
                         authority
                     );
                     self.no_endpoints(authority, false);
-
-                    // A negative result has no TTL; poll again after the default wait time.
-                    // TODO: use the `Now` configured on our current tokio `Timer` instance
-                    //       so that the time source can be mocked. This will require
-                    //       support for getting the current `Now` instance in tokio.
-                    Instant::now() + NEGATIVE_RESULT_TTL
+                    // Poll again after the deadline on the DNS response, if
+                    // there is one.
+                    until.unwrap_or_else(|| Instant::now() + DNS_DEFAULT_TTL)
                 },
                 Err(e) => {
                     // Do nothing so that the most recent non-error response is used until a
@@ -491,7 +463,7 @@ where
                     trace!("DNS resolution failed for {}: {}", &authority.host, e);
 
                     // Poll again after the default wait time.
-                    Instant::now() + NEGATIVE_RESULT_TTL
+                    Instant::now() + DNS_DEFAULT_TTL
                 },
             };
             self.reset_dns_query(dns_resolver, deadline, &authority)

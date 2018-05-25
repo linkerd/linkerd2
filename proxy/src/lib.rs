@@ -211,7 +211,7 @@ where
             &taps,
         );
 
-        let dns_resolver = dns::Resolver::from_system_config()
+        let dns_resolver = dns::Resolver::from_system_config_and_env(&config)
             .unwrap_or_else(|e| {
                 // TODO: Make DNS configuration infallible.
                 panic!("invalid DNS configuration: {:?}", e);
@@ -219,7 +219,6 @@ where
 
         let (control, control_bg) = control::destination::new(
             dns_resolver.clone(),
-            config.dns_min_ttl,
             config.pod_namespace.clone(),
             control_host_and_port
         );
