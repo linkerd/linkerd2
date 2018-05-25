@@ -25,6 +25,14 @@
     }
   }
 
+  & .sidebar-submenu-item {
+    font-size: 14px;
+
+    & a {
+      color: var(--silver);
+    }
+  }
+
   & img {
     height: 36px;
   }
