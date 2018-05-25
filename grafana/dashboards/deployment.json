@@ -96,7 +96,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[20s])) / sum(irate(response_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[20s]))",
+          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[30s])) / sum(irate(response_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[30s]))",
           "format": "time_series",
           "instant": false,
           "intervalFactor": 1,
@@ -180,7 +180,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[20s]))",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[30s]))",
           "format": "time_series",
           "instant": false,
           "intervalFactor": 1,
@@ -419,7 +419,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[20s])) by (deployment) / sum(irate(response_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[20s])) by (deployment)",
+          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[30s])) by (deployment) / sum(irate(response_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[30s])) by (deployment)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "deploy/{{deployment}}",
@@ -504,11 +504,18 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[20s])) by (deployment)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\", meshed=\"true\"}[30s])) by (deployment)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "deploy/{{deployment}}",
+          "legendFormat": "🔒deploy/{{deployment}}",
           "refId": "A"
+        },
+        {
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\", meshed=\"false\"}[30s])) by (deployment)",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "⚠️deploy/{{deployment}}",
+          "refId": "B"
         }
       ],
       "thresholds": [],
@@ -589,14 +596,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[20s])) by (le, deployment))",
+          "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[30s])) by (le, deployment))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "p50 deploy/{{deployment}}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[20s])) by (le, deployment))",
+          "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[30s])) by (le, deployment))",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
@@ -604,7 +611,7 @@
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[20s])) by (le, deployment))",
+          "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\"}[30s])) by (le, deployment))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "p99 deploy/{{deployment}}",
@@ -929,7 +936,7 @@
             "h": 2,
             "w": 24,
             "x": 0,
-            "y": 43
+            "y": 20.8
           },
           "id": 39,
           "links": [],
@@ -949,7 +956,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 45
+            "y": 22.8
           },
           "id": 36,
           "legend": {
@@ -975,7 +982,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(response_total{classification=\"success\", deployment!=\"\", deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (deployment, pod) / sum(irate(response_total{deployment!=\"\", deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (deployment, pod)",
+              "expr": "sum(irate(response_total{classification=\"success\", deployment!=\"\", deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[30s])) by (deployment, pod) / sum(irate(response_total{deployment!=\"\", deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[30s])) by (deployment, pod)",
               "format": "time_series",
               "instant": false,
               "intervalFactor": 1,
@@ -1018,7 +1025,11 @@
               "min": null,
               "show": true
             }
-          ]
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
         },
         {
           "aliasColors": {},
@@ -1031,7 +1042,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 45
+            "y": 22.8
           },
           "id": 22,
           "legend": {
@@ -1057,11 +1068,18 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(request_total{deployment!=\"\", deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (deployment, pod)",
+              "expr": "sum(irate(request_total{deployment!=\"\", deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\", meshed=\"true\"}[30s])) by (deployment, pod)",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "po/{{pod}}",
+              "legendFormat": "🔒po/{{pod}}",
               "refId": "A"
+            },
+            {
+              "expr": "sum(irate(request_total{deployment!=\"\", deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\", meshed=\"false\"}[30s])) by (deployment, pod)",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "⚠️po/{{pod}}",
+              "refId": "B"
             }
           ],
           "thresholds": [],
@@ -1099,7 +1117,11 @@
               "min": null,
               "show": true
             }
-          ]
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
         },
         {
           "aliasColors": {},
@@ -1112,7 +1134,7 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 45
+            "y": 22.8
           },
           "id": 29,
           "legend": {
@@ -1138,21 +1160,21 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{deployment!=\"\", deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (le, deployment))",
+              "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{deployment!=\"\", deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[30s])) by (le, deployment))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "P50 deploy/{{deployment}}",
               "refId": "A"
             },
             {
-              "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{deployment!=\"\", deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (le, deployment))",
+              "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{deployment!=\"\", deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[30s])) by (le, deployment))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "P95 deploy/{{deployment}}",
               "refId": "B"
             },
             {
-              "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{deployment!=\"\", deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (le, deployment))",
+              "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{deployment!=\"\", deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\"}[30s])) by (le, deployment))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "P99 deploy/{{deployment}}",
@@ -1193,7 +1215,11 @@
               "min": null,
               "show": true
             }
-          ]
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
         }
       ],
       "repeat": "inbound",
@@ -1266,7 +1292,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (dst_deployment) / sum(irate(response_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (dst_deployment)",
+          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\"}[30s])) by (dst_deployment) / sum(irate(response_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\"}[30s])) by (dst_deployment)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "deploy/{{dst_deployment}}",
@@ -1351,11 +1377,18 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (dst_deployment)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\", meshed=\"true\"}[30s])) by (dst_deployment)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "deploy/{{dst_deployment}}",
+          "legendFormat": "🔒deploy/{{dst_deployment}}",
           "refId": "A"
+        },
+        {
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\", meshed=\"false\"}[30s])) by (dst_deployment)",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "⚠️deploy/{{dst_deployment}}",
+          "refId": "B"
         }
       ],
       "thresholds": [],
@@ -1435,7 +1468,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\"}[20s])) by (le, dst_deployment))",
+          "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\"}[30s])) by (le, dst_deployment))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "P95 deploy/{{dst_deployment}}",
@@ -1814,7 +1847,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\"}[20s])) by (dst_deployment) / sum(irate(response_total{namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\"}[20s])) by (dst_deployment)",
+              "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\"}[30s])) by (dst_deployment) / sum(irate(response_total{namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\"}[30s])) by (dst_deployment)",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "deploy/{{dst_deployment}}",
@@ -1899,11 +1932,18 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\"}[20s])) by (dst_deployment)",
+              "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\", meshed=\"true\"}[30s])) by (dst_deployment)",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "deploy/{{dst_deployment}}",
+              "legendFormat": "🔒deploy/{{dst_deployment}}",
               "refId": "A"
+            },
+            {
+              "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\", meshed=\"false\"}[30s])) by (dst_deployment)",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "⚠️deploy/{{dst_deployment}}",
+              "refId": "B"
             }
           ],
           "thresholds": [],
@@ -1983,21 +2023,21 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\"}[20s])) by (le, dst_deployment))",
+              "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\"}[30s])) by (le, dst_deployment))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "P50 deploy/{{dst_deployment}}",
               "refId": "A"
             },
             {
-              "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\"}[20s])) by (le, dst_deployment))",
+              "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\"}[30s])) by (le, dst_deployment))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "P95 deploy/{{dst_deployment}}",
               "refId": "B"
             },
             {
-              "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\"}[20s])) by (le, dst_deployment))",
+              "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\"}[30s])) by (le, dst_deployment))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "P99 deploy/{{dst_deployment}}",
