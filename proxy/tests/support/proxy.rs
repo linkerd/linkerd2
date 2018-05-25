@@ -105,7 +105,7 @@ struct DstInner {
 }
 
 impl conduit_proxy::GetOriginalDst for MockOriginalDst {
-    fn get_original_dst(&self, sock: &TcpStream) -> Option<SocketAddr> {
+    fn get_original_dst(&self, sock: &AddrInfo) -> Option<SocketAddr> {
         sock.local_addr()
             .ok()
             .and_then(|local| {
