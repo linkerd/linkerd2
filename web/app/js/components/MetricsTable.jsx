@@ -22,26 +22,20 @@ const withTooltip = (d, metricName) => {
 };
 
 const formatTitle = (title, tooltipText) => {
-  let words = title.split(" ");
-  let content = title;
-  if (words.length === 2) {
-    content = (<div className="table-long-title">{words[0]}<br />{words[1]}</div>);
-  }
-
   if (!tooltipText) {
-    return content;
+    return title;
   } else {
     return (
       <Tooltip
         title={tooltipText}
         overlayStyle={{ fontSize: "12px" }}>
-        {content}
+        {title}
       </Tooltip>
     );
   }
 
 };
-const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick, ConduitLink) => {
+const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick, linkifyNsColumn, ConduitLink) => {
   let nsColumn = [
     {
       title: formatTitle("Namespace"),
@@ -50,7 +44,14 @@ const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick,
       filters: namespaces,
       onFilterDropdownVisibleChange: onFilterClick,
       onFilter: (value, row) => row.namespace.indexOf(value) === 0,
-      sorter: sortable ? (a, b) => (a.namespace || "").localeCompare(b.namespace) : false
+      sorter: sortable ? (a, b) => (a.namespace || "").localeCompare(b.namespace) : false,
+      render: ns => {
+        if (linkifyNsColumn) {
+          return <ConduitLink to={"/namespaces/" + ns}>{ns}</ConduitLink>;
+        } else {
+          return ns;
+        }
+      }
     }
   ];
   let percentMeshedColumn = [
@@ -183,15 +184,21 @@ class MetricsTable extends BaseTable {
       this.props.resource,
       namespaceFilterText,
       this.onFilterDropdownVisibleChange,
+      this.props.linkifyNsColumn,
       this.api.ConduitLink
     ));
+
+    let locale = {
+      emptyText: `No ${this.props.resource}s detected.`
+    };
 
     return (<BaseTable
       dataSource={tableData.rows}
       columns={columns}
       pagination={false}
       className="conduit-table"
-      rowKey={r => r.name}
+      rowKey={r => `${r.namespace}/${r.name}`}
+      locale={locale}
       size="middle" />);
   }
 }

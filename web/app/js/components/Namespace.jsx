@@ -1,5 +1,4 @@
 import _ from 'lodash';
-import CallToAction from './CallToAction.jsx';
 import ConduitSpinner from "./ConduitSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
 import MetricsTable from './MetricsTable.jsx';
@@ -58,8 +57,7 @@ class Namespaces extends React.Component {
 
     Promise.all(this.api.getCurrentPromises())
       .then(([allRollup]) => {
-        let includeConduitStats = this.state.ns === this.props.controllerNamespace; // allow us to get stats on the conduit ns
-        let metrics = processMultiResourceRollup(allRollup, this.props.controllerNamespace, includeConduitStats);
+        let metrics = processMultiResourceRollup(allRollup);
 
         this.setState({
           metrics: metrics,
@@ -105,7 +103,7 @@ class Namespaces extends React.Component {
         { !this.state.loaded ? <ConduitSpinner />  :
           <div>
             <PageHeader header={`Namespace: ${this.state.ns}`} />
-            { noMetrics ? <CallToAction /> : null}
+            { noMetrics ? <div>No resources detected.</div> : null}
             {this.renderResourceSection("Deployment", this.state.metrics.deployments)}
             {this.renderResourceSection("Replication Controller", this.state.metrics.replicationcontrollers)}
             {this.renderResourceSection("Pod", this.state.metrics.pods)}

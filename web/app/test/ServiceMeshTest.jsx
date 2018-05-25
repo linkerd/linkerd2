@@ -160,14 +160,22 @@ describe('ServiceMesh', () => {
       component = mount(routerWrap(ServiceMesh));
 
       return withPromise(() => {
-        expect(component.html()).to.include("2 namespaces have no meshed resources.");
+        expect(component.html()).to.include("4 namespaces have no meshed resources.");
       });
     });
 
     it("displays a message if 1 resource has not added to servicemesh", () => {
+      let nsOneResourceNotAdded = _.cloneDeep(nsFixtures);
+      _.each(nsOneResourceNotAdded.ok.statTables[0].podGroup.rows, row => {
+        // set all namespaces to have fully meshed pod counts, except one
+        if (row.resource.name !== "default") {
+          row.meshedPodCount = "10";
+          row.runningPodCount = "10";
+        }
+      });
       fetchStub.resolves({
         ok: true,
-        json: () => Promise.resolve(nsFixtures)
+        json: () => Promise.resolve(nsOneResourceNotAdded)
       });
       component = mount(routerWrap(ServiceMesh));
 
@@ -176,13 +184,11 @@ describe('ServiceMesh', () => {
       });
     });
 
-    it("displays a message if all resource have been added to servicemesh", () => {
+    it("displays a message if all resources have been added to servicemesh", () => {
       let nsAllResourcesAdded = _.cloneDeep(nsFixtures);
       _.each(nsAllResourcesAdded.ok.statTables[0].podGroup.rows, row => {
-        if (row.resource.name === "default") {
-          row.meshedPodCount = "10";
-          row.runningPodCount = "10";
-        }
+        row.meshedPodCount = "10";
+        row.runningPodCount = "10";
       });
       fetchStub.resolves({
         ok: true,
