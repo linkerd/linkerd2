@@ -70,8 +70,7 @@ class Sidebar extends React.Component {
     this.serverPromise = Promise.all(this.api.getCurrentPromises())
       .then(([versionRsp, nsRsp]) => {
         let nsStats = _.get(nsRsp, ["ok", "statTables", 0, "podGroup", "rows"], []);
-        let namespaces = _(nsStats).map(r => r.resource.name)
-          .sortBy().take(this.state.maxNsItemsToShow).value();
+        let namespaces = _(nsStats).map(r => r.resource.name).sortBy().value();
 
         this.setState({
           latestVersion: versionRsp.version,
@@ -103,6 +102,7 @@ class Sidebar extends React.Component {
   render() {
     let normalizedPath = this.props.location.pathname.replace(this.props.pathPrefix, "");
     let ConduitLink = this.api.ConduitLink;
+    let numHiddenNamespaces = _.size(this.state.namespaces) - this.state.maxNsItemsToShow;
 
     return (
       <Layout.Sider
@@ -145,16 +145,27 @@ class Sidebar extends React.Component {
             </Menu.Item>
 
             {
-              _.map(this.state.namespaces, ns => {
+              _.map(_.take(this.state.namespaces, this.state.maxNsItemsToShow), ns => {
                 return (
                   <Menu.Item className="sidebar-submenu-item" key={ns}>
                     <ConduitLink to={`/namespaces/${ns}`}>
-                      <Icon>{_.take(ns, 2)}</Icon>
+                      <Icon>{this.state.collapsed ? _.take(ns, 2) : <span>&nbsp;&nbsp;</span> }</Icon>
                       <span>{ns} {this.state.collapsed ? "namespace" : ""}</span>
                     </ConduitLink>
                   </Menu.Item>
                 );
               })
+            }
+
+            { // if we're hiding some namespaces, show a count
+              numHiddenNamespaces > 0 ?
+                <Menu.Item className="sidebar-submenu-item" key="extra-items">
+                  <ConduitLink to="/namespaces">
+                    <Icon>{this.state.collapsed ? <span>...</span> : <span>&nbsp;&nbsp;</span> }</Icon>
+                    <span>{numHiddenNamespaces} more namespace{numHiddenNamespaces === 1 ? "" : "s"}</span>
+                  </ConduitLink>
+                </Menu.Item>
+                : null
             }
 
             <Menu.Item className="sidebar-menu-item" key="/docs">
