@@ -1,5 +1,5 @@
 import _ from 'lodash';
-import { ApiHelpers } from './components/util/ApiHelpers.jsx';
+import ApiHelpers from './components/util/ApiHelpers.jsx';
 import AppContext from './components/util/AppContext.jsx';
 import { Layout } from 'antd';
 import Namespace from './components/Namespace.jsx';

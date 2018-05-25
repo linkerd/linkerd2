@@ -2,23 +2,22 @@ import _ from 'lodash';
 import Adapter from 'enzyme-adapter-react-16';
 import ConduitSpinner from '../js/components/ConduitSpinner.jsx';
 import deployRollup from './fixtures/deployRollup.json';
-import Enzyme from 'enzyme';
 import ErrorBanner from '../js/components/ErrorBanner.jsx';
 import { expect } from 'chai';
 import MetricsTable from '../js/components/MetricsTable.jsx';
 import PageHeader from '../js/components/PageHeader.jsx';
 import React from 'react';
-import { ResourceList } from '../js/components/ResourceList.jsx';
-import { shallow } from 'enzyme';
+import { ResourceListBase } from '../js/components/ResourceList.jsx';
+import Enzyme, { shallow } from 'enzyme';
 
 Enzyme.configure({ adapter: new Adapter() });
 
-describe('Tests for <ResourceList>', () => {
+describe('Tests for <ResourceListBase>', () => {
   it('displays an error if the api call fails', () => {
     const msg = 'foobar';
 
     const component = shallow(
-      <ResourceList
+      <ResourceListBase
         data={[]}
         error={msg}
         loading={false} />
@@ -35,7 +34,7 @@ describe('Tests for <ResourceList>', () => {
 
   it('shows a loading spinner', () => {
     const component = shallow(
-      <ResourceList
+      <ResourceListBase
         data={[]}
         loading={true} />
     );
@@ -48,7 +47,7 @@ describe('Tests for <ResourceList>', () => {
 
   it('handles empty content', () => {
     const component = shallow(
-      <ResourceList
+      <ResourceListBase
         data={[]}
         loading={false} />
     );
@@ -62,7 +61,7 @@ describe('Tests for <ResourceList>', () => {
   it('renders a metrics table', () => {
     const resource = 'deployment';
     const component = shallow(
-      <ResourceList
+      <ResourceListBase
         data={[deployRollup]}
         loading={false}
         resource={resource} />

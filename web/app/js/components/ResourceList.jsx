@@ -9,7 +9,7 @@ import withREST from './util/withREST.jsx';
 import './../../css/list.css';
 import 'whatwg-fetch';
 
-export class ResourceList extends React.Component {
+export class ResourceListBase extends React.Component {
   banner = () => {
     const {error} = this.props;
 
@@ -60,7 +60,7 @@ export class ResourceList extends React.Component {
 }
 
 export default withREST(
-  ResourceList,
+  ResourceListBase,
   ({api, resource}) => [api.fetchMetrics(api.urlsForResource(resource))],
   ['resource'],
 );

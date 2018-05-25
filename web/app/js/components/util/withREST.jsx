@@ -36,7 +36,7 @@ const withREST = (WrappedComponent, componentPromises, resetProps = []) => {
         prop => _.get(newProps, prop) !== _.get(this.props, prop),
       );
 
-      if (_.isEmpty(changed)) return;
+      if (_.isEmpty(changed)) { return; }
 
       // React won't unmount this component when switching resource pages so we need to clear state
       this.stopServerPolling();
@@ -81,7 +81,7 @@ const withREST = (WrappedComponent, componentPromises, resetProps = []) => {
     }
 
     handleApiError = e => {
-      if (e.isCanceled) return;
+      if (e.isCanceled) { return; }
 
       this.setState({
         pendingRequests: false,

@@ -37,7 +37,7 @@ const makeCancelable = (promise, onSuccess) => {
   };
 };
 
-export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
+const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   let metricsWindow = defaultMetricsWindow;
   const podsPath = `/api/pods`;
 
@@ -75,7 +75,7 @@ export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   const getMetricsWindowDisplayText = () => validMetricsWindows[metricsWindow];
 
   const setMetricsWindow = window => {
-    if (!validMetricsWindows[window]) return;
+    if (!validMetricsWindows[window]) { return; }
     metricsWindow = window;
   };
 
@@ -127,7 +127,9 @@ export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     to: PropTypes.string,
   };
   ConduitLink.defaultProps = {
-    targetBlank: false
+    deployment: "",
+    targetBlank: false,
+    to: "",
   };
 
   return {
@@ -147,3 +149,5 @@ export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     makeCancelable
   };
 };
+
+export default ApiHelpers;

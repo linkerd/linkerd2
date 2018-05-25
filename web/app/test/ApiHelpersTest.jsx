@@ -2,7 +2,7 @@
 import _ from 'lodash';
 import 'raf/polyfill'; // the polyfill import must be first
 import Adapter from 'enzyme-adapter-react-16';
-import { ApiHelpers } from '../js/components/util/ApiHelpers.jsx';
+import ApiHelpers from '../js/components/util/ApiHelpers.jsx';
 import Enzyme from 'enzyme';
 import { expect } from 'chai';
 import { mount } from 'enzyme';

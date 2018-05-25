@@ -8,7 +8,7 @@ export default class GrafanaLink extends React.Component {
     return (
       <this.props.conduitLink
         to={`/dashboard/db/conduit-${dashboardName}?var-namespace=${this.props.namespace}&var-${resourceVariableName}=${this.props.name}`}
-        deployment={"grafana"}
+        deployment="grafana"
         targetBlank={true}>
         {this.props.displayName || this.props.name}&nbsp;&nbsp;<i className="fa fa-external-link" />
       </this.props.conduitLink>

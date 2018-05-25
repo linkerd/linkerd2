@@ -33,7 +33,7 @@ export default class ErrorMessage extends React.Component {
             {this.props.message || defaultErrorMsg}
           </Col>
           <Col span={4}>
-            <div className="dismiss" onClick={this.hideMessage}>Dismiss X</div>
+            <div className="dismiss" onClick={this.hideMessage} role="presentation">Dismiss X</div>
           </Col>
         </div>
       </Row>

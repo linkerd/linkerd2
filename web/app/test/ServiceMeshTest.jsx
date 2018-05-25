@@ -1,14 +1,13 @@
 import _ from 'lodash';
 import Adapter from 'enzyme-adapter-react-16';
 import conduitPodFixtures from './fixtures/conduitPods.json';
-import Enzyme from 'enzyme';
 import { expect } from 'chai';
-import { mount } from 'enzyme';
 import nsFixtures from './fixtures/namespaces.json';
 import { routerWrap } from './testHelpers.jsx';
 import ServiceMesh from '../js/components/ServiceMesh.jsx';
 import sinon from 'sinon';
 import sinonStubPromise from 'sinon-stub-promise';
+import Enzyme, { mount } from 'enzyme';
 
 Enzyme.configure({ adapter: new Adapter() });
 sinonStubPromise(sinon);

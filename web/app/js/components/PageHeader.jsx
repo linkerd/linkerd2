@@ -24,18 +24,20 @@ class PageHeader extends React.Component {
     if (this.props.hideButtons) {
       return null;
     } else {
-      return (<Col span={6}>
-        <Radio.Group
-          className="time-window-btns"
-          value={this.state.selectedWindow}
-          onChange={this.onTimeWindowClick} >
-          {
-            _.map(this.props.api.getValidMetricsWindows(), (w, i) => {
-              return <Radio.Button key={`metrics-window-btn-${i}`} value={w}>{w}</Radio.Button>;
-            })
-          }
-        </Radio.Group>
-      </Col>);
+      return (
+        <Col span={6}>
+          <Radio.Group
+            className="time-window-btns"
+            value={this.state.selectedWindow}
+            onChange={this.onTimeWindowClick} >
+            {
+              _.map(this.props.api.getValidMetricsWindows(), (w, i) => {
+                return <Radio.Button key={`metrics-window-btn-${i}`} value={w}>{w}</Radio.Button>;
+              })
+            }
+          </Radio.Group>
+        </Col>
+      );
     }
   }
 

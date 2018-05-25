@@ -1,13 +1,12 @@
 import Adapter from 'enzyme-adapter-react-16';
-import { ApiHelpers } from '../js/components/util/ApiHelpers.jsx';
+import ApiHelpers from '../js/components/util/ApiHelpers.jsx';
 import { BrowserRouter } from 'react-router-dom';
-import Enzyme from 'enzyme';
 import { expect } from 'chai';
-import { mount } from 'enzyme';
 import React from 'react';
 import Sidebar from '../js/components/Sidebar.jsx';
 import sinon from 'sinon';
 import sinonStubPromise from 'sinon-stub-promise';
+import Enzyme, { mount } from 'enzyme';
 
 Enzyme.configure({ adapter: new Adapter() });
 sinonStubPromise(sinon);
