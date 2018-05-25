@@ -78,6 +78,22 @@ impl<'a> From<&'a HostAndPort> for http::uri::Authority {
     }
 }
 
+impl ::logging::LogCtx for HostAndPort {
+    fn fmt(&self, f: &mut ::logging::Formatter) -> ::logging::Result {
+        write!(f, "{{")?;
+        match self.host {
+            Host::DnsName(ref dns) => {
+                write!(f, "dns={}", dns)?;
+            }
+            Host::Ip(ref ip) => {
+                write!(f, "ip={}", ip)?;
+            }
+        }
+        write!(f, ";port={}", self.port)?;
+        write!(f, "}}")
+    }
+}
+
 // ===== impl Connect =====
 
 impl Connect {

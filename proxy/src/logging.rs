@@ -12,7 +12,15 @@ use log::{Level};
 const ENV_LOG: &str = "CONDUIT_PROXY_LOG";
 
 thread_local! {
-    static CONTEXT: RefCell<Vec<*const fmt::Debug>> = RefCell::new(Vec::new());
+    static CONTEXT: RefCell<Vec<*const LogCtx>> = RefCell::new(Vec::new());
+}
+
+pub type Formatter<'a> = fmt::Formatter<'a>;
+
+pub type Result = fmt::Result;
+
+pub trait LogCtx {
+    fn fmt(&self, fmt: &mut Formatter) -> Result;
 }
 
 pub fn init() {
@@ -28,7 +36,7 @@ pub fn init() {
                 };
                 writeln!(
                    fmt,
-                    "{} {} {:?}{}",
+                    "{} {} {}{}",
                     level,
                     record.target(),
                     Context(&ctxt.borrow()),
@@ -40,31 +48,30 @@ pub fn init() {
         .init();
 }
 
-/// Execute a closure with a `Debug` item attached to allow log messages.
+/// Execute a closure with a `Display` item attached to allow log messages.
 pub fn context<T, F, U>(context: &T, mut closure: F) -> U
 where
-    T: ::std::fmt::Debug + 'static,
+    T: LogCtx + 'static,
     F: FnMut() -> U,
 {
     let _guard = ContextGuard::new(context);
     closure()
 }
 
-/// Wrap a `Future` with a `Debug` value that will be inserted into all logs
+/// Wrap a `Future` with a `Display` value that will be inserted into all logs
 /// created by this Future.
-pub fn context_future<T, F>(context: T, future: F) -> ContextualFuture<T, F> {
+pub fn context_future<T: LogCtx, F>(context: T, future: F) -> ContextualFuture<T, F> {
     ContextualFuture {
         context,
         future,
     }
 }
 
-/// Wrap an `Executor` to spawn futures that have a reference to the `Debug`
+/// Wrap an `Executor` to spawn futures that have a reference to the `Display`
 /// value, inserting it into all logs created by this future.
-pub fn context_executor<T, E>(context: T, executor: E) -> ContextualExecutor<T, E> {
+pub fn context_executor<T: LogCtx>(context: T) -> ContextualExecutor<T> {
     ContextualExecutor {
         context: Arc::new(context),
-        executor,
     }
 }
 
@@ -76,7 +83,7 @@ pub struct ContextualFuture<T, F> {
 
 impl<T, F> Future for ContextualFuture<T, F>
 where
-    T: ::std::fmt::Debug + 'static,
+    T: LogCtx + 'static,
     F: Future,
 {
     type Item = F::Item;
@@ -89,21 +96,32 @@ where
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct ContextualExecutor<T, E> {
+#[derive(Debug)]
+pub struct ContextualExecutor<T> {
     context: Arc<T>,
-    executor: E,
 }
 
-impl<T, E, F> Executor<F> for ContextualExecutor<T, E>
+impl<T> ::tokio::executor::Executor for ContextualExecutor<T>
 where
-    T: ::std::fmt::Debug + 'static,
-    E: Executor<ContextualFuture<Arc<T>, F>>,
-    F: Future<Item = (), Error = ()>,
+    T: LogCtx + 'static + Send + Sync,
 {
-    fn execute(&self, future: F) -> Result<(), ExecuteError<F>> {
+    fn spawn(
+        &mut self,
+        future: Box<Future<Item = (), Error = ()> + 'static + Send>
+    ) -> ::std::result::Result<(), ::tokio::executor::SpawnError> {
         let fut = context_future(self.context.clone(), future);
-        match self.executor.execute(fut) {
+        ::task::LazyExecutor.spawn(Box::new(fut))
+    }
+}
+
+impl<T, F> Executor<F> for ContextualExecutor<T>
+where
+    T: LogCtx + 'static + Send + Sync,
+    F: Future<Item = (), Error = ()> + 'static + Send,
+{
+    fn execute(&self, future: F) -> ::std::result::Result<(), ExecuteError<F>> {
+        let fut = context_future(self.context.clone(), future);
+        match ::task::LazyExecutor.execute(fut) {
             Ok(()) => Ok(()),
             Err(err) => {
                 let kind = err.kind();
@@ -114,9 +132,17 @@ where
     }
 }
 
-struct Context<'a>(&'a [*const fmt::Debug]);
+impl<T> Clone for ContextualExecutor<T> {
+    fn clone(&self) -> Self {
+        Self {
+            context: self.context.clone(),
+        }
+    }
+}
 
-impl<'a> fmt::Debug for Context<'a> {
+struct Context<'a>(&'a [*const LogCtx]);
+
+impl<'a> fmt::Display for Context<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.0.is_empty() {
             return Ok(());
@@ -136,17 +162,17 @@ impl<'a> fmt::Debug for Context<'a> {
 ///
 /// Specifically, this protects even if the passed function panics,
 /// as destructors are run while unwinding.
-struct ContextGuard<'a>(&'a (fmt::Debug + 'static));
+struct ContextGuard<'a>(&'a (LogCtx + 'static));
 
 impl<'a> ContextGuard<'a> {
-    fn new(context: &'a (fmt::Debug + 'static)) -> Self {
+    fn new(context: &'a (LogCtx + 'static)) -> Self {
         // This is a raw pointer because of lifetime conflicts that require
         // the thread local to have a static lifetime.
         //
         // We don't want to require a static lifetime, and in fact,
         // only use the reference within this closure, so converting
         // to a raw pointer is safe.
-        let raw = context as *const fmt::Debug;
+        let raw = context as *const LogCtx;
         CONTEXT.with(|ctxt| {
             ctxt.borrow_mut().push(raw);
         });
@@ -159,5 +185,23 @@ impl<'a> Drop for ContextGuard<'a> {
         CONTEXT.with(|ctxt| {
             ctxt.borrow_mut().pop();
         });
+    }
+}
+
+impl<'a> LogCtx for &'a str {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        fmt::Display::fmt(self, f)
+    }
+}
+
+impl LogCtx for String {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        fmt::Display::fmt(self, f)
+    }
+}
+
+impl<T: LogCtx> LogCtx for Arc<T> {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        self.as_ref().fmt(f)
     }
 }

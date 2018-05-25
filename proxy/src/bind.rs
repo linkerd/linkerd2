@@ -132,7 +132,11 @@ pub type HttpResponse = http::Response<sensor::http::ResponseBody<HttpBody>>;
 
 pub type HttpRequest<B> = http::Request<sensor::http::RequestBody<B>>;
 
-pub type Client<B> = transparency::Client<sensor::Connect<transport::Connect>, B>;
+pub type Client<B> = transparency::Client<
+    sensor::Connect<transport::Connect>,
+    ::logging::ContextualExecutor<BindCtx>,
+    B,
+>;
 
 #[derive(Copy, Clone, Debug)]
 pub enum BufferSpawnError {
@@ -143,6 +147,27 @@ pub enum BufferSpawnError {
 impl fmt::Display for BufferSpawnError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad(self.description())
+    }
+}
+
+pub struct BindCtx {
+    ctx: Arc<ctx::transport::Client>,
+    protocol: Protocol,
+}
+
+impl ::logging::LogCtx for BindCtx {
+    fn fmt(&self, f: &mut ::logging::Formatter) -> ::logging::Result {
+        write!(f, "client={{")?;
+
+        if self.ctx.proxy.is_inbound() {
+            write!(f, "proxy=in")?;
+        } else {
+            write!(f, "proxy=out")?;
+        }
+        write!(f, ";proto={:?}", self.protocol)?;
+        write!(f, ";remote={}", self.ctx.remote)?;
+
+        write!(f, "}}")
     }
 }
 
@@ -221,6 +246,10 @@ where
         let client = transparency::Client::new(
             protocol,
             connect,
+            ::logging::context_executor(BindCtx {
+                ctx: client_ctx.clone(),
+                protocol: protocol.clone(),
+            })
         );
 
         let sensors = self.sensors.http(
@@ -376,11 +405,15 @@ where
         let ready = match self.binding {
             // A service is already bound, so poll its readiness.
             Binding::Bound(ref mut svc) |
-            Binding::BindsPerRequest { next: Some(ref mut svc) } => svc.poll_ready(),
+            Binding::BindsPerRequest { next: Some(ref mut svc) } => {
+                trace!("poll_ready: stack already bound");
+                svc.poll_ready()
+            }
 
             // If no stack has been bound, bind it now so that its readiness can be
             // checked. Store it so it can be consumed to dispatch the next request.
             Binding::BindsPerRequest { ref mut next } => {
+                trace!("poll_ready: binding stack");
                 let mut svc = self.bind.bind_stack(&self.endpoint, &self.protocol);
                 let ready = svc.poll_ready();
                 *next = Some(svc);
@@ -400,12 +433,16 @@ where
                 if !self.debounce_connect_error_log {
                     self.debounce_connect_error_log = true;
                     warn!("connect error to {:?}: {}", self.endpoint, err);
+                } else {
+                    debug!("connect error to {:?}: {}", self.endpoint, err);
                 }
                 match self.binding {
                     Binding::Bound(ref mut svc) => {
+                        trace!("poll_ready: binding stack after error");
                         *svc = self.bind.bind_stack(&self.endpoint, &self.protocol);
                     },
                     Binding::BindsPerRequest { ref mut next } => {
+                        trace!("poll_ready: dropping bound stack after error");
                         next.take();
                     }
                 }
@@ -425,6 +462,7 @@ where
             // don't debounce on NotReady...
             Ok(Async::NotReady) => Ok(Async::NotReady),
             other => {
+                trace!("poll_ready: ready for business");
                 self.debounce_connect_error_log = false;
                 other
             },
@@ -432,6 +470,7 @@ where
     }
 
     fn call(&mut self, request: Self::Request) -> Self::Future {
+        debug!("call");
         match self.binding {
             Binding::Bound(ref mut svc) => svc.call(request),
             Binding::BindsPerRequest { ref mut next } => {

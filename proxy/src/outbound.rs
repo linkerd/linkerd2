@@ -16,7 +16,6 @@ use conduit_proxy_router::Recognize;
 use bind::{self, Bind, Protocol};
 use control::destination::{self, Bind as BindTrait, Resolution};
 use ctx;
-use task::LazyExecutor;
 use timeout::Timeout;
 use transparency::h1;
 use transport::{DnsNameAndPort, Host, HostAndPort};
@@ -150,19 +149,18 @@ where
 
         let loaded = tower_balance::load::WithPendingRequests::new(resolve);
 
-
         // We can't use `rand::thread_rng` here because the returned `Service`
         // needs to be `Send`, so instead, we use `LazyRng`, which calls
         // `rand::thread_rng()` when it is *used*.
         let balance = tower_balance::power_of_two_choices(loaded, LazyThreadRng);
 
-        let buffer = Buffer::new(balance, &LazyExecutor)
+        let ctx = Ctx { dest: dest.clone(), protocol: protocol.clone() };
+        let buffer = Buffer::new(balance, &::logging::context_executor(ctx))
             .map_err(|_| bind::BufferSpawnError::Outbound)?;
 
         let timeout = Timeout::new(buffer, self.bind_timeout);
 
         Ok(InFlightLimit::new(timeout, MAX_IN_FLIGHT))
-
     }
 }
 
@@ -231,4 +229,16 @@ impl error::Error for BindError {
     }
 
     fn cause(&self) -> Option<&error::Error> { None }
+}
+
+pub struct Ctx {
+    dest: Destination,
+    protocol: bind::Protocol
+}
+
+
+impl ::logging::LogCtx for Ctx {
+    fn fmt(&self, f: &mut ::logging::Formatter) -> ::logging::Result {
+        write!(f, "client={{proxy=out;proto={:?};dst={:?}}}", self.protocol, self.dest)
+    }
 }

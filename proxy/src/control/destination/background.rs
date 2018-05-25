@@ -32,7 +32,6 @@ use control::{
     AddOrigin, Backoff, LogErrors
 };
 use dns::{self, IpAddrListFuture};
-use task::LazyExecutor;
 use telemetry::metrics::DstLabels;
 use transport::{DnsNameAndPort, HostAndPort, LookupAddressAndConnect};
 use timeout::Timeout;
@@ -59,6 +58,8 @@ struct Background<T: HttpService<ResponseBody = RecvBody>> {
     request_rx: mpsc::UnboundedReceiver<ResolveRequest>,
 }
 
+struct Ctx(HostAndPort);
+
 /// Holds the state of a single resolution.
 struct DestinationSet<T: HttpService<ResponseBody = RecvBody>> {
     addrs: Exists<Cache<SocketAddr, Metadata>>,
@@ -78,18 +79,17 @@ pub(super) fn task(
 {
     // Build up the Controller Client Stack
     let mut client = {
-        let ctx = ("controller-client", format!("{:?}", host_and_port));
         let scheme = http::uri::Scheme::from_shared(Bytes::from_static(b"http")).unwrap();
         let authority = http::uri::Authority::from(&host_and_port);
         let connect = Timeout::new(
-            LookupAddressAndConnect::new(host_and_port, dns_resolver.clone()),
+            LookupAddressAndConnect::new(host_and_port.clone(), dns_resolver.clone()),
             Duration::from_secs(3),
         );
 
         let h2_client = tower_h2::client::Connect::new(
             connect,
             h2::client::Builder::default(),
-            ::logging::context_executor(ctx, LazyExecutor),
+            ::logging::context_executor(Ctx(host_and_port))
         );
 
         let reconnect = Reconnect::new(h2_client);
@@ -550,9 +550,14 @@ fn pb_to_addr_meta(
     set_labels: &HashMap<String, String>,
 ) -> Option<(SocketAddr, Metadata)> {
     let addr = pb.addr.and_then(pb_to_sock_addr)?;
-    let label_iter = set_labels.iter().chain(pb.metric_labels.iter());
+
+    let mut labels = set_labels.iter()
+        .chain(pb.metric_labels.iter())
+        .collect::<Vec<_>>();
+    labels.sort_by(|(k0, _), (k1, _)| k0.cmp(k1));
+
     let meta = Metadata {
-        metric_labels: DstLabels::new(label_iter),
+        metric_labels: DstLabels::new(labels.into_iter()),
     };
     Some((addr, meta))
 }
@@ -606,5 +611,13 @@ fn pb_to_sock_addr(pb: TcpAddress) -> Option<SocketAddr> {
             None => None,
         },
         None => None,
+    }
+}
+
+impl ::logging::LogCtx for Ctx {
+    fn fmt(&self, f: &mut ::logging::Formatter) -> ::logging::Result {
+        write!(f, "client={{controller=")?;
+        ::logging::LogCtx::fmt(&self.0, f)?;
+        write!(f, "}}")
     }
 }

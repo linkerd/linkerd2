@@ -33,6 +33,9 @@ use std::{
 #[derive(Copy, Clone, Debug, Default)]
 pub struct LazyExecutor;
 
+#[derive(Copy, Clone, Debug, Default)]
+pub struct BoxExecutor<E: TokioExecutor>(E);
+
 /// Indicates which Tokio `Runtime` should be used for the main proxy.
 ///
 /// This is either a `tokio::runtime::current_thread::Runtime`, or a
@@ -99,6 +102,53 @@ where
             }
         };
         executor.spawn(Box::new(future))
+            .expect("spawn() errored but status() was Ok");
+        Ok(())
+    }
+}
+
+// ===== impl BoxExecutor =====;
+
+impl<E: TokioExecutor> BoxExecutor<E> {
+    pub fn new(e: E) -> Self {
+        BoxExecutor(e)
+    }
+}
+
+impl<E: TokioExecutor> TokioExecutor for BoxExecutor<E> {
+    fn spawn(
+        &mut self,
+        future: Box<Future<Item = (), Error = ()> + 'static + Send>
+    ) -> Result<(), SpawnError> {
+        self.0.spawn(future)
+    }
+
+    fn status(&self) -> Result<(), SpawnError> {
+        self.0.status()
+    }
+}
+
+impl<F, E> Executor<F> for BoxExecutor<E>
+where
+    F: Future<Item = (), Error = ()> + 'static + Send,
+    E: TokioExecutor,
+    E: Executor<Box<Future<Item = (), Error = ()> + Send + 'static>>,
+{
+    fn execute(&self, future: F) -> Result<(), ExecuteError<F>> {
+        // Check the status of the executor first, so that we can return the
+        // future in the `ExecuteError`. If we just called `spawn` and
+        // `map_err`ed the error into an `ExecuteError`, we'd have to move the
+        // future into the closure, but it was already moved into `spawn`.
+        if let Err(e) = self.0.status() {
+            if e.is_at_capacity() {
+                return Err(ExecuteError::new(ExecuteErrorKind::NoCapacity, future));
+            } else if e.is_shutdown() {
+                return Err(ExecuteError::new(ExecuteErrorKind::Shutdown, future));
+            } else {
+                panic!("unexpected `SpawnError`: {:?}", e);
+            }
+        };
+        self.0.execute(Box::new(future))
             .expect("spawn() errored but status() was Ok");
         Ok(())
     }

@@ -15,7 +15,6 @@ use connection::{Connection, Peek};
 use ctx::Proxy as ProxyCtx;
 use ctx::transport::{Server as ServerCtx};
 use drain;
-use task::LazyExecutor;
 use telemetry::Sensors;
 use transport::GetOriginalDst;
 use super::glue::{HttpBody, HttpBodyNewSvc, HyperServerSvc};
@@ -37,7 +36,11 @@ where
     drain_signal: drain::Watch,
     get_orig_dst: G,
     h1: hyper::server::conn::Http,
-    h2: tower_h2::Server<HttpBodyNewSvc<S>, LazyExecutor, B>,
+    h2: tower_h2::Server<
+        HttpBodyNewSvc<S>,
+        ::logging::ContextualExecutor<AcceptInfo>,
+        B
+    >,
     listen_addr: SocketAddr,
     new_service: S,
     proxy_ctx: Arc<ProxyCtx>,
@@ -87,13 +90,20 @@ where
             h2: tower_h2::Server::new(
                 recv_body_svc,
                 Default::default(),
-                LazyExecutor,
+                ::logging::context_executor(AcceptInfo { listen_addr, ctx: proxy_ctx.clone() }),
             ),
             listen_addr,
             new_service: stack,
             proxy_ctx,
             sensors,
             tcp,
+        }
+    }
+
+    pub fn accept_info(&self) -> AcceptInfo {
+        AcceptInfo {
+            listen_addr: self.listen_addr,
+            ctx: self.proxy_ctx.clone(),
         }
     }
 
@@ -135,11 +145,11 @@ where
             let fut = tcp_serve(
                 &self.tcp,
                 io,
-                srv_ctx,
+                srv_ctx.clone(),
                 self.drain_signal.clone(),
             );
 
-            return Either::B(fut);
+            return ::logging::context_future(ServeInfo(srv_ctx), Either::B(fut));
         }
 
         // try to sniff protocol
@@ -148,7 +158,8 @@ where
         let tcp = self.tcp.clone();
         let new_service = self.new_service.clone();
         let drain_signal = self.drain_signal.clone();
-        Either::A(io.peek()
+        let ctx = ServeInfo(srv_ctx.clone());
+        let fut = Either::A(io.peek()
             .map_err(|e| debug!("peek error: {}", e))
             .and_then(move |io| {
                 if let Some(proto) = Protocol::detect(io.peeked()) {
@@ -159,7 +170,7 @@ where
                             let fut = new_service.new_service()
                                 .map_err(|_| ())
                                 .and_then(move |s| {
-                                    let svc = HyperServerSvc::new(s, srv_ctx);
+                                    let svc = HyperServerSvc::new(s, srv_ctx.clone());
                                     drain_signal
                                         .watch(h1.serve_connection(io, svc), |conn| {
                                             conn.graceful_shutdown();
@@ -171,7 +182,7 @@ where
                         },
                         Protocol::Http2 => {
                             trace!("transparency detected HTTP/2");
-
+                            let srv_ctx = srv_ctx.clone();
                             let set_ctx = move |request: &mut http::Request<()>| {
                                 request.extensions_mut().insert(srv_ctx.clone());
                             };
@@ -190,11 +201,13 @@ where
                     Either::B(tcp_serve(
                         &tcp,
                         io,
-                        srv_ctx,
+                        srv_ctx.clone(),
                         drain_signal,
                     ))
                 }
-            }))
+            }));
+
+        ::logging::context_future(ctx, fut)
     }
 }
 
@@ -210,4 +223,41 @@ fn tcp_serve<T: AsyncRead + AsyncWrite + Send + 'static>(
     // the sockets finish soon. However, the drain signal still needs to
     // 'watch' the TCP future so that the process doesn't close early.
     drain_signal.watch(fut, |_| ())
+}
+
+pub struct AcceptInfo {
+    listen_addr: SocketAddr,
+    ctx: Arc<ProxyCtx>,
+}
+
+pub struct ServeInfo(Arc<ServerCtx>);
+
+impl ::logging::LogCtx for AcceptInfo {
+    fn fmt(&self, f: &mut ::logging::Formatter) -> ::logging::Result {
+        write!(f, "server={{")?;
+        if self.ctx.is_inbound() {
+            write!(f, "proxy=in")?;
+        } else {
+            write!(f, "proxy=out")?;
+        }
+        write!(f, ";listen={}", self.listen_addr)?;
+        write!(f, "}}")
+    }
+}
+
+impl ::logging::LogCtx for ServeInfo {
+    fn fmt(&self, f: &mut ::logging::Formatter) -> ::logging::Result {
+        write!(f, "server={{")?;
+        if self.0.proxy.is_inbound() {
+            write!(f, "proxy=in")?;
+        } else {
+            write!(f, "proxy=out")?;
+        }
+        write!(f, ";local={}", self.0.local)?;
+        write!(f, ";remote={}", self.0.remote)?;
+        if let Some(dst) = self.0.orig_dst {
+            write!(f, ";orig_dst={}", dst)?;
+        }
+        write!(f, "}}")
+    }
 }

@@ -245,7 +245,6 @@ where
                 config.inbound_router_max_idle_age,
             );
             serve(
-                "inbound",
                 inbound_listener,
                 router,
                 config.private_connect_timeout,
@@ -269,7 +268,6 @@ where
                 config.outbound_router_max_idle_age,
             );
             serve(
-                "outbound",
                 outbound_listener,
                 router,
                 config.public_connect_timeout,
@@ -335,7 +333,6 @@ where
 }
 
 fn serve<R, B, E, F, G>(
-    name: &'static str,
     bound_port: BoundPort,
     router: Router<R>,
     tcp_connect_timeout: Duration,
@@ -400,7 +397,7 @@ where
     let listen_addr = bound_port.local_addr();
     let server = Server::new(
         listen_addr,
-        proxy_ctx,
+        proxy_ctx.clone(),
         sensors,
         get_orig_dst,
         stack,
@@ -408,20 +405,19 @@ where
         disable_protocol_detection_ports,
         drain_rx.clone(),
     );
-
+    let accept_info = server.accept_info();
 
     let accept = bound_port.listen_and_fold(
         (),
         move |(), (connection, remote_addr)| {
             let s = server.serve(connection, remote_addr);
-            let s = ::logging::context_future((name, remote_addr), s);
             let r = DefaultExecutor::current()
                 .spawn(Box::new(s))
                 .map_err(task::Error::into_io);
             future::result(r)
         },
     );
-    let accept = ::logging::context_future(name, accept);
+    let accept = ::logging::context_future(accept_info, accept);
 
     let accept_until = Cancelable {
         future: accept,
