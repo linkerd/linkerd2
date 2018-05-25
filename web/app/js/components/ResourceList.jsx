@@ -100,7 +100,8 @@ class ResourceList extends React.Component {
             <PageHeader header={friendlyTitle + "s"} />
             <MetricsTable
               resource={friendlyTitle}
-              metrics={this.state.metrics} />
+              metrics={this.state.metrics}
+              linkifyNsColumn={true} />
           </div>
         }
       </div>);

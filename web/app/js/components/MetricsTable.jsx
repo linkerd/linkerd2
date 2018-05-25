@@ -35,7 +35,7 @@ const formatTitle = (title, tooltipText) => {
   }
 
 };
-const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick, ConduitLink) => {
+const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick, linkifyNsColumn, ConduitLink) => {
   let nsColumn = [
     {
       title: formatTitle("Namespace"),
@@ -44,7 +44,14 @@ const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick,
       filters: namespaces,
       onFilterDropdownVisibleChange: onFilterClick,
       onFilter: (value, row) => row.namespace.indexOf(value) === 0,
-      sorter: sortable ? (a, b) => (a.namespace || "").localeCompare(b.namespace) : false
+      sorter: sortable ? (a, b) => (a.namespace || "").localeCompare(b.namespace) : false,
+      render: ns => {
+        if (linkifyNsColumn) {
+          return <ConduitLink to={"/namespaces/" + ns}>{ns}</ConduitLink>;
+        } else {
+          return ns;
+        }
+      }
     }
   ];
   let percentMeshedColumn = [
@@ -177,6 +184,7 @@ class MetricsTable extends BaseTable {
       this.props.resource,
       namespaceFilterText,
       this.onFilterDropdownVisibleChange,
+      this.props.linkifyNsColumn,
       this.api.ConduitLink
     ));
 
