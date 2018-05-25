@@ -422,6 +422,7 @@ where
             future::result(r)
         },
     );
+    let accept = ::logging::context_future(name, accept);
 
     let accept_until = Cancelable {
         future: accept,
