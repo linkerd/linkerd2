@@ -182,8 +182,8 @@ class MetricsTable extends BaseTable {
     let columns = _.compact(columnDefinitions(
       this.props.sortable,
       this.props.resource,
-      namespaceFilterText,
-      this.onFilterDropdownVisibleChange,
+      this.props.showNamespaceFilter ? namespaceFilterText : undefined,
+      this.props.showNamespaceFilter ? this.onFilterDropdownVisibleChange : undefined,
       this.props.linkifyNsColumn,
       this.api.ConduitLink
     ));
@@ -202,5 +202,9 @@ class MetricsTable extends BaseTable {
       size="middle" />);
   }
 }
+
+MetricsTable.defaultProps = {
+  showNamespaceFilter: true
+};
 
 export default withContext(MetricsTable);
