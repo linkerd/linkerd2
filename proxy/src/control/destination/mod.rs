@@ -88,7 +88,7 @@ pub struct Resolution<B> {
 
 /// Metadata describing an endpoint.
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
-pub struct Metadata {
+struct Metadata {
     /// A set of Prometheus metric labels describing the destination.
     metric_labels: Option<DstLabels>,
 }
@@ -195,6 +195,12 @@ where
 
             match update {
                 Update::Insert(addr, meta) | Update::ChangeMetadata(addr, meta) => {
+                    // We expect the load balancer to handle duplicate inserts
+                    // by replacing the old endpoint with the new one, so
+                    // insertions of new endpoints and metadata changes for
+                    // existing ones can be handled in the same way.
+                    // TODO: consider combining `Update::Insert` and
+                    //       `Update::ChangeMetadata` into `Update::Upsert`.
                     let endpoint = Endpoint::new(addr, meta.metric_labels.clone());
 
                     let service = self.bind.bind(&endpoint).map_err(|_| ())?;
@@ -220,7 +226,7 @@ impl Responder {
 // ===== impl Metadata =====
 
 impl Metadata {
-    pub fn no_metadata() -> Self {
+    fn no_metadata() -> Self {
         Metadata {
             metric_labels: None,
         }
