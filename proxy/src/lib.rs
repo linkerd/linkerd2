@@ -87,7 +87,7 @@ use inbound::Inbound;
 use map_err::MapErr;
 use task::MainRuntime;
 use transparency::{HttpBody, Server};
-pub use transport::{GetOriginalDst, SoOriginalDst};
+pub use transport::{AddrInfo, GetOriginalDst, SoOriginalDst};
 use outbound::Outbound;
 
 /// Runs a sidecar proxy.
