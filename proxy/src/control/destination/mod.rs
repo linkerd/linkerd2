@@ -88,7 +88,7 @@ pub struct Resolution<B> {
 
 /// Metadata describing an endpoint.
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
-pub struct Metadata {
+struct Metadata {
     /// A set of Prometheus metric labels describing the destination.
     metric_labels: Option<DstLabels>,
 }
@@ -229,7 +229,7 @@ impl Responder {
 // ===== impl Metadata =====
 
 impl Metadata {
-    pub fn no_metadata() -> Self {
+    fn no_metadata() -> Self {
         Metadata {
             metric_labels: None,
         }
