@@ -46,12 +46,6 @@ where
     T: ::std::fmt::Debug + 'static,
     F: FnMut() -> U,
 {
-    // This is a raw pointer because of lifetime conflicts that require
-    // the thread local to have a static lifetime.
-    //
-    // We don't want to require a static lifetime, and in fact,
-    // only use the reference within this closure, so converting
-    // to a raw pointer is safe.
     let _guard = ContextGuard::new(context);
     closure()
 }
@@ -146,6 +140,12 @@ struct ContextGuard<'a>(&'a (fmt::Debug + 'static));
 
 impl<'a> ContextGuard<'a> {
     fn new(context: &'a (fmt::Debug + 'static)) -> Self {
+        // This is a raw pointer because of lifetime conflicts that require
+        // the thread local to have a static lifetime.
+        //
+        // We don't want to require a static lifetime, and in fact,
+        // only use the reference within this closure, so converting
+        // to a raw pointer is safe.
         let raw = context as *const fmt::Debug;
         CONTEXT.with(|ctxt| {
             ctxt.borrow_mut().push(raw);
