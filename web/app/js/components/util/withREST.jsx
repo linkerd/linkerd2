@@ -1,5 +1,6 @@
 import _ from 'lodash';
 import React from 'react';
+import { withContext } from './AppContext.jsx';
 
 /**
  * Provides components with data fetched via. polling a list of REST URLs.
@@ -9,7 +10,7 @@ import React from 'react';
  * @param {List[string]} resetProps - Props that on change cause a state reset.
  */
 const withREST = (WrappedComponent, componentPromises, resetProps = []) => {
-  return class extends React.Component {
+  class RESTWrapper extends React.Component {
     constructor(props) {
       super(props);
       this.api = this.props.api;
@@ -95,7 +96,9 @@ const withREST = (WrappedComponent, componentPromises, resetProps = []) => {
           {...this.props} />
       );
     }
-  };
+  }
+
+  return withContext(RESTWrapper);
 };
 
 export default withREST;
