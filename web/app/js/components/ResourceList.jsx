@@ -32,10 +32,6 @@ export class ResourceList extends React.Component {
       processedMetrics = processSingleResourceRollup(data[0]);
     }
 
-    if (_.isEmpty(processedMetrics)) {
-      return this.renderEmptyMessage();
-    }
-
     const friendlyTitle = _.startCase(this.props.resource);
 
     return (

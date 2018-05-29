@@ -1,6 +1,5 @@
 import _ from 'lodash';
 import Adapter from 'enzyme-adapter-react-16';
-import CallToAction from '../js/components/CallToAction.jsx';
 import ConduitSpinner from '../js/components/ConduitSpinner.jsx';
 import deployRollup from './fixtures/deployRollup.json';
 import Enzyme from 'enzyme';
@@ -29,8 +28,7 @@ describe('Tests for <ResourceList>', () => {
     expect(err).to.have.length(1);
     expect(component.find(PageHeader)).to.have.length(1);
     expect(component.find(ConduitSpinner)).to.have.length(0);
-    expect(component.find(CallToAction)).to.have.length(1);
-    expect(component.find(MetricsTable)).to.have.length(0);
+    expect(component.find(MetricsTable)).to.have.length(1);
 
     expect(err.props().message).to.equal(msg);
   });
@@ -45,7 +43,6 @@ describe('Tests for <ResourceList>', () => {
     expect(component.find(ErrorBanner)).to.have.length(0);
     expect(component.find(PageHeader)).to.have.length(0);
     expect(component.find(ConduitSpinner)).to.have.length(1);
-    expect(component.find(CallToAction)).to.have.length(0);
     expect(component.find(MetricsTable)).to.have.length(0);
   });
 
@@ -59,8 +56,7 @@ describe('Tests for <ResourceList>', () => {
     expect(component.find(ErrorBanner)).to.have.length(0);
     expect(component.find(PageHeader)).to.have.length(1);
     expect(component.find(ConduitSpinner)).to.have.length(0);
-    expect(component.find(CallToAction)).to.have.length(1);
-    expect(component.find(MetricsTable)).to.have.length(0);
+    expect(component.find(MetricsTable)).to.have.length(1);
   });
 
   it('renders a metrics table', () => {
@@ -77,7 +73,6 @@ describe('Tests for <ResourceList>', () => {
     expect(component.find(ErrorBanner)).to.have.length(0);
     expect(component.find(PageHeader)).to.have.length(1);
     expect(component.find(ConduitSpinner)).to.have.length(0);
-    expect(component.find(CallToAction)).to.have.length(0);
     expect(metrics).to.have.length(1);
 
     expect(metrics.props().resource).to.equal(_.startCase(resource));
