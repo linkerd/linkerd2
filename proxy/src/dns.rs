@@ -61,28 +61,22 @@ impl AsRef<str> for Name {
 }
 
 impl Resolver {
+
     /// Construct a new `Resolver` from the system configuration and Conduit's
     /// environment variables.
     ///
     /// TODO: Make this infallible, like it is in the `domain` crate.
-    pub fn from_system_config_and_env(env_config: &Config) -> Result<Self, ResolveError> {
+    pub fn new(env_config: &Config) -> Result<Self, ResolveError> {
         let (config, opts) = trust_dns_resolver::system_conf::read_system_conf()?;
-        let opts = env_config.configure_resolver_opts(opts);
+        let mut opts = env_config.configure_resolver_opts(opts);
+        // Disable Trust-DNS's caching.
+        opts.cache_size = 0;
         trace!("DNS config: {:?}", &config);
         trace!("DNS opts: {:?}", &opts);
-        Ok(Self::new(config, opts))
-    }
-
-    pub fn new(config: ResolverConfig,  mut opts: ResolverOpts) -> Self {
-        // Disable Trust-DNS's caching.
-        // NOTE: Trust-DNS' integration tests indicate that the resolver
-        //       functions correctly with cache_size = 0, so this is
-        //       sufficient to disable its' caching.
-        opts.cache_size = 0;
-        Resolver {
+        Ok(Resolver {
             config,
             opts,
-        }
+        })
     }
 
     pub fn resolve_one_ip(&self, host: &transport::Host) -> IpAddrFuture {
