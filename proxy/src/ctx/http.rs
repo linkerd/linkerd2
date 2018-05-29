@@ -1,9 +1,8 @@
 use http;
 use std::sync::Arc;
 
-use control::destination::DstLabelsWatch;
 use ctx;
-
+use telemetry::metrics::DstLabels;
 
 /// Describes a stream's request headers.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -54,7 +53,7 @@ impl Request {
         Arc::new(r)
     }
 
-    pub fn dst_labels(&self) -> Option<&DstLabelsWatch> {
+    pub fn dst_labels(&self) -> Option<&DstLabels> {
         self.client.dst_labels.as_ref()
     }
 }
@@ -67,5 +66,9 @@ impl Response {
         };
 
         Arc::new(r)
+    }
+
+    pub fn dst_labels(&self) -> Option<&DstLabels> {
+        self.request.dst_labels()
     }
 }

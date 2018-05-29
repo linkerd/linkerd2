@@ -2,8 +2,8 @@ use std::{cmp, hash};
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 
-use control::destination::DstLabelsWatch;
 use ctx;
+use telemetry::metrics::DstLabels;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Ctx {
@@ -25,7 +25,7 @@ pub struct Server {
 pub struct Client {
     pub proxy: Arc<ctx::Proxy>,
     pub remote: SocketAddr,
-    pub dst_labels: Option<DstLabelsWatch>,
+    pub dst_labels: Option<DstLabels>,
 }
 
 impl Ctx {
@@ -82,7 +82,7 @@ impl Client {
     pub fn new(
         proxy: &Arc<ctx::Proxy>,
         remote: &SocketAddr,
-        dst_labels: Option<DstLabelsWatch>,
+        dst_labels: Option<DstLabels>,
     ) -> Arc<Client> {
         let c = Client {
             proxy: Arc::clone(proxy),

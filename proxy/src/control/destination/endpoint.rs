@@ -1,26 +1,24 @@
-use futures_watch;
-use std::{cmp, hash, net::SocketAddr};
+use std::net::SocketAddr;
 
 use telemetry::metrics::DstLabels;
 
-pub type DstLabelsWatch = futures_watch::Watch<Option<DstLabels>>;
 
 /// An individual traffic target.
 ///
 /// Equality, Ordering, and hashability is determined soley by the Endpoint's address.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Endpoint {
     address: SocketAddr,
-    dst_labels: Option<DstLabelsWatch>,
+    dst_labels: Option<DstLabels>,
 }
 
 // ==== impl Endpoint =====
 
 impl Endpoint {
-    pub fn new(address: SocketAddr, dst_labels: DstLabelsWatch) -> Self {
+    pub fn new(address: SocketAddr, dst_labels: Option<DstLabels>) -> Self {
         Self {
             address,
-            dst_labels: Some(dst_labels),
+            dst_labels,
         }
     }
 
@@ -28,7 +26,7 @@ impl Endpoint {
         self.address
     }
 
-    pub fn dst_labels(&self) -> Option<&DstLabelsWatch> {
+    pub fn dst_labels(&self) -> Option<&DstLabels> {
         self.dst_labels.as_ref()
     }
 }
@@ -41,17 +39,3 @@ impl From<SocketAddr> for Endpoint {
         }
     }
 }
-
-impl hash::Hash for Endpoint {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        self.address.hash(state)
-    }
-}
-
-impl cmp::PartialEq for Endpoint {
-    fn eq(&self, other: &Self) -> bool {
-        self.address.eq(&other.address)
-    }
-}
-
-impl cmp::Eq for Endpoint {}

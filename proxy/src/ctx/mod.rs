@@ -78,7 +78,6 @@ impl Proxy {
 #[cfg(test)]
 pub mod test_util {
     use http;
-    use futures_watch;
     use std::{
         fmt,
         net::SocketAddr,
@@ -109,8 +108,8 @@ pub mod test_util {
         L: IntoIterator<Item=(S, S)>,
         S: fmt::Display,
     {
-        let (labels_watch, _store) = futures_watch::Watch::new(DstLabels::new(labels));
-        ctx::transport::Client::new(&proxy, &addr(), Some(labels_watch))
+        let labels = DstLabels::new(labels);
+        ctx::transport::Client::new(&proxy, &addr(), labels)
     }
 
     pub fn request(
