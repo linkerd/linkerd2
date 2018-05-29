@@ -213,7 +213,7 @@ where
             &taps,
         );
 
-        let dns_resolver = dns::Resolver::new(&config)
+        let (dns_resolver, dns_bg) = dns::Resolver::from_system_config_and_env(&config)
             .unwrap_or_else(|e| {
                 // TODO: Make DNS configuration infallible.
                 panic!("invalid DNS configuration: {:?}", e);
@@ -313,10 +313,11 @@ where
                     let metrics_server = telemetry.serve_metrics(metrics_listener);
 
                     let fut = ::logging::admin().bg("resolver").future(resolver_bg)
-                        .join4(
+                        .join5(
                             ::logging::admin().bg("telemetry").future(telemetry),
                             tap.map_err(|_| {}),
                             metrics_server.map_err(|_| {}),
+                            ::logging::admin().bg("dns-resolver").future(dns_bg),
                         ).map(|_| {});
 
                     rt.spawn(Box::new(fut));

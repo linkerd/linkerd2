@@ -37,7 +37,7 @@ tokio-signal = "0.2"
 prost = "0.3.0"
 prost-types = "0.3.0"
 
-trust-dns-resolver = { default-features = false, git = "https://github.com/bluejekyll/trust-dns", rev = "5c966b86e7d847ad14344e494237e162dc635de0" }
+trust-dns-resolver = { default-features = false, git = "https://github.com/bluejekyll/trust-dns" }
 
 tokio-connect         = { git = "https://github.com/carllerche/tokio-connect" }
 tower-service         = { git = "https://github.com/tower-rs/tower" }
