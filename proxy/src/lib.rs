@@ -211,7 +211,7 @@ where
             &taps,
         );
 
-        let dns_resolver = dns::Resolver::from_system_config_and_env(&config)
+        let (dns_resolver, dns_bg) = dns::Resolver::from_system_config_and_env(&config)
             .unwrap_or_else(|e| {
                 // TODO: Make DNS configuration infallible.
                 panic!("invalid DNS configuration: {:?}", e);
@@ -298,10 +298,11 @@ where
                     let metrics_server = telemetry
                         .serve_metrics(metrics_listener);
 
-                    let fut = control_bg.join4(
+                    let fut = control_bg.join5(
                         server.map_err(|_| {}),
                         telemetry,
                         metrics_server.map_err(|_| {}),
+                        dns_bg,
                     ).map(|_| {});
                     let fut = ::logging::context_future("controller-client", fut);
 

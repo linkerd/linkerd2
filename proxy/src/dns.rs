@@ -4,18 +4,19 @@ use std::net::IpAddr;
 use std::time::Instant;
 use tokio::timer::Delay;
 use transport;
-use trust_dns_resolver;
-use trust_dns_resolver::config::{ResolverConfig, ResolverOpts};
-use trust_dns_resolver::error::{ResolveError, ResolveErrorKind};
-use trust_dns_resolver::ResolverFuture;
-use trust_dns_resolver::lookup_ip::LookupIp;
+use trust_dns_resolver::{
+    self,
+    config::{ResolverConfig, ResolverOpts},
+    error::{ResolveError, ResolveErrorKind},
+    lookup_ip::LookupIp,
+    AsyncResolver,
+};
 
 use config::Config;
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Resolver {
-    config: ResolverConfig,
-    opts: ResolverOpts,
+    resolver: AsyncResolver,
 }
 
 pub enum IpAddrFuture {
@@ -60,12 +61,14 @@ impl AsRef<str> for Name {
     }
 }
 
+
 impl Resolver {
     /// Construct a new `Resolver` from the system configuration and Conduit's
     /// environment variables.
     ///
     /// TODO: Make this infallible, like it is in the `domain` crate.
-    pub fn from_system_config_and_env(env_config: &Config) -> Result<Self, ResolveError> {
+    pub fn from_system_config_and_env(env_config: &Config)
+        -> Result<(Self, impl Future<Item = (), Error = ()> + Send), ResolveError> {
         let (config, opts) = trust_dns_resolver::system_conf::read_system_conf()?;
         let opts = env_config.configure_resolver_opts(opts);
         trace!("DNS config: {:?}", &config);
@@ -73,16 +76,19 @@ impl Resolver {
         Ok(Self::new(config, opts))
     }
 
-    pub fn new(config: ResolverConfig,  mut opts: ResolverOpts) -> Self {
+    pub fn new(config: ResolverConfig,  mut opts: ResolverOpts)
+        -> (Self, impl Future<Item = (), Error = ()> + Send)
+    {
         // Disable Trust-DNS's caching.
         // NOTE: Trust-DNS' integration tests indicate that the resolver
         //       functions correctly with cache_size = 0, so this is
         //       sufficient to disable its' caching.
         opts.cache_size = 0;
-        Resolver {
-            config,
-            opts,
-        }
+        let (resolver, background) = AsyncResolver::new(config, opts);
+        let resolver = Resolver {
+            resolver,
+        };
+        (resolver, background)
     }
 
     pub fn resolve_one_ip(&self, host: &transport::Host) -> IpAddrFuture {
@@ -126,12 +132,17 @@ impl Resolver {
     fn lookup_ip(self, &Name(ref name): &Name)
         -> impl Future<Item = LookupIp, Error = ResolveError>
     {
-        let name = name.clone(); // TODO: ref-count names.
-        let resolver = ResolverFuture::new(
-            self.config,
-            self.opts
-        );
-        resolver.and_then(move |r| r.lookup_ip(name.as_str()))
+        self.resolver.lookup_ip(name.as_str())
+    }
+}
+
+/// Note: `AsyncResolver` does not implement `Debug`, so we must manually
+///       implement this.
+impl fmt::Debug for Resolver {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Resolver")
+            .field("resolver", &"...")
+            .finish()
     }
 }
 
