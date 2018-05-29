@@ -1,5 +1,9 @@
+// These crates are only used within the `tls` module.
+extern crate ring;
 extern crate rustls;
 extern crate tokio_rustls;
+extern crate untrusted;
+extern crate webpki;
 
 use std::fs::File;
 use std::io::{self, Cursor, Read};
@@ -12,20 +16,23 @@ use futures::Future;
 use tokio::prelude::*;
 use tokio::net::TcpStream;
 
-use self::rustls::{ServerSession, internal::pemfile};
+use self::rustls::ServerSession;
 use self::tokio_rustls::ServerConfigExt;
 
 use transport::{AddrInfo, Io};
 
+mod cert_resolver;
+
 #[derive(Debug)]
 pub struct ServerSettings {
-    /// The certificate chain, sans root certificate, encoded as the
-    /// concatenation of PEM-encoded DER X.509 certificates, end-entity
-    /// certificate first. (TODO).
-    cert_chain: PathBuf,
+    /// The trust anchors as concatenated PEM-encoded X.509 certificates.
+    pub trust_anchors: PathBuf,
+
+    /// The end-entity certificate as a DER-encoded X.509 certificate.
+    pub end_entity_cert: PathBuf,
 
     /// The RSA private key in PEM-encoded PKCS#8 form.
-    private_key: PathBuf,
+    pub private_key: PathBuf,
 }
 
 #[derive(Clone)]
@@ -34,44 +41,52 @@ pub struct ServerConfig(Arc<rustls::ServerConfig>);
 #[derive(Debug)]
 pub enum ConfigError {
     Io(PathBuf, io::Error),
-    FailedToParseCertChain,
     FailedToParsePrivateKey,
-    FailedToParseCaBundle,
-    EmptyCertChain,
+    FailedToParseTrustAnchors(Option<webpki::Error>),
+    EmptyEndEntityCert,
+    EndEntityCertIsNotValid(webpki::Error),
+    InvalidPrivateKey,
+    TimeConversionFailed,
 }
 
 impl ServerSettings {
-    pub fn from_cert_chain_and_private_key(cert_chain: PathBuf, private_key: PathBuf) -> Self {
-        Self {
-            cert_chain,
-            private_key,
-        }
-    }
-
     pub fn load_from_disk(&self) -> Result<ServerConfig, ConfigError> {
-        let cert_chain =
-            pemfile::certs(&mut load_file_contents(&self.cert_chain)?)
-                .map_err(|()| ConfigError::FailedToParseCertChain)?;
-        let private_key = {
-            let mut private_keys =
-                pemfile::pkcs8_private_keys(&mut load_file_contents(&self.private_key)?)
-                    .map_err(|()| ConfigError::FailedToParsePrivateKey)?;
-            if !private_keys.len() != 1 {
-                return Err(ConfigError::FailedToParsePrivateKey);
-            }
-            private_keys.pop().unwrap() // We just checked it.
-        };
+        let trust_anchor_certs = load_file_contents(&self.trust_anchors)
+            .and_then(|file_contents|
+                rustls::internal::pemfile::certs(&mut Cursor::new(file_contents))
+                    .map_err(|()| ConfigError::FailedToParseTrustAnchors(None)))?;
+        let mut trust_anchors = Vec::with_capacity(trust_anchor_certs.len());
+        for ta in &trust_anchor_certs {
+            let ta = webpki::trust_anchor_util::cert_der_as_trust_anchor(
+                untrusted::Input::from(ta.as_ref()))
+                .map_err(|e| ConfigError::FailedToParseTrustAnchors(Some(e)))?;
+            trust_anchors.push(ta);
+        }
+        let trust_anchors = webpki::TLSServerTrustAnchors(&trust_anchors);
+
+        let end_entity_cert = load_file_contents(&self.end_entity_cert)?;
+
+        // XXX: Assume there are no intermediates since there is no way to load
+        // them yet.
+        let cert_chain = vec![rustls::Certificate(end_entity_cert)];
+
+        // Load the private key after we've validated the certificate.
+        let private_key = load_file_contents(&self.private_key)?;
+        let private_key = untrusted::Input::from(&private_key);
+
+        let cert_resolver =
+            cert_resolver::CertResolver::new(&trust_anchors, cert_chain, private_key)?;
 
         let mut config = rustls::ServerConfig::new(Arc::new(rustls::NoClientAuth));
         set_common_settings(&mut config.versions);
-        config.set_single_cert(cert_chain, private_key);
+        config.cert_resolver = Arc::new(cert_resolver);
 
         Ok(ServerConfig(Arc::new(config)))
     }
 }
 
 pub fn accept_tls_connection(socket: TcpStream, ServerConfig(config): ServerConfig)
-    -> impl Future<Item = Connection, Error = io::Error>
+                             -> impl Future<Item = Connection, Error = io::Error>
 {
     config.accept_async(socket).map(Connection)
 }
@@ -135,7 +150,7 @@ fn set_common_settings(versions: &mut Vec<rustls::ProtocolVersion>) {
     *versions = vec![rustls::ProtocolVersion::TLSv1_2]
 }
 
-fn load_file_contents(path: &PathBuf) -> Result<Cursor<Vec<u8>>, ConfigError> {
+fn load_file_contents(path: &PathBuf) -> Result<Vec<u8>, ConfigError> {
     fn load_file(path: &PathBuf) -> Result<Vec<u8>, io::Error> {
         let mut result = Vec::new();
         let mut file = File::open(path)?;
@@ -156,7 +171,7 @@ fn load_file_contents(path: &PathBuf) -> Result<Cursor<Vec<u8>>, ConfigError> {
     load_file(path)
         .map(|contents| {
             trace!("loaded file {:?}", path);
-            Cursor::new(contents)
+            contents
         })
         .map_err(|e| ConfigError::Io(path.clone(), e))
 }

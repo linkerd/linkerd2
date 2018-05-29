@@ -151,6 +151,7 @@ dependencies = [
  "quickcheck 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ring 0.13.0-alpha3",
  "rustls 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-connect 0.1.0 (git+https://github.com/carllerche/tokio-connect)",
@@ -167,6 +168,8 @@ dependencies = [
  "tower-service 0.1.0 (git+https://github.com/tower-rs/tower)",
  "tower-util 0.1.0 (git+https://github.com/tower-rs/tower)",
  "trust-dns-resolver 0.8.1 (git+https://github.com/bluejekyll/trust-dns)",
+ "untrusted 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "webpki 0.18.0-alpha3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -831,7 +834,6 @@ dependencies = [
 [[package]]
 name = "ring"
 version = "0.13.0-alpha3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "cc 1.0.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -851,7 +853,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "base64 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "ring 0.13.0-alpha3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ring 0.13.0-alpha3",
  "sct 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "untrusted 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "webpki 0.18.0-alpha3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -877,7 +879,7 @@ name = "sct"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "ring 0.13.0-alpha3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ring 0.13.0-alpha3",
  "untrusted 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -1350,7 +1352,7 @@ name = "webpki"
 version = "0.18.0-alpha3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "ring 0.13.0-alpha3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ring 0.13.0-alpha3",
  "untrusted 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -1511,7 +1513,6 @@ dependencies = [
 "checksum regex-syntax 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "8f1ac0f60d675cc6cf13a20ec076568254472551051ad5dd050364d70671bf6b"
 "checksum remove_dir_all 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "dfc5b3ce5d5ea144bb04ebd093a9e14e9765bcfec866aecda9b6dec43b3d1e24"
 "checksum resolv-conf 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "8e1b086bb6a2659d6ba66e4aa21bde8a53ec03587cd5c80b83bdc3a330f35cab"
-"checksum ring 0.13.0-alpha3 (registry+https://github.com/rust-lang/crates.io-index)" = "caa01a2423071513d705e3214187b944be268b34fb44ae7b07eba76ad9e6b01d"
 "checksum rustc-demangle 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "aee45432acc62f7b9a108cc054142dac51f979e69e71ddce7d6fc7adf29e817e"
 "checksum rustls 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ab72e4883a4fc9fd5cd462a51c55d79f6a7b5c9483e8d73a2b7bca0b18430bcd"
 "checksum safemem 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "e27a8b19b835f7aea908818e871f5cc3a5a186550c30773be987e155e8163d8f"

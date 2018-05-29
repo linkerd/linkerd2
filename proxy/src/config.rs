@@ -160,8 +160,9 @@ pub const ENV_OUTBOUND_ROUTER_MAX_IDLE_AGE: &str = "CONDUIT_PROXY_OUTBOUND_ROUTE
 pub const ENV_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION: &str = "CONDUIT_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION";
 pub const ENV_OUTBOUND_PORTS_DISABLE_PROTOCOL_DETECTION: &str = "CONDUIT_PROXY_OUTBOUND_PORTS_DISABLE_PROTOCOL_DETECTION";
 
-pub const ENV_INBOUND_TLS_CERT_CHAIN: &str = "CONDUIT_PROXY_INBOUND_TLS_CERT_CHAIN";
-pub const ENV_INBOUND_TLS_PRIVATE_KEY: &str = "CONDUIT_PROXY_INBOUND_TLS_PRIVATE_KEY";
+pub const ENV_TLS_TRUST_ANCHORS: &str = "CONDUIT_PROXY_TLS_TRUST_ANCHORS";
+pub const ENV_TLS_CERT: &str = "CONDUIT_PROXY_TLS_CERT";
+pub const ENV_TLS_PRIVATE_KEY: &str = "CONDUIT_PROXY_TLS_PRIVATE_KEY";
 
 pub const ENV_POD_NAMESPACE: &str = "CONDUIT_PROXY_POD_NAMESPACE";
 
@@ -218,8 +219,9 @@ impl<'a> TryFrom<&'a Strings> for Config {
         let outbound_router_capacity = parse(strings, ENV_OUTBOUND_ROUTER_CAPACITY, parse_number);
         let inbound_router_max_idle_age = parse(strings, ENV_INBOUND_ROUTER_MAX_IDLE_AGE, parse_duration);
         let outbound_router_max_idle_age = parse(strings, ENV_OUTBOUND_ROUTER_MAX_IDLE_AGE, parse_duration);
-        let inbound_tls_cert_chain = parse(strings, ENV_INBOUND_TLS_CERT_CHAIN, parse_path);
-        let inbound_tls_private_key = parse(strings, ENV_INBOUND_TLS_PRIVATE_KEY, parse_path);
+        let tls_trust_anchors = parse(strings, ENV_TLS_TRUST_ANCHORS, parse_path);
+        let tls_end_entity_cert = parse(strings, ENV_TLS_CERT, parse_path);
+        let tls_private_key = parse(strings, ENV_TLS_PRIVATE_KEY, parse_path);
         let bind_timeout = parse(strings, ENV_BIND_TIMEOUT, parse_duration);
         let resolv_conf_path = strings.get(ENV_RESOLV_CONF);
         let event_buffer_capacity = parse(strings, ENV_EVENT_BUFFER_CAPACITY, parse_number);
@@ -243,20 +245,29 @@ impl<'a> TryFrom<&'a Strings> for Config {
             Err(e) => Err(e),
         };
 
-        let inbound_tls = match (inbound_tls_cert_chain?, inbound_tls_private_key?) {
-            (Some(cert_chain), Some(private_key)) =>
-                Ok(Some(tls::ServerSettings::from_cert_chain_and_private_key(cert_chain, private_key))),
-            (None, None) => Ok(None),
-            (Some(_), None) => {
-                error!("{} is not set but {} is set; both must be set or both unset",
-                    ENV_INBOUND_TLS_CERT_CHAIN, ENV_INBOUND_TLS_PRIVATE_KEY);
+        let inbound_tls = match (tls_trust_anchors?, tls_end_entity_cert?, tls_private_key?) {
+            (Some(trust_anchors), Some(end_entity_cert), Some(private_key)) =>
+                Ok(Some(tls::ServerSettings {
+                    trust_anchors,
+                    end_entity_cert,
+                    private_key,
+                })),
+            (_, None, None) => Ok(None), // No TLS in server role.
+            (trust_anchors, end_entity_cert, private_key) => {
+                if trust_anchors.is_none() {
+                    error!("{} is not set; it is required when {} and {} are set.",
+                           ENV_TLS_TRUST_ANCHORS, ENV_TLS_CERT, ENV_TLS_PRIVATE_KEY);
+                }
+                if end_entity_cert.is_none() {
+                    error!("{} is not set; it is required when {} are set.",
+                           ENV_TLS_CERT, ENV_TLS_PRIVATE_KEY);
+                }
+                if private_key.is_none() {
+                    error!("{} is not set; it is required when {} are set.",
+                           ENV_TLS_PRIVATE_KEY, ENV_TLS_CERT);
+                }
                 Err(Error::InvalidEnvVar)
             },
-            (None, Some(_)) => {
-                error!("{} is not set but {} is set; both must be set or both unset",
-                       ENV_INBOUND_TLS_PRIVATE_KEY, ENV_INBOUND_TLS_CERT_CHAIN);
-                Err(Error::InvalidEnvVar)
-            }
         }?;
 
         Ok(Config {
