@@ -183,7 +183,7 @@ where
                             // them onto the new watch first
                             match set.addrs {
                                 Exists::Yes(ref cache) => for (&addr, meta) in cache {
-                                    let update = Update::Insert(addr, meta.clone());
+                                    let update = Update::Bind(addr, meta.clone());
                                     resolve.responder.update_tx
                                         .unbounded_send(update)
                                         .expect("unbounded_send does not fail");
@@ -526,12 +526,12 @@ impl<T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
     ) {
         let (update_str, update, addr) = match change {
             CacheChange::Insertion { key, value } => {
-                ("insert", Update::Insert(key, value.clone()), key)
+                ("insert", Update::Bind(key, value.clone()), key)
             },
             CacheChange::Removal { key } => ("remove", Update::Remove(key), key),
             CacheChange::Modification { key, new_value } => (
                 "change metadata for",
-                Update::ChangeMetadata(key, new_value.clone()),
+                Update::Bind(key, new_value.clone()),
                 key,
             ),
         };

@@ -95,9 +95,14 @@ struct Metadata {
 
 #[derive(Debug, Clone)]
 enum Update {
-    Insert(SocketAddr, Metadata),
+    /// Indicates that an endpoint should be bound to `SocketAddr` with the
+    /// provided `Metadata`.
+    ///
+    /// If there was already an endpoint in the load balancer for this
+    /// address, it should be replaced with the new one.
+    Bind(SocketAddr, Metadata),
+    /// Indicates that the endpoint for this `SocketAddr` should be removed.
     Remove(SocketAddr),
-    ChangeMetadata(SocketAddr, Metadata),
 }
 
 /// Bind a `SocketAddr` with a protocol.
@@ -194,13 +199,11 @@ where
             let update = try_ready!(up).expect("destination stream must be infinite");
 
             match update {
-                Update::Insert(addr, meta) | Update::ChangeMetadata(addr, meta) => {
+                Update::Bind(addr, meta) => {
                     // We expect the load balancer to handle duplicate inserts
                     // by replacing the old endpoint with the new one, so
                     // insertions of new endpoints and metadata changes for
                     // existing ones can be handled in the same way.
-                    // TODO: consider combining `Update::Insert` and
-                    //       `Update::ChangeMetadata` into `Update::Upsert`.
                     let endpoint = Endpoint::new(addr, meta.metric_labels.clone());
 
                     let service = self.bind.bind(&endpoint).map_err(|_| ())?;
@@ -208,7 +211,7 @@ where
                     return Ok(Async::Ready(Change::Insert(addr, service)));
                 },
                 Update::Remove(addr) => {
-                    return Ok(Async::Ready(Change::Remove(addr,)));
+                    return Ok(Async::Ready(Change::Remove(addr)));
                 },
             }
         }
