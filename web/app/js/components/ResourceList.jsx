@@ -47,7 +47,7 @@ export class ResourceList extends React.Component {
   }
 
   render() {
-    const {api, resource} = this.props;
+    const {api, loading, resource} = this.props;
 
     const friendlyTitle = _.startCase(resource);
 
@@ -55,7 +55,7 @@ export class ResourceList extends React.Component {
       <div className="page-content">
         <div>
           {this.banner()}
-          <PageHeader header={`${friendlyTitle}s`} api={api} />
+          {loading ? null : <PageHeader header={`${friendlyTitle}s`} api={api} />}
           {this.content()}
         </div>
       </div>

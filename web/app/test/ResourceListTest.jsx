@@ -8,7 +8,6 @@ import ErrorBanner from '../js/components/ErrorBanner.jsx';
 import { expect } from 'chai';
 import MetricsTable from '../js/components/MetricsTable.jsx';
 import PageHeader from '../js/components/PageHeader.jsx';
-import { processSingleResourceRollup } from '../js/components/util/MetricUtils.js';
 import React from 'react';
 import { ResourceList } from '../js/components/ResourceList.jsx';
 import { shallow } from 'enzyme';
@@ -44,7 +43,7 @@ describe('Tests for <ResourceList>', () => {
     );
 
     expect(component.find(ErrorBanner)).to.have.length(0);
-    expect(component.find(PageHeader)).to.have.length(1);
+    expect(component.find(PageHeader)).to.have.length(0);
     expect(component.find(ConduitSpinner)).to.have.length(1);
     expect(component.find(CallToAction)).to.have.length(0);
     expect(component.find(MetricsTable)).to.have.length(0);
