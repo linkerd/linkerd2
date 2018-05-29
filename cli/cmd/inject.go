@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/ghodss/yaml"
 	"github.com/runconduit/conduit/pkg/k8s"
@@ -61,6 +62,10 @@ with 'conduit inject'. e.g. curl http://url.to/yml | conduit inject -
 
 			if len(args) < 1 {
 				return fmt.Errorf("please specify a kubernetes resource file")
+			}
+
+			if _, err := time.ParseDuration(options.proxyBindTimeout); err != nil {
+				return fmt.Errorf("Invalid duration '%s' for --proxy-bind-timeout flag", options.proxyBindTimeout)
 			}
 
 			var in io.Reader
@@ -180,6 +185,7 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride st
 		},
 		Env: []v1.EnvVar{
 			{Name: "CONDUIT_PROXY_LOG", Value: options.proxyLogLevel},
+			{Name: "CONDUIT_PROXY_BIND_TIMEOUT", Value: options.proxyBindTimeout},
 			{
 				Name:  "CONDUIT_PROXY_CONTROL_URL",
 				Value: fmt.Sprintf("tcp://%s:%d", controlPlaneDNS, options.proxyAPIPort),
