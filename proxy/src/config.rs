@@ -214,14 +214,12 @@ impl Config {
     /// Modify a `trust-dns-resolver::config::ResolverOpts` to reflect
     /// the configured minimum and maximum DNS TTL values.
     pub fn configure_resolver_opts(&self, mut opts: ResolverOpts) -> ResolverOpts {
-        opts.min_positive_ttl = self.dns_min_ttl;
-        // TODO: When the Trust-DNS PR that adds support for maximum TTLs
-        //       is merged, use that as well.
-        // opts.positive_max_ttl = self.dns_max_ttl;
+        opts.positive_min_ttl = self.dns_min_ttl;
+        opts.positive_max_ttl = self.dns_max_ttl;
         // TODO: Do we want to allow the positive and negative TTLs to be
         //       configured separately?
-        opts.min_negative_ttl = self.dns_min_ttl;
-        // opts.negative_max_ttl = self.dns_max_ttl;
+        opts.negative_min_ttl = self.dns_min_ttl;
+        opts.negative_max_ttl = self.dns_max_ttl;
         opts
     }
 }
