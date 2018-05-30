@@ -27,7 +27,7 @@ jobs:
     - language: rust
       # Run proxy benchmarks in development mode. Requires nightly.
       # Failures are not fatal.
-      rust: nightly
+      rust: nightly-2018-05-26
       cache: cargo
       script:
         - (cd proxy && cargo test --benches --locked --no-default-features)
@@ -143,9 +143,12 @@ jobs:
         - target/cli/linux/conduit install --conduit-version=$CONDUIT_TAG |tee conduit.yml
         - kubectl -n conduit apply -f conduit.yml --prune --selector='conduit.io/control-plane-component'
 
-  allow_failures:
-    - rust: nightly
-  fast_finish: true
+  # If we want to start building everything against bleeding-edge Rust nightly, we'll have
+  # to enable:
+  #
+  # allow_failures:
+  #   - rust: nightly
+  # fast_finish: true
 
 notifications:
   email:

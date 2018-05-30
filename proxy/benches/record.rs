@@ -2,7 +2,6 @@
 #![deny(warnings)]
 
 extern crate conduit_proxy;
-extern crate futures_watch;
 extern crate http;
 extern crate test;
 
@@ -44,8 +43,7 @@ where
     L: IntoIterator<Item=(S, S)>,
     S: fmt::Display,
 {
-    let (labels_watch, _store) = futures_watch::Watch::new(metrics::DstLabels::new(labels));
-    ctx::transport::Client::new(&proxy, &addr(), Some(labels_watch))
+    ctx::transport::Client::new(&proxy, &addr(), metrics::DstLabels::new(labels))
 }
 
 fn request(
