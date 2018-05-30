@@ -219,7 +219,7 @@ where
                 panic!("invalid DNS configuration: {:?}", e);
             });
 
-        let (control, control_bg) = control::destination::new(
+        let (resolver, resolver_bg) = control::destination::new(
             dns_resolver.clone(),
             config.pod_namespace.clone(),
             control_host_and_port
@@ -263,7 +263,7 @@ where
             let ctx = ctx::Proxy::outbound(&process_ctx);
             let bind = bind.clone().with_ctx(ctx.clone());
             let router = Router::new(
-                Outbound::new(bind, control, config.bind_timeout),
+                Outbound::new(bind, resolver, config.bind_timeout),
                 config.outbound_router_capacity,
                 config.outbound_router_max_idle_age,
             );
@@ -293,17 +293,25 @@ where
 
                     let new_service = TapServer::new(observe);
 
+                    let server_addr = control_listener.local_addr();
                     let server = serve_control(control_listener, new_service);
 
+                    let metrics_addr = metrics_listener.local_addr();
                     let metrics_server = telemetry
                         .serve_metrics(metrics_listener);
 
-                    let fut = control_bg.join4(
-                        server.map_err(|_| {}),
-                        telemetry,
-                        metrics_server.map_err(|_| {}),
-                    ).map(|_| {});
-                    let fut = ::logging::context_future("controller-client", fut);
+                    let fut = ::logging::context_future("admin={bg=resolver}", resolver_bg)
+                        .join4(
+                            ::logging::context_future("admin={bg=telemetry}", telemetry),
+                            ::logging::context_future(
+                                format!("admin={{server=tap;listen={}}}", server_addr),
+                                server.map_err(|_| {}),
+                            ),
+                            ::logging::context_future(
+                                format!("admin={{server=metrics;listen={}}}", metrics_addr),
+                                metrics_server.map_err(|_| {}),
+                            ),
+                        ).map(|_| {});
 
                     rt.spawn(Box::new(fut));
 
