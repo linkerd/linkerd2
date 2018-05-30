@@ -29,10 +29,10 @@ pub fn init() {
                 };
                 writeln!(
                    fmt,
-                    "{} {} {}{}",
+                    "{} {}{} {}",
                     level,
-                    record.target(),
                     Context(&ctxt.borrow()),
+                    record.target(),
                     record.args()
                 )
             })
