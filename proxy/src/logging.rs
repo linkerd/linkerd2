@@ -157,8 +157,7 @@ impl<'a> fmt::Display for Context<'a> {
         for item in self.0 {
             // See `fn context()` for comments about this unsafe.
             let item = unsafe { &**item };
-            item.fmt(f)?;
-            f.write_str(", ")?;
+            write!(f, "{} ", item)?;
         }
         Ok(())
     }
@@ -208,6 +207,7 @@ pub enum Section {
     Admin,
 }
 
+/// A utility for logging actions taken on behalf of a server task.
 #[derive(Clone)]
 pub struct Server {
     section: Section,
@@ -216,6 +216,7 @@ pub struct Server {
     remote: Option<SocketAddr>,
 }
 
+/// A utility for logging actions taken on behalf of a client task.
 #[derive(Clone)]
 pub struct Client<C: fmt::Display, D: fmt::Display> {
     section: Section,
@@ -225,6 +226,7 @@ pub struct Client<C: fmt::Display, D: fmt::Display> {
     remote: Option<SocketAddr>,
 }
 
+/// A utility for logging actions taken on behalf of a background task.
 #[derive(Clone)]
 pub struct Bg {
     section: Section,
