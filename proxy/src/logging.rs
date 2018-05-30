@@ -53,10 +53,10 @@ where
 
 /// Wrap a `Future` with a `Display` value that will be inserted into all logs
 /// created by this Future.
-pub fn context_future<T: fmt::Display, F>(context: T, future: F) -> ContextualFuture<T, F> {
+pub fn context_future<T: fmt::Display, F: Future>(context: T, future: F) -> ContextualFuture<T, F> {
     ContextualFuture {
         context,
-        future,
+        future: Some(future),
     }
 }
 
@@ -69,9 +69,9 @@ pub fn context_executor<T: fmt::Display>(context: T) -> ContextualExecutor<T> {
 }
 
 #[derive(Debug)]
-pub struct ContextualFuture<T, F> {
+pub struct ContextualFuture<T: fmt::Display + 'static, F: Future> {
     context: T,
-    future: F,
+    future: Option<F>,
 }
 
 impl<T, F> Future for ContextualFuture<T, F>
@@ -84,8 +84,21 @@ where
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         let ctxt = &self.context;
-        let fut = &mut self.future;
+        let fut = self.future.as_mut().expect("poll after drop");
         context(ctxt, || fut.poll())
+    }
+}
+impl<T, F> Drop for ContextualFuture<T, F>
+where
+    T: fmt::Display + 'static,
+    F: Future,
+{
+    fn drop(&mut self) {
+        if self.future.is_some() {
+            let ctxt = &self.context;
+            let fut = &mut self.future;
+            context(ctxt, || drop(fut.take()))
+        }
     }
 }
 
@@ -118,8 +131,8 @@ where
             Ok(()) => Ok(()),
             Err(err) => {
                 let kind = err.kind();
-                let future = err.into_future();
-                Err(ExecuteError::new(kind, future.future))
+                let mut future = err.into_future();
+                Err(ExecuteError::new(kind, future.future.take().expect("future")))
             }
         }
     }
