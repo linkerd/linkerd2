@@ -559,9 +559,10 @@ fn pb_to_addr_meta(
         .chain(pb.metric_labels.iter())
         .collect::<Vec<_>>();
     labels.sort_by(|(k0, _), (k1, _)| k0.cmp(k1));
+
     let tls = pb.tls_verification.and_then(TlsVerification::from_pb);
 
-    let meta = Metadata::from_destination(DstLabels::new(labels.into_iter()), tls);
+    let meta = Metadata::new(DstLabels::new(labels.into_iter()), tls);
     Some((addr, meta))
 }
 

@@ -109,8 +109,8 @@ pub mod test_util {
         L: IntoIterator<Item=(S, S)>,
         S: fmt::Display,
     {
-        let labels = destination::Metadata::from_labels(DstLabels::new(labels));
-        ctx::transport::Client::new(&proxy, &addr(), labels)
+        let meta = destination::Metadata::new(DstLabels::new(labels), None);
+        ctx::transport::Client::new(&proxy, &addr(), meta)
     }
 
     pub fn request(

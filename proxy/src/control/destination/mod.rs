@@ -258,7 +258,7 @@ impl Metadata {
     }
 
     /// Construct a new Metadata with a set of labels from the Destination service.
-    pub fn from_destination(
+    pub fn new(
         dst_labels: Option<DstLabels>,
         tls_verification: Option<TlsVerification>
     ) -> Self {
