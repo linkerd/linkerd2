@@ -92,7 +92,9 @@ const withREST = (WrappedComponent, componentPromises, resetProps = []) => {
     render() {
       return (
         <WrappedComponent
-          {..._.pick(this.state, ['data', 'error', 'loading'])}
+          data={this.state.data}
+          error={this.state.error}
+          loading={this.state.loading}
           {...this.props} />
       );
     }
