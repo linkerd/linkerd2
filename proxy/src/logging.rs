@@ -338,10 +338,6 @@ impl<C: fmt::Display, D: fmt::Display> Client<C, D> {
     pub fn executor(self) -> ClientExecutor<C, D> {
         context_executor(self)
     }
-
-    // pub fn future<F: Future>(self, f: F) -> ContextualFuture<Self, F> {
-    //     context_future(self, f)
-    // }
 }
 
 impl<C: fmt::Display, D: fmt::Display> fmt::Display for Client<C, D> {
