@@ -39,8 +39,6 @@ prost-types = "0.3.0"
 
 trust-dns-resolver = { default-features = false, git = "https://github.com/bluejekyll/trust-dns", branch = "master" }
 
-#futures-watch   = { git = "https://github.com/carllerche/better-future" }
-
 tokio-connect         = { git = "https://github.com/carllerche/tokio-connect" }
 tower-service         = { git = "https://github.com/tower-rs/tower" }
 tower-balance         = { git = "https://github.com/tower-rs/tower" }
