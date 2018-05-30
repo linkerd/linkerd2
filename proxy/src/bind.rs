@@ -470,7 +470,6 @@ where
     }
 
     fn call(&mut self, request: Self::Request) -> Self::Future {
-        debug!("call");
         match self.binding {
             Binding::Bound(ref mut svc) => svc.call(request),
             Binding::BindsPerRequest { ref mut next } => {

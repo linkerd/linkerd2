@@ -154,8 +154,11 @@ where
         // `rand::thread_rng()` when it is *used*.
         let balance = tower_balance::power_of_two_choices(loaded, LazyThreadRng);
 
-        let ctx = Ctx { dest: dest.clone(), protocol: protocol.clone() };
-        let buffer = Buffer::new(balance, &::logging::context_executor(ctx))
+        let executor = ::logging::context_executor(Log {
+            dest: dest.clone(),
+            protocol: protocol.clone()
+        });
+        let buffer = Buffer::new(balance, &executor)
             .map_err(|_| bind::BufferSpawnError::Outbound)?;
 
         let timeout = Timeout::new(buffer, self.bind_timeout);
@@ -231,13 +234,13 @@ impl error::Error for BindError {
     fn cause(&self) -> Option<&error::Error> { None }
 }
 
-pub struct Ctx {
+struct Log {
     dest: Destination,
     protocol: bind::Protocol
 }
 
 
-impl fmt::Display for Ctx {
+impl fmt::Display for Log {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "client={{proxy=out;proto={:?};dst={:?}}}", self.protocol, self.dest)
     }

@@ -89,8 +89,11 @@ where
         let endpoint = (*addr).into();
         let binding = self.bind.bind_service(&endpoint, proto);
 
-        let ctx = Ctx { addr: *addr, protocol: proto.clone() };
-        Buffer::new(binding, &::logging::context_executor(ctx))
+        let executor = ::logging::context_executor(Log {
+            addr: *addr,
+            protocol: proto.clone()
+        });
+        Buffer::new(binding, &executor)
             .map(|buffer| {
                 InFlightLimit::new(buffer, MAX_IN_FLIGHT)
             })
@@ -98,12 +101,12 @@ where
     }
 }
 
-struct Ctx {
+struct Log {
     addr: SocketAddr,
     protocol: bind::Protocol
 }
 
-impl fmt::Display for Ctx {
+impl fmt::Display for Log {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "client={{proxy=in;proto={:?};dst={:?}}}", self.protocol, self.addr)
     }
