@@ -303,9 +303,9 @@ impl Server {
 
 impl fmt::Display for Server {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}={{server={};listen={}", self.section, self.name, self.listen)?;
+        write!(f, "{}={{server={} listen={}", self.section, self.name, self.listen)?;
         if let Some(remote) = self.remote {
-            write!(f, ";remote={}", remote)?;
+            write!(f, " remote={}", remote)?;
         }
         write!(f, "}}")
     }
@@ -344,12 +344,12 @@ impl<C: fmt::Display, D: fmt::Display> Client<C, D> {
 
 impl<C: fmt::Display, D: fmt::Display> fmt::Display for Client<C, D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}={{client={};dst={}", self.section, self.client, self.dst)?;
+        write!(f, "{}={{client={} dst={}", self.section, self.client, self.dst)?;
         if let Some(ref proto) = self.protocol {
-            write!(f, ";proto={:?}", proto)?;
+            write!(f, " proto={:?}", proto)?;
         }
         if let Some(remote) = self.remote {
-            write!(f, ";remote={}", remote)?;
+            write!(f, " remote={}", remote)?;
         }
         write!(f, "}}")
     }
