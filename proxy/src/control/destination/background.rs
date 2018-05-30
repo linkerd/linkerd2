@@ -568,9 +568,8 @@ fn pb_to_addr_meta(
 
 impl TlsVerification {
     pub fn from_pb(pb: TlsVerificationPb) -> Option<Self> {
-        use conduit_proxy_controller_grpc::destination::{
-            tls_verification::Strategy,
-            K8sPodNamespace,
+        use conduit_proxy_controller_grpc::destination::tls_verification::{
+            Strategy, K8sPodNamespace
         };
         pb.strategy.map(|strategy| match strategy {
             Strategy::K8sPodNamespace(K8sPodNamespace { pod_name, namespace }) =>
