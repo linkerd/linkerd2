@@ -128,7 +128,7 @@ impl BoundPort {
                     match tls_config.clone() {
                         Some(tls_config) => {
                             Either::A(
-                                tls::accept_tls_connection(socket, tls_config)
+                                tls::Connection::accept(socket, tls_config)
                                     .map(move |tls| (Connection::new(Box::new(tls)), remote_addr)))
                         },
                         None => Either::B(future::ok((Connection::new(Box::new(socket)), remote_addr))),
