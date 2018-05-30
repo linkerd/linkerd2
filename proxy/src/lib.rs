@@ -419,6 +419,7 @@ where
         (),
         move |(), (connection, remote_addr)| {
             let s = server.serve(connection, remote_addr);
+            // Logging context is configured by the server.
             let r = DefaultExecutor::current()
                 .spawn(Box::new(s))
                 .map_err(task::Error::into_io);
