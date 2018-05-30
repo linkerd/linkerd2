@@ -33,7 +33,7 @@ use control::{
 };
 use dns::{self, IpAddrListFuture};
 use telemetry::metrics::DstLabels;
-use transport::{DnsNameAndPort, HostAndPort, LookupAddressAndConnect};
+use transport::{DnsNameAndPort, Host, HostAndPort, LookupAddressAndConnect};
 use timeout::Timeout;
 
 type DestinationServiceQuery<T> = Remote<PbUpdate, T>;
@@ -58,7 +58,7 @@ struct Background<T: HttpService<ResponseBody = RecvBody>> {
     request_rx: mpsc::UnboundedReceiver<ResolveRequest>,
 }
 
-struct Ctx(HostAndPort);
+struct Log(HostAndPort);
 
 /// Holds the state of a single resolution.
 struct DestinationSet<T: HttpService<ResponseBody = RecvBody>> {
@@ -89,7 +89,7 @@ pub(super) fn task(
         let h2_client = tower_h2::client::Connect::new(
             connect,
             h2::client::Builder::default(),
-            ::logging::context_executor(Ctx(host_and_port))
+            ::logging::context_executor(Log(host_and_port))
         );
 
         let reconnect = Reconnect::new(h2_client);
@@ -609,10 +609,17 @@ fn pb_to_sock_addr(pb: TcpAddress) -> Option<SocketAddr> {
     }
 }
 
-impl fmt::Display for Ctx {
+impl fmt::Display for Log {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "client={{controller=")?;
-        fmt::Display::fmt(&self.0, f)?;
+        match self.0.host {
+            Host::DnsName(ref dns) => {
+                write!(f, "dns={}:{}", dns, self.0.port)?;
+            }
+            Host::Ip(ref ip) => {
+                write!(f, "ip={}:{}", ip, self.0.port)?;
+            }
+        }
         write!(f, "}}")
     }
 }

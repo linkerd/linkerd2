@@ -134,7 +134,7 @@ pub type HttpRequest<B> = http::Request<sensor::http::RequestBody<B>>;
 
 pub type Client<B> = transparency::Client<
     sensor::Connect<transport::Connect>,
-    ::logging::ContextualExecutor<BindCtx>,
+    ::logging::ContextualExecutor<Log>,
     B,
 >;
 
@@ -150,12 +150,12 @@ impl fmt::Display for BufferSpawnError {
     }
 }
 
-pub struct BindCtx {
+pub struct Log {
     ctx: Arc<ctx::transport::Client>,
     protocol: Protocol,
 }
 
-impl fmt::Display for BindCtx {
+impl fmt::Display for Log {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "client={{")?;
 
@@ -246,7 +246,7 @@ where
         let client = transparency::Client::new(
             protocol,
             connect,
-            ::logging::context_executor(BindCtx {
+            ::logging::context_executor(Log {
                 ctx: client_ctx.clone(),
                 protocol: protocol.clone(),
             })

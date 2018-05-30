@@ -108,7 +108,7 @@ struct Log {
 
 impl fmt::Display for Log {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "client={{proxy=in;proto={:?};dst={:?}}}", self.protocol, self.addr)
+        write!(f, "client={{proxy=in;proto={:?};dst={}}}", self.protocol, self.addr)
     }
 }
 

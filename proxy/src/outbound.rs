@@ -242,6 +242,15 @@ struct Log {
 
 impl fmt::Display for Log {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "client={{proxy=out;proto={:?};dst={:?}}}", self.protocol, self.dest)
+        write!(f, "client={{proxy=out;proto={:?}", self.protocol)?;
+        match self.dest {
+            Destination::Hostname(ref name) => {
+                write!(f, ";dst={{host={}:{}}}", name.host, name.port)?;
+            }
+            Destination::ImplicitOriginalDst(ref addr) => {
+                write!(f, ";dst={{orig={}}}", addr)?;
+            }
+        }
+        write!(f, "}}")
     }
 }
