@@ -237,8 +237,8 @@ pub struct Ctx {
 }
 
 
-impl ::logging::LogCtx for Ctx {
-    fn fmt(&self, f: &mut ::logging::Formatter) -> ::logging::Result {
+impl fmt::Display for Ctx {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "client={{proxy=out;proto={:?};dst={:?}}}", self.protocol, self.dest)
     }
 }

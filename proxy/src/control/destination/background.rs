@@ -609,10 +609,10 @@ fn pb_to_sock_addr(pb: TcpAddress) -> Option<SocketAddr> {
     }
 }
 
-impl ::logging::LogCtx for Ctx {
-    fn fmt(&self, f: &mut ::logging::Formatter) -> ::logging::Result {
+impl fmt::Display for Ctx {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "client={{controller=")?;
-        ::logging::LogCtx::fmt(&self.0, f)?;
+        fmt::Display::fmt(&self.0, f)?;
         write!(f, "}}")
     }
 }

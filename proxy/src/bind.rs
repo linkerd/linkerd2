@@ -155,8 +155,8 @@ pub struct BindCtx {
     protocol: Protocol,
 }
 
-impl ::logging::LogCtx for BindCtx {
-    fn fmt(&self, f: &mut ::logging::Formatter) -> ::logging::Result {
+impl fmt::Display for BindCtx {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "client={{")?;
 
         if self.ctx.proxy.is_inbound() {

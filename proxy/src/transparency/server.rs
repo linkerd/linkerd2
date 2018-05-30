@@ -232,8 +232,8 @@ pub struct AcceptInfo {
 
 pub struct ServeInfo(Arc<ServerCtx>);
 
-impl ::logging::LogCtx for AcceptInfo {
-    fn fmt(&self, f: &mut ::logging::Formatter) -> ::logging::Result {
+impl fmt::Display for AcceptInfo {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "server={{")?;
         if self.ctx.is_inbound() {
             write!(f, "proxy=in")?;
@@ -245,8 +245,8 @@ impl ::logging::LogCtx for AcceptInfo {
     }
 }
 
-impl ::logging::LogCtx for ServeInfo {
-    fn fmt(&self, f: &mut ::logging::Formatter) -> ::logging::Result {
+impl fmt::Display for ServeInfo {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "server={{")?;
         if self.0.proxy.is_inbound() {
             write!(f, "proxy=in")?;

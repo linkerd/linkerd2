@@ -1,3 +1,4 @@
+use std::fmt;
 use std::net::{SocketAddr};
 use std::sync::Arc;
 
@@ -102,8 +103,8 @@ struct Ctx {
     protocol: bind::Protocol
 }
 
-impl ::logging::LogCtx for Ctx {
-    fn fmt(&self, f: &mut ::logging::Formatter) -> ::logging::Result {
+impl fmt::Display for Ctx {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "client={{proxy=in;proto={:?};dst={:?}}}", self.protocol, self.addr)
     }
 }

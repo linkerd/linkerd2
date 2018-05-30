@@ -1,7 +1,7 @@
 use futures::Future;
 use tokio_connect;
 
-use std::io;
+use std::{fmt, io};
 use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
 
@@ -78,8 +78,8 @@ impl<'a> From<&'a HostAndPort> for http::uri::Authority {
     }
 }
 
-impl ::logging::LogCtx for HostAndPort {
-    fn fmt(&self, f: &mut ::logging::Formatter) -> ::logging::Result {
+impl fmt::Display for HostAndPort {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{{")?;
         match self.host {
             Host::DnsName(ref dns) => {
