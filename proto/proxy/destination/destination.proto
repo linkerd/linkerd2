@@ -78,11 +78,11 @@ message WeightedAddr {
   common.TcpAddress addr = 1;
   uint32 weight = 3;
   map<string, string> metric_labels = 4;
-  TlsVerification tls_verification = 5;
+  TlsIdentity tls_identity = 5;
 }
 
 // Which strategy should be used for verifying TLS.
-message TlsVerification {
+message TlsIdentity {
   oneof strategy {
     K8sPodNamespace k8s_pod_namespace = 1;
   }
