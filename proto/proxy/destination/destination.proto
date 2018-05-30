@@ -81,8 +81,7 @@ message WeightedAddr {
     TlsVerification tls_verification = 5;
 }
 
-
-    // Which strategy should be used for verifying TLS.
+// Which strategy should be used for verifying TLS.
 message TlsVerification {
     oneof strategy {
         K8sPodNamespace k8s_pod_namespace = 1;
