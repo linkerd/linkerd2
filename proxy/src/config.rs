@@ -51,7 +51,7 @@ pub struct Config {
 
     pub outbound_router_max_idle_age: Duration,
 
-    pub inbound_tls: Option<tls::ServerSettings>,
+    pub tls_settings: Option<tls::CommonSettings>,
 
     /// The path to "/etc/resolv.conf"
     pub resolv_conf_path: PathBuf,
@@ -245,9 +245,9 @@ impl<'a> TryFrom<&'a Strings> for Config {
             Err(e) => Err(e),
         };
 
-        let inbound_tls = match (tls_trust_anchors?, tls_end_entity_cert?, tls_private_key?) {
+        let tls_settings = match (tls_trust_anchors?, tls_end_entity_cert?, tls_private_key?) {
             (Some(trust_anchors), Some(end_entity_cert), Some(private_key)) =>
-                Ok(Some(tls::ServerSettings {
+                Ok(Some(tls::CommonSettings {
                     trust_anchors,
                     end_entity_cert,
                     private_key,
@@ -309,7 +309,7 @@ impl<'a> TryFrom<&'a Strings> for Config {
             outbound_router_max_idle_age: outbound_router_max_idle_age?
                 .unwrap_or(DEFAULT_OUTBOUND_ROUTER_MAX_IDLE_AGE),
 
-            inbound_tls,
+            tls_settings,
 
             resolv_conf_path: resolv_conf_path?
                 .unwrap_or(DEFAULT_RESOLV_CONF.into())

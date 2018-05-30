@@ -26,8 +26,15 @@ struct Signer {
 }
 
 impl CertResolver {
-    pub fn new(trust_anchors: &webpki::TLSServerTrustAnchors,
-        cert_chain: Vec<rustls::Certificate>, private_key: untrusted::Input)
+    /// Returns a new `CertResolver` that has a certificate (chain) verified to
+    /// have been issued by one of the given trust anchors.
+    ///
+    /// TODO: Verify that the public key of the certificate matches the private
+    /// key.
+    pub fn new(
+        trust_anchors: &webpki::TLSServerTrustAnchors,
+        cert_chain: Vec<rustls::Certificate>,
+        private_key: untrusted::Input)
         -> Result<Self, ConfigError>
     {
         let now = webpki::Time::try_from(SystemTime::now())

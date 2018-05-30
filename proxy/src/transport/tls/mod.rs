@@ -23,8 +23,10 @@ use transport::{AddrInfo, Io};
 
 mod cert_resolver;
 
+/// Not-yet-validated settings that are used for both TLS clients and TLS
+/// servers.
 #[derive(Debug)]
-pub struct ServerSettings {
+pub struct CommonSettings {
     /// The trust anchors as concatenated PEM-encoded X.509 certificates.
     pub trust_anchors: PathBuf,
 
@@ -35,6 +37,12 @@ pub struct ServerSettings {
     pub private_key: PathBuf,
 }
 
+/// Validated configuration common between TLS clients and TLS servers.
+pub struct CommonConfig {
+    cert_resolver: Arc<cert_resolver::CertResolver>,
+}
+
+/// Validated configuration for TLS servers.
 #[derive(Clone)]
 pub struct ServerConfig(Arc<rustls::ServerConfig>);
 
@@ -49,8 +57,18 @@ pub enum ConfigError {
     TimeConversionFailed,
 }
 
-impl ServerSettings {
-    pub fn load_from_disk(&self) -> Result<ServerConfig, ConfigError> {
+impl CommonConfig {
+    /// Loads a configuration from the given files and validates it. If an
+    /// error is returned then the caller should try again after the files are
+    /// updated.
+    ///
+    /// In a valid configuration, all the files need to be in sync with each
+    /// other. For example, the private key file must contain the private
+    /// key for the end-entity certificate, and the end-entity certificate
+    /// must be issued by the CA represented by a certificate in the
+    /// trust anchors file. Since filesystem operations are not atomic, we
+    /// need to check for this consistency.
+    pub fn load_from_disk(settings: &CommonSettings) -> Result<Self, ConfigError> {
         let trust_anchor_certs = load_file_contents(&self.trust_anchors)
             .and_then(|file_contents|
                 rustls::internal::pemfile::certs(&mut Cursor::new(file_contents))
@@ -74,13 +92,21 @@ impl ServerSettings {
         let private_key = load_file_contents(&self.private_key)?;
         let private_key = untrusted::Input::from(&private_key);
 
+        // `CertResolver::new` is responsible for the consistency check.
         let cert_resolver =
             cert_resolver::CertResolver::new(&trust_anchors, cert_chain, private_key)?;
 
+        Ok(Self {
+            cert_resolver: Arc::new(cert_resolver),
+        })
+    }
+}
+
+impl ServerConfig {
+    pub fn from(common: &CommonConfig) -> Self {
         let mut config = rustls::ServerConfig::new(Arc::new(rustls::NoClientAuth));
         set_common_settings(&mut config.versions);
-        config.cert_resolver = Arc::new(cert_resolver);
-
+        config.cert_resolver = common.cert_resolver.clone();
         Ok(ServerConfig(Arc::new(config)))
     }
 }

@@ -229,19 +229,25 @@ where
 
         let bind = Bind::new().with_sensors(sensors.clone());
 
+        // TODO: Load the TLS configuration asynchronously and watch for
+        // changes to the files.
+        let tls_config = config.tls_settings.and_then(|settings| {
+            match settings.load_from_disk() {
+                Ok(config) => Some(config),
+                Err(e) => {
+                    // Keep going without TLS if loading settings failed.
+                    error!("Error loading TLS configuration: {:?}", e);
+                    None
+                }
+            }
+        });
+
+        let tls_server_config = tls_config.as_ref().map(tls::ServerConfig::from);
+
         // Setup the public listener. This will listen on a publicly accessible
         // address and listen for inbound connections that should be forwarded
         // to the managed application (private destination).
         let inbound = {
-            let tls_config = config.inbound_tls.and_then(|config| {
-                match config.load_from_disk() {
-                    Ok(config) => Some(config),
-                    Err(e) => {
-                        error!("Error loading inbound TLS configuration: {:?}", e);
-                        None
-                    }
-                }
-            });
             let ctx = ctx::Proxy::inbound(&process_ctx);
 
             let bind = bind.clone().with_ctx(ctx.clone());
@@ -255,7 +261,7 @@ where
             );
             serve(
                 inbound_listener,
-                tls_config,
+                tls_server_config,
                 router,
                 config.private_connect_timeout,
                 config.inbound_ports_disable_protocol_detection,
