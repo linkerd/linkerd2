@@ -101,7 +101,7 @@ class Namespaces extends React.Component {
     return (
       <div className="page-content">
         { !this.state.error ? null : <ErrorBanner message={this.state.error} /> }
-        { !this.state.loaded ? <ConduitSpinner />  :
+        { !this.state.loaded ? <ConduitSpinner /> : (
           <div>
             <PageHeader header={`Namespace: ${this.state.ns}`} />
             { noMetrics ? <div>No resources detected.</div> : null}
@@ -109,7 +109,7 @@ class Namespaces extends React.Component {
             {this.renderResourceSection("Replication Controller", this.state.metrics.replicationcontrollers)}
             {this.renderResourceSection("Pod", this.state.metrics.pods)}
           </div>
-        }
+        )}
       </div>);
   }
 }

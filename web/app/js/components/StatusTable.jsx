@@ -16,10 +16,12 @@ const columnConfig = {
     dotExplanation: pod => {
       let addedStatus = !pod.added ? "Not in mesh" : "Added to mesh";
 
-      return (<React.Fragment>
-        <div>Pod status: {pod.status}</div>
-        <div>{addedStatus}</div>
-      </React.Fragment>);
+      return (
+        <React.Fragment>
+          <div>Pod status: {pod.status}</div>
+          <div>{addedStatus}</div>
+        </React.Fragment>
+      );
     }
   }
 };
@@ -27,14 +29,17 @@ const columnConfig = {
 const StatusDot = ({status, multilineDots, columnName}) => (
   <Tooltip
     placement="top"
-    title={<div>
-      <div>{status.name}</div>
-      <div>{_.get(columnConfig, [columnName, "dotExplanation"])(status)}</div>
-    </div>}
+    title={(
+      <div>
+        <div>{status.name}</div>
+        <div>{_.get(columnConfig, [columnName, "dotExplanation"])(status)}</div>
+      </div>
+    )}
     overlayStyle={{ fontSize: "12px" }}>
     <div
       className={`status-dot status-dot-${status.value} ${multilineDots ? 'dot-multiline': ''}`}
-      key={status.name}>&nbsp;</div>
+      key={status.name}>&nbsp;
+    </div>
   </Tooltip>
 );
 
@@ -57,11 +62,13 @@ const columns = {
         let multilineDots = _.size(statuses) > columnConfig[name].wrapDotsAt;
 
         return _.map(statuses, (status, i) => {
-          return (<StatusDot
-            status={status}
-            multilineDots={multilineDots}
-            columnName={name}
-            key={`${name}-pod-status-${i}`} />);
+          return (
+            <StatusDot
+              status={status}
+              multilineDots={multilineDots}
+              columnName={name}
+              key={`${name}-pod-status-${i}`} />
+          );
         });
       }
     };
@@ -89,12 +96,14 @@ export default class StatusTable extends React.Component {
     ];
     let tableData = this.getTableData();
 
-    return (<Table
-      dataSource={tableData}
-      columns={tableCols}
-      pagination={false}
-      className="conduit-table"
-      rowKey={r => r.name}
-      size="middle" />);
+    return (
+      <Table
+        dataSource={tableData}
+        columns={tableCols}
+        pagination={false}
+        className="conduit-table"
+        rowKey={r => r.name}
+        size="middle" />
+    );
   }
 }

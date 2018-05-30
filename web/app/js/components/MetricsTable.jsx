@@ -192,14 +192,16 @@ class MetricsTable extends BaseTable {
       emptyText: `No ${this.props.resource}s detected.`
     };
 
-    return (<BaseTable
-      dataSource={tableData.rows}
-      columns={columns}
-      pagination={false}
-      className="conduit-table"
-      rowKey={r => `${r.namespace}/${r.name}`}
-      locale={locale}
-      size="middle" />);
+    return (
+      <BaseTable
+        dataSource={tableData.rows}
+        columns={columns}
+        pagination={false}
+        className="conduit-table"
+        rowKey={r => `${r.namespace}/${r.name}`}
+        locale={locale}
+        size="middle" />
+    );
   }
 }
 

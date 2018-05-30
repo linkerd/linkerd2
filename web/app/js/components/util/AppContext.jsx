@@ -1,4 +1,4 @@
-import { ApiHelpers } from './ApiHelpers.jsx';
+import ApiHelpers from './ApiHelpers.jsx';
 import React from 'react';
 
 const Context = React.createContext({
