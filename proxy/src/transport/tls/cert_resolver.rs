@@ -4,7 +4,7 @@ use std::{
 };
 
 use super::{
-    ConfigError,
+    config,
 
     ring::{self, rand, signature},
     rustls,
@@ -35,10 +35,10 @@ impl CertResolver {
         trust_anchors: &webpki::TLSServerTrustAnchors,
         cert_chain: Vec<rustls::Certificate>,
         private_key: untrusted::Input)
-        -> Result<Self, ConfigError>
+        -> Result<Self, config::Error>
     {
         let now = webpki::Time::try_from(SystemTime::now())
-            .map_err(|ring::error::Unspecified| ConfigError::TimeConversionFailed)?;
+            .map_err(|ring::error::Unspecified| config::Error::TimeConversionFailed)?;
 
         // Verify that we were given a valid TLS certificate that was issued by
         // our CA.
@@ -49,11 +49,11 @@ impl CertResolver {
                     &trust_anchors,
                     &[], // No intermediate certificates
                     now)
-                    .map_err(ConfigError::EndEntityCertIsNotValid)
+                    .map_err(config::Error::EndEntityCertIsNotValid)
             })?;
 
         let private_key = signature::key_pair_from_pkcs8(SIGNATURE_ALG_RING_SIGNING, private_key)
-            .map_err(|ring::error::Unspecified| ConfigError::InvalidPrivateKey)?;
+            .map_err(|ring::error::Unspecified| config::Error::InvalidPrivateKey)?;
 
         let signer = Signer { private_key: Arc::new(private_key) };
         let signing_key = SigningKey { signer };
@@ -64,13 +64,13 @@ impl CertResolver {
 }
 
 fn parse_end_entity_cert<'a>(cert_chain: &'a[rustls::Certificate])
-    -> Result<webpki::EndEntityCert<'a>, ConfigError>
+    -> Result<webpki::EndEntityCert<'a>, config::Error>
 {
     cert_chain.first()
-        .ok_or(ConfigError::EmptyEndEntityCert)
+        .ok_or(config::Error::EmptyEndEntityCert)
         .and_then(|cert| {
             webpki::EndEntityCert::from(untrusted::Input::from(cert.as_ref()))
-                .map_err(ConfigError::EndEntityCertIsNotValid)
+                .map_err(config::Error::EndEntityCertIsNotValid)
         })
 }
 

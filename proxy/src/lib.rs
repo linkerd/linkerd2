@@ -232,7 +232,7 @@ where
         // TODO: Load the TLS configuration asynchronously and watch for
         // changes to the files.
         let tls_config = config.tls_settings.and_then(|settings| {
-            match settings.load_from_disk() {
+            match tls::CommonConfig::load_from_disk(&settings) {
                 Ok(config) => Some(config),
                 Err(e) => {
                     // Keep going without TLS if loading settings failed.
