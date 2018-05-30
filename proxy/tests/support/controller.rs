@@ -181,6 +181,7 @@ pub fn destination_add_labeled(
                         }),
                         weight: 0,
                         metric_labels: addr_labels,
+                        ..Default::default()
                     },
                 ],
                 metric_labels: set_labels,
