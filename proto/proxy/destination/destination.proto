@@ -92,9 +92,9 @@ message TlsIdentity {
   // namespace as this proxy.
   message K8sPodNamespace {
     // The Kubernetes namespace of the pod's Conduit control plane.
-    string controller_namespace = 1;
+    string controller_ns = 1;
     // The Kubernetes namespace that the pod is in.
-    string pod_namespace = 2;
+    string pod_ns = 2;
     // The name of the pod.
     string pod_name = 3;
   }
