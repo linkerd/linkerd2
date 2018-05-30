@@ -59,7 +59,7 @@ pub fn context_future<T: fmt::Display, F>(context: T, future: F) -> ContextualFu
     }
 }
 
-/// Wrap an `Executor` to spawn futures that have a reference to the `Display`
+/// Wrap `task::LazyExecutor` to spawn futures that have a reference to the `Display`
 /// value, inserting it into all logs created by this future.
 pub fn context_executor<T: fmt::Display>(context: T) -> ContextualExecutor<T> {
     ContextualExecutor {
