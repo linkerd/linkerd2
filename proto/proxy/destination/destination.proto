@@ -84,7 +84,7 @@ message WeightedAddr {
 // Which strategy should be used for verifying TLS.
 message TlsVerification {
   oneof strategy {
-      K8sPodNamespace k8s_pod_namespace = 1;
+    K8sPodNamespace k8s_pod_namespace = 1;
   }
 
   // Verify the certificate based on the Kubernetes pod name, and ensure
