@@ -154,11 +154,9 @@ where
         // `rand::thread_rng()` when it is *used*.
         let balance = tower_balance::power_of_two_choices(loaded, LazyThreadRng);
 
-        let executor = ::logging::context_executor(Log {
-            dest: dest.clone(),
-            protocol: protocol.clone()
-        });
-        let buffer = Buffer::new(balance, &executor)
+        let log = ::logging::proxy().client("out", Dst(dest.clone()))
+            .with_protocol(protocol.clone());
+        let buffer = Buffer::new(balance, &log.executor())
             .map_err(|_| bind::BufferSpawnError::Outbound)?;
 
         let timeout = Timeout::new(buffer, self.bind_timeout);
@@ -196,7 +194,7 @@ where
                 // closing down when the connection is no longer usable.
                 if let Some((addr, bind)) = opt.take() {
                     let svc = bind.bind(&addr.into())
-                        .map_err(|_| BindError::External{ addr })?;
+                        .map_err(|_| BindError::External { addr })?;
                     Ok(Async::Ready(Change::Insert(addr, svc)))
                 } else {
                     Ok(Async::NotReady)
@@ -234,23 +232,15 @@ impl error::Error for BindError {
     fn cause(&self) -> Option<&error::Error> { None }
 }
 
-struct Log {
-    dest: Destination,
-    protocol: bind::Protocol
-}
+struct Dst(Destination);
 
-
-impl fmt::Display for Log {
+impl fmt::Display for Dst {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "client={{proxy=out;proto={:?}", self.protocol)?;
-        match self.dest {
+        match self.0 {
             Destination::Hostname(ref name) => {
-                write!(f, ";dst={{host={}:{}}}", name.host, name.port)?;
+                write!(f, "{}:{}", name.host, name.port)
             }
-            Destination::ImplicitOriginalDst(ref addr) => {
-                write!(f, ";dst={{orig={}}}", addr)?;
-            }
+            Destination::ImplicitOriginalDst(ref addr) => addr.fmt(f),
         }
-        write!(f, "}}")
     }
 }

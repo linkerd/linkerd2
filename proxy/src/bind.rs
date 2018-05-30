@@ -2,6 +2,7 @@ use std::error::Error;
 use std::fmt;
 use std::default::Default;
 use std::marker::PhantomData;
+use std::net::SocketAddr;
 use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
 
@@ -134,7 +135,7 @@ pub type HttpRequest<B> = http::Request<sensor::http::RequestBody<B>>;
 
 pub type Client<B> = transparency::Client<
     sensor::Connect<transport::Connect>,
-    ::logging::ContextualExecutor<Log>,
+    ::logging::ClientExecutor<&'static str, SocketAddr>,
     B,
 >;
 
@@ -147,27 +148,6 @@ pub enum BufferSpawnError {
 impl fmt::Display for BufferSpawnError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad(self.description())
-    }
-}
-
-pub struct Log {
-    ctx: Arc<ctx::transport::Client>,
-    protocol: Protocol,
-}
-
-impl fmt::Display for Log {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "client={{")?;
-
-        if self.ctx.proxy.is_inbound() {
-            write!(f, "proxy=in")?;
-        } else {
-            write!(f, "proxy=out")?;
-        }
-        write!(f, ";proto={:?}", self.protocol)?;
-        write!(f, ";remote={}", self.ctx.remote)?;
-
-        write!(f, "}}")
     }
 }
 
@@ -243,13 +223,12 @@ where
             &client_ctx,
         );
 
+        let log = ::logging::Client::proxy(&self.ctx, addr)
+            .with_protocol(protocol.clone());
         let client = transparency::Client::new(
             protocol,
             connect,
-            ::logging::context_executor(Log {
-                ctx: client_ctx.clone(),
-                protocol: protocol.clone(),
-            })
+            log.executor(),
         );
 
         let sensors = self.sensors.http(

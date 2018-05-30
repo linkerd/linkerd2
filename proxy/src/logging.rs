@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::env;
 use std::io::Write;
 use std::fmt;
+use std::net::SocketAddr;
 use std::sync::Arc;
 
 use env_logger;
@@ -180,3 +181,177 @@ impl<'a> Drop for ContextGuard<'a> {
     }
 }
 
+pub fn admin() -> Section {
+    Section::Admin
+}
+
+pub fn proxy() -> Section {
+    Section::Proxy
+}
+
+#[derive(Copy, Clone)]
+pub enum Section {
+    Proxy,
+    Admin,
+}
+
+#[derive(Clone)]
+pub struct Server {
+    section: Section,
+    name: &'static str,
+    listen: SocketAddr,
+    remote: Option<SocketAddr>,
+}
+
+#[derive(Clone)]
+pub struct Client<C: fmt::Display, D: fmt::Display> {
+    section: Section,
+    client: C,
+    dst: D,
+    protocol: Option<::bind::Protocol>,
+    remote: Option<SocketAddr>,
+}
+
+#[derive(Clone)]
+pub struct Bg<> {
+    section: Section,
+    name: &'static str,
+}
+
+impl Section {
+    pub fn bg(&self, name: &'static str) -> Bg {
+        Bg {
+            section: *self,
+            name,
+        }
+    }
+
+    pub fn server(&self, name: &'static str, listen: SocketAddr) -> Server {
+        Server {
+            section: *self,
+            name,
+            listen,
+            remote: None,
+        }
+    }
+
+    pub fn client<C: fmt::Display, D: fmt::Display>(&self, client: C, dst: D) -> Client<C, D> {
+        Client {
+            section: *self,
+            client,
+            dst,
+            protocol: None,
+            remote: None,
+        }
+    }
+}
+
+impl fmt::Display for Section {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Section::Proxy => "proxy".fmt(f),
+            Section::Admin => "admin".fmt(f),
+        }
+    }
+}
+
+pub type BgFuture<F> = ContextualFuture<Bg, F>;
+pub type ClientExecutor<C, D> = ContextualExecutor<Client<C, D>>;
+pub type ServerExecutor = ContextualExecutor<Server>;
+pub type ServerFuture<F> = ContextualFuture<Server, F>;
+
+impl Server {
+    pub fn proxy(ctx: &::ctx::Proxy, listen: SocketAddr) -> Self {
+        let name = if ctx.is_inbound() {
+            "in"
+        } else {
+            "out"
+        };
+        Section::Proxy.server(name, listen)
+    }
+
+    pub fn with_remote(self, remote: SocketAddr) -> Self {
+        Self {
+            remote: Some(remote),
+            .. self
+        }
+    }
+
+    pub fn executor(self) -> ServerExecutor {
+        context_executor(self)
+    }
+
+    pub fn future<F: Future>(self, f: F) -> ServerFuture<F> {
+        context_future(self, f)
+    }
+}
+
+impl fmt::Display for Server {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}={{server={};listen={}", self.section, self.name, self.listen)?;
+        if let Some(remote) = self.remote {
+            write!(f, ";remote={}", remote)?;
+        }
+        write!(f, "}}")
+    }
+}
+
+impl<D: fmt::Display> Client<&'static str, D> {
+    pub fn proxy(ctx: &::ctx::Proxy, dst: D) -> Self {
+        let name = if ctx.is_inbound() {
+            "in"
+        } else {
+            "out"
+        };
+        Section::Proxy.client(name, dst)
+    }
+}
+
+impl<C: fmt::Display, D: fmt::Display> Client<C, D> {
+    pub fn with_protocol(self, p: ::bind::Protocol) -> Self {
+        Self {
+            protocol: Some(p),
+            .. self
+        }
+    }
+
+    pub fn with_remote(self, remote: SocketAddr) -> Self {
+        Self {
+            remote: Some(remote),
+            .. self
+        }
+    }
+
+    pub fn executor(self) -> ClientExecutor<C, D> {
+        context_executor(self)
+    }
+
+    // pub fn future<F: Future>(self, f: F) -> ContextualFuture<Self, F> {
+    //     context_future(self, f)
+    // }
+}
+
+impl<C: fmt::Display, D: fmt::Display> fmt::Display for Client<C, D> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}={{client={};dst={}", self.section, self.client, self.dst)?;
+        if let Some(ref proto) = self.protocol {
+            write!(f, ";proto={:?}", proto)?;
+        }
+        if let Some(remote) = self.remote {
+            write!(f, ";remote={}", remote)?;
+        }
+        write!(f, "}}")
+    }
+}
+
+impl Bg {
+    pub fn future<F: Future>(self, f: F) -> BgFuture<F> {
+        context_future(self, f)
+    }
+}
+
+impl fmt::Display for Bg {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}={{bg={}}}", self.section, self.name)
+    }
+}

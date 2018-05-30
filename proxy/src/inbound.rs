@@ -1,4 +1,3 @@
-use std::fmt;
 use std::net::{SocketAddr};
 use std::sync::Arc;
 
@@ -89,26 +88,13 @@ where
         let endpoint = (*addr).into();
         let binding = self.bind.bind_service(&endpoint, proto);
 
-        let executor = ::logging::context_executor(Log {
-            addr: *addr,
-            protocol: proto.clone()
-        });
-        Buffer::new(binding, &executor)
+        let log = ::logging::proxy().client("in", "local")
+            .with_remote(*addr);
+        Buffer::new(binding, &log.executor())
             .map(|buffer| {
                 InFlightLimit::new(buffer, MAX_IN_FLIGHT)
             })
             .map_err(|_| bind::BufferSpawnError::Inbound)
-    }
-}
-
-struct Log {
-    addr: SocketAddr,
-    protocol: bind::Protocol
-}
-
-impl fmt::Display for Log {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "client={{proxy=in;proto={:?};dst={}}}", self.protocol, self.addr)
     }
 }
 

@@ -96,25 +96,33 @@ impl Control {
         -> impl Future<Item = (), Error = io::Error>
     {
         use hyper;
+
+        let log = ::logging::admin().server("metrics", bound_port.local_addr());
+
         let service = self.metrics_service.clone();
-        bound_port.listen_and_fold(
-            hyper::server::conn::Http::new(),
-            move |hyper, (conn, _)| {
-                let service = service.clone();
-                let serve = hyper.serve_connection(conn, service)
-                    .map(|_| {})
-                    .map_err(|e| {
-                        error!("error serving prometheus metrics: {:?}", e);
-                    });
-                let serve = ::logging::context_future("serve_metrics", serve);
+        let fut = {
+            let log = log.clone();
+            bound_port.listen_and_fold(
+                hyper::server::conn::Http::new(),
+                move |hyper, (conn, remote)| {
+                    let service = service.clone();
+                    let serve = hyper.serve_connection(conn, service)
+                        .map(|_| {})
+                        .map_err(|e| {
+                            error!("error serving prometheus metrics: {:?}", e);
+                        });
+                    let serve = log.clone().with_remote(remote).future(serve);
 
-                let r = TaskExecutor::current()
-                    .spawn_local(Box::new(serve))
-                    .map(move |()| hyper)
-                    .map_err(task::Error::into_io);
+                    let r = TaskExecutor::current()
+                        .spawn_local(Box::new(serve))
+                        .map(move |()| hyper)
+                        .map_err(task::Error::into_io);
 
-                future::result(r)
-            })
+                    future::result(r)
+                })
+        };
+
+        log.future(fut)
     }
 
 }

@@ -38,7 +38,7 @@ where
     h1: hyper::server::conn::Http,
     h2: tower_h2::Server<
         HttpBodyNewSvc<S>,
-        ::logging::ContextualExecutor<LogAccept>,
+        ::logging::ServerExecutor,
         B
     >,
     listen_addr: SocketAddr,
@@ -46,6 +46,7 @@ where
     proxy_ctx: Arc<ProxyCtx>,
     sensors: Sensors,
     tcp: tcp::Proxy,
+    log: ::logging::Server,
 }
 
 impl<S, B, G> Server<S, B, G>
@@ -82,6 +83,7 @@ where
     ) -> Self {
         let recv_body_svc = HttpBodyNewSvc::new(stack.clone());
         let tcp = tcp::Proxy::new(tcp_connect_timeout, sensors.clone());
+        let log = ::logging::Server::proxy(&proxy_ctx, listen_addr);
         Server {
             disable_protocol_detection_ports,
             drain_signal,
@@ -90,24 +92,19 @@ where
             h2: tower_h2::Server::new(
                 recv_body_svc,
                 Default::default(),
-                ::logging::context_executor(LogAccept {
-                    listen_addr,
-                    ctx: proxy_ctx.clone()
-                }),
+                log.clone().executor(),
             ),
             listen_addr,
             new_service: stack,
             proxy_ctx,
             sensors,
             tcp,
+            log,
         }
     }
 
-    pub fn accept_info(&self) -> impl fmt::Display {
-        LogAccept {
-            listen_addr: self.listen_addr,
-            ctx: self.proxy_ctx.clone(),
-        }
+    pub fn log(&self) -> &::logging::Server {
+        &self.log
     }
 
     /// Handle a new connection.
@@ -130,7 +127,8 @@ where
             &remote_addr,
             &orig_dst,
         );
-        let log = LogServe(srv_ctx.clone());
+        let log = self.log.clone()
+            .with_remote(remote_addr);
 
         // record telemetry
         let io = self.sensors.accept(connection, opened_at, &srv_ctx);
@@ -153,7 +151,7 @@ where
                 self.drain_signal.clone(),
             );
 
-            return ::logging::context_future(log, Either::B(fut));
+            return log.future(Either::B(fut));
         }
 
         // try to sniff protocol
@@ -208,7 +206,8 @@ where
                     ))
                 }
             }));
-        ::logging::context_future(log, fut)
+
+        log.future(fut)
     }
 }
 
@@ -224,41 +223,4 @@ fn tcp_serve<T: AsyncRead + AsyncWrite + Send + 'static>(
     // the sockets finish soon. However, the drain signal still needs to
     // 'watch' the TCP future so that the process doesn't close early.
     drain_signal.watch(fut, |_| ())
-}
-
-struct LogAccept {
-    listen_addr: SocketAddr,
-    ctx: Arc<ProxyCtx>,
-}
-
-struct LogServe(Arc<ServerCtx>);
-
-impl fmt::Display for LogAccept {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "server={{")?;
-        if self.ctx.is_inbound() {
-            write!(f, "proxy=in")?;
-        } else {
-            write!(f, "proxy=out")?;
-        }
-        write!(f, ";listen={}", self.listen_addr)?;
-        write!(f, "}}")
-    }
-}
-
-impl fmt::Display for LogServe {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "server={{")?;
-        if self.0.proxy.is_inbound() {
-            write!(f, "proxy=in")?;
-        } else {
-            write!(f, "proxy=out")?;
-        }
-        write!(f, ";local={}", self.0.local)?;
-        write!(f, ";remote={}", self.0.remote)?;
-        if let Some(dst) = self.0.orig_dst {
-            write!(f, ";orig_dst={}", dst)?;
-        }
-        write!(f, "}}")
-    }
 }
