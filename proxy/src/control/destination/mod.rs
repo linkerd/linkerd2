@@ -100,8 +100,9 @@ pub struct Metadata {
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub enum TlsIdentity {
     K8sPodNamespace {
+        controller_ns: Arc<str>,
+        pod_ns: Arc<str>,
         pod_name: Arc<str>,
-        namespace: Arc<str>,
     },
 }
 

@@ -568,14 +568,13 @@ fn pb_to_addr_meta(
 
 impl TlsIdentity {
     pub fn from_pb(pb: TlsIdentityPb) -> Option<Self> {
-        use conduit_proxy_controller_grpc::destination::tls_identity::{
-            Strategy, K8sPodNamespace
-        };
+        use conduit_proxy_controller_grpc::destination::tls_identity::Strategy;
         pb.strategy.map(|strategy| match strategy {
-            Strategy::K8sPodNamespace(K8sPodNamespace { pod_name, namespace }) =>
+            Strategy::K8sPodNamespace(s) =>
                 TlsIdentity::K8sPodNamespace {
-                    pod_name: Arc::from(pod_name),
-                    namespace: Arc::from(namespace),
+                    controller_ns: Arc::from(s.controller_ns),
+                    pod_ns: Arc::from(s.pod_ns),
+                    pod_name: Arc::from(s.pod_name),
                 },
         })
     }
