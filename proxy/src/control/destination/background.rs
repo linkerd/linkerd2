@@ -32,7 +32,6 @@ use control::{
     AddOrigin, Backoff, LogErrors
 };
 use dns::{self, IpAddrListFuture};
-use task::LazyExecutor;
 use telemetry::metrics::DstLabels;
 use transport::{DnsNameAndPort, HostAndPort, LookupAddressAndConnect};
 use timeout::Timeout;
@@ -78,18 +77,18 @@ pub(super) fn task(
 {
     // Build up the Controller Client Stack
     let mut client = {
-        let ctx = ("controller-client", format!("{:?}", host_and_port));
         let scheme = http::uri::Scheme::from_shared(Bytes::from_static(b"http")).unwrap();
         let authority = http::uri::Authority::from(&host_and_port);
         let connect = Timeout::new(
-            LookupAddressAndConnect::new(host_and_port, dns_resolver.clone()),
+            LookupAddressAndConnect::new(host_and_port.clone(), dns_resolver.clone()),
             Duration::from_secs(3),
         );
 
+        let log = ::logging::admin().client("control", host_and_port.clone());
         let h2_client = tower_h2::client::Connect::new(
             connect,
             h2::client::Builder::default(),
-            ::logging::context_executor(ctx, LazyExecutor),
+            log.executor()
         );
 
         let reconnect = Reconnect::new(h2_client);

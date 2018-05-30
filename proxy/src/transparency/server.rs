@@ -15,7 +15,6 @@ use connection::{Connection, Peek};
 use ctx::Proxy as ProxyCtx;
 use ctx::transport::{Server as ServerCtx};
 use drain;
-use task::LazyExecutor;
 use telemetry::Sensors;
 use transport::GetOriginalDst;
 use super::glue::{HttpBody, HttpBodyNewSvc, HyperServerSvc};
@@ -37,12 +36,17 @@ where
     drain_signal: drain::Watch,
     get_orig_dst: G,
     h1: hyper::server::conn::Http,
-    h2: tower_h2::Server<HttpBodyNewSvc<S>, LazyExecutor, B>,
+    h2: tower_h2::Server<
+        HttpBodyNewSvc<S>,
+        ::logging::ServerExecutor,
+        B
+    >,
     listen_addr: SocketAddr,
     new_service: S,
     proxy_ctx: Arc<ProxyCtx>,
     sensors: Sensors,
     tcp: tcp::Proxy,
+    log: ::logging::Server,
 }
 
 impl<S, B, G> Server<S, B, G>
@@ -79,6 +83,7 @@ where
     ) -> Self {
         let recv_body_svc = HttpBodyNewSvc::new(stack.clone());
         let tcp = tcp::Proxy::new(tcp_connect_timeout, sensors.clone());
+        let log = ::logging::Server::proxy(&proxy_ctx, listen_addr);
         Server {
             disable_protocol_detection_ports,
             drain_signal,
@@ -87,14 +92,19 @@ where
             h2: tower_h2::Server::new(
                 recv_body_svc,
                 Default::default(),
-                LazyExecutor,
+                log.clone().executor(),
             ),
             listen_addr,
             new_service: stack,
             proxy_ctx,
             sensors,
             tcp,
+            log,
         }
+    }
+
+    pub fn log(&self) -> &::logging::Server {
+        &self.log
     }
 
     /// Handle a new connection.
@@ -117,6 +127,8 @@ where
             &remote_addr,
             &orig_dst,
         );
+        let log = self.log.clone()
+            .with_remote(remote_addr);
 
         // record telemetry
         let io = self.sensors.accept(connection, opened_at, &srv_ctx);
@@ -139,7 +151,7 @@ where
                 self.drain_signal.clone(),
             );
 
-            return Either::B(fut);
+            return log.future(Either::B(fut));
         }
 
         // try to sniff protocol
@@ -148,7 +160,7 @@ where
         let tcp = self.tcp.clone();
         let new_service = self.new_service.clone();
         let drain_signal = self.drain_signal.clone();
-        Either::A(io.peek()
+        let fut = Either::A(io.peek()
             .map_err(|e| debug!("peek error: {}", e))
             .and_then(move |io| {
                 if let Some(proto) = Protocol::detect(io.peeked()) {
@@ -171,7 +183,6 @@ where
                         },
                         Protocol::Http2 => {
                             trace!("transparency detected HTTP/2");
-
                             let set_ctx = move |request: &mut http::Request<()>| {
                                 request.extensions_mut().insert(srv_ctx.clone());
                             };
@@ -194,7 +205,9 @@ where
                         drain_signal,
                     ))
                 }
-            }))
+            }));
+
+        log.future(fut)
     }
 }
 

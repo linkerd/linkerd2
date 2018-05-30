@@ -16,7 +16,6 @@ use conduit_proxy_router::Recognize;
 use bind::{self, Bind, Protocol};
 use control::destination::{self, Bind as BindTrait, Resolution};
 use ctx;
-use task::LazyExecutor;
 use timeout::Timeout;
 use transparency::h1;
 use transport::{DnsNameAndPort, Host, HostAndPort};
@@ -150,19 +149,19 @@ where
 
         let loaded = tower_balance::load::WithPendingRequests::new(resolve);
 
-
         // We can't use `rand::thread_rng` here because the returned `Service`
         // needs to be `Send`, so instead, we use `LazyRng`, which calls
         // `rand::thread_rng()` when it is *used*.
         let balance = tower_balance::power_of_two_choices(loaded, LazyThreadRng);
 
-        let buffer = Buffer::new(balance, &LazyExecutor)
+        let log = ::logging::proxy().client("out", Dst(dest.clone()))
+            .with_protocol(protocol.clone());
+        let buffer = Buffer::new(balance, &log.executor())
             .map_err(|_| bind::BufferSpawnError::Outbound)?;
 
         let timeout = Timeout::new(buffer, self.bind_timeout);
 
         Ok(InFlightLimit::new(timeout, MAX_IN_FLIGHT))
-
     }
 }
 
@@ -195,7 +194,7 @@ where
                 // closing down when the connection is no longer usable.
                 if let Some((addr, bind)) = opt.take() {
                     let svc = bind.bind(&addr.into())
-                        .map_err(|_| BindError::External{ addr })?;
+                        .map_err(|_| BindError::External { addr })?;
                     Ok(Async::Ready(Change::Insert(addr, svc)))
                 } else {
                     Ok(Async::NotReady)
@@ -231,4 +230,17 @@ impl error::Error for BindError {
     }
 
     fn cause(&self) -> Option<&error::Error> { None }
+}
+
+struct Dst(Destination);
+
+impl fmt::Display for Dst {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.0 {
+            Destination::Hostname(ref name) => {
+                write!(f, "{}:{}", name.host, name.port)
+            }
+            Destination::ImplicitOriginalDst(ref addr) => addr.fmt(f),
+        }
+    }
 }
