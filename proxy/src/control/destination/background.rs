@@ -40,12 +40,6 @@ use timeout::Timeout;
 type DestinationServiceQuery<T> = Remote<PbUpdate, T>;
 type UpdateRx<T> = Receiver<PbUpdate, T>;
 
-/// Duration to wait before polling DNS again after an error
-/// (or a NXDOMAIN response with no TTL).
-///
-// TODO: should this be a config option?
-const DNS_DEFAULT_TTL: Duration = Duration::from_secs(5);
-
 /// Satisfies resolutions as requested via `request_rx`.
 ///
 /// As the `Background` is polled with a client to Destination service, if the client to the
@@ -419,6 +413,10 @@ where
     }
 
     fn poll_dns(&mut self, dns_resolver: &dns::Resolver, authority: &DnsNameAndPort) {
+        // Duration to wait before polling DNS again after an error
+        // (or a NXDOMAIN response with no TTL).
+        const DNS_ERROR_TTL: Duration = Duration::from_secs(5);
+
         trace!("checking DNS for {:?}", authority);
         while let Some(mut query) = self.dns_query.take() {
             trace!("polling DNS for {:?}", authority);
@@ -447,7 +445,7 @@ where
                     // Poll again after the deadline on the DNS response.
                     ips.valid_until()
                 },
-                Ok(Async::Ready(dns::Response::DoesNotExist(until))) => {
+                Ok(Async::Ready(dns::Response::DoesNotExist { retry_after })) => {
                     trace!(
                         "negative result (NXDOMAIN) of DNS query for {:?}",
                         authority
@@ -455,7 +453,7 @@ where
                     self.no_endpoints(authority, false);
                     // Poll again after the deadline on the DNS response, if
                     // there is one.
-                    until.unwrap_or_else(|| Instant::now() + DNS_DEFAULT_TTL)
+                    retry_after.unwrap_or_else(|| Instant::now() + DNS_ERROR_TTL)
                 },
                 Err(e) => {
                     // Do nothing so that the most recent non-error response is used until a
@@ -463,7 +461,7 @@ where
                     trace!("DNS resolution failed for {}: {}", &authority.host, e);
 
                     // Poll again after the default wait time.
-                    Instant::now() + DNS_DEFAULT_TTL
+                    Instant::now() + DNS_ERROR_TTL
                 },
             };
             self.reset_dns_query(dns_resolver, deadline, &authority)

@@ -30,7 +30,7 @@ pub enum Error {
 
 pub enum Response {
     Exists(LookupIp),
-    DoesNotExist(Option<Instant>),
+    DoesNotExist { retry_after: Option<Instant> },
 }
 
 // `Box<Future>` implements `Future` so it doesn't need to be implemented manually.
@@ -105,7 +105,7 @@ impl Resolver {
                     Ok(ips) => Ok(Response::Exists(ips)),
                     Err(e) => {
                         if let &ResolveErrorKind::NoRecordsFound { valid_until, .. } = e.kind() {
-                            Ok(Response::DoesNotExist(valid_until))
+                            Ok(Response::DoesNotExist { retry_after: valid_until })
                         } else {
                             Err(e)
                         }
