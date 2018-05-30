@@ -25,11 +25,11 @@ use conduit_proxy_controller_grpc::destination::client::Destination as Destinati
 use conduit_proxy_controller_grpc::destination::update::Update as PbUpdate2;
 use conduit_proxy_controller_grpc::destination::{
     Update as PbUpdate,
-    TlsVerification as TlsVerificationPb,
+    TlsIdentity as TlsIdentityPb,
     WeightedAddr,
 };
 
-use super::{TlsVerification, Metadata, ResolveRequest, Responder, Update};
+use super::{TlsIdentity, Metadata, ResolveRequest, Responder, Update};
 use control::{
     cache::{Cache, CacheChange, Exists},
     fully_qualified_authority::FullyQualifiedAuthority,
@@ -560,20 +560,20 @@ fn pb_to_addr_meta(
         .collect::<Vec<_>>();
     labels.sort_by(|(k0, _), (k1, _)| k0.cmp(k1));
 
-    let tls = pb.tls_verification.and_then(TlsVerification::from_pb);
+    let tls = pb.tls_identity.and_then(TlsIdentity::from_pb);
 
     let meta = Metadata::new(DstLabels::new(labels.into_iter()), tls);
     Some((addr, meta))
 }
 
-impl TlsVerification {
-    pub fn from_pb(pb: TlsVerificationPb) -> Option<Self> {
-        use conduit_proxy_controller_grpc::destination::tls_verification::{
+impl TlsIdentity {
+    pub fn from_pb(pb: TlsIdentityPb) -> Option<Self> {
+        use conduit_proxy_controller_grpc::destination::tls_identity::{
             Strategy, K8sPodNamespace
         };
         pb.strategy.map(|strategy| match strategy {
             Strategy::K8sPodNamespace(K8sPodNamespace { pod_name, namespace }) =>
-                TlsVerification::K8sPodNamespace {
+                TlsIdentity::K8sPodNamespace {
                     pod_name: Arc::from(pod_name),
                     namespace: Arc::from(namespace),
                 },

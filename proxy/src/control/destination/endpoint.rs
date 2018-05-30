@@ -1,7 +1,7 @@
 use std::net::SocketAddr;
 
 use telemetry::metrics::DstLabels;
-use super::{Metadata, TlsVerification};
+use super::{Metadata, TlsIdentity};
 
 /// An individual traffic target.
 ///
@@ -34,8 +34,8 @@ impl Endpoint {
         self.metadata.dst_labels()
     }
 
-    pub fn tls_verification(&self) -> Option<&TlsVerification> {
-        self.metadata.tls_verification()
+    pub fn tls_identity(&self) -> Option<&TlsIdentity> {
+        self.metadata.tls_identity()
     }
 }
 

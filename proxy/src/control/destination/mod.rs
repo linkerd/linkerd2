@@ -93,12 +93,12 @@ pub struct Metadata {
     dst_labels: Option<DstLabels>,
 
     /// How to verify TLS for the endpoint.
-    tls_verification: Option<TlsVerification>,
+    tls_identity: Option<TlsIdentity>,
 }
 
 /// How to verify TLS for an endpoint.
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub enum TlsVerification {
+pub enum TlsIdentity {
     K8sPodNamespace {
         pod_name: Arc<str>,
         namespace: Arc<str>,
@@ -253,18 +253,18 @@ impl Metadata {
         Metadata {
             dst_labels: None,
             // If we have no metadata on an endpoint, assume it does not support TLS.
-            tls_verification: None,
+            tls_identity: None,
         }
     }
 
     /// Construct a new Metadata with a set of labels from the Destination service.
     pub fn new(
         dst_labels: Option<DstLabels>,
-        tls_verification: Option<TlsVerification>
+        tls_identity: Option<TlsIdentity>
     ) -> Self {
         Metadata {
             dst_labels,
-            tls_verification,
+            tls_identity,
         }
     }
 
@@ -274,7 +274,7 @@ impl Metadata {
     }
 
     /// Returns the endpoint's TLS verification strategy
-    pub fn tls_verification(&self) -> Option<&TlsVerification> {
-        self.tls_verification.as_ref()
+    pub fn tls_identity(&self) -> Option<&TlsIdentity> {
+        self.tls_identity.as_ref()
     }
 }

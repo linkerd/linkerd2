@@ -54,8 +54,8 @@ impl Request {
         Arc::new(r)
     }
 
-    pub fn tls_verification(&self) -> Option<&destination::TlsVerification> {
-        self.client.tls_verification()
+    pub fn tls_identity(&self) -> Option<&destination::TlsIdentity> {
+        self.client.tls_identity()
     }
 
     pub fn dst_labels(&self) -> Option<&DstLabels> {
@@ -73,8 +73,8 @@ impl Response {
         Arc::new(r)
     }
 
-    pub fn tls_verification(&self) -> Option<&destination::TlsVerification> {
-        self.request.tls_verification()
+    pub fn tls_identity(&self) -> Option<&destination::TlsIdentity> {
+        self.request.tls_identity()
     }
 
     pub fn dst_labels(&self) -> Option<&DstLabels> {

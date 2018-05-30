@@ -98,10 +98,10 @@ impl Connect {
     /// Returns a `Connect` to `addr`.
     pub fn new(
         addr: SocketAddr,
-        tls_verification: Option<&destination::TlsVerification>,
+        tls_identity: Option<&destination::TlsIdentity>,
     ) -> Self {
         // TODO: this is currently unused.
-        let _ = tls_verification;
+        let _ = tls_identity;
         Self {
             addr,
         }
