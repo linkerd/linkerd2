@@ -226,7 +226,7 @@ pub struct Client<C: fmt::Display, D: fmt::Display> {
 }
 
 #[derive(Clone)]
-pub struct Bg<> {
+pub struct Bg {
     section: Section,
     name: &'static str,
 }
