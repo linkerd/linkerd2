@@ -86,6 +86,7 @@ const namespacesColumns = ConduitLink => [
 
 const componentNames = {
   "prometheus":   "Prometheus",
+  "grafana":      "Grafana",
   "destination":  "Destination",
   "proxy-api":    "Proxy API",
   "public-api":   "Public API",
@@ -95,6 +96,7 @@ const componentNames = {
 
 const componentDeploys = {
   "prometheus":   "prometheus",
+  "grafana":      "grafana",
   "destination":  "controller",
   "proxy-api":    "controller",
   "public-api":   "controller",
