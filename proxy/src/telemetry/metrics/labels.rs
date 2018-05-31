@@ -104,6 +104,11 @@ impl RequestLabels {
             is_tls: req.is_tls(),
         }
     }
+
+    #[cfg(test)]
+    pub fn is_tls(&self) -> bool {
+        self.is_tls
+    }
 }
 
 impl fmt::Display for RequestLabels {
@@ -155,6 +160,11 @@ impl ResponseLabels {
             grpc_status_code: None,
             classification: Classification::Failure,
         }
+    }
+
+    #[cfg(test)]
+    pub fn is_tls(&self) -> bool {
+        self.request_labels.is_tls
     }
 }
 
@@ -315,6 +325,11 @@ impl TransportLabels {
             is_tls: ctx.is_tls(),
         }
     }
+
+    #[cfg(test)]
+    pub fn is_tls(&self) -> bool {
+        self.is_tls
+    }
 }
 
 impl fmt::Display for TransportLabels {
@@ -343,6 +358,11 @@ impl TransportCloseLabels {
             transport: TransportLabels::new(ctx),
             classification: Classification::transport_close(close),
         }
+    }
+
+    #[cfg(test)]
+    pub fn is_tls(&self) -> bool {
+        self.transport.is_tls()
     }
 }
 

@@ -100,17 +100,21 @@ pub mod test_util {
         })
     }
 
-    pub fn server(proxy: &Arc<ctx::Proxy>) -> Arc<ctx::transport::Server> {
-        ctx::transport::Server::new(&proxy, &addr(), &addr(), &Some(addr()), false)
+    pub fn server(proxy: &Arc<ctx::Proxy>, tls: bool) -> Arc<ctx::transport::Server> {
+        ctx::transport::Server::new(&proxy, &addr(), &addr(), &Some(addr()), tls)
     }
 
-    pub fn client<L, S>(proxy: &Arc<ctx::Proxy>, labels: L) -> Arc<ctx::transport::Client>
+    pub fn client<L, S>(
+        proxy: &Arc<ctx::Proxy>,
+        labels: L,
+        tls: bool,
+    ) -> Arc<ctx::transport::Client>
     where
         L: IntoIterator<Item=(S, S)>,
         S: fmt::Display,
     {
         let meta = destination::Metadata::new(DstLabels::new(labels), None);
-        ctx::transport::Client::new(&proxy, &addr(), meta, false)
+        ctx::transport::Client::new(&proxy, &addr(), meta, tls)
     }
 
     pub fn request(
