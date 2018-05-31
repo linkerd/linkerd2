@@ -37,34 +37,6 @@ const makeCancelable = (promise, onSuccess) => {
   };
 };
 
-export const metricsPropType = PropTypes.shape({
-  ok: PropTypes.shape({
-    statTables: PropTypes.arrayOf(PropTypes.shape({
-      podGroup: PropTypes.shape({
-        rows: PropTypes.arrayOf(PropTypes.shape({
-          failedPodCount: PropTypes.string,
-          meshedPodCount: PropTypes.string.isRequired,
-          resource: PropTypes.shape({
-            name: PropTypes.string.isRequired,
-            namespace: PropTypes.string.isRequired,
-            type: PropTypes.string.isRequired,
-          }).isRequired,
-          runningPodCount: PropTypes.string.isRequired,
-          stats: PropTypes.shape({
-            failureCount: PropTypes.string.isRequired,
-            latencyMsP50: PropTypes.string.isRequired,
-            latencyMsP95: PropTypes.string.isRequired,
-            latencyMsP99: PropTypes.string.isRequired,
-            meshedRequestCount: PropTypes.string.isRequired,
-            successCount: PropTypes.string.isRequired,
-          }),
-          timeWindow: PropTypes.string.isRequired,
-        }).isRequired),
-      }),
-    }).isRequired).isRequired,
-  }),
-});
-
 const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   let metricsWindow = defaultMetricsWindow;
   const podsPath = `/api/pods`;

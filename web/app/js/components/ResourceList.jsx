@@ -1,13 +1,12 @@
 import _ from 'lodash';
 import ConduitSpinner from "./ConduitSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
-import { metricsPropType } from './util/ApiHelpers.jsx';
 import MetricsTable from './MetricsTable.jsx';
 import PageHeader from './PageHeader.jsx';
-import { processSingleResourceRollup } from './util/MetricUtils.js';
 import PropTypes from 'prop-types';
 import React from 'react';
 import withREST from './util/withREST.jsx';
+import { metricsPropType, processSingleResourceRollup } from './util/MetricUtils.js';
 import './../../css/list.css';
 import 'whatwg-fetch';
 
@@ -50,8 +49,7 @@ export class ResourceListBase extends React.Component {
     return (
       <MetricsTable
         resource={friendlyTitle}
-        metrics={processedMetrics}
-        linkifyNsColumn={true} />
+        metrics={processedMetrics} />
     );
   }
 

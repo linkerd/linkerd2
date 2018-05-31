@@ -1,6 +1,8 @@
 import _ from 'lodash';
 import BaseTable from './BaseTable.jsx';
 import GrafanaLink from './GrafanaLink.jsx';
+import { processedMetricsPropType } from './util/MetricUtils.js';
+import PropTypes from 'prop-types';
 import React from 'react';
 import { Tooltip } from 'antd';
 import { withContext } from './util/AppContext.jsx';
@@ -35,7 +37,7 @@ const formatTitle = (title, tooltipText) => {
   }
 
 };
-const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick, linkifyNsColumn, ConduitLink) => {
+const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceColumn, ConduitLink) => {
   let nsColumn = [
     {
       title: formatTitle("Namespace"),
@@ -44,32 +46,19 @@ const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick,
       filters: namespaces,
       onFilterDropdownVisibleChange: onFilterClick,
       onFilter: (value, row) => row.namespace.indexOf(value) === 0,
-      sorter: sortable ? (a, b) => (a.namespace || "").localeCompare(b.namespace) : false,
+      sorter: (a, b) => (a.namespace || "").localeCompare(b.namespace),
       render: ns => {
-        if (linkifyNsColumn) {
-          return <ConduitLink to={"/namespaces/" + ns}>{ns}</ConduitLink>;
-        } else {
-          return ns;
-        }
+        return <ConduitLink to={"/namespaces/" + ns}>{ns}</ConduitLink>;
       }
     }
   ];
-  let percentMeshedColumn = [
-    {
-      title: formatTitle("Secured", "Percent of traffic that is TLSed"),
-      key: "securedTraffic",
-      dataIndex: "meshedRequestPercent",
-      className: "numeric",
-      sorter: sortable ? (a, b) => numericSort(a.meshedRequestPercent.get(), b.meshedRequestPercent.get()) : false,
-      render: d => _.isNil(d) ? "---" : d.prettyRate()
-    }
-  ];
+
   let columns = [
     {
       title: formatTitle(resource),
       key: "name",
       defaultSortOrder: 'ascend',
-      sorter: sortable ? (a, b) => (a.name || "").localeCompare(b.name) : false,
+      sorter: (a, b) => (a.name || "").localeCompare(b.name),
       render: row => {
         if (resource.toLowerCase() === "namespace") {
           return <ConduitLink to={"/namespaces/" + row.name}>{row.name}</ConduitLink>;
@@ -91,7 +80,7 @@ const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick,
       dataIndex: "successRate",
       key: "successRateRollup",
       className: "numeric",
-      sorter: sortable ? (a, b) => numericSort(a.successRate, b.successRate) : false,
+      sorter: (a, b) => numericSort(a.successRate, b.successRate),
       render: d => metricToFormatter["SUCCESS_RATE"](d)
     },
     {
@@ -99,7 +88,7 @@ const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick,
       dataIndex: "requestRate",
       key: "requestRateRollup",
       className: "numeric",
-      sorter: sortable ? (a, b) => numericSort(a.requestRate, b.requestRate) : false,
+      sorter: (a, b) => numericSort(a.requestRate, b.requestRate),
       render: d => withTooltip(d, "REQUEST_RATE")
     },
     {
@@ -107,7 +96,7 @@ const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick,
       dataIndex: "P50",
       key: "p50LatencyRollup",
       className: "numeric",
-      sorter: sortable ? (a, b) => numericSort(a.P50, b.P50) : false,
+      sorter: (a, b) => numericSort(a.P50, b.P50),
       render: metricToFormatter["LATENCY"]
     },
     {
@@ -115,7 +104,7 @@ const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick,
       dataIndex: "P95",
       key: "p95LatencyRollup",
       className: "numeric",
-      sorter: sortable ? (a, b) => numericSort(a.P95, b.P95) : false,
+      sorter: (a, b) => numericSort(a.P95, b.P95),
       render: metricToFormatter["LATENCY"]
     },
     {
@@ -123,19 +112,41 @@ const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick,
       dataIndex: "P99",
       key: "p99LatencyRollup",
       className: "numeric",
-      sorter: sortable ? (a, b) => numericSort(a.P99, b.P99) : false,
+      sorter: (a, b) => numericSort(a.P99, b.P99),
       render: metricToFormatter["LATENCY"]
+    },
+    {
+      title: formatTitle("Secured", "Percentage of TLS Traffic"),
+      key: "securedTraffic",
+      dataIndex: "meshedRequestPercent",
+      className: "numeric",
+      sorter: (a, b) => numericSort(a.meshedRequestPercent.get(), b.meshedRequestPercent.get()),
+      render: d => _.isNil(d) ? "---" : d.prettyRate()
     }
   ];
 
-  if (resource.toLowerCase() === "namespace") {
+  if (resource.toLowerCase() === "namespace" || !showNamespaceColumn) {
     return columns;
   } else {
-    return _.concat(nsColumn, columns, percentMeshedColumn);
+    return _.concat(nsColumn, columns);
   }
 };
 
-class MetricsTable extends BaseTable {
+/** @extends React.Component */
+export class MetricsTableBase extends BaseTable {
+  static defaultProps = {
+    showNamespaceColumn: true,
+  }
+
+  static propTypes = {
+    api: PropTypes.shape({
+      ConduitLink: PropTypes.func.isRequired,
+    }).isRequired,
+    metrics: PropTypes.arrayOf(processedMetricsPropType.isRequired).isRequired,
+    resource: PropTypes.string.isRequired,
+    showNamespaceColumn: PropTypes.bool,
+  }
+
   constructor(props) {
     super(props);
     this.api = this.props.api;
@@ -143,6 +154,17 @@ class MetricsTable extends BaseTable {
     this.state = {
       preventTableUpdates: false
     };
+  }
+
+  shouldComponentUpdate() {
+    // prevent the table from updating if the filter dropdown menu is open
+    // this is because if the table updates, the filters will reset which
+    // makes it impossible to select a filter
+    return !this.state.preventTableUpdates;
+  }
+
+  onFilterDropdownVisibleChange(dropdownVisible) {
+    this.setState({ preventTableUpdates: dropdownVisible});
   }
 
   preprocessMetrics() {
@@ -162,17 +184,6 @@ class MetricsTable extends BaseTable {
     };
   }
 
-  shouldComponentUpdate() {
-    // prevent the table from updating if the filter dropdown menu is open
-    // this is because if the table updates, the filters will reset which
-    // makes it impossible to select a filter
-    return !this.state.preventTableUpdates;
-  }
-
-  onFilterDropdownVisibleChange(dropdownVisible) {
-    this.setState({ preventTableUpdates: dropdownVisible});
-  }
-
   render() {
     let tableData = this.preprocessMetrics();
     let namespaceFilterText = _.map(tableData.namespaces, ns => {
@@ -180,11 +191,10 @@ class MetricsTable extends BaseTable {
     });
 
     let columns = _.compact(columnDefinitions(
-      this.props.sortable,
       this.props.resource,
-      this.props.showNamespaceFilter ? namespaceFilterText : undefined,
-      this.props.showNamespaceFilter ? this.onFilterDropdownVisibleChange : undefined,
-      this.props.linkifyNsColumn,
+      namespaceFilterText,
+      this.onFilterDropdownVisibleChange,
+      this.props.showNamespaceColumn,
       this.api.ConduitLink
     ));
 
@@ -205,8 +215,4 @@ class MetricsTable extends BaseTable {
   }
 }
 
-MetricsTable.defaultProps = {
-  showNamespaceFilter: true
-};
-
-export default withContext(MetricsTable);
+export default withContext(MetricsTableBase);
