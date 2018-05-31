@@ -45,6 +45,22 @@ pub type IpAddrListFuture = Box<Future<Item=Response, Error=ResolveError> + Send
 /// valid certificate.
 pub type Name = tls::DnsName;
 
+struct ResolveAllCtx(Name);
+
+impl fmt::Display for ResolveAllCtx {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "resolve_all_ips={}", self.0)
+    }
+}
+
+struct ResolveOneCtx(Name);
+
+impl fmt::Display for ResolveOneCtx {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "resolve_one_ip={}", self.0)
+    }
+}
+
 impl Resolver {
 
     /// Construct a new `Resolver` from the system configuration and Conduit's
@@ -85,8 +101,9 @@ impl Resolver {
     pub fn resolve_one_ip(&self, host: &transport::Host) -> IpAddrFuture {
         match *host {
             transport::Host::DnsName(ref name) => {
-                trace!("resolve_one_ip {}", name);
-                IpAddrFuture::DNS(Box::new(self.lookup_ip(name)))
+                let ctx = ResolveOneCtx(name.clone());
+                let f = ::logging::context_future(ctx, self.lookup_ip(name));
+                IpAddrFuture::DNS(Box::new(f))
             }
             transport::Host::Ip(addr) => IpAddrFuture::Fixed(addr),
         }
@@ -94,16 +111,14 @@ impl Resolver {
 
     pub fn resolve_all_ips(&self, deadline: Instant, host: &Name) -> IpAddrListFuture {
         let name = host.clone();
-        let name_clone = name.clone();
-        trace!("resolve_all_ips {}", &name);
         let lookup = self.lookup_ip(&name);
         let f = Delay::new(deadline)
             .then(move |_| {
-                trace!("resolve_all_ips {} after delay", &name);
+                trace!("after delay");
                 lookup
             })
             .then(move |result| {
-                trace!("resolve_all_ips {}: completed with {:?}", name_clone, &result);
+                trace!("completed with {:?}", &result);
                 match result {
                     Ok(ips) => Ok(Response::Exists(ips)),
                     Err(e) => {
@@ -115,7 +130,7 @@ impl Resolver {
                     }
                 }
             });
-        Box::new(f)
+        Box::new(::logging::context_future(ResolveAllCtx(name), f))
     }
 
     fn lookup_ip(&self, name: &Name)
@@ -142,7 +157,10 @@ impl Future for IpAddrFuture {
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         match *self {
             IpAddrFuture::DNS(ref mut inner) => match inner.poll() {
-                Ok(Async::NotReady) => Ok(Async::NotReady),
+                Ok(Async::NotReady) => {
+                    trace!("dns not ready");
+                    Ok(Async::NotReady)
+                } ,
                 Ok(Async::Ready(ips)) => {
                     match ips.iter().next() {
                         Some(ip) => {
