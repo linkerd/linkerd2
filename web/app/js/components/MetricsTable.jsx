@@ -35,7 +35,7 @@ const formatTitle = (title, tooltipText) => {
   }
 
 };
-const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick, linkifyNsColumn, ConduitLink) => {
+const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick, showNsColumn, ConduitLink) => {
   let nsColumn = [
     {
       title: formatTitle("Namespace"),
@@ -46,17 +46,13 @@ const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick,
       onFilter: (value, row) => row.namespace.indexOf(value) === 0,
       sorter: sortable ? (a, b) => (a.namespace || "").localeCompare(b.namespace) : false,
       render: ns => {
-        if (linkifyNsColumn) {
-          return <ConduitLink to={"/namespaces/" + ns}>{ns}</ConduitLink>;
-        } else {
-          return ns;
-        }
+        return <ConduitLink to={"/namespaces/" + ns}>{ns}</ConduitLink>;
       }
     }
   ];
   let percentMeshedColumn = [
     {
-      title: formatTitle("Secured", "Percent of traffic that is TLSed"),
+      title: formatTitle("Secured", "Percentage of TLS Traffic"),
       key: "securedTraffic",
       dataIndex: "meshedRequestPercent",
       className: "numeric",
@@ -130,6 +126,8 @@ const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick,
 
   if (resource.toLowerCase() === "namespace") {
     return columns;
+  } else if (!showNsColumn) {
+    return _.concat(columns, percentMeshedColumn);
   } else {
     return _.concat(nsColumn, columns, percentMeshedColumn);
   }
@@ -184,7 +182,7 @@ class MetricsTable extends BaseTable {
       this.props.resource,
       this.props.showNamespaceFilter ? namespaceFilterText : undefined,
       this.props.showNamespaceFilter ? this.onFilterDropdownVisibleChange : undefined,
-      this.props.linkifyNsColumn,
+      this.props.showNsColumn,
       this.api.ConduitLink
     ));
 

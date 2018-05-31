@@ -51,7 +51,7 @@ export class ResourceListBase extends React.Component {
       <MetricsTable
         resource={friendlyTitle}
         metrics={processedMetrics}
-        linkifyNsColumn={true} />
+        showNsColumn={true} />
     );
   }
 
