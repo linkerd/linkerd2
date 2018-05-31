@@ -5,6 +5,7 @@ use tokio::net::TcpStream;
 
 mod connect;
 mod addr_info;
+pub mod tls;
 
 pub use self::connect::{
     Connect,

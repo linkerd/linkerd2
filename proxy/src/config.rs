@@ -8,8 +8,7 @@ use std::time::Duration;
 
 use http;
 use indexmap::IndexSet;
-
-use transport::{Host, HostAndPort, HostAndPortError};
+use transport::{Host, HostAndPort, HostAndPortError, tls};
 use convert::TryFrom;
 
 // TODO:
@@ -17,7 +16,7 @@ use convert::TryFrom;
 // * Make struct fields private.
 
 /// Tracks all configuration settings for the process.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Config {
     /// Where to listen for connections that are initiated on the host.
     pub private_listener: Listener,
@@ -51,6 +50,8 @@ pub struct Config {
     pub inbound_router_max_idle_age: Duration,
 
     pub outbound_router_max_idle_age: Duration,
+
+    pub tls_settings: Option<tls::CommonSettings>,
 
     /// The path to "/etc/resolv.conf"
     pub resolv_conf_path: PathBuf,
@@ -159,6 +160,10 @@ pub const ENV_OUTBOUND_ROUTER_MAX_IDLE_AGE: &str = "CONDUIT_PROXY_OUTBOUND_ROUTE
 pub const ENV_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION: &str = "CONDUIT_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION";
 pub const ENV_OUTBOUND_PORTS_DISABLE_PROTOCOL_DETECTION: &str = "CONDUIT_PROXY_OUTBOUND_PORTS_DISABLE_PROTOCOL_DETECTION";
 
+pub const ENV_TLS_TRUST_ANCHORS: &str = "CONDUIT_PROXY_TLS_TRUST_ANCHORS";
+pub const ENV_TLS_CERT: &str = "CONDUIT_PROXY_TLS_CERT";
+pub const ENV_TLS_PRIVATE_KEY: &str = "CONDUIT_PROXY_TLS_PRIVATE_KEY";
+
 pub const ENV_POD_NAMESPACE: &str = "CONDUIT_PROXY_POD_NAMESPACE";
 
 pub const ENV_CONTROL_URL: &str = "CONDUIT_PROXY_CONTROL_URL";
@@ -214,6 +219,9 @@ impl<'a> TryFrom<&'a Strings> for Config {
         let outbound_router_capacity = parse(strings, ENV_OUTBOUND_ROUTER_CAPACITY, parse_number);
         let inbound_router_max_idle_age = parse(strings, ENV_INBOUND_ROUTER_MAX_IDLE_AGE, parse_duration);
         let outbound_router_max_idle_age = parse(strings, ENV_OUTBOUND_ROUTER_MAX_IDLE_AGE, parse_duration);
+        let tls_trust_anchors = parse(strings, ENV_TLS_TRUST_ANCHORS, parse_path);
+        let tls_end_entity_cert = parse(strings, ENV_TLS_CERT, parse_path);
+        let tls_private_key = parse(strings, ENV_TLS_PRIVATE_KEY, parse_path);
         let bind_timeout = parse(strings, ENV_BIND_TIMEOUT, parse_duration);
         let resolv_conf_path = strings.get(ENV_RESOLV_CONF);
         let event_buffer_capacity = parse(strings, ENV_EVENT_BUFFER_CAPACITY, parse_number);
@@ -236,6 +244,31 @@ impl<'a> TryFrom<&'a Strings> for Config {
             },
             Err(e) => Err(e),
         };
+
+        let tls_settings = match (tls_trust_anchors?, tls_end_entity_cert?, tls_private_key?) {
+            (Some(trust_anchors), Some(end_entity_cert), Some(private_key)) =>
+                Ok(Some(tls::CommonSettings {
+                    trust_anchors,
+                    end_entity_cert,
+                    private_key,
+                })),
+            (_, None, None) => Ok(None), // No TLS in server role.
+            (trust_anchors, end_entity_cert, private_key) => {
+                if trust_anchors.is_none() {
+                    error!("{} is not set; it is required when {} and {} are set.",
+                           ENV_TLS_TRUST_ANCHORS, ENV_TLS_CERT, ENV_TLS_PRIVATE_KEY);
+                }
+                if end_entity_cert.is_none() {
+                    error!("{} is not set; it is required when {} are set.",
+                           ENV_TLS_CERT, ENV_TLS_PRIVATE_KEY);
+                }
+                if private_key.is_none() {
+                    error!("{} is not set; it is required when {} are set.",
+                           ENV_TLS_PRIVATE_KEY, ENV_TLS_CERT);
+                }
+                Err(Error::InvalidEnvVar)
+            },
+        }?;
 
         Ok(Config {
             private_listener: Listener {
@@ -275,6 +308,8 @@ impl<'a> TryFrom<&'a Strings> for Config {
                 .unwrap_or(DEFAULT_INBOUND_ROUTER_MAX_IDLE_AGE),
             outbound_router_max_idle_age: outbound_router_max_idle_age?
                 .unwrap_or(DEFAULT_OUTBOUND_ROUTER_MAX_IDLE_AGE),
+
+            tls_settings,
 
             resolv_conf_path: resolv_conf_path?
                 .unwrap_or(DEFAULT_RESOLV_CONF.into())
@@ -375,6 +410,10 @@ fn parse_duration(s: &str) -> Result<Duration, ParseError> {
         Some("d") => Ok(Duration::from_secs(magnitude * 60 * 60 * 24)),
         _ => Err(ParseError::NotADuration),
     }
+}
+
+fn parse_path(s: &str) -> Result<PathBuf, ParseError> {
+    Ok(PathBuf::from(s))
 }
 
 fn parse_url(s: &str) -> Result<HostAndPort, ParseError> {
