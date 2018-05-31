@@ -7,6 +7,7 @@ import Metric from './Metric.jsx';
 import { numericSort } from './util/Utils.js';
 import PageHeader from './PageHeader.jsx';
 import Percentage from './util/Percentage.js';
+import PropTypes from 'prop-types';
 import React from 'react';
 import StatusTable from './StatusTable.jsx';
 import { withContext } from './util/AppContext.jsx';
@@ -102,6 +103,19 @@ const componentDeploys = {
 };
 
 class ServiceMesh extends React.Component {
+  static propTypes = {
+    api: PropTypes.shape({
+      cancelCurrentRequests: PropTypes.func.isRequired,
+      ConduitLink: PropTypes.func.isRequired,
+      fetchMetrics: PropTypes.func.isRequired,
+      getCurrentPromises: PropTypes.func.isRequired,
+      setCurrentRequests: PropTypes.func.isRequired,
+      urlsForResource: PropTypes.func.isRequired,
+    }).isRequired,
+    controllerNamespace: PropTypes.string.isRequired,
+    releaseVersion: PropTypes.string.isRequired,
+  }
+
   constructor(props) {
     super(props);
     this.loadFromServer = this.loadFromServer.bind(this);

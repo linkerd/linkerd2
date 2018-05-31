@@ -1,4 +1,5 @@
 import _ from 'lodash';
+import PropTypes from 'prop-types';
 import React from 'react';
 import { withContext } from './AppContext.jsx';
 
@@ -11,6 +12,14 @@ import { withContext } from './AppContext.jsx';
  */
 const withREST = (WrappedComponent, componentPromises, resetProps = []) => {
   class RESTWrapper extends React.Component {
+    static propTypes = {
+      api: PropTypes.shape({
+        cancelCurrentRequests: PropTypes.func.isRequired,
+        getCurrentPromises: PropTypes.func.isRequired,
+        setCurrentRequests: PropTypes.func.isRequired,
+      }).isRequired,
+    }
+
     constructor(props) {
       super(props);
       this.api = this.props.api;
