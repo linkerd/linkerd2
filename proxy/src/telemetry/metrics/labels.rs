@@ -21,6 +21,9 @@ pub struct RequestLabels {
     /// The value of the `:authority` (HTTP/2) or `Host` (HTTP/1.1) header of
     /// the request.
     authority: Option<http::uri::Authority>,
+
+    /// Whether or not the request was made over TLS.
+    is_tls: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -46,6 +49,9 @@ pub struct TransportLabels {
     direction: Direction,
 
     peer: Peer,
+
+    /// Was the transport secured with TLS?
+    is_tls: bool,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
@@ -95,6 +101,7 @@ impl RequestLabels {
             direction,
             outbound_labels,
             authority,
+            is_tls: req.is_tls(),
         }
     }
 }
@@ -112,6 +119,10 @@ impl fmt::Display for RequestLabels {
             // leading comma added between the direction label and the
             // destination labels, if there are destination labels.
             write!(f, ",{}", outbound)?;
+        }
+
+        if self.is_tls {
+            f.pad(",tls=\"true\"")?;
         }
 
         Ok(())
@@ -301,6 +312,7 @@ impl TransportLabels {
                 ctx::transport::Ctx::Server(_) => Peer::Src,
                 ctx::transport::Ctx::Client(_) => Peer::Dst,
             },
+            is_tls: ctx.is_tls(),
         }
     }
 }
@@ -311,7 +323,13 @@ impl fmt::Display for TransportLabels {
         f.pad(match self.peer {
             Peer::Src => ",peer=\"src\"",
             Peer::Dst => ",peer=\"dst\"",
-        })
+        })?;
+
+        if self.is_tls {
+            f.pad(",tls=\"true\"")?;
+        }
+
+        Ok(())
     }
 }
 
