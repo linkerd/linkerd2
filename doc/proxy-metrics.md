@@ -42,9 +42,7 @@ Each of these metrics has the following labels:
                header of the request.
 * `direction`: `inbound` if the request originated from outside of the pod,
                `outbound` if the request originated from inside of the pod.
-* `meshed`: `false` if the request's source and destination were not in the
-                    mesh,
-            `true` if the request's source and destination were in the mesh.
+* `tls`: `true` if the request's connection was secured with TLS.
 
 ### Response Labels
 

@@ -504,14 +504,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"inbound\", meshed=\"true\"}[30s])) by (replication_controller)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"inbound\", tls=\"true\"}[30s])) by (replication_controller)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "🔒rc/{{replication_controller}}",
           "refId": "A"
         },
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"inbound\", meshed=\"false\"}[30s])) by (replication_controller)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"inbound\", tls!=\"true\"}[30s])) by (replication_controller)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "⚠️rc/{{replication_controller}}",
@@ -822,14 +822,14 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(request_total{replication_controller!=\"\", replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\", meshed=\"true\"}[30s])) by (replication_controller, pod)",
+              "expr": "sum(irate(request_total{replication_controller!=\"\", replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\", tls=\"true\"}[30s])) by (replication_controller, pod)",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "🔒po/{{pod}}",
               "refId": "A"
             },
             {
-              "expr": "sum(irate(request_total{replication_controller!=\"\", replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\", meshed=\"false\"}[30s])) by (replication_controller, pod)",
+              "expr": "sum(irate(request_total{replication_controller!=\"\", replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\", tls!=\"true\"}[30s])) by (replication_controller, pod)",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "⚠️po/{{pod}}",
@@ -1131,14 +1131,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"outbound\", meshed=\"true\"}[30s])) by (dst_replication_controller)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"outbound\", tls=\"true\"}[30s])) by (dst_replication_controller)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "🔒rc/{{dst_replication_controller}}",
           "refId": "A"
         },
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"outbound\", meshed=\"false\"}[30s])) by (dst_replication_controller)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"outbound\", tls!=\"true\"}[30s])) by (dst_replication_controller)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "⚠️rc/{{dst_replication_controller}}",
@@ -1431,14 +1431,14 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(request_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", dst_replication_controller=\"$outbound\", direction=\"outbound\", meshed=\"true\"}[30s])) by (dst_replication_controller)",
+              "expr": "sum(irate(request_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", dst_replication_controller=\"$outbound\", direction=\"outbound\", tls=\"true\"}[30s])) by (dst_replication_controller)",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "🔒rc/{{dst_replication_controller}}",
               "refId": "A"
             },
             {
-              "expr": "sum(irate(request_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", dst_replication_controller=\"$outbound\", direction=\"outbound\", meshed=\"false\"}[30s])) by (dst_replication_controller)",
+              "expr": "sum(irate(request_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", dst_replication_controller=\"$outbound\", direction=\"outbound\", tls!=\"true\"}[30s])) by (dst_replication_controller)",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "⚠️rc/{{dst_replication_controller}}",

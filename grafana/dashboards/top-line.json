@@ -500,14 +500,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=~\"$namespace\", direction=\"inbound\", meshed=\"true\"}[30s])) by (namespace)",
+          "expr": "sum(irate(request_total{namespace=~\"$namespace\", direction=\"inbound\", tls=\"true\"}[30s])) by (namespace)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "🔒ns/{{namespace}}",
           "refId": "A"
         },
         {
-          "expr": "sum(irate(request_total{namespace=~\"$namespace\", direction=\"inbound\", meshed=\"false\"}[30s])) by (namespace)",
+          "expr": "sum(irate(request_total{namespace=~\"$namespace\", direction=\"inbound\", tls!=\"true\"}[30s])) by (namespace)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "⚠️ns/{{namespace}}",
@@ -805,14 +805,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", direction=\"inbound\", meshed=\"true\"}[30s])) by (deployment)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", direction=\"inbound\", tls=\"true\"}[30s])) by (deployment)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "🔒deploy/{{deployment}}",
           "refId": "A"
         },
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", direction=\"inbound\", meshed=\"false\"}[30s])) by (deployment)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", direction=\"inbound\", tls!=\"true\"}[30s])) by (deployment)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "⚠️deploy/{{deployment}}",

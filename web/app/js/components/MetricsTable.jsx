@@ -118,9 +118,9 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
     {
       title: formatTitle("Secured", "Percentage of TLS Traffic"),
       key: "securedTraffic",
-      dataIndex: "meshedRequestPercent",
+      dataIndex: "tlsRequestPercent",
       className: "numeric",
-      sorter: (a, b) => numericSort(a.meshedRequestPercent.get(), b.meshedRequestPercent.get()),
+      sorter: (a, b) => numericSort(a.tlsRequestPercent.get(), b.tlsRequestPercent.get()),
       render: d => _.isNil(d) ? "---" : d.prettyRate()
     }
   ];

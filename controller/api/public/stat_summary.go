@@ -33,7 +33,7 @@ type resourceResult struct {
 }
 
 const (
-	reqQuery             = "sum(increase(response_total%s[%s])) by (%s, classification, meshed)"
+	reqQuery             = "sum(increase(response_total%s[%s])) by (%s, classification, tls)"
 	latencyQuantileQuery = "histogram_quantile(%s, sum(irate(response_latency_ms_bucket%s[%s])) by (le, %s))"
 
 	promRequests   = promType("QUERY_REQUESTS")
@@ -374,9 +374,9 @@ func processPrometheusMetrics(results []promResult, groupBy model.LabelNames) ma
 				case "failure":
 					basicStats[label].FailureCount += value
 				}
-				switch string(sample.Metric[model.LabelName("meshed")]) {
+				switch string(sample.Metric[model.LabelName("tls")]) {
 				case "true":
-					basicStats[label].MeshedRequestCount += value
+					basicStats[label].TlsRequestCount += value
 				}
 			case promLatencyP50:
 				basicStats[label].LatencyMsP50 = value

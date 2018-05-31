@@ -505,14 +505,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"inbound\", meshed=\"true\"}[30s])) by (pod)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"inbound\", tls=\"true\"}[30s])) by (pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "🔒po/{{pod}}",
           "refId": "A"
         },
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"inbound\", meshed=\"false\"}[30s])) by (pod)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"inbound\", tls!=\"true\"}[30s])) by (pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "⚠️po/{{pod}}",
@@ -798,14 +798,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{dst_namespace=\"$namespace\", dst_pod!=\"\", dst_pod=\"$pod\", direction=\"outbound\", meshed=\"true\"}[30s])) by (pod)",
+          "expr": "sum(irate(request_total{dst_namespace=\"$namespace\", dst_pod!=\"\", dst_pod=\"$pod\", direction=\"outbound\", tls=\"true\"}[30s])) by (pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "🔒po/{{pod}}",
           "refId": "A"
         },
         {
-          "expr": "sum(irate(request_total{dst_namespace=\"$namespace\", dst_pod!=\"\", dst_pod=\"$pod\", direction=\"outbound\", meshed=\"false\"}[30s])) by (pod)",
+          "expr": "sum(irate(request_total{dst_namespace=\"$namespace\", dst_pod!=\"\", dst_pod=\"$pod\", direction=\"outbound\", tls!=\"true\"}[30s])) by (pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "⚠️po/{{pod}}",
@@ -1091,14 +1091,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\", meshed=\"true\"}[30s])) by (pod)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\", tls=\"true\"}[30s])) by (pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "🔒po/{{pod}}",
           "refId": "A"
         },
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\", meshed=\"false\"}[30s])) by (pod)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\", tls!=\"true\"}[30s])) by (pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "⚠️po/{{pod}}",
@@ -1384,14 +1384,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\", meshed=\"true\"}[30s])) by (dst_pod)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\", tls=\"true\"}[30s])) by (dst_pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "🔒po/{{dst_pod}}",
           "refId": "A"
         },
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\", meshed=\"false\"}[30s])) by (dst_pod)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\", tls!=\"true\"}[30s])) by (dst_pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "⚠️po/{{dst_pod}}",

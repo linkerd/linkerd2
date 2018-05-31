@@ -246,8 +246,7 @@ func renderTapEvent(event *common.TapEvent) string {
 	dstPod := dstLabels["pod"]
 	isSecured := "no"
 
-	if dstLabels["meshed"] == "true" {
-		// assumption: meshed traffic is secured by default
+	if dstLabels["tls"] == "true" {
 		isSecured = "yes"
 	}
 
