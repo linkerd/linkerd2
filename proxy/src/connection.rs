@@ -14,27 +14,28 @@ use ctx::transport::TlsStatus;
 use config::Addr;
 use transport::{GetOriginalDst, Io, tls};
 
-pub type PlaintextSocket = TcpStream;
-
 pub struct BoundPort {
     inner: std::net::TcpListener,
     local_addr: SocketAddr,
 }
 
 /// Initiates a client connection to the given address.
-pub fn connect(addr: &SocketAddr) -> Connecting {
-    Connecting {
-        inner: PlaintextSocket::connect(addr),
-        // TODO: when we can open TLS client connections, this is where we will
-        //       indicate that for telemetry.
-        tls_status: TlsStatus::Disabled,
+pub fn connect(addr: &SocketAddr, tls: Option<(tls::Identity, tls::ClientConfigWatch)>)
+    -> Connecting
+{
+    Connecting::Plaintext {
+        connect: TcpStream::connect(addr),
+        tls
     }
 }
 
 /// A socket that is in the process of connecting.
-pub struct Connecting {
-    inner: ConnectFuture,
-    tls_status: TlsStatus,
+pub enum Connecting {
+    Plaintext {
+        connect: ConnectFuture,
+        tls: Option<(tls::Identity, tls::ClientConfigWatch)>,
+    },
+    UpgradeToTls(tls::UpgradeClientToTls),
 }
 
 /// Abstracts a plaintext socket vs. a TLS decorated one.
@@ -155,7 +156,7 @@ impl BoundPort {
                     } else {
                         TlsStatus::Disabled
                     };
-                    let conn = Connection::new(socket, tls_status);
+                    let conn = Connection::plain(socket, tls_status);
                     Either::B(future::ok((conn, remote_addr)))
                 })
                 .then(|r| {
@@ -181,16 +182,55 @@ impl Future for Connecting {
     type Error = io::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        let socket = try_ready!(self.inner.poll());
-        set_nodelay_or_warn(&socket);
-        Ok(Async::Ready(Connection::new(socket, self.tls_status)))
+        loop {
+            let new_state = match self {
+                Connecting::Plaintext { connect, tls } => {
+                    match connect.poll() {
+                        Ok(Async::Ready(plaintext_stream)) => {
+                            set_nodelay_or_warn(&plaintext_stream);
+                            if let Some((identity, config_watch)) = tls {
+                                if let Some(ref config) = *config_watch.borrow() {
+                                    let upgrade_to_tls = tls::Connection::connect(
+                                        plaintext_stream, &identity, config.clone());
+                                    Some(Connecting::UpgradeToTls(upgrade_to_tls))
+                                } else {
+                                    return Ok(Async::Ready(Connection::plain(plaintext_stream,
+                                                                             TlsStatus::NoConfig)));
+                                }
+                            } else {
+                                return Ok(Async::Ready(Connection::plain(plaintext_stream,
+                                                                         TlsStatus::Disabled)));
+                            }
+                        },
+                        Ok(Async::NotReady) => None,
+                        Err(e) => {
+                            return Err(e);
+                        }
+                    }
+                },
+                Connecting::UpgradeToTls(upgrading) => {
+                    match upgrading.poll() {
+                        Ok(Async::Ready(tls_stream)) => {
+                            return Ok(Async::Ready(Connection::tls(tls_stream)));
+                        },
+                        Ok(Async::NotReady) => None,
+                        Err(e) => {
+                            return Err(e);
+                        }
+                    }
+                },
+            };
+            if let Some(s) = new_state {
+                std::mem::replace(self, s);
+            }
+        }
     }
 }
 
 // ===== impl Connection =====
 
 impl Connection {
-    fn new<I: Io + 'static>(io: I, tls_status: TlsStatus) -> Self {
+    fn plain(io: TcpStream, tls_status: TlsStatus) -> Self {
         Connection {
             io: Box::new(io),
             peek_buf: BytesMut::new(),
@@ -198,8 +238,8 @@ impl Connection {
         }
     }
 
-    fn tls(tls: tls::Connection) -> Self {
-            Connection {
+    fn tls<S: tls::Session + std::fmt::Debug + 'static>(tls: tls::Connection<S>) -> Self {
+        Connection {
             io: Box::new(tls),
             peek_buf: BytesMut::new(),
             tls_status: TlsStatus::Success,
@@ -312,7 +352,7 @@ impl<T: Peek> Future for PeekFuture<T> {
 
 // Misc.
 
-fn set_nodelay_or_warn(socket: &PlaintextSocket) {
+fn set_nodelay_or_warn(socket: &TcpStream) {
     if let Err(e) = socket.set_nodelay(true) {
         warn!(
             "could not set TCP_NODELAY on {:?}/{:?}: {}",

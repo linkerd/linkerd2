@@ -214,9 +214,13 @@ where
             ctx::transport::TlsStatus::Disabled,
         );
 
+        let tls = ep.tls_identity().map(|tls_identity| {
+            (tls_identity.clone(), self.ctx.tls_client_config_watch().clone())
+        });
+
         // Map a socket address to a connection.
         let connect = self.sensors.connect(
-            transport::Connect::new(addr, ep.tls_identity().cloned()),
+            transport::Connect::new(addr, tls),
             &client_ctx,
         );
 
@@ -266,7 +270,9 @@ where
 
 
 impl<C, B> Bind<C, B> {
-    pub fn with_protocol(self, protocol: Protocol) -> BindProtocol<C, B> {
+    pub fn with_protocol(self, protocol: Protocol)
+        -> BindProtocol<C, B>
+    {
         BindProtocol {
             bind: self,
             protocol,
