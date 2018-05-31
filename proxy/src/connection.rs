@@ -134,13 +134,10 @@ impl BoundPort {
                         None => Either::B(future::ok((Connection::new(Box::new(socket)), remote_addr))),
                     }
                 })
-                .map(Some)
                 .or_else(|err| {
                     debug!("error handshaking: {}", err);
-                    let r: Option<(Connection, SocketAddr)> = None;
-                    future::ok(r)
+                    future::err(err)
                 })
-                .filter_map(|x| x) // Strip `None`s (skip connections with errors).
                 .fold(initial, f)
         )
         .map(|_| ())
