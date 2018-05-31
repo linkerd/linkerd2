@@ -139,4 +139,3 @@ class Namespaces extends React.Component {
 }
 
 export default withContext(Namespaces);
-
