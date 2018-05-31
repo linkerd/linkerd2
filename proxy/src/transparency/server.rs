@@ -126,6 +126,7 @@ where
             &local_addr,
             &remote_addr,
             &orig_dst,
+            connection.is_tls(),
         );
         let log = self.log.clone()
             .with_remote(remote_addr);

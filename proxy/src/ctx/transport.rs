@@ -19,6 +19,7 @@ pub struct Server {
     pub remote: SocketAddr,
     pub local: SocketAddr,
     pub orig_dst: Option<SocketAddr>,
+    pub is_tls: bool,
 }
 
 /// Identifies a connection from the proxy to another process.
@@ -44,12 +45,14 @@ impl Server {
         local: &SocketAddr,
         remote: &SocketAddr,
         orig_dst: &Option<SocketAddr>,
+        is_tls: bool,
     ) -> Arc<Server> {
         let s = Server {
             proxy: Arc::clone(proxy),
             local: *local,
             remote: *remote,
             orig_dst: *orig_dst,
+            is_tls,
         };
 
         Arc::new(s)

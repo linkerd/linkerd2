@@ -133,7 +133,9 @@ mod tests {
 
             let inbound = new_inbound(None, &ctx);
 
-            let srv_ctx = ctx::transport::Server::new(&ctx, &local, &remote, &Some(orig_dst));
+            let srv_ctx = ctx::transport::Server::new(
+                &ctx, &local, &remote, &Some(orig_dst), false,
+            );
 
             let rec = srv_ctx.orig_dst_if_not_local().map(make_key_http1);
 
@@ -160,6 +162,7 @@ mod tests {
                     &local,
                     &remote,
                     &None,
+                    false,
                 ));
 
             inbound.recognize(&req) == default.map(make_key_http1)
@@ -191,6 +194,7 @@ mod tests {
                     &local,
                     &remote,
                     &Some(local),
+                    false,
                 ));
 
             inbound.recognize(&req) == default.map(make_key_http1)

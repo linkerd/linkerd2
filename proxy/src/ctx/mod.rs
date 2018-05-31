@@ -101,7 +101,7 @@ pub mod test_util {
     }
 
     pub fn server(proxy: &Arc<ctx::Proxy>) -> Arc<ctx::transport::Server> {
-        ctx::transport::Server::new(&proxy, &addr(), &addr(), &Some(addr()))
+        ctx::transport::Server::new(&proxy, &addr(), &addr(), &Some(addr()), false)
     }
 
     pub fn client<L, S>(proxy: &Arc<ctx::Proxy>, labels: L) -> Arc<ctx::transport::Client>
