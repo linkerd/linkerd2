@@ -114,7 +114,7 @@ class Namespaces extends React.Component {
         <MetricsTable
           resource={friendlyTitle}
           metrics={metrics}
-          showNamespaceFilter={false} />
+          showNamespaceColumn={false} />
       </div>
     );
   }
