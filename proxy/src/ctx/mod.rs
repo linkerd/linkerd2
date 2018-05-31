@@ -110,7 +110,7 @@ pub mod test_util {
         S: fmt::Display,
     {
         let meta = destination::Metadata::new(DstLabels::new(labels), None);
-        ctx::transport::Client::new(&proxy, &addr(), meta)
+        ctx::transport::Client::new(&proxy, &addr(), meta, false)
     }
 
     pub fn request(

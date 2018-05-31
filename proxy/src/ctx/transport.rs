@@ -28,6 +28,7 @@ pub struct Client {
     pub proxy: Arc<ctx::Proxy>,
     pub remote: SocketAddr,
     pub metadata: destination::Metadata,
+    pub is_tls: bool,
 }
 
 impl Ctx {
@@ -87,11 +88,13 @@ impl Client {
         proxy: &Arc<ctx::Proxy>,
         remote: &SocketAddr,
         metadata: destination::Metadata,
+        is_tls: bool,
     ) -> Arc<Client> {
         let c = Client {
             proxy: Arc::clone(proxy),
             remote: *remote,
             metadata,
+            is_tls,
         };
 
         Arc::new(c)
@@ -105,7 +108,6 @@ impl Client {
         self.metadata.dst_labels()
     }
 }
-
 impl From<Arc<Client>> for Ctx {
     fn from(c: Arc<Client>) -> Self {
         Ctx::Client(c)

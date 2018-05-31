@@ -59,6 +59,10 @@ impl Proxy {
             &srv_ctx.proxy,
             &orig_dst,
             destination::Metadata::no_metadata(),
+            // A raw TCP client connection may be or may not be TLS traffic,
+            // but the `is_tls` field indicates whether _the proxy_ is
+            // responsible for the encryption, so set this to false.
+            false,
         );
         let c = Timeout::new(
             transport::Connect::new(orig_dst, None), // No TLS.
