@@ -86,7 +86,7 @@ impl Resolver {
         match *host {
             transport::Host::DnsName(ref name) => {
                 trace!("resolve_one_ip {}", name);
-                IpAddrFuture::DNS(Box::new(self.clone().lookup_ip(name)))
+                IpAddrFuture::DNS(Box::new(self.lookup_ip(name)))
             }
             transport::Host::Ip(addr) => IpAddrFuture::Fixed(addr),
         }
@@ -96,11 +96,11 @@ impl Resolver {
         let name = host.clone();
         let name_clone = name.clone();
         trace!("resolve_all_ips {}", &name);
-        let resolver = self.clone();
+        let lookup = self.lookup_ip(&name);
         let f = Delay::new(deadline)
             .then(move |_| {
                 trace!("resolve_all_ips {} after delay", &name);
-                resolver.lookup_ip(&name)
+                lookup
             })
             .then(move |result| {
                 trace!("resolve_all_ips {}: completed with {:?}", name_clone, &result);
@@ -118,9 +118,7 @@ impl Resolver {
         Box::new(f)
     }
 
-    // `ResolverFuture` can only be used for one lookup, so we have to clone all
-    // the state during each resolution.
-    fn lookup_ip(self, name: &Name)
+    fn lookup_ip(&self, name: &Name)
         -> impl Future<Item = LookupIp, Error = ResolveError>
     {
         self.resolver.lookup_ip(name.as_ref())
