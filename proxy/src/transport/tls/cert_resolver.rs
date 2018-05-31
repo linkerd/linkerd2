@@ -49,8 +49,7 @@ impl CertResolver {
                     &trust_anchors,
                     &[], // No intermediate certificates
                     now)
-                    .map_err(config::Error::EndEntityCertIsNotValid)
-            })?;
+            }).map_err(config::Error::EndEntityCertIsNotValid)?;
 
         let private_key = signature::key_pair_from_pkcs8(SIGNATURE_ALG_RING_SIGNING, private_key)
             .map_err(|ring::error::Unspecified| config::Error::InvalidPrivateKey)?;
@@ -64,28 +63,35 @@ impl CertResolver {
 }
 
 fn parse_end_entity_cert<'a>(cert_chain: &'a[rustls::Certificate])
-    -> Result<webpki::EndEntityCert<'a>, config::Error>
+    -> Result<webpki::EndEntityCert<'a>, webpki::Error>
 {
-    cert_chain.first()
-        .ok_or(config::Error::EmptyEndEntityCert)
-        .and_then(|cert| {
-            webpki::EndEntityCert::from(untrusted::Input::from(cert.as_ref()))
-                .map_err(config::Error::EndEntityCertIsNotValid)
-        })
+    let cert = cert_chain.first()
+        .map(rustls::Certificate::as_ref)
+        .unwrap_or(&[]); // An empty input fill fail to parse.
+    webpki::EndEntityCert::from(untrusted::Input::from(cert))
 }
 
 impl rustls::ResolvesServerCert for CertResolver {
     fn resolve(&self, server_name: Option<webpki::DNSNameRef>,
                sigschemes: &[rustls::SignatureScheme]) -> Option<rustls::sign::CertifiedKey> {
-        let server_name = server_name?; // Require SNI
+        let server_name = if let Some(server_name) = server_name {
+            server_name
+        } else {
+            debug!("no SNI -> no certificate");
+            return None;
+        };
 
         if !sigschemes.contains(&SIGNATURE_ALG_RUSTLS_SCHEME) {
+            debug!("signature scheme not supported -> no certificate");
             return None;
         }
 
         // Verify that our certificate is valid for the given SNI name.
-        parse_end_entity_cert(&self.certified_key.cert).ok()
-            .and_then(|cert| cert.verify_is_valid_for_dns_name(server_name).ok())?;
+        if let Err(err) = parse_end_entity_cert(&self.certified_key.cert)
+            .and_then(|cert| cert.verify_is_valid_for_dns_name(server_name)) {
+            debug!("our certificate is not valid for the SNI name -> no certificate: {:?}", err);
+            return None;
+        }
 
         Some(self.certified_key.clone())
     }
