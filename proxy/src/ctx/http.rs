@@ -80,6 +80,19 @@ impl Request {
         self.client.tls_identity()
     }
 
+    /// Returns `true` if the request was secured with TLS.
+    pub fn is_tls(&self) -> bool {
+        if self.server.proxy.is_outbound() {
+            // If the request is in the outbound direction, then we opened the
+            // client connection, so check if it was secured.
+            self.client.is_tls
+        } else {
+            // Otherwise, the request is inbound, so check if we accepted it
+            // over TLS.
+            self.server.is_tls
+        }
+    }
+
     pub fn dst_labels(&self) -> Option<&DstLabels> {
         self.client.dst_labels()
     }
@@ -93,6 +106,11 @@ impl Response {
         };
 
         Arc::new(r)
+    }
+
+    /// Returns `true` if the response was secured with TLS.
+    pub fn is_tls(&self) -> bool {
+        self.request.is_tls()
     }
 
     pub fn dst_labels(&self) -> Option<&DstLabels> {
