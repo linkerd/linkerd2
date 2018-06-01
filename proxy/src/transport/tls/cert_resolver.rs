@@ -48,7 +48,8 @@ impl CertResolver {
         private_key: untrusted::Input)
         -> Result<Self, config::Error>
     {
-        let private_key = signature::key_pair_from_pkcs8(SIGNATURE_ALG_RING_SIGNING, private_key)
+        let private_key =
+                signature::key_pair_from_pkcs8(config::SIGNATURE_ALG_RING_SIGNING, private_key)
             .map_err(|ring::error::Unspecified| config::Error::InvalidPrivateKey)?;
 
         let signer = Signer { private_key: Arc::new(private_key) };
@@ -78,7 +79,7 @@ impl rustls::ResolvesServerCert for CertResolver {
             return None;
         };
 
-        if !sigschemes.contains(&SIGNATURE_ALG_RUSTLS_SCHEME) {
+        if !sigschemes.contains(&config::SIGNATURE_ALG_RUSTLS_SCHEME) {
             debug!("signature scheme not supported -> no certificate");
             return None;
         }
@@ -98,7 +99,7 @@ impl rustls::sign::SigningKey for SigningKey {
     fn choose_scheme(&self, offered: &[rustls::SignatureScheme])
         -> Option<Box<rustls::sign::Signer>>
     {
-        if offered.contains(&SIGNATURE_ALG_RUSTLS_SCHEME) {
+        if offered.contains(&config::SIGNATURE_ALG_RUSTLS_SCHEME) {
             Some(Box::new(self.signer.clone()))
         } else {
             None
@@ -106,7 +107,7 @@ impl rustls::sign::SigningKey for SigningKey {
     }
 
     fn algorithm(&self) -> rustls::internal::msgs::enums::SignatureAlgorithm {
-        SIGNATURE_ALG_RUSTLS_ALGORITHM
+        config::SIGNATURE_ALG_RUSTLS_ALGORITHM
     }
 }
 
@@ -120,14 +121,6 @@ impl rustls::sign::Signer for Signer {
     }
 
     fn get_scheme(&self) -> rustls::SignatureScheme {
-        SIGNATURE_ALG_RUSTLS_SCHEME
+        config::SIGNATURE_ALG_RUSTLS_SCHEME
     }
 }
-
-// Keep these in sync.
-static SIGNATURE_ALG_RING_SIGNING: &signature::SigningAlgorithm =
-    &signature::ECDSA_P256_SHA256_ASN1_SIGNING;
-const SIGNATURE_ALG_RUSTLS_SCHEME: rustls::SignatureScheme =
-    rustls::SignatureScheme::ECDSA_NISTP256_SHA256;
-const SIGNATURE_ALG_RUSTLS_ALGORITHM: rustls::internal::msgs::enums::SignatureAlgorithm =
-    rustls::internal::msgs::enums::SignatureAlgorithm::ECDSA;

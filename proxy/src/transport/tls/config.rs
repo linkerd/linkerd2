@@ -17,6 +17,7 @@ use super::{
 
 use futures::{future, stream, Future, Stream};
 use futures_watch::Watch;
+use ring::signature;
 
 /// Not-yet-validated settings that are used for both TLS clients and TLS
 /// servers.
@@ -281,6 +282,13 @@ fn set_common_settings(versions: &mut Vec<rustls::ProtocolVersion>) {
     *versions = vec![rustls::ProtocolVersion::TLSv1_2]
 }
 
+// Keep these in sync.
+pub(super) static SIGNATURE_ALG_RING_SIGNING: &signature::SigningAlgorithm =
+    &signature::ECDSA_P256_SHA256_ASN1_SIGNING;
+pub(super) const SIGNATURE_ALG_RUSTLS_SCHEME: rustls::SignatureScheme =
+    rustls::SignatureScheme::ECDSA_NISTP256_SHA256;
+pub(super) const SIGNATURE_ALG_RUSTLS_ALGORITHM: rustls::internal::msgs::enums::SignatureAlgorithm =
+    rustls::internal::msgs::enums::SignatureAlgorithm::ECDSA;
 
 #[cfg(test)]
 mod tests {
