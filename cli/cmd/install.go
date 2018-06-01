@@ -31,6 +31,7 @@ type installConfig struct {
 	ControllerComponentLabel string
 	CreatedByAnnotation      string
 	ProxyAPIPort             uint
+	EnableTLS                bool
 }
 
 type installOptions struct {
@@ -39,6 +40,7 @@ type installOptions struct {
 	webReplicas        uint
 	prometheusReplicas uint
 	controllerLogLevel string
+	enableTLS          bool
 	*proxyConfigOptions
 }
 
@@ -49,6 +51,7 @@ func newInstallOptions() *installOptions {
 		webReplicas:        1,
 		prometheusReplicas: 1,
 		controllerLogLevel: "info",
+		enableTLS:          false,
 		proxyConfigOptions: newProxyConfigOptions(),
 	}
 }
@@ -75,6 +78,8 @@ func newCmdInstall() *cobra.Command {
 	cmd.PersistentFlags().UintVar(&options.webReplicas, "web-replicas", options.webReplicas, "Replicas of the web server to deploy")
 	cmd.PersistentFlags().UintVar(&options.prometheusReplicas, "prometheus-replicas", options.prometheusReplicas, "Replicas of prometheus to deploy")
 	cmd.PersistentFlags().StringVar(&options.controllerLogLevel, "controller-log-level", options.controllerLogLevel, "Log level for the controller and web components")
+	cmd.PersistentFlags().BoolVar(&options.enableTLS, "enable-tls", options.enableTLS, "Enable TLS connections among pods in the service mesh")
+	cmd.PersistentFlags().MarkHidden("enable-tls")
 
 	return cmd
 }
@@ -99,6 +104,7 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		ControllerComponentLabel: k8s.ControllerComponentLabel,
 		CreatedByAnnotation:      k8s.CreatedByAnnotation,
 		ProxyAPIPort:             options.proxyAPIPort,
+		EnableTLS:                options.enableTLS,
 	}, nil
 }
 

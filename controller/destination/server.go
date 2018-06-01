@@ -17,6 +17,7 @@ import (
 type server struct {
 	podsByIp  k8s.PodIndex
 	resolvers []streamingDestinationResolver
+	enableTLS bool
 }
 
 // The Destination service serves service discovery information to the proxy.
@@ -29,7 +30,7 @@ type server struct {
 //
 // Addresses for the given destination are fetched from the Kubernetes Endpoints
 // API.
-func NewServer(addr, kubeconfig string, k8sDNSZone string, done chan struct{}) (*grpc.Server, net.Listener, error) {
+func NewServer(addr, kubeconfig, k8sDNSZone string, enableTLS bool, done chan struct{}) (*grpc.Server, net.Listener, error) {
 	clientSet, err := k8s.NewClientSet(kubeconfig)
 	if err != nil {
 		return nil, nil, err
@@ -58,6 +59,7 @@ func NewServer(addr, kubeconfig string, k8sDNSZone string, done chan struct{}) (
 	srv := server{
 		podsByIp:  podsByIp,
 		resolvers: resolvers,
+		enableTLS: enableTLS,
 	}
 
 	lis, err := net.Listen("tcp", addr)
@@ -105,7 +107,7 @@ func (s *server) Get(dest *common.Destination, stream pb.Destination_GetServer) 
 }
 
 func (s *server) streamResolutionUsingCorrectResolverFor(host string, port int, stream pb.Destination_GetServer) error {
-	listener := &endpointListener{stream: stream, podsByIp: s.podsByIp}
+	listener := &endpointListener{stream: stream, podsByIp: s.podsByIp, enableTLS: s.enableTLS}
 
 	for _, resolver := range s.resolvers {
 		resolverCanResolve, err := resolver.canResolve(host, port)

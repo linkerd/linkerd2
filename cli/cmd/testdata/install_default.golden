@@ -157,6 +157,7 @@ spec:
         resources: {}
       - args:
         - destination
+        - -enable-tls=false
         - -log-level=info
         - -logtostderr=true
         image: gcr.io/runconduit/controller:undefined

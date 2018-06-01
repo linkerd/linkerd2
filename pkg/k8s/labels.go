@@ -94,6 +94,10 @@ func GetOwnerLabels(objectMeta meta.ObjectMeta) map[string]string {
 	return labels
 }
 
+func GetControllerNs(objectMeta meta.ObjectMeta) string {
+	return objectMeta.Labels[ControllerNSLabel]
+}
+
 // toOwnerLabel converts a proxy label to a prometheus label, following the
 // relabel conventions from the prometheus scrape config file
 func toOwnerLabel(proxyLabel string) string {

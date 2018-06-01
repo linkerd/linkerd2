@@ -158,6 +158,7 @@ spec:
         resources: {}
       - args:
         - destination
+        - -enable-tls=true
         - -log-level=ControllerLogLevel
         - -logtostderr=true
         image: ControllerImage

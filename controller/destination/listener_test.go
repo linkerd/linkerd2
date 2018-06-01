@@ -153,6 +153,93 @@ func TestEndpointListener(t *testing.T) {
 		}
 	})
 
+	t.Run("Sends TlsIdentity when enabled", func(t *testing.T) {
+		expectedPodName := "pod1"
+		expectedPodNamespace := "this-namespace"
+		expectedConduitNamespace := "conduit-namespace"
+		expectedTlsIdentity := &pb.TlsIdentity_K8SPodNamespace{
+			PodName:      expectedPodName,
+			PodNs:        expectedPodNamespace,
+			ControllerNs: expectedConduitNamespace,
+		}
+
+		addedAddress := common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 666}}, Port: 1}
+		ipForAddr := util.IPToString(addedAddress.Ip)
+		podForAddedAddress := &v1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      expectedPodName,
+				Namespace: expectedPodNamespace,
+				Labels: map[string]string{
+					pkgK8s.ControllerNSLabel: expectedConduitNamespace,
+				},
+			},
+			Status: v1.PodStatus{
+				Phase: v1.PodRunning,
+			},
+		}
+
+		podIndex := &k8s.InMemoryPodIndex{BackingMap: map[string][]*v1.Pod{ipForAddr: []*v1.Pod{podForAddedAddress}}}
+
+		mockGetServer := &mockDestination_GetServer{updatesReceived: []*pb.Update{}}
+		listener := &endpointListener{
+			podsByIp:  podIndex,
+			stream:    mockGetServer,
+			enableTLS: true,
+		}
+
+		listener.Update([]common.TcpAddress{addedAddress}, nil)
+
+		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
+		if len(addrs) != 1 {
+			t.Fatalf("Expected [1] address returned, got %v", addrs)
+		}
+
+		actualTlsIdentity := addrs[0].GetTlsIdentity().GetK8SPodNamespace()
+		if !reflect.DeepEqual(actualTlsIdentity, expectedTlsIdentity) {
+			t.Fatalf("Expected TlsIdentity to be [%v] but was [%v]", expectedTlsIdentity, actualTlsIdentity)
+		}
+	})
+
+	t.Run("Does not sent TlsIdentity when not enabled", func(t *testing.T) {
+		expectedPodName := "pod1"
+		expectedPodNamespace := "this-namespace"
+		expectedConduitNamespace := "conduit-namespace"
+
+		addedAddress := common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 666}}, Port: 1}
+		ipForAddr := util.IPToString(addedAddress.Ip)
+		podForAddedAddress := &v1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      expectedPodName,
+				Namespace: expectedPodNamespace,
+				Labels: map[string]string{
+					pkgK8s.ControllerNSLabel: expectedConduitNamespace,
+				},
+			},
+			Status: v1.PodStatus{
+				Phase: v1.PodRunning,
+			},
+		}
+
+		podIndex := &k8s.InMemoryPodIndex{BackingMap: map[string][]*v1.Pod{ipForAddr: []*v1.Pod{podForAddedAddress}}}
+
+		mockGetServer := &mockDestination_GetServer{updatesReceived: []*pb.Update{}}
+		listener := &endpointListener{
+			podsByIp: podIndex,
+			stream:   mockGetServer,
+		}
+
+		listener.Update([]common.TcpAddress{addedAddress}, nil)
+
+		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
+		if len(addrs) != 1 {
+			t.Fatalf("Expected [1] address returned, got %v", addrs)
+		}
+
+		if addrs[0].TlsIdentity != nil {
+			t.Fatalf("Expected no TlsIdentity to be sent, but got [%v]", addrs[0].TlsIdentity)
+		}
+	})
+
 	t.Run("It only returns pods in a running state", func(t *testing.T) {
 		expectations := []listenerExpected{
 			listenerExpected{
