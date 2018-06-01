@@ -78,7 +78,11 @@ impl CommonSettings {
                 for path in &paths  {
                     let t = fs::metadata(path)
                         .and_then(|meta| meta.modified())
-                        .map_err(|e| warn!("metadata for {:?}: {:?}", path, e))
+                        .map_err(|e| if e.kind() != io::ErrorKind::NotFound {
+                            // Don't log if the files don't exist, since this
+                            // makes the logs *quite* noisy.
+                            warn!("metadata for {:?}: {}", path, e)
+                        })
                         .ok();
                     if t > max {
                         max = t;
@@ -89,6 +93,18 @@ impl CommonSettings {
             })
     }
 
+    /// Stream changes to the files described by this `CommonSettings`.
+    ///
+    /// This will poll the filesystem for changes to the files at the paths
+    /// described by this `CommonSettings` every `interval`, and attempt to
+    /// load a new `CommonConfig` from the files again after each change.
+    ///
+    /// The returned stream consists of each subsequent successfully loaded
+    /// `CommonSettings` after each change. If the settings could not be
+    /// reloaded (i.e., they were malformed), nothing is sent.
+    ///
+    /// TODO: On Linux, this should be replaced with an `inotify` watch when
+    ///       available.
     pub fn stream_changes(self, interval: Duration)
         -> impl Stream<Item = CommonConfig, Error = ()>
     {
@@ -96,7 +112,7 @@ impl CommonSettings {
             .filter_map(move |t| {
                 trace!("config changed at {:?}", t);
                 CommonConfig::load_from_disk(&self)
-                    .map_err(|e| warn!("error reloading TLS config: {:?}", e))
+                    .map_err(|e| warn!("error reloading TLS config: {:?}, falling back", e))
                     .ok()
             })
     }
@@ -155,6 +171,9 @@ impl ServerConfig {
         ServerConfig(Arc::new(config))
     }
 
+    /// Watch a `Stream` of changes to a `CommonConfig`, such as those returned by
+    /// `CommonSettings::stream_changes`, and update a `futures_watch::Watch` cell
+    /// with a `ServerConfig` generated from each change.
     pub fn watch(changes: impl Stream<Item = CommonConfig, Error = ()>)
         -> (Watch<Option<Self>>, impl Future<Item=(), Error=()>)
     {
