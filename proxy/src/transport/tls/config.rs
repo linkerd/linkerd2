@@ -1,8 +1,9 @@
 use std::{
-    fs::File,
+    fs::{self, File},
     io::{self, Cursor, Read},
     path::PathBuf,
     sync::Arc,
+    time::{Duration, Instant, SystemTime,},
 };
 
 use super::{
@@ -12,6 +13,10 @@ use super::{
     untrusted,
     webpki,
 };
+
+use futures::{ Future, Sink, Stream };
+use futures_watch::Watch;
+use tokio::timer::Interval;
 
 /// Not-yet-validated settings that are used for both TLS clients and TLS
 /// servers.
@@ -42,6 +47,7 @@ pub struct CommonConfig {
     cert_resolver: Arc<CertResolver>,
 }
 
+
 /// Validated configuration for TLS servers.
 #[derive(Clone)]
 pub struct ServerConfig(pub(super) Arc<rustls::ServerConfig>);
@@ -55,6 +61,50 @@ pub enum Error {
     EndEntityCertIsNotValid(webpki::Error),
     InvalidPrivateKey,
     TimeConversionFailed,
+}
+
+impl CommonSettings {
+
+    fn changes(&self, interval: Duration) -> impl Stream<Item=SystemTime, Error = ()> {
+        let paths = [
+            self.trust_anchors.clone(),
+            self.end_entity_cert.clone(),
+            self.private_key.clone(),
+        ];
+        let mut max: Option<SystemTime> = None;
+        Interval::new(Instant::now(), interval)
+            .map_err(|e| error!("timer error: {:?}", e))
+            .filter_map(move |_| {
+                for path in &paths  {
+                    let t = fs::metadata(path)
+                        .and_then(|meta| meta.modified())
+                        .map_err(|e| warn!("metadata for {:?}: {:?}", path, e))
+                        .ok();
+                    if t > max {
+                        max = t;
+                        return t;
+                    }
+                }
+                None
+            })
+    }
+
+    pub fn start_watching(self, interval: Duration)
+        -> (Watch<Option<CommonConfig>>, impl Future<Item=(), Error=()>)
+    {
+        let (watch, store) = Watch::new(None);
+        let s = self.changes(interval).filter_map(move |t| {
+            trace!("config changed at {:?}", t);
+            CommonConfig::load_from_disk(&self)
+                .map_err(|e| warn!("error reloading TLS config: {:?}", e))
+                .ok()
+        });
+        let store = store
+            .sink_map_err(|_| warn!("all TLS config watches dropped"));
+        let f = s.map(Some).forward(store)
+            .map(|_| trace!("forwarding to config watch finished."));
+        (watch, f)
+    }
 }
 
 impl CommonConfig {
@@ -99,6 +149,7 @@ impl CommonConfig {
             cert_resolver: Arc::new(cert_resolver),
         })
     }
+
 }
 
 impl ServerConfig {

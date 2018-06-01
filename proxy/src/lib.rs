@@ -10,6 +10,7 @@ extern crate deflate;
 #[macro_use]
 extern crate futures;
 extern crate futures_mpsc_lossy;
+extern crate futures_watch;
 extern crate h2;
 extern crate http;
 extern crate httparse;
