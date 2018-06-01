@@ -213,7 +213,7 @@ where
             &taps,
         );
 
-        let dns_resolver = dns::Resolver::from_system_config()
+        let dns_resolver = dns::Resolver::new(&config)
             .unwrap_or_else(|e| {
                 // TODO: Make DNS configuration infallible.
                 panic!("invalid DNS configuration: {:?}", e);

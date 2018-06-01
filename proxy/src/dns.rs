@@ -1,7 +1,7 @@
 use futures::prelude::*;
 use std::fmt;
 use std::net::IpAddr;
-use std::time::{Instant, Duration};
+use std::time::Instant;
 use tokio::timer::Delay;
 use transport;
 use trust_dns_resolver;
@@ -9,6 +9,8 @@ use trust_dns_resolver::config::{ResolverConfig, ResolverOpts};
 use trust_dns_resolver::error::{ResolveError, ResolveErrorKind};
 use trust_dns_resolver::ResolverFuture;
 use trust_dns_resolver::lookup_ip::LookupIp;
+
+use config::Config;
 
 #[derive(Clone, Debug)]
 pub struct Resolver {
@@ -28,7 +30,7 @@ pub enum Error {
 
 pub enum Response {
     Exists(LookupIp),
-    DoesNotExist,
+    DoesNotExist { retry_after: Option<Instant> },
 }
 
 // `Box<Future>` implements `Future` so it doesn't need to be implemented manually.
@@ -59,19 +61,22 @@ impl AsRef<str> for Name {
 }
 
 impl Resolver {
+
+    /// Construct a new `Resolver` from the system configuration and Conduit's
+    /// environment variables.
+    ///
     /// TODO: Make this infallible, like it is in the `domain` crate.
-    pub fn from_system_config() -> Result<Self, ResolveError> {
+    pub fn new(env_config: &Config) -> Result<Self, ResolveError> {
         let (config, opts) = trust_dns_resolver::system_conf::read_system_conf()?;
+        let mut opts = env_config.configure_resolver_opts(opts);
+        // Disable Trust-DNS's caching.
+        opts.cache_size = 0;
         trace!("DNS config: {:?}", &config);
         trace!("DNS opts: {:?}", &opts);
-        Ok(Self::new(config, opts))
-    }
-
-    pub fn new(config: ResolverConfig,  opts: ResolverOpts) -> Self {
-        Resolver {
+        Ok(Resolver {
             config,
             opts,
-        }
+        })
     }
 
     pub fn resolve_one_ip(&self, host: &transport::Host) -> IpAddrFuture {
@@ -84,12 +89,12 @@ impl Resolver {
         }
     }
 
-    pub fn resolve_all_ips(&self, delay: Duration, host: &Name) -> IpAddrListFuture {
+    pub fn resolve_all_ips(&self, deadline: Instant, host: &Name) -> IpAddrListFuture {
         let name = host.clone();
         let name_clone = name.clone();
         trace!("resolve_all_ips {}", &name);
         let resolver = self.clone();
-        let f = Delay::new(Instant::now() + delay)
+        let f = Delay::new(deadline)
             .then(move |_| {
                 trace!("resolve_all_ips {} after delay", &name);
                 resolver.lookup_ip(&name)
@@ -99,8 +104,8 @@ impl Resolver {
                 match result {
                     Ok(ips) => Ok(Response::Exists(ips)),
                     Err(e) => {
-                        if let &ResolveErrorKind::NoRecordsFound(_) = e.kind() {
-                            Ok(Response::DoesNotExist)
+                        if let &ResolveErrorKind::NoRecordsFound { valid_until, .. } = e.kind() {
+                            Ok(Response::DoesNotExist { retry_after: valid_until })
                         } else {
                             Err(e)
                         }

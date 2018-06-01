@@ -8,6 +8,8 @@ use std::time::Duration;
 
 use http;
 use indexmap::IndexSet;
+use trust_dns_resolver::config::ResolverOpts;
+
 use transport::{Host, HostAndPort, HostAndPortError, tls};
 use convert::TryFrom;
 
@@ -69,6 +71,12 @@ pub struct Config {
     pub bind_timeout: Duration,
 
     pub pod_namespace: String,
+
+    /// Optional minimum TTL for DNS lookups.
+    pub dns_min_ttl: Option<Duration>,
+
+    /// Optional maximum TTL for DNS lookups.
+    pub dns_max_ttl: Option<Duration>,
 }
 
 /// Configuration settings for binding a listener.
@@ -169,6 +177,15 @@ pub const ENV_POD_NAMESPACE: &str = "CONDUIT_PROXY_POD_NAMESPACE";
 pub const ENV_CONTROL_URL: &str = "CONDUIT_PROXY_CONTROL_URL";
 const ENV_RESOLV_CONF: &str = "CONDUIT_RESOLV_CONF";
 
+/// Configures a minimum value for the TTL of DNS lookups.
+///
+/// Lookups with TTLs below this value will use this value instead.
+const ENV_DNS_MIN_TTL: &str = "CONDUIT_PROXY_DNS_MIN_TTL";
+/// Configures a maximum value for the TTL of DNS lookups.
+///
+/// Lookups with TTLs above this value will use this value instead.
+const ENV_DNS_MAX_TTL: &str = "CONDUIT_PROXY_DNS_MAX_TTL";
+
 // Default values for various configuration fields
 const DEFAULT_EVENT_BUFFER_CAPACITY: usize = 10_000; // FIXME
 const DEFAULT_PRIVATE_LISTENER: &str = "tcp://127.0.0.1:4140";
@@ -199,6 +216,20 @@ const DEFAULT_PORTS_DISABLE_PROTOCOL_DETECTION: &[u16] = &[
 
 // ===== impl Config =====
 
+impl Config {
+    /// Modify a `trust-dns-resolver::config::ResolverOpts` to reflect
+    /// the configured minimum and maximum DNS TTL values.
+    pub fn configure_resolver_opts(&self, mut opts: ResolverOpts) -> ResolverOpts {
+        opts.positive_min_ttl = self.dns_min_ttl;
+        opts.positive_max_ttl = self.dns_max_ttl;
+        // TODO: Do we want to allow the positive and negative TTLs to be
+        //       configured separately?
+        opts.negative_min_ttl = self.dns_min_ttl;
+        opts.negative_max_ttl = self.dns_max_ttl;
+        opts
+    }
+}
+
 impl<'a> TryFrom<&'a Strings> for Config {
     type Err = Error;
     /// Load a `Config` by reading ENV variables.
@@ -226,6 +257,8 @@ impl<'a> TryFrom<&'a Strings> for Config {
         let resolv_conf_path = strings.get(ENV_RESOLV_CONF);
         let event_buffer_capacity = parse(strings, ENV_EVENT_BUFFER_CAPACITY, parse_number);
         let metrics_retain_idle = parse(strings, ENV_METRICS_RETAIN_IDLE, parse_duration);
+        let dns_min_ttl = parse(strings, ENV_DNS_MIN_TTL, parse_duration);
+        let dns_max_ttl = parse(strings, ENV_DNS_MAX_TTL, parse_duration);
         let pod_namespace = strings.get(ENV_POD_NAMESPACE).and_then(|maybe_value| {
             // There cannot be a default pod namespace, and the pod namespace is required.
             maybe_value.ok_or_else(|| {
@@ -322,6 +355,10 @@ impl<'a> TryFrom<&'a Strings> for Config {
             bind_timeout: bind_timeout?.unwrap_or(DEFAULT_BIND_TIMEOUT),
 
             pod_namespace: pod_namespace?,
+
+            dns_min_ttl: dns_min_ttl?,
+
+            dns_max_ttl: dns_max_ttl?,
         })
     }
 }

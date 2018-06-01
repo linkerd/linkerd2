@@ -5,7 +5,7 @@ use std::collections::{
 use std::fmt;
 use std::iter::IntoIterator;
 use std::net::SocketAddr;
-use std::time::Duration;
+use std::time::{Instant, Duration};
 
 use bytes::Bytes;
 use futures::{
@@ -210,7 +210,7 @@ where
                             if set.query.is_none() {
                                 set.reset_dns_query(
                                     &self.dns_resolver,
-                                    Duration::from_secs(0),
+                                    Instant::now(),
                                     vac.key(),
                                 );
                             }
@@ -290,7 +290,7 @@ where
                 },
                 Exists::No => {
                     // Fall back to DNS.
-                    set.reset_dns_query(&self.dns_resolver, Duration::from_secs(0), auth);
+                    set.reset_dns_query(&self.dns_resolver, Instant::now(), auth);
                 },
                 Exists::Unknown => (), // No change from Destination service's perspective.
             }
@@ -339,16 +339,16 @@ where
     fn reset_dns_query(
         &mut self,
         dns_resolver: &dns::Resolver,
-        delay: Duration,
+        deadline: Instant,
         authority: &DnsNameAndPort,
     ) {
         trace!(
-            "resetting DNS query for {} with delay {:?}",
+            "resetting DNS query for {} at {:?}",
             authority.host,
-            delay
+            deadline
         );
         self.reset_on_next_modification();
-        self.dns_query = Some(dns_resolver.resolve_all_ips(delay, &authority.host));
+        self.dns_query = Some(dns_resolver.resolve_all_ips(deadline, &authority.host));
     }
 
     // Processes Destination service updates from `request_rx`, returning the new query
@@ -412,10 +412,14 @@ where
     }
 
     fn poll_dns(&mut self, dns_resolver: &dns::Resolver, authority: &DnsNameAndPort) {
+        // Duration to wait before polling DNS again after an error
+        // (or a NXDOMAIN response with no TTL).
+        const DNS_ERROR_TTL: Duration = Duration::from_secs(5);
+
         trace!("checking DNS for {:?}", authority);
         while let Some(mut query) = self.dns_query.take() {
             trace!("polling DNS for {:?}", authority);
-            match query.poll() {
+            let deadline = match query.poll() {
                 Ok(Async::NotReady) => {
                     trace!("DNS query not ready {:?}", authority);
                     self.dns_query = Some(query);
@@ -436,23 +440,30 @@ where
                             )
                         }),
                     );
+
+                    // Poll again after the deadline on the DNS response.
+                    ips.valid_until()
                 },
-                Ok(Async::Ready(dns::Response::DoesNotExist)) => {
+                Ok(Async::Ready(dns::Response::DoesNotExist { retry_after })) => {
                     trace!(
                         "negative result (NXDOMAIN) of DNS query for {:?}",
                         authority
                     );
                     self.no_endpoints(authority, false);
+                    // Poll again after the deadline on the DNS response, if
+                    // there is one.
+                    retry_after.unwrap_or_else(|| Instant::now() + DNS_ERROR_TTL)
                 },
                 Err(e) => {
-                    trace!("DNS resolution failed for {}: {}", &authority.host, e);
                     // Do nothing so that the most recent non-error response is used until a
-                    // non-error response is received.
+                    // non-error response is received
+                    trace!("DNS resolution failed for {}: {}", &authority.host, e);
+
+                    // Poll again after the default wait time.
+                    Instant::now() + DNS_ERROR_TTL
                 },
             };
-            // TODO: When we have a TTL to use, we should use that TTL instead of hard-coding this
-            // delay.
-            self.reset_dns_query(dns_resolver, Duration::from_secs(5), &authority)
+            self.reset_dns_query(dns_resolver, deadline, &authority)
         }
     }
 }
