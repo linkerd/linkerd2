@@ -20,7 +20,7 @@ describe('MetricUtils', () => {
           requestRate: 2.5,
           successRate: 0.9,
           totalRequests: 150,
-          meshedRequestPercent: new Percentage(100, 150),
+          tlsRequestPercent: new Percentage(100, 150),
           latency: {
             P50: 1,
             P95: 2,
@@ -30,7 +30,7 @@ describe('MetricUtils', () => {
         }
       ];
       expect(result).to.have.length(1);
-      expect(result[0].meshedRequestPercent.prettyRate()).to.equal("66.7%");
+      expect(result[0].tlsRequestPercent.prettyRate()).to.equal("66.7%");
       expect(result).to.deep.equal(expectedResult);
     });
 

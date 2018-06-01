@@ -159,8 +159,7 @@ message BasicStats {
   uint64 latency_ms_p50 = 3;
   uint64 latency_ms_p95 = 4;
   uint64 latency_ms_p99 = 5;
-  // count of requests that are TLSed
-  uint64 meshed_request_count = 6;
+  uint64 tls_request_count = 6;
 }
 
 message StatTable {

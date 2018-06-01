@@ -47,8 +47,8 @@ func TestRequestTapByResourceFromAPI(t *testing.T) {
 				},
 			},
 			map[string]string{
-				"pod":    "my-pod",
-				"meshed": "true",
+				"pod": "my-pod",
+				"tls": "true",
 			},
 		)
 		event2 := createEvent(

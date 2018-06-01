@@ -368,12 +368,11 @@ func getSuccessRate(r pb.StatTable_PodGroup_Row) float64 {
 }
 
 func getPercentSecured(r pb.StatTable_PodGroup_Row) float64 {
-	// assumption: meshed requests are secured by default
 	reqTotal := r.Stats.SuccessCount + r.Stats.FailureCount
 	if reqTotal == 0 {
 		return 0.0
 	}
-	return float64(r.Stats.MeshedRequestCount) / float64(reqTotal)
+	return float64(r.Stats.TlsRequestCount) / float64(reqTotal)
 }
 
 func sortStatsKeys(stats map[string]*row) []string {

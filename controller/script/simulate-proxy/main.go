@@ -370,19 +370,12 @@ func newSimulatedProxy(
 		// "replica_set",
 	}
 
-	// make 50% of requests meshed
-	meshed := "false"
-	if rand.Int31n(2) > 0 {
-		meshed = "true"
-	}
-
 	constLabels := prom.Labels{
 		"authority":         "fakeauthority:123",
 		"namespace":         pod.GetNamespace(),
 		"deployment":        deploy.Name,
 		"pod_template_hash": pod.GetLabels()["pod-template-hash"],
 		"pod":               pod.GetName(),
-		"meshed":            meshed,
 
 		// TODO: support other k8s objects
 		// "daemon_set",
@@ -390,6 +383,11 @@ func newSimulatedProxy(
 		// "replication_controller",
 		// "replica_set",
 
+	}
+
+	// make 50% of requests tls
+	if rand.Int31n(2) > 0 {
+		constLabels["tls"] = "true"
 	}
 
 	requestLabels := []string{

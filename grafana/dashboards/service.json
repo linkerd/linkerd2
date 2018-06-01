@@ -423,14 +423,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\", meshed=\"true\"}[30s])) by (dst_service)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\", tls=\"true\"}[30s])) by (dst_service)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "🔒svc/{{dst_service}}",
           "refId": "A"
         },
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\", meshed=\"false\"}[30s])) by (dst_service)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\", tls!=\"true\"}[30s])) by (dst_service)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "⚠️svc/{{dst_service}}",
@@ -715,14 +715,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\", meshed=\"true\"}[30s])) by (dst_service, deployment)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\", tls=\"true\"}[30s])) by (dst_service, deployment)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "🔒deploy/{{deployment}}",
           "refId": "A"
         },
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\", meshed=\"false\"}[30s])) by (dst_service, deployment)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\", tls!=\"true\"}[30s])) by (dst_service, deployment)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "⚠️deploy/{{deployment}}",
@@ -990,14 +990,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\", meshed=\"true\"}[30s])) by (dst_service, pod)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\", tls=\"true\"}[30s])) by (dst_service, pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "🔒po/{{pod}}",
           "refId": "A"
         },
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\", meshed=\"false\"}[30s])) by (dst_service, pod)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\", tls!=\"true\"}[30s])) by (dst_service, pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "⚠️po/{{pod}}",

@@ -504,14 +504,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\", meshed=\"true\"}[30s])) by (deployment)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\", tls=\"true\"}[30s])) by (deployment)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "🔒deploy/{{deployment}}",
           "refId": "A"
         },
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\", meshed=\"false\"}[30s])) by (deployment)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\", tls!=\"true\"}[30s])) by (deployment)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "⚠️deploy/{{deployment}}",
@@ -1068,14 +1068,14 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(request_total{deployment!=\"\", deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\", meshed=\"true\"}[30s])) by (deployment, pod)",
+              "expr": "sum(irate(request_total{deployment!=\"\", deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\", tls=\"true\"}[30s])) by (deployment, pod)",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "🔒po/{{pod}}",
               "refId": "A"
             },
             {
-              "expr": "sum(irate(request_total{deployment!=\"\", deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\", meshed=\"false\"}[30s])) by (deployment, pod)",
+              "expr": "sum(irate(request_total{deployment!=\"\", deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\", tls!=\"true\"}[30s])) by (deployment, pod)",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "⚠️po/{{pod}}",
@@ -1377,14 +1377,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\", meshed=\"true\"}[30s])) by (dst_deployment)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\", tls=\"true\"}[30s])) by (dst_deployment)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "🔒deploy/{{dst_deployment}}",
           "refId": "A"
         },
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\", meshed=\"false\"}[30s])) by (dst_deployment)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\", tls!=\"true\"}[30s])) by (dst_deployment)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "⚠️deploy/{{dst_deployment}}",
@@ -1932,14 +1932,14 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\", meshed=\"true\"}[30s])) by (dst_deployment)",
+              "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\", tls=\"true\"}[30s])) by (dst_deployment)",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "🔒deploy/{{dst_deployment}}",
               "refId": "A"
             },
             {
-              "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\", meshed=\"false\"}[30s])) by (dst_deployment)",
+              "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\", tls!=\"true\"}[30s])) by (dst_deployment)",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "⚠️deploy/{{dst_deployment}}",
