@@ -121,7 +121,7 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
       dataIndex: "tlsRequestPercent",
       className: "numeric",
       sorter: (a, b) => numericSort(a.tlsRequestPercent.get(), b.tlsRequestPercent.get()),
-      render: d => _.isNil(d) ? "---" : d.prettyRate()
+      render: d => _.isNil(d) || d.get() === -1 ? "---" : d.prettyRate()
     }
   ];
 
