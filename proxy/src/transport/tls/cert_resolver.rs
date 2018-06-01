@@ -32,13 +32,18 @@ impl CertResolver {
     /// TODO: Verify that the public key of the certificate matches the private
     /// key.
     pub fn new(
-        trust_anchors: &webpki::TLSServerTrustAnchors,
+        root_cert_store: &rustls::RootCertStore,
         cert_chain: Vec<rustls::Certificate>,
         private_key: untrusted::Input)
         -> Result<Self, config::Error>
     {
         let now = webpki::Time::try_from(SystemTime::now())
             .map_err(|ring::error::Unspecified| config::Error::TimeConversionFailed)?;
+
+        let trust_anchors = root_cert_store.roots.iter()
+            .map(|owned_trust_anchor| owned_trust_anchor.to_trust_anchor())
+            .collect::<Vec<_>>();
+        let trust_anchors = webpki::TLSServerTrustAnchors(&trust_anchors);
 
         // Verify that we were given a valid TLS certificate that was issued by
         // our CA.
