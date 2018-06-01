@@ -10,11 +10,12 @@ use trust_dns_resolver::{
     error::{ResolveError, ResolveErrorKind},
     lookup_ip::LookupIp,
     AsyncResolver,
+    BackgroundLookupIp,
 };
 
 use config::Config;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Resolver {
     resolver: AsyncResolver,
 }
@@ -29,13 +30,21 @@ pub enum Error {
     ResolutionFailed(ResolveError),
 }
 
+#[derive(Debug)]
 pub enum Response {
     Exists(LookupIp),
     DoesNotExist(Option<Instant>),
 }
 
-// `Box<Future>` implements `Future` so it doesn't need to be implemented manually.
-pub type IpAddrListFuture = Box<Future<Item=Response, Error=ResolveError> + Send>;
+pub struct IpAddrListFuture {
+    name: Name,
+    state: Option<State>,
+}
+
+enum State {
+    Delay { delay: Delay, lookup: BackgroundLookupIp },
+    Lookup(BackgroundLookupIp),
+}
 
 /// A DNS name.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -110,46 +119,17 @@ impl Resolver {
 
     pub fn resolve_all_ips(&self, deadline: Instant, host: &Name) -> IpAddrListFuture {
         let name = host.clone();
-        let name_clone = name.clone();
         trace!("resolve_all_ips {}", &name);
-        let resolver = self.clone();
-        let f = Delay::new(deadline)
-            .then(move |_| {
-                trace!("resolve_all_ips {} after delay", &name);
-                resolver.lookup_ip(&name)
-            })
-            .then(move |result| {
-                trace!("resolve_all_ips {}: completed with {:?}", name_clone, &result);
-                match result {
-                    Ok(ips) => Ok(Response::Exists(ips)),
-                    Err(e) => {
-                        if let &ResolveErrorKind::NoRecordsFound { valid_until, .. } = e.kind() {
-                            Ok(Response::DoesNotExist(valid_until))
-                        } else {
-                            Err(e)
-                        }
-                    }
-                }
-            });
-        Box::new(f)
+        let lookup = self.clone().lookup_ip(&name);
+        let delay = Delay::new(deadline);
+        IpAddrListFuture {
+            name,
+            state: Some(State::Delay { delay, lookup }),
+        }
     }
 
-    // `ResolverFuture` can only be used for one lookup, so we have to clone all
-    // the state during each resolution.
-    fn lookup_ip(self, &Name(ref name): &Name)
-        -> impl Future<Item = LookupIp, Error = ResolveError>
-    {
+    fn lookup_ip(self, &Name(ref name): &Name) -> BackgroundLookupIp {
         self.resolver.lookup_ip(name.as_str())
-    }
-}
-
-/// Note: `AsyncResolver` does not implement `Debug`, so we must manually
-///       implement this.
-impl fmt::Debug for Resolver {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Resolver")
-            .field("resolver", &"...")
-            .finish()
     }
 }
 
@@ -176,6 +156,67 @@ impl Future for IpAddrFuture {
                 Err(e) => Err(Error::ResolutionFailed(e)),
             },
             IpAddrFuture::Fixed(addr) => Ok(Async::Ready(addr)),
+        }
+    }
+}
+
+impl Future for IpAddrListFuture {
+    type Item = Response;
+    type Error = ResolveError;
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        loop {
+            match self.state.take().expect("state taken twice!") {
+                State::Delay { mut delay, lookup } => match delay.poll() {
+                    Ok(Async::Ready(())) => {
+                        trace!(
+                            "resolve_all_ips {}: looking up IP after delay",
+                            &self.name
+                        );
+                        self.state = Some(State::Lookup(lookup));
+                    },
+                    Err(e) => {
+                        warn!(
+                            "resolve_all_ips {}: timer failed ({:?}), \
+                             advancing to lookup anyway",
+                             self.name,
+                             e
+                            );
+                        self.state = Some(State::Lookup(lookup));
+                    },
+                    Ok(Async::NotReady) => {
+                        self.state = Some(State::Delay { delay, lookup });
+                        return Ok(Async::NotReady);
+                    },
+                },
+                State::Lookup(ref mut lookup) => {
+                    return match lookup.poll() {
+                        Ok(Async::NotReady) => Ok(Async::NotReady),
+                        Ok(Async::Ready(ips)) => {
+                            trace!(
+                                "resolve_all_ips {}: completed with {:?}",
+                                &self.name, ips
+                            );
+                            Ok(Async::Ready(Response::Exists(ips)))
+                        },
+                        Err(e) => if let &ResolveErrorKind::NoRecordsFound {
+                            valid_until, ..
+                        } = e.kind() {
+                            trace!(
+                                "resolve_all_ips {}: completed with {:?}",
+                                self.name, e
+                            );
+                            Ok(Async::Ready(Response::DoesNotExist(valid_until)))
+                        } else {
+                            warn!(
+                                "resolve_all_ips {}: failed with: {:?}",
+                                self.name, e
+                            );
+                            Err(e)
+                        }
+                    };
+                }
+            }
         }
     }
 }

@@ -9,3 +9,6 @@ members = [
 
 [patch.crates-io]
 prost-derive = { git = "https://github.com/danburkert/prost" }
+
+[patch."https://github.com/bluejekyll/trust-dns"]
+trust-dns-resolver = { git = "https://github.com/hawkw/trust-dns", branch = "eliza/async-resolver-api-improvement" }
