@@ -67,6 +67,12 @@ impl Resolver {
     /// Construct a new `Resolver` from the system configuration and Conduit's
     /// environment variables.
     ///
+    /// # Returns
+    ///
+    /// Either a tuple containing a new `Resolver` and the background task to
+    /// drive that resolver's futures, or an error if the system configuration
+    /// could not be parsed.
+    ///
     /// TODO: Make this infallible, like it is in the `domain` crate.
     pub fn from_system_config_and_env(env_config: &Config)
         -> Result<(Self, impl Future<Item = (), Error = ()> + Send), ResolveError> {
@@ -77,6 +83,10 @@ impl Resolver {
         Ok(Self::new(config, opts))
     }
 
+
+    /// NOTE: It would be nice to be able to return a named type rather than
+    ///       `impl Future` for the background future; it would be called
+    ///       `Background` or `ResolverBackground` if that were possible.
     pub fn new(config: ResolverConfig,  mut opts: ResolverOpts)
         -> (Self, impl Future<Item = (), Error = ()> + Send)
     {
