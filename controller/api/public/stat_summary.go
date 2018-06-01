@@ -131,7 +131,7 @@ func statSummaryError(req *pb.StatSummaryRequest, message string) *pb.StatSummar
 }
 
 func (s *grpcServer) resourceQuery(ctx context.Context, req *pb.StatSummaryRequest) resourceResult {
-	objects, err := s.lister.GetObjects(req.Selector.Resource.Namespace, req.Selector.Resource.Type, req.Selector.Resource.Name)
+	objects, err := s.k8sAPI.GetObjects(req.Selector.Resource.Namespace, req.Selector.Resource.Type, req.Selector.Resource.Name)
 	if err != nil {
 		return resourceResult{res: nil, err: err}
 	}
@@ -410,7 +410,7 @@ func metricToKey(metric model.Metric, groupBy model.LabelNames) string {
 }
 
 func (s *grpcServer) getMeshedPodCount(obj runtime.Object) (*podCount, error) {
-	pods, err := s.lister.GetPodsFor(obj, true)
+	pods, err := s.k8sAPI.GetPodsFor(obj, true)
 	if err != nil {
 		return nil, err
 	}

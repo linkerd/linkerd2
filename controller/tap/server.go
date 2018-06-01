@@ -26,7 +26,7 @@ import (
 type (
 	server struct {
 		tapPort uint
-		lister  *k8s.Lister
+		k8sAPI  *k8s.API
 	}
 )
 
@@ -46,14 +46,14 @@ func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_T
 		return status.Errorf(codes.InvalidArgument, "TapByResource received nil target ResourceSelection: %+v", *req)
 	}
 
-	objects, err := s.lister.GetObjects(req.Target.Resource.Namespace, req.Target.Resource.Type, req.Target.Resource.Name)
+	objects, err := s.k8sAPI.GetObjects(req.Target.Resource.Namespace, req.Target.Resource.Type, req.Target.Resource.Name)
 	if err != nil {
 		return apiUtil.GRPCError(err)
 	}
 
 	pods := []*apiv1.Pod{}
 	for _, object := range objects {
-		podsFor, err := s.lister.GetPodsFor(object, false)
+		podsFor, err := s.k8sAPI.GetPodsFor(object, false)
 		if err != nil {
 			return apiUtil.GRPCError(err)
 		}
@@ -283,7 +283,7 @@ func (s *server) tapProxy(ctx context.Context, maxRps float32, match *proxy.Obse
 func NewServer(
 	addr string,
 	tapPort uint,
-	lister *k8s.Lister,
+	k8sAPI *k8s.API,
 ) (*grpc.Server, net.Listener, error) {
 
 	lis, err := net.Listen("tcp", addr)
@@ -294,7 +294,7 @@ func NewServer(
 	s := util.NewGrpcServer()
 	srv := server{
 		tapPort: tapPort,
-		lister:  lister,
+		k8sAPI:  k8sAPI,
 	}
 	pb.RegisterTapServer(s, &srv)
 

@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -11,7 +12,6 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/client-go/kubernetes/scheme"
 )
 
 // append to a list of runtime.Object, if the object is not already in the list
@@ -23,6 +23,38 @@ func appendUnique(objs []runtime.Object, obj runtime.Object) []runtime.Object {
 	}
 	return append(objs, obj)
 }
+
+func newAPI(resourceConfigs []string, extraConfigs ...string) (*API, []runtime.Object, error) {
+	k8sObjs := []runtime.Object{}
+	k8sResults := []runtime.Object{}
+
+	for _, config := range resourceConfigs {
+		obj, err := toRuntimeObject(config)
+		if err != nil {
+			return nil, nil, err
+		}
+		k8sObjs = appendUnique(k8sObjs, obj)
+		k8sResults = append(k8sResults, obj)
+	}
+
+	for _, config := range extraConfigs {
+		obj, err := toRuntimeObject(config)
+		if err != nil {
+			return nil, nil, err
+		}
+		k8sObjs = append(k8sObjs, obj)
+	}
+
+	clientSet := fake.NewSimpleClientset(k8sObjs...)
+	api := NewAPI(clientSet)
+	err := api.Sync()
+	if err != nil {
+		return nil, nil, fmt.Errorf("api.Sync() returned an error: %s", err)
+	}
+
+	return api, k8sResults, nil
+}
+
 func TestGetObjects(t *testing.T) {
 
 	type getObjectsExpected struct {
@@ -118,41 +150,17 @@ metadata:
 		}
 
 		for _, exp := range expectations {
-			k8sObjs := []runtime.Object{}
-
-			k8sResults := []runtime.Object{}
-			for _, res := range exp.k8sResResults {
-				decode := scheme.Codecs.UniversalDeserializer().Decode
-				obj, _, err := decode([]byte(res), nil, nil)
-				if err != nil {
-					t.Fatalf("could not decode yml: %s", err)
-				}
-				k8sObjs = appendUnique(k8sObjs, obj)
-				k8sResults = append(k8sResults, obj)
-			}
-
-			for _, res := range exp.k8sResMisc {
-				decode := scheme.Codecs.UniversalDeserializer().Decode
-				obj, _, err := decode([]byte(res), nil, nil)
-				if err != nil {
-					t.Fatalf("could not decode yml: %s", err)
-				}
-				k8sObjs = append(k8sObjs, obj)
-			}
-
-			clientSet := fake.NewSimpleClientset(k8sObjs...)
-			lister := NewLister(clientSet)
-			err := lister.Sync()
+			api, k8sResults, err := newAPI(exp.k8sResResults, exp.k8sResMisc...)
 			if err != nil {
-				t.Fatalf("lister.Sync() returned an error: %s", err)
+				t.Fatalf("newAPI error: %s", err)
 			}
 
-			pods, err := lister.GetObjects(exp.namespace, exp.resType, exp.name)
+			pods, err := api.GetObjects(exp.namespace, exp.resType, exp.name)
 			if err != nil || exp.err != nil {
 				if (err == nil && exp.err != nil) ||
 					(err != nil && exp.err == nil) ||
 					(err.Error() != exp.err.Error()) {
-					t.Fatalf("lister.GetObjects() unexpected error, expected [%s] got: [%s]", exp.err, err)
+					t.Fatalf("api.GetObjects() unexpected error, expected [%s] got: [%s]", exp.err, err)
 				}
 			} else {
 				if !reflect.DeepEqual(pods, k8sResults) {
@@ -204,29 +212,14 @@ status:
 			}
 
 			for _, exp := range expectations {
-				k8sObjs := []runtime.Object{}
-
-				k8sResults := []runtime.Object{}
-				for _, res := range exp.k8sResResults {
-					decode := scheme.Codecs.UniversalDeserializer().Decode
-					obj, _, err := decode([]byte(res), nil, nil)
-					if err != nil {
-						t.Fatalf("could not decode yml: %s", err)
-					}
-					k8sObjs = appendUnique(k8sObjs, obj)
-					k8sResults = append(k8sResults, obj)
+				api, k8sResults, err := newAPI(exp.k8sResResults)
+				if err != nil {
+					t.Fatalf("newAPI error: %s", err)
 				}
 
-				clientSet := fake.NewSimpleClientset(k8sObjs...)
-				lister := NewLister(clientSet)
-				err := lister.Sync()
+				pods, err := api.GetObjects(exp.namespace, exp.resType, exp.name)
 				if err != nil {
-					t.Fatalf("lister.Sync() returned an error: %s", err)
-				}
-
-				pods, err := lister.GetObjects(exp.namespace, exp.resType, exp.name)
-				if err != nil {
-					t.Fatalf("lister.GetObjects() unexpected error %s", err)
+					t.Fatalf("api.GetObjects() unexpected error %s", err)
 				}
 
 				if !reflect.DeepEqual(pods, k8sResults) {
@@ -276,29 +269,14 @@ status:
 			}
 
 			for _, exp := range expectations {
-				k8sObjs := []runtime.Object{}
-
-				k8sResults := []runtime.Object{}
-				for _, res := range exp.k8sResResults {
-					decode := scheme.Codecs.UniversalDeserializer().Decode
-					obj, _, err := decode([]byte(res), nil, nil)
-					if err != nil {
-						t.Fatalf("could not decode yml: %s", err)
-					}
-					k8sObjs = appendUnique(k8sObjs, obj)
-					k8sResults = append(k8sResults, obj)
+				api, _, err := newAPI(exp.k8sResResults)
+				if err != nil {
+					t.Fatalf("newAPI error: %s", err)
 				}
 
-				clientSet := fake.NewSimpleClientset(k8sObjs...)
-				lister := NewLister(clientSet)
-				err := lister.Sync()
+				pods, err := api.GetObjects(exp.namespace, exp.resType, exp.name)
 				if err != nil {
-					t.Fatalf("lister.Sync() returned an error: %s", err)
-				}
-
-				pods, err := lister.GetObjects(exp.namespace, exp.resType, exp.name)
-				if err != nil {
-					t.Fatalf("lister.GetObjects() unexpected error %s", err)
+					t.Fatalf("api.GetObjects() unexpected error %s", err)
 				}
 
 				if len(pods) != 0 {
@@ -421,44 +399,24 @@ status:
 		}
 
 		for _, exp := range expectations {
-			decode := scheme.Codecs.UniversalDeserializer().Decode
-			k8sInputObj, _, err := decode([]byte(exp.k8sResInput), nil, nil)
+			k8sInputObj, err := toRuntimeObject(exp.k8sResInput)
 			if err != nil {
 				t.Fatalf("could not decode yml: %s", err)
 			}
 
-			k8sObjs := []runtime.Object{k8sInputObj}
+			api, k8sResults, err := newAPI(exp.k8sResResults, exp.k8sResMisc...)
+			if err != nil {
+				t.Fatalf("newAPI error: %s", err)
+			}
 
 			k8sResultPods := []*apiv1.Pod{}
-			for _, res := range exp.k8sResResults {
-				decode := scheme.Codecs.UniversalDeserializer().Decode
-				obj, _, err := decode([]byte(res), nil, nil)
-				if err != nil {
-					t.Fatalf("could not decode yml: %s", err)
-				}
-				k8sObjs = appendUnique(k8sObjs, obj)
+			for _, obj := range k8sResults {
 				k8sResultPods = append(k8sResultPods, obj.(*apiv1.Pod))
 			}
 
-			for _, res := range exp.k8sResMisc {
-				decode := scheme.Codecs.UniversalDeserializer().Decode
-				obj, _, err := decode([]byte(res), nil, nil)
-				if err != nil {
-					t.Fatalf("could not decode yml: %s", err)
-				}
-				k8sObjs = appendUnique(k8sObjs, obj)
-			}
-
-			clientSet := fake.NewSimpleClientset(k8sObjs...)
-			lister := NewLister(clientSet)
-			err = lister.Sync()
-			if err != nil {
-				t.Fatalf("lister.Sync() returned an error: %s", err)
-			}
-
-			pods, err := lister.GetPodsFor(k8sInputObj, false)
+			pods, err := api.GetPodsFor(k8sInputObj, false)
 			if err != exp.err {
-				t.Fatalf("lister.GetPodsFor() unexpected error, expected [%s] got: [%s]", exp.err, err)
+				t.Fatalf("api.GetPodsFor() unexpected error, expected [%s] got: [%s]", exp.err, err)
 			}
 
 			if !reflect.DeepEqual(pods, k8sResultPods) {

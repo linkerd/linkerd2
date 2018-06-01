@@ -195,7 +195,7 @@ func NewServer(
 	addr string,
 	prometheusClient promApi.Client,
 	tapClient tapPb.TapClient,
-	lister *k8s.Lister,
+	k8sAPI *k8s.API,
 	controllerNamespace string,
 	ignoredNamespaces []string,
 ) *http.Server {
@@ -203,7 +203,7 @@ func NewServer(
 		grpcServer: newGrpcServer(
 			promv1.NewAPI(prometheusClient),
 			tapClient,
-			lister,
+			k8sAPI,
 			controllerNamespace,
 			ignoredNamespaces,
 		),
