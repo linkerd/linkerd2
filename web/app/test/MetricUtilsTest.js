@@ -3,6 +3,7 @@ import deployRollupFixtures from './fixtures/deployRollup.json';
 import { expect } from 'chai';
 import multiDeployRollupFixtures from './fixtures/multiDeployRollup.json';
 import multiResourceRollupFixtures from './fixtures/allRollup.json';
+import Percentage from '../js/components/util/Percentage';
 import {
   processMultiResourceRollup,
   processSingleResourceRollup
@@ -18,6 +19,8 @@ describe('MetricUtils', () => {
           namespace: 'emojivoto',
           requestRate: 2.5,
           successRate: 0.9,
+          totalRequests: 150,
+          meshedRequestPercent: new Percentage(100, 150),
           latency: {
             P50: 1,
             P95: 2,
@@ -26,6 +29,8 @@ describe('MetricUtils', () => {
           added: true
         }
       ];
+      expect(result).to.have.length(1);
+      expect(result[0].meshedRequestPercent.prettyRate()).to.equal("66.7%");
       expect(result).to.deep.equal(expectedResult);
     });
 
@@ -46,15 +51,6 @@ describe('MetricUtils', () => {
   describe('processMultiResourceRollup', () => {
     it('Extracts metrics and groups them by resource type', () => {
       let result = processMultiResourceRollup(multiResourceRollupFixtures);
-      expect(_.size(result)).to.equal(2);
-
-      expect(result["deployments"]).to.have.length(1);
-      expect(result["pods"]).to.have.length(3);
-      expect(result["replicationcontrollers"]).to.be.undefined;
-    });
-
-    it('Respects the includeConduit flag', () => {
-      let result = processMultiResourceRollup(multiResourceRollupFixtures, "conduit-other", true);
       expect(_.size(result)).to.equal(2);
 
       expect(result["deployments"]).to.have.length(1);

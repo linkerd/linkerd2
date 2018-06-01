@@ -96,7 +96,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\"}[20s])) / sum(irate(response_total{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\"}[20s]))",
+          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\"}[30s])) / sum(irate(response_total{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\"}[30s]))",
           "format": "time_series",
           "instant": false,
           "intervalFactor": 1,
@@ -180,7 +180,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\"}[20s]))",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\"}[30s]))",
           "format": "time_series",
           "instant": false,
           "intervalFactor": 1,
@@ -264,7 +264,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\"}[20s])) by (le, dst_service))",
+          "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\"}[30s])) by (le, dst_service))",
           "format": "time_series",
           "instant": false,
           "intervalFactor": 1,
@@ -338,7 +338,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\"}[20s])) by (dst_service) / sum(irate(response_total{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\"}[20s])) by (dst_service)",
+          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\"}[30s])) by (dst_service) / sum(irate(response_total{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\"}[30s])) by (dst_service)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "svc/{{dst_service}}",
@@ -423,11 +423,18 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\"}[20s])) by (dst_service)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\", meshed=\"true\"}[30s])) by (dst_service)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "svc/{{dst_service}}",
+          "legendFormat": "🔒svc/{{dst_service}}",
           "refId": "A"
+        },
+        {
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\", meshed=\"false\"}[30s])) by (dst_service)",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "⚠️svc/{{dst_service}}",
+          "refId": "B"
         }
       ],
       "thresholds": [],
@@ -508,14 +515,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\"}[20s])) by (le, dst_service))",
+          "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\"}[30s])) by (le, dst_service))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "p50 svc/{{dst_service}}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\"}[20s])) by (le, dst_service))",
+          "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\"}[30s])) by (le, dst_service))",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
@@ -523,7 +530,7 @@
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\"}[20s])) by (le, dst_service))",
+          "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\"}[30s])) by (le, dst_service))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "p99 svc/{{dst_service}}",
@@ -623,7 +630,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\"}[20s])) by (dst_service, deployment) / sum(irate(response_total{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\"}[20s])) by (dst_service, deployment)",
+          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\"}[30s])) by (dst_service, deployment) / sum(irate(response_total{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\"}[30s])) by (dst_service, deployment)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "deploy/{{deployment}}",
@@ -708,11 +715,18 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\"}[20s])) by (dst_service, deployment)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\", meshed=\"true\"}[30s])) by (dst_service, deployment)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "deploy/{{deployment}}",
+          "legendFormat": "🔒deploy/{{deployment}}",
           "refId": "A"
+        },
+        {
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\", meshed=\"false\"}[30s])) by (dst_service, deployment)",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "⚠️deploy/{{deployment}}",
+          "refId": "B"
         }
       ],
       "thresholds": [],
@@ -792,7 +806,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\"}[20s])) by (le, dst_service, deployment))",
+          "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\"}[30s])) by (le, dst_service, deployment))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "P95 deploy/{{deployment}}",
@@ -891,7 +905,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\"}[20s])) by (dst_service, pod) / sum(irate(response_total{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\"}[20s])) by (dst_service, pod)",
+          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\"}[30s])) by (dst_service, pod) / sum(irate(response_total{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\"}[30s])) by (dst_service, pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "po/{{pod}}",
@@ -976,11 +990,18 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\"}[20s])) by (dst_service, pod)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\", meshed=\"true\"}[30s])) by (dst_service, pod)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "po/{{pod}}",
+          "legendFormat": "🔒po/{{pod}}",
           "refId": "A"
+        },
+        {
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\", meshed=\"false\"}[30s])) by (dst_service, pod)",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "⚠️po/{{pod}}",
+          "refId": "B"
         }
       ],
       "thresholds": [],
@@ -1060,7 +1081,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\"}[20s])) by (le, dst_service, pod))",
+          "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", dst_service=\"$service\", direction=\"outbound\"}[30s])) by (le, dst_service, pod))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "P95 po/{{pod}}",
@@ -1126,7 +1147,7 @@
         "multi": false,
         "name": "namespace",
         "options": [],
-        "query": "label_values(request_total{conduit_io_control_plane_component=\"\"}, namespace)",
+        "query": "label_values(request_total, namespace)",
         "refresh": 2,
         "regex": "",
         "sort": 1,
@@ -1146,7 +1167,7 @@
         "multi": false,
         "name": "service",
         "options": [],
-        "query": "label_values(request_total{namespace=\"$namespace\", conduit_io_control_plane_component=\"\"}, dst_service)",
+        "query": "label_values(request_total{namespace=\"$namespace\"}, dst_service)",
         "refresh": 2,
         "regex": "",
         "sort": 1,
@@ -1166,7 +1187,7 @@
         "multi": false,
         "name": "inbound",
         "options": [],
-        "query": "label_values(request_total{dst_namespace=\"$namespace\", dst_service=\"$service\", conduit_io_control_plane_component=\"\"}, deployment)",
+        "query": "label_values(request_total{dst_namespace=\"$namespace\", dst_service=\"$service\"}, deployment)",
         "refresh": 2,
         "regex": "",
         "sort": 1,
@@ -1186,7 +1207,7 @@
         "multi": false,
         "name": "outbound",
         "options": [],
-        "query": "label_values(request_total{namespace=\"$namespace\", deployment=\"$deployment\", conduit_io_control_plane_component=\"\"}, dst_deployment)",
+        "query": "label_values(request_total{namespace=\"$namespace\", deployment=\"$deployment\"}, dst_deployment)",
         "refresh": 2,
         "regex": "",
         "sort": 1,

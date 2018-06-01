@@ -19,7 +19,6 @@ bytes = "0.4"
 deflate = {version = "0.7.18", features = ["gzip"] }
 env_logger = { version = "0.5", default-features = false }
 futures = "0.1"
-futures-watch = { git = "https://github.com/carllerche/better-future.git" }
 h2 = "0.1.7"
 http = "0.1"
 httparse = "1.2"
@@ -40,8 +39,6 @@ prost-types = "0.3.0"
 
 trust-dns-resolver = { default-features = false, git = "https://github.com/bluejekyll/trust-dns", rev = "5c966b86e7d847ad14344e494237e162dc635de0" }
 
-#futures-watch   = { git = "https://github.com/carllerche/better-future" }
-
 tokio-connect         = { git = "https://github.com/carllerche/tokio-connect" }
 tower-service         = { git = "https://github.com/tower-rs/tower" }
 tower-balance         = { git = "https://github.com/tower-rs/tower" }
@@ -52,6 +49,12 @@ tower-h2              = { git = "https://github.com/tower-rs/tower-h2" }
 tower-reconnect       = { git = "https://github.com/tower-rs/tower" }
 tower-in-flight-limit = { git = "https://github.com/tower-rs/tower" }
 tower-util            = { git = "https://github.com/tower-rs/tower" }
+
+ring = "0.13.0-alpha4"
+webpki = "0.18.0-alpha3"
+rustls = "0.12.0"
+tokio-rustls = "0.6.0"
+untrusted = "0.6.1"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 libc = "0.2"

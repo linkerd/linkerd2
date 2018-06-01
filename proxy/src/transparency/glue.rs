@@ -8,7 +8,7 @@ use futures::{future, Async, Future, Poll, Stream};
 use futures::future::Either;
 use h2;
 use http;
-use hyper;
+use hyper::{self, body::Payload};
 use hyper::client::connect as hyper_connect;
 use tokio_connect::Connect;
 use tower_service::{Service, NewService};
@@ -79,7 +79,7 @@ impl tower_h2::Body for HttpBody {
 
     fn is_end_stream(&self) -> bool {
         match *self {
-            HttpBody::Http1(ref b) => b.is_empty(),
+            HttpBody::Http1(ref b) => b.is_end_stream(),
             HttpBody::Http2(ref b) => b.is_end_stream(),
         }
     }

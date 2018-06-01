@@ -1,33 +1,59 @@
 use std::net::SocketAddr;
 use tokio::net::TcpStream;
+use std::fmt::Debug;
+use std::io;
+
+pub trait AddrInfo: Debug {
+    fn local_addr(&self) -> Result<SocketAddr, io::Error>;
+    fn get_original_dst(&self) -> Option<SocketAddr>;
+}
+
+impl<T: AddrInfo + ?Sized> AddrInfo for Box<T> {
+    fn local_addr(&self) -> Result<SocketAddr, io::Error> {
+        self.as_ref().local_addr()
+    }
+
+    fn get_original_dst(&self) -> Option<SocketAddr> {
+        self.as_ref().get_original_dst()
+    }
+}
+
+impl AddrInfo for TcpStream {
+    fn local_addr(&self) -> Result<SocketAddr, io::Error> {
+        TcpStream::local_addr(&self)
+    }
+
+    #[cfg(target_os = "linux")]
+    fn get_original_dst(&self) -> Option<SocketAddr> {
+        use self::linux;
+        use std::os::unix::io::AsRawFd;
+
+        let fd = self.as_raw_fd();
+        let r = unsafe { linux::so_original_dst(fd) };
+        r.ok()
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    fn get_original_dst(&self) -> Option<SocketAddr> {
+        debug!("no support for SO_ORIGINAL_DST");
+        None
+    }
+}
 
 /// A generic way to get the original destination address of a socket.
 ///
 /// This is especially useful to allow tests to provide a mock implementation.
 pub trait GetOriginalDst {
-    fn get_original_dst(&self, socket: &TcpStream) -> Option<SocketAddr>;
+    fn get_original_dst(&self, socket: &AddrInfo) -> Option<SocketAddr>;
 }
 
 #[derive(Copy, Clone, Debug)]
 pub struct SoOriginalDst;
 
 impl GetOriginalDst for SoOriginalDst {
-    #[cfg(not(target_os = "linux"))]
-    fn get_original_dst(&self, _: &TcpStream) -> Option<SocketAddr> {
-        debug!("no support for SO_ORIGINAL_DST");
-        None
-    }
-
-    // TODO change/remove once https://github.com/tokio-rs/tokio/issues/25 is addressed
-    #[cfg(target_os = "linux")]
-    fn get_original_dst(&self, sock: &TcpStream) -> Option<SocketAddr> {
-        use self::linux;
-        use std::os::unix::io::AsRawFd;
-
+    fn get_original_dst(&self, sock: &AddrInfo) -> Option<SocketAddr> {
         trace!("get_original_dst {:?}", sock);
-
-        let res = unsafe { linux::so_original_dst(sock.as_raw_fd()) };
-        res.ok()
+        sock.get_original_dst()
     }
 }
 

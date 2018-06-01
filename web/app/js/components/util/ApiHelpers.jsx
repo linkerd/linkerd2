@@ -37,7 +37,7 @@ const makeCancelable = (promise, onSuccess) => {
   };
 };
 
-export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
+const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   let metricsWindow = defaultMetricsWindow;
   const podsPath = `/api/pods`;
 
@@ -75,7 +75,7 @@ export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   const getMetricsWindowDisplayText = () => validMetricsWindows[metricsWindow];
 
   const setMetricsWindow = window => {
-    if (!validMetricsWindows[window]) return;
+    if (!validMetricsWindows[window]) { return; }
     metricsWindow = window;
   };
 
@@ -105,9 +105,21 @@ export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
 
   // prefix all links in the app with `pathPrefix`
   class ConduitLink extends React.Component {
+    static defaultProps = {
+      deployment: "",
+      targetBlank: false,
+    }
+
+    static propTypes = {
+      children: PropTypes.node.isRequired,
+      deployment: PropTypes.string,
+      targetBlank: PropTypes.bool,
+      to: PropTypes.string.isRequired,
+    }
+
     render() {
       let prefix = pathPrefix;
-      if (this.props.deployment) {
+      if (!_.isEmpty(this.props.deployment)) {
         prefix = prefix.replace("/web:", "/"+this.props.deployment+":");
       }
       let url = `${prefix}${this.props.to}`;
@@ -121,14 +133,6 @@ export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
       );
     }
   }
-  ConduitLink.propTypes = {
-    deployment: PropTypes.string,
-    targetBlank: PropTypes.bool,
-    to: PropTypes.string,
-  };
-  ConduitLink.defaultProps = {
-    targetBlank: false
-  };
 
   return {
     fetch: apiFetch,
@@ -147,3 +151,5 @@ export const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     makeCancelable
   };
 };
+
+export default ApiHelpers;

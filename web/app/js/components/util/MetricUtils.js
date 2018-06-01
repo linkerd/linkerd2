@@ -1,4 +1,6 @@
 import _ from 'lodash';
+import Percentage from './Percentage';
+import PropTypes from 'prop-types';
 
 const getPodCategorization = pod => {
   if (pod.added && pod.status === "Running") {
@@ -11,13 +13,18 @@ const getPodCategorization = pod => {
   return ""; // Terminating | Succeeded | Unknown
 };
 
+const getTotalRequests = row => {
+  let success = parseInt(_.get(row, ["stats", "successCount"], 0), 10);
+  let failure = parseInt(_.get(row, ["stats", "failureCount"], 0), 10);
+
+  return success + failure;
+};
+
 const getRequestRate = row => {
   if (_.isEmpty(row.stats)) {
     return null;
   }
 
-  let success = parseInt(row.stats.successCount, 10);
-  let failure = parseInt(row.stats.failureCount, 10);
   let seconds = 0;
 
   if (row.timeWindow === "10s") { seconds = 10; }
@@ -28,7 +35,7 @@ const getRequestRate = row => {
   if (seconds === 0) {
     return null;
   } else {
-    return (success + failure) / seconds;
+    return getTotalRequests(row) / seconds;
   }
 };
 
@@ -45,6 +52,15 @@ const getSuccessRate = row => {
   } else {
     return success / (success + failure);
   }
+};
+
+const getMeshedTrafficPercentage = row => {
+  // assume all meshed traffic is secured by default
+  if (_.isEmpty(row.stats)) {
+    return null;
+  }
+  let meshedRequests = parseInt(_.get(row, ["stats", "meshedRequestCount"], 0), 10);
+  return new Percentage(meshedRequests, getTotalRequests(row));
 };
 
 const getLatency = row => {
@@ -92,24 +108,16 @@ export const getComponentPods = componentPods => {
     .value();
 };
 
-const kubernetesNs = "kube-system";
-const defaultControllerNs = "conduit";
-
-const processStatTable = (table, controllerNamespace, includeConduit) => {
+const processStatTable = table => {
   return _(table.podGroup.rows).map(row => {
-    if (row.resource.namespace === kubernetesNs) {
-      return null;
-    }
-    if (row.resource.namespace === controllerNamespace && !includeConduit) {
-      return null;
-    }
-
     return {
       name: row.resource.name,
       namespace: row.resource.namespace,
+      totalRequests: getTotalRequests(row),
       requestRate: getRequestRate(row),
       successRate: getSuccessRate(row),
       latency: getLatency(row),
+      meshedRequestPercent: getMeshedTrafficPercentage(row),
       added: row.meshedPodCount === row.runningPodCount
     };
   })
@@ -118,21 +126,17 @@ const processStatTable = (table, controllerNamespace, includeConduit) => {
     .value();
 };
 
-export const processSingleResourceRollup = (rawMetrics, controllerNamespace, includeConduit) => {
-  let result = processMultiResourceRollup(rawMetrics, controllerNamespace, includeConduit);
+export const processSingleResourceRollup = rawMetrics => {
+  let result = processMultiResourceRollup(rawMetrics);
   if (_.size(result) > 1) {
     console.error("Multi metric returned; expected single metric.");
   }
   return _.values(result)[0];
 };
 
-export const processMultiResourceRollup = (rawMetrics, controllerNamespace, includeConduit) => {
+export const processMultiResourceRollup = rawMetrics => {
   if (_.isEmpty(rawMetrics.ok) || _.isEmpty(rawMetrics.ok.statTables)) {
     return {};
-  }
-
-  if (_.isEmpty(controllerNamespace)) {
-    controllerNamespace = defaultControllerNs;
   }
 
   let metricsByResource = {};
@@ -144,7 +148,43 @@ export const processMultiResourceRollup = (rawMetrics, controllerNamespace, incl
     // assumes all rows in a podGroup have the same resource type
     let resource = _.get(table, ["podGroup", "rows", 0, "resource", "type"]);
 
-    metricsByResource[resource] = processStatTable(table, controllerNamespace, includeConduit);
+    metricsByResource[resource] = processStatTable(table);
   });
   return metricsByResource;
 };
+
+export const metricsPropType = PropTypes.shape({
+  ok: PropTypes.shape({
+    statTables: PropTypes.arrayOf(PropTypes.shape({
+      podGroup: PropTypes.shape({
+        rows: PropTypes.arrayOf(PropTypes.shape({
+          failedPodCount: PropTypes.string,
+          meshedPodCount: PropTypes.string.isRequired,
+          resource: PropTypes.shape({
+            name: PropTypes.string.isRequired,
+            namespace: PropTypes.string.isRequired,
+            type: PropTypes.string.isRequired,
+          }).isRequired,
+          runningPodCount: PropTypes.string.isRequired,
+          stats: PropTypes.shape({
+            failureCount: PropTypes.string.isRequired,
+            latencyMsP50: PropTypes.string.isRequired,
+            latencyMsP95: PropTypes.string.isRequired,
+            latencyMsP99: PropTypes.string.isRequired,
+            meshedRequestCount: PropTypes.string.isRequired,
+            successCount: PropTypes.string.isRequired,
+          }),
+          timeWindow: PropTypes.string.isRequired,
+        }).isRequired),
+      }),
+    }).isRequired).isRequired,
+  }),
+});
+
+export const processedMetricsPropType = PropTypes.shape({
+  name: PropTypes.string.isRequired,
+  namespace: PropTypes.string.isRequired,
+  totalRequests: PropTypes.number.isRequired,
+  requestRate: PropTypes.number,
+  successRate: PropTypes.number,
+});

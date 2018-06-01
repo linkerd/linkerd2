@@ -78,8 +78,28 @@ message WeightedAddr {
   common.TcpAddress addr = 1;
   uint32 weight = 3;
   map<string, string> metric_labels = 4;
+  TlsIdentity tls_identity = 5;
+}
+
+// Which strategy should be used for verifying TLS.
+message TlsIdentity {
+  oneof strategy {
+    K8sPodNamespace k8s_pod_namespace = 1;
+  }
+
+  // Verify the certificate based on the Kubernetes pod name, and ensure
+  // that the pod is configured with the same Conduit control plane
+  // namespace as this proxy.
+  message K8sPodNamespace {
+    // The Kubernetes namespace of the pod's Conduit control plane.
+    string controller_ns = 1;
+    // The Kubernetes namespace that the pod is in.
+    string pod_ns = 2;
+    // The name of the pod.
+    string pod_name = 3;
+  }
 }
 
 message NoEndpoints {
-    bool exists = 1;
+  bool exists = 1;
 }

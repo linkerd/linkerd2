@@ -1,21 +1,45 @@
 import _ from 'lodash';
-import CallToAction from './CallToAction.jsx';
 import ConduitSpinner from "./ConduitSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
 import MetricsTable from './MetricsTable.jsx';
 import PageHeader from './PageHeader.jsx';
 import { processMultiResourceRollup } from './util/MetricUtils.js';
+import PropTypes from 'prop-types';
 import React from 'react';
+import { withContext } from './util/AppContext.jsx';
 import './../../css/list.css';
 import 'whatwg-fetch';
 
-export default class Namespaces extends React.Component {
+class Namespaces extends React.Component {
+  static defaultProps = {
+    match: {
+      params: {
+        namespace: 'default',
+      },
+    },
+  }
+
+  static propTypes = {
+    api: PropTypes.shape({
+      cancelCurrentRequests: PropTypes.func.isRequired,
+      fetchMetrics: PropTypes.func.isRequired,
+      getCurrentPromises: PropTypes.func.isRequired,
+      setCurrentRequests: PropTypes.func.isRequired,
+      urlsForResource: PropTypes.func.isRequired,
+    }).isRequired,
+    match: PropTypes.shape({
+      params: PropTypes.shape({
+        namespace: PropTypes.string,
+      }),
+    }),
+  }
+
   constructor(props) {
     super(props);
     this.api = this.props.api;
     this.handleApiError = this.handleApiError.bind(this);
     this.loadFromServer = this.loadFromServer.bind(this);
-    this.state = this.getInitialState(this.props.params);
+    this.state = this.getInitialState(this.props.match.params);
   }
 
   getInitialState(params) {
@@ -36,10 +60,10 @@ export default class Namespaces extends React.Component {
     this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
   }
 
-  componentWillReceiveProps() {
+  componentWillReceiveProps(newProps) {
     // React won't unmount this component when switching resource pages so we need to clear state
     this.api.cancelCurrentRequests();
-    this.setState(this.getInitialState(this.props.params));
+    this.setState(this.getInitialState(newProps.match.params));
   }
 
   componentWillUnmount() {
@@ -57,8 +81,7 @@ export default class Namespaces extends React.Component {
 
     Promise.all(this.api.getCurrentPromises())
       .then(([allRollup]) => {
-        let includeConduitStats = this.state.ns === this.props.controllerNamespace; // allow us to get stats on the conduit ns
-        let metrics = processMultiResourceRollup(allRollup, this.props.controllerNamespace, includeConduitStats);
+        let metrics = processMultiResourceRollup(allRollup);
 
         this.setState({
           metrics: metrics,
@@ -91,7 +114,7 @@ export default class Namespaces extends React.Component {
         <MetricsTable
           resource={friendlyTitle}
           metrics={metrics}
-          api={this.api} />
+          showNamespaceColumn={false} />
       </div>
     );
   }
@@ -102,15 +125,17 @@ export default class Namespaces extends React.Component {
     return (
       <div className="page-content">
         { !this.state.error ? null : <ErrorBanner message={this.state.error} /> }
-        { !this.state.loaded ? <ConduitSpinner />  :
+        { !this.state.loaded ? <ConduitSpinner /> : (
           <div>
-            <PageHeader header={"Namespace: " + this.state.ns} api={this.api} />
-            { noMetrics ? <CallToAction /> : null}
+            <PageHeader header={`Namespace: ${this.state.ns}`} />
+            { noMetrics ? <div>No resources detected.</div> : null}
             {this.renderResourceSection("Deployment", this.state.metrics.deployments)}
             {this.renderResourceSection("Replication Controller", this.state.metrics.replicationcontrollers)}
             {this.renderResourceSection("Pod", this.state.metrics.pods)}
           </div>
-        }
+        )}
       </div>);
   }
 }
+
+export default withContext(Namespaces);

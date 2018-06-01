@@ -39,15 +39,14 @@ impl event::StreamResponseEnd {
                 base: 0, // TODO FIXME
                 stream: ctx.id as u64,
             }),
-            since_request_init: Some(pb_duration(&self.since_request_open)),
-            since_response_init: Some(pb_duration(&self.since_response_open)),
+            since_request_init: Some(pb_elapsed(self.request_open_at, self.response_end_at)),
+            since_response_init: Some(pb_elapsed(self.response_open_at, self.response_end_at)),
             response_bytes: self.bytes_sent,
             eos,
         };
 
         let destination_meta = ctx.dst_labels()
-            .and_then(|b| b.borrow().clone())
-            .map(|d| tap_event::EndpointMeta {
+            .map(|ref d| tap_event::EndpointMeta {
                 labels: d.as_map().clone(),
             });
 
@@ -71,15 +70,14 @@ impl event::StreamResponseFail {
                 base: 0, // TODO FIXME
                 stream: ctx.id as u64,
             }),
-            since_request_init: Some(pb_duration(&self.since_request_open)),
-            since_response_init: Some(pb_duration(&self.since_response_open)),
+            since_request_init: Some(pb_elapsed(self.request_open_at, self.response_fail_at)),
+            since_response_init: Some(pb_elapsed(self.response_open_at, self.response_fail_at)),
             response_bytes: self.bytes_sent,
             eos: Some(self.error.into()),
         };
 
         let destination_meta = ctx.dst_labels()
-            .and_then(|b| b.borrow().clone())
-            .map(|d| tap_event::EndpointMeta {
+            .map(|ref d| tap_event::EndpointMeta {
                 labels: d.as_map().clone(),
             });
 
@@ -103,15 +101,14 @@ impl event::StreamRequestFail {
                 base: 0, // TODO FIXME
                 stream: ctx.id as u64,
             }),
-            since_request_init: Some(pb_duration(&self.since_request_open)),
+            since_request_init: Some(pb_elapsed(self.request_open_at, self.request_fail_at)),
             since_response_init: None,
             response_bytes: 0,
             eos: Some(self.error.into()),
         };
 
         let destination_meta = ctx.dst_labels()
-            .and_then(|b| b.borrow().clone())
-            .map(|d| tap_event::EndpointMeta {
+            .map(|ref d| tap_event::EndpointMeta {
                 labels: d.as_map().clone(),
             });
 
@@ -150,8 +147,7 @@ impl<'a> TryFrom<&'a Event> for common::TapEvent {
                 };
 
                 let destination_meta = ctx.dst_labels()
-                    .and_then(|b| b.borrow().clone())
-                    .map(|d| tap_event::EndpointMeta {
+                    .map(|ref d| tap_event::EndpointMeta {
                         labels: d.as_map().clone(),
                     });
 
@@ -172,13 +168,12 @@ impl<'a> TryFrom<&'a Event> for common::TapEvent {
                         // TODO FIXME
                         stream: ctx.request.id as u64,
                     }),
-                    since_request_init: Some(pb_duration(&rsp.since_request_open)),
+                    since_request_init: Some(pb_elapsed(rsp.request_open_at, rsp.response_open_at)),
                     http_status: u32::from(ctx.status.as_u16()),
                 };
 
-                let destination_meta = ctx.request.dst_labels()
-                    .and_then(|b| b.borrow().clone())
-                    .map(|d| tap_event::EndpointMeta {
+                let destination_meta = ctx.dst_labels()
+                    .map(|ref d| tap_event::EndpointMeta {
                         labels: d.as_map().clone(),
                     });
 

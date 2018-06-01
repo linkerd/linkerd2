@@ -33,7 +33,7 @@ type resourceResult struct {
 }
 
 const (
-	reqQuery             = "sum(increase(response_total%s[%s])) by (%s, classification)"
+	reqQuery             = "sum(increase(response_total%s[%s])) by (%s, classification, meshed)"
 	latencyQuantileQuery = "histogram_quantile(%s, sum(irate(response_latency_ms_bucket%s[%s])) by (le, %s))"
 
 	promRequests   = promType("QUERY_REQUESTS")
@@ -57,6 +57,12 @@ type podCount struct {
 }
 
 func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
+
+	// check for well-formed request
+	if req.GetSelector().GetResource() == nil {
+		return statSummaryError(req, "StatSummary request missing Selector Resource"), nil
+	}
+
 	// special case to check for services as outbound only
 	if isInvalidServiceRequest(req) {
 		return statSummaryError(req, "service only supported as a target on 'from' queries, or as a destination on 'to' queries"), nil
@@ -117,7 +123,7 @@ func statSummaryError(req *pb.StatSummaryRequest, message string) *pb.StatSummar
 	return &pb.StatSummaryResponse{
 		Response: &pb.StatSummaryResponse_Error{
 			Error: &pb.ResourceError{
-				Resource: req.Selector.Resource,
+				Resource: req.GetSelector().GetResource(),
 				Error:    message,
 			},
 		},
@@ -170,7 +176,7 @@ func (s *grpcServer) objectQuery(
 ) (*pb.StatTable, error) {
 	rows := make([]*pb.StatTable_PodGroup_Row, 0)
 
-	requestMetrics, err := s.getRequests(ctx, req, req.TimeWindow)
+	requestMetrics, err := s.getPrometheusMetrics(ctx, req, req.TimeWindow)
 	if err != nil {
 		return nil, err
 	}
@@ -273,13 +279,14 @@ func promResourceType(resource *pb.Resource) model.LabelName {
 	return model.LabelName(k8s.ResourceTypesToProxyLabels[resource.Type])
 }
 
-func buildRequestLabels(req *pb.StatSummaryRequest) (model.LabelSet, model.LabelNames) {
-	var labelNames model.LabelNames
-	labels := model.LabelSet{}
+func buildRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labelNames model.LabelNames) {
+	// labelNames: the group by in the prometheus query
+	// labels: the labels for the resource we want to query for
 
 	switch out := req.Outbound.(type) {
 	case *pb.StatSummaryRequest_ToResource:
 		labelNames = promLabelNames(req.Selector.Resource)
+
 		labels = labels.Merge(promDstLabels(out.ToResource))
 		labels = labels.Merge(promLabels(req.Selector.Resource))
 		labels = labels.Merge(promDirectionLabels("outbound"))
@@ -295,15 +302,16 @@ func buildRequestLabels(req *pb.StatSummaryRequest) (model.LabelSet, model.Label
 		labels = labels.Merge(promDirectionLabels("inbound"))
 	}
 
-	return labels, labelNames
+	return
 }
 
-func (s *grpcServer) getRequests(ctx context.Context, req *pb.StatSummaryRequest, timeWindow string) (map[string]*pb.BasicStats, error) {
+func (s *grpcServer) getPrometheusMetrics(ctx context.Context, req *pb.StatSummaryRequest, timeWindow string) (map[string]*pb.BasicStats, error) {
 	reqLabels, groupBy := buildRequestLabels(req)
 	resultChan := make(chan promResult)
 
 	// kick off 4 asynchronous queries: 1 request volume + 3 latency
 	go func() {
+		// success/failure counts
 		requestsQuery := fmt.Sprintf(reqQuery, reqLabels, timeWindow, groupBy)
 		resultVector, err := s.queryProm(ctx, requestsQuery)
 
@@ -343,10 +351,10 @@ func (s *grpcServer) getRequests(ctx context.Context, req *pb.StatSummaryRequest
 		return nil, err
 	}
 
-	return processRequests(results, groupBy), nil
+	return processPrometheusMetrics(results, groupBy), nil
 }
 
-func processRequests(results []promResult, groupBy model.LabelNames) map[string]*pb.BasicStats {
+func processPrometheusMetrics(results []promResult, groupBy model.LabelNames) map[string]*pb.BasicStats {
 	basicStats := make(map[string]*pb.BasicStats)
 
 	for _, result := range results {
@@ -356,18 +364,19 @@ func processRequests(results []promResult, groupBy model.LabelNames) map[string]
 				basicStats[label] = &pb.BasicStats{}
 			}
 
-			value := uint64(0)
-			if !math.IsNaN(float64(sample.Value)) {
-				value = uint64(math.Round(float64(sample.Value)))
-			}
+			value := extractSampleValue(sample)
 
 			switch result.prom {
 			case promRequests:
 				switch string(sample.Metric[model.LabelName("classification")]) {
 				case "success":
-					basicStats[label].SuccessCount = value
+					basicStats[label].SuccessCount += value
 				case "failure":
-					basicStats[label].FailureCount = value
+					basicStats[label].FailureCount += value
+				}
+				switch string(sample.Metric[model.LabelName("meshed")]) {
+				case "true":
+					basicStats[label].MeshedRequestCount += value
 				}
 			case promLatencyP50:
 				basicStats[label].LatencyMsP50 = value
@@ -382,9 +391,19 @@ func processRequests(results []promResult, groupBy model.LabelNames) map[string]
 	return basicStats
 }
 
+func extractSampleValue(sample *model.Sample) uint64 {
+	value := uint64(0)
+	if !math.IsNaN(float64(sample.Value)) {
+		value = uint64(math.Round(float64(sample.Value)))
+	}
+	return value
+}
+
 func metricToKey(metric model.Metric, groupBy model.LabelNames) string {
+	// this needs to match keys generated by MetaNamespaceKeyFunc
 	values := []string{}
 	for _, k := range groupBy {
+		// return namespace/resource
 		values = append(values, string(metric[k]))
 	}
 	return strings.Join(values, "/")
@@ -426,7 +445,7 @@ func isInvalidServiceRequest(req *pb.StatSummaryRequest) bool {
 }
 
 func (s *grpcServer) queryProm(ctx context.Context, query string) (model.Vector, error) {
-	log.Debugf("Query request: %+v", query)
+	log.Debugf("Query request:\n\t%+v", query)
 
 	// single data point (aka summary) query
 	res, err := s.prometheusAPI.Query(ctx, query, time.Time{})
@@ -434,7 +453,7 @@ func (s *grpcServer) queryProm(ctx context.Context, query string) (model.Vector,
 		log.Errorf("Query(%+v) failed with: %+v", query, err)
 		return nil, err
 	}
-	log.Debugf("Query response: %+v", res)
+	log.Debugf("Query response:\n\t%+v", res)
 
 	if res.Type() != model.ValVector {
 		err = fmt.Errorf("Unexpected query result type (expected Vector): %s", res.Type())

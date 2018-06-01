@@ -24,7 +24,6 @@
 //! - We need some means to limit the number of endpoints that can be returned for a
 //!   single resolution so that `control::Cache` is not effectively unbounded.
 
-use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::{Arc, Weak};
 
@@ -35,7 +34,6 @@ use futures::{
     Poll,
     Stream
 };
-use futures_watch::{Store, Watch};
 use http;
 use tower_discover::{Change, Discover};
 use tower_service::Service;
@@ -47,7 +45,7 @@ use transport::{DnsNameAndPort, HostAndPort};
 pub mod background;
 mod endpoint;
 
-pub use self::endpoint::{DstLabelsWatch, Endpoint};
+pub use self::endpoint::Endpoint;
 
 /// A handle to request resolutions from the background discovery task.
 #[derive(Clone, Debug)]
@@ -84,18 +82,11 @@ pub struct Resolution<B> {
     /// reference has been dropped.
     _active: Arc<()>,
 
-    /// Map associating addresses with the `Store` for the watch on that
-    /// service's metric labels (as provided by the Destination service).
-    ///
-    /// This is used to update the `Labeled` middleware on those services
-    /// without requiring the service stack to be re-bound.
-    metric_labels: HashMap<SocketAddr, Store<Option<DstLabels>>>,
-
     /// Binds an update endpoint to a Service.
     bind: B,
 }
 
-/// .
+/// Metadata describing an endpoint.
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 struct Metadata {
     /// A set of Prometheus metric labels describing the destination.
@@ -104,9 +95,14 @@ struct Metadata {
 
 #[derive(Debug, Clone)]
 enum Update {
-    Insert(SocketAddr, Metadata),
+    /// Indicates that an endpoint should be bound to `SocketAddr` with the
+    /// provided `Metadata`.
+    ///
+    /// If there was already an endpoint in the load balancer for this
+    /// address, it should be replaced with the new one.
+    Bind(SocketAddr, Metadata),
+    /// Indicates that the endpoint for this `SocketAddr` should be removed.
     Remove(SocketAddr),
-    ChangeMetadata(SocketAddr, Metadata),
 }
 
 /// Bind a `SocketAddr` with a protocol.
@@ -178,36 +174,12 @@ impl Resolver {
         Resolution {
             update_rx,
             _active: active,
-            metric_labels: HashMap::new(),
             bind,
         }
     }
 }
 
 // ==== impl Resolution =====
-
-impl<B> Resolution<B> {
-    fn update_metadata(&mut self, addr: SocketAddr, meta: Metadata) -> Result<(), ()> {
-        if let Some(store) = self.metric_labels.get_mut(&addr) {
-            store
-                .store(meta.metric_labels)
-                .map_err(|e| {
-                    error!("update_metadata: label store error: {:?}", e);
-                })
-                .map(|_| ())
-        } else {
-            // The store has already been removed, so nobody cares about
-            // the metadata change. We expect that this shouldn't happen,
-            // but if it does, log a warning and handle it gracefully.
-            warn!(
-                "update_metadata: ignoring ChangeMetadata for {:?} because the service no longer \
-                 exists.",
-                addr
-            );
-            Ok(())
-        }
-    }
-}
 
 impl<B, A> Discover for Resolution<B>
 where
@@ -227,29 +199,18 @@ where
             let update = try_ready!(up).expect("destination stream must be infinite");
 
             match update {
-                Update::Insert(addr, meta) => {
-                    // Construct a watch for the `Labeled` middleware that will
-                    // wrap the bound service, and insert the store into our map
-                    // so it can be updated later.
-                    let (labels_watch, labels_store) = Watch::new(meta.metric_labels);
-                    self.metric_labels.insert(addr, labels_store);
-
-                    let endpoint = Endpoint::new(addr, labels_watch.clone());
+                Update::Bind(addr, meta) => {
+                    // We expect the load balancer to handle duplicate inserts
+                    // by replacing the old endpoint with the new one, so
+                    // insertions of new endpoints and metadata changes for
+                    // existing ones can be handled in the same way.
+                    let endpoint = Endpoint::new(addr, meta.metric_labels.clone());
 
                     let service = self.bind.bind(&endpoint).map_err(|_| ())?;
 
                     return Ok(Async::Ready(Change::Insert(addr, service)));
                 },
-                Update::ChangeMetadata(addr, meta) => {
-                    // Update metadata and continue polling `rx`.
-                    self.update_metadata(addr, meta)?;
-                },
                 Update::Remove(addr) => {
-                    // It's safe to drop the store handle here, even if
-                    // the `Labeled` middleware using the watch handle
-                    // still exists --- it will simply read the final
-                    // value from the watch.
-                    self.metric_labels.remove(&addr);
                     return Ok(Async::Ready(Change::Remove(addr)));
                 },
             }

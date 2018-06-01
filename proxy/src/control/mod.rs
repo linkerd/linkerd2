@@ -47,7 +47,7 @@ impl<S> Backoff<S> {
 impl<S> Service for Backoff<S>
 where
     S: Service,
-    S::Error: ::std::fmt::Debug,
+    S::Error: fmt::Debug,
 {
     type Request = S::Request;
     type Response = S::Response;

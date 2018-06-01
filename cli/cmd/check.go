@@ -23,44 +23,61 @@ const (
 	versionCheckURL = "https://versioncheck.conduit.io/version.json"
 )
 
-var versionOverride string
+type checkOptions struct {
+	versionOverride string
+}
 
-var checkCmd = &cobra.Command{
-	Use:   "check",
-	Short: "Check your Conduit installation for potential problems.",
-	Long: `Check your Conduit installation for potential problems. The check command will perform various checks of your
+func newCheckOptions() *checkOptions {
+	return &checkOptions{
+		versionOverride: "",
+	}
+}
+
+func newCmdCheck() *cobra.Command {
+	options := newCheckOptions()
+
+	cmd := &cobra.Command{
+		Use:   "check",
+		Short: "Check your Conduit installation for potential problems.",
+		Long: `Check your Conduit installation for potential problems. The check command will perform various checks of your
 local system, the Conduit control plane, and connectivity between those. The process will exit with non-zero check if
 problems were found.`,
-	Args: cobra.NoArgs,
-	Run: func(cmd *cobra.Command, args []string) {
+		Args: cobra.NoArgs,
+		Run: func(cmd *cobra.Command, args []string) {
 
-		kubeApi, err := k8s.NewAPI(kubeconfigPath)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error with Kubernetes API: %s\n", err.Error())
-			statusCheckResultWasError(os.Stdout)
-			os.Exit(2)
-		}
+			kubeApi, err := k8s.NewAPI(kubeconfigPath)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error with Kubernetes API: %s\n", err.Error())
+				statusCheckResultWasError(os.Stdout)
+				os.Exit(2)
+			}
 
-		var conduitApi pb.ApiClient
-		if apiAddr != "" {
-			conduitApi, err = public.NewInternalClient(apiAddr)
-		} else {
-			conduitApi, err = public.NewExternalClient(controlPlaneNamespace, kubeApi)
-		}
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error with Conduit API: %s\n", err.Error())
-			statusCheckResultWasError(os.Stdout)
-			os.Exit(2)
-		}
+			var conduitApi pb.ApiClient
+			if apiAddr != "" {
+				conduitApi, err = public.NewInternalClient(apiAddr)
+			} else {
+				conduitApi, err = public.NewExternalClient(controlPlaneNamespace, kubeApi)
+			}
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error with Conduit API: %s\n", err.Error())
+				statusCheckResultWasError(os.Stdout)
+				os.Exit(2)
+			}
 
-		grpcStatusChecker := healthcheck.NewGrpcStatusChecker(public.ConduitApiSubsystemName, conduitApi)
-		versionStatusChecker := version.NewVersionStatusChecker(versionCheckURL, versionOverride, conduitApi)
+			grpcStatusChecker := healthcheck.NewGrpcStatusChecker(public.ConduitApiSubsystemName, conduitApi)
+			versionStatusChecker := version.NewVersionStatusChecker(versionCheckURL, options.versionOverride, conduitApi)
 
-		err = checkStatus(os.Stdout, kubeApi, grpcStatusChecker, versionStatusChecker)
-		if err != nil {
-			os.Exit(2)
-		}
-	},
+			err = checkStatus(os.Stdout, kubeApi, grpcStatusChecker, versionStatusChecker)
+			if err != nil {
+				os.Exit(2)
+			}
+		},
+	}
+
+	cmd.Args = cobra.NoArgs
+	cmd.PersistentFlags().StringVar(&options.versionOverride, "expected-version", options.versionOverride, "Overrides the version used when checking if Conduit is running the latest version (mostly for testing)")
+
+	return cmd
 }
 
 func checkStatus(w io.Writer, checkers ...healthcheck.StatusChecker) error {
@@ -118,10 +135,4 @@ func statusCheckResultWasFail(w io.Writer) error {
 func statusCheckResultWasError(w io.Writer) error {
 	fmt.Fprintln(w, "Status check results are [ERROR]")
 	return errors.New("error during status check")
-}
-
-func init() {
-	RootCmd.AddCommand(checkCmd)
-	checkCmd.Args = cobra.NoArgs
-	checkCmd.PersistentFlags().StringVar(&versionOverride, "expected-version", "", "Overrides the version used when checking if Conduit is running the latest version (mostly for testing)")
 }

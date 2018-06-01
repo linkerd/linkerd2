@@ -38,6 +38,7 @@ func genPromSample(resName string, resType string, resNs string, classification 
 			model.LabelName(resType): model.LabelValue(resName),
 			"namespace":              model.LabelValue(resNs),
 			"classification":         model.LabelValue(classification),
+			"meshed":                 model.LabelValue("true"),
 		},
 		Value:     123,
 		Timestamp: 456,
@@ -60,11 +61,12 @@ func genStatSummaryResponse(resName, resType, resNs string, meshedPods uint64, r
 											Name:      resName,
 										},
 										Stats: &pb.BasicStats{
-											SuccessCount: 123,
-											FailureCount: 0,
-											LatencyMsP50: 123,
-											LatencyMsP95: 123,
-											LatencyMsP99: 123,
+											SuccessCount:       123,
+											FailureCount:       0,
+											LatencyMsP50:       123,
+											LatencyMsP95:       123,
+											LatencyMsP99:       123,
+											MeshedRequestCount: 123,
 										},
 										TimeWindow:      "1m",
 										MeshedPodCount:  meshedPods,
@@ -275,7 +277,7 @@ status:
 					`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
 					`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
 					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
-					`sum(increase(response_total{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod, classification)`,
+					`sum(increase(response_total{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod, classification, meshed)`,
 				},
 				expectedResponse: genStatSummaryResponse("emojivoto-1", "pods", "emojivoto", 1, 1),
 			},
@@ -326,7 +328,7 @@ status:
 					`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="outbound", namespace="emojivoto", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
 					`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="outbound", namespace="emojivoto", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
 					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="outbound", namespace="emojivoto", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
-					`sum(increase(response_total{direction="outbound", namespace="emojivoto", pod="emojivoto-2"}[1m])) by (dst_namespace, dst_pod, classification)`,
+					`sum(increase(response_total{direction="outbound", namespace="emojivoto", pod="emojivoto-2"}[1m])) by (dst_namespace, dst_pod, classification, meshed)`,
 				},
 				expectedResponse: genEmptyResponse(),
 			},
@@ -422,11 +424,12 @@ status:
 														Name:      "emoji-deploy",
 													},
 													Stats: &pb.BasicStats{
-														SuccessCount: 123,
-														FailureCount: 0,
-														LatencyMsP50: 123,
-														LatencyMsP95: 123,
-														LatencyMsP99: 123,
+														SuccessCount:       123,
+														FailureCount:       0,
+														LatencyMsP50:       123,
+														LatencyMsP95:       123,
+														LatencyMsP99:       123,
+														MeshedRequestCount: 123,
 													},
 													TimeWindow:      "1m",
 													MeshedPodCount:  1,
@@ -550,6 +553,9 @@ status:
 		)
 
 		invalidRequests := []statSumExpected{
+			statSumExpected{
+				req: pb.StatSummaryRequest{},
+			},
 			statSumExpected{
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{

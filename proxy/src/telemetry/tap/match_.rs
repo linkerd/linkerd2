@@ -109,12 +109,7 @@ impl Match {
                 Event::StreamRequestOpen(ref req) | Event::StreamRequestFail(ref req, _) => {
                     match req.dst_labels() {
                         None => false,
-                        Some(ref b) => {
-                            match b.borrow().as_ref() {
-                                None => false,
-                                Some(ref labels) => label.matches(labels.as_map()),
-                            }
-                        }
+                        Some(labels) => label.matches(labels.as_map()),
                     }
                 }
 
@@ -123,12 +118,7 @@ impl Match {
                 Event::StreamResponseEnd(ref rsp, _) => {
                     match rsp.request.dst_labels() {
                         None => false,
-                        Some(ref b) => {
-                            match b.borrow().as_ref() {
-                                None => false,
-                                Some(ref labels) => label.matches(labels.as_map()),
-                            }
-                        }
+                        Some(labels) => label.matches(labels.as_map()),
                     }
                 },
 

@@ -10,7 +10,6 @@ use conduit_proxy_router::Recognize;
 
 use bind;
 use ctx;
-use task::LazyExecutor;
 
 type Bind<B> = bind::Bind<Arc<ctx::Proxy>, B>;
 
@@ -88,7 +87,10 @@ where
 
         let endpoint = (*addr).into();
         let binding = self.bind.bind_service(&endpoint, proto);
-        Buffer::new(binding, &LazyExecutor)
+
+        let log = ::logging::proxy().client("in", "local")
+            .with_remote(*addr);
+        Buffer::new(binding, &log.executor())
             .map(|buffer| {
                 InFlightLimit::new(buffer, MAX_IN_FLIGHT)
             })

@@ -7,8 +7,10 @@ import Metric from './Metric.jsx';
 import { numericSort } from './util/Utils.js';
 import PageHeader from './PageHeader.jsx';
 import Percentage from './util/Percentage.js';
+import PropTypes from 'prop-types';
 import React from 'react';
 import StatusTable from './StatusTable.jsx';
+import { withContext } from './util/AppContext.jsx';
 import { Col, Row, Table, Tooltip } from 'antd';
 import './../../css/service-mesh.css';
 
@@ -65,12 +67,14 @@ const namespacesColumns = ConduitLink => [
       return (
         <Tooltip
           overlayStyle={{ fontSize: "12px" }}
-          title={<div>
+          title={(
             <div>
-              {`${row.meshedPods} out of ${row.totalPods} running or pending pods are in the mesh (${row.meshedPercent.prettyRate()})`}
+              <div>
+                {`${row.meshedPods} out of ${row.totalPods} running or pending pods are in the mesh (${row.meshedPercent.prettyRate()})`}
+              </div>
+              {row.failedPods === 0 ? null : <div>{ `${row.failedPods} failed pods` }</div>}
             </div>
-            {row.failedPods === 0 ? null : <div>{ `${row.failedPods} failed pods` }</div>}
-          </div>}>
+            )}>
           <div className={"container-bar " + barType} style={{width: containerWidth}}>
             <div className={"inner-bar " + barType} style={{width: barWidth}}>&nbsp;</div>
           </div>
@@ -82,6 +86,7 @@ const namespacesColumns = ConduitLink => [
 
 const componentNames = {
   "prometheus":   "Prometheus",
+  "grafana":      "Grafana",
   "destination":  "Destination",
   "proxy-api":    "Proxy API",
   "public-api":   "Public API",
@@ -91,6 +96,7 @@ const componentNames = {
 
 const componentDeploys = {
   "prometheus":   "prometheus",
+  "grafana":      "grafana",
   "destination":  "controller",
   "proxy-api":    "controller",
   "public-api":   "controller",
@@ -98,7 +104,20 @@ const componentDeploys = {
   "web":          "web"
 };
 
-export default class ServiceMesh extends React.Component {
+class ServiceMesh extends React.Component {
+  static propTypes = {
+    api: PropTypes.shape({
+      cancelCurrentRequests: PropTypes.func.isRequired,
+      ConduitLink: PropTypes.func.isRequired,
+      fetchMetrics: PropTypes.func.isRequired,
+      getCurrentPromises: PropTypes.func.isRequired,
+      setCurrentRequests: PropTypes.func.isRequired,
+      urlsForResource: PropTypes.func.isRequired,
+    }).isRequired,
+    controllerNamespace: PropTypes.string.isRequired,
+    releaseVersion: PropTypes.string.isRequired,
+  }
+
   constructor(props) {
     super(props);
     this.loadFromServer = this.loadFromServer.bind(this);
@@ -107,9 +126,7 @@ export default class ServiceMesh extends React.Component {
 
     this.state = {
       pollingInterval: 2000,
-      metrics: [],
       components: [],
-      lastUpdated: 0,
       pendingRequests: false,
       loaded: false,
       error: ''
@@ -126,12 +143,18 @@ export default class ServiceMesh extends React.Component {
     this.api.cancelCurrentRequests();
   }
 
+  getServiceMeshDetails() {
+    return [
+      { key: 1, name: "Conduit version", value: this.props.releaseVersion },
+      { key: 2, name: "Conduit namespace", value: this.props.controllerNamespace },
+      { key: 3, name: "Control plane components", value: this.componentCount() },
+      { key: 4, name: "Data plane proxies", value: this.proxyCount() }
+    ];
+  }
+
   extractNsStatuses(nsData) {
     let podsByNs = _.get(nsData, ["ok", "statTables", 0, "podGroup", "rows"], []);
     let dataPlaneNamepaces = _.map(podsByNs, ns => {
-      if (ns.resource.name.indexOf("kube-") === 0) {
-        return;
-      }
       let meshedPods = parseInt(ns.meshedPodCount, 10);
       let totalPods = parseInt(ns.runningPodCount, 10);
       let failedPods = parseInt(ns.failedPodCount, 10);
@@ -182,7 +205,6 @@ export default class ServiceMesh extends React.Component {
         this.setState({
           components: this.processComponents(conduitPods),
           nsStatuses: this.extractNsStatuses(nsStats),
-          lastUpdated: Date.now(),
           pendingRequests: false,
           loaded: true,
           error: ''
@@ -210,15 +232,6 @@ export default class ServiceMesh extends React.Component {
     return _.sumBy(this.state.nsStatuses, d => {
       return d.namespace === this.props.controllerNamespace ? 0 : d.meshedPods;
     });
-  }
-
-  getServiceMeshDetails() {
-    return [
-      { key: 1, name: "Conduit version", value: this.props.releaseVersion },
-      { key: 2, name: "Conduit namespace", value: this.props.controllerNamespace },
-      { key: 3, name: "Control plane components", value: this.componentCount() },
-      { key: 4, name: "Data plane proxies", value: this.proxyCount() }
-    ];
   }
 
   renderControlPlaneDetails() {
@@ -311,12 +324,11 @@ export default class ServiceMesh extends React.Component {
     return (
       <div className="page-content">
         { !this.state.error ? null : <ErrorBanner message={this.state.error} /> }
-        { !this.state.loaded ? <ConduitSpinner /> :
+        { !this.state.loaded ? <ConduitSpinner /> : (
           <div>
             <PageHeader
               header="Service mesh overview"
-              hideButtons={this.proxyCount() === 0}
-              api={this.api} />
+              hideButtons={this.proxyCount() === 0} />
 
             {this.proxyCount() === 0 ?
               <CallToAction
@@ -330,8 +342,10 @@ export default class ServiceMesh extends React.Component {
 
             {this.renderNamespaceStatusTable()}
           </div>
-        }
+        )}
       </div>
     );
   }
 }
+
+export default withContext(ServiceMesh);

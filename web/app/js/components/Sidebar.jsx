@@ -1,15 +1,28 @@
-import { ApiHelpers } from './util/ApiHelpers.jsx';
-import { Layout } from 'antd';
+import _ from 'lodash';
+import ApiHelpers from './util/ApiHelpers.jsx';
 import { Link } from 'react-router-dom';
 import logo from './../../img/logo_only.png';
+import PropTypes from 'prop-types';
 import React from 'react';
+import ReactRouterPropTypes from 'react-router-prop-types';
 import SocialLinks from './SocialLinks.jsx';
 import Version from './Version.jsx';
+import { withContext } from './util/AppContext.jsx';
 import wordLogo from './../../img/reversed_logo.png';
-import { Icon, Menu } from 'antd';
+import { Icon, Layout, Menu } from 'antd';
 import './../../css/sidebar.css';
 
-export default class Sidebar extends React.Component {
+class Sidebar extends React.Component {
+  static propTypes = {
+    api: PropTypes.shape({
+      ConduitLink: PropTypes.func.isRequired,
+    }).isRequired,
+    location: ReactRouterPropTypes.location.isRequired,
+    pathPrefix: PropTypes.string.isRequired,
+    releaseVersion: PropTypes.string.isRequired,
+    uuid: PropTypes.string.isRequired,
+  }
+
   constructor(props) {
     super(props);
     this.api= this.props.api;
@@ -17,19 +30,40 @@ export default class Sidebar extends React.Component {
     this.loadFromServer = this.loadFromServer.bind(this);
     this.handleApiError = this.handleApiError.bind(this);
 
-    this.state = {
+    this.state = this.getInitialState();
+  }
+
+  getInitialState() {
+    return {
+      pollingInterval: 12000,
+      maxNsItemsToShow: 8,
       initialCollapse: true,
       collapsed: true,
       error: null,
-      latest: null,
+      latestVersion: '',
       isLatest: true,
       pendingRequests: false
     };
   }
-
   componentDidMount() {
-    this.loadFromServer();
+    this.startServerPolling();
   }
+
+  componentWillUnmount() {
+    // the Sidebar never unmounts, but if something ever does, we should take care of it
+    this.stopServerPolling();
+  }
+
+  startServerPolling() {
+    this.loadFromServer();
+    this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
+  }
+
+  stopServerPolling() {
+    window.clearInterval(this.timerId);
+    this.api.cancelCurrentRequests();
+  }
+
 
   loadFromServer() {
     if (this.state.pendingRequests) {
@@ -38,13 +72,21 @@ export default class Sidebar extends React.Component {
     this.setState({ pendingRequests: true });
 
     let versionUrl = `https://versioncheck.conduit.io/version.json?version=${this.props.releaseVersion}?uuid=${this.props.uuid}`;
-    let versionFetch = ApiHelpers("").fetch(versionUrl);
+    this.api.setCurrentRequests([
+      ApiHelpers("").fetch(versionUrl),
+      this.api.fetchMetrics(this.api.urlsForResource("namespace"))
+    ]);
+
     // expose serverPromise for testing
-    this.serverPromise = versionFetch.promise
-      .then(resp => {
+    this.serverPromise = Promise.all(this.api.getCurrentPromises())
+      .then(([versionRsp, nsRsp]) => {
+        let nsStats = _.get(nsRsp, ["ok", "statTables", 0, "podGroup", "rows"], []);
+        let namespaces = _(nsStats).map(r => r.resource.name).sortBy().value();
+
         this.setState({
-          latestVersion: resp.version,
-          isLatest: resp.version === this.props.releaseVersion,
+          latestVersion: versionRsp.version,
+          isLatest: versionRsp.version === this.props.releaseVersion,
+          namespaces,
           pendingRequests: false,
         });
       }).catch(this.handleApiError);
@@ -71,6 +113,7 @@ export default class Sidebar extends React.Component {
   render() {
     let normalizedPath = this.props.location.pathname.replace(this.props.pathPrefix, "");
     let ConduitLink = this.api.ConduitLink;
+    let numHiddenNamespaces = _.size(this.state.namespaces) - this.state.maxNsItemsToShow;
 
     return (
       <Layout.Sider
@@ -85,6 +128,7 @@ export default class Sidebar extends React.Component {
           <div className={`sidebar-menu-header ${this.state.collapsed ? "collapsed" : ""}`}>
             <ConduitLink to="/servicemesh">
               <img
+                alt="Conduit logo"
                 src={this.state.collapsed ? logo : wordLogo}
                 onError={e => {
                   // awful hack to deal with the fact that we don't serve assets off absolute paths
@@ -107,32 +151,34 @@ export default class Sidebar extends React.Component {
 
             <Menu.Item className="sidebar-menu-item" key="/namespaces">
               <ConduitLink to="/namespaces">
-                <Icon>N</Icon>
+                <Icon type="dashboard" />
                 <span>Namespaces</span>
               </ConduitLink>
             </Menu.Item>
 
-            <Menu.Item className="sidebar-menu-item" key="/deployments">
-              <ConduitLink to="/deployments">
-                <Icon>D</Icon>
-                <span>Deployments</span>
-              </ConduitLink>
-            </Menu.Item>
+            {
+              _.map(_.take(this.state.namespaces, this.state.maxNsItemsToShow), ns => {
+                return (
+                  <Menu.Item className="sidebar-submenu-item" key={`/namespaces/${ns}`}>
+                    <ConduitLink to={`/namespaces/${ns}`}>
+                      <Icon>{this.state.collapsed ? _.take(ns, 2) : <span>&nbsp;&nbsp;</span> }</Icon>
+                      <span>{ns} {this.state.collapsed ? "namespace" : ""}</span>
+                    </ConduitLink>
+                  </Menu.Item>
+                );
+              })
+            }
 
-            <Menu.Item className="sidebar-menu-item" key="/replicationcontrollers">
-              <ConduitLink to="/replicationcontrollers">
-                <Icon>R</Icon>
-                <span>Replication Controllers</span>
-              </ConduitLink>
-            </Menu.Item>
-
-            <Menu.Item className="sidebar-menu-item" key="/pods">
-              <ConduitLink to="/pods">
-                <Icon>P</Icon>
-                <span>Pods</span>
-              </ConduitLink>
-            </Menu.Item>
-
+            { // if we're hiding some namespaces, show a count
+              numHiddenNamespaces > 0 ?
+                <Menu.Item className="sidebar-submenu-item" key="extra-items">
+                  <ConduitLink to="/namespaces">
+                    <Icon>{this.state.collapsed ? <span>...</span> : <span>&nbsp;&nbsp;</span> }</Icon>
+                    <span>{numHiddenNamespaces} more namespace{numHiddenNamespaces === 1 ? "" : "s"}</span>
+                  </ConduitLink>
+                </Menu.Item>
+                : null
+            }
 
             <Menu.Item className="sidebar-menu-item" key="/docs">
               <Link to="https://conduit.io/docs/" target="_blank">
@@ -141,29 +187,31 @@ export default class Sidebar extends React.Component {
               </Link>
             </Menu.Item>
 
-            { this.state.isLatest ? null :
+            { this.state.isLatest ? null : (
               <Menu.Item className="sidebar-menu-item" key="/update">
                 <Link to="https://versioncheck.conduit.io/update" target="_blank">
                   <Icon type="exclamation-circle-o" className="update" />
                   <span>Update Conduit</span>
                 </Link>
               </Menu.Item>
-            }
+            )}
           </Menu>
 
-          { this.state.collapsed ? null :
+          { this.state.collapsed ? null : (
             <div className="sidebar-menu-footer">
               <SocialLinks />
               <Version
                 isLatest={this.state.isLatest}
-                latest={this.state.latestVersion}
+                latestVersion={this.state.latestVersion}
                 releaseVersion={this.props.releaseVersion}
                 error={this.state.error}
                 uuid={this.props.uuid} />
             </div>
-          }
+          )}
         </div>
       </Layout.Sider>
     );
   }
 }
+
+export default withContext(Sidebar);

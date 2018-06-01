@@ -85,8 +85,7 @@ impl RequestLabels {
     pub fn new(req: &ctx::http::Request) -> Self {
         let direction = Direction::from_context(req.server.proxy.as_ref());
 
-        let outbound_labels = req.dst_labels()
-            .and_then(|b| b.borrow().clone());
+        let outbound_labels = req.dst_labels().cloned();
 
         let authority = req.uri
             .authority_part()

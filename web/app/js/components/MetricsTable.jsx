@@ -1,8 +1,11 @@
 import _ from 'lodash';
 import BaseTable from './BaseTable.jsx';
 import GrafanaLink from './GrafanaLink.jsx';
+import { processedMetricsPropType } from './util/MetricUtils.js';
+import PropTypes from 'prop-types';
 import React from 'react';
 import { Tooltip } from 'antd';
+import { withContext } from './util/AppContext.jsx';
 import { metricToFormatter, numericSort } from './util/Utils.js';
 
 /*
@@ -21,25 +24,20 @@ const withTooltip = (d, metricName) => {
 };
 
 const formatTitle = (title, tooltipText) => {
-  let words = title.split(" ");
-  let content = title;
-  if (words.length === 2) {
-    content = (<div className="table-long-title">{words[0]}<br />{words[1]}</div>);
-  }
-
   if (!tooltipText) {
-    return content;
+    return title;
   } else {
     return (
       <Tooltip
-        title={tooltipText}>
-        {content}
+        title={tooltipText}
+        overlayStyle={{ fontSize: "12px" }}>
+        {title}
       </Tooltip>
     );
   }
 
 };
-const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick, ConduitLink) => {
+const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceColumn, ConduitLink) => {
   let nsColumn = [
     {
       title: formatTitle("Namespace"),
@@ -48,15 +46,19 @@ const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick,
       filters: namespaces,
       onFilterDropdownVisibleChange: onFilterClick,
       onFilter: (value, row) => row.namespace.indexOf(value) === 0,
-      sorter: sortable ? (a, b) => (a.namespace || "").localeCompare(b.namespace) : false
+      sorter: (a, b) => (a.namespace || "").localeCompare(b.namespace),
+      render: ns => {
+        return <ConduitLink to={"/namespaces/" + ns}>{ns}</ConduitLink>;
+      }
     }
   ];
+
   let columns = [
     {
       title: formatTitle(resource),
       key: "name",
       defaultSortOrder: 'ascend',
-      sorter: sortable ? (a, b) => (a.name || "").localeCompare(b.name) : false,
+      sorter: (a, b) => (a.name || "").localeCompare(b.name),
       render: row => {
         if (resource.toLowerCase() === "namespace") {
           return <ConduitLink to={"/namespaces/" + row.name}>{row.name}</ConduitLink>;
@@ -68,7 +70,7 @@ const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick,
               name={row.name}
               namespace={row.namespace}
               resource={resource}
-              conduitLink={ConduitLink} />
+              ConduitLink={ConduitLink} />
           );
         }
       }
@@ -77,52 +79,74 @@ const columnDefinitions = (sortable = true, resource, namespaces, onFilterClick,
       title: formatTitle("SR", "Success Rate"),
       dataIndex: "successRate",
       key: "successRateRollup",
-      className: "numeric long-header",
-      sorter: sortable ? (a, b) => numericSort(a.successRate, b.successRate) : false,
+      className: "numeric",
+      sorter: (a, b) => numericSort(a.successRate, b.successRate),
       render: d => metricToFormatter["SUCCESS_RATE"](d)
     },
     {
       title: formatTitle("RPS", "Request Rate"),
       dataIndex: "requestRate",
       key: "requestRateRollup",
-      className: "numeric long-header",
-      sorter: sortable ? (a, b) => numericSort(a.requestRate, b.requestRate) : false,
+      className: "numeric",
+      sorter: (a, b) => numericSort(a.requestRate, b.requestRate),
       render: d => withTooltip(d, "REQUEST_RATE")
     },
     {
       title: formatTitle("P50", "P50 Latency"),
       dataIndex: "P50",
       key: "p50LatencyRollup",
-      className: "numeric long-header",
-      sorter: sortable ? (a, b) => numericSort(a.P50, b.P50) : false,
+      className: "numeric",
+      sorter: (a, b) => numericSort(a.P50, b.P50),
       render: metricToFormatter["LATENCY"]
     },
     {
       title: formatTitle("P95", "P95 Latency"),
       dataIndex: "P95",
       key: "p95LatencyRollup",
-      className: "numeric long-header",
-      sorter: sortable ? (a, b) => numericSort(a.P95, b.P95) : false,
+      className: "numeric",
+      sorter: (a, b) => numericSort(a.P95, b.P95),
       render: metricToFormatter["LATENCY"]
     },
     {
       title: formatTitle("P99", "P99 Latency"),
       dataIndex: "P99",
       key: "p99LatencyRollup",
-      className: "numeric long-header",
-      sorter: sortable ? (a, b) => numericSort(a.P99, b.P99) : false,
+      className: "numeric",
+      sorter: (a, b) => numericSort(a.P99, b.P99),
       render: metricToFormatter["LATENCY"]
+    },
+    {
+      title: formatTitle("Secured", "Percentage of TLS Traffic"),
+      key: "securedTraffic",
+      dataIndex: "meshedRequestPercent",
+      className: "numeric",
+      sorter: (a, b) => numericSort(a.meshedRequestPercent.get(), b.meshedRequestPercent.get()),
+      render: d => _.isNil(d) ? "---" : d.prettyRate()
     }
   ];
 
-  if (resource.toLowerCase() === "namespace") {
+  if (resource.toLowerCase() === "namespace" || !showNamespaceColumn) {
     return columns;
   } else {
     return _.concat(nsColumn, columns);
   }
 };
 
-export default class MetricsTable extends BaseTable {
+/** @extends React.Component */
+export class MetricsTableBase extends BaseTable {
+  static defaultProps = {
+    showNamespaceColumn: true,
+  }
+
+  static propTypes = {
+    api: PropTypes.shape({
+      ConduitLink: PropTypes.func.isRequired,
+    }).isRequired,
+    metrics: PropTypes.arrayOf(processedMetricsPropType.isRequired).isRequired,
+    resource: PropTypes.string.isRequired,
+    showNamespaceColumn: PropTypes.bool,
+  }
+
   constructor(props) {
     super(props);
     this.api = this.props.api;
@@ -130,6 +154,17 @@ export default class MetricsTable extends BaseTable {
     this.state = {
       preventTableUpdates: false
     };
+  }
+
+  shouldComponentUpdate() {
+    // prevent the table from updating if the filter dropdown menu is open
+    // this is because if the table updates, the filters will reset which
+    // makes it impossible to select a filter
+    return !this.state.preventTableUpdates;
+  }
+
+  onFilterDropdownVisibleChange(dropdownVisible) {
+    this.setState({ preventTableUpdates: dropdownVisible});
   }
 
   preprocessMetrics() {
@@ -149,17 +184,6 @@ export default class MetricsTable extends BaseTable {
     };
   }
 
-  shouldComponentUpdate() {
-    // prevent the table from updating if the filter dropdown menu is open
-    // this is because if the table updates, the filters will reset which
-    // makes it impossible to select a filter
-    return !this.state.preventTableUpdates;
-  }
-
-  onFilterDropdownVisibleChange(dropdownVisible) {
-    this.setState({ preventTableUpdates: dropdownVisible});
-  }
-
   render() {
     let tableData = this.preprocessMetrics();
     let namespaceFilterText = _.map(tableData.namespaces, ns => {
@@ -167,19 +191,28 @@ export default class MetricsTable extends BaseTable {
     });
 
     let columns = _.compact(columnDefinitions(
-      this.props.sortable,
       this.props.resource,
       namespaceFilterText,
       this.onFilterDropdownVisibleChange,
+      this.props.showNamespaceColumn,
       this.api.ConduitLink
     ));
 
-    return (<BaseTable
-      dataSource={tableData.rows}
-      columns={columns}
-      pagination={false}
-      className="conduit-table"
-      rowKey={r => r.name}
-      size="middle" />);
+    let locale = {
+      emptyText: `No ${this.props.resource}s detected.`
+    };
+
+    return (
+      <BaseTable
+        dataSource={tableData.rows}
+        columns={columns}
+        pagination={false}
+        className="conduit-table"
+        rowKey={r => `${r.namespace}/${r.name}`}
+        locale={locale}
+        size="middle" />
+    );
   }
 }
+
+export default withContext(MetricsTableBase);

@@ -1,5 +1,5 @@
 use bytes::{Buf, BytesMut};
-use futures::*;
+use futures::{*, future::Either};
 use std;
 use std::cmp;
 use std::io;
@@ -11,7 +11,7 @@ use tokio::{
 };
 
 use config::Addr;
-use transport::GetOriginalDst;
+use transport::{GetOriginalDst, Io, tls};
 
 pub type PlaintextSocket = TcpStream;
 
@@ -36,7 +36,7 @@ pub struct Connecting(ConnectFuture);
 /// subverted.
 #[derive(Debug)]
 pub struct Connection {
-    io: Io,
+    io: Box<Io>,
     /// This buffer gets filled up when "peeking" bytes on this Connection.
     ///
     /// This is used instead of MSG_PEEK in order to support TLS streams.
@@ -44,11 +44,6 @@ pub struct Connection {
     /// When calling `read`, it's important to consume bytes from this buffer
     /// before calling `io.read`.
     peek_buf: BytesMut,
-}
-
-#[derive(Debug)]
-enum Io {
-    Plain(PlaintextSocket),
 }
 
 /// A trait describing that a type can peek bytes.
@@ -100,7 +95,11 @@ impl BoundPort {
     // This ensures that every incoming connection has the correct options set.
     // In the future it will also ensure that the connection is upgraded with
     // TLS when needed.
-    pub fn listen_and_fold<T, F, Fut>(self, initial: T, f: F)
+    pub fn listen_and_fold<T, F, Fut>(
+        self,
+        tls_config: Option<tls::ServerConfig>,
+        initial: T,
+        f: F)
         -> impl Future<Item = (), Error = io::Error> + Send + 'static
     where
         F: Fn(T, (Connection, SocketAddr)) -> Fut + Send + 'static,
@@ -116,7 +115,7 @@ impl BoundPort {
             TcpListener::from_std(self.inner, &Handle::current())
         }).and_then(|listener|
             listener.incoming()
-                .fold(initial, move |b, socket,| {
+                .and_then(move |socket| {
                     let remote_addr = socket.peer_addr()
                         .expect("couldn't get remote addr!");
                     // TODO: On Linux and most other platforms it would be better
@@ -126,8 +125,20 @@ impl BoundPort {
                     // libraries don't have the necessary API for that, so just
                     // do it here.
                     set_nodelay_or_warn(&socket);
-                    f(b, (Connection::plain(socket), remote_addr))
+                    match tls_config.clone() {
+                        Some(tls_config) => {
+                            Either::A(
+                                tls::Connection::accept(socket, tls_config)
+                                    .map(move |tls| (Connection::new(Box::new(tls)), remote_addr)))
+                        },
+                        None => Either::B(future::ok((Connection::new(Box::new(socket)), remote_addr))),
+                    }
                 })
+                .or_else(|err| {
+                    debug!("error handshaking: {}", err);
+                    future::err(err)
+                })
+                .fold(initial, f)
         )
         .map(|_| ())
     }
@@ -142,7 +153,7 @@ impl Future for Connecting {
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         let socket = try_ready!(self.0.poll());
         set_nodelay_or_warn(&socket);
-        Ok(Async::Ready(Connection::plain(socket)))
+        Ok(Async::Ready(Connection::new(Box::new(socket))))
     }
 }
 
@@ -150,31 +161,19 @@ impl Future for Connecting {
 
 impl Connection {
     /// A constructor of `Connection` with a plain text TCP socket.
-    pub fn plain(socket: PlaintextSocket) -> Self {
+    fn new(io: Box<Io>) -> Self {
         Connection {
-            io: Io::Plain(socket),
+            io,
             peek_buf: BytesMut::new(),
         }
     }
 
     pub fn original_dst_addr<T: GetOriginalDst>(&self, get: &T) -> Option<SocketAddr> {
-        get.get_original_dst(self.socket())
+        get.get_original_dst(&self.io)
     }
 
     pub fn local_addr(&self) -> Result<SocketAddr, std::io::Error> {
-        self.socket().local_addr()
-    }
-
-    // This must never be made public so that in the future `Connection` can
-    // control access to the plaintext socket for TLS, to ensure no private
-    // data is accidentally writen to the socket and to ensure no unprotected
-    // data is read from the socket. Each piece of information needed about the
-    // underlying socket should be exposed by its own minimal accessor function
-    // as is done above.
-    fn socket(&self) -> &PlaintextSocket {
-        match self.io {
-            Io::Plain(ref socket) => socket
-        }
+        self.io.local_addr()
     }
 }
 
@@ -185,9 +184,7 @@ impl io::Read for Connection {
         let peeked_len = self.peek_buf.len();
 
         if peeked_len == 0 {
-            match self.io {
-                Io::Plain(ref mut t) => t.read(buf),
-            }
+            self.io.read(buf)
         } else {
             let len = cmp::min(buf.len(), peeked_len);
             buf[..len].copy_from_slice(&self.peek_buf.as_ref()[..len]);
@@ -205,47 +202,35 @@ impl io::Read for Connection {
 
 impl AsyncRead for Connection {
     unsafe fn prepare_uninitialized_buffer(&self, buf: &mut [u8]) -> bool {
-        match self.io {
-            Io::Plain(ref t) => t.prepare_uninitialized_buffer(buf),
-        }
+        self.io.prepare_uninitialized_buffer(buf)
     }
 }
 
 impl io::Write for Connection {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        match self.io {
-            Io::Plain(ref mut t) => t.write(buf),
-        }
+        self.io.write(buf)
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        match self.io {
-            Io::Plain(ref mut t) => t.flush(),
-        }
+        self.io.flush()
     }
 }
 
 impl AsyncWrite for Connection {
     fn shutdown(&mut self) -> Poll<(), io::Error> {
-        use std::net::Shutdown;
-        match self.io {
-            Io::Plain(ref mut t) => {
-                try_ready!(AsyncWrite::shutdown(t));
-                // TCP shutdown the write side.
-                //
-                // If we're shutting down, then we definitely won't write
-                // anymore. So, we should tell the remote about this. This
-                // is relied upon in our TCP proxy, to start shutting down
-                // the pipe if one side closes.
-                TcpStream::shutdown(t, Shutdown::Write).map(Async::Ready)
-            },
-        }
+        try_ready!(AsyncWrite::shutdown(&mut self.io));
+
+        // TCP shutdown the write side.
+        //
+        // If we're shutting down, then we definitely won't write
+        // anymore. So, we should tell the remote about this. This
+        // is relied upon in our TCP proxy, to start shutting down
+        // the pipe if one side closes.
+        self.io.shutdown_write().map(Async::Ready)
     }
 
     fn write_buf<B: Buf>(&mut self, buf: &mut B) -> Poll<usize, io::Error> {
-        match self.io {
-            Io::Plain(ref mut t) => t.write_buf(buf),
-        }
+        self.io.write_buf(buf)
     }
 }
 
@@ -253,9 +238,7 @@ impl Peek for Connection {
     fn poll_peek(&mut self) -> Poll<usize, io::Error> {
         if self.peek_buf.is_empty() {
             self.peek_buf.reserve(8192);
-            match self.io {
-                Io::Plain(ref mut t) => t.read_buf(&mut self.peek_buf),
-            }
+            self.io.read_buf(&mut self.peek_buf)
         } else {
             Ok(Async::Ready(self.peek_buf.len()))
         }

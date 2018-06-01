@@ -83,7 +83,7 @@ export const styleNum = (number, unit = "", truncate = true) => {
 * Convert a string to a valid css class name
 */
 export const toClassName = name => {
-  if (!name) return "";
+  if (!name) { return ""; }
   return _.lowerCase(name).replace(/[^a-zA-Z0-9]/g, "_");
 };
 

@@ -2,7 +2,6 @@
 #![deny(warnings)]
 
 extern crate conduit_proxy;
-extern crate futures_watch;
 extern crate http;
 extern crate test;
 
@@ -18,7 +17,7 @@ use std::{
     fmt,
     net::SocketAddr,
     sync::Arc,
-    time::{Duration, SystemTime},
+    time::{Duration, Instant, SystemTime},
 };
 use test::Bencher;
 
@@ -44,8 +43,7 @@ where
     L: IntoIterator<Item=(S, S)>,
     S: fmt::Display,
 {
-    let (labels_watch, _store) = futures_watch::Watch::new(metrics::DstLabels::new(labels));
-    ctx::transport::Client::new(&proxy, &addr(), Some(labels_watch))
+    ctx::transport::Client::new(&proxy, &addr(), metrics::DstLabels::new(labels))
 }
 
 fn request(
@@ -81,10 +79,16 @@ fn record_response_end(b: &mut Bencher) {
 
     let (_, rsp) = request("http://buoyant.io", &server, &client, 1);
 
+    let request_open_at = Instant::now();
+    let response_open_at = request_open_at + Duration::from_millis(100);
+    let response_first_frame_at = response_open_at + Duration::from_millis(100);
+    let response_end_at = response_open_at + Duration::from_millis(100);
     let end = event::StreamResponseEnd {
         grpc_status: None,
-        since_request_open: Duration::from_millis(300),
-        since_response_open: Duration::from_millis(0),
+        request_open_at,
+        response_open_at,
+        response_first_frame_at,
+        response_end_at,
         bytes_sent: 0,
         frames_sent: 0,
     };
@@ -110,22 +114,32 @@ fn record_one_conn_request(b: &mut Bencher) {
     let server_transport = Arc::new(ctx::transport::Ctx::Server(server));
     let client_transport = Arc::new(ctx::transport::Ctx::Client(client));
 
+    let request_open_at = Instant::now();
+    let request_end_at = request_open_at + Duration::from_millis(10);
+    let response_open_at = request_open_at + Duration::from_millis(100);
+    let response_first_frame_at = response_open_at + Duration::from_millis(100);
+    let response_end_at = response_open_at + Duration::from_millis(100);
+
     use Event::*;
     let events = vec![
         TransportOpen(server_transport.clone()),
         TransportOpen(client_transport.clone()),
         StreamRequestOpen(req.clone()),
         StreamRequestEnd(req.clone(), event::StreamRequestEnd {
-            since_request_open: Duration::from_millis(10),
+            request_open_at,
+            request_end_at,
         }),
 
         StreamResponseOpen(rsp.clone(), event::StreamResponseOpen {
-            since_request_open: Duration::from_millis(300),
+            request_open_at,
+            response_open_at,
         }),
         StreamResponseEnd(rsp.clone(), event::StreamResponseEnd {
             grpc_status: None,
-            since_request_open: Duration::from_millis(300),
-            since_response_open: Duration::from_millis(0),
+            request_open_at,
+            response_open_at,
+            response_first_frame_at,
+            response_end_at,
             bytes_sent: 0,
             frames_sent: 0,
         }),
@@ -159,6 +173,12 @@ fn record_many_dsts(b: &mut Bencher) {
     let mut events = Vec::new();
     events.push(TransportOpen(server_transport.clone()));
 
+    let request_open_at = Instant::now();
+    let request_end_at = request_open_at + Duration::from_millis(10);
+    let response_open_at = request_open_at + Duration::from_millis(100);
+    let response_first_frame_at = response_open_at + Duration::from_millis(100);
+    let response_end_at = response_open_at + Duration::from_millis(100);
+
     for n in 0..REQUESTS {
         let client = client(&proxy, vec![
             ("service".into(), format!("svc{}", n)),
@@ -173,16 +193,20 @@ fn record_many_dsts(b: &mut Bencher) {
 
         events.push(StreamRequestOpen(req.clone()));
         events.push(StreamRequestEnd(req.clone(), event::StreamRequestEnd {
-            since_request_open: Duration::from_millis(10),
+            request_open_at,
+            request_end_at,
         }));
 
         events.push(StreamResponseOpen(rsp.clone(), event::StreamResponseOpen {
-            since_request_open: Duration::from_millis(300),
+            request_open_at,
+            response_open_at,
         }));
         events.push(StreamResponseEnd(rsp.clone(), event::StreamResponseEnd {
             grpc_status: None,
-            since_request_open: Duration::from_millis(300),
-            since_response_open: Duration::from_millis(0),
+            request_open_at,
+            response_open_at,
+            response_first_frame_at,
+            response_end_at,
             bytes_sent: 0,
             frames_sent: 0,
         }));

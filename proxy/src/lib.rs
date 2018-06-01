@@ -10,7 +10,6 @@ extern crate deflate;
 #[macro_use]
 extern crate futures;
 extern crate futures_mpsc_lossy;
-extern crate futures_watch;
 extern crate h2;
 extern crate http;
 extern crate httparse;
@@ -53,7 +52,10 @@ use std::thread;
 use std::time::Duration;
 
 use indexmap::IndexSet;
-use tokio::{executor, runtime::current_thread};
+use tokio::{
+    executor::{self, DefaultExecutor, Executor},
+    runtime::current_thread,
+};
 use tower_service::NewService;
 use tower_fn::*;
 use conduit_proxy_router::{Recognize, Router, Error as RouteError};
@@ -84,7 +86,7 @@ use inbound::Inbound;
 use map_err::MapErr;
 use task::MainRuntime;
 use transparency::{HttpBody, Server};
-pub use transport::{GetOriginalDst, SoOriginalDst};
+pub use transport::{AddrInfo, GetOriginalDst, SoOriginalDst, tls};
 use outbound::Outbound;
 
 /// Runs a sidecar proxy.
@@ -217,7 +219,7 @@ where
                 panic!("invalid DNS configuration: {:?}", e);
             });
 
-        let (control, control_bg) = control::destination::new(
+        let (resolver, resolver_bg) = control::destination::new(
             dns_resolver.clone(),
             config.pod_namespace.clone(),
             control_host_and_port
@@ -226,6 +228,21 @@ where
         let (drain_tx, drain_rx) = drain::channel();
 
         let bind = Bind::new().with_sensors(sensors.clone());
+
+        // TODO: Load the TLS configuration asynchronously and watch for
+        // changes to the files.
+        let tls_config = config.tls_settings.and_then(|settings| {
+            match tls::CommonConfig::load_from_disk(&settings) {
+                Ok(config) => Some(config),
+                Err(e) => {
+                    // Keep going without TLS if loading settings failed.
+                    error!("Error loading TLS configuration: {:?}", e);
+                    None
+                }
+            }
+        });
+
+        let tls_server_config = tls_config.as_ref().map(tls::ServerConfig::from);
 
         // Setup the public listener. This will listen on a publicly accessible
         // address and listen for inbound connections that should be forwarded
@@ -242,8 +259,9 @@ where
                 config.inbound_router_capacity,
                 config.inbound_router_max_idle_age,
             );
-            let fut = serve(
+            serve(
                 inbound_listener,
+                tls_server_config,
                 router,
                 config.private_connect_timeout,
                 config.inbound_ports_disable_protocol_detection,
@@ -251,8 +269,7 @@ where
                 sensors.clone(),
                 get_original_dst.clone(),
                 drain_rx.clone(),
-            );
-            ::logging::context_future("inbound", fut)
+            )
         };
 
         // Setup the private listener. This will listen on a locally accessible
@@ -262,12 +279,13 @@ where
             let ctx = ctx::Proxy::outbound(&process_ctx);
             let bind = bind.clone().with_ctx(ctx.clone());
             let router = Router::new(
-                Outbound::new(bind, control, config.bind_timeout),
+                Outbound::new(bind, resolver, config.bind_timeout),
                 config.outbound_router_capacity,
                 config.outbound_router_max_idle_age,
             );
-            let fut = serve(
+            serve(
                 outbound_listener,
+                None, // No TLS
                 router,
                 config.public_connect_timeout,
                 config.outbound_ports_disable_protocol_detection,
@@ -275,41 +293,37 @@ where
                 sensors,
                 get_original_dst,
                 drain_rx,
-            );
-            ::logging::context_future("outbound", fut)
+            )
         };
 
         trace!("running");
 
-        let (_tx, controller_shutdown_signal) = futures::sync::oneshot::channel::<()>();
+        let (_tx, admin_shutdown_signal) = futures::sync::oneshot::channel::<()>();
         {
             thread::Builder::new()
-                .name("controller-client".into())
+                .name("admin".into())
                 .spawn(move || {
                     use conduit_proxy_controller_grpc::tap::server::TapServer;
 
                     let mut rt = current_thread::Runtime::new()
-                        .expect("initialize controller-client thread runtime");
+                        .expect("initialize admin thread runtime");
 
-                    let new_service = TapServer::new(observe);
+                    let tap = serve_tap(control_listener, TapServer::new(observe));
 
-                    let server = serve_control(control_listener, new_service);
+                    let metrics_server = telemetry.serve_metrics(metrics_listener);
 
-                    let metrics_server = telemetry
-                        .serve_metrics(metrics_listener);
-
-                    let fut = control_bg.join4(
-                        server.map_err(|_| {}),
-                        telemetry,
-                        metrics_server.map_err(|_| {}),
-                    ).map(|_| {});
-                    let fut = ::logging::context_future("controller-client", fut);
+                    let fut = ::logging::admin().bg("resolver").future(resolver_bg)
+                        .join4(
+                            ::logging::admin().bg("telemetry").future(telemetry),
+                            tap.map_err(|_| {}),
+                            metrics_server.map_err(|_| {}),
+                        ).map(|_| {});
 
                     rt.spawn(Box::new(fut));
 
-                    let shutdown = controller_shutdown_signal.then(|_| Ok::<(), ()>(()));
-                    rt.block_on(shutdown).expect("controller api");
-                    trace!("controller client shutdown finished");
+                    let shutdown = admin_shutdown_signal.then(|_| Ok::<(), ()>(()));
+                    rt.block_on(shutdown).expect("admin");
+                    trace!("admin shutdown finished");
                 })
                 .expect("initialize controller api thread");
             trace!("controller client thread spawned");
@@ -334,6 +348,7 @@ where
 
 fn serve<R, B, E, F, G>(
     bound_port: BoundPort,
+    tls_config: Option<tls::ServerConfig>,
     router: Router<R>,
     tcp_connect_timeout: Duration,
     disable_protocol_detection_ports: IndexSet<u16>,
@@ -397,7 +412,7 @@ where
     let listen_addr = bound_port.local_addr();
     let server = Server::new(
         listen_addr,
-        proxy_ctx,
+        proxy_ctx.clone(),
         sensors,
         get_orig_dst,
         stack,
@@ -405,15 +420,23 @@ where
         disable_protocol_detection_ports,
         drain_rx.clone(),
     );
+    let log = server.log().clone();
 
-
-    let accept = bound_port.listen_and_fold(
-        (),
-        move |(), (connection, remote_addr)| {
-            server.serve(connection, remote_addr);
-            Ok(())
-        },
-    );
+    let accept = {
+        let fut = bound_port.listen_and_fold(
+            tls_config,
+            (),
+            move |(), (connection, remote_addr)| {
+                let s = server.serve(connection, remote_addr);
+                // Logging context is configured by the server.
+                let r = DefaultExecutor::current()
+                    .spawn(Box::new(s))
+                    .map_err(task::Error::into_io);
+                future::result(r)
+            },
+        );
+        log.future(fut)
+    };
 
     let accept_until = Cancelable {
         future: accept,
@@ -452,7 +475,7 @@ where
     }
 }
 
-fn serve_control<N, B>(
+fn serve_tap<N, B>(
     bound_port: BoundPort,
     new_service: N,
 ) -> impl Future<Item = (), Error = io::Error> + 'static
@@ -467,28 +490,37 @@ where
     tower_h2::server::Connection<
         connection::Connection,
         N,
-        task::LazyExecutor,
+        ::logging::ServerExecutor,
         B,
         ()
     >: Future<Item = ()>,
 {
+    let log = logging::admin().server("tap", bound_port.local_addr());
+
     let h2_builder = h2::server::Builder::default();
     let server = tower_h2::Server::new(
         new_service,
         h2_builder,
-        task::LazyExecutor
+        log.clone().executor(),
     );
-    bound_port.listen_and_fold(
-        server,
-        move |server, (session, _)| {
-            let s = server.serve(session).map_err(|_| ());
-            let s = ::logging::context_future("serve_control", s);
 
-            let r = executor::current_thread::TaskExecutor::current()
-                .spawn_local(Box::new(s))
-                .map(move |_| server)
-                .map_err(task::Error::into_io);
-            future::result(r)
-        },
-    )
+    let fut = {
+        let log = log.clone();
+        bound_port.listen_and_fold(
+            None, // No TLS
+            server,
+            move |server, (session, remote)| {
+                let log = log.clone().with_remote(remote);
+                let serve = server.serve(session).map_err(|_| ());
+
+                let r = executor::current_thread::TaskExecutor::current()
+                    .spawn_local(Box::new(log.future(serve)))
+                    .map(move |_| server)
+                    .map_err(task::Error::into_io);
+                future::result(r)
+            },
+        )
+    };
+
+    log.future(fut)
 }

@@ -8,10 +8,10 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/ghodss/yaml"
 	"github.com/runconduit/conduit/pkg/k8s"
-	"github.com/runconduit/conduit/pkg/version"
 	"github.com/spf13/cobra"
 	appsV1 "k8s.io/api/apps/v1"
 	batchV1 "k8s.io/api/batch/v1"
@@ -29,54 +29,74 @@ const (
 	ControlPlanePodName = "controller"
 )
 
-var (
-	initImage           string
-	proxyImage          string
-	proxyUID            int64
+type injectOptions struct {
 	inboundPort         uint
 	outboundPort        uint
 	ignoreInboundPorts  []uint
 	ignoreOutboundPorts []uint
-	proxyControlPort    uint
-	proxyMetricsPort    uint
-	proxyAPIPort        uint
-	proxyLogLevel       string
-)
+	*proxyConfigOptions
+}
 
-var injectCmd = &cobra.Command{
-	Use:   "inject [flags] CONFIG-FILE",
-	Short: "Add the Conduit proxy to a Kubernetes config",
-	Long: `Add the Conduit proxy to a Kubernetes config.
+func newInjectOptions() *injectOptions {
+	return &injectOptions{
+		inboundPort:         4143,
+		outboundPort:        4140,
+		ignoreInboundPorts:  nil,
+		ignoreOutboundPorts: nil,
+		proxyConfigOptions:  newProxyConfigOptions(),
+	}
+}
+
+func newCmdInject() *cobra.Command {
+	options := newInjectOptions()
+
+	cmd := &cobra.Command{
+		Use:   "inject [flags] CONFIG-FILE",
+		Short: "Add the Conduit proxy to a Kubernetes config",
+		Long: `Add the Conduit proxy to a Kubernetes config.
 
 You can use a config file from stdin by using the '-' argument
 with 'conduit inject'. e.g. curl http://url.to/yml | conduit inject -
 	`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 
-		if len(args) < 1 {
-			return fmt.Errorf("please specify a kubernetes resource file")
-		}
-
-		var in io.Reader
-		var err error
-
-		if args[0] == "-" {
-			in = os.Stdin
-		} else {
-			if in, err = os.Open(args[0]); err != nil {
-				return err
+			if len(args) < 1 {
+				return fmt.Errorf("please specify a kubernetes resource file")
 			}
-		}
-		exitCode := runInjectCmd(in, os.Stderr, os.Stdout, conduitVersion)
-		os.Exit(exitCode)
-		return nil
-	},
+
+			if _, err := time.ParseDuration(options.proxyBindTimeout); err != nil {
+				return fmt.Errorf("Invalid duration '%s' for --proxy-bind-timeout flag", options.proxyBindTimeout)
+			}
+
+			var in io.Reader
+			var err error
+
+			if args[0] == "-" {
+				in = os.Stdin
+			} else {
+				if in, err = os.Open(args[0]); err != nil {
+					return err
+				}
+			}
+			exitCode := runInjectCmd(in, os.Stderr, os.Stdout, options)
+			os.Exit(exitCode)
+			return nil
+		},
+	}
+
+	addProxyConfigFlags(cmd, options.proxyConfigOptions)
+	cmd.PersistentFlags().UintVar(&options.inboundPort, "inbound-port", options.inboundPort, "Proxy port to use for inbound traffic")
+	cmd.PersistentFlags().UintVar(&options.outboundPort, "outbound-port", options.outboundPort, "Proxy port to use for outbound traffic")
+	cmd.PersistentFlags().UintSliceVar(&options.ignoreInboundPorts, "skip-inbound-ports", options.ignoreInboundPorts, "Ports that should skip the proxy and send directly to the application")
+	cmd.PersistentFlags().UintSliceVar(&options.ignoreOutboundPorts, "skip-outbound-ports", options.ignoreOutboundPorts, "Outbound ports that should skip the proxy")
+
+	return cmd
 }
 
 // Returns the integer representation of os.Exit code; 0 on success and 1 on failure.
-func runInjectCmd(input io.Reader, errWriter, outWriter io.Writer, version string) int {
+func runInjectCmd(input io.Reader, errWriter, outWriter io.Writer, options *injectOptions) int {
 	postInjectBuf := &bytes.Buffer{}
-	err := InjectYAML(input, postInjectBuf, version)
+	err := InjectYAML(input, postInjectBuf, options)
 	if err != nil {
 		fmt.Fprintf(errWriter, "Error injecting conduit proxy: %v\n", err)
 		return 1
@@ -93,7 +113,7 @@ func runInjectCmd(input io.Reader, errWriter, outWriter io.Writer, version strin
  * and init-container injected. If the pod is unsuitable for having them
  * injected, return null.
  */
-func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride, version string, k8sLabels map[string]string) bool {
+func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride string, k8sLabels map[string]string, options *injectOptions) bool {
 	// Pods with `hostNetwork=true` share a network namespace with the host. The
 	// init-container would destroy the iptables configuration on the host, so
 	// skip the injection in this case.
@@ -102,21 +122,21 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride, v
 	}
 
 	f := false
-	inboundSkipPorts := append(ignoreInboundPorts, proxyControlPort, proxyMetricsPort)
+	inboundSkipPorts := append(options.ignoreInboundPorts, options.proxyControlPort, options.proxyMetricsPort)
 	inboundSkipPortsStr := make([]string, len(inboundSkipPorts))
 	for i, p := range inboundSkipPorts {
 		inboundSkipPortsStr[i] = strconv.Itoa(int(p))
 	}
 
-	outboundSkipPortsStr := make([]string, len(ignoreOutboundPorts))
-	for i, p := range ignoreOutboundPorts {
+	outboundSkipPortsStr := make([]string, len(options.ignoreOutboundPorts))
+	for i, p := range options.ignoreOutboundPorts {
 		outboundSkipPortsStr[i] = strconv.Itoa(int(p))
 	}
 
 	initArgs := []string{
-		"--incoming-proxy-port", fmt.Sprintf("%d", inboundPort),
-		"--outgoing-proxy-port", fmt.Sprintf("%d", outboundPort),
-		"--proxy-uid", fmt.Sprintf("%d", proxyUID),
+		"--incoming-proxy-port", fmt.Sprintf("%d", options.inboundPort),
+		"--outgoing-proxy-port", fmt.Sprintf("%d", options.outboundPort),
+		"--proxy-uid", fmt.Sprintf("%d", options.proxyUID),
 	}
 
 	if len(inboundSkipPortsStr) > 0 {
@@ -131,8 +151,8 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride, v
 
 	initContainer := v1.Container{
 		Name:            "conduit-init",
-		Image:           fmt.Sprintf("%s:%s", initImage, version),
-		ImagePullPolicy: v1.PullPolicy(imagePullPolicy),
+		Image:           fmt.Sprintf("%s:%s", options.initImage, options.conduitVersion),
+		ImagePullPolicy: v1.PullPolicy(options.imagePullPolicy),
 		Args:            initArgs,
 		SecurityContext: &v1.SecurityContext{
 			Capabilities: &v1.Capabilities{
@@ -148,31 +168,32 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride, v
 
 	sidecar := v1.Container{
 		Name:            "conduit-proxy",
-		Image:           fmt.Sprintf("%s:%s", proxyImage, version),
-		ImagePullPolicy: v1.PullPolicy(imagePullPolicy),
+		Image:           fmt.Sprintf("%s:%s", options.proxyImage, options.conduitVersion),
+		ImagePullPolicy: v1.PullPolicy(options.imagePullPolicy),
 		SecurityContext: &v1.SecurityContext{
-			RunAsUser: &proxyUID,
+			RunAsUser: &options.proxyUID,
 		},
 		Ports: []v1.ContainerPort{
 			{
 				Name:          "conduit-proxy",
-				ContainerPort: int32(inboundPort),
+				ContainerPort: int32(options.inboundPort),
 			},
 			{
 				Name:          "conduit-metrics",
-				ContainerPort: int32(proxyMetricsPort),
+				ContainerPort: int32(options.proxyMetricsPort),
 			},
 		},
 		Env: []v1.EnvVar{
-			{Name: "CONDUIT_PROXY_LOG", Value: proxyLogLevel},
+			{Name: "CONDUIT_PROXY_LOG", Value: options.proxyLogLevel},
+			{Name: "CONDUIT_PROXY_BIND_TIMEOUT", Value: options.proxyBindTimeout},
 			{
 				Name:  "CONDUIT_PROXY_CONTROL_URL",
-				Value: fmt.Sprintf("tcp://%s:%d", controlPlaneDNS, proxyAPIPort),
+				Value: fmt.Sprintf("tcp://%s:%d", controlPlaneDNS, options.proxyAPIPort),
 			},
-			{Name: "CONDUIT_PROXY_CONTROL_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", proxyControlPort)},
-			{Name: "CONDUIT_PROXY_METRICS_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", proxyMetricsPort)},
-			{Name: "CONDUIT_PROXY_PRIVATE_LISTENER", Value: fmt.Sprintf("tcp://127.0.0.1:%d", outboundPort)},
-			{Name: "CONDUIT_PROXY_PUBLIC_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", inboundPort)},
+			{Name: "CONDUIT_PROXY_CONTROL_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", options.proxyControlPort)},
+			{Name: "CONDUIT_PROXY_METRICS_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", options.proxyMetricsPort)},
+			{Name: "CONDUIT_PROXY_PRIVATE_LISTENER", Value: fmt.Sprintf("tcp://127.0.0.1:%d", options.outboundPort)},
+			{Name: "CONDUIT_PROXY_PUBLIC_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", options.inboundPort)},
 			{
 				Name:      "CONDUIT_PROXY_POD_NAMESPACE",
 				ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
@@ -184,7 +205,7 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride, v
 		t.Annotations = make(map[string]string)
 	}
 	t.Annotations[k8s.CreatedByAnnotation] = k8s.CreatedByAnnotationValue()
-	t.Annotations[k8s.ProxyVersionAnnotation] = version
+	t.Annotations[k8s.ProxyVersionAnnotation] = options.conduitVersion
 
 	if t.Labels == nil {
 		t.Labels = make(map[string]string)
@@ -201,7 +222,7 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride, v
 }
 
 // InjectYAML takes an input stream of YAML, outputting injected YAML to out.
-func InjectYAML(in io.Reader, out io.Writer, version string) error {
+func InjectYAML(in io.Reader, out io.Writer, options *injectOptions) error {
 	reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(in, 4096))
 
 	// Iterate over all YAML objects in the input
@@ -215,7 +236,7 @@ func InjectYAML(in io.Reader, out io.Writer, version string) error {
 			return err
 		}
 
-		result, err := injectResource(bytes, version)
+		result, err := injectResource(bytes, options)
 		if err != nil {
 			return err
 		}
@@ -227,7 +248,7 @@ func InjectYAML(in io.Reader, out io.Writer, version string) error {
 	return nil
 }
 
-func injectList(b []byte, version string) ([]byte, error) {
+func injectList(b []byte, options *injectOptions) ([]byte, error) {
 	var sourceList v1.List
 	if err := yaml.Unmarshal(b, &sourceList); err != nil {
 		return nil, err
@@ -236,7 +257,7 @@ func injectList(b []byte, version string) ([]byte, error) {
 	items := []runtime.RawExtension{}
 
 	for _, item := range sourceList.Items {
-		result, err := injectResource(item.Raw, version)
+		result, err := injectResource(item.Raw, options)
 		if err != nil {
 			return nil, err
 		}
@@ -256,7 +277,7 @@ func injectList(b []byte, version string) ([]byte, error) {
 	return yaml.Marshal(sourceList)
 }
 
-func injectResource(bytes []byte, version string) ([]byte, error) {
+func injectResource(bytes []byte, options *injectOptions) ([]byte, error) {
 	// The Kuberentes API is versioned and each version has an API modeled
 	// with its own distinct Go types. If we tell `yaml.Unmarshal()` which
 	// version we support then it will provide a representation of that
@@ -356,14 +377,14 @@ func injectResource(bytes []byte, version string) ([]byte, error) {
 		// Lists are a little different than the other types. There's no immediate
 		// pod template. Because of this, we do a recursive call for each element
 		// in the list (instead of just marshaling the injected pod template).
-		return injectList(bytes, version)
+		return injectList(bytes, options)
 	}
 
 	// If we don't inject anything into the pod template then output the
 	// original serialization of the original object. Otherwise, output the
 	// serialization of the modified object.
 	output := bytes
-	if podTemplateSpec != nil && injectPodTemplateSpec(podTemplateSpec, DNSNameOverride, version, k8sLabels) {
+	if podTemplateSpec != nil && injectPodTemplateSpec(podTemplateSpec, DNSNameOverride, k8sLabels, options) {
 		var err error
 		output, err = yaml.Marshal(obj)
 		if err != nil {
@@ -372,25 +393,4 @@ func injectResource(bytes []byte, version string) ([]byte, error) {
 	}
 
 	return output, nil
-}
-
-func init() {
-	RootCmd.AddCommand(injectCmd)
-	addProxyConfigFlags(injectCmd)
-	injectCmd.PersistentFlags().StringVar(&initImage, "init-image", "gcr.io/runconduit/proxy-init", "Conduit init container image name")
-	injectCmd.PersistentFlags().UintVar(&inboundPort, "inbound-port", 4143, "Proxy port to use for inbound traffic")
-	injectCmd.PersistentFlags().UintVar(&outboundPort, "outbound-port", 4140, "Proxy port to use for outbound traffic")
-	injectCmd.PersistentFlags().UintSliceVar(&ignoreInboundPorts, "skip-inbound-ports", nil, "Ports that should skip the proxy and send directly to the application")
-	injectCmd.PersistentFlags().UintSliceVar(&ignoreOutboundPorts, "skip-outbound-ports", nil, "Outbound ports that should skip the proxy")
-}
-
-func addProxyConfigFlags(cmd *cobra.Command) {
-	cmd.PersistentFlags().StringVarP(&conduitVersion, "conduit-version", "v", version.Version, "Tag to be used for Conduit images")
-	cmd.PersistentFlags().StringVar(&proxyImage, "proxy-image", "gcr.io/runconduit/proxy", "Conduit proxy container image name")
-	cmd.PersistentFlags().StringVar(&imagePullPolicy, "image-pull-policy", "IfNotPresent", "Docker image pull policy")
-	cmd.PersistentFlags().Int64Var(&proxyUID, "proxy-uid", 2102, "Run the proxy under this user ID")
-	cmd.PersistentFlags().StringVar(&proxyLogLevel, "proxy-log-level", "warn,conduit_proxy=info", "Log level for the proxy")
-	cmd.PersistentFlags().UintVar(&proxyAPIPort, "api-port", 8086, "Port where the Conduit controller is running")
-	cmd.PersistentFlags().UintVar(&proxyControlPort, "control-port", 4190, "Proxy port to use for control")
-	cmd.PersistentFlags().UintVar(&proxyMetricsPort, "metrics-port", 4191, "Proxy port to serve metrics on")
 }
