@@ -44,6 +44,7 @@ extern crate tower_in_flight_limit;
 extern crate trust_dns_resolver;
 
 use futures::*;
+use futures_watch::Watch;
 
 use std::error::Error;
 use std::io;
@@ -230,20 +231,16 @@ where
 
         let bind = Bind::new().with_sensors(sensors.clone());
 
-        // TODO: Load the TLS configuration asynchronously and watch for
-        // changes to the files.
-        let tls_config = config.tls_settings.and_then(|settings| {
-            match tls::CommonConfig::load_from_disk(&settings) {
-                Ok(config) => Some(config),
-                Err(e) => {
-                    // Keep going without TLS if loading settings failed.
-                    error!("Error loading TLS configuration: {:?}", e);
-                    None
-                }
-            }
-        });
+        let tls_config_changes = config.tls_settings
+            // TODO: determine the correct interval for this.
+            .map(|settings| settings.stream_changes(Duration::from_secs(1)));
 
-        let tls_server_config = tls_config.as_ref().map(tls::ServerConfig::from);
+        let (tls_server_config, tls_server_bg) =
+            tls_config_changes.map(|config| {
+                let (cfg, bg) = tls::ServerConfig::watch(config);
+                (Some(cfg), Some(bg))
+            })
+                .unwrap_or_else(|| (None, None));
 
         // Setup the public listener. This will listen on a publicly accessible
         // address and listen for inbound connections that should be forwarded
@@ -319,9 +316,19 @@ where
                             tap.map_err(|_| {}),
                             metrics_server.map_err(|_| {}),
                             ::logging::admin().bg("dns-resolver").future(dns_bg),
-                        ).map(|_| {});
+                        );
 
-                    rt.spawn(Box::new(fut));
+                    let fut: Box<Future<Item=(), Error=()>> =
+                        if let Some(config_bg) = tls_server_bg {
+                            let config_bg = ::logging::admin()
+                                .bg("tls config")
+                                .future(config_bg);
+                            Box::new(fut.join(config_bg).map(|_| {}))
+                        } else {
+                            Box::new(fut.map(|_| {}))
+                        };
+
+                    rt.spawn(fut);
 
                     let shutdown = admin_shutdown_signal.then(|_| Ok::<(), ()>(()));
                     rt.block_on(shutdown).expect("admin");
@@ -350,7 +357,7 @@ where
 
 fn serve<R, B, E, F, G>(
     bound_port: BoundPort,
-    tls_config: Option<tls::ServerConfig>,
+    tls_config: Option<Watch<Option<tls::ServerConfig>>>,
     router: Router<R>,
     tcp_connect_timeout: Duration,
     disable_protocol_detection_ports: IndexSet<u16>,

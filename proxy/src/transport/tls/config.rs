@@ -65,7 +65,7 @@ pub enum Error {
 
 impl CommonSettings {
 
-    fn changes(&self, interval: Duration) -> impl Stream<Item=SystemTime, Error = ()> {
+    fn change_timestamps(&self, interval: Duration) -> impl Stream<Item=SystemTime, Error = ()> {
         let paths = [
             self.trust_anchors.clone(),
             self.end_entity_cert.clone(),
@@ -89,21 +89,16 @@ impl CommonSettings {
             })
     }
 
-    pub fn start_watching(self, interval: Duration)
-        -> (Watch<Option<CommonConfig>>, impl Future<Item=(), Error=()>)
+    pub fn stream_changes(self, interval: Duration)
+        -> impl Stream<Item = CommonConfig, Error = ()>
     {
-        let (watch, store) = Watch::new(None);
-        let s = self.changes(interval).filter_map(move |t| {
-            trace!("config changed at {:?}", t);
-            CommonConfig::load_from_disk(&self)
-                .map_err(|e| warn!("error reloading TLS config: {:?}", e))
-                .ok()
-        });
-        let store = store
-            .sink_map_err(|_| warn!("all TLS config watches dropped"));
-        let f = s.map(Some).forward(store)
-            .map(|_| trace!("forwarding to config watch finished."));
-        (watch, f)
+        self.change_timestamps(interval)
+            .filter_map(move |t| {
+                trace!("config changed at {:?}", t);
+                CommonConfig::load_from_disk(&self)
+                    .map_err(|e| warn!("error reloading TLS config: {:?}", e))
+                    .ok()
+            })
     }
 }
 
@@ -158,6 +153,18 @@ impl ServerConfig {
         set_common_settings(&mut config.versions);
         config.cert_resolver = common.cert_resolver.clone();
         ServerConfig(Arc::new(config))
+    }
+
+    pub fn watch(changes: impl Stream<Item = CommonConfig, Error = ()>)
+        -> (Watch<Option<Self>>, impl Future<Item=(), Error=()>)
+    {
+        let (watch, store) = Watch::new(None);
+        let server_configs = changes.map(|ref config| Self::from(config));
+        let store = store
+            .sink_map_err(|_| warn!("all server config watches dropped"));
+        let f = server_configs.map(Some).forward(store)
+            .map(|_| trace!("forwarding to server config watch finished."));
+        (watch, f)
     }
 }
 
