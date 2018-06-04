@@ -6,7 +6,6 @@ use std::fmt;
 use std::iter::IntoIterator;
 use std::net::SocketAddr;
 use std::time::Duration;
-use std::sync::Arc;
 
 use bytes::Bytes;
 use futures::{
@@ -570,11 +569,11 @@ impl TlsIdentity {
     pub fn from_pb(pb: TlsIdentityPb) -> Option<Self> {
         use conduit_proxy_controller_grpc::destination::tls_identity::Strategy;
         pb.strategy.map(|strategy| match strategy {
-            Strategy::K8sPodNamespace(s) =>
+            Strategy::K8sPodNamespace(i) =>
                 TlsIdentity::K8sPodNamespace {
-                    controller_ns: Arc::from(s.controller_ns),
-                    pod_ns: Arc::from(s.pod_ns),
-                    pod_name: Arc::from(s.pod_name),
+                    controller_ns: i.controller_ns,
+                    pod_ns: i.pod_ns,
+                    pod_name: i.pod_name,
                 },
         })
     }

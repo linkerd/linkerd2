@@ -93,16 +93,22 @@ pub struct Metadata {
     dst_labels: Option<DstLabels>,
 
     /// How to verify TLS for the endpoint.
-    tls_identity: Option<TlsIdentity>,
+    tls_identity: Option<Arc<TlsIdentity>>,
 }
 
 /// How to verify TLS for an endpoint.
+///
+/// NOTE: This currently derives `Hash`, `PartialEq`, and `Eq`, which is not
+///       entirely correct, as domain name equality ought to be case
+///       insensitive. However, `Metadata` must be `Hash` + `Eq`, so this is at
+///       least better than having `Metadata` ignore the TLS identity when
+///       checking for equality
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub enum TlsIdentity {
     K8sPodNamespace {
-        controller_ns: Arc<str>,
-        pod_ns: Arc<str>,
-        pod_name: Arc<str>,
+        controller_ns: String,
+        pod_ns: String,
+        pod_name: String,
     },
 }
 
@@ -258,14 +264,13 @@ impl Metadata {
         }
     }
 
-    /// Construct a new Metadata with a set of labels from the Destination service.
     pub fn new(
         dst_labels: Option<DstLabels>,
         tls_identity: Option<TlsIdentity>
     ) -> Self {
         Metadata {
             dst_labels,
-            tls_identity,
+            tls_identity: tls_identity.map(Arc::new),
         }
     }
 
@@ -274,8 +279,7 @@ impl Metadata {
         self.dst_labels.as_ref()
     }
 
-    /// Returns the endpoint's TLS verification strategy
     pub fn tls_identity(&self) -> Option<&TlsIdentity> {
-        self.tls_identity.as_ref()
+        self.tls_identity.as_ref().map(Arc::as_ref)
     }
 }
