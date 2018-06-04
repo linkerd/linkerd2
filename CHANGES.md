@@ -1,3 +1,44 @@
+## v0.4.2
+
+Conduit 0.4.2 is a major step towards production readiness. It features a wide array of
+fixes and improvements for long-running proxies, and several new telemetry features. It
+also lays the groundwork for upcoming releases that introduce mutual TLS everywhere.
+
+* Production Readiness
+  * The proxy now drops metrics that do not update for 10 minutes, preventing unbounded
+    memory growth for long-running processes.
+  * The proxy now constrains the number of services that a node can route to
+    simultaneously (default: 100). This protects long-running proxies from consuming
+    unbounded resources by tearing down the longest-idle clients when the capacity is
+    reached.
+  * The proxy now properly honors HTTP/2 request cancellation.
+  * The proxy could incorrectly handle requests in the face of some connection errors.
+    This has been fixed.
+  * The proxy now honors DNS TTLs.
+  * `conduit inject` now works with `statefulset` resources.
+* Telemetry
+  * **New** `conduit stat` now supports the `all` Kubernetes resource, which
+    shows traffic stats for all Kubernetes resources in a namespace.
+  * **New** the Conduit web UI has been reorganized to provide namespace overviews.
+  * **Fix** a bug in Tap that prevented the proxy from simultaneously satisfying more than
+    one Tap request.
+  * **Fix** a bug that could prevent stats from being reported for some TCP streams in
+    failure conditions.
+  * The proxy now measures response latency as time-to-first-byte.
+* Internals
+  * The proxy now supports user-friendly time values (e.g. `10s`) from environment
+    configuration.
+  * The control plane now uses client for Kubernetes 1.10.2.
+  * Much richer proxy debug logging, including socket and stream metadata.
+  * The proxy internals have been changed substantially in preparation for TLS support.
+
+Special thanks to @carllhw, @kichristensen, & @sfroment for contributing to this release!
+
+### Upgrading from v0.4.1
+
+When upgrading from v0.4.1, we suggest that the control plane be upgraded to v0.4.2 before
+injecting application pods to use v0.4.2 proxies.
+
 ## v0.4.1
 
 Conduit 0.4.1 builds on the telemetry work from 0.4.0, providing rich,

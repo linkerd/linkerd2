@@ -34,13 +34,13 @@ To run Kubernetes on your local machine, we suggest
 <a href="https://kubernetes.io/docs/tasks/tools/install-minikube/" target="_blank">Minikube</a>
  --- running version 0.24.1 or later.
 
-### When ready, make sure you're running the latest version of Kubernetes with:
+### When ready, make sure you're running a recent version of Kubernetes with:
 #### `kubectl version --short`
 
 ### Which should display:
 ```
-Client Version: v1.8.3
-Server Version: v1.8.0
+Client Version: v1.10.3
+Server Version: v1.10.3
 ```
 Confirm that both `Client Version` and `Server Version` are v1.8.0 or greater.
 If not, or if `kubectl` displays an error message, your Kubernetes cluster may
