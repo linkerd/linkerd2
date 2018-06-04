@@ -65,7 +65,7 @@ pub enum Error {
 
 impl CommonSettings {
 
-    fn change_timestamps(&self, interval: Duration) -> impl Stream<Item=SystemTime, Error = ()> {
+    fn change_timestamps(&self, interval: Duration) -> impl Stream<Item = (), Error = ()> {
         let paths = [
             self.trust_anchors.clone(),
             self.end_entity_cert.clone(),
@@ -86,7 +86,8 @@ impl CommonSettings {
                         .ok();
                     if t > max {
                         max = t;
-                        return t;
+                        trace!("{:?} changed at {:?}", path, t);
+                        return Some(());
                     }
                 }
                 None
@@ -109,12 +110,11 @@ impl CommonSettings {
         -> impl Stream<Item = CommonConfig, Error = ()>
     {
         self.change_timestamps(interval)
-            .filter_map(move |t| {
-                trace!("config changed at {:?}", t);
+            .filter_map(move |_|
                 CommonConfig::load_from_disk(&self)
                     .map_err(|e| warn!("error reloading TLS config: {:?}, falling back", e))
                     .ok()
-            })
+            )
     }
 }
 
