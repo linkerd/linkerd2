@@ -10,7 +10,7 @@ extern crate quickcheck;
 extern crate tower_grpc;
 
 use convert::{TryFrom, TryInto};
-use std::{fmt, hash};
+use std::fmt;
 use std::error::Error;
 
 #[cfg(feature = "arbitrary")]
@@ -188,16 +188,6 @@ impl<'a> From<&'a ::std::net::SocketAddr> for common::TcpAddress {
             ip: Some(sa.ip().into()),
             port: u32::from(sa.port()),
         }
-    }
-}
-
-// ===== impl common::Protocol =====
-
-impl hash::Hash for common::Protocol {
-    // it's necessary to implement Hash for Protocol as it's a field on
-    // ctx::Transport, which derives Hash.
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        (*self as i32).hash(state)
     }
 }
 

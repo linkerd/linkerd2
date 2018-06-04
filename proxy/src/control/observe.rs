@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use futures::{future, Poll, Stream};
 use futures_mpsc_lossy;
 use http::HeaderMap;
-use indexmap::IndexMap;
+use indexmap::{Equivalent, IndexSet};
 use tower_grpc::{self as grpc, Response};
 
 use conduit_proxy_controller_grpc::common::TapEvent;
@@ -13,6 +13,7 @@ use convert::*;
 use ctx;
 use telemetry::Event;
 use telemetry::tap::{Tap, Taps};
+use std::hash::{Hash, Hasher};
 
 #[derive(Clone, Debug)]
 pub struct Observe {
@@ -24,10 +25,14 @@ pub struct Observe {
 pub struct TapEvents {
     rx: futures_mpsc_lossy::Receiver<Event>,
     remaining: usize,
-    current: IndexMap<Arc<ctx::http::Request>, ()>,
+    current: IndexSet<RequestById>,
     tap_id: usize,
     taps: Arc<Mutex<Taps>>,
 }
+
+// `IndexSet<RequestById>` is equivalent to `IndexMap<RequestId, Request>` but
+// avoids storing the `RequestID` twice.
+struct RequestById(Arc<ctx::http::Request>);
 
 impl Observe {
     pub fn new(tap_capacity: usize) -> (Arc<Mutex<Taps>>, Observe) {
@@ -85,7 +90,7 @@ impl server::Tap for Observe {
         let events = TapEvents {
             rx,
             tap_id,
-            current: IndexMap::default(),
+            current: IndexSet::default(),
             remaining: req.limit as usize,
             taps: self.taps.clone(),
         };
@@ -115,21 +120,21 @@ impl Stream for TapEvents {
                                 continue;
                             }
                             self.remaining -= 1;
-                            let _ = self.current.insert(req.clone(), ());
+                            let _ = self.current.insert(RequestById(req.clone()));
                         }
                         Event::StreamRequestFail(ref req, _) => {
-                            if self.current.remove(req).is_none() {
+                            if !self.current.remove(&req.id) {
                                 continue;
                             }
                         }
                         Event::StreamResponseOpen(ref rsp, _) => {
-                            if !self.current.contains_key(&rsp.request) {
+                            if !self.current.contains(&rsp.request.id) {
                                 continue;
                             }
                         }
                         Event::StreamResponseFail(ref rsp, _) |
                         Event::StreamResponseEnd(ref rsp, _) => {
-                            if self.current.remove(&rsp.request).is_none() {
+                            if !self.current.remove(&rsp.request.id) {
                                 continue;
                             }
                         }
@@ -154,5 +159,26 @@ impl Drop for TapEvents {
         if let Ok(mut taps) = self.taps.lock() {
             let _ = (*taps).remove(self.tap_id);
         }
+    }
+}
+
+impl Eq for RequestById {}
+
+impl PartialEq for RequestById {
+    fn eq(&self, other: &RequestById) -> bool {
+        self.0.id.eq(&other.0.id)
+    }
+}
+
+impl Hash for RequestById {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.id.hash(state)
+    }
+}
+
+impl Equivalent<RequestById> for ctx::http::RequestId {
+    /// Compare self to `key` and return `true` if they are equal.
+    fn equivalent(&self, key: &RequestById) -> bool {
+        *self == key.0.id
     }
 }

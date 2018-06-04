@@ -87,7 +87,7 @@ pub struct Resolution<B> {
 }
 
 /// Metadata describing an endpoint.
-#[derive(Clone, Debug, Hash, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Metadata {
     /// A set of Prometheus metric labels describing the destination.
     dst_labels: Option<DstLabels>,
@@ -98,12 +98,10 @@ pub struct Metadata {
 
 /// How to verify TLS for an endpoint.
 ///
-/// NOTE: This currently derives `Hash`, `PartialEq`, and `Eq`, which is not
-///       entirely correct, as domain name equality ought to be case
-///       insensitive. However, `Metadata` must be `Hash` + `Eq`, so this is at
-///       least better than having `Metadata` ignore the TLS identity when
-///       checking for equality
-#[derive(Debug, Hash, PartialEq, Eq)]
+/// XXX: This currently derives `PartialEq  and `Eq`, which is not entirely
+/// correct, as domain name equality ought to be case insensitive. However,
+/// `Metadata` must be `Eq`.
+#[derive(Debug, PartialEq, Eq)]
 pub enum TlsIdentity {
     K8sPodNamespace {
         controller_ns: String,

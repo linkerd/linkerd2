@@ -35,7 +35,7 @@ pub struct Histogram<V: Into<u64>> {
     _p: PhantomData<V>,
 }
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone, Hash)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum Bucket {
     Le(u64),
     Inf,

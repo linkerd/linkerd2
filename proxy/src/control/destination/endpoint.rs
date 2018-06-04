@@ -6,7 +6,7 @@ use super::{Metadata, TlsIdentity};
 /// An individual traffic target.
 ///
 /// Equality, Ordering, and hashability is determined soley by the Endpoint's address.
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Endpoint {
     address: SocketAddr,
     metadata: Metadata,

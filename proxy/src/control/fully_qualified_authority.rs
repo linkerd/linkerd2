@@ -3,7 +3,7 @@ use bytes::{BytesMut};
 use transport::DnsNameAndPort;
 
 /// A normalized `Authority`.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FullyQualifiedAuthority(String);
 
 impl FullyQualifiedAuthority {

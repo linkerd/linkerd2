@@ -14,7 +14,7 @@ pub mod http;
 pub mod transport;
 
 /// Describes a single running proxy instance.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Process {
     /// Identifies the Kubernetes namespace in which this proxy is process.
     pub scheduled_namespace: String,
@@ -29,7 +29,7 @@ pub struct Process {
 ///   local instance.
 /// - The  _outbound_ proxy receives traffic from the local instance and forwards it to a
 ///   remove service.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Proxy {
     Inbound(Arc<Process>),
     Outbound(Arc<Process>),
@@ -117,7 +117,7 @@ pub mod test_util {
         uri: &str,
         server: &Arc<ctx::transport::Server>,
         client: &Arc<ctx::transport::Client>,
-        id: usize
+        id: ctx::http::RequestId,
     ) -> (Arc<ctx::http::Request>, Arc<ctx::http::Response>) {
         let req = ctx::http::Request::new(
             &http::Request::get(uri).body(()).unwrap(),

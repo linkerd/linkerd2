@@ -5,11 +5,14 @@ use ctx;
 use control::destination;
 use telemetry::metrics::DstLabels;
 
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct RequestId(usize);
+
 /// Describes a stream's request headers.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Debug)]
 pub struct Request {
     // A numeric ID useful for debugging & correlation.
-    pub id: usize,
+    pub id: RequestId,
 
     pub uri: http::Uri,
     pub method: http::Method,
@@ -22,7 +25,7 @@ pub struct Request {
 }
 
 /// Describes a stream's response headers.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Debug)]
 pub struct Response {
     pub request: Arc<Request>,
 
@@ -36,12 +39,24 @@ pub struct Response {
 //    pub h2_error_code: Option<u32>,
 //}
 
+impl From<usize> for RequestId {
+    fn from(value: usize) -> Self {
+        RequestId(value)
+    }
+}
+
+impl Into<u64> for RequestId {
+    fn into(self) -> u64 {
+        self.0 as u64
+    }
+}
+
 impl Request {
     pub fn new<B>(
         request: &http::Request<B>,
         server: &Arc<ctx::transport::Server>,
         client: &Arc<ctx::transport::Client>,
-        id: usize,
+        id: RequestId,
     ) -> Arc<Self> {
         let r = Self {
             id,
