@@ -14,9 +14,11 @@ use super::{
     webpki,
 };
 
-use futures::{ Future, Sink, Stream };
+use futures::{future, Future, Sink, Stream};
 use futures_watch::Watch;
 use tokio::timer::Interval;
+
+pub type ServerConfigWatch = Watch<Option<ServerConfig>>;
 
 /// Not-yet-validated settings that are used for both TLS clients and TLS
 /// servers.
@@ -174,8 +176,10 @@ impl ServerConfig {
     /// Watch a `Stream` of changes to a `CommonConfig`, such as those returned by
     /// `CommonSettings::stream_changes`, and update a `futures_watch::Watch` cell
     /// with a `ServerConfig` generated from each change.
-    pub fn watch(changes: impl Stream<Item = CommonConfig, Error = ()>)
-        -> (Watch<Option<Self>>, impl Future<Item=(), Error=()>)
+    pub fn watch<C>(changes: C)
+        -> (ServerConfigWatch, Box<Future<Item=(), Error=()> + Send>)
+    where
+        C: Stream<Item = CommonConfig, Error = ()> + Send + 'static,
     {
         let (watch, store) = Watch::new(None);
         let server_configs = changes.map(|ref config| Self::from(config));
@@ -183,7 +187,21 @@ impl ServerConfig {
             .sink_map_err(|_| warn!("all server config watches dropped"));
         let f = server_configs.map(Some).forward(store)
             .map(|_| trace!("forwarding to server config watch finished."));
-        (watch, f)
+
+        // NOTE: This function and `no_tls` return `Box<Future<...>>` rather
+        //       than `impl Future<...>` so that they can have the _same_
+        //       return types (impl Traits are not the same type unless the
+        //       original non-anonymized type was the same).
+        (watch, Box::new(f))
+    }
+
+    pub fn no_tls()
+        -> (ServerConfigWatch, Box<Future<Item = (), Error = ()> + Send>)
+    {
+            let (watch, _) = Watch::new(None);
+            let no_future = future::ok(());
+
+            (watch, Box::new(no_future))
     }
 }
 

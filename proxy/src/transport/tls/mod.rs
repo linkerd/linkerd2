@@ -10,6 +10,6 @@ mod cert_resolver;
 mod connection;
 
 pub use self::{
-    config::{CommonSettings, CommonConfig, Error, ServerConfig},
+    config::{CommonSettings, CommonConfig, Error, ServerConfig, ServerConfigWatch},
     connection::Connection,
 };
