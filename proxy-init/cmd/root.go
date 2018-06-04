@@ -2,70 +2,86 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/runconduit/conduit/proxy-init/iptables"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
-var incomingProxyPort int
-var outgoingProxyPort int
-var proxyUserId int
-var portsToRedirect []int
-var inboundPortsToIgnore []int
-var outboundPortsToIgnore []int
-var simulateOnly bool
+type rootOptions struct {
+	incomingProxyPort     int
+	outgoingProxyPort     int
+	proxyUserId           int
+	portsToRedirect       []int
+	inboundPortsToIgnore  []int
+	outboundPortsToIgnore []int
+	simulateOnly          bool
+}
 
-var RootCmd = &cobra.Command{
-	Use:   "proxy-init",
-	Short: "Adds a Kubernetes pod to join the Conduit Service Mesh",
-	Long: `proxy-init Adds a Kubernetes pod to join the Conduit Service Mesh.
+func newRootOptions() *rootOptions {
+	return &rootOptions{
+		incomingProxyPort:     -1,
+		outgoingProxyPort:     -1,
+		proxyUserId:           -1,
+		portsToRedirect:       make([]int, 0),
+		inboundPortsToIgnore:  make([]int, 0),
+		outboundPortsToIgnore: make([]int, 0),
+		simulateOnly:          false,
+	}
+}
+
+func NewRootCmd() *cobra.Command {
+	options := newRootOptions()
+
+	cmd := &cobra.Command{
+		Use:   "proxy-init",
+		Short: "Adds a Kubernetes pod to the Conduit Service Mesh",
+		Long: `proxy-init Adds a Kubernetes pod to the Conduit Service Mesh.
 
 Find more information at https://conduit.io/.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		err := iptables.ConfigureFirewall(buildFirewallConfiguration())
-		if err != nil {
-			log.Fatal(err)
-		}
-	},
-}
-
-func init() {
-	RootCmd.PersistentFlags().IntVarP(&incomingProxyPort, "incoming-proxy-port", "p", -1, "Port to redirect incoming traffic")
-	RootCmd.PersistentFlags().IntVarP(&outgoingProxyPort, "outgoing-proxy-port", "o", -1, "Port to redirect outgoing traffic")
-	RootCmd.PersistentFlags().BoolVar(&simulateOnly, "simulate", false, "Don't execute any command, just print what would be executed")
-	RootCmd.PersistentFlags().IntSliceVarP(&portsToRedirect, "ports-to-redirect", "r", make([]int, 0), "Port to redirect to proxy, if no port is specified then ALL ports are redirected")
-	RootCmd.PersistentFlags().IntSliceVar(&inboundPortsToIgnore, "inbound-ports-to-ignore", make([]int, 0), "Inbound ports to ignore and not redirect to proxy. This has higher precedence than any other parameters.")
-	RootCmd.PersistentFlags().IntSliceVar(&outboundPortsToIgnore, "outbound-ports-to-ignore", make([]int, 0), "Outbound ports to ignore and not redirect to proxy. This has higher precedence than any other parameters.")
-	RootCmd.PersistentFlags().IntVarP(&proxyUserId, "proxy-uid", "u", -1, "User ID that the proxy is running under. Any traffic coming from this user will be ignored to avoid infinite redirection loops.")
-}
-
-func buildFirewallConfiguration() iptables.FirewallConfiguration {
-	if incomingProxyPort < 0 || incomingProxyPort > 65535 {
-		fmt.Println("--incoming-proxy-port must be a valid TCP port number")
-		os.Exit(1)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			config, err := buildFirewallConfiguration(options)
+			if err != nil {
+				return err
+			}
+			return iptables.ConfigureFirewall(*config)
+		},
 	}
 
-	if outgoingProxyPort < 0 || incomingProxyPort > 65535 {
-		fmt.Println("--outgoing-proxy-port must be a valid TCP port number")
-		os.Exit(1)
+	cmd.PersistentFlags().IntVarP(&options.incomingProxyPort, "incoming-proxy-port", "p", options.incomingProxyPort, "Port to redirect incoming traffic")
+	cmd.PersistentFlags().IntVarP(&options.outgoingProxyPort, "outgoing-proxy-port", "o", options.outgoingProxyPort, "Port to redirect outgoing traffic")
+	cmd.PersistentFlags().IntVarP(&options.proxyUserId, "proxy-uid", "u", options.proxyUserId, "User ID that the proxy is running under. Any traffic coming from this user will be ignored to avoid infinite redirection loops.")
+	cmd.PersistentFlags().IntSliceVarP(&options.portsToRedirect, "ports-to-redirect", "r", options.portsToRedirect, "Port to redirect to proxy, if no port is specified then ALL ports are redirected")
+	cmd.PersistentFlags().IntSliceVar(&options.inboundPortsToIgnore, "inbound-ports-to-ignore", options.inboundPortsToIgnore, "Inbound ports to ignore and not redirect to proxy. This has higher precedence than any other parameters.")
+	cmd.PersistentFlags().IntSliceVar(&options.outboundPortsToIgnore, "outbound-ports-to-ignore", options.outboundPortsToIgnore, "Outbound ports to ignore and not redirect to proxy. This has higher precedence than any other parameters.")
+	cmd.PersistentFlags().BoolVar(&options.simulateOnly, "simulate", options.simulateOnly, "Don't execute any command, just print what would be executed")
+
+	return cmd
+}
+
+func buildFirewallConfiguration(options *rootOptions) (*iptables.FirewallConfiguration, error) {
+	if options.incomingProxyPort < 0 || options.incomingProxyPort > 65535 {
+		return nil, fmt.Errorf("--incoming-proxy-port must be a valid TCP port number")
 	}
 
-	firewallConfiguration := iptables.FirewallConfiguration{}
+	if options.outgoingProxyPort < 0 || options.outgoingProxyPort > 65535 {
+		return nil, fmt.Errorf("--outgoing-proxy-port must be a valid TCP port number")
+	}
 
-	if len(portsToRedirect) > 0 {
+	firewallConfiguration := &iptables.FirewallConfiguration{
+		ProxyInboundPort:       options.incomingProxyPort,
+		ProxyOutgoingPort:      options.outgoingProxyPort,
+		ProxyUid:               options.proxyUserId,
+		PortsToRedirectInbound: options.portsToRedirect,
+		InboundPortsToIgnore:   options.inboundPortsToIgnore,
+		OutboundPortsToIgnore:  options.outboundPortsToIgnore,
+		SimulateOnly:           options.simulateOnly,
+	}
+
+	if len(options.portsToRedirect) > 0 {
 		firewallConfiguration.Mode = iptables.RedirectListedMode
 	} else {
 		firewallConfiguration.Mode = iptables.RedirectAllMode
 	}
 
-	firewallConfiguration.PortsToRedirectInbound = portsToRedirect
-	firewallConfiguration.InboundPortsToIgnore = inboundPortsToIgnore
-	firewallConfiguration.OutboundPortsToIgnore = outboundPortsToIgnore
-	firewallConfiguration.ProxyInboundPort = incomingProxyPort
-	firewallConfiguration.ProxyOutgoingPort = outgoingProxyPort
-	firewallConfiguration.ProxyUid = proxyUserId
-	firewallConfiguration.SimulateOnly = simulateOnly
-	return firewallConfiguration
+	return firewallConfiguration, nil
 }
