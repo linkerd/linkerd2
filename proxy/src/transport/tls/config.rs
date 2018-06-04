@@ -1,8 +1,9 @@
 use std::{
-    fs::File,
+    fs::{self, File},
     io::{self, Cursor, Read},
     path::PathBuf,
     sync::Arc,
+    time::{Duration, Instant, SystemTime,},
 };
 
 use super::{
@@ -12,6 +13,12 @@ use super::{
     untrusted,
     webpki,
 };
+
+use futures::{future, Future, Sink, Stream};
+use futures_watch::Watch;
+use tokio::timer::Interval;
+
+pub type ServerConfigWatch = Watch<Option<ServerConfig>>;
 
 /// Not-yet-validated settings that are used for both TLS clients and TLS
 /// servers.
@@ -42,6 +49,7 @@ pub struct CommonConfig {
     cert_resolver: Arc<CertResolver>,
 }
 
+
 /// Validated configuration for TLS servers.
 #[derive(Clone)]
 pub struct ServerConfig(pub(super) Arc<rustls::ServerConfig>);
@@ -55,6 +63,61 @@ pub enum Error {
     EndEntityCertIsNotValid(webpki::Error),
     InvalidPrivateKey,
     TimeConversionFailed,
+}
+
+impl CommonSettings {
+
+    fn change_timestamps(&self, interval: Duration) -> impl Stream<Item = (), Error = ()> {
+        let paths = [
+            self.trust_anchors.clone(),
+            self.end_entity_cert.clone(),
+            self.private_key.clone(),
+        ];
+        let mut max: Option<SystemTime> = None;
+        Interval::new(Instant::now(), interval)
+            .map_err(|e| error!("timer error: {:?}", e))
+            .filter_map(move |_| {
+                for path in &paths  {
+                    let t = fs::metadata(path)
+                        .and_then(|meta| meta.modified())
+                        .map_err(|e| if e.kind() != io::ErrorKind::NotFound {
+                            // Don't log if the files don't exist, since this
+                            // makes the logs *quite* noisy.
+                            warn!("metadata for {:?}: {}", path, e)
+                        })
+                        .ok();
+                    if t > max {
+                        max = t;
+                        trace!("{:?} changed at {:?}", path, t);
+                        return Some(());
+                    }
+                }
+                None
+            })
+    }
+
+    /// Stream changes to the files described by this `CommonSettings`.
+    ///
+    /// This will poll the filesystem for changes to the files at the paths
+    /// described by this `CommonSettings` every `interval`, and attempt to
+    /// load a new `CommonConfig` from the files again after each change.
+    ///
+    /// The returned stream consists of each subsequent successfully loaded
+    /// `CommonSettings` after each change. If the settings could not be
+    /// reloaded (i.e., they were malformed), nothing is sent.
+    ///
+    /// TODO: On Linux, this should be replaced with an `inotify` watch when
+    ///       available.
+    pub fn stream_changes(self, interval: Duration)
+        -> impl Stream<Item = CommonConfig, Error = ()>
+    {
+        self.change_timestamps(interval)
+            .filter_map(move |_|
+                CommonConfig::load_from_disk(&self)
+                    .map_err(|e| warn!("error reloading TLS config: {:?}, falling back", e))
+                    .ok()
+            )
+    }
 }
 
 impl CommonConfig {
@@ -99,6 +162,7 @@ impl CommonConfig {
             cert_resolver: Arc::new(cert_resolver),
         })
     }
+
 }
 
 impl ServerConfig {
@@ -107,6 +171,37 @@ impl ServerConfig {
         set_common_settings(&mut config.versions);
         config.cert_resolver = common.cert_resolver.clone();
         ServerConfig(Arc::new(config))
+    }
+
+    /// Watch a `Stream` of changes to a `CommonConfig`, such as those returned by
+    /// `CommonSettings::stream_changes`, and update a `futures_watch::Watch` cell
+    /// with a `ServerConfig` generated from each change.
+    pub fn watch<C>(changes: C)
+        -> (ServerConfigWatch, Box<Future<Item=(), Error=()> + Send>)
+    where
+        C: Stream<Item = CommonConfig, Error = ()> + Send + 'static,
+    {
+        let (watch, store) = Watch::new(None);
+        let server_configs = changes.map(|ref config| Self::from(config));
+        let store = store
+            .sink_map_err(|_| warn!("all server config watches dropped"));
+        let f = server_configs.map(Some).forward(store)
+            .map(|_| trace!("forwarding to server config watch finished."));
+
+        // NOTE: This function and `no_tls` return `Box<Future<...>>` rather
+        //       than `impl Future<...>` so that they can have the _same_
+        //       return types (impl Traits are not the same type unless the
+        //       original non-anonymized type was the same).
+        (watch, Box::new(f))
+    }
+
+    pub fn no_tls()
+        -> (ServerConfigWatch, Box<Future<Item = (), Error = ()> + Send>)
+    {
+            let (watch, _) = Watch::new(None);
+            let no_future = future::ok(());
+
+            (watch, Box::new(no_future))
     }
 }
 

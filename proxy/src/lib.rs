@@ -10,6 +10,7 @@ extern crate deflate;
 #[macro_use]
 extern crate futures;
 extern crate futures_mpsc_lossy;
+extern crate futures_watch;
 extern crate h2;
 extern crate http;
 extern crate httparse;
@@ -229,20 +230,15 @@ where
 
         let bind = Bind::new().with_sensors(sensors.clone());
 
-        // TODO: Load the TLS configuration asynchronously and watch for
-        // changes to the files.
-        let tls_config = config.tls_settings.and_then(|settings| {
-            match tls::CommonConfig::load_from_disk(&settings) {
-                Ok(config) => Some(config),
-                Err(e) => {
-                    // Keep going without TLS if loading settings failed.
-                    error!("Error loading TLS configuration: {:?}", e);
-                    None
-                }
-            }
-        });
+        let tls_config_changes = config.tls_settings
+            // TODO: determine the correct interval for this.
+            .map(|settings| settings.stream_changes(Duration::from_secs(1)));
 
-        let tls_server_config = tls_config.as_ref().map(tls::ServerConfig::from);
+        let (tls_server_config, tls_cfg_bg) =
+            tls_config_changes
+                .map(tls::ServerConfig::watch)
+                .unwrap_or_else(tls::ServerConfig::no_tls);
+
 
         // Setup the public listener. This will listen on a publicly accessible
         // address and listen for inbound connections that should be forwarded
@@ -283,9 +279,11 @@ where
                 config.outbound_router_capacity,
                 config.outbound_router_max_idle_age,
             );
+            // No TLS yet.
+            let (no_tls, _) = tls::ServerConfig::no_tls();
             serve(
                 outbound_listener,
-                None, // No TLS
+                no_tls,
                 router,
                 config.public_connect_timeout,
                 config.outbound_ports_disable_protocol_detection,
@@ -318,7 +316,10 @@ where
                             tap.map_err(|_| {}),
                             metrics_server.map_err(|_| {}),
                             ::logging::admin().bg("dns-resolver").future(dns_bg),
-                        ).map(|_| {});
+                        )
+                        // There's no `Future::join6` combinator...
+                        .join(::logging::admin().bg("tls-config").future(tls_cfg_bg))
+                        .map(|_| {});
 
                     rt.spawn(Box::new(fut));
 
@@ -349,7 +350,7 @@ where
 
 fn serve<R, B, E, F, G>(
     bound_port: BoundPort,
-    tls_config: Option<tls::ServerConfig>,
+    tls_config: tls::ServerConfigWatch,
     router: Router<R>,
     tcp_connect_timeout: Duration,
     disable_protocol_detection_ports: IndexSet<u16>,
@@ -504,11 +505,12 @@ where
         h2_builder,
         log.clone().executor(),
     );
+    let (no_tls, _) = tls::ServerConfig::no_tls();
 
     let fut = {
         let log = log.clone();
         bound_port.listen_and_fold(
-            None, // No TLS
+            no_tls,
             server,
             move |server, (session, remote)| {
                 let log = log.clone().with_remote(remote);

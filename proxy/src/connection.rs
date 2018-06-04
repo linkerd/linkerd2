@@ -97,7 +97,7 @@ impl BoundPort {
     // TLS when needed.
     pub fn listen_and_fold<T, F, Fut>(
         self,
-        tls_config: Option<tls::ServerConfig>,
+        tls_config: tls::ServerConfigWatch,
         initial: T,
         f: F)
         -> impl Future<Item = (), Error = io::Error> + Send + 'static
@@ -105,7 +105,8 @@ impl BoundPort {
         F: Fn(T, (Connection, SocketAddr)) -> Fut + Send + 'static,
         T: Send + 'static,
         Fut: IntoFuture<Item = T, Error = std::io::Error> + Send + 'static,
-        <Fut as IntoFuture>::Future: Send, {
+        <Fut as IntoFuture>::Future: Send,
+    {
         future::lazy(move || {
             // Create the TCP listener lazily, so that it's not bound to a
             // reactor until the future is run. This will avoid
@@ -125,10 +126,10 @@ impl BoundPort {
                     // libraries don't have the necessary API for that, so just
                     // do it here.
                     set_nodelay_or_warn(&socket);
-                    match tls_config.clone() {
+                    match tls_config.borrow().as_ref() {
                         Some(tls_config) => {
                             Either::A(
-                                tls::Connection::accept(socket, tls_config)
+                                tls::Connection::accept(socket, tls_config.clone())
                                     .map(move |tls| (Connection::new(Box::new(tls)), remote_addr)))
                         },
                         None => Either::B(future::ok((Connection::new(Box::new(socket)), remote_addr))),
