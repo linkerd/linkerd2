@@ -19,9 +19,10 @@ type updateListener interface {
 
 // implements the updateListener interface
 type endpointListener struct {
-	stream   pb.Destination_GetServer
-	podsByIp k8s.PodIndex
-	labels   map[string]string
+	stream    pb.Destination_GetServer
+	podsByIp  k8s.PodIndex
+	labels    map[string]string
+	enableTLS bool
 }
 
 func (l *endpointListener) Done() <-chan struct{} {
@@ -86,6 +87,7 @@ func (l *endpointListener) toWeightedAddrSet(endpoints []common.TcpAddress) *pb.
 }
 
 func (l *endpointListener) toWeightedAddr(address common.TcpAddress) *pb.WeightedAddr {
+	var tlsIdentity *pb.TlsIdentity
 	metricLabelsForPod := map[string]string{}
 	ipAsString := util.IPToString(address.Ip)
 
@@ -99,6 +101,7 @@ func (l *endpointListener) toWeightedAddr(address common.TcpAddress) *pb.Weighte
 				podFound = true
 				metricLabelsForPod = pkgK8s.GetOwnerLabels(pod.ObjectMeta)
 				metricLabelsForPod["pod"] = pod.Name
+				tlsIdentity = l.toTlsIdentity(pod)
 				break
 			}
 		}
@@ -111,6 +114,7 @@ func (l *endpointListener) toWeightedAddr(address common.TcpAddress) *pb.Weighte
 		Addr:         &address,
 		Weight:       1,
 		MetricLabels: metricLabelsForPod,
+		TlsIdentity:  tlsIdentity,
 	}
 }
 
@@ -120,4 +124,20 @@ func (l *endpointListener) toAddrSet(endpoints []common.TcpAddress) *pb.AddrSet 
 		addrs = append(addrs, &endpoints[i])
 	}
 	return &pb.AddrSet{Addrs: addrs}
+}
+
+func (l *endpointListener) toTlsIdentity(pod *coreV1.Pod) *pb.TlsIdentity {
+	if !l.enableTLS {
+		return nil
+	}
+
+	return &pb.TlsIdentity{
+		Strategy: &pb.TlsIdentity_K8SPodNamespace_{
+			K8SPodNamespace: &pb.TlsIdentity_K8SPodNamespace{
+				ControllerNs: pkgK8s.GetControllerNs(pod.ObjectMeta),
+				PodNs:        pod.Namespace,
+				PodName:      pod.Name,
+			},
+		},
+	}
 }

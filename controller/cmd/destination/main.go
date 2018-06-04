@@ -18,6 +18,7 @@ func main() {
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
 	k8sDNSZone := flag.String("kubernetes-dns-zone", "", "The DNS suffix for the local Kubernetes zone.")
 	logLevel := flag.String("log-level", log.InfoLevel.String(), "log level, must be one of: panic, fatal, error, warn, info, debug")
+	enableTLS := flag.Bool("enable-tls", false, "Enable TLS connections among pods in the service mesh")
 	printVersion := version.VersionFlag()
 	flag.Parse()
 
@@ -35,7 +36,7 @@ func main() {
 
 	done := make(chan struct{})
 
-	server, lis, err := destination.NewServer(*addr, *kubeConfigPath, *k8sDNSZone, done)
+	server, lis, err := destination.NewServer(*addr, *kubeConfigPath, *k8sDNSZone, *enableTLS, done)
 	if err != nil {
 		log.Fatal(err)
 	}

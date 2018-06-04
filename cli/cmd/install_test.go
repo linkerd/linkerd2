@@ -36,6 +36,7 @@ func TestRender(t *testing.T) {
 		ControllerComponentLabel: "ControllerComponentLabel",
 		CreatedByAnnotation:      "CreatedByAnnotation",
 		ProxyAPIPort:             123,
+		EnableTLS:                true,
 	}
 
 	testCases := []struct {

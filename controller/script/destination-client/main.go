@@ -51,9 +51,14 @@ func main() {
 		switch updateType := update.Update.(type) {
 		case *pb.Update_Add:
 			log.Println("Add:")
-			log.Printf("metric_labels: %v", updateType.Add.MetricLabels)
+			log.Printf("labels: %v", updateType.Add.MetricLabels)
 			for _, addr := range updateType.Add.Addrs {
-				log.Printf("- %s:%d - %v", util.IPToString(addr.Addr.GetIp()), addr.Addr.Port, addr.MetricLabels)
+				log.Printf("- %s:%d", util.IPToString(addr.Addr.GetIp()), addr.Addr.Port)
+				log.Printf("  - labels: %v", addr.MetricLabels)
+				switch identityType := addr.GetTlsIdentity().GetStrategy().(type) {
+				case *pb.TlsIdentity_K8SPodNamespace_:
+					log.Printf("  - tls:    %v", identityType.K8SPodNamespace)
+				}
 			}
 			log.Println()
 		case *pb.Update_Remove:

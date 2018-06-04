@@ -162,6 +162,7 @@ spec:
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
         - "destination"
+        - "-enable-tls={{.EnableTLS}}"
         - "-log-level={{.ControllerLogLevel}}"
         - "-logtostderr=true"
       - name: proxy-api
