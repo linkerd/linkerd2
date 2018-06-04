@@ -32,18 +32,18 @@ type rowStat struct {
 	secured    string
 }
 
+var controllerDeployments = []string{"controller", "grafana", "prometheus", "web"}
+
 //////////////////////
 /// TEST EXECUTION ///
 //////////////////////
 
 // This test retries for up to 20 seconds, since each call to "conduit stat"
-// generates traffic to the controller and prometheus deployments in the conduit
-// namespace, and we're testing that those deployments are properly reporting
-// stats. It's ok if the first few attempts fail due to missing stats, since the
-// requests from those failed attempts will eventually be recorded in the stats
-// that we're requesting, and the test will pass. Note that we're not validating
-// stats for the web and grafana deployments, since we aren't guaranteeing that
-// they're receiving traffic as part of this test.
+// generates traffic to the deployments in the conduit namespace, and we're
+// testing that those deployments are properly reporting stats. It's ok if the
+// first few attempts fail due to missing stats, since the requests from those
+// failed attempts will eventually be recorded in the stats that we're
+// requesting, and the test will pass.
 func TestCliStatForConduitNamespace(t *testing.T) {
 
 	err := TestHelper.RetryFor(20*time.Second, func() error {
@@ -57,7 +57,7 @@ func TestCliStatForConduitNamespace(t *testing.T) {
 			return err
 		}
 
-		for _, name := range []string{"controller", "prometheus"} {
+		for _, name := range controllerDeployments {
 			if err := validateRowStats(name, rowStats); err != nil {
 				return err
 			}
