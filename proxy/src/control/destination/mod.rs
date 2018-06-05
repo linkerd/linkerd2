@@ -248,12 +248,6 @@ impl Responder {
 
 // ===== impl Metadata =====
 
-impl Default for Metadata {
-    fn default() -> Self {
-        Self::no_metadata()
-    }
-}
-
 impl Metadata {
     /// Construct a Metadata struct representing an endpoint with no metadata.
     pub fn no_metadata() -> Self {
