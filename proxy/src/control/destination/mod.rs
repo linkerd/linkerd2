@@ -88,10 +88,30 @@ pub struct Resolution<B> {
 
 /// Metadata describing an endpoint.
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
-struct Metadata {
+pub struct Metadata {
     /// A set of Prometheus metric labels describing the destination.
-    metric_labels: Option<DstLabels>,
+    dst_labels: Option<DstLabels>,
+
+    /// How to verify TLS for the endpoint.
+    tls_identity: Option<Arc<TlsIdentity>>,
 }
+
+/// How to verify TLS for an endpoint.
+///
+/// NOTE: This currently derives `Hash`, `PartialEq`, and `Eq`, which is not
+///       entirely correct, as domain name equality ought to be case
+///       insensitive. However, `Metadata` must be `Hash` + `Eq`, so this is at
+///       least better than having `Metadata` ignore the TLS identity when
+///       checking for equality
+#[derive(Debug, Hash, PartialEq, Eq)]
+pub enum TlsIdentity {
+    K8sPodNamespace {
+        controller_ns: String,
+        pod_ns: String,
+        pod_name: String,
+    },
+}
+
 
 #[derive(Debug, Clone)]
 enum Update {
@@ -204,7 +224,7 @@ where
                     // by replacing the old endpoint with the new one, so
                     // insertions of new endpoints and metadata changes for
                     // existing ones can be handled in the same way.
-                    let endpoint = Endpoint::new(addr, meta.metric_labels.clone());
+                    let endpoint = Endpoint::new(addr, meta);
 
                     let service = self.bind.bind(&endpoint).map_err(|_| ())?;
 
@@ -229,9 +249,31 @@ impl Responder {
 // ===== impl Metadata =====
 
 impl Metadata {
-    fn no_metadata() -> Self {
+    /// Construct a Metadata struct representing an endpoint with no metadata.
+    pub fn no_metadata() -> Self {
         Metadata {
-            metric_labels: None,
+            dst_labels: None,
+            // If we have no metadata on an endpoint, assume it does not support TLS.
+            tls_identity: None,
         }
+    }
+
+    pub fn new(
+        dst_labels: Option<DstLabels>,
+        tls_identity: Option<TlsIdentity>
+    ) -> Self {
+        Metadata {
+            dst_labels,
+            tls_identity: tls_identity.map(Arc::new),
+        }
+    }
+
+    /// Returns the endpoint's labels from the destination service, if it has them.
+    pub fn dst_labels(&self) -> Option<&DstLabels> {
+        self.dst_labels.as_ref()
+    }
+
+    pub fn tls_identity(&self) -> Option<&TlsIdentity> {
+        self.tls_identity.as_ref().map(Arc::as_ref)
     }
 }

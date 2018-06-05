@@ -22,9 +22,13 @@ use tower_reconnect::Reconnect;
 use conduit_proxy_controller_grpc::common::{Destination, TcpAddress};
 use conduit_proxy_controller_grpc::destination::client::Destination as DestinationSvc;
 use conduit_proxy_controller_grpc::destination::update::Update as PbUpdate2;
-use conduit_proxy_controller_grpc::destination::{Update as PbUpdate, WeightedAddr};
+use conduit_proxy_controller_grpc::destination::{
+    Update as PbUpdate,
+    TlsIdentity as TlsIdentityPb,
+    WeightedAddr,
+};
 
-use super::{Metadata, ResolveRequest, Responder, Update};
+use super::{TlsIdentity, Metadata, ResolveRequest, Responder, Update};
 use control::{
     cache::{Cache, CacheChange, Exists},
     fully_qualified_authority::FullyQualifiedAuthority,
@@ -566,11 +570,26 @@ fn pb_to_addr_meta(
         .collect::<Vec<_>>();
     labels.sort_by(|(k0, _), (k1, _)| k0.cmp(k1));
 
-    let meta = Metadata {
-        metric_labels: DstLabels::new(labels.into_iter()),
-    };
+    let tls = pb.tls_identity.and_then(TlsIdentity::from_pb);
+
+    let meta = Metadata::new(DstLabels::new(labels.into_iter()), tls);
     Some((addr, meta))
 }
+
+impl TlsIdentity {
+    pub fn from_pb(pb: TlsIdentityPb) -> Option<Self> {
+        use conduit_proxy_controller_grpc::destination::tls_identity::Strategy;
+        pb.strategy.map(|strategy| match strategy {
+            Strategy::K8sPodNamespace(i) =>
+                TlsIdentity::K8sPodNamespace {
+                    controller_ns: i.controller_ns,
+                    pod_ns: i.pod_ns,
+                    pod_name: i.pod_name,
+                },
+        })
+    }
+}
+
 
 fn pb_to_sock_addr(pb: TcpAddress) -> Option<SocketAddr> {
     use conduit_proxy_controller_grpc::common::ip_address::Ip;

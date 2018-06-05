@@ -86,6 +86,7 @@ pub mod test_util {
     };
 
     use ctx;
+    use control::destination;
     use telemetry::metrics::DstLabels;
 
     fn addr() -> SocketAddr {
@@ -108,8 +109,8 @@ pub mod test_util {
         L: IntoIterator<Item=(S, S)>,
         S: fmt::Display,
     {
-        let labels = DstLabels::new(labels);
-        ctx::transport::Client::new(&proxy, &addr(), labels)
+        let meta = destination::Metadata::new(DstLabels::new(labels), None);
+        ctx::transport::Client::new(&proxy, &addr(), meta)
     }
 
     pub fn request(

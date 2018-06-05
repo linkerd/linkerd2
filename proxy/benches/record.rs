@@ -7,6 +7,7 @@ extern crate test;
 
 use conduit_proxy::{
     ctx,
+    control::destination,
     telemetry::{
         event,
         metrics,
@@ -43,7 +44,11 @@ where
     L: IntoIterator<Item=(S, S)>,
     S: fmt::Display,
 {
-    ctx::transport::Client::new(&proxy, &addr(), metrics::DstLabels::new(labels))
+    ctx::transport::Client::new(
+        &proxy,
+        &addr(),
+        destination::Metadata::new(metrics::DstLabels::new(labels), None),
+    )
 }
 
 fn request(

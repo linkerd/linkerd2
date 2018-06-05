@@ -1,8 +1,8 @@
-use std::{cmp, hash};
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 
 use ctx;
+use control::destination;
 use telemetry::metrics::DstLabels;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -21,11 +21,11 @@ pub struct Server {
 }
 
 /// Identifies a connection from the proxy to another process.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Client {
     pub proxy: Arc<ctx::Proxy>,
     pub remote: SocketAddr,
-    pub dst_labels: Option<DstLabels>,
+    pub metadata: destination::Metadata,
 }
 
 impl Ctx {
@@ -82,34 +82,25 @@ impl Client {
     pub fn new(
         proxy: &Arc<ctx::Proxy>,
         remote: &SocketAddr,
-        dst_labels: Option<DstLabels>,
+        metadata: destination::Metadata,
     ) -> Arc<Client> {
         let c = Client {
             proxy: Arc::clone(proxy),
             remote: *remote,
-            dst_labels,
+            metadata,
         };
 
         Arc::new(c)
     }
-}
 
-impl hash::Hash for Client {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        self.proxy.hash(state);
-        self.remote.hash(state);
-        // ignore dst_labels
+    pub fn tls_identity(&self) -> Option<&destination::TlsIdentity> {
+        self.metadata.tls_identity()
+    }
+
+    pub fn dst_labels(&self) -> Option<&DstLabels> {
+        self.metadata.dst_labels()
     }
 }
-
-impl cmp::PartialEq for Client {
-    fn eq(&self, other: &Self) -> bool {
-        self.proxy.eq(&other.proxy) &&
-        self.remote.eq(&other.remote)
-    }
-}
-
-impl cmp::Eq for Client {}
 
 impl From<Arc<Client>> for Ctx {
     fn from(c: Arc<Client>) -> Self {

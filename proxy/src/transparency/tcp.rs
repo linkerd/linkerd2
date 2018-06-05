@@ -7,6 +7,7 @@ use futures::{future, Async, Future, Poll};
 use tokio_connect::Connect;
 use tokio::io::{AsyncRead, AsyncWrite};
 
+use control::destination;
 use ctx::transport::{Client as ClientCtx, Server as ServerCtx};
 use telemetry::Sensors;
 use timeout::Timeout;
@@ -57,10 +58,10 @@ impl Proxy {
         let client_ctx = ClientCtx::new(
             &srv_ctx.proxy,
             &orig_dst,
-            None,
+            destination::Metadata::no_metadata(),
         );
         let c = Timeout::new(
-            transport::Connect::new(orig_dst),
+            transport::Connect::new(orig_dst, None), // No TLS.
             self.connect_timeout,
         );
         let connect = self.sensors.connect(c, &client_ctx);

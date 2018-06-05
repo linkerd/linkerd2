@@ -214,12 +214,12 @@ where
         let client_ctx = ctx::transport::Client::new(
             &self.ctx,
             &addr,
-            ep.dst_labels().cloned(),
+            ep.metadata().clone(),
         );
 
         // Map a socket address to a connection.
         let connect = self.sensors.connect(
-            transport::Connect::new(addr),
+            transport::Connect::new(addr, ep.tls_identity()),
             &client_ctx,
         );
 

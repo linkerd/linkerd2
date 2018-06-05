@@ -8,6 +8,7 @@ use std::str::FromStr;
 use http;
 
 use connection;
+use control::destination;
 use dns;
 
 #[derive(Debug, Clone)]
@@ -95,7 +96,12 @@ impl fmt::Display for HostAndPort {
 
 impl Connect {
     /// Returns a `Connect` to `addr`.
-    pub fn new(addr: SocketAddr) -> Self {
+    pub fn new(
+        addr: SocketAddr,
+        tls_identity: Option<&destination::TlsIdentity>,
+    ) -> Self {
+        // TODO: this is currently unused.
+        let _ = tls_identity;
         Self {
             addr,
         }
