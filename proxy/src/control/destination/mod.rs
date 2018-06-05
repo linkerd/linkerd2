@@ -103,7 +103,7 @@ pub struct Metadata {
 ///       insensitive. However, `Metadata` must be `Hash` + `Eq`, so this is at
 ///       least better than having `Metadata` ignore the TLS identity when
 ///       checking for equality
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Debug, Hash, PartialEq, Eq)]
 pub enum TlsIdentity {
     K8sPodNamespace {
         controller_ns: String,
