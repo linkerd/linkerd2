@@ -78,7 +78,7 @@ impl CommonSettings {
             .map_err(|e| error!("timer error: {:?}", e))
             .filter_map(move |_| {
                 for path in &paths  {
-                    let t = fs::metadata(path)
+                    let t = path.symlink_metadata()
                         .and_then(|meta| meta.modified())
                         .map_err(|e| if e.kind() != io::ErrorKind::NotFound {
                             // Don't log if the files don't exist, since this
