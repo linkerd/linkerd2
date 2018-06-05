@@ -34,7 +34,6 @@ pub struct TimestampRequestOpen<S> {
 }
 
 pub struct NewHttp<N, A, B> {
-    next_id: Arc<ctx::http::RequestIdSequence>,
     new_service: N,
     handle: super::Handle,
     client_ctx: Arc<ctx::transport::Client>,
@@ -42,7 +41,6 @@ pub struct NewHttp<N, A, B> {
 }
 
 pub struct Init<F, A, B> {
-    next_id: Arc<ctx::http::RequestIdSequence>,
     future: F,
     handle: super::Handle,
     client_ctx: Arc<ctx::transport::Client>,
@@ -52,7 +50,6 @@ pub struct Init<F, A, B> {
 /// Wraps a transport with telemetry.
 #[derive(Debug)]
 pub struct Http<S, A, B> {
-    next_id: Arc<ctx::http::RequestIdSequence>,
     service: S,
     handle: super::Handle,
     client_ctx: Arc<ctx::transport::Client>,
@@ -126,13 +123,11 @@ where
         + 'static,
 {
     pub(super) fn new(
-        next_id: Arc<ctx::http::RequestIdSequence>,
         new_service: N,
         handle: &super::Handle,
         client_ctx: &Arc<ctx::transport::Client>,
     ) -> Self {
         Self {
-            next_id,
             new_service,
             handle: handle.clone(),
             client_ctx: Arc::clone(client_ctx),
@@ -161,7 +156,6 @@ where
 
     fn new_service(&self) -> Self::Future {
         Init {
-            next_id: self.next_id.clone(),
             future: self.new_service.new_service(),
             handle: self.handle.clone(),
             client_ctx: Arc::clone(&self.client_ctx),
@@ -191,7 +185,6 @@ where
         Ok(Async::Ready(Http {
             service,
             handle: self.handle.clone(),
-            next_id: self.next_id.clone(),
             client_ctx: self.client_ctx.clone(),
             _p: PhantomData,
         }))
@@ -227,8 +220,7 @@ where
         );
         let (inner, body_inner) = match metadata {
             (Some(ctx), Some(RequestOpen(request_open_at))) => {
-                let id = self.next_id.next();
-                let ctx = ctx::http::Request::new(&req, &ctx, &self.client_ctx, id);
+                let ctx = ctx::http::Request::new(&req, &ctx, &self.client_ctx);
 
                 self.handle
                     .send(|| Event::StreamRequestOpen(Arc::clone(&ctx)));

@@ -6,15 +6,14 @@ use control::destination;
 use telemetry::metrics::DstLabels;
 use std::sync::atomic::Ordering;
 
+
+/// A `RequestId` can be mapped to a `u64`. No `RequestId`s will map to the
+/// same value within a process.
+///
 /// XXX `usize` is too small except on 64-bit platforms. TODO: Use `u64` when
-/// `RequestIdSequence` switches to `AtomicU64`.
+/// `AtomicU64` becomes stable.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct RequestId(usize);
-
-/// XXX `usize` is too small except on 64-bit platforms. TODO: Use `AtomicU64`
-/// when it becomes stable.
-#[derive(Debug)]
-pub struct RequestIdSequence(AtomicUsize);
 
 /// Describes a stream's request headers.
 #[derive(Debug)]
@@ -47,19 +46,16 @@ pub struct Response {
 //    pub h2_error_code: Option<u32>,
 //}
 
-impl Into<u64> for RequestId {
-    fn into(self) -> u64 {
-        self.0 as u64
+impl RequestId {
+    fn next() -> Self {
+        static NEXT_REQUEST_ID: AtomicUsize = AtomicUsize::new(0);
+        RequestId(NEXT_REQUEST_ID.fetch_add(1, Ordering::SeqCst))
     }
 }
 
-impl RequestIdSequence {
-    pub fn new() -> Arc<Self> {
-        Arc::new(RequestIdSequence(AtomicUsize::from(0)))
-    }
-
-    pub fn next(&self) -> RequestId {
-        RequestId(self.0.fetch_add(1, Ordering::SeqCst))
+impl Into<u64> for RequestId {
+    fn into(self) -> u64 {
+        self.0 as u64
     }
 }
 
@@ -68,10 +64,9 @@ impl Request {
         request: &http::Request<B>,
         server: &Arc<ctx::transport::Server>,
         client: &Arc<ctx::transport::Client>,
-        id: RequestId,
     ) -> Arc<Self> {
         let r = Self {
-            id,
+            id: RequestId::next(),
             uri: request.uri().clone(),
             method: request.method().clone(),
             server: Arc::clone(server),

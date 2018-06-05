@@ -76,7 +76,6 @@ impl Sensors {
 
     pub fn http<N, A, B>(
         &self,
-        next_id: Arc<ctx::http::RequestIdSequence>,
         new_service: N,
         client_ctx: &Arc<ctx::transport::Client>,
     ) -> NewHttp<N, A, B>
@@ -90,6 +89,6 @@ impl Sensors {
         >
             + 'static,
     {
-        NewHttp::new(next_id, new_service, &self.0, client_ctx)
+        NewHttp::new(new_service, &self.0, client_ctx)
     }
 }
