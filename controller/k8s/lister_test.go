@@ -58,7 +58,12 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: my-pod
-  namespace: my-ns`,
+  namespace: my-ns
+spec:
+  containers:
+  - name: my-pod
+status:
+  phase: Running`,
 				},
 				k8sResMisc: []string{},
 			},
@@ -155,6 +160,153 @@ metadata:
 				}
 			}
 		}
+	})
+
+	t.Run("If objects are pods", func(t *testing.T) {
+		t.Run("Return running or pending pods", func(t *testing.T) {
+			expectations := []getObjectsExpected{
+				getObjectsExpected{
+					err:       nil,
+					namespace: "my-ns",
+					resType:   k8s.Pods,
+					name:      "my-pod",
+					k8sResResults: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+  namespace: my-ns
+spec:
+  containers:
+  - name: my-pod
+status:
+  phase: Running`,
+					},
+				},
+				getObjectsExpected{
+					err:       nil,
+					namespace: "my-ns",
+					resType:   k8s.Pods,
+					name:      "my-pod",
+					k8sResResults: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+  namespace: my-ns
+spec:
+  containers:
+  - name: my-pod
+status:
+  phase: Pending`,
+					},
+				},
+			}
+
+			for _, exp := range expectations {
+				k8sObjs := []runtime.Object{}
+
+				k8sResults := []runtime.Object{}
+				for _, res := range exp.k8sResResults {
+					decode := scheme.Codecs.UniversalDeserializer().Decode
+					obj, _, err := decode([]byte(res), nil, nil)
+					if err != nil {
+						t.Fatalf("could not decode yml: %s", err)
+					}
+					k8sObjs = appendUnique(k8sObjs, obj)
+					k8sResults = append(k8sResults, obj)
+				}
+
+				clientSet := fake.NewSimpleClientset(k8sObjs...)
+				lister := NewLister(clientSet)
+				err := lister.Sync()
+				if err != nil {
+					t.Fatalf("lister.Sync() returned an error: %s", err)
+				}
+
+				pods, err := lister.GetObjects(exp.namespace, exp.resType, exp.name)
+				if err != nil {
+					t.Fatalf("lister.GetObjects() unexpected error %s", err)
+				}
+
+				if !reflect.DeepEqual(pods, k8sResults) {
+					t.Fatalf("Expected: %+v, Got: %+v", k8sResults, pods)
+				}
+			}
+		})
+
+		t.Run("Don't return failed or succeeded pods", func(t *testing.T) {
+			expectations := []getObjectsExpected{
+				getObjectsExpected{
+					err:       nil,
+					namespace: "my-ns",
+					resType:   k8s.Pods,
+					name:      "my-pod",
+					k8sResResults: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+  namespace: my-ns
+spec:
+  containers:
+  - name: my-pod
+status:
+  phase: Succeeded`,
+					},
+				},
+				getObjectsExpected{
+					err:       nil,
+					namespace: "my-ns",
+					resType:   k8s.Pods,
+					name:      "my-pod",
+					k8sResResults: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+  namespace: my-ns
+spec:
+  containers:
+  - name: my-pod
+status:
+  phase: Failed`,
+					},
+				},
+			}
+
+			for _, exp := range expectations {
+				k8sObjs := []runtime.Object{}
+
+				k8sResults := []runtime.Object{}
+				for _, res := range exp.k8sResResults {
+					decode := scheme.Codecs.UniversalDeserializer().Decode
+					obj, _, err := decode([]byte(res), nil, nil)
+					if err != nil {
+						t.Fatalf("could not decode yml: %s", err)
+					}
+					k8sObjs = appendUnique(k8sObjs, obj)
+					k8sResults = append(k8sResults, obj)
+				}
+
+				clientSet := fake.NewSimpleClientset(k8sObjs...)
+				lister := NewLister(clientSet)
+				err := lister.Sync()
+				if err != nil {
+					t.Fatalf("lister.Sync() returned an error: %s", err)
+				}
+
+				pods, err := lister.GetObjects(exp.namespace, exp.resType, exp.name)
+				if err != nil {
+					t.Fatalf("lister.GetObjects() unexpected error %s", err)
+				}
+
+				if len(pods) != 0 {
+					t.Errorf("Expected no terminating or failed pods to be returned but got %d pods", len(pods))
+				}
+			}
+
+		})
 	})
 }
 
