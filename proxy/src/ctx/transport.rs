@@ -5,14 +5,14 @@ use ctx;
 use control::destination;
 use telemetry::metrics::DstLabels;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Debug)]
 pub enum Ctx {
     Client(Arc<Client>),
     Server(Arc<Server>),
 }
 
 /// Identifies a connection from another process to a proxy listener.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Debug)]
 pub struct Server {
     pub proxy: Arc<ctx::Proxy>,
     pub remote: SocketAddr,
@@ -21,7 +21,7 @@ pub struct Server {
 }
 
 /// Identifies a connection from the proxy to another process.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Debug)]
 pub struct Client {
     pub proxy: Arc<ctx::Proxy>,
     pub remote: SocketAddr,

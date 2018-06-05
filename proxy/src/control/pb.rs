@@ -37,7 +37,7 @@ impl event::StreamResponseEnd {
         let end = tap_event::http::ResponseEnd {
             id: Some(tap_event::http::StreamId {
                 base: 0, // TODO FIXME
-                stream: ctx.id as u64,
+                stream: ctx.id.into(),
             }),
             since_request_init: Some(pb_elapsed(self.request_open_at, self.response_end_at)),
             since_response_init: Some(pb_elapsed(self.response_open_at, self.response_end_at)),
@@ -68,7 +68,7 @@ impl event::StreamResponseFail {
         let end = tap_event::http::ResponseEnd {
             id: Some(tap_event::http::StreamId {
                 base: 0, // TODO FIXME
-                stream: ctx.id as u64,
+                stream: ctx.id.into(),
             }),
             since_request_init: Some(pb_elapsed(self.request_open_at, self.response_fail_at)),
             since_response_init: Some(pb_elapsed(self.response_open_at, self.response_fail_at)),
@@ -99,7 +99,7 @@ impl event::StreamRequestFail {
         let end = tap_event::http::ResponseEnd {
             id: Some(tap_event::http::StreamId {
                 base: 0, // TODO FIXME
-                stream: ctx.id as u64,
+                stream: ctx.id.into(),
             }),
             since_request_init: Some(pb_elapsed(self.request_open_at, self.request_fail_at)),
             since_response_init: None,
@@ -134,7 +134,7 @@ impl<'a> TryFrom<&'a Event> for common::TapEvent {
                     id: Some(tap_event::http::StreamId {
                         base: 0,
                         // TODO FIXME
-                        stream: ctx.id as u64,
+                        stream: ctx.id.into(),
                     }),
                     method: Some((&ctx.method).into()),
                     scheme: ctx.uri.scheme_part().map(common::Scheme::from),
@@ -166,7 +166,7 @@ impl<'a> TryFrom<&'a Event> for common::TapEvent {
                     id: Some(tap_event::http::StreamId {
                         base: 0,
                         // TODO FIXME
-                        stream: ctx.request.id as u64,
+                        stream: ctx.request.id.into(),
                     }),
                     since_request_init: Some(pb_elapsed(rsp.request_open_at, rsp.response_open_at)),
                     http_status: u32::from(ctx.status.as_u16()),

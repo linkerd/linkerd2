@@ -108,7 +108,8 @@ mod test {
             ("pod", "klay"),
         ]);
 
-        let (_, rsp) = request("http://buoyant.io", &server, &client, 1);
+        let (_, rsp) = request("http://buoyant.io", &server, &client,
+                               ctx::http::RequestId::from(1));
 
         let request_open_at = Instant::now();
         let response_open_at = request_open_at + Duration::from_millis(100);
@@ -168,7 +169,8 @@ mod test {
             ("pod", "klay"),
         ]);
 
-        let (req, rsp) = request("http://buoyant.io", &server, &client, 1);
+        let (req, rsp) = request("http://buoyant.io", &server, &client,
+                                 ctx::http::RequestId::from(1));
         let server_transport =
             Arc::new(ctx::transport::Ctx::Server(server.clone()));
         let client_transport =

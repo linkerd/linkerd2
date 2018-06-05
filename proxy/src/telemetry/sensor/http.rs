@@ -228,7 +228,7 @@ where
         );
         let (inner, body_inner) = match metadata {
             (Some(ctx), Some(RequestOpen(request_open_at))) => {
-                let id = self.next_id.fetch_add(1, Ordering::SeqCst);
+                let id = ctx::http::RequestId::from(self.next_id.fetch_add(1, Ordering::SeqCst));
                 let ctx = ctx::http::Request::new(&req, &ctx, &self.client_ctx, id);
 
                 self.handle
