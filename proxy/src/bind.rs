@@ -1,10 +1,8 @@
 use std::error::Error;
 use std::fmt;
-use std::default::Default;
 use std::marker::PhantomData;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use std::sync::atomic::AtomicUsize;
 
 use futures::{Async, Future, Poll, future, task};
 use http::{self, uri};
@@ -29,7 +27,6 @@ use transport;
 pub struct Bind<C, B> {
     ctx: C,
     sensors: telemetry::Sensors,
-    req_ids: Arc<AtomicUsize>,
     _p: PhantomData<fn() -> B>,
 }
 
@@ -170,7 +167,6 @@ impl<B> Bind<(), B> {
         Self {
             ctx: (),
             sensors: telemetry::Sensors::null(),
-            req_ids: Default::default(),
             _p: PhantomData,
         }
     }
@@ -186,7 +182,6 @@ impl<B> Bind<(), B> {
         Bind {
             ctx,
             sensors: self.sensors,
-            req_ids: self.req_ids,
             _p: PhantomData,
         }
     }
@@ -197,7 +192,6 @@ impl<C: Clone, B> Clone for Bind<C, B> {
         Self {
             ctx: self.ctx.clone(),
             sensors: self.sensors.clone(),
-            req_ids: self.req_ids.clone(),
             _p: PhantomData,
         }
     }
@@ -232,7 +226,6 @@ where
         );
 
         let sensors = self.sensors.http(
-            self.req_ids.clone(),
             client,
             &client_ctx
         );

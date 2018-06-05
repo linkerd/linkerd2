@@ -286,8 +286,7 @@ mod tests {
         team: &str
     ) {
         let client = client(&proxy, vec![("team", team)]);
-        let (req, rsp) = request("http://nba.com", &server, &client,
-                                 ctx::http::RequestId::from(1));
+        let (req, rsp) = request("http://nba.com", &server, &client);
 
         let client_transport = Arc::new(ctx::transport::Ctx::Client(client));
         let transport = TransportLabels::new(&client_transport);
