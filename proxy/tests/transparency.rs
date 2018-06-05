@@ -504,7 +504,6 @@ fn http1_bodyless_responses() {
     );
 
     assert_eq!(resp.status(), StatusCode::OK);
-    assert!(!resp.headers().contains_key("content-length"));
     assert!(!resp.headers().contains_key("transfer-encoding"));
 
     let statuses = &[
@@ -524,7 +523,6 @@ fn http1_bodyless_responses() {
         );
 
         assert_eq!(resp.status(), status);
-        assert!(!resp.headers().contains_key("content-length"), "content-length with status={:?}", status);
         assert!(!resp.headers().contains_key("transfer-encoding"), "transfer-encoding with status={:?}", status);
     }
 }
