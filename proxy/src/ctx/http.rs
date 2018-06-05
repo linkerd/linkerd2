@@ -1,10 +1,17 @@
 use http;
-use std::sync::Arc;
+use std::sync::{Arc, atomic::AtomicUsize};
 
 use ctx;
 use control::destination;
 use telemetry::metrics::DstLabels;
+use std::sync::atomic::Ordering;
 
+
+/// A `RequestId` can be mapped to a `u64`. No `RequestId`s will map to the
+/// same value within a process.
+///
+/// XXX `usize` is too small except on 64-bit platforms. TODO: Use `u64` when
+/// `AtomicU64` becomes stable.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct RequestId(usize);
 
@@ -39,9 +46,10 @@ pub struct Response {
 //    pub h2_error_code: Option<u32>,
 //}
 
-impl From<usize> for RequestId {
-    fn from(value: usize) -> Self {
-        RequestId(value)
+impl RequestId {
+    fn next() -> Self {
+        static NEXT_REQUEST_ID: AtomicUsize = AtomicUsize::new(0);
+        RequestId(NEXT_REQUEST_ID.fetch_add(1, Ordering::SeqCst))
     }
 }
 
@@ -56,10 +64,9 @@ impl Request {
         request: &http::Request<B>,
         server: &Arc<ctx::transport::Server>,
         client: &Arc<ctx::transport::Client>,
-        id: RequestId,
     ) -> Arc<Self> {
         let r = Self {
-            id,
+            id: RequestId::next(),
             uri: request.uri().clone(),
             method: request.method().clone(),
             server: Arc::clone(server),

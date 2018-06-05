@@ -45,7 +45,7 @@ func genPromSample(resName string, resType string, resNs string, classification 
 	}
 }
 
-func genStatSummaryResponse(resName, resType, resNs string, meshedPods uint64, runningPods uint64) pb.StatSummaryResponse {
+func genStatSummaryResponse(resName, resType, resNs string, meshedPods uint64, runningPods uint64, failedPods uint64) pb.StatSummaryResponse {
 	return pb.StatSummaryResponse{
 		Response: &pb.StatSummaryResponse_Ok_{ // https://github.com/golang/protobuf/issues/205
 			Ok: &pb.StatSummaryResponse_Ok{
@@ -71,6 +71,7 @@ func genStatSummaryResponse(resName, resType, resNs string, meshedPods uint64, r
 										TimeWindow:      "1m",
 										MeshedPodCount:  meshedPods,
 										RunningPodCount: runningPods,
+										FailedPodCount:  failedPods,
 									},
 								},
 							},
@@ -237,7 +238,7 @@ status:
 					},
 					TimeWindow: "1m",
 				},
-				expectedResponse: genStatSummaryResponse("emoji", "deployments", "emojivoto", 1, 2),
+				expectedResponse: genStatSummaryResponse("emoji", "deployments", "emojivoto", 1, 2, 0),
 			},
 		}
 
@@ -279,7 +280,7 @@ status:
 					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
 					`sum(increase(response_total{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod, classification, tls)`,
 				},
-				expectedResponse: genStatSummaryResponse("emojivoto-1", "pods", "emojivoto", 1, 1),
+				expectedResponse: genStatSummaryResponse("emojivoto-1", "pods", "emojivoto", 1, 1, 0),
 			},
 		}
 
@@ -641,5 +642,136 @@ status:
 				t.Fatalf("Did not expect validation error on StatSummaryResponse, got %v, %v", rsp, err)
 			}
 		}
+	})
+
+	t.Run("Return empty stats summary response", func(t *testing.T) {
+		t.Run("when pod phase is succeeded or failed", func(t *testing.T) {
+			expectations := []statSumExpected{
+				statSumExpected{
+					err: nil,
+					k8sConfigs: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-00
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+  annotations:
+    conduit.io/proxy-version: testinjectversion
+status:
+  phase: Succeeded
+`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-01
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+  annotations:
+    conduit.io/proxy-version: testinjectversion
+status:
+  phase: Failed
+`},
+					mockPromResponse: model.Vector{},
+					req: pb.StatSummaryRequest{
+						Selector: &pb.ResourceSelection{
+							Resource: &pb.Resource{
+								Namespace: "emojivoto",
+								Type:      pkgK8s.Pods,
+							},
+						},
+					},
+					expectedPrometheusQueries: []string{},
+					expectedResponse:          genEmptyResponse(),
+				},
+			}
+
+			testStatSummary(t, expectations)
+		})
+
+		t.Run("for succeeded or failed replicas of a deployment", func(t *testing.T) {
+			expectations := []statSumExpected{
+				statSumExpected{
+					err: nil,
+					k8sConfigs: []string{`
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: emoji
+  namespace: emojivoto
+spec:
+  selector:
+    matchLabels:
+      app: emoji-svc
+  strategy: {}
+  template:
+    spec:
+      containers:
+      - image: buoyantio/emojivoto-emoji-svc:v3
+`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-00
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+  annotations:
+    conduit.io/proxy-version: testinjectversion
+status:
+  phase: Running
+`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-01
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+status:
+  phase: Running
+`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-02
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+  annotations:
+    conduit.io/proxy-version: testinjectversion
+status:
+  phase: Failed
+`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-03
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+  annotations:
+    conduit.io/proxy-version: testinjectversion
+status:
+  phase: Succeeded
+`},
+					mockPromResponse: prometheusMetric("emoji", "deployment", "emojivoto", "success"),
+					req: pb.StatSummaryRequest{
+						Selector: &pb.ResourceSelection{
+							Resource: &pb.Resource{
+								Namespace: "emojivoto",
+								Type:      pkgK8s.Deployments,
+							},
+						},
+						TimeWindow: "1m",
+					},
+					expectedResponse: genStatSummaryResponse("emoji", "deployments", "emojivoto", 1, 2, 1),
+				},
+			}
+
+			testStatSummary(t, expectations)
+		})
 	})
 }

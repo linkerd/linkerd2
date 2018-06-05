@@ -248,6 +248,9 @@ func (l *Lister) getPods(namespace, name string) ([]runtime.Object, error) {
 
 	objects := []runtime.Object{}
 	for _, pod := range pods {
+		if !isPendingOrRunning(pod) {
+			continue
+		}
 		objects = append(objects, pod)
 	}
 

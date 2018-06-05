@@ -117,13 +117,11 @@ pub mod test_util {
         uri: &str,
         server: &Arc<ctx::transport::Server>,
         client: &Arc<ctx::transport::Client>,
-        id: ctx::http::RequestId,
     ) -> (Arc<ctx::http::Request>, Arc<ctx::http::Response>) {
         let req = ctx::http::Request::new(
             &http::Request::get(uri).body(()).unwrap(),
             &server,
             &client,
-            id,
         );
         let rsp = ctx::http::Response::new(
             &http::Response::builder().status(http::StatusCode::OK).body(()).unwrap(),

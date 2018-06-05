@@ -55,13 +55,11 @@ fn request(
     uri: &str,
     server: &Arc<ctx::transport::Server>,
     client: &Arc<ctx::transport::Client>,
-    id: ctx::http::RequestId,
 ) -> (Arc<ctx::http::Request>, Arc<ctx::http::Response>) {
     let req = ctx::http::Request::new(
         &http::Request::get(uri).body(()).unwrap(),
         &server,
         &client,
-        id,
     );
     let rsp = ctx::http::Response::new(
         &http::Response::builder().status(http::StatusCode::OK).body(()).unwrap(),
@@ -82,7 +80,7 @@ fn record_response_end(b: &mut Bencher) {
         ("pod", "klay"),
     ]);
 
-    let (_, rsp) = request("http://buoyant.io", &server, &client, ctx::http::RequestId::from(1));
+    let (_, rsp) = request("http://buoyant.io", &server, &client);
 
     let request_open_at = Instant::now();
     let response_open_at = request_open_at + Duration::from_millis(100);
@@ -114,7 +112,7 @@ fn record_one_conn_request(b: &mut Bencher) {
         ("pod", "klay"),
     ]);
 
-    let (req, rsp) = request("http://buoyant.io", &server, &client, ctx::http::RequestId::from(1));
+    let (req, rsp) = request("http://buoyant.io", &server, &client);
 
     let server_transport = Arc::new(ctx::transport::Ctx::Server(server));
     let client_transport = Arc::new(ctx::transport::Ctx::Client(client));
@@ -191,7 +189,7 @@ fn record_many_dsts(b: &mut Bencher) {
             ("pod".into(), format!("pod{}", n)),
         ]);
         let uri = format!("http://test{}.local", n);
-        let (req, rsp) = request(&uri, &server, &client, ctx::http::RequestId::from(1));
+        let (req, rsp) = request(&uri, &server, &client);
         let client_transport = Arc::new(ctx::transport::Ctx::Client(client));
 
         events.push(TransportOpen(client_transport.clone()));
