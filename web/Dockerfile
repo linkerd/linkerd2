@@ -1,6 +1,6 @@
 ## bundle web assets
-FROM node:6.7.0 as webpack-bundle
-RUN curl -o- -L https://yarnpkg.com/install.sh | bash
+FROM node:10 as webpack-bundle
+RUN curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.7.0
 
 ENV HOME /root
 ENV PATH $HOME/.yarn/bin:$PATH
