@@ -9,6 +9,7 @@ use http;
 
 use connection;
 use control::destination;
+use convert::TryFrom;
 use dns;
 
 #[derive(Debug, Clone)]
@@ -58,7 +59,10 @@ impl HostAndPort {
     {
         let host = IpAddr::from_str(a.host())
             .map(Host::Ip)
-            .unwrap_or_else(|_| Host::DnsName(dns::Name::from(a.host())));
+            .or_else(|_|
+                dns::Name::try_from(a.host())
+                    .map(Host::DnsName)
+                    .map_err(|_| HostAndPortError::InvalidHost))?;
         let port = a.port()
             .or(default_port)
             .ok_or_else(|| HostAndPortError::MissingPort)?;

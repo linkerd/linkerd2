@@ -52,7 +52,7 @@ tower-in-flight-limit = { git = "https://github.com/tower-rs/tower" }
 tower-util            = { git = "https://github.com/tower-rs/tower" }
 
 ring = "0.13.0-alpha4"
-webpki = "0.18.0-alpha3"
+webpki = "0.18.0-alpha4"
 rustls = "0.12.0"
 tokio-rustls = "0.6.0"
 untrusted = "0.6.1"
