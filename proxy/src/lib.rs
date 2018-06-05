@@ -15,6 +15,8 @@ extern crate h2;
 extern crate http;
 extern crate httparse;
 extern crate hyper;
+#[cfg(target_os = "linux")]
+extern crate inotify;
 extern crate ipnet;
 #[cfg(target_os = "linux")]
 extern crate libc;

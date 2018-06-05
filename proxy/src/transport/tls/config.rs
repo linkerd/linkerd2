@@ -63,17 +63,70 @@ pub enum Error {
     EndEntityCertIsNotValid(webpki::Error),
     InvalidPrivateKey,
     TimeConversionFailed,
+    #[cfg(target_os = "linux")]
+    InotifyInit(io::Error),
 }
 
 impl CommonSettings {
+    fn paths(&self) -> [&PathBuf; 3] {
+        [
+            &self.trust_anchors,
+            &self.end_entity_cert,
+            &self.private_key,
+        ]
+    }
 
-    fn change_timestamps(&self, interval: Duration) -> impl Stream<Item = (), Error = ()> {
-        let paths = [
-            self.trust_anchors.clone(),
-            self.end_entity_cert.clone(),
-            self.private_key.clone(),
-        ];
+    /// Stream changes to the files described by this `CommonSettings`.
+    ///
+    /// The returned stream consists of each subsequent successfully loaded
+    /// `CommonSettings` after each change. If the settings could not be
+    /// reloaded (i.e., they were malformed), nothing is sent.
+    pub fn stream_changes(self, interval: Duration)
+        -> impl Stream<Item = CommonConfig, Error = ()>
+    {
+        // If we're on Linux, first atttempt to start an Inotify watch on the
+        // paths. If this fails, fall back to polling the filesystem.
+        #[cfg(target_os = "linux")]
+        // Explicit type annotation so that the compiler doesn't infer this to
+        // be `impl Stream<...>` (in which case the match arms would have
+        // different types).
+        let changes: Box<Stream<Item = (), Error = ()> + Send> =
+            match self.stream_changes_inotify() {
+                Ok(s) => Box::new(s),
+                Err(e) => {
+                    warn!(
+                        "inotify init error: {:?}, falling back to polling",
+                        e
+                    );
+                    Box::new(self.stream_changes_polling(interval))
+                },
+            };
 
+        // If we're not on Linux, we can't use inotify, so simply poll the fs.
+        // TODO: Use other FS events APIs (such as `kqueue`) as well, when
+        //       they're available.
+        #[cfg(not(target_os = "linux"))]
+        let changes = self.stream_changes_polling(interval);
+
+        changes.filter_map(move |_|
+            CommonConfig::load_from_disk(&self)
+                .map_err(|e| warn!("error reloading TLS config: {:?}, falling back", e))
+                .ok()
+        )
+
+    }
+
+    /// Stream changes by polling the filesystem.
+    ///
+    /// This will poll the filesystem for changes to the files at the paths
+    /// described by this `CommonSettings` every `interval`, and attempt to
+    /// load a new `CommonConfig` from the files again after each change.
+    ///
+    /// This is used on operating systems other than Linux, or on Linux if
+    /// our attempt to use `inotify` failed.
+    fn stream_changes_polling(&self, interval: Duration)
+        -> impl Stream<Item = (), Error = ()>
+    {
         fn last_modified(path: &PathBuf) -> Option<SystemTime> {
             // We have to canonicalize the path _every_ time we poll the fs,
             // rather than once when we start watching, because if it's a
@@ -94,7 +147,12 @@ impl CommonSettings {
                 .ok()
         }
 
+        let paths = self.paths().iter()
+            .map(|&p| p.clone())
+            .collect::<Vec<PathBuf>>();
+
         let mut max: Option<SystemTime> = None;
+
         Interval::new(Instant::now(), interval)
             .map_err(|e| error!("timer error: {:?}", e))
             .filter_map(move |_| {
@@ -110,27 +168,56 @@ impl CommonSettings {
             })
     }
 
-    /// Stream changes to the files described by this `CommonSettings`.
-    ///
-    /// This will poll the filesystem for changes to the files at the paths
-    /// described by this `CommonSettings` every `interval`, and attempt to
-    /// load a new `CommonConfig` from the files again after each change.
-    ///
-    /// The returned stream consists of each subsequent successfully loaded
-    /// `CommonSettings` after each change. If the settings could not be
-    /// reloaded (i.e., they were malformed), nothing is sent.
-    ///
-    /// TODO: On Linux, this should be replaced with an `inotify` watch when
-    ///       available.
-    pub fn stream_changes(self, interval: Duration)
-        -> impl Stream<Item = CommonConfig, Error = ()>
+    #[cfg(target_os = "linux")]
+    fn stream_changes_inotify(&self)
+        -> Result<impl Stream<Item = (), Error = ()>, Error>
     {
-        self.change_timestamps(interval)
-            .filter_map(move |_|
-                CommonConfig::load_from_disk(&self)
-                    .map_err(|e| warn!("error reloading TLS config: {:?}, falling back", e))
-                    .ok()
-            )
+        use inotify::{Inotify, WatchMask};
+        // NOTE: If we used a less broad watch mask, we could probably avoid
+        //       reloading the certs multiple times when k8s modifies a
+        //       ConfigMap (a multi-step process that we see as a series of
+        //       CREATE, MOVED_TO, MOVED_FROM, and DELETE events). However,
+        //       this may not catch changes if the files we're watching *don't*
+        //       live in a k8s ConfigMap, and I think false positives are
+        //       much less harmful here than false negatives.
+        let mask = WatchMask::CREATE
+                 | WatchMask::MODIFY
+                 | WatchMask::DELETE
+                 | WatchMask::MOVE
+                 ;
+        let mut inotify = Inotify::init().map_err(Error::InotifyInit)?;
+
+        for path in &self.paths() {
+            // If the path we want to watch has a parent, watch that instead.
+            // This will allow us to pick up events to files in k8s ConfigMaps
+            // (which we wouldn't detect if we watch the file itself, as they
+            // are double-symlinked).
+            //
+            // This may also result in some false positives (if a file we
+            // *don't* care about in the same dir changes, we'll still reload),
+            // but that's unlikely to be a problem.
+            let watch_path = path.parent()
+                .map(Path::to_path_buf)
+                .unwrap_or(path.to_path_buf());
+
+            trace!("inotify: watch {:?} (parent of {:?})", watch_path, path);
+            inotify.add_watch(&watch_path, mask)
+                .map_err(|e| Error::Io(watch_path, e))?;
+        }
+
+        // Stream the events using `Inotify::into_event_stream` rather than
+        // `Inotify::event_stream`, so that we transfer ownership of the
+        // underlying file descriptor from the `Inotify` struct to the stream.
+        // Otherwise, the `Inotify` would close the fd when we drop it as we
+        // leave this function, rendering returned the stream useless.
+        let events = inotify.into_event_stream()
+            .map(|ev| {
+                trace!("inotify: event={:?}; path={:?};", ev.mask, ev.name);
+            })
+            .map_err(|e| error!("inotify watch error: {}", e));
+        trace!("started inotify watch");
+
+        Ok(events)
     }
 }
 

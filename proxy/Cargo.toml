@@ -59,6 +59,7 @@ untrusted = "0.6.1"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 libc = "0.2"
+inotify = { git = "https://github.com/hawkw/inotify", branch = "eliza/fix-einval" }
 
 [dev-dependencies]
 net2 = "0.2"
