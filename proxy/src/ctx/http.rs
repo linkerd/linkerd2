@@ -1,12 +1,20 @@
 use http;
-use std::sync::Arc;
+use std::sync::{Arc, atomic::AtomicUsize};
 
 use ctx;
 use control::destination;
 use telemetry::metrics::DstLabels;
+use std::sync::atomic::Ordering;
 
+/// XXX `usize` is too small except on 64-bit platforms. TODO: Use `u64` when
+/// `RequestIdSequence` switches to `AtomicU64`.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct RequestId(usize);
+
+/// XXX `usize` is too small except on 64-bit platforms. TODO: Use `AtomicU64`
+/// when it becomes stable.
+#[derive(Debug)]
+pub struct RequestIdSequence(AtomicUsize);
 
 /// Describes a stream's request headers.
 #[derive(Debug)]
@@ -39,15 +47,19 @@ pub struct Response {
 //    pub h2_error_code: Option<u32>,
 //}
 
-impl From<usize> for RequestId {
-    fn from(value: usize) -> Self {
-        RequestId(value)
-    }
-}
-
 impl Into<u64> for RequestId {
     fn into(self) -> u64 {
         self.0 as u64
+    }
+}
+
+impl RequestIdSequence {
+    pub fn new() -> Arc<Self> {
+        Arc::new(RequestIdSequence(AtomicUsize::from(0)))
+    }
+
+    pub fn next(&self) -> RequestId {
+        RequestId(self.0.fetch_add(1, Ordering::SeqCst))
     }
 }
 

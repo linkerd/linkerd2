@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use std::sync::atomic::AtomicUsize;
 use std::time::Instant;
 
 use futures_mpsc_lossy::Sender;
@@ -77,7 +76,7 @@ impl Sensors {
 
     pub fn http<N, A, B>(
         &self,
-        next_id: Arc<AtomicUsize>,
+        next_id: Arc<ctx::http::RequestIdSequence>,
         new_service: N,
         client_ctx: &Arc<ctx::transport::Client>,
     ) -> NewHttp<N, A, B>

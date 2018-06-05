@@ -1,10 +1,8 @@
 use std::error::Error;
 use std::fmt;
-use std::default::Default;
 use std::marker::PhantomData;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use std::sync::atomic::AtomicUsize;
 
 use futures::{Async, Future, Poll, future, task};
 use http::{self, uri};
@@ -29,7 +27,7 @@ use transport;
 pub struct Bind<C, B> {
     ctx: C,
     sensors: telemetry::Sensors,
-    req_ids: Arc<AtomicUsize>,
+    req_ids: Arc<ctx::http::RequestIdSequence>,
     _p: PhantomData<fn() -> B>,
 }
 
@@ -170,7 +168,7 @@ impl<B> Bind<(), B> {
         Self {
             ctx: (),
             sensors: telemetry::Sensors::null(),
-            req_ids: Default::default(),
+            req_ids: ctx::http::RequestIdSequence::new(),
             _p: PhantomData,
         }
     }

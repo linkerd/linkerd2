@@ -5,7 +5,6 @@ use http;
 use std::default::Default;
 use std::marker::PhantomData;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
 use tower_service::{NewService, Service};
 use tower_h2::{client, Body};
@@ -35,7 +34,7 @@ pub struct TimestampRequestOpen<S> {
 }
 
 pub struct NewHttp<N, A, B> {
-    next_id: Arc<AtomicUsize>,
+    next_id: Arc<ctx::http::RequestIdSequence>,
     new_service: N,
     handle: super::Handle,
     client_ctx: Arc<ctx::transport::Client>,
@@ -43,7 +42,7 @@ pub struct NewHttp<N, A, B> {
 }
 
 pub struct Init<F, A, B> {
-    next_id: Arc<AtomicUsize>,
+    next_id: Arc<ctx::http::RequestIdSequence>,
     future: F,
     handle: super::Handle,
     client_ctx: Arc<ctx::transport::Client>,
@@ -53,7 +52,7 @@ pub struct Init<F, A, B> {
 /// Wraps a transport with telemetry.
 #[derive(Debug)]
 pub struct Http<S, A, B> {
-    next_id: Arc<AtomicUsize>,
+    next_id: Arc<ctx::http::RequestIdSequence>,
     service: S,
     handle: super::Handle,
     client_ctx: Arc<ctx::transport::Client>,
@@ -127,7 +126,7 @@ where
         + 'static,
 {
     pub(super) fn new(
-        next_id: Arc<AtomicUsize>,
+        next_id: Arc<ctx::http::RequestIdSequence>,
         new_service: N,
         handle: &super::Handle,
         client_ctx: &Arc<ctx::transport::Client>,
@@ -228,7 +227,7 @@ where
         );
         let (inner, body_inner) = match metadata {
             (Some(ctx), Some(RequestOpen(request_open_at))) => {
-                let id = ctx::http::RequestId::from(self.next_id.fetch_add(1, Ordering::SeqCst));
+                let id = self.next_id.next();
                 let ctx = ctx::http::Request::new(&req, &ctx, &self.client_ctx, id);
 
                 self.handle
