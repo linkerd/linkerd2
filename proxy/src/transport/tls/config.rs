@@ -1,5 +1,5 @@
 use std::{
-    fs::{self, File},
+    fs::File,
     io::{self, Cursor, Read},
     path::PathBuf,
     sync::Arc,
@@ -73,19 +73,33 @@ impl CommonSettings {
             self.end_entity_cert.clone(),
             self.private_key.clone(),
         ];
+
+        fn last_modified(path: &PathBuf) -> Option<SystemTime> {
+            // We have to canonicalize the path _every_ time we poll the fs,
+            // rather than once when we start watching, because if it's a
+            // symlink, the target may change. If that happened, and we
+            // continued watching the original canonical path, we wouldn't see
+            // any subsequent changes to the new symlink target.
+            path.canonicalize()
+                .and_then(|canonical| {
+                    trace!("last_modified: {:?} -> {:?}", path, canonical);
+                    canonical.symlink_metadata()
+                        .and_then(|meta| meta.modified())
+                })
+                .map_err(|e| if e.kind() != io::ErrorKind::NotFound {
+                    // Don't log if the files don't exist, since this
+                    // makes the logs *quite* noisy.
+                    warn!("error reading metadata for {:?}: {}", path, e)
+                })
+                .ok()
+        }
+
         let mut max: Option<SystemTime> = None;
         Interval::new(Instant::now(), interval)
             .map_err(|e| error!("timer error: {:?}", e))
             .filter_map(move |_| {
                 for path in &paths  {
-                    let t = fs::metadata(path)
-                        .and_then(|meta| meta.modified())
-                        .map_err(|e| if e.kind() != io::ErrorKind::NotFound {
-                            // Don't log if the files don't exist, since this
-                            // makes the logs *quite* noisy.
-                            warn!("metadata for {:?}: {}", path, e)
-                        })
-                        .ok();
+                    let t = last_modified(path);
                     if t > max {
                         max = t;
                         trace!("{:?} changed at {:?}", path, t);
