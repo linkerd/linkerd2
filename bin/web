@@ -23,6 +23,15 @@ USAGE: web <command>
 USAGE
 }; function --help { -h ;}
 
+function check-for-conduit {
+  pod=$(get-pod)
+
+  if [[ -z "${pod// }" ]]; then
+    err "Controller is not running. Have you installed Conduit?"
+    exit 1
+  fi
+}
+
 function dev {
   build
 
@@ -32,7 +41,7 @@ function dev {
     esac
   done
 
-  port-forward &
+  check-for-conduit && (port-forward &)
 
   cd $ROOT/web/app && yarn webpack-dev-server --port $DEV_PORT &
   cd $ROOT/web && \
@@ -47,16 +56,11 @@ function build {
 function get-pod {
   kubectl --namespace=conduit get po \
     --selector=conduit.io/control-plane-component=controller \
+    --field-selector='status.phase==Running' \
     -o jsonpath='{.items[*].metadata.name}'
 }
 
 function port-forward {
-  pod=$(get-pod)
-
-  [[ ! -z "${pod// }" ]] || \
-    (printf "Controller is not running. Have you installed conduit?\n" && \
-    exit 1)
-
   nc -z localhost 8085 || \
     kubectl --namespace=conduit port-forward $(get-pod) 8085:8085
 }
@@ -64,7 +68,7 @@ function port-forward {
 function run {
   build
 
-  port-forward &
+  check-for-conduit && (port-forward &)
 
   cd $ROOT/web
   ../bin/go-run . $*

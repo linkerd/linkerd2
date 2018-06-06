@@ -251,7 +251,9 @@ bin/web run
 
 The web server will be running on `localhost:8084`.
 
-Note: by default, this requires a `public-api` server and assumes that it is running in a Kubernetes cluster. If that isn't the case, you have some other options:
+Note: by default, this requires a `public-api` server and assumes that it is
+running in a Kubernetes cluster. If that isn't the case, you have some other
+options:
 
 #### 1. Connect to `public-api` locally
 
