@@ -11,6 +11,7 @@ use trust_dns_resolver::{
     lookup_ip::LookupIp,
     AsyncResolver,
 };
+use tls;
 
 use config::Config;
 
@@ -37,30 +38,12 @@ pub enum Response {
 // `Box<Future>` implements `Future` so it doesn't need to be implemented manually.
 pub type IpAddrListFuture = Box<Future<Item=Response, Error=ResolveError> + Send>;
 
-/// A DNS name.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct Name(String);
-
-impl fmt::Display for Name {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        self.0.fmt(f)
-    }
-}
-
-impl<'a> From<&'a str> for Name {
-    fn from(s: &str) -> Self {
-        // TODO: Verify the name is a valid DNS name.
-        // TODO: Avoid this extra allocation.
-        Name(s.to_ascii_lowercase())
-    }
-}
-
-impl AsRef<str> for Name {
-    fn as_ref(&self) -> &str {
-        self.0.as_ref()
-    }
-}
-
+/// A valid DNS name.
+///
+/// This is an alias of the strictly-validated `tls::DnsName` based on the
+/// premise that we only need to support DNS names for which one could get a
+/// valid certificate.
+pub type Name = tls::DnsName;
 
 impl Resolver {
 
@@ -137,10 +120,10 @@ impl Resolver {
 
     // `ResolverFuture` can only be used for one lookup, so we have to clone all
     // the state during each resolution.
-    fn lookup_ip(self, &Name(ref name): &Name)
+    fn lookup_ip(self, name: &Name)
         -> impl Future<Item = LookupIp, Error = ResolveError>
     {
-        self.resolver.lookup_ip(name.as_str())
+        self.resolver.lookup_ip(name.as_ref())
     }
 }
 
@@ -187,6 +170,11 @@ mod tests {
 
     #[test]
     fn test_dns_name_parsing() {
+        // Make sure `dns::Name`'s validation isn't too strict. It is
+        // implemented in terms of `webpki::DNSName` which has many more tests
+        // at https://github.com/briansmith/webpki/blob/master/tests/dns_name_tests.rs.
+        use convert::TryFrom;
+
         struct Case {
             input: &'static str,
             output: &'static str,
@@ -197,19 +185,33 @@ mod tests {
             Case { input: "1.2.3.x", output: "1.2.3.x", },
             Case { input: "1.2.3.x", output: "1.2.3.x", },
             Case { input: "1.2.3.4A", output: "1.2.3.4a", },
-            Case { input: "a.1.2.3", output: "a.1.2.3", },
-            Case { input: "1.2.x.3", output: "1.2.x.3", },
             Case { input: "a.b.c.d", output: "a.b.c.d", },
 
             // Uppercase letters in labels
             Case { input: "A.b.c.d", output: "a.b.c.d", },
             Case { input: "a.mIddle.c", output: "a.middle.c", },
             Case { input: "a.b.c.D", output: "a.b.c.d", },
+
+            // Absolute
+            Case { input: "a.b.c.d.", output: "a.b.c.d.", },
         ];
 
         for case in VALID {
-            let name = Name::from(case.input);
-            assert_eq!(name.as_ref(), case.output);
+            let name = Name::try_from(case.input);
+            assert_eq!(name.as_ref().map(|x| x.as_ref()), Ok(case.output));
+        }
+
+        static INVALID: &[&str] = &[
+            // These are not in the "preferred name syntax" as defined by
+            // https://tools.ietf.org/html/rfc1123#section-2.1. In particular
+            // the last label only has digits.
+            "1.2.3.4",
+            "a.1.2.3",
+            "1.2.x.3",
+        ];
+
+        for case in INVALID {
+            assert!(Name::try_from(case).is_err());
         }
     }
 }

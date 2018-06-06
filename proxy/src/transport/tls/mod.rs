@@ -8,8 +8,10 @@ extern crate webpki;
 mod config;
 mod cert_resolver;
 mod connection;
+mod dns_name;
 
 pub use self::{
     config::{CommonSettings, CommonConfig, Error, ServerConfig, ServerConfigWatch},
     connection::Connection,
+    dns_name::DnsName,
 };
