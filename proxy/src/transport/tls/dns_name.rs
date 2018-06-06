@@ -2,6 +2,9 @@ use super::webpki;
 use std::fmt;
 use convert::TryFrom;
 
+/// A `DnsName` is guaranteed to be syntactically valid. The validity rules
+/// are specified in [RFC 5280 Section 7.2], except that underscores are also
+/// allowed.
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct DnsName(webpki::DNSName);
 
