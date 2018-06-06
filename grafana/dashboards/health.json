@@ -85,7 +85,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(response_total{classification=\"success\", deployment=\"$deployment\", direction=\"inbound\"}[30s])) by (deployment, pod) / sum(irate(response_total{deployment=\"$deployment\", direction=\"inbound\"}[30s])) by (deployment, pod)",
+          "expr": "sum(irate(response_total{classification=\"success\", deployment=\"$deployment\", namespace=\"$namespace\", direction=\"inbound\"}[30s])) by (deployment, pod) / sum(irate(response_total{deployment=\"$deployment\", namespace=\"$namespace\", direction=\"inbound\"}[30s])) by (deployment, pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "po/{{pod}}",
@@ -169,7 +169,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{deployment=\"$deployment\", direction=\"inbound\"}[30s])) by (deployment, pod)",
+          "expr": "sum(irate(request_total{deployment=\"$deployment\", namespace=\"$namespace\", direction=\"inbound\"}[30s])) by (deployment, pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "po/{{pod}}",
@@ -253,21 +253,21 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{deployment=\"$deployment\", direction=\"inbound\"}[30s])) by (le, deployment, pod))",
+          "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{deployment=\"$deployment\", namespace=\"$namespace\", direction=\"inbound\"}[30s])) by (le, deployment, pod))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "p50 po/{{pod}}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{deployment=\"$deployment\", direction=\"inbound\"}[30s])) by (le, deployment, pod))",
+          "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{deployment=\"$deployment\", namespace=\"$namespace\", direction=\"inbound\"}[30s])) by (le, deployment, pod))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "p95 po/{{pod}}",
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{deployment=\"$deployment\", direction=\"inbound\"}[30s])) by (le, deployment, pod))",
+          "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{deployment=\"$deployment\", namespace=\"$namespace\", direction=\"inbound\"}[30s])) by (le, deployment, pod))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "p99 po/{{pod}}",
@@ -405,7 +405,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "tcp_close_total{deployment=\"$deployment\", direction=\"inbound\",classification=\"failure\"}",
+              "expr": "tcp_close_total{deployment=\"$deployment\", namespace=\"$namespace\", direction=\"inbound\",classification=\"failure\"}",
               "format": "time_series",
               "intervalFactor": 1,
               "refId": "A"
@@ -488,7 +488,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "tcp_open_connections{deployment=\"$deployment\", direction=\"inbound\"}",
+              "expr": "tcp_open_connections{deployment=\"$deployment\", namespace=\"$namespace\", direction=\"inbound\"}",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "{{peer}}",
@@ -571,7 +571,7 @@
           },
           "targets": [
             {
-              "expr": "tcp_connection_duration_ms_bucket{deployment=\"$deployment\", direction=\"inbound\"}",
+              "expr": "tcp_connection_duration_ms_bucket{deployment=\"$deployment\", namespace=\"$namespace\", direction=\"inbound\"}",
               "format": "time_series",
               "intervalFactor": 1,
               "refId": "A"
