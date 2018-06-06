@@ -251,8 +251,7 @@ bin/web run
 
 The web server will be running on `localhost:8084`.
 
-Note the `web` process depends on a `public-api` server, for which you have
-three options:
+Note: by default, this requires a `public-api` server and assumes that it is running in a Kubernetes cluster. If that isn't the case, you have some other options:
 
 #### 1. Connect to `public-api` locally
 
@@ -270,29 +269,6 @@ docker-compose stop web
 bin/web run --api-addr=$DOCKER_IP:8085
 ```
 
-#### 3. Connect to `public-api` in Kubernetes
-
-If you are running the public API server in Kubernetes, forward `localhost:8085`
-to the Conduit controller pod:
-
-```bash
-kubectl --namespace=conduit port-forward $(
-  kubectl --namespace=conduit get po --selector=conduit.io/control-plane-component=controller -o jsonpath='{.items[*].metadata.name}'
-) 8085:8085
-```
-
-Note: you can also do this via:
-
-```bash
-bin/web port-forward
-```
-
-Then connect the local web process to the forwarded port:
-
-```bash
-bin/web run --api-addr=localhost:8085
-```
-
 ### Webpack dev server
 
 To develop with a webpack dev server, run:
@@ -300,6 +276,8 @@ To develop with a webpack dev server, run:
 ```bash
 bin/web dev
 ```
+
+Note: you'll want to install conduit on a Kubernetes cluster first.
 
 To add a JS dependency:
 

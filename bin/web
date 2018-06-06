@@ -44,12 +44,21 @@ function build {
   yarn webpack
 }
 
+function get-pod {
+  kubectl --namespace=conduit get po \
+    --selector=conduit.io/control-plane-component=controller \
+    -o jsonpath='{.items[*].metadata.name}'
+}
+
 function port-forward {
-  nc -z localhost 8085 || kubectl --namespace=conduit port-forward $(
-    kubectl --namespace=conduit get po \
-      --selector=conduit.io/control-plane-component=controller \
-      -o jsonpath='{.items[*].metadata.name}'
-  ) 8085:8085
+  pod=$(get-pod)
+
+  [[ ! -z "${pod// }" ]] || \
+    (printf "Controller is not running. Have you installed conduit?\n" && \
+    exit 1)
+
+  nc -z localhost 8085 || \
+    kubectl --namespace=conduit port-forward $(get-pod) 8085:8085
 }
 
 function run {
