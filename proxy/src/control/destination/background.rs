@@ -24,11 +24,11 @@ use conduit_proxy_controller_grpc::destination::client::Destination as Destinati
 use conduit_proxy_controller_grpc::destination::update::Update as PbUpdate2;
 use conduit_proxy_controller_grpc::destination::{
     Update as PbUpdate,
-    TlsIdentity as TlsIdentityPb,
     WeightedAddr,
 };
 
-use super::{TlsIdentity, Metadata, ResolveRequest, Responder, Update};
+use super::{Metadata, ResolveRequest, Responder, Update};
+use config::Namespaces;
 use control::{
     cache::{Cache, CacheChange, Exists},
     fully_qualified_authority::FullyQualifiedAuthority,
@@ -39,6 +39,7 @@ use dns::{self, IpAddrListFuture};
 use telemetry::metrics::DstLabels;
 use transport::{DnsNameAndPort, HostAndPort, LookupAddressAndConnect};
 use timeout::Timeout;
+use transport::tls;
 
 type DestinationServiceQuery<T> = Remote<PbUpdate, T>;
 type UpdateRx<T> = Receiver<PbUpdate, T>;
@@ -51,7 +52,7 @@ type UpdateRx<T> = Receiver<PbUpdate, T>;
 /// propagated to all requesters.
 struct Background<T: HttpService<ResponseBody = RecvBody>> {
     dns_resolver: dns::Resolver,
-    default_destination_namespace: String,
+    namespaces: Namespaces,
     destinations: HashMap<DnsNameAndPort, DestinationSet<T>>,
     /// A queue of authorities that need to be reconnected.
     reconnects: VecDeque<DnsNameAndPort>,
@@ -75,7 +76,7 @@ struct DestinationSet<T: HttpService<ResponseBody = RecvBody>> {
 pub(super) fn task(
     request_rx: mpsc::UnboundedReceiver<ResolveRequest>,
     dns_resolver: dns::Resolver,
-    default_destination_namespace: String,
+    namespaces: Namespaces,
     host_and_port: HostAndPort,
 ) -> impl Future<Item = (), Error = ()>
 {
@@ -105,7 +106,7 @@ pub(super) fn task(
     let mut disco = Background::new(
         request_rx,
         dns_resolver,
-        default_destination_namespace,
+        namespaces,
     );
 
     future::poll_fn(move || {
@@ -125,11 +126,11 @@ where
     fn new(
         request_rx: mpsc::UnboundedReceiver<ResolveRequest>,
         dns_resolver: dns::Resolver,
-        default_destination_namespace: String,
+        namespaces: Namespaces,
     ) -> Self {
         Self {
             dns_resolver,
-            default_destination_namespace,
+            namespaces,
             destinations: HashMap::new(),
             reconnects: VecDeque::new(),
             rpc_ready: false,
@@ -197,7 +198,7 @@ where
                         },
                         Entry::Vacant(vac) => {
                             let query = Self::query_destination_service_if_relevant(
-                                &self.default_destination_namespace,
+                                &self.namespaces.pod,
                                 client,
                                 vac.key(),
                                 "connect",
@@ -239,7 +240,7 @@ where
         while let Some(auth) = self.reconnects.pop_front() {
             if let Some(set) = self.destinations.get_mut(&auth) {
                 set.query = Self::query_destination_service_if_relevant(
-                    &self.default_destination_namespace,
+                    &self.namespaces.pod,
                     client,
                     &auth,
                     "reconnect",
@@ -268,7 +269,8 @@ where
             let (new_query, found_by_destination_service) = match set.query.take() {
                 Some(Remote::ConnectedOrConnecting { rx }) => {
                     let (new_query, found_by_destination_service) =
-                        set.poll_destination_service(auth, rx);
+                        set.poll_destination_service(
+                            auth, rx, self.namespaces.tls_controller.as_ref().map(|s| s.as_ref()));
                     if let Remote::NeedsReconnect = new_query {
                         set.reset_on_next_modification();
                         self.reconnects.push_back(auth.clone());
@@ -363,6 +365,7 @@ where
         &mut self,
         auth: &DnsNameAndPort,
         mut rx: UpdateRx<T>,
+        tls_controller_namespace: Option<&str>,
     ) -> (DestinationServiceQuery<T>, Exists<()>) {
         let mut exists = Exists::Unknown;
 
@@ -374,7 +377,8 @@ where
                         let addrs = a_set
                             .addrs
                             .into_iter()
-                            .filter_map(|pb| pb_to_addr_meta(pb, &set_labels));
+                            .filter_map(|pb|
+                                pb_to_addr_meta(pb, &set_labels, tls_controller_namespace));
                         self.add(auth, addrs)
                     },
                     Some(PbUpdate2::Remove(r_set)) => {
@@ -562,6 +566,7 @@ impl<T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
 fn pb_to_addr_meta(
     pb: WeightedAddr,
     set_labels: &HashMap<String, String>,
+    tls_controller_namespace: Option<&str>,
 ) -> Option<(SocketAddr, Metadata)> {
     let addr = pb.addr.and_then(pb_to_sock_addr)?;
 
@@ -570,26 +575,22 @@ fn pb_to_addr_meta(
         .collect::<Vec<_>>();
     labels.sort_by(|(k0, _), (k1, _)| k0.cmp(k1));
 
-    let tls = pb.tls_identity.and_then(TlsIdentity::from_pb);
+    let tls_identity = pb.tls_identity.and_then(|pb| {
+        match tls::Identity::maybe_from(pb, tls_controller_namespace) {
+            Ok(maybe_tls) => maybe_tls,
+            Err(e) => {
+                error!("Failed to parse TLS identity: {:?}", e);
+                // XXX: Wallpaper over the error and keep going without TLS.
+                // TODO: Hard fail here once the TLS infrastructure has been
+                // validated.
+                None
+            },
+        }
+    });
 
-    let meta = Metadata::new(DstLabels::new(labels.into_iter()), tls);
+    let meta = Metadata::new(DstLabels::new(labels.into_iter()), tls_identity);
     Some((addr, meta))
 }
-
-impl TlsIdentity {
-    pub fn from_pb(pb: TlsIdentityPb) -> Option<Self> {
-        use conduit_proxy_controller_grpc::destination::tls_identity::Strategy;
-        pb.strategy.map(|strategy| match strategy {
-            Strategy::K8sPodNamespace(i) =>
-                TlsIdentity::K8sPodNamespace {
-                    controller_ns: i.controller_ns,
-                    pod_ns: i.pod_ns,
-                    pod_name: i.pod_name,
-                },
-        })
-    }
-}
-
 
 fn pb_to_sock_addr(pb: TcpAddress) -> Option<SocketAddr> {
     use conduit_proxy_controller_grpc::common::ip_address::Ip;

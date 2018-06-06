@@ -70,13 +70,21 @@ pub struct Config {
     /// Timeout after which to cancel binding a request.
     pub bind_timeout: Duration,
 
-    pub pod_namespace: String,
+    pub namespaces: Namespaces,
 
     /// Optional minimum TTL for DNS lookups.
     pub dns_min_ttl: Option<Duration>,
 
     /// Optional maximum TTL for DNS lookups.
     pub dns_max_ttl: Option<Duration>,
+}
+
+#[derive(Clone, Debug)]
+pub struct Namespaces {
+    pub pod: String,
+
+    /// `None` if TLS is disabled; otherwise must be `Some`.
+    pub tls_controller: Option<String>,
 }
 
 /// Configuration settings for binding a listener.
@@ -172,6 +180,7 @@ pub const ENV_TLS_TRUST_ANCHORS: &str = "CONDUIT_PROXY_TLS_TRUST_ANCHORS";
 pub const ENV_TLS_CERT: &str = "CONDUIT_PROXY_TLS_CERT";
 pub const ENV_TLS_PRIVATE_KEY: &str = "CONDUIT_PROXY_TLS_PRIVATE_KEY";
 
+pub const ENV_CONTROLLER_NAMESPACE: &str = "CONDUIT_PROXY_CONTROLLER_NAMESPACE";
 pub const ENV_POD_NAMESPACE: &str = "CONDUIT_PROXY_POD_NAMESPACE";
 
 pub const ENV_CONTROL_URL: &str = "CONDUIT_PROXY_CONTROL_URL";
@@ -266,6 +275,7 @@ impl<'a> TryFrom<&'a Strings> for Config {
                 Error::InvalidEnvVar
             })
         });
+        let controller_namespace = strings.get(ENV_CONTROLLER_NAMESPACE);
 
         // There is no default controller URL because a default would make it
         // too easy to connect to the wrong controller, which would be dangerous.
@@ -302,6 +312,16 @@ impl<'a> TryFrom<&'a Strings> for Config {
                 Err(Error::InvalidEnvVar)
             },
         }?;
+
+        let tls_controller_namespace = match (&tls_settings, controller_namespace?) {
+            (Some(_), Some(ns)) => Some(ns),
+            (Some(_), None) => {
+                error!("{} is not set; it is required when {} are set.",
+                       ENV_CONTROLLER_NAMESPACE, ENV_TLS_TRUST_ANCHORS);
+                return Err(Error::InvalidEnvVar);
+            },
+            _ => None,
+        };
 
         Ok(Config {
             private_listener: Listener {
@@ -354,7 +374,10 @@ impl<'a> TryFrom<&'a Strings> for Config {
 
             bind_timeout: bind_timeout?.unwrap_or(DEFAULT_BIND_TIMEOUT),
 
-            pod_namespace: pod_namespace?,
+            namespaces: Namespaces {
+                pod: pod_namespace?,
+                tls_controller: tls_controller_namespace,
+            },
 
             dns_min_ttl: dns_min_ttl?,
 

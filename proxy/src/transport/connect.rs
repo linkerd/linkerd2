@@ -8,9 +8,10 @@ use std::str::FromStr;
 use http;
 
 use connection;
-use control::destination;
 use convert::TryFrom;
 use dns;
+use std::sync::Arc;
+use transport::tls;
 
 #[derive(Debug, Clone)]
 pub struct Connect {
@@ -102,7 +103,7 @@ impl Connect {
     /// Returns a `Connect` to `addr`.
     pub fn new(
         addr: SocketAddr,
-        tls_identity: Option<&destination::TlsIdentity>,
+        tls_identity: Option<Arc<tls::Identity>>,
     ) -> Self {
         // TODO: this is currently unused.
         let _ = tls_identity;
