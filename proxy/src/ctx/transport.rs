@@ -94,7 +94,7 @@ impl Client {
         Arc::new(c)
     }
 
-    pub fn tls_identity(&self) -> Option<&Arc<tls::Identity>> {
+    pub fn tls_identity(&self) -> Option<&tls::Identity> {
         self.metadata.tls_identity()
     }
 

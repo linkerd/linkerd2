@@ -76,7 +76,7 @@ impl Request {
         Arc::new(r)
     }
 
-    pub fn tls_identity(&self) -> Option<&Arc<tls::Identity>> {
+    pub fn tls_identity(&self) -> Option<&tls::Identity> {
         self.client.tls_identity()
     }
 

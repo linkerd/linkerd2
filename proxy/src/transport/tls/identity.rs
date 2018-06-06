@@ -1,12 +1,11 @@
 use conduit_proxy_controller_grpc;
 use convert::TryFrom;
 use super::{DnsName, InvalidDnsName};
+use std::sync::Arc;
 
 /// An endpoint's identity.
-///
-/// `Clone` isn't derived because `Identity` should be `Arc`ed.
-#[derive(Debug, Eq, PartialEq)]
-pub struct Identity(DnsName);
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Identity(Arc<DnsName>);
 
 impl Identity {
     /// Parses the given TLS identity, if provided.
@@ -53,15 +52,15 @@ impl Identity {
 
                 // We reserve all names under a fake "managed-pods" service in
                 // our namespace for identifying pods by name.
-                let mut name = i.pod_name;
-                name.push('.');
-                name.push_str(&i.pod_ns);
-                name.push_str(".conduit-managed-pods.");
-                name.push_str(&i.controller_ns);
-                name.push_str(".svc.cluster.local.");
+                let name = format!(
+                    "{pod}.{pod_ns}.conduit-managed-pods.{controller_ns}.svc.cluster.local.",
+                    pod = i.pod_name,
+                    pod_ns = i.pod_ns,
+                    controller_ns = i.controller_ns,
+                );
 
                 DnsName::try_from(&name)
-                    .map(|name| Some(Identity(name)))
+                    .map(|name| Some(Identity(Arc::new(name))))
                     .map_err(|InvalidDnsName| {
                         error!("Invalid DNS name: {:?}", name);
                         ()

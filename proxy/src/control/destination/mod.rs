@@ -95,7 +95,7 @@ pub struct Metadata {
     dst_labels: Option<DstLabels>,
 
     /// How to verify TLS for the endpoint.
-    tls_identity: Option<Arc<tls::Identity>>,
+    tls_identity: Option<tls::Identity>,
 }
 
 
@@ -250,7 +250,7 @@ impl Metadata {
     ) -> Self {
         Metadata {
             dst_labels,
-            tls_identity: tls_identity.map(Arc::new),
+            tls_identity,
         }
     }
 
@@ -259,7 +259,7 @@ impl Metadata {
         self.dst_labels.as_ref()
     }
 
-    pub fn tls_identity(&self) -> Option<&Arc<tls::Identity>> {
+    pub fn tls_identity(&self) -> Option<&tls::Identity> {
         self.tls_identity.as_ref()
     }
 }

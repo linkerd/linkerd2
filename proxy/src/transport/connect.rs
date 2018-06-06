@@ -10,7 +10,6 @@ use http;
 use connection;
 use convert::TryFrom;
 use dns;
-use std::sync::Arc;
 use transport::tls;
 
 #[derive(Debug, Clone)]
@@ -103,7 +102,7 @@ impl Connect {
     /// Returns a `Connect` to `addr`.
     pub fn new(
         addr: SocketAddr,
-        tls_identity: Option<Arc<tls::Identity>>,
+        tls_identity: Option<tls::Identity>,
     ) -> Self {
         // TODO: this is currently unused.
         let _ = tls_identity;
