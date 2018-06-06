@@ -7,6 +7,7 @@ import (
 	"syscall"
 
 	"github.com/runconduit/conduit/controller/destination"
+	"github.com/runconduit/conduit/controller/k8s"
 	"github.com/runconduit/conduit/controller/util"
 	"github.com/runconduit/conduit/pkg/version"
 	log "github.com/sirupsen/logrus"
@@ -34,12 +35,25 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
+	k8sClient, err := k8s.NewClientSet(*kubeConfigPath)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	k8sAPI := k8s.NewAPI(k8sClient)
+
 	done := make(chan struct{})
 
-	server, lis, err := destination.NewServer(*addr, *kubeConfigPath, *k8sDNSZone, *enableTLS, done)
+	server, lis, err := destination.NewServer(*addr, *kubeConfigPath, *k8sDNSZone, *enableTLS, k8sAPI, done)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	go func() {
+		err := k8sAPI.Sync()
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+	}()
 
 	go func() {
 		log.Infof("starting gRPC server on %s", *addr)

@@ -84,6 +84,10 @@ func TestStreamResolutionUsingCorrectResolverFor(t *testing.T) {
 	stream := &mockDestination_GetServer{}
 	host := "something"
 	port := 666
+	k8sAPI, err := k8s.NewFakeAPI()
+	if err != nil {
+		t.Fatalf("NewFakeAPI returned an error: %s", err)
+	}
 
 	t.Run("Uses first resolver that is able to resolve the host and port", func(t *testing.T) {
 		no := &mockStreamingDestinationResolver{canResolveToReturn: false}
@@ -91,7 +95,7 @@ func TestStreamResolutionUsingCorrectResolverFor(t *testing.T) {
 		otherYes := &mockStreamingDestinationResolver{canResolveToReturn: true}
 
 		server := server{
-			podsByIp:  k8s.NewEmptyPodIndex(),
+			k8sAPI:    k8sAPI,
 			resolvers: []streamingDestinationResolver{no, no, yes, no, no, otherYes},
 		}
 
@@ -117,7 +121,7 @@ func TestStreamResolutionUsingCorrectResolverFor(t *testing.T) {
 		no := &mockStreamingDestinationResolver{canResolveToReturn: false}
 
 		server := server{
-			podsByIp:  k8s.NewEmptyPodIndex(),
+			k8sAPI:    k8sAPI,
 			resolvers: []streamingDestinationResolver{no, no, no, no},
 		}
 
@@ -131,7 +135,7 @@ func TestStreamResolutionUsingCorrectResolverFor(t *testing.T) {
 		resolver := &mockStreamingDestinationResolver{canResolveToReturn: true, errToReturnForCanResolve: errors.New("expected for can resolve")}
 
 		server := server{
-			podsByIp:  k8s.NewEmptyPodIndex(),
+			k8sAPI:    k8sAPI,
 			resolvers: []streamingDestinationResolver{resolver},
 		}
 
@@ -145,7 +149,7 @@ func TestStreamResolutionUsingCorrectResolverFor(t *testing.T) {
 		resolver := &mockStreamingDestinationResolver{canResolveToReturn: true, errToReturnForResolution: errors.New("expected for resolving")}
 
 		server := server{
-			podsByIp:  k8s.NewEmptyPodIndex(),
+			k8sAPI:    k8sAPI,
 			resolvers: []streamingDestinationResolver{resolver},
 		}
 
