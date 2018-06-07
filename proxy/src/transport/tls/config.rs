@@ -173,13 +173,13 @@ impl CommonSettings {
         -> Result<impl Stream<Item = (), Error = ()>, Error>
     {
         use inotify::{Inotify, WatchMask};
-        // NOTE: If we used a less broad watch mask, we could probably avoid
-        //       reloading the certs multiple times when k8s modifies a
-        //       ConfigMap (a multi-step process that we see as a series of
-        //       CREATE, MOVED_TO, MOVED_FROM, and DELETE events). However,
-        //       this may not catch changes if the files we're watching *don't*
-        //       live in a k8s ConfigMap, and I think false positives are
-        //       much less harmful here than false negatives.
+        // If we used a less broad watch mask, we could avoid reloading the
+        // certs multiple times when k8s modifies a ConfigMap or Secret (a
+        // multi-step process that we see as a series of CREATE, MOVED_TO,
+        // MOVED_FROM, and DELETE events). However, this may not catch changes
+        // if the files we're watching *don't* live in a k8s ConfigMap/Secret,
+        // and I think false positives are much less harmful here than false
+        // negatives.
         let mask = WatchMask::CREATE
                  | WatchMask::MODIFY
                  | WatchMask::DELETE
@@ -190,8 +190,8 @@ impl CommonSettings {
         for path in &self.paths() {
             // If the path we want to watch has a parent, watch that instead.
             // This will allow us to pick up events to files in k8s ConfigMaps
-            // (which we wouldn't detect if we watch the file itself, as they
-            // are double-symlinked).
+            // or Secrets (which we wouldn't detect if we watch the file itself,
+            // as they are double-symlinked).
             //
             // This may also result in some false positives (if a file we
             // *don't* care about in the same dir changes, we'll still reload),
