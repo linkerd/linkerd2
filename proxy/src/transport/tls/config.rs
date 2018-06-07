@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     fs::File,
     io::{self, Cursor, Read},
     path::{Path, PathBuf},
@@ -187,22 +188,36 @@ impl CommonSettings {
                  ;
         let mut inotify = Inotify::init().map_err(Error::InotifyInit)?;
 
-        for path in &self.paths() {
-            // If the path we want to watch has a parent, watch that instead.
-            // This will allow us to pick up events to files in k8s ConfigMaps
-            // or Secrets (which we wouldn't detect if we watch the file itself,
-            // as they are double-symlinked).
+        let paths = self.paths();
+        let paths = paths.into_iter()
+            .map(|path| {
+                // If the path to watch has a parent, watch that instead. This
+                // will allow us to pick up events to files in k8s ConfigMaps
+                // or Secrets (which we wouldn't detect if we watch the file
+                // itself, as they are double-symlinked).
+                //
+                // This may also result in some false positives (if a file we
+                // *don't* care about in the same dir changes, we'll still
+                // reload), but that's unlikely to be a problem.
+                let parent = path
+                    .parent()
+                    .map(Path::to_path_buf)
+                    .unwrap_or(path.to_path_buf());
+                trace!("will watch {:?} for {:?}", parent, path);
+                path
+            })
+            // Collect the paths into a `HashSet` eliminates any duplicates, to
+            // conserve the number of inotify watches we create.
             //
-            // This may also result in some false positives (if a file we
-            // *don't* care about in the same dir changes, we'll still reload),
-            // but that's unlikely to be a problem.
-            let watch_path = path.parent()
-                .map(Path::to_path_buf)
-                .unwrap_or(path.to_path_buf());
+            // We could probably de-dup the iterator without allocating, by
+            // using `Iterator::peekable`, but this function isn't in the hot
+            // path, so this should be fine.
+            .collect::<HashSet<_>>();
 
-            trace!("inotify: watch {:?} (parent of {:?})", watch_path, path);
-            inotify.add_watch(&watch_path, mask)
-                .map_err(|e| Error::Io(watch_path, e))?;
+        for path in paths {
+            inotify.add_watch(path, mask)
+                .map_err(|e| Error::Io(path.to_path_buf(), e))?;
+            trace!("inotify: watch {:?}", path);
         }
 
         // Stream the events using `Inotify::into_event_stream` rather than
