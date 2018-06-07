@@ -126,7 +126,7 @@ impl BoundPort {
                     // libraries don't have the necessary API for that, so just
                     // do it here.
                     set_nodelay_or_warn(&socket);
-                    match tls_config.borrow().as_ref() {
+                    match tls_config.clone_current() {
                         Some(tls_config) => {
                             Either::A(
                                 tls::Connection::accept(socket, tls_config.clone())
