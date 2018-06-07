@@ -26,6 +26,7 @@
 
 use std::net::SocketAddr;
 use std::sync::{Arc, Weak};
+use tls;
 
 use futures::{
     sync::mpsc,
@@ -46,6 +47,7 @@ pub mod background;
 mod endpoint;
 
 pub use self::endpoint::Endpoint;
+use config::Namespaces;
 
 /// A handle to request resolutions from the background discovery task.
 #[derive(Clone, Debug)]
@@ -93,21 +95,7 @@ pub struct Metadata {
     dst_labels: Option<DstLabels>,
 
     /// How to verify TLS for the endpoint.
-    tls_identity: Option<Arc<TlsIdentity>>,
-}
-
-/// How to verify TLS for an endpoint.
-///
-/// XXX: This currently derives `PartialEq  and `Eq`, which is not entirely
-/// correct, as domain name equality ought to be case insensitive. However,
-/// `Metadata` must be `Eq`.
-#[derive(Debug, PartialEq, Eq)]
-pub enum TlsIdentity {
-    K8sPodNamespace {
-        controller_ns: String,
-        pod_ns: String,
-        pod_name: String,
-    },
+    tls_identity: Option<tls::Identity>,
 }
 
 
@@ -153,7 +141,7 @@ pub trait Bind {
 /// to drive the background task.
 pub fn new(
     dns_resolver: dns::Resolver,
-    default_destination_namespace: String,
+    namespaces: Namespaces,
     host_and_port: HostAndPort,
 ) -> (Resolver, impl Future<Item = (), Error = ()>) {
     let (request_tx, rx) = mpsc::unbounded();
@@ -161,7 +149,7 @@ pub fn new(
     let bg = background::task(
         rx,
         dns_resolver,
-        default_destination_namespace,
+        namespaces,
         host_and_port,
     );
     (disco, bg)
@@ -258,11 +246,11 @@ impl Metadata {
 
     pub fn new(
         dst_labels: Option<DstLabels>,
-        tls_identity: Option<TlsIdentity>
+        tls_identity: Option<tls::Identity>
     ) -> Self {
         Metadata {
             dst_labels,
-            tls_identity: tls_identity.map(Arc::new),
+            tls_identity,
         }
     }
 
@@ -271,7 +259,7 @@ impl Metadata {
         self.dst_labels.as_ref()
     }
 
-    pub fn tls_identity(&self) -> Option<&TlsIdentity> {
-        self.tls_identity.as_ref().map(Arc::as_ref)
+    pub fn tls_identity(&self) -> Option<&tls::Identity> {
+        self.tls_identity.as_ref()
     }
 }

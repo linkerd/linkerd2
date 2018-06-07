@@ -4,6 +4,7 @@ use std::sync::Arc;
 use ctx;
 use control::destination;
 use telemetry::metrics::DstLabels;
+use transport::tls;
 
 #[derive(Debug)]
 pub enum Ctx {
@@ -93,7 +94,7 @@ impl Client {
         Arc::new(c)
     }
 
-    pub fn tls_identity(&self) -> Option<&destination::TlsIdentity> {
+    pub fn tls_identity(&self) -> Option<&tls::Identity> {
         self.metadata.tls_identity()
     }
 

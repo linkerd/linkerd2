@@ -2,9 +2,9 @@ use http;
 use std::sync::{Arc, atomic::AtomicUsize};
 
 use ctx;
-use control::destination;
 use telemetry::metrics::DstLabels;
 use std::sync::atomic::Ordering;
+use transport::tls;
 
 
 /// A `RequestId` can be mapped to a `u64`. No `RequestId`s will map to the
@@ -76,7 +76,7 @@ impl Request {
         Arc::new(r)
     }
 
-    pub fn tls_identity(&self) -> Option<&destination::TlsIdentity> {
+    pub fn tls_identity(&self) -> Option<&tls::Identity> {
         self.client.tls_identity()
     }
 
@@ -93,10 +93,6 @@ impl Response {
         };
 
         Arc::new(r)
-    }
-
-    pub fn tls_identity(&self) -> Option<&destination::TlsIdentity> {
-        self.request.tls_identity()
     }
 
     pub fn dst_labels(&self) -> Option<&DstLabels> {

@@ -9,9 +9,11 @@ mod config;
 mod cert_resolver;
 mod connection;
 mod dns_name;
+mod identity;
 
 pub use self::{
     config::{CommonSettings, CommonConfig, Error, ServerConfig, ServerConfigWatch},
     connection::Connection,
-    dns_name::DnsName,
+    dns_name::{DnsName, InvalidDnsName},
+    identity::Identity,
 };

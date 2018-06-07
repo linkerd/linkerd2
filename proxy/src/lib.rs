@@ -222,7 +222,7 @@ where
 
         let (resolver, resolver_bg) = control::destination::new(
             dns_resolver.clone(),
-            config.pod_namespace.clone(),
+            config.namespaces.clone(),
             control_host_and_port
         );
 

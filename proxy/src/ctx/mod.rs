@@ -48,7 +48,7 @@ impl Process {
     pub fn new(config: &config::Config) -> Arc<Self> {
         let start_time = SystemTime::now();
         Arc::new(Self {
-            scheduled_namespace: config.pod_namespace.clone(),
+            scheduled_namespace: config.namespaces.pod.clone(),
             start_time,
         })
     }
