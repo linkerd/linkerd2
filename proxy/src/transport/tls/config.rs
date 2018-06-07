@@ -1,8 +1,7 @@
 use std::{
-    collections::HashSet,
     fs::File,
     io::{self, Cursor, Read},
-    path::{Path, PathBuf},
+    path::PathBuf,
     sync::Arc,
     time::{Duration, Instant, SystemTime,},
 };
@@ -33,7 +32,7 @@ pub type ServerConfigWatch = Watch<Option<ServerConfig>>;
 /// The end-entity certificate and private key are in DER format because they
 /// are stored in the secret store where space utilization is a concern, and
 /// because PEM doesn't offer any advantages.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct CommonSettings {
     /// The trust anchors as concatenated PEM-encoded X.509 certificates.
     pub trust_anchors: PathBuf,
@@ -58,9 +57,7 @@ pub struct ServerConfig(pub(super) Arc<rustls::ServerConfig>);
 #[derive(Debug)]
 pub enum Error {
     Io(PathBuf, io::Error),
-    FailedToParsePrivateKey,
     FailedToParseTrustAnchors(Option<webpki::Error>),
-    EmptyEndEntityCert,
     EndEntityCertIsNotValid(webpki::Error),
     InvalidPrivateKey,
     TimeConversionFailed,
@@ -82,7 +79,7 @@ impl CommonSettings {
     /// The returned stream consists of each subsequent successfully loaded
     /// `CommonSettings` after each change. If the settings could not be
     /// reloaded (i.e., they were malformed), nothing is sent.
-    pub fn stream_changes(self, interval: Duration)
+    fn stream_changes(self, interval: Duration)
         -> impl Stream<Item = CommonConfig, Error = ()>
     {
         // If we're on Linux, first atttempt to start an Inotify watch on the
@@ -170,7 +167,9 @@ impl CommonSettings {
     fn stream_changes_inotify(&self)
         -> Result<impl Stream<Item = (), Error = ()>, Error>
     {
+        use std::{collections::HashSet, path::Path};
         use inotify::{Inotify, WatchMask};
+
         // Use a broad watch mask so that we will pick up any events that might
         // indicate a change to the watched files.
         //
@@ -236,7 +235,7 @@ impl CommonConfig {
     /// must be issued by the CA represented by a certificate in the
     /// trust anchors file. Since filesystem operations are not atomic, we
     /// need to check for this consistency.
-    pub fn load_from_disk(settings: &CommonSettings) -> Result<Self, Error> {
+    fn load_from_disk(settings: &CommonSettings) -> Result<Self, Error> {
         let trust_anchor_certs = load_file_contents(&settings.trust_anchors)
             .and_then(|file_contents|
                 rustls::internal::pemfile::certs(&mut Cursor::new(file_contents))
@@ -270,34 +269,38 @@ impl CommonConfig {
 
 }
 
+pub fn watch_for_config_changes(settings: Option<&CommonSettings>)
+    -> (ServerConfigWatch, Box<Future<Item = (), Error = ()> + Send>)
+{
+    let settings = if let Some(settings) = settings {
+        settings.clone()
+    } else {
+        let (watch, _) = Watch::new(None);
+        let no_future = future::ok(());
+        return (watch, Box::new(no_future));
+    };
+
+    let changes = settings.stream_changes(Duration::from_secs(1));
+    let (watch, store) = Watch::new(None);
+    let server_configs = changes.map(|ref config| Some(ServerConfig::from(config)));
+    let store = store
+        .sink_map_err(|_| warn!("all server config watches dropped"));
+    let f = server_configs.forward(store)
+        .map(|_| trace!("forwarding to server config watch finished."));
+
+    // This function and `ServerConfig::no_tls` return `Box<Future<...>>`
+    // rather than `impl Future<...>` so that they can have the _same_ return
+    // types (impl Traits are not the same type unless the original
+    // non-anonymized type was the same).
+    (watch, Box::new(f))
+}
+
 impl ServerConfig {
-    pub fn from(common: &CommonConfig) -> Self {
+    fn from(common: &CommonConfig) -> Self {
         let mut config = rustls::ServerConfig::new(Arc::new(rustls::NoClientAuth));
         set_common_settings(&mut config.versions);
         config.cert_resolver = common.cert_resolver.clone();
         ServerConfig(Arc::new(config))
-    }
-
-    /// Watch a `Stream` of changes to a `CommonConfig`, such as those returned by
-    /// `CommonSettings::stream_changes`, and update a `futures_watch::Watch` cell
-    /// with a `ServerConfig` generated from each change.
-    pub fn watch<C>(changes: C)
-        -> (ServerConfigWatch, Box<Future<Item=(), Error=()> + Send>)
-    where
-        C: Stream<Item = CommonConfig, Error = ()> + Send + 'static,
-    {
-        let (watch, store) = Watch::new(None);
-        let server_configs = changes.map(|ref config| Self::from(config));
-        let store = store
-            .sink_map_err(|_| warn!("all server config watches dropped"));
-        let f = server_configs.map(Some).forward(store)
-            .map(|_| trace!("forwarding to server config watch finished."));
-
-        // This function and `no_tls` return `Box<Future<...>>` rather than
-        // `impl Future<...>` so that they can have the _same_ return types
-        // (impl Traits are not the same type unless the original
-        // non-anonymized type was the same).
-        (watch, Box::new(f))
     }
 
     pub fn no_tls()
