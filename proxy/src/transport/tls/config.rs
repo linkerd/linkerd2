@@ -18,8 +18,6 @@ use futures::{future, Future, Sink, Stream};
 use futures_watch::Watch;
 use tokio::timer::Interval;
 
-pub type ServerConfigWatch = Watch<Option<ServerConfig>>;
-
 /// Not-yet-validated settings that are used for both TLS clients and TLS
 /// servers.
 ///
@@ -49,10 +47,22 @@ pub struct CommonConfig {
     cert_resolver: Arc<CertResolver>,
 }
 
+/// Validated configuration for TLS clients.
+///
+/// TODO: Fill this in with the actual configuration.
+#[derive(Clone, Debug)]
+pub struct ClientConfig(Arc<()>);
 
 /// Validated configuration for TLS servers.
 #[derive(Clone)]
 pub struct ServerConfig(pub(super) Arc<rustls::ServerConfig>);
+
+// XXX: Ideally each type of watch would only watch the type of Config that
+// is relevant for it, but it's easier to implement this design where both
+// kinds of watch are updated when either config changes. Each one only
+// provides access to the type of configuration that's relevant to it.
+pub struct ClientConfigWatch(Watch<Option<(ClientConfig, ServerConfig)>>);
+pub struct ServerConfigWatch(Watch<Option<(ClientConfig, ServerConfig)>>);
 
 #[derive(Debug)]
 pub enum Error {
@@ -270,29 +280,32 @@ impl CommonConfig {
 }
 
 pub fn watch_for_config_changes(settings: Option<&CommonSettings>)
-    -> (ServerConfigWatch, Box<Future<Item = (), Error = ()> + Send>)
+    -> (ClientConfigWatch, ServerConfigWatch, Box<Future<Item = (), Error = ()> + Send>)
 {
     let settings = if let Some(settings) = settings {
         settings.clone()
     } else {
-        let (watch, _) = Watch::new(None);
+        let (client_watch, _) = Watch::new(None);
+        let server_watch = client_watch.clone();
         let no_future = future::ok(());
-        return (watch, Box::new(no_future));
+        return (ClientConfigWatch(client_watch), ServerConfigWatch(server_watch), Box::new(no_future));
     };
 
     let changes = settings.stream_changes(Duration::from_secs(1));
-    let (watch, store) = Watch::new(None);
-    let server_configs = changes.map(|ref config| Some(ServerConfig::from(config)));
+    let (client_watch, store) = Watch::new(None);
+    let configs = changes.map(|ref config|
+        Some((ClientConfig(Arc::new(())), ServerConfig::from(config))));
     let store = store
         .sink_map_err(|_| warn!("all server config watches dropped"));
-    let f = server_configs.forward(store)
+    let f = configs.forward(store)
         .map(|_| trace!("forwarding to server config watch finished."));
 
     // This function and `ServerConfig::no_tls` return `Box<Future<...>>`
     // rather than `impl Future<...>` so that they can have the _same_ return
     // types (impl Traits are not the same type unless the original
     // non-anonymized type was the same).
-    (watch, Box::new(f))
+    let server_watch = client_watch.clone();
+    (ClientConfigWatch(client_watch), ServerConfigWatch(server_watch), Box::new(f))
 }
 
 impl ServerConfig {
@@ -309,7 +322,27 @@ impl ServerConfig {
             let (watch, _) = Watch::new(None);
             let no_future = future::ok(());
 
-            (watch, Box::new(no_future))
+            (ServerConfigWatch(watch), Box::new(no_future))
+    }
+}
+
+impl ClientConfigWatch {
+    pub fn clone_current(&self) -> Option<ClientConfig> {
+        if let Some((ref client_config, _)) = *self.0.borrow() {
+            Some(client_config.clone())
+        } else {
+            None
+        }
+    }
+}
+
+impl ServerConfigWatch {
+    pub fn clone_current(&self) -> Option<ServerConfig> {
+        if let Some((_, ref server_config)) = *self.0.borrow() {
+            Some(server_config.clone())
+        } else {
+            None
+        }
     }
 }
 
