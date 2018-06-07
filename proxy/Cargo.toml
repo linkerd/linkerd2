@@ -46,7 +46,7 @@ tower-reconnect       = { git = "https://github.com/tower-rs/tower" }
 tower-service         = { git = "https://github.com/tower-rs/tower" }
 tower-util            = { git = "https://github.com/tower-rs/tower" }
 tower-h2              = { git = "https://github.com/tower-rs/tower-h2" }
-tower-h2-balance      = { git = "https://github.com/tower-rs/tower-h2", branch = "ver/tower-h2-balance" }
+tower-h2-balance      = { git = "https://github.com/tower-rs/tower-h2" }
 tower-grpc            = { git = "https://github.com/tower-rs/tower-grpc" }
 
 # dns
