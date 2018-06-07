@@ -1,7 +1,7 @@
 use std::{
     fs::File,
     io::{self, Cursor, Read},
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::Arc,
     time::{Duration, Instant, SystemTime,},
 };
