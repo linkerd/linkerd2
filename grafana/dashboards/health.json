@@ -1446,6 +1446,26 @@
         "tagsQuery": "",
         "type": "query",
         "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {},
+        "datasource": "prometheus",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Conduit Namespace",
+        "multi": false,
+        "name": "namespace",
+        "options": [],
+        "query": "label_values(request_total{conduit_io_control_plane_ns!=\"\"},  conduit_io_control_plane_ns)",
+        "refresh": 2,
+        "regex": "",
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
       }
     ]
   },
@@ -1481,5 +1501,5 @@
   "timezone": "",
   "title": "Conduit Health",
   "uid": "Og9nanzmk",
-  "version": 2
+  "version": 3
 }
