@@ -59,6 +59,8 @@ untrusted = "0.6.1"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 libc = "0.2"
+# We can use the `crates.io` version of `inotify` once 0.5.2 has been released.
+inotify = { git = "https://github.com/inotify-rs/inotify" }
 
 [dev-dependencies]
 net2 = "0.2"
