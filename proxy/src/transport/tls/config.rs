@@ -88,9 +88,6 @@ impl CommonSettings {
         // If we're on Linux, first atttempt to start an Inotify watch on the
         // paths. If this fails, fall back to polling the filesystem.
         #[cfg(target_os = "linux")]
-        // Explicit type annotation so that the compiler doesn't infer this to
-        // be `impl Stream<...>` (in which case the match arms would have
-        // different types).
         let changes: Box<Stream<Item = (), Error = ()> + Send> =
             match self.stream_changes_inotify() {
                 Ok(s) => Box::new(s),
@@ -174,13 +171,14 @@ impl CommonSettings {
         -> Result<impl Stream<Item = (), Error = ()>, Error>
     {
         use inotify::{Inotify, WatchMask};
-        // If we used a less broad watch mask, we could avoid reloading the
-        // certs multiple times when k8s modifies a ConfigMap or Secret (a
-        // multi-step process that we see as a series of CREATE, MOVED_TO,
-        // MOVED_FROM, and DELETE events). However, this may not catch changes
-        // if the files we're watching *don't* live in a k8s ConfigMap/Secret,
-        // and I think false positives are much less harmful here than false
-        // negatives.
+        // Use a broad watch mask so that we will pick up any events that might
+        // indicate a change to the watched files.
+        //
+        // Such a broad mask may lead to reloading certs multiple times when k8s
+        // modifies a ConfigMap or Secret, which is a multi-step process that we
+        // see as a series CREATE, MOVED_TO, MOVED_FROM, and DELETE events.
+        // However, we want to catch single events that might occur when the
+        // files we're watching *don't* live in a k8s ConfigMap/Secret.
         let mask = WatchMask::CREATE
                  | WatchMask::MODIFY
                  | WatchMask::DELETE
@@ -208,10 +206,6 @@ impl CommonSettings {
             })
             // Collect the paths into a `HashSet` eliminates any duplicates, to
             // conserve the number of inotify watches we create.
-            //
-            // We could probably de-dup the iterator without allocating, by
-            // using `Iterator::peekable`, but this function isn't in the hot
-            // path, so this should be fine.
             .collect::<HashSet<_>>();
 
         for path in paths {
@@ -220,11 +214,6 @@ impl CommonSettings {
             trace!("inotify: watch {:?}", path);
         }
 
-        // Stream the events using `Inotify::into_event_stream` rather than
-        // `Inotify::event_stream`, so that we transfer ownership of the
-        // underlying file descriptor from the `Inotify` struct to the stream.
-        // Otherwise, the `Inotify` would close the fd when we drop it as we
-        // leave this function, rendering returned the stream useless.
         let events = inotify.into_event_stream()
             .map(|ev| {
                 trace!("inotify: event={:?}; path={:?};", ev.mask, ev.name);
@@ -304,10 +293,10 @@ impl ServerConfig {
         let f = server_configs.map(Some).forward(store)
             .map(|_| trace!("forwarding to server config watch finished."));
 
-        // NOTE: This function and `no_tls` return `Box<Future<...>>` rather
-        //       than `impl Future<...>` so that they can have the _same_
-        //       return types (impl Traits are not the same type unless the
-        //       original non-anonymized type was the same).
+        // This function and `no_tls` return `Box<Future<...>>` rather than
+        // `impl Future<...>` so that they can have the _same_ return types
+        // (impl Traits are not the same type unless the original
+        // non-anonymized type was the same).
         (watch, Box::new(f))
     }
 
