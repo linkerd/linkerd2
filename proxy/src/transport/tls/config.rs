@@ -1,8 +1,7 @@
 use std::{
-    collections::HashSet,
     fs::File,
     io::{self, Cursor, Read},
-    path::{Path, PathBuf},
+    path::PathBuf,
     sync::Arc,
     time::{Duration, Instant, SystemTime,},
 };
@@ -170,7 +169,9 @@ impl CommonSettings {
     fn stream_changes_inotify(&self)
         -> Result<impl Stream<Item = (), Error = ()>, Error>
     {
+        use std::{collections::HashSet, path::Path};
         use inotify::{Inotify, WatchMask};
+
         // Use a broad watch mask so that we will pick up any events that might
         // indicate a change to the watched files.
         //

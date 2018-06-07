@@ -74,7 +74,7 @@ mod imp {
 
 #[cfg(not(unix))]
 mod imp {
-    use super::{tokio_signal, Handle, ShutdownSignal};
+    use super::{tokio_signal, ShutdownSignal};
     use super::futures::{Future, Stream};
 
     pub(super) fn shutdown() -> ShutdownSignal {
