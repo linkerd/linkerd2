@@ -43,7 +43,7 @@ func main() {
 
 	done := make(chan struct{})
 
-	server, lis, err := destination.NewServer(*addr, *kubeConfigPath, *k8sDNSZone, *enableTLS, k8sAPI, done)
+	server, lis, err := destination.NewServer(*addr, *k8sDNSZone, *enableTLS, k8sAPI, done)
 	if err != nil {
 		log.Fatal(err)
 	}

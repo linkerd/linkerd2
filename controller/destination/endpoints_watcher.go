@@ -1,17 +1,17 @@
-package k8s
+package destination
 
 import (
 	"fmt"
 	"sync"
-	"time"
 
 	common "github.com/runconduit/conduit/controller/gen/common"
+	"github.com/runconduit/conduit/controller/k8s"
 	"github.com/runconduit/conduit/controller/util"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/fields"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/kubernetes"
+	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -20,91 +20,86 @@ const (
 	endpointResource = "endpoints"
 )
 
-type EndpointsListener interface {
-	Update(add []common.TcpAddress, remove []common.TcpAddress)
-	NoEndpoints(exists bool)
-}
-
-/// EndpointsWatcher ///
-
-type EndpointsWatcher interface {
-	GetService(service string) (*v1.Service, bool, error)
-	Subscribe(service string, port uint32, listener EndpointsListener) error
-	Unsubscribe(service string, port uint32, listener EndpointsListener) error
-	Run() error
-	Stop()
-}
-
+// endpointsWatcher watches all endpoints and services in the Kubernetes
+// cluster.  Listeners can subscribe to a particular service and port and
+// endpointsWatcher will publish the address set and all future changes for
+// that service:port.
 type endpointsWatcher struct {
-	endpointInformer informer
-	serviceInformer  informer
+	serviceLister  corelisters.ServiceLister
+	endpointLister corelisters.EndpointsLister
 	// a map of service -> service port -> servicePort
-	servicePorts *map[string]*map[uint32]*servicePort
+	servicePorts map[serviceId]map[uint32]*servicePort
 	// This mutex protects the servicePorts data structure (nested map) itself
 	// and does not protect the servicePort objects themselves.  They are locked
-	// seperately.
-	mutex *sync.RWMutex
+	// separately.
+	mutex sync.RWMutex
 }
 
-// An EndpointsWatcher watches all endpoints and services in the Kubernetes
-// cluster.  Listeners can subscribe to a particular service and port and
-// EndpointsWatcher will publish the address set and all future changes for
-// that service:port.
-func NewEndpointsWatcher(clientset *kubernetes.Clientset) EndpointsWatcher {
-
-	servicePorts := make(map[string]*map[uint32]*servicePort)
-	mutex := sync.RWMutex{}
-
-	return &endpointsWatcher{
-		endpointInformer: newEndpointInformer(clientset, &servicePorts, &mutex),
-		serviceInformer:  newServiceInformer(clientset, &servicePorts, &mutex),
-		servicePorts:     &servicePorts,
-		mutex:            &mutex,
+func newEndpointsWatcher(k8sAPI *k8s.API) *endpointsWatcher {
+	watcher := &endpointsWatcher{
+		serviceLister:  k8sAPI.Svc.Lister(),
+		endpointLister: k8sAPI.Endpoint.Lister(),
+		servicePorts:   make(map[serviceId]map[uint32]*servicePort),
+		mutex:          sync.RWMutex{},
 	}
+
+	k8sAPI.Svc.Informer().AddEventHandler(
+		cache.ResourceEventHandlerFuncs{
+			AddFunc:    watcher.addService,
+			UpdateFunc: watcher.updateService,
+		},
+	)
+
+	k8sAPI.Endpoint.Informer().AddEventHandler(
+		cache.ResourceEventHandlerFuncs{
+			AddFunc:    watcher.addEndpoints,
+			UpdateFunc: watcher.updateEndpoints,
+			DeleteFunc: watcher.deleteEndpoints,
+		},
+	)
+
+	return watcher
 }
 
-func (e *endpointsWatcher) Run() error {
-	err := e.endpointInformer.run()
-	if err != nil {
-		return err
-	}
-	return e.serviceInformer.run()
-}
-
-func (e *endpointsWatcher) Stop() {
-	e.endpointInformer.stop()
-	e.serviceInformer.stop()
-}
+// TODO: this method should close all open streams
+// https://github.com/runconduit/conduit/issues/644
+func (e *endpointsWatcher) stop() {}
 
 // Subscribe to a service and service port.
 // The provided listener will be updated each time the address set for the
 // given service port is changed.
-func (e *endpointsWatcher) Subscribe(service string, port uint32, listener EndpointsListener) error {
-
+func (e *endpointsWatcher) subscribe(service *serviceId, port uint32, listener updateListener) error {
 	log.Printf("Establishing watch on endpoint %s:%d", service, port)
+
+	svc, err := e.getService(service)
+	if err != nil && !apierrors.IsNotFound(err) {
+		log.Errorf("Error getting service: %s", err)
+		return err
+	}
 
 	e.mutex.Lock() // Acquire write-lock on servicePorts data structure.
 	defer e.mutex.Unlock()
 
-	svcPorts, ok := (*e.servicePorts)[service]
+	svcPorts, ok := e.servicePorts[*service]
 	if !ok {
-		ports := make(map[uint32]*servicePort)
-		(*e.servicePorts)[service] = &ports
-		svcPorts = &ports
+		svcPorts = make(map[uint32]*servicePort)
+		e.servicePorts[*service] = svcPorts
 	}
-	svcPort, ok := (*svcPorts)[port]
+	svcPort, ok := svcPorts[port]
 	if !ok {
-		var err error
-		svcPort, err = newServicePort(service, port, e)
-		if err != nil {
+		endpoints, err := e.getEndpoints(service)
+		if apierrors.IsNotFound(err) {
+			endpoints = &v1.Endpoints{}
+		} else if err != nil {
+			log.Errorf("Error getting endpoints: %s", err)
 			return err
 		}
-		(*svcPorts)[port] = svcPort
+		svcPort = newServicePort(svc, endpoints, port)
+		svcPorts[port] = svcPort
 	}
 
-	svc, exists, _ := e.GetService(service)
-
-	if exists && svc.Spec.Type == v1.ServiceTypeExternalName {
+	exists := true
+	if svc == nil || svc.Spec.Type == v1.ServiceTypeExternalName {
 		// XXX: The proxy will use DNS to discover the service if it is told
 		// the service doesn't exist. An external service is represented in DNS
 		// as a CNAME, which the proxy will correctly resolve. Thus, there's no
@@ -118,18 +113,17 @@ func (e *endpointsWatcher) Subscribe(service string, port uint32, listener Endpo
 	return nil
 }
 
-func (e *endpointsWatcher) Unsubscribe(service string, port uint32, listener EndpointsListener) error {
-
+func (e *endpointsWatcher) unsubscribe(service *serviceId, port uint32, listener updateListener) error {
 	log.Printf("Stopping watch on endpoint %s:%d", service, port)
 
 	e.mutex.Lock() // Acquire write-lock on servicePorts data structure.
 	defer e.mutex.Unlock()
 
-	svc, ok := (*e.servicePorts)[service]
+	svc, ok := e.servicePorts[*service]
 	if !ok {
 		return fmt.Errorf("Cannot unsubscribe from %s: not subscribed", service)
 	}
-	svcPort, ok := (*svc)[port]
+	svcPort, ok := svc[port]
 	if !ok {
 		return fmt.Errorf("Cannot unsubscribe from %s: not subscribed", service)
 	}
@@ -139,158 +133,111 @@ func (e *endpointsWatcher) Unsubscribe(service string, port uint32, listener End
 	return nil
 }
 
-func (e *endpointsWatcher) GetService(service string) (*v1.Service, bool, error) {
-	obj, exists, err := e.serviceInformer.store.GetByKey(service)
-	if err != nil || !exists {
-		return nil, exists, err
+func (e *endpointsWatcher) getService(service *serviceId) (*v1.Service, error) {
+	return e.serviceLister.Services(service.namespace).Get(service.name)
+}
+
+func (e *endpointsWatcher) addService(obj interface{}) {
+	service := obj.(*v1.Service)
+	if service.Namespace == kubeSystem {
+		return
 	}
-	return obj.(*v1.Service), exists, err
-}
-
-/// informer ///
-
-// Watches a Kubernetes resource type
-type informer struct {
-	informer cache.Controller
-	store    cache.Store
-	stopCh   chan struct{}
-}
-
-func (i *informer) run() error {
-	initializer := func(stopCh <-chan struct{}) error {
-		i.informer.Run(stopCh)
-		return nil
+	id := serviceId{
+		namespace: service.Namespace,
+		name:      service.Name,
 	}
-	return newWatcher(i.informer, endpointResource, initializer, i.stopCh).run()
-}
 
-func (i *informer) stop() {
-	i.stopCh <- struct{}{}
-}
-
-func newEndpointInformer(clientset *kubernetes.Clientset, servicePorts *map[string]*map[uint32]*servicePort, mutex *sync.RWMutex) informer {
-	endpointsListWatcher := cache.NewListWatchFromClient(
-		clientset.CoreV1().RESTClient(),
-		endpointResource,
-		v1.NamespaceAll,
-		fields.Everything(),
-	)
-
-	store, inf := cache.NewInformer(
-		endpointsListWatcher,
-		&v1.Endpoints{},
-		time.Duration(0),
-		cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}) {
-				endpoints := obj.(*v1.Endpoints)
-				if endpoints.Namespace == kubeSystem {
-					return
-				}
-				id := endpoints.Namespace + "/" + endpoints.Name
-
-				mutex.RLock()
-				service, ok := (*servicePorts)[id]
-				if ok {
-					for _, sp := range *service {
-						sp.updateEndpoints(endpoints)
-					}
-				}
-				mutex.RUnlock()
-			},
-			DeleteFunc: func(obj interface{}) {
-				endpoints := obj.(*v1.Endpoints)
-				if endpoints.Namespace == kubeSystem {
-					return
-				}
-				id := endpoints.Namespace + "/" + endpoints.Name
-
-				mutex.RLock()
-				service, ok := (*servicePorts)[id]
-				if ok {
-					for _, sp := range *service {
-						sp.deleteEndpoints()
-					}
-				}
-				mutex.RUnlock()
-			},
-			UpdateFunc: func(oldObj, newObj interface{}) {
-				endpoints := newObj.(*v1.Endpoints)
-				if endpoints.Namespace == kubeSystem {
-					return
-				}
-				id := endpoints.Namespace + "/" + endpoints.Name
-
-				mutex.RLock()
-				service, ok := (*servicePorts)[id]
-				if ok {
-					for _, sp := range *service {
-						sp.updateEndpoints(endpoints)
-					}
-				}
-				mutex.RUnlock()
-			},
-		},
-	)
-
-	stopCh := make(chan struct{})
-
-	return informer{
-		informer: inf,
-		store:    store,
-		stopCh:   stopCh,
+	e.mutex.RLock()
+	defer e.mutex.RUnlock()
+	svc, ok := e.servicePorts[id]
+	if ok {
+		for _, sp := range svc {
+			sp.updateService(service)
+		}
 	}
 }
 
-func newServiceInformer(clientset *kubernetes.Clientset, servicePorts *map[string]*map[uint32]*servicePort, mutex *sync.RWMutex) informer {
+func (e *endpointsWatcher) updateService(oldObj, newObj interface{}) {
+	service := newObj.(*v1.Service)
+	if service.Namespace == kubeSystem {
+		return
+	}
+	id := serviceId{
+		namespace: service.Namespace,
+		name:      service.Name,
+	}
 
-	serviceListWatcher := cache.NewListWatchFromClient(clientset.CoreV1().RESTClient(), "services", v1.NamespaceAll, fields.Everything())
+	e.mutex.RLock()
+	defer e.mutex.RUnlock()
+	svc, ok := e.servicePorts[id]
+	if ok {
+		for _, sp := range svc {
+			sp.updateService(service)
+		}
+	}
+}
 
-	store, inf := cache.NewInformer(
-		serviceListWatcher,
-		&v1.Service{},
-		time.Duration(0),
-		cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}) {
-				service := obj.(*v1.Service)
-				if service.Namespace == kubeSystem {
-					return
-				}
-				id := service.Namespace + "/" + service.Name
+func (e *endpointsWatcher) getEndpoints(service *serviceId) (*v1.Endpoints, error) {
+	return e.endpointLister.Endpoints(service.namespace).Get(service.name)
+}
 
-				mutex.RLock()
-				svc, ok := (*servicePorts)[id]
-				if ok {
-					for _, sp := range *svc {
-						sp.updateService(service)
-					}
-				}
-				mutex.RUnlock()
-			},
-			UpdateFunc: func(oldObj, newObj interface{}) {
-				service := newObj.(*v1.Service)
-				if service.Namespace == kubeSystem {
-					return
-				}
-				id := service.Namespace + "/" + service.Name
+func (e *endpointsWatcher) addEndpoints(obj interface{}) {
+	endpoints := obj.(*v1.Endpoints)
+	if endpoints.Namespace == kubeSystem {
+		return
+	}
+	id := serviceId{
+		namespace: endpoints.Namespace,
+		name:      endpoints.Name,
+	}
 
-				mutex.RLock()
-				svc, ok := (*servicePorts)[id]
-				if ok {
-					for _, sp := range *svc {
-						sp.updateService(service)
-					}
-				}
-				mutex.RUnlock()
-			},
-		},
-	)
+	e.mutex.RLock()
+	defer e.mutex.RUnlock()
+	service, ok := e.servicePorts[id]
+	if ok {
+		for _, sp := range service {
+			sp.updateEndpoints(endpoints)
+		}
+	}
+}
 
-	stopCh := make(chan struct{})
+func (e *endpointsWatcher) deleteEndpoints(obj interface{}) {
+	endpoints := obj.(*v1.Endpoints)
+	if endpoints.Namespace == kubeSystem {
+		return
+	}
+	id := serviceId{
+		namespace: endpoints.Namespace,
+		name:      endpoints.Name,
+	}
 
-	return informer{
-		informer: inf,
-		store:    store,
-		stopCh:   stopCh,
+	e.mutex.RLock()
+	defer e.mutex.RUnlock()
+	service, ok := e.servicePorts[id]
+	if ok {
+		for _, sp := range service {
+			sp.deleteEndpoints()
+		}
+	}
+}
+
+func (e *endpointsWatcher) updateEndpoints(oldObj, newObj interface{}) {
+	endpoints := newObj.(*v1.Endpoints)
+	if endpoints.Namespace == kubeSystem {
+		return
+	}
+	id := serviceId{
+		namespace: endpoints.Namespace,
+		name:      endpoints.Name,
+	}
+
+	e.mutex.RLock()
+	defer e.mutex.RUnlock()
+	service, ok := e.servicePorts[id]
+	if ok {
+		for _, sp := range service {
+			sp.updateEndpoints(endpoints)
+		}
 	}
 }
 
@@ -302,10 +249,10 @@ func newServiceInformer(clientset *kubernetes.Clientset, servicePorts *map[strin
 // updates come from either the endpoints API or the service API.
 type servicePort struct {
 	// these values are immutable properties of the servicePort
-	service string
+	service serviceId
 	port    uint32 // service port
 	// these values hold the current state of the servicePort and are mutable
-	listeners  []EndpointsListener
+	listeners  []updateListener
 	endpoints  *v1.Endpoints
 	targetPort intstr.IntOrString
 	addresses  []common.TcpAddress
@@ -315,43 +262,36 @@ type servicePort struct {
 	mutex sync.Mutex
 }
 
-func newServicePort(service string, port uint32, e *endpointsWatcher) (*servicePort, error) {
-	endpoints := &v1.Endpoints{}
-	obj, exists, err := e.endpointInformer.store.GetByKey(service)
-	if err != nil {
-		return nil, err
-	}
-	if exists {
-		endpoints = obj.(*v1.Endpoints)
-	}
-
+func newServicePort(service *v1.Service, endpoints *v1.Endpoints, port uint32) *servicePort {
 	// Use the service port as the target port by default.
 	targetPort := intstr.FromInt(int(port))
-	obj, exists, err = e.serviceInformer.store.GetByKey(service)
-	if err != nil {
-		return nil, err
-	}
-	if exists {
+
+	id := serviceId{}
+
+	if service != nil {
+		id.namespace = service.Namespace
+		id.name = service.Name
 		// If a port spec exists with a matching service port, use that port spec's
 		// target port.
-		for _, portSpec := range obj.(*v1.Service).Spec.Ports {
+		for _, portSpec := range service.Spec.Ports {
 			if portSpec.Port == int32(port) && portSpec.TargetPort != intstr.FromInt(0) {
 				targetPort = portSpec.TargetPort
 				break
 			}
 		}
 	}
+
 	addrs := addresses(endpoints, targetPort)
 
 	return &servicePort{
-		service:    service,
-		listeners:  make([]EndpointsListener, 0),
+		service:    id,
+		listeners:  make([]updateListener, 0),
 		port:       port,
 		endpoints:  endpoints,
 		targetPort: targetPort,
 		addresses:  addrs,
 		mutex:      sync.Mutex{},
-	}, nil
+	}
 }
 
 func (sp *servicePort) updateEndpoints(newEndpoints *v1.Endpoints) {
@@ -399,6 +339,7 @@ func (sp *servicePort) updateService(newService *v1.Service) {
 
 func (sp *servicePort) updateAddresses(newAddresses []common.TcpAddress) {
 	log.Debugf("Updating %s:%d to %s", sp.service, sp.port, util.AddressesToString(newAddresses))
+
 	if len(newAddresses) == 0 {
 		for _, listener := range sp.listeners {
 			listener.NoEndpoints(true)
@@ -412,7 +353,9 @@ func (sp *servicePort) updateAddresses(newAddresses []common.TcpAddress) {
 	sp.addresses = newAddresses
 }
 
-func (sp *servicePort) subscribe(exists bool, listener EndpointsListener) {
+func (sp *servicePort) subscribe(exists bool, listener updateListener) {
+	log.Debugf("Subscribing %s:%d exists=%t", sp.service, sp.port, exists)
+
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
 
@@ -427,7 +370,9 @@ func (sp *servicePort) subscribe(exists bool, listener EndpointsListener) {
 }
 
 // true iff the listener was found and removed
-func (sp *servicePort) unsubscribe(listener EndpointsListener) bool {
+func (sp *servicePort) unsubscribe(listener updateListener) bool {
+	log.Debugf("Unsubscribing %s:%d", sp.service, sp.port)
+
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
 

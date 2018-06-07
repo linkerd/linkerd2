@@ -3,12 +3,12 @@ package destination
 import (
 	"fmt"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 
-	"k8s.io/api/core/v1"
-
 	"github.com/runconduit/conduit/controller/k8s"
+	"github.com/runconduit/conduit/controller/util"
 )
 
 func TestK8sResolver(t *testing.T) {
@@ -53,16 +53,43 @@ func TestK8sResolver(t *testing.T) {
 	})
 
 	t.Run("subscribes the listener to resolve local services", func(t *testing.T) {
-		mockEndpointsWatcher := &k8s.MockEndpointsWatcher{
-			ExistsToReturn: true,
-			ServiceToReturn: &v1.Service{
-				Spec: v1.ServiceSpec{Type: v1.ServiceTypeLoadBalancer},
-			},
+		configs := []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: name1
+  namespace: ns
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8989`,
+			`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: name1
+  namespace: ns
+subsets:
+- addresses:
+  - ip: 172.17.0.12
+  - ip: 172.17.0.19
+  - ip: 172.17.0.20
+  ports:
+  - port: 8989`,
+		}
+		k8sAPI, err := k8s.NewFakeAPI(configs...)
+		if err != nil {
+			t.Fatalf("NewFakeAPI returned an error: %s", err)
 		}
 
 		resolver := k8sResolver{
 			k8sDNSZoneLabels: someKubernetesDNSZone,
-			endpointsWatcher: mockEndpointsWatcher,
+			endpointsWatcher: newEndpointsWatcher(k8sAPI),
+		}
+
+		err = k8sAPI.Sync()
+		if err != nil {
+			t.Fatalf("k8sAPI.Sync() returned an error: %s", err)
 		}
 
 		host := "name1.ns.svc.some.namespace"
@@ -81,22 +108,46 @@ func TestK8sResolver(t *testing.T) {
 		cancelFn()
 		<-done
 
-		if mockEndpointsWatcher.ListenerSubscribed != listener || mockEndpointsWatcher.ListenerUnsubscribed != listener {
-			t.Fatalf("Expected listener [%v] to have been subscribed then unsubscribed to endpoint watcher, got: %+v", listener, mockEndpointsWatcher)
+		expectedAddresses := []string{
+			"172.17.0.12:8989",
+			"172.17.0.19:8989",
+			"172.17.0.20:8989",
+		}
+
+		actualAddresses := make([]string, 0)
+		for _, add := range listener.added {
+			actualAddresses = append(actualAddresses, util.AddressToString(&add))
+		}
+		sort.Strings(actualAddresses)
+
+		if !reflect.DeepEqual(actualAddresses, expectedAddresses) {
+			t.Fatalf("Expected addresses %v, got %v", expectedAddresses, actualAddresses)
 		}
 	})
 
 	t.Run("subscribes the listener to resolve external services", func(t *testing.T) {
-		mockEndpointsWatcher := &k8s.MockEndpointsWatcher{
-			ExistsToReturn: true,
-			ServiceToReturn: &v1.Service{
-				Spec: v1.ServiceSpec{ExternalName: "sc", Type: v1.ServiceTypeExternalName},
-			},
+		config := `
+apiVersion: v1
+kind: Service
+metadata:
+  name: name32
+  namespace: ns
+spec:
+  type: ExternalName
+  externalName: foo`
+		k8sAPI, err := k8s.NewFakeAPI(config)
+		if err != nil {
+			t.Fatalf("NewFakeAPI returned an error: %s", err)
 		}
 
 		resolver := k8sResolver{
 			k8sDNSZoneLabels: someKubernetesDNSZone,
-			endpointsWatcher: mockEndpointsWatcher,
+			endpointsWatcher: newEndpointsWatcher(k8sAPI),
+		}
+
+		err = k8sAPI.Sync()
+		if err != nil {
+			t.Fatalf("k8sAPI.Sync() returned an error: %s", err)
 		}
 
 		host := "name32.ns.svc.some.namespace"
@@ -115,8 +166,11 @@ func TestK8sResolver(t *testing.T) {
 		cancelFn()
 		<-done
 
-		if mockEndpointsWatcher.ListenerSubscribed != listener || mockEndpointsWatcher.ListenerUnsubscribed != listener {
-			t.Fatalf("Expected listener [%v] to have been subscribed then unsubscribed to endpoint watcher, got: %+v", listener, mockEndpointsWatcher)
+		if !listener.noEndpointsCalled {
+			t.Fatalf("Expected listener to receive no endpoints message, got nothing")
+		}
+		if listener.noEndpointsExists {
+			t.Fatalf("Expected no endpoints message to indicate that service does not exist")
 		}
 	})
 }

@@ -8,9 +8,11 @@ import (
 
 // implements the updateListener interface
 type collectUpdateListener struct {
-	added   []common.TcpAddress
-	removed []common.TcpAddress
-	context context.Context
+	added             []common.TcpAddress
+	removed           []common.TcpAddress
+	noEndpointsCalled bool
+	noEndpointsExists bool
+	context           context.Context
 }
 
 func (c *collectUpdateListener) Update(add []common.TcpAddress, remove []common.TcpAddress) {
@@ -22,7 +24,10 @@ func (c *collectUpdateListener) Done() <-chan struct{} {
 	return c.context.Done()
 }
 
-func (c *collectUpdateListener) NoEndpoints(exists bool) {}
+func (c *collectUpdateListener) NoEndpoints(exists bool) {
+	c.noEndpointsCalled = true
+	c.noEndpointsExists = exists
+}
 
 func (c *collectUpdateListener) SetServiceId(id *serviceId) {}
 
