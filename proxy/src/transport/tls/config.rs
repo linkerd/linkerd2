@@ -288,9 +288,9 @@ pub fn watch_for_config_changes(settings: Option<&CommonSettings>)
     let f = server_configs.forward(store)
         .map(|_| trace!("forwarding to server config watch finished."));
 
-    // This function and `ServerConfig::no_tls` return `Box<Future<...>>` rather than
-    // `impl Future<...>` so that they can have the _same_ return types
-    // (impl Traits are not the same type unless the original
+    // This function and `ServerConfig::no_tls` return `Box<Future<...>>`
+    // rather than `impl Future<...>` so that they can have the _same_ return
+    // types (impl Traits are not the same type unless the original
     // non-anonymized type was the same).
     (watch, Box::new(f))
 }
