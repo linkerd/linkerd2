@@ -373,7 +373,6 @@ fn set_common_settings(versions: &mut Vec<rustls::ProtocolVersion>) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use env_logger;
 
     use tempdir::TempDir;
     use tokio::{
@@ -499,11 +498,6 @@ mod tests {
             .expect("first change");
         assert!(item.is_some());
 
-        // Sleep briefly between changing the fs, as a workaround for
-        // macOS reporting timestamps with second resolution.
-        // https://github.com/runconduit/conduit/issues/1090
-        thread::sleep(Duration::from_secs(2));
-
         let f = File::create(cfg.end_entity_cert)
             .expect("create end entity cert");
         f.sync_all()
@@ -514,11 +508,6 @@ mod tests {
         let (item, watch) = rt.block_on_for(Duration::from_secs(5), next)
             .expect("second change");
         assert!(item.is_some());
-
-        // Sleep briefly between changing the fs, as a workaround for
-        // macOS reporting timestamps with second resolution.
-        // https://github.com/runconduit/conduit/issues/1090
-        thread::sleep(Duration::from_secs(2));
 
         let f = File::create(cfg.private_key)
             .expect("create private key");
@@ -569,10 +558,6 @@ mod tests {
             .expect("first change");
         assert!(item.is_some());
 
-        // Sleep briefly between changing the fs, as a workaround for
-        // macOS reporting timestamps with second resolution.
-        // https://github.com/runconduit/conduit/issues/1090
-        thread::sleep(Duration::from_secs(2));
         symlink_file(private_key_path, cfg.private_key)
             .expect("symlink private key");
 
@@ -581,10 +566,6 @@ mod tests {
             .expect("second change");
         assert!(item.is_some());
 
-        // Sleep briefly between changing the fs, as a workaround for
-        // macOS reporting timestamps with second resolution.
-        // https://github.com/runconduit/conduit/issues/1090
-        thread::sleep(Duration::from_secs(2));
         symlink_file(end_entity_cert_path, cfg.end_entity_cert)
             .expect("symlink end entity cert");
 
@@ -601,7 +582,6 @@ mod tests {
         fixture: Fixture,
         stream: impl Stream<Item = (), Error=()> + 'static,
     ) {
-        env_logger::try_init().unwrap();
         let Fixture { cfg, dir, mut rt } = fixture;
 
         let real_data_path = dir.path().join("real_data");
@@ -658,6 +638,84 @@ mod tests {
         assert!(item.is_some());
     }
 
+    fn test_detects_modification_symlink(
+        fixture: Fixture,
+        stream: impl Stream<Item = (), Error=()> + 'static,
+    ) {
+        let Fixture { cfg, dir, mut rt } = fixture;
+
+        let data_path = dir.path().join("data");
+        fs::create_dir(&data_path).expect("create data dir");
+
+        let trust_anchors_path = data_path.clone().join(TRUST_ANCHORS);
+        let end_entity_cert_path = data_path.clone().join(END_ENTITY_CERT);
+        let private_key_path = data_path.clone().join(PRIVATE_KEY);
+
+        let mut trust_anchors = File::create(&trust_anchors_path)
+            .expect("create trust anchors");
+        println!("created {:?}", trust_anchors);
+        trust_anchors.write_all(b"I am not real trust anchors")
+            .expect("write to trust anchors");
+        trust_anchors.sync_all().expect("sync trust anchors");
+
+        let mut private_key = File::create(&private_key_path)
+            .expect("create private key");
+        println!("created {:?}", private_key);
+        private_key.write_all(b"I am not a realprivate key")
+            .expect("write to private key");
+        private_key.sync_all().expect("sync private key");
+
+        let mut end_entity_cert = File::create(&end_entity_cert_path)
+            .expect("create end entity cert");
+        println!("created {:?}", end_entity_cert);
+        end_entity_cert.write_all(b"I am not real end entity cert")
+            .expect("write to end entity cert");
+        end_entity_cert.sync_all().expect("sync end entity cert");
+
+        symlink_file(private_key_path, cfg.private_key)
+            .expect("symlink private key");
+        symlink_file(end_entity_cert_path, cfg.end_entity_cert)
+            .expect("symlink end entity cert");
+        symlink_file(trust_anchors_path, cfg.trust_anchors)
+            .expect("symlink trust anchors");
+
+        let (watch, bg) = watch_stream(stream);
+        rt.spawn(Box::new(bg));
+
+        trust_anchors.write_all(b"Trust me on this :)")
+            .expect("write to trust anchors again");
+        trust_anchors.sync_all()
+            .expect("sync trust anchors again");
+
+        let next = watch.into_future().map_err(|(e, _)| e);
+        let (item, watch) = rt.block_on_for(Duration::from_secs(5), next)
+            .expect("first change");
+        assert!(item.is_some());
+        println!("saw first change");
+
+        end_entity_cert.write_all(b"This is the end of the end entity cert :)")
+            .expect("write to end entity cert again");
+        end_entity_cert.sync_all()
+            .expect("sync end entity cert again");
+
+        let next = watch.into_future().map_err(|(e, _)| e);
+        let (item, watch) = rt.block_on_for(Duration::from_secs(5), next)
+            .expect("second change");
+        assert!(item.is_some());
+        println!("saw second change");
+
+        private_key.write_all(b"Keep me private :)")
+            .expect("write to private key");
+        private_key.sync_all()
+            .expect("sync private key again");
+
+        let next = watch.into_future().map_err(|(e, _)| e);
+        let (item, _) = rt.block_on_for(Duration::from_secs(5), next)
+            .expect("third change");
+        assert!(item.is_some());
+        println!("saw third change");
+    }
+
     fn test_detects_modification(
         fixture: Fixture,
         stream: impl Stream<Item = (), Error=()> + 'static,
@@ -688,10 +746,6 @@ mod tests {
         let (watch, bg) = watch_stream(stream);
         rt.spawn(Box::new(bg));
 
-        // Sleep briefly between changing the fs, as a workaround for
-        // macOS reporting timestamps with second resolution.
-        // https://github.com/runconduit/conduit/issues/1090
-        thread::sleep(Duration::from_secs(2));
         trust_anchors.write_all(b"Trust me on this :)")
             .expect("write to trust anchors again");
         trust_anchors.sync_all()
@@ -703,10 +757,6 @@ mod tests {
         assert!(item.is_some());
         println!("saw first change");
 
-        // Sleep briefly between changing the fs, as a workaround for
-        // macOS reporting timestamps with second resolution.
-        // https://github.com/runconduit/conduit/issues/1090
-        thread::sleep(Duration::from_secs(2));
         end_entity_cert.write_all(b"This is the end of the end entity cert :)")
             .expect("write to end entity cert again");
         end_entity_cert.sync_all()
@@ -718,10 +768,82 @@ mod tests {
         assert!(item.is_some());
         println!("saw second change");
 
-        // Sleep briefly between changing the fs, as a workaround for
-        // macOS reporting timestamps with second resolution.
-        // https://github.com/runconduit/conduit/issues/1090
-        thread::sleep(Duration::from_secs(2));
+        private_key.write_all(b"Keep me private :)")
+            .expect("write to private key");
+        private_key.sync_all()
+            .expect("sync private key again");
+
+        let next = watch.into_future().map_err(|(e, _)| e);
+        let (item, _) = rt.block_on_for(Duration::from_secs(5), next)
+            .expect("third change");
+        assert!(item.is_some());
+        println!("saw third change");
+    }
+
+    fn test_detects_modification_double_symlink(
+        fixture: Fixture,
+        stream: impl Stream<Item = (), Error=()> + 'static,
+    ) {
+        let Fixture { cfg, dir, mut rt } = fixture;
+
+        let real_data_path = dir.path().join("real_data");
+        let data_path = dir.path().join("data");
+        fs::create_dir(&real_data_path).expect("create data dir");
+        symlink_dir(&real_data_path, &data_path).expect("create data dir symlink");
+
+        let mut trust_anchors = File::create(real_data_path.clone().join(TRUST_ANCHORS))
+            .expect("create trust anchors");
+        println!("created {:?}", trust_anchors);
+        trust_anchors.write_all(b"I am not real trust anchors")
+            .expect("write to trust anchors");
+        trust_anchors.sync_all().expect("sync trust anchors");
+
+        let mut private_key = File::create(real_data_path.clone().join(PRIVATE_KEY))
+            .expect("create private key");
+        println!("created {:?}", private_key);
+        private_key.write_all(b"I am not a realprivate key")
+            .expect("write to private key");
+        private_key.sync_all().expect("sync private key");
+
+        let mut end_entity_cert = File::create(real_data_path.clone().join(END_ENTITY_CERT))
+            .expect("create end entity cert");
+        println!("created {:?}", end_entity_cert);
+        end_entity_cert.write_all(b"I am not real end entity cert")
+            .expect("write to end entity cert");
+        end_entity_cert.sync_all().expect("sync end entity cert");
+
+        symlink_file(data_path.clone().join(PRIVATE_KEY), cfg.private_key)
+            .expect("symlink private key");
+        symlink_file(data_path.clone().join(END_ENTITY_CERT), cfg.end_entity_cert)
+            .expect("symlink end entity cert");
+        symlink_file(data_path.clone().join(TRUST_ANCHORS), cfg.trust_anchors)
+            .expect("symlink trust anchors");
+
+        let (watch, bg) = watch_stream(stream);
+        rt.spawn(Box::new(bg));
+
+        trust_anchors.write_all(b"Trust me on this :)")
+            .expect("write to trust anchors again");
+        trust_anchors.sync_all()
+            .expect("sync trust anchors again");
+
+        let next = watch.into_future().map_err(|(e, _)| e);
+        let (item, watch) = rt.block_on_for(Duration::from_secs(5), next)
+            .expect("first change");
+        assert!(item.is_some());
+        println!("saw first change");
+
+        end_entity_cert.write_all(b"This is the end of the end entity cert :)")
+            .expect("write to end entity cert again");
+        end_entity_cert.sync_all()
+            .expect("sync end entity cert again");
+
+        let next = watch.into_future().map_err(|(e, _)| e);
+        let (item, watch) = rt.block_on_for(Duration::from_secs(5), next)
+            .expect("second change");
+        assert!(item.is_some());
+        println!("saw second change");
+
         private_key.write_all(b"Keep me private :)")
             .expect("write to private key");
         private_key.sync_all()
@@ -800,6 +922,40 @@ mod tests {
         let stream = fixture.cfg.clone()
             .stream_changes_inotify();
         test_detects_modification(fixture, stream)
+    }
+
+    #[test]
+    fn polling_detects_modification_symlink() {
+        let fixture = fixture();
+        let stream = fixture.cfg.clone()
+            .stream_changes_polling(Duration::from_millis(1));
+        test_detects_modification_symlink(fixture, stream)
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn inotify_detects_modification_symlink() {
+        let fixture = fixture();
+        let stream = fixture.cfg.clone()
+            .stream_changes_inotify();
+        test_detects_modification_symlink(fixture, stream)
+    }
+
+    #[test]
+    fn polling_detects_modification_double_symlink() {
+        let fixture = fixture();
+        let stream = fixture.cfg.clone()
+            .stream_changes_polling(Duration::from_millis(1));
+        test_detects_modification_double_symlink(fixture, stream)
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn inotify_detects_modification_double_symlink() {
+        let fixture = fixture();
+        let stream = fixture.cfg.clone()
+            .stream_changes_inotify();
+        test_detects_modification_double_symlink(fixture, stream)
     }
 
 }
