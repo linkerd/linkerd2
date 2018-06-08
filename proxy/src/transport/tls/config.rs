@@ -877,6 +877,84 @@ mod tests {
         println!("saw third change");
     }
 
+    fn test_detects_double_symlink_retargeting(
+        fixture: Fixture,
+        stream: impl Stream<Item = (), Error=()> + 'static,
+    ) {
+        let Fixture { cfg, dir, mut rt } = fixture;
+
+        let real_data_path = dir.path().join("real_data");
+        let real_data_path_2 = dir.path().join("real_data_2");
+        let data_path = dir.path().join("data");
+        fs::create_dir(&real_data_path).expect("create data dir");
+        fs::create_dir(&real_data_path_2).expect("create data dir 2");
+        symlink_dir(&real_data_path, &data_path).expect("create data dir symlink");
+
+        let mut trust_anchors = File::create(real_data_path.clone().join(TRUST_ANCHORS))
+            .expect("create trust anchors");
+        println!("created {:?}", trust_anchors);
+        trust_anchors.write_all(b"I am not real trust anchors")
+            .expect("write to trust anchors");
+        trust_anchors.sync_all().expect("sync trust anchors");
+
+        let mut private_key = File::create(real_data_path.clone().join(PRIVATE_KEY))
+            .expect("create private key");
+        println!("created {:?}", private_key);
+        private_key.write_all(b"I am not a realprivate key")
+            .expect("write to private key");
+        private_key.sync_all().expect("sync private key");
+
+        let mut end_entity_cert = File::create(real_data_path.clone().join(END_ENTITY_CERT))
+            .expect("create end entity cert");
+        println!("created {:?}", end_entity_cert);
+        end_entity_cert.write_all(b"I am not real end entity cert")
+            .expect("write to end entity cert");
+        end_entity_cert.sync_all().expect("sync end entity cert");
+
+        let mut trust_anchors = File::create(real_data_path_2.clone().join(TRUST_ANCHORS))
+            .expect("create trust anchors 2");
+        println!("created {:?}", trust_anchors);
+        trust_anchors.write_all(b"I am not real trust anchors either")
+            .expect("write to trust anchors 2");
+        trust_anchors.sync_all().expect("sync trust anchors 2");
+
+        let mut private_key = File::create(real_data_path_2.clone().join(PRIVATE_KEY))
+            .expect("create private key 2");
+        println!("created {:?}", private_key);
+        private_key.write_all(b"I am not a real private key either")
+            .expect("write to private key 2");
+        private_key.sync_all().expect("sync private key 2");
+
+        let mut end_entity_cert = File::create(real_data_path_2.clone().join(END_ENTITY_CERT))
+            .expect("create end entity cert 2");
+        println!("created {:?}", end_entity_cert);
+        end_entity_cert.write_all(b"I am not real end entity cert either")
+            .expect("write to end entity cert 2");
+        end_entity_cert.sync_all().expect("sync end entity cert 2");
+
+        symlink_file(data_path.clone().join(PRIVATE_KEY), cfg.private_key)
+            .expect("symlink private key");
+        symlink_file(data_path.clone().join(END_ENTITY_CERT), cfg.end_entity_cert)
+            .expect("symlink end entity cert");
+        symlink_file(data_path.clone().join(TRUST_ANCHORS), cfg.trust_anchors)
+            .expect("symlink trust anchors");
+
+        let (watch, bg) = watch_stream(stream);
+        rt.spawn(Box::new(bg));
+
+        fs::remove_dir_all(&data_path)
+            .expect("remove original data dir symlink");
+        symlink_dir(&real_data_path_2, &data_path)
+            .expect("create second data dir symlink");
+
+        let next = watch.into_future().map_err(|(e, _)| e);
+        let (item, _) = rt.block_on_for(Duration::from_secs(5), next)
+            .expect("first change");
+        assert!(item.is_some());
+        println!("saw first change");
+    }
+
+
     #[test]
     fn polling_detects_create() {
         let fixture = fixture();
@@ -977,6 +1055,23 @@ mod tests {
         let stream = fixture.cfg.clone()
             .stream_changes_inotify();
         test_detects_modification_double_symlink(fixture, stream)
+    }
+
+    #[test]
+    fn polling_detects_double_symlink_retargeting() {
+        let fixture = fixture();
+        let stream = fixture.cfg.clone()
+            .stream_changes_polling(Duration::from_millis(1));
+        test_detects_double_symlink_retargeting(fixture, stream)
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn polling_detects_double_symlink_retargeting() {
+        let fixture = fixture();
+        let stream = fixture.cfg.clone()
+            .stream_changes_inotify();
+        test_detects_double_symlink_retargeting(fixture, stream)
     }
 
 }
