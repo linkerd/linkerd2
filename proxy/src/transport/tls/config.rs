@@ -367,3 +367,168 @@ fn set_common_settings(versions: &mut Vec<rustls::ProtocolVersion>) {
     // Only enable TLS 1.2 until TLS 1.3 is stable.
     *versions = vec![rustls::ProtocolVersion::TLSv1_2]
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use tempdir::TempDir;
+    use tokio::{
+        runtime::current_thread::Runtime,
+        timer,
+    };
+
+    use std::{
+        io::Write,
+        fs::File,
+    };
+
+    use futures::{Sink, Stream};
+    use futures_watch::Watch;
+
+    struct Fixture {
+        cfg: CommonSettings,
+        dir: TempDir,
+        rt: Runtime,
+    }
+
+    /// A trait that allows an executor to execute a future for up to
+    /// a given time limit, and then panics if the future has not
+    /// finished.
+    ///
+    // TODO: This might be useful for tests outside of this module...
+    trait BlockOnFor {
+        /// Runs the provided future for up to `Duration`, blocking the thread
+        /// until the future completes.
+        fn block_on_for<F>(&mut self, duration: Duration, f: F) -> Result<F::Item, F::Error>
+        where
+            F: Future;
+    }
+
+    impl BlockOnFor for Runtime {
+        fn block_on_for<F>(&mut self, duration: Duration, f: F) -> Result<F::Item, F::Error>
+        where
+            F: Future
+        {
+            let f = timer::Deadline::new(f, Instant::now() + duration);
+            match self.block_on(f) {
+                Ok(item) => Ok(item),
+                Err(e) => if e.is_inner() {
+                    return Err(e.into_inner().unwrap());
+                } else if e.is_timer() {
+                    panic!("timer error: {}", e.into_timer().unwrap());
+                } else {
+                    panic!("assertion failed: future did not finish within {:?}", duration);
+                },
+            }
+        }
+    }
+
+    fn fixture() -> Fixture {
+        let dir = TempDir::new("certs").expect("temp dir");
+        let cfg = CommonSettings {
+            trust_anchors: dir.path().join("ca.pem"),
+            end_entity_cert: dir.path().join("test-test.crt"),
+            private_key: dir.path().join("test-test.p8"),
+        };
+        let rt = Runtime::new().expect("runtime");
+        Fixture { cfg, dir, rt }
+    }
+
+    #[test]
+    fn polling_detects_create() {
+        let Fixture { cfg, dir: _dir, mut rt } = fixture();
+
+        let (watch, store) = Watch::new(());
+        // Use a watch so we can start running the stream immediately but also
+        // wait on stream updates.
+        let stream = cfg.stream_changes_polling(Duration::from_millis(1))
+            .forward(store.sink_map_err(|_| ()))
+            .map(|_| ())
+            .map_err(|_| ());
+
+        rt.spawn(Box::new(stream));
+
+        let f = File::create(cfg.trust_anchors)
+            .expect("create trust anchors");
+        f.sync_all().expect("create trust anchors");
+        println!("created {:?}", f);
+
+        let next = watch.into_future().map_err(|(e, _)| e);
+        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
+            .expect("first change");
+        assert!(item.is_some());
+
+        let f = File::create(cfg.end_entity_cert)
+            .expect("create end entity cert")
+            .sync_all()
+            .expect("sync end entity cert");
+        println!("created {:?}", f);
+
+        let next = watch.into_future().map_err(|(e, _)| e);
+        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
+            .expect("second change");
+        assert!(item.is_some());
+
+        let f = File::create(cfg.private_key)
+            .expect("create private key")
+            .sync_all()
+            .expect("sync private key");
+        println!("created {:?}", f);
+
+        let next = watch.into_future().map_err(|(e, _)| e);
+        let (item, _) = rt.block_on_for(Duration::from_secs(2), next)
+            .expect("third change");
+        assert!(item.is_some());
+    }
+
+    #[test]
+    fn polling_detects_modification() {
+        let Fixture { cfg, dir: _dir, mut rt } = fixture();
+        let (watch, store) = Watch::new(());
+        let mut trust_anchors = File::create(cfg.trust_anchors.clone())
+            .expect("create trust anchors");
+        println!("created {:?}", trust_anchors);
+        trust_anchors.write_all(b"I am not real trust anchors")
+            .expect("write to trust anchors");
+        trust_anchors.sync_all().expect("sync trust anchors");
+
+        // let mut private_key = File::create(cfg.private_key.clone())
+        //     .expect("create private key");
+        // println!("created {:?}", private_key);
+        // writeln!(private_key, "I am not real a private key")
+        //     .expect("write to private key");
+        // private_key.sync_all().expect("sync private key");
+
+        // Use a watch so we can start running the stream immediately but also
+        // wait on stream updates.
+        let stream = cfg.stream_changes_polling(Duration::from_millis(1))
+            .forward(store.sink_map_err(|_| ()))
+            .map(|_| ())
+            .map_err(|_| ());
+
+        rt.spawn(Box::new(stream));
+
+        trust_anchors.write_all(b"Trust me on this :)")
+            .expect("write to trust anchors again");
+        trust_anchors.sync_all()
+            .expect("sync trust anchors again");
+
+        let next = watch.into_future().map_err(|(e, _)| e);
+        let (item, _watch) = rt.block_on_for(Duration::from_secs(5), next)
+            .expect("first change");
+        assert!(item.is_some());
+        println!("saw first change");
+
+        // writeln!(private_key, "Keep me private.")
+        //     .expect("write to private key again");
+        // private_key.sync_all().expect("sync private key");
+
+        // let next = stream.into_future().map_err(|(e, _)| e);
+        // let (item, _stream) = rt.block_on_for(Duration::from_secs(5), next)
+        //     .expect("second change");
+        // assert!(item.is_some());
+
+        println!("saw second change");
+    }
+}
