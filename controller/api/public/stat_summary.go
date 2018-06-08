@@ -47,9 +47,6 @@ const (
 
 var promTypes = []promType{promRequests, promLatencyP50, promLatencyP95, promLatencyP99}
 
-// resources to query when Resource.Type is "all"
-var resourceTypes = []string{k8s.Pods, k8s.Deployments, k8s.ReplicationControllers, k8s.Services}
-
 type podCount struct {
 	inMesh uint64
 	total  uint64
@@ -83,7 +80,7 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 
 	var resourcesToQuery []string
 	if req.Selector.Resource.Type == k8s.All {
-		resourcesToQuery = resourceTypes
+		resourcesToQuery = k8s.StatAllResourceTypes
 	} else {
 		resourcesToQuery = []string{req.Selector.Resource.Type}
 	}
