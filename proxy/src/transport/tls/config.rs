@@ -137,8 +137,10 @@ impl CommonSettings {
             path.canonicalize()
                 .and_then(|canonical| {
                     trace!("last_modified: {:?} -> {:?}", path, canonical);
-                    canonical.symlink_metadata()
-                        .and_then(|meta| meta.modified())
+                    let modified = canonical.symlink_metadata()
+                        .and_then(|meta| meta.modified());
+                    debug!("{:?} modified at {:?}", path, modified);
+                    modified
                 })
                 .map_err(|e| if e.kind() != io::ErrorKind::NotFound {
                     // Don't log if the files don't exist, since this
@@ -381,6 +383,7 @@ mod tests {
     use std::{
         io::Write,
         fs::File,
+        thread,
     };
 
     use futures::{Sink, Stream};
@@ -435,19 +438,28 @@ mod tests {
         Fixture { cfg, dir, rt }
     }
 
-    #[test]
-    fn polling_detects_create() {
-        let Fixture { cfg, dir: _dir, mut rt } = fixture();
-
+    fn watch_stream(stream: impl Stream<Item = (), Error = ()> + 'static)
+        -> (Watch<()>, Box<Future<Item = (), Error = ()>>)
+    {
         let (watch, store) = Watch::new(());
         // Use a watch so we can start running the stream immediately but also
         // wait on stream updates.
-        let stream = cfg.stream_changes_polling(Duration::from_millis(1))
+        let f = stream
             .forward(store.sink_map_err(|_| ()))
             .map(|_| ())
             .map_err(|_| ());
 
-        rt.spawn(Box::new(stream));
+        (watch, Box::new(f))
+    }
+
+    fn test_detects_create(
+        fixture: Fixture,
+        stream: impl Stream<Item = (), Error=()> + 'static,
+    ) {
+        let Fixture { cfg, dir: _dir, mut rt } = fixture;
+
+        let (watch, bg) = watch_stream(stream);
+        rt.spawn(bg);
 
         let f = File::create(cfg.trust_anchors)
             .expect("create trust anchors");
@@ -455,24 +467,34 @@ mod tests {
         println!("created {:?}", f);
 
         let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
+        let (item, watch) = rt.block_on_for(Duration::from_secs(5), next)
             .expect("first change");
         assert!(item.is_some());
 
+        // Sleep briefly between changing the fs, as a workaround for
+        // macOS reporting timestamps with second resolution.
+        // https://github.com/runconduit/conduit/issues/1090
+        thread::sleep(Duration::from_secs(2));
+
         let f = File::create(cfg.end_entity_cert)
-            .expect("create end entity cert")
-            .sync_all()
+            .expect("create end entity cert");
+        f.sync_all()
             .expect("sync end entity cert");
         println!("created {:?}", f);
 
         let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
+        let (item, watch) = rt.block_on_for(Duration::from_secs(5), next)
             .expect("second change");
         assert!(item.is_some());
 
+        // Sleep briefly between changing the fs, as a workaround for
+        // macOS reporting timestamps with second resolution.
+        // https://github.com/runconduit/conduit/issues/1090
+        thread::sleep(Duration::from_secs(2));
+
         let f = File::create(cfg.private_key)
-            .expect("create private key")
-            .sync_all()
+            .expect("create private key");
+        f.sync_all()
             .expect("sync private key");
         println!("created {:?}", f);
 
@@ -482,10 +504,12 @@ mod tests {
         assert!(item.is_some());
     }
 
-    #[test]
-    fn polling_detects_modification() {
-        let Fixture { cfg, dir: _dir, mut rt } = fixture();
-        let (watch, store) = Watch::new(());
+    fn test_detects_modification(
+        fixture: Fixture,
+        stream: impl Stream<Item = (), Error=()> + 'static,
+    ) {
+        let Fixture { cfg, dir: _dir, mut rt } = fixture;
+
         let mut trust_anchors = File::create(cfg.trust_anchors.clone())
             .expect("create trust anchors");
         println!("created {:?}", trust_anchors);
@@ -493,42 +517,101 @@ mod tests {
             .expect("write to trust anchors");
         trust_anchors.sync_all().expect("sync trust anchors");
 
-        // let mut private_key = File::create(cfg.private_key.clone())
-        //     .expect("create private key");
-        // println!("created {:?}", private_key);
-        // writeln!(private_key, "I am not real a private key")
-        //     .expect("write to private key");
-        // private_key.sync_all().expect("sync private key");
+        let mut private_key = File::create(cfg.private_key.clone())
+            .expect("create private key");
+        println!("created {:?}", private_key);
+        private_key.write_all(b"I am not a realprivate key")
+            .expect("write to private key");
+        private_key.sync_all().expect("sync private key");
 
-        // Use a watch so we can start running the stream immediately but also
-        // wait on stream updates.
-        let stream = cfg.stream_changes_polling(Duration::from_millis(1))
-            .forward(store.sink_map_err(|_| ()))
-            .map(|_| ())
-            .map_err(|_| ());
+        let mut end_entity_cert = File::create(cfg.end_entity_cert.clone())
+            .expect("create end entity cert");
+        println!("created {:?}", end_entity_cert);
+        end_entity_cert.write_all(b"I am not real end entity cert")
+            .expect("write to end entity cert");
+        end_entity_cert.sync_all().expect("sync end entity cert");
 
-        rt.spawn(Box::new(stream));
+        let (watch, bg) = watch_stream(stream);
+        rt.spawn(Box::new(bg));
 
+        // Sleep briefly between changing the fs, as a workaround for
+        // macOS reporting timestamps with second resolution.
+        // https://github.com/runconduit/conduit/issues/1090
+        thread::sleep(Duration::from_secs(2));
         trust_anchors.write_all(b"Trust me on this :)")
             .expect("write to trust anchors again");
         trust_anchors.sync_all()
             .expect("sync trust anchors again");
 
         let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, _watch) = rt.block_on_for(Duration::from_secs(5), next)
+        let (item, watch) = rt.block_on_for(Duration::from_secs(5), next)
             .expect("first change");
         assert!(item.is_some());
         println!("saw first change");
 
-        // writeln!(private_key, "Keep me private.")
-        //     .expect("write to private key again");
-        // private_key.sync_all().expect("sync private key");
+        // Sleep briefly between changing the fs, as a workaround for
+        // macOS reporting timestamps with second resolution.
+        // https://github.com/runconduit/conduit/issues/1090
+        thread::sleep(Duration::from_secs(2));
+        end_entity_cert.write_all(b"This is the end of the end entity cert :)")
+            .expect("write to end entity cert again");
+        end_entity_cert.sync_all()
+            .expect("sync end entity cert again");
 
-        // let next = stream.into_future().map_err(|(e, _)| e);
-        // let (item, _stream) = rt.block_on_for(Duration::from_secs(5), next)
-        //     .expect("second change");
-        // assert!(item.is_some());
-
+        let next = watch.into_future().map_err(|(e, _)| e);
+        let (item, watch) = rt.block_on_for(Duration::from_secs(5), next)
+            .expect("second change");
+        assert!(item.is_some());
         println!("saw second change");
+
+        // Sleep briefly between changing the fs, as a workaround for
+        // macOS reporting timestamps with second resolution.
+        // https://github.com/runconduit/conduit/issues/1090
+        thread::sleep(Duration::from_secs(2));
+        private_key.write_all(b"Keep me private :)")
+            .expect("write to private key");
+        private_key.sync_all()
+            .expect("sync private key again");
+
+        let next = watch.into_future().map_err(|(e, _)| e);
+        let (item, _) = rt.block_on_for(Duration::from_secs(5), next)
+            .expect("third change");
+        assert!(item.is_some());
+        println!("saw third change");
     }
+
+    #[test]
+    fn polling_detects_create() {
+        let fixture = fixture();
+        let stream = fixture.cfg.clone()
+            .stream_changes_polling(Duration::from_millis(1));
+        test_detects_create(fixture, stream)
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn inotify_detects_create() {
+        let fixture = fixture();
+        let stream = fixture.cfg.clone()
+            .stream_changes_inotify();
+        test_detects_create(fixture, stream)
+    }
+
+    #[test]
+    fn polling_detects_modification() {
+        let fixture = fixture();
+        let stream = fixture.cfg.clone()
+            .stream_changes_polling(Duration::from_millis(1));
+        test_detects_modification(fixture, stream)
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn inotify_detects_modification() {
+        let fixture = fixture();
+        let stream = fixture.cfg.clone()
+            .stream_changes_inotify();
+        test_detects_modification(fixture, stream)
+    }
+
 }
