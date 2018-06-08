@@ -349,6 +349,7 @@ fn set_common_settings(versions: &mut Vec<rustls::ProtocolVersion>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use env_logger;
 
     use tempdir::TempDir;
     use tokio::{
@@ -357,19 +358,46 @@ mod tests {
     };
 
     use std::{
-        io::Write,
-        fs::File,
+        path::Path,
+        io::{self, Write},
+        fs::{self, File},
         thread,
     };
 
     use futures::{Sink, Stream};
     use futures_watch::Watch;
 
+    // These functions are a workaround for Windows having separate API calls
+    // for symlinking files and directories. You're welcome, Brian ;)
+    fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()> {
+        #[cfg(target_os = "windows")] {
+            ::std::os::windows::fs::symlink_file(src, dst)?;
+        }
+        #[cfg(not(target_os = "windows"))] {
+            ::std::os::unix::fs::symlink(src, dst)?;
+        }
+        Ok(())
+    }
+
+    fn symlink_dir<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()> {
+        #[cfg(target_os = "windows")] {
+            ::std::os::windows::fs::symlink_dir(src, dst)?;
+        }
+        #[cfg(not(target_os = "windows"))] {
+            ::std::os::unix::fs::symlink(src, dst)?;
+        }
+        Ok(())
+    }
+
     struct Fixture {
         cfg: CommonSettings,
         dir: TempDir,
         rt: Runtime,
     }
+
+    const END_ENTITY_CERT: &'static str = "test-test.crt";
+    const PRIVATE_KEY: &'static str = "test-test.p8";
+    const TRUST_ANCHORS: &'static str = "ca.pem";
 
     /// A trait that allows an executor to execute a future for up to
     /// a given time limit, and then panics if the future has not
@@ -406,9 +434,9 @@ mod tests {
     fn fixture() -> Fixture {
         let dir = TempDir::new("certs").expect("temp dir");
         let cfg = CommonSettings {
-            trust_anchors: dir.path().join("ca.pem"),
-            end_entity_cert: dir.path().join("test-test.crt"),
-            private_key: dir.path().join("test-test.p8"),
+            trust_anchors: dir.path().join(TRUST_ANCHORS),
+            end_entity_cert: dir.path().join(END_ENTITY_CERT),
+            private_key: dir.path().join(PRIVATE_KEY),
         };
         let rt = Runtime::new().expect("runtime");
         Fixture { cfg, dir, rt }
@@ -476,6 +504,132 @@ mod tests {
 
         let next = watch.into_future().map_err(|(e, _)| e);
         let (item, _) = rt.block_on_for(Duration::from_secs(2), next)
+            .expect("third change");
+        assert!(item.is_some());
+    }
+
+    fn test_detects_create_symlink(
+        fixture: Fixture,
+        stream: impl Stream<Item = (), Error=()> + 'static,
+    ) {
+        let Fixture { cfg, dir, mut rt } = fixture;
+
+        let data_path = dir.path().join("data");
+        fs::create_dir(&data_path).expect("create data dir");
+
+        let trust_anchors_path = data_path.clone().join(TRUST_ANCHORS);
+        let end_entity_cert_path = data_path.clone().join(END_ENTITY_CERT);
+        let private_key_path = data_path.clone().join(PRIVATE_KEY);
+
+        let end_entity_cert = File::create(&end_entity_cert_path)
+            .expect("create end entity cert");
+        end_entity_cert.sync_all()
+            .expect("sync end entity cert");
+        let private_key = File::create(&private_key_path)
+            .expect("create private key");
+        private_key.sync_all()
+            .expect("sync private key");
+        let trust_anchors = File::create(&trust_anchors_path)
+            .expect("create trust anchors");
+        trust_anchors.sync_all()
+            .expect("sync trust_anchors");
+
+        let (watch, bg) = watch_stream(stream);
+        rt.spawn(bg);
+
+        symlink_file(trust_anchors_path, cfg.trust_anchors)
+            .expect("symlink trust anchors");
+
+        let next = watch.into_future().map_err(|(e, _)| e);
+        let (item, watch) = rt.block_on_for(Duration::from_secs(5), next)
+            .expect("first change");
+        assert!(item.is_some());
+
+        // Sleep briefly between changing the fs, as a workaround for
+        // macOS reporting timestamps with second resolution.
+        // https://github.com/runconduit/conduit/issues/1090
+        thread::sleep(Duration::from_secs(2));
+        symlink_file(private_key_path, cfg.private_key)
+            .expect("symlink private key");
+
+        let next = watch.into_future().map_err(|(e, _)| e);
+        let (item, watch) = rt.block_on_for(Duration::from_secs(5), next)
+            .expect("second change");
+        assert!(item.is_some());
+
+        // Sleep briefly between changing the fs, as a workaround for
+        // macOS reporting timestamps with second resolution.
+        // https://github.com/runconduit/conduit/issues/1090
+        thread::sleep(Duration::from_secs(2));
+        symlink_file(end_entity_cert_path, cfg.end_entity_cert)
+            .expect("symlink end entity cert");
+
+        let next = watch.into_future().map_err(|(e, _)| e);
+        let (item, _) = rt.block_on_for(Duration::from_secs(2), next)
+            .expect("third change");
+        assert!(item.is_some());
+    }
+
+    // Test for when the watched files are symlinks to a file insdie of a
+    // directory which is also a symlink (as is the case with Kubernetes
+    // ConfigMap/Secret volume mounts).
+    fn test_detects_create_double_symlink(
+        fixture: Fixture,
+        stream: impl Stream<Item = (), Error=()> + 'static,
+    ) {
+        env_logger::try_init().unwrap();
+        let Fixture { cfg, dir, mut rt } = fixture;
+
+        let real_data_path = dir.path().join("real_data");
+        let data_path = dir.path().join("data");
+        fs::create_dir(&real_data_path).expect("create data dir");
+        symlink_dir(&real_data_path, &data_path).expect("create data dir symlink");
+
+        let end_entity_cert = File::create(real_data_path.clone().join(END_ENTITY_CERT))
+            .expect("create end entity cert");
+        end_entity_cert.sync_all()
+            .expect("sync end entity cert");
+        let private_key = File::create(real_data_path.clone().join(PRIVATE_KEY))
+            .expect("create private key");
+        private_key.sync_all()
+            .expect("sync private key");
+        let trust_anchors = File::create(real_data_path.clone().join(TRUST_ANCHORS))
+            .expect("create trust anchors");
+        trust_anchors.sync_all()
+            .expect("sync private key");
+
+        let (watch, bg) = watch_stream(stream);
+        rt.spawn(bg);
+
+        symlink_file(data_path.clone().join(TRUST_ANCHORS), cfg.trust_anchors)
+            .expect("symlink trust anchors");
+
+        let next = watch.into_future().map_err(|(e, _)| e);
+        let (item, watch) = rt.block_on_for(Duration::from_secs(5), next)
+            .expect("first change");
+        assert!(item.is_some());
+
+        // Sleep briefly between changing the fs, as a workaround for
+        // macOS reporting timestamps with second resolution.
+        // https://github.com/runconduit/conduit/issues/1090
+        thread::sleep(Duration::from_secs(2));
+        symlink_file(data_path.clone().join(PRIVATE_KEY), cfg.private_key)
+            .expect("symlink private key");
+
+        let next = watch.into_future().map_err(|(e, _)| e);
+        let (item, watch) = rt.block_on_for(Duration::from_secs(5), next)
+            .expect("second change");
+        assert!(item.is_some());
+
+        // Sleep briefly between changing the fs, as a workaround for
+        // macOS reporting timestamps with second resolution.
+        // https://github.com/runconduit/conduit/issues/1090
+        thread::sleep(Duration::from_secs(2));
+        symlink_file(real_data_path.clone().join(END_ENTITY_CERT), cfg.end_entity_cert)
+            .expect("symlink end entity cert");
+
+        let next = watch.into_future().map_err(|(e, _)| e);
+        let (item, _) = rt.block_on_for(Duration::from_secs(5), next)
             .expect("third change");
         assert!(item.is_some());
     }
@@ -571,6 +725,40 @@ mod tests {
         let stream = fixture.cfg.clone()
             .stream_changes_inotify();
         test_detects_create(fixture, stream)
+    }
+
+    #[test]
+    fn polling_detects_create_symlink() {
+        let fixture = fixture();
+        let stream = fixture.cfg.clone()
+            .stream_changes_polling(Duration::from_millis(1));
+        test_detects_create_symlink(fixture, stream)
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn inotify_detects_create_symlink() {
+        let fixture = fixture();
+        let stream = fixture.cfg.clone()
+            .stream_changes_inotify();
+        test_detects_create_symlink(fixture, stream)
+    }
+
+    #[test]
+    fn polling_detects_create_double_symlink() {
+        let fixture = fixture();
+        let stream = fixture.cfg.clone()
+            .stream_changes_polling(Duration::from_millis(1));
+        test_detects_create_double_symlink(fixture, stream)
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn inotify_detects_create_double_symlink() {
+        let fixture = fixture();
+        let stream = fixture.cfg.clone()
+            .stream_changes_inotify();
+        test_detects_create_double_symlink(fixture, stream)
     }
 
     #[test]
