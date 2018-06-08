@@ -30,6 +30,8 @@ extern crate prost_types;
 extern crate quickcheck;
 extern crate rand;
 extern crate regex;
+#[cfg(test)]
+extern crate tempdir;
 extern crate tokio;
 extern crate tokio_connect;
 extern crate tower_balance;
