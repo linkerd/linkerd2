@@ -27,6 +27,9 @@ var ResourceTypesToProxyLabels = map[string]string{
 	Services:               "service",
 }
 
+// resources to query in StatSummary when Resource.Type is "all"
+var StatAllResourceTypes = []string{Deployments, ReplicationControllers, Pods, Services}
+
 func generateKubernetesApiBaseUrlFor(schemeHostAndPort string, namespace string, extraPathStartingWithSlash string) (*url.URL, error) {
 	if string(extraPathStartingWithSlash[0]) != "/" {
 		return nil, fmt.Errorf("Path must start with a [/], was [%s]", extraPathStartingWithSlash)
