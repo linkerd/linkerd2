@@ -27,30 +27,32 @@ hyper = "0.12"
 ipnet = "1.0"
 log = "0.4.1"
 indexmap = "1.0.0"
+prost = "0.3.0"
+prost-types = "0.3.0"
 rand = "0.4"
 
 # for config parsing
 regex = "1.0.0"
 
-tokio = "0.1.6"
+# networking
+tokio = "0.1.7"
 tokio-signal = "0.2"
-
-prost = "0.3.0"
-prost-types = "0.3.0"
-
-trust-dns-resolver = { default-features = false, git = "https://github.com/bluejekyll/trust-dns" }
-
 tokio-connect         = { git = "https://github.com/carllerche/tokio-connect" }
-tower-service         = { git = "https://github.com/tower-rs/tower" }
 tower-balance         = { git = "https://github.com/tower-rs/tower" }
 tower-buffer          = { git = "https://github.com/tower-rs/tower" }
 tower-discover        = { git = "https://github.com/tower-rs/tower" }
-tower-grpc            = { git = "https://github.com/tower-rs/tower-grpc" }
-tower-h2              = { git = "https://github.com/tower-rs/tower-h2" }
-tower-reconnect       = { git = "https://github.com/tower-rs/tower" }
 tower-in-flight-limit = { git = "https://github.com/tower-rs/tower" }
+tower-reconnect       = { git = "https://github.com/tower-rs/tower" }
+tower-service         = { git = "https://github.com/tower-rs/tower" }
 tower-util            = { git = "https://github.com/tower-rs/tower" }
+tower-h2              = { git = "https://github.com/tower-rs/tower-h2" }
+tower-h2-balance      = { git = "https://github.com/tower-rs/tower-h2" }
+tower-grpc            = { git = "https://github.com/tower-rs/tower-grpc" }
 
+# dns
+trust-dns-resolver = { default-features = false, git = "https://github.com/bluejekyll/trust-dns" }
+
+# tls
 ring = "0.13.0-alpha4"
 webpki = "0.18.0-alpha4"
 rustls = "0.12.0"
