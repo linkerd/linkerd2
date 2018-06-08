@@ -1067,7 +1067,7 @@ mod tests {
 
     #[test]
     #[cfg(target_os = "linux")]
-    fn polling_detects_double_symlink_retargeting() {
+    fn inotify_detects_double_symlink_retargeting() {
         let fixture = fixture();
         let stream = fixture.cfg.clone()
             .stream_changes_inotify();
