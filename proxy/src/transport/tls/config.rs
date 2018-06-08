@@ -14,11 +14,9 @@ use super::{
     webpki,
 };
 
-use futures::{future, Future, Sink, Stream};
+use futures::{future, Future, Stream};
 use futures_watch::Watch;
 use tokio::timer::Interval;
-
-pub type ServerConfigWatch = Watch<Option<ServerConfig>>;
 
 /// Not-yet-validated settings that are used for both TLS clients and TLS
 /// servers.
@@ -49,10 +47,18 @@ pub struct CommonConfig {
     cert_resolver: Arc<CertResolver>,
 }
 
+/// Validated configuration for TLS clients.
+///
+/// TODO: Fill this in with the actual configuration.
+#[derive(Clone, Debug)]
+pub struct ClientConfig(Arc<()>);
 
 /// Validated configuration for TLS servers.
 #[derive(Clone)]
 pub struct ServerConfig(pub(super) Arc<rustls::ServerConfig>);
+
+pub type ClientConfigWatch = Watch<Option<ClientConfig>>;
+pub type ServerConfigWatch = Watch<Option<ServerConfig>>;
 
 #[derive(Debug)]
 pub enum Error {
@@ -270,29 +276,47 @@ impl CommonConfig {
 }
 
 pub fn watch_for_config_changes(settings: Option<&CommonSettings>)
-    -> (ServerConfigWatch, Box<Future<Item = (), Error = ()> + Send>)
+    -> (ClientConfigWatch, ServerConfigWatch, Box<Future<Item = (), Error = ()> + Send>)
 {
     let settings = if let Some(settings) = settings {
         settings.clone()
     } else {
-        let (watch, _) = Watch::new(None);
+        let (client_watch, _) = Watch::new(None);
+        let (server_watch, _) = Watch::new(None);
         let no_future = future::ok(());
-        return (watch, Box::new(no_future));
+        return (client_watch, server_watch, Box::new(no_future));
     };
 
     let changes = settings.stream_changes(Duration::from_secs(1));
-    let (watch, store) = Watch::new(None);
-    let server_configs = changes.map(|ref config| Some(ServerConfig::from(config)));
-    let store = store
-        .sink_map_err(|_| warn!("all server config watches dropped"));
-    let f = server_configs.forward(store)
-        .map(|_| trace!("forwarding to server config watch finished."));
+    let (client_watch, client_store) = Watch::new(None);
+    let (server_watch, server_store) = Watch::new(None);
+
+    // `Store::store` will return an error iff all watchers have been dropped,
+    // so we'll use `fold` to cancel the forwarding future. Eventually, we can
+    // also use the fold to continue tracking previous states if we need to do
+    // that.
+    let f = changes
+        .fold(
+            (client_store, server_store),
+            |(mut client_store, mut server_store), ref config| {
+                client_store
+                    .store(Some(ClientConfig(Arc::new(()))))
+                    .map_err(|_| trace!("all client config watchers dropped"))?;
+                server_store
+                    .store(Some(ServerConfig::from(config)))
+                    .map_err(|_| trace!("all server config watchers dropped"))?;
+                Ok((client_store, server_store))
+            })
+        .then(|_| {
+            trace!("forwarding to server config watch finished.");
+            Ok(())
+        });
 
     // This function and `ServerConfig::no_tls` return `Box<Future<...>>`
     // rather than `impl Future<...>` so that they can have the _same_ return
     // types (impl Traits are not the same type unless the original
     // non-anonymized type was the same).
-    (watch, Box::new(f))
+    (client_watch, server_watch, Box::new(f))
 }
 
 impl ServerConfig {
