@@ -968,7 +968,7 @@ mod tests {
     fn inotify_detects_create() {
         let fixture = fixture();
         let stream = fixture.cfg.clone()
-            .stream_changes_inotify();
+            .stream_changes_inotify().expect("inotify init");
         test_detects_create(fixture, stream)
     }
 
@@ -985,7 +985,7 @@ mod tests {
     fn inotify_detects_create_symlink() {
         let fixture = fixture();
         let stream = fixture.cfg.clone()
-            .stream_changes_inotify();
+            .stream_changes_inotify().expect("inotify init");
         test_detects_create_symlink(fixture, stream)
     }
 
@@ -1002,7 +1002,7 @@ mod tests {
     fn inotify_detects_create_double_symlink() {
         let fixture = fixture();
         let stream = fixture.cfg.clone()
-            .stream_changes_inotify();
+            .stream_changes_inotify().expect("inotify init");
         test_detects_create_double_symlink(fixture, stream)
     }
 
@@ -1019,7 +1019,7 @@ mod tests {
     fn inotify_detects_modification() {
         let fixture = fixture();
         let stream = fixture.cfg.clone()
-            .stream_changes_inotify();
+            .stream_changes_inotify().expect("inotify init");
         test_detects_modification(fixture, stream)
     }
 
@@ -1036,7 +1036,7 @@ mod tests {
     fn inotify_detects_modification_symlink() {
         let fixture = fixture();
         let stream = fixture.cfg.clone()
-            .stream_changes_inotify();
+            .stream_changes_inotify().expect("inotify init");
         test_detects_modification_symlink(fixture, stream)
     }
 
@@ -1053,7 +1053,7 @@ mod tests {
     fn inotify_detects_modification_double_symlink() {
         let fixture = fixture();
         let stream = fixture.cfg.clone()
-            .stream_changes_inotify();
+            .stream_changes_inotify().expect("inotify init");
         test_detects_modification_double_symlink(fixture, stream)
     }
 
@@ -1070,7 +1070,7 @@ mod tests {
     fn inotify_detects_double_symlink_retargeting() {
         let fixture = fixture();
         let stream = fixture.cfg.clone()
-            .stream_changes_inotify();
+            .stream_changes_inotify().expect("inotify init");
         test_detects_double_symlink_retargeting(fixture, stream)
     }
 
