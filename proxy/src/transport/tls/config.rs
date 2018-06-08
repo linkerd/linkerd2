@@ -1,24 +1,24 @@
 use std::{
-    fs::File,
+    cell::RefCell,
+    fs::{self, File},
     io::{self, Cursor, Read},
     path::PathBuf,
     sync::Arc,
-    time::{Duration, Instant, SystemTime,},
+    time::{Duration, Instant},
 };
 
 use super::{
     cert_resolver::CertResolver,
 
+    ring::digest::{self, Digest},
     rustls,
     untrusted,
     webpki,
 };
 
-use futures::{future, Future, Sink, Stream};
+use futures::{future, Future, Stream};
 use futures_watch::Watch;
 use tokio::timer::Interval;
-
-pub type ServerConfigWatch = Watch<Option<ServerConfig>>;
 
 /// Not-yet-validated settings that are used for both TLS clients and TLS
 /// servers.
@@ -44,15 +44,32 @@ pub struct CommonSettings {
     pub private_key: PathBuf,
 }
 
+#[derive(Clone, Debug)]
+struct PathAndHash {
+    /// The path to the file.
+    path: PathBuf,
+
+    /// The last SHA-384 digest of the file, if we have previously hashed it.
+    last_hash: RefCell<Option<Digest>>,
+}
+
 /// Validated configuration common between TLS clients and TLS servers.
 pub struct CommonConfig {
     cert_resolver: Arc<CertResolver>,
 }
 
+/// Validated configuration for TLS clients.
+///
+/// TODO: Fill this in with the actual configuration.
+#[derive(Clone, Debug)]
+pub struct ClientConfig(Arc<()>);
 
 /// Validated configuration for TLS servers.
 #[derive(Clone)]
 pub struct ServerConfig(pub(super) Arc<rustls::ServerConfig>);
+
+pub type ClientConfigWatch = Watch<Option<ClientConfig>>;
+pub type ServerConfigWatch = Watch<Option<ServerConfig>>;
 
 #[derive(Debug)]
 pub enum Error {
@@ -113,52 +130,38 @@ impl CommonSettings {
 
     /// Stream changes by polling the filesystem.
     ///
-    /// This will poll the filesystem for changes to the files at the paths
+    /// This will calculate the SHA-384 hash of each of files at the paths
     /// described by this `CommonSettings` every `interval`, and attempt to
-    /// load a new `CommonConfig` from the files again after each change.
+    /// load a new `CommonConfig` from the files again if any of the hashes
+    /// has changed.
     ///
     /// This is used on operating systems other than Linux, or on Linux if
     /// our attempt to use `inotify` failed.
     fn stream_changes_polling(&self, interval: Duration)
         -> impl Stream<Item = (), Error = ()>
     {
-        fn last_modified(path: &PathBuf) -> Option<SystemTime> {
-            // We have to canonicalize the path _every_ time we poll the fs,
-            // rather than once when we start watching, because if it's a
-            // symlink, the target may change. If that happened, and we
-            // continued watching the original canonical path, we wouldn't see
-            // any subsequent changes to the new symlink target.
-            path.canonicalize()
-                .and_then(|canonical| {
-                    trace!("last_modified: {:?} -> {:?}", path, canonical);
-                    let modified = canonical.symlink_metadata()
-                        .and_then(|meta| meta.modified());
-                    debug!("{:?} modified at {:?}", path, modified);
-                    modified
-                })
-                .map_err(|e| if e.kind() != io::ErrorKind::NotFound {
-                    // Don't log if the files don't exist, since this
-                    // makes the logs *quite* noisy.
-                    warn!("error reading metadata for {:?}: {}", path, e)
-                })
-                .ok()
-        }
-
-        let paths = self.paths().iter()
-            .map(|&p| p.clone())
-            .collect::<Vec<PathBuf>>();
-
-        let mut max: Option<SystemTime> = None;
+        let files = self.paths().iter()
+            .map(|&p| PathAndHash::new(p.clone()))
+            .collect::<Vec<_>>();
 
         Interval::new(Instant::now(), interval)
             .map_err(|e| error!("timer error: {:?}", e))
             .filter_map(move |_| {
-                for path in &paths  {
-                    let t = last_modified(path);
-                    if t > max {
-                        max = t;
-                        trace!("{:?} changed at {:?}", path, t);
-                        return Some(());
+                for file in &files  {
+                    match file.has_changed() {
+                        Ok(true) => {
+                            trace!("{:?} changed", &file.path);
+                            return Some(());
+                        },
+                        Err(ref e) if e.kind() != io::ErrorKind::NotFound => {
+                            // Ignore file not found errors so the log doesn't
+                            // get too noisy.
+                            warn!("error hashing {:?}: {}", &file.path, e);
+                        },
+                        _ => {
+                            // If the file doesn't exist or the hash hasn't changed,
+                            // keep going.
+                        },
                     }
                 }
                 None
@@ -226,6 +229,30 @@ impl CommonSettings {
     }
 }
 
+impl PathAndHash {
+    fn new(path: PathBuf) -> Self {
+        Self {
+            path,
+            last_hash: RefCell::new(None),
+        }
+    }
+
+    fn has_changed(&self) -> io::Result<bool> {
+        let contents = fs::read(&self.path)?;
+        let hash = Some(digest::digest(&digest::SHA256, &contents[..]));
+        let changed = self.last_hash
+            .borrow().as_ref()
+            .map(Digest::as_ref) != hash.as_ref().map(Digest::as_ref);
+        if changed {
+            self.last_hash.replace(hash);
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+
+    }
+}
+
 impl CommonConfig {
     /// Loads a configuration from the given files and validates it. If an
     /// error is returned then the caller should try again after the files are
@@ -272,29 +299,47 @@ impl CommonConfig {
 }
 
 pub fn watch_for_config_changes(settings: Option<&CommonSettings>)
-    -> (ServerConfigWatch, Box<Future<Item = (), Error = ()> + Send>)
+    -> (ClientConfigWatch, ServerConfigWatch, Box<Future<Item = (), Error = ()> + Send>)
 {
     let settings = if let Some(settings) = settings {
         settings.clone()
     } else {
-        let (watch, _) = Watch::new(None);
+        let (client_watch, _) = Watch::new(None);
+        let (server_watch, _) = Watch::new(None);
         let no_future = future::ok(());
-        return (watch, Box::new(no_future));
+        return (client_watch, server_watch, Box::new(no_future));
     };
 
     let changes = settings.stream_changes(Duration::from_secs(1));
-    let (watch, store) = Watch::new(None);
-    let server_configs = changes.map(|ref config| Some(ServerConfig::from(config)));
-    let store = store
-        .sink_map_err(|_| warn!("all server config watches dropped"));
-    let f = server_configs.forward(store)
-        .map(|_| trace!("forwarding to server config watch finished."));
+    let (client_watch, client_store) = Watch::new(None);
+    let (server_watch, server_store) = Watch::new(None);
+
+    // `Store::store` will return an error iff all watchers have been dropped,
+    // so we'll use `fold` to cancel the forwarding future. Eventually, we can
+    // also use the fold to continue tracking previous states if we need to do
+    // that.
+    let f = changes
+        .fold(
+            (client_store, server_store),
+            |(mut client_store, mut server_store), ref config| {
+                client_store
+                    .store(Some(ClientConfig(Arc::new(()))))
+                    .map_err(|_| trace!("all client config watchers dropped"))?;
+                server_store
+                    .store(Some(ServerConfig::from(config)))
+                    .map_err(|_| trace!("all server config watchers dropped"))?;
+                Ok((client_store, server_store))
+            })
+        .then(|_| {
+            trace!("forwarding to server config watch finished.");
+            Ok(())
+        });
 
     // This function and `ServerConfig::no_tls` return `Box<Future<...>>`
     // rather than `impl Future<...>` so that they can have the _same_ return
     // types (impl Traits are not the same type unless the original
     // non-anonymized type was the same).
-    (watch, Box::new(f))
+    (client_watch, server_watch, Box::new(f))
 }
 
 impl ServerConfig {

@@ -6,20 +6,21 @@ use std::sync::Arc;
 use http;
 use futures::{Async, Poll};
 use tower_service as tower;
-use tower_balance::{self, choose, load, Balance};
+use tower_balance::{choose, load, Balance};
 use tower_buffer::Buffer;
 use tower_discover::{Change, Discover};
 use tower_in_flight_limit::InFlightLimit;
 use tower_h2;
+use tower_h2_balance::{PendingUntilFirstData, PendingUntilFirstDataBody};
 use conduit_proxy_router::Recognize;
 
 use bind::{self, Bind, Protocol};
 use control::destination::{self, Bind as BindTrait, Resolution};
 use ctx;
+use telemetry::sensor::http::{ResponseBody as SensorBody};
 use timeout::Timeout;
-use transparency::h1;
+use transparency::{h1, HttpBody};
 use transport::{DnsNameAndPort, Host, HostAndPort};
-use rng::LazyThreadRng;
 
 type BindProtocol<B> = bind::BindProtocol<Arc<ctx::Proxy>, B>;
 
@@ -30,6 +31,9 @@ pub struct Outbound<B> {
 }
 
 const MAX_IN_FLIGHT: usize = 10_000;
+
+/// This default is used by Finagle.
+const DEFAULT_DECAY: Duration = Duration::from_secs(10);
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Destination {
@@ -72,13 +76,16 @@ where
     <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
     type Request = http::Request<B>;
-    type Response = bind::HttpResponse;
+    type Response = http::Response<PendingUntilFirstDataBody<
+        load::peak_ewma::Handle,
+        SensorBody<HttpBody>,
+    >>;
     type Error = <Self::Service as tower::Service>::Error;
     type Key = (Destination, Protocol);
     type RouteError = bind::BufferSpawnError;
     type Service = InFlightLimit<Timeout<Buffer<Balance<
-        load::WithPendingRequests<Discovery<B>>,
-        choose::PowerOfTwoChoices<LazyThreadRng>
+        load::WithPeakEwma<Discovery<B>, PendingUntilFirstData>,
+        choose::PowerOfTwoChoices,
     >>>>;
 
     fn recognize(&self, req: &Self::Request) -> Option<Self::Key> {
@@ -147,12 +154,11 @@ where
             }
         };
 
-        let loaded = tower_balance::load::WithPendingRequests::new(resolve);
-
-        // We can't use `rand::thread_rng` here because the returned `Service`
-        // needs to be `Send`, so instead, we use `LazyRng`, which calls
-        // `rand::thread_rng()` when it is *used*.
-        let balance = tower_balance::power_of_two_choices(loaded, LazyThreadRng);
+        let balance = {
+            let instrument = PendingUntilFirstData::default();
+            let loaded = load::WithPeakEwma::new(resolve, DEFAULT_DECAY, instrument);
+            Balance::p2c(loaded)
+        };
 
         let log = ::logging::proxy().client("out", Dst(dest.clone()))
             .with_protocol(protocol.clone());

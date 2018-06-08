@@ -40,6 +40,7 @@ extern crate tower_buffer;
 extern crate tower_discover;
 extern crate tower_grpc;
 extern crate tower_h2;
+extern crate tower_h2_balance;
 extern crate tower_reconnect;
 extern crate tower_service;
 extern crate conduit_proxy_router;
@@ -83,7 +84,6 @@ mod transparency;
 mod transport;
 pub mod timeout;
 mod tower_fn; // TODO: move to tower-fn
-mod rng;
 
 use bind::Bind;
 use connection::BoundPort;
@@ -234,7 +234,7 @@ where
 
         let bind = Bind::new().with_sensors(sensors.clone());
 
-        let (tls_server_config, tls_cfg_bg) =
+        let (_tls_client_config, tls_server_config, tls_cfg_bg) =
             tls::watch_for_config_changes(config.tls_settings.as_ref());
 
         // Setup the public listener. This will listen on a publicly accessible
@@ -358,12 +358,13 @@ fn serve<R, B, E, F, G>(
 ) -> impl Future<Item = (), Error = io::Error> + Send + 'static
 where
     B: tower_h2::Body + Default + Send + 'static,
+    B::Data: Send,
     <B::Data as ::bytes::IntoBuf>::Buf: Send,
     E: Error + Send + 'static,
     F: Error + Send + 'static,
     R: Recognize<
         Request = http::Request<HttpBody>,
-        Response = http::Response<telemetry::sensor::http::ResponseBody<B>>,
+        Response = http::Response<B>,
         Error = E,
         RouteError = F,
     >
