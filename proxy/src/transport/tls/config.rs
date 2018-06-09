@@ -103,17 +103,18 @@ impl CommonSettings {
         // paths. If this fails, fall back to polling the filesystem.
         #[cfg(target_os = "linux")]
         let changes: Box<Stream<Item = (), Error = ()> + Send> =
-            match self.stream_changes_inotify() {
-                Ok(s) => Box::new(s),
-                Err(e) => {
-                    warn!(
-                        "inotify init error: {:?}, falling back to polling",
-                        e
-                    );
-                    Box::new(self.stream_changes_polling(interval))
-                },
-            };
-
+            Box::new(self.stream_changes_polling()
+                .take(1)
+                .concat(self.stream_changes_inotify()
+                    .or_else(|e| {
+                        warn!(
+                            "inotify init error: {:?}, falling back to polling",
+                            e
+                        );
+                        self.stream_changes_polling(interval)
+                    })
+                );
+            );
         // If we're not on Linux, we can't use inotify, so simply poll the fs.
         // TODO: Use other FS events APIs (such as `kqueue`) as well, when
         //       they're available.
