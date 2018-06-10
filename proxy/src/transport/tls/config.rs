@@ -102,24 +102,28 @@ impl CommonSettings {
         // If we're on Linux, first atttempt to start an Inotify watch on the
         // paths. If this fails, fall back to polling the filesystem.
         #[cfg(target_os = "linux")]
-        let changes: Box<Stream<Item = (), Error = ()> + Send> =
-            Box::new(self.stream_changes_polling()
-                .take(1)
-                .concat(self.stream_changes_inotify()
-                    .or_else(|e| {
-                        warn!(
-                            "inotify init error: {:?}, falling back to polling",
-                            e
-                        );
-                        self.stream_changes_polling(interval)
-                    })
-                );
+        let changes = self
+            .stream_changes_polling(interval)
+            .take(1)
+            .chain(self
+                .stream_changes_inotify()
+                .map(|inotify| {
+                    // XXX: ugh.
+                    let s: Box<Stream<Item = (), Error = ()> + Send> = Box::new(inotify);
+                    s
+                })
+                .unwrap_or_else(|e| {
+                    warn!("inotify init error: {:?}, falling back to polling", e);
+                    let s = self.stream_changes_polling(interval);
+                    let s: Box<Stream<Item = (), Error = ()> + Send> = Box::new(s);
+                    s
+                })
             );
         // If we're not on Linux, we can't use inotify, so simply poll the fs.
         // TODO: Use other FS events APIs (such as `kqueue`) as well, when
         //       they're available.
         #[cfg(not(target_os = "linux"))]
-        let changes = self.stream_changes_polling(interval);
+        let changes = Box::new(self.stream_changes_polling(interval));
 
         changes.filter_map(move |_|
             CommonConfig::load_from_disk(&self)
