@@ -514,7 +514,7 @@
           "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\", tls!=\"true\"}[30s])) by (deployment)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "⚠️deploy/{{deployment}}",
+          "legendFormat": "deploy/{{deployment}}",
           "refId": "B"
         }
       ],
@@ -1078,7 +1078,7 @@
               "expr": "sum(irate(request_total{deployment!=\"\", deployment=\"$inbound\", dst_namespace=\"$namespace\", dst_deployment=\"$deployment\", direction=\"outbound\", tls!=\"true\"}[30s])) by (deployment, pod)",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "⚠️po/{{pod}}",
+              "legendFormat": "po/{{pod}}",
               "refId": "B"
             }
           ],
@@ -1387,7 +1387,7 @@
           "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\", tls!=\"true\"}[30s])) by (dst_deployment)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "⚠️deploy/{{dst_deployment}}",
+          "legendFormat": "deploy/{{dst_deployment}}",
           "refId": "B"
         }
       ],
@@ -1942,7 +1942,7 @@
               "expr": "sum(irate(request_total{namespace=\"$namespace\", deployment=\"$deployment\", dst_deployment=\"$outbound\", direction=\"outbound\", tls!=\"true\"}[30s])) by (dst_deployment)",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "⚠️deploy/{{dst_deployment}}",
+              "legendFormat": "deploy/{{dst_deployment}}",
               "refId": "B"
             }
           ],

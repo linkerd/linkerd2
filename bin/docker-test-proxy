@@ -1,0 +1,28 @@
+#!/bin/bash
+
+set -eu
+
+if [ $# -ne 0 ]; then
+    echo "no arguments allowed for $(basename $0), given: $@" >&2
+    exit 64
+fi
+
+bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+rootdir="$( cd $bindir/.. && pwd )"
+
+. $bindir/_docker.sh
+. $bindir/_tag.sh
+
+if [ -z "${PROXY_BUILD_CACHE_IMAGE:-}" ]; then
+    # If a cache is not specified use the default docker cache.
+    DOCKER_TRACE=1 docker_build proxy "$(head_root_tag)" \
+        $rootdir/proxy/Dockerfile-test \
+        --build-arg="PROXY_UNOPTIMIZED=${PROXY_UNOPTIMIZED:-}"
+
+else
+    # Otherwise, if a cache image is specified, use it.
+    DOCKER_TRACE=1 docker_build proxy "$(head_root_tag)" \
+        $rootdir/proxy/Dockerfile-test \
+        --build-arg="PROXY_UNOPTIMIZED=${PROXY_UNOPTIMIZED:-}" \
+        --cache-from="$PROXY_BUILD_CACHE_IMAGE"
+fi
