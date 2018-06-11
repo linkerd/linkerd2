@@ -1,6 +1,27 @@
+## v0.4.3
+
+Conduit v0.4.3 continues progress towards production readiness. It features a new
+latency-aware load balancer.
+
+* Production Readiness
+  * The proxy now uses a latency-aware load balancer for outbound requests. This
+    implementation is based on Finagle's Peak-EWMA balancer, which has been proven to
+    significantly reduce tail latencies. This is the same load balancing strategy used by
+    Linkerd.
+* User Interface
+  * `conduit stat` is now slightly more predictable in the way it outputs things,
+    especially for commands like `watch conduit stat all --all-namespaces`.
+  * Failed and completed pods are no longer shown in stat summary results.
+* Internals
+  * The proxy now supports some TLS configuration, though these features remain disabled
+    and undocumented pending further testing and instrumentation.
+
+Special thanks to @ihcsim for contributing his first PR to the project and to @roanta for
+discussing the Peak-EWMA load balancing algorithm with us.
+
 ## v0.4.2
 
-Conduit 0.4.2 is a major step towards production readiness. It features a wide array of
+Conduit v0.4.2 is a major step towards production readiness. It features a wide array of
 fixes and improvements for long-running proxies, and several new telemetry features. It
 also lays the groundwork for upcoming releases that introduce mutual TLS everywhere.
 
