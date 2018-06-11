@@ -250,24 +250,24 @@ describe('ApiHelpers', () => {
     });
 
     it('adds a ?window= if metricsWindow is the only param', () => {
-      api.fetchMetrics('/api/stat');
+      api.fetchMetrics('/api/tps-reports');
 
       expect(fetchStub.calledOnce).to.be.true;
-      expect(fetchStub.args[0][0]).to.equal('/api/stat?window=1m');
+      expect(fetchStub.args[0][0]).to.equal('/api/tps-reports?window=1m');
     });
 
     it('adds &window= if metricsWindow is not the only param', () => {
-      api.fetchMetrics('/api/stat?foo=3&bar="me"');
+      api.fetchMetrics('/api/tps-reports?foo=3&bar="me"');
 
       expect(fetchStub.calledOnce).to.be.true;
-      expect(fetchStub.args[0][0]).to.equal('/api/stat?foo=3&bar="me"&window=1m');
+      expect(fetchStub.args[0][0]).to.equal('/api/tps-reports?foo=3&bar="me"&window=1m');
     });
 
     it('does not add another &window= if there is already a window param', () => {
-      api.fetchMetrics('/api/stat?foo=3&window=24h&bar="me"');
+      api.fetchMetrics('/api/tps-reports?foo=3&window=24h&bar="me"');
 
       expect(fetchStub.calledOnce).to.be.true;
-      expect(fetchStub.args[0][0]).to.equal('/api/stat?foo=3&window=24h&bar="me"');
+      expect(fetchStub.args[0][0]).to.equal('/api/tps-reports?foo=3&window=24h&bar="me"');
     });
   });
 
@@ -285,19 +285,19 @@ describe('ApiHelpers', () => {
     it('returns the correct rollup url for deployment overviews', () => {
       api = ApiHelpers('/go/my/own/way');
       let deploymentUrl = api.urlsForResource("deployment");
-      expect(deploymentUrl).to.equal('/api/stat?resource_type=deployment');
+      expect(deploymentUrl).to.equal('/api/tps-reports?resource_type=deployment');
     });
 
     it('returns the correct rollup url for pod overviews', () => {
       api = ApiHelpers('/go/my/own/way');
       let deploymentUrls = api.urlsForResource("pod");
-      expect(deploymentUrls).to.equal('/api/stat?resource_type=pod');
+      expect(deploymentUrls).to.equal('/api/tps-reports?resource_type=pod');
     });
 
     it('scopes the query to the provided namespace', () => {
       api = ApiHelpers('/go/my/own/way');
       let deploymentUrls = api.urlsForResource("pod", "my-ns");
-      expect(deploymentUrls).to.equal('/api/stat?resource_type=pod&namespace=my-ns');
+      expect(deploymentUrls).to.equal('/api/tps-reports?resource_type=pod&namespace=my-ns');
     });
   });
 });
