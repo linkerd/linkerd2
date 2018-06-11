@@ -326,6 +326,15 @@ It supports two environment variables:
   which reduces build times at the expense of runtime performance. Changing this will
   likely invalidate a substantial portion of Docker's cache.
 
+To run `cargo test` inside of the latest proxy Docker image, run:
+
+```bash
+bin/docker-test-proxy
+```
+
+This is primarily useful for testing Linux-only proxy features when developing
+on another operating system.
+
 # Dependencies
 
 ## Updating protobuf dependencies
