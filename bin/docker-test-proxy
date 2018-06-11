@@ -10,10 +10,13 @@ fi
 bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 rootdir="$( cd $bindir/.. && pwd )"
 
+output="/dev/null"
+if [ -n "$DOCKER_TRACE" ]; then
+    output="/dev/stderr"
+fi
 
 docker build -f $rootdir/proxy/Dockerfile . \
     --target build \
     -t proxy-build \
-    --build-arg=PROXY_UNOPTIMIZED=1 > /dev/null
-echo "running proxy tests in docker image..."
+    --build-arg=PROXY_UNOPTIMIZED=1 > "$output"
 docker run --rm -it proxy-build cargo test
