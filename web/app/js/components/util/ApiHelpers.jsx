@@ -84,7 +84,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
       type = "replicationcontroller";
     }
 
-    let baseUrl = '/api/stat?resource_type=' + type;
+    let baseUrl = '/api/tps-reports?resource_type=' + type;
     return !namespace ? baseUrl : baseUrl + '&namespace=' + namespace;
   };
 
