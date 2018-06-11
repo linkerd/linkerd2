@@ -82,6 +82,8 @@ pub enum Error {
     InotifyInit(io::Error),
 }
 
+
+
 impl CommonSettings {
     fn paths(&self) -> [&PathBuf; 3] {
         [
@@ -102,35 +104,18 @@ impl CommonSettings {
         // If we're on Linux, first atttempt to start an Inotify watch on the
         // paths. If this fails, fall back to polling the filesystem.
         #[cfg(target_os = "linux")]
-        let changes = self
-            .stream_changes_polling(interval)
-            .take(1)
-            .chain(self
-                .stream_changes_inotify()
-                .map(|inotify| {
-                    // XXX: ugh.
-                    let s: Box<Stream<Item = (), Error = ()> + Send> = Box::new(inotify);
-                    s
-                })
-                .unwrap_or_else(|e| {
-                    warn!("inotify init error: {:?}, falling back to polling", e);
-                    let s = self.stream_changes_polling(interval);
-                    let s: Box<Stream<Item = (), Error = ()> + Send> = Box::new(s);
-                    s
-                })
-            );
+        let changes = self.stream_changes_inotify(interval);
         // If we're not on Linux, we can't use inotify, so simply poll the fs.
         // TODO: Use other FS events APIs (such as `kqueue`) as well, when
         //       they're available.
         #[cfg(not(target_os = "linux"))]
-        let changes = Box::new(self.stream_changes_polling(interval));
+        let changes = self.stream_changes_polling(interval);
 
         changes.filter_map(move |_|
             CommonConfig::load_from_disk(&self)
                 .map_err(|e| warn!("error reloading TLS config: {:?}, falling back", e))
                 .ok()
         )
-
     }
 
     /// Stream changes by polling the filesystem.
@@ -174,63 +159,79 @@ impl CommonSettings {
     }
 
     #[cfg(target_os = "linux")]
-    fn stream_changes_inotify(&self)
-        -> Result<impl Stream<Item = (), Error = ()>, Error>
+    fn stream_changes_inotify(&self, interval: Duration)
+        -> impl Stream<Item = (), Error = ()>
     {
-        use std::{collections::HashSet, path::Path};
-        use inotify::{Inotify, WatchMask};
+        use ::stream;
+        fn inotify_inner(paths: [&PathBuf; 3])
+            -> Result<impl Stream<Item = (), Error = ()>, Error>
+        {
+            use std::{collections::HashSet, path::Path};
+            use inotify::{Inotify, WatchMask};
 
-        // Use a broad watch mask so that we will pick up any events that might
-        // indicate a change to the watched files.
-        //
-        // Such a broad mask may lead to reloading certs multiple times when k8s
-        // modifies a ConfigMap or Secret, which is a multi-step process that we
-        // see as a series CREATE, MOVED_TO, MOVED_FROM, and DELETE events.
-        // However, we want to catch single events that might occur when the
-        // files we're watching *don't* live in a k8s ConfigMap/Secret.
-        let mask = WatchMask::CREATE
-                 | WatchMask::MODIFY
-                 | WatchMask::DELETE
-                 | WatchMask::MOVE
-                 ;
-        let mut inotify = Inotify::init().map_err(Error::InotifyInit)?;
+            // Use a broad watch mask so that we will pick up any events that might
+            // indicate a change to the watched files.
+            //
+            // Such a broad mask may lead to reloading certs multiple times when k8s
+            // modifies a ConfigMap or Secret, which is a multi-step process that we
+            // see as a series CREATE, MOVED_TO, MOVED_FROM, and DELETE events.
+            // However, we want to catch single events that might occur when the
+            // files we're watching *don't* live in a k8s ConfigMap/Secret.
+            let mask = WatchMask::CREATE
+                    | WatchMask::MODIFY
+                    | WatchMask::DELETE
+                    | WatchMask::MOVE
+                    ;
+            let mut inotify = Inotify::init().map_err(Error::InotifyInit)?;
 
-        let paths = self.paths();
-        let paths = paths.into_iter()
-            .map(|path| {
-                // If the path to watch has a parent, watch that instead. This
-                // will allow us to pick up events to files in k8s ConfigMaps
-                // or Secrets (which we wouldn't detect if we watch the file
-                // itself, as they are double-symlinked).
-                //
-                // This may also result in some false positives (if a file we
-                // *don't* care about in the same dir changes, we'll still
-                // reload), but that's unlikely to be a problem.
-                let parent = path
-                    .parent()
-                    .map(Path::to_path_buf)
-                    .unwrap_or(path.to_path_buf());
-                trace!("will watch {:?} for {:?}", parent, path);
-                path
-            })
-            // Collect the paths into a `HashSet` eliminates any duplicates, to
-            // conserve the number of inotify watches we create.
-            .collect::<HashSet<_>>();
+            let paths = paths.into_iter()
+                .map(|path| {
+                    // If the path to watch has a parent, watch that instead. This
+                    // will allow us to pick up events to files in k8s ConfigMaps
+                    // or Secrets (which we wouldn't detect if we watch the file
+                    // itself, as they are double-symlinked).
+                    //
+                    // This may also result in some false positives (if a file we
+                    // *don't* care about in the same dir changes, we'll still
+                    // reload), but that's unlikely to be a problem.
+                    let parent = path
+                        .parent()
+                        .map(Path::to_path_buf)
+                        .unwrap_or(path.to_path_buf());
+                    trace!("will watch {:?} for {:?}", parent, path);
+                    path
+                })
+                // Collect the paths into a `HashSet` eliminates any duplicates, to
+                // conserve the number of inotify watches we create.
+                .collect::<HashSet<_>>();
 
-        for path in paths {
-            inotify.add_watch(path, mask)
-                .map_err(|e| Error::Io(path.to_path_buf(), e))?;
-            trace!("inotify: watch {:?}", path);
+            for path in paths {
+                inotify.add_watch(path, mask)
+                    .map_err(|e| Error::Io(path.to_path_buf(), e))?;
+                trace!("inotify: watch {:?}", path);
+            }
+
+            let events = inotify.into_event_stream()
+                .map(|ev| {
+                    trace!("inotify: event={:?}; path={:?};", ev.mask, ev.name);
+                })
+                .map_err(|e| error!("inotify watch error: {}", e));
+            trace!("started inotify watch");
+
+            Ok(events)
         }
 
-        let events = inotify.into_event_stream()
-            .map(|ev| {
-                trace!("inotify: event={:?}; path={:?};", ev.mask, ev.name);
-            })
-            .map_err(|e| error!("inotify watch error: {}", e));
-        trace!("started inotify watch");
+        self.stream_changes_polling(interval)
+            .take(1)
+            .chain(inotify_inner(self.paths())
+                .map(stream::Either::A)
+                .unwrap_or_else(|e| {
+                    warn!("inotify init error: {:?}, falling back to polling", e);
+                    let s = self.stream_changes_polling(interval);
+                    stream::Either::B(s)
+                })
+            )
 
-        Ok(events)
     }
 }
 
@@ -544,6 +545,66 @@ mod tests {
         let next = watch.into_future().map_err(|(e, _)| e);
         let (item, _) = rt.block_on_for(Duration::from_secs(2), next)
             .expect("third change");
+        assert!(item.is_some());
+    }
+
+    fn test_detects_delete_and_recreate(
+        fixture: Fixture,
+        stream: impl Stream<Item = (), Error=()> + 'static,
+    ) {
+        let Fixture { cfg, dir: _dir, mut rt } = fixture;
+
+        let (watch, bg) = watch_stream(stream);
+        rt.spawn(bg);
+
+        let f = File::create(cfg.trust_anchors)
+            .expect("create trust anchors");
+        f.sync_all().expect("create trust anchors");
+        println!("created {:?}", f);
+
+        let next = watch.into_future().map_err(|(e, _)| e);
+        let (item, watch) = rt.block_on_for(Duration::from_secs(5), next)
+            .expect("first change");
+        assert!(item.is_some());
+
+        let f = File::create(cfg.end_entity_cert)
+            .expect("create end entity cert");
+        f.sync_all()
+            .expect("sync end entity cert");
+        println!("created {:?}", f);
+
+        let next = watch.into_future().map_err(|(e, _)| e);
+        let (item, watch) = rt.block_on_for(Duration::from_secs(5), next)
+            .expect("second change");
+        assert!(item.is_some());
+
+        let mut f = File::create(&cfg.private_key)
+            .expect("create private key");
+        f.write_all(b"i'm the first private key")
+            .expect("write private key once");
+        f.sync_all()
+            .expect("sync private key");
+        println!("created {:?}", f);
+
+        let next = watch.into_future().map_err(|(e, _)| e);
+        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
+            .expect("third change");
+        assert!(item.is_some());
+
+        fs::remove_file(&cfg.private_key).expect("remove private key");
+        println!("deleted {:?}", f);
+
+        let mut f = File::create(&cfg.private_key)
+            .expect("rereate private key");
+        f.write_all(b"i'm the new private key")
+            .expect("write private key once");
+        f.sync_all()
+            .expect("sync private key");
+        println!("recreated {:?}", f);
+
+        let next = watch.into_future().map_err(|(e, _)| e);
+        let (item, _) = rt.block_on_for(Duration::from_secs(2), next)
+            .expect("fourth change");
         assert!(item.is_some());
     }
 
@@ -973,7 +1034,7 @@ mod tests {
     fn inotify_detects_create() {
         let fixture = fixture();
         let stream = fixture.cfg.clone()
-            .stream_changes_inotify().expect("inotify init");
+            .stream_changes_inotify(Duration::from_millis(1));
         test_detects_create(fixture, stream)
     }
 
@@ -990,7 +1051,7 @@ mod tests {
     fn inotify_detects_create_symlink() {
         let fixture = fixture();
         let stream = fixture.cfg.clone()
-            .stream_changes_inotify().expect("inotify init");
+            .stream_changes_inotify(Duration::from_millis(1));
         test_detects_create_symlink(fixture, stream)
     }
 
@@ -1007,7 +1068,7 @@ mod tests {
     fn inotify_detects_create_double_symlink() {
         let fixture = fixture();
         let stream = fixture.cfg.clone()
-            .stream_changes_inotify().expect("inotify init");
+            .stream_changes_inotify(Duration::from_millis(1));
         test_detects_create_double_symlink(fixture, stream)
     }
 
@@ -1024,7 +1085,7 @@ mod tests {
     fn inotify_detects_modification() {
         let fixture = fixture();
         let stream = fixture.cfg.clone()
-            .stream_changes_inotify().expect("inotify init");
+            .stream_changes_inotify(Duration::from_millis(1));
         test_detects_modification(fixture, stream)
     }
 
@@ -1041,7 +1102,7 @@ mod tests {
     fn inotify_detects_modification_symlink() {
         let fixture = fixture();
         let stream = fixture.cfg.clone()
-            .stream_changes_inotify().expect("inotify init");
+            .stream_changes_inotify(Duration::from_millis(1));
         test_detects_modification_symlink(fixture, stream)
     }
 
@@ -1058,7 +1119,7 @@ mod tests {
     fn inotify_detects_modification_double_symlink() {
         let fixture = fixture();
         let stream = fixture.cfg.clone()
-            .stream_changes_inotify().expect("inotify init");
+            .stream_changes_inotify(Duration::from_millis(1));
         test_detects_modification_double_symlink(fixture, stream)
     }
 
@@ -1075,8 +1136,25 @@ mod tests {
     fn inotify_detects_double_symlink_retargeting() {
         let fixture = fixture();
         let stream = fixture.cfg.clone()
-            .stream_changes_inotify().expect("inotify init");
+            .stream_changes_inotify(Duration::from_millis(1));
         test_detects_double_symlink_retargeting(fixture, stream)
+    }
+
+    #[test]
+    fn polling_detects_delete_and_recreate() {
+        let fixture = fixture();
+        let stream = fixture.cfg.clone()
+            .stream_changes_polling(Duration::from_millis(1));
+        test_detects_delete_and_recreate(fixture, stream)
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn inotify_detects_delete_and_recreate() {
+        let fixture = fixture();
+        let stream = fixture.cfg.clone()
+            .stream_changes_inotify(Duration::from_millis(1));
+        test_detects_delete_and_recreate(fixture, stream)
     }
 
 }
