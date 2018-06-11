@@ -104,7 +104,7 @@ impl CommonSettings {
         // If we're on Linux, first atttempt to start an Inotify watch on the
         // paths. If this fails, fall back to polling the filesystem.
         #[cfg(target_os = "linux")]
-        let changes = self.stream_changes_inotify(interval);
+        let changes = self.clone().stream_changes_inotify(interval);
         // If we're not on Linux, we can't use inotify, so simply poll the fs.
         // TODO: Use other FS events APIs (such as `kqueue`) as well, when
         //       they're available.
@@ -158,11 +158,13 @@ impl CommonSettings {
             })
     }
 
+
     #[cfg(target_os = "linux")]
     fn stream_changes_inotify(&self, interval: Duration)
         -> impl Stream<Item = (), Error = ()>
     {
         use ::stream;
+
         fn inotify_inner(paths: [&PathBuf; 3])
             -> Result<impl Stream<Item = (), Error = ()>, Error>
         {
@@ -221,16 +223,25 @@ impl CommonSettings {
             Ok(events)
         }
 
-        self.stream_changes_polling(interval)
-            .take(1)
-            .chain(inotify_inner(self.paths())
-                .map(stream::Either::A)
-                .unwrap_or_else(|e| {
-                    warn!("inotify init error: {:?}, falling back to polling", e);
-                    let s = self.stream_changes_polling(interval);
-                    stream::Either::B(s)
-                })
-            )
+        inotify_inner(self.paths())
+            .map(move |inotify| {
+                // It's necessary to reference count `self` here so it can be valid
+                // for the stream's lifetime. We'll need to hang on to the paths
+                // to restart polling the fs if the watch has a transient failure.
+                let this = Arc::new(self.clone());
+                let s = inotify.or_else(move |e| {
+                    warn!("inotify watch error: {:?}", e);
+                    this.clone()
+                        .stream_changes_polling(interval)
+                        .into_future()
+                        .then(|_| future::ok(()))
+                });
+                stream::Either::A(s)
+            })
+            .unwrap_or_else(|e| {
+                warn!("inotify init error: {:?}, falling back to polling", e);
+                stream::Either::B(self.stream_changes_polling(interval))
+            })
 
     }
 }
