@@ -14,4 +14,4 @@ docker build -f $rootdir/proxy/Dockerfile . \
     --target build \
     -t proxy-build \
     --build-arg=PROXY_UNOPTIMIZED=1 &&
-docker run proxy-build --rm -it cargo test
+docker run --rm -it proxy-build cargo test
