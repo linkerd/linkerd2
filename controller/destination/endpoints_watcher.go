@@ -6,7 +6,7 @@ import (
 
 	common "github.com/runconduit/conduit/controller/gen/common"
 	"github.com/runconduit/conduit/controller/k8s"
-	"github.com/runconduit/conduit/controller/util"
+	"github.com/runconduit/conduit/pkg/addr"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -345,14 +345,14 @@ func (sp *servicePort) updateService(newService *v1.Service) {
 }
 
 func (sp *servicePort) updateAddresses(newAddresses []common.TcpAddress) {
-	log.Debugf("Updating %s:%d to %s", sp.service, sp.port, util.AddressesToString(newAddresses))
+	log.Debugf("Updating %s:%d to %s", sp.service, sp.port, addr.AddressesToString(newAddresses))
 
 	if len(newAddresses) == 0 {
 		for _, listener := range sp.listeners {
 			listener.NoEndpoints(true)
 		}
 	} else {
-		add, remove := util.DiffAddresses(sp.addresses, newAddresses)
+		add, remove := addr.DiffAddresses(sp.addresses, newAddresses)
 		for _, listener := range sp.listeners {
 			listener.Update(add, remove)
 		}
@@ -402,7 +402,7 @@ func addresses(endpoints *v1.Endpoints, port intstr.IntOrString) []common.TcpAdd
 	ips := make([]common.IPAddress, 0)
 	for _, subset := range endpoints.Subsets {
 		for _, address := range subset.Addresses {
-			ip, err := util.ParseIPV4(address.IP)
+			ip, err := addr.ParseIPV4(address.IP)
 			if err != nil {
 				log.Printf("%s is not a valid IP address", address.IP)
 				continue

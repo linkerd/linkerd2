@@ -9,7 +9,7 @@ import (
 	common "github.com/runconduit/conduit/controller/gen/common"
 	pb "github.com/runconduit/conduit/controller/gen/proxy/destination"
 	"github.com/runconduit/conduit/controller/k8s"
-	"github.com/runconduit/conduit/controller/util"
+	"github.com/runconduit/conduit/pkg/prometheus"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"k8s.io/api/core/v1"
@@ -52,7 +52,7 @@ func NewServer(addr, k8sDNSZone string, enableTLS bool, k8sAPI *k8s.API, done ch
 		return nil, nil, err
 	}
 
-	s := util.NewGrpcServer()
+	s := prometheus.NewGrpcServer()
 	pb.RegisterDestinationServer(s, &srv)
 
 	go func() {

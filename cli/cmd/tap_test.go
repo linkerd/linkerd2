@@ -10,7 +10,7 @@ import (
 	"github.com/golang/protobuf/ptypes/duration"
 	"github.com/runconduit/conduit/controller/api/public"
 	common "github.com/runconduit/conduit/controller/gen/common"
-	"github.com/runconduit/conduit/controller/util"
+	"github.com/runconduit/conduit/pkg/addr"
 	"github.com/runconduit/conduit/pkg/k8s"
 	"google.golang.org/grpc/codes"
 )
@@ -185,11 +185,11 @@ func TestEventToString(t *testing.T) {
 
 		return &common.TapEvent{
 			Source: &common.TcpAddress{
-				Ip:   util.IPV4(1, 2, 3, 4),
+				Ip:   addr.IPV4(1, 2, 3, 4),
 				Port: 5555,
 			},
 			Destination: &common.TcpAddress{
-				Ip:   util.IPV4(2, 3, 4, 5),
+				Ip:   addr.IPV4(2, 3, 4, 5),
 				Port: 6666,
 			},
 			Event: &common.TapEvent_Http_{Http: httpEvent},

@@ -14,8 +14,8 @@ import (
 	proxy "github.com/runconduit/conduit/controller/gen/proxy/tap"
 	public "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/controller/k8s"
-	"github.com/runconduit/conduit/controller/util"
 	pkgK8s "github.com/runconduit/conduit/pkg/k8s"
+	"github.com/runconduit/conduit/pkg/prometheus"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -291,7 +291,7 @@ func NewServer(
 		return nil, nil, err
 	}
 
-	s := util.NewGrpcServer()
+	s := prometheus.NewGrpcServer()
 	srv := server{
 		tapPort: tapPort,
 		k8sAPI:  k8sAPI,
