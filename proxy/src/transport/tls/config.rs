@@ -159,117 +159,65 @@ impl CommonSettings {
     fn stream_changes_inotify(&self, interval: Duration)
         -> impl Stream<Item = (), Error = ()>
     {
-        use ::stream::Either as EitherStream;
-        use futures::stream;
-        use inotify::{Inotify, WatchMask};
+        use ::stream; // as EitherStream;
+        // use futures::stream;
 
-        fn start_watching(paths: [&PathBuf; 3], inotify: &mut Inotify)
-            -> Result<(), io::Error>
-        {
-            use std::{collections::HashSet, path::Path};
-            // Use a broad watch mask so that we will pick up any events that might
-            // indicate a change to the watched files.
-            //
-            // Such a broad mask may lead to reloading certs multiple times when k8s
-            // modifies a ConfigMap or Secret, which is a multi-step process that we
-            // see as a series CREATE, MOVED_TO, MOVED_FROM, and DELETE events.
-            // However, we want to catch single events that might occur when the
-            // files we're watching *don't* live in a k8s ConfigMap/Secret.
-            let mask = WatchMask::CREATE
-                    | WatchMask::MODIFY
-                    | WatchMask::DELETE
-                    | WatchMask::MOVE
-                    ;
+        // fn into_stream(
+        //     this: Arc<CommonSettings>,
+        //     mut inotify: Inotify,
+        //     interval: Duration
+        // ) -> Box<Stream<Item = (), Error = ()> + Send>
+        // {
+        //     use std::iter;
+        //     match start_watching(this.paths(), &mut inotify) {
+        //         Ok(()) => {
 
-            let paths = paths.into_iter()
-                .map(|path| {
-                    // If the path to watch has a parent, watch that instead. This
-                    // will allow us to pick up events to files in k8s ConfigMaps
-                    // or Secrets (which we wouldn't detect if we watch the file
-                    // itself, as they are double-symlinked).
-                    //
-                    // This may also result in some false positives (if a file we
-                    // *don't* care about in the same dir changes, we'll still
-                    // reload), but that's unlikely to be a problem.
-                    let parent = path
-                        .parent()
-                        .map(Path::to_path_buf)
-                        .unwrap_or(path.to_path_buf());
-                    trace!("will watch {:?} for {:?}", parent, path);
-                    path
-                })
-                // Collect the paths into a `HashSet` eliminates any duplicates, to
-                // conserve the number of inotify watches we create.
-                .collect::<HashSet<_>>();
+        //         },
+        //         Err(ref e) if e.kind() == io::ErrorKind::NotFound => {
+        //             // Inotify will return a file not found error if the watched file
+        //             // doesn't exist yet. In that case, poll until it does, and then
+        //             // try to start a watch again.
+        //             let me = this.clone();
+        //             let retry = future::lazy(move || Ok(into_stream(me, inotify, interval)));
+        //             let retry = stream::futures_unordered(iter::once(retry)).flatten();
+        //             let stream = this.stream_changes_polling(interval)
+        //                 .take(1)
+        //                 .chain(retry);
+        //             // We have to box here to avoid creating an infinitely recursive
+        //             // type with `impl Stream`.
+        //             Box::new(stream)
+        //         },
+        //         Err(ref e) => {
+        //             // For other errors, we don't know if subsequent attempts to start
+        //             // watching will work, so just fall back to polling.
+        //             warn!("inotify add watch error: {:?}, falling back to polling", e);
+        //             Box::new(this.stream_changes_polling(interval))
+        //         },
+        //     }
+        // }
 
-            for path in paths {
-                inotify.add_watch(path, mask)?;
-                trace!("inotify: watch {:?}", path);
-            }
-
-            Ok(())
-        }
-
-        fn into_stream(
-            this: Arc<CommonSettings>,
-            mut inotify: Inotify,
-            interval: Duration
-        ) -> Box<Stream<Item = (), Error = ()> + Send>
-        {
-            use std::iter;
-            match start_watching(this.paths(), &mut inotify) {
-                Ok(()) => {
-                    let stream = inotify
-                        .into_event_stream()
-                        .map(|ev| {
-                            trace!("inotify event={:?}; path={:?}", ev.mask, ev.name);
-                        })
-                        .or_else(move |e| {
-                            warn!("inotify watch error: {:?}", e);
-                            this.clone()
-                                .stream_changes_polling(interval)
-                                .into_future()
-                                .then(|_| future::ok(()))
-                        });
-                    Box::new(stream)
-                },
-                Err(ref e) if e.kind() == io::ErrorKind::NotFound => {
-                    // Inotify will return a file not found error if the watched file
-                    // doesn't exist yet. In that case, poll until it does, and then
-                    // try to start a watch again.
-                    let me = this.clone();
-                    let retry = future::lazy(move || Ok(into_stream(me, inotify, interval)));
-                    let retry = stream::futures_unordered(iter::once(retry)).flatten();
-                    let stream = this.stream_changes_polling(interval)
-                        .take(1)
-                        .chain(retry);
-                    // We have to box here to avoid creating an infinitely recursive
-                    // type with `impl Stream`.
-                    Box::new(stream)
-                },
-                Err(ref e) => {
-                    // For other errors, we don't know if subsequent attempts to start
-                    // watching will work, so just fall back to polling.
-                    warn!("inotify add watch error: {:?}, falling back to polling", e);
-                    Box::new(this.stream_changes_polling(interval))
-                },
-            }
-        }
-
-        match Inotify::init() {
-            Ok(inotify) => {
-                // It's necessary to reference count `self` here so it can be valid
-                // for the stream's lifetime. We'll need to hang on to the paths
-                // to restart polling the fs if the watch has a transient failure.
-                let this = Arc::new(self.clone());
-                EitherStream::A(into_stream(this, inotify, interval))
+        // It's necessary to reference count `self` here so it can be valid
+        // for the stream's lifetime. We'll need to hang on to the paths
+        // to restart polling the fs if the watch has a transient failure.
+        let this = Arc::new(self.clone());
+        match inotify::WatchStream::new(this.clone()) {
+            Ok(stream) => {
+                let stream = stream
+                    .or_else(move |e| {
+                        warn!("inotify watch error: {:?}", e);
+                        this.clone()
+                            .stream_changes_polling(interval)
+                            .into_future()
+                            .then(|_| future::ok(()))
+                    });
+                stream::Either::A(stream)
             },
             Err(e) => {
                 // If initializing the `Inotify` instance failed, it probably won't
                 // succeed in the future (it's likely that inotify unsupported on
                 // this OS).
                 warn!("inotify init error: {}, falling back to polling", e);
-                EitherStream::B(self.stream_changes_polling(interval))
+                stream::Either::B(self.stream_changes_polling(interval))
             },
         }
     }
@@ -437,6 +385,86 @@ fn set_common_settings(versions: &mut Vec<rustls::ProtocolVersion>) {
     *versions = vec![rustls::ProtocolVersion::TLSv1_2]
 }
 
+#[cfg(target_os = "linux")]
+mod inotify {
+    use super::*;
+
+    use std::{
+        io,
+        sync::Arc,
+    };
+
+    use inotify::{Inotify, Event, EventMask, EventStream, WatchMask};
+    use futures::{Async, Poll, Stream};
+
+    pub(super) struct WatchStream {
+        inotify: Inotify,
+        settings: Arc<CommonSettings>,
+        stream: EventStream,
+    }
+
+    impl WatchStream {
+        pub fn new(settings: Arc<CommonSettings>) -> Result<Self, io::Error> {
+            let mut inotify = Inotify::init()?;
+            let stream = inotify.event_stream();
+            let mut watch = WatchStream {
+                inotify,
+                settings,
+                stream,
+            };
+            watch.add_paths()?;
+            Ok(watch)
+        }
+
+        fn add_paths(&mut self) -> Result<(), io::Error> {
+            let mask
+                = WatchMask::CREATE
+                | WatchMask::MODIFY
+                | WatchMask::DELETE
+                | WatchMask::MOVE
+                | WatchMask::MOVE_SELF
+                ;
+            let paths = self.settings.paths();
+            for path in &paths {
+                let canonical = path.canonicalize()?;
+                match self.inotify.add_watch(&canonical, mask) {
+                    Err(ref e) if e.kind() == io::ErrorKind::NotFound => {
+                        if let Some(parent) = path.parent() {
+                            self.inotify.add_watch(parent, mask)?;
+                            trace!("watch {:?} for {:?}", parent, path)
+                        }
+                    },
+                    Err(e) => return Err(e),
+                    Ok(_) => trace!("watch {:?}", canonical),
+                }
+            }
+            Ok(())
+        }
+
+    }
+
+    impl Stream for WatchStream {
+        type Item = ();
+        type Error = io::Error;
+        fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
+            match try_ready!(self.stream.poll()) {
+                Some(Event { ref mask, ref name, .. }) => {
+                    trace!("event={:?}; path={:?}", mask, name);
+                    if mask.contains(EventMask::DELETE) {
+                        self.add_paths()?;
+                    }
+                    Ok(Async::Ready(Some(())))
+                },
+                None => {
+                    debug!("watch stream ending");
+                    Ok(Async::Ready(None))
+                },
+            }
+        }
+    }
+
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -522,6 +550,7 @@ mod tests {
     }
 
     fn fixture() -> Fixture {
+        let _ = ::env_logger::try_init();
         let dir = TempDir::new("certs").expect("temp dir");
         let cfg = CommonSettings {
             trust_anchors: dir.path().join(TRUST_ANCHORS),
@@ -587,6 +616,52 @@ mod tests {
             .expect("third change");
         assert!(item.is_some());
     }
+
+    // fn test_detects_create_dir(
+    //     fixture: Fixture,
+    //     stream: impl Stream<Item = (), Error=()> + 'static,
+    // ) {
+
+    //     let Fixture { cfg, mut rt, dir } = fixture;
+    //     drop(dir);
+
+    //     let (watch, bg) = watch_stream(stream);
+    //     rt.spawn(bg);
+
+    //     let _dir = TempDir::new("certs").expect("create dir");
+
+    //     let f = File::create(cfg.trust_anchors)
+    //         .expect("create trust anchors");
+    //     f.sync_all().expect("create trust anchors");
+    //     println!("created {:?}", f);
+
+    //     let next = watch.into_future().map_err(|(e, _)| e);
+    //     let (item, watch) = rt.block_on_for(Duration::from_secs(5), next)
+    //         .expect("first change");
+    //     assert!(item.is_some());
+
+    //     let f = File::create(cfg.end_entity_cert)
+    //         .expect("create end entity cert");
+    //     f.sync_all()
+    //         .expect("sync end entity cert");
+    //     println!("created {:?}", f);
+
+    //     let next = watch.into_future().map_err(|(e, _)| e);
+    //     let (item, watch) = rt.block_on_for(Duration::from_secs(5), next)
+    //         .expect("second change");
+    //     assert!(item.is_some());
+
+    //     let f = File::create(cfg.private_key)
+    //         .expect("create private key");
+    //     f.sync_all()
+    //         .expect("sync private key");
+    //     println!("created {:?}", f);
+
+    //     let next = watch.into_future().map_err(|(e, _)| e);
+    //     let (item, _) = rt.block_on_for(Duration::from_secs(2), next)
+    //         .expect("third change");
+    //     assert!(item.is_some());
+    // }
 
     fn test_detects_delete_and_recreate(
         fixture: Fixture,
@@ -1198,5 +1273,22 @@ mod tests {
             .stream_changes_inotify(Duration::from_millis(1));
         test_detects_delete_and_recreate(fixture, stream)
     }
+
+    // #[test]
+    // fn polling_detects_create_dir() {
+    //     let fixture = fixture();
+    //     let stream = fixture.cfg.clone()
+    //         .stream_changes_polling(Duration::from_millis(1));
+    //     test_detects_create_dir(fixture, stream)
+    // }
+
+    // #[test]
+    // #[cfg(target_os = "linux")]
+    // fn inotify_detects_create_dir() {
+    //     let fixture = fixture();
+    //     let stream = fixture.cfg.clone()
+    //         .stream_changes_inotify(Duration::from_millis(1));
+    //     test_detects_create_dir(fixture, stream)
+    // }
 
 }
