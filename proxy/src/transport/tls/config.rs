@@ -592,7 +592,7 @@ mod tests {
         fixture: Fixture,
         stream: impl Stream<Item = (), Error=()> + 'static,
     ) {
-        ::env_logger::try_init().expect("logger");
+        let _ = ::env_logger::try_init();
 
         let Fixture { cfg, dir: _dir, mut rt } = fixture;
 
