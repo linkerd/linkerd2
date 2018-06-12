@@ -78,11 +78,7 @@ pub enum Error {
     EndEntityCertIsNotValid(webpki::Error),
     InvalidPrivateKey,
     TimeConversionFailed,
-    #[cfg(target_os = "linux")]
-    InotifyInit(io::Error),
 }
-
-
 
 impl CommonSettings {
     fn paths(&self) -> [&PathBuf; 3] {
@@ -163,14 +159,14 @@ impl CommonSettings {
     fn stream_changes_inotify(&self, interval: Duration)
         -> impl Stream<Item = (), Error = ()>
     {
-        use ::stream;
+        use ::stream::Either as EitherStream;
+        use futures::stream;
+        use inotify::{Inotify, WatchMask};
 
-        fn inotify_inner(paths: [&PathBuf; 3])
-            -> Result<impl Stream<Item = (), Error = ()>, Error>
+        fn start_watching(paths: [&PathBuf; 3], inotify: &mut Inotify)
+            -> Result<(), io::Error>
         {
             use std::{collections::HashSet, path::Path};
-            use inotify::{Inotify, WatchMask};
-
             // Use a broad watch mask so that we will pick up any events that might
             // indicate a change to the watched files.
             //
@@ -184,7 +180,6 @@ impl CommonSettings {
                     | WatchMask::DELETE
                     | WatchMask::MOVE
                     ;
-            let mut inotify = Inotify::init().map_err(Error::InotifyInit)?;
 
             let paths = paths.into_iter()
                 .map(|path| {
@@ -208,41 +203,75 @@ impl CommonSettings {
                 .collect::<HashSet<_>>();
 
             for path in paths {
-                inotify.add_watch(path, mask)
-                    .map_err(|e| Error::Io(path.to_path_buf(), e))?;
+                inotify.add_watch(path, mask)?;
                 trace!("inotify: watch {:?}", path);
             }
 
-            let events = inotify.into_event_stream()
-                .map(|ev| {
-                    trace!("inotify: event={:?}; path={:?};", ev.mask, ev.name);
-                })
-                .map_err(|e| error!("inotify watch error: {}", e));
-            trace!("started inotify watch");
-
-            Ok(events)
+            Ok(())
         }
 
-        inotify_inner(self.paths())
-            .map(move |inotify| {
+        fn into_stream(
+            this: Arc<CommonSettings>,
+            mut inotify: Inotify,
+            interval: Duration
+        ) -> Box<Stream<Item = (), Error = ()> + Send>
+        {
+            use std::iter;
+            match start_watching(this.paths(), &mut inotify) {
+                Ok(()) => {
+                    let stream = inotify
+                        .into_event_stream()
+                        .map(|ev| {
+                            trace!("inotify event={:?}; path={:?}", ev.mask, ev.name);
+                        })
+                        .or_else(move |e| {
+                            warn!("inotify watch error: {:?}", e);
+                            this.clone()
+                                .stream_changes_polling(interval)
+                                .into_future()
+                                .then(|_| future::ok(()))
+                        });
+                    Box::new(stream)
+                },
+                Err(ref e) if e.kind() == io::ErrorKind::NotFound => {
+                    // Inotify will return a file not found error if the watched file
+                    // doesn't exist yet. In that case, poll until it does, and then
+                    // try to start a watch again.
+                    let me = this.clone();
+                    let retry = future::lazy(move || Ok(into_stream(me, inotify, interval)));
+                    let retry = stream::futures_unordered(iter::once(retry)).flatten();
+                    let stream = this.stream_changes_polling(interval)
+                        .take(1)
+                        .chain(retry);
+                    // We have to box here to avoid creating an infinitely recursive
+                    // type with `impl Stream`.
+                    Box::new(stream)
+                },
+                Err(ref e) => {
+                    // For other errors, we don't know if subsequent attempts to start
+                    // watching will work, so just fall back to polling.
+                    warn!("inotify add watch error: {:?}, falling back to polling", e);
+                    Box::new(this.stream_changes_polling(interval))
+                },
+            }
+        }
+
+        match Inotify::init() {
+            Ok(inotify) => {
                 // It's necessary to reference count `self` here so it can be valid
                 // for the stream's lifetime. We'll need to hang on to the paths
                 // to restart polling the fs if the watch has a transient failure.
                 let this = Arc::new(self.clone());
-                let s = inotify.or_else(move |e| {
-                    warn!("inotify watch error: {:?}", e);
-                    this.clone()
-                        .stream_changes_polling(interval)
-                        .into_future()
-                        .then(|_| future::ok(()))
-                });
-                stream::Either::A(s)
-            })
-            .unwrap_or_else(|e| {
-                warn!("inotify init error: {:?}, falling back to polling", e);
-                stream::Either::B(self.stream_changes_polling(interval))
-            })
-
+                EitherStream::A(into_stream(this, inotify, interval))
+            },
+            Err(e) => {
+                // If initializing the `Inotify` instance failed, it probably won't
+                // succeed in the future (it's likely that inotify unsupported on
+                // this OS).
+                warn!("inotify init error: {}, falling back to polling", e);
+                EitherStream::B(self.stream_changes_polling(interval))
+            },
+        }
     }
 }
 
@@ -563,6 +592,8 @@ mod tests {
         fixture: Fixture,
         stream: impl Stream<Item = (), Error=()> + 'static,
     ) {
+        ::env_logger::try_init().expect("logger");
+
         let Fixture { cfg, dir: _dir, mut rt } = fixture;
 
         let (watch, bg) = watch_stream(stream);
