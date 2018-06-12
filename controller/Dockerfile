@@ -1,5 +1,5 @@
 ## compile controller services
-FROM gcr.io/runconduit/go-deps:69ba71ed as golang
+FROM gcr.io/runconduit/go-deps:23e16ad5 as golang
 WORKDIR /go/src/github.com/runconduit/conduit
 COPY controller/gen controller/gen
 COPY pkg pkg

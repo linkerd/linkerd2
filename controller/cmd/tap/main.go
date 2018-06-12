@@ -38,17 +38,17 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to create Kubernetes client: %s", err)
 	}
-	lister := k8s.NewLister(clientSet)
+	k8sAPI := k8s.NewAPI(clientSet)
 
-	server, lis, err := tap.NewServer(*addr, *tapPort, lister)
+	server, lis, err := tap.NewServer(*addr, *tapPort, k8sAPI)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 
 	go func() {
-		err := lister.Sync()
+		err := k8sAPI.Sync()
 		if err != nil {
-			log.Fatalf("timed out wait for caches to sync: %s", err)
+			log.Fatal(err.Error())
 		}
 	}()
 

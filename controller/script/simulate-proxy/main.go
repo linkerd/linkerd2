@@ -557,8 +557,8 @@ func newSimulatedProxy(
 	return &proxy
 }
 
-func getDeploymentByPod(lister *k8s.Lister, maxPods int) map[*v1.Pod]*v1beta2.Deployment {
-	deployList, err := lister.Deploy.List(labels.Everything())
+func getDeploymentByPod(k8sAPI *k8s.API, maxPods int) map[*v1.Pod]*v1beta2.Deployment {
+	deployList, err := k8sAPI.Deploy.Lister().List(labels.Everything())
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -566,7 +566,7 @@ func getDeploymentByPod(lister *k8s.Lister, maxPods int) map[*v1.Pod]*v1beta2.De
 	allPods := map[*v1.Pod]*v1beta2.Deployment{}
 
 	for _, deploy := range deployList {
-		pods, err := lister.GetPodsFor(deploy, false)
+		pods, err := k8sAPI.GetPodsFor(deploy, false)
 		if err != nil {
 			log.Fatalf("GetPodsFor failed with %s", err)
 			return map[*v1.Pod]*v1beta2.Deployment{}
@@ -615,14 +615,14 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
-	lister := k8s.NewLister(clientSet)
-	err = lister.Sync()
+	k8sAPI := k8s.NewAPI(clientSet)
+	err = k8sAPI.Sync()
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 
 	proxyCount := endPort - startPort + 1
-	simulatedPods := getDeploymentByPod(lister, proxyCount)
+	simulatedPods := getDeploymentByPod(k8sAPI, proxyCount)
 	podsFound := len(simulatedPods)
 	if podsFound < proxyCount {
 		log.Warnf("Found only %d pods to simulate %d proxies, creating %d fake pods.", podsFound, proxyCount, proxyCount-podsFound)

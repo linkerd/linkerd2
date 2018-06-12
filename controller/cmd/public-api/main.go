@@ -51,8 +51,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-
-	lister := k8s.NewLister(k8sClient)
+	k8sAPI := k8s.NewAPI(k8sClient)
 
 	prometheusClient, err := promApi.NewClient(promApi.Config{Address: *prometheusUrl})
 	if err != nil {
@@ -63,15 +62,15 @@ func main() {
 		*addr,
 		prometheusClient,
 		tapClient,
-		lister,
+		k8sAPI,
 		*controllerNamespace,
 		strings.Split(*ignoredNamespaces, ","),
 	)
 
 	go func() {
-		err := lister.Sync()
+		err := k8sAPI.Sync()
 		if err != nil {
-			log.Fatalf("timed out wait for caches to sync: %s", err)
+			log.Fatal(err.Error())
 		}
 	}()
 

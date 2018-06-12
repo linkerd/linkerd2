@@ -15,20 +15,20 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/informers"
+	appinformers "k8s.io/client-go/informers/apps/v1beta2"
+	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
-	applisters "k8s.io/client-go/listers/apps/v1beta2"
-	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 )
 
-// Lister wraps client-go Lister types for all Kubernetes objects
-type Lister struct {
-	NS     corelisters.NamespaceLister
-	Deploy applisters.DeploymentLister
-	RS     applisters.ReplicaSetLister
-	Pod    corelisters.PodLister
-	RC     corelisters.ReplicationControllerLister
-	Svc    corelisters.ServiceLister
+// API provides shared informers for all Kubernetes objects
+type API struct {
+	NS     coreinformers.NamespaceInformer
+	Deploy appinformers.DeploymentInformer
+	RS     appinformers.ReplicaSetInformer
+	Pod    coreinformers.PodInformer
+	RC     coreinformers.ReplicationControllerInformer
+	Svc    coreinformers.ServiceInformer
 
 	nsSynced     cache.InformerSynced
 	deploySynced cache.InformerSynced
@@ -36,10 +36,12 @@ type Lister struct {
 	podSynced    cache.InformerSynced
 	rcSynced     cache.InformerSynced
 	svcSynced    cache.InformerSynced
+
+	sharedInformers informers.SharedInformerFactory
 }
 
-// NewLister takes a Kubernetes client and returns an initialized Lister
-func NewLister(k8sClient kubernetes.Interface) *Lister {
+// NewAPI takes a Kubernetes client and returns an initialized API
+func NewAPI(k8sClient kubernetes.Interface) *API {
 	sharedInformers := informers.NewSharedInformerFactory(k8sClient, 10*time.Minute)
 
 	namespaceInformer := sharedInformers.Core().V1().Namespaces()
@@ -49,13 +51,13 @@ func NewLister(k8sClient kubernetes.Interface) *Lister {
 	replicationControllerInformer := sharedInformers.Core().V1().ReplicationControllers()
 	serviceInformer := sharedInformers.Core().V1().Services()
 
-	lister := &Lister{
-		NS:     namespaceInformer.Lister(),
-		Deploy: deployInformer.Lister(),
-		RS:     replicaSetInformer.Lister(),
-		Pod:    podInformer.Lister(),
-		RC:     replicationControllerInformer.Lister(),
-		Svc:    serviceInformer.Lister(),
+	api := &API{
+		NS:     namespaceInformer,
+		Deploy: deployInformer,
+		RS:     replicaSetInformer,
+		Pod:    podInformer,
+		RC:     replicationControllerInformer,
+		Svc:    serviceInformer,
 
 		nsSynced:     namespaceInformer.Informer().HasSynced,
 		deploySynced: deployInformer.Informer().HasSynced,
@@ -63,32 +65,33 @@ func NewLister(k8sClient kubernetes.Interface) *Lister {
 		podSynced:    podInformer.Informer().HasSynced,
 		rcSynced:     replicationControllerInformer.Informer().HasSynced,
 		svcSynced:    serviceInformer.Informer().HasSynced,
+
+		sharedInformers: sharedInformers,
 	}
 
-	// this must be called after the Lister() methods
-	sharedInformers.Start(nil)
-
-	return lister
+	return api
 }
 
 // Sync waits for all informers to be synced.
 // For servers, call this asynchronously.
 // For testing, call this synchronously.
-func (l *Lister) Sync() error {
+func (api *API) Sync() error {
+	api.sharedInformers.Start(nil)
+
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
 	log.Infof("waiting for caches to sync")
 	if !cache.WaitForCacheSync(
 		ctx.Done(),
-		l.nsSynced,
-		l.deploySynced,
-		l.rsSynced,
-		l.podSynced,
-		l.rcSynced,
-		l.svcSynced,
+		api.nsSynced,
+		api.deploySynced,
+		api.rsSynced,
+		api.podSynced,
+		api.rcSynced,
+		api.svcSynced,
 	) {
-		return errors.New("timed out wait for caches to sync")
+		return errors.New("timed out waiting for caches to sync")
 	}
 	log.Infof("caches synced")
 
@@ -98,18 +101,18 @@ func (l *Lister) Sync() error {
 // GetObjects returns a list of Kubernetes objects, given a namespace, type, and name.
 // If namespace is an empty string, match objects in all namespaces.
 // If name is an empty string, match all objects of the given type.
-func (l *Lister) GetObjects(namespace, restype, name string) ([]runtime.Object, error) {
+func (api *API) GetObjects(namespace, restype, name string) ([]runtime.Object, error) {
 	switch restype {
 	case k8s.Namespaces:
-		return l.getNamespaces(name)
+		return api.getNamespaces(name)
 	case k8s.Deployments:
-		return l.getDeployments(namespace, name)
+		return api.getDeployments(namespace, name)
 	case k8s.Pods:
-		return l.getPods(namespace, name)
+		return api.getPods(namespace, name)
 	case k8s.ReplicationControllers:
-		return l.getRCs(namespace, name)
+		return api.getRCs(namespace, name)
 	case k8s.Services:
-		return l.getServices(namespace, name)
+		return api.getServices(namespace, name)
 	default:
 		// TODO: ReplicaSet
 		return nil, status.Errorf(codes.Unimplemented, "unimplemented resource type: %s", restype)
@@ -118,7 +121,7 @@ func (l *Lister) GetObjects(namespace, restype, name string) ([]runtime.Object, 
 
 // GetPodsFor returns all running and pending Pods associated with a given
 // Kubernetes object. Use includeFailed to also get failed Pods
-func (l *Lister) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*apiv1.Pod, error) {
+func (api *API) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*apiv1.Pod, error) {
 	var namespace string
 	var selector labels.Selector
 	var pods []*apiv1.Pod
@@ -149,7 +152,7 @@ func (l *Lister) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*apiv1.Po
 		// Special case for pods:
 		// GetPodsFor a pod should just return the pod itself
 		namespace = typed.Namespace
-		pod, err := l.Pod.Pods(typed.Namespace).Get(typed.Name)
+		pod, err := api.Pod.Lister().Pods(typed.Namespace).Get(typed.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -162,7 +165,7 @@ func (l *Lister) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*apiv1.Po
 	// if obj.(type) is Pod, we've already retrieved it and put it in pods
 	// for the other types, pods will still be empty
 	if len(pods) == 0 {
-		pods, err = l.Pod.Pods(namespace).List(selector)
+		pods, err = api.Pod.Lister().Pods(namespace).List(selector)
 		if err != nil {
 			return nil, err
 		}
@@ -178,15 +181,15 @@ func (l *Lister) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*apiv1.Po
 	return allPods, nil
 }
 
-func (l *Lister) getNamespaces(name string) ([]runtime.Object, error) {
+func (api *API) getNamespaces(name string) ([]runtime.Object, error) {
 	var err error
 	var namespaces []*apiv1.Namespace
 
 	if name == "" {
-		namespaces, err = l.NS.List(labels.Everything())
+		namespaces, err = api.NS.Lister().List(labels.Everything())
 	} else {
 		var namespace *apiv1.Namespace
-		namespace, err = l.NS.Get(name)
+		namespace, err = api.NS.Lister().Get(name)
 		namespaces = []*apiv1.Namespace{namespace}
 	}
 
@@ -202,17 +205,17 @@ func (l *Lister) getNamespaces(name string) ([]runtime.Object, error) {
 	return objects, nil
 }
 
-func (l *Lister) getDeployments(namespace, name string) ([]runtime.Object, error) {
+func (api *API) getDeployments(namespace, name string) ([]runtime.Object, error) {
 	var err error
 	var deploys []*appsv1beta2.Deployment
 
 	if namespace == "" {
-		deploys, err = l.Deploy.List(labels.Everything())
+		deploys, err = api.Deploy.Lister().List(labels.Everything())
 	} else if name == "" {
-		deploys, err = l.Deploy.Deployments(namespace).List(labels.Everything())
+		deploys, err = api.Deploy.Lister().Deployments(namespace).List(labels.Everything())
 	} else {
 		var deploy *appsv1beta2.Deployment
-		deploy, err = l.Deploy.Deployments(namespace).Get(name)
+		deploy, err = api.Deploy.Lister().Deployments(namespace).Get(name)
 		deploys = []*appsv1beta2.Deployment{deploy}
 	}
 
@@ -228,17 +231,17 @@ func (l *Lister) getDeployments(namespace, name string) ([]runtime.Object, error
 	return objects, nil
 }
 
-func (l *Lister) getPods(namespace, name string) ([]runtime.Object, error) {
+func (api *API) getPods(namespace, name string) ([]runtime.Object, error) {
 	var err error
 	var pods []*apiv1.Pod
 
 	if namespace == "" {
-		pods, err = l.Pod.List(labels.Everything())
+		pods, err = api.Pod.Lister().List(labels.Everything())
 	} else if name == "" {
-		pods, err = l.Pod.Pods(namespace).List(labels.Everything())
+		pods, err = api.Pod.Lister().Pods(namespace).List(labels.Everything())
 	} else {
 		var pod *apiv1.Pod
-		pod, err = l.Pod.Pods(namespace).Get(name)
+		pod, err = api.Pod.Lister().Pods(namespace).Get(name)
 		pods = []*apiv1.Pod{pod}
 	}
 
@@ -257,17 +260,17 @@ func (l *Lister) getPods(namespace, name string) ([]runtime.Object, error) {
 	return objects, nil
 }
 
-func (l *Lister) getRCs(namespace, name string) ([]runtime.Object, error) {
+func (api *API) getRCs(namespace, name string) ([]runtime.Object, error) {
 	var err error
 	var rcs []*apiv1.ReplicationController
 
 	if namespace == "" {
-		rcs, err = l.RC.List(labels.Everything())
+		rcs, err = api.RC.Lister().List(labels.Everything())
 	} else if name == "" {
-		rcs, err = l.RC.ReplicationControllers(namespace).List(labels.Everything())
+		rcs, err = api.RC.Lister().ReplicationControllers(namespace).List(labels.Everything())
 	} else {
 		var rc *apiv1.ReplicationController
-		rc, err = l.RC.ReplicationControllers(namespace).Get(name)
+		rc, err = api.RC.Lister().ReplicationControllers(namespace).Get(name)
 		rcs = []*apiv1.ReplicationController{rc}
 	}
 
@@ -283,17 +286,17 @@ func (l *Lister) getRCs(namespace, name string) ([]runtime.Object, error) {
 	return objects, nil
 }
 
-func (l *Lister) getServices(namespace, name string) ([]runtime.Object, error) {
+func (api *API) getServices(namespace, name string) ([]runtime.Object, error) {
 	var err error
 	var services []*apiv1.Service
 
 	if namespace == "" {
-		services, err = l.Svc.List(labels.Everything())
+		services, err = api.Svc.Lister().List(labels.Everything())
 	} else if name == "" {
-		services, err = l.Svc.Services(namespace).List(labels.Everything())
+		services, err = api.Svc.Lister().Services(namespace).List(labels.Everything())
 	} else {
 		var svc *apiv1.Service
-		svc, err = l.Svc.Services(namespace).Get(name)
+		svc, err = api.Svc.Lister().Services(namespace).Get(name)
 		services = []*apiv1.Service{svc}
 	}
 

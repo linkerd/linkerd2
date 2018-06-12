@@ -1,6 +1,11 @@
 package k8s
 
-import "k8s.io/api/core/v1"
+import (
+	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/kubernetes/scheme"
+)
 
 type MockEndpointsWatcher struct {
 	HostReceived         string
@@ -56,4 +61,24 @@ func (i *InMemoryPodIndex) Stop()      {}
 
 func NewEmptyPodIndex() PodIndex {
 	return &InMemoryPodIndex{BackingMap: map[string][]*v1.Pod{}}
+}
+
+func toRuntimeObject(config string) (runtime.Object, error) {
+	decode := scheme.Codecs.UniversalDeserializer().Decode
+	obj, _, err := decode([]byte(config), nil, nil)
+	return obj, err
+}
+
+func NewFakeAPI(configs ...string) (*API, error) {
+	objs := []runtime.Object{}
+	for _, config := range configs {
+		obj, err := toRuntimeObject(config)
+		if err != nil {
+			return nil, err
+		}
+		objs = append(objs, obj)
+	}
+
+	clientSet := fake.NewSimpleClientset(objs...)
+	return NewAPI(clientSet), nil
 }

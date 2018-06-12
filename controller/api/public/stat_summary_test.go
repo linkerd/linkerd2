@@ -12,14 +12,11 @@ import (
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/controller/k8s"
 	pkgK8s "github.com/runconduit/conduit/pkg/k8s"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/client-go/kubernetes/scheme"
 )
 
 type statSumExpected struct {
 	err                       error
-	k8sConfigs                []string               // k8s objects to seed the lister
+	k8sConfigs                []string               // k8s objects to seed the API
 	mockPromResponse          model.Value            // mock out a prometheus query response
 	expectedPrometheusQueries []string               // queries we expect public-api to issue to prometheus
 	req                       pb.StatSummaryRequest  // the request we would like to test
@@ -93,36 +90,25 @@ func genEmptyResponse() pb.StatSummaryResponse {
 	}
 }
 
-func createFakeLister(t *testing.T, k8sConfigs []string) *k8s.Lister {
-	k8sObjs := []runtime.Object{}
-	for _, res := range k8sConfigs {
-		decode := scheme.Codecs.UniversalDeserializer().Decode
-		obj, _, err := decode([]byte(res), nil, nil)
-		if err != nil {
-			t.Fatalf("could not decode yml: %s", err)
-		}
-		k8sObjs = append(k8sObjs, obj)
-	}
-
-	clientSet := fake.NewSimpleClientset(k8sObjs...)
-	return k8s.NewLister(clientSet)
-}
-
 func testStatSummary(t *testing.T, expectations []statSumExpected) {
 	for _, exp := range expectations {
-		lister := createFakeLister(t, exp.k8sConfigs)
+		k8sAPI, err := k8s.NewFakeAPI(exp.k8sConfigs...)
+		if err != nil {
+			t.Fatalf("NewFakeAPI returned an error: %s", err)
+		}
 
 		mockProm := &MockProm{Res: exp.mockPromResponse}
 		fakeGrpcServer := newGrpcServer(
 			mockProm,
 			tap.NewTapClient(nil),
-			lister,
+			k8sAPI,
 			"conduit",
 			[]string{},
 		)
-		err := lister.Sync()
+
+		err = k8sAPI.Sync()
 		if err != nil {
-			t.Fatalf("timed out wait for caches to sync")
+			t.Fatalf("k8sAPI.Sync() returned an error: %s", err)
 		}
 
 		rsp, err := fakeGrpcServer.StatSummary(context.TODO(), &exp.req)
@@ -487,6 +473,11 @@ status:
 	})
 
 	t.Run("Given an invalid resource type, returns error", func(t *testing.T) {
+		k8sAPI, err := k8s.NewFakeAPI()
+		if err != nil {
+			t.Fatalf("NewFakeAPI returned an error: %s", err)
+		}
+
 		expectations := []statSumExpected{
 			statSumExpected{
 				err: errors.New("rpc error: code = Unimplemented desc = unimplemented resource type: badtype"),
@@ -521,12 +512,10 @@ status:
 		}
 
 		for _, exp := range expectations {
-			clientSet := fake.NewSimpleClientset()
-			lister := k8s.NewLister(clientSet)
 			fakeGrpcServer := newGrpcServer(
 				&MockProm{Res: exp.mockPromResponse},
 				tap.NewTapClient(nil),
-				lister,
+				k8sAPI,
 				"conduit",
 				[]string{},
 			)
@@ -543,12 +532,14 @@ status:
 	})
 
 	t.Run("Validates service stat requests", func(t *testing.T) {
-		clientSet := fake.NewSimpleClientset()
-		lister := k8s.NewLister(clientSet)
+		k8sAPI, err := k8s.NewFakeAPI()
+		if err != nil {
+			t.Fatalf("NewFakeAPI returned an error: %s", err)
+		}
 		fakeGrpcServer := newGrpcServer(
 			&MockProm{Res: model.Vector{}},
 			tap.NewTapClient(nil),
-			lister,
+			k8sAPI,
 			"conduit",
 			[]string{},
 		)

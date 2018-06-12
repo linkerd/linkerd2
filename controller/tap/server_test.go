@@ -7,9 +7,6 @@ import (
 
 	public "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/controller/k8s"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/client-go/kubernetes/scheme"
 )
 
 type tapExpected struct {
@@ -160,20 +157,12 @@ status:
 		}
 
 		for _, exp := range expectations {
-			k8sObjs := []runtime.Object{}
-			for _, res := range exp.k8sRes {
-				decode := scheme.Codecs.UniversalDeserializer().Decode
-				obj, _, err := decode([]byte(res), nil, nil)
-				if err != nil {
-					t.Fatalf("could not decode yml: %s", err)
-				}
-				k8sObjs = append(k8sObjs, obj)
+			k8sAPI, err := k8s.NewFakeAPI(exp.k8sRes...)
+			if err != nil {
+				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			clientSet := fake.NewSimpleClientset(k8sObjs...)
-			lister := k8s.NewLister(clientSet)
-
-			server, listener, err := NewServer("localhost:0", 0, lister)
+			server, listener, err := NewServer("localhost:0", 0, k8sAPI)
 			if err != nil {
 				t.Fatalf("NewServer error: %s", err)
 			}
@@ -181,9 +170,9 @@ status:
 			go func() { server.Serve(listener) }()
 			defer server.GracefulStop()
 
-			err = lister.Sync()
+			err = k8sAPI.Sync()
 			if err != nil {
-				t.Fatalf("timed out wait for caches to sync: %s", err)
+				t.Fatalf("k8sAPI.Sync() returned an error: %s", err)
 			}
 
 			client, conn, err := NewClient(listener.Addr().String())
