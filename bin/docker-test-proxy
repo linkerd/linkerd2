@@ -2,6 +2,9 @@
 
 set -eu
 
+# When set, causes docker's build output to be emitted to stderr.
+export DOCKER_TRACE="${DOCKER_TRACE:-}"
+
 if [ $# -ne 0 ]; then
     echo "no arguments allowed for $(basename $0), given: $@" >&2
     exit 64
