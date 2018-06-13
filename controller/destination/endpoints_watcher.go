@@ -37,20 +37,20 @@ type endpointsWatcher struct {
 
 func newEndpointsWatcher(k8sAPI *k8s.API) *endpointsWatcher {
 	watcher := &endpointsWatcher{
-		serviceLister:  k8sAPI.Svc.Lister(),
-		endpointLister: k8sAPI.Endpoint.Lister(),
+		serviceLister:  k8sAPI.Svc().Lister(),
+		endpointLister: k8sAPI.Endpoint().Lister(),
 		servicePorts:   make(map[serviceId]map[uint32]*servicePort),
 		mutex:          sync.RWMutex{},
 	}
 
-	k8sAPI.Svc.Informer().AddEventHandler(
+	k8sAPI.Svc().Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    watcher.addService,
 			UpdateFunc: watcher.updateService,
 		},
 	)
 
-	k8sAPI.Endpoint.Informer().AddEventHandler(
+	k8sAPI.Endpoint().Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    watcher.addEndpoints,
 			UpdateFunc: watcher.updateEndpoints,

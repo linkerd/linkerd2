@@ -51,7 +51,15 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	k8sAPI := k8s.NewAPI(k8sClient)
+	k8sAPI := k8s.NewAPI(
+		k8sClient,
+		k8s.Deploy,
+		k8s.NS,
+		k8s.Pod,
+		k8s.RC,
+		k8s.RS,
+		k8s.Svc,
+	)
 
 	prometheusClient, err := promApi.NewClient(promApi.Config{Address: *prometheusUrl})
 	if err != nil {

@@ -78,7 +78,7 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.Empty) (*pb.ListPodsR
 		reports[pod] = time.Unix(0, int64(timestamp)*int64(time.Millisecond))
 	}
 
-	pods, err := s.k8sAPI.Pod.Lister().List(labels.Everything())
+	pods, err := s.k8sAPI.Pod().Lister().List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +137,7 @@ func (s *grpcServer) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckR
 		CheckDescription: K8sClientCheckDescription,
 		Status:           healthcheckPb.CheckStatus_OK,
 	}
-	_, err := s.k8sAPI.Pod.Lister().List(labels.Everything())
+	_, err := s.k8sAPI.Pod().Lister().List(labels.Everything())
 	if err != nil {
 		k8sClientCheck.Status = healthcheckPb.CheckStatus_ERROR
 		k8sClientCheck.FriendlyMessageToUser = fmt.Sprintf("Error talking to Kubernetes from control plane: %s", err.Error())
@@ -209,7 +209,7 @@ func (s *grpcServer) getDeploymentFor(pod *k8sV1.Pod) (string, error) {
 		return "", fmt.Errorf("Pod %s parent is not a ReplicaSet", pod.Name)
 	}
 
-	rs, err := s.k8sAPI.RS.Lister().GetPodReplicaSets(pod)
+	rs, err := s.k8sAPI.RS().Lister().GetPodReplicaSets(pod)
 	if err != nil {
 		return "", err
 	}

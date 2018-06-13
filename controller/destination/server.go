@@ -35,7 +35,7 @@ type server struct {
 // Addresses for the given destination are fetched from the Kubernetes Endpoints
 // API.
 func NewServer(addr, k8sDNSZone string, enableTLS bool, k8sAPI *k8s.API, done chan struct{}) (*grpc.Server, net.Listener, error) {
-	k8sAPI.Pod.Informer().AddIndexers(cache.Indexers{podIpIndexName: indexPodByIp})
+	k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{podIpIndexName: indexPodByIp})
 	resolvers, err := buildResolversList(k8sDNSZone, k8sAPI)
 	if err != nil {
 		return nil, nil, err
@@ -101,7 +101,7 @@ func indexPodByIp(obj interface{}) ([]string, error) {
 }
 
 func (s *server) podsByIp(ip string) ([]*v1.Pod, error) {
-	objs, err := s.k8sAPI.Pod.Informer().GetIndexer().ByIndex(podIpIndexName, ip)
+	objs, err := s.k8sAPI.Pod().Informer().GetIndexer().ByIndex(podIpIndexName, ip)
 	if err != nil {
 		return nil, err
 	}

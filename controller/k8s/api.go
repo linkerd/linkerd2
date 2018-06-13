@@ -21,57 +21,73 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
+type ApiResource int
+
+const (
+	CM ApiResource = iota
+	Deploy
+	Endpoint
+	NS
+	Pod
+	RC
+	RS
+	Svc
+)
+
 // API provides shared informers for all Kubernetes objects
 type API struct {
-	NS       coreinformers.NamespaceInformer
-	Deploy   appinformers.DeploymentInformer
-	RS       appinformers.ReplicaSetInformer
-	Pod      coreinformers.PodInformer
-	RC       coreinformers.ReplicationControllerInformer
-	Svc      coreinformers.ServiceInformer
-	Endpoint coreinformers.EndpointsInformer
+	Client kubernetes.Interface
 
-	nsSynced       cache.InformerSynced
-	deploySynced   cache.InformerSynced
-	rsSynced       cache.InformerSynced
-	podSynced      cache.InformerSynced
-	rcSynced       cache.InformerSynced
-	svcSynced      cache.InformerSynced
-	endpointSynced cache.InformerSynced
+	cm       coreinformers.ConfigMapInformer
+	deploy   appinformers.DeploymentInformer
+	endpoint coreinformers.EndpointsInformer
+	ns       coreinformers.NamespaceInformer
+	pod      coreinformers.PodInformer
+	rc       coreinformers.ReplicationControllerInformer
+	rs       appinformers.ReplicaSetInformer
+	svc      coreinformers.ServiceInformer
 
+	syncChecks      []cache.InformerSynced
 	sharedInformers informers.SharedInformerFactory
 }
 
 // NewAPI takes a Kubernetes client and returns an initialized API
-func NewAPI(k8sClient kubernetes.Interface) *API {
+func NewAPI(k8sClient kubernetes.Interface, resources ...ApiResource) *API {
 	sharedInformers := informers.NewSharedInformerFactory(k8sClient, 10*time.Minute)
 
-	namespaceInformer := sharedInformers.Core().V1().Namespaces()
-	deployInformer := sharedInformers.Apps().V1beta2().Deployments()
-	replicaSetInformer := sharedInformers.Apps().V1beta2().ReplicaSets()
-	podInformer := sharedInformers.Core().V1().Pods()
-	replicationControllerInformer := sharedInformers.Core().V1().ReplicationControllers()
-	serviceInformer := sharedInformers.Core().V1().Services()
-	endpointInformer := sharedInformers.Core().V1().Endpoints()
-
 	api := &API{
-		NS:       namespaceInformer,
-		Deploy:   deployInformer,
-		RS:       replicaSetInformer,
-		Pod:      podInformer,
-		RC:       replicationControllerInformer,
-		Svc:      serviceInformer,
-		Endpoint: endpointInformer,
-
-		nsSynced:       namespaceInformer.Informer().HasSynced,
-		deploySynced:   deployInformer.Informer().HasSynced,
-		rsSynced:       replicaSetInformer.Informer().HasSynced,
-		podSynced:      podInformer.Informer().HasSynced,
-		rcSynced:       replicationControllerInformer.Informer().HasSynced,
-		svcSynced:      serviceInformer.Informer().HasSynced,
-		endpointSynced: endpointInformer.Informer().HasSynced,
-
+		Client:          k8sClient,
+		syncChecks:      make([]cache.InformerSynced, 0),
 		sharedInformers: sharedInformers,
+	}
+
+	for _, resource := range resources {
+		switch resource {
+		case CM:
+			api.cm = sharedInformers.Core().V1().ConfigMaps()
+			api.syncChecks = append(api.syncChecks, api.cm.Informer().HasSynced)
+		case Deploy:
+			api.deploy = sharedInformers.Apps().V1beta2().Deployments()
+			api.syncChecks = append(api.syncChecks, api.deploy.Informer().HasSynced)
+		case Endpoint:
+			api.endpoint = sharedInformers.Core().V1().Endpoints()
+			api.syncChecks = append(api.syncChecks, api.endpoint.Informer().HasSynced)
+		case NS:
+			api.ns = sharedInformers.Core().V1().Namespaces()
+			api.syncChecks = append(api.syncChecks, api.ns.Informer().HasSynced)
+		case Pod:
+			api.pod = sharedInformers.Core().V1().Pods()
+			api.syncChecks = append(api.syncChecks, api.pod.Informer().HasSynced)
+		case RC:
+			api.rc = sharedInformers.Core().V1().ReplicationControllers()
+			api.syncChecks = append(api.syncChecks, api.rc.Informer().HasSynced)
+		case RS:
+			api.rs = sharedInformers.Apps().V1beta2().ReplicaSets()
+			api.syncChecks = append(api.syncChecks, api.rs.Informer().HasSynced)
+		case Svc:
+			api.svc = sharedInformers.Core().V1().Services()
+			api.syncChecks = append(api.syncChecks, api.svc.Informer().HasSynced)
+		}
 	}
 
 	return api
@@ -87,21 +103,68 @@ func (api *API) Sync() error {
 	defer cancel()
 
 	log.Infof("waiting for caches to sync")
-	if !cache.WaitForCacheSync(
-		ctx.Done(),
-		api.nsSynced,
-		api.deploySynced,
-		api.rsSynced,
-		api.podSynced,
-		api.rcSynced,
-		api.svcSynced,
-		api.endpointSynced,
-	) {
+	if !cache.WaitForCacheSync(ctx.Done(), api.syncChecks...) {
 		return errors.New("timed out waiting for caches to sync")
 	}
 	log.Infof("caches synced")
 
 	return nil
+}
+
+func (api *API) NS() coreinformers.NamespaceInformer {
+	if api.ns == nil {
+		panic("NS informer not configured")
+	}
+	return api.ns
+}
+
+func (api *API) Deploy() appinformers.DeploymentInformer {
+	if api.deploy == nil {
+		panic("Deploy informer not configured")
+	}
+	return api.deploy
+}
+
+func (api *API) RS() appinformers.ReplicaSetInformer {
+	if api.rs == nil {
+		panic("RS informer not configured")
+	}
+	return api.rs
+}
+
+func (api *API) Pod() coreinformers.PodInformer {
+	if api.pod == nil {
+		panic("Pod informer not configured")
+	}
+	return api.pod
+}
+
+func (api *API) RC() coreinformers.ReplicationControllerInformer {
+	if api.rc == nil {
+		panic("RC informer not configured")
+	}
+	return api.rc
+}
+
+func (api *API) Svc() coreinformers.ServiceInformer {
+	if api.svc == nil {
+		panic("Svc informer not configured")
+	}
+	return api.svc
+}
+
+func (api *API) Endpoint() coreinformers.EndpointsInformer {
+	if api.endpoint == nil {
+		panic("Endpoint informer not configured")
+	}
+	return api.endpoint
+}
+
+func (api *API) CM() coreinformers.ConfigMapInformer {
+	if api.cm == nil {
+		panic("CM informer not configured")
+	}
+	return api.cm
 }
 
 // GetObjects returns a list of Kubernetes objects, given a namespace, type, and name.
@@ -158,7 +221,7 @@ func (api *API) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*apiv1.Pod
 		// Special case for pods:
 		// GetPodsFor a pod should just return the pod itself
 		namespace = typed.Namespace
-		pod, err := api.Pod.Lister().Pods(typed.Namespace).Get(typed.Name)
+		pod, err := api.Pod().Lister().Pods(typed.Namespace).Get(typed.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -171,7 +234,7 @@ func (api *API) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*apiv1.Pod
 	// if obj.(type) is Pod, we've already retrieved it and put it in pods
 	// for the other types, pods will still be empty
 	if len(pods) == 0 {
-		pods, err = api.Pod.Lister().Pods(namespace).List(selector)
+		pods, err = api.Pod().Lister().Pods(namespace).List(selector)
 		if err != nil {
 			return nil, err
 		}
@@ -192,10 +255,10 @@ func (api *API) getNamespaces(name string) ([]runtime.Object, error) {
 	var namespaces []*apiv1.Namespace
 
 	if name == "" {
-		namespaces, err = api.NS.Lister().List(labels.Everything())
+		namespaces, err = api.NS().Lister().List(labels.Everything())
 	} else {
 		var namespace *apiv1.Namespace
-		namespace, err = api.NS.Lister().Get(name)
+		namespace, err = api.NS().Lister().Get(name)
 		namespaces = []*apiv1.Namespace{namespace}
 	}
 
@@ -216,12 +279,12 @@ func (api *API) getDeployments(namespace, name string) ([]runtime.Object, error)
 	var deploys []*appsv1beta2.Deployment
 
 	if namespace == "" {
-		deploys, err = api.Deploy.Lister().List(labels.Everything())
+		deploys, err = api.Deploy().Lister().List(labels.Everything())
 	} else if name == "" {
-		deploys, err = api.Deploy.Lister().Deployments(namespace).List(labels.Everything())
+		deploys, err = api.Deploy().Lister().Deployments(namespace).List(labels.Everything())
 	} else {
 		var deploy *appsv1beta2.Deployment
-		deploy, err = api.Deploy.Lister().Deployments(namespace).Get(name)
+		deploy, err = api.Deploy().Lister().Deployments(namespace).Get(name)
 		deploys = []*appsv1beta2.Deployment{deploy}
 	}
 
@@ -242,12 +305,12 @@ func (api *API) getPods(namespace, name string) ([]runtime.Object, error) {
 	var pods []*apiv1.Pod
 
 	if namespace == "" {
-		pods, err = api.Pod.Lister().List(labels.Everything())
+		pods, err = api.Pod().Lister().List(labels.Everything())
 	} else if name == "" {
-		pods, err = api.Pod.Lister().Pods(namespace).List(labels.Everything())
+		pods, err = api.Pod().Lister().Pods(namespace).List(labels.Everything())
 	} else {
 		var pod *apiv1.Pod
-		pod, err = api.Pod.Lister().Pods(namespace).Get(name)
+		pod, err = api.Pod().Lister().Pods(namespace).Get(name)
 		pods = []*apiv1.Pod{pod}
 	}
 
@@ -271,12 +334,12 @@ func (api *API) getRCs(namespace, name string) ([]runtime.Object, error) {
 	var rcs []*apiv1.ReplicationController
 
 	if namespace == "" {
-		rcs, err = api.RC.Lister().List(labels.Everything())
+		rcs, err = api.RC().Lister().List(labels.Everything())
 	} else if name == "" {
-		rcs, err = api.RC.Lister().ReplicationControllers(namespace).List(labels.Everything())
+		rcs, err = api.RC().Lister().ReplicationControllers(namespace).List(labels.Everything())
 	} else {
 		var rc *apiv1.ReplicationController
-		rc, err = api.RC.Lister().ReplicationControllers(namespace).Get(name)
+		rc, err = api.RC().Lister().ReplicationControllers(namespace).Get(name)
 		rcs = []*apiv1.ReplicationController{rc}
 	}
 
@@ -297,12 +360,12 @@ func (api *API) getServices(namespace, name string) ([]runtime.Object, error) {
 	var services []*apiv1.Service
 
 	if namespace == "" {
-		services, err = api.Svc.Lister().List(labels.Everything())
+		services, err = api.Svc().Lister().List(labels.Everything())
 	} else if name == "" {
-		services, err = api.Svc.Lister().Services(namespace).List(labels.Everything())
+		services, err = api.Svc().Lister().Services(namespace).List(labels.Everything())
 	} else {
 		var svc *apiv1.Service
-		svc, err = api.Svc.Lister().Services(namespace).Get(name)
+		svc, err = api.Svc().Lister().Services(namespace).Get(name)
 		services = []*apiv1.Service{svc}
 	}
 

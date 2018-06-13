@@ -558,7 +558,7 @@ func newSimulatedProxy(
 }
 
 func getDeploymentByPod(k8sAPI *k8s.API, maxPods int) map[*v1.Pod]*v1beta2.Deployment {
-	deployList, err := k8sAPI.Deploy.Lister().List(labels.Everything())
+	deployList, err := k8sAPI.Deploy().Lister().List(labels.Everything())
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -615,7 +615,11 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
-	k8sAPI := k8s.NewAPI(clientSet)
+	k8sAPI := k8s.NewAPI(
+		clientSet,
+		k8s.Deploy,
+		k8s.Pod,
+	)
 	err = k8sAPI.Sync()
 	if err != nil {
 		log.Fatal(err.Error())
