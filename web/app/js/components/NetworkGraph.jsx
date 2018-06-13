@@ -12,7 +12,7 @@ const defaultSvgHeight = 295;
 const margin = { top: 0, right: 0, bottom: 10, left: 0 };
 
 const simulation = d3.forceSimulation()
-  .force("link", d3.forceLink().id(function(d) { return d.id; }).distance(60))
+  .force("link", d3.forceLink().id(function(d) { return d.id; }).distance(100))
   .force('charge', d3.forceManyBody().strength(-20))
   .force('center', d3.forceCenter(defaultSvgWidth / 2, defaultSvgHeight / 2));
 
@@ -91,8 +91,7 @@ class NetworkGraph extends React.Component {
           _.map(rows, row => {
             links.push({
               source: row.resource.name,
-              target: dst,
-              value: 1
+              target: dst
             });
             nodeList.push(row.resource.name);
             nodeList.push(dst);
@@ -120,7 +119,7 @@ class NetworkGraph extends React.Component {
       .enter().append("svg:marker")    // This section adds in the arrows
       .attr("id", String)
       .attr("viewBox", "0 -5 10 10")
-      .attr("refX", 18)
+      .attr("refX", 24)
       .attr("refY", -0.25)
       .attr("markerWidth", 3)
       .attr("markerHeight", 3)
@@ -140,7 +139,7 @@ class NetworkGraph extends React.Component {
       .selectAll('circle')
       .data(this.state.nodes)
       .enter().append('circle')
-      .attr('r', 10)
+      .attr("r", 15)
       .attr('fill', 'steelblue')
       .call(d3.drag()
         .on("start", this.dragstarted)

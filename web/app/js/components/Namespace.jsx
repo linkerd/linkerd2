@@ -123,6 +123,7 @@ class Namespaces extends React.Component {
 
   render() {
     let noMetrics = _.isEmpty(this.state.metrics.pods);
+    let deploymentsWithMetrics = _.filter(this.state.metrics.deployments, d => !_.isNull(d.requestRate));
 
     return (
       <div className="page-content">
@@ -131,7 +132,8 @@ class Namespaces extends React.Component {
           <div>
             <PageHeader header={`Namespace: ${this.state.ns}`} />
             { noMetrics ? <div>No resources detected.</div> : null}
-            <NetworkGraph deployments={this.state.metrics.deployments} />
+            { _.isEmpty(deploymentsWithMetrics) ? null :
+            <NetworkGraph deployments={this.state.metrics.deployments} />}
             {this.renderResourceSection("Deployment", this.state.metrics.deployments)}
             {this.renderResourceSection("Replication Controller", this.state.metrics.replicationcontrollers)}
             {this.renderResourceSection("Pod", this.state.metrics.pods)}
