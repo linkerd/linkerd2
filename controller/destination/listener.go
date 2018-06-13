@@ -3,7 +3,7 @@ package destination
 import (
 	common "github.com/runconduit/conduit/controller/gen/common"
 	pb "github.com/runconduit/conduit/controller/gen/proxy/destination"
-	"github.com/runconduit/conduit/controller/util"
+	"github.com/runconduit/conduit/pkg/addr"
 	pkgK8s "github.com/runconduit/conduit/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	coreV1 "k8s.io/api/core/v1"
@@ -88,7 +88,7 @@ func (l *endpointListener) toWeightedAddrSet(endpoints []common.TcpAddress) *pb.
 func (l *endpointListener) toWeightedAddr(address common.TcpAddress) *pb.WeightedAddr {
 	var tlsIdentity *pb.TlsIdentity
 	metricLabelsForPod := map[string]string{}
-	ipAsString := util.IPToString(address.Ip)
+	ipAsString := addr.IPToString(address.Ip)
 
 	resultingPods, err := l.podsByIp(ipAsString)
 	if err != nil {

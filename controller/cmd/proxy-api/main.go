@@ -8,7 +8,7 @@ import (
 
 	"github.com/runconduit/conduit/controller/api/proxy"
 	"github.com/runconduit/conduit/controller/destination"
-	"github.com/runconduit/conduit/controller/util"
+	"github.com/runconduit/conduit/pkg/prometheus"
 	"github.com/runconduit/conduit/pkg/version"
 	log "github.com/sirupsen/logrus"
 )
@@ -49,7 +49,7 @@ func main() {
 		server.Serve(lis)
 	}()
 
-	go util.NewMetricsServer(*metricsAddr)
+	go prometheus.NewMetricsServer(*metricsAddr)
 
 	<-stop
 

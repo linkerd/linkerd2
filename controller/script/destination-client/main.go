@@ -10,7 +10,7 @@ import (
 	"github.com/runconduit/conduit/controller/destination"
 	common "github.com/runconduit/conduit/controller/gen/common"
 	pb "github.com/runconduit/conduit/controller/gen/proxy/destination"
-	"github.com/runconduit/conduit/controller/util"
+	addrUtil "github.com/runconduit/conduit/pkg/addr"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -53,7 +53,7 @@ func main() {
 			log.Println("Add:")
 			log.Printf("labels: %v", updateType.Add.MetricLabels)
 			for _, addr := range updateType.Add.Addrs {
-				log.Printf("- %s:%d", util.IPToString(addr.Addr.GetIp()), addr.Addr.Port)
+				log.Printf("- %s:%d", addrUtil.IPToString(addr.Addr.GetIp()), addr.Addr.Port)
 				log.Printf("  - labels: %v", addr.MetricLabels)
 				switch identityType := addr.GetTlsIdentity().GetStrategy().(type) {
 				case *pb.TlsIdentity_K8SPodNamespace_:
@@ -64,7 +64,7 @@ func main() {
 		case *pb.Update_Remove:
 			log.Println("Remove:")
 			for _, addr := range updateType.Remove.Addrs {
-				log.Printf("- %s:%d", util.IPToString(addr.GetIp()), addr.Port)
+				log.Printf("- %s:%d", addrUtil.IPToString(addr.GetIp()), addr.Port)
 			}
 			log.Println()
 		case *pb.Update_NoEndpoints:

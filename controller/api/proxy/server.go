@@ -6,7 +6,7 @@ import (
 
 	common "github.com/runconduit/conduit/controller/gen/common"
 	destination "github.com/runconduit/conduit/controller/gen/proxy/destination"
-	"github.com/runconduit/conduit/controller/util"
+	"github.com/runconduit/conduit/pkg/prometheus"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 )
@@ -58,7 +58,7 @@ func NewServer(addr string, destinationClient destination.DestinationClient) (*g
 		return nil, nil, err
 	}
 
-	s := util.NewGrpcServer()
+	s := prometheus.NewGrpcServer()
 	srv := server{destinationClient: destinationClient}
 	destination.RegisterDestinationServer(s, &srv)
 

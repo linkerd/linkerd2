@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/runconduit/conduit/controller/k8s"
-	"github.com/runconduit/conduit/controller/util"
+	"github.com/runconduit/conduit/pkg/addr"
 )
 
 func TestEndpointsWatcher(t *testing.T) {
@@ -126,7 +126,7 @@ spec:
 
 			actualAddresses := make([]string, 0)
 			for _, add := range listener.added {
-				actualAddresses = append(actualAddresses, util.AddressToString(&add))
+				actualAddresses = append(actualAddresses, addr.AddressToString(&add))
 			}
 			sort.Strings(actualAddresses)
 

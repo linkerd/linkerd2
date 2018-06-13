@@ -12,7 +12,7 @@ import (
 	tapPb "github.com/runconduit/conduit/controller/gen/controller/tap"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/controller/k8s"
-	"github.com/runconduit/conduit/controller/util"
+	"github.com/runconduit/conduit/pkg/prometheus"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/metadata"
 )
@@ -209,7 +209,7 @@ func NewServer(
 		),
 	}
 
-	instrumentedHandler := util.WithTelemetry(baseHandler)
+	instrumentedHandler := prometheus.WithTelemetry(baseHandler)
 
 	return &http.Server{
 		Addr:    addr,

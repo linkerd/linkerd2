@@ -7,10 +7,10 @@ import (
 	"os"
 	"text/tabwriter"
 
-	apiUtil "github.com/runconduit/conduit/controller/api/util"
+	"github.com/runconduit/conduit/controller/api/util"
 	common "github.com/runconduit/conduit/controller/gen/common"
 	pb "github.com/runconduit/conduit/controller/gen/public"
-	"github.com/runconduit/conduit/controller/util"
+	"github.com/runconduit/conduit/pkg/addr"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/codes"
@@ -73,7 +73,7 @@ func newCmdTap() *cobra.Command {
   # tap the test namespace, filter by request to prod namespace
   conduit tap ns/test --to ns/prod`,
 		Args:      cobra.RangeArgs(1, 2),
-		ValidArgs: apiUtil.ValidTargets,
+		ValidArgs: util.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			req, err := buildTapByResourceRequest(args, options)
 			if err != nil {
@@ -114,22 +114,22 @@ func buildTapByResourceRequest(
 	options *tapOptions,
 ) (*pb.TapByResourceRequest, error) {
 
-	target, err := apiUtil.BuildResource(options.namespace, resource...)
+	target, err := util.BuildResource(options.namespace, resource...)
 	if err != nil {
 		return nil, fmt.Errorf("target resource invalid: %s", err)
 	}
-	if !contains(apiUtil.ValidTargets, target.Type) {
+	if !contains(util.ValidTargets, target.Type) {
 		return nil, fmt.Errorf("unsupported resource type [%s]", target.Type)
 	}
 
 	matches := []*pb.TapByResourceRequest_Match{}
 
 	if options.toResource != "" {
-		destination, err := apiUtil.BuildResource(options.toNamespace, options.toResource)
+		destination, err := util.BuildResource(options.toNamespace, options.toResource)
 		if err != nil {
 			return nil, fmt.Errorf("destination resource invalid: %s", err)
 		}
-		if !contains(apiUtil.ValidDestinations, destination.Type) {
+		if !contains(util.ValidDestinations, destination.Type) {
 			return nil, fmt.Errorf("unsupported resource type [%s]", target.Type)
 		}
 
@@ -241,7 +241,7 @@ func writeTapEventsToBuffer(tapClient pb.Api_TapByResourceClient, w *tabwriter.W
 }
 
 func renderTapEvent(event *common.TapEvent) string {
-	dst := util.AddressToString(event.GetDestination())
+	dst := addr.AddressToString(event.GetDestination())
 	dstLabels := event.GetDestinationMeta().GetLabels()
 	dstPod := dstLabels["pod"]
 	isSecured := "no"
@@ -255,7 +255,7 @@ func renderTapEvent(event *common.TapEvent) string {
 	}
 
 	flow := fmt.Sprintf("src=%s dst=%s",
-		util.AddressToString(event.GetSource()),
+		addr.AddressToString(event.GetSource()),
 		dst,
 	)
 

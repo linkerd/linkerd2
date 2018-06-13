@@ -10,8 +10,8 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	pb "github.com/runconduit/conduit/controller/gen/public"
-	"github.com/runconduit/conduit/controller/util"
-	"github.com/runconduit/conduit/web/util/filesonly"
+	"github.com/runconduit/conduit/pkg/filesonly"
+	"github.com/runconduit/conduit/pkg/prometheus"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -65,7 +65,7 @@ func NewServer(addr, templateDir, staticDir, uuid, controllerNamespace, webpackD
 		HandleMethodNotAllowed: false, // disable 405s
 	}
 
-	wrappedServer := util.WithTelemetry(server)
+	wrappedServer := prometheus.WithTelemetry(server)
 	handler := &handler{
 		apiClient:           apiClient,
 		render:              server.RenderTemplate,

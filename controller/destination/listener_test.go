@@ -7,7 +7,7 @@ import (
 
 	common "github.com/runconduit/conduit/controller/gen/common"
 	pb "github.com/runconduit/conduit/controller/gen/proxy/destination"
-	"github.com/runconduit/conduit/controller/util"
+	"github.com/runconduit/conduit/pkg/addr"
 	pkgK8s "github.com/runconduit/conduit/pkg/k8s"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -112,7 +112,7 @@ func TestEndpointListener(t *testing.T) {
 		expectedReplicationControllerName := "rc-name"
 
 		addedAddress1 := common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 666}}, Port: 1}
-		ipForAddr1 := util.IPToString(addedAddress1.Ip)
+		ipForAddr1 := addr.IPToString(addedAddress1.Ip)
 		podForAddedAddress1 := &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      expectedPodName,
@@ -169,7 +169,7 @@ func TestEndpointListener(t *testing.T) {
 		}
 
 		addedAddress := common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 666}}, Port: 1}
-		ipForAddr := util.IPToString(addedAddress.Ip)
+		ipForAddr := addr.IPToString(addedAddress.Ip)
 		podForAddedAddress := &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      expectedPodName,
@@ -213,7 +213,7 @@ func TestEndpointListener(t *testing.T) {
 		expectedConduitNamespace := "conduit-namespace"
 
 		addedAddress := common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 666}}, Port: 1}
-		ipForAddr := util.IPToString(addedAddress.Ip)
+		ipForAddr := addr.IPToString(addedAddress.Ip)
 		podForAddedAddress := &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      expectedPodName,
@@ -304,7 +304,7 @@ func TestEndpointListener(t *testing.T) {
 			backingMap := map[string][]*v1.Pod{}
 
 			for _, pod := range exp.pods {
-				ipForAddr := util.IPToString(exp.address.Ip)
+				ipForAddr := addr.IPToString(exp.address.Ip)
 				podForAddedAddress := &v1.Pod{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      pod.pod,
