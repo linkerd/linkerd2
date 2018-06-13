@@ -16,6 +16,8 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
+const podIpIndexName = "ip"
+
 type server struct {
 	k8sAPI    *k8s.API
 	resolvers []streamingDestinationResolver
@@ -38,7 +40,7 @@ func NewServer(addr, kubeconfig, k8sDNSZone string, enableTLS bool, k8sAPI *k8s.
 		return nil, nil, err
 	}
 
-	k8sAPI.Pod.Informer().AddIndexers(cache.Indexers{"ip": indexPodByIp})
+	k8sAPI.Pod.Informer().AddIndexers(cache.Indexers{podIpIndexName: indexPodByIp})
 
 	endpointsWatcher := k8s.NewEndpointsWatcher(clientSet)
 	err = endpointsWatcher.Run()
@@ -109,7 +111,7 @@ func indexPodByIp(obj interface{}) ([]string, error) {
 }
 
 func (s *server) podsByIp(ip string) ([]*v1.Pod, error) {
-	objs, err := s.k8sAPI.Pod.Informer().GetIndexer().ByIndex("ip", ip)
+	objs, err := s.k8sAPI.Pod.Informer().GetIndexer().ByIndex(podIpIndexName, ip)
 	if err != nil {
 		return nil, err
 	}
