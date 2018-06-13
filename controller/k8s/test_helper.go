@@ -34,35 +34,6 @@ func (m *MockEndpointsWatcher) Run() error {
 
 func (m *MockEndpointsWatcher) Stop() {}
 
-type InMemoryPodIndex struct {
-	BackingMap map[string][]*v1.Pod
-}
-
-func (i *InMemoryPodIndex) GetPod(key string) (*v1.Pod, error) {
-	return i.BackingMap[key][0], nil
-}
-
-func (i *InMemoryPodIndex) GetPodsByIndex(key string) ([]*v1.Pod, error) {
-	return i.BackingMap[key], nil
-}
-
-func (i *InMemoryPodIndex) List() ([]*v1.Pod, error) {
-	var pods []*v1.Pod
-	for _, byIndex := range i.BackingMap {
-		for _, pod := range byIndex {
-			pods = append(pods, pod)
-		}
-	}
-
-	return pods, nil
-}
-func (i *InMemoryPodIndex) Run() error { return nil }
-func (i *InMemoryPodIndex) Stop()      {}
-
-func NewEmptyPodIndex() PodIndex {
-	return &InMemoryPodIndex{BackingMap: map[string][]*v1.Pod{}}
-}
-
 func toRuntimeObject(config string) (runtime.Object, error) {
 	decode := scheme.Codecs.UniversalDeserializer().Decode
 	obj, _, err := decode([]byte(config), nil, nil)

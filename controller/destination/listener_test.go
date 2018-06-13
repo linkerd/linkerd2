@@ -7,7 +7,6 @@ import (
 
 	common "github.com/runconduit/conduit/controller/gen/common"
 	pb "github.com/runconduit/conduit/controller/gen/proxy/destination"
-	"github.com/runconduit/conduit/controller/k8s"
 	"github.com/runconduit/conduit/controller/util"
 	pkgK8s "github.com/runconduit/conduit/pkg/k8s"
 	"k8s.io/api/core/v1"
@@ -28,11 +27,15 @@ type listenerExpected struct {
 	addressLabels  map[string]string
 }
 
+func noPodsByIp(ip string) ([]*v1.Pod, error) {
+	return make([]*v1.Pod, 0), nil
+}
+
 func TestEndpointListener(t *testing.T) {
 	t.Run("Sends one update for add and another for remove", func(t *testing.T) {
 		mockGetServer := &mockDestination_GetServer{updatesReceived: []*pb.Update{}}
 
-		listener := &endpointListener{stream: mockGetServer, podsByIp: k8s.NewEmptyPodIndex()}
+		listener := &endpointListener{stream: mockGetServer, podsByIp: noPodsByIp}
 
 		addedAddress1 := common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 1}}, Port: 1}
 		addedAddress2 := common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 2}}, Port: 2}
@@ -50,7 +53,7 @@ func TestEndpointListener(t *testing.T) {
 	t.Run("Sends addresses as removed or added", func(t *testing.T) {
 		mockGetServer := &mockDestination_GetServer{updatesReceived: []*pb.Update{}}
 
-		listener := &endpointListener{stream: mockGetServer, podsByIp: k8s.NewEmptyPodIndex()}
+		listener := &endpointListener{stream: mockGetServer, podsByIp: noPodsByIp}
 
 		addedAddress1 := common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 1}}, Port: 1}
 		addedAddress2 := common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 2}}, Port: 2}
@@ -85,7 +88,7 @@ func TestEndpointListener(t *testing.T) {
 	t.Run("It returns when the underlying context is done", func(t *testing.T) {
 		context, cancelFn := context.WithCancel(context.Background())
 		mockGetServer := &mockDestination_GetServer{updatesReceived: []*pb.Update{}, contextToReturn: context}
-		listener := &endpointListener{stream: mockGetServer, podsByIp: k8s.NewEmptyPodIndex()}
+		listener := &endpointListener{stream: mockGetServer, podsByIp: noPodsByIp}
 
 		completed := make(chan bool)
 		go func() {
@@ -123,7 +126,9 @@ func TestEndpointListener(t *testing.T) {
 			},
 		}
 		addedAddress2 := common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 222}}, Port: 22}
-		podIndex := &k8s.InMemoryPodIndex{BackingMap: map[string][]*v1.Pod{ipForAddr1: []*v1.Pod{podForAddedAddress1}}}
+		podIndex := func(ip string) ([]*v1.Pod, error) {
+			return map[string][]*v1.Pod{ipForAddr1: []*v1.Pod{podForAddedAddress1}}[ip], nil
+		}
 
 		mockGetServer := &mockDestination_GetServer{updatesReceived: []*pb.Update{}}
 		listener := &endpointListener{
@@ -178,7 +183,9 @@ func TestEndpointListener(t *testing.T) {
 			},
 		}
 
-		podIndex := &k8s.InMemoryPodIndex{BackingMap: map[string][]*v1.Pod{ipForAddr: []*v1.Pod{podForAddedAddress}}}
+		podIndex := func(ip string) ([]*v1.Pod, error) {
+			return map[string][]*v1.Pod{ipForAddr: []*v1.Pod{podForAddedAddress}}[ip], nil
+		}
 
 		mockGetServer := &mockDestination_GetServer{updatesReceived: []*pb.Update{}}
 		listener := &endpointListener{
@@ -220,7 +227,9 @@ func TestEndpointListener(t *testing.T) {
 			},
 		}
 
-		podIndex := &k8s.InMemoryPodIndex{BackingMap: map[string][]*v1.Pod{ipForAddr: []*v1.Pod{podForAddedAddress}}}
+		podIndex := func(ip string) ([]*v1.Pod, error) {
+			return map[string][]*v1.Pod{ipForAddr: []*v1.Pod{podForAddedAddress}}[ip], nil
+		}
 
 		mockGetServer := &mockDestination_GetServer{updatesReceived: []*pb.Update{}}
 		listener := &endpointListener{
@@ -311,7 +320,9 @@ func TestEndpointListener(t *testing.T) {
 
 				backingMap[ipForAddr] = append(backingMap[ipForAddr], podForAddedAddress)
 			}
-			podIndex := &k8s.InMemoryPodIndex{BackingMap: backingMap}
+			podIndex := func(ip string) ([]*v1.Pod, error) {
+				return backingMap[ip], nil
+			}
 
 			mockGetServer := &mockDestination_GetServer{updatesReceived: []*pb.Update{}}
 			listener := &endpointListener{

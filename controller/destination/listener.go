@@ -3,7 +3,6 @@ package destination
 import (
 	common "github.com/runconduit/conduit/controller/gen/common"
 	pb "github.com/runconduit/conduit/controller/gen/proxy/destination"
-	"github.com/runconduit/conduit/controller/k8s"
 	"github.com/runconduit/conduit/controller/util"
 	pkgK8s "github.com/runconduit/conduit/pkg/k8s"
 	log "github.com/sirupsen/logrus"
@@ -20,7 +19,7 @@ type updateListener interface {
 // implements the updateListener interface
 type endpointListener struct {
 	stream    pb.Destination_GetServer
-	podsByIp  k8s.PodIndex
+	podsByIp  func(string) ([]*coreV1.Pod, error)
 	labels    map[string]string
 	enableTLS bool
 }
@@ -91,7 +90,7 @@ func (l *endpointListener) toWeightedAddr(address common.TcpAddress) *pb.Weighte
 	metricLabelsForPod := map[string]string{}
 	ipAsString := util.IPToString(address.Ip)
 
-	resultingPods, err := l.podsByIp.GetPodsByIndex(ipAsString)
+	resultingPods, err := l.podsByIp(ipAsString)
 	if err != nil {
 		log.Errorf("Error while finding pod for IP [%s], this IP will be sent with no metric labels: %v", ipAsString, err)
 	} else {
