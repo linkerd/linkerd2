@@ -10,7 +10,6 @@ default = ["flaky_tests"]
 flaky_tests = []
 
 [dependencies]
-convert                         = { path = "./convert" }
 conduit-proxy-controller-grpc   = { path = "./controller-grpc" }
 futures-mpsc-lossy              = { path = "./futures-mpsc-lossy" }
 conduit-proxy-router            = { path = "./router" }

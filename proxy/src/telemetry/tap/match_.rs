@@ -9,7 +9,7 @@ use ipnet::{Contains, Ipv4Net, Ipv6Net};
 use super::Event;
 use conduit_proxy_controller_grpc::common::ip_address;
 use conduit_proxy_controller_grpc::tap::observe_request;
-use convert::*;
+use convert::TryFrom;
 use ctx;
 
 #[derive(Clone, Debug)]
@@ -358,7 +358,7 @@ impl<'a> TryFrom<&'a observe_request::match_::Http> for HttpMatch {
                     .as_ref()
                     .ok_or_else(|| InvalidMatch::Empty)
                     .and_then(|s| {
-                        s.try_into()
+                        s.try_to_string()
                             .map(HttpMatch::Scheme)
                             .map_err(|_| InvalidMatch::InvalidScheme)
                     }),
@@ -367,7 +367,7 @@ impl<'a> TryFrom<&'a observe_request::match_::Http> for HttpMatch {
                     .as_ref()
                     .ok_or_else(|| InvalidMatch::Empty)
                     .and_then(|m| {
-                        m.try_into()
+                        m.try_as_http()
                             .map(HttpMatch::Method)
                             .map_err(|_| InvalidMatch::InvalidHttpMethod)
                     }),

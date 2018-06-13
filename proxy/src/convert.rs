@@ -15,25 +15,3 @@ pub trait TryFrom<T>: Sized {
     #[doc(hidden)]
     fn try_from(t: T) -> Result<Self, Self::Err>;
 }
-
-/// Private trait for generic methods with fallible conversions.
-///
-/// This trait is similar to the `TryInto` trait proposed in the standard
-/// library, and should be removed when `TryInto` is stabilized.
-pub trait TryInto<T>: Sized {
-    type Err;
-
-    #[doc(hidden)]
-    fn try_into(self) -> Result<T, Self::Err>;
-}
-
-impl<T, U> TryInto<U> for T
-where
-    U: TryFrom<T>,
-{
-    type Err = U::Err;
-
-    fn try_into(self) -> Result<U, Self::Err> {
-        U::try_from(self)
-    }
-}
