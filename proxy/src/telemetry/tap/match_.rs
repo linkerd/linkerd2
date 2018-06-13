@@ -8,8 +8,8 @@ use ipnet::{Contains, Ipv4Net, Ipv6Net};
 
 use super::Event;
 use conduit_proxy_controller_grpc::common::ip_address;
+use conduit_proxy_controller_grpc::convert::*;
 use conduit_proxy_controller_grpc::tap::observe_request;
-use convert::*;
 use ctx;
 
 #[derive(Clone, Debug)]

@@ -8,7 +8,6 @@
 pub extern crate bytes;
 pub extern crate conduit_proxy_controller_grpc;
 extern crate conduit_proxy;
-pub extern crate convert;
 extern crate futures;
 extern crate h2;
 pub extern crate http;

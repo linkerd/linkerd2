@@ -4,7 +4,6 @@
 
 extern crate bytes;
 extern crate conduit_proxy_controller_grpc;
-extern crate convert;
 extern crate env_logger;
 extern crate deflate;
 #[macro_use]
@@ -69,6 +68,7 @@ mod bind;
 pub mod config;
 mod connection;
 pub mod control;
+pub mod convert;
 pub mod ctx;
 mod dns;
 mod drain;

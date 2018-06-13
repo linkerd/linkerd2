@@ -1,4 +1,3 @@
-extern crate convert;
 extern crate h2;
 extern crate http;
 extern crate prost;
@@ -9,13 +8,14 @@ extern crate prost_types;
 extern crate quickcheck;
 extern crate tower_grpc;
 
-use convert::{TryFrom, TryInto};
 use std::fmt;
 use std::error::Error;
 
 #[cfg(feature = "arbitrary")]
 pub mod arbitrary;
+pub mod convert;
 
+use self::convert::{TryFrom, TryInto};
 pub use self::gen::*;
 
 // The generated code requires two tiers of outer modules so that references between

@@ -8,8 +8,6 @@ default = []
 arbitrary = ["quickcheck"]
 
 [dependencies]
-convert = { path = "../convert" }
-
 bytes = "0.4"
 futures = "0.1"
 h2 = "0.1"

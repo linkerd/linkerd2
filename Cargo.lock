@@ -125,7 +125,6 @@ dependencies = [
  "bytes 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "conduit-proxy-controller-grpc 0.3.0",
  "conduit-proxy-router 0.3.0",
- "convert 0.3.0",
  "deflate 0.7.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "flate2 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -174,7 +173,6 @@ name = "conduit-proxy-controller-grpc"
 version = "0.3.0"
 dependencies = [
  "bytes 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "convert 0.3.0",
  "futures 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "h2 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "http 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -195,10 +193,6 @@ dependencies = [
  "indexmap 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tower-service 0.1.0 (git+https://github.com/tower-rs/tower)",
 ]
-
-[[package]]
-name = "convert"
-version = "0.3.0"
 
 [[package]]
 name = "crc"
