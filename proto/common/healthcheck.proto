@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package conduit.common.healthcheck;
 
+option go_package = "github.com/runconduit/conduit/controller/gen/common/healthcheck";
+
 enum CheckStatus {
     OK = 0;
     FAIL = 1;

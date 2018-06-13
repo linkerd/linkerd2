@@ -4,8 +4,10 @@ package conduit.public;
 
 import "google/protobuf/duration.proto";
 
-import "common/common.proto";
-import "common/healthcheck/healthcheck.proto";
+import "common.proto";
+import "common/healthcheck.proto";
+
+option go_package = "github.com/runconduit/conduit/controller/gen/public";
 
 message Empty {}
 

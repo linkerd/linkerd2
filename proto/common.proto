@@ -4,6 +4,8 @@ package conduit.common;
 
 import "google/protobuf/duration.proto";
 
+option go_package = "github.com/runconduit/conduit/controller/gen/common";
+
 message HttpMethod {
   enum Registered {
     GET = 0;
