@@ -47,10 +47,11 @@ const (
 
 var promTypes = []promType{promRequests, promLatencyP50, promLatencyP95, promLatencyP99}
 
-type podCount struct {
+type podStats struct {
 	inMesh uint64
 	total  uint64
 	failed uint64
+	errors map[string]*pb.ApiErrors
 }
 
 func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
@@ -136,7 +137,7 @@ func (s *grpcServer) resourceQuery(ctx context.Context, req *pb.StatSummaryReque
 	// TODO: make these one struct:
 	// string => {metav1.ObjectMeta, podCount}
 	objectMap := map[string]metav1.Object{}
-	meshCountMap := map[string]*podCount{}
+	podStatsMap := map[string]*podStats{}
 
 	for _, object := range objects {
 		key, err := cache.MetaNamespaceKeyFunc(object)
@@ -150,14 +151,14 @@ func (s *grpcServer) resourceQuery(ctx context.Context, req *pb.StatSummaryReque
 
 		objectMap[key] = metaObj
 
-		meshCount, err := s.getMeshedPodCount(object)
+		podStats, err := s.getPodStats(object)
 		if err != nil {
 			return resourceResult{res: nil, err: err}
 		}
-		meshCountMap[key] = meshCount
+		podStatsMap[key] = podStats
 	}
 
-	res, err := s.objectQuery(ctx, req, objectMap, meshCountMap)
+	res, err := s.objectQuery(ctx, req, objectMap, podStatsMap)
 	if err != nil {
 		return resourceResult{res: nil, err: err}
 	}
@@ -169,7 +170,7 @@ func (s *grpcServer) objectQuery(
 	ctx context.Context,
 	req *pb.StatSummaryRequest,
 	objects map[string]metav1.Object,
-	meshCount map[string]*podCount,
+	podStats map[string]*podStats,
 ) (*pb.StatTable, error) {
 	rows := make([]*pb.StatTable_PodGroup_Row, 0)
 
@@ -208,10 +209,11 @@ func (s *grpcServer) objectQuery(
 			Stats:      requestMetrics[key],
 		}
 
-		if count, ok := meshCount[key]; ok {
-			row.MeshedPodCount = count.inMesh
-			row.RunningPodCount = count.total
-			row.FailedPodCount = count.failed
+		if podStat, ok := podStats[key]; ok {
+			row.MeshedPodCount = podStat.inMesh
+			row.RunningPodCount = podStat.total
+			row.FailedPodCount = podStat.failed
+			row.ErrorsByPod = podStat.errors
 		}
 
 		rows = append(rows, &row)
@@ -406,13 +408,14 @@ func metricToKey(metric model.Metric, groupBy model.LabelNames) string {
 	return strings.Join(values, "/")
 }
 
-func (s *grpcServer) getMeshedPodCount(obj runtime.Object) (*podCount, error) {
+func (s *grpcServer) getPodStats(obj runtime.Object) (*podStats, error) {
 	pods, err := s.k8sAPI.GetPodsFor(obj, true)
 	if err != nil {
 		return nil, err
 	}
+	podErrors := make(map[string]*pb.ApiErrors)
+	meshCount := &podStats{}
 
-	meshCount := &podCount{}
 	for _, pod := range pods {
 		if pod.Status.Phase == apiv1.PodFailed {
 			meshCount.failed++
@@ -422,9 +425,34 @@ func (s *grpcServer) getMeshedPodCount(obj runtime.Object) (*podCount, error) {
 				meshCount.inMesh++
 			}
 		}
-	}
 
+		errors := checkContainerErrors(pod.Status.ContainerStatuses, "conduit-proxy")
+		errors = append(errors, checkContainerErrors(pod.Status.InitContainerStatuses, "conduit-init")...)
+
+		if len(errors) > 0 {
+			podErrors[pod.Name] = &pb.ApiErrors{Errors: errors}
+		}
+	}
+	meshCount.errors = podErrors
 	return meshCount, nil
+}
+
+func checkContainerErrors(containerStatuses []apiv1.ContainerStatus, containerName string) []*pb.ApiError {
+	errors := []*pb.ApiError{}
+	for _, st := range containerStatuses {
+		if st.Name == containerName && st.State.Waiting != nil {
+			errors = append(errors, &pb.ApiError{Error: fmt.Sprintf("[%s] container has not started. %s", st.Name, st.State.Waiting.Message)})
+
+			if st.LastTerminationState.Waiting != nil {
+				errors = append(errors, &pb.ApiError{Error: fmt.Sprintf("[%s] [image: %s] %s", st.Name, st.Image, st.LastTerminationState.Waiting.Message)})
+			}
+
+			if st.LastTerminationState.Terminated != nil {
+				errors = append(errors, &pb.ApiError{Error: fmt.Sprintf("[%s] [image: %s] %s", st.Name, st.Image, st.LastTerminationState.Terminated.Message)})
+			}
+		}
+	}
+	return errors
 }
 
 func isInMesh(pod *apiv1.Pod) bool {

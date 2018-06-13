@@ -99,6 +99,10 @@ message ApiError {
   string error = 1;
 }
 
+message ApiErrors {
+  repeated ApiError errors = 1;
+}
+
 message Resource {
   // The namespace the resource is in.
   //
@@ -184,6 +188,9 @@ message StatTable {
       uint64 failed_pod_count = 6;
 
       BasicStats stats = 5;
+
+      // propagate pod errors so we can display them to the user
+      map<string, ApiErrors> errors_by_pod = 7;
     }
   }
 }
