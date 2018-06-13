@@ -67,6 +67,7 @@ spec:
         resources: {}
         securityContext:
           runAsUser: 2102
+        terminationMessagePolicy: FallbackToLogsOnError
       initContainers:
       - args:
         - --incoming-proxy-port
@@ -86,6 +87,7 @@ spec:
             add:
             - NET_ADMIN
           privileged: false
+        terminationMessagePolicy: FallbackToLogsOnError
 status: {}
 ---
 apiVersion: apps/v1beta1
@@ -157,6 +159,7 @@ spec:
         resources: {}
         securityContext:
           runAsUser: 2102
+        terminationMessagePolicy: FallbackToLogsOnError
       initContainers:
       - args:
         - --incoming-proxy-port
@@ -176,5 +179,6 @@ spec:
             add:
             - NET_ADMIN
           privileged: false
+        terminationMessagePolicy: FallbackToLogsOnError
 status: {}
 ---
