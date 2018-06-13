@@ -358,7 +358,7 @@ impl<'a> TryFrom<&'a observe_request::match_::Http> for HttpMatch {
                     .as_ref()
                     .ok_or_else(|| InvalidMatch::Empty)
                     .and_then(|s| {
-                        s.try_as_string()
+                        s.try_to_string()
                             .map(HttpMatch::Scheme)
                             .map_err(|_| InvalidMatch::InvalidScheme)
                     }),

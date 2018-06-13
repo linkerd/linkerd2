@@ -192,7 +192,7 @@ impl<'a> From<&'a ::std::net::SocketAddr> for common::TcpAddress {
 // ===== impl common::scheme::Type =====
 
 impl common::scheme::Type {
-    pub fn try_as_string(&self) -> Result<String, InvalidScheme> {
+    pub fn try_to_string(&self) -> Result<String, InvalidScheme> {
         use self::common::scheme::*;
 
         match *self {
