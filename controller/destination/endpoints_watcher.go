@@ -127,8 +127,15 @@ func (e *endpointsWatcher) unsubscribe(service *serviceId, port uint32, listener
 	if !ok {
 		return fmt.Errorf("Cannot unsubscribe from %s: not subscribed", service)
 	}
-	if !svcPort.unsubscribe(listener) {
+	unsubscribed, numListeners := svcPort.unsubscribe(listener)
+	if !unsubscribed {
 		return fmt.Errorf("Cannot unsubscribe from %s: not subscribed", service)
+	}
+	if numListeners == 0 {
+		delete(svc, port)
+		if len(svc) == 0 {
+			delete(e.servicePorts, *service)
+		}
 	}
 	return nil
 }
@@ -369,8 +376,9 @@ func (sp *servicePort) subscribe(exists bool, listener updateListener) {
 	}
 }
 
-// true iff the listener was found and removed
-func (sp *servicePort) unsubscribe(listener updateListener) bool {
+// unsubscribe returns true iff the listener was found and removed.
+// it also returns the number of listeners remaining after unsubscribing.
+func (sp *servicePort) unsubscribe(listener updateListener) (bool, int) {
 	log.Debugf("Unsubscribing %s:%d", sp.service, sp.port)
 
 	sp.mutex.Lock()
@@ -382,10 +390,10 @@ func (sp *servicePort) unsubscribe(listener updateListener) bool {
 			sp.listeners[i] = sp.listeners[len(sp.listeners)-1]
 			sp.listeners[len(sp.listeners)-1] = nil
 			sp.listeners = sp.listeners[:len(sp.listeners)-1]
-			return true
+			return true, len(sp.listeners)
 		}
 	}
-	return false
+	return false, len(sp.listeners)
 }
 
 /// helpers ///
