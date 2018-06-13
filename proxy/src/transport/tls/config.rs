@@ -159,57 +159,15 @@ impl CommonSettings {
     fn stream_changes_inotify(&self, interval: Duration)
         -> impl Stream<Item = (), Error = ()>
     {
-        use ::stream; // as EitherStream;
-        // use futures::stream;
+        use ::stream;
 
-        // fn into_stream(
-        //     this: Arc<CommonSettings>,
-        //     mut inotify: Inotify,
-        //     interval: Duration
-        // ) -> Box<Stream<Item = (), Error = ()> + Send>
-        // {
-        //     use std::iter;
-        //     match start_watching(this.paths(), &mut inotify) {
-        //         Ok(()) => {
-
-        //         },
-        //         Err(ref e) if e.kind() == io::ErrorKind::NotFound => {
-        //             // Inotify will return a file not found error if the watched file
-        //             // doesn't exist yet. In that case, poll until it does, and then
-        //             // try to start a watch again.
-        //             let me = this.clone();
-        //             let retry = future::lazy(move || Ok(into_stream(me, inotify, interval)));
-        //             let retry = stream::futures_unordered(iter::once(retry)).flatten();
-        //             let stream = this.stream_changes_polling(interval)
-        //                 .take(1)
-        //                 .chain(retry);
-        //             // We have to box here to avoid creating an infinitely recursive
-        //             // type with `impl Stream`.
-        //             Box::new(stream)
-        //         },
-        //         Err(ref e) => {
-        //             // For other errors, we don't know if subsequent attempts to start
-        //             // watching will work, so just fall back to polling.
-        //             warn!("inotify add watch error: {:?}, falling back to polling", e);
-        //             Box::new(this.stream_changes_polling(interval))
-        //         },
-        //     }
-        // }
-
-        // It's necessary to reference count `self` here so it can be valid
-        // for the stream's lifetime. We'll need to hang on to the paths
-        // to restart polling the fs if the watch has a transient failure.
-        let this = Arc::new(self.clone());
-        match inotify::WatchStream::new(this.clone()) {
-            Ok(stream) => {
-                let stream = stream
-                    .or_else(move |e| {
-                        warn!("inotify watch error: {:?}", e);
-                        this.clone()
-                            .stream_changes_polling(interval)
-                            .into_future()
-                            .then(|_| future::ok(()))
-                    });
+        let polls = Box::new(self.stream_changes_polling(interval));
+        match inotify::WatchStream::new(&self) {
+            Ok(watch) => {
+                let stream = inotify::FallbackStream {
+                    watch,
+                    polls,
+                };
                 stream::Either::A(stream)
             },
             Err(e) => {
@@ -217,7 +175,7 @@ impl CommonSettings {
                 // succeed in the future (it's likely that inotify unsupported on
                 // this OS).
                 warn!("inotify init error: {}, falling back to polling", e);
-                stream::Either::B(self.stream_changes_polling(interval))
+                stream::Either::B(polls)
             },
         }
     }
@@ -391,36 +349,53 @@ mod inotify {
 
     use std::{
         io,
-        sync::Arc,
+        path::PathBuf,
     };
-
-    use inotify::{Inotify, Event, EventMask, EventStream, WatchMask};
+    use indexmap::IndexMap;
+    use inotify::{
+        Inotify,
+        Event,
+        EventMask,
+        EventStream,
+        WatchDescriptor,
+        WatchMask,
+    };
     use futures::{Async, Poll, Stream};
 
     pub(super) struct WatchStream {
         inotify: Inotify,
-        settings: Arc<CommonSettings>,
         stream: EventStream,
+        settings: CommonSettings,
+    }
+
+    pub(super) struct FallbackStream {
+        pub watch: WatchStream,
+        pub polls: Box<Stream<Item = (), Error = ()> + Send>,
     }
 
     impl WatchStream {
-        pub fn new(settings: Arc<CommonSettings>) -> Result<Self, io::Error> {
+        pub fn new(settings: &CommonSettings) -> Result<Self, io::Error> {
             let mut inotify = Inotify::init()?;
             let stream = inotify.event_stream();
-            let mut watch = WatchStream {
+
+            let mut watch_stream = WatchStream {
                 inotify,
-                settings,
                 stream,
+                settings: settings.clone(),
             };
-            watch.add_paths()?;
-            Ok(watch)
+
+            watch_stream.add_paths()?;
+
+            Ok(watch_stream)
         }
+
 
         fn add_paths(&mut self) -> Result<(), io::Error> {
             let mask
                 = WatchMask::CREATE
                 | WatchMask::MODIFY
                 | WatchMask::DELETE
+                | WatchMask::DELETE_SELF
                 | WatchMask::MOVE
                 | WatchMask::MOVE_SELF
                 ;
@@ -440,25 +415,43 @@ mod inotify {
             Ok(())
         }
 
-    }
-
     impl Stream for WatchStream {
         type Item = ();
         type Error = io::Error;
         fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-            match try_ready!(self.stream.poll()) {
-                Some(Event { ref mask, ref name, .. }) => {
-                    trace!("event={:?}; path={:?}", mask, name);
-                    if mask.contains(EventMask::DELETE) || mask.contains(EventMask::CREATE) {
-                        self.add_paths()?;
-                    }
-                    Ok(Async::Ready(Some(())))
-                },
-                None => {
-                    debug!("watch stream ending");
-                    Ok(Async::Ready(None))
-                },
+            loop {
+                match try_ready!(self.stream.poll()) {
+                    Some(Event { mask, name, wd, .. }) => {
+                        if mask.contains(EventMask::IGNORED) {
+                            // This event fires if we removed a watch. Poll the
+                            // stream again.
+                            continue;
+                        }
+                        trace!("event={:?}; path={:?}", mask, name);
+                        if mask.contains(
+                            EventMask::DELETE & EventMask::DELETE_SELF & EventMask::CREATE
+                        ) {
+                            self.add_paths()?;
+                        }
+                        return Ok(Async::Ready(Some(())));
+                    },
+                    None => {
+                        debug!("watch stream ending");
+                        return Ok(Async::Ready(None));
+                    },
+                }
             }
+        }
+    }
+
+    impl Stream for FallbackStream {
+        type Item = ();
+        type Error = ();
+        fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
+            self.watch.poll().or_else(|e| {
+                warn!("watch error: {:?}, polling the fs until next change", e);
+                self.polls.poll()
+            })
         }
     }
 
@@ -615,52 +608,6 @@ mod tests {
             .expect("third change");
         assert!(item.is_some());
     }
-
-    // fn test_detects_create_dir(
-    //     fixture: Fixture,
-    //     stream: impl Stream<Item = (), Error=()> + 'static,
-    // ) {
-
-    //     let Fixture { cfg, mut rt, dir } = fixture;
-    //     drop(dir);
-
-    //     let (watch, bg) = watch_stream(stream);
-    //     rt.spawn(bg);
-
-    //     let _dir = TempDir::new("certs").expect("create dir");
-
-    //     let f = File::create(cfg.trust_anchors)
-    //         .expect("create trust anchors");
-    //     f.sync_all().expect("create trust anchors");
-    //     println!("created {:?}", f);
-
-    //     let next = watch.into_future().map_err(|(e, _)| e);
-    //     let (item, watch) = rt.block_on_for(Duration::from_secs(5), next)
-    //         .expect("first change");
-    //     assert!(item.is_some());
-
-    //     let f = File::create(cfg.end_entity_cert)
-    //         .expect("create end entity cert");
-    //     f.sync_all()
-    //         .expect("sync end entity cert");
-    //     println!("created {:?}", f);
-
-    //     let next = watch.into_future().map_err(|(e, _)| e);
-    //     let (item, watch) = rt.block_on_for(Duration::from_secs(5), next)
-    //         .expect("second change");
-    //     assert!(item.is_some());
-
-    //     let f = File::create(cfg.private_key)
-    //         .expect("create private key");
-    //     f.sync_all()
-    //         .expect("sync private key");
-    //     println!("created {:?}", f);
-
-    //     let next = watch.into_future().map_err(|(e, _)| e);
-    //     let (item, _) = rt.block_on_for(Duration::from_secs(2), next)
-    //         .expect("third change");
-    //     assert!(item.is_some());
-    // }
 
     fn test_detects_delete_and_recreate(
         fixture: Fixture,
@@ -1149,8 +1096,9 @@ mod tests {
     #[cfg(target_os = "linux")]
     fn inotify_detects_create() {
         let fixture = fixture();
-        let stream = fixture.cfg.clone()
-            .stream_changes_inotify(Duration::from_millis(1));
+        let stream = inotify::WatchStream::new(&Arc::new(fixture.cfg.clone()))
+            .expect("create watch")
+            .map_err(|e| panic!("{}", e));
         test_detects_create(fixture, stream)
     }
 
@@ -1166,8 +1114,9 @@ mod tests {
     #[cfg(target_os = "linux")]
     fn inotify_detects_create_symlink() {
         let fixture = fixture();
-        let stream = fixture.cfg.clone()
-            .stream_changes_inotify(Duration::from_millis(1));
+        let stream = inotify::WatchStream::new(&Arc::new(fixture.cfg.clone()))
+            .expect("create watch")
+            .map_err(|e| panic!("{}", e));
         test_detects_create_symlink(fixture, stream)
     }
 
@@ -1183,8 +1132,9 @@ mod tests {
     #[cfg(target_os = "linux")]
     fn inotify_detects_create_double_symlink() {
         let fixture = fixture();
-        let stream = fixture.cfg.clone()
-            .stream_changes_inotify(Duration::from_millis(1));
+        let stream = inotify::WatchStream::new(&Arc::new(fixture.cfg.clone()))
+            .expect("create watch")
+            .map_err(|e| panic!("{}", e));
         test_detects_create_double_symlink(fixture, stream)
     }
 
@@ -1200,8 +1150,9 @@ mod tests {
     #[cfg(target_os = "linux")]
     fn inotify_detects_modification() {
         let fixture = fixture();
-        let stream = fixture.cfg.clone()
-            .stream_changes_inotify(Duration::from_millis(1));
+        let stream = inotify::WatchStream::new(&Arc::new(fixture.cfg.clone()))
+            .expect("create watch")
+            .map_err(|e| panic!("{}", e));
         test_detects_modification(fixture, stream)
     }
 
@@ -1217,8 +1168,9 @@ mod tests {
     #[cfg(target_os = "linux")]
     fn inotify_detects_modification_symlink() {
         let fixture = fixture();
-        let stream = fixture.cfg.clone()
-            .stream_changes_inotify(Duration::from_millis(1));
+        let stream = inotify::WatchStream::new(&Arc::new(fixture.cfg.clone()))
+            .expect("create watch")
+            .map_err(|e| panic!("{}", e));
         test_detects_modification_symlink(fixture, stream)
     }
 
@@ -1234,8 +1186,9 @@ mod tests {
     #[cfg(target_os = "linux")]
     fn inotify_detects_modification_double_symlink() {
         let fixture = fixture();
-        let stream = fixture.cfg.clone()
-            .stream_changes_inotify(Duration::from_millis(1));
+        let stream = inotify::WatchStream::new(&Arc::new(fixture.cfg.clone()))
+            .expect("create watch")
+            .map_err(|e| panic!("{}", e));
         test_detects_modification_double_symlink(fixture, stream)
     }
 
@@ -1251,8 +1204,9 @@ mod tests {
     #[cfg(target_os = "linux")]
     fn inotify_detects_double_symlink_retargeting() {
         let fixture = fixture();
-        let stream = fixture.cfg.clone()
-            .stream_changes_inotify(Duration::from_millis(1));
+        let stream = inotify::WatchStream::new(&Arc::new(fixture.cfg.clone()))
+            .expect("create watch")
+            .map_err(|e| panic!("{}", e));
         test_detects_double_symlink_retargeting(fixture, stream)
     }
 
@@ -1268,26 +1222,10 @@ mod tests {
     #[cfg(target_os = "linux")]
     fn inotify_detects_delete_and_recreate() {
         let fixture = fixture();
-        let stream = fixture.cfg.clone()
-            .stream_changes_inotify(Duration::from_millis(1));
+        let stream = inotify::WatchStream::new(&Arc::new(fixture.cfg.clone()))
+            .expect("create watch")
+            .map_err(|e| panic!("{}", e));
         test_detects_delete_and_recreate(fixture, stream)
     }
-
-    // #[test]
-    // fn polling_detects_create_dir() {
-    //     let fixture = fixture();
-    //     let stream = fixture.cfg.clone()
-    //         .stream_changes_polling(Duration::from_millis(1));
-    //     test_detects_create_dir(fixture, stream)
-    // }
-
-    // #[test]
-    // #[cfg(target_os = "linux")]
-    // fn inotify_detects_create_dir() {
-    //     let fixture = fixture();
-    //     let stream = fixture.cfg.clone()
-    //         .stream_changes_inotify(Duration::from_millis(1));
-    //     test_detects_create_dir(fixture, stream)
-    // }
 
 }
