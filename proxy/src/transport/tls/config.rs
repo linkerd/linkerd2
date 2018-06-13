@@ -426,17 +426,16 @@ mod inotify {
                 ;
             let paths = self.settings.paths();
             for path in &paths {
-                let canonical = path.canonicalize()?;
-                match self.inotify.add_watch(&canonical, mask) {
-                    Err(ref e) if e.kind() == io::ErrorKind::NotFound => {
-                        if let Some(parent) = path.parent() {
-                            self.inotify.add_watch(parent, mask)?;
-                            trace!("watch {:?} for {:?}", parent, path)
-                        }
-                    },
-                    Err(e) => return Err(e),
-                    Ok(_) => trace!("watch {:?}", canonical),
-                }
+                let watch_path = path
+                    .canonicalize()
+                    .unwrap_or_else(|e| {
+                        trace!("canonicalize({:?}): {:?}", &path, e);
+                        path.parent()
+                            .unwrap_or_else(|| path.as_ref())
+                            .to_path_buf()
+                    });
+                self.inotify.add_watch(&watch_path, mask)?;
+                trace!("watch {:?} (for {:?})", watch_path, path);
             }
             Ok(())
         }
@@ -450,7 +449,7 @@ mod inotify {
             match try_ready!(self.stream.poll()) {
                 Some(Event { ref mask, ref name, .. }) => {
                     trace!("event={:?}; path={:?}", mask, name);
-                    if mask.contains(EventMask::DELETE) {
+                    if mask.contains(EventMask::DELETE) || mask.contains(EventMask::CREATE) {
                         self.add_paths()?;
                     }
                     Ok(Async::Ready(Some(())))
