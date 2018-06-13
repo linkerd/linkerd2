@@ -13,9 +13,7 @@ use std::error::Error;
 
 #[cfg(feature = "arbitrary")]
 pub mod arbitrary;
-pub mod convert;
 
-use self::convert::{TryFrom, TryInto};
 pub use self::gen::*;
 
 // The generated code requires two tiers of outer modules so that references between
@@ -193,9 +191,8 @@ impl<'a> From<&'a ::std::net::SocketAddr> for common::TcpAddress {
 
 // ===== impl common::scheme::Type =====
 
-impl<'a> TryInto<String> for &'a common::scheme::Type {
-    type Err = InvalidScheme;
-    fn try_into(self) -> Result<String, Self::Err> {
+impl common::scheme::Type {
+    pub fn try_as_string(&self) -> Result<String, InvalidScheme> {
         use self::common::scheme::*;
 
         match *self {
@@ -213,13 +210,12 @@ impl<'a> TryInto<String> for &'a common::scheme::Type {
 
 // ===== impl common::HttpMethod =====
 
-impl<'a> TryFrom<&'a common::http_method::Type> for http::Method {
-    type Err = InvalidMethod;
-    fn try_from(m: &'a common::http_method::Type) -> Result<Self, Self::Err> {
+impl common::http_method::Type {
+    pub fn try_as_http(&self) -> Result<http::Method, InvalidMethod> {
         use self::common::http_method::*;
         use http::HttpTryFrom;
 
-        match *m {
+        match *self {
             Type::Registered(reg) => if reg == Registered::Get.into() {
                 Ok(http::Method::GET)
             } else if reg == Registered::Post.into() {
