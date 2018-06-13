@@ -212,6 +212,5 @@ func (c *CertificateController) isInjectedNamespace(ns string) (bool, error) {
 }
 
 func (c *CertificateController) isInjectedPod(pod *v1.Pod) bool {
-	_, ok := pod.Annotations[pkgK8s.CreatedByAnnotation]
-	return ok
+	return pkgK8s.GetControllerNs(pod.ObjectMeta) == c.namespace
 }

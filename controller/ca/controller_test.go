@@ -50,8 +50,8 @@ apiVersion: v1
 kind: Pod
 metadata:
   namespace: %s
-  annotations:
-    %s: conduit`, injectedNS, pkgK8s.CreatedByAnnotation),
+  labels:
+    %s: %s`, injectedNS, pkgK8s.ControllerNSLabel, conduitNS),
 	}
 )
 
@@ -66,8 +66,8 @@ func TestCertificateController(t *testing.T) {
 		controller.handlePodUpdate(nil, &v1.Pod{
 			ObjectMeta: meta.ObjectMeta{
 				Namespace: injectedNS,
-				Annotations: map[string]string{
-					pkgK8s.CreatedByAnnotation: "conduit",
+				Labels: map[string]string{
+					pkgK8s.ControllerNSLabel: conduitNS,
 				},
 			},
 		})
