@@ -34,21 +34,9 @@ type server struct {
 //
 // Addresses for the given destination are fetched from the Kubernetes Endpoints
 // API.
-func NewServer(addr, kubeconfig, k8sDNSZone string, enableTLS bool, k8sAPI *k8s.API, done chan struct{}) (*grpc.Server, net.Listener, error) {
-	clientSet, err := k8s.NewClientSet(kubeconfig)
-	if err != nil {
-		return nil, nil, err
-	}
-
+func NewServer(addr, k8sDNSZone string, enableTLS bool, k8sAPI *k8s.API, done chan struct{}) (*grpc.Server, net.Listener, error) {
 	k8sAPI.Pod.Informer().AddIndexers(cache.Indexers{podIpIndexName: indexPodByIp})
-
-	endpointsWatcher := k8s.NewEndpointsWatcher(clientSet)
-	err = endpointsWatcher.Run()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	resolvers, err := buildResolversList(k8sDNSZone, endpointsWatcher)
+	resolvers, err := buildResolversList(k8sDNSZone, k8sAPI)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -69,7 +57,9 @@ func NewServer(addr, kubeconfig, k8sDNSZone string, enableTLS bool, k8sAPI *k8s.
 
 	go func() {
 		<-done
-		endpointsWatcher.Stop()
+		for _, resolver := range resolvers {
+			resolver.stop()
+		}
 	}()
 
 	return s, lis, nil
@@ -141,7 +131,7 @@ func (s *server) streamResolutionUsingCorrectResolverFor(host string, port int, 
 	return fmt.Errorf("cannot find resolver for host [%s] port [%d]", host, port)
 }
 
-func buildResolversList(k8sDNSZone string, endpointsWatcher k8s.EndpointsWatcher) ([]streamingDestinationResolver, error) {
+func buildResolversList(k8sDNSZone string, k8sAPI *k8s.API) ([]streamingDestinationResolver, error) {
 	var k8sDNSZoneLabels []string
 	if k8sDNSZone == "" {
 		k8sDNSZoneLabels = []string{}
@@ -153,10 +143,8 @@ func buildResolversList(k8sDNSZone string, endpointsWatcher k8s.EndpointsWatcher
 		}
 	}
 
-	k8sResolver := &k8sResolver{
-		k8sDNSZoneLabels: k8sDNSZoneLabels,
-		endpointsWatcher: endpointsWatcher,
-	}
+	k8sResolver := newK8sResolver(k8sDNSZoneLabels, k8sAPI)
+
 	log.Infof("Adding k8s name resolver")
 
 	return []streamingDestinationResolver{k8sResolver}, nil

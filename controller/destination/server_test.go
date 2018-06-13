@@ -29,12 +29,15 @@ func (m *mockDestination_GetServer) SendMsg(x interface{}) error  { return m.err
 func (m *mockDestination_GetServer) RecvMsg(x interface{}) error  { return m.errorToReturn }
 
 func TestBuildResolversList(t *testing.T) {
-	endpointsWatcher := &k8s.MockEndpointsWatcher{}
+	k8sAPI, err := k8s.NewFakeAPI()
+	if err != nil {
+		t.Fatalf("NewFakeAPI returned an error: %s", err)
+	}
 
 	t.Run("Doesn't build a list if Kubernetes DNS zone isnt valid", func(t *testing.T) {
 		invalidK8sDNSZones := []string{"1", "-a", "a-", "-"}
 		for _, dsnZone := range invalidK8sDNSZones {
-			resolvers, err := buildResolversList(dsnZone, endpointsWatcher)
+			resolvers, err := buildResolversList(dsnZone, k8sAPI)
 			if err == nil {
 				t.Fatalf("Expecting error when k8s zone is [%s], got nothing. Resolvers: %v", dsnZone, resolvers)
 			}
@@ -42,7 +45,7 @@ func TestBuildResolversList(t *testing.T) {
 	})
 
 	t.Run("Builds list with echo IP first, then K8s resolver", func(t *testing.T) {
-		resolvers, err := buildResolversList("some.zone", endpointsWatcher)
+		resolvers, err := buildResolversList("some.zone", k8sAPI)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -79,6 +82,8 @@ func (m *mockStreamingDestinationResolver) streamResolution(host string, port in
 	m.listenerReceived = listener
 	return m.errToReturnForResolution
 }
+
+func (m *mockStreamingDestinationResolver) stop() {}
 
 func TestStreamResolutionUsingCorrectResolverFor(t *testing.T) {
 	stream := &mockDestination_GetServer{}

@@ -5,10 +5,6 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-
-	"k8s.io/api/core/v1"
-
-	"github.com/runconduit/conduit/controller/k8s"
 )
 
 func TestK8sResolver(t *testing.T) {
@@ -49,76 +45,8 @@ func TestK8sResolver(t *testing.T) {
 				t.Fatalf("Expected k8s resolver to NOT resolve name [%s] but it did", name)
 			}
 		}
-
 	})
 
-	t.Run("subscribes the listener to resolve local services", func(t *testing.T) {
-		mockEndpointsWatcher := &k8s.MockEndpointsWatcher{
-			ExistsToReturn: true,
-			ServiceToReturn: &v1.Service{
-				Spec: v1.ServiceSpec{Type: v1.ServiceTypeLoadBalancer},
-			},
-		}
-
-		resolver := k8sResolver{
-			k8sDNSZoneLabels: someKubernetesDNSZone,
-			endpointsWatcher: mockEndpointsWatcher,
-		}
-
-		host := "name1.ns.svc.some.namespace"
-		port := 8989
-
-		listener, cancelFn := newCollectUpdateListener()
-
-		done := make(chan bool, 1)
-		go func() {
-			err := resolver.streamResolution(host, port, listener)
-			if err != nil {
-				t.Fatalf("Unexpected error: %v", err)
-			}
-			done <- true
-		}()
-		cancelFn()
-		<-done
-
-		if mockEndpointsWatcher.ListenerSubscribed != listener || mockEndpointsWatcher.ListenerUnsubscribed != listener {
-			t.Fatalf("Expected listener [%v] to have been subscribed then unsubscribed to endpoint watcher, got: %+v", listener, mockEndpointsWatcher)
-		}
-	})
-
-	t.Run("subscribes the listener to resolve external services", func(t *testing.T) {
-		mockEndpointsWatcher := &k8s.MockEndpointsWatcher{
-			ExistsToReturn: true,
-			ServiceToReturn: &v1.Service{
-				Spec: v1.ServiceSpec{ExternalName: "sc", Type: v1.ServiceTypeExternalName},
-			},
-		}
-
-		resolver := k8sResolver{
-			k8sDNSZoneLabels: someKubernetesDNSZone,
-			endpointsWatcher: mockEndpointsWatcher,
-		}
-
-		host := "name32.ns.svc.some.namespace"
-		port := 9090
-
-		listener, cancelFn := newCollectUpdateListener()
-
-		done := make(chan bool, 1)
-		go func() {
-			err := resolver.streamResolution(host, port, listener)
-			if err != nil {
-				t.Fatalf("Unexpected error: %v", err)
-			}
-			done <- true
-		}()
-		cancelFn()
-		<-done
-
-		if mockEndpointsWatcher.ListenerSubscribed != listener || mockEndpointsWatcher.ListenerUnsubscribed != listener {
-			t.Fatalf("Expected listener [%v] to have been subscribed then unsubscribed to endpoint watcher, got: %+v", listener, mockEndpointsWatcher)
-		}
-	})
 }
 
 func TestLocalKubernetesServiceIdFromDNSName(t *testing.T) {

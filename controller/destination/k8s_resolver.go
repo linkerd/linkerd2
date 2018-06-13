@@ -17,7 +17,14 @@ var containsAlphaRegexp = regexp.MustCompile("[a-zA-Z]")
 // implements the streamingDestinationResolver interface
 type k8sResolver struct {
 	k8sDNSZoneLabels []string
-	endpointsWatcher k8s.EndpointsWatcher
+	endpointsWatcher *endpointsWatcher
+}
+
+func newK8sResolver(k8sDNSZoneLabels []string, k8sAPI *k8s.API) *k8sResolver {
+	return &k8sResolver{
+		k8sDNSZoneLabels: k8sDNSZoneLabels,
+		endpointsWatcher: newEndpointsWatcher(k8sAPI),
+	}
 }
 
 type serviceId struct {
@@ -53,15 +60,19 @@ func (k *k8sResolver) streamResolution(host string, port int, listener updateLis
 
 	listener.SetServiceId(id)
 
-	return k.resolveKubernetesService(id.String(), port, listener)
+	return k.resolveKubernetesService(id, port, listener)
 }
 
-func (k *k8sResolver) resolveKubernetesService(id string, port int, listener updateListener) error {
-	k.endpointsWatcher.Subscribe(id, uint32(port), listener)
+func (k *k8sResolver) stop() {
+	k.endpointsWatcher.stop()
+}
+
+func (k *k8sResolver) resolveKubernetesService(id *serviceId, port int, listener updateListener) error {
+	k.endpointsWatcher.subscribe(id, uint32(port), listener)
 
 	<-listener.Done()
 
-	k.endpointsWatcher.Unsubscribe(id, uint32(port), listener)
+	k.endpointsWatcher.unsubscribe(id, uint32(port), listener)
 
 	return nil
 }

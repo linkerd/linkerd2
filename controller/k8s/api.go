@@ -23,19 +23,21 @@ import (
 
 // API provides shared informers for all Kubernetes objects
 type API struct {
-	NS     coreinformers.NamespaceInformer
-	Deploy appinformers.DeploymentInformer
-	RS     appinformers.ReplicaSetInformer
-	Pod    coreinformers.PodInformer
-	RC     coreinformers.ReplicationControllerInformer
-	Svc    coreinformers.ServiceInformer
+	NS       coreinformers.NamespaceInformer
+	Deploy   appinformers.DeploymentInformer
+	RS       appinformers.ReplicaSetInformer
+	Pod      coreinformers.PodInformer
+	RC       coreinformers.ReplicationControllerInformer
+	Svc      coreinformers.ServiceInformer
+	Endpoint coreinformers.EndpointsInformer
 
-	nsSynced     cache.InformerSynced
-	deploySynced cache.InformerSynced
-	rsSynced     cache.InformerSynced
-	podSynced    cache.InformerSynced
-	rcSynced     cache.InformerSynced
-	svcSynced    cache.InformerSynced
+	nsSynced       cache.InformerSynced
+	deploySynced   cache.InformerSynced
+	rsSynced       cache.InformerSynced
+	podSynced      cache.InformerSynced
+	rcSynced       cache.InformerSynced
+	svcSynced      cache.InformerSynced
+	endpointSynced cache.InformerSynced
 
 	sharedInformers informers.SharedInformerFactory
 }
@@ -50,21 +52,24 @@ func NewAPI(k8sClient kubernetes.Interface) *API {
 	podInformer := sharedInformers.Core().V1().Pods()
 	replicationControllerInformer := sharedInformers.Core().V1().ReplicationControllers()
 	serviceInformer := sharedInformers.Core().V1().Services()
+	endpointInformer := sharedInformers.Core().V1().Endpoints()
 
 	api := &API{
-		NS:     namespaceInformer,
-		Deploy: deployInformer,
-		RS:     replicaSetInformer,
-		Pod:    podInformer,
-		RC:     replicationControllerInformer,
-		Svc:    serviceInformer,
+		NS:       namespaceInformer,
+		Deploy:   deployInformer,
+		RS:       replicaSetInformer,
+		Pod:      podInformer,
+		RC:       replicationControllerInformer,
+		Svc:      serviceInformer,
+		Endpoint: endpointInformer,
 
-		nsSynced:     namespaceInformer.Informer().HasSynced,
-		deploySynced: deployInformer.Informer().HasSynced,
-		rsSynced:     replicaSetInformer.Informer().HasSynced,
-		podSynced:    podInformer.Informer().HasSynced,
-		rcSynced:     replicationControllerInformer.Informer().HasSynced,
-		svcSynced:    serviceInformer.Informer().HasSynced,
+		nsSynced:       namespaceInformer.Informer().HasSynced,
+		deploySynced:   deployInformer.Informer().HasSynced,
+		rsSynced:       replicaSetInformer.Informer().HasSynced,
+		podSynced:      podInformer.Informer().HasSynced,
+		rcSynced:       replicationControllerInformer.Informer().HasSynced,
+		svcSynced:      serviceInformer.Informer().HasSynced,
+		endpointSynced: endpointInformer.Informer().HasSynced,
 
 		sharedInformers: sharedInformers,
 	}
@@ -90,6 +95,7 @@ func (api *API) Sync() error {
 		api.podSynced,
 		api.rcSynced,
 		api.svcSynced,
+		api.endpointSynced,
 	) {
 		return errors.New("timed out waiting for caches to sync")
 	}
