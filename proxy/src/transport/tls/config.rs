@@ -347,17 +347,12 @@ fn set_common_settings(versions: &mut Vec<rustls::ProtocolVersion>) {
 mod inotify {
     use super::*;
 
-    use std::{
-        io,
-        path::PathBuf,
-    };
-    use indexmap::IndexMap;
+    use std::io;
     use inotify::{
         Inotify,
         Event,
         EventMask,
         EventStream,
-        WatchDescriptor,
         WatchMask,
     };
     use futures::{Async, Poll, Stream};
@@ -414,6 +409,7 @@ mod inotify {
             }
             Ok(())
         }
+    }
 
     impl Stream for WatchStream {
         type Item = ();
@@ -421,7 +417,7 @@ mod inotify {
         fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
             loop {
                 match try_ready!(self.stream.poll()) {
-                    Some(Event { mask, name, wd, .. }) => {
+                    Some(Event { mask, name, .. }) => {
                         if mask.contains(EventMask::IGNORED) {
                             // This event fires if we removed a watch. Poll the
                             // stream again.
