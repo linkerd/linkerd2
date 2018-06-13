@@ -141,7 +141,7 @@ impl Stream for TapEvents {
                         _ => continue,
                     }
 
-                    if let Ok(te) = (&ev).try_into() {
+                    if let Ok(te) = TapEvent::try_from(&ev) {
                         // TODO Do limit checks here.
                         return Ok(Some(te).into());
                     }
