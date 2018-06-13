@@ -5,13 +5,11 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/runconduit/conduit/controller/ca"
 	"github.com/runconduit/conduit/controller/k8s"
 	"github.com/runconduit/conduit/pkg/version"
 	log "github.com/sirupsen/logrus"
-	"k8s.io/client-go/informers"
 )
 
 const configMapName = "conduit-ca-bundle"
@@ -35,22 +33,27 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	clientSet, err := k8s.NewClientSet(*kubeConfigPath)
+	k8sClient, err := k8s.NewClientSet(*kubeConfigPath)
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err.Error())
 	}
+	k8sAPI := k8s.NewAPI(k8sClient)
 
-	sharedInformers := informers.NewSharedInformerFactory(clientSet, 10*time.Minute)
-	controller := ca.NewCertificateController(
-		clientSet,
-		*controllerNamespace,
-		sharedInformers.Core().V1().Pods(),
-		sharedInformers.Core().V1().ConfigMaps(),
-	)
+	controller := ca.NewCertificateController(*controllerNamespace, k8sAPI)
+
+	go func() {
+		err := k8sAPI.Sync()
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+	}()
+
 	stopCh := make(chan struct{})
 
-	sharedInformers.Start(stopCh)
-	go controller.Run(stopCh)
+	go func() {
+		log.Info("starting distributor")
+		controller.Run(stopCh)
+	}()
 
 	<-stop
 

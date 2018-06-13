@@ -26,7 +26,7 @@ rules:
   resources: ["deployments", "replicasets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
-  resources: ["pods", "endpoints", "services", "namespaces", "replicationcontrollers"]
+  resources: ["pods", "endpoints", "services", "namespaces", "replicationcontrollers", "configmaps"]
   verbs: ["list", "get", "watch"]
 
 ---
@@ -60,14 +60,17 @@ metadata:
 rules:
 - apiGroups: [""]
   resources: ["configmaps"]
-  verbs: ["create", "list", "watch"]
+  verbs: ["create"]
 - apiGroups: [""]
   resources: ["configmaps"]
   resourceNames: [{{.CertificateBundleName}}]
   verbs: ["update"]
+- apiGroups: ["extensions", "apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["list", "get", "watch"]
 - apiGroups: [""]
-  resources: ["pods"]
-  verbs: ["list", "watch"]
+  resources: ["pods", "endpoints", "services", "namespaces", "replicationcontrollers", "configmaps"]
+  verbs: ["list", "get", "watch"]
 
 ---
 kind: ClusterRoleBinding

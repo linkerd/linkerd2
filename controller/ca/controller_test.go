@@ -1,62 +1,76 @@
 package ca
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
-	"github.com/runconduit/conduit/pkg/k8s"
+	"github.com/runconduit/conduit/controller/k8s"
+	pkgK8s "github.com/runconduit/conduit/pkg/k8s"
 	"k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/client-go/tools/cache"
+	testingK8s "k8s.io/client-go/testing"
 )
 
 var (
-	conduitNS = "conduitest"
-
-	conduitNamespace = &v1.Namespace{
-		ObjectMeta: meta.ObjectMeta{Name: conduitNS},
-	}
-
-	conduitConfigMap = &v1.ConfigMap{
-		ObjectMeta: meta.ObjectMeta{
-			Namespace: conduitNS,
-			Name:      k8s.CertificateBundleName,
-		},
-	}
-
+	conduitNS  = "conduitest"
 	injectedNS = "injecttest"
 
-	injectedNamespace = &v1.Namespace{
-		ObjectMeta: meta.ObjectMeta{Name: injectedNS},
+	conduitConfigs = []string{
+		fmt.Sprintf(`
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: %s`, conduitNS),
+		fmt.Sprintf(`
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: %s
+  name: %s`, conduitNS, pkgK8s.CertificateBundleName),
 	}
 
-	injectedConfigMap = &v1.ConfigMap{
-		ObjectMeta: meta.ObjectMeta{
-			Namespace: injectedNS,
-			Name:      k8s.CertificateBundleName,
-		},
-	}
+	injectedNSConfig = fmt.Sprintf(`
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: %s`, injectedNS)
 
-	injectedPod = &v1.Pod{
-		ObjectMeta: meta.ObjectMeta{
-			Namespace: injectedNS,
-			Annotations: map[string]string{
-				k8s.CreatedByAnnotation: "conduit",
-			},
-		},
+	injectedConfigs = []string{
+		injectedNSConfig,
+		fmt.Sprintf(`
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: %s
+  name: %s`, injectedNS, pkgK8s.CertificateBundleName),
+		fmt.Sprintf(`
+apiVersion: v1
+kind: Pod
+metadata:
+  namespace: %s
+  annotations:
+    %s: conduit`, injectedNS, pkgK8s.CreatedByAnnotation),
 	}
 )
 
 func TestCertificateController(t *testing.T) {
 	t.Run("creates new configmap in injected namespace on pod add", func(t *testing.T) {
-		controller, sharedInformers, client, synced := new(injectedNamespace)
-		stopCh := run(controller, sharedInformers)
+		controller, synced, stopCh, err := new(injectedNSConfig)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
 		defer close(stopCh)
 
-		controller.handlePodUpdate(injectedPod)
+		controller.handlePodUpdate(nil, &v1.Pod{
+			ObjectMeta: meta.ObjectMeta{
+				Namespace: injectedNS,
+				Annotations: map[string]string{
+					pkgK8s.CreatedByAnnotation: "conduit",
+				},
+			},
+		})
 
 		select {
 		case <-synced:
@@ -64,7 +78,7 @@ func TestCertificateController(t *testing.T) {
 			t.Fatal("timed out waiting for sync")
 		}
 
-		action := client.Actions()[len(client.Actions())-1]
+		action := getAction(controller)
 
 		if !action.Matches("create", "configmaps") {
 			t.Fatalf("expected action to be configmap create, got: %+v", action)
@@ -77,12 +91,18 @@ func TestCertificateController(t *testing.T) {
 	})
 
 	t.Run("updates configmap in injected namespace on configmap update", func(t *testing.T) {
-		controller, sharedInformers, client, synced := new(
-			injectedNamespace, injectedPod, injectedConfigMap)
-		stopCh := run(controller, sharedInformers)
+		controller, synced, stopCh, err := new(injectedConfigs...)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
 		defer close(stopCh)
 
-		controller.handleConfigMapUpdate(conduitConfigMap)
+		controller.handleConfigMapUpdate(nil, &v1.ConfigMap{
+			ObjectMeta: meta.ObjectMeta{
+				Namespace: conduitNS,
+				Name:      pkgK8s.CertificateBundleName,
+			},
+		})
 
 		select {
 		case <-synced:
@@ -90,7 +110,7 @@ func TestCertificateController(t *testing.T) {
 			t.Fatal("timed out waiting for sync")
 		}
 
-		action := client.Actions()[len(client.Actions())-1]
+		action := getAction(controller)
 
 		if !action.Matches("update", "configmaps") {
 			t.Fatalf("expected action to be configmap update, got: %+v", action)
@@ -103,12 +123,18 @@ func TestCertificateController(t *testing.T) {
 	})
 
 	t.Run("re-adds configmap in injected namespace on configmap delete", func(t *testing.T) {
-		controller, sharedInformers, client, synced := new(
-			injectedNamespace, injectedPod, injectedConfigMap)
-		stopCh := run(controller, sharedInformers)
+		controller, synced, stopCh, err := new(injectedConfigs...)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
 		defer close(stopCh)
 
-		controller.handleConfigMapDelete(injectedConfigMap)
+		controller.handleConfigMapDelete(&v1.ConfigMap{
+			ObjectMeta: meta.ObjectMeta{
+				Namespace: injectedNS,
+				Name:      pkgK8s.CertificateBundleName,
+			},
+		})
 
 		select {
 		case <-synced:
@@ -116,7 +142,7 @@ func TestCertificateController(t *testing.T) {
 			t.Fatal("timed out waiting for sync")
 		}
 
-		action := client.Actions()[len(client.Actions())-1]
+		action := getAction(controller)
 
 		// we expect an update instead of a create here because we didn't actually
 		// delete the config map; we just triggered a delete event
@@ -131,16 +157,14 @@ func TestCertificateController(t *testing.T) {
 	})
 }
 
-func new(fixtures ...runtime.Object) (*CertificateController, informers.SharedInformerFactory, *fake.Clientset, chan bool) {
-	withConduit := append([]runtime.Object{conduitNamespace, conduitConfigMap}, fixtures...)
-	clientSet := fake.NewSimpleClientset(withConduit...)
-	sharedInformers := informers.NewSharedInformerFactory(clientSet, 10*time.Minute)
-	controller := NewCertificateController(
-		clientSet,
-		conduitNS,
-		sharedInformers.Core().V1().Pods(),
-		sharedInformers.Core().V1().ConfigMaps(),
-	)
+func new(fixtures ...string) (*CertificateController, chan bool, chan struct{}, error) {
+	withConduit := append(conduitConfigs, fixtures...)
+	k8sAPI, err := k8s.NewFakeAPI(withConduit...)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("NewFakeAPI returned an error: %s", err)
+	}
+
+	controller := NewCertificateController(conduitNS, k8sAPI)
 
 	synced := make(chan bool, 1)
 	controller.syncHandler = func(key string) error {
@@ -149,13 +173,17 @@ func new(fixtures ...runtime.Object) (*CertificateController, informers.SharedIn
 		return err
 	}
 
-	return controller, sharedInformers, clientSet, synced
+	if err := controller.k8sAPI.Sync(); err != nil {
+		return nil, nil, nil, fmt.Errorf("k8sAPI.Sync() returned an error: %s", err)
+	}
+
+	stopCh := make(chan struct{})
+	go controller.Run(stopCh)
+
+	return controller, synced, stopCh, nil
 }
 
-func run(c *CertificateController, i informers.SharedInformerFactory) chan struct{} {
-	stopCh := make(chan struct{})
-	i.Start(stopCh)
-	go c.Run(stopCh)
-	cache.WaitForCacheSync(stopCh, c.podListerSynced, c.configMapListerSynced)
-	return stopCh
+func getAction(controller *CertificateController) testingK8s.Action {
+	client := controller.k8sAPI.Client.(*fake.Clientset)
+	return client.Actions()[len(client.Actions())-1]
 }

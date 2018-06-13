@@ -1,10 +1,10 @@
 package ca
 
 import (
-	"fmt"
 	"time"
 
-	"github.com/runconduit/conduit/pkg/k8s"
+	"github.com/runconduit/conduit/controller/k8s"
+	pkgK8s "github.com/runconduit/conduit/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -13,64 +13,36 @@ import (
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
-	coreinformers "k8s.io/client-go/informers/core/v1"
-	"k8s.io/client-go/kubernetes"
-	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 )
 
 type CertificateController struct {
-	client    kubernetes.Interface
-	namespace string
-
+	namespace   string
+	k8sAPI      *k8s.API
 	syncHandler func(key string) error
-
-	podLister       corelisters.PodLister
-	podListerSynced cache.InformerSynced
-
-	configMapLister       corelisters.ConfigMapLister
-	configMapListerSynced cache.InformerSynced
-
-	queue workqueue.RateLimitingInterface
+	queue       workqueue.RateLimitingInterface
 }
 
-func NewCertificateController(
-	client kubernetes.Interface,
-	conduitNamespace string,
-	podInformer coreinformers.PodInformer,
-	configMapInformer coreinformers.ConfigMapInformer,
-) *CertificateController {
+func NewCertificateController(conduitNamespace string, k8sAPI *k8s.API) *CertificateController {
 	c := &CertificateController{
-		client:                client,
-		namespace:             conduitNamespace,
-		podLister:             podInformer.Lister(),
-		podListerSynced:       podInformer.Informer().HasSynced,
-		configMapLister:       configMapInformer.Lister(),
-		configMapListerSynced: configMapInformer.Informer().HasSynced,
+		namespace: conduitNamespace,
+		k8sAPI:    k8sAPI,
 		queue: workqueue.NewNamedRateLimitingQueue(
 			workqueue.DefaultControllerRateLimiter(), "certificates"),
 	}
 
-	podInformer.Informer().AddEventHandler(
+	k8sAPI.Pod.Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}) {
-				c.handlePodUpdate(obj.(*v1.Pod))
-			},
-			UpdateFunc: func(_, obj interface{}) {
-				c.handlePodUpdate(obj.(*v1.Pod))
-			},
+			AddFunc:    c.handlePodAdd,
+			UpdateFunc: c.handlePodUpdate,
 		},
 	)
 
-	configMapInformer.Informer().AddEventHandler(
+	k8sAPI.CM.Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}) {
-				c.handleConfigMapUpdate(obj.(*v1.ConfigMap))
-			},
-			UpdateFunc: func(_, obj interface{}) {
-				c.handleConfigMapUpdate(obj.(*v1.ConfigMap))
-			},
+			AddFunc:    c.handleConfigMapAdd,
+			UpdateFunc: c.handleConfigMapUpdate,
 			DeleteFunc: c.handleConfigMapDelete,
 		},
 	)
@@ -80,22 +52,16 @@ func NewCertificateController(
 	return c
 }
 
-func (c *CertificateController) Run(stopCh <-chan struct{}) error {
+func (c *CertificateController) Run(stopCh <-chan struct{}) {
 	defer runtime.HandleCrash()
 	defer c.queue.ShutDown()
 
 	log.Info("starting certificate controller")
 	defer log.Info("shutting down certificate controller")
 
-	if !cache.WaitForCacheSync(stopCh, c.podListerSynced, c.configMapListerSynced) {
-		return fmt.Errorf("timed out waiting for cache to sync")
-	}
-	log.Info("caches are synced")
-
 	go wait.Until(c.worker, time.Second, stopCh)
 
 	<-stopCh
-	return nil
 }
 
 func (c *CertificateController) worker() {
@@ -122,11 +88,11 @@ func (c *CertificateController) processNextWorkItem() bool {
 }
 
 func (c *CertificateController) syncNamespace(ns string) error {
-	conduitConfigMap, err := c.configMapLister.ConfigMaps(c.namespace).
-		Get(k8s.CertificateBundleName)
+	conduitConfigMap, err := c.k8sAPI.CM.Lister().ConfigMaps(c.namespace).
+		Get(pkgK8s.CertificateBundleName)
 	if apierrors.IsNotFound(err) {
 		log.Warnf("configmap [%s] not found in namespace [%s]",
-			k8s.CertificateBundleName, c.namespace)
+			pkgK8s.CertificateBundleName, c.namespace)
 		return nil
 	}
 	if err != nil {
@@ -134,28 +100,34 @@ func (c *CertificateController) syncNamespace(ns string) error {
 	}
 
 	configMap := &v1.ConfigMap{
-		ObjectMeta: meta.ObjectMeta{Name: k8s.CertificateBundleName},
+		ObjectMeta: meta.ObjectMeta{Name: pkgK8s.CertificateBundleName},
 		Data:       conduitConfigMap.Data,
 	}
 
 	log.Debugf("adding configmap [%s] to namespace [%s]",
-		k8s.CertificateBundleName, ns)
-	_, err = c.client.CoreV1().ConfigMaps(ns).Create(configMap)
+		pkgK8s.CertificateBundleName, ns)
+	_, err = c.k8sAPI.Client.CoreV1().ConfigMaps(ns).Create(configMap)
 	if apierrors.IsAlreadyExists(err) {
-		_, err = c.client.CoreV1().ConfigMaps(ns).Update(configMap)
+		_, err = c.k8sAPI.Client.CoreV1().ConfigMaps(ns).Update(configMap)
 	}
 
 	return err
 }
 
-func (c *CertificateController) handlePodUpdate(pod *v1.Pod) {
+func (c *CertificateController) handlePodAdd(obj interface{}) {
+	pod := obj.(*v1.Pod)
 	if c.isInjectedPod(pod) && !c.filterNamespace(pod.Namespace) {
 		c.queue.Add(pod.Namespace)
 	}
 }
 
-func (c *CertificateController) handleConfigMapUpdate(cm *v1.ConfigMap) {
-	if cm.Namespace == c.namespace && cm.Name == k8s.CertificateBundleName {
+func (c *CertificateController) handlePodUpdate(oldObj, newObj interface{}) {
+	c.handlePodAdd(newObj)
+}
+
+func (c *CertificateController) handleConfigMapAdd(obj interface{}) {
+	cm := obj.(*v1.ConfigMap)
+	if cm.Namespace == c.namespace && cm.Name == pkgK8s.CertificateBundleName {
 		namespaces, err := c.getInjectedNamespaces()
 		if err != nil {
 			log.Errorf("error getting namespaces: %s", err)
@@ -166,6 +138,10 @@ func (c *CertificateController) handleConfigMapUpdate(cm *v1.ConfigMap) {
 			c.queue.Add(ns)
 		}
 	}
+}
+
+func (c *CertificateController) handleConfigMapUpdate(oldObj, newObj interface{}) {
+	c.handleConfigMapAdd(newObj)
 }
 
 func (c *CertificateController) handleConfigMapDelete(obj interface{}) {
@@ -183,7 +159,7 @@ func (c *CertificateController) handleConfigMapDelete(obj interface{}) {
 		}
 	}
 
-	if configMap.Name == k8s.CertificateBundleName && configMap.Namespace != c.namespace {
+	if configMap.Name == pkgK8s.CertificateBundleName && configMap.Namespace != c.namespace {
 		injected, err := c.isInjectedNamespace(configMap.Namespace)
 		if err != nil {
 			log.Errorf("error getting pods in namespace [%s]: %s", configMap.Namespace, err)
@@ -191,14 +167,14 @@ func (c *CertificateController) handleConfigMapDelete(obj interface{}) {
 		}
 		if injected {
 			log.Infof("configmap [%s] in namespace [%s] deleted; recreating it",
-				k8s.CertificateBundleName, configMap.Namespace)
+				pkgK8s.CertificateBundleName, configMap.Namespace)
 			c.queue.Add(configMap.Namespace)
 		}
 	}
 }
 
 func (c *CertificateController) getInjectedNamespaces() ([]string, error) {
-	pods, err := c.podLister.List(labels.Everything())
+	pods, err := c.k8sAPI.Pod.Lister().List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +199,7 @@ func (c *CertificateController) filterNamespace(ns string) bool {
 }
 
 func (c *CertificateController) isInjectedNamespace(ns string) (bool, error) {
-	pods, err := c.podLister.Pods(ns).List(labels.Everything())
+	pods, err := c.k8sAPI.Pod.Lister().Pods(ns).List(labels.Everything())
 	if err != nil {
 		return false, err
 	}
@@ -236,6 +212,6 @@ func (c *CertificateController) isInjectedNamespace(ns string) (bool, error) {
 }
 
 func (c *CertificateController) isInjectedPod(pod *v1.Pod) bool {
-	_, ok := pod.Annotations[k8s.CreatedByAnnotation]
+	_, ok := pod.Annotations[pkgK8s.CreatedByAnnotation]
 	return ok
 }
