@@ -43,49 +43,6 @@ subjects:
   name: conduit-controller
   namespace: {{.Namespace}}
 
-### Service Account CA ###
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: conduit-ca
-  namespace: {{.Namespace}}
-
-### CA RBAC ###
----
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1beta1
-metadata:
-  name: conduit-ca
-rules:
-- apiGroups: [""]
-  resources: ["configmaps"]
-  verbs: ["create"]
-- apiGroups: [""]
-  resources: ["configmaps"]
-  resourceNames: [{{.CertificateBundleName}}]
-  verbs: ["update"]
-- apiGroups: ["extensions", "apps"]
-  resources: ["deployments", "replicasets"]
-  verbs: ["list", "get", "watch"]
-- apiGroups: [""]
-  resources: ["pods", "endpoints", "services", "namespaces", "replicationcontrollers", "configmaps"]
-  verbs: ["list", "get", "watch"]
-
----
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1beta1
-metadata:
-  name: conduit-ca
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: conduit-ca
-subjects:
-- kind: ServiceAccount
-  name: conduit-ca
-  namespace: {{.Namespace}}
-
 ### Service Account Prometheus ###
 ---
 kind: ServiceAccount
@@ -229,36 +186,6 @@ spec:
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
         - "tap"
-        - "-log-level={{.ControllerLogLevel}}"
-        - "-logtostderr=true"
-
----
-kind: Deployment
-apiVersion: extensions/v1beta1
-metadata:
-  name: ca-bundle-distributor
-  namespace: {{.Namespace}}
-  labels:
-    {{.ControllerComponentLabel}}: ca-bundle-distributor
-  annotations:
-    {{.CreatedByAnnotation}}: {{.CliVersion}}
-spec:
-  replicas: {{.ControllerReplicas}}
-  template:
-    metadata:
-      labels:
-        {{.ControllerComponentLabel}}: ca-bundle-distributor
-      annotations:
-        {{.CreatedByAnnotation}}: {{.CliVersion}}
-    spec:
-      serviceAccount: conduit-ca
-      containers:
-      - name: ca-distributor
-        image: {{.ControllerImage}}
-        imagePullPolicy: {{.ImagePullPolicy}}
-        args:
-        - "ca-distributor"
-        - "-controller-namespace={{.Namespace}}"
         - "-log-level={{.ControllerLogLevel}}"
         - "-logtostderr=true"
 
@@ -634,4 +561,81 @@ data:
       options:
         path: /var/lib/grafana/dashboards
         homeDashboardId: conduit-top-line
+`
+
+const TlsTemplate = `
+### Service Account CA ###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: conduit-ca
+  namespace: {{.Namespace}}
+
+### CA RBAC ###
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: conduit-ca
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["create"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  resourceNames: [{{.CertificateBundleName}}]
+  verbs: ["update"]
+- apiGroups: ["extensions", "apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: [""]
+  resources: ["pods", "endpoints", "services", "namespaces", "replicationcontrollers", "configmaps"]
+  verbs: ["list", "get", "watch"]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: conduit-ca
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: conduit-ca
+subjects:
+- kind: ServiceAccount
+  name: conduit-ca
+  namespace: {{.Namespace}}
+
+### CA Distributor ###
+---
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: ca-bundle-distributor
+  namespace: {{.Namespace}}
+  labels:
+    {{.ControllerComponentLabel}}: ca-bundle-distributor
+  annotations:
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
+spec:
+  replicas: {{.ControllerReplicas}}
+  template:
+    metadata:
+      labels:
+        {{.ControllerComponentLabel}}: ca-bundle-distributor
+      annotations:
+        {{.CreatedByAnnotation}}: {{.CliVersion}}
+    spec:
+      serviceAccount: conduit-ca
+      containers:
+      - name: ca-distributor
+        image: {{.ControllerImage}}
+        imagePullPolicy: {{.ImagePullPolicy}}
+        args:
+        - "ca-distributor"
+        - "-controller-namespace={{.Namespace}}"
+        - "-log-level={{.ControllerLogLevel}}"
+        - "-logtostderr=true"
+
 `

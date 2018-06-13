@@ -120,6 +120,16 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 	if err != nil {
 		return err
 	}
+	if config.EnableTLS {
+		tlsTemplate, err := template.New("conduit").Parse(install.TlsTemplate)
+		if err != nil {
+			return err
+		}
+		err = tlsTemplate.Execute(buf, config)
+		if err != nil {
+			return err
+		}
+	}
 	injectOptions := newInjectOptions()
 	injectOptions.proxyConfigOptions = options.proxyConfigOptions
 	return InjectYAML(buf, w, injectOptions)
