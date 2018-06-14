@@ -32,14 +32,14 @@ func NewCertificateController(conduitNamespace string, k8sAPI *k8s.API) *Certifi
 			workqueue.DefaultControllerRateLimiter(), "certificates"),
 	}
 
-	k8sAPI.Pod.Informer().AddEventHandler(
+	k8sAPI.Pod().Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    c.handlePodAdd,
 			UpdateFunc: c.handlePodUpdate,
 		},
 	)
 
-	k8sAPI.CM.Informer().AddEventHandler(
+	k8sAPI.CM().Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    c.handleConfigMapAdd,
 			UpdateFunc: c.handleConfigMapUpdate,
@@ -88,7 +88,7 @@ func (c *CertificateController) processNextWorkItem() bool {
 }
 
 func (c *CertificateController) syncNamespace(ns string) error {
-	conduitConfigMap, err := c.k8sAPI.CM.Lister().ConfigMaps(c.namespace).
+	conduitConfigMap, err := c.k8sAPI.CM().Lister().ConfigMaps(c.namespace).
 		Get(pkgK8s.CertificateBundleName)
 	if apierrors.IsNotFound(err) {
 		log.Warnf("configmap [%s] not found in namespace [%s]",
@@ -174,7 +174,7 @@ func (c *CertificateController) handleConfigMapDelete(obj interface{}) {
 }
 
 func (c *CertificateController) getInjectedNamespaces() ([]string, error) {
-	pods, err := c.k8sAPI.Pod.Lister().List(labels.Everything())
+	pods, err := c.k8sAPI.Pod().Lister().List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +199,7 @@ func (c *CertificateController) filterNamespace(ns string) bool {
 }
 
 func (c *CertificateController) isInjectedNamespace(ns string) (bool, error) {
-	pods, err := c.k8sAPI.Pod.Lister().Pods(ns).List(labels.Everything())
+	pods, err := c.k8sAPI.Pod().Lister().Pods(ns).List(labels.Everything())
 	if err != nil {
 		return false, err
 	}

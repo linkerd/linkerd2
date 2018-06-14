@@ -26,7 +26,7 @@ rules:
   resources: ["deployments", "replicasets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
-  resources: ["pods", "endpoints", "services", "namespaces", "replicationcontrollers", "configmaps"]
+  resources: ["pods", "endpoints", "services", "namespaces", "replicationcontrollers"]
   verbs: ["list", "get", "watch"]
 
 ---
@@ -586,11 +586,8 @@ rules:
   resources: ["configmaps"]
   resourceNames: [{{.CertificateBundleName}}]
   verbs: ["update"]
-- apiGroups: ["extensions", "apps"]
-  resources: ["deployments", "replicasets"]
-  verbs: ["list", "get", "watch"]
 - apiGroups: [""]
-  resources: ["pods", "endpoints", "services", "namespaces", "replicationcontrollers", "configmaps"]
+  resources: ["pods", "configmaps"]
   verbs: ["list", "get", "watch"]
 
 ---
