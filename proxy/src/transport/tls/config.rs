@@ -456,12 +456,10 @@ mod inotify {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use task::test_util::BlockOnFor;
 
     use tempdir::TempDir;
-    use tokio::{
-        runtime::current_thread::Runtime,
-        timer,
-    };
+    use tokio::runtime::current_thread::Runtime;
 
     use std::{
         io::Write,
@@ -483,38 +481,6 @@ mod tests {
     const END_ENTITY_CERT: &'static str = "test-test.crt";
     const PRIVATE_KEY: &'static str = "test-test.p8";
     const TRUST_ANCHORS: &'static str = "ca.pem";
-
-    /// A trait that allows an executor to execute a future for up to
-    /// a given time limit, and then panics if the future has not
-    /// finished.
-    ///
-    // TODO: This might be useful for tests outside of this module...
-    trait BlockOnFor {
-        /// Runs the provided future for up to `Duration`, blocking the thread
-        /// until the future completes.
-        fn block_on_for<F>(&mut self, duration: Duration, f: F) -> Result<F::Item, F::Error>
-        where
-            F: Future;
-    }
-
-    impl BlockOnFor for Runtime {
-        fn block_on_for<F>(&mut self, duration: Duration, f: F) -> Result<F::Item, F::Error>
-        where
-            F: Future
-        {
-            let f = timer::Deadline::new(f, Instant::now() + duration);
-            match self.block_on(f) {
-                Ok(item) => Ok(item),
-                Err(e) => if e.is_inner() {
-                    return Err(e.into_inner().unwrap());
-                } else if e.is_timer() {
-                    panic!("timer error: {}", e.into_timer().unwrap());
-                } else {
-                    panic!("assertion failed: future did not finish within {:?}", duration);
-                },
-            }
-        }
-    }
 
     fn fixture() -> Fixture {
         let _ = ::env_logger::try_init();
