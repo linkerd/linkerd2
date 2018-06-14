@@ -197,11 +197,8 @@ impl PathAndHash {
             .map(Digest::as_ref) != hash.as_ref().map(Digest::as_ref);
         if changed {
             self.last_hash.replace(hash);
-            Ok(true)
-        } else {
-            Ok(false)
         }
-
+        Ok(changed)
     }
 }
 
@@ -464,7 +461,6 @@ mod tests {
     use std::{
         io::Write,
         fs::{self, File},
-        thread,
     };
     #[cfg(not(target_os = "windows"))]
     use std::os::unix::fs::symlink;
@@ -523,7 +519,7 @@ mod tests {
         println!("created {:?}", f);
 
         let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, watch) = rt.block_on_for(Duration::from_secs(5), next)
+        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
             .expect("first change");
         assert!(item.is_some());
 
@@ -534,7 +530,7 @@ mod tests {
         println!("created {:?}", f);
 
         let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, watch) = rt.block_on_for(Duration::from_secs(5), next)
+        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
             .expect("second change");
         assert!(item.is_some());
 
@@ -567,7 +563,7 @@ mod tests {
         println!("created {:?}", f);
 
         let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, watch) = rt.block_on_for(Duration::from_secs(5), next)
+        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
             .expect("first change");
         assert!(item.is_some());
 
@@ -578,7 +574,7 @@ mod tests {
         println!("created {:?}", f);
 
         let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, watch) = rt.block_on_for(Duration::from_secs(5), next)
+        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
             .expect("second change");
         assert!(item.is_some());
 
@@ -646,7 +642,7 @@ mod tests {
             .expect("symlink trust anchors");
 
         let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, watch) = rt.block_on_for(Duration::from_secs(5), next)
+        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
             .expect("first change");
         assert!(item.is_some());
 
@@ -654,7 +650,7 @@ mod tests {
             .expect("symlink private key");
 
         let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, watch) = rt.block_on_for(Duration::from_secs(5), next)
+        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
             .expect("second change");
         assert!(item.is_some());
 
@@ -702,31 +698,23 @@ mod tests {
             .expect("symlink trust anchors");
 
         let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, watch) = rt.block_on_for(Duration::from_secs(5), next)
+        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
             .expect("first change");
         assert!(item.is_some());
 
-        // Sleep briefly between changing the fs, as a workaround for
-        // macOS reporting timestamps with second resolution.
-        // https://github.com/runconduit/conduit/issues/1090
-        thread::sleep(Duration::from_secs(2));
         symlink(data_path.clone().join(PRIVATE_KEY), cfg.private_key)
             .expect("symlink private key");
 
         let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, watch) = rt.block_on_for(Duration::from_secs(5), next)
+        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
             .expect("second change");
         assert!(item.is_some());
 
-        // Sleep briefly between changing the fs, as a workaround for
-        // macOS reporting timestamps with second resolution.
-        // https://github.com/runconduit/conduit/issues/1090
-        thread::sleep(Duration::from_secs(2));
         symlink(real_data_path.clone().join(END_ENTITY_CERT), cfg.end_entity_cert)
             .expect("symlink end entity cert");
 
         let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, _) = rt.block_on_for(Duration::from_secs(5), next)
+        let (item, _) = rt.block_on_for(Duration::from_secs(2), next)
             .expect("third change");
         assert!(item.is_some());
     }
@@ -782,7 +770,7 @@ mod tests {
             .expect("sync trust anchors again");
 
         let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, watch) = rt.block_on_for(Duration::from_secs(5), next)
+        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
             .expect("first change");
         assert!(item.is_some());
         println!("saw first change");
@@ -793,7 +781,7 @@ mod tests {
             .expect("sync end entity cert again");
 
         let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, watch) = rt.block_on_for(Duration::from_secs(5), next)
+        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
             .expect("second change");
         assert!(item.is_some());
         println!("saw second change");
@@ -804,7 +792,7 @@ mod tests {
             .expect("sync private key again");
 
         let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, _) = rt.block_on_for(Duration::from_secs(5), next)
+        let (item, _) = rt.block_on_for(Duration::from_secs(2), next)
             .expect("third change");
         assert!(item.is_some());
         println!("saw third change");
@@ -846,7 +834,7 @@ mod tests {
             .expect("sync trust anchors again");
 
         let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, watch) = rt.block_on_for(Duration::from_secs(5), next)
+        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
             .expect("first change");
         assert!(item.is_some());
         println!("saw first change");
@@ -857,7 +845,7 @@ mod tests {
             .expect("sync end entity cert again");
 
         let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, watch) = rt.block_on_for(Duration::from_secs(5), next)
+        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
             .expect("second change");
         assert!(item.is_some());
         println!("saw second change");
@@ -868,7 +856,7 @@ mod tests {
             .expect("sync private key again");
 
         let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, _) = rt.block_on_for(Duration::from_secs(5), next)
+        let (item, _) = rt.block_on_for(Duration::from_secs(2), next)
             .expect("third change");
         assert!(item.is_some());
         println!("saw third change");
@@ -923,7 +911,7 @@ mod tests {
             .expect("sync trust anchors again");
 
         let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, watch) = rt.block_on_for(Duration::from_secs(5), next)
+        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
             .expect("first change");
         assert!(item.is_some());
         println!("saw first change");
@@ -934,7 +922,7 @@ mod tests {
             .expect("sync end entity cert again");
 
         let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, watch) = rt.block_on_for(Duration::from_secs(5), next)
+        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
             .expect("second change");
         assert!(item.is_some());
         println!("saw second change");
@@ -945,7 +933,7 @@ mod tests {
             .expect("sync private key again");
 
         let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, _) = rt.block_on_for(Duration::from_secs(5), next)
+        let (item, _) = rt.block_on_for(Duration::from_secs(2), next)
             .expect("third change");
         assert!(item.is_some());
         println!("saw third change");
@@ -1023,7 +1011,7 @@ mod tests {
             .expect("create second data dir symlink");
 
         let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, _) = rt.block_on_for(Duration::from_secs(5), next)
+        let (item, _) = rt.block_on_for(Duration::from_secs(2), next)
             .expect("first change");
         assert!(item.is_some());
         println!("saw first change");
