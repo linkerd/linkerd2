@@ -28,7 +28,7 @@ log = "0.4.1"
 indexmap = "1.0.0"
 prost = "0.3.0"
 prost-types = "0.3.0"
-rand = "0.4"
+rand = "0.5.1"
 
 # for config parsing
 regex = "1.0.0"
