@@ -99,8 +99,19 @@ message ApiError {
   string error = 1;
 }
 
-message ApiErrors {
-  repeated ApiError errors = 1;
+message PodErrors {
+  repeated PodError errors = 1;
+
+  message PodError {
+    oneof error {
+      Unknown unknown = 1;
+    }
+
+    // Covers errors such as container failures
+    message Unknown {
+      string message = 1;
+    }
+  }
 }
 
 message Resource {
@@ -190,7 +201,7 @@ message StatTable {
       BasicStats stats = 5;
 
       // propagate pod errors so we can display them to the user
-      map<string, ApiErrors> errors_by_pod = 7;
+      map<string, PodErrors> errors_by_pod = 7;
     }
   }
 }

@@ -51,7 +51,7 @@ type podStats struct {
 	inMesh uint64
 	total  uint64
 	failed uint64
-	errors map[string]*pb.ApiErrors
+	errors map[string]*pb.PodErrors
 }
 
 func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
@@ -413,7 +413,7 @@ func (s *grpcServer) getPodStats(obj runtime.Object) (*podStats, error) {
 	if err != nil {
 		return nil, err
 	}
-	podErrors := make(map[string]*pb.ApiErrors)
+	podErrors := make(map[string]*pb.PodErrors)
 	meshCount := &podStats{}
 
 	for _, pod := range pods {
@@ -430,25 +430,33 @@ func (s *grpcServer) getPodStats(obj runtime.Object) (*podStats, error) {
 		errors = append(errors, checkContainerErrors(pod.Status.InitContainerStatuses, "conduit-init")...)
 
 		if len(errors) > 0 {
-			podErrors[pod.Name] = &pb.ApiErrors{Errors: errors}
+			podErrors[pod.Name] = &pb.PodErrors{Errors: errors}
 		}
 	}
 	meshCount.errors = podErrors
 	return meshCount, nil
 }
 
-func checkContainerErrors(containerStatuses []apiv1.ContainerStatus, containerName string) []*pb.ApiError {
-	errors := []*pb.ApiError{}
+func toPodError(message string) *pb.PodErrors_PodError {
+	return &pb.PodErrors_PodError{
+		Error: &pb.PodErrors_PodError_Unknown_{
+			Unknown: &pb.PodErrors_PodError_Unknown{Message: message},
+		},
+	}
+}
+
+func checkContainerErrors(containerStatuses []apiv1.ContainerStatus, containerName string) []*pb.PodErrors_PodError {
+	errors := []*pb.PodErrors_PodError{}
 	for _, st := range containerStatuses {
 		if st.Name == containerName && st.State.Waiting != nil {
-			errors = append(errors, &pb.ApiError{Error: fmt.Sprintf("[%s] container has not started. %s", st.Name, st.State.Waiting.Message)})
+			errors = append(errors, toPodError(fmt.Sprintf("[%s] container has not started. %s", st.Name, st.State.Waiting.Message)))
 
 			if st.LastTerminationState.Waiting != nil {
-				errors = append(errors, &pb.ApiError{Error: fmt.Sprintf("[%s] [image: %s] %s", st.Name, st.Image, st.LastTerminationState.Waiting.Message)})
+				errors = append(errors, toPodError(fmt.Sprintf("[%s] [image: %s] %s", st.Name, st.Image, st.LastTerminationState.Waiting.Message)))
 			}
 
 			if st.LastTerminationState.Terminated != nil {
-				errors = append(errors, &pb.ApiError{Error: fmt.Sprintf("[%s] [image: %s] %s", st.Name, st.Image, st.LastTerminationState.Terminated.Message)})
+				errors = append(errors, toPodError(fmt.Sprintf("[%s] [image: %s] %s", st.Name, st.Image, st.LastTerminationState.Terminated.Message)))
 			}
 		}
 	}
