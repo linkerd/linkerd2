@@ -2,6 +2,7 @@ import _ from 'lodash';
 import CallToAction from './CallToAction.jsx';
 import ConduitSpinner from "./ConduitSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
+import ErrorModal from './ErrorModal.jsx';
 import { incompleteMeshMessage } from './util/CopyUtils.jsx';
 import Metric from './Metric.jsx';
 import { numericSort } from './util/Utils.js';
@@ -41,11 +42,19 @@ const getClassification = (meshedPodCount, failedPodCount) => {
 const namespacesColumns = ConduitLink => [
   {
     title: "Namespace",
-    dataIndex: "namespace",
     key: "namespace",
     defaultSortOrder: "ascend",
     sorter: (a, b) => (a.namespace || "").localeCompare(b.namespace),
-    render: d => <ConduitLink to={"/namespaces/" + d}>{d}</ConduitLink>
+    render: d => {
+      return  (
+        <React.Fragment>
+          <ConduitLink to={"/namespaces/" + d.namespace}>{d.namespace}</ConduitLink>
+          { _.isEmpty(d.errors) ? null :
+          <ErrorModal errors={d.errors} resourceName={d.namespace} resourceType="namespace" />
+          }
+        </React.Fragment>
+      );
+    }
   },
   {
     title: "Meshed pods",
@@ -62,7 +71,8 @@ const namespacesColumns = ConduitLink => [
       let containerWidth = 132;
       let percent = row.meshedPercent.get();
       let barWidth = percent < 0 ? 0 : Math.round(percent * containerWidth);
-      let barType = getClassification(row.meshedPods, row.failedPods);
+      let barType = _.isEmpty(row.errors) ?
+        getClassification(row.meshedPods, row.failedPods) : "poor";
 
       return (
         <Tooltip
@@ -165,7 +175,8 @@ class ServiceMesh extends React.Component {
         meshedPercent: new Percentage(meshedPods, totalPods),
         meshedPods,
         totalPods,
-        failedPods
+        failedPods,
+        errors: ns.errorsByPod
       };
     });
     return _.compact(dataPlaneNamepaces);
