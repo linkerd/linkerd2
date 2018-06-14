@@ -248,3 +248,454 @@ pub mod inotify {
     }
 
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use task::test_util::BlockOnFor;
+
+    use tempdir::TempDir;
+    use tokio::runtime::current_thread::Runtime;
+
+    use std::{
+        path::Path,
+        io::Write,
+        fs::{self, File},
+        time::Duration,
+    };
+    #[cfg(not(target_os = "windows"))]
+    use std::os::unix::fs::symlink;
+
+    use futures::{Sink, Stream, Future};
+    use futures_watch::{Watch, WatchError};
+
+    struct Fixture {
+        paths: Vec<PathBuf>,
+        dir: TempDir,
+        rt: Runtime,
+    }
+
+    impl Fixture {
+        fn new() -> Fixture {
+            let _ = ::env_logger::try_init();
+            let dir = TempDir::new("test").unwrap();
+            let paths = vec![
+                dir.path().join("a"),
+                dir.path().join("b"),
+                dir.path().join("c"),
+            ];
+            let rt = Runtime::new().unwrap();
+            Fixture { paths, dir, rt }
+        }
+
+        fn test_polling(
+            self,
+            test: fn(Self, Watch<()>, Box<Future<Item=(), Error = ()>>)
+        ) {
+            let stream = stream_changes_polling(
+                self.paths.clone(),
+                Duration::from_secs(1)
+            );
+            let (watch, bg) = watch_stream(stream);
+            test(self, watch, bg)
+        }
+
+        #[cfg(target_os="linux")]
+        fn test_inotify(
+            self,
+            test: fn(Self, Watch<()>, Box<Future<Item=(), Error = ()>>)
+        ) {
+            let paths = self.paths.clone();
+            let stream = inotify::WatchStream::new(paths)
+                .unwrap()
+                .map_err(|e| panic!("{}", e));
+            let (watch, bg) = watch_stream(stream);
+            test(self, watch, bg)
+        }
+    }
+
+    fn create_file<P: AsRef<Path>>(path: P) -> io::Result<File> {
+        let f = File::create(path)?;
+        println!("created {:?}", f);
+        Ok(f)
+    }
+
+    fn create_and_write<P: AsRef<Path>>(path: P, s: &[u8]) -> io::Result<File> {
+        let mut f = File::create(path)?;
+        f.write_all(s)?;
+        println!("created and wrote to {:?}", f);
+        Ok(f)
+    }
+
+    fn watch_stream(stream: impl Stream<Item = (), Error = ()> + 'static)
+        -> (Watch<()>, Box<Future<Item = (), Error = ()>>)
+    {
+        let (watch, store) = Watch::new(());
+        // Use a watch so we can start running the stream immediately but also
+        // wait on stream updates.
+        let f = stream
+            .forward(store.sink_map_err(|_| ()))
+            .map(|_| ())
+            .map_err(|_| ());
+
+        (watch, Box::new(f))
+    }
+
+    fn next_change(rt: &mut Runtime, watch: Watch<()>)
+        -> Result<(Option<()>, Watch<()>), WatchError>
+    {
+        let next = watch.into_future().map_err(|(e, _)| e);
+        rt.block_on_for(Duration::from_secs(2), next)
+    }
+
+    fn test_detects_create(
+        fixture: Fixture,
+        watch: Watch<()>,
+        bg: Box<Future<Item = (), Error = ()>>
+    ) {
+        let Fixture { paths, dir: _dir, mut rt } = fixture;
+
+        rt.spawn(bg);
+
+        paths.iter().fold(watch, |watch, path| {
+            create_file(path).unwrap();
+
+            let (item, watch) = next_change(&mut rt, watch).unwrap();
+            assert!(item.is_some());
+            watch
+        });
+    }
+
+    fn test_detects_delete_and_recreate(
+        fixture: Fixture,
+        watch: Watch<()>,
+        bg: Box<Future<Item = (), Error = ()>>
+    ) {
+        let Fixture { paths, dir: _dir, mut rt } = fixture;
+        rt.spawn(bg);
+
+        let watch = paths.iter().fold(watch, |watch, ref path| {
+            create_and_write(path, b"A").unwrap();
+
+            let (item, watch) = next_change(&mut rt, watch).unwrap();
+            assert!(item.is_some());
+            watch
+        });
+
+        for path in &paths {
+            fs::remove_file(path).unwrap();
+            println!("deleted {:?}", path);
+        }
+
+        paths.iter().fold(watch, |watch, ref path| {
+            create_and_write(path, b"B").unwrap();
+
+            let (item, watch) = next_change(&mut rt, watch).unwrap();
+            assert!(item.is_some());
+            watch
+        });
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    fn test_detects_create_symlink(
+        fixture: Fixture,
+        watch: Watch<()>,
+        bg: Box<Future<Item = (), Error = ()>>
+    ) {
+        let Fixture { paths, dir, mut rt } = fixture;
+
+        let data_path = dir.path().join("data");
+        fs::create_dir(&data_path).unwrap();
+
+        let data_paths = paths.iter().map(|p| {
+            let path = data_path.clone()
+                .join(p.file_name().unwrap());
+            create_file(&path).unwrap();
+            path
+        })
+        .collect::<Vec<_>>();
+
+        rt.spawn(bg);
+
+        data_paths.iter().zip(paths.iter()).fold(watch, |watch, (path, target_path)| {
+            symlink(path, target_path).unwrap();
+
+            let (item, watch) = next_change(&mut rt, watch).unwrap();
+            assert!(item.is_some());
+            watch
+        });
+    }
+
+    // Test for when the watched files are symlinks to a file inside of a
+    // directory which is also a symlink (as is the case with Kubernetes
+    // ConfigMap/Secret volume mounts).
+    #[cfg(not(target_os = "windows"))]
+    fn test_detects_create_double_symlink(
+        fixture: Fixture,
+        watch: Watch<()>,
+        bg: Box<Future<Item = (), Error = ()>>
+    ) {
+        let Fixture { paths, dir, mut rt } = fixture;
+
+        let real_data_path = dir.path().join("real_data");
+        let data_path = dir.path().join("data");
+        fs::create_dir(&real_data_path).unwrap();
+        symlink(&real_data_path, &data_path).unwrap();
+
+        for path in &paths {
+            let path = real_data_path.clone()
+                .join(path.file_name().unwrap());
+            create_file(&path).unwrap();
+        }
+
+        rt.spawn(bg);
+
+        paths.iter().fold(watch, |watch, path| {
+            let file_name = path.file_name().unwrap();
+            symlink(data_path.clone().join(file_name), path).unwrap();
+
+            let (item, watch) = next_change(&mut rt, watch).unwrap();
+            assert!(item.is_some());
+            watch
+        });
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    fn test_detects_modification_symlink(
+        fixture: Fixture,
+        watch: Watch<()>,
+        bg: Box<Future<Item = (), Error = ()>>
+    ) {
+        let Fixture { paths, dir, mut rt } = fixture;
+
+        let data_path = dir.path().join("data");
+        fs::create_dir(&data_path).unwrap();
+
+        let data_paths = paths.iter().map(|p| {
+            let path = data_path.clone()
+                .join(p.file_name().unwrap());
+            path
+        })
+        .collect::<Vec<_>>();
+
+        let mut data_files = data_paths.iter()
+            .map(|path| create_and_write(path, b"a").unwrap())
+            .collect::<Vec<_>>();
+
+        for (path, target_path) in data_paths.iter().zip(paths.iter()) {
+            symlink(path, target_path).unwrap();
+        }
+
+        rt.spawn(bg);
+
+        data_files.iter_mut().fold(watch, |watch, file| {
+            file.write_all(b"b").unwrap();
+
+            let (item, watch) = next_change(&mut rt, watch).unwrap();
+            assert!(item.is_some());
+            watch
+        });
+    }
+
+    fn test_detects_modification(
+        fixture: Fixture,
+        watch: Watch<()>,
+        bg: Box<Future<Item = (), Error = ()>>
+    ) {
+        let Fixture { paths, dir: _dir, mut rt } = fixture;
+
+        let mut files = paths.iter()
+            .map(|path| create_and_write(path, b"a").unwrap())
+            .collect::<Vec<_>>();
+
+        rt.spawn(bg);
+
+        files.iter_mut().fold(watch, |watch, file| {
+            file.write_all(b"b").unwrap();
+            let (item, watch) = next_change(&mut rt, watch).unwrap();
+            assert!(item.is_some());
+            watch
+        });
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    fn test_detects_modification_double_symlink(
+        fixture: Fixture,
+        watch: Watch<()>,
+        bg: Box<Future<Item = (), Error = ()>>
+    ) {
+        let Fixture { paths, dir, mut rt } = fixture;
+
+        let real_data_path = dir.path().join("real_data");
+        let data_path = dir.path().join("data");
+        fs::create_dir(&real_data_path).unwrap();
+        symlink(&real_data_path, &data_path).unwrap();
+
+        let mut files = paths.iter().map(|p| {
+            let path = real_data_path.clone()
+                .join(p.file_name().unwrap());
+            create_and_write(path, b"a").unwrap()
+        })
+        .collect::<Vec<_>>();
+
+        for path in &paths {
+            symlink(
+                data_path.clone().join(path.file_name().unwrap()),
+                path
+            ).unwrap();
+        }
+
+        rt.spawn(bg);
+
+        files.iter_mut().fold(watch, |watch, file| {
+            file.write_all(b"b").unwrap();
+            let (item, watch) = next_change(&mut rt, watch).unwrap();
+            assert!(item.is_some());
+            watch
+        });
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    fn test_detects_double_symlink_retargeting(
+        fixture: Fixture,
+        watch: Watch<()>,
+        bg: Box<Future<Item = (), Error = ()>>
+    ) {
+        let Fixture { paths, dir, mut rt } = fixture;
+
+        let real_data_path = dir.path().join("real_data");
+        let real_data_path_2 = dir.path().join("real_data_2");
+        let data_path = dir.path().join("data");
+        fs::create_dir(&real_data_path).unwrap();
+        fs::create_dir(&real_data_path_2).unwrap();
+        symlink(&real_data_path, &data_path).unwrap();
+
+        // Create the first set of files
+        for path in &paths {
+            let path = real_data_path
+                .clone()
+                .join(path.file_name().unwrap());
+            create_and_write(path, b"a").unwrap();
+        }
+
+        // Symlink those files into `data_path`
+        for path in &paths {
+            let data_file_path = data_path
+                .clone()
+                .join(path.file_name().unwrap());
+            symlink(data_file_path, path).unwrap();
+        }
+
+        // Create the second set of files.
+        for path in &paths {
+            let path = real_data_path_2
+                .clone()
+                .join(path.file_name().unwrap());
+            create_and_write(path, b"b").unwrap();
+        }
+
+        rt.spawn(bg);
+
+        fs::remove_dir_all(&data_path).unwrap();
+        symlink(&real_data_path_2, &data_path).unwrap();
+
+        let (item, _) = next_change(&mut rt, watch).unwrap();
+        assert!(item.is_some());
+        println!("saw first change");
+    }
+
+
+    #[test]
+    fn polling_detects_create() {
+        Fixture::new().test_polling(test_detects_create)
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn inotify_detects_create() {
+        Fixture::new().test_inotify(test_detects_create)
+    }
+
+    #[test]
+    #[cfg(not(target_os = "windows"))]
+    fn polling_detects_create_symlink() {
+        Fixture::new().test_polling(test_detects_create_symlink)
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn inotify_detects_create_symlink() {
+        Fixture::new().test_inotify(test_detects_create_symlink)
+    }
+
+    #[test]
+    #[cfg(not(target_os = "windows"))]
+    fn polling_detects_create_double_symlink() {
+        Fixture::new().test_polling(test_detects_create_double_symlink)
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn inotify_detects_create_double_symlink() {
+        Fixture::new().test_inotify(test_detects_create_double_symlink)
+    }
+
+    #[test]
+    fn polling_detects_modification() {
+        Fixture::new().test_polling(test_detects_modification)
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn inotify_detects_modification() {
+        Fixture::new().test_inotify(test_detects_modification)
+    }
+
+    #[test]
+    #[cfg(not(target_os = "windows"))]
+    fn polling_detects_modification_symlink() {
+        Fixture::new().test_polling(test_detects_modification_symlink)
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn inotify_detects_modification_symlink() {
+        Fixture::new().test_inotify(test_detects_modification_symlink)
+    }
+
+    #[test]
+    #[cfg(not(target_os = "windows"))]
+    fn polling_detects_modification_double_symlink() {
+        Fixture::new().test_polling(test_detects_modification_double_symlink)
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn inotify_detects_modification_double_symlink() {
+        Fixture::new().test_inotify(test_detects_modification_double_symlink)
+    }
+
+    #[test]
+    #[cfg(not(target_os = "windows"))]
+    fn polling_detects_double_symlink_retargeting() {
+        Fixture::new().test_polling(test_detects_double_symlink_retargeting)
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn inotify_detects_double_symlink_retargeting() {
+        Fixture::new().test_inotify(test_detects_double_symlink_retargeting)
+    }
+
+    #[test]
+    fn polling_detects_delete_and_recreate() {
+        Fixture::new().test_polling(test_detects_delete_and_recreate)
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn inotify_detects_delete_and_recreate() {
+        Fixture::new().test_inotify(test_detects_delete_and_recreate)
+    }
+
+}
