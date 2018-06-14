@@ -12,8 +12,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const configMapName = "conduit-ca-bundle"
-
 func main() {
 	controllerNamespace := flag.String("controller-namespace", "conduit", "namespace in which Conduit is installed")
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")

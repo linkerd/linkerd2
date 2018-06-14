@@ -634,5 +634,4 @@ spec:
         - "-controller-namespace={{.Namespace}}"
         - "-log-level={{.ControllerLogLevel}}"
         - "-logtostderr=true"
-
 `
