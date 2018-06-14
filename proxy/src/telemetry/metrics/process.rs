@@ -6,7 +6,7 @@ use super::{Counter, Gauge, Metric};
 pub struct ProcessMetrics {
     cpu_seconds_total: Counter,
     open_fds: Gauge,
-    // max_fds: Gauge, // TODO: support this
+    max_fds: Option<Gauge>,
     virtual_memory_bytes: Gauge,
     resident_memory_bytes: Gauge,
 }
@@ -17,7 +17,7 @@ impl ProcessMetrics {
             "Total user and system CPU time spent in seconds."
         },
         process_open_fds: Gauge { "Number of open file descriptors." },
-        // process_max_fds: Gauge { "Maximum number of open file descriptors." },
+        process_max_fds: Gauge { "Maximum number of open file descriptors." },
         process_virtual_memory_bytes: Gauge {
             "Virtual memory size in bytes."
         },
@@ -43,8 +43,10 @@ impl fmt::Display for ProcessMetrics {
         Self::process_open_fds.fmt_help(f)?;
         Self::process_open_fds.fmt_metric(f, self.open_fds)?;
 
-        // Self::process_max_fds.fmt_help(f)?;
-        // Self::process_max_fds.fmt_metric(f, self.max_fds)?;
+        if let Some(ref max_fds) = self.max_fds {
+            Self::process_max_fds.fmt_help(f)?;
+            Self::process_max_fds.fmt_metric(f, *max_fds)?;
+        }
 
         Self::process_virtual_memory_bytes.fmt_help(f)?;
         Self::process_virtual_memory_bytes.fmt_metric(
@@ -81,6 +83,7 @@ mod imp {
         let metrics = ProcessMetrics {
             cpu_seconds_total: cpu_seconds_total,
             open_fds: open_fds(stat.pid)?,
+            max_fds: max_fds()?,
             resident_memory_bytes,
             virtual_memory_bytes,
         };
@@ -95,6 +98,13 @@ mod imp {
             }
         }
         Ok(Gauge::from(open))
+    }
+
+    fn max_fds() -> io::Result<Option<Gauge>> {
+        let limit = pid::limits_self()?.max_open_files;
+        let max_fds = limit.soft.or(limit.hard)
+            .map(|max| Gauge::from(max as u64));
+        Ok(max_fds)
     }
 }
 
