@@ -4,8 +4,6 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import 'whatwg-fetch';
 
-let foo = 3; // trigger a lint error
-
 const checkFetchOk = resp => {
   if (!resp.ok) {
     throw Error(resp.statusText);
