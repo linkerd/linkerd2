@@ -37,7 +37,7 @@ RUN if [ -n "$PROXY_UNOPTIMIZED" ]; \
 
 # Build gRPC bindings, leaving the proxy mocked out.
 COPY proto/proxy proto/proxy
-COPY proto/common proto/common
+COPY proto/common.proto proto/common.proto
 COPY proxy/controller-grpc proxy/controller-grpc
 RUN if [ -n "$PROXY_UNOPTIMIZED" ]; \
     then cargo build -p conduit-proxy-controller-grpc --frozen ; \

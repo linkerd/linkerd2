@@ -2,7 +2,9 @@ syntax = "proto3";
 
 package conduit.proxy.destination;
 
-import "common/common.proto";
+import "common.proto";
+
+option go_package = "github.com/runconduit/conduit/controller/gen/proxy/destination";
 
 /// Destination Service ///
 //
