@@ -25,13 +25,13 @@ func NewFakeAPI(configs ...string) (*API, error) {
 	clientSet := fake.NewSimpleClientset(objs...)
 	return NewAPI(
 		clientSet,
-		NS,
+		CM,
 		Deploy,
-		RS,
+		Endpoint,
+		NS,
 		Pod,
 		RC,
+		RS,
 		Svc,
-		Endpoint,
-		CM,
 	), nil
 }
