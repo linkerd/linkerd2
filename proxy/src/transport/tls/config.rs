@@ -464,36 +464,15 @@ mod tests {
     };
 
     use std::{
-        path::Path,
-        io::{self, Write},
+        io::Write,
         fs::{self, File},
         thread,
     };
+    #[cfg(not(target_os = "windows"))]
+    use std::os::unix::fs::symlink;
 
     use futures::{Sink, Stream};
     use futures_watch::Watch;
-
-    // These functions are a workaround for Windows having separate API calls
-    // for symlinking files and directories. You're welcome, Brian ;)
-    fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()> {
-        #[cfg(target_os = "windows")] {
-            ::std::os::windows::fs::symlink_file(src, dst)?;
-        }
-        #[cfg(not(target_os = "windows"))] {
-            ::std::os::unix::fs::symlink(src, dst)?;
-        }
-        Ok(())
-    }
-
-    fn symlink_dir<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()> {
-        #[cfg(target_os = "windows")] {
-            ::std::os::windows::fs::symlink_dir(src, dst)?;
-        }
-        #[cfg(not(target_os = "windows"))] {
-            ::std::os::unix::fs::symlink(src, dst)?;
-        }
-        Ok(())
-    }
 
     struct Fixture {
         cfg: CommonSettings,
@@ -667,6 +646,7 @@ mod tests {
         assert!(item.is_some());
     }
 
+    #[cfg(not(target_os = "windows"))]
     fn test_detects_create_symlink(
         fixture: Fixture,
         stream: impl Stream<Item = (), Error=()> + 'static,
@@ -696,7 +676,7 @@ mod tests {
         let (watch, bg) = watch_stream(stream);
         rt.spawn(bg);
 
-        symlink_file(trust_anchors_path, cfg.trust_anchors)
+        symlink(trust_anchors_path, cfg.trust_anchors)
             .expect("symlink trust anchors");
 
         let next = watch.into_future().map_err(|(e, _)| e);
@@ -704,7 +684,7 @@ mod tests {
             .expect("first change");
         assert!(item.is_some());
 
-        symlink_file(private_key_path, cfg.private_key)
+        symlink(private_key_path, cfg.private_key)
             .expect("symlink private key");
 
         let next = watch.into_future().map_err(|(e, _)| e);
@@ -712,7 +692,7 @@ mod tests {
             .expect("second change");
         assert!(item.is_some());
 
-        symlink_file(end_entity_cert_path, cfg.end_entity_cert)
+        symlink(end_entity_cert_path, cfg.end_entity_cert)
             .expect("symlink end entity cert");
 
         let next = watch.into_future().map_err(|(e, _)| e);
@@ -724,6 +704,7 @@ mod tests {
     // Test for when the watched files are symlinks to a file insdie of a
     // directory which is also a symlink (as is the case with Kubernetes
     // ConfigMap/Secret volume mounts).
+    #[cfg(not(target_os = "windows"))]
     fn test_detects_create_double_symlink(
         fixture: Fixture,
         stream: impl Stream<Item = (), Error=()> + 'static,
@@ -733,7 +714,7 @@ mod tests {
         let real_data_path = dir.path().join("real_data");
         let data_path = dir.path().join("data");
         fs::create_dir(&real_data_path).expect("create data dir");
-        symlink_dir(&real_data_path, &data_path).expect("create data dir symlink");
+        symlink(&real_data_path, &data_path).expect("create data dir symlink");
 
         let end_entity_cert = File::create(real_data_path.clone().join(END_ENTITY_CERT))
             .expect("create end entity cert");
@@ -751,7 +732,7 @@ mod tests {
         let (watch, bg) = watch_stream(stream);
         rt.spawn(bg);
 
-        symlink_file(data_path.clone().join(TRUST_ANCHORS), cfg.trust_anchors)
+        symlink(data_path.clone().join(TRUST_ANCHORS), cfg.trust_anchors)
             .expect("symlink trust anchors");
 
         let next = watch.into_future().map_err(|(e, _)| e);
@@ -763,7 +744,7 @@ mod tests {
         // macOS reporting timestamps with second resolution.
         // https://github.com/runconduit/conduit/issues/1090
         thread::sleep(Duration::from_secs(2));
-        symlink_file(data_path.clone().join(PRIVATE_KEY), cfg.private_key)
+        symlink(data_path.clone().join(PRIVATE_KEY), cfg.private_key)
             .expect("symlink private key");
 
         let next = watch.into_future().map_err(|(e, _)| e);
@@ -775,7 +756,7 @@ mod tests {
         // macOS reporting timestamps with second resolution.
         // https://github.com/runconduit/conduit/issues/1090
         thread::sleep(Duration::from_secs(2));
-        symlink_file(real_data_path.clone().join(END_ENTITY_CERT), cfg.end_entity_cert)
+        symlink(real_data_path.clone().join(END_ENTITY_CERT), cfg.end_entity_cert)
             .expect("symlink end entity cert");
 
         let next = watch.into_future().map_err(|(e, _)| e);
@@ -784,6 +765,7 @@ mod tests {
         assert!(item.is_some());
     }
 
+    #[cfg(not(target_os = "windows"))]
     fn test_detects_modification_symlink(
         fixture: Fixture,
         stream: impl Stream<Item = (), Error=()> + 'static,
@@ -818,11 +800,11 @@ mod tests {
             .expect("write to end entity cert");
         end_entity_cert.sync_all().expect("sync end entity cert");
 
-        symlink_file(private_key_path, cfg.private_key)
+        symlink(private_key_path, cfg.private_key)
             .expect("symlink private key");
-        symlink_file(end_entity_cert_path, cfg.end_entity_cert)
+        symlink(end_entity_cert_path, cfg.end_entity_cert)
             .expect("symlink end entity cert");
-        symlink_file(trust_anchors_path, cfg.trust_anchors)
+        symlink(trust_anchors_path, cfg.trust_anchors)
             .expect("symlink trust anchors");
 
         let (watch, bg) = watch_stream(stream);
@@ -926,6 +908,7 @@ mod tests {
         println!("saw third change");
     }
 
+    #[cfg(not(target_os = "windows"))]
     fn test_detects_modification_double_symlink(
         fixture: Fixture,
         stream: impl Stream<Item = (), Error=()> + 'static,
@@ -935,7 +918,7 @@ mod tests {
         let real_data_path = dir.path().join("real_data");
         let data_path = dir.path().join("data");
         fs::create_dir(&real_data_path).expect("create data dir");
-        symlink_dir(&real_data_path, &data_path).expect("create data dir symlink");
+        symlink(&real_data_path, &data_path).expect("create data dir symlink");
 
         let mut trust_anchors = File::create(real_data_path.clone().join(TRUST_ANCHORS))
             .expect("create trust anchors");
@@ -958,11 +941,11 @@ mod tests {
             .expect("write to end entity cert");
         end_entity_cert.sync_all().expect("sync end entity cert");
 
-        symlink_file(data_path.clone().join(PRIVATE_KEY), cfg.private_key)
+        symlink(data_path.clone().join(PRIVATE_KEY), cfg.private_key)
             .expect("symlink private key");
-        symlink_file(data_path.clone().join(END_ENTITY_CERT), cfg.end_entity_cert)
+        symlink(data_path.clone().join(END_ENTITY_CERT), cfg.end_entity_cert)
             .expect("symlink end entity cert");
-        symlink_file(data_path.clone().join(TRUST_ANCHORS), cfg.trust_anchors)
+        symlink(data_path.clone().join(TRUST_ANCHORS), cfg.trust_anchors)
             .expect("symlink trust anchors");
 
         let (watch, bg) = watch_stream(stream);
@@ -1002,6 +985,7 @@ mod tests {
         println!("saw third change");
     }
 
+    #[cfg(not(target_os = "windows"))]
     fn test_detects_double_symlink_retargeting(
         fixture: Fixture,
         stream: impl Stream<Item = (), Error=()> + 'static,
@@ -1013,7 +997,7 @@ mod tests {
         let data_path = dir.path().join("data");
         fs::create_dir(&real_data_path).expect("create data dir");
         fs::create_dir(&real_data_path_2).expect("create data dir 2");
-        symlink_dir(&real_data_path, &data_path).expect("create data dir symlink");
+        symlink(&real_data_path, &data_path).expect("create data dir symlink");
 
         let mut trust_anchors = File::create(real_data_path.clone().join(TRUST_ANCHORS))
             .expect("create trust anchors");
@@ -1057,11 +1041,11 @@ mod tests {
             .expect("write to end entity cert 2");
         end_entity_cert.sync_all().expect("sync end entity cert 2");
 
-        symlink_file(data_path.clone().join(PRIVATE_KEY), cfg.private_key)
+        symlink(data_path.clone().join(PRIVATE_KEY), cfg.private_key)
             .expect("symlink private key");
-        symlink_file(data_path.clone().join(END_ENTITY_CERT), cfg.end_entity_cert)
+        symlink(data_path.clone().join(END_ENTITY_CERT), cfg.end_entity_cert)
             .expect("symlink end entity cert");
-        symlink_file(data_path.clone().join(TRUST_ANCHORS), cfg.trust_anchors)
+        symlink(data_path.clone().join(TRUST_ANCHORS), cfg.trust_anchors)
             .expect("symlink trust anchors");
 
         let (watch, bg) = watch_stream(stream);
@@ -1069,7 +1053,7 @@ mod tests {
 
         fs::remove_dir_all(&data_path)
             .expect("remove original data dir symlink");
-        symlink_dir(&real_data_path_2, &data_path)
+        symlink(&real_data_path_2, &data_path)
             .expect("create second data dir symlink");
 
         let next = watch.into_future().map_err(|(e, _)| e);
@@ -1099,6 +1083,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(target_os = "windows"))]
     fn polling_detects_create_symlink() {
         let fixture = fixture();
         let stream = fixture.cfg.clone()
@@ -1117,6 +1102,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(target_os = "windows"))]
     fn polling_detects_create_double_symlink() {
         let fixture = fixture();
         let stream = fixture.cfg.clone()
@@ -1153,6 +1139,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(target_os = "windows"))]
     fn polling_detects_modification_symlink() {
         let fixture = fixture();
         let stream = fixture.cfg.clone()
@@ -1171,6 +1158,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(target_os = "windows"))]
     fn polling_detects_modification_double_symlink() {
         let fixture = fixture();
         let stream = fixture.cfg.clone()
@@ -1189,6 +1177,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(target_os = "windows"))]
     fn polling_detects_double_symlink_retargeting() {
         let fixture = fixture();
         let stream = fixture.cfg.clone()
