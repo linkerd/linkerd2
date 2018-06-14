@@ -30,6 +30,7 @@ extern crate prost_types;
 extern crate quickcheck;
 extern crate rand;
 extern crate regex;
+extern crate ring;
 #[cfg(test)]
 extern crate tempdir;
 extern crate tokio;
@@ -74,6 +75,7 @@ pub mod convert;
 pub mod ctx;
 mod dns;
 mod drain;
+pub mod fs_watch;
 mod inbound;
 mod logging;
 mod map_err;
