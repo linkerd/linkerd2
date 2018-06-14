@@ -104,12 +104,14 @@ message PodErrors {
 
   message PodError {
     oneof error {
-      Unknown unknown = 1;
+      ContainerError container = 1;
     }
 
-    // Covers errors such as container failures
-    message Unknown {
+    // To report init-container and container failures
+    message ContainerError {
       string message = 1;
+      string container = 2;
+      string image = 3;
     }
   }
 }
