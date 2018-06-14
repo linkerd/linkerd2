@@ -1,6 +1,7 @@
-use std::{fmt, io};
-
+use std::fmt;
 use super::{Counter, Gauge, Metric};
+
+pub use self::imp::Sensor;
 
 #[derive(Copy, Clone)]
 pub struct ProcessMetrics {
@@ -25,12 +26,7 @@ impl ProcessMetrics {
             "Resident memory size in bytes."
         }
     }
-
-    pub fn collect() -> io::Result<Self> {
-        self::imp::collect()
-    }
 }
-
 
 impl fmt::Display for ProcessMetrics {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -64,31 +60,53 @@ impl fmt::Display for ProcessMetrics {
 
 #[cfg(target_os = "linux")]
 mod imp {
-    use super::ProcessMetrics;
+    use super::*;
     use super::super::{Counter, Gauge};
 
     use std::{io, fs};
 
     use procinfo::pid;
-    use libc::pid_t;
+    use libc::{self, pid_t};
 
-    pub fn collect() -> io::Result<ProcessMetrics> {
-        let stat = pid::stat_self()?;
-
-        let cpu_seconds_total =
-            Counter::from((stat.utime + stat.stime) as u64);
-        let virtual_memory_bytes = Gauge::from(stat.vsize as u64);
-        let resident_memory_bytes = Gauge::from(stat.rss as u64);
-
-        let metrics = ProcessMetrics {
-            cpu_seconds_total: cpu_seconds_total,
-            open_fds: open_fds(stat.pid)?,
-            max_fds: max_fds()?,
-            resident_memory_bytes,
-            virtual_memory_bytes,
-        };
-        Ok(metrics)
+    #[derive(Debug)]
+    pub struct Sensor {
+        page_size: usize,
     }
+
+    impl Sensor {
+        pub fn new() -> io::Result<Sensor> {
+            let page_size = match unsafe { libc::sysconf(libc::_SC_PAGESIZE) } {
+                e if e < 0 => {
+                    let error = io::Error::last_os_error();
+                    error!("error getting page size: {:?}", error);
+                    return Err(error);
+                },
+                page_size => page_size as usize,
+            };
+            Ok(Sensor {
+                page_size,
+            })
+        }
+
+        pub fn metrics(&self) -> io::Result<ProcessMetrics> {
+            let stat = pid::stat_self()?;
+
+            let cpu_seconds_total = Counter::from((stat.utime + stat.stime) as u64);
+            let virtual_memory_bytes = Gauge::from(stat.vsize as u64);
+            let resident_memory_bytes = Gauge::from((stat.rss * self.page_size) as u64);
+
+            let metrics = ProcessMetrics {
+                cpu_seconds_total,
+                virtual_memory_bytes,
+                resident_memory_bytes,
+                open_fds: open_fds(stat.pid)?,
+                max_fds: max_fds()?,
+            };
+
+            Ok(metrics)
+        }
+    }
+
 
     fn open_fds(pid: pid_t) -> io::Result<Gauge> {
         let mut open = 0;
@@ -110,13 +128,26 @@ mod imp {
 
 #[cfg(not(target_os = "linux"))]
 mod imp {
-    use super::ProcessMetrics;
+    use super::*;
     use std::io;
 
-    pub fn collect() -> io::Result<ProcessMetrics> {
-        Err(io::Error::new(
-            io::ErrorKind::Other,
-            "procinfo not supported on this operating system"
-        ))
+    #[derive(Debug)]
+    pub struct Sensor {}
+
+    impl Sensor {
+        pub fn new() -> io::Result<Sensor> {
+            Err(io::Error::new(
+                io::ErrorKind::Other,
+                "procinfo not supported on this operating system"
+            ))
+        }
+
+        pub fn metrics(&self) -> io::Result<ProcessMetrics> {
+            Err(io::Error::new(
+                io::ErrorKind::Other,
+                "procinfo not supported on this operating system"
+            ))
+        }
     }
+
 }
