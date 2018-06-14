@@ -246,6 +246,7 @@ mod tests {
     use tokio::runtime::current_thread::Runtime;
 
     use std::{
+        path::Path,
         io::Write,
         fs::{self, File},
     };
@@ -253,7 +254,7 @@ mod tests {
     use std::os::unix::fs::symlink;
 
     use futures::{Sink, Stream};
-    use futures_watch::Watch;
+    use futures_watch::{Watch, WatchError};
 
     struct Fixture {
         cfg: CommonSettings,
@@ -265,16 +266,63 @@ mod tests {
     const PRIVATE_KEY: &'static str = "test-test.p8";
     const TRUST_ANCHORS: &'static str = "ca.pem";
 
-    fn fixture() -> Fixture {
-        let _ = ::env_logger::try_init();
-        let dir = TempDir::new("certs").expect("temp dir");
-        let cfg = CommonSettings {
-            trust_anchors: dir.path().join(TRUST_ANCHORS),
-            end_entity_cert: dir.path().join(END_ENTITY_CERT),
-            private_key: dir.path().join(PRIVATE_KEY),
-        };
-        let rt = Runtime::new().expect("runtime");
-        Fixture { cfg, dir, rt }
+    impl Fixture {
+        fn new() -> Fixture {
+            let _ = ::env_logger::try_init();
+            let dir = TempDir::new("certs").unwrap();
+            let cfg = CommonSettings {
+                trust_anchors: dir.path().join(TRUST_ANCHORS),
+                end_entity_cert: dir.path().join(END_ENTITY_CERT),
+                private_key: dir.path().join(PRIVATE_KEY),
+            };
+            let rt = Runtime::new().unwrap();
+            Fixture { cfg, dir, rt }
+        }
+
+        fn test_polling(
+            self,
+            test: fn(Self, Watch<()>, Box<Future<Item=(), Error = ()>>)
+        ) {
+            let paths = self.cfg.paths().iter()
+                .map(|&p| p.clone())
+                .collect::<Vec<PathBuf>>();
+            let stream = fs_watch::stream_changes_polling(
+                paths,
+                Duration::from_secs(1)
+            );
+            let (watch, bg) = watch_stream(stream);
+            test(self, watch, bg)
+        }
+
+        #[cfg(target_os="linux")]
+        fn test_inotify(
+            self,
+            test: fn(Self, Watch<()>, Box<Future<Item=(), Error = ()>>)
+        ) {
+            let paths = self.cfg.paths().iter()
+                .map(|&p| p.clone())
+                .collect::<Vec<PathBuf>>();
+            let stream = fs_watch::inotify::WatchStream::new(paths)
+                .unwrap()
+                .map_err(|e| panic!("{}", e));
+            let (watch, bg) = watch_stream(stream);
+            test(self, watch, bg)
+        }
+    }
+
+    fn create_file<P: AsRef<Path>>(path: P) -> io::Result<File> {
+        let f = File::create(path)?;
+        f.sync_all()?;
+        println!("created {:?}", f);
+        Ok(f)
+    }
+
+    fn create_and_write<P: AsRef<Path>>(path: P, s: &[u8]) -> io::Result<File> {
+        let mut f = File::create(path)?;
+        f.write_all(s)?;
+        f.sync_all()?;
+        println!("created and wrote to {:?}", f);
+        Ok(f)
     }
 
     fn watch_stream(stream: impl Stream<Item = (), Error = ()> + 'static)
@@ -291,162 +339,104 @@ mod tests {
         (watch, Box::new(f))
     }
 
+    fn next_change(rt: &mut Runtime, watch: Watch<()>)
+        -> Result<(Option<()>, Watch<()>), WatchError>
+    {
+        let next = watch.into_future().map_err(|(e, _)| e);
+        rt.block_on_for(Duration::from_secs(2), next)
+    }
+
     fn test_detects_create(
         fixture: Fixture,
-        stream: impl Stream<Item = (), Error=()> + 'static,
+        watch: Watch<()>,
+        bg: Box<Future<Item = (), Error = ()>>
     ) {
         let Fixture { cfg, dir: _dir, mut rt } = fixture;
 
-        let (watch, bg) = watch_stream(stream);
         rt.spawn(bg);
 
-        let f = File::create(cfg.trust_anchors)
-            .expect("create trust anchors");
-        f.sync_all().expect("create trust anchors");
-        println!("created {:?}", f);
+        create_file(cfg.trust_anchors).unwrap();
 
-        let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
-            .expect("first change");
+        let (item, watch) = next_change(&mut rt, watch).unwrap();
         assert!(item.is_some());
 
-        let f = File::create(cfg.end_entity_cert)
-            .expect("create end entity cert");
-        f.sync_all()
-            .expect("sync end entity cert");
-        println!("created {:?}", f);
+        create_file(cfg.end_entity_cert).unwrap();
 
-        let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
-            .expect("second change");
+        let (item, watch) = next_change(&mut rt, watch).unwrap();
         assert!(item.is_some());
 
-        let f = File::create(cfg.private_key)
-            .expect("create private key");
-        f.sync_all()
-            .expect("sync private key");
-        println!("created {:?}", f);
+        create_file(cfg.private_key).unwrap();
 
-        let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, _) = rt.block_on_for(Duration::from_secs(2), next)
-            .expect("third change");
+        let (item, _) = next_change(&mut rt, watch).unwrap();
         assert!(item.is_some());
     }
 
     fn test_detects_delete_and_recreate(
         fixture: Fixture,
-        stream: impl Stream<Item = (), Error=()> + 'static,
+        watch: Watch<()>,
+        bg: Box<Future<Item = (), Error = ()>>
     ) {
-        let _ = ::env_logger::try_init();
-
         let Fixture { cfg, dir: _dir, mut rt } = fixture;
-
-        let (watch, bg) = watch_stream(stream);
         rt.spawn(bg);
 
-        let f = File::create(cfg.trust_anchors)
-            .expect("create trust anchors");
-        f.sync_all().expect("create trust anchors");
-        println!("created {:?}", f);
+        create_file(cfg.trust_anchors).unwrap();
 
-        let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
-            .expect("first change");
+        let (item, watch) = next_change(&mut rt, watch).unwrap();
         assert!(item.is_some());
 
-        let f = File::create(cfg.end_entity_cert)
-            .expect("create end entity cert");
-        f.sync_all()
-            .expect("sync end entity cert");
-        println!("created {:?}", f);
+        create_file(cfg.end_entity_cert).unwrap();
 
-        let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
-            .expect("second change");
+        let (item, watch) = next_change(&mut rt, watch).unwrap();
         assert!(item.is_some());
 
-        let mut f = File::create(&cfg.private_key)
-            .expect("create private key");
-        f.write_all(b"i'm the first private key")
-            .expect("write private key once");
-        f.sync_all()
-            .expect("sync private key");
-        println!("created {:?}", f);
+        create_and_write(&cfg.private_key, b"i'm the first private key").unwrap();
 
-        let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
-            .expect("third change");
+        let (item, watch) = next_change(&mut rt, watch).unwrap();
         assert!(item.is_some());
 
-        fs::remove_file(&cfg.private_key).expect("remove private key");
-        println!("deleted {:?}", f);
+        fs::remove_file(&cfg.private_key).unwrap();
+        println!("deleted private key");
 
-        let mut f = File::create(&cfg.private_key)
-            .expect("rereate private key");
-        f.write_all(b"i'm the new private key")
-            .expect("write private key once");
-        f.sync_all()
-            .expect("sync private key");
-        println!("recreated {:?}", f);
+        create_and_write(&cfg.private_key, b"i'm the new private key").unwrap();
 
-        let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, _) = rt.block_on_for(Duration::from_secs(2), next)
-            .expect("fourth change");
+        let (item, _) = next_change(&mut rt, watch).unwrap();
         assert!(item.is_some());
     }
 
     #[cfg(not(target_os = "windows"))]
     fn test_detects_create_symlink(
         fixture: Fixture,
-        stream: impl Stream<Item = (), Error=()> + 'static,
+        watch: Watch<()>,
+        bg: Box<Future<Item = (), Error = ()>>
     ) {
         let Fixture { cfg, dir, mut rt } = fixture;
 
         let data_path = dir.path().join("data");
-        fs::create_dir(&data_path).expect("create data dir");
+        fs::create_dir(&data_path).unwrap();
 
         let trust_anchors_path = data_path.clone().join(TRUST_ANCHORS);
         let end_entity_cert_path = data_path.clone().join(END_ENTITY_CERT);
         let private_key_path = data_path.clone().join(PRIVATE_KEY);
 
-        let end_entity_cert = File::create(&end_entity_cert_path)
-            .expect("create end entity cert");
-        end_entity_cert.sync_all()
-            .expect("sync end entity cert");
-        let private_key = File::create(&private_key_path)
-            .expect("create private key");
-        private_key.sync_all()
-            .expect("sync private key");
-        let trust_anchors = File::create(&trust_anchors_path)
-            .expect("create trust anchors");
-        trust_anchors.sync_all()
-            .expect("sync trust_anchors");
+        create_file(&end_entity_cert_path).unwrap();
+        create_file(&private_key_path).unwrap();
+        create_file(&trust_anchors_path).unwrap();
 
-        let (watch, bg) = watch_stream(stream);
         rt.spawn(bg);
 
-        symlink(trust_anchors_path, cfg.trust_anchors)
-            .expect("symlink trust anchors");
+        symlink(trust_anchors_path, cfg.trust_anchors).unwrap();
 
-        let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
-            .expect("first change");
+        let (item, watch) = next_change(&mut rt, watch).unwrap();
         assert!(item.is_some());
 
-        symlink(private_key_path, cfg.private_key)
-            .expect("symlink private key");
+        symlink(private_key_path, cfg.private_key).unwrap();
 
-        let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
-            .expect("second change");
+        let (item, watch) = next_change(&mut rt, watch).unwrap();
         assert!(item.is_some());
 
-        symlink(end_entity_cert_path, cfg.end_entity_cert)
-            .expect("symlink end entity cert");
+        symlink(end_entity_cert_path, cfg.end_entity_cert).unwrap();
 
-        let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, _) = rt.block_on_for(Duration::from_secs(2), next)
-            .expect("third change");
+        let (item, _) = next_change(&mut rt, watch).unwrap();
         assert!(item.is_some());
     }
 
@@ -456,195 +446,145 @@ mod tests {
     #[cfg(not(target_os = "windows"))]
     fn test_detects_create_double_symlink(
         fixture: Fixture,
-        stream: impl Stream<Item = (), Error=()> + 'static,
+        watch: Watch<()>,
+        bg: Box<Future<Item = (), Error = ()>>
     ) {
         let Fixture { cfg, dir, mut rt } = fixture;
 
         let real_data_path = dir.path().join("real_data");
         let data_path = dir.path().join("data");
-        fs::create_dir(&real_data_path).expect("create data dir");
-        symlink(&real_data_path, &data_path).expect("create data dir symlink");
+        fs::create_dir(&real_data_path).unwrap();
+        symlink(&real_data_path, &data_path).unwrap();
 
-        let end_entity_cert = File::create(real_data_path.clone().join(END_ENTITY_CERT))
-            .expect("create end entity cert");
-        end_entity_cert.sync_all()
-            .expect("sync end entity cert");
-        let private_key = File::create(real_data_path.clone().join(PRIVATE_KEY))
-            .expect("create private key");
-        private_key.sync_all()
-            .expect("sync private key");
-        let trust_anchors = File::create(real_data_path.clone().join(TRUST_ANCHORS))
-            .expect("create trust anchors");
-        trust_anchors.sync_all()
-            .expect("sync private key");
+        create_file(real_data_path.clone().join(END_ENTITY_CERT)).unwrap();
+        create_file(real_data_path.clone().join(PRIVATE_KEY)).unwrap();
+        create_file(real_data_path.clone().join(TRUST_ANCHORS)).unwrap();
 
-        let (watch, bg) = watch_stream(stream);
         rt.spawn(bg);
 
         symlink(data_path.clone().join(TRUST_ANCHORS), cfg.trust_anchors)
-            .expect("symlink trust anchors");
+            .unwrap();
 
-        let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
-            .expect("first change");
+        let (item, watch) = next_change(&mut rt, watch).unwrap();
         assert!(item.is_some());
 
         symlink(data_path.clone().join(PRIVATE_KEY), cfg.private_key)
-            .expect("symlink private key");
+            .unwrap();
 
-        let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
-            .expect("second change");
+        let (item, watch) = next_change(&mut rt, watch).unwrap();
         assert!(item.is_some());
 
         symlink(real_data_path.clone().join(END_ENTITY_CERT), cfg.end_entity_cert)
-            .expect("symlink end entity cert");
+            .unwrap();
 
-        let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, _) = rt.block_on_for(Duration::from_secs(2), next)
-            .expect("third change");
+        let (item, _) = next_change(&mut rt, watch).unwrap();
         assert!(item.is_some());
     }
 
     #[cfg(not(target_os = "windows"))]
     fn test_detects_modification_symlink(
         fixture: Fixture,
-        stream: impl Stream<Item = (), Error=()> + 'static,
+        watch: Watch<()>,
+        bg: Box<Future<Item = (), Error = ()>>
     ) {
         let Fixture { cfg, dir, mut rt } = fixture;
 
         let data_path = dir.path().join("data");
-        fs::create_dir(&data_path).expect("create data dir");
+        fs::create_dir(&data_path).unwrap();
 
         let trust_anchors_path = data_path.clone().join(TRUST_ANCHORS);
         let end_entity_cert_path = data_path.clone().join(END_ENTITY_CERT);
         let private_key_path = data_path.clone().join(PRIVATE_KEY);
 
-        let mut trust_anchors = File::create(&trust_anchors_path)
-            .expect("create trust anchors");
-        println!("created {:?}", trust_anchors);
-        trust_anchors.write_all(b"I am not real trust anchors")
-            .expect("write to trust anchors");
-        trust_anchors.sync_all().expect("sync trust anchors");
+        let mut trust_anchors = create_and_write(
+            &trust_anchors_path,
+            b"I am not real trust anchors",
+        ).unwrap();
 
-        let mut private_key = File::create(&private_key_path)
-            .expect("create private key");
-        println!("created {:?}", private_key);
-        private_key.write_all(b"I am not a realprivate key")
-            .expect("write to private key");
-        private_key.sync_all().expect("sync private key");
+        let mut private_key = create_and_write(
+            &private_key_path,
+            b"I am not a realprivate key",
+        ).unwrap();
 
-        let mut end_entity_cert = File::create(&end_entity_cert_path)
-            .expect("create end entity cert");
-        println!("created {:?}", end_entity_cert);
-        end_entity_cert.write_all(b"I am not real end entity cert")
-            .expect("write to end entity cert");
-        end_entity_cert.sync_all().expect("sync end entity cert");
+        let mut end_entity_cert =  create_and_write(
+            &end_entity_cert_path,
+            b"I am not real end entity cert",
+        ).unwrap();
 
-        symlink(private_key_path, cfg.private_key)
-            .expect("symlink private key");
-        symlink(end_entity_cert_path, cfg.end_entity_cert)
-            .expect("symlink end entity cert");
-        symlink(trust_anchors_path, cfg.trust_anchors)
-            .expect("symlink trust anchors");
+        symlink(private_key_path, cfg.private_key).unwrap();
+        symlink(end_entity_cert_path, cfg.end_entity_cert).unwrap();
+        symlink(trust_anchors_path, cfg.trust_anchors).unwrap();
 
-        let (watch, bg) = watch_stream(stream);
-        rt.spawn(Box::new(bg));
+        rt.spawn(bg);
 
-        trust_anchors.write_all(b"Trust me on this :)")
-            .expect("write to trust anchors again");
-        trust_anchors.sync_all()
-            .expect("sync trust anchors again");
+        trust_anchors.write_all(b"Trust me on this :)").unwrap();
+        trust_anchors.sync_all().unwrap();
 
-        let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
-            .expect("first change");
+        let (item, watch) = next_change(&mut rt, watch).unwrap();
         assert!(item.is_some());
         println!("saw first change");
 
         end_entity_cert.write_all(b"This is the end of the end entity cert :)")
-            .expect("write to end entity cert again");
-        end_entity_cert.sync_all()
-            .expect("sync end entity cert again");
+            .unwrap();
+        end_entity_cert.sync_all().unwrap();
 
-        let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
-            .expect("second change");
+        let (item, watch) = next_change(&mut rt, watch).unwrap();
         assert!(item.is_some());
         println!("saw second change");
 
         private_key.write_all(b"Keep me private :)")
-            .expect("write to private key");
+            .unwrap();
         private_key.sync_all()
-            .expect("sync private key again");
+            .unwrap();
 
-        let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, _) = rt.block_on_for(Duration::from_secs(2), next)
-            .expect("third change");
+        let (item, _) = next_change(&mut rt, watch).unwrap();
         assert!(item.is_some());
         println!("saw third change");
     }
 
     fn test_detects_modification(
         fixture: Fixture,
-        stream: impl Stream<Item = (), Error=()> + 'static,
+        watch: Watch<()>,
+        bg: Box<Future<Item = (), Error = ()>>
     ) {
         let Fixture { cfg, dir: _dir, mut rt } = fixture;
 
-        let mut trust_anchors = File::create(cfg.trust_anchors.clone())
-            .expect("create trust anchors");
-        println!("created {:?}", trust_anchors);
-        trust_anchors.write_all(b"I am not real trust anchors")
-            .expect("write to trust anchors");
-        trust_anchors.sync_all().expect("sync trust anchors");
+        let mut trust_anchors = create_and_write(
+            &cfg.trust_anchors,
+            b"I am not real trust anchors",
+        ).unwrap();
 
-        let mut private_key = File::create(cfg.private_key.clone())
-            .expect("create private key");
-        println!("created {:?}", private_key);
-        private_key.write_all(b"I am not a realprivate key")
-            .expect("write to private key");
-        private_key.sync_all().expect("sync private key");
+        let mut private_key = create_and_write(
+            &cfg.private_key,
+            b"I am not a real private key",
+        ).unwrap();
 
-        let mut end_entity_cert = File::create(cfg.end_entity_cert.clone())
-            .expect("create end entity cert");
-        println!("created {:?}", end_entity_cert);
-        end_entity_cert.write_all(b"I am not real end entity cert")
-            .expect("write to end entity cert");
-        end_entity_cert.sync_all().expect("sync end entity cert");
+        let mut end_entity_cert = create_and_write(
+            &cfg.end_entity_cert.clone(),
+            b"I am not real end entity cert",
+        ).unwrap();
 
-        let (watch, bg) = watch_stream(stream);
-        rt.spawn(Box::new(bg));
+        trust_anchors.write_all(b"Trust me on this :)").unwrap();
+        trust_anchors.sync_all().unwrap();
 
-        trust_anchors.write_all(b"Trust me on this :)")
-            .expect("write to trust anchors again");
-        trust_anchors.sync_all()
-            .expect("sync trust anchors again");
+        rt.spawn(bg);
 
-        let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
-            .expect("first change");
+        let (item, watch) = next_change(&mut rt, watch).unwrap();
         assert!(item.is_some());
         println!("saw first change");
 
         end_entity_cert.write_all(b"This is the end of the end entity cert :)")
-            .expect("write to end entity cert again");
-        end_entity_cert.sync_all()
-            .expect("sync end entity cert again");
+            .unwrap();
+        end_entity_cert.sync_all().unwrap();
 
-        let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
-            .expect("second change");
+        let (item, watch) = next_change(&mut rt, watch).unwrap();
         assert!(item.is_some());
         println!("saw second change");
 
-        private_key.write_all(b"Keep me private :)")
-            .expect("write to private key");
-        private_key.sync_all()
-            .expect("sync private key again");
+        private_key.write_all(b"Keep me private :)").unwrap();
+        private_key.sync_all() .unwrap();
 
-        let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, _) = rt.block_on_for(Duration::from_secs(2), next)
-            .expect("third change");
+        let (item, _) = next_change(&mut rt, watch).unwrap();
         assert!(item.is_some());
         println!("saw third change");
     }
@@ -652,76 +592,58 @@ mod tests {
     #[cfg(not(target_os = "windows"))]
     fn test_detects_modification_double_symlink(
         fixture: Fixture,
-        stream: impl Stream<Item = (), Error=()> + 'static,
+        watch: Watch<()>,
+        bg: Box<Future<Item = (), Error = ()>>
     ) {
         let Fixture { cfg, dir, mut rt } = fixture;
 
         let real_data_path = dir.path().join("real_data");
         let data_path = dir.path().join("data");
-        fs::create_dir(&real_data_path).expect("create data dir");
-        symlink(&real_data_path, &data_path).expect("create data dir symlink");
+        fs::create_dir(&real_data_path).unwrap();
+        symlink(&real_data_path, &data_path).unwrap();
 
-        let mut trust_anchors = File::create(real_data_path.clone().join(TRUST_ANCHORS))
-            .expect("create trust anchors");
-        println!("created {:?}", trust_anchors);
-        trust_anchors.write_all(b"I am not real trust anchors")
-            .expect("write to trust anchors");
-        trust_anchors.sync_all().expect("sync trust anchors");
+        let mut trust_anchors = create_and_write(
+            real_data_path.clone().join(TRUST_ANCHORS),
+            b"I am not real trust anchors",
+        ).unwrap();
 
-        let mut private_key = File::create(real_data_path.clone().join(PRIVATE_KEY))
-            .expect("create private key");
-        println!("created {:?}", private_key);
-        private_key.write_all(b"I am not a realprivate key")
-            .expect("write to private key");
-        private_key.sync_all().expect("sync private key");
+        let mut private_key = create_and_write(
+            real_data_path.clone().join(PRIVATE_KEY),
+            b"I am not a real private key",
+        ).unwrap();
 
-        let mut end_entity_cert = File::create(real_data_path.clone().join(END_ENTITY_CERT))
-            .expect("create end entity cert");
-        println!("created {:?}", end_entity_cert);
-        end_entity_cert.write_all(b"I am not real end entity cert")
-            .expect("write to end entity cert");
-        end_entity_cert.sync_all().expect("sync end entity cert");
+        let mut end_entity_cert = create_and_write(
+            real_data_path.clone().join(END_ENTITY_CERT),
+            b"I am not real end entity cert"
+        ).unwrap();
 
-        symlink(data_path.clone().join(PRIVATE_KEY), cfg.private_key)
-            .expect("symlink private key");
-        symlink(data_path.clone().join(END_ENTITY_CERT), cfg.end_entity_cert)
-            .expect("symlink end entity cert");
-        symlink(data_path.clone().join(TRUST_ANCHORS), cfg.trust_anchors)
-            .expect("symlink trust anchors");
+        symlink(data_path.clone().join(PRIVATE_KEY), cfg.private_key).unwrap();
+        symlink(data_path.clone().join(END_ENTITY_CERT), cfg.end_entity_cert).unwrap();
+        symlink(data_path.clone().join(TRUST_ANCHORS), cfg.trust_anchors).unwrap();
 
-        let (watch, bg) = watch_stream(stream);
-        rt.spawn(Box::new(bg));
+        rt.spawn(bg);
 
-        trust_anchors.write_all(b"Trust me on this :)")
-            .expect("write to trust anchors again");
-        trust_anchors.sync_all()
-            .expect("sync trust anchors again");
+        trust_anchors.write_all(b"Trust me on this :)").unwrap();
+        trust_anchors.sync_all().unwrap();
 
-        let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
-            .expect("first change");
+
+        let (item, watch) = next_change(&mut rt, watch).unwrap();
         assert!(item.is_some());
         println!("saw first change");
 
         end_entity_cert.write_all(b"This is the end of the end entity cert :)")
-            .expect("write to end entity cert again");
-        end_entity_cert.sync_all()
-            .expect("sync end entity cert again");
+            .unwrap();
+        end_entity_cert.sync_all().unwrap();
 
-        let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, watch) = rt.block_on_for(Duration::from_secs(2), next)
-            .expect("second change");
+        let (item, watch) = next_change(&mut rt, watch).unwrap();
         assert!(item.is_some());
         println!("saw second change");
 
-        private_key.write_all(b"Keep me private :)")
-            .expect("write to private key");
+        private_key.write_all(b"Keep me private :)").unwrap();
         private_key.sync_all()
-            .expect("sync private key again");
+            .unwrap();
 
-        let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, _) = rt.block_on_for(Duration::from_secs(2), next)
-            .expect("third change");
+        let (item, _) = next_change(&mut rt, watch).unwrap();
         assert!(item.is_some());
         println!("saw third change");
     }
@@ -729,77 +651,61 @@ mod tests {
     #[cfg(not(target_os = "windows"))]
     fn test_detects_double_symlink_retargeting(
         fixture: Fixture,
-        stream: impl Stream<Item = (), Error=()> + 'static,
+        watch: Watch<()>,
+        bg: Box<Future<Item = (), Error = ()>>
     ) {
         let Fixture { cfg, dir, mut rt } = fixture;
 
         let real_data_path = dir.path().join("real_data");
         let real_data_path_2 = dir.path().join("real_data_2");
         let data_path = dir.path().join("data");
-        fs::create_dir(&real_data_path).expect("create data dir");
-        fs::create_dir(&real_data_path_2).expect("create data dir 2");
-        symlink(&real_data_path, &data_path).expect("create data dir symlink");
+        fs::create_dir(&real_data_path).unwrap();
+        fs::create_dir(&real_data_path_2).unwrap();
+        symlink(&real_data_path, &data_path).unwrap();
 
-        let mut trust_anchors = File::create(real_data_path.clone().join(TRUST_ANCHORS))
-            .expect("create trust anchors");
-        println!("created {:?}", trust_anchors);
-        trust_anchors.write_all(b"I am not real trust anchors")
-            .expect("write to trust anchors");
-        trust_anchors.sync_all().expect("sync trust anchors");
+        // Create the first set of files
+        create_and_write(
+            real_data_path.clone().join(TRUST_ANCHORS),
+            b"I am not real trust anchors",
+        ).unwrap();
 
-        let mut private_key = File::create(real_data_path.clone().join(PRIVATE_KEY))
-            .expect("create private key");
-        println!("created {:?}", private_key);
-        private_key.write_all(b"I am not a realprivate key")
-            .expect("write to private key");
-        private_key.sync_all().expect("sync private key");
+        create_and_write(
+            real_data_path.clone().join(PRIVATE_KEY),
+            b"I am not a real private key",
+        ).unwrap();
 
-        let mut end_entity_cert = File::create(real_data_path.clone().join(END_ENTITY_CERT))
-            .expect("create end entity cert");
-        println!("created {:?}", end_entity_cert);
-        end_entity_cert.write_all(b"I am not real end entity cert")
-            .expect("write to end entity cert");
-        end_entity_cert.sync_all().expect("sync end entity cert");
+        create_and_write(
+            real_data_path.clone().join(END_ENTITY_CERT),
+            b"I am not real end entity cert"
+        ).unwrap();
 
-        let mut trust_anchors = File::create(real_data_path_2.clone().join(TRUST_ANCHORS))
-            .expect("create trust anchors 2");
-        println!("created {:?}", trust_anchors);
-        trust_anchors.write_all(b"I am not real trust anchors either")
-            .expect("write to trust anchors 2");
-        trust_anchors.sync_all().expect("sync trust anchors 2");
+        // Symlink those files into `data_path`
+        symlink(data_path.clone().join(PRIVATE_KEY), cfg.private_key).unwrap();
+        symlink(data_path.clone().join(END_ENTITY_CERT), cfg.end_entity_cert).unwrap();
+        symlink(data_path.clone().join(TRUST_ANCHORS), cfg.trust_anchors) .unwrap();
 
-        let mut private_key = File::create(real_data_path_2.clone().join(PRIVATE_KEY))
-            .expect("create private key 2");
-        println!("created {:?}", private_key);
-        private_key.write_all(b"I am not a real private key either")
-            .expect("write to private key 2");
-        private_key.sync_all().expect("sync private key 2");
+        // Create the second set of files.
+        create_and_write(
+            real_data_path_2.clone().join(TRUST_ANCHORS),
+            b"I am not real trust anchors either",
+        ).unwrap();
 
-        let mut end_entity_cert = File::create(real_data_path_2.clone().join(END_ENTITY_CERT))
-            .expect("create end entity cert 2");
-        println!("created {:?}", end_entity_cert);
-        end_entity_cert.write_all(b"I am not real end entity cert either")
-            .expect("write to end entity cert 2");
-        end_entity_cert.sync_all().expect("sync end entity cert 2");
+        create_and_write(
+            real_data_path_2.clone().join(PRIVATE_KEY),
+            b"I am not real end entity cert either",
+        ).unwrap();
 
-        symlink(data_path.clone().join(PRIVATE_KEY), cfg.private_key)
-            .expect("symlink private key");
-        symlink(data_path.clone().join(END_ENTITY_CERT), cfg.end_entity_cert)
-            .expect("symlink end entity cert");
-        symlink(data_path.clone().join(TRUST_ANCHORS), cfg.trust_anchors)
-            .expect("symlink trust anchors");
+        create_and_write(
+            real_data_path_2.clone().join(END_ENTITY_CERT),
+            b"I am not real end entity cert either",
+        ).unwrap();
 
-        let (watch, bg) = watch_stream(stream);
-        rt.spawn(Box::new(bg));
+        rt.spawn(bg);
 
-        fs::remove_dir_all(&data_path)
-            .expect("remove original data dir symlink");
-        symlink(&real_data_path_2, &data_path)
-            .expect("create second data dir symlink");
+        fs::remove_dir_all(&data_path).unwrap();
+        symlink(&real_data_path_2, &data_path).unwrap();
 
-        let next = watch.into_future().map_err(|(e, _)| e);
-        let (item, _) = rt.block_on_for(Duration::from_secs(2), next)
-            .expect("first change");
+        let (item, _) = next_change(&mut rt, watch).unwrap();
         assert!(item.is_some());
         println!("saw first change");
     }
@@ -807,199 +713,95 @@ mod tests {
 
     #[test]
     fn polling_detects_create() {
-        let fixture = fixture();
-        let paths = fixture.cfg.paths().iter()
-            .map(|&p| p.clone())
-            .collect::<Vec<_>>();
-        let stream = fs_watch::stream_changes_polling(
-            paths,
-            Duration::from_secs(1)
-        );
-        test_detects_create(fixture, stream)
+        Fixture::new().test_polling(test_detects_create)
     }
 
     #[test]
     #[cfg(target_os = "linux")]
     fn inotify_detects_create() {
-        let fixture = fixture();
-        let paths = fixture.cfg.paths().iter().collect();
-        let stream = fs_watch::inotify::WatchStream::new(paths)
-            .expect("create watch")
-            .map_err(|e| panic!("{}", e));
-        test_detects_create(fixture, stream)
+        Fixture::new().test_inotify(test_detects_create)
     }
 
     #[test]
     #[cfg(not(target_os = "windows"))]
     fn polling_detects_create_symlink() {
-        let fixture = fixture();
-        let paths = fixture.cfg.paths().iter()
-            .map(|&p| p.clone())
-            .collect::<Vec<_>>();
-        let stream = fs_watch::stream_changes_polling(
-            paths,
-            Duration::from_secs(1)
-        );
-        test_detects_create_symlink(fixture, stream)
+        Fixture::new().test_polling(test_detects_create_symlink)
     }
 
     #[test]
     #[cfg(target_os = "linux")]
     fn inotify_detects_create_symlink() {
-        let fixture = fixture();
-        let paths = fixture.cfg.paths().iter().collect();
-        let stream = fs_watch::inotify::WatchStream::new(paths)
-            .expect("create watch")
-            .map_err(|e| panic!("{}", e));
-        test_detects_create_symlink(fixture, stream)
+        Fixture::new().test_inotify(test_detects_create_symlink)
     }
 
     #[test]
     #[cfg(not(target_os = "windows"))]
     fn polling_detects_create_double_symlink() {
-        let fixture = fixture();
-        let paths = fixture.cfg.paths().iter()
-            .map(|&p| p.clone())
-            .collect::<Vec<_>>();
-        let stream = fs_watch::stream_changes_polling(
-            paths,
-            Duration::from_secs(1)
-        );
-        test_detects_create_double_symlink(fixture, stream)
+        Fixture::new().test_polling(test_detects_create_double_symlink)
     }
 
     #[test]
     #[cfg(target_os = "linux")]
     fn inotify_detects_create_double_symlink() {
-        let fixture = fixture();
-        let paths = fixture.cfg.paths().iter().collect();
-        let stream = fs_watch::inotify::WatchStream::new(paths)
-            .expect("create watch")
-            .map_err(|e| panic!("{}", e));
-        test_detects_create_double_symlink(fixture, stream)
+        Fixture::new().test_inotify(test_detects_create_double_symlink)
     }
 
     #[test]
     fn polling_detects_modification() {
-        let fixture = fixture();
-        let paths = fixture.cfg.paths().iter()
-            .map(|&p| p.clone())
-            .collect::<Vec<_>>();
-        let stream = fs_watch::stream_changes_polling(
-            paths,
-            Duration::from_secs(1)
-        );
-        test_detects_modification(fixture, stream)
+        Fixture::new().test_polling(test_detects_modification)
     }
 
     #[test]
     #[cfg(target_os = "linux")]
     fn inotify_detects_modification() {
-        let fixture = fixture();
-        let paths = fixture.cfg.paths().iter().collect();
-        let stream = fs_watch::inotify::WatchStream::new(paths)
-            .expect("create watch")
-            .map_err(|e| panic!("{}", e));
-        test_detects_modification(fixture, stream)
+        Fixture::new().test_inotify(test_detects_modification)
     }
 
     #[test]
     #[cfg(not(target_os = "windows"))]
     fn polling_detects_modification_symlink() {
-        let fixture = fixture();
-        let paths = fixture.cfg.paths().iter()
-            .map(|&p| p.clone())
-            .collect::<Vec<_>>();
-        let stream = fs_watch::stream_changes_polling(
-            paths,
-            Duration::from_secs(1)
-        );
-        test_detects_modification_symlink(fixture, stream)
+        Fixture::new().test_polling(test_detects_modification_symlink)
     }
 
     #[test]
     #[cfg(target_os = "linux")]
     fn inotify_detects_modification_symlink() {
-        let fixture = fixture();
-        let paths = fixture.cfg.paths().iter().collect();
-        let stream = fs_watch::inotify::WatchStream::new(paths)
-            .expect("create watch")
-            .map_err(|e| panic!("{}", e));
-        test_detects_modification_symlink(fixture, stream)
+        Fixture::new().test_inotify(test_detects_modification_symlink)
     }
 
     #[test]
     #[cfg(not(target_os = "windows"))]
     fn polling_detects_modification_double_symlink() {
-        let fixture = fixture();
-        let paths = fixture.cfg.paths().iter()
-            .map(|&p| p.clone())
-            .collect::<Vec<_>>();
-        let stream = fs_watch::stream_changes_polling(
-            paths,
-            Duration::from_secs(1)
-        );
-        test_detects_modification_double_symlink(fixture, stream)
+        Fixture::new().test_polling(test_detects_modification_double_symlink)
     }
 
     #[test]
     #[cfg(target_os = "linux")]
     fn inotify_detects_modification_double_symlink() {
-        let fixture = fixture();
-        let paths = fixture.cfg.paths().iter().collect();
-        let stream = fs_watch::inotify::WatchStream::new(paths)
-            .expect("create watch")
-            .map_err(|e| panic!("{}", e));
-        test_detects_modification_double_symlink(fixture, stream)
+        Fixture::new().test_inotify(test_detects_modification_double_symlink)
     }
 
     #[test]
     #[cfg(not(target_os = "windows"))]
     fn polling_detects_double_symlink_retargeting() {
-        let fixture = fixture();
-        let paths = fixture.cfg.paths().iter()
-            .map(|&p| p.clone())
-            .collect::<Vec<_>>();
-        let stream = fs_watch::stream_changes_polling(
-            paths,
-            Duration::from_secs(1)
-        );
-        test_detects_double_symlink_retargeting(fixture, stream)
+        Fixture::new().test_polling(test_detects_double_symlink_retargeting)
     }
 
     #[test]
     #[cfg(target_os = "linux")]
     fn inotify_detects_double_symlink_retargeting() {
-        let fixture = fixture();
-        let paths = fixture.cfg.paths().iter().collect();
-        let stream = fs_watch::inotify::WatchStream::new(paths)
-            .expect("create watch")
-            .map_err(|e| panic!("{}", e));
-        test_detects_double_symlink_retargeting(fixture, stream)
+        Fixture::new().test_inotify(test_detects_double_symlink_retargeting)
     }
 
     #[test]
     fn polling_detects_delete_and_recreate() {
-        let fixture = fixture();
-        let paths = fixture.cfg.paths().iter()
-            .map(|&p| p.clone())
-            .collect::<Vec<_>>();
-        let stream = fs_watch::stream_changes_polling(
-            paths,
-            Duration::from_secs(1)
-        );
-        test_detects_delete_and_recreate(fixture, stream)
+        Fixture::new().test_polling(test_detects_delete_and_recreate)
     }
 
     #[test]
     #[cfg(target_os = "linux")]
     fn inotify_detects_delete_and_recreate() {
-        let fixture = fixture();
-        let paths = fixture.cfg.paths().iter().collect();
-        let stream = fs_watch::inotify::WatchStream::new(paths)
-            .expect("create watch")
-            .map_err(|e| panic!("{}", e));
-        test_detects_delete_and_recreate(fixture, stream)
+        Fixture::new().test_inotify(test_detects_delete_and_recreate)
     }
 
 }

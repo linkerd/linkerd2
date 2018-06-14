@@ -87,10 +87,10 @@ where
 {
     use ::stream;
 
-    let paths: Vec<PathBuf> = paths
+    let paths: Vec<PathBuf> = paths.into_iter()
         .map(|p| p.as_ref().to_path_buf())
         .collect();
-    let polls = Box::new(stream_changes_polling(&paths));
+    let polls = Box::new(stream_changes_polling(paths.clone(), interval));
     match inotify::WatchStream::new(paths) {
         Ok(watch) => {
             let stream = inotify::FallbackStream {
@@ -173,7 +173,7 @@ pub mod inotify {
             let mut watch_stream = WatchStream {
                 inotify,
                 stream,
-                settings: settings,
+                paths,
             };
 
             watch_stream.add_paths()?;
@@ -191,8 +191,7 @@ pub mod inotify {
                 | WatchMask::MOVE
                 | WatchMask::MOVE_SELF
                 ;
-            let paths = self.settings.paths();
-            for path in &paths {
+            for path in &self.paths {
                 let watch_path = path
                     .canonicalize()
                     .unwrap_or_else(|e| {
