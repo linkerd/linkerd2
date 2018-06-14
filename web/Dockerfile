@@ -20,7 +20,7 @@ RUN $ROOT/bin/web setup --pure-lockfile
 # frontend assets
 # set the env to production *after* yarn has done an install, to make sure all
 # libraries required for building are included.
-ENV NODE_ENV development
+ENV NODE_ENV production
 RUN $ROOT/bin/web build
 
 ## compile go server
