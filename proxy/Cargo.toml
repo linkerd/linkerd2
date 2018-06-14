@@ -26,8 +26,8 @@ hyper = "0.12"
 ipnet = "1.0"
 log = "0.4.1"
 indexmap = "1.0.0"
-prost = "0.3.0"
-prost-types = "0.3.0"
+prost = "0.4.0"
+prost-types = "0.4.0"
 rand = "0.5.1"
 
 # for config parsing
