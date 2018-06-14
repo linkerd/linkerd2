@@ -11,21 +11,10 @@ import (
 	"google.golang.org/grpc/status"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/fake"
 )
 
-// append to a list of runtime.Object, if the object is not already in the list
-func appendUnique(objs []runtime.Object, obj runtime.Object) []runtime.Object {
-	for _, o := range objs {
-		if reflect.DeepEqual(o, obj) {
-			return objs
-		}
-	}
-	return append(objs, obj)
-}
-
 func newAPI(resourceConfigs []string, extraConfigs ...string) (*API, []runtime.Object, error) {
-	k8sObjs := []runtime.Object{}
+	k8sConfigs := []string{}
 	k8sResults := []runtime.Object{}
 
 	for _, config := range resourceConfigs {
@@ -33,21 +22,20 @@ func newAPI(resourceConfigs []string, extraConfigs ...string) (*API, []runtime.O
 		if err != nil {
 			return nil, nil, err
 		}
-		k8sObjs = appendUnique(k8sObjs, obj)
+		k8sConfigs = append(k8sConfigs, config)
 		k8sResults = append(k8sResults, obj)
 	}
 
 	for _, config := range extraConfigs {
-		obj, err := toRuntimeObject(config)
-		if err != nil {
-			return nil, nil, err
-		}
-		k8sObjs = append(k8sObjs, obj)
+		k8sConfigs = append(k8sConfigs, config)
 	}
 
-	clientSet := fake.NewSimpleClientset(k8sObjs...)
-	api := NewAPI(clientSet)
-	err := api.Sync()
+	api, err := NewFakeAPI(k8sConfigs...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("NewFakeAPI returned an error: %s", err)
+	}
+
+	err = api.Sync()
 	if err != nil {
 		return nil, nil, fmt.Errorf("api.Sync() returned an error: %s", err)
 	}

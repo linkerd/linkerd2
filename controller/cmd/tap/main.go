@@ -38,7 +38,14 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to create Kubernetes client: %s", err)
 	}
-	k8sAPI := k8s.NewAPI(clientSet)
+	k8sAPI := k8s.NewAPI(
+		clientSet,
+		k8s.Deploy,
+		k8s.NS,
+		k8s.Pod,
+		k8s.RC,
+		k8s.Svc,
+	)
 
 	server, lis, err := tap.NewServer(*addr, *tapPort, k8sAPI)
 	if err != nil {

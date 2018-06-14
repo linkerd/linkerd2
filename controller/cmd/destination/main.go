@@ -39,7 +39,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	k8sAPI := k8s.NewAPI(k8sClient)
+	k8sAPI := k8s.NewAPI(
+		k8sClient,
+		k8s.Endpoint,
+		k8s.Pod,
+		k8s.Svc,
+	)
 
 	done := make(chan struct{})
 
