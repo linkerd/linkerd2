@@ -4,7 +4,7 @@
 # This reduces build time and produces binaries with debug symbols, at the expense of
 # runtime perforamnce.
 
-ARG RUST_IMAGE=rust:1.26.0
+ARG RUST_IMAGE=rust:1.26.2
 ARG RUNTIME_IMAGE=gcr.io/runconduit/base:2017-10-30.01
 
 ## Builds the proxy as incrementally as possible.
@@ -16,19 +16,17 @@ WORKDIR /usr/src/conduit
 #
 # Mock out all local code and fetch external dependencies to ensure that external sources
 # are cached.
-RUN for d in proxy proxy/controller-grpc proxy/convert proxy/futures-mpsc-lossy proxy/router ; \
+RUN for d in proxy proxy/controller-grpc proxy/futures-mpsc-lossy proxy/router ; \
     do mkdir -p "${d}/src" && touch "${d}/src/lib.rs" ; \
     done
 COPY Cargo.toml Cargo.lock ./
 COPY proxy/Cargo.toml                       proxy/Cargo.toml
 COPY proxy/controller-grpc/Cargo.toml       proxy/controller-grpc/Cargo.toml
-COPY proxy/convert/Cargo.toml               proxy/convert/Cargo.toml
 COPY proxy/futures-mpsc-lossy/Cargo.toml    proxy/futures-mpsc-lossy/Cargo.toml
 COPY proxy/router/Cargo.toml                proxy/router/Cargo.toml
 RUN cargo fetch --locked
 
 # Build libraries, leaving the proxy and gRPC bindings mocked out.
-COPY proxy/convert             proxy/convert
 COPY proxy/futures-mpsc-lossy  proxy/futures-mpsc-lossy
 COPY proxy/router              proxy/router
 ARG PROXY_UNOPTIMIZED
