@@ -99,6 +99,23 @@ message ApiError {
   string error = 1;
 }
 
+message PodErrors {
+  repeated PodError errors = 1;
+
+  message PodError {
+    oneof error {
+      ContainerError container = 1;
+    }
+
+    // To report init-container and container failures
+    message ContainerError {
+      string message = 1;
+      string container = 2;
+      string image = 3;
+    }
+  }
+}
+
 message Resource {
   // The namespace the resource is in.
   //
@@ -184,6 +201,9 @@ message StatTable {
       uint64 failed_pod_count = 6;
 
       BasicStats stats = 5;
+
+      // Stores a set of errors for each pod name. If a pod has no errors, it may be omitted.
+      map<string, PodErrors> errors_by_pod = 7;
     }
   }
 }
