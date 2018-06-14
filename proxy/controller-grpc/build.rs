@@ -6,9 +6,9 @@ fn main() {
 
 fn build_control() {
     let iface_files = &[
-        "../../proto/common/common.proto",
-        "../../proto/proxy/destination/destination.proto",
-        "../../proto/proxy/tap/tap.proto"
+        "../../proto/common.proto",
+        "../../proto/proxy/destination.proto",
+        "../../proto/proxy/tap.proto"
     ];
     let dirs = &["../../proto"];
 

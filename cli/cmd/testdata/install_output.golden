@@ -414,10 +414,22 @@ spec:
         - --config.file=/etc/prometheus/prometheus.yml
         image: PrometheusImage
         imagePullPolicy: ImagePullPolicy
+        livenessProbe:
+          httpGet:
+            path: /-/healthy
+            port: 9090
+          initialDelaySeconds: 30
+          timeoutSeconds: 30
         name: prometheus
         ports:
         - containerPort: 9090
           name: admin-http
+        readinessProbe:
+          httpGet:
+            path: /-/ready
+            port: 9090
+          initialDelaySeconds: 30
+          timeoutSeconds: 30
         resources: {}
         volumeMounts:
         - mountPath: /etc/prometheus
@@ -639,10 +651,22 @@ spec:
       containers:
       - image: GrafanaImage
         imagePullPolicy: ImagePullPolicy
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
         name: grafana
         ports:
         - containerPort: 3000
           name: http
+        readinessProbe:
+          failureThreshold: 10
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 30
         resources: {}
         volumeMounts:
         - mountPath: /etc/grafana

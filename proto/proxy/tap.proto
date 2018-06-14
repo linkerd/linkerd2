@@ -2,7 +2,9 @@ syntax = "proto3";
 
 package conduit.proxy.tap;
 
-import "common/common.proto";
+import "common.proto";
+
+option go_package = "github.com/runconduit/conduit/controller/gen/proxy/tap";
 
 // A service exposed by proxy instances to setup
 service Tap {
