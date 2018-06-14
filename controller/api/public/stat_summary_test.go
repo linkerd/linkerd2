@@ -131,15 +131,11 @@ func testStatSummary(t *testing.T, expectations []statSumExpected) {
 			unsortedStatTables := rsp.GetOk().StatTables
 			sort.Sort(byStatResult(unsortedStatTables))
 
-			okRsp := &pb.StatSummaryResponse{
-				Response: &pb.StatSummaryResponse_Ok_{
-					Ok: &pb.StatSummaryResponse_Ok{
-						StatTables: unsortedStatTables,
-					},
-				},
+			okRsp := &pb.StatSummaryResponse_Ok{
+				StatTables: unsortedStatTables,
 			}
 
-			if !proto.Equal(&exp.expectedResponse, okRsp) {
+			if !proto.Equal(exp.expectedResponse.GetOk(), okRsp) {
 				t.Fatalf("Expected: %+v\n Got: %+v", &exp.expectedResponse, rsp)
 			}
 		}
