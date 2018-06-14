@@ -308,6 +308,18 @@ spec:
         args:
         - "--storage.tsdb.retention=6h"
         - "--config.file=/etc/prometheus/prometheus.yml"
+        readinessProbe:
+          httpGet:
+            path: /-/ready
+            port: 9090
+          initialDelaySeconds: 30
+          timeoutSeconds: 30
+        livenessProbe:
+          httpGet:
+            path: /-/healthy
+            port: 9090
+          initialDelaySeconds: 30
+          timeoutSeconds: 30
 
 ---
 kind: ConfigMap
@@ -482,6 +494,18 @@ spec:
           readOnly: true
         image: {{.GrafanaImage}}
         imagePullPolicy: {{.ImagePullPolicy}}
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 60
+          timeoutSeconds: 30
+          failureThreshold: 10
+          periodSeconds: 10
 
 ---
 kind: ConfigMap
