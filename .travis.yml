@@ -93,23 +93,12 @@ jobs:
         - |
           # Install gcloud and kubectl.
           dir="${CLOUDSDK_INSTALL_DIR:-${HOME}}/google-cloud-sdk"
-          export CLOUDSDK_CORE_DISABLE_PROMPTS=1
-          if [ -d "$dir/bin" ]; then
-              . "$dir/path.bash.inc"
-              gcloud components update
-          else
-              rm -rf "$dir"
-              curl https://sdk.cloud.google.com | bash
-              . "$dir/path.bash.inc"
-          fi
-          gcloud components install kubectl
+          (. bin/_gcp.sh ; install_gcloud_kubectl "$dir")
+          . "$dir/path.bash.inc"
         - |
           # Configure gcloud with a service account.
           openssl aes-256-cbc -K $encrypted_6af64675f81c_key -iv $encrypted_6af64675f81c_iv -in .gcp.json.enc -out .gcp.json -d
-          gcloud auth activate-service-account --key-file .gcp.json
-          gcloud config set core/project "$GCP_PROJECT"
-          gcloud config set compute/zone "$GCP_ZONE"
-          gcloud config set container/cluster "$GKE_CLUSTER"
+          (. bin/_gcp.sh ; set_gcloud_config "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER")
         - |
           # Get a kubernetes context.
           (. bin/_gcp.sh ; get_k8s_ctx "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER")
@@ -164,23 +153,12 @@ jobs:
         - |
           # Install gcloud and kubectl.
           dir="${CLOUDSDK_INSTALL_DIR:-${HOME}}/google-cloud-sdk"
-          export CLOUDSDK_CORE_DISABLE_PROMPTS=1
-          if [ -d "$dir/bin" ]; then
-              . "$dir/path.bash.inc"
-              gcloud components update
-          else
-              rm -rf "$dir"
-              curl https://sdk.cloud.google.com | bash
-              . "$dir/path.bash.inc"
-          fi
-          gcloud components install kubectl
+          (. bin/_gcp.sh ; install_gcloud_kubectl "$dir")
+          . "$dir/path.bash.inc"
         - |
           # Configure gcloud with a service account.
           openssl aes-256-cbc -K $encrypted_6af64675f81c_key -iv $encrypted_6af64675f81c_iv -in .gcp.json.enc -out .gcp.json -d
-          gcloud auth activate-service-account --key-file .gcp.json
-          gcloud config set core/project "$GCP_PROJECT"
-          gcloud config set compute/zone "$GCP_ZONE"
-          gcloud config set container/cluster "$GKE_CLUSTER"
+          (. bin/_gcp.sh ; set_gcloud_config "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER")
         - |
           # Get a kubernetes context.
           (. bin/_gcp.sh ; get_k8s_ctx "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER")
