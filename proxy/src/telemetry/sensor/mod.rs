@@ -109,6 +109,6 @@ impl TlsConfig {
     }
 
     pub fn failed(&mut self, err: tls::ConfigError) {
-        self.0.send(|| event::Event::TlsConfigReloadFailed(err))
+        self.0.send(|| event::Event::TlsConfigReloadFailed(err.into()))
     }
 }

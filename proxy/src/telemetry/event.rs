@@ -4,7 +4,6 @@ use std::time::{Duration, Instant};
 use h2;
 
 use ctx;
-use transport::tls;
 
 #[derive(Clone, Debug)]
 pub enum Event {
@@ -20,7 +19,10 @@ pub enum Event {
     StreamResponseEnd(Arc<ctx::http::Response>, StreamResponseEnd),
 
     TlsConfigReloaded,
-    TlsConfigReloadFailed(tls::ConfigError),
+    // This uses the label type rather than the `tls::ConfigError`
+    // type, since `ConfigError` owns a `std::io::Error` that doesn't
+    // implement `Clone`.
+    TlsConfigReloadFailed(super::metrics::TlsConfigLabels),
 }
 
 #[derive(Clone, Debug)]
@@ -107,6 +109,9 @@ impl Event {
             Event::StreamResponseOpen(ref rsp, _) |
             Event::StreamResponseFail(ref rsp, _) |
             Event::StreamResponseEnd(ref rsp, _) => &rsp.request.server.proxy,
+            Event::TlsConfigReloaded | Event::TlsConfigReloadFailed(_) =>
+                // XXX: these events aren't associated with either proxy...
+                unimplemented!()
         }
     }
 }
