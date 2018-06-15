@@ -1,8 +1,11 @@
 /* global require, module, __dirname */
 
 const path = require('path');
+const webpack = require('webpack');
+var HtmlWebpackPlugin = require('html-webpack-plugin');
 
 module.exports = {
+  mode: process.env.NODE_ENV,
   entry: './js/index.js',
   output: {
     path: path.resolve(__dirname, 'dist'),
@@ -46,10 +49,13 @@ module.exports = {
         use: [
           {
             loader: 'file-loader',
-            options: { publicPath: 'dist/' }
+            options: {}
           }
         ]
       }
     ]
-  }
+  },
+  plugins: [
+    new HtmlWebpackPlugin()
+  ]
 }
