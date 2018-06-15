@@ -2,10 +2,9 @@
 
 const path = require('path');
 const webpack = require('webpack');
-var HtmlWebpackPlugin = require('html-webpack-plugin');
 
 module.exports = {
-  mode: process.env.NODE_ENV,
+  mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
   entry: './js/index.js',
   output: {
     path: path.resolve(__dirname, 'dist'),
@@ -31,7 +30,7 @@ module.exports = {
             loader: 'eslint-loader',
             options: {
               fix: true,
-              emitWarning: process.env.NODE_ENV == 'development'
+              emitWarning: process.env.NODE_ENV === 'development'
             }
           }
         ]
@@ -54,8 +53,5 @@ module.exports = {
         ]
       }
     ]
-  },
-  plugins: [
-    new HtmlWebpackPlugin()
-  ]
+  }
 }

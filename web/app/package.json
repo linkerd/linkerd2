@@ -9,7 +9,6 @@
     "d3": "^4.11.0",
     "enzyme": "^3.3.0",
     "enzyme-adapter-react-16": "^1.1.1",
-    "html-webpack-plugin": "^3.2.0",
     "jsdom": "^11.5.1",
     "karma": "^1.7.1",
     "karma-jsdom-launcher": "^6.1.2",
