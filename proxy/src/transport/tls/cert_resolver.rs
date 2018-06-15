@@ -6,11 +6,11 @@ use std::{
 use super::{
     config,
 
-    ring::{self, rand, signature},
     rustls,
     untrusted,
     webpki,
 };
+use ring::{self, rand, signature};
 
 pub struct CertResolver {
     certified_key: rustls::sign::CertifiedKey,

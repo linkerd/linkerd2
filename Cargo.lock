@@ -148,6 +148,7 @@ dependencies = [
  "regex 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ring 0.13.0-alpha5 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustls 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tempdir 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-connect 0.1.0 (git+https://github.com/carllerche/tokio-connect)",
  "tokio-io 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",

@@ -71,3 +71,6 @@ flate2 = { version = "1.0.1", default-features = false, features = ["rust_backen
 # `tokio-io` is needed for TCP tests, because `tokio::io` doesn't re-export
 # the `read` function.
 tokio-io = "0.1.6"
+# Used for filesystem watch tests. We should switch from `tempdir` to `tempfile` once
+# `prost-build` switches to it.`
+tempdir = "0.3"
