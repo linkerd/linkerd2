@@ -16,6 +16,8 @@ use super::{
     webpki,
 };
 use conditional::Conditional;
+use telemetry::sensor;
+
 use futures::{future, stream, Future, Stream};
 use futures_watch::Watch;
 use ring::signature;
@@ -169,8 +171,11 @@ impl CommonSettings {
     /// The returned stream consists of each subsequent successfully loaded
     /// `CommonSettings` after each change. If the settings could not be
     /// reloaded (i.e., they were malformed), nothing is sent.
-    fn stream_changes(self, interval: Duration)
-        -> impl Stream<Item = CommonConfig, Error = ()>
+    fn stream_changes(
+        self,
+        interval: Duration,
+        mut sensor: sensor::TlsConfig,
+    ) -> impl Stream<Item = CommonConfig, Error = ()>
     {
         let paths = self.paths().iter()
             .map(|&p| p.clone())
@@ -180,9 +185,17 @@ impl CommonSettings {
         stream::once(Ok(()))
             .chain(::fs_watch::stream_changes(paths, interval))
             .filter_map(move |_| {
-                CommonConfig::load_from_disk(&self)
-                    .map_err(|e| warn!("error reloading TLS config: {:?}, falling back", e))
-                    .ok()
+                match CommonConfig::load_from_disk(&self) {
+                    Err(e) => {
+                        warn!("error reloading TLS config: {:?}, falling back", e);
+                        sensor.failed(e);
+                        None
+                    },
+                    Ok(cfg) => {
+                        sensor.reloaded();
+                        Some(cfg)
+                    }
+                }
             })
     }
 
@@ -279,8 +292,10 @@ pub type PublishConfigs = Box<Future<Item = (), Error = ()> + Send>;
 ///
 /// If all references are dropped to _either_ the client or server config watches, all
 /// updates will cease for both config watches.
-pub fn watch_for_config_changes(settings: Conditional<&CommonSettings, ReasonForNoTls>)
-    -> (ClientConfigWatch, ServerConfigWatch, PublishConfigs)
+pub fn watch_for_config_changes(
+    settings: Conditional<&CommonSettings, ReasonForNoTls>
+    sensor: sensor::TlsConfig,
+) -> (ClientConfigWatch, ServerConfigWatch, PublishConfigs)
 {
     let settings = if let Conditional::Some(settings) = settings {
         settings.clone()

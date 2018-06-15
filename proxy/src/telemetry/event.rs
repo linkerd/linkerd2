@@ -4,6 +4,7 @@ use std::time::{Duration, Instant};
 use h2;
 
 use ctx;
+use transport::tls;
 
 #[derive(Clone, Debug)]
 pub enum Event {
@@ -17,6 +18,9 @@ pub enum Event {
     StreamResponseOpen(Arc<ctx::http::Response>, StreamResponseOpen),
     StreamResponseFail(Arc<ctx::http::Response>, StreamResponseFail),
     StreamResponseEnd(Arc<ctx::http::Response>, StreamResponseEnd),
+
+    TlsConfigReloaded,
+    TlsConfigReloadFailed(tls::ConfigError),
 }
 
 #[derive(Clone, Debug)]
