@@ -142,7 +142,7 @@ pub trait Bind {
 pub fn new(
     dns_resolver: dns::Resolver,
     namespaces: Namespaces,
-    host_and_port: HostAndPort,
+    host_and_port: Option<HostAndPort>,
 ) -> (Resolver, impl Future<Item = (), Error = ()>) {
     let (request_tx, rx) = mpsc::unbounded();
     let disco = Resolver { request_tx };
