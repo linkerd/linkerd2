@@ -184,7 +184,6 @@ pub mod inotify {
             Ok(watch_stream)
         }
 
-
         fn add_paths(&mut self) -> Result<(), io::Error> {
             let mask
                 = WatchMask::CREATE
@@ -458,6 +457,7 @@ mod tests {
             create_file(&path).unwrap();
         }
 
+        // -- Below this point, the watch is running. -----------------------
         rt.spawn(bg);
 
         paths.iter().fold(watch, |watch, path| {
@@ -493,9 +493,12 @@ mod tests {
             .collect::<Vec<_>>();
 
         for (path, target_path) in data_paths.iter().zip(paths.iter()) {
+            // Don't assert that events are seen here, as we haven't started
+            // running the watch yet.
             symlink(path, target_path).unwrap();
         }
 
+        // -- Below this point, the watch is running. -----------------------
         rt.spawn(bg);
 
         data_files.iter_mut().fold(watch, |watch, file| {
@@ -549,12 +552,13 @@ mod tests {
         .collect::<Vec<_>>();
 
         for path in &paths {
-            symlink(
-                data_path.clone().join(path.file_name().unwrap()),
-                path
-            ).unwrap();
+            let file_path = data_path.clone().join(path.file_name().unwrap();
+            // Don't assert that events are seen here, as we haven't started
+            // running the watch yet.
+            symlink(file_path, path).unwrap();
         }
 
+        // -- Below this point, the watch is running. -----------------------
         rt.spawn(bg);
 
         files.iter_mut().fold(watch, |watch, file| {
@@ -580,7 +584,9 @@ mod tests {
         fs::create_dir(&real_data_path_2).unwrap();
         symlink(&real_data_path, &data_path).unwrap();
 
-        // Create the first set of files
+        // Create the first set of files.
+        // We won't assert that any changes are detected until we actually
+        // start the watch.
         for path in &paths {
             let path = real_data_path
                 .clone()
@@ -604,6 +610,7 @@ mod tests {
             create_and_write(path, b"b").unwrap();
         }
 
+        // -- Below this point, the watch is running. -----------------------
         rt.spawn(bg);
 
         let (item, watch) = next_change(&mut rt, watch).unwrap();
