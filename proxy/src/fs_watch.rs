@@ -385,10 +385,14 @@ mod tests {
             watch
         });
 
-        for path in &paths {
+        let watch = paths.iter().fold(watch, |watch, ref path| {
             fs::remove_file(path).unwrap();
             println!("deleted {:?}", path);
-        }
+
+            let (item, watch) = next_change(&mut rt, watch).unwrap();
+            assert!(item.is_some());
+            watch
+        });
 
         paths.iter().fold(watch, |watch, ref path| {
             create_and_write(path, b"B").unwrap();
