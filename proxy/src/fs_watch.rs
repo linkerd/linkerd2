@@ -1,37 +1,30 @@
-use std::{
-    cell::RefCell,
-    fs,
-    io,
-    path::{Path, PathBuf},
-    time::{Duration, Instant},
-};
+use std::{fs, io, cell::RefCell, path::{Path, PathBuf}, time::{Duration, Instant}};
 
 use futures::Stream;
 use ring::digest::{self, Digest};
 
 use tokio::timer::Interval;
 
-
 /// Stream changes to the files at a group of paths.
-pub fn stream_changes<I, P>(paths: I, interval: Duration)
-    -> impl Stream<Item = (), Error = ()>
+pub fn stream_changes<I, P>(paths: I, interval: Duration) -> impl Stream<Item = (), Error = ()>
 where
-    I: IntoIterator<Item=P>,
+    I: IntoIterator<Item = P>,
     P: AsRef<Path>,
 {
     // If we're on Linux, first atttempt to start an Inotify watch on the
     // paths. If this fails, fall back to polling the filesystem.
-    #[cfg(target_os = "linux")] {
+    #[cfg(target_os = "linux")]
+    {
         stream_changes_inotify(paths, interval)
     }
 
     // If we're not on Linux, we can't use inotify, so simply poll the fs.
     // TODO: Use other FS events APIs (such as `kqueue`) as well, when
     //       they're available.
-    #[cfg(not(target_os = "linux"))] {
+    #[cfg(not(target_os = "linux"))]
+    {
         stream_changes_polling(paths, interval)
     }
-
 }
 
 /// Stream changes by polling the filesystem.
@@ -43,25 +36,25 @@ where
 ///
 /// This is used on operating systems other than Linux, or on Linux if
 /// our attempt to use `inotify` failed.
-pub fn stream_changes_polling<I, P>(paths: I, interval: Duration)
-    -> impl Stream<Item = (), Error = ()>
+pub fn stream_changes_polling<I, P>(
+    paths: I,
+    interval: Duration,
+) -> impl Stream<Item = (), Error = ()>
 where
-    I: IntoIterator<Item=P>,
+    I: IntoIterator<Item = P>,
     P: AsRef<Path>,
 {
-    let files = paths.into_iter()
-        .map(PathAndHash::new)
-        .collect::<Vec<_>>();
+    let files = paths.into_iter().map(PathAndHash::new).collect::<Vec<_>>();
 
     Interval::new(Instant::now(), interval)
         .map_err(|e| error!("timer error: {:?}", e))
         .filter_map(move |_| {
-            for file in &files  {
+            for file in &files {
                 match file.has_changed() {
                     Ok(true) => {
                         trace!("{:?} changed", &file.path);
                         return Some(());
-                    },
+                    }
                     Ok(false) => {
                         // If the hash hasn't changed, keep going.
                     }
@@ -70,45 +63,44 @@ where
                         // has been deleted.
                         trace!("{:?} deleted", &file.path);
                         return Some(());
-                    },
+                    }
                     Err(ref e) => {
                         warn!("error hashing {:?}: {}", &file.path, e);
-                    },
+                    }
                 }
             }
             None
         })
 }
 
-
 #[cfg(target_os = "linux")]
-pub fn stream_changes_inotify<I, P>(paths: I, interval: Duration)
-    -> impl Stream<Item = (), Error = ()>
+pub fn stream_changes_inotify<I, P>(
+    paths: I,
+    interval: Duration,
+) -> impl Stream<Item = (), Error = ()>
 where
-    I: IntoIterator<Item=P>,
+    I: IntoIterator<Item = P>,
     P: AsRef<Path>,
 {
-    use ::stream;
+    use stream;
 
-    let paths: Vec<PathBuf> = paths.into_iter()
+    let paths: Vec<PathBuf> = paths
+        .into_iter()
         .map(|p| p.as_ref().to_path_buf())
         .collect();
     let polls = Box::new(stream_changes_polling(paths.clone(), interval));
     match inotify::WatchStream::new(paths) {
         Ok(watch) => {
-            let stream = inotify::FallbackStream {
-                watch,
-                polls,
-            };
+            let stream = inotify::FallbackStream { watch, polls };
             stream::Either::A(stream)
-        },
+        }
         Err(e) => {
             // If initializing the `Inotify` instance failed, it probably won't
             // succeed in the future (it's likely that inotify unsupported on
             // this OS).
             warn!("inotify init error: {}, falling back to polling", e);
             stream::Either::B(polls)
-        },
+        }
     }
 }
 
@@ -132,9 +124,8 @@ impl PathAndHash {
     fn has_changed(&self) -> io::Result<bool> {
         let contents = fs::read(&self.path)?;
         let hash = Some(digest::digest(&digest::SHA256, &contents[..]));
-        let changed = self.last_hash
-            .borrow().as_ref()
-            .map(Digest::as_ref) != hash.as_ref().map(Digest::as_ref);
+        let changed = self.last_hash.borrow().as_ref().map(Digest::as_ref)
+            != hash.as_ref().map(Digest::as_ref);
         if changed {
             self.last_hash.replace(hash);
         }
@@ -144,18 +135,9 @@ impl PathAndHash {
 
 #[cfg(target_os = "linux")]
 pub mod inotify {
-    use std::{
-        io,
-        path::PathBuf,
-    };
-    use inotify::{
-        Inotify,
-        Event,
-        EventMask,
-        EventStream,
-        WatchMask,
-    };
     use futures::{Async, Poll, Stream};
+    use inotify::{Event, EventMask, EventStream, Inotify, WatchMask};
+    use std::{io, path::PathBuf};
 
     pub struct WatchStream {
         inotify: Inotify,
@@ -185,23 +167,14 @@ pub mod inotify {
         }
 
         fn add_paths(&mut self) -> Result<(), io::Error> {
-            let mask
-                = WatchMask::CREATE
-                | WatchMask::MODIFY
-                | WatchMask::DELETE
-                | WatchMask::DELETE_SELF
-                | WatchMask::MOVE
-                | WatchMask::MOVE_SELF
-                ;
+            let mask = WatchMask::CREATE | WatchMask::MODIFY | WatchMask::DELETE
+                | WatchMask::DELETE_SELF | WatchMask::MOVE
+                | WatchMask::MOVE_SELF;
             for path in &self.paths {
-                let watch_path = path
-                    .canonicalize()
-                    .unwrap_or_else(|e| {
-                        trace!("canonicalize({:?}): {:?}", &path, e);
-                        path.parent()
-                            .unwrap_or_else(|| path.as_ref())
-                            .to_path_buf()
-                    });
+                let watch_path = path.canonicalize().unwrap_or_else(|e| {
+                    trace!("canonicalize({:?}): {:?}", &path, e);
+                    path.parent().unwrap_or_else(|| path.as_ref()).to_path_buf()
+                });
                 self.inotify.add_watch(&watch_path, mask)?;
                 trace!("watch {:?} (for {:?})", watch_path, path);
             }
@@ -223,16 +196,16 @@ pub mod inotify {
                         }
                         trace!("event={:?}; path={:?}", mask, name);
                         if mask.contains(
-                            EventMask::DELETE & EventMask::DELETE_SELF & EventMask::CREATE
+                            EventMask::DELETE & EventMask::DELETE_SELF & EventMask::CREATE,
                         ) {
                             self.add_paths()?;
                         }
                         return Ok(Async::Ready(Some(())));
-                    },
+                    }
                     None => {
                         debug!("watch stream ending");
                         return Ok(Async::Ready(None));
-                    },
+                    }
                 }
             }
         }
@@ -259,16 +232,11 @@ mod tests {
     use tempdir::TempDir;
     use tokio::runtime::current_thread::Runtime;
 
-    use std::{
-        path::Path,
-        io::Write,
-        fs::{self, File},
-        time::Duration,
-    };
     #[cfg(not(target_os = "windows"))]
     use std::os::unix::fs::symlink;
+    use std::{fs::{self, File}, io::Write, path::Path, time::Duration};
 
-    use futures::{Sink, Stream, Future};
+    use futures::{Future, Sink, Stream};
     use futures_watch::{Watch, WatchError};
 
     struct Fixture {
@@ -290,23 +258,14 @@ mod tests {
             Fixture { paths, dir, rt }
         }
 
-        fn test_polling(
-            self,
-            test: fn(Self, Watch<()>, Box<Future<Item=(), Error = ()>>)
-        ) {
-            let stream = stream_changes_polling(
-                self.paths.clone(),
-                Duration::from_secs(1)
-            );
+        fn test_polling(self, test: fn(Self, Watch<()>, Box<Future<Item = (), Error = ()>>)) {
+            let stream = stream_changes_polling(self.paths.clone(), Duration::from_secs(1));
             let (watch, bg) = watch_stream(stream);
             test(self, watch, bg)
         }
 
-        #[cfg(target_os="linux")]
-        fn test_inotify(
-            self,
-            test: fn(Self, Watch<()>, Box<Future<Item=(), Error = ()>>)
-        ) {
+        #[cfg(target_os = "linux")]
+        fn test_inotify(self, test: fn(Self, Watch<()>, Box<Future<Item = (), Error = ()>>)) {
             let paths = self.paths.clone();
             let stream = inotify::WatchStream::new(paths)
                 .unwrap()
@@ -329,9 +288,9 @@ mod tests {
         Ok(f)
     }
 
-    fn watch_stream(stream: impl Stream<Item = (), Error = ()> + 'static)
-        -> (Watch<()>, Box<Future<Item = (), Error = ()>>)
-    {
+    fn watch_stream(
+        stream: impl Stream<Item = (), Error = ()> + 'static,
+    ) -> (Watch<()>, Box<Future<Item = (), Error = ()>>) {
         let (watch, store) = Watch::new(());
         // Use a watch so we can start running the stream immediately but also
         // wait on stream updates.
@@ -343,9 +302,10 @@ mod tests {
         (watch, Box::new(f))
     }
 
-    fn next_change(rt: &mut Runtime, watch: Watch<()>)
-        -> Result<(Option<()>, Watch<()>), WatchError>
-    {
+    fn next_change(
+        rt: &mut Runtime,
+        watch: Watch<()>,
+    ) -> Result<(Option<()>, Watch<()>), WatchError> {
         let next = watch.into_future().map_err(|(e, _)| e);
         // Rust will print a warning if a test runs longer than 60 seconds,
         // so we'll use that as the timeout after which we'll kill the test
@@ -356,9 +316,13 @@ mod tests {
     fn test_detects_create(
         fixture: Fixture,
         watch: Watch<()>,
-        bg: Box<Future<Item = (), Error = ()>>
+        bg: Box<Future<Item = (), Error = ()>>,
     ) {
-        let Fixture { paths, dir: _dir, mut rt } = fixture;
+        let Fixture {
+            paths,
+            dir: _dir,
+            mut rt,
+        } = fixture;
 
         rt.spawn(bg);
 
@@ -374,9 +338,13 @@ mod tests {
     fn test_detects_delete_and_recreate(
         fixture: Fixture,
         watch: Watch<()>,
-        bg: Box<Future<Item = (), Error = ()>>
+        bg: Box<Future<Item = (), Error = ()>>,
     ) {
-        let Fixture { paths, dir: _dir, mut rt } = fixture;
+        let Fixture {
+            paths,
+            dir: _dir,
+            mut rt,
+        } = fixture;
         rt.spawn(bg);
 
         let watch = paths.iter().fold(watch, |watch, ref path| {
@@ -409,30 +377,34 @@ mod tests {
     fn test_detects_create_symlink(
         fixture: Fixture,
         watch: Watch<()>,
-        bg: Box<Future<Item = (), Error = ()>>
+        bg: Box<Future<Item = (), Error = ()>>,
     ) {
         let Fixture { paths, dir, mut rt } = fixture;
 
         let data_path = dir.path().join("data");
         fs::create_dir(&data_path).unwrap();
 
-        let data_paths = paths.iter().map(|p| {
-            let path = data_path.clone()
-                .join(p.file_name().unwrap());
-            create_file(&path).unwrap();
-            path
-        })
-        .collect::<Vec<_>>();
+        let data_paths = paths
+            .iter()
+            .map(|p| {
+                let path = data_path.clone().join(p.file_name().unwrap());
+                create_file(&path).unwrap();
+                path
+            })
+            .collect::<Vec<_>>();
 
         rt.spawn(bg);
 
-        data_paths.iter().zip(paths.iter()).fold(watch, |watch, (path, target_path)| {
-            symlink(path, target_path).unwrap();
+        data_paths
+            .iter()
+            .zip(paths.iter())
+            .fold(watch, |watch, (path, target_path)| {
+                symlink(path, target_path).unwrap();
 
-            let (item, watch) = next_change(&mut rt, watch).unwrap();
-            assert!(item.is_some());
-            watch
-        });
+                let (item, watch) = next_change(&mut rt, watch).unwrap();
+                assert!(item.is_some());
+                watch
+            });
     }
 
     // Test for when the watched files are symlinks to a file inside of a
@@ -442,7 +414,7 @@ mod tests {
     fn test_detects_create_double_symlink(
         fixture: Fixture,
         watch: Watch<()>,
-        bg: Box<Future<Item = (), Error = ()>>
+        bg: Box<Future<Item = (), Error = ()>>,
     ) {
         let Fixture { paths, dir, mut rt } = fixture;
 
@@ -452,8 +424,7 @@ mod tests {
         symlink(&real_data_path, &data_path).unwrap();
 
         for path in &paths {
-            let path = real_data_path.clone()
-                .join(path.file_name().unwrap());
+            let path = real_data_path.clone().join(path.file_name().unwrap());
             create_file(&path).unwrap();
         }
 
@@ -474,21 +445,23 @@ mod tests {
     fn test_detects_modification_symlink(
         fixture: Fixture,
         watch: Watch<()>,
-        bg: Box<Future<Item = (), Error = ()>>
+        bg: Box<Future<Item = (), Error = ()>>,
     ) {
         let Fixture { paths, dir, mut rt } = fixture;
 
         let data_path = dir.path().join("data");
         fs::create_dir(&data_path).unwrap();
 
-        let data_paths = paths.iter().map(|p| {
-            let path = data_path.clone()
-                .join(p.file_name().unwrap());
-            path
-        })
-        .collect::<Vec<_>>();
+        let data_paths = paths
+            .iter()
+            .map(|p| {
+                let path = data_path.clone().join(p.file_name().unwrap());
+                path
+            })
+            .collect::<Vec<_>>();
 
-        let mut data_files = data_paths.iter()
+        let mut data_files = data_paths
+            .iter()
             .map(|path| create_and_write(path, b"a").unwrap())
             .collect::<Vec<_>>();
 
@@ -513,11 +486,16 @@ mod tests {
     fn test_detects_modification(
         fixture: Fixture,
         watch: Watch<()>,
-        bg: Box<Future<Item = (), Error = ()>>
+        bg: Box<Future<Item = (), Error = ()>>,
     ) {
-        let Fixture { paths, dir: _dir, mut rt } = fixture;
+        let Fixture {
+            paths,
+            dir: _dir,
+            mut rt,
+        } = fixture;
 
-        let mut files = paths.iter()
+        let mut files = paths
+            .iter()
             .map(|path| create_and_write(path, b"a").unwrap())
             .collect::<Vec<_>>();
 
@@ -535,7 +513,7 @@ mod tests {
     fn test_detects_modification_double_symlink(
         fixture: Fixture,
         watch: Watch<()>,
-        bg: Box<Future<Item = (), Error = ()>>
+        bg: Box<Future<Item = (), Error = ()>>,
     ) {
         let Fixture { paths, dir, mut rt } = fixture;
 
@@ -544,12 +522,13 @@ mod tests {
         fs::create_dir(&real_data_path).unwrap();
         symlink(&real_data_path, &data_path).unwrap();
 
-        let mut files = paths.iter().map(|p| {
-            let path = real_data_path.clone()
-                .join(p.file_name().unwrap());
-            create_and_write(path, b"a").unwrap()
-        })
-        .collect::<Vec<_>>();
+        let mut files = paths
+            .iter()
+            .map(|p| {
+                let path = real_data_path.clone().join(p.file_name().unwrap());
+                create_and_write(path, b"a").unwrap()
+            })
+            .collect::<Vec<_>>();
 
         for path in &paths {
             let file_path = data_path.clone().join(path.file_name().unwrap());
@@ -573,7 +552,7 @@ mod tests {
     fn test_detects_double_symlink_retargeting(
         fixture: Fixture,
         watch: Watch<()>,
-        bg: Box<Future<Item = (), Error = ()>>
+        bg: Box<Future<Item = (), Error = ()>>,
     ) {
         let Fixture { paths, dir, mut rt } = fixture;
 
@@ -588,25 +567,19 @@ mod tests {
         // We won't assert that any changes are detected until we actually
         // start the watch.
         for path in &paths {
-            let path = real_data_path
-                .clone()
-                .join(path.file_name().unwrap());
+            let path = real_data_path.clone().join(path.file_name().unwrap());
             create_and_write(path, b"a").unwrap();
         }
 
         // Symlink those files into `data_path`
         for path in &paths {
-            let data_file_path = data_path
-                .clone()
-                .join(path.file_name().unwrap());
+            let data_file_path = data_path.clone().join(path.file_name().unwrap());
             symlink(data_file_path, path).unwrap();
         }
 
         // Create the second set of files.
         for path in &paths {
-            let path = real_data_path_2
-                .clone()
-                .join(path.file_name().unwrap());
+            let path = real_data_path_2.clone().join(path.file_name().unwrap());
             create_and_write(path, b"b").unwrap();
         }
 
@@ -622,7 +595,6 @@ mod tests {
         let (item, _) = next_change(&mut rt, watch).unwrap();
         assert!(item.is_some());
     }
-
 
     #[test]
     fn polling_detects_create() {
