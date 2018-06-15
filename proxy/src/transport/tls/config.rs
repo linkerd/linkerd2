@@ -327,13 +327,9 @@ impl ServerConfig {
         ServerConfig(Arc::new(config))
     }
 
-    pub fn no_tls()
-        -> (ServerConfigWatch, Box<Future<Item = (), Error = ()> + Send>)
-    {
-            let (watch, _) = Watch::new(None);
-            let no_future = future::ok(());
-
-            (watch, Box::new(no_future))
+    pub fn no_tls() -> ServerConfigWatch {
+        let (watch, _) = Watch::new(None);
+        watch
     }
 }
 

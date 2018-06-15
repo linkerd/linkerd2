@@ -98,13 +98,11 @@ impl Control {
         use hyper;
 
         let log = ::logging::admin().server("metrics", bound_port.local_addr());
-        let (no_tls, _) = ::tls::ServerConfig::no_tls();
-
         let service = self.metrics_service.clone();
         let fut = {
             let log = log.clone();
             bound_port.listen_and_fold(
-                no_tls, // TODO: Serve over TLS.
+                ::tls::ServerConfig::no_tls(), // TODO: Serve over TLS.
                 hyper::server::conn::Http::new(),
                 move |hyper, (conn, remote)| {
                     let service = service.clone();
