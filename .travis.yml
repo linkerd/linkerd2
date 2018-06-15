@@ -167,18 +167,15 @@ jobs:
 
       script:
         - |
-          # Run tests and cleanup afterward.
-          exit_code=0
-          cleanup_exit_code=0
+          # Run integration tests.
           version=$(./bin/go-run cli version --client --short)
           namespace=conduit-$(echo $version | tr -cd '[:alnum:]-')
-          ./bin/test-run $(pwd)/.gorun $namespace || exit_code=$?
-          ./bin/test-cleanup $namespace || cleanup_exit_code=$?
-          if [ $exit_code -ne 0 ]; then
-            exit $exit_code;
-          else
-            exit $cleanup_exit_code;
-          fi
+          ./bin/test-run $(pwd)/.gorun $namespace
+
+      after_script:
+        - |
+          # Cleanup after integration test run.
+          ./bin/test-cleanup "conduit-$(./bin/root-tag | tr -cd '[:alnum:]-')"
 
   # If we want to start building everything against bleeding-edge Rust nightly, we'll have
   # to enable:
