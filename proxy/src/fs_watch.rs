@@ -250,9 +250,14 @@ mod tests {
 
     #[cfg(not(target_os = "windows"))]
     use std::os::unix::fs::symlink;
-    use std::{fs::{self, File}, io::Write, path::Path, time::Duration};
+    use std::{
+        fs::{self, File},
+        io::Write,
+        path::Path,
+        time::{Duration, Instant},
+    };
 
-    use futures::{Future, Sink, Stream};
+    use futures::{future, Future, Sink, Stream};
     use futures_watch::{Watch, WatchError};
 
     struct Fixture {
@@ -380,6 +385,67 @@ mod tests {
             watch
         });
 
+        paths.iter().fold(watch, |watch, ref path| {
+            create_and_write(path, b"B").unwrap();
+
+            let (item, watch) = next_change(&mut rt, watch).unwrap();
+            assert!(item.is_some());
+            watch
+        });
+    }
+
+    fn test_nonexistent_files_dont_file_delete_events(
+        fixture: Fixture,
+        watch: Watch<()>,
+        bg: Box<Future<Item = (), Error = ()>>,
+    ) {
+        // This test confirms that when a file has been deleted,
+        // it's nonexistence doesn't continuously generate new
+        // "file deleted" events.
+        let Fixture {
+            paths,
+            dir: _dir,
+            mut rt,
+        } = fixture;
+
+        rt.spawn(bg);
+
+        let watch = paths.iter().fold(watch, |watch, ref path| {
+            create_and_write(path, b"A").unwrap();
+
+            let (item, watch) = next_change(&mut rt, watch).unwrap();
+            assert!(item.is_some());
+            watch
+        });
+
+        let watch = paths.iter().fold(watch, |watch, ref path| {
+            fs::remove_file(path).unwrap();
+            println!("deleted {:?}", path);
+
+            let (item, watch) = next_change(&mut rt, watch).unwrap();
+            assert!(item.is_some());
+            watch
+        });
+
+        let watch2 = watch.clone();
+        // Check if the stream has become ready every one second.
+        let stream = ::tokio::timer::Interval::new(
+            Instant::now(),
+            Duration::from_secs(1),
+        )
+            .map(|_| {
+                let mut watch = watch2.clone();
+                // The stream should not be ready, since the file
+                // system hasn't changed yet.
+                assert!(!watch.poll().unwrap().is_ready());
+                ()
+            })
+            .take(5)
+            .fold((), |_, ()| future::ok(()));
+
+        rt.block_on(stream).unwrap();
+
+        // Creating the files again should generate a new event
         paths.iter().fold(watch, |watch, ref path| {
             create_and_write(path, b"B").unwrap();
 
@@ -705,4 +771,14 @@ mod tests {
         Fixture::new().test_inotify(test_detects_delete_and_recreate)
     }
 
+    #[test]
+    fn polling_nonexistent_files_dont_file_delete_events() {
+        Fixture::new().test_polling(test_nonexistent_files_dont_file_delete_events)
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn inotify_nonexistent_files_dont_file_delete_events() {
+        Fixture::new().test_inotify(test_detects_delete_and_recreate)
+    }
 }
