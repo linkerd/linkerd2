@@ -60,7 +60,6 @@ metadata:
 spec:
   selector:
     app: smoke-test-gateway
-  type: LoadBalancer
   ports:
   - name: http
     port: 8080

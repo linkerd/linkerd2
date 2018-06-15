@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/runconduit/conduit/pkg/k8s"
 	coreV1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -190,4 +191,23 @@ func (h *KubernetesHelper) ParseNamespacedResource(resource string) (string, str
 		return "", "", fmt.Errorf("string [%s] didn't contain expected format for namespace/resource, extracted: %v", resource, matches)
 	}
 	return matches[0][1], matches[0][2], nil
+}
+
+// ProxyURLFor creates a kubernetes proxy, runs it, and returns the URL that
+// tests can use for access to the given service. Note that the proxy remains
+// running for the duration of the test.
+func (h *KubernetesHelper) ProxyURLFor(namespace, service, port string) (string, error) {
+	proxy, err := k8s.NewProxy("", 0)
+	if err != nil {
+		return "", err
+	}
+
+	url, err := proxy.URLFor(namespace, fmt.Sprintf("/services/%s:%s/proxy/", service, port))
+	if err != nil {
+		return "", err
+	}
+
+	go proxy.Run()
+
+	return url.String(), nil
 }
