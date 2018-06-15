@@ -1,7 +1,6 @@
 package testutil
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -171,29 +170,6 @@ func (h *TestHelper) CheckVersion(serverVersion string) error {
 	return nil
 }
 
-// BlockUntilTrue retries a given function every second until the function
-// returns true or a timeout is reached. If the timeout is reached, it returns
-// an error.
-func (h *TestHelper) BlockUntilTrue(timeout time.Duration, fn func() bool) error {
-	if fn() {
-		return nil
-	}
-
-	timeoutAfter := time.After(timeout)
-	retryAfter := time.Tick(time.Second)
-
-	for {
-		select {
-		case <-timeoutAfter:
-			return errors.New("timed out waiting for condition")
-		case <-retryAfter:
-			if fn() {
-				return nil
-			}
-		}
-	}
-}
-
 // RetryFor retries a given function every second until the function returns
 // without an error, or a timeout is reached. If the timeout is reached, it
 // returns the last error received from the function.
@@ -221,11 +197,11 @@ func (h *TestHelper) RetryFor(timeout time.Duration, fn func() error) error {
 
 // HTTPGetURL sends a GET request to the given URL. It returns the response body
 // in the event of a successful 200 response. In the event of a non-200
-// response, it returns an error. It retries requests for up to 10 seconds,
+// response, it returns an error. It retries requests for up to 30 seconds,
 // giving pods time to start.
 func (h *TestHelper) HTTPGetURL(url string) (string, error) {
 	var body string
-	err := h.RetryFor(10*time.Second, func() error {
+	err := h.RetryFor(30*time.Second, func() error {
 		resp, err := h.httpClient.Get(url)
 		if err != nil {
 			return err

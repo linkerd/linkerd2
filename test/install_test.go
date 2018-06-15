@@ -31,7 +31,7 @@ var (
 		"web",
 	}
 
-	conduitDeploys = map[string]int{
+	conduitDeployReplicas = map[string]int{
 		"controller": 1,
 		"grafana":    1,
 		"prometheus": 1,
@@ -83,24 +83,15 @@ func TestInstall(t *testing.T) {
 		t.Error(err)
 	}
 
-	// Tests Pods
-	err = TestHelper.RetryFor(1*time.Minute, func() error {
-		for deploy, replicas := range conduitDeploys {
+	// Tests Pods and Deployments
+	// The Grafana readiness check can take 1+ min; hence the high timeout here
+	err = TestHelper.RetryFor(2*time.Minute, func() error {
+		for deploy, replicas := range conduitDeployReplicas {
 			if err := TestHelper.CheckPods(TestHelper.GetConduitNamespace(), deploy, replicas); err != nil {
 				return fmt.Errorf("Error validating pods for deploy [%s]:\n%s", deploy, err)
 			}
-		}
-		return nil
-	})
-	if err != nil {
-		t.Error(err)
-	}
-
-	// Tests Deployments
-	err = TestHelper.RetryFor(1*time.Minute, func() error {
-		for deploy, replicas := range conduitDeploys {
 			if err := TestHelper.CheckDeployment(TestHelper.GetConduitNamespace(), deploy, replicas); err != nil {
-				return fmt.Errorf("Error validating Deployment [%s]:\n%s", deploy, err)
+				return fmt.Errorf("Error validating deploy [%s]:\n%s", deploy, err)
 			}
 		}
 		return nil
