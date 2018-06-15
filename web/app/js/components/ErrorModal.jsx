@@ -3,24 +3,6 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import { Icon, Modal } from 'antd';
 
-const ContainerError = (container, errors) => {
-  return (
-    <div key={`error-${container}`}>
-      <p>Container: {_.get(errors, [0, "container", "container"])}</p>
-      <p>Image: {_.get(errors, [0, "container", "image"])}</p>
-      <div className="error-text">
-        {
-        _.map(errors, (er, i) => (
-          <code key={`error-msg-${i}`}>
-            {_.get(er, ["container", "message"])}
-          </code>
-        ))
-      }
-      </div>
-    </div>
-  );
-};
-
 export default class ErrorModal extends React.Component {
   static propTypes = {
     errors: PropTypes.shape({}).isRequired,
@@ -38,15 +20,41 @@ export default class ErrorModal extends React.Component {
     });
   }
 
-  renderPodErrors = podErrors => {
-    let sortedPods = _.sortBy(_.keys(podErrors));
-    return _.map(sortedPods, pod => {
-      let errorsByContainer = _.groupBy(podErrors[pod].errors, "container.container");
+  renderContainerErrors = errorsByContainer => {
+    return _.map(errorsByContainer, (errors, container) => (
+      <div key={`error-${container}`}>
+        <p>Container: {container}</p>
+        <p>Image: {_.get(errors, [0, "image"])}</p>
+        <div className="error-text">
+          {
+            _.map(errors, (er, i) =>
+              <code key={`error-msg-${i}`}>{er.message}</code>
+            )
+          }
+        </div>
+      </div>
+    ));
+  };
 
+  renderPodErrors = podErrors => {
+    let errorsByPodAndContainer = _(podErrors)
+      .keys()
+      .sortBy()
+      .map(pod => {
+        return {
+          pod: pod,
+          byContainer: _(podErrors[pod].errors)
+            .groupBy( "container.container")
+            .mapValues(v => _.map(v, "container"))
+            .value()
+        };
+      }).value();
+
+    return _.map(errorsByPodAndContainer, err => {
       return (
-        <div className="conduit-pod-error" key={pod}>
-          <h3>Pod: {pod}</h3>
-          {_.map(errorsByContainer, (errors, container) => ContainerError(container, errors))}
+        <div className="conduit-pod-error" key={err.pod}>
+          <h3>Pod: {err.pod}</h3>
+          {this.renderContainerErrors(err.byContainer)}
         </div>
       );
     });
