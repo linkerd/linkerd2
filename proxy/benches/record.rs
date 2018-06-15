@@ -48,8 +48,8 @@ where
         &proxy,
         &addr(),
         destination::Metadata::new(metrics::DstLabels::new(labels), None),
+        false
     )
-    ctx::transport::Client::new(&proxy, &addr(), metrics::DstLabels::new(labels), false)
 }
 
 fn request(
