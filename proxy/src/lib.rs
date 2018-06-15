@@ -274,11 +274,9 @@ where
                 config.outbound_router_capacity,
                 config.outbound_router_max_idle_age,
             );
-            // No TLS yet.
-            let (no_tls, _) = tls::ServerConfig::no_tls();
             serve(
                 outbound_listener,
-                no_tls,
+                tls::ServerConfig::no_tls(), // No TLS between service & proxy.
                 router,
                 config.public_connect_timeout,
                 config.outbound_ports_disable_protocol_detection,
@@ -501,12 +499,10 @@ where
         h2_builder,
         log.clone().executor(),
     );
-    let (no_tls, _) = tls::ServerConfig::no_tls();
-
     let fut = {
         let log = log.clone();
         bound_port.listen_and_fold(
-            no_tls,
+            tls::ServerConfig::no_tls(), // TODO: serve over TLS.
             server,
             move |server, (session, remote)| {
                 let log = log.clone().with_remote(remote);
