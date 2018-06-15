@@ -135,10 +135,16 @@ impl BoundPort {
                         None => Either::B(future::ok((Connection::new(Box::new(socket)), remote_addr))),
                     }
                 })
-                .or_else(|err| {
-                    debug!("error handshaking: {}", err);
-                    future::err(err)
+                .then(|r| {
+                    future::ok(match r {
+                        Ok(r) => Some(r),
+                        Err(err) => {
+                            debug!("error handshaking: {}", err);
+                            None
+                        }
+                    })
                 })
+                .filter_map(|x| x)
                 .fold(initial, f)
         )
         .map(|_| ())
