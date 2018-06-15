@@ -48,29 +48,31 @@ where
 
     Interval::new(Instant::now(), interval)
         .map_err(|e| error!("timer error: {:?}", e))
-        .filter_map(move |_| {
+        .filter(move |_| {
+            let mut changed = false;
             for file in &files {
                 match file.has_changed() {
                     Ok(true) => {
                         trace!("{:?} changed", &file.path);
-                        return Some(());
+                        changed = true;
                     }
                     Ok(false) => {
                         // If the hash hasn't changed, keep going.
                     }
-                    Err(ref e) if e.kind() == io::ErrorKind::NotFound => {
+                    Err(ref e) if e.kind() == io::ErrorKind::NotFound && file. => {
                         // A file not found error indicates that the file
                         // has been deleted.
                         trace!("{:?} deleted", &file.path);
-                        return Some(());
+                        changed = true;
                     }
                     Err(ref e) => {
                         warn!("error hashing {:?}: {}", &file.path, e);
                     }
                 }
             }
-            None
+            changed
         })
+        .map(|_| ())
 }
 
 #[cfg(target_os = "linux")]
