@@ -596,12 +596,14 @@ mod tests {
 
         rt.spawn(bg);
 
+        let (item, watch) = next_change(&mut rt, watch).unwrap();
+        assert!(item.is_some());
+
         fs::remove_dir_all(&data_path).unwrap();
         symlink(&real_data_path_2, &data_path).unwrap();
 
         let (item, _) = next_change(&mut rt, watch).unwrap();
         assert!(item.is_some());
-        println!("saw first change");
     }
 
 
