@@ -552,7 +552,7 @@ mod tests {
         .collect::<Vec<_>>();
 
         for path in &paths {
-            let file_path = data_path.clone().join(path.file_name().unwrap();
+            let file_path = data_path.clone().join(path.file_name().unwrap());
             // Don't assert that events are seen here, as we haven't started
             // running the watch yet.
             symlink(file_path, path).unwrap();
