@@ -117,7 +117,8 @@ const processStatTable = table => {
       successRate: getSuccessRate(row),
       latency: getLatency(row),
       tlsRequestPercent: getTlsRequestPercentage(row),
-      added: row.meshedPodCount === row.runningPodCount
+      added: row.meshedPodCount === row.runningPodCount,
+      errors: row.errorsByPod
     };
   })
     .compact()

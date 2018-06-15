@@ -85,3 +85,28 @@ td .status-dot {
     background-color: #E0E0E0;
   }
 }
+
+
+/* error indicator and modal */
+.conduit-error-icon {
+  cursor: pointer;
+  margin-left: 5px;
+  color: var(--siennared);
+}
+
+.conduit-pod-error {
+  margin-top: calc(2 * var(--base-width));
+  margin-bottom: calc(3 * var(--base-width));
+
+  & p {
+    line-height: 8px;
+  }
+
+  & .error-text {
+    padding: var(--base-width);
+    border-radius: calc(0.5 * var(--base-width));
+    font-size: 12px;
+    color: white;
+    background-color: #696969;
+  }
+}

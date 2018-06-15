@@ -1,5 +1,6 @@
 import _ from 'lodash';
 import BaseTable from './BaseTable.jsx';
+import ErrorModal from './ErrorModal.jsx';
 import GrafanaLink from './GrafanaLink.jsx';
 import { processedMetricsPropType } from './util/MetricUtils.js';
 import PropTypes from 'prop-types';
@@ -60,12 +61,13 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
       defaultSortOrder: 'ascend',
       sorter: (a, b) => (a.name || "").localeCompare(b.name),
       render: row => {
+        let nameContents;
         if (resource.toLowerCase() === "namespace") {
-          return <ConduitLink to={"/namespaces/" + row.name}>{row.name}</ConduitLink>;
+          nameContents = <ConduitLink to={"/namespaces/" + row.name}>{row.name}</ConduitLink>;
         } else if (!row.added) {
-          return row.name;
+          nameContents = row.name;
         } else {
-          return (
+          nameContents = (
             <GrafanaLink
               name={row.name}
               namespace={row.namespace}
@@ -73,6 +75,12 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
               ConduitLink={ConduitLink} />
           );
         }
+        return (
+          <React.Fragment>
+            {nameContents}
+            { _.isEmpty(row.errors) ? null : <ErrorModal errors={row.errors} resourceName={row.name} resourceType={resource} /> }
+          </React.Fragment>
+        );
       }
     },
     {
