@@ -139,6 +139,8 @@ jobs:
       language: go
       go: "1.10.2"
       go_import_path: github.com/runconduit/conduit
+      services:
+        - docker
 
       cache:
         directories:
@@ -162,20 +164,27 @@ jobs:
         - |
           # Get a kubernetes context.
           (. bin/_gcp.sh ; get_k8s_ctx "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER")
+        - |
+          # Install conduit cli.
+          version="git-$(git rev-parse --short=8 HEAD)"
+          image="gcr.io/runconduit/cli-bin:$version"
+          id=$(docker create $image)
+          docker cp "$id:/out/conduit-linux" "./conduit"
         - gcloud version
         - kubectl version --short
+        - ./conduit version --client
 
       script:
         - |
           # Run integration tests.
-          version=$(./bin/go-run cli version --client --short)
-          namespace=conduit-$(echo $version | tr -cd '[:alnum:]-')
-          ./bin/test-run $(pwd)/.gorun $namespace
+          version="$(./conduit version --client --short | tr -cd '[:alnum:]-')"
+          ./bin/test-run `pwd`/conduit conduit-$version
 
       after_script:
         - |
           # Cleanup after integration test run.
-          ./bin/test-cleanup "conduit-$(./bin/root-tag | tr -cd '[:alnum:]-')"
+          version="$(./conduit version --client --short | tr -cd '[:alnum:]-')"
+          ./bin/test-cleanup conduit-$version
 
   # If we want to start building everything against bleeding-edge Rust nightly, we'll have
   # to enable:
