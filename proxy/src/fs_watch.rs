@@ -345,7 +345,10 @@ mod tests {
         -> Result<(Option<()>, Watch<()>), WatchError>
     {
         let next = watch.into_future().map_err(|(e, _)| e);
-        rt.block_on_for(Duration::from_secs(2), next)
+        // Rust will print a warning if a test runs longer than 60 seconds,
+        // so we'll use that as the timeout after which we'll kill the test
+        // if we don't see a change.
+        rt.block_on_for(Duration::from_secs(60), next)
     }
 
     fn test_detects_create(
