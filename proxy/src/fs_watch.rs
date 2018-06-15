@@ -49,28 +49,19 @@ where
     Interval::new(Instant::now(), interval)
         .map_err(|e| error!("timer error: {:?}", e))
         .filter(move |_| {
-            let mut changed = false;
+            let mut any_changes = false;
             for file in &files {
-                match file.has_changed() {
-                    Ok(true) => {
-                        trace!("{:?} changed", &file.path);
-                        changed = true;
-                    }
-                    Ok(false) => {
-                        // If the hash hasn't changed, keep going.
-                    }
-                    Err(ref e) if e.kind() == io::ErrorKind::NotFound && file. => {
-                        // A file not found error indicates that the file
-                        // has been deleted.
-                        trace!("{:?} deleted", &file.path);
-                        changed = true;
-                    }
-                    Err(ref e) => {
+                let has_changed = file
+                    .has_changed()
+                    .unwrap_or_else(|e| {
                         warn!("error hashing {:?}: {}", &file.path, e);
-                    }
+                        false
+                    });
+                if has_changed {
+                    any_changes = true;
                 }
             }
-            changed
+            any_changes
         })
         .map(|_| ())
 }
@@ -124,14 +115,37 @@ impl PathAndHash {
     }
 
     fn has_changed(&self) -> io::Result<bool> {
-        let contents = fs::read(&self.path)?;
-        let hash = Some(digest::digest(&digest::SHA256, &contents[..]));
-        let changed = self.last_hash.borrow().as_ref().map(Digest::as_ref)
-            != hash.as_ref().map(Digest::as_ref);
-        if changed {
-            self.last_hash.replace(hash);
+        match fs::read(&self.path) {
+            Ok(contents) => {
+                // If we were able to read the file, compare the hash of its
+                // current contents with the previous hash to determine if it
+                // has changed.
+                let hash = Some(digest::digest(&digest::SHA256, &contents[..]));
+                let changed = self.last_hash.borrow().as_ref()
+                    .map(Digest::as_ref) != hash.as_ref().map(Digest::as_ref);
+                if changed {
+                    trace!("{:?} changed", &self.path);
+                    self.last_hash.replace(hash);
+                }
+                Ok(changed)
+            },
+            Err(ref e) if e.kind() == io::ErrorKind::NotFound => {
+                if self.last_hash.borrow().is_some() {
+                    // If we have a previous hash, then the file was deleted,
+                    // so it has changed.
+                    trace!("{:?} deleted", &self.path);
+                    self.last_hash.replace(None);
+                    Ok(true)
+                } else {
+                    // Otherwise, it didn't exist previously, so there hasn't
+                    // been a change.
+                    Ok(false)
+                }
+            },
+            // Propagate any other errors.
+            Err(e) => Err(e),
         }
-        Ok(changed)
+
     }
 }
 
