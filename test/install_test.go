@@ -22,6 +22,23 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+var (
+	conduitSvcs = []string{
+		"api",
+		"grafana",
+		"prometheus",
+		"proxy-api",
+		"web",
+	}
+
+	conduitDeploys = map[string]int{
+		"controller": 1,
+		"grafana":    1,
+		"prometheus": 1,
+		"web":        1,
+	}
+)
+
 //////////////////////
 /// TEST EXECUTION ///
 //////////////////////
@@ -55,7 +72,7 @@ func TestInstall(t *testing.T) {
 
 	// Tests Services
 	err = TestHelper.RetryFor(10*time.Second, func() error {
-		for _, svc := range []string{"api", "proxy-api", "web"} {
+		for _, svc := range conduitSvcs {
 			if err := TestHelper.CheckService(TestHelper.GetConduitNamespace(), svc); err != nil {
 				return fmt.Errorf("Error validating service [%s]:\n%s", svc, err)
 			}
@@ -67,9 +84,9 @@ func TestInstall(t *testing.T) {
 	}
 
 	// Tests Pods
-	err = TestHelper.RetryFor(30*time.Second, func() error {
-		for _, deploy := range []string{"prometheus", "controller", "web"} {
-			if err := TestHelper.CheckPods(TestHelper.GetConduitNamespace(), deploy, 1); err != nil {
+	err = TestHelper.RetryFor(1*time.Minute, func() error {
+		for deploy, replicas := range conduitDeploys {
+			if err := TestHelper.CheckPods(TestHelper.GetConduitNamespace(), deploy, replicas); err != nil {
 				return fmt.Errorf("Error validating pods for deploy [%s]:\n%s", deploy, err)
 			}
 		}
@@ -80,8 +97,8 @@ func TestInstall(t *testing.T) {
 	}
 
 	// Tests Deployments
-	err = TestHelper.RetryFor(30*time.Second, func() error {
-		for deploy, replicas := range map[string]int{"controller": 1, "prometheus": 1, "web": 1} {
+	err = TestHelper.RetryFor(1*time.Minute, func() error {
+		for deploy, replicas := range conduitDeploys {
 			if err := TestHelper.CheckDeployment(TestHelper.GetConduitNamespace(), deploy, replicas); err != nil {
 				return fmt.Errorf("Error validating Deployment [%s]:\n%s", deploy, err)
 			}
@@ -166,9 +183,9 @@ func TestInject(t *testing.T) {
 		t.Fatalf("kubectl apply command failed\n%s", out)
 	}
 
-	svcURL, err := TestHelper.GetURLForService(prefixedNs, "smoke-test-gateway-svc")
+	svcURL, err := TestHelper.ProxyURLFor(prefixedNs, "smoke-test-gateway-svc", "http")
 	if err != nil {
-		t.Fatalf("Failed to get service URL: %v", err)
+		t.Fatalf("Failed to get proxy URL: %s", err)
 	}
 
 	output, err := TestHelper.HTTPGetURL(svcURL)

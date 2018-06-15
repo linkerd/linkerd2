@@ -42,9 +42,9 @@ func TestEgressHttp(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			expectedURL := fmt.Sprintf("%s://%s/%s", protocolToUse, dnsName, strings.ToLower(methodToUse))
 
-			svcURL, err := TestHelper.GetURLForService(prefixedNs, serviceName)
+			svcURL, err := TestHelper.ProxyURLFor(prefixedNs, serviceName, "http")
 			if err != nil {
-				t.Fatalf("Failed to get service URL: %v", err)
+				t.Fatalf("Failed to get proxy URL: %s", err)
 			}
 
 			output, err := TestHelper.HTTPGetURL(svcURL)

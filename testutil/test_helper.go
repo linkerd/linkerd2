@@ -221,58 +221,29 @@ func (h *TestHelper) RetryFor(timeout time.Duration, fn func() error) error {
 
 // HTTPGetURL sends a GET request to the given URL. It returns the response body
 // in the event of a successful 200 response. In the event of a non-200
-// response, it returns an error.
+// response, it returns an error. It retries requests for up to 10 seconds,
+// giving pods time to start.
 func (h *TestHelper) HTTPGetURL(url string) (string, error) {
-	resp, err := h.httpClient.Get(url)
-	if err != nil {
-		// retry once on timeout error; workaround for GKE loadbalancers
-		if strings.Contains(err.Error(), "Client.Timeout") {
-			resp, err = h.httpClient.Get(url)
-		}
-	}
-	if err != nil {
-		return "", err
-	}
-
-	defer resp.Body.Close()
-	bytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("Error reading response body: %v", err)
-	}
-	body := string(bytes)
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("GET request to [%s] returned status [%d]\n%s", url, resp.StatusCode, body)
-	}
-
-	return body, nil
-}
-
-// GetURLForService returns the external URL for a service in a namespace.
-func (h *TestHelper) GetURLForService(namespace string, serviceName string) (string, error) {
-	var url string
-	err := h.RetryFor(3*time.Minute, func() error {
-		// first try fetching the url from kubectl
-		cmd := exec.Command("kubectl", "-n", namespace, "get", "svc", serviceName, "-o",
-			"jsonpath={.status.loadBalancer.ingress[0].*}:{.spec.ports[0].port}")
-		out, err := cmd.Output()
+	var body string
+	err := h.RetryFor(10*time.Second, func() error {
+		resp, err := h.httpClient.Get(url)
 		if err != nil {
-			return fmt.Errorf("kubectl get svc error: %s\n%s", out, err)
-		}
-		addr := strings.TrimSpace(string(out))
-		if !strings.HasPrefix(addr, ":") {
-			url = "http://" + addr
-			return nil
+			return err
 		}
 
-		// fallback to minikube
-		cmd = exec.Command("minikube", "-n", namespace, "service", serviceName, "--url")
-		out, err = cmd.Output()
+		defer resp.Body.Close()
+		bytes, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			return fmt.Errorf("minikube service error: %s\n%s", out, err)
+			return fmt.Errorf("Error reading response body: %v", err)
 		}
-		url = strings.TrimSpace(string(out))
+		body = string(bytes)
+
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("GET request to [%s] returned status [%d]\n%s", url, resp.StatusCode, body)
+		}
+
 		return nil
 	})
-	return url, err
+
+	return body, err
 }
