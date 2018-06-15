@@ -62,14 +62,17 @@ where
                         trace!("{:?} changed", &file.path);
                         return Some(());
                     },
-                    Err(ref e) if e.kind() != io::ErrorKind::NotFound => {
-                        // Ignore file not found errors so the log doesn't
-                        // get too noisy.
-                        warn!("error hashing {:?}: {}", &file.path, e);
+                    Ok(false) => {
+                        // If the hash hasn't changed, keep going.
+                    }
+                    Err(ref e) if e.kind() == io::ErrorKind::NotFound => {
+                        // A file not found error indicates that the file
+                        // has been deleted.
+                        trace!("{:?} deleted", &file.path);
+                        return Some(());
                     },
-                    _ => {
-                        // If the file doesn't exist or the hash hasn't changed,
-                        // keep going.
+                    Err(ref e) => {
+                        warn!("error hashing {:?}: {}", &file.path, e);
                     },
                 }
             }
