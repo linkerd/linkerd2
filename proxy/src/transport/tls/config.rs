@@ -43,6 +43,7 @@ pub struct CommonSettings {
 
 /// Validated configuration common between TLS clients and TLS servers.
 pub struct CommonConfig {
+    root_cert_store: rustls::RootCertStore,
     cert_resolver: Arc<CertResolver>,
 }
 
@@ -110,18 +111,24 @@ impl CommonConfig {
     /// trust anchors file. Since filesystem operations are not atomic, we
     /// need to check for this consistency.
     fn load_from_disk(settings: &CommonSettings) -> Result<Self, Error> {
-        let trust_anchor_certs = load_file_contents(&settings.trust_anchors)
-            .and_then(|file_contents|
-                rustls::internal::pemfile::certs(&mut Cursor::new(file_contents))
-                    .map_err(|()| Error::FailedToParseTrustAnchors(None)))?;
-        let mut trust_anchors = Vec::with_capacity(trust_anchor_certs.len());
-        for ta in &trust_anchor_certs {
-            let ta = webpki::trust_anchor_util::cert_der_as_trust_anchor(
-                untrusted::Input::from(ta.as_ref()))
-                .map_err(|e| Error::FailedToParseTrustAnchors(Some(e)))?;
-            trust_anchors.push(ta);
-        }
-        let trust_anchors = webpki::TLSServerTrustAnchors(&trust_anchors);
+        let root_cert_store = load_file_contents(&settings.trust_anchors)
+            .and_then(|file_contents| {
+                let mut root_cert_store = rustls::RootCertStore::empty();
+                let (added, skipped) = root_cert_store.add_pem_file(&mut Cursor::new(file_contents))
+                    .map_err(|err| {
+                        error!("error parsing trust anchors file: {:?}", err);
+                        Error::FailedToParseTrustAnchors(None)
+                    })?;
+                if skipped != 0 {
+                    warn!("skipped {} trust anchors in trust anchors file", skipped);
+                }
+                if added > 0 {
+                    Ok(root_cert_store)
+                } else {
+                    error!("no valid trust anchors in trust anchors file");
+                    Err(Error::FailedToParseTrustAnchors(None))
+                }
+            })?;
 
         let end_entity_cert = load_file_contents(&settings.end_entity_cert)?;
 
@@ -134,9 +141,10 @@ impl CommonConfig {
         let private_key = untrusted::Input::from(&private_key);
 
         // `CertResolver::new` is responsible for the consistency check.
-        let cert_resolver = CertResolver::new(&trust_anchors, cert_chain, private_key)?;
+        let cert_resolver = CertResolver::new(&root_cert_store, cert_chain, private_key)?;
 
         Ok(Self {
+            root_cert_store,
             cert_resolver: Arc::new(cert_resolver),
         })
     }
@@ -189,7 +197,23 @@ pub fn watch_for_config_changes(settings: Option<&CommonSettings>)
 
 impl ServerConfig {
     fn from(common: &CommonConfig) -> Self {
-        let mut config = rustls::ServerConfig::new(Arc::new(rustls::NoClientAuth));
+        // Ask TLS clients for a certificate and accept any certificate issued
+        // by our trusted CA(s).
+        //
+        // Initially, also allow TLS clients that don't have a client
+        // certificate too, to minimize risk. TODO: Use
+        // `AllowAnyAuthenticatedClient` to require a valid certificate.
+        //
+        // XXX: Rustls's built-in verifiers don't let us tweak things as fully
+        // as we'd like (e.g. controlling the set of trusted signature
+        // algorithms), but they provide good enough defaults for now.
+        // TODO: lock down the verification further.
+        //
+        // TODO: Change Rustls's API to Avoid needing to clone `root_cert_store`.
+        let client_cert_verifier =
+            rustls::AllowAnyAnonymousOrAuthenticatedClient::new(common.root_cert_store.clone());
+
+        let mut config = rustls::ServerConfig::new(client_cert_verifier);
         set_common_settings(&mut config.versions);
         config.cert_resolver = common.cert_resolver.clone();
         ServerConfig(Arc::new(config))
