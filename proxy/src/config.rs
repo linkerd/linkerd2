@@ -59,7 +59,14 @@ pub struct Config {
     pub resolv_conf_path: PathBuf,
 
     /// Where to talk to the control plane.
-    pub control_host_and_port: HostAndPort,
+    ///
+    /// When set, DNS is only after the Destination service says that there is
+    /// no service with the given name. When not set, the Destination service
+    /// is completely bypassed for service discovery and DNS is always used.
+    ///
+    /// This is optional to allow the proxy to work without the controller for
+    /// experimental & testing purposes.
+    pub control_host_and_port: Option<HostAndPort>,
 
     /// Event queue capacity.
     pub event_buffer_capacity: usize,
@@ -279,14 +286,7 @@ impl<'a> TryFrom<&'a Strings> for Config {
 
         // There is no default controller URL because a default would make it
         // too easy to connect to the wrong controller, which would be dangerous.
-        let control_host_and_port = match parse(strings, ENV_CONTROL_URL, parse_url) {
-            Ok(Some(x)) => Ok(x),
-            Ok(None) => {
-                error!("{} is not set", ENV_CONTROL_URL);
-                Err(Error::InvalidEnvVar)
-            },
-            Err(e) => Err(e),
-        };
+        let control_host_and_port = parse(strings, ENV_CONTROL_URL, parse_url);
 
         let tls_settings = match (tls_trust_anchors?, tls_end_entity_cert?, tls_private_key?) {
             (Some(trust_anchors), Some(end_entity_cert), Some(private_key)) =>
