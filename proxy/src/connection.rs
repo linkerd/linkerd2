@@ -97,7 +97,7 @@ impl BoundPort {
     // TLS when needed.
     pub fn listen_and_fold<T, F, Fut>(
         self,
-        tls_config: tls::ServerConfigWatch,
+        tls: Option<(tls::Identity, tls::ServerConfigWatch)>,
         initial: T,
         f: F)
         -> impl Future<Item = (), Error = io::Error> + Send + 'static
@@ -126,14 +126,18 @@ impl BoundPort {
                     // libraries don't have the necessary API for that, so just
                     // do it here.
                     set_nodelay_or_warn(&socket);
-                    match tls_config.borrow().as_ref() {
-                        Some(tls_config) => {
-                            Either::A(
-                                tls::Connection::accept(socket, tls_config.clone())
-                                    .map(move |tls| (Connection::new(Box::new(tls)), remote_addr)))
-                        },
-                        None => Either::B(future::ok((Connection::new(Box::new(socket)), remote_addr))),
+                    if let Some((_identity, config_watch)) = &tls {
+                        // TODO: use `identity` to differentiate between TLS
+                        // that the proxy should terminate vs. TLS that should
+                        // be passed through.
+                        if let Some(config) = &*config_watch.borrow() {
+                            return Either::A(
+                                tls::Connection::accept(socket, config.clone())
+                                    .map(move |tls| (Connection::new(Box::new(tls)), remote_addr)));
+                        }
                     }
+
+                    Either::B(future::ok((Connection::new(Box::new(socket)), remote_addr)))
                 })
                 .then(|r| {
                     future::ok(match r {

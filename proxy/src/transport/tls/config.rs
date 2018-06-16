@@ -8,6 +8,7 @@ use std::{
 
 use super::{
     cert_resolver::CertResolver,
+    Identity,
 
     rustls,
     untrusted,
@@ -39,6 +40,10 @@ pub struct CommonSettings {
 
     /// The private key in DER-encoded PKCS#8 form.
     pub private_key: PathBuf,
+
+    /// The identity we use to identify the service being proxied (as opposed
+    /// to the psuedo-service exposed on the proxy's control port).
+    pub service_identity: Identity,
 }
 
 /// Validated configuration common between TLS clients and TLS servers.
@@ -64,9 +69,8 @@ pub type ServerConfigWatch = Watch<Option<ServerConfig>>;
 pub enum Error {
     Io(PathBuf, io::Error),
     FailedToParseTrustAnchors(Option<webpki::Error>),
-    EndEntityCertIsNotValid(webpki::Error),
+    EndEntityCertIsNotValid(rustls::TLSError),
     InvalidPrivateKey,
-    TimeConversionFailed,
 }
 
 impl CommonSettings {
@@ -143,8 +147,30 @@ impl CommonConfig {
         let private_key = load_file_contents(&settings.private_key)?;
         let private_key = untrusted::Input::from(&private_key);
 
-        // `CertResolver::new` is responsible for the consistency check.
-        let cert_resolver = CertResolver::new(&root_cert_store, cert_chain, private_key)?;
+        // Ensure the certificate is valid for the services we terminate for
+        // TLS. This assumes that server cert validation does the same or
+        // more validation than client cert validation.
+        //
+        // XXX: Rustls currently only provides access to a
+        // `ServerCertVerifier` through
+        // `rustls::ClientConfig::get_verifier()`.
+        //
+        // XXX: Once `rustls::ServerCertVerified` is exposed in Rustls's
+        // safe API, remove the `map(|_| ())` below.
+        //
+        // TODO: Restrict accepted signatutre algorithms.
+        let certificate_was_validated =
+            rustls::ClientConfig::new().get_verifier().verify_server_cert(
+                    &root_cert_store,
+                    &cert_chain,
+                    (settings.service_identity.0).0.as_ref(),
+                    &[]) // No OCSP
+                .map(|_| ())
+                .map_err(Error::EndEntityCertIsNotValid)?;
+
+        // `CertResolver::new` is responsible for verifying that the
+        // private key is the right one for the certificate.
+        let cert_resolver = CertResolver::new(certificate_was_validated, cert_chain, private_key)?;
 
         Ok(Self {
             root_cert_store,
@@ -220,11 +246,6 @@ impl ServerConfig {
         set_common_settings(&mut config.versions);
         config.cert_resolver = common.cert_resolver.clone();
         ServerConfig(Arc::new(config))
-    }
-
-    pub fn no_tls() -> ServerConfigWatch {
-        let (watch, _) = Watch::new(None);
-        watch
     }
 }
 

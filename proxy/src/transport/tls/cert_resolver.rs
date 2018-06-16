@@ -1,6 +1,5 @@
 use std::{
     sync::Arc,
-    time::SystemTime,
 };
 
 use super::{
@@ -29,33 +28,18 @@ impl CertResolver {
     /// Returns a new `CertResolver` that has a certificate (chain) verified to
     /// have been issued by one of the given trust anchors.
     ///
+    /// TODO: Have the caller pass in a `rustls::ServerCertVerified` as evidence
+    /// that the certificate chain was validated, once Rustls's (safe) API
+    /// supports that.
+    ///
     /// TODO: Verify that the public key of the certificate matches the private
     /// key.
     pub fn new(
-        root_cert_store: &rustls::RootCertStore,
+        _certificate_was_validated: (), // TODO: `rustls::ServerCertVerified`.
         cert_chain: Vec<rustls::Certificate>,
         private_key: untrusted::Input)
         -> Result<Self, config::Error>
     {
-        let now = webpki::Time::try_from(SystemTime::now())
-            .map_err(|ring::error::Unspecified| config::Error::TimeConversionFailed)?;
-
-        let trust_anchors = root_cert_store.roots.iter()
-            .map(|owned_trust_anchor| owned_trust_anchor.to_trust_anchor())
-            .collect::<Vec<_>>();
-        let trust_anchors = webpki::TLSServerTrustAnchors(&trust_anchors);
-
-        // Verify that we were given a valid TLS certificate that was issued by
-        // our CA.
-        parse_end_entity_cert(&cert_chain)
-            .and_then(|cert| {
-                cert.verify_is_valid_tls_server_cert(
-                    &[SIGNATURE_ALG_WEBPKI],
-                    &trust_anchors,
-                    &[], // No intermediate certificates
-                    now)
-            }).map_err(config::Error::EndEntityCertIsNotValid)?;
-
         let private_key = signature::key_pair_from_pkcs8(SIGNATURE_ALG_RING_SIGNING, private_key)
             .map_err(|ring::error::Unspecified| config::Error::InvalidPrivateKey)?;
 
@@ -139,4 +123,3 @@ const SIGNATURE_ALG_RUSTLS_SCHEME: rustls::SignatureScheme =
     rustls::SignatureScheme::ECDSA_NISTP256_SHA256;
 const SIGNATURE_ALG_RUSTLS_ALGORITHM: rustls::internal::msgs::enums::SignatureAlgorithm =
     rustls::internal::msgs::enums::SignatureAlgorithm::ECDSA;
-static SIGNATURE_ALG_WEBPKI: &webpki::SignatureAlgorithm = &webpki::ECDSA_P256_SHA256;
