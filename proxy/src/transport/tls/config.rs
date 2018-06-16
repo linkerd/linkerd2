@@ -14,7 +14,7 @@ use super::{
     webpki,
 };
 
-use futures::{future, Future, Stream};
+use futures::{future, stream, Future, Stream};
 use futures_watch::Watch;
 
 /// Not-yet-validated settings that are used for both TLS clients and TLS
@@ -89,7 +89,10 @@ impl CommonSettings {
         let paths = self.paths().iter()
             .map(|&p| p.clone())
             .collect::<Vec<_>>();
-        ::fs_watch::stream_changes(paths, interval)
+        // Generate one "change" immediately before starting to watch
+        // the files, so that we'll try to load them now if they exist.
+        stream::once(Ok(()))
+            .chain(::fs_watch::stream_changes(paths, interval))
             .filter_map(move |_| {
                 CommonConfig::load_from_disk(&self)
                     .map_err(|e| warn!("error reloading TLS config: {:?}, falling back", e))
