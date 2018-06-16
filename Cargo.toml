@@ -5,3 +5,6 @@ members = [
   "proxy/futures-mpsc-lossy",
   "proxy/router",
 ]
+
+[patch.crates-io]
+rustls = { git = "https://github.com/ctz/rustls" }
