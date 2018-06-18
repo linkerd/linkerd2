@@ -1,3 +1,24 @@
+## v0.4.4
+
+Conduit v0.4.4 continues to improve production suitability and sets up internals for the
+upcoming v0.5.0 release.
+
+* Production Readiness
+  * The destination service has been mostly-rewritten to improve safety and correctness,
+    especially during controller initialization.
+  * Readiness and Liveness checks have been added for some controller components.
+  * RBAC settings have been expanded so that Prometheus can access node-level metrics.
+* User Interface
+  * Ad blockers like uBlock caused the Conduit dashboard to misbehave. This has been
+    fixed.
+  * The UI now highlights pods that have failed to start a proxy.
+* Internals
+  * Various dependency upgrades, including Rust 1.26.2.
+  * TLS testing continues to bear fruit, precipitating stability improvements to
+    dependencies like Rustls.
+
+Special thanks to @alenkacz for improving docker build times!
+
 ## v0.4.3
 
 Conduit v0.4.3 continues progress towards production readiness. It features a new
