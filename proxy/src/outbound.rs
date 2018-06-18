@@ -83,26 +83,37 @@ impl<B> Outbound<B> {
 
     /// Determines the destination to use in the router.
     ///
-    /// If the request was destined to a logical hostname, it is routed by the hostname
-    /// and port.
+    /// A Destination is determined for each request as follows:
     ///
-    /// If no hostname is present on the request, it is routed to the exact concrete
-    /// destination it was already headed to, as determined by the SO_ORIGINAL_DST socket
-    /// option.
+    /// 1. If the request includes a logical authority, it is routed by the hostname and
+    ///    port. If an explicit port is not provided, a default is assumed.
     ///
-    /// If the request has no logical host destination and the SO_ORIGINAL_DST socket
-    /// option has not been set or is unavailable on this platform, the request is not
-    /// recognized.
+    /// 2. If the request authority contains a concrete IP address, it is routed directly
+    ///    to that IP address.
     ///
-    /// The SO_ORIGINAL_DST socket option is typically set by iptables(8) in containerized
-    /// environments like Kubernetes (as configured by the proxy-init program).
+    /// 3. If no authority is present on the request, the client's original destination,
+    ///    as determined by the SO_ORIGINAL_DST socket option, is used as the request's
+    ///    destination.
+    ///
+    ///    The SO_ORIGINAL_DST socket option is typically set by iptables(8) in
+    ///    containerized environments like Kubernetes (as configured by the proxy-init
+    ///    program).
+    ///
+    /// 4. If the request has no authority and the SO_ORIGINAL_DST socket option has not
+    ///    been set (or is unavailable on the current platform), no destination is
+    ///    determined.
     fn destination(req: &http::Request<B>) -> Option<Destination> {
         match Self::host_port(req) {
-            Some(HostAndPort { host: Host::DnsName(dns_name), port }) => {
-                Some(Destination::Hostname(DnsNameAndPort { host: dns_name, port }))
+            Some(HostAndPort { host: Host::DnsName(host), port }) => {
+                let dst = DnsNameAndPort { host, port };
+                Some(Destination::Hostname(dst))
             }
 
-            Some(HostAndPort { host: Host::Ip(_), .. }) |
+            Some(HostAndPort { host: Host::Ip(ip), port }) => {
+                let dst = SocketAddr::from((ip, port));
+                Some(Destination::ImplicitOriginalDst(dst))
+            }
+
             None => {
                 req.extensions()
                     .get::<Arc<ctx::transport::Server>>()
