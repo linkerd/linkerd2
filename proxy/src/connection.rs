@@ -145,8 +145,7 @@ impl BoundPort {
                         if let Some(config) = &*config_watch.borrow() {
                             let f = tls::Connection::accept(socket, config.clone())
                                 .map(move |tls| {
-                                    let conn = Connection::new(tls, TlsStatus::Success);
-                                    (conn, remote_addr)
+                                    (Connection::tls(tls), remote_addr)
                                 });
                             return Either::A(f);
                         } else {
@@ -196,6 +195,14 @@ impl Connection {
             io: Box::new(io),
             peek_buf: BytesMut::new(),
             tls_status,
+        }
+    }
+
+    fn tls(tls: tls::Connection) -> Self {
+            Connection {
+            io: Box::new(tls),
+            peek_buf: BytesMut::new(),
+            tls_status: TlsStatus::Success,
         }
     }
 
