@@ -95,7 +95,6 @@ td .status-dot {
 }
 
 .conduit-pod-error {
-  margin-top: calc(2 * var(--base-width));
   margin-bottom: calc(3 * var(--base-width));
 
   & p {
@@ -104,6 +103,7 @@ td .status-dot {
 
   & .error-text {
     padding: var(--base-width);
+    margin-top: calc(2 * var(--base-width));
     border-radius: calc(0.5 * var(--base-width));
     font-size: 12px;
     color: white;

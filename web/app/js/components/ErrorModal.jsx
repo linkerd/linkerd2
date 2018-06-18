@@ -1,7 +1,7 @@
 import _ from 'lodash';
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Icon, Modal } from 'antd';
+import { Button, Icon, Modal, Switch } from 'antd';
 
 export default class ErrorModal extends React.Component {
   static propTypes = {
@@ -10,34 +10,39 @@ export default class ErrorModal extends React.Component {
     resourceType: PropTypes.string.isRequired
   }
 
+  state = {
+    visible: false,
+    maxErrorLength: 500,
+    truncateErrors: true
+  }
+
   showModal = () => {
-    Modal.error({
-      title: `Errors in ${this.props.resourceType} ${this.props.resourceName}`,
-      width: 800,
-      maskClosable: true,
-      content: this.renderPodErrors(this.props.errors),
-      onOk() {},
+    this.setState({
+      visible: true,
     });
   }
 
-  renderContainerErrors = errorsByContainer => {
-    return _.map(errorsByContainer, (errors, container) => (
-      <div key={`error-${container}`}>
-        <p>Container: {container}</p>
-        <p>Image: {_.get(errors, [0, "image"])}</p>
-        <div className="error-text">
-          {
-            _.map(errors, (er, i) =>
-              <code key={`error-msg-${i}`}>{er.message}</code>
-            )
-          }
-        </div>
-      </div>
-    ));
-  };
+  handleOk = () => {
+    this.setState({
+      visible: false,
+    });
+  }
 
-  renderPodErrors = podErrors => {
-    let errorsByPodAndContainer = _(podErrors)
+  handleCancel = () => {
+    this.setState({
+      visible: false,
+    });
+  }
+
+  toggleTruncateErrors = () => {
+    this.setState({
+      truncateErrors: !this.state.truncateErrors
+    });
+  }
+
+  processErrorData = podErrors => {
+    let shouldTruncate = false;
+    let byPodAndContainer = _(podErrors)
       .keys()
       .sortBy()
       .map(pod => {
@@ -45,24 +50,94 @@ export default class ErrorModal extends React.Component {
           pod: pod,
           byContainer: _(podErrors[pod].errors)
             .groupBy( "container.container")
-            .mapValues(v => _.map(v, "container"))
+            .mapValues(v => {
+              return _.map(v, err => {
+                let errMsg = _.get(err, ["container", "message"]);
+                if (_.size(errMsg) > this.state.maxErrorLength) {
+                  shouldTruncate = true;
+                  err.container.truncatedMessage = _.take(errMsg, this.state.maxErrorLength).join("") + "...";
+                }
+
+                return err.container;
+              });
+            })
             .value()
         };
       }).value();
 
-    return _.map(errorsByPodAndContainer, err => {
+    return {
+      byPodAndContainer,
+      shouldTruncate
+    };
+  }
+
+  renderContainerErrors = (pod, errorsByContainer) => {
+    return _.map(errorsByContainer, (errors, container) => (
+      <div key={`error-${container}`}>
+        <div className="clearfix">
+          <span className="pull-left" title="container name">{container}</span>
+          <span className="pull-right" title="docker image">{_.get(errors, [0, "image"])}</span>
+        </div>
+
+        <div className="error-text">
+          {
+            _.map(errors, (er, i) => {
+                if (_.size(er.message) === 0) {
+                  return null;
+                }
+
+                let message = !this.state.truncateErrors ? er.message :
+                  er.truncatedMessage || er.message;
+
+                return (
+                  <React.Fragment  key={`error-msg-long-${i}`}>
+                    <code>{message}</code><br /><br />
+                  </React.Fragment>
+                );
+              }
+            )
+          }
+        </div>
+      </div>
+    ));
+  };
+
+  renderPodErrors = errors => {
+    return _.map(errors, err => {
       return (
         <div className="conduit-pod-error" key={err.pod}>
-          <h3>Pod: {err.pod}</h3>
-          {this.renderContainerErrors(err.byContainer)}
+          <h3 title="pod name">{err.pod}</h3>
+          {this.renderContainerErrors(err.pod, err.byContainer)}
         </div>
       );
     });
   }
 
   render() {
+    let errors = this.processErrorData(this.props.errors);
+
     return (
-      <Icon type="warning" className="conduit-error-icon" onClick={this.showModal} />
+      <React.Fragment>
+        <Icon type="warning" className="conduit-error-icon" onClick={this.showModal} />
+        <Modal
+          className="conduit-pod-error-modal"
+          title={`Errors in ${this.props.resourceType} ${this.props.resourceName}`}
+          visible={this.state.visible}
+          onOk={this.handleOk}
+          onCancel={this.handleCancel}
+          footer={<Button key="modal-ok" type="primary" onClick={this.handleOk}>OK</Button>}
+          width="800px">
+          <React.Fragment>
+            {
+              errors.shouldTruncate ?
+                <React.Fragment>
+                  Some of these error messages are very long. Show full error text? <Switch onChange={this.toggleTruncateErrors} />
+                </React.Fragment> : null
+            }
+            {this.renderPodErrors(errors.byPodAndContainer)}
+          </React.Fragment>
+        </Modal>
+      </React.Fragment>
     );
   }
 }
