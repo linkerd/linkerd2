@@ -9,8 +9,8 @@ upcoming v0.5.0 release.
   * Readiness and Liveness checks have been added for some controller components.
   * RBAC settings have been expanded so that Prometheus can access node-level metrics.
 * User Interface
-  * Ad blockers like uBlock caused the Conduit dashboard to misbehave. This has been
-    fixed.
+  * Ad blockers like uBlock prevented the Conduit dashboard from fetching API data. This
+    has been fixed.
   * The UI now highlights pods that have failed to start a proxy.
 * Internals
   * Various dependency upgrades, including Rust 1.26.2.
