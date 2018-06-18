@@ -242,6 +242,7 @@ where
         }
     }
 }
+
 #[derive(Copy, Clone, Debug)]
 pub enum BindError {
     External { addr: SocketAddr },
