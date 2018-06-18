@@ -3,6 +3,7 @@
 const path = require('path');
 
 module.exports = {
+  mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
   entry: './js/index.js',
   output: {
     path: path.resolve(__dirname, 'dist'),
@@ -28,7 +29,7 @@ module.exports = {
             loader: 'eslint-loader',
             options: {
               fix: true,
-              emitWarning: process.env.NODE_ENV == 'development'
+              emitWarning: process.env.NODE_ENV === 'development'
             }
           }
         ]
@@ -46,7 +47,7 @@ module.exports = {
         use: [
           {
             loader: 'file-loader',
-            options: { publicPath: 'dist/' }
+            options: {}
           }
         ]
       }

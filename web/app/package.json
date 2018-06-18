@@ -30,8 +30,8 @@
     "sinon": "^4.1.2",
     "sinon-chai": "^2.14.0",
     "sinon-stub-promise": "^4.0.0",
-    "webpack": "^3.5.6",
-    "webpack-dev-server": "^2.7.1",
+    "webpack": "^4.1.12",
+    "webpack-dev-server": "^3.1.4",
     "whatwg-fetch": "^2.0.3"
   },
   "devDependencies": {
@@ -57,6 +57,7 @@
     "postcss-import": "^11.1.0",
     "postcss-loader": "^2.1.5",
     "style-loader": "^0.21.0",
-    "url-loader": "^1.0.1"
+    "url-loader": "^1.0.1",
+    "webpack-cli": "^3.0.7"
   }
 }
