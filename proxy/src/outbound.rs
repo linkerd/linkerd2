@@ -85,11 +85,11 @@ impl<B> Outbound<B> {
     ///
     /// A Destination is determined for each request as follows:
     ///
-    /// 1. If the request includes a logical authority, it is routed by the hostname and
-    ///    port. If an explicit port is not provided, a default is assumed.
+    /// 1. If the request's authority contains a logical hostname, it is routed by the
+    ///    hostname and port. If an explicit port is not provided, a default is assumed.
     ///
-    /// 2. If the request authority contains a concrete IP address, it is routed directly
-    ///    to that IP address.
+    /// 2. If the request's authority contains a concrete IP address, it is routed
+    ///    directly to that IP address.
     ///
     /// 3. If no authority is present on the request, the client's original destination,
     ///    as determined by the SO_ORIGINAL_DST socket option, is used as the request's
