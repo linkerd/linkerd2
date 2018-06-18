@@ -245,9 +245,7 @@ where
         // to the managed application (private destination).
         let inbound = {
             let ctx = ctx::Proxy::inbound(&process_ctx);
-
             let bind = bind.clone().with_ctx(ctx.clone());
-
             let default_addr = config.private_forward.map(|a| a.into());
 
             let router = Router::new(
@@ -257,7 +255,7 @@ where
             );
             serve(
                 inbound_listener,
-                tls_server_config,
+                config.tls_settings.map(|settings| (settings.service_identity, tls_server_config)),
                 router,
                 config.private_connect_timeout,
                 config.inbound_ports_disable_protocol_detection,
@@ -281,7 +279,7 @@ where
             );
             serve(
                 outbound_listener,
-                tls::ServerConfig::no_tls(), // No TLS between service & proxy.
+                None, // No TLS between service & proxy.
                 router,
                 config.public_connect_timeout,
                 config.outbound_ports_disable_protocol_detection,
@@ -348,7 +346,7 @@ where
 
 fn serve<R, B, E, F, G>(
     bound_port: BoundPort,
-    tls_config: tls::ServerConfigWatch,
+    tls_config: Option<(tls::Identity, tls::ServerConfigWatch)>,
     router: Router<R>,
     tcp_connect_timeout: Duration,
     disable_protocol_detection_ports: IndexSet<u16>,
@@ -507,7 +505,7 @@ where
     let fut = {
         let log = log.clone();
         bound_port.listen_and_fold(
-            tls::ServerConfig::no_tls(), // TODO: serve over TLS.
+            None, // TODO: serve over TLS.
             server,
             move |server, (session, remote)| {
                 let log = log.clone().with_remote(remote);

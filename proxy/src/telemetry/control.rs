@@ -102,7 +102,7 @@ impl Control {
         let fut = {
             let log = log.clone();
             bound_port.listen_and_fold(
-                ::tls::ServerConfig::no_tls(), // TODO: Serve over TLS.
+                None, // TODO: Serve over TLS.
                 hyper::server::conn::Http::new(),
                 move |hyper, (conn, remote)| {
                     let service = service.clone();

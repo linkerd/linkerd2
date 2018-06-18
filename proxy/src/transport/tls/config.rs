@@ -8,6 +8,7 @@ use std::{
 
 use super::{
     cert_resolver::CertResolver,
+    Identity,
 
     rustls,
     untrusted,
@@ -39,10 +40,15 @@ pub struct CommonSettings {
 
     /// The private key in DER-encoded PKCS#8 form.
     pub private_key: PathBuf,
+
+    /// The identity we use to identify the service being proxied (as opposed
+    /// to the psuedo-service exposed on the proxy's control port).
+    pub service_identity: Identity,
 }
 
 /// Validated configuration common between TLS clients and TLS servers.
-pub struct CommonConfig {
+#[derive(Debug)]
+struct CommonConfig {
     root_cert_store: rustls::RootCertStore,
     cert_resolver: Arc<CertResolver>,
 }
@@ -64,9 +70,8 @@ pub type ServerConfigWatch = Watch<Option<ServerConfig>>;
 pub enum Error {
     Io(PathBuf, io::Error),
     FailedToParseTrustAnchors(Option<webpki::Error>),
-    EndEntityCertIsNotValid(webpki::Error),
+    EndEntityCertIsNotValid(rustls::TLSError),
     InvalidPrivateKey,
-    TimeConversionFailed,
 }
 
 impl CommonSettings {
@@ -83,7 +88,7 @@ impl CommonSettings {
     /// The returned stream consists of each subsequent successfully loaded
     /// `CommonSettings` after each change. If the settings could not be
     /// reloaded (i.e., they were malformed), nothing is sent.
-    pub fn stream_changes(self, interval: Duration)
+    fn stream_changes(self, interval: Duration)
         -> impl Stream<Item = CommonConfig, Error = ()>
     {
         let paths = self.paths().iter()
@@ -143,8 +148,30 @@ impl CommonConfig {
         let private_key = load_file_contents(&settings.private_key)?;
         let private_key = untrusted::Input::from(&private_key);
 
-        // `CertResolver::new` is responsible for the consistency check.
-        let cert_resolver = CertResolver::new(&root_cert_store, cert_chain, private_key)?;
+        // Ensure the certificate is valid for the services we terminate for
+        // TLS. This assumes that server cert validation does the same or
+        // more validation than client cert validation.
+        //
+        // XXX: Rustls currently only provides access to a
+        // `ServerCertVerifier` through
+        // `rustls::ClientConfig::get_verifier()`.
+        //
+        // XXX: Once `rustls::ServerCertVerified` is exposed in Rustls's
+        // safe API, remove the `map(|_| ())` below.
+        //
+        // TODO: Restrict accepted signatutre algorithms.
+        let certificate_was_validated =
+            rustls::ClientConfig::new().get_verifier().verify_server_cert(
+                    &root_cert_store,
+                    &cert_chain,
+                    settings.service_identity.as_dns_name_ref(),
+                    &[]) // No OCSP
+                .map(|_| ())
+                .map_err(Error::EndEntityCertIsNotValid)?;
+
+        // `CertResolver::new` is responsible for verifying that the
+        // private key is the right one for the certificate.
+        let cert_resolver = CertResolver::new(certificate_was_validated, cert_chain, private_key)?;
 
         Ok(Self {
             root_cert_store,
@@ -221,11 +248,6 @@ impl ServerConfig {
         config.cert_resolver = common.cert_resolver.clone();
         ServerConfig(Arc::new(config))
     }
-
-    pub fn no_tls() -> ServerConfigWatch {
-        let (watch, _) = Watch::new(None);
-        watch
-    }
 }
 
 fn load_file_contents(path: &PathBuf) -> Result<Vec<u8>, Error> {
@@ -257,4 +279,101 @@ fn load_file_contents(path: &PathBuf) -> Result<Vec<u8>, Error> {
 fn set_common_settings(versions: &mut Vec<rustls::ProtocolVersion>) {
     // Only enable TLS 1.2 until TLS 1.3 is stable.
     *versions = vec![rustls::ProtocolVersion::TLSv1_2]
+}
+
+
+#[cfg(test)]
+mod tests {
+    use tls::{CommonSettings, Identity, ServerConfig};
+    use super::{CommonConfig, Error};
+    use config::Namespaces;
+    use std::path::PathBuf;
+
+    struct Strings {
+        pod_name: &'static str,
+        pod_ns: &'static str,
+        controller_ns: &'static str,
+        trust_anchors: &'static str,
+        end_entity_cert: &'static str,
+        private_key: &'static str,
+    }
+
+    fn settings(s: &Strings) -> CommonSettings {
+        let dir = PathBuf::from("src/transport/tls/testdata");
+        let namespaces = Namespaces {
+            pod: s.pod_ns.into(),
+            tls_controller: Some(s.controller_ns.into()),
+        };
+        let service_identity = Identity::try_from_pod_name(&namespaces, s.pod_name).unwrap();
+        CommonSettings {
+            trust_anchors: dir.join(s.trust_anchors),
+            end_entity_cert: dir.join(s.end_entity_cert),
+            private_key: dir.join(s.private_key),
+            service_identity,
+        }
+    }
+
+    #[test]
+    fn can_construct_server_config_from_valid_settings() {
+        let settings = settings(&Strings {
+            pod_name: "foo",
+            pod_ns: "ns1",
+            controller_ns: "conduit",
+            trust_anchors: "ca1.pem",
+            end_entity_cert: "foo-ns1-ca1.crt",
+            private_key: "foo-ns1-ca1.p8",
+        });
+        let config = CommonConfig::load_from_disk(&settings).unwrap();
+        let _: ServerConfig = ServerConfig::from(&config); // Infallible.
+    }
+
+    #[test]
+    fn recognize_ca_did_not_issue_cert() {
+        let settings = settings(&Strings {
+            pod_name: "foo",
+            pod_ns: "ns1",
+            controller_ns: "conduit",
+            trust_anchors: "ca2.pem", // Mismatch
+            end_entity_cert: "foo-ns1-ca1.crt",
+            private_key: "foo-ns1-ca1.p8",
+        });
+        match CommonConfig::load_from_disk(&settings) {
+            Err(Error::EndEntityCertIsNotValid(_)) => (),
+            r => unreachable!("CommonConfig::load_from_disk returned {:?}", r),
+        }
+    }
+
+    #[test]
+    fn recognize_cert_is_not_valid_for_identity() {
+        let settings = settings(&Strings {
+            pod_name: "foo", // Mismatch
+            pod_ns: "ns1",
+            controller_ns: "conduit",
+            trust_anchors: "ca1.pem",
+            end_entity_cert: "bar-ns1-ca1.crt",
+            private_key: "bar-ns1-ca1.p8",
+        });
+        match CommonConfig::load_from_disk(&settings) {
+            Err(Error::EndEntityCertIsNotValid(_)) => (),
+            r => unreachable!("CommonConfig::load_from_disk returned {:?}", r),
+        }
+    }
+
+    // XXX: The check that this tests hasn't been implemented yet.
+    #[test]
+    #[should_panic]
+    fn recognize_private_key_is_not_valid_for_cert() {
+        let settings = settings(&Strings {
+            pod_name: "foo",
+            pod_ns: "ns1",
+            controller_ns: "conduit",
+            trust_anchors: "ca1.pem",
+            end_entity_cert: "foo-ns1-ca1.crt",
+            private_key: "bar-ns1-ca1.p8", // Mismatch
+        });
+        match CommonConfig::load_from_disk(&settings) {
+            Err(_) => (), // // TODO: Err(Error::InvalidPrivateKey) > (),
+            r => unreachable!("CommonConfig::load_from_disk returned {:?}", r),
+        }
+    }
 }

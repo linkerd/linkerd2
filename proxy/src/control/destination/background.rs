@@ -582,7 +582,7 @@ fn pb_to_addr_meta(
     labels.sort_by(|(k0, _), (k1, _)| k0.cmp(k1));
 
     let tls_identity = pb.tls_identity.and_then(|pb| {
-        match tls::Identity::maybe_from(pb, tls_controller_namespace) {
+        match tls::Identity::maybe_from_protobuf(tls_controller_namespace, pb) {
             Ok(maybe_tls) => maybe_tls,
             Err(e) => {
                 error!("Failed to parse TLS identity: {:?}", e);
