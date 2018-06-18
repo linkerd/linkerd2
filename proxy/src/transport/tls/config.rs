@@ -47,7 +47,7 @@ pub struct CommonSettings {
 }
 
 /// Validated configuration common between TLS clients and TLS servers.
-pub struct CommonConfig {
+struct CommonConfig {
     root_cert_store: rustls::RootCertStore,
     cert_resolver: Arc<CertResolver>,
 }
@@ -87,7 +87,7 @@ impl CommonSettings {
     /// The returned stream consists of each subsequent successfully loaded
     /// `CommonSettings` after each change. If the settings could not be
     /// reloaded (i.e., they were malformed), nothing is sent.
-    pub fn stream_changes(self, interval: Duration)
+    fn stream_changes(self, interval: Duration)
         -> impl Stream<Item = CommonConfig, Error = ()>
     {
         let paths = self.paths().iter()
