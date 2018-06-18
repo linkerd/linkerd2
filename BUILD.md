@@ -206,6 +206,17 @@ In development you can run:
 bin/go-run cli check
 ```
 
+### Building CLI for development
+
+When Conduit's CLI is built using `bin/docker-build` it always creates binaries for all three platforms.
+For local development and fast edit-build-test cycle you might want to avoid that. For those situations
+you can use the fast-build option, that will skip the docker build altogether and will build CLI
+locally using `go build`.
+
+```bash
+bin/fast-build
+```
+
 ### Running the control plane for development
 
 Conduit's control plane is composed of several Go microservices. You can run

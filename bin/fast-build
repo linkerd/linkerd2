@@ -1,0 +1,24 @@
+#!/bin/bash
+
+set -eu
+cd "$(pwd -P)"
+
+# Builds CLI binary for current platform only and outside docker to speed up things. Suitable for local development.
+
+bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+rootdir="$( cd $bindir/.. && pwd )"
+. $bindir/_tag.sh
+
+CONDUIT_SKIP_CLI_CONTAINER=1 bin/docker-build
+current_platform=$(uname)
+host_platform="windows"
+if [ "${current_platform}" = 'Darwin' ]; then
+    host_platform="darwin"
+elif [ "${current_platform}" = 'Linux' ]; then
+    host_platform="linux"
+fi
+
+./bin/dep ensure -vendor-only -v
+target="$rootdir/target/cli/${host_platform}/conduit"
+CGO_ENABLED=0 go build -installsuffix cgo -o $target -ldflags "-s -w -X github.com/runconduit/conduit/pkg/version.Version=$($bindir/root-tag)" ./cli
+echo "$target"
