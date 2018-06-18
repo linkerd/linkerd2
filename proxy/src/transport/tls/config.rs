@@ -47,6 +47,7 @@ pub struct CommonSettings {
 }
 
 /// Validated configuration common between TLS clients and TLS servers.
+#[derive(Debug)]
 struct CommonConfig {
     root_cert_store: rustls::RootCertStore,
     cert_resolver: Arc<CertResolver>,
@@ -159,11 +160,12 @@ impl CommonConfig {
         // safe API, remove the `map(|_| ())` below.
         //
         // TODO: Restrict accepted signatutre algorithms.
+        let identity_dns_name = (settings.service_identity.0).0.as_ref();
         let certificate_was_validated =
             rustls::ClientConfig::new().get_verifier().verify_server_cert(
                     &root_cert_store,
                     &cert_chain,
-                    (settings.service_identity.0).0.as_ref(),
+                    identity_dns_name,
                     &[]) // No OCSP
                 .map(|_| ())
                 .map_err(Error::EndEntityCertIsNotValid)?;
@@ -338,7 +340,7 @@ mod tests {
         });
         match CommonConfig::load_from_disk(&settings) {
             Err(Error::EndEntityCertIsNotValid(_)) => (),
-            _ => unreachable!()
+            r => unreachable!("CommonConfig::load_from_disk returned {:?}", r),
         }
     }
 
@@ -354,7 +356,7 @@ mod tests {
         });
         match CommonConfig::load_from_disk(&settings) {
             Err(Error::EndEntityCertIsNotValid(_)) => (),
-            _ => unreachable!()
+            r => unreachable!("CommonConfig::load_from_disk returned {:?}", r),
         }
     }
 
@@ -372,7 +374,7 @@ mod tests {
         });
         match CommonConfig::load_from_disk(&settings) {
             Err(_) => (), // // TODO: Err(Error::InvalidPrivateKey) > (),
-            _ => unreachable!()
+            r => unreachable!("CommonConfig::load_from_disk returned {:?}", r),
         }
     }
 }

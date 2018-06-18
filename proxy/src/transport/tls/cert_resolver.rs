@@ -1,4 +1,5 @@
 use std::{
+    fmt,
     sync::Arc,
 };
 
@@ -13,6 +14,13 @@ use ring::{self, rand, signature};
 
 pub struct CertResolver {
     certified_key: rustls::sign::CertifiedKey,
+}
+
+impl fmt::Debug for CertResolver {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        f.debug_struct("CertResolver")
+            .finish()
+    }
 }
 
 struct SigningKey {
