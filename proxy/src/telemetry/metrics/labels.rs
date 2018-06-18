@@ -126,11 +126,7 @@ impl fmt::Display for RequestLabels {
             write!(f, ",{}", outbound)?;
         }
 
-        if self.tls_status == ctx::transport::TlsStatus::Success {
-            // TODO: Handle status variant for `NoConfig` when that
-            // is added.
-            f.pad(",tls=\"true\"")?;
-        }
+        write!(f, ",{}", self.tls_status)?;
 
         Ok(())
     }
@@ -336,19 +332,16 @@ impl TransportLabels {
 
 impl fmt::Display for TransportLabels {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.direction, f)?;
-        f.pad(match self.peer {
-            Peer::Src => ",peer=\"src\"",
-            Peer::Dst => ",peer=\"dst\"",
-        })?;
+        write!(f, "{},{},{}", self.direction, self.peer, self.tls_status)
+    }
+}
 
-        if self.tls_status == ctx::transport::TlsStatus::Success {
-            // TODO: Handle status variant for `NoConfig` when that
-            // is added.
-            f.pad(",tls=\"true\"")?;
+impl fmt::Display for Peer {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Peer::Src => f.pad("peer=\"src\""),
+            Peer::Dst => f.pad("peer=\"dst\""),
         }
-
-        Ok(())
     }
 }
 
@@ -376,3 +369,13 @@ impl fmt::Display for TransportCloseLabels {
     }
 }
 
+impl fmt::Display for ctx::transport::TlsStatus {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use ctx::transport::TlsStatus;
+        match *self {
+            TlsStatus::Disabled => Ok(()),
+            TlsStatus::NoConfig => f.pad("tls=\"no config\""),
+            TlsStatus::Success  => f.pad("tls=\"true\""),
+        }
+    }
+}

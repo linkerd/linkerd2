@@ -39,8 +39,9 @@ pub enum TlsStatus {
     Success,
     /// TLS was not enabled for this connection.
     Disabled,
-    // TODO: Add `NoConfig` variant for when TLS was enabled,
-    // but we had no valid configuration.
+    /// TLS was enabled for this connection, but we have no valid
+    /// config.
+    NoConfig,
 }
 
 impl Ctx {

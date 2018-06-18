@@ -150,7 +150,8 @@ impl BoundPort {
                                 });
                             return Either::A(f);
                         } else {
-                            TlsStatus::Disabled
+                            // No valid TLS configuration.
+                            TlsStatus::NoConfig
                         }
                     } else {
                         TlsStatus::Disabled
