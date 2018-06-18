@@ -60,8 +60,7 @@ impl<B> Outbound<B> {
     /// TODO: Use scheme-appropriate default port.
     fn normalize(authority: &http::uri::Authority) -> Option<HostAndPort> {
         const DEFAULT_PORT: Option<u16> = Some(80);
-        HostAndPort::normalize(authority, DEFAULT_PORT)
-            .inspect_err(|e| error!("invalid authority=\"{}\": {:?}", authority, e))
+        HostAndPort::normalize(authority, DEFAULT_PORT).ok()
     }
 
     /// Determines the logical host:port of the request.
