@@ -145,7 +145,7 @@ impl BoundPort {
                         if let Some(config) = &*config_watch.borrow() {
                             let f = tls::Connection::accept(socket, config.clone())
                                 .map(move |tls| {
-                                    let conn = Connection::new(Box::new(tls), TlsStatus::Success);
+                                    let conn = Connection::new(tls, TlsStatus::Success);
                                     (conn, remote_addr)
                                 });
                             return Either::A(f);
@@ -155,7 +155,7 @@ impl BoundPort {
                     } else {
                         TlsStatus::Disabled
                     };
-                    let conn = Connection::new(Box::new(socket), tls_status);
+                    let conn = Connection::new(socket, tls_status);
                     Either::B(future::ok((conn, remote_addr)))
                 })
                 .then(|r| {
@@ -183,16 +183,16 @@ impl Future for Connecting {
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         let socket = try_ready!(self.inner.poll());
         set_nodelay_or_warn(&socket);
-        Ok(Async::Ready(Connection::new(Box::new(socket), self.tls_status)))
+        Ok(Async::Ready(Connection::new(socket, self.tls_status)))
     }
 }
 
 // ===== impl Connection =====
 
 impl Connection {
-    fn new(io: Box<Io>, tls_status: TlsStatus) -> Self {
+    fn new<I: Io + 'static>(io: I, tls_status: TlsStatus) -> Self {
         Connection {
-            io,
+            io: Box::new(io),
             peek_buf: BytesMut::new(),
             tls_status,
         }
