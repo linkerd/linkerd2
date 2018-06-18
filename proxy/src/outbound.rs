@@ -55,21 +55,23 @@ impl<B> Outbound<B> {
         }
     }
 
-    const DEFAULT_PORT: Option<u16> = Some(80);
 
     /// TODO: Return error when `HostAndPort::normalize()` fails.
-    /// TODO: Use scheme-appropriate-default
+    /// TODO: Use scheme-appropriate default port.
     fn normalize(authority: &http::uri::Authority) -> Option<HostAndPort> {
-        HostAndPort::normalize(authority, Self::DEFAULT_PORT).ok()
+        const DEFAULT_PORT: Option<u16> = Some(80);
+        HostAndPort::normalize(authority, DEFAULT_PORT)
+            .inspect_err(|e| error!("invalid authority=\"{}\": {:?}", authority, e))
     }
 
     /// Determines the logical host:port of the request.
     ///
-    /// 1. If the parsed URI includes an authority, use that.
-    /// 2. Otherwise, try to load the authority from the `Host` header.
+    /// If the parsed URI includes an authority, use that. Otherwise, try to load the
+    /// authority from the `Host` header.
     ///
     /// The port is either parsed from the authority or a default of 80 is used.
     fn host_port(req: &http::Request<B>) -> Option<HostAndPort> {
+        // Note: Calls to `normalize` cannot be deduped without cloning `authority`.
         req.uri()
             .authority_part()
             .and_then(Self::normalize)
@@ -81,18 +83,19 @@ impl<B> Outbound<B> {
 
     /// Determines the destination to use in the router.
     ///
-    /// 1. If the request was destined to a logic (named) host, route it by the logical
-    ///    hostname and port.
-    /// 2. Otherwise, route the request to the exact concrete destination it was
-    ///    already headed to, as determined by the SO_ORIGINAL_DST socket option.
+    /// If the request was destined to a logical hostname, it is routed by the hostname
+    /// and port.
+    ///
+    /// If no hostname is present on the request, it is routed to the exact concrete
+    /// destination it was already headed to, as determined by the SO_ORIGINAL_DST socket
+    /// option.
     ///
     /// If the request has no logical host destination and the SO_ORIGINAL_DST socket
     /// option has not been set or is unavailable on this platform, the request is not
     /// recognized.
     ///
-    /// The SO_ORIGINAL_DST socket option is typically set by iptables(8) in i.e.
-    /// containerized environments like Kubernetes (as configured by the proxy-init
-    /// program).
+    /// The SO_ORIGINAL_DST socket option is typically set by iptables(8) in containerized
+    /// environments like Kubernetes (as configured by the proxy-init program).
     fn destination(req: &http::Request<B>) -> Option<Destination> {
         match Self::host_port(req) {
             Some(HostAndPort { host: Host::DnsName(dns_name), port }) => {
