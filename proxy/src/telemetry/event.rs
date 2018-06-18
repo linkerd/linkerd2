@@ -19,10 +19,7 @@ pub enum Event {
     StreamResponseEnd(Arc<ctx::http::Response>, StreamResponseEnd),
 
     TlsConfigReloaded,
-    // This uses the label type rather than the `tls::ConfigError`
-    // type, since `ConfigError` owns a `std::io::Error` that doesn't
-    // implement `Clone`.
-    TlsConfigReloadFailed(super::metrics::TlsConfigLabels),
+    TlsConfigReloadFailed(::transport::tls::ConfigError),
 }
 
 #[derive(Clone, Debug)]

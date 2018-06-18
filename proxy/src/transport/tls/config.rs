@@ -149,9 +149,9 @@ impl From<ReasonForNoIdentity> for ReasonForNoTls {
 pub type ConditionalConnectionConfig<C> = Conditional<ConnectionConfig<C>, ReasonForNoTls>;
 pub type ConditionalClientConfig = Conditional<ClientConfig, ReasonForNoTls>;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Error {
-    Io(PathBuf, io::Error),
+    Io(PathBuf, Option<i32>),
     FailedToParseTrustAnchors(Option<webpki::Error>),
     EndEntityCertIsNotValid(rustls::TLSError),
     InvalidPrivateKey,
@@ -418,7 +418,10 @@ fn load_file_contents(path: &PathBuf) -> Result<Vec<u8>, Error> {
             trace!("loaded file {:?}", path);
             contents
         })
-        .map_err(|e| Error::Io(path.clone(), e))
+        .map_err(|e| {
+            error!("error loading {}: {}", path.display(), e);
+            Error::Io(path.clone(), e.raw_os_error())
+        })
 }
 
 fn set_common_settings(versions: &mut Vec<rustls::ProtocolVersion>) {

@@ -1,8 +1,10 @@
-use std::collections::HashMap;
-use std::fmt::{self, Write};
-use std::hash;
-use std::path::PathBuf;
-use std::sync::Arc;
+use std::{
+    collections::HashMap,
+    fmt::{self, Write},
+    hash,
+    path::PathBuf,
+    sync::Arc,
+};
 
 use http;
 
@@ -96,7 +98,7 @@ pub enum TlsConfigLabels {
     InvalidTrustAnchors,
     InvalidPrivateKey,
     InvalidEndEntityCert,
-    Io(PathBuf),
+    Io { path: PathBuf, error_code: Option<i32>, },
     TimeConversion,
 }
 
@@ -416,8 +418,8 @@ impl TlsConfigLabels {
 impl From<tls::ConfigError> for TlsConfigLabels {
     fn from(err: tls::ConfigError) -> Self {
         match err {
-            tls::ConfigError::Io(path, _) =>
-                TlsConfigLabels::Io(path),
+            tls::ConfigError::Io(path, error_code) =>
+                TlsConfigLabels::Io { path, error_code },
             tls::ConfigError::FailedToParseTrustAnchors(_) =>
                 TlsConfigLabels::InvalidTrustAnchors,
             tls::ConfigError::EndEntityCertIsNotValid(_) =>
@@ -435,8 +437,14 @@ impl fmt::Display for TlsConfigLabels {
         match self {
             TlsConfigLabels::Reloaded =>
                 f.pad("status=\"reloaded\""),
-            TlsConfigLabels::Io(ref path) =>
-                write!(f, "status=\"io error\",path=\"{}\"", path.display()),
+            TlsConfigLabels::Io { ref path, error_code } => {
+                write!(f, "status=\"io error\",path=\"{}\"", path.display())?;
+                if let Some(error_code) = error_code {
+                    write!(f, ",error_code=\"{}\"", error_code)?;
+                }
+                Ok(())
+            }
+
             TlsConfigLabels::InvalidPrivateKey =>
                 f.pad("status=\"invalid private key\""),
             TlsConfigLabels::InvalidEndEntityCert =>

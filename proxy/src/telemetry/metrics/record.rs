@@ -91,7 +91,7 @@ impl Record {
 
             Event::TlsConfigReloadFailed(ref err) =>
                 self.update(|metrics| {
-                    metrics.tls_config(err.clone()).incr();
+                    metrics.tls_config(err.clone().into()).incr();
                 }),
         };
     }
