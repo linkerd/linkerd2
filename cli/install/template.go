@@ -60,8 +60,8 @@ metadata:
   name: conduit-prometheus
 rules:
 - apiGroups: [""]
-  resources: ["nodes", "pods"]
-  verbs: ["list", "watch"]
+  resources: ["nodes", "nodes/proxy", "pods"]
+  verbs: ["get", "list", "watch"]
 
 ---
 kind: ClusterRoleBinding
