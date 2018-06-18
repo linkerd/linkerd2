@@ -1,6 +1,6 @@
 use conduit_proxy_controller_grpc;
 use convert::TryFrom;
-use super::{DnsName, InvalidDnsName};
+use super::{DnsName, InvalidDnsName, webpki};
 use std::sync::Arc;
 use config::Namespaces;
 
@@ -84,5 +84,9 @@ impl Identity {
                 error!("Invalid DNS name: {:?}", name);
                 ()
             })
+    }
+
+    pub(super) fn as_dns_name_ref(&self) -> webpki::DNSNameRef {
+        (self.0).0.as_ref()
     }
 }
