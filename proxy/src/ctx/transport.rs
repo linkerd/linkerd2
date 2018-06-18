@@ -19,7 +19,7 @@ pub struct Server {
     pub remote: SocketAddr,
     pub local: SocketAddr,
     pub orig_dst: Option<SocketAddr>,
-    pub is_tls: bool,
+    pub tls_status: TlsStatus,
 }
 
 /// Identifies a connection from the proxy to another process.
@@ -28,7 +28,19 @@ pub struct Client {
     pub proxy: Arc<ctx::Proxy>,
     pub remote: SocketAddr,
     pub metadata: destination::Metadata,
-    pub is_tls: bool,
+    pub tls_status: TlsStatus,
+}
+
+/// Identifies whether or not a connection was secured with TLS,
+/// and the reason why not.
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub enum TlsStatus {
+    /// The TLS handshake was successful.
+    Success,
+    /// TLS was not enabled for this connection.
+    Disabled,
+    // TODO: Add `NoConfig` variant for when TLS was enabled,
+    // but we had no valid configuration.
 }
 
 impl Ctx {
@@ -39,10 +51,10 @@ impl Ctx {
         }
     }
 
-    pub fn is_tls(&self) -> bool {
+    pub fn tls_status(&self) -> TlsStatus {
         match *self {
-            Ctx::Client(ref ctx) => ctx.is_tls,
-            Ctx::Server(ref ctx) => ctx.is_tls,
+            Ctx::Client(ref ctx) => ctx.tls_status,
+            Ctx::Server(ref ctx) => ctx.tls_status,
         }
     }
 }
@@ -53,14 +65,14 @@ impl Server {
         local: &SocketAddr,
         remote: &SocketAddr,
         orig_dst: &Option<SocketAddr>,
-        is_tls: bool,
+        tls_status: TlsStatus,
     ) -> Arc<Server> {
         let s = Server {
             proxy: Arc::clone(proxy),
             local: *local,
             remote: *remote,
             orig_dst: *orig_dst,
-            is_tls,
+            tls_status,
         };
 
         Arc::new(s)
@@ -95,13 +107,13 @@ impl Client {
         proxy: &Arc<ctx::Proxy>,
         remote: &SocketAddr,
         metadata: destination::Metadata,
-        is_tls: bool,
+        tls_status: TlsStatus,
     ) -> Arc<Client> {
         let c = Client {
             proxy: Arc::clone(proxy),
             remote: *remote,
             metadata,
-            is_tls,
+            tls_status,
         };
 
         Arc::new(c)

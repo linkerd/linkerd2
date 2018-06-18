@@ -23,7 +23,7 @@ pub struct RequestLabels {
     authority: Option<http::uri::Authority>,
 
     /// Whether or not the request was made over TLS.
-    is_tls: bool,
+    tls_status: ctx::transport::TlsStatus,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -51,7 +51,7 @@ pub struct TransportLabels {
     peer: Peer,
 
     /// Was the transport secured with TLS?
-    is_tls: bool,
+    tls_status: ctx::transport::TlsStatus,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
@@ -101,13 +101,13 @@ impl RequestLabels {
             direction,
             outbound_labels,
             authority,
-            is_tls: req.is_tls(),
+            tls_status: req.tls_status(),
         }
     }
 
     #[cfg(test)]
-    pub fn is_tls(&self) -> bool {
-        self.is_tls
+    pub fn tls_status(&self) -> ctx::transport::TlsStatus {
+        self.tls_status
     }
 }
 
@@ -126,7 +126,9 @@ impl fmt::Display for RequestLabels {
             write!(f, ",{}", outbound)?;
         }
 
-        if self.is_tls {
+        if self.tls_status == ctx::transport::TlsStatus::Success {
+            // TODO: Handle status variant for `NoConfig` when that
+            // is added.
             f.pad(",tls=\"true\"")?;
         }
 
@@ -163,8 +165,8 @@ impl ResponseLabels {
     }
 
     #[cfg(test)]
-    pub fn is_tls(&self) -> bool {
-        self.request_labels.is_tls
+    pub fn tls_status(&self) -> ctx::transport::TlsStatus {
+        self.request_labels.tls_status
     }
 }
 
@@ -322,13 +324,13 @@ impl TransportLabels {
                 ctx::transport::Ctx::Server(_) => Peer::Src,
                 ctx::transport::Ctx::Client(_) => Peer::Dst,
             },
-            is_tls: ctx.is_tls(),
+            tls_status: ctx.tls_status(),
         }
     }
 
     #[cfg(test)]
-    pub fn is_tls(&self) -> bool {
-        self.is_tls
+    pub fn tls_status(&self) -> ctx::transport::TlsStatus {
+        self.tls_status
     }
 }
 
@@ -340,7 +342,9 @@ impl fmt::Display for TransportLabels {
             Peer::Dst => ",peer=\"dst\"",
         })?;
 
-        if self.is_tls {
+        if self.tls_status == ctx::transport::TlsStatus::Success {
+            // TODO: Handle status variant for `NoConfig` when that
+            // is added.
             f.pad(",tls=\"true\"")?;
         }
 
@@ -361,8 +365,8 @@ impl TransportCloseLabels {
     }
 
     #[cfg(test)]
-    pub fn is_tls(&self) -> bool {
-        self.transport.is_tls()
+    pub fn tls_status(&self) -> ctx::transport::TlsStatus  {
+        self.transport.tls_status()
     }
 }
 

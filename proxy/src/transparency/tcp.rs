@@ -8,7 +8,11 @@ use tokio_connect::Connect;
 use tokio::io::{AsyncRead, AsyncWrite};
 
 use control::destination;
-use ctx::transport::{Client as ClientCtx, Server as ServerCtx};
+use ctx::transport::{
+    Client as ClientCtx,
+    Server as ServerCtx,
+    TlsStatus,
+};
 use telemetry::Sensors;
 use timeout::Timeout;
 use transport;
@@ -62,7 +66,7 @@ impl Proxy {
             // A raw TCP client connection may be or may not be TLS traffic,
             // but the `is_tls` field indicates whether _the proxy_ is
             // responsible for the encryption, so set this to false.
-            false,
+            TlsStatus::Disabled,
         );
         let c = Timeout::new(
             transport::Connect::new(orig_dst, None), // No TLS.

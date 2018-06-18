@@ -93,11 +93,11 @@ mod test {
         metrics::{self, labels},
         Event,
     };
-    use ctx::{self, test_util::* };
+    use ctx::{self, test_util::*, transport::TlsStatus};
     use std::time::{Duration, Instant};
 
 
-    fn test_record_response_end_outbound(client_tls: bool, server_tls: bool) {
+    fn test_record_response_end_outbound(client_tls: TlsStatus, server_tls: TlsStatus) {
         let process = process();
         let proxy = ctx::Proxy::outbound(&process);
         let server = server(&proxy, server_tls);
@@ -128,7 +128,7 @@ mod test {
         let ev = Event::StreamResponseEnd(rsp.clone(), end.clone());
         let labels = labels::ResponseLabels::new(&rsp, None);
 
-        assert_eq!(labels.is_tls(), client_tls);
+        assert_eq!(labels.tls_status(), client_tls);
 
         assert!(r.metrics.lock()
             .expect("lock")
@@ -154,7 +154,7 @@ mod test {
 
     }
 
-    fn test_record_one_conn_request_outbound(client_tls: bool, server_tls: bool) {
+    fn test_record_one_conn_request_outbound(client_tls: TlsStatus, server_tls: TlsStatus) {
         use self::Event::*;
         use self::labels::*;
         use std::sync::Arc;
@@ -233,12 +233,12 @@ mod test {
             &transport_close,
         );
 
-        assert_eq!(client_tls, req_labels.is_tls());
-        assert_eq!(client_tls, rsp_labels.is_tls());
-        assert_eq!(client_tls, client_open_labels.is_tls());
-        assert_eq!(client_tls, client_close_labels.is_tls());
-        assert_eq!(server_tls, srv_open_labels.is_tls());
-        assert_eq!(server_tls, srv_close_labels.is_tls());
+        assert_eq!(client_tls, req_labels.tls_status());
+        assert_eq!(client_tls, rsp_labels.tls_status());
+        assert_eq!(client_tls, client_open_labels.tls_status());
+        assert_eq!(client_tls, client_close_labels.tls_status());
+        assert_eq!(server_tls, srv_open_labels.tls_status());
+        assert_eq!(server_tls, srv_close_labels.tls_status());
 
         {
             let lock = r.metrics.lock()
@@ -325,41 +325,41 @@ mod test {
 
     #[test]
     fn record_one_conn_request_outbound_client_tls() {
-        test_record_one_conn_request_outbound(true, false)
+        test_record_one_conn_request_outbound(TlsStatus::Success, TlsStatus::Disabled)
     }
 
     #[test]
     fn record_one_conn_request_outbound_server_tls() {
-        test_record_one_conn_request_outbound(false, true)
+        test_record_one_conn_request_outbound(TlsStatus::Disabled, TlsStatus::Success)
     }
 
     #[test]
     fn record_one_conn_request_outbound_both_tls() {
-        test_record_one_conn_request_outbound(true, true)
+        test_record_one_conn_request_outbound(TlsStatus::Success, TlsStatus::Success)
     }
 
     #[test]
     fn record_one_conn_request_outbound_no_tls() {
-        test_record_one_conn_request_outbound(false, false)
+        test_record_one_conn_request_outbound(TlsStatus::Disabled, TlsStatus::Disabled)
     }
 
     #[test]
     fn record_response_end_outbound_client_tls() {
-        test_record_response_end_outbound(true, false)
+        test_record_response_end_outbound(TlsStatus::Success, TlsStatus::Disabled)
     }
 
     #[test]
     fn record_response_end_outbound_server_tls() {
-        test_record_response_end_outbound(false, true)
+        test_record_response_end_outbound(TlsStatus::Disabled, TlsStatus::Success)
     }
 
     #[test]
     fn record_response_end_outbound_both_tls() {
-        test_record_response_end_outbound(true, true)
+        test_record_response_end_outbound(TlsStatus::Success, TlsStatus::Success)
     }
 
     #[test]
     fn record_response_end_outbound_no_tls() {
-        test_record_response_end_outbound(false, false)
+        test_record_response_end_outbound(TlsStatus::Disabled, TlsStatus::Disabled)
     }
 }

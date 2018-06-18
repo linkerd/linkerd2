@@ -100,14 +100,17 @@ pub mod test_util {
         })
     }
 
-    pub fn server(proxy: &Arc<ctx::Proxy>, tls: bool) -> Arc<ctx::transport::Server> {
+    pub fn server(
+        proxy: &Arc<ctx::Proxy>,
+        tls: ctx::transport::TlsStatus
+    ) -> Arc<ctx::transport::Server> {
         ctx::transport::Server::new(&proxy, &addr(), &addr(), &Some(addr()), tls)
     }
 
     pub fn client<L, S>(
         proxy: &Arc<ctx::Proxy>,
         labels: L,
-        tls: bool,
+        tls: ctx::transport::TlsStatus,
     ) -> Arc<ctx::transport::Client>
     where
         L: IntoIterator<Item=(S, S)>,

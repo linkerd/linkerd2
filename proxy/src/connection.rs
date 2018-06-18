@@ -10,6 +10,7 @@ use tokio::{
     reactor::Handle,
 };
 
+use ctx::transport::TlsStatus;
 use config::Addr;
 use transport::{GetOriginalDst, Io, tls};
 
@@ -26,14 +27,14 @@ pub fn connect(addr: &SocketAddr) -> Connecting {
         inner: PlaintextSocket::connect(addr),
         // TODO: when we can open TLS client connections, this is where we will
         //       indicate that for telemetry.
-        is_tls: false,
+        tls_status: TlsStatus::Disabled,
     }
 }
 
 /// A socket that is in the process of connecting.
 pub struct Connecting {
     inner: ConnectFuture,
-    is_tls: bool,
+    tls_status: TlsStatus,
 }
 
 /// Abstracts a plaintext socket vs. a TLS decorated one.
@@ -54,7 +55,7 @@ pub struct Connection {
     peek_buf: BytesMut,
 
     /// Whether or not the connection is secured with TLS.
-    is_tls: bool,
+    tls_status: TlsStatus,
 }
 
 /// A trait describing that a type can peek bytes.
@@ -137,18 +138,25 @@ impl BoundPort {
                     // libraries don't have the necessary API for that, so just
                     // do it here.
                     set_nodelay_or_warn(&socket);
-                    if let Some((_identity, config_watch)) = &tls {
+                    let tls_status = if let Some((_identity, config_watch)) = &tls {
                         // TODO: use `identity` to differentiate between TLS
                         // that the proxy should terminate vs. TLS that should
                         // be passed through.
                         if let Some(config) = &*config_watch.borrow() {
-                            return Either::A(
-                                tls::Connection::accept(socket, config.clone())
-                                    .map(move |tls| (Connection::new(Box::new(tls), true), remote_addr)));
+                            let f = tls::Connection::accept(socket, config.clone())
+                                .map(move |tls| {
+                                    let conn = Connection::new(Box::new(tls), TlsStatus::Success);
+                                    (conn, remote_addr)
+                                });
+                            return Either::A(f);
+                        } else {
+                            TlsStatus::Disabled
                         }
-                    }
-
-                    Either::B(future::ok((Connection::new(Box::new(socket), false), remote_addr)))
+                    } else {
+                        TlsStatus::Disabled
+                    };
+                    let conn = Connection::new(Box::new(socket), tls_status);
+                    Either::B(future::ok((conn, remote_addr)))
                 })
                 .then(|r| {
                     future::ok(match r {
@@ -175,19 +183,18 @@ impl Future for Connecting {
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         let socket = try_ready!(self.inner.poll());
         set_nodelay_or_warn(&socket);
-        Ok(Async::Ready(Connection::new(Box::new(socket), self.is_tls)))
+        Ok(Async::Ready(Connection::new(Box::new(socket), self.tls_status)))
     }
 }
 
 // ===== impl Connection =====
 
 impl Connection {
-    /// A constructor of `Connection` with a plain text TCP socket.
-    fn new(io: Box<Io>, is_tls: bool) -> Self {
+    fn new(io: Box<Io>, tls_status: TlsStatus) -> Self {
         Connection {
             io,
             peek_buf: BytesMut::new(),
-            is_tls,
+            tls_status,
         }
     }
 
@@ -199,8 +206,8 @@ impl Connection {
         self.io.local_addr()
     }
 
-    pub fn is_tls(&self) -> bool {
-        self.is_tls
+    pub fn tls_status(&self) -> TlsStatus {
+        self.tls_status
     }
 }
 
