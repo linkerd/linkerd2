@@ -126,7 +126,7 @@ impl fmt::Display for RequestLabels {
             write!(f, ",{}", outbound)?;
         }
 
-        write!(f, ",{}", self.tls_status)?;
+        write!(f, "{}", self.tls_status)?;
 
         Ok(())
     }
@@ -332,7 +332,7 @@ impl TransportLabels {
 
 impl fmt::Display for TransportLabels {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{},{},{}", self.direction, self.peer, self.tls_status)
+        write!(f, "{},{}{}", self.direction, self.peer, self.tls_status)
     }
 }
 
@@ -369,13 +369,18 @@ impl fmt::Display for TransportCloseLabels {
     }
 }
 
+// TLS status is the only label that prints its own preceding comma, because
+// there is a case when we don't print a label. If the comma was added by
+// whatever owns a TlsStatus, and the status is Disabled, we might sometimes
+// get double commas.
+// TODO: There's got to be a nicer way to handle this.
 impl fmt::Display for ctx::transport::TlsStatus {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use ctx::transport::TlsStatus;
         match *self {
             TlsStatus::Disabled => Ok(()),
-            TlsStatus::NoConfig => f.pad("tls=\"no config\""),
-            TlsStatus::Success  => f.pad("tls=\"true\""),
+            TlsStatus::NoConfig => f.pad(",tls=\"no config\""),
+            TlsStatus::Success  => f.pad(",tls=\"true\""),
         }
     }
 }
