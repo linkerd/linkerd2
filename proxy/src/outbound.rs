@@ -54,6 +54,60 @@ impl<B> Outbound<B> {
             bind_timeout,
         }
     }
+
+    const DEFAULT_PORT: Option<u16> = Some(80);
+
+    /// TODO: Return error when `HostAndPort::normalize()` fails.
+    /// TODO: Use scheme-appropriate-default
+    fn normalize(authority: &http::uri::Authority) -> Option<HostAndPort> {
+        HostAndPort::normalize(authority, Self::DEFAULT_PORT).ok()
+    }
+
+    /// Determines the logical host:port of the request.
+    ///
+    /// 1. If the parsed URI includes an authority, use that.
+    /// 2. Otherwise, try to load the authority from the `Host` header.
+    ///
+    /// The port is either parsed from the authority or a default of 80 is used.
+    fn host_port(req: &http::Request<B>) -> Option<HostAndPort> {
+        req.uri()
+            .authority_part()
+            .and_then(Self::normalize)
+            .or_else(|| {
+                h1::authority_from_host(req)
+                    .and_then(|h| Self::normalize(&h))
+            })
+    }
+
+    /// Determines the destination to use in the router.
+    ///
+    /// 1. If the request was destined to a logic (named) host, route it by the logical
+    ///    hostname and port.
+    /// 2. Otherwise, route the request to the exact concrete destination it was
+    ///    already headed to, as determined by the SO_ORIGINAL_DST socket option.
+    ///
+    /// If the request has no logical host destination and the SO_ORIGINAL_DST socket
+    /// option has not been set or is unavailable on this platform, the request is not
+    /// recognized.
+    ///
+    /// The SO_ORIGINAL_DST socket option is typically set by iptables(8) in i.e.
+    /// containerized environments like Kubernetes (as configured by the proxy-init
+    /// program).
+    fn destination(req: &http::Request<B>) -> Option<Destination> {
+        match Self::host_port(req) {
+            Some(HostAndPort { host: Host::DnsName(dns_name), port }) => {
+                Some(Destination::Hostname(DnsNameAndPort { host: dns_name, port }))
+            }
+
+            Some(HostAndPort { host: Host::Ip(_), .. }) |
+            None => {
+                req.extensions()
+                    .get::<Arc<ctx::transport::Server>>()
+                    .and_then(|ctx| ctx.orig_dst_if_not_local())
+                    .map(Destination::ImplicitOriginalDst)
+            }
+        }
+    }
 }
 
 impl<B> Clone for Outbound<B>
@@ -88,45 +142,11 @@ where
         choose::PowerOfTwoChoices,
     >>>>;
 
+    // Route the request by its destination AND PROTOCOL. This prevents HTTP/1
+    // requests from being routed to HTTP/2 servers, and vice versa.
     fn recognize(&self, req: &Self::Request) -> Option<Self::Key> {
+        let dest = Self::destination(req)?;
         let proto = bind::Protocol::detect(req);
-
-        // The request URI and Host: header have not yet been normalized
-        // by `NormalizeUri`, as we need to know whether the request will
-        // be routed by Host/authority or by SO_ORIGINAL_DST, in order to
-        // determine whether the service is reusable.
-        let authority = req.uri().authority_part()
-            .cloned()
-        // Therefore, we need to check the host header as well as the URI
-        // for a valid authority, before we fall back to SO_ORIGINAL_DST.
-            .or_else(|| h1::authority_from_host(req));
-
-        // TODO: Return error when `HostAndPort::normalize()` fails.
-        let mut dest = match authority.as_ref()
-            .and_then(|auth| HostAndPort::normalize(auth, Some(80)).ok()) {
-            Some(HostAndPort { host: Host::DnsName(dns_name), port }) =>
-                Some(Destination::Hostname(DnsNameAndPort { host: dns_name, port })),
-            Some(HostAndPort { host: Host::Ip(_), .. }) |
-            None => None,
-        };
-
-        if dest.is_none() {
-            dest = req.extensions()
-                .get::<Arc<ctx::transport::Server>>()
-                .and_then(|ctx| {
-                    ctx.orig_dst_if_not_local()
-                })
-                .map(Destination::ImplicitOriginalDst)
-        };
-
-        // If there is no authority in the request URI or in the Host header,
-        // and there is no original dst, then we have nothing! In that case,
-        // return `None`, which results an "unrecognized" error. In practice,
-        // this shouldn't ever happen, since we expect the proxy to be run on
-        // Linux servers, with iptables setup, so there should always be an
-        // original destination.
-        let dest = dest?;
-
         Some((dest, proto))
     }
 
