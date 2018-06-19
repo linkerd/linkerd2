@@ -43,44 +43,6 @@ func genPromSample(resName string, resType string, resNs string, classification 
 	}
 }
 
-func genStatSummaryResponse(resName, resType, resNs string, meshedPods uint64, runningPods uint64, failedPods uint64) pb.StatSummaryResponse {
-	return pb.StatSummaryResponse{
-		Response: &pb.StatSummaryResponse_Ok_{ // https://github.com/golang/protobuf/issues/205
-			Ok: &pb.StatSummaryResponse_Ok{
-				StatTables: []*pb.StatTable{
-					&pb.StatTable{
-						Table: &pb.StatTable_PodGroup_{
-							PodGroup: &pb.StatTable_PodGroup{
-								Rows: []*pb.StatTable_PodGroup_Row{
-									&pb.StatTable_PodGroup_Row{
-										Resource: &pb.Resource{
-											Namespace: resNs,
-											Type:      resType,
-											Name:      resName,
-										},
-										Stats: &pb.BasicStats{
-											SuccessCount:    123,
-											FailureCount:    0,
-											LatencyMsP50:    123,
-											LatencyMsP95:    123,
-											LatencyMsP99:    123,
-											TlsRequestCount: 123,
-										},
-										TimeWindow:      "1m",
-										MeshedPodCount:  meshedPods,
-										RunningPodCount: runningPods,
-										FailedPodCount:  failedPods,
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-}
-
 func genEmptyResponse() pb.StatSummaryResponse {
 	return pb.StatSummaryResponse{
 		Response: &pb.StatSummaryResponse_Ok_{ // https://github.com/golang/protobuf/issues/205
@@ -229,7 +191,7 @@ status:
 					},
 					TimeWindow: "1m",
 				},
-				expectedResponse: genStatSummaryResponse("emoji", "deployments", "emojivoto", 1, 2, 0),
+				expectedResponse: GenStatSummaryResponse("emoji", "deployments", "emojivoto", 1, 2, 0),
 			},
 		}
 
@@ -271,7 +233,7 @@ status:
 					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
 					`sum(increase(response_total{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod, classification, tls)`,
 				},
-				expectedResponse: genStatSummaryResponse("emojivoto-1", "pods", "emojivoto", 1, 1, 0),
+				expectedResponse: GenStatSummaryResponse("emojivoto-1", "pods", "emojivoto", 1, 1, 0),
 			},
 		}
 
@@ -763,7 +725,7 @@ status:
 						},
 						TimeWindow: "1m",
 					},
-					expectedResponse: genStatSummaryResponse("emoji", "deployments", "emojivoto", 1, 2, 1),
+					expectedResponse: GenStatSummaryResponse("emoji", "deployments", "emojivoto", 1, 2, 1),
 				},
 			}
 
