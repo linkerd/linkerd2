@@ -2,10 +2,8 @@ use futures::{Future, Poll, Stream};
 use http::HeaderMap;
 use prost::Message;
 use std::fmt;
-use tower_h2::{HttpService, Body, Data};
 use tower_grpc::{
     self as grpc,
-    Streaming,
     client::server_streaming::ResponseFuture,
 };
 
@@ -13,10 +11,14 @@ use tower_grpc::{
 ///
 /// A remote may hold a `Receiver` that can be used to read `M`-typed messages from the
 /// remote stream.
-pub enum Remote<M, S: HttpService> {
+pub enum Remote<M, E, F, S>
+where
+    F: Future<Item = grpc::Response<S>, Error = grpc::Error<E>>,
+    S: Stream<Item = M, Error = grpc::Error>
+{
     NeedsReconnect,
     ConnectedOrConnecting {
-        rx: Receiver<M, S>
+        rx: Receiver<M, E, F, S>
     },
 }
 
@@ -25,26 +27,38 @@ pub enum Remote<M, S: HttpService> {
 /// Streaming gRPC endpoints return a `ResponseFuture` whose item is a `Response<Stream>`.
 /// A `Receiver` holds the state of that RPC call, exposing a `Stream` that drives both
 /// the gRPC response and its streaming body.
-pub struct Receiver<M, S: HttpService>(Rx<M, S>);
+pub struct Receiver<M, E, F, S>
+where
+    F: Future<Item = grpc::Response<S>, Error = grpc::Error<E>>,
+    S: Stream<Item = M, Error = grpc::Error>,
+{
+    rx: Rx<M, E, F, S>,
+}
 
-enum Rx<M, S: HttpService> {
-    Waiting(ResponseFuture<M, S::Future>),
-    Streaming(Streaming<M, S::ResponseBody>),
+enum Rx<M, E, F, S>
+where
+    F: Future<Item = grpc::Response<S>, Error = grpc::Error<E>>,
+    S: Stream<Item = M, Error = grpc::Error>,
+{
+    Waiting(ResponseFuture<M, F>),
+    Streaming(S),
 }
 
 // ===== impl Receiver =====
 
-impl<M: Message + Default, S: HttpService> Receiver<M, S>
+impl<M, E, F, S> Receiver<M, E, F, S>
 where
-    S::ResponseBody: Body<Data = Data>,
-    S::Error: fmt::Debug,
+    M: Message + Default,
+    E: fmt::Debug,
+    F: Future<Item = grpc::Response<S>, Error = grpc::Error<E>>,
+    S: Stream<Item = M, Error = grpc::Error>
 {
-    pub fn new(future: ResponseFuture<M, S::Future>) -> Self {
-        Receiver(Rx::Waiting(future))
+    pub fn new(future: ResponseFuture<M, F>) -> Self {
+        Receiver { rx: Rx::Waiting(future) }
     }
 
     // Coerces the stream's Error<()> to an Error<S::Error>.
-    fn coerce_stream_err(e: grpc::Error<()>) -> grpc::Error<S::Error> {
+    fn coerce_stream_err(e: grpc::Error<()>) -> grpc::Error<E> {
         match e {
             grpc::Error::Grpc(s, h) => grpc::Error::Grpc(s, h),
             grpc::Error::Decode(e) => grpc::Error::Decode(e),
@@ -60,17 +74,19 @@ where
     }
 }
 
-impl<M: Message + Default, S: HttpService> Stream for Receiver<M, S>
+impl<M, E, F, S> Stream for Receiver<M, E, F ,S>
 where
-    S::ResponseBody: Body<Data = Data>,
-    S::Error: fmt::Debug,
+    M: Message + Default,
+    E: fmt::Debug,
+    F: Future<Item = grpc::Response<S>, Error = grpc::Error<E>>,
+    S: Stream<Item = M, Error = grpc::Error>
 {
     type Item = M;
-    type Error = grpc::Error<S::Error>;
+    type Error = S::Error;
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
         loop {
-            let stream = match self.0 {
+            let stream = match self.rx {
                 Rx::Waiting(ref mut future) => {
                     try_ready!(future.poll()).into_inner()
                 }
@@ -80,7 +96,7 @@ where
                 }
             };
 
-            self.0 = Rx::Streaming(stream);
+            self.rx = Rx::Streaming(stream);
         }
     }
 }

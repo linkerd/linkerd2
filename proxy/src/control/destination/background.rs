@@ -11,12 +11,12 @@ use bytes::Bytes;
 use futures::{
     future,
     sync::mpsc,
-    Async, Future, Stream,
+    Async, Future, Poll, Stream,
 };
 use h2;
 use http;
+use tower_h2::{self, HttpService};
 use tower_grpc as grpc;
-use tower_h2::{self, BoxBody, HttpService, RecvBody};
 use tower_reconnect::Reconnect;
 
 use conduit_proxy_controller_grpc::common::{Destination, TcpAddress};
@@ -33,7 +33,7 @@ use control::{
     cache::{Cache, CacheChange, Exists},
     fully_qualified_authority::FullyQualifiedAuthority,
     remote_stream::{Receiver, Remote},
-    AddOrigin, Backoff, LogErrors
+        AddOrigin, Backoff, LogErrors
 };
 use dns::{self, IpAddrListFuture};
 use telemetry::metrics::DstLabels;
@@ -41,8 +41,40 @@ use transport::{DnsNameAndPort, HostAndPort, LookupAddressAndConnect};
 use timeout::Timeout;
 use transport::tls;
 
-type DestinationServiceQuery<T> = Remote<PbUpdate, T>;
-type UpdateRx<T> = Receiver<PbUpdate, T>;
+type DestinationServiceQuery<T: GetDst> = Remote<PbUpdate, T::Error, T::Future, T::Stream>;
+type UpdateRx<T: GetDst> = Receiver<PbUpdate, T::Error, T::Future, T::Stream>;
+
+pub trait GetDst {
+    type Error: fmt::Debug;
+    type Future: Future<
+        Item = grpc::Response<Self::Stream>,
+        Error = grpc::Error<Self::Error>,
+    >;
+    type Stream: Stream<Item = PbUpdate, Error = grpc::Error>;
+
+    fn poll_ready(&mut self) -> Poll<(), grpc::Error<Self::Error>>;
+
+    fn get_dst(&mut self, dst: Destination) -> Self::Future;
+}
+
+impl<T> GetDst for DestinationSvc<T>
+where
+    T: HttpService,
+    T::ResponseBody: tower_h2::Body<Data = tower_h2::Data>,
+    T::Error: fmt::Debug,
+{
+    type Error = T::Error;
+    type Future = grpc::client::streaming::ResponseFuture<PbUpdate, T::Future>;
+    type Stream = grpc::Streaming<PbUpdate, T::ResponseBody>;
+
+    fn poll_ready(&mut self) -> Poll<(), grpc::Error<Self::Error>> {
+        DestinationSvc::poll_ready(self)
+    }
+
+    fn get_dst(&mut self, dst: Destination) -> Self::Future {
+        DestinationSvc::get(self, grpc::Request::new(dst))
+    }
+}
 
 /// Satisfies resolutions as requested via `request_rx`.
 ///
@@ -50,7 +82,7 @@ type UpdateRx<T> = Receiver<PbUpdate, T>;
 /// service is healthy, it reads requests from `request_rx`, determines how to resolve the
 /// provided authority to a set of addresses, and ensures that resolution updates are
 /// propagated to all requesters.
-struct Background<T: HttpService<ResponseBody = RecvBody>> {
+struct Background<T: GetDst> {
     dns_resolver: dns::Resolver,
     namespaces: Namespaces,
     destinations: HashMap<DnsNameAndPort, DestinationSet<T>>,
@@ -64,7 +96,7 @@ struct Background<T: HttpService<ResponseBody = RecvBody>> {
 }
 
 /// Holds the state of a single resolution.
-struct DestinationSet<T: HttpService<ResponseBody = RecvBody>> {
+struct DestinationSet<T: GetDst> {
     addrs: Exists<Cache<SocketAddr, Metadata>>,
     query: Option<DestinationServiceQuery<T>>,
     dns_query: Option<IpAddrListFuture>,
@@ -110,6 +142,7 @@ pub(super) fn task(
     );
 
     future::poll_fn(move || {
+        let dst: Option<DestinationSvc<_>> = client.map(|c| DestinationSvc::new(c.lift_ref()));
         disco.poll_rpc(&mut client);
 
         Ok(Async::NotReady)
@@ -118,11 +151,7 @@ pub(super) fn task(
 
 // ==== impl Background =====
 
-impl<T> Background<T>
-where
-    T: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>,
-    T::Error: fmt::Debug,
-{
+impl<T: GetDst> Background<T> {
     fn new(
         request_rx: mpsc::UnboundedReceiver<ResolveRequest>,
         dns_resolver: dns::Resolver,
@@ -328,14 +357,12 @@ where
             auth
         );
         FullyQualifiedAuthority::normalize(auth, default_destination_namespace).map(|auth| {
-            let req = Destination {
+            let dst = Destination {
                 scheme: "k8s".into(),
                 path: auth.without_trailing_dot().to_owned(),
             };
-            let mut svc = DestinationSvc::new(client.lift_ref());
-            let response = svc.get(grpc::Request::new(req));
             Remote::ConnectedOrConnecting {
-                rx: Receiver::new(response),
+                rx: Receiver::new(client.get(dst)),
             }
         })
     }
@@ -343,11 +370,7 @@ where
 
 // ===== impl DestinationSet =====
 
-impl<T> DestinationSet<T>
-where
-    T: HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>,
-    T::Error: fmt::Debug,
-{
+impl<T: GetDst> DestinationSet<T> {
     fn reset_dns_query(
         &mut self,
         dns_resolver: &dns::Resolver,
@@ -482,7 +505,7 @@ where
     }
 }
 
-impl<T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
+impl<T: GetDst> DestinationSet<T> {
     fn reset_on_next_modification(&mut self) {
         match self.addrs {
             Exists::Yes(ref mut cache) => {
