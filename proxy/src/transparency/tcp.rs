@@ -16,6 +16,7 @@ use ctx::transport::{
 use telemetry::Sensors;
 use timeout::Timeout;
 use transport::{self, tls};
+use ctx::transport::TlsStatus;
 
 /// TCP Server Proxy
 #[derive(Debug, Clone)]
@@ -65,7 +66,7 @@ impl Proxy {
             &srv_ctx.proxy,
             &orig_dst,
             destination::Metadata::no_metadata(),
-            tls.to_empty(),
+            TlsStatus::from(&tls),
         );
         let c = Timeout::new(
             transport::Connect::new(orig_dst, tls),

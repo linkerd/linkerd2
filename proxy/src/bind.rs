@@ -17,6 +17,7 @@ use telemetry::{self, sensor};
 use transparency::{self, HttpBody, h1};
 use transport;
 use tls;
+use ctx::transport::TlsStatus;
 
 /// Binds a `Service` from a `SocketAddr`.
 ///
@@ -214,7 +215,7 @@ where
             &self.ctx,
             &addr,
             ep.metadata().clone(),
-            tls.to_empty(),
+            TlsStatus::from(&tls),
         );
 
         // Map a socket address to a connection.

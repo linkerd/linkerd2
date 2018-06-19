@@ -53,16 +53,3 @@ where
         }
     }
 }
-
-impl<C, R> Conditional<C, R>
-where
-    C: Clone + std::fmt::Debug,
-    R: Copy + Clone + std::fmt::Debug,
-{
-    pub fn to_empty(&self) -> Conditional<(), R> {
-        match self {
-            Conditional::Some(_) => Conditional::Some(()),
-            Conditional::None(r) => Conditional::None(*r),
-        }
-    }
-}

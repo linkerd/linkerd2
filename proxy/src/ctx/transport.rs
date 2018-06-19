@@ -1,6 +1,8 @@
-use std::net::{IpAddr, SocketAddr};
-use std::sync::Arc;
-
+use std::{
+    self,
+    net::{IpAddr, SocketAddr},
+    sync::Arc,
+};
 use ctx;
 use control::destination;
 use telemetry::metrics::DstLabels;
@@ -35,6 +37,18 @@ pub struct Client {
 /// Identifies whether or not a connection was secured with TLS,
 /// and, if it was not, the reason why.
 pub type TlsStatus = Conditional<(), tls::ReasonForNoTls>;
+
+impl TlsStatus {
+    pub fn from<C>(c: &Conditional<C, tls::ReasonForNoTls>) -> Conditional<(), tls::ReasonForNoTls>
+    where C: Clone + std::fmt::Debug
+    {
+        match c {
+            Conditional::Some(_) => Conditional::Some(()),
+            Conditional::None(r) => Conditional::None(*r),
+        }
+    }
+}
+
 
 impl Ctx {
     pub fn proxy(&self) -> &Arc<ctx::Proxy> {
