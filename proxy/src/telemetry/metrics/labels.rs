@@ -438,7 +438,7 @@ impl fmt::Display for TlsConfigLabels {
             TlsConfigLabels::Reloaded =>
                 f.pad("status=\"reloaded\""),
             TlsConfigLabels::Io { ref path, error_code } => {
-                write!(f, "status=\"io error\",path=\"{}\"", path.display())?;
+                write!(f, "status=\"io_error\",path=\"{}\"", path.display())?;
                 if let Some(error_code) = error_code {
                     write!(f, ",error_code=\"{}\"", error_code)?;
                 }
@@ -446,13 +446,13 @@ impl fmt::Display for TlsConfigLabels {
             }
 
             TlsConfigLabels::InvalidPrivateKey =>
-                f.pad("status=\"invalid private key\""),
+                f.pad("status=\"invalid_private_key\""),
             TlsConfigLabels::InvalidEndEntityCert =>
-                f.pad("status=\"invalid end entity cert\""),
+                f.pad("status=\"invalid_end_entity_cert\""),
             TlsConfigLabels::InvalidTrustAnchors =>
-                f.pad("status=\"invalid trust anchors\""),
+                f.pad("status=\"invalid_trust_anchors\""),
             TlsConfigLabels::TimeConversion =>
-                f.pad("status=\"time conversion failed\""),
+                f.pad("status=\"time_conversion_failed\""),
         }
     }
 }
