@@ -40,7 +40,8 @@ pub enum Proxy {
 }
 
 impl Process {
-    #[cfg(test)]
+    // Test-only, but we can't use `#[cfg(test)]` because it is used by the
+    // benchmarks
     pub fn test(ns: &str) -> Arc<Self> {
         Arc::new(Self {
             scheduled_namespace: ns.into(),

@@ -285,8 +285,8 @@ impl ClientConfig {
     }
 
     /// Some tests aren't set up to do TLS yet, but we require a
-    /// `ClientConfigWatch`.
-    #[cfg(test)]
+    /// `ClientConfigWatch`. We can't use `#[cfg(test)]` here because the
+    /// benchmarks use this.
     pub fn no_tls() -> ClientConfigWatch {
         let (watch, _) = Watch::new(None);
         watch
