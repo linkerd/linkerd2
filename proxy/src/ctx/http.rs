@@ -80,7 +80,7 @@ impl Request {
         self.client.tls_identity()
     }
 
-    /// Returns `true` if the request was secured with TLS.
+    /// Returns a `TlsStatus` indicating if the request was sent was over TLS.
     pub fn tls_status(&self) -> ctx::transport::TlsStatus {
         if self.server.proxy.is_outbound() {
             // If the request is in the outbound direction, then we opened the
@@ -108,7 +108,7 @@ impl Response {
         Arc::new(r)
     }
 
-    /// Returns `true` if the response was secured with TLS.
+    /// Returns a `TlsStatus` indicating if the response was sent was over TLS.
     pub fn tls_status(&self) -> ctx::transport::TlsStatus {
         self.request.tls_status()
     }

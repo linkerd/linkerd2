@@ -32,7 +32,7 @@ pub struct Client {
 }
 
 /// Identifies whether or not a connection was secured with TLS,
-/// and the reason why not.
+/// and, if it was not, the reason why.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum TlsStatus {
     /// The TLS handshake was successful.
@@ -42,6 +42,8 @@ pub enum TlsStatus {
     /// TLS was enabled for this connection, but we have no valid
     /// config.
     NoConfig,
+    // TODO: When the proxy falls back to plaintext on handshake
+    // failures, we'll want to add a variant for that here as well.
 }
 
 impl Ctx {
@@ -53,9 +55,9 @@ impl Ctx {
     }
 
     pub fn tls_status(&self) -> TlsStatus {
-        match *self {
-            Ctx::Client(ref ctx) => ctx.tls_status,
-            Ctx::Server(ref ctx) => ctx.tls_status,
+        match self {
+            Ctx::Client(ctx)  => ctx.tls_status,
+            Ctx::Server(ctx) => ctx.tls_status,
         }
     }
 }

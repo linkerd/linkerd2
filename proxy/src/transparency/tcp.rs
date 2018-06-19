@@ -64,8 +64,10 @@ impl Proxy {
             &orig_dst,
             destination::Metadata::no_metadata(),
             // A raw TCP client connection may be or may not be TLS traffic,
-            // but the `is_tls` field indicates whether _the proxy_ is
-            // responsible for the encryption, so set this to false.
+            // but the `TlsStatus` field indicates whether _the proxy_ is
+            // responsible for the encryption, so set this to "Disabled".
+            // XXX: Should raw TCP connections have a different TLS status
+            // from HTTP connections for which TLS is disabled?
             TlsStatus::Disabled,
         );
         let c = Timeout::new(
