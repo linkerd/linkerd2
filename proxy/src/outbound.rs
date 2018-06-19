@@ -35,10 +35,14 @@ const MAX_IN_FLIGHT: usize = 10_000;
 /// This default is used by Finagle.
 const DEFAULT_DECAY: Duration = Duration::from_secs(10);
 
+/// Describes a destination for HTTP requests.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Destination {
-    Hostname(DnsNameAndPort),
-    ImplicitOriginalDst(SocketAddr),
+    /// A logical, lazily-bound endpoint.
+    Name(DnsNameAndPort),
+
+    /// A single, bound endpoint.
+    Addr(SocketAddr),
 }
 
 // ===== impl Outbound =====
@@ -80,44 +84,36 @@ impl<B> Outbound<B> {
             })
     }
 
-    /// Determines the destination to use in the router.
+    /// Determines the destination for a request.
     ///
-    /// A Destination is determined for each request as follows:
+    /// Typically, a request's authority is used to produce a `Destination`. If the it
+    /// addresses a DNS name, a `Destinatino::Name` is returned; and, otherwise, if it
+    /// addresses a fixed IP address, a `Destination::Addr` is returned. A port is
+    /// inferred if not specified in the authority.
     ///
-    /// 1. If the request's authority contains a logical hostname, it is routed by the
-    ///    hostname and port. If an explicit port is not provided, a default is assumed.
+    /// Otherwise, the `SO_ORIGINAL_DST` socket option is checked. If it's available, it
+    /// is used to return a `Destination;:Addr`. This option is typically set by
+    /// `iptables(8)` in containerized environments like Kubernetes (as configured by the
+    /// `proxy-init` program).
     ///
-    /// 2. If the request's authority contains a concrete IP address, it is routed
-    ///    directly to that IP address.
-    ///
-    /// 3. If no authority is present on the request, the client's original destination,
-    ///    as determined by the SO_ORIGINAL_DST socket option, is used as the request's
-    ///    destination.
-    ///
-    ///    The SO_ORIGINAL_DST socket option is typically set by iptables(8) in
-    ///    containerized environments like Kubernetes (as configured by the proxy-init
-    ///    program).
-    ///
-    /// 4. If the request has no authority and the SO_ORIGINAL_DST socket option has not
-    ///    been set (or is unavailable on the current platform), no destination is
-    ///    determined.
+    /// If none of this informatino is available, no `Destination` is returned.
     fn destination(req: &http::Request<B>) -> Option<Destination> {
         match Self::host_port(req) {
             Some(HostAndPort { host: Host::DnsName(host), port }) => {
                 let dst = DnsNameAndPort { host, port };
-                Some(Destination::Hostname(dst))
+                Some(Destination::Name(dst))
             }
 
             Some(HostAndPort { host: Host::Ip(ip), port }) => {
                 let dst = SocketAddr::from((ip, port));
-                Some(Destination::ImplicitOriginalDst(dst))
+                Some(Destination::Addr(dst))
             }
 
             None => {
                 req.extensions()
                     .get::<Arc<ctx::transport::Server>>()
                     .and_then(|ctx| ctx.orig_dst_if_not_local())
-                    .map(Destination::ImplicitOriginalDst)
+                    .map(Destination::Addr)
             }
         }
     }
@@ -174,16 +170,12 @@ where
         let &(ref dest, ref protocol) = key;
         debug!("building outbound {:?} client to {:?}", protocol, dest);
 
-        let resolve = match *dest {
-            Destination::Hostname(ref authority) => {
-                Discovery::NamedSvc(self.discovery.resolve(
-                    authority,
-                    self.bind.clone().with_protocol(protocol.clone()),
-                ))
-            },
-            Destination::ImplicitOriginalDst(addr) => {
-                Discovery::ImplicitOriginalDst(Some((addr, self.bind.clone()
-                    .with_protocol(protocol.clone()))))
+        let resolve = {
+            let proto = self.bind.clone().with_protocol(protocol.clone());
+            match *dest {
+                Destination::Name(ref authority) =>
+                    Discovery::Name(self.discovery.resolve(authority, proto)),
+                Destination::Addr(addr) => Discovery::Addr(Some((addr, proto))),
             }
         };
 
@@ -205,8 +197,8 @@ where
 }
 
 pub enum Discovery<B> {
-    NamedSvc(Resolution<BindProtocol<B>>),
-    ImplicitOriginalDst(Option<(SocketAddr, BindProtocol<B>)>),
+    Name(Resolution<BindProtocol<B>>),
+    Addr(Option<(SocketAddr, BindProtocol<B>)>),
 }
 
 impl<B> Discover for Discovery<B>
@@ -223,9 +215,9 @@ where
 
     fn poll(&mut self) -> Poll<Change<Self::Key, Self::Service>, Self::DiscoverError> {
         match *self {
-            Discovery::NamedSvc(ref mut w) => w.poll()
+            Discovery::Name(ref mut w) => w.poll()
                 .map_err(|_| BindError::Internal),
-            Discovery::ImplicitOriginalDst(ref mut opt) => {
+            Discovery::Addr(ref mut opt) => {
                 // This "discovers" a single address for an external service
                 // that never has another change. This can mean it floats
                 // in the Balancer forever. However, when we finally add
@@ -277,10 +269,10 @@ struct Dst(Destination);
 impl fmt::Display for Dst {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.0 {
-            Destination::Hostname(ref name) => {
+            Destination::Name(ref name) => {
                 write!(f, "{}:{}", name.host, name.port)
             }
-            Destination::ImplicitOriginalDst(ref addr) => addr.fmt(f),
+            Destination::Addr(ref addr) => addr.fmt(f),
         }
     }
 }
