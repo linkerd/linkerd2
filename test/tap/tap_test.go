@@ -179,7 +179,7 @@ func tap(target string, arg ...string) ([]*tapEvent, error) {
 	}
 	defer outputStream.Stop()
 
-	outputLines, err := outputStream.ReadUntil(30, 1*time.Minute)
+	outputLines, err := outputStream.ReadUntil(10, 1*time.Minute)
 	if err != nil {
 		return nil, err
 	}
