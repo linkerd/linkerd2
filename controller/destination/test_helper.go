@@ -13,6 +13,7 @@ type collectUpdateListener struct {
 	noEndpointsCalled bool
 	noEndpointsExists bool
 	context           context.Context
+	stopCh            chan struct{}
 }
 
 func (c *collectUpdateListener) Update(add []common.TcpAddress, remove []common.TcpAddress) {
@@ -20,8 +21,16 @@ func (c *collectUpdateListener) Update(add []common.TcpAddress, remove []common.
 	c.removed = append(c.removed, remove...)
 }
 
-func (c *collectUpdateListener) Done() <-chan struct{} {
+func (c *collectUpdateListener) ClientClose() <-chan struct{} {
 	return c.context.Done()
+}
+
+func (c *collectUpdateListener) ServerClose() <-chan struct{} {
+	return c.stopCh
+}
+
+func (c *collectUpdateListener) Stop() {
+	close(c.stopCh)
 }
 
 func (c *collectUpdateListener) NoEndpoints(exists bool) {

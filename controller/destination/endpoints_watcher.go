@@ -61,9 +61,17 @@ func newEndpointsWatcher(k8sAPI *k8s.API) *endpointsWatcher {
 	return watcher
 }
 
-// TODO: this method should close all open streams
-// https://github.com/runconduit/conduit/issues/644
-func (e *endpointsWatcher) stop() {}
+// Close all open streams on shutdown
+func (e *endpointsWatcher) stop() {
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
+
+	for _, portMap := range e.servicePorts {
+		for _, servicePort := range portMap {
+			servicePort.unsubscribeAll()
+		}
+	}
+}
 
 // Subscribe to a service and service port.
 // The provided listener will be updated each time the address set for the
@@ -394,6 +402,17 @@ func (sp *servicePort) unsubscribe(listener updateListener) (bool, int) {
 		}
 	}
 	return false, len(sp.listeners)
+}
+
+func (sp *servicePort) unsubscribeAll() {
+	log.Debugf("Unsubscribing %s:%d", sp.service, sp.port)
+
+	sp.mutex.Lock()
+	defer sp.mutex.Unlock()
+
+	for _, listener := range sp.listeners {
+		listener.Stop()
+	}
 }
 
 /// helpers ///
