@@ -379,7 +379,7 @@ impl fmt::Display for ctx::transport::TlsStatus {
         use ctx::transport::TlsStatus;
         match *self {
             TlsStatus::Disabled => Ok(()),
-            TlsStatus::NoConfig => f.pad(",tls=\"no config\""),
+            TlsStatus::NoConfig => f.pad(",tls=\"no_config\""),
             TlsStatus::Success  => f.pad(",tls=\"true\""),
         }
     }
