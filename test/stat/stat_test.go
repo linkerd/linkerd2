@@ -82,11 +82,7 @@ func TestCliStatForConduitNamespace(t *testing.T) {
 				return err
 			}
 
-			if err := validateRowStats(TestHelper.GetConduitNamespace(), "4/4", rowStats); err != nil {
-				return err
-			}
-
-			return nil
+			return validateRowStats(TestHelper.GetConduitNamespace(), "4/4", rowStats)
 		})
 		if err != nil {
 			t.Fatal(err.Error())
