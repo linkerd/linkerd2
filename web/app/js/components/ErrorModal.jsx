@@ -3,6 +3,9 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import { Button, Icon, Modal, Switch } from 'antd';
 
+// max characters we displaly for error messages before truncating them
+const maxErrorLength = 500;
+
 export default class ErrorModal extends React.Component {
   static propTypes = {
     errors: PropTypes.shape({}).isRequired,
@@ -12,7 +15,6 @@ export default class ErrorModal extends React.Component {
 
   state = {
     visible: false,
-    maxErrorLength: 500,
     truncateErrors: true
   }
 
@@ -53,9 +55,9 @@ export default class ErrorModal extends React.Component {
             .mapValues(v => {
               return _.map(v, err => {
                 let errMsg = _.get(err, ["container", "message"]);
-                if (_.size(errMsg) > this.state.maxErrorLength) {
+                if (_.size(errMsg) > maxErrorLength) {
                   shouldTruncate = true;
-                  err.container.truncatedMessage = _.take(errMsg, this.state.maxErrorLength).join("") + "...";
+                  err.container.truncatedMessage = _.take(errMsg, maxErrorLength).join("") + "...";
                 }
 
                 return err.container;
