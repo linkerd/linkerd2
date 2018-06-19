@@ -46,6 +46,9 @@ impl<S, F> Future for UpgradeToTls<S, F>
 pub type UpgradeClientToTls =
     UpgradeToTls<rustls::ClientSession, tokio_rustls::ConnectAsync<TcpStream>>;
 
+pub type UpgradeServerToTls =
+    UpgradeToTls<rustls::ServerSession, tokio_rustls::AcceptAsync<TcpStream>>;
+
 impl Connection<rustls::ClientSession> {
     pub fn connect(socket: TcpStream, identity: &Identity, ClientConfig(config): ClientConfig)
         -> UpgradeClientToTls
@@ -55,10 +58,9 @@ impl Connection<rustls::ClientSession> {
 }
 
 impl Connection<rustls::ServerSession> {
-    pub fn accept(socket: TcpStream, ServerConfig(config): ServerConfig)
-                  -> impl Future<Item = Connection<rustls::ServerSession>, Error = io::Error>
+    pub fn accept(socket: TcpStream, ServerConfig(config): ServerConfig) -> UpgradeServerToTls
     {
-        config.accept_async(socket).map(Connection)
+        UpgradeToTls(config.accept_async(socket))
     }
 }
 
