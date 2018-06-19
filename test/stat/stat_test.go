@@ -46,13 +46,14 @@ var controllerDeployments = []string{"controller", "grafana", "prometheus", "web
 // requesting, and the test will pass.
 func TestCliStatForConduitNamespace(t *testing.T) {
 
+	// test `conduit stat deploy -n <namespace>`
 	err := TestHelper.RetryFor(20*time.Second, func() error {
 		out, err := TestHelper.ConduitRun("stat", "deploy", "-n", TestHelper.GetConduitNamespace())
 		if err != nil {
 			t.Fatalf("Unexpected stat error: %v", err)
 		}
 
-		rowStats, err := parseRows(out)
+		rowStats, err := parseRows(out, 4, false)
 		if err != nil {
 			return err
 		}
@@ -69,17 +70,65 @@ func TestCliStatForConduitNamespace(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
+	// test `conduit stat ns`
+	err = TestHelper.RetryFor(20*time.Second, func() error {
+		out, err := TestHelper.ConduitRun("stat", "ns")
+		if err != nil {
+			t.Fatalf("Unexpected stat error: %v", err)
+		}
+
+		rowStats, err := parseRows(out, 2, true)
+		if err != nil {
+			return err
+		}
+
+		conduitNsFound := false
+		emojivotoNsFound := false
+		for _, row := range rowStats {
+			if row.name == "emojivoto" {
+				emojivotoNsFound = true
+			}
+			if row.name == TestHelper.GetConduitNamespace() {
+				conduitNsFound = true
+			}
+		}
+		if conduitNsFound == false {
+			t.Fatalf("Expected conduit stat to find stats for namespace: %s", TestHelper.GetConduitNamespace())
+		}
+		if emojivotoNsFound == false {
+			t.Fatalf("Expected conduit stat to find stats for namespace: emojivoto")
+		}
+
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err.Error())
+	}
 }
 
-func parseRows(out string) (map[string]*rowStat, error) {
+// check that expectedRowCount rows have been returned
+// if checkMin is set, check that a minimum of expectedRowCount rows have been returned
+func checkRowCount(out string, expectedRowCount int, checkMin bool) ([]string, error) {
 	rows := strings.Split(out, "\n")
 	rows = rows[1 : len(rows)-1] // strip header and trailing newline
 
-	expectedRowCount := 4
-	if len(rows) != expectedRowCount {
+	if checkMin && len(rows) < expectedRowCount {
+		return nil, fmt.Errorf(
+			"Expected at least [%d] rows in stat output, got [%d]; full output:\n%s",
+			expectedRowCount, len(rows), strings.Join(rows, "\n"))
+	} else if !checkMin && len(rows) != expectedRowCount {
 		return nil, fmt.Errorf(
 			"Expected [%d] rows in stat output, got [%d]; full output:\n%s",
 			expectedRowCount, len(rows), strings.Join(rows, "\n"))
+	}
+
+	return rows, nil
+}
+
+func parseRows(out string, expectedRowCount int, checkMin bool) (map[string]*rowStat, error) {
+	rows, err := checkRowCount(out, expectedRowCount, checkMin)
+	if err != nil {
+		return nil, err
 	}
 
 	rowStats := make(map[string]*rowStat)
