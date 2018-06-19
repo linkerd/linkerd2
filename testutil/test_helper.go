@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // TestHelper provides helpers for running the conduit integration tests.
@@ -32,6 +34,7 @@ func NewTestHelper() *TestHelper {
 	conduit := flag.String("conduit", "", "path to the conduit binary to test")
 	namespace := flag.String("conduit-namespace", "conduit", "the namespace where conduit is installed")
 	runTests := flag.Bool("integration-tests", false, "must be provided to run the integration tests")
+	verbose := flag.Bool("verbose", false, "turn on debug logging")
 	flag.Parse()
 
 	if !*runTests {
@@ -49,6 +52,12 @@ func NewTestHelper() *TestHelper {
 	_, err := os.Stat(*conduit)
 	if err != nil {
 		exit(1, "-conduit binary does not exist")
+	}
+
+	if *verbose {
+		log.SetLevel(log.DebugLevel)
+	} else {
+		log.SetLevel(log.PanicLevel)
 	}
 
 	testHelper := &TestHelper{
