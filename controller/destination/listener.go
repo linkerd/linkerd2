@@ -9,9 +9,12 @@ import (
 	coreV1 "k8s.io/api/core/v1"
 )
 
+type podsByIpFn func(string) ([]*coreV1.Pod, error)
+
 type updateListener interface {
 	Update(add []common.TcpAddress, remove []common.TcpAddress)
-	Done() <-chan struct{}
+	ClientClose() <-chan struct{}
+	ServerClose() chan struct{}
 	NoEndpoints(exists bool)
 	SetServiceId(id *serviceId)
 }
@@ -19,13 +22,32 @@ type updateListener interface {
 // implements the updateListener interface
 type endpointListener struct {
 	stream    pb.Destination_GetServer
-	podsByIp  func(string) ([]*coreV1.Pod, error)
+	podsByIp  podsByIpFn
 	labels    map[string]string
 	enableTLS bool
+	stopCh    chan struct{}
 }
 
-func (l *endpointListener) Done() <-chan struct{} {
+func newEndpointListener(
+	stream pb.Destination_GetServer,
+	podsByIp podsByIpFn,
+	enableTLS bool,
+) *endpointListener {
+	return &endpointListener{
+		stream:    stream,
+		podsByIp:  podsByIp,
+		labels:    make(map[string]string),
+		enableTLS: enableTLS,
+		stopCh:    make(chan struct{}),
+	}
+}
+
+func (l *endpointListener) ClientClose() <-chan struct{} {
 	return l.stream.Context().Done()
+}
+
+func (l *endpointListener) ServerClose() chan struct{} {
+	return l.stopCh
 }
 
 func (l *endpointListener) SetServiceId(id *serviceId) {

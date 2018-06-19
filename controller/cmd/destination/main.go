@@ -69,7 +69,7 @@ func main() {
 
 	<-stop
 
-	log.Infof("shutting down gRPC server on %s\n", *addr)
-	done <- struct{}{}
+	log.Infof("shutting down gRPC server on %s", *addr)
+	close(done)
 	server.GracefulStop()
 }

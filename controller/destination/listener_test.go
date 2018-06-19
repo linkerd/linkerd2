@@ -92,7 +92,7 @@ func TestEndpointListener(t *testing.T) {
 
 		completed := make(chan bool)
 		go func() {
-			<-listener.Done()
+			<-listener.ClientClose()
 			completed <- true
 		}()
 

@@ -32,8 +32,8 @@ type serviceId struct {
 	name      string
 }
 
-func (s *serviceId) String() string {
-	return fmt.Sprintf("%s/%s", s.namespace, s.name)
+func (s serviceId) String() string {
+	return fmt.Sprintf("%s.%s", s.name, s.namespace)
 }
 
 func (k *k8sResolver) canResolve(host string, port int) (bool, error) {
@@ -70,11 +70,12 @@ func (k *k8sResolver) stop() {
 func (k *k8sResolver) resolveKubernetesService(id *serviceId, port int, listener updateListener) error {
 	k.endpointsWatcher.subscribe(id, uint32(port), listener)
 
-	<-listener.Done()
-
-	k.endpointsWatcher.unsubscribe(id, uint32(port), listener)
-
-	return nil
+	select {
+	case <-listener.ClientClose():
+		return k.endpointsWatcher.unsubscribe(id, uint32(port), listener)
+	case <-listener.ServerClose():
+		return nil
+	}
 }
 
 // localKubernetesServiceIdFromDNSName returns the name of the service in
