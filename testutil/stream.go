@@ -49,7 +49,6 @@ func (s *Stream) ReadUntil(lineCount int, timeout time.Duration) ([]string, erro
 			return output, fmt.Errorf("cmd [%s] Timed out trying to read %d lines", strings.Join(s.cmd.Args, " "), lineCount)
 		case line := <-lines:
 			output = append(output, line)
-		default:
 			if len(output) >= lineCount {
 				stopSignal = true
 				return output, nil
