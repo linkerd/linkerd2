@@ -39,7 +39,7 @@ pub struct Client {
 pub type TlsStatus = Conditional<(), tls::ReasonForNoTls>;
 
 impl TlsStatus {
-    pub fn from<C>(c: &Conditional<C, tls::ReasonForNoTls>) -> Conditional<(), tls::ReasonForNoTls>
+    pub fn from<C>(c: &Conditional<C, tls::ReasonForNoTls>) -> Self
     where C: Clone + std::fmt::Debug
     {
         match c {
