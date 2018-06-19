@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/url"
 
+	log "github.com/sirupsen/logrus"
 	"k8s.io/client-go/rest"
 	"k8s.io/kubernetes/pkg/kubectl/proxy"
 	// Load all the auth plugins for the cloud providers.
@@ -83,7 +84,7 @@ func proxyListen(server *proxy.Server, proxyPort int) (net.Listener, error) {
 }
 
 func proxyServe(server *proxy.Server, listener net.Listener) error {
-	fmt.Printf("Starting to serve on %s\n", listener.Addr().String())
+	log.Infof("Starting to serve on %s", listener.Addr().String())
 
 	// blocks until process is killed
 	err := server.ServeOnListener(listener)
