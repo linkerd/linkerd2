@@ -14,9 +14,10 @@ type podsByIpFn func(string) ([]*coreV1.Pod, error)
 type updateListener interface {
 	Update(add []common.TcpAddress, remove []common.TcpAddress)
 	ClientClose() <-chan struct{}
-	ServerClose() chan struct{}
+	ServerClose() <-chan struct{}
 	NoEndpoints(exists bool)
 	SetServiceId(id *serviceId)
+	Stop()
 }
 
 // implements the updateListener interface
@@ -46,8 +47,12 @@ func (l *endpointListener) ClientClose() <-chan struct{} {
 	return l.stream.Context().Done()
 }
 
-func (l *endpointListener) ServerClose() chan struct{} {
+func (l *endpointListener) ServerClose() <-chan struct{} {
 	return l.stopCh
+}
+
+func (l *endpointListener) Stop() {
+	close(l.stopCh)
 }
 
 func (l *endpointListener) SetServiceId(id *serviceId) {

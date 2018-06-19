@@ -25,8 +25,12 @@ func (c *collectUpdateListener) ClientClose() <-chan struct{} {
 	return c.context.Done()
 }
 
-func (c *collectUpdateListener) ServerClose() chan struct{} {
+func (c *collectUpdateListener) ServerClose() <-chan struct{} {
 	return c.stopCh
+}
+
+func (c *collectUpdateListener) Stop() {
+	close(c.stopCh)
 }
 
 func (c *collectUpdateListener) NoEndpoints(exists bool) {

@@ -411,7 +411,7 @@ func (sp *servicePort) unsubscribeAll() {
 	defer sp.mutex.Unlock()
 
 	for _, listener := range sp.listeners {
-		close(listener.ServerClose())
+		listener.Stop()
 	}
 }
 
