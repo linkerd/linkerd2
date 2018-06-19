@@ -2,10 +2,7 @@ use futures::{Future, Poll, Stream};
 use http::HeaderMap;
 use prost::Message;
 use std::fmt;
-use tower_grpc::{
-    self as grpc,
-    client::server_streaming::ResponseFuture,
-};
+use tower_grpc as grpc;
 
 /// Tracks the state of a gRPC response stream from a remote.
 ///
@@ -40,7 +37,7 @@ where
     F: Future<Item = grpc::Response<S>, Error = grpc::Error<E>>,
     S: Stream<Item = M, Error = grpc::Error>,
 {
-    Waiting(ResponseFuture<M, F>),
+    Waiting(F),
     Streaming(S),
 }
 
@@ -53,7 +50,7 @@ where
     F: Future<Item = grpc::Response<S>, Error = grpc::Error<E>>,
     S: Stream<Item = M, Error = grpc::Error>
 {
-    pub fn new(future: ResponseFuture<M, F>) -> Self {
+    pub fn new(future: F) -> Self {
         Receiver { rx: Rx::Waiting(future) }
     }
 
@@ -82,7 +79,7 @@ where
     S: Stream<Item = M, Error = grpc::Error>
 {
     type Item = M;
-    type Error = S::Error;
+    type Error = grpc::Error<E>;
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
         loop {

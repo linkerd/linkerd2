@@ -41,9 +41,6 @@ use transport::{DnsNameAndPort, HostAndPort, LookupAddressAndConnect};
 use timeout::Timeout;
 use transport::tls;
 
-type DestinationServiceQuery<T: GetDst> = Remote<PbUpdate, T::Error, T::Future, T::Stream>;
-type UpdateRx<T: GetDst> = Receiver<PbUpdate, T::Error, T::Future, T::Stream>;
-
 pub trait GetDst {
     type Error: fmt::Debug;
     type Future: Future<
@@ -59,12 +56,12 @@ pub trait GetDst {
 
 impl<T> GetDst for DestinationSvc<T>
 where
-    T: HttpService,
+    T: HttpService<RequestBody = tower_h2::BoxBody>,
     T::ResponseBody: tower_h2::Body<Data = tower_h2::Data>,
     T::Error: fmt::Debug,
 {
     type Error = T::Error;
-    type Future = grpc::client::streaming::ResponseFuture<PbUpdate, T::Future>;
+    type Future = grpc::client::server_streaming::ResponseFuture<PbUpdate, T::Future>;
     type Stream = grpc::Streaming<PbUpdate, T::ResponseBody>;
 
     fn poll_ready(&mut self) -> Poll<(), grpc::Error<Self::Error>> {
@@ -98,7 +95,7 @@ struct Background<T: GetDst> {
 /// Holds the state of a single resolution.
 struct DestinationSet<T: GetDst> {
     addrs: Exists<Cache<SocketAddr, Metadata>>,
-    query: Option<DestinationServiceQuery<T>>,
+    query: Option<Remote<PbUpdate, T::Error, T::Future, T::Stream>>,
     dns_query: Option<IpAddrListFuture>,
     responders: Vec<Responder>,
 }
@@ -132,7 +129,9 @@ pub(super) fn task(
         let log_errors = LogErrors::new(reconnect);
         let backoff = Backoff::new(log_errors, Duration::from_secs(5));
         // TODO: Use AddOrigin in tower-http
-        AddOrigin::new(scheme, authority, backoff)
+        let c = AddOrigin::new(scheme, authority, backoff);
+
+        DestinationSvc::new(c.lift())
     });
 
     let mut disco = Background::new(
@@ -142,7 +141,6 @@ pub(super) fn task(
     );
 
     future::poll_fn(move || {
-        let dst: Option<DestinationSvc<_>> = client.map(|c| DestinationSvc::new(c.lift_ref()));
         disco.poll_rpc(&mut client);
 
         Ok(Async::NotReady)
@@ -350,7 +348,7 @@ impl<T: GetDst> Background<T> {
         client: &mut T,
         auth: &DnsNameAndPort,
         connect_or_reconnect: &str,
-    ) -> Option<DestinationServiceQuery<T>> {
+    ) -> Option<Remote<PbUpdate, T::Error, T::Future, T::Stream>> {
         trace!(
             "DestinationServiceQuery {} {:?}",
             connect_or_reconnect,
@@ -362,7 +360,7 @@ impl<T: GetDst> Background<T> {
                 path: auth.without_trailing_dot().to_owned(),
             };
             Remote::ConnectedOrConnecting {
-                rx: Receiver::new(client.get(dst)),
+                rx: Receiver::new(client.get_dst(dst)),
             }
         })
     }
@@ -393,9 +391,9 @@ impl<T: GetDst> DestinationSet<T> {
     fn poll_destination_service(
         &mut self,
         auth: &DnsNameAndPort,
-        mut rx: UpdateRx<T>,
+        mut rx: Receiver<PbUpdate, T::Error, T::Future, T::Stream>,
         tls_controller_namespace: Option<&str>,
-    ) -> (DestinationServiceQuery<T>, Exists<()>) {
+    ) -> (Remote<PbUpdate, T::Error, T::Future, T::Stream>, Exists<()>) {
         let mut exists = Exists::Unknown;
 
         loop {
