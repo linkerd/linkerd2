@@ -31,7 +31,7 @@ emoji      1/2   100.00%   2.0rps         123ms         123ms         123ms     
 		}
 
 		if output != expectedOutput {
-			t.Fatalf("Wrong output:\n expected: \n%v\n, got: \n%v", expectedOutput, output)
+			t.Fatalf("Wrong output:\n expected: \n%s\n, got: \n%s", expectedOutput, output)
 		}
 	})
 }

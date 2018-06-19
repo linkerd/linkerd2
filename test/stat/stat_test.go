@@ -45,78 +45,61 @@ var controllerDeployments = []string{"controller", "grafana", "prometheus", "web
 // failed attempts will eventually be recorded in the stats that we're
 // requesting, and the test will pass.
 func TestCliStatForConduitNamespace(t *testing.T) {
+	t.Run("test conduit stat deploy", func(t *testing.T) {
+		err := TestHelper.RetryFor(20*time.Second, func() error {
+			out, err := TestHelper.ConduitRun("stat", "deploy", "-n", TestHelper.GetConduitNamespace())
+			if err != nil {
+				t.Fatalf("Unexpected stat error: %v", err)
+			}
 
-	// test `conduit stat deploy -n <namespace>`
-	err := TestHelper.RetryFor(20*time.Second, func() error {
-		out, err := TestHelper.ConduitRun("stat", "deploy", "-n", TestHelper.GetConduitNamespace())
-		if err != nil {
-			t.Fatalf("Unexpected stat error: %v", err)
-		}
-
-		rowStats, err := parseRows(out, 4, false)
-		if err != nil {
-			return err
-		}
-
-		for _, name := range controllerDeployments {
-			if err := validateRowStats(name, rowStats); err != nil {
+			rowStats, err := parseRows(out, 4)
+			if err != nil {
 				return err
 			}
-		}
 
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	// test `conduit stat ns`
-	err = TestHelper.RetryFor(20*time.Second, func() error {
-		out, err := TestHelper.ConduitRun("stat", "ns")
-		if err != nil {
-			t.Fatalf("Unexpected stat error: %v", err)
-		}
-
-		rowStats, err := parseRows(out, 2, true)
-		if err != nil {
-			return err
-		}
-
-		conduitNsFound := false
-		emojivotoNsFound := false
-		for _, row := range rowStats {
-			if row.name == "emojivoto" {
-				emojivotoNsFound = true
+			for _, name := range controllerDeployments {
+				if err := validateRowStats(name, "1/1", rowStats); err != nil {
+					return err
+				}
 			}
-			if row.name == TestHelper.GetConduitNamespace() {
-				conduitNsFound = true
-			}
-		}
-		if conduitNsFound == false {
-			t.Fatalf("Expected conduit stat to find stats for namespace: %s", TestHelper.GetConduitNamespace())
-		}
-		if emojivotoNsFound == false {
-			t.Fatalf("Expected conduit stat to find stats for namespace: emojivoto")
-		}
 
-		return nil
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err.Error())
+		}
 	})
-	if err != nil {
-		t.Fatal(err.Error())
-	}
+
+	t.Run("test conduit stat namespace", func(t *testing.T) {
+		err := TestHelper.RetryFor(20*time.Second, func() error {
+			out, err := TestHelper.ConduitRun("stat", "ns", TestHelper.GetConduitNamespace())
+			if err != nil {
+				t.Fatalf("Unexpected stat error: %v", err)
+			}
+
+			rowStats, err := parseRows(out, 1)
+			if err != nil {
+				return err
+			}
+
+			if err := validateRowStats(TestHelper.GetConduitNamespace(), "4/4", rowStats); err != nil {
+				return err
+			}
+
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+	})
 }
 
 // check that expectedRowCount rows have been returned
-// if checkMin is set, check that a minimum of expectedRowCount rows have been returned
-func checkRowCount(out string, expectedRowCount int, checkMin bool) ([]string, error) {
+func checkRowCount(out string, expectedRowCount int) ([]string, error) {
 	rows := strings.Split(out, "\n")
 	rows = rows[1 : len(rows)-1] // strip header and trailing newline
 
-	if checkMin && len(rows) < expectedRowCount {
-		return nil, fmt.Errorf(
-			"Expected at least [%d] rows in stat output, got [%d]; full output:\n%s",
-			expectedRowCount, len(rows), strings.Join(rows, "\n"))
-	} else if !checkMin && len(rows) != expectedRowCount {
+	if len(rows) != expectedRowCount {
 		return nil, fmt.Errorf(
 			"Expected [%d] rows in stat output, got [%d]; full output:\n%s",
 			expectedRowCount, len(rows), strings.Join(rows, "\n"))
@@ -125,8 +108,8 @@ func checkRowCount(out string, expectedRowCount int, checkMin bool) ([]string, e
 	return rows, nil
 }
 
-func parseRows(out string, expectedRowCount int, checkMin bool) (map[string]*rowStat, error) {
-	rows, err := checkRowCount(out, expectedRowCount, checkMin)
+func parseRows(out string, expectedRowCount int) (map[string]*rowStat, error) {
+	rows, err := checkRowCount(out, expectedRowCount)
 	if err != nil {
 		return nil, err
 	}
@@ -157,13 +140,12 @@ func parseRows(out string, expectedRowCount int, checkMin bool) (map[string]*row
 	return rowStats, nil
 }
 
-func validateRowStats(name string, rowStats map[string]*rowStat) error {
+func validateRowStats(name, expectedMeshCount string, rowStats map[string]*rowStat) error {
 	stat, ok := rowStats[name]
 	if !ok {
 		return fmt.Errorf("No stats found for [%s]", name)
 	}
 
-	expectedMeshCount := "1/1"
 	if stat.meshed != expectedMeshCount {
 		return fmt.Errorf("Expected mesh count [%s] for [%s], got [%s]",
 			expectedMeshCount, name, stat.meshed)
