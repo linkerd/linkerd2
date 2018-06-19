@@ -111,6 +111,20 @@ macro_rules! assert_eventually {
     };
 }
 
+#[macro_export]
+macro_rules! assert_contains {
+    ($haystack:expr, $needle:expr) => {
+        assert!($haystack.contains($needle), "haystack:\n{:8?}\ndid not contain:\n{:8?}", $haystack, $needle)
+    }
+}
+
+#[macro_export]
+macro_rules! assert_eventually_contains {
+    ($scrape:expr, $contains:expr) => {
+        assert_eventually!($scrape.contains($contains), "metrics scrape:\n{:8?}\ndid not contain:\n{:8?}", $scrape, $contains)
+    }
+}
+
 pub mod client;
 pub mod controller;
 pub mod proxy;

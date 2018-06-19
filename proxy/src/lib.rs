@@ -47,6 +47,7 @@ extern crate conduit_proxy_router;
 extern crate tower_util;
 extern crate tower_in_flight_limit;
 extern crate trust_dns_resolver;
+extern crate try_lock;
 
 use futures::*;
 

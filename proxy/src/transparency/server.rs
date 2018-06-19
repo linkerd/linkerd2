@@ -161,43 +161,52 @@ where
         let tcp = self.tcp.clone();
         let new_service = self.new_service.clone();
         let drain_signal = self.drain_signal.clone();
+        let log_clone = log.clone();
         let fut = Either::A(io.peek()
             .map_err(|e| debug!("peek error: {}", e))
-            .and_then(move |io| {
-                if let Some(proto) = Protocol::detect(io.peeked()) {
-                    Either::A(match proto {
-                        Protocol::Http1 => {
-                            trace!("transparency detected HTTP/1");
+            .and_then(move |io| match Protocol::detect(io.peeked()) {
+                Some(Protocol::Http1) => Either::A({
+                    trace!("transparency detected HTTP/1");
 
-                            let fut = new_service.new_service()
-                                .map_err(|_| ())
-                                .and_then(move |s| {
-                                    let svc = HyperServerSvc::new(s, srv_ctx);
-                                    drain_signal
-                                        .watch(h1.serve_connection(io, svc), |conn| {
-                                            conn.graceful_shutdown();
-                                        })
-                                        .map(|_| ())
-                                        .map_err(|e| trace!("http1 server error: {:?}", e))
-                                });
-                            Either::A(fut)
-                        },
-                        Protocol::Http2 => {
-                            trace!("transparency detected HTTP/2");
-                            let set_ctx = move |request: &mut http::Request<()>| {
-                                request.extensions_mut().insert(srv_ctx.clone());
-                            };
-
-                            let fut = drain_signal
-                                .watch(h2.serve_modified(io, set_ctx), |conn| {
+                    let fut = new_service.new_service()
+                        .map_err(|e| trace!("h1 new_service error: {:?}", e))
+                        .and_then(move |s| {
+                            let svc = HyperServerSvc::new(
+                                s,
+                                srv_ctx,
+                                drain_signal.clone(),
+                                log_clone.executor(),
+                            );
+                            let conn = h1
+                                .serve_connection(io, svc)
+                                // Since using `Connection`s, enable
+                                // support for HTTP upgrades (CONNECT
+                                // and websockets).
+                                .with_upgrades();
+                            drain_signal
+                                .watch(conn, |conn| {
                                     conn.graceful_shutdown();
                                 })
-                                .map_err(|e| trace!("h2 server error: {:?}", e));
+                                .map(|_| ())
+                                .map_err(|e| trace!("http1 server error: {:?}", e))
+                        });
+                    Either::A(fut)
+                }),
+                Some(Protocol::Http2) => Either::A({
+                    trace!("transparency detected HTTP/2");
+                    let set_ctx = move |request: &mut http::Request<()>| {
+                        request.extensions_mut().insert(srv_ctx.clone());
+                    };
 
-                            Either::B(fut)
-                        }
-                    })
-                } else {
+                    let fut = drain_signal
+                        .watch(h2.serve_modified(io, set_ctx), |conn| {
+                            conn.graceful_shutdown();
+                        })
+                        .map_err(|e| trace!("h2 server error: {:?}", e));
+
+                    Either::B(fut)
+                }),
+                None => {
                     trace!("transparency did not detect protocol, treating as TCP");
                     Either::B(tcp_serve(
                         &tcp,
