@@ -184,7 +184,7 @@ impl Future for Connecting {
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         loop {
-            let new_state = match self {
+            *self = match self {
                 Connecting::Plaintext { connect, tls } => {
                     let plaintext_stream = try_ready!(connect.poll());
                     set_nodelay_or_warn(&plaintext_stream);
@@ -192,7 +192,7 @@ impl Future for Connecting {
                         Conditional::Some(config) => {
                             let upgrade_to_tls = tls::Connection::connect(
                                 plaintext_stream, &config.identity, config.config);
-                            Some(Connecting::UpgradeToTls(upgrade_to_tls))
+                            Connecting::UpgradeToTls(upgrade_to_tls)
                         },
                         Conditional::None(why) => {
                             return Ok(Async::Ready(Connection::plain(plaintext_stream, why)));
@@ -204,9 +204,6 @@ impl Future for Connecting {
                     return Ok(Async::Ready(Connection::tls(tls_stream)));
                 },
             };
-            if let Some(s) = new_state {
-                std::mem::replace(self, s);
-            }
         }
     }
 }
