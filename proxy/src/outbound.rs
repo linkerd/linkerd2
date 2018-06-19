@@ -86,17 +86,17 @@ impl<B> Outbound<B> {
 
     /// Determines the destination for a request.
     ///
-    /// Typically, a request's authority is used to produce a `Destination`. If the it
-    /// addresses a DNS name, a `Destinatino::Name` is returned; and, otherwise, if it
-    /// addresses a fixed IP address, a `Destination::Addr` is returned. A port is
+    /// Typically, a request's authority is used to produce a `Destination`. If the
+    /// authority addresses a DNS name, a `Destination::Name` is returned; and, otherwise,
+    /// it addresses a fixed IP address and a `Destination::Addr` is returned. The port is
     /// inferred if not specified in the authority.
     ///
-    /// Otherwise, the `SO_ORIGINAL_DST` socket option is checked. If it's available, it
-    /// is used to return a `Destination;:Addr`. This option is typically set by
-    /// `iptables(8)` in containerized environments like Kubernetes (as configured by the
-    /// `proxy-init` program).
+    /// If no authority is available, the `SO_ORIGINAL_DST` socket option is checked. If
+    /// it's available, it is used to return a `Destination::Addr`. This socket option is
+    /// typically set by `iptables(8)` in containerized environments like Kubernetes (as
+    /// configured by the `proxy-init` program).
     ///
-    /// If none of this informatino is available, no `Destination` is returned.
+    /// If none of this information is available, no `Destination` is returned.
     fn destination(req: &http::Request<B>) -> Option<Destination> {
         match Self::host_port(req) {
             Some(HostAndPort { host: Host::DnsName(host), port }) => {
