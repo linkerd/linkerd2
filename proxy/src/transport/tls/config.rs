@@ -15,7 +15,7 @@ use super::{
     untrusted,
     webpki,
 };
-
+use conditional::Conditional;
 use futures::{future, stream, Future, Stream};
 use futures_watch::Watch;
 use ring::signature;
@@ -74,6 +74,33 @@ pub struct ServerConfig(pub(super) Arc<rustls::ServerConfig>);
 
 pub type ClientConfigWatch = Watch<Option<ClientConfig>>;
 pub type ServerConfigWatch = Watch<Option<ServerConfig>>;
+
+/// The configuration in effect for a client (`ClientConfig`) or server
+/// (`ServerConfig`) TLS connection.
+#[derive(Clone, Debug)]
+pub struct ConnectionConfig<C> where C: Clone + std::fmt::Debug {
+    pub identity: Identity,
+    pub config: C,
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum ReasonForNoTls {
+    /// TLS is disabled.
+    Disabled,
+
+    /// TLS was enabled but the configuration isn't available (yet).
+    NoConfig,
+
+    /// TLS isn't implemented for the connection between the proxy and the
+    /// control plane yet.
+    NotImplementedForControlPlane,
+
+    /// TLS is only enabled for HTTP (HTTPS) right now.
+    NotImplementedForNonHttp,
+
+}
+
+pub type ConditionalConnectionConfig<C> = Conditional<ConnectionConfig<C>, ReasonForNoTls>;
 
 #[derive(Debug)]
 pub enum Error {
@@ -288,6 +315,24 @@ impl ServerConfig {
         set_common_settings(&mut config.versions);
         config.cert_resolver = common.cert_resolver.clone();
         ServerConfig(Arc::new(config))
+    }
+}
+
+pub fn current_connection_config<C>(identity: Option<&Identity>, watch: &Watch<Option<C>>)
+    -> ConditionalConnectionConfig<C> where C: Clone + std::fmt::Debug
+{
+    match identity {
+        Some(identity) => {
+            match *watch.borrow() {
+                Some(ref config) =>
+                    Conditional::Some(ConnectionConfig {
+                        identity: identity.clone(),
+                        config: config.clone()
+                    }),
+                None => Conditional::None(ReasonForNoTls::NoConfig),
+            }
+        },
+        None => Conditional::None(ReasonForNoTls::Disabled),
     }
 }
 

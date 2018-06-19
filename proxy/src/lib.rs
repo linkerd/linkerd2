@@ -70,6 +70,7 @@ pub mod app;
 mod bind;
 pub mod config;
 mod connection;
+mod conditional;
 pub mod control;
 pub mod convert;
 pub mod ctx;

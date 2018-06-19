@@ -11,11 +11,12 @@ use connection;
 use convert::TryFrom;
 use dns;
 use transport::tls;
+use conditional::Conditional;
 
 #[derive(Debug, Clone)]
 pub struct Connect {
     addr: SocketAddr,
-    tls: Option<(tls::Identity, tls::ClientConfigWatch)>,
+    tls: tls::ConditionalConnectionConfig<tls::ClientConfig>,
 }
 
 #[derive(Clone, Debug)]
@@ -103,7 +104,7 @@ impl Connect {
     /// Returns a `Connect` to `addr`.
     pub fn new(
         addr: SocketAddr,
-        tls: Option<(tls::Identity, tls::ClientConfigWatch)>,
+        tls: tls::ConditionalConnectionConfig<tls::ClientConfig>,
     ) -> Self {
         Self {
             addr,
@@ -144,7 +145,7 @@ impl tokio_connect::Connect for LookupAddressAndConnect {
     fn connect(&self) -> Self::Future {
         let port = self.host_and_port.port;
         let host = self.host_and_port.host.clone();
-        let tls = None; // TODO: Connect over TLS.
+        let tls = Conditional::None(tls::ReasonForNoTls::NotImplementedForControlPlane); // TODO
         let c = self.dns_resolver
             .resolve_one_ip(&self.host_and_port.host)
             .map_err(|_| {

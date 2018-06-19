@@ -9,7 +9,7 @@ use tokio::{
     net::{TcpListener, TcpStream, ConnectFuture},
     reactor::Handle,
 };
-
+use conditional::Conditional;
 use ctx::transport::TlsStatus;
 use config::Addr;
 use transport::{GetOriginalDst, Io, tls};
@@ -20,12 +20,13 @@ pub struct BoundPort {
 }
 
 /// Initiates a client connection to the given address.
-pub fn connect(addr: &SocketAddr, tls: Option<(tls::Identity, tls::ClientConfigWatch)>)
+pub fn connect(addr: &SocketAddr,
+               tls: tls::ConditionalConnectionConfig<tls::ClientConfig>)
     -> Connecting
 {
     Connecting::Plaintext {
         connect: TcpStream::connect(addr),
-        tls
+        tls: Some(tls),
     }
 }
 
@@ -33,7 +34,7 @@ pub fn connect(addr: &SocketAddr, tls: Option<(tls::Identity, tls::ClientConfigW
 pub enum Connecting {
     Plaintext {
         connect: ConnectFuture,
-        tls: Option<(tls::Identity, tls::ClientConfigWatch)>,
+        tls: Option<tls::ConditionalConnectionConfig<tls::ClientConfig>>,
     },
     UpgradeToTls(tls::UpgradeClientToTls),
 }
@@ -139,7 +140,7 @@ impl BoundPort {
                     // libraries don't have the necessary API for that, so just
                     // do it here.
                     set_nodelay_or_warn(&socket);
-                    let tls_status = if let Some((_identity, config_watch)) = &tls {
+                    let why_no_tls = if let Some((_identity, config_watch)) = &tls {
                         // TODO: use `identity` to differentiate between TLS
                         // that the proxy should terminate vs. TLS that should
                         // be passed through.
@@ -151,12 +152,12 @@ impl BoundPort {
                             return Either::A(f);
                         } else {
                             // No valid TLS configuration.
-                            TlsStatus::NoConfig
+                            tls::ReasonForNoTls::NoConfig
                         }
                     } else {
-                        TlsStatus::Disabled
+                        tls::ReasonForNoTls::Disabled
                     };
-                    let conn = Connection::plain(socket, tls_status);
+                    let conn = Connection::plain(socket, why_no_tls);
                     Either::B(future::ok((conn, remote_addr)))
                 })
                 .then(|r| {
@@ -185,39 +186,22 @@ impl Future for Connecting {
         loop {
             let new_state = match self {
                 Connecting::Plaintext { connect, tls } => {
-                    match connect.poll() {
-                        Ok(Async::Ready(plaintext_stream)) => {
-                            set_nodelay_or_warn(&plaintext_stream);
-                            if let Some((identity, config_watch)) = tls {
-                                if let Some(ref config) = *config_watch.borrow() {
-                                    let upgrade_to_tls = tls::Connection::connect(
-                                        plaintext_stream, &identity, config.clone());
-                                    Some(Connecting::UpgradeToTls(upgrade_to_tls))
-                                } else {
-                                    return Ok(Async::Ready(Connection::plain(plaintext_stream,
-                                                                             TlsStatus::NoConfig)));
-                                }
-                            } else {
-                                return Ok(Async::Ready(Connection::plain(plaintext_stream,
-                                                                         TlsStatus::Disabled)));
-                            }
+                    let plaintext_stream = try_ready!(connect.poll());
+                    set_nodelay_or_warn(&plaintext_stream);
+                    match tls.take().expect("Polled after ready") {
+                        Conditional::Some(config) => {
+                            let upgrade_to_tls = tls::Connection::connect(
+                                plaintext_stream, &config.identity, config.config);
+                            Some(Connecting::UpgradeToTls(upgrade_to_tls))
                         },
-                        Ok(Async::NotReady) => None,
-                        Err(e) => {
-                            return Err(e);
-                        }
+                        Conditional::None(why) => {
+                            return Ok(Async::Ready(Connection::plain(plaintext_stream, why)));
+                        },
                     }
                 },
                 Connecting::UpgradeToTls(upgrading) => {
-                    match upgrading.poll() {
-                        Ok(Async::Ready(tls_stream)) => {
-                            return Ok(Async::Ready(Connection::tls(tls_stream)));
-                        },
-                        Ok(Async::NotReady) => None,
-                        Err(e) => {
-                            return Err(e);
-                        }
-                    }
+                    let tls_stream = try_ready!(upgrading.poll());
+                    return Ok(Async::Ready(Connection::tls(tls_stream)));
                 },
             };
             if let Some(s) = new_state {
@@ -230,11 +214,11 @@ impl Future for Connecting {
 // ===== impl Connection =====
 
 impl Connection {
-    fn plain(io: TcpStream, tls_status: TlsStatus) -> Self {
+    fn plain(io: TcpStream, why_no_tls: tls::ReasonForNoTls) -> Self {
         Connection {
             io: Box::new(io),
             peek_buf: BytesMut::new(),
-            tls_status,
+            tls_status: Conditional::None(why_no_tls),
         }
     }
 
@@ -242,7 +226,7 @@ impl Connection {
         Connection {
             io: Box::new(tls),
             peek_buf: BytesMut::new(),
-            tls_status: TlsStatus::Success,
+            tls_status: Conditional::Some(()),
         }
     }
 

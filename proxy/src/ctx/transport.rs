@@ -5,6 +5,7 @@ use ctx;
 use control::destination;
 use telemetry::metrics::DstLabels;
 use transport::tls;
+use conditional::Conditional;
 
 #[derive(Debug)]
 pub enum Ctx {
@@ -33,18 +34,7 @@ pub struct Client {
 
 /// Identifies whether or not a connection was secured with TLS,
 /// and, if it was not, the reason why.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub enum TlsStatus {
-    /// The TLS handshake was successful.
-    Success,
-    /// TLS was not enabled for this connection.
-    Disabled,
-    /// TLS was enabled for this connection, but we have no valid
-    /// config.
-    NoConfig,
-    // TODO: When the proxy falls back to plaintext on handshake
-    // failures, we'll want to add a variant for that here as well.
-}
+pub type TlsStatus = Conditional<(), tls::ReasonForNoTls>;
 
 impl Ctx {
     pub fn proxy(&self) -> &Arc<ctx::Proxy> {
