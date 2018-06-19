@@ -80,6 +80,19 @@ impl Request {
         self.client.tls_identity()
     }
 
+    /// Returns a `TlsStatus` indicating if the request was sent was over TLS.
+    pub fn tls_status(&self) -> ctx::transport::TlsStatus {
+        if self.server.proxy.is_outbound() {
+            // If the request is in the outbound direction, then we opened the
+            // client connection, so check if it was secured.
+            self.client.tls_status
+        } else {
+            // Otherwise, the request is inbound, so check if we accepted it
+            // over TLS.
+            self.server.tls_status
+        }
+    }
+
     pub fn dst_labels(&self) -> Option<&DstLabels> {
         self.client.dst_labels()
     }
@@ -93,6 +106,11 @@ impl Response {
         };
 
         Arc::new(r)
+    }
+
+    /// Returns a `TlsStatus` indicating if the response was sent was over TLS.
+    pub fn tls_status(&self) -> ctx::transport::TlsStatus {
+        self.request.tls_status()
     }
 
     pub fn dst_labels(&self) -> Option<&DstLabels> {

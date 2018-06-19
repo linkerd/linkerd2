@@ -209,6 +209,9 @@ where
             &self.ctx,
             &addr,
             ep.metadata().clone(),
+            // TODO: when we can use TLS for client connections, indicate
+            //       whether or not the connection was TLS here.
+            ctx::transport::TlsStatus::Disabled,
         );
 
         // Map a socket address to a connection.

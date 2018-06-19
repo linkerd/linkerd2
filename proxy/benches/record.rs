@@ -36,7 +36,10 @@ fn process() -> Arc<ctx::Process> {
 }
 
 fn server(proxy: &Arc<ctx::Proxy>) -> Arc<ctx::transport::Server> {
-    ctx::transport::Server::new(&proxy, &addr(), &addr(), &Some(addr()))
+    ctx::transport::Server::new(
+        &proxy, &addr(), &addr(), &Some(addr()),
+        ctx::transport::TlsStatus::Disabled,
+    )
 }
 
 fn client<L, S>(proxy: &Arc<ctx::Proxy>, labels: L) -> Arc<ctx::transport::Client>
@@ -48,6 +51,7 @@ where
         &proxy,
         &addr(),
         destination::Metadata::new(metrics::DstLabels::new(labels), None),
+        ctx::transport::TlsStatus::Disabled,
     )
 }
 

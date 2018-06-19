@@ -133,7 +133,10 @@ mod tests {
 
             let inbound = new_inbound(None, &ctx);
 
-            let srv_ctx = ctx::transport::Server::new(&ctx, &local, &remote, &Some(orig_dst));
+            let srv_ctx = ctx::transport::Server::new(
+                &ctx, &local, &remote, &Some(orig_dst),
+                ctx::transport::TlsStatus::Disabled,
+            );
 
             let rec = srv_ctx.orig_dst_if_not_local().map(make_key_http1);
 
@@ -160,6 +163,7 @@ mod tests {
                     &local,
                     &remote,
                     &None,
+                    ctx::transport::TlsStatus::Disabled,
                 ));
 
             inbound.recognize(&req) == default.map(make_key_http1)
@@ -191,6 +195,7 @@ mod tests {
                     &local,
                     &remote,
                     &Some(local),
+                    ctx::transport::TlsStatus::Disabled,
                 ));
 
             inbound.recognize(&req) == default.map(make_key_http1)

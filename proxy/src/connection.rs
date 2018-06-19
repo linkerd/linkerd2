@@ -10,6 +10,7 @@ use tokio::{
     reactor::Handle,
 };
 
+use ctx::transport::TlsStatus;
 use config::Addr;
 use transport::{GetOriginalDst, Io, tls};
 
@@ -22,11 +23,19 @@ pub struct BoundPort {
 
 /// Initiates a client connection to the given address.
 pub fn connect(addr: &SocketAddr) -> Connecting {
-    Connecting(PlaintextSocket::connect(addr))
+    Connecting {
+        inner: PlaintextSocket::connect(addr),
+        // TODO: when we can open TLS client connections, this is where we will
+        //       indicate that for telemetry.
+        tls_status: TlsStatus::Disabled,
+    }
 }
 
 /// A socket that is in the process of connecting.
-pub struct Connecting(ConnectFuture);
+pub struct Connecting {
+    inner: ConnectFuture,
+    tls_status: TlsStatus,
+}
 
 /// Abstracts a plaintext socket vs. a TLS decorated one.
 ///
@@ -44,6 +53,9 @@ pub struct Connection {
     /// When calling `read`, it's important to consume bytes from this buffer
     /// before calling `io.read`.
     peek_buf: BytesMut,
+
+    /// Whether or not the connection is secured with TLS.
+    tls_status: TlsStatus,
 }
 
 /// A trait describing that a type can peek bytes.
@@ -126,18 +138,25 @@ impl BoundPort {
                     // libraries don't have the necessary API for that, so just
                     // do it here.
                     set_nodelay_or_warn(&socket);
-                    if let Some((_identity, config_watch)) = &tls {
+                    let tls_status = if let Some((_identity, config_watch)) = &tls {
                         // TODO: use `identity` to differentiate between TLS
                         // that the proxy should terminate vs. TLS that should
                         // be passed through.
                         if let Some(config) = &*config_watch.borrow() {
-                            return Either::A(
-                                tls::Connection::accept(socket, config.clone())
-                                    .map(move |tls| (Connection::new(Box::new(tls)), remote_addr)));
+                            let f = tls::Connection::accept(socket, config.clone())
+                                .map(move |tls| {
+                                    (Connection::tls(tls), remote_addr)
+                                });
+                            return Either::A(f);
+                        } else {
+                            // No valid TLS configuration.
+                            TlsStatus::NoConfig
                         }
-                    }
-
-                    Either::B(future::ok((Connection::new(Box::new(socket)), remote_addr)))
+                    } else {
+                        TlsStatus::Disabled
+                    };
+                    let conn = Connection::new(socket, tls_status);
+                    Either::B(future::ok((conn, remote_addr)))
                 })
                 .then(|r| {
                     future::ok(match r {
@@ -162,20 +181,28 @@ impl Future for Connecting {
     type Error = io::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        let socket = try_ready!(self.0.poll());
+        let socket = try_ready!(self.inner.poll());
         set_nodelay_or_warn(&socket);
-        Ok(Async::Ready(Connection::new(Box::new(socket))))
+        Ok(Async::Ready(Connection::new(socket, self.tls_status)))
     }
 }
 
 // ===== impl Connection =====
 
 impl Connection {
-    /// A constructor of `Connection` with a plain text TCP socket.
-    fn new(io: Box<Io>) -> Self {
+    fn new<I: Io + 'static>(io: I, tls_status: TlsStatus) -> Self {
         Connection {
-            io,
+            io: Box::new(io),
             peek_buf: BytesMut::new(),
+            tls_status,
+        }
+    }
+
+    fn tls(tls: tls::Connection) -> Self {
+            Connection {
+            io: Box::new(tls),
+            peek_buf: BytesMut::new(),
+            tls_status: TlsStatus::Success,
         }
     }
 
@@ -185,6 +212,10 @@ impl Connection {
 
     pub fn local_addr(&self) -> Result<SocketAddr, std::io::Error> {
         self.io.local_addr()
+    }
+
+    pub fn tls_status(&self) -> TlsStatus {
+        self.tls_status
     }
 }
 
