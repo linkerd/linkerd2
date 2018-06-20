@@ -141,7 +141,7 @@ func TestDashboard(t *testing.T) {
 	}
 	defer outputStream.Stop()
 
-	outputLines, err := outputStream.ReadUntil(5, 1*time.Minute)
+	outputLines, err := outputStream.ReadUntil(4, 1*time.Minute)
 	if err != nil {
 		t.Fatalf("Error running command:\n%s", err)
 	}
