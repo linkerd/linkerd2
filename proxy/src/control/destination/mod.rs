@@ -36,6 +36,7 @@ use futures::{
     Stream
 };
 use http;
+use indexmap::IndexMap;
 use tower_discover::{Change, Discover};
 use tower_service::Service;
 
@@ -87,6 +88,23 @@ pub struct Resolution<B> {
 
     /// Binds an update endpoint to a Service.
     bind: B,
+
+    /// Tracks state necessary for rebinding endpoints when the TLS config is
+    /// invalidated.
+    rebind: RebindState,
+}
+
+#[derive(Debug)]
+struct RebindState {
+    /// Are we currently rebinding?
+    rebinding: bool,
+
+    /// Endpoints that should be rebound on the next poll.
+    now: IndexMap<SocketAddr, Endpoint>,
+
+    /// Endpoints that have already been rebound by this invalidation, but will
+    /// have to be rebound again the next time the state is invalidated.
+    next: IndexMap<SocketAddr, Endpoint>,
 }
 
 /// Metadata describing an endpoint.
@@ -110,6 +128,8 @@ enum Update {
     Bind(SocketAddr, Metadata),
     /// Indicates that the endpoint for this `SocketAddr` should be removed.
     Remove(SocketAddr),
+    /// Indicates that any endpoints with TLS metadata should be rebound.
+    RebindIfTls,
 }
 
 /// Bind a `SocketAddr` with a protocol.
@@ -184,6 +204,7 @@ impl Resolver {
             update_rx,
             _active: active,
             bind,
+            rebind: RebindState::new(),
         }
     }
 }
@@ -203,6 +224,18 @@ where
 
     fn poll(&mut self) -> Poll<Change<Self::Key, Self::Service>, Self::DiscoverError> {
         loop {
+            // First, check if we have any endpoints that need to be rebound.
+            if let Some(endpoint) = self.rebind.next_to_rebind() {
+                // The current service stack for `endpoint` has been
+                // invalidated, so bind a new one.
+                let addr = endpoint.address();
+                let service = self.bind.bind(endpoint).map_err(|_| ())?;
+
+                // Return the newly bound service for that endpoint to the
+                // load balancer.
+                return Ok(Async::Ready(Change::Insert(addr, service)));
+            }
+
             let up = self.update_rx.poll();
             trace!("watch: {:?}", up);
             let update = try_ready!(up).expect("destination stream must be infinite");
@@ -217,11 +250,20 @@ where
 
                     let service = self.bind.bind(&endpoint).map_err(|_| ())?;
 
+                    self.rebind.add_endpoint(endpoint);
+
                     return Ok(Async::Ready(Change::Insert(addr, service)));
                 },
                 Update::Remove(addr) => {
+                    self.rebind.remove_endpoint(&addr);
                     return Ok(Async::Ready(Change::Remove(addr)));
                 },
+                Update::RebindIfTls => {
+                    // The TLS configuration has changed! We need to start
+                    // rebinding any TLS endpoints. We'll start draining the
+                    // endpoints to rebind on the next iteration of the loop.
+                    self.rebind.invalidate();
+                }
             }
         }
     }
@@ -265,5 +307,58 @@ impl Metadata {
 
     pub fn tls_identity(&self) -> Conditional<&tls::Identity, tls::ReasonForNoIdentity> {
         self.tls_identity.as_ref()
+    }
+}
+
+// ===== impl RebindState =====
+
+impl RebindState {
+    fn new() -> Self {
+        RebindState {
+            rebinding: false,
+            now: IndexMap::new(),
+            next: IndexMap::new(),
+        }
+    }
+
+    fn add_endpoint(&mut self, ep: Endpoint) {
+        // The endpoint only needs to be rebound if it we're
+        // able to communicate with it over TLS (i.e. it has a
+        // TLS identity in its metadata).
+        if ep.tls_identity().is_some() {
+            self.now.insert(ep.address(), ep);
+        }
+    }
+
+    fn remove_endpoint(&mut self, addr: &SocketAddr) {
+        if self.now.remove(addr).is_some() {
+            return;
+        } else {
+            self.next.remove(addr);
+        }
+    }
+
+    fn invalidate(&mut self) {
+        self.rebinding = true;
+    }
+
+    /// Returns the next endpoint that needs to be rebound, or `None` if
+    /// no endpoints currently need to be rebound.
+    fn next_to_rebind(&mut self) -> Option<&Endpoint> {
+        if !self.rebinding {
+            return None;
+        }
+
+        if let Some((addr, ep)) = self.now.pop() {
+            // We'll have to rebind the endpoint again the next time
+            // the TLS config is invalidated.
+            self.next.insert(addr, ep.clone());
+            self.next.get(&addr)
+        } else {
+            // If there are no endpoints left in `now`, we're done
+            // rebinding.
+            self.rebinding = false;
+            None
+        }
     }
 }
