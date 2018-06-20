@@ -49,7 +49,9 @@ where
     ctx::transport::Client::new(
         &proxy,
         &addr(),
-        destination::Metadata::new(metrics::DstLabels::new(labels), None),
+        destination::Metadata::new(
+            metrics::DstLabels::new(labels),
+            Conditional::None(tls::ReasonForNoIdentity::NotProvidedByServiceDiscovery)),
         TLS_DISABLED,
     )
 }
