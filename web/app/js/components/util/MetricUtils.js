@@ -131,6 +131,9 @@ export const processSingleResourceRollup = rawMetrics => {
   if (_.size(result) > 1) {
     console.error("Multi metric returned; expected single metric.");
   }
+  if (_.isEmpty(result)) {
+    return [];
+  }
   return _.values(result)[0];
 };
 

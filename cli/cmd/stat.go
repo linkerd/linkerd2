@@ -3,7 +3,6 @@ package cmd
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -16,7 +15,6 @@ import (
 	"github.com/runconduit/conduit/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"k8s.io/api/core/v1"
 )
 
 type statOptions struct {
@@ -310,20 +308,9 @@ func getNamePrefix(resourceType string) string {
 }
 
 func buildStatSummaryRequest(resource []string, options *statOptions) (*pb.StatSummaryRequest, error) {
-	targetNamespace := options.namespace
-	if options.allNamespaces {
-		targetNamespace = ""
-	} else if options.namespace == "" {
-		targetNamespace = v1.NamespaceDefault
-	}
-
-	target, err := util.BuildResource(targetNamespace, resource...)
+	target, err := util.BuildResource(options.namespace, resource...)
 	if err != nil {
 		return nil, err
-	}
-
-	if target.Name != "" && targetNamespace == "" {
-		return nil, errors.New("stats for a resource cannot be retrieved by name across all namespaces")
 	}
 
 	var toRes, fromRes pb.Resource
@@ -344,13 +331,14 @@ func buildStatSummaryRequest(resource []string, options *statOptions) (*pb.StatS
 		TimeWindow:    options.timeWindow,
 		ResourceName:  target.Name,
 		ResourceType:  target.Type,
-		Namespace:     targetNamespace,
+		Namespace:     options.namespace,
 		ToName:        toRes.Name,
 		ToType:        toRes.Type,
 		ToNamespace:   options.toNamespace,
 		FromName:      fromRes.Name,
 		FromType:      fromRes.Type,
 		FromNamespace: options.fromNamespace,
+		AllNamespaces: options.allNamespaces,
 	}
 
 	return util.BuildStatSummaryRequest(requestParams)

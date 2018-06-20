@@ -285,13 +285,13 @@ describe('ApiHelpers', () => {
     it('returns the correct rollup url for deployment overviews', () => {
       api = ApiHelpers('/go/my/own/way');
       let deploymentUrl = api.urlsForResource("deployment");
-      expect(deploymentUrl).to.equal('/api/tps-reports?resource_type=deployment');
+      expect(deploymentUrl).to.equal('/api/tps-reports?resource_type=deployment&all_namespaces=true');
     });
 
     it('returns the correct rollup url for pod overviews', () => {
       api = ApiHelpers('/go/my/own/way');
       let deploymentUrls = api.urlsForResource("pod");
-      expect(deploymentUrls).to.equal('/api/tps-reports?resource_type=pod');
+      expect(deploymentUrls).to.equal('/api/tps-reports?resource_type=pod&all_namespaces=true');
     });
 
     it('scopes the query to the provided namespace', () => {

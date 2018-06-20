@@ -70,6 +70,10 @@ func (h *handler) handleApiPods(w http.ResponseWriter, req *http.Request, p http
 }
 
 func (h *handler) handleApiStat(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
+	allNs := false
+	if req.FormValue("all_namespaces") == "true" {
+		allNs = true
+	}
 	requestParams := util.StatSummaryRequestParams{
 		TimeWindow:    req.FormValue("window"),
 		ResourceName:  req.FormValue("resource_name"),
@@ -81,6 +85,7 @@ func (h *handler) handleApiStat(w http.ResponseWriter, req *http.Request, p http
 		FromName:      req.FormValue("from_name"),
 		FromType:      req.FormValue("from_type"),
 		FromNamespace: req.FormValue("from_namespace"),
+		AllNamespaces: allNs,
 	}
 
 	// default to returning deployment stats
