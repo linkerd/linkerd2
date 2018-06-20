@@ -39,6 +39,13 @@ struct Inner {
     server: TryLock<Option<OnUpgrade>>,
     client: TryLock<Option<OnUpgrade>>,
     upgrade_drain_signal: Option<drain::Watch>,
+    /// An ErasedExecutor is used because the containing type, Http11Upgrade,
+    /// is inserted into `http::Extensions`, which is a type map.
+    ///
+    /// If this were instead a generic `E: Executor`, it'd be very easy
+    /// to specify the wrong when trying to remove the `Http11Upgrade` from
+    /// the type map, since with different generics, they'd generate
+    /// different `TypeId`s.
     upgrade_executor: ErasedExecutor,
 }
 

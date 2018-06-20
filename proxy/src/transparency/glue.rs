@@ -24,7 +24,7 @@ use task::{BoxSendFuture, ErasedExecutor, Executor};
 pub enum HttpBody {
     Http1 {
         /// In HttpBody::drop, if this was an HTTP upgrade, the body is taken
-        /// to be sent on the oneshot::Sender.
+        /// to be inserted into the Http11Upgrade half.
         body: Option<hyper::Body>,
         upgrade: Option<Http11Upgrade>
     },
@@ -255,7 +255,6 @@ where
     >;
 
     fn call(&mut self, mut req: http::Request<Self::ReqBody>) -> Self::Future {
-        //TODO: we can remove this also, should we?
         if let &http::Method::CONNECT = req.method() {
             debug!("HTTP/1.1 CONNECT not supported");
             let res = http::Response::builder()

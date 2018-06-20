@@ -40,6 +40,9 @@ pub struct LazyExecutor;
 pub struct BoxExecutor<E: TokioExecutor>(E);
 
 /// A `futures::executor::Executor` with any generics erased.
+///
+/// This is useful when some code cannot be generic over any executor,
+/// and instead needs a trait object. An example is `Http11Upgrade`.
 pub struct ErasedExecutor(Box<Executor<BoxSendFuture> + Send + Sync>);
 
 /// Indicates which Tokio `Runtime` should be used for the main proxy.
