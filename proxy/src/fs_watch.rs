@@ -1,9 +1,9 @@
-use std::{fs, io, cell::RefCell, path::{Path, PathBuf}, time::{Duration, Instant}};
+use std::{fs, io, cell::RefCell, path::{Path, PathBuf}, time::Duration};
 
 use futures::Stream;
 use ring::digest::{self, Digest};
 
-use tokio::timer::Interval;
+use tokio_timer::{clock, Interval};
 
 /// Stream changes to the files at a group of paths.
 pub fn stream_changes<I, P>(paths: I, interval: Duration) -> impl Stream<Item = (), Error = ()>
@@ -46,7 +46,7 @@ where
 {
     let files = paths.into_iter().map(PathAndHash::new).collect::<Vec<_>>();
 
-    Interval::new(Instant::now(), interval)
+    Interval::new(clock::now(), interval)
         .map_err(|e| error!("timer error: {:?}", e))
         .filter(move |_| {
             let mut any_changes = false;
@@ -247,6 +247,7 @@ mod tests {
 
     use tempdir::TempDir;
     use tokio::runtime::current_thread::Runtime;
+    use tokio_timer::{clock, Interval};
 
     #[cfg(not(target_os = "windows"))]
     use std::os::unix::fs::symlink;
@@ -254,7 +255,7 @@ mod tests {
         fs::{self, File},
         io::Write,
         path::Path,
-        time::{Duration, Instant},
+        time::Duration,
     };
 
     use futures::{future, Future, Sink, Stream};
@@ -429,10 +430,7 @@ mod tests {
 
         let watch2 = watch.clone();
         // Check if the stream has become ready every one second.
-        let stream = ::tokio::timer::Interval::new(
-            Instant::now(),
-            Duration::from_secs(1),
-        )
+        let stream = Interval::new(clock::now(), Duration::from_secs(1))
             .map(|_| {
                 let mut watch = watch2.clone();
                 // The stream should not be ready, since the file

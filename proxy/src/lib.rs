@@ -35,6 +35,7 @@ extern crate ring;
 extern crate tempdir;
 extern crate tokio;
 extern crate tokio_connect;
+extern crate tokio_timer;
 extern crate tower_balance;
 extern crate tower_buffer;
 extern crate tower_discover;
