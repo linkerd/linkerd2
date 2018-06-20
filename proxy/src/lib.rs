@@ -97,6 +97,7 @@ use task::MainRuntime;
 use transparency::{HttpBody, Server};
 pub use transport::{AddrInfo, GetOriginalDst, SoOriginalDst, tls};
 use outbound::Outbound;
+use conditional::Conditional;
 
 /// Runs a sidecar proxy.
 ///
@@ -183,7 +184,7 @@ where
         let (tls_client_config, tls_server_config, tls_cfg_bg) =
             tls::watch_for_config_changes(self.config.tls_settings.as_ref());
 
-        let process_ctx = ctx::Process::new(&self.config, tls_client_config);
+        let process_ctx = ctx::Process::new(&self.config, tls_client_config.clone());
 
         let Main {
             config,
@@ -225,6 +226,9 @@ where
             &taps,
         );
 
+        let controller_tls =
+            Conditional::None(tls::ReasonForNoIdentity::NotImplementedForController.into()); // TODO
+
         let (dns_resolver, dns_bg) = dns::Resolver::from_system_config_and_env(&config)
             .unwrap_or_else(|e| {
                 // TODO: Make DNS configuration infallible.
@@ -234,7 +238,8 @@ where
         let (resolver, resolver_bg) = control::destination::new(
             dns_resolver.clone(),
             config.namespaces.clone(),
-            control_host_and_port
+            control_host_and_port,
+            controller_tls,
         );
 
         let (drain_tx, drain_rx) = drain::channel();

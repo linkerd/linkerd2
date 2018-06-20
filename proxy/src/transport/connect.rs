@@ -11,7 +11,6 @@ use connection;
 use convert::TryFrom;
 use dns;
 use transport::tls;
-use conditional::Conditional;
 
 #[derive(Debug, Clone)]
 pub struct Connect {
@@ -51,6 +50,7 @@ pub enum HostAndPortError {
 pub struct LookupAddressAndConnect {
     host_and_port: HostAndPort,
     dns_resolver: dns::Resolver,
+    tls: tls::ConditionalConnectionConfig<tls::ClientConfigWatch>,
 }
 
 // ===== impl HostAndPort =====
@@ -129,10 +129,12 @@ impl LookupAddressAndConnect {
     pub fn new(
         host_and_port: HostAndPort,
         dns_resolver: dns::Resolver,
+        tls: tls::ConditionalConnectionConfig<tls::ClientConfigWatch>,
     ) -> Self {
         Self {
             host_and_port,
             dns_resolver,
+            tls,
         }
     }
 }
@@ -145,7 +147,7 @@ impl tokio_connect::Connect for LookupAddressAndConnect {
     fn connect(&self) -> Self::Future {
         let port = self.host_and_port.port;
         let host = self.host_and_port.host.clone();
-        let tls = Conditional::None(tls::ReasonForNoTls::NotImplementedForControlPlane); // TODO
+        let tls = tls::current_connection_config(&self.tls);
         let c = self.dns_resolver
             .resolve_one_ip(&self.host_and_port.host)
             .map_err(|_| {

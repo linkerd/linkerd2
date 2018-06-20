@@ -48,6 +48,7 @@ mod endpoint;
 
 pub use self::endpoint::Endpoint;
 use config::Namespaces;
+use conditional::Conditional;
 
 /// A handle to request resolutions from the background discovery task.
 #[derive(Clone, Debug)]
@@ -95,7 +96,7 @@ pub struct Metadata {
     dst_labels: Option<DstLabels>,
 
     /// How to verify TLS for the endpoint.
-    tls_identity: Option<tls::Identity>,
+    tls_identity: Conditional<tls::Identity, tls::ReasonForNoIdentity>,
 }
 
 
@@ -143,6 +144,7 @@ pub fn new(
     dns_resolver: dns::Resolver,
     namespaces: Namespaces,
     host_and_port: Option<HostAndPort>,
+    controller_tls: tls::ConditionalConnectionConfig<tls::ClientConfigWatch>,
 ) -> (Resolver, impl Future<Item = (), Error = ()>) {
     let (request_tx, rx) = mpsc::unbounded();
     let disco = Resolver { request_tx };
@@ -151,6 +153,7 @@ pub fn new(
         dns_resolver,
         namespaces,
         host_and_port,
+        controller_tls,
     );
     (disco, bg)
 }
@@ -240,13 +243,14 @@ impl Metadata {
         Metadata {
             dst_labels: None,
             // If we have no metadata on an endpoint, assume it does not support TLS.
-            tls_identity: None,
+            tls_identity:
+                Conditional::None(tls::ReasonForNoIdentity::NotProvidedByServiceDiscovery),
         }
     }
 
     pub fn new(
         dst_labels: Option<DstLabels>,
-        tls_identity: Option<tls::Identity>
+        tls_identity: Conditional<tls::Identity, tls::ReasonForNoIdentity>
     ) -> Self {
         Metadata {
             dst_labels,
@@ -259,7 +263,7 @@ impl Metadata {
         self.dst_labels.as_ref()
     }
 
-    pub fn tls_identity(&self) -> Option<&tls::Identity> {
+    pub fn tls_identity(&self) -> Conditional<&tls::Identity, tls::ReasonForNoIdentity> {
         self.tls_identity.as_ref()
     }
 }

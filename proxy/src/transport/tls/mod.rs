@@ -18,6 +18,7 @@ pub use self::{
         ConditionalConnectionConfig,
         ConnectionConfig,
         ReasonForNoTls,
+        ReasonForNoIdentity,
         ServerConfig,
         ServerConfigWatch,
         current_connection_config,

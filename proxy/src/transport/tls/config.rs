@@ -91,13 +91,34 @@ pub enum ReasonForNoTls {
     /// TLS was enabled but the configuration isn't available (yet).
     NoConfig,
 
-    /// TLS isn't implemented for the connection between the proxy and the
-    /// control plane yet.
-    NotImplementedForControlPlane,
+    /// The endpoint's TLS identity is unknown. Without knowing its identity
+    /// we can't validate its certificate.
+    NoIdentity(ReasonForNoIdentity),
+}
 
-    /// TLS is only enabled for HTTP (HTTPS) right now.
-    NotImplementedForNonHttp,
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum ReasonForNoIdentity {
+    /// The connection is a non-HTTP connection so we don't know anything
+    /// about the destination besides its address.
+    NotHttp,
 
+    /// The connection is for HTTP but the HTTP request doesn't have an
+    /// authority so we can't extract the identity from it.
+    NoAuthorityInHttpRequest,
+
+    /// The destination service didn't give us the identity, which is its way
+    /// of telling us that we shouldn't do TLS for this endpoint.
+    NotProvidedByServiceDiscovery,
+
+    /// We haven't implemented the mechanism to construct a TLS identity for
+    /// the controller yet.
+    NotImplementedForController,
+}
+
+impl From<ReasonForNoIdentity> for ReasonForNoTls {
+    fn from(r: ReasonForNoIdentity) -> Self {
+        ReasonForNoTls::NoIdentity(r)
+    }
 }
 
 pub type ConditionalConnectionConfig<C> = Conditional<ConnectionConfig<C>, ReasonForNoTls>;
@@ -318,21 +339,21 @@ impl ServerConfig {
     }
 }
 
-pub fn current_connection_config<C>(identity: Option<&Identity>, watch: &Watch<Option<C>>)
+pub fn current_connection_config<C>(watch: &ConditionalConnectionConfig<Watch<Option<C>>>)
     -> ConditionalConnectionConfig<C> where C: Clone + std::fmt::Debug
 {
-    match identity {
-        Some(identity) => {
-            match *watch.borrow() {
+    match watch {
+        Conditional::Some(c) => {
+            match *c.config.borrow() {
                 Some(ref config) =>
                     Conditional::Some(ConnectionConfig {
-                        identity: identity.clone(),
+                        identity: c.identity.clone(),
                         config: config.clone()
                     }),
                 None => Conditional::None(ReasonForNoTls::NoConfig),
             }
         },
-        None => Conditional::None(ReasonForNoTls::Disabled),
+        Conditional::None(r) => Conditional::None(*r),
     }
 }
 

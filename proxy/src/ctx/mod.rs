@@ -100,6 +100,8 @@ pub mod test_util {
     use ctx;
     use control::destination;
     use telemetry::metrics::DstLabels;
+    use tls;
+    use conditional::Conditional;
 
     fn addr() -> SocketAddr {
         ([1, 2, 3, 4], 5678).into()
@@ -125,7 +127,8 @@ pub mod test_util {
         L: IntoIterator<Item=(S, S)>,
         S: fmt::Display,
     {
-        let meta = destination::Metadata::new(DstLabels::new(labels), None);
+        let meta = destination::Metadata::new(DstLabels::new(labels),
+            Conditional::None(tls::ReasonForNoIdentity::NotProvidedByServiceDiscovery));
         ctx::transport::Client::new(&proxy, &addr(), meta, tls)
     }
 

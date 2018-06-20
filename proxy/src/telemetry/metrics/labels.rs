@@ -382,8 +382,7 @@ impl fmt::Display for ctx::transport::TlsStatus {
             Conditional::Some(()) => f.pad(",tls=\"true\""),
             Conditional::None(tls::ReasonForNoTls::NoConfig) => f.pad(",tls=\"no_config\""),
             Conditional::None(tls::ReasonForNoTls::Disabled) |
-            Conditional::None(tls::ReasonForNoTls::NotImplementedForNonHttp) |
-            Conditional::None(tls::ReasonForNoTls::NotImplementedForControlPlane) => Ok(()),
+            Conditional::None(tls::ReasonForNoTls::NoIdentity(_)) => Ok(()),
         }
     }
 }
