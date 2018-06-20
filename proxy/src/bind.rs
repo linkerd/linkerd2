@@ -221,8 +221,7 @@ where
                     None => Conditional::None(tls::ReasonForNoTls::NoConfig),
                 }
             },
-            Conditional::None(why_no_identity) =>
-                Conditional::None(tls::ReasonForNoTls::NoIdentity(why_no_identity)),
+            Conditional::None(why_no_identity) => Conditional::None(why_no_identity.into()),
         };
 
         let client_ctx = ctx::transport::Client::new(
