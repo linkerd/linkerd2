@@ -227,8 +227,7 @@ where
         );
 
         let controller_tls =
-                Conditional::None(tls::ReasonForNoTls::NoIdentity(
-                    tls::ReasonForNoIdentity::NotImplementedForController)); // TODO
+            Conditional::None(tls::ReasonForNoIdentity::NotImplementedForController.into()); // TODO
 
         let (dns_resolver, dns_bg) = dns::Resolver::from_system_config_and_env(&config)
             .unwrap_or_else(|e| {

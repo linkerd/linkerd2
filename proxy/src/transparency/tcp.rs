@@ -60,8 +60,7 @@ impl Proxy {
             return future::Either::B(future::ok(()));
         };
 
-        let tls = Conditional::None(
-            tls::ReasonForNoTls::NoIdentity(tls::ReasonForNoIdentity::NotHttp)); // TODO
+        let tls = Conditional::None(tls::ReasonForNoIdentity::NotHttp.into()); // TODO
 
         let client_ctx = ClientCtx::new(
             &srv_ctx.proxy,

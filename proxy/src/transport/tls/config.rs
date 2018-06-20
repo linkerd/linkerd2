@@ -115,6 +115,12 @@ pub enum ReasonForNoIdentity {
     NotImplementedForController,
 }
 
+impl From<ReasonForNoIdentity> for ReasonForNoTls {
+    fn from(r: ReasonForNoIdentity) -> Self {
+        ReasonForNoTls::NoIdentity(r)
+    }
+}
+
 pub type ConditionalConnectionConfig<C> = Conditional<ConnectionConfig<C>, ReasonForNoTls>;
 
 #[derive(Debug)]
