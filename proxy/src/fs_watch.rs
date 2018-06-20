@@ -52,7 +52,7 @@ where
             let mut any_changes = false;
             for file in &files {
                 let has_changed = file
-                    .has_changed()
+                    .update_and_check()
                     .unwrap_or_else(|e| {
                         warn!("error hashing {:?}: {}", &file.path, e);
                         false
@@ -114,15 +114,26 @@ impl PathAndHash {
         }
     }
 
-    fn has_changed(&self) -> io::Result<bool> {
+    /// Attempts to update the hash for this file and checks if it has changed.
+    ///
+    /// # Returns
+    /// - `Ok(true)` if the file was read successfully and the hash has changed.
+    /// - `Ok(false)` if we were able to read the file but the has has not
+    ///    changed.
+    /// - `Err(io::Error)` if an error occurred reading the file.
+    fn update_and_check(&self) -> io::Result<bool> {
         match fs::read(&self.path) {
             Ok(contents) => {
                 // If we were able to read the file, compare the hash of its
                 // current contents with the previous hash to determine if it
                 // has changed.
                 let hash = Some(digest::digest(&digest::SHA256, &contents[..]));
-                let changed = self.last_hash.borrow().as_ref()
-                    .map(Digest::as_ref) != hash.as_ref().map(Digest::as_ref);
+                let changed = self.last_hash
+                    .borrow()
+                    .as_ref()
+                    .map(Digest::as_ref)
+                    // Compare the last hash with the current hash.
+                    .ne(&hash.as_ref().map(Digest::as_ref));
                 if changed {
                     trace!("{:?} changed", &self.path);
                     self.last_hash.replace(hash);
