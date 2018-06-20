@@ -111,7 +111,7 @@ impl BoundPort {
     // TLS when needed.
     pub fn listen_and_fold<T, F, Fut>(
         self,
-        tls: Option<(tls::Identity, tls::ServerConfigWatch)>,
+        tls: tls::ConditionalConnectionConfig<tls::ServerConfigWatch>,
         initial: T,
         f: F)
         -> impl Future<Item = (), Error = io::Error> + Send + 'static
@@ -140,25 +140,26 @@ impl BoundPort {
                     // libraries don't have the necessary API for that, so just
                     // do it here.
                     set_nodelay_or_warn(&socket);
-                    let why_no_tls = if let Some((_identity, config_watch)) = &tls {
-                        // TODO: use `identity` to differentiate between TLS
-                        // that the proxy should terminate vs. TLS that should
-                        // be passed through.
-                        if let Some(config) = &*config_watch.borrow() {
-                            let f = tls::Connection::accept(socket, config.clone())
+
+                    match tls::current_connection_config(&tls) {
+                        Conditional::Some(config) => {
+                            // TODO: use `config.identity` to differentiate
+                            // between TLS that the proxy should terminate vs.
+                            // TLS that should be passed through.
+                            let f = tls::Connection::accept(socket, config.config)
                                 .map(move |tls| {
                                     (Connection::tls(tls), remote_addr)
                                 });
-                            return Either::A(f);
-                        } else {
-                            // No valid TLS configuration.
-                            tls::ReasonForNoTls::NoConfig
-                        }
-                    } else {
-                        tls::ReasonForNoTls::Disabled
-                    };
-                    let conn = Connection::plain(socket, why_no_tls);
-                    Either::B(future::ok((conn, remote_addr)))
+                            Either::A(f)
+                        },
+                        Conditional::None(why_no_tls) => {
+                            let f = future::ok(socket)
+                                .map(move |plain| {
+                                    (Connection::plain(plain, why_no_tls), remote_addr)
+                                });
+                            Either::B(f)
+                        },
+                    }
                 })
                 .then(|r| {
                     future::ok(match r {
