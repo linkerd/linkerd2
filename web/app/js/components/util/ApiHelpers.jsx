@@ -85,7 +85,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     }
 
     let baseUrl = '/api/tps-reports?resource_type=' + type;
-    return !namespace ? baseUrl : baseUrl + '&namespace=' + namespace;
+    return !namespace ? baseUrl + '&all_namespaces=true' : baseUrl + '&namespace=' + namespace;
   };
 
   // maintain a list of a component's requests,
