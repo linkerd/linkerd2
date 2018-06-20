@@ -24,17 +24,22 @@
 //! - We need some means to limit the number of endpoints that can be returned for a
 //!   single resolution so that `control::Cache` is not effectively unbounded.
 
-use std::net::SocketAddr;
-use std::sync::{Arc, Weak};
+use std::{
+    fmt,
+    net::SocketAddr,
+    sync::{Arc, Weak},
+};
 use tls;
 
 use futures::{
+    stream,
     sync::mpsc,
     Future,
     Async,
     Poll,
     Stream
 };
+use futures_watch;
 use http;
 use indexmap::IndexMap;
 use tower_discover::{Change, Discover};
@@ -74,11 +79,19 @@ struct Responder {
     active: Weak<()>,
 }
 
+type UpdateRx = stream::Select<
+    mpsc::UnboundedReceiver<Update>,
+    stream::MapErr<
+        stream::Map<tls::ClientConfigWatch, fn(()) -> Update>,
+        fn(futures_watch::WatchError) -> (),
+    >,
+>;
+
 /// A `tower_discover::Discover`, given to a `tower_balance::Balance`.
-#[derive(Debug)]
 pub struct Resolution<B> {
-    /// Receives updates from the controller.
-    update_rx: mpsc::UnboundedReceiver<Update>,
+    /// Receives updates from the controller, and invalidation notifications
+    /// when the TLS config changes..
+    update_rx: UpdateRx,
 
     /// Allows `Responder` to detect when its `Resolution` has been lost.
     ///
@@ -182,9 +195,23 @@ pub fn new(
 
 impl Resolver {
     /// Start watching for address changes for a certain authority.
-    pub fn resolve<B>(&self, authority: &DnsNameAndPort, bind: B) -> Resolution<B> {
+    pub fn resolve<B>(
+        &self,
+        authority: &DnsNameAndPort,
+        bind: B,
+        tls_client_cfg: tls::ClientConfigWatch,
+    ) -> Resolution<B> {
         trace!("resolve; authority={:?}", authority);
         let (update_tx, update_rx) = mpsc::unbounded();
+
+        // When the watch on the TLS client config changes, send a
+        // `RebindIfTls` update so the currently bound client stacks in the
+        // load balancer will be invalidated.
+        let tls_invalidations = tls_client_cfg
+            .map((|_| Update::RebindIfTls) as fn(_) -> Update)
+            .map_err((|_| ()) as fn(_));
+        let update_rx = update_rx.select(tls_invalidations);
+
         let active = Arc::new(());
         let req = {
             let authority = authority.clone();
@@ -266,6 +293,18 @@ where
                 }
             }
         }
+    }
+}
+
+// Manual impl because `Box<Stream<...>>` isn't known to be `Debug`.
+impl<B: fmt::Debug> fmt::Debug for Resolution<B> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Resolution")
+            .field("update_rx", &"Box(...)")
+            .field("_active", &self._active)
+            .field("bind", &self.bind)
+            .field("rebind", &self.rebind)
+            .finish()
     }
 }
 

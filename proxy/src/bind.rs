@@ -310,6 +310,12 @@ where
     }
 }
 
+impl<C, B> BindProtocol<C, B> {
+    pub fn ctx(&self) -> &C {
+        &self.bind.ctx
+    }
+}
+
 
 // ===== impl NormalizeUri =====
 
