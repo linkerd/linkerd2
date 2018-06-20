@@ -72,6 +72,7 @@ func TestCliStatForConduitNamespace(t *testing.T) {
 
 	t.Run("test conduit stat namespace", func(t *testing.T) {
 		err := TestHelper.RetryFor(20*time.Second, func() error {
+			fmt.Println("HEREEEEE")
 			out, err := TestHelper.ConduitRun("stat", "ns", TestHelper.GetConduitNamespace())
 			if err != nil {
 				t.Fatalf("Unexpected stat error: %v", err)
@@ -83,6 +84,22 @@ func TestCliStatForConduitNamespace(t *testing.T) {
 			}
 
 			return validateRowStats(TestHelper.GetConduitNamespace(), "4/4", rowStats)
+		})
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+	})
+
+	t.Run("test named deploy query", func(t *testing.T) {
+		err := TestHelper.RetryFor(10*time.Second, func() error {
+			fmt.Println("HEREEEEE")
+			out, err := TestHelper.ConduitRun("stat", "deploy/web", "--all-namespaces")
+			if err == nil {
+				t.Fatalf("Unexpected stat error: %v", err)
+			}
+
+			fmt.Println(out)
+			return nil
 		})
 		if err != nil {
 			t.Fatal(err.Error())

@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -319,6 +320,10 @@ func buildStatSummaryRequest(resource []string, options *statOptions) (*pb.StatS
 	target, err := util.BuildResource(targetNamespace, resource...)
 	if err != nil {
 		return nil, err
+	}
+
+	if target.Name != "" && targetNamespace == "" {
+		return nil, errors.New("stats for a resource cannot be retrieved by name across all namespaces")
 	}
 
 	var toRes, fromRes pb.Resource

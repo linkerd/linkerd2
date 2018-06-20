@@ -34,4 +34,16 @@ emoji      1/2   100.00%   2.0rps         123ms         123ms         123ms     
 			t.Fatalf("Wrong output:\n expected: \n%s\n, got: \n%s", expectedOutput, output)
 		}
 	})
+
+	t.Run("Returns an error for named resource queries with the --all-namespaces flag", func(t *testing.T) {
+		options := newStatOptions()
+		options.allNamespaces = true
+		args := []string{"po", "web"}
+		expectedError := "stats for a resource cannot be retrieved by name across all namespaces"
+
+		_, err := buildStatSummaryRequest(args, options)
+		if err == nil || err.Error() != expectedError {
+			t.Fatalf("Expected error [%s] instead got [%s]", expectedError, err)
+		}
+	})
 }
