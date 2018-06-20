@@ -620,7 +620,7 @@ func main() {
 		k8s.Deploy,
 		k8s.Pod,
 	)
-	err = k8sAPI.Sync()
+	err = k8sAPI.Sync(nil)
 	if err != nil {
 		log.Fatal(err.Error())
 	}

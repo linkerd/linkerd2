@@ -152,6 +152,15 @@ spec:
         - "-controller-namespace={{.Namespace}}"
         - "-log-level={{.ControllerLogLevel}}"
         - "-logtostderr=true"
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9995
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9995
       - name: destination
         ports:
         - name: grpc
@@ -165,6 +174,15 @@ spec:
         - "-enable-tls={{.EnableTLS}}"
         - "-log-level={{.ControllerLogLevel}}"
         - "-logtostderr=true"
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9999
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9999
       - name: proxy-api
         ports:
         - name: grpc
@@ -178,6 +196,15 @@ spec:
         - "-addr=:{{.ProxyAPIPort}}"
         - "-log-level={{.ControllerLogLevel}}"
         - "-logtostderr=true"
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9996
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9996
       - name: tap
         ports:
         - name: grpc
@@ -190,6 +217,15 @@ spec:
         - "tap"
         - "-log-level={{.ControllerLogLevel}}"
         - "-logtostderr=true"
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9998
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9998
 
 ### Web ###
 ---
@@ -249,6 +285,15 @@ spec:
         - "-uuid={{.UUID}}"
         - "-controller-namespace={{.Namespace}}"
         - "-log-level={{.ControllerLogLevel}}"
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9994
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9994
 
 ### Prometheus ###
 ---

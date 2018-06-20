@@ -8,7 +8,7 @@ import (
 
 	"github.com/runconduit/conduit/controller/destination"
 	"github.com/runconduit/conduit/controller/k8s"
-	"github.com/runconduit/conduit/pkg/prometheus"
+	"github.com/runconduit/conduit/pkg/admin"
 	"github.com/runconduit/conduit/pkg/version"
 	log "github.com/sirupsen/logrus"
 )
@@ -47,6 +47,7 @@ func main() {
 	)
 
 	done := make(chan struct{})
+	ready := make(chan struct{})
 
 	server, lis, err := destination.NewServer(*addr, *k8sDNSZone, *enableTLS, k8sAPI, done)
 	if err != nil {
@@ -54,7 +55,7 @@ func main() {
 	}
 
 	go func() {
-		err := k8sAPI.Sync()
+		err := k8sAPI.Sync(ready)
 		if err != nil {
 			log.Fatal(err.Error())
 		}
@@ -65,7 +66,7 @@ func main() {
 		server.Serve(lis)
 	}()
 
-	go prometheus.NewMetricsServer(*metricsAddr)
+	go admin.StartServer(*metricsAddr, ready)
 
 	<-stop
 

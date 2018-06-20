@@ -96,7 +96,7 @@ func NewAPI(k8sClient kubernetes.Interface, resources ...ApiResource) *API {
 // Sync waits for all informers to be synced.
 // For servers, call this asynchronously.
 // For testing, call this synchronously.
-func (api *API) Sync() error {
+func (api *API) Sync(readyCh chan<- struct{}) error {
 	api.sharedInformers.Start(nil)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -107,6 +107,10 @@ func (api *API) Sync() error {
 		return errors.New("timed out waiting for caches to sync")
 	}
 	log.Infof("caches synced")
+
+	if readyCh != nil {
+		close(readyCh)
+	}
 
 	return nil
 }

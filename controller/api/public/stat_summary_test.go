@@ -69,9 +69,9 @@ func testStatSummary(t *testing.T, expectations []statSumExpected) {
 			[]string{},
 		)
 
-		err = k8sAPI.Sync()
+		err = k8sAPI.Sync(nil)
 		if err != nil {
-			t.Fatalf("k8sAPI.Sync() returned an error: %s", err)
+			t.Fatalf("k8sAPI.Sync returned an error: %s", err)
 		}
 
 		rsp, err := fakeGrpcServer.StatSummary(context.TODO(), &exp.req)

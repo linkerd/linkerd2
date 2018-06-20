@@ -170,9 +170,9 @@ status:
 			go func() { server.Serve(listener) }()
 			defer server.GracefulStop()
 
-			err = k8sAPI.Sync()
+			err = k8sAPI.Sync(nil)
 			if err != nil {
-				t.Fatalf("k8sAPI.Sync() returned an error: %s", err)
+				t.Fatalf("k8sAPI.Sync returned an error: %s", err)
 			}
 
 			client, conn, err := NewClient(listener.Addr().String())

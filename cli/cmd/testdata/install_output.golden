@@ -149,12 +149,21 @@ spec:
         - -logtostderr=true
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9995
+          initialDelaySeconds: 10
         name: public-api
         ports:
         - containerPort: 8085
           name: http
         - containerPort: 9995
           name: admin-http
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9995
         resources: {}
       - args:
         - destination
@@ -163,12 +172,21 @@ spec:
         - -logtostderr=true
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9999
+          initialDelaySeconds: 10
         name: destination
         ports:
         - containerPort: 8089
           name: grpc
         - containerPort: 9999
           name: admin-http
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9999
         resources: {}
       - args:
         - proxy-api
@@ -177,12 +195,21 @@ spec:
         - -logtostderr=true
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9996
+          initialDelaySeconds: 10
         name: proxy-api
         ports:
         - containerPort: 123
           name: grpc
         - containerPort: 9996
           name: admin-http
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9996
         resources: {}
       - args:
         - tap
@@ -190,12 +217,21 @@ spec:
         - -logtostderr=true
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9998
+          initialDelaySeconds: 10
         name: tap
         ports:
         - containerPort: 8088
           name: grpc
         - containerPort: 9998
           name: admin-http
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9998
         resources: {}
       - env:
         - name: CONDUIT_PROXY_LOG
@@ -308,12 +344,21 @@ spec:
         - -log-level=ControllerLogLevel
         image: WebImage
         imagePullPolicy: ImagePullPolicy
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9994
+          initialDelaySeconds: 10
         name: web
         ports:
         - containerPort: 8084
           name: http
         - containerPort: 9994
           name: admin-http
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9994
         resources: {}
       - env:
         - name: CONDUIT_PROXY_LOG
