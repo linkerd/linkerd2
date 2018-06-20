@@ -32,6 +32,11 @@ type resourceResult struct {
 	err error
 }
 
+type k8sStat struct {
+	object   metav1.Object
+	podStats *podStats
+}
+
 const (
 	reqQuery             = "sum(increase(response_total%s[%s])) by (%s, classification, tls)"
 	latencyQuantileQuery = "histogram_quantile(%s, sum(irate(response_latency_ms_bucket%s[%s])) by (le, %s))"
@@ -134,10 +139,7 @@ func (s *grpcServer) resourceQuery(ctx context.Context, req *pb.StatSummaryReque
 		return resourceResult{res: nil, err: err}
 	}
 
-	// TODO: make these one struct:
-	// string => {metav1.ObjectMeta, podCount}
-	objectMap := map[string]metav1.Object{}
-	podStatsMap := map[string]*podStats{}
+	objectMap := map[string]k8sStat{}
 
 	for _, object := range objects {
 		key, err := cache.MetaNamespaceKeyFunc(object)
@@ -149,16 +151,18 @@ func (s *grpcServer) resourceQuery(ctx context.Context, req *pb.StatSummaryReque
 			return resourceResult{res: nil, err: err}
 		}
 
-		objectMap[key] = metaObj
-
 		podStats, err := s.getPodStats(object)
 		if err != nil {
 			return resourceResult{res: nil, err: err}
 		}
-		podStatsMap[key] = podStats
+
+		objectMap[key] = k8sStat{
+			object:   metaObj,
+			podStats: podStats,
+		}
 	}
 
-	res, err := s.objectQuery(ctx, req, objectMap, podStatsMap)
+	res, err := s.objectQuery(ctx, req, objectMap)
 	if err != nil {
 		return resourceResult{res: nil, err: err}
 	}
@@ -169,8 +173,7 @@ func (s *grpcServer) resourceQuery(ctx context.Context, req *pb.StatSummaryReque
 func (s *grpcServer) objectQuery(
 	ctx context.Context,
 	req *pb.StatSummaryRequest,
-	objects map[string]metav1.Object,
-	podStats map[string]*podStats,
+	objects map[string]k8sStat,
 ) (*pb.StatTable, error) {
 	rows := make([]*pb.StatTable_PodGroup_Row, 0)
 
@@ -194,10 +197,11 @@ func (s *grpcServer) objectQuery(
 	}
 
 	for _, key := range keys {
-		resource, ok := objects[key]
+		objInfo, ok := objects[key]
 		if !ok {
 			continue
 		}
+		resource := objInfo.object
 
 		row := pb.StatTable_PodGroup_Row{
 			Resource: &pb.Resource{
@@ -209,12 +213,11 @@ func (s *grpcServer) objectQuery(
 			Stats:      requestMetrics[key],
 		}
 
-		if podStat, ok := podStats[key]; ok {
-			row.MeshedPodCount = podStat.inMesh
-			row.RunningPodCount = podStat.total
-			row.FailedPodCount = podStat.failed
-			row.ErrorsByPod = podStat.errors
-		}
+		podStat := objInfo.podStats
+		row.MeshedPodCount = podStat.inMesh
+		row.RunningPodCount = podStat.total
+		row.FailedPodCount = podStat.failed
+		row.ErrorsByPod = podStat.errors
 
 		rows = append(rows, &row)
 	}
