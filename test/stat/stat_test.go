@@ -88,21 +88,6 @@ func TestCliStatForConduitNamespace(t *testing.T) {
 			t.Fatal(err.Error())
 		}
 	})
-
-	t.Run("test named deploy query", func(t *testing.T) {
-		err := TestHelper.RetryFor(10*time.Second, func() error {
-			_, err := TestHelper.ConduitRun("stat", "deploy/web", "--all-namespaces")
-
-			if err == nil {
-				t.Fatalf("Unexpected stat error: %v", err)
-			}
-
-			return nil
-		})
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-	})
 }
 
 // check that expectedRowCount rows have been returned
