@@ -223,19 +223,21 @@ func writeStatsToBuffer(resp *pb.StatSummaryResponse, reqResourceType string, w 
 		os.Exit(0)
 	}
 
-	lastDisplayedStat := true // don't print a newline after the final stat
-
-	for _, resourceType := range k8s.StatAllResourceTypes {
-		if stats, ok := statTables[resourceType]; ok {
-			if !lastDisplayedStat {
-				fmt.Fprint(w, "\n")
-			}
-			lastDisplayedStat = false
-			if reqResourceType == k8s.All {
+	switch reqResourceType {
+	case k8s.All:
+		firstDisplayedStat := true // don't print a newline before the first stat
+		for _, resourceType := range k8s.StatAllResourceTypes {
+			if stats, ok := statTables[resourceType]; ok {
+				if !firstDisplayedStat {
+					fmt.Fprint(w, "\n")
+				}
+				firstDisplayedStat = false
 				printStatTable(stats, resourceType, w, maxNameLength, maxNamespaceLength, options)
-			} else {
-				printStatTable(stats, "", w, maxNameLength, maxNamespaceLength, options)
 			}
+		}
+	default:
+		if stats, ok := statTables[reqResourceType]; ok {
+			printStatTable(stats, "", w, maxNameLength, maxNamespaceLength, options)
 		}
 	}
 }
