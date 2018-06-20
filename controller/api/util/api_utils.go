@@ -21,6 +21,8 @@ import (
 var (
 	defaultMetricTimeWindow = "1m"
 
+	Authority = "authority" // non-k8s resource type
+
 	// ValidTargets specifies resource types allowed as a target:
 	// target resource on an inbound query
 	// target resource on an outbound 'to' query
@@ -111,7 +113,7 @@ func BuildStatSummaryRequest(p StatSummaryRequestParams) (*pb.StatSummaryRequest
 		targetNamespace = v1.NamespaceDefault
 	}
 
-	resourceType, err := k8s.CanonicalKubernetesNameFromFriendlyName(p.ResourceType)
+	resourceType, err := ValidateResourceType(p.ResourceType)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +137,7 @@ func BuildStatSummaryRequest(p StatSummaryRequestParams) (*pb.StatSummaryRequest
 			p.ToType = resourceType
 		}
 
-		toType, err := k8s.CanonicalKubernetesNameFromFriendlyName(p.ToType)
+		toType, err := ValidateToResourceType(p.ToType)
 		if err != nil {
 			return nil, err
 		}
@@ -158,7 +160,7 @@ func BuildStatSummaryRequest(p StatSummaryRequestParams) (*pb.StatSummaryRequest
 			p.FromType = resourceType
 		}
 
-		fromType, err := k8s.CanonicalKubernetesNameFromFriendlyName(p.FromType)
+		fromType, err := ValidateFromResourceType(p.FromType)
 		if err != nil {
 			return nil, err
 		}
@@ -174,6 +176,23 @@ func BuildStatSummaryRequest(p StatSummaryRequestParams) (*pb.StatSummaryRequest
 	}
 
 	return statRequest, nil
+}
+
+// Ensures a valid resource type - a canonical k8s object, or 'authority'
+func ValidateResourceType(resourceType string) (string, error) {
+	if resourceType == Authority {
+		return resourceType, nil
+	}
+	return k8s.CanonicalKubernetesNameFromFriendlyName(resourceType)
+}
+
+// An authority can only receive traffic, not send it
+func ValidateToResourceType(resourceType string) (string, error) {
+	return ValidateResourceType(resourceType)
+}
+
+func ValidateFromResourceType(resourceType string) (string, error) {
+	return k8s.CanonicalKubernetesNameFromFriendlyName(resourceType)
 }
 
 // BuildResource parses input strings, typically from CLI flags, to build a

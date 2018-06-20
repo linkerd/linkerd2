@@ -15,9 +15,10 @@ const (
 	ReplicationControllers = "replicationcontrollers"
 	Services               = "services"
 	All                    = "all"
+	Authority              = "authority"
 )
 
-// ResourceTypesToProxyLabels maps Kubernetes resource type names to keys
+// ResourceTypesToProxyLabels maps resource type names to keys
 // understood by the proxy, specifically Destination and Prometheus labels.
 var ResourceTypesToProxyLabels = map[string]string{
 	Deployments: "deployment",
@@ -25,7 +26,11 @@ var ResourceTypesToProxyLabels = map[string]string{
 	Pods:        "pod",
 	ReplicationControllers: "replication_controller",
 	Services:               "service",
+	Authority:              "authority", // non k8s
 }
+
+// ProxyLabelsToResourceTypes is the reverse of ResourceTypesToProxyLabels
+var ProxyLabelsToResourceTypes = reverseMap(ResourceTypesToProxyLabels)
 
 // resources to query in StatSummary when Resource.Type is "all"
 var StatAllResourceTypes = []string{Deployments, ReplicationControllers, Pods, Services}
@@ -107,4 +112,12 @@ func ShortNameFromCanonicalKubernetesName(canonicalName string) string {
 	default:
 		return ""
 	}
+}
+
+func reverseMap(m map[string]string) map[string]string {
+	reversedMap := map[string]string{}
+	for k, v := range m {
+		reversedMap[v] = k
+	}
+	return reversedMap
 }
