@@ -77,10 +77,19 @@ impl Proxy {
         future::Either::A(connect.connect()
             .map_err(move |e| error!("tcp connect error to {}: {:?}", orig_dst, e))
             .and_then(move |tcp_out| {
-                Duplex::new(tcp_in, tcp_out)
-                    .map_err(|e| error!("tcp duplex error: {}", e))
+                duplex(tcp_in, tcp_out)
             }))
     }
+}
+
+pub(super) fn duplex<In, Out>(half_in: In, half_out: Out)
+    -> impl Future<Item=(), Error=()> + Send
+where
+    In: AsyncRead + AsyncWrite + Send + 'static,
+    Out: AsyncRead + AsyncWrite + Send + 'static,
+{
+    Duplex::new(half_in, half_out)
+        .map_err(|e| error!("tcp duplex error: {}", e))
 }
 
 /// A future piping data bi-directionally to In and Out.

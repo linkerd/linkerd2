@@ -22,13 +22,14 @@ futures-watch = { git = "https://github.com/carllerche/better-future" }
 h2 = "0.1.10"
 http = "0.1"
 httparse = "1.2"
-hyper = "0.12"
+hyper = "0.12.2"
 ipnet = "1.0"
 log = "0.4.1"
 indexmap = "1.0.0"
 prost = "0.4.0"
 prost-types = "0.4.0"
 rand = "0.5.1"
+try-lock = "0.2"
 
 # for config parsing
 regex = "1.0.0"
