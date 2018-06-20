@@ -65,4 +65,11 @@ where
             Conditional::None(r) => Conditional::None(*r),
         }
     }
+
+    pub fn is_some(&self) -> bool {
+        match self {
+            Conditional::Some(_) => true,
+            Conditional::None(_) => false,
+        }
+    }
 }
