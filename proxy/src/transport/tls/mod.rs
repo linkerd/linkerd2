@@ -11,8 +11,19 @@ mod dns_name;
 mod identity;
 
 pub use self::{
-    config::{CommonSettings, ServerConfig, ServerConfigWatch, watch_for_config_changes},
-    connection::Connection,
+    config::{
+        ClientConfig,
+        ClientConfigWatch,
+        CommonSettings,
+        ConditionalConnectionConfig,
+        ConnectionConfig,
+        ReasonForNoTls,
+        ServerConfig,
+        ServerConfigWatch,
+        current_connection_config,
+        watch_for_config_changes,
+    },
+    connection::{Connection, Session, UpgradeClientToTls},
     dns_name::{DnsName, InvalidDnsName},
     identity::Identity,
 };

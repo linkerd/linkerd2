@@ -70,6 +70,7 @@ pub mod app;
 mod bind;
 pub mod config;
 mod connection;
+pub mod conditional;
 pub mod control;
 pub mod convert;
 pub mod ctx;
@@ -179,7 +180,10 @@ where
     where
         F: Future<Item = (), Error = ()> + Send + 'static,
     {
-        let process_ctx = ctx::Process::new(&self.config);
+        let (tls_client_config, tls_server_config, tls_cfg_bg) =
+            tls::watch_for_config_changes(self.config.tls_settings.as_ref());
+
+        let process_ctx = ctx::Process::new(&self.config, tls_client_config);
 
         let Main {
             config,
@@ -236,9 +240,6 @@ where
         let (drain_tx, drain_rx) = drain::channel();
 
         let bind = Bind::new().with_sensors(sensors.clone());
-
-        let (_tls_client_config, tls_server_config, tls_cfg_bg) =
-            tls::watch_for_config_changes(config.tls_settings.as_ref());
 
         // Setup the public listener. This will listen on a publicly accessible
         // address and listen for inbound connections that should be forwarded

@@ -7,6 +7,8 @@ use http;
 
 use ctx;
 use telemetry::event;
+use tls;
+use conditional::Conditional;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct RequestLabels {
@@ -376,11 +378,12 @@ impl fmt::Display for TransportCloseLabels {
 // TODO: There's got to be a nicer way to handle this.
 impl fmt::Display for ctx::transport::TlsStatus {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use ctx::transport::TlsStatus;
         match *self {
-            TlsStatus::Disabled => Ok(()),
-            TlsStatus::NoConfig => f.pad(",tls=\"no_config\""),
-            TlsStatus::Success  => f.pad(",tls=\"true\""),
+            Conditional::Some(()) => f.pad(",tls=\"true\""),
+            Conditional::None(tls::ReasonForNoTls::NoConfig) => f.pad(",tls=\"no_config\""),
+            Conditional::None(tls::ReasonForNoTls::Disabled) |
+            Conditional::None(tls::ReasonForNoTls::NotImplementedForNonHttp) |
+            Conditional::None(tls::ReasonForNoTls::NotImplementedForControlPlane) => Ok(()),
         }
     }
 }

@@ -109,6 +109,8 @@ mod tests {
     use super::Inbound;
     use bind::{self, Bind, Host};
     use ctx;
+    use conditional::Conditional;
+    use tls;
 
     fn new_inbound(default: Option<net::SocketAddr>, ctx: &Arc<ctx::Proxy>) -> Inbound<()> {
         let bind = Bind::new().with_ctx(ctx.clone());
@@ -123,6 +125,9 @@ mod tests {
         (addr, protocol)
     }
 
+    const TLS_DISABLED: Conditional<(), tls::ReasonForNoTls> =
+        Conditional::None(tls::ReasonForNoTls::Disabled);
+
     quickcheck! {
         fn recognize_orig_dst(
             orig_dst: net::SocketAddr,
@@ -134,9 +139,7 @@ mod tests {
             let inbound = new_inbound(None, &ctx);
 
             let srv_ctx = ctx::transport::Server::new(
-                &ctx, &local, &remote, &Some(orig_dst),
-                ctx::transport::TlsStatus::Disabled,
-            );
+                &ctx, &local, &remote, &Some(orig_dst), TLS_DISABLED);
 
             let rec = srv_ctx.orig_dst_if_not_local().map(make_key_http1);
 
@@ -163,7 +166,7 @@ mod tests {
                     &local,
                     &remote,
                     &None,
-                    ctx::transport::TlsStatus::Disabled,
+                    TLS_DISABLED,
                 ));
 
             inbound.recognize(&req) == default.map(make_key_http1)
@@ -195,7 +198,7 @@ mod tests {
                     &local,
                     &remote,
                     &Some(local),
-                    ctx::transport::TlsStatus::Disabled,
+                    TLS_DISABLED,
                 ));
 
             inbound.recognize(&req) == default.map(make_key_http1)

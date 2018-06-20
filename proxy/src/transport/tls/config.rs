@@ -1,4 +1,5 @@
 use std::{
+    self,
     fs::File,
     io::{self, Cursor, Read},
     path::PathBuf,
@@ -14,9 +15,10 @@ use super::{
     untrusted,
     webpki,
 };
-
+use conditional::Conditional;
 use futures::{future, stream, Future, Stream};
 use futures_watch::Watch;
+use ring::signature;
 
 /// Not-yet-validated settings that are used for both TLS clients and TLS
 /// servers.
@@ -53,11 +55,18 @@ struct CommonConfig {
     cert_resolver: Arc<CertResolver>,
 }
 
-/// Validated configuration for TLS clients.
-///
-/// TODO: Fill this in with the actual configuration.
-#[derive(Clone, Debug)]
-pub struct ClientConfig(Arc<()>);
+
+/// Validated configuration for TLS servers.
+#[derive(Clone)]
+pub struct ClientConfig(pub(super) Arc<rustls::ClientConfig>);
+
+/// XXX: `rustls::ClientConfig` doesn't implement `Debug` yet.
+impl std::fmt::Debug for ClientConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        f.debug_struct("ClientConfig")
+            .finish()
+    }
+}
 
 /// Validated configuration for TLS servers.
 #[derive(Clone)]
@@ -65,6 +74,33 @@ pub struct ServerConfig(pub(super) Arc<rustls::ServerConfig>);
 
 pub type ClientConfigWatch = Watch<Option<ClientConfig>>;
 pub type ServerConfigWatch = Watch<Option<ServerConfig>>;
+
+/// The configuration in effect for a client (`ClientConfig`) or server
+/// (`ServerConfig`) TLS connection.
+#[derive(Clone, Debug)]
+pub struct ConnectionConfig<C> where C: Clone + std::fmt::Debug {
+    pub identity: Identity,
+    pub config: C,
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum ReasonForNoTls {
+    /// TLS is disabled.
+    Disabled,
+
+    /// TLS was enabled but the configuration isn't available (yet).
+    NoConfig,
+
+    /// TLS isn't implemented for the connection between the proxy and the
+    /// control plane yet.
+    NotImplementedForControlPlane,
+
+    /// TLS is only enabled for HTTP (HTTPS) right now.
+    NotImplementedForNonHttp,
+
+}
+
+pub type ConditionalConnectionConfig<C> = Conditional<ConnectionConfig<C>, ReasonForNoTls>;
 
 #[derive(Debug)]
 pub enum Error {
@@ -206,7 +242,7 @@ pub fn watch_for_config_changes(settings: Option<&CommonSettings>)
             (client_store, server_store),
             |(mut client_store, mut server_store), ref config| {
                 client_store
-                    .store(Some(ClientConfig(Arc::new(()))))
+                    .store(Some(ClientConfig::from(config)))
                     .map_err(|_| trace!("all client config watchers dropped"))?;
                 server_store
                     .store(Some(ServerConfig::from(config)))
@@ -223,6 +259,38 @@ pub fn watch_for_config_changes(settings: Option<&CommonSettings>)
     // types (impl Traits are not the same type unless the original
     // non-anonymized type was the same).
     (client_watch, server_watch, Box::new(f))
+}
+
+impl ClientConfig {
+    fn from(common: &CommonConfig) -> Self {
+        let mut config = rustls::ClientConfig::new();
+        set_common_settings(&mut config.versions);
+
+        // XXX: Rustls's built-in verifiers don't let us tweak things as fully
+        // as we'd like (e.g. controlling the set of trusted signature
+        // algorithms), but they provide good enough defaults for now.
+        // TODO: lock down the verification further.
+        // TODO: Change Rustls's API to Avoid needing to clone `root_cert_store`.
+        config.root_store = common.root_cert_store.clone();
+
+        // Disable session resumption for the time-being until resumption is
+        // more tested.
+        config.enable_tickets = false;
+
+        // Enable client authentication if and only if we were configured for
+        // it.
+        config.client_auth_cert_resolver = common.cert_resolver.clone();
+
+        ClientConfig(Arc::new(config))
+    }
+
+    /// Some tests aren't set up to do TLS yet, but we require a
+    /// `ClientConfigWatch`. We can't use `#[cfg(test)]` here because the
+    /// benchmarks use this.
+    pub fn no_tls() -> ClientConfigWatch {
+        let (watch, _) = Watch::new(None);
+        watch
+    }
 }
 
 impl ServerConfig {
@@ -247,6 +315,24 @@ impl ServerConfig {
         set_common_settings(&mut config.versions);
         config.cert_resolver = common.cert_resolver.clone();
         ServerConfig(Arc::new(config))
+    }
+}
+
+pub fn current_connection_config<C>(identity: Option<&Identity>, watch: &Watch<Option<C>>)
+    -> ConditionalConnectionConfig<C> where C: Clone + std::fmt::Debug
+{
+    match identity {
+        Some(identity) => {
+            match *watch.borrow() {
+                Some(ref config) =>
+                    Conditional::Some(ConnectionConfig {
+                        identity: identity.clone(),
+                        config: config.clone()
+                    }),
+                None => Conditional::None(ReasonForNoTls::NoConfig),
+            }
+        },
+        None => Conditional::None(ReasonForNoTls::Disabled),
     }
 }
 
@@ -279,12 +365,24 @@ fn load_file_contents(path: &PathBuf) -> Result<Vec<u8>, Error> {
 fn set_common_settings(versions: &mut Vec<rustls::ProtocolVersion>) {
     // Only enable TLS 1.2 until TLS 1.3 is stable.
     *versions = vec![rustls::ProtocolVersion::TLSv1_2]
+
+    // XXX: Rustls doesn't provide a good way to customize the cipher suite
+    // support, so just use its defaults, which are still pretty good.
+    // TODO: Expand Rustls's API to allow us to clearly whitelist the cipher
+    // suites we want to enable.
 }
 
+// Keep these in sync.
+pub(super) static SIGNATURE_ALG_RING_SIGNING: &signature::SigningAlgorithm =
+    &signature::ECDSA_P256_SHA256_ASN1_SIGNING;
+pub(super) const SIGNATURE_ALG_RUSTLS_SCHEME: rustls::SignatureScheme =
+    rustls::SignatureScheme::ECDSA_NISTP256_SHA256;
+pub(super) const SIGNATURE_ALG_RUSTLS_ALGORITHM: rustls::internal::msgs::enums::SignatureAlgorithm =
+    rustls::internal::msgs::enums::SignatureAlgorithm::ECDSA;
 
 #[cfg(test)]
 mod tests {
-    use tls::{CommonSettings, Identity, ServerConfig};
+    use tls::{ClientConfig, CommonSettings, Identity, ServerConfig};
     use super::{CommonConfig, Error};
     use config::Namespaces;
     use std::path::PathBuf;
@@ -314,7 +412,7 @@ mod tests {
     }
 
     #[test]
-    fn can_construct_server_config_from_valid_settings() {
+    fn can_construct_client_and_server_config_from_valid_settings() {
         let settings = settings(&Strings {
             pod_name: "foo",
             pod_ns: "ns1",
@@ -324,6 +422,7 @@ mod tests {
             private_key: "foo-ns1-ca1.p8",
         });
         let config = CommonConfig::load_from_disk(&settings).unwrap();
+        let _: ClientConfig = ClientConfig::from(&config); // Infallible.
         let _: ServerConfig = ServerConfig::from(&config); // Infallible.
     }
 

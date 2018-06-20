@@ -7,15 +7,16 @@ use futures::{future, Async, Future, Poll};
 use tokio_connect::Connect;
 use tokio::io::{AsyncRead, AsyncWrite};
 
+use conditional::Conditional;
 use control::destination;
 use ctx::transport::{
     Client as ClientCtx,
     Server as ServerCtx,
-    TlsStatus,
 };
 use telemetry::Sensors;
 use timeout::Timeout;
-use transport;
+use transport::{self, tls};
+use ctx::transport::TlsStatus;
 
 /// TCP Server Proxy
 #[derive(Debug, Clone)]
@@ -59,19 +60,16 @@ impl Proxy {
             return future::Either::B(future::ok(()));
         };
 
+        let tls = Conditional::None(tls::ReasonForNoTls::NotImplementedForNonHttp); // TODO
+
         let client_ctx = ClientCtx::new(
             &srv_ctx.proxy,
             &orig_dst,
             destination::Metadata::no_metadata(),
-            // A raw TCP client connection may be or may not be TLS traffic,
-            // but the `TlsStatus` field indicates whether _the proxy_ is
-            // responsible for the encryption, so set this to "Disabled".
-            // XXX: Should raw TCP connections have a different TLS status
-            // from HTTP connections for which TLS is disabled?
-            TlsStatus::Disabled,
+            TlsStatus::from(&tls),
         );
         let c = Timeout::new(
-            transport::Connect::new(orig_dst, None), // No TLS.
+            transport::Connect::new(orig_dst, tls),
             self.connect_timeout,
         );
         let connect = self.sensors.connect(c, &client_ctx);

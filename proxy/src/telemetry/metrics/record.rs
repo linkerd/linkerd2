@@ -95,7 +95,12 @@ mod test {
     };
     use ctx::{self, test_util::*, transport::TlsStatus};
     use std::time::{Duration, Instant};
+    use conditional::Conditional;
+    use tls;
 
+    const TLS_ENABLED: Conditional<(), tls::ReasonForNoTls> = Conditional::Some(());
+    const TLS_DISABLED: Conditional<(), tls::ReasonForNoTls> =
+        Conditional::None(tls::ReasonForNoTls::Disabled);
 
     fn test_record_response_end_outbound(client_tls: TlsStatus, server_tls: TlsStatus) {
         let process = process();
@@ -325,41 +330,41 @@ mod test {
 
     #[test]
     fn record_one_conn_request_outbound_client_tls() {
-        test_record_one_conn_request_outbound(TlsStatus::Success, TlsStatus::Disabled)
+        test_record_one_conn_request_outbound(TLS_ENABLED, TLS_DISABLED)
     }
 
     #[test]
     fn record_one_conn_request_outbound_server_tls() {
-        test_record_one_conn_request_outbound(TlsStatus::Disabled, TlsStatus::Success)
+        test_record_one_conn_request_outbound(TLS_DISABLED, TLS_ENABLED)
     }
 
     #[test]
     fn record_one_conn_request_outbound_both_tls() {
-        test_record_one_conn_request_outbound(TlsStatus::Success, TlsStatus::Success)
+        test_record_one_conn_request_outbound(TLS_ENABLED, TLS_ENABLED)
     }
 
     #[test]
     fn record_one_conn_request_outbound_no_tls() {
-        test_record_one_conn_request_outbound(TlsStatus::Disabled, TlsStatus::Disabled)
+        test_record_one_conn_request_outbound(TLS_DISABLED, TLS_DISABLED)
     }
 
     #[test]
     fn record_response_end_outbound_client_tls() {
-        test_record_response_end_outbound(TlsStatus::Success, TlsStatus::Disabled)
+        test_record_response_end_outbound(TLS_ENABLED, TLS_DISABLED)
     }
 
     #[test]
     fn record_response_end_outbound_server_tls() {
-        test_record_response_end_outbound(TlsStatus::Disabled, TlsStatus::Success)
+        test_record_response_end_outbound(TLS_DISABLED, TLS_ENABLED)
     }
 
     #[test]
     fn record_response_end_outbound_both_tls() {
-        test_record_response_end_outbound(TlsStatus::Success, TlsStatus::Success)
+        test_record_response_end_outbound(TLS_ENABLED, TLS_ENABLED)
     }
 
     #[test]
     fn record_response_end_outbound_no_tls() {
-        test_record_response_end_outbound(TlsStatus::Disabled, TlsStatus::Disabled)
+        test_record_response_end_outbound(TLS_DISABLED, TLS_DISABLED)
     }
 }

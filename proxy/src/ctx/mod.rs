@@ -10,16 +10,20 @@
 use config;
 use std::time::SystemTime;
 use std::sync::Arc;
+use transport::tls;
+
 pub mod http;
 pub mod transport;
 
 /// Describes a single running proxy instance.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct Process {
     /// Identifies the Kubernetes namespace in which this proxy is process.
     pub scheduled_namespace: String,
 
     pub start_time: SystemTime,
+
+    tls_client_config: tls::ClientConfigWatch,
 }
 
 /// Indicates the orientation of traffic, relative to a sidecar proxy.
@@ -29,27 +33,30 @@ pub struct Process {
 ///   local instance.
 /// - The  _outbound_ proxy receives traffic from the local instance and forwards it to a
 ///   remove service.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub enum Proxy {
     Inbound(Arc<Process>),
     Outbound(Arc<Process>),
 }
 
 impl Process {
-    #[cfg(test)]
+    // Test-only, but we can't use `#[cfg(test)]` because it is used by the
+    // benchmarks
     pub fn test(ns: &str) -> Arc<Self> {
         Arc::new(Self {
             scheduled_namespace: ns.into(),
             start_time: SystemTime::now(),
+            tls_client_config: tls::ClientConfig::no_tls(),
         })
     }
 
     /// Construct a new `Process` from environment variables.
-    pub fn new(config: &config::Config) -> Arc<Self> {
+    pub fn new(config: &config::Config, tls_client_config: tls::ClientConfigWatch) -> Arc<Self> {
         let start_time = SystemTime::now();
         Arc::new(Self {
             scheduled_namespace: config.namespaces.pod.clone(),
             start_time,
+            tls_client_config,
         })
     }
 }
@@ -73,6 +80,12 @@ impl Proxy {
     pub fn is_outbound(&self) -> bool {
         !self.is_inbound()
     }
+
+    pub fn tls_client_config_watch(&self) -> &tls::ClientConfigWatch {
+        match self {
+            Proxy::Inbound(process) | Proxy::Outbound(process) => &process.tls_client_config
+        }
+    }
 }
 
 #[cfg(test)]
@@ -82,7 +95,6 @@ pub mod test_util {
         fmt,
         net::SocketAddr,
         sync::Arc,
-        time::SystemTime,
     };
 
     use ctx;
@@ -94,10 +106,7 @@ pub mod test_util {
     }
 
     pub fn process() -> Arc<ctx::Process> {
-        Arc::new(ctx::Process {
-            scheduled_namespace: "test".into(),
-            start_time: SystemTime::now(),
-        })
+        ctx::Process::test("test")
     }
 
     pub fn server(

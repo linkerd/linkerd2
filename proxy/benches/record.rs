@@ -7,6 +7,7 @@ extern crate test;
 
 use conduit_proxy::{
     ctx,
+    conditional::Conditional,
     control::destination,
     telemetry::{
         event,
@@ -18,28 +19,26 @@ use std::{
     fmt,
     net::SocketAddr,
     sync::Arc,
-    time::{Duration, Instant, SystemTime},
+    time::{Duration, Instant},
 };
 use test::Bencher;
+use conduit_proxy::tls;
 
 const REQUESTS: usize = 100;
+
+const TLS_DISABLED: Conditional<(), tls::ReasonForNoTls> =
+    Conditional::None(tls::ReasonForNoTls::Disabled);
 
 fn addr() -> SocketAddr {
     ([1, 2, 3, 4], 5678).into()
 }
 
 fn process() -> Arc<ctx::Process> {
-    Arc::new(ctx::Process {
-        scheduled_namespace: "test".into(),
-        start_time: SystemTime::now(),
-    })
+    ctx::Process::test("test")
 }
 
 fn server(proxy: &Arc<ctx::Proxy>) -> Arc<ctx::transport::Server> {
-    ctx::transport::Server::new(
-        &proxy, &addr(), &addr(), &Some(addr()),
-        ctx::transport::TlsStatus::Disabled,
-    )
+    ctx::transport::Server::new(&proxy, &addr(), &addr(), &Some(addr()), TLS_DISABLED)
 }
 
 fn client<L, S>(proxy: &Arc<ctx::Proxy>, labels: L) -> Arc<ctx::transport::Client>
@@ -51,7 +50,7 @@ where
         &proxy,
         &addr(),
         destination::Metadata::new(metrics::DstLabels::new(labels), None),
-        ctx::transport::TlsStatus::Disabled,
+        TLS_DISABLED,
     )
 }
 

@@ -11,10 +11,12 @@ use connection;
 use convert::TryFrom;
 use dns;
 use transport::tls;
+use conditional::Conditional;
 
 #[derive(Debug, Clone)]
 pub struct Connect {
     addr: SocketAddr,
+    tls: tls::ConditionalConnectionConfig<tls::ClientConfig>,
 }
 
 #[derive(Clone, Debug)]
@@ -102,12 +104,11 @@ impl Connect {
     /// Returns a `Connect` to `addr`.
     pub fn new(
         addr: SocketAddr,
-        tls_identity: Option<tls::Identity>,
+        tls: tls::ConditionalConnectionConfig<tls::ClientConfig>,
     ) -> Self {
-        // TODO: this is currently unused.
-        let _ = tls_identity;
         Self {
             addr,
+            tls,
         }
     }
 }
@@ -118,7 +119,7 @@ impl tokio_connect::Connect for Connect {
     type Future = connection::Connecting;
 
     fn connect(&self) -> Self::Future {
-        connection::connect(&self.addr)
+        connection::connect(&self.addr, self.tls.clone())
     }
 }
 
@@ -144,6 +145,7 @@ impl tokio_connect::Connect for LookupAddressAndConnect {
     fn connect(&self) -> Self::Future {
         let port = self.host_and_port.port;
         let host = self.host_and_port.host.clone();
+        let tls = Conditional::None(tls::ReasonForNoTls::NotImplementedForControlPlane); // TODO
         let c = self.dns_resolver
             .resolve_one_ip(&self.host_and_port.host)
             .map_err(|_| {
@@ -153,7 +155,7 @@ impl tokio_connect::Connect for LookupAddressAndConnect {
                 info!("DNS resolved {:?} to {}", host, ip_addr);
                 let addr = SocketAddr::from((ip_addr, port));
                 trace!("connect {}", addr);
-                connection::connect(&addr)
+                connection::connect(&addr, tls)
             });
         Box::new(c)
     }

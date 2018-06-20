@@ -12,6 +12,10 @@ use super::{
 };
 use ring::{self, rand, signature};
 
+/// Manages the use of the private key and certificate.
+///
+/// Authentication is symmetric with respect to the client/server roles, so the
+/// same certificate and private key is used for both roles.
 pub struct CertResolver {
     certified_key: rustls::sign::CertifiedKey,
 }
@@ -48,7 +52,8 @@ impl CertResolver {
         private_key: untrusted::Input)
         -> Result<Self, config::Error>
     {
-        let private_key = signature::key_pair_from_pkcs8(SIGNATURE_ALG_RING_SIGNING, private_key)
+        let private_key =
+                signature::key_pair_from_pkcs8(config::SIGNATURE_ALG_RING_SIGNING, private_key)
             .map_err(|ring::error::Unspecified| config::Error::InvalidPrivateKey)?;
 
         let signer = Signer { private_key: Arc::new(private_key) };
@@ -57,6 +62,17 @@ impl CertResolver {
             cert_chain, Arc::new(Box::new(signing_key)));
         Ok(Self { certified_key })
     }
+
+    fn resolve_(&self, sigschemes: &[rustls::SignatureScheme]) -> Option<rustls::sign::CertifiedKey>
+    {
+        if !sigschemes.contains(&config::SIGNATURE_ALG_RUSTLS_SCHEME) {
+            debug!("signature scheme not supported -> no certificate");
+            return None;
+        }
+
+        Some(self.certified_key.clone())
+    }
+
 }
 
 fn parse_end_entity_cert<'a>(cert_chain: &'a[rustls::Certificate])
@@ -66,6 +82,20 @@ fn parse_end_entity_cert<'a>(cert_chain: &'a[rustls::Certificate])
         .map(rustls::Certificate::as_ref)
         .unwrap_or(&[]); // An empty input fill fail to parse.
     webpki::EndEntityCert::from(untrusted::Input::from(cert))
+}
+
+impl rustls::ResolvesClientCert for CertResolver {
+    fn resolve(&self, _acceptable_issuers: &[&[u8]], sigschemes: &[rustls::SignatureScheme])
+        -> Option<rustls::sign::CertifiedKey>
+    {
+        // Conduit's server side doesn't send the list of acceptable issuers so
+        // don't bother looking at `_acceptable_issuers`.
+        self.resolve_(sigschemes)
+    }
+
+    fn has_certs(&self) -> bool {
+        true
+    }
 }
 
 impl rustls::ResolvesServerCert for CertResolver {
@@ -78,11 +108,6 @@ impl rustls::ResolvesServerCert for CertResolver {
             return None;
         };
 
-        if !sigschemes.contains(&SIGNATURE_ALG_RUSTLS_SCHEME) {
-            debug!("signature scheme not supported -> no certificate");
-            return None;
-        }
-
         // Verify that our certificate is valid for the given SNI name.
         if let Err(err) = parse_end_entity_cert(&self.certified_key.cert)
             .and_then(|cert| cert.verify_is_valid_for_dns_name(server_name)) {
@@ -90,7 +115,7 @@ impl rustls::ResolvesServerCert for CertResolver {
             return None;
         }
 
-        Some(self.certified_key.clone())
+        self.resolve_(sigschemes)
     }
 }
 
@@ -98,7 +123,7 @@ impl rustls::sign::SigningKey for SigningKey {
     fn choose_scheme(&self, offered: &[rustls::SignatureScheme])
         -> Option<Box<rustls::sign::Signer>>
     {
-        if offered.contains(&SIGNATURE_ALG_RUSTLS_SCHEME) {
+        if offered.contains(&config::SIGNATURE_ALG_RUSTLS_SCHEME) {
             Some(Box::new(self.signer.clone()))
         } else {
             None
@@ -106,7 +131,7 @@ impl rustls::sign::SigningKey for SigningKey {
     }
 
     fn algorithm(&self) -> rustls::internal::msgs::enums::SignatureAlgorithm {
-        SIGNATURE_ALG_RUSTLS_ALGORITHM
+        config::SIGNATURE_ALG_RUSTLS_ALGORITHM
     }
 }
 
@@ -120,14 +145,6 @@ impl rustls::sign::Signer for Signer {
     }
 
     fn get_scheme(&self) -> rustls::SignatureScheme {
-        SIGNATURE_ALG_RUSTLS_SCHEME
+        config::SIGNATURE_ALG_RUSTLS_SCHEME
     }
 }
-
-// Keep these in sync.
-static SIGNATURE_ALG_RING_SIGNING: &signature::SigningAlgorithm =
-    &signature::ECDSA_P256_SHA256_ASN1_SIGNING;
-const SIGNATURE_ALG_RUSTLS_SCHEME: rustls::SignatureScheme =
-    rustls::SignatureScheme::ECDSA_NISTP256_SHA256;
-const SIGNATURE_ALG_RUSTLS_ALGORITHM: rustls::internal::msgs::enums::SignatureAlgorithm =
-    rustls::internal::msgs::enums::SignatureAlgorithm::ECDSA;
