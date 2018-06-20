@@ -40,6 +40,7 @@ use telemetry::metrics::DstLabels;
 use transport::{DnsNameAndPort, HostAndPort, LookupAddressAndConnect};
 use timeout::Timeout;
 use transport::tls;
+use conditional::Conditional;
 
 type DestinationServiceQuery<T> = Remote<PbUpdate, T>;
 type UpdateRx<T> = Receiver<PbUpdate, T>;
@@ -78,6 +79,7 @@ pub(super) fn task(
     dns_resolver: dns::Resolver,
     namespaces: Namespaces,
     host_and_port: Option<HostAndPort>,
+    controller_tls: tls::ConditionalConnectionConfig<tls::ClientConfigWatch>
 ) -> impl Future<Item = (), Error = ()>
 {
     // Build up the Controller Client Stack
@@ -85,7 +87,8 @@ pub(super) fn task(
         let scheme = http::uri::Scheme::from_shared(Bytes::from_static(b"http")).unwrap();
         let authority = http::uri::Authority::from(&host_and_port);
         let connect = Timeout::new(
-            LookupAddressAndConnect::new(host_and_port.clone(), dns_resolver.clone()),
+            LookupAddressAndConnect::new(host_and_port.clone(), dns_resolver.clone(),
+                                         controller_tls),
             Duration::from_secs(3),
         );
 
@@ -581,18 +584,22 @@ fn pb_to_addr_meta(
         .collect::<Vec<_>>();
     labels.sort_by(|(k0, _), (k1, _)| k0.cmp(k1));
 
-    let tls_identity = pb.tls_identity.and_then(|pb| {
+    let mut tls_identity =
+        Conditional::None(tls::ReasonForNoIdentity::NotProvidedByServiceDiscovery);
+    if let Some(pb) = pb.tls_identity {
         match tls::Identity::maybe_from_protobuf(tls_controller_namespace, pb) {
-            Ok(maybe_tls) => maybe_tls,
+            Ok(Some(identity)) => {
+                tls_identity = Conditional::Some(identity);
+            },
+            Ok(None) => (),
             Err(e) => {
                 error!("Failed to parse TLS identity: {:?}", e);
                 // XXX: Wallpaper over the error and keep going without TLS.
                 // TODO: Hard fail here once the TLS infrastructure has been
                 // validated.
-                None
             },
         }
-    });
+    };
 
     let meta = Metadata::new(DstLabels::new(labels.into_iter()), tls_identity);
     Some((addr, meta))

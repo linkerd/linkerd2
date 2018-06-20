@@ -5,6 +5,7 @@ use ctx;
 use telemetry::metrics::DstLabels;
 use std::sync::atomic::Ordering;
 use transport::tls;
+use conditional::Conditional;
 
 
 /// A `RequestId` can be mapped to a `u64`. No `RequestId`s will map to the
@@ -76,7 +77,7 @@ impl Request {
         Arc::new(r)
     }
 
-    pub fn tls_identity(&self) -> Option<&tls::Identity> {
+    pub fn tls_identity(&self) -> Conditional<&tls::Identity, tls::ReasonForNoIdentity> {
         self.client.tls_identity()
     }
 

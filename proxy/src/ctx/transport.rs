@@ -126,7 +126,7 @@ impl Client {
         Arc::new(c)
     }
 
-    pub fn tls_identity(&self) -> Option<&tls::Identity> {
+    pub fn tls_identity(&self) -> Conditional<&tls::Identity, tls::ReasonForNoIdentity> {
         self.metadata.tls_identity()
     }
 
