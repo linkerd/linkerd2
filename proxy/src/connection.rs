@@ -9,6 +9,7 @@ use tokio::{
     net::{TcpListener, TcpStream, ConnectFuture},
     reactor::Handle,
 };
+
 use conditional::Conditional;
 use ctx::transport::TlsStatus;
 use config::Addr;
@@ -25,6 +26,7 @@ pub fn connect(addr: &SocketAddr,
     -> Connecting
 {
     Connecting::Plaintext {
+        addr: *addr,
         connect: TcpStream::connect(addr),
         tls: Some(tls),
     }
@@ -45,10 +47,14 @@ struct ConditionallyUpgradeServerToTlsInner {
 /// A socket that is in the process of connecting.
 pub enum Connecting {
     Plaintext {
+        addr: SocketAddr,
         connect: ConnectFuture,
         tls: Option<tls::ConditionalConnectionConfig<tls::ClientConfig>>,
     },
-    UpgradeToTls(tls::UpgradeClientToTls),
+    UpgradeToTls {
+        addr: SocketAddr,
+        upgrading: tls::UpgradeClientToTls
+    },
 }
 
 /// Abstracts a plaintext socket vs. a TLS decorated one.
@@ -253,23 +259,64 @@ impl Future for Connecting {
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         loop {
             *self = match self {
-                Connecting::Plaintext { connect, tls } => {
+                Connecting::Plaintext { addr, connect, tls } => {
                     let plaintext_stream = try_ready!(connect.poll());
                     set_nodelay_or_warn(&plaintext_stream);
                     match tls.take().expect("Polled after ready") {
                         Conditional::Some(config) => {
-                            let upgrade_to_tls = tls::Connection::connect(
+                            let upgrading = tls::Connection::connect(
                                 plaintext_stream, &config.identity, config.config);
-                            Connecting::UpgradeToTls(upgrade_to_tls)
+                            Connecting::UpgradeToTls { addr: *addr, upgrading }
                         },
                         Conditional::None(why) => {
                             return Ok(Async::Ready(Connection::plain(plaintext_stream, why)));
                         },
                     }
                 },
-                Connecting::UpgradeToTls(upgrading) => {
-                    let tls_stream = try_ready!(upgrading.poll());
-                    return Ok(Async::Ready(Connection::tls(BoxedIo::new(tls_stream))));
+                Connecting::UpgradeToTls { addr, upgrading } => {
+                    match upgrading.poll() {
+                        Ok(Async::NotReady) => return Ok(Async::NotReady),
+                        Ok(Async::Ready(tls_stream)) => {
+                            let conn = Connection::tls(BoxedIo::new(tls_stream));
+                            return Ok(Async::Ready(conn));
+                        },
+                        Err(e) => {
+                            // Did the TLS handshake fail, or did something
+                            // else go wrong?
+                            let handshake_err = if let Some(tls_error) = e
+                                .get_ref()
+                                .and_then(|e| e.downcast_ref::<tls::Error>())
+                            {
+                                warn!(
+                                    "TLS handshake with {:?} failed: {}\
+                                     -> falling back to plaintext",
+                                    addr, tls_error,
+                                );
+                                true
+                            } else {
+                                false
+                            };
+                            if handshake_err {
+                                // XXX: We can't get the old connection back
+                                // from the failed upgrade future, so we have
+                                // to try reconnecting.
+                                let connect = TcpStream::connect(addr);
+                                // XXX: Should we propagate *why* the handshake
+                                // failed here?
+                                let reason =
+                                    tls::ReasonForNoTls::HandshakeFailed;
+                                // Reset self to try the plaintext connection.
+                                Connecting::Plaintext {
+                                    addr: *addr,
+                                    connect,
+                                    tls: Some(Conditional::None(reason))
+                                }
+                            } else {
+                                // Don't try to recover from non-TLS errors.
+                                return Err(e);
+                            }
+                        }
+                    }
                 },
             };
         }

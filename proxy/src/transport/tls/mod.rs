@@ -33,4 +33,5 @@ pub use self::{
     },
     dns_name::{DnsName, InvalidDnsName},
     identity::Identity,
+    rustls::TLSError as Error,
 };
