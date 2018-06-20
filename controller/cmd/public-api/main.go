@@ -77,12 +77,7 @@ func main() {
 
 	ready := make(chan struct{})
 
-	go func() {
-		err := k8sAPI.Sync(ready)
-		if err != nil {
-			log.Fatal(err.Error())
-		}
-	}()
+	go k8sAPI.Sync(ready)
 
 	go func() {
 		log.Infof("starting HTTP server on %+v", *addr)

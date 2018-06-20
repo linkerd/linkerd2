@@ -161,6 +161,7 @@ spec:
         - containerPort: 9995
           name: admin-http
         readinessProbe:
+          failureThreshold: 7
           httpGet:
             path: /ready
             port: 9995
@@ -184,6 +185,7 @@ spec:
         - containerPort: 9999
           name: admin-http
         readinessProbe:
+          failureThreshold: 7
           httpGet:
             path: /ready
             port: 9999
@@ -207,6 +209,7 @@ spec:
         - containerPort: 9996
           name: admin-http
         readinessProbe:
+          failureThreshold: 7
           httpGet:
             path: /ready
             port: 9996
@@ -229,6 +232,7 @@ spec:
         - containerPort: 9998
           name: admin-http
         readinessProbe:
+          failureThreshold: 7
           httpGet:
             path: /ready
             port: 9998
@@ -356,6 +360,7 @@ spec:
         - containerPort: 9994
           name: admin-http
         readinessProbe:
+          failureThreshold: 7
           httpGet:
             path: /ready
             port: 9994
@@ -715,7 +720,7 @@ spec:
           httpGet:
             path: /api/health
             port: 3000
-          initialDelaySeconds: 60
+          initialDelaySeconds: 30
           periodSeconds: 10
           timeoutSeconds: 30
         resources: {}

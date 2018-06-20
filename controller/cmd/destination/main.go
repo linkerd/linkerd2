@@ -54,12 +54,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	go func() {
-		err := k8sAPI.Sync(ready)
-		if err != nil {
-			log.Fatal(err.Error())
-		}
-	}()
+	go k8sAPI.Sync(ready)
 
 	go func() {
 		log.Infof("starting gRPC server on %s", *addr)

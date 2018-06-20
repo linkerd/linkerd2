@@ -161,6 +161,7 @@ spec:
           httpGet:
             path: /ready
             port: 9995
+          failureThreshold: 7
       - name: destination
         ports:
         - name: grpc
@@ -183,6 +184,7 @@ spec:
           httpGet:
             path: /ready
             port: 9999
+          failureThreshold: 7
       - name: proxy-api
         ports:
         - name: grpc
@@ -205,6 +207,7 @@ spec:
           httpGet:
             path: /ready
             port: 9996
+          failureThreshold: 7
       - name: tap
         ports:
         - name: grpc
@@ -226,6 +229,7 @@ spec:
           httpGet:
             path: /ready
             port: 9998
+          failureThreshold: 7
 
 ### Web ###
 ---
@@ -294,6 +298,7 @@ spec:
           httpGet:
             path: /ready
             port: 9994
+          failureThreshold: 7
 
 ### Prometheus ###
 ---
@@ -547,7 +552,7 @@ spec:
           httpGet:
             path: /api/health
             port: 3000
-          initialDelaySeconds: 60
+          initialDelaySeconds: 30
           timeoutSeconds: 30
           failureThreshold: 10
           periodSeconds: 10
