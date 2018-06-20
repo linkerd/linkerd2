@@ -12,7 +12,7 @@ use tokio::{
 use conditional::Conditional;
 use ctx::transport::TlsStatus;
 use config::Addr;
-use transport::{GetOriginalDst, Io, tls};
+use transport::{AddrInfo, BoxedIo, GetOriginalDst, tls};
 
 pub struct BoundPort {
     inner: std::net::TcpListener,
@@ -47,7 +47,7 @@ pub enum Connecting {
 /// subverted.
 #[derive(Debug)]
 pub struct Connection {
-    io: Box<Io>,
+    io: BoxedIo,
     /// This buffer gets filled up when "peeking" bytes on this Connection.
     ///
     /// This is used instead of MSG_PEEK in order to support TLS streams.
@@ -213,7 +213,7 @@ impl Future for Connecting {
 impl Connection {
     fn plain(io: TcpStream, why_no_tls: tls::ReasonForNoTls) -> Self {
         Connection {
-            io: Box::new(io),
+            io: BoxedIo::new(io),
             peek_buf: BytesMut::new(),
             tls_status: Conditional::None(why_no_tls),
         }
@@ -221,7 +221,7 @@ impl Connection {
 
     fn tls<S: tls::Session + std::fmt::Debug + 'static>(tls: tls::Connection<S>) -> Self {
         Connection {
-            io: Box::new(tls),
+            io: BoxedIo::new(tls),
             peek_buf: BytesMut::new(),
             tls_status: Conditional::Some(()),
         }

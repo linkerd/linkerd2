@@ -6,7 +6,7 @@ use futures::Future;
 use tokio::prelude::*;
 use tokio::net::TcpStream;
 
-use transport::{AddrInfo, Io};
+use transport::{AddrInfo, io::internal::Io};
 
 use super::{
     identity::Identity,
@@ -109,5 +109,9 @@ impl<S: Session + Debug> AddrInfo for Connection<S> {
 impl<S: Session + Debug> Io for Connection<S> {
     fn shutdown_write(&mut self) -> Result<(), io::Error> {
         self.0.get_mut().0.shutdown_write()
+    }
+
+    fn write_buf_erased(&mut self, mut buf: &mut Buf) -> Poll<usize, io::Error> {
+        self.0.write_buf(&mut buf)
     }
 }
