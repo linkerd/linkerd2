@@ -133,6 +133,7 @@ impl BoundPort {
                 .and_then(move |socket| {
                     let remote_addr = socket.peer_addr()
                         .expect("couldn't get remote addr!");
+
                     // TODO: On Linux and most other platforms it would be better
                     // to set the `TCP_NODELAY` option on the bound socket and
                     // then have the listening sockets inherit it. However, that
@@ -141,25 +142,22 @@ impl BoundPort {
                     // do it here.
                     set_nodelay_or_warn(&socket);
 
-                    match tls::current_connection_config(&tls) {
+                    let conn = match tls::current_connection_config(&tls) {
                         Conditional::Some(config) => {
                             // TODO: use `config.identity` to differentiate
                             // between TLS that the proxy should terminate vs.
                             // TLS that should be passed through.
                             let f = tls::Connection::accept(socket, config.config)
-                                .map(move |tls| {
-                                    (Connection::tls(tls), remote_addr)
-                                });
+                                .map(move |tls| Connection::tls(tls));
                             Either::A(f)
                         },
                         Conditional::None(why_no_tls) => {
                             let f = future::ok(socket)
-                                .map(move |plain| {
-                                    (Connection::plain(plain, why_no_tls), remote_addr)
-                                });
+                                .map(move |plain| Connection::plain(plain, why_no_tls));
                             Either::B(f)
                         },
-                    }
+                    };
+                    conn.map(move |conn| (conn, remote_addr))
                 })
                 .then(|r| {
                     future::ok(match r {
