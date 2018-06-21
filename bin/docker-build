@@ -9,24 +9,11 @@ fi
 
 bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-containers=$(cat <<-END
-controller
-web
-proxy-init
-grafana
-proxy
-END
-)
-
+$bindir/docker-build-controller
+$bindir/docker-build-web
+$bindir/docker-build-proxy-init
 if [ -z "${CONDUIT_SKIP_CLI_CONTAINER:-}" ]; then
-  containers=$(printf "$containers\ncli-bin")
+    $bindir/docker-build-cli-bin
 fi
-
-if which parallel >/dev/null; then
-  cmd="parallel $bindir/docker-build-{}"
-else
-  printf "Install parallel to speed the build up (brew install parallel)\n" >&2
-  cmd="xargs -I{} /bin/sh -c $bindir/docker-build-{}"
-fi
-
-echo "$containers" | $cmd
+$bindir/docker-build-grafana
+$bindir/docker-build-proxy
