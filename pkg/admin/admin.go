@@ -23,12 +23,12 @@ func StartServer(addr string, readyCh <-chan struct{}) {
 		ready:       readyCh == nil,
 	}
 
-	go func() {
-		if readyCh != nil {
+	if readyCh != nil {
+		go func() {
 			<-readyCh
 			h.setReady(true)
-		}
-	}()
+		}()
+	}
 
 	s := &http.Server{
 		Addr:         addr,
