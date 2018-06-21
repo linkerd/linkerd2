@@ -30,7 +30,9 @@ impl<T, R: Rebind<T>> Service for WatchService<T, R> {
 
     fn poll_ready(&mut self) -> Poll<(), Self::Error> {
         // Check to see if the watch has been updated and, if so, rebind the service.
-        if let Async::Ready(Some(())) = self.watch.poll().expect("watch poll") {
+        //
+        // `watch.poll()` can't actually fail; so errors are not considered.
+        if let Ok(Async::Ready(Some(()))) = self.watch.poll() {
             self.inner = self.rebind.rebind(&*self.watch.borrow());
         }
 
