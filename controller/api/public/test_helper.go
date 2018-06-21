@@ -107,10 +107,9 @@ type MockProm struct {
 }
 
 type PodCounts struct {
-	MeshedPods    uint64
-	RunningPods   uint64
-	FailedPods    uint64
-	OmitPodCounts bool
+	MeshedPods  uint64
+	RunningPods uint64
+	FailedPods  uint64
 }
 
 // satisfies v1.API
@@ -133,7 +132,7 @@ func (m *MockProm) Series(ctx context.Context, matches []string, startTime time.
 	return nil, nil
 }
 
-func GenStatSummaryResponse(resName, resType, resNs string, counts PodCounts) pb.StatSummaryResponse {
+func GenStatSummaryResponse(resName, resType, resNs string, counts *PodCounts) pb.StatSummaryResponse {
 	statTableRow := &pb.StatTable_PodGroup_Row{
 		Resource: &pb.Resource{
 			Namespace: resNs,
@@ -151,7 +150,7 @@ func GenStatSummaryResponse(resName, resType, resNs string, counts PodCounts) pb
 		TimeWindow: "1m",
 	}
 
-	if !counts.OmitPodCounts {
+	if counts != nil {
 		statTableRow.MeshedPodCount = counts.MeshedPods
 		statTableRow.RunningPodCount = counts.RunningPods
 		statTableRow.FailedPodCount = counts.FailedPods

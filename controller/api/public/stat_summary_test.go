@@ -188,7 +188,7 @@ status:
 					},
 					TimeWindow: "1m",
 				},
-				expectedResponse: GenStatSummaryResponse("emoji", "deployments", "emojivoto", PodCounts{
+				expectedResponse: GenStatSummaryResponse("emoji", "deployments", "emojivoto", &PodCounts{
 					MeshedPods:  1,
 					RunningPods: 2,
 					FailedPods:  0,
@@ -234,7 +234,7 @@ status:
 					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
 					`sum(increase(response_total{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod, classification, tls)`,
 				},
-				expectedResponse: GenStatSummaryResponse("emojivoto-1", "pods", "emojivoto", PodCounts{
+				expectedResponse: GenStatSummaryResponse("emojivoto-1", "pods", "emojivoto", &PodCounts{
 					MeshedPods:  1,
 					RunningPods: 1,
 					FailedPods:  0,
@@ -730,7 +730,7 @@ status:
 						},
 						TimeWindow: "1m",
 					},
-					expectedResponse: GenStatSummaryResponse("emoji", "deployments", "emojivoto", PodCounts{
+					expectedResponse: GenStatSummaryResponse("emoji", "deployments", "emojivoto", &PodCounts{
 						MeshedPods:  1,
 						RunningPods: 2,
 						FailedPods:  1,
@@ -778,7 +778,7 @@ status:
 					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="conduit"}[1m])) by (le, namespace, authority))`,
 					`sum(increase(response_total{direction="inbound", namespace="conduit"}[1m])) by (namespace, authority, classification, tls)`,
 				},
-				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", "authority", "conduit", PodCounts{OmitPodCounts: true}),
+				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", "authority", "conduit", nil),
 			},
 		}
 
@@ -822,7 +822,7 @@ status:
 					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{authority="10.1.1.239:9995", direction="inbound", namespace="conduit"}[1m])) by (le, namespace, authority))`,
 					`sum(increase(response_total{authority="10.1.1.239:9995", direction="inbound", namespace="conduit"}[1m])) by (namespace, authority, classification, tls)`,
 				},
-				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", "authority", "conduit", PodCounts{OmitPodCounts: true}),
+				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", "authority", "conduit", nil),
 			},
 		}
 

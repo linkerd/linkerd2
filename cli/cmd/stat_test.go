@@ -10,7 +10,7 @@ func TestStat(t *testing.T) {
 	t.Run("Returns namespace stats", func(t *testing.T) {
 		mockClient := &public.MockConduitApiClient{}
 
-		counts := public.PodCounts{
+		counts := &public.PodCounts{
 			MeshedPods:  1,
 			RunningPods: 2,
 			FailedPods:  0,
