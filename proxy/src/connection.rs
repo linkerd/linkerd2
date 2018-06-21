@@ -286,38 +286,22 @@ impl Future for Connecting {
                             return Ok(Async::Ready(conn));
                         },
                         Err(e) => {
-                            // Did the TLS handshake fail, or did something
-                            // else go wrong?
-                            let handshake_err = if let Some(tls_error) = e
-                                .get_ref()
-                                .and_then(|e| e.downcast_ref::<tls::Error>())
-                            {
-                                warn!(
-                                    "TLS handshake with {:?} failed: {}\
-                                     -> falling back to plaintext",
-                                    addr, tls_error,
-                                );
-                                true
-                            } else {
-                                false
-                            };
-                            if handshake_err {
-                                // XXX: We can't get the old connection back
-                                // from the failed upgrade future, so we have
-                                // to try reconnecting.
-                                let connect = TcpStream::connect(&addr);
-                                // XXX: Should we propagate *why* the handshake
-                                // failed here?
-                                let reason =
-                                    tls::ReasonForNoTls::HandshakeFailed;
-                                // Reset self to try the plaintext connection.
-                                ConnectingState::Plaintext {
-                                    connect,
-                                    tls: Some(Conditional::None(reason))
-                                }
-                            } else {
-                                // Don't try to recover from non-TLS errors.
-                                return Err(e);
+                            warn!(
+                                "TLS handshake with {:?} failed: {}\
+                                    -> falling back to plaintext",
+                                addr, e,
+                            );
+                            // XXX: We can't get the old connection back
+                            // from the failed upgrade future, so we have
+                            // to try reconnecting.
+                            let connect = TcpStream::connect(&addr);
+                            // XXX: Should we propagate *why* the handshake
+                            // failed here?
+                            let reason = tls::ReasonForNoTls::HandshakeFailed;
+                            // Reset self to try the plaintext connection.
+                            ConnectingState::Plaintext {
+                                connect,
+                                tls: Some(Conditional::None(reason))
                             }
                         }
                     }
