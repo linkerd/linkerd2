@@ -145,6 +145,7 @@ pub fn new(
     namespaces: Namespaces,
     host_and_port: Option<HostAndPort>,
     controller_tls: tls::ConditionalConnectionConfig<tls::ClientConfigWatch>,
+    client_tls: tls::ClientConfigWatch,
 ) -> (Resolver, impl Future<Item = (), Error = ()>) {
     let (request_tx, rx) = mpsc::unbounded();
     let disco = Resolver { request_tx };
@@ -154,6 +155,7 @@ pub fn new(
         namespaces,
         host_and_port,
         controller_tls,
+        client_tls,
     );
     (disco, bg)
 }
@@ -250,7 +252,7 @@ impl Metadata {
 
     pub fn new(
         dst_labels: Option<DstLabels>,
-        tls_identity: Conditional<tls::Identity, tls::ReasonForNoIdentity>
+        tls_identity: Conditional<tls::Identity, tls::ReasonForNoIdentity>,
     ) -> Self {
         Metadata {
             dst_labels,

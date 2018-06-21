@@ -78,4 +78,23 @@ where
             Conditional::None(r) => Conditional::None(*r),
         }
     }
+
+    pub fn map<D, F>(self, f: F) -> Conditional<D, R>
+    where
+        F: FnOnce(C) -> D,
+        D: Clone + std::fmt::Debug,
+    {
+        match self {
+            Conditional::Some(c) => Conditional::Some(f(c)),
+            Conditional::None(r) => Conditional::None(r),
+        }
+    }
+
+    pub fn is_some(&self) -> bool {
+        match self {
+            Conditional::Some(_) => true,
+            Conditional::None(_) => false,
+        }
+    }
+
 }

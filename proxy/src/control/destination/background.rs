@@ -62,6 +62,11 @@ struct Background<T: HttpService<ResponseBody = RecvBody>> {
     rpc_ready: bool,
     /// A receiver of new watch requests.
     request_rx: mpsc::UnboundedReceiver<ResolveRequest>,
+    /// Watch for changes to the client TLS configuration.
+    ///
+    /// When the TLS config changes, we will have to rebind the client stacks
+    /// for endpoints with which we can communicate over TLS.
+    client_tls: tls::ClientConfigWatch,
 }
 
 /// Holds the state of a single resolution.
@@ -79,7 +84,8 @@ pub(super) fn task(
     dns_resolver: dns::Resolver,
     namespaces: Namespaces,
     host_and_port: Option<HostAndPort>,
-    controller_tls: tls::ConditionalConnectionConfig<tls::ClientConfigWatch>
+    controller_tls: tls::ConditionalConnectionConfig<tls::ClientConfigWatch>,
+    client_tls: tls::ClientConfigWatch,
 ) -> impl Future<Item = (), Error = ()>
 {
     // Build up the Controller Client Stack
@@ -110,6 +116,7 @@ pub(super) fn task(
         request_rx,
         dns_resolver,
         namespaces,
+        client_tls,
     );
 
     future::poll_fn(move || {
@@ -130,6 +137,7 @@ where
         request_rx: mpsc::UnboundedReceiver<ResolveRequest>,
         dns_resolver: dns::Resolver,
         namespaces: Namespaces,
+        client_tls: tls::ClientConfigWatch,
     ) -> Self {
         Self {
             dns_resolver,
@@ -138,6 +146,7 @@ where
             reconnects: VecDeque::new(),
             rpc_ready: false,
             request_rx,
+            client_tls,
         }
     }
 
@@ -149,6 +158,7 @@ where
             self.poll_resolve_requests(client);
             self.retain_active_destinations();
             self.poll_destinations();
+            self.poll_tls_config_updates();
 
             if self.reconnects.is_empty() || !self.rpc_ready {
                 break;
@@ -316,6 +326,19 @@ where
         }
     }
 
+    /// Check if the TLS client configuration has changed.
+    ///
+    /// If it has, each `DestinationSet` must signal to the load balancer to
+    /// invalidate the bound client stacks for all endpoints with TLS
+    /// identities.
+    fn poll_tls_config_updates(&mut self) {
+        if let Ok(Async::Ready(_)) = self.client_tls.poll() {
+            for (auth, set) in &mut self.destinations {
+                set.invalidate_tls_clients(auth);
+            }
+        }
+    }
+
     /// Initiates a query `query` to the Destination service and returns it as
     /// `Some(query)` if the given authority's host is of a form suitable for using to
     /// query the Destination service. Otherwise, returns `None`.
@@ -377,7 +400,6 @@ where
         tls_controller_namespace: Option<&str>,
     ) -> (DestinationServiceQuery<T>, Exists<()>) {
         let mut exists = Exists::Unknown;
-
         loop {
             match rx.poll() {
                 Ok(Async::Ready(Some(update))) => match update.update {
@@ -387,7 +409,8 @@ where
                             .addrs
                             .into_iter()
                             .filter_map(|pb|
-                                pb_to_addr_meta(pb, &set_labels, tls_controller_namespace));
+                                pb_to_addr_meta(pb, &set_labels, tls_controller_namespace)
+                            );
                         self.add(auth, addrs)
                     },
                     Some(PbUpdate2::Remove(r_set)) => {
@@ -486,6 +509,39 @@ where
 }
 
 impl<T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
+
+    /// Invalidate any endpoints in this `DestinationSet` which have TLS
+    /// identity metadata, causing the load balancer to rebind the client
+    /// stacks for those endpoints.
+    ///
+    /// This is called when the TLS client configuration changes.
+    fn invalidate_tls_clients( &mut self, authority: &DnsNameAndPort) {
+        trace!("invalidate_tls_clients: {:?}", authority);
+        if let Exists::Yes(ref cache) = self.addrs {
+            for (&key, ref metadata) in cache {
+                // If the endpoint has a TLS identity, then we are
+                // capable of communicating with it over TLS. Therefore,
+                // the client for that endpoint must be rebound.
+                if metadata.tls_identity().is_some() {
+                    trace!(
+                        "invalidate_tls_clients: authority={:?}; endpoint={:?}",
+                        authority, key
+                    );
+                    // Sending the `CacheChange::Modification` event will cause
+                    // the endpoint to be rebound (even though we haven't
+                    // _actually_ changed the cached metadata).
+                    Self::on_change(
+                        &mut self.responders,
+                        authority,
+                        CacheChange::Modification {
+                            key,
+                            new_value: metadata,
+                        });
+                }
+            }
+        }
+    }
+
     fn reset_on_next_modification(&mut self) {
         match self.addrs {
             Exists::Yes(ref mut cache) => {
@@ -601,7 +657,10 @@ fn pb_to_addr_meta(
         }
     };
 
-    let meta = Metadata::new(DstLabels::new(labels.into_iter()), tls_identity);
+    let meta = Metadata::new(
+        DstLabels::new(labels.into_iter()),
+        tls_identity,
+    );
     Some((addr, meta))
 }
 

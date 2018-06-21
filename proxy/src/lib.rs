@@ -243,6 +243,7 @@ where
             config.namespaces.clone(),
             control_host_and_port,
             controller_tls,
+            tls_client_config.clone(),
         );
 
         let (drain_tx, drain_rx) = drain::channel();
