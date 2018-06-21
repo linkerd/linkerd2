@@ -32,7 +32,7 @@ impl<T, R: Rebind<T>> Service for WatchService<T, R> {
         // Check to see if the watch has been updated and, if so, rebind the service.
         //
         // `watch.poll()` can't actually fail; so errors are not considered.
-        if let Ok(Async::Ready(Some(()))) = self.watch.poll() {
+        while let Ok(Async::Ready(Some(()))) = self.watch.poll() {
             self.inner = self.rebind.rebind(&*self.watch.borrow());
         }
 
@@ -44,10 +44,77 @@ impl<T, R: Rebind<T>> Service for WatchService<T, R> {
     }
 }
 
-impl<T, S> Rebind<T> for FnMut(&T) -> S where S: Service
+impl<T, S, F> Rebind<T> for F
+where
+    S: Service,
+    for<'t> F: FnMut(&'t T) -> S,
 {
     type Service = S;
     fn rebind(&mut self, t: &T) -> S {
         (self)(t)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use futures::future;
+    use std::time::Duration;
+    use task::test_util::BlockOnFor;
+    use tokio::runtime::current_thread::Runtime;
+    use super::*;
+
+    const TIMEOUT: Duration = Duration::from_secs(60);
+
+    #[test]
+    fn rebind() {
+        struct Svc(usize);
+        impl Service for Svc {
+            type Request = ();
+            type Response = usize;
+            type Error = ();
+            type Future = future::FutureResult<usize, ()>;
+            fn poll_ready(&mut self) -> Poll<(), Self::Error> {
+                Ok(().into())
+            }
+            fn call(&mut self, _: ()) -> Self::Future {
+                future::ok(self.0)
+            }
+        }
+
+        let mut rt = Runtime::new().unwrap();
+        macro_rules! assert_ready {
+            ($svc:expr) => {
+                rt.block_on_for(TIMEOUT, future::poll_fn(|| $svc.poll_ready()))
+                    .expect("ready")
+            };
+        }
+        macro_rules! call {
+            ($svc:expr) => {
+                rt.block_on_for(TIMEOUT, $svc.call(()))
+                    .expect("call")
+            };
+        }
+
+        let (watch, mut store) = Watch::new(1);
+        let mut svc = WatchService::new(watch, |n: &usize| Svc(*n));
+
+        assert_ready!(svc);
+        assert_eq!(call!(svc), 1);
+
+        assert_ready!(svc);
+        assert_eq!(call!(svc), 1);
+
+        store.store(2).expect("store");
+        assert_ready!(svc);
+        assert_eq!(call!(svc), 2);
+
+        store.store(3).expect("store");
+        store.store(4).expect("store");
+        assert_ready!(svc);
+        assert_eq!(call!(svc), 4);
+
+        drop(store);
+        assert_ready!(svc);
+        assert_eq!(call!(svc), 4);
     }
 }
