@@ -249,15 +249,27 @@ impl CommonConfig {
 
 }
 
+// A Future that, when polled, checks for config updates and publishes them.
+pub type PublishConfigs = Box<Future<Item = (), Error = ()> + Send>;
+
+/// Returns Client and Server config watches, and a task to drive updates.
+///
+/// The returned task Future is expected to never complete.
+///
+/// If there are no TLS settings, then empty watches are returned. In this case, the
+/// Future is never notified.
+///
+/// If all references are dropped to _either_ the client or server config watches, all
+/// updates will cease for both config watches.
 pub fn watch_for_config_changes(settings: Conditional<&CommonSettings, ReasonForNoTls>)
-    -> (ClientConfigWatch, ServerConfigWatch, Box<Future<Item = (), Error = ()> + Send>)
+    -> (ClientConfigWatch, ServerConfigWatch, PublishConfigs)
 {
     let settings = if let Conditional::Some(settings) = settings {
         settings.clone()
     } else {
         let (client_watch, _) = Watch::new(None);
         let (server_watch, _) = Watch::new(None);
-        let no_future = future::ok(());
+        let no_future = future::empty();
         return (client_watch, server_watch, Box::new(no_future));
     };
 
@@ -282,8 +294,8 @@ pub fn watch_for_config_changes(settings: Conditional<&CommonSettings, ReasonFor
                 Ok((client_store, server_store))
             })
         .then(|_| {
-            trace!("forwarding to server config watch finished.");
-            Ok(())
+            error!("forwarding to tls config watches finished.");
+            Err(())
         });
 
     // This function and `ServerConfig::no_tls` return `Box<Future<...>>`
