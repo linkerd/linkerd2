@@ -1,6 +1,10 @@
 package cmd
 
 import (
+	"fmt"
+	"regexp"
+	"time"
+
 	"github.com/runconduit/conduit/controller/api/public"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
@@ -67,6 +71,7 @@ type proxyConfigOptions struct {
 	proxyAPIPort     uint
 	proxyControlPort uint
 	proxyMetricsPort uint
+	tls              string
 }
 
 func newProxyConfigOptions() *proxyConfigOptions {
@@ -81,7 +86,32 @@ func newProxyConfigOptions() *proxyConfigOptions {
 		proxyAPIPort:     8086,
 		proxyControlPort: 4190,
 		proxyMetricsPort: 4191,
+		tls:              "",
 	}
+}
+
+const optionalTLS = "optional"
+
+var alphaNumDashDot = regexp.MustCompile("^[\\.a-zA-Z0-9-]+$")
+
+func (options *proxyConfigOptions) validate() error {
+	if !alphaNumDashDot.MatchString(options.conduitVersion) {
+		return fmt.Errorf("%s is not a valid version", options.conduitVersion)
+	}
+	if options.imagePullPolicy != "Always" && options.imagePullPolicy != "IfNotPresent" && options.imagePullPolicy != "Never" {
+		return fmt.Errorf("--image-pull-policy must be one of: Always, IfNotPresent, Never")
+	}
+	if _, err := time.ParseDuration(options.proxyBindTimeout); err != nil {
+		return fmt.Errorf("Invalid duration '%s' for --proxy-bind-timeout flag", options.proxyBindTimeout)
+	}
+	if options.tls != "" && options.tls != optionalTLS {
+		return fmt.Errorf("--tls must be blank or set to \"%s\"", optionalTLS)
+	}
+	return nil
+}
+
+func (options *proxyConfigOptions) enableTLS() bool {
+	return options.tls == optionalTLS
 }
 
 func addProxyConfigFlags(cmd *cobra.Command, options *proxyConfigOptions) {
@@ -95,4 +125,6 @@ func addProxyConfigFlags(cmd *cobra.Command, options *proxyConfigOptions) {
 	cmd.PersistentFlags().UintVar(&options.proxyAPIPort, "api-port", options.proxyAPIPort, "Port where the Conduit controller is running")
 	cmd.PersistentFlags().UintVar(&options.proxyControlPort, "control-port", options.proxyControlPort, "Proxy port to use for control")
 	cmd.PersistentFlags().UintVar(&options.proxyMetricsPort, "metrics-port", options.proxyMetricsPort, "Proxy port to serve metrics on")
+	cmd.PersistentFlags().StringVar(&options.tls, "tls", options.tls, "Enable TLS; valid settings: \"optional\"")
+	cmd.PersistentFlags().MarkHidden("tls")
 }
