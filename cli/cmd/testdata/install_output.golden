@@ -921,7 +921,20 @@ spec:
         - -logtostderr=true
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9997
+          initialDelaySeconds: 10
         name: ca-distributor
+        ports:
+        - containerPort: 9997
+          name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9997
         resources: {}
       - env:
         - name: CONDUIT_PROXY_LOG
@@ -953,6 +966,7 @@ spec:
         resources: {}
         securityContext:
           runAsUser: 2102
+        terminationMessagePolicy: FallbackToLogsOnError
       initContainers:
       - args:
         - --incoming-proxy-port
@@ -972,6 +986,7 @@ spec:
             add:
             - NET_ADMIN
           privileged: false
+        terminationMessagePolicy: FallbackToLogsOnError
       serviceAccount: conduit-ca
 status: {}
 ---

@@ -8,11 +8,13 @@ import (
 
 	"github.com/runconduit/conduit/controller/ca"
 	"github.com/runconduit/conduit/controller/k8s"
+	"github.com/runconduit/conduit/pkg/admin"
 	"github.com/runconduit/conduit/pkg/version"
 	log "github.com/sirupsen/logrus"
 )
 
 func main() {
+	metricsAddr := flag.String("metrics-addr", ":9997", "address to serve scrapable metrics on")
 	controllerNamespace := flag.String("controller-namespace", "conduit", "namespace in which Conduit is installed")
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
 	logLevel := flag.String("log-level", log.InfoLevel.String(), "log level, must be one of: panic, fatal, error, warn, info, debug")
@@ -43,19 +45,17 @@ func main() {
 
 	controller := ca.NewCertificateController(*controllerNamespace, k8sAPI)
 
-	go func() {
-		err := k8sAPI.Sync()
-		if err != nil {
-			log.Fatal(err.Error())
-		}
-	}()
-
 	stopCh := make(chan struct{})
+	ready := make(chan struct{})
+
+	go k8sAPI.Sync(ready)
 
 	go func() {
 		log.Info("starting distributor")
 		controller.Run(stopCh)
 	}()
+
+	go admin.StartServer(*metricsAddr, ready)
 
 	<-stop
 
