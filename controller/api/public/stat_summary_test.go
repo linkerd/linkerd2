@@ -188,7 +188,11 @@ status:
 					},
 					TimeWindow: "1m",
 				},
-				expectedResponse: GenStatSummaryResponse("emoji", "deployments", "emojivoto", 1, 2, 0),
+				expectedResponse: GenStatSummaryResponse("emoji", "deployments", "emojivoto", PodCounts{
+					MeshedPods:  1,
+					RunningPods: 2,
+					FailedPods:  0,
+				}),
 			},
 		}
 
@@ -230,7 +234,11 @@ status:
 					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
 					`sum(increase(response_total{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod, classification, tls)`,
 				},
-				expectedResponse: GenStatSummaryResponse("emojivoto-1", "pods", "emojivoto", 1, 1, 0),
+				expectedResponse: GenStatSummaryResponse("emojivoto-1", "pods", "emojivoto", PodCounts{
+					MeshedPods:  1,
+					RunningPods: 1,
+					FailedPods:  0,
+				}),
 			},
 		}
 
@@ -722,11 +730,102 @@ status:
 						},
 						TimeWindow: "1m",
 					},
-					expectedResponse: GenStatSummaryResponse("emoji", "deployments", "emojivoto", 1, 2, 1),
+					expectedResponse: GenStatSummaryResponse("emoji", "deployments", "emojivoto", PodCounts{
+						MeshedPods:  1,
+						RunningPods: 2,
+						FailedPods:  1,
+					}),
 				},
 			}
 
 			testStatSummary(t, expectations)
 		})
+	})
+
+	t.Run("Queries prometheus for authority stats", func(t *testing.T) {
+		expectations := []statSumExpected{
+			statSumExpected{
+				err: nil,
+				k8sConfigs: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-1
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+  annotations:
+    conduit.io/proxy-version: testinjectversion
+status:
+  phase: Running
+`,
+				},
+				mockPromResponse: model.Vector{
+					genPromSample("10.1.1.239:9995", "authority", "conduit", "success"),
+				},
+				req: pb.StatSummaryRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Namespace: "conduit",
+							Type:      pkgK8s.Authority,
+						},
+					},
+					TimeWindow: "1m",
+				},
+				expectedPrometheusQueries: []string{
+					`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="conduit"}[1m])) by (le, namespace, authority))`,
+					`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="conduit"}[1m])) by (le, namespace, authority))`,
+					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="conduit"}[1m])) by (le, namespace, authority))`,
+					`sum(increase(response_total{direction="inbound", namespace="conduit"}[1m])) by (namespace, authority, classification, tls)`,
+				},
+				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", "authority", "conduit", PodCounts{OmitPodCounts: true}),
+			},
+		}
+
+		testStatSummary(t, expectations)
+	})
+
+	t.Run("Queries prometheus for a named authority", func(t *testing.T) {
+		expectations := []statSumExpected{
+			statSumExpected{
+				err: nil,
+				k8sConfigs: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-1
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+  annotations:
+    conduit.io/proxy-version: testinjectversion
+status:
+  phase: Running
+`,
+				},
+				mockPromResponse: model.Vector{
+					genPromSample("10.1.1.239:9995", "authority", "conduit", "success"),
+				},
+				req: pb.StatSummaryRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Namespace: "conduit",
+							Type:      pkgK8s.Authority,
+							Name:      "10.1.1.239:9995",
+						},
+					},
+					TimeWindow: "1m",
+				},
+				expectedPrometheusQueries: []string{
+					`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{authority="10.1.1.239:9995", direction="inbound", namespace="conduit"}[1m])) by (le, namespace, authority))`,
+					`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{authority="10.1.1.239:9995", direction="inbound", namespace="conduit"}[1m])) by (le, namespace, authority))`,
+					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{authority="10.1.1.239:9995", direction="inbound", namespace="conduit"}[1m])) by (le, namespace, authority))`,
+					`sum(increase(response_total{authority="10.1.1.239:9995", direction="inbound", namespace="conduit"}[1m])) by (namespace, authority, classification, tls)`,
+				},
+				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", "authority", "conduit", PodCounts{OmitPodCounts: true}),
+			},
+		}
+
+		testStatSummary(t, expectations)
 	})
 }
