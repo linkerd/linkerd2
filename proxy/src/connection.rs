@@ -261,7 +261,6 @@ impl Future for Connecting {
     type Error = io::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        let addr = self.addr;
         loop {
             self.state = match &mut self.state {
                 ConnectingState::Plaintext { connect, tls } => {
@@ -289,14 +288,13 @@ impl Future for Connecting {
                             warn!(
                                 "TLS handshake with {:?} failed: {}\
                                     -> falling back to plaintext",
-                                addr, e,
+                                self.addr, e,
                             );
                             // XXX: We can't get the old connection back
                             // from the failed upgrade future, so we have
                             // to try reconnecting.
-                            let connect = TcpStream::connect(&addr);
-                            // XXX: Should we propagate *why* the handshake
-                            // failed here?
+                            let connect = TcpStream::connect(&self.addr);
+                            // TODO: emit a `HandshakeFailed` telemetry event.
                             let reason = tls::ReasonForNoTls::HandshakeFailed;
                             // Reset self to try the plaintext connection.
                             ConnectingState::Plaintext {
