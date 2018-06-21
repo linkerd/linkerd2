@@ -92,7 +92,7 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		Namespace:                controlPlaneNamespace,
 		ControllerImage:          fmt.Sprintf("%s/controller:%s", options.dockerRegistry, options.conduitVersion),
 		WebImage:                 fmt.Sprintf("%s/web:%s", options.dockerRegistry, options.conduitVersion),
-		PrometheusImage:          "prom/prometheus:v2.2.1",
+		PrometheusImage:          "prom/prometheus:v2.3.1",
 		GrafanaImage:             fmt.Sprintf("%s/grafana:%s", options.dockerRegistry, options.conduitVersion),
 		ControllerReplicas:       options.controllerReplicas,
 		WebReplicas:              options.webReplicas,
