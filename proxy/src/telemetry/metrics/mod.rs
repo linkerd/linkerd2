@@ -186,7 +186,7 @@ impl Root {
             .as_secs();
 
         let process_metrics = process::Sensor::new()
-            .map_err(|e| warn!("{}", e))
+            .map_err(|e| info!("{}", e))
             .ok();
 
         Self {

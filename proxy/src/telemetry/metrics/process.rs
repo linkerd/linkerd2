@@ -89,6 +89,7 @@ mod imp {
         }
 
         pub fn metrics(&self) -> io::Result<ProcessMetrics> {
+            // XXX potentially blocking call
             let stat = pid::stat_self()?;
 
             let cpu_seconds_total = Counter::from((stat.utime + stat.stime) as u64);
@@ -143,10 +144,7 @@ mod imp {
         }
 
         pub fn metrics(&self) -> io::Result<ProcessMetrics> {
-            Err(io::Error::new(
-                io::ErrorKind::Other,
-                "procinfo not supported on this operating system"
-            ))
+            unreachable!("process::Sensor::metrics() on unsupported OS!")
         }
     }
 
