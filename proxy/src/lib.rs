@@ -89,8 +89,10 @@ mod transparency;
 mod transport;
 pub mod timeout;
 mod tower_fn; // TODO: move to tower-fn
+mod watch_service; // TODO: move to tower
 
 use bind::Bind;
+use conditional::Conditional;
 use connection::BoundPort;
 use inbound::Inbound;
 use map_err::MapErr;
@@ -98,7 +100,7 @@ use task::MainRuntime;
 use transparency::{HttpBody, Server};
 pub use transport::{AddrInfo, GetOriginalDst, SoOriginalDst, tls};
 use outbound::Outbound;
-use conditional::Conditional;
+pub use watch_service::WatchService;
 
 /// Runs a sidecar proxy.
 ///
