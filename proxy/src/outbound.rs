@@ -173,8 +173,17 @@ where
         let resolve = {
             let proto = self.bind.clone().with_protocol(protocol.clone());
             match *dest {
-                Destination::Name(ref authority) =>
-                    Discovery::Name(self.discovery.resolve(authority, proto)),
+                Destination::Name(ref authority) => {
+                    let tls_client_cfg = proto.ctx()
+                        .tls_client_config_watch()
+                        .clone();
+                    let resolve = self.discovery.resolve(
+                        authority,
+                        proto,
+                        tls_client_cfg,
+                    );
+                    Discovery::Name(resolve)
+                },
                 Destination::Addr(addr) => Discovery::Addr(Some((addr, proto))),
             }
         };
