@@ -677,6 +677,9 @@ spec:
       serviceAccount: conduit-ca
       containers:
       - name: ca-distributor
+        ports:
+        - name: admin-http
+          containerPort: 9997
         image: {{.ControllerImage}}
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
@@ -684,4 +687,14 @@ spec:
         - "-controller-namespace={{.Namespace}}"
         - "-log-level={{.ControllerLogLevel}}"
         - "-logtostderr=true"
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9997
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9997
+          failureThreshold: 7
 `

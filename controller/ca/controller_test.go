@@ -173,9 +173,7 @@ func new(fixtures ...string) (*CertificateController, chan bool, chan struct{}, 
 		return err
 	}
 
-	if err := controller.k8sAPI.Sync(); err != nil {
-		return nil, nil, nil, fmt.Errorf("k8sAPI.Sync() returned an error: %s", err)
-	}
+	controller.k8sAPI.Sync(nil)
 
 	stopCh := make(chan struct{})
 	go controller.Run(stopCh)
