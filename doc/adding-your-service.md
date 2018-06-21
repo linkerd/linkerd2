@@ -43,18 +43,15 @@ part. To accomplish this, Conduit automatically detects the protocol used on
 each connection. In some cases, however, Conduit's protocol detection can't be
 fully automated and requires some configuration from you.
 
-### HTTP Tunneling and WebSockets
+### HTTP Tunneling
 
 Most HTTP traffic (including HTTP/2) will be handled automatically and
 transparently by Conduit without any configuration on your part. However,
-non-HTTPS WebSockets and HTTP tunneling/proxying (use of the HTTP `CONNECT`
-method) currently require manual configuration to disable the layer 7 features
-for those connections. For pods that accept incoming `CONNECT` requests and/or
-incoming WebSocket connections, use the `--skip-inbound-ports` flag when running
-`conduit inject`. For pods that make outgoing `CONNECT` requests and/or outgoing
-WebSocket connections, use the `--skip-outbound-ports` flag when running
-`conduit inject`. (Automatic transparent proxying of WebSockets will be
-implemented in a [future release](https://github.com/runconduit/conduit/issues/195).)
+HTTP tunneling/proxying (use of the HTTP `CONNECT` method) currently requires
+manual configuration to disable the layer 7 features. For pods that accept
+incoming `CONNECT` requests, use the `--skip-inbound-ports` flag when running
+`conduit inject`. For pods that make outgoing `CONNECT` requests, use the
+`--skip-outbound-ports` flag when running `conduit inject`.
 
 ### For example, to allow inbound traffic on ports 80 and 7777 to bypass the proxy, use the command:
 #### `conduit inject deployment.yml --skip-inbound-ports=80,7777 | kubectl apply -f -`
