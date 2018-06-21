@@ -62,7 +62,7 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
       sorter: (a, b) => (a.name || "").localeCompare(b.name),
       render: row => {
         let nameContents;
-        if (resource.toLowerCase() === "namespace") {
+        if (resource === "namespace") {
           nameContents = <ConduitLink to={"/namespaces/" + row.name}>{row.name}</ConduitLink>;
         } else if (!row.added) {
           nameContents = row.name;
@@ -133,7 +133,7 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
     }
   ];
 
-  if (resource.toLowerCase() === "namespace" || !showNamespaceColumn) {
+  if (!showNamespaceColumn) {
     return columns;
   } else {
     return _.concat(nsColumn, columns);
@@ -198,16 +198,23 @@ export class MetricsTableBase extends BaseTable {
       return { text: ns, value: ns };
     });
 
+    let resource = this.props.resource.toLowerCase();
+
+    let showNsColumn = this.props.showNamespaceColumn;
+    if (resource === "authority" || resource === "namespace") {
+      showNsColumn = false;
+    }
+
     let columns = _.compact(columnDefinitions(
-      this.props.resource,
+      resource,
       namespaceFilterText,
       this.onFilterDropdownVisibleChange,
-      this.props.showNamespaceColumn,
+      showNsColumn,
       this.api.ConduitLink
     ));
 
     let locale = {
-      emptyText: `No ${this.props.resource}s detected.`
+      emptyText: `No ${resource}s detected.`
     };
 
     return (

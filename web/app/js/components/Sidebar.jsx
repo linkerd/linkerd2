@@ -180,6 +180,13 @@ class Sidebar extends React.Component {
                 : null
             }
 
+            <Menu.Item className="sidebar-menu-item" key="/authorities">
+              <ConduitLink to="/authorities">
+                <Icon type="cloud-o" />
+                <span>Authorities</span>
+              </ConduitLink>
+            </Menu.Item>
+
             <Menu.Item className="sidebar-menu-item" key="/docs">
               <Link to="https://conduit.io/docs/" target="_blank">
                 <Icon type="solution" />
