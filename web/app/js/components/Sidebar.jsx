@@ -180,6 +180,22 @@ class Sidebar extends React.Component {
                 : null
             }
 
+            <Menu.Item className="sidebar-menu-item" key="/authorities">
+              <ConduitLink to="/authorities">
+                <Icon type="cloud-o" />
+                <span>Authorities</span>
+              </ConduitLink>
+            </Menu.Item>
+
+            <Menu.SubMenu
+              className="sidebar-menu-item"
+              key="byresource"
+              title={<span className="sidebar-title"><Icon type="bars" />{this.state.collapsed ? "" : "asdf"}</span>}>
+              <Menu.Item><ConduitLink to="/deployments">Deployments</ConduitLink></Menu.Item>
+              <Menu.Item><ConduitLink to="/replicationcontrollers">Replication Controllers</ConduitLink></Menu.Item>
+              <Menu.Item><ConduitLink to="/pods">Pods</ConduitLink></Menu.Item>
+            </Menu.SubMenu>
+
             <Menu.Item className="sidebar-menu-item" key="/docs">
               <Link to="https://conduit.io/docs/" target="_blank">
                 <Icon type="solution" />
