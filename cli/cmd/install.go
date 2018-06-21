@@ -41,7 +41,6 @@ type installOptions struct {
 	webReplicas        uint
 	prometheusReplicas uint
 	controllerLogLevel string
-	enableTLS          bool
 	*proxyConfigOptions
 }
 
@@ -52,7 +51,6 @@ func newInstallOptions() *installOptions {
 		webReplicas:        1,
 		prometheusReplicas: 1,
 		controllerLogLevel: "info",
-		enableTLS:          false,
 		proxyConfigOptions: newProxyConfigOptions(),
 	}
 }
@@ -79,8 +77,6 @@ func newCmdInstall() *cobra.Command {
 	cmd.PersistentFlags().UintVar(&options.webReplicas, "web-replicas", options.webReplicas, "Replicas of the web server to deploy")
 	cmd.PersistentFlags().UintVar(&options.prometheusReplicas, "prometheus-replicas", options.prometheusReplicas, "Replicas of prometheus to deploy")
 	cmd.PersistentFlags().StringVar(&options.controllerLogLevel, "controller-log-level", options.controllerLogLevel, "Log level for the controller and web components")
-	cmd.PersistentFlags().BoolVar(&options.enableTLS, "enable-tls", options.enableTLS, "Enable TLS connections among pods in the service mesh")
-	cmd.PersistentFlags().MarkHidden("enable-tls")
 
 	return cmd
 }
@@ -105,7 +101,7 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		ControllerComponentLabel: k8s.ControllerComponentLabel,
 		CreatedByAnnotation:      k8s.CreatedByAnnotation,
 		ProxyAPIPort:             options.proxyAPIPort,
-		EnableTLS:                options.enableTLS,
+		EnableTLS:                options.enableTLS(),
 		CertificateBundleName:    k8s.CertificateBundleName,
 	}, nil
 }
@@ -136,7 +132,6 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 }
 
 var alphaNumDash = regexp.MustCompile("^[a-zA-Z0-9-]+$")
-var alphaNumDashDot = regexp.MustCompile("^[\\.a-zA-Z0-9-]+$")
 var alphaNumDashDotSlash = regexp.MustCompile("^[\\./a-zA-Z0-9-]+$")
 
 func validate(options *installOptions) error {
@@ -145,17 +140,11 @@ func validate(options *installOptions) error {
 	if !alphaNumDash.MatchString(controlPlaneNamespace) {
 		return fmt.Errorf("%s is not a valid namespace", controlPlaneNamespace)
 	}
-	if !alphaNumDashDot.MatchString(options.conduitVersion) {
-		return fmt.Errorf("%s is not a valid version", options.conduitVersion)
-	}
 	if !alphaNumDashDotSlash.MatchString(options.dockerRegistry) {
 		return fmt.Errorf("%s is not a valid Docker registry", options.dockerRegistry)
-	}
-	if options.imagePullPolicy != "Always" && options.imagePullPolicy != "IfNotPresent" && options.imagePullPolicy != "Never" {
-		return fmt.Errorf("--image-pull-policy must be one of: Always, IfNotPresent, Never")
 	}
 	if _, err := log.ParseLevel(options.controllerLogLevel); err != nil {
 		return fmt.Errorf("--controller-log-level must be one of: panic, fatal, error, warn, info, debug")
 	}
-	return nil
+	return options.validate()
 }
