@@ -96,14 +96,9 @@ pub struct Metadata {
     dst_labels: Option<DstLabels>,
 
     /// How to verify TLS for the endpoint.
-    tls: Conditional<TlsMetadata, tls::ReasonForNoIdentity>,
+    tls_identity: Conditional<tls::Identity, tls::ReasonForNoIdentity>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-struct TlsMetadata {
-    identity: tls::Identity,
-    client_cfg_version: usize,
-}
 
 #[derive(Debug, Clone)]
 enum Update {
@@ -250,7 +245,7 @@ impl Metadata {
         Metadata {
             dst_labels: None,
             // If we have no metadata on an endpoint, assume it does not support TLS.
-            tls:
+            tls_identity:
                 Conditional::None(tls::ReasonForNoIdentity::NotProvidedByServiceDiscovery),
         }
     }
@@ -258,16 +253,10 @@ impl Metadata {
     pub fn new(
         dst_labels: Option<DstLabels>,
         tls_identity: Conditional<tls::Identity, tls::ReasonForNoIdentity>,
-        tls_config_version: usize,
     ) -> Self {
-        let tls = tls_identity
-            .map(|identity| TlsMetadata {
-                identity,
-                client_cfg_version: tls_config_version,
-            });
         Metadata {
             dst_labels,
-            tls
+            tls_identity,
         }
     }
 
@@ -277,17 +266,6 @@ impl Metadata {
     }
 
     pub fn tls_identity(&self) -> Conditional<&tls::Identity, tls::ReasonForNoIdentity> {
-        self.tls.as_ref().map(|tls| &tls.identity)
-    }
-
-    pub fn with_tls_config_version(self, client_cfg_version: usize) -> Self {
-        Self {
-            dst_labels: self.dst_labels,
-            tls: self.tls
-                .map(|old| TlsMetadata {
-                    identity: old.identity,
-                    client_cfg_version,
-                })
-        }
+        self.tls_identity.as_ref()
     }
 }

@@ -77,4 +77,11 @@ where
         }
     }
 
+    pub fn is_some(&self) -> bool {
+        match self {
+            Conditional::Some(_) => true,
+            Conditional::None(_) => false,
+        }
+    }
+
 }

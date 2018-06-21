@@ -72,7 +72,6 @@ struct DestinationSet<T: HttpService<ResponseBody = RecvBody>> {
     query: Option<DestinationServiceQuery<T>>,
     dns_query: Option<IpAddrListFuture>,
     responders: Vec<Responder>,
-    tls_config_version: usize,
 }
 
 
@@ -225,7 +224,6 @@ where
                                 query,
                                 dns_query: None,
                                 responders: vec![resolve.responder],
-                                tls_config_version: self.tls_config_version,
                             };
                             // If the authority is one for which the Destination service is never
                             // relevant (e.g. an absolute name that doesn't end in ".svc.$zone." in
@@ -330,7 +328,7 @@ where
         if let Ok(Async::Ready(_)) = self.client_tls.poll() {
             self.tls_config_version += 1;
             for (auth, set) in &mut self.destinations {
-                set.set_tls_config_version(auth, self.tls_config_version);
+                set.invalidate_tls_clients(auth);
             }
         }
     }
@@ -396,7 +394,6 @@ where
         tls_controller_namespace: Option<&str>,
     ) -> (DestinationServiceQuery<T>, Exists<()>) {
         let mut exists = Exists::Unknown;
-        let tls_config_version = self.tls_config_version;
         loop {
             match rx.poll() {
                 Ok(Async::Ready(Some(update))) => match update.update {
@@ -406,12 +403,7 @@ where
                             .addrs
                             .into_iter()
                             .filter_map(|pb|
-                                pb_to_addr_meta(
-                                    pb,
-                                    &set_labels,
-                                    tls_controller_namespace,
-                                    tls_config_version,
-                                )
+                                pb_to_addr_meta(pb, &set_labels, tls_controller_namespace)
                             );
                         self.add(auth, addrs)
                     },
@@ -511,33 +503,35 @@ where
 }
 
 impl<T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
-    fn set_tls_config_version(
+
+    /// Invalidate any endpoints in this `DestinationSet` which have TLS
+    /// identity metadata, causing the load balancer to rebind the client
+    /// stacks for those endpoints.
+    ///
+    /// This is called when the TLS client configuration changes.
+    fn invalidate_tls_clients(
         &mut self,
         authority_for_logging: &DnsNameAndPort,
-        version: usize
     ) {
-        self.tls_config_version = version;
-        let cache = match self.addrs.take() {
-            Exists::Yes(mut cache) => Some(cache),
-            Exists::Unknown | Exists::No => None,
-        };
-        if let Some(mut cache) = cache {
-            let updated = (&cache).into_iter()
-                .map(|(k, v)| {
-                    let v = v.clone().with_tls_config_version(version);
-                    (*k, v)
-                })
-                .collect::<Vec<_>>();
-            cache.update_union(updated.into_iter(), &mut |change| {
-                Self::on_change(
-                    &mut self.responders,
-                    authority_for_logging,
-                    change
-                )
-            });
-            self.addrs = Exists::Yes(cache);
-        };
-
+        trace!("invalidate_tls_clients: {:?}", authority_for_logging);
+        if let Exists::Yes(ref cache) = self.addrs {
+            for (&key, ref metadata) in cache {
+                if metadata.tls_identity().is_some() {
+                    trace!(
+                        "invalidate_tls_client: authority={:?}; endpoint={:?}",
+                        authority_for_logging, key
+                    );
+                    Self::on_change(
+                        &mut self.responders,
+                        authority_for_logging,
+                        CacheChange::Modification {
+                            key,
+                            new_value: metadata,
+                        },
+                    );
+                }
+            }
+        }
     }
 
     fn reset_on_next_modification(&mut self) {
@@ -630,7 +624,6 @@ fn pb_to_addr_meta(
     pb: WeightedAddr,
     set_labels: &HashMap<String, String>,
     tls_controller_namespace: Option<&str>,
-    tls_config_version: usize,
 ) -> Option<(SocketAddr, Metadata)> {
     let addr = pb.addr.and_then(pb_to_sock_addr)?;
 
@@ -659,7 +652,6 @@ fn pb_to_addr_meta(
     let meta = Metadata::new(
         DstLabels::new(labels.into_iter()),
         tls_identity,
-        tls_config_version,
     );
     Some((addr, meta))
 }
