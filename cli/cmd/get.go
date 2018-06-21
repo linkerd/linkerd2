@@ -29,7 +29,7 @@ Only pod resources (aka pods, po) are supported.`,
 			}
 
 			friendlyName := args[0]
-			resourceType, err := k8s.CanonicalKubernetesNameFromFriendlyName(friendlyName)
+			resourceType, err := k8s.CanonicalResourceNameFromFriendlyName(friendlyName)
 
 			if err != nil || resourceType != k8s.Pods {
 				return fmt.Errorf("invalid resource type %s, only %s are allowed as resource types", friendlyName, k8s.Pods)

@@ -74,9 +74,10 @@ func getConfig(fpath string) (*rest.Config, error) {
 		ClientConfig()
 }
 
-// CanonicalKubernetesNameFromFriendlyName returns a canonical name from common shorthands used in command line tools.
+// CanonicalResourceNameFromFriendlyName returns a canonical name from common shorthands used in command line tools.
 // This works based on https://github.com/kubernetes/kubernetes/blob/63ffb1995b292be0a1e9ebde6216b83fc79dd988/pkg/kubectl/kubectl.go#L39
-func CanonicalKubernetesNameFromFriendlyName(friendlyName string) (string, error) {
+// This also works for non-k8s resources, e.g. authorities
+func CanonicalResourceNameFromFriendlyName(friendlyName string) (string, error) {
 	switch friendlyName {
 	case "deploy", "deployment", "deployments":
 		return Deployments, nil
@@ -88,6 +89,8 @@ func CanonicalKubernetesNameFromFriendlyName(friendlyName string) (string, error
 		return ReplicationControllers, nil
 	case "svc", "service", "services":
 		return Services, nil
+	case "au", "authority", "authorities":
+		return Authority, nil
 	case "all":
 		return All, nil
 	}
@@ -96,8 +99,8 @@ func CanonicalKubernetesNameFromFriendlyName(friendlyName string) (string, error
 }
 
 // Return a the shortest name for a k8s canonical name.
-// Essentially the reverse of CanonicalKubernetesNameFromFriendlyName
-func ShortNameFromCanonicalKubernetesName(canonicalName string) string {
+// Essentially the reverse of CanonicalResourceNameFromFriendlyName
+func ShortNameFromCanonicalResourceName(canonicalName string) string {
 	switch canonicalName {
 	case Deployments:
 		return "deploy"
@@ -109,6 +112,8 @@ func ShortNameFromCanonicalKubernetesName(canonicalName string) string {
 		return "rc"
 	case Services:
 		return "svc"
+	case Authority:
+		return "au"
 	default:
 		return ""
 	}
