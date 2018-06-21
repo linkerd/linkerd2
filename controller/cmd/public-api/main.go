@@ -12,7 +12,7 @@ import (
 	"github.com/runconduit/conduit/controller/api/public"
 	"github.com/runconduit/conduit/controller/k8s"
 	"github.com/runconduit/conduit/controller/tap"
-	"github.com/runconduit/conduit/pkg/prometheus"
+	"github.com/runconduit/conduit/pkg/admin"
 	"github.com/runconduit/conduit/pkg/version"
 	log "github.com/sirupsen/logrus"
 )
@@ -75,19 +75,16 @@ func main() {
 		strings.Split(*ignoredNamespaces, ","),
 	)
 
-	go func() {
-		err := k8sAPI.Sync()
-		if err != nil {
-			log.Fatal(err.Error())
-		}
-	}()
+	ready := make(chan struct{})
+
+	go k8sAPI.Sync(ready)
 
 	go func() {
 		log.Infof("starting HTTP server on %+v", *addr)
 		server.ListenAndServe()
 	}()
 
-	go prometheus.NewMetricsServer(*metricsAddr)
+	go admin.StartServer(*metricsAddr, ready)
 
 	<-stop
 

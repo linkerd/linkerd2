@@ -84,8 +84,7 @@ func TestInstall(t *testing.T) {
 	}
 
 	// Tests Pods and Deployments
-	// The Grafana readiness check can take 1+ min; hence the high timeout here
-	err = TestHelper.RetryFor(2*time.Minute, func() error {
+	err = TestHelper.RetryFor(1*time.Minute, func() error {
 		for deploy, replicas := range conduitDeployReplicas {
 			if err := TestHelper.CheckPods(TestHelper.GetConduitNamespace(), deploy, replicas); err != nil {
 				return fmt.Errorf("Error validating pods for deploy [%s]:\n%s", deploy, err)

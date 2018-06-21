@@ -152,6 +152,16 @@ spec:
         - "-controller-namespace={{.Namespace}}"
         - "-log-level={{.ControllerLogLevel}}"
         - "-logtostderr=true"
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9995
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9995
+          failureThreshold: 7
       - name: destination
         ports:
         - name: grpc
@@ -165,6 +175,16 @@ spec:
         - "-enable-tls={{.EnableTLS}}"
         - "-log-level={{.ControllerLogLevel}}"
         - "-logtostderr=true"
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9999
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9999
+          failureThreshold: 7
       - name: proxy-api
         ports:
         - name: grpc
@@ -178,6 +198,16 @@ spec:
         - "-addr=:{{.ProxyAPIPort}}"
         - "-log-level={{.ControllerLogLevel}}"
         - "-logtostderr=true"
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9996
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9996
+          failureThreshold: 7
       - name: tap
         ports:
         - name: grpc
@@ -190,6 +220,16 @@ spec:
         - "tap"
         - "-log-level={{.ControllerLogLevel}}"
         - "-logtostderr=true"
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9998
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9998
+          failureThreshold: 7
 
 ### Web ###
 ---
@@ -249,6 +289,16 @@ spec:
         - "-uuid={{.UUID}}"
         - "-controller-namespace={{.Namespace}}"
         - "-log-level={{.ControllerLogLevel}}"
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9994
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9994
+          failureThreshold: 7
 
 ### Prometheus ###
 ---
@@ -502,7 +552,7 @@ spec:
           httpGet:
             path: /api/health
             port: 3000
-          initialDelaySeconds: 60
+          initialDelaySeconds: 30
           timeoutSeconds: 30
           failureThreshold: 10
           periodSeconds: 10

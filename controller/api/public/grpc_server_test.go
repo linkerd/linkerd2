@@ -161,10 +161,7 @@ spec:
 				[]string{},
 			)
 
-			err = k8sAPI.Sync()
-			if err != nil {
-				t.Fatalf("k8sAPI.Sync() returned an error: %s", err)
-			}
+			k8sAPI.Sync(nil)
 
 			rsp, err := fakeGrpcServer.ListPods(context.TODO(), &pb.Empty{})
 			if err != exp.err {
