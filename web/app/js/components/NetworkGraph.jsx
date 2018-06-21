@@ -50,6 +50,7 @@ class NetworkGraph extends React.Component {
       urlsForResource: PropTypes.func.isRequired,
     }).isRequired,
     deployments: PropTypes.arrayOf(PropTypes.object),
+    namespace: PropTypes.string.isRequired,
   }
 
   constructor(props) {
@@ -95,7 +96,7 @@ class NetworkGraph extends React.Component {
 
     let deployments = _.sortBy(_.map(this.props.deployments, 'name'));
     let urls = _.map(this.props.deployments, d => {
-      return this.api.fetchMetrics(this.api.urlsForResource("deployment", "") + "&to_name=" + d.name);
+      return this.api.fetchMetrics(this.api.urlsForResource("deployment", this.props.namespace) + "&to_name=" + d.name);
     });
 
     this.api.setCurrentRequests(urls);
@@ -213,24 +214,24 @@ class NetworkGraph extends React.Component {
       .links(this.state.links);
   }
 
-  dragstarted(d) {
+  dragstarted = d => {
     if (!d3.event.active) {simulation.alphaTarget(0.3).restart();}
     d.fx = d.x;
     d.fy = d.y;
   }
 
-  dragged(d) {
+  dragged = d => {
     d.fx = d3.event.x;
     d.fy = d3.event.y;
   }
 
-  dragended(d) {
+  dragended = d => {
     if (!d3.event.active) {simulation.alphaTarget(0);}
     d.fx = null;
     d.fy = null;
   }
 
-  handleApiError(e) {
+  handleApiError = e => {
     if (e.isCanceled) {
       return;
     }
