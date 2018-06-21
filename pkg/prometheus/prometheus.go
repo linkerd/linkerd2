@@ -6,7 +6,6 @@ import (
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 )
 
@@ -71,10 +70,4 @@ func WithTelemetry(handler http.Handler) http.HandlerFunc {
 	return promhttp.InstrumentHandlerDuration(duration,
 		promhttp.InstrumentHandlerResponseSize(responseSize,
 			promhttp.InstrumentHandlerCounter(counter, handler)))
-}
-
-func NewMetricsServer(metricsAddr string) {
-	log.Infof("serving scrapable metrics on %s", metricsAddr)
-	http.Handle("/metrics", promhttp.Handler())
-	http.ListenAndServe(metricsAddr, nil)
 }

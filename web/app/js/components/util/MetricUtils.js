@@ -117,7 +117,8 @@ const processStatTable = table => {
       successRate: getSuccessRate(row),
       latency: getLatency(row),
       tlsRequestPercent: getTlsRequestPercentage(row),
-      added: row.meshedPodCount === row.runningPodCount
+      added: row.meshedPodCount === row.runningPodCount,
+      errors: row.errorsByPod
     };
   })
     .compact()
@@ -129,6 +130,9 @@ export const processSingleResourceRollup = rawMetrics => {
   let result = processMultiResourceRollup(rawMetrics);
   if (_.size(result) > 1) {
     console.error("Multi metric returned; expected single metric.");
+  }
+  if (_.isEmpty(result)) {
+    return [];
   }
   return _.values(result)[0];
 };

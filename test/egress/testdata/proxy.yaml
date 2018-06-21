@@ -33,7 +33,6 @@ kind: Service
 metadata:
   name: egress-test-https-post-svc
 spec:
-  type: LoadBalancer
   selector:
     app: egress-test-https-post
   ports:
@@ -74,7 +73,6 @@ kind: Service
 metadata:
   name: egress-test-http-post-svc
 spec:
-  type: LoadBalancer
   selector:
     app: egress-test-http-post
   ports:
@@ -116,7 +114,6 @@ kind: Service
 metadata:
   name: egress-test-https-get-svc
 spec:
-  type: LoadBalancer
   selector:
     app: egress-test-https-get
   ports:
@@ -157,7 +154,6 @@ kind: Service
 metadata:
   name: egress-test-http-get-svc
 spec:
-  type: LoadBalancer
   selector:
     app: egress-test-http-get
   ports:
@@ -199,7 +195,6 @@ kind: Service
 metadata:
   name: egress-test-not-www-get-svc
 spec:
-  type: LoadBalancer
   selector:
     app: egress-test-not-www-get
   ports:

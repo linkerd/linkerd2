@@ -2,7 +2,6 @@ package k8s
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -96,7 +95,7 @@ func NewAPI(k8sClient kubernetes.Interface, resources ...ApiResource) *API {
 // Sync waits for all informers to be synced.
 // For servers, call this asynchronously.
 // For testing, call this synchronously.
-func (api *API) Sync() error {
+func (api *API) Sync(readyCh chan<- struct{}) {
 	api.sharedInformers.Start(nil)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -104,11 +103,13 @@ func (api *API) Sync() error {
 
 	log.Infof("waiting for caches to sync")
 	if !cache.WaitForCacheSync(ctx.Done(), api.syncChecks...) {
-		return errors.New("timed out waiting for caches to sync")
+		log.Fatal("failed to sync caches")
 	}
 	log.Infof("caches synced")
 
-	return nil
+	if readyCh != nil {
+		close(readyCh)
+	}
 }
 
 func (api *API) NS() coreinformers.NamespaceInformer {

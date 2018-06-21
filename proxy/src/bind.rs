@@ -16,6 +16,9 @@ use ctx;
 use telemetry::{self, sensor};
 use transparency::{self, HttpBody, h1};
 use transport;
+use tls;
+use ctx::transport::TlsStatus;
+use conditional::Conditional;
 
 /// Binds a `Service` from a `SocketAddr`.
 ///
@@ -205,15 +208,32 @@ where
     fn bind_stack(&self, ep: &Endpoint, protocol: &Protocol) -> Stack<B> {
         debug!("bind_stack endpoint={:?}, protocol={:?}", ep, protocol);
         let addr = ep.address();
+
+        // Like `tls::current_connection_config()` with optional identity.
+        let tls = match ep.tls_identity() {
+            Conditional::Some(identity) => {
+                match *self.ctx.tls_client_config_watch().borrow() {
+                    Some(ref config) =>
+                        Conditional::Some(tls::ConnectionConfig {
+                            identity: identity.clone(),
+                            config: config.clone()
+                        }),
+                    None => Conditional::None(tls::ReasonForNoTls::NoConfig),
+                }
+            },
+            Conditional::None(why_no_identity) => Conditional::None(why_no_identity.into()),
+        };
+
         let client_ctx = ctx::transport::Client::new(
             &self.ctx,
             &addr,
             ep.metadata().clone(),
+            TlsStatus::from(&tls),
         );
 
         // Map a socket address to a connection.
         let connect = self.sensors.connect(
-            transport::Connect::new(addr, ep.tls_identity().cloned()),
+            transport::Connect::new(addr, tls),
             &client_ctx,
         );
 
@@ -263,7 +283,9 @@ where
 
 
 impl<C, B> Bind<C, B> {
-    pub fn with_protocol(self, protocol: Protocol) -> BindProtocol<C, B> {
+    pub fn with_protocol(self, protocol: Protocol)
+        -> BindProtocol<C, B>
+    {
         BindProtocol {
             bind: self,
             protocol,

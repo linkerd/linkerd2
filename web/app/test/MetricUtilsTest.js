@@ -26,7 +26,8 @@ describe('MetricUtils', () => {
             P95: 2,
             P99: 7
           },
-          added: true
+          added: true,
+          errors: {}
         }
       ];
       expect(result).to.have.length(1);

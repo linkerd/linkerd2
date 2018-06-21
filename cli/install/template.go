@@ -15,7 +15,7 @@ metadata:
   name: conduit-controller
   namespace: {{.Namespace}}
 
-### RBAC ###
+### Controller RBAC ###
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -34,7 +34,6 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: conduit-controller
-  namespace: {{.Namespace}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -52,7 +51,7 @@ metadata:
   name: conduit-prometheus
   namespace: {{.Namespace}}
 
-### RBAC ###
+### Prometheus RBAC ###
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -60,15 +59,14 @@ metadata:
   name: conduit-prometheus
 rules:
 - apiGroups: [""]
-  resources: ["nodes", "pods"]
-  verbs: ["list", "watch"]
+  resources: ["nodes", "nodes/proxy", "pods"]
+  verbs: ["get", "list", "watch"]
 
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: conduit-prometheus
-  namespace: {{.Namespace}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -152,6 +150,16 @@ spec:
         - "-controller-namespace={{.Namespace}}"
         - "-log-level={{.ControllerLogLevel}}"
         - "-logtostderr=true"
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9995
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9995
+          failureThreshold: 7
       - name: destination
         ports:
         - name: grpc
@@ -165,6 +173,16 @@ spec:
         - "-enable-tls={{.EnableTLS}}"
         - "-log-level={{.ControllerLogLevel}}"
         - "-logtostderr=true"
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9999
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9999
+          failureThreshold: 7
       - name: proxy-api
         ports:
         - name: grpc
@@ -178,6 +196,16 @@ spec:
         - "-addr=:{{.ProxyAPIPort}}"
         - "-log-level={{.ControllerLogLevel}}"
         - "-logtostderr=true"
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9996
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9996
+          failureThreshold: 7
       - name: tap
         ports:
         - name: grpc
@@ -190,6 +218,16 @@ spec:
         - "tap"
         - "-log-level={{.ControllerLogLevel}}"
         - "-logtostderr=true"
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9998
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9998
+          failureThreshold: 7
 
 ### Web ###
 ---
@@ -249,6 +287,16 @@ spec:
         - "-uuid={{.UUID}}"
         - "-controller-namespace={{.Namespace}}"
         - "-log-level={{.ControllerLogLevel}}"
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9994
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9994
+          failureThreshold: 7
 
 ### Prometheus ###
 ---
@@ -502,7 +550,7 @@ spec:
           httpGet:
             path: /api/health
             port: 3000
-          initialDelaySeconds: 60
+          initialDelaySeconds: 30
           timeoutSeconds: 30
           failureThreshold: 10
           periodSeconds: 10
@@ -563,4 +611,90 @@ data:
       options:
         path: /var/lib/grafana/dashboards
         homeDashboardId: conduit-top-line
+`
+
+const TlsTemplate = `
+### Service Account CA ###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: conduit-ca
+  namespace: {{.Namespace}}
+
+### CA RBAC ###
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: conduit-ca
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["create"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  resourceNames: [{{.CertificateBundleName}}]
+  verbs: ["update"]
+- apiGroups: [""]
+  resources: ["pods", "configmaps"]
+  verbs: ["list", "get", "watch"]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: conduit-ca
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: conduit-ca
+subjects:
+- kind: ServiceAccount
+  name: conduit-ca
+  namespace: {{.Namespace}}
+
+### CA Distributor ###
+---
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: ca-bundle-distributor
+  namespace: {{.Namespace}}
+  labels:
+    {{.ControllerComponentLabel}}: ca-bundle-distributor
+  annotations:
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
+spec:
+  replicas: {{.ControllerReplicas}}
+  template:
+    metadata:
+      labels:
+        {{.ControllerComponentLabel}}: ca-bundle-distributor
+      annotations:
+        {{.CreatedByAnnotation}}: {{.CliVersion}}
+    spec:
+      serviceAccount: conduit-ca
+      containers:
+      - name: ca-distributor
+        ports:
+        - name: admin-http
+          containerPort: 9997
+        image: {{.ControllerImage}}
+        imagePullPolicy: {{.ImagePullPolicy}}
+        args:
+        - "ca-distributor"
+        - "-controller-namespace={{.Namespace}}"
+        - "-log-level={{.ControllerLogLevel}}"
+        - "-logtostderr=true"
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9997
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9997
+          failureThreshold: 7
 `

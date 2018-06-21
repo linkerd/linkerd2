@@ -12,6 +12,7 @@ use trust_dns_resolver::config::ResolverOpts;
 
 use transport::{Host, HostAndPort, HostAndPortError, tls};
 use convert::TryFrom;
+use conditional::Conditional;
 
 // TODO:
 //
@@ -53,13 +54,20 @@ pub struct Config {
 
     pub outbound_router_max_idle_age: Duration,
 
-    pub tls_settings: Option<tls::CommonSettings>,
+    pub tls_settings: Conditional<tls::CommonSettings, tls::ReasonForNoTls>,
 
     /// The path to "/etc/resolv.conf"
     pub resolv_conf_path: PathBuf,
 
     /// Where to talk to the control plane.
-    pub control_host_and_port: HostAndPort,
+    ///
+    /// When set, DNS is only after the Destination service says that there is
+    /// no service with the given name. When not set, the Destination service
+    /// is completely bypassed for service discovery and DNS is always used.
+    ///
+    /// This is optional to allow the proxy to work without the controller for
+    /// experimental & testing purposes.
+    pub control_host_and_port: Option<HostAndPort>,
 
     /// Event queue capacity.
     pub event_buffer_capacity: usize,
@@ -181,6 +189,7 @@ pub const ENV_TLS_CERT: &str = "CONDUIT_PROXY_TLS_CERT";
 pub const ENV_TLS_PRIVATE_KEY: &str = "CONDUIT_PROXY_TLS_PRIVATE_KEY";
 
 pub const ENV_CONTROLLER_NAMESPACE: &str = "CONDUIT_PROXY_CONTROLLER_NAMESPACE";
+pub const ENV_POD_NAME: &str = "CONDUIT_PROXY_POD_NAME";
 pub const ENV_POD_NAMESPACE: &str = "CONDUIT_PROXY_POD_NAMESPACE";
 
 pub const ENV_CONTROL_URL: &str = "CONDUIT_PROXY_CONTROL_URL";
@@ -268,6 +277,7 @@ impl<'a> TryFrom<&'a Strings> for Config {
         let metrics_retain_idle = parse(strings, ENV_METRICS_RETAIN_IDLE, parse_duration);
         let dns_min_ttl = parse(strings, ENV_DNS_MIN_TTL, parse_duration);
         let dns_max_ttl = parse(strings, ENV_DNS_MAX_TTL, parse_duration);
+        let pod_name = strings.get(ENV_POD_NAME);
         let pod_namespace = strings.get(ENV_POD_NAMESPACE).and_then(|maybe_value| {
             // There cannot be a default pod namespace, and the pod namespace is required.
             maybe_value.ok_or_else(|| {
@@ -279,49 +289,52 @@ impl<'a> TryFrom<&'a Strings> for Config {
 
         // There is no default controller URL because a default would make it
         // too easy to connect to the wrong controller, which would be dangerous.
-        let control_host_and_port = match parse(strings, ENV_CONTROL_URL, parse_url) {
-            Ok(Some(x)) => Ok(x),
-            Ok(None) => {
-                error!("{} is not set", ENV_CONTROL_URL);
-                Err(Error::InvalidEnvVar)
-            },
-            Err(e) => Err(e),
+        let control_host_and_port = parse(strings, ENV_CONTROL_URL, parse_url);
+
+        let namespaces = Namespaces {
+            pod: pod_namespace?,
+            tls_controller: controller_namespace?,
         };
 
-        let tls_settings = match (tls_trust_anchors?, tls_end_entity_cert?, tls_private_key?) {
-            (Some(trust_anchors), Some(end_entity_cert), Some(private_key)) =>
-                Ok(Some(tls::CommonSettings {
+        let tls_settings = match (tls_trust_anchors?,
+                                  tls_end_entity_cert?,
+                                  tls_private_key?,
+                                  pod_name?.as_ref())
+        {
+            (Some(trust_anchors),
+             Some(end_entity_cert),
+             Some(private_key),
+             Some(pod_name)) => {
+                let service_identity = tls::Identity::try_from_pod_name(&namespaces, pod_name)
+                    .map_err(|_| Error::InvalidEnvVar)?; // Already logged.
+                Ok(Conditional::Some(tls::CommonSettings {
                     trust_anchors,
                     end_entity_cert,
                     private_key,
-                })),
-            (_, None, None) => Ok(None), // No TLS in server role.
-            (trust_anchors, end_entity_cert, private_key) => {
+                    service_identity,
+                }))
+            },
+            (None, None, None, _) => Ok(Conditional::None(tls::ReasonForNoTls::Disabled)),
+            (trust_anchors, end_entity_cert, private_key, pod_name) => {
                 if trust_anchors.is_none() {
                     error!("{} is not set; it is required when {} and {} are set.",
                            ENV_TLS_TRUST_ANCHORS, ENV_TLS_CERT, ENV_TLS_PRIVATE_KEY);
                 }
                 if end_entity_cert.is_none() {
                     error!("{} is not set; it is required when {} are set.",
-                           ENV_TLS_CERT, ENV_TLS_PRIVATE_KEY);
+                           ENV_TLS_CERT, ENV_TLS_TRUST_ANCHORS);
                 }
                 if private_key.is_none() {
                     error!("{} is not set; it is required when {} are set.",
-                           ENV_TLS_PRIVATE_KEY, ENV_TLS_CERT);
+                           ENV_TLS_PRIVATE_KEY, ENV_TLS_TRUST_ANCHORS);
+                }
+                if pod_name.is_none() {
+                    error!("{} is not set; it is required when {} are set.",
+                           ENV_POD_NAME, ENV_TLS_CERT);
                 }
                 Err(Error::InvalidEnvVar)
             },
         }?;
-
-        let tls_controller_namespace = match (&tls_settings, controller_namespace?) {
-            (Some(_), Some(ns)) => Some(ns),
-            (Some(_), None) => {
-                error!("{} is not set; it is required when {} are set.",
-                       ENV_CONTROLLER_NAMESPACE, ENV_TLS_TRUST_ANCHORS);
-                return Err(Error::InvalidEnvVar);
-            },
-            _ => None,
-        };
 
         Ok(Config {
             private_listener: Listener {
@@ -374,10 +387,7 @@ impl<'a> TryFrom<&'a Strings> for Config {
 
             bind_timeout: bind_timeout?.unwrap_or(DEFAULT_BIND_TIMEOUT),
 
-            namespaces: Namespaces {
-                pod: pod_namespace?,
-                tls_controller: tls_controller_namespace,
-            },
+            namespaces,
 
             dns_min_ttl: dns_min_ttl?,
 

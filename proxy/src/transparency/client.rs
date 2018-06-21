@@ -11,10 +11,11 @@ use tower_h2;
 use bind;
 use task::BoxExecutor;
 use telemetry::sensor::http::RequestBody;
-use super::glue::{BodyStream, HttpBody, HyperConnect};
+use super::glue::{BodyPayload, HttpBody, HyperConnect};
+use super::upgrade::Http11Upgrade;
 
 type HyperClient<C, B> =
-    hyper::Client<HyperConnect<C>, BodyStream<RequestBody<B>>>;
+    hyper::Client<HyperConnect<C>, BodyPayload<RequestBody<B>>>;
 
 /// A `NewService` that can speak either HTTP/1 or HTTP/2.
 pub struct Client<C, E, B>
@@ -209,12 +210,16 @@ where
     }
 
     fn call(&mut self, req: Self::Request) -> Self::Future {
-        debug!("ClientService::call method={} uri={} headers={:?} ext={:?}",
-            req.method(), req.uri(), req.headers(), req.extensions());
+        debug!("client request: method={} uri={} headers={:?}",
+            req.method(), req.uri(), req.headers());
         match self.inner {
             ClientServiceInner::Http1(ref h1) => {
-                let mut req = hyper::Request::from(req.map(BodyStream::new));
-                ClientServiceFuture::Http1(h1.request(req))
+                let mut req = req.map(BodyPayload::new);
+                let upgrade = req.extensions_mut().remove::<Http11Upgrade>();
+                ClientServiceFuture::Http1 {
+                    future: h1.request(req),
+                    upgrade,
+                }
             },
             ClientServiceInner::Http2(ref mut h2) => {
                 ClientServiceFuture::Http2(h2.call(req))
@@ -224,7 +229,10 @@ where
 }
 
 pub enum ClientServiceFuture {
-    Http1(hyper::client::ResponseFuture),
+    Http1 {
+        future: hyper::client::ResponseFuture,
+        upgrade: Option<Http11Upgrade>,
+    },
     Http2(tower_h2::client::ResponseFuture),
 }
 
@@ -233,12 +241,14 @@ impl Future for ClientServiceFuture {
     type Error = tower_h2::client::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        match *self {
-            ClientServiceFuture::Http1(ref mut f) => {
-                match f.poll() {
+        match self {
+            ClientServiceFuture::Http1 { future, upgrade } => {
+                match future.poll() {
                     Ok(Async::Ready(res)) => {
-                        let res = http::Response::from(res);
-                        let res = res.map(HttpBody::Http1);
+                        let res = res.map(move |b| HttpBody::Http1 {
+                            body: Some(b),
+                            upgrade: upgrade.take(),
+                        });
                         Ok(Async::Ready(res))
                     },
                     Ok(Async::NotReady) => Ok(Async::NotReady),
@@ -248,7 +258,7 @@ impl Future for ClientServiceFuture {
                     }
                 }
             },
-            ClientServiceFuture::Http2(ref mut f) => {
+            ClientServiceFuture::Http2(f) => {
                 let res = try_ready!(f.poll());
                 let res = res.map(HttpBody::Http2);
                 Ok(Async::Ready(res))

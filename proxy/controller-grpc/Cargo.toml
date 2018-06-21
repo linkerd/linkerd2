@@ -12,9 +12,9 @@ bytes = "0.4"
 futures = "0.1"
 h2 = "0.1"
 http = "0.1"
-prost = "0.3.0"
-prost-derive = "0.3.0"
-prost-types = "0.3.0"
+prost = "0.4.0"
+prost-derive = "0.4.0"
+prost-types = "0.4.0"
 
 tower-grpc = { git = "https://github.com/tower-rs/tower-grpc" }
 tower-h2   = { git = "https://github.com/tower-rs/tower-h2" }

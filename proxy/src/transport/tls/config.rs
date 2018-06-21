@@ -1,22 +1,24 @@
 use std::{
+    self,
     fs::File,
     io::{self, Cursor, Read},
     path::PathBuf,
     sync::Arc,
-    time::{Duration, Instant, SystemTime,},
+    time::Duration,
 };
 
 use super::{
     cert_resolver::CertResolver,
+    Identity,
 
     rustls,
     untrusted,
     webpki,
 };
-
-use futures::{future, Future, Stream};
+use conditional::Conditional;
+use futures::{future, stream, Future, Stream};
 use futures_watch::Watch;
-use tokio::timer::Interval;
+use ring::signature;
 
 /// Not-yet-validated settings that are used for both TLS clients and TLS
 /// servers.
@@ -40,18 +42,31 @@ pub struct CommonSettings {
 
     /// The private key in DER-encoded PKCS#8 form.
     pub private_key: PathBuf,
+
+    /// The identity we use to identify the service being proxied (as opposed
+    /// to the psuedo-service exposed on the proxy's control port).
+    pub service_identity: Identity,
 }
 
 /// Validated configuration common between TLS clients and TLS servers.
-pub struct CommonConfig {
+#[derive(Debug)]
+struct CommonConfig {
+    root_cert_store: rustls::RootCertStore,
     cert_resolver: Arc<CertResolver>,
 }
 
-/// Validated configuration for TLS clients.
-///
-/// TODO: Fill this in with the actual configuration.
-#[derive(Clone, Debug)]
-pub struct ClientConfig(Arc<()>);
+
+/// Validated configuration for TLS servers.
+#[derive(Clone)]
+pub struct ClientConfig(pub(super) Arc<rustls::ClientConfig>);
+
+/// XXX: `rustls::ClientConfig` doesn't implement `Debug` yet.
+impl std::fmt::Debug for ClientConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        f.debug_struct("ClientConfig")
+            .finish()
+    }
+}
 
 /// Validated configuration for TLS servers.
 #[derive(Clone)]
@@ -60,15 +75,71 @@ pub struct ServerConfig(pub(super) Arc<rustls::ServerConfig>);
 pub type ClientConfigWatch = Watch<Option<ClientConfig>>;
 pub type ServerConfigWatch = Watch<Option<ServerConfig>>;
 
+/// The configuration in effect for a client (`ClientConfig`) or server
+/// (`ServerConfig`) TLS connection.
+#[derive(Clone, Debug)]
+pub struct ConnectionConfig<C> where C: Clone {
+    pub identity: Identity,
+    pub config: C,
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum ReasonForNoTls {
+    /// TLS is disabled.
+    Disabled,
+
+    /// TLS was enabled but the configuration isn't available (yet).
+    NoConfig,
+
+    /// The endpoint's TLS identity is unknown. Without knowing its identity
+    /// we can't validate its certificate.
+    NoIdentity(ReasonForNoIdentity),
+
+    /// The connection is between the proxy and the service
+    InternalTraffic,
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum ReasonForNoIdentity {
+    /// The connection is a non-HTTP connection so we don't know anything
+    /// about the destination besides its address.
+    NotHttp,
+
+    /// The connection is for HTTP but the HTTP request doesn't have an
+    /// authority so we can't extract the identity from it.
+    NoAuthorityInHttpRequest,
+
+    /// The destination service didn't give us the identity, which is its way
+    /// of telling us that we shouldn't do TLS for this endpoint.
+    NotProvidedByServiceDiscovery,
+
+    /// We haven't implemented the mechanism to construct a TLS identity for
+    /// the controller yet.
+    NotImplementedForController,
+
+    /// We haven't implemented the mechanism to construct a TLs identity for
+    /// the tap psuedo-service yet.
+    NotImplementedForTap,
+
+    /// We haven't implemented the mechanism to construct a TLs identity for
+    /// the metrics psuedo-service yet.
+    NotImplementedForMetrics,
+}
+
+impl From<ReasonForNoIdentity> for ReasonForNoTls {
+    fn from(r: ReasonForNoIdentity) -> Self {
+        ReasonForNoTls::NoIdentity(r)
+    }
+}
+
+pub type ConditionalConnectionConfig<C> = Conditional<ConnectionConfig<C>, ReasonForNoTls>;
+
 #[derive(Debug)]
 pub enum Error {
     Io(PathBuf, io::Error),
     FailedToParseTrustAnchors(Option<webpki::Error>),
-    EndEntityCertIsNotValid(webpki::Error),
+    EndEntityCertIsNotValid(rustls::TLSError),
     InvalidPrivateKey,
-    TimeConversionFailed,
-    #[cfg(target_os = "linux")]
-    InotifyInit(io::Error),
 }
 
 impl CommonSettings {
@@ -88,146 +159,20 @@ impl CommonSettings {
     fn stream_changes(self, interval: Duration)
         -> impl Stream<Item = CommonConfig, Error = ()>
     {
-        // If we're on Linux, first atttempt to start an Inotify watch on the
-        // paths. If this fails, fall back to polling the filesystem.
-        #[cfg(target_os = "linux")]
-        let changes: Box<Stream<Item = (), Error = ()> + Send> =
-            match self.stream_changes_inotify() {
-                Ok(s) => Box::new(s),
-                Err(e) => {
-                    warn!(
-                        "inotify init error: {:?}, falling back to polling",
-                        e
-                    );
-                    Box::new(self.stream_changes_polling(interval))
-                },
-            };
-
-        // If we're not on Linux, we can't use inotify, so simply poll the fs.
-        // TODO: Use other FS events APIs (such as `kqueue`) as well, when
-        //       they're available.
-        #[cfg(not(target_os = "linux"))]
-        let changes = self.stream_changes_polling(interval);
-
-        changes.filter_map(move |_|
-            CommonConfig::load_from_disk(&self)
-                .map_err(|e| warn!("error reloading TLS config: {:?}, falling back", e))
-                .ok()
-        )
-
-    }
-
-    /// Stream changes by polling the filesystem.
-    ///
-    /// This will poll the filesystem for changes to the files at the paths
-    /// described by this `CommonSettings` every `interval`, and attempt to
-    /// load a new `CommonConfig` from the files again after each change.
-    ///
-    /// This is used on operating systems other than Linux, or on Linux if
-    /// our attempt to use `inotify` failed.
-    fn stream_changes_polling(&self, interval: Duration)
-        -> impl Stream<Item = (), Error = ()>
-    {
-        fn last_modified(path: &PathBuf) -> Option<SystemTime> {
-            // We have to canonicalize the path _every_ time we poll the fs,
-            // rather than once when we start watching, because if it's a
-            // symlink, the target may change. If that happened, and we
-            // continued watching the original canonical path, we wouldn't see
-            // any subsequent changes to the new symlink target.
-            path.canonicalize()
-                .and_then(|canonical| {
-                    trace!("last_modified: {:?} -> {:?}", path, canonical);
-                    canonical.symlink_metadata()
-                        .and_then(|meta| meta.modified())
-                })
-                .map_err(|e| if e.kind() != io::ErrorKind::NotFound {
-                    // Don't log if the files don't exist, since this
-                    // makes the logs *quite* noisy.
-                    warn!("error reading metadata for {:?}: {}", path, e)
-                })
-                .ok()
-        }
-
         let paths = self.paths().iter()
             .map(|&p| p.clone())
-            .collect::<Vec<PathBuf>>();
-
-        let mut max: Option<SystemTime> = None;
-
-        Interval::new(Instant::now(), interval)
-            .map_err(|e| error!("timer error: {:?}", e))
+            .collect::<Vec<_>>();
+        // Generate one "change" immediately before starting to watch
+        // the files, so that we'll try to load them now if they exist.
+        stream::once(Ok(()))
+            .chain(::fs_watch::stream_changes(paths, interval))
             .filter_map(move |_| {
-                for path in &paths  {
-                    let t = last_modified(path);
-                    if t > max {
-                        max = t;
-                        trace!("{:?} changed at {:?}", path, t);
-                        return Some(());
-                    }
-                }
-                None
+                CommonConfig::load_from_disk(&self)
+                    .map_err(|e| warn!("error reloading TLS config: {:?}, falling back", e))
+                    .ok()
             })
     }
 
-    #[cfg(target_os = "linux")]
-    fn stream_changes_inotify(&self)
-        -> Result<impl Stream<Item = (), Error = ()>, Error>
-    {
-        use std::{collections::HashSet, path::Path};
-        use inotify::{Inotify, WatchMask};
-
-        // Use a broad watch mask so that we will pick up any events that might
-        // indicate a change to the watched files.
-        //
-        // Such a broad mask may lead to reloading certs multiple times when k8s
-        // modifies a ConfigMap or Secret, which is a multi-step process that we
-        // see as a series CREATE, MOVED_TO, MOVED_FROM, and DELETE events.
-        // However, we want to catch single events that might occur when the
-        // files we're watching *don't* live in a k8s ConfigMap/Secret.
-        let mask = WatchMask::CREATE
-                 | WatchMask::MODIFY
-                 | WatchMask::DELETE
-                 | WatchMask::MOVE
-                 ;
-        let mut inotify = Inotify::init().map_err(Error::InotifyInit)?;
-
-        let paths = self.paths();
-        let paths = paths.into_iter()
-            .map(|path| {
-                // If the path to watch has a parent, watch that instead. This
-                // will allow us to pick up events to files in k8s ConfigMaps
-                // or Secrets (which we wouldn't detect if we watch the file
-                // itself, as they are double-symlinked).
-                //
-                // This may also result in some false positives (if a file we
-                // *don't* care about in the same dir changes, we'll still
-                // reload), but that's unlikely to be a problem.
-                let parent = path
-                    .parent()
-                    .map(Path::to_path_buf)
-                    .unwrap_or(path.to_path_buf());
-                trace!("will watch {:?} for {:?}", parent, path);
-                path
-            })
-            // Collect the paths into a `HashSet` eliminates any duplicates, to
-            // conserve the number of inotify watches we create.
-            .collect::<HashSet<_>>();
-
-        for path in paths {
-            inotify.add_watch(path, mask)
-                .map_err(|e| Error::Io(path.to_path_buf(), e))?;
-            trace!("inotify: watch {:?}", path);
-        }
-
-        let events = inotify.into_event_stream()
-            .map(|ev| {
-                trace!("inotify: event={:?}; path={:?};", ev.mask, ev.name);
-            })
-            .map_err(|e| error!("inotify watch error: {}", e));
-        trace!("started inotify watch");
-
-        Ok(events)
-    }
 }
 
 impl CommonConfig {
@@ -242,18 +187,24 @@ impl CommonConfig {
     /// trust anchors file. Since filesystem operations are not atomic, we
     /// need to check for this consistency.
     fn load_from_disk(settings: &CommonSettings) -> Result<Self, Error> {
-        let trust_anchor_certs = load_file_contents(&settings.trust_anchors)
-            .and_then(|file_contents|
-                rustls::internal::pemfile::certs(&mut Cursor::new(file_contents))
-                    .map_err(|()| Error::FailedToParseTrustAnchors(None)))?;
-        let mut trust_anchors = Vec::with_capacity(trust_anchor_certs.len());
-        for ta in &trust_anchor_certs {
-            let ta = webpki::trust_anchor_util::cert_der_as_trust_anchor(
-                untrusted::Input::from(ta.as_ref()))
-                .map_err(|e| Error::FailedToParseTrustAnchors(Some(e)))?;
-            trust_anchors.push(ta);
-        }
-        let trust_anchors = webpki::TLSServerTrustAnchors(&trust_anchors);
+        let root_cert_store = load_file_contents(&settings.trust_anchors)
+            .and_then(|file_contents| {
+                let mut root_cert_store = rustls::RootCertStore::empty();
+                let (added, skipped) = root_cert_store.add_pem_file(&mut Cursor::new(file_contents))
+                    .map_err(|err| {
+                        error!("error parsing trust anchors file: {:?}", err);
+                        Error::FailedToParseTrustAnchors(None)
+                    })?;
+                if skipped != 0 {
+                    warn!("skipped {} trust anchors in trust anchors file", skipped);
+                }
+                if added > 0 {
+                    Ok(root_cert_store)
+                } else {
+                    error!("no valid trust anchors in trust anchors file");
+                    Err(Error::FailedToParseTrustAnchors(None))
+                }
+            })?;
 
         let end_entity_cert = load_file_contents(&settings.end_entity_cert)?;
 
@@ -265,25 +216,60 @@ impl CommonConfig {
         let private_key = load_file_contents(&settings.private_key)?;
         let private_key = untrusted::Input::from(&private_key);
 
-        // `CertResolver::new` is responsible for the consistency check.
-        let cert_resolver = CertResolver::new(&trust_anchors, cert_chain, private_key)?;
+        // Ensure the certificate is valid for the services we terminate for
+        // TLS. This assumes that server cert validation does the same or
+        // more validation than client cert validation.
+        //
+        // XXX: Rustls currently only provides access to a
+        // `ServerCertVerifier` through
+        // `rustls::ClientConfig::get_verifier()`.
+        //
+        // XXX: Once `rustls::ServerCertVerified` is exposed in Rustls's
+        // safe API, remove the `map(|_| ())` below.
+        //
+        // TODO: Restrict accepted signatutre algorithms.
+        let certificate_was_validated =
+            rustls::ClientConfig::new().get_verifier().verify_server_cert(
+                    &root_cert_store,
+                    &cert_chain,
+                    settings.service_identity.as_dns_name_ref(),
+                    &[]) // No OCSP
+                .map(|_| ())
+                .map_err(Error::EndEntityCertIsNotValid)?;
+
+        // `CertResolver::new` is responsible for verifying that the
+        // private key is the right one for the certificate.
+        let cert_resolver = CertResolver::new(certificate_was_validated, cert_chain, private_key)?;
 
         Ok(Self {
+            root_cert_store,
             cert_resolver: Arc::new(cert_resolver),
         })
     }
 
 }
 
-pub fn watch_for_config_changes(settings: Option<&CommonSettings>)
-    -> (ClientConfigWatch, ServerConfigWatch, Box<Future<Item = (), Error = ()> + Send>)
+// A Future that, when polled, checks for config updates and publishes them.
+pub type PublishConfigs = Box<Future<Item = (), Error = ()> + Send>;
+
+/// Returns Client and Server config watches, and a task to drive updates.
+///
+/// The returned task Future is expected to never complete.
+///
+/// If there are no TLS settings, then empty watches are returned. In this case, the
+/// Future is never notified.
+///
+/// If all references are dropped to _either_ the client or server config watches, all
+/// updates will cease for both config watches.
+pub fn watch_for_config_changes(settings: Conditional<&CommonSettings, ReasonForNoTls>)
+    -> (ClientConfigWatch, ServerConfigWatch, PublishConfigs)
 {
-    let settings = if let Some(settings) = settings {
+    let settings = if let Conditional::Some(settings) = settings {
         settings.clone()
     } else {
         let (client_watch, _) = Watch::new(None);
         let (server_watch, _) = Watch::new(None);
-        let no_future = future::ok(());
+        let no_future = future::empty();
         return (client_watch, server_watch, Box::new(no_future));
     };
 
@@ -300,7 +286,7 @@ pub fn watch_for_config_changes(settings: Option<&CommonSettings>)
             (client_store, server_store),
             |(mut client_store, mut server_store), ref config| {
                 client_store
-                    .store(Some(ClientConfig(Arc::new(()))))
+                    .store(Some(ClientConfig::from(config)))
                     .map_err(|_| trace!("all client config watchers dropped"))?;
                 server_store
                     .store(Some(ServerConfig::from(config)))
@@ -308,8 +294,8 @@ pub fn watch_for_config_changes(settings: Option<&CommonSettings>)
                 Ok((client_store, server_store))
             })
         .then(|_| {
-            trace!("forwarding to server config watch finished.");
-            Ok(())
+            error!("forwarding to tls config watches finished.");
+            Err(())
         });
 
     // This function and `ServerConfig::no_tls` return `Box<Future<...>>`
@@ -319,21 +305,78 @@ pub fn watch_for_config_changes(settings: Option<&CommonSettings>)
     (client_watch, server_watch, Box::new(f))
 }
 
+impl ClientConfig {
+    fn from(common: &CommonConfig) -> Self {
+        let mut config = rustls::ClientConfig::new();
+        set_common_settings(&mut config.versions);
+
+        // XXX: Rustls's built-in verifiers don't let us tweak things as fully
+        // as we'd like (e.g. controlling the set of trusted signature
+        // algorithms), but they provide good enough defaults for now.
+        // TODO: lock down the verification further.
+        // TODO: Change Rustls's API to Avoid needing to clone `root_cert_store`.
+        config.root_store = common.root_cert_store.clone();
+
+        // Disable session resumption for the time-being until resumption is
+        // more tested.
+        config.enable_tickets = false;
+
+        // Enable client authentication if and only if we were configured for
+        // it.
+        config.client_auth_cert_resolver = common.cert_resolver.clone();
+
+        ClientConfig(Arc::new(config))
+    }
+
+    /// Some tests aren't set up to do TLS yet, but we require a
+    /// `ClientConfigWatch`. We can't use `#[cfg(test)]` here because the
+    /// benchmarks use this.
+    pub fn no_tls() -> ClientConfigWatch {
+        let (watch, _) = Watch::new(None);
+        watch
+    }
+}
+
 impl ServerConfig {
     fn from(common: &CommonConfig) -> Self {
-        let mut config = rustls::ServerConfig::new(Arc::new(rustls::NoClientAuth));
+        // Ask TLS clients for a certificate and accept any certificate issued
+        // by our trusted CA(s).
+        //
+        // Initially, also allow TLS clients that don't have a client
+        // certificate too, to minimize risk. TODO: Use
+        // `AllowAnyAuthenticatedClient` to require a valid certificate.
+        //
+        // XXX: Rustls's built-in verifiers don't let us tweak things as fully
+        // as we'd like (e.g. controlling the set of trusted signature
+        // algorithms), but they provide good enough defaults for now.
+        // TODO: lock down the verification further.
+        //
+        // TODO: Change Rustls's API to Avoid needing to clone `root_cert_store`.
+        let client_cert_verifier =
+            rustls::AllowAnyAnonymousOrAuthenticatedClient::new(common.root_cert_store.clone());
+
+        let mut config = rustls::ServerConfig::new(client_cert_verifier);
         set_common_settings(&mut config.versions);
         config.cert_resolver = common.cert_resolver.clone();
         ServerConfig(Arc::new(config))
     }
+}
 
-    pub fn no_tls()
-        -> (ServerConfigWatch, Box<Future<Item = (), Error = ()> + Send>)
-    {
-            let (watch, _) = Watch::new(None);
-            let no_future = future::ok(());
-
-            (watch, Box::new(no_future))
+pub fn current_connection_config<C>(watch: &ConditionalConnectionConfig<Watch<Option<C>>>)
+    -> ConditionalConnectionConfig<C> where C: Clone
+{
+    match watch {
+        Conditional::Some(c) => {
+            match *c.config.borrow() {
+                Some(ref config) =>
+                    Conditional::Some(ConnectionConfig {
+                        identity: c.identity.clone(),
+                        config: config.clone()
+                    }),
+                None => Conditional::None(ReasonForNoTls::NoConfig),
+            }
+        },
+        Conditional::None(r) => Conditional::None(*r),
     }
 }
 
@@ -366,4 +409,114 @@ fn load_file_contents(path: &PathBuf) -> Result<Vec<u8>, Error> {
 fn set_common_settings(versions: &mut Vec<rustls::ProtocolVersion>) {
     // Only enable TLS 1.2 until TLS 1.3 is stable.
     *versions = vec![rustls::ProtocolVersion::TLSv1_2]
+
+    // XXX: Rustls doesn't provide a good way to customize the cipher suite
+    // support, so just use its defaults, which are still pretty good.
+    // TODO: Expand Rustls's API to allow us to clearly whitelist the cipher
+    // suites we want to enable.
+}
+
+// Keep these in sync.
+pub(super) static SIGNATURE_ALG_RING_SIGNING: &signature::SigningAlgorithm =
+    &signature::ECDSA_P256_SHA256_ASN1_SIGNING;
+pub(super) const SIGNATURE_ALG_RUSTLS_SCHEME: rustls::SignatureScheme =
+    rustls::SignatureScheme::ECDSA_NISTP256_SHA256;
+pub(super) const SIGNATURE_ALG_RUSTLS_ALGORITHM: rustls::internal::msgs::enums::SignatureAlgorithm =
+    rustls::internal::msgs::enums::SignatureAlgorithm::ECDSA;
+
+#[cfg(test)]
+mod tests {
+    use tls::{ClientConfig, CommonSettings, Identity, ServerConfig};
+    use super::{CommonConfig, Error};
+    use config::Namespaces;
+    use std::path::PathBuf;
+
+    struct Strings {
+        pod_name: &'static str,
+        pod_ns: &'static str,
+        controller_ns: &'static str,
+        trust_anchors: &'static str,
+        end_entity_cert: &'static str,
+        private_key: &'static str,
+    }
+
+    fn settings(s: &Strings) -> CommonSettings {
+        let dir = PathBuf::from("src/transport/tls/testdata");
+        let namespaces = Namespaces {
+            pod: s.pod_ns.into(),
+            tls_controller: Some(s.controller_ns.into()),
+        };
+        let service_identity = Identity::try_from_pod_name(&namespaces, s.pod_name).unwrap();
+        CommonSettings {
+            trust_anchors: dir.join(s.trust_anchors),
+            end_entity_cert: dir.join(s.end_entity_cert),
+            private_key: dir.join(s.private_key),
+            service_identity,
+        }
+    }
+
+    #[test]
+    fn can_construct_client_and_server_config_from_valid_settings() {
+        let settings = settings(&Strings {
+            pod_name: "foo",
+            pod_ns: "ns1",
+            controller_ns: "conduit",
+            trust_anchors: "ca1.pem",
+            end_entity_cert: "foo-ns1-ca1.crt",
+            private_key: "foo-ns1-ca1.p8",
+        });
+        let config = CommonConfig::load_from_disk(&settings).unwrap();
+        let _: ClientConfig = ClientConfig::from(&config); // Infallible.
+        let _: ServerConfig = ServerConfig::from(&config); // Infallible.
+    }
+
+    #[test]
+    fn recognize_ca_did_not_issue_cert() {
+        let settings = settings(&Strings {
+            pod_name: "foo",
+            pod_ns: "ns1",
+            controller_ns: "conduit",
+            trust_anchors: "ca2.pem", // Mismatch
+            end_entity_cert: "foo-ns1-ca1.crt",
+            private_key: "foo-ns1-ca1.p8",
+        });
+        match CommonConfig::load_from_disk(&settings) {
+            Err(Error::EndEntityCertIsNotValid(_)) => (),
+            r => unreachable!("CommonConfig::load_from_disk returned {:?}", r),
+        }
+    }
+
+    #[test]
+    fn recognize_cert_is_not_valid_for_identity() {
+        let settings = settings(&Strings {
+            pod_name: "foo", // Mismatch
+            pod_ns: "ns1",
+            controller_ns: "conduit",
+            trust_anchors: "ca1.pem",
+            end_entity_cert: "bar-ns1-ca1.crt",
+            private_key: "bar-ns1-ca1.p8",
+        });
+        match CommonConfig::load_from_disk(&settings) {
+            Err(Error::EndEntityCertIsNotValid(_)) => (),
+            r => unreachable!("CommonConfig::load_from_disk returned {:?}", r),
+        }
+    }
+
+    // XXX: The check that this tests hasn't been implemented yet.
+    #[test]
+    #[should_panic]
+    fn recognize_private_key_is_not_valid_for_cert() {
+        let settings = settings(&Strings {
+            pod_name: "foo",
+            pod_ns: "ns1",
+            controller_ns: "conduit",
+            trust_anchors: "ca1.pem",
+            end_entity_cert: "foo-ns1-ca1.crt",
+            private_key: "bar-ns1-ca1.p8", // Mismatch
+        });
+        match CommonConfig::load_from_disk(&settings) {
+            Err(_) => (), // // TODO: Err(Error::InvalidPrivateKey) > (),
+            r => unreachable!("CommonConfig::load_from_disk returned {:?}", r),
+        }
+    }
 }

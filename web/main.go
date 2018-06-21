@@ -4,14 +4,13 @@ import (
 	"context"
 	"flag"
 	"net"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/runconduit/conduit/controller/api/public"
+	"github.com/runconduit/conduit/pkg/admin"
 	"github.com/runconduit/conduit/pkg/version"
 	"github.com/runconduit/conduit/web/srv"
 	log "github.com/sirupsen/logrus"
@@ -59,11 +58,7 @@ func main() {
 		server.ListenAndServe()
 	}()
 
-	go func() {
-		log.Infof("serving scrapable metrics on %+v", *metricsAddr)
-		http.Handle("/metrics", promhttp.Handler())
-		http.ListenAndServe(*metricsAddr, nil)
-	}()
+	go admin.StartServer(*metricsAddr, nil)
 
 	<-stop
 

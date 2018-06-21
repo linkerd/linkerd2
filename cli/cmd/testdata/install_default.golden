@@ -12,7 +12,7 @@ metadata:
   name: conduit-controller
   namespace: conduit
 
-### RBAC ###
+### Controller RBAC ###
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -31,7 +31,6 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: conduit-controller
-  namespace: conduit
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -49,7 +48,7 @@ metadata:
   name: conduit-prometheus
   namespace: conduit
 
-### RBAC ###
+### Prometheus RBAC ###
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -57,15 +56,14 @@ metadata:
   name: conduit-prometheus
 rules:
 - apiGroups: [""]
-  resources: ["nodes", "pods"]
-  verbs: ["list", "watch"]
+  resources: ["nodes", "nodes/proxy", "pods"]
+  verbs: ["get", "list", "watch"]
 
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: conduit-prometheus
-  namespace: conduit
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -148,12 +146,22 @@ spec:
         - -logtostderr=true
         image: gcr.io/runconduit/controller:undefined
         imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9995
+          initialDelaySeconds: 10
         name: public-api
         ports:
         - containerPort: 8085
           name: http
         - containerPort: 9995
           name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9995
         resources: {}
       - args:
         - destination
@@ -162,12 +170,22 @@ spec:
         - -logtostderr=true
         image: gcr.io/runconduit/controller:undefined
         imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9999
+          initialDelaySeconds: 10
         name: destination
         ports:
         - containerPort: 8089
           name: grpc
         - containerPort: 9999
           name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9999
         resources: {}
       - args:
         - proxy-api
@@ -176,12 +194,22 @@ spec:
         - -logtostderr=true
         image: gcr.io/runconduit/controller:undefined
         imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9996
+          initialDelaySeconds: 10
         name: proxy-api
         ports:
         - containerPort: 8086
           name: grpc
         - containerPort: 9996
           name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9996
         resources: {}
       - args:
         - tap
@@ -189,12 +217,22 @@ spec:
         - -logtostderr=true
         image: gcr.io/runconduit/controller:undefined
         imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9998
+          initialDelaySeconds: 10
         name: tap
         ports:
         - containerPort: 8088
           name: grpc
         - containerPort: 9998
           name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9998
         resources: {}
       - env:
         - name: CONDUIT_PROXY_LOG
@@ -226,6 +264,7 @@ spec:
         resources: {}
         securityContext:
           runAsUser: 2102
+        terminationMessagePolicy: FallbackToLogsOnError
       initContainers:
       - args:
         - --incoming-proxy-port
@@ -245,6 +284,7 @@ spec:
             add:
             - NET_ADMIN
           privileged: false
+        terminationMessagePolicy: FallbackToLogsOnError
       serviceAccount: conduit-controller
 status: {}
 ---
@@ -304,12 +344,22 @@ spec:
         - -log-level=info
         image: gcr.io/runconduit/web:undefined
         imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9994
+          initialDelaySeconds: 10
         name: web
         ports:
         - containerPort: 8084
           name: http
         - containerPort: 9994
           name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9994
         resources: {}
       - env:
         - name: CONDUIT_PROXY_LOG
@@ -341,6 +391,7 @@ spec:
         resources: {}
         securityContext:
           runAsUser: 2102
+        terminationMessagePolicy: FallbackToLogsOnError
       initContainers:
       - args:
         - --incoming-proxy-port
@@ -360,6 +411,7 @@ spec:
             add:
             - NET_ADMIN
           privileged: false
+        terminationMessagePolicy: FallbackToLogsOnError
 status: {}
 ---
 kind: Service
@@ -409,7 +461,7 @@ spec:
       - args:
         - --storage.tsdb.retention=6h
         - --config.file=/etc/prometheus/prometheus.yml
-        image: prom/prometheus:v2.2.1
+        image: prom/prometheus:v2.3.1
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -462,6 +514,7 @@ spec:
         resources: {}
         securityContext:
           runAsUser: 2102
+        terminationMessagePolicy: FallbackToLogsOnError
       initContainers:
       - args:
         - --incoming-proxy-port
@@ -481,6 +534,7 @@ spec:
             add:
             - NET_ADMIN
           privileged: false
+        terminationMessagePolicy: FallbackToLogsOnError
       serviceAccount: conduit-prometheus
       volumes:
       - configMap:
@@ -660,7 +714,7 @@ spec:
           httpGet:
             path: /api/health
             port: 3000
-          initialDelaySeconds: 60
+          initialDelaySeconds: 30
           periodSeconds: 10
           timeoutSeconds: 30
         resources: {}
@@ -698,6 +752,7 @@ spec:
         resources: {}
         securityContext:
           runAsUser: 2102
+        terminationMessagePolicy: FallbackToLogsOnError
       initContainers:
       - args:
         - --incoming-proxy-port
@@ -717,6 +772,7 @@ spec:
             add:
             - NET_ADMIN
           privileged: false
+        terminationMessagePolicy: FallbackToLogsOnError
       volumes:
       - configMap:
           items:

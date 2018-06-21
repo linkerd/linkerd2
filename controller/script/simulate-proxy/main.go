@@ -620,10 +620,7 @@ func main() {
 		k8s.Deploy,
 		k8s.Pod,
 	)
-	err = k8sAPI.Sync()
-	if err != nil {
-		log.Fatal(err.Error())
-	}
+	k8sAPI.Sync(nil)
 
 	proxyCount := endPort - startPort + 1
 	simulatedPods := getDeploymentByPod(k8sAPI, proxyCount)

@@ -56,7 +56,7 @@ printf "Testing Conduit version [%s] namespace [%s]\\n" "$conduit_version" "$con
 
 exit_code=0
 run_test "$test_directory/install_test.go" || exit_code=$?
-for test in $(find "$test_directory" -name '*_test.go' -mindepth 2); do
+for test in $(find "$test_directory" -mindepth 2 -name '*_test.go'); do
     run_test "$test" || exit_code=$?
 done
 exit $exit_code

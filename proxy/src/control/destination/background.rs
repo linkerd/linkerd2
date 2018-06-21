@@ -40,6 +40,7 @@ use telemetry::metrics::DstLabels;
 use transport::{DnsNameAndPort, HostAndPort, LookupAddressAndConnect};
 use timeout::Timeout;
 use transport::tls;
+use conditional::Conditional;
 
 type DestinationServiceQuery<T> = Remote<PbUpdate, T>;
 type UpdateRx<T> = Receiver<PbUpdate, T>;
@@ -77,15 +78,17 @@ pub(super) fn task(
     request_rx: mpsc::UnboundedReceiver<ResolveRequest>,
     dns_resolver: dns::Resolver,
     namespaces: Namespaces,
-    host_and_port: HostAndPort,
+    host_and_port: Option<HostAndPort>,
+    controller_tls: tls::ConditionalConnectionConfig<tls::ClientConfigWatch>
 ) -> impl Future<Item = (), Error = ()>
 {
     // Build up the Controller Client Stack
-    let mut client = {
+    let mut client = host_and_port.map(|host_and_port| {
         let scheme = http::uri::Scheme::from_shared(Bytes::from_static(b"http")).unwrap();
         let authority = http::uri::Authority::from(&host_and_port);
         let connect = Timeout::new(
-            LookupAddressAndConnect::new(host_and_port.clone(), dns_resolver.clone()),
+            LookupAddressAndConnect::new(host_and_port.clone(), dns_resolver.clone(),
+                                         controller_tls),
             Duration::from_secs(3),
         );
 
@@ -101,7 +104,7 @@ pub(super) fn task(
         let backoff = Backoff::new(log_errors, Duration::from_secs(5));
         // TODO: Use AddOrigin in tower-http
         AddOrigin::new(scheme, authority, backoff)
-    };
+    });
 
     let mut disco = Background::new(
         request_rx,
@@ -138,7 +141,7 @@ where
         }
     }
 
-   fn poll_rpc(&mut self, client: &mut T) {
+   fn poll_rpc(&mut self, client: &mut Option<T>) {
         // This loop is make sure any streams that were found disconnected
         // in `poll_destinations` while the `rpc` service is ready should
         // be reconnected now, otherwise the task would just sleep...
@@ -153,27 +156,29 @@ where
         }
     }
 
-    fn poll_resolve_requests(&mut self, client: &mut T) {
+    fn poll_resolve_requests(&mut self, client: &mut Option<T>) {
         loop {
-            // if rpc service isn't ready, not much we can do...
-            match client.poll_ready() {
-                Ok(Async::Ready(())) => {
-                    self.rpc_ready = true;
-                },
-                Ok(Async::NotReady) => {
-                    self.rpc_ready = false;
-                    break;
-                },
-                Err(err) => {
-                    warn!("Destination.Get poll_ready error: {:?}", err);
-                    self.rpc_ready = false;
-                    break;
-                },
-            }
+            if let Some(client) = client {
+                // if rpc service isn't ready, not much we can do...
+                match client.poll_ready() {
+                    Ok(Async::Ready(())) => {
+                        self.rpc_ready = true;
+                    },
+                    Ok(Async::NotReady) => {
+                        self.rpc_ready = false;
+                        break;
+                    },
+                    Err(err) => {
+                        warn!("Destination.Get poll_ready error: {:?}", err);
+                        self.rpc_ready = false;
+                        break;
+                    },
+                }
 
-            // handle any pending reconnects first
-            if self.poll_reconnect(client) {
-                continue;
+                // handle any pending reconnects first
+                if self.poll_reconnect(client) {
+                    continue;
+                }
             }
 
             // check for any new watches
@@ -197,12 +202,15 @@ where
                             set.responders.push(resolve.responder);
                         },
                         Entry::Vacant(vac) => {
-                            let query = Self::query_destination_service_if_relevant(
-                                &self.namespaces.pod,
-                                client,
-                                vac.key(),
-                                "connect",
-                            );
+                            let pod_namespace = &self.namespaces.pod;
+                            let query = client.as_mut().and_then(|client| {
+                                Self::query_destination_service_if_relevant(
+                                    pod_namespace,
+                                    client,
+                                    vac.key(),
+                                    "connect",
+                                )
+                            });
                             let mut set = DestinationSet {
                                 addrs: Exists::Unknown,
                                 query,
@@ -211,7 +219,8 @@ where
                             };
                             // If the authority is one for which the Destination service is never
                             // relevant (e.g. an absolute name that doesn't end in ".svc.$zone." in
-                            // Kubernetes), then immediately start polling DNS.
+                            // Kubernetes), or if we don't have a `client`, then immediately start
+                            // polling DNS.
                             if set.query.is_none() {
                                 set.reset_dns_query(
                                     &self.dns_resolver,
@@ -575,18 +584,22 @@ fn pb_to_addr_meta(
         .collect::<Vec<_>>();
     labels.sort_by(|(k0, _), (k1, _)| k0.cmp(k1));
 
-    let tls_identity = pb.tls_identity.and_then(|pb| {
-        match tls::Identity::maybe_from(pb, tls_controller_namespace) {
-            Ok(maybe_tls) => maybe_tls,
+    let mut tls_identity =
+        Conditional::None(tls::ReasonForNoIdentity::NotProvidedByServiceDiscovery);
+    if let Some(pb) = pb.tls_identity {
+        match tls::Identity::maybe_from_protobuf(tls_controller_namespace, pb) {
+            Ok(Some(identity)) => {
+                tls_identity = Conditional::Some(identity);
+            },
+            Ok(None) => (),
             Err(e) => {
                 error!("Failed to parse TLS identity: {:?}", e);
                 // XXX: Wallpaper over the error and keep going without TLS.
                 // TODO: Hard fail here once the TLS infrastructure has been
                 // validated.
-                None
             },
         }
-    });
+    };
 
     let meta = Metadata::new(DstLabels::new(labels.into_iter()), tls_identity);
     Some((addr, meta))

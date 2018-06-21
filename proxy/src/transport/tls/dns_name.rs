@@ -6,7 +6,7 @@ use convert::TryFrom;
 /// are specified in [RFC 5280 Section 7.2], except that underscores are also
 /// allowed.
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub struct DnsName(webpki::DNSName);
+pub struct DnsName(pub(super) webpki::DNSName);
 
 impl fmt::Display for DnsName {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {

@@ -111,10 +111,7 @@ spec:
 
 			watcher := newEndpointsWatcher(k8sAPI)
 
-			err = k8sAPI.Sync()
-			if err != nil {
-				t.Fatalf("k8sAPI.Sync() returned an error: %s", err)
-			}
+			k8sAPI.Sync(nil)
 
 			listener, cancelFn := newCollectUpdateListener()
 			defer cancelFn()

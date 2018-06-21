@@ -93,20 +93,25 @@ mod test {
         metrics::{self, labels},
         Event,
     };
-    use ctx::{self, test_util::* };
+    use ctx::{self, test_util::*, transport::TlsStatus};
     use std::time::{Duration, Instant};
+    use conditional::Conditional;
+    use tls;
 
-    #[test]
-    fn record_response_end() {
+    const TLS_ENABLED: Conditional<(), tls::ReasonForNoTls> = Conditional::Some(());
+    const TLS_DISABLED: Conditional<(), tls::ReasonForNoTls> =
+        Conditional::None(tls::ReasonForNoTls::Disabled);
+
+    fn test_record_response_end_outbound(client_tls: TlsStatus, server_tls: TlsStatus) {
         let process = process();
         let proxy = ctx::Proxy::outbound(&process);
-        let server = server(&proxy);
+        let server = server(&proxy, server_tls);
 
         let client = client(&proxy, vec![
             ("service", "draymond"),
             ("deployment", "durant"),
             ("pod", "klay"),
-        ]);
+        ], client_tls);
 
         let (_, rsp) = request("http://buoyant.io", &server, &client);
 
@@ -127,6 +132,8 @@ mod test {
         let (mut r, _) = metrics::new(&process, Duration::from_secs(100));
         let ev = Event::StreamResponseEnd(rsp.clone(), end.clone());
         let labels = labels::ResponseLabels::new(&rsp, None);
+
+        assert_eq!(labels.tls_status(), client_tls);
 
         assert!(r.metrics.lock()
             .expect("lock")
@@ -152,21 +159,20 @@ mod test {
 
     }
 
-    #[test]
-    fn record_one_conn_request() {
+    fn test_record_one_conn_request_outbound(client_tls: TlsStatus, server_tls: TlsStatus) {
         use self::Event::*;
         use self::labels::*;
         use std::sync::Arc;
 
         let process = process();
         let proxy = ctx::Proxy::outbound(&process);
-        let server = server(&proxy);
+        let server = server(&proxy, server_tls);
 
         let client = client(&proxy, vec![
             ("service", "draymond"),
             ("deployment", "durant"),
             ("pod", "klay"),
-        ]);
+        ], client_tls);
 
         let (req, rsp) = request("http://buoyant.io", &server, &client);
         let server_transport =
@@ -231,6 +237,13 @@ mod test {
             &ctx::transport::Ctx::Client(client.clone()),
             &transport_close,
         );
+
+        assert_eq!(client_tls, req_labels.tls_status());
+        assert_eq!(client_tls, rsp_labels.tls_status());
+        assert_eq!(client_tls, client_open_labels.tls_status());
+        assert_eq!(client_tls, client_close_labels.tls_status());
+        assert_eq!(server_tls, srv_open_labels.tls_status());
+        assert_eq!(server_tls, srv_close_labels.tls_status());
 
         {
             let lock = r.metrics.lock()
@@ -315,4 +328,43 @@ mod test {
         }
     }
 
+    #[test]
+    fn record_one_conn_request_outbound_client_tls() {
+        test_record_one_conn_request_outbound(TLS_ENABLED, TLS_DISABLED)
+    }
+
+    #[test]
+    fn record_one_conn_request_outbound_server_tls() {
+        test_record_one_conn_request_outbound(TLS_DISABLED, TLS_ENABLED)
+    }
+
+    #[test]
+    fn record_one_conn_request_outbound_both_tls() {
+        test_record_one_conn_request_outbound(TLS_ENABLED, TLS_ENABLED)
+    }
+
+    #[test]
+    fn record_one_conn_request_outbound_no_tls() {
+        test_record_one_conn_request_outbound(TLS_DISABLED, TLS_DISABLED)
+    }
+
+    #[test]
+    fn record_response_end_outbound_client_tls() {
+        test_record_response_end_outbound(TLS_ENABLED, TLS_DISABLED)
+    }
+
+    #[test]
+    fn record_response_end_outbound_server_tls() {
+        test_record_response_end_outbound(TLS_DISABLED, TLS_ENABLED)
+    }
+
+    #[test]
+    fn record_response_end_outbound_both_tls() {
+        test_record_response_end_outbound(TLS_ENABLED, TLS_ENABLED)
+    }
+
+    #[test]
+    fn record_response_end_outbound_no_tls() {
+        test_record_response_end_outbound(TLS_DISABLED, TLS_DISABLED)
+    }
 }

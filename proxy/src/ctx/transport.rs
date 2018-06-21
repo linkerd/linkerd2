@@ -1,10 +1,13 @@
-use std::net::{IpAddr, SocketAddr};
-use std::sync::Arc;
-
+use std::{
+    self,
+    net::{IpAddr, SocketAddr},
+    sync::Arc,
+};
 use ctx;
 use control::destination;
 use telemetry::metrics::DstLabels;
 use transport::tls;
+use conditional::Conditional;
 
 #[derive(Debug)]
 pub enum Ctx {
@@ -19,6 +22,7 @@ pub struct Server {
     pub remote: SocketAddr,
     pub local: SocketAddr,
     pub orig_dst: Option<SocketAddr>,
+    pub tls_status: TlsStatus,
 }
 
 /// Identifies a connection from the proxy to another process.
@@ -27,13 +31,37 @@ pub struct Client {
     pub proxy: Arc<ctx::Proxy>,
     pub remote: SocketAddr,
     pub metadata: destination::Metadata,
+    pub tls_status: TlsStatus,
 }
+
+/// Identifies whether or not a connection was secured with TLS,
+/// and, if it was not, the reason why.
+pub type TlsStatus = Conditional<(), tls::ReasonForNoTls>;
+
+impl TlsStatus {
+    pub fn from<C>(c: &Conditional<C, tls::ReasonForNoTls>) -> Self
+    where C: Clone + std::fmt::Debug
+    {
+        match c {
+            Conditional::Some(_) => Conditional::Some(()),
+            Conditional::None(r) => Conditional::None(*r),
+        }
+    }
+}
+
 
 impl Ctx {
     pub fn proxy(&self) -> &Arc<ctx::Proxy> {
         match *self {
             Ctx::Client(ref ctx) => &ctx.proxy,
             Ctx::Server(ref ctx) => &ctx.proxy,
+        }
+    }
+
+    pub fn tls_status(&self) -> TlsStatus {
+        match self {
+            Ctx::Client(ctx)  => ctx.tls_status,
+            Ctx::Server(ctx) => ctx.tls_status,
         }
     }
 }
@@ -44,12 +72,14 @@ impl Server {
         local: &SocketAddr,
         remote: &SocketAddr,
         orig_dst: &Option<SocketAddr>,
+        tls_status: TlsStatus,
     ) -> Arc<Server> {
         let s = Server {
             proxy: Arc::clone(proxy),
             local: *local,
             remote: *remote,
             orig_dst: *orig_dst,
+            tls_status,
         };
 
         Arc::new(s)
@@ -84,17 +114,19 @@ impl Client {
         proxy: &Arc<ctx::Proxy>,
         remote: &SocketAddr,
         metadata: destination::Metadata,
+        tls_status: TlsStatus,
     ) -> Arc<Client> {
         let c = Client {
             proxy: Arc::clone(proxy),
             remote: *remote,
             metadata,
+            tls_status,
         };
 
         Arc::new(c)
     }
 
-    pub fn tls_identity(&self) -> Option<&tls::Identity> {
+    pub fn tls_identity(&self) -> Conditional<&tls::Identity, tls::ReasonForNoIdentity> {
         self.metadata.tls_identity()
     }
 
@@ -102,7 +134,6 @@ impl Client {
         self.metadata.dst_labels()
     }
 }
-
 impl From<Arc<Client>> for Ctx {
     fn from(c: Arc<Client>) -> Self {
         Ctx::Client(c)

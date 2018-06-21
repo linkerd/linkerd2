@@ -3,6 +3,7 @@ use std::net::SocketAddr;
 use telemetry::metrics::DstLabels;
 use super::Metadata;
 use tls;
+use conditional::Conditional;
 
 /// An individual traffic target.
 ///
@@ -35,7 +36,7 @@ impl Endpoint {
         self.metadata.dst_labels()
     }
 
-    pub fn tls_identity(&self) -> Option<&tls::Identity> {
+    pub fn tls_identity(&self) -> Conditional<&tls::Identity, tls::ReasonForNoIdentity> {
         self.metadata.tls_identity()
     }
 }

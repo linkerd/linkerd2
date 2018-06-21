@@ -12,6 +12,8 @@ use super::tap::Taps;
 use connection;
 use ctx;
 use task;
+use conditional::Conditional;
+use tls;
 
 /// A `Control` which has been configured but not initialized.
 #[derive(Debug)]
@@ -98,13 +100,12 @@ impl Control {
         use hyper;
 
         let log = ::logging::admin().server("metrics", bound_port.local_addr());
-        let (no_tls, _) = ::tls::ServerConfig::no_tls();
-
         let service = self.metrics_service.clone();
         let fut = {
             let log = log.clone();
             bound_port.listen_and_fold(
-                no_tls, // TODO: Serve over TLS.
+                // TODO: Serve over TLS.
+                Conditional::None(tls::ReasonForNoIdentity::NotImplementedForMetrics.into()),
                 hyper::server::conn::Http::new(),
                 move |hyper, (conn, remote)| {
                     let service = service.clone();

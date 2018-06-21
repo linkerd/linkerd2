@@ -1,10 +1,9 @@
-use std::cell::RefCell;
 use std::fmt;
 use std::io;
 use std::sync::Arc;
 
 use bytes::{Bytes, IntoBuf};
-use futures::{future, Async, Future, Poll, Stream};
+use futures::{future, Async, Future, Poll};
 use futures::future::Either;
 use h2;
 use http;
@@ -15,26 +14,39 @@ use tower_service::{Service, NewService};
 use tower_h2;
 
 use ctx::transport::{Server as ServerCtx};
+use drain;
 use super::h1;
+use super::upgrade::Http11Upgrade;
+use task::{BoxSendFuture, ErasedExecutor, Executor};
 
 /// Glue between `hyper::Body` and `tower_h2::RecvBody`.
 #[derive(Debug)]
 pub enum HttpBody {
-    Http1(hyper::Body),
+    Http1 {
+        /// In HttpBody::drop, if this was an HTTP upgrade, the body is taken
+        /// to be inserted into the Http11Upgrade half.
+        body: Option<hyper::Body>,
+        upgrade: Option<Http11Upgrade>
+    },
     Http2(tower_h2::RecvBody),
 }
 
 /// Glue for `tower_h2::Body`s to be used in hyper.
 #[derive(Debug)]
-pub(super) struct BodyStream<B> {
+pub(super) struct BodyPayload<B> {
     body: B,
 }
 
 /// Glue for a `tower::Service` to used as a `hyper::server::Service`.
 #[derive(Debug)]
-pub(super) struct HyperServerSvc<S> {
-    service: RefCell<S>,
+pub(super) struct HyperServerSvc<S, E> {
+    service: S,
     srv_ctx: Arc<ServerCtx>,
+    /// Watch any spawned HTTP/1.1 upgrade tasks.
+    upgrade_drain_signal: drain::Watch,
+    /// Executor used to spawn HTTP/1.1 upgrade tasks, and TCP proxies
+    /// after they succeed.
+    upgrade_executor: E,
 }
 
 /// Future returned by `HyperServerSvc`.
@@ -78,16 +90,21 @@ impl tower_h2::Body for HttpBody {
     type Data = Bytes;
 
     fn is_end_stream(&self) -> bool {
-        match *self {
-            HttpBody::Http1(ref b) => b.is_end_stream(),
-            HttpBody::Http2(ref b) => b.is_end_stream(),
+        match self {
+            HttpBody::Http1 { body, .. } => {
+                body
+                    .as_ref()
+                    .expect("only taken in drop")
+                    .is_end_stream()
+            },
+            HttpBody::Http2(b) => b.is_end_stream(),
         }
     }
 
     fn poll_data(&mut self) -> Poll<Option<Self::Data>, h2::Error> {
-        match *self {
-            HttpBody::Http1(ref mut b) => {
-                match b.poll() {
+        match self {
+            HttpBody::Http1 { body, .. } => {
+                match body.as_mut().expect("only taken in drop").poll_data() {
                     Ok(Async::Ready(Some(chunk))) => Ok(Async::Ready(Some(chunk.into()))),
                     Ok(Async::Ready(None)) => Ok(Async::Ready(None)),
                     Ok(Async::NotReady) => Ok(Async::NotReady),
@@ -97,14 +114,19 @@ impl tower_h2::Body for HttpBody {
                     }
                 }
             },
-            HttpBody::Http2(ref mut b) => b.poll_data().map(|async| async.map(|opt| opt.map(|data| data.into()))),
+            HttpBody::Http2(b) => b.poll_data()
+                .map(|async| {
+                    async.map(|opt| {
+                        opt.map(Bytes::from)
+                    })
+                })
         }
     }
 
     fn poll_trailers(&mut self) -> Poll<Option<http::HeaderMap>, h2::Error> {
-        match *self {
-            HttpBody::Http1(_) => Ok(Async::Ready(None)),
-            HttpBody::Http2(ref mut b) => b.poll_trailers(),
+        match self {
+            HttpBody::Http1 { .. } => Ok(Async::Ready(None)),
+            HttpBody::Http2(b) => b.poll_trailers(),
         }
     }
 }
@@ -137,18 +159,36 @@ impl Default for HttpBody {
     }
 }
 
-// ===== impl BodyStream =====
+impl Drop for HttpBody {
+    fn drop(&mut self) {
+        // If HTTP/1, and an upgrade was wanted, send the upgrade future.
+        match self {
+            HttpBody::Http1 { body, upgrade } => {
+                if let Some(upgrade) = upgrade.take() {
+                    let on_upgrade = body
+                        .take()
+                        .expect("take only on drop")
+                        .on_upgrade();
+                    upgrade.insert_half(on_upgrade);
+                }
+            },
+            HttpBody::Http2(_) => (),
+        }
+    }
+}
 
-impl<B> BodyStream<B> {
+// ===== impl BodyPayload =====
+
+impl<B> BodyPayload<B> {
     /// Wrap a `tower_h2::Body` into a `Stream` hyper can understand.
     pub fn new(body: B) -> Self {
-        BodyStream {
+        BodyPayload {
             body,
         }
     }
 }
 
-impl<B> hyper::body::Payload for BodyStream<B>
+impl<B> hyper::body::Payload for BodyPayload<B>
 where
     B: tower_h2::Body + Send + 'static,
     <B::Data as IntoBuf>::Buf: Send,
@@ -179,16 +219,23 @@ where
 
 // ===== impl HyperServerSvc =====
 
-impl<S> HyperServerSvc<S> {
-    pub fn new(svc: S, ctx: Arc<ServerCtx>) -> Self {
+impl<S, E> HyperServerSvc<S, E> {
+    pub fn new(
+        service: S,
+        srv_ctx: Arc<ServerCtx>,
+        upgrade_drain_signal: drain::Watch,
+        upgrade_executor: E,
+    ) -> Self {
         HyperServerSvc {
-            service: RefCell::new(svc),
-            srv_ctx: ctx,
+            service,
+            srv_ctx,
+            upgrade_drain_signal,
+            upgrade_executor,
         }
     }
 }
 
-impl<S, B> hyper::service::Service for HyperServerSvc<S>
+impl<S, E, B> hyper::service::Service for HyperServerSvc<S, E>
 where
     S: Service<
         Request=http::Request<HttpBody>,
@@ -197,32 +244,52 @@ where
     S::Error: fmt::Debug,
     B: tower_h2::Body + Default + Send + 'static,
     <B::Data as ::bytes::IntoBuf>::Buf: Send,
+    E: Executor<BoxSendFuture> + Clone + Send + Sync + 'static,
 {
     type ReqBody = hyper::Body;
-    type ResBody = BodyStream<B>;
+    type ResBody = BodyPayload<B>;
     type Error = h2::Error;
     type Future = Either<
         HyperServerSvcFuture<S::Future>,
         future::FutureResult<http::Response<Self::ResBody>, Self::Error>,
     >;
 
-    fn call(&mut self, req: http::Request<Self::ReqBody>) -> Self::Future {
-        if let &hyper::Method::CONNECT = req.method() {
+    fn call(&mut self, mut req: http::Request<Self::ReqBody>) -> Self::Future {
+        if let &http::Method::CONNECT = req.method() {
             debug!("HTTP/1.1 CONNECT not supported");
-            let res = hyper::Response::builder()
-                .status(hyper::StatusCode::BAD_GATEWAY)
-                .body(BodyStream::new(Default::default()))
+            let res = http::Response::builder()
+                .status(http::StatusCode::BAD_GATEWAY)
+                .body(BodyPayload::new(Default::default()))
                 .expect("building response with empty body should not error!");
             return Either::B(future::ok(res));
         }
-        let mut req = req;
         req.extensions_mut().insert(self.srv_ctx.clone());
 
-        h1::strip_connection_headers(req.headers_mut());
+        let upgrade = if h1::wants_upgrade(&req) {
+            trace!("server request wants HTTP/1.1 upgrade");
+            // Upgrade requests include several "connection" headers that
+            // cannot be removed.
 
-        let req = req.map(|b| HttpBody::Http1(b));
+            // Setup HTTP Upgrade machinery.
+            let halves = Http11Upgrade::new(
+                self.upgrade_drain_signal.clone(),
+                ErasedExecutor::erase(self.upgrade_executor.clone()),
+            );
+            req.extensions_mut().insert(halves.client);
+
+            Some(halves.server)
+        } else {
+            h1::strip_connection_headers(req.headers_mut());
+            None
+        };
+
+
+        let req = req.map(move |b| HttpBody::Http1 {
+            body: Some(b),
+            upgrade,
+        });
         let f = HyperServerSvcFuture {
-            inner: self.service.borrow_mut().call(req),
+            inner: self.service.call(req),
         };
         Either::A(f)
     }
@@ -233,7 +300,7 @@ where
     F: Future<Item=http::Response<B>>,
     F::Error: fmt::Debug,
 {
-    type Item = hyper::Response<BodyStream<B>>;
+    type Item = http::Response<BodyPayload<B>>;
     type Error = h2::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
@@ -242,8 +309,12 @@ where
             h2::Error::from(io::Error::from(io::ErrorKind::Other))
         }));
 
-        h1::strip_connection_headers(res.headers_mut());
-        Ok(Async::Ready(res.map(BodyStream::new).into()))
+        if h1::is_upgrade(&res) {
+            trace!("client response is HTTP/1.1 upgrade");
+        } else {
+            h1::strip_connection_headers(res.headers_mut());
+        }
+        Ok(Async::Ready(res.map(BodyPayload::new)))
     }
 }
 
