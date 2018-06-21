@@ -414,7 +414,7 @@ func processPrometheusMetrics(results []promResult, groupBy model.LabelNames) ma
 	for _, result := range results {
 		for _, sample := range result.vec {
 			resource := metricToKey(sample.Metric, groupBy)
-			log.Info("generated key: ", resource)
+
 			if basicStats[resource] == nil {
 				basicStats[resource] = &pb.BasicStats{}
 			}

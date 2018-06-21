@@ -21,7 +21,8 @@ import (
 var (
 	defaultMetricTimeWindow = "1m"
 
-	Authority = "authority" // non-k8s resource type
+	Authority          = "authority" // non-k8s resource type
+	AuthorityShortName = "au"
 
 	// ValidTargets specifies resource types allowed as a target:
 	// target resource on an inbound query
@@ -113,7 +114,7 @@ func BuildStatSummaryRequest(p StatSummaryRequestParams) (*pb.StatSummaryRequest
 		targetNamespace = v1.NamespaceDefault
 	}
 
-	resourceType, err := ValidateResourceType(p.ResourceType)
+	resourceType, err := CanonicalResourceType(p.ResourceType)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +180,7 @@ func BuildStatSummaryRequest(p StatSummaryRequestParams) (*pb.StatSummaryRequest
 }
 
 // Ensures a valid resource type - a canonical k8s object, or 'authority'
-func ValidateResourceType(resourceType string) (string, error) {
+func CanonicalResourceType(resourceType string) (string, error) {
 	if resourceType == Authority {
 		return resourceType, nil
 	}
@@ -188,11 +189,18 @@ func ValidateResourceType(resourceType string) (string, error) {
 
 // An authority can only receive traffic, not send it
 func ValidateToResourceType(resourceType string) (string, error) {
-	return ValidateResourceType(resourceType)
+	return CanonicalResourceType(resourceType)
 }
 
 func ValidateFromResourceType(resourceType string) (string, error) {
 	return k8s.CanonicalKubernetesNameFromFriendlyName(resourceType)
+}
+
+func ShortNameFromCanonicalName(canonicalName string) string {
+	if canonicalName == Authority {
+		return AuthorityShortName
+	}
+	return k8s.ShortNameFromCanonicalKubernetesName(canonicalName)
 }
 
 // BuildResource parses input strings, typically from CLI flags, to build a
@@ -222,7 +230,7 @@ func BuildResource(namespace string, args ...string) (pb.Resource, error) {
 }
 
 func buildResource(namespace string, resType string, name string) (pb.Resource, error) {
-	canonicalType, err := k8s.CanonicalKubernetesNameFromFriendlyName(resType)
+	canonicalType, err := CanonicalResourceType(resType)
 	if err != nil {
 		return pb.Resource{}, err
 	}

@@ -303,7 +303,9 @@ func getNamePrefix(resourceType string) string {
 	if resourceType == "" {
 		return ""
 	} else {
-		return k8s.ShortNameFromCanonicalKubernetesName(resourceType) + "/"
+		// the type doesn't come from the user here; skip err check
+		canonicalType, _ := util.CanonicalResourceType(resourceType)
+		return canonicalType + "/"
 	}
 }
 
