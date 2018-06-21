@@ -12,7 +12,7 @@ metadata:
   name: conduit-controller
   namespace: conduit
 
-### RBAC ###
+### Controller RBAC ###
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -31,7 +31,6 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: conduit-controller
-  namespace: conduit
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -49,7 +48,7 @@ metadata:
   name: conduit-prometheus
   namespace: conduit
 
-### RBAC ###
+### Prometheus RBAC ###
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -65,7 +64,6 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: conduit-prometheus
-  namespace: conduit
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole

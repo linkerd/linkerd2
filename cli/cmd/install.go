@@ -32,6 +32,7 @@ type installConfig struct {
 	CreatedByAnnotation      string
 	ProxyAPIPort             uint
 	EnableTLS                bool
+	CertificateBundleName    string
 }
 
 type installOptions struct {
@@ -105,6 +106,7 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		CreatedByAnnotation:      k8s.CreatedByAnnotation,
 		ProxyAPIPort:             options.proxyAPIPort,
 		EnableTLS:                options.enableTLS,
+		CertificateBundleName:    k8s.CertificateBundleName,
 	}, nil
 }
 
@@ -117,6 +119,16 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 	err = template.Execute(buf, config)
 	if err != nil {
 		return err
+	}
+	if config.EnableTLS {
+		tlsTemplate, err := template.New("conduit").Parse(install.TlsTemplate)
+		if err != nil {
+			return err
+		}
+		err = tlsTemplate.Execute(buf, config)
+		if err != nil {
+			return err
+		}
 	}
 	injectOptions := newInjectOptions()
 	injectOptions.proxyConfigOptions = options.proxyConfigOptions
