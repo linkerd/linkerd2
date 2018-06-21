@@ -249,10 +249,10 @@ impl CommonConfig {
 
 }
 
-pub fn watch_for_config_changes(settings: Option<&CommonSettings>)
+pub fn watch_for_config_changes(settings: Conditional<&CommonSettings, ReasonForNoTls>)
     -> (ClientConfigWatch, ServerConfigWatch, Box<Future<Item = (), Error = ()> + Send>)
 {
-    let settings = if let Some(settings) = settings {
+    let settings = if let Conditional::Some(settings) = settings {
         settings.clone()
     } else {
         let (client_watch, _) = Watch::new(None);

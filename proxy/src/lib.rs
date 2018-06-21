@@ -260,11 +260,11 @@ where
                 config.inbound_router_max_idle_age,
             );
             let tls_settings = match &config.tls_settings {
-                Some(settings) => Conditional::Some(tls::ConnectionConfig {
+                Conditional::Some(settings) => Conditional::Some(tls::ConnectionConfig {
                     identity: settings.service_identity.clone(),
                     config: tls_server_config
                 }),
-                None => Conditional::None(tls::ReasonForNoTls::NoConfig),
+                Conditional::None(r) => Conditional::None(*r),
             };
             serve(
                 inbound_listener,
