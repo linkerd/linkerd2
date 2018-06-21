@@ -25,10 +25,13 @@ pub fn connect(addr: &SocketAddr,
                tls: tls::ConditionalConnectionConfig<tls::ClientConfig>)
     -> Connecting
 {
-    Connecting::Plaintext {
-        addr: *addr,
+    let state = ConnectingState::Plaintext {
         connect: TcpStream::connect(addr),
         tls: Some(tls),
+    };
+    Connecting {
+        addr: *addr,
+        state,
     }
 }
 
@@ -45,16 +48,17 @@ struct ConditionallyUpgradeServerToTlsInner {
 }
 
 /// A socket that is in the process of connecting.
-pub enum Connecting {
+pub struct Connecting {
+    addr: SocketAddr,
+    state: ConnectingState,
+}
+
+enum ConnectingState {
     Plaintext {
-        addr: SocketAddr,
         connect: ConnectFuture,
-        tls: Option<tls::ConditionalConnectionConfig<tls::ClientConfig>>,
+        tls: Option<tls::ConditionalConnectionConfig<tls::ClientConfig>>
     },
-    UpgradeToTls {
-        addr: SocketAddr,
-        upgrading: tls::UpgradeClientToTls
-    },
+    UpgradeToTls(tls::UpgradeClientToTls),
 }
 
 /// Abstracts a plaintext socket vs. a TLS decorated one.
@@ -257,24 +261,25 @@ impl Future for Connecting {
     type Error = io::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        let addr = self.addr;
         loop {
-            *self = match self {
-                Connecting::Plaintext { addr, connect, tls } => {
+            self.state = match &mut self.state {
+                ConnectingState::Plaintext { connect, tls } => {
                     let plaintext_stream = try_ready!(connect.poll());
                     set_nodelay_or_warn(&plaintext_stream);
                     match tls.take().expect("Polled after ready") {
                         Conditional::Some(config) => {
-                            let upgrading = tls::Connection::connect(
+                            let upgrade = tls::Connection::connect(
                                 plaintext_stream, &config.identity, config.config);
-                            Connecting::UpgradeToTls { addr: *addr, upgrading }
+                            ConnectingState::UpgradeToTls(upgrade)
                         },
                         Conditional::None(why) => {
                             return Ok(Async::Ready(Connection::plain(plaintext_stream, why)));
                         },
                     }
                 },
-                Connecting::UpgradeToTls { addr, upgrading } => {
-                    match upgrading.poll() {
+                ConnectingState::UpgradeToTls(upgrade) => {
+                    match upgrade.poll() {
                         Ok(Async::NotReady) => return Ok(Async::NotReady),
                         Ok(Async::Ready(tls_stream)) => {
                             let conn = Connection::tls(BoxedIo::new(tls_stream));
@@ -300,14 +305,13 @@ impl Future for Connecting {
                                 // XXX: We can't get the old connection back
                                 // from the failed upgrade future, so we have
                                 // to try reconnecting.
-                                let connect = TcpStream::connect(addr);
+                                let connect = TcpStream::connect(&addr);
                                 // XXX: Should we propagate *why* the handshake
                                 // failed here?
                                 let reason =
                                     tls::ReasonForNoTls::HandshakeFailed;
                                 // Reset self to try the plaintext connection.
-                                Connecting::Plaintext {
-                                    addr: *addr,
+                                ConnectingState::Plaintext {
                                     connect,
                                     tls: Some(Conditional::None(reason))
                                 }
