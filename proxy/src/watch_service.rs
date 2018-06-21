@@ -34,7 +34,7 @@ impl<T, R: Rebind<T>> Service for WatchService<T, R> {
             self.inner = self.rebind.rebind(&*self.watch.borrow());
         }
 
-        Ok(Async::Ready(()))
+        self.inner.poll_ready()
     }
 
     fn call(&mut self, req: Self::Request) -> Self::Future {
