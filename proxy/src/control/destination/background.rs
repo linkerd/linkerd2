@@ -62,6 +62,8 @@ struct Background<T: HttpService<ResponseBody = RecvBody>> {
     rpc_ready: bool,
     /// A receiver of new watch requests.
     request_rx: mpsc::UnboundedReceiver<ResolveRequest>,
+    client_tls: tls::ClientConfigWatch,
+    tls_config_version: usize,
 }
 
 /// Holds the state of a single resolution.
@@ -70,6 +72,7 @@ struct DestinationSet<T: HttpService<ResponseBody = RecvBody>> {
     query: Option<DestinationServiceQuery<T>>,
     dns_query: Option<IpAddrListFuture>,
     responders: Vec<Responder>,
+    tls_config_version: usize,
 }
 
 
@@ -79,7 +82,8 @@ pub(super) fn task(
     dns_resolver: dns::Resolver,
     namespaces: Namespaces,
     host_and_port: Option<HostAndPort>,
-    controller_tls: tls::ConditionalConnectionConfig<tls::ClientConfigWatch>
+    controller_tls: tls::ConditionalConnectionConfig<tls::ClientConfigWatch>,
+    client_tls: tls::ClientConfigWatch,
 ) -> impl Future<Item = (), Error = ()>
 {
     // Build up the Controller Client Stack
@@ -110,6 +114,7 @@ pub(super) fn task(
         request_rx,
         dns_resolver,
         namespaces,
+        client_tls,
     );
 
     future::poll_fn(move || {
@@ -130,6 +135,7 @@ where
         request_rx: mpsc::UnboundedReceiver<ResolveRequest>,
         dns_resolver: dns::Resolver,
         namespaces: Namespaces,
+        client_tls: tls::ClientConfigWatch,
     ) -> Self {
         Self {
             dns_resolver,
@@ -138,6 +144,8 @@ where
             reconnects: VecDeque::new(),
             rpc_ready: false,
             request_rx,
+            client_tls,
+            tls_config_version: 0,
         }
     }
 
@@ -149,6 +157,7 @@ where
             self.poll_resolve_requests(client);
             self.retain_active_destinations();
             self.poll_destinations();
+            self.poll_tls_config_updates();
 
             if self.reconnects.is_empty() || !self.rpc_ready {
                 break;
@@ -216,6 +225,7 @@ where
                                 query,
                                 dns_query: None,
                                 responders: vec![resolve.responder],
+                                tls_config_version: self.tls_config_version,
                             };
                             // If the authority is one for which the Destination service is never
                             // relevant (e.g. an absolute name that doesn't end in ".svc.$zone." in
@@ -316,6 +326,15 @@ where
         }
     }
 
+    fn poll_tls_config_updates(&mut self) {
+        if let Ok(Async::Ready(_)) = self.client_tls.poll() {
+            self.tls_config_version += 1;
+            for (auth, set) in &mut self.destinations {
+                set.set_tls_config_version(auth, self.tls_config_version);
+            }
+        }
+    }
+
     /// Initiates a query `query` to the Destination service and returns it as
     /// `Some(query)` if the given authority's host is of a form suitable for using to
     /// query the Destination service. Otherwise, returns `None`.
@@ -377,7 +396,7 @@ where
         tls_controller_namespace: Option<&str>,
     ) -> (DestinationServiceQuery<T>, Exists<()>) {
         let mut exists = Exists::Unknown;
-
+        let tls_config_version = self.tls_config_version;
         loop {
             match rx.poll() {
                 Ok(Async::Ready(Some(update))) => match update.update {
@@ -387,7 +406,13 @@ where
                             .addrs
                             .into_iter()
                             .filter_map(|pb|
-                                pb_to_addr_meta(pb, &set_labels, tls_controller_namespace));
+                                pb_to_addr_meta(
+                                    pb,
+                                    &set_labels,
+                                    tls_controller_namespace,
+                                    tls_config_version,
+                                )
+                            );
                         self.add(auth, addrs)
                     },
                     Some(PbUpdate2::Remove(r_set)) => {
@@ -486,6 +511,35 @@ where
 }
 
 impl<T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
+    fn set_tls_config_version(
+        &mut self,
+        authority_for_logging: &DnsNameAndPort,
+        version: usize
+    ) {
+        self.tls_config_version = version;
+        let cache = match self.addrs.take() {
+            Exists::Yes(mut cache) => Some(cache),
+            Exists::Unknown | Exists::No => None,
+        };
+        if let Some(mut cache) = cache {
+            let updated = (&cache).into_iter()
+                .map(|(k, v)| {
+                    let v = v.clone().with_tls_config_version(version);
+                    (*k, v)
+                })
+                .collect::<Vec<_>>();
+            cache.update_union(updated.into_iter(), &mut |change| {
+                Self::on_change(
+                    &mut self.responders,
+                    authority_for_logging,
+                    change
+                )
+            });
+            self.addrs = Exists::Yes(cache);
+        };
+
+    }
+
     fn reset_on_next_modification(&mut self) {
         match self.addrs {
             Exists::Yes(ref mut cache) => {
@@ -576,6 +630,7 @@ fn pb_to_addr_meta(
     pb: WeightedAddr,
     set_labels: &HashMap<String, String>,
     tls_controller_namespace: Option<&str>,
+    tls_config_version: usize,
 ) -> Option<(SocketAddr, Metadata)> {
     let addr = pb.addr.and_then(pb_to_sock_addr)?;
 
@@ -601,7 +656,11 @@ fn pb_to_addr_meta(
         }
     };
 
-    let meta = Metadata::new(DstLabels::new(labels.into_iter()), tls_identity);
+    let meta = Metadata::new(
+        DstLabels::new(labels.into_iter()),
+        tls_identity,
+        tls_config_version,
+    );
     Some((addr, meta))
 }
 
