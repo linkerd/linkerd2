@@ -260,9 +260,16 @@ where
                 config.inbound_router_capacity,
                 config.inbound_router_max_idle_age,
             );
+            let tls_settings = match &config.tls_settings {
+                Conditional::Some(settings) => Conditional::Some(tls::ConnectionConfig {
+                    identity: settings.service_identity.clone(),
+                    config: tls_server_config
+                }),
+                Conditional::None(r) => Conditional::None(*r),
+            };
             serve(
                 inbound_listener,
-                config.tls_settings.map(|settings| (settings.service_identity, tls_server_config)),
+                tls_settings,
                 router,
                 config.private_connect_timeout,
                 config.inbound_ports_disable_protocol_detection,
@@ -286,7 +293,7 @@ where
             );
             serve(
                 outbound_listener,
-                None, // No TLS between service & proxy.
+                Conditional::None(tls::ReasonForNoTls::InternalTraffic),
                 router,
                 config.public_connect_timeout,
                 config.outbound_ports_disable_protocol_detection,
@@ -353,7 +360,7 @@ where
 
 fn serve<R, B, E, F, G>(
     bound_port: BoundPort,
-    tls_config: Option<(tls::Identity, tls::ServerConfigWatch)>,
+    tls_config: tls::ConditionalConnectionConfig<tls::ServerConfigWatch>,
     router: Router<R>,
     tcp_connect_timeout: Duration,
     disable_protocol_detection_ports: IndexSet<u16>,
@@ -511,8 +518,9 @@ where
     );
     let fut = {
         let log = log.clone();
+        // TODO: serve over TLS.
         bound_port.listen_and_fold(
-            None, // TODO: serve over TLS.
+            Conditional::None(tls::ReasonForNoIdentity::NotImplementedForTap.into()),
             server,
             move |server, (session, remote)| {
                 let log = log.clone().with_remote(remote);

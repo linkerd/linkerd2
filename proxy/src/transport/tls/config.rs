@@ -78,7 +78,7 @@ pub type ServerConfigWatch = Watch<Option<ServerConfig>>;
 /// The configuration in effect for a client (`ClientConfig`) or server
 /// (`ServerConfig`) TLS connection.
 #[derive(Clone, Debug)]
-pub struct ConnectionConfig<C> where C: Clone + std::fmt::Debug {
+pub struct ConnectionConfig<C> where C: Clone {
     pub identity: Identity,
     pub config: C,
 }
@@ -94,6 +94,9 @@ pub enum ReasonForNoTls {
     /// The endpoint's TLS identity is unknown. Without knowing its identity
     /// we can't validate its certificate.
     NoIdentity(ReasonForNoIdentity),
+
+    /// The connection is between the proxy and the service
+    InternalTraffic,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -113,6 +116,14 @@ pub enum ReasonForNoIdentity {
     /// We haven't implemented the mechanism to construct a TLS identity for
     /// the controller yet.
     NotImplementedForController,
+
+    /// We haven't implemented the mechanism to construct a TLs identity for
+    /// the tap psuedo-service yet.
+    NotImplementedForTap,
+
+    /// We haven't implemented the mechanism to construct a TLs identity for
+    /// the metrics psuedo-service yet.
+    NotImplementedForMetrics,
 }
 
 impl From<ReasonForNoIdentity> for ReasonForNoTls {
@@ -238,10 +249,10 @@ impl CommonConfig {
 
 }
 
-pub fn watch_for_config_changes(settings: Option<&CommonSettings>)
+pub fn watch_for_config_changes(settings: Conditional<&CommonSettings, ReasonForNoTls>)
     -> (ClientConfigWatch, ServerConfigWatch, Box<Future<Item = (), Error = ()> + Send>)
 {
-    let settings = if let Some(settings) = settings {
+    let settings = if let Conditional::Some(settings) = settings {
         settings.clone()
     } else {
         let (client_watch, _) = Watch::new(None);
@@ -340,7 +351,7 @@ impl ServerConfig {
 }
 
 pub fn current_connection_config<C>(watch: &ConditionalConnectionConfig<Watch<Option<C>>>)
-    -> ConditionalConnectionConfig<C> where C: Clone + std::fmt::Debug
+    -> ConditionalConnectionConfig<C> where C: Clone
 {
     match watch {
         Conditional::Some(c) => {
