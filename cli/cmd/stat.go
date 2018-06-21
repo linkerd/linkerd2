@@ -303,8 +303,7 @@ func getNamePrefix(resourceType string) string {
 	if resourceType == "" {
 		return ""
 	} else {
-		// the type doesn't come from the user here; skip err check
-		canonicalType, _ := util.CanonicalResourceType(resourceType)
+		canonicalType := util.ShortNameFromCanonicalName(resourceType)
 		return canonicalType + "/"
 	}
 }

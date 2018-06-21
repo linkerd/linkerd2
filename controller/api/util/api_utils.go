@@ -138,7 +138,7 @@ func BuildStatSummaryRequest(p StatSummaryRequestParams) (*pb.StatSummaryRequest
 			p.ToType = resourceType
 		}
 
-		toType, err := ValidateToResourceType(p.ToType)
+		toType, err := CanonicalResourceType(p.ToType)
 		if err != nil {
 			return nil, err
 		}
@@ -161,7 +161,7 @@ func BuildStatSummaryRequest(p StatSummaryRequestParams) (*pb.StatSummaryRequest
 			p.FromType = resourceType
 		}
 
-		fromType, err := ValidateFromResourceType(p.FromType)
+		fromType, err := validateFromResourceType(p.FromType)
 		if err != nil {
 			return nil, err
 		}
@@ -181,18 +181,14 @@ func BuildStatSummaryRequest(p StatSummaryRequestParams) (*pb.StatSummaryRequest
 
 // Ensures a valid resource type - a canonical k8s object, or 'authority'
 func CanonicalResourceType(resourceType string) (string, error) {
-	if resourceType == Authority {
-		return resourceType, nil
+	if resourceType == Authority || resourceType == AuthorityShortName {
+		return Authority, nil
 	}
 	return k8s.CanonicalKubernetesNameFromFriendlyName(resourceType)
 }
 
-// An authority can only receive traffic, not send it
-func ValidateToResourceType(resourceType string) (string, error) {
-	return CanonicalResourceType(resourceType)
-}
-
-func ValidateFromResourceType(resourceType string) (string, error) {
+// An authority can only receive traffic, not send it, so it can't be a --from
+func validateFromResourceType(resourceType string) (string, error) {
 	return k8s.CanonicalKubernetesNameFromFriendlyName(resourceType)
 }
 
