@@ -15,7 +15,6 @@ import (
 	"github.com/runconduit/conduit/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"k8s.io/api/core/v1"
 )
 
 type statOptions struct {
@@ -223,19 +222,21 @@ func writeStatsToBuffer(resp *pb.StatSummaryResponse, reqResourceType string, w 
 		os.Exit(0)
 	}
 
-	lastDisplayedStat := true // don't print a newline after the final stat
-
-	for _, resourceType := range k8s.StatAllResourceTypes {
-		if stats, ok := statTables[resourceType]; ok {
-			if !lastDisplayedStat {
-				fmt.Fprint(w, "\n")
-			}
-			lastDisplayedStat = false
-			if reqResourceType == k8s.All {
+	switch reqResourceType {
+	case k8s.All:
+		firstDisplayedStat := true // don't print a newline before the first stat
+		for _, resourceType := range k8s.StatAllResourceTypes {
+			if stats, ok := statTables[resourceType]; ok {
+				if !firstDisplayedStat {
+					fmt.Fprint(w, "\n")
+				}
+				firstDisplayedStat = false
 				printStatTable(stats, resourceType, w, maxNameLength, maxNamespaceLength, options)
-			} else {
-				printStatTable(stats, "", w, maxNameLength, maxNamespaceLength, options)
 			}
+		}
+	default:
+		if stats, ok := statTables[reqResourceType]; ok {
+			printStatTable(stats, "", w, maxNameLength, maxNamespaceLength, options)
 		}
 	}
 }
@@ -307,14 +308,7 @@ func getNamePrefix(resourceType string) string {
 }
 
 func buildStatSummaryRequest(resource []string, options *statOptions) (*pb.StatSummaryRequest, error) {
-	targetNamespace := options.namespace
-	if options.allNamespaces {
-		targetNamespace = ""
-	} else if options.namespace == "" {
-		targetNamespace = v1.NamespaceDefault
-	}
-
-	target, err := util.BuildResource(targetNamespace, resource...)
+	target, err := util.BuildResource(options.namespace, resource...)
 	if err != nil {
 		return nil, err
 	}
@@ -337,13 +331,14 @@ func buildStatSummaryRequest(resource []string, options *statOptions) (*pb.StatS
 		TimeWindow:    options.timeWindow,
 		ResourceName:  target.Name,
 		ResourceType:  target.Type,
-		Namespace:     targetNamespace,
+		Namespace:     options.namespace,
 		ToName:        toRes.Name,
 		ToType:        toRes.Type,
 		ToNamespace:   options.toNamespace,
 		FromName:      fromRes.Name,
 		FromType:      fromRes.Type,
 		FromNamespace: options.fromNamespace,
+		AllNamespaces: options.allNamespaces,
 	}
 
 	return util.BuildStatSummaryRequest(requestParams)

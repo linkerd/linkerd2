@@ -4,14 +4,15 @@ set -eu
 
 # When set, causes docker's build output to be emitted to stderr.
 export DOCKER_TRACE="${DOCKER_TRACE:-}"
-
-if [ $# -ne 0 ]; then
-    echo "no arguments allowed for $(basename $0), given: $@" >&2
-    exit 64
-fi
+export RUST_LOG="${RUST_LOG:-}"
 
 bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 rootdir="$( cd $bindir/.. && pwd )"
+
+output="/dev/null"
+if [ -n "$DOCKER_TRACE" ]; then
+    output="/dev/stderr"
+fi
 
 output="/dev/null"
 if [ -n "$DOCKER_TRACE" ]; then
@@ -22,4 +23,4 @@ docker build -f $rootdir/proxy/Dockerfile . \
     --target build \
     -t proxy-build \
     --build-arg=PROXY_UNOPTIMIZED=1 > "$output"
-docker run --rm -it proxy-build cargo test
+docker run --rm -it proxy-build env RUST_LOG="$RUST_LOG" cargo test "$@"

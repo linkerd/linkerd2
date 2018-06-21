@@ -1,6 +1,7 @@
 mod client;
 mod glue;
 pub mod h1;
+mod upgrade;
 mod protocol;
 mod server;
 mod tcp;

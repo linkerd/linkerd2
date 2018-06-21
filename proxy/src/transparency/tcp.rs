@@ -7,11 +7,16 @@ use futures::{future, Async, Future, Poll};
 use tokio_connect::Connect;
 use tokio::io::{AsyncRead, AsyncWrite};
 
+use conditional::Conditional;
 use control::destination;
-use ctx::transport::{Client as ClientCtx, Server as ServerCtx};
+use ctx::transport::{
+    Client as ClientCtx,
+    Server as ServerCtx,
+};
 use telemetry::Sensors;
 use timeout::Timeout;
-use transport;
+use transport::{self, tls};
+use ctx::transport::TlsStatus;
 
 /// TCP Server Proxy
 #[derive(Debug, Clone)]
@@ -55,13 +60,16 @@ impl Proxy {
             return future::Either::B(future::ok(()));
         };
 
+        let tls = Conditional::None(tls::ReasonForNoIdentity::NotHttp.into()); // TODO
+
         let client_ctx = ClientCtx::new(
             &srv_ctx.proxy,
             &orig_dst,
             destination::Metadata::no_metadata(),
+            TlsStatus::from(&tls),
         );
         let c = Timeout::new(
-            transport::Connect::new(orig_dst, None), // No TLS.
+            transport::Connect::new(orig_dst, tls),
             self.connect_timeout,
         );
         let connect = self.sensors.connect(c, &client_ctx);
@@ -69,10 +77,19 @@ impl Proxy {
         future::Either::A(connect.connect()
             .map_err(move |e| error!("tcp connect error to {}: {:?}", orig_dst, e))
             .and_then(move |tcp_out| {
-                Duplex::new(tcp_in, tcp_out)
-                    .map_err(|e| error!("tcp duplex error: {}", e))
+                duplex(tcp_in, tcp_out)
             }))
     }
+}
+
+pub(super) fn duplex<In, Out>(half_in: In, half_out: Out)
+    -> impl Future<Item=(), Error=()> + Send
+where
+    In: AsyncRead + AsyncWrite + Send + 'static,
+    Out: AsyncRead + AsyncWrite + Send + 'static,
+{
+    Duplex::new(half_in, half_out)
+        .map_err(|e| error!("tcp duplex error: {}", e))
 }
 
 /// A future piping data bi-directionally to In and Out.

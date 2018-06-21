@@ -45,41 +45,69 @@ var controllerDeployments = []string{"controller", "grafana", "prometheus", "web
 // failed attempts will eventually be recorded in the stats that we're
 // requesting, and the test will pass.
 func TestCliStatForConduitNamespace(t *testing.T) {
+	t.Run("test conduit stat deploy", func(t *testing.T) {
+		err := TestHelper.RetryFor(20*time.Second, func() error {
+			out, err := TestHelper.ConduitRun("stat", "deploy", "-n", TestHelper.GetConduitNamespace())
+			if err != nil {
+				t.Fatalf("Unexpected stat error: %v", err)
+			}
 
-	err := TestHelper.RetryFor(20*time.Second, func() error {
-		out, err := TestHelper.ConduitRun("stat", "deploy", "-n", TestHelper.GetConduitNamespace())
-		if err != nil {
-			t.Fatalf("Unexpected stat error: %v", err)
-		}
-
-		rowStats, err := parseRows(out)
-		if err != nil {
-			return err
-		}
-
-		for _, name := range controllerDeployments {
-			if err := validateRowStats(name, rowStats); err != nil {
+			rowStats, err := parseRows(out, 4)
+			if err != nil {
 				return err
 			}
+
+			for _, name := range controllerDeployments {
+				if err := validateRowStats(name, "1/1", rowStats); err != nil {
+					return err
+				}
+			}
+
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err.Error())
 		}
-
-		return nil
 	})
-	if err != nil {
-		t.Fatal(err.Error())
-	}
 
+	t.Run("test conduit stat namespace", func(t *testing.T) {
+		err := TestHelper.RetryFor(20*time.Second, func() error {
+			out, err := TestHelper.ConduitRun("stat", "ns", TestHelper.GetConduitNamespace())
+			if err != nil {
+				t.Fatalf("Unexpected stat error: %v", err)
+			}
+
+			rowStats, err := parseRows(out, 1)
+			if err != nil {
+				return err
+			}
+
+			return validateRowStats(TestHelper.GetConduitNamespace(), "4/4", rowStats)
+		})
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+	})
 }
 
-func parseRows(out string) (map[string]*rowStat, error) {
+// check that expectedRowCount rows have been returned
+func checkRowCount(out string, expectedRowCount int) ([]string, error) {
 	rows := strings.Split(out, "\n")
 	rows = rows[1 : len(rows)-1] // strip header and trailing newline
 
-	expectedRowCount := 4
 	if len(rows) != expectedRowCount {
 		return nil, fmt.Errorf(
 			"Expected [%d] rows in stat output, got [%d]; full output:\n%s",
 			expectedRowCount, len(rows), strings.Join(rows, "\n"))
+	}
+
+	return rows, nil
+}
+
+func parseRows(out string, expectedRowCount int) (map[string]*rowStat, error) {
+	rows, err := checkRowCount(out, expectedRowCount)
+	if err != nil {
+		return nil, err
 	}
 
 	rowStats := make(map[string]*rowStat)
@@ -108,13 +136,12 @@ func parseRows(out string) (map[string]*rowStat, error) {
 	return rowStats, nil
 }
 
-func validateRowStats(name string, rowStats map[string]*rowStat) error {
+func validateRowStats(name, expectedMeshCount string, rowStats map[string]*rowStat) error {
 	stat, ok := rowStats[name]
 	if !ok {
 		return fmt.Errorf("No stats found for [%s]", name)
 	}
 
-	expectedMeshCount := "1/1"
 	if stat.meshed != expectedMeshCount {
 		return fmt.Errorf("Expected mesh count [%s] for [%s], got [%s]",
 			expectedMeshCount, name, stat.meshed)

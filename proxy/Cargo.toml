@@ -19,16 +19,17 @@ deflate = {version = "0.7.18", features = ["gzip"] }
 env_logger = { version = "0.5", default-features = false }
 futures = "0.1"
 futures-watch = { git = "https://github.com/carllerche/better-future" }
-h2 = "0.1.7"
+h2 = "0.1.10"
 http = "0.1"
 httparse = "1.2"
-hyper = "0.12"
+hyper = "0.12.2"
 ipnet = "1.0"
 log = "0.4.1"
 indexmap = "1.0.0"
-prost = "0.3.0"
-prost-types = "0.3.0"
+prost = "0.4.0"
+prost-types = "0.4.0"
 rand = "0.5.1"
+try-lock = "0.2"
 
 # for config parsing
 regex = "1.0.0"
@@ -72,3 +73,6 @@ flate2 = { version = "1.0.1", default-features = false, features = ["rust_backen
 # `tokio-io` is needed for TCP tests, because `tokio::io` doesn't re-export
 # the `read` function.
 tokio-io = "0.1.6"
+# Used for filesystem watch tests. We should switch from `tempdir` to `tempfile` once
+# `prost-build` switches to it.`
+tempdir = "0.3"

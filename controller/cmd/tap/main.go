@@ -8,7 +8,7 @@ import (
 
 	"github.com/runconduit/conduit/controller/k8s"
 	"github.com/runconduit/conduit/controller/tap"
-	"github.com/runconduit/conduit/pkg/prometheus"
+	"github.com/runconduit/conduit/pkg/admin"
 	"github.com/runconduit/conduit/pkg/version"
 	log "github.com/sirupsen/logrus"
 )
@@ -52,19 +52,16 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
-	go func() {
-		err := k8sAPI.Sync()
-		if err != nil {
-			log.Fatal(err.Error())
-		}
-	}()
+	ready := make(chan struct{})
+
+	go k8sAPI.Sync(ready)
 
 	go func() {
 		log.Println("starting gRPC server on", *addr)
 		server.Serve(lis)
 	}()
 
-	go prometheus.NewMetricsServer(*metricsAddr)
+	go admin.StartServer(*metricsAddr, ready)
 
 	<-stop
 

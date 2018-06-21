@@ -5,6 +5,7 @@ use ctx;
 use telemetry::metrics::DstLabels;
 use std::sync::atomic::Ordering;
 use transport::tls;
+use conditional::Conditional;
 
 
 /// A `RequestId` can be mapped to a `u64`. No `RequestId`s will map to the
@@ -76,8 +77,21 @@ impl Request {
         Arc::new(r)
     }
 
-    pub fn tls_identity(&self) -> Option<&tls::Identity> {
+    pub fn tls_identity(&self) -> Conditional<&tls::Identity, tls::ReasonForNoIdentity> {
         self.client.tls_identity()
+    }
+
+    /// Returns a `TlsStatus` indicating if the request was sent was over TLS.
+    pub fn tls_status(&self) -> ctx::transport::TlsStatus {
+        if self.server.proxy.is_outbound() {
+            // If the request is in the outbound direction, then we opened the
+            // client connection, so check if it was secured.
+            self.client.tls_status
+        } else {
+            // Otherwise, the request is inbound, so check if we accepted it
+            // over TLS.
+            self.server.tls_status
+        }
     }
 
     pub fn dst_labels(&self) -> Option<&DstLabels> {
@@ -93,6 +107,11 @@ impl Response {
         };
 
         Arc::new(r)
+    }
+
+    /// Returns a `TlsStatus` indicating if the response was sent was over TLS.
+    pub fn tls_status(&self) -> ctx::transport::TlsStatus {
+        self.request.tls_status()
     }
 
     pub fn dst_labels(&self) -> Option<&DstLabels> {

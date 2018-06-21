@@ -116,17 +116,17 @@ func TestLocalKubernetesServiceIdFromDNSName(t *testing.T) {
 		resolver := &k8sResolver{k8sDNSZoneLabels: zone}
 
 		resolvableServiceNames := map[string]string{
-			"name1.ns.svc.this.is.the.zone":  "ns/name1",
-			"name2.ns.svc.this.is.the.zone.": "ns/name2",
-			"name3.ns.svc.cluster.local":     "ns/name3",
-			"name4.ns.svc.cluster.local.":    "ns/name4",
+			"name1.ns.svc.this.is.the.zone":  "name1.ns",
+			"name2.ns.svc.this.is.the.zone.": "name2.ns",
+			"name3.ns.svc.cluster.local":     "name3.ns",
+			"name4.ns.svc.cluster.local.":    "name4.ns",
 		}
 		assertIsResolved(t, resolver, resolvableServiceNames)
 	})
 
 	t.Run("Resolves names of services only if three labels in it", func(t *testing.T) {
 		resolver := &k8sResolver{k8sDNSZoneLabels: someKubernetesDNSZone}
-		validServiceNames := map[string]string{"name.ns.svc": "ns/name"}
+		validServiceNames := map[string]string{"name.ns.svc": "name.ns"}
 		assertIsResolved(t, resolver, validServiceNames)
 
 		invalidServiceNames := []string{"", "something.name.ns.svc.cluster.local", "a.svc", "svc", "a.b.c.svc", "a.b.c.d.svc"}

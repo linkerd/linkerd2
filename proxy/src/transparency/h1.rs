@@ -4,8 +4,9 @@ use std::sync::Arc;
 
 use bytes::BytesMut;
 use http;
-use http::header::HOST;
+use http::header::{HOST, UPGRADE};
 use http::uri::{Authority, Parts, Scheme, Uri};
+
 use ctx::transport::{Server as ServerCtx};
 
 /// Tries to make sure the `Uri` of the request is in a form needed by
@@ -81,4 +82,35 @@ pub fn strip_connection_headers(headers: &mut http::HeaderMap) {
     }
 }
 
+/// Checks requests to determine if they want to perform an HTTP upgrade.
+pub fn wants_upgrade<B>(req: &http::Request<B>) -> bool {
+    // HTTP upgrades were added in 1.1, not 1.0.
+    if req.version() != http::Version::HTTP_11 {
+        return false;
+    }
 
+    if let Some(upgrade) = req.headers().get(UPGRADE) {
+        // If an `h2` upgrade over HTTP/1.1 were to go by the proxy,
+        // and it succeeded, there would an h2 connection, but it would
+        // be opaque-to-the-proxy, acting as just a TCP proxy.
+        //
+        // A user wouldn't be able to see any usual HTTP telemetry about
+        // requests going over that connection. Instead of that confusion,
+        // the proxy strips h2 upgrade headers.
+        //
+        // Eventually, the proxy will support h2 upgrades directly.
+        upgrade != "h2c"
+    } else {
+        // No Upgrade header means no upgrade wanted!
+        false
+    }
+
+
+}
+
+/// Checks responses to determine if they are successful HTTP upgrades.
+pub fn is_upgrade<B>(res: &http::Response<B>) -> bool {
+    // 101 Switching Protocols
+    res.status() == http::StatusCode::SWITCHING_PROTOCOLS
+        && res.version() == http::Version::HTTP_11
+}

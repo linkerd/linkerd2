@@ -69,6 +69,7 @@ items:
           resources: {}
           securityContext:
             runAsUser: 2102
+          terminationMessagePolicy: FallbackToLogsOnError
         initContainers:
         - args:
           - --incoming-proxy-port
@@ -88,6 +89,7 @@ items:
               add:
               - NET_ADMIN
             privileged: false
+          terminationMessagePolicy: FallbackToLogsOnError
   status: {}
 kind: List
 metadata: {}

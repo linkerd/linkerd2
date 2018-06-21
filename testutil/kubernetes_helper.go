@@ -6,8 +6,10 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/runconduit/conduit/pkg/k8s"
 	coreV1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	// Loads the GCP auth plugin
@@ -163,21 +165,26 @@ func (h *KubernetesHelper) CheckService(namespace string, serviceName string) er
 	return err
 }
 
-// GetJobStatus gets the status of a job running in a namespace. If the job does
-// not exist it return an error.
-func (h *KubernetesHelper) GetJobStatus(namespace, jobName string) (string, error) {
-	job, err := h.clientset.BatchV1().Jobs(namespace).Get(jobName, metav1.GetOptions{})
+// GetPodsForDeployment returns all pods for the given deployment
+func (h *KubernetesHelper) GetPodsForDeployment(namespace string, deploymentName string) ([]string, error) {
+	deploy, err := h.clientset.AppsV1().Deployments(namespace).Get(deploymentName, metav1.GetOptions{})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	status := job.Status
-	if status.CompletionTime != nil {
-		if status.Failed > 0 {
-			return "Failed", nil
-		}
-		return "Completed", nil
+
+	podList, err := h.clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{
+		LabelSelector: labels.Set(deploy.Spec.Selector.MatchLabels).AsSelector().String(),
+	})
+	if err != nil {
+		return nil, err
 	}
-	return "Running", nil
+
+	pods := make([]string, 0)
+	for _, pod := range podList.Items {
+		pods = append(pods, pod.Name)
+	}
+
+	return pods, nil
 }
 
 // ParseNamespacedResource extracts a namespace and resource name from a string
@@ -190,4 +197,23 @@ func (h *KubernetesHelper) ParseNamespacedResource(resource string) (string, str
 		return "", "", fmt.Errorf("string [%s] didn't contain expected format for namespace/resource, extracted: %v", resource, matches)
 	}
 	return matches[0][1], matches[0][2], nil
+}
+
+// ProxyURLFor creates a kubernetes proxy, runs it, and returns the URL that
+// tests can use for access to the given service. Note that the proxy remains
+// running for the duration of the test.
+func (h *KubernetesHelper) ProxyURLFor(namespace, service, port string) (string, error) {
+	proxy, err := k8s.NewProxy("", 0)
+	if err != nil {
+		return "", err
+	}
+
+	url, err := proxy.URLFor(namespace, fmt.Sprintf("/services/%s:%s/proxy/", service, port))
+	if err != nil {
+		return "", err
+	}
+
+	go proxy.Run()
+
+	return url.String(), nil
 }

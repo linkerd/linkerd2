@@ -125,3 +125,41 @@ func (m *MockProm) LabelValues(ctx context.Context, label string) (model.LabelVa
 func (m *MockProm) Series(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) ([]model.LabelSet, error) {
 	return nil, nil
 }
+
+func GenStatSummaryResponse(resName, resType, resNs string, meshedPods uint64, runningPods uint64, failedPods uint64) pb.StatSummaryResponse {
+	return pb.StatSummaryResponse{
+		Response: &pb.StatSummaryResponse_Ok_{ // https://github.com/golang/protobuf/issues/205
+			Ok: &pb.StatSummaryResponse_Ok{
+				StatTables: []*pb.StatTable{
+					&pb.StatTable{
+						Table: &pb.StatTable_PodGroup_{
+							PodGroup: &pb.StatTable_PodGroup{
+								Rows: []*pb.StatTable_PodGroup_Row{
+									&pb.StatTable_PodGroup_Row{
+										Resource: &pb.Resource{
+											Namespace: resNs,
+											Type:      resType,
+											Name:      resName,
+										},
+										Stats: &pb.BasicStats{
+											SuccessCount:    123,
+											FailureCount:    0,
+											LatencyMsP50:    123,
+											LatencyMsP95:    123,
+											LatencyMsP99:    123,
+											TlsRequestCount: 123,
+										},
+										TimeWindow:      "1m",
+										MeshedPodCount:  meshedPods,
+										RunningPodCount: runningPods,
+										FailedPodCount:  failedPods,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}

@@ -3,8 +3,9 @@ use futures::future::{
     Future,
     ExecuteError,
     ExecuteErrorKind,
-    Executor,
 };
+pub use futures::future::Executor;
+
 use tokio::{
     executor::{
         DefaultExecutor,
@@ -19,6 +20,8 @@ use std::{
     fmt,
     io,
 };
+
+pub type BoxSendFuture = Box<Future<Item = (), Error = ()> + Send>;
 
 /// An empty type which implements `Executor` by lazily  calling
 /// `tokio::executor::DefaultExecutor::current().execute(...)`.
@@ -35,6 +38,12 @@ pub struct LazyExecutor;
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct BoxExecutor<E: TokioExecutor>(E);
+
+/// A `futures::executor::Executor` with any generics erased.
+///
+/// This is useful when some code cannot be generic over any executor,
+/// and instead needs a trait object. An example is `Http11Upgrade`.
+pub struct ErasedExecutor(Box<Executor<BoxSendFuture> + Send + Sync>);
 
 /// Indicates which Tokio `Runtime` should be used for the main proxy.
 ///
@@ -71,7 +80,7 @@ pub enum Error {
 impl TokioExecutor for LazyExecutor {
     fn spawn(
         &mut self,
-        future: Box<Future<Item = (), Error = ()> + 'static + Send>
+        future: BoxSendFuture,
     ) -> Result<(), SpawnError>
     {
         DefaultExecutor::current().spawn(future)
@@ -118,7 +127,7 @@ impl<E: TokioExecutor> BoxExecutor<E> {
 impl<E: TokioExecutor> TokioExecutor for BoxExecutor<E> {
     fn spawn(
         &mut self,
-        future: Box<Future<Item = (), Error = ()> + 'static + Send>
+        future: BoxSendFuture,
     ) -> Result<(), SpawnError> {
         self.0.spawn(future)
     }
@@ -132,7 +141,7 @@ impl<F, E> Executor<F> for BoxExecutor<E>
 where
     F: Future<Item = (), Error = ()> + 'static + Send,
     E: TokioExecutor,
-    E: Executor<Box<Future<Item = (), Error = ()> + Send + 'static>>,
+    E: Executor<BoxSendFuture>,
 {
     fn execute(&self, future: F) -> Result<(), ExecuteError<F>> {
         // Check the status of the executor first, so that we can return the
@@ -151,6 +160,30 @@ where
         self.0.execute(Box::new(future))
             .expect("spawn() errored but status() was Ok");
         Ok(())
+    }
+}
+
+// ===== impl ErasedExecutor =====;
+
+impl ErasedExecutor {
+    pub fn erase<E: Executor<BoxSendFuture> + Send + Sync + 'static>(exe: E) -> ErasedExecutor {
+        ErasedExecutor(Box::new(exe))
+    }
+}
+
+impl<F> Executor<F> for ErasedExecutor
+where
+    F: Future<Item = (), Error = ()> + 'static + Send,
+{
+    fn execute(&self, future: F) -> Result<(), ExecuteError<F>> {
+        self.0.execute(Box::new(future))
+            .map_err(|_| panic!("erased executor error"))
+    }
+}
+
+impl fmt::Debug for ErasedExecutor {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("ErasedExecutor")
     }
 }
 
@@ -260,6 +293,53 @@ impl StdError for Error {
             Error::Shutdown => "executor has shut down",
             Error::NoCapacity => "executor has no more capacity",
             Error::Unknown => "unknown error executing future",
+        }
+    }
+}
+
+#[cfg(test)]
+pub mod test_util {
+    use futures::Future;
+    use tokio::{
+        runtime::current_thread,
+        timer,
+    };
+
+    use std::time::{Duration, Instant};
+
+    /// A trait that allows an executor to execute a future for up to a given
+    /// time limit, and then panics if the future has not finished.
+    ///
+    /// This is intended for use in cases where the failure mode of some future
+    /// is to wait forever, rather than returning an error. When this happens,
+    /// it can make debugging test failures much more difficult, as killing
+    /// the tests when one has been waiting for over a minute prevents any
+    /// remaining tests from running, and doesn't print any output from the
+    /// killed test.
+    pub trait BlockOnFor {
+        /// Runs the provided future for up to `timeout`, blocking the thread
+        /// until the future completes.
+        fn block_on_for<F>(&mut self, timeout: Duration, f: F) -> Result<F::Item, F::Error>
+        where
+            F: Future;
+    }
+
+    impl BlockOnFor for current_thread::Runtime {
+        fn block_on_for<F>(&mut self, timeout: Duration, f: F) -> Result<F::Item, F::Error>
+        where
+            F: Future
+        {
+            let f = timer::Deadline::new(f, Instant::now() + timeout);
+            match self.block_on(f) {
+                Ok(item) => Ok(item),
+                Err(e) => if e.is_inner() {
+                    return Err(e.into_inner().unwrap());
+                } else if e.is_timer() {
+                    panic!("timer error: {}", e.into_timer().unwrap());
+                } else {
+                    panic!("assertion failed: future did not finish within {:?}", timeout);
+                },
+            }
         }
     }
 }

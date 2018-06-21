@@ -1,7 +1,6 @@
 package testutil
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -11,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // TestHelper provides helpers for running the conduit integration tests.
@@ -33,6 +34,7 @@ func NewTestHelper() *TestHelper {
 	conduit := flag.String("conduit", "", "path to the conduit binary to test")
 	namespace := flag.String("conduit-namespace", "conduit", "the namespace where conduit is installed")
 	runTests := flag.Bool("integration-tests", false, "must be provided to run the integration tests")
+	verbose := flag.Bool("verbose", false, "turn on debug logging")
 	flag.Parse()
 
 	if !*runTests {
@@ -50,6 +52,12 @@ func NewTestHelper() *TestHelper {
 	_, err := os.Stat(*conduit)
 	if err != nil {
 		exit(1, "-conduit binary does not exist")
+	}
+
+	if *verbose {
+		log.SetLevel(log.DebugLevel)
+	} else {
+		log.SetLevel(log.PanicLevel)
 	}
 
 	testHelper := &TestHelper{
@@ -171,29 +179,6 @@ func (h *TestHelper) CheckVersion(serverVersion string) error {
 	return nil
 }
 
-// BlockUntilTrue retries a given function every second until the function
-// returns true or a timeout is reached. If the timeout is reached, it returns
-// an error.
-func (h *TestHelper) BlockUntilTrue(timeout time.Duration, fn func() bool) error {
-	if fn() {
-		return nil
-	}
-
-	timeoutAfter := time.After(timeout)
-	retryAfter := time.Tick(time.Second)
-
-	for {
-		select {
-		case <-timeoutAfter:
-			return errors.New("timed out waiting for condition")
-		case <-retryAfter:
-			if fn() {
-				return nil
-			}
-		}
-	}
-}
-
 // RetryFor retries a given function every second until the function returns
 // without an error, or a timeout is reached. If the timeout is reached, it
 // returns the last error received from the function.
@@ -221,58 +206,29 @@ func (h *TestHelper) RetryFor(timeout time.Duration, fn func() error) error {
 
 // HTTPGetURL sends a GET request to the given URL. It returns the response body
 // in the event of a successful 200 response. In the event of a non-200
-// response, it returns an error.
+// response, it returns an error. It retries requests for up to 30 seconds,
+// giving pods time to start.
 func (h *TestHelper) HTTPGetURL(url string) (string, error) {
-	resp, err := h.httpClient.Get(url)
-	if err != nil {
-		// retry once on timeout error; workaround for GKE loadbalancers
-		if strings.Contains(err.Error(), "Client.Timeout") {
-			resp, err = h.httpClient.Get(url)
-		}
-	}
-	if err != nil {
-		return "", err
-	}
-
-	defer resp.Body.Close()
-	bytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("Error reading response body: %v", err)
-	}
-	body := string(bytes)
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("GET request to [%s] returned status [%d]\n%s", url, resp.StatusCode, body)
-	}
-
-	return body, nil
-}
-
-// GetURLForService returns the external URL for a service in a namespace.
-func (h *TestHelper) GetURLForService(namespace string, serviceName string) (string, error) {
-	var url string
-	err := h.RetryFor(3*time.Minute, func() error {
-		// first try fetching the url from kubectl
-		cmd := exec.Command("kubectl", "-n", namespace, "get", "svc", serviceName, "-o",
-			"jsonpath={.status.loadBalancer.ingress[0].*}:{.spec.ports[0].port}")
-		out, err := cmd.Output()
+	var body string
+	err := h.RetryFor(30*time.Second, func() error {
+		resp, err := h.httpClient.Get(url)
 		if err != nil {
-			return fmt.Errorf("kubectl get svc error: %s\n%s", out, err)
-		}
-		addr := strings.TrimSpace(string(out))
-		if !strings.HasPrefix(addr, ":") {
-			url = "http://" + addr
-			return nil
+			return err
 		}
 
-		// fallback to minikube
-		cmd = exec.Command("minikube", "-n", namespace, "service", serviceName, "--url")
-		out, err = cmd.Output()
+		defer resp.Body.Close()
+		bytes, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			return fmt.Errorf("minikube service error: %s\n%s", out, err)
+			return fmt.Errorf("Error reading response body: %v", err)
 		}
-		url = strings.TrimSpace(string(out))
+		body = string(bytes)
+
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("GET request to [%s] returned status [%d]\n%s", url, resp.StatusCode, body)
+		}
+
 		return nil
 	})
-	return url, err
+
+	return body, err
 }

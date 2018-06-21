@@ -21,7 +21,8 @@
               },
               "timeWindow": "1m",
               "runningPodCount": "1",
-              "failedPodCount": null
+              "failedPodCount": null,
+              "errorsByPod": {}
             }
           ]
         }

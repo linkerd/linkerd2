@@ -32,6 +32,9 @@ extern crate prost_types;
 extern crate quickcheck;
 extern crate rand;
 extern crate regex;
+extern crate ring;
+#[cfg(test)]
+extern crate tempdir;
 extern crate tokio;
 extern crate tokio_connect;
 extern crate tower_balance;
@@ -46,6 +49,7 @@ extern crate conduit_proxy_router;
 extern crate tower_util;
 extern crate tower_in_flight_limit;
 extern crate trust_dns_resolver;
+extern crate try_lock;
 
 use futures::*;
 
@@ -69,15 +73,18 @@ pub mod app;
 mod bind;
 pub mod config;
 mod connection;
+pub mod conditional;
 pub mod control;
 pub mod convert;
 pub mod ctx;
 mod dns;
 mod drain;
+pub mod fs_watch;
 mod inbound;
 mod logging;
 mod map_err;
 mod outbound;
+pub mod stream;
 pub mod task;
 pub mod telemetry;
 mod transparency;
@@ -93,6 +100,7 @@ use task::MainRuntime;
 use transparency::{HttpBody, Server};
 pub use transport::{AddrInfo, GetOriginalDst, SoOriginalDst, tls};
 use outbound::Outbound;
+use conditional::Conditional;
 
 /// Runs a sidecar proxy.
 ///
@@ -176,7 +184,10 @@ where
     where
         F: Future<Item = (), Error = ()> + Send + 'static,
     {
-        let process_ctx = ctx::Process::new(&self.config);
+        let (tls_client_config, tls_server_config, tls_cfg_bg) =
+            tls::watch_for_config_changes(self.config.tls_settings.as_ref());
+
+        let process_ctx = ctx::Process::new(&self.config, tls_client_config.clone());
 
         let Main {
             config,
@@ -218,6 +229,9 @@ where
             &taps,
         );
 
+        let controller_tls =
+            Conditional::None(tls::ReasonForNoIdentity::NotImplementedForController.into()); // TODO
+
         let (dns_resolver, dns_bg) = dns::Resolver::from_system_config_and_env(&config)
             .unwrap_or_else(|e| {
                 // TODO: Make DNS configuration infallible.
@@ -227,24 +241,20 @@ where
         let (resolver, resolver_bg) = control::destination::new(
             dns_resolver.clone(),
             config.namespaces.clone(),
-            control_host_and_port
+            control_host_and_port,
+            controller_tls,
         );
 
         let (drain_tx, drain_rx) = drain::channel();
 
         let bind = Bind::new().with_sensors(sensors.clone());
 
-        let (_tls_client_config, tls_server_config, tls_cfg_bg) =
-            tls::watch_for_config_changes(config.tls_settings.as_ref());
-
         // Setup the public listener. This will listen on a publicly accessible
         // address and listen for inbound connections that should be forwarded
         // to the managed application (private destination).
         let inbound = {
             let ctx = ctx::Proxy::inbound(&process_ctx);
-
             let bind = bind.clone().with_ctx(ctx.clone());
-
             let default_addr = config.private_forward.map(|a| a.into());
 
             let router = Router::new(
@@ -254,7 +264,7 @@ where
             );
             serve(
                 inbound_listener,
-                tls_server_config,
+                config.tls_settings.map(|settings| (settings.service_identity, tls_server_config)),
                 router,
                 config.private_connect_timeout,
                 config.inbound_ports_disable_protocol_detection,
@@ -276,11 +286,9 @@ where
                 config.outbound_router_capacity,
                 config.outbound_router_max_idle_age,
             );
-            // No TLS yet.
-            let (no_tls, _) = tls::ServerConfig::no_tls();
             serve(
                 outbound_listener,
-                no_tls,
+                None, // No TLS between service & proxy.
                 router,
                 config.public_connect_timeout,
                 config.outbound_ports_disable_protocol_detection,
@@ -347,7 +355,7 @@ where
 
 fn serve<R, B, E, F, G>(
     bound_port: BoundPort,
-    tls_config: tls::ServerConfigWatch,
+    tls_config: Option<(tls::Identity, tls::ServerConfigWatch)>,
     router: Router<R>,
     tcp_connect_timeout: Duration,
     disable_protocol_detection_ports: IndexSet<u16>,
@@ -503,12 +511,10 @@ where
         h2_builder,
         log.clone().executor(),
     );
-    let (no_tls, _) = tls::ServerConfig::no_tls();
-
     let fut = {
         let log = log.clone();
         bound_port.listen_and_fold(
-            no_tls,
+            None, // TODO: serve over TLS.
             server,
             move |server, (session, remote)| {
                 let log = log.clone().with_remote(remote);

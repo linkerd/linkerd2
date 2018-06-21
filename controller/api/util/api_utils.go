@@ -9,6 +9,7 @@ import (
 	"github.com/runconduit/conduit/pkg/k8s"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -54,6 +55,7 @@ type StatSummaryRequestParams struct {
 	FromNamespace string
 	FromType      string
 	FromName      string
+	AllNamespaces bool
 }
 
 // GRPCError generates a gRPC error code, as defined in
@@ -98,6 +100,17 @@ func BuildStatSummaryRequest(p StatSummaryRequestParams) (*pb.StatSummaryRequest
 		window = p.TimeWindow
 	}
 
+	if p.AllNamespaces && p.ResourceName != "" {
+		return nil, errors.New("stats for a resource cannot be retrieved by name across all namespaces")
+	}
+
+	targetNamespace := p.Namespace
+	if p.AllNamespaces {
+		targetNamespace = ""
+	} else if p.Namespace == "" {
+		targetNamespace = v1.NamespaceDefault
+	}
+
 	resourceType, err := k8s.CanonicalKubernetesNameFromFriendlyName(p.ResourceType)
 	if err != nil {
 		return nil, err
@@ -106,7 +119,7 @@ func BuildStatSummaryRequest(p StatSummaryRequestParams) (*pb.StatSummaryRequest
 	statRequest := &pb.StatSummaryRequest{
 		Selector: &pb.ResourceSelection{
 			Resource: &pb.Resource{
-				Namespace: p.Namespace,
+				Namespace: targetNamespace,
 				Name:      p.ResourceName,
 				Type:      resourceType,
 			},
@@ -116,7 +129,7 @@ func BuildStatSummaryRequest(p StatSummaryRequestParams) (*pb.StatSummaryRequest
 
 	if p.ToName != "" || p.ToType != "" || p.ToNamespace != "" {
 		if p.ToNamespace == "" {
-			p.ToNamespace = p.Namespace
+			p.ToNamespace = targetNamespace
 		}
 		if p.ToType == "" {
 			p.ToType = resourceType
@@ -139,7 +152,7 @@ func BuildStatSummaryRequest(p StatSummaryRequestParams) (*pb.StatSummaryRequest
 
 	if p.FromName != "" || p.FromType != "" || p.FromNamespace != "" {
 		if p.FromNamespace == "" {
-			p.FromNamespace = p.Namespace
+			p.FromNamespace = targetNamespace
 		}
 		if p.FromType == "" {
 			p.FromType = resourceType

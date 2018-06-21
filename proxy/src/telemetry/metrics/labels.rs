@@ -7,6 +7,8 @@ use http;
 
 use ctx;
 use telemetry::event;
+use tls;
+use conditional::Conditional;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct RequestLabels {
@@ -21,6 +23,9 @@ pub struct RequestLabels {
     /// The value of the `:authority` (HTTP/2) or `Host` (HTTP/1.1) header of
     /// the request.
     authority: Option<http::uri::Authority>,
+
+    /// Whether or not the request was made over TLS.
+    tls_status: ctx::transport::TlsStatus,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -46,6 +51,9 @@ pub struct TransportLabels {
     direction: Direction,
 
     peer: Peer,
+
+    /// Was the transport secured with TLS?
+    tls_status: ctx::transport::TlsStatus,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
@@ -95,7 +103,13 @@ impl RequestLabels {
             direction,
             outbound_labels,
             authority,
+            tls_status: req.tls_status(),
         }
+    }
+
+    #[cfg(test)]
+    pub fn tls_status(&self) -> ctx::transport::TlsStatus {
+        self.tls_status
     }
 }
 
@@ -113,6 +127,8 @@ impl fmt::Display for RequestLabels {
             // destination labels, if there are destination labels.
             write!(f, ",{}", outbound)?;
         }
+
+        write!(f, "{}", self.tls_status)?;
 
         Ok(())
     }
@@ -144,6 +160,11 @@ impl ResponseLabels {
             grpc_status_code: None,
             classification: Classification::Failure,
         }
+    }
+
+    #[cfg(test)]
+    pub fn tls_status(&self) -> ctx::transport::TlsStatus {
+        self.request_labels.tls_status
     }
 }
 
@@ -301,17 +322,28 @@ impl TransportLabels {
                 ctx::transport::Ctx::Server(_) => Peer::Src,
                 ctx::transport::Ctx::Client(_) => Peer::Dst,
             },
+            tls_status: ctx.tls_status(),
         }
+    }
+
+    #[cfg(test)]
+    pub fn tls_status(&self) -> ctx::transport::TlsStatus {
+        self.tls_status
     }
 }
 
 impl fmt::Display for TransportLabels {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.direction, f)?;
-        f.pad(match self.peer {
-            Peer::Src => ",peer=\"src\"",
-            Peer::Dst => ",peer=\"dst\"",
-        })
+        write!(f, "{},{}{}", self.direction, self.peer, self.tls_status)
+    }
+}
+
+impl fmt::Display for Peer {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Peer::Src => f.pad("peer=\"src\""),
+            Peer::Dst => f.pad("peer=\"dst\""),
+        }
     }
 }
 
@@ -326,6 +358,11 @@ impl TransportCloseLabels {
             classification: Classification::transport_close(close),
         }
     }
+
+    #[cfg(test)]
+    pub fn tls_status(&self) -> ctx::transport::TlsStatus  {
+        self.transport.tls_status()
+    }
 }
 
 impl fmt::Display for TransportCloseLabels {
@@ -334,3 +371,18 @@ impl fmt::Display for TransportCloseLabels {
     }
 }
 
+// TLS status is the only label that prints its own preceding comma, because
+// there is a case when we don't print a label. If the comma was added by
+// whatever owns a TlsStatus, and the status is Disabled, we might sometimes
+// get double commas.
+// TODO: There's got to be a nicer way to handle this.
+impl fmt::Display for ctx::transport::TlsStatus {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Conditional::Some(()) => f.pad(",tls=\"true\""),
+            Conditional::None(tls::ReasonForNoTls::NoConfig) => f.pad(",tls=\"no_config\""),
+            Conditional::None(tls::ReasonForNoTls::Disabled) |
+            Conditional::None(tls::ReasonForNoTls::NoIdentity(_)) => Ok(()),
+        }
+    }
+}

@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/runconduit/conduit/testutil"
 )
@@ -23,6 +24,15 @@ func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
 	os.Exit(m.Run())
 }
+
+var (
+	deployReplicas = map[string]int{
+		"cli-get-test-d1":              2,
+		"cli-get-test-d2":              1,
+		"cli-get-test-not-injected-d1": 2,
+		"cli-get-test-not-injected-d2": 1,
+	}
+)
 
 //////////////////////
 /// TEST EXECUTION ///
@@ -50,6 +60,19 @@ func TestCliGet(t *testing.T) {
 		t.Fatalf("Unexpected error: %v output:\n%s", err, out)
 	}
 
+	// wait for pods to start
+	err = TestHelper.RetryFor(30*time.Second, func() error {
+		for deploy, replicas := range deployReplicas {
+			if err := TestHelper.CheckPods(prefixedNs, deploy, replicas); err != nil {
+				return fmt.Errorf("Error validating pods for deploy [%s]:\n%s", deploy, err)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Error(err)
+	}
+
 	out, err = TestHelper.ConduitRun("get", "pods")
 	if err != nil {
 		t.Fatalf("Unexpected error: %v output:\n%s", err, out)
@@ -60,8 +83,11 @@ func TestCliGet(t *testing.T) {
 		t.Fatal("Expecting conduit get pods to return something, got nothing")
 	}
 
-	expectedPods := []string{
-		"cli-get-test-d1", "cli-get-test-not-injected-d1", "cli-get-test-not-injected-d1", "cli-get-test-not-injected-d2", "cli-get-test-d1", "cli-get-test-d2",
+	expectedPods := []string{}
+	for deploy, replicas := range deployReplicas {
+		for i := 0; i < replicas; i++ {
+			expectedPods = append(expectedPods, deploy)
+		}
 	}
 
 	var actualPods []string

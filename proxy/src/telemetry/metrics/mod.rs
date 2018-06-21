@@ -293,6 +293,11 @@ mod tests {
     use ctx::test_util::*;
     use telemetry::event;
     use super::*;
+    use conditional::Conditional;
+    use tls;
+
+    const TLS_DISABLED: Conditional<(), tls::ReasonForNoTls> =
+        Conditional::None(tls::ReasonForNoTls::Disabled);
 
     fn mock_route(
         root: &mut Root,
@@ -300,7 +305,7 @@ mod tests {
         server: &Arc<ctx::transport::Server>,
         team: &str
     ) {
-        let client = client(&proxy, vec![("team", team)]);
+        let client = client(&proxy, vec![("team", team)], TLS_DISABLED);
         let (req, rsp) = request("http://nba.com", &server, &client);
 
         let client_transport = Arc::new(ctx::transport::Ctx::Client(client));
@@ -325,7 +330,7 @@ mod tests {
         let process = process();
         let proxy = ctx::Proxy::outbound(&process);
 
-        let server = server(&proxy);
+        let server = server(&proxy, TLS_DISABLED);
         let server_transport = Arc::new(ctx::transport::Ctx::Server(server.clone()));
 
         let mut root = Root::default();
