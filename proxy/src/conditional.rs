@@ -2,11 +2,11 @@ use std;
 
 /// Like `std::option::Option<C>` but `None` carries a reason why the value
 /// isn't available.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub enum Conditional<C, R>
 where
-    C: Clone + std::fmt::Debug,
-    R: Clone + std::fmt::Debug,
+    C: Clone,
+    R: Clone,
 {
     Some(C),
     None(R),
@@ -19,17 +19,30 @@ where
 {
 }
 
+impl<C, R> std::fmt::Debug for Conditional<C, R>
+where
+    C: Clone + std::fmt::Debug,
+    R: Clone + std::fmt::Debug
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        match self {
+            Conditional::Some(s) => f.debug_tuple("Some").field(s).finish(),
+            Conditional::None(r) => f.debug_tuple("None").field(r).finish(),
+        }
+    }
+}
+
 impl<C, R> Eq for Conditional<C, R>
 where
-    C: Eq + Clone + std::fmt::Debug,
-    R: Eq + Clone + std::fmt::Debug,
+    C: Eq + Clone,
+    R: Eq + Clone,
 {
 }
 
 impl<C, R> PartialEq for Conditional<C, R>
 where
-    C: PartialEq + Clone + std::fmt::Debug,
-    R: PartialEq + Clone + std::fmt::Debug,
+    C: PartialEq + Clone,
+    R: PartialEq + Clone,
 {
     fn eq(&self, other: &Conditional<C, R>) -> bool {
         use self::Conditional::*;
@@ -43,8 +56,8 @@ where
 
 impl<C, R> std::hash::Hash for Conditional<C, R>
 where
-    C: std::hash::Hash + Clone + std::fmt::Debug,
-    R: std::hash::Hash + Clone + std::fmt::Debug,
+    C: std::hash::Hash + Clone,
+    R: std::hash::Hash + Clone,
 {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         match self {
@@ -56,8 +69,8 @@ where
 
 impl<C, R> Conditional<C, R>
 where
-    C: Clone + std::fmt::Debug,
-    R: Copy + Clone + std::fmt::Debug,
+    C: Clone,
+    R: Copy + Clone,
 {
     pub fn as_ref<'a>(&'a self) -> Conditional<&'a C, R> {
         match self {

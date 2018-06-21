@@ -12,6 +12,7 @@ use trust_dns_resolver::config::ResolverOpts;
 
 use transport::{Host, HostAndPort, HostAndPortError, tls};
 use convert::TryFrom;
+use conditional::Conditional;
 
 // TODO:
 //
@@ -53,7 +54,7 @@ pub struct Config {
 
     pub outbound_router_max_idle_age: Duration,
 
-    pub tls_settings: Option<tls::CommonSettings>,
+    pub tls_settings: Conditional<tls::CommonSettings, tls::ReasonForNoTls>,
 
     /// The path to "/etc/resolv.conf"
     pub resolv_conf_path: PathBuf,
@@ -306,14 +307,14 @@ impl<'a> TryFrom<&'a Strings> for Config {
              Some(pod_name)) => {
                 let service_identity = tls::Identity::try_from_pod_name(&namespaces, pod_name)
                     .map_err(|_| Error::InvalidEnvVar)?; // Already logged.
-                Ok(Some(tls::CommonSettings {
+                Ok(Conditional::Some(tls::CommonSettings {
                     trust_anchors,
                     end_entity_cert,
                     private_key,
                     service_identity,
                 }))
             },
-            (None, None, None, _) => Ok(None), // No TLS.
+            (None, None, None, _) => Ok(Conditional::None(tls::ReasonForNoTls::Disabled)),
             (trust_anchors, end_entity_cert, private_key, pod_name) => {
                 if trust_anchors.is_none() {
                     error!("{} is not set; it is required when {} and {} are set.",
