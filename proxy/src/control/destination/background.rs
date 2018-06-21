@@ -62,8 +62,11 @@ struct Background<T: HttpService<ResponseBody = RecvBody>> {
     rpc_ready: bool,
     /// A receiver of new watch requests.
     request_rx: mpsc::UnboundedReceiver<ResolveRequest>,
+    /// Watch for changes to the client TLS configuration.
+    ///
+    /// When the TLS config changes, we will have to rebind the client stacks
+    /// for endpoints with which we can communicate over TLS.
     client_tls: tls::ClientConfigWatch,
-    tls_config_version: usize,
 }
 
 /// Holds the state of a single resolution.
@@ -144,7 +147,6 @@ where
             rpc_ready: false,
             request_rx,
             client_tls,
-            tls_config_version: 0,
         }
     }
 
@@ -324,9 +326,13 @@ where
         }
     }
 
+    /// Check if the TLS client configuration has changed.
+    ///
+    /// If it has, each `DestinationSet` must signal to the load balancer to
+    /// invalidate the bound client stacks for all endpoints with TLS
+    /// identities.
     fn poll_tls_config_updates(&mut self) {
         if let Ok(Async::Ready(_)) = self.client_tls.poll() {
-            self.tls_config_version += 1;
             for (auth, set) in &mut self.destinations {
                 set.invalidate_tls_clients(auth);
             }
@@ -509,26 +515,28 @@ impl<T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
     /// stacks for those endpoints.
     ///
     /// This is called when the TLS client configuration changes.
-    fn invalidate_tls_clients(
-        &mut self,
-        authority_for_logging: &DnsNameAndPort,
-    ) {
-        trace!("invalidate_tls_clients: {:?}", authority_for_logging);
+    fn invalidate_tls_clients( &mut self, authority: &DnsNameAndPort) {
+        trace!("invalidate_tls_clients: {:?}", authority);
         if let Exists::Yes(ref cache) = self.addrs {
             for (&key, ref metadata) in cache {
+                // If the endpoint has a TLS identity, then we are
+                // capable of communicating with it over TLS. Therefore,
+                // the client for that endpoint must be rebound.
                 if metadata.tls_identity().is_some() {
                     trace!(
-                        "invalidate_tls_client: authority={:?}; endpoint={:?}",
-                        authority_for_logging, key
+                        "invalidate_tls_clients: authority={:?}; endpoint={:?}",
+                        authority, key
                     );
+                    // Sending the `CacheChange::Modification` event will cause
+                    // the endpoint to be rebound (even though we haven't
+                    // _actually_ changed the cached metadata).
                     Self::on_change(
                         &mut self.responders,
-                        authority_for_logging,
+                        authority,
                         CacheChange::Modification {
                             key,
                             new_value: metadata,
-                        },
-                    );
+                        });
                 }
             }
         }
