@@ -276,7 +276,12 @@ func getResultKeys(
 
 // add filtering by resource type
 func promLabelNames(resource *pb.Resource) model.LabelNames {
-	names := model.LabelNames{namespaceLabel}
+	names := model.LabelNames{}
+
+	if shouldAddNamespaceLabelName(resource) {
+		names = model.LabelNames{namespaceLabel}
+	}
+
 	if resource.Type != k8s.Namespaces {
 		names = append(names, promResourceType(resource))
 	}
@@ -285,7 +290,11 @@ func promLabelNames(resource *pb.Resource) model.LabelNames {
 
 // add filtering by resource type
 func promDstLabelNames(resource *pb.Resource) model.LabelNames {
-	names := model.LabelNames{dstNamespaceLabel}
+	names := model.LabelNames{}
+	if shouldAddNamespaceLabelName(resource) {
+		names = model.LabelNames{dstNamespaceLabel}
+	}
+
 	if resource.Type != k8s.Namespaces {
 		names = append(names, "dst_"+promResourceType(resource))
 	}
@@ -298,7 +307,7 @@ func promLabels(resource *pb.Resource) model.LabelSet {
 	if resource.Name != "" {
 		set[promResourceType(resource)] = model.LabelValue(resource.Name)
 	}
-	if resource.Type != k8s.Namespaces && resource.Namespace != "" {
+	if shouldAddNamespaceLabel(resource) {
 		set[namespaceLabel] = model.LabelValue(resource.Namespace)
 	}
 	return set
@@ -314,10 +323,20 @@ func promDstLabels(resource *pb.Resource) model.LabelSet {
 			set["dst_"+promResourceType(resource)] = model.LabelValue(resource.Name)
 		}
 	}
-	if resource.Type != k8s.Namespaces && resource.Namespace != "" {
+	if shouldAddNamespaceLabel(resource) {
 		set[dstNamespaceLabel] = model.LabelValue(resource.Namespace)
 	}
 	return set
+}
+
+// determine if we should add "namespace" to the group by clause in the query
+func shouldAddNamespaceLabelName(resource *pb.Resource) bool {
+	return resource.Type != k8s.Authority
+}
+
+// determine if we should add "namespace=<namespace>" to a named query
+func shouldAddNamespaceLabel(resource *pb.Resource) bool {
+	return resource.Type != k8s.Namespaces && resource.Type != k8s.Authority && resource.Namespace != ""
 }
 
 // query for inbound or outbound requests
@@ -462,7 +481,6 @@ func metricToKey(metric model.Metric, groupBy model.LabelNames) pb.Resource {
 
 	for _, k := range groupBy {
 		item := string(k)
-
 		if _, ok := k8s.ProxyLabelsToResourceTypes[item]; ok {
 			resourceKeys[item] = string(metric[k])
 			if item != "namespace" {
@@ -471,11 +489,10 @@ func metricToKey(metric model.Metric, groupBy model.LabelNames) pb.Resource {
 		}
 	}
 
+	key.Name = resourceKeys[resourceName]
 	if len(resourceKeys) == 2 {
+		// key by both resource type and namespace only if it's not an authority or namespace request
 		key.Namespace = resourceKeys["namespace"]
-		key.Name = resourceKeys[resourceName]
-	} else {
-		key.Name = resourceKeys["namespace"]
 	}
 
 	return key
