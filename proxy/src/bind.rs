@@ -261,7 +261,7 @@ where
 
         // Map a socket address to a connection.
         let connect = self.sensors.connect(
-            transport::Connect::new(addr, tls),
+            transport::Connect::new(addr, tls.clone()),
             &client_ctx,
         );
 
