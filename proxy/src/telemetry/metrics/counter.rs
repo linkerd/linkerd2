@@ -43,6 +43,12 @@ impl Into<u64> for Counter {
     }
 }
 
+impl From<u64> for Counter {
+    fn from(value: u64) -> Self {
+        Counter(Wrapping(value))
+    }
+}
+
 impl ops::Add for Counter {
     type Output = Self;
     fn add(self, Counter(rhs): Self) -> Self::Output {

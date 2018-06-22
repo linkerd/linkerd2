@@ -23,6 +23,8 @@ extern crate libc;
 extern crate log;
 #[cfg_attr(test, macro_use)]
 extern crate indexmap;
+#[cfg(target_os = "linux")]
+extern crate procinfo;
 extern crate prost;
 extern crate prost_types;
 #[cfg(test)]
