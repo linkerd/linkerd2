@@ -13,7 +13,6 @@ use futures::{
     sync::mpsc,
     Async, Future, Stream,
 };
-use futures_watch::Watch;
 use h2;
 use http;
 use tower_grpc as grpc;
@@ -89,15 +88,10 @@ struct DestinationSet<T: HttpService<ResponseBody = RecvBody>> {
 }
 
 /// The state needed to bind a new controller client stack.
-///
-/// This implements `watch_service::Rebind`, so it can be used to rebind the
-/// client when the TLS client configuration changes.
 struct BindClient {
     identity: Conditional<tls::Identity, tls::ReasonForNoTls>,
     host_and_port: HostAndPort,
     dns_resolver: dns::Resolver,
-    scheme: http::uri::Scheme,
-    authority: http::uri::Authority,
     log_ctx: ::logging::Client<&'static str, HostAndPort>,
 }
 
@@ -112,24 +106,14 @@ pub(super) fn task(
 {
     // Build up the Controller Client Stack
     let mut client = host_and_port.map(|host_and_port| {
-        // Destructure `controller_tls` to separate the `ClientConfigWatch`
-        // from our `tls::Identity`.
         let (identity, watch) = match controller_tls {
-            Conditional::Some(tls::ConnectionConfig {
-                identity,
-                config: watch
-            }) => {
-                (Conditional::Some(identity), watch)
-            },
+            Conditional::Some(cfg) =>
+                (Conditional::Some(cfg.identity), cfg.config),
             Conditional::None(reason) => {
                 // If there's no connection config, then construct a new
                 // `Watch` that never updates to construct the `WatchService`.
-                // In this case, it seems unnecessary to wrap the stack in a
-                // `WatchService`, as we know the watch will never update.
-                // However, if we didn't wrap the stack in a `WatchService`,
-                // it would have a different type than the client stack in
-                // the case where there _is_ a config watch, and we'd need
-                // to box it as a trait object.
+                // We do this here rather than calling `ClientConfig::no_tls`
+                // in order to propagate the reason for no TLS to the watch.
                 let (watch, _) = Watch::new(Conditional::None(reason));
                 (Conditional::None(reason), watch)
             },
@@ -615,15 +599,11 @@ impl BindClient {
         dns_resolver: &dns::Resolver,
         host_and_port: HostAndPort,
     ) -> Self {
-        let scheme = http::uri::Scheme::from_shared(Bytes::from_static(b"http")).unwrap();
-        let authority = http::uri::Authority::from(&host_and_port);
         let log_ctx = ::logging::admin().client("control", host_and_port.clone());
         Self {
             identity,
             dns_resolver: dns_resolver.clone(),
             host_and_port,
-            authority,
-            scheme,
             log_ctx,
         }
     }
@@ -634,19 +614,18 @@ impl Rebind<tls::ConditionalClientConfig> for BindClient {
         &mut self,
         client_cfg: &tls::ConditionalClientConfig,
     ) -> Self::Service {
-        // Join the `Conditional<tls::Identity>` in `self.identity` with the
-        // passed-in `Conditional<tls::ClientConfig>` to build a
-        // `tls::ConnectionConfig` (or `None` if either is `None).
-        let conn_cfg = client_cfg.clone()
-            .and_then(|config| {
-                self.identity.clone()
-                    .map(|identity| {
-                        tls::ConnectionConfig {
-                            identity,
-                            config,
-                        }
-                    })
-            });
+        let conn_cfg = match (&self.identity, client_cfg) {
+            (Conditional::Some(ref id), Conditional::Some(ref cfg)) =>
+                Conditional::Some(tls::ConnectionConfig {
+                    identity: id.clone(),
+                    config: cfg.clone(),
+                }),
+            (Conditional::None(ref reason), _) |
+            (_, Conditional::None(ref reason)) =>
+                Conditional::None(reason.clone()),
+        };
+        let scheme = http::uri::Scheme::from_shared(Bytes::from_static(b"http")).unwrap();
+        let authority = http::uri::Authority::from(&self.host_and_port);
         let connect = Timeout::new(
             LookupAddressAndConnect::new(self.host_and_port.clone(),
                                          self.dns_resolver.clone(),
@@ -663,7 +642,7 @@ impl Rebind<tls::ConditionalClientConfig> for BindClient {
         let log_errors = LogErrors::new(reconnect);
         let backoff = Backoff::new(log_errors, Duration::from_secs(5));
         // TODO: Use AddOrigin in tower-http
-        AddOrigin::new(self.scheme.clone(), self.authority.clone(), backoff)
+        AddOrigin::new(scheme, authority, backoff)
     }
 
 }
