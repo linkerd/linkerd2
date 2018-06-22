@@ -16,6 +16,7 @@ pub use self::{
         ClientConfigWatch,
         CommonSettings,
         ConditionalConnectionConfig,
+        ConditionalClientConfig,
         ConnectionConfig,
         ReasonForNoTls,
         ReasonForNoIdentity,

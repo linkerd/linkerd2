@@ -55,7 +55,6 @@ struct CommonConfig {
     cert_resolver: Arc<CertResolver>,
 }
 
-
 /// Validated configuration for TLS servers.
 #[derive(Clone)]
 pub struct ClientConfig(pub(super) Arc<rustls::ClientConfig>);
@@ -133,6 +132,7 @@ impl From<ReasonForNoIdentity> for ReasonForNoTls {
 }
 
 pub type ConditionalConnectionConfig<C> = Conditional<ConnectionConfig<C>, ReasonForNoTls>;
+pub type ConditionalClientConfig = Conditional<ClientConfig, ReasonForNoTls>;
 
 #[derive(Debug)]
 pub enum Error {
