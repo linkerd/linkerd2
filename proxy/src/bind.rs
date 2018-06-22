@@ -75,7 +75,7 @@ where
     B: tower_h2::Body + Send + 'static,
     <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
-    Bound(WatchService<Option<tls::ClientConfig>, RebindTls<B>>),
+    Bound(WatchService<Conditional<tls::ClientConfig, tls::ReasonForNoTls>, RebindTls<B>>),
     BindsPerRequest {
         // When `poll_ready` is called, the _next_ service to be used may be bound
         // ahead-of-time. This stack is used only to serve the next request to this
@@ -132,7 +132,7 @@ pub struct RebindTls<B> {
 
 pub type Service<B> = BoundService<B>;
 
-pub type Stack<B> = WatchService<Option<tls::ClientConfig>, RebindTls<B>>;
+pub type Stack<B> = WatchService<Conditional<tls::ClientConfig, tls::ReasonForNoTls>, RebindTls<B>>;
 
 type StackInner<B> = Reconnect<NormalizeUri<NewHttp<B>>>;
 
@@ -230,27 +230,20 @@ where
         &self,
         ep: &Endpoint,
         protocol: &Protocol,
-        tls_client_config: &Option<tls::ClientConfig>,
+        tls_client_config: &Conditional<tls::ClientConfig, tls::ReasonForNoTls>,
     )-> StackInner<B> {
         debug!("bind_inner_stack endpoint={:?}, protocol={:?}", ep, protocol);
         let addr = ep.address();
 
-        // Like `tls::current_connection_config()` with optional identity.
-        let tls = match ep.tls_identity() {
-            Conditional::Some(identity) => {
-                // TODO: the watch should be an explicit field of `Bind`, rather
-                // than passed in the context.
-                match tls_client_config.as_ref() {
-                    Some(ref config) =>
-                        Conditional::Some(tls::ConnectionConfig {
-                            identity: identity.clone(),
-                            config: config.clone()
-                        }),
-                    None => Conditional::None(tls::ReasonForNoTls::NoConfig),
+        // Like `tls::current_connection_config()`.
+        let tls = ep.tls_identity().and_then(|identity| {
+            tls_client_config.as_ref().map(|config| {
+                tls::ConnectionConfig {
+                    identity: identity.clone(),
+                    config: config.clone(),
                 }
-            },
-            Conditional::None(why_no_identity) => Conditional::None(why_no_identity.into()),
-        };
+            })
+        });
 
         let client_ctx = ctx::transport::Client::new(
             &self.ctx,
@@ -312,8 +305,8 @@ where
         };
         // TODO: the watch should be an explicit field of `Bind`, rather
         // than passed in the context.
-        let tls_client_cfg = self.ctx.tls_client_config_watch().clone();
-        WatchService::new(tls_client_cfg, rebind)
+        let tls_client_config = self.ctx.tls_client_config_watch().clone();
+        WatchService::new(tls_client_config, rebind)
     }
 
     pub fn bind_service(&self, ep: &Endpoint, protocol: &Protocol) -> BoundService<B> {
@@ -583,17 +576,18 @@ impl Protocol {
 
 // ===== impl RebindTls =====
 
-impl<B> Rebind<Option<tls::ClientConfig>> for RebindTls<B>
+impl<B> Rebind<Conditional<tls::ClientConfig, tls::ReasonForNoTls>> for RebindTls<B>
 where
     B: tower_h2::Body + Send + 'static,
     <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
     type Service = StackInner<B>;
-    fn rebind(&mut self, cfg: &Option<tls::ClientConfig>) -> Self::Service {
+    fn rebind(&mut self, tls: &Conditional<tls::ClientConfig, tls::ReasonForNoTls>)
+              -> Self::Service {
         debug!(
             "rebinding endpoint stack for {:?}:{:?} on TLS config change",
             self.endpoint, self.protocol,
         );
-        self.bind.bind_inner_stack(&self.endpoint, &self.protocol, cfg)
+        self.bind.bind_inner_stack(&self.endpoint, &self.protocol, tls)
     }
 }

@@ -72,8 +72,8 @@ impl std::fmt::Debug for ClientConfig {
 #[derive(Clone)]
 pub struct ServerConfig(pub(super) Arc<rustls::ServerConfig>);
 
-pub type ClientConfigWatch = Watch<Option<ClientConfig>>;
-pub type ServerConfigWatch = Watch<Option<ServerConfig>>;
+pub type ClientConfigWatch = Watch<Conditional<ClientConfig, ReasonForNoTls>>;
+pub type ServerConfigWatch = Watch<Conditional<ServerConfig, ReasonForNoTls>>;
 
 /// The configuration in effect for a client (`ClientConfig`) or server
 /// (`ServerConfig`) TLS connection.
@@ -267,15 +267,15 @@ pub fn watch_for_config_changes(settings: Conditional<&CommonSettings, ReasonFor
     let settings = if let Conditional::Some(settings) = settings {
         settings.clone()
     } else {
-        let (client_watch, _) = Watch::new(None);
-        let (server_watch, _) = Watch::new(None);
+        let (client_watch, _) = Watch::new(Conditional::None(ReasonForNoTls::NoConfig));
+        let (server_watch, _) = Watch::new(Conditional::None(ReasonForNoTls::NoConfig));
         let no_future = future::empty();
         return (client_watch, server_watch, Box::new(no_future));
     };
 
     let changes = settings.stream_changes(Duration::from_secs(1));
-    let (client_watch, client_store) = Watch::new(None);
-    let (server_watch, server_store) = Watch::new(None);
+    let (client_watch, client_store) = Watch::new(Conditional::None(ReasonForNoTls::NoConfig));
+    let (server_watch, server_store) = Watch::new(Conditional::None(ReasonForNoTls::NoConfig));
 
     // `Store::store` will return an error iff all watchers have been dropped,
     // so we'll use `fold` to cancel the forwarding future. Eventually, we can
@@ -286,10 +286,10 @@ pub fn watch_for_config_changes(settings: Conditional<&CommonSettings, ReasonFor
             (client_store, server_store),
             |(mut client_store, mut server_store), ref config| {
                 client_store
-                    .store(Some(ClientConfig::from(config)))
+                    .store(Conditional::Some(ClientConfig::from(config)))
                     .map_err(|_| trace!("all client config watchers dropped"))?;
                 server_store
-                    .store(Some(ServerConfig::from(config)))
+                    .store(Conditional::Some(ServerConfig::from(config)))
                     .map_err(|_| trace!("all server config watchers dropped"))?;
                 Ok((client_store, server_store))
             })
@@ -332,7 +332,7 @@ impl ClientConfig {
     /// `ClientConfigWatch`. We can't use `#[cfg(test)]` here because the
     /// benchmarks use this.
     pub fn no_tls() -> ClientConfigWatch {
-        let (watch, _) = Watch::new(None);
+        let (watch, _) = Watch::new(Conditional::None(ReasonForNoTls::NoConfig));
         watch
     }
 }
@@ -362,22 +362,18 @@ impl ServerConfig {
     }
 }
 
-pub fn current_connection_config<C>(watch: &ConditionalConnectionConfig<Watch<Option<C>>>)
+pub fn current_connection_config<C>(
+    watch: &ConditionalConnectionConfig<Watch<Conditional<C, ReasonForNoTls>>>)
     -> ConditionalConnectionConfig<C> where C: Clone
 {
-    match watch {
-        Conditional::Some(c) => {
-            match *c.config.borrow() {
-                Some(ref config) =>
-                    Conditional::Some(ConnectionConfig {
-                        identity: c.identity.clone(),
-                        config: config.clone()
-                    }),
-                None => Conditional::None(ReasonForNoTls::NoConfig),
+    watch.as_ref().and_then(|c| {
+        c.config.borrow().as_ref().map(|config| {
+            ConnectionConfig {
+                identity: c.identity.clone(),
+                config: config.clone()
             }
-        },
-        Conditional::None(r) => Conditional::None(*r),
-    }
+        })
+    })
 }
 
 fn load_file_contents(path: &PathBuf) -> Result<Vec<u8>, Error> {
