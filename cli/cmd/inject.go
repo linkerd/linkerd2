@@ -150,7 +150,7 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride st
 
 	initContainer := v1.Container{
 		Name:                     "conduit-init",
-		Image:                    fmt.Sprintf("%s:%s", options.initImage, options.conduitVersion),
+		Image:                    options.taggedProxyInitImage(),
 		ImagePullPolicy:          v1.PullPolicy(options.imagePullPolicy),
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
 		Args: initArgs,
@@ -168,7 +168,7 @@ func injectPodTemplateSpec(t *v1.PodTemplateSpec, controlPlaneDNSNameOverride st
 
 	sidecar := v1.Container{
 		Name:                     "conduit-proxy",
-		Image:                    fmt.Sprintf("%s:%s", options.proxyImage, options.conduitVersion),
+		Image:                    options.taggedProxyImage(),
 		ImagePullPolicy:          v1.PullPolicy(options.imagePullPolicy),
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
 		SecurityContext: &v1.SecurityContext{

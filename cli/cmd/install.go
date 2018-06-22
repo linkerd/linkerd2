@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"regexp"
 	"text/template"
 
 	"github.com/runconduit/conduit/cli/install"
@@ -36,7 +35,6 @@ type installConfig struct {
 }
 
 type installOptions struct {
-	dockerRegistry     string
 	controllerReplicas uint
 	webReplicas        uint
 	prometheusReplicas uint
@@ -46,7 +44,6 @@ type installOptions struct {
 
 func newInstallOptions() *installOptions {
 	return &installOptions{
-		dockerRegistry:     "gcr.io/runconduit",
 		controllerReplicas: 1,
 		webReplicas:        1,
 		prometheusReplicas: 1,
@@ -72,7 +69,6 @@ func newCmdInstall() *cobra.Command {
 	}
 
 	addProxyConfigFlags(cmd, options.proxyConfigOptions)
-	cmd.PersistentFlags().StringVar(&options.dockerRegistry, "registry", options.dockerRegistry, "Docker registry to pull images from")
 	cmd.PersistentFlags().UintVar(&options.controllerReplicas, "controller-replicas", options.controllerReplicas, "Replicas of the controller to deploy")
 	cmd.PersistentFlags().UintVar(&options.webReplicas, "web-replicas", options.webReplicas, "Replicas of the web server to deploy")
 	cmd.PersistentFlags().UintVar(&options.prometheusReplicas, "prometheus-replicas", options.prometheusReplicas, "Replicas of prometheus to deploy")
@@ -131,18 +127,7 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 	return InjectYAML(buf, w, injectOptions)
 }
 
-var alphaNumDash = regexp.MustCompile("^[a-zA-Z0-9-]+$")
-var alphaNumDashDotSlash = regexp.MustCompile("^[\\./a-zA-Z0-9-]+$")
-
 func validate(options *installOptions) error {
-	// These regexs are not as strict as they could be, but are a quick and dirty
-	// sanity check against illegal characters.
-	if !alphaNumDash.MatchString(controlPlaneNamespace) {
-		return fmt.Errorf("%s is not a valid namespace", controlPlaneNamespace)
-	}
-	if !alphaNumDashDotSlash.MatchString(options.dockerRegistry) {
-		return fmt.Errorf("%s is not a valid Docker registry", options.dockerRegistry)
-	}
 	if _, err := log.ParseLevel(options.controllerLogLevel); err != nil {
 		return fmt.Errorf("--controller-log-level must be one of: panic, fatal, error, warn, info, debug")
 	}
