@@ -53,6 +53,15 @@ pub struct Connecting {
     state: ConnectingState,
 }
 
+
+#[derive(Clone, Debug)]
+pub enum HandshakeError {
+    /// The handshake failed due to an IO error.
+    Io { errno: Option<i32> },
+    /// The handshake failed due to a TLS error.
+    Tls(tls::Error),
+}
+
 enum ConnectingState {
     Plaintext {
         connect: ConnectFuture,
@@ -452,5 +461,16 @@ fn set_nodelay_or_warn(socket: &TcpStream) {
             socket.peer_addr(),
             e
         );
+    }
+}
+
+// ===== impl HandshakeError =====
+
+impl From<std::io::Error> for HandshakeError {
+    fn from(err: std::io::Error) -> Self {
+        match err.downcast::<tls::Error>() {
+            Ok(tls_error) => Self::Tls(tls_error),
+            Err(io_error) => Self::Io { errno: io_error.raw_os_error() },
+        }
     }
 }
