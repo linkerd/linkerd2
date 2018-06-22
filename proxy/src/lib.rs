@@ -264,13 +264,12 @@ where
                 config.inbound_router_capacity,
                 config.inbound_router_max_idle_age,
             );
-            let tls_settings = match &config.tls_settings {
-                Conditional::Some(settings) => Conditional::Some(tls::ConnectionConfig {
+            let tls_settings = config.tls_settings.as_ref().map(|settings| {
+                tls::ConnectionConfig {
                     identity: settings.service_identity.clone(),
                     config: tls_server_config
-                }),
-                Conditional::None(r) => Conditional::None(*r),
-            };
+                }
+            });
             serve(
                 inbound_listener,
                 tls_settings,
