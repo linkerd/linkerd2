@@ -50,7 +50,7 @@ pub enum HostAndPortError {
 pub struct LookupAddressAndConnect {
     host_and_port: HostAndPort,
     dns_resolver: dns::Resolver,
-    tls: tls::ConditionalConnectionConfig<tls::ClientConfigWatch>,
+    tls: tls::ConditionalConnectionConfig<tls::ClientConfig>,
 }
 
 // ===== impl HostAndPort =====
@@ -129,7 +129,7 @@ impl LookupAddressAndConnect {
     pub fn new(
         host_and_port: HostAndPort,
         dns_resolver: dns::Resolver,
-        tls: tls::ConditionalConnectionConfig<tls::ClientConfigWatch>,
+        tls: tls::ConditionalConnectionConfig<tls::ClientConfig>,
     ) -> Self {
         Self {
             host_and_port,
@@ -147,7 +147,6 @@ impl tokio_connect::Connect for LookupAddressAndConnect {
     fn connect(&self) -> Self::Future {
         let port = self.host_and_port.port;
         let host = self.host_and_port.host.clone();
-        let tls = tls::current_connection_config(&self.tls);
         let c = self.dns_resolver
             .resolve_one_ip(&self.host_and_port.host)
             .map_err(|_| {
@@ -157,7 +156,7 @@ impl tokio_connect::Connect for LookupAddressAndConnect {
                 info!("DNS resolved {:?} to {}", host, ip_addr);
                 let addr = SocketAddr::from((ip_addr, port));
                 trace!("connect {}", addr);
-                connection::connect(&addr, tls)
+                connection::connect(&addr, self.tls)
             });
         Box::new(c)
     }
