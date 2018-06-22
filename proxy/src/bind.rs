@@ -226,7 +226,12 @@ where
     ///
     /// When the TLS client configuration is invalidated, this function will
     /// be called again to bind a new stack.
-    fn bind_inner_stack(&self, ep: &Endpoint, protocol: &Protocol)-> StackInner<B> {
+    fn bind_inner_stack(
+        &self,
+        ep: &Endpoint,
+        protocol: &Protocol,
+        tls_client_config: &Option<tls::ClientConfig>,
+    )-> StackInner<B> {
         debug!("bind_inner_stack endpoint={:?}, protocol={:?}", ep, protocol);
         let addr = ep.address();
 
@@ -235,7 +240,7 @@ where
             Conditional::Some(identity) => {
                 // TODO: the watch should be an explicit field of `Bind`, rather
                 // than passed in the context.
-                match *self.ctx.tls_client_config_watch().borrow() {
+                match tls_client_config.as_ref() {
                     Some(ref config) =>
                         Conditional::Some(tls::ConnectionConfig {
                             identity: identity.clone(),
@@ -256,7 +261,7 @@ where
 
         // Map a socket address to a connection.
         let connect = self.sensors.connect(
-            transport::Connect::new(addr, tls),
+            transport::Connect::new(addr, tls.clone()),
             &client_ctx,
         );
 
@@ -584,13 +589,11 @@ where
     <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
     type Service = StackInner<B>;
-    fn rebind(&mut self, _cfg: &Option<tls::ClientConfig>) -> Self::Service {
+    fn rebind(&mut self, cfg: &Option<tls::ClientConfig>) -> Self::Service {
         debug!(
             "rebinding endpoint stack for {:?}:{:?} on TLS config change",
             self.endpoint, self.protocol,
         );
-        // We don't actually pass in the config, as `self.bind` also already
-        // owns a config watch of its own.
-        self.bind.bind_inner_stack(&self.endpoint, &self.protocol)
+        self.bind.bind_inner_stack(&self.endpoint, &self.protocol, cfg)
     }
 }
