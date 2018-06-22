@@ -214,8 +214,18 @@ where
     B: tower_h2::Body + Send + 'static,
     <B::Data as ::bytes::IntoBuf>::Buf: Send,
 {
-    /// Binds the "inner" portion of the stack (i.e., that part which is
-    /// rebound when the TLS client configuration changes).
+    /// Binds the "inner" layers of the stack.
+    ///
+    /// This binds a service stack that comprises the client for that individual
+    /// endpoint. It will have to be rebuilt if the TLS configuration changes.
+    ///
+    /// This includes:
+    /// + Reconnects
+    /// + URI normalization
+    /// + HTTP sensors
+    ///
+    /// When the TLS client configuration is invalidated, this function will
+    /// be called again to bind a new stack.
     fn bind_inner_stack(&self, ep: &Endpoint, protocol: &Protocol)-> StackInner<B> {
         debug!("bind_inner_stack endpoint={:?}, protocol={:?}", ep, protocol);
         let addr = ep.address();
@@ -224,7 +234,7 @@ where
         let tls = match ep.tls_identity() {
             Conditional::Some(identity) => {
                 // TODO: the watch should be an explicit field of `Bind`, rather
-                 // than passed in the context.
+                // than passed in the context.
                 match *self.ctx.tls_client_config_watch().borrow() {
                     Some(ref config) =>
                         Conditional::Some(tls::ConnectionConfig {
@@ -273,12 +283,23 @@ where
         Reconnect::new(proxy)
     }
 
-    /// Bind the _whole_ stack, including the `WatchService` that rebinds
-    /// the inner stack on TLS client configuration changes.
+    /// Binds the endpoint stack used to construct a bound service.
+    ///
+    /// This will wrap the service stack returned by `bind_inner_stack`
+    /// with a middleware layer that causes it to be re-constructed when
+    /// the TLS client configuration changes.
+    ///
+    /// This function will itself be called again by `BoundService` if the
+    /// service binds per request, or if the initial connection to the
+    /// endpoint fails.
     fn bind_stack(&self, ep: &Endpoint, protocol: &Protocol) -> Stack<B> {
         debug!("bind_stack: endpoint={:?}, protocol={:?}", ep, protocol);
-        // TODO: it would be nice to not have to wrap `BindsPerRequest`
-        // services with `WatchService`...
+        // TODO: Since `BindsPerRequest` bindings are only used for a
+        // single request, it seems somewhat unnecessary to wrap them in a
+        // `WatchService` middleware so that they can be rebound when the TLS
+        // config changes, since they _always_ get rebound regardless. For now,
+        // we still add the `WatchService` layer so that the per-request and
+        // bound service stacks have the same type.
         let rebind = RebindTls {
             bind: self.clone(),
             endpoint: ep.clone(),
