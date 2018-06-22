@@ -42,7 +42,7 @@ impl TlsStatus {
     pub fn from<C>(c: &Conditional<C, tls::ReasonForNoTls>) -> Self
     where C: Clone + std::fmt::Debug
     {
-        c.map(|_| ())
+        c.as_ref().map(|_| ())
     }
 }
 
