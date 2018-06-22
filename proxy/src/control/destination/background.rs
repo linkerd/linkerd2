@@ -13,6 +13,7 @@ use futures::{
     sync::mpsc,
     Async, Future, Stream,
 };
+use futures_watch;
 use h2;
 use http;
 use tower_grpc as grpc;
@@ -73,9 +74,11 @@ struct DestinationSet<T: HttpService<ResponseBody = RecvBody>> {
     responders: Vec<Responder>,
 }
 
+// State necessary to bind a controller client stack.
 struct BindClient {
-    identity: Conditional<tls::Identity, tls::ReasonForNoIdentity>,
-    host_and_port: Option<HostAndPort>,
+    identity: Conditional<tls::Identity, tls::ReasonForNoTls>,
+    host_and_port: HostAndPort,
+    dns_resolver: dns::Resolver,
 }
 
 
@@ -89,50 +92,23 @@ pub(super) fn task(
 ) -> impl Future<Item = (), Error = ()>
 {
     // Build up the Controller Client Stack
-    let mut client: Option<Box<HttpService<RequestBody = BoxBody, ResponseBody = RecvBody>>> = host_and_port.map(|host_and_port| {
-        let bind_inner = |cfg: tls::ConditionalConnectionConfig<tls::ClientConfig>| {
-            let scheme = http::uri::Scheme::from_shared(Bytes::from_static(b"http")).unwrap();
-            let authority = http::uri::Authority::from(&host_and_port);
-            let connect = Timeout::new(
-                LookupAddressAndConnect::new(host_and_port.clone(), dns_resolver.clone(),
-                                             cfg),
-                Duration::from_secs(3),
-            );
-
-            let log = ::logging::admin().client("control", host_and_port.clone());
-            let h2_client = tower_h2::client::Connect::new(
-                connect,
-                h2::client::Builder::default(),
-                log.executor()
-            );
-
-            let reconnect = Reconnect::new(h2_client);
-            let log_errors = LogErrors::new(reconnect);
-            let backoff = Backoff::new(log_errors, Duration::from_secs(5));
-            // TODO: Use AddOrigin in tower-http
-            AddOrigin::new(scheme, authority, backoff)
-        };
-
-        match controller_tls {
-            Conditional::Some(tls::ConnectionConfig { identity, config: watch }) => {
-                let bind = |cfg: &Option<tls::ClientConfig>| {
-                    let cfg = match cfg.as_ref().cloned() {
-                        Some(config) =>
-                            Conditional::Some(tls::ConnectionConfig {
-                                identity,
-                                config,
-                            }),
-                        None => Conditional::None(tls::ReasonForNoTls::NoConfig)
-                    };
-                    bind_inner(cfg)
-                };
-                Box::new(WatchService::new(watch, bind))
-            },
-            Conditional::None(reason) => {
-                Box::new(bind_inner(Conditional::None(reason)))
-            }
-        }
-
+    let mut client = host_and_port.map(|host_and_port| {
+        let (identity, watch): (_, tls::ClientConfigWatch)
+            = match controller_tls {
+                Conditional::Some(tls::ConnectionConfig { identity, config: watch }) => {
+                    (Conditional::Some(identity), watch)
+                },
+                Conditional::None(reason) => {
+                    let (watch, _) = futures_watch::Watch::new(Conditional::None(reason));
+                    (Conditional::None(reason), watch)
+                },
+            };
+        let bind_client = BindClient::new(
+            identity,
+            &dns_resolver,
+            host_and_port,
+        );
+        WatchService::new(watch, bind_client)
     });
 
     let mut disco = Background::new(
@@ -598,6 +574,68 @@ impl<T: HttpService<ResponseBody = RecvBody>> DestinationSet<T> {
             sent.is_ok()
         });
     }
+}
+
+// ===== impl BindClient =====
+impl BindClient {
+    fn new(
+        identity: Conditional<tls::Identity, tls::ReasonForNoTls>,
+        dns_resolver: &dns::Resolver,
+        host_and_port: HostAndPort,
+    ) -> Self {
+        Self {
+            identity,
+            dns_resolver: dns_resolver.clone(),
+            host_and_port,
+        }
+    }
+}
+impl Rebind<tls::ConditionalClientConfig> for BindClient {
+    type Service =  AddOrigin<Backoff<LogErrors<Reconnect<
+        tower_h2::client::Connect<
+            Timeout<LookupAddressAndConnect>,
+            ::logging::ContextualExecutor<
+                ::logging::Client<
+                    &'static str,
+                    HostAndPort
+                >
+            >,
+            BoxBody,
+        >
+    >>>>;
+    fn rebind(&mut self, client_cfg: &tls::ConditionalClientConfig) -> Self::Service {
+        let conn_cfg = client_cfg.as_ref()
+            .and_then(|client_cfg| {
+                self.identity.as_ref()
+                    .map(|identity| {
+                        tls::ConnectionConfig {
+                            identity: identity.clone(),
+                            config: client_cfg.clone(),
+                        }
+                    })
+            });
+        let scheme = http::uri::Scheme::from_shared(Bytes::from_static(b"http")).unwrap();
+        let authority = http::uri::Authority::from(&self.host_and_port);
+        let connect = Timeout::new(
+            LookupAddressAndConnect::new(self.host_and_port.clone(),
+                                         self.dns_resolver.clone(),
+                                         conn_cfg),
+            Duration::from_secs(3),
+        );
+        let log = ::logging::admin().client("control", self.host_and_port.clone());
+        let h2_client = tower_h2::client::Connect::new(
+            connect,
+            h2::client::Builder::default(),
+            log.executor()
+        );
+
+        let reconnect = Reconnect::new(h2_client);
+        let log_errors = LogErrors::new(reconnect);
+        let backoff = Backoff::new(log_errors, Duration::from_secs(5));
+        // TODO: Use AddOrigin in tower-http
+        AddOrigin::new(scheme, authority, backoff)
+    }
+
 }
 
 /// Construct a new labeled `SocketAddr `from a protobuf `WeightedAddr`.

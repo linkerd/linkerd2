@@ -147,6 +147,7 @@ impl tokio_connect::Connect for LookupAddressAndConnect {
     fn connect(&self) -> Self::Future {
         let port = self.host_and_port.port;
         let host = self.host_and_port.host.clone();
+        let tls = self.tls.clone();
         let c = self.dns_resolver
             .resolve_one_ip(&self.host_and_port.host)
             .map_err(|_| {
@@ -156,7 +157,7 @@ impl tokio_connect::Connect for LookupAddressAndConnect {
                 info!("DNS resolved {:?} to {}", host, ip_addr);
                 let addr = SocketAddr::from((ip_addr, port));
                 trace!("connect {}", addr);
-                connection::connect(&addr, self.tls)
+                connection::connect(&addr, tls)
             });
         Box::new(c)
     }
