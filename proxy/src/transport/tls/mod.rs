@@ -4,7 +4,7 @@ extern crate tokio_rustls;
 extern crate untrusted;
 extern crate webpki;
 
-mod conditional_accept;
+pub mod conditional_accept;
 mod config;
 mod cert_resolver;
 mod connection;
@@ -25,7 +25,12 @@ pub use self::{
         ServerConfigWatch,
         watch_for_config_changes,
     },
-    connection::{Connection, Session, UpgradeClientToTls},
+    connection::{
+        Connection,
+        Session,
+        UpgradeClientToTls,
+        UpgradeServerToTls
+    },
     dns_name::{DnsName, InvalidDnsName},
     identity::Identity,
 };

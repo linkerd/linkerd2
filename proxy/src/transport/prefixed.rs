@@ -1,5 +1,3 @@
-#![allow(dead_code)] // TODO: Actually use this.
-
 use std::{cmp, fmt::Debug, io, net::SocketAddr};
 
 use super::io::internal::Io;
