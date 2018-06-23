@@ -421,61 +421,71 @@ pub(super) const SIGNATURE_ALG_RUSTLS_ALGORITHM: rustls::internal::msgs::enums::
     rustls::internal::msgs::enums::SignatureAlgorithm::ECDSA;
 
 #[cfg(test)]
-mod tests {
-    use tls::{ClientConfig, CommonSettings, Identity, ServerConfig};
-    use super::{CommonConfig, Error};
-    use config::Namespaces;
+mod test_util {
     use std::path::PathBuf;
 
-    struct Strings {
-        pod_name: &'static str,
-        pod_ns: &'static str,
-        controller_ns: &'static str,
-        trust_anchors: &'static str,
-        end_entity_cert: &'static str,
-        private_key: &'static str,
+    use config::Namespaces;
+    use tls::{CommonSettings, Identity};
+
+    pub struct Strings {
+        pub pod_name: &'static str,
+        pub pod_ns: &'static str,
+        pub controller_ns: &'static str,
+        pub trust_anchors: &'static str,
+        pub end_entity_cert: &'static str,
+        pub private_key: &'static str,
     }
 
-    fn settings(s: &Strings) -> CommonSettings {
-        let dir = PathBuf::from("src/transport/tls/testdata");
-        let namespaces = Namespaces {
-            pod: s.pod_ns.into(),
-            tls_controller: Some(s.controller_ns.into()),
-        };
-        let service_identity = Identity::try_from_pod_name(&namespaces, s.pod_name).unwrap();
-        CommonSettings {
-            trust_anchors: dir.join(s.trust_anchors),
-            end_entity_cert: dir.join(s.end_entity_cert),
-            private_key: dir.join(s.private_key),
-            service_identity,
+    pub static FOO_NS1: Strings = Strings {
+        pod_name: "foo",
+        pod_ns: "ns1",
+        controller_ns: "conduit",
+        trust_anchors: "ca1.pem",
+        end_entity_cert: "foo-ns1-ca1.crt",
+        private_key: "foo-ns1-ca1.p8",
+    };
+
+    impl Strings {
+        pub fn to_settings(&self) -> CommonSettings {
+            let dir = PathBuf::from("src/transport/tls/testdata");
+            let namespaces = Namespaces {
+                pod: self.pod_ns.into(),
+                tls_controller: Some(self.controller_ns.into()),
+            };
+            let service_identity = Identity::try_from_pod_name(&namespaces, self.pod_name).unwrap();
+            CommonSettings {
+                trust_anchors: dir.join(self.trust_anchors),
+                end_entity_cert: dir.join(self.end_entity_cert),
+                private_key: dir.join(self.private_key),
+                service_identity,
+            }
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use tls::{ClientConfig, ServerConfig};
+    use super::{CommonConfig, Error, test_util::*};
 
     #[test]
     fn can_construct_client_and_server_config_from_valid_settings() {
-        let settings = settings(&Strings {
-            pod_name: "foo",
-            pod_ns: "ns1",
-            controller_ns: "conduit",
-            trust_anchors: "ca1.pem",
-            end_entity_cert: "foo-ns1-ca1.crt",
-            private_key: "foo-ns1-ca1.p8",
-        });
-        let config = CommonConfig::load_from_disk(&settings).unwrap();
-        let _: ClientConfig = ClientConfig::from(&config); // Infallible.
-        let _: ServerConfig = ServerConfig::from(&config); // Infallible.
+        let settings = FOO_NS1.to_settings();
+        let common = CommonConfig::load_from_disk(&settings).unwrap();
+        let _: ClientConfig = ClientConfig::from(&common); // infallible
+        let _: ServerConfig = ServerConfig::from(&common); // infallible
     }
 
     #[test]
     fn recognize_ca_did_not_issue_cert() {
-        let settings = settings(&Strings {
+        let settings = Strings {
             pod_name: "foo",
             pod_ns: "ns1",
             controller_ns: "conduit",
             trust_anchors: "ca2.pem", // Mismatch
             end_entity_cert: "foo-ns1-ca1.crt",
             private_key: "foo-ns1-ca1.p8",
-        });
+        }.to_settings();
         match CommonConfig::load_from_disk(&settings) {
             Err(Error::EndEntityCertIsNotValid(_)) => (),
             r => unreachable!("CommonConfig::load_from_disk returned {:?}", r),
@@ -484,14 +494,14 @@ mod tests {
 
     #[test]
     fn recognize_cert_is_not_valid_for_identity() {
-        let settings = settings(&Strings {
+        let settings = Strings {
             pod_name: "foo", // Mismatch
             pod_ns: "ns1",
             controller_ns: "conduit",
             trust_anchors: "ca1.pem",
             end_entity_cert: "bar-ns1-ca1.crt",
             private_key: "bar-ns1-ca1.p8",
-        });
+        }.to_settings();
         match CommonConfig::load_from_disk(&settings) {
             Err(Error::EndEntityCertIsNotValid(_)) => (),
             r => unreachable!("CommonConfig::load_from_disk returned {:?}", r),
@@ -502,14 +512,14 @@ mod tests {
     #[test]
     #[should_panic]
     fn recognize_private_key_is_not_valid_for_cert() {
-        let settings = settings(&Strings {
+        let settings = Strings {
             pod_name: "foo",
             pod_ns: "ns1",
             controller_ns: "conduit",
             trust_anchors: "ca1.pem",
             end_entity_cert: "foo-ns1-ca1.crt",
             private_key: "bar-ns1-ca1.p8", // Mismatch
-        });
+        }.to_settings();
         match CommonConfig::load_from_disk(&settings) {
             Err(_) => (), // // TODO: Err(Error::InvalidPrivateKey) > (),
             r => unreachable!("CommonConfig::load_from_disk returned {:?}", r),
