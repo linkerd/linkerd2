@@ -42,6 +42,7 @@ use timeout::Timeout;
 use transport::tls;
 use conditional::Conditional;
 use watch_service::{Rebind, WatchService};
+use futures_watch::Watch;
 
 type DestinationServiceQuery<T> = Remote<PbUpdate, T>;
 type UpdateRx<T> = Receiver<PbUpdate, T>;
