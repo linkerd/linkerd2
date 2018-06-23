@@ -267,8 +267,8 @@ pub fn watch_for_config_changes(settings: Conditional<&CommonSettings, ReasonFor
     let settings = if let Conditional::Some(settings) = settings {
         settings.clone()
     } else {
-        let (client_watch, _) = Watch::new(Conditional::None(ReasonForNoTls::NoConfig));
-        let (server_watch, _) = Watch::new(Conditional::None(ReasonForNoTls::NoConfig));
+        let (client_watch, _) = Watch::new(Conditional::None(ReasonForNoTls::Disabled));
+        let (server_watch, _) = Watch::new(Conditional::None(ReasonForNoTls::Disabled));
         let no_future = future::empty();
         return (client_watch, server_watch, Box::new(no_future));
     };
@@ -332,7 +332,7 @@ impl ClientConfig {
     /// `ClientConfigWatch`. We can't use `#[cfg(test)]` here because the
     /// benchmarks use this.
     pub fn no_tls() -> ClientConfigWatch {
-        let (watch, _) = Watch::new(Conditional::None(ReasonForNoTls::NoConfig));
+        let (watch, _) = Watch::new(Conditional::None(ReasonForNoTls::Disabled));
         watch
     }
 }
