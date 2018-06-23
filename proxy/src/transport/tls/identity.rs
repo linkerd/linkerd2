@@ -72,16 +72,23 @@ impl Identity {
         // We reserve all names under a fake "managed-pods" service in
         // our namespace for identifying pods by name.
         let name = format!(
-            "{pod}.{pod_ns}.conduit-managed-pods.{controller_ns}.svc.cluster.local.",
+            "{pod}.{pod_ns}.conduit-managed-pods.{controller_ns}.svc.cluster.local",
             pod = pod_name,
             pod_ns = &namespaces.pod,
             controller_ns = controller_ns,
         );
 
-        DnsName::try_from(&name)
+        Self::from_sni_hostname(name.as_bytes())
+    }
+
+    pub fn from_sni_hostname(hostname: &[u8]) -> Result<Self, ()> {
+        if hostname.last() == Some(&b'.') {
+            return Err(()); // SNI hostnames are implicitly absolute.
+        }
+        DnsName::try_from(hostname)
             .map(|name| Identity(Arc::new(name)))
             .map_err(|InvalidDnsName| {
-                error!("Invalid DNS name: {:?}", name);
+                error!("Invalid DNS name: {:?}", hostname);
                 ()
             })
     }

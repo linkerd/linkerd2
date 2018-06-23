@@ -167,7 +167,7 @@ dependencies = [
  "tower-util 0.1.0 (git+https://github.com/tower-rs/tower)",
  "trust-dns-resolver 0.9.0 (git+https://github.com/bluejekyll/trust-dns)",
  "try-lock 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "untrusted 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "untrusted 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "webpki 0.18.0-alpha4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -894,7 +894,7 @@ dependencies = [
  "cc 1.0.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.40 (registry+https://github.com/rust-lang/crates.io-index)",
- "untrusted 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "untrusted 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -919,7 +919,7 @@ dependencies = [
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "ring 0.13.0-alpha5 (registry+https://github.com/rust-lang/crates.io-index)",
  "sct 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "untrusted 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "untrusted 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "webpki 0.18.0-alpha4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -939,7 +939,7 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "ring 0.13.0-alpha5 (registry+https://github.com/rust-lang/crates.io-index)",
- "untrusted 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "untrusted 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1413,7 +1413,7 @@ dependencies = [
 
 [[package]]
 name = "untrusted"
-version = "0.6.1"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -1452,7 +1452,7 @@ version = "0.18.0-alpha4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "ring 0.13.0-alpha5 (registry+https://github.com/rust-lang/crates.io-index)",
- "untrusted 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "untrusted 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1683,7 +1683,7 @@ dependencies = [
 "checksum unicode-xid 0.0.4 (registry+https://github.com/rust-lang/crates.io-index)" = "8c1f860d7d29cf02cb2f3f359fd35991af3d30bac52c57d265a3c461074cb4dc"
 "checksum unicode-xid 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "fc72304796d0818e357ead4e000d19c9c174ab23dc11093ac919054d20a6a7fc"
 "checksum unreachable 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "382810877fe448991dfc7f0dd6e3ae5d58088fd0ea5e35189655f84e6814fa56"
-"checksum untrusted 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)" = "70afa43c8c5d23a53a3c39ec9b56232c5badc19f6bb5ad529c1d6448a7241365"
+"checksum untrusted 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)" = "55cd1f4b4e96b46aeb8d4855db4a7a9bd96eeeb5c6a1ab54593328761642ce2f"
 "checksum url 1.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f808aadd8cfec6ef90e4a14eb46f24511824d1ac596b9682703c87056c8678b7"
 "checksum utf8-ranges 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "662fab6525a98beff2921d7f61a39e7d59e0b425ebc7d0d9e66d316e55124122"
 "checksum void 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "6a02e4885ed3bc0f2de90ea6dd45ebcbb66dacffe03547fadbb0eeae2770887d"

@@ -213,7 +213,7 @@ mod tests {
         ];
 
         for case in VALID {
-            let name = Name::try_from(case.input);
+            let name = Name::try_from(case.input.as_bytes());
             assert_eq!(name.as_ref().map(|x| x.as_ref()), Ok(case.output));
         }
 
@@ -227,7 +227,7 @@ mod tests {
         ];
 
         for case in INVALID {
-            assert!(Name::try_from(case).is_err());
+            assert!(Name::try_from(case.as_bytes()).is_err());
         }
     }
 }
