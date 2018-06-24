@@ -187,9 +187,8 @@ mod tests {
     use super::match_client_hello;
     use tls;
 
-    /// From `cargo run --example tlsclient -- --http example.com
-    static VALID_EXAMPLE_COM: &[u8] =
-        include_bytes!("testdata/example-com-client-hello.bin");
+    /// From `cargo run --example tlsclient -- --http example.com`
+    static VALID_EXAMPLE_COM: &[u8] = include_bytes!("testdata/example-com-client-hello.bin");
 
     #[test]
     fn matches() {
@@ -199,6 +198,21 @@ mod tests {
     #[test]
     fn mismatch_different_sni() {
         check_all_prefixes(false, "example.org", VALID_EXAMPLE_COM);
+    }
+
+    #[test]
+    fn mismatch_truncated_sni() {
+        check_all_prefixes(false, "example.coma", VALID_EXAMPLE_COM);
+    }
+
+    #[test]
+    fn mismatch_appended_sni() {
+        check_all_prefixes(false, "example.co", VALID_EXAMPLE_COM);
+    }
+
+    #[test]
+    fn mismatch_prepended_sni() {
+        check_all_prefixes(false, "aexample.com", VALID_EXAMPLE_COM);
     }
 
     #[test]
