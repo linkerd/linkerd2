@@ -1,6 +1,7 @@
 mod connect;
 mod addr_info;
 mod io;
+mod prefixed;
 pub mod tls;
 
 pub use self::connect::{

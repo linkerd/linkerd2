@@ -252,6 +252,9 @@ impl Connection {
 
 impl io::Read for Connection {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        // TODO: Eliminate the duplication between this and
+        // `transport::prefixed::Prefixed`.
+
         // Check the length only once, since looking as the length
         // of a BytesMut isn't as cheap as the length of a &[u8].
         let peeked_len = self.peek_buf.len();
@@ -266,7 +269,7 @@ impl io::Read for Connection {
             // hold onto the allocated memory any longer. We won't peek
             // again.
             if peeked_len == len {
-                self.peek_buf = BytesMut::new();
+                self.peek_buf = Default::default();
             }
             Ok(len)
         }
