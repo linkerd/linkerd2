@@ -142,7 +142,18 @@ impl BoundPort {
                     // do it here.
                     set_nodelay_or_warn(&socket);
 
-                    let conn = match tls::current_connection_config(&tls) {
+                    let tls = match &tls {
+                        Conditional::Some(tls) => match &*tls.config.borrow() {
+                            Conditional::Some(config) =>
+                                Conditional::Some(tls::ConnectionConfig {
+                                    identity: tls.identity.clone(),
+                                    config: config.clone(),
+                                }),
+                            Conditional::None(r) => Conditional::None(*r),
+                        },
+                        Conditional::None(r) => Conditional::None(*r),
+                    };
+                    let conn = match tls {
                         Conditional::Some(config) => {
                             // TODO: use `config.identity` to differentiate
                             // between TLS that the proxy should terminate vs.

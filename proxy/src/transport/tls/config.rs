@@ -55,7 +55,6 @@ struct CommonConfig {
     cert_resolver: Arc<CertResolver>,
 }
 
-
 /// Validated configuration for TLS servers.
 #[derive(Clone)]
 pub struct ClientConfig(pub(super) Arc<rustls::ClientConfig>);
@@ -133,6 +132,7 @@ impl From<ReasonForNoIdentity> for ReasonForNoTls {
 }
 
 pub type ConditionalConnectionConfig<C> = Conditional<ConnectionConfig<C>, ReasonForNoTls>;
+pub type ConditionalClientConfig = Conditional<ClientConfig, ReasonForNoTls>;
 
 #[derive(Debug)]
 pub enum Error {
@@ -360,20 +360,6 @@ impl ServerConfig {
         config.cert_resolver = common.cert_resolver.clone();
         ServerConfig(Arc::new(config))
     }
-}
-
-pub fn current_connection_config<C>(
-    watch: &ConditionalConnectionConfig<Watch<Conditional<C, ReasonForNoTls>>>)
-    -> ConditionalConnectionConfig<C> where C: Clone
-{
-    watch.as_ref().and_then(|c| {
-        c.config.borrow().as_ref().map(|config| {
-            ConnectionConfig {
-                identity: c.identity.clone(),
-                config: config.clone()
-            }
-        })
-    })
 }
 
 fn load_file_contents(path: &PathBuf) -> Result<Vec<u8>, Error> {
