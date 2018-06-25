@@ -34,6 +34,7 @@ const StatusDot = ({status, multilineDots, columnName}) => (
       <div>
         <div>{status.name}</div>
         <div>{_.get(columnConfig, [columnName, "dotExplanation"])(status)}</div>
+        <div>Uptime: {status.uptime} ({status.uptimeSec}s)</div>
       </div>
     )}
     overlayStyle={{ fontSize: "12px" }}>
@@ -66,7 +67,7 @@ const columns = {
   status: name => {
     return {
       title: name,
-      dataIndex: "statuses",
+      dataIndex: "pods",
       width: columnConfig[name].width,
       render: statuses => {
         let multilineDots = _.size(statuses) > columnConfig[name].wrapDotsAt;
@@ -97,12 +98,9 @@ class StatusTable extends React.Component {
 
   getTableData() {
     let tableData = _.map(this.props.data, datum => {
-      return {
-        name: datum.name,
-        statuses: datum.pods,
-        numEntities: _.size(datum.pods),
-        added: datum.added
-      };
+      return _.merge(datum, {
+        numEntities: _.size(datum.pods)
+      });
     });
     return _.sortBy(tableData, 'name');
   }

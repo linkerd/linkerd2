@@ -31,8 +31,13 @@ type (
 	}
 )
 
+type podReport struct {
+	lastReport              time.Time
+	processStartTimeSeconds time.Time
+}
+
 const (
-	podQuery                   = "count(process_start_time_seconds) by (pod)"
+	podQuery                   = "sum(process_start_time_seconds) by (pod)"
 	K8sClientSubsystemName     = "kubernetes"
 	K8sClientCheckDescription  = "control plane can talk to Kubernetes"
 	PromClientSubsystemName    = "prometheus"
@@ -63,8 +68,8 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.Empty) (*pb.ListPodsR
 	log.Debugf("ListPods request: %+v", req)
 
 	// Reports is a map from instance name to the absolute time of the most recent
-	// report from that instance.
-	reports := make(map[string]time.Time)
+	// report from that instance and its process start time
+	reports := make(map[string]podReport)
 
 	// Query Prometheus for all pods present
 	vec, err := s.queryProm(ctx, podQuery)
@@ -75,7 +80,10 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.Empty) (*pb.ListPodsR
 		pod := string(sample.Metric["pod"])
 		timestamp := sample.Timestamp
 
-		reports[pod] = time.Unix(0, int64(timestamp)*int64(time.Millisecond))
+		reports[pod] = podReport{
+			lastReport:              time.Unix(0, int64(timestamp)*int64(time.Millisecond)),
+			processStartTimeSeconds: time.Unix(0, int64(sample.Value)*int64(time.Second)),
+		}
 	}
 
 	pods, err := s.k8sAPI.Pod().Lister().List(labels.Everything())
@@ -115,10 +123,15 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.Empty) (*pb.ListPodsR
 			ControlPlane:        controllerComponent != "",
 		}
 		if added {
-			since := time.Since(updated)
+			since := time.Since(updated.lastReport)
 			item.SinceLastReport = &duration.Duration{
 				Seconds: int64(since / time.Second),
 				Nanos:   int32(since % time.Second),
+			}
+			sinceStarting := time.Since(updated.processStartTimeSeconds)
+			item.Uptime = &duration.Duration{
+				Seconds: int64(sinceStarting / time.Second),
+				Nanos:   int32(sinceStarting % time.Second),
 			}
 		}
 		podList = append(podList, item)
