@@ -33,7 +33,7 @@ use control::{
     cache::{Cache, CacheChange, Exists},
     fully_qualified_authority::FullyQualifiedAuthority,
     remote_stream::{Receiver, Remote},
-    AddOrigin, Backoff, LogErrors
+    util::{AddOrigin, Backoff, LogErrors},
 };
 use dns::{self, IpAddrListFuture};
 use telemetry::metrics::DstLabels;
