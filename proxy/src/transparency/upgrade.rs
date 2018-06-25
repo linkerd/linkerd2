@@ -35,6 +35,11 @@ pub struct Http11UpgradeHalves {
     _inner: (),
 }
 
+/// A marker type inserted into Extensions to signal it was an HTTP CONNECT
+/// request.
+#[derive(Debug)]
+pub struct HttpConnect;
+
 struct Inner {
     server: TryLock<Option<OnUpgrade>>,
     client: TryLock<Option<OnUpgrade>>,
@@ -157,6 +162,9 @@ impl Drop for Inner {
             if let Err(_) = self.upgrade_executor.execute(fut) {
                 trace!("error spawning HTTP upgrade task");
             }
+        } else {
+            trace!("HTTP/1.1 upgrade half missing");
         }
     }
 }
+

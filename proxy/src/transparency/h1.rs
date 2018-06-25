@@ -8,10 +8,17 @@ use http::header::{HOST, UPGRADE};
 use http::uri::{Authority, Parts, Scheme, Uri};
 
 use ctx::transport::{Server as ServerCtx};
+use super::upgrade::HttpConnect;
 
 /// Tries to make sure the `Uri` of the request is in a form needed by
 /// hyper's Client.
 pub fn normalize_our_view_of_uri<B>(req: &mut http::Request<B>) {
+    debug_assert!(
+        req.uri().scheme_part().is_none(),
+        "normalize_uri shouldn't be called with absolute URIs: {:?}",
+        req.uri()
+    );
+
     // try to parse the Host header
     if let Some(auth) = authority_from_host(&req) {
         set_authority(req.uri_mut(), auth);
@@ -50,8 +57,18 @@ pub fn authority_from_host<B>(req: &http::Request<B>) -> Option<Authority> {
 
 fn set_authority(uri: &mut http::Uri, auth: Authority) {
     let mut parts = Parts::from(mem::replace(uri, Uri::default()));
-    parts.scheme = Some(Scheme::HTTP);
+
     parts.authority = Some(auth);
+
+    // If this was an origin-form target (path only),
+    // then we can't *only* set the authority, as that's
+    // an illegal target (such as `conduit.io/docs`).
+    //
+    // But don't set a scheme if this was authority-form (CONNECT),
+    // since that would change it's meaning (like `https://conduit.io`).
+    if parts.path_and_query.is_some() {
+        parts.scheme = Some(Scheme::HTTP);
+    }
 
     let new = Uri::from_parts(parts)
         .expect("absolute uri");
@@ -99,18 +116,92 @@ pub fn wants_upgrade<B>(req: &http::Request<B>) -> bool {
         // the proxy strips h2 upgrade headers.
         //
         // Eventually, the proxy will support h2 upgrades directly.
-        upgrade != "h2c"
-    } else {
-        // No Upgrade header means no upgrade wanted!
-        false
+        return upgrade != "h2c";
     }
 
-
+    // HTTP/1.1 CONNECT requests are just like upgrades!
+    req.method() == &http::Method::CONNECT
 }
 
 /// Checks responses to determine if they are successful HTTP upgrades.
 pub fn is_upgrade<B>(res: &http::Response<B>) -> bool {
+    // Upgrades were introduced in HTTP/1.1
+    if res.version() != http::Version::HTTP_11 {
+        return false;
+    }
+
     // 101 Switching Protocols
-    res.status() == http::StatusCode::SWITCHING_PROTOCOLS
-        && res.version() == http::Version::HTTP_11
+    if res.status() == http::StatusCode::SWITCHING_PROTOCOLS {
+        return true;
+    }
+
+    // CONNECT requests are complete if status code is 2xx.
+    if res.extensions().get::<HttpConnect>().is_some()
+        && res.status().is_success() {
+        return true;
+    }
+
+    // Just a regular HTTP response...
+    false
+}
+
+/// Returns if the request target is in `absolute-form`.
+///
+/// This is `absolute-form`: `https://conduit.io/docs`
+///
+/// This is not:
+///
+/// - `/docs`
+/// - `conduit.io`
+pub fn is_absolute_form(uri: &Uri) -> bool {
+    // It's sufficient just to check for a scheme, since in HTTP1,
+    // it's required in absolute-form, and `http::Uri` doesn't
+    // allow URIs with the other parts missing when the scheme is set.
+    debug_assert!(
+        uri.scheme_part().is_none() ||
+        (
+            uri.authority_part().is_some() &&
+            uri.path_and_query().is_some()
+        ),
+        "is_absolute_form http::Uri invariants: {:?}",
+        uri
+    );
+
+    uri.scheme_part().is_some()
+}
+
+/// Returns if the request target is in `origin-form`.
+///
+/// This is `origin-form`: `conduit.io`
+fn is_origin_form(uri: &Uri) -> bool {
+    uri.scheme_part().is_none() &&
+        uri.path_and_query().is_none()
+}
+
+/// Returns if the received request is definitely bad.
+///
+/// Just because a request parses doesn't mean it's correct. For examples:
+///
+/// - `GET conduit.io`
+/// - `CONNECT /just-a-path
+pub fn is_bad_request<B>(req: &http::Request<B>) -> bool {
+    if req.method() == &http::Method::CONNECT {
+        // CONNECT is only valid over HTTP/1.1
+        if req.version() != http::Version::HTTP_11 {
+            debug!("CONNECT request not valid for HTTP/1.0: {:?}", req.uri());
+            return true;
+        }
+
+        // CONNECT requests are only valid in authority-form.
+        if !is_origin_form(req.uri()) {
+            debug!("CONNECT request with illegal URI: {:?}", req.uri());
+            return true;
+        }
+    // If not CONNECT, refuse any origin-form URIs
+    } else if is_origin_form(req.uri()) {
+        debug!("{} request with illegal URI: {:?}", req.method(), req.uri());
+        return true;
+    }
+
+    false
 }

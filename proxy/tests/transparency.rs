@@ -31,25 +31,6 @@ fn inbound_http1() {
 }
 
 #[test]
-fn http1_connect_not_supported() {
-    let _ = env_logger::try_init();
-
-    let srv = server::tcp()
-        .run();
-    let proxy = proxy::new()
-        .inbound(srv)
-        .run();
-
-    let client = client::tcp(proxy.inbound);
-
-    let tcp_client = client.connect();
-    tcp_client.write("CONNECT foo.bar:443 HTTP/1.1\r\nHost: foo.bar:443\r\n\r\n");
-
-    let expected = "HTTP/1.1 502 Bad Gateway\r\n";
-    assert_eq!(s(&tcp_client.read()[..expected.len()]), expected);
-}
-
-#[test]
 fn http1_removes_connection_headers() {
     let _ = env_logger::try_init();
 
@@ -437,6 +418,147 @@ fn http11_upgrade_h2_stripped() {
     // If the assertion is trigger in the above test route, the proxy will
     // just send back a 500.
     assert_eq!(res.status(), http::StatusCode::OK);
+}
+
+#[test]
+fn http11_connect() {
+    let _ = env_logger::try_init();
+
+    // To simplify things for this test, we just use the test TCP
+    // client and server to do an HTTP CONNECT.
+    //
+    // We don't *actually* perfom a new connect to requested host,
+    // but client doesn't need to know that for our tests.
+
+    let connect_req = "\
+        CONNECT foo.bar HTTP/1.1\r\n\
+        Host: foo.bar\r\n\
+        \r\n\
+        ";
+    let connect_res = "\
+        HTTP/1.1 200 OK\r\n\
+        \r\n\
+        ";
+
+    let tunneled_req = "{send}: hi all\n";
+    let tunneled_res = "{recv}: welcome!\n";
+
+    let srv = server::tcp()
+        .accept_fut(move |sock| {
+            // Read connect_req...
+            tokio_io::io::read(sock, vec![0; 512])
+                .and_then(move |(sock, vec, n)| {
+                    let head = s(&vec[..n]);
+                    assert_contains!(head, "CONNECT foo.bar HTTP/1.1\r\n");
+
+                    // Write connect_res back...
+                    tokio_io::io::write_all(sock, connect_res)
+                })
+                .and_then(move |(sock, _)| {
+                    // Read the message after tunneling...
+                    tokio_io::io::read(sock, vec![0; 512])
+                })
+                .and_then(move |(sock, vec, n)| {
+                    assert_eq!(s(&vec[..n]), tunneled_req);
+
+                    // Some processing... and then write back tunneled res...
+                    tokio_io::io::write_all(sock, tunneled_res)
+                })
+                .map(|_| ())
+                .map_err(|e| panic!("tcp server error: {}", e))
+        })
+        .run();
+    let proxy = proxy::new()
+        .inbound(srv)
+        .run();
+
+    let client = client::tcp(proxy.inbound);
+
+    let tcp_client = client.connect();
+
+    tcp_client.write(connect_req);
+
+    let resp = tcp_client.read();
+    let resp_str = s(&resp);
+    assert!(
+        resp_str.starts_with("HTTP/1.1 200 OK\r\n"),
+        "response not an upgrade: {:?}",
+        resp_str
+    );
+
+    // We've CONNECTed from HTTP to foo.bar! Say hi!
+    tcp_client.write(tunneled_req);
+    // Did anyone respond?
+    let resp2 = tcp_client.read();
+    assert_eq!(s(&resp2), tunneled_res);
+}
+
+#[test]
+fn http11_connect_bad_requests() {
+    let _ = env_logger::try_init();
+
+    let srv = server::tcp()
+        .accept(move |_sock| -> Vec<u8> {
+            unreachable!("shouldn't get through the proxy");
+        })
+        .run();
+    let proxy = proxy::new()
+        .inbound(srv)
+        .run();
+
+    // A TCP client is used since the HTTP client would stop these requests
+    // from ever touching the network.
+    let client = client::tcp(proxy.inbound);
+
+    let bad_uris = vec![
+        "/origin-form",
+        "/",
+        "http://test/bar",
+        "http://test",
+        "*",
+    ];
+
+    for bad_uri in bad_uris {
+        let tcp_client = client.connect();
+
+        let req = format!("CONNECT {} HTTP/1.1\r\nHost: test\r\n\r\n", bad_uri);
+        tcp_client.write(req);
+
+        let resp = tcp_client.read();
+        let resp_str = s(&resp);
+        assert!(
+            resp_str.starts_with("HTTP/1.1 400 Bad Request\r\n"),
+            "bad URI ({:?}) should get 400 response: {:?}",
+            bad_uri,
+            resp_str
+        );
+    }
+
+    // origin-form URIs must be CONNECT
+    let tcp_client = client.connect();
+
+    tcp_client.write("GET test HTTP/1.1\r\nHost: test\r\n\r\n");
+
+    let resp = tcp_client.read();
+    let resp_str = s(&resp);
+    assert!(
+        resp_str.starts_with("HTTP/1.1 400 Bad Request\r\n"),
+        "origin-form without CONNECT should get 400 response: {:?}",
+        resp_str
+    );
+
+    // check that HTTP/1.0 is not allowed for CONNECT
+    let tcp_client = client.connect();
+
+    tcp_client.write("CONNECT test HTTP/1.0\r\nHost: test\r\n\r\n");
+
+    let resp = tcp_client.read();
+    let resp_str = s(&resp);
+    assert!(
+        resp_str.starts_with("HTTP/1.0 400 Bad Request\r\n"),
+        "HTTP/1.0 CONNECT should get 400 response: {:?}",
+        resp_str
+    );
 }
 
 #[test]

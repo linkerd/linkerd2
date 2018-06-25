@@ -22,7 +22,7 @@ futures-watch = { git = "https://github.com/carllerche/better-future" }
 h2 = "0.1.10"
 http = "0.1"
 httparse = "1.2"
-hyper = "0.12.2"
+hyper = "0.12.3"
 ipnet = "1.0"
 log = "0.4.1"
 indexmap = "1.0.0"
