@@ -234,7 +234,6 @@ where
         debug!("bind_inner_stack endpoint={:?}, protocol={:?}", ep, protocol);
         let addr = ep.address();
 
-        // Like `tls::current_connection_config()`.
         let tls = ep.tls_identity().and_then(|identity| {
             tls_client_config.as_ref().map(|config| {
                 tls::ConnectionConfig {

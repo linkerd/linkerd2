@@ -362,20 +362,6 @@ impl ServerConfig {
     }
 }
 
-pub fn current_connection_config<C>(
-    watch: &ConditionalConnectionConfig<Watch<Conditional<C, ReasonForNoTls>>>)
-    -> ConditionalConnectionConfig<C> where C: Clone
-{
-    watch.as_ref().and_then(|c| {
-        c.config.borrow().as_ref().map(|config| {
-            ConnectionConfig {
-                identity: c.identity.clone(),
-                config: config.clone()
-            }
-        })
-    })
-}
-
 fn load_file_contents(path: &PathBuf) -> Result<Vec<u8>, Error> {
     fn load_file(path: &PathBuf) -> Result<Vec<u8>, io::Error> {
         let mut result = Vec::new();

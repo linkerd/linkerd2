@@ -22,7 +22,6 @@ pub use self::{
         ReasonForNoIdentity,
         ServerConfig,
         ServerConfigWatch,
-        current_connection_config,
         watch_for_config_changes,
     },
     connection::{Connection, Session, UpgradeClientToTls},
