@@ -468,9 +468,20 @@ fn set_nodelay_or_warn(socket: &TcpStream) {
 
 impl From<std::io::Error> for HandshakeError {
     fn from(err: std::io::Error) -> Self {
-        match err.downcast::<tls::Error>() {
-            Ok(tls_error) => Self::Tls(tls_error),
-            Err(io_error) => Self::Io { errno: io_error.raw_os_error() },
+        // See if the error can be downcast first, so the
+        // IO error is only consumed by `into_inner` if we
+        // know it will succeed.
+        if err.get_ref()
+            .and_then(|err| err.downcast_ref::<tls::Error>())
+            .is_some()
+        {
+            let tls_error = err.into_inner()
+                .expect("err.get_ref() returned already Some")
+                .downcast::<tls::Error>()
+                .expect("err.downcast_ref() already succeeded");
+            HandshakeError::Tls(*tls_error)
+        } else {
+            HandshakeError::Io { errno: err.raw_os_error() }
         }
     }
 }

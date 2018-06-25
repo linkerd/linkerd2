@@ -59,12 +59,14 @@ mod latency;
 mod process;
 mod record;
 mod serve;
+mod tls;
 mod transport;
 
 use self::counter::Counter;
 use self::gauge::Gauge;
 use self::histogram::Histogram;
 use self::labels::{
+    HandshakeFailLabels,
     RequestLabels,
     ResponseLabels,
     TransportLabels,
@@ -109,6 +111,8 @@ struct Root {
     responses: http::ResponseScopes,
     transports: transport::OpenScopes,
     transport_closes: transport::CloseScopes,
+
+    tls_handshake_failures: tls::HandshakeFailScopes,
 
     process_metrics: Option<process::Sensor>,
 
@@ -218,6 +222,12 @@ impl Root {
         self.transport_closes.scopes.entry(labels)
             .or_insert_with(|| transport::CloseMetrics::default().into())
             .stamped()
+    }
+
+    fn tls_handshake_fail(&mut self, labels: HandshakeFailLabels)
+        -> &mut Counter {
+        self.tls_handshake_failures.scopes.entry(labels)
+            .or_insert_with(|| Counter::default())
     }
 
     fn retain_since(&mut self, epoch: Instant) {

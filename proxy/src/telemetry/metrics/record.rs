@@ -3,10 +3,11 @@ use std::sync::{Arc, Mutex};
 use telemetry::event::Event;
 use super::Root;
 use super::labels::{
+    HandshakeFailLabels,
     RequestLabels,
     ResponseLabels,
     TransportLabels,
-    TransportCloseLabels
+    TransportCloseLabels,
 };
 
 /// Tracks Prometheus metrics
@@ -82,6 +83,13 @@ impl Record {
                         .close(close.duration);
                 })
             },
+
+            Event::TlsHandshakeFailed(ref ctx, ref err) => {
+                self.update(|metrics| {
+                    metrics.tls_handshake_fail(HandshakeFailLabels::new(ctx, err))
+                        .incr();
+                })
+            }
         };
     }
 }

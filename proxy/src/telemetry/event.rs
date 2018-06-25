@@ -99,7 +99,9 @@ impl Event {
 
     pub fn proxy(&self) -> &Arc<ctx::Proxy> {
         match *self {
-            Event::TransportOpen(ref ctx) | Event::TransportClose(ref ctx, _) => ctx.proxy(),
+            Event::TransportOpen(ref ctx) |
+            Event::TransportClose(ref ctx, _) |
+            Event::TlsHandshakeFailed(ref ctx, _) => ctx.proxy(),
             Event::StreamRequestOpen(ref req) |
             Event::StreamRequestFail(ref req, _) |
             Event::StreamRequestEnd(ref req, _) => &req.server.proxy,
