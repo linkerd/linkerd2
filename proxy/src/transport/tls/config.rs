@@ -293,7 +293,7 @@ pub type PublishConfigs = Box<Future<Item = (), Error = ()> + Send>;
 /// If all references are dropped to _either_ the client or server config watches, all
 /// updates will cease for both config watches.
 pub fn watch_for_config_changes(
-    settings: Conditional<&CommonSettings, ReasonForNoTls>
+    settings: Conditional<&CommonSettings, ReasonForNoTls>,
     sensor: sensor::TlsConfig,
 ) -> (ClientConfigWatch, ServerConfigWatch, PublishConfigs)
 {
@@ -306,7 +306,7 @@ pub fn watch_for_config_changes(
         return (client_watch, server_watch, Box::new(no_future));
     };
 
-    let changes = settings.stream_changes(Duration::from_secs(1));
+    let changes = settings.stream_changes(Duration::from_secs(1), sensor);
     let (client_watch, client_store) = Watch::new(Conditional::None(ReasonForNoTls::NoConfig));
     let (server_watch, server_store) = Watch::new(Conditional::None(ReasonForNoTls::NoConfig));
 
