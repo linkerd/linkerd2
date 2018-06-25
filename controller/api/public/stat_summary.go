@@ -226,6 +226,7 @@ func (s *grpcServer) nonK8sResourceQuery(ctx context.Context, req *pb.StatSummar
 
 	for resourceKey, metrics := range requestMetrics {
 		resource := resourceKey
+		resource.Type = req.GetSelector().GetResource().GetType()
 
 		row := pb.StatTable_PodGroup_Row{
 			Resource:   &resource,
@@ -278,11 +279,7 @@ func getResultKeys(
 
 // add filtering by resource type
 func promLabelNames(resource *pb.Resource) model.LabelNames {
-	names := model.LabelNames{}
-
-	if shouldAddNamespaceLabelName(resource) {
-		names = model.LabelNames{namespaceLabel}
-	}
+	names := model.LabelNames{namespaceLabel}
 
 	if resource.Type != k8s.Namespaces {
 		names = append(names, promResourceType(resource))
@@ -292,10 +289,7 @@ func promLabelNames(resource *pb.Resource) model.LabelNames {
 
 // add filtering by resource type
 func promDstLabelNames(resource *pb.Resource) model.LabelNames {
-	names := model.LabelNames{}
-	if shouldAddNamespaceLabelName(resource) {
-		names = model.LabelNames{dstNamespaceLabel}
-	}
+	names := model.LabelNames{dstNamespaceLabel}
 
 	if resource.Type != k8s.Namespaces {
 		names = append(names, "dst_"+promResourceType(resource))
@@ -323,22 +317,18 @@ func promDstLabels(resource *pb.Resource) model.LabelSet {
 			set[promResourceType(resource)] = model.LabelValue(resource.Name)
 		} else {
 			set["dst_"+promResourceType(resource)] = model.LabelValue(resource.Name)
+			if shouldAddNamespaceLabel(resource) {
+				set[dstNamespaceLabel] = model.LabelValue(resource.Namespace)
+			}
 		}
 	}
-	if shouldAddNamespaceLabel(resource) {
-		set[dstNamespaceLabel] = model.LabelValue(resource.Namespace)
-	}
-	return set
-}
 
-// determine if we should add "namespace" to the group by clause in the query
-func shouldAddNamespaceLabelName(resource *pb.Resource) bool {
-	return resource.Type != k8s.Authority
+	return set
 }
 
 // determine if we should add "namespace=<namespace>" to a named query
 func shouldAddNamespaceLabel(resource *pb.Resource) bool {
-	return resource.Type != k8s.Namespaces && resource.Type != k8s.Authority && resource.Namespace != ""
+	return resource.Type != k8s.Namespaces && resource.Namespace != ""
 }
 
 // query for inbound or outbound requests
