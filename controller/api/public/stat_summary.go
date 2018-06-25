@@ -167,7 +167,7 @@ func (s *grpcServer) resourceQuery(ctx context.Context, req *pb.StatSummaryReque
 	objectMap := map[pb.Resource]k8sStat{}
 	var err error
 
-	if req.GetSelector().GetResource().GetType() != util.Authority {
+	if req.GetSelector().GetResource().GetType() != k8s.Authority {
 		objectMap, err = s.getKubernetesObjectStats(req)
 		if err != nil {
 			return resourceResult{res: nil, err: err}
@@ -243,7 +243,7 @@ func (s *grpcServer) objectQuery(
 
 func isNonK8sResourceQuery(req *pb.StatSummaryRequest) bool {
 	isNonK8s := false
-	if req.GetSelector().GetResource().GetType() == util.Authority {
+	if req.GetSelector().GetResource().GetType() == k8s.Authority {
 		isNonK8s = true
 	}
 	return isNonK8s
@@ -317,7 +317,7 @@ func promLabels(resource *pb.Resource) model.LabelSet {
 func promDstLabels(resource *pb.Resource) model.LabelSet {
 	set := model.LabelSet{}
 	if resource.Name != "" {
-		if resource.Type == util.Authority {
+		if resource.Type == k8s.Authority {
 			set[promResourceType(resource)] = model.LabelValue(resource.Name)
 		} else {
 			set["dst_"+promResourceType(resource)] = model.LabelValue(resource.Name)

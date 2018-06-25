@@ -21,9 +21,6 @@ import (
 var (
 	defaultMetricTimeWindow = "1m"
 
-	Authority          = "authority" // non-k8s resource type
-	AuthorityShortName = "au"
-
 	// ValidTargets specifies resource types allowed as a target:
 	// target resource on an inbound query
 	// target resource on an outbound 'to' query
@@ -181,10 +178,14 @@ func BuildStatSummaryRequest(p StatSummaryRequestParams) (*pb.StatSummaryRequest
 
 // An authority can only receive traffic, not send it, so it can't be a --from
 func validateFromResourceType(resourceType string) (string, error) {
-	if resourceType == Authority || resourceType == AuthorityShortName {
+	name, err := k8s.CanonicalResourceNameFromFriendlyName(resourceType)
+	if err != nil {
+		return "", err
+	}
+	if name == k8s.Authority {
 		return "", errors.New("cannot query traffic --from an authority")
 	}
-	return k8s.CanonicalResourceNameFromFriendlyName(resourceType)
+	return name, nil
 }
 
 // BuildResource parses input strings, typically from CLI flags, to build a
