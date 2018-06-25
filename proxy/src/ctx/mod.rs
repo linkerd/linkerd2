@@ -10,7 +10,6 @@
 use config;
 use std::time::SystemTime;
 use std::sync::Arc;
-use transport::tls;
 
 pub mod http;
 pub mod transport;
@@ -22,8 +21,6 @@ pub struct Process {
     pub scheduled_namespace: String,
 
     pub start_time: SystemTime,
-
-    tls_client_config: tls::ClientConfigWatch,
 }
 
 /// Indicates the orientation of traffic, relative to a sidecar proxy.
@@ -46,17 +43,15 @@ impl Process {
         Arc::new(Self {
             scheduled_namespace: ns.into(),
             start_time: SystemTime::now(),
-            tls_client_config: tls::ClientConfig::no_tls(),
         })
     }
 
     /// Construct a new `Process` from environment variables.
-    pub fn new(config: &config::Config, tls_client_config: tls::ClientConfigWatch) -> Arc<Self> {
+    pub fn new(config: &config::Config) -> Arc<Self> {
         let start_time = SystemTime::now();
         Arc::new(Self {
             scheduled_namespace: config.namespaces.pod.clone(),
             start_time,
-            tls_client_config,
         })
     }
 }
@@ -79,12 +74,6 @@ impl Proxy {
 
     pub fn is_outbound(&self) -> bool {
         !self.is_inbound()
-    }
-
-    pub fn tls_client_config_watch(&self) -> &tls::ClientConfigWatch {
-        match self {
-            Proxy::Inbound(process) | Proxy::Outbound(process) => &process.tls_client_config
-        }
     }
 }
 
