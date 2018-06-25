@@ -113,7 +113,7 @@ mod tests {
     use tls;
 
     fn new_inbound(default: Option<net::SocketAddr>, ctx: &Arc<ctx::Proxy>) -> Inbound<()> {
-        let bind = Bind::new().with_ctx(ctx.clone());
+        let bind = Bind::new(tls::ClientConfig::no_tls()).with_ctx(ctx.clone());
         Inbound::new(default, bind)
     }
 

@@ -189,7 +189,7 @@ where
         let (tls_client_config, tls_server_config, tls_cfg_bg) =
             tls::watch_for_config_changes(self.config.tls_settings.as_ref());
 
-        let process_ctx = ctx::Process::new(&self.config, tls_client_config.clone());
+        let process_ctx = ctx::Process::new(&self.config);
 
         let Main {
             config,
@@ -249,7 +249,7 @@ where
 
         let (drain_tx, drain_rx) = drain::channel();
 
-        let bind = Bind::new().with_sensors(sensors.clone());
+        let bind = Bind::new(tls_client_config).with_sensors(sensors.clone());
 
         // Setup the public listener. This will listen on a publicly accessible
         // address and listen for inbound connections that should be forwarded

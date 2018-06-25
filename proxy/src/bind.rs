@@ -30,6 +30,7 @@ use watch_service::{WatchService, Rebind};
 pub struct Bind<C, B> {
     ctx: C,
     sensors: telemetry::Sensors,
+    tls_client_config: tls::ClientConfigWatch,
     _p: PhantomData<fn() -> B>,
 }
 
@@ -174,10 +175,11 @@ impl Error for BufferSpawnError {
 }
 
 impl<B> Bind<(), B> {
-    pub fn new() -> Self {
+    pub fn new(tls_client_config: tls::ClientConfigWatch) -> Self {
         Self {
             ctx: (),
             sensors: telemetry::Sensors::null(),
+            tls_client_config,
             _p: PhantomData,
         }
     }
@@ -193,6 +195,7 @@ impl<B> Bind<(), B> {
         Bind {
             ctx,
             sensors: self.sensors,
+            tls_client_config: self.tls_client_config,
             _p: PhantomData,
         }
     }
@@ -203,6 +206,7 @@ impl<C: Clone, B> Clone for Bind<C, B> {
         Self {
             ctx: self.ctx.clone(),
             sensors: self.sensors.clone(),
+            tls_client_config: self.tls_client_config.clone(),
             _p: PhantomData,
         }
     }
@@ -301,10 +305,7 @@ where
             endpoint: ep.clone(),
             protocol: protocol.clone(),
         };
-        // TODO: the watch should be an explicit field of `Bind`, rather
-        // than passed in the context.
-        let tls_client_config = self.ctx.tls_client_config_watch().clone();
-        WatchService::new(tls_client_config, rebind)
+        WatchService::new(self.tls_client_config.clone(), rebind)
     }
 
     pub fn bind_service(&self, ep: &Endpoint, protocol: &Protocol) -> BoundService<B> {
