@@ -103,14 +103,14 @@ struct PathAndHash {
     path: PathBuf,
 
     /// The last SHA-384 digest of the file, if we have previously hashed it.
-    last_hash: RefCell<Option<Digest>>,
+    curr_hash: RefCell<Option<Digest>>,
 }
 
 impl PathAndHash {
     fn new<P: AsRef<Path>>(path: P) -> Self {
         Self {
             path: path.as_ref().to_path_buf(),
-            last_hash: RefCell::new(None),
+            curr_hash: RefCell::new(None),
         }
     }
 
@@ -128,7 +128,7 @@ impl PathAndHash {
                 // current contents with the previous hash to determine if it
                 // has changed.
                 let hash = Some(digest::digest(&digest::SHA256, &contents[..]));
-                let changed = self.last_hash
+                let changed = self.curr_hash
                     .borrow()
                     .as_ref()
                     .map(Digest::as_ref)
@@ -136,16 +136,16 @@ impl PathAndHash {
                     .ne(&hash.as_ref().map(Digest::as_ref));
                 if changed {
                     trace!("{:?} changed", &self.path);
-                    self.last_hash.replace(hash);
+                    self.curr_hash.replace(hash);
                 }
                 Ok(changed)
             },
             Err(ref e) if e.kind() == io::ErrorKind::NotFound => {
-                if self.last_hash.borrow().is_some() {
+                if self.curr_hash.borrow().is_some() {
                     // If we have a previous hash, then the file was deleted,
                     // so it has changed.
                     trace!("{:?} deleted", &self.path);
-                    self.last_hash.replace(None);
+                    self.curr_hash.replace(None);
                     Ok(true)
                 } else {
                     // Otherwise, it didn't exist previously, so there hasn't
