@@ -97,7 +97,11 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 		statReq.Selector.Resource.Type = resource
 
 		go func() {
-			resultChan <- s.resourceQuery(ctx, statReq)
+			if isNonK8sResourceQuery(req) {
+				resultChan <- s.nonK8sResourceQuery(ctx, statReq)
+			} else {
+				resultChan <- s.k8sResourceQuery(ctx, statReq)
+			}
 		}()
 	}
 
@@ -163,69 +167,41 @@ func (s *grpcServer) getKubernetesObjectStats(req *pb.StatSummaryRequest) (map[p
 	return objectMap, nil
 }
 
-func (s *grpcServer) resourceQuery(ctx context.Context, req *pb.StatSummaryRequest) resourceResult {
-	objectMap := map[pb.Resource]k8sStat{}
-	var err error
-
-	if req.GetSelector().GetResource().GetType() != k8s.Authority {
-		objectMap, err = s.getKubernetesObjectStats(req)
-		if err != nil {
-			return resourceResult{res: nil, err: err}
-		}
-	}
-
-	res, err := s.objectQuery(ctx, req, objectMap)
+func (s *grpcServer) k8sResourceQuery(ctx context.Context, req *pb.StatSummaryRequest) resourceResult {
+	k8sObjects, err := s.getKubernetesObjectStats(req)
 	if err != nil {
 		return resourceResult{res: nil, err: err}
 	}
 
-	return resourceResult{res: res, err: nil}
-}
-
-func (s *grpcServer) objectQuery(
-	ctx context.Context,
-	req *pb.StatSummaryRequest,
-	objects map[pb.Resource]k8sStat,
-) (*pb.StatTable, error) {
-	rows := make([]*pb.StatTable_PodGroup_Row, 0)
-
 	requestMetrics, err := s.getPrometheusMetrics(ctx, req, req.TimeWindow)
 	if err != nil {
-		return nil, err
+		return resourceResult{res: nil, err: err}
 	}
 
-	isNonK8s := isNonK8sResourceQuery(req)
-	keys := getResultKeys(req, objects, requestMetrics, isNonK8s)
+	rows := make([]*pb.StatTable_PodGroup_Row, 0)
+	keys := getResultKeys(req, k8sObjects, requestMetrics)
 
 	for _, key := range keys {
-		resource := pb.Resource{
-			Type: req.GetSelector().GetResource().GetType(),
+		objInfo, ok := k8sObjects[key]
+		if !ok {
+			continue
 		}
+		k8sResource := objInfo.object
 		row := pb.StatTable_PodGroup_Row{
+			Resource: &pb.Resource{
+				Name:      k8sResource.GetName(),
+				Namespace: k8sResource.GetNamespace(),
+				Type:      req.GetSelector().GetResource().GetType(),
+			},
 			TimeWindow: req.TimeWindow,
+			Stats:      requestMetrics[key],
 		}
 
-		if isNonK8s {
-			resource.Namespace = key.GetNamespace()
-			resource.Name = key.GetName()
-		} else {
-			objInfo, ok := objects[key]
-			if !ok {
-				continue
-			}
-			k8sResource := objInfo.object
-			resource.Namespace = k8sResource.GetNamespace()
-			resource.Name = k8sResource.GetName()
-
-			podStat := objInfo.podStats
-			row.MeshedPodCount = podStat.inMesh
-			row.RunningPodCount = podStat.total
-			row.FailedPodCount = podStat.failed
-			row.ErrorsByPod = podStat.errors
-		}
-
-		row.Resource = &resource
-		row.Stats = requestMetrics[key]
+		podStat := objInfo.podStats
+		row.MeshedPodCount = podStat.inMesh
+		row.RunningPodCount = podStat.total
+		row.FailedPodCount = podStat.failed
+		row.ErrorsByPod = podStat.errors
 
 		rows = append(rows, &row)
 	}
@@ -238,7 +214,35 @@ func (s *grpcServer) objectQuery(
 		},
 	}
 
-	return &rsp, nil
+	return resourceResult{res: &rsp, err: nil}
+}
+
+func (s *grpcServer) nonK8sResourceQuery(ctx context.Context, req *pb.StatSummaryRequest) resourceResult {
+	requestMetrics, err := s.getPrometheusMetrics(ctx, req, req.TimeWindow)
+	if err != nil {
+		return resourceResult{res: nil, err: err}
+	}
+	rows := make([]*pb.StatTable_PodGroup_Row, 0)
+
+	for resourceKey, metrics := range requestMetrics {
+		resource := resourceKey
+
+		row := pb.StatTable_PodGroup_Row{
+			Resource:   &resource,
+			TimeWindow: req.TimeWindow,
+			Stats:      metrics,
+		}
+		rows = append(rows, &row)
+	}
+
+	rsp := pb.StatTable{
+		Table: &pb.StatTable_PodGroup_{
+			PodGroup: &pb.StatTable_PodGroup{
+				Rows: rows,
+			},
+		},
+	}
+	return resourceResult{res: &rsp, err: nil}
 }
 
 func isNonK8sResourceQuery(req *pb.StatSummaryRequest) bool {
@@ -254,18 +258,16 @@ func getResultKeys(
 	req *pb.StatSummaryRequest,
 	k8sObjects map[pb.Resource]k8sStat,
 	metricResults map[pb.Resource]*pb.BasicStats,
-	isNonK8sObj bool,
 ) []pb.Resource {
 	var keys []pb.Resource
 
-	if !isNonK8sObj && (req.GetOutbound() == nil || req.GetNone() != nil) {
+	if req.GetOutbound() == nil || req.GetNone() != nil {
 		// if the request doesn't have outbound filtering, return all rows
 		for key := range k8sObjects {
 			keys = append(keys, key)
 		}
 	} else {
-		// if there are no k8s objects associated with the request (e.g. authorities),
-		// or if the request does have outbound filtering,
+		// if the request does have outbound filtering,
 		// only return rows for which we have stats
 		for key := range metricResults {
 			keys = append(keys, key)
