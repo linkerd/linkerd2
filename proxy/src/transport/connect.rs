@@ -62,7 +62,7 @@ impl HostAndPort {
         let host = IpAddr::from_str(a.host())
             .map(Host::Ip)
             .or_else(|_|
-                dns::Name::try_from(a.host())
+                dns::Name::try_from(a.host().as_bytes())
                     .map(Host::DnsName)
                     .map_err(|_| HostAndPortError::InvalidHost))?;
         let port = a.port()
