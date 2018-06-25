@@ -201,7 +201,7 @@ export class MetricsTableBase extends BaseTable {
     let resource = this.props.resource.toLowerCase();
 
     let showNsColumn = this.props.showNamespaceColumn;
-    if (resource === "authority" || resource === "namespace") {
+    if (resource === "namespace") {
       showNsColumn = false;
     }
 
