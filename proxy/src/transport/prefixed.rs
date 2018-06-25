@@ -63,6 +63,12 @@ impl<S> AsyncWrite for Prefixed<S> where S: AsyncWrite + Debug {
     fn shutdown(&mut self) -> Result<Async<()>, io::Error> {
         self.io.shutdown()
     }
+
+    fn write_buf<B: Buf>(&mut self, buf: &mut B) -> Poll<usize, io::Error>
+        where Self: Sized
+    {
+        self.io.write_buf(buf)
+    }
 }
 
 impl<S> AddrInfo for Prefixed<S> where S: AddrInfo {
