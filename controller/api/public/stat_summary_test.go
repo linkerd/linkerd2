@@ -773,12 +773,12 @@ status:
 					TimeWindow: "1m",
 				},
 				expectedPrometheusQueries: []string{
-					`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="inbound"}[1m])) by (le, authority))`,
-					`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="inbound"}[1m])) by (le, authority))`,
-					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="inbound"}[1m])) by (le, authority))`,
-					`sum(increase(response_total{direction="inbound"}[1m])) by (authority, classification, tls)`,
+					`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="conduit"}[1m])) by (le, namespace, authority))`,
+					`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="conduit"}[1m])) by (le, namespace, authority))`,
+					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="conduit"}[1m])) by (le, namespace, authority))`,
+					`sum(increase(response_total{direction="inbound", namespace="conduit"}[1m])) by (namespace, authority, classification, tls)`,
 				},
-				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", "authority", "", nil),
+				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", "authority", "conduit", nil),
 			},
 		}
 
@@ -817,12 +817,12 @@ status:
 					TimeWindow: "1m",
 				},
 				expectedPrometheusQueries: []string{
-					`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{authority="10.1.1.239:9995", direction="inbound"}[1m])) by (le, authority))`,
-					`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{authority="10.1.1.239:9995", direction="inbound"}[1m])) by (le, authority))`,
-					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{authority="10.1.1.239:9995", direction="inbound"}[1m])) by (le, authority))`,
-					`sum(increase(response_total{authority="10.1.1.239:9995", direction="inbound"}[1m])) by (authority, classification, tls)`,
+					`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{authority="10.1.1.239:9995", direction="inbound", namespace="conduit"}[1m])) by (le, namespace, authority))`,
+					`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{authority="10.1.1.239:9995", direction="inbound", namespace="conduit"}[1m])) by (le, namespace, authority))`,
+					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{authority="10.1.1.239:9995", direction="inbound", namespace="conduit"}[1m])) by (le, namespace, authority))`,
+					`sum(increase(response_total{authority="10.1.1.239:9995", direction="inbound", namespace="conduit"}[1m])) by (namespace, authority, classification, tls)`,
 				},
-				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", "authority", "", nil),
+				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", "authority", "conduit", nil),
 			},
 		}
 
