@@ -51,7 +51,7 @@ func (c *grpcOverHttpClient) SelfCheck(ctx context.Context, req *healthcheckPb.S
 	return &msg, err
 }
 
-func (c *grpcOverHttpClient) ListPods(ctx context.Context, req *pb.Empty, _ ...grpc.CallOption) (*pb.ListPodsResponse, error) {
+func (c *grpcOverHttpClient) ListPods(ctx context.Context, req *pb.ListPodsRequest, _ ...grpc.CallOption) (*pb.ListPodsResponse, error) {
 	var msg pb.ListPodsResponse
 	err := c.apiRequest(ctx, "ListPods", req, &msg)
 	return &msg, err

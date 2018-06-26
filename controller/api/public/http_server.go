@@ -121,7 +121,7 @@ func (h *handler) handleSelfCheck(w http.ResponseWriter, req *http.Request) {
 }
 
 func (h *handler) handleListPods(w http.ResponseWriter, req *http.Request) {
-	var protoRequest pb.Empty
+	var protoRequest pb.ListPodsRequest
 	err := httpRequestToProto(req, &protoRequest)
 	if err != nil {
 		writeErrorToHttpResponse(w, err)

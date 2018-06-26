@@ -17,6 +17,9 @@ message VersionInfo {
   string releaseVersion = 3;
 }
 
+message ListPodsRequest {
+  Resource resource = 1;
+}
 message ListPodsResponse {
   repeated Pod pods = 1;
 }
@@ -212,7 +215,7 @@ message StatTable {
 service Api {
   rpc StatSummary(StatSummaryRequest) returns (StatSummaryResponse) {}
 
-  rpc ListPods(Empty) returns (ListPodsResponse) {}
+  rpc ListPods(ListPodsRequest) returns (ListPodsResponse) {}
 
   // Superceded by `TapByResource`.
   rpc Tap(TapRequest) returns (stream common.TapEvent) { option deprecated = true; }

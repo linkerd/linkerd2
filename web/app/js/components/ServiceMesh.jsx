@@ -217,7 +217,7 @@ class ServiceMesh extends React.Component {
     this.setState({ pendingRequests: true });
 
     this.api.setCurrentRequests([
-      this.api.fetchPods(),
+      this.api.fetchPods(this.props.controllerNamespace),
       this.api.fetchMetrics(this.api.urlsForResource("namespace"))
     ]);
 

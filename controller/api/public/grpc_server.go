@@ -37,7 +37,7 @@ type podReport struct {
 }
 
 const (
-	podQuery                   = "sum(process_start_time_seconds) by (pod)"
+	podQuery                   = "sum(process_start_time_seconds{%s}) by (pod, namespace)"
 	K8sClientSubsystemName     = "kubernetes"
 	K8sClientCheckDescription  = "control plane can talk to Kubernetes"
 	PromClientSubsystemName    = "prometheus"
@@ -64,15 +64,21 @@ func (*grpcServer) Version(ctx context.Context, req *pb.Empty) (*pb.VersionInfo,
 	return &pb.VersionInfo{GoVersion: runtime.Version(), ReleaseVersion: version.Version, BuildDate: "1970-01-01T00:00:00Z"}, nil
 }
 
-func (s *grpcServer) ListPods(ctx context.Context, req *pb.Empty) (*pb.ListPodsResponse, error) {
+func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb.ListPodsResponse, error) {
 	log.Debugf("ListPods request: %+v", req)
 
 	// Reports is a map from instance name to the absolute time of the most recent
 	// report from that instance and its process start time
 	reports := make(map[string]podReport)
 
+	nsQuery := ""
+	if req.GetResource().GetNamespace() != "" {
+		nsQuery = fmt.Sprintf("namespace=\"%s\"", req.GetResource().GetNamespace())
+	}
+	processStartTimeQuery := fmt.Sprintf(podQuery, nsQuery)
+
 	// Query Prometheus for all pods present
-	vec, err := s.queryProm(ctx, podQuery)
+	vec, err := s.queryProm(ctx, processStartTimeQuery)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +92,14 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.Empty) (*pb.ListPodsR
 		}
 	}
 
-	pods, err := s.k8sAPI.Pod().Lister().List(labels.Everything())
+	var pods []*k8sV1.Pod
+	namespace := req.GetResource().GetNamespace()
+	if namespace != "" {
+		pods, err = s.k8sAPI.Pod().Lister().Pods(namespace).List(labels.Everything())
+	} else {
+		pods, err = s.k8sAPI.Pod().Lister().List(labels.Everything())
+	}
+
 	if err != nil {
 		return nil, err
 	}
