@@ -15,7 +15,7 @@ const (
 	ReplicationControllers = "replicationcontrollers"
 	Services               = "services"
 	All                    = "all"
-	Authority              = "authorities"
+	Authorities            = "authorities"
 )
 
 // ResourceTypesToProxyLabels maps resource type names to keys
@@ -26,7 +26,7 @@ var ResourceTypesToProxyLabels = map[string]string{
 	Pods:        "pod",
 	ReplicationControllers: "replication_controller",
 	Services:               "service",
-	Authority:              "authority", // non k8s
+	Authorities:            "authority", // non k8s
 }
 
 // resources to query in StatSummary when Resource.Type is "all"
@@ -35,7 +35,7 @@ var StatAllResourceTypes = []string{
 	ReplicationControllers,
 	Pods,
 	Services,
-	Authority,
+	Authorities,
 }
 
 func generateKubernetesApiBaseUrlFor(schemeHostAndPort string, namespace string, extraPathStartingWithSlash string) (*url.URL, error) {
@@ -93,7 +93,7 @@ func CanonicalResourceNameFromFriendlyName(friendlyName string) (string, error) 
 	case "svc", "service", "services":
 		return Services, nil
 	case "au", "authority", "authorities":
-		return Authority, nil
+		return Authorities, nil
 	case "all":
 		return All, nil
 	}
@@ -115,7 +115,7 @@ func ShortNameFromCanonicalResourceName(canonicalName string) string {
 		return "rc"
 	case Services:
 		return "svc"
-	case Authority:
+	case Authorities:
 		return "au"
 	default:
 		return ""

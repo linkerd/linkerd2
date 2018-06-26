@@ -247,7 +247,7 @@ func (s *grpcServer) nonK8sResourceQuery(ctx context.Context, req *pb.StatSummar
 }
 
 func isNonK8sResourceQuery(resourceType string) bool {
-	return resourceType == k8s.Authority
+	return resourceType == k8s.Authorities
 }
 
 // get the list of objects for which we want to return results
@@ -309,7 +309,7 @@ func promLabels(resource *pb.Resource) model.LabelSet {
 func promDstLabels(resource *pb.Resource) model.LabelSet {
 	set := model.LabelSet{}
 	if resource.Name != "" {
-		if resource.Type == k8s.Authority {
+		if resource.Type == k8s.Authorities {
 			set[promResourceType(resource)] = model.LabelValue(resource.Name)
 		} else {
 			set["dst_"+promResourceType(resource)] = model.LabelValue(resource.Name)

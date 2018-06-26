@@ -30,7 +30,7 @@ var (
 		k8s.Namespaces,
 		k8s.Pods,
 		k8s.ReplicationControllers,
-		k8s.Authority,
+		k8s.Authorities,
 	}
 
 	// ValidDestinations specifies resource types allowed as a destination:
@@ -183,7 +183,7 @@ func validateFromResourceType(resourceType string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if name == k8s.Authority {
+	if name == k8s.Authorities {
 		return "", errors.New("cannot query traffic --from an authority")
 	}
 	return name, nil

@@ -204,7 +204,7 @@ func writeStatsToBuffer(resp *pb.StatSummaryResponse, reqResourceType string, w 
 			}
 
 			meshedCount := fmt.Sprintf("%d/%d", r.MeshedPodCount, r.RunningPodCount)
-			if resourceKey == k8s.Authority {
+			if resourceKey == k8s.Authorities {
 				meshedCount = "-"
 			}
 			statTables[resourceKey][key] = &row{
