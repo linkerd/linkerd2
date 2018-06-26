@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/runconduit/conduit/controller/api/util"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/spf13/cobra"
@@ -33,12 +32,12 @@ func newCmdGet() *cobra.Command {
 
 Only pod resources (aka pods, po) are supported.`,
 		Example: `  # get all pods
-	conduit get pods
+  conduit get pods
 
-	# get pods from namespace conduit
-	conduit get pods --namespace conduit`,
+  # get pods from namespace conduit
+  conduit get pods --namespace conduit`,
 		Args:      cobra.ExactArgs(1),
-		ValidArgs: util.ValidTargets,
+		ValidArgs: []string{k8s.Pods},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return errors.New("please specify a resource type")
