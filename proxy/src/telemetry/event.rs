@@ -96,20 +96,4 @@ impl Event {
             _ => false,
         }
     }
-
-    /// Return the proxy context associated with the event, or `None` if the
-    /// event was not associated with either proxy.
-    pub fn proxy(&self) -> Option<&Arc<ctx::Proxy>> {
-        match *self {
-            Event::TransportOpen(ref ctx) |
-            Event::TransportClose(ref ctx, _) => Some(ctx.proxy()),
-            Event::StreamRequestOpen(ref req) |
-            Event::StreamRequestFail(ref req, _) |
-            Event::StreamRequestEnd(ref req, _) => Some(&req.server.proxy),
-            Event::StreamResponseOpen(ref rsp, _) |
-            Event::StreamResponseFail(ref rsp, _) |
-            Event::StreamResponseEnd(ref rsp, _) => Some(&rsp.request.server.proxy),
-            Event::TlsConfigReloaded | Event::TlsConfigReloadFailed(_) => None,
-        }
-    }
 }
