@@ -468,23 +468,13 @@ func extractSampleValue(sample *model.Sample) uint64 {
 func metricToKey(metric model.Metric, groupBy model.LabelNames) pb.Resource {
 	// i.e. produce a key using the resource name and namespace
 	key := pb.Resource{}
-	resourceKeys := map[string]string{}
-	resourceName := ""
 
 	for _, k := range groupBy {
-		item := string(k)
-		if _, ok := k8s.ProxyLabelsToResourceTypes[item]; ok {
-			resourceKeys[item] = string(metric[k])
-			if item != "namespace" {
-				resourceName = item
-			}
+		if string(k) == "namespace" && len(groupBy) == 2 {
+			key.Namespace = string(metric[k])
+		} else {
+			key.Name = string(metric[k])
 		}
-	}
-
-	key.Name = resourceKeys[resourceName]
-	if len(resourceKeys) == 2 {
-		// key by both resource type and namespace only if it's not an authority or namespace request
-		key.Namespace = resourceKeys["namespace"]
 	}
 
 	return key
