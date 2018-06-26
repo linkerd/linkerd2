@@ -247,12 +247,7 @@ func (s *grpcServer) nonK8sResourceQuery(ctx context.Context, req *pb.StatSummar
 }
 
 func isNonK8sResourceQuery(resourceType string) bool {
-	isNonK8s := false
-	if resourceType == k8s.Authority {
-		isNonK8s = true
-	}
-
-	return isNonK8s
+	return resourceType == k8s.Authority
 }
 
 // get the list of objects for which we want to return results

@@ -183,8 +183,6 @@ func (api *API) GetObjects(namespace, restype, name string) ([]runtime.Object, e
 		return api.getRCs(namespace, name)
 	case k8s.Services:
 		return api.getServices(namespace, name)
-	case k8s.Authority:
-		return []runtime.Object{}, nil
 	default:
 		// TODO: ReplicaSet
 		return nil, status.Errorf(codes.Unimplemented, "unimplemented resource type: %s", restype)

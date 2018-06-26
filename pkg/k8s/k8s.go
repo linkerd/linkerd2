@@ -15,7 +15,7 @@ const (
 	ReplicationControllers = "replicationcontrollers"
 	Services               = "services"
 	All                    = "all"
-	Authority              = "authority"
+	Authority              = "authorities"
 )
 
 // ResourceTypesToProxyLabels maps resource type names to keys
