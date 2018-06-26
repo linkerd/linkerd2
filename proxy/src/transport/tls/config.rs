@@ -96,6 +96,10 @@ pub enum ReasonForNoTls {
 
     /// The connection is between the proxy and the service
     InternalTraffic,
+
+    /// The connection isn't TLS or it is TLS but not intended to be handled
+    /// by the proxy.
+    NotProxyTls,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]

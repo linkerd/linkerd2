@@ -1,5 +1,3 @@
-#![allow(dead_code)] // TODO: Use this.
-
 use super::{Identity, untrusted};
 
 #[derive(Debug, Eq, PartialEq)]
