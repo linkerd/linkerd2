@@ -1,4 +1,5 @@
 use std::{
+    io,
     net::SocketAddr,
     sync::Arc,
 };
@@ -11,10 +12,16 @@ use telemetry::event;
 use tls;
 
 #[derive(Clone, Debug)]
-pub struct AcceptHandshake {
+pub struct Accept {
     pub(super) local_addr: SocketAddr,
     pub(super) handle: super::Handle,
     pub(super) ctx: Arc<ctx::Proxy>,
+}
+
+#[derive(Clone, Debug)]
+pub struct Connect {
+    pub(super) handle: super::Handle,
+    pub(super) ctx: Arc<ctx::transport::Client>,
 }
 
 #[derive(Clone, Debug)]
@@ -26,8 +33,8 @@ pub struct AcceptHandshakeFuture<F> {
     local_addr: SocketAddr,
 }
 
-impl AcceptHandshake {
-    pub fn accept<F: Future<Error = ::std::io::Error>>(
+impl Accept {
+    pub fn accept<F: Future<Error = ::io::Error>>(
         &self,
         remote_addr: SocketAddr,
         inner: F,
@@ -43,7 +50,7 @@ impl AcceptHandshake {
 
 }
 
-impl<F: Future<Error = ::std::io::Error>> Future for AcceptHandshakeFuture<F> {
+impl<F: Future<Error = ::io::Error>> Future for AcceptHandshakeFuture<F> {
     type Item = F::Item;
     type Error = F::Error;
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
@@ -56,11 +63,25 @@ impl<F: Future<Error = ::std::io::Error>> Future for AcceptHandshakeFuture<F> {
                 &None, // we haven't determined the original dst yet.
                 Conditional::None(tls::ReasonForNoTls::HandshakeFailed),
             );
+            // XXX: this arc is unnecessary...Connect
             let ctx = Arc::new(ctx::transport::Ctx::Server(ctx));
             self.handle.send(|| {
                 event::Event::TlsHandshakeFailed(ctx, e.into())
             });
         };
         poll
+    }
+}
+
+impl Connect {
+    pub fn fail(&mut self, error: &io::Error) {
+        let ctx = Arc::new(ctx::transport::Ctx::Client(
+            self.ctx.with_tls_status(
+                Conditional::None(tls::ReasonForNoTls::HandshakeFailed)
+            )
+        ));
+        self.handle.send(|| {
+            event::Event::TlsHandshakeFailed(ctx, error.into())
+        });
     }
 }

@@ -10,12 +10,14 @@ use http;
 use connection;
 use convert::TryFrom;
 use dns;
+use telemetry::sensor;
 use transport::tls;
 
 #[derive(Debug, Clone)]
 pub struct Connect {
     addr: SocketAddr,
     tls: tls::ConditionalConnectionConfig<tls::ClientConfig>,
+    tls_sensor: Option<sensor::tls::Connect>,
 }
 
 #[derive(Clone, Debug)]
@@ -116,6 +118,17 @@ impl Connect {
         Self {
             addr,
             tls,
+            tls_sensor: None,
+        }
+    }
+
+    pub fn with_tls_sensor(
+        self,
+        sensor: sensor::tls::Connect,
+    ) -> Self {
+        Connect {
+            tls_sensor: Some(sensor),
+            ..self
         }
     }
 }
@@ -126,7 +139,11 @@ impl tokio_connect::Connect for Connect {
     type Future = connection::Connecting;
 
     fn connect(&self) -> Self::Future {
-        connection::connect(&self.addr, self.tls.clone())
+        connection::connect(
+            &self.addr,
+            self.tls.clone(),
+            self.tls_sensor.clone(),
+        )
     }
 }
 
@@ -164,7 +181,11 @@ impl tokio_connect::Connect for LookupAddressAndConnect {
                 info!("DNS resolved {:?} to {}", host, ip_addr);
                 let addr = SocketAddr::from((ip_addr, port));
                 trace!("connect {}", addr);
-                connection::connect(&addr, tls)
+                connection::connect(
+                    &addr,
+                    tls,
+                    None, // no TLS sensor since we don't have a context.
+                )
             });
         Box::new(c)
     }

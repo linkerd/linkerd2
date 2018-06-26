@@ -254,9 +254,12 @@ where
             TlsStatus::from(&tls),
         );
 
+
         // Map a socket address to a connection.
+        let connect = transport::Connect::new(addr, tls);
+
         let connect = self.sensors.connect(
-            transport::Connect::new(addr, tls),
+            connect.with_tls_sensor(self.sensors.tls_connect(&client_ctx)),
             &client_ctx,
         );
 

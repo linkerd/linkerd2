@@ -434,8 +434,7 @@ where
 
 
     let listen_addr = bound_port.local_addr();
-    let handshake_sensor = sensors
-        .tls_accept_handshake(listen_addr, &proxy_ctx);
+    let handshake_sensor = sensors.tls_accept(listen_addr, &proxy_ctx);
     let server = Server::new(
         listen_addr,
         proxy_ctx.clone(),

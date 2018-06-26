@@ -57,16 +57,27 @@ impl Sensors {
         Sensors(Handle(None))
     }
 
-    pub fn tls_accept_handshake(
+    pub fn tls_accept(
         &self,
         local_addr: SocketAddr,
         ctx: &Arc<ctx::Proxy>,
-    ) -> tls::AcceptHandshake {
-        tls::AcceptHandshake {
+    ) -> tls::Accept {
+        tls::Accept {
             local_addr,
             handle: self.0.clone(),
             ctx: ctx.clone(),
         }
+    }
+
+    pub fn tls_connect(
+        &self,
+        ctx: &Arc<ctx::transport::Client>,
+    ) -> tls::Connect {
+        tls::Connect {
+            handle: self.0.clone(),
+            ctx: ctx.clone(),
+        }
+
     }
 
     pub fn accept<T>(
