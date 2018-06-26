@@ -86,8 +86,8 @@ func TestCanonicalResourceNameFromFriendlyName(t *testing.T) {
 			"pod":         Pods,
 			"deployment":  Deployments,
 			"deployments": Deployments,
-			"au":          Authority,
-			"authorities": Authority,
+			"au":          Authorities,
+			"authorities": Authorities,
 		}
 
 		for input, expectedName := range expectations {

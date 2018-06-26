@@ -797,7 +797,7 @@ status:
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Namespace: "conduit",
-							Type:      pkgK8s.Authority,
+							Type:      pkgK8s.Authorities,
 						},
 					},
 					TimeWindow: "1m",
@@ -840,7 +840,7 @@ status:
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Namespace: "conduit",
-							Type:      pkgK8s.Authority,
+							Type:      pkgK8s.Authorities,
 							Name:      "10.1.1.239:9995",
 						},
 					},
