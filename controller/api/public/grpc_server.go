@@ -174,7 +174,7 @@ func (s *grpcServer) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckR
 		CheckDescription: PromClientCheckDescription,
 		Status:           healthcheckPb.CheckStatus_OK,
 	}
-	_, err = s.queryProm(ctx, podQuery)
+	_, err = s.queryProm(ctx, fmt.Sprintf(podQuery, ""))
 	if err != nil {
 		promClientCheck.Status = healthcheckPb.CheckStatus_ERROR
 		promClientCheck.FriendlyMessageToUser = fmt.Sprintf("Error talking to Prometheus from control plane: %s", err.Error())
