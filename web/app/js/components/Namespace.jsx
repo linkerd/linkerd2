@@ -132,7 +132,7 @@ class Namespaces extends React.Component {
             {this.renderResourceSection("Deployment", this.state.metrics.deployments)}
             {this.renderResourceSection("Replication Controller", this.state.metrics.replicationcontrollers)}
             {this.renderResourceSection("Pod", this.state.metrics.pods)}
-            {this.renderResourceSection("Authority", this.state.metrics.authority)}
+            {this.renderResourceSection("Authority", this.state.metrics.authorities)}
           </div>
         )}
       </div>);
