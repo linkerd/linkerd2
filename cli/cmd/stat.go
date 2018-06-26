@@ -203,8 +203,12 @@ func writeStatsToBuffer(resp *pb.StatSummaryResponse, reqResourceType string, w 
 				maxNamespaceLength = len(namespace)
 			}
 
+			meshedCount := fmt.Sprintf("%d/%d", r.MeshedPodCount, r.RunningPodCount)
+			if resourceKey == k8s.Authority {
+				meshedCount = "-"
+			}
 			statTables[resourceKey][key] = &row{
-				meshed: fmt.Sprintf("%d/%d", r.MeshedPodCount, r.RunningPodCount),
+				meshed: meshedCount,
 			}
 
 			if r.Stats != nil {
