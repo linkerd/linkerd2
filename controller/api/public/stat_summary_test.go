@@ -87,11 +87,18 @@ func testStatSummary(t *testing.T, expectations []statSumExpected) {
 		}
 
 		if len(exp.expectedResponse.GetOk().StatTables) > 0 {
-			unsortedStatTables := rsp.GetOk().StatTables
-			sort.Sort(byStatResult(unsortedStatTables))
+			rspStatTables := rsp.GetOk().StatTables
+			sort.Sort(byStatResult(rspStatTables))
 
 			okRsp := &pb.StatSummaryResponse_Ok{
-				StatTables: unsortedStatTables,
+				StatTables: rspStatTables,
+			}
+
+			for i, st := range rspStatTables {
+				expected := exp.expectedResponse.GetOk().StatTables[i]
+				if !proto.Equal(st, expected) {
+					t.Fatalf("Expected: %+v\n Got: %+v", expected, st)
+				}
 			}
 
 			if !proto.Equal(exp.expectedResponse.GetOk(), okRsp) {
@@ -369,6 +376,29 @@ status:
 									Table: &pb.StatTable_PodGroup_{
 										PodGroup: &pb.StatTable_PodGroup{
 											Rows: []*pb.StatTable_PodGroup_Row{},
+										},
+									},
+								},
+								&pb.StatTable{
+									Table: &pb.StatTable_PodGroup_{
+										PodGroup: &pb.StatTable_PodGroup{
+											Rows: []*pb.StatTable_PodGroup_Row{
+												&pb.StatTable_PodGroup_Row{
+													Resource: &pb.Resource{
+														Namespace: "emojivoto",
+														Type:      "authority",
+													},
+													TimeWindow: "1m",
+													Stats: &pb.BasicStats{
+														SuccessCount:    123,
+														FailureCount:    0,
+														LatencyMsP50:    123,
+														LatencyMsP95:    123,
+														LatencyMsP99:    123,
+														TlsRequestCount: 123,
+													},
+												},
+											},
 										},
 									},
 								},

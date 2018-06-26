@@ -97,7 +97,7 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 		statReq.Selector.Resource.Type = resource
 
 		go func() {
-			if isNonK8sResourceQuery(resource) {
+			if isNonK8sResourceQuery(statReq.GetSelector().GetResource().GetType()) {
 				resultChan <- s.nonK8sResourceQuery(ctx, statReq)
 			} else {
 				resultChan <- s.k8sResourceQuery(ctx, statReq)
