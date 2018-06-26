@@ -8,13 +8,21 @@
   background-repeat: no-repeat;
   background-size: 100% 50vh;
 
+  & .ant-menu-submenu {
+    & .ant-menu-submenu-title, & .anticon{
+      /* override ant transition animation */
+      transition: none;
+    }
+  }
+
   & .sidebar-menu {
     background: none;
   }
 
-  & .sidebar-menu-item {
+  & .sidebar-menu-item, & .sidebar-title {
     font-size: 16px;
     font-weight: var(--font-weight-bold);
+    color: white;
 
     & a {
       color: white;

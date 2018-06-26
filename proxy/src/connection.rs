@@ -30,6 +30,18 @@ pub fn connect(addr: &SocketAddr,
     }
 }
 
+/// A server socket that is in the process of conditionally upgrading to TLS.
+enum ConditionallyUpgradeServerToTls {
+    Plaintext(Option<ConditionallyUpgradeServerToTlsInner>),
+    UpgradeToTls(tls::UpgradeServerToTls),
+}
+
+struct ConditionallyUpgradeServerToTlsInner {
+    socket: TcpStream,
+    tls: tls::ConnectionConfig<tls::ServerConfig>,
+    peek_buf: BytesMut,
+}
+
 /// A socket that is in the process of connecting.
 pub enum Connecting {
     Plaintext {
@@ -142,20 +154,22 @@ impl BoundPort {
                     // do it here.
                     set_nodelay_or_warn(&socket);
 
-                    let conn = match tls::current_connection_config(&tls) {
-                        Conditional::Some(config) => {
-                            // TODO: use `config.identity` to differentiate
-                            // between TLS that the proxy should terminate vs.
-                            // TLS that should be passed through.
-                            let f = tls::Connection::accept(socket, config.config)
-                                .map(move |tls| Connection::tls(tls));
-                            Either::A(f)
+                    let tls = match &tls {
+                        Conditional::Some(tls) => match &*tls.config.borrow() {
+                            Conditional::Some(config) =>
+                                Conditional::Some(tls::ConnectionConfig {
+                                    identity: tls.identity.clone(),
+                                    config: config.clone(),
+                                }),
+                            Conditional::None(r) => Conditional::None(*r),
                         },
-                        Conditional::None(why_no_tls) => {
-                            let f = future::ok(socket)
-                                .map(move |plain| Connection::plain(plain, why_no_tls));
-                            Either::B(f)
-                        },
+                        Conditional::None(r) => Conditional::None(*r),
+                    };
+                    let conn = match tls {
+                        Conditional::Some(tls) =>
+                            Either::A(ConditionallyUpgradeServerToTls::new(socket, tls)),
+                        Conditional::None(why_no_tls) =>
+                            Either::B(future::ok(Connection::plain(socket, why_no_tls))),
                     };
                     conn.map(move |conn| (conn, remote_addr))
                 })
@@ -172,6 +186,61 @@ impl BoundPort {
                 .fold(initial, f)
         )
         .map(|_| ())
+    }
+}
+
+// ===== impl ConditionallyUpgradeServerToTls =====
+
+impl ConditionallyUpgradeServerToTls {
+    fn new(socket: TcpStream, tls: tls::ConnectionConfig<tls::ServerConfig>) -> Self {
+        ConditionallyUpgradeServerToTls::Plaintext(Some(ConditionallyUpgradeServerToTlsInner {
+            socket,
+            tls,
+            peek_buf: BytesMut::with_capacity(8192),
+        }))
+    }
+}
+
+impl Future for ConditionallyUpgradeServerToTls {
+    type Item = Connection;
+    type Error = io::Error;
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        loop {
+            *self = match self {
+                ConditionallyUpgradeServerToTls::Plaintext(ref mut inner) => {
+                    let r = {
+                        let inner = inner.as_mut().unwrap();
+                        try_ready!(inner.socket.read_buf(&mut inner.peek_buf));
+                        tls::conditional_accept::match_client_hello(
+                            inner.peek_buf.as_ref(), &inner.tls.identity)
+                    };
+                    match r {
+                        tls::conditional_accept::Match::Matched => {
+                            trace!("upgrading accepted connection to TLS");
+                            let inner = inner.take().expect("Polled after ready");
+                            let upgrade_to_tls = tls::Connection::accept(
+                                inner.socket, inner.peek_buf.freeze(), inner.tls.config);
+                            ConditionallyUpgradeServerToTls::UpgradeToTls(upgrade_to_tls)
+                        },
+                        tls::conditional_accept::Match::NotMatched => {
+                            trace!("passing through accepted connection without TLS");
+                            let inner = inner.take().expect("Polled after ready");
+                            let conn = Connection::plain_with_peek_buf(
+                                inner.socket, inner.peek_buf, tls::ReasonForNoTls::NotProxyTls);
+                            return Ok(Async::Ready(conn));
+                        },
+                        tls::conditional_accept::Match::Incomplete => {
+                            return Ok(Async::NotReady);
+                        },
+                    }
+                },
+                ConditionallyUpgradeServerToTls::UpgradeToTls(upgrading) => {
+                    let tls_stream = try_ready!(upgrading.poll());
+                    return Ok(Async::Ready(Connection::tls(BoxedIo::new(tls_stream))));
+                }
+            }
+        }
     }
 }
 
@@ -200,7 +269,7 @@ impl Future for Connecting {
                 },
                 Connecting::UpgradeToTls(upgrading) => {
                     let tls_stream = try_ready!(upgrading.poll());
-                    return Ok(Async::Ready(Connection::tls(tls_stream)));
+                    return Ok(Async::Ready(Connection::tls(BoxedIo::new(tls_stream))));
                 },
             };
         }
@@ -211,16 +280,22 @@ impl Future for Connecting {
 
 impl Connection {
     fn plain(io: TcpStream, why_no_tls: tls::ReasonForNoTls) -> Self {
+        Self::plain_with_peek_buf(io, BytesMut::new(), why_no_tls)
+    }
+
+    fn plain_with_peek_buf(io: TcpStream, peek_buf: BytesMut, why_no_tls: tls::ReasonForNoTls)
+        -> Self
+    {
         Connection {
             io: BoxedIo::new(io),
-            peek_buf: BytesMut::new(),
+            peek_buf,
             tls_status: Conditional::None(why_no_tls),
         }
     }
 
-    fn tls<S: tls::Session + std::fmt::Debug + 'static>(tls: tls::Connection<S>) -> Self {
+    fn tls(io: BoxedIo) -> Self {
         Connection {
-            io: BoxedIo::new(tls),
+            io: io,
             peek_buf: BytesMut::new(),
             tls_status: Conditional::Some(()),
         }
@@ -241,6 +316,9 @@ impl Connection {
 
 impl io::Read for Connection {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        // TODO: Eliminate the duplication between this and
+        // `transport::prefixed::Prefixed`.
+
         // Check the length only once, since looking as the length
         // of a BytesMut isn't as cheap as the length of a &[u8].
         let peeked_len = self.peek_buf.len();
@@ -255,7 +333,7 @@ impl io::Read for Connection {
             // hold onto the allocated memory any longer. We won't peek
             // again.
             if peeked_len == len {
-                self.peek_buf = BytesMut::new();
+                self.peek_buf = Default::default();
             }
             Ok(len)
         }

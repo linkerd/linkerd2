@@ -50,7 +50,7 @@ pub enum HostAndPortError {
 pub struct LookupAddressAndConnect {
     host_and_port: HostAndPort,
     dns_resolver: dns::Resolver,
-    tls: tls::ConditionalConnectionConfig<tls::ClientConfigWatch>,
+    tls: tls::ConditionalConnectionConfig<tls::ClientConfig>,
 }
 
 // ===== impl HostAndPort =====
@@ -62,7 +62,7 @@ impl HostAndPort {
         let host = IpAddr::from_str(a.host())
             .map(Host::Ip)
             .or_else(|_|
-                dns::Name::try_from(a.host())
+                dns::Name::try_from(a.host().as_bytes())
                     .map(Host::DnsName)
                     .map_err(|_| HostAndPortError::InvalidHost))?;
         let port = a.port()
@@ -129,7 +129,7 @@ impl LookupAddressAndConnect {
     pub fn new(
         host_and_port: HostAndPort,
         dns_resolver: dns::Resolver,
-        tls: tls::ConditionalConnectionConfig<tls::ClientConfigWatch>,
+        tls: tls::ConditionalConnectionConfig<tls::ClientConfig>,
     ) -> Self {
         Self {
             host_and_port,
@@ -147,7 +147,7 @@ impl tokio_connect::Connect for LookupAddressAndConnect {
     fn connect(&self) -> Self::Future {
         let port = self.host_and_port.port;
         let host = self.host_and_port.host.clone();
-        let tls = tls::current_connection_config(&self.tls);
+        let tls = self.tls.clone();
         let c = self.dns_resolver
             .resolve_one_ip(&self.host_and_port.host)
             .map_err(|_| {

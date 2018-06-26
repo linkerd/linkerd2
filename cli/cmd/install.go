@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"regexp"
 	"text/template"
 
 	"github.com/runconduit/conduit/cli/install"
@@ -36,23 +35,19 @@ type installConfig struct {
 }
 
 type installOptions struct {
-	dockerRegistry     string
 	controllerReplicas uint
 	webReplicas        uint
 	prometheusReplicas uint
 	controllerLogLevel string
-	enableTLS          bool
 	*proxyConfigOptions
 }
 
 func newInstallOptions() *installOptions {
 	return &installOptions{
-		dockerRegistry:     "gcr.io/runconduit",
 		controllerReplicas: 1,
 		webReplicas:        1,
 		prometheusReplicas: 1,
 		controllerLogLevel: "info",
-		enableTLS:          false,
 		proxyConfigOptions: newProxyConfigOptions(),
 	}
 }
@@ -74,13 +69,10 @@ func newCmdInstall() *cobra.Command {
 	}
 
 	addProxyConfigFlags(cmd, options.proxyConfigOptions)
-	cmd.PersistentFlags().StringVar(&options.dockerRegistry, "registry", options.dockerRegistry, "Docker registry to pull images from")
 	cmd.PersistentFlags().UintVar(&options.controllerReplicas, "controller-replicas", options.controllerReplicas, "Replicas of the controller to deploy")
 	cmd.PersistentFlags().UintVar(&options.webReplicas, "web-replicas", options.webReplicas, "Replicas of the web server to deploy")
 	cmd.PersistentFlags().UintVar(&options.prometheusReplicas, "prometheus-replicas", options.prometheusReplicas, "Replicas of prometheus to deploy")
 	cmd.PersistentFlags().StringVar(&options.controllerLogLevel, "controller-log-level", options.controllerLogLevel, "Log level for the controller and web components")
-	cmd.PersistentFlags().BoolVar(&options.enableTLS, "enable-tls", options.enableTLS, "Enable TLS connections among pods in the service mesh")
-	cmd.PersistentFlags().MarkHidden("enable-tls")
 
 	return cmd
 }
@@ -105,7 +97,7 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		ControllerComponentLabel: k8s.ControllerComponentLabel,
 		CreatedByAnnotation:      k8s.CreatedByAnnotation,
 		ProxyAPIPort:             options.proxyAPIPort,
-		EnableTLS:                options.enableTLS,
+		EnableTLS:                options.enableTLS(),
 		CertificateBundleName:    k8s.CertificateBundleName,
 	}, nil
 }
@@ -135,27 +127,9 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 	return InjectYAML(buf, w, injectOptions)
 }
 
-var alphaNumDash = regexp.MustCompile("^[a-zA-Z0-9-]+$")
-var alphaNumDashDot = regexp.MustCompile("^[\\.a-zA-Z0-9-]+$")
-var alphaNumDashDotSlash = regexp.MustCompile("^[\\./a-zA-Z0-9-]+$")
-
 func validate(options *installOptions) error {
-	// These regexs are not as strict as they could be, but are a quick and dirty
-	// sanity check against illegal characters.
-	if !alphaNumDash.MatchString(controlPlaneNamespace) {
-		return fmt.Errorf("%s is not a valid namespace", controlPlaneNamespace)
-	}
-	if !alphaNumDashDot.MatchString(options.conduitVersion) {
-		return fmt.Errorf("%s is not a valid version", options.conduitVersion)
-	}
-	if !alphaNumDashDotSlash.MatchString(options.dockerRegistry) {
-		return fmt.Errorf("%s is not a valid Docker registry", options.dockerRegistry)
-	}
-	if options.imagePullPolicy != "Always" && options.imagePullPolicy != "IfNotPresent" && options.imagePullPolicy != "Never" {
-		return fmt.Errorf("--image-pull-policy must be one of: Always, IfNotPresent, Never")
-	}
 	if _, err := log.ParseLevel(options.controllerLogLevel); err != nil {
 		return fmt.Errorf("--controller-log-level must be one of: panic, fatal, error, warn, info, debug")
 	}
-	return nil
+	return options.validate()
 }

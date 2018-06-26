@@ -37,6 +37,7 @@ regex = "1.0.0"
 # networking
 tokio = "0.1.7"
 tokio-signal = "0.2"
+tokio-timer = "0.2.4"   # for tokio_timer::clock
 tokio-connect         = { git = "https://github.com/carllerche/tokio-connect" }
 tower-balance         = { git = "https://github.com/tower-rs/tower" }
 tower-buffer          = { git = "https://github.com/tower-rs/tower" }
@@ -63,6 +64,7 @@ untrusted = "0.6.1"
 libc = "0.2"
 # We can use the `crates.io` version of `inotify` once 0.5.2 has been released.
 inotify = { git = "https://github.com/inotify-rs/inotify" }
+procinfo = "0.4.2"
 
 [dev-dependencies]
 net2 = "0.2"

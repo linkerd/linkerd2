@@ -383,7 +383,8 @@ impl fmt::Display for ctx::transport::TlsStatus {
             Conditional::None(tls::ReasonForNoTls::NoConfig) => f.pad(",tls=\"no_config\""),
             Conditional::None(tls::ReasonForNoTls::Disabled) |
             Conditional::None(tls::ReasonForNoTls::InternalTraffic) |
-            Conditional::None(tls::ReasonForNoTls::NoIdentity(_)) => Ok(()),
+            Conditional::None(tls::ReasonForNoTls::NoIdentity(_)) |
+            Conditional::None(tls::ReasonForNoTls::NotProxyTls) => Ok(()),
         }
     }
 }

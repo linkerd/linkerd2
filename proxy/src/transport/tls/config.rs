@@ -55,7 +55,6 @@ struct CommonConfig {
     cert_resolver: Arc<CertResolver>,
 }
 
-
 /// Validated configuration for TLS servers.
 #[derive(Clone)]
 pub struct ClientConfig(pub(super) Arc<rustls::ClientConfig>);
@@ -72,8 +71,8 @@ impl std::fmt::Debug for ClientConfig {
 #[derive(Clone)]
 pub struct ServerConfig(pub(super) Arc<rustls::ServerConfig>);
 
-pub type ClientConfigWatch = Watch<Option<ClientConfig>>;
-pub type ServerConfigWatch = Watch<Option<ServerConfig>>;
+pub type ClientConfigWatch = Watch<Conditional<ClientConfig, ReasonForNoTls>>;
+pub type ServerConfigWatch = Watch<Conditional<ServerConfig, ReasonForNoTls>>;
 
 /// The configuration in effect for a client (`ClientConfig`) or server
 /// (`ServerConfig`) TLS connection.
@@ -97,6 +96,10 @@ pub enum ReasonForNoTls {
 
     /// The connection is between the proxy and the service
     InternalTraffic,
+
+    /// The connection isn't TLS or it is TLS but not intended to be handled
+    /// by the proxy.
+    NotProxyTls,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -133,6 +136,7 @@ impl From<ReasonForNoIdentity> for ReasonForNoTls {
 }
 
 pub type ConditionalConnectionConfig<C> = Conditional<ConnectionConfig<C>, ReasonForNoTls>;
+pub type ConditionalClientConfig = Conditional<ClientConfig, ReasonForNoTls>;
 
 #[derive(Debug)]
 pub enum Error {
@@ -267,15 +271,15 @@ pub fn watch_for_config_changes(settings: Conditional<&CommonSettings, ReasonFor
     let settings = if let Conditional::Some(settings) = settings {
         settings.clone()
     } else {
-        let (client_watch, _) = Watch::new(None);
-        let (server_watch, _) = Watch::new(None);
+        let (client_watch, _) = Watch::new(Conditional::None(ReasonForNoTls::Disabled));
+        let (server_watch, _) = Watch::new(Conditional::None(ReasonForNoTls::Disabled));
         let no_future = future::empty();
         return (client_watch, server_watch, Box::new(no_future));
     };
 
     let changes = settings.stream_changes(Duration::from_secs(1));
-    let (client_watch, client_store) = Watch::new(None);
-    let (server_watch, server_store) = Watch::new(None);
+    let (client_watch, client_store) = Watch::new(Conditional::None(ReasonForNoTls::NoConfig));
+    let (server_watch, server_store) = Watch::new(Conditional::None(ReasonForNoTls::NoConfig));
 
     // `Store::store` will return an error iff all watchers have been dropped,
     // so we'll use `fold` to cancel the forwarding future. Eventually, we can
@@ -286,10 +290,10 @@ pub fn watch_for_config_changes(settings: Conditional<&CommonSettings, ReasonFor
             (client_store, server_store),
             |(mut client_store, mut server_store), ref config| {
                 client_store
-                    .store(Some(ClientConfig::from(config)))
+                    .store(Conditional::Some(ClientConfig::from(config)))
                     .map_err(|_| trace!("all client config watchers dropped"))?;
                 server_store
-                    .store(Some(ServerConfig::from(config)))
+                    .store(Conditional::Some(ServerConfig::from(config)))
                     .map_err(|_| trace!("all server config watchers dropped"))?;
                 Ok((client_store, server_store))
             })
@@ -332,7 +336,7 @@ impl ClientConfig {
     /// `ClientConfigWatch`. We can't use `#[cfg(test)]` here because the
     /// benchmarks use this.
     pub fn no_tls() -> ClientConfigWatch {
-        let (watch, _) = Watch::new(None);
+        let (watch, _) = Watch::new(Conditional::None(ReasonForNoTls::Disabled));
         watch
     }
 }
@@ -359,24 +363,6 @@ impl ServerConfig {
         set_common_settings(&mut config.versions);
         config.cert_resolver = common.cert_resolver.clone();
         ServerConfig(Arc::new(config))
-    }
-}
-
-pub fn current_connection_config<C>(watch: &ConditionalConnectionConfig<Watch<Option<C>>>)
-    -> ConditionalConnectionConfig<C> where C: Clone
-{
-    match watch {
-        Conditional::Some(c) => {
-            match *c.config.borrow() {
-                Some(ref config) =>
-                    Conditional::Some(ConnectionConfig {
-                        identity: c.identity.clone(),
-                        config: config.clone()
-                    }),
-                None => Conditional::None(ReasonForNoTls::NoConfig),
-            }
-        },
-        Conditional::None(r) => Conditional::None(*r),
     }
 }
 
@@ -425,61 +411,71 @@ pub(super) const SIGNATURE_ALG_RUSTLS_ALGORITHM: rustls::internal::msgs::enums::
     rustls::internal::msgs::enums::SignatureAlgorithm::ECDSA;
 
 #[cfg(test)]
-mod tests {
-    use tls::{ClientConfig, CommonSettings, Identity, ServerConfig};
-    use super::{CommonConfig, Error};
-    use config::Namespaces;
+mod test_util {
     use std::path::PathBuf;
 
-    struct Strings {
-        pod_name: &'static str,
-        pod_ns: &'static str,
-        controller_ns: &'static str,
-        trust_anchors: &'static str,
-        end_entity_cert: &'static str,
-        private_key: &'static str,
+    use config::Namespaces;
+    use tls::{CommonSettings, Identity};
+
+    pub struct Strings {
+        pub pod_name: &'static str,
+        pub pod_ns: &'static str,
+        pub controller_ns: &'static str,
+        pub trust_anchors: &'static str,
+        pub end_entity_cert: &'static str,
+        pub private_key: &'static str,
     }
 
-    fn settings(s: &Strings) -> CommonSettings {
-        let dir = PathBuf::from("src/transport/tls/testdata");
-        let namespaces = Namespaces {
-            pod: s.pod_ns.into(),
-            tls_controller: Some(s.controller_ns.into()),
-        };
-        let service_identity = Identity::try_from_pod_name(&namespaces, s.pod_name).unwrap();
-        CommonSettings {
-            trust_anchors: dir.join(s.trust_anchors),
-            end_entity_cert: dir.join(s.end_entity_cert),
-            private_key: dir.join(s.private_key),
-            service_identity,
+    pub static FOO_NS1: Strings = Strings {
+        pod_name: "foo",
+        pod_ns: "ns1",
+        controller_ns: "conduit",
+        trust_anchors: "ca1.pem",
+        end_entity_cert: "foo-ns1-ca1.crt",
+        private_key: "foo-ns1-ca1.p8",
+    };
+
+    impl Strings {
+        pub fn to_settings(&self) -> CommonSettings {
+            let dir = PathBuf::from("src/transport/tls/testdata");
+            let namespaces = Namespaces {
+                pod: self.pod_ns.into(),
+                tls_controller: Some(self.controller_ns.into()),
+            };
+            let service_identity = Identity::try_from_pod_name(&namespaces, self.pod_name).unwrap();
+            CommonSettings {
+                trust_anchors: dir.join(self.trust_anchors),
+                end_entity_cert: dir.join(self.end_entity_cert),
+                private_key: dir.join(self.private_key),
+                service_identity,
+            }
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use tls::{ClientConfig, ServerConfig};
+    use super::{CommonConfig, Error, test_util::*};
 
     #[test]
     fn can_construct_client_and_server_config_from_valid_settings() {
-        let settings = settings(&Strings {
-            pod_name: "foo",
-            pod_ns: "ns1",
-            controller_ns: "conduit",
-            trust_anchors: "ca1.pem",
-            end_entity_cert: "foo-ns1-ca1.crt",
-            private_key: "foo-ns1-ca1.p8",
-        });
-        let config = CommonConfig::load_from_disk(&settings).unwrap();
-        let _: ClientConfig = ClientConfig::from(&config); // Infallible.
-        let _: ServerConfig = ServerConfig::from(&config); // Infallible.
+        let settings = FOO_NS1.to_settings();
+        let common = CommonConfig::load_from_disk(&settings).unwrap();
+        let _: ClientConfig = ClientConfig::from(&common); // infallible
+        let _: ServerConfig = ServerConfig::from(&common); // infallible
     }
 
     #[test]
     fn recognize_ca_did_not_issue_cert() {
-        let settings = settings(&Strings {
+        let settings = Strings {
             pod_name: "foo",
             pod_ns: "ns1",
             controller_ns: "conduit",
             trust_anchors: "ca2.pem", // Mismatch
             end_entity_cert: "foo-ns1-ca1.crt",
             private_key: "foo-ns1-ca1.p8",
-        });
+        }.to_settings();
         match CommonConfig::load_from_disk(&settings) {
             Err(Error::EndEntityCertIsNotValid(_)) => (),
             r => unreachable!("CommonConfig::load_from_disk returned {:?}", r),
@@ -488,14 +484,14 @@ mod tests {
 
     #[test]
     fn recognize_cert_is_not_valid_for_identity() {
-        let settings = settings(&Strings {
+        let settings = Strings {
             pod_name: "foo", // Mismatch
             pod_ns: "ns1",
             controller_ns: "conduit",
             trust_anchors: "ca1.pem",
             end_entity_cert: "bar-ns1-ca1.crt",
             private_key: "bar-ns1-ca1.p8",
-        });
+        }.to_settings();
         match CommonConfig::load_from_disk(&settings) {
             Err(Error::EndEntityCertIsNotValid(_)) => (),
             r => unreachable!("CommonConfig::load_from_disk returned {:?}", r),
@@ -506,14 +502,14 @@ mod tests {
     #[test]
     #[should_panic]
     fn recognize_private_key_is_not_valid_for_cert() {
-        let settings = settings(&Strings {
+        let settings = Strings {
             pod_name: "foo",
             pod_ns: "ns1",
             controller_ns: "conduit",
             trust_anchors: "ca1.pem",
             end_entity_cert: "foo-ns1-ca1.crt",
             private_key: "bar-ns1-ca1.p8", // Mismatch
-        });
+        }.to_settings();
         match CommonConfig::load_from_disk(&settings) {
             Err(_) => (), // // TODO: Err(Error::InvalidPrivateKey) > (),
             r => unreachable!("CommonConfig::load_from_disk returned {:?}", r),

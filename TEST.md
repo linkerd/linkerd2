@@ -63,9 +63,13 @@ Javascript dependencies are managed via [yarn](https://yarnpkg.com/) and
 [webpack](https://webpack.js.org/). To fetch dependencies and run tests, run:
 
 ```bash
+bin/web test
+
+# or alternatively:
+
 cd web/app
-yarn && yarn webpack
-yarn karma start --single-run
+yarn && NODE_ENV=test yarn webpack
+NODE_ENV=test yarn karma start --single-run
 ```
 
 # Integration tests

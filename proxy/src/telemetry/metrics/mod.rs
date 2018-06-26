@@ -56,6 +56,7 @@ mod histogram;
 mod http;
 mod labels;
 mod latency;
+mod process;
 mod record;
 mod serve;
 mod transport;
@@ -108,6 +109,8 @@ struct Root {
     responses: http::ResponseScopes,
     transports: transport::OpenScopes,
     transport_closes: transport::CloseScopes,
+
+    process_metrics: Option<process::Sensor>,
 
     start_time: Gauge,
 }
@@ -182,8 +185,13 @@ impl Root {
             .expect("process start time")
             .as_secs();
 
+        let process_metrics = process::Sensor::new()
+            .map_err(|e| info!("{}", e))
+            .ok();
+
         Self {
             start_time: t0.into(),
+            process_metrics,
             .. Root::default()
         }
     }
@@ -226,6 +234,13 @@ impl fmt::Display for Root {
         self.responses.fmt(f)?;
         self.transports.fmt(f)?;
         self.transport_closes.fmt(f)?;
+
+        if let Some(ref process_metrics) = self.process_metrics {
+            match process_metrics.metrics() {
+                Ok(process) => process.fmt(f)?,
+                Err(e) => warn!("error collecting process metrics: {:?}", e),
+            }
+        };
 
         Self::process_start_time_seconds.fmt_help(f)?;
         Self::process_start_time_seconds.fmt_metric(f, self.start_time)?;

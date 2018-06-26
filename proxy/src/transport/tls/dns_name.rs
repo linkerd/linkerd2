@@ -1,4 +1,4 @@
-use super::webpki;
+use super::{untrusted, webpki};
 use std::fmt;
 use convert::TryFrom;
 
@@ -17,10 +17,10 @@ impl fmt::Display for DnsName {
 #[derive(Debug, Eq, PartialEq)]
 pub struct InvalidDnsName;
 
-impl<'a> TryFrom<&'a str> for DnsName {
+impl<'a> TryFrom<&'a [u8]> for DnsName {
     type Err = InvalidDnsName;
-    fn try_from(s: &str) -> Result<Self, <Self as TryFrom<&str>>::Err> {
-        webpki::DNSNameRef::try_from_ascii_str(s)
+    fn try_from(s: &[u8]) -> Result<Self, Self::Err> {
+        webpki::DNSNameRef::try_from_ascii(untrusted::Input::from(s))
             .map(|r| DnsName(r.to_owned()))
             .map_err(|()| InvalidDnsName)
     }

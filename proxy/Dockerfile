@@ -4,7 +4,7 @@
 # This reduces build time and produces binaries with debug symbols, at the expense of
 # runtime perforamnce.
 
-ARG RUST_IMAGE=rust:1.26.2
+ARG RUST_IMAGE=rust:1.27.0
 ARG RUNTIME_IMAGE=gcr.io/runconduit/base:2017-10-30.01
 
 ## Builds the proxy as incrementally as possible.

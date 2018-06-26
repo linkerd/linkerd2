@@ -23,6 +23,8 @@ extern crate libc;
 extern crate log;
 #[cfg_attr(test, macro_use)]
 extern crate indexmap;
+#[cfg(target_os = "linux")]
+extern crate procinfo;
 extern crate prost;
 extern crate prost_types;
 #[cfg(test)]
@@ -35,6 +37,7 @@ extern crate ring;
 extern crate tempdir;
 extern crate tokio;
 extern crate tokio_connect;
+extern crate tokio_timer;
 extern crate tower_balance;
 extern crate tower_buffer;
 extern crate tower_discover;
@@ -89,8 +92,10 @@ mod transparency;
 mod transport;
 pub mod timeout;
 mod tower_fn; // TODO: move to tower-fn
+mod watch_service; // TODO: move to tower
 
 use bind::Bind;
+use conditional::Conditional;
 use connection::BoundPort;
 use inbound::Inbound;
 use map_err::MapErr;
@@ -98,7 +103,7 @@ use task::MainRuntime;
 use transparency::{HttpBody, Server};
 pub use transport::{AddrInfo, GetOriginalDst, SoOriginalDst, tls};
 use outbound::Outbound;
-use conditional::Conditional;
+pub use watch_service::WatchService;
 
 /// Runs a sidecar proxy.
 ///
@@ -185,7 +190,7 @@ where
         let (tls_client_config, tls_server_config, tls_cfg_bg) =
             tls::watch_for_config_changes(self.config.tls_settings.as_ref());
 
-        let process_ctx = ctx::Process::new(&self.config, tls_client_config.clone());
+        let process_ctx = ctx::Process::new(&self.config);
 
         let Main {
             config,
@@ -245,7 +250,7 @@ where
 
         let (drain_tx, drain_rx) = drain::channel();
 
-        let bind = Bind::new().with_sensors(sensors.clone());
+        let bind = Bind::new(tls_client_config).with_sensors(sensors.clone());
 
         // Setup the public listener. This will listen on a publicly accessible
         // address and listen for inbound connections that should be forwarded
@@ -260,13 +265,12 @@ where
                 config.inbound_router_capacity,
                 config.inbound_router_max_idle_age,
             );
-            let tls_settings = match &config.tls_settings {
-                Conditional::Some(settings) => Conditional::Some(tls::ConnectionConfig {
+            let tls_settings = config.tls_settings.as_ref().map(|settings| {
+                tls::ConnectionConfig {
                     identity: settings.service_identity.clone(),
                     config: tls_server_config
-                }),
-                Conditional::None(r) => Conditional::None(*r),
-            };
+                }
+            });
             serve(
                 inbound_listener,
                 tls_settings,
