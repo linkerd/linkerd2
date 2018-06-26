@@ -386,7 +386,7 @@ status:
 												&pb.StatTable_PodGroup_Row{
 													Resource: &pb.Resource{
 														Namespace: "emojivoto",
-														Type:      "authority",
+														Type:      "authorities",
 													},
 													TimeWindow: "1m",
 													Stats: &pb.BasicStats{
@@ -808,7 +808,7 @@ status:
 					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="conduit"}[1m])) by (le, namespace, authority))`,
 					`sum(increase(response_total{direction="inbound", namespace="conduit"}[1m])) by (namespace, authority, classification, tls)`,
 				},
-				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", "authority", "conduit", nil),
+				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", "authorities", "conduit", nil),
 			},
 		}
 
@@ -852,7 +852,7 @@ status:
 					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{authority="10.1.1.239:9995", direction="inbound", namespace="conduit"}[1m])) by (le, namespace, authority))`,
 					`sum(increase(response_total{authority="10.1.1.239:9995", direction="inbound", namespace="conduit"}[1m])) by (namespace, authority, classification, tls)`,
 				},
-				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", "authority", "conduit", nil),
+				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", "authorities", "conduit", nil),
 			},
 		}
 
