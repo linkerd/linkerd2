@@ -16,16 +16,305 @@
   "gnetId": null,
   "graphTooltip": 1,
   "id": null,
-  "iteration": 1524697499292,
+  "iteration": 1529950676425,
   "links": [],
   "panels": [
+    {
+      "content": "<div class=\"text-center dashboard-header\">\n  <span>Data-Plane Telemetry</span>\n</div>",
+      "gridPos": {
+        "h": 2.2,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 400,
+      "links": [],
+      "mode": "html",
+      "title": "",
+      "transparent": true,
+      "type": "text"
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "prometheus",
+      "fill": 0,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 2.2
+      },
+      "id": 397,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": false,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "percentage": false,
+      "pointradius": 5,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "process_virtual_memory_bytes{conduit_io_control_plane_ns=\"$namespace\", job=\"conduit-proxy\"}",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "{{namespace}}/{{pod}}/virtual",
+          "refId": "A"
+        },
+        {
+          "expr": "process_resident_memory_bytes{conduit_io_control_plane_ns=\"$namespace\", job=\"conduit-proxy\"}",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "{{namespace}}/{{pod}}/resident",
+          "refId": "B"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "MEMORY USAGE",
+      "tooltip": {
+        "shared": false,
+        "sort": 2,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "decbytes",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "prometheus",
+      "fill": 0,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 2.2
+      },
+      "id": 399,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": false,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "percentage": false,
+      "pointradius": 5,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "sum(irate(process_cpu_seconds_total{conduit_io_control_plane_ns=\"$namespace\", job=\"conduit-proxy\"}[20s])) by (namespace, pod)",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "{{namespace}}/{{pod}}",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "CPU USAGE",
+      "tooltip": {
+        "shared": false,
+        "sort": 2,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "s",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "prometheus",
+      "fill": 0,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 2.2
+      },
+      "id": 398,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": false,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "percentage": false,
+      "pointradius": 5,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "process_open_fds{conduit_io_control_plane_ns=\"$namespace\", job=\"conduit-proxy\"}",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "{{namespace}}/{{pod}}",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "OPEN FILE DESCRIPTORS",
+      "tooltip": {
+        "shared": false,
+        "sort": 2,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "content": "<div class=\"text-center dashboard-header\">\n  <span>Control-Plane Traffic</span>\n</div>",
+      "gridPos": {
+        "h": 2.2,
+        "w": 24,
+        "x": 0,
+        "y": 9.2
+      },
+      "id": 401,
+      "links": [],
+      "mode": "html",
+      "title": "",
+      "transparent": true,
+      "type": "text"
+    },
     {
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 0
+        "y": 11.4
       },
       "id": 19,
       "panels": [],
@@ -39,7 +328,7 @@
         "h": 2.2,
         "w": 24,
         "x": 0,
-        "y": 1
+        "y": 12.4
       },
       "id": 21,
       "links": [],
@@ -59,7 +348,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 3.2
+        "y": 14.6
       },
       "id": 23,
       "legend": {
@@ -143,7 +432,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 3.2
+        "y": 14.6
       },
       "id": 24,
       "legend": {
@@ -227,7 +516,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 3.2
+        "y": 14.6
       },
       "id": 25,
       "legend": {
@@ -320,7 +609,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 10.2
+        "y": 21.6
       },
       "id": 339,
       "panels": [],
@@ -333,7 +622,7 @@
         "h": 2.2,
         "w": 24,
         "x": 0,
-        "y": 11.2
+        "y": 22.6
       },
       "id": 340,
       "links": [],
@@ -348,7 +637,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 13.4
+        "y": 24.8
       },
       "id": 179,
       "panels": [
@@ -612,7 +901,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 14.4
+        "y": 25.8
       },
       "id": 90,
       "panels": [],
@@ -625,7 +914,7 @@
         "h": 2.2,
         "w": 24,
         "x": 0,
-        "y": 15.4
+        "y": 26.8
       },
       "id": 27,
       "links": [],
@@ -645,7 +934,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 17.6
+        "y": 29
       },
       "id": 2,
       "legend": {
@@ -729,7 +1018,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 17.6
+        "y": 29
       },
       "id": 5,
       "legend": {
@@ -758,14 +1047,14 @@
           "expr": "process_resident_memory_bytes{job=\"conduit-controller\"}",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "resident/{{component}}",
+          "legendFormat": "{{component}}/resident",
           "refId": "A"
         },
         {
           "expr": "process_virtual_memory_bytes{job=\"conduit-controller\"}",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "virtual/{{component}}",
+          "legendFormat": "{{component}}/virtual",
           "refId": "B"
         }
       ],
@@ -820,7 +1109,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 17.6
+        "y": 29
       },
       "id": 7,
       "legend": {
@@ -904,7 +1193,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 24.6
+        "y": 36
       },
       "id": 9,
       "legend": {
@@ -988,7 +1277,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 24.6
+        "y": 36
       },
       "id": 12,
       "legend": {
@@ -1081,7 +1370,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 31.6
+        "y": 43
       },
       "id": 29,
       "panels": [],
@@ -1095,7 +1384,7 @@
         "h": 2.2,
         "w": 24,
         "x": 0,
-        "y": 32.6
+        "y": 44
       },
       "id": 30,
       "links": [],
@@ -1115,7 +1404,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 34.8
+        "y": 46.2
       },
       "id": 6,
       "legend": {
@@ -1220,7 +1509,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 34.8
+        "y": 46.2
       },
       "id": 8,
       "legend": {
@@ -1318,7 +1607,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 34.8
+        "y": 46.2
       },
       "id": 14,
       "legend": {
