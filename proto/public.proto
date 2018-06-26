@@ -18,7 +18,7 @@ message VersionInfo {
 }
 
 message ListPodsRequest {
-  Resource resource = 1;
+  string namespace = 1;
 }
 message ListPodsResponse {
   repeated Pod pods = 1;

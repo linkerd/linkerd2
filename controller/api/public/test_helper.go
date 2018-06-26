@@ -36,7 +36,7 @@ func (c *MockConduitApiClient) Version(ctx context.Context, in *pb.Empty, opts .
 	return c.VersionInfoToReturn, c.ErrorToReturn
 }
 
-func (c *MockConduitApiClient) ListPods(ctx context.Context, in *pb.Empty, opts ...grpc.CallOption) (*pb.ListPodsResponse, error) {
+func (c *MockConduitApiClient) ListPods(ctx context.Context, in *pb.ListPodsRequest, opts ...grpc.CallOption) (*pb.ListPodsResponse, error) {
 	return c.ListPodsResponseToReturn, c.ErrorToReturn
 }
 

@@ -72,8 +72,8 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb
 	reports := make(map[string]podReport)
 
 	nsQuery := ""
-	if req.GetResource().GetNamespace() != "" {
-		nsQuery = fmt.Sprintf("namespace=\"%s\"", req.GetResource().GetNamespace())
+	if req.GetNamespace() != "" {
+		nsQuery = fmt.Sprintf("namespace=\"%s\"", req.GetNamespace())
 	}
 	processStartTimeQuery := fmt.Sprintf(podQuery, nsQuery)
 
@@ -93,7 +93,7 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb
 	}
 
 	var pods []*k8sV1.Pod
-	namespace := req.GetResource().GetNamespace()
+	namespace := req.GetNamespace()
 	if namespace != "" {
 		pods, err = s.k8sAPI.Pod().Lister().Pods(namespace).List(labels.Everything())
 	} else {

@@ -28,7 +28,7 @@ func TestGetPods(t *testing.T) {
 		}
 
 		mockClient.ListPodsResponseToReturn = response
-		actualPodNames, err := getPods(mockClient)
+		actualPodNames, err := getPods(mockClient, newGetOptions())
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -48,7 +48,7 @@ func TestGetPods(t *testing.T) {
 			Pods: []*pb.Pod{},
 		}
 
-		actualPodNames, err := getPods(mockClient)
+		actualPodNames, err := getPods(mockClient, newGetOptions())
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -62,7 +62,7 @@ func TestGetPods(t *testing.T) {
 		mockClient := &public.MockConduitApiClient{}
 		mockClient.ErrorToReturn = errors.New("expected")
 
-		_, err := getPods(mockClient)
+		_, err := getPods(mockClient, newGetOptions())
 		if err == nil {
 			t.Fatalf("Expecting error, got noting")
 		}
