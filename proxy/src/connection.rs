@@ -231,7 +231,7 @@ impl Future for ConditionallyUpgradeServerToTls {
                             return Ok(Async::Ready(conn));
                         },
                         tls::conditional_accept::Match::Incomplete => {
-                            return Ok(Async::NotReady);
+                            continue;
                         },
                     }
                 },
