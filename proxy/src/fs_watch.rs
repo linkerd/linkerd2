@@ -134,7 +134,7 @@ impl PathAndHash {
                     let prev_hash = self.curr_hash.borrow();
                     let prev_hash_bytes = prev_hash.as_ref().map(Digest::as_ref);
                     let curr_hash_bytes = curr_hash.as_ref().map(Digest::as_ref);
-                    prev_hash_bytes == curr_hash_bytes
+                    prev_hash_bytes != curr_hash_bytes
                 };
                 if changed {
                     trace!("{:?} changed", &self.path);
