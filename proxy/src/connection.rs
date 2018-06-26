@@ -231,8 +231,6 @@ impl Future for ConditionallyUpgradeServerToTls {
                             return Ok(Async::Ready(conn));
                         },
                         tls::conditional_accept::Match::Incomplete => {
-                            // Read more data into the peek buffer and try
-                            // to match again.
                             continue;
                         },
                     }
