@@ -127,16 +127,18 @@ impl PathAndHash {
                 // If we were able to read the file, compare the hash of its
                 // current contents with the previous hash to determine if it
                 // has changed.
-                let hash = Some(digest::digest(&digest::SHA256, &contents[..]));
-                let changed = self.curr_hash
-                    .borrow()
-                    .as_ref()
-                    .map(Digest::as_ref)
-                    // Compare the last hash with the current hash.
-                    .ne(&hash.as_ref().map(Digest::as_ref));
+                let curr_hash = Some(digest::digest(&digest::SHA256, &contents[..]));
+                let changed = {
+                    // We can't compare `ring::Digest`s directly, so we have to
+                    // borrow the hashes as byte slices to compare them.
+                    let prev_hash = self.curr_hash.borrow();
+                    let prev_hash_bytes = prev_hash.as_ref().map(Digest::as_ref);
+                    let curr_hash_bytes = curr_hash.as_ref().map(Digest::as_ref);
+                    prev_hash_bytes == curr_hash_bytes
+                };
                 if changed {
                     trace!("{:?} changed", &self.path);
-                    self.curr_hash.replace(hash);
+                    self.curr_hash.replace(curr_hash);
                 }
                 Ok(changed)
             },
