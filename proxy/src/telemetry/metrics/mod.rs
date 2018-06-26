@@ -70,7 +70,7 @@ use self::labels::{
     RequestLabels,
     ResponseLabels,
     TransportLabels,
-    TransportCloseLabels
+    TransportCloseLabels,
 };
 pub use self::labels::DstLabels;
 pub use self::record::Record;
@@ -244,6 +244,8 @@ impl fmt::Display for Root {
         self.responses.fmt(f)?;
         self.transports.fmt(f)?;
         self.transport_closes.fmt(f)?;
+
+        self.tls_handshake_failures.fmt(f)?;
 
         if let Some(ref process_metrics) = self.process_metrics {
             match process_metrics.metrics() {

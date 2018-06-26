@@ -432,7 +432,10 @@ where
         telemetry::sensor::http::TimestampRequestOpen::new(map_err)
     }));
 
+
     let listen_addr = bound_port.local_addr();
+    let handshake_sensor = sensors
+        .tls_accept_handshake(listen_addr, &proxy_ctx);
     let server = Server::new(
         listen_addr,
         proxy_ctx.clone(),
@@ -444,10 +447,10 @@ where
         drain_rx.clone(),
     );
     let log = server.log().clone();
-
     let accept = {
         let fut = bound_port.listen_and_fold(
             tls_config,
+            Some(handshake_sensor),
             (),
             move |(), (connection, remote_addr)| {
                 let s = server.serve(connection, remote_addr);
@@ -531,6 +534,7 @@ where
         // TODO: serve over TLS.
         bound_port.listen_and_fold(
             Conditional::None(tls::ReasonForNoIdentity::NotImplementedForTap.into()),
+            None, // No TLS handshake sensor
             server,
             move |server, (session, remote)| {
                 let log = log.clone().with_remote(remote);

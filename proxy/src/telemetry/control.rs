@@ -106,6 +106,7 @@ impl Control {
             bound_port.listen_and_fold(
                 // TODO: Serve over TLS.
                 Conditional::None(tls::ReasonForNoIdentity::NotImplementedForMetrics.into()),
+                None, // No TLS handshake sensor.
                 hyper::server::conn::Http::new(),
                 move |hyper, (conn, remote)| {
                     let service = service.clone();

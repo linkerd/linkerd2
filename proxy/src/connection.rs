@@ -13,6 +13,7 @@ use tokio::{
 use conditional::Conditional;
 use ctx::transport::TlsStatus;
 use config::Addr;
+use telemetry::sensor;
 use transport::{AddrInfo, BoxedIo, GetOriginalDst, tls};
 
 pub struct BoundPort {
@@ -143,8 +144,9 @@ impl BoundPort {
     pub fn listen_and_fold<T, F, Fut>(
         self,
         tls: tls::ConditionalConnectionConfig<tls::ServerConfigWatch>,
+        tls_sensor: Option<sensor::tls::AcceptHandshake>,
         initial: T,
-        f: F)
+        f: F,)
         -> impl Future<Item = (), Error = io::Error> + Send + 'static
     where
         F: Fn(T, (Connection, SocketAddr)) -> Fut + Send + 'static,
@@ -185,8 +187,19 @@ impl BoundPort {
                         Conditional::None(r) => Conditional::None(*r),
                     };
                     let conn = match tls {
-                        Conditional::Some(tls) =>
-                            Either::A(ConditionallyUpgradeServerToTls::new(socket, tls)),
+                        Conditional::Some(config) => {
+                            let f = ConditionallyUpgradeServerToTls::new(socket, config);
+                            let f = if let Some(ref sensor) = tls_sensor {
+                                let f = sensor.accept(
+                                    remote_addr,
+                                    f,
+                                );
+                                Either::A(f)
+                            } else {
+                                Either::B(f)
+                            };
+                            Either::A(f)
+                        },
                         Conditional::None(why_no_tls) =>
                             Either::B(future::ok(Connection::plain(socket, why_no_tls))),
                     };
@@ -201,6 +214,8 @@ impl BoundPort {
                         }
                     })
                 })
+                // This `map_err` is only necessary to placate the type checker
+                // since the `then` above turns any `Err`s into `Ok`s.
                 .filter_map(|x| x)
                 .fold(initial, f)
         )
@@ -466,20 +481,16 @@ fn set_nodelay_or_warn(socket: &TcpStream) {
 
 // ===== impl HandshakeError =====
 
-impl From<std::io::Error> for HandshakeError {
-    fn from(err: std::io::Error) -> Self {
+impl<'a> From<&'a std::io::Error> for HandshakeError {
+    fn from(err: &'a std::io::Error) -> Self {
         // See if the error can be downcast first, so the
         // IO error is only consumed by `into_inner` if we
         // know it will succeed.
-        if err.get_ref()
+        if let Some(tls_error) = err
+            .get_ref()
             .and_then(|err| err.downcast_ref::<tls::Error>())
-            .is_some()
         {
-            let tls_error = err.into_inner()
-                .expect("err.get_ref() returned already Some")
-                .downcast::<tls::Error>()
-                .expect("err.downcast_ref() already succeeded");
-            HandshakeError::Tls(*tls_error)
+            HandshakeError::Tls(tls_error.clone())
         } else {
             HandshakeError::Io { errno: err.raw_os_error() }
         }

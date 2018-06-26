@@ -1,5 +1,8 @@
-use std::sync::Arc;
-use std::time::Instant;
+use std::{
+    net::SocketAddr,
+    sync::Arc,
+    time::Instant,
+};
 
 use futures_mpsc_lossy::Sender;
 use http::{Request, Response};
@@ -12,6 +15,7 @@ use ctx;
 use telemetry::event;
 
 pub mod http;
+pub mod tls;
 mod transport;
 
 pub use self::http::{Http, NewHttp};
@@ -51,6 +55,18 @@ impl Sensors {
 
     pub fn null() -> Sensors {
         Sensors(Handle(None))
+    }
+
+    pub fn tls_accept_handshake(
+        &self,
+        local_addr: SocketAddr,
+        ctx: &Arc<ctx::Proxy>,
+    ) -> tls::AcceptHandshake {
+        tls::AcceptHandshake {
+            local_addr,
+            handle: self.0.clone(),
+            ctx: ctx.clone(),
+        }
     }
 
     pub fn accept<T>(
