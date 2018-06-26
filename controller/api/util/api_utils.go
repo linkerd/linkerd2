@@ -30,6 +30,7 @@ var (
 		k8s.Namespaces,
 		k8s.Pods,
 		k8s.ReplicationControllers,
+		k8s.Authority,
 	}
 
 	// ValidDestinations specifies resource types allowed as a destination:
