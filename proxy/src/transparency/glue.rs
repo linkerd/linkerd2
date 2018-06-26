@@ -32,7 +32,7 @@ pub enum HttpBody {
 }
 
 /// Glue for `tower_h2::Body`s to be used in hyper.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub(super) struct BodyPayload<B> {
     body: B,
 }
@@ -255,14 +255,19 @@ where
     >;
 
     fn call(&mut self, mut req: http::Request<Self::ReqBody>) -> Self::Future {
-        if let &http::Method::CONNECT = req.method() {
-            debug!("HTTP/1.1 CONNECT not supported");
-            let res = http::Response::builder()
-                .status(http::StatusCode::BAD_GATEWAY)
-                .body(BodyPayload::new(Default::default()))
-                .expect("building response with empty body should not error!");
+        // Should this rejection happen later in the Service stack?
+        //
+        // Rejecting here means telemetry doesn't record anything about it...
+        //
+        // At the same time, this stuff is specifically HTTP1, so it feels
+        // proper to not have the HTTP2 requests going through it...
+        if h1::is_bad_request(&req) {
+            let mut res = http::Response::default();
+            *res.status_mut() = http::StatusCode::BAD_REQUEST;
             return Either::B(future::ok(res));
         }
+
+
         req.extensions_mut().insert(self.srv_ctx.clone());
 
         let upgrade = if h1::wants_upgrade(&req) {
