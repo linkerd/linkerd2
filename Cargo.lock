@@ -155,6 +155,7 @@ dependencies = [
  "tokio-io 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-rustls 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-signal 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio-timer 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "tower-balance 0.1.0 (git+https://github.com/tower-rs/tower)",
  "tower-buffer 0.1.0 (git+https://github.com/tower-rs/tower)",
  "tower-discover 0.1.0 (git+https://github.com/tower-rs/tower)",

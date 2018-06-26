@@ -1,9 +1,9 @@
-use std::{fs, io, cell::RefCell, path::{Path, PathBuf}, time::{Duration, Instant}};
+use std::{fs, io, cell::RefCell, path::{Path, PathBuf}, time::Duration};
 
 use futures::Stream;
 use ring::digest::{self, Digest};
 
-use tokio::timer::Interval;
+use tokio_timer::{clock, Interval};
 
 /// Stream changes to the files at a group of paths.
 pub fn stream_changes<I, P>(paths: I, interval: Duration) -> impl Stream<Item = (), Error = ()>
@@ -46,31 +46,24 @@ where
 {
     let files = paths.into_iter().map(PathAndHash::new).collect::<Vec<_>>();
 
-    Interval::new(Instant::now(), interval)
+    Interval::new(clock::now(), interval)
         .map_err(|e| error!("timer error: {:?}", e))
-        .filter_map(move |_| {
+        .filter(move |_| {
+            let mut any_changes = false;
             for file in &files {
-                match file.has_changed() {
-                    Ok(true) => {
-                        trace!("{:?} changed", &file.path);
-                        return Some(());
-                    }
-                    Ok(false) => {
-                        // If the hash hasn't changed, keep going.
-                    }
-                    Err(ref e) if e.kind() == io::ErrorKind::NotFound => {
-                        // A file not found error indicates that the file
-                        // has been deleted.
-                        trace!("{:?} deleted", &file.path);
-                        return Some(());
-                    }
-                    Err(ref e) => {
+                let has_changed = file
+                    .update_and_check()
+                    .unwrap_or_else(|e| {
                         warn!("error hashing {:?}: {}", &file.path, e);
-                    }
+                        false
+                    });
+                if has_changed {
+                    any_changes = true;
                 }
             }
-            None
+            any_changes
         })
+        .map(|_| ())
 }
 
 #[cfg(target_os = "linux")]
@@ -110,26 +103,62 @@ struct PathAndHash {
     path: PathBuf,
 
     /// The last SHA-384 digest of the file, if we have previously hashed it.
-    last_hash: RefCell<Option<Digest>>,
+    curr_hash: RefCell<Option<Digest>>,
 }
 
 impl PathAndHash {
     fn new<P: AsRef<Path>>(path: P) -> Self {
         Self {
             path: path.as_ref().to_path_buf(),
-            last_hash: RefCell::new(None),
+            curr_hash: RefCell::new(None),
         }
     }
 
-    fn has_changed(&self) -> io::Result<bool> {
-        let contents = fs::read(&self.path)?;
-        let hash = Some(digest::digest(&digest::SHA256, &contents[..]));
-        let changed = self.last_hash.borrow().as_ref().map(Digest::as_ref)
-            != hash.as_ref().map(Digest::as_ref);
-        if changed {
-            self.last_hash.replace(hash);
+    /// Attempts to update the hash for this file and checks if it has changed.
+    ///
+    /// # Returns
+    /// - `Ok(true)` if the file was read successfully and the hash has changed.
+    /// - `Ok(false)` if we were able to read the file but the has has not
+    ///    changed.
+    /// - `Err(io::Error)` if an error occurred reading the file.
+    fn update_and_check(&self) -> io::Result<bool> {
+        match fs::read(&self.path) {
+            Ok(contents) => {
+                // If we were able to read the file, compare the hash of its
+                // current contents with the previous hash to determine if it
+                // has changed.
+                let curr_hash = Some(digest::digest(&digest::SHA256, &contents[..]));
+                let changed = {
+                    // We can't compare `ring::Digest`s directly, so we have to
+                    // borrow the hashes as byte slices to compare them.
+                    let prev_hash = self.curr_hash.borrow();
+                    let prev_hash_bytes = prev_hash.as_ref().map(Digest::as_ref);
+                    let curr_hash_bytes = curr_hash.as_ref().map(Digest::as_ref);
+                    prev_hash_bytes != curr_hash_bytes
+                };
+                if changed {
+                    trace!("{:?} changed", &self.path);
+                    self.curr_hash.replace(curr_hash);
+                }
+                Ok(changed)
+            },
+            Err(ref e) if e.kind() == io::ErrorKind::NotFound => {
+                if self.curr_hash.borrow().is_some() {
+                    // If we have a previous hash, then the file was deleted,
+                    // so it has changed.
+                    trace!("{:?} deleted", &self.path);
+                    self.curr_hash.replace(None);
+                    Ok(true)
+                } else {
+                    // Otherwise, it didn't exist previously, so there hasn't
+                    // been a change.
+                    Ok(false)
+                }
+            },
+            // Propagate any other errors.
+            Err(e) => Err(e),
         }
-        Ok(changed)
+
     }
 }
 
@@ -231,12 +260,18 @@ mod tests {
 
     use tempdir::TempDir;
     use tokio::runtime::current_thread::Runtime;
+    use tokio_timer::{clock, Interval};
 
     #[cfg(not(target_os = "windows"))]
     use std::os::unix::fs::symlink;
-    use std::{fs::{self, File}, io::Write, path::Path, time::Duration};
+    use std::{
+        fs::{self, File},
+        io::Write,
+        path::Path,
+        time::Duration,
+    };
 
-    use futures::{Future, Sink, Stream};
+    use futures::{future, Future, Sink, Stream};
     use futures_watch::{Watch, WatchError};
 
     struct Fixture {
@@ -364,6 +399,64 @@ mod tests {
             watch
         });
 
+        paths.iter().fold(watch, |watch, ref path| {
+            create_and_write(path, b"B").unwrap();
+
+            let (item, watch) = next_change(&mut rt, watch).unwrap();
+            assert!(item.is_some());
+            watch
+        });
+    }
+
+    fn test_nonexistent_files_dont_file_delete_events(
+        fixture: Fixture,
+        watch: Watch<()>,
+        bg: Box<Future<Item = (), Error = ()>>,
+    ) {
+        // This test confirms that when a file has been deleted,
+        // it's nonexistence doesn't continuously generate new
+        // "file deleted" events.
+        let Fixture {
+            paths,
+            dir: _dir,
+            mut rt,
+        } = fixture;
+
+        rt.spawn(bg);
+
+        let watch = paths.iter().fold(watch, |watch, ref path| {
+            create_and_write(path, b"A").unwrap();
+
+            let (item, watch) = next_change(&mut rt, watch).unwrap();
+            assert!(item.is_some());
+            watch
+        });
+
+        let watch = paths.iter().fold(watch, |watch, ref path| {
+            fs::remove_file(path).unwrap();
+            println!("deleted {:?}", path);
+
+            let (item, watch) = next_change(&mut rt, watch).unwrap();
+            assert!(item.is_some());
+            watch
+        });
+
+        let watch2 = watch.clone();
+        // Check if the stream has become ready every one second.
+        let stream = Interval::new(clock::now(), Duration::from_secs(1))
+            .map(|_| {
+                let mut watch = watch2.clone();
+                // The stream should not be ready, since the file
+                // system hasn't changed yet.
+                assert!(!watch.poll().unwrap().is_ready());
+                ()
+            })
+            .take(5)
+            .fold((), |_, ()| future::ok(()));
+
+        rt.block_on(stream).unwrap();
+
+        // Creating the files again should generate a new event
         paths.iter().fold(watch, |watch, ref path| {
             create_and_write(path, b"B").unwrap();
 
@@ -689,4 +782,14 @@ mod tests {
         Fixture::new().test_inotify(test_detects_delete_and_recreate)
     }
 
+    #[test]
+    fn polling_nonexistent_files_dont_file_delete_events() {
+        Fixture::new().test_polling(test_nonexistent_files_dont_file_delete_events)
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn inotify_nonexistent_files_dont_file_delete_events() {
+        Fixture::new().test_inotify(test_detects_delete_and_recreate)
+    }
 }

@@ -37,6 +37,7 @@ regex = "1.0.0"
 # networking
 tokio = "0.1.7"
 tokio-signal = "0.2"
+tokio-timer = "0.2.4"   # for tokio_timer::clock
 tokio-connect         = { git = "https://github.com/carllerche/tokio-connect" }
 tower-balance         = { git = "https://github.com/tower-rs/tower" }
 tower-buffer          = { git = "https://github.com/tower-rs/tower" }
