@@ -110,7 +110,7 @@ class Namespaces extends React.Component {
     }
     return (
       <div className="page-section">
-        <h1>{friendlyTitle}s</h1>
+        <h1>{friendlyTitle === "Authority" ? "Authorities" : `${friendlyTitle}s`}</h1>
         <MetricsTable
           resource={friendlyTitle}
           metrics={metrics}
@@ -132,6 +132,7 @@ class Namespaces extends React.Component {
             {this.renderResourceSection("Deployment", this.state.metrics.deployments)}
             {this.renderResourceSection("Replication Controller", this.state.metrics.replicationcontrollers)}
             {this.renderResourceSection("Pod", this.state.metrics.pods)}
+            {this.renderResourceSection("Authority", this.state.metrics.authority)}
           </div>
         )}
       </div>);
