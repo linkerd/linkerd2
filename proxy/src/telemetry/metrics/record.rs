@@ -86,10 +86,17 @@ impl Record {
 
             Event::TlsHandshakeFailed(ref ctx, ref err) => {
                 self.update(|metrics| {
-                    metrics.tls_handshake_fail(HandshakeFailLabels::new(ctx, err))
+                    metrics.tls_handshake_fail(HandshakeFailLabels::proxy(ctx, err))
                         .incr();
                 })
-            }
+            },
+
+            Event::ControlTlsHandshakeFailed(ref ctx, ref err) => {
+                self.update(|metrics| {
+                    metrics.tls_handshake_fail(HandshakeFailLabels::control(ctx, err))
+                        .incr();
+                })
+            },
         };
     }
 }

@@ -32,7 +32,9 @@ pub enum ControlConnection {
         local_addr: SocketAddr,
         remote_addr: SocketAddr,
     },
-    Connect(SocketAddr),
+    Connect {
+        remote_addr: SocketAddr
+    },
 }
 
 #[derive(Clone, Debug)]

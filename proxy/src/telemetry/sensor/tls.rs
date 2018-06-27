@@ -113,7 +113,7 @@ impl Connect {
             },
             ConnectCtx::Control { remote_addr } => {
                 event::Event::ControlTlsHandshakeFailed(
-                    event::ControlConnection::Connect(remote_addr),
+                    event::ControlConnection::Connect { remote_addr },
                     error.into(),
                 )
             },

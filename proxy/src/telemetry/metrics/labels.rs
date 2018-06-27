@@ -1,7 +1,10 @@
-use std::collections::HashMap;
-use std::fmt::{self, Write};
-use std::hash;
-use std::sync::Arc;
+use std::{
+    collections::HashMap,
+    fmt::{self, Write},
+    hash,
+    net::SocketAddr,
+    sync::Arc
+};
 
 use http;
 
@@ -124,15 +127,23 @@ pub struct TlsStatus(ctx::transport::TlsStatus);
 
 /// Labels describing a TLS handshake failure.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub struct HandshakeFailLabels {
-    /// Labels describing the TCP connection that closed.
-    pub(super) transport: TransportLabels,
-    reason: HandshakeFailReason,
+pub enum HandshakeFailLabels {
+    Proxy {
+        /// Labels describing the TCP connection that closed.
+        transport: TransportLabels,
+        reason: HandshakeFailReason,
+    },
+    Control {
+        peer: Peer,
+        remote_addr: SocketAddr,
+        reason: HandshakeFailReason,
+    },
+
 }
 
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-enum HandshakeFailReason {
+pub enum HandshakeFailReason {
     Io(Option<Errno>),
     Tls(TlsError),
 }
@@ -606,19 +617,41 @@ impl Into<ctx::transport::TlsStatus> for TlsStatus {
 }
 
 impl HandshakeFailLabels {
-    pub fn new(ctx: &ctx::transport::Ctx,
-               err: &connection::HandshakeError)
+    pub fn proxy(ctx: &ctx::transport::Ctx,
+                 err: &connection::HandshakeError)
                -> Self {
-        HandshakeFailLabels {
+        HandshakeFailLabels::Proxy {
             transport: TransportLabels::new(ctx),
-            reason: HandshakeFailReason::from(err),
+            reason: err.into(),
+        }
+    }
+
+    pub fn control(ctx: &event::ControlConnection,
+                   err: &connection::HandshakeError)
+                   -> Self {
+        let (peer, remote_addr) = match ctx {
+            event::ControlConnection::Accept { remote_addr, .. } =>
+                (Peer::Dst, *remote_addr),
+            event::ControlConnection::Connect { remote_addr } =>
+                (Peer::Src, *remote_addr),
+        };
+        HandshakeFailLabels::Control {
+            peer,
+            remote_addr,
+            reason: err.into(),
         }
     }
 }
 
 impl fmt::Display for HandshakeFailLabels {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{},{}", self.transport, self.reason)
+        match self {
+            HandshakeFailLabels::Proxy { transport, reason } =>
+                write!(f, "{},{}", transport, reason),
+            HandshakeFailLabels::Control { peer, remote_addr, reason } =>
+                write!(f, "{},remote=\"{}\",{}",peer, remote_addr, reason),
+
+        }
     }
 }
 
