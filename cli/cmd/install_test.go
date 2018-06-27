@@ -37,7 +37,7 @@ func TestRender(t *testing.T) {
 		CreatedByAnnotation:      "CreatedByAnnotation",
 		ProxyAPIPort:             123,
 		EnableTLS:                true,
-		CertificateBundleName:    "CertificateBundleName",
+		TLSTrustAnchorConfigMapName:    "TLSTrustAnchorConfigMapName",
 	}
 
 	testCases := []struct {

@@ -28,7 +28,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   namespace: %s
-  name: %s`, conduitNS, pkgK8s.CertificateBundleName),
+  name: %s`, conduitNS, pkgK8s.TLSTrustAnchorConfigMapName),
 	}
 
 	injectedNSConfig = fmt.Sprintf(`
@@ -44,7 +44,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   namespace: %s
-  name: %s`, injectedNS, pkgK8s.CertificateBundleName),
+  name: %s`, injectedNS, pkgK8s.TLSTrustAnchorConfigMapName),
 		fmt.Sprintf(`
 apiVersion: v1
 kind: Pod
@@ -100,7 +100,7 @@ func TestCertificateController(t *testing.T) {
 		controller.handleConfigMapUpdate(nil, &v1.ConfigMap{
 			ObjectMeta: meta.ObjectMeta{
 				Namespace: conduitNS,
-				Name:      pkgK8s.CertificateBundleName,
+				Name:      pkgK8s.TLSTrustAnchorConfigMapName,
 			},
 		})
 
@@ -132,7 +132,7 @@ func TestCertificateController(t *testing.T) {
 		controller.handleConfigMapDelete(&v1.ConfigMap{
 			ObjectMeta: meta.ObjectMeta{
 				Namespace: injectedNS,
-				Name:      pkgK8s.CertificateBundleName,
+				Name:      pkgK8s.TLSTrustAnchorConfigMapName,
 			},
 		})
 

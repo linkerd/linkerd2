@@ -634,7 +634,7 @@ rules:
   verbs: ["create"]
 - apiGroups: [""]
   resources: ["configmaps"]
-  resourceNames: [{{.CertificateBundleName}}]
+  resourceNames: [{{.TLSTrustAnchorConfigMapName}}]
   verbs: ["update"]
 - apiGroups: [""]
   resources: ["pods", "configmaps"]

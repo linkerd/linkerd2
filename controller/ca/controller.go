@@ -89,10 +89,10 @@ func (c *CertificateController) processNextWorkItem() bool {
 
 func (c *CertificateController) syncNamespace(ns string) error {
 	conduitConfigMap, err := c.k8sAPI.CM().Lister().ConfigMaps(c.namespace).
-		Get(pkgK8s.CertificateBundleName)
+		Get(pkgK8s.TLSTrustAnchorConfigMapName)
 	if apierrors.IsNotFound(err) {
 		log.Warnf("configmap [%s] not found in namespace [%s]",
-			pkgK8s.CertificateBundleName, c.namespace)
+			pkgK8s.TLSTrustAnchorConfigMapName, c.namespace)
 		return nil
 	}
 	if err != nil {
@@ -100,12 +100,12 @@ func (c *CertificateController) syncNamespace(ns string) error {
 	}
 
 	configMap := &v1.ConfigMap{
-		ObjectMeta: meta.ObjectMeta{Name: pkgK8s.CertificateBundleName},
+		ObjectMeta: meta.ObjectMeta{Name: pkgK8s.TLSTrustAnchorConfigMapName},
 		Data:       conduitConfigMap.Data,
 	}
 
 	log.Debugf("adding configmap [%s] to namespace [%s]",
-		pkgK8s.CertificateBundleName, ns)
+		pkgK8s.TLSTrustAnchorConfigMapName, ns)
 	_, err = c.k8sAPI.Client.CoreV1().ConfigMaps(ns).Create(configMap)
 	if apierrors.IsAlreadyExists(err) {
 		_, err = c.k8sAPI.Client.CoreV1().ConfigMaps(ns).Update(configMap)
@@ -127,7 +127,7 @@ func (c *CertificateController) handlePodUpdate(oldObj, newObj interface{}) {
 
 func (c *CertificateController) handleConfigMapAdd(obj interface{}) {
 	cm := obj.(*v1.ConfigMap)
-	if cm.Namespace == c.namespace && cm.Name == pkgK8s.CertificateBundleName {
+	if cm.Namespace == c.namespace && cm.Name == pkgK8s.TLSTrustAnchorConfigMapName {
 		namespaces, err := c.getInjectedNamespaces()
 		if err != nil {
 			log.Errorf("error getting namespaces: %s", err)
@@ -159,7 +159,7 @@ func (c *CertificateController) handleConfigMapDelete(obj interface{}) {
 		}
 	}
 
-	if configMap.Name == pkgK8s.CertificateBundleName && configMap.Namespace != c.namespace {
+	if configMap.Name == pkgK8s.TLSTrustAnchorConfigMapName && configMap.Namespace != c.namespace {
 		injected, err := c.isInjectedNamespace(configMap.Namespace)
 		if err != nil {
 			log.Errorf("error getting pods in namespace [%s]: %s", configMap.Namespace, err)
@@ -167,7 +167,7 @@ func (c *CertificateController) handleConfigMapDelete(obj interface{}) {
 		}
 		if injected {
 			log.Infof("configmap [%s] in namespace [%s] deleted; recreating it",
-				pkgK8s.CertificateBundleName, configMap.Namespace)
+				pkgK8s.TLSTrustAnchorConfigMapName, configMap.Namespace)
 			c.queue.Add(configMap.Namespace)
 		}
 	}
