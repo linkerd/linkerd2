@@ -57,7 +57,8 @@ func main() {
 				log.Printf("  - labels: %v", addr.MetricLabels)
 				switch identityType := addr.GetTlsIdentity().GetStrategy().(type) {
 				case *pb.TlsIdentity_K8SPodIdentity_:
-					log.Printf("  - tls identity: %s", identityType.K8SPodIdentity.PodIdentity)
+					log.Printf("  - pod identity: %s", identityType.K8SPodIdentity.PodIdentity)
+					log.Printf("  - controller ns: %s", identityType.K8SPodIdentity.ControllerNs)
 				}
 			}
 			log.Println()

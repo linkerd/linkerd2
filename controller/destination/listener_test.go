@@ -164,7 +164,8 @@ func TestEndpointListener(t *testing.T) {
 		expectedConduitNamespace := "conduit-namespace"
 		expectedPodDeployment := "pod-deployment"
 		expectedTlsIdentity := &pb.TlsIdentity_K8SPodIdentity{
-			PodIdentity: "pod1.deployment.this-namespace.conduit-managed.conduit-namespace.svc.cluster.local",
+			PodIdentity:  "pod1.deployment.this-namespace.conduit-managed.conduit-namespace.svc.cluster.local",
+			ControllerNs: "conduit-namespace",
 		}
 
 		addedAddress := common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 666}}, Port: 1}
