@@ -257,7 +257,7 @@ where
 
         // If TLS, attach a sensor to the TLS config.
         let tls = tls.map(|config| {
-            let sensor = self.sensors.tls_connect(client_ctx.clone());
+            let sensor = self.sensors.tls_connect(&client_ctx);
             connection::TlsConnect::new(config, sensor)
         });
 

@@ -8,7 +8,6 @@ use std::{
     iter::IntoIterator,
     net::SocketAddr,
     time::{Instant, Duration},
-    sync::Arc,
 };
 
 use bytes::Bytes;
@@ -32,7 +31,6 @@ use conduit_proxy_controller_grpc::destination::{
 };
 
 use super::{Metadata, ResolveRequest, Responder, Update};
-use ctx;
 use config::Namespaces;
 use control::{
     cache::{Cache, CacheChange, Exists},
@@ -99,7 +97,6 @@ struct BindClient {
     host_and_port: HostAndPort,
     dns_resolver: dns::Resolver,
     log_ctx: ::logging::Client<&'static str, HostAndPort>,
-    proxy_ctx: Arc<ctx::Proxy>,
     sensors: telemetry::Sensors,
 }
 
@@ -111,7 +108,6 @@ pub(super) fn task(
     host_and_port: Option<HostAndPort>,
     controller_tls: tls::ConditionalConnectionConfig<tls::ClientConfigWatch>,
     sensors: &telemetry::Sensors,
-    process_ctx: &Arc<ctx::Process>,
 ) -> impl Future<Item = (), Error = ()>
 {
     // Build up the Controller Client Stack
@@ -132,7 +128,6 @@ pub(super) fn task(
             identity,
             &dns_resolver,
             host_and_port,
-            ctx::Proxy::control(process_ctx),
             sensors,
         );
         WatchService::new(watch, bind_client)
@@ -610,7 +605,6 @@ impl BindClient {
         identity: Conditional<tls::Identity, tls::ReasonForNoTls>,
         dns_resolver: &dns::Resolver,
         host_and_port: HostAndPort,
-        proxy_ctx: Arc<ctx::Proxy>,
         sensors: &telemetry::Sensors,
     ) -> Self {
         let log_ctx = ::logging::admin().client("control", host_and_port.clone());
@@ -619,7 +613,6 @@ impl BindClient {
             dns_resolver: dns_resolver.clone(),
             host_and_port,
             log_ctx,
-            proxy_ctx,
             sensors: sensors.clone(),
         }
     }
@@ -646,8 +639,7 @@ impl Rebind<tls::ConditionalClientConfig> for BindClient {
             LookupAddressAndConnect::new(self.host_and_port.clone(),
                                          self.dns_resolver.clone(),
                                          conn_cfg,
-                                         &self.sensors,
-                                         &self.proxy_ctx),
+                                         &self.sensors),
             Duration::from_secs(3),
         );
         let h2_client = tower_h2::client::Connect::new(
