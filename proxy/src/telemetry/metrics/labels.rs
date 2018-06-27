@@ -137,38 +137,6 @@ enum HandshakeFailReason {
     Tls(TlsError),
 }
 
-macro_rules! mk_err_enum {
-    { $(#[$m:meta])* enum $name:ident from $from_ty:ty {
-         $( $from:pat => $reason:ident ),+
-     } } => {
-        $(#[$m])*
-        pub enum $name {
-            $( $reason ),+
-        }
-
-        impl fmt::Display for $name {
-             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                // use super::$name::*;
-                 match self {
-                    $(
-                        $name::$reason => f.pad(stringify!($reason))
-                    ),+
-                }
-             }
-        }
-
-        impl<'a> From<$from_ty> for $name {
-            fn from(err: $from_ty) -> Self {
-                match err {
-                    $(
-                        $from => $name::$reason
-                    ),+
-                }
-            }
-        }
-    }
-}
-
 mk_err_enum! {
     /// Translates `rustls::TLSError` variants into a `Copy` type suitable for
     /// labels.
