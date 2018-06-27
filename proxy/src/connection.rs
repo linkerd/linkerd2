@@ -21,25 +21,29 @@ pub struct BoundPort {
     local_addr: SocketAddr,
 }
 
+pub type ConditionalTlsConnect = Conditional<TlsConnect, tls::ReasonForNoTls>;
+
+/// Bundles together a TLS server connection config with a sensor for
+/// recording events while handshaking.
+#[derive(Clone)]
+pub struct TlsAccept {
+    config: tls::ConnectionConfig<tls::ServerConfigWatch>,
+    sensor: sensor::tls::Accept,
+}
+
+/// Bundles together a TLS client connection config with a sensor for
+/// recording events while handshaking.
 #[derive(Clone, Debug)]
-pub struct TlsConnector {
+pub struct TlsConnect {
     config: tls::ConnectionConfig<tls::ClientConfig>,
-    /// Note: this is optional currently, as there is no ctx::Proxy variant
-    /// for the controller client, so we don't generate metrics for it as
-    /// it is neither "inbound" nor "outbound". Eventually, we will want to
-    /// talk to the control plane over TLS, but we won't be able to produce
-    /// correctly labeled metrics until there's an appropriate context type,
-    /// so we still won't have a sensor.
-    sensor: Option<sensor::tls::Connect>,
+    sensor: sensor::tls::Connect,
 }
 
 /// Initiates a client connection to the given address.
-pub fn connect(addr: &SocketAddr,
-               tls: tls::ConditionalConnectionConfig<tls::ClientConfig>,
-               tls_sensor: Option<sensor::tls::Connect>,
-) -> Connecting
-{
-    let tls = tls.map(|config| TlsConnector { config, sensor: tls_sensor });
+pub fn connect(
+    addr: &SocketAddr,
+    tls: Conditional<TlsConnect, tls::ReasonForNoTls>,
+) -> Connecting {
     let state = ConnectingState::Plaintext {
         connect: TcpStream::connect(addr),
         tls: Some(tls),
@@ -80,11 +84,11 @@ pub enum HandshakeError {
 enum ConnectingState {
     Plaintext {
         connect: ConnectFuture,
-        tls: Option<Conditional<TlsConnector, tls::ReasonForNoTls>>,
+        tls: Option<Conditional<TlsConnect, tls::ReasonForNoTls>>,
     },
     UpgradeToTls {
         upgrade: tls::UpgradeClientToTls,
-        sensor: Option<sensor::tls::Connect>,
+        sensor: sensor::tls::Connect,
     },
 }
 
@@ -135,6 +139,15 @@ pub trait Peek {
 #[derive(Debug)]
 pub struct PeekFuture<T> {
     inner: Option<T>,
+}
+
+impl TlsConnect {
+    pub fn new(
+        config: tls::ConnectionConfig<tls::ClientConfig>,
+        sensor: sensor::tls::Connect
+    ) -> Self {
+        TlsConnect { config, sensor }
+    }
 }
 
 // ===== impl BoundPort =====
@@ -310,7 +323,7 @@ impl Future for Connecting {
                     trace!("Connecting: state=plaintext; tls={:?};",tls);
                     set_nodelay_or_warn(&plaintext_stream);
                     match tls.take().expect("Polled after ready") {
-                        Conditional::Some(TlsConnector { config, sensor }) => {
+                        Conditional::Some(TlsConnect { config, sensor }) => {
                             trace!("plaintext connection established; trying to upgrade");
                             let upgrade = tls::Connection::connect(
                                 plaintext_stream, &config.identity, config.config);
@@ -335,9 +348,7 @@ impl Future for Connecting {
                                     -> falling back to plaintext",
                                 self.addr, e,
                             );
-                            if let Some(sensor) = sensor {
-                                sensor.fail(&e);
-                            }
+                            sensor.fail(&e);
                             let connect = TcpStream::connect(&self.addr);
                             let reason = tls::ReasonForNoTls::HandshakeFailed;
                             // Reset self to try the plaintext connection.

@@ -1,11 +1,15 @@
-use std::collections::{
-    hash_map::{Entry, HashMap},
-    VecDeque,
+
+use std::{
+    collections::{
+        hash_map::{Entry, HashMap},
+        VecDeque,
+    },
+    fmt,
+    iter::IntoIterator,
+    net::SocketAddr,
+    time::{Instant, Duration},
+    sync::Arc,
 };
-use std::fmt;
-use std::iter::IntoIterator;
-use std::net::SocketAddr;
-use std::time::{Instant, Duration};
 
 use bytes::Bytes;
 use futures::{
@@ -28,6 +32,7 @@ use conduit_proxy_controller_grpc::destination::{
 };
 
 use super::{Metadata, ResolveRequest, Responder, Update};
+use ctx;
 use config::Namespaces;
 use control::{
     cache::{Cache, CacheChange, Exists},
@@ -36,7 +41,7 @@ use control::{
     util::{AddOrigin, Backoff, LogErrors},
 };
 use dns::{self, IpAddrListFuture};
-use telemetry::metrics::DstLabels;
+use telemetry::{self, metrics::DstLabels};
 use transport::{DnsNameAndPort, HostAndPort, LookupAddressAndConnect};
 use timeout::Timeout;
 use transport::tls;
@@ -94,6 +99,8 @@ struct BindClient {
     host_and_port: HostAndPort,
     dns_resolver: dns::Resolver,
     log_ctx: ::logging::Client<&'static str, HostAndPort>,
+    proxy_ctx: Arc<ctx::Proxy>,
+    sensors: telemetry::Sensors,
 }
 
 /// Returns a new discovery background task.
@@ -102,7 +109,9 @@ pub(super) fn task(
     dns_resolver: dns::Resolver,
     namespaces: Namespaces,
     host_and_port: Option<HostAndPort>,
-    controller_tls: tls::ConditionalConnectionConfig<tls::ClientConfigWatch>
+    controller_tls: tls::ConditionalConnectionConfig<tls::ClientConfigWatch>,
+    sensors: &telemetry::Sensors,
+    process_ctx: &Arc<ctx::Process>,
 ) -> impl Future<Item = (), Error = ()>
 {
     // Build up the Controller Client Stack
@@ -123,6 +132,8 @@ pub(super) fn task(
             identity,
             &dns_resolver,
             host_and_port,
+            ctx::Proxy::control(process_ctx),
+            sensors,
         );
         WatchService::new(watch, bind_client)
     });
@@ -599,6 +610,8 @@ impl BindClient {
         identity: Conditional<tls::Identity, tls::ReasonForNoTls>,
         dns_resolver: &dns::Resolver,
         host_and_port: HostAndPort,
+        proxy_ctx: Arc<ctx::Proxy>,
+        sensors: &telemetry::Sensors,
     ) -> Self {
         let log_ctx = ::logging::admin().client("control", host_and_port.clone());
         Self {
@@ -606,6 +619,8 @@ impl BindClient {
             dns_resolver: dns_resolver.clone(),
             host_and_port,
             log_ctx,
+            proxy_ctx,
+            sensors: sensors.clone(),
         }
     }
 }
@@ -630,7 +645,9 @@ impl Rebind<tls::ConditionalClientConfig> for BindClient {
         let connect = Timeout::new(
             LookupAddressAndConnect::new(self.host_and_port.clone(),
                                          self.dns_resolver.clone(),
-                                         conn_cfg),
+                                         conn_cfg,
+                                         &self.sensors,
+                                         &self.proxy_ctx),
             Duration::from_secs(3),
         );
         let h2_client = tower_h2::client::Connect::new(

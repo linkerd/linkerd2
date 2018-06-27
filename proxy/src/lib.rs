@@ -252,6 +252,8 @@ where
             config.namespaces.clone(),
             control_host_and_port,
             controller_tls,
+            &sensors,
+            &process_ctx,
         );
 
         let (drain_tx, drain_rx) = drain::channel();
