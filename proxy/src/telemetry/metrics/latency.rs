@@ -30,7 +30,6 @@ pub const BOUNDS: &Bounds = &Bounds(&[
     Bucket::Le(30_000),
     Bucket::Le(40_000),
     Bucket::Le(50_000),
-    Bucket::Le(60_000),
     // A final upper bound.
     Bucket::Inf,
 ]);
