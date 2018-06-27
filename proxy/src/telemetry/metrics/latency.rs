@@ -3,7 +3,7 @@ use std::time::Duration;
 use super::histogram::{Bounds, Bucket, Histogram};
 
 /// The maximum value (inclusive) for each latency bucket in
-/// tenths of a millisecond.
+/// milliseconds.
 pub const BOUNDS: &Bounds = &Bounds(&[
     Bucket::Le(1),
     Bucket::Le(2),
@@ -30,11 +30,7 @@ pub const BOUNDS: &Bounds = &Bounds(&[
     Bucket::Le(30_000),
     Bucket::Le(40_000),
     Bucket::Le(50_000),
-    Bucket::Le(100_000),
-    Bucket::Le(200_000),
-    Bucket::Le(300_000),
-    Bucket::Le(400_000),
-    Bucket::Le(500_000),
+    Bucket::Le(60_000),
     // A final upper bound.
     Bucket::Inf,
 ]);
