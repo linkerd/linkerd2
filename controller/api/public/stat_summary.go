@@ -136,7 +136,8 @@ func statSummaryError(req *pb.StatSummaryRequest, message string) *pb.StatSummar
 }
 
 func (s *grpcServer) getKubernetesObjectStats(req *pb.StatSummaryRequest) (map[pb.Resource]k8sStat, error) {
-	objects, err := s.k8sAPI.GetObjects(req.Selector.Resource.Namespace, req.Selector.Resource.Type, req.Selector.Resource.Name)
+	requestedResource := req.GetSelector().GetResource()
+	objects, err := s.k8sAPI.GetObjects(requestedResource.Namespace, requestedResource.Type, requestedResource.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -152,6 +153,7 @@ func (s *grpcServer) getKubernetesObjectStats(req *pb.StatSummaryRequest) (map[p
 		key := pb.Resource{
 			Name:      metaObj.GetName(),
 			Namespace: metaObj.GetNamespace(),
+			Type:      requestedResource.GetType(),
 		}
 
 		podStats, err := s.getPodStats(object)
@@ -412,15 +414,15 @@ func (s *grpcServer) getPrometheusMetrics(ctx context.Context, req *pb.StatSumma
 		return nil, err
 	}
 
-	return processPrometheusMetrics(results, groupBy), nil
+	return processPrometheusMetrics(req, results, groupBy), nil
 }
 
-func processPrometheusMetrics(results []promResult, groupBy model.LabelNames) map[pb.Resource]*pb.BasicStats {
+func processPrometheusMetrics(req *pb.StatSummaryRequest, results []promResult, groupBy model.LabelNames) map[pb.Resource]*pb.BasicStats {
 	basicStats := make(map[pb.Resource]*pb.BasicStats)
 
 	for _, result := range results {
 		for _, sample := range result.vec {
-			resource := metricToKey(sample.Metric, groupBy)
+			resource := metricToKey(req, sample.Metric, groupBy)
 
 			if basicStats[resource] == nil {
 				basicStats[resource] = &pb.BasicStats{}
@@ -461,13 +463,20 @@ func extractSampleValue(sample *model.Sample) uint64 {
 	return value
 }
 
-func metricToKey(metric model.Metric, groupBy model.LabelNames) pb.Resource {
-	// i.e. produce a key using the resource name and namespace
-	key := pb.Resource{}
+func metricToKey(req *pb.StatSummaryRequest, metric model.Metric, groupBy model.LabelNames) pb.Resource {
+	// this key is used to match the metric stats we queried from prometheus
+	// with the k8s object stats we queried from k8s
+	resourceType := req.GetSelector().GetResource().GetType()
+	key := pb.Resource{
+		Type: resourceType,
+	}
+	if resourceType != k8s.Namespaces {
+		key.Namespace = req.GetSelector().GetResource().GetNamespace()
+	}
 
 	for _, k := range groupBy {
 		if string(k) == "namespace" && len(groupBy) == 2 {
-			key.Namespace = string(metric[k])
+			// do nothing
 		} else {
 			key.Name = string(metric[k])
 		}
