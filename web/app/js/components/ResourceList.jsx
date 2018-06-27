@@ -1,6 +1,7 @@
 import _ from 'lodash';
 import ConduitSpinner from "./ConduitSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
+import { friendlyTitle } from './util/Utils.js';
 import MetricsTable from './MetricsTable.jsx';
 import PageHeader from './PageHeader.jsx';
 import PropTypes from 'prop-types';
@@ -9,16 +10,6 @@ import withREST from './util/withREST.jsx';
 import { metricsPropType, processSingleResourceRollup } from './util/MetricUtils.js';
 import './../../css/list.css';
 import 'whatwg-fetch';
-
-const friendlyTitle = resource => {
-  let titles = { singluar: _.startCase(resource) };
-  if (resource === "authority") {
-    titles.plural = "Authorities";
-  } else {
-    titles.plural = titles.singluar + "s";
-  }
-  return titles;
-};
 
 export class ResourceListBase extends React.Component {
   static defaultProps = {
@@ -54,11 +45,9 @@ export class ResourceListBase extends React.Component {
       processedMetrics = processSingleResourceRollup(data[0]);
     }
 
-    const friendlyTitle = _.startCase(this.props.resource);
-
     return (
       <MetricsTable
-        resource={friendlyTitle}
+        resource={friendlyTitle(this.props.resource).singular}
         metrics={processedMetrics} />
     );
   }

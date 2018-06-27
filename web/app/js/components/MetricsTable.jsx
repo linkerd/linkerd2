@@ -7,7 +7,11 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import { Tooltip } from 'antd';
 import { withContext } from './util/AppContext.jsx';
-import { metricToFormatter, numericSort } from './util/Utils.js';
+import {
+  friendlyTitle,
+  metricToFormatter,
+  numericSort
+} from './util/Utils.js';
 
 /*
   Table to display Success Rate, Requests and Latency in tabs.
@@ -214,7 +218,7 @@ export class MetricsTableBase extends BaseTable {
     ));
 
     let locale = {
-      emptyText: `No ${resource}s detected.`
+      emptyText: `No ${friendlyTitle(resource).plural} detected.`
     };
 
     return (
