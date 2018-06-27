@@ -43,9 +43,12 @@ pub struct CommonSettings {
     /// The private key in DER-encoded PKCS#8 form.
     pub private_key: PathBuf,
 
-    /// The identity we use to identify the service being proxied (as opposed
-    /// to the psuedo-service exposed on the proxy's control port).
-    pub service_identity: Identity,
+    /// The identity of the pod being proxied (as opposed to the psuedo-service
+    /// exposed on the proxy's control port).
+    pub pod_identity: Identity,
+
+    /// The identity of the controller, if given.
+    pub controller_identity: Conditional<Identity, ReasonForNoIdentity>,
 }
 
 /// Validated configuration common between TLS clients and TLS servers.
@@ -116,9 +119,8 @@ pub enum ReasonForNoIdentity {
     /// of telling us that we shouldn't do TLS for this endpoint.
     NotProvidedByServiceDiscovery,
 
-    /// We haven't implemented the mechanism to construct a TLS identity for
-    /// the controller yet.
-    NotImplementedForController,
+    /// The proxy wasn't configured with the identity.
+    NotConfigured,
 
     /// We haven't implemented the mechanism to construct a TLs identity for
     /// the tap psuedo-service yet.
@@ -236,14 +238,19 @@ impl CommonConfig {
             rustls::ClientConfig::new().get_verifier().verify_server_cert(
                     &root_cert_store,
                     &cert_chain,
-                    settings.service_identity.as_dns_name_ref(),
+                    settings.pod_identity.as_dns_name_ref(),
                     &[]) // No OCSP
                 .map(|_| ())
-                .map_err(Error::EndEntityCertIsNotValid)?;
+                .map_err(|err| {
+                    error!("validating certificate failed for {:?}: {}", settings.pod_identity, err);
+                    Error::EndEntityCertIsNotValid(err)
+                })?;
 
         // `CertResolver::new` is responsible for verifying that the
         // private key is the right one for the certificate.
         let cert_resolver = CertResolver::new(certificate_was_validated, cert_chain, private_key)?;
+
+        info!("loaded TLS configuration.");
 
         Ok(Self {
             root_cert_store,
@@ -414,22 +421,18 @@ pub(super) const SIGNATURE_ALG_RUSTLS_ALGORITHM: rustls::internal::msgs::enums::
 mod test_util {
     use std::path::PathBuf;
 
-    use config::Namespaces;
-    use tls::{CommonSettings, Identity};
+    use conditional::Conditional;
+    use tls::{CommonSettings, Identity, ReasonForNoIdentity};
 
     pub struct Strings {
-        pub pod_name: &'static str,
-        pub pod_ns: &'static str,
-        pub controller_ns: &'static str,
+        pub identity: &'static str,
         pub trust_anchors: &'static str,
         pub end_entity_cert: &'static str,
         pub private_key: &'static str,
     }
 
     pub static FOO_NS1: Strings = Strings {
-        pod_name: "foo",
-        pod_ns: "ns1",
-        controller_ns: "conduit",
+        identity: "foo.deployment.ns1.conduit-managed.conduit.svc.cluster.local",
         trust_anchors: "ca1.pem",
         end_entity_cert: "foo-ns1-ca1.crt",
         private_key: "foo-ns1-ca1.p8",
@@ -438,16 +441,12 @@ mod test_util {
     impl Strings {
         pub fn to_settings(&self) -> CommonSettings {
             let dir = PathBuf::from("src/transport/tls/testdata");
-            let namespaces = Namespaces {
-                pod: self.pod_ns.into(),
-                tls_controller: Some(self.controller_ns.into()),
-            };
-            let service_identity = Identity::try_from_pod_name(&namespaces, self.pod_name).unwrap();
             CommonSettings {
+                pod_identity: Identity::from_sni_hostname(self.identity.as_bytes()).unwrap(),
+                controller_identity: Conditional::None(ReasonForNoIdentity::NotConfigured),
                 trust_anchors: dir.join(self.trust_anchors),
                 end_entity_cert: dir.join(self.end_entity_cert),
                 private_key: dir.join(self.private_key),
-                service_identity,
             }
         }
     }
@@ -469,12 +468,8 @@ mod tests {
     #[test]
     fn recognize_ca_did_not_issue_cert() {
         let settings = Strings {
-            pod_name: "foo",
-            pod_ns: "ns1",
-            controller_ns: "conduit",
-            trust_anchors: "ca2.pem", // Mismatch
-            end_entity_cert: "foo-ns1-ca1.crt",
-            private_key: "foo-ns1-ca1.p8",
+            trust_anchors: "ca2.pem",
+            ..FOO_NS1
         }.to_settings();
         match CommonConfig::load_from_disk(&settings) {
             Err(Error::EndEntityCertIsNotValid(_)) => (),
@@ -485,12 +480,9 @@ mod tests {
     #[test]
     fn recognize_cert_is_not_valid_for_identity() {
         let settings = Strings {
-            pod_name: "foo", // Mismatch
-            pod_ns: "ns1",
-            controller_ns: "conduit",
-            trust_anchors: "ca1.pem",
             end_entity_cert: "bar-ns1-ca1.crt",
             private_key: "bar-ns1-ca1.p8",
+            ..FOO_NS1
         }.to_settings();
         match CommonConfig::load_from_disk(&settings) {
             Err(Error::EndEntityCertIsNotValid(_)) => (),
@@ -503,12 +495,8 @@ mod tests {
     #[should_panic]
     fn recognize_private_key_is_not_valid_for_cert() {
         let settings = Strings {
-            pod_name: "foo",
-            pod_ns: "ns1",
-            controller_ns: "conduit",
-            trust_anchors: "ca1.pem",
-            end_entity_cert: "foo-ns1-ca1.crt",
-            private_key: "bar-ns1-ca1.p8", // Mismatch
+            private_key: "bar-ns1-ca1.p8",
+            ..FOO_NS1
         }.to_settings();
         match CommonConfig::load_from_disk(&settings) {
             Err(_) => (), // // TODO: Err(Error::InvalidPrivateKey) > (),

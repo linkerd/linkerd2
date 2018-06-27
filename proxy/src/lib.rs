@@ -232,8 +232,14 @@ where
             &taps,
         );
 
-        let controller_tls =
-            Conditional::None(tls::ReasonForNoIdentity::NotImplementedForController.into()); // TODO
+        let controller_tls = config.tls_settings.as_ref().and_then(|settings| {
+            settings.controller_identity.as_ref().map(|controller_identity| {
+                tls::ConnectionConfig {
+                    identity: controller_identity.clone(),
+                    config: tls_client_config.clone(),
+                }
+            })
+        });
 
         let (dns_resolver, dns_bg) = dns::Resolver::from_system_config_and_env(&config)
             .unwrap_or_else(|e| {
@@ -267,7 +273,7 @@ where
             );
             let tls_settings = config.tls_settings.as_ref().map(|settings| {
                 tls::ConnectionConfig {
-                    identity: settings.service_identity.clone(),
+                    identity: settings.pod_identity.clone(),
                     config: tls_server_config
                 }
             });

@@ -187,10 +187,12 @@ pub const ENV_OUTBOUND_PORTS_DISABLE_PROTOCOL_DETECTION: &str = "CONDUIT_PROXY_O
 pub const ENV_TLS_TRUST_ANCHORS: &str = "CONDUIT_PROXY_TLS_TRUST_ANCHORS";
 pub const ENV_TLS_CERT: &str = "CONDUIT_PROXY_TLS_CERT";
 pub const ENV_TLS_PRIVATE_KEY: &str = "CONDUIT_PROXY_TLS_PRIVATE_KEY";
+pub const ENV_TLS_POD_IDENTITY: &str = "CONDUIT_PROXY_TLS_POD_IDENTITY";
+pub const ENV_TLS_CONTROLLER_IDENTITY: &str = "CONDUIT_PROXY_TLS_CONTROLLER_IDENTITY";
 
 pub const ENV_CONTROLLER_NAMESPACE: &str = "CONDUIT_PROXY_CONTROLLER_NAMESPACE";
-pub const ENV_POD_NAME: &str = "CONDUIT_PROXY_POD_NAME";
 pub const ENV_POD_NAMESPACE: &str = "CONDUIT_PROXY_POD_NAMESPACE";
+pub const VAR_POD_NAMESPACE: &str = "$CONDUIT_PROXY_POD_NAMESPACE";
 
 pub const ENV_CONTROL_URL: &str = "CONDUIT_PROXY_CONTROL_URL";
 const ENV_RESOLV_CONF: &str = "CONDUIT_RESOLV_CONF";
@@ -271,13 +273,14 @@ impl<'a> TryFrom<&'a Strings> for Config {
         let tls_trust_anchors = parse(strings, ENV_TLS_TRUST_ANCHORS, parse_path);
         let tls_end_entity_cert = parse(strings, ENV_TLS_CERT, parse_path);
         let tls_private_key = parse(strings, ENV_TLS_PRIVATE_KEY, parse_path);
+        let tls_pod_identity_template = strings.get(ENV_TLS_POD_IDENTITY);
+        let tls_controller_identity = strings.get(ENV_TLS_CONTROLLER_IDENTITY);
         let bind_timeout = parse(strings, ENV_BIND_TIMEOUT, parse_duration);
         let resolv_conf_path = strings.get(ENV_RESOLV_CONF);
         let event_buffer_capacity = parse(strings, ENV_EVENT_BUFFER_CAPACITY, parse_number);
         let metrics_retain_idle = parse(strings, ENV_METRICS_RETAIN_IDLE, parse_duration);
         let dns_min_ttl = parse(strings, ENV_DNS_MIN_TTL, parse_duration);
         let dns_max_ttl = parse(strings, ENV_DNS_MAX_TTL, parse_duration);
-        let pod_name = strings.get(ENV_POD_NAME);
         let pod_namespace = strings.get(ENV_POD_NAMESPACE).and_then(|maybe_value| {
             // There cannot be a default pod namespace, and the pod namespace is required.
             maybe_value.ok_or_else(|| {
@@ -299,23 +302,35 @@ impl<'a> TryFrom<&'a Strings> for Config {
         let tls_settings = match (tls_trust_anchors?,
                                   tls_end_entity_cert?,
                                   tls_private_key?,
-                                  pod_name?.as_ref())
+                                  tls_pod_identity_template?.as_ref(),
+                                  tls_controller_identity?)
         {
             (Some(trust_anchors),
              Some(end_entity_cert),
              Some(private_key),
-             Some(pod_name)) => {
-                let service_identity = tls::Identity::try_from_pod_name(&namespaces, pod_name)
+             Some(tls_pod_identity_template),
+             controller_identity) => {
+                let pod_identity =
+                    tls_pod_identity_template.replace(VAR_POD_NAMESPACE, &namespaces.pod);
+                let pod_identity = tls::Identity::from_sni_hostname(pod_identity.as_bytes())
                     .map_err(|_| Error::InvalidEnvVar)?; // Already logged.
+                let controller_identity = if let Some(controller_identity) = &controller_identity {
+                    let identity = tls::Identity::from_sni_hostname(controller_identity.as_bytes())
+                        .map_err(|_| Error::InvalidEnvVar)?; // Already logged.
+                    Conditional::Some(identity)
+                } else {
+                    Conditional::None(tls::ReasonForNoIdentity::NotConfigured)
+                };
                 Ok(Conditional::Some(tls::CommonSettings {
                     trust_anchors,
                     end_entity_cert,
                     private_key,
-                    service_identity,
+                    pod_identity,
+                    controller_identity,
                 }))
             },
-            (None, None, None, _) => Ok(Conditional::None(tls::ReasonForNoTls::Disabled)),
-            (trust_anchors, end_entity_cert, private_key, pod_name) => {
+            (None, None, None, _, _) => Ok(Conditional::None(tls::ReasonForNoTls::Disabled)),
+            (trust_anchors, end_entity_cert, private_key, pod_identity, _) => {
                 if trust_anchors.is_none() {
                     error!("{} is not set; it is required when {} and {} are set.",
                            ENV_TLS_TRUST_ANCHORS, ENV_TLS_CERT, ENV_TLS_PRIVATE_KEY);
@@ -328,9 +343,9 @@ impl<'a> TryFrom<&'a Strings> for Config {
                     error!("{} is not set; it is required when {} are set.",
                            ENV_TLS_PRIVATE_KEY, ENV_TLS_TRUST_ANCHORS);
                 }
-                if pod_name.is_none() {
+                if pod_identity.is_none() {
                     error!("{} is not set; it is required when {} are set.",
-                           ENV_POD_NAME, ENV_TLS_CERT);
+                           ENV_TLS_POD_IDENTITY, ENV_TLS_CERT);
                 }
                 Err(Error::InvalidEnvVar)
             },
