@@ -37,6 +37,9 @@ impl Identity {
                 };
                 Self::try_from_pod_name(&namespaces, &i.pod_name).map(Some)
             },
+            Some(Strategy::K8sPodIdentity(_i)) => {
+                Ok(None) // TODO: switch to K8sPodIdentity
+            },
             None => Ok(None), // No TLS.
         }
     }

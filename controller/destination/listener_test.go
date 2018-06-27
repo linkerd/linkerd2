@@ -162,10 +162,10 @@ func TestEndpointListener(t *testing.T) {
 		expectedPodName := "pod1"
 		expectedPodNamespace := "this-namespace"
 		expectedConduitNamespace := "conduit-namespace"
-		expectedTlsIdentity := &pb.TlsIdentity_K8SPodNamespace{
-			PodName:      expectedPodName,
-			PodNs:        expectedPodNamespace,
-			ControllerNs: expectedConduitNamespace,
+		expectedPodDeployment := "pod-deployment"
+		expectedTlsIdentity := &pb.TlsIdentity_K8SPodIdentity{
+			PodIdentity:  "pod1.deployment.this-namespace.conduit-managed.conduit-namespace.svc.cluster.local",
+			ControllerNs: "conduit-namespace",
 		}
 
 		addedAddress := common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 666}}, Port: 1}
@@ -175,7 +175,8 @@ func TestEndpointListener(t *testing.T) {
 				Name:      expectedPodName,
 				Namespace: expectedPodNamespace,
 				Labels: map[string]string{
-					pkgK8s.ControllerNSLabel: expectedConduitNamespace,
+					pkgK8s.ControllerNSLabel:    expectedConduitNamespace,
+					pkgK8s.ProxyDeploymentLabel: expectedPodDeployment,
 				},
 			},
 			Status: v1.PodStatus{
@@ -201,7 +202,7 @@ func TestEndpointListener(t *testing.T) {
 			t.Fatalf("Expected [1] address returned, got %v", addrs)
 		}
 
-		actualTlsIdentity := addrs[0].GetTlsIdentity().GetK8SPodNamespace()
+		actualTlsIdentity := addrs[0].GetTlsIdentity().GetK8SPodIdentity()
 		if !reflect.DeepEqual(actualTlsIdentity, expectedTlsIdentity) {
 			t.Fatalf("Expected TlsIdentity to be [%v] but was [%v]", expectedTlsIdentity, actualTlsIdentity)
 		}
