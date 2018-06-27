@@ -22,6 +22,7 @@ pub struct BoundPort {
 }
 
 pub type ConditionalTlsConnect = Conditional<TlsConnect, tls::ReasonForNoTls>;
+pub type ConditionalTlsAccept = Conditional<TlsAccept, tls::ReasonForNoTls>;
 
 /// Bundles together a TLS server connection config with a sensor for
 /// recording events while handshaking.
@@ -150,6 +151,15 @@ impl TlsConnect {
     }
 }
 
+impl TlsAccept {
+    pub fn new(
+        config: tls::ConnectionConfig<tls::ServerConfigWatch>,
+        sensor: sensor::tls::Accept
+    ) -> Self {
+        TlsAccept { config, sensor }
+    }
+}
+
 // ===== impl BoundPort =====
 
 impl BoundPort {
@@ -173,8 +183,7 @@ impl BoundPort {
     // TLS when needed.
     pub fn listen_and_fold<T, F, Fut>(
         self,
-        tls: tls::ConditionalConnectionConfig<tls::ServerConfigWatch>,
-        tls_sensor: Option<sensor::tls::Accept>,
+        tls: ConditionalTlsAccept,
         initial: T,
         f: F,)
         -> impl Future<Item = (), Error = io::Error> + Send + 'static
@@ -206,28 +215,23 @@ impl BoundPort {
                     set_nodelay_or_warn(&socket);
 
                     let tls = match &tls {
-                        Conditional::Some(tls) => match &*tls.config.borrow() {
-                            Conditional::Some(config) =>
-                                Conditional::Some(tls::ConnectionConfig {
-                                    identity: tls.identity.clone(),
-                                    config: config.clone(),
-                                }),
-                            Conditional::None(r) => Conditional::None(*r),
-                        },
+                        Conditional::Some(TlsAccept { sensor, config: conn_config }) =>
+                            match &*conn_config.config.borrow() {
+                                Conditional::Some(config) => {
+                                    let config = tls::ConnectionConfig {
+                                        identity: conn_config.identity.clone(),
+                                        config: config.clone(),
+                                    };
+                                    Conditional::Some((sensor, config))
+                                },
+                                Conditional::None(r) => Conditional::None(*r),
+                            },
                         Conditional::None(r) => Conditional::None(*r),
                     };
                     let conn = match tls {
-                        Conditional::Some(config) => {
+                        Conditional::Some((sensor, config)) => {
                             let f = ConditionallyUpgradeServerToTls::new(socket, config);
-                            let f = if let Some(ref sensor) = tls_sensor {
-                                let f = sensor.accept(
-                                    remote_addr,
-                                    f,
-                                );
-                                Either::A(f)
-                            } else {
-                                Either::B(f)
-                            };
+                            let f = sensor.accept(remote_addr, f);
                             Either::A(f)
                         },
                         Conditional::None(why_no_tls) =>

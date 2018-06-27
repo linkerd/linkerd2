@@ -77,7 +77,6 @@ impl Sensors {
             handle: self.0.clone(),
             ctx,
         }
-
     }
 
     pub fn accept<T>(
