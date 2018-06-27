@@ -396,7 +396,6 @@ func injectResource(bytes []byte, options *injectOptions) ([]byte, error) {
 		}
 
 		obj = &pod
-		k8sLabels[k8s.ProxyPodLabel] = pod.Name
 		podSpec = &pod.Spec
 		objectMeta = &pod.ObjectMeta
 

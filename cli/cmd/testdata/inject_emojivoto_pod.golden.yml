@@ -8,7 +8,6 @@ metadata:
   labels:
     app: vote-bot
     conduit.io/control-plane-ns: conduit
-    conduit.io/proxy-pod: vote-bot
   name: vote-bot
   namespace: emojivoto
 spec:
