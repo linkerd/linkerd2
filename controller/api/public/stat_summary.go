@@ -467,16 +467,19 @@ func metricToKey(req *pb.StatSummaryRequest, metric model.Metric, groupBy model.
 	// this key is used to match the metric stats we queried from prometheus
 	// with the k8s object stats we queried from k8s
 	resourceType := req.GetSelector().GetResource().GetType()
+	resourceNs := req.GetSelector().GetResource().GetNamespace()
 	key := pb.Resource{
 		Type: resourceType,
 	}
+
 	if resourceType != k8s.Namespaces {
-		key.Namespace = req.GetSelector().GetResource().GetNamespace()
+		key.Namespace = resourceNs
 	}
 
 	for _, k := range groupBy {
-		if string(k) == "namespace" && len(groupBy) == 2 {
-			// do nothing
+		if string(k) == "namespace" && len(groupBy) == 2 && resourceNs == "" {
+			// in the case of querying for all namespaces, populate the namespace here
+			key.Namespace = string(metric[k])
 		} else {
 			key.Name = string(metric[k])
 		}
