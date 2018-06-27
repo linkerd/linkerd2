@@ -56,8 +56,8 @@ func main() {
 				log.Printf("- %s:%d", addrUtil.IPToString(addr.Addr.GetIp()), addr.Addr.Port)
 				log.Printf("  - labels: %v", addr.MetricLabels)
 				switch identityType := addr.GetTlsIdentity().GetStrategy().(type) {
-				case *pb.TlsIdentity_K8SPodNamespace_:
-					log.Printf("  - tls:    %v", identityType.K8SPodNamespace)
+				case *pb.TlsIdentity_K8SPodIdentity_:
+					log.Printf("  - tls identity: %s", identityType.K8SPodIdentity.PodIdentity)
 				}
 			}
 			log.Println()

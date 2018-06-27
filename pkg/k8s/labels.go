@@ -72,16 +72,19 @@ const (
 	CertificateBundleName = "conduit-ca-bundle"
 )
 
-var proxyLabels = []string{
-	ControllerNSLabel,
+var podOwnerLabels = []string{
 	ProxyDeploymentLabel,
 	ProxyReplicationControllerLabel,
 	ProxyReplicaSetLabel,
 	ProxyJobLabel,
 	ProxyDaemonSetLabel,
 	ProxyStatefulSetLabel,
-	k8sV1.DefaultDeploymentUniqueLabelKey,
 }
+
+var proxyLabels = append(podOwnerLabels, []string{
+	ControllerNSLabel,
+	k8sV1.DefaultDeploymentUniqueLabelKey,
+}...)
 
 // CreatedByAnnotationValue returns the value associated with
 // CreatedByAnnotation.
@@ -104,6 +107,15 @@ func GetOwnerLabels(objectMeta meta.ObjectMeta) map[string]string {
 
 func GetControllerNs(objectMeta meta.ObjectMeta) string {
 	return objectMeta.Labels[ControllerNSLabel]
+}
+
+func GetOwnerType(objectMeta meta.ObjectMeta) string {
+	for _, label := range podOwnerLabels {
+		if _, ok := objectMeta.Labels[label]; ok {
+			return toOwnerLabel(label)
+		}
+	}
+	return ""
 }
 
 // toOwnerLabel converts a proxy label to a prometheus label, following the
