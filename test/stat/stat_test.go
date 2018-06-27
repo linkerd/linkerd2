@@ -53,6 +53,15 @@ func TestCliStatForConduitNamespace(t *testing.T) {
 	}
 	prometheusPod := pods[0]
 
+	controllerPods, err := TestHelper.GetPodsForDeployment(TestHelper.GetConduitNamespace(), "controller")
+	if err != nil {
+		t.Fatalf("Failed to get pods for controller: %s", err)
+	}
+	if len(controllerPods) != 1 {
+		t.Fatalf("Expected 1 pod for controller, got %d", len(controllerPods))
+	}
+	controllerPod := controllerPods[0]
+
 	for _, tt := range []struct {
 		args         []string
 		expectedRows map[string]string
@@ -94,6 +103,18 @@ func TestCliStatForConduitNamespace(t *testing.T) {
 			args: []string{"stat", "ns", TestHelper.GetConduitNamespace()},
 			expectedRows: map[string]string{
 				TestHelper.GetConduitNamespace(): "4/4",
+			},
+		},
+		{
+			args: []string{"stat", "po", "-n", TestHelper.GetConduitNamespace(), "--to", "au/prometheus.conduit.svc.cluster.local:9090"},
+			expectedRows: map[string]string{
+				controllerPod: "1/1",
+			},
+		},
+		{
+			args: []string{"stat", "au", "-n", TestHelper.GetConduitNamespace(), "--to", "au/prometheus.conduit.svc.cluster.local:9090"},
+			expectedRows: map[string]string{
+				"prometheus.conduit.svc.cluster.local:9090": "-",
 			},
 		},
 	} {
