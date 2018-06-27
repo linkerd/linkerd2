@@ -249,7 +249,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 				Value: identity.ToDNSName(),
 			},
 			{Name: "CONDUIT_PROXY_CONTROLLER_NAMESPACE", Value: controlPlaneNamespace}	,
-			{Name: "CONDUIT_PROXY_CONTROLLER_IDENTITY", Value: identity.ToControllerIdentity().ToDNSName()},
+			{Name: "CONDUIT_PROXY_TLS_CONTROLLER_IDENTITY", Value: identity.ToControllerIdentity().ToDNSName()},
 		}
 
 		sidecar.Env = append(sidecar.Env, tlsEnvVars...)
