@@ -22,6 +22,7 @@ func TestInjectYAML(t *testing.T) {
 		{"inject_emojivoto_deployment_hostNetwork_true.input.yml", "inject_emojivoto_deployment_hostNetwork_true.golden.yml"},
 		{"inject_emojivoto_deployment_controller_name.input.yml", "inject_emojivoto_deployment_controller_name.golden.yml"},
 		{"inject_emojivoto_statefulset.input.yml", "inject_emojivoto_statefulset.golden.yml"},
+		{"inject_emojivoto_pod.input.yml", "inject_emojivoto_pod.golden.yml"},
 	}
 
 	for i, tc := range testCases {
