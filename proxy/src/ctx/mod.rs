@@ -25,15 +25,18 @@ pub struct Process {
 
 /// Indicates the orientation of traffic, relative to a sidecar proxy.
 ///
-/// Each process exposes two proxies:
+/// Each process exposes two proxies and a control thread:
 /// - The _inbound_ proxy receives traffic from another services forwards it to within the
 ///   local instance.
 /// - The  _outbound_ proxy receives traffic from the local instance and forwards it to a
 ///   remove service.
+/// - The _control_ thread handles all work not directly related to either proxy, such as
+///   the Destination service client and Prometheus metrics server.
 #[derive(Clone, Debug)]
 pub enum Proxy {
     Inbound(Arc<Process>),
     Outbound(Arc<Process>),
+    Control(Arc<Process>),
 }
 
 impl Process {
@@ -65,15 +68,22 @@ impl Proxy {
         Arc::new(Proxy::Outbound(Arc::clone(p)))
     }
 
+    pub fn control(p: &Arc<Process>) -> Arc<Self> {
+        Arc::new(Proxy::Control(Arc::clone(p)))
+    }
+
     pub fn is_inbound(&self) -> bool {
         match *self {
             Proxy::Inbound(_) => true,
-            Proxy::Outbound(_) => false,
+            _ => false,
         }
     }
 
     pub fn is_outbound(&self) -> bool {
-        !self.is_inbound()
+        match *self {
+            Proxy::Outbound(_) => true,
+            _ => false,
+        }
     }
 }
 
