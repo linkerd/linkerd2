@@ -539,15 +539,16 @@ impl Protocol {
             return Protocol::Http2
         }
 
-        let authority_part = req.uri().authority_part();
-        let was_absolute_form = authority_part.is_some();
+        let was_absolute_form = h1::is_absolute_form(req.uri());
         trace!(
             "Protocol::detect(); req.uri='{:?}'; was_absolute_form={:?};",
             req.uri(), was_absolute_form
         );
         // If the request has an authority part, use that as the host part of
         // the key for an HTTP/1.x request.
-        let host = authority_part
+        let host = req
+            .uri()
+            .authority_part()
             .cloned()
             .or_else(|| h1::authority_from_host(req))
             .map(Host::Authority)

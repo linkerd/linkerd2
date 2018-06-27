@@ -192,7 +192,7 @@ class Sidebar extends React.Component {
 
             <Menu.Item className="sidebar-menu-item" key="/docs">
               <Link to="https://conduit.io/docs/" target="_blank">
-                <Icon type="solution" />
+                <Icon type="file-text" />
                 <span>Documentation</span>
               </Link>
             </Menu.Item>

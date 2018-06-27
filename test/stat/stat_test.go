@@ -32,62 +32,96 @@ type rowStat struct {
 	secured    string
 }
 
-var controllerDeployments = []string{"controller", "grafana", "prometheus", "web"}
-
 //////////////////////
 /// TEST EXECUTION ///
 //////////////////////
 
-// This test retries for up to 20 seconds, since each call to "conduit stat"
-// generates traffic to the deployments in the conduit namespace, and we're
-// testing that those deployments are properly reporting stats. It's ok if the
+// These tests retry for up to 20 seconds, since each call to "conduit stat"
+// generates traffic to the components in the conduit namespace, and we're
+// testing that those components are properly reporting stats. It's ok if the
 // first few attempts fail due to missing stats, since the requests from those
 // failed attempts will eventually be recorded in the stats that we're
 // requesting, and the test will pass.
 func TestCliStatForConduitNamespace(t *testing.T) {
-	t.Run("test conduit stat deploy", func(t *testing.T) {
-		err := TestHelper.RetryFor(20*time.Second, func() error {
-			out, err := TestHelper.ConduitRun("stat", "deploy", "-n", TestHelper.GetConduitNamespace())
-			if err != nil {
-				t.Fatalf("Unexpected stat error: %v", err)
-			}
 
-			rowStats, err := parseRows(out, 4)
-			if err != nil {
-				return err
-			}
+	pods, err := TestHelper.GetPodsForDeployment(TestHelper.GetConduitNamespace(), "prometheus")
+	if err != nil {
+		t.Fatalf("Failed to get pods for prometheus: %s", err)
+	}
+	if len(pods) != 1 {
+		t.Fatalf("Expected 1 pod for prometheus, got %d", len(pods))
+	}
+	prometheusPod := pods[0]
 
-			for _, name := range controllerDeployments {
-				if err := validateRowStats(name, "1/1", rowStats); err != nil {
+	for _, tt := range []struct {
+		args         []string
+		expectedRows map[string]string
+	}{
+		{
+			args: []string{"stat", "deploy", "-n", TestHelper.GetConduitNamespace()},
+			expectedRows: map[string]string{
+				"controller": "1/1",
+				"grafana":    "1/1",
+				"prometheus": "1/1",
+				"web":        "1/1",
+			},
+		},
+		{
+			args: []string{"stat", "po", "-n", TestHelper.GetConduitNamespace(), "--from", "deploy/controller"},
+			expectedRows: map[string]string{
+				prometheusPod: "1/1",
+			},
+		},
+		{
+			args: []string{"stat", "deploy", "-n", TestHelper.GetConduitNamespace(), "--to", "po/" + prometheusPod},
+			expectedRows: map[string]string{
+				"controller": "1/1",
+			},
+		},
+		{
+			args: []string{"stat", "svc", "-n", TestHelper.GetConduitNamespace(), "--from", "deploy/controller"},
+			expectedRows: map[string]string{
+				"prometheus": "1/1",
+			},
+		},
+		{
+			args: []string{"stat", "deploy", "-n", TestHelper.GetConduitNamespace(), "--to", "svc/prometheus"},
+			expectedRows: map[string]string{
+				"controller": "1/1",
+			},
+		},
+		{
+			args: []string{"stat", "ns", TestHelper.GetConduitNamespace()},
+			expectedRows: map[string]string{
+				TestHelper.GetConduitNamespace(): "4/4",
+			},
+		},
+	} {
+		t.Run("conduit "+strings.Join(tt.args, " "), func(t *testing.T) {
+			err := TestHelper.RetryFor(20*time.Second, func() error {
+				out, err := TestHelper.ConduitRun(tt.args...)
+				if err != nil {
+					t.Fatalf("Unexpected stat error: %s\n%s", err, out)
+				}
+
+				rowStats, err := parseRows(out, len(tt.expectedRows))
+				if err != nil {
 					return err
 				}
-			}
 
-			return nil
-		})
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-	})
+				for name, meshed := range tt.expectedRows {
+					if err := validateRowStats(name, meshed, rowStats); err != nil {
+						return err
+					}
+				}
 
-	t.Run("test conduit stat namespace", func(t *testing.T) {
-		err := TestHelper.RetryFor(20*time.Second, func() error {
-			out, err := TestHelper.ConduitRun("stat", "ns", TestHelper.GetConduitNamespace())
+				return nil
+			})
 			if err != nil {
-				t.Fatalf("Unexpected stat error: %v", err)
+				t.Fatal(err.Error())
 			}
-
-			rowStats, err := parseRows(out, 1)
-			if err != nil {
-				return err
-			}
-
-			return validateRowStats(TestHelper.GetConduitNamespace(), "4/4", rowStats)
 		})
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-	})
+	}
 }
 
 // check that expectedRowCount rows have been returned

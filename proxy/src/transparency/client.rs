@@ -12,7 +12,7 @@ use bind;
 use task::BoxExecutor;
 use telemetry::sensor::http::RequestBody;
 use super::glue::{BodyPayload, HttpBody, HyperConnect};
-use super::upgrade::Http11Upgrade;
+use super::upgrade::{HttpConnect, Http11Upgrade};
 
 type HyperClient<C, B> =
     hyper::Client<HyperConnect<C>, BodyPayload<RequestBody<B>>>;
@@ -216,9 +216,15 @@ where
             ClientServiceInner::Http1(ref h1) => {
                 let mut req = req.map(BodyPayload::new);
                 let upgrade = req.extensions_mut().remove::<Http11Upgrade>();
+                let is_http_connect = if upgrade.is_some() {
+                    req.method() == &http::Method::CONNECT
+                } else {
+                    false
+                };
                 ClientServiceFuture::Http1 {
                     future: h1.request(req),
                     upgrade,
+                    is_http_connect,
                 }
             },
             ClientServiceInner::Http2(ref mut h2) => {
@@ -232,6 +238,7 @@ pub enum ClientServiceFuture {
     Http1 {
         future: hyper::client::ResponseFuture,
         upgrade: Option<Http11Upgrade>,
+        is_http_connect: bool,
     },
     Http2(tower_h2::client::ResponseFuture),
 }
@@ -242,13 +249,16 @@ impl Future for ClientServiceFuture {
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         match self {
-            ClientServiceFuture::Http1 { future, upgrade } => {
+            ClientServiceFuture::Http1 { future, upgrade, is_http_connect } => {
                 match future.poll() {
                     Ok(Async::Ready(res)) => {
-                        let res = res.map(move |b| HttpBody::Http1 {
+                        let mut res = res.map(move |b| HttpBody::Http1 {
                             body: Some(b),
                             upgrade: upgrade.take(),
                         });
+                        if *is_http_connect {
+                            res.extensions_mut().insert(HttpConnect);
+                        }
                         Ok(Async::Ready(res))
                     },
                     Ok(Async::NotReady) => Ok(Async::NotReady),
