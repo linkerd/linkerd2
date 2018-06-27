@@ -1,5 +1,8 @@
-use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::{
+    net::SocketAddr,
+    time::{Duration, Instant},
+    sync::Arc,
+};
 
 use h2;
 
@@ -20,6 +23,16 @@ pub enum Event {
     StreamResponseEnd(Arc<ctx::http::Response>, StreamResponseEnd),
 
     TlsHandshakeFailed(Arc<ctx::transport::Ctx>, connection::HandshakeError),
+    ControlTlsHandshakeFailed(ControlConnection, connection::HandshakeError),
+}
+
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+pub enum ControlConnection {
+    Accept {
+        local_addr: SocketAddr,
+        remote_addr: SocketAddr,
+    },
+    Connect(SocketAddr),
 }
 
 #[derive(Clone, Debug)]

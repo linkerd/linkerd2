@@ -83,9 +83,15 @@ impl<F: Future<Error = ::io::Error>> Future for AcceptHandshakeFuture<F> {
                     let ctx = Arc::new(ctx::transport::Ctx::Server(ctx));
                     event::Event::TlsHandshakeFailed(ctx, e.into())
                 },
-                AcceptCtx::Control => {
-                    unimplemented!()
-                }
+                AcceptCtx::Control =>{
+                    event::Event::ControlTlsHandshakeFailed(
+                        event::ControlConnection::Accept {
+                            local_addr: self.local_addr,
+                            remote_addr: self.remote_addr,
+                        },
+                        e.into(),
+                    )
+                },
             };
 
             self.handle.send(|| event);
@@ -105,9 +111,12 @@ impl Connect {
                 ));
                 event::Event::TlsHandshakeFailed(ctx, error.into())
             },
-            ConnectCtx::Control { remote_addr: _ } => {
-                unimplemented!()
-            }
+            ConnectCtx::Control { remote_addr } => {
+                event::Event::ControlTlsHandshakeFailed(
+                    event::ControlConnection::Connect(remote_addr),
+                    error.into(),
+                )
+            },
         };
 
         self.handle.send(|| event);
