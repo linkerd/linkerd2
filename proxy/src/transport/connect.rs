@@ -179,7 +179,7 @@ impl tokio_connect::Connect for LookupAddressAndConnect {
                 info!("DNS resolved {:?} to {}", host, ip_addr);
                 let addr = SocketAddr::from((ip_addr, port));
                 let tls_status = ctx::transport::TlsStatus::from(&tls);
-                let tls = tls.map(move |config| {
+                let tls = tls.map(|config| {
                     // Build the transport context for the TLS handshake sensor.
                     let client_ctx = ctx::transport::Client::new(
                         &proxy_ctx,
@@ -189,7 +189,7 @@ impl tokio_connect::Connect for LookupAddressAndConnect {
                         destination::Metadata::no_metadata(),
                         tls_status,
                     );
-                    let sensor = sensors.tls_connect(&client_ctx);
+                    let sensor = sensors.tls_connect(client_ctx);
                     connection::TlsConnect::new(config, sensor)
                 });
 

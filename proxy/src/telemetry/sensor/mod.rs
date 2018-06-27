@@ -60,22 +60,22 @@ impl Sensors {
     pub fn tls_accept(
         &self,
         local_addr: SocketAddr,
-        ctx: &Arc<ctx::Proxy>,
+        ctx: Arc<ctx::Proxy>,
     ) -> tls::Accept {
         tls::Accept {
             local_addr,
             handle: self.0.clone(),
-            ctx: ctx.clone(),
+            ctx,
         }
     }
 
     pub fn tls_connect(
         &self,
-        ctx: &Arc<ctx::transport::Client>,
+        ctx: Arc<ctx::transport::Client>,
     ) -> tls::Connect {
         tls::Connect {
             handle: self.0.clone(),
-            ctx: ctx.clone(),
+            ctx,
         }
 
     }
