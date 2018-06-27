@@ -14,7 +14,7 @@ use conditional::Conditional;
 pub struct RequestLabels {
 
     /// Was the request in the inbound or outbound direction?
-    direction: Direction,
+    direction: Option<Direction>,
 
     // Additional labels identifying the destination service of an outbound
     // request, provided by the Conduit control plane's service discovery.
@@ -48,7 +48,7 @@ pub struct ResponseLabels {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct TransportLabels {
     /// Was the transport opened in the inbound or outbound direction?
-    direction: Direction,
+    direction: Option<Direction>,
 
     peer: Peer,
 
@@ -115,12 +115,15 @@ impl RequestLabels {
 
 impl fmt::Display for RequestLabels {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.authority {
-            Some(ref authority) =>
-                write!(f, "authority=\"{}\",{}", authority, self.direction),
-            None =>
-                write!(f, "authority=\"\",{}", self.direction),
-        }?;
+        if let Some(ref authority) = self.authority {
+            write!(f, "authority=\"{}\"", authority)?;
+        } else {
+            f.pad("authority=\"\"")?;
+        }
+
+        if let Some(ref direction) = self.direction {
+            write!(f, ",{}", direction)?;
+        }
 
         if let Some(ref outbound) = self.outbound_labels {
             // leading comma added between the direction label and the
@@ -235,10 +238,11 @@ impl fmt::Display for Classification {
 // ===== impl Direction =====
 
 impl Direction {
-    fn from_context(context: &ctx::Proxy) -> Self {
+    fn from_context(context: &ctx::Proxy) -> Option<Self> {
         match context {
-            &ctx::Proxy::Inbound(_) => Direction::Inbound,
-            &ctx::Proxy::Outbound(_) => Direction::Outbound,
+            &ctx::Proxy::Inbound(_) => Some(Direction::Inbound),
+            &ctx::Proxy::Outbound(_) => Some(Direction::Outbound),
+            &ctx::Proxy::Control(_) => None,
         }
     }
 }
@@ -334,7 +338,10 @@ impl TransportLabels {
 
 impl fmt::Display for TransportLabels {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{},{}{}", self.direction, self.peer, self.tls_status)
+        if let Some(ref direction) = self.direction {
+            write!(f, "{},", direction)?;
+        }
+        write!(f, "{}{}", self.peer, self.tls_status)
     }
 }
 
