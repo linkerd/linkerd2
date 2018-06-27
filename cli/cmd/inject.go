@@ -458,9 +458,9 @@ func injectResource(bytes []byte, options *injectOptions) ([]byte, error) {
 
 	}
 
-	// The namespace isn't necessarily in the input YAML file it has to be
-	// substituted at runtime. The proxy recognizes the "$NAME" syntax for this
-	// variable (but not necessarily other variables).
+	// The namespace isn't necessarily in the input so it has to be substituted
+	// at runtime. The proxy recognizes the "$NAME" syntax for this variable
+	// but not necessarily other variables.
 	identity := k8s.TLSIdentity {
 		Name: name,
 		Kind: k8s.GetOwnerTypeFromLabels(k8sLabels),
