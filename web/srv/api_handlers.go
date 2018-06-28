@@ -60,7 +60,10 @@ func (h *handler) handleApiVersion(w http.ResponseWriter, req *http.Request, p h
 }
 
 func (h *handler) handleApiPods(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
-	pods, err := h.apiClient.ListPods(req.Context(), &pb.Empty{})
+	pods, err := h.apiClient.ListPods(req.Context(), &pb.ListPodsRequest{
+		Namespace: req.FormValue("namespace"),
+	})
+
 	if err != nil {
 		renderJsonError(w, err, http.StatusInternalServerError)
 		return

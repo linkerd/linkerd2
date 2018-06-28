@@ -4,13 +4,28 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
 	"github.com/spf13/cobra"
 )
 
+type getOptions struct {
+	namespace     string
+	allNamespaces bool
+}
+
+func newGetOptions() *getOptions {
+	return &getOptions{
+		namespace:     "default",
+		allNamespaces: false,
+	}
+}
+
 func newCmdGet() *cobra.Command {
+	options := newGetOptions()
+
 	cmd := &cobra.Command{
 		Use:   "get [flags] pods",
 		Short: "Display one or many mesh resources",
@@ -18,7 +33,12 @@ func newCmdGet() *cobra.Command {
 
 Only pod resources (aka pods, po) are supported.`,
 		Example: `  # get all pods
-  conduit get pods`,
+  conduit get pods
+
+  # get pods from namespace conduit
+  conduit get pods --namespace conduit`,
+		Args:      cobra.ExactArgs(1),
+		ValidArgs: []string{k8s.Pods},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return errors.New("please specify a resource type")
@@ -39,9 +59,14 @@ Only pod resources (aka pods, po) are supported.`,
 				return err
 			}
 
-			podNames, err := getPods(client)
+			podNames, err := getPods(client, options)
 			if err != nil {
 				return err
+			}
+
+			if len(podNames) == 0 {
+				fmt.Fprintln(os.Stderr, "No resources found.")
+				os.Exit(0)
 			}
 
 			for _, podName := range podNames {
@@ -52,11 +77,18 @@ Only pod resources (aka pods, po) are supported.`,
 		},
 	}
 
+	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of pods")
+	cmd.PersistentFlags().BoolVar(&options.allNamespaces, "all-namespaces", options.allNamespaces, "If present, returns pods across all namespaces, ignoring the \"--namespace\" flag")
 	return cmd
 }
 
-func getPods(apiClient pb.ApiClient) ([]string, error) {
-	resp, err := apiClient.ListPods(context.Background(), &pb.Empty{})
+func getPods(apiClient pb.ApiClient, options *getOptions) ([]string, error) {
+	req := &pb.ListPodsRequest{}
+	if !options.allNamespaces {
+		req.Namespace = options.namespace
+	}
+
+	resp, err := apiClient.ListPods(context.Background(), req)
 	if err != nil {
 		return nil, err
 	}

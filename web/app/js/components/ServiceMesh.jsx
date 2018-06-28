@@ -5,6 +5,7 @@ import ErrorBanner from './ErrorBanner.jsx';
 import ErrorModal from './ErrorModal.jsx';
 import { incompleteMeshMessage } from './util/CopyUtils.jsx';
 import Metric from './Metric.jsx';
+import moment from 'moment';
 import { numericSort } from './util/Utils.js';
 import PageHeader from './PageHeader.jsx';
 import Percentage from './util/Percentage.js';
@@ -36,6 +37,16 @@ const getClassification = (meshedPodCount, failedPodCount) => {
     return "neutral";
   } else {
     return "good";
+  }
+};
+
+const getPodClassification = pod => {
+  if (pod.status === "Running") {
+    return "good";
+  } else if (pod.status === "Waiting") {
+    return "neutral";
+  } else {
+    return "poor";
   }
 };
 
@@ -94,24 +105,14 @@ const namespacesColumns = ConduitLink => [
   }
 ];
 
-const componentNames = {
-  "prometheus":   "Prometheus",
-  "grafana":      "Grafana",
-  "destination":  "Destination",
-  "proxy-api":    "Proxy API",
-  "public-api":   "Public API",
-  "tap":          "Tap",
-  "web":          "Web UI"
-};
-
-const componentDeploys = {
-  "prometheus":   "prometheus",
-  "grafana":      "grafana",
-  "destination":  "controller",
-  "proxy-api":    "controller",
-  "public-api":   "controller",
-  "tap":          "controller",
-  "web":          "web"
+const componentsToDeployNames = {
+  "Destination": "controller",
+  "Grafana" : "grafana",
+  "Prometheus": "prometheus",
+  "Proxy API": "controller",
+  "Public API": "controller",
+  "Tap": "controller",
+  "Web UI": "web"
 };
 
 class ServiceMesh extends React.Component {
@@ -162,6 +163,33 @@ class ServiceMesh extends React.Component {
     ];
   }
 
+  getControllerComponentData(podData) {
+    let podDataByDeploy = _.chain(podData.pods)
+      .filter( "controlPlane")
+      .groupBy("deployment")
+      .mapKeys((pods, dep) => {
+        return dep.split("/")[1];
+      })
+      .value();
+
+    return _.map(componentsToDeployNames, (deployName, component) => {
+      return {
+        name: component,
+        pods: _.map(podDataByDeploy[deployName], p => {
+          let uptimeSec = !p.uptime ? 0 : p.uptime.split(".")[0];
+          let uptime = moment.duration(parseInt(uptimeSec, 10) * 1000);
+
+          return {
+            name: p.name,
+            value: getPodClassification(p),
+            uptime: uptime.humanize(),
+            uptimeSec
+          };
+        })
+      };
+    });
+  }
+
   extractNsStatuses(nsData) {
     let podsByNs = _.get(nsData, ["ok", "statTables", 0, "podGroup", "rows"], []);
     let dataPlaneNamepaces = _.map(podsByNs, ns => {
@@ -182,24 +210,6 @@ class ServiceMesh extends React.Component {
     return _.compact(dataPlaneNamepaces);
   }
 
-  processComponents(conduitPods) {
-    let pods = _.get(conduitPods, ["ok", "statTables", 0, "podGroup", "rows"], 0);
-    return _.map(componentNames, (title, name) => {
-      let deployName = componentDeploys[name];
-      let matchingPods = _.filter(pods, p => p.resource.name.split("-")[0] === deployName);
-
-      return {
-        name: title,
-        pods: _.map(matchingPods, p => {
-          return {
-            name: p.resource.name,
-            value: getClassification(parseInt(p.meshedPodCount, 10), parseInt(p.failedPodCount, 10))
-          };
-        })
-      };
-    });
-  }
-
   loadFromServer() {
     if (this.state.pendingRequests) {
       return; // don't make more requests if the ones we sent haven't completed
@@ -207,14 +217,14 @@ class ServiceMesh extends React.Component {
     this.setState({ pendingRequests: true });
 
     this.api.setCurrentRequests([
-      this.api.fetchMetrics(this.api.urlsForResource("pod", this.props.controllerNamespace)),
+      this.api.fetchPods(this.props.controllerNamespace),
       this.api.fetchMetrics(this.api.urlsForResource("namespace"))
     ]);
 
     this.serverPromise = Promise.all(this.api.getCurrentPromises())
-      .then(([conduitPods, nsStats]) => {
+      .then(([pods, nsStats]) => {
         this.setState({
-          components: this.processComponents(conduitPods),
+          components: this.getControllerComponentData(pods),
           nsStatuses: this.extractNsStatuses(nsStats),
           pendingRequests: false,
           loaded: true,

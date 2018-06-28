@@ -17,6 +17,9 @@ message VersionInfo {
   string releaseVersion = 3;
 }
 
+message ListPodsRequest {
+  string namespace = 1;
+}
 message ListPodsResponse {
   repeated Pod pods = 1;
 }
@@ -30,6 +33,7 @@ message Pod {
   google.protobuf.Duration sinceLastReport = 6;
   string controllerNamespace = 7; // namespace of controller this pod reports to
   bool controlPlane = 8; // true if this pod is part of the control plane
+  google.protobuf.Duration uptime = 9; // uptime of this pod
 }
 
 message TapRequest {
@@ -212,7 +216,7 @@ message StatTable {
 service Api {
   rpc StatSummary(StatSummaryRequest) returns (StatSummaryResponse) {}
 
-  rpc ListPods(Empty) returns (ListPodsResponse) {}
+  rpc ListPods(ListPodsRequest) returns (ListPodsResponse) {}
 
   // Superceded by `TapByResource`.
   rpc Tap(TapRequest) returns (stream common.TapEvent) { option deprecated = true; }

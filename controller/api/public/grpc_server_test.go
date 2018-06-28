@@ -163,7 +163,7 @@ spec:
 
 			k8sAPI.Sync(nil)
 
-			rsp, err := fakeGrpcServer.ListPods(context.TODO(), &pb.Empty{})
+			rsp, err := fakeGrpcServer.ListPods(context.TODO(), &pb.ListPodsRequest{})
 			if err != exp.err {
 				t.Fatalf("Expected error: %s, Got: %s", exp.err, err)
 			}

@@ -31,7 +31,7 @@ func (m *mockGrpcServer) Version(ctx context.Context, req *pb.Empty) (*pb.Versio
 	return m.ResponseToReturn.(*pb.VersionInfo), m.ErrorToReturn
 }
 
-func (m *mockGrpcServer) ListPods(ctx context.Context, req *pb.Empty) (*pb.ListPodsResponse, error) {
+func (m *mockGrpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb.ListPodsResponse, error) {
 	m.LastRequestReceived = req
 	return m.ResponseToReturn.(*pb.ListPodsResponse), m.ErrorToReturn
 }
@@ -93,7 +93,7 @@ func TestServer(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		listPodsReq := &pb.Empty{}
+		listPodsReq := &pb.ListPodsRequest{}
 		testListPods := grpcCallTestCase{
 			expectedRequest: listPodsReq,
 			expectedResponse: &pb.ListPodsResponse{

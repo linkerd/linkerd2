@@ -32,6 +32,13 @@ var (
 		"cli-get-test-not-injected-d1": 2,
 		"cli-get-test-not-injected-d2": 1,
 	}
+
+	conduitPods = map[string]int{
+		"grafana":    1,
+		"web":        1,
+		"prometheus": 1,
+		"controller": 1,
+	}
 )
 
 //////////////////////
@@ -73,21 +80,44 @@ func TestCliGet(t *testing.T) {
 		t.Error(err)
 	}
 
-	out, err = TestHelper.ConduitRun("get", "pods")
-	if err != nil {
-		t.Fatalf("Unexpected error: %v output:\n%s", err, out)
-	}
+	t.Run("get pods from --all-namespaces", func(t *testing.T) {
+		out, err = TestHelper.ConduitRun("get", "pods", "--all-namespaces")
 
-	lines := strings.Split(out, "\n")
-	if len(lines) == 0 {
-		t.Fatal("Expecting conduit get pods to return something, got nothing")
-	}
-
-	expectedPods := []string{}
-	for deploy, replicas := range deployReplicas {
-		for i := 0; i < replicas; i++ {
-			expectedPods = append(expectedPods, deploy)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v output:\n%s", err, out)
 		}
+
+		err := checkPodOutput(out, deployReplicas, prefixedNs)
+		if err != nil {
+			t.Fatalf("Pod output check failed:\n%s\nCommand output:\n%s", err, out)
+		}
+	})
+
+	t.Run("get pods from the conduit namespace", func(t *testing.T) {
+		out, err = TestHelper.ConduitRun("get", "pods", "-n", TestHelper.GetConduitNamespace())
+
+		if err != nil {
+			t.Fatalf("Unexpected error: %v output:\n%s", err, out)
+		}
+
+		err := checkPodOutput(out, conduitPods, TestHelper.GetConduitNamespace())
+		if err != nil {
+			t.Fatalf("Pod output check failed:\n%s\nCommand output:\n%s", err, out)
+		}
+	})
+}
+
+func checkPodOutput(cmdOutput string, expectedPodCounts map[string]int, namespace string) error {
+	expectedPods := []string{}
+	for podName, replicas := range expectedPodCounts {
+		for i := 0; i < replicas; i++ {
+			expectedPods = append(expectedPods, podName)
+		}
+	}
+
+	lines := strings.Split(cmdOutput, "\n")
+	if len(lines) == 0 {
+		return fmt.Errorf("Expecting conduit get pods to return something, got nothing")
 	}
 
 	var actualPods []string
@@ -99,13 +129,14 @@ func TestCliGet(t *testing.T) {
 
 		ns, pod, err := TestHelper.ParseNamespacedResource(sanitizedLine)
 		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
+			return fmt.Errorf("Unexpected error: %v", err)
 		}
 
-		if ns == prefixedNs {
+		if ns == namespace {
 			podPrefix, err := parsePodPrefix(pod)
+
 			if err != nil {
-				t.Fatalf("Unexpected error: %v", err)
+				return fmt.Errorf("Unexpected error: %v", err)
 			}
 			actualPods = append(actualPods, podPrefix)
 		}
@@ -114,8 +145,10 @@ func TestCliGet(t *testing.T) {
 	sort.Strings(expectedPods)
 	sort.Strings(actualPods)
 	if !reflect.DeepEqual(expectedPods, actualPods) {
-		t.Fatalf("Expected conduit get to return:\n%v\nBut got:\n%v\nRaw output:\n%s", expectedPods, actualPods, out)
+		return fmt.Errorf("Expected conduit get to return:\n%v\nBut got:\n%v", expectedPods, actualPods)
 	}
+
+	return nil
 }
 
 func parsePodPrefix(pod string) (string, error) {

@@ -67,7 +67,10 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     return apiFetch(path);
   };
 
-  const fetchPods = () => {
+  const fetchPods = namespace => {
+    if (!_.isNil(namespace)) {
+      return apiFetch(podsPath + "?namespace=" + namespace);
+    }
     return apiFetch(podsPath);
   };
 

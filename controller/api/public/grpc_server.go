@@ -31,8 +31,13 @@ type (
 	}
 )
 
+type podReport struct {
+	lastReport              time.Time
+	processStartTimeSeconds time.Time
+}
+
 const (
-	podQuery                   = "count(process_start_time_seconds) by (pod)"
+	podQuery                   = "max(process_start_time_seconds{%s}) by (pod, namespace)"
 	K8sClientSubsystemName     = "kubernetes"
 	K8sClientCheckDescription  = "control plane can talk to Kubernetes"
 	PromClientSubsystemName    = "prometheus"
@@ -59,15 +64,21 @@ func (*grpcServer) Version(ctx context.Context, req *pb.Empty) (*pb.VersionInfo,
 	return &pb.VersionInfo{GoVersion: runtime.Version(), ReleaseVersion: version.Version, BuildDate: "1970-01-01T00:00:00Z"}, nil
 }
 
-func (s *grpcServer) ListPods(ctx context.Context, req *pb.Empty) (*pb.ListPodsResponse, error) {
+func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb.ListPodsResponse, error) {
 	log.Debugf("ListPods request: %+v", req)
 
 	// Reports is a map from instance name to the absolute time of the most recent
-	// report from that instance.
-	reports := make(map[string]time.Time)
+	// report from that instance and its process start time
+	reports := make(map[string]podReport)
+
+	nsQuery := ""
+	if req.GetNamespace() != "" {
+		nsQuery = fmt.Sprintf("namespace=\"%s\"", req.GetNamespace())
+	}
+	processStartTimeQuery := fmt.Sprintf(podQuery, nsQuery)
 
 	// Query Prometheus for all pods present
-	vec, err := s.queryProm(ctx, podQuery)
+	vec, err := s.queryProm(ctx, processStartTimeQuery)
 	if err != nil {
 		return nil, err
 	}
@@ -75,10 +86,20 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.Empty) (*pb.ListPodsR
 		pod := string(sample.Metric["pod"])
 		timestamp := sample.Timestamp
 
-		reports[pod] = time.Unix(0, int64(timestamp)*int64(time.Millisecond))
+		reports[pod] = podReport{
+			lastReport:              time.Unix(0, int64(timestamp)*int64(time.Millisecond)),
+			processStartTimeSeconds: time.Unix(0, int64(sample.Value)*int64(time.Second)),
+		}
 	}
 
-	pods, err := s.k8sAPI.Pod().Lister().List(labels.Everything())
+	var pods []*k8sV1.Pod
+	namespace := req.GetNamespace()
+	if namespace != "" {
+		pods, err = s.k8sAPI.Pod().Lister().Pods(namespace).List(labels.Everything())
+	} else {
+		pods, err = s.k8sAPI.Pod().Lister().List(labels.Everything())
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -115,10 +136,15 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.Empty) (*pb.ListPodsR
 			ControlPlane:        controllerComponent != "",
 		}
 		if added {
-			since := time.Since(updated)
+			since := time.Since(updated.lastReport)
 			item.SinceLastReport = &duration.Duration{
 				Seconds: int64(since / time.Second),
 				Nanos:   int32(since % time.Second),
+			}
+			sinceStarting := time.Since(updated.processStartTimeSeconds)
+			item.Uptime = &duration.Duration{
+				Seconds: int64(sinceStarting / time.Second),
+				Nanos:   int32(sinceStarting % time.Second),
 			}
 		}
 		podList = append(podList, item)
@@ -148,7 +174,7 @@ func (s *grpcServer) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckR
 		CheckDescription: PromClientCheckDescription,
 		Status:           healthcheckPb.CheckStatus_OK,
 	}
-	_, err = s.queryProm(ctx, podQuery)
+	_, err = s.queryProm(ctx, fmt.Sprintf(podQuery, ""))
 	if err != nil {
 		promClientCheck.Status = healthcheckPb.CheckStatus_ERROR
 		promClientCheck.FriendlyMessageToUser = fmt.Sprintf("Error talking to Prometheus from control plane: %s", err.Error())
