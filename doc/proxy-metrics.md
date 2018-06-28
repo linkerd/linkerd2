@@ -173,6 +173,18 @@ connection closes.
 A histogram of the duration of the lifetime of a connection, in milliseconds.
 This is updated when the connection closes.
 
+## `tls_handshake_failure_total`
+
+A counter of the total number of times a TLS handshake has failed.
+
+## `control_tls_handshake_failure_total`
+
+A counter of the total number of times a TLS handshake with the Conduit
+control plane failed.
+
+This does not have the `direction` label, as it is not associated with the
+inbound or outbound side of the proxy.
+
 ## Labels
 
 Each of these metrics has the following labels:
