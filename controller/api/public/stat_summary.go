@@ -276,7 +276,8 @@ func getResultKeys(
 }
 
 // add filtering by resource type
-func promLabelNames(resource *pb.Resource) model.LabelNames {
+// note that metricToKey assumes the label ordering (namespace, name)
+func promGroupByLabelNames(resource *pb.Resource) model.LabelNames {
 	names := model.LabelNames{namespaceLabel}
 
 	if resource.Type != k8s.Namespaces {
@@ -286,7 +287,8 @@ func promLabelNames(resource *pb.Resource) model.LabelNames {
 }
 
 // add filtering by resource type
-func promDstLabelNames(resource *pb.Resource) model.LabelNames {
+// note that metricToKey assumes the label ordering (namespace, name)
+func promDstGroupByLabelNames(resource *pb.Resource) model.LabelNames {
 	names := model.LabelNames{dstNamespaceLabel}
 
 	if resource.Type != k8s.Namespaces {
@@ -296,7 +298,7 @@ func promDstLabelNames(resource *pb.Resource) model.LabelNames {
 }
 
 // query a named resource
-func promLabels(resource *pb.Resource) model.LabelSet {
+func promQueryLabels(resource *pb.Resource) model.LabelSet {
 	set := model.LabelSet{}
 	if resource.Name != "" {
 		set[promResourceType(resource)] = model.LabelValue(resource.Name)
@@ -308,7 +310,7 @@ func promLabels(resource *pb.Resource) model.LabelSet {
 }
 
 // query a named resource
-func promDstLabels(resource *pb.Resource) model.LabelSet {
+func promDstQueryLabels(resource *pb.Resource) model.LabelSet {
 	set := model.LabelSet{}
 	if resource.Name != "" {
 		if isNonK8sResourceQuery(resource.GetType()) {
@@ -346,22 +348,22 @@ func buildRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labe
 
 	switch out := req.Outbound.(type) {
 	case *pb.StatSummaryRequest_ToResource:
-		labelNames = promLabelNames(req.Selector.Resource)
+		labelNames = promGroupByLabelNames(req.Selector.Resource)
 
-		labels = labels.Merge(promDstLabels(out.ToResource))
-		labels = labels.Merge(promLabels(req.Selector.Resource))
+		labels = labels.Merge(promDstQueryLabels(out.ToResource))
+		labels = labels.Merge(promQueryLabels(req.Selector.Resource))
 		labels = labels.Merge(promDirectionLabels("outbound"))
 
 	case *pb.StatSummaryRequest_FromResource:
-		labelNames = promDstLabelNames(req.Selector.Resource)
+		labelNames = promDstGroupByLabelNames(req.Selector.Resource)
 
-		labels = labels.Merge(promLabels(out.FromResource))
+		labels = labels.Merge(promQueryLabels(out.FromResource))
 		labels = labels.Merge(promDirectionLabels("outbound"))
 
 	default:
-		labelNames = promLabelNames(req.Selector.Resource)
+		labelNames = promGroupByLabelNames(req.Selector.Resource)
 
-		labels = labels.Merge(promLabels(req.Selector.Resource))
+		labels = labels.Merge(promQueryLabels(req.Selector.Resource))
 		labels = labels.Merge(promDirectionLabels("inbound"))
 	}
 
@@ -466,6 +468,7 @@ func extractSampleValue(sample *model.Sample) uint64 {
 func metricToKey(req *pb.StatSummaryRequest, metric model.Metric, groupBy model.LabelNames) pb.Resource {
 	// this key is used to match the metric stats we queried from prometheus
 	// with the k8s object stats we queried from k8s
+	// ASSUMPTION: this code assumes that groupBy is always ordered (..., namespace, name)
 	key := pb.Resource{
 		Type: req.GetSelector().GetResource().GetType(),
 		Name: string(metric[groupBy[len(groupBy)-1]]),
