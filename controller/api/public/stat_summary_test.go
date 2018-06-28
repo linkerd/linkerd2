@@ -321,9 +321,7 @@ status:
   phase: Running
 `,
 				},
-				mockPromResponse: model.Vector{
-					genPromSample("emojivoto-2", "pod", "emojivoto", "success"),
-				},
+				mockPromResponse: model.Vector{},
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
@@ -372,9 +370,7 @@ status:
   phase: Running
 `,
 				},
-				mockPromResponse: model.Vector{
-					genPromSample("emojivoto-2", "pod", "emojivoto", "success"),
-				},
+				mockPromResponse: model.Vector{},
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
