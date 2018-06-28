@@ -954,13 +954,14 @@ type Resource struct {
 	//
 	// If empty, indicates all namespaces should be considered.
 	Namespace string `protobuf:"bytes,1,opt,name=namespace" json:"namespace,omitempty"`
-	// The type of Kubernetes resource.
+	// The type of resource.
 	//
-	// E.g. pod, deployment, service, ...
-	//
-	// If `all` refers, to all resource types.
+	// This can be:
+	// - "all" -- includes all Kubernetes resource types only
+	// - "authority" -- a special resource type derived from request `:authority` values
+	// - Otherwise, the resource type may be any Kubernetes resource (e.g. "namespace", "deployment").
 	Type string `protobuf:"bytes,2,opt,name=type" json:"type,omitempty"`
-	// An optional Kubernetes resource name.
+	// An optional resource name.
 	Name string `protobuf:"bytes,3,opt,name=name" json:"name,omitempty"`
 }
 

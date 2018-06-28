@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"strings"
 	"time"
 
 	proto "github.com/golang/protobuf/proto"
@@ -17,7 +16,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/cache"
 )
 
 type promType string
@@ -30,6 +28,11 @@ type promResult struct {
 type resourceResult struct {
 	res *pb.StatTable
 	err error
+}
+
+type k8sStat struct {
+	object   metav1.Object
+	podStats *podStats
 }
 
 const (
@@ -94,7 +97,11 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 		statReq.Selector.Resource.Type = resource
 
 		go func() {
-			resultChan <- s.resourceQuery(ctx, statReq)
+			if isNonK8sResourceQuery(statReq.GetSelector().GetResource().GetType()) {
+				resultChan <- s.nonK8sResourceQuery(ctx, statReq)
+			} else {
+				resultChan <- s.k8sResourceQuery(ctx, statReq)
+			}
 		}()
 	}
 
@@ -128,93 +135,75 @@ func statSummaryError(req *pb.StatSummaryRequest, message string) *pb.StatSummar
 	}
 }
 
-func (s *grpcServer) resourceQuery(ctx context.Context, req *pb.StatSummaryRequest) resourceResult {
-	objects, err := s.k8sAPI.GetObjects(req.Selector.Resource.Namespace, req.Selector.Resource.Type, req.Selector.Resource.Name)
-	if err != nil {
-		return resourceResult{res: nil, err: err}
-	}
-
-	// TODO: make these one struct:
-	// string => {metav1.ObjectMeta, podCount}
-	objectMap := map[string]metav1.Object{}
-	podStatsMap := map[string]*podStats{}
-
-	for _, object := range objects {
-		key, err := cache.MetaNamespaceKeyFunc(object)
-		if err != nil {
-			return resourceResult{res: nil, err: err}
-		}
-		metaObj, err := meta.Accessor(object)
-		if err != nil {
-			return resourceResult{res: nil, err: err}
-		}
-
-		objectMap[key] = metaObj
-
-		podStats, err := s.getPodStats(object)
-		if err != nil {
-			return resourceResult{res: nil, err: err}
-		}
-		podStatsMap[key] = podStats
-	}
-
-	res, err := s.objectQuery(ctx, req, objectMap, podStatsMap)
-	if err != nil {
-		return resourceResult{res: nil, err: err}
-	}
-
-	return resourceResult{res: res, err: nil}
-}
-
-func (s *grpcServer) objectQuery(
-	ctx context.Context,
-	req *pb.StatSummaryRequest,
-	objects map[string]metav1.Object,
-	podStats map[string]*podStats,
-) (*pb.StatTable, error) {
-	rows := make([]*pb.StatTable_PodGroup_Row, 0)
-
-	requestMetrics, err := s.getPrometheusMetrics(ctx, req, req.TimeWindow)
+func (s *grpcServer) getKubernetesObjectStats(req *pb.StatSummaryRequest) (map[pb.Resource]k8sStat, error) {
+	requestedResource := req.GetSelector().GetResource()
+	objects, err := s.k8sAPI.GetObjects(requestedResource.Namespace, requestedResource.Type, requestedResource.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	var keys []string
+	objectMap := map[pb.Resource]k8sStat{}
 
-	if req.GetOutbound() == nil || req.GetNone() != nil {
-		// if this request doesn't have outbound filtering, return all rows
-		for key := range objects {
-			keys = append(keys, key)
+	for _, object := range objects {
+		metaObj, err := meta.Accessor(object)
+		if err != nil {
+			return nil, err
 		}
-	} else {
-		// otherwise only return rows for which we have stats
-		for key := range requestMetrics {
-			keys = append(keys, key)
+
+		key := pb.Resource{
+			Name:      metaObj.GetName(),
+			Namespace: metaObj.GetNamespace(),
+			Type:      requestedResource.GetType(),
+		}
+
+		podStats, err := s.getPodStats(object)
+		if err != nil {
+			return nil, err
+		}
+
+		objectMap[key] = k8sStat{
+			object:   metaObj,
+			podStats: podStats,
 		}
 	}
+	return objectMap, nil
+}
+
+func (s *grpcServer) k8sResourceQuery(ctx context.Context, req *pb.StatSummaryRequest) resourceResult {
+	k8sObjects, err := s.getKubernetesObjectStats(req)
+	if err != nil {
+		return resourceResult{res: nil, err: err}
+	}
+
+	requestMetrics, err := s.getPrometheusMetrics(ctx, req, req.TimeWindow)
+	if err != nil {
+		return resourceResult{res: nil, err: err}
+	}
+
+	rows := make([]*pb.StatTable_PodGroup_Row, 0)
+	keys := getResultKeys(req, k8sObjects, requestMetrics)
 
 	for _, key := range keys {
-		resource, ok := objects[key]
+		objInfo, ok := k8sObjects[key]
 		if !ok {
 			continue
 		}
-
+		k8sResource := objInfo.object
 		row := pb.StatTable_PodGroup_Row{
 			Resource: &pb.Resource{
-				Namespace: resource.GetNamespace(),
-				Type:      req.Selector.Resource.Type,
-				Name:      resource.GetName(),
+				Name:      k8sResource.GetName(),
+				Namespace: k8sResource.GetNamespace(),
+				Type:      req.GetSelector().GetResource().GetType(),
 			},
 			TimeWindow: req.TimeWindow,
 			Stats:      requestMetrics[key],
 		}
 
-		if podStat, ok := podStats[key]; ok {
-			row.MeshedPodCount = podStat.inMesh
-			row.RunningPodCount = podStat.total
-			row.FailedPodCount = podStat.failed
-			row.ErrorsByPod = podStat.errors
-		}
+		podStat := objInfo.podStats
+		row.MeshedPodCount = podStat.inMesh
+		row.RunningPodCount = podStat.total
+		row.FailedPodCount = podStat.failed
+		row.ErrorsByPod = podStat.errors
 
 		rows = append(rows, &row)
 	}
@@ -227,47 +216,122 @@ func (s *grpcServer) objectQuery(
 		},
 	}
 
-	return &rsp, nil
+	return resourceResult{res: &rsp, err: nil}
 }
 
-func promLabelNames(resource *pb.Resource) model.LabelNames {
+func (s *grpcServer) nonK8sResourceQuery(ctx context.Context, req *pb.StatSummaryRequest) resourceResult {
+	requestMetrics, err := s.getPrometheusMetrics(ctx, req, req.TimeWindow)
+	if err != nil {
+		return resourceResult{res: nil, err: err}
+	}
+	rows := make([]*pb.StatTable_PodGroup_Row, 0)
+
+	for resourceKey, metrics := range requestMetrics {
+		resource := resourceKey
+		resource.Type = req.GetSelector().GetResource().GetType()
+
+		row := pb.StatTable_PodGroup_Row{
+			Resource:   &resource,
+			TimeWindow: req.TimeWindow,
+			Stats:      metrics,
+		}
+		rows = append(rows, &row)
+	}
+
+	rsp := pb.StatTable{
+		Table: &pb.StatTable_PodGroup_{
+			PodGroup: &pb.StatTable_PodGroup{
+				Rows: rows,
+			},
+		},
+	}
+	return resourceResult{res: &rsp, err: nil}
+}
+
+func isNonK8sResourceQuery(resourceType string) bool {
+	return resourceType == k8s.Authorities
+}
+
+// get the list of objects for which we want to return results
+func getResultKeys(
+	req *pb.StatSummaryRequest,
+	k8sObjects map[pb.Resource]k8sStat,
+	metricResults map[pb.Resource]*pb.BasicStats,
+) []pb.Resource {
+	var keys []pb.Resource
+
+	if req.GetOutbound() == nil || req.GetNone() != nil {
+		// if the request doesn't have outbound filtering, return all rows
+		for key := range k8sObjects {
+			keys = append(keys, key)
+		}
+	} else {
+		// if the request does have outbound filtering,
+		// only return rows for which we have stats
+		for key := range metricResults {
+			keys = append(keys, key)
+		}
+	}
+	return keys
+}
+
+// add filtering by resource type
+// note that metricToKey assumes the label ordering (namespace, name)
+func promGroupByLabelNames(resource *pb.Resource) model.LabelNames {
 	names := model.LabelNames{namespaceLabel}
+
 	if resource.Type != k8s.Namespaces {
 		names = append(names, promResourceType(resource))
 	}
 	return names
 }
 
-func promDstLabelNames(resource *pb.Resource) model.LabelNames {
+// add filtering by resource type
+// note that metricToKey assumes the label ordering (namespace, name)
+func promDstGroupByLabelNames(resource *pb.Resource) model.LabelNames {
 	names := model.LabelNames{dstNamespaceLabel}
+
 	if resource.Type != k8s.Namespaces {
 		names = append(names, "dst_"+promResourceType(resource))
 	}
 	return names
 }
 
-func promLabels(resource *pb.Resource) model.LabelSet {
+// query a named resource
+func promQueryLabels(resource *pb.Resource) model.LabelSet {
 	set := model.LabelSet{}
 	if resource.Name != "" {
 		set[promResourceType(resource)] = model.LabelValue(resource.Name)
 	}
-	if resource.Type != k8s.Namespaces && resource.Namespace != "" {
+	if shouldAddNamespaceLabel(resource) {
 		set[namespaceLabel] = model.LabelValue(resource.Namespace)
 	}
 	return set
 }
 
-func promDstLabels(resource *pb.Resource) model.LabelSet {
+// query a named resource
+func promDstQueryLabels(resource *pb.Resource) model.LabelSet {
 	set := model.LabelSet{}
 	if resource.Name != "" {
-		set["dst_"+promResourceType(resource)] = model.LabelValue(resource.Name)
+		if isNonK8sResourceQuery(resource.GetType()) {
+			set[promResourceType(resource)] = model.LabelValue(resource.Name)
+		} else {
+			set["dst_"+promResourceType(resource)] = model.LabelValue(resource.Name)
+			if shouldAddNamespaceLabel(resource) {
+				set[dstNamespaceLabel] = model.LabelValue(resource.Namespace)
+			}
+		}
 	}
-	if resource.Type != k8s.Namespaces && resource.Namespace != "" {
-		set[dstNamespaceLabel] = model.LabelValue(resource.Namespace)
-	}
+
 	return set
 }
 
+// determine if we should add "namespace=<namespace>" to a named query
+func shouldAddNamespaceLabel(resource *pb.Resource) bool {
+	return resource.Type != k8s.Namespaces && resource.Namespace != ""
+}
+
+// query for inbound or outbound requests
 func promDirectionLabels(direction string) model.LabelSet {
 	return model.LabelSet{
 		model.LabelName("direction"): model.LabelValue(direction),
@@ -284,27 +348,29 @@ func buildRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labe
 
 	switch out := req.Outbound.(type) {
 	case *pb.StatSummaryRequest_ToResource:
-		labelNames = promLabelNames(req.Selector.Resource)
+		labelNames = promGroupByLabelNames(req.Selector.Resource)
 
-		labels = labels.Merge(promDstLabels(out.ToResource))
-		labels = labels.Merge(promLabels(req.Selector.Resource))
+		labels = labels.Merge(promDstQueryLabels(out.ToResource))
+		labels = labels.Merge(promQueryLabels(req.Selector.Resource))
 		labels = labels.Merge(promDirectionLabels("outbound"))
 
 	case *pb.StatSummaryRequest_FromResource:
-		labelNames = promDstLabelNames(req.Selector.Resource)
-		labels = labels.Merge(promLabels(out.FromResource))
+		labelNames = promDstGroupByLabelNames(req.Selector.Resource)
+
+		labels = labels.Merge(promQueryLabels(out.FromResource))
 		labels = labels.Merge(promDirectionLabels("outbound"))
 
 	default:
-		labelNames = promLabelNames(req.Selector.Resource)
-		labels = labels.Merge(promLabels(req.Selector.Resource))
+		labelNames = promGroupByLabelNames(req.Selector.Resource)
+
+		labels = labels.Merge(promQueryLabels(req.Selector.Resource))
 		labels = labels.Merge(promDirectionLabels("inbound"))
 	}
 
 	return
 }
 
-func (s *grpcServer) getPrometheusMetrics(ctx context.Context, req *pb.StatSummaryRequest, timeWindow string) (map[string]*pb.BasicStats, error) {
+func (s *grpcServer) getPrometheusMetrics(ctx context.Context, req *pb.StatSummaryRequest, timeWindow string) (map[pb.Resource]*pb.BasicStats, error) {
 	reqLabels, groupBy := buildRequestLabels(req)
 	resultChan := make(chan promResult)
 
@@ -350,17 +416,18 @@ func (s *grpcServer) getPrometheusMetrics(ctx context.Context, req *pb.StatSumma
 		return nil, err
 	}
 
-	return processPrometheusMetrics(results, groupBy), nil
+	return processPrometheusMetrics(req, results, groupBy), nil
 }
 
-func processPrometheusMetrics(results []promResult, groupBy model.LabelNames) map[string]*pb.BasicStats {
-	basicStats := make(map[string]*pb.BasicStats)
+func processPrometheusMetrics(req *pb.StatSummaryRequest, results []promResult, groupBy model.LabelNames) map[pb.Resource]*pb.BasicStats {
+	basicStats := make(map[pb.Resource]*pb.BasicStats)
 
 	for _, result := range results {
 		for _, sample := range result.vec {
-			label := metricToKey(sample.Metric, groupBy)
-			if basicStats[label] == nil {
-				basicStats[label] = &pb.BasicStats{}
+			resource := metricToKey(req, sample.Metric, groupBy)
+
+			if basicStats[resource] == nil {
+				basicStats[resource] = &pb.BasicStats{}
 			}
 
 			value := extractSampleValue(sample)
@@ -369,20 +436,20 @@ func processPrometheusMetrics(results []promResult, groupBy model.LabelNames) ma
 			case promRequests:
 				switch string(sample.Metric[model.LabelName("classification")]) {
 				case "success":
-					basicStats[label].SuccessCount += value
+					basicStats[resource].SuccessCount += value
 				case "failure":
-					basicStats[label].FailureCount += value
+					basicStats[resource].FailureCount += value
 				}
 				switch string(sample.Metric[model.LabelName("tls")]) {
 				case "true":
-					basicStats[label].TlsRequestCount += value
+					basicStats[resource].TlsRequestCount += value
 				}
 			case promLatencyP50:
-				basicStats[label].LatencyMsP50 = value
+				basicStats[resource].LatencyMsP50 = value
 			case promLatencyP95:
-				basicStats[label].LatencyMsP95 = value
+				basicStats[resource].LatencyMsP95 = value
 			case promLatencyP99:
-				basicStats[label].LatencyMsP99 = value
+				basicStats[resource].LatencyMsP99 = value
 			}
 		}
 	}
@@ -398,14 +465,20 @@ func extractSampleValue(sample *model.Sample) uint64 {
 	return value
 }
 
-func metricToKey(metric model.Metric, groupBy model.LabelNames) string {
-	// this needs to match keys generated by MetaNamespaceKeyFunc
-	values := []string{}
-	for _, k := range groupBy {
-		// return namespace/resource
-		values = append(values, string(metric[k]))
+func metricToKey(req *pb.StatSummaryRequest, metric model.Metric, groupBy model.LabelNames) pb.Resource {
+	// this key is used to match the metric stats we queried from prometheus
+	// with the k8s object stats we queried from k8s
+	// ASSUMPTION: this code assumes that groupBy is always ordered (..., namespace, name)
+	key := pb.Resource{
+		Type: req.GetSelector().GetResource().GetType(),
+		Name: string(metric[groupBy[len(groupBy)-1]]),
 	}
-	return strings.Join(values, "/")
+
+	if len(groupBy) == 2 {
+		key.Namespace = string(metric[groupBy[0]])
+	}
+
+	return key
 }
 
 func (s *grpcServer) getPodStats(obj runtime.Object) (*podStats, error) {

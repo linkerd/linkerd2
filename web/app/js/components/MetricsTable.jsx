@@ -7,7 +7,11 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import { Tooltip } from 'antd';
 import { withContext } from './util/AppContext.jsx';
-import { metricToFormatter, numericSort } from './util/Utils.js';
+import {
+  friendlyTitle,
+  metricToFormatter,
+  numericSort
+} from './util/Utils.js';
 
 /*
   Table to display Success Rate, Requests and Latency in tabs.
@@ -38,7 +42,8 @@ const formatTitle = (title, tooltipText) => {
   }
 
 };
-const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceColumn, ConduitLink) => {
+
+const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceColumn, ConduitLink, showGrafanaLink) => {
   let nsColumn = [
     {
       title: formatTitle("Namespace"),
@@ -62,18 +67,22 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
       sorter: (a, b) => (a.name || "").localeCompare(b.name),
       render: row => {
         let nameContents;
-        if (resource.toLowerCase() === "namespace") {
+        if (resource === "namespace") {
           nameContents = <ConduitLink to={"/namespaces/" + row.name}>{row.name}</ConduitLink>;
         } else if (!row.added) {
           nameContents = row.name;
         } else {
-          nameContents = (
-            <GrafanaLink
-              name={row.name}
-              namespace={row.namespace}
-              resource={resource}
-              ConduitLink={ConduitLink} />
-          );
+          if (showGrafanaLink) {
+            nameContents = (
+              <GrafanaLink
+                name={row.name}
+                namespace={row.namespace}
+                resource={resource}
+                ConduitLink={ConduitLink} />
+            );
+          } else {
+            nameContents = row.name;
+          }
         }
         return (
           <React.Fragment>
@@ -133,7 +142,7 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
     }
   ];
 
-  if (resource.toLowerCase() === "namespace" || !showNamespaceColumn) {
+  if (!showNamespaceColumn) {
     return columns;
   } else {
     return _.concat(nsColumn, columns);
@@ -143,6 +152,7 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
 /** @extends React.Component */
 export class MetricsTableBase extends BaseTable {
   static defaultProps = {
+    showGrafanaLink: true,
     showNamespaceColumn: true,
   }
 
@@ -152,7 +162,8 @@ export class MetricsTableBase extends BaseTable {
     }).isRequired,
     metrics: PropTypes.arrayOf(processedMetricsPropType.isRequired).isRequired,
     resource: PropTypes.string.isRequired,
-    showNamespaceColumn: PropTypes.bool,
+    showGrafanaLink: PropTypes.bool,
+    showNamespaceColumn: PropTypes.bool
   }
 
   constructor(props) {
@@ -198,16 +209,29 @@ export class MetricsTableBase extends BaseTable {
       return { text: ns, value: ns };
     });
 
+    let resource = this.props.resource.toLowerCase();
+
+    let showNsColumn = this.props.showNamespaceColumn;
+    if (resource === "namespace") {
+      showNsColumn = false;
+    }
+
+    let showGrafanaLink = this.props.showGrafanaLink;
+    if (resource === "authority") {
+      showGrafanaLink = false;
+    }
+
     let columns = _.compact(columnDefinitions(
-      this.props.resource,
+      resource,
       namespaceFilterText,
       this.onFilterDropdownVisibleChange,
-      this.props.showNamespaceColumn,
-      this.api.ConduitLink
+      showNsColumn,
+      this.api.ConduitLink,
+      showGrafanaLink
     ));
 
     let locale = {
-      emptyText: `No ${this.props.resource}s detected.`
+      emptyText: `No ${friendlyTitle(resource).plural} detected.`
     };
 
     return (

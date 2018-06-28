@@ -79,17 +79,19 @@ func TestGetConfig(t *testing.T) {
 	})
 }
 
-func TestCanonicalKubernetesNameFromFriendlyName(t *testing.T) {
+func TestCanonicalResourceNameFromFriendlyName(t *testing.T) {
 	t.Run("Returns canonical name for all known variants", func(t *testing.T) {
 		expectations := map[string]string{
 			"po":          Pods,
 			"pod":         Pods,
 			"deployment":  Deployments,
 			"deployments": Deployments,
+			"au":          Authorities,
+			"authorities": Authorities,
 		}
 
 		for input, expectedName := range expectations {
-			actualName, err := CanonicalKubernetesNameFromFriendlyName(input)
+			actualName, err := CanonicalResourceNameFromFriendlyName(input)
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
@@ -106,7 +108,7 @@ func TestCanonicalKubernetesNameFromFriendlyName(t *testing.T) {
 		}
 
 		for _, n := range unsupportedNames {
-			out, err := CanonicalKubernetesNameFromFriendlyName(n)
+			out, err := CanonicalResourceNameFromFriendlyName(n)
 			if err == nil {
 				t.Fatalf("Expecting error when resolving [%s], but it did resolve to [%s]", n, out)
 			}

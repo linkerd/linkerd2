@@ -184,9 +184,10 @@ class Sidebar extends React.Component {
               className="sidebar-menu-item"
               key="byresource"
               title={<span className="sidebar-title"><Icon type="bars" />{this.state.collapsed ? "" : "Resources"}</span>}>
+              <Menu.Item><ConduitLink to="/authorities">Authorities</ConduitLink></Menu.Item>
               <Menu.Item><ConduitLink to="/deployments">Deployments</ConduitLink></Menu.Item>
-              <Menu.Item><ConduitLink to="/replicationcontrollers">Replication Controllers</ConduitLink></Menu.Item>
               <Menu.Item><ConduitLink to="/pods">Pods</ConduitLink></Menu.Item>
+              <Menu.Item><ConduitLink to="/replicationcontrollers">Replication Controllers</ConduitLink></Menu.Item>
             </Menu.SubMenu>
 
             <Menu.Item className="sidebar-menu-item" key="/docs">

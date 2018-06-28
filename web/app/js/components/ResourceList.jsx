@@ -1,6 +1,7 @@
 import _ from 'lodash';
 import ConduitSpinner from "./ConduitSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
+import { friendlyTitle } from './util/Utils.js';
 import MetricsTable from './MetricsTable.jsx';
 import PageHeader from './PageHeader.jsx';
 import PropTypes from 'prop-types';
@@ -44,11 +45,9 @@ export class ResourceListBase extends React.Component {
       processedMetrics = processSingleResourceRollup(data[0]);
     }
 
-    const friendlyTitle = _.startCase(this.props.resource);
-
     return (
       <MetricsTable
-        resource={friendlyTitle}
+        resource={friendlyTitle(this.props.resource).singular}
         metrics={processedMetrics} />
     );
   }
@@ -56,13 +55,11 @@ export class ResourceListBase extends React.Component {
   render() {
     const {loading, resource} = this.props;
 
-    const friendlyTitle = _.startCase(resource);
-
     return (
       <div className="page-content">
         <div>
           {this.banner()}
-          {loading ? null : <PageHeader header={`${friendlyTitle}s`} />}
+          {loading ? null : <PageHeader header={friendlyTitle(resource).plural} />}
           {this.content()}
         </div>
       </div>

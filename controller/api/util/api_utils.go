@@ -30,6 +30,7 @@ var (
 		k8s.Namespaces,
 		k8s.Pods,
 		k8s.ReplicationControllers,
+		k8s.Authorities,
 	}
 
 	// ValidDestinations specifies resource types allowed as a destination:
@@ -111,7 +112,7 @@ func BuildStatSummaryRequest(p StatSummaryRequestParams) (*pb.StatSummaryRequest
 		targetNamespace = v1.NamespaceDefault
 	}
 
-	resourceType, err := k8s.CanonicalKubernetesNameFromFriendlyName(p.ResourceType)
+	resourceType, err := k8s.CanonicalResourceNameFromFriendlyName(p.ResourceType)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +136,7 @@ func BuildStatSummaryRequest(p StatSummaryRequestParams) (*pb.StatSummaryRequest
 			p.ToType = resourceType
 		}
 
-		toType, err := k8s.CanonicalKubernetesNameFromFriendlyName(p.ToType)
+		toType, err := k8s.CanonicalResourceNameFromFriendlyName(p.ToType)
 		if err != nil {
 			return nil, err
 		}
@@ -158,7 +159,7 @@ func BuildStatSummaryRequest(p StatSummaryRequestParams) (*pb.StatSummaryRequest
 			p.FromType = resourceType
 		}
 
-		fromType, err := k8s.CanonicalKubernetesNameFromFriendlyName(p.FromType)
+		fromType, err := validateFromResourceType(p.FromType)
 		if err != nil {
 			return nil, err
 		}
@@ -174,6 +175,18 @@ func BuildStatSummaryRequest(p StatSummaryRequestParams) (*pb.StatSummaryRequest
 	}
 
 	return statRequest, nil
+}
+
+// An authority can only receive traffic, not send it, so it can't be a --from
+func validateFromResourceType(resourceType string) (string, error) {
+	name, err := k8s.CanonicalResourceNameFromFriendlyName(resourceType)
+	if err != nil {
+		return "", err
+	}
+	if name == k8s.Authorities {
+		return "", errors.New("cannot query traffic --from an authority")
+	}
+	return name, nil
 }
 
 // BuildResource parses input strings, typically from CLI flags, to build a
@@ -203,7 +216,7 @@ func BuildResource(namespace string, args ...string) (pb.Resource, error) {
 }
 
 func buildResource(namespace string, resType string, name string) (pb.Resource, error) {
-	canonicalType, err := k8s.CanonicalKubernetesNameFromFriendlyName(resType)
+	canonicalType, err := k8s.CanonicalResourceNameFromFriendlyName(resType)
 	if err != nil {
 		return pb.Resource{}, err
 	}

@@ -122,14 +122,15 @@ message Resource {
   // If empty, indicates all namespaces should be considered.
   string namespace = 1;
 
-  // The type of Kubernetes resource.
+  // The type of resource.
   //
-  // E.g. pod, deployment, service, ...
-  //
-  // If `all` refers, to all resource types.
+  // This can be:
+  // - "all" -- includes all Kubernetes resource types only
+  // - "authority" -- a special resource type derived from request `:authority` values
+  // - Otherwise, the resource type may be any Kubernetes resource (e.g. "namespace", "deployment").
   string type = 2;
 
-  // An optional Kubernetes resource name.
+  // An optional resource name.
   string name = 3;
 }
 

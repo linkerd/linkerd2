@@ -87,11 +87,18 @@ func testStatSummary(t *testing.T, expectations []statSumExpected) {
 		}
 
 		if len(exp.expectedResponse.GetOk().StatTables) > 0 {
-			unsortedStatTables := rsp.GetOk().StatTables
-			sort.Sort(byStatResult(unsortedStatTables))
+			rspStatTables := rsp.GetOk().StatTables
+			sort.Sort(byStatResult(rspStatTables))
 
 			okRsp := &pb.StatSummaryResponse_Ok{
-				StatTables: unsortedStatTables,
+				StatTables: rspStatTables,
+			}
+
+			for i, st := range rspStatTables {
+				expected := exp.expectedResponse.GetOk().StatTables[i]
+				if !proto.Equal(st, expected) {
+					t.Fatalf("Expected: %+v\n Got: %+v", expected, st)
+				}
 			}
 
 			if !proto.Equal(exp.expectedResponse.GetOk(), okRsp) {
@@ -188,7 +195,11 @@ status:
 					},
 					TimeWindow: "1m",
 				},
-				expectedResponse: GenStatSummaryResponse("emoji", "deployments", "emojivoto", 1, 2, 0),
+				expectedResponse: GenStatSummaryResponse("emoji", "deployments", "emojivoto", &PodCounts{
+					MeshedPods:  1,
+					RunningPods: 2,
+					FailedPods:  0,
+				}),
 			},
 		}
 
@@ -230,7 +241,11 @@ status:
 					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
 					`sum(increase(response_total{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod, classification, tls)`,
 				},
-				expectedResponse: GenStatSummaryResponse("emojivoto-1", "pods", "emojivoto", 1, 1, 0),
+				expectedResponse: GenStatSummaryResponse("emojivoto-1", "pods", "emojivoto", &PodCounts{
+					MeshedPods:  1,
+					RunningPods: 1,
+					FailedPods:  0,
+				}),
 			},
 		}
 
@@ -280,6 +295,104 @@ status:
 					`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="outbound", namespace="emojivoto", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
 					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="outbound", namespace="emojivoto", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
 					`sum(increase(response_total{direction="outbound", namespace="emojivoto", pod="emojivoto-2"}[1m])) by (dst_namespace, dst_pod, classification, tls)`,
+				},
+				expectedResponse: genEmptyResponse(),
+			},
+		}
+
+		testStatSummary(t, expectations)
+	})
+
+	t.Run("Queries prometheus for outbound metrics if --to resource is specified", func(t *testing.T) {
+		expectations := []statSumExpected{
+			statSumExpected{
+				err: nil,
+				k8sConfigs: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-1
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+  annotations:
+    conduit.io/proxy-version: testinjectversion
+status:
+  phase: Running
+`,
+				},
+				mockPromResponse: model.Vector{},
+				req: pb.StatSummaryRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Name:      "emojivoto-1",
+							Namespace: "emojivoto",
+							Type:      pkgK8s.Pods,
+						},
+					},
+					TimeWindow: "1m",
+					Outbound: &pb.StatSummaryRequest_ToResource{
+						ToResource: &pb.Resource{
+							Name:      "emojivoto-2",
+							Namespace: "emojivoto",
+							Type:      pkgK8s.Pods,
+						},
+					},
+				},
+				expectedPrometheusQueries: []string{
+					`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
+					`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
+					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
+					`sum(increase(response_total{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod, classification, tls)`,
+				},
+				expectedResponse: genEmptyResponse(),
+			},
+		}
+
+		testStatSummary(t, expectations)
+	})
+
+	t.Run("Queries prometheus for outbound metrics if --to resource is specified and --to-namespace is different from the resource namespace", func(t *testing.T) {
+		expectations := []statSumExpected{
+			statSumExpected{
+				err: nil,
+				k8sConfigs: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-1
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+  annotations:
+    conduit.io/proxy-version: testinjectversion
+status:
+  phase: Running
+`,
+				},
+				mockPromResponse: model.Vector{},
+				req: pb.StatSummaryRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Name:      "emojivoto-1",
+							Namespace: "emojivoto",
+							Type:      pkgK8s.Pods,
+						},
+					},
+					TimeWindow: "1m",
+					Outbound: &pb.StatSummaryRequest_ToResource{
+						ToResource: &pb.Resource{
+							Name:      "emojivoto-2",
+							Namespace: "totallydifferent",
+							Type:      pkgK8s.Pods,
+						},
+					},
+				},
+				expectedPrometheusQueries: []string{
+					`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="totallydifferent", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
+					`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="totallydifferent", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
+					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="totallydifferent", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
+					`sum(increase(response_total{direction="outbound", dst_namespace="totallydifferent", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod, classification, tls)`,
 				},
 				expectedResponse: genEmptyResponse(),
 			},
@@ -361,6 +474,29 @@ status:
 									Table: &pb.StatTable_PodGroup_{
 										PodGroup: &pb.StatTable_PodGroup{
 											Rows: []*pb.StatTable_PodGroup_Row{},
+										},
+									},
+								},
+								&pb.StatTable{
+									Table: &pb.StatTable_PodGroup_{
+										PodGroup: &pb.StatTable_PodGroup{
+											Rows: []*pb.StatTable_PodGroup_Row{
+												&pb.StatTable_PodGroup_Row{
+													Resource: &pb.Resource{
+														Namespace: "emojivoto",
+														Type:      "authorities",
+													},
+													TimeWindow: "1m",
+													Stats: &pb.BasicStats{
+														SuccessCount:    123,
+														FailureCount:    0,
+														LatencyMsP50:    123,
+														LatencyMsP95:    123,
+														LatencyMsP99:    123,
+														TlsRequestCount: 123,
+													},
+												},
+											},
 										},
 									},
 								},
@@ -722,11 +858,102 @@ status:
 						},
 						TimeWindow: "1m",
 					},
-					expectedResponse: GenStatSummaryResponse("emoji", "deployments", "emojivoto", 1, 2, 1),
+					expectedResponse: GenStatSummaryResponse("emoji", "deployments", "emojivoto", &PodCounts{
+						MeshedPods:  1,
+						RunningPods: 2,
+						FailedPods:  1,
+					}),
 				},
 			}
 
 			testStatSummary(t, expectations)
 		})
+	})
+
+	t.Run("Queries prometheus for authority stats", func(t *testing.T) {
+		expectations := []statSumExpected{
+			statSumExpected{
+				err: nil,
+				k8sConfigs: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-1
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+  annotations:
+    conduit.io/proxy-version: testinjectversion
+status:
+  phase: Running
+`,
+				},
+				mockPromResponse: model.Vector{
+					genPromSample("10.1.1.239:9995", "authority", "conduit", "success"),
+				},
+				req: pb.StatSummaryRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Namespace: "conduit",
+							Type:      pkgK8s.Authorities,
+						},
+					},
+					TimeWindow: "1m",
+				},
+				expectedPrometheusQueries: []string{
+					`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="conduit"}[1m])) by (le, namespace, authority))`,
+					`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="conduit"}[1m])) by (le, namespace, authority))`,
+					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="conduit"}[1m])) by (le, namespace, authority))`,
+					`sum(increase(response_total{direction="inbound", namespace="conduit"}[1m])) by (namespace, authority, classification, tls)`,
+				},
+				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", "authorities", "conduit", nil),
+			},
+		}
+
+		testStatSummary(t, expectations)
+	})
+
+	t.Run("Queries prometheus for a named authority", func(t *testing.T) {
+		expectations := []statSumExpected{
+			statSumExpected{
+				err: nil,
+				k8sConfigs: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-1
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+  annotations:
+    conduit.io/proxy-version: testinjectversion
+status:
+  phase: Running
+`,
+				},
+				mockPromResponse: model.Vector{
+					genPromSample("10.1.1.239:9995", "authority", "conduit", "success"),
+				},
+				req: pb.StatSummaryRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Namespace: "conduit",
+							Type:      pkgK8s.Authorities,
+							Name:      "10.1.1.239:9995",
+						},
+					},
+					TimeWindow: "1m",
+				},
+				expectedPrometheusQueries: []string{
+					`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{authority="10.1.1.239:9995", direction="inbound", namespace="conduit"}[1m])) by (le, namespace, authority))`,
+					`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{authority="10.1.1.239:9995", direction="inbound", namespace="conduit"}[1m])) by (le, namespace, authority))`,
+					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{authority="10.1.1.239:9995", direction="inbound", namespace="conduit"}[1m])) by (le, namespace, authority))`,
+					`sum(increase(response_total{authority="10.1.1.239:9995", direction="inbound", namespace="conduit"}[1m])) by (namespace, authority, classification, tls)`,
+				},
+				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", "authorities", "conduit", nil),
+			},
+		}
+
+		testStatSummary(t, expectations)
 	})
 }

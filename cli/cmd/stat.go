@@ -53,8 +53,10 @@ func newCmdStat() *cobra.Command {
   Examples:
   * deploy
   * deploy/my-deploy
-  * deploy my-deploy
+  * rc/my-replication-controller
   * ns/my-ns
+  * authority
+  * au/my-authority
   * all
 
 Valid resource types include:
@@ -63,7 +65,8 @@ Valid resource types include:
   * namespaces
   * pods
   * replicationcontrollers
-  * services (only supported if a "--from" is also specified, or as a "--to")
+  * authorities (not supported in --from)
+  * services (only supported if a --from is also specified, or as a --to)
   * all (all resource types, not supported in --from or --to)
 
 This command will hide resources that have completed, such as pods that are in the Succeeded or Failed phases.
@@ -200,8 +203,12 @@ func writeStatsToBuffer(resp *pb.StatSummaryResponse, reqResourceType string, w 
 				maxNamespaceLength = len(namespace)
 			}
 
+			meshedCount := fmt.Sprintf("%d/%d", r.MeshedPodCount, r.RunningPodCount)
+			if resourceKey == k8s.Authorities {
+				meshedCount = "-"
+			}
 			statTables[resourceKey][key] = &row{
-				meshed: fmt.Sprintf("%d/%d", r.MeshedPodCount, r.RunningPodCount),
+				meshed: meshedCount,
 			}
 
 			if r.Stats != nil {
@@ -303,7 +310,8 @@ func getNamePrefix(resourceType string) string {
 	if resourceType == "" {
 		return ""
 	} else {
-		return k8s.ShortNameFromCanonicalKubernetesName(resourceType) + "/"
+		canonicalType := k8s.ShortNameFromCanonicalResourceName(resourceType)
+		return canonicalType + "/"
 	}
 }
 

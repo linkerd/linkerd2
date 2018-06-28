@@ -106,6 +106,12 @@ type MockProm struct {
 	rwLock          sync.Mutex
 }
 
+type PodCounts struct {
+	MeshedPods  uint64
+	RunningPods uint64
+	FailedPods  uint64
+}
+
 // satisfies v1.API
 func (m *MockProm) Query(ctx context.Context, query string, ts time.Time) (model.Value, error) {
 	m.rwLock.Lock()
@@ -126,8 +132,31 @@ func (m *MockProm) Series(ctx context.Context, matches []string, startTime time.
 	return nil, nil
 }
 
-func GenStatSummaryResponse(resName, resType, resNs string, meshedPods uint64, runningPods uint64, failedPods uint64) pb.StatSummaryResponse {
-	return pb.StatSummaryResponse{
+func GenStatSummaryResponse(resName, resType, resNs string, counts *PodCounts) pb.StatSummaryResponse {
+	statTableRow := &pb.StatTable_PodGroup_Row{
+		Resource: &pb.Resource{
+			Namespace: resNs,
+			Type:      resType,
+			Name:      resName,
+		},
+		Stats: &pb.BasicStats{
+			SuccessCount:    123,
+			FailureCount:    0,
+			LatencyMsP50:    123,
+			LatencyMsP95:    123,
+			LatencyMsP99:    123,
+			TlsRequestCount: 123,
+		},
+		TimeWindow: "1m",
+	}
+
+	if counts != nil {
+		statTableRow.MeshedPodCount = counts.MeshedPods
+		statTableRow.RunningPodCount = counts.RunningPods
+		statTableRow.FailedPodCount = counts.FailedPods
+	}
+
+	resp := pb.StatSummaryResponse{
 		Response: &pb.StatSummaryResponse_Ok_{ // https://github.com/golang/protobuf/issues/205
 			Ok: &pb.StatSummaryResponse_Ok{
 				StatTables: []*pb.StatTable{
@@ -135,25 +164,7 @@ func GenStatSummaryResponse(resName, resType, resNs string, meshedPods uint64, r
 						Table: &pb.StatTable_PodGroup_{
 							PodGroup: &pb.StatTable_PodGroup{
 								Rows: []*pb.StatTable_PodGroup_Row{
-									&pb.StatTable_PodGroup_Row{
-										Resource: &pb.Resource{
-											Namespace: resNs,
-											Type:      resType,
-											Name:      resName,
-										},
-										Stats: &pb.BasicStats{
-											SuccessCount:    123,
-											FailureCount:    0,
-											LatencyMsP50:    123,
-											LatencyMsP95:    123,
-											LatencyMsP99:    123,
-											TlsRequestCount: 123,
-										},
-										TimeWindow:      "1m",
-										MeshedPodCount:  meshedPods,
-										RunningPodCount: runningPods,
-										FailedPodCount:  failedPods,
-									},
+									statTableRow,
 								},
 							},
 						},
@@ -162,4 +173,6 @@ func GenStatSummaryResponse(resName, resType, resNs string, meshedPods uint64, r
 			},
 		},
 	}
+
+	return resp
 }

@@ -1,6 +1,7 @@
 import _ from 'lodash';
 import ConduitSpinner from "./ConduitSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
+import { friendlyTitle } from './util/Utils.js';
 import MetricsTable from './MetricsTable.jsx';
 import PageHeader from './PageHeader.jsx';
 import { processMultiResourceRollup } from './util/MetricUtils.js';
@@ -104,15 +105,15 @@ class Namespaces extends React.Component {
     });
   }
 
-  renderResourceSection(friendlyTitle, metrics) {
+  renderResourceSection(resource, metrics) {
     if (_.isEmpty(metrics)) {
       return null;
     }
     return (
       <div className="page-section">
-        <h1>{friendlyTitle}s</h1>
+        <h1>{friendlyTitle(resource).plural}</h1>
         <MetricsTable
-          resource={friendlyTitle}
+          resource={resource}
           metrics={metrics}
           showNamespaceColumn={false} />
       </div>
@@ -132,6 +133,7 @@ class Namespaces extends React.Component {
             {this.renderResourceSection("Deployment", this.state.metrics.deployments)}
             {this.renderResourceSection("Replication Controller", this.state.metrics.replicationcontrollers)}
             {this.renderResourceSection("Pod", this.state.metrics.pods)}
+            {this.renderResourceSection("Authority", this.state.metrics.authorities)}
           </div>
         )}
       </div>);

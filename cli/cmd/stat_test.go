@@ -10,7 +10,13 @@ func TestStat(t *testing.T) {
 	t.Run("Returns namespace stats", func(t *testing.T) {
 		mockClient := &public.MockConduitApiClient{}
 
-		response := public.GenStatSummaryResponse("emoji", "namespaces", "emojivoto", 1, 2, 0)
+		counts := &public.PodCounts{
+			MeshedPods:  1,
+			RunningPods: 2,
+			FailedPods:  0,
+		}
+
+		response := public.GenStatSummaryResponse("emoji", "namespaces", "emojivoto", counts)
 
 		mockClient.StatSummaryResponseToReturn = &response
 
