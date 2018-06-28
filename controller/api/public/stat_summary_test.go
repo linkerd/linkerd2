@@ -303,7 +303,7 @@ status:
 		testStatSummary(t, expectations)
 	})
 
-	t.Run("Queries prometheus for outbound metrics if --to resource is specified, ignores resource name", func(t *testing.T) {
+	t.Run("Queries prometheus for outbound metrics if --to resource is specified", func(t *testing.T) {
 		expectations := []statSumExpected{
 			statSumExpected{
 				err: nil,
