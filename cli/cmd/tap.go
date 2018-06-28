@@ -259,19 +259,19 @@ func renderTapEvent(event *common.TapEvent) string {
 		dst,
 	)
 
-	http := event.GetHttp()
-	httpEvent := http.Event
+	httpEvent := event.GetHttp().GetEvent()
 	switch ev := httpEvent.(type) {
 	case *common.TapEvent_Http_RequestInit_:
 		return fmt.Sprintf("req id=%d:%d %s :method=%s :authority=%s :path=%s secured=%s",
 			ev.RequestInit.Id.Base,
 			ev.RequestInit.Id.Stream,
 			flow,
-			ev.RequestInit.Method.GetRegistered().String(),
-			ev.RequestInit.Authority,
-			ev.RequestInit.Path,
+			ev.RequestInit.GetMethod().GetRegistered().String(),
+			ev.RequestInit.GetAuthority(),
+			ev.RequestInit.GetPath(),
 			isSecured,
 		)
+
 	case *common.TapEvent_Http_ResponseInit_:
 		return fmt.Sprintf("rsp id=%d:%d %s :status=%d latency=%dµs secured=%s",
 			ev.ResponseInit.Id.Base,
@@ -281,10 +281,10 @@ func renderTapEvent(event *common.TapEvent) string {
 			ev.ResponseInit.GetSinceRequestInit().Nanos/1000,
 			isSecured,
 		)
-	case *common.TapEvent_Http_ResponseEnd_:
 
-		if ev.ResponseEnd.Eos != nil {
-			switch eos := ev.ResponseEnd.Eos.End.(type) {
+	case *common.TapEvent_Http_ResponseEnd_:
+		if ev.ResponseEnd.GetEos() != nil {
+			switch eos := ev.ResponseEnd.GetEos().GetEnd().(type) {
 			case *common.Eos_GrpcStatusCode:
 				return fmt.Sprintf("end id=%d:%d %s grpc-status=%s duration=%dµs response-length=%dB secured=%s",
 					ev.ResponseEnd.Id.Base,
