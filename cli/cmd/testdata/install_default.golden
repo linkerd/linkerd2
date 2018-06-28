@@ -503,6 +503,8 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: CONDUIT_PROXY_OUTBOUND_ROUTER_CAPACITY
+          value: "10000"
         image: gcr.io/linkerd-io/proxy:undefined
         imagePullPolicy: IfNotPresent
         name: linkerd-proxy
