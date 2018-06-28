@@ -336,7 +336,7 @@ status:
 					Outbound: &pb.StatSummaryRequest_ToResource{
 						ToResource: &pb.Resource{
 							Name:      "emojivoto-2",
-							Namespace: "emojivoto",
+							Namespace: "",
 							Type:      pkgK8s.Pods,
 						},
 					},
