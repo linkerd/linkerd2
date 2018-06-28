@@ -134,6 +134,9 @@ func injectObjectMeta(t *metaV1.ObjectMeta, k8sLabels map[string]string, options
  * injected, return false.
  */
 func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameOverride string, options *injectOptions) bool {
+	// Pods with `hostNetwork=true` share a network namespace with the host. The
+	// init-container would destroy the iptables configuration on the host, so
+	// skip the injection in this case.
 	if t.HostNetwork {
 		return false
 	}
