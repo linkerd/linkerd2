@@ -76,18 +76,19 @@ func newPublicAPIClient() (pb.ApiClient, error) {
 }
 
 type proxyConfigOptions struct {
-	conduitVersion   string
-	proxyImage       string
-	initImage        string
-	dockerRegistry   string
-	imagePullPolicy  string
-	proxyUID         int64
-	proxyLogLevel    string
-	proxyBindTimeout string
-	proxyAPIPort     uint
-	proxyControlPort uint
-	proxyMetricsPort uint
-	tls              string
+	conduitVersion        string
+	proxyImage            string
+	initImage             string
+	dockerRegistry        string
+	imagePullPolicy       string
+	proxyUID              int64
+	proxyLogLevel         string
+	proxyBindTimeout      string
+	proxyAPIPort          uint
+	proxyControlPort      uint
+	proxyMetricsPort      uint
+	proxyOutboundCapacity map[string]uint
+	tls                   string
 }
 
 const (
@@ -97,18 +98,19 @@ const (
 
 func newProxyConfigOptions() *proxyConfigOptions {
 	return &proxyConfigOptions{
-		conduitVersion:   version.Version,
-		proxyImage:       defaultDockerRegistry + "/proxy",
-		initImage:        defaultDockerRegistry + "/proxy-init",
-		dockerRegistry:   defaultDockerRegistry,
-		imagePullPolicy:  "IfNotPresent",
-		proxyUID:         2102,
-		proxyLogLevel:    "warn,conduit_proxy=info",
-		proxyBindTimeout: "10s",
-		proxyAPIPort:     8086,
-		proxyControlPort: 4190,
-		proxyMetricsPort: 4191,
-		tls:              "",
+		conduitVersion:        version.Version,
+		proxyImage:            defaultDockerRegistry + "/proxy",
+		initImage:             defaultDockerRegistry + "/proxy-init",
+		dockerRegistry:        defaultDockerRegistry,
+		imagePullPolicy:       "IfNotPresent",
+		proxyUID:              2102,
+		proxyLogLevel:         "warn,conduit_proxy=info",
+		proxyBindTimeout:      "10s",
+		proxyAPIPort:          8086,
+		proxyControlPort:      4190,
+		proxyMetricsPort:      4191,
+		proxyOutboundCapacity: map[string]uint{},
+		tls: "",
 	}
 }
 
