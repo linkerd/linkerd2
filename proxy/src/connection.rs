@@ -290,9 +290,6 @@ impl Future for Connecting {
                                     -> falling back to plaintext",
                                 self.addr, e,
                             );
-                            // XXX: We can't get the old connection back
-                            // from the failed upgrade future, so we have
-                            // to try reconnecting.
                             let connect = TcpStream::connect(&self.addr);
                             // TODO: emit a `HandshakeFailed` telemetry event.
                             let reason = tls::ReasonForNoTls::HandshakeFailed;

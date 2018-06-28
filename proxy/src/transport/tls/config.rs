@@ -105,8 +105,6 @@ pub enum ReasonForNoTls {
     NotProxyTls,
 
     /// We fell back to plaintext because the TLS handshake failed.
-    // TODO: Perhaps this should store some more detailed information on
-    // why the handshake failed...
     HandshakeFailed,
 }
 
