@@ -217,7 +217,7 @@ export class MetricsTableBase extends BaseTable {
     }
 
     let showGrafanaLink = this.props.showGrafanaLink;
-    if (resource === "authorities") {
+    if (resource === "authority") {
       showGrafanaLink = false;
     }
 
