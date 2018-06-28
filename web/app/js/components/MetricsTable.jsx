@@ -42,7 +42,8 @@ const formatTitle = (title, tooltipText) => {
   }
 
 };
-const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceColumn, ConduitLink) => {
+
+const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceColumn, ConduitLink, showGrafanaLink) => {
   let nsColumn = [
     {
       title: formatTitle("Namespace"),
@@ -71,13 +72,17 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
         } else if (!row.added) {
           nameContents = row.name;
         } else {
-          nameContents = (
-            <GrafanaLink
-              name={row.name}
-              namespace={row.namespace}
-              resource={resource}
-              ConduitLink={ConduitLink} />
-          );
+          if (showGrafanaLink) {
+            nameContents = (
+              <GrafanaLink
+                name={row.name}
+                namespace={row.namespace}
+                resource={resource}
+                ConduitLink={ConduitLink} />
+            );
+          } else {
+            nameContents = row.name;
+          }
         }
         return (
           <React.Fragment>
@@ -147,6 +152,7 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
 /** @extends React.Component */
 export class MetricsTableBase extends BaseTable {
   static defaultProps = {
+    showGrafanaLink: true,
     showNamespaceColumn: true,
   }
 
@@ -156,7 +162,8 @@ export class MetricsTableBase extends BaseTable {
     }).isRequired,
     metrics: PropTypes.arrayOf(processedMetricsPropType.isRequired).isRequired,
     resource: PropTypes.string.isRequired,
-    showNamespaceColumn: PropTypes.bool,
+    showGrafanaLink: PropTypes.bool,
+    showNamespaceColumn: PropTypes.bool
   }
 
   constructor(props) {
@@ -209,12 +216,18 @@ export class MetricsTableBase extends BaseTable {
       showNsColumn = false;
     }
 
+    let showGrafanaLink = this.props.showGrafanaLink;
+    if (resource === "authorities") {
+      showGrafanaLink = false;
+    }
+
     let columns = _.compact(columnDefinitions(
       resource,
       namespaceFilterText,
       this.onFilterDropdownVisibleChange,
       showNsColumn,
-      this.api.ConduitLink
+      this.api.ConduitLink,
+      showGrafanaLink
     ));
 
     let locale = {
