@@ -361,7 +361,6 @@ func injectResource(bytes []byte, options *injectOptions) ([]byte, error) {
 	//     across all controller pod replicas. This is undesirable as we would want all traffic between
 	//	   containers to be self contained.
 	//  4. We skip recording telemetry for intra-pod traffic within the control plane.
-	var name string
 	switch meta.Kind {
 	case "Deployment":
 		var deployment v1beta1.Deployment
@@ -369,8 +368,7 @@ func injectResource(bytes []byte, options *injectOptions) ([]byte, error) {
 			return nil, err
 		}
 
-		name = deployment.Name
-		if name == ControlPlanePodName && deployment.Namespace == controlPlaneNamespace {
+		if deployment.Name == ControlPlanePodName && deployment.Namespace == controlPlaneNamespace {
 			DNSNameOverride = LocalhostDNSNameOverride
 		}
 
@@ -385,7 +383,6 @@ func injectResource(bytes []byte, options *injectOptions) ([]byte, error) {
 			return nil, err
 		}
 
-		name = rc.Name
 		obj = &rc
 		k8sLabels[k8s.ProxyReplicationControllerLabel] = rc.Name
 		podSpec = &rc.Spec.Template.Spec
@@ -397,7 +394,6 @@ func injectResource(bytes []byte, options *injectOptions) ([]byte, error) {
 			return nil, err
 		}
 
-		name = rs.Name
 		obj = &rs
 		k8sLabels[k8s.ProxyReplicaSetLabel] = rs.Name
 		podSpec = &rs.Spec.Template.Spec
@@ -409,7 +405,6 @@ func injectResource(bytes []byte, options *injectOptions) ([]byte, error) {
 			return nil, err
 		}
 
-		name = job.Name
 		obj = &job
 		k8sLabels[k8s.ProxyJobLabel] = job.Name
 		podSpec = &job.Spec.Template.Spec
@@ -421,7 +416,6 @@ func injectResource(bytes []byte, options *injectOptions) ([]byte, error) {
 			return nil, err
 		}
 
-		name = ds.Name
 		obj = &ds
 		k8sLabels[k8s.ProxyDaemonSetLabel] = ds.Name
 		podSpec = &ds.Spec.Template.Spec
@@ -433,7 +427,6 @@ func injectResource(bytes []byte, options *injectOptions) ([]byte, error) {
 			return nil, err
 		}
 
-		name = statefulset.Name
 		obj = &statefulset
 		k8sLabels[k8s.ProxyStatefulSetLabel] = statefulset.Name
 		podSpec = &statefulset.Spec.Template.Spec
@@ -445,7 +438,6 @@ func injectResource(bytes []byte, options *injectOptions) ([]byte, error) {
 			return nil, err
 		}
 
-		name = pod.Name
 		obj = &pod
 		podSpec = &pod.Spec
 		objectMeta = &pod.ObjectMeta
@@ -458,27 +450,28 @@ func injectResource(bytes []byte, options *injectOptions) ([]byte, error) {
 
 	}
 
-	// The namespace isn't necessarily in the input so it has to be substituted
-	// at runtime. The proxy recognizes the "$NAME" syntax for this variable
-	// but not necessarily other variables.
-	identity := k8s.TLSIdentity {
-		Name: name,
-		Kind: k8s.GetOwnerTypeFromLabels(k8sLabels),
-		Namespace: "$" + PodNamespaceEnvVarName,
-		ControllerNamespace: controlPlaneNamespace,
-	}
-
 	// If we don't inject anything into the pod template then output the
 	// original serialization of the original object. Otherwise, output the
 	// serialization of the modified object.
 	output := bytes
-	if podSpec != nil &&
-		injectPodSpec(podSpec, identity, DNSNameOverride, options) {
-		injectObjectMeta(objectMeta, k8sLabels, options)
-		var err error
-		output, err = yaml.Marshal(obj)
-		if err != nil {
-			return nil, err
+	if podSpec != nil {
+		// The namespace isn't necessarily in the input so it has to be substituted
+		// at runtime. The proxy recognizes the "$NAME" syntax for this variable
+		// but not necessarily other variables.
+		identity := k8s.TLSIdentity{
+			Name:                objectMeta.Name,
+			Kind:                k8s.GetOwnerTypeFromLabels(k8sLabels),
+			Namespace:           "$" + PodNamespaceEnvVarName,
+			ControllerNamespace: controlPlaneNamespace,
+		}
+
+		if injectPodSpec(podSpec, identity, DNSNameOverride, options) {
+			injectObjectMeta(objectMeta, k8sLabels, options)
+			var err error
+			output, err = yaml.Marshal(obj)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
