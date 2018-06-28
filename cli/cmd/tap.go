@@ -262,8 +262,8 @@ func renderTapEvent(event *common.TapEvent) string {
 	switch ev := event.GetHttp().GetEvent().(type) {
 	case *common.TapEvent_Http_RequestInit_:
 		return fmt.Sprintf("req id=%d:%d %s :method=%s :authority=%s :path=%s secured=%s",
-			ev.RequestInit.Id.Base,
-			ev.RequestInit.Id.Stream,
+			ev.RequestInit.GetId().GetBase(),
+			ev.RequestInit.GetId().GetStream(),
 			flow,
 			ev.RequestInit.GetMethod().GetRegistered().String(),
 			ev.RequestInit.GetAuthority(),
@@ -273,8 +273,8 @@ func renderTapEvent(event *common.TapEvent) string {
 
 	case *common.TapEvent_Http_ResponseInit_:
 		return fmt.Sprintf("rsp id=%d:%d %s :status=%d latency=%dµs secured=%s",
-			ev.ResponseInit.Id.Base,
-			ev.ResponseInit.Id.Stream,
+			ev.ResponseInit.GetId().GetBase(),
+			ev.ResponseInit.GetId().GetStream(),
 			flow,
 			ev.ResponseInit.GetHttpStatus(),
 			ev.ResponseInit.GetSinceRequestInit().Nanos/1000,
@@ -285,32 +285,32 @@ func renderTapEvent(event *common.TapEvent) string {
 		switch eos := ev.ResponseEnd.GetEos().GetEnd().(type) {
 		case *common.Eos_GrpcStatusCode:
 			return fmt.Sprintf("end id=%d:%d %s grpc-status=%s duration=%dµs response-length=%dB secured=%s",
-				ev.ResponseEnd.Id.Base,
-				ev.ResponseEnd.Id.Stream,
+				ev.ResponseEnd.GetId().GetBase(),
+				ev.ResponseEnd.GetId().GetStream(),
 				flow,
 				codes.Code(eos.GrpcStatusCode),
-				millisSinceInit(ev.ResponseEnd),
+				ev.ResponseEnd.GetSinceResponseInit().GetNanos()/1000,
 				ev.ResponseEnd.GetResponseBytes(),
 				isSecured,
 			)
 
 		case *common.Eos_ResetErrorCode:
 			return fmt.Sprintf("end id=%d:%d %s reset-error=%+v duration=%dµs response-length=%dB secured=%s",
-				ev.ResponseEnd.Id.Base,
-				ev.ResponseEnd.Id.Stream,
+				ev.ResponseEnd.GetId().GetBase(),
+				ev.ResponseEnd.GetId().GetStream(),
 				flow,
 				eos.ResetErrorCode,
-				millisSinceInit(ev.ResponseEnd),
+				ev.ResponseEnd.GetSinceResponseInit().GetNanos()/1000,
 				ev.ResponseEnd.GetResponseBytes(),
 				isSecured,
 			)
 
 		default:
 			return fmt.Sprintf("end id=%d:%d %s duration=%dµs response-length=%dB secured=%s",
-				ev.ResponseEnd.Id.Base,
-				ev.ResponseEnd.Id.Stream,
+				ev.ResponseEnd.GetId().GetBase(),
+				ev.ResponseEnd.GetId().GetStream(),
 				flow,
-				millisSinceInit(ev.ResponseEnd),
+				ev.ResponseEnd.GetSinceResponseInit().GetNanos()/1000,
 				ev.ResponseEnd.GetResponseBytes(),
 				isSecured,
 			)
@@ -319,12 +319,4 @@ func renderTapEvent(event *common.TapEvent) string {
 	default:
 		return fmt.Sprintf("unknown %s", flow)
 	}
-}
-
-func millisSinceInit(end *common.TapEvent_Http_ResponseEnd) int32 {
-	var latency int32
-	if init := end.GetSinceResponseInit(); init != nil {
-		latency = init.Nanos / 1000
-	}
-	return latency
 }
