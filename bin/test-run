@@ -31,8 +31,8 @@ function check_if_k8s_reachable(){
 }
 
 function run_test(){
-    printf "Running test [%s]\\n" "$(basename "$1")"
-    go test -v "$1" -conduit "$conduit_path" -conduit-namespace "$conduit_namespace" -integration-tests
+    printf "Running test [%s] %s\\n" "$(basename "$1")" "$2"
+    go test -v "$1" -conduit "$conduit_path" -conduit-namespace "$conduit_namespace" -integration-tests "$2"
 }
 
 conduit_path=$1
@@ -55,8 +55,17 @@ printf "==================RUNNING ALL TESTS==================\\n"
 printf "Testing Conduit version [%s] namespace [%s]\\n" "$conduit_version" "$conduit_namespace"
 
 exit_code=0
+
 run_test "$test_directory/install_test.go" || exit_code=$?
 for test in $(find "$test_directory" -mindepth 2 -name '*_test.go'); do
     run_test "$test" || exit_code=$?
 done
+run_test "$test_directory/install_test.go" "-enable-tls" || exit_code=$?
+
+if [ $exit_code -eq 0 ]; then
+    printf "\\n=== PASS: all tests passed\\n"
+else
+    printf "\\n=== FAIL: at least one test failed\\n"
+fi
+
 exit $exit_code

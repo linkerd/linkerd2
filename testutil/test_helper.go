@@ -19,6 +19,7 @@ type TestHelper struct {
 	conduit    string
 	version    string
 	namespace  string
+	tls        bool
 	httpClient http.Client
 	KubernetesHelper
 }
@@ -33,6 +34,7 @@ func NewTestHelper() *TestHelper {
 
 	conduit := flag.String("conduit", "", "path to the conduit binary to test")
 	namespace := flag.String("conduit-namespace", "conduit", "the namespace where conduit is installed")
+	tls := flag.Bool("enable-tls", false, "enable TLS in tests")
 	runTests := flag.Bool("integration-tests", false, "must be provided to run the integration tests")
 	verbose := flag.Bool("verbose", false, "turn on debug logging")
 	flag.Parse()
@@ -60,9 +62,15 @@ func NewTestHelper() *TestHelper {
 		log.SetLevel(log.PanicLevel)
 	}
 
+	ns := *namespace
+	if *tls {
+		ns += "-tls"
+	}
+
 	testHelper := &TestHelper{
 		conduit:   *conduit,
-		namespace: *namespace,
+		namespace: ns,
+		tls:       *tls,
 	}
 
 	version, err := testHelper.ConduitRun("version", "--client", "--short")
@@ -101,6 +109,11 @@ func (h *TestHelper) GetConduitNamespace() string {
 // is prefixed with the conduit namespace.
 func (h *TestHelper) GetTestNamespace(testName string) string {
 	return h.namespace + "-" + testName
+}
+
+// TLS returns whether or not TLS is enabled for the given test.
+func (h *TestHelper) TLS() bool {
+	return h.tls
 }
 
 // CombinedOutput executes a shell command and returns the output.
