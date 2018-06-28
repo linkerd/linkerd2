@@ -311,7 +311,7 @@ func promLabels(resource *pb.Resource) model.LabelSet {
 func promDstLabels(resource *pb.Resource) model.LabelSet {
 	set := model.LabelSet{}
 	if resource.Name != "" {
-		if resource.Type == k8s.Authorities {
+		if isNonK8sResourceQuery(resource.GetType()) {
 			set[promResourceType(resource)] = model.LabelValue(resource.Name)
 		} else {
 			set["dst_"+promResourceType(resource)] = model.LabelValue(resource.Name)

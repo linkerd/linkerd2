@@ -53,14 +53,16 @@ func TestCliStatForConduitNamespace(t *testing.T) {
 	}
 	prometheusPod := pods[0]
 
-	controllerPods, err := TestHelper.GetPodsForDeployment(TestHelper.GetConduitNamespace(), "controller")
+	pods, err = TestHelper.GetPodsForDeployment(TestHelper.GetConduitNamespace(), "controller")
 	if err != nil {
 		t.Fatalf("Failed to get pods for controller: %s", err)
 	}
-	if len(controllerPods) != 1 {
-		t.Fatalf("Expected 1 pod for controller, got %d", len(controllerPods))
+	if len(pods) != 1 {
+		t.Fatalf("Expected 1 pod for controller, got %d", len(pods))
 	}
-	controllerPod := controllerPods[0]
+	controllerPod := pods[0]
+
+	prometheusAuthority := "prometheus." + TestHelper.GetConduitNamespace() + ".svc.cluster.local:9090"
 
 	for _, tt := range []struct {
 		args         []string
@@ -106,15 +108,15 @@ func TestCliStatForConduitNamespace(t *testing.T) {
 			},
 		},
 		{
-			args: []string{"stat", "po", "-n", TestHelper.GetConduitNamespace(), "--to", "au/prometheus.conduit.svc.cluster.local:9090"},
+			args: []string{"stat", "po", "-n", TestHelper.GetConduitNamespace(), "--to", "au/" + prometheusAuthority},
 			expectedRows: map[string]string{
 				controllerPod: "1/1",
 			},
 		},
 		{
-			args: []string{"stat", "au", "-n", TestHelper.GetConduitNamespace(), "--to", "au/prometheus.conduit.svc.cluster.local:9090"},
+			args: []string{"stat", "au", "-n", TestHelper.GetConduitNamespace(), "--to", "po/" + prometheusPod},
 			expectedRows: map[string]string{
-				"prometheus.conduit.svc.cluster.local:9090": "-",
+				prometheusAuthority: "-",
 			},
 		},
 	} {
