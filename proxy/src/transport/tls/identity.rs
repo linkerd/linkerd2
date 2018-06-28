@@ -22,7 +22,7 @@ impl Identity {
     {
         use conduit_proxy_controller_grpc::destination::tls_identity::Strategy;
         match pb.strategy {
-            Some(Strategy::K8sPodNamespace(i)) => {
+            Some(Strategy::K8sPodIdentity(i)) => {
                 // XXX: If we don't know the controller's namespace or we don't
                 // share the same controller then we won't be able to validate
                 // the certificate yet. TODO: Support cross-controller
@@ -30,15 +30,7 @@ impl Identity {
                 if controller_namespace != Some(i.controller_ns.as_ref()) {
                     return Ok(None);
                 }
-
-                let namespaces = Namespaces {
-                    pod: i.pod_ns,
-                    tls_controller: Some(i.controller_ns),
-                };
-                Self::try_from_pod_name(&namespaces, &i.pod_name).map(Some)
-            },
-            Some(Strategy::K8sPodIdentity(_i)) => {
-                Ok(None) // TODO: switch to K8sPodIdentity
+                Self::from_sni_hostname(i.pod_identity.as_bytes()).map(Some)
             },
             None => Ok(None), // No TLS.
         }
