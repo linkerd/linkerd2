@@ -55,6 +55,11 @@ export default class ErrorModal extends React.Component {
             .mapValues(v => {
               return _.map(v, err => {
                 let errMsg = _.get(err, ["container", "message"]);
+
+                if (!errMsg) {
+                  return null;
+                }
+
                 if (_.size(errMsg) > maxErrorLength) {
                   shouldTruncate = true;
                   err.container.truncatedMessage = _.take(errMsg, maxErrorLength).join("") + "...";
@@ -63,6 +68,7 @@ export default class ErrorModal extends React.Component {
                 return err.container;
               });
             })
+            .compact()
             .value()
         };
       }).value();
@@ -74,6 +80,10 @@ export default class ErrorModal extends React.Component {
   }
 
   renderContainerErrors = (pod, errorsByContainer) => {
+    if (_.isEmpty(errorsByContainer)) {
+      return "No messages to display";
+    }
+
     return _.map(errorsByContainer, (errors, container) => (
       <div key={`error-${container}`}>
         <div className="clearfix">

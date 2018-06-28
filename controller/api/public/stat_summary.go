@@ -526,7 +526,9 @@ func checkContainerErrors(containerStatuses []apiv1.ContainerStatus, containerNa
 	errors := []*pb.PodErrors_PodError{}
 	for _, st := range containerStatuses {
 		if st.Name == containerName && st.State.Waiting != nil {
-			errors = append(errors, toPodError(st.Name, st.Image, st.State.Waiting.Message))
+			if st.State.Waiting.Message != "" {
+				errors = append(errors, toPodError(st.Name, st.Image, st.State.Waiting.Message))
+			}
 
 			if st.LastTerminationState.Waiting != nil {
 				errors = append(errors, toPodError(st.Name, st.Image, st.LastTerminationState.Waiting.Message))
