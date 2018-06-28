@@ -299,28 +299,41 @@ impl<'a> TryFrom<&'a Strings> for Config {
             tls_controller: controller_namespace?,
         };
 
+        let tls_controller_identity = tls_controller_identity?;
+        let control_host_and_port = control_host_and_port?;
+
         let tls_settings = match (tls_trust_anchors?,
                                   tls_end_entity_cert?,
                                   tls_private_key?,
-                                  tls_pod_identity_template?.as_ref(),
-                                  tls_controller_identity?)
+                                  tls_pod_identity_template?.as_ref())
         {
             (Some(trust_anchors),
              Some(end_entity_cert),
              Some(private_key),
-             Some(tls_pod_identity_template),
-             controller_identity) => {
+             Some(tls_pod_identity_template)) => {
                 let pod_identity =
                     tls_pod_identity_template.replace(VAR_POD_NAMESPACE, &namespaces.pod);
                 let pod_identity = tls::Identity::from_sni_hostname(pod_identity.as_bytes())
                     .map_err(|_| Error::InvalidEnvVar)?; // Already logged.
-                let controller_identity = if let Some(controller_identity) = &controller_identity {
-                    let identity = tls::Identity::from_sni_hostname(controller_identity.as_bytes())
-                        .map_err(|_| Error::InvalidEnvVar)?; // Already logged.
-                    Conditional::Some(identity)
+
+                // Avoid setting the controller identity if it is going to be
+                // a loopback connection since TLS isn't needed or supported in
+                // that case.
+                let controller_identity = if let Some(identity) = &tls_controller_identity {
+                    match &control_host_and_port {
+                        Some(hp) if hp.is_loopback() =>
+                            Conditional::None(tls::ReasonForNoIdentity::Loopback),
+                        Some(_) => {
+                            let identity = tls::Identity::from_sni_hostname(identity.as_bytes())
+                                .map_err(|_| Error::InvalidEnvVar)?; // Already logged.
+                            Conditional::Some(identity)
+                        },
+                        None => Conditional::None(tls::ReasonForNoIdentity::NotConfigured),
+                    }
                 } else {
                     Conditional::None(tls::ReasonForNoIdentity::NotConfigured)
                 };
+
                 Ok(Conditional::Some(tls::CommonSettings {
                     trust_anchors,
                     end_entity_cert,
@@ -329,8 +342,8 @@ impl<'a> TryFrom<&'a Strings> for Config {
                     controller_identity,
                 }))
             },
-            (None, None, None, _, _) => Ok(Conditional::None(tls::ReasonForNoTls::Disabled)),
-            (trust_anchors, end_entity_cert, private_key, pod_identity, _) => {
+            (None, None, None, _) => Ok(Conditional::None(tls::ReasonForNoTls::Disabled)),
+            (trust_anchors, end_entity_cert, private_key, pod_identity) => {
                 if trust_anchors.is_none() {
                     error!("{} is not set; it is required when {} and {} are set.",
                            ENV_TLS_TRUST_ANCHORS, ENV_TLS_CERT, ENV_TLS_PRIVATE_KEY);
@@ -395,7 +408,7 @@ impl<'a> TryFrom<&'a Strings> for Config {
             resolv_conf_path: resolv_conf_path?
                 .unwrap_or(DEFAULT_RESOLV_CONF.into())
                 .into(),
-            control_host_and_port: control_host_and_port?,
+            control_host_and_port,
 
             event_buffer_capacity: event_buffer_capacity?.unwrap_or(DEFAULT_EVENT_BUFFER_CAPACITY),
             metrics_retain_idle: metrics_retain_idle?.unwrap_or(DEFAULT_METRICS_RETAIN_IDLE),
