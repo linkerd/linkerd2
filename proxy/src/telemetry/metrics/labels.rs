@@ -123,6 +123,7 @@ pub struct DstLabels {
 
 mk_err_enum! {
     /// Taken from `errno.h`.
+    #[cfg(not(target_os="windows"))]
     #[allow(non_camel_case_types)]
     #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
     enum Errno from i32 {
@@ -557,5 +558,24 @@ impl fmt::Display for ctx::transport::TlsStatus {
             Conditional::None(tls::ReasonForNoTls::InternalTraffic) |
             Conditional::None(tls::ReasonForNoTls::NoIdentity(_)) => Ok(()),
         }
+    }
+}
+
+
+#[cfg(target_os="windows")]
+pub struct Errno(i32);
+
+#[cfg(target_os="windows")]
+impl From<i32> for Errno {
+    fn from(code: i32) -> Self {
+        Errno(code)
+    }
+}
+
+#[cfg(target_os="windows")]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+impl fmt::Display for Errno {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display.fmt(self.0, f)
     }
 }
