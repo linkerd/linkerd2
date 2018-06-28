@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"github.com/runconduit/conduit/pkg/k8s"
@@ -61,6 +62,11 @@ Only pod resources (aka pods, po) are supported.`,
 			podNames, err := getPods(client, options)
 			if err != nil {
 				return err
+			}
+
+			if len(podNames) == 0 {
+				fmt.Fprintln(os.Stderr, "No resources found.")
+				os.Exit(0)
 			}
 
 			for _, podName := range podNames {

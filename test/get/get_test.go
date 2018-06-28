@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/runconduit/conduit/testutil"
 )
 
@@ -118,7 +117,7 @@ func checkPodOutput(cmdOutput string, expectedPodCounts map[string]int, namespac
 
 	lines := strings.Split(cmdOutput, "\n")
 	if len(lines) == 0 {
-		return errors.Errorf("Expecting conduit get pods to return something, got nothing")
+		return fmt.Errorf("Expecting conduit get pods to return something, got nothing")
 	}
 
 	var actualPods []string
@@ -130,14 +129,14 @@ func checkPodOutput(cmdOutput string, expectedPodCounts map[string]int, namespac
 
 		ns, pod, err := TestHelper.ParseNamespacedResource(sanitizedLine)
 		if err != nil {
-			return errors.Errorf("Unexpected error: %v", err)
+			return fmt.Errorf("Unexpected error: %v", err)
 		}
 
 		if ns == namespace {
 			podPrefix, err := parsePodPrefix(pod)
 
 			if err != nil {
-				return errors.Errorf("Unexpected error: %v", err)
+				return fmt.Errorf("Unexpected error: %v", err)
 			}
 			actualPods = append(actualPods, podPrefix)
 		}
@@ -146,7 +145,7 @@ func checkPodOutput(cmdOutput string, expectedPodCounts map[string]int, namespac
 	sort.Strings(expectedPods)
 	sort.Strings(actualPods)
 	if !reflect.DeepEqual(expectedPods, actualPods) {
-		return errors.Errorf("Expected conduit get to return:\n%v\nBut got:\n%v", expectedPods, actualPods)
+		return fmt.Errorf("Expected conduit get to return:\n%v\nBut got:\n%v", expectedPods, actualPods)
 	}
 
 	return nil
