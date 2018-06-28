@@ -37,7 +37,7 @@ type podReport struct {
 }
 
 const (
-	podQuery                   = "sum(process_start_time_seconds{%s}) by (pod, namespace)"
+	podQuery                   = "max(process_start_time_seconds{%s}) by (pod, namespace)"
 	K8sClientSubsystemName     = "kubernetes"
 	K8sClientCheckDescription  = "control plane can talk to Kubernetes"
 	PromClientSubsystemName    = "prometheus"
