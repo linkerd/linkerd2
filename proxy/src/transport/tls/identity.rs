@@ -2,7 +2,6 @@ use conduit_proxy_controller_grpc;
 use convert::TryFrom;
 use super::{DnsName, InvalidDnsName, webpki};
 use std::sync::Arc;
-use config::Namespaces;
 
 /// An endpoint's identity.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -34,46 +33,6 @@ impl Identity {
             },
             None => Ok(None), // No TLS.
         }
-    }
-
-    pub fn try_from_pod_name(namespaces: &Namespaces, pod_name: &str) -> Result<Self, ()> {
-        // Verifies that the string doesn't contain '.' so that it is safe to
-        // join it using '.' to try to form a DNS name. The rest of the DNS
-        // name rules will be enforced by `DnsName::try_from`.
-        fn check_single_label(value: &str, name: &str) -> Result<(), ()> {
-            if !value.contains('.') {
-                Ok(())
-            } else {
-                error!("Invalid {}: {:?}", name, value);
-                Err(())
-            }
-        }
-
-        let controller_ns = if let Some(controller_ns) = &namespaces.tls_controller {
-            controller_ns
-        } else {
-            error!("controller namespace not provided");
-            return Err(());
-        };
-
-        // Log any/any per-component errors before returning.
-        let controller_ns_check = check_single_label(controller_ns, "controller namespace");
-        let pod_ns_check = check_single_label(&namespaces.pod, "pod namespace");
-        let pod_name_check = check_single_label(pod_name, "pod name");
-        if controller_ns_check.is_err() || pod_ns_check.is_err() || pod_name_check.is_err() {
-            return Err(());
-        }
-
-        // We reserve all names under a fake "managed-pods" service in
-        // our namespace for identifying pods by name.
-        let name = format!(
-            "{pod}.{pod_ns}.conduit-managed-pods.{controller_ns}.svc.cluster.local",
-            pod = pod_name,
-            pod_ns = &namespaces.pod,
-            controller_ns = controller_ns,
-        );
-
-        Self::from_sni_hostname(name.as_bytes())
     }
 
     pub fn from_sni_hostname(hostname: &[u8]) -> Result<Self, ()> {
