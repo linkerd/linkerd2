@@ -466,23 +466,13 @@ func extractSampleValue(sample *model.Sample) uint64 {
 func metricToKey(req *pb.StatSummaryRequest, metric model.Metric, groupBy model.LabelNames) pb.Resource {
 	// this key is used to match the metric stats we queried from prometheus
 	// with the k8s object stats we queried from k8s
-	resourceType := req.GetSelector().GetResource().GetType()
-	resourceNs := req.GetSelector().GetResource().GetNamespace()
 	key := pb.Resource{
-		Type: resourceType,
+		Type: req.GetSelector().GetResource().GetType(),
+		Name: string(metric[groupBy[len(groupBy)-1]]),
 	}
 
-	if resourceType != k8s.Namespaces {
-		key.Namespace = resourceNs
-	}
-
-	for _, k := range groupBy {
-		if string(k) == "namespace" && len(groupBy) == 2 && resourceNs == "" {
-			// in the case of querying for all namespaces, populate the namespace here
-			key.Namespace = string(metric[k])
-		} else {
-			key.Name = string(metric[k])
-		}
+	if len(groupBy) == 2 {
+		key.Namespace = string(metric[groupBy[0]])
 	}
 
 	return key
