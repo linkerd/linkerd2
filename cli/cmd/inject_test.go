@@ -10,19 +10,26 @@ import (
 )
 
 func TestInjectYAML(t *testing.T) {
-	testInjectOptions := newInjectOptions()
-	testInjectOptions.conduitVersion = "testinjectversion"
+	defaultOptions := newInjectOptions()
+	defaultOptions.conduitVersion = "testinjectversion"
+
+	tlsOptions := newInjectOptions()
+	tlsOptions.conduitVersion = "testinjectversion"
+	tlsOptions.tls = "optional"
+
 	testCases := []struct {
-		inputFileName  string
-		goldenFileName string
+		inputFileName     string
+		goldenFileName    string
+		testInjectOptions *injectOptions
 	}{
-		{"inject_emojivoto_deployment.input.yml", "inject_emojivoto_deployment.golden.yml"},
-		{"inject_emojivoto_list.input.yml", "inject_emojivoto_list.golden.yml"},
-		{"inject_emojivoto_deployment_hostNetwork_false.input.yml", "inject_emojivoto_deployment_hostNetwork_false.golden.yml"},
-		{"inject_emojivoto_deployment_hostNetwork_true.input.yml", "inject_emojivoto_deployment_hostNetwork_true.golden.yml"},
-		{"inject_emojivoto_deployment_controller_name.input.yml", "inject_emojivoto_deployment_controller_name.golden.yml"},
-		{"inject_emojivoto_statefulset.input.yml", "inject_emojivoto_statefulset.golden.yml"},
-		{"inject_emojivoto_pod.input.yml", "inject_emojivoto_pod.golden.yml"},
+		{"inject_emojivoto_deployment.input.yml", "inject_emojivoto_deployment.golden.yml", defaultOptions},
+		{"inject_emojivoto_list.input.yml", "inject_emojivoto_list.golden.yml", defaultOptions},
+		{"inject_emojivoto_deployment_hostNetwork_false.input.yml", "inject_emojivoto_deployment_hostNetwork_false.golden.yml", defaultOptions},
+		{"inject_emojivoto_deployment_hostNetwork_true.input.yml", "inject_emojivoto_deployment_hostNetwork_true.golden.yml", defaultOptions},
+		{"inject_emojivoto_deployment_controller_name.input.yml", "inject_emojivoto_deployment_controller_name.golden.yml", defaultOptions},
+		{"inject_emojivoto_statefulset.input.yml", "inject_emojivoto_statefulset.golden.yml", defaultOptions},
+		{"inject_emojivoto_pod.input.yml", "inject_emojivoto_pod.golden.yml", defaultOptions},
+		{"inject_emojivoto_deployment.input.yml", "inject_emojivoto_deployment_tls.golden.yml", tlsOptions},
 	}
 
 	for i, tc := range testCases {
@@ -36,7 +43,7 @@ func TestInjectYAML(t *testing.T) {
 
 			output := new(bytes.Buffer)
 
-			err = InjectYAML(read, output, testInjectOptions)
+			err = InjectYAML(read, output, tc.testInjectOptions)
 			if err != nil {
 				t.Errorf("Unexpected error injecting YAML: %v\n", err)
 			}

@@ -1,0 +1,120 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  name: web
+  namespace: emojivoto
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-svc
+  strategy: {}
+  template:
+    metadata:
+      annotations:
+        conduit.io/created-by: conduit/cli undefined
+        conduit.io/proxy-version: testinjectversion
+      creationTimestamp: null
+      labels:
+        app: web-svc
+        conduit.io/control-plane-ns: conduit
+        conduit.io/proxy-deployment: web
+    spec:
+      containers:
+      - env:
+        - name: WEB_PORT
+          value: "80"
+        - name: EMOJISVC_HOST
+          value: emoji-svc.emojivoto:8080
+        - name: VOTINGSVC_HOST
+          value: voting-svc.emojivoto:8080
+        - name: INDEX_BUNDLE
+          value: dist/index_bundle.js
+        image: buoyantio/emojivoto-web:v3
+        name: web-svc
+        ports:
+        - containerPort: 80
+          name: http
+        resources: {}
+      - env:
+        - name: CONDUIT_PROXY_LOG
+          value: warn,conduit_proxy=info
+        - name: CONDUIT_PROXY_BIND_TIMEOUT
+          value: 10s
+        - name: CONDUIT_PROXY_CONTROL_URL
+          value: tcp://proxy-api.conduit.svc.cluster.local:8086
+        - name: CONDUIT_PROXY_CONTROL_LISTENER
+          value: tcp://0.0.0.0:4190
+        - name: CONDUIT_PROXY_METRICS_LISTENER
+          value: tcp://0.0.0.0:4191
+        - name: CONDUIT_PROXY_PRIVATE_LISTENER
+          value: tcp://127.0.0.1:4140
+        - name: CONDUIT_PROXY_PUBLIC_LISTENER
+          value: tcp://0.0.0.0:4143
+        - name: CONDUIT_PROXY_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: CONDUIT_PROXY_TLS_TRUST_ANCHORS
+          value: /var/conduit-io/trust-anchors/trust-anchors.pem
+        - name: CONDUIT_PROXY_TLS_CERT
+          value: /var/conduit-io/identity/certificate.crt
+        - name: CONDUIT_PROXY_TLS_PRIVATE_KEY
+          value: /var/conduit-io/identity/private-key.p8
+        - name: CONDUIT_PROXY_TLS_POD_IDENTITY
+          value: web.deployment.$CONDUIT_PROXY_POD_NAMESPACE.conduit-managed.conduit.svc.cluster.local
+        - name: CONDUIT_PROXY_CONTROLLER_NAMESPACE
+          value: conduit
+        - name: CONDUIT_PROXY_TLS_CONTROLLER_IDENTITY
+          value: controller.deployment.conduit.conduit-managed.conduit.svc.cluster.local
+        image: gcr.io/runconduit/proxy:testinjectversion
+        imagePullPolicy: IfNotPresent
+        name: conduit-proxy
+        ports:
+        - containerPort: 4143
+          name: conduit-proxy
+        - containerPort: 4191
+          name: conduit-metrics
+        resources: {}
+        securityContext:
+          runAsUser: 2102
+        terminationMessagePolicy: FallbackToLogsOnError
+        volumeMounts:
+        - mountPath: /var/conduit-io/trust-anchors
+          name: conduit-trust-anchors
+          readOnly: true
+        - mountPath: /var/conduit-io/identity
+          name: conduit-secrets
+          readOnly: true
+      initContainers:
+      - args:
+        - --incoming-proxy-port
+        - "4143"
+        - --outgoing-proxy-port
+        - "4140"
+        - --proxy-uid
+        - "2102"
+        - --inbound-ports-to-ignore
+        - 4190,4191
+        image: gcr.io/runconduit/proxy-init:testinjectversion
+        imagePullPolicy: IfNotPresent
+        name: conduit-init
+        resources: {}
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+          privileged: false
+        terminationMessagePolicy: FallbackToLogsOnError
+      volumes:
+      - configMap:
+          name: conduit-ca-bundle
+          optional: true
+        name: conduit-trust-anchors
+      - name: conduit-secrets
+        secret:
+          optional: true
+          secretName: web-deployment-tls-conduit-io
+status: {}
+---
