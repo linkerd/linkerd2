@@ -1,8 +1,6 @@
 package destination
 
 import (
-	"fmt"
-
 	common "github.com/runconduit/conduit/controller/gen/common"
 	pb "github.com/runconduit/conduit/controller/gen/proxy/destination"
 	"github.com/runconduit/conduit/pkg/addr"
@@ -161,16 +159,17 @@ func (l *endpointListener) toTlsIdentity(pod *coreV1.Pod) *pb.TlsIdentity {
 
 	controllerNs := pkgK8s.GetControllerNs(pod.ObjectMeta)
 
+	identity := pkgK8s.TLSIdentity{
+		Name:                pod.Name,
+		Kind:                pkgK8s.GetOwnerType(pod.ObjectMeta),
+		Namespace:           pod.Namespace,
+		ControllerNamespace: controllerNs,
+	}
+
 	return &pb.TlsIdentity{
 		Strategy: &pb.TlsIdentity_K8SPodIdentity_{
 			K8SPodIdentity: &pb.TlsIdentity_K8SPodIdentity{
-				PodIdentity: fmt.Sprintf(
-					"%s.%s.%s.conduit-managed.%s.svc.cluster.local",
-					pod.Name,
-					pkgK8s.GetOwnerType(pod.ObjectMeta),
-					pod.Namespace,
-					controllerNs,
-				),
+				PodIdentity:  identity.ToDNSName(),
 				ControllerNs: controllerNs,
 			},
 		},

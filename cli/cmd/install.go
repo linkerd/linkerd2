@@ -15,23 +15,23 @@ import (
 )
 
 type installConfig struct {
-	Namespace                string
-	ControllerImage          string
-	WebImage                 string
-	PrometheusImage          string
-	GrafanaImage             string
-	ControllerReplicas       uint
-	WebReplicas              uint
-	PrometheusReplicas       uint
-	ImagePullPolicy          string
-	UUID                     string
-	CliVersion               string
-	ControllerLogLevel       string
-	ControllerComponentLabel string
-	CreatedByAnnotation      string
-	ProxyAPIPort             uint
-	EnableTLS                bool
-	CertificateBundleName    string
+	Namespace                   string
+	ControllerImage             string
+	WebImage                    string
+	PrometheusImage             string
+	GrafanaImage                string
+	ControllerReplicas          uint
+	WebReplicas                 uint
+	PrometheusReplicas          uint
+	ImagePullPolicy             string
+	UUID                        string
+	CliVersion                  string
+	ControllerLogLevel          string
+	ControllerComponentLabel    string
+	CreatedByAnnotation         string
+	ProxyAPIPort                uint
+	EnableTLS                   bool
+	TLSTrustAnchorConfigMapName string
 }
 
 type installOptions struct {
@@ -82,23 +82,23 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		return nil, err
 	}
 	return &installConfig{
-		Namespace:                controlPlaneNamespace,
-		ControllerImage:          fmt.Sprintf("%s/controller:%s", options.dockerRegistry, options.conduitVersion),
-		WebImage:                 fmt.Sprintf("%s/web:%s", options.dockerRegistry, options.conduitVersion),
-		PrometheusImage:          "prom/prometheus:v2.3.1",
-		GrafanaImage:             fmt.Sprintf("%s/grafana:%s", options.dockerRegistry, options.conduitVersion),
-		ControllerReplicas:       options.controllerReplicas,
-		WebReplicas:              options.webReplicas,
-		PrometheusReplicas:       options.prometheusReplicas,
-		ImagePullPolicy:          options.imagePullPolicy,
-		UUID:                     uuid.NewV4().String(),
-		CliVersion:               k8s.CreatedByAnnotationValue(),
-		ControllerLogLevel:       options.controllerLogLevel,
-		ControllerComponentLabel: k8s.ControllerComponentLabel,
-		CreatedByAnnotation:      k8s.CreatedByAnnotation,
-		ProxyAPIPort:             options.proxyAPIPort,
-		EnableTLS:                options.enableTLS(),
-		CertificateBundleName:    k8s.CertificateBundleName,
+		Namespace:                   controlPlaneNamespace,
+		ControllerImage:             fmt.Sprintf("%s/controller:%s", options.dockerRegistry, options.conduitVersion),
+		WebImage:                    fmt.Sprintf("%s/web:%s", options.dockerRegistry, options.conduitVersion),
+		PrometheusImage:             "prom/prometheus:v2.3.1",
+		GrafanaImage:                fmt.Sprintf("%s/grafana:%s", options.dockerRegistry, options.conduitVersion),
+		ControllerReplicas:          options.controllerReplicas,
+		WebReplicas:                 options.webReplicas,
+		PrometheusReplicas:          options.prometheusReplicas,
+		ImagePullPolicy:             options.imagePullPolicy,
+		UUID:                        uuid.NewV4().String(),
+		CliVersion:                  k8s.CreatedByAnnotationValue(),
+		ControllerLogLevel:          options.controllerLogLevel,
+		ControllerComponentLabel:    k8s.ControllerComponentLabel,
+		CreatedByAnnotation:         k8s.CreatedByAnnotation,
+		ProxyAPIPort:                options.proxyAPIPort,
+		EnableTLS:                   options.enableTLS(),
+		TLSTrustAnchorConfigMapName: k8s.TLSTrustAnchorConfigMapName,
 	}, nil
 }
 
