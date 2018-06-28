@@ -207,6 +207,19 @@ The following labels are added only to metrics which are updated when a connecti
 + `classification`: `success` if the connection terminated cleanly, `failure` if the
                     connection closed due to a connection failure.
 
+### TLS Handshake Failure Labels
+
+These labels apply only to the `tls_handshake_failure_total` and
+`control_tls_handshake_failure_total` metrics.
+
++ `reason`: `tls_error` if the handshake failed due to a protocol-level TLS error,
+            `io_error` if the handshake failed due to a transport IO error.
++ `tls_error`: Only present if `reason="tls_error"`. A string identifying what kind
+               of TLS error occurred.
++ `errno`: Only present if `reason="io_error"`. The name of the Unix error code describing why
+           the error occurred, or `unknown` if there was no such code or it was
+           not recognized.
+
 [prom-format]: https://prometheus.io/docs/instrumenting/exposition_formats/#format-version-0.0.4
 [pod-template-hash]: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#pod-template-hash-label
 [ttfb]: https://en.wikipedia.org/wiki/Time_to_first_byte
