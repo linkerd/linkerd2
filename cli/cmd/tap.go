@@ -259,66 +259,62 @@ func renderTapEvent(event *common.TapEvent) string {
 		dst,
 	)
 
-	http := event.GetHttp()
-	httpEvent := http.Event
-	switch ev := httpEvent.(type) {
+	switch ev := event.GetHttp().GetEvent().(type) {
 	case *common.TapEvent_Http_RequestInit_:
 		return fmt.Sprintf("req id=%d:%d %s :method=%s :authority=%s :path=%s secured=%s",
-			ev.RequestInit.Id.Base,
-			ev.RequestInit.Id.Stream,
+			ev.RequestInit.GetId().GetBase(),
+			ev.RequestInit.GetId().GetStream(),
 			flow,
-			ev.RequestInit.Method.GetRegistered().String(),
-			ev.RequestInit.Authority,
-			ev.RequestInit.Path,
+			ev.RequestInit.GetMethod().GetRegistered().String(),
+			ev.RequestInit.GetAuthority(),
+			ev.RequestInit.GetPath(),
 			isSecured,
 		)
+
 	case *common.TapEvent_Http_ResponseInit_:
 		return fmt.Sprintf("rsp id=%d:%d %s :status=%d latency=%dµs secured=%s",
-			ev.ResponseInit.Id.Base,
-			ev.ResponseInit.Id.Stream,
+			ev.ResponseInit.GetId().GetBase(),
+			ev.ResponseInit.GetId().GetStream(),
 			flow,
 			ev.ResponseInit.GetHttpStatus(),
-			ev.ResponseInit.GetSinceRequestInit().Nanos/1000,
+			ev.ResponseInit.GetSinceRequestInit().GetNanos()/1000,
 			isSecured,
 		)
+
 	case *common.TapEvent_Http_ResponseEnd_:
+		switch eos := ev.ResponseEnd.GetEos().GetEnd().(type) {
+		case *common.Eos_GrpcStatusCode:
+			return fmt.Sprintf("end id=%d:%d %s grpc-status=%s duration=%dµs response-length=%dB secured=%s",
+				ev.ResponseEnd.GetId().GetBase(),
+				ev.ResponseEnd.GetId().GetStream(),
+				flow,
+				codes.Code(eos.GrpcStatusCode),
+				ev.ResponseEnd.GetSinceResponseInit().GetNanos()/1000,
+				ev.ResponseEnd.GetResponseBytes(),
+				isSecured,
+			)
 
-		if ev.ResponseEnd.Eos != nil {
-			switch eos := ev.ResponseEnd.Eos.End.(type) {
-			case *common.Eos_GrpcStatusCode:
-				return fmt.Sprintf("end id=%d:%d %s grpc-status=%s duration=%dµs response-length=%dB secured=%s",
-					ev.ResponseEnd.Id.Base,
-					ev.ResponseEnd.Id.Stream,
-					flow,
-					codes.Code(eos.GrpcStatusCode),
-					ev.ResponseEnd.GetSinceResponseInit().Nanos/1000,
-					ev.ResponseEnd.GetResponseBytes(),
-					isSecured,
-				)
-			case *common.Eos_ResetErrorCode:
-				return fmt.Sprintf("end id=%d:%d %s reset-error=%+v duration=%dµs response-length=%dB secured=%s",
-					ev.ResponseEnd.Id.Base,
-					ev.ResponseEnd.Id.Stream,
-					flow,
-					eos.ResetErrorCode,
-					ev.ResponseEnd.GetSinceResponseInit().Nanos/1000,
-					ev.ResponseEnd.GetResponseBytes(),
-					isSecured,
-				)
-			}
+		case *common.Eos_ResetErrorCode:
+			return fmt.Sprintf("end id=%d:%d %s reset-error=%+v duration=%dµs response-length=%dB secured=%s",
+				ev.ResponseEnd.GetId().GetBase(),
+				ev.ResponseEnd.GetId().GetStream(),
+				flow,
+				eos.ResetErrorCode,
+				ev.ResponseEnd.GetSinceResponseInit().GetNanos()/1000,
+				ev.ResponseEnd.GetResponseBytes(),
+				isSecured,
+			)
+
+		default:
+			return fmt.Sprintf("end id=%d:%d %s duration=%dµs response-length=%dB secured=%s",
+				ev.ResponseEnd.GetId().GetBase(),
+				ev.ResponseEnd.GetId().GetStream(),
+				flow,
+				ev.ResponseEnd.GetSinceResponseInit().GetNanos()/1000,
+				ev.ResponseEnd.GetResponseBytes(),
+				isSecured,
+			)
 		}
-
-		// this catchall handles 2 cases:
-		// 1) ev.ResponseEnd.Eos == nil
-		// 2) ev.ResponseEnd.Eos.End == nil
-		return fmt.Sprintf("end id=%d:%d %s duration=%dµs response-length=%dB secured=%s",
-			ev.ResponseEnd.Id.Base,
-			ev.ResponseEnd.Id.Stream,
-			flow,
-			ev.ResponseEnd.GetSinceResponseInit().Nanos/1000,
-			ev.ResponseEnd.GetResponseBytes(),
-			isSecured,
-		)
 
 	default:
 		return fmt.Sprintf("unknown %s", flow)
