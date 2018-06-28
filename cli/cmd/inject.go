@@ -245,10 +245,10 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 			{Name: "CONDUIT_PROXY_TLS_CERT", Value: secretBase + "/" + k8s.TLSCertFileName},
 			{Name: "CONDUIT_PROXY_TLS_PRIVATE_KEY", Value: secretBase + "/" + k8s.TLSPrivateKeyFileName},
 			{
-				Name: "CONDUIT_PROXY_TLS_POD_IDENTITY",
+				Name:  "CONDUIT_PROXY_TLS_POD_IDENTITY",
 				Value: identity.ToDNSName(),
 			},
-			{Name: "CONDUIT_PROXY_CONTROLLER_NAMESPACE", Value: controlPlaneNamespace}	,
+			{Name: "CONDUIT_PROXY_CONTROLLER_NAMESPACE", Value: controlPlaneNamespace},
 			{Name: "CONDUIT_PROXY_TLS_CONTROLLER_IDENTITY", Value: identity.ToControllerIdentity().ToDNSName()},
 		}
 
