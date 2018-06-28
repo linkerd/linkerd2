@@ -277,7 +277,7 @@ func renderTapEvent(event *common.TapEvent) string {
 			ev.ResponseInit.GetId().GetStream(),
 			flow,
 			ev.ResponseInit.GetHttpStatus(),
-			ev.ResponseInit.GetSinceRequestInit().Nanos/1000,
+			ev.ResponseInit.GetSinceRequestInit().GetNanos()/1000,
 			isSecured,
 		)
 
