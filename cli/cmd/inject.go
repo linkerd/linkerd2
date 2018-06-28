@@ -225,17 +225,22 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 
 		configMapVolume := v1.Volume{
 			Name: "conduit-trust-anchors",
-			VolumeSource: v1.VolumeSource{ConfigMap: &v1.ConfigMapVolumeSource{
-				LocalObjectReference: v1.LocalObjectReference{Name: k8s.TLSTrustAnchorConfigMapName},
-				Optional:             &yes,
-			}},
-		}
-		secretVolume := v1.Volume{Name: "conduit-secrets", VolumeSource: v1.VolumeSource{
-			Secret: &v1.SecretVolumeSource{
-				SecretName: identity.ToSecretName(),
-				Optional:   &yes,
+			VolumeSource: v1.VolumeSource{
+				ConfigMap: &v1.ConfigMapVolumeSource{
+					LocalObjectReference: v1.LocalObjectReference{Name: k8s.TLSTrustAnchorConfigMapName},
+					Optional:             &yes,
+				},
 			},
-		}}
+		}
+		secretVolume := v1.Volume{
+			Name: "conduit-secrets",
+			VolumeSource: v1.VolumeSource{
+				Secret: &v1.SecretVolumeSource{
+					SecretName: identity.ToSecretName(),
+					Optional:   &yes,
+				},
+			},
+		}
 
 		base := "/var/conduit-io"
 		configMapBase := base + "/trust-anchors"
