@@ -116,17 +116,13 @@ func GetControllerNs(objectMeta meta.ObjectMeta) string {
 	return objectMeta.Labels[ControllerNSLabel]
 }
 
-func GetOwnerType(objectMeta meta.ObjectMeta) string {
-	return GetOwnerTypeFromLabels(objectMeta.Labels)
-}
-
-func GetOwnerTypeFromLabels(labels map[string]string) string {
+func GetOwnerKindAndName(labels map[string]string) (string, string) {
 	for _, label := range podOwnerLabels {
-		if _, ok := labels[label]; ok {
-			return toOwnerLabel(label)
+		if v, ok := labels[label]; ok {
+			return toOwnerLabel(label), v
 		}
 	}
-	return ""
+	return "", ""
 }
 
 // toOwnerLabel converts a proxy label to a prometheus label, following the
