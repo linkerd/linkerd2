@@ -264,8 +264,8 @@ impl Future for Connecting {
         loop {
             self.state = match &mut self.state {
                 ConnectingState::Plaintext { connect, tls } => {
-                    trace!("Connecting: state=plaintext; tls={:?};",tls);
                     let plaintext_stream = try_ready!(connect.poll());
+                    trace!("Connecting: state=plaintext; tls={:?};",tls);
                     set_nodelay_or_warn(&plaintext_stream);
                     match tls.take().expect("Polled after ready") {
                         Conditional::Some(config) => {
@@ -288,7 +288,7 @@ impl Future for Connecting {
                             return Ok(Async::Ready(conn));
                         },
                         Err(e) => {
-                            warn!(
+                            debug!(
                                 "TLS handshake with {:?} failed: {}\
                                     -> falling back to plaintext",
                                 self.addr, e,
