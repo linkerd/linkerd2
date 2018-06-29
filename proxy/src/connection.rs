@@ -166,10 +166,14 @@ impl BoundPort {
                         Conditional::None(r) => Conditional::None(*r),
                     };
                     let conn = match tls {
-                        Conditional::Some(tls) =>
-                            Either::A(ConditionallyUpgradeServerToTls::new(socket, tls)),
-                        Conditional::None(why_no_tls) =>
-                            Either::B(future::ok(Connection::plain(socket, why_no_tls))),
+                        Conditional::Some(tls) => {
+                            warn!("Accept: ConditionallyUpgradeServerToTls");
+                            Either::A(ConditionallyUpgradeServerToTls::new(socket, tls))
+                        },
+                        Conditional::None(why_no_tls) => {
+                            warn!("Accept: Plaintext: {:?}", why_no_tls);
+                            Either::B(future::ok(Connection::plain(socket, why_no_tls)))
+                        }
                     };
                     conn.map(move |conn| (conn, remote_addr))
                 })
@@ -217,20 +221,21 @@ impl Future for ConditionallyUpgradeServerToTls {
                     };
                     match r {
                         tls::conditional_accept::Match::Matched => {
-                            trace!("upgrading accepted connection to TLS");
+                            warn!("ConditionallyUpgradeServerToTls: upgrading accepted connection to TLS");
                             let inner = inner.take().expect("Polled after ready");
                             let upgrade_to_tls = tls::Connection::accept(
                                 inner.socket, inner.peek_buf.freeze(), inner.tls.config);
                             ConditionallyUpgradeServerToTls::UpgradeToTls(upgrade_to_tls)
                         },
                         tls::conditional_accept::Match::NotMatched => {
-                            trace!("passing through accepted connection without TLS");
+                            warn!("ConditionallyUpgradeServerToTls: passing through accepted connection without TLS");
                             let inner = inner.take().expect("Polled after ready");
                             let conn = Connection::plain_with_peek_buf(
                                 inner.socket, inner.peek_buf, tls::ReasonForNoTls::NotProxyTls);
                             return Ok(Async::Ready(conn));
                         },
                         tls::conditional_accept::Match::Incomplete => {
+                            warn!("ConditionallyUpgradeServerToTls: Incomplete");
                             continue;
                         },
                     }
@@ -252,22 +257,27 @@ impl Future for Connecting {
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         loop {
+            warn!("Connecting::poll");
             *self = match self {
                 Connecting::Plaintext { connect, tls } => {
+                    warn!("Connecting::Plaintext {:?}", &tls);
                     let plaintext_stream = try_ready!(connect.poll());
                     set_nodelay_or_warn(&plaintext_stream);
                     match tls.take().expect("Polled after ready") {
                         Conditional::Some(config) => {
+                            warn!("Connecting upgrade_to_tls");
                             let upgrade_to_tls = tls::Connection::connect(
                                 plaintext_stream, &config.identity, config.config);
                             Connecting::UpgradeToTls(upgrade_to_tls)
                         },
                         Conditional::None(why) => {
+                            warn!("Connecting plaintext");
                             return Ok(Async::Ready(Connection::plain(plaintext_stream, why)));
                         },
                     }
                 },
                 Connecting::UpgradeToTls(upgrading) => {
+                    warn!("Connecting::UpgradeToTls");
                     let tls_stream = try_ready!(upgrading.poll());
                     return Ok(Async::Ready(Connection::tls(BoxedIo::new(tls_stream))));
                 },
