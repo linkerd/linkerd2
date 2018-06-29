@@ -79,7 +79,7 @@ pub struct Connection {
     peek_buf: BytesMut,
 
     /// Whether or not the connection is secured with TLS.
-    tls_status: TlsStatus,
+    pub tls_status: TlsStatus,
 }
 
 /// A trait describing that a type can peek bytes.
