@@ -92,7 +92,7 @@ message TlsIdentity {
   // Verify the certificate based on the Kubernetes pod identity.
   message K8sPodIdentity {
     // The pod_identity string is of the format:
-    // {pod_name}.{pod_type}.{pod_ns}.conduit-managed.{controller_ns}.svc.cluster.local
+    // {owner_name}.{owner_type}.{pod_ns}.conduit-managed.{controller_ns}.svc.cluster.local
     string pod_identity = 1;
     // The Kubernetes namespace of the pod's Conduit control plane.
     string controller_ns = 2;

@@ -164,7 +164,7 @@ func TestEndpointListener(t *testing.T) {
 		expectedConduitNamespace := "conduit-namespace"
 		expectedPodDeployment := "pod-deployment"
 		expectedTlsIdentity := &pb.TlsIdentity_K8SPodIdentity{
-			PodIdentity:  "pod1.deployment.this-namespace.conduit-managed.conduit-namespace.svc.cluster.local",
+			PodIdentity:  "pod-deployment.deployment.this-namespace.conduit-managed.conduit-namespace.svc.cluster.local",
 			ControllerNs: "conduit-namespace",
 		}
 
