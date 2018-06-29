@@ -264,15 +264,18 @@ impl Future for Connecting {
         loop {
             self.state = match &mut self.state {
                 ConnectingState::Plaintext { connect, tls } => {
+                    trace!("Connecting: state=plaintext; tls={:?};",tls);
                     let plaintext_stream = try_ready!(connect.poll());
                     set_nodelay_or_warn(&plaintext_stream);
                     match tls.take().expect("Polled after ready") {
                         Conditional::Some(config) => {
+                            trace!("plaintext connection established; trying to upgrade");
                             let upgrade = tls::Connection::connect(
                                 plaintext_stream, &config.identity, config.config);
                             ConnectingState::UpgradeToTls(upgrade)
                         },
                         Conditional::None(why) => {
+                            trace!("plaintext connection established; no TLS ({:?})", why);
                             return Ok(Async::Ready(Connection::plain(plaintext_stream, why)));
                         },
                     }
