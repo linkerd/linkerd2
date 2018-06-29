@@ -101,7 +101,7 @@ class NetworkGraph extends React.Component {
 
     this.api.setCurrentRequests(urls);
 
-    Promise.all(this.api.getCurrentPromises())
+    this.serverPromise = Promise.all(this.api.getCurrentPromises())
       .then(results => {
         let links = [];
         let nodeList = [];
