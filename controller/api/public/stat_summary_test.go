@@ -47,7 +47,13 @@ func genEmptyResponse() pb.StatSummaryResponse {
 	return pb.StatSummaryResponse{
 		Response: &pb.StatSummaryResponse_Ok_{ // https://github.com/golang/protobuf/issues/205
 			Ok: &pb.StatSummaryResponse_Ok{
-				StatTables: []*pb.StatTable{},
+				StatTables: []*pb.StatTable{
+					&pb.StatTable{
+						Table: &pb.StatTable_PodGroup_{
+							PodGroup: &pb.StatTable_PodGroup{},
+						},
+					},
+				},
 			},
 		},
 	}
@@ -81,30 +87,39 @@ func testStatSummary(t *testing.T, expectations []statSumExpected) {
 			sort.Strings(mockProm.QueriesExecuted)
 
 			if !reflect.DeepEqual(exp.expectedPrometheusQueries, mockProm.QueriesExecuted) {
-				t.Fatalf("Prometheus queries incorrect. \nExpected: %+v \nGot: %+v",
+				t.Fatalf("Prometheus queries incorrect. \nExpected:\n%+v \nGot:\n%+v",
 					exp.expectedPrometheusQueries, mockProm.QueriesExecuted)
 			}
 		}
 
-		if len(exp.expectedResponse.GetOk().StatTables) > 0 {
-			rspStatTables := rsp.GetOk().StatTables
-			sort.Sort(byStatResult(rspStatTables))
+		rspStatTables := rsp.GetOk().StatTables
 
-			okRsp := &pb.StatSummaryResponse_Ok{
-				StatTables: rspStatTables,
-			}
+		if len(rspStatTables) != len(exp.expectedResponse.GetOk().StatTables) {
+			t.Fatalf(
+				"Expected [%d] stat tables, got [%d].\nExpected:\n%s\nGot:\n%s",
+				len(exp.expectedResponse.GetOk().StatTables),
+				len(rspStatTables),
+				exp.expectedResponse.GetOk().StatTables,
+				rspStatTables,
+			)
+		}
 
-			for i, st := range rspStatTables {
-				expected := exp.expectedResponse.GetOk().StatTables[i]
-				if !proto.Equal(st, expected) {
-					t.Fatalf("Expected: %+v\n Got: %+v", expected, st)
-				}
-			}
+		sort.Sort(byStatResult(rspStatTables))
+		statOkRsp := &pb.StatSummaryResponse_Ok{
+			StatTables: rspStatTables,
+		}
 
-			if !proto.Equal(exp.expectedResponse.GetOk(), okRsp) {
-				t.Fatalf("Expected: %+v\n Got: %+v", &exp.expectedResponse, rsp)
+		for i, st := range rspStatTables {
+			expected := exp.expectedResponse.GetOk().StatTables[i]
+			if !proto.Equal(st, expected) {
+				t.Fatalf("Expected: %+v\n Got: %+v", expected, st)
 			}
 		}
+
+		if !proto.Equal(exp.expectedResponse.GetOk(), statOkRsp) {
+			t.Fatalf("Expected: %+v\n Got: %+v", &exp.expectedResponse, rsp)
+		}
+
 	}
 }
 
