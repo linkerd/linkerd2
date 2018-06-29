@@ -119,6 +119,10 @@ pub enum ReasonForNoIdentity {
     /// of telling us that we shouldn't do TLS for this endpoint.
     NotProvidedByServiceDiscovery,
 
+    /// No TLS is wanted because the connection is a loopback connection which
+    /// doesn't need or support TLS.
+    Loopback,
+
     /// The proxy wasn't configured with the identity.
     NotConfigured,
 

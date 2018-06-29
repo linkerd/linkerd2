@@ -73,6 +73,13 @@ impl HostAndPort {
             port
         })
     }
+
+    pub fn is_loopback(&self) -> bool {
+        match &self.host {
+            Host::DnsName(dns_name) => dns_name.is_localhost(),
+            Host::Ip(ip) => ip.is_loopback(),
+        }
+    }
 }
 
 impl<'a> From<&'a HostAndPort> for http::uri::Authority {
@@ -160,5 +167,29 @@ impl tokio_connect::Connect for LookupAddressAndConnect {
                 connection::connect(&addr, tls)
             });
         Box::new(c)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use http::uri::Authority;
+    use super::*;
+
+    #[test]
+    fn test_is_loopback() {
+        let cases = &[
+            ("localhost", false), // Not absolute
+            ("localhost.", true),
+            ("LocalhOsT.", true), // Case-insensitive
+            ("mlocalhost.", false), // prefixed
+            ("localhost1.", false), // suffixed
+            ("127.0.0.1", true), // IPv4
+            ("[::1]", true), // IPv6
+        ];
+        for (host, expected_result) in cases {
+            let authority = Authority::from_static(host);
+            let hp = HostAndPort::normalize(&authority, Some(80)).unwrap();
+            assert_eq!(hp.is_loopback(), *expected_result, "{:?}", host)
+        }
     }
 }

@@ -23,8 +23,9 @@ import (
 )
 
 const (
-	// LocalhostDNSNameOverride allows override of the controlPlaneDNS
-	LocalhostDNSNameOverride = "localhost"
+	// LocalhostDNSNameOverride allows override of the controlPlaneDNS. This
+	// must be in absolute form for the proxy to special-case it.
+	LocalhostDNSNameOverride = "localhost."
 	// ControlPlanePodName default control plane pod name.
 	ControlPlanePodName = "controller"
 	// The name of the variable used to pass the pod's namespace.
