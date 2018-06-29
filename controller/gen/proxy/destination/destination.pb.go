@@ -360,7 +360,7 @@ func _TlsIdentity_OneofSizer(msg proto.Message) (n int) {
 // Verify the certificate based on the Kubernetes pod identity.
 type TlsIdentity_K8SPodIdentity struct {
 	// The pod_identity string is of the format:
-	// {pod_name}.{pod_type}.{pod_ns}.conduit-managed.{controller_ns}.svc.cluster.local
+	// {owner_name}.{owner_type}.{pod_ns}.conduit-managed.{controller_ns}.svc.cluster.local
 	PodIdentity string `protobuf:"bytes,1,opt,name=pod_identity,json=podIdentity" json:"pod_identity,omitempty"`
 	// The Kubernetes namespace of the pod's Conduit control plane.
 	ControllerNs string `protobuf:"bytes,2,opt,name=controller_ns,json=controllerNs" json:"controller_ns,omitempty"`
