@@ -244,11 +244,7 @@ func renderTapEvent(event *common.TapEvent) string {
 	dst := addr.AddressToString(event.GetDestination())
 	dstLabels := event.GetDestinationMeta().GetLabels()
 	dstPod := dstLabels["pod"]
-	isSecured := "no"
-
-	if dstLabels["tls"] == "true" {
-		isSecured = "yes"
-	}
+	tls := dstLabels["tls"]
 
 	if dstPod != "" {
 		dst = dstPod
@@ -261,7 +257,7 @@ func renderTapEvent(event *common.TapEvent) string {
 
 	switch ev := event.GetHttp().GetEvent().(type) {
 	case *common.TapEvent_Http_RequestInit_:
-		return fmt.Sprintf("req id=%d:%d %s :method=%s :authority=%s :path=%s secured=%s",
+		return fmt.Sprintf("req id=%d:%d %s :method=%s :authority=%s :path=%s tls=%s",
 			ev.RequestInit.GetId().GetBase(),
 			ev.RequestInit.GetId().GetStream(),
 			flow,
@@ -272,7 +268,7 @@ func renderTapEvent(event *common.TapEvent) string {
 		)
 
 	case *common.TapEvent_Http_ResponseInit_:
-		return fmt.Sprintf("rsp id=%d:%d %s :status=%d latency=%dµs secured=%s",
+		return fmt.Sprintf("rsp id=%d:%d %s :status=%d latency=%dµs tls=%s",
 			ev.ResponseInit.GetId().GetBase(),
 			ev.ResponseInit.GetId().GetStream(),
 			flow,
@@ -284,7 +280,7 @@ func renderTapEvent(event *common.TapEvent) string {
 	case *common.TapEvent_Http_ResponseEnd_:
 		switch eos := ev.ResponseEnd.GetEos().GetEnd().(type) {
 		case *common.Eos_GrpcStatusCode:
-			return fmt.Sprintf("end id=%d:%d %s grpc-status=%s duration=%dµs response-length=%dB secured=%s",
+			return fmt.Sprintf("end id=%d:%d %s grpc-status=%s duration=%dµs response-length=%dB tls=%s",
 				ev.ResponseEnd.GetId().GetBase(),
 				ev.ResponseEnd.GetId().GetStream(),
 				flow,
@@ -295,7 +291,7 @@ func renderTapEvent(event *common.TapEvent) string {
 			)
 
 		case *common.Eos_ResetErrorCode:
-			return fmt.Sprintf("end id=%d:%d %s reset-error=%+v duration=%dµs response-length=%dB secured=%s",
+			return fmt.Sprintf("end id=%d:%d %s reset-error=%+v duration=%dµs response-length=%dB tls=%s",
 				ev.ResponseEnd.GetId().GetBase(),
 				ev.ResponseEnd.GetId().GetStream(),
 				flow,
@@ -306,7 +302,7 @@ func renderTapEvent(event *common.TapEvent) string {
 			)
 
 		default:
-			return fmt.Sprintf("end id=%d:%d %s duration=%dµs response-length=%dB secured=%s",
+			return fmt.Sprintf("end id=%d:%d %s duration=%dµs response-length=%dB tls=%s",
 				ev.ResponseEnd.GetId().GetBase(),
 				ev.ResponseEnd.GetId().GetStream(),
 				flow,
