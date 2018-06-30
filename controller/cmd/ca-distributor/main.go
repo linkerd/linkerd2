@@ -40,10 +40,14 @@ func main() {
 	k8sAPI := k8s.NewAPI(
 		k8sClient,
 		k8s.CM,
+		k8s.Deploy,
 		k8s.Pod,
 	)
 
-	controller := ca.NewCertificateController(*controllerNamespace, k8sAPI)
+	controller, err := ca.NewCertificateController(*controllerNamespace, k8sAPI)
+	if err != nil {
+		log.Fatalf("Failed to create CertificateController: %v", err)
+	}
 
 	stopCh := make(chan struct{})
 	ready := make(chan struct{})

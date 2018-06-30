@@ -113,7 +113,11 @@ func GetOwnerLabels(objectMeta meta.ObjectMeta) map[string]string {
 }
 
 func GetControllerNs(objectMeta meta.ObjectMeta) string {
-	return objectMeta.Labels[ControllerNSLabel]
+	return GetControllerNsFromLabels(objectMeta.Labels)
+}
+
+func GetControllerNsFromLabels(labels map[string]string) string {
+	return labels[ControllerNSLabel]
 }
 
 func GetOwnerKindAndName(labels map[string]string) (string, string) {

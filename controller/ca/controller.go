@@ -1,17 +1,20 @@
 package ca
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
+	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	"github.com/runconduit/conduit/controller/k8s"
 	pkgK8s "github.com/runconduit/conduit/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
@@ -20,24 +23,47 @@ import (
 type CertificateController struct {
 	namespace   string
 	k8sAPI      *k8s.API
+	ca *CA
+	trustAnchorsPEM string
 	syncHandler func(key string) error
+
+	// The queue is keyed on a string. If the string doesn't contain any dots
+	// then it is a namespace name and the task is to create the CA bundle
+	// configmap in that namespace. Otherwise the string must be of the form
+	// "$podOwner.$podKind.$podNamespace" and the task is to create the secret
+	// for that pod owner.
 	queue       workqueue.RateLimitingInterface
 }
 
-func NewCertificateController(conduitNamespace string, k8sAPI *k8s.API) *CertificateController {
+func NewCertificateController(conduitNamespace string, k8sAPI *k8s.API) (*CertificateController, error) {
+	ca, err := NewCA()
+	if err != nil {
+		return nil, err
+	}
+
 	c := &CertificateController{
 		namespace: conduitNamespace,
 		k8sAPI:    k8sAPI,
+		ca: ca,
+		trustAnchorsPEM: ca.TrustAnchorPEM(),
 		queue: workqueue.NewNamedRateLimitingQueue(
 			workqueue.DefaultControllerRateLimiter(), "certificates"),
 	}
 
-	k8sAPI.Pod().Informer().AddEventHandler(
-		cache.ResourceEventHandlerFuncs{
-			AddFunc:    c.handlePodAdd,
-			UpdateFunc: c.handlePodUpdate,
-		},
-	)
+	// TODO: Handle deletions.
+	handlePodOwnerAddUpdate := cache.ResourceEventHandlerFuncs{
+		AddFunc:    c.handlePodOwnerAdd,
+		UpdateFunc: c.handlePodOwnerUpdate,
+	}
+
+	// Watch pod owners, instead of just pods, so that we can create the
+	// secret for each pod owner as soon as the pod owner is created, instead
+	// of later when the first pod that it owns is created. This creates a race
+	// with the pod creation that we hope to win so that the pod starts up with
+	// a valid TLS configuration.
+	//
+	// TODO: Other pod owner types
+	k8sAPI.Deploy().Informer().AddEventHandler(handlePodOwnerAddUpdate)
 
 	k8sAPI.CM().Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -47,9 +73,9 @@ func NewCertificateController(conduitNamespace string, k8sAPI *k8s.API) *Certifi
 		},
 	)
 
-	c.syncHandler = c.syncNamespace
+	c.syncHandler = c.syncObject
 
-	return c
+	return c, nil
 }
 
 func (c *CertificateController) Run(stopCh <-chan struct{}) {
@@ -70,6 +96,8 @@ func (c *CertificateController) worker() {
 }
 
 func (c *CertificateController) processNextWorkItem() bool {
+	log.Infof("processNextWorkItem()")
+
 	key, quit := c.queue.Get()
 	if quit {
 		return false
@@ -87,26 +115,30 @@ func (c *CertificateController) processNextWorkItem() bool {
 	return true
 }
 
-func (c *CertificateController) syncNamespace(ns string) error {
-	conduitConfigMap, err := c.k8sAPI.CM().Lister().ConfigMaps(c.namespace).
-		Get(pkgK8s.TLSTrustAnchorConfigMapName)
-	if apierrors.IsNotFound(err) {
-		log.Warnf("configmap [%s] not found in namespace [%s]",
-			pkgK8s.TLSTrustAnchorConfigMapName, c.namespace)
-		return nil
-	}
-	if err != nil {
-		return err
-	}
+func (c *CertificateController) syncObject(key string) error {
+	log.Debugf("syncObject(%s)", key)
 
+	if key == "" {
+		return c.syncAll()
+	}
+	if !strings.Contains(key, ".") {
+		return c.syncNamespace(key)
+	}
+	return c.syncSecret(key)
+}
+
+func (c *CertificateController) syncNamespace(ns string) error {
+	log.Debugf("syncNamespace(%s)", ns)
 	configMap := &v1.ConfigMap{
-		ObjectMeta: meta.ObjectMeta{Name: pkgK8s.TLSTrustAnchorConfigMapName},
-		Data:       conduitConfigMap.Data,
+		ObjectMeta: metav1.ObjectMeta{Name: pkgK8s.TLSTrustAnchorConfigMapName},
+		Data:       map[string]string{
+			pkgK8s.TLSTrustAnchorFileName: c.trustAnchorsPEM,
+		},
 	}
 
 	log.Debugf("adding configmap [%s] to namespace [%s]",
 		pkgK8s.TLSTrustAnchorConfigMapName, ns)
-	_, err = c.k8sAPI.Client.CoreV1().ConfigMaps(ns).Create(configMap)
+	_, err := c.k8sAPI.Client.CoreV1().ConfigMaps(ns).Create(configMap)
 	if apierrors.IsAlreadyExists(err) {
 		_, err = c.k8sAPI.Client.CoreV1().ConfigMaps(ns).Update(configMap)
 	}
@@ -114,34 +146,88 @@ func (c *CertificateController) syncNamespace(ns string) error {
 	return err
 }
 
-func (c *CertificateController) handlePodAdd(obj interface{}) {
-	pod := obj.(*v1.Pod)
-	if c.isInjectedPod(pod) && !c.filterNamespace(pod.Namespace) {
-		c.queue.Add(pod.Namespace)
+func (c *CertificateController) syncSecret(key string) error {
+	log.Debugf("syncSecret(%s)", key)
+	parts := strings.Split(key, ".")
+	if len(parts) != 3 {
+		return nil // TODO
 	}
+	identity := pkgK8s.TLSIdentity{
+		Name: parts[0],
+		Kind: parts[1],
+		Namespace: parts[2],
+		ControllerNamespace: c.namespace,
+	}
+	dnsName := identity.ToDNSName()
+	secretName := identity.ToSecretName()
+	certAndPrivateKey, err := c.ca.IssueEndEntityCertificate(dnsName)
+	if err != nil {
+		log.Errorf("Failed to issue certificate for %s", dnsName)
+		return err
+	}
+	secret := &v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: secretName},
+		Data:       map[string][]byte{
+			pkgK8s.TLSCertFileName: certAndPrivateKey.Certificate,
+			pkgK8s.TLSPrivateKeyFileName: certAndPrivateKey.PrivateKey,
+		},
+	}
+	secrets := c.k8sAPI.Client.CoreV1().Secrets(identity.Namespace)
+	_, err = secrets.Create(secret)
+	if apierrors.IsAlreadyExists(err) {
+		_, err = secrets.Update(secret)
+	}
+
+	return err
 }
 
-func (c *CertificateController) handlePodUpdate(oldObj, newObj interface{}) {
-	c.handlePodAdd(newObj)
+func (c *CertificateController) handlePodOwnerAdd(obj interface{}) {
+	owner, err := meta.Accessor(obj)
+	if err != nil {
+		log.Warnf("handlePodOwnerAdd couldn't get object from tombstone: %+v", obj)
+		return
+	}
+
+	var podLabels map[string]string
+
+	switch typed := obj.(type) {
+	case *appsv1beta2.Deployment:
+		podLabels = typed.Spec.Template.Labels
+	default:
+		log.Warnf("handlePodOwnerAdd skipping %s in %s because of type mismatch", owner.GetName(), owner.GetNamespace())
+		return
+	}
+
+	controller_ns := pkgK8s.GetControllerNsFromLabels(podLabels)
+	if 	controller_ns != c.namespace {
+		if controller_ns == "" {
+			controller_ns = "<no controller>"
+		}
+		log.Debugf("handlePodOwnerAdd skipping %s in %s controlled by %s", owner.GetName(), owner.GetNamespace(), controller_ns)
+		return
+	}
+
+	ns := owner.GetNamespace()
+	log.Debugf("enqueuing update of CA bundle configmap in %s", ns)
+	c.queue.Add(ns) // The namespace name won't have dots in it.
+
+	kind, name := pkgK8s.GetOwnerKindAndName(podLabels)
+
+	// Serialize (name, kind, ns) as a string since the queue's element
+	// type must be a valid map key (so it can't not a struct).
+	item := fmt.Sprintf("%s.%s.%s", name, kind, ns)
+	log.Debugf("enqueuing update of secret for %s %s in %s", kind, name, ns)
+	c.queue.Add(item)
+}
+
+func (c *CertificateController) handlePodOwnerUpdate(oldObj, newObj interface{}) {
+	c.handlePodOwnerAdd(newObj)
 }
 
 func (c *CertificateController) handleConfigMapAdd(obj interface{}) {
-	cm := obj.(*v1.ConfigMap)
-	if cm.Namespace == c.namespace && cm.Name == pkgK8s.TLSTrustAnchorConfigMapName {
-		namespaces, err := c.getInjectedNamespaces()
-		if err != nil {
-			log.Errorf("error getting namespaces: %s", err)
-			return
-		}
-
-		for _, ns := range namespaces {
-			c.queue.Add(ns)
-		}
-	}
 }
 
 func (c *CertificateController) handleConfigMapUpdate(oldObj, newObj interface{}) {
-	c.handleConfigMapAdd(newObj)
 }
 
 func (c *CertificateController) handleConfigMapDelete(obj interface{}) {
@@ -159,7 +245,7 @@ func (c *CertificateController) handleConfigMapDelete(obj interface{}) {
 		}
 	}
 
-	if configMap.Name == pkgK8s.TLSTrustAnchorConfigMapName && configMap.Namespace != c.namespace {
+	if configMap.Name == pkgK8s.TLSTrustAnchorConfigMapName {
 		injected, err := c.isInjectedNamespace(configMap.Namespace)
 		if err != nil {
 			log.Errorf("error getting pods in namespace [%s]: %s", configMap.Namespace, err)
@@ -173,20 +259,22 @@ func (c *CertificateController) handleConfigMapDelete(obj interface{}) {
 	}
 }
 
-func (c *CertificateController) getInjectedNamespaces() ([]string, error) {
-	pods, err := c.k8sAPI.Pod().Lister().List(labels.Everything())
+func (c *CertificateController) syncAll() error {
+	log.Infof("syncAll() start")
+
+	// TODO: error handling
+	// TODO: other types of pod owners
+	podOwners, err := c.k8sAPI.Deploy().Lister().List(labels.Everything())
 	if err != nil {
-		return nil, err
+		log.Errorf("error getting pod owners %s", err)
+		return err
 	}
 
-	namespaces := make(sets.String)
-	for _, pod := range pods {
-		if !c.filterNamespace(pod.Namespace) && c.isInjectedPod(pod) {
-			namespaces.Insert(pod.Namespace)
-		}
+	for _, podOwner := range(podOwners) {
+		c.handlePodOwnerAdd(podOwner)
 	}
 
-	return namespaces.List(), nil
+	return nil
 }
 
 func (c *CertificateController) filterNamespace(ns string) bool {
