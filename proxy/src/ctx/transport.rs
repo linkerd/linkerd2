@@ -1,8 +1,10 @@
 use std::{
     self,
-    // cell::Cell,
     net::{IpAddr, SocketAddr},
-    sync::{Arc, Mutex},
+    sync::{
+        Arc,
+        atomic::{Ordering, AtomicBool},
+    },
 };
 use ctx;
 use control::destination;
@@ -32,15 +34,15 @@ pub struct Client {
     pub proxy: Arc<ctx::Proxy>,
     pub remote: SocketAddr,
     pub metadata: destination::Metadata,
+    tls_status: TlsStatus,
     // The client-side TLS status requires interior mutability so that it can
     // be updated to "handshake_failed" if we try to connect over TLS and have
-    // to fall back to plaintext.
-    //
-    // Normally, we would just use a `Cell` for this, but the client context
-    // has to be `Sync`, so we require a `Mutex`. However, since there is only
-    // one place where we'd mutate this, and accesses will immediately copy the
-    // data under the mutex, there shouldn't be too much lock contention.
-    tls_status: Mutex<TlsStatus>,
+    // to fall back to plaintext. Therefore, we hide the `tls_status` field
+    // behind an accessor function that checks if this flag is set, and returns
+    // `ReasonForNoTls::HandshakeFailed` if it is. By representing this special
+    // case with a separate atomic bool, we can avoid storing the status in a
+    // `Mutex`, and still have some interior mutability while remaining `Sync`.
+    handshake_failed: AtomicBool,
 }
 
 /// Identifies whether or not a connection was secured with TLS,
@@ -126,7 +128,8 @@ impl Client {
             proxy: Arc::clone(proxy),
             remote: *remote,
             metadata,
-            tls_status: Mutex::new(tls_status),
+            tls_status,
+            handshake_failed: AtomicBool::new(false)
         };
 
         Arc::new(c)
@@ -136,22 +139,30 @@ impl Client {
         self.metadata.tls_identity()
     }
 
-    pub fn dst_labels(&self) -> Option<&DstLabels> {
-        self.metadata.dst_labels()
+    /// Returns the TLS status of this context.
+    pub fn tls_status(&self) -> TlsStatus {
+        if self.handshake_failed() {
+            Conditional::None(tls::ReasonForNoTls::HandshakeFailed)
+        } else {
+            self.tls_status
+        }
     }
 
-    pub fn tls_status(&self) -> TlsStatus {
-        *(self.tls_status.lock()
-            .expect("TLS status lock poisoned"))
+    pub fn dst_labels(&self) -> Option<&DstLabels> {
+        self.metadata.dst_labels()
     }
 
     /// Update the client context's TLS status to "handshake failed".
     ///
     /// This will mutate the context.
     pub fn set_handshake_failed(&self) {
-        let mut lock = self.tls_status.lock()
-            .expect("TLS status lock poisoned");
-        *lock = Conditional::None(tls::ReasonForNoTls::HandshakeFailed);
+        self.handshake_failed.store(true, Ordering::Release)
+    }
+
+    /// Returns `true` if this contrxt attempted a TLS handshake
+    /// that failed.
+    pub fn handshake_failed(&self) -> bool {
+        self.handshake_failed.load(Ordering::Acquire)
     }
  }
 
