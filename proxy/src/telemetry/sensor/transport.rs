@@ -6,7 +6,7 @@ use std::time::Instant;
 use tokio_connect;
 use tokio::io::{AsyncRead, AsyncWrite};
 
-use connection::{self, Peek};
+use connection::Peek;
 use ctx;
 use telemetry::event;
 
@@ -191,10 +191,7 @@ impl<T: AsyncRead + AsyncWrite + Peek> Peek for Transport<T> {
 
 // === impl Connect ===
 
-impl<C> Connect<C>
-where
-    C: tokio_connect::Connect<Connected = connection::Connection>,
-{
+impl<C: tokio_connect::Connect> Connect<C> {
     /// Returns a `Connect` to `addr` and `handle`.
     pub(super) fn new(
         underlying: C,
@@ -209,10 +206,7 @@ where
     }
 }
 
-impl<C> tokio_connect::Connect for Connect<C>
-where
-    C: tokio_connect::Connect<Connected = connection::Connection>,
-{
+impl<C: tokio_connect::Connect> tokio_connect::Connect for Connect<C> {
     type Connected = Transport<C::Connected>;
     type Error = C::Error;
     type Future = Connecting<C>;
@@ -228,23 +222,14 @@ where
 
 // === impl Connecting ===
 
-impl<C> Future for Connecting<C>
-where
-    C: tokio_connect::Connect<Connected = connection::Connection>,
-{
+impl<C: tokio_connect::Connect> Future for Connecting<C> {
     type Item = Transport<C::Connected>;
     type Error = C::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         let io = try_ready!(self.underlying.poll());
         debug!("client connection open");
-        let ctx = ctx::transport::Client::new(
-            &self.ctx.proxy,
-            &self.ctx.remote,
-            self.ctx.metadata.clone(),
-            io.tls_status,
-        );
-        let ctx = Arc::new(ctx.into());
+        let ctx = Arc::new(Arc::clone(&self.ctx).into());
         let trans = Transport::open(io, Instant::now(), &self.handle, ctx);
         Ok(trans.into())
     }
