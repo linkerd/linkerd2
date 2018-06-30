@@ -103,6 +103,9 @@ pub enum ReasonForNoTls {
     /// The connection isn't TLS or it is TLS but not intended to be handled
     /// by the proxy.
     NotProxyTls,
+
+    /// We fell back to plaintext because the TLS handshake failed.
+    HandshakeFailed,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]

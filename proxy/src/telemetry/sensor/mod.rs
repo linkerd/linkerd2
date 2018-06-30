@@ -69,7 +69,7 @@ impl Sensors {
 
     pub fn connect<C>(&self, connect: C, ctx: &Arc<ctx::transport::Client>) -> Connect<C>
     where
-        C: tokio_connect::Connect,
+        C: tokio_connect::Connect<Connected = ::connection::Connection>,
     {
         Connect::new(connect, &self.0, ctx)
     }

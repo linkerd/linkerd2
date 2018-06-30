@@ -9,6 +9,7 @@ use tokio::{
     net::{TcpListener, TcpStream, ConnectFuture},
     reactor::Handle,
 };
+
 use conditional::Conditional;
 use ctx::transport::TlsStatus;
 use config::Addr;
@@ -24,9 +25,13 @@ pub fn connect(addr: &SocketAddr,
                tls: tls::ConditionalConnectionConfig<tls::ClientConfig>)
     -> Connecting
 {
-    Connecting::Plaintext {
+    let state = ConnectingState::Plaintext {
         connect: TcpStream::connect(addr),
         tls: Some(tls),
+    };
+    Connecting {
+        addr: *addr,
+        state,
     }
 }
 
@@ -43,10 +48,15 @@ struct ConditionallyUpgradeServerToTlsInner {
 }
 
 /// A socket that is in the process of connecting.
-pub enum Connecting {
+pub struct Connecting {
+    addr: SocketAddr,
+    state: ConnectingState,
+}
+
+enum ConnectingState {
     Plaintext {
         connect: ConnectFuture,
-        tls: Option<tls::ConditionalConnectionConfig<tls::ClientConfig>>,
+        tls: Option<tls::ConditionalConnectionConfig<tls::ClientConfig>>
     },
     UpgradeToTls(tls::UpgradeClientToTls),
 }
@@ -69,7 +79,7 @@ pub struct Connection {
     peek_buf: BytesMut,
 
     /// Whether or not the connection is secured with TLS.
-    tls_status: TlsStatus,
+    pub tls_status: TlsStatus,
 }
 
 /// A trait describing that a type can peek bytes.
@@ -252,24 +262,47 @@ impl Future for Connecting {
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         loop {
-            *self = match self {
-                Connecting::Plaintext { connect, tls } => {
+            self.state = match &mut self.state {
+                ConnectingState::Plaintext { connect, tls } => {
                     let plaintext_stream = try_ready!(connect.poll());
+                    trace!("Connecting: state=plaintext; tls={:?};",tls);
                     set_nodelay_or_warn(&plaintext_stream);
                     match tls.take().expect("Polled after ready") {
                         Conditional::Some(config) => {
-                            let upgrade_to_tls = tls::Connection::connect(
+                            trace!("plaintext connection established; trying to upgrade");
+                            let upgrade = tls::Connection::connect(
                                 plaintext_stream, &config.identity, config.config);
-                            Connecting::UpgradeToTls(upgrade_to_tls)
+                            ConnectingState::UpgradeToTls(upgrade)
                         },
                         Conditional::None(why) => {
+                            trace!("plaintext connection established; no TLS ({:?})", why);
                             return Ok(Async::Ready(Connection::plain(plaintext_stream, why)));
                         },
                     }
                 },
-                Connecting::UpgradeToTls(upgrading) => {
-                    let tls_stream = try_ready!(upgrading.poll());
-                    return Ok(Async::Ready(Connection::tls(BoxedIo::new(tls_stream))));
+                ConnectingState::UpgradeToTls(upgrade) => {
+                    match upgrade.poll() {
+                        Ok(Async::NotReady) => return Ok(Async::NotReady),
+                        Ok(Async::Ready(tls_stream)) => {
+                            let conn = Connection::tls(BoxedIo::new(tls_stream));
+                            return Ok(Async::Ready(conn));
+                        },
+                        Err(e) => {
+                            debug!(
+                                "TLS handshake with {:?} failed: {}\
+                                    -> falling back to plaintext",
+                                self.addr, e,
+                            );
+                            let connect = TcpStream::connect(&self.addr);
+                            // TODO: emit a `HandshakeFailed` telemetry event.
+                            let reason = tls::ReasonForNoTls::HandshakeFailed;
+                            // Reset self to try the plaintext connection.
+                            ConnectingState::Plaintext {
+                                connect,
+                                tls: Some(Conditional::None(reason))
+                            }
+                        }
+                    }
                 },
             };
         }
