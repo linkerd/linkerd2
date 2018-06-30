@@ -261,6 +261,7 @@ impl Future for Connecting {
     type Error = io::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        let addr = self.addr;
         loop {
             self.state = match &mut self.state {
                 ConnectingState::Plaintext { connect, tls } => {
