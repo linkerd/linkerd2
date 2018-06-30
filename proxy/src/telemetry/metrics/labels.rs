@@ -378,15 +378,14 @@ impl fmt::Display for TransportCloseLabels {
 // TODO: There's got to be a nicer way to handle this.
 impl fmt::Display for ctx::transport::TlsStatus {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Conditional::Some(()) => f.pad("tls=\"true\""),
-            Conditional::None(tls::ReasonForNoTls::NoConfig) => f.pad("tls=\"no_config\""),
-            Conditional::None(tls::ReasonForNoTls::HandshakeFailed) =>
-                f.pad("tls=\"handshake_failed\""),
-            Conditional::None(tls::ReasonForNoTls::Disabled) |
-            Conditional::None(tls::ReasonForNoTls::InternalTraffic) |
-            Conditional::None(tls::ReasonForNoTls::NoIdentity(_)) |
-            Conditional::None(tls::ReasonForNoTls::NotProxyTls) => Ok(()),
-        }
+        write!(f, "tls=\"{}\"", match *self {
+            Conditional::Some(()) => "true",
+            Conditional::None(tls::ReasonForNoTls::NoConfig) => "no_config",
+            Conditional::None(tls::ReasonForNoTls::HandshakeFailed) => "handshake_failed",
+            Conditional::None(tls::ReasonForNoTls::Disabled) => "disabled",
+            Conditional::None(tls::ReasonForNoTls::InternalTraffic) => "internal_traffic",
+            Conditional::None(tls::ReasonForNoTls::NoIdentity(_)) => "no_identity",
+            Conditional::None(tls::ReasonForNoTls::NotProxyTls) => "no_proxy_tls"
+        })
     }
 }
