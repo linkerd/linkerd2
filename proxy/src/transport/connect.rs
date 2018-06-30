@@ -4,9 +4,11 @@ use tokio_connect;
 use std::{fmt, io};
 use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
+use std::sync::Arc;
 
 use http;
 
+use ctx;
 use connection;
 use convert::TryFrom;
 use dns;
@@ -16,6 +18,7 @@ use transport::tls;
 pub struct Connect {
     addr: SocketAddr,
     tls: tls::ConditionalConnectionConfig<tls::ClientConfig>,
+    client_ctx: Arc<ctx::transport::Client>,
 }
 
 #[derive(Clone, Debug)]
@@ -112,10 +115,12 @@ impl Connect {
     pub fn new(
         addr: SocketAddr,
         tls: tls::ConditionalConnectionConfig<tls::ClientConfig>,
+        client_ctx: &Arc<ctx::transport::Client>,
     ) -> Self {
         Self {
             addr,
             tls,
+            client_ctx: client_ctx.clone(),
         }
     }
 }
@@ -126,7 +131,11 @@ impl tokio_connect::Connect for Connect {
     type Future = connection::Connecting;
 
     fn connect(&self) -> Self::Future {
-        connection::connect(&self.addr, self.tls.clone())
+        connection::connect(
+            &self.addr,
+            self.tls.clone(),
+            Some(&self.client_ctx)
+        )
     }
 }
 
@@ -164,7 +173,11 @@ impl tokio_connect::Connect for LookupAddressAndConnect {
                 info!("DNS resolved {:?} to {}", host, ip_addr);
                 let addr = SocketAddr::from((ip_addr, port));
                 trace!("connect {}", addr);
-                connection::connect(&addr, tls)
+                connection::connect(
+                    &addr,
+                    tls,
+                    None, // No client context for the controller client.
+                )
             });
         Box::new(c)
     }

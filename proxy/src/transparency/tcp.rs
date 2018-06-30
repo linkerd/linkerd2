@@ -69,7 +69,11 @@ impl Proxy {
             TlsStatus::from(&tls),
         );
         let c = Timeout::new(
-            transport::Connect::new(orig_dst, tls),
+            transport::Connect::new(
+                orig_dst,
+                tls,
+                &client_ctx,
+            ),
             self.connect_timeout,
         );
         let connect = self.sensors.connect(c, &client_ctx);

@@ -1,7 +1,8 @@
 use std::{
     self,
+    // cell::Cell,
     net::{IpAddr, SocketAddr},
-    sync::Arc,
+    sync::{Arc, Mutex},
 };
 use ctx;
 use control::destination;
@@ -31,7 +32,15 @@ pub struct Client {
     pub proxy: Arc<ctx::Proxy>,
     pub remote: SocketAddr,
     pub metadata: destination::Metadata,
-    pub tls_status: TlsStatus,
+    // The client-side TLS status requires interior mutability so that it can
+    // be updated to "handshake_failed" if we try to connect over TLS and have
+    // to fall back to plaintext.
+    //
+    // Normally, we would just use a `Cell` for this, but the client context
+    // has to be `Sync`, so we require a `Mutex`. However, since there is only
+    // one place where we'd mutate this, and accesses will immediately copy the
+    // data under the mutex, there shouldn't be too much lock contention.
+    tls_status: Mutex<TlsStatus>,
 }
 
 /// Identifies whether or not a connection was secured with TLS,
@@ -57,7 +66,7 @@ impl Ctx {
 
     pub fn tls_status(&self) -> TlsStatus {
         match self {
-            Ctx::Client(ctx)  => ctx.tls_status,
+            Ctx::Client(ctx)  => ctx.tls_status(),
             Ctx::Server(ctx) => ctx.tls_status,
         }
     }
@@ -117,7 +126,7 @@ impl Client {
             proxy: Arc::clone(proxy),
             remote: *remote,
             metadata,
-            tls_status,
+            tls_status: Mutex::new(tls_status),
         };
 
         Arc::new(c)
@@ -130,7 +139,22 @@ impl Client {
     pub fn dst_labels(&self) -> Option<&DstLabels> {
         self.metadata.dst_labels()
     }
-}
+
+    pub fn tls_status(&self) -> TlsStatus {
+        *(self.tls_status.lock()
+            .expect("TLS status lock poisoned"))
+    }
+
+    /// Update the client context's TLS status to "handshake failed".
+    ///
+    /// This will mutate the context.
+    pub fn set_handshake_failed(&self) {
+        let mut lock = self.tls_status.lock()
+            .expect("TLS status lock poisoned");
+        *lock = Conditional::None(tls::ReasonForNoTls::HandshakeFailed);
+    }
+ }
+
 impl From<Arc<Client>> for Ctx {
     fn from(c: Arc<Client>) -> Self {
         Ctx::Client(c)
