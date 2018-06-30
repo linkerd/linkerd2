@@ -128,7 +128,7 @@ impl fmt::Display for RequestLabels {
             write!(f, ",{}", outbound)?;
         }
 
-        write!(f, "{}", self.tls_status)?;
+        write!(f, ",{}", self.tls_status)?;
 
         Ok(())
     }
@@ -334,7 +334,7 @@ impl TransportLabels {
 
 impl fmt::Display for TransportLabels {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{},{}{}", self.direction, self.peer, self.tls_status)
+        write!(f, "{},{},{}", self.direction, self.peer, self.tls_status)
     }
 }
 
@@ -379,8 +379,8 @@ impl fmt::Display for TransportCloseLabels {
 impl fmt::Display for ctx::transport::TlsStatus {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Conditional::Some(()) => f.pad(",tls=\"true\""),
-            Conditional::None(tls::ReasonForNoTls::NoConfig) => f.pad(",tls=\"no_config\""),
+            Conditional::Some(()) => f.pad("tls=\"true\""),
+            Conditional::None(tls::ReasonForNoTls::NoConfig) => f.pad("tls=\"no_config\""),
             Conditional::None(tls::ReasonForNoTls::HandshakeFailed) =>
                 f.pad("tls=\"handshake_failed\""),
             Conditional::None(tls::ReasonForNoTls::Disabled) |
