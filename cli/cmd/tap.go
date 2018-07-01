@@ -245,12 +245,12 @@ func renderTapEvent(event *common.TapEvent) string {
 	dstLabels := event.GetDestinationMeta().GetLabels()
 	dstPod := dstLabels["pod"]
 
-	proxy := "unknown"
+	proxy := "???"
 	tls := ""
 	switch event.GetProxyDirection() {
 	case common.TapEvent_INBOUND:
 		srcLabels := event.GetSourceMeta().GetLabels()
-		proxy = "in"
+		proxy = "in "
 		tls = srcLabels["tls"]
 	case common.TapEvent_OUTBOUND:
 		proxy = "out"
@@ -263,70 +263,62 @@ func renderTapEvent(event *common.TapEvent) string {
 		dst = dstPod
 	}
 
-	flow := fmt.Sprintf("src=%s dst=%s",
+	flow := fmt.Sprintf("proxy=%s src=%s dst=%s tls=%s",
+		proxy,
 		addr.AddressToString(event.GetSource()),
 		dst,
+		tls,
 	)
 
 	switch ev := event.GetHttp().GetEvent().(type) {
 	case *common.TapEvent_Http_RequestInit_:
-		return fmt.Sprintf("req proxy=%s id=%d:%d %s :method=%s :authority=%s :path=%s tls=%s",
-			proxy,
+		return fmt.Sprintf("req id=%d:%d %s :method=%s :authority=%s :path=%s",
 			ev.RequestInit.GetId().GetBase(),
 			ev.RequestInit.GetId().GetStream(),
 			flow,
 			ev.RequestInit.GetMethod().GetRegistered().String(),
 			ev.RequestInit.GetAuthority(),
 			ev.RequestInit.GetPath(),
-			tls,
 		)
 
 	case *common.TapEvent_Http_ResponseInit_:
-		return fmt.Sprintf("rsp proxy=%s id=%d:%d %s :status=%d latency=%dµs tls=%s",
-			proxy,
+		return fmt.Sprintf("rsp id=%d:%d %s :status=%d latency=%dµs",
 			ev.ResponseInit.GetId().GetBase(),
 			ev.ResponseInit.GetId().GetStream(),
 			flow,
 			ev.ResponseInit.GetHttpStatus(),
 			ev.ResponseInit.GetSinceRequestInit().GetNanos()/1000,
-			tls,
 		)
 
 	case *common.TapEvent_Http_ResponseEnd_:
 		switch eos := ev.ResponseEnd.GetEos().GetEnd().(type) {
 		case *common.Eos_GrpcStatusCode:
-			return fmt.Sprintf("end proxy=%s id=%d:%d %s grpc-status=%s duration=%dµs response-length=%dB tls=%s",
-				proxy,
+			return fmt.Sprintf("end id=%d:%d %s grpc-status=%s duration=%dµs response-length=%dB",
 				ev.ResponseEnd.GetId().GetBase(),
 				ev.ResponseEnd.GetId().GetStream(),
 				flow,
 				codes.Code(eos.GrpcStatusCode),
 				ev.ResponseEnd.GetSinceResponseInit().GetNanos()/1000,
 				ev.ResponseEnd.GetResponseBytes(),
-				tls,
 			)
 
 		case *common.Eos_ResetErrorCode:
-			return fmt.Sprintf("end proxy=%s id=%d:%d %s reset-error=%+v duration=%dµs response-length=%dB tls=%s",
-				proxy,
+			return fmt.Sprintf("end id=%d:%d %s reset-error=%+v duration=%dµs response-length=%dB",
 				ev.ResponseEnd.GetId().GetBase(),
 				ev.ResponseEnd.GetId().GetStream(),
 				flow,
 				eos.ResetErrorCode,
 				ev.ResponseEnd.GetSinceResponseInit().GetNanos()/1000,
 				ev.ResponseEnd.GetResponseBytes(),
-				tls,
 			)
 
 		default:
-			return fmt.Sprintf("end proxy=%s id=%d:%d %s duration=%dµs response-length=%dB tls=%s",
-				proxy,
+			return fmt.Sprintf("end id=%d:%d %s duration=%dµs response-length=%dB",
 				ev.ResponseEnd.GetId().GetBase(),
 				ev.ResponseEnd.GetId().GetStream(),
 				flow,
 				ev.ResponseEnd.GetSinceResponseInit().GetNanos()/1000,
 				ev.ResponseEnd.GetResponseBytes(),
-				tls,
 			)
 		}
 
