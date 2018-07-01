@@ -244,7 +244,17 @@ func renderTapEvent(event *common.TapEvent) string {
 	dst := addr.AddressToString(event.GetDestination())
 	dstLabels := event.GetDestinationMeta().GetLabels()
 	dstPod := dstLabels["pod"]
-	tls := dstLabels["tls"]
+
+	tls := ""
+	switch event.GetProxyDirection() {
+	case common.TapEvent_INBOUND:
+		srcLabels := event.GetSourceMeta().GetLabels()
+		tls = srcLabels["tls"]
+	case common.TapEvent_OUTBOUND:
+		tls = dstLabels["tls"]
+	default:
+		// Too old for TLS.
+	}
 
 	if dstPod != "" {
 		dst = dstPod
