@@ -264,7 +264,7 @@ func renderTapEvent(event *common.TapEvent) string {
 			ev.RequestInit.GetMethod().GetRegistered().String(),
 			ev.RequestInit.GetAuthority(),
 			ev.RequestInit.GetPath(),
-			isSecured,
+			tls,
 		)
 
 	case *common.TapEvent_Http_ResponseInit_:
@@ -274,7 +274,7 @@ func renderTapEvent(event *common.TapEvent) string {
 			flow,
 			ev.ResponseInit.GetHttpStatus(),
 			ev.ResponseInit.GetSinceRequestInit().GetNanos()/1000,
-			isSecured,
+			tls,
 		)
 
 	case *common.TapEvent_Http_ResponseEnd_:
@@ -287,7 +287,7 @@ func renderTapEvent(event *common.TapEvent) string {
 				codes.Code(eos.GrpcStatusCode),
 				ev.ResponseEnd.GetSinceResponseInit().GetNanos()/1000,
 				ev.ResponseEnd.GetResponseBytes(),
-				isSecured,
+				tls,
 			)
 
 		case *common.Eos_ResetErrorCode:
@@ -298,7 +298,7 @@ func renderTapEvent(event *common.TapEvent) string {
 				eos.ResetErrorCode,
 				ev.ResponseEnd.GetSinceResponseInit().GetNanos()/1000,
 				ev.ResponseEnd.GetResponseBytes(),
-				isSecured,
+				tls,
 			)
 
 		default:
@@ -308,7 +308,7 @@ func renderTapEvent(event *common.TapEvent) string {
 				flow,
 				ev.ResponseEnd.GetSinceResponseInit().GetNanos()/1000,
 				ev.ResponseEnd.GetResponseBytes(),
-				isSecured,
+				tls,
 			)
 		}
 
