@@ -245,12 +245,15 @@ func renderTapEvent(event *common.TapEvent) string {
 	dstLabels := event.GetDestinationMeta().GetLabels()
 	dstPod := dstLabels["pod"]
 
+	proxy := "unknown"
 	tls := ""
 	switch event.GetProxyDirection() {
 	case common.TapEvent_INBOUND:
 		srcLabels := event.GetSourceMeta().GetLabels()
+		proxy = "in"
 		tls = srcLabels["tls"]
 	case common.TapEvent_OUTBOUND:
+		proxy = "out"
 		tls = dstLabels["tls"]
 	default:
 		// Too old for TLS.
@@ -267,7 +270,8 @@ func renderTapEvent(event *common.TapEvent) string {
 
 	switch ev := event.GetHttp().GetEvent().(type) {
 	case *common.TapEvent_Http_RequestInit_:
-		return fmt.Sprintf("req id=%d:%d %s :method=%s :authority=%s :path=%s tls=%s",
+		return fmt.Sprintf("req proxy=%s id=%d:%d %s :method=%s :authority=%s :path=%s tls=%s",
+			proxy,
 			ev.RequestInit.GetId().GetBase(),
 			ev.RequestInit.GetId().GetStream(),
 			flow,
@@ -278,7 +282,8 @@ func renderTapEvent(event *common.TapEvent) string {
 		)
 
 	case *common.TapEvent_Http_ResponseInit_:
-		return fmt.Sprintf("rsp id=%d:%d %s :status=%d latency=%dµs tls=%s",
+		return fmt.Sprintf("rsp proxy=%s id=%d:%d %s :status=%d latency=%dµs tls=%s",
+			proxy,
 			ev.ResponseInit.GetId().GetBase(),
 			ev.ResponseInit.GetId().GetStream(),
 			flow,
@@ -290,7 +295,8 @@ func renderTapEvent(event *common.TapEvent) string {
 	case *common.TapEvent_Http_ResponseEnd_:
 		switch eos := ev.ResponseEnd.GetEos().GetEnd().(type) {
 		case *common.Eos_GrpcStatusCode:
-			return fmt.Sprintf("end id=%d:%d %s grpc-status=%s duration=%dµs response-length=%dB tls=%s",
+			return fmt.Sprintf("end proxy=%s id=%d:%d %s grpc-status=%s duration=%dµs response-length=%dB tls=%s",
+				proxy,
 				ev.ResponseEnd.GetId().GetBase(),
 				ev.ResponseEnd.GetId().GetStream(),
 				flow,
@@ -301,7 +307,8 @@ func renderTapEvent(event *common.TapEvent) string {
 			)
 
 		case *common.Eos_ResetErrorCode:
-			return fmt.Sprintf("end id=%d:%d %s reset-error=%+v duration=%dµs response-length=%dB tls=%s",
+			return fmt.Sprintf("end proxy=%s id=%d:%d %s reset-error=%+v duration=%dµs response-length=%dB tls=%s",
+				proxy,
 				ev.ResponseEnd.GetId().GetBase(),
 				ev.ResponseEnd.GetId().GetStream(),
 				flow,
@@ -312,7 +319,8 @@ func renderTapEvent(event *common.TapEvent) string {
 			)
 
 		default:
-			return fmt.Sprintf("end id=%d:%d %s duration=%dµs response-length=%dB tls=%s",
+			return fmt.Sprintf("end proxy=%s id=%d:%d %s duration=%dµs response-length=%dB tls=%s",
+				proxy,
 				ev.ResponseEnd.GetId().GetBase(),
 				ev.ResponseEnd.GetId().GetStream(),
 				flow,
