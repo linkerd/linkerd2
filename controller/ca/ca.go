@@ -51,6 +51,9 @@ type CA struct {
 	// The CA's certificate.
 	root *x509.Certificate
 
+	// The PEM X.509 encoding of `root`
+	rootPEM string
+
 	// nextSerialNumber is the serial number of the next certificate to issue.
 	// Serial numbers must not be reused.
 	//
@@ -114,13 +117,15 @@ func NewCA() (*CA, error) {
 		return nil, err
 	}
 
+	ca.rootPEM = string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ca.root.Raw}))
+
 	return &ca, nil
 }
 
 // TrustAnchorDER returns the PEM-encoded X.509 certificate of the trust anchor
 // (root CA).
 func (ca *CA) TrustAnchorPEM() string {
-	return string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ca.root.Raw}))
+	return ca.rootPEM
 }
 
 // IssueEndEntityCertificate issues

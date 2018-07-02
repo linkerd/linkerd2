@@ -24,7 +24,6 @@ type CertificateController struct {
 	namespace   string
 	k8sAPI      *k8s.API
 	ca *CA
-	trustAnchorsPEM string
 	syncHandler func(key string) error
 
 	// The queue is keyed on a string. If the string doesn't contain any dots
@@ -45,7 +44,6 @@ func NewCertificateController(conduitNamespace string, k8sAPI *k8s.API) (*Certif
 		namespace: conduitNamespace,
 		k8sAPI:    k8sAPI,
 		ca: ca,
-		trustAnchorsPEM: ca.TrustAnchorPEM(),
 		queue: workqueue.NewNamedRateLimitingQueue(
 			workqueue.DefaultControllerRateLimiter(), "certificates"),
 	}
@@ -132,7 +130,7 @@ func (c *CertificateController) syncNamespace(ns string) error {
 	configMap := &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: pkgK8s.TLSTrustAnchorConfigMapName},
 		Data:       map[string]string{
-			pkgK8s.TLSTrustAnchorFileName: c.trustAnchorsPEM,
+			pkgK8s.TLSTrustAnchorFileName: c.ca.TrustAnchorPEM(),
 		},
 	}
 
