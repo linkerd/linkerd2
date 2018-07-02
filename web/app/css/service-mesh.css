@@ -97,13 +97,17 @@ td .status-dot {
 .conduit-pod-error {
   margin-bottom: calc(3 * var(--base-width));
 
+  & .container-error {
+    margin-bottom: calc(3 * var(--base-width));
+  }
+
   & p {
     line-height: 8px;
   }
 
   & .error-text {
     padding: var(--base-width);
-    margin-top: calc(2 * var(--base-width));
+    margin-top: var(--base-width);
     border-radius: calc(0.5 * var(--base-width));
     font-size: 12px;
     color: white;

@@ -71,7 +71,6 @@ export default class ErrorModal extends React.Component {
         };
       }).value();
 
-
     return {
       byPodAndContainer,
       shouldTruncate
@@ -84,7 +83,7 @@ export default class ErrorModal extends React.Component {
     }
 
     return _.map(errorsByContainer, (errors, container) => (
-      <div key={`error-${container}`}>
+      <div key={`error-${container}`} className="container-error">
         <div className="clearfix">
           <span className="pull-left" title="container name">{container}</span>
           <span className="pull-right" title="docker image">{_.get(errors, [0, "image"])}</span>
