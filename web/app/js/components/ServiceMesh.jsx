@@ -85,13 +85,18 @@ const namespacesColumns = ConduitLink => [
       let barType = _.isEmpty(row.errors) ?
         getClassification(row.meshedPods, row.failedPods) : "poor";
 
+
+      let percentMeshedMsg = "";
+      if (row.meshedPercent.get() < 0) {
+        percentMeshedMsg = `(${row.meshedPercent.prettyRate()})`;
+      }
       return (
         <Tooltip
           overlayStyle={{ fontSize: "12px" }}
           title={(
             <div>
               <div>
-                {`${row.meshedPods} out of ${row.totalPods} running or pending pods are in the mesh (${row.meshedPercent.prettyRate()})`}
+                {`${row.meshedPods} out of ${row.totalPods} running or pending pods are in the mesh ${percentMeshedMsg}`}
               </div>
               {row.failedPods === 0 ? null : <div>{ `${row.failedPods} failed pods` }</div>}
             </div>
