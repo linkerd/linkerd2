@@ -252,8 +252,8 @@ func renderTapEvent(event *common.TapEvent) string {
 	tls := ""
 	switch event.GetProxyDirection() {
 	case common.TapEvent_INBOUND:
+		proxy = "in " // A space is added so it aligns with `out`.
 		srcLabels := event.GetSourceMeta().GetLabels()
-		proxy = "in "
 		tls = srcLabels["tls"]
 	case common.TapEvent_OUTBOUND:
 		proxy = "out"
