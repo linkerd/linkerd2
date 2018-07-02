@@ -1,12 +1,9 @@
 @import 'styles.css';
 
 .sidebar {
-  background-color: #091B39;
+  background: var(--header-black);
   color: white;
   min-height: 100vh;
-  background-image: url(./../img/sidebar-bg.png);
-  background-repeat: no-repeat;
-  background-size: 100% 50vh;
 
   & .ant-menu-submenu {
     & .ant-menu-submenu-title, & .anticon{
@@ -90,4 +87,9 @@
       height: 40px;
     }
   }
+}
+
+.ant-layout .ant-layout-sider .ant-layout-sider-trigger {
+  /* override ant color */
+  background: #343838;
 }
