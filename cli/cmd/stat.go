@@ -156,7 +156,7 @@ const padding = 3
 type rowStats struct {
 	requestRate float64
 	successRate float64
-	secured     float64
+	tlsPercent  float64
 	latencyP50  uint64
 	latencyP95  uint64
 	latencyP99  uint64
@@ -215,7 +215,7 @@ func writeStatsToBuffer(resp *pb.StatSummaryResponse, reqResourceType string, w 
 				statTables[resourceKey][key].rowStats = &rowStats{
 					requestRate: getRequestRate(*r),
 					successRate: getSuccessRate(*r),
-					secured:     getPercentSecured(*r),
+					tlsPercent:  getPercentTls(*r),
 					latencyP50:  r.Stats.LatencyMsP50,
 					latencyP95:  r.Stats.LatencyMsP95,
 					latencyP99:  r.Stats.LatencyMsP99,
@@ -262,7 +262,7 @@ func printStatTable(stats map[string]*row, resourceType string, w *tabwriter.Wri
 		"LATENCY_P50",
 		"LATENCY_P95",
 		"LATENCY_P99",
-		"SECURED\t", // trailing \t is required to format last column
+		"TLS\t", // trailing \t is required to format last column
 	}...)
 
 	fmt.Fprintln(w, strings.Join(headers, "\t"))
@@ -296,7 +296,7 @@ func printStatTable(stats map[string]*row, resourceType string, w *tabwriter.Wri
 				stats[key].latencyP50,
 				stats[key].latencyP95,
 				stats[key].latencyP99,
-				stats[key].secured * 100,
+				stats[key].tlsPercent * 100,
 			}...)
 
 			fmt.Fprintf(w, templateString, values...)
@@ -373,7 +373,7 @@ func getSuccessRate(r pb.StatTable_PodGroup_Row) float64 {
 	return float64(success) / float64(success+failure)
 }
 
-func getPercentSecured(r pb.StatTable_PodGroup_Row) float64 {
+func getPercentTls(r pb.StatTable_PodGroup_Row) float64 {
 	reqTotal := r.Stats.SuccessCount + r.Stats.FailureCount
 	if reqTotal == 0 {
 		return 0.0

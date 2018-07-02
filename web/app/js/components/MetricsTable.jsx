@@ -133,8 +133,8 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
       render: metricToFormatter["LATENCY"]
     },
     {
-      title: formatTitle("Secured", "Percentage of TLS Traffic"),
-      key: "securedTraffic",
+      title: formatTitle("TLS", "Percentage of TLS Traffic"),
+      key: "tlsTraffic",
       dataIndex: "tlsRequestPercent",
       className: "numeric",
       sorter: (a, b) => numericSort(a.tlsRequestPercent.get(), b.tlsRequestPercent.get()),
