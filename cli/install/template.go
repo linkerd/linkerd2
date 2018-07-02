@@ -637,7 +637,7 @@ rules:
   resourceNames: [{{.TLSTrustAnchorConfigMapName}}]
   verbs: ["update"]
 - apiGroups: [""]
-  resources: ["pods", "configmaps", "deployments"]
+  resources: ["pods", "configmaps"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
   resources: ["secrets"]
