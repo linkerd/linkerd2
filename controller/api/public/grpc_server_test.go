@@ -42,7 +42,7 @@ func listPodResponsesEqual(a pb.ListPodsResponse, b pb.ListPodsResponse) bool {
 			(aPod.Added != bPod.Added) ||
 			(aPod.Status != bPod.Status) ||
 			(aPod.PodIP != bPod.PodIP) ||
-			(aPod.Deployment != bPod.Deployment) {
+			(aPod.GetDeployment() != bPod.GetDeployment()) {
 			return false
 		}
 
@@ -134,13 +134,13 @@ spec:
 							SinceLastReport: &duration.Duration{},
 							Status:          "Running",
 							PodIP:           "1.2.3.4",
-							Deployment:      "emojivoto/meshed-deployment",
+							Owner:           &pb.Pod_Deployment{Deployment: "emojivoto/meshed-deployment"},
 						},
 						&pb.Pod{
-							Name:       "emojivoto/emojivoto-not-meshed",
-							Status:     "Pending",
-							PodIP:      "4.3.2.1",
-							Deployment: "emojivoto/not-meshed-deployment",
+							Name:   "emojivoto/emojivoto-not-meshed",
+							Status: "Pending",
+							PodIP:  "4.3.2.1",
+							Owner:  &pb.Pod_Deployment{Deployment: "emojivoto/not-meshed-deployment"},
 						},
 					},
 				},
