@@ -1,6 +1,6 @@
 import _ from 'lodash';
+import ConduitSpinner from "./ConduitSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
-import { metricToFormatter } from './util/Utils.js';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { withContext } from './util/AppContext.jsx';
@@ -13,28 +13,9 @@ const defaultSvgHeight = 325;
 const margin = { top: 0, right: 0, bottom: 10, left: 0 };
 
 const simulation = d3.forceSimulation()
-  .force("link", d3.forceLink().id(function(d) { return d.id; }).distance(160))
+  .force("link", d3.forceLink().id(function(d) { return d.id; }).distance(140))
   .force('charge', d3.forceManyBody().strength(-20))
   .force('center', d3.forceCenter(defaultSvgWidth / 2, defaultSvgHeight / 2));
-
-const getSuccessRate = (successCount, failureCount) => {
-  if (successCount + failureCount === 0) {
-    return null;
-  } else {
-    return successCount / (successCount + failureCount);
-  }
-};
-
-const getColor = successrate => {
-  if (successrate > 0.96) {
-    return "#27AE60";
-  } else if (successrate > 0.61 ) {
-    return "#ffd633";
-  } else {
-    return "#EB5757";
-  }
-};
-
 
 class NetworkGraph extends React.Component {
   static defaultProps = {
@@ -64,7 +45,8 @@ class NetworkGraph extends React.Component {
       nodes: [],
       links: [],
       pendingRequests: false,
-      error: ""
+      error: "",
+      loaded: false,
     };
   }
 
@@ -113,7 +95,6 @@ class NetworkGraph extends React.Component {
             links.push({
               source: row.resource.name,
               target: dst,
-              successRate: getSuccessRate(parseInt(row.stats.successCount, 10), parseInt(row.stats.failureCount, 10))
             });
             nodeList.push(row.resource.name);
             nodeList.push(dst);
@@ -128,7 +109,8 @@ class NetworkGraph extends React.Component {
           nodes: nodes,
           links: links,
           pendingRequests: false,
-          error: ""
+          error: "",
+          loaded: true,
         });
       })
       .then( () => this.updateGraph())
@@ -145,7 +127,7 @@ class NetworkGraph extends React.Component {
       .attr("refY", -0.25)
       .attr("markerWidth", 3)
       .attr("markerHeight", 3)
-      .attr("fill", node => getColor(node.successRate))
+      .attr("fill", "#454242")
       .attr("orient", "auto")
       .append("svg:path")
       .attr("d", "M0,-5L10,0L0,5");
@@ -155,19 +137,8 @@ class NetworkGraph extends React.Component {
       .data(this.state.links)
       .enter().append("svg:path")
       .attr("stroke-width", 3)
-      .attr("stroke", node => getColor(node.successRate))
+      .attr("stroke", "#454242")
       .attr("marker-end", node => "url(#"+node.source + "/" + node.target+")");
-
-    const edgelabels = this.svg.append("g")
-      .selectAll("edgelabel")
-      .data(this.state.links)
-      .enter()
-      .append('text')
-      .text(node => metricToFormatter["SUCCESS_RATE"](node.successRate))
-      .style("pointer-events", "none")
-      .attr("dx", 5)
-      .attr("dy", 5)
-      .attr('font-size', 10);
 
     const nodeElements = this.svg.append('g')
       .selectAll('circle')
@@ -196,10 +167,6 @@ class NetworkGraph extends React.Component {
               node.source.y + " L " +
               node.target.x + " " +
               node.target.y);
-
-      edgelabels
-        .attr("x", node => (node.target.x + node.source.x) / 2)
-        .attr("y", node => (node.target.y + node.source.y) / 2);
 
       nodeElements
         .attr("cx", node => node.x)
@@ -246,6 +213,7 @@ class NetworkGraph extends React.Component {
     return (
       <div>
         { !this.state.error ? null : <ErrorBanner message={this.state.error} /> }
+        { !this.state.loaded ? <ConduitSpinner /> : null }
         <div className="network-graph-container" />
       </div>
     );
