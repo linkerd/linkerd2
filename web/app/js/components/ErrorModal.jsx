@@ -48,30 +48,29 @@ export default class ErrorModal extends React.Component {
       .keys()
       .sortBy()
       .map(pod => {
+        let byContainer = _(podErrors[pod].errors).reduce((errors, err) => {
+          if (!_.isEmpty(err.container)) {
+            let c = err.container;
+            if (_.isEmpty(errors[c.container])) {
+              errors[c.container] = [];
+            }
+
+            let errMsg = c.message;
+            if (_.size(errMsg) > maxErrorLength) {
+              shouldTruncate = true;
+              c.truncatedMessage = _.take(errMsg, maxErrorLength).join("") + "...";
+            }
+            errors[c.container].push(c);
+          }
+          return errors;
+        }, {});
+
         return {
-          pod: pod,
-          byContainer: _(podErrors[pod].errors)
-            .groupBy( "container.container")
-            .mapValues(v => {
-              return _.map(v, err => {
-                let errMsg = _.get(err, ["container", "message"]);
-
-                if (!errMsg) {
-                  return null;
-                }
-
-                if (_.size(errMsg) > maxErrorLength) {
-                  shouldTruncate = true;
-                  err.container.truncatedMessage = _.take(errMsg, maxErrorLength).join("") + "...";
-                }
-
-                return err.container;
-              });
-            })
-            .compact()
-            .value()
+          pod,
+          byContainer
         };
       }).value();
+
 
     return {
       byPodAndContainer,
@@ -103,7 +102,7 @@ export default class ErrorModal extends React.Component {
 
                 return (
                   <React.Fragment  key={`error-msg-long-${i}`}>
-                    <code>{message}</code><br /><br />
+                    <code>{!er.reason ? null : er.reason + ": "} {message}</code><br /><br />
                   </React.Fragment>
                 );
               }

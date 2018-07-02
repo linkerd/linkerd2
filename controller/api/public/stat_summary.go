@@ -510,13 +510,14 @@ func (s *grpcServer) getPodStats(obj runtime.Object) (*podStats, error) {
 	return meshCount, nil
 }
 
-func toPodError(container, image, message string) *pb.PodErrors_PodError {
+func toPodError(container, image, reason, message string) *pb.PodErrors_PodError {
 	return &pb.PodErrors_PodError{
 		Error: &pb.PodErrors_PodError_Container{
 			Container: &pb.PodErrors_PodError_ContainerError{
 				Message:   message,
 				Container: container,
 				Image:     image,
+				Reason:    reason,
 			},
 		},
 	}
@@ -525,17 +526,21 @@ func toPodError(container, image, message string) *pb.PodErrors_PodError {
 func checkContainerErrors(containerStatuses []apiv1.ContainerStatus, containerName string) []*pb.PodErrors_PodError {
 	errors := []*pb.PodErrors_PodError{}
 	for _, st := range containerStatuses {
-		if st.Name == containerName && st.State.Waiting != nil {
-			if st.State.Waiting.Message != "" {
-				errors = append(errors, toPodError(st.Name, st.Image, st.State.Waiting.Message))
+		if !st.Ready {
+			if st.State.Waiting != nil {
+				errors = append(errors, toPodError(st.Name, st.Image, st.State.Waiting.Reason, st.State.Waiting.Message))
+			}
+
+			if st.State.Terminated != nil {
+				errors = append(errors, toPodError(st.Name, st.Image, st.State.Terminated.Reason, st.State.Terminated.Message))
 			}
 
 			if st.LastTerminationState.Waiting != nil {
-				errors = append(errors, toPodError(st.Name, st.Image, st.LastTerminationState.Waiting.Message))
+				errors = append(errors, toPodError(st.Name, st.Image, st.LastTerminationState.Waiting.Reason, st.LastTerminationState.Waiting.Message))
 			}
 
 			if st.LastTerminationState.Terminated != nil {
-				errors = append(errors, toPodError(st.Name, st.Image, st.LastTerminationState.Terminated.Message))
+				errors = append(errors, toPodError(st.Name, st.Image, st.LastTerminationState.Terminated.Reason, st.LastTerminationState.Terminated.Message))
 			}
 		}
 	}
