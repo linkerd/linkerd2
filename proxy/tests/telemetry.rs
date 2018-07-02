@@ -119,13 +119,13 @@ fn metrics_endpoint_inbound_request_count() {
 
     // prior to seeing any requests, request count should be empty.
     assert!(!metrics.get("/metrics")
-        .contains("request_total{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\"}"));
+        .contains("request_total{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",tls=\"disabled\"}"));
 
     info!("client.get(/)");
     assert_eq!(client.get("/"), "hello");
 
     // after seeing a request, the request count should be 1.
-    assert_contains!(metrics.get("/metrics"), "request_total{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\"} 1");
+    assert_contains!(metrics.get("/metrics"), "request_total{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",tls=\"disabled\"} 1");
 
 }
 
@@ -136,13 +136,13 @@ fn metrics_endpoint_outbound_request_count() {
 
     // prior to seeing any requests, request count should be empty.
     assert!(!metrics.get("/metrics")
-        .contains("request_total{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\"}"));
+        .contains("request_total{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",tls=\"no_identity\"}"));
 
     info!("client.get(/)");
     assert_eq!(client.get("/"), "hello");
 
     // after seeing a request, the request count should be 1.
-    assert_contains!(metrics.get("/metrics"), "request_total{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\"} 1");
+    assert_contains!(metrics.get("/metrics"), "request_total{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",tls=\"no_identity\"} 1");
 
 }
 
@@ -163,10 +163,11 @@ mod response_classification {
     ];
 
 
-    fn expected_metric(status: &http::StatusCode, direction: &str) -> String {
+    fn expected_metric(status: &http::StatusCode, direction: &str, tls: &str) -> String {
         format!(
-            "response_total{{authority=\"tele.test.svc.cluster.local\",direction=\"{}\",classification=\"{}\",status_code=\"{}\"}} 1",
+            "response_total{{authority=\"tele.test.svc.cluster.local\",direction=\"{}\",tls=\"{}\",classification=\"{}\",status_code=\"{}\"}} 1",
             direction,
+            tls,
             if status.is_server_error() { "failure" } else { "success" },
             status.as_u16(),
         )
@@ -220,7 +221,7 @@ mod response_classification {
             for status in &STATUSES[0..i] {
                 // assert that the current status code is incremented, *and* that
                 // all previous requests are *not* incremented.
-                assert_contains!(metrics.get("/metrics"), &expected_metric(status, "inbound"))
+                assert_contains!(metrics.get("/metrics"), &expected_metric(status, "inbound", "disabled"))
             }
         }
     }
@@ -242,7 +243,7 @@ mod response_classification {
             for status in &STATUSES[0..i] {
                 // assert that the current status code is incremented, *and* that
                 // all previous requests are *not* incremented.
-                assert_contains!(metrics.get("/metrics"), &expected_metric(status, "outbound"))
+                assert_contains!(metrics.get("/metrics"), &expected_metric(status, "outbound", "no_identity"))
             }
         }
     }
@@ -272,10 +273,10 @@ fn metrics_endpoint_inbound_response_latency() {
     // assert the >=1000ms bucket is incremented by our request with 500ms
     // extra latency.
     assert_contains!(metrics.get("/metrics"),
-        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",classification=\"success\",status_code=\"200\",le=\"1000\"} 1");
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",tls=\"disabled\",classification=\"success\",status_code=\"200\",le=\"1000\"} 1");
     // the histogram's count should be 1.
     assert_contains!(metrics.get("/metrics"),
-        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",classification=\"success\",status_code=\"200\"} 1");
+        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",tls=\"disabled\",classification=\"success\",status_code=\"200\"} 1");
     // TODO: we're not going to make any assertions about the
     // response_latency_ms_sum stat, since its granularity depends on the actual
     // observed latencies, which may vary a bit. we could make more reliable
@@ -287,41 +288,41 @@ fn metrics_endpoint_inbound_response_latency() {
 
     // request with 40ms extra latency should fall into the 50ms bucket.
     assert_contains!(metrics.get("/metrics"),
-        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",classification=\"success\",status_code=\"200\",le=\"50\"} 1");
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",tls=\"disabled\",classification=\"success\",status_code=\"200\",le=\"50\"} 1");
     // 1000ms bucket should be incremented as well, since it counts *all*
     // bservations less than or equal to 1000ms, even if they also increment
     // other buckets.
     assert_contains!(metrics.get("/metrics"),
-        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",classification=\"success\",status_code=\"200\",le=\"1000\"} 2");
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",tls=\"disabled\",classification=\"success\",status_code=\"200\",le=\"1000\"} 2");
     // the histogram's total count should be 2.
     assert_contains!(metrics.get("/metrics"),
-        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",classification=\"success\",status_code=\"200\"} 2");
+        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",tls=\"disabled\",classification=\"success\",status_code=\"200\"} 2");
 
     info!("client.get(/hi)");
     assert_eq!(client.get("/hi"), "good morning");
 
     // request with 40ms extra latency should fall into the 50ms bucket.
     assert_contains!(metrics.get("/metrics"),
-        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",classification=\"success\",status_code=\"200\",le=\"50\"} 2");
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",tls=\"disabled\",classification=\"success\",status_code=\"200\",le=\"50\"} 2");
     // 1000ms bucket should be incremented as well.
     assert_contains!(metrics.get("/metrics"),
-        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",classification=\"success\",status_code=\"200\",le=\"1000\"} 3");
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",tls=\"disabled\",classification=\"success\",status_code=\"200\",le=\"1000\"} 3");
     // the histogram's total count should be 3.
     assert_contains!(metrics.get("/metrics"),
-        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",classification=\"success\",status_code=\"200\"} 3");
+        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",tls=\"disabled\",classification=\"success\",status_code=\"200\"} 3");
 
     info!("client.get(/hey)");
     assert_eq!(client.get("/hey"), "hello");
 
     // 50ms bucket should be un-changed by the request with 500ms latency.
     assert_contains!(metrics.get("/metrics"),
-        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",classification=\"success\",status_code=\"200\",le=\"50\"} 2");
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",tls=\"disabled\",classification=\"success\",status_code=\"200\",le=\"50\"} 2");
     // 1000ms bucket should be incremented.
     assert_contains!(metrics.get("/metrics"),
-        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",classification=\"success\",status_code=\"200\",le=\"1000\"} 4");
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",tls=\"disabled\",classification=\"success\",status_code=\"200\",le=\"1000\"} 4");
     // the histogram's total count should be 4.
     assert_contains!(metrics.get("/metrics"),
-        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",classification=\"success\",status_code=\"200\"} 4");
+        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",tls=\"disabled\",classification=\"success\",status_code=\"200\"} 4");
 }
 
 // Ignore this test on CI, because our method of adding latency to requests
@@ -348,10 +349,10 @@ fn metrics_endpoint_outbound_response_latency() {
     // assert the >=1000ms bucket is incremented by our request with 500ms
     // extra latency.
     assert_contains!(metrics.get("/metrics"),
-        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",classification=\"success\",status_code=\"200\",le=\"1000\"} 1");
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",tls=\"no_identity\",classification=\"success\",status_code=\"200\",le=\"1000\"} 1");
     // the histogram's count should be 1.
     assert_contains!(metrics.get("/metrics"),
-        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",classification=\"success\",status_code=\"200\"} 1");
+        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",tls=\"no_identity\",classification=\"success\",status_code=\"200\"} 1");
     // TODO: we're not going to make any assertions about the
     // response_latency_ms_sum stat, since its granularity depends on the actual
     // observed latencies, which may vary a bit. we could make more reliable
@@ -363,41 +364,41 @@ fn metrics_endpoint_outbound_response_latency() {
 
     // request with 40ms extra latency should fall into the 50ms bucket.
     assert_contains!(metrics.get("/metrics"),
-        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",classification=\"success\",status_code=\"200\",le=\"50\"} 1");
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",tls=\"no_identity\",classification=\"success\",status_code=\"200\",le=\"50\"} 1");
     // 1000ms bucket should be incremented as well, since it counts *all*
     // bservations less than or equal to 1000ms, even if they also increment
     // other buckets.
     assert_contains!(metrics.get("/metrics"),
-        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",classification=\"success\",status_code=\"200\",le=\"1000\"} 2");
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",tls=\"no_identity\",classification=\"success\",status_code=\"200\",le=\"1000\"} 2");
     // the histogram's total count should be 2.
     assert_contains!(metrics.get("/metrics"),
-        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",classification=\"success\",status_code=\"200\"} 2");
+        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",tls=\"no_identity\",classification=\"success\",status_code=\"200\"} 2");
 
     info!("client.get(/hi)");
     assert_eq!(client.get("/hi"), "good morning");
 
     // request with 40ms extra latency should fall into the 50ms bucket.
     assert_contains!(metrics.get("/metrics"),
-        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",classification=\"success\",status_code=\"200\",le=\"50\"} 2");
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",tls=\"no_identity\",classification=\"success\",status_code=\"200\",le=\"50\"} 2");
     // 1000ms bucket should be incremented as well.
     assert_contains!(metrics.get("/metrics"),
-        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",classification=\"success\",status_code=\"200\",le=\"1000\"} 3");
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",tls=\"no_identity\",classification=\"success\",status_code=\"200\",le=\"1000\"} 3");
     // the histogram's total count should be 3.
     assert_contains!(metrics.get("/metrics"),
-        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",classification=\"success\",status_code=\"200\"} 3");
+        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",tls=\"no_identity\",classification=\"success\",status_code=\"200\"} 3");
 
     info!("client.get(/hey)");
     assert_eq!(client.get("/hey"), "hello");
 
     // 50ms bucket should be un-changed by the request with 500ms latency.
     assert_contains!(metrics.get("/metrics"),
-        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",classification=\"success\",status_code=\"200\",le=\"50\"} 2");
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",tls=\"no_identity\",classification=\"success\",status_code=\"200\",le=\"50\"} 2");
     // 1000ms bucket should be incremented.
     assert_contains!(metrics.get("/metrics"),
-        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",classification=\"success\",status_code=\"200\",le=\"1000\"} 4");
+        "response_latency_ms_bucket{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",tls=\"no_identity\",classification=\"success\",status_code=\"200\",le=\"1000\"} 4");
     // the histogram's total count should be 4.
     assert_contains!(metrics.get("/metrics"),
-        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",classification=\"success\",status_code=\"200\"} 4");
+        "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"outbound\",tls=\"no_identity\",classification=\"success\",status_code=\"200\"} 4");
 }
 
 // Tests for destination labels provided by control plane service discovery.
@@ -499,11 +500,11 @@ mod outbound_dst_labels {
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
         assert_contains!(metrics.get("/metrics"),
-            "response_latency_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"bar\",classification=\"success\",status_code=\"200\"} 1");
+            "response_latency_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"bar\",tls=\"no_identity\",classification=\"success\",status_code=\"200\"} 1");
         assert_contains!(metrics.get("/metrics"),
-            "request_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"bar\"} 1");
+            "request_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"bar\",tls=\"no_identity\"} 1");
         assert_contains!(metrics.get("/metrics"),
-            "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"bar\",classification=\"success\",status_code=\"200\"} 1");
+            "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"bar\",tls=\"no_identity\",classification=\"success\",status_code=\"200\"} 1");
     }
 
     // Ignore this test on CI, as it may fail due to the reduced concurrency
@@ -531,11 +532,11 @@ mod outbound_dst_labels {
         assert_eq!(client.get("/"), "hello");
         // the first request should be labeled with `dst_addr_label="foo"`
         assert_contains!(metrics.get("/metrics"),
-            "response_latency_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"unchanged\",classification=\"success\",status_code=\"200\"} 1");
+            "response_latency_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"unchanged\",tls=\"no_identity\",classification=\"success\",status_code=\"200\"} 1");
         assert_contains!(metrics.get("/metrics"),
-            "request_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"unchanged\"} 1");
+            "request_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"unchanged\",tls=\"no_identity\"} 1");
         assert_contains!(metrics.get("/metrics"),
-            "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"unchanged\",classification=\"success\",status_code=\"200\"} 1");
+            "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"unchanged\",tls=\"no_identity\",classification=\"success\",status_code=\"200\"} 1");
 
         {
             let mut alabels = HashMap::new();
@@ -549,18 +550,18 @@ mod outbound_dst_labels {
         assert_eq!(client.get("/"), "hello");
         // the second request should increment stats labeled with `dst_addr_label="bar"`
         assert_contains!(metrics.get("/metrics"),
-            "response_latency_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"bar\",dst_set_label=\"unchanged\",classification=\"success\",status_code=\"200\"} 1");
+            "response_latency_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"bar\",dst_set_label=\"unchanged\",tls=\"no_identity\",classification=\"success\",status_code=\"200\"} 1");
         assert_contains!(metrics.get("/metrics"),
-            "request_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"bar\",dst_set_label=\"unchanged\"} 1");
+            "request_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"bar\",dst_set_label=\"unchanged\",tls=\"no_identity\"} 1");
         assert_contains!(metrics.get("/metrics"),
-            "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"bar\",dst_set_label=\"unchanged\",classification=\"success\",status_code=\"200\"} 1");
+            "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"bar\",dst_set_label=\"unchanged\",tls=\"no_identity\",classification=\"success\",status_code=\"200\"} 1");
         // stats recorded from the first request should still be present.
         assert_contains!(metrics.get("/metrics"),
-            "response_latency_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"unchanged\",classification=\"success\",status_code=\"200\"} 1");
+            "response_latency_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"unchanged\",tls=\"no_identity\",classification=\"success\",status_code=\"200\"} 1");
         assert_contains!(metrics.get("/metrics"),
-            "request_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"unchanged\"} 1");
+            "request_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"unchanged\",tls=\"no_identity\"} 1");
         assert_contains!(metrics.get("/metrics"),
-            "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"unchanged\",classification=\"success\",status_code=\"200\"} 1");
+            "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_addr_label=\"foo\",dst_set_label=\"unchanged\",tls=\"no_identity\",classification=\"success\",status_code=\"200\"} 1");
     }
 
     // Ignore this test on CI, as it may fail due to the reduced concurrency
@@ -586,11 +587,11 @@ mod outbound_dst_labels {
         assert_eq!(client.get("/"), "hello");
         // the first request should be labeled with `dst_addr_label="foo"`
         assert_contains!(metrics.get("/metrics"),
-            "response_latency_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"foo\",classification=\"success\",status_code=\"200\"} 1");
+            "response_latency_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"foo\",tls=\"no_identity\",classification=\"success\",status_code=\"200\"} 1");
         assert_contains!(metrics.get("/metrics"),
-            "request_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"foo\"} 1");
+            "request_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"foo\",tls=\"no_identity\"} 1");
         assert_contains!(metrics.get("/metrics"),
-            "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"foo\",classification=\"success\",status_code=\"200\"} 1");
+            "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"foo\",tls=\"no_identity\",classification=\"success\",status_code=\"200\"} 1");
 
         {
             let alabels = HashMap::new();
@@ -603,18 +604,18 @@ mod outbound_dst_labels {
         assert_eq!(client.get("/"), "hello");
         // the second request should increment stats labeled with `dst_addr_label="bar"`
         assert_contains!(metrics.get("/metrics"),
-            "response_latency_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"bar\",classification=\"success\",status_code=\"200\"} 1");
+            "response_latency_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"bar\",tls=\"no_identity\",classification=\"success\",status_code=\"200\"} 1");
         assert_contains!(metrics.get("/metrics"),
-            "request_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"bar\"} 1");
+            "request_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"bar\",tls=\"no_identity\"} 1");
         assert_contains!(metrics.get("/metrics"),
-            "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"bar\",classification=\"success\",status_code=\"200\"} 1");
+            "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"bar\",tls=\"no_identity\",classification=\"success\",status_code=\"200\"} 1");
         // stats recorded from the first request should still be present.
         assert_contains!(metrics.get("/metrics"),
-            "response_latency_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"foo\",classification=\"success\",status_code=\"200\"} 1");
+            "response_latency_ms_count{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"foo\",tls=\"no_identity\",classification=\"success\",status_code=\"200\"} 1");
         assert_contains!(metrics.get("/metrics"),
-            "request_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"foo\"} 1");
+            "request_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"foo\",tls=\"no_identity\"} 1");
         assert_contains!(metrics.get("/metrics"),
-            "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"foo\",classification=\"success\",status_code=\"200\"} 1");
+            "response_total{authority=\"labeled.test.svc.cluster.local\",direction=\"outbound\",dst_set_label=\"foo\",tls=\"no_identity\",classification=\"success\",status_code=\"200\"} 1");
     }
 }
 
@@ -680,12 +681,12 @@ mod transport {
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
         assert_contains!(metrics.get("/metrics"),
-            "tcp_open_total{direction=\"inbound\",peer=\"src\"} 1"
+            "tcp_open_total{direction=\"inbound\",peer=\"src\",tls=\"disabled\"} 1"
         );
         // drop the client to force the connection to close.
         drop(client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_close_total{direction=\"inbound\",peer=\"src\",classification=\"success\"} 1"
+            "tcp_close_total{direction=\"inbound\",peer=\"src\",tls=\"disabled\",classification=\"success\"} 1"
         );
 
         // create a new client to force a new connection
@@ -694,12 +695,12 @@ mod transport {
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
         assert_contains!(metrics.get("/metrics"),
-            "tcp_open_total{direction=\"inbound\",peer=\"src\"} 2"
+            "tcp_open_total{direction=\"inbound\",peer=\"src\",tls=\"disabled\"} 2"
         );
         // drop the client to force the connection to close.
         drop(client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_close_total{direction=\"inbound\",peer=\"src\",classification=\"success\"} 2"
+            "tcp_close_total{direction=\"inbound\",peer=\"src\",tls=\"disabled\",classification=\"success\"} 2"
         );
     }
 
@@ -712,7 +713,7 @@ mod transport {
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
         assert_contains!(metrics.get("/metrics"),
-            "tcp_open_total{direction=\"inbound\",peer=\"dst\"} 1");
+            "tcp_open_total{direction=\"inbound\",peer=\"dst\",tls=\"no_identity\"} 1");
 
         // create a new client to force a new connection
         let client = client::new(proxy.inbound, "tele.test.svc.cluster.local");
@@ -721,7 +722,7 @@ mod transport {
         assert_eq!(client.get("/"), "hello");
         // server connection should be pooled
         assert_contains!(metrics.get("/metrics"),
-            "tcp_open_total{direction=\"inbound\",peer=\"dst\"} 1");
+            "tcp_open_total{direction=\"inbound\",peer=\"dst\",tls=\"no_identity\"} 1");
     }
 
     #[test]
@@ -733,12 +734,12 @@ mod transport {
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
         assert_contains!(metrics.get("/metrics"),
-            "tcp_open_total{direction=\"outbound\",peer=\"src\"} 1"
+            "tcp_open_total{direction=\"outbound\",peer=\"src\",tls=\"internal_traffic\"} 1"
         );
         // drop the client to force the connection to close.
         drop(client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_close_total{direction=\"outbound\",peer=\"src\",classification=\"success\"} 1"
+            "tcp_close_total{direction=\"outbound\",peer=\"src\",tls=\"internal_traffic\",classification=\"success\"} 1"
         );
 
         // create a new client to force a new connection
@@ -747,12 +748,12 @@ mod transport {
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
         assert_contains!(metrics.get("/metrics"),
-            "tcp_open_total{direction=\"outbound\",peer=\"src\"} 2"
+            "tcp_open_total{direction=\"outbound\",peer=\"src\",tls=\"internal_traffic\"} 2"
         );
         // drop the client to force the connection to close.
         drop(client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_close_total{direction=\"outbound\",peer=\"src\",classification=\"success\"} 2"
+            "tcp_close_total{direction=\"outbound\",peer=\"src\",tls=\"internal_traffic\",classification=\"success\"} 2"
         );
     }
 
@@ -765,7 +766,7 @@ mod transport {
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
         assert_contains!(metrics.get("/metrics"),
-            "tcp_open_total{direction=\"outbound\",peer=\"dst\"} 1");
+            "tcp_open_total{direction=\"outbound\",peer=\"dst\",tls=\"no_identity\"} 1");
 
         // create a new client to force a new connection
         let client2 = client::new(proxy.outbound, "tele.test.svc.cluster.local");
@@ -774,7 +775,7 @@ mod transport {
         assert_eq!(client2.get("/"), "hello");
         // server connection should be pooled
         assert_contains!(metrics.get("/metrics"),
-            "tcp_open_total{direction=\"outbound\",peer=\"dst\"} 1");
+            "tcp_open_total{direction=\"outbound\",peer=\"dst\",tls=\"no_identity\"} 1");
     }
 
     #[test]
@@ -789,7 +790,7 @@ mod transport {
         tcp_client.write(TcpFixture::HELLO_MSG);
         assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
         assert_contains!(metrics.get("/metrics"),
-            "tcp_open_total{direction=\"inbound\",peer=\"dst\"} 1");
+            "tcp_open_total{direction=\"inbound\",peer=\"dst\",tls=\"no_identity\"} 1");
     }
 
     #[test]
@@ -805,11 +806,11 @@ mod transport {
         assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
 
         assert_contains!(metrics.get("/metrics"),
-            "tcp_open_total{direction=\"inbound\",peer=\"src\"} 1");
+            "tcp_open_total{direction=\"inbound\",peer=\"src\",tls=\"disabled\"} 1");
 
         drop(tcp_client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_close_total{direction=\"inbound\",peer=\"src\",classification=\"success\"} 1");
+            "tcp_close_total{direction=\"inbound\",peer=\"src\",tls=\"disabled\",classification=\"success\"} 1");
 
         let tcp_client = client.connect();
 
@@ -817,10 +818,10 @@ mod transport {
         assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
 
         assert_contains!(metrics.get("/metrics"),
-            "tcp_open_total{direction=\"inbound\",peer=\"src\"} 2");
+            "tcp_open_total{direction=\"inbound\",peer=\"src\",tls=\"disabled\"} 2");
         drop(tcp_client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_close_total{direction=\"inbound\",peer=\"src\",classification=\"success\"} 2");
+            "tcp_close_total{direction=\"inbound\",peer=\"src\",tls=\"disabled\",classification=\"success\"} 2");
     }
 
     // https://github.com/runconduit/conduit/issues/831
@@ -839,9 +840,9 @@ mod transport {
         // TODO: make assertions about buckets
         let out = metrics.get("/metrics");
         assert_contains!(out,
-            "tcp_connection_duration_ms_count{direction=\"inbound\",peer=\"src\",classification=\"success\"} 1");
+            "tcp_connection_duration_ms_count{direction=\"inbound\",peer=\"src\",tls=\"disabled\",classification=\"success\"} 1");
         assert_contains!(out,
-            "tcp_connection_duration_ms_count{direction=\"inbound\",peer=\"dst\",classification=\"success\"} 1");
+            "tcp_connection_duration_ms_count{direction=\"inbound\",peer=\"dst\",tls=\"no_identity\",classification=\"success\"} 1");
 
         let tcp_client = client.connect();
 
@@ -849,16 +850,17 @@ mod transport {
         assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
         let out = metrics.get("/metrics");
         assert_contains!(out,
-            "tcp_connection_duration_ms_count{direction=\"inbound\",peer=\"src\",classification=\"success\"} 1");
+            "tcp_connection_duration_ms_count{direction=\"inbound\",peer=\"src\",tls=\"disabled\",classification=\"success\"} 1");
         assert_contains!(out,
-            "tcp_connection_duration_ms_count{direction=\"inbound\",peer=\"dst\",classification=\"success\"} 1");
+            "tcp_connection_duration_ms_count{direction=\"inbound\",peer=\"dst\",tls=\"no_identity\",classification=\"success\"} 1");
 
         drop(tcp_client);
         let out = metrics.get("/metrics");
         assert_contains!(out,
-            "tcp_connection_duration_ms_count{direction=\"inbound\",peer=\"src\",classification=\"success\"} 2");
+            "tcp_connection_duration_ms_count{direction=\"inbound\",peer=\"src\",tls=\"disabled\",classification=\"success\"} 2");
         assert_contains!(out,
-            "tcp_connection_duration_ms_count{direction=\"inbound\",peer=\"dst\",classification=\"success\"} 2");    }
+            "tcp_connection_duration_ms_count{direction=\"inbound\",peer=\"dst\",tls=\"no_identity\",classification=\"success\"} 2");
+    }
 
     #[test]
     #[cfg_attr(not(feature = "flaky_tests"), ignore)]
@@ -867,11 +869,11 @@ mod transport {
         let TcpFixture { client, metrics, proxy: _proxy } =
             TcpFixture::inbound();
         let src_expected = format!(
-            "tcp_write_bytes_total{{direction=\"inbound\",peer=\"src\"}} {}",
+            "tcp_write_bytes_total{{direction=\"inbound\",peer=\"src\",tls=\"disabled\"}} {}",
             TcpFixture::BYE_MSG.len()
         );
         let dst_expected = format!(
-            "tcp_write_bytes_total{{direction=\"inbound\",peer=\"dst\"}} {}",
+            "tcp_write_bytes_total{{direction=\"inbound\",peer=\"dst\",tls=\"no_identity\"}} {}",
             TcpFixture::HELLO_MSG.len()
         );
 
@@ -893,11 +895,11 @@ mod transport {
         let TcpFixture { client, metrics, proxy: _proxy } =
             TcpFixture::inbound();
         let src_expected = format!(
-            "tcp_read_bytes_total{{direction=\"inbound\",peer=\"src\"}} {}",
+            "tcp_read_bytes_total{{direction=\"inbound\",peer=\"src\",tls=\"disabled\"}} {}",
             TcpFixture::HELLO_MSG.len()
         );
         let dst_expected = format!(
-            "tcp_read_bytes_total{{direction=\"inbound\",peer=\"dst\"}} {}",
+            "tcp_read_bytes_total{{direction=\"inbound\",peer=\"dst\",tls=\"no_identity\"}} {}",
             TcpFixture::BYE_MSG.len()
         );
 
@@ -923,7 +925,7 @@ mod transport {
         tcp_client.write(TcpFixture::HELLO_MSG);
         assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
         assert_contains!(metrics.get("/metrics"),
-            "tcp_open_total{direction=\"outbound\",peer=\"dst\"} 1");
+            "tcp_open_total{direction=\"outbound\",peer=\"dst\",tls=\"no_identity\"} 1");
     }
 
     #[test]
@@ -939,11 +941,11 @@ mod transport {
         assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
 
         assert_contains!(metrics.get("/metrics"),
-            "tcp_open_total{direction=\"outbound\",peer=\"src\"} 1");
+            "tcp_open_total{direction=\"outbound\",peer=\"src\",tls=\"internal_traffic\"} 1");
 
         drop(tcp_client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_close_total{direction=\"outbound\",peer=\"src\",classification=\"success\"} 1");
+            "tcp_close_total{direction=\"outbound\",peer=\"src\",tls=\"internal_traffic\",classification=\"success\"} 1");
 
         let tcp_client = client.connect();
 
@@ -951,10 +953,10 @@ mod transport {
         assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
 
         assert_contains!(metrics.get("/metrics"),
-            "tcp_open_total{direction=\"outbound\",peer=\"src\"} 2");
+            "tcp_open_total{direction=\"outbound\",peer=\"src\",tls=\"internal_traffic\"} 2");
         drop(tcp_client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_close_total{direction=\"outbound\",peer=\"src\",classification=\"success\"} 2");
+            "tcp_close_total{direction=\"outbound\",peer=\"src\",tls=\"internal_traffic\",classification=\"success\"} 2");
     }
 
     #[test]
@@ -972,9 +974,9 @@ mod transport {
         // TODO: make assertions about buckets
         let out = metrics.get("/metrics");
         assert_contains!(out,
-            "tcp_connection_duration_ms_count{direction=\"outbound\",peer=\"src\",classification=\"success\"} 1");
+            "tcp_connection_duration_ms_count{direction=\"outbound\",peer=\"src\",tls=\"internal_traffic\",classification=\"success\"} 1");
         assert_contains!(out,
-            "tcp_connection_duration_ms_count{direction=\"outbound\",peer=\"dst\",classification=\"success\"} 1");
+            "tcp_connection_duration_ms_count{direction=\"outbound\",peer=\"dst\",tls=\"no_identity\",classification=\"success\"} 1");
 
         let tcp_client = client.connect();
 
@@ -982,16 +984,16 @@ mod transport {
         assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
         let out = metrics.get("/metrics");
         assert_contains!(out,
-            "tcp_connection_duration_ms_count{direction=\"outbound\",peer=\"src\",classification=\"success\"} 1");
+            "tcp_connection_duration_ms_count{direction=\"outbound\",peer=\"src\",tls=\"internal_traffic\",classification=\"success\"} 1");
         assert_contains!(out,
-            "tcp_connection_duration_ms_count{direction=\"outbound\",peer=\"dst\",classification=\"success\"} 1");
+            "tcp_connection_duration_ms_count{direction=\"outbound\",peer=\"dst\",tls=\"no_identity\",classification=\"success\"} 1");
 
         drop(tcp_client);
         let out = metrics.get("/metrics");
         assert_contains!(out,
-            "tcp_connection_duration_ms_count{direction=\"outbound\",peer=\"src\",classification=\"success\"} 2");
+            "tcp_connection_duration_ms_count{direction=\"outbound\",peer=\"src\",tls=\"internal_traffic\",classification=\"success\"} 2");
         assert_contains!(out,
-            "tcp_connection_duration_ms_count{direction=\"outbound\",peer=\"dst\",classification=\"success\"} 2");
+            "tcp_connection_duration_ms_count{direction=\"outbound\",peer=\"dst\",tls=\"no_identity\",classification=\"success\"} 2");
     }
 
     #[test]
@@ -1001,11 +1003,11 @@ mod transport {
         let TcpFixture { client, metrics, proxy: _proxy } =
             TcpFixture::outbound();
         let src_expected = format!(
-            "tcp_write_bytes_total{{direction=\"outbound\",peer=\"src\"}} {}",
+            "tcp_write_bytes_total{{direction=\"outbound\",peer=\"src\",tls=\"internal_traffic\"}} {}",
             TcpFixture::BYE_MSG.len()
         );
         let dst_expected = format!(
-            "tcp_write_bytes_total{{direction=\"outbound\",peer=\"dst\"}} {}",
+            "tcp_write_bytes_total{{direction=\"outbound\",peer=\"dst\",tls=\"no_identity\"}} {}",
             TcpFixture::HELLO_MSG.len()
         );
 
@@ -1017,7 +1019,8 @@ mod transport {
 
         let out = metrics.get("/metrics");
         assert_contains!(out, &src_expected);
-        assert_contains!(out, &dst_expected);    }
+        assert_contains!(out, &dst_expected);
+    }
 
     #[test]
     #[cfg_attr(not(feature = "flaky_tests"), ignore)]
@@ -1026,11 +1029,11 @@ mod transport {
         let TcpFixture { client, metrics, proxy: _proxy } =
             TcpFixture::outbound();
         let src_expected = format!(
-            "tcp_read_bytes_total{{direction=\"outbound\",peer=\"src\"}} {}",
+            "tcp_read_bytes_total{{direction=\"outbound\",peer=\"src\",tls=\"internal_traffic\"}} {}",
             TcpFixture::HELLO_MSG.len()
         );
         let dst_expected = format!(
-            "tcp_read_bytes_total{{direction=\"outbound\",peer=\"dst\"}} {}",
+            "tcp_read_bytes_total{{direction=\"outbound\",peer=\"dst\",tls=\"no_identity\"}} {}",
             TcpFixture::BYE_MSG.len()
         );
 
@@ -1057,20 +1060,20 @@ mod transport {
         tcp_client.write(TcpFixture::HELLO_MSG);
         assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
         assert_contains!(metrics.get("/metrics"),
-            "tcp_open_connections{direction=\"outbound\",peer=\"src\"} 1");
+            "tcp_open_connections{direction=\"outbound\",peer=\"src\",tls=\"internal_traffic\"} 1");
         drop(tcp_client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_open_connections{direction=\"outbound\",peer=\"src\"} 0");
+            "tcp_open_connections{direction=\"outbound\",peer=\"src\",tls=\"internal_traffic\"} 0");
         let tcp_client = client.connect();
 
         tcp_client.write(TcpFixture::HELLO_MSG);
         assert_eq!(tcp_client.read(), TcpFixture::BYE_MSG.as_bytes());
         assert_contains!(metrics.get("/metrics"),
-            "tcp_open_connections{direction=\"outbound\",peer=\"src\"} 1");
+            "tcp_open_connections{direction=\"outbound\",peer=\"src\",tls=\"internal_traffic\"} 1");
 
         drop(tcp_client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_open_connections{direction=\"outbound\",peer=\"src\"} 0");
+            "tcp_open_connections{direction=\"outbound\",peer=\"src\",tls=\"internal_traffic\"} 0");
     }
 
     #[test]
@@ -1084,10 +1087,10 @@ mod transport {
         assert_eq!(client.get("/"), "hello");
 
         assert_contains!(metrics.get("/metrics"),
-            "tcp_open_connections{direction=\"outbound\",peer=\"src\"} 1");
+            "tcp_open_connections{direction=\"outbound\",peer=\"src\",tls=\"internal_traffic\"} 1");
         drop(client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_open_connections{direction=\"outbound\",peer=\"src\"} 0");
+            "tcp_open_connections{direction=\"outbound\",peer=\"src\",tls=\"internal_traffic\"} 0");
 
         // create a new client to force a new connection
         let client = client::new(proxy.outbound, "tele.test.svc.cluster.local");
@@ -1095,11 +1098,11 @@ mod transport {
         info!("client.get(/)");
         assert_eq!(client.get("/"), "hello");
         assert_contains!(metrics.get("/metrics"),
-            "tcp_open_connections{direction=\"outbound\",peer=\"src\"} 1");
+            "tcp_open_connections{direction=\"outbound\",peer=\"src\",tls=\"internal_traffic\"} 1");
 
         drop(client);
         assert_contains!(metrics.get("/metrics"),
-            "tcp_open_connections{direction=\"outbound\",peer=\"src\"} 0");
+            "tcp_open_connections{direction=\"outbound\",peer=\"src\",tls=\"internal_traffic\"} 0");
     }
 }
 
@@ -1158,7 +1161,7 @@ fn metrics_compression() {
 
     for &encoding in encodings {
         assert_contains!(do_scrape(encoding),
-            "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",classification=\"success\",status_code=\"200\"} 1");
+            "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",tls=\"disabled\",classification=\"success\",status_code=\"200\"} 1");
     }
 
     info!("client.get(/)");
@@ -1166,6 +1169,6 @@ fn metrics_compression() {
 
     for &encoding in encodings {
         assert_contains!(do_scrape(encoding),
-            "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",classification=\"success\",status_code=\"200\"} 2");
+            "response_latency_ms_count{authority=\"tele.test.svc.cluster.local\",direction=\"inbound\",tls=\"disabled\",classification=\"success\",status_code=\"200\"} 2");
     }
 }

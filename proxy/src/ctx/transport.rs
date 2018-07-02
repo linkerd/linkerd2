@@ -1,5 +1,6 @@
 use std::{
     self,
+    fmt,
     net::{IpAddr, SocketAddr},
     sync::Arc,
 };
@@ -43,6 +44,20 @@ impl TlsStatus {
     where C: Clone + std::fmt::Debug
     {
         c.as_ref().map(|_| ())
+    }
+}
+
+impl fmt::Display for TlsStatus {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad(match *self {
+            Conditional::Some(()) => "true",
+            Conditional::None(tls::ReasonForNoTls::NoConfig) => "no_config",
+            Conditional::None(tls::ReasonForNoTls::HandshakeFailed) => "handshake_failed",
+            Conditional::None(tls::ReasonForNoTls::Disabled) => "disabled",
+            Conditional::None(tls::ReasonForNoTls::InternalTraffic) => "internal_traffic",
+            Conditional::None(tls::ReasonForNoTls::NoIdentity(_)) => "no_identity",
+            Conditional::None(tls::ReasonForNoTls::NotProxyTls) => "no_proxy_tls"
+        })
     }
 }
 
