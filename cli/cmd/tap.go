@@ -241,9 +241,12 @@ func writeTapEventsToBuffer(tapClient pb.Api_TapByResourceClient, w *tabwriter.W
 }
 
 func renderTapEvent(event *common.TapEvent) string {
-	dst := addr.AddressToString(event.GetDestination())
 	dstLabels := event.GetDestinationMeta().GetLabels()
-	dstPod := dstLabels["pod"]
+
+	dst := addr.AddressToString(event.GetDestination())
+	if pod := dstLabels["pod"]; pod != "" {
+		dst = fmt.Sprintf("%s:%d", pod, event.GetDestination().GetPort())
+	}
 
 	proxy := "???"
 	tls := ""
@@ -257,10 +260,6 @@ func renderTapEvent(event *common.TapEvent) string {
 		tls = dstLabels["tls"]
 	default:
 		// Too old for TLS.
-	}
-
-	if dstPod != "" {
-		dst = dstPod
 	}
 
 	flow := fmt.Sprintf("proxy=%s src=%s dst=%s tls=%s",
