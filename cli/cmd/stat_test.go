@@ -20,7 +20,7 @@ func TestStat(t *testing.T) {
 
 		mockClient.StatSummaryResponseToReturn = &response
 
-		expectedOutput := `NAME    MESHED   SUCCESS      RPS   LATENCY_P50   LATENCY_P95   LATENCY_P99   TLS
+		expectedOutput := `NAME    MESHED   SUCCESS      RPS   LATENCY_P50   LATENCY_P95   LATENCY_P99    TLS
 emoji      1/2   100.00%   2.0rps         123ms         123ms         123ms   100%
 `
 
