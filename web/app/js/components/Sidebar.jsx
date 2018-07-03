@@ -128,7 +128,7 @@ class Sidebar extends React.Component {
           <div className={`sidebar-menu-header ${this.state.collapsed ? "collapsed" : ""}`}>
             <ConduitLink to="/servicemesh">
               <img
-                alt="Conduit logo"
+                alt="Linkerd logo"
                 src={this.state.collapsed ? logo : wordLogo}
                 onError={e => {
                   // awful hack to deal with the fact that we don't serve assets off absolute paths
@@ -201,7 +201,7 @@ class Sidebar extends React.Component {
               <Menu.Item className="sidebar-menu-item" key="/update">
                 <Link to="https://versioncheck.conduit.io/update" target="_blank">
                   <Icon type="exclamation-circle-o" className="update" />
-                  <span>Update Conduit</span>
+                  <span>Update {this.props.productName}</span>
                 </Link>
               </Menu.Item>
             )}

@@ -1,3 +1,4 @@
+import { withContext } from './util/AppContext.jsx';
 import { Link } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import React from 'react';
@@ -46,11 +47,11 @@ class Version extends React.Component {
   render() {
     return (
       <div className="version">
-        Running Conduit {this.props.releaseVersion}<br />
+        Running {this.props.productName} {this.props.releaseVersion}<br />
         {this.renderVersionCheck()}
       </div>
     );
   }
 }
 
-export default Version;
+export default withContext(Version);
