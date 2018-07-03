@@ -116,9 +116,6 @@ func (c *CertificateController) processNextWorkItem() bool {
 func (c *CertificateController) syncObject(key string) error {
 	log.Debugf("syncObject(%s)", key)
 
-	if key == "" {
-		return c.syncAll()
-	}
 	if !strings.Contains(key, ".") {
 		return c.syncNamespace(key)
 	}
@@ -255,24 +252,6 @@ func (c *CertificateController) handleConfigMapDelete(obj interface{}) {
 			c.queue.Add(configMap.Namespace)
 		}
 	}
-}
-
-func (c *CertificateController) syncAll() error {
-	log.Infof("syncAll() start")
-
-	// TODO: error handling
-	// TODO: other types of pod owners
-	podOwners, err := c.k8sAPI.Deploy().Lister().List(labels.Everything())
-	if err != nil {
-		log.Errorf("error getting pod owners %s", err)
-		return err
-	}
-
-	for _, podOwner := range(podOwners) {
-		c.handlePodOwnerAdd(podOwner)
-	}
-
-	return nil
 }
 
 func (c *CertificateController) filterNamespace(ns string) bool {
