@@ -13,12 +13,17 @@ import { Icon, Layout, Menu } from 'antd';
 import './../../css/sidebar.css';
 
 class Sidebar extends React.Component {
+  static defaultProps = {
+    productName: 'controller'
+  }
+
   static propTypes = {
     api: PropTypes.shape({
       PrefixedLink: PropTypes.func.isRequired,
     }).isRequired,
     location: ReactRouterPropTypes.location.isRequired,
     pathPrefix: PropTypes.string.isRequired,
+    productName: PropTypes.string,
     releaseVersion: PropTypes.string.isRequired,
     uuid: PropTypes.string.isRequired,
   }

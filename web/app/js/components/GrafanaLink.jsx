@@ -16,9 +16,9 @@ const GrafanaLink = ({PrefixedLink, name, namespace, resource}) => {
 };
 
 GrafanaLink.propTypes = {
-  PrefixedLink: PropTypes.func.isRequired,
   name: PropTypes.string.isRequired,
   namespace: PropTypes.string.isRequired,
+  PrefixedLink: PropTypes.func.isRequired,
   resource: PropTypes.string.isRequired,
 };
 

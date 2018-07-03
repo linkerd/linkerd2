@@ -91,7 +91,7 @@ describe('ServiceMesh', () => {
       expect(component.find("ServiceMesh")).to.have.length(1);
       expect(component.find("ConduitSpinner")).to.have.length(0);
       expect(component.html()).to.include("Service mesh details");
-      expect(component.html()).to.include("Conduit version");
+      expect(component.html()).to.include("ShinyProductName version");
     });
   });
 

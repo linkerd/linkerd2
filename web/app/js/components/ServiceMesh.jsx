@@ -116,6 +116,10 @@ const componentsToDeployNames = {
 };
 
 class ServiceMesh extends React.Component {
+  static defaultProps = {
+    productName: 'controller'
+  }
+
   static propTypes = {
     api: PropTypes.shape({
       cancelCurrentRequests: PropTypes.func.isRequired,
@@ -126,6 +130,7 @@ class ServiceMesh extends React.Component {
       urlsForResource: PropTypes.func.isRequired,
     }).isRequired,
     controllerNamespace: PropTypes.string.isRequired,
+    productName: PropTypes.string,
     releaseVersion: PropTypes.string.isRequired,
   }
 

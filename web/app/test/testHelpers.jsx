@@ -5,9 +5,10 @@ import React from 'react';
 import { Route, Router } from 'react-router';
 
 const componentDefaultProps = {
-  api: ApiHelpers(""),
+  api: ApiHelpers(''),
   controllerNamespace: 'conduit',
-  releaseVersion: '',
+  productName: 'ShinyProductName',
+  releaseVersion: ''
 };
 
 export function routerWrap(Component, extraProps={}, route="/", currentLoc="/") {
