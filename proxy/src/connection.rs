@@ -225,18 +225,18 @@ impl Future for ConditionallyUpgradeServerToTls {
                         .poll_match_client_hello();
 
                     match try_ready!(poll_match) {
-                        Some(tls::conditional_accept::Match::Incomplete) => {
+                        tls::conditional_accept::Match::Incomplete => {
+                            // Keep reading until a NotReady is encountered.
                             continue;
                         },
-                        Some(tls::conditional_accept::Match::Matched) => {
+                        tls::conditional_accept::Match::Matched => {
                             trace!("upgrading accepted connection to TLS");
-                            let upgrade = tls::UpgradeServerToTls::from(inner.take().unwrap());
+                            let upgrade = inner.take().unwrap().into_tls_upgrade();
                             ConditionallyUpgradeServerToTls::UpgradeToTls(upgrade)
                         },
-                        Some(tls::conditional_accept::Match::NotMatched) |
-                        None => {
+                        tls::conditional_accept::Match::NotMatched => {
                             trace!("passing through accepted connection without TLS");
-                            let conn = Connection::from(inner.take().unwrap());
+                            let conn = inner.take().unwrap().into_plaintext();
                             return Ok(Async::Ready(conn));
                         },
                     }
@@ -256,28 +256,27 @@ impl ConditionallyUpgradeServerToTlsInner {
     /// The buffer is matched for a TLS client hello message.
     ///
     /// `None` is returned if the underlying socket has closed.
-    fn poll_match_client_hello(&mut self) -> Poll<Option<tls::conditional_accept::Match>, io::Error> {
+    fn poll_match_client_hello(&mut self) -> Poll<tls::conditional_accept::Match, io::Error> {
         let sz = try_ready!(self.socket.read_buf(&mut self.peek_buf));
         if sz == 0 {
-            return Ok(None.into())
+            // XXX: It is ambiguous whether this is the start of a TLS handshake or not.
+            // For now, resolve the ambiguity in favor of plaintext. TODO: revisit this
+            // when we add support for TLS policy.
+            return Ok(tls::conditional_accept::Match::NotMatched.into())
         }
 
         let buf = self.peek_buf.as_ref();
-        Ok(Some(tls::conditional_accept::match_client_hello(buf, &self.tls.identity)).into())
+        Ok(tls::conditional_accept::match_client_hello(buf, &self.tls.identity).into())
     }
-}
 
-impl From<ConditionallyUpgradeServerToTlsInner> for tls::UpgradeServerToTls {
-    fn from(inner: ConditionallyUpgradeServerToTlsInner) -> Self {
-        tls::Connection::accept(inner.socket, inner.peek_buf.freeze(), inner.tls.config)
+    fn into_tls_upgrade(self) -> tls::UpgradeServerToTls {
+        tls::Connection::accept(self.socket, self.peek_buf.freeze(), self.tls.config)
     }
-}
 
-impl From<ConditionallyUpgradeServerToTlsInner> for Connection {
-    fn from(inner: ConditionallyUpgradeServerToTlsInner) -> Self {
+    fn into_plaintext(self) -> Connection {
         Connection::plain_with_peek_buf(
-            inner.socket,
-            inner.peek_buf,
+            self.socket,
+            self.peek_buf,
             tls::ReasonForNoTls::NotProxyTls
         )
     }
