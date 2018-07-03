@@ -225,18 +225,19 @@ impl Future for ConditionallyUpgradeServerToTls {
                         .poll_match_client_hello();
 
                     match try_ready!(poll_match) {
-                        tls::conditional_accept::Match::Matched => {
+                        Some(tls::conditional_accept::Match::Incomplete) => {
+                            continue;
+                        },
+                        Some(tls::conditional_accept::Match::Matched) => {
                             trace!("upgrading accepted connection to TLS");
                             let upgrade = inner.take().unwrap().into();
                             ConditionallyUpgradeServerToTls::UpgradeToTls(upgrade)
                         },
-                        tls::conditional_accept::Match::NotMatched => {
+                        Some(tls::conditional_accept::Match::NotMatched) |
+                        None => {
                             trace!("passing through accepted connection without TLS");
                             let conn = inner.take().unwrap().into();
                             return Ok(Async::Ready(conn));
-                        },
-                        tls::conditional_accept::Match::Incomplete => {
-                            continue;
                         },
                     }
                 },
@@ -255,14 +256,14 @@ impl ConditionallyUpgradeServerToTlsInner {
     /// The buffer is matched for a TLS client hello message.
     ///
     /// An error is returned if the underlying socket has closed.
-    fn poll_match_client_hello(&mut self) -> Poll<tls::conditional_accept::Match, io::Error> {
+    fn poll_match_client_hello(&mut self) -> Poll<Option<tls::conditional_accept::Match>, io::Error> {
         let sz = try_ready!(self.socket.read_buf(&mut self.peek_buf));
         if sz == 0 {
-            return Err(io::ErrorKind::BrokenPipe.into());
+            return Ok(None.into())
         }
 
         let buf = self.peek_buf.as_ref();
-        Ok(tls::conditional_accept::match_client_hello(buf, &self.tls.identity).into())
+        Ok(Some(tls::conditional_accept::match_client_hello(buf, &self.tls.identity)).into())
     }
 }
 
