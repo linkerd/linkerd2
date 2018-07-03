@@ -61,14 +61,6 @@ func NewCertificateController(conduitNamespace string, k8sAPI *k8s.API) (*Certif
 		UpdateFunc: c.handlePodOwnerUpdate,
 	})
 
-	k8sAPI.CM().Informer().AddEventHandler(
-		cache.ResourceEventHandlerFuncs{
-			AddFunc:    c.handleConfigMapAdd,
-			UpdateFunc: c.handleConfigMapUpdate,
-			DeleteFunc: c.handleConfigMapDelete,
-		},
-	)
-
 	c.syncHandler = c.syncObject
 
 	return c, nil
@@ -213,41 +205,6 @@ func (c *CertificateController) handlePodOwnerAdd(obj interface{}) {
 
 func (c *CertificateController) handlePodOwnerUpdate(oldObj, newObj interface{}) {
 	c.handlePodOwnerAdd(newObj)
-}
-
-func (c *CertificateController) handleConfigMapAdd(obj interface{}) {
-}
-
-func (c *CertificateController) handleConfigMapUpdate(oldObj, newObj interface{}) {
-}
-
-func (c *CertificateController) handleConfigMapDelete(obj interface{}) {
-	configMap, ok := obj.(*v1.ConfigMap)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			log.Warnf("couldn't get object from tombstone: %+v", obj)
-			return
-		}
-		configMap, ok = tombstone.Obj.(*v1.ConfigMap)
-		if !ok {
-			log.Warnf("object is not a configmap: %+v", tombstone.Obj)
-			return
-		}
-	}
-
-	if configMap.Name == pkgK8s.TLSTrustAnchorConfigMapName {
-		injected, err := c.isInjectedNamespace(configMap.Namespace)
-		if err != nil {
-			log.Errorf("error getting pods in namespace [%s]: %s", configMap.Namespace, err)
-			return
-		}
-		if injected {
-			log.Infof("configmap [%s] in namespace [%s] deleted; recreating it",
-				pkgK8s.TLSTrustAnchorConfigMapName, configMap.Namespace)
-			c.queue.Add(configMap.Namespace)
-		}
-	}
 }
 
 func (c *CertificateController) filterNamespace(ns string) bool {
