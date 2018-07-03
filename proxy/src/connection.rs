@@ -230,13 +230,13 @@ impl Future for ConditionallyUpgradeServerToTls {
                         },
                         Some(tls::conditional_accept::Match::Matched) => {
                             trace!("upgrading accepted connection to TLS");
-                            let upgrade = inner.take().unwrap().into();
+                            let upgrade = tls::UpgradeServerToTls::from(inner.take().unwrap());
                             ConditionallyUpgradeServerToTls::UpgradeToTls(upgrade)
                         },
                         Some(tls::conditional_accept::Match::NotMatched) |
                         None => {
                             trace!("passing through accepted connection without TLS");
-                            let conn = inner.take().unwrap().into();
+                            let conn = Connection::from(inner.take().unwrap());
                             return Ok(Async::Ready(conn));
                         },
                     }
@@ -267,17 +267,17 @@ impl ConditionallyUpgradeServerToTlsInner {
     }
 }
 
-impl Into<tls::UpgradeServerToTls> for ConditionallyUpgradeServerToTlsInner {
-    fn into(self) -> tls::UpgradeServerToTls {
-        tls::Connection::accept(self.socket, self.peek_buf.freeze(), self.tls.config)
+impl From<ConditionallyUpgradeServerToTlsInner> for tls::UpgradeServerToTls {
+    fn from(inner: ConditionallyUpgradeServerToTlsInner) -> Self {
+        tls::Connection::accept(inner.socket, inner.peek_buf.freeze(), inner.tls.config)
     }
 }
 
-impl Into<Connection> for ConditionallyUpgradeServerToTlsInner {
-    fn into(self) -> Connection {
+impl From<ConditionallyUpgradeServerToTlsInner> for Connection {
+    fn from(inner: ConditionallyUpgradeServerToTlsInner) -> Self {
         Connection::plain_with_peek_buf(
-            self.socket,
-            self.peek_buf,
+            inner.socket,
+            inner.peek_buf,
             tls::ReasonForNoTls::NotProxyTls
         )
     }
