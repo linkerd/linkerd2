@@ -107,7 +107,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   };
 
   // prefix all links in the app with `pathPrefix`
-  class ConduitLink extends React.Component {
+  class PrefixedLink extends React.Component {
     static defaultProps = {
       deployment: "",
       targetBlank: false,
@@ -146,7 +146,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     getValidMetricsWindows: () => _.keys(validMetricsWindows),
     getMetricsWindowDisplayText,
     urlsForResource,
-    ConduitLink,
+    PrefixedLink,
     setCurrentRequests,
     getCurrentPromises,
     cancelCurrentRequests,

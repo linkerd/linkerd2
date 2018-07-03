@@ -50,7 +50,7 @@ const getPodClassification = pod => {
   }
 };
 
-const namespacesColumns = ConduitLink => [
+const namespacesColumns = PrefixedLink => [
   {
     title: "Namespace",
     key: "namespace",
@@ -59,7 +59,7 @@ const namespacesColumns = ConduitLink => [
     render: d => {
       return  (
         <React.Fragment>
-          <ConduitLink to={"/namespaces/" + d.namespace}>{d.namespace}</ConduitLink>
+          <PrefixedLink to={"/namespaces/" + d.namespace}>{d.namespace}</PrefixedLink>
           { _.isEmpty(d.errors) ? null :
           <ErrorModal errors={d.errors} resourceName={d.namespace} resourceType="namespace" />
           }
@@ -119,7 +119,7 @@ class ServiceMesh extends React.Component {
   static propTypes = {
     api: PropTypes.shape({
       cancelCurrentRequests: PropTypes.func.isRequired,
-      ConduitLink: PropTypes.func.isRequired,
+      PrefixedLink: PropTypes.func.isRequired,
       fetchMetrics: PropTypes.func.isRequired,
       getCurrentPromises: PropTypes.func.isRequired,
       setCurrentRequests: PropTypes.func.isRequired,
@@ -329,7 +329,7 @@ class ServiceMesh extends React.Component {
             <Table
               className="conduit-table service-mesh-table mesh-completion-table"
               dataSource={this.state.nsStatuses}
-              columns={namespacesColumns(this.api.ConduitLink)}
+              columns={namespacesColumns(this.api.PrefixedLink)}
               rowKey="namespace"
               rowClassName={rowCn}
               pagination={false}
