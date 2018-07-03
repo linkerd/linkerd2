@@ -293,9 +293,7 @@ status:
   phase: Running
 `,
 				},
-				mockPromResponse: model.Vector{
-					genPromSample("emojivoto-2", "pod", "emojivoto", "success", false),
-				},
+				mockPromResponse: prometheusMetric("emojivoto-2", "pod", "emojivoto", "success", false),
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
