@@ -254,7 +254,7 @@ impl ConditionallyUpgradeServerToTlsInner {
     ///
     /// The buffer is matched for a TLS client hello message.
     ///
-    /// `None` is returned if the underlying socket has closed.
+    /// `NotMatched` is returned if the underlying socket has closed.
     fn poll_match_client_hello(&mut self) -> Poll<tls::conditional_accept::Match, io::Error> {
         let sz = try_ready!(self.socket.read_buf(&mut self.peek_buf));
         if sz == 0 {
