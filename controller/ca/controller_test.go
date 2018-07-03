@@ -82,7 +82,9 @@ func new(fixtures ...string) (*CertificateController, chan bool, chan struct{}, 
 	controller.k8sAPI.Sync(nil)
 
 	stopCh := make(chan struct{})
-	go controller.Run(stopCh)
+	ready := make(chan struct{})
+	close(ready)
+	go controller.Run(ready, stopCh)
 
 	return controller, synced, stopCh, nil
 }

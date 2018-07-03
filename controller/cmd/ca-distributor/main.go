@@ -51,12 +51,11 @@ func main() {
 	stopCh := make(chan struct{})
 	ready := make(chan struct{})
 
-	// synchronously sync caches before starting the controller
-	k8sAPI.Sync(ready)
+	go k8sAPI.Sync(ready)
 
 	go func() {
 		log.Info("starting distributor")
-		controller.Run(stopCh)
+		controller.Run(ready, stopCh)
 	}()
 
 	go admin.StartServer(*metricsAddr, ready)
