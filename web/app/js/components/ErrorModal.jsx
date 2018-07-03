@@ -117,7 +117,7 @@ export default class ErrorModal extends React.Component {
   renderPodErrors = errors => {
     return _.map(errors, err => {
       return (
-        <div className="conduit-pod-error" key={err.pod}>
+        <div className="controller-pod-error" key={err.pod}>
           <h3 title="pod name">{err.pod}</h3>
           {this.renderContainerErrors(err.pod, err.byContainer)}
         </div>
@@ -130,9 +130,9 @@ export default class ErrorModal extends React.Component {
 
     return (
       <React.Fragment>
-        <Icon type="warning" className="conduit-error-icon" onClick={this.showModal} />
+        <Icon type="warning" className="controller-error-icon" onClick={this.showModal} />
         <Modal
-          className="conduit-pod-error-modal"
+          className="controller-pod-error-modal"
           title={`Errors in ${this.props.resourceType} ${this.props.resourceName}`}
           visible={this.state.visible}
           onOk={this.handleOk}
