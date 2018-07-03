@@ -48,20 +48,18 @@ func NewCertificateController(conduitNamespace string, k8sAPI *k8s.API) (*Certif
 			workqueue.DefaultControllerRateLimiter(), "certificates"),
 	}
 
-	// TODO: Handle deletions.
-	handlePodOwnerAddUpdate := cache.ResourceEventHandlerFuncs{
-		AddFunc:    c.handlePodOwnerAdd,
-		UpdateFunc: c.handlePodOwnerUpdate,
-	}
-
 	// Watch pod owners, instead of just pods, so that we can create the
 	// secret for each pod owner as soon as the pod owner is created, instead
 	// of later when the first pod that it owns is created. This creates a race
 	// with the pod creation that we hope to win so that the pod starts up with
 	// a valid TLS configuration.
 	//
-	// TODO: Other pod owner types
-	k8sAPI.Deploy().Informer().AddEventHandler(handlePodOwnerAddUpdate)
+	// TODO: Other pod owner types.
+	// TODO: Handle deletions.
+	k8sAPI.Deploy().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    c.handlePodOwnerAdd,
+		UpdateFunc: c.handlePodOwnerUpdate,
+	})
 
 	k8sAPI.CM().Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -94,8 +92,6 @@ func (c *CertificateController) worker() {
 }
 
 func (c *CertificateController) processNextWorkItem() bool {
-	log.Infof("processNextWorkItem()")
-
 	key, quit := c.queue.Get()
 	if quit {
 		return false
@@ -104,7 +100,7 @@ func (c *CertificateController) processNextWorkItem() bool {
 
 	err := c.syncHandler(key.(string))
 	if err != nil {
-		log.Errorf("error syncing config map: %s", err)
+		log.Errorf("error syncing object: %s", err)
 		c.queue.AddRateLimited(key)
 		return true
 	}
@@ -115,7 +111,6 @@ func (c *CertificateController) processNextWorkItem() bool {
 
 func (c *CertificateController) syncObject(key string) error {
 	log.Debugf("syncObject(%s)", key)
-
 	if !strings.Contains(key, ".") {
 		return c.syncNamespace(key)
 	}
@@ -145,6 +140,7 @@ func (c *CertificateController) syncSecret(key string) error {
 	log.Debugf("syncSecret(%s)", key)
 	parts := strings.Split(key, ".")
 	if len(parts) != 3 {
+		log.Errorf("Failed to parse secret sync request %s", key)
 		return nil // TODO
 	}
 	identity := pkgK8s.TLSIdentity{
@@ -179,7 +175,7 @@ func (c *CertificateController) syncSecret(key string) error {
 func (c *CertificateController) handlePodOwnerAdd(obj interface{}) {
 	owner, err := meta.Accessor(obj)
 	if err != nil {
-		log.Warnf("handlePodOwnerAdd couldn't get object from tombstone: %+v", obj)
+		log.Warnf("handlePodOwnerAdd failed to get metadata accessor: %+v", obj)
 		return
 	}
 
