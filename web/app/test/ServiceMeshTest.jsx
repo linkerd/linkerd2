@@ -1,6 +1,6 @@
 import _ from 'lodash';
 import Adapter from 'enzyme-adapter-react-16';
-import conduitPodFixtures from './fixtures/conduitPods.json';
+import podFixtures from './fixtures/podRollup.json';
 import { expect } from 'chai';
 import nsFixtures from './fixtures/namespaces.json';
 import { routerWrap } from './testHelpers.jsx';
@@ -68,7 +68,7 @@ describe('ServiceMesh', () => {
   it("renders controller component summaries", () => {
     fetchStub.resolves({
       ok: true,
-      json: () => Promise.resolve(conduitPodFixtures)
+      json: () => Promise.resolve(podFixtures)
     });
     component = mount(routerWrap(ServiceMesh));
 
