@@ -19,6 +19,7 @@ pub use self::{
         ConditionalConnectionConfig,
         ConditionalClientConfig,
         ConnectionConfig,
+        Error as ConfigError,
         ReasonForNoTls,
         ReasonForNoIdentity,
         ServerConfig,

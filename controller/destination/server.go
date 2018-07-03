@@ -117,7 +117,7 @@ func (s *server) podsByIp(ip string) ([]*v1.Pod, error) {
 }
 
 func (s *server) streamResolutionUsingCorrectResolverFor(host string, port int, stream pb.Destination_GetServer) error {
-	listener := newEndpointListener(stream, s.podsByIp, s.enableTLS)
+	listener := newEndpointListener(stream, s.podsByIp, s.k8sAPI.GetOwnerKindAndName, s.enableTLS)
 
 	for _, resolver := range s.resolvers {
 		resolverCanResolve, err := resolver.canResolve(host, port)

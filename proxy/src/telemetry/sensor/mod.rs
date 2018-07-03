@@ -29,6 +29,10 @@ struct Handle(Option<Sender<event::Event>>);
 #[derive(Clone, Debug)]
 pub struct Sensors(Handle);
 
+/// Given to the TLS config watch to generate events on reloads.
+#[derive(Clone, Debug)]
+pub struct TlsConfig(Handle);
+
 impl Handle {
     fn send<F>(&mut self, mk: F)
     where
@@ -133,5 +137,20 @@ impl Sensors {
             + 'static,
     {
         NewHttp::new(new_service, &self.0, client_ctx)
+    }
+
+    pub fn tls_config(&self) -> TlsConfig {
+        TlsConfig(self.0.clone())
+    }
+}
+
+impl TlsConfig {
+
+    pub fn reloaded(&mut self) {
+        self.0.send(|| event::Event::TlsConfigReloaded)
+    }
+
+    pub fn failed(&mut self, err: ::transport::tls::ConfigError) {
+        self.0.send(|| event::Event::TlsConfigReloadFailed(err.into()))
     }
 }

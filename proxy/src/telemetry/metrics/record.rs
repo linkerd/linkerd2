@@ -8,6 +8,7 @@ use super::labels::{
     ResponseLabels,
     TransportLabels,
     TransportCloseLabels,
+    TlsConfigLabels,
 };
 
 /// Tracks Prometheus metrics
@@ -83,6 +84,16 @@ impl Record {
                         .close(close.duration);
                 })
             },
+
+            Event::TlsConfigReloaded =>
+                self.update(|metrics| {
+                    metrics.tls_config(TlsConfigLabels::success()).incr();
+                }),
+
+            Event::TlsConfigReloadFailed(ref err) =>
+                self.update(|metrics| {
+                    metrics.tls_config(err.clone().into()).incr();
+                }),
 
             Event::TlsHandshakeFailed(ref ctx, ref err) => {
                 self.update(|metrics| {

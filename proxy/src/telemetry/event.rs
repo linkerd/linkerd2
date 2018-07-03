@@ -22,6 +22,8 @@ pub enum Event {
     StreamResponseFail(Arc<ctx::http::Response>, StreamResponseFail),
     StreamResponseEnd(Arc<ctx::http::Response>, StreamResponseEnd),
 
+    TlsConfigReloaded,
+    TlsConfigReloadFailed(::transport::tls::ConfigError),
     TlsHandshakeFailed(Arc<ctx::transport::Ctx>, connection::HandshakeError),
     ControlTlsHandshakeFailed(ControlConnection, connection::HandshakeError),
 }
@@ -35,6 +37,7 @@ pub enum ControlConnection {
     Connect {
         remote_addr: SocketAddr
     },
+
 }
 
 #[derive(Clone, Debug)]
