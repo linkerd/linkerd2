@@ -110,7 +110,8 @@ func (ca *CA) TrustAnchorPEM() string {
 	return ca.rootPEM
 }
 
-// IssueEndEntityCertificate issues
+// IssueEndEntityCertificate creates a new certificate that is valid for the
+// given DNS name, generating a new keypair for it.
 func (ca *CA) IssueEndEntityCertificate(dnsName string) (*CertificateAndPrivateKey, error) {
 	privateKey, err := generateKeyPair()
 	if err != nil {
