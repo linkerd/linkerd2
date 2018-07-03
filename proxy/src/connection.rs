@@ -251,11 +251,11 @@ impl Future for ConditionallyUpgradeServerToTls {
 }
 
 impl ConditionallyUpgradeServerToTlsInner {
-    /// Polls the underliyng socket for more data and buffers it.
+    /// Polls the underlying socket for more data and buffers it.
     ///
     /// The buffer is matched for a TLS client hello message.
     ///
-    /// An error is returned if the underlying socket has closed.
+    /// `None` is returned if the underlying socket has closed.
     fn poll_match_client_hello(&mut self) -> Poll<Option<tls::conditional_accept::Match>, io::Error> {
         let sz = try_ready!(self.socket.read_buf(&mut self.peek_buf));
         if sz == 0 {
