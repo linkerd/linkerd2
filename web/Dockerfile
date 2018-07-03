@@ -24,7 +24,7 @@ ENV NODE_ENV production
 RUN $ROOT/bin/web build
 
 ## compile go server
-FROM gcr.io/runconduit/go-deps:bca359b1 as golang
+FROM gcr.io/runconduit/go-deps:a9f4d24b as golang
 WORKDIR /go/src/github.com/runconduit/conduit
 COPY web web
 COPY controller controller
