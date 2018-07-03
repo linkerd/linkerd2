@@ -29,7 +29,7 @@ type rowStat struct {
 	p50Latency string
 	p95Latency string
 	p99Latency string
-	secured    string
+	tlsPercent string
 }
 
 //////////////////////
@@ -186,7 +186,7 @@ func parseRows(out string, expectedRowCount int) (map[string]*rowStat, error) {
 			p50Latency: fields[4],
 			p95Latency: fields[5],
 			p99Latency: fields[6],
-			secured:    fields[7],
+			tlsPercent: fields[7],
 		}
 	}
 
@@ -230,11 +230,11 @@ func validateRowStats(name, expectedMeshCount string, rowStats map[string]*rowSt
 			name, stat.p99Latency)
 	}
 
-	// this should be 100.00% when control plane is secure by default
-	expectedSecuredRate := "0%"
-	if stat.secured != expectedSecuredRate {
-		return fmt.Errorf("Expected secured rate [%s] for [%s], got [%s]",
-			expectedSecuredRate, name, stat.secured)
+	// this should be 100.00% when control plane is TLSed by default
+	expectedTlsRate := "0%"
+	if stat.tlsPercent != expectedTlsRate {
+		return fmt.Errorf("Expected tls rate [%s] for [%s], got [%s]",
+			expectedTlsRate, name, stat.tlsPercent)
 	}
 
 	return nil
