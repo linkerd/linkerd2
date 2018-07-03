@@ -16,6 +16,7 @@ import (
 	batchV1 "k8s.io/api/batch/v1"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
+	k8sMeta "k8s.io/apimachinery/pkg/api/meta"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
@@ -464,14 +465,17 @@ func injectResource(bytes []byte, options *injectOptions) ([]byte, error) {
 	// serialization of the modified object.
 	output := bytes
 	if podSpec != nil {
-		ownerKind, ownerName := k8s.GetOwnerKindAndName(k8sLabels)
+		metaAccessor, err := k8sMeta.Accessor(obj)
+		if err != nil {
+			return nil, err
+		}
 
 		// The namespace isn't necessarily in the input so it has to be substituted
 		// at runtime. The proxy recognizes the "$NAME" syntax for this variable
 		// but not necessarily other variables.
 		identity := k8s.TLSIdentity{
-			Name:                ownerName,
-			Kind:                ownerKind,
+			Name:                metaAccessor.GetName(),
+			Kind:                strings.ToLower(meta.Kind),
 			Namespace:           "$" + PodNamespaceEnvVarName,
 			ControllerNamespace: controlPlaneNamespace,
 		}

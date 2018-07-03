@@ -10,6 +10,7 @@ import (
 )
 
 type podsByIpFn func(string) ([]*coreV1.Pod, error)
+type ownerKindAndNameFn func(*coreV1.Pod) (string, string)
 
 type updateListener interface {
 	Update(add []common.TcpAddress, remove []common.TcpAddress)
@@ -22,24 +23,27 @@ type updateListener interface {
 
 // implements the updateListener interface
 type endpointListener struct {
-	stream    pb.Destination_GetServer
-	podsByIp  podsByIpFn
-	labels    map[string]string
-	enableTLS bool
-	stopCh    chan struct{}
+	stream           pb.Destination_GetServer
+	podsByIp         podsByIpFn
+	ownerKindAndName ownerKindAndNameFn
+	labels           map[string]string
+	enableTLS        bool
+	stopCh           chan struct{}
 }
 
 func newEndpointListener(
 	stream pb.Destination_GetServer,
 	podsByIp podsByIpFn,
+	ownerKindAndName ownerKindAndNameFn,
 	enableTLS bool,
 ) *endpointListener {
 	return &endpointListener{
-		stream:    stream,
-		podsByIp:  podsByIp,
-		labels:    make(map[string]string),
-		enableTLS: enableTLS,
-		stopCh:    make(chan struct{}),
+		stream:           stream,
+		podsByIp:         podsByIp,
+		ownerKindAndName: ownerKindAndName,
+		labels:           make(map[string]string),
+		enableTLS:        enableTLS,
+		stopCh:           make(chan struct{}),
 	}
 }
 
@@ -158,7 +162,7 @@ func (l *endpointListener) toTlsIdentity(pod *coreV1.Pod) *pb.TlsIdentity {
 	}
 
 	controllerNs := pkgK8s.GetControllerNs(pod.ObjectMeta)
-	ownerKind, ownerName := pkgK8s.GetOwnerKindAndName(pod.Labels)
+	ownerKind, ownerName := l.ownerKindAndName(pod)
 
 	identity := pkgK8s.TLSIdentity{
 		Name:                ownerName,

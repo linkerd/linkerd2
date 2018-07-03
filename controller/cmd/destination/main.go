@@ -43,6 +43,7 @@ func main() {
 		k8sClient,
 		k8s.Endpoint,
 		k8s.Pod,
+		k8s.RS,
 		k8s.Svc,
 	)
 

@@ -79,31 +79,15 @@ const (
 	TLSPrivateKeyFileName = "private-key.p8"
 )
 
-var podOwnerLabels = []string{
+var proxyLabels = []string{
+	ControllerNSLabel,
 	ProxyDeploymentLabel,
 	ProxyReplicationControllerLabel,
 	ProxyReplicaSetLabel,
 	ProxyJobLabel,
 	ProxyDaemonSetLabel,
 	ProxyStatefulSetLabel,
-}
-
-var proxyLabels = append(podOwnerLabels, []string{
-	ControllerNSLabel,
 	k8sV1.DefaultDeploymentUniqueLabelKey,
-}...)
-
-// TODO: these labels include invalid DNS subdomain characters (_). Fix by
-// using Kubernetes canonical names instead, but that also requires updates
-// to inject and the destination service.
-var KindToPromLabel = map[string]string{
-	"Pod":                   "pod",
-	"Deployment":            toOwnerLabel(ProxyDeploymentLabel),
-	"ReplicationController": toOwnerLabel(ProxyReplicationControllerLabel),
-	"ReplicaSet":            toOwnerLabel(ProxyReplicaSetLabel),
-	"Job":                   toOwnerLabel(ProxyJobLabel),
-	"DaemonSet":             toOwnerLabel(ProxyDaemonSetLabel),
-	"StatefulSet":           toOwnerLabel(ProxyStatefulSetLabel),
 }
 
 // CreatedByAnnotationValue returns the value associated with
@@ -127,15 +111,6 @@ func GetOwnerLabels(objectMeta meta.ObjectMeta) map[string]string {
 
 func GetControllerNs(objectMeta meta.ObjectMeta) string {
 	return objectMeta.Labels[ControllerNSLabel]
-}
-
-func GetOwnerKindAndName(labels map[string]string) (string, string) {
-	for _, label := range podOwnerLabels {
-		if v, ok := labels[label]; ok {
-			return toOwnerLabel(label), v
-		}
-	}
-	return "", ""
 }
 
 // toOwnerLabel converts a proxy label to a prometheus label, following the

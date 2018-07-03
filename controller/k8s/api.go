@@ -3,6 +3,7 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/runconduit/conduit/pkg/k8s"
@@ -189,24 +190,25 @@ func (api *API) GetObjects(namespace, restype, name string) ([]runtime.Object, e
 	}
 }
 
-// GetOwnerKindAndName returns the pod owner's kind (e.g. Deployment, Job) and
-// name, using owner references from the Kubernetes API.
+// GetOwnerKindAndName returns the pod owner's kind and name, using owner
+// references from the Kubernetes API. The kind is represented as the Kubernetes
+// singular resource type (e.g. deployment, daemonset, job, etc.)
 func (api *API) GetOwnerKindAndName(pod *apiv1.Pod) (string, string) {
 	if len(pod.GetOwnerReferences()) != 1 {
-		return "Pod", pod.Name
+		return "pod", pod.Name
 	}
 
 	parent := pod.GetOwnerReferences()[0]
 	if parent.Kind == "ReplicaSet" {
 		rs, err := api.RS().Lister().ReplicaSets(pod.Namespace).Get(parent.Name)
 		if err != nil || len(rs.GetOwnerReferences()) != 1 {
-			return parent.Kind, parent.Name
+			return strings.ToLower(parent.Kind), parent.Name
 		}
 		rsParent := rs.GetOwnerReferences()[0]
-		return rsParent.Kind, rsParent.Name
+		return strings.ToLower(rsParent.Kind), rsParent.Name
 	}
 
-	return parent.Kind, parent.Name
+	return strings.ToLower(parent.Kind), parent.Name
 }
 
 // GetPodsFor returns all running and pending Pods associated with a given
