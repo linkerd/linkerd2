@@ -21,7 +21,7 @@ const (
 	//
 	// CA certificates are signed with the same algorithm as end-entity
 	// certificates because they are relatively short-lived, because using one
-	// algorithm minimizes exposure to implementation flaws, and to sleed up
+	// algorithm minimizes exposure to implementation flaws, and to speed up
 	// signature verification time.
 	//
 	// SHA-256 is used because any larger digest would be truncated to 256 bits
