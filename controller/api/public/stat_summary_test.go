@@ -24,19 +24,27 @@ type statSumExpected struct {
 	expectedResponse          pb.StatSummaryResponse // the stat response we expect
 }
 
-func prometheusMetric(resName string, resType string, resNs string, classification string) model.Vector {
+func prometheusMetric(resName string, resType string, resNs string, classification string, isDst bool) model.Vector {
 	return model.Vector{
-		genPromSample(resName, resType, resNs, classification),
+		genPromSample(resName, resType, resNs, classification, isDst),
 	}
 }
 
-func genPromSample(resName string, resType string, resNs string, classification string) *model.Sample {
+func genPromSample(resName string, resType string, resNs string, classification string, isDst bool) *model.Sample {
+	labelName := model.LabelName(resType)
+	namespaceLabel := model.LabelName("namespace")
+
+	if isDst {
+		labelName = "dst_" + labelName
+		namespaceLabel = "dst_" + namespaceLabel
+	}
+
 	return &model.Sample{
 		Metric: model.Metric{
-			model.LabelName(resType): model.LabelValue(resName),
-			"namespace":              model.LabelValue(resNs),
-			"classification":         model.LabelValue(classification),
-			"tls":                    model.LabelValue("true"),
+			labelName:        model.LabelValue(resName),
+			namespaceLabel:   model.LabelValue(resNs),
+			"classification": model.LabelValue(classification),
+			"tls":            model.LabelValue("true"),
 		},
 		Value:     123,
 		Timestamp: 456,
@@ -200,7 +208,7 @@ status:
   phase: Completed
 `,
 				},
-				mockPromResponse: prometheusMetric("emoji", "deployment", "emojivoto", "success"),
+				mockPromResponse: prometheusMetric("emoji", "deployment", "emojivoto", "success", false),
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
@@ -239,7 +247,7 @@ status:
   phase: Running
 `,
 				},
-				mockPromResponse: prometheusMetric("emojivoto-1", "pod", "emojivoto", "success"),
+				mockPromResponse: prometheusMetric("emojivoto-1", "pod", "emojivoto", "success", false),
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
@@ -285,9 +293,7 @@ status:
   phase: Running
 `,
 				},
-				mockPromResponse: model.Vector{
-					genPromSample("emojivoto-2", "pod", "emojivoto", "success"),
-				},
+				mockPromResponse: prometheusMetric("emojivoto-2", "pod", "emojivoto", "success", false),
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
@@ -336,7 +342,9 @@ status:
   phase: Running
 `,
 				},
-				mockPromResponse: model.Vector{},
+				mockPromResponse: model.Vector{
+					genPromSample("emojivoto-1", "pod", "emojivoto", "success", false),
+				},
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
@@ -360,7 +368,11 @@ status:
 					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
 					`sum(increase(response_total{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod, classification, tls)`,
 				},
-				expectedResponse: genEmptyResponse(),
+				expectedResponse: GenStatSummaryResponse("emojivoto-1", "pods", "emojivoto", &PodCounts{
+					MeshedPods:  1,
+					RunningPods: 1,
+					FailedPods:  0,
+				}),
 			},
 		}
 
@@ -385,7 +397,9 @@ status:
   phase: Running
 `,
 				},
-				mockPromResponse: model.Vector{},
+				mockPromResponse: model.Vector{
+					genPromSample("emojivoto-1", "pod", "emojivoto", "success", false),
+				},
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
@@ -409,7 +423,145 @@ status:
 					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="totallydifferent", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
 					`sum(increase(response_total{direction="outbound", dst_namespace="totallydifferent", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod, classification, tls)`,
 				},
-				expectedResponse: genEmptyResponse(),
+				expectedResponse: GenStatSummaryResponse("emojivoto-1", "pods", "emojivoto", &PodCounts{
+					MeshedPods:  1,
+					RunningPods: 1,
+					FailedPods:  0,
+				}),
+			},
+		}
+
+		testStatSummary(t, expectations)
+	})
+
+	t.Run("Queries prometheus for outbound metrics if --from resource is specified", func(t *testing.T) {
+		expectations := []statSumExpected{
+			statSumExpected{
+				err: nil,
+				k8sConfigs: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-1
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+  annotations:
+    conduit.io/proxy-version: testinjectversion
+status:
+  phase: Running
+`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-2
+  namespace: totallydifferent
+  labels:
+    app: emoji-svc
+  annotations:
+    conduit.io/proxy-version: testinjectversion
+status:
+  phase: Running
+`,
+				},
+				mockPromResponse: model.Vector{
+					genPromSample("emojivoto-1", "pod", "emojivoto", "success", true),
+				},
+				req: pb.StatSummaryRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Name:      "",
+							Namespace: "emojivoto",
+							Type:      pkgK8s.Pods,
+						},
+					},
+					TimeWindow: "1m",
+					Outbound: &pb.StatSummaryRequest_FromResource{
+						FromResource: &pb.Resource{
+							Name:      "emojivoto-2",
+							Namespace: "",
+							Type:      pkgK8s.Pods,
+						},
+					},
+				},
+				expectedPrometheusQueries: []string{
+					`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="outbound", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
+					`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="outbound", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
+					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="outbound", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
+					`sum(increase(response_total{direction="outbound", pod="emojivoto-2"}[1m])) by (dst_namespace, dst_pod, classification, tls)`,
+				},
+				expectedResponse: GenStatSummaryResponse("emojivoto-1", "pods", "emojivoto", &PodCounts{
+					MeshedPods:  1,
+					RunningPods: 1,
+					FailedPods:  0,
+				}),
+			},
+		}
+
+		testStatSummary(t, expectations)
+	})
+
+	t.Run("Queries prometheus for outbound metrics if --from resource is specified and --from-namespace is different from the resource namespace", func(t *testing.T) {
+		expectations := []statSumExpected{
+			statSumExpected{
+				err: nil,
+				k8sConfigs: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-1
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+  annotations:
+    conduit.io/proxy-version: testinjectversion
+status:
+  phase: Running
+`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-2
+  namespace: totallydifferent
+  labels:
+    app: emoji-svc
+  annotations:
+    conduit.io/proxy-version: testinjectversion
+status:
+  phase: Running
+`,
+				},
+				mockPromResponse: model.Vector{
+					genPromSample("emojivoto-1", "pod", "emojivoto", "success", true),
+				},
+				req: pb.StatSummaryRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Name:      "emojivoto-1",
+							Namespace: "emojivoto",
+							Type:      pkgK8s.Pods,
+						},
+					},
+					TimeWindow: "1m",
+					Outbound: &pb.StatSummaryRequest_FromResource{
+						FromResource: &pb.Resource{
+							Name:      "emojivoto-2",
+							Namespace: "totallydifferent",
+							Type:      pkgK8s.Pods,
+						},
+					},
+				},
+				expectedPrometheusQueries: []string{
+					`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="outbound", namespace="totallydifferent", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
+					`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="outbound", namespace="totallydifferent", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
+					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="outbound", namespace="totallydifferent", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
+					`sum(increase(response_total{direction="outbound", namespace="totallydifferent", pod="emojivoto-2"}[1m])) by (dst_namespace, dst_pod, classification, tls)`,
+				},
+				expectedResponse: GenStatSummaryResponse("emojivoto-1", "pods", "emojivoto", &PodCounts{
+					MeshedPods:  1,
+					RunningPods: 1,
+					FailedPods:  0,
+				}),
 			},
 		}
 
@@ -471,7 +623,7 @@ status:
   phase: Running
 `,
 				},
-				mockPromResponse: prometheusMetric("emoji-deploy", "deployment", "emojivoto", "success"),
+				mockPromResponse: prometheusMetric("emoji-deploy", "deployment", "emojivoto", "success", false),
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
@@ -863,7 +1015,7 @@ metadata:
 status:
   phase: Succeeded
 `},
-					mockPromResponse: prometheusMetric("emoji", "deployment", "emojivoto", "success"),
+					mockPromResponse: prometheusMetric("emoji", "deployment", "emojivoto", "success", false),
 					req: pb.StatSummaryRequest{
 						Selector: &pb.ResourceSelection{
 							Resource: &pb.Resource{
@@ -904,7 +1056,7 @@ status:
 `,
 				},
 				mockPromResponse: model.Vector{
-					genPromSample("10.1.1.239:9995", "authority", "conduit", "success"),
+					genPromSample("10.1.1.239:9995", "authority", "conduit", "success", false),
 				},
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
@@ -947,7 +1099,7 @@ status:
 `,
 				},
 				mockPromResponse: model.Vector{
-					genPromSample("10.1.1.239:9995", "authority", "conduit", "success"),
+					genPromSample("10.1.1.239:9995", "authority", "conduit", "success", false),
 				},
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
