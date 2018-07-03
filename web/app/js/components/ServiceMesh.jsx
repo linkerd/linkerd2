@@ -1,6 +1,5 @@
 import _ from 'lodash';
 import CallToAction from './CallToAction.jsx';
-import CustomSpinner from "./CustomSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
 import ErrorModal from './ErrorModal.jsx';
 import { incompleteMeshMessage } from './util/CopyUtils.jsx';
@@ -13,7 +12,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import StatusTable from './StatusTable.jsx';
 import { withContext } from './util/AppContext.jsx';
-import { Col, Row, Table, Tooltip } from 'antd';
+import { Col, Row, Spin, Table, Tooltip } from 'antd';
 import './../../css/service-mesh.css';
 
 const serviceMeshDetailsColumns = [
@@ -350,7 +349,7 @@ class ServiceMesh extends React.Component {
     return (
       <div className="page-content">
         { !this.state.error ? null : <ErrorBanner message={this.state.error} /> }
-        { !this.state.loaded ? <CustomSpinner /> : (
+        { !this.state.loaded ? <Spin size="large" /> : (
           <div>
             <PageHeader
               header="Service mesh overview"

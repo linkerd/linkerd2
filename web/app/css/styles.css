@@ -74,6 +74,14 @@ h2, h3, h4, h5, h6 {
   float: right;
 }
 
+/* center the spinner */
+.page-content .ant-spin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 75vh;
+}
+
 .page-section {
   margin-bottom: calc(var(--base-width) * 3);
 }

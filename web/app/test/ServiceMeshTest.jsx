@@ -45,7 +45,7 @@ describe('ServiceMesh', () => {
   it("renders the spinner before metrics are loaded", () => {
     component = mount(routerWrap(ServiceMesh));
 
-    expect(component.find("CustomSpinner")).to.have.length(1);
+    expect(component.find(".ant-spin")).to.have.length(1);
     expect(component.find("ServiceMesh")).to.have.length(1);
     expect(component.find("CallToAction")).to.have.length(0);
   });
@@ -59,8 +59,9 @@ describe('ServiceMesh', () => {
 
     return withPromise(() => {
       component.update();
+      // console.log(component.find("Spin").debug());
       expect(component.find("ServiceMesh")).to.have.length(1);
-      expect(component.find("CustomSpinner")).to.have.length(0);
+      expect(component.find(".ant-spin")).to.have.length(0);
       expect(component.find("CallToAction")).to.have.length(1);
     });
   });
@@ -75,7 +76,7 @@ describe('ServiceMesh', () => {
     return withPromise(() => {
       component.update();
       expect(component.find("ServiceMesh")).to.have.length(1);
-      expect(component.find("CustomSpinner")).to.have.length(0);
+      expect(component.find(".ant-spin")).to.have.length(0);
     });
   });
 
@@ -89,7 +90,7 @@ describe('ServiceMesh', () => {
     return withPromise(() => {
       component.update();
       expect(component.find("ServiceMesh")).to.have.length(1);
-      expect(component.find("CustomSpinner")).to.have.length(0);
+      expect(component.find(".ant-spin")).to.have.length(0);
       expect(component.html()).to.include("Service mesh details");
       expect(component.html()).to.include("ShinyProductName version");
     });
@@ -105,7 +106,7 @@ describe('ServiceMesh', () => {
     return withPromise(() => {
       component.update();
       expect(component.find("ServiceMesh")).to.have.length(1);
-      expect(component.find("CustomSpinner")).to.have.length(0);
+      expect(component.find(".ant-spin")).to.have.length(0);
       expect(component.html()).to.include("Control plane");
     });
   });
@@ -120,7 +121,7 @@ describe('ServiceMesh', () => {
     return withPromise(() => {
       component.update();
       expect(component.find("ServiceMesh")).to.have.length(1);
-      expect(component.find("CustomSpinner")).to.have.length(0);
+      expect(component.find(".ant-spin")).to.have.length(0);
       expect(component.html()).to.include("Data plane");
     });
   });

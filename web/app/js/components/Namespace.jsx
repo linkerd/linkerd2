@@ -1,5 +1,4 @@
 import _ from 'lodash';
-import CustomSpinner from "./CustomSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
 import { friendlyTitle } from './util/Utils.js';
 import MetricsTable from './MetricsTable.jsx';
@@ -7,6 +6,7 @@ import PageHeader from './PageHeader.jsx';
 import { processMultiResourceRollup } from './util/MetricUtils.js';
 import PropTypes from 'prop-types';
 import React from 'react';
+import { Spin } from 'antd';
 import { withContext } from './util/AppContext.jsx';
 import './../../css/list.css';
 import 'whatwg-fetch';
@@ -126,7 +126,7 @@ class Namespaces extends React.Component {
     return (
       <div className="page-content">
         { !this.state.error ? null : <ErrorBanner message={this.state.error} /> }
-        { !this.state.loaded ? <CustomSpinner /> : (
+        { !this.state.loaded ? <Spin size="large" /> : (
           <div>
             <PageHeader header={`Namespace: ${this.state.ns}`} />
             { noMetrics ? <div>No resources detected.</div> : null}
