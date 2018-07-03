@@ -241,78 +241,83 @@ func writeTapEventsToBuffer(tapClient pb.Api_TapByResourceClient, w *tabwriter.W
 }
 
 func renderTapEvent(event *common.TapEvent) string {
-	dst := addr.AddressToString(event.GetDestination())
 	dstLabels := event.GetDestinationMeta().GetLabels()
-	dstPod := dstLabels["pod"]
-	isSecured := "no"
 
-	if dstLabels["tls"] == "true" {
-		isSecured = "yes"
+	dst := addr.AddressToString(event.GetDestination())
+	if pod := dstLabels["pod"]; pod != "" {
+		dst = fmt.Sprintf("%s:%d", pod, event.GetDestination().GetPort())
 	}
 
-	if dstPod != "" {
-		dst = dstPod
+	proxy := "???"
+	tls := ""
+	switch event.GetProxyDirection() {
+	case common.TapEvent_INBOUND:
+		proxy = "in " // A space is added so it aligns with `out`.
+		srcLabels := event.GetSourceMeta().GetLabels()
+		tls = srcLabels["tls"]
+	case common.TapEvent_OUTBOUND:
+		proxy = "out"
+		tls = dstLabels["tls"]
+	default:
+		// Too old for TLS.
 	}
 
-	flow := fmt.Sprintf("src=%s dst=%s",
+	flow := fmt.Sprintf("proxy=%s src=%s dst=%s tls=%s",
+		proxy,
 		addr.AddressToString(event.GetSource()),
 		dst,
+		tls,
 	)
 
 	switch ev := event.GetHttp().GetEvent().(type) {
 	case *common.TapEvent_Http_RequestInit_:
-		return fmt.Sprintf("req id=%d:%d %s :method=%s :authority=%s :path=%s secured=%s",
+		return fmt.Sprintf("req id=%d:%d %s :method=%s :authority=%s :path=%s",
 			ev.RequestInit.GetId().GetBase(),
 			ev.RequestInit.GetId().GetStream(),
 			flow,
 			ev.RequestInit.GetMethod().GetRegistered().String(),
 			ev.RequestInit.GetAuthority(),
 			ev.RequestInit.GetPath(),
-			isSecured,
 		)
 
 	case *common.TapEvent_Http_ResponseInit_:
-		return fmt.Sprintf("rsp id=%d:%d %s :status=%d latency=%dµs secured=%s",
+		return fmt.Sprintf("rsp id=%d:%d %s :status=%d latency=%dµs",
 			ev.ResponseInit.GetId().GetBase(),
 			ev.ResponseInit.GetId().GetStream(),
 			flow,
 			ev.ResponseInit.GetHttpStatus(),
 			ev.ResponseInit.GetSinceRequestInit().GetNanos()/1000,
-			isSecured,
 		)
 
 	case *common.TapEvent_Http_ResponseEnd_:
 		switch eos := ev.ResponseEnd.GetEos().GetEnd().(type) {
 		case *common.Eos_GrpcStatusCode:
-			return fmt.Sprintf("end id=%d:%d %s grpc-status=%s duration=%dµs response-length=%dB secured=%s",
+			return fmt.Sprintf("end id=%d:%d %s grpc-status=%s duration=%dµs response-length=%dB",
 				ev.ResponseEnd.GetId().GetBase(),
 				ev.ResponseEnd.GetId().GetStream(),
 				flow,
 				codes.Code(eos.GrpcStatusCode),
 				ev.ResponseEnd.GetSinceResponseInit().GetNanos()/1000,
 				ev.ResponseEnd.GetResponseBytes(),
-				isSecured,
 			)
 
 		case *common.Eos_ResetErrorCode:
-			return fmt.Sprintf("end id=%d:%d %s reset-error=%+v duration=%dµs response-length=%dB secured=%s",
+			return fmt.Sprintf("end id=%d:%d %s reset-error=%+v duration=%dµs response-length=%dB",
 				ev.ResponseEnd.GetId().GetBase(),
 				ev.ResponseEnd.GetId().GetStream(),
 				flow,
 				eos.ResetErrorCode,
 				ev.ResponseEnd.GetSinceResponseInit().GetNanos()/1000,
 				ev.ResponseEnd.GetResponseBytes(),
-				isSecured,
 			)
 
 		default:
-			return fmt.Sprintf("end id=%d:%d %s duration=%dµs response-length=%dB secured=%s",
+			return fmt.Sprintf("end id=%d:%d %s duration=%dµs response-length=%dB",
 				ev.ResponseEnd.GetId().GetBase(),
 				ev.ResponseEnd.GetId().GetStream(),
 				flow,
 				ev.ResponseEnd.GetSinceResponseInit().GetNanos()/1000,
 				ev.ResponseEnd.GetResponseBytes(),
-				isSecured,
 			)
 		}
 

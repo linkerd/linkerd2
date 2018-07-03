@@ -45,15 +45,12 @@ impl event::StreamResponseEnd {
             eos,
         };
 
-        let destination_meta = ctx.dst_labels()
-            .map(|ref d| tap_event::EndpointMeta {
-                labels: d.as_map().clone(),
-            });
-
         common::TapEvent {
+            proxy_direction: ctx.server.direction().into(),
             source: Some((&ctx.server.remote).into()),
+            source_meta: Some(ctx.server.src_meta()),
             destination: Some((&ctx.client.remote).into()),
-            destination_meta,
+            destination_meta: Some(ctx.client.dst_meta()),
             event: Some(tap_event::Event::Http(tap_event::Http {
                 event: Some(tap_event::http::Event::ResponseEnd(end)),
             })),
@@ -76,15 +73,12 @@ impl event::StreamResponseFail {
             eos: Some(self.error.into()),
         };
 
-        let destination_meta = ctx.dst_labels()
-            .map(|ref d| tap_event::EndpointMeta {
-                labels: d.as_map().clone(),
-            });
-
         common::TapEvent {
+            proxy_direction: ctx.server.direction().into(),
             source: Some((&ctx.server.remote).into()),
+            source_meta: Some(ctx.server.src_meta()),
             destination: Some((&ctx.client.remote).into()),
-            destination_meta,
+            destination_meta: Some(ctx.client.dst_meta()),
             event: Some(tap_event::Event::Http(tap_event::Http {
                 event: Some(tap_event::http::Event::ResponseEnd(end)),
             })),
@@ -107,15 +101,12 @@ impl event::StreamRequestFail {
             eos: Some(self.error.into()),
         };
 
-        let destination_meta = ctx.dst_labels()
-            .map(|ref d| tap_event::EndpointMeta {
-                labels: d.as_map().clone(),
-            });
-
         common::TapEvent {
+            proxy_direction: ctx.server.direction().into(),
             source: Some((&ctx.server.remote).into()),
+            source_meta: Some(ctx.server.src_meta()),
             destination: Some((&ctx.client.remote).into()),
-            destination_meta,
+            destination_meta: Some(ctx.client.dst_meta()),
             event: Some(tap_event::Event::Http(tap_event::Http {
                 event: Some(tap_event::http::Event::ResponseEnd(end)),
             })),
@@ -146,15 +137,12 @@ impl<'a> TryFrom<&'a Event> for common::TapEvent {
                     path: ctx.uri.path().into(),
                 };
 
-                let destination_meta = ctx.dst_labels()
-                    .map(|ref d| tap_event::EndpointMeta {
-                        labels: d.as_map().clone(),
-                    });
-
                 common::TapEvent {
+                    proxy_direction: ctx.server.direction().into(),
                     source: Some((&ctx.server.remote).into()),
+                    source_meta: Some(ctx.server.src_meta()),
                     destination: Some((&ctx.client.remote).into()),
-                    destination_meta,
+                    destination_meta: Some(ctx.client.dst_meta()),
                     event: Some(tap_event::Event::Http(tap_event::Http {
                         event: Some(tap_event::http::Event::RequestInit(init)),
                     })),
@@ -172,15 +160,12 @@ impl<'a> TryFrom<&'a Event> for common::TapEvent {
                     http_status: u32::from(ctx.status.as_u16()),
                 };
 
-                let destination_meta = ctx.dst_labels()
-                    .map(|ref d| tap_event::EndpointMeta {
-                        labels: d.as_map().clone(),
-                    });
-
                 common::TapEvent {
+                    proxy_direction: ctx.request.server.direction().into(),
                     source: Some((&ctx.request.server.remote).into()),
+                    source_meta: Some(ctx.request.server.src_meta()),
                     destination: Some((&ctx.request.client.remote).into()),
-                    destination_meta,
+                    destination_meta: Some(ctx.request.client.dst_meta()),
                     event: Some(tap_event::Event::Http(tap_event::Http {
                         event: Some(tap_event::http::Event::ResponseInit(init)),
                     })),
@@ -203,5 +188,39 @@ impl<'a> TryFrom<&'a Event> for common::TapEvent {
         };
 
         Ok(tap_ev)
+    }
+}
+
+impl ctx::transport::Server {
+    fn src_meta(&self) -> common::tap_event::EndpointMeta {
+        let mut meta = common::tap_event::EndpointMeta::default();
+
+        meta.labels.insert("tls".to_owned(), format!("{}", self.tls_status));
+
+        meta
+    }
+
+    fn direction(&self) -> common::tap_event::ProxyDirection {
+        if self.proxy.is_outbound() {
+            common::tap_event::ProxyDirection::Outbound
+        } else {
+            common::tap_event::ProxyDirection::Inbound
+        }
+    }
+}
+
+impl ctx::transport::Client {
+    fn dst_meta(&self) -> common::tap_event::EndpointMeta {
+        let mut meta = common::tap_event::EndpointMeta::default();
+
+        if let Some(ref d) = self.dst_labels() {
+            for (k, v) in d.as_map() {
+                meta.labels.insert(k.clone(), v.clone());
+            }
+        }
+
+        meta.labels.insert("tls".to_owned(), format!("{}", self.tls_status));
+
+        meta
     }
 }

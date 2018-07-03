@@ -68,9 +68,17 @@ message Eos {
 
 message TapEvent {
   TcpAddress source = 1;
+  EndpointMeta source_meta = 5;
 
   TcpAddress   destination      = 2;
   EndpointMeta destination_meta = 4;
+
+  ProxyDirection proxy_direction = 6;
+  enum ProxyDirection {
+    UNKNOWN = 0;
+    INBOUND = 1;
+    OUTBOUND = 2;
+  }
 
   oneof event {
     Http http = 3;
