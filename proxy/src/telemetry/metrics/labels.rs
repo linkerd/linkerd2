@@ -11,6 +11,7 @@ use http;
 use ctx;
 use connection;
 use telemetry::event;
+use transport::tls;
 
 macro_rules! mk_err_enum {
     { $(#[$m:meta])* enum $name:ident from $from_ty:ty {
