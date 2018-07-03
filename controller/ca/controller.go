@@ -8,10 +8,8 @@ import (
 	"github.com/runconduit/conduit/controller/k8s"
 	pkgK8s "github.com/runconduit/conduit/pkg/k8s"
 	log "github.com/sirupsen/logrus"
-	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	"k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -47,18 +45,12 @@ func NewCertificateController(conduitNamespace string, k8sAPI *k8s.API) (*Certif
 			workqueue.DefaultControllerRateLimiter(), "certificates"),
 	}
 
-	// Watch pod owners, instead of just pods, so that we can create the
-	// secret for each pod owner as soon as the pod owner is created, instead
-	// of later when the first pod that it owns is created. This creates a race
-	// with the pod creation that we hope to win so that the pod starts up with
-	// a valid TLS configuration.
-	//
-	// TODO: Other pod owner types.
-	// TODO: Handle deletions.
-	k8sAPI.Deploy().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    c.handlePodOwnerAdd,
-		UpdateFunc: c.handlePodOwnerUpdate,
-	})
+	k8sAPI.Pod().Informer().AddEventHandler(
+		cache.ResourceEventHandlerFuncs{
+			AddFunc:    c.handlePodAdd,
+			UpdateFunc: c.handlePodUpdate,
+		},
+	)
 
 	c.syncHandler = c.syncObject
 
@@ -154,56 +146,29 @@ func (c *CertificateController) syncSecret(key string) error {
 			pkgK8s.TLSPrivateKeyFileName: certAndPrivateKey.PrivateKey,
 		},
 	}
-	secrets := c.k8sAPI.Client.CoreV1().Secrets(identity.Namespace)
-	_, err = secrets.Create(secret)
+	_, err = c.k8sAPI.Client.CoreV1().Secrets(identity.Namespace).Create(secret)
 	if apierrors.IsAlreadyExists(err) {
-		_, err = secrets.Update(secret)
+		_, err = c.k8sAPI.Client.CoreV1().Secrets(identity.Namespace).Update(secret)
 	}
 
 	return err
 }
 
-func (c *CertificateController) handlePodOwnerAdd(obj interface{}) {
-	owner, err := meta.Accessor(obj)
-	if err != nil {
-		log.Warnf("handlePodOwnerAdd failed to get metadata accessor: %+v", obj)
-		return
+func (c *CertificateController) handlePodAdd(obj interface{}) {
+	pod := obj.(*v1.Pod)
+	if c.isInjectedPod(pod) {
+		c.queue.Add(pod.Namespace)
+
+		ownerKind, ownerName := c.k8sAPI.GetOwnerKindAndName(pod)
+		ownerLabel := pkgK8s.KindToPromLabel[ownerKind]
+		item := fmt.Sprintf("%s.%s.%s", ownerName, ownerLabel, pod.Namespace)
+		log.Debugf("enqueuing secret write for %s", item)
+		c.queue.Add(item)
 	}
-
-	var podLabels map[string]string
-
-	switch typed := obj.(type) {
-	case *appsv1beta2.Deployment:
-		podLabels = typed.Spec.Template.Labels
-	default:
-		log.Warnf("handlePodOwnerAdd skipping %s in %s because of type mismatch", owner.GetName(), owner.GetNamespace())
-		return
-	}
-
-	controllerNs := pkgK8s.GetControllerNsFromLabels(podLabels)
-	if controllerNs != c.namespace {
-		if controllerNs == "" {
-			controllerNs = "<no controller>"
-		}
-		log.Debugf("handlePodOwnerAdd skipping %s in %s controlled by %s", owner.GetName(), owner.GetNamespace(), controllerNs)
-		return
-	}
-
-	ns := owner.GetNamespace()
-	log.Debugf("enqueuing update of CA bundle configmap in %s", ns)
-	c.queue.Add(ns) // The namespace name won't have dots in it.
-
-	kind, name := pkgK8s.GetOwnerKindAndName(podLabels)
-
-	// Serialize (name, kind, ns) as a string since the queue's element
-	// type must be a valid map key (so it can't not a struct).
-	item := fmt.Sprintf("%s.%s.%s", name, kind, ns)
-	log.Debugf("enqueuing update of secret for %s %s in %s", kind, name, ns)
-	c.queue.Add(item)
 }
 
-func (c *CertificateController) handlePodOwnerUpdate(oldObj, newObj interface{}) {
-	c.handlePodOwnerAdd(newObj)
+func (c *CertificateController) handlePodUpdate(oldObj, newObj interface{}) {
+	c.handlePodAdd(newObj)
 }
 
 func (c *CertificateController) isInjectedPod(pod *v1.Pod) bool {

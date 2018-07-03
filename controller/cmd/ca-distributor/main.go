@@ -39,9 +39,8 @@ func main() {
 	}
 	k8sAPI := k8s.NewAPI(
 		k8sClient,
-		k8s.CM,
-		k8s.Deploy,
 		k8s.Pod,
+		k8s.RS,
 	)
 
 	controller, err := ca.NewCertificateController(*controllerNamespace, k8sAPI)
@@ -52,7 +51,8 @@ func main() {
 	stopCh := make(chan struct{})
 	ready := make(chan struct{})
 
-	go k8sAPI.Sync(ready)
+	// synchronously sync caches before starting the controller
+	k8sAPI.Sync(ready)
 
 	go func() {
 		log.Info("starting distributor")
