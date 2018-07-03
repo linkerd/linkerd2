@@ -31,7 +31,7 @@
   margin-top: 18px;
 }
 
-.conduit-table.mesh-completion-table {
+.metric-table.mesh-completion-table {
   & .ant-table-row {
     & td {
       & .container-bar {

@@ -118,7 +118,7 @@ class StatusTable extends React.Component {
         dataSource={tableData}
         columns={tableCols}
         pagination={false}
-        className="conduit-table"
+        className="metric-table"
         rowKey={r => r.name}
         size="middle" />
     );

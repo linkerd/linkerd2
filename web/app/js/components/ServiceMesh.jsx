@@ -286,7 +286,7 @@ class ServiceMesh extends React.Component {
 
         <div className="service-mesh-table">
           <Table
-            className="conduit-table"
+            className="metric-table"
             dataSource={this.getServiceMeshDetails()}
             columns={serviceMeshDetailsColumns}
             pagination={false}
@@ -332,7 +332,7 @@ class ServiceMesh extends React.Component {
         <Row gutter={16}>
           <Col span={16}>
             <Table
-              className="conduit-table service-mesh-table mesh-completion-table"
+              className="metric-table service-mesh-table mesh-completion-table"
               dataSource={this.state.nsStatuses}
               columns={namespacesColumns(this.api.PrefixedLink)}
               rowKey="namespace"

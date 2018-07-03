@@ -239,7 +239,7 @@ export class MetricsTableBase extends BaseTable {
         dataSource={tableData.rows}
         columns={columns}
         pagination={false}
-        className="conduit-table"
+        className="metric-table"
         rowKey={r => `${r.namespace}/${r.name}`}
         locale={locale}
         size="middle" />
