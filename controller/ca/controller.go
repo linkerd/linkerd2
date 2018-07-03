@@ -207,19 +207,6 @@ func (c *CertificateController) handlePodOwnerUpdate(oldObj, newObj interface{})
 	c.handlePodOwnerAdd(newObj)
 }
 
-func (c *CertificateController) isInjectedNamespace(ns string) (bool, error) {
-	pods, err := c.k8sAPI.Pod().Lister().Pods(ns).List(labels.Everything())
-	if err != nil {
-		return false, err
-	}
-	for _, pod := range pods {
-		if c.isInjectedPod(pod) {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
 func (c *CertificateController) isInjectedPod(pod *v1.Pod) bool {
 	return pkgK8s.GetControllerNs(pod.ObjectMeta) == c.namespace
 }
