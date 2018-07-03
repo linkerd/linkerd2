@@ -11,24 +11,6 @@ import (
 	"time"
 )
 
-const (
-	// SignatureAlgorithm is the algorithm that will be used for all digital
-	// signatures.
-	//
-	// ECDSA is used instead of RSA because ECDSA key generation is
-	// straightforward and fast whereas RSA key generation is extremely slow
-	// and error-prone.
-	//
-	// CA certificates are signed with the same algorithm as end-entity
-	// certificates because they are relatively short-lived, because using one
-	// algorithm minimizes exposure to implementation flaws, and to speed up
-	// signature verification time.
-	//
-	// SHA-256 is used because any larger digest would be truncated to 256 bits
-	// anyway since a P-256 scalar is only 256 bits long.
-	SignatureAlgorithm = x509.ECDSAWithSHA256
-)
-
 // Issuing certificates concurrently is not supported.
 type CA struct {
 	// validity is the duration for which issued certificates are valid. This
@@ -155,10 +137,24 @@ func (ca *CA) IssueEndEntityCertificate(dnsName string) (*CertificateAndPrivateK
 // no subject name, no subjectAltNames. The template can then be modified into
 // a (root) CA template or an end-entity template by the caller.
 func (ca *CA) createTemplate(publicKey *ecdsa.PublicKey) x509.Certificate {
+	// ECDSA is used instead of RSA because ECDSA key generation is
+	// straightforward and fast whereas RSA key generation is extremely slow
+	// and error-prone.
+	//
+	// CA certificates are signed with the same algorithm as end-entity
+	// certificates because they are relatively short-lived, because using one
+	// algorithm minimizes exposure to implementation flaws, and to speed up
+	// signature verification time.
+	//
+	// SHA-256 is used because any larger digest would be truncated to 256 bits
+	// anyway since a P-256 scalar is only 256 bits long.
+	const SignatureAlgorithm = x509.ECDSAWithSHA256
+
 	serialNumber := big.NewInt(int64(ca.nextSerialNumber))
 	ca.nextSerialNumber += 1
 
 	notBefore := time.Now()
+
 	return x509.Certificate{
 		SerialNumber:       serialNumber,
 		SignatureAlgorithm: SignatureAlgorithm,
