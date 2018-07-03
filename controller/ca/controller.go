@@ -159,6 +159,7 @@ func (c *CertificateController) syncSecret(key string) error {
 func (c *CertificateController) handlePodAdd(obj interface{}) {
 	pod := obj.(*v1.Pod)
 	if c.isInjectedPod(pod) {
+		log.Debugf("enqueuing update of CA bundle configmap in %s", pod.Namespace)
 		c.queue.Add(pod.Namespace)
 
 		ownerKind, ownerName := c.k8sAPI.GetOwnerKindAndName(pod)
