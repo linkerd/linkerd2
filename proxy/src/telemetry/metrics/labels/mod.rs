@@ -1,12 +1,51 @@
-use std::collections::HashMap;
-use std::fmt::{self, Write};
-use std::hash;
-use std::sync::Arc;
+use std::{
+    collections::HashMap,
+    fmt::{self, Write},
+    hash,
+    path::PathBuf,
+    sync::Arc,
+};
 
 use http;
 
 use ctx;
 use telemetry::event;
+use transport::tls;
+
+macro_rules! mk_err_enum {
+    { $(#[$m:meta])* enum $name:ident from $from_ty:ty {
+         $( $from:pat => $reason:ident ),+
+     } } => {
+        $(#[$m])*
+        pub enum $name {
+            $( $reason ),+
+        }
+
+        impl fmt::Display for $name {
+             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                // use super::$name::*;
+                 match self {
+                    $(
+                        $name::$reason => f.pad(stringify!($reason))
+                    ),+
+                }
+             }
+        }
+
+        impl<'a> From<$from_ty> for $name {
+            fn from(err: $from_ty) -> Self {
+                match err {
+                    $(
+                        $from => $name::$reason
+                    ),+
+                }
+            }
+        }
+    }
+}
+
+mod errno;
+use self::errno::Errno;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct RequestLabels {
@@ -87,6 +126,15 @@ pub struct DstLabels {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct TlsStatus(ctx::transport::TlsStatus);
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub enum TlsConfigLabels {
+    Reloaded,
+    InvalidTrustAnchors,
+    InvalidPrivateKey,
+    InvalidEndEntityCert,
+    Io { path: PathBuf, errno: Option<Errno>, },
+}
 
 // ===== impl RequestLabels =====
 
@@ -390,5 +438,72 @@ impl From<ctx::transport::TlsStatus> for TlsStatus {
 impl Into<ctx::transport::TlsStatus> for TlsStatus {
     fn into(self) -> ctx::transport::TlsStatus {
         self.0
+    }
+}
+
+// ===== impl TlsConfigLabels =====
+
+impl TlsConfigLabels {
+    pub fn success() -> Self {
+        TlsConfigLabels::Reloaded
+    }
+}
+
+impl From<tls::ConfigError> for TlsConfigLabels {
+    fn from(err: tls::ConfigError) -> Self {
+        match err {
+            tls::ConfigError::Io(path, error_code) =>
+                TlsConfigLabels::Io { path, errno: error_code.map(Errno::from) },
+            tls::ConfigError::FailedToParseTrustAnchors(_) =>
+                TlsConfigLabels::InvalidTrustAnchors,
+            tls::ConfigError::EndEntityCertIsNotValid(_) =>
+                TlsConfigLabels::InvalidEndEntityCert,
+            tls::ConfigError::InvalidPrivateKey =>
+                TlsConfigLabels::InvalidPrivateKey,
+        }
+    }
+}
+
+impl fmt::Display for TlsConfigLabels {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            TlsConfigLabels::Reloaded =>
+                f.pad("status=\"reloaded\""),
+            TlsConfigLabels::Io { ref path, errno: Some(errno) } =>
+                write!(f,
+                    "status=\"io_error\",path=\"{}\",errno=\"{}\"",
+                    path.display(), errno
+                ),
+            TlsConfigLabels::Io { ref path, errno: None } =>
+                write!(f,
+                    "status=\"io_error\",path=\"{}\",errno=\"UNKNOWN\"",
+                    path.display(),
+                ),
+            TlsConfigLabels::InvalidPrivateKey =>
+                f.pad("status=\"invalid_private_key\""),
+            TlsConfigLabels::InvalidEndEntityCert =>
+                f.pad("status=\"invalid_end_entity_cert\""),
+            TlsConfigLabels::InvalidTrustAnchors =>
+                f.pad("status=\"invalid_trust_anchors\""),
+        }
+    }
+}
+
+
+#[cfg(target_os="windows")]
+pub struct Errno(i32);
+
+#[cfg(target_os="windows")]
+impl From<i32> for Errno {
+    fn from(code: i32) -> Self {
+        Errno(code)
+    }
+}
+
+#[cfg(target_os="windows")]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+impl fmt::Display for Errno {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display.fmt(self.0, f)
     }
 }

@@ -68,9 +68,12 @@ use self::labels::{
     RequestLabels,
     ResponseLabels,
     TransportLabels,
-    TransportCloseLabels
+    TransportCloseLabels,
 };
-pub use self::labels::DstLabels;
+pub use self::labels::{
+    DstLabels,
+    TlsConfigLabels,
+};
 pub use self::record::Record;
 pub use self::serve::Serve;
 
@@ -110,10 +113,13 @@ struct Root {
     transports: transport::OpenScopes,
     transport_closes: transport::CloseScopes,
 
+    tls_config: TlsConfigScopes,
+
     process_metrics: Option<process::Sensor>,
 
     start_time: Gauge,
 }
+
 
 /// Holds an `S`-typed scope for each `L`-typed label set.
 ///
@@ -128,6 +134,8 @@ struct Stamped<T> {
     stamp: Instant,
     inner: T,
 }
+
+type TlsConfigScopes = Scopes<labels::TlsConfigLabels, Counter>;
 
 /// Construct the Prometheus metrics.
 ///
@@ -220,6 +228,11 @@ impl Root {
             .stamped()
     }
 
+    fn tls_config(&mut self, labels: TlsConfigLabels) -> &mut Counter {
+        self.tls_config.scopes.entry(labels)
+            .or_insert_with(|| Counter::default())
+    }
+
     fn retain_since(&mut self, epoch: Instant) {
         self.requests.retain_since(epoch);
         self.responses.retain_since(epoch);
@@ -234,6 +247,7 @@ impl fmt::Display for Root {
         self.responses.fmt(f)?;
         self.transports.fmt(f)?;
         self.transport_closes.fmt(f)?;
+        self.tls_config.fmt(f)?;
 
         if let Some(ref process_metrics) = self.process_metrics {
             match process_metrics.metrics() {
@@ -248,6 +262,28 @@ impl fmt::Display for Root {
         Ok(())
     }
 }
+
+impl TlsConfigScopes {
+    metrics! {
+        tls_config_reload_total: Counter {
+            "Total number of times the proxy's TLS config files were reloaded."
+        }
+    }
+}
+
+impl fmt::Display for TlsConfigScopes {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.scopes.is_empty() {
+            return Ok(());
+        }
+
+        Self::tls_config_reload_total.fmt_help(f)?;
+        Self::tls_config_reload_total.fmt_scopes(f, &self, |s| &s)?;
+
+        Ok(())
+    }
+}
+
 
 // ===== impl Stamped =====
 

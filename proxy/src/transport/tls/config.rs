@@ -16,6 +16,8 @@ use super::{
     webpki,
 };
 use conditional::Conditional;
+use telemetry::sensor;
+
 use futures::{future, stream, Future, Stream};
 use futures_watch::Watch;
 use ring::signature;
@@ -147,9 +149,9 @@ impl From<ReasonForNoIdentity> for ReasonForNoTls {
 pub type ConditionalConnectionConfig<C> = Conditional<ConnectionConfig<C>, ReasonForNoTls>;
 pub type ConditionalClientConfig = Conditional<ClientConfig, ReasonForNoTls>;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Error {
-    Io(PathBuf, io::Error),
+    Io(PathBuf, Option<i32>),
     FailedToParseTrustAnchors(Option<webpki::Error>),
     EndEntityCertIsNotValid(rustls::TLSError),
     InvalidPrivateKey,
@@ -169,8 +171,11 @@ impl CommonSettings {
     /// The returned stream consists of each subsequent successfully loaded
     /// `CommonSettings` after each change. If the settings could not be
     /// reloaded (i.e., they were malformed), nothing is sent.
-    fn stream_changes(self, interval: Duration)
-        -> impl Stream<Item = CommonConfig, Error = ()>
+    fn stream_changes(
+        self,
+        interval: Duration,
+        mut sensor: sensor::TlsConfig,
+    ) -> impl Stream<Item = CommonConfig, Error = ()>
     {
         let paths = self.paths().iter()
             .map(|&p| p.clone())
@@ -180,9 +185,17 @@ impl CommonSettings {
         stream::once(Ok(()))
             .chain(::fs_watch::stream_changes(paths, interval))
             .filter_map(move |_| {
-                CommonConfig::load_from_disk(&self)
-                    .map_err(|e| warn!("error reloading TLS config: {:?}, falling back", e))
-                    .ok()
+                match CommonConfig::load_from_disk(&self) {
+                    Err(e) => {
+                        warn!("error reloading TLS config: {:?}, falling back", e);
+                        sensor.failed(e);
+                        None
+                    },
+                    Ok(cfg) => {
+                        sensor.reloaded();
+                        Some(cfg)
+                    }
+                }
             })
     }
 
@@ -279,8 +292,10 @@ pub type PublishConfigs = Box<Future<Item = (), Error = ()> + Send>;
 ///
 /// If all references are dropped to _either_ the client or server config watches, all
 /// updates will cease for both config watches.
-pub fn watch_for_config_changes(settings: Conditional<&CommonSettings, ReasonForNoTls>)
-    -> (ClientConfigWatch, ServerConfigWatch, PublishConfigs)
+pub fn watch_for_config_changes(
+    settings: Conditional<&CommonSettings, ReasonForNoTls>,
+    sensor: sensor::TlsConfig,
+) -> (ClientConfigWatch, ServerConfigWatch, PublishConfigs)
 {
     let settings = if let Conditional::Some(settings) = settings {
         settings.clone()
@@ -291,7 +306,7 @@ pub fn watch_for_config_changes(settings: Conditional<&CommonSettings, ReasonFor
         return (client_watch, server_watch, Box::new(no_future));
     };
 
-    let changes = settings.stream_changes(Duration::from_secs(1));
+    let changes = settings.stream_changes(Duration::from_secs(1), sensor);
     let (client_watch, client_store) = Watch::new(Conditional::None(ReasonForNoTls::NoConfig));
     let (server_watch, server_store) = Watch::new(Conditional::None(ReasonForNoTls::NoConfig));
 
@@ -403,7 +418,10 @@ fn load_file_contents(path: &PathBuf) -> Result<Vec<u8>, Error> {
             trace!("loaded file {:?}", path);
             contents
         })
-        .map_err(|e| Error::Io(path.clone(), e))
+        .map_err(|e| {
+            error!("error loading {}: {}", path.display(), e);
+            Error::Io(path.clone(), e.raw_os_error())
+        })
 }
 
 fn set_common_settings(versions: &mut Vec<rustls::ProtocolVersion>) {

@@ -10,6 +10,7 @@ use tower_h2::{client, Body};
 
 use ctx;
 use telemetry::event;
+use transport::tls;
 
 pub mod http;
 mod transport;
@@ -24,6 +25,10 @@ struct Handle(Option<Sender<event::Event>>);
 /// Supports the creation of telemetry scopes.
 #[derive(Clone, Debug)]
 pub struct Sensors(Handle);
+
+/// Given to the TLS config watch to generate events on reloads.
+#[derive(Clone, Debug)]
+pub struct TlsConfig(Handle);
 
 impl Handle {
     fn send<F>(&mut self, mk: F)
@@ -90,5 +95,20 @@ impl Sensors {
             + 'static,
     {
         NewHttp::new(new_service, &self.0, client_ctx)
+    }
+
+    pub fn tls_config(&self) -> TlsConfig {
+        TlsConfig(self.0.clone())
+    }
+}
+
+impl TlsConfig {
+
+    pub fn reloaded(&mut self) {
+        self.0.send(|| event::Event::TlsConfigReloaded)
+    }
+
+    pub fn failed(&mut self, err: tls::ConfigError) {
+        self.0.send(|| event::Event::TlsConfigReloadFailed(err.into()))
     }
 }

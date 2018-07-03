@@ -17,6 +17,9 @@ pub enum Event {
     StreamResponseOpen(Arc<ctx::http::Response>, StreamResponseOpen),
     StreamResponseFail(Arc<ctx::http::Response>, StreamResponseFail),
     StreamResponseEnd(Arc<ctx::http::Response>, StreamResponseEnd),
+
+    TlsConfigReloaded,
+    TlsConfigReloadFailed(::transport::tls::ConfigError),
 }
 
 #[derive(Clone, Debug)]
@@ -91,18 +94,6 @@ impl Event {
         match *self {
             Event::TransportOpen(_) | Event::TransportClose(_, _) => true,
             _ => false,
-        }
-    }
-
-    pub fn proxy(&self) -> &Arc<ctx::Proxy> {
-        match *self {
-            Event::TransportOpen(ref ctx) | Event::TransportClose(ref ctx, _) => ctx.proxy(),
-            Event::StreamRequestOpen(ref req) |
-            Event::StreamRequestFail(ref req, _) |
-            Event::StreamRequestEnd(ref req, _) => &req.server.proxy,
-            Event::StreamResponseOpen(ref rsp, _) |
-            Event::StreamResponseFail(ref rsp, _) |
-            Event::StreamResponseEnd(ref rsp, _) => &rsp.request.server.proxy,
         }
     }
 }
