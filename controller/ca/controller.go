@@ -207,15 +207,6 @@ func (c *CertificateController) handlePodOwnerUpdate(oldObj, newObj interface{})
 	c.handlePodOwnerAdd(newObj)
 }
 
-func (c *CertificateController) filterNamespace(ns string) bool {
-	for _, filter := range []string{c.namespace, "kube-system", "kube-public"} {
-		if ns == filter {
-			return true
-		}
-	}
-	return false
-}
-
 func (c *CertificateController) isInjectedNamespace(ns string) (bool, error) {
 	pods, err := c.k8sAPI.Pod().Lister().Pods(ns).List(labels.Everything())
 	if err != nil {
