@@ -126,16 +126,18 @@ func toOwnerLabel(proxyLabel string) string {
 	return strings.Replace(stripped, "-", "_", -1)
 }
 
-// TLSIdentity is the identity of a pod template (Deployment, Pod,
+// TLSIdentity is the identity of a pod owner (Deployment, Pod,
 // ReplicationController, etc.).
 type TLSIdentity struct {
-	// The name of the pod template.
+	// Name is the name of the pod owner.
 	Name string
 
-	// Kind is the result of GetOwnerType(pod.ObjectMeta) for a pod template.
+	// Kind is the singular, lowercased Kubernetes resource type of the pod owner
+	// (deployment, daemonset, job, replicationcontroller, etc.).
 	Kind string
 
-	// Namespace is the pod template's namespace.
+	// Namespace is the pod's namespace. Kubernetes requires that pods and
+	// pod owners be in the same namespace.
 	Namespace string
 
 	// ControllerNamespace is the namespace of the controller for the pod.
