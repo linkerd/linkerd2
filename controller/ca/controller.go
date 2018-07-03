@@ -193,12 +193,12 @@ func (c *CertificateController) handlePodOwnerAdd(obj interface{}) {
 		return
 	}
 
-	controller_ns := pkgK8s.GetControllerNsFromLabels(podLabels)
-	if controller_ns != c.namespace {
-		if controller_ns == "" {
-			controller_ns = "<no controller>"
+	controllerNs := pkgK8s.GetControllerNsFromLabels(podLabels)
+	if controllerNs != c.namespace {
+		if controllerNs == "" {
+			controllerNs = "<no controller>"
 		}
-		log.Debugf("handlePodOwnerAdd skipping %s in %s controlled by %s", owner.GetName(), owner.GetNamespace(), controller_ns)
+		log.Debugf("handlePodOwnerAdd skipping %s in %s controlled by %s", owner.GetName(), owner.GetNamespace(), controllerNs)
 		return
 	}
 
