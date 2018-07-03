@@ -184,6 +184,7 @@ func TestEventToString(t *testing.T) {
 		}
 
 		return &common.TapEvent{
+			ProxyDirection: common.TapEvent_OUTBOUND,
 			Source: &common.TcpAddress{
 				Ip:   addr.IPV4(1, 2, 3, 4),
 				Port: 5555,
@@ -216,7 +217,7 @@ func TestEventToString(t *testing.T) {
 			},
 		})
 
-		expectedOutput := "req id=7:8 src=1.2.3.4:5555 dst=2.3.4.5:6666 :method=POST :authority=hello.default:7777 :path=/hello.v1.HelloService/Hello secured=no"
+		expectedOutput := "req id=7:8 proxy=out src=1.2.3.4:5555 dst=2.3.4.5:6666 tls= :method=POST :authority=hello.default:7777 :path=/hello.v1.HelloService/Hello"
 		output := renderTapEvent(event)
 		if output != expectedOutput {
 			t.Fatalf("Expecting command output to be [%s], got [%s]", expectedOutput, output)
@@ -233,7 +234,7 @@ func TestEventToString(t *testing.T) {
 			},
 		})
 
-		expectedOutput := "rsp id=7:8 src=1.2.3.4:5555 dst=2.3.4.5:6666 :status=200 latency=999µs secured=no"
+		expectedOutput := "rsp id=7:8 proxy=out src=1.2.3.4:5555 dst=2.3.4.5:6666 tls= :status=200 latency=999µs"
 		output := renderTapEvent(event)
 		if output != expectedOutput {
 			t.Fatalf("Expecting command output to be [%s], got [%s]", expectedOutput, output)
@@ -254,7 +255,7 @@ func TestEventToString(t *testing.T) {
 			},
 		})
 
-		expectedOutput := "end id=7:8 src=1.2.3.4:5555 dst=2.3.4.5:6666 grpc-status=OK duration=888µs response-length=111B secured=no"
+		expectedOutput := "end id=7:8 proxy=out src=1.2.3.4:5555 dst=2.3.4.5:6666 tls= grpc-status=OK duration=888µs response-length=111B"
 		output := renderTapEvent(event)
 		if output != expectedOutput {
 			t.Fatalf("Expecting command output to be [%s], got [%s]", expectedOutput, output)
@@ -275,7 +276,7 @@ func TestEventToString(t *testing.T) {
 			},
 		})
 
-		expectedOutput := "end id=7:8 src=1.2.3.4:5555 dst=2.3.4.5:6666 reset-error=123 duration=888µs response-length=111B secured=no"
+		expectedOutput := "end id=7:8 proxy=out src=1.2.3.4:5555 dst=2.3.4.5:6666 tls= reset-error=123 duration=888µs response-length=111B"
 		output := renderTapEvent(event)
 		if output != expectedOutput {
 			t.Fatalf("Expecting command output to be [%s], got [%s]", expectedOutput, output)
@@ -294,7 +295,7 @@ func TestEventToString(t *testing.T) {
 			},
 		})
 
-		expectedOutput := "end id=7:8 src=1.2.3.4:5555 dst=2.3.4.5:6666 duration=888µs response-length=111B secured=no"
+		expectedOutput := "end id=7:8 proxy=out src=1.2.3.4:5555 dst=2.3.4.5:6666 tls= duration=888µs response-length=111B"
 		output := renderTapEvent(event)
 		if output != expectedOutput {
 			t.Fatalf("Expecting command output to be [%s], got [%s]", expectedOutput, output)
@@ -312,7 +313,7 @@ func TestEventToString(t *testing.T) {
 			},
 		})
 
-		expectedOutput := "end id=7:8 src=1.2.3.4:5555 dst=2.3.4.5:6666 duration=888µs response-length=111B secured=no"
+		expectedOutput := "end id=7:8 proxy=out src=1.2.3.4:5555 dst=2.3.4.5:6666 tls= duration=888µs response-length=111B"
 		output := renderTapEvent(event)
 		if output != expectedOutput {
 			t.Fatalf("Expecting command output to be [%s], got [%s]", expectedOutput, output)
@@ -322,7 +323,7 @@ func TestEventToString(t *testing.T) {
 	t.Run("Handles unknown event types", func(t *testing.T) {
 		event := toTapEvent(&common.TapEvent_Http{})
 
-		expectedOutput := "unknown src=1.2.3.4:5555 dst=2.3.4.5:6666"
+		expectedOutput := "unknown proxy=out src=1.2.3.4:5555 dst=2.3.4.5:6666 tls="
 		output := renderTapEvent(event)
 		if output != expectedOutput {
 			t.Fatalf("Expecting command output to be [%s], got [%s]", expectedOutput, output)
@@ -332,6 +333,7 @@ func TestEventToString(t *testing.T) {
 
 func createEvent(event_http *common.TapEvent_Http, dstMeta map[string]string) common.TapEvent {
 	event := common.TapEvent{
+		ProxyDirection: common.TapEvent_OUTBOUND,
 		Source: &common.TcpAddress{
 			Ip: &common.IPAddress{
 				Ip: &common.IPAddress_Ipv4{
