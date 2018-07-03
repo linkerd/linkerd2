@@ -225,10 +225,6 @@ impl Future for ConditionallyUpgradeServerToTls {
                         .poll_match_client_hello();
 
                     match try_ready!(poll_match) {
-                        tls::conditional_accept::Match::Incomplete => {
-                            // Keep reading until a NotReady is encountered.
-                            continue;
-                        },
                         tls::conditional_accept::Match::Matched => {
                             trace!("upgrading accepted connection to TLS");
                             let upgrade = inner.take().unwrap().into_tls_upgrade();
@@ -238,6 +234,9 @@ impl Future for ConditionallyUpgradeServerToTls {
                             trace!("passing through accepted connection without TLS");
                             let conn = inner.take().unwrap().into_plaintext();
                             return Ok(Async::Ready(conn));
+                        },
+                        tls::conditional_accept::Match::Incomplete => {
+                            continue;
                         },
                     }
                 },
