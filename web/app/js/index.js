@@ -29,7 +29,7 @@ const context = {
   ...appData,
   api: ApiHelpers(pathPrefix),
   pathPrefix: pathPrefix,
-  productName: "Boron"
+  productName: "Conduit"
 };
 
 let applicationHtml = (
