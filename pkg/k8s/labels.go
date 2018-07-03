@@ -93,6 +93,19 @@ var proxyLabels = append(podOwnerLabels, []string{
 	k8sV1.DefaultDeploymentUniqueLabelKey,
 }...)
 
+// TODO: these labels include invalid DNS subdomain characters (_). Fix by
+// using Kubernetes canonical names instead, but that also requires updates
+// to inject and the destination service.
+var KindToPromLabel = map[string]string{
+	"Pod":                   "pod",
+	"Deployment":            toOwnerLabel(ProxyDeploymentLabel),
+	"ReplicationController": toOwnerLabel(ProxyReplicationControllerLabel),
+	"ReplicaSet":            toOwnerLabel(ProxyReplicaSetLabel),
+	"Job":                   toOwnerLabel(ProxyJobLabel),
+	"DaemonSet":             toOwnerLabel(ProxyDaemonSetLabel),
+	"StatefulSet":           toOwnerLabel(ProxyStatefulSetLabel),
+}
+
 // CreatedByAnnotationValue returns the value associated with
 // CreatedByAnnotation.
 func CreatedByAnnotationValue() string {
@@ -113,11 +126,7 @@ func GetOwnerLabels(objectMeta meta.ObjectMeta) map[string]string {
 }
 
 func GetControllerNs(objectMeta meta.ObjectMeta) string {
-	return GetControllerNsFromLabels(objectMeta.Labels)
-}
-
-func GetControllerNsFromLabels(labels map[string]string) string {
-	return labels[ControllerNSLabel]
+	return objectMeta.Labels[ControllerNSLabel]
 }
 
 func GetOwnerKindAndName(labels map[string]string) (string, string) {

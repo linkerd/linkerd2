@@ -189,6 +189,26 @@ func (api *API) GetObjects(namespace, restype, name string) ([]runtime.Object, e
 	}
 }
 
+// GetOwnerKindAndName returns the pod owner's kind (e.g. Deployment, Job) and
+// name, using owner references from the Kubernetes API.
+func (api *API) GetOwnerKindAndName(pod *apiv1.Pod) (string, string) {
+	if len(pod.GetOwnerReferences()) != 1 {
+		return "Pod", pod.Name
+	}
+
+	parent := pod.GetOwnerReferences()[0]
+	if parent.Kind == "ReplicaSet" {
+		rs, err := api.RS().Lister().ReplicaSets(pod.Namespace).Get(parent.Name)
+		if err != nil || len(rs.GetOwnerReferences()) != 1 {
+			return parent.Kind, parent.Name
+		}
+		rsParent := rs.GetOwnerReferences()[0]
+		return rsParent.Kind, rsParent.Name
+	}
+
+	return parent.Kind, parent.Name
+}
+
 // GetPodsFor returns all running and pending Pods associated with a given
 // Kubernetes object. Use includeFailed to also get failed Pods
 func (api *API) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*apiv1.Pod, error) {
