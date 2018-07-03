@@ -1,5 +1,5 @@
 import _ from 'lodash';
-import ConduitSpinner from "./ConduitSpinner.jsx";
+import CustomSpinner from "./CustomSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
 import { friendlyTitle } from './util/Utils.js';
 import MetricsTable from './MetricsTable.jsx';
@@ -126,7 +126,7 @@ class Namespaces extends React.Component {
     return (
       <div className="page-content">
         { !this.state.error ? null : <ErrorBanner message={this.state.error} /> }
-        { !this.state.loaded ? <ConduitSpinner /> : (
+        { !this.state.loaded ? <CustomSpinner /> : (
           <div>
             <PageHeader header={`Namespace: ${this.state.ns}`} />
             { noMetrics ? <div>No resources detected.</div> : null}

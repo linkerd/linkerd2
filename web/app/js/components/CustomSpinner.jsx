@@ -1,7 +1,7 @@
 import React from 'react';
 import './../../css/conduit-spinner.css';
 
-export default class ConduitSpinner extends React.Component {
+export default class CustomSpinner extends React.Component {
   render() {
     return (
       <div className="spinner-container">

@@ -1,6 +1,6 @@
 import _ from 'lodash';
 import CallToAction from './CallToAction.jsx';
-import ConduitSpinner from "./ConduitSpinner.jsx";
+import CustomSpinner from "./CustomSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
 import ErrorModal from './ErrorModal.jsx';
 import { incompleteMeshMessage } from './util/CopyUtils.jsx';
@@ -350,7 +350,7 @@ class ServiceMesh extends React.Component {
     return (
       <div className="page-content">
         { !this.state.error ? null : <ErrorBanner message={this.state.error} /> }
-        { !this.state.loaded ? <ConduitSpinner /> : (
+        { !this.state.loaded ? <CustomSpinner /> : (
           <div>
             <PageHeader
               header="Service mesh overview"

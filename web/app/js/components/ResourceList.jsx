@@ -1,5 +1,5 @@
 import _ from 'lodash';
-import ConduitSpinner from "./ConduitSpinner.jsx";
+import CustomSpinner from "./CustomSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
 import { friendlyTitle } from './util/Utils.js';
 import MetricsTable from './MetricsTable.jsx';
@@ -37,7 +37,7 @@ export class ResourceListBase extends React.Component {
     const {data, loading} = this.props;
 
     if (loading) {
-      return <ConduitSpinner />;
+      return <CustomSpinner />;
     }
 
     let processedMetrics = [];

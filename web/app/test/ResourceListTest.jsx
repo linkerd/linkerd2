@@ -1,6 +1,6 @@
 import _ from 'lodash';
 import Adapter from 'enzyme-adapter-react-16';
-import ConduitSpinner from '../js/components/ConduitSpinner.jsx';
+import CustomSpinner from '../js/components/CustomSpinner.jsx';
 import deployRollup from './fixtures/deployRollup.json';
 import ErrorBanner from '../js/components/ErrorBanner.jsx';
 import { expect } from 'chai';
@@ -31,7 +31,7 @@ describe('Tests for <ResourceListBase>', () => {
     const err = component.find(ErrorBanner);
     expect(err).to.have.length(1);
     expect(component.find(PageHeader)).to.have.length(1);
-    expect(component.find(ConduitSpinner)).to.have.length(0);
+    expect(component.find(CustomSpinner)).to.have.length(0);
     expect(component.find(MetricsTable)).to.have.length(1);
 
     expect(err.props().message).to.equal(msg);
@@ -47,7 +47,7 @@ describe('Tests for <ResourceListBase>', () => {
 
     expect(component.find(ErrorBanner)).to.have.length(0);
     expect(component.find(PageHeader)).to.have.length(0);
-    expect(component.find(ConduitSpinner)).to.have.length(1);
+    expect(component.find(CustomSpinner)).to.have.length(1);
     expect(component.find(MetricsTable)).to.have.length(0);
   });
 
@@ -61,7 +61,7 @@ describe('Tests for <ResourceListBase>', () => {
 
     expect(component.find(ErrorBanner)).to.have.length(0);
     expect(component.find(PageHeader)).to.have.length(1);
-    expect(component.find(ConduitSpinner)).to.have.length(0);
+    expect(component.find(CustomSpinner)).to.have.length(0);
     expect(component.find(MetricsTable)).to.have.length(1);
   });
 
@@ -79,7 +79,7 @@ describe('Tests for <ResourceListBase>', () => {
 
     expect(component.find(ErrorBanner)).to.have.length(0);
     expect(component.find(PageHeader)).to.have.length(1);
-    expect(component.find(ConduitSpinner)).to.have.length(0);
+    expect(component.find(CustomSpinner)).to.have.length(0);
     expect(metrics).to.have.length(1);
 
     expect(metrics.props().resource).to.equal(_.startCase(resource));
