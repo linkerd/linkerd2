@@ -637,8 +637,14 @@ rules:
   resourceNames: [{{.TLSTrustAnchorConfigMapName}}]
   verbs: ["update"]
 - apiGroups: [""]
-  resources: ["pods", "configmaps"]
+  resources: ["pods"]
   verbs: ["list", "get", "watch"]
+- apiGroups: ["extensions", "apps"]
+  resources: ["replicasets"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["create", "update"]
 
 ---
 kind: ClusterRoleBinding

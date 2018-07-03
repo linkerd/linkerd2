@@ -39,11 +39,14 @@ func main() {
 	}
 	k8sAPI := k8s.NewAPI(
 		k8sClient,
-		k8s.CM,
 		k8s.Pod,
+		k8s.RS,
 	)
 
-	controller := ca.NewCertificateController(*controllerNamespace, k8sAPI)
+	controller, err := ca.NewCertificateController(*controllerNamespace, k8sAPI)
+	if err != nil {
+		log.Fatalf("Failed to create CertificateController: %v", err)
+	}
 
 	stopCh := make(chan struct{})
 	ready := make(chan struct{})
@@ -52,7 +55,7 @@ func main() {
 
 	go func() {
 		log.Info("starting distributor")
-		controller.Run(stopCh)
+		controller.Run(ready, stopCh)
 	}()
 
 	go admin.StartServer(*metricsAddr, ready)
