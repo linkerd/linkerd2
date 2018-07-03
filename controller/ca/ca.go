@@ -90,16 +90,16 @@ func NewCA() (*CA, error) {
 		return nil, err
 	}
 
-	ca := CA {
-		validity: validity,
+	ca := CA{
+		validity:           validity,
 		clockSkewAllocance: clockSkewAllocance,
-		privateKey: privateKey,
-		nextSerialNumber: 1,
+		privateKey:         privateKey,
+		nextSerialNumber:   1,
 	}
 
 	template := ca.createTemplate(&ca.privateKey.PublicKey)
 
-	template.Subject = pkix.Name { CommonName: "Cluster-local Managed Pod CA" }
+	template.Subject = pkix.Name{CommonName: "Cluster-local Managed Pod CA"}
 
 	// basicConstraints.cA = true
 	template.IsCA = true
@@ -147,7 +147,7 @@ func (ca *CA) IssueEndEntityCertificate(dnsName string) (*CertificateAndPrivateK
 	}
 	return &CertificateAndPrivateKey{
 		Certificate: crt,
-		PrivateKey: p8,
+		PrivateKey:  p8,
 	}, nil
 }
 
@@ -159,12 +159,12 @@ func (ca *CA) createTemplate(publicKey *ecdsa.PublicKey) x509.Certificate {
 	ca.nextSerialNumber += 1
 
 	notBefore := time.Now()
-	return x509.Certificate {
-		SerialNumber: serialNumber,
+	return x509.Certificate{
+		SerialNumber:       serialNumber,
 		SignatureAlgorithm: SignatureAlgorithm,
-		NotBefore: notBefore.Add(-ca.clockSkewAllocance),
-		NotAfter: notBefore.Add(ca.validity).Add(ca.clockSkewAllocance),
-		PublicKey: publicKey,
+		NotBefore:          notBefore.Add(-ca.clockSkewAllocance),
+		NotAfter:           notBefore.Add(ca.validity).Add(ca.clockSkewAllocance),
+		PublicKey:          publicKey,
 	}
 }
 
