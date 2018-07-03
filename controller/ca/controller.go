@@ -163,8 +163,7 @@ func (c *CertificateController) handlePodAdd(obj interface{}) {
 		c.queue.Add(pod.Namespace)
 
 		ownerKind, ownerName := c.k8sAPI.GetOwnerKindAndName(pod)
-		ownerLabel := pkgK8s.KindToPromLabel[ownerKind]
-		item := fmt.Sprintf("%s.%s.%s", ownerName, ownerLabel, pod.Namespace)
+		item := fmt.Sprintf("%s.%s.%s", ownerName, ownerKind, pod.Namespace)
 		log.Debugf("enqueuing secret write for %s", item)
 		c.queue.Add(item)
 	}

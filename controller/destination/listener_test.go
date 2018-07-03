@@ -31,11 +31,19 @@ func noPodsByIp(ip string) ([]*v1.Pod, error) {
 	return make([]*v1.Pod, 0), nil
 }
 
+func defaultOwnerKindAndName(pod *v1.Pod) (string, string) {
+	return "", ""
+}
+
 func TestEndpointListener(t *testing.T) {
 	t.Run("Sends one update for add and another for remove", func(t *testing.T) {
 		mockGetServer := &mockDestination_GetServer{updatesReceived: []*pb.Update{}}
 
-		listener := &endpointListener{stream: mockGetServer, podsByIp: noPodsByIp}
+		listener := &endpointListener{
+			stream:           mockGetServer,
+			podsByIp:         noPodsByIp,
+			ownerKindAndName: defaultOwnerKindAndName,
+		}
 
 		addedAddress1 := common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 1}}, Port: 1}
 		addedAddress2 := common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 2}}, Port: 2}
@@ -53,7 +61,11 @@ func TestEndpointListener(t *testing.T) {
 	t.Run("Sends addresses as removed or added", func(t *testing.T) {
 		mockGetServer := &mockDestination_GetServer{updatesReceived: []*pb.Update{}}
 
-		listener := &endpointListener{stream: mockGetServer, podsByIp: noPodsByIp}
+		listener := &endpointListener{
+			stream:           mockGetServer,
+			podsByIp:         noPodsByIp,
+			ownerKindAndName: defaultOwnerKindAndName,
+		}
 
 		addedAddress1 := common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 1}}, Port: 1}
 		addedAddress2 := common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 2}}, Port: 2}
@@ -88,7 +100,11 @@ func TestEndpointListener(t *testing.T) {
 	t.Run("It returns when the underlying context is done", func(t *testing.T) {
 		context, cancelFn := context.WithCancel(context.Background())
 		mockGetServer := &mockDestination_GetServer{updatesReceived: []*pb.Update{}, contextToReturn: context}
-		listener := &endpointListener{stream: mockGetServer, podsByIp: noPodsByIp}
+		listener := &endpointListener{
+			stream:           mockGetServer,
+			podsByIp:         noPodsByIp,
+			ownerKindAndName: defaultOwnerKindAndName,
+		}
 
 		completed := make(chan bool)
 		go func() {
@@ -132,7 +148,8 @@ func TestEndpointListener(t *testing.T) {
 
 		mockGetServer := &mockDestination_GetServer{updatesReceived: []*pb.Update{}}
 		listener := &endpointListener{
-			podsByIp: podIndex,
+			podsByIp:         podIndex,
+			ownerKindAndName: defaultOwnerKindAndName,
 			labels: map[string]string{
 				"service":   expectedServiceName,
 				"namespace": expectedNamespace,
@@ -188,11 +205,16 @@ func TestEndpointListener(t *testing.T) {
 			return map[string][]*v1.Pod{ipForAddr: []*v1.Pod{podForAddedAddress}}[ip], nil
 		}
 
+		ownerKindAndName := func(pod *v1.Pod) (string, string) {
+			return "deployment", expectedPodDeployment
+		}
+
 		mockGetServer := &mockDestination_GetServer{updatesReceived: []*pb.Update{}}
 		listener := &endpointListener{
-			podsByIp:  podIndex,
-			stream:    mockGetServer,
-			enableTLS: true,
+			podsByIp:         podIndex,
+			ownerKindAndName: ownerKindAndName,
+			stream:           mockGetServer,
+			enableTLS:        true,
 		}
 
 		listener.Update([]common.TcpAddress{addedAddress}, nil)
@@ -208,10 +230,11 @@ func TestEndpointListener(t *testing.T) {
 		}
 	})
 
-	t.Run("Does not sent TlsIdentity when not enabled", func(t *testing.T) {
+	t.Run("Does not send TlsIdentity when not enabled", func(t *testing.T) {
 		expectedPodName := "pod1"
 		expectedPodNamespace := "this-namespace"
 		expectedConduitNamespace := "conduit-namespace"
+		expectedPodDeployment := "pod-deployment"
 
 		addedAddress := common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 666}}, Port: 1}
 		ipForAddr := addr.IPToString(addedAddress.Ip)
@@ -220,7 +243,8 @@ func TestEndpointListener(t *testing.T) {
 				Name:      expectedPodName,
 				Namespace: expectedPodNamespace,
 				Labels: map[string]string{
-					pkgK8s.ControllerNSLabel: expectedConduitNamespace,
+					pkgK8s.ControllerNSLabel:    expectedConduitNamespace,
+					pkgK8s.ProxyDeploymentLabel: expectedPodDeployment,
 				},
 			},
 			Status: v1.PodStatus{
@@ -232,10 +256,15 @@ func TestEndpointListener(t *testing.T) {
 			return map[string][]*v1.Pod{ipForAddr: []*v1.Pod{podForAddedAddress}}[ip], nil
 		}
 
+		ownerKindAndName := func(pod *v1.Pod) (string, string) {
+			return "deployment", expectedPodDeployment
+		}
+
 		mockGetServer := &mockDestination_GetServer{updatesReceived: []*pb.Update{}}
 		listener := &endpointListener{
-			podsByIp: podIndex,
-			stream:   mockGetServer,
+			podsByIp:         podIndex,
+			ownerKindAndName: ownerKindAndName,
+			stream:           mockGetServer,
 		}
 
 		listener.Update([]common.TcpAddress{addedAddress}, nil)
@@ -327,9 +356,10 @@ func TestEndpointListener(t *testing.T) {
 
 			mockGetServer := &mockDestination_GetServer{updatesReceived: []*pb.Update{}}
 			listener := &endpointListener{
-				podsByIp: podIndex,
-				labels:   exp.listenerLabels,
-				stream:   mockGetServer,
+				podsByIp:         podIndex,
+				ownerKindAndName: defaultOwnerKindAndName,
+				labels:           exp.listenerLabels,
+				stream:           mockGetServer,
 			}
 
 			listener.Update([]common.TcpAddress{exp.address}, nil)

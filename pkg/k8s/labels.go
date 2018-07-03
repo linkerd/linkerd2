@@ -79,31 +79,15 @@ const (
 	TLSPrivateKeyFileName = "private-key.p8"
 )
 
-var podOwnerLabels = []string{
+var proxyLabels = []string{
+	ControllerNSLabel,
 	ProxyDeploymentLabel,
 	ProxyReplicationControllerLabel,
 	ProxyReplicaSetLabel,
 	ProxyJobLabel,
 	ProxyDaemonSetLabel,
 	ProxyStatefulSetLabel,
-}
-
-var proxyLabels = append(podOwnerLabels, []string{
-	ControllerNSLabel,
 	k8sV1.DefaultDeploymentUniqueLabelKey,
-}...)
-
-// TODO: these labels include invalid DNS subdomain characters (_). Fix by
-// using Kubernetes canonical names instead, but that also requires updates
-// to inject and the destination service.
-var KindToPromLabel = map[string]string{
-	"Pod":                   "pod",
-	"Deployment":            toOwnerLabel(ProxyDeploymentLabel),
-	"ReplicationController": toOwnerLabel(ProxyReplicationControllerLabel),
-	"ReplicaSet":            toOwnerLabel(ProxyReplicaSetLabel),
-	"Job":                   toOwnerLabel(ProxyJobLabel),
-	"DaemonSet":             toOwnerLabel(ProxyDaemonSetLabel),
-	"StatefulSet":           toOwnerLabel(ProxyStatefulSetLabel),
 }
 
 // CreatedByAnnotationValue returns the value associated with
@@ -129,15 +113,6 @@ func GetControllerNs(objectMeta meta.ObjectMeta) string {
 	return objectMeta.Labels[ControllerNSLabel]
 }
 
-func GetOwnerKindAndName(labels map[string]string) (string, string) {
-	for _, label := range podOwnerLabels {
-		if v, ok := labels[label]; ok {
-			return toOwnerLabel(label), v
-		}
-	}
-	return "", ""
-}
-
 // toOwnerLabel converts a proxy label to a prometheus label, following the
 // relabel conventions from the prometheus scrape config file
 func toOwnerLabel(proxyLabel string) string {
@@ -151,16 +126,18 @@ func toOwnerLabel(proxyLabel string) string {
 	return strings.Replace(stripped, "-", "_", -1)
 }
 
-// TLSIdentity is the identity of a pod template (Deployment, Pod,
+// TLSIdentity is the identity of a pod owner (Deployment, Pod,
 // ReplicationController, etc.).
 type TLSIdentity struct {
-	// The name of the pod template.
+	// Name is the name of the pod owner.
 	Name string
 
-	// Kind is the result of GetOwnerType(pod.ObjectMeta) for a pod template.
+	// Kind is the singular, lowercased Kubernetes resource type of the pod owner
+	// (deployment, daemonset, job, replicationcontroller, etc.).
 	Kind string
 
-	// Namespace is the pod template's namespace.
+	// Namespace is the pod's namespace. Kubernetes requires that pods and
+	// pod owners be in the same namespace.
 	Namespace string
 
 	// ControllerNamespace is the namespace of the controller for the pod.
