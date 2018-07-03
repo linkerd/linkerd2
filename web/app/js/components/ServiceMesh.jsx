@@ -87,7 +87,7 @@ const namespacesColumns = ConduitLink => [
 
 
       let percentMeshedMsg = "";
-      if (row.meshedPercent.get() < 0) {
+      if (row.meshedPercent.get() >= 0) {
         percentMeshedMsg = `(${row.meshedPercent.prettyRate()})`;
       }
       return (
