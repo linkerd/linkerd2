@@ -116,6 +116,7 @@ message PodErrors {
       string message = 1;
       string container = 2;
       string image = 3;
+      string reason = 4;
     }
   }
 }
