@@ -167,7 +167,40 @@ mk_err_enum! {
         tls::Error::PeerIncompatibleError(_) => PEER_INCOMPATIBLE,
         tls::Error::PeerMisbehavedError(_) => PEER_MISBEHAVED,
         tls::Error::AlertReceived(_) => ALERT_RECEIVED,
-        tls::Error::WebPKIError(_) => WEBPKI_ERROR,
+        tls::Error::WebPKIError(tls::WebPkiError::BadDER) => BAD_DER,
+        tls::Error::WebPKIError(tls::WebPkiError::BadDERTime) => BAD_DER_TIME,
+        tls::Error::WebPKIError(tls::WebPkiError::CAUsedAsEndEntity) => CA_USED_AS_END_ENTITY,
+        tls::Error::WebPKIError(tls::WebPkiError::CertExpired) => CERT_EXPIRED,
+        tls::Error::WebPKIError(tls::WebPkiError::CertNotValidForName) =>
+            CERT_NOT_VALID_FOR_NAME,
+        tls::Error::WebPKIError(tls::WebPkiError::CertNotValidYet) =>
+            CERT_NOT_VALID_YET,
+        tls::Error::WebPKIError(tls::WebPkiError::EndEntityUsedAsCA) =>
+            END_ENTITY_USED_AS_CA,
+        tls::Error::WebPKIError(tls::WebPkiError::ExtensionValueInvalid) =>
+            EXTENSION_VALUE_INVALID,
+        tls::Error::WebPKIError(tls::WebPkiError::InvalidCertValidity) =>
+            INVALID_CERT_VALIDITY,
+        tls::Error::WebPKIError(tls::WebPkiError::InvalidSignatureForPublicKey) =>
+            INVALID_SIGNATURE_FOR_PUBLIC_KEY,
+        tls::Error::WebPKIError(tls::WebPkiError::NameConstraintViolation) =>
+            NAME_CONSTRAINT_VIOLATION,
+        tls::Error::WebPKIError(tls::WebPkiError::PathLenConstraintViolated) =>
+            PATH_LEN_CONSTRAINT_VIOLATED,
+        tls::Error::WebPKIError(tls::WebPkiError::SignatureAlgorithmMismatch) =>
+            SIGNATURE_ALGORITHM_MISMATCH,
+        tls::Error::WebPKIError(tls::WebPkiError::RequiredEKUNotFound) =>
+            REQUESTED_EKU_NOT_FOUND,
+        tls::Error::WebPKIError(tls::WebPkiError::UnknownIssuer) =>
+            UNKNOWN_ISSUER,
+        tls::Error::WebPKIError(tls::WebPkiError::UnsupportedCertVersion) =>
+            UNSUPPORTED_CERT_VERSION,
+        tls::Error::WebPKIError(tls::WebPkiError::UnsupportedCriticalExtension) =>
+            UNSUPPORTED_CRITICAL_EXTENSION,
+        tls::Error::WebPKIError(tls::WebPkiError::UnsupportedSignatureAlgorithmForPublicKey) =>
+            UNSUPPORTED_SIGNATURE_ALGORITHM_FOR_PUBLIC_KEY,
+        tls::Error::WebPKIError(tls::WebPkiError::UnsupportedSignatureAlgorithm) =>
+            UNSUPPORTED_SIGNATURE_ALGORITHM,
         tls::Error::InvalidSCT(_) => INVALID_SCT,
         tls::Error::General(_) => UNKNOWN,
         tls::Error::FailedToGetCurrentTime => FAILED_TO_GET_CURRENT_TIME,
