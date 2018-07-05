@@ -27,7 +27,14 @@ message ListPodsResponse {
 message Pod {
   string name = 1;
   string podIP = 2;
-  string deployment = 3;
+  oneof owner {
+    string deployment = 3;
+    string replica_set = 10;
+    string replication_controller = 11;
+    string stateful_set = 12;
+    string daemon_set = 13;
+    string job = 14;
+  }
   string status = 4;
   bool added = 5; // true if this pod has a proxy sidecar (data plane)
   google.protobuf.Duration sinceLastReport = 6;

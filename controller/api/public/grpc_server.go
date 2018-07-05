@@ -110,12 +110,6 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb
 			continue
 		}
 
-		deployment, err := s.getDeploymentFor(pod)
-		if err != nil {
-			log.Debugf("Cannot get deployment for pod %s: %s", pod.Name, err)
-			deployment = ""
-		}
-
 		updated, added := reports[pod.Name]
 
 		status := string(pod.Status.Phase)
@@ -128,13 +122,31 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb
 
 		item := &pb.Pod{
 			Name:                pod.Namespace + "/" + pod.Name,
-			Deployment:          deployment, // TODO: this is of the form `namespace/deployment`, it should just be `deployment`
 			Status:              status,
 			PodIP:               pod.Status.PodIP,
 			Added:               added,
 			ControllerNamespace: controllerNS,
 			ControlPlane:        controllerComponent != "",
 		}
+
+		ownerKind, ownerName := s.k8sAPI.GetOwnerKindAndName(pod)
+		namespacedOwnerName := pod.Namespace + "/" + ownerName
+
+		switch ownerKind {
+		case "deployment":
+			item.Owner = &pb.Pod_Deployment{Deployment: namespacedOwnerName}
+		case "replicaset":
+			item.Owner = &pb.Pod_ReplicaSet{ReplicaSet: namespacedOwnerName}
+		case "replicationcontroller":
+			item.Owner = &pb.Pod_ReplicationController{ReplicationController: namespacedOwnerName}
+		case "statefulset":
+			item.Owner = &pb.Pod_StatefulSet{StatefulSet: namespacedOwnerName}
+		case "daemonset":
+			item.Owner = &pb.Pod_DaemonSet{DaemonSet: namespacedOwnerName}
+		case "job":
+			item.Owner = &pb.Pod_Job{Job: namespacedOwnerName}
+		}
+
 		if added {
 			since := time.Since(updated.lastReport)
 			item.SinceLastReport = &duration.Duration{
@@ -147,6 +159,7 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb
 				Nanos:   int32(sinceStarting % time.Second),
 			}
 		}
+
 		podList = append(podList, item)
 	}
 
@@ -223,34 +236,4 @@ func (s *grpcServer) shouldIgnore(pod *k8sV1.Pod) bool {
 		}
 	}
 	return false
-}
-
-func (s *grpcServer) getDeploymentFor(pod *k8sV1.Pod) (string, error) {
-	namespace := pod.Namespace
-	if len(pod.GetOwnerReferences()) == 0 {
-		return "", fmt.Errorf("Pod %s has no owner", pod.Name)
-	}
-	parent := pod.GetOwnerReferences()[0]
-	if parent.Kind != "ReplicaSet" {
-		return "", fmt.Errorf("Pod %s parent is not a ReplicaSet", pod.Name)
-	}
-
-	rs, err := s.k8sAPI.RS().Lister().GetPodReplicaSets(pod)
-	if err != nil {
-		return "", err
-	}
-	if len(rs) == 0 || len(rs[0].GetOwnerReferences()) == 0 {
-		return "", fmt.Errorf("Pod %s has no replicasets", pod.Name)
-	}
-
-	for _, r := range rs {
-		for _, owner := range r.GetOwnerReferences() {
-			switch owner.Kind {
-			case "Deployment":
-				return namespace + "/" + owner.Name, nil
-			}
-		}
-	}
-
-	return "", fmt.Errorf("Pod %s owner is not a Deployment", pod.Name)
 }

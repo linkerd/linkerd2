@@ -5,10 +5,9 @@ import (
 	"errors"
 	"net"
 	"net/http"
-	"reflect"
 	"testing"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	common "github.com/runconduit/conduit/controller/gen/common"
 	healcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
 	pb "github.com/runconduit/conduit/controller/gen/public"
@@ -192,7 +191,7 @@ func TestServer(t *testing.T) {
 				t.Fatalf("Unexpected error: %v", err)
 			}
 
-			if !reflect.DeepEqual(actualTapEvent, expectedTapEvent) {
+			if !proto.Equal(actualTapEvent, expectedTapEvent) {
 				t.Fatalf("Expecting tap event to be [%v], but was [%v]", expectedTapEvent, actualTapEvent)
 			}
 		}
@@ -238,10 +237,10 @@ func assertCallWasForwarded(t *testing.T, mockGrpcServer *mockGrpcServer, expect
 		t.Fatalf("Unexpected error: %v", err)
 	}
 	actualRequest := mockGrpcServer.LastRequestReceived
-	if !reflect.DeepEqual(actualRequest, expectedRequest) {
+	if !proto.Equal(actualRequest, expectedRequest) {
 		t.Fatalf("Expecting server call to return [%v], but got [%v]", expectedRequest, actualRequest)
 	}
-	if !reflect.DeepEqual(actualResponse, expectedResponse) {
+	if !proto.Equal(actualResponse, expectedResponse) {
 		t.Fatalf("Expecting server call to return [%v], but got [%v]", expectedResponse, actualResponse)
 	}
 

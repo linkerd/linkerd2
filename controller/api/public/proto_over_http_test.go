@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	pb "github.com/runconduit/conduit/controller/gen/public"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -59,7 +59,7 @@ func TestHttpRequestToProto(t *testing.T) {
 		expectedProtoMessage := pb.Pod{
 			Name:                "some-name",
 			PodIP:               "some-name",
-			Deployment:          "some-name",
+			Owner:               &pb.Pod_Deployment{Deployment: "some-name"},
 			Status:              "some-name",
 			Added:               false,
 			ControllerNamespace: "some-name",
@@ -81,8 +81,8 @@ func TestHttpRequestToProto(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		if actualProtoMessage != expectedProtoMessage {
-			t.Fatalf("Expected request to be [%v], but got [%v]", actualProtoMessage, expectedProtoMessage)
+		if !proto.Equal(&actualProtoMessage, &expectedProtoMessage) {
+			t.Fatalf("Expected request to be [%v], but got [%v]", expectedProtoMessage, actualProtoMessage)
 		}
 	})
 
@@ -138,7 +138,7 @@ func TestWriteErrorToHttpResponse(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		if actualErrorPayload != expectedErrorPayload {
+		if !proto.Equal(&actualErrorPayload, &expectedErrorPayload) {
 			t.Fatalf("Expecting error to be serialized as [%v], but got [%v]", expectedErrorPayload, actualErrorPayload)
 		}
 	})
@@ -172,7 +172,7 @@ func TestWriteErrorToHttpResponse(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		if actualErrorPayload != expectedErrorPayload {
+		if !proto.Equal(&actualErrorPayload, &expectedErrorPayload) {
 			t.Fatalf("Expecting error to be serialized as [%v], but got [%v]", expectedErrorPayload, actualErrorPayload)
 		}
 	})
@@ -238,7 +238,7 @@ func TestWriteProtoToHttpResponse(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		if expectedMessage != actualMessage {
+		if !proto.Equal(&actualMessage, &expectedMessage) {
 			t.Fatalf("Expected response body to contain message [%v], but got [%v]", expectedMessage, actualMessage)
 		}
 	})
@@ -350,7 +350,7 @@ func TestDeserializePayloadFromReader(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		if !reflect.DeepEqual(actualMessage, expectedMessage) {
+		if !proto.Equal(actualMessage, expectedMessage) {
 			t.Fatalf("Expecting payload to contain message [%s], but it had [%s]", expectedMessage, actualMessage)
 		}
 	})
