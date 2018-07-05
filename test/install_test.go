@@ -54,7 +54,13 @@ func TestVersionPreInstall(t *testing.T) {
 }
 
 func TestInstall(t *testing.T) {
-	out, err := TestHelper.ConduitRun("install", "--conduit-version", TestHelper.GetVersion())
+	cmd := []string{"install", "--conduit-version", TestHelper.GetVersion()}
+	if TestHelper.TLS() {
+		cmd = append(cmd, []string{"--tls", "optional"}...)
+		conduitDeployReplicas["ca-bundle-distributor"] = 1
+	}
+
+	out, err := TestHelper.ConduitRun(cmd...)
 	if err != nil {
 		t.Fatalf("conduit install command failed\n%s", out)
 	}
@@ -162,7 +168,12 @@ func TestDashboard(t *testing.T) {
 }
 
 func TestInject(t *testing.T) {
-	out, err := TestHelper.ConduitRun("inject", "testdata/smoke_test.yaml")
+	cmd := []string{"inject", "testdata/smoke_test.yaml"}
+	if TestHelper.TLS() {
+		cmd = append(cmd, []string{"--tls", "optional"}...)
+	}
+
+	out, err := TestHelper.ConduitRun(cmd...)
 	if err != nil {
 		t.Fatalf("conduit inject command failed\n%s", out)
 	}
