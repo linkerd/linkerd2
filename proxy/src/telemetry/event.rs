@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 
 use h2;
 
@@ -18,7 +18,7 @@ pub enum Event {
     StreamResponseFail(Arc<ctx::http::Response>, StreamResponseFail),
     StreamResponseEnd(Arc<ctx::http::Response>, StreamResponseEnd),
 
-    TlsConfigReloaded,
+    TlsConfigReloaded(SystemTime),
     TlsConfigReloadFailed(::transport::tls::ConfigError),
 }
 

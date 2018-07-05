@@ -301,7 +301,6 @@ impl fmt::Display for Direction {
     }
 }
 
-
 // ===== impl DstLabels ====
 
 impl DstLabels {

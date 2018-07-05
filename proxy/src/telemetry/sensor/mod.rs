@@ -105,7 +105,8 @@ impl Sensors {
 impl TlsConfig {
 
     pub fn reloaded(&mut self) {
-        self.0.send(|| event::Event::TlsConfigReloaded)
+        use std::time::SystemTime;
+        self.0.send(|| event::Event::TlsConfigReloaded(SystemTime::now()))
     }
 
     pub fn failed(&mut self, err: tls::ConfigError) {

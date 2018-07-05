@@ -114,6 +114,7 @@ struct Root {
     transport_closes: transport::CloseScopes,
 
     tls_config: TlsConfigScopes,
+    tls_config_last_reload_seconds: Option<Gauge>,
 
     process_metrics: Option<process::Sensor>,
 
@@ -184,6 +185,10 @@ impl Root {
     metrics! {
         process_start_time_seconds: Gauge {
             "Time that the process started (in seconds since the UNIX epoch)"
+        },
+        tls_config_last_reload_seconds: Gauge {
+            "Timestamp of when the TLS configuration files were last reloaded \
+             successfully (in seconds since the UNIX epoch)"
         }
     }
 
@@ -249,6 +254,11 @@ impl fmt::Display for Root {
         self.transport_closes.fmt(f)?;
         self.tls_config.fmt(f)?;
 
+        if let Some(timestamp) = self.tls_config_last_reload_seconds {
+            Self::tls_config_last_reload_seconds.fmt_help(f)?;
+            Self::tls_config_last_reload_seconds.fmt_metric(f, timestamp)?;
+        }
+
         if let Some(ref process_metrics) = self.process_metrics {
             match process_metrics.metrics() {
                 Ok(process) => process.fmt(f)?,
@@ -283,7 +293,6 @@ impl fmt::Display for TlsConfigScopes {
         Ok(())
     }
 }
-
 
 // ===== impl Stamped =====
 
