@@ -158,5 +158,4 @@ func addProxyConfigFlags(cmd *cobra.Command, options *proxyConfigOptions) {
 	cmd.PersistentFlags().UintVar(&options.proxyControlPort, "control-port", options.proxyControlPort, "Proxy port to use for control")
 	cmd.PersistentFlags().UintVar(&options.proxyMetricsPort, "metrics-port", options.proxyMetricsPort, "Proxy port to serve metrics on")
 	cmd.PersistentFlags().StringVar(&options.tls, "tls", options.tls, "Enable TLS; valid settings: \"optional\"")
-	cmd.PersistentFlags().MarkHidden("tls")
 }
