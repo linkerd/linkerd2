@@ -5,8 +5,9 @@ docpage = true
     parent = "automatic-tls"
 +++
 
-As of [Conduit v0.5.0][conduit-v0.5.0], Conduit can be configured to automatically
-instrument applications to communicate with Transport Layer Security (TLS).
+As of [Conduit v0.5.0][conduit-v0.5.0], Conduit can be configured to
+automatically negotiate Transport Layer Security (TLS) for proxy-to-proxy
+communication.
 
 When TLS is enabled, Conduit automatically establishes and authenticates
 secure, private connections between Conduit proxies. This is done without
@@ -19,7 +20,9 @@ this policy will change in favor of stronger security guarantees.
 
 ### Getting started with TLS
 
-The conduit control plane must be installed with the `--tls=optional` flag:
+The TLS feature is currently disabled by default. To enable it, you must
+install the control plane with the `--tls` flag set to `optional`. This
+configures the mesh so that TLS is enabled opportunistically:
 
 ```
 conduit install --tls=optional |kubectl apply -f -
