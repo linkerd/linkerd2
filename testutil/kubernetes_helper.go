@@ -86,7 +86,7 @@ func (h *KubernetesHelper) KubectlApply(stdin string, namespace string) (string,
 // getDeployments gets all deployments with a count of their ready replicas in
 // the specified namespace.
 func (h *KubernetesHelper) getDeployments(namespace string) (map[string]int, error) {
-	deploys, err := h.clientset.AppsV1().Deployments(namespace).List(metav1.ListOptions{})
+	deploys, err := h.clientset.AppsV1beta2().Deployments(namespace).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +167,7 @@ func (h *KubernetesHelper) CheckService(namespace string, serviceName string) er
 
 // GetPodsForDeployment returns all pods for the given deployment
 func (h *KubernetesHelper) GetPodsForDeployment(namespace string, deploymentName string) ([]string, error) {
-	deploy, err := h.clientset.AppsV1().Deployments(namespace).Get(deploymentName, metav1.GetOptions{})
+	deploy, err := h.clientset.AppsV1beta2().Deployments(namespace).Get(deploymentName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
