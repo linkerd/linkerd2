@@ -254,7 +254,6 @@ impl fmt::Display for Root {
         self.transport_closes.fmt(f)?;
         self.tls_config.fmt(f)?;
 
-
         if let Some(timestamp) = self.tls_config_last_reload_seconds {
             Self::tls_config_last_reload_seconds.fmt_help(f)?;
             Self::tls_config_last_reload_seconds.fmt_metric(f, timestamp)?;
@@ -266,7 +265,6 @@ impl fmt::Display for Root {
                 Err(e) => warn!("error collecting process metrics: {:?}", e),
             }
         };
-
 
         Self::process_start_time_seconds.fmt_help(f)?;
         Self::process_start_time_seconds.fmt_metric(f, self.start_time)?;
@@ -295,7 +293,6 @@ impl fmt::Display for TlsConfigScopes {
         Ok(())
     }
 }
-
 
 // ===== impl Stamped =====
 
