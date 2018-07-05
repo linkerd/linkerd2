@@ -6,7 +6,7 @@ docpage = true
 +++
 
 As of [Conduit v0.5.0][conduit-v0.5.0], Conduit can be configured to
-automatically negotiate Transport Layer Security (TLS) for proxy-to-proxy
+automatically negotiate Transport Layer Security (TLS) for application
 communication.
 
 When TLS is enabled, Conduit automatically establishes and authenticates
