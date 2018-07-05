@@ -8,8 +8,8 @@ docpage = true
 As of [Conduit v0.5.0][conduit-v0.5.0], Conduit can be configured to automatically
 instrument applications to communicate with Transport Layer Security (TLS).
 
-When TLS enabled, Conduit automatically establishes and authenticates
-secure,private connections between Conduit proxies. This is done without
+When TLS is enabled, Conduit automatically establishes and authenticates
+secure, private connections between Conduit proxies. This is done without
 breaking unencrypted communication with endpoints that are not configured
 with TLS-enabled Conduit proxies.
 
@@ -19,18 +19,17 @@ this policy will change in favor of stronger security guarantees.
 
 ### Getting started with TLS
 
-
 The conduit control plane must be installed with the `--tls=optional` flag:
 
 ```
 conduit install --tls=optional |kubectl apply -f -
 ```
 
-This causes a Certificate Authority (CA) container to be run in the control
-plane. The CA is responsible for watching the Kubernetes API for new
-Conduit-enabled pods and, as new pods are created, it ensures that the pod
-has access to a Kubernetes Secret holding the credentials for that Deployment
-(or Replication Controller or etc).
+This causes a Certificate Authority (CA) container to be run in the
+control-plane. The CA watches for the creation and updates of Conduit-enabled
+pods. For each Conduit-enabled pod, it generates a private key, issues a
+certificate, and distributes the certificate and private key to each pod as a
+Kubernetes Secret.
 
 Once you've configured the control plane to support TLS, you may enable TLS
 for each application when it is injected with the Conduit proxy:
