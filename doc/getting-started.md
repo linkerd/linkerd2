@@ -17,11 +17,10 @@ cluster, and how to set up a sample gRPC application.
 Afterwards, check out the [Using Conduit to debug a service](/debugging-an-app) page,
 where  we'll walk you through how to use Conduit to investigate poorly performing services.
 
-> Note that Conduit v{{% latestversion %}} is an alpha release. Conduit will
-automatically work for most protocols. However, applications that use
-WebSockets, HTTP tunneling/proxying, or protocols such as MySQL and SMTP, will
-require some additional configuration. See [Adding your service to the
-mesh](/adding-your-service) for details.
+> Note that Conduit v{{% latestversion %}} is an alpha release. It is capable of
+proxying all TCP traffic, including WebSockets and HTTP tunneling, and reporting
+top-line metrics (success rates, latencies, etc) for all HTTP, HTTP/2, and gRPC
+traffic.
 
 ____
 

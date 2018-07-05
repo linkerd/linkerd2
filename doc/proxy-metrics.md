@@ -1,5 +1,5 @@
 +++
-title = "Proxy Metrics"
+title = "Metrics exported by the proxy"
 docpage = true
 [menu.docs]
   parent = "proxy-metrics"
@@ -9,7 +9,7 @@ The Conduit proxy exposes metrics that describe the traffic flowing through the
 proxy.  The following metrics are available at `/metrics` on the proxy's metrics
 port (default: `:4191`) in the [Prometheus format][prom-format]:
 
-# Protocol-Level Metrics
+## Protocol-Level Metrics
 
 ### `request_total`
 
@@ -141,7 +141,7 @@ request_total{
 }
 ```
 
-# Transport-Level Metrics
+## Transport-Level Metrics
 
 The following metrics are collected at the level of the underlying transport
 layer.

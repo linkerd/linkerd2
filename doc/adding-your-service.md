@@ -12,10 +12,6 @@ of your application will not be affected.
 
 ## Prerequisites
 
-* Applications that use WebSockets or HTTP tunneling/proxying (use of the HTTP
-  `CONNECT` method), or plaintext MySQL, SMTP, or other protocols where the server
-  sends data before the client sends data, may require additional configuration.
-  See the [Protocol Support](#protocol-support) section below.
 * gRPC applications that use grpc-go must use grpc-go version 1.3 or later due
   to a [bug](https://github.com/grpc/grpc-go/issues/1120) in earlier versions.
 
@@ -38,22 +34,6 @@ if its proxy status is green in the Conduit dashboard.
 
 ## Protocol Support
 
-Conduit supports most applications without requiring any configuration on your
-part. To accomplish this, Conduit automatically detects the protocol used on
-each connection. In some cases, however, Conduit's protocol detection can't be
-fully automated and requires some configuration from you.
-
-### MySQL and SMTP
-
-Most non-HTTP traffic will also be handled automatically and transparently by
-Conduit without any configuration on your part. However, for protocols where the
-server sends data before the client sends, e.g. MySQL and SMTP connections that
-aren't protected by TLS, Conduit currently requires some manual configuration.
-In such cases, use the `--skip-inbound-ports` flag when running `conduit
-inject`. For pods that make outgoing connections using such protocols, use the
-`--skip-outbound-ports` flag when running `conduit inject`. (Note that this
-applies only to non-TLS'd connections; connections with TLS enabled do not
-require any additional configuration irrespective of protocol.)
-
-### For example, to allow outbound traffic to port 3306 (MySQL) to bypass the proxy, use the command:
-#### `conduit inject deployment.yml --skip-outbound-ports=3306 | kubectl apply -f -`
+Conduit is capable of proxying all TCP traffic, including WebSockets and HTTP
+tunneling, and reporting top-line metrics (success rates, latencies, etc) for
+all HTTP, HTTP/2, and gRPC traffic.
