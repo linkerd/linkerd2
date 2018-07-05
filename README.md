@@ -10,10 +10,9 @@ Conduit is an ultralight service mesh for Kubernetes. It features a minimalist
 control plane written in Go, and a native proxy data plane written in
 [Rust][rust] that boasts the performance of C without the heartbleed.
 
-Conduit is **alpha**. It is capable of proxying all TCP traffic, and reporting
-top-line metrics (success rates, latencies, etc) for all HTTP, HTTP/2, and gRPC traffic.
-It currently does not work with websockets or with HTTP tunneling--see the
-`--skip-outbound-ports` flag for how to exclude these types of traffic.
+Conduit is **alpha**. It is capable of proxying all TCP traffic, including
+websockets and HTTP tunneling, and reporting top-line metrics (success rates,
+latencies, etc) for all HTTP, HTTP/2, and gRPC traffic.
 
 ## Get involved
 
