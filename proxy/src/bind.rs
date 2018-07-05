@@ -10,6 +10,7 @@ use tower_service as tower;
 use tower_h2;
 use tower_reconnect::{Reconnect, Error as ReconnectError};
 
+use connection;
 use control;
 use control::destination::Endpoint;
 use ctx;
@@ -253,6 +254,12 @@ where
             ep.metadata().clone(),
             TlsStatus::from(&tls),
         );
+
+        // If TLS, attach a sensor to the TLS config.
+        let tls = tls.map(|config| {
+            let sensor = self.sensors.tls_connect(&client_ctx);
+            connection::TlsConnect::new(config, sensor)
+        });
 
         // Map a socket address to a connection.
         let connect = self.sensors.connect(

@@ -2,6 +2,7 @@ use std::{
     collections::HashMap,
     fmt::{self, Write},
     hash,
+    net::SocketAddr,
     path::PathBuf,
     sync::Arc,
 };
@@ -9,6 +10,7 @@ use std::{
 use http;
 
 use ctx;
+use connection;
 use telemetry::event;
 use transport::tls;
 
@@ -126,6 +128,87 @@ pub struct DstLabels {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct TlsStatus(ctx::transport::TlsStatus);
+
+/// Labels describing a TLS handshake failure.
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub enum HandshakeFailLabels {
+    Proxy {
+        /// Labels describing the TCP connection that closed.
+        transport: TransportLabels,
+        reason: HandshakeFailReason,
+    },
+    Control {
+        peer: Peer,
+        remote_addr: SocketAddr,
+        reason: HandshakeFailReason,
+    },
+
+}
+
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub enum HandshakeFailReason {
+    Io(Option<Errno>),
+    Tls(TlsError),
+}
+
+mk_err_enum! {
+    /// Translates `rustls::TLSError` variants into a `Copy` type suitable for
+    /// labels.
+    #[allow(non_camel_case_types)]
+    #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+    enum TlsError from &'a tls::Error {
+        tls::Error::InappropriateMessage {..} => INAPPROPRIATE_MESSAGE,
+        tls::Error::InappropriateHandshakeMessage {..} => INAPPROPRIATE_HANDSHAKE_MESSAGE,
+        tls::Error::CorruptMessage => CORRUPT_MESSAGE,
+        tls::Error::CorruptMessagePayload(_) => CORRUPT_MESSAGE_PAYLOAD,
+        tls::Error::NoCertificatesPresented => NO_CERTIFICATES_PRESENTED,
+        tls::Error::DecryptError => DECRYPT_ERROR,
+        tls::Error::PeerIncompatibleError(_) => PEER_INCOMPATIBLE,
+        tls::Error::PeerMisbehavedError(_) => PEER_MISBEHAVED,
+        tls::Error::AlertReceived(_) => ALERT_RECEIVED,
+        tls::Error::WebPKIError(tls::WebPkiError::BadDER) => BAD_DER,
+        tls::Error::WebPKIError(tls::WebPkiError::BadDERTime) => BAD_DER_TIME,
+        tls::Error::WebPKIError(tls::WebPkiError::CAUsedAsEndEntity) => CA_USED_AS_END_ENTITY,
+        tls::Error::WebPKIError(tls::WebPkiError::CertExpired) => CERT_EXPIRED,
+        tls::Error::WebPKIError(tls::WebPkiError::CertNotValidForName) =>
+            CERT_NOT_VALID_FOR_NAME,
+        tls::Error::WebPKIError(tls::WebPkiError::CertNotValidYet) =>
+            CERT_NOT_VALID_YET,
+        tls::Error::WebPKIError(tls::WebPkiError::EndEntityUsedAsCA) =>
+            END_ENTITY_USED_AS_CA,
+        tls::Error::WebPKIError(tls::WebPkiError::ExtensionValueInvalid) =>
+            EXTENSION_VALUE_INVALID,
+        tls::Error::WebPKIError(tls::WebPkiError::InvalidCertValidity) =>
+            INVALID_CERT_VALIDITY,
+        tls::Error::WebPKIError(tls::WebPkiError::InvalidSignatureForPublicKey) =>
+            INVALID_SIGNATURE_FOR_PUBLIC_KEY,
+        tls::Error::WebPKIError(tls::WebPkiError::NameConstraintViolation) =>
+            NAME_CONSTRAINT_VIOLATION,
+        tls::Error::WebPKIError(tls::WebPkiError::PathLenConstraintViolated) =>
+            PATH_LEN_CONSTRAINT_VIOLATED,
+        tls::Error::WebPKIError(tls::WebPkiError::SignatureAlgorithmMismatch) =>
+            SIGNATURE_ALGORITHM_MISMATCH,
+        tls::Error::WebPKIError(tls::WebPkiError::RequiredEKUNotFound) =>
+            REQUESTED_EKU_NOT_FOUND,
+        tls::Error::WebPKIError(tls::WebPkiError::UnknownIssuer) =>
+            UNKNOWN_ISSUER,
+        tls::Error::WebPKIError(tls::WebPkiError::UnsupportedCertVersion) =>
+            UNSUPPORTED_CERT_VERSION,
+        tls::Error::WebPKIError(tls::WebPkiError::UnsupportedCriticalExtension) =>
+            UNSUPPORTED_CRITICAL_EXTENSION,
+        tls::Error::WebPKIError(tls::WebPkiError::UnsupportedSignatureAlgorithmForPublicKey) =>
+            UNSUPPORTED_SIGNATURE_ALGORITHM_FOR_PUBLIC_KEY,
+        tls::Error::WebPKIError(tls::WebPkiError::UnsupportedSignatureAlgorithm) =>
+            UNSUPPORTED_SIGNATURE_ALGORITHM,
+        tls::Error::InvalidSCT(_) => INVALID_SCT,
+        tls::Error::General(_) => UNKNOWN,
+        tls::Error::FailedToGetCurrentTime => FAILED_TO_GET_CURRENT_TIME,
+        tls::Error::InvalidDNSName(_) => INVALID_DNS_NAME,
+        tls::Error::HandshakeNotComplete => HANDSHAKE_NOT_COMPLETE,
+        tls::Error::PeerSentOversizedRecord => PEER_SENT_OVERSIZED_RECORD
+    }
+}
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum TlsConfigLabels {
@@ -441,6 +524,68 @@ impl Into<ctx::transport::TlsStatus> for TlsStatus {
     }
 }
 
+impl HandshakeFailLabels {
+    pub fn proxy(ctx: &ctx::transport::Ctx,
+                 err: &connection::HandshakeError)
+               -> Self {
+        HandshakeFailLabels::Proxy {
+            transport: TransportLabels::new(ctx),
+            reason: err.into(),
+        }
+    }
+
+    pub fn control(ctx: &event::ControlConnection,
+                   err: &connection::HandshakeError)
+                   -> Self {
+        let (peer, remote_addr) = match ctx {
+            event::ControlConnection::Accept { remote_addr, .. } =>
+                (Peer::Dst, *remote_addr),
+            event::ControlConnection::Connect { remote_addr } =>
+                (Peer::Src, *remote_addr),
+        };
+        HandshakeFailLabels::Control {
+            peer,
+            remote_addr,
+            reason: err.into(),
+        }
+    }
+}
+
+impl fmt::Display for HandshakeFailLabels {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            HandshakeFailLabels::Proxy { transport, reason } =>
+                write!(f, "{},{}", transport, reason),
+            HandshakeFailLabels::Control { peer, remote_addr, reason } =>
+                write!(f, "{},remote=\"{}\",{}",peer, remote_addr, reason),
+        }
+    }
+}
+
+impl fmt::Display for HandshakeFailReason {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            HandshakeFailReason::Tls(ref reason) =>
+                write!(f, "reason=\"tls_error\",tls_error=\"{}\"", reason),
+            HandshakeFailReason::Io(Some(ref errno)) =>
+                write!(f, "reason=\"io_error\",errno=\"{}\"", errno),
+            HandshakeFailReason::Io(None) =>
+                f.pad("reason=\"io_error\",errno=\"unknown\""),
+        }
+    }
+}
+
+impl<'a> From<&'a connection::HandshakeError> for HandshakeFailReason {
+    fn from(err: &'a connection::HandshakeError) -> Self {
+        match err {
+            connection::HandshakeError::Io { ref errno } =>
+                HandshakeFailReason::Io(errno.map(Errno::from)),
+            connection::HandshakeError::Tls(ref tls_err) =>
+                HandshakeFailReason::Tls(tls_err.into()),
+        }
+    }
+}
+
 // ===== impl TlsConfigLabels =====
 
 impl TlsConfigLabels {
@@ -464,6 +609,7 @@ impl From<tls::ConfigError> for TlsConfigLabels {
     }
 }
 
+
 impl fmt::Display for TlsConfigLabels {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -486,24 +632,5 @@ impl fmt::Display for TlsConfigLabels {
             TlsConfigLabels::InvalidTrustAnchors =>
                 f.pad("status=\"invalid_trust_anchors\""),
         }
-    }
-}
-
-
-#[cfg(target_os="windows")]
-pub struct Errno(i32);
-
-#[cfg(target_os="windows")]
-impl From<i32> for Errno {
-    fn from(code: i32) -> Self {
-        Errno(code)
-    }
-}
-
-#[cfg(target_os="windows")]
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-impl fmt::Display for Errno {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display.fmt(self.0, f)
     }
 }

@@ -145,6 +145,10 @@ impl Client {
     pub fn dst_labels(&self) -> Option<&DstLabels> {
         self.metadata.dst_labels()
     }
+
+    pub fn with_tls_status(&self, tls_status: TlsStatus) -> Arc<Client> {
+        Self::new(&self.proxy, &self.remote, self.metadata.clone(), tls_status)
+    }
 }
 impl From<Arc<Client>> for Ctx {
     fn from(c: Arc<Client>) -> Self {

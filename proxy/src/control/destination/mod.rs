@@ -40,7 +40,7 @@ use tower_discover::{Change, Discover};
 use tower_service::Service;
 
 use dns;
-use telemetry::metrics::DstLabels;
+use telemetry::{self, metrics::DstLabels};
 use transport::{DnsNameAndPort, HostAndPort};
 
 pub mod background;
@@ -145,6 +145,7 @@ pub fn new(
     namespaces: Namespaces,
     host_and_port: Option<HostAndPort>,
     controller_tls: tls::ConditionalConnectionConfig<tls::ClientConfigWatch>,
+    sensors: &telemetry::Sensors,
 ) -> (Resolver, impl Future<Item = (), Error = ()>) {
     let (request_tx, rx) = mpsc::unbounded();
     let disco = Resolver { request_tx };
@@ -154,6 +155,7 @@ pub fn new(
         namespaces,
         host_and_port,
         controller_tls,
+        sensors,
     );
     (disco, bg)
 }

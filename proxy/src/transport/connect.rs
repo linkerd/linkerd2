@@ -1,21 +1,25 @@
 use futures::Future;
 use tokio_connect;
 
-use std::{fmt, io};
-use std::net::{IpAddr, SocketAddr};
-use std::str::FromStr;
+use std::{
+    fmt,
+    io,
+    net::{IpAddr, SocketAddr},
+    str::FromStr,
+};
 
 use http;
 
 use connection;
 use convert::TryFrom;
 use dns;
+use telemetry;
 use transport::tls;
 
 #[derive(Debug, Clone)]
 pub struct Connect {
     addr: SocketAddr,
-    tls: tls::ConditionalConnectionConfig<tls::ClientConfig>,
+    tls: connection::ConditionalTlsConnect,
 }
 
 #[derive(Clone, Debug)]
@@ -50,6 +54,7 @@ pub enum HostAndPortError {
 pub struct LookupAddressAndConnect {
     host_and_port: HostAndPort,
     dns_resolver: dns::Resolver,
+    sensors: telemetry::Sensors,
     tls: tls::ConditionalConnectionConfig<tls::ClientConfig>,
 }
 
@@ -111,7 +116,7 @@ impl Connect {
     /// Returns a `Connect` to `addr`.
     pub fn new(
         addr: SocketAddr,
-        tls: tls::ConditionalConnectionConfig<tls::ClientConfig>,
+        tls: connection::ConditionalTlsConnect,
     ) -> Self {
         Self {
             addr,
@@ -137,10 +142,12 @@ impl LookupAddressAndConnect {
         host_and_port: HostAndPort,
         dns_resolver: dns::Resolver,
         tls: tls::ConditionalConnectionConfig<tls::ClientConfig>,
+        sensors: &telemetry::Sensors,
     ) -> Self {
         Self {
             host_and_port,
             dns_resolver,
+            sensors: sensors.clone(),
             tls,
         }
     }
@@ -154,6 +161,7 @@ impl tokio_connect::Connect for LookupAddressAndConnect {
     fn connect(&self) -> Self::Future {
         let port = self.host_and_port.port;
         let host = self.host_and_port.host.clone();
+        let sensors = self.sensors.clone();
         let tls = self.tls.clone();
         let c = self.dns_resolver
             .resolve_one_ip(&self.host_and_port.host)
@@ -163,6 +171,11 @@ impl tokio_connect::Connect for LookupAddressAndConnect {
             .and_then(move |ip_addr: IpAddr| {
                 info!("DNS resolved {:?} to {}", host, ip_addr);
                 let addr = SocketAddr::from((ip_addr, port));
+                let tls = tls.map(|config| {
+                    let sensor = sensors.control_tls_connect(addr);
+                    connection::TlsConnect::new(config, sensor)
+                });
+
                 trace!("connect {}", addr);
                 connection::connect(&addr, tls)
             });

@@ -59,12 +59,14 @@ mod latency;
 mod process;
 mod record;
 mod serve;
+mod tls;
 mod transport;
 
 use self::counter::Counter;
 use self::gauge::Gauge;
 use self::histogram::Histogram;
 use self::labels::{
+    HandshakeFailLabels,
     RequestLabels,
     ResponseLabels,
     TransportLabels,
@@ -113,6 +115,7 @@ struct Root {
     transports: transport::OpenScopes,
     transport_closes: transport::CloseScopes,
 
+    tls_handshake_failures: tls::HandshakeFailScopes,
     tls_config: TlsConfigScopes,
 
     process_metrics: Option<process::Sensor>,
@@ -228,6 +231,12 @@ impl Root {
             .stamped()
     }
 
+    fn tls_handshake_fail(&mut self, labels: HandshakeFailLabels)
+        -> &mut Counter {
+        self.tls_handshake_failures.scopes.entry(labels)
+            .or_insert_with(|| Counter::default())
+    }
+
     fn tls_config(&mut self, labels: TlsConfigLabels) -> &mut Counter {
         self.tls_config.scopes.entry(labels)
             .or_insert_with(|| Counter::default())
@@ -248,6 +257,8 @@ impl fmt::Display for Root {
         self.transports.fmt(f)?;
         self.transport_closes.fmt(f)?;
         self.tls_config.fmt(f)?;
+
+        self.tls_handshake_failures.fmt(f)?;
 
         if let Some(ref process_metrics) = self.process_metrics {
             match process_metrics.metrics() {

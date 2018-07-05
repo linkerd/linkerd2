@@ -3,6 +3,7 @@ use std::sync::{Arc, Mutex};
 use telemetry::event::Event;
 use super::Root;
 use super::labels::{
+    HandshakeFailLabels,
     RequestLabels,
     ResponseLabels,
     TransportLabels,
@@ -93,6 +94,20 @@ impl Record {
                 self.update(|metrics| {
                     metrics.tls_config(err.clone().into()).incr();
                 }),
+
+            Event::TlsHandshakeFailed(ref ctx, ref err) => {
+                self.update(|metrics| {
+                    metrics.tls_handshake_fail(HandshakeFailLabels::proxy(ctx, err))
+                        .incr();
+                })
+            },
+
+            Event::ControlTlsHandshakeFailed(ref ctx, ref err) => {
+                self.update(|metrics| {
+                    metrics.tls_handshake_fail(HandshakeFailLabels::control(ctx, err))
+                        .incr();
+                })
+            },
         };
     }
 }

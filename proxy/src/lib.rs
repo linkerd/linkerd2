@@ -255,6 +255,7 @@ where
             config.namespaces.clone(),
             control_host_and_port,
             controller_tls,
+            &sensors,
         );
 
         let (drain_tx, drain_rx) = drain::channel();
@@ -435,7 +436,14 @@ where
         telemetry::sensor::http::TimestampRequestOpen::new(map_err)
     }));
 
+
     let listen_addr = bound_port.local_addr();
+
+    let tls = tls_config
+        .map(|config| {
+            let sensor = sensors.tls_accept(listen_addr, &proxy_ctx);
+            connection::TlsAccept::new(config, sensor)
+        });
     let server = Server::new(
         listen_addr,
         proxy_ctx.clone(),
@@ -447,10 +455,9 @@ where
         drain_rx.clone(),
     );
     let log = server.log().clone();
-
     let accept = {
         let fut = bound_port.listen_and_fold(
-            tls_config,
+            tls,
             (),
             move |(), (connection, remote_addr)| {
                 let s = server.serve(connection, remote_addr);

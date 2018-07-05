@@ -13,6 +13,7 @@ use tokio::{
 use conditional::Conditional;
 use ctx::transport::TlsStatus;
 use config::Addr;
+use telemetry::sensor;
 use transport::{AddrInfo, BoxedIo, GetOriginalDst, tls};
 
 pub struct BoundPort {
@@ -20,11 +21,30 @@ pub struct BoundPort {
     local_addr: SocketAddr,
 }
 
+pub type ConditionalTlsConnect = Conditional<TlsConnect, tls::ReasonForNoTls>;
+pub type ConditionalTlsAccept = Conditional<TlsAccept, tls::ReasonForNoTls>;
+
+/// Bundles together a TLS server connection config with a sensor for
+/// recording events while handshaking.
+#[derive(Clone)]
+pub struct TlsAccept {
+    config: tls::ConnectionConfig<tls::ServerConfigWatch>,
+    sensor: sensor::tls::Accept,
+}
+
+/// Bundles together a TLS client connection config with a sensor for
+/// recording events while handshaking.
+#[derive(Clone, Debug)]
+pub struct TlsConnect {
+    config: tls::ConnectionConfig<tls::ClientConfig>,
+    sensor: sensor::tls::Connect,
+}
+
 /// Initiates a client connection to the given address.
-pub fn connect(addr: &SocketAddr,
-               tls: tls::ConditionalConnectionConfig<tls::ClientConfig>)
-    -> Connecting
-{
+pub fn connect(
+    addr: &SocketAddr,
+    tls: Conditional<TlsConnect, tls::ReasonForNoTls>,
+) -> Connecting {
     let state = ConnectingState::Plaintext {
         connect: TcpStream::connect(addr),
         tls: Some(tls),
@@ -53,12 +73,24 @@ pub struct Connecting {
     state: ConnectingState,
 }
 
+
+#[derive(Clone, Debug)]
+pub enum HandshakeError {
+    /// The handshake failed due to an IO error.
+    Io { errno: Option<i32> },
+    /// The handshake failed due to a TLS error.
+    Tls(tls::Error),
+}
+
 enum ConnectingState {
     Plaintext {
         connect: ConnectFuture,
-        tls: Option<tls::ConditionalConnectionConfig<tls::ClientConfig>>
+        tls: Option<Conditional<TlsConnect, tls::ReasonForNoTls>>,
     },
-    UpgradeToTls(tls::UpgradeClientToTls),
+    UpgradeToTls {
+        upgrade: tls::UpgradeClientToTls,
+        sensor: sensor::tls::Connect,
+    },
 }
 
 /// Abstracts a plaintext socket vs. a TLS decorated one.
@@ -110,6 +142,24 @@ pub struct PeekFuture<T> {
     inner: Option<T>,
 }
 
+impl TlsConnect {
+    pub fn new(
+        config: tls::ConnectionConfig<tls::ClientConfig>,
+        sensor: sensor::tls::Connect
+    ) -> Self {
+        TlsConnect { config, sensor }
+    }
+}
+
+impl TlsAccept {
+    pub fn new(
+        config: tls::ConnectionConfig<tls::ServerConfigWatch>,
+        sensor: sensor::tls::Accept
+    ) -> Self {
+        TlsAccept { config, sensor }
+    }
+}
+
 // ===== impl BoundPort =====
 
 impl BoundPort {
@@ -133,9 +183,9 @@ impl BoundPort {
     // TLS when needed.
     pub fn listen_and_fold<T, F, Fut>(
         self,
-        tls: tls::ConditionalConnectionConfig<tls::ServerConfigWatch>,
+        tls: ConditionalTlsAccept,
         initial: T,
-        f: F)
+        f: F,)
         -> impl Future<Item = (), Error = io::Error> + Send + 'static
     where
         F: Fn(T, (Connection, SocketAddr)) -> Fut + Send + 'static,
@@ -165,19 +215,25 @@ impl BoundPort {
                     set_nodelay_or_warn(&socket);
 
                     let tls = match &tls {
-                        Conditional::Some(tls) => match &*tls.config.borrow() {
-                            Conditional::Some(config) =>
-                                Conditional::Some(tls::ConnectionConfig {
-                                    identity: tls.identity.clone(),
-                                    config: config.clone(),
-                                }),
-                            Conditional::None(r) => Conditional::None(*r),
-                        },
+                        Conditional::Some(TlsAccept { sensor, config: conn_config }) =>
+                            match &*conn_config.config.borrow() {
+                                Conditional::Some(config) => {
+                                    let config = tls::ConnectionConfig {
+                                        identity: conn_config.identity.clone(),
+                                        config: config.clone(),
+                                    };
+                                    Conditional::Some((sensor, config))
+                                },
+                                Conditional::None(r) => Conditional::None(*r),
+                            },
                         Conditional::None(r) => Conditional::None(*r),
                     };
                     let conn = match tls {
-                        Conditional::Some(tls) =>
-                            Either::A(ConditionallyUpgradeServerToTls::new(socket, tls)),
+                        Conditional::Some((sensor, config)) => {
+                            let f = ConditionallyUpgradeServerToTls::new(socket, config);
+                            let f = sensor.accept(remote_addr, f);
+                            Either::A(f)
+                        },
                         Conditional::None(why_no_tls) =>
                             Either::B(future::ok(Connection::plain(socket, why_no_tls))),
                     };
@@ -192,6 +248,8 @@ impl BoundPort {
                         }
                     })
                 })
+                // This `map_err` is only necessary to placate the type checker
+                // since the `then` above turns any `Err`s into `Ok`s.
                 .filter_map(|x| x)
                 .fold(initial, f)
         )
@@ -295,11 +353,11 @@ impl Future for Connecting {
                     trace!("Connecting: state=plaintext; tls={:?};",tls);
                     set_nodelay_or_warn(&plaintext_stream);
                     match tls.take().expect("Polled after ready") {
-                        Conditional::Some(config) => {
+                        Conditional::Some(TlsConnect { config, sensor }) => {
                             trace!("plaintext connection established; trying to upgrade");
                             let upgrade = tls::Connection::connect(
                                 plaintext_stream, &config.identity, config.config);
-                            ConnectingState::UpgradeToTls(upgrade)
+                            ConnectingState::UpgradeToTls { upgrade, sensor }
                         },
                         Conditional::None(why) => {
                             trace!("plaintext connection established; no TLS ({:?})", why);
@@ -307,7 +365,7 @@ impl Future for Connecting {
                         },
                     }
                 },
-                ConnectingState::UpgradeToTls(upgrade) => {
+                ConnectingState::UpgradeToTls { upgrade, sensor } => {
                     match upgrade.poll() {
                         Ok(Async::NotReady) => return Ok(Async::NotReady),
                         Ok(Async::Ready(tls_stream)) => {
@@ -320,8 +378,8 @@ impl Future for Connecting {
                                     -> falling back to plaintext",
                                 self.addr, e,
                             );
+                            sensor.fail(&e);
                             let connect = TcpStream::connect(&self.addr);
-                            // TODO: emit a `HandshakeFailed` telemetry event.
                             let reason = tls::ReasonForNoTls::HandshakeFailed;
                             // Reset self to try the plaintext connection.
                             ConnectingState::Plaintext {
@@ -478,5 +536,20 @@ fn set_nodelay_or_warn(socket: &TcpStream) {
             socket.peer_addr(),
             e
         );
+    }
+}
+
+// ===== impl HandshakeError =====
+
+impl<'a> From<&'a std::io::Error> for HandshakeError {
+    fn from(err: &'a std::io::Error) -> Self {
+        if let Some(tls_error) = err
+            .get_ref()
+            .and_then(|err| err.downcast_ref::<tls::Error>())
+        {
+            HandshakeError::Tls(tls_error.clone())
+        } else {
+            HandshakeError::Io { errno: err.raw_os_error() }
+        }
     }
 }

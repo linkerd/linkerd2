@@ -1,5 +1,8 @@
-use std::sync::Arc;
-use std::time::Instant;
+use std::{
+    net::SocketAddr,
+    sync::Arc,
+    time::Instant,
+};
 
 use futures_mpsc_lossy::Sender;
 use http::{Request, Response};
@@ -10,9 +13,9 @@ use tower_h2::{client, Body};
 
 use ctx;
 use telemetry::event;
-use transport::tls;
 
 pub mod http;
+pub mod tls;
 mod transport;
 
 pub use self::http::{Http, NewHttp};
@@ -56,6 +59,45 @@ impl Sensors {
 
     pub fn null() -> Sensors {
         Sensors(Handle(None))
+    }
+
+    pub fn tls_accept(
+        &self,
+        local_addr: SocketAddr,
+        ctx: &Arc<ctx::Proxy>,
+    ) -> tls::Accept {
+        tls::Accept {
+            local_addr,
+            handle: self.0.clone(),
+            ctx: tls::AcceptCtx::Proxy(ctx.clone()),
+        }
+    }
+
+    /// Returns a TLS accept handshake sensor for the control subsystem.
+    pub fn control_tls_accept(self, local_addr: SocketAddr) -> tls::Accept {
+        tls::Accept {
+            local_addr,
+            handle: self.0.clone(),
+            ctx: tls::AcceptCtx::Control,
+        }
+    }
+
+    pub fn tls_connect(
+        &self,
+        ctx: &Arc<ctx::transport::Client>,
+    ) -> tls::Connect {
+        tls::Connect {
+            handle: self.0.clone(),
+            ctx: tls::ConnectCtx::Proxy(ctx.clone()),
+        }
+    }
+
+    /// Returns a TLS connect handshake sensor for the control subsystem.
+    pub fn control_tls_connect(&self, remote_addr: SocketAddr) -> tls::Connect {
+        tls::Connect {
+            handle: self.0.clone(),
+            ctx: tls::ConnectCtx::Control { remote_addr },
+        }
     }
 
     pub fn accept<T>(
@@ -108,7 +150,7 @@ impl TlsConfig {
         self.0.send(|| event::Event::TlsConfigReloaded)
     }
 
-    pub fn failed(&mut self, err: tls::ConfigError) {
+    pub fn failed(&mut self, err: ::transport::tls::ConfigError) {
         self.0.send(|| event::Event::TlsConfigReloadFailed(err.into()))
     }
 }
