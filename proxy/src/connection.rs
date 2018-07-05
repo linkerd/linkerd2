@@ -1,9 +1,12 @@
 use bytes::{Buf, BytesMut};
 use futures::{*, future::Either};
-use std;
-use std::cmp;
-use std::io;
-use std::net::SocketAddr;
+use std::{
+    self,
+    cmp,
+    io,
+    net::SocketAddr,
+    sync::Arc,
+};
 use tokio::{
     io::{AsyncRead, AsyncWrite},
     net::{TcpListener, TcpStream, ConnectFuture},
@@ -11,7 +14,7 @@ use tokio::{
 };
 
 use conditional::Conditional;
-use ctx::transport::TlsStatus;
+use ctx::{self, transport::TlsStatus};
 use config::Addr;
 use transport::{AddrInfo, BoxedIo, GetOriginalDst, tls};
 
@@ -21,9 +24,11 @@ pub struct BoundPort {
 }
 
 /// Initiates a client connection to the given address.
-pub fn connect(addr: &SocketAddr,
-               tls: tls::ConditionalConnectionConfig<tls::ClientConfig>)
-    -> Connecting
+pub fn connect(
+    addr: &SocketAddr,
+    tls: tls::ConditionalConnectionConfig<tls::ClientConfig>,
+    client_ctx: Option<&Arc<ctx::transport::Client>>,
+) -> Connecting
 {
     let state = ConnectingState::Plaintext {
         connect: TcpStream::connect(addr),
@@ -32,6 +37,7 @@ pub fn connect(addr: &SocketAddr,
     Connecting {
         addr: *addr,
         state,
+        client_ctx: client_ctx.cloned(),
     }
 }
 
@@ -51,6 +57,7 @@ struct ConditionallyUpgradeServerToTlsInner {
 pub struct Connecting {
     addr: SocketAddr,
     state: ConnectingState,
+    client_ctx: Option<Arc<ctx::transport::Client>>,
 }
 
 enum ConnectingState {
@@ -320,6 +327,12 @@ impl Future for Connecting {
                                     -> falling back to plaintext",
                                 self.addr, e,
                             );
+                            if let Some(ref ctx) = self.client_ctx {
+                                // Set the `tls_status` field on the client context
+                                // to "Handshake Failed" so that future telemetry
+                                // events will have the correct status label.
+                                ctx.set_handshake_failed();
+                            }
                             let connect = TcpStream::connect(&self.addr);
                             // TODO: emit a `HandshakeFailed` telemetry event.
                             let reason = tls::ReasonForNoTls::HandshakeFailed;
