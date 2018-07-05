@@ -13,12 +13,17 @@ import { Icon, Layout, Menu } from 'antd';
 import './../../css/sidebar.css';
 
 class Sidebar extends React.Component {
+  static defaultProps = {
+    productName: 'controller'
+  }
+
   static propTypes = {
     api: PropTypes.shape({
-      ConduitLink: PropTypes.func.isRequired,
+      PrefixedLink: PropTypes.func.isRequired,
     }).isRequired,
     location: ReactRouterPropTypes.location.isRequired,
     pathPrefix: PropTypes.string.isRequired,
+    productName: PropTypes.string,
     releaseVersion: PropTypes.string.isRequired,
     uuid: PropTypes.string.isRequired,
   }
@@ -112,7 +117,7 @@ class Sidebar extends React.Component {
 
   render() {
     let normalizedPath = this.props.location.pathname.replace(this.props.pathPrefix, "");
-    let ConduitLink = this.api.ConduitLink;
+    let PrefixedLink = this.api.PrefixedLink;
     let numHiddenNamespaces = _.size(this.state.namespaces) - this.state.maxNsItemsToShow;
 
     return (
@@ -126,15 +131,15 @@ class Sidebar extends React.Component {
         <div className="sidebar">
 
           <div className={`sidebar-menu-header ${this.state.collapsed ? "collapsed" : ""}`}>
-            <ConduitLink to="/servicemesh">
+            <PrefixedLink to="/servicemesh">
               <img
-                alt="Conduit logo"
+                alt="Linkerd logo"
                 src={this.state.collapsed ? logo : wordLogo}
                 onError={e => {
                   // awful hack to deal with the fact that we don't serve assets off absolute paths
                   e.target.src = e.target.src.replace(/(.*)(\/[a-zA-Z]*)(\/dist)(.*)/, "$1$3$4");
                 }} />
-            </ConduitLink>
+            </PrefixedLink>
           </div>
 
           <Menu
@@ -143,27 +148,27 @@ class Sidebar extends React.Component {
             selectedKeys={[normalizedPath]}>
 
             <Menu.Item className="sidebar-menu-item" key="/servicemesh">
-              <ConduitLink to="/servicemesh">
+              <PrefixedLink to="/servicemesh">
                 <Icon type="home" />
                 <span>Service mesh</span>
-              </ConduitLink>
+              </PrefixedLink>
             </Menu.Item>
 
             <Menu.Item className="sidebar-menu-item" key="/namespaces">
-              <ConduitLink to="/namespaces">
+              <PrefixedLink to="/namespaces">
                 <Icon type="dashboard" />
                 <span>Namespaces</span>
-              </ConduitLink>
+              </PrefixedLink>
             </Menu.Item>
 
             {
               _.map(_.take(this.state.namespaces, this.state.maxNsItemsToShow), ns => {
                 return (
                   <Menu.Item className="sidebar-submenu-item" key={`/namespaces/${ns}`}>
-                    <ConduitLink to={`/namespaces/${ns}`}>
+                    <PrefixedLink to={`/namespaces/${ns}`}>
                       <Icon>{this.state.collapsed ? _.take(ns, 2) : <span>&nbsp;&nbsp;</span> }</Icon>
                       <span>{ns} {this.state.collapsed ? "namespace" : ""}</span>
-                    </ConduitLink>
+                    </PrefixedLink>
                   </Menu.Item>
                 );
               })
@@ -172,10 +177,10 @@ class Sidebar extends React.Component {
             { // if we're hiding some namespaces, show a count
               numHiddenNamespaces > 0 ?
                 <Menu.Item className="sidebar-submenu-item" key="extra-items">
-                  <ConduitLink to="/namespaces">
+                  <PrefixedLink to="/namespaces">
                     <Icon>{this.state.collapsed ? <span>...</span> : <span>&nbsp;&nbsp;</span> }</Icon>
                     <span>{numHiddenNamespaces} more namespace{numHiddenNamespaces === 1 ? "" : "s"}</span>
-                  </ConduitLink>
+                  </PrefixedLink>
                 </Menu.Item>
                 : null
             }
@@ -184,10 +189,10 @@ class Sidebar extends React.Component {
               className="sidebar-menu-item"
               key="byresource"
               title={<span className="sidebar-title"><Icon type="bars" />{this.state.collapsed ? "" : "Resources"}</span>}>
-              <Menu.Item><ConduitLink to="/authorities">Authorities</ConduitLink></Menu.Item>
-              <Menu.Item><ConduitLink to="/deployments">Deployments</ConduitLink></Menu.Item>
-              <Menu.Item><ConduitLink to="/pods">Pods</ConduitLink></Menu.Item>
-              <Menu.Item><ConduitLink to="/replicationcontrollers">Replication Controllers</ConduitLink></Menu.Item>
+              <Menu.Item><PrefixedLink to="/authorities">Authorities</PrefixedLink></Menu.Item>
+              <Menu.Item><PrefixedLink to="/deployments">Deployments</PrefixedLink></Menu.Item>
+              <Menu.Item><PrefixedLink to="/pods">Pods</PrefixedLink></Menu.Item>
+              <Menu.Item><PrefixedLink to="/replicationcontrollers">Replication Controllers</PrefixedLink></Menu.Item>
             </Menu.SubMenu>
 
             <Menu.Item className="sidebar-menu-item" key="/docs">
@@ -201,7 +206,7 @@ class Sidebar extends React.Component {
               <Menu.Item className="sidebar-menu-item" key="/update">
                 <Link to="https://versioncheck.conduit.io/update" target="_blank">
                   <Icon type="exclamation-circle-o" className="update" />
-                  <span>Update Conduit</span>
+                  <span>Update {this.props.productName}</span>
                 </Link>
               </Menu.Item>
             )}

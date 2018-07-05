@@ -31,7 +31,7 @@
   margin-top: 18px;
 }
 
-.conduit-table.mesh-completion-table {
+.metric-table.mesh-completion-table {
   & .ant-table-row {
     & td {
       & .container-bar {
@@ -88,13 +88,13 @@ td .status-dot {
 
 
 /* error indicator and modal */
-.conduit-error-icon {
+.controller-error-icon {
   cursor: pointer;
   margin-left: 5px;
   color: var(--siennared);
 }
 
-.conduit-pod-error {
+.controller-pod-error {
   margin-bottom: calc(3 * var(--base-width));
 
   & .container-error {

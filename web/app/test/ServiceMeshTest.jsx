@@ -1,6 +1,6 @@
 import _ from 'lodash';
 import Adapter from 'enzyme-adapter-react-16';
-import conduitPodFixtures from './fixtures/conduitPods.json';
+import podFixtures from './fixtures/podRollup.json';
 import { expect } from 'chai';
 import nsFixtures from './fixtures/namespaces.json';
 import { routerWrap } from './testHelpers.jsx';
@@ -45,7 +45,7 @@ describe('ServiceMesh', () => {
   it("renders the spinner before metrics are loaded", () => {
     component = mount(routerWrap(ServiceMesh));
 
-    expect(component.find("ConduitSpinner")).to.have.length(1);
+    expect(component.find(".ant-spin")).to.have.length(1);
     expect(component.find("ServiceMesh")).to.have.length(1);
     expect(component.find("CallToAction")).to.have.length(0);
   });
@@ -59,8 +59,9 @@ describe('ServiceMesh', () => {
 
     return withPromise(() => {
       component.update();
+      // console.log(component.find("Spin").debug());
       expect(component.find("ServiceMesh")).to.have.length(1);
-      expect(component.find("ConduitSpinner")).to.have.length(0);
+      expect(component.find(".ant-spin")).to.have.length(0);
       expect(component.find("CallToAction")).to.have.length(1);
     });
   });
@@ -68,14 +69,14 @@ describe('ServiceMesh', () => {
   it("renders controller component summaries", () => {
     fetchStub.resolves({
       ok: true,
-      json: () => Promise.resolve(conduitPodFixtures)
+      json: () => Promise.resolve(podFixtures)
     });
     component = mount(routerWrap(ServiceMesh));
 
     return withPromise(() => {
       component.update();
       expect(component.find("ServiceMesh")).to.have.length(1);
-      expect(component.find("ConduitSpinner")).to.have.length(0);
+      expect(component.find(".ant-spin")).to.have.length(0);
     });
   });
 
@@ -89,9 +90,9 @@ describe('ServiceMesh', () => {
     return withPromise(() => {
       component.update();
       expect(component.find("ServiceMesh")).to.have.length(1);
-      expect(component.find("ConduitSpinner")).to.have.length(0);
+      expect(component.find(".ant-spin")).to.have.length(0);
       expect(component.html()).to.include("Service mesh details");
-      expect(component.html()).to.include("Conduit version");
+      expect(component.html()).to.include("ShinyProductName version");
     });
   });
 
@@ -105,7 +106,7 @@ describe('ServiceMesh', () => {
     return withPromise(() => {
       component.update();
       expect(component.find("ServiceMesh")).to.have.length(1);
-      expect(component.find("ConduitSpinner")).to.have.length(0);
+      expect(component.find(".ant-spin")).to.have.length(0);
       expect(component.html()).to.include("Control plane");
     });
   });
@@ -120,7 +121,7 @@ describe('ServiceMesh', () => {
     return withPromise(() => {
       component.update();
       expect(component.find("ServiceMesh")).to.have.length(1);
-      expect(component.find("ConduitSpinner")).to.have.length(0);
+      expect(component.find(".ant-spin")).to.have.length(0);
       expect(component.html()).to.include("Data plane");
     });
   });

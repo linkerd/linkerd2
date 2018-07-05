@@ -74,6 +74,14 @@ h2, h3, h4, h5, h6 {
   float: right;
 }
 
+/* center the spinner */
+.page-content .ant-spin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 75vh;
+}
+
 .page-section {
   margin-bottom: calc(var(--base-width) * 3);
 }
@@ -217,7 +225,7 @@ a.button.primary:active {
   font-family: var(--font-stack);
 }
 
-.conduit-table {
+.metric-table {
   & .ant-table-content {
     font-size: 12px;
   }

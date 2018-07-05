@@ -43,7 +43,7 @@ const formatTitle = (title, tooltipText) => {
 
 };
 
-const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceColumn, ConduitLink, showGrafanaLink) => {
+const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceColumn, PrefixedLink, showGrafanaLink) => {
   let nsColumn = [
     {
       title: formatTitle("Namespace"),
@@ -54,7 +54,7 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
       onFilter: (value, row) => row.namespace.indexOf(value) === 0,
       sorter: (a, b) => (a.namespace || "").localeCompare(b.namespace),
       render: ns => {
-        return <ConduitLink to={"/namespaces/" + ns}>{ns}</ConduitLink>;
+        return <PrefixedLink to={"/namespaces/" + ns}>{ns}</PrefixedLink>;
       }
     }
   ];
@@ -68,7 +68,7 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
       render: row => {
         let nameContents;
         if (resource === "namespace") {
-          nameContents = <ConduitLink to={"/namespaces/" + row.name}>{row.name}</ConduitLink>;
+          nameContents = <PrefixedLink to={"/namespaces/" + row.name}>{row.name}</PrefixedLink>;
         } else if (!row.added) {
           nameContents = row.name;
         } else {
@@ -78,7 +78,7 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
                 name={row.name}
                 namespace={row.namespace}
                 resource={resource}
-                ConduitLink={ConduitLink} />
+                PrefixedLink={PrefixedLink} />
             );
           } else {
             nameContents = row.name;
@@ -158,7 +158,7 @@ export class MetricsTableBase extends BaseTable {
 
   static propTypes = {
     api: PropTypes.shape({
-      ConduitLink: PropTypes.func.isRequired,
+      PrefixedLink: PropTypes.func.isRequired,
     }).isRequired,
     metrics: PropTypes.arrayOf(processedMetricsPropType.isRequired).isRequired,
     resource: PropTypes.string.isRequired,
@@ -226,7 +226,7 @@ export class MetricsTableBase extends BaseTable {
       namespaceFilterText,
       this.onFilterDropdownVisibleChange,
       showNsColumn,
-      this.api.ConduitLink,
+      this.api.PrefixedLink,
       showGrafanaLink
     ));
 
@@ -239,7 +239,7 @@ export class MetricsTableBase extends BaseTable {
         dataSource={tableData.rows}
         columns={columns}
         pagination={false}
-        className="conduit-table"
+        className="metric-table"
         rowKey={r => `${r.namespace}/${r.name}`}
         locale={locale}
         size="middle" />

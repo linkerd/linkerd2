@@ -1,6 +1,5 @@
 import _ from 'lodash';
 import CallToAction from './CallToAction.jsx';
-import ConduitSpinner from "./ConduitSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
 import ErrorModal from './ErrorModal.jsx';
 import { incompleteMeshMessage } from './util/CopyUtils.jsx';
@@ -13,7 +12,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import StatusTable from './StatusTable.jsx';
 import { withContext } from './util/AppContext.jsx';
-import { Col, Row, Table, Tooltip } from 'antd';
+import { Col, Row, Spin, Table, Tooltip } from 'antd';
 import './../../css/service-mesh.css';
 
 const serviceMeshDetailsColumns = [
@@ -50,7 +49,7 @@ const getPodClassification = pod => {
   }
 };
 
-const namespacesColumns = ConduitLink => [
+const namespacesColumns = PrefixedLink => [
   {
     title: "Namespace",
     key: "namespace",
@@ -59,7 +58,7 @@ const namespacesColumns = ConduitLink => [
     render: d => {
       return  (
         <React.Fragment>
-          <ConduitLink to={"/namespaces/" + d.namespace}>{d.namespace}</ConduitLink>
+          <PrefixedLink to={"/namespaces/" + d.namespace}>{d.namespace}</PrefixedLink>
           { _.isEmpty(d.errors) ? null :
           <ErrorModal errors={d.errors} resourceName={d.namespace} resourceType="namespace" />
           }
@@ -121,16 +120,21 @@ const componentsToDeployNames = {
 };
 
 class ServiceMesh extends React.Component {
+  static defaultProps = {
+    productName: 'controller'
+  }
+
   static propTypes = {
     api: PropTypes.shape({
       cancelCurrentRequests: PropTypes.func.isRequired,
-      ConduitLink: PropTypes.func.isRequired,
+      PrefixedLink: PropTypes.func.isRequired,
       fetchMetrics: PropTypes.func.isRequired,
       getCurrentPromises: PropTypes.func.isRequired,
       setCurrentRequests: PropTypes.func.isRequired,
       urlsForResource: PropTypes.func.isRequired,
     }).isRequired,
     controllerNamespace: PropTypes.string.isRequired,
+    productName: PropTypes.string,
     releaseVersion: PropTypes.string.isRequired,
   }
 
@@ -161,8 +165,8 @@ class ServiceMesh extends React.Component {
 
   getServiceMeshDetails() {
     return [
-      { key: 1, name: "Conduit version", value: this.props.releaseVersion },
-      { key: 2, name: "Conduit namespace", value: this.props.controllerNamespace },
+      { key: 1, name: this.props.productName + " version", value: this.props.releaseVersion },
+      { key: 2, name: this.props.productName + " namespace", value: this.props.controllerNamespace },
       { key: 3, name: "Control plane components", value: this.componentCount() },
       { key: 4, name: "Data plane proxies", value: this.proxyCount() }
     ];
@@ -286,7 +290,7 @@ class ServiceMesh extends React.Component {
 
         <div className="service-mesh-table">
           <Table
-            className="conduit-table"
+            className="metric-table"
             dataSource={this.getServiceMeshDetails()}
             columns={serviceMeshDetailsColumns}
             pagination={false}
@@ -332,9 +336,9 @@ class ServiceMesh extends React.Component {
         <Row gutter={16}>
           <Col span={16}>
             <Table
-              className="conduit-table service-mesh-table mesh-completion-table"
+              className="metric-table service-mesh-table mesh-completion-table"
               dataSource={this.state.nsStatuses}
-              columns={namespacesColumns(this.api.ConduitLink)}
+              columns={namespacesColumns(this.api.PrefixedLink)}
               rowKey="namespace"
               rowClassName={rowCn}
               pagination={false}
@@ -350,7 +354,7 @@ class ServiceMesh extends React.Component {
     return (
       <div className="page-content">
         { !this.state.error ? null : <ErrorBanner message={this.state.error} /> }
-        { !this.state.loaded ? <ConduitSpinner /> : (
+        { !this.state.loaded ? <Spin size="large" /> : (
           <div>
             <PageHeader
               header="Service mesh overview"

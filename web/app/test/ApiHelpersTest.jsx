@@ -60,56 +60,56 @@ describe('ApiHelpers', () => {
     });
   });
 
-  describe('ConduitLink', () => {
+  describe('PrefixedLink', () => {
     it('respects default values', () => {
       api = ApiHelpers('/my/path/prefix/web:/foo');
       let linkProps = { to: "/myrelpath", children: ["Informative Link Title"] };
-      let conduitLink = mount(routerWrap(api.ConduitLink, linkProps));
+      let prefixedLink = mount(routerWrap(api.PrefixedLink, linkProps));
 
-      expect(conduitLink.find("Link")).to.have.length(1);
-      expect(conduitLink.html()).to.contain('href="/my/path/prefix/web:/foo/myrelpath"');
-      expect(conduitLink.html()).to.not.contain('target="_blank"');
-      expect(conduitLink.html()).to.contain(linkProps.children[0]);
+      expect(prefixedLink.find("Link")).to.have.length(1);
+      expect(prefixedLink.html()).to.contain('href="/my/path/prefix/web:/foo/myrelpath"');
+      expect(prefixedLink.html()).to.not.contain('target="_blank"');
+      expect(prefixedLink.html()).to.contain(linkProps.children[0]);
     });
 
     it('wraps a relative link with the pathPrefix', () => {
       api = ApiHelpers('/my/path/prefix');
       let linkProps = { to: "/myrelpath", children: ["Informative Link Title"] };
-      let conduitLink = mount(routerWrap(api.ConduitLink, linkProps));
+      let prefixedLink = mount(routerWrap(api.PrefixedLink, linkProps));
 
-      expect(conduitLink.find("Link")).to.have.length(1);
-      expect(conduitLink.html()).to.contain('href="/my/path/prefix/myrelpath"');
-      expect(conduitLink.html()).to.contain(linkProps.children[0]);
+      expect(prefixedLink.find("Link")).to.have.length(1);
+      expect(prefixedLink.html()).to.contain('href="/my/path/prefix/myrelpath"');
+      expect(prefixedLink.html()).to.contain(linkProps.children[0]);
     });
 
     it('wraps a relative link with no pathPrefix', () => {
       api = ApiHelpers('');
       let linkProps = { to: "/myrelpath", children: ["Informative Link Title"] };
-      let conduitLink = mount(routerWrap(api.ConduitLink, linkProps));
+      let prefixedLink = mount(routerWrap(api.PrefixedLink, linkProps));
 
-      expect(conduitLink.find("Link")).to.have.length(1);
-      expect(conduitLink.html()).to.contain('href="/myrelpath"');
-      expect(conduitLink.html()).to.contain(linkProps.children[0]);
+      expect(prefixedLink.find("Link")).to.have.length(1);
+      expect(prefixedLink.html()).to.contain('href="/myrelpath"');
+      expect(prefixedLink.html()).to.contain(linkProps.children[0]);
     });
 
     it('replaces the deployment in a pathPrefix', () => {
       api = ApiHelpers('/my/path/prefix/web:/foo');
       let linkProps = { deployment: "mydeployment", to: "/myrelpath", children: ["Informative Link Title"] };
-      let conduitLink = mount(routerWrap(api.ConduitLink, linkProps));
+      let prefixedLink = mount(routerWrap(api.PrefixedLink, linkProps));
 
-      expect(conduitLink.find("Link")).to.have.length(1);
-      expect(conduitLink.html()).to.contain('href="/my/path/prefix/mydeployment:/foo/myrelpath"');
-      expect(conduitLink.html()).to.contain(linkProps.children[0]);
+      expect(prefixedLink.find("Link")).to.have.length(1);
+      expect(prefixedLink.html()).to.contain('href="/my/path/prefix/mydeployment:/foo/myrelpath"');
+      expect(prefixedLink.html()).to.contain(linkProps.children[0]);
     });
 
     it('sets target=blank', () => {
       api = ApiHelpers('/my/path/prefix');
       let linkProps = { targetBlank: true, to: "/myrelpath", children: ["Informative Link Title"] };
-      let conduitLink = mount(routerWrap(api.ConduitLink, linkProps));
+      let prefixedLink = mount(routerWrap(api.PrefixedLink, linkProps));
 
-      expect(conduitLink.find("Link")).to.have.length(1);
-      expect(conduitLink.html()).to.contain('target="_blank"');
-      expect(conduitLink.html()).to.contain(linkProps.children[0]);
+      expect(prefixedLink.find("Link")).to.have.length(1);
+      expect(prefixedLink.html()).to.contain('target="_blank"');
+      expect(prefixedLink.html()).to.contain(linkProps.children[0]);
     });
   });
 

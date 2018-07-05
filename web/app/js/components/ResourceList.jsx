@@ -1,11 +1,11 @@
 import _ from 'lodash';
-import ConduitSpinner from "./ConduitSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
 import { friendlyTitle } from './util/Utils.js';
 import MetricsTable from './MetricsTable.jsx';
 import PageHeader from './PageHeader.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
+import { Spin } from 'antd';
 import withREST from './util/withREST.jsx';
 import { metricsPropType, processSingleResourceRollup } from './util/MetricUtils.js';
 import './../../css/list.css';
@@ -37,7 +37,7 @@ export class ResourceListBase extends React.Component {
     const {data, loading} = this.props;
 
     if (loading) {
-      return <ConduitSpinner />;
+      return <Spin size="large" />;
     }
 
     let processedMetrics = [];

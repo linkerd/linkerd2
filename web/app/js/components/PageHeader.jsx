@@ -39,8 +39,7 @@ class PageHeader extends React.Component {
     this.setState({selectedWindow: window});
   }
 
-  // don't use time window changing until the results of Telemetry Scalability are in
-  // https://github.com/runconduit/conduit/milestone/4
+  // varying the time window on the web UI is currently hidden
   renderMetricWindowButtons() {
     if (this.props.hideButtons) {return null;}
 
