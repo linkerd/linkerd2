@@ -1,9 +1,10 @@
 import _ from 'lodash';
-import ConduitSpinner from "./ConduitSpinner.jsx";
 import ErrorBanner from './ErrorBanner.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
+import { Spin } from 'antd';
 import { withContext } from './util/AppContext.jsx';
+import withREST from './util/withREST.jsx';
 import * as d3 from 'd3';
 import 'whatwg-fetch';
 
@@ -213,11 +214,15 @@ class NetworkGraph extends React.Component {
     return (
       <div>
         { !this.state.error ? null : <ErrorBanner message={this.state.error} /> }
-        { !this.state.loaded ? <ConduitSpinner /> : null }
+        { !this.state.loaded ? <Spin /> : null }
         <div className="network-graph-container" />
       </div>
     );
   }
 }
 
-export default withContext(NetworkGraph);
+export default withREST(
+  withContext(NetworkGraph),
+  ({api, resource, namespace, deployment}) => [api.fetchMetrics(api.urlsForResource(resource, namespace) + "&to_name=" + deployment.name)],
+  ["deployment", this.props.namespace, {...this.props.deployments}]
+);
