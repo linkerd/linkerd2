@@ -115,16 +115,26 @@ jobs:
           export CONDUIT_TAG=$(. bin/_tag.sh ; clean_head_root_tag)
           echo "CONDUIT_TAG=${CONDUIT_TAG}"
         - export BUILD_DEBUG=1 DOCKER_TRACE=1
-        - export DOCKER_CACHE="$HOME/.cache/docker.tgz" PROXY_BUILD_CACHE_IMAGE="proxy-build:cache"
-        - if [ -f "$DOCKER_CACHE" ]; then gunzip -c "$DOCKER_CACHE" | docker load ; docker image ls "$PROXY_BUILD_CACHE_IMAGE" ; fi
+        - export BUILD_CACHE_SHA_FILE="$HOME/.cache/build-cache-sha"
+        - |
+          if [ -f "$BUILD_CACHE_SHA_FILE" ]; then
+            # If there's a build cache file, use it when building a new build cache image.
+            export PROXY_BUILD_CACHE_IMAGE="gcr.io/runconduit/proxy-build:$(cat $BUILD_CACHE_SHA_FILE)"
+            docker pull $PROXY_BUILD_CACHE_IMAGE
+            docker image ls $PROXY_BUILD_CACHE_IMAGE
+          else
+            echo "Cache SHA file does not exist ($BUILD_CACHE_SHA_FILE)" >&2
+          fi
 
       script:
-        # Build the proxy so that its build stage can be cached for reuse.
-        - docker build . -f ./proxy/Dockerfile --build-arg="PROXY_UNOPTIMIZED=${PROXY_UNOPTIMIZED:-}" --cache-from="$PROXY_BUILD_CACHE_IMAGE" --tag "$PROXY_BUILD_CACHE_IMAGE" --target build
-        # bin/docker-build-proxy uses PROXY_BUILD_CACHE_IMAGE.
+        - |
+          # If there was a prior cache image, it will be used as the basis for new cache.
+          export PROXY_BUILD_CACHE_IMAGE=$(bin/docker-build-proxy-build)
+          # Save off the proxy build cache so it can be reused
+          docker push "$PROXY_BUILD_CACHE_IMAGE"
+          bin/root-tag >$BUILD_CACHE_SHA_FILE
+          echo "Proxy build cache: ${PROXY_BUILD_CACHE_IMAGE}" >&2
         - bin/docker-build
-        # The proxy's build cache is preserved so it can be reused on subsequent runs.
-        - docker save gcr.io/runconduit/proxy-build:cache | gzip -9 >"$DOCKER_CACHE"
 
       after_success:
         - bin/docker-push-deps
