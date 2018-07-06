@@ -8,7 +8,7 @@
               "resource": {
                 "namespace": "",
                 "type": "namespaces",
-                "name": "conduit"
+                "name": "shiny-product"
               },
               "timeWindow": "1m",
               "meshedPodCount": "4",

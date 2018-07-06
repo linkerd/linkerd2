@@ -313,7 +313,7 @@ class ServiceMesh extends React.Component {
     if (numUnadded === 0) {
       return (
         <div className="mesh-completion-message">
-          All namespaces have a conduit install.
+          All namespaces have a {this.props.productName} install.
         </div>
       );
     } else {

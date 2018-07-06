@@ -6,7 +6,7 @@
           "rows": [
             {
               "resource": {
-                "namespace": "conduit",
+                "namespace": "shiny-product",
                 "type": "pods",
                 "name": "web-5f97578cf6-597sr"
               },
@@ -23,7 +23,7 @@
             },
             {
               "resource": {
-                "namespace": "conduit",
+                "namespace": "shiny-product",
                 "type": "pods",
                 "name": "controller-795dd8df6-tjdt6"
               },
@@ -40,7 +40,7 @@
             },
             {
               "resource": {
-                "namespace": "conduit",
+                "namespace": "shiny-product",
                 "type": "pods",
                 "name": "prometheus-595785446-r7rlq"
               },
@@ -51,7 +51,7 @@
             },
             {
               "resource": {
-                "namespace": "conduit",
+                "namespace": "shiny-product",
                 "type": "pods",
                 "name": "grafana-78cdb656bf-v8lsj"
               },
