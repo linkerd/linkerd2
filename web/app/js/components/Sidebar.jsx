@@ -1,14 +1,14 @@
 import _ from 'lodash';
 import ApiHelpers from './util/ApiHelpers.jsx';
 import { Link } from 'react-router-dom';
-import logo from './../../img/logo_only.png';
+import logo from './../../img/logo-only.svg';
 import PropTypes from 'prop-types';
 import React from 'react';
 import ReactRouterPropTypes from 'react-router-prop-types';
 import SocialLinks from './SocialLinks.jsx';
 import Version from './Version.jsx';
 import { withContext } from './util/AppContext.jsx';
-import wordLogo from './../../img/reversed_logo.png';
+import wordLogo from './../../img/word-logo.svg';
 import { Icon, Layout, Menu } from 'antd';
 import './../../css/sidebar.css';
 
