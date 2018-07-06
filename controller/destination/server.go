@@ -11,11 +11,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
-	"k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/cache"
 )
-
-const podIpIndexName = "ip"
 
 type server struct {
 	k8sAPI    *k8s.API
@@ -34,7 +30,6 @@ type server struct {
 // Addresses for the given destination are fetched from the Kubernetes Endpoints
 // API.
 func NewServer(addr, k8sDNSZone string, enableTLS bool, k8sAPI *k8s.API, done chan struct{}) (*grpc.Server, net.Listener, error) {
-	k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{podIpIndexName: indexPodByIp})
 	resolvers, err := buildResolversList(k8sDNSZone, k8sAPI)
 	if err != nil {
 		return nil, nil, err
@@ -92,31 +87,8 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 	return s.streamResolutionUsingCorrectResolverFor(host, port, stream)
 }
 
-func indexPodByIp(obj interface{}) ([]string, error) {
-	if pod, ok := obj.(*v1.Pod); ok {
-		return []string{pod.Status.PodIP}, nil
-	}
-	return []string{""}, fmt.Errorf("object is not a pod")
-}
-
-func (s *server) podsByIp(ip string) ([]*v1.Pod, error) {
-	objs, err := s.k8sAPI.Pod().Informer().GetIndexer().ByIndex(podIpIndexName, ip)
-	if err != nil {
-		return nil, err
-	}
-	pods := make([]*v1.Pod, 0)
-	for _, obj := range objs {
-		pod, ok := obj.(*v1.Pod)
-		if !ok {
-			return nil, fmt.Errorf("not a pod")
-		}
-		pods = append(pods, pod)
-	}
-	return pods, nil
-}
-
 func (s *server) streamResolutionUsingCorrectResolverFor(host string, port int, stream pb.Destination_GetServer) error {
-	listener := newEndpointListener(stream, s.podsByIp, s.k8sAPI.GetOwnerKindAndName, s.enableTLS)
+	listener := newEndpointListener(stream, s.k8sAPI.GetOwnerKindAndName, s.enableTLS)
 
 	for _, resolver := range s.resolvers {
 		resolverCanResolve, err := resolver.canResolve(host, port)
