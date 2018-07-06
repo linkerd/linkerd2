@@ -291,7 +291,9 @@ func promGroupByLabelNames(resource *pb.Resource) model.LabelNames {
 func promDstGroupByLabelNames(resource *pb.Resource) model.LabelNames {
 	names := model.LabelNames{dstNamespaceLabel}
 
-	if resource.Type != k8s.Namespaces {
+	if isNonK8sResourceQuery(resource.GetType()) {
+		names = append(names, promResourceType(resource))
+	} else if resource.Type != k8s.Namespaces {
 		names = append(names, "dst_"+promResourceType(resource))
 	}
 	return names
