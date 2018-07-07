@@ -20,7 +20,7 @@ metadata:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: conduit-controller
+  name: conduit-{{.Namespace}}-controller
 rules:
 - apiGroups: ["extensions", "apps"]
   resources: ["deployments", "replicasets"]
@@ -33,11 +33,11 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: conduit-controller
+  name: conduit-{{.Namespace}}-controller
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: conduit-controller
+  name: conduit-{{.Namespace}}-controller
 subjects:
 - kind: ServiceAccount
   name: conduit-controller
@@ -56,7 +56,7 @@ metadata:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: conduit-prometheus
+  name: conduit-{{.Namespace}}-prometheus
 rules:
 - apiGroups: [""]
   resources: ["nodes", "nodes/proxy", "pods"]
@@ -66,11 +66,11 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: conduit-prometheus
+  name: conduit-{{.Namespace}}-prometheus
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: conduit-prometheus
+  name: conduit-{{.Namespace}}-prometheus
 subjects:
 - kind: ServiceAccount
   name: conduit-prometheus
@@ -627,7 +627,7 @@ metadata:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: conduit-ca
+  name: conduit-{{.Namespace}}-ca
 rules:
 - apiGroups: [""]
   resources: ["configmaps"]
@@ -650,11 +650,11 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: conduit-ca
+  name: conduit-{{.Namespace}}-ca
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: conduit-ca
+  name: conduit-{{.Namespace}}-ca
 subjects:
 - kind: ServiceAccount
   name: conduit-ca
