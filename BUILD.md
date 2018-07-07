@@ -104,7 +104,6 @@ and run Conduit:
 
 - [Comprehensive](#comprehensive): Integrated configuration using Minikube, most
   closely matches release.
-- [Go](#go): Development of the Go components using Docker Compose.
 - [Web](#web): Development of the Conduit Dashboard.
 - [Rust](#Rust): Standalone development of the Rust `proxy`.
 
@@ -146,34 +145,6 @@ bin/conduit stat deployments
 # view a live pipeline of requests
 bin/conduit tap deploy emojivoto/voting
 ```
-
-## Go
-
-These commands assume working [Go](https://golang.org) and
-[Docker](https://www.docker.com/) environments.
-
-To run all of the Go apps in a docker-compose environment:
-
-```bash
-docker-compose build
-docker-compose up -d
-
-# view dashboard
-open http://$DOCKER_IP:8084
-```
-
-If your system is configured to talk to a Kubernetes cluster, you can simulate
-traffic to the docker-compose environment:
-
-```bash
-# confirm you are connected to Kubernetes
-kubectl version
-```
-
-Note that the Kubernetes cluster your system is configured to talk to must not
-be referenced via `localhost` in your Kubernetes config file, as
-`simulate-proxy` will not be able to connect to it.  This includes Kubernetes on
-Docker For Mac.
 
 ### A note about Go run
 
@@ -262,26 +233,6 @@ bin/web run
 ```
 
 The web server will be running on `localhost:8084`.
-
-Note: by default, this requires a `public-api` server and assumes that it is
-running in a Kubernetes cluster. If that isn't the case, you have some other
-options:
-
-#### 1. Connect to `public-api` locally
-
-```bash
-bin/go-run controller/cmd/public-api
-```
-
-#### 2. Connect to `public-api` in docker-compose
-
-Stop the web service, then run it locally and set the `--api-addr` flag to the
-address of the public API server that's running in your docker environment:
-
-```bash
-docker-compose stop web
-bin/web run --api-addr=$DOCKER_IP:8085
-```
 
 ### Webpack dev server
 
