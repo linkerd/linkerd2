@@ -167,7 +167,6 @@ func TestEndpointListener(t *testing.T) {
 
 		add := map[net.TcpAddress]*v1.Pod{
 			addedAddress1: podForAddedAddress1,
-			addedAddress2: pod2,
 		}
 		listener.Update(add, nil)
 
