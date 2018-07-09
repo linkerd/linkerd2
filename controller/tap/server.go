@@ -293,21 +293,24 @@ func translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 
 	tcp := func(orig *netpb.TcpAddress) *public.TcpAddress {
 		ip := func(orig *netpb.IPAddress) *public.IPAddress {
-			if ip := orig.GetIpv6(); ip != nil {
+			switch i := orig.GetIp().(type) {
+			case *netpb.IPAddress_Ipv6:
 				return &public.IPAddress{
 					Ip: &public.IPAddress_Ipv6{
 						Ipv6: &public.IPv6{
-							First: ip.First,
-							Last:  ip.Last,
+							First: i.Ipv6.First,
+							Last:  i.Ipv6.Last,
 						},
 					},
 				}
-			}
-
-			return &public.IPAddress{
-				Ip: &public.IPAddress_Ipv4{
-					Ipv4: orig.GetIpv4(),
-				},
+			case *netpb.IPAddress_Ipv4:
+				return &public.IPAddress{
+					Ip: &public.IPAddress_Ipv4{
+						Ipv4: i.Ipv4,
+					},
+				}
+			default:
+				return nil
 			}
 		}
 
@@ -394,18 +397,21 @@ func translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 
 		case *proxy.TapEvent_Http_ResponseEnd_:
 			eos := func(orig *proxy.Eos) *public.Eos {
-				if eos := orig.GetResetErrorCode(); eos != 0 {
+				switch e := orig.GetEnd().(type) {
+				case *proxy.Eos_ResetErrorCode:
 					return &public.Eos{
 						End: &public.Eos_ResetErrorCode{
-							ResetErrorCode: eos,
+							ResetErrorCode: e.ResetErrorCode,
 						},
 					}
-				}
-
-				return &public.Eos{
-					End: &public.Eos_GrpcStatusCode{
-						GrpcStatusCode: orig.GetGrpcStatusCode(),
-					},
+				case *proxy.Eos_GrpcStatusCode:
+					return &public.Eos{
+						End: &public.Eos_GrpcStatusCode{
+							GrpcStatusCode: e.GrpcStatusCode,
+						},
+					}
+				default:
+					return nil
 				}
 			}
 
