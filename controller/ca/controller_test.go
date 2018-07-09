@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/runconduit/conduit/controller/k8s"
-	pkgK8s "github.com/runconduit/conduit/pkg/k8s"
+	"github.com/linkerd/linkerd2/controller/k8s"
+	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"

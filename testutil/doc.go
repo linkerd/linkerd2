@@ -13,7 +13,7 @@ TestMain function. For example:
 		"os"
 		"testing"
 
-		"github.com/runconduit/conduit/testutil"
+		"github.com/linkerd/linkerd2/testutil"
 	)
 
 	var TestHelper *util.TestHelper

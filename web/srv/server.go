@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
-	pb "github.com/runconduit/conduit/controller/gen/public"
-	"github.com/runconduit/conduit/pkg/filesonly"
-	"github.com/runconduit/conduit/pkg/prometheus"
+	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/filesonly"
+	"github.com/linkerd/linkerd2/pkg/prometheus"
 	log "github.com/sirupsen/logrus"
 )
 

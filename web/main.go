@@ -9,10 +9,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/runconduit/conduit/controller/api/public"
-	"github.com/runconduit/conduit/pkg/admin"
-	"github.com/runconduit/conduit/pkg/version"
-	"github.com/runconduit/conduit/web/srv"
+	"github.com/linkerd/linkerd2/controller/api/public"
+	"github.com/linkerd/linkerd2/pkg/admin"
+	"github.com/linkerd/linkerd2/pkg/version"
+	"github.com/linkerd/linkerd2/web/srv"
 	log "github.com/sirupsen/logrus"
 )
 

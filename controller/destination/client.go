@@ -1,7 +1,7 @@
 package destination
 
 import (
-	pb "github.com/runconduit/conduit/controller/gen/proxy/destination"
+	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"google.golang.org/grpc"
 )
 

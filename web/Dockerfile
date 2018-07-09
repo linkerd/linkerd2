@@ -5,7 +5,7 @@ RUN curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.7.0
 ENV HOME /root
 ENV PATH $HOME/.yarn/bin:$PATH
 ENV GOPATH /go
-ENV PROJECT github.com/runconduit/conduit
+ENV PROJECT github.com/linkerd/linkerd2
 ENV PACKAGE $PROJECT/web/app
 ENV ROOT $GOPATH/src/$PROJECT
 ENV PACKAGEDIR $GOPATH/src/$PACKAGE
@@ -24,8 +24,8 @@ ENV NODE_ENV production
 RUN $ROOT/bin/web build
 
 ## compile go server
-FROM gcr.io/runconduit/go-deps:8b4952a2 as golang
-WORKDIR /go/src/github.com/runconduit/conduit
+FROM gcr.io/linkerd-io/go-deps:34096b37 as golang
+WORKDIR /go/src/github.com/linkerd/linkerd2
 COPY web web
 COPY controller controller
 COPY pkg pkg
@@ -34,11 +34,11 @@ COPY pkg pkg
 RUN CGO_ENABLED=0 GOOS=linux go build -installsuffix cgo -o web/web ./web
 
 ARG CONDUIT_VERSION
-RUN CGO_ENABLED=0 GOOS=linux go build -installsuffix cgo -o web/web -ldflags "-X github.com/runconduit/conduit/pkg/version.Version=$CONDUIT_VERSION" ./web
+RUN CGO_ENABLED=0 GOOS=linux go build -installsuffix cgo -o web/web -ldflags "-X github.com/linkerd/linkerd2/pkg/version.Version=$CONDUIT_VERSION" ./web
 
 ## package it all up
-FROM gcr.io/runconduit/base:2017-10-30.01
-COPY --from=golang /go/src/github.com/runconduit/conduit/web .
+FROM gcr.io/linkerd-io/base:2017-10-30.01
+COPY --from=golang /go/src/github.com/linkerd/linkerd2/web .
 RUN mkdir -p ./dist
-COPY --from=webpack-bundle /go/src/github.com/runconduit/conduit/web/app/dist ./dist
+COPY --from=webpack-bundle /go/src/github.com/linkerd/linkerd2/web/app/dist ./dist
 ENTRYPOINT ["./web"]

@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"net/http"
 
+	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
+	tapPb "github.com/linkerd/linkerd2/controller/gen/controller/tap"
+	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/controller/k8s"
+	"github.com/linkerd/linkerd2/pkg/prometheus"
 	promApi "github.com/prometheus/client_golang/api"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
-	common "github.com/runconduit/conduit/controller/gen/common"
-	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
-	tapPb "github.com/runconduit/conduit/controller/gen/controller/tap"
-	pb "github.com/runconduit/conduit/controller/gen/public"
-	"github.com/runconduit/conduit/controller/k8s"
-	"github.com/runconduit/conduit/pkg/prometheus"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/metadata"
 )
@@ -168,7 +167,7 @@ type tapServer struct {
 	req *http.Request
 }
 
-func (s tapServer) Send(msg *common.TapEvent) error {
+func (s tapServer) Send(msg *pb.TapEvent) error {
 	err := writeProtoToHttpResponse(s.w, msg)
 	if err != nil {
 		writeErrorToHttpResponse(s.w, err)

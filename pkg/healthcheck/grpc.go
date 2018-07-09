@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
+	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	"google.golang.org/grpc"
 )
 

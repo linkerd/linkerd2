@@ -84,7 +84,7 @@ specific language governing permissions and limitations under the License.
 [license-badge]: https://img.shields.io/github/license/linkerd/linkerd.svg
 [logo]: https://user-images.githubusercontent.com/240738/33589722-649152de-d92f-11e7-843a-b078ac889a39.png
 [roadmap]: https://conduit.io/roadmap
-[releases]: https://github.com/runconduit/conduit/releases
+[releases]: https://github.com/linkerd/linkerd2/releases
 [rust]: https://www.rust-lang.org/
 [slack-badge]: http://slack.linkerd.io/badge.svg
 [slack]: http://slack.linkerd.io

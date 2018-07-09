@@ -70,7 +70,7 @@ Visit conduit.io for more information.
 ```
 
 >Alternatively, you can download the CLI directly via the
-[Conduit releases page](https://github.com/runconduit/conduit/releases/v{{% latestversion %}}).
+[Conduit releases page](https://github.com/linkerd/linkerd2/releases/v{{% latestversion %}}).
 
 ### Next, add conduit to your path with:
 #### `export PATH=$PATH:$HOME/.conduit/bin`

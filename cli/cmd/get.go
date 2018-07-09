@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	pb "github.com/runconduit/conduit/controller/gen/public"
-	"github.com/runconduit/conduit/pkg/k8s"
+	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
 )
 

@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/runconduit/conduit/controller/api/public"
-	pb "github.com/runconduit/conduit/controller/gen/public"
-	"github.com/runconduit/conduit/pkg/k8s"
-	"github.com/runconduit/conduit/pkg/version"
+	"github.com/linkerd/linkerd2/controller/api/public"
+	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -92,7 +92,7 @@ type proxyConfigOptions struct {
 
 const (
 	optionalTLS           = "optional"
-	defaultDockerRegistry = "gcr.io/runconduit"
+	defaultDockerRegistry = "gcr.io/linkerd-io"
 )
 
 func newProxyConfigOptions() *proxyConfigOptions {

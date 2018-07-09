@@ -151,6 +151,15 @@
   version = "v1.1"
 
 [[projects]]
+  name = "github.com/linkerd/linkerd2-proxy-api"
+  packages = [
+    "go/destination",
+    "go/net",
+    "go/tap"
+  ]
+  revision = "6886fbf5f10ef0cf45978fe8463c7afb717cb467"
+
+[[projects]]
   name = "github.com/matttproud/golang_protobuf_extensions"
   packages = ["pbutil"]
   revision = "3247c84500bff8d9fb6d579d800f20b3e091582c"
@@ -627,6 +636,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "00652f1de84ed6ae416a1993fbb2d2b0a758b5ea23ad9fb69f7d49afe9267a68"
+  inputs-digest = "54e0dd7c4513ef8ceddf3cbb7e4d20a7b868c4a850b8c5efce81065181e2b745"
   solver-name = "gps-cdcl"
   solver-version = 1

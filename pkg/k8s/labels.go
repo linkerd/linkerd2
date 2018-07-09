@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/runconduit/conduit/pkg/version"
+	"github.com/linkerd/linkerd2/pkg/version"
 	k8sV1 "k8s.io/api/apps/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/julienschmidt/httprouter"
-	"github.com/runconduit/conduit/controller/api/public"
-	pb "github.com/runconduit/conduit/controller/gen/public"
+	"github.com/linkerd/linkerd2/controller/api/public"
+	pb "github.com/linkerd/linkerd2/controller/gen/public"
 )
 
 func TestHandleIndex(t *testing.T) {

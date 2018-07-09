@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/runconduit/conduit/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

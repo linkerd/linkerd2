@@ -11,36 +11,21 @@ branches:
 stages:
   - name: test
   - name: docker-deploy
-    if: branch = master AND type != pull_request
+    if: branch = DOCKER_BUILDS_ARE_CURRENTLY_DISABLED AND type != pull_request
   - name: integration-test
-    if: branch = master AND type != pull_request
+    if: branch = DOCKER_BUILDS_ARE_CURRENTLY_DISABLED AND type != pull_request
 
 jobs:
   include:
-
-    # Compile the application and run tests.
-    - stage: test
-      language: rust
-      rust: stable
-      cache: cargo
-      script:
-        - (cd proxy && cargo test --locked --no-default-features)
-
-    - language: rust
-      # Run proxy benchmarks in development mode. Requires nightly.
-      # Failures are not fatal.
-      rust: nightly-2018-05-26
-      cache: cargo
-      script:
-        - (cd proxy && cargo test --benches --locked --no-default-features)
 
     - language: go
       # Quote the version number to avoid parsing issues like
       # https://github.com/travis-ci/gimme/issues/132.
       go: "1.10.2"
-      go_import_path: github.com/runconduit/conduit
+      go_import_path: github.com/linkerd/linkerd2
       cache:
         directories:
+          - target
           - vendor
       install:
         - ./bin/dep ensure -vendor-only -v
@@ -138,7 +123,7 @@ jobs:
 
       language: go
       go: "1.10.2"
-      go_import_path: github.com/runconduit/conduit
+      go_import_path: github.com/linkerd/linkerd2
       services:
         - docker
 

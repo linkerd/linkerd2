@@ -8,14 +8,14 @@ import (
 	"strings"
 	"time"
 
-	apiUtil "github.com/runconduit/conduit/controller/api/util"
-	common "github.com/runconduit/conduit/controller/gen/common"
-	pb "github.com/runconduit/conduit/controller/gen/controller/tap"
-	proxy "github.com/runconduit/conduit/controller/gen/proxy/tap"
-	public "github.com/runconduit/conduit/controller/gen/public"
-	"github.com/runconduit/conduit/controller/k8s"
-	pkgK8s "github.com/runconduit/conduit/pkg/k8s"
-	"github.com/runconduit/conduit/pkg/prometheus"
+	netpb "github.com/linkerd/linkerd2-proxy-api/go/net"
+	proxy "github.com/linkerd/linkerd2-proxy-api/go/tap"
+	apiUtil "github.com/linkerd/linkerd2/controller/api/util"
+	pb "github.com/linkerd/linkerd2/controller/gen/controller/tap"
+	public "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/controller/k8s"
+	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/prometheus"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -67,7 +67,7 @@ func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_T
 
 	log.Infof("Tapping %d pods for target: %+v", len(pods), *req.Target.Resource)
 
-	events := make(chan *common.TapEvent)
+	events := make(chan *public.TapEvent)
 
 	go func() { // Stop sending back events if the request is cancelled
 		<-stream.Context().Done()
@@ -101,34 +101,34 @@ func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_T
 }
 
 // TODO: validate scheme
-func parseScheme(scheme string) *common.Scheme {
-	value, ok := common.Scheme_Registered_value[strings.ToUpper(scheme)]
+func parseScheme(scheme string) *proxy.Scheme {
+	value, ok := proxy.Scheme_Registered_value[strings.ToUpper(scheme)]
 	if ok {
-		return &common.Scheme{
-			Type: &common.Scheme_Registered_{
-				Registered: common.Scheme_Registered(value),
+		return &proxy.Scheme{
+			Type: &proxy.Scheme_Registered_{
+				Registered: proxy.Scheme_Registered(value),
 			},
 		}
 	}
-	return &common.Scheme{
-		Type: &common.Scheme_Unregistered{
+	return &proxy.Scheme{
+		Type: &proxy.Scheme_Unregistered{
 			Unregistered: strings.ToUpper(scheme),
 		},
 	}
 }
 
 // TODO: validate method
-func parseMethod(method string) *common.HttpMethod {
-	value, ok := common.HttpMethod_Registered_value[strings.ToUpper(method)]
+func parseMethod(method string) *proxy.HttpMethod {
+	value, ok := proxy.HttpMethod_Registered_value[strings.ToUpper(method)]
 	if ok {
-		return &common.HttpMethod{
-			Type: &common.HttpMethod_Registered_{
-				Registered: common.HttpMethod_Registered(value),
+		return &proxy.HttpMethod{
+			Type: &proxy.HttpMethod_Registered_{
+				Registered: proxy.HttpMethod_Registered(value),
 			},
 		}
 	}
-	return &common.HttpMethod{
-		Type: &common.HttpMethod_Unregistered{
+	return &proxy.HttpMethod{
+		Type: &proxy.HttpMethod_Unregistered{
 			Unregistered: strings.ToUpper(method),
 		},
 	}
@@ -239,7 +239,7 @@ func destinationLabels(resource *public.Resource) map[string]string {
 // of maxRps * 10s at most once per 10s window.  If this limit is reached in
 // less than 10s, we sleep until the end of the window before calling Observe
 // again.
-func (s *server) tapProxy(ctx context.Context, maxRps float32, match *proxy.ObserveRequest_Match, addr string, events chan *common.TapEvent) {
+func (s *server) tapProxy(ctx context.Context, maxRps float32, match *proxy.ObserveRequest_Match, addr string, events chan *public.TapEvent) {
 	tapAddr := fmt.Sprintf("%s:%d", addr, s.tapPort)
 	log.Infof("Establishing tap on %s", tapAddr)
 	conn, err := grpc.DialContext(ctx, tapAddr, grpc.WithInsecure())
@@ -271,11 +271,180 @@ func (s *server) tapProxy(ctx context.Context, maxRps float32, match *proxy.Obse
 				log.Error(err)
 				return
 			}
-			events <- event
+			events <- translateEvent(event)
 		}
 		if time.Now().Before(windowEnd) {
 			time.Sleep(time.Until(windowEnd))
 		}
+	}
+}
+
+func translateEvent(orig *proxy.TapEvent) *public.TapEvent {
+	direction := func(orig proxy.TapEvent_ProxyDirection) public.TapEvent_ProxyDirection {
+		switch orig {
+		case proxy.TapEvent_INBOUND:
+			return public.TapEvent_INBOUND
+		case proxy.TapEvent_OUTBOUND:
+			return public.TapEvent_OUTBOUND
+		default:
+			return public.TapEvent_UNKNOWN
+		}
+	}
+
+	tcp := func(orig *netpb.TcpAddress) *public.TcpAddress {
+		ip := func(orig *netpb.IPAddress) *public.IPAddress {
+			switch i := orig.GetIp().(type) {
+			case *netpb.IPAddress_Ipv6:
+				return &public.IPAddress{
+					Ip: &public.IPAddress_Ipv6{
+						Ipv6: &public.IPv6{
+							First: i.Ipv6.First,
+							Last:  i.Ipv6.Last,
+						},
+					},
+				}
+			case *netpb.IPAddress_Ipv4:
+				return &public.IPAddress{
+					Ip: &public.IPAddress_Ipv4{
+						Ipv4: i.Ipv4,
+					},
+				}
+			default:
+				return nil
+			}
+		}
+
+		return &public.TcpAddress{
+			Ip:   ip(orig.GetIp()),
+			Port: orig.GetPort(),
+		}
+	}
+
+	event := func(orig *proxy.TapEvent_Http) *public.TapEvent_Http_ {
+		id := func(orig *proxy.TapEvent_Http_StreamId) *public.TapEvent_Http_StreamId {
+			return &public.TapEvent_Http_StreamId{
+				Base:   orig.GetBase(),
+				Stream: orig.GetStream(),
+			}
+		}
+
+		method := func(orig *proxy.HttpMethod) *public.HttpMethod {
+			switch m := orig.GetType().(type) {
+			case *proxy.HttpMethod_Registered_:
+				return &public.HttpMethod{
+					Type: &public.HttpMethod_Registered_{
+						Registered: public.HttpMethod_Registered(m.Registered),
+					},
+				}
+			case *proxy.HttpMethod_Unregistered:
+				return &public.HttpMethod{
+					Type: &public.HttpMethod_Unregistered{
+						Unregistered: m.Unregistered,
+					},
+				}
+			default:
+				return nil
+			}
+		}
+
+		scheme := func(orig *proxy.Scheme) *public.Scheme {
+			switch s := orig.GetType().(type) {
+			case *proxy.Scheme_Registered_:
+				return &public.Scheme{
+					Type: &public.Scheme_Registered_{
+						Registered: public.Scheme_Registered(s.Registered),
+					},
+				}
+			case *proxy.Scheme_Unregistered:
+				return &public.Scheme{
+					Type: &public.Scheme_Unregistered{
+						Unregistered: s.Unregistered,
+					},
+				}
+			default:
+				return nil
+			}
+		}
+
+		switch orig := orig.GetEvent().(type) {
+		case *proxy.TapEvent_Http_RequestInit_:
+			return &public.TapEvent_Http_{
+				Http: &public.TapEvent_Http{
+					Event: &public.TapEvent_Http_RequestInit_{
+						RequestInit: &public.TapEvent_Http_RequestInit{
+							Id:        id(orig.RequestInit.GetId()),
+							Method:    method(orig.RequestInit.GetMethod()),
+							Scheme:    scheme(orig.RequestInit.GetScheme()),
+							Authority: orig.RequestInit.Authority,
+							Path:      orig.RequestInit.Path,
+						},
+					},
+				},
+			}
+
+		case *proxy.TapEvent_Http_ResponseInit_:
+			return &public.TapEvent_Http_{
+				Http: &public.TapEvent_Http{
+					Event: &public.TapEvent_Http_ResponseInit_{
+						ResponseInit: &public.TapEvent_Http_ResponseInit{
+							Id:               id(orig.ResponseInit.GetId()),
+							SinceRequestInit: orig.ResponseInit.GetSinceRequestInit(),
+							HttpStatus:       orig.ResponseInit.GetHttpStatus(),
+						},
+					},
+				},
+			}
+
+		case *proxy.TapEvent_Http_ResponseEnd_:
+			eos := func(orig *proxy.Eos) *public.Eos {
+				switch e := orig.GetEnd().(type) {
+				case *proxy.Eos_ResetErrorCode:
+					return &public.Eos{
+						End: &public.Eos_ResetErrorCode{
+							ResetErrorCode: e.ResetErrorCode,
+						},
+					}
+				case *proxy.Eos_GrpcStatusCode:
+					return &public.Eos{
+						End: &public.Eos_GrpcStatusCode{
+							GrpcStatusCode: e.GrpcStatusCode,
+						},
+					}
+				default:
+					return nil
+				}
+			}
+
+			return &public.TapEvent_Http_{
+				Http: &public.TapEvent_Http{
+					Event: &public.TapEvent_Http_ResponseEnd_{
+						ResponseEnd: &public.TapEvent_Http_ResponseEnd{
+							Id:                id(orig.ResponseEnd.GetId()),
+							SinceRequestInit:  orig.ResponseEnd.GetSinceRequestInit(),
+							SinceResponseInit: orig.ResponseEnd.GetSinceResponseInit(),
+							ResponseBytes:     orig.ResponseEnd.GetResponseBytes(),
+							Eos:               eos(orig.ResponseEnd.GetEos()),
+						},
+					},
+				},
+			}
+
+		default:
+			return nil
+		}
+	}
+
+	return &public.TapEvent{
+		Source: tcp(orig.GetSource()),
+		SourceMeta: &public.TapEvent_EndpointMeta{
+			Labels: orig.GetSourceMeta().GetLabels(),
+		},
+		Destination: tcp(orig.GetDestination()),
+		DestinationMeta: &public.TapEvent_EndpointMeta{
+			Labels: orig.GetDestinationMeta().GetLabels(),
+		},
+		ProxyDirection: direction(orig.GetProxyDirection()),
+		Event:          event(orig.GetHttp()),
 	}
 }
 

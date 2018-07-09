@@ -4,8 +4,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/runconduit/conduit/controller/api/public"
-	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
+	"github.com/linkerd/linkerd2/controller/api/public"
+	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 )
 
 func TestDashboardAvailability(t *testing.T) {

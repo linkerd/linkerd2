@@ -5,7 +5,7 @@ import (
 	"regexp"
 
 	"github.com/julienschmidt/httprouter"
-	pb "github.com/runconduit/conduit/controller/gen/public"
+	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	log "github.com/sirupsen/logrus"
 )
 

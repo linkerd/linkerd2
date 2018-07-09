@@ -40,25 +40,25 @@ spec:
         - containerPort: 9090
         resources: {}
       - env:
-        - name: CONDUIT_PROXY_LOG
+        - name: LINKERD2_PROXY_LOG
           value: warn,conduit_proxy=info
-        - name: CONDUIT_PROXY_BIND_TIMEOUT
+        - name: LINKERD2_PROXY_BIND_TIMEOUT
           value: 10s
-        - name: CONDUIT_PROXY_CONTROL_URL
+        - name: LINKERD2_PROXY_CONTROL_URL
           value: tcp://proxy-api.conduit.svc.cluster.local:8086
-        - name: CONDUIT_PROXY_CONTROL_LISTENER
+        - name: LINKERD2_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
-        - name: CONDUIT_PROXY_METRICS_LISTENER
+        - name: LINKERD2_PROXY_METRICS_LISTENER
           value: tcp://0.0.0.0:4191
-        - name: CONDUIT_PROXY_PRIVATE_LISTENER
+        - name: LINKERD2_PROXY_PRIVATE_LISTENER
           value: tcp://127.0.0.1:4140
-        - name: CONDUIT_PROXY_PUBLIC_LISTENER
+        - name: LINKERD2_PROXY_PUBLIC_LISTENER
           value: tcp://0.0.0.0:4143
-        - name: CONDUIT_PROXY_POD_NAMESPACE
+        - name: LINKERD2_PROXY_POD_NAMESPACE
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        image: gcr.io/runconduit/proxy:testinjectversion
+        image: gcr.io/linkerd-io/proxy:testinjectversion
         imagePullPolicy: IfNotPresent
         name: conduit-proxy
         ports:
@@ -80,7 +80,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
-        image: gcr.io/runconduit/proxy-init:testinjectversion
+        image: gcr.io/linkerd-io/proxy-init:testinjectversion
         imagePullPolicy: IfNotPresent
         name: conduit-init
         resources: {}
@@ -134,25 +134,25 @@ spec:
         - containerPort: 9090
         resources: {}
       - env:
-        - name: CONDUIT_PROXY_LOG
+        - name: LINKERD2_PROXY_LOG
           value: warn,conduit_proxy=info
-        - name: CONDUIT_PROXY_BIND_TIMEOUT
+        - name: LINKERD2_PROXY_BIND_TIMEOUT
           value: 10s
-        - name: CONDUIT_PROXY_CONTROL_URL
+        - name: LINKERD2_PROXY_CONTROL_URL
           value: tcp://proxy-api.conduit.svc.cluster.local:8086
-        - name: CONDUIT_PROXY_CONTROL_LISTENER
+        - name: LINKERD2_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
-        - name: CONDUIT_PROXY_METRICS_LISTENER
+        - name: LINKERD2_PROXY_METRICS_LISTENER
           value: tcp://0.0.0.0:4191
-        - name: CONDUIT_PROXY_PRIVATE_LISTENER
+        - name: LINKERD2_PROXY_PRIVATE_LISTENER
           value: tcp://127.0.0.1:4140
-        - name: CONDUIT_PROXY_PUBLIC_LISTENER
+        - name: LINKERD2_PROXY_PUBLIC_LISTENER
           value: tcp://0.0.0.0:4143
-        - name: CONDUIT_PROXY_POD_NAMESPACE
+        - name: LINKERD2_PROXY_POD_NAMESPACE
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        image: gcr.io/runconduit/proxy:testinjectversion
+        image: gcr.io/linkerd-io/proxy:testinjectversion
         imagePullPolicy: IfNotPresent
         name: conduit-proxy
         ports:
@@ -174,7 +174,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
-        image: gcr.io/runconduit/proxy-init:testinjectversion
+        image: gcr.io/linkerd-io/proxy-init:testinjectversion
         imagePullPolicy: IfNotPresent
         name: conduit-init
         resources: {}

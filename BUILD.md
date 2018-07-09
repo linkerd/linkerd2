@@ -134,7 +134,7 @@ bin/conduit check --expected-version $(bin/root-tag)
 bin/conduit dashboard
 
 # install the demo app
-curl https://raw.githubusercontent.com/runconduit/conduit-examples/master/emojivoto/emojivoto.yml | bin/conduit inject - | kubectl apply -f -
+curl https://raw.githubusercontent.com/linkerd/linkerd2-examples/master/emojivoto/emojivoto.yml | bin/conduit inject - | kubectl apply -f -
 
 # view demo app
 minikube -n emojivoto service web-svc --url
@@ -262,10 +262,10 @@ To build and run the Rust proxy:
 
 ```bash
 cargo build -p conduit-proxy
-CONDUIT_PROXY_LOG=trace \
-  CONDUIT_PROXY_PUBLIC_LISTENER=tcp://0.0.0.0:5432 \
-  CONDUIT_PROXY_PRIVATE_FORWARD=tcp://127.0.0.1:1234 \
-  CONDUIT_PROXY_CONTROL_URL=tcp://127.0.0.1:8086 \
+LINKERD2_PROXY_LOG=trace \
+  LINKERD2_PROXY_PUBLIC_LISTENER=tcp://0.0.0.0:5432 \
+  LINKERD2_PROXY_PRIVATE_FORWARD=tcp://127.0.0.1:1234 \
+  LINKERD2_PROXY_CONTROL_URL=tcp://127.0.0.1:8086 \
   target/debug/conduit-proxy
 ```
 
@@ -314,7 +314,7 @@ bin/protoc-go.sh
 The Rust proxy and Go Docker images rely on base dependency images with
 hard-coded SHA's:
 
-`gcr.io/runconduit/go-deps` depends on
+`gcr.io/linkerd-io/go-deps` depends on
 - [`Gopkg.lock`](Gopkg.lock)
 - [`Dockerfile-go-deps`](Dockerfile-go-deps)
 

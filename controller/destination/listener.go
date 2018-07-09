@@ -1,10 +1,10 @@
 package destination
 
 import (
-	common "github.com/runconduit/conduit/controller/gen/common"
-	pb "github.com/runconduit/conduit/controller/gen/proxy/destination"
-	"github.com/runconduit/conduit/pkg/addr"
-	pkgK8s "github.com/runconduit/conduit/pkg/k8s"
+	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
+	net "github.com/linkerd/linkerd2-proxy-api/go/net"
+	"github.com/linkerd/linkerd2/pkg/addr"
+	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	coreV1 "k8s.io/api/core/v1"
 )
@@ -13,7 +13,7 @@ type podsByIpFn func(string) ([]*coreV1.Pod, error)
 type ownerKindAndNameFn func(*coreV1.Pod) (string, string)
 
 type updateListener interface {
-	Update(add []common.TcpAddress, remove []common.TcpAddress)
+	Update(add []net.TcpAddress, remove []net.TcpAddress)
 	ClientClose() <-chan struct{}
 	ServerClose() <-chan struct{}
 	NoEndpoints(exists bool)
@@ -68,7 +68,7 @@ func (l *endpointListener) SetServiceId(id *serviceId) {
 	}
 }
 
-func (l *endpointListener) Update(add []common.TcpAddress, remove []common.TcpAddress) {
+func (l *endpointListener) Update(add []net.TcpAddress, remove []net.TcpAddress) {
 	if len(add) > 0 {
 		update := &pb.Update{
 			Update: &pb.Update_Add{
@@ -104,7 +104,7 @@ func (l *endpointListener) NoEndpoints(exists bool) {
 	l.stream.Send(update)
 }
 
-func (l *endpointListener) toWeightedAddrSet(endpoints []common.TcpAddress) *pb.WeightedAddrSet {
+func (l *endpointListener) toWeightedAddrSet(endpoints []net.TcpAddress) *pb.WeightedAddrSet {
 	addrs := make([]*pb.WeightedAddr, 0)
 	for _, address := range endpoints {
 		addrs = append(addrs, l.toWeightedAddr(address))
@@ -116,10 +116,10 @@ func (l *endpointListener) toWeightedAddrSet(endpoints []common.TcpAddress) *pb.
 	}
 }
 
-func (l *endpointListener) toWeightedAddr(address common.TcpAddress) *pb.WeightedAddr {
+func (l *endpointListener) toWeightedAddr(address net.TcpAddress) *pb.WeightedAddr {
 	var tlsIdentity *pb.TlsIdentity
 	metricLabelsForPod := map[string]string{}
-	ipAsString := addr.IPToString(address.Ip)
+	ipAsString := addr.ProxyIPToString(address.Ip)
 
 	resultingPods, err := l.podsByIp(ipAsString)
 	if err != nil {
@@ -148,8 +148,8 @@ func (l *endpointListener) toWeightedAddr(address common.TcpAddress) *pb.Weighte
 	}
 }
 
-func (l *endpointListener) toAddrSet(endpoints []common.TcpAddress) *pb.AddrSet {
-	addrs := make([]*common.TcpAddress, 0)
+func (l *endpointListener) toAddrSet(endpoints []net.TcpAddress) *pb.AddrSet {
+	addrs := make([]*net.TcpAddress, 0)
 	for i := range endpoints {
 		addrs = append(addrs, &endpoints[i])
 	}

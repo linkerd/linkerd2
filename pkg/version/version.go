@@ -10,9 +10,9 @@ import (
 	"os"
 	"time"
 
-	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
-	pb "github.com/runconduit/conduit/controller/gen/public"
-	"github.com/runconduit/conduit/pkg/healthcheck"
+	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
+	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	log "github.com/sirupsen/logrus"
 )
 

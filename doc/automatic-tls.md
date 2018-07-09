@@ -60,6 +60,6 @@ to do][tls-issues]. We **LOVE** bug reports though, so please don't hesitate
 to [file an issue][new-issue] if you run into any problems while testing
 automatic TLS.
 
-[conduit-v0.5.0]: https://github.com/runconduit/conduit/releases/tag/v0.5.0
-[tls-issues]: https://github.com/runconduit/conduit/issues?q=is%3Aissue+is%3Aopen+label%3Aarea%2Ftls
-[new-issue]: https://github.com/runconduit/conduit/issues/new
+[conduit-v0.5.0]: https://github.com/linkerd/linkerd2/releases/tag/v0.5.0
+[tls-issues]: https://github.com/linkerd/linkerd2/issues?q=is%3Aissue+is%3Aopen+label%3Aarea%2Ftls
+[new-issue]: https://github.com/linkerd/linkerd2/issues/new

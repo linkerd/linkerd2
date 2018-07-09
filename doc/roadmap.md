@@ -15,7 +15,7 @@ overly conservative.
 
 
 ##### Status: alpha
-## [0.4.1: Rich, Kubernetes-aware debugging](https://github.com/runconduit/conduit/milestone/10)
+## [0.4.1: Rich, Kubernetes-aware debugging](https://github.com/linkerd/linkerd2/milestone/10)
 #### 2018-04-26
 
 ### Visibility
@@ -26,7 +26,7 @@ overly conservative.
 - `conduit tap` works on many Kubernetes resources, too.
 - Grafana dashboards for Kubernetes Pods, Services, & Replication Controllers.
 
-## [0.5: Stable, private communication](https://github.com/runconduit/conduit/milestone/7)
+## [0.5: Stable, private communication](https://github.com/linkerd/linkerd2/milestone/7)
 #### Mid-May 2018
 
 ### Security
@@ -46,7 +46,7 @@ overly conservative.
 - `conduit wtf`: what's the failure?
 
 
-## [0.6: Externally accessible](https://github.com/runconduit/conduit/milestone/8)
+## [0.6: Externally accessible](https://github.com/linkerd/linkerd2/milestone/8)
 #### Early June 2018
 
 ### Routing

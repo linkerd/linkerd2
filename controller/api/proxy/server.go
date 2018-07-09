@@ -4,9 +4,8 @@ import (
 	"io"
 	"net"
 
-	common "github.com/runconduit/conduit/controller/gen/common"
-	destination "github.com/runconduit/conduit/controller/gen/proxy/destination"
-	"github.com/runconduit/conduit/pkg/prometheus"
+	destination "github.com/linkerd/linkerd2-proxy-api/go/destination"
+	"github.com/linkerd/linkerd2/pkg/prometheus"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 )
@@ -17,7 +16,7 @@ type (
 	}
 )
 
-func (s *server) Get(dest *common.Destination, stream destination.Destination_GetServer) error {
+func (s *server) Get(dest *destination.GetDestination, stream destination.Destination_GetServer) error {
 	log := log.WithFields(
 		log.Fields{
 			"scheme": dest.Scheme,

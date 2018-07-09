@@ -7,10 +7,9 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/runconduit/conduit/controller/destination"
-	common "github.com/runconduit/conduit/controller/gen/common"
-	pb "github.com/runconduit/conduit/controller/gen/proxy/destination"
-	addrUtil "github.com/runconduit/conduit/pkg/addr"
+	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
+	"github.com/linkerd/linkerd2/controller/destination"
+	addrUtil "github.com/linkerd/linkerd2/pkg/addr"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -29,7 +28,7 @@ func main() {
 	}
 	defer conn.Close()
 
-	req := &common.Destination{
+	req := &pb.GetDestination{
 		Scheme: "k8s",
 		Path:   *path,
 	}
@@ -53,7 +52,7 @@ func main() {
 			log.Println("Add:")
 			log.Printf("labels: %v", updateType.Add.MetricLabels)
 			for _, addr := range updateType.Add.Addrs {
-				log.Printf("- %s:%d", addrUtil.IPToString(addr.Addr.GetIp()), addr.Addr.Port)
+				log.Printf("- %s:%d", addrUtil.ProxyIPToString(addr.Addr.GetIp()), addr.Addr.Port)
 				log.Printf("  - labels: %v", addr.MetricLabels)
 				switch identityType := addr.GetTlsIdentity().GetStrategy().(type) {
 				case *pb.TlsIdentity_K8SPodIdentity_:
@@ -65,7 +64,7 @@ func main() {
 		case *pb.Update_Remove:
 			log.Println("Remove:")
 			for _, addr := range updateType.Remove.Addrs {
-				log.Printf("- %s:%d", addrUtil.IPToString(addr.GetIp()), addr.Port)
+				log.Printf("- %s:%d", addrUtil.ProxyIPToString(addr.GetIp()), addr.Port)
 			}
 			log.Println()
 		case *pb.Update_NoEndpoints:

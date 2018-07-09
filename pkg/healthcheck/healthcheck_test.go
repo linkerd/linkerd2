@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
+	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 )
 
 type mockSubsystem struct {
@@ -69,13 +69,13 @@ func TestSelfChecker(t *testing.T) {
 			t.Fatalf("Expecting observed check to contain [%d] check, got [%d]", expectedLength, observedLength)
 		}
 
-		observedResultsSet := make(map[healthcheckPb.CheckResult]bool)
+		observedResultsSet := make(map[string]bool)
 		for _, result := range observedResults {
-			observedResultsSet[*result] = true
+			observedResultsSet[result.CheckDescription] = true
 		}
 
 		for _, expected := range expectedResults {
-			if !observedResultsSet[*expected] {
+			if !observedResultsSet[expected.CheckDescription] {
 				t.Fatalf("Expected observed results to contain [%v], but was: %v", expected,
 					reflect.ValueOf(observedResultsSet).MapKeys())
 			}

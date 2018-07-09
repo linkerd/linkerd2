@@ -3,20 +3,20 @@ package destination
 import (
 	"context"
 
-	common "github.com/runconduit/conduit/controller/gen/common"
+	"github.com/linkerd/linkerd2-proxy-api/go/net"
 )
 
 // implements the updateListener interface
 type collectUpdateListener struct {
-	added             []common.TcpAddress
-	removed           []common.TcpAddress
+	added             []net.TcpAddress
+	removed           []net.TcpAddress
 	noEndpointsCalled bool
 	noEndpointsExists bool
 	context           context.Context
 	stopCh            chan struct{}
 }
 
-func (c *collectUpdateListener) Update(add []common.TcpAddress, remove []common.TcpAddress) {
+func (c *collectUpdateListener) Update(add []net.TcpAddress, remove []net.TcpAddress) {
 	c.added = append(c.added, add...)
 	c.removed = append(c.removed, remove...)
 }

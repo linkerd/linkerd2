@@ -7,10 +7,9 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/runconduit/conduit/controller/api/util"
-	common "github.com/runconduit/conduit/controller/gen/common"
-	pb "github.com/runconduit/conduit/controller/gen/public"
-	"github.com/runconduit/conduit/pkg/addr"
+	"github.com/linkerd/linkerd2/controller/api/util"
+	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/addr"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/codes"
@@ -240,10 +239,10 @@ func writeTapEventsToBuffer(tapClient pb.Api_TapByResourceClient, w *tabwriter.W
 	return nil
 }
 
-func renderTapEvent(event *common.TapEvent) string {
+func renderTapEvent(event *pb.TapEvent) string {
 	dstLabels := event.GetDestinationMeta().GetLabels()
 
-	dst := addr.AddressToString(event.GetDestination())
+	dst := addr.PublicAddressToString(event.GetDestination())
 	if pod := dstLabels["pod"]; pod != "" {
 		dst = fmt.Sprintf("%s:%d", pod, event.GetDestination().GetPort())
 	}
@@ -251,11 +250,11 @@ func renderTapEvent(event *common.TapEvent) string {
 	proxy := "???"
 	tls := ""
 	switch event.GetProxyDirection() {
-	case common.TapEvent_INBOUND:
+	case pb.TapEvent_INBOUND:
 		proxy = "in " // A space is added so it aligns with `out`.
 		srcLabels := event.GetSourceMeta().GetLabels()
 		tls = srcLabels["tls"]
-	case common.TapEvent_OUTBOUND:
+	case pb.TapEvent_OUTBOUND:
 		proxy = "out"
 		tls = dstLabels["tls"]
 	default:
@@ -264,13 +263,13 @@ func renderTapEvent(event *common.TapEvent) string {
 
 	flow := fmt.Sprintf("proxy=%s src=%s dst=%s tls=%s",
 		proxy,
-		addr.AddressToString(event.GetSource()),
+		addr.PublicAddressToString(event.GetSource()),
 		dst,
 		tls,
 	)
 
 	switch ev := event.GetHttp().GetEvent().(type) {
-	case *common.TapEvent_Http_RequestInit_:
+	case *pb.TapEvent_Http_RequestInit_:
 		return fmt.Sprintf("req id=%d:%d %s :method=%s :authority=%s :path=%s",
 			ev.RequestInit.GetId().GetBase(),
 			ev.RequestInit.GetId().GetStream(),
@@ -280,7 +279,7 @@ func renderTapEvent(event *common.TapEvent) string {
 			ev.RequestInit.GetPath(),
 		)
 
-	case *common.TapEvent_Http_ResponseInit_:
+	case *pb.TapEvent_Http_ResponseInit_:
 		return fmt.Sprintf("rsp id=%d:%d %s :status=%d latency=%dµs",
 			ev.ResponseInit.GetId().GetBase(),
 			ev.ResponseInit.GetId().GetStream(),
@@ -289,9 +288,9 @@ func renderTapEvent(event *common.TapEvent) string {
 			ev.ResponseInit.GetSinceRequestInit().GetNanos()/1000,
 		)
 
-	case *common.TapEvent_Http_ResponseEnd_:
+	case *pb.TapEvent_Http_ResponseEnd_:
 		switch eos := ev.ResponseEnd.GetEos().GetEnd().(type) {
-		case *common.Eos_GrpcStatusCode:
+		case *pb.Eos_GrpcStatusCode:
 			return fmt.Sprintf("end id=%d:%d %s grpc-status=%s duration=%dµs response-length=%dB",
 				ev.ResponseEnd.GetId().GetBase(),
 				ev.ResponseEnd.GetId().GetStream(),
@@ -301,7 +300,7 @@ func renderTapEvent(event *common.TapEvent) string {
 				ev.ResponseEnd.GetResponseBytes(),
 			)
 
-		case *common.Eos_ResetErrorCode:
+		case *pb.Eos_ResetErrorCode:
 			return fmt.Sprintf("end id=%d:%d %s reset-error=%+v duration=%dµs response-length=%dB",
 				ev.ResponseEnd.GetId().GetBase(),
 				ev.ResponseEnd.GetId().GetStream(),

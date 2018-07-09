@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	pb "github.com/runconduit/conduit/controller/gen/proxy/destination"
-	"github.com/runconduit/conduit/controller/k8s"
+	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
+	"github.com/linkerd/linkerd2/controller/k8s"
 	"google.golang.org/grpc/metadata"
 )
 

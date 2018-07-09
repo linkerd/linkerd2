@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/runconduit/conduit/controller/api/public"
-	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
-	pb "github.com/runconduit/conduit/controller/gen/public"
-	"github.com/runconduit/conduit/pkg/version"
+	"github.com/linkerd/linkerd2/controller/api/public"
+	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
+	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/version"
 )
 
 func TestVersionCheck(t *testing.T) {

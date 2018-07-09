@@ -8,15 +8,14 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	common "github.com/runconduit/conduit/controller/gen/common"
-	healcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
-	pb "github.com/runconduit/conduit/controller/gen/public"
+	healcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
+	pb "github.com/linkerd/linkerd2/controller/gen/public"
 )
 
 type mockGrpcServer struct {
 	LastRequestReceived proto.Message
 	ResponseToReturn    proto.Message
-	TapStreamsToReturn  []*common.TapEvent
+	TapStreamsToReturn  []*pb.TapEvent
 	ErrorToReturn       error
 }
 
@@ -160,19 +159,19 @@ func TestServer(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		expectedTapResponses := []*common.TapEvent{
+		expectedTapResponses := []*pb.TapEvent{
 			{
-				Destination: &common.TcpAddress{
+				Destination: &pb.TcpAddress{
 					Port: 9999,
 				},
-				Source: &common.TcpAddress{
+				Source: &pb.TcpAddress{
 					Port: 6666,
 				},
 			}, {
-				Destination: &common.TcpAddress{
+				Destination: &pb.TcpAddress{
 					Port: 2102,
 				},
-				Source: &common.TcpAddress{
+				Source: &pb.TcpAddress{
 					Port: 1983,
 				},
 			},

@@ -98,6 +98,6 @@ Describe the testing you've done to validate your change.  Performance-related
 changes should include before- and after- benchmark results.
 
 [discourse]: https://discourse.linkerd.io/c/conduit
-[issue]: https://github.com/runconduit/conduit/issues/new
+[issue]: https://github.com/linkerd/linkerd2/issues/new
 [members]: https://github.com/orgs/runconduit/people
 [slack]: http://slack.linkerd.io/

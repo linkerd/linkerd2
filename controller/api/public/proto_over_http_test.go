@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	pb "github.com/runconduit/conduit/controller/gen/public"
+	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
