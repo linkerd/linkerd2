@@ -14,4 +14,4 @@ RUN (latest=$(awk '{print $2}' latest.txt) ; \
 
 FROM gcr.io/linkerd-io/base:2017-10-30.01 as runtime
 COPY --from=fetch linkerd2-proxy /usr/local/bin/linkerd2-proxy
-ENTRYPOINT ["/usr/bin/local/linkerd2-proxy"]
+ENTRYPOINT ["/usr/local/bin/linkerd2-proxy"]
