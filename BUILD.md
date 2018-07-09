@@ -314,7 +314,7 @@ bin/protoc-go.sh
 The Rust proxy and Go Docker images rely on base dependency images with
 hard-coded SHA's:
 
-`gcr.io/runconduit/go-deps` depends on
+`gcr.io/linkerd-io/go-deps` depends on
 - [`Gopkg.lock`](Gopkg.lock)
 - [`Dockerfile-go-deps`](Dockerfile-go-deps)
 

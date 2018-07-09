@@ -6,7 +6,7 @@ bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # TODO this should be set to the canonical public docker regsitry; we can override this
 # docker regsistry in, for instance, CI.
-export DOCKER_REGISTRY="${DOCKER_REGISTRY:-gcr.io/runconduit}"
+export DOCKER_REGISTRY="${DOCKER_REGISTRY:-gcr.io/linkerd-io}"
 
 # When set, causes docker's build output to be emitted to stderr.
 export DOCKER_TRACE="${DOCKER_TRACE:-}"

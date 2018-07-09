@@ -70,7 +70,7 @@ spec:
           containerPort: 8080
       initContainers:
       - name: conduit-init
-        image: gcr.io/runconduit/proxy-init:latest
+        image: gcr.io/linkerd-io/proxy-init:latest
         imagePullPolicy: Never
         args: ["-p", "8080",  "-o", "8080", "-u", "2102"]
         securityContext:
@@ -114,7 +114,7 @@ spec:
           runAsUser: 2102
       initContainers:
       - name: conduit-init
-        image: gcr.io/runconduit/proxy-init:latest
+        image: gcr.io/linkerd-io/proxy-init:latest
         imagePullPolicy: Never
         args: ["-p", "8080",  "-o", "8080", "-u", "2102", "-r", "9090", "-r", "9099"]
         securityContext:
@@ -165,7 +165,7 @@ spec:
           containerPort: 7070
       initContainers:
       - name: conduit-init
-        image: gcr.io/runconduit/proxy-init:latest
+        image: gcr.io/linkerd-io/proxy-init:latest
         imagePullPolicy: Never
         args: ["-p", "8080",  "-o", "8080", "-u", "2102", "--inbound-ports-to-ignore", "7070"]
         securityContext:

@@ -211,7 +211,7 @@ Start by building and tagging the `proxy-init` image required for the test:
 
 ```bash
 DOCKER_TRACE=1 bin/mkube bin/docker-build-proxy-init
-bin/mkube docker tag gcr.io/runconduit/proxy-init:`bin/root-tag` gcr.io/runconduit/proxy-init:latest
+bin/mkube docker tag gcr.io/linkerd-io/proxy-init:`bin/root-tag` gcr.io/linkerd-io/proxy-init:latest
 ```
 
 The run the tests with:

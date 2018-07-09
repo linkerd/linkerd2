@@ -92,7 +92,7 @@ type proxyConfigOptions struct {
 
 const (
 	optionalTLS           = "optional"
-	defaultDockerRegistry = "gcr.io/runconduit"
+	defaultDockerRegistry = "gcr.io/linkerd-io"
 )
 
 func newProxyConfigOptions() *proxyConfigOptions {

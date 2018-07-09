@@ -51,7 +51,7 @@ spec:
       value: conduit
     - name: CONDUIT_PROXY_TLS_CONTROLLER_IDENTITY
       value: controller.deployment.conduit.conduit-managed.conduit.svc.cluster.local
-    image: gcr.io/runconduit/proxy:testinjectversion
+    image: gcr.io/linkerd-io/proxy:testinjectversion
     imagePullPolicy: IfNotPresent
     name: conduit-proxy
     ports:
@@ -80,7 +80,7 @@ spec:
     - "2102"
     - --inbound-ports-to-ignore
     - 4190,4191
-    image: gcr.io/runconduit/proxy-init:testinjectversion
+    image: gcr.io/linkerd-io/proxy-init:testinjectversion
     imagePullPolicy: IfNotPresent
     name: conduit-init
     resources: {}

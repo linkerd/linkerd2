@@ -144,7 +144,7 @@ spec:
         - -controller-namespace=conduit
         - -log-level=info
         - -logtostderr=true
-        image: gcr.io/runconduit/controller:undefined
+        image: gcr.io/linkerd-io/controller:undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -168,7 +168,7 @@ spec:
         - -enable-tls=false
         - -log-level=info
         - -logtostderr=true
-        image: gcr.io/runconduit/controller:undefined
+        image: gcr.io/linkerd-io/controller:undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -192,7 +192,7 @@ spec:
         - -addr=:8086
         - -log-level=info
         - -logtostderr=true
-        image: gcr.io/runconduit/controller:undefined
+        image: gcr.io/linkerd-io/controller:undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -215,7 +215,7 @@ spec:
         - tap
         - -log-level=info
         - -logtostderr=true
-        image: gcr.io/runconduit/controller:undefined
+        image: gcr.io/linkerd-io/controller:undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -253,7 +253,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        image: gcr.io/runconduit/proxy:undefined
+        image: gcr.io/linkerd-io/proxy:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-proxy
         ports:
@@ -275,7 +275,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
-        image: gcr.io/runconduit/proxy-init:undefined
+        image: gcr.io/linkerd-io/proxy-init:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-init
         resources: {}
@@ -342,7 +342,7 @@ spec:
         - -uuid=deaab91a-f4ab-448a-b7d1-c832a2fa0a60
         - -controller-namespace=conduit
         - -log-level=info
-        image: gcr.io/runconduit/web:undefined
+        image: gcr.io/linkerd-io/web:undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -380,7 +380,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        image: gcr.io/runconduit/proxy:undefined
+        image: gcr.io/linkerd-io/proxy:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-proxy
         ports:
@@ -402,7 +402,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
-        image: gcr.io/runconduit/proxy-init:undefined
+        image: gcr.io/linkerd-io/proxy-init:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-init
         resources: {}
@@ -503,7 +503,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        image: gcr.io/runconduit/proxy:undefined
+        image: gcr.io/linkerd-io/proxy:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-proxy
         ports:
@@ -525,7 +525,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
-        image: gcr.io/runconduit/proxy-init:undefined
+        image: gcr.io/linkerd-io/proxy-init:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-init
         resources: {}
@@ -699,7 +699,7 @@ spec:
         conduit.io/proxy-deployment: grafana
     spec:
       containers:
-      - image: gcr.io/runconduit/grafana:undefined
+      - image: gcr.io/linkerd-io/grafana:undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -741,7 +741,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        image: gcr.io/runconduit/proxy:undefined
+        image: gcr.io/linkerd-io/proxy:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-proxy
         ports:
@@ -763,7 +763,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
-        image: gcr.io/runconduit/proxy-init:undefined
+        image: gcr.io/linkerd-io/proxy-init:undefined
         imagePullPolicy: IfNotPresent
         name: conduit-init
         resources: {}
