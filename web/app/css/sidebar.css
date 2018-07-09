@@ -93,7 +93,7 @@ ul.ant-menu.ant-menu-sub {
   }
 }
 
-.ant-layout .ant-layout-sider .ant-layout-sider-trigger {
+.ant-layout .ant-layout-sider, .ant-layout .ant-layout-sider .ant-layout-sider-trigger {
   /* override ant color */
   background: var(--sider-black);
 }
