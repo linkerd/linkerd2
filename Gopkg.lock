@@ -153,14 +153,13 @@
   version = "v1.1"
 
 [[projects]]
-  branch = "ver/goproto110"
   name = "github.com/linkerd/linkerd2-proxy-api"
   packages = [
     "go/destination",
     "go/net",
     "go/tap"
   ]
-  revision = "7605aac5c4cdc82d8e79137cf69de36325d850ab"
+  revision = "d9f9ee748737f55f2481d74ae83d509d32bd7469"
 
 [[projects]]
   name = "github.com/matttproud/golang_protobuf_extensions"
@@ -215,12 +214,6 @@
     "xfs"
   ]
   revision = "cb4147076ac75738c9a7d279075a253c0cc5acbd"
-
-[[projects]]
-  branch = "kl/proto-upgrade"
-  name = "github.com/runconduit/conduit"
-  packages = ["controller/gen/common"]
-  revision = "7e0946b2daaf1f6d38ccc47e536bdf49664ff8cc"
 
 [[projects]]
   name = "github.com/satori/go.uuid"
@@ -645,6 +638,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "aa7154a2b2c8106c8ac363a52682cd86db2af4366b3b86a85720433e5a566579"
+  inputs-digest = "1d25bc6731ec6c69b26fb2b331825a055a29cfeebd5fd2dfaa57fd12f3c156d1"
   solver-name = "gps-cdcl"
   solver-version = 1
