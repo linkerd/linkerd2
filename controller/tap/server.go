@@ -326,11 +326,41 @@ func translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 		}
 
 		method := func(orig *proxy.HttpMethod) *public.HttpMethod {
-			return nil
+			switch m := orig.GetType().(type) {
+			case *proxy.HttpMethod_Registered_:
+				return &public.HttpMethod{
+					Type: &public.HttpMethod_Registered_{
+						Registered: public.HttpMethod_Registered(m.Registered),
+					},
+				}
+			case *proxy.HttpMethod_Unregistered:
+				return &public.HttpMethod{
+					Type: &public.HttpMethod_Unregistered{
+						Unregistered: m.Unregistered,
+					},
+				}
+			default:
+				return nil
+			}
 		}
 
 		scheme := func(orig *proxy.Scheme) *public.Scheme {
-			return nil
+			switch s := orig.GetType().(type) {
+			case *proxy.Scheme_Registered_:
+				return &public.Scheme{
+					Type: &public.Scheme_Registered_{
+						Registered: public.Scheme_Registered(s.Registered),
+					},
+				}
+			case *proxy.Scheme_Unregistered:
+				return &public.Scheme{
+					Type: &public.Scheme_Unregistered{
+						Unregistered: s.Unregistered,
+					},
+				}
+			default:
+				return nil
+			}
 		}
 
 		switch orig := orig.GetEvent().(type) {
