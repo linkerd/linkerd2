@@ -11,9 +11,9 @@ branches:
 stages:
   - name: test
   - name: docker-deploy
-    if: branch = master AND type != pull_request
+    if: branch = DOCKER_BUILDS_ARE_CURRENTLY_DISABLED AND type != pull_request
   - name: integration-test
-    if: branch = master AND type != pull_request
+    if: branch = DOCKER_BUILDS_ARE_CURRENTLY_DISABLED AND type != pull_request
 
 jobs:
   include:
