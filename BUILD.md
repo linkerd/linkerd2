@@ -262,10 +262,10 @@ To build and run the Rust proxy:
 
 ```bash
 cargo build -p conduit-proxy
-CONDUIT_PROXY_LOG=trace \
-  CONDUIT_PROXY_PUBLIC_LISTENER=tcp://0.0.0.0:5432 \
-  CONDUIT_PROXY_PRIVATE_FORWARD=tcp://127.0.0.1:1234 \
-  CONDUIT_PROXY_CONTROL_URL=tcp://127.0.0.1:8086 \
+LINKERD2_PROXY_LOG=trace \
+  LINKERD2_PROXY_PUBLIC_LISTENER=tcp://0.0.0.0:5432 \
+  LINKERD2_PROXY_PRIVATE_FORWARD=tcp://127.0.0.1:1234 \
+  LINKERD2_PROXY_CONTROL_URL=tcp://127.0.0.1:8086 \
   target/debug/conduit-proxy
 ```
 

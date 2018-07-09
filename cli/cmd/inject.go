@@ -29,7 +29,7 @@ const (
 	// ControlPlanePodName default control plane pod name.
 	ControlPlanePodName = "controller"
 	// The name of the variable used to pass the pod's namespace.
-	PodNamespaceEnvVarName = "CONDUIT_PROXY_POD_NAMESPACE"
+	PodNamespaceEnvVarName = "LINKERD2_PROXY_POD_NAMESPACE"
 )
 
 type injectOptions struct {
@@ -208,16 +208,16 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 			},
 		},
 		Env: []v1.EnvVar{
-			{Name: "CONDUIT_PROXY_LOG", Value: options.proxyLogLevel},
-			{Name: "CONDUIT_PROXY_BIND_TIMEOUT", Value: options.proxyBindTimeout},
+			{Name: "LINKERD2_PROXY_LOG", Value: options.proxyLogLevel},
+			{Name: "LINKERD2_PROXY_BIND_TIMEOUT", Value: options.proxyBindTimeout},
 			{
-				Name:  "CONDUIT_PROXY_CONTROL_URL",
+				Name:  "LINKERD2_PROXY_CONTROL_URL",
 				Value: fmt.Sprintf("tcp://%s:%d", controlPlaneDNS, options.proxyAPIPort),
 			},
-			{Name: "CONDUIT_PROXY_CONTROL_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", options.proxyControlPort)},
-			{Name: "CONDUIT_PROXY_METRICS_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", options.proxyMetricsPort)},
-			{Name: "CONDUIT_PROXY_PRIVATE_LISTENER", Value: fmt.Sprintf("tcp://127.0.0.1:%d", options.outboundPort)},
-			{Name: "CONDUIT_PROXY_PUBLIC_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", options.inboundPort)},
+			{Name: "LINKERD2_PROXY_CONTROL_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", options.proxyControlPort)},
+			{Name: "LINKERD2_PROXY_METRICS_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", options.proxyMetricsPort)},
+			{Name: "LINKERD2_PROXY_PRIVATE_LISTENER", Value: fmt.Sprintf("tcp://127.0.0.1:%d", options.outboundPort)},
+			{Name: "LINKERD2_PROXY_PUBLIC_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", options.inboundPort)},
 			{
 				Name:      PodNamespaceEnvVarName,
 				ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
@@ -251,15 +251,15 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 		configMapBase := base + "/trust-anchors"
 		secretBase := base + "/identity"
 		tlsEnvVars := []v1.EnvVar{
-			{Name: "CONDUIT_PROXY_TLS_TRUST_ANCHORS", Value: configMapBase + "/" + k8s.TLSTrustAnchorFileName},
-			{Name: "CONDUIT_PROXY_TLS_CERT", Value: secretBase + "/" + k8s.TLSCertFileName},
-			{Name: "CONDUIT_PROXY_TLS_PRIVATE_KEY", Value: secretBase + "/" + k8s.TLSPrivateKeyFileName},
+			{Name: "LINKERD2_PROXY_TLS_TRUST_ANCHORS", Value: configMapBase + "/" + k8s.TLSTrustAnchorFileName},
+			{Name: "LINKERD2_PROXY_TLS_CERT", Value: secretBase + "/" + k8s.TLSCertFileName},
+			{Name: "LINKERD2_PROXY_TLS_PRIVATE_KEY", Value: secretBase + "/" + k8s.TLSPrivateKeyFileName},
 			{
-				Name:  "CONDUIT_PROXY_TLS_POD_IDENTITY",
+				Name:  "LINKERD2_PROXY_TLS_POD_IDENTITY",
 				Value: identity.ToDNSName(),
 			},
-			{Name: "CONDUIT_PROXY_CONTROLLER_NAMESPACE", Value: controlPlaneNamespace},
-			{Name: "CONDUIT_PROXY_TLS_CONTROLLER_IDENTITY", Value: identity.ToControllerIdentity().ToDNSName()},
+			{Name: "LINKERD2_PROXY_CONTROLLER_NAMESPACE", Value: controlPlaneNamespace},
+			{Name: "LINKERD2_PROXY_TLS_CONTROLLER_IDENTITY", Value: identity.ToControllerIdentity().ToDNSName()},
 		}
 
 		sidecar.Env = append(sidecar.Env, tlsEnvVars...)
@@ -360,10 +360,10 @@ func injectResource(bytes []byte, options *injectOptions) ([]byte, error) {
 	k8sLabels := map[string]string{}
 
 	// When injecting the conduit proxy into a conduit controller pod. The conduit proxy's
-	// CONDUIT_PROXY_CONTROL_URL variable must be set to localhost for the following reasons:
+	// LINKERD2_PROXY_CONTROL_URL variable must be set to localhost for the following reasons:
 	//	1. According to https://github.com/kubernetes/minikube/issues/1568, minikube has an issue
 	//     where pods are unable to connect to themselves through their associated service IP.
-	//     Setting the CONDUIT_PROXY_CONTROL_URL to localhost allows the proxy to bypass kube DNS
+	//     Setting the LINKERD2_PROXY_CONTROL_URL to localhost allows the proxy to bypass kube DNS
 	//     name resolution as a workaround to this issue.
 	//  2. We avoid the TLS overhead in encrypting and decrypting intra-pod traffic i.e. traffic
 	//     between containers in the same pod.
