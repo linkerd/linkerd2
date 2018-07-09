@@ -6,7 +6,7 @@ required = ["github.com/golang/protobuf/protoc-gen-go"]
 
 [[constraint]]
   name = "github.com/linkerd/linkerd2-proxy-api"
-  revision = "d9f9ee748737f55f2481d74ae83d509d32bd7469" # pending release
+  revision = "242ca189bc23849f0be77bfff332b670be31c9e3" # ver/revert-go-proto-version
 
 [[constraint]]
   name = "google.golang.org/grpc"
@@ -42,7 +42,7 @@ required = ["github.com/golang/protobuf/protoc-gen-go"]
 
 [[constraint]]
   name = "github.com/golang/protobuf"
-  version = "1.1.0"
+  revision = "1e59b77b52bf8e4b449a57e6f79f21226d571845" # recent versions introduce breaking changes
 
 [[constraint]]
   name = "github.com/prometheus/client_golang"

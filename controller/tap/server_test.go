@@ -20,7 +20,7 @@ func TestTapByResource(t *testing.T) {
 	t.Run("Returns expected response", func(t *testing.T) {
 		expectations := []tapExpected{
 			tapExpected{
-				msg:    "rpc error: code = InvalidArgument desc = TapByResource received nil target ResourceSelection: {Target:<nil> Match:<nil> MaxRps:0 XXX_NoUnkeyedLiteral:{} XXX_unrecognized:[] XXX_sizecache:0}",
+				msg:    "rpc error: code = InvalidArgument desc = TapByResource received nil target ResourceSelection: {Target:<nil> Match:<nil> MaxRps:0}",
 				k8sRes: []string{},
 				req:    public.TapByResourceRequest{},
 			},
@@ -95,7 +95,7 @@ status:
 				},
 			},
 			tapExpected{
-				msg: "rpc error: code = NotFound desc = no pods found for ResourceSelection: {Resource:namespace:\"emojivoto\" type:\"pods\" name:\"emojivoto-meshed\"  LabelSelector: XXX_NoUnkeyedLiteral:{} XXX_unrecognized:[] XXX_sizecache:0}",
+				msg: "rpc error: code = NotFound desc = no pods found for ResourceSelection: {Resource:namespace:\"emojivoto\" type:\"pods\" name:\"emojivoto-meshed\"  LabelSelector:}",
 				k8sRes: []string{`
 apiVersion: v1
 kind: Pod

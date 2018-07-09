@@ -65,7 +65,6 @@
     "protoc-gen-go",
     "protoc-gen-go/descriptor",
     "protoc-gen-go/generator",
-    "protoc-gen-go/generator/internal/remap",
     "protoc-gen-go/grpc",
     "protoc-gen-go/plugin",
     "ptypes",
@@ -74,8 +73,7 @@
     "ptypes/struct",
     "ptypes/timestamp"
   ]
-  revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
-  version = "v1.1.0"
+  revision = "1e59b77b52bf8e4b449a57e6f79f21226d571845"
 
 [[projects]]
   branch = "master"
@@ -159,7 +157,7 @@
     "go/net",
     "go/tap"
   ]
-  revision = "d9f9ee748737f55f2481d74ae83d509d32bd7469"
+  revision = "242ca189bc23849f0be77bfff332b670be31c9e3"
 
 [[projects]]
   name = "github.com/matttproud/golang_protobuf_extensions"
@@ -638,6 +636,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "1d25bc6731ec6c69b26fb2b331825a055a29cfeebd5fd2dfaa57fd12f3c156d1"
+  inputs-digest = "0cdc469f33c45eaeb4fefaa6f96ba8803b6c810bc6dcf0fb5ea3954e1c9b2084"
   solver-name = "gps-cdcl"
   solver-version = 1
