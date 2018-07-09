@@ -1,0 +1,17 @@
+FROM gcr.io/linkerd-io/base:2017-10-30.01 as fetch
+
+# XXX We must do HTTPS verification here, but we don't yet have certs in this
+# container.
+RUN curl -kvsLO https://build.l5d.io/linkerd2-proxy/latest.txt
+RUN (latest=$(awk '{print $2}' latest.txt) ; \
+    latest_sha=$(awk '{print $1}' latest.txt) ; \
+    curl -kvsLO "https://build.l5d.io/linkerd2-proxy/${latest}" ; \
+    sha=$(sha256sum $latest | awk '{print $1}') ; \
+    if [ "$sha" != "$latest_sha" ]; then echo "sha mismatch" >&2 ; exit 1 ; fi ; \
+    tar -zxvf ${latest} ; \
+    mv "${latest%%.tar.gz}/bin/linkerd2-proxy" . )
+
+
+FROM gcr.io/linkerd-io/base:2017-10-30.01 as runtime
+COPY --from=fetch linkerd2-proxy /usr/local/bin/linkerd2-proxy
+ENTRYPOINT ["/usr/bin/local/linkerd2-proxy"]
