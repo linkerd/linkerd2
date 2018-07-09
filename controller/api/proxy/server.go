@@ -4,9 +4,9 @@ import (
 	"io"
 	"net"
 
-	common "github.com/runconduit/conduit/controller/gen/common"
-	destination "github.com/runconduit/conduit/controller/gen/proxy/destination"
-	"github.com/runconduit/conduit/pkg/prometheus"
+	common "github.com/linkerd/linkerd2/controller/gen/common"
+	destination "github.com/linkerd/linkerd2-proxy-api/go/destination"
+	"github.com/linkerd/linkerd2/pkg/prometheus"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 )

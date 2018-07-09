@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"sync"
 
-	common "github.com/runconduit/conduit/controller/gen/common"
-	"github.com/runconduit/conduit/controller/k8s"
-	"github.com/runconduit/conduit/pkg/addr"
+	common "github.com/linkerd/linkerd2/controller/gen/common"
+	"github.com/linkerd/linkerd2/controller/k8s"
+	"github.com/linkerd/linkerd2/pkg/addr"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"

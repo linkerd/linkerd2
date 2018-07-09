@@ -5,8 +5,8 @@ import (
 	"io/ioutil"
 	"testing"
 
-	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
-	"github.com/runconduit/conduit/pkg/k8s"
+	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 )
 
 func TestCheckStatus(t *testing.T) {

@@ -1,8 +1,0 @@
-[package]
-name = "futures-mpsc-lossy"
-version = "0.3.0"
-authors = ["Oliver Gould <ver@buoyant.io>"]
-publish = false
-
-[dependencies]
-futures = "0.1"

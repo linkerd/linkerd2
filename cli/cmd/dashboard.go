@@ -6,9 +6,9 @@ import (
 	"os"
 
 	"github.com/pkg/browser"
-	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
-	pb "github.com/runconduit/conduit/controller/gen/public"
-	"github.com/runconduit/conduit/pkg/k8s"
+	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
+	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )

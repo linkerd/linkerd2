@@ -6,10 +6,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/runconduit/conduit/controller/api/proxy"
-	"github.com/runconduit/conduit/controller/destination"
-	"github.com/runconduit/conduit/pkg/admin"
-	"github.com/runconduit/conduit/pkg/version"
+	"github.com/linkerd/linkerd2/controller/api/proxy"
+	"github.com/linkerd/linkerd2/controller/destination"
+	"github.com/linkerd/linkerd2/pkg/admin"
+	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 )
 

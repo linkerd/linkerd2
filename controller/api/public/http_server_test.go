@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	common "github.com/runconduit/conduit/controller/gen/common"
-	healcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
-	pb "github.com/runconduit/conduit/controller/gen/public"
+	common "github.com/linkerd/linkerd2/controller/gen/common"
+	healcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
+	pb "github.com/linkerd/linkerd2/controller/gen/public"
 )
 
 type mockGrpcServer struct {

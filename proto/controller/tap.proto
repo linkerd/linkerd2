@@ -5,7 +5,7 @@ package conduit.controller.tap;
 import "common.proto";
 import "public.proto";
 
-option go_package = "github.com/runconduit/conduit/controller/gen/controller/tap";
+option go_package = "github.com/linkerd/linkerd2/controller/gen/controller/tap";
 
 service Tap {
   rpc Tap(public.TapRequest) returns (stream common.TapEvent) { option deprecated = true; }

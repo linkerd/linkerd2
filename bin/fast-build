@@ -22,6 +22,6 @@ fi
     cd $rootdir
     $bindir/dep ensure -vendor-only -v
     target="target/cli/${host_platform}/conduit"
-    CGO_ENABLED=0 go build -installsuffix cgo -o $target -ldflags "-s -w -X github.com/runconduit/conduit/pkg/version.Version=$($bindir/root-tag)" ./cli
+    CGO_ENABLED=0 go build -installsuffix cgo -o $target -ldflags "-s -w -X github.com/linkerd/linkerd2/pkg/version.Version=$($bindir/root-tag)" ./cli
     echo "$target"
 )

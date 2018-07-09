@@ -3,7 +3,7 @@ package cmd
 import (
 	"testing"
 
-	"github.com/runconduit/conduit/controller/api/public"
+	"github.com/linkerd/linkerd2/controller/api/public"
 )
 
 func TestStat(t *testing.T) {

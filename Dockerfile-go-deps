@@ -7,7 +7,7 @@
 
 FROM golang:1.10.2
 ENV TEMP_GOPATH=/temp-gopath
-WORKDIR ${TEMP_GOPATH}/src/github.com/runconduit/conduit
+WORKDIR ${TEMP_GOPATH}/src/github.com/linkerd/linkerd2
 
 # Download `dep` without being sensitive to changes to Gopkg.{toml,lock}.
 COPY bin/dep bin/dep

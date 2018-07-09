@@ -43,7 +43,7 @@ export default class SocialLinks extends React.Component {
   render() {
     return (
       <div className="social-links">
-        <Link target="_blank" to="https://github.com/runconduit/conduit"><Github /></Link>
+        <Link target="_blank" to="https://github.com/linkerd/linkerd2"><Github /></Link>
         <Link target="_blank" to="https://slack.linkerd.io/"><Slack /></Link>
         <Link target="_blank" to="https://twitter.com/runconduit"><Twitter /></Link>
       </div>

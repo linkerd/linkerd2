@@ -9,10 +9,10 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/prometheus/common/model"
-	tap "github.com/runconduit/conduit/controller/gen/controller/tap"
-	pb "github.com/runconduit/conduit/controller/gen/public"
-	"github.com/runconduit/conduit/controller/k8s"
-	pkgK8s "github.com/runconduit/conduit/pkg/k8s"
+	tap "github.com/linkerd/linkerd2/controller/gen/controller/tap"
+	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/controller/k8s"
+	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 )
 
 type statSumExpected struct {

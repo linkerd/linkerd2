@@ -5,8 +5,8 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/runconduit/conduit/controller/k8s"
-	"github.com/runconduit/conduit/pkg/addr"
+	"github.com/linkerd/linkerd2/controller/k8s"
+	"github.com/linkerd/linkerd2/pkg/addr"
 )
 
 func TestEndpointsWatcher(t *testing.T) {

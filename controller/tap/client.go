@@ -1,7 +1,7 @@
 package tap
 
 import (
-	pb "github.com/runconduit/conduit/controller/gen/controller/tap"
+	pb "github.com/linkerd/linkerd2/controller/gen/controller/tap"
 	"google.golang.org/grpc"
 )
 

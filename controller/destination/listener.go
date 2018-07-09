@@ -1,10 +1,10 @@
 package destination
 
 import (
-	common "github.com/runconduit/conduit/controller/gen/common"
-	pb "github.com/runconduit/conduit/controller/gen/proxy/destination"
-	"github.com/runconduit/conduit/pkg/addr"
-	pkgK8s "github.com/runconduit/conduit/pkg/k8s"
+	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
+	common "github.com/linkerd/linkerd2/controller/gen/common"
+	"github.com/linkerd/linkerd2/pkg/addr"
+	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	coreV1 "k8s.io/api/core/v1"
 )

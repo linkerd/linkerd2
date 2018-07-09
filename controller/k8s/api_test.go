@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/runconduit/conduit/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	apiv1 "k8s.io/api/core/v1"

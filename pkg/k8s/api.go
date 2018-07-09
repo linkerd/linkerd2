@@ -9,8 +9,8 @@ import (
 	"net/url"
 	"time"
 
-	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
-	"github.com/runconduit/conduit/pkg/healthcheck"
+	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/rest"
 	// Load all the auth plugins for the cloud providers.

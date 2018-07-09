@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/runconduit/conduit/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	coreV1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"

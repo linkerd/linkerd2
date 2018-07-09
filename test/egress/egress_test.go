@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/runconduit/conduit/testutil"
+	"github.com/linkerd/linkerd2/testutil"
 )
 
 //////////////////////

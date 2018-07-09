@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
-	"github.com/runconduit/conduit/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
 	appsV1 "k8s.io/api/apps/v1"
 	batchV1 "k8s.io/api/batch/v1"

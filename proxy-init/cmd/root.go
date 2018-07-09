@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/runconduit/conduit/proxy-init/iptables"
+	"github.com/linkerd/linkerd2/proxy-init/iptables"
 	"github.com/spf13/cobra"
 )
 

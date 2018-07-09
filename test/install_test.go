@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/runconduit/conduit/testutil"
+	"github.com/linkerd/linkerd2/testutil"
 )
 
 //////////////////////

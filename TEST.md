@@ -198,7 +198,7 @@ directory. For a complete description of how to use the test helpers to write
 your own tests, view the `testutil` package's godoc, with:
 
 ```bash
-$ godoc github.com/runconduit/conduit/testutil | less
+$ godoc github.com/linkerd/linkerd2/testutil | less
 ```
 
 # Integration tests: proxy-init

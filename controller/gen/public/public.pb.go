@@ -31,8 +31,8 @@ import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
 import google_protobuf "github.com/golang/protobuf/ptypes/duration"
-import conduit_common "github.com/runconduit/conduit/controller/gen/common"
-import conduit_common_healthcheck "github.com/runconduit/conduit/controller/gen/common/healthcheck"
+import conduit_common "github.com/linkerd/linkerd2/controller/gen/common"
+import conduit_common_healthcheck "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 
 import (
 	context "golang.org/x/net/context"

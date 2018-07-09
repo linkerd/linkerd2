@@ -1,6 +1,6 @@
 ## compile binaries
 FROM gcr.io/runconduit/go-deps:8b4952a2 as golang
-WORKDIR /go/src/github.com/runconduit/conduit
+WORKDIR /go/src/github.com/linkerd/linkerd2
 COPY cli cli
 COPY controller/k8s controller/k8s
 COPY controller/api controller/api
@@ -14,7 +14,7 @@ RUN CGO_ENABLED=0 GOOS=linux   go build -installsuffix cgo -o /out/conduit-linux
 RUN CGO_ENABLED=0 GOOS=windows go build -installsuffix cgo -o /out/conduit-windows -ldflags "-s -w" ./cli
 
 ARG CONDUIT_VERSION
-ENV GO_LDFLAGS="-s -w -X github.com/runconduit/conduit/pkg/version.Version=${CONDUIT_VERSION}"
+ENV GO_LDFLAGS="-s -w -X github.com/linkerd/linkerd2/pkg/version.Version=${CONDUIT_VERSION}"
 RUN CGO_ENABLED=0 GOOS=darwin  go build -installsuffix cgo -o /out/conduit-darwin  -ldflags "${GO_LDFLAGS}" ./cli
 RUN CGO_ENABLED=0 GOOS=linux   go build -installsuffix cgo -o /out/conduit-linux   -ldflags "${GO_LDFLAGS}" ./cli
 RUN CGO_ENABLED=0 GOOS=windows go build -installsuffix cgo -o /out/conduit-windows -ldflags "${GO_LDFLAGS}" ./cli

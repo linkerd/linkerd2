@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/runconduit/conduit/controller/k8s"
-	pkgK8s "github.com/runconduit/conduit/pkg/k8s"
+	"github.com/linkerd/linkerd2/controller/k8s"
+	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"

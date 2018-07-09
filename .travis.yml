@@ -38,7 +38,7 @@ jobs:
       # Quote the version number to avoid parsing issues like
       # https://github.com/travis-ci/gimme/issues/132.
       go: "1.10.2"
-      go_import_path: github.com/runconduit/conduit
+      go_import_path: github.com/linkerd/linkerd2
       cache:
         directories:
           - vendor
@@ -138,7 +138,7 @@ jobs:
 
       language: go
       go: "1.10.2"
-      go_import_path: github.com/runconduit/conduit
+      go_import_path: github.com/linkerd/linkerd2
       services:
         - docker
 

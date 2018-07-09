@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"net/url"
 
-	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
+	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 )
 
 type MockKubeApi struct {

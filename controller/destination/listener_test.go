@@ -5,10 +5,10 @@ import (
 	"reflect"
 	"testing"
 
-	common "github.com/runconduit/conduit/controller/gen/common"
-	pb "github.com/runconduit/conduit/controller/gen/proxy/destination"
-	"github.com/runconduit/conduit/pkg/addr"
-	pkgK8s "github.com/runconduit/conduit/pkg/k8s"
+	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
+	common "github.com/linkerd/linkerd2/controller/gen/common"
+	"github.com/linkerd/linkerd2/pkg/addr"
+	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

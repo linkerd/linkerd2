@@ -10,7 +10,7 @@ import (
 	"net/http"
 
 	"github.com/golang/protobuf/proto"
-	pb "github.com/runconduit/conduit/controller/gen/public"
+	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/status"
 )

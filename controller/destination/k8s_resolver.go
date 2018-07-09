@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/runconduit/conduit/controller/k8s"
+	"github.com/linkerd/linkerd2/controller/k8s"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -119,7 +119,7 @@ func (k *k8sResolver) localKubernetesServiceIdFromDNSName(host string) (*service
 
 	// Extract the service name and namespace. TODO: Federated services have
 	// *three* components before "svc"; see
-	// https://github.com/runconduit/conduit/issues/156.
+	// https://github.com/linkerd/linkerd2/issues/156.
 	if len(hostLabels) != 2 {
 		return nil, fmt.Errorf("not a service: %s", host)
 	}

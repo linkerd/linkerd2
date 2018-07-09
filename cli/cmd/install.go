@@ -7,8 +7,8 @@ import (
 	"os"
 	"text/template"
 
-	"github.com/runconduit/conduit/cli/install"
-	"github.com/runconduit/conduit/pkg/k8s"
+	"github.com/linkerd/linkerd2/cli/install"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	uuid "github.com/satori/go.uuid"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"

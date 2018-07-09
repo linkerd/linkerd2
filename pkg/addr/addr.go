@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	pb "github.com/runconduit/conduit/controller/gen/common"
+	pb "github.com/linkerd/linkerd2/controller/gen/common"
 )
 
 func AddressToString(addr *pb.TcpAddress) string {

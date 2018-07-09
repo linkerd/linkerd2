@@ -7,10 +7,10 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/runconduit/conduit/controller/destination"
-	common "github.com/runconduit/conduit/controller/gen/common"
-	pb "github.com/runconduit/conduit/controller/gen/proxy/destination"
-	addrUtil "github.com/runconduit/conduit/pkg/addr"
+	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
+	"github.com/linkerd/linkerd2/controller/destination"
+	common "github.com/linkerd/linkerd2/controller/gen/common"
+	addrUtil "github.com/linkerd/linkerd2/pkg/addr"
 	log "github.com/sirupsen/logrus"
 )
 

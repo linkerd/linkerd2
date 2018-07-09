@@ -3,7 +3,7 @@ package destination
 import (
 	"context"
 
-	common "github.com/runconduit/conduit/controller/gen/common"
+	common "github.com/linkerd/linkerd2/controller/gen/common"
 )
 
 // implements the updateListener interface

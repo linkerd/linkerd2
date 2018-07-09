@@ -14,8 +14,8 @@ package tap
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import conduit_common "github.com/runconduit/conduit/controller/gen/common"
-import conduit_public "github.com/runconduit/conduit/controller/gen/public"
+import conduit_common "github.com/linkerd/linkerd2/controller/gen/common"
+import conduit_public "github.com/linkerd/linkerd2/controller/gen/public"
 
 import (
 	context "golang.org/x/net/context"

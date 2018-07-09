@@ -134,7 +134,7 @@ bin/conduit check --expected-version $(bin/root-tag)
 bin/conduit dashboard
 
 # install the demo app
-curl https://raw.githubusercontent.com/runconduit/conduit-examples/master/emojivoto/emojivoto.yml | bin/conduit inject - | kubectl apply -f -
+curl https://raw.githubusercontent.com/linkerd/linkerd2-examples/master/emojivoto/emojivoto.yml | bin/conduit inject - | kubectl apply -f -
 
 # view demo app
 minikube -n emojivoto service web-svc --url

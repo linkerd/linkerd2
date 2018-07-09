@@ -8,10 +8,10 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/ptypes/duration"
-	"github.com/runconduit/conduit/controller/api/public"
-	common "github.com/runconduit/conduit/controller/gen/common"
-	"github.com/runconduit/conduit/pkg/addr"
-	"github.com/runconduit/conduit/pkg/k8s"
+	"github.com/linkerd/linkerd2/controller/api/public"
+	common "github.com/linkerd/linkerd2/controller/gen/common"
+	"github.com/linkerd/linkerd2/pkg/addr"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	"google.golang.org/grpc/codes"
 )
 

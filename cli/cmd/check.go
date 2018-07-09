@@ -6,12 +6,12 @@ import (
 	"io"
 	"os"
 
-	"github.com/runconduit/conduit/controller/api/public"
-	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
-	pb "github.com/runconduit/conduit/controller/gen/public"
-	"github.com/runconduit/conduit/pkg/healthcheck"
-	"github.com/runconduit/conduit/pkg/k8s"
-	"github.com/runconduit/conduit/pkg/version"
+	"github.com/linkerd/linkerd2/controller/api/public"
+	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
+	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
 )
 

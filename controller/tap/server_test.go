@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	public "github.com/runconduit/conduit/controller/gen/public"
-	"github.com/runconduit/conduit/controller/k8s"
+	public "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/controller/k8s"
 )
 
 type tapExpected struct {

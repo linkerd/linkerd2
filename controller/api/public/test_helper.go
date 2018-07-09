@@ -8,9 +8,9 @@ import (
 
 	"github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
-	common "github.com/runconduit/conduit/controller/gen/common"
-	healthcheckPb "github.com/runconduit/conduit/controller/gen/common/healthcheck"
-	pb "github.com/runconduit/conduit/controller/gen/public"
+	common "github.com/linkerd/linkerd2/controller/gen/common"
+	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
+	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"google.golang.org/grpc"
 )
 

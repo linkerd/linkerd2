@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/runconduit/conduit/cli/cmd"
+	"github.com/linkerd/linkerd2/cli/cmd"
 )
 
 func main() {

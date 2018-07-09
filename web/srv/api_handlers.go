@@ -7,8 +7,8 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/julienschmidt/httprouter"
-	"github.com/runconduit/conduit/controller/api/util"
-	pb "github.com/runconduit/conduit/controller/gen/public"
+	"github.com/linkerd/linkerd2/controller/api/util"
+	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	log "github.com/sirupsen/logrus"
 )
 
