@@ -9,16 +9,17 @@ else
 fi
 arch=$(uname -m)
 
-protocbin=.protoc
-protocversion=3.4.0
+protocversion=3.6.0
+protocbin=target/protoc-${protocversion}
 protocurl="https://github.com/google/protobuf/releases/download/v${protocversion}/protoc-${protocversion}-${os}-${arch}.zip"
 
 if [ ! -f "$protocbin" ]; then
   tmp=$(mktemp -d -t protoc.XXX)
+  mkdir -p target
   (
     cd "$tmp"
-    curl -L --silent --fail -o "$protocbin.zip" "$protocurl"
-    jar xf "$protocbin.zip"
+    curl -L --silent --fail -o "./protoc.zip" "$protocurl"
+    unzip "./protoc.zip"
     chmod +x bin/protoc
   )
   mv "$tmp/bin/protoc" "$protocbin"

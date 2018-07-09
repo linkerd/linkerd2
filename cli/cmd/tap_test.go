@@ -9,7 +9,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes/duration"
 	"github.com/linkerd/linkerd2/controller/api/public"
-	common "github.com/linkerd/linkerd2/controller/gen/common"
+	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"google.golang.org/grpc/codes"
@@ -35,10 +35,10 @@ func TestRequestTapByResourceFromAPI(t *testing.T) {
 		}
 
 		event1 := createEvent(
-			&common.TapEvent_Http{
-				Event: &common.TapEvent_Http_RequestInit_{
-					RequestInit: &common.TapEvent_Http_RequestInit{
-						Id: &common.TapEvent_Http_StreamId{
+			&pb.TapEvent_Http{
+				Event: &pb.TapEvent_Http_RequestInit_{
+					RequestInit: &pb.TapEvent_Http_RequestInit{
+						Id: &pb.TapEvent_Http_StreamId{
 							Base: 1,
 						},
 						Authority: options.authority,
@@ -52,14 +52,14 @@ func TestRequestTapByResourceFromAPI(t *testing.T) {
 			},
 		)
 		event2 := createEvent(
-			&common.TapEvent_Http{
-				Event: &common.TapEvent_Http_ResponseEnd_{
-					ResponseEnd: &common.TapEvent_Http_ResponseEnd{
-						Id: &common.TapEvent_Http_StreamId{
+			&pb.TapEvent_Http{
+				Event: &pb.TapEvent_Http_ResponseEnd_{
+					ResponseEnd: &pb.TapEvent_Http_ResponseEnd{
+						Id: &pb.TapEvent_Http_StreamId{
 							Base: 1,
 						},
-						Eos: &common.Eos{
-							End: &common.Eos_GrpcStatusCode{GrpcStatusCode: 666},
+						Eos: &pb.Eos{
+							End: &pb.Eos_GrpcStatusCode{GrpcStatusCode: 666},
 						},
 						SinceRequestInit: &duration.Duration{
 							Seconds: 10,
@@ -75,7 +75,7 @@ func TestRequestTapByResourceFromAPI(t *testing.T) {
 		)
 		mockApiClient := &public.MockConduitApiClient{}
 		mockApiClient.Api_TapByResourceClientToReturn = &public.MockApi_TapByResourceClient{
-			TapEventsToReturn: []common.TapEvent{event1, event2},
+			TapEventsToReturn: []pb.TapEvent{event1, event2},
 		}
 
 		writer := bytes.NewBufferString("")
@@ -115,7 +115,7 @@ func TestRequestTapByResourceFromAPI(t *testing.T) {
 
 		mockApiClient := &public.MockConduitApiClient{}
 		mockApiClient.Api_TapByResourceClientToReturn = &public.MockApi_TapByResourceClient{
-			TapEventsToReturn: []common.TapEvent{},
+			TapEventsToReturn: []pb.TapEvent{},
 		}
 
 		writer := bytes.NewBufferString("")
@@ -168,47 +168,47 @@ func TestRequestTapByResourceFromAPI(t *testing.T) {
 }
 
 func TestEventToString(t *testing.T) {
-	toTapEvent := func(httpEvent *common.TapEvent_Http) *common.TapEvent {
-		streamId := &common.TapEvent_Http_StreamId{
+	toTapEvent := func(httpEvent *pb.TapEvent_Http) *pb.TapEvent {
+		streamId := &pb.TapEvent_Http_StreamId{
 			Base:   7,
 			Stream: 8,
 		}
 
 		switch httpEvent.Event.(type) {
-		case *common.TapEvent_Http_RequestInit_:
+		case *pb.TapEvent_Http_RequestInit_:
 			httpEvent.GetRequestInit().Id = streamId
-		case *common.TapEvent_Http_ResponseInit_:
+		case *pb.TapEvent_Http_ResponseInit_:
 			httpEvent.GetResponseInit().Id = streamId
-		case *common.TapEvent_Http_ResponseEnd_:
+		case *pb.TapEvent_Http_ResponseEnd_:
 			httpEvent.GetResponseEnd().Id = streamId
 		}
 
-		return &common.TapEvent{
-			ProxyDirection: common.TapEvent_OUTBOUND,
-			Source: &common.TcpAddress{
-				Ip:   addr.IPV4(1, 2, 3, 4),
+		return &pb.TapEvent{
+			ProxyDirection: pb.TapEvent_OUTBOUND,
+			Source: &pb.TcpAddress{
+				Ip:   addr.PublicIPV4(1, 2, 3, 4),
 				Port: 5555,
 			},
-			Destination: &common.TcpAddress{
-				Ip:   addr.IPV4(2, 3, 4, 5),
+			Destination: &pb.TcpAddress{
+				Ip:   addr.PublicIPV4(2, 3, 4, 5),
 				Port: 6666,
 			},
-			Event: &common.TapEvent_Http_{Http: httpEvent},
+			Event: &pb.TapEvent_Http_{Http: httpEvent},
 		}
 	}
 
 	t.Run("Converts HTTP request init event to string", func(t *testing.T) {
-		event := toTapEvent(&common.TapEvent_Http{
-			Event: &common.TapEvent_Http_RequestInit_{
-				RequestInit: &common.TapEvent_Http_RequestInit{
-					Method: &common.HttpMethod{
-						Type: &common.HttpMethod_Registered_{
-							Registered: common.HttpMethod_POST,
+		event := toTapEvent(&pb.TapEvent_Http{
+			Event: &pb.TapEvent_Http_RequestInit_{
+				RequestInit: &pb.TapEvent_Http_RequestInit{
+					Method: &pb.HttpMethod{
+						Type: &pb.HttpMethod_Registered_{
+							Registered: pb.HttpMethod_POST,
 						},
 					},
-					Scheme: &common.Scheme{
-						Type: &common.Scheme_Registered_{
-							Registered: common.Scheme_HTTPS,
+					Scheme: &pb.Scheme{
+						Type: &pb.Scheme_Registered_{
+							Registered: pb.Scheme_HTTPS,
 						},
 					},
 					Authority: "hello.default:7777",
@@ -225,9 +225,9 @@ func TestEventToString(t *testing.T) {
 	})
 
 	t.Run("Converts HTTP response init event to string", func(t *testing.T) {
-		event := toTapEvent(&common.TapEvent_Http{
-			Event: &common.TapEvent_Http_ResponseInit_{
-				ResponseInit: &common.TapEvent_Http_ResponseInit{
+		event := toTapEvent(&pb.TapEvent_Http{
+			Event: &pb.TapEvent_Http_ResponseInit_{
+				ResponseInit: &pb.TapEvent_Http_ResponseInit{
 					SinceRequestInit: &duration.Duration{Nanos: 999000},
 					HttpStatus:       http.StatusOK,
 				},
@@ -242,14 +242,14 @@ func TestEventToString(t *testing.T) {
 	})
 
 	t.Run("Converts gRPC response end event to string", func(t *testing.T) {
-		event := toTapEvent(&common.TapEvent_Http{
-			Event: &common.TapEvent_Http_ResponseEnd_{
-				ResponseEnd: &common.TapEvent_Http_ResponseEnd{
+		event := toTapEvent(&pb.TapEvent_Http{
+			Event: &pb.TapEvent_Http_ResponseEnd_{
+				ResponseEnd: &pb.TapEvent_Http_ResponseEnd{
 					SinceRequestInit:  &duration.Duration{Nanos: 999000},
 					SinceResponseInit: &duration.Duration{Nanos: 888000},
 					ResponseBytes:     111,
-					Eos: &common.Eos{
-						End: &common.Eos_GrpcStatusCode{GrpcStatusCode: uint32(codes.OK)},
+					Eos: &pb.Eos{
+						End: &pb.Eos_GrpcStatusCode{GrpcStatusCode: uint32(codes.OK)},
 					},
 				},
 			},
@@ -263,14 +263,14 @@ func TestEventToString(t *testing.T) {
 	})
 
 	t.Run("Converts HTTP response end event with reset error code to string", func(t *testing.T) {
-		event := toTapEvent(&common.TapEvent_Http{
-			Event: &common.TapEvent_Http_ResponseEnd_{
-				ResponseEnd: &common.TapEvent_Http_ResponseEnd{
+		event := toTapEvent(&pb.TapEvent_Http{
+			Event: &pb.TapEvent_Http_ResponseEnd_{
+				ResponseEnd: &pb.TapEvent_Http_ResponseEnd{
 					SinceRequestInit:  &duration.Duration{Nanos: 999000},
 					SinceResponseInit: &duration.Duration{Nanos: 888000},
 					ResponseBytes:     111,
-					Eos: &common.Eos{
-						End: &common.Eos_ResetErrorCode{ResetErrorCode: 123},
+					Eos: &pb.Eos{
+						End: &pb.Eos_ResetErrorCode{ResetErrorCode: 123},
 					},
 				},
 			},
@@ -284,13 +284,13 @@ func TestEventToString(t *testing.T) {
 	})
 
 	t.Run("Converts HTTP response end event with empty EOS context string", func(t *testing.T) {
-		event := toTapEvent(&common.TapEvent_Http{
-			Event: &common.TapEvent_Http_ResponseEnd_{
-				ResponseEnd: &common.TapEvent_Http_ResponseEnd{
+		event := toTapEvent(&pb.TapEvent_Http{
+			Event: &pb.TapEvent_Http_ResponseEnd_{
+				ResponseEnd: &pb.TapEvent_Http_ResponseEnd{
 					SinceRequestInit:  &duration.Duration{Nanos: 999000},
 					SinceResponseInit: &duration.Duration{Nanos: 888000},
 					ResponseBytes:     111,
-					Eos:               &common.Eos{},
+					Eos:               &pb.Eos{},
 				},
 			},
 		})
@@ -303,9 +303,9 @@ func TestEventToString(t *testing.T) {
 	})
 
 	t.Run("Converts HTTP response end event without EOS context string", func(t *testing.T) {
-		event := toTapEvent(&common.TapEvent_Http{
-			Event: &common.TapEvent_Http_ResponseEnd_{
-				ResponseEnd: &common.TapEvent_Http_ResponseEnd{
+		event := toTapEvent(&pb.TapEvent_Http{
+			Event: &pb.TapEvent_Http_ResponseEnd_{
+				ResponseEnd: &pb.TapEvent_Http_ResponseEnd{
 					SinceRequestInit:  &duration.Duration{Nanos: 999000},
 					SinceResponseInit: &duration.Duration{Nanos: 888000},
 					ResponseBytes:     111,
@@ -321,7 +321,7 @@ func TestEventToString(t *testing.T) {
 	})
 
 	t.Run("Handles unknown event types", func(t *testing.T) {
-		event := toTapEvent(&common.TapEvent_Http{})
+		event := toTapEvent(&pb.TapEvent_Http{})
 
 		expectedOutput := "unknown proxy=out src=1.2.3.4:5555 dst=2.3.4.5:6666 tls="
 		output := renderTapEvent(event)
@@ -331,27 +331,27 @@ func TestEventToString(t *testing.T) {
 	})
 }
 
-func createEvent(event_http *common.TapEvent_Http, dstMeta map[string]string) common.TapEvent {
-	event := common.TapEvent{
-		ProxyDirection: common.TapEvent_OUTBOUND,
-		Source: &common.TcpAddress{
-			Ip: &common.IPAddress{
-				Ip: &common.IPAddress_Ipv4{
+func createEvent(event_http *pb.TapEvent_Http, dstMeta map[string]string) pb.TapEvent {
+	event := pb.TapEvent{
+		ProxyDirection: pb.TapEvent_OUTBOUND,
+		Source: &pb.TcpAddress{
+			Ip: &pb.IPAddress{
+				Ip: &pb.IPAddress_Ipv4{
 					Ipv4: uint32(1),
 				},
 			},
 		},
-		Destination: &common.TcpAddress{
-			Ip: &common.IPAddress{
-				Ip: &common.IPAddress_Ipv4{
+		Destination: &pb.TcpAddress{
+			Ip: &pb.IPAddress{
+				Ip: &pb.IPAddress_Ipv4{
 					Ipv4: uint32(9),
 				},
 			},
 		},
-		Event: &common.TapEvent_Http_{
+		Event: &pb.TapEvent_Http_{
 			Http: event_http,
 		},
-		DestinationMeta: &common.TapEvent_EndpointMeta{
+		DestinationMeta: &pb.TapEvent_EndpointMeta{
 			Labels: dstMeta,
 		},
 	}

@@ -18,22 +18,6 @@ stages:
 jobs:
   include:
 
-    # Compile the application and run tests.
-    - stage: test
-      language: rust
-      rust: stable
-      cache: cargo
-      script:
-        - (cd proxy && cargo test --locked --no-default-features)
-
-    - language: rust
-      # Run proxy benchmarks in development mode. Requires nightly.
-      # Failures are not fatal.
-      rust: nightly-2018-05-26
-      cache: cargo
-      script:
-        - (cd proxy && cargo test --benches --locked --no-default-features)
-
     - language: go
       # Quote the version number to avoid parsing issues like
       # https://github.com/travis-ci/gimme/issues/132.

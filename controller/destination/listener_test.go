@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
-	common "github.com/linkerd/linkerd2/controller/gen/common"
+	"github.com/linkerd/linkerd2-proxy-api/go/net"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"k8s.io/api/core/v1"
@@ -22,7 +22,7 @@ type podExpected struct {
 
 type listenerExpected struct {
 	pods           []podExpected
-	address        common.TcpAddress
+	address        net.TcpAddress
 	listenerLabels map[string]string
 	addressLabels  map[string]string
 }
@@ -45,11 +45,11 @@ func TestEndpointListener(t *testing.T) {
 			ownerKindAndName: defaultOwnerKindAndName,
 		}
 
-		addedAddress1 := common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 1}}, Port: 1}
-		addedAddress2 := common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 2}}, Port: 2}
-		removedAddress1 := common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 100}}, Port: 100}
+		addedAddress1 := net.TcpAddress{Ip: &net.IPAddress{Ip: &net.IPAddress_Ipv4{Ipv4: 1}}, Port: 1}
+		addedAddress2 := net.TcpAddress{Ip: &net.IPAddress{Ip: &net.IPAddress_Ipv4{Ipv4: 2}}, Port: 2}
+		removedAddress1 := net.TcpAddress{Ip: &net.IPAddress{Ip: &net.IPAddress_Ipv4{Ipv4: 100}}, Port: 100}
 
-		listener.Update([]common.TcpAddress{addedAddress1, addedAddress2}, []common.TcpAddress{removedAddress1})
+		listener.Update([]net.TcpAddress{addedAddress1, addedAddress2}, []net.TcpAddress{removedAddress1})
 
 		expectedNumUpdates := 2
 		actualNumUpdates := len(mockGetServer.updatesReceived)
@@ -67,11 +67,11 @@ func TestEndpointListener(t *testing.T) {
 			ownerKindAndName: defaultOwnerKindAndName,
 		}
 
-		addedAddress1 := common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 1}}, Port: 1}
-		addedAddress2 := common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 2}}, Port: 2}
-		removedAddress1 := common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 100}}, Port: 100}
+		addedAddress1 := net.TcpAddress{Ip: &net.IPAddress{Ip: &net.IPAddress_Ipv4{Ipv4: 1}}, Port: 1}
+		addedAddress2 := net.TcpAddress{Ip: &net.IPAddress{Ip: &net.IPAddress_Ipv4{Ipv4: 2}}, Port: 2}
+		removedAddress1 := net.TcpAddress{Ip: &net.IPAddress{Ip: &net.IPAddress_Ipv4{Ipv4: 100}}, Port: 100}
 
-		listener.Update([]common.TcpAddress{addedAddress1, addedAddress2}, []common.TcpAddress{removedAddress1})
+		listener.Update([]net.TcpAddress{addedAddress1, addedAddress2}, []net.TcpAddress{removedAddress1})
 
 		addressesAdded := mockGetServer.updatesReceived[0].GetAdd().Addrs
 		actualNumberOfAdded := len(addressesAdded)
@@ -127,8 +127,8 @@ func TestEndpointListener(t *testing.T) {
 		expectedNamespace := "this-namespace"
 		expectedReplicationControllerName := "rc-name"
 
-		addedAddress1 := common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 666}}, Port: 1}
-		ipForAddr1 := addr.IPToString(addedAddress1.Ip)
+		addedAddress1 := net.TcpAddress{Ip: &net.IPAddress{Ip: &net.IPAddress_Ipv4{Ipv4: 666}}, Port: 1}
+		ipForAddr1 := addr.ProxyIPToString(addedAddress1.Ip)
 		podForAddedAddress1 := &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      expectedPodName,
@@ -141,7 +141,7 @@ func TestEndpointListener(t *testing.T) {
 				Phase: v1.PodRunning,
 			},
 		}
-		addedAddress2 := common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 222}}, Port: 22}
+		addedAddress2 := net.TcpAddress{Ip: &net.IPAddress{Ip: &net.IPAddress_Ipv4{Ipv4: 222}}, Port: 22}
 		podIndex := func(ip string) ([]*v1.Pod, error) {
 			return map[string][]*v1.Pod{ipForAddr1: []*v1.Pod{podForAddedAddress1}}[ip], nil
 		}
@@ -157,7 +157,7 @@ func TestEndpointListener(t *testing.T) {
 			stream: mockGetServer,
 		}
 
-		listener.Update([]common.TcpAddress{addedAddress1, addedAddress2}, nil)
+		listener.Update([]net.TcpAddress{addedAddress1, addedAddress2}, nil)
 
 		actualGlobalMetricLabels := mockGetServer.updatesReceived[0].GetAdd().MetricLabels
 		expectedGlobalMetricLabels := map[string]string{"namespace": expectedNamespace, "service": expectedServiceName}
@@ -185,8 +185,8 @@ func TestEndpointListener(t *testing.T) {
 			ControllerNs: "conduit-namespace",
 		}
 
-		addedAddress := common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 666}}, Port: 1}
-		ipForAddr := addr.IPToString(addedAddress.Ip)
+		addedAddress := net.TcpAddress{Ip: &net.IPAddress{Ip: &net.IPAddress_Ipv4{Ipv4: 666}}, Port: 1}
+		ipForAddr := addr.ProxyIPToString(addedAddress.Ip)
 		podForAddedAddress := &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      expectedPodName,
@@ -217,7 +217,7 @@ func TestEndpointListener(t *testing.T) {
 			enableTLS:        true,
 		}
 
-		listener.Update([]common.TcpAddress{addedAddress}, nil)
+		listener.Update([]net.TcpAddress{addedAddress}, nil)
 
 		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
 		if len(addrs) != 1 {
@@ -236,8 +236,8 @@ func TestEndpointListener(t *testing.T) {
 		expectedConduitNamespace := "conduit-namespace"
 		expectedPodDeployment := "pod-deployment"
 
-		addedAddress := common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 666}}, Port: 1}
-		ipForAddr := addr.IPToString(addedAddress.Ip)
+		addedAddress := net.TcpAddress{Ip: &net.IPAddress{Ip: &net.IPAddress_Ipv4{Ipv4: 666}}, Port: 1}
+		ipForAddr := addr.ProxyIPToString(addedAddress.Ip)
 		podForAddedAddress := &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      expectedPodName,
@@ -267,7 +267,7 @@ func TestEndpointListener(t *testing.T) {
 			stream:           mockGetServer,
 		}
 
-		listener.Update([]common.TcpAddress{addedAddress}, nil)
+		listener.Update([]net.TcpAddress{addedAddress}, nil)
 
 		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
 		if len(addrs) != 1 {
@@ -290,7 +290,7 @@ func TestEndpointListener(t *testing.T) {
 						phase: v1.PodPending,
 					},
 				},
-				address: common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 666}}, Port: 1},
+				address: net.TcpAddress{Ip: &net.IPAddress{Ip: &net.IPAddress_Ipv4{Ipv4: 666}}, Port: 1},
 				listenerLabels: map[string]string{
 					"service":   "service-name",
 					"namespace": "this-namespace",
@@ -318,7 +318,7 @@ func TestEndpointListener(t *testing.T) {
 						phase: v1.PodSucceeded,
 					},
 				},
-				address: common.TcpAddress{Ip: &common.IPAddress{Ip: &common.IPAddress_Ipv4{Ipv4: 666}}, Port: 1},
+				address: net.TcpAddress{Ip: &net.IPAddress{Ip: &net.IPAddress_Ipv4{Ipv4: 666}}, Port: 1},
 				listenerLabels: map[string]string{
 					"service":   "service-name",
 					"namespace": "this-namespace",
@@ -334,7 +334,7 @@ func TestEndpointListener(t *testing.T) {
 			backingMap := map[string][]*v1.Pod{}
 
 			for _, pod := range exp.pods {
-				ipForAddr := addr.IPToString(exp.address.Ip)
+				ipForAddr := addr.ProxyIPToString(exp.address.Ip)
 				podForAddedAddress := &v1.Pod{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      pod.pod,
@@ -362,7 +362,7 @@ func TestEndpointListener(t *testing.T) {
 				stream:           mockGetServer,
 			}
 
-			listener.Update([]common.TcpAddress{exp.address}, nil)
+			listener.Update([]net.TcpAddress{exp.address}, nil)
 
 			actualGlobalMetricLabels := mockGetServer.updatesReceived[0].GetAdd().MetricLabels
 			if !reflect.DeepEqual(actualGlobalMetricLabels, exp.listenerLabels) {
@@ -377,7 +377,7 @@ func TestEndpointListener(t *testing.T) {
 	})
 }
 
-func checkAddress(t *testing.T, addr *pb.WeightedAddr, expectedAddress *common.TcpAddress) {
+func checkAddress(t *testing.T, addr *pb.WeightedAddr, expectedAddress *net.TcpAddress) {
 	actualAddress := addr.Addr
 	actualWeight := addr.Weight
 	expectedWeight := uint32(1)

@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
-	common "github.com/linkerd/linkerd2/controller/gen/common"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -65,7 +64,7 @@ func NewServer(addr, k8sDNSZone string, enableTLS bool, k8sAPI *k8s.API, done ch
 	return s, lis, nil
 }
 
-func (s *server) Get(dest *common.Destination, stream pb.Destination_GetServer) error {
+func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) error {
 	log.Debugf("Get %v", dest)
 	if dest.Scheme != "k8s" {
 		err := fmt.Errorf("Unsupported scheme %v", dest.Scheme)

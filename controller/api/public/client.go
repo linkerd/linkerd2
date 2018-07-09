@@ -9,7 +9,6 @@ import (
 	"net/url"
 
 	"github.com/golang/protobuf/proto"
-	common "github.com/linkerd/linkerd2/controller/gen/common"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -140,8 +139,8 @@ type tapClient struct {
 	reader *bufio.Reader
 }
 
-func (c tapClient) Recv() (*common.TapEvent, error) {
-	var msg common.TapEvent
+func (c tapClient) Recv() (*pb.TapEvent, error) {
+	var msg pb.TapEvent
 	err := fromByteStreamToProtocolBuffers(c.reader, &msg)
 	return &msg, err
 }

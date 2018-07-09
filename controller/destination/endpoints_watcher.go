@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	common "github.com/linkerd/linkerd2/controller/gen/common"
+	net "github.com/linkerd/linkerd2-proxy-api/go/net"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	log "github.com/sirupsen/logrus"
@@ -270,7 +270,7 @@ type servicePort struct {
 	listeners  []updateListener
 	endpoints  *v1.Endpoints
 	targetPort intstr.IntOrString
-	addresses  []common.TcpAddress
+	addresses  []net.TcpAddress
 	// This mutex protects against concurrent modification of the listeners slice
 	// as well as prevents updates for occuring while the listeners slice is being
 	// modified.
@@ -328,7 +328,7 @@ func (sp *servicePort) deleteEndpoints() {
 		listener.NoEndpoints(false)
 	}
 	sp.endpoints = &v1.Endpoints{}
-	sp.addresses = []common.TcpAddress{}
+	sp.addresses = []net.TcpAddress{}
 }
 
 func (sp *servicePort) updateService(newService *v1.Service) {
@@ -352,15 +352,15 @@ func (sp *servicePort) updateService(newService *v1.Service) {
 	}
 }
 
-func (sp *servicePort) updateAddresses(newAddresses []common.TcpAddress) {
-	log.Debugf("Updating %s:%d to %s", sp.service, sp.port, addr.AddressesToString(newAddresses))
+func (sp *servicePort) updateAddresses(newAddresses []net.TcpAddress) {
+	log.Debugf("Updating %s:%d to %s", sp.service, sp.port, addr.ProxyAddressesToString(newAddresses))
 
 	if len(newAddresses) == 0 {
 		for _, listener := range sp.listeners {
 			listener.NoEndpoints(true)
 		}
 	} else {
-		add, remove := addr.DiffAddresses(sp.addresses, newAddresses)
+		add, remove := addr.DiffProxyAddresses(sp.addresses, newAddresses)
 		for _, listener := range sp.listeners {
 			listener.Update(add, remove)
 		}
@@ -417,11 +417,11 @@ func (sp *servicePort) unsubscribeAll() {
 
 /// helpers ///
 
-func addresses(endpoints *v1.Endpoints, port intstr.IntOrString) []common.TcpAddress {
-	ips := make([]common.IPAddress, 0)
+func addresses(endpoints *v1.Endpoints, port intstr.IntOrString) []net.TcpAddress {
+	ips := make([]net.IPAddress, 0)
 	for _, subset := range endpoints.Subsets {
 		for _, address := range subset.Addresses {
-			ip, err := addr.ParseIPV4(address.IP)
+			ip, err := addr.ParseProxyIPV4(address.IP)
 			if err != nil {
 				log.Printf("%s is not a valid IP address", address.IP)
 				continue
@@ -443,15 +443,15 @@ func addresses(endpoints *v1.Endpoints, port intstr.IntOrString) []common.TcpAdd
 		}
 		if portNum == 0 {
 			log.Printf("Port %s not found", port.StrVal)
-			return []common.TcpAddress{}
+			return []net.TcpAddress{}
 		}
 	} else if port.Type == intstr.Int {
 		portNum = uint32(port.IntVal)
 	}
 
-	addrs := make([]common.TcpAddress, len(ips))
+	addrs := make([]net.TcpAddress, len(ips))
 	for i := range ips {
-		addrs[i] = common.TcpAddress{
+		addrs[i] = net.TcpAddress{
 			Ip:   &ips[i],
 			Port: portNum,
 		}

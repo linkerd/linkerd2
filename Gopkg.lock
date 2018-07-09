@@ -65,6 +65,7 @@
     "protoc-gen-go",
     "protoc-gen-go/descriptor",
     "protoc-gen-go/generator",
+    "protoc-gen-go/generator/internal/remap",
     "protoc-gen-go/grpc",
     "protoc-gen-go/plugin",
     "ptypes",
@@ -73,7 +74,8 @@
     "ptypes/struct",
     "ptypes/timestamp"
   ]
-  revision = "1e59b77b52bf8e4b449a57e6f79f21226d571845"
+  revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
+  version = "v1.1.0"
 
 [[projects]]
   branch = "master"
@@ -151,6 +153,16 @@
   version = "v1.1"
 
 [[projects]]
+  branch = "ver/goproto110"
+  name = "github.com/linkerd/linkerd2-proxy-api"
+  packages = [
+    "go/destination",
+    "go/net",
+    "go/tap"
+  ]
+  revision = "7605aac5c4cdc82d8e79137cf69de36325d850ab"
+
+[[projects]]
   name = "github.com/matttproud/golang_protobuf_extensions"
   packages = ["pbutil"]
   revision = "3247c84500bff8d9fb6d579d800f20b3e091582c"
@@ -203,6 +215,12 @@
     "xfs"
   ]
   revision = "cb4147076ac75738c9a7d279075a253c0cc5acbd"
+
+[[projects]]
+  branch = "kl/proto-upgrade"
+  name = "github.com/runconduit/conduit"
+  packages = ["controller/gen/common"]
+  revision = "7e0946b2daaf1f6d38ccc47e536bdf49664ff8cc"
 
 [[projects]]
   name = "github.com/satori/go.uuid"
@@ -627,6 +645,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "00652f1de84ed6ae416a1993fbb2d2b0a758b5ea23ad9fb69f7d49afe9267a68"
+  inputs-digest = "aa7154a2b2c8106c8ac363a52682cd86db2af4366b3b86a85720433e5a566579"
   solver-name = "gps-cdcl"
   solver-version = 1

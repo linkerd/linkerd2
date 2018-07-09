@@ -6,11 +6,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/prometheus/client_golang/api/prometheus/v1"
-	"github.com/prometheus/common/model"
-	common "github.com/linkerd/linkerd2/controller/gen/common"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/prometheus/client_golang/api/prometheus/v1"
+	"github.com/prometheus/common/model"
 	"google.golang.org/grpc"
 )
 
@@ -53,13 +52,13 @@ func (c *MockConduitApiClient) SelfCheck(ctx context.Context, in *healthcheckPb.
 }
 
 type MockApi_TapClient struct {
-	TapEventsToReturn []common.TapEvent
+	TapEventsToReturn []pb.TapEvent
 	ErrorsToReturn    []error
 	grpc.ClientStream
 }
 
-func (a *MockApi_TapClient) Recv() (*common.TapEvent, error) {
-	var eventPopped common.TapEvent
+func (a *MockApi_TapClient) Recv() (*pb.TapEvent, error) {
+	var eventPopped pb.TapEvent
 	var errorPopped error
 	if len(a.TapEventsToReturn) == 0 && len(a.ErrorsToReturn) == 0 {
 		return nil, io.EOF
@@ -75,13 +74,13 @@ func (a *MockApi_TapClient) Recv() (*common.TapEvent, error) {
 }
 
 type MockApi_TapByResourceClient struct {
-	TapEventsToReturn []common.TapEvent
+	TapEventsToReturn []pb.TapEvent
 	ErrorsToReturn    []error
 	grpc.ClientStream
 }
 
-func (a *MockApi_TapByResourceClient) Recv() (*common.TapEvent, error) {
-	var eventPopped common.TapEvent
+func (a *MockApi_TapByResourceClient) Recv() (*pb.TapEvent, error) {
+	var eventPopped pb.TapEvent
 	var errorPopped error
 	if len(a.TapEventsToReturn) == 0 && len(a.ErrorsToReturn) == 0 {
 		return nil, io.EOF
