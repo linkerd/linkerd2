@@ -140,10 +140,10 @@ curl https://raw.githubusercontent.com/runconduit/conduit-examples/master/emojiv
 minikube -n emojivoto service web-svc --url
 
 # view details per deployment
-bin/conduit stat deployments
+bin/conduit -n emojivoto stat deployments
 
 # view a live pipeline of requests
-bin/conduit tap deploy emojivoto/voting
+bin/conduit -n emojivoto tap deploy voting
 ```
 
 ### A note about Go run
