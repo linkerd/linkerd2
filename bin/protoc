@@ -19,7 +19,7 @@ if [ ! -f "$protocbin" ]; then
   (
     cd "$tmp"
     curl -L --silent --fail -o "./protoc.zip" "$protocurl"
-    unzip "./protoc.zip"
+    unzip -q "./protoc.zip" bin/protoc
     chmod +x bin/protoc
   )
   mv "$tmp/bin/protoc" "$protocbin"
