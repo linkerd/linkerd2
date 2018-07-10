@@ -6,7 +6,7 @@ The Linkerd2 maintainers are:
 * Brian Smith <brian@buoyant.io> @briansmith
 * Eliza Weisman <eliza@buoyant.io> @hawkw
 * Andrew Seigner <siggy@buoyant.io> @siggy
-* Sean McArthur <sean@buoyant.io> @siggy
+* Sean McArthur <sean@buoyant.io> @seanmonstar
 * William Morgan <william@buoyant.io> @wmorgan: docs and governance
 
 
