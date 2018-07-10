@@ -1,21 +1,23 @@
-FROM gcr.io/linkerd-io/base:2017-10-30.01 as fetch
+ARG RUNTIME_IMAGE=gcr.io/linkerd-io/base:2017-10-30.01
 
-# XXX We must do HTTPS verification here, but we don't yet have certs in this
-# container.
-RUN (apt-get update && \
-    apt-get install -y ca-certificates ; \
-    curl -vsLO https://build.l5d.io/linkerd2-proxy/latest.txt ; \
+# Fetches the latest proxy binary via build.l5d.io/linkerd2-proxy/latest.txt
+FROM gcr.io/linkerd-io/base:2017-10-30.01 as fetch
+RUN apt-get update && apt-get install -y ca-certificates
+WORKDIR /build
+RUN (curl -vsLO https://build.l5d.io/linkerd2-proxy/latest.txt ; \
     latest=$(awk '{print $2}' latest.txt) ; \
+    version=${latest%%.tar.gz} ; version=${version##linkerd2-proxy-} ; \
     latest_sha=$(awk '{print $1}' latest.txt) ; \
     curl -vsLO "https://build.l5d.io/linkerd2-proxy/${latest}" ; \
     sha=$(sha256sum $latest | awk '{print $1}') ; \
     if [ "$sha" != "$latest_sha" ]; then echo "sha mismatch" >&2 ; exit 1 ; fi ; \
     tar -zxvf ${latest} ; \
-    mv "${latest%%.tar.gz}/bin/linkerd2-proxy" . )
+    mv "linkerd2-proxy-${version}/bin/linkerd2-proxy" . ; \
+    echo "$version" >version.txt)
 
-
-ARG RUNTIME_IMAGE=gcr.io/linkerd-io/base:2017-10-30.01
 FROM $RUNTIME_IMAGE as runtime
-COPY --from=fetch linkerd2-proxy /usr/local/bin/linkerd2-proxy
+WORKDIR /linkerd
+COPY --from=fetch /build/linkerd2-proxy ./linkerd2-proxy
+COPY --from=fetch /build/version.txt ./linkerd2-proxy-version.txt
 ENV LINKERD2_PROXY_LOG=warn,linkerd2_proxy=info
-ENTRYPOINT ["/usr/local/bin/linkerd2-proxy"]
+ENTRYPOINT ["./linkerd2-proxy"]
