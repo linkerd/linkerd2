@@ -4,11 +4,7 @@ The Linkerd2 maintainers are:
 * Kevin Lingerfelt <kl@buoyant.io> @klingerf (super-maintainer)
 * Risha Mars <mars@buoyant.io> @rmars
 * Brian Smith <brian@buoyant.io> @briansmith
-* Eliza Weisman <eliza@buoyant.io> @hawkw
 * Andrew Seigner <siggy@buoyant.io> @siggy
-* Sean McArthur <sean@buoyant.io> @seanmonstar
-* William Morgan <william@buoyant.io> @wmorgan: docs and governance
-
 
 <!--
 # Adding a new maintainer
