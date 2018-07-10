@@ -2,21 +2,19 @@ package destination
 
 import (
 	"context"
-
-	"github.com/linkerd/linkerd2-proxy-api/go/net"
 )
 
 // implements the updateListener interface
 type collectUpdateListener struct {
-	added             []net.TcpAddress
-	removed           []net.TcpAddress
+	added             []*updateAddress
+	removed           []*updateAddress
 	noEndpointsCalled bool
 	noEndpointsExists bool
 	context           context.Context
 	stopCh            chan struct{}
 }
 
-func (c *collectUpdateListener) Update(add []net.TcpAddress, remove []net.TcpAddress) {
+func (c *collectUpdateListener) Update(add, remove []*updateAddress) {
 	c.added = append(c.added, add...)
 	c.removed = append(c.removed, remove...)
 }

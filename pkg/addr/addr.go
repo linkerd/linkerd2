@@ -90,36 +90,3 @@ func decodeIPToOctets(ip uint32) [4]uint8 {
 		uint8(ip & 255),
 	}
 }
-
-func DiffProxyAddresses(oldAddrs []pb.TcpAddress, newAddrs []pb.TcpAddress) ([]pb.TcpAddress, []pb.TcpAddress) {
-	addSet := make(map[string]pb.TcpAddress)
-	removeSet := make(map[string]pb.TcpAddress)
-
-	for _, addr := range newAddrs {
-		key := ProxyAddressToString(&addr)
-		addSet[key] = addr
-	}
-
-	for _, addr := range oldAddrs {
-		key := ProxyAddressToString(&addr)
-		delete(addSet, key)
-		removeSet[key] = addr
-	}
-
-	for _, addr := range newAddrs {
-		key := ProxyAddressToString(&addr)
-		delete(removeSet, key)
-	}
-
-	add := make([]pb.TcpAddress, 0)
-	for _, addr := range addSet {
-		add = append(add, addr)
-	}
-
-	remove := make([]pb.TcpAddress, 0)
-	for _, addr := range removeSet {
-		remove = append(remove, addr)
-	}
-
-	return add, remove
-}

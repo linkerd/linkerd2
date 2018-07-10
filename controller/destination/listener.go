@@ -9,11 +9,8 @@ import (
 	coreV1 "k8s.io/api/core/v1"
 )
 
-type podsByIpFn func(string) ([]*coreV1.Pod, error)
-type ownerKindAndNameFn func(*coreV1.Pod) (string, string)
-
 type updateListener interface {
-	Update(add []net.TcpAddress, remove []net.TcpAddress)
+	Update(add, remove []*updateAddress)
 	ClientClose() <-chan struct{}
 	ServerClose() <-chan struct{}
 	NoEndpoints(exists bool)
@@ -21,10 +18,50 @@ type updateListener interface {
 	Stop()
 }
 
+type ownerKindAndNameFn func(*coreV1.Pod) (string, string)
+
+// updateAddress is a pairing of TCP address to Kubernetes pod object
+type updateAddress struct {
+	address *net.TcpAddress
+	pod     *coreV1.Pod
+}
+
+func diffUpdateAddresses(oldAddrs, newAddrs []*updateAddress) ([]*updateAddress, []*updateAddress) {
+	addSet := make(map[string]*updateAddress)
+	removeSet := make(map[string]*updateAddress)
+
+	for _, a := range newAddrs {
+		key := addr.ProxyAddressToString(a.address)
+		addSet[key] = a
+	}
+
+	for _, a := range oldAddrs {
+		key := addr.ProxyAddressToString(a.address)
+		delete(addSet, key)
+		removeSet[key] = a
+	}
+
+	for _, a := range newAddrs {
+		key := addr.ProxyAddressToString(a.address)
+		delete(removeSet, key)
+	}
+
+	add := make([]*updateAddress, 0)
+	for _, a := range addSet {
+		add = append(add, a)
+	}
+
+	remove := make([]*updateAddress, 0)
+	for _, a := range removeSet {
+		remove = append(remove, a)
+	}
+
+	return add, remove
+}
+
 // implements the updateListener interface
 type endpointListener struct {
 	stream           pb.Destination_GetServer
-	podsByIp         podsByIpFn
 	ownerKindAndName ownerKindAndNameFn
 	labels           map[string]string
 	enableTLS        bool
@@ -33,13 +70,11 @@ type endpointListener struct {
 
 func newEndpointListener(
 	stream pb.Destination_GetServer,
-	podsByIp podsByIpFn,
 	ownerKindAndName ownerKindAndNameFn,
 	enableTLS bool,
 ) *endpointListener {
 	return &endpointListener{
 		stream:           stream,
-		podsByIp:         podsByIp,
 		ownerKindAndName: ownerKindAndName,
 		labels:           make(map[string]string),
 		enableTLS:        enableTLS,
@@ -68,7 +103,7 @@ func (l *endpointListener) SetServiceId(id *serviceId) {
 	}
 }
 
-func (l *endpointListener) Update(add []net.TcpAddress, remove []net.TcpAddress) {
+func (l *endpointListener) Update(add, remove []*updateAddress) {
 	if len(add) > 0 {
 		update := &pb.Update{
 			Update: &pb.Update_Add{
@@ -104,10 +139,10 @@ func (l *endpointListener) NoEndpoints(exists bool) {
 	l.stream.Send(update)
 }
 
-func (l *endpointListener) toWeightedAddrSet(endpoints []net.TcpAddress) *pb.WeightedAddrSet {
+func (l *endpointListener) toWeightedAddrSet(addresses []*updateAddress) *pb.WeightedAddrSet {
 	addrs := make([]*pb.WeightedAddr, 0)
-	for _, address := range endpoints {
-		addrs = append(addrs, l.toWeightedAddr(address))
+	for _, a := range addresses {
+		addrs = append(addrs, l.toWeightedAddr(a))
 	}
 
 	return &pb.WeightedAddrSet{
@@ -116,42 +151,22 @@ func (l *endpointListener) toWeightedAddrSet(endpoints []net.TcpAddress) *pb.Wei
 	}
 }
 
-func (l *endpointListener) toWeightedAddr(address net.TcpAddress) *pb.WeightedAddr {
-	var tlsIdentity *pb.TlsIdentity
-	metricLabelsForPod := map[string]string{}
-	ipAsString := addr.ProxyIPToString(address.Ip)
-
-	resultingPods, err := l.podsByIp(ipAsString)
-	if err != nil {
-		log.Errorf("Error while finding pod for IP [%s], this IP will be sent with no metric labels: %v", ipAsString, err)
-	} else {
-		podFound := false
-		for _, pod := range resultingPods {
-			if pod.Status.Phase == coreV1.PodRunning {
-				podFound = true
-				metricLabelsForPod = pkgK8s.GetOwnerLabels(pod.ObjectMeta)
-				metricLabelsForPod["pod"] = pod.Name
-				tlsIdentity = l.toTlsIdentity(pod)
-				break
-			}
-		}
-		if !podFound {
-			log.Errorf("Could not find running pod for IP [%s], this IP will be sent with no metric labels.", ipAsString)
-		}
-	}
+func (l *endpointListener) toWeightedAddr(address *updateAddress) *pb.WeightedAddr {
+	metricLabelsForPod := pkgK8s.GetOwnerLabels(address.pod.ObjectMeta)
+	metricLabelsForPod["pod"] = address.pod.Name
 
 	return &pb.WeightedAddr{
-		Addr:         &address,
+		Addr:         address.address,
 		Weight:       1,
 		MetricLabels: metricLabelsForPod,
-		TlsIdentity:  tlsIdentity,
+		TlsIdentity:  l.toTlsIdentity(address.pod),
 	}
 }
 
-func (l *endpointListener) toAddrSet(endpoints []net.TcpAddress) *pb.AddrSet {
+func (l *endpointListener) toAddrSet(addresses []*updateAddress) *pb.AddrSet {
 	addrs := make([]*net.TcpAddress, 0)
-	for i := range endpoints {
-		addrs = append(addrs, &endpoints[i])
+	for _, a := range addresses {
+		addrs = append(addrs, a.address)
 	}
 	return &pb.AddrSet{Addrs: addrs}
 }

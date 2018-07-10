@@ -40,10 +40,49 @@ metadata:
 subsets:
 - addresses:
   - ip: 172.17.0.12
+    targetRef:
+      kind: Pod
+      name: name1-1
+      namespace: ns
   - ip: 172.17.0.19
+    targetRef:
+      kind: Pod
+      name: name1-2
+      namespace: ns
   - ip: 172.17.0.20
+    targetRef:
+      kind: Pod
+      name: name1-3
+      namespace: ns
   ports:
   - port: 8989`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name1-1
+  namespace: ns
+status:
+  phase: Running
+  podIP: 172.17.0.12`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name1-2
+  namespace: ns
+status:
+  phase: Running
+  podIP: 172.17.0.19`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name1-3
+  namespace: ns
+status:
+  phase: Running
+  podIP: 172.17.0.20`,
 			},
 			service: &serviceId{namespace: "ns", name: "name1"},
 			port:    uint32(8989),
@@ -55,7 +94,61 @@ subsets:
 			expectedNoEndpoints:              false,
 			expectedNoEndpointsServiceExists: false,
 		},
-
+		{
+			serviceType: "local services with missing pods",
+			k8sConfigs: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: name1
+  namespace: ns
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8989`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: name1
+  namespace: ns
+subsets:
+- addresses:
+  - ip: 172.17.0.23
+    targetRef:
+      kind: Pod
+      name: name1-1
+      namespace: ns
+  - ip: 172.17.0.24
+    targetRef:
+      kind: Pod
+      name: name1-2
+      namespace: ns
+  - ip: 172.17.0.25
+    targetRef:
+      kind: Pod
+      name: name1-3
+      namespace: ns
+  ports:
+  - port: 8989`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name1-3
+  namespace: ns
+status:
+  phase: Running
+  podIP: 172.17.0.25`,
+			},
+			service: &serviceId{namespace: "ns", name: "name1"},
+			port:    uint32(8989),
+			expectedAddresses: []string{
+				"172.17.0.25:8989",
+			},
+			expectedNoEndpoints:              false,
+			expectedNoEndpointsServiceExists: false,
+		},
 		{
 			serviceType: "local services with no endpoints",
 			k8sConfigs: []string{`
@@ -123,7 +216,7 @@ spec:
 
 			actualAddresses := make([]string, 0)
 			for _, add := range listener.added {
-				actualAddresses = append(actualAddresses, addr.ProxyAddressToString(&add))
+				actualAddresses = append(actualAddresses, addr.ProxyAddressToString(add.address))
 			}
 			sort.Strings(actualAddresses)
 
