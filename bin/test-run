@@ -57,10 +57,10 @@ printf "Testing Conduit version [%s] namespace [%s]\\n" "$conduit_version" "$con
 exit_code=0
 
 run_test "$test_directory/install_test.go" || exit_code=$?
+run_test "$test_directory/install_test.go" "-enable-tls" || exit_code=$?
 for test in $(find "$test_directory" -mindepth 2 -name '*_test.go'); do
     run_test "$test" || exit_code=$?
 done
-run_test "$test_directory/install_test.go" "-enable-tls" || exit_code=$?
 
 if [ $exit_code -eq 0 ]; then
     printf "\\n=== PASS: all tests passed\\n"
