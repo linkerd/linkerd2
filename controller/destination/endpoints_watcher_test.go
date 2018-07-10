@@ -216,7 +216,7 @@ spec:
 
 			actualAddresses := make([]string, 0)
 			for _, add := range listener.added {
-				actualAddresses = append(actualAddresses, addr.ProxyAddressToString(&add))
+				actualAddresses = append(actualAddresses, addr.ProxyAddressToString(add.address))
 			}
 			sort.Strings(actualAddresses)
 

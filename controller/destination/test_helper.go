@@ -2,25 +2,20 @@ package destination
 
 import (
 	"context"
-
-	"github.com/linkerd/linkerd2-proxy-api/go/net"
-	"k8s.io/api/core/v1"
 )
 
 // implements the updateListener interface
 type collectUpdateListener struct {
-	added             []net.TcpAddress
-	removed           []net.TcpAddress
+	added             []*updateAddress
+	removed           []*updateAddress
 	noEndpointsCalled bool
 	noEndpointsExists bool
 	context           context.Context
 	stopCh            chan struct{}
 }
 
-func (c *collectUpdateListener) Update(add map[net.TcpAddress]*v1.Pod, remove []net.TcpAddress) {
-	for a := range add {
-		c.added = append(c.added, a)
-	}
+func (c *collectUpdateListener) Update(add, remove []*updateAddress) {
+	c.added = append(c.added, add...)
 	c.removed = append(c.removed, remove...)
 }
 

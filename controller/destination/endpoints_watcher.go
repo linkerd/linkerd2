@@ -79,7 +79,7 @@ func (e *endpointsWatcher) stop() {
 // The provided listener will be updated each time the address set for the
 // given service port is changed.
 func (e *endpointsWatcher) subscribe(service *serviceId, port uint32, listener updateListener) error {
-	log.Printf("Establishing watch on endpoint %s:%d", service, port)
+	log.Infof("Establishing watch on endpoint %s:%d", service, port)
 
 	svc, err := e.getService(service)
 	if err != nil && !apierrors.IsNotFound(err) {
@@ -124,7 +124,7 @@ func (e *endpointsWatcher) subscribe(service *serviceId, port uint32, listener u
 }
 
 func (e *endpointsWatcher) unsubscribe(service *serviceId, port uint32, listener updateListener) error {
-	log.Printf("Stopping watch on endpoint %s:%d", service, port)
+	log.Infof("Stopping watch on endpoint %s:%d", service, port)
 
 	e.mutex.Lock() // Acquire write-lock on servicePorts data structure.
 	defer e.mutex.Unlock()
@@ -256,7 +256,7 @@ type servicePort struct {
 	listeners  []updateListener
 	endpoints  *v1.Endpoints
 	targetPort intstr.IntOrString
-	addresses  map[net.TcpAddress]*v1.Pod
+	addresses  []*updateAddress
 	podLister  corelisters.PodLister
 	// This mutex protects against concurrent modification of the listeners slice
 	// as well as prevents updates for occuring while the listeners slice is being
@@ -293,7 +293,7 @@ func newServicePort(service *v1.Service, endpoints *v1.Endpoints, port uint32, p
 		mutex:      sync.Mutex{},
 	}
 
-	sp.addresses = sp.addressMap(endpoints, targetPort)
+	sp.addresses = sp.endpointsToAddresses(endpoints, targetPort)
 
 	return sp
 }
@@ -316,7 +316,7 @@ func (sp *servicePort) deleteEndpoints() {
 		listener.NoEndpoints(false)
 	}
 	sp.endpoints = &v1.Endpoints{}
-	sp.addresses = map[net.TcpAddress]*v1.Pod{}
+	sp.addresses = []*updateAddress{}
 }
 
 func (sp *servicePort) updateService(newService *v1.Service) {
@@ -340,33 +340,20 @@ func (sp *servicePort) updateService(newService *v1.Service) {
 }
 
 func (sp *servicePort) updateAddresses(endpoints *v1.Endpoints, port intstr.IntOrString) {
-	addresses := sp.addressMap(endpoints, port)
-	newAddresses := make([]net.TcpAddress, 0)
-	for a := range addresses {
-		newAddresses = append(newAddresses, a)
-	}
-
-	log.Debugf("Updating %s:%d to %s", sp.service, sp.port, addr.ProxyAddressesToString(newAddresses))
+	newAddresses := sp.endpointsToAddresses(endpoints, port)
+	log.Debugf("Updating %s:%d to %v", sp.service, sp.port, newAddresses)
 
 	if len(newAddresses) == 0 {
 		for _, listener := range sp.listeners {
 			listener.NoEndpoints(true)
 		}
 	} else {
-		oldAddresses := make([]net.TcpAddress, 0)
-		for a := range sp.addresses {
-			oldAddresses = append(oldAddresses, a)
-		}
-		add, remove := addr.DiffProxyAddresses(oldAddresses, newAddresses)
-		addAddresses := make(map[net.TcpAddress]*v1.Pod)
-		for _, a := range add {
-			addAddresses[a] = addresses[a]
-		}
+		add, remove := diffUpdateAddresses(sp.addresses, newAddresses)
 		for _, listener := range sp.listeners {
-			listener.Update(addAddresses, remove)
+			listener.Update(add, remove)
 		}
 	}
-	sp.addresses = addresses
+	sp.addresses = newAddresses
 }
 
 func (sp *servicePort) subscribe(exists bool, listener updateListener) {
@@ -418,8 +405,8 @@ func (sp *servicePort) unsubscribeAll() {
 
 /// helpers ///
 
-func (sp *servicePort) addressMap(endpoints *v1.Endpoints, port intstr.IntOrString) map[net.TcpAddress]*v1.Pod {
-	addresses := make(map[net.TcpAddress]*v1.Pod)
+func (sp *servicePort) endpointsToAddresses(endpoints *v1.Endpoints, port intstr.IntOrString) []*updateAddress {
+	addrs := make([]*updateAddress, 0)
 
 	var portNum uint32
 	if port.Type == intstr.String {
@@ -433,8 +420,8 @@ func (sp *servicePort) addressMap(endpoints *v1.Endpoints, port intstr.IntOrStri
 			}
 		}
 		if portNum == 0 {
-			log.Printf("Port %s not found", port.StrVal)
-			return addresses
+			log.Errorf("Port %s not found", port.StrVal)
+			return addrs
 		}
 	} else if port.Type == intstr.Int {
 		portNum = uint32(port.IntVal)
@@ -444,7 +431,7 @@ func (sp *servicePort) addressMap(endpoints *v1.Endpoints, port intstr.IntOrStri
 		for _, address := range subset.Addresses {
 			target := address.TargetRef
 			if target == nil {
-				log.Printf("Target not found for endpoint %v", address)
+				log.Errorf("Target not found for endpoint %v", address)
 				continue
 			}
 
@@ -452,19 +439,21 @@ func (sp *servicePort) addressMap(endpoints *v1.Endpoints, port intstr.IntOrStri
 
 			ip, err := addr.ParseProxyIPV4(address.IP)
 			if err != nil {
-				log.Printf("[%s] not a valid IPV4 address", idStr)
+				log.Errorf("[%s] not a valid IPV4 address", idStr)
 				continue
 			}
 
 			pod, err := sp.podLister.Pods(target.Namespace).Get(target.Name)
 			if err != nil {
-				log.Printf("[%s] failed to lookup pod: %s", idStr, err)
+				log.Errorf("[%s] failed to lookup pod: %s", idStr, err)
 				continue
 			}
 
-			addresses[net.TcpAddress{Ip: ip, Port: portNum}] = pod
+			addrs = append(addrs, &updateAddress{
+				address: &net.TcpAddress{Ip: ip, Port: portNum},
+				pod:     pod,
+			})
 		}
 	}
-
-	return addresses
+	return addrs
 }

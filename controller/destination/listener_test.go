@@ -20,17 +20,17 @@ type podExpected struct {
 }
 
 var (
-	addedAddress1 = net.TcpAddress{
+	addedAddress1 = &net.TcpAddress{
 		Ip:   &net.IPAddress{Ip: &net.IPAddress_Ipv4{Ipv4: 1}},
 		Port: 1,
 	}
 
-	addedAddress2 = net.TcpAddress{
+	addedAddress2 = &net.TcpAddress{
 		Ip:   &net.IPAddress{Ip: &net.IPAddress_Ipv4{Ipv4: 2}},
 		Port: 2,
 	}
 
-	removedAddress1 = net.TcpAddress{
+	removedAddress1 = &net.TcpAddress{
 		Ip:   &net.IPAddress{Ip: &net.IPAddress_Ipv4{Ipv4: 100}},
 		Port: 100,
 	}
@@ -49,12 +49,14 @@ var (
 		},
 	}
 
-	add = map[net.TcpAddress]*v1.Pod{
-		addedAddress1: pod1,
-		addedAddress2: pod2,
+	add = []*updateAddress{
+		&updateAddress{address: addedAddress1, pod: pod1},
+		&updateAddress{address: addedAddress2, pod: pod2},
 	}
 
-	remove = []net.TcpAddress{removedAddress1}
+	remove = []*updateAddress{
+		&updateAddress{address: removedAddress1},
+	}
 )
 
 func defaultOwnerKindAndName(pod *v1.Pod) (string, string) {
@@ -103,11 +105,11 @@ func TestEndpointListener(t *testing.T) {
 			t.Fatalf("Expecting [%d] addresses to be removed, got [%d]: %v", expectedNumberOfRemoved, actualNumberOfRemoved, addressesRemoved)
 		}
 
-		checkAddress(t, addressesAdded[0], &addedAddress1)
-		checkAddress(t, addressesAdded[1], &addedAddress2)
+		checkAddress(t, addressesAdded[0], addedAddress1)
+		checkAddress(t, addressesAdded[1], addedAddress2)
 
 		actualAddressRemoved := addressesRemoved[0]
-		expectedAddressRemoved := &removedAddress1
+		expectedAddressRemoved := removedAddress1
 		if !reflect.DeepEqual(actualAddressRemoved, expectedAddressRemoved) {
 			t.Fatalf("Expected remove address to be [%s], but it was [%s]", expectedAddressRemoved, actualAddressRemoved)
 		}
@@ -165,8 +167,8 @@ func TestEndpointListener(t *testing.T) {
 			stream: mockGetServer,
 		}
 
-		add := map[net.TcpAddress]*v1.Pod{
-			addedAddress1: podForAddedAddress1,
+		add := []*updateAddress{
+			&updateAddress{address: addedAddress1, pod: podForAddedAddress1},
 		}
 		listener.Update(add, nil)
 
@@ -221,8 +223,8 @@ func TestEndpointListener(t *testing.T) {
 			enableTLS:        true,
 		}
 
-		add := map[net.TcpAddress]*v1.Pod{
-			addedAddress1: podForAddedAddress1,
+		add := []*updateAddress{
+			&updateAddress{address: addedAddress1, pod: podForAddedAddress1},
 		}
 		listener.Update(add, nil)
 
@@ -267,8 +269,8 @@ func TestEndpointListener(t *testing.T) {
 			stream:           mockGetServer,
 		}
 
-		add := map[net.TcpAddress]*v1.Pod{
-			addedAddress1: podForAddedAddress1,
+		add := []*updateAddress{
+			&updateAddress{address: addedAddress1, pod: podForAddedAddress1},
 		}
 		listener.Update(add, nil)
 
