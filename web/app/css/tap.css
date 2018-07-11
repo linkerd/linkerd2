@@ -1,0 +1,17 @@
+@import 'styles.css';
+
+.tap-display {
+  font-size: 10px;
+  margin-top: calc(4 * var(--base-width));
+}
+
+button.ant-btn-primary {
+  &.tap-start {
+    background-color: var(--green);
+    border-color: var(--green);
+  }
+  &.tap-stop {
+    background-color: var(--siennared);
+    border-color: var(--siennared);
+  }
+}

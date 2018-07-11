@@ -2,10 +2,12 @@ package util
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/addr"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -57,6 +59,18 @@ type StatSummaryRequestParams struct {
 	FromType      string
 	FromName      string
 	AllNamespaces bool
+}
+
+type TapRequestParams struct {
+	Resource    string
+	Namespace   string
+	ToResource  string
+	ToNamespace string
+	MaxRps      float32
+	Scheme      string
+	Method      string
+	Authority   string
+	Path        string
 }
 
 // GRPCError generates a gRPC error code, as defined in
@@ -230,4 +244,177 @@ func buildResource(namespace string, resType string, name string) (pb.Resource, 
 		Type:      canonicalType,
 		Name:      name,
 	}, nil
+}
+
+func BuildTapByResourceRequest(params TapRequestParams) (*pb.TapByResourceRequest, error) {
+	target, err := BuildResource(params.Namespace, params.Resource)
+	if err != nil {
+		return nil, fmt.Errorf("target resource invalid: %s", err)
+	}
+	if !contains(ValidTargets, target.Type) {
+		return nil, fmt.Errorf("unsupported resource type [%s]", target.Type)
+	}
+
+	matches := []*pb.TapByResourceRequest_Match{}
+
+	if params.ToResource != "" {
+		destination, err := BuildResource(params.ToNamespace, params.ToResource)
+		if err != nil {
+			return nil, fmt.Errorf("destination resource invalid: %s", err)
+		}
+		if !contains(ValidDestinations, destination.Type) {
+			return nil, fmt.Errorf("unsupported resource type [%s]", target.Type)
+		}
+
+		match := pb.TapByResourceRequest_Match{
+			Match: &pb.TapByResourceRequest_Match_Destinations{
+				Destinations: &pb.ResourceSelection{
+					Resource: &destination,
+				},
+			},
+		}
+		matches = append(matches, &match)
+	}
+
+	if params.Scheme != "" {
+		match := buildMatchHTTP(&pb.TapByResourceRequest_Match_Http{
+			Match: &pb.TapByResourceRequest_Match_Http_Scheme{Scheme: params.Scheme},
+		})
+		matches = append(matches, &match)
+	}
+	if params.Method != "" {
+		match := buildMatchHTTP(&pb.TapByResourceRequest_Match_Http{
+			Match: &pb.TapByResourceRequest_Match_Http_Method{Method: params.Method},
+		})
+		matches = append(matches, &match)
+	}
+	if params.Authority != "" {
+		match := buildMatchHTTP(&pb.TapByResourceRequest_Match_Http{
+			Match: &pb.TapByResourceRequest_Match_Http_Authority{Authority: params.Authority},
+		})
+		matches = append(matches, &match)
+	}
+	if params.Path != "" {
+		match := buildMatchHTTP(&pb.TapByResourceRequest_Match_Http{
+			Match: &pb.TapByResourceRequest_Match_Http_Path{Path: params.Path},
+		})
+		matches = append(matches, &match)
+	}
+
+	return &pb.TapByResourceRequest{
+		Target: &pb.ResourceSelection{
+			Resource: &target,
+		},
+		MaxRps: params.MaxRps,
+		Match: &pb.TapByResourceRequest_Match{
+			Match: &pb.TapByResourceRequest_Match_All{
+				All: &pb.TapByResourceRequest_Match_Seq{
+					Matches: matches,
+				},
+			},
+		},
+	}, nil
+}
+
+func buildMatchHTTP(match *pb.TapByResourceRequest_Match_Http) pb.TapByResourceRequest_Match {
+	return pb.TapByResourceRequest_Match{
+		Match: &pb.TapByResourceRequest_Match_Http_{
+			Http: match,
+		},
+	}
+}
+
+func contains(list []string, s string) bool {
+	for _, elem := range list {
+		if s == elem {
+			return true
+		}
+	}
+	return false
+}
+
+func RenderTapEvent(event *pb.TapEvent) string {
+	dstLabels := event.GetDestinationMeta().GetLabels()
+
+	dst := addr.PublicAddressToString(event.GetDestination())
+	if pod := dstLabels["pod"]; pod != "" {
+		dst = fmt.Sprintf("%s:%d", pod, event.GetDestination().GetPort())
+	}
+
+	proxy := "???"
+	tls := ""
+	switch event.GetProxyDirection() {
+	case pb.TapEvent_INBOUND:
+		proxy = "in " // A space is added so it aligns with `out`.
+		srcLabels := event.GetSourceMeta().GetLabels()
+		tls = srcLabels["tls"]
+	case pb.TapEvent_OUTBOUND:
+		proxy = "out"
+		tls = dstLabels["tls"]
+	default:
+		// Too old for TLS.
+	}
+
+	flow := fmt.Sprintf("proxy=%s src=%s dst=%s tls=%s",
+		proxy,
+		addr.PublicAddressToString(event.GetSource()),
+		dst,
+		tls,
+	)
+
+	switch ev := event.GetHttp().GetEvent().(type) {
+	case *pb.TapEvent_Http_RequestInit_:
+		return fmt.Sprintf("req id=%d:%d %s :method=%s :authority=%s :path=%s",
+			ev.RequestInit.GetId().GetBase(),
+			ev.RequestInit.GetId().GetStream(),
+			flow,
+			ev.RequestInit.GetMethod().GetRegistered().String(),
+			ev.RequestInit.GetAuthority(),
+			ev.RequestInit.GetPath(),
+		)
+
+	case *pb.TapEvent_Http_ResponseInit_:
+		return fmt.Sprintf("rsp id=%d:%d %s :status=%d latency=%dµs",
+			ev.ResponseInit.GetId().GetBase(),
+			ev.ResponseInit.GetId().GetStream(),
+			flow,
+			ev.ResponseInit.GetHttpStatus(),
+			ev.ResponseInit.GetSinceRequestInit().GetNanos()/1000,
+		)
+
+	case *pb.TapEvent_Http_ResponseEnd_:
+		switch eos := ev.ResponseEnd.GetEos().GetEnd().(type) {
+		case *pb.Eos_GrpcStatusCode:
+			return fmt.Sprintf("end id=%d:%d %s grpc-status=%s duration=%dµs response-length=%dB",
+				ev.ResponseEnd.GetId().GetBase(),
+				ev.ResponseEnd.GetId().GetStream(),
+				flow,
+				codes.Code(eos.GrpcStatusCode),
+				ev.ResponseEnd.GetSinceResponseInit().GetNanos()/1000,
+				ev.ResponseEnd.GetResponseBytes(),
+			)
+
+		case *pb.Eos_ResetErrorCode:
+			return fmt.Sprintf("end id=%d:%d %s reset-error=%+v duration=%dµs response-length=%dB",
+				ev.ResponseEnd.GetId().GetBase(),
+				ev.ResponseEnd.GetId().GetStream(),
+				flow,
+				eos.ResetErrorCode,
+				ev.ResponseEnd.GetSinceResponseInit().GetNanos()/1000,
+				ev.ResponseEnd.GetResponseBytes(),
+			)
+
+		default:
+			return fmt.Sprintf("end id=%d:%d %s duration=%dµs response-length=%dB",
+				ev.ResponseEnd.GetId().GetBase(),
+				ev.ResponseEnd.GetId().GetStream(),
+				flow,
+				ev.ResponseEnd.GetSinceResponseInit().GetNanos()/1000,
+				ev.ResponseEnd.GetResponseBytes(),
+			)
+		}
+
+	default:
+		return fmt.Sprintf("unknown %s", flow)
+	}
 }

@@ -48,6 +48,9 @@ required = ["github.com/golang/protobuf/protoc-gen-go"]
   name = "github.com/prometheus/client_golang"
   revision = "9bb6ab929dcbe1c8393cd9ef70387cb69811bd1c"
 
+[[constraint]]
+  name = "github.com/gorilla/websocket"
+  version = "1.2.0"
 #
 # k8s.io/kubernetes dependency fixes
 # taken from https://github.com/kubernetes/kubernetes/blob/master/Godeps/Godeps.json

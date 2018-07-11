@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
-	"github.com/linkerd/linkerd2/pkg/addr"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc/codes"
 )
 
 type tapOptions struct {
@@ -74,7 +73,19 @@ func newCmdTap() *cobra.Command {
 		Args:      cobra.RangeArgs(1, 2),
 		ValidArgs: util.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			req, err := buildTapByResourceRequest(args, options)
+			requestParams := util.TapRequestParams{
+				Resource:    strings.Join(args, "/"),
+				Namespace:   options.namespace,
+				ToResource:  options.toResource,
+				ToNamespace: options.toNamespace,
+				MaxRps:      options.maxRps,
+				Scheme:      options.scheme,
+				Method:      options.method,
+				Authority:   options.authority,
+				Path:        options.path,
+			}
+
+			req, err := util.BuildTapByResourceRequest(requestParams)
 			if err != nil {
 				return err
 			}
@@ -108,103 +119,11 @@ func newCmdTap() *cobra.Command {
 	return cmd
 }
 
-func buildTapByResourceRequest(
-	resource []string,
-	options *tapOptions,
-) (*pb.TapByResourceRequest, error) {
-
-	target, err := util.BuildResource(options.namespace, resource...)
-	if err != nil {
-		return nil, fmt.Errorf("target resource invalid: %s", err)
-	}
-	if !contains(util.ValidTargets, target.Type) {
-		return nil, fmt.Errorf("unsupported resource type [%s]", target.Type)
-	}
-
-	matches := []*pb.TapByResourceRequest_Match{}
-
-	if options.toResource != "" {
-		destination, err := util.BuildResource(options.toNamespace, options.toResource)
-		if err != nil {
-			return nil, fmt.Errorf("destination resource invalid: %s", err)
-		}
-		if !contains(util.ValidDestinations, destination.Type) {
-			return nil, fmt.Errorf("unsupported resource type [%s]", target.Type)
-		}
-
-		match := pb.TapByResourceRequest_Match{
-			Match: &pb.TapByResourceRequest_Match_Destinations{
-				Destinations: &pb.ResourceSelection{
-					Resource: &destination,
-				},
-			},
-		}
-		matches = append(matches, &match)
-	}
-
-	if options.scheme != "" {
-		match := buildMatchHTTP(&pb.TapByResourceRequest_Match_Http{
-			Match: &pb.TapByResourceRequest_Match_Http_Scheme{Scheme: options.scheme},
-		})
-		matches = append(matches, &match)
-	}
-	if options.method != "" {
-		match := buildMatchHTTP(&pb.TapByResourceRequest_Match_Http{
-			Match: &pb.TapByResourceRequest_Match_Http_Method{Method: options.method},
-		})
-		matches = append(matches, &match)
-	}
-	if options.authority != "" {
-		match := buildMatchHTTP(&pb.TapByResourceRequest_Match_Http{
-			Match: &pb.TapByResourceRequest_Match_Http_Authority{Authority: options.authority},
-		})
-		matches = append(matches, &match)
-	}
-	if options.path != "" {
-		match := buildMatchHTTP(&pb.TapByResourceRequest_Match_Http{
-			Match: &pb.TapByResourceRequest_Match_Http_Path{Path: options.path},
-		})
-		matches = append(matches, &match)
-	}
-
-	return &pb.TapByResourceRequest{
-		Target: &pb.ResourceSelection{
-			Resource: &target,
-		},
-		MaxRps: options.maxRps,
-		Match: &pb.TapByResourceRequest_Match{
-			Match: &pb.TapByResourceRequest_Match_All{
-				All: &pb.TapByResourceRequest_Match_Seq{
-					Matches: matches,
-				},
-			},
-		},
-	}, nil
-}
-
-func contains(list []string, s string) bool {
-	for _, elem := range list {
-		if s == elem {
-			return true
-		}
-	}
-	return false
-}
-
-func buildMatchHTTP(match *pb.TapByResourceRequest_Match_Http) pb.TapByResourceRequest_Match {
-	return pb.TapByResourceRequest_Match{
-		Match: &pb.TapByResourceRequest_Match_Http_{
-			Http: match,
-		},
-	}
-}
-
 func requestTapByResourceFromAPI(w io.Writer, client pb.ApiClient, req *pb.TapByResourceRequest) error {
 	rsp, err := client.TapByResource(context.Background(), req)
 	if err != nil {
 		return err
 	}
-
 	return renderTap(w, rsp)
 }
 
@@ -230,97 +149,11 @@ func writeTapEventsToBuffer(tapClient pb.Api_TapByResourceClient, w *tabwriter.W
 			fmt.Fprintln(os.Stderr, err)
 			break
 		}
-		_, err = fmt.Fprintln(w, renderTapEvent(event))
+		_, err = fmt.Fprintln(w, util.RenderTapEvent(event))
 		if err != nil {
 			return err
 		}
 	}
 
 	return nil
-}
-
-func renderTapEvent(event *pb.TapEvent) string {
-	dstLabels := event.GetDestinationMeta().GetLabels()
-
-	dst := addr.PublicAddressToString(event.GetDestination())
-	if pod := dstLabels["pod"]; pod != "" {
-		dst = fmt.Sprintf("%s:%d", pod, event.GetDestination().GetPort())
-	}
-
-	proxy := "???"
-	tls := ""
-	switch event.GetProxyDirection() {
-	case pb.TapEvent_INBOUND:
-		proxy = "in " // A space is added so it aligns with `out`.
-		srcLabels := event.GetSourceMeta().GetLabels()
-		tls = srcLabels["tls"]
-	case pb.TapEvent_OUTBOUND:
-		proxy = "out"
-		tls = dstLabels["tls"]
-	default:
-		// Too old for TLS.
-	}
-
-	flow := fmt.Sprintf("proxy=%s src=%s dst=%s tls=%s",
-		proxy,
-		addr.PublicAddressToString(event.GetSource()),
-		dst,
-		tls,
-	)
-
-	switch ev := event.GetHttp().GetEvent().(type) {
-	case *pb.TapEvent_Http_RequestInit_:
-		return fmt.Sprintf("req id=%d:%d %s :method=%s :authority=%s :path=%s",
-			ev.RequestInit.GetId().GetBase(),
-			ev.RequestInit.GetId().GetStream(),
-			flow,
-			ev.RequestInit.GetMethod().GetRegistered().String(),
-			ev.RequestInit.GetAuthority(),
-			ev.RequestInit.GetPath(),
-		)
-
-	case *pb.TapEvent_Http_ResponseInit_:
-		return fmt.Sprintf("rsp id=%d:%d %s :status=%d latency=%dµs",
-			ev.ResponseInit.GetId().GetBase(),
-			ev.ResponseInit.GetId().GetStream(),
-			flow,
-			ev.ResponseInit.GetHttpStatus(),
-			ev.ResponseInit.GetSinceRequestInit().GetNanos()/1000,
-		)
-
-	case *pb.TapEvent_Http_ResponseEnd_:
-		switch eos := ev.ResponseEnd.GetEos().GetEnd().(type) {
-		case *pb.Eos_GrpcStatusCode:
-			return fmt.Sprintf("end id=%d:%d %s grpc-status=%s duration=%dµs response-length=%dB",
-				ev.ResponseEnd.GetId().GetBase(),
-				ev.ResponseEnd.GetId().GetStream(),
-				flow,
-				codes.Code(eos.GrpcStatusCode),
-				ev.ResponseEnd.GetSinceResponseInit().GetNanos()/1000,
-				ev.ResponseEnd.GetResponseBytes(),
-			)
-
-		case *pb.Eos_ResetErrorCode:
-			return fmt.Sprintf("end id=%d:%d %s reset-error=%+v duration=%dµs response-length=%dB",
-				ev.ResponseEnd.GetId().GetBase(),
-				ev.ResponseEnd.GetId().GetStream(),
-				flow,
-				eos.ResetErrorCode,
-				ev.ResponseEnd.GetSinceResponseInit().GetNanos()/1000,
-				ev.ResponseEnd.GetResponseBytes(),
-			)
-
-		default:
-			return fmt.Sprintf("end id=%d:%d %s duration=%dµs response-length=%dB",
-				ev.ResponseEnd.GetId().GetBase(),
-				ev.ResponseEnd.GetId().GetStream(),
-				flow,
-				ev.ResponseEnd.GetSinceResponseInit().GetNanos()/1000,
-				ev.ResponseEnd.GetResponseBytes(),
-			)
-		}
-
-	default:
-		return fmt.Sprintf("unknown %s", flow)
-	}
 }
