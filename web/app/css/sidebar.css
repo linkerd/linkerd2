@@ -1,5 +1,9 @@
 @import 'styles.css';
 
+ul.ant-menu.ant-menu-sub {
+  background: var(--sider-black);
+}
+
 .sidebar {
   background: var(--header-black);
   color: white;
@@ -89,7 +93,7 @@
   }
 }
 
-.ant-layout .ant-layout-sider .ant-layout-sider-trigger {
+.ant-layout .ant-layout-sider, .ant-layout .ant-layout-sider .ant-layout-sider-trigger {
   /* override ant color */
-  background: #343838;
+  background: var(--sider-black);
 }

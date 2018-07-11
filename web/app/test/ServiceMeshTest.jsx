@@ -1,8 +1,8 @@
 import _ from 'lodash';
 import Adapter from 'enzyme-adapter-react-16';
-import podFixtures from './fixtures/podRollup.json';
 import { expect } from 'chai';
 import nsFixtures from './fixtures/namespaces.json';
+import podFixtures from './fixtures/podRollup.json';
 import { routerWrap } from './testHelpers.jsx';
 import ServiceMesh from '../js/components/ServiceMesh.jsx';
 import sinon from 'sinon';
@@ -197,7 +197,7 @@ describe('ServiceMesh', () => {
       component = mount(routerWrap(ServiceMesh));
 
       return withPromise(() => {
-        expect(component.html()).to.include("All namespaces have a conduit install.");
+        expect(component.html()).to.include("All namespaces have a ShinyProductName install.");
       });
     });
   });

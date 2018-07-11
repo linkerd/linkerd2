@@ -6,7 +6,7 @@ import { Route, Router } from 'react-router';
 
 const componentDefaultProps = {
   api: ApiHelpers(''),
-  controllerNamespace: 'conduit',
+  controllerNamespace: 'shiny-controller-ns',
   productName: 'ShinyProductName',
   releaseVersion: ''
 };
