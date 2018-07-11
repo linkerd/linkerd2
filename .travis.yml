@@ -11,9 +11,9 @@ branches:
 stages:
   - name: test
   - name: docker-deploy
-    if: branch = DOCKER_BUILDS_ARE_CURRENTLY_DISABLED AND type != pull_request
+    if: branch = master AND type != pull_request
   - name: integration-test
-    if: branch = DOCKER_BUILDS_ARE_CURRENTLY_DISABLED AND type != pull_request
+    if: branch = master AND type != pull_request
 
 jobs:
   include:
@@ -82,7 +82,7 @@ jobs:
           . "$dir/path.bash.inc"
         - |
           # Configure gcloud with a service account.
-          openssl aes-256-cbc -K $encrypted_6af64675f81c_key -iv $encrypted_6af64675f81c_iv -in .gcp.json.enc -out .gcp.json -d
+          openssl aes-256-cbc -K $encrypted_ea955175587c_key -iv $encrypted_ea955175587c_iv -in .gcp.json.enc -out .gcp.json -d
           (. bin/_gcp.sh ; set_gcloud_config "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER")
         - |
           # Get a kubernetes context.
@@ -100,16 +100,9 @@ jobs:
           export CONDUIT_TAG=$(. bin/_tag.sh ; clean_head_root_tag)
           echo "CONDUIT_TAG=${CONDUIT_TAG}"
         - export BUILD_DEBUG=1 DOCKER_TRACE=1
-        - export DOCKER_CACHE="$HOME/.cache/docker.tgz" PROXY_BUILD_CACHE_IMAGE="proxy-build:cache"
-        - if [ -f "$DOCKER_CACHE" ]; then gunzip -c "$DOCKER_CACHE" | docker load ; docker image ls "$PROXY_BUILD_CACHE_IMAGE" ; fi
 
       script:
-        # Build the proxy so that its build stage can be cached for reuse.
-        - docker build . -f ./proxy/Dockerfile --build-arg="PROXY_UNOPTIMIZED=${PROXY_UNOPTIMIZED:-}" --cache-from="$PROXY_BUILD_CACHE_IMAGE" --tag "$PROXY_BUILD_CACHE_IMAGE" --target build
-        # bin/docker-build-proxy uses PROXY_BUILD_CACHE_IMAGE.
         - bin/docker-build
-        # The proxy's build cache is preserved so it can be reused on subsequent runs.
-        - docker save gcr.io/runconduit/proxy-build:cache | gzip -9 >"$DOCKER_CACHE"
 
       after_success:
         - bin/docker-push-deps
@@ -144,7 +137,7 @@ jobs:
           . "$dir/path.bash.inc"
         - |
           # Configure gcloud with a service account.
-          openssl aes-256-cbc -K $encrypted_6af64675f81c_key -iv $encrypted_6af64675f81c_iv -in .gcp.json.enc -out .gcp.json -d
+          openssl aes-256-cbc -K $encrypted_ea955175587c_key -iv $encrypted_ea955175587c_iv -in .gcp.json.enc -out .gcp.json -d
           (. bin/_gcp.sh ; set_gcloud_config "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER")
         - |
           # Get a kubernetes context.
@@ -152,7 +145,7 @@ jobs:
         - |
           # Install conduit cli.
           version="git-$(git rev-parse --short=8 HEAD)"
-          image="gcr.io/runconduit/cli-bin:$version"
+          image="gcr.io/linkerd-io/cli-bin:$version"
           id=$(docker create $image)
           docker cp "$id:/out/conduit-linux" "./conduit"
         - gcloud version
@@ -170,13 +163,6 @@ jobs:
           # Cleanup after integration test run.
           version="$(./conduit version --client --short | tr -cd '[:alnum:]-')"
           ./bin/test-cleanup conduit-$version
-
-  # If we want to start building everything against bleeding-edge Rust nightly, we'll have
-  # to enable:
-  #
-  # allow_failures:
-  #   - rust: nightly
-  # fast_finish: true
 
 notifications:
   email:
