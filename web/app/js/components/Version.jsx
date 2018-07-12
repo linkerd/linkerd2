@@ -31,7 +31,7 @@ class Version extends React.Component {
       );
     }
 
-    if (isLatest) { return "Conduit is up to date"; }
+    if (isLatest) { return "Linkerd is up to date"; }
 
     return (
       <div>

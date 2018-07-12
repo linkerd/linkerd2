@@ -61,9 +61,9 @@ describe('Version', () => {
     );
 
     return withPromise(() => {
-      expect(component.html()).not.to.include("Conduit is up to date");
+      expect(component.html()).not.to.include("Linkerd is up to date");
       expandSidebar(component);
-      expect(component.html()).to.include("Conduit is up to date");
+      expect(component.html()).to.include("Linkerd is up to date");
     });
   });
 
@@ -87,7 +87,7 @@ describe('Version', () => {
     expandSidebar(component);
 
     return withPromise(() => {
-      expect(component.html()).to.include("Conduit is up to date");
+      expect(component.html()).to.include("Linkerd is up to date");
     });
   });
 

@@ -22,11 +22,11 @@ func main() {
 	kubernetesApiHost := flag.String("api-addr", ":8085", "host address of kubernetes public api")
 	templateDir := flag.String("template-dir", "templates", "directory to search for template files")
 	staticDir := flag.String("static-dir", "app/dist", "directory to search for static files")
-	uuid := flag.String("uuid", "", "unqiue Conduit install id")
+	uuid := flag.String("uuid", "", "unique linkerd install id")
 	reload := flag.Bool("reload", true, "reloading set to true or false")
 	webpackDevServer := flag.String("webpack-dev-server", "", "use webpack to serve static assets; frontend will use this instead of static-dir")
 	logLevel := flag.String("log-level", log.InfoLevel.String(), "log level, must be one of: panic, fatal, error, warn, info, debug")
-	controllerNamespace := flag.String("controller-namespace", "", "the k8s namespace in which Conduit is running")
+	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	printVersion := version.VersionFlag()
 	flag.Parse()
 
