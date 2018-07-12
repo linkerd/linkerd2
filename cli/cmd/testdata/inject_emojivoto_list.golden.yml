@@ -15,13 +15,13 @@ items:
     template:
       metadata:
         annotations:
-          conduit.io/created-by: conduit/cli undefined
-          conduit.io/proxy-version: testinjectversion
+          linkerd.io/created-by: linkerd/cli undefined
+          linkerd.io/proxy-version: testinjectversion
         creationTimestamp: null
         labels:
           app: web-svc
-          conduit.io/control-plane-ns: linkerd
-          conduit.io/proxy-deployment: web
+          linkerd.io/control-plane-ns: linkerd
+          linkerd.io/proxy-deployment: web
       spec:
         containers:
         - env:

@@ -24,7 +24,7 @@ func TestGetOwnerLabels(t *testing.T) {
 		}
 
 		expectedLabels := map[string]string{
-			"conduit_io_control_plane_ns": "linkerd-namespace",
+			"linkerd_io_control_plane_ns": "linkerd-namespace",
 			"deployment":                  "test-deployment",
 			"replication_controller":      "test-replication-controller",
 			"replica_set":                 "test-replica-set",

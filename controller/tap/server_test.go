@@ -35,7 +35,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
 `,
@@ -79,7 +79,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
 `,
@@ -105,7 +105,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Finished
 `,
@@ -134,7 +134,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
 `,

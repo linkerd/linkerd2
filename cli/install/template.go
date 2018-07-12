@@ -440,7 +440,7 @@ data:
           names: ['{{.Namespace}}']
       relabel_configs:
       - source_labels:
-        - __meta_kubernetes_pod_label_conduit_io_control_plane_component
+        - __meta_kubernetes_pod_label_linkerd_io_control_plane_component
         - __meta_kubernetes_pod_container_port_name
         action: keep
         regex: (.*);admin-http$
@@ -465,18 +465,18 @@ data:
         target_label: pod
       # special case k8s' "job" label, to not interfere with prometheus' "job"
       # label
-      # __meta_kubernetes_pod_label_conduit_io_proxy_job=foo =>
+      # __meta_kubernetes_pod_label_linkerd_io_proxy_job=foo =>
       # k8s_job=foo
-      - source_labels: [__meta_kubernetes_pod_label_conduit_io_proxy_job]
+      - source_labels: [__meta_kubernetes_pod_label_linkerd_io_proxy_job]
         action: replace
         target_label: k8s_job
-      # __meta_kubernetes_pod_label_conduit_io_proxy_deployment=foo =>
+      # __meta_kubernetes_pod_label_linkerd_io_proxy_deployment=foo =>
       # deployment=foo
       - action: labelmap
-        regex: __meta_kubernetes_pod_label_conduit_io_proxy_(.+)
+        regex: __meta_kubernetes_pod_label_linkerd_io_proxy_(.+)
       # drop all labels that we just made copies of in the previous labelmap
       - action: labeldrop
-        regex: __meta_kubernetes_pod_label_conduit_io_proxy_(.+)
+        regex: __meta_kubernetes_pod_label_linkerd_io_proxy_(.+)
       # __meta_kubernetes_pod_label_foo=bar => foo=bar
       - action: labelmap
         regex: __meta_kubernetes_pod_label_(.+)

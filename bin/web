@@ -23,11 +23,11 @@ USAGE: web <command>
 USAGE
 }; function --help { -h ;}
 
-function check-for-conduit {
+function check-for-linkerd {
   pod=$(get-pod)
 
   if [[ -z "${pod// }" ]]; then
-    err "Controller is not running. Have you installed Conduit?"
+    err "Controller is not running. Have you installed Linkerd?"
     exit 1
   fi
 }
@@ -41,7 +41,7 @@ function dev {
     esac
   done
 
-  check-for-conduit && (port-forward &)
+  check-for-linkerd && (port-forward &)
 
   cd $ROOT/web/app && yarn webpack-dev-server --port $DEV_PORT &
   cd $ROOT/web && \
@@ -54,21 +54,21 @@ function build {
 }
 
 function get-pod {
-  kubectl --namespace=conduit get po \
-    --selector=conduit.io/control-plane-component=controller \
+  kubectl --namespace=linkerd get po \
+    --selector=linkerd.io/control-plane-component=controller \
     --field-selector='status.phase==Running' \
     -o jsonpath='{.items[*].metadata.name}'
 }
 
 function port-forward {
   nc -z localhost 8085 || \
-    kubectl --namespace=conduit port-forward $(get-pod) 8085:8085
+    kubectl --namespace=linkerd port-forward $(get-pod) 8085:8085
 }
 
 function run {
   build
 
-  check-for-conduit && (port-forward &)
+  check-for-linkerd && (port-forward &)
 
   cd $ROOT/web
   ../bin/go-run . $*

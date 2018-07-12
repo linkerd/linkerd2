@@ -130,13 +130,13 @@ spec:
     metadata:
       annotations:
         CreatedByAnnotation: CliVersion
-        conduit.io/created-by: conduit/cli undefined
-        conduit.io/proxy-version: undefined
+        linkerd.io/created-by: linkerd/cli undefined
+        linkerd.io/proxy-version: undefined
       creationTimestamp: null
       labels:
         ControllerComponentLabel: controller
-        conduit.io/control-plane-ns: Namespace
-        conduit.io/proxy-deployment: controller
+        linkerd.io/control-plane-ns: Namespace
+        linkerd.io/proxy-deployment: controller
     spec:
       containers:
       - args:
@@ -328,13 +328,13 @@ spec:
     metadata:
       annotations:
         CreatedByAnnotation: CliVersion
-        conduit.io/created-by: conduit/cli undefined
-        conduit.io/proxy-version: undefined
+        linkerd.io/created-by: linkerd/cli undefined
+        linkerd.io/proxy-version: undefined
       creationTimestamp: null
       labels:
         ControllerComponentLabel: web
-        conduit.io/control-plane-ns: Namespace
-        conduit.io/proxy-deployment: web
+        linkerd.io/control-plane-ns: Namespace
+        linkerd.io/proxy-deployment: web
     spec:
       containers:
       - args:
@@ -452,13 +452,13 @@ spec:
     metadata:
       annotations:
         CreatedByAnnotation: CliVersion
-        conduit.io/created-by: conduit/cli undefined
-        conduit.io/proxy-version: undefined
+        linkerd.io/created-by: linkerd/cli undefined
+        linkerd.io/proxy-version: undefined
       creationTimestamp: null
       labels:
         ControllerComponentLabel: prometheus
-        conduit.io/control-plane-ns: Namespace
-        conduit.io/proxy-deployment: prometheus
+        linkerd.io/control-plane-ns: Namespace
+        linkerd.io/proxy-deployment: prometheus
     spec:
       containers:
       - args:
@@ -615,7 +615,7 @@ data:
           names: ['Namespace']
       relabel_configs:
       - source_labels:
-        - __meta_kubernetes_pod_label_conduit_io_control_plane_component
+        - __meta_kubernetes_pod_label_linkerd_io_control_plane_component
         - __meta_kubernetes_pod_container_port_name
         action: keep
         regex: (.*);admin-http$
@@ -640,18 +640,18 @@ data:
         target_label: pod
       # special case k8s' "job" label, to not interfere with prometheus' "job"
       # label
-      # __meta_kubernetes_pod_label_conduit_io_proxy_job=foo =>
+      # __meta_kubernetes_pod_label_linkerd_io_proxy_job=foo =>
       # k8s_job=foo
-      - source_labels: [__meta_kubernetes_pod_label_conduit_io_proxy_job]
+      - source_labels: [__meta_kubernetes_pod_label_linkerd_io_proxy_job]
         action: replace
         target_label: k8s_job
-      # __meta_kubernetes_pod_label_conduit_io_proxy_deployment=foo =>
+      # __meta_kubernetes_pod_label_linkerd_io_proxy_deployment=foo =>
       # deployment=foo
       - action: labelmap
-        regex: __meta_kubernetes_pod_label_conduit_io_proxy_(.+)
+        regex: __meta_kubernetes_pod_label_linkerd_io_proxy_(.+)
       # drop all labels that we just made copies of in the previous labelmap
       - action: labeldrop
-        regex: __meta_kubernetes_pod_label_conduit_io_proxy_(.+)
+        regex: __meta_kubernetes_pod_label_linkerd_io_proxy_(.+)
       # __meta_kubernetes_pod_label_foo=bar => foo=bar
       - action: labelmap
         regex: __meta_kubernetes_pod_label_(.+)
@@ -694,13 +694,13 @@ spec:
     metadata:
       annotations:
         CreatedByAnnotation: CliVersion
-        conduit.io/created-by: conduit/cli undefined
-        conduit.io/proxy-version: undefined
+        linkerd.io/created-by: linkerd/cli undefined
+        linkerd.io/proxy-version: undefined
       creationTimestamp: null
       labels:
         ControllerComponentLabel: grafana
-        conduit.io/control-plane-ns: Namespace
-        conduit.io/proxy-deployment: grafana
+        linkerd.io/control-plane-ns: Namespace
+        linkerd.io/proxy-deployment: grafana
     spec:
       containers:
       - image: GrafanaImage
@@ -911,13 +911,13 @@ spec:
     metadata:
       annotations:
         CreatedByAnnotation: CliVersion
-        conduit.io/created-by: conduit/cli undefined
-        conduit.io/proxy-version: undefined
+        linkerd.io/created-by: linkerd/cli undefined
+        linkerd.io/proxy-version: undefined
       creationTimestamp: null
       labels:
         ControllerComponentLabel: ca-bundle-distributor
-        conduit.io/control-plane-ns: Namespace
-        conduit.io/proxy-deployment: ca-bundle-distributor
+        linkerd.io/control-plane-ns: Namespace
+        linkerd.io/proxy-deployment: ca-bundle-distributor
     spec:
       containers:
       - args:

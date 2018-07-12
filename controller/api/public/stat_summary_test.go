@@ -181,7 +181,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
 `, `
@@ -203,7 +203,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Completed
 `,
@@ -242,7 +242,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
 `,
@@ -288,7 +288,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
 `,
@@ -337,7 +337,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
 `,
@@ -392,7 +392,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
 `,
@@ -447,7 +447,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
 `, `
@@ -459,7 +459,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
 `,
@@ -514,7 +514,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
 `, `
@@ -526,7 +526,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
 `,
@@ -606,7 +606,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
 `, `
@@ -618,7 +618,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
 `,
@@ -916,7 +916,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Succeeded
 `, `
@@ -928,7 +928,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Failed
 `},
@@ -977,7 +977,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
 `, `
@@ -999,7 +999,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Failed
 `, `
@@ -1011,7 +1011,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Succeeded
 `},
@@ -1050,7 +1050,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
 `,
@@ -1093,7 +1093,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
 `,
@@ -1143,7 +1143,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
 `,

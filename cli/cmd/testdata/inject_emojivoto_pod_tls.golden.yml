@@ -2,12 +2,12 @@ apiVersion: v1
 kind: Pod
 metadata:
   annotations:
-    conduit.io/created-by: conduit/cli undefined
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/created-by: linkerd/cli undefined
+    linkerd.io/proxy-version: testinjectversion
   creationTimestamp: null
   labels:
     app: vote-bot
-    conduit.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd
   name: vote-bot
   namespace: emojivoto
 spec:
@@ -40,11 +40,11 @@ spec:
         fieldRef:
           fieldPath: metadata.namespace
     - name: LINKERD2_PROXY_TLS_TRUST_ANCHORS
-      value: /var/conduit-io/trust-anchors/trust-anchors.pem
+      value: /var/linkerd-io/trust-anchors/trust-anchors.pem
     - name: LINKERD2_PROXY_TLS_CERT
-      value: /var/conduit-io/identity/certificate.crt
+      value: /var/linkerd-io/identity/certificate.crt
     - name: LINKERD2_PROXY_TLS_PRIVATE_KEY
-      value: /var/conduit-io/identity/private-key.p8
+      value: /var/linkerd-io/identity/private-key.p8
     - name: LINKERD2_PROXY_TLS_POD_IDENTITY
       value: vote-bot.pod.$LINKERD2_PROXY_POD_NAMESPACE.conduit-managed.linkerd.svc.cluster.local
     - name: LINKERD2_PROXY_CONTROLLER_NAMESPACE
@@ -64,10 +64,10 @@ spec:
       runAsUser: 2102
     terminationMessagePolicy: FallbackToLogsOnError
     volumeMounts:
-    - mountPath: /var/conduit-io/trust-anchors
+    - mountPath: /var/linkerd-io/trust-anchors
       name: linkerd-trust-anchors
       readOnly: true
-    - mountPath: /var/conduit-io/identity
+    - mountPath: /var/linkerd-io/identity
       name: linkerd-secrets
       readOnly: true
   initContainers:
@@ -92,12 +92,12 @@ spec:
     terminationMessagePolicy: FallbackToLogsOnError
   volumes:
   - configMap:
-      name: conduit-ca-bundle
+      name: linkerd-ca-bundle
       optional: true
     name: linkerd-trust-anchors
   - name: linkerd-secrets
     secret:
       optional: true
-      secretName: vote-bot-pod-tls-conduit-io
+      secretName: vote-bot-pod-tls-linkerd-io
 status: {}
 ---

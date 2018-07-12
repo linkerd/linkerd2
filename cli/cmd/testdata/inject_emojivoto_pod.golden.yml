@@ -2,12 +2,12 @@ apiVersion: v1
 kind: Pod
 metadata:
   annotations:
-    conduit.io/created-by: conduit/cli undefined
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/created-by: linkerd/cli undefined
+    linkerd.io/proxy-version: testinjectversion
   creationTimestamp: null
   labels:
     app: vote-bot
-    conduit.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd
   name: vote-bot
   namespace: emojivoto
 spec:

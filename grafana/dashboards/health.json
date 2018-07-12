@@ -71,14 +71,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "process_virtual_memory_bytes{conduit_io_control_plane_ns=\"$namespace\", job=\"linkerd-proxy\"}",
+          "expr": "process_virtual_memory_bytes{linkerd_io_control_plane_ns=\"$namespace\", job=\"linkerd-proxy\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{namespace}}/{{pod}}/virtual",
           "refId": "A"
         },
         {
-          "expr": "process_resident_memory_bytes{conduit_io_control_plane_ns=\"$namespace\", job=\"linkerd-proxy\"}",
+          "expr": "process_resident_memory_bytes{linkerd_io_control_plane_ns=\"$namespace\", job=\"linkerd-proxy\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{namespace}}/{{pod}}/resident",
@@ -162,7 +162,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(process_cpu_seconds_total{conduit_io_control_plane_ns=\"$namespace\", job=\"linkerd-proxy\"}[20s])) by (namespace, pod)",
+          "expr": "sum(irate(process_cpu_seconds_total{linkerd_io_control_plane_ns=\"$namespace\", job=\"linkerd-proxy\"}[20s])) by (namespace, pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{namespace}}/{{pod}}",
@@ -246,7 +246,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "process_open_fds{conduit_io_control_plane_ns=\"$namespace\", job=\"linkerd-proxy\"}",
+          "expr": "process_open_fds{linkerd_io_control_plane_ns=\"$namespace\", job=\"linkerd-proxy\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{namespace}}/{{pod}}",
@@ -1706,7 +1706,7 @@
         "multi": false,
         "name": "deployment",
         "options": [],
-        "query": "label_values(request_total{conduit_io_control_plane_component!=\"\"}, deployment)",
+        "query": "label_values(request_total{linkerd_io_control_plane_component!=\"\"}, deployment)",
         "refresh": 2,
         "regex": "",
         "sort": 1,
@@ -1746,7 +1746,7 @@
         "multi": false,
         "name": "namespace",
         "options": [],
-        "query": "label_values(request_total{conduit_io_control_plane_ns!=\"\"},  conduit_io_control_plane_ns)",
+        "query": "label_values(request_total{linkerd_io_control_plane_ns!=\"\"},  linkerd_io_control_plane_ns)",
         "refresh": 2,
         "regex": "",
         "sort": 0,

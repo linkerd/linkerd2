@@ -326,7 +326,7 @@ message StatTable {
       Resource resource = 1;
       string time_window = 2;
 
-      // number of pending or running pods in this resource that have conduit injected
+      // number of pending or running pods in this resource that have linkerd injected
       uint64 meshed_pod_count = 3;
       // number of pending or running pods in this resource
       uint64 running_pod_count = 4;

@@ -2783,7 +2783,7 @@ func (m *StatTable_PodGroup) GetRows() []*StatTable_PodGroup_Row {
 type StatTable_PodGroup_Row struct {
 	Resource   *Resource `protobuf:"bytes,1,opt,name=resource" json:"resource,omitempty"`
 	TimeWindow string    `protobuf:"bytes,2,opt,name=time_window,json=timeWindow" json:"time_window,omitempty"`
-	// number of pending or running pods in this resource that have conduit injected
+	// number of pending or running pods in this resource that have linkerd injected
 	MeshedPodCount uint64 `protobuf:"varint,3,opt,name=meshed_pod_count,json=meshedPodCount" json:"meshed_pod_count,omitempty"`
 	// number of pending or running pods in this resource
 	RunningPodCount uint64 `protobuf:"varint,4,opt,name=running_pod_count,json=runningPodCount" json:"running_pod_count,omitempty"`

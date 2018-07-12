@@ -81,13 +81,13 @@ metadata:
   name: api
   namespace: linkerd
   labels:
-    conduit.io/control-plane-component: controller
+    linkerd.io/control-plane-component: controller
   annotations:
-    conduit.io/created-by: conduit/cli undefined
+    linkerd.io/created-by: linkerd/cli undefined
 spec:
   type: ClusterIP
   selector:
-    conduit.io/control-plane-component: controller
+    linkerd.io/control-plane-component: controller
   ports:
   - name: http
     port: 8085
@@ -100,13 +100,13 @@ metadata:
   name: proxy-api
   namespace: linkerd
   labels:
-    conduit.io/control-plane-component: controller
+    linkerd.io/control-plane-component: controller
   annotations:
-    conduit.io/created-by: conduit/cli undefined
+    linkerd.io/created-by: linkerd/cli undefined
 spec:
   type: ClusterIP
   selector:
-    conduit.io/control-plane-component: controller
+    linkerd.io/control-plane-component: controller
   ports:
   - name: grpc
     port: 8086
@@ -117,10 +117,10 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   annotations:
-    conduit.io/created-by: conduit/cli undefined
+    linkerd.io/created-by: linkerd/cli undefined
   creationTimestamp: null
   labels:
-    conduit.io/control-plane-component: controller
+    linkerd.io/control-plane-component: controller
   name: controller
   namespace: linkerd
 spec:
@@ -129,13 +129,13 @@ spec:
   template:
     metadata:
       annotations:
-        conduit.io/created-by: conduit/cli undefined
-        conduit.io/proxy-version: undefined
+        linkerd.io/created-by: linkerd/cli undefined
+        linkerd.io/proxy-version: undefined
       creationTimestamp: null
       labels:
-        conduit.io/control-plane-component: controller
-        conduit.io/control-plane-ns: linkerd
-        conduit.io/proxy-deployment: controller
+        linkerd.io/control-plane-component: controller
+        linkerd.io/control-plane-ns: linkerd
+        linkerd.io/proxy-deployment: controller
     spec:
       containers:
       - args:
@@ -294,13 +294,13 @@ metadata:
   name: web
   namespace: linkerd
   labels:
-    conduit.io/control-plane-component: web
+    linkerd.io/control-plane-component: web
   annotations:
-    conduit.io/created-by: conduit/cli undefined
+    linkerd.io/created-by: linkerd/cli undefined
 spec:
   type: ClusterIP
   selector:
-    conduit.io/control-plane-component: web
+    linkerd.io/control-plane-component: web
   ports:
   - name: http
     port: 8084
@@ -314,10 +314,10 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   annotations:
-    conduit.io/created-by: conduit/cli undefined
+    linkerd.io/created-by: linkerd/cli undefined
   creationTimestamp: null
   labels:
-    conduit.io/control-plane-component: web
+    linkerd.io/control-plane-component: web
   name: web
   namespace: linkerd
 spec:
@@ -326,13 +326,13 @@ spec:
   template:
     metadata:
       annotations:
-        conduit.io/created-by: conduit/cli undefined
-        conduit.io/proxy-version: undefined
+        linkerd.io/created-by: linkerd/cli undefined
+        linkerd.io/proxy-version: undefined
       creationTimestamp: null
       labels:
-        conduit.io/control-plane-component: web
-        conduit.io/control-plane-ns: linkerd
-        conduit.io/proxy-deployment: web
+        linkerd.io/control-plane-component: web
+        linkerd.io/control-plane-ns: linkerd
+        linkerd.io/proxy-deployment: web
     spec:
       containers:
       - args:
@@ -420,13 +420,13 @@ metadata:
   name: prometheus
   namespace: linkerd
   labels:
-    conduit.io/control-plane-component: prometheus
+    linkerd.io/control-plane-component: prometheus
   annotations:
-    conduit.io/created-by: conduit/cli undefined
+    linkerd.io/created-by: linkerd/cli undefined
 spec:
   type: ClusterIP
   selector:
-    conduit.io/control-plane-component: prometheus
+    linkerd.io/control-plane-component: prometheus
   ports:
   - name: admin-http
     port: 9090
@@ -437,10 +437,10 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   annotations:
-    conduit.io/created-by: conduit/cli undefined
+    linkerd.io/created-by: linkerd/cli undefined
   creationTimestamp: null
   labels:
-    conduit.io/control-plane-component: prometheus
+    linkerd.io/control-plane-component: prometheus
   name: prometheus
   namespace: linkerd
 spec:
@@ -449,13 +449,13 @@ spec:
   template:
     metadata:
       annotations:
-        conduit.io/created-by: conduit/cli undefined
-        conduit.io/proxy-version: undefined
+        linkerd.io/created-by: linkerd/cli undefined
+        linkerd.io/proxy-version: undefined
       creationTimestamp: null
       labels:
-        conduit.io/control-plane-component: prometheus
-        conduit.io/control-plane-ns: linkerd
-        conduit.io/proxy-deployment: prometheus
+        linkerd.io/control-plane-component: prometheus
+        linkerd.io/control-plane-ns: linkerd
+        linkerd.io/proxy-deployment: prometheus
     spec:
       containers:
       - args:
@@ -548,9 +548,9 @@ metadata:
   name: prometheus-config
   namespace: linkerd
   labels:
-    conduit.io/control-plane-component: prometheus
+    linkerd.io/control-plane-component: prometheus
   annotations:
-    conduit.io/created-by: conduit/cli undefined
+    linkerd.io/created-by: linkerd/cli undefined
 data:
   prometheus.yml: |-
     global:
@@ -612,7 +612,7 @@ data:
           names: ['linkerd']
       relabel_configs:
       - source_labels:
-        - __meta_kubernetes_pod_label_conduit_io_control_plane_component
+        - __meta_kubernetes_pod_label_linkerd_io_control_plane_component
         - __meta_kubernetes_pod_container_port_name
         action: keep
         regex: (.*);admin-http$
@@ -637,18 +637,18 @@ data:
         target_label: pod
       # special case k8s' "job" label, to not interfere with prometheus' "job"
       # label
-      # __meta_kubernetes_pod_label_conduit_io_proxy_job=foo =>
+      # __meta_kubernetes_pod_label_linkerd_io_proxy_job=foo =>
       # k8s_job=foo
-      - source_labels: [__meta_kubernetes_pod_label_conduit_io_proxy_job]
+      - source_labels: [__meta_kubernetes_pod_label_linkerd_io_proxy_job]
         action: replace
         target_label: k8s_job
-      # __meta_kubernetes_pod_label_conduit_io_proxy_deployment=foo =>
+      # __meta_kubernetes_pod_label_linkerd_io_proxy_deployment=foo =>
       # deployment=foo
       - action: labelmap
-        regex: __meta_kubernetes_pod_label_conduit_io_proxy_(.+)
+        regex: __meta_kubernetes_pod_label_linkerd_io_proxy_(.+)
       # drop all labels that we just made copies of in the previous labelmap
       - action: labeldrop
-        regex: __meta_kubernetes_pod_label_conduit_io_proxy_(.+)
+        regex: __meta_kubernetes_pod_label_linkerd_io_proxy_(.+)
       # __meta_kubernetes_pod_label_foo=bar => foo=bar
       - action: labelmap
         regex: __meta_kubernetes_pod_label_(.+)
@@ -661,13 +661,13 @@ metadata:
   name: grafana
   namespace: linkerd
   labels:
-    conduit.io/control-plane-component: grafana
+    linkerd.io/control-plane-component: grafana
   annotations:
-    conduit.io/created-by: conduit/cli undefined
+    linkerd.io/created-by: linkerd/cli undefined
 spec:
   type: ClusterIP
   selector:
-    conduit.io/control-plane-component: grafana
+    linkerd.io/control-plane-component: grafana
   ports:
   - name: http
     port: 3000
@@ -678,10 +678,10 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   annotations:
-    conduit.io/created-by: conduit/cli undefined
+    linkerd.io/created-by: linkerd/cli undefined
   creationTimestamp: null
   labels:
-    conduit.io/control-plane-component: grafana
+    linkerd.io/control-plane-component: grafana
   name: grafana
   namespace: linkerd
 spec:
@@ -690,13 +690,13 @@ spec:
   template:
     metadata:
       annotations:
-        conduit.io/created-by: conduit/cli undefined
-        conduit.io/proxy-version: undefined
+        linkerd.io/created-by: linkerd/cli undefined
+        linkerd.io/proxy-version: undefined
       creationTimestamp: null
       labels:
-        conduit.io/control-plane-component: grafana
-        conduit.io/control-plane-ns: linkerd
-        conduit.io/proxy-deployment: grafana
+        linkerd.io/control-plane-component: grafana
+        linkerd.io/control-plane-ns: linkerd
+        linkerd.io/proxy-deployment: grafana
     spec:
       containers:
       - image: gcr.io/linkerd-io/grafana:undefined
@@ -792,9 +792,9 @@ metadata:
   name: grafana-config
   namespace: linkerd
   labels:
-    conduit.io/control-plane-component: grafana
+    linkerd.io/control-plane-component: grafana
   annotations:
-    conduit.io/created-by: conduit/cli undefined
+    linkerd.io/created-by: linkerd/cli undefined
 data:
   grafana.ini: |-
     instance_name = conduit-grafana

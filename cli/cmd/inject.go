@@ -247,7 +247,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 			},
 		}
 
-		base := "/var/conduit-io"
+		base := "/var/linkerd-io"
 		configMapBase := base + "/trust-anchors"
 		secretBase := base + "/identity"
 		tlsEnvVars := []v1.EnvVar{

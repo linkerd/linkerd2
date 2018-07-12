@@ -8,13 +8,13 @@ spec:
   template:
     metadata:
       annotations:
-        conduit.io/created-by: conduit/cli undefined
-        conduit.io/proxy-version: testinjectversion
+        linkerd.io/created-by: linkerd/cli undefined
+        linkerd.io/proxy-version: testinjectversion
       creationTimestamp: null
       labels:
         app: get-test
-        conduit.io/control-plane-ns: linkerd
-        conduit.io/proxy-deployment: get-test-deploy-injected-1
+        linkerd.io/control-plane-ns: linkerd
+        linkerd.io/proxy-deployment: get-test-deploy-injected-1
     spec:
       containers:
       - args:
@@ -102,13 +102,13 @@ spec:
   template:
     metadata:
       annotations:
-        conduit.io/created-by: conduit/cli undefined
-        conduit.io/proxy-version: testinjectversion
+        linkerd.io/created-by: linkerd/cli undefined
+        linkerd.io/proxy-version: testinjectversion
       creationTimestamp: null
       labels:
         app: get-test
-        conduit.io/control-plane-ns: linkerd
-        conduit.io/proxy-deployment: get-test-deploy-injected-2
+        linkerd.io/control-plane-ns: linkerd
+        linkerd.io/proxy-deployment: get-test-deploy-injected-2
     spec:
       containers:
       - args:
