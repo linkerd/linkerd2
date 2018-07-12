@@ -1,203 +1,109 @@
-{
-  "ok": {
-    "statTables": [
-      {
-        "podGroup": {
-          "rows": [
-            {
-              "resource": {
-                "namespace": "emojivoto",
-                "type": "deployments",
-                "name": "voting"
-              },
-              "timeWindow": "1m",
-              "meshedPodCount": "1",
-              "runningPodCount": "1",
-              "failedPodCount": "0",
-              "stats": {
-                "successCount": "52",
-                "failureCount": "65",
-                "latencyMsP50": "5",
-                "latencyMsP95": "10",
-                "latencyMsP99": "10",
-                "tlsRequestCount": "0"
+[
+  {
+    "ok": {
+      "statTables": [
+        {
+          "podGroup": {
+            "rows": [
+              {
+                "resource": {
+                  "namespace": "emojivoto",
+                  "type": "deployments",
+                  "name": "web"
+                },
+                "timeWindow": "1m",
+                "meshedPodCount": "1",
+                "runningPodCount": "1",
+                "failedPodCount": "0",
+                "stats": {
+                  "successCount": "118",
+                  "failureCount": "0",
+                  "latencyMsP50": "1",
+                  "latencyMsP95": "1",
+                  "latencyMsP99": "2",
+                  "tlsRequestCount": "0"
+                },
+                "errorsByPod": {}
               }
-            },
-            {
-              "resource": {
-                "namespace": "emojivoto",
-                "type": "deployments",
-                "name": "web"
-              },
-              "timeWindow": "1m",
-              "meshedPodCount": "1",
-              "runningPodCount": "1",
-              "failedPodCount": "0",
-              "stats": {
-                "successCount": "169",
-                "failureCount": "64",
-                "latencyMsP50": "5",
-                "latencyMsP95": "10",
-                "latencyMsP99": "18",
-                "tlsRequestCount": "0"
-              }
-            },
-            {
-              "resource": {
-                "namespace": "emojivoto",
-                "type": "deployments",
-                "name": "vote-bot"
-              },
-              "timeWindow": "1m",
-              "meshedPodCount": "1",
-              "runningPodCount": "1",
-              "failedPodCount": "0",
-              "stats": null
-            },
-            {
-              "resource": {
-                "namespace": "emojivoto",
-                "type": "deployments",
-                "name": "emoji"
-              },
-              "timeWindow": "1m",
-              "meshedPodCount": "1",
-              "runningPodCount": "1",
-              "failedPodCount": "0",
-              "stats": {
-                "successCount": "286",
-                "failureCount": "64",
-                "latencyMsP50": "5",
-                "latencyMsP95": "9",
-                "latencyMsP99": "10",
-                "tlsRequestCount": "0"
-              }
-            }
-          ]
+            ]
+          }
         }
-      },
-      {
-        "podGroup": {
-          "rows": [
-            {
-              "resource": {
-                "namespace": "emojivoto",
-                "type": "services",
-                "name": "emoji-svc"
-              },
-              "timeWindow": "1m",
-              "meshedPodCount": "1",
-              "runningPodCount": "1",
-              "failedPodCount": "0",
-              "stats": null
-            },
-            {
-              "resource": {
-                "namespace": "emojivoto",
-                "type": "services",
-                "name": "voting-svc"
-              },
-              "timeWindow": "1m",
-              "meshedPodCount": "1",
-              "runningPodCount": "1",
-              "failedPodCount": "0",
-              "stats": null
-            },
-            {
-              "resource": {
-                "namespace": "emojivoto",
-                "type": "services",
-                "name": "web-svc"
-              },
-              "timeWindow": "1m",
-              "meshedPodCount": "1",
-              "runningPodCount": "1",
-              "failedPodCount": "0",
-              "stats": null
-            }
-          ]
+      ]
+    }
+  },
+  {
+    "ok": {
+      "statTables": [
+        {
+          "podGroup": {
+            "rows": []
+          }
         }
-      },
-      {
-        "podGroup": {
-          "rows": []
+      ]
+    }
+  },
+  {
+    "ok": {
+      "statTables": [
+        {
+          "podGroup": {
+            "rows": [
+              {
+                "resource": {
+                  "namespace": "emojivoto",
+                  "type": "deployments",
+                  "name": "web"
+                },
+                "timeWindow": "1m",
+                "meshedPodCount": "1",
+                "runningPodCount": "1",
+                "failedPodCount": "0",
+                "stats": {
+                  "successCount": "47",
+                  "failureCount": "12",
+                  "latencyMsP50": "1",
+                  "latencyMsP95": "9",
+                  "latencyMsP99": "10",
+                  "tlsRequestCount": "0"
+                },
+                "errorsByPod": {}
+              }
+            ]
+          }
         }
-      },
-      {
-        "podGroup": {
-          "rows": [
-            {
-              "resource": {
-                "namespace": "emojivoto",
-                "type": "pods",
-                "name": "voting-5cb8f85965-2rkjr"
-              },
-              "timeWindow": "1m",
-              "meshedPodCount": "1",
-              "runningPodCount": "1",
-              "failedPodCount": "0",
-              "stats": {
-                "successCount": "52",
-                "failureCount": "65",
-                "latencyMsP50": "5",
-                "latencyMsP95": "10",
-                "latencyMsP99": "10",
-                "tlsRequestCount": "0"
+      ]
+    }
+  },
+  {
+    "ok": {
+      "statTables": [
+        {
+          "podGroup": {
+            "rows": [
+              {
+                "resource": {
+                  "namespace": "emojivoto",
+                  "type": "deployments",
+                  "name": "vote-bot"
+                },
+                "timeWindow": "1m",
+                "meshedPodCount": "1",
+                "runningPodCount": "1",
+                "failedPodCount": "0",
+                "stats": {
+                  "successCount": "108",
+                  "failureCount": "12",
+                  "latencyMsP50": "2",
+                  "latencyMsP95": "3",
+                  "latencyMsP99": "4",
+                  "tlsRequestCount": "0"
+                },
+                "errorsByPod": {}
               }
-            },
-            {
-              "resource": {
-                "namespace": "emojivoto",
-                "type": "pods",
-                "name": "web-5ddd56d679-hsgn7"
-              },
-              "timeWindow": "1m",
-              "meshedPodCount": "1",
-              "runningPodCount": "1",
-              "failedPodCount": "0",
-              "stats": {
-                "successCount": "169",
-                "failureCount": "64",
-                "latencyMsP50": "5",
-                "latencyMsP95": "10",
-                "latencyMsP99": "18",
-                "tlsRequestCount": "0"
-              }
-            },
-            {
-              "resource": {
-                "namespace": "emojivoto",
-                "type": "pods",
-                "name": "vote-bot-86f685b974-cth8h"
-              },
-              "timeWindow": "1m",
-              "meshedPodCount": "1",
-              "runningPodCount": "1",
-              "failedPodCount": "0",
-              "stats": null
-            },
-            {
-              "resource": {
-                "namespace": "emojivoto",
-                "type": "pods",
-                "name": "emoji-57d4797b68-29fw7"
-              },
-              "timeWindow": "1m",
-              "meshedPodCount": "1",
-              "runningPodCount": "1",
-              "failedPodCount": "0",
-              "stats": {
-                "successCount": "286",
-                "failureCount": "64",
-                "latencyMsP50": "5",
-                "latencyMsP95": "9",
-                "latencyMsP99": "10",
-                "tlsRequestCount": "0"
-              }
-            }
-          ]
+            ]
+          }
         }
-      }
-    ]
+      ]
+    }
   }
-}
+]

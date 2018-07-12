@@ -1,8 +1,7 @@
 import _ from 'lodash';
-import ErrorBanner from './ErrorBanner.jsx';
+import { metricsPropType } from './util/MetricUtils.js';
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Spin } from 'antd';
 import { withContext } from './util/AppContext.jsx';
 import withREST from './util/withREST.jsx';
 import * as d3 from 'd3';
@@ -18,37 +17,18 @@ const simulation = d3.forceSimulation()
   .force('charge', d3.forceManyBody().strength(-20))
   .force('center', d3.forceCenter(defaultSvgWidth / 2, defaultSvgHeight / 2));
 
-class NetworkGraph extends React.Component {
+export class NetworkGraphBase extends React.Component {
   static defaultProps = {
     deployments: []
   }
 
   static propTypes = {
-    api: PropTypes.shape({
-      cancelCurrentRequests: PropTypes.func.isRequired,
-      fetchMetrics: PropTypes.func.isRequired,
-      getCurrentPromises: PropTypes.func.isRequired,
-      setCurrentRequests: PropTypes.func.isRequired,
-      urlsForResource: PropTypes.func.isRequired,
-    }).isRequired,
+    data: PropTypes.arrayOf(metricsPropType.isRequired).isRequired,
     deployments: PropTypes.arrayOf(PropTypes.object),
-    namespace: PropTypes.string.isRequired,
   }
 
   constructor(props) {
     super(props);
-    this.api = this.props.api;
-    this.handleApiError = this.handleApiError.bind(this);
-    this.loadFromServer = this.loadFromServer.bind(this);
-    this.updateGraph = this.updateGraph.bind(this);
-
-    this.state = {
-      nodes: [],
-      links: [],
-      pendingRequests: false,
-      error: "",
-      loaded: false,
-    };
   }
 
   componentDidMount() {
@@ -59,68 +39,48 @@ class NetworkGraph extends React.Component {
       .attr("height", defaultSvgHeight)
       .append("g")
       .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
-    this.loadFromServer();
   }
 
   componentDidUpdate() {
     simulation.alpha(1).restart();
+    this.drawGraph();
   }
 
-  componentWillUnmount() {
-    this.api.cancelCurrentRequests();
-  }
+  getGraphData() {
+    const { data } = this.props;
+    let links = [];
+    let nodeList = [];
 
-  loadFromServer() {
-    if (this.state.pendingRequests) {
-      return; // don't make more requests if the ones we sent haven't completed
-    }
-    this.setState({ pendingRequests: true });
-
-    let deployments = _.sortBy(_.map(this.props.deployments, 'name'));
-    let urls = _.map(this.props.deployments, d => {
-      return this.api.fetchMetrics(this.api.urlsForResource("deployment", this.props.namespace) + "&to_name=" + d.name);
+    _.map(data, (r, i) => {
+      let rows = _.get(r, ["ok", "statTables", 0, "podGroup", "rows"]);
+      let dst = this.props.deployments[i].name;
+      _.map(rows, row => {
+        links.push({
+          source: row.resource.name,
+          target: dst,
+        });
+        nodeList.push(row.resource.name);
+        nodeList.push(dst);
+      });
     });
 
-    this.api.setCurrentRequests(urls);
-
-    this.serverPromise = Promise.all(this.api.getCurrentPromises())
-      .then(results => {
-        let links = [];
-        let nodeList = [];
-
-        _.map(results, (r, i) => {
-          let rows = _.get(r, ["ok", "statTables", 0, "podGroup", "rows"]);
-          let dst = deployments[i];
-          _.map(rows, row => {
-            links.push({
-              source: row.resource.name,
-              target: dst,
-            });
-            nodeList.push(row.resource.name);
-            nodeList.push(dst);
-          });
-        });
-
-        let nodes = _.map(_.uniq(nodeList), n => {
-          return { id: n, r: 15 };
-        });
-
-        this.setState({
-          nodes: nodes,
-          links: links,
-          pendingRequests: false,
-          error: "",
-          loaded: true,
-        });
-      })
-      .then( () => this.updateGraph())
-      .catch(this.handleApiError);
+    let nodes = _.map(_.uniq(nodeList), n => ({ id: n, r: 15 }));
+    return {"links": links, "nodes": nodes};
   }
 
-  updateGraph() {
+  drawGraph() {
+    let graphData = this.getGraphData();
+
+    // check if graph is present to prevent drawing of multiple graphs
+    if (this.svg.select("circle")._groups[0][0]) {
+      return;
+    }
+    this.drawGraphComponents(graphData.links, graphData.nodes);
+  }
+
+  drawGraphComponents(links, nodes) {
     this.svg.append("svg:defs").selectAll("marker")
-      .data(this.state.links)      // Different link/path types can be defined here
+      .data(links)      // Different link/path types can be defined here
       .enter().append("svg:marker")    // This section adds in the arrows
       .attr("id", node => node.source + "/" + node.target)
       .attr("viewBox", "0 -5 10 10")
@@ -135,7 +95,7 @@ class NetworkGraph extends React.Component {
 
     // add the links and the arrows
     const path = this.svg.append("svg:g").selectAll("path")
-      .data(this.state.links)
+      .data(links)
       .enter().append("svg:path")
       .attr("stroke-width", 3)
       .attr("stroke", "#454242")
@@ -143,7 +103,7 @@ class NetworkGraph extends React.Component {
 
     const nodeElements = this.svg.append('g')
       .selectAll('circle')
-      .data(this.state.nodes)
+      .data(nodes)
       .enter().append('circle')
       .attr("r", 15)
       .attr('fill', 'steelblue')
@@ -154,14 +114,14 @@ class NetworkGraph extends React.Component {
 
     const textElements = this.svg.append('g')
       .selectAll('text')
-      .data(this.state.nodes)
+      .data(nodes)
       .enter().append('text')
       .text(node => node.id)
       .attr('font-size', 15)
       .attr('dx', 20)
       .attr('dy', 4);
 
-    simulation.nodes(this.state.nodes).on("tick", () => {
+    simulation.nodes(nodes).on("tick", () => {
       path
         .attr("d", node =>  "M" +
               node.source.x + " " +
@@ -179,7 +139,7 @@ class NetworkGraph extends React.Component {
     });
 
     simulation.force("link")
-      .links(this.state.links);
+      .links(links);
   }
 
   dragstarted = d => {
@@ -199,22 +159,9 @@ class NetworkGraph extends React.Component {
     d.fy = null;
   }
 
-  handleApiError = e => {
-    if (e.isCanceled) {
-      return;
-    }
-
-    this.setState({
-      pendingRequests: false,
-      error: `Error getting data from server: ${e.message}`
-    });
-  }
-
   render() {
     return (
       <div>
-        { !this.state.error ? null : <ErrorBanner message={this.state.error} /> }
-        { !this.state.loaded ? <Spin /> : null }
         <div className="network-graph-container" />
       </div>
     );
@@ -222,7 +169,13 @@ class NetworkGraph extends React.Component {
 }
 
 export default withREST(
-  withContext(NetworkGraph),
-  ({api, resource, namespace, deployment}) => [api.fetchMetrics(api.urlsForResource(resource, namespace) + "&to_name=" + deployment.name)],
-  ["deployment", this.props.namespace, {...this.props.deployments}]
+  withContext(NetworkGraphBase),
+  ({api, namespace, deployments}) =>
+    _.map(deployments, d => {
+      return api.fetchMetrics(api.urlsForResource("deployment", namespace) + "&to_name=" + d.name);
+    }),
+  {
+    poll: false,
+    resetProps: ["deployment"],
+  },
 );

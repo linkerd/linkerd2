@@ -1,79 +1,31 @@
-// import _ from 'lodash';
 import Adapter from 'enzyme-adapter-react-16';
 import emojivotoPodFixtures from './fixtures/emojivotoPods.json';
 import { expect } from 'chai';
-// import nsFixtures from './fixtures/namespaces.json';
-import { routerWrap } from './testHelpers.jsx';
-import NetworkGraph from '../js/components/NetworkGraph.jsx';
-import sinon from 'sinon';
-import sinonStubPromise from 'sinon-stub-promise';
-import Enzyme, { mount } from 'enzyme';
+import { NetworkGraphBase } from '../js/components/NetworkGraph.jsx';
+import React from 'react';
+import Enzyme, { shallow } from 'enzyme';
 
 
 Enzyme.configure({ adapter: new Adapter() });
-sinonStubPromise(sinon);
 
-describe('NetworkGraph', () => {
-  let component, fetchStub;
+const deploys = [{name: "emoji", namespace: "emojivoto", totalRequests: 120, requestRate: 2, successRate: 1},
+  {name: "vote-bot", namespace: "emojivoto", totalRequests: 0, requestRate: null, successRate: null},
+  {name: "voting", namespace: "emojivoto", totalRequests: 59, requestRate: 0.9833333333333333, successRate: 0.7288135593220338},
+  {name: "web", namespace: "emojivoto", totalRequests: 117, requestRate: 1.95, successRate: 0.8803418803418803}];
 
-  const defaultProps = {
-    namespace: "test",
-  };
+describe('Tests for <NetworkGraph>', () => {
 
-  function withPromise(fn) {
-    return component.find("NetworkGraph").instance().serverPromise.then(fn);
-  }
+  it("checks graph data", () => {
+    const component = shallow(
+      <NetworkGraphBase
+        data={emojivotoPodFixtures}
+        deployments={deploys} />
+    );
 
-  beforeEach(() => {
-    fetchStub = sinon.stub(window, 'fetch').returnsPromise();
+    const data = component.instance().graphData();
+    expect(data.links).to.have.length(3);
+    expect(data.nodes).to.have.length(4);
+    expect(data.links[0]).to.include({source: 'web', target: 'emoji'});
+    expect(data.nodes[0]).to.include({ id: 'web', r: 15 });
   });
-
-  afterEach(() => {
-    component = null;
-    window.fetch.restore();
-  });
-
-  // it("check if component renders", () => {
-  //   let exampleData = {"ok": {"statTables":[]}};
-  //   fetchStub.resolves({
-  //     ok: true,
-  //     json: () => Promise.resolve(exampleData)
-  //   }).resolves({});
-  //   component = mount(routerWrap(NetworkGraph, defaultProps));
-
-  //   return withPromise(() => {
-  //     component.update();
-  //     expect(component.find("NetworkGraph")).to.have.length(1);
-  //     expect(component.find("ConduitSpinner")).to.have.length(0);
-  //   });
-  // });
-
-  // it("check if conduitspinner renders when context is not loaded yet", () => {
-  //   component = mount(routerWrap(NetworkGraph, defaultProps));
-  //   expect(component.find("NetworkGraph")).to.have.length(1);
-  //   expect(component.find("ConduitSpinner")).to.have.length(1);
-  // });
-
-  it("check if graph renders when data is received", () => {
-    console.log("example data before fetch: ", emojivotoPodFixtures);
-    // fetchStub.resolves({}).resolves({
-    console.log("almost fetchin'");
-    console.log("FETCHIN' ", fetchStub);
-    fetchStub.returns({
-      ok: true,
-      json: () => {
-        console.log("calling it!!!");
-        return Promise.resolve([{metrics: ["hello"]}]);
-      }
-    });
-
-    component = mount(routerWrap(NetworkGraph, defaultProps));
-
-    return withPromise(() => {
-      component.update();
-      expect(component.find("NetworkGraph")).to.have.length(1);
-      expect(component.html()).to.include("voting");
-    });
-  });
-
 });

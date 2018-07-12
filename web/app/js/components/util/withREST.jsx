@@ -8,9 +8,14 @@ import { withContext } from './AppContext.jsx';
  * @constructor
  * @param {React.Component} WrappedComponent - Component to add functionality to.
  * @param {List[string]} requestURLs - List of URLs to poll.
- * @param {List[string]} resetProps - Props that on change cause a state reset.
+ * @param {List[string]} options - Options for withREST
  */
-const withREST = (WrappedComponent, componentPromises, resetProps = []) => {
+const withREST = (WrappedComponent, componentPromises, options={}) => {
+  const localOptions = _.merge({}, {
+    resetProps: [],
+    poll: true,
+  }, options);
+
   class RESTWrapper extends React.Component {
     static propTypes = {
       api: PropTypes.shape({
@@ -41,7 +46,7 @@ const withREST = (WrappedComponent, componentPromises, resetProps = []) => {
 
     componentWillReceiveProps(newProps) {
       const changed = _.filter(
-        resetProps,
+        localOptions.resetProps,
         prop => _.get(newProps, prop) !== _.get(this.props, prop),
       );
 
@@ -59,6 +64,9 @@ const withREST = (WrappedComponent, componentPromises, resetProps = []) => {
 
     startServerPolling = props => {
       this.loadFromServer(props);
+      if (!localOptions.poll) {
+        return;
+      }
       this.timerId = window.setInterval(
         this.loadFromServer, this.state.pollingInterval, props);
     }
