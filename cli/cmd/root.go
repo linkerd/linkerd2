@@ -28,9 +28,9 @@ var (
 )
 
 var RootCmd = &cobra.Command{
-	Use:   "conduit",
-	Short: "conduit manages the Conduit service mesh",
-	Long:  `conduit manages the Conduit service mesh.`,
+	Use:   "linkerd",
+	Short: "linkerd manages the Linkerd service mesh",
+	Long:  `linkerd manages the Linkerd service mesh.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// enable / disable logging
 		if verbose {
@@ -48,7 +48,7 @@ var RootCmd = &cobra.Command{
 }
 
 func init() {
-	RootCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "conduit-namespace", "c", "conduit", "Namespace in which Conduit is installed")
+	RootCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "linkerd-namespace", "l", "linkerd", "Namespace in which Linkerd is installed")
 	RootCmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", "", "Path to the kubeconfig file to use for CLI requests")
 	RootCmd.PersistentFlags().StringVar(&apiAddr, "api-addr", "", "Override kubeconfig and communicate directly with the control plane at host:port (mostly for testing)")
 	RootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Turn on debug logging")

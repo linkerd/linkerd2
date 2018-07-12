@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/pkg/browser"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/pkg/browser"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -84,7 +84,7 @@ func newCmdDashboard() *cobra.Command {
 
 			if err != nil || !dashboardAvailable {
 				fmt.Fprintf(os.Stderr, "Conduit is not running in the \"%s\" namespace\n", controlPlaneNamespace)
-				fmt.Fprintf(os.Stderr, "Install with: conduit install --conduit-namespace %s | kubectl apply -f -\n", controlPlaneNamespace)
+				fmt.Fprintf(os.Stderr, "Install with: conduit install --linkerd-namespace %s | kubectl apply -f -\n", controlPlaneNamespace)
 				os.Exit(1)
 			}
 

@@ -191,11 +191,11 @@ func TestEndpointListener(t *testing.T) {
 	t.Run("Sends TlsIdentity when enabled", func(t *testing.T) {
 		expectedPodName := "pod1"
 		expectedPodNamespace := "this-namespace"
-		expectedConduitNamespace := "conduit-namespace"
+		expectedConduitNamespace := "linkerd-namespace"
 		expectedPodDeployment := "pod-deployment"
 		expectedTlsIdentity := &pb.TlsIdentity_K8SPodIdentity{
-			PodIdentity:  "pod-deployment.deployment.this-namespace.conduit-managed.conduit-namespace.svc.cluster.local",
-			ControllerNs: "conduit-namespace",
+			PodIdentity:  "pod-deployment.deployment.this-namespace.conduit-managed.linkerd-namespace.svc.cluster.local",
+			ControllerNs: "linkerd-namespace",
 		}
 
 		podForAddedAddress1 := &v1.Pod{
@@ -242,7 +242,7 @@ func TestEndpointListener(t *testing.T) {
 	t.Run("Does not send TlsIdentity when not enabled", func(t *testing.T) {
 		expectedPodName := "pod1"
 		expectedPodNamespace := "this-namespace"
-		expectedConduitNamespace := "conduit-namespace"
+		expectedConduitNamespace := "linkerd-namespace"
 		expectedPodDeployment := "pod-deployment"
 
 		podForAddedAddress1 := &v1.Pod{

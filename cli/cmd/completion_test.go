@@ -18,11 +18,11 @@ func TestCompletion(t *testing.T) {
 			t.Fatalf("Unexpected error: %+v", err)
 		}
 
-		if !strings.Contains(bash, "# bash completion for conduit") {
+		if !strings.Contains(bash, "# bash completion for linkerd") {
 			t.Fatalf("Unexpected bash output: %+v", bash)
 		}
 
-		if !strings.Contains(zsh, "#compdef conduit") {
+		if !strings.Contains(zsh, "#compdef linkerd") {
 			t.Fatalf("Unexpected zsh output: %+v", zsh)
 		}
 	})

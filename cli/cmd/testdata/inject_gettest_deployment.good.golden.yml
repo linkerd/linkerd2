@@ -13,7 +13,7 @@ spec:
       creationTimestamp: null
       labels:
         app: get-test
-        conduit.io/control-plane-ns: conduit
+        conduit.io/control-plane-ns: linkerd
         conduit.io/proxy-deployment: get-test-deploy-injected-1
     spec:
       containers:
@@ -45,7 +45,7 @@ spec:
         - name: LINKERD2_PROXY_BIND_TIMEOUT
           value: 10s
         - name: LINKERD2_PROXY_CONTROL_URL
-          value: tcp://proxy-api.conduit.svc.cluster.local:8086
+          value: tcp://proxy-api.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: LINKERD2_PROXY_METRICS_LISTENER
@@ -107,7 +107,7 @@ spec:
       creationTimestamp: null
       labels:
         app: get-test
-        conduit.io/control-plane-ns: conduit
+        conduit.io/control-plane-ns: linkerd
         conduit.io/proxy-deployment: get-test-deploy-injected-2
     spec:
       containers:
@@ -139,7 +139,7 @@ spec:
         - name: LINKERD2_PROXY_BIND_TIMEOUT
           value: 10s
         - name: LINKERD2_PROXY_CONTROL_URL
-          value: tcp://proxy-api.conduit.svc.cluster.local:8086
+          value: tcp://proxy-api.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: LINKERD2_PROXY_METRICS_LISTENER

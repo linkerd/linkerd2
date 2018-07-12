@@ -40,7 +40,7 @@ kind: Deployment
 metadata:
   creationTimestamp: null
   name: not-controller
-  namespace: conduit
+  namespace: linkerd
 spec:
   replicas: 1
   selector:

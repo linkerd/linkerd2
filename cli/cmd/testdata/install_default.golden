@@ -2,7 +2,7 @@
 kind: Namespace
 apiVersion: v1
 metadata:
-  name: conduit
+  name: linkerd
 
 ### Service Account Controller ###
 ---
@@ -10,14 +10,14 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: conduit-controller
-  namespace: conduit
+  namespace: linkerd
 
 ### Controller RBAC ###
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: conduit-conduit-controller
+  name: conduit-linkerd-controller
 rules:
 - apiGroups: ["extensions", "apps"]
   resources: ["deployments", "replicasets"]
@@ -30,15 +30,15 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: conduit-conduit-controller
+  name: conduit-linkerd-controller
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: conduit-conduit-controller
+  name: conduit-linkerd-controller
 subjects:
 - kind: ServiceAccount
   name: conduit-controller
-  namespace: conduit
+  namespace: linkerd
 
 ### Service Account Prometheus ###
 ---
@@ -46,14 +46,14 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: conduit-prometheus
-  namespace: conduit
+  namespace: linkerd
 
 ### Prometheus RBAC ###
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: conduit-conduit-prometheus
+  name: conduit-linkerd-prometheus
 rules:
 - apiGroups: [""]
   resources: ["nodes", "nodes/proxy", "pods"]
@@ -63,15 +63,15 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: conduit-conduit-prometheus
+  name: conduit-linkerd-prometheus
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: conduit-conduit-prometheus
+  name: conduit-linkerd-prometheus
 subjects:
 - kind: ServiceAccount
   name: conduit-prometheus
-  namespace: conduit
+  namespace: linkerd
 
 ### Controller ###
 ---
@@ -79,7 +79,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: api
-  namespace: conduit
+  namespace: linkerd
   labels:
     conduit.io/control-plane-component: controller
   annotations:
@@ -98,7 +98,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: proxy-api
-  namespace: conduit
+  namespace: linkerd
   labels:
     conduit.io/control-plane-component: controller
   annotations:
@@ -122,7 +122,7 @@ metadata:
   labels:
     conduit.io/control-plane-component: controller
   name: controller
-  namespace: conduit
+  namespace: linkerd
 spec:
   replicas: 1
   strategy: {}
@@ -134,14 +134,14 @@ spec:
       creationTimestamp: null
       labels:
         conduit.io/control-plane-component: controller
-        conduit.io/control-plane-ns: conduit
+        conduit.io/control-plane-ns: linkerd
         conduit.io/proxy-deployment: controller
     spec:
       containers:
       - args:
         - public-api
-        - -prometheus-url=http://prometheus.conduit.svc.cluster.local:9090
-        - -controller-namespace=conduit
+        - -prometheus-url=http://prometheus.linkerd.svc.cluster.local:9090
+        - -controller-namespace=linkerd
         - -log-level=info
         - -logtostderr=true
         image: gcr.io/linkerd-io/controller:undefined
@@ -292,7 +292,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: web
-  namespace: conduit
+  namespace: linkerd
   labels:
     conduit.io/control-plane-component: web
   annotations:
@@ -319,7 +319,7 @@ metadata:
   labels:
     conduit.io/control-plane-component: web
   name: web
-  namespace: conduit
+  namespace: linkerd
 spec:
   replicas: 1
   strategy: {}
@@ -331,16 +331,16 @@ spec:
       creationTimestamp: null
       labels:
         conduit.io/control-plane-component: web
-        conduit.io/control-plane-ns: conduit
+        conduit.io/control-plane-ns: linkerd
         conduit.io/proxy-deployment: web
     spec:
       containers:
       - args:
-        - -api-addr=api.conduit.svc.cluster.local:8085
+        - -api-addr=api.linkerd.svc.cluster.local:8085
         - -static-dir=/dist
         - -template-dir=/templates
         - -uuid=deaab91a-f4ab-448a-b7d1-c832a2fa0a60
-        - -controller-namespace=conduit
+        - -controller-namespace=linkerd
         - -log-level=info
         image: gcr.io/linkerd-io/web:undefined
         imagePullPolicy: IfNotPresent
@@ -367,7 +367,7 @@ spec:
         - name: LINKERD2_PROXY_BIND_TIMEOUT
           value: 10s
         - name: LINKERD2_PROXY_CONTROL_URL
-          value: tcp://proxy-api.conduit.svc.cluster.local:8086
+          value: tcp://proxy-api.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: LINKERD2_PROXY_METRICS_LISTENER
@@ -418,7 +418,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: prometheus
-  namespace: conduit
+  namespace: linkerd
   labels:
     conduit.io/control-plane-component: prometheus
   annotations:
@@ -442,7 +442,7 @@ metadata:
   labels:
     conduit.io/control-plane-component: prometheus
   name: prometheus
-  namespace: conduit
+  namespace: linkerd
 spec:
   replicas: 1
   strategy: {}
@@ -454,7 +454,7 @@ spec:
       creationTimestamp: null
       labels:
         conduit.io/control-plane-component: prometheus
-        conduit.io/control-plane-ns: conduit
+        conduit.io/control-plane-ns: linkerd
         conduit.io/proxy-deployment: prometheus
     spec:
       containers:
@@ -490,7 +490,7 @@ spec:
         - name: LINKERD2_PROXY_BIND_TIMEOUT
           value: 10s
         - name: LINKERD2_PROXY_CONTROL_URL
-          value: tcp://proxy-api.conduit.svc.cluster.local:8086
+          value: tcp://proxy-api.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: LINKERD2_PROXY_METRICS_LISTENER
@@ -546,7 +546,7 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: prometheus-config
-  namespace: conduit
+  namespace: linkerd
   labels:
     conduit.io/control-plane-component: prometheus
   annotations:
@@ -567,7 +567,7 @@ data:
       kubernetes_sd_configs:
       - role: pod
         namespaces:
-          names: ['conduit']
+          names: ['linkerd']
       relabel_configs:
       - source_labels:
         - __meta_kubernetes_pod_container_name
@@ -609,7 +609,7 @@ data:
       kubernetes_sd_configs:
       - role: pod
         namespaces:
-          names: ['conduit']
+          names: ['linkerd']
       relabel_configs:
       - source_labels:
         - __meta_kubernetes_pod_label_conduit_io_control_plane_component
@@ -659,7 +659,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: grafana
-  namespace: conduit
+  namespace: linkerd
   labels:
     conduit.io/control-plane-component: grafana
   annotations:
@@ -683,7 +683,7 @@ metadata:
   labels:
     conduit.io/control-plane-component: grafana
   name: grafana
-  namespace: conduit
+  namespace: linkerd
 spec:
   replicas: 1
   strategy: {}
@@ -695,7 +695,7 @@ spec:
       creationTimestamp: null
       labels:
         conduit.io/control-plane-component: grafana
-        conduit.io/control-plane-ns: conduit
+        conduit.io/control-plane-ns: linkerd
         conduit.io/proxy-deployment: grafana
     spec:
       containers:
@@ -728,7 +728,7 @@ spec:
         - name: LINKERD2_PROXY_BIND_TIMEOUT
           value: 10s
         - name: LINKERD2_PROXY_CONTROL_URL
-          value: tcp://proxy-api.conduit.svc.cluster.local:8086
+          value: tcp://proxy-api.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: LINKERD2_PROXY_METRICS_LISTENER
@@ -790,7 +790,7 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: grafana-config
-  namespace: conduit
+  namespace: linkerd
   labels:
     conduit.io/control-plane-component: grafana
   annotations:
@@ -800,7 +800,7 @@ data:
     instance_name = conduit-grafana
 
     [server]
-    root_url = %(protocol)s://%(domain)s:/api/v1/namespaces/conduit/services/grafana:http/proxy/
+    root_url = %(protocol)s://%(domain)s:/api/v1/namespaces/linkerd/services/grafana:http/proxy/
 
     [auth]
     disable_login_form = true
@@ -822,7 +822,7 @@ data:
       type: prometheus
       access: proxy
       orgId: 1
-      url: http://prometheus.conduit.svc.cluster.local:9090
+      url: http://prometheus.linkerd.svc.cluster.local:9090
       isDefault: true
       jsonData:
         timeInterval: "5s"

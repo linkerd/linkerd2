@@ -18,7 +18,7 @@ spec:
       creationTimestamp: null
       labels:
         app: web-svc
-        conduit.io/control-plane-ns: conduit
+        conduit.io/control-plane-ns: linkerd
         conduit.io/proxy-deployment: web
     spec:
       containers:
@@ -43,7 +43,7 @@ spec:
         - name: LINKERD2_PROXY_BIND_TIMEOUT
           value: 10s
         - name: LINKERD2_PROXY_CONTROL_URL
-          value: tcp://proxy-api.conduit.svc.cluster.local:8086
+          value: tcp://proxy-api.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: LINKERD2_PROXY_METRICS_LISTENER
@@ -63,11 +63,11 @@ spec:
         - name: LINKERD2_PROXY_TLS_PRIVATE_KEY
           value: /var/conduit-io/identity/private-key.p8
         - name: LINKERD2_PROXY_TLS_POD_IDENTITY
-          value: web.deployment.$LINKERD2_PROXY_POD_NAMESPACE.conduit-managed.conduit.svc.cluster.local
+          value: web.deployment.$LINKERD2_PROXY_POD_NAMESPACE.conduit-managed.linkerd.svc.cluster.local
         - name: LINKERD2_PROXY_CONTROLLER_NAMESPACE
-          value: conduit
+          value: linkerd
         - name: LINKERD2_PROXY_TLS_CONTROLLER_IDENTITY
-          value: controller.deployment.conduit.conduit-managed.conduit.svc.cluster.local
+          value: controller.deployment.linkerd.conduit-managed.linkerd.svc.cluster.local
         image: gcr.io/linkerd-io/proxy:testinjectversion
         imagePullPolicy: IfNotPresent
         name: conduit-proxy

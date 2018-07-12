@@ -127,18 +127,18 @@ func (h *TestHelper) CombinedOutput(name string, arg ...string) (string, error) 
 	return string(bytes), nil
 }
 
-// LinkerdRun executes a linkerd command appended with the --conduit-namespace
+// LinkerdRun executes a linkerd command appended with the --linkerd-namespace
 // flag.
 func (h *TestHelper) LinkerdRun(arg ...string) (string, error) {
-	withNamespace := append(arg, "--conduit-namespace", h.namespace)
+	withNamespace := append(arg, "--linkerd-namespace", h.namespace)
 	return h.CombinedOutput(h.linkerd, withNamespace...)
 }
 
 // LinkerdRunStream initiates a linkerd command appended with the
-// --conduit-namespace flag, and returns a Stream that can be used to read the
+// --linkerd-namespace flag, and returns a Stream that can be used to read the
 // command's output while it is still executing.
 func (h *TestHelper) LinkerdRunStream(arg ...string) (*Stream, error) {
-	withNamespace := append(arg, "--conduit-namespace", h.namespace)
+	withNamespace := append(arg, "--linkerd-namespace", h.namespace)
 	cmd := exec.Command(h.linkerd, withNamespace...)
 
 	cmdReader, err := cmd.StdoutPipe()
