@@ -54,7 +54,7 @@ func TestVersionPreInstall(t *testing.T) {
 }
 
 func TestInstall(t *testing.T) {
-	cmd := []string{"install", "--conduit-version", TestHelper.GetVersion()}
+	cmd := []string{"install", "--linkerd-version", TestHelper.GetVersion()}
 	if TestHelper.TLS() {
 		cmd = append(cmd, []string{"--tls", "optional"}...)
 		linkerdDeployReplicas["ca-bundle-distributor"] = 1

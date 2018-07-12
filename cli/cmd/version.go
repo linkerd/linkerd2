@@ -38,14 +38,14 @@ func newCmdVersion() *cobra.Command {
 				fmt.Printf("Client version: %s\n", clientVersion)
 			}
 
-			conduitApiClient, err := newPublicAPIClient()
+			client, err := newPublicAPIClient()
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error connecting to server: %s\n", err)
 				os.Exit(1)
 			}
 
 			if !options.onlyClientVersion {
-				serverVersion := getServerVersion(conduitApiClient)
+				serverVersion := getServerVersion(client)
 				if options.shortVersion {
 					fmt.Println(serverVersion)
 				} else {

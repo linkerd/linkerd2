@@ -57,8 +57,8 @@ func newCmdInstall() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "install [flags]",
-		Short: "Output Kubernetes configs to install Conduit",
-		Long:  "Output Kubernetes configs to install Conduit.",
+		Short: "Output Kubernetes configs to install Linkerd",
+		Long:  "Output Kubernetes configs to install Linkerd.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			config, err := validateAndBuildConfig(options)
 			if err != nil {
@@ -83,10 +83,10 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 	}
 	return &installConfig{
 		Namespace:                   controlPlaneNamespace,
-		ControllerImage:             fmt.Sprintf("%s/controller:%s", options.dockerRegistry, options.conduitVersion),
-		WebImage:                    fmt.Sprintf("%s/web:%s", options.dockerRegistry, options.conduitVersion),
+		ControllerImage:             fmt.Sprintf("%s/controller:%s", options.dockerRegistry, options.linkerdVersion),
+		WebImage:                    fmt.Sprintf("%s/web:%s", options.dockerRegistry, options.linkerdVersion),
 		PrometheusImage:             "prom/prometheus:v2.3.1",
-		GrafanaImage:                fmt.Sprintf("%s/grafana:%s", options.dockerRegistry, options.conduitVersion),
+		GrafanaImage:                fmt.Sprintf("%s/grafana:%s", options.dockerRegistry, options.linkerdVersion),
 		ControllerReplicas:          options.controllerReplicas,
 		WebReplicas:                 options.webReplicas,
 		PrometheusReplicas:          options.prometheusReplicas,
@@ -103,7 +103,7 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 }
 
 func render(config installConfig, w io.Writer, options *installOptions) error {
-	template, err := template.New("conduit").Parse(install.Template)
+	template, err := template.New("linkerd").Parse(install.Template)
 	if err != nil {
 		return err
 	}
@@ -113,7 +113,7 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 		return err
 	}
 	if config.EnableTLS {
-		tlsTemplate, err := template.New("conduit").Parse(install.TlsTemplate)
+		tlsTemplate, err := template.New("linkerd").Parse(install.TlsTemplate)
 		if err != nil {
 			return err
 		}

@@ -38,9 +38,9 @@ func newCmdCheck() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "check",
-		Short: "Check your Conduit installation for potential problems.",
-		Long: `Check your Conduit installation for potential problems. The check command will perform various checks of your
-local system, the Conduit control plane, and connectivity between those. The process will exit with non-zero check if
+		Short: "Check your Linkerd installation for potential problems.",
+		Long: `Check your Linkerd installation for potential problems. The check command will perform various checks of your
+local system, the Linkerd control plane, and connectivity between those. The process will exit with non-zero check if
 problems were found.`,
 		Args: cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -52,20 +52,20 @@ problems were found.`,
 				os.Exit(2)
 			}
 
-			var conduitApi pb.ApiClient
+			var apiClient pb.ApiClient
 			if apiAddr != "" {
-				conduitApi, err = public.NewInternalClient(apiAddr)
+				apiClient, err = public.NewInternalClient(apiAddr)
 			} else {
-				conduitApi, err = public.NewExternalClient(controlPlaneNamespace, kubeApi)
+				apiClient, err = public.NewExternalClient(controlPlaneNamespace, kubeApi)
 			}
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error with Conduit API: %s\n", err.Error())
+				fmt.Fprintf(os.Stderr, "Error with Linkerd API: %s\n", err.Error())
 				statusCheckResultWasError(os.Stdout)
 				os.Exit(2)
 			}
 
-			grpcStatusChecker := healthcheck.NewGrpcStatusChecker(public.ConduitApiSubsystemName, conduitApi)
-			versionStatusChecker := version.NewVersionStatusChecker(versionCheckURL, options.versionOverride, conduitApi)
+			grpcStatusChecker := healthcheck.NewGrpcStatusChecker(public.ApiSubsystemName, apiClient)
+			versionStatusChecker := version.NewVersionStatusChecker(versionCheckURL, options.versionOverride, apiClient)
 
 			err = checkStatus(os.Stdout, kubeApi, grpcStatusChecker, versionStatusChecker)
 			if err != nil {
@@ -75,7 +75,7 @@ problems were found.`,
 	}
 
 	cmd.Args = cobra.NoArgs
-	cmd.PersistentFlags().StringVar(&options.versionOverride, "expected-version", options.versionOverride, "Overrides the version used when checking if Conduit is running the latest version (mostly for testing)")
+	cmd.PersistentFlags().StringVar(&options.versionOverride, "expected-version", options.versionOverride, "Overrides the version used when checking if Linkerd is running the latest version (mostly for testing)")
 
 	return cmd
 }

@@ -13,7 +13,7 @@ import (
 )
 
 func TestHandleApiVersion(t *testing.T) {
-	mockApiClient := &public.MockConduitApiClient{
+	mockApiClient := &public.MockApiClient{
 		VersionInfoToReturn: &pb.VersionInfo{
 			GoVersion:      "the best one",
 			BuildDate:      "never",

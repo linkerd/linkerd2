@@ -10,7 +10,7 @@ import (
 
 func TestGetPods(t *testing.T) {
 	t.Run("Returns names of existing pods if everything went ok", func(t *testing.T) {
-		mockClient := &public.MockConduitApiClient{}
+		mockClient := &public.MockApiClient{}
 
 		pods := []*pb.Pod{
 			{Name: "pod-a"},
@@ -42,7 +42,7 @@ func TestGetPods(t *testing.T) {
 	})
 
 	t.Run("Returns empty list if no pods found", func(t *testing.T) {
-		mockClient := &public.MockConduitApiClient{}
+		mockClient := &public.MockApiClient{}
 
 		mockClient.ListPodsResponseToReturn = &pb.ListPodsResponse{
 			Pods: []*pb.Pod{},
@@ -59,7 +59,7 @@ func TestGetPods(t *testing.T) {
 	})
 
 	t.Run("Returns error if cant find pods in API", func(t *testing.T) {
-		mockClient := &public.MockConduitApiClient{}
+		mockClient := &public.MockApiClient{}
 		mockClient.ErrorToReturn = errors.New("expected")
 
 		_, err := getPods(mockClient, newGetOptions())

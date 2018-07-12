@@ -22,7 +22,7 @@ func (proxy *statusCheckerProxy) SelfCheck() []*healthcheckPb.CheckResult {
 	canConnectViaGrpcCheck := &healthcheckPb.CheckResult{
 		Status:           healthcheckPb.CheckStatus_OK,
 		SubsystemName:    proxy.prefix,
-		CheckDescription: "can query the Conduit API",
+		CheckDescription: "can query the Linkerd API",
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

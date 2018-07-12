@@ -17,7 +17,7 @@ import (
 // Conduit Public API client
 //
 
-type MockConduitApiClient struct {
+type MockApiClient struct {
 	ErrorToReturn                   error
 	VersionInfoToReturn             *pb.VersionInfo
 	ListPodsResponseToReturn        *pb.ListPodsResponse
@@ -27,27 +27,27 @@ type MockConduitApiClient struct {
 	Api_TapByResourceClientToReturn pb.Api_TapByResourceClient
 }
 
-func (c *MockConduitApiClient) StatSummary(ctx context.Context, in *pb.StatSummaryRequest, opts ...grpc.CallOption) (*pb.StatSummaryResponse, error) {
+func (c *MockApiClient) StatSummary(ctx context.Context, in *pb.StatSummaryRequest, opts ...grpc.CallOption) (*pb.StatSummaryResponse, error) {
 	return c.StatSummaryResponseToReturn, c.ErrorToReturn
 }
 
-func (c *MockConduitApiClient) Version(ctx context.Context, in *pb.Empty, opts ...grpc.CallOption) (*pb.VersionInfo, error) {
+func (c *MockApiClient) Version(ctx context.Context, in *pb.Empty, opts ...grpc.CallOption) (*pb.VersionInfo, error) {
 	return c.VersionInfoToReturn, c.ErrorToReturn
 }
 
-func (c *MockConduitApiClient) ListPods(ctx context.Context, in *pb.ListPodsRequest, opts ...grpc.CallOption) (*pb.ListPodsResponse, error) {
+func (c *MockApiClient) ListPods(ctx context.Context, in *pb.ListPodsRequest, opts ...grpc.CallOption) (*pb.ListPodsResponse, error) {
 	return c.ListPodsResponseToReturn, c.ErrorToReturn
 }
 
-func (c *MockConduitApiClient) Tap(ctx context.Context, in *pb.TapRequest, opts ...grpc.CallOption) (pb.Api_TapClient, error) {
+func (c *MockApiClient) Tap(ctx context.Context, in *pb.TapRequest, opts ...grpc.CallOption) (pb.Api_TapClient, error) {
 	return c.Api_TapClientToReturn, c.ErrorToReturn
 }
 
-func (c *MockConduitApiClient) TapByResource(ctx context.Context, in *pb.TapByResourceRequest, opts ...grpc.CallOption) (pb.Api_TapByResourceClient, error) {
+func (c *MockApiClient) TapByResource(ctx context.Context, in *pb.TapByResourceRequest, opts ...grpc.CallOption) (pb.Api_TapByResourceClient, error) {
 	return c.Api_TapByResourceClientToReturn, c.ErrorToReturn
 }
 
-func (c *MockConduitApiClient) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckRequest, _ ...grpc.CallOption) (*healthcheckPb.SelfCheckResponse, error) {
+func (c *MockApiClient) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckRequest, _ ...grpc.CallOption) (*healthcheckPb.SelfCheckResponse, error) {
 	return c.SelfCheckResponseToReturn, c.ErrorToReturn
 }
 

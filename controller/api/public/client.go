@@ -20,10 +20,10 @@ import (
 )
 
 const (
-	apiRoot                 = "/" // Must be absolute (with a leading slash).
-	apiVersion              = "v1"
-	apiPrefix               = "api/" + apiVersion + "/" // Must be relative (without a leading slash).
-	ConduitApiSubsystemName = "conduit-api"
+	apiRoot          = "/" // Must be absolute (with a leading slash).
+	apiVersion       = "v1"
+	apiPrefix        = "api/" + apiVersion + "/" // Must be relative (without a leading slash).
+	ApiSubsystemName = "linkerd-api"
 )
 
 type grpcOverHttpClient struct {

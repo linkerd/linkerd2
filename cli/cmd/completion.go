@@ -10,24 +10,24 @@ import (
 
 func newCmdCompletion() *cobra.Command {
 	example := `  # bash <= 3.2
-  source /dev/stdin <<< "$(conduit completion bash)"
+  source /dev/stdin <<< "$(linkerd completion bash)"
 
   # bash >= 4.0
-  source <(conduit completion bash)
+  source <(linkerd completion bash)
 
   # bash <= 3.2 on osx
   brew install bash-completion # ensure you have bash-completion 1.3+
-  conduit completion bash > $(brew --prefix)/etc/bash_completion.d/conduit
+  linkerd completion bash > $(brew --prefix)/etc/bash_completion.d/linkerd
 
   # bash >= 4.0 on osx
   brew install bash-completion@2
-  conduit completion bash > $(brew --prefix)/etc/bash_completion.d/conduit
+  linkerd completion bash > $(brew --prefix)/etc/bash_completion.d/linkerd
 
   # zsh
-  source <(conduit completion zsh)
+  source <(linkerd completion zsh)
 
   # zsh on osx / oh-my-zsh
-  conduit completion zsh > "${fpath[1]}/_conduit"`
+  linkerd completion zsh > "${fpath[1]}/_linkerd"`
 
 	cmd := &cobra.Command{
 		Use:       "completion [bash|zsh]",

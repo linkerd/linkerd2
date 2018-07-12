@@ -72,25 +72,25 @@ Valid resource types include:
 This command will hide resources that have completed, such as pods that are in the Succeeded or Failed phases.
 If no resource name is specified, displays stats about all resources of the specified RESOURCETYPE`,
 		Example: `  # Get all deployments in the test namespace.
-  conduit stat deployments -n test
+  linkerd stat deployments -n test
 
   # Get the hello1 replication controller in the test namespace.
-  conduit stat replicationcontrollers hello1 -n test
+  linkerd stat replicationcontrollers hello1 -n test
 
   # Get all namespaces.
-  conduit stat namespaces
+  linkerd stat namespaces
 
   # Get all inbound stats to the web deployment.
-  conduit stat deploy/web
+  linkerd stat deploy/web
 
   # Get all pods in all namespaces that call the hello1 deployment in the test namesapce.
-  conduit stat pods --to deploy/hello1 --to-namespace test --all-namespaces
+  linkerd stat pods --to deploy/hello1 --to-namespace test --all-namespaces
 
   # Get all pods in all namespaces that call the hello1 service in the test namesapce.
-  conduit stat pods --to svc/hello1 --to-namespace test --all-namespaces
+  linkerd stat pods --to svc/hello1 --to-namespace test --all-namespaces
 
   # Get all services in all namespaces that receive calls from hello1 deployment in the test namesapce.
-  conduit stat services --from deploy/hello1 --from-namespace test --all-namespaces`,
+  linkerd stat services --from deploy/hello1 --from-namespace test --all-namespaces`,
 		Args:      cobra.RangeArgs(1, 2),
 		ValidArgs: util.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {

@@ -55,11 +55,11 @@ func newCmdInject() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "inject [flags] CONFIG-FILE",
-		Short: "Add the Conduit proxy to a Kubernetes config",
-		Long: `Add the Conduit proxy to a Kubernetes config.
+		Short: "Add the Linkerd proxy to a Kubernetes config",
+		Long: `Add the Linkerd proxy to a Kubernetes config.
 
 You can use a config file from stdin by using the '-' argument
-with 'conduit inject'. e.g. curl http://url.to/yml | conduit inject -
+with 'linkerd inject'. e.g. curl http://url.to/yml | linkerd inject -
 	`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
@@ -101,7 +101,7 @@ func runInjectCmd(input io.Reader, errWriter, outWriter io.Writer, options *inje
 	postInjectBuf := &bytes.Buffer{}
 	err := InjectYAML(input, postInjectBuf, options)
 	if err != nil {
-		fmt.Fprintf(errWriter, "Error injecting conduit proxy: %v\n", err)
+		fmt.Fprintf(errWriter, "Error injecting linkerd proxy: %v\n", err)
 		return 1
 	}
 	_, err = io.Copy(outWriter, postInjectBuf)
@@ -120,7 +120,7 @@ func injectObjectMeta(t *metaV1.ObjectMeta, k8sLabels map[string]string, options
 		t.Annotations = make(map[string]string)
 	}
 	t.Annotations[k8s.CreatedByAnnotation] = k8s.CreatedByAnnotationValue()
-	t.Annotations[k8s.ProxyVersionAnnotation] = options.conduitVersion
+	t.Annotations[k8s.ProxyVersionAnnotation] = options.linkerdVersion
 
 	if t.Labels == nil {
 		t.Labels = make(map[string]string)
@@ -359,7 +359,7 @@ func injectResource(bytes []byte, options *injectOptions) ([]byte, error) {
 	var DNSNameOverride string
 	k8sLabels := map[string]string{}
 
-	// When injecting the conduit proxy into a conduit controller pod. The conduit proxy's
+	// When injecting the linkerd proxy into a linkerd controller pod. The linkerd proxy's
 	// LINKERD2_PROXY_CONTROL_URL variable must be set to localhost for the following reasons:
 	//	1. According to https://github.com/kubernetes/minikube/issues/1568, minikube has an issue
 	//     where pods are unable to connect to themselves through their associated service IP.

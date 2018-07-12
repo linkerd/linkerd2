@@ -33,10 +33,10 @@ func newCmdGet() *cobra.Command {
 
 Only pod resources (aka pods, po) are supported.`,
 		Example: `  # get all pods
-  conduit get pods
+  linkerd get pods
 
-  # get pods from namespace conduit
-  conduit get pods --namespace conduit`,
+  # get pods from namespace linkerd
+  linkerd get pods --namespace linkerd`,
 		Args:      cobra.ExactArgs(1),
 		ValidArgs: []string{k8s.Pods},
 		RunE: func(cmd *cobra.Command, args []string) error {
