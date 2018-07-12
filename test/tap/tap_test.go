@@ -73,9 +73,9 @@ var (
 //////////////////////
 
 func TestCliTap(t *testing.T) {
-	out, err := TestHelper.ConduitRun("inject", "testdata/tap_application.yaml")
+	out, err := TestHelper.LinkerdRun("inject", "testdata/tap_application.yaml")
 	if err != nil {
-		t.Fatalf("conduit inject command failed\n%s", out)
+		t.Fatalf("linkerd inject command failed\n%s", out)
 	}
 
 	prefixedNs := TestHelper.GetTestNamespace("tap-test")
@@ -173,7 +173,7 @@ func TestCliTap(t *testing.T) {
 // events using each line's "id" field
 func tap(target string, arg ...string) ([]*tapEvent, error) {
 	cmd := append([]string{"tap", target}, arg...)
-	outputStream, err := TestHelper.ConduitRunStream(cmd...)
+	outputStream, err := TestHelper.LinkerdRunStream(cmd...)
 	if err != nil {
 		return nil, err
 	}

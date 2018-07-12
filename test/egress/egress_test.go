@@ -26,7 +26,7 @@ func TestMain(m *testing.M) {
 //////////////////////
 
 func TestEgressHttp(t *testing.T) {
-	out, err := TestHelper.ConduitRun("inject", "testdata/proxy.yaml")
+	out, err := TestHelper.LinkerdRun("inject", "testdata/proxy.yaml")
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}

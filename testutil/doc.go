@@ -1,6 +1,6 @@
 /*
 
-Package testutil provides helpers for running the conduit integration tests.
+Package testutil provides helpers for running the linkerd integration tests.
 
 All helpers are defined as functions on the TestHelper struct, which you should
 instantiate once per test, using the NewTestHelper function. Since that function
@@ -29,10 +29,10 @@ TestMain function. For example:
 
 Calling NewTestHelper adds the following command line flags:
 
-	-conduit string
-			path to the conduit binary to test
-	-conduit-namespace string
-			the namespace where conduit is installed (default "conduit")
+	-linkerd string
+			path to the linkerd binary to test
+	-linkerd-namespace string
+			the namespace where linkerd is installed (default "linkerd")
 	-integration-tests
 		must be provided to run the integration tests
 

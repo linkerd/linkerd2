@@ -33,7 +33,7 @@ var (
 		"cli-get-test-not-injected-d2": 1,
 	}
 
-	conduitPods = map[string]int{
+	linkerdPods = map[string]int{
 		"grafana":    1,
 		"web":        1,
 		"prometheus": 1,
@@ -46,7 +46,7 @@ var (
 //////////////////////
 
 func TestCliGet(t *testing.T) {
-	out, err := TestHelper.ConduitRun("inject", "testdata/to_be_injected_application.yaml")
+	out, err := TestHelper.LinkerdRun("inject", "testdata/to_be_injected_application.yaml")
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -81,7 +81,7 @@ func TestCliGet(t *testing.T) {
 	}
 
 	t.Run("get pods from --all-namespaces", func(t *testing.T) {
-		out, err = TestHelper.ConduitRun("get", "pods", "--all-namespaces")
+		out, err = TestHelper.LinkerdRun("get", "pods", "--all-namespaces")
 
 		if err != nil {
 			t.Fatalf("Unexpected error: %v output:\n%s", err, out)
@@ -93,14 +93,14 @@ func TestCliGet(t *testing.T) {
 		}
 	})
 
-	t.Run("get pods from the conduit namespace", func(t *testing.T) {
-		out, err = TestHelper.ConduitRun("get", "pods", "-n", TestHelper.GetConduitNamespace())
+	t.Run("get pods from the linkerd namespace", func(t *testing.T) {
+		out, err = TestHelper.LinkerdRun("get", "pods", "-n", TestHelper.GetLinkerdNamespace())
 
 		if err != nil {
 			t.Fatalf("Unexpected error: %v output:\n%s", err, out)
 		}
 
-		err := checkPodOutput(out, conduitPods, TestHelper.GetConduitNamespace())
+		err := checkPodOutput(out, linkerdPods, TestHelper.GetLinkerdNamespace())
 		if err != nil {
 			t.Fatalf("Pod output check failed:\n%s\nCommand output:\n%s", err, out)
 		}
@@ -117,7 +117,7 @@ func checkPodOutput(cmdOutput string, expectedPodCounts map[string]int, namespac
 
 	lines := strings.Split(cmdOutput, "\n")
 	if len(lines) == 0 {
-		return fmt.Errorf("Expecting conduit get pods to return something, got nothing")
+		return fmt.Errorf("Expecting linkerd get pods to return something, got nothing")
 	}
 
 	var actualPods []string
@@ -145,7 +145,7 @@ func checkPodOutput(cmdOutput string, expectedPodCounts map[string]int, namespac
 	sort.Strings(expectedPods)
 	sort.Strings(actualPods)
 	if !reflect.DeepEqual(expectedPods, actualPods) {
-		return fmt.Errorf("Expected conduit get to return:\n%v\nBut got:\n%v", expectedPods, actualPods)
+		return fmt.Errorf("Expected linkerd get to return:\n%v\nBut got:\n%v", expectedPods, actualPods)
 	}
 
 	return nil

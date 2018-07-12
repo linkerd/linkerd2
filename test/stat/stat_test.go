@@ -36,15 +36,15 @@ type rowStat struct {
 /// TEST EXECUTION ///
 //////////////////////
 
-// These tests retry for up to 20 seconds, since each call to "conduit stat"
-// generates traffic to the components in the conduit namespace, and we're
+// These tests retry for up to 20 seconds, since each call to "linkerd stat"
+// generates traffic to the components in the linkerd namespace, and we're
 // testing that those components are properly reporting stats. It's ok if the
 // first few attempts fail due to missing stats, since the requests from those
 // failed attempts will eventually be recorded in the stats that we're
 // requesting, and the test will pass.
-func TestCliStatForConduitNamespace(t *testing.T) {
+func TestCliStatForLinkerdNamespace(t *testing.T) {
 
-	pods, err := TestHelper.GetPodsForDeployment(TestHelper.GetConduitNamespace(), "prometheus")
+	pods, err := TestHelper.GetPodsForDeployment(TestHelper.GetLinkerdNamespace(), "prometheus")
 	if err != nil {
 		t.Fatalf("Failed to get pods for prometheus: %s", err)
 	}
@@ -53,7 +53,7 @@ func TestCliStatForConduitNamespace(t *testing.T) {
 	}
 	prometheusPod := pods[0]
 
-	pods, err = TestHelper.GetPodsForDeployment(TestHelper.GetConduitNamespace(), "controller")
+	pods, err = TestHelper.GetPodsForDeployment(TestHelper.GetLinkerdNamespace(), "controller")
 	if err != nil {
 		t.Fatalf("Failed to get pods for controller: %s", err)
 	}
@@ -62,14 +62,14 @@ func TestCliStatForConduitNamespace(t *testing.T) {
 	}
 	controllerPod := pods[0]
 
-	prometheusAuthority := "prometheus." + TestHelper.GetConduitNamespace() + ".svc.cluster.local:9090"
+	prometheusAuthority := "prometheus." + TestHelper.GetLinkerdNamespace() + ".svc.cluster.local:9090"
 
 	for _, tt := range []struct {
 		args         []string
 		expectedRows map[string]string
 	}{
 		{
-			args: []string{"stat", "deploy", "-n", TestHelper.GetConduitNamespace()},
+			args: []string{"stat", "deploy", "-n", TestHelper.GetLinkerdNamespace()},
 			expectedRows: map[string]string{
 				"controller": "1/1",
 				"grafana":    "1/1",
@@ -78,51 +78,51 @@ func TestCliStatForConduitNamespace(t *testing.T) {
 			},
 		},
 		{
-			args: []string{"stat", "po", "-n", TestHelper.GetConduitNamespace(), "--from", "deploy/controller"},
+			args: []string{"stat", "po", "-n", TestHelper.GetLinkerdNamespace(), "--from", "deploy/controller"},
 			expectedRows: map[string]string{
 				prometheusPod: "1/1",
 			},
 		},
 		{
-			args: []string{"stat", "deploy", "-n", TestHelper.GetConduitNamespace(), "--to", "po/" + prometheusPod},
+			args: []string{"stat", "deploy", "-n", TestHelper.GetLinkerdNamespace(), "--to", "po/" + prometheusPod},
 			expectedRows: map[string]string{
 				"controller": "1/1",
 			},
 		},
 		{
-			args: []string{"stat", "svc", "-n", TestHelper.GetConduitNamespace(), "--from", "deploy/controller"},
+			args: []string{"stat", "svc", "-n", TestHelper.GetLinkerdNamespace(), "--from", "deploy/controller"},
 			expectedRows: map[string]string{
 				"prometheus": "1/1",
 			},
 		},
 		{
-			args: []string{"stat", "deploy", "-n", TestHelper.GetConduitNamespace(), "--to", "svc/prometheus"},
+			args: []string{"stat", "deploy", "-n", TestHelper.GetLinkerdNamespace(), "--to", "svc/prometheus"},
 			expectedRows: map[string]string{
 				"controller": "1/1",
 			},
 		},
 		{
-			args: []string{"stat", "ns", TestHelper.GetConduitNamespace()},
+			args: []string{"stat", "ns", TestHelper.GetLinkerdNamespace()},
 			expectedRows: map[string]string{
-				TestHelper.GetConduitNamespace(): "4/4",
+				TestHelper.GetLinkerdNamespace(): "4/4",
 			},
 		},
 		{
-			args: []string{"stat", "po", "-n", TestHelper.GetConduitNamespace(), "--to", "au/" + prometheusAuthority},
+			args: []string{"stat", "po", "-n", TestHelper.GetLinkerdNamespace(), "--to", "au/" + prometheusAuthority},
 			expectedRows: map[string]string{
 				controllerPod: "1/1",
 			},
 		},
 		{
-			args: []string{"stat", "au", "-n", TestHelper.GetConduitNamespace(), "--to", "po/" + prometheusPod},
+			args: []string{"stat", "au", "-n", TestHelper.GetLinkerdNamespace(), "--to", "po/" + prometheusPod},
 			expectedRows: map[string]string{
 				prometheusAuthority: "-",
 			},
 		},
 	} {
-		t.Run("conduit "+strings.Join(tt.args, " "), func(t *testing.T) {
+		t.Run("linkerd "+strings.Join(tt.args, " "), func(t *testing.T) {
 			err := TestHelper.RetryFor(20*time.Second, func() error {
-				out, err := TestHelper.ConduitRun(tt.args...)
+				out, err := TestHelper.LinkerdRun(tt.args...)
 				if err != nil {
 					t.Fatalf("Unexpected stat error: %s\n%s", err, out)
 				}
