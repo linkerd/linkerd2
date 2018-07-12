@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package conduit.public;
+package linkerd2.public;
 
 import "google/protobuf/duration.proto";
 

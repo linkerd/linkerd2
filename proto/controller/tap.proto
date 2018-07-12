@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package conduit.controller.tap;
+package linkerd2.controller.tap;
 
 import "public.proto";
 

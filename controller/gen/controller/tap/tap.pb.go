@@ -14,7 +14,7 @@ package tap
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import conduit_public "github.com/linkerd/linkerd2/controller/gen/public"
+import linkerd2_public "github.com/linkerd/linkerd2/controller/gen/public"
 
 import (
 	context "golang.org/x/net/context"
@@ -43,8 +43,8 @@ const _ = grpc.SupportPackageIsVersion4
 // Client API for Tap service
 
 type TapClient interface {
-	Tap(ctx context.Context, in *conduit_public.TapRequest, opts ...grpc.CallOption) (Tap_TapClient, error)
-	TapByResource(ctx context.Context, in *conduit_public.TapByResourceRequest, opts ...grpc.CallOption) (Tap_TapByResourceClient, error)
+	Tap(ctx context.Context, in *linkerd2_public.TapRequest, opts ...grpc.CallOption) (Tap_TapClient, error)
+	TapByResource(ctx context.Context, in *linkerd2_public.TapByResourceRequest, opts ...grpc.CallOption) (Tap_TapByResourceClient, error)
 }
 
 type tapClient struct {
@@ -55,8 +55,8 @@ func NewTapClient(cc *grpc.ClientConn) TapClient {
 	return &tapClient{cc}
 }
 
-func (c *tapClient) Tap(ctx context.Context, in *conduit_public.TapRequest, opts ...grpc.CallOption) (Tap_TapClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_Tap_serviceDesc.Streams[0], c.cc, "/conduit.controller.tap.Tap/Tap", opts...)
+func (c *tapClient) Tap(ctx context.Context, in *linkerd2_public.TapRequest, opts ...grpc.CallOption) (Tap_TapClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_Tap_serviceDesc.Streams[0], c.cc, "/linkerd2.controller.tap.Tap/Tap", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func (c *tapClient) Tap(ctx context.Context, in *conduit_public.TapRequest, opts
 }
 
 type Tap_TapClient interface {
-	Recv() (*conduit_public.TapEvent, error)
+	Recv() (*linkerd2_public.TapEvent, error)
 	grpc.ClientStream
 }
 
@@ -79,16 +79,16 @@ type tapTapClient struct {
 	grpc.ClientStream
 }
 
-func (x *tapTapClient) Recv() (*conduit_public.TapEvent, error) {
-	m := new(conduit_public.TapEvent)
+func (x *tapTapClient) Recv() (*linkerd2_public.TapEvent, error) {
+	m := new(linkerd2_public.TapEvent)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-func (c *tapClient) TapByResource(ctx context.Context, in *conduit_public.TapByResourceRequest, opts ...grpc.CallOption) (Tap_TapByResourceClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_Tap_serviceDesc.Streams[1], c.cc, "/conduit.controller.tap.Tap/TapByResource", opts...)
+func (c *tapClient) TapByResource(ctx context.Context, in *linkerd2_public.TapByResourceRequest, opts ...grpc.CallOption) (Tap_TapByResourceClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_Tap_serviceDesc.Streams[1], c.cc, "/linkerd2.controller.tap.Tap/TapByResource", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +103,7 @@ func (c *tapClient) TapByResource(ctx context.Context, in *conduit_public.TapByR
 }
 
 type Tap_TapByResourceClient interface {
-	Recv() (*conduit_public.TapEvent, error)
+	Recv() (*linkerd2_public.TapEvent, error)
 	grpc.ClientStream
 }
 
@@ -111,8 +111,8 @@ type tapTapByResourceClient struct {
 	grpc.ClientStream
 }
 
-func (x *tapTapByResourceClient) Recv() (*conduit_public.TapEvent, error) {
-	m := new(conduit_public.TapEvent)
+func (x *tapTapByResourceClient) Recv() (*linkerd2_public.TapEvent, error) {
+	m := new(linkerd2_public.TapEvent)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -122,8 +122,8 @@ func (x *tapTapByResourceClient) Recv() (*conduit_public.TapEvent, error) {
 // Server API for Tap service
 
 type TapServer interface {
-	Tap(*conduit_public.TapRequest, Tap_TapServer) error
-	TapByResource(*conduit_public.TapByResourceRequest, Tap_TapByResourceServer) error
+	Tap(*linkerd2_public.TapRequest, Tap_TapServer) error
+	TapByResource(*linkerd2_public.TapByResourceRequest, Tap_TapByResourceServer) error
 }
 
 func RegisterTapServer(s *grpc.Server, srv TapServer) {
@@ -131,7 +131,7 @@ func RegisterTapServer(s *grpc.Server, srv TapServer) {
 }
 
 func _Tap_Tap_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(conduit_public.TapRequest)
+	m := new(linkerd2_public.TapRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
@@ -139,7 +139,7 @@ func _Tap_Tap_Handler(srv interface{}, stream grpc.ServerStream) error {
 }
 
 type Tap_TapServer interface {
-	Send(*conduit_public.TapEvent) error
+	Send(*linkerd2_public.TapEvent) error
 	grpc.ServerStream
 }
 
@@ -147,12 +147,12 @@ type tapTapServer struct {
 	grpc.ServerStream
 }
 
-func (x *tapTapServer) Send(m *conduit_public.TapEvent) error {
+func (x *tapTapServer) Send(m *linkerd2_public.TapEvent) error {
 	return x.ServerStream.SendMsg(m)
 }
 
 func _Tap_TapByResource_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(conduit_public.TapByResourceRequest)
+	m := new(linkerd2_public.TapByResourceRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
@@ -160,7 +160,7 @@ func _Tap_TapByResource_Handler(srv interface{}, stream grpc.ServerStream) error
 }
 
 type Tap_TapByResourceServer interface {
-	Send(*conduit_public.TapEvent) error
+	Send(*linkerd2_public.TapEvent) error
 	grpc.ServerStream
 }
 
@@ -168,12 +168,12 @@ type tapTapByResourceServer struct {
 	grpc.ServerStream
 }
 
-func (x *tapTapByResourceServer) Send(m *conduit_public.TapEvent) error {
+func (x *tapTapByResourceServer) Send(m *linkerd2_public.TapEvent) error {
 	return x.ServerStream.SendMsg(m)
 }
 
 var _Tap_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "conduit.controller.tap.Tap",
+	ServiceName: "linkerd2.controller.tap.Tap",
 	HandlerType: (*TapServer)(nil),
 	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{
@@ -194,17 +194,17 @@ var _Tap_serviceDesc = grpc.ServiceDesc{
 func init() { proto.RegisterFile("controller/tap.proto", fileDescriptor0) }
 
 var fileDescriptor0 = []byte{
-	// 184 bytes of a gzipped FileDescriptorProto
+	// 180 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x12, 0x49, 0xce, 0xcf, 0x2b,
 	0x29, 0xca, 0xcf, 0xc9, 0x49, 0x2d, 0xd2, 0x2f, 0x49, 0x2c, 0xd0, 0x2b, 0x28, 0xca, 0x2f, 0xc9,
-	0x17, 0x12, 0x4b, 0xce, 0xcf, 0x4b, 0x29, 0xcd, 0x2c, 0xd1, 0x43, 0xc8, 0xea, 0x95, 0x24, 0x16,
-	0x48, 0xf1, 0x14, 0x94, 0x26, 0xe5, 0x64, 0x26, 0x43, 0x54, 0x19, 0xcd, 0x63, 0xe4, 0x62, 0x0e,
-	0x49, 0x2c, 0x10, 0x72, 0x82, 0x50, 0x52, 0x7a, 0x30, 0x5d, 0x50, 0x55, 0x21, 0x89, 0x05, 0x41,
-	0xa9, 0x85, 0xa5, 0xa9, 0xc5, 0x25, 0x52, 0x12, 0x58, 0xe4, 0x5c, 0xcb, 0x52, 0xf3, 0x4a, 0x94,
-	0x98, 0x3b, 0x98, 0x18, 0x0d, 0x18, 0x85, 0x82, 0xb9, 0x78, 0x43, 0x12, 0x0b, 0x9c, 0x2a, 0x83,
-	0x52, 0x8b, 0xf3, 0x4b, 0x8b, 0x92, 0x53, 0x85, 0x54, 0xb0, 0xe8, 0x40, 0x48, 0x13, 0x36, 0x97,
-	0xc1, 0x80, 0xd1, 0xc9, 0x3a, 0xca, 0x32, 0x3d, 0xb3, 0x24, 0xa3, 0x34, 0x49, 0x2f, 0x39, 0x3f,
-	0x57, 0x3f, 0x27, 0x33, 0x2f, 0x3b, 0xb5, 0x28, 0x05, 0x46, 0x1b, 0xe9, 0x23, 0x79, 0x3d, 0x3d,
-	0x35, 0x4f, 0x1f, 0x35, 0x24, 0x92, 0xd8, 0xc0, 0x9e, 0x34, 0x06, 0x04, 0x00, 0x00, 0xff, 0xff,
-	0x80, 0xde, 0xd3, 0x68, 0x22, 0x01, 0x00, 0x00,
+	0x17, 0x12, 0xcf, 0xc9, 0xcc, 0xcb, 0x4e, 0x2d, 0x4a, 0x31, 0xd2, 0x43, 0x48, 0xeb, 0x95, 0x24,
+	0x16, 0x48, 0xf1, 0x14, 0x94, 0x26, 0xe5, 0x64, 0x26, 0x43, 0x94, 0x19, 0x2d, 0x62, 0xe4, 0x62,
+	0x0e, 0x49, 0x2c, 0x10, 0x72, 0x81, 0x50, 0xd2, 0x7a, 0x70, 0x6d, 0x50, 0x65, 0x21, 0x89, 0x05,
+	0x41, 0xa9, 0x85, 0xa5, 0xa9, 0xc5, 0x25, 0x52, 0x92, 0xd8, 0x24, 0x5d, 0xcb, 0x52, 0xf3, 0x4a,
+	0x94, 0x98, 0x3b, 0x98, 0x18, 0x0d, 0x18, 0x85, 0x42, 0xb9, 0x78, 0x43, 0x12, 0x0b, 0x9c, 0x2a,
+	0x83, 0x52, 0x8b, 0xf3, 0x4b, 0x8b, 0x92, 0x53, 0x85, 0x54, 0xb1, 0x69, 0x41, 0xc8, 0x13, 0x61,
+	0x32, 0x83, 0x01, 0xa3, 0x93, 0x75, 0x94, 0x65, 0x7a, 0x66, 0x49, 0x46, 0x69, 0x92, 0x5e, 0x72,
+	0x7e, 0xae, 0x3e, 0x54, 0x29, 0x8c, 0x36, 0xd2, 0x47, 0xf2, 0x7f, 0x7a, 0x6a, 0x9e, 0x3e, 0x6a,
+	0x70, 0x24, 0xb1, 0x81, 0x3d, 0x6a, 0x0c, 0x08, 0x00, 0x00, 0xff, 0xff, 0xb2, 0x4e, 0xdc, 0xd1,
+	0x27, 0x01, 0x00, 0x00,
 }
