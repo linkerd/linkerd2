@@ -67,7 +67,7 @@ func (c *grpcOverHttpClient) TapByResource(ctx context.Context, req *pb.TapByRes
 		return nil, err
 	}
 
-	if err = checkIfResponseHasConduitError(httpRsp); err != nil {
+	if err = checkIfResponseHasErrorHeader(httpRsp); err != nil {
 		httpRsp.Body.Close()
 		return nil, err
 	}
@@ -94,10 +94,10 @@ func (c *grpcOverHttpClient) apiRequest(ctx context.Context, endpoint string, re
 
 	clientSideErrorStatusCode := httpRsp.StatusCode >= 400 && httpRsp.StatusCode <= 499
 	if clientSideErrorStatusCode {
-		return fmt.Errorf("POST to Conduit API endpoint [%s] returned HTTP status [%s]", url, httpRsp.Status)
+		return fmt.Errorf("POST to API endpoint [%s] returned HTTP status [%s]", url, httpRsp.Status)
 	}
 
-	if err = checkIfResponseHasConduitError(httpRsp); err != nil {
+	if err = checkIfResponseHasErrorHeader(httpRsp); err != nil {
 		return err
 	}
 
@@ -175,7 +175,7 @@ func newClient(apiURL *url.URL, httpClientToUse *http.Client) (pb.ApiClient, err
 
 	serverUrl := apiURL.ResolveReference(&url.URL{Path: apiPrefix})
 
-	log.Debugf("Expecting Conduit Public API to be served over [%s]", serverUrl)
+	log.Debugf("Expecting API to be served over [%s]", serverUrl)
 
 	return &grpcOverHttpClient{
 		serverURL:  serverUrl,

@@ -2,7 +2,7 @@
 
 set -eu
 
-# Updates the tag for `runconduit/go-deps` across all Dockerfiles in this repository.
+# Updates the tag for `linkerd-io/go-deps` across all Dockerfiles in this repository.
 
 bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 

@@ -436,18 +436,18 @@ func TestNewStreamingWriter(t *testing.T) {
 }
 
 func TestCheckIfResponseHasError(t *testing.T) {
-	t.Run("returns nil if response doesnt contain Conduit error", func(t *testing.T) {
+	t.Run("returns nil if response doesn't contain linkerd-error header", func(t *testing.T) {
 		response := &http.Response{
 			Header: make(http.Header),
 		}
-		err := checkIfResponseHasConduitError(response)
+		err := checkIfResponseHasErrorHeader(response)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
 	})
 
-	t.Run("returns error in body if response contains Conduit error", func(t *testing.T) {
+	t.Run("returns error in body if response contains linkerd-error header", func(t *testing.T) {
 		expectedErrorMessage := "expected error message"
 		protoInBytes, err := proto.Marshal(&pb.ApiError{Error: expectedErrorMessage})
 		if err != nil {
@@ -465,7 +465,7 @@ func TestCheckIfResponseHasError(t *testing.T) {
 		}
 		response.Header.Set(errorHeader, "error")
 
-		err = checkIfResponseHasConduitError(response)
+		err = checkIfResponseHasErrorHeader(response)
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing")
 		}
@@ -476,7 +476,7 @@ func TestCheckIfResponseHasError(t *testing.T) {
 		}
 	})
 
-	t.Run("returns error if response contains Conduit error but body isn't error message", func(t *testing.T) {
+	t.Run("returns error if response contains linkerd-error header but body isn't error message", func(t *testing.T) {
 		protoInBytes, err := proto.Marshal(&pb.VersionInfo{ReleaseVersion: "0.0.1"})
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
@@ -493,7 +493,7 @@ func TestCheckIfResponseHasError(t *testing.T) {
 		}
 		response.Header.Set(errorHeader, "error")
 
-		err = checkIfResponseHasConduitError(response)
+		err = checkIfResponseHasErrorHeader(response)
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing")
 		}

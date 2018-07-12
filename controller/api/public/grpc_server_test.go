@@ -6,10 +6,10 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/ptypes/duration"
-	"github.com/prometheus/common/model"
 	tap "github.com/linkerd/linkerd2/controller/gen/controller/tap"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
+	"github.com/prometheus/common/model"
 )
 
 type listPodsExpected struct {
@@ -157,7 +157,7 @@ spec:
 				&MockProm{Res: exp.promRes},
 				tap.NewTapClient(nil),
 				k8sAPI,
-				"conduit",
+				"linkerd",
 				[]string{},
 			)
 

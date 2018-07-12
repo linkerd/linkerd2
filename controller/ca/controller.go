@@ -31,14 +31,14 @@ type CertificateController struct {
 	queue workqueue.RateLimitingInterface
 }
 
-func NewCertificateController(conduitNamespace string, k8sAPI *k8s.API) (*CertificateController, error) {
+func NewCertificateController(controllerNamespace string, k8sAPI *k8s.API) (*CertificateController, error) {
 	ca, err := NewCA()
 	if err != nil {
 		return nil, err
 	}
 
 	c := &CertificateController{
-		namespace: conduitNamespace,
+		namespace: controllerNamespace,
 		k8sAPI:    k8sAPI,
 		ca:        ca,
 		queue: workqueue.NewNamedRateLimitingQueue(

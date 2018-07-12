@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	errorHeader                = "conduit-error"
+	errorHeader                = "linkerd-error"
 	defaultHttpErrorStatusCode = http.StatusInternalServerError
 	contentTypeHeader          = "Content-Type"
 	protobufContentType        = "application/octet-stream"
@@ -131,7 +131,7 @@ func deserializePayloadFromReader(reader *bufio.Reader) ([]byte, error) {
 	return messageContentsAsBytes, nil
 }
 
-func checkIfResponseHasConduitError(rsp *http.Response) error {
+func checkIfResponseHasErrorHeader(rsp *http.Response) error {
 	errorMsg := rsp.Header.Get(errorHeader)
 
 	if errorMsg != "" {
@@ -140,7 +140,7 @@ func checkIfResponseHasConduitError(rsp *http.Response) error {
 
 		err := fromByteStreamToProtocolBuffers(reader, &apiError)
 		if err != nil {
-			return fmt.Errorf("response is Conduit error header [%s], but response body didn't contain protobuf error: %v", errorMsg, err)
+			return fmt.Errorf("response has %s header [%s], but response body didn't contain protobuf error: %v", errorHeader, errorMsg, err)
 		}
 
 		return errors.New(apiError.Error)

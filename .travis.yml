@@ -97,8 +97,8 @@ jobs:
          # adding a new image to the mix.
         - bin/docker-pull master || echo "docker pull failed" >&2
         - |
-          export CONDUIT_TAG=$(. bin/_tag.sh ; clean_head_root_tag)
-          echo "CONDUIT_TAG=${CONDUIT_TAG}"
+          export LINKERD_TAG=$(. bin/_tag.sh ; clean_head_root_tag)
+          echo "LINKERD_TAG=${LINKERD_TAG}"
         - export BUILD_DEBUG=1 DOCKER_TRACE=1
 
       script:
@@ -106,9 +106,9 @@ jobs:
 
       after_success:
         - bin/docker-push-deps
-        - bin/docker-push $CONDUIT_TAG
-        - bin/docker-retag-all $CONDUIT_TAG master && bin/docker-push master
-        - target/cli/linux/linkerd install --linkerd-version=$CONDUIT_TAG |tee linkerd.yml
+        - bin/docker-push $LINKERD_TAG
+        - bin/docker-retag-all $LINKERD_TAG master && bin/docker-push master
+        - target/cli/linux/linkerd install --linkerd-version=$LINKERD_TAG |tee linkerd.yml
         - kubectl -n linkerd apply -f linkerd.yml --prune --selector='conduit.io/control-plane-component'
 
     # Run integration tests after container images have been published.

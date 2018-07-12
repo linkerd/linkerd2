@@ -191,7 +191,7 @@ func TestEndpointListener(t *testing.T) {
 	t.Run("Sends TlsIdentity when enabled", func(t *testing.T) {
 		expectedPodName := "pod1"
 		expectedPodNamespace := "this-namespace"
-		expectedConduitNamespace := "linkerd-namespace"
+		expectedControllerNamespace := "linkerd-namespace"
 		expectedPodDeployment := "pod-deployment"
 		expectedTlsIdentity := &pb.TlsIdentity_K8SPodIdentity{
 			PodIdentity:  "pod-deployment.deployment.this-namespace.conduit-managed.linkerd-namespace.svc.cluster.local",
@@ -203,7 +203,7 @@ func TestEndpointListener(t *testing.T) {
 				Name:      expectedPodName,
 				Namespace: expectedPodNamespace,
 				Labels: map[string]string{
-					pkgK8s.ControllerNSLabel:    expectedConduitNamespace,
+					pkgK8s.ControllerNSLabel:    expectedControllerNamespace,
 					pkgK8s.ProxyDeploymentLabel: expectedPodDeployment,
 				},
 			},
@@ -242,7 +242,7 @@ func TestEndpointListener(t *testing.T) {
 	t.Run("Does not send TlsIdentity when not enabled", func(t *testing.T) {
 		expectedPodName := "pod1"
 		expectedPodNamespace := "this-namespace"
-		expectedConduitNamespace := "linkerd-namespace"
+		expectedControllerNamespace := "linkerd-namespace"
 		expectedPodDeployment := "pod-deployment"
 
 		podForAddedAddress1 := &v1.Pod{
@@ -250,7 +250,7 @@ func TestEndpointListener(t *testing.T) {
 				Name:      expectedPodName,
 				Namespace: expectedPodNamespace,
 				Labels: map[string]string{
-					pkgK8s.ControllerNSLabel:    expectedConduitNamespace,
+					pkgK8s.ControllerNSLabel:    expectedControllerNamespace,
 					pkgK8s.ProxyDeploymentLabel: expectedPodDeployment,
 				},
 			},

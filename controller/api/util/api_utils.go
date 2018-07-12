@@ -190,7 +190,7 @@ func validateFromResourceType(resourceType string) (string, error) {
 }
 
 // BuildResource parses input strings, typically from CLI flags, to build a
-// Resource object for use in the Conduit Public API.
+// Resource object for use in the protobuf API.
 func BuildResource(namespace string, args ...string) (pb.Resource, error) {
 	switch len(args) {
 	case 0:

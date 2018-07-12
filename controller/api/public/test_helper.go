@@ -13,10 +13,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-//
-// Conduit Public API client
-//
-
 type MockApiClient struct {
 	ErrorToReturn                   error
 	VersionInfoToReturn             *pb.VersionInfo
