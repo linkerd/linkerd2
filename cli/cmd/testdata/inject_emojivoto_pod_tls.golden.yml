@@ -53,22 +53,22 @@ spec:
       value: controller.deployment.linkerd.conduit-managed.linkerd.svc.cluster.local
     image: gcr.io/linkerd-io/proxy:testinjectversion
     imagePullPolicy: IfNotPresent
-    name: conduit-proxy
+    name: linkerd-proxy
     ports:
     - containerPort: 4143
-      name: conduit-proxy
+      name: linkerd-proxy
     - containerPort: 4191
-      name: conduit-metrics
+      name: linkerd-metrics
     resources: {}
     securityContext:
       runAsUser: 2102
     terminationMessagePolicy: FallbackToLogsOnError
     volumeMounts:
     - mountPath: /var/conduit-io/trust-anchors
-      name: conduit-trust-anchors
+      name: linkerd-trust-anchors
       readOnly: true
     - mountPath: /var/conduit-io/identity
-      name: conduit-secrets
+      name: linkerd-secrets
       readOnly: true
   initContainers:
   - args:
@@ -82,7 +82,7 @@ spec:
     - 4190,4191
     image: gcr.io/linkerd-io/proxy-init:testinjectversion
     imagePullPolicy: IfNotPresent
-    name: conduit-init
+    name: linkerd-init
     resources: {}
     securityContext:
       capabilities:
@@ -94,8 +94,8 @@ spec:
   - configMap:
       name: conduit-ca-bundle
       optional: true
-    name: conduit-trust-anchors
-  - name: conduit-secrets
+    name: linkerd-trust-anchors
+  - name: linkerd-secrets
     secret:
       optional: true
       secretName: vote-bot-pod-tls-conduit-io

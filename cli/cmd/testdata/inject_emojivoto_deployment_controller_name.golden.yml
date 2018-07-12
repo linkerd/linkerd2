@@ -58,12 +58,12 @@ spec:
               fieldPath: metadata.namespace
         image: gcr.io/linkerd-io/proxy:testinjectversion
         imagePullPolicy: IfNotPresent
-        name: conduit-proxy
+        name: linkerd-proxy
         ports:
         - containerPort: 4143
-          name: conduit-proxy
+          name: linkerd-proxy
         - containerPort: 4191
-          name: conduit-metrics
+          name: linkerd-metrics
         resources: {}
         securityContext:
           runAsUser: 2102
@@ -80,7 +80,7 @@ spec:
         - 4190,4191
         image: gcr.io/linkerd-io/proxy-init:testinjectversion
         imagePullPolicy: IfNotPresent
-        name: conduit-init
+        name: linkerd-init
         resources: {}
         securityContext:
           capabilities:
@@ -150,12 +150,12 @@ spec:
               fieldPath: metadata.namespace
         image: gcr.io/linkerd-io/proxy:testinjectversion
         imagePullPolicy: IfNotPresent
-        name: conduit-proxy
+        name: linkerd-proxy
         ports:
         - containerPort: 4143
-          name: conduit-proxy
+          name: linkerd-proxy
         - containerPort: 4191
-          name: conduit-metrics
+          name: linkerd-metrics
         resources: {}
         securityContext:
           runAsUser: 2102
@@ -172,7 +172,7 @@ spec:
         - 4190,4191
         image: gcr.io/linkerd-io/proxy-init:testinjectversion
         imagePullPolicy: IfNotPresent
-        name: conduit-init
+        name: linkerd-init
         resources: {}
         securityContext:
           capabilities:

@@ -1,6 +1,6 @@
 package install
 
-// Template provides the base template for the `conduit install` command.
+// Template provides the base template for the `linkerd install` command.
 const Template = `### Namespace ###
 kind: Namespace
 apiVersion: v1
@@ -12,7 +12,7 @@ metadata:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: conduit-controller
+  name: linkerd-controller
   namespace: {{.Namespace}}
 
 ### Controller RBAC ###
@@ -20,7 +20,7 @@ metadata:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: conduit-{{.Namespace}}-controller
+  name: linkerd-{{.Namespace}}-controller
 rules:
 - apiGroups: ["extensions", "apps"]
   resources: ["deployments", "replicasets"]
@@ -33,14 +33,14 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: conduit-{{.Namespace}}-controller
+  name: linkerd-{{.Namespace}}-controller
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: conduit-{{.Namespace}}-controller
+  name: linkerd-{{.Namespace}}-controller
 subjects:
 - kind: ServiceAccount
-  name: conduit-controller
+  name: linkerd-controller
   namespace: {{.Namespace}}
 
 ### Service Account Prometheus ###
@@ -48,7 +48,7 @@ subjects:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: conduit-prometheus
+  name: linkerd-prometheus
   namespace: {{.Namespace}}
 
 ### Prometheus RBAC ###
@@ -56,7 +56,7 @@ metadata:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: conduit-{{.Namespace}}-prometheus
+  name: linkerd-{{.Namespace}}-prometheus
 rules:
 - apiGroups: [""]
   resources: ["nodes", "nodes/proxy", "pods"]
@@ -66,14 +66,14 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: conduit-{{.Namespace}}-prometheus
+  name: linkerd-{{.Namespace}}-prometheus
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: conduit-{{.Namespace}}-prometheus
+  name: linkerd-{{.Namespace}}-prometheus
 subjects:
 - kind: ServiceAccount
-  name: conduit-prometheus
+  name: linkerd-prometheus
   namespace: {{.Namespace}}
 
 ### Controller ###
@@ -134,7 +134,7 @@ spec:
       annotations:
         {{.CreatedByAnnotation}}: {{.CliVersion}}
     spec:
-      serviceAccount: conduit-controller
+      serviceAccount: linkerd-controller
       containers:
       - name: public-api
         ports:
@@ -337,7 +337,7 @@ spec:
       annotations:
         {{.CreatedByAnnotation}}: {{.CliVersion}}
     spec:
-      serviceAccount: conduit-prometheus
+      serviceAccount: linkerd-prometheus
       volumes:
       - name: prometheus-config
         configMap:
@@ -433,7 +433,7 @@ data:
         target_label: systemd_service_name
         replacement: '${1}'
 
-    - job_name: 'conduit-controller'
+    - job_name: 'linkerd-controller'
       kubernetes_sd_configs:
       - role: pod
         namespaces:
@@ -448,7 +448,7 @@ data:
         action: replace
         target_label: component
 
-    - job_name: 'conduit-proxy'
+    - job_name: 'linkerd-proxy'
       kubernetes_sd_configs:
       - role: pod
       relabel_configs:
@@ -456,7 +456,7 @@ data:
         - __meta_kubernetes_pod_container_name
         - __meta_kubernetes_pod_container_port_name
         action: keep
-        regex: ^conduit-proxy;conduit-metrics$
+        regex: ^linkerd-proxy;linkerd-metrics$
       - source_labels: [__meta_kubernetes_namespace]
         action: replace
         target_label: namespace
@@ -619,7 +619,7 @@ const TlsTemplate = `
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: conduit-ca
+  name: linkerd-ca
   namespace: {{.Namespace}}
 
 ### CA RBAC ###
@@ -627,7 +627,7 @@ metadata:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: conduit-{{.Namespace}}-ca
+  name: linkerd-{{.Namespace}}-ca
 rules:
 - apiGroups: [""]
   resources: ["configmaps"]
@@ -650,14 +650,14 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: conduit-{{.Namespace}}-ca
+  name: linkerd-{{.Namespace}}-ca
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: conduit-{{.Namespace}}-ca
+  name: linkerd-{{.Namespace}}-ca
 subjects:
 - kind: ServiceAccount
-  name: conduit-ca
+  name: linkerd-ca
   namespace: {{.Namespace}}
 
 ### CA Distributor ###
@@ -680,7 +680,7 @@ spec:
       annotations:
         {{.CreatedByAnnotation}}: {{.CliVersion}}
     spec:
-      serviceAccount: conduit-ca
+      serviceAccount: linkerd-ca
       containers:
       - name: ca-distributor
         ports:

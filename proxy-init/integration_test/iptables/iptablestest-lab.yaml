@@ -69,7 +69,7 @@ spec:
         - name: http
           containerPort: 8080
       initContainers:
-      - name: conduit-init
+      - name: linkerd-init
         image: gcr.io/linkerd-io/proxy-init:latest
         imagePullPolicy: Never
         args: ["-p", "8080",  "-o", "8080", "-u", "2102"]
@@ -113,7 +113,7 @@ spec:
           privileged: false
           runAsUser: 2102
       initContainers:
-      - name: conduit-init
+      - name: linkerd-init
         image: gcr.io/linkerd-io/proxy-init:latest
         imagePullPolicy: Never
         args: ["-p", "8080",  "-o", "8080", "-u", "2102", "-r", "9090", "-r", "9099"]
@@ -164,7 +164,7 @@ spec:
         - name: http
           containerPort: 7070
       initContainers:
-      - name: conduit-init
+      - name: linkerd-init
         image: gcr.io/linkerd-io/proxy-init:latest
         imagePullPolicy: Never
         args: ["-p", "8080",  "-o", "8080", "-u", "2102", "--inbound-ports-to-ignore", "7070"]

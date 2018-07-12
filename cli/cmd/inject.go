@@ -172,7 +172,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 	}
 
 	initContainer := v1.Container{
-		Name:                     "conduit-init",
+		Name:                     "linkerd-init",
 		Image:                    options.taggedProxyInitImage(),
 		ImagePullPolicy:          v1.PullPolicy(options.imagePullPolicy),
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
@@ -190,7 +190,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 	}
 
 	sidecar := v1.Container{
-		Name:                     "conduit-proxy",
+		Name:                     "linkerd-proxy",
 		Image:                    options.taggedProxyImage(),
 		ImagePullPolicy:          v1.PullPolicy(options.imagePullPolicy),
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
@@ -199,11 +199,11 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 		},
 		Ports: []v1.ContainerPort{
 			{
-				Name:          "conduit-proxy",
+				Name:          "linkerd-proxy",
 				ContainerPort: int32(options.inboundPort),
 			},
 			{
-				Name:          "conduit-metrics",
+				Name:          "linkerd-metrics",
 				ContainerPort: int32(options.proxyMetricsPort),
 			},
 		},
@@ -229,7 +229,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 		yes := true
 
 		configMapVolume := v1.Volume{
-			Name: "conduit-trust-anchors",
+			Name: "linkerd-trust-anchors",
 			VolumeSource: v1.VolumeSource{
 				ConfigMap: &v1.ConfigMapVolumeSource{
 					LocalObjectReference: v1.LocalObjectReference{Name: k8s.TLSTrustAnchorConfigMapName},
@@ -238,7 +238,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 			},
 		}
 		secretVolume := v1.Volume{
-			Name: "conduit-secrets",
+			Name: "linkerd-secrets",
 			VolumeSource: v1.VolumeSource{
 				Secret: &v1.SecretVolumeSource{
 					SecretName: identity.ToSecretName(),

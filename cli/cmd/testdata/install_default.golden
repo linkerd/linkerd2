@@ -9,7 +9,7 @@ metadata:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: conduit-controller
+  name: linkerd-controller
   namespace: linkerd
 
 ### Controller RBAC ###
@@ -17,7 +17,7 @@ metadata:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: conduit-linkerd-controller
+  name: linkerd-linkerd-controller
 rules:
 - apiGroups: ["extensions", "apps"]
   resources: ["deployments", "replicasets"]
@@ -30,14 +30,14 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: conduit-linkerd-controller
+  name: linkerd-linkerd-controller
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: conduit-linkerd-controller
+  name: linkerd-linkerd-controller
 subjects:
 - kind: ServiceAccount
-  name: conduit-controller
+  name: linkerd-controller
   namespace: linkerd
 
 ### Service Account Prometheus ###
@@ -45,7 +45,7 @@ subjects:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: conduit-prometheus
+  name: linkerd-prometheus
   namespace: linkerd
 
 ### Prometheus RBAC ###
@@ -53,7 +53,7 @@ metadata:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: conduit-linkerd-prometheus
+  name: linkerd-linkerd-prometheus
 rules:
 - apiGroups: [""]
   resources: ["nodes", "nodes/proxy", "pods"]
@@ -63,14 +63,14 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: conduit-linkerd-prometheus
+  name: linkerd-linkerd-prometheus
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: conduit-linkerd-prometheus
+  name: linkerd-linkerd-prometheus
 subjects:
 - kind: ServiceAccount
-  name: conduit-prometheus
+  name: linkerd-prometheus
   namespace: linkerd
 
 ### Controller ###
@@ -255,12 +255,12 @@ spec:
               fieldPath: metadata.namespace
         image: gcr.io/linkerd-io/proxy:undefined
         imagePullPolicy: IfNotPresent
-        name: conduit-proxy
+        name: linkerd-proxy
         ports:
         - containerPort: 4143
-          name: conduit-proxy
+          name: linkerd-proxy
         - containerPort: 4191
-          name: conduit-metrics
+          name: linkerd-metrics
         resources: {}
         securityContext:
           runAsUser: 2102
@@ -277,7 +277,7 @@ spec:
         - 4190,4191
         image: gcr.io/linkerd-io/proxy-init:undefined
         imagePullPolicy: IfNotPresent
-        name: conduit-init
+        name: linkerd-init
         resources: {}
         securityContext:
           capabilities:
@@ -285,7 +285,7 @@ spec:
             - NET_ADMIN
           privileged: false
         terminationMessagePolicy: FallbackToLogsOnError
-      serviceAccount: conduit-controller
+      serviceAccount: linkerd-controller
 status: {}
 ---
 kind: Service
@@ -382,12 +382,12 @@ spec:
               fieldPath: metadata.namespace
         image: gcr.io/linkerd-io/proxy:undefined
         imagePullPolicy: IfNotPresent
-        name: conduit-proxy
+        name: linkerd-proxy
         ports:
         - containerPort: 4143
-          name: conduit-proxy
+          name: linkerd-proxy
         - containerPort: 4191
-          name: conduit-metrics
+          name: linkerd-metrics
         resources: {}
         securityContext:
           runAsUser: 2102
@@ -404,7 +404,7 @@ spec:
         - 4190,4191
         image: gcr.io/linkerd-io/proxy-init:undefined
         imagePullPolicy: IfNotPresent
-        name: conduit-init
+        name: linkerd-init
         resources: {}
         securityContext:
           capabilities:
@@ -505,12 +505,12 @@ spec:
               fieldPath: metadata.namespace
         image: gcr.io/linkerd-io/proxy:undefined
         imagePullPolicy: IfNotPresent
-        name: conduit-proxy
+        name: linkerd-proxy
         ports:
         - containerPort: 4143
-          name: conduit-proxy
+          name: linkerd-proxy
         - containerPort: 4191
-          name: conduit-metrics
+          name: linkerd-metrics
         resources: {}
         securityContext:
           runAsUser: 2102
@@ -527,7 +527,7 @@ spec:
         - 4190,4191
         image: gcr.io/linkerd-io/proxy-init:undefined
         imagePullPolicy: IfNotPresent
-        name: conduit-init
+        name: linkerd-init
         resources: {}
         securityContext:
           capabilities:
@@ -535,7 +535,7 @@ spec:
             - NET_ADMIN
           privileged: false
         terminationMessagePolicy: FallbackToLogsOnError
-      serviceAccount: conduit-prometheus
+      serviceAccount: linkerd-prometheus
       volumes:
       - configMap:
           name: prometheus-config
@@ -605,7 +605,7 @@ data:
         target_label: systemd_service_name
         replacement: '${1}'
 
-    - job_name: 'conduit-controller'
+    - job_name: 'linkerd-controller'
       kubernetes_sd_configs:
       - role: pod
         namespaces:
@@ -620,7 +620,7 @@ data:
         action: replace
         target_label: component
 
-    - job_name: 'conduit-proxy'
+    - job_name: 'linkerd-proxy'
       kubernetes_sd_configs:
       - role: pod
       relabel_configs:
@@ -628,7 +628,7 @@ data:
         - __meta_kubernetes_pod_container_name
         - __meta_kubernetes_pod_container_port_name
         action: keep
-        regex: ^conduit-proxy;conduit-metrics$
+        regex: ^linkerd-proxy;linkerd-metrics$
       - source_labels: [__meta_kubernetes_namespace]
         action: replace
         target_label: namespace
@@ -743,12 +743,12 @@ spec:
               fieldPath: metadata.namespace
         image: gcr.io/linkerd-io/proxy:undefined
         imagePullPolicy: IfNotPresent
-        name: conduit-proxy
+        name: linkerd-proxy
         ports:
         - containerPort: 4143
-          name: conduit-proxy
+          name: linkerd-proxy
         - containerPort: 4191
-          name: conduit-metrics
+          name: linkerd-metrics
         resources: {}
         securityContext:
           runAsUser: 2102
@@ -765,7 +765,7 @@ spec:
         - 4190,4191
         image: gcr.io/linkerd-io/proxy-init:undefined
         imagePullPolicy: IfNotPresent
-        name: conduit-init
+        name: linkerd-init
         resources: {}
         securityContext:
           capabilities:
