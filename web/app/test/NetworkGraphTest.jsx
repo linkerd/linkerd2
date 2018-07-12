@@ -22,7 +22,7 @@ describe('Tests for <NetworkGraph>', () => {
         deployments={deploys} />
     );
 
-    const data = component.instance().graphData();
+    const data = component.instance().getGraphData();
     expect(data.links).to.have.length(3);
     expect(data.nodes).to.have.length(4);
     expect(data.links[0]).to.include({source: 'web', target: 'emoji'});
