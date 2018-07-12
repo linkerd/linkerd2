@@ -145,8 +145,7 @@ type TLSIdentity struct {
 }
 
 func (i TLSIdentity) ToDNSName() string {
-	// TODO: replace conduit-managed with linkerd-managed?
-	return fmt.Sprintf("%s.%s.%s.conduit-managed.%s.svc.cluster.local", i.Name,
+	return fmt.Sprintf("%s.%s.%s.linkerd-managed.%s.svc.cluster.local", i.Name,
 		i.Kind, i.Namespace, i.ControllerNamespace)
 }
 

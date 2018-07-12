@@ -194,7 +194,7 @@ func TestEndpointListener(t *testing.T) {
 		expectedControllerNamespace := "linkerd-namespace"
 		expectedPodDeployment := "pod-deployment"
 		expectedTlsIdentity := &pb.TlsIdentity_K8SPodIdentity{
-			PodIdentity:  "pod-deployment.deployment.this-namespace.conduit-managed.linkerd-namespace.svc.cluster.local",
+			PodIdentity:  "pod-deployment.deployment.this-namespace.linkerd-managed.linkerd-namespace.svc.cluster.local",
 			ControllerNs: "linkerd-namespace",
 		}
 
