@@ -1,6 +1,13 @@
 #!/bin/bash
 
 set -eu
+
+if [[ "${1:-}" = "--no-dep" ]]; then
+dep_ensure=
+else
+dep_ensure=1
+fi
+
 cd "$(pwd -P)"
 
 # Builds CLI binary for current platform only and outside docker to speed up things. Suitable for local development.
@@ -20,7 +27,9 @@ fi
 
 (
     cd $rootdir
-    $bindir/dep ensure -vendor-only -v
+    if [ ! -z ${dep_ensure} ]; then
+      $bindir/dep ensure -vendor-only -v
+    fi
     target="target/cli/${host_platform}/linkerd"
     CGO_ENABLED=0 go build -installsuffix cgo -o $target -ldflags "-s -w -X github.com/linkerd/linkerd2/pkg/version.Version=$($bindir/root-tag)" ./cli
     echo "$target"
