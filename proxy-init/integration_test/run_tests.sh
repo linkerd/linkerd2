@@ -82,8 +82,6 @@ spec:
       - name: tester
         image: buoyantio/iptables-tester:v1
         env:
-          - name: CONDUIT_INTEGRATION_TESTS_ENABLED
-            value: "1"
           - name: POD_REDIRECTS_ALL_PORTS_IP
             value: ${POD_REDIRECTS_ALL_PORTS_IP}
           - name: POD_WITH_NO_RULES_IP

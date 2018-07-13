@@ -68,48 +68,48 @@ func ConfigureFirewall(firewallConfiguration FirewallConfiguration) error {
 //formatComment is used to format iptables comments in such way that it is possible to identify when the rules were added.
 // This helps debug when iptables has some stale rules from previous runs, something that can happen frequently on minikube.
 func formatComment(text string) string {
-	return fmt.Sprintf("conduit/%s/%s", text, ExecutionTraceId)
+	return fmt.Sprintf("proxy-init/%s/%s", text, ExecutionTraceId)
 }
 
 func addOutgoingTrafficRules(commands []*exec.Cmd, firewallConfiguration FirewallConfiguration) []*exec.Cmd {
-	ConduitOutputChainName := "CONDUIT_OUTPUT"
-	executeCommand(firewallConfiguration, makeFlushChain(ConduitOutputChainName))
-	executeCommand(firewallConfiguration, makeDeleteChain(ConduitOutputChainName))
+	outputChainName := "PROXY_INIT_OUTPUT"
+	executeCommand(firewallConfiguration, makeFlushChain(outputChainName))
+	executeCommand(firewallConfiguration, makeDeleteChain(outputChainName))
 
-	commands = append(commands, makeCreateNewChain(ConduitOutputChainName, "redirect-common-chain"))
+	commands = append(commands, makeCreateNewChain(outputChainName, "redirect-common-chain"))
 
 	// Ingore traffic from the proxy
 	if firewallConfiguration.ProxyUid > 0 {
 		log.Printf("Ignoring uid %d", firewallConfiguration.ProxyUid)
-		commands = append(commands, makeIgnoreUserId(ConduitOutputChainName, firewallConfiguration.ProxyUid, "ignore-proxy-user-id"))
+		commands = append(commands, makeIgnoreUserId(outputChainName, firewallConfiguration.ProxyUid, "ignore-proxy-user-id"))
 	} else {
 		log.Println("Not ignoring any uid")
 	}
 
 	// Ignore loopback
-	commands = append(commands, makeIgnoreLoopback(ConduitOutputChainName, "ignore-loopback"))
+	commands = append(commands, makeIgnoreLoopback(outputChainName, "ignore-loopback"))
 	// Ignore ports
-	commands = addRulesForIgnoredPorts(firewallConfiguration.OutboundPortsToIgnore, ConduitOutputChainName, commands)
+	commands = addRulesForIgnoredPorts(firewallConfiguration.OutboundPortsToIgnore, outputChainName, commands)
 
 	log.Printf("Redirecting all OUTPUT to %d", firewallConfiguration.ProxyOutgoingPort)
-	commands = append(commands, makeRedirectChainToPort(ConduitOutputChainName, firewallConfiguration.ProxyOutgoingPort, "redirect-all-outgoing-to-proxy-port"))
+	commands = append(commands, makeRedirectChainToPort(outputChainName, firewallConfiguration.ProxyOutgoingPort, "redirect-all-outgoing-to-proxy-port"))
 
 	//Redirect all remaining outbound traffic to the proxy.
-	commands = append(commands, makeJumpFromChainToAnotherForAllProtocols(IptablesOutputChainName, ConduitOutputChainName, "install-conduit-output"))
+	commands = append(commands, makeJumpFromChainToAnotherForAllProtocols(IptablesOutputChainName, outputChainName, "install-proxy-init-output"))
 	return commands
 }
 
 func addIncomingTrafficRules(commands []*exec.Cmd, firewallConfiguration FirewallConfiguration) []*exec.Cmd {
-	ConduitRedirectChainName := "CONDUIT_REDIRECT"
-	executeCommand(firewallConfiguration, makeFlushChain(ConduitRedirectChainName))
-	executeCommand(firewallConfiguration, makeDeleteChain(ConduitRedirectChainName))
+	redirectChainName := "PROXY_INIT_REDIRECT"
+	executeCommand(firewallConfiguration, makeFlushChain(redirectChainName))
+	executeCommand(firewallConfiguration, makeDeleteChain(redirectChainName))
 
-	commands = append(commands, makeCreateNewChain(ConduitRedirectChainName, "redirect-common-chain"))
-	commands = addRulesForIgnoredPorts(firewallConfiguration.InboundPortsToIgnore, ConduitRedirectChainName, commands)
-	commands = addRulesForInboundPortRedirect(firewallConfiguration, ConduitRedirectChainName, commands)
+	commands = append(commands, makeCreateNewChain(redirectChainName, "redirect-common-chain"))
+	commands = addRulesForIgnoredPorts(firewallConfiguration.InboundPortsToIgnore, redirectChainName, commands)
+	commands = addRulesForInboundPortRedirect(firewallConfiguration, redirectChainName, commands)
 
 	//Redirect all remaining inbound traffic to the proxy.
-	commands = append(commands, makeJumpFromChainToAnotherForAllProtocols(IptablesPreroutingChainName, ConduitRedirectChainName, "install-conduit-prerouting"))
+	commands = append(commands, makeJumpFromChainToAnotherForAllProtocols(IptablesPreroutingChainName, redirectChainName, "install-proxy-init-prerouting"))
 
 	return commands
 }
