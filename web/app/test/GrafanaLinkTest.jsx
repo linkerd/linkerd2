@@ -21,7 +21,7 @@ describe('GrafanaLink', () => {
     };
     let component = mount(routerWrap(GrafanaLink, linkProps));
 
-    let expectedDashboardNameStr = "/conduit-replication-controller";
+    let expectedDashboardNameStr = "/linkerd-replication-controller";
     let expectedNsStr = "var-namespace=myns";
     let expectedVarNameStr = "var-replication_controller=aldksf-3409823049823";
 
