@@ -73,7 +73,7 @@ func TestRequestTapByResourceFromAPI(t *testing.T) {
 			},
 			map[string]string{},
 		)
-		mockApiClient := &public.MockConduitApiClient{}
+		mockApiClient := &public.MockApiClient{}
 		mockApiClient.Api_TapByResourceClientToReturn = &public.MockApi_TapByResourceClient{
 			TapEventsToReturn: []pb.TapEvent{event1, event2},
 		}
@@ -113,7 +113,7 @@ func TestRequestTapByResourceFromAPI(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		mockApiClient := &public.MockConduitApiClient{}
+		mockApiClient := &public.MockApiClient{}
 		mockApiClient.Api_TapByResourceClientToReturn = &public.MockApi_TapByResourceClient{
 			TapEventsToReturn: []pb.TapEvent{},
 		}
@@ -154,7 +154,7 @@ func TestRequestTapByResourceFromAPI(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		mockApiClient := &public.MockConduitApiClient{}
+		mockApiClient := &public.MockApiClient{}
 		mockApiClient.Api_TapByResourceClientToReturn = &public.MockApi_TapByResourceClient{
 			ErrorsToReturn: []error{errors.New("expected")},
 		}

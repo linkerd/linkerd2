@@ -11,10 +11,10 @@ import (
 
 func TestInjectYAML(t *testing.T) {
 	defaultOptions := newInjectOptions()
-	defaultOptions.conduitVersion = "testinjectversion"
+	defaultOptions.linkerdVersion = "testinjectversion"
 
 	tlsOptions := newInjectOptions()
-	tlsOptions.conduitVersion = "testinjectversion"
+	tlsOptions.linkerdVersion = "testinjectversion"
 	tlsOptions.tls = "optional"
 
 	testCases := []struct {
@@ -63,7 +63,7 @@ func TestInjectYAML(t *testing.T) {
 
 func TestRunInjectCmd(t *testing.T) {
 	testInjectOptions := newInjectOptions()
-	testInjectOptions.conduitVersion = "testinjectversion"
+	testInjectOptions.linkerdVersion = "testinjectversion"
 	testCases := []struct {
 		inputFileName        string
 		stdErrGoldenFileName string

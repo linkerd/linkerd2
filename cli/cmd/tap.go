@@ -64,13 +64,13 @@ func newCmdTap() *cobra.Command {
   * replicationcontrollers
   * services (only supported as a "--to" resource)`,
 		Example: `  # tap the web deployment in the default namespace
-  conduit tap deploy/web
+  linkerd tap deploy/web
 
   # tap the web-dlbvj pod in the default namespace
-  conduit tap pod/web-dlbvj
+  linkerd tap pod/web-dlbvj
 
   # tap the test namespace, filter by request to prod namespace
-  conduit tap ns/test --to ns/prod`,
+  linkerd tap ns/test --to ns/prod`,
 		Args:      cobra.RangeArgs(1, 2),
 		ValidArgs: util.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {

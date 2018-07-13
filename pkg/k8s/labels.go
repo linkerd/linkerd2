@@ -1,5 +1,5 @@
 /*
-Kubernetes labels and annotations used in Conduit's control plane and data plane
+Kubernetes labels and annotations used in Linkerd's control plane and data plane
 Kubernetes configs.
 */
 
@@ -19,49 +19,49 @@ const (
 	 * Labels
 	 */
 
-	// ControllerComponentLabel identifies this object as a component of Conduit's
+	// ControllerComponentLabel identifies this object as a component of Linkerd's
 	// control plane (e.g. web, controller).
-	ControllerComponentLabel = "conduit.io/control-plane-component"
+	ControllerComponentLabel = "linkerd.io/control-plane-component"
 
 	// ControllerNSLabel is injected into mesh-enabled apps, identifying the
-	// namespace of the Conduit control plane.
-	ControllerNSLabel = "conduit.io/control-plane-ns"
+	// namespace of the Linkerd control plane.
+	ControllerNSLabel = "linkerd.io/control-plane-ns"
 
 	// ProxyDeploymentLabel is injected into mesh-enabled apps, identifying the
 	// deployment that this proxy belongs to.
-	ProxyDeploymentLabel = "conduit.io/proxy-deployment"
+	ProxyDeploymentLabel = "linkerd.io/proxy-deployment"
 
 	// ProxyReplicationControllerLabel is injected into mesh-enabled apps,
 	// identifying the ReplicationController that this proxy belongs to.
-	ProxyReplicationControllerLabel = "conduit.io/proxy-replication-controller"
+	ProxyReplicationControllerLabel = "linkerd.io/proxy-replication-controller"
 
 	// ProxyReplicaSetLabel is injected into mesh-enabled apps, identifying the
 	// ReplicaSet that this proxy belongs to.
-	ProxyReplicaSetLabel = "conduit.io/proxy-replica-set"
+	ProxyReplicaSetLabel = "linkerd.io/proxy-replica-set"
 
 	// ProxyJobLabel is injected into mesh-enabled apps, identifying the Job that
 	// this proxy belongs to.
-	ProxyJobLabel = "conduit.io/proxy-job"
+	ProxyJobLabel = "linkerd.io/proxy-job"
 
 	// ProxyDaemonSetLabel is injected into mesh-enabled apps, identifying the
 	// DaemonSet that this proxy belongs to.
-	ProxyDaemonSetLabel = "conduit.io/proxy-daemon-set"
+	ProxyDaemonSetLabel = "linkerd.io/proxy-daemon-set"
 
 	// ProxyStatefulSetLabel is injected into mesh-enabled apps, identifying the
 	// StatefulSet that this proxy belongs to.
-	ProxyStatefulSetLabel = "conduit.io/proxy-stateful-set"
+	ProxyStatefulSetLabel = "linkerd.io/proxy-stateful-set"
 
 	/*
 	 * Annotations
 	 */
 
 	// CreatedByAnnotation indicates the source of the injected data plane
-	// (e.g. conduit/cli v0.1.3).
-	CreatedByAnnotation = "conduit.io/created-by"
+	// (e.g. linkerd/cli v2.0.0).
+	CreatedByAnnotation = "linkerd.io/created-by"
 
 	// ProxyVersionAnnotation indicates the version of the injected data plane
 	// (e.g. v0.1.3).
-	ProxyVersionAnnotation = "conduit.io/proxy-version"
+	ProxyVersionAnnotation = "linkerd.io/proxy-version"
 
 	/*
 	 * Component Names
@@ -69,7 +69,7 @@ const (
 
 	// TLSTrustAnchorConfigMapName is the name of the ConfigMap that holds the
 	// trust anchors (trusted root certificates).
-	TLSTrustAnchorConfigMapName = "conduit-ca-bundle"
+	TLSTrustAnchorConfigMapName = "linkerd-ca-bundle"
 
 	// TLSTrustAnchorFileName is the name (key) within the trust anchor ConfigMap
 	// that contains the actual trust anchor bundle.
@@ -93,7 +93,7 @@ var proxyLabels = []string{
 // CreatedByAnnotationValue returns the value associated with
 // CreatedByAnnotation.
 func CreatedByAnnotationValue() string {
-	return fmt.Sprintf("conduit/cli %s", version.Version)
+	return fmt.Sprintf("linkerd/cli %s", version.Version)
 }
 
 // GetOwnerLabels returns the set of prometheus owner labels that can be
@@ -117,9 +117,9 @@ func GetControllerNs(objectMeta meta.ObjectMeta) string {
 // relabel conventions from the prometheus scrape config file
 func toOwnerLabel(proxyLabel string) string {
 	if proxyLabel == ControllerNSLabel {
-		return "conduit_io_control_plane_ns"
+		return "linkerd_io_control_plane_ns"
 	}
-	stripped := strings.TrimPrefix(proxyLabel, "conduit.io/proxy-")
+	stripped := strings.TrimPrefix(proxyLabel, "linkerd.io/proxy-")
 	if stripped == "job" {
 		return "k8s_job"
 	}
@@ -145,12 +145,12 @@ type TLSIdentity struct {
 }
 
 func (i TLSIdentity) ToDNSName() string {
-	return fmt.Sprintf("%s.%s.%s.conduit-managed.%s.svc.cluster.local", i.Name,
+	return fmt.Sprintf("%s.%s.%s.linkerd-managed.%s.svc.cluster.local", i.Name,
 		i.Kind, i.Namespace, i.ControllerNamespace)
 }
 
 func (i TLSIdentity) ToSecretName() string {
-	return fmt.Sprintf("%s-%s-tls-conduit-io", i.Name, i.Kind)
+	return fmt.Sprintf("%s-%s-tls-linkerd-io", i.Name, i.Kind)
 }
 
 func (i TLSIdentity) ToControllerIdentity() TLSIdentity {

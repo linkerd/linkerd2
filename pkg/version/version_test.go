@@ -102,8 +102,8 @@ func TestVersionCheck(t *testing.T) {
 	})
 }
 
-func createMockPublicApi(version string) *public.MockConduitApiClient {
-	return &public.MockConduitApiClient{
+func createMockPublicApi(version string) *public.MockApiClient {
+	return &public.MockApiClient{
 		VersionInfoToReturn: &pb.VersionInfo{
 			ReleaseVersion: version,
 		},

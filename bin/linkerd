@@ -8,15 +8,15 @@ rootdir="$( cd $bindir/.. && pwd )"
 system=$(uname -s)
 
 if [ "$system" = "Darwin" ]; then
-  bin=$rootdir/target/cli/darwin/conduit
+  bin=$rootdir/target/cli/darwin/linkerd
 elif [ "$system" = "Linux" ]; then
-  bin=$rootdir/target/cli/linux/conduit
+  bin=$rootdir/target/cli/linux/linkerd
 else
   echo "unknown system: $system" >&2
   exit 1
 fi
 
-# build conduit executable if it does not exist
+# build linkerd executable if it does not exist
 if [ ! -f $bin ]; then
   $bindir/docker-build-cli-bin >/dev/null
 fi

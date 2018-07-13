@@ -97,8 +97,8 @@ jobs:
          # adding a new image to the mix.
         - bin/docker-pull master || echo "docker pull failed" >&2
         - |
-          export CONDUIT_TAG=$(. bin/_tag.sh ; clean_head_root_tag)
-          echo "CONDUIT_TAG=${CONDUIT_TAG}"
+          export LINKERD_TAG=$(. bin/_tag.sh ; clean_head_root_tag)
+          echo "LINKERD_TAG=${LINKERD_TAG}"
         - export BUILD_DEBUG=1 DOCKER_TRACE=1
 
       script:
@@ -106,10 +106,10 @@ jobs:
 
       after_success:
         - bin/docker-push-deps
-        - bin/docker-push $CONDUIT_TAG
-        - bin/docker-retag-all $CONDUIT_TAG master && bin/docker-push master
-        - target/cli/linux/conduit install --conduit-version=$CONDUIT_TAG |tee conduit.yml
-        - kubectl -n conduit apply -f conduit.yml --prune --selector='conduit.io/control-plane-component'
+        - bin/docker-push $LINKERD_TAG
+        - bin/docker-retag-all $LINKERD_TAG master && bin/docker-push master
+        - target/cli/linux/linkerd install --linkerd-version=$LINKERD_TAG |tee linkerd.yml
+        - kubectl -n linkerd apply -f linkerd.yml --prune --selector='linkerd.io/control-plane-component'
 
     # Run integration tests after container images have been published.
     - stage: integration-test
@@ -143,26 +143,26 @@ jobs:
           # Get a kubernetes context.
           (. bin/_gcp.sh ; get_k8s_ctx "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER")
         - |
-          # Install conduit cli.
+          # Install linkerd cli.
           version="git-$(git rev-parse --short=8 HEAD)"
           image="gcr.io/linkerd-io/cli-bin:$version"
           id=$(docker create $image)
-          docker cp "$id:/out/conduit-linux" "./conduit"
+          docker cp "$id:/out/linkerd-linux" "./linkerd"
         - gcloud version
         - kubectl version --short
-        - ./conduit version --client
+        - ./linkerd version --client
 
       script:
         - |
           # Run integration tests.
-          version="$(./conduit version --client --short | tr -cd '[:alnum:]-')"
-          ./bin/test-run `pwd`/conduit conduit-$version
+          version="$(./linkerd version --client --short | tr -cd '[:alnum:]-')"
+          ./bin/test-run `pwd`/linkerd linkerd-$version
 
       after_script:
         - |
           # Cleanup after integration test run.
-          version="$(./conduit version --client --short | tr -cd '[:alnum:]-')"
-          ./bin/test-cleanup conduit-$version
+          version="$(./linkerd version --client --short | tr -cd '[:alnum:]-')"
+          ./bin/test-cleanup linkerd-$version
 
 notifications:
   email:

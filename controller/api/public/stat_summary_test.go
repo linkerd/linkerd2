@@ -8,11 +8,11 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/prometheus/common/model"
 	tap "github.com/linkerd/linkerd2/controller/gen/controller/tap"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/prometheus/common/model"
 )
 
 type statSumExpected struct {
@@ -79,7 +79,7 @@ func testStatSummary(t *testing.T, expectations []statSumExpected) {
 			mockProm,
 			tap.NewTapClient(nil),
 			k8sAPI,
-			"conduit",
+			"linkerd",
 			[]string{},
 		)
 
@@ -181,7 +181,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
 `, `
@@ -203,7 +203,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Completed
 `,
@@ -242,7 +242,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
 `,
@@ -288,7 +288,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
 `,
@@ -337,7 +337,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
 `,
@@ -392,7 +392,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
 `,
@@ -447,7 +447,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
 `, `
@@ -459,7 +459,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
 `,
@@ -514,7 +514,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
 `, `
@@ -526,7 +526,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
 `,
@@ -606,7 +606,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
 `, `
@@ -618,7 +618,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
 `,
@@ -783,7 +783,7 @@ status:
 				&MockProm{Res: exp.mockPromResponse},
 				tap.NewTapClient(nil),
 				k8sAPI,
-				"conduit",
+				"linkerd",
 				[]string{},
 			)
 
@@ -807,7 +807,7 @@ status:
 			&MockProm{Res: model.Vector{}},
 			tap.NewTapClient(nil),
 			k8sAPI,
-			"conduit",
+			"linkerd",
 			[]string{},
 		)
 
@@ -916,7 +916,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Succeeded
 `, `
@@ -928,7 +928,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Failed
 `},
@@ -977,7 +977,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
 `, `
@@ -999,7 +999,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Failed
 `, `
@@ -1011,7 +1011,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Succeeded
 `},
@@ -1050,30 +1050,30 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
 `,
 				},
 				mockPromResponse: model.Vector{
-					genPromSample("10.1.1.239:9995", "authority", "conduit", "success", false),
+					genPromSample("10.1.1.239:9995", "authority", "linkerd", "success", false),
 				},
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
-							Namespace: "conduit",
+							Namespace: "linkerd",
 							Type:      pkgK8s.Authorities,
 						},
 					},
 					TimeWindow: "1m",
 				},
 				expectedPrometheusQueries: []string{
-					`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="conduit"}[1m])) by (le, namespace, authority))`,
-					`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="conduit"}[1m])) by (le, namespace, authority))`,
-					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="conduit"}[1m])) by (le, namespace, authority))`,
-					`sum(increase(response_total{direction="inbound", namespace="conduit"}[1m])) by (namespace, authority, classification, tls)`,
+					`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="linkerd"}[1m])) by (le, namespace, authority))`,
+					`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="linkerd"}[1m])) by (le, namespace, authority))`,
+					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="linkerd"}[1m])) by (le, namespace, authority))`,
+					`sum(increase(response_total{direction="inbound", namespace="linkerd"}[1m])) by (namespace, authority, classification, tls)`,
 				},
-				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", "authorities", "conduit", nil),
+				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", "authorities", "linkerd", nil),
 			},
 		}
 
@@ -1093,18 +1093,18 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
 `,
 				},
 				mockPromResponse: model.Vector{
-					genPromSample("10.1.1.239:9995", "authority", "conduit", "success", false),
+					genPromSample("10.1.1.239:9995", "authority", "linkerd", "success", false),
 				},
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
-							Namespace: "conduit",
+							Namespace: "linkerd",
 							Type:      pkgK8s.Authorities,
 						},
 					},
@@ -1143,18 +1143,18 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
-    conduit.io/proxy-version: testinjectversion
+    linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
 `,
 				},
 				mockPromResponse: model.Vector{
-					genPromSample("10.1.1.239:9995", "authority", "conduit", "success", false),
+					genPromSample("10.1.1.239:9995", "authority", "linkerd", "success", false),
 				},
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
-							Namespace: "conduit",
+							Namespace: "linkerd",
 							Type:      pkgK8s.Authorities,
 							Name:      "10.1.1.239:9995",
 						},
@@ -1162,12 +1162,12 @@ status:
 					TimeWindow: "1m",
 				},
 				expectedPrometheusQueries: []string{
-					`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{authority="10.1.1.239:9995", direction="inbound", namespace="conduit"}[1m])) by (le, namespace, authority))`,
-					`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{authority="10.1.1.239:9995", direction="inbound", namespace="conduit"}[1m])) by (le, namespace, authority))`,
-					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{authority="10.1.1.239:9995", direction="inbound", namespace="conduit"}[1m])) by (le, namespace, authority))`,
-					`sum(increase(response_total{authority="10.1.1.239:9995", direction="inbound", namespace="conduit"}[1m])) by (namespace, authority, classification, tls)`,
+					`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{authority="10.1.1.239:9995", direction="inbound", namespace="linkerd"}[1m])) by (le, namespace, authority))`,
+					`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{authority="10.1.1.239:9995", direction="inbound", namespace="linkerd"}[1m])) by (le, namespace, authority))`,
+					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{authority="10.1.1.239:9995", direction="inbound", namespace="linkerd"}[1m])) by (le, namespace, authority))`,
+					`sum(increase(response_total{authority="10.1.1.239:9995", direction="inbound", namespace="linkerd"}[1m])) by (namespace, authority, classification, tls)`,
 				},
-				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", "authorities", "conduit", nil),
+				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", "authorities", "linkerd", nil),
 			},
 		}
 

@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package conduit.common.healthcheck;
+package linkerd2.common.healthcheck;
 
 option go_package = "github.com/linkerd/linkerd2/controller/gen/common/healthcheck";
 

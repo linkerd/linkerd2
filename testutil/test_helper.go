@@ -14,9 +14,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// TestHelper provides helpers for running the conduit integration tests.
+// TestHelper provides helpers for running the linkerd integration tests.
 type TestHelper struct {
-	conduit    string
+	linkerd    string
 	version    string
 	namespace  string
 	tls        bool
@@ -32,8 +32,8 @@ func NewTestHelper() *TestHelper {
 		os.Exit(code)
 	}
 
-	conduit := flag.String("conduit", "", "path to the conduit binary to test")
-	namespace := flag.String("conduit-namespace", "conduit", "the namespace where conduit is installed")
+	linkerd := flag.String("linkerd", "", "path to the linkerd binary to test")
+	namespace := flag.String("linkerd-namespace", "linkerd", "the namespace where linkerd is installed")
 	tls := flag.Bool("enable-tls", false, "enable TLS in tests")
 	runTests := flag.Bool("integration-tests", false, "must be provided to run the integration tests")
 	verbose := flag.Bool("verbose", false, "turn on debug logging")
@@ -43,17 +43,17 @@ func NewTestHelper() *TestHelper {
 		exit(0, "integration tests not enabled: enable with -integration-tests")
 	}
 
-	if *conduit == "" {
-		exit(1, "-conduit flag is required")
+	if *linkerd == "" {
+		exit(1, "-linkerd flag is required")
 	}
 
-	if !filepath.IsAbs(*conduit) {
-		exit(1, "-conduit path must be absolute")
+	if !filepath.IsAbs(*linkerd) {
+		exit(1, "-linkerd path must be absolute")
 	}
 
-	_, err := os.Stat(*conduit)
+	_, err := os.Stat(*linkerd)
 	if err != nil {
-		exit(1, "-conduit binary does not exist")
+		exit(1, "-linkerd binary does not exist")
 	}
 
 	if *verbose {
@@ -68,14 +68,14 @@ func NewTestHelper() *TestHelper {
 	}
 
 	testHelper := &TestHelper{
-		conduit:   *conduit,
+		linkerd:   *linkerd,
 		namespace: ns,
 		tls:       *tls,
 	}
 
-	version, err := testHelper.ConduitRun("version", "--client", "--short")
+	version, err := testHelper.LinkerdRun("version", "--client", "--short")
 	if err != nil {
-		exit(1, "error getting conduit version")
+		exit(1, "error getting linkerd version")
 	}
 	testHelper.version = strings.TrimSpace(version)
 
@@ -92,21 +92,21 @@ func NewTestHelper() *TestHelper {
 	return testHelper
 }
 
-// GetVersion returns the version of conduit to test. This version corresponds
-// to the client version of the conduit binary provided via the -conduit command
+// GetVersion returns the version of linkerd to test. This version corresponds
+// to the client version of the linkerd binary provided via the -linkerd command
 // line flag.
 func (h *TestHelper) GetVersion() string {
 	return h.version
 }
 
-// GetConduitNamespace returns the namespace where conduit is installed. Set the
-// namespace using the -conduit-namespace command line flag.
-func (h *TestHelper) GetConduitNamespace() string {
+// GetLinkerdNamespace returns the namespace where linkerd is installed. Set the
+// namespace using the -linkerd-namespace command line flag.
+func (h *TestHelper) GetLinkerdNamespace() string {
 	return h.namespace
 }
 
 // GetTestNamespace returns the namespace for the given test. The test namespace
-// is prefixed with the conduit namespace.
+// is prefixed with the linkerd namespace.
 func (h *TestHelper) GetTestNamespace(testName string) string {
 	return h.namespace + "-" + testName
 }
@@ -127,19 +127,19 @@ func (h *TestHelper) CombinedOutput(name string, arg ...string) (string, error) 
 	return string(bytes), nil
 }
 
-// ConduitRun executes a conduit command appended with the --conduit-namespace
+// LinkerdRun executes a linkerd command appended with the --linkerd-namespace
 // flag.
-func (h *TestHelper) ConduitRun(arg ...string) (string, error) {
-	withNamespace := append(arg, "--conduit-namespace", h.namespace)
-	return h.CombinedOutput(h.conduit, withNamespace...)
+func (h *TestHelper) LinkerdRun(arg ...string) (string, error) {
+	withNamespace := append(arg, "--linkerd-namespace", h.namespace)
+	return h.CombinedOutput(h.linkerd, withNamespace...)
 }
 
-// ConduitRunStream initiates a conduit command appended with the
-// --conduit-namespace flag, and returns a Stream that can be used to read the
+// LinkerdRunStream initiates a linkerd command appended with the
+// --linkerd-namespace flag, and returns a Stream that can be used to read the
 // command's output while it is still executing.
-func (h *TestHelper) ConduitRunStream(arg ...string) (*Stream, error) {
-	withNamespace := append(arg, "--conduit-namespace", h.namespace)
-	cmd := exec.Command(h.conduit, withNamespace...)
+func (h *TestHelper) LinkerdRunStream(arg ...string) (*Stream, error) {
+	withNamespace := append(arg, "--linkerd-namespace", h.namespace)
+	cmd := exec.Command(h.linkerd, withNamespace...)
 
 	cmdReader, err := cmd.StdoutPipe()
 	if err != nil {
@@ -177,9 +177,9 @@ func (h *TestHelper) ValidateOutput(out, fixtureFile string) error {
 	return nil
 }
 
-// CheckVersion validates the the output of the "conduit version" command.
+// CheckVersion validates the the output of the "linkerd version" command.
 func (h *TestHelper) CheckVersion(serverVersion string) error {
-	out, err := h.ConduitRun("version")
+	out, err := h.LinkerdRun("version")
 	if err != nil {
 		return fmt.Errorf("Unexpected error: %s\n%s", err.Error(), out)
 	}

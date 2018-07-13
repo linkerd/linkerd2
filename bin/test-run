@@ -1,19 +1,19 @@
 #!/bin/bash
 
-function check_conduit_binary(){
-    printf "Checking the conduit binary..."
-    if [[ "$conduit_path" != /* ]]; then
-        printf "\\n[%s] is not an absolute path\\n" "$conduit_path"
+function check_linkerd_binary(){
+    printf "Checking the linkerd binary..."
+    if [[ "$linkerd_path" != /* ]]; then
+        printf "\\n[%s] is not an absolute path\\n" "$linkerd_path"
         exit 1
     fi
-    if [ ! -x "$conduit_path" ]; then
-        printf "\\n[%s] does not exist or is not executable\\n" "$conduit_path"
+    if [ ! -x "$linkerd_path" ]; then
+        printf "\\n[%s] does not exist or is not executable\\n" "$linkerd_path"
         exit 1
     fi
     exit_code=0
-    "$conduit_path" version --client > /dev/null 2>&1 || exit_code=$?
+    "$linkerd_path" version --client > /dev/null 2>&1 || exit_code=$?
     if [ $exit_code -ne 0 ]; then
-        printf "\\nFailed to run conduit version command\\n"
+        printf "\\nFailed to run linkerd version command\\n"
         exit $exit_code
     fi
     printf "[ok]\\n"
@@ -32,27 +32,27 @@ function check_if_k8s_reachable(){
 
 function run_test(){
     printf "Running test [%s] %s\\n" "$(basename "$1")" "$2"
-    go test -v "$1" -conduit "$conduit_path" -conduit-namespace "$conduit_namespace" -integration-tests "$2"
+    go test -v "$1" -linkerd "$linkerd_path" -linkerd-namespace "$linkerd_namespace" -integration-tests "$2"
 }
 
-conduit_path=$1
+linkerd_path=$1
 
-if [ -z "$conduit_path" ]; then
-    echo "usage: $(basename "$0") /path/to/conduit [namespace]" >&2
+if [ -z "$linkerd_path" ]; then
+    echo "usage: $(basename "$0") /path/to/linkerd [namespace]" >&2
     exit 64
 fi
 
-check_conduit_binary
+check_linkerd_binary
 check_if_k8s_reachable
 
 bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 test_directory="$bindir/../test"
-conduit_version=$($conduit_path version --client --short)
-conduit_namespace=${2:-conduit}
+linkerd_version=$($linkerd_path version --client --short)
+linkerd_namespace=${2:-linkerd}
 
 printf "==================RUNNING ALL TESTS==================\\n"
 
-printf "Testing Conduit version [%s] namespace [%s]\\n" "$conduit_version" "$conduit_namespace"
+printf "Testing Linkerd version [%s] namespace [%s]\\n" "$linkerd_version" "$linkerd_namespace"
 
 exit_code=0
 

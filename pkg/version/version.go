@@ -21,7 +21,7 @@ import (
 var Version = "undefined"
 
 const (
-	VersionSubsystemName         = "conduit-version"
+	VersionSubsystemName         = "linkerd-version"
 	CliCheckDescription          = "cli is up-to-date"
 	ControlPlaneCheckDescription = "control plane is up-to-date"
 )
@@ -35,7 +35,7 @@ func MaybePrintVersionAndExit(printVersion bool) {
 		fmt.Println(Version)
 		os.Exit(0)
 	}
-	log.Infof("running conduit version %s", Version)
+	log.Infof("running linkerd version %s", Version)
 }
 
 var httpClientTimeout = 10 * time.Second

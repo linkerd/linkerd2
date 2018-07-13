@@ -25,7 +25,7 @@ type (
 )
 
 func (h *handler) handleIndex(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
-	// when running the dashboard via `conduit dashboard`, serve the index bundle at the right path
+	// when running the dashboard via `linkerd dashboard`, serve the index bundle at the right path
 	pathPfx := proxyPathRegexp.FindString(req.URL.Path)
 	if pathPfx == "" {
 		pathPfx = "/"

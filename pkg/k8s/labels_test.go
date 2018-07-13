@@ -12,7 +12,7 @@ func TestGetOwnerLabels(t *testing.T) {
 	t.Run("Maps proxy labels to prometheus labels", func(t *testing.T) {
 		metadata := meta.ObjectMeta{
 			Labels: map[string]string{
-				ControllerNSLabel:                     "conduit-namespace",
+				ControllerNSLabel:                     "linkerd-namespace",
 				ProxyDeploymentLabel:                  "test-deployment",
 				ProxyReplicationControllerLabel:       "test-replication-controller",
 				ProxyReplicaSetLabel:                  "test-replica-set",
@@ -24,7 +24,7 @@ func TestGetOwnerLabels(t *testing.T) {
 		}
 
 		expectedLabels := map[string]string{
-			"conduit_io_control_plane_ns": "conduit-namespace",
+			"linkerd_io_control_plane_ns": "linkerd-namespace",
 			"deployment":                  "test-deployment",
 			"replication_controller":      "test-replication-controller",
 			"replica_set":                 "test-replica-set",

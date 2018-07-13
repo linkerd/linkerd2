@@ -23,7 +23,7 @@ func TestMain(m *testing.M) {
 }
 
 var (
-	conduitSvcs = []string{
+	linkerdSvcs = []string{
 		"api",
 		"grafana",
 		"prometheus",
@@ -31,7 +31,7 @@ var (
 		"web",
 	}
 
-	conduitDeployReplicas = map[string]int{
+	linkerdDeployReplicas = map[string]int{
 		"controller": 1,
 		"grafana":    1,
 		"prometheus": 1,
@@ -54,32 +54,32 @@ func TestVersionPreInstall(t *testing.T) {
 }
 
 func TestInstall(t *testing.T) {
-	cmd := []string{"install", "--conduit-version", TestHelper.GetVersion()}
+	cmd := []string{"install", "--linkerd-version", TestHelper.GetVersion()}
 	if TestHelper.TLS() {
 		cmd = append(cmd, []string{"--tls", "optional"}...)
-		conduitDeployReplicas["ca-bundle-distributor"] = 1
+		linkerdDeployReplicas["ca-bundle-distributor"] = 1
 	}
 
-	out, err := TestHelper.ConduitRun(cmd...)
+	out, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
-		t.Fatalf("conduit install command failed\n%s", out)
+		t.Fatalf("linkerd install command failed\n%s", out)
 	}
 
-	out, err = TestHelper.KubectlApply(out, TestHelper.GetConduitNamespace())
+	out, err = TestHelper.KubectlApply(out, TestHelper.GetLinkerdNamespace())
 	if err != nil {
 		t.Fatalf("kubectl apply command failed\n%s", out)
 	}
 
 	// Tests Namespace
-	err = TestHelper.CheckIfNamespaceExists(TestHelper.GetConduitNamespace())
+	err = TestHelper.CheckIfNamespaceExists(TestHelper.GetLinkerdNamespace())
 	if err != nil {
 		t.Fatalf("Received unexpected output\n%s", err.Error())
 	}
 
 	// Tests Services
 	err = TestHelper.RetryFor(10*time.Second, func() error {
-		for _, svc := range conduitSvcs {
-			if err := TestHelper.CheckService(TestHelper.GetConduitNamespace(), svc); err != nil {
+		for _, svc := range linkerdSvcs {
+			if err := TestHelper.CheckService(TestHelper.GetLinkerdNamespace(), svc); err != nil {
 				return fmt.Errorf("Error validating service [%s]:\n%s", svc, err)
 			}
 		}
@@ -91,11 +91,11 @@ func TestInstall(t *testing.T) {
 
 	// Tests Pods and Deployments
 	err = TestHelper.RetryFor(1*time.Minute, func() error {
-		for deploy, replicas := range conduitDeployReplicas {
-			if err := TestHelper.CheckPods(TestHelper.GetConduitNamespace(), deploy, replicas); err != nil {
+		for deploy, replicas := range linkerdDeployReplicas {
+			if err := TestHelper.CheckPods(TestHelper.GetLinkerdNamespace(), deploy, replicas); err != nil {
 				return fmt.Errorf("Error validating pods for deploy [%s]:\n%s", deploy, err)
 			}
-			if err := TestHelper.CheckDeployment(TestHelper.GetConduitNamespace(), deploy, replicas); err != nil {
+			if err := TestHelper.CheckDeployment(TestHelper.GetLinkerdNamespace(), deploy, replicas); err != nil {
 				return fmt.Errorf("Error validating deploy [%s]:\n%s", deploy, err)
 			}
 		}
@@ -119,7 +119,7 @@ func TestCheck(t *testing.T) {
 	var out string
 	var err error
 	overallErr := TestHelper.RetryFor(30*time.Second, func() error {
-		out, err = TestHelper.ConduitRun("check", "--expected-version", TestHelper.GetVersion())
+		out, err = TestHelper.LinkerdRun("check", "--expected-version", TestHelper.GetVersion())
 		return err
 	})
 	if overallErr != nil {
@@ -136,10 +136,10 @@ func TestDashboard(t *testing.T) {
 	dashboardPort := 52237
 	dashboardURL := fmt.Sprintf(
 		"http://127.0.0.1:%d/api/v1/namespaces/%s/services/web:http/proxy",
-		dashboardPort, TestHelper.GetConduitNamespace(),
+		dashboardPort, TestHelper.GetLinkerdNamespace(),
 	)
 
-	outputStream, err := TestHelper.ConduitRunStream("dashboard", "-p",
+	outputStream, err := TestHelper.LinkerdRunStream("dashboard", "-p",
 		strconv.Itoa(dashboardPort), "--show", "url")
 	if err != nil {
 		t.Fatalf("Error running command:\n%s", err)
@@ -173,9 +173,9 @@ func TestInject(t *testing.T) {
 		cmd = append(cmd, []string{"--tls", "optional"}...)
 	}
 
-	out, err := TestHelper.ConduitRun(cmd...)
+	out, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
-		t.Fatalf("conduit inject command failed\n%s", out)
+		t.Fatalf("linkerd inject command failed\n%s", out)
 	}
 
 	prefixedNs := TestHelper.GetTestNamespace("smoke-test")

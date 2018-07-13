@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	conduitNS        = "conduitest"
+	controllerNS     = "controllertest"
 	injectedNS       = "injecttest"
 	injectedPodName  = "injected-pod"
 	injectedNSConfig = fmt.Sprintf(`
@@ -36,7 +36,7 @@ func TestCertificateController(t *testing.T) {
 				Name:      injectedPodName,
 				Namespace: injectedNS,
 				Labels: map[string]string{
-					pkgK8s.ControllerNSLabel: conduitNS,
+					pkgK8s.ControllerNSLabel: controllerNS,
 				},
 			},
 		})
@@ -67,7 +67,7 @@ func new(fixtures ...string) (*CertificateController, chan bool, chan struct{}, 
 		return nil, nil, nil, fmt.Errorf("NewFakeAPI returned an error: %s", err)
 	}
 
-	controller, err := NewCertificateController(conduitNS, k8sAPI)
+	controller, err := NewCertificateController(controllerNS, k8sAPI)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("NewCertificateController returned an error: %s", err)
 	}

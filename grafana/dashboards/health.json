@@ -71,14 +71,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "process_virtual_memory_bytes{conduit_io_control_plane_ns=\"$namespace\", job=\"conduit-proxy\"}",
+          "expr": "process_virtual_memory_bytes{linkerd_io_control_plane_ns=\"$namespace\", job=\"linkerd-proxy\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{namespace}}/{{pod}}/virtual",
           "refId": "A"
         },
         {
-          "expr": "process_resident_memory_bytes{conduit_io_control_plane_ns=\"$namespace\", job=\"conduit-proxy\"}",
+          "expr": "process_resident_memory_bytes{linkerd_io_control_plane_ns=\"$namespace\", job=\"linkerd-proxy\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{namespace}}/{{pod}}/resident",
@@ -162,7 +162,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(process_cpu_seconds_total{conduit_io_control_plane_ns=\"$namespace\", job=\"conduit-proxy\"}[20s])) by (namespace, pod)",
+          "expr": "sum(irate(process_cpu_seconds_total{linkerd_io_control_plane_ns=\"$namespace\", job=\"linkerd-proxy\"}[20s])) by (namespace, pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{namespace}}/{{pod}}",
@@ -246,7 +246,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "process_open_fds{conduit_io_control_plane_ns=\"$namespace\", job=\"conduit-proxy\"}",
+          "expr": "process_open_fds{linkerd_io_control_plane_ns=\"$namespace\", job=\"linkerd-proxy\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{namespace}}/{{pod}}",
@@ -960,7 +960,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "go_goroutines{job=\"conduit-controller\"}",
+          "expr": "go_goroutines{job=\"linkerd-controller\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{component}}",
@@ -1044,14 +1044,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "process_resident_memory_bytes{job=\"conduit-controller\"}",
+          "expr": "process_resident_memory_bytes{job=\"linkerd-controller\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{component}}/resident",
           "refId": "A"
         },
         {
-          "expr": "process_virtual_memory_bytes{job=\"conduit-controller\"}",
+          "expr": "process_virtual_memory_bytes{job=\"linkerd-controller\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{component}}/virtual",
@@ -1135,7 +1135,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "process_open_fds{job=\"conduit-controller\"}",
+          "expr": "process_open_fds{job=\"linkerd-controller\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{component}}",
@@ -1219,7 +1219,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "go_threads{job=\"conduit-controller\"}",
+          "expr": "go_threads{job=\"linkerd-controller\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{component}}",
@@ -1303,21 +1303,21 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, sum(rate(http_request_duration_seconds_bucket{job=\"conduit-controller\"}[30s])) by (le, component, code))",
+          "expr": "histogram_quantile(0.5, sum(rate(http_request_duration_seconds_bucket{job=\"linkerd-controller\"}[30s])) by (le, component, code))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "P50 {{component}}/{{code}}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"conduit-controller\"}[30s])) by (le, component, code))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"linkerd-controller\"}[30s])) by (le, component, code))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "P95 {{component}}/{{code}}",
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"conduit-controller\"}[30s])) by (le, component, code))",
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"linkerd-controller\"}[30s])) by (le, component, code))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "P99 {{component}}/{{code}}",
@@ -1430,28 +1430,28 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "go_memstats_alloc_bytes{job=\"conduit-controller\", component=\"$component\"}",
+          "expr": "go_memstats_alloc_bytes{job=\"linkerd-controller\", component=\"$component\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "alloc/{{component}}",
           "refId": "A"
         },
         {
-          "expr": "irate(go_memstats_alloc_bytes_total{job=\"conduit-controller\", component=\"$component\"}[30s])",
+          "expr": "irate(go_memstats_alloc_bytes_total{job=\"linkerd-controller\", component=\"$component\"}[30s])",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "alloc rate/{{component}}",
           "refId": "B"
         },
         {
-          "expr": "go_memstats_stack_inuse_bytes{job=\"conduit-controller\", component=\"$component\"}",
+          "expr": "go_memstats_stack_inuse_bytes{job=\"linkerd-controller\", component=\"$component\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "stack/{{component}}",
           "refId": "C"
         },
         {
-          "expr": "go_memstats_heap_inuse_bytes{job=\"conduit-controller\", component=\"$component\"}",
+          "expr": "go_memstats_heap_inuse_bytes{job=\"linkerd-controller\", component=\"$component\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "heap/{{component}}",
@@ -1535,21 +1535,21 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "go_gc_duration_seconds{job=\"conduit-controller\", quantile=\"0.5\", component=\"$component\"}",
+          "expr": "go_gc_duration_seconds{job=\"linkerd-controller\", quantile=\"0.5\", component=\"$component\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "P50 {{component}}",
           "refId": "A"
         },
         {
-          "expr": "go_gc_duration_seconds{job=\"conduit-controller\", quantile=\"0.75\", component=\"$component\"}",
+          "expr": "go_gc_duration_seconds{job=\"linkerd-controller\", quantile=\"0.75\", component=\"$component\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "P75 {{component}}",
           "refId": "B"
         },
         {
-          "expr": "go_gc_duration_seconds{job=\"conduit-controller\", quantile=\"1\", component=\"$component\"}",
+          "expr": "go_gc_duration_seconds{job=\"linkerd-controller\", quantile=\"1\", component=\"$component\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "Max {{component}}",
@@ -1633,14 +1633,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "irate(grpc_server_msg_sent_total{job=\"conduit-controller\", component=\"$component\"}[30s])",
+          "expr": "irate(grpc_server_msg_sent_total{job=\"linkerd-controller\", component=\"$component\"}[30s])",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "sent/{{component}}/{{grpc_method}}",
           "refId": "A"
         },
         {
-          "expr": "irate(grpc_server_msg_received_total{job=\"conduit-controller\", component=\"$component\"}[30s])",
+          "expr": "irate(grpc_server_msg_received_total{job=\"linkerd-controller\", component=\"$component\"}[30s])",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "received/{{component}}/{{grpc_method}}",
@@ -1706,7 +1706,7 @@
         "multi": false,
         "name": "deployment",
         "options": [],
-        "query": "label_values(request_total{conduit_io_control_plane_component!=\"\"}, deployment)",
+        "query": "label_values(request_total{linkerd_io_control_plane_component!=\"\"}, deployment)",
         "refresh": 2,
         "regex": "",
         "sort": 1,
@@ -1746,7 +1746,7 @@
         "multi": false,
         "name": "namespace",
         "options": [],
-        "query": "label_values(request_total{conduit_io_control_plane_ns!=\"\"},  conduit_io_control_plane_ns)",
+        "query": "label_values(request_total{linkerd_io_control_plane_ns!=\"\"},  linkerd_io_control_plane_ns)",
         "refresh": 2,
         "regex": "",
         "sort": 0,

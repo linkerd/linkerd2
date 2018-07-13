@@ -8,13 +8,13 @@ spec:
   template:
     metadata:
       annotations:
-        conduit.io/created-by: conduit/cli undefined
-        conduit.io/proxy-version: testinjectversion
+        linkerd.io/created-by: linkerd/cli undefined
+        linkerd.io/proxy-version: testinjectversion
       creationTimestamp: null
       labels:
         app: get-test
-        conduit.io/control-plane-ns: conduit
-        conduit.io/proxy-deployment: get-test-deploy-injected-1
+        linkerd.io/control-plane-ns: linkerd
+        linkerd.io/proxy-deployment: get-test-deploy-injected-1
     spec:
       containers:
       - args:
@@ -41,11 +41,11 @@ spec:
         resources: {}
       - env:
         - name: LINKERD2_PROXY_LOG
-          value: warn,conduit_proxy=info
+          value: warn,linkerd2_proxy=info
         - name: LINKERD2_PROXY_BIND_TIMEOUT
           value: 10s
         - name: LINKERD2_PROXY_CONTROL_URL
-          value: tcp://proxy-api.conduit.svc.cluster.local:8086
+          value: tcp://proxy-api.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: LINKERD2_PROXY_METRICS_LISTENER
@@ -60,12 +60,12 @@ spec:
               fieldPath: metadata.namespace
         image: gcr.io/linkerd-io/proxy:testinjectversion
         imagePullPolicy: IfNotPresent
-        name: conduit-proxy
+        name: linkerd-proxy
         ports:
         - containerPort: 4143
-          name: conduit-proxy
+          name: linkerd-proxy
         - containerPort: 4191
-          name: conduit-metrics
+          name: linkerd-metrics
         resources: {}
         securityContext:
           runAsUser: 2102
@@ -82,7 +82,7 @@ spec:
         - 4190,4191
         image: gcr.io/linkerd-io/proxy-init:testinjectversion
         imagePullPolicy: IfNotPresent
-        name: conduit-init
+        name: linkerd-init
         resources: {}
         securityContext:
           capabilities:
@@ -102,13 +102,13 @@ spec:
   template:
     metadata:
       annotations:
-        conduit.io/created-by: conduit/cli undefined
-        conduit.io/proxy-version: testinjectversion
+        linkerd.io/created-by: linkerd/cli undefined
+        linkerd.io/proxy-version: testinjectversion
       creationTimestamp: null
       labels:
         app: get-test
-        conduit.io/control-plane-ns: conduit
-        conduit.io/proxy-deployment: get-test-deploy-injected-2
+        linkerd.io/control-plane-ns: linkerd
+        linkerd.io/proxy-deployment: get-test-deploy-injected-2
     spec:
       containers:
       - args:
@@ -135,11 +135,11 @@ spec:
         resources: {}
       - env:
         - name: LINKERD2_PROXY_LOG
-          value: warn,conduit_proxy=info
+          value: warn,linkerd2_proxy=info
         - name: LINKERD2_PROXY_BIND_TIMEOUT
           value: 10s
         - name: LINKERD2_PROXY_CONTROL_URL
-          value: tcp://proxy-api.conduit.svc.cluster.local:8086
+          value: tcp://proxy-api.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: LINKERD2_PROXY_METRICS_LISTENER
@@ -154,12 +154,12 @@ spec:
               fieldPath: metadata.namespace
         image: gcr.io/linkerd-io/proxy:testinjectversion
         imagePullPolicy: IfNotPresent
-        name: conduit-proxy
+        name: linkerd-proxy
         ports:
         - containerPort: 4143
-          name: conduit-proxy
+          name: linkerd-proxy
         - containerPort: 4191
-          name: conduit-metrics
+          name: linkerd-metrics
         resources: {}
         securityContext:
           runAsUser: 2102
@@ -176,7 +176,7 @@ spec:
         - 4190,4191
         image: gcr.io/linkerd-io/proxy-init:testinjectversion
         imagePullPolicy: IfNotPresent
-        name: conduit-init
+        name: linkerd-init
         resources: {}
         securityContext:
           capabilities:

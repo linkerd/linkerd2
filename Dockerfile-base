@@ -1,6 +1,6 @@
 # A base image for runtimes.
 #
-# This means that all Conduit containers share a common set of tools, and furthermore, they
+# This means that all Linkerd containers share a common set of tools, and furthermore, they
 # are highly cacheable at runtime.
 
 FROM debian:jessie-slim

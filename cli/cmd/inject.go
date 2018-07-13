@@ -55,11 +55,11 @@ func newCmdInject() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "inject [flags] CONFIG-FILE",
-		Short: "Add the Conduit proxy to a Kubernetes config",
-		Long: `Add the Conduit proxy to a Kubernetes config.
+		Short: "Add the Linkerd proxy to a Kubernetes config",
+		Long: `Add the Linkerd proxy to a Kubernetes config.
 
 You can use a config file from stdin by using the '-' argument
-with 'conduit inject'. e.g. curl http://url.to/yml | conduit inject -
+with 'linkerd inject'. e.g. curl http://url.to/yml | linkerd inject -
 	`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
@@ -101,7 +101,7 @@ func runInjectCmd(input io.Reader, errWriter, outWriter io.Writer, options *inje
 	postInjectBuf := &bytes.Buffer{}
 	err := InjectYAML(input, postInjectBuf, options)
 	if err != nil {
-		fmt.Fprintf(errWriter, "Error injecting conduit proxy: %v\n", err)
+		fmt.Fprintf(errWriter, "Error injecting linkerd proxy: %v\n", err)
 		return 1
 	}
 	_, err = io.Copy(outWriter, postInjectBuf)
@@ -120,7 +120,7 @@ func injectObjectMeta(t *metaV1.ObjectMeta, k8sLabels map[string]string, options
 		t.Annotations = make(map[string]string)
 	}
 	t.Annotations[k8s.CreatedByAnnotation] = k8s.CreatedByAnnotationValue()
-	t.Annotations[k8s.ProxyVersionAnnotation] = options.conduitVersion
+	t.Annotations[k8s.ProxyVersionAnnotation] = options.linkerdVersion
 
 	if t.Labels == nil {
 		t.Labels = make(map[string]string)
@@ -172,7 +172,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 	}
 
 	initContainer := v1.Container{
-		Name:                     "conduit-init",
+		Name:                     "linkerd-init",
 		Image:                    options.taggedProxyInitImage(),
 		ImagePullPolicy:          v1.PullPolicy(options.imagePullPolicy),
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
@@ -190,7 +190,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 	}
 
 	sidecar := v1.Container{
-		Name:                     "conduit-proxy",
+		Name:                     "linkerd-proxy",
 		Image:                    options.taggedProxyImage(),
 		ImagePullPolicy:          v1.PullPolicy(options.imagePullPolicy),
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
@@ -199,11 +199,11 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 		},
 		Ports: []v1.ContainerPort{
 			{
-				Name:          "conduit-proxy",
+				Name:          "linkerd-proxy",
 				ContainerPort: int32(options.inboundPort),
 			},
 			{
-				Name:          "conduit-metrics",
+				Name:          "linkerd-metrics",
 				ContainerPort: int32(options.proxyMetricsPort),
 			},
 		},
@@ -229,7 +229,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 		yes := true
 
 		configMapVolume := v1.Volume{
-			Name: "conduit-trust-anchors",
+			Name: "linkerd-trust-anchors",
 			VolumeSource: v1.VolumeSource{
 				ConfigMap: &v1.ConfigMapVolumeSource{
 					LocalObjectReference: v1.LocalObjectReference{Name: k8s.TLSTrustAnchorConfigMapName},
@@ -238,7 +238,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 			},
 		}
 		secretVolume := v1.Volume{
-			Name: "conduit-secrets",
+			Name: "linkerd-secrets",
 			VolumeSource: v1.VolumeSource{
 				Secret: &v1.SecretVolumeSource{
 					SecretName: identity.ToSecretName(),
@@ -247,7 +247,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 			},
 		}
 
-		base := "/var/conduit-io"
+		base := "/var/linkerd-io"
 		configMapBase := base + "/trust-anchors"
 		secretBase := base + "/identity"
 		tlsEnvVars := []v1.EnvVar{
@@ -359,7 +359,7 @@ func injectResource(bytes []byte, options *injectOptions) ([]byte, error) {
 	var DNSNameOverride string
 	k8sLabels := map[string]string{}
 
-	// When injecting the conduit proxy into a conduit controller pod. The conduit proxy's
+	// When injecting the linkerd proxy into a linkerd controller pod. The linkerd proxy's
 	// LINKERD2_PROXY_CONTROL_URL variable must be set to localhost for the following reasons:
 	//	1. According to https://github.com/kubernetes/minikube/issues/1568, minikube has an issue
 	//     where pods are unable to connect to themselves through their associated service IP.

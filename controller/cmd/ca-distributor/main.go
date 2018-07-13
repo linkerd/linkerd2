@@ -15,7 +15,7 @@ import (
 
 func main() {
 	metricsAddr := flag.String("metrics-addr", ":9997", "address to serve scrapable metrics on")
-	controllerNamespace := flag.String("controller-namespace", "conduit", "namespace in which Conduit is installed")
+	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
 	logLevel := flag.String("log-level", log.InfoLevel.String(), "log level, must be one of: panic, fatal, error, warn, info, debug")
 	printVersion := version.VersionFlag()

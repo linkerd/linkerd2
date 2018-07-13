@@ -20,7 +20,7 @@ func TestDashboardAvailability(t *testing.T) {
 			},
 		}
 
-		mockPublicApi := &public.MockConduitApiClient{
+		mockPublicApi := &public.MockApiClient{
 			SelfCheckResponseToReturn: mockSelfCheckResponse,
 		}
 
@@ -44,7 +44,7 @@ func TestDashboardAvailability(t *testing.T) {
 			},
 		}
 
-		mockPublicApi := &public.MockConduitApiClient{
+		mockPublicApi := &public.MockApiClient{
 			SelfCheckResponseToReturn: mockSelfCheckResponse,
 		}
 
@@ -59,7 +59,7 @@ func TestDashboardAvailability(t *testing.T) {
 	})
 
 	t.Run("Return false when public API Self Check fails to make a request", func(t *testing.T) {
-		mockPublicApi := &public.MockConduitApiClient{
+		mockPublicApi := &public.MockApiClient{
 			ErrorToReturn: errors.New("expected"),
 		}
 		dashboardAvailable, err := isDashboardAvailable(mockPublicApi)
