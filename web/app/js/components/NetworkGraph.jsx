@@ -13,9 +13,12 @@ const defaultSvgHeight = 325;
 const margin = { top: 0, right: 0, bottom: 10, left: 0 };
 
 const simulation = d3.forceSimulation()
-  .force("link", d3.forceLink().id(function(d) { return d.id; }).distance(140))
-  .force('charge', d3.forceManyBody().strength(-20))
-  .force('center', d3.forceCenter(defaultSvgWidth / 2, defaultSvgHeight / 2));
+  .force("link",
+    d3.forceLink()
+      .id(d => d.id)
+      .distance(140))
+  .force("charge", d3.forceManyBody().strength(-20))
+  .force("center", d3.forceCenter(defaultSvgWidth / 2, defaultSvgHeight / 2));
 
 export class NetworkGraphBase extends React.Component {
   static defaultProps = {
@@ -65,7 +68,10 @@ export class NetworkGraphBase extends React.Component {
     });
 
     let nodes = _.map(_.uniq(nodeList), n => ({ id: n, r: 15 }));
-    return {"links": links, "nodes": nodes};
+    return {
+      links,
+      nodes
+    };
   }
 
   drawGraph() {
@@ -79,6 +85,13 @@ export class NetworkGraphBase extends React.Component {
   }
 
   drawGraphComponents(links, nodes) {
+    if (_.isEmpty(nodes)) {
+      d3.select(".network-graph-container").select("svg").attr("height", 0);
+      return;
+    } else {
+      d3.select(".network-graph-container").select("svg").attr("height", defaultSvgHeight);
+    }
+
     this.svg.append("svg:defs").selectAll("marker")
       .data(links)      // Different link/path types can be defined here
       .enter().append("svg:marker")    // This section adds in the arrows
@@ -143,7 +156,9 @@ export class NetworkGraphBase extends React.Component {
   }
 
   dragstarted = d => {
-    if (!d3.event.active) {simulation.alphaTarget(0.3).restart();}
+    if (!d3.event.active) {
+      simulation.alphaTarget(0.3).restart();
+    }
     d.fx = d.x;
     d.fy = d.y;
   }
@@ -154,7 +169,9 @@ export class NetworkGraphBase extends React.Component {
   }
 
   dragended = d => {
-    if (!d3.event.active) {simulation.alphaTarget(0);}
+    if (!d3.event.active) {
+      simulation.alphaTarget(0);
+    }
     d.fx = null;
     d.fy = null;
   }
