@@ -5,11 +5,11 @@ RUN apt-get update && apt-get install -y ca-certificates
 WORKDIR /build
 COPY bin/fetch-proxy bin/fetch-proxy
 ARG PROXY_VERSION
-RUN bin/fetch-proxy $PROXY_VERSION
+RUN bin/fetch-proxy $PROXY_VERSION > version.txt
 
 FROM $RUNTIME_IMAGE as runtime
 WORKDIR /linkerd
 COPY --from=fetch /build/target/proxy/linkerd2-proxy ./linkerd2-proxy
-COPY --from=fetch /build/target/proxy/version.txt ./linkerd2-proxy-version.txt
+COPY --from=fetch /build/version.txt ./linkerd2-proxy-version.txt
 ENV LINKERD2_PROXY_LOG=warn,linkerd2_proxy=info
 ENTRYPOINT ["./linkerd2-proxy"]

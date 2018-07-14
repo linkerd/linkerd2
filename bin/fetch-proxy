@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # If the first argument to this script is "latest" or unset, it fetches the
-# latest proxy binary via build.l5d.io/linkerd2-proxy/latest.txt. If it's set
-# to a 7-character commit sha from the master branch of the linkerd2-proxy repo,
-# it will fetch that binary instead.
+# latest proxy binary via build.l5d.io/linkerd2-proxy/latest.txt. If it's set to
+# a commit sha from the master branch of the linkerd2-proxy repo, it will fetch
+# the binary matching that sha instead.
 
 set -eu
 
@@ -23,8 +23,10 @@ fi
 filename="linkerd2-proxy-${version}.tar.gz"
 archive="$builddir/$filename"
 
-mkdir -p "$builddir"
-curl -vsL "$builddir" "https://build.l5d.io/linkerd2-proxy/$filename" > "$archive"
+if [ ! -f "$archive" ]; then
+  mkdir -p "$builddir"
+  curl -vsL "$builddir" "https://build.l5d.io/linkerd2-proxy/$filename" > "$archive"
+fi
 
 if [ -n "$latest_sha" ]; then
   sha=$(sha256sum "$archive" | awk '{print $1}')
@@ -34,6 +36,7 @@ if [ -n "$latest_sha" ]; then
   fi
 fi
 
-tar -C "$builddir" -zxvf "$archive"
+tar -C "$builddir" -zxvf "$archive" >&2
 mv "$builddir/linkerd2-proxy-$version/bin/linkerd2-proxy" "$builddir"
-echo "$version" > "$builddir/version.txt"
+rm -r "$archive" "$builddir/linkerd2-proxy-$version"
+echo "$version"
