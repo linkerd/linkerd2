@@ -1,7 +1,6 @@
 #!/bin/bash
 
 set -eu
-
 cd "$(pwd -P)"
 
 # Builds CLI binary for current platform only and outside docker to speed up things. Suitable for local development.
