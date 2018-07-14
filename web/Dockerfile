@@ -24,17 +24,17 @@ ENV NODE_ENV production
 RUN $ROOT/bin/web build
 
 ## compile go server
-FROM gcr.io/linkerd-io/go-deps:817f8e11 as golang
+FROM gcr.io/linkerd-io/go-deps:baf323e4 as golang
 WORKDIR /go/src/github.com/linkerd/linkerd2
 COPY web web
 COPY controller controller
 COPY pkg pkg
 
 # Cache a build without version info
-RUN CGO_ENABLED=0 GOOS=linux go build -installsuffix cgo -o web/web ./web
+RUN CGO_ENABLED=0 GOOS=linux go build -o web/web ./web
 
 ARG LINKERD_VERSION
-RUN CGO_ENABLED=0 GOOS=linux go build -installsuffix cgo -o web/web -ldflags "-X github.com/linkerd/linkerd2/pkg/version.Version=$LINKERD_VERSION" ./web
+RUN CGO_ENABLED=0 GOOS=linux go build -o web/web -ldflags "-X github.com/linkerd/linkerd2/pkg/version.Version=$LINKERD_VERSION" ./web
 
 ## package it all up
 FROM gcr.io/linkerd-io/base:2017-10-30.01
