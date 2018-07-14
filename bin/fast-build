@@ -2,12 +2,6 @@
 
 set -eu
 
-if [[ "${1:-}" = "--no-dep" ]]; then
-dep_ensure=
-else
-dep_ensure=1
-fi
-
 cd "$(pwd -P)"
 
 # Builds CLI binary for current platform only and outside docker to speed up things. Suitable for local development.
@@ -27,7 +21,7 @@ fi
 
 (
     cd $rootdir
-    if [ ! -z ${dep_ensure} ]; then
+    if [ -z "${LINKERD_SKIP_DEP:-}" ]; then
       $bindir/dep ensure -vendor-only -v
     fi
     target="target/cli/${host_platform}/linkerd"
