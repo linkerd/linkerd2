@@ -1,63 +1,94 @@
-![conduit][logo]
+![Linkerd2][logo]
 
 [![Build Status][ci-badge]][ci]
 [![GitHub license][license-badge]](LICENSE)
 [![Slack Status][slack-badge]][slack]
 
-:balloon: Welcome to Conduit! :wave:
+:balloon: Welcome to Linkerd2! :wave:
 
-Conduit is an ultralight service mesh for Kubernetes. It features a minimalist
-control plane written in Go, and a native proxy data plane written in
-[Rust][rust] that boasts the performance of C without the heartbleed.
+Note: this project is currently in the middle of a migration from the old name
+(Conduit) to the new name (Linkerd2). While this transition is ongoing, there
+will be references to Conduit that don't make a lot of sense. Not to worry,
+we're working on it! For more information, check out the
+[announcement][announcement].
 
-Conduit is **alpha**. It is capable of proxying all TCP traffic, including
-WebSockets and HTTP tunneling, and reporting top-line metrics (success rates,
+Linkerd2 is an ultralight *service mesh*, designed to make modern applications
+safe and sane by transparently adding service discovery, load balancing, failure
+handling, instrumentation, and routing to all inter-service communication.
+
+Linkerd2 (pronouned "linker-DEE-two") acts as a transparent
+HTTP/gRPC/thrift/tcp/etc proxy, and can be deployed alongside existing
+applications regardless of what language they're written in. It works with many
+common protocols and utilizes Kubernetes as a backend for service discovery.
+
+It is separated into two major components: the control plane and the data plane.
+The control plane interacts with the service discovery backend, orchestrates the
+data plane and is written in [Go][golang]. The data plane runs alongside
+existing applications, provides the proxy that manages traffic itself and is
+written in [Rust][rust].
+
+Currently, Linkerd2 is capable of proxying all TCP traffic, including WebSockets
+and HTTP tunneling, along with reporting top-line metrics (success rates,
 latencies, etc) for all HTTP, HTTP/2, and gRPC traffic.
+
+Linkerd is hosted by the Cloud Native Computing Foundation ([CNCF][cncf]).
 
 ## Get involved
 
-* [conduit-users mailing list][conduit-users]: Conduit user discussion mailing list.
-* [conduit-dev mailing list][conduit-dev]: Conduit development discussion mailing list.
-* [conduit-announce mailing list][conduit-announce]: Conduit announcements only (low volume).
+* [conduit-users mailing list][conduit-users]: Linkerd2 user discussion mailing
+  list.
+* [conduit-dev mailing list][conduit-dev]: Linkerd2 development discussion
+  mailing list.
+* [conduit-announce mailing list][conduit-announce]: Linkerd2 announcements only
+  (low volume).
 * Follow [@RunConduit][twitter] on Twitter.
 * Join the #conduit channel on the [Linkerd Slack][slack].
 
 ## Documentation
 
-View [Conduit docs][conduit-docs] for more a more comprehensive guide to
-getting started, or view the full [Conduit roadmap][roadmap].
+View [Conduit docs][conduit-docs] for more a more comprehensive guide to getting
+started, or view the full [Conduit roadmap][roadmap].
 
 ## Getting started with Conduit
 
 1. Install the Conduit CLI with `curl https://run.conduit.io/install | sh `.
 
-2. Add `$HOME/.conduit/bin` to your `PATH`.
+1. Add `$HOME/.conduit/bin` to your `PATH`.
 
-3. Install Conduit into your Kubernetes cluster with:
-  `conduit install | kubectl apply -f -`.
+1. Install Conduit into your Kubernetes cluster with `conduit install | kubectl
+   apply -f -`.
 
-4. Verify that the installation succeeded with `conduit check`.
+1. Verify that the installation succeeded with `conduit check`.
 
-5. Explore the Conduit controller with `conduit dashboard`.
+1. Explore the Conduit controller with `conduit dashboard`.
 
-6. Optionally, install a [demo application][conduit-demo] to run with Conduit.
+1. Optionally, install a [demo application][conduit-demo] to run with Conduit.
 
-7. Add [your own service][conduit-inject] to the Conduit mesh!
+1. Add [your own service][conduit-inject] to the Conduit mesh!
 
 ## Working in this repo ##
 
 [`BUILD.md`](BUILD.md) includes general information on how to work in this repo.
 
+We :heart: pull requests! See [`CONTRIBUTING.md`](CONTRIBUTING.md) for info on
+contributing changes.
+
+## Dependencies ##
+
+There are some projects used by Linkerd2 that are not part of this repo.
+
+* [linkerd2-proxy][proxy] -- High-performance data plane, injected as a sidecar
+  with every service.
+* [linkerd2-proxy-api][proxy-api] -- gRPC API bindings for the proxy.
 
 ## Code of conduct
 
 This project is for everyone. We ask that our users and contributors take a few
 minutes to review our [code of conduct][coc].
 
-
 ## License
 
-Conduit is copyright 2018 Buoyant, Inc. All rights reserved.
+Copyright 2018, Linkerd Authors. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use
 these files except in compliance with the License. You may obtain a copy of the
@@ -71,8 +102,10 @@ CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License.
 
 <!-- refs -->
-[ci]: https://travis-ci.org/runconduit/conduit
-[ci-badge]: https://travis-ci.org/runconduit/conduit.svg?branch=master
+[announcement]: https://blog.conduit.io/2018/07/06/conduit-0-5-and-the-future/
+[ci]: https://travis-ci.org/linkerd/linkerd2
+[ci-badge]: https://travis-ci.org/linkerd/linkerd2.svg?branch=master
+[cncf]: https://www.cncf.io/
 [coc]: https://github.com/linkerd/linkerd/wiki/Linkerd-code-of-conduct
 [conduit-announce]: https://groups.google.com/forum/#!forum/conduit-announce
 [conduit-demo]: https://conduit.io/getting-started/#install-the-demo-app
@@ -81,8 +114,11 @@ specific language governing permissions and limitations under the License.
 [conduit-docs]: https://conduit.io/docs/
 [conduit-users]: https://groups.google.com/forum/#!forum/conduit-users
 <!-- [examples]: https://github.com/runconduit/conduit-examples -->
+[golang]: https://golang.org/
 [license-badge]: https://img.shields.io/github/license/linkerd/linkerd.svg
-[logo]: https://user-images.githubusercontent.com/240738/33589722-649152de-d92f-11e7-843a-b078ac889a39.png
+[logo]: https://user-images.githubusercontent.com/9226/33582867-3e646e02-d90c-11e7-85a2-2e238737e859.png
+[proxy]: https://github.com/linkerd/linkerd2-proxy
+[proxy-api]: https://github.com/linkerd/linkerd2-proxy-api
 [roadmap]: https://conduit.io/roadmap
 [releases]: https://github.com/linkerd/linkerd2/releases
 [rust]: https://www.rust-lang.org/
