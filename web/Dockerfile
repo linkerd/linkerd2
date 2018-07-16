@@ -30,15 +30,15 @@ COPY web web
 COPY controller controller
 COPY pkg pkg
 
-# Cache a build without version info
 RUN CGO_ENABLED=0 GOOS=linux go build -o web/web ./web
-
-ARG LINKERD_VERSION
-RUN CGO_ENABLED=0 GOOS=linux go build -o web/web -ldflags "-X github.com/linkerd/linkerd2/pkg/version.Version=$LINKERD_VERSION" ./web
 
 ## package it all up
 FROM gcr.io/linkerd-io/base:2017-10-30.01
 COPY --from=golang /go/src/github.com/linkerd/linkerd2/web .
 RUN mkdir -p ./dist
 COPY --from=webpack-bundle /go/src/github.com/linkerd/linkerd2/web/app/dist ./dist
+
+ARG LINKERD_VERSION
+ENV LINKERD_VERSION=${LINKERD_VERSION}
+
 ENTRYPOINT ["./web"]

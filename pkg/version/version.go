@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"time"
 
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
@@ -15,13 +16,27 @@ import (
 
 // DO NOT EDIT
 // This var is updated automatically as part of the build process
-var Version = "undefined"
+var Version = undefinedVersion
 
 const (
+	undefinedVersion             = "undefined"
 	VersionSubsystemName         = "linkerd-version"
 	CliCheckDescription          = "cli is up-to-date"
 	ControlPlaneCheckDescription = "control plane is up-to-date"
 )
+
+func init() {
+	// Use `$LINKERD_VERSION` as the version only if the version wasn't set at
+	// link time to minimize the chance of using it unintentionally. This
+	// mechanism allows the version to be bound at container build time instead
+	// of at execurtable link time to improve incremental rebuild efficiency.
+	if Version == undefinedVersion {
+		override := os.Getenv("LINKERD_VERSION")
+		if override != "" {
+			Version = override
+		}
+	}
+}
 
 var httpClientTimeout = 10 * time.Second
 
