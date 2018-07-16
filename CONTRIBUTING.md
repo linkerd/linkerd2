@@ -1,12 +1,12 @@
-# Contributing to Conduit #
+# Contributing to Linkerd2 #
 
 :balloon: Thanks for your help improving the project!
 
 ## Getting Help ##
 
-If you have a question about Conduit or have encountered problems using it,
+If you have a question about Linkerd2 or have encountered problems using it,
 start by [asking a question in the forums][discourse] or join us in the
-[#conduit Slack channel][slack].
+(yet-to-be-renamed) [#conduit Slack channel][slack].
 
 ## Certificate of Origin ##
 
@@ -35,8 +35,8 @@ Do you have an improvement?
 3. Fork this repo, develop and test your code changes. See the project's [README](README.md) for further information about working in this repository.
 4. Submit a pull request against this repo's `master` branch.
 5. Your branch may be merged once all configured checks pass, including:
-    - 2 code review approvals, at least 1 of which is from a [runconduit organization member][members].
     - The branch has passed tests in CI.
+    - A review from appropriate maintainers (see [MAINTAINERS.md](MAINTAINERS.md) and [GOVERNANCE.md](GOVERNANCE.md))
 
 ## Committing ##
 
@@ -99,5 +99,4 @@ changes should include before- and after- benchmark results.
 
 [discourse]: https://discourse.linkerd.io/c/conduit
 [issue]: https://github.com/linkerd/linkerd2/issues/new
-[members]: https://github.com/orgs/runconduit/people
 [slack]: http://slack.linkerd.io/
