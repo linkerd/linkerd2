@@ -3,14 +3,13 @@ title = "Get involved"
 docpage = true
 [menu.docs]
   parent = "get-involved"
-
 +++
 
-We're really excited to welcome Contributors to [Conduit](https://github.com/linkerd/linkerd2)!
+We're really excited to welcome Contributors to [Linkerd](https://github.com/linkerd/linkerd2)!
 
 There are several ways to get involved:
 
-- Conduit on [GitHub](https://github.com/linkerd/linkerd2)
+- Linkerd on [GitHub](https://github.com/linkerd/linkerd2)
 - Join us on the #conduit channel in [Linkerd slack](https://slack.linkerd.io/)
 - Join the mailing lists
   - Users list: [conduit-users@googlegroups.com](https://groups.google.com/forum/#!forum/conduit-users)
