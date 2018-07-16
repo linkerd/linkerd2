@@ -16,7 +16,7 @@
   "gnetId": null,
   "graphTooltip": 1,
   "id": null,
-  "iteration": 1531434683595,
+  "iteration": 1531764114061,
   "links": [],
   "panels": [
     {
@@ -675,7 +675,7 @@
       "type": "text"
     },
     {
-      "collapsed": false,
+      "collapsed": true,
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -683,301 +683,302 @@
         "y": 17.8
       },
       "id": 59,
-      "panels": [],
+      "panels": [
+        {
+          "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">rc/$inbound</span>\n</div>",
+          "gridPos": {
+            "h": 2,
+            "w": 24,
+            "x": 0,
+            "y": 18.8
+          },
+          "id": 39,
+          "links": [],
+          "mode": "html",
+          "title": "",
+          "transparent": true,
+          "type": "text"
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "prometheus",
+          "fill": 1,
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 0,
+            "y": 20.8
+          },
+          "id": 36,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": false,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
+          "nullPointMode": "null",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "sum(irate(response_total{classification=\"success\", replication_controller!=\"\", replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}[30s])) by (replication_controller, pod) / sum(irate(response_total{replication_controller!=\"\", replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}[30s])) by (replication_controller, pod)",
+              "format": "time_series",
+              "instant": false,
+              "intervalFactor": 1,
+              "legendFormat": "po/{{pod}}",
+              "refId": "A"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "SUCCESS RATE",
+          "tooltip": {
+            "shared": true,
+            "sort": 2,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "decimals": null,
+              "format": "percentunit",
+              "label": null,
+              "logBase": 1,
+              "max": "1",
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "prometheus",
+          "fill": 0,
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 8,
+            "y": 20.8
+          },
+          "id": 22,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": false,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
+          "nullPointMode": "null",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "sum(irate(request_total{replication_controller!=\"\", replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\", tls=\"true\"}[30s])) by (replication_controller, pod)",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "🔒po/{{pod}}",
+              "refId": "A"
+            },
+            {
+              "expr": "sum(irate(request_total{replication_controller!=\"\", replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\", tls!=\"true\"}[30s])) by (replication_controller, pod)",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "po/{{pod}}",
+              "refId": "B"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "REQUEST RATE",
+          "tooltip": {
+            "shared": true,
+            "sort": 2,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "decimals": null,
+              "format": "rps",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": "0",
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "prometheus",
+          "fill": 1,
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 16,
+            "y": 20.8
+          },
+          "id": 29,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": false,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
+          "nullPointMode": "null",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{replication_controller!=\"\", replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}[30s])) by (le, replication_controller))",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "P50 rc/{{replication_controller}}",
+              "refId": "A"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{replication_controller!=\"\", replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}[30s])) by (le, replication_controller))",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "P95 rc/{{replication_controller}}",
+              "refId": "B"
+            },
+            {
+              "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{replication_controller!=\"\", replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}[30s])) by (le, replication_controller))",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "P99 rc/{{replication_controller}}",
+              "refId": "C"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "LATENCY",
+          "tooltip": {
+            "shared": true,
+            "sort": 2,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "ms",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        }
+      ],
       "repeat": "inbound",
       "title": "rc/$inbound",
       "type": "row"
-    },
-    {
-      "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">rc/$inbound</span>\n</div>",
-      "gridPos": {
-        "h": 2,
-        "w": 24,
-        "x": 0,
-        "y": 18.8
-      },
-      "id": 39,
-      "links": [],
-      "mode": "html",
-      "title": "",
-      "transparent": true,
-      "type": "text"
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "prometheus",
-      "fill": 1,
-      "gridPos": {
-        "h": 7,
-        "w": 8,
-        "x": 0,
-        "y": 20.8
-      },
-      "id": 36,
-      "legend": {
-        "avg": false,
-        "current": false,
-        "max": false,
-        "min": false,
-        "show": false,
-        "total": false,
-        "values": false
-      },
-      "lines": true,
-      "linewidth": 2,
-      "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "sum(irate(response_total{classification=\"success\", replication_controller!=\"\", replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}[30s])) by (replication_controller, pod) / sum(irate(response_total{replication_controller!=\"\", replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}[30s])) by (replication_controller, pod)",
-          "format": "time_series",
-          "instant": false,
-          "intervalFactor": 1,
-          "legendFormat": "po/{{pod}}",
-          "refId": "A"
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "SUCCESS RATE",
-      "tooltip": {
-        "shared": true,
-        "sort": 2,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "decimals": null,
-          "format": "percentunit",
-          "label": null,
-          "logBase": 1,
-          "max": "1",
-          "min": null,
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "prometheus",
-      "fill": 0,
-      "gridPos": {
-        "h": 7,
-        "w": 8,
-        "x": 8,
-        "y": 20.8
-      },
-      "id": 22,
-      "legend": {
-        "avg": false,
-        "current": false,
-        "max": false,
-        "min": false,
-        "show": false,
-        "total": false,
-        "values": false
-      },
-      "lines": true,
-      "linewidth": 2,
-      "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "sum(irate(request_total{replication_controller!=\"\", replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\", tls=\"true\"}[30s])) by (replication_controller, pod)",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "🔒po/{{pod}}",
-          "refId": "A"
-        },
-        {
-          "expr": "sum(irate(request_total{replication_controller!=\"\", replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\", tls!=\"true\"}[30s])) by (replication_controller, pod)",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "po/{{pod}}",
-          "refId": "B"
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "REQUEST RATE",
-      "tooltip": {
-        "shared": true,
-        "sort": 2,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "decimals": null,
-          "format": "rps",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": "0",
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "prometheus",
-      "fill": 1,
-      "gridPos": {
-        "h": 7,
-        "w": 8,
-        "x": 16,
-        "y": 20.8
-      },
-      "id": 29,
-      "legend": {
-        "avg": false,
-        "current": false,
-        "max": false,
-        "min": false,
-        "show": false,
-        "total": false,
-        "values": false
-      },
-      "lines": true,
-      "linewidth": 2,
-      "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{replication_controller!=\"\", replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}[30s])) by (le, replication_controller))",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "P50 rc/{{replication_controller}}",
-          "refId": "A"
-        },
-        {
-          "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{replication_controller!=\"\", replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}[30s])) by (le, replication_controller))",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "P95 rc/{{replication_controller}}",
-          "refId": "B"
-        },
-        {
-          "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{replication_controller!=\"\", replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}[30s])) by (le, replication_controller))",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "P99 rc/{{replication_controller}}",
-          "refId": "C"
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "LATENCY",
-      "tooltip": {
-        "shared": true,
-        "sort": 2,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "ms",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
     },
     {
       "collapsed": false,
@@ -985,7 +986,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 27.8
+        "y": 18.8
       },
       "id": 34,
       "panels": [],
@@ -999,7 +1000,7 @@
         "h": 2.2,
         "w": 24,
         "x": 0,
-        "y": 28.8
+        "y": 19.8
       },
       "id": 32,
       "links": [],
@@ -1019,7 +1020,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 31
+        "y": 22
       },
       "id": 77,
       "legend": {
@@ -1104,7 +1105,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 31
+        "y": 22
       },
       "id": 78,
       "legend": {
@@ -1195,7 +1196,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 31
+        "y": 22
       },
       "id": 79,
       "legend": {
@@ -1274,7 +1275,7 @@
         "h": 2.2,
         "w": 24,
         "x": 0,
-        "y": 38
+        "y": 29
       },
       "id": 80,
       "links": [],
@@ -1289,7 +1290,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 40.2
+        "y": 31.2
       },
       "id": 27,
       "panels": [
