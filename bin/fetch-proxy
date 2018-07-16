@@ -39,4 +39,5 @@ fi
 tar -C "$builddir" -zxvf "$archive" >&2
 mv "$builddir/linkerd2-proxy-$version/bin/linkerd2-proxy" "$builddir"
 rm -r "$archive" "$builddir/linkerd2-proxy-$version"
-echo "$version"
+mv "$builddir/linkerd2-proxy" "$builddir/linkerd2-proxy-$version"
+echo "$builddir/linkerd2-proxy-$version"
