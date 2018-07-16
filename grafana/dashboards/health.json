@@ -16,7 +16,7 @@
   "gnetId": null,
   "graphTooltip": 1,
   "id": null,
-  "iteration": 1529950676425,
+  "iteration": 1531764407999,
   "links": [],
   "panels": [
     {
@@ -314,7 +314,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 11.4
+        "y": 11.399999999999999
       },
       "id": 19,
       "panels": [],
@@ -323,12 +323,12 @@
       "type": "row"
     },
     {
-      "content": "<div>\n  <img src=\"https://conduit.io/favicon.png\" style=\"baseline; height:40px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">deploy/$deployment</span>\n</div>",
+      "content": "<div>\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"baseline; height:40px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">deploy/$deployment</span>\n</div>",
       "gridPos": {
         "h": 2.2,
         "w": 24,
         "x": 0,
-        "y": 12.4
+        "y": 12.399999999999999
       },
       "id": 21,
       "links": [],
@@ -348,7 +348,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 14.6
+        "y": 14.599999999999998
       },
       "id": 23,
       "legend": {
@@ -432,7 +432,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 14.6
+        "y": 14.599999999999998
       },
       "id": 24,
       "legend": {
@@ -516,7 +516,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 14.6
+        "y": 14.599999999999998
       },
       "id": 25,
       "legend": {
@@ -609,7 +609,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 21.6
+        "y": 21.599999999999998
       },
       "id": 339,
       "panels": [],
@@ -622,7 +622,7 @@
         "h": 2.2,
         "w": 24,
         "x": 0,
-        "y": 22.6
+        "y": 22.599999999999998
       },
       "id": 340,
       "links": [],
@@ -637,17 +637,17 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 24.8
+        "y": 24.799999999999997
       },
       "id": 179,
       "panels": [
         {
-          "content": "<div>\n  <img src=\"https://conduit.io/favicon.png\" style=\"baseline; height:40px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">deploy/$deployment</span>\n</div>",
+          "content": "<div>\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"baseline; height:40px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">deploy/$deployment</span>\n</div>",
           "gridPos": {
             "h": 2.2,
             "w": 24,
             "x": 0,
-            "y": 34.8
+            "y": 56.400000000000006
           },
           "id": 282,
           "links": [],
@@ -662,13 +662,13 @@
           "bars": false,
           "dashLength": 10,
           "dashes": false,
-          "datasource": null,
+          "datasource": "prometheus",
           "fill": 1,
           "gridPos": {
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 37
+            "y": 58.60000000000001
           },
           "id": 227,
           "legend": {
@@ -745,13 +745,13 @@
           "bars": false,
           "dashLength": 10,
           "dashes": false,
-          "datasource": null,
+          "datasource": "prometheus",
           "fill": 0,
           "gridPos": {
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 37
+            "y": 58.60000000000001
           },
           "id": 132,
           "legend": {
@@ -837,12 +837,12 @@
             "mode": "spectrum"
           },
           "dataFormat": "timeseries",
-          "datasource": null,
+          "datasource": "prometheus",
           "gridPos": {
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 37
+            "y": 58.60000000000001
           },
           "heatmap": {},
           "highlightCards": true,
@@ -851,13 +851,6 @@
             "show": false
           },
           "links": [],
-          "scopedVars": {
-            "deployment": {
-              "selected": false,
-              "text": "controller",
-              "value": "controller"
-            }
-          },
           "targets": [
             {
               "expr": "tcp_connection_duration_ms_bucket{deployment=\"$deployment\", namespace=\"$namespace\", direction=\"inbound\"}",
@@ -901,7 +894,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 25.8
+        "y": 25.799999999999997
       },
       "id": 90,
       "panels": [],
@@ -914,7 +907,7 @@
         "h": 2.2,
         "w": 24,
         "x": 0,
-        "y": 26.8
+        "y": 26.799999999999997
       },
       "id": 27,
       "links": [],
@@ -934,7 +927,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 29
+        "y": 28.999999999999996
       },
       "id": 2,
       "legend": {
@@ -1018,7 +1011,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 29
+        "y": 28.999999999999996
       },
       "id": 5,
       "legend": {
@@ -1109,7 +1102,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 29
+        "y": 28.999999999999996
       },
       "id": 7,
       "legend": {
@@ -1379,7 +1372,7 @@
       "type": "row"
     },
     {
-      "content": "<div>\n  <img src=\"https://conduit.io/favicon.png\" style=\"baseline; height:40px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">$component</span>\n</div>",
+      "content": "<div>\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"baseline; height:40px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">$component</span>\n</div>",
       "gridPos": {
         "h": 2.2,
         "w": 24,
@@ -1692,7 +1685,7 @@
   "schemaVersion": 16,
   "style": "dark",
   "tags": [
-    "conduit"
+    "linkerd"
   ],
   "templating": {
     "list": [
@@ -1742,7 +1735,7 @@
         "datasource": "prometheus",
         "hide": 0,
         "includeAll": false,
-        "label": "Conduit Namespace",
+        "label": "Linkerd Namespace",
         "multi": false,
         "name": "namespace",
         "options": [],
@@ -1788,7 +1781,7 @@
     ]
   },
   "timezone": "",
-  "title": "Conduit Health",
+  "title": "Linkerd Health",
   "uid": "Og9nanzmk",
-  "version": 3
+  "version": 1
 }

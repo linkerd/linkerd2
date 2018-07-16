@@ -16,11 +16,11 @@
   "gnetId": null,
   "graphTooltip": 1,
   "id": null,
-  "iteration": 1524860857295,
+  "iteration": 1531434418636,
   "links": [],
   "panels": [
     {
-      "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://conduit.io/favicon.png\" style=\"height:32px;\"/>&nbsp;\n  <span style=\"font-size: 32px\">po/$pod</span>\n</div>",
+      "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"height:32px;\"/>&nbsp;\n  <span style=\"font-size: 32px\">po/$pod</span>\n</div>",
       "gridPos": {
         "h": 2.4,
         "w": 24,
@@ -394,7 +394,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 8.6
+        "y": 8.600000000000001
       },
       "id": 67,
       "legend": {
@@ -479,7 +479,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 8.6
+        "y": 8.600000000000001
       },
       "id": 2,
       "legend": {
@@ -571,7 +571,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 8.6
+        "y": 8.600000000000001
       },
       "id": 68,
       "legend": {
@@ -666,7 +666,7 @@
         "h": 2.2,
         "w": 24,
         "x": 0,
-        "y": 15.6
+        "y": 15.600000000000001
       },
       "id": 80,
       "links": [],
@@ -1544,7 +1544,7 @@
   "schemaVersion": 16,
   "style": "dark",
   "tags": [
-    "conduit"
+    "linkerd"
   ],
   "templating": {
     "list": [
@@ -1620,7 +1620,7 @@
     ]
   },
   "timezone": "",
-  "title": "Conduit Pod",
+  "title": "Linkerd Pod",
   "uid": "VleHJpWmk",
   "version": 1
 }

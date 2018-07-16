@@ -16,11 +16,11 @@
   "gnetId": null,
   "graphTooltip": 1,
   "id": null,
-  "iteration": 1524861055004,
+  "iteration": 1531431143257,
   "links": [],
   "panels": [
     {
-      "content": "<div>\n  <div style=\"position: absolute; top: 0, left: 0\">\n    <a href=\"https://conduit.io\" target=\"_blank\"><img src=\"https://conduit.io/images/conduit-primary-white.svg\" style=\"height: 30px;\"></a>\n  </div>\n  <div style=\"position: absolute; top: 0; right: 0; font-size: 15px\">\n    <a href=\"https://conduit.io\" target=\"_blank\">Conduit</a> is a next-generation ultralight service mesh for Kubernetes.\n    <br>\n    Need help? Visit <a href=\"https://conduit.io\" target=\"_blank\">conduit.io</a>.\n  </div>\n</div>",
+      "content": "<div>\n  <div style=\"position: absolute; top: 0, left: 0\">\n    <a href=\"https://linkerd.io\" target=\"_blank\"><img src=\"https://linkerd.io/images/identity/svg/linkerd_primary_color_white.svg\" style=\"height: 30px;\"></a>\n  </div>\n  <div style=\"position: absolute; top: 0; right: 0; font-size: 15px\">\n    <a href=\"https://linkerd.io\" target=\"_blank\">Linkerd</a> is a next-generation ultralight service mesh for Kubernetes.\n    <br>\n    Need help? Visit <a href=\"https://linkerd.io\" target=\"_blank\">linkerd.io</a>.\n  </div>\n</div>",
       "gridPos": {
         "h": 3,
         "w": 24,
@@ -669,7 +669,7 @@
       "type": "row"
     },
     {
-      "content": "<div>\n  <img src=\"https://conduit.io/favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <a href=\"./dashboard/db/conduit-deployment?var-namespace=$namespace\">\n    <span style=\"font-size: 15px; border-image:none\">ns/$namespace</span>\n  </a>\n</div>",
+      "content": "<div>\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <a href=\"./dashboard/db/linkerd-deployment?var-namespace=$namespace\">\n    <span style=\"font-size: 15px; border-image:none\">ns/$namespace</span>\n  </a>\n</div>",
       "gridPos": {
         "h": 2,
         "w": 24,
@@ -949,7 +949,7 @@
   "schemaVersion": 16,
   "style": "dark",
   "tags": [
-    "conduit"
+    "linkerd"
   ],
   "templating": {
     "list": [
@@ -1025,7 +1025,7 @@
     ]
   },
   "timezone": "",
-  "title": "Conduit Top Line",
+  "title": "Linkerd Top Line",
   "uid": "XKy9QWRmz",
   "version": 1
 }

@@ -16,11 +16,11 @@
   "gnetId": null,
   "graphTooltip": 1,
   "id": null,
-  "iteration": 1524965907080,
+  "iteration": 1531763681685,
   "links": [],
   "panels": [
     {
-      "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://conduit.io/favicon.png\" style=\"height:32px;\"/>&nbsp;\n  <span style=\"font-size: 32px\">deploy/$deployment</span>\n</div>",
+      "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"height:32px;\"/>&nbsp;\n  <span style=\"font-size: 32px\">deploy/$deployment</span>\n</div>",
       "gridPos": {
         "h": 2.4,
         "w": 24,
@@ -393,7 +393,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 8.6
+        "y": 8.600000000000001
       },
       "id": 67,
       "legend": {
@@ -478,7 +478,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 8.6
+        "y": 8.600000000000001
       },
       "id": 2,
       "legend": {
@@ -570,7 +570,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 8.6
+        "y": 8.600000000000001
       },
       "id": 68,
       "legend": {
@@ -665,7 +665,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 15.6
+        "y": 15.600000000000001
       },
       "id": 148,
       "panels": [
@@ -680,7 +680,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 16
+            "y": 16.6
           },
           "id": 167,
           "legend": {
@@ -748,20 +748,24 @@
               "min": null,
               "show": true
             }
-          ]
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
         },
         {
           "aliasColors": {},
           "bars": false,
           "dashLength": 10,
           "dashes": false,
-          "datasource": null,
+          "datasource": "prometheus",
           "fill": 0,
           "gridPos": {
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 16
+            "y": 16.6
           },
           "id": 168,
           "legend": {
@@ -828,7 +832,11 @@
               "min": null,
               "show": true
             }
-          ]
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
         },
         {
           "cards": {
@@ -843,12 +851,12 @@
             "mode": "spectrum"
           },
           "dataFormat": "timeseries",
-          "datasource": null,
+          "datasource": "prometheus",
           "gridPos": {
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 16
+            "y": 16.6
           },
           "heatmap": {},
           "highlightCards": true,
@@ -885,6 +893,7 @@
             "show": true,
             "splitFactor": null
           },
+          "yBucketBound": "auto",
           "yBucketNumber": null,
           "yBucketSize": null
         }
@@ -931,7 +940,7 @@
       "id": 59,
       "panels": [
         {
-          "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://conduit.io/favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">deploy/$inbound</span>\n</div>",
+          "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">deploy/$inbound</span>\n</div>",
           "gridPos": {
             "h": 2,
             "w": 24,
@@ -1536,7 +1545,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 32
+            "y": 41
           },
           "id": 157,
           "legend": {
@@ -1615,13 +1624,13 @@
           "bars": false,
           "dashLength": 10,
           "dashes": false,
-          "datasource": null,
+          "datasource": "prometheus",
           "fill": 0,
           "gridPos": {
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 32
+            "y": 41
           },
           "id": 166,
           "legend": {
@@ -1707,12 +1716,12 @@
             "mode": "spectrum"
           },
           "dataFormat": "timeseries",
-          "datasource": null,
+          "datasource": "prometheus",
           "gridPos": {
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 32
+            "y": 41
           },
           "heatmap": {},
           "highlightCards": true,
@@ -1796,7 +1805,7 @@
       "id": 27,
       "panels": [
         {
-          "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://conduit.io/favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">deploy/$outbound</span>\n</div>",
+          "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">deploy/$outbound</span>\n</div>",
           "gridPos": {
             "h": 2,
             "w": 24,
@@ -2094,7 +2103,7 @@
   "schemaVersion": 16,
   "style": "dark",
   "tags": [
-    "conduit"
+    "linkerd"
   ],
   "templating": {
     "list": [
@@ -2210,7 +2219,7 @@
     ]
   },
   "timezone": "",
-  "title": "Conduit Deployment",
+  "title": "Linkerd Deployment",
   "uid": "6svnwykmk",
   "version": 1
 }

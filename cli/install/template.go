@@ -567,7 +567,7 @@ metadata:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 data:
   grafana.ini: |-
-    instance_name = conduit-grafana
+    instance_name = linkerd-grafana
 
     [server]
     root_url = %(protocol)s://%(domain)s:/api/v1/namespaces/{{.Namespace}}/services/grafana:http/proxy/
@@ -610,7 +610,7 @@ data:
       editable: true
       options:
         path: /var/lib/grafana/dashboards
-        homeDashboardId: conduit-top-line
+        homeDashboardId: linkerd-top-line
 `
 
 const TlsTemplate = `

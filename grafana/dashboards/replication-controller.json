@@ -16,11 +16,11 @@
   "gnetId": null,
   "graphTooltip": 1,
   "id": null,
-  "iteration": 1524963428641,
+  "iteration": 1531764114061,
   "links": [],
   "panels": [
     {
-      "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://conduit.io/favicon.png\" style=\"height:32px;\"/>&nbsp;\n  <span style=\"font-size: 32px\">rc/$replication_controller</span>\n</div>",
+      "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"height:32px;\"/>&nbsp;\n  <span style=\"font-size: 32px\">rc/$replication_controller</span>\n</div>",
       "gridPos": {
         "h": 2.4,
         "w": 24,
@@ -393,7 +393,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 8.6
+        "y": 8.600000000000001
       },
       "id": 67,
       "legend": {
@@ -478,7 +478,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 8.6
+        "y": 8.600000000000001
       },
       "id": 2,
       "legend": {
@@ -570,7 +570,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 8.6
+        "y": 8.600000000000001
       },
       "id": 68,
       "legend": {
@@ -665,7 +665,7 @@
         "h": 2.2,
         "w": 24,
         "x": 0,
-        "y": 15.6
+        "y": 15.600000000000001
       },
       "id": 76,
       "links": [],
@@ -685,12 +685,12 @@
       "id": 59,
       "panels": [
         {
-          "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://conduit.io/favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">rc/$inbound</span>\n</div>",
+          "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">rc/$inbound</span>\n</div>",
           "gridPos": {
             "h": 2,
             "w": 24,
             "x": 0,
-            "y": 18.6
+            "y": 18.8
           },
           "id": 39,
           "links": [],
@@ -710,7 +710,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 20.6
+            "y": 20.8
           },
           "id": 36,
           "legend": {
@@ -796,7 +796,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 20.6
+            "y": 20.8
           },
           "id": 22,
           "legend": {
@@ -888,7 +888,7 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 20.6
+            "y": 20.8
           },
           "id": 29,
           "legend": {
@@ -1295,12 +1295,12 @@
       "id": 27,
       "panels": [
         {
-          "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://conduit.io/favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">rc/$outbound</span>\n</div>",
+          "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">rc/$outbound</span>\n</div>",
           "gridPos": {
             "h": 2,
             "w": 24,
             "x": 0,
-            "y": 32
+            "y": 41.2
           },
           "id": 40,
           "links": [],
@@ -1320,7 +1320,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 34
+            "y": 43.2
           },
           "id": 28,
           "legend": {
@@ -1405,7 +1405,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 34
+            "y": 43.2
           },
           "id": 35,
           "legend": {
@@ -1496,7 +1496,7 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 34
+            "y": 43.2
           },
           "id": 41,
           "legend": {
@@ -1593,7 +1593,7 @@
   "schemaVersion": 16,
   "style": "dark",
   "tags": [
-    "conduit"
+    "linkerd"
   ],
   "templating": {
     "list": [
@@ -1709,7 +1709,7 @@
     ]
   },
   "timezone": "",
-  "title": "Conduit Replication Controller",
+  "title": "Linkerd Replication Controller",
   "uid": "eIYYYkGmz",
   "version": 1
 }
