@@ -57,7 +57,7 @@ func TestInstall(t *testing.T) {
 	cmd := []string{"install", "--linkerd-version", TestHelper.GetVersion()}
 	if TestHelper.TLS() {
 		cmd = append(cmd, []string{"--tls", "optional"}...)
-		linkerdDeployReplicas["ca-bundle-distributor"] = 1
+		linkerdDeployReplicas["ca"] = 1
 	}
 
 	out, err := TestHelper.LinkerdRun(cmd...)

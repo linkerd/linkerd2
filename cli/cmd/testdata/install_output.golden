@@ -892,7 +892,7 @@ subjects:
   name: linkerd-ca
   namespace: Namespace
 
-### CA Distributor ###
+### CA ###
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
@@ -901,8 +901,8 @@ metadata:
     CreatedByAnnotation: CliVersion
   creationTimestamp: null
   labels:
-    ControllerComponentLabel: ca-bundle-distributor
-  name: ca-bundle-distributor
+    ControllerComponentLabel: ca
+  name: ca
   namespace: Namespace
 spec:
   replicas: 1
@@ -915,13 +915,13 @@ spec:
         linkerd.io/proxy-version: undefined
       creationTimestamp: null
       labels:
-        ControllerComponentLabel: ca-bundle-distributor
+        ControllerComponentLabel: ca
         linkerd.io/control-plane-ns: Namespace
-        linkerd.io/proxy-deployment: ca-bundle-distributor
+        linkerd.io/proxy-deployment: ca
     spec:
       containers:
       - args:
-        - ca-distributor
+        - ca
         - -controller-namespace=Namespace
         - -log-level=ControllerLogLevel
         - -logtostderr=true
@@ -932,7 +932,7 @@ spec:
             path: /ping
             port: 9997
           initialDelaySeconds: 10
-        name: ca-distributor
+        name: ca
         ports:
         - containerPort: 9997
           name: admin-http
