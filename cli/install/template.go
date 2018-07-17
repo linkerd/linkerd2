@@ -145,6 +145,7 @@ spec:
         image: {{.ControllerImage}}
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
+        - "linkerd-controller"
         - "public-api"
         - "-prometheus-url=http://prometheus.{{.Namespace}}.svc.cluster.local:9090"
         - "-controller-namespace={{.Namespace}}"
@@ -168,6 +169,7 @@ spec:
         image: {{.ControllerImage}}
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
+        - "linkerd-controller"
         - "destination"
         - "-enable-tls={{.EnableTLS}}"
         - "-log-level={{.ControllerLogLevel}}"
@@ -190,6 +192,7 @@ spec:
         image: {{.ControllerImage}}
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
+        - "linkerd-controller"
         - "proxy-api"
         - "-addr=:{{.ProxyAPIPort}}"
         - "-log-level={{.ControllerLogLevel}}"
@@ -212,6 +215,7 @@ spec:
         image: {{.ControllerImage}}
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
+        - "linkerd-controller"
         - "tap"
         - "-log-level={{.ControllerLogLevel}}"
         livenessProbe:
@@ -685,6 +689,7 @@ spec:
         image: {{.ControllerImage}}
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
+        - "linkerd-controller"
         - "ca"
         - "-controller-namespace={{.Namespace}}"
         - "-log-level={{.ControllerLogLevel}}"

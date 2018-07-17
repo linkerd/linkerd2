@@ -1,4 +1,4 @@
-package main
+package public_api_main
 
 import (
 	"context"
@@ -17,7 +17,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func main() {
+func Main() {
 	addr := flag.String("addr", ":8085", "address to serve on")
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
 	prometheusUrl := flag.String("prometheus-url", "http://127.0.0.1:9090", "prometheus url")

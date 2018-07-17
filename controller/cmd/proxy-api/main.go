@@ -1,4 +1,4 @@
-package main
+package proxy_api_main
 
 import (
 	"flag"
@@ -13,7 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func main() {
+func Main() {
 	addr := flag.String("addr", ":8086", "address to serve on")
 	metricsAddr := flag.String("metrics-addr", ":9996", "address to serve scrapable metrics on")
 	destinationAddr := flag.String("destination-addr", "127.0.0.1:8089", "address of destination service")

@@ -1,4 +1,4 @@
-package main
+package ca_main
 
 import (
 	"flag"
@@ -13,7 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func main() {
+func Main() {
 	metricsAddr := flag.String("metrics-addr", ":9997", "address to serve scrapable metrics on")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")

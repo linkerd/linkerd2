@@ -139,6 +139,7 @@ spec:
     spec:
       containers:
       - args:
+        - linkerd-controller
         - public-api
         - -prometheus-url=http://prometheus.linkerd.svc.cluster.local:9090
         - -controller-namespace=linkerd
@@ -163,6 +164,7 @@ spec:
             port: 9995
         resources: {}
       - args:
+        - linkerd-controller
         - destination
         - -enable-tls=false
         - -log-level=info
@@ -186,6 +188,7 @@ spec:
             port: 9999
         resources: {}
       - args:
+        - linkerd-controller
         - proxy-api
         - -addr=:8086
         - -log-level=info
@@ -209,6 +212,7 @@ spec:
             port: 9996
         resources: {}
       - args:
+        - linkerd-controller
         - tap
         - -log-level=info
         image: gcr.io/linkerd-io/controller:undefined

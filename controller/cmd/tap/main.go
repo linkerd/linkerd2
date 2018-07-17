@@ -1,4 +1,4 @@
-package main
+package tap_main
 
 import (
 	"flag"
@@ -13,7 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func main() {
+func Main() {
 	addr := flag.String("addr", "127.0.0.1:8088", "address to serve on")
 	metricsAddr := flag.String("metrics-addr", ":9998", "address to serve scrapable metrics on")
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")

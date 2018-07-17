@@ -140,6 +140,7 @@ spec:
     spec:
       containers:
       - args:
+        - linkerd-controller
         - public-api
         - -prometheus-url=http://prometheus.Namespace.svc.cluster.local:9090
         - -controller-namespace=Namespace
@@ -164,6 +165,7 @@ spec:
             port: 9995
         resources: {}
       - args:
+        - linkerd-controller
         - destination
         - -enable-tls=true
         - -log-level=ControllerLogLevel
@@ -187,6 +189,7 @@ spec:
             port: 9999
         resources: {}
       - args:
+        - linkerd-controller
         - proxy-api
         - -addr=:123
         - -log-level=ControllerLogLevel
@@ -210,6 +213,7 @@ spec:
             port: 9996
         resources: {}
       - args:
+        - linkerd-controller
         - tap
         - -log-level=ControllerLogLevel
         image: ControllerImage
@@ -917,6 +921,7 @@ spec:
     spec:
       containers:
       - args:
+        - linkerd-controller
         - ca
         - -controller-namespace=Namespace
         - -log-level=ControllerLogLevel
