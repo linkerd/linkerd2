@@ -1,6 +1,5 @@
 import _ from 'lodash';
 import ApiHelpers from './util/ApiHelpers.jsx';
-import fav from './../../img/favicon.png'; // eslint-disable-line no-unused-vars
 import { Link } from 'react-router-dom';
 import logo from './../../img/logo-only.svg';
 import PropTypes from 'prop-types';
