@@ -35,9 +35,7 @@ func NewRootCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "proxy-init",
 		Short: "proxy-init adds a Kubernetes pod to the Linkerd service mesh",
-		Long: `proxy-init adds a Kubernetes pod to the Linkerd service mesh.
-
-Find more information at https://linkerd.io/.`,
+		Long:  "proxy-init adds a Kubernetes pod to the Linkerd service mesh.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			config, err := buildFirewallConfiguration(options)
 			if err != nil {
