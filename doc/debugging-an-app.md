@@ -10,19 +10,14 @@ Started](/getting-started) guide and have Linkerd and the demo application
 running in some flavor of Kubernetes cluster.
 
 ## Using Linkerd to debug a failing service 💻🔥
-
 Now that we have Linkerd and the demo application [up and
 running](/getting-started), let's use Linkerd to diagnose issues.
 
 First, let's use the `linkerd stat` command to get an overview of deployment
 health:
+#### `linkerd -n emojivoto stat deploy`
 
-```bash
-linkerd -n emojivoto stat deploy
-```
-
-Your results will be something like:
-
+### Your results will be something like:
 ```bash
 NAME       MESHED   SUCCESS      RPS   LATENCY_P50   LATENCY_P95   LATENCY_P99
 emoji         1/1   100.00%   2.0rps           1ms           4ms           5ms
@@ -34,13 +29,11 @@ web           1/1    94.92%   2.0rps           5ms          10ms          18ms
 We can see that the `voting` service is performing far worse than the others.
 
 How do we figure out what's going on? Our traditional options are: looking at
-the logs, attaching a debugger, etc. Linkerd gives us a new tool that we can use
-: a live view of traffic going through the deployment. Let's use the `tap`
+the logs, attaching a debugger, etc. Linkerd gives us a new tool that we can
+use: a live view of traffic going through the deployment. Let's use the `tap`
 command to take a look at all requests currently flowing to this deployment.
 
-```bash
-linkerd -n emojivoto tap deploy --to deploy/voting
-```
+#### `linkerd -n emojivoto tap deploy --to deploy/voting`
 
 This gives us a lot of requests:
 
@@ -66,9 +59,9 @@ requests.
 Let's figure out where those are coming from. Let's run the `tap` command again,
 and grep the output for `Unknown`s:
 
-```bash
-$ linkerd -n emojivoto tap deploy --to deploy/voting | grep Unknown -B 2
+####  `linkerd -n emojivoto tap deploy --to deploy/voting | grep Unknown -B 2`
 
+```bash
 req id=0:2294 src=10.1.8.150:56224 dst=voting-6795f54474-6vfbs :method=POST :authority=voting-svc.emojivoto:8080 :path=/emojivoto.v1.VotingService/VotePoop
 rsp id=0:2294 src=10.1.8.150:56224 dst=voting-6795f54474-6vfbs :status=200 latency=2147µs
 end id=0:2294 src=10.1.8.150:56224 dst=voting-6795f54474-6vfbs grpc-status=Unknown duration=0µs response-length=0B
@@ -83,10 +76,9 @@ We can see that all of the `grpc-status=Unknown`s are coming from the `VotePoop`
 endpoint. Let's use the `tap` command's flags to narrow down our output to just
 this endpoint:
 
-```bash
-$ linkerd -n emojivoto tap deploy/voting \
-  --path /emojivoto.v1.VotingService/VotePoop
+####  `linkerd -n emojivoto tap deploy/voting --path /emojivoto.v1.VotingService/VotePoop`
 
+```bash
 req id=0:2724 src=10.1.8.150:56224 dst=voting-6795f54474-6vfbs :method=POST :authority=voting-svc.emojivoto:8080 :path=/emojivoto.v1.VotingService/VotePoop
 rsp id=0:2724 src=10.1.8.150:56224 dst=voting-6795f54474-6vfbs :status=200 latency=1644µs
 end id=0:2724 src=10.1.8.150:56224 dst=voting-6795f54474-6vfbs grpc-status=Unknown duration=0µs response-length=0B

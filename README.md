@@ -42,7 +42,7 @@ Linkerd is hosted by the Cloud Native Computing Foundation ([CNCF][cncf]).
 * [conduit-announce mailing list][conduit-announce]: Linkerd2 announcements only
   (low volume).
 * Follow [@RunConduit][twitter] on Twitter.
-* Join the #conduit channel on the [Linkerd Slack][slack].
+* Join the #linkerd2 channel on the [Linkerd Slack][slack].
 
 ## Documentation
 

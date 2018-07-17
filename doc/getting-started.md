@@ -290,7 +290,7 @@ Lists all replications controllers by requests, success rate, and latency.
 For detailed metrics on all of the above resources, click any resource to browse
 to a dynamically-generated Grafana dashboard.
 
-____
+___
 
 ## Using the CLI 💻
 Of course, the dashboard isn’t the only way to inspect what’s
