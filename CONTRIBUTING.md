@@ -6,7 +6,7 @@
 
 If you have a question about Linkerd2 or have encountered problems using it,
 start by [asking a question in the forums][discourse] or join us in the
-(yet-to-be-renamed) [#conduit Slack channel][slack].
+[#linkerd2 Slack channel][slack].
 
 ## Certificate of Origin ##
 

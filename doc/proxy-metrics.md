@@ -5,7 +5,7 @@ docpage = true
   parent = "proxy-metrics"
 +++
 
-The Conduit proxy exposes metrics that describe the traffic flowing through the
+The Linkerd proxy exposes metrics that describe the traffic flowing through the
 proxy.  The following metrics are available at `/metrics` on the proxy's metrics
 port (default: `:4191`) in the [Prometheus format][prom-format]:
 
@@ -24,11 +24,12 @@ incremented when the response stream ends.
 ### `response_latency_ms`
 
 A histogram of response latencies. This measurement reflects the
-[time-to-first-byte][ttfb] (TTFB) by recording the elapsed time between the proxy
-processing a request's headers and the first data frame of the response. If a response
-does not include any data, the end-of-stream event is used. The TTFB measurement is used
-so that Conduit accurately reflects application behavior when a server provides response
-headers immediately but is slow to begin serving the response body.
+[time-to-first-byte][ttfb] (TTFB) by recording the elapsed time between the
+proxy processing a request's headers and the first data frame of the response.
+If a response does not include any data, the end-of-stream event is used. The
+TTFB measurement is used so that Linkerd accurately reflects application
+behavior when a server provides response headers immediately but is slow to
+begin serving the response body.
 
 Note that latency measurements are not exported to Prometheus until the stream
 _completes_. This is necessary so that latencies can be labeled with the appropriate
@@ -81,7 +82,7 @@ The following labels are added by the Prometheus collector.
 
 * `instance`: ip:port of the pod.
 * `job`: The Prometheus job responsible for the collection, typically
-         `conduit-proxy`.
+         `linkerd-proxy`.
 
 #### Kubernetes labels added at collection time
 
@@ -96,11 +97,11 @@ Prometheus labels.
                        approximates a pod's `ReplicaSet` or
                        `ReplicationController`.
 
-#### Conduit labels added at collection time
+#### Linkerd labels added at collection time
 
-Kubernetes labels prefixed with `conduit.io/` are added to your application at
-`conduit inject` time. More specifically, Kubernetes labels prefixed with
-`conduit.io/proxy-*` will correspond to these Prometheus labels:
+Kubernetes labels prefixed with `linkerd.io/` are added to your application at
+`linkerd inject` time. More specifically, Kubernetes labels prefixed with
+`linkerd.io/proxy-*` will correspond to these Prometheus labels:
 
 * `daemon_set`: The daemon set that the pod belongs to (if applicable).
 * `deployment`: The deployment that the pod belongs to (if applicable).
@@ -119,25 +120,25 @@ name: vote-bot-5b7f5657f6-xbjjw
 namespace: emojivoto
 labels:
   app: vote-bot
-  conduit.io/control-plane-ns: conduit
-  conduit.io/proxy-deployment: vote-bot
+  linkerd.io/control-plane-ns: linkerd
+  linkerd.io/proxy-deployment: vote-bot
   pod-template-hash: "3957278789"
   test: vote-bot-test
 ```
 
 The resulting Prometheus labels will look like this:
 
-```
+```bash
 request_total{
   pod="vote-bot-5b7f5657f6-xbjjw",
   namespace="emojivoto",
   app="vote-bot",
-  conduit_io_control_plane_ns="conduit",
+  linkerd_io_control_plane_ns="linkerd",
   deployment="vote-bot",
   pod_template_hash="3957278789",
   test="vote-bot-test",
   instance="10.1.3.93:4191",
-  job="conduit-proxy"
+  job="linkerd-proxy"
 }
 ```
 
@@ -189,11 +190,11 @@ are also added to transport-level metrics, when applicable.
 
 ### Connection Close Labels
 
-The following labels are added only to metrics which are updated when a connection closes
-(`tcp_close_total` and `tcp_connection_duration_ms`):
+The following labels are added only to metrics which are updated when a
+connection closes (`tcp_close_total` and `tcp_connection_duration_ms`):
 
-+ `classification`: `success` if the connection terminated cleanly, `failure` if the
-                    connection closed due to a connection failure.
+* `classification`: `success` if the connection terminated cleanly, `failure` if
+  the connection closed due to a connection failure.
 
 [prom-format]: https://prometheus.io/docs/instrumenting/exposition_formats/#format-version-0.0.4
 [pod-template-hash]: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#pod-template-hash-label
