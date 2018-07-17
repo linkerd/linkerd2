@@ -1,3 +1,20 @@
+## v18.7.1
+
+Linkerd2 v18.7.1 is the first release of the Linkerd2 project, which was
+formerly hosted at github.com/runconduit/conduit.
+
+* Packaging
+  * Introduce new date-based versioning scheme, `vYY.M.n`
+  * Move all Docker images to `gcr.io/linkerd-io` repo
+* User Interface
+  * Update branding to reference Linkerd throughout
+  * The CLI is now called `linkerd`
+* Production Readiness
+  * Fix issue with Destination service sending back incomplete pod metadata
+  * Fix high CPU usage during proxy shutdown
+  * ClusterRoles are now unique per Linkerd install, allowing multiple instances
+    to be installed in the same Kubernetes cluster
+
 ## v0.5.0
 
 Conduit v0.5.0 introduces a new, experimental feature that automatically
