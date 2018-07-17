@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/linkerd/linkerd2/controller/api/public"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
@@ -16,6 +17,24 @@ func TestVersionCheck(t *testing.T) {
 		fmt.Fprintf(w, "{\"version\": \"v0.3.0\"}")
 	})
 	go http.ListenAndServe("localhost:8080", nil)
+
+	// wait for HTTP server to initialize
+	readyCh := make(chan struct{})
+	go func() {
+		for {
+			_, err := http.Head("http://localhost:8080/")
+			if err == nil {
+				close(readyCh)
+				break
+			}
+		}
+	}()
+
+	select {
+	case <-readyCh:
+	case <-time.After(5 * time.Second):
+		t.Fatalf("Failed to initialize HTTP server")
+	}
 
 	t.Run("Passes when versions are latest", func(t *testing.T) {
 		version.Version = "v0.3.0"
