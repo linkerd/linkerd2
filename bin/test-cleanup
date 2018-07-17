@@ -9,7 +9,4 @@ fi
 
 echo "cleaning up namespace [${linkerd_namespace}] and associated test namespaces"
 
-kubectl delete ns "$linkerd_namespace"
-for ns in $(kubectl get ns | grep "^$linkerd_namespace-" | cut -f1 -d ' '); do
-  kubectl delete ns "$ns"
-done
+kubectl get ns | grep "^$linkerd_namespace-" | cut -f1 -d ' ' | xargs kubectl delete ns "$linkerd_namespace"
