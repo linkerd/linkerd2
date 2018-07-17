@@ -10,6 +10,7 @@ import 'whatwg-fetch';
 
 const defaultSvgWidth = 524;
 const defaultSvgHeight = 325;
+const defaultNodeRadius = 15;
 const margin = { top: 0, right: 0, bottom: 10, left: 0 };
 
 const simulation = d3.forceSimulation()
@@ -35,11 +36,14 @@ export class NetworkGraphBase extends React.Component {
   }
 
   componentDidMount() {
+    let container = document.getElementsByClassName("network-graph-container")[0];
+    let width = !container ? defaultSvgWidth : container.getBoundingClientRect().width;
+
     this.svg = d3.select(".network-graph-container")
       .append("svg")
       .attr("class", "network-graph")
-      .attr("width", defaultSvgWidth)
-      .attr("height", defaultSvgHeight)
+      .attr("width", width)
+      .attr("height", width)
       .append("g")
       .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
   }
@@ -54,8 +58,8 @@ export class NetworkGraphBase extends React.Component {
     let links = [];
     let nodeList = [];
 
-    _.map(data, (r, i) => {
-      let rows = _.get(r, ["ok", "statTables", 0, "podGroup", "rows"]);
+    _.map(data, (resp, i) => {
+      let rows = _.get(resp, ["ok", "statTables", 0, "podGroup", "rows"]);
       let dst = this.props.deployments[i].name;
       _.map(rows, row => {
         links.push({
@@ -67,7 +71,7 @@ export class NetworkGraphBase extends React.Component {
       });
     });
 
-    let nodes = _.map(_.uniq(nodeList), n => ({ id: n, r: 15 }));
+    let nodes = _.map(_.uniq(nodeList), n => ({ id: n }));
     return {
       links,
       nodes
@@ -93,8 +97,8 @@ export class NetworkGraphBase extends React.Component {
     }
 
     this.svg.append("svg:defs").selectAll("marker")
-      .data(links)      // Different link/path types can be defined here
-      .enter().append("svg:marker")    // This section adds in the arrows
+      .data(links) // Different link/path types can be defined here
+      .enter().append("svg:marker") // This section adds in the arrows
       .attr("id", node => node.source + "/" + node.target)
       .attr("viewBox", "0 -5 10 10")
       .attr("refX", 24)
@@ -118,7 +122,7 @@ export class NetworkGraphBase extends React.Component {
       .selectAll('circle')
       .data(nodes)
       .enter().append('circle')
-      .attr("r", 15)
+      .attr("r", defaultNodeRadius)
       .attr('fill', 'steelblue')
       .call(d3.drag()
         .on("start", this.dragstarted)
