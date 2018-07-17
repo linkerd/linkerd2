@@ -1,8 +1,8 @@
-# Conduit Development Guide
+# Linkerd2 Development Guide
 
-:balloon: Welcome to the Conduit development guide! :wave:
+:balloon: Welcome to the Linkerd2 development guide! :wave:
 
-This document will help you build and run Conduit from source. More information
+This document will help you build and run Linkerd2 from source. More information
 about testing from source can be found in the [TEST.md](TEST.md) guide.
 
 # Table of contents
@@ -23,13 +23,13 @@ about testing from source can be found in the [TEST.md](TEST.md) guide.
 
 # Repo layout
 
-Conduit is primarily written in Rust, Go, and React. At its core is a
+Linkerd2 is primarily written in Rust, Go, and React. At its core is a
 high-performance data plane written in Rust. The control plane components are
 written in Go. The dashboard UI is a React application.
 
 ## Control Plane (Go/React)
 
-- [`cli`](cli): Command-line `conduit` utility, view and drive the control
+- [`cli`](cli): Command-line `linkerd` utility, view and drive the control
   plane.
 - [`controller`](controller)
   - [`destination`](controller/destination): Serves service discovery
@@ -39,25 +39,27 @@ written in Go. The dashboard UI is a React application.
     service.
   - [`public-api`](controller/api/public): Accepts requests from API
     clients such as `cli` and `web`, provides access to and control of the
-    conduit service mesh.
+    Linkerd2 service mesh.
   - [`tap`](controller/tap): Provides a live pipeline of requests.
-- [`proxy-init`](proxy-init): Adds a Kubernetes pod to join the Conduit
+- [`proxy-init`](proxy-init): Adds a Kubernetes pod to join the Linkerd2
   Service Mesh.
 - [`web`](web): Provides a UI dashboard to view and drive the control plane.
   This component is written in Go and React.
 
 ## Data Plane (Rust)
 
-- [`proxy`](proxy): High-performance data plane, injected as a sidecar with
-  every service.
+- [`linkerd2-proxy`](https://github.com/linkerd/linkerd2-proxy): Rust source
+  code for the proxy lives in the linkerd2-proxy repo.
+- [`linkerd2-proxy-api`](https://github.com/linkerd/linkerd2-proxy-api): Protobuf
+  definitions for the data plane APIs live in the linkerd2-proxy-api repo.
 
 # Components
 
-![Conduit Components](https://g.gravizo.com/source/svg/conduit_components?https%3A%2F%2Fraw.githubusercontent.com%2Frunconduit%2Fconduit%2Fmaster%2FBUILD.md)
+![Linkerd2 Components](https://g.gravizo.com/source/svg/linkerd2_components?https%3A%2F%2Fraw.githubusercontent.com%2Flinkerd%2Flinkerd2%2Fmaster%2FBUILD.md)
 
 <details>
 <summary></summary>
-conduit_components
+linkerd2_components
   digraph G {
     rankdir=LR;
 
@@ -94,22 +96,21 @@ conduit_components
     "prometheus" -> "kubernetes api";
     "prometheus" -> "proxy";
   }
-conduit_components
+linkerd2_components
 </details>
 
 # Development configurations
 
 Depending on use case, there are several configurations with which to develop
-and run Conduit:
+and run Linkerd2:
 
 - [Comprehensive](#comprehensive): Integrated configuration using Minikube, most
   closely matches release.
-- [Web](#web): Development of the Conduit Dashboard.
-- [Rust](#Rust): Standalone development of the Rust `proxy`.
+- [Web](#web): Development of the Linkerd2 Dashboard.
 
 ## Comprehensive
 
-This configuration builds all Conduit components in Docker images, and deploys
+This configuration builds all Linkerd2 components in Docker images, and deploys
 them onto Minikube. This setup most closely parallels our recommended production
 installation, documented at https://conduit.io/getting-started/.
 
@@ -118,32 +119,32 @@ These commands assume a working
 
 ```bash
 # build all docker images, using minikube as our docker repo
-DOCKER_TRACE=1 bin/mkube bin/docker-build
+DOCKER_TRACE=1 bin/mkube bin/fast-build
 
-# install conduit
-bin/conduit install | kubectl apply -f -
+# install linkerd
+bin/linkerd install | kubectl apply -f -
 
 # verify cli and server versions
-bin/conduit version
+bin/linkerd version
 
 # validate installation
-kubectl --namespace=conduit get all
-bin/conduit check --expected-version $(bin/root-tag)
+kubectl --namespace=linkerd get all
+bin/linkerd check --expected-version $(bin/root-tag)
 
-# view conduit dashboard
-bin/conduit dashboard
+# view linkerd dashboard
+bin/linkerd dashboard
 
 # install the demo app
-curl https://raw.githubusercontent.com/linkerd/linkerd2-examples/master/emojivoto/emojivoto.yml | bin/conduit inject - | kubectl apply -f -
+curl https://raw.githubusercontent.com/runconduit/conduit-examples/master/emojivoto/emojivoto.yml | bin/linkerd inject - | kubectl apply -f -
 
 # view demo app
-minikube -n emojivoto service web-svc --url
+minikube -n emojivoto service web-svc
 
 # view details per deployment
-bin/conduit -n emojivoto stat deployments
+bin/linkerd -n emojivoto stat deployments
 
 # view a live pipeline of requests
-bin/conduit -n emojivoto tap deploy voting
+bin/linkerd -n emojivoto tap deploy voting
 ```
 
 ### A note about Go run
@@ -155,31 +156,20 @@ build/run/debug loop faster.
 In general, replace commands like this:
 
 ```bash
-go run cli/main.go
+go run cli/main.go check
 ```
 
 with this:
 
 ```bash
-bin/go-run cli
-```
-
-You may also leverage `go-run` to execute our `conduit` cli command. While in a
-release context you may run:
-
-```bash
-conduit check
-```
-
-In development you can run:
-
-```bash
 bin/go-run cli check
 ```
 
+That is equivalent to running `linkerd check` using the code on your branch.
+
 ### Building the CLI for development
 
-When Conduit's CLI is built using `bin/docker-build` it always creates binaries
+When Linkerd2's CLI is built using `bin/docker-build` it always creates binaries
 for all three platforms. For local development and a faster edit-build-test
 cycle you might want to avoid that. For those situations you can use the
 `bin/fast-build` script, which builds the CLI using the local Go toolchain
@@ -191,7 +181,7 @@ bin/fast-build
 
 ### Running the control plane for development
 
-Conduit's control plane is composed of several Go microservices. You can run
+Linkerd2's control plane is composed of several Go microservices. You can run
 these components in a Kubernetes (or Minikube) cluster, or even locally.
 
 To run an individual component locally, you can use the `go-run` command, and
@@ -242,7 +232,7 @@ To develop with a webpack dev server, run:
 bin/web dev
 ```
 
-Note: you'll want to install conduit on a Kubernetes cluster first.
+Note: you'll want to install Linkerd2 on a Kubernetes cluster first.
 
 To add a JS dependency:
 
@@ -253,65 +243,23 @@ yarn add [dep]
 
 ## Rust
 
-These commands assume a working [Rust](https://www.rust-lang.org)
-environment.
-
-Note that we _only_ support the most recent `stable` version of Rust.
-
-To build and run the Rust proxy:
-
-```bash
-cargo build -p conduit-proxy
-LINKERD2_PROXY_LOG=trace \
-  LINKERD2_PROXY_PUBLIC_LISTENER=tcp://0.0.0.0:5432 \
-  LINKERD2_PROXY_PRIVATE_FORWARD=tcp://127.0.0.1:1234 \
-  LINKERD2_PROXY_CONTROL_URL=tcp://127.0.0.1:8086 \
-  target/debug/conduit-proxy
-```
-
-To connect to a live `proxy-api` at `localhost:8086`:
-
-```bash
-bin/go-run controller/cmd/proxy-api
-```
+All Rust development happens in the
+[`linkerd2-proxy`](https://github.com/linkerd/linkerd2-proxy) repo.
 
 ### Docker
 
-The `bin/docker-build-proxy` script builds the proxy:
+The `bin/docker-build-proxy` script builds the proxy by pulling a pre-published
+proxy binary:
 
 ```bash
-DOCKER_TRACE=1 PROXY_UNOPTIMIZED=1 bin/docker-build-proxy
+DOCKER_TRACE=1 bin/docker-build-proxy
 ```
-
-It supports two environment variables:
-
-- `PROXY_UNOPTIMIZED` -- When set and non-empty, produces unoptimized build artifacts,
-  which reduces build times at the expense of runtime performance. Changing this will
-  likely invalidate a substantial portion of Docker's cache.
-
-To run `cargo test` inside of the latest proxy Docker image, run:
-
-```bash
-bin/docker-test-proxy
-```
-
-This is primarily useful for testing Linux-only proxy features when developing
-on another operating system.
 
 # Dependencies
 
-## Updating protobuf dependencies
-
-If you make Protobuf changes, run:
-
-```bash
-bin/dep ensure
-bin/protoc-go.sh
-```
-
 ## Updating Docker dependencies
 
-The Rust proxy and Go Docker images rely on base dependency images with
+The go Docker images rely on base dependency images with
 hard-coded SHA's:
 
 `gcr.io/linkerd-io/go-deps` depends on
@@ -322,7 +270,7 @@ hard-coded SHA's:
 
 # Build Architecture
 
-![Build Architecture](https://g.gravizo.com/source/svg/build_architecture?https%3A%2F%2Fraw.githubusercontent.com%2Frunconduit%2Fconduit%2Fmaster%2FBUILD.md)
+![Build Architecture](https://g.gravizo.com/source/svg/build_architecture?https%3A%2F%2Fraw.githubusercontent.com%2Flinkerd%2Flinkerd2%2Fmaster%2FBUILD.md)
 
 <details>
 <summary></summary>
@@ -332,10 +280,10 @@ build_architecture
 
     "Dockerfile-base" [color=lightblue, style=filled, shape=rect];
     "Dockerfile-go-deps" [color=lightblue, style=filled, shape=rect];
+    "Dockerfile-proxy" [color=lightblue, style=filled, shape=rect];
     "controller/Dockerfile" [color=lightblue, style=filled, shape=rect];
     "cli/Dockerfile-bin" [color=lightblue, style=filled, shape=rect];
     "grafana/Dockerfile" [color=lightblue, style=filled, shape=rect];
-    "proxy/Dockerfile" [color=lightblue, style=filled, shape=rect];
     "proxy-init/Dockerfile" [color=lightblue, style=filled, shape=rect];
     "proxy-init/integration_test/iptables/Dockerfile-tester" [color=lightblue, style=filled, shape=rect];
     "web/Dockerfile" [color=lightblue, style=filled, shape=rect];
@@ -348,7 +296,7 @@ build_architecture
     "_log.sh";
     "_tag.sh";
 
-    "conduit" -> "docker-build-cli-bin";
+    "linkerd" -> "docker-build-cli-bin";
 
     "dep";
 
@@ -384,7 +332,7 @@ build_architecture
 
     "docker-build-proxy" -> "_docker.sh";
     "docker-build-proxy" -> "_tag.sh";
-    "docker-build-proxy" -> "proxy/Dockerfile";
+    "docker-build-proxy" -> "Dockerfile-proxy";
 
     "docker-build-proxy-init" -> "_docker.sh";
     "docker-build-proxy-init" -> "_tag.sh";
