@@ -28,6 +28,6 @@ describe("NetworkGraph", () => {
     expect(data.links).to.have.length(3);
     expect(data.nodes).to.have.length(4);
     expect(data.links[0]).to.include({source: "web", target: "emoji"});
-    expect(data.nodes[0]).to.include({ id: "web", r: 15 });
+    expect(data.nodes[0]).to.include({ id: "web"});
   });
 });
