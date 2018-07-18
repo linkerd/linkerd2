@@ -1,4 +1,3 @@
-import _ from 'lodash';
 import Adapter from 'enzyme-adapter-react-16';
 import deployRollup from './fixtures/deployRollup.json';
 import ErrorBanner from '../js/components/ErrorBanner.jsx';
@@ -82,7 +81,7 @@ describe('Tests for <ResourceListBase>', () => {
     expect(component.find(Spin)).to.have.length(0);
     expect(metrics).to.have.length(1);
 
-    expect(metrics.props().resource).to.equal(_.startCase(resource));
+    expect(metrics.props().resource).to.equal(resource);
     expect(metrics.props().metrics).to.have.length(1);
   });
 });

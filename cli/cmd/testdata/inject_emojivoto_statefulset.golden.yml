@@ -19,7 +19,7 @@ spec:
       labels:
         app: web-svc
         linkerd.io/control-plane-ns: linkerd
-        linkerd.io/proxy-stateful-set: web
+        linkerd.io/proxy-statefulset: web
     spec:
       containers:
       - env:

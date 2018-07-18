@@ -82,12 +82,12 @@ func TestGetConfig(t *testing.T) {
 func TestCanonicalResourceNameFromFriendlyName(t *testing.T) {
 	t.Run("Returns canonical name for all known variants", func(t *testing.T) {
 		expectations := map[string]string{
-			"po":          Pods,
-			"pod":         Pods,
-			"deployment":  Deployments,
-			"deployments": Deployments,
-			"au":          Authorities,
-			"authorities": Authorities,
+			"po":          Pod,
+			"pod":         Pod,
+			"deployment":  Deployment,
+			"deployments": Deployment,
+			"au":          Authority,
+			"authorities": Authority,
 		}
 
 		for input, expectedName := range expectations {

@@ -61,7 +61,7 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
 
   let columns = [
     {
-      title: formatTitle(resource),
+      title: formatTitle(friendlyTitle(resource).singular),
       key: "name",
       defaultSortOrder: 'ascend',
       sorter: (a, b) => (a.name || "").localeCompare(b.name),
@@ -209,7 +209,7 @@ export class MetricsTableBase extends BaseTable {
       return { text: ns, value: ns };
     });
 
-    let resource = this.props.resource.toLowerCase();
+    let resource = this.props.resource;
 
     let showNsColumn = this.props.showNamespaceColumn;
     if (resource === "namespace") {

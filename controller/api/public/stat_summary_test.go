@@ -213,12 +213,12 @@ status:
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Namespace: "emojivoto",
-							Type:      pkgK8s.Deployments,
+							Type:      pkgK8s.Deployment,
 						},
 					},
 					TimeWindow: "1m",
 				},
-				expectedResponse: GenStatSummaryResponse("emoji", "deployments", "emojivoto", &PodCounts{
+				expectedResponse: GenStatSummaryResponse("emoji", pkgK8s.Deployment, "emojivoto", &PodCounts{
 					MeshedPods:  1,
 					RunningPods: 2,
 					FailedPods:  0,
@@ -253,7 +253,7 @@ status:
 						Resource: &pb.Resource{
 							Name:      "emojivoto-1",
 							Namespace: "emojivoto",
-							Type:      pkgK8s.Pods,
+							Type:      pkgK8s.Pod,
 						},
 					},
 					TimeWindow: "1m",
@@ -264,7 +264,7 @@ status:
 					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
 					`sum(increase(response_total{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod, classification, tls)`,
 				},
-				expectedResponse: GenStatSummaryResponse("emojivoto-1", "pods", "emojivoto", &PodCounts{
+				expectedResponse: GenStatSummaryResponse("emojivoto-1", pkgK8s.Pod, "emojivoto", &PodCounts{
 					MeshedPods:  1,
 					RunningPods: 1,
 					FailedPods:  0,
@@ -299,7 +299,7 @@ status:
 						Resource: &pb.Resource{
 							Name:      "emojivoto-1",
 							Namespace: "emojivoto",
-							Type:      pkgK8s.Pods,
+							Type:      pkgK8s.Pod,
 						},
 					},
 					TimeWindow: "1m",
@@ -307,7 +307,7 @@ status:
 						FromResource: &pb.Resource{
 							Name:      "emojivoto-2",
 							Namespace: "emojivoto",
-							Type:      pkgK8s.Pods,
+							Type:      pkgK8s.Pod,
 						},
 					},
 				},
@@ -350,7 +350,7 @@ status:
 						Resource: &pb.Resource{
 							Name:      "emojivoto-1",
 							Namespace: "emojivoto",
-							Type:      pkgK8s.Pods,
+							Type:      pkgK8s.Pod,
 						},
 					},
 					TimeWindow: "1m",
@@ -358,7 +358,7 @@ status:
 						ToResource: &pb.Resource{
 							Name:      "emojivoto-2",
 							Namespace: "emojivoto",
-							Type:      pkgK8s.Pods,
+							Type:      pkgK8s.Pod,
 						},
 					},
 				},
@@ -368,7 +368,7 @@ status:
 					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
 					`sum(increase(response_total{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod, classification, tls)`,
 				},
-				expectedResponse: GenStatSummaryResponse("emojivoto-1", "pods", "emojivoto", &PodCounts{
+				expectedResponse: GenStatSummaryResponse("emojivoto-1", pkgK8s.Pod, "emojivoto", &PodCounts{
 					MeshedPods:  1,
 					RunningPods: 1,
 					FailedPods:  0,
@@ -405,7 +405,7 @@ status:
 						Resource: &pb.Resource{
 							Name:      "emojivoto-1",
 							Namespace: "emojivoto",
-							Type:      pkgK8s.Pods,
+							Type:      pkgK8s.Pod,
 						},
 					},
 					TimeWindow: "1m",
@@ -413,7 +413,7 @@ status:
 						ToResource: &pb.Resource{
 							Name:      "emojivoto-2",
 							Namespace: "totallydifferent",
-							Type:      pkgK8s.Pods,
+							Type:      pkgK8s.Pod,
 						},
 					},
 				},
@@ -423,7 +423,7 @@ status:
 					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="totallydifferent", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
 					`sum(increase(response_total{direction="outbound", dst_namespace="totallydifferent", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod, classification, tls)`,
 				},
-				expectedResponse: GenStatSummaryResponse("emojivoto-1", "pods", "emojivoto", &PodCounts{
+				expectedResponse: GenStatSummaryResponse("emojivoto-1", pkgK8s.Pod, "emojivoto", &PodCounts{
 					MeshedPods:  1,
 					RunningPods: 1,
 					FailedPods:  0,
@@ -472,7 +472,7 @@ status:
 						Resource: &pb.Resource{
 							Name:      "",
 							Namespace: "emojivoto",
-							Type:      pkgK8s.Pods,
+							Type:      pkgK8s.Pod,
 						},
 					},
 					TimeWindow: "1m",
@@ -480,7 +480,7 @@ status:
 						FromResource: &pb.Resource{
 							Name:      "emojivoto-2",
 							Namespace: "",
-							Type:      pkgK8s.Pods,
+							Type:      pkgK8s.Pod,
 						},
 					},
 				},
@@ -490,7 +490,7 @@ status:
 					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="outbound", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
 					`sum(increase(response_total{direction="outbound", pod="emojivoto-2"}[1m])) by (dst_namespace, dst_pod, classification, tls)`,
 				},
-				expectedResponse: GenStatSummaryResponse("emojivoto-1", "pods", "emojivoto", &PodCounts{
+				expectedResponse: GenStatSummaryResponse("emojivoto-1", pkgK8s.Pod, "emojivoto", &PodCounts{
 					MeshedPods:  1,
 					RunningPods: 1,
 					FailedPods:  0,
@@ -539,7 +539,7 @@ status:
 						Resource: &pb.Resource{
 							Name:      "emojivoto-1",
 							Namespace: "emojivoto",
-							Type:      pkgK8s.Pods,
+							Type:      pkgK8s.Pod,
 						},
 					},
 					TimeWindow: "1m",
@@ -547,7 +547,7 @@ status:
 						FromResource: &pb.Resource{
 							Name:      "emojivoto-2",
 							Namespace: "totallydifferent",
-							Type:      pkgK8s.Pods,
+							Type:      pkgK8s.Pod,
 						},
 					},
 				},
@@ -557,7 +557,7 @@ status:
 					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="outbound", namespace="totallydifferent", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
 					`sum(increase(response_total{direction="outbound", namespace="totallydifferent", pod="emojivoto-2"}[1m])) by (dst_namespace, dst_pod, classification, tls)`,
 				},
-				expectedResponse: GenStatSummaryResponse("emojivoto-1", "pods", "emojivoto", &PodCounts{
+				expectedResponse: GenStatSummaryResponse("emojivoto-1", pkgK8s.Pod, "emojivoto", &PodCounts{
 					MeshedPods:  1,
 					RunningPods: 1,
 					FailedPods:  0,
@@ -651,7 +651,7 @@ status:
 												&pb.StatTable_PodGroup_Row{
 													Resource: &pb.Resource{
 														Namespace: "emojivoto",
-														Type:      "authorities",
+														Type:      pkgK8s.Authority,
 													},
 													TimeWindow: "1m",
 													Stats: &pb.BasicStats{
@@ -674,7 +674,7 @@ status:
 												&pb.StatTable_PodGroup_Row{
 													Resource: &pb.Resource{
 														Namespace: "emojivoto",
-														Type:      "deployments",
+														Type:      pkgK8s.Deployment,
 														Name:      "emoji-deploy",
 													},
 													Stats: &pb.BasicStats{
@@ -700,7 +700,7 @@ status:
 												&pb.StatTable_PodGroup_Row{
 													Resource: &pb.Resource{
 														Namespace: "emojivoto",
-														Type:      "pods",
+														Type:      pkgK8s.Pod,
 														Name:      "emojivoto-pod-2",
 													},
 													TimeWindow:      "1m",
@@ -718,7 +718,7 @@ status:
 												&pb.StatTable_PodGroup_Row{
 													Resource: &pb.Resource{
 														Namespace: "emojivoto",
-														Type:      "services",
+														Type:      pkgK8s.Service,
 														Name:      "emoji-svc",
 													},
 													TimeWindow:      "1m",
@@ -757,21 +757,21 @@ status:
 				},
 			},
 			statSumExpected{
-				err: errors.New("rpc error: code = Unimplemented desc = unimplemented resource type: deployment"),
+				err: errors.New("rpc error: code = Unimplemented desc = unimplemented resource type: deployments"),
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
-							Type: "deployment",
+							Type: "deployments",
 						},
 					},
 				},
 			},
 			statSumExpected{
-				err: errors.New("rpc error: code = Unimplemented desc = unimplemented resource type: pod"),
+				err: errors.New("rpc error: code = Unimplemented desc = unimplemented resource type: po"),
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
-							Type: "pod",
+							Type: "po",
 						},
 					},
 				},
@@ -819,7 +819,7 @@ status:
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
-							Type: "services",
+							Type: pkgK8s.Service,
 						},
 					},
 				},
@@ -828,12 +828,12 @@ status:
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
-							Type: "services",
+							Type: pkgK8s.Service,
 						},
 					},
 					Outbound: &pb.StatSummaryRequest_ToResource{
 						ToResource: &pb.Resource{
-							Type: "pods",
+							Type: pkgK8s.Pod,
 						},
 					},
 				},
@@ -842,12 +842,12 @@ status:
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
-							Type: "pods",
+							Type: pkgK8s.Pod,
 						},
 					},
 					Outbound: &pb.StatSummaryRequest_FromResource{
 						FromResource: &pb.Resource{
-							Type: "services",
+							Type: pkgK8s.Service,
 						},
 					},
 				},
@@ -867,12 +867,12 @@ status:
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
-							Type: "pods",
+							Type: pkgK8s.Pod,
 						},
 					},
 					Outbound: &pb.StatSummaryRequest_ToResource{
 						ToResource: &pb.Resource{
-							Type: "services",
+							Type: pkgK8s.Service,
 						},
 					},
 				},
@@ -881,12 +881,12 @@ status:
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
-							Type: "services",
+							Type: pkgK8s.Service,
 						},
 					},
 					Outbound: &pb.StatSummaryRequest_FromResource{
 						FromResource: &pb.Resource{
-							Type: "pods",
+							Type: pkgK8s.Pod,
 						},
 					},
 				},
@@ -937,7 +937,7 @@ status:
 						Selector: &pb.ResourceSelection{
 							Resource: &pb.Resource{
 								Namespace: "emojivoto",
-								Type:      pkgK8s.Pods,
+								Type:      pkgK8s.Pod,
 							},
 						},
 					},
@@ -1020,12 +1020,12 @@ status:
 						Selector: &pb.ResourceSelection{
 							Resource: &pb.Resource{
 								Namespace: "emojivoto",
-								Type:      pkgK8s.Deployments,
+								Type:      pkgK8s.Deployment,
 							},
 						},
 						TimeWindow: "1m",
 					},
-					expectedResponse: GenStatSummaryResponse("emoji", "deployments", "emojivoto", &PodCounts{
+					expectedResponse: GenStatSummaryResponse("emoji", pkgK8s.Deployment, "emojivoto", &PodCounts{
 						MeshedPods:  1,
 						RunningPods: 2,
 						FailedPods:  1,
@@ -1062,7 +1062,7 @@ status:
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Namespace: "linkerd",
-							Type:      pkgK8s.Authorities,
+							Type:      pkgK8s.Authority,
 						},
 					},
 					TimeWindow: "1m",
@@ -1073,7 +1073,7 @@ status:
 					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="linkerd"}[1m])) by (le, namespace, authority))`,
 					`sum(increase(response_total{direction="inbound", namespace="linkerd"}[1m])) by (namespace, authority, classification, tls)`,
 				},
-				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", "authorities", "linkerd", nil),
+				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", pkgK8s.Authority, "linkerd", nil),
 			},
 		}
 
@@ -1105,7 +1105,7 @@ status:
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Namespace: "linkerd",
-							Type:      pkgK8s.Authorities,
+							Type:      pkgK8s.Authority,
 						},
 					},
 					TimeWindow: "1m",
@@ -1113,7 +1113,7 @@ status:
 						FromResource: &pb.Resource{
 							Name:      "emojivoto",
 							Namespace: "",
-							Type:      pkgK8s.Deployments,
+							Type:      pkgK8s.Deployment,
 						},
 					},
 				},
@@ -1123,7 +1123,7 @@ status:
 					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{deployment="emojivoto", direction="outbound"}[1m])) by (le, dst_namespace, authority))`,
 					`sum(increase(response_total{deployment="emojivoto", direction="outbound"}[1m])) by (dst_namespace, authority, classification, tls)`,
 				},
-				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", "authorities", "", nil),
+				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", pkgK8s.Authority, "", nil),
 			},
 		}
 
@@ -1155,7 +1155,7 @@ status:
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Namespace: "linkerd",
-							Type:      pkgK8s.Authorities,
+							Type:      pkgK8s.Authority,
 							Name:      "10.1.1.239:9995",
 						},
 					},
@@ -1167,7 +1167,7 @@ status:
 					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{authority="10.1.1.239:9995", direction="inbound", namespace="linkerd"}[1m])) by (le, namespace, authority))`,
 					`sum(increase(response_total{authority="10.1.1.239:9995", direction="inbound", namespace="linkerd"}[1m])) by (namespace, authority, classification, tls)`,
 				},
-				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", "authorities", "linkerd", nil),
+				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", pkgK8s.Authority, "linkerd", nil),
 			},
 		}
 

@@ -20,7 +20,7 @@
   "links": [],
   "panels": [
     {
-      "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"height:32px;\"/>&nbsp;\n  <span style=\"font-size: 32px\">rc/$replication_controller</span>\n</div>",
+      "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"height:32px;\"/>&nbsp;\n  <span style=\"font-size: 32px\">rc/$replicationcontroller</span>\n</div>",
       "gridPos": {
         "h": 2.4,
         "w": 24,
@@ -96,7 +96,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"inbound\"}[30s])) / sum(irate(response_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"inbound\"}[30s]))",
+          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", replicationcontroller=\"$replicationcontroller\", direction=\"inbound\"}[30s])) / sum(irate(response_total{namespace=\"$namespace\", replicationcontroller=\"$replicationcontroller\", direction=\"inbound\"}[30s]))",
           "format": "time_series",
           "instant": false,
           "intervalFactor": 1,
@@ -180,7 +180,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"inbound\"}[30s]))",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", replicationcontroller=\"$replicationcontroller\", direction=\"inbound\"}[30s]))",
           "format": "time_series",
           "instant": false,
           "intervalFactor": 1,
@@ -264,7 +264,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "count(count(request_total{dst_namespace=\"$namespace\", replication_controller!=\"\", dst_replication_controller!=\"\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}) by (namespace, replication_controller))",
+          "expr": "count(count(request_total{dst_namespace=\"$namespace\", replicationcontroller!=\"\", dst_replicationcontroller!=\"\", dst_replicationcontroller=\"$replicationcontroller\", direction=\"outbound\"}) by (namespace, replicationcontroller))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "",
@@ -346,7 +346,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "count(count(request_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"outbound\"}) by (namespace, dst_replication_controller))",
+          "expr": "count(count(request_total{namespace=\"$namespace\", replicationcontroller=\"$replicationcontroller\", direction=\"outbound\"}) by (namespace, dst_replicationcontroller))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "",
@@ -419,10 +419,10 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"inbound\"}[30s])) by (replication_controller) / sum(irate(response_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"inbound\"}[30s])) by (replication_controller)",
+          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", replicationcontroller=\"$replicationcontroller\", direction=\"inbound\"}[30s])) by (replicationcontroller) / sum(irate(response_total{namespace=\"$namespace\", replicationcontroller=\"$replicationcontroller\", direction=\"inbound\"}[30s])) by (replicationcontroller)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "rc/{{replication_controller}}",
+          "legendFormat": "rc/{{replicationcontroller}}",
           "refId": "A"
         }
       ],
@@ -504,17 +504,17 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"inbound\", tls=\"true\"}[30s])) by (replication_controller)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", replicationcontroller=\"$replicationcontroller\", direction=\"inbound\", tls=\"true\"}[30s])) by (replicationcontroller)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "🔒rc/{{replication_controller}}",
+          "legendFormat": "🔒rc/{{replicationcontroller}}",
           "refId": "A"
         },
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"inbound\", tls!=\"true\"}[30s])) by (replication_controller)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", replicationcontroller=\"$replicationcontroller\", direction=\"inbound\", tls!=\"true\"}[30s])) by (replicationcontroller)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "rc/{{replication_controller}}",
+          "legendFormat": "rc/{{replicationcontroller}}",
           "refId": "B"
         }
       ],
@@ -596,25 +596,25 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"inbound\"}[30s])) by (le, replication_controller))",
+          "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", replicationcontroller=\"$replicationcontroller\", direction=\"inbound\"}[30s])) by (le, replicationcontroller))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "p50 rc/{{replication_controller}}",
+          "legendFormat": "p50 rc/{{replicationcontroller}}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"inbound\"}[30s])) by (le, replication_controller))",
+          "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", replicationcontroller=\"$replicationcontroller\", direction=\"inbound\"}[30s])) by (le, replicationcontroller))",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
-          "legendFormat": "p95 rc/{{replication_controller}}",
+          "legendFormat": "p95 rc/{{replicationcontroller}}",
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"inbound\"}[30s])) by (le, replication_controller))",
+          "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", replicationcontroller=\"$replicationcontroller\", direction=\"inbound\"}[30s])) by (le, replicationcontroller))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "p99 rc/{{replication_controller}}",
+          "legendFormat": "p99 rc/{{replicationcontroller}}",
           "refId": "C"
         }
       ],
@@ -736,7 +736,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(response_total{classification=\"success\", replication_controller!=\"\", replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}[30s])) by (replication_controller, pod) / sum(irate(response_total{replication_controller!=\"\", replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}[30s])) by (replication_controller, pod)",
+              "expr": "sum(irate(response_total{classification=\"success\", replicationcontroller!=\"\", replicationcontroller=\"$inbound\", dst_namespace=\"$namespace\", dst_replicationcontroller=\"$replicationcontroller\", direction=\"outbound\"}[30s])) by (replicationcontroller, pod) / sum(irate(response_total{replicationcontroller!=\"\", replicationcontroller=\"$inbound\", dst_namespace=\"$namespace\", dst_replicationcontroller=\"$replicationcontroller\", direction=\"outbound\"}[30s])) by (replicationcontroller, pod)",
               "format": "time_series",
               "instant": false,
               "intervalFactor": 1,
@@ -822,14 +822,14 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(request_total{replication_controller!=\"\", replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\", tls=\"true\"}[30s])) by (replication_controller, pod)",
+              "expr": "sum(irate(request_total{replicationcontroller!=\"\", replicationcontroller=\"$inbound\", dst_namespace=\"$namespace\", dst_replicationcontroller=\"$replicationcontroller\", direction=\"outbound\", tls=\"true\"}[30s])) by (replicationcontroller, pod)",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "🔒po/{{pod}}",
               "refId": "A"
             },
             {
-              "expr": "sum(irate(request_total{replication_controller!=\"\", replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\", tls!=\"true\"}[30s])) by (replication_controller, pod)",
+              "expr": "sum(irate(request_total{replicationcontroller!=\"\", replicationcontroller=\"$inbound\", dst_namespace=\"$namespace\", dst_replicationcontroller=\"$replicationcontroller\", direction=\"outbound\", tls!=\"true\"}[30s])) by (replicationcontroller, pod)",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "po/{{pod}}",
@@ -914,24 +914,24 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{replication_controller!=\"\", replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}[30s])) by (le, replication_controller))",
+              "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{replicationcontroller!=\"\", replicationcontroller=\"$inbound\", dst_namespace=\"$namespace\", dst_replicationcontroller=\"$replicationcontroller\", direction=\"outbound\"}[30s])) by (le, replicationcontroller))",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "P50 rc/{{replication_controller}}",
+              "legendFormat": "P50 rc/{{replicationcontroller}}",
               "refId": "A"
             },
             {
-              "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{replication_controller!=\"\", replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}[30s])) by (le, replication_controller))",
+              "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{replicationcontroller!=\"\", replicationcontroller=\"$inbound\", dst_namespace=\"$namespace\", dst_replicationcontroller=\"$replicationcontroller\", direction=\"outbound\"}[30s])) by (le, replicationcontroller))",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "P95 rc/{{replication_controller}}",
+              "legendFormat": "P95 rc/{{replicationcontroller}}",
               "refId": "B"
             },
             {
-              "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{replication_controller!=\"\", replication_controller=\"$inbound\", dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\", direction=\"outbound\"}[30s])) by (le, replication_controller))",
+              "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{replicationcontroller!=\"\", replicationcontroller=\"$inbound\", dst_namespace=\"$namespace\", dst_replicationcontroller=\"$replicationcontroller\", direction=\"outbound\"}[30s])) by (le, replicationcontroller))",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "P99 rc/{{replication_controller}}",
+              "legendFormat": "P99 rc/{{replicationcontroller}}",
               "refId": "C"
             }
           ],
@@ -1046,10 +1046,10 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"outbound\"}[30s])) by (dst_replication_controller) / sum(irate(response_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"outbound\"}[30s])) by (dst_replication_controller)",
+          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", replicationcontroller=\"$replicationcontroller\", direction=\"outbound\"}[30s])) by (dst_replicationcontroller) / sum(irate(response_total{namespace=\"$namespace\", replicationcontroller=\"$replicationcontroller\", direction=\"outbound\"}[30s])) by (dst_replicationcontroller)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "rc/{{dst_replication_controller}}",
+          "legendFormat": "rc/{{dst_replicationcontroller}}",
           "refId": "A"
         }
       ],
@@ -1131,17 +1131,17 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"outbound\", tls=\"true\"}[30s])) by (dst_replication_controller)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", replicationcontroller=\"$replicationcontroller\", direction=\"outbound\", tls=\"true\"}[30s])) by (dst_replicationcontroller)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "🔒rc/{{dst_replication_controller}}",
+          "legendFormat": "🔒rc/{{dst_replicationcontroller}}",
           "refId": "A"
         },
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"outbound\", tls!=\"true\"}[30s])) by (dst_replication_controller)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", replicationcontroller=\"$replicationcontroller\", direction=\"outbound\", tls!=\"true\"}[30s])) by (dst_replicationcontroller)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "rc/{{dst_replication_controller}}",
+          "legendFormat": "rc/{{dst_replicationcontroller}}",
           "refId": "B"
         }
       ],
@@ -1222,10 +1222,10 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", replication_controller=\"$replication_controller\", direction=\"outbound\"}[30s])) by (le, dst_replication_controller))",
+          "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", replicationcontroller=\"$replicationcontroller\", direction=\"outbound\"}[30s])) by (le, dst_replicationcontroller))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "P95 rc/{{dst_replication_controller}}",
+          "legendFormat": "P95 rc/{{dst_replicationcontroller}}",
           "refId": "A"
         }
       ],
@@ -1346,10 +1346,10 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", replication_controller=\"$replication_controller\", dst_replication_controller=\"$outbound\", direction=\"outbound\"}[30s])) by (dst_replication_controller) / sum(irate(response_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", dst_replication_controller=\"$outbound\", direction=\"outbound\"}[30s])) by (dst_replication_controller)",
+              "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", replicationcontroller=\"$replicationcontroller\", dst_replicationcontroller=\"$outbound\", direction=\"outbound\"}[30s])) by (dst_replicationcontroller) / sum(irate(response_total{namespace=\"$namespace\", replicationcontroller=\"$replicationcontroller\", dst_replicationcontroller=\"$outbound\", direction=\"outbound\"}[30s])) by (dst_replicationcontroller)",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "rc/{{dst_replication_controller}}",
+              "legendFormat": "rc/{{dst_replicationcontroller}}",
               "refId": "A"
             }
           ],
@@ -1431,17 +1431,17 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(request_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", dst_replication_controller=\"$outbound\", direction=\"outbound\", tls=\"true\"}[30s])) by (dst_replication_controller)",
+              "expr": "sum(irate(request_total{namespace=\"$namespace\", replicationcontroller=\"$replicationcontroller\", dst_replicationcontroller=\"$outbound\", direction=\"outbound\", tls=\"true\"}[30s])) by (dst_replicationcontroller)",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "🔒rc/{{dst_replication_controller}}",
+              "legendFormat": "🔒rc/{{dst_replicationcontroller}}",
               "refId": "A"
             },
             {
-              "expr": "sum(irate(request_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\", dst_replication_controller=\"$outbound\", direction=\"outbound\", tls!=\"true\"}[30s])) by (dst_replication_controller)",
+              "expr": "sum(irate(request_total{namespace=\"$namespace\", replicationcontroller=\"$replicationcontroller\", dst_replicationcontroller=\"$outbound\", direction=\"outbound\", tls!=\"true\"}[30s])) by (dst_replicationcontroller)",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "rc/{{dst_replication_controller}}",
+              "legendFormat": "rc/{{dst_replicationcontroller}}",
               "refId": "B"
             }
           ],
@@ -1522,24 +1522,24 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", replication_controller=\"$replication_controller\", dst_replication_controller=\"$outbound\", direction=\"outbound\"}[30s])) by (le, dst_replication_controller))",
+              "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", replicationcontroller=\"$replicationcontroller\", dst_replicationcontroller=\"$outbound\", direction=\"outbound\"}[30s])) by (le, dst_replicationcontroller))",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "P50 rc/{{dst_replication_controller}}",
+              "legendFormat": "P50 rc/{{dst_replicationcontroller}}",
               "refId": "A"
             },
             {
-              "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", replication_controller=\"$replication_controller\", dst_replication_controller=\"$outbound\", direction=\"outbound\"}[30s])) by (le, dst_replication_controller))",
+              "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", replicationcontroller=\"$replicationcontroller\", dst_replicationcontroller=\"$outbound\", direction=\"outbound\"}[30s])) by (le, dst_replicationcontroller))",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "P95 rc/{{dst_replication_controller}}",
+              "legendFormat": "P95 rc/{{dst_replicationcontroller}}",
               "refId": "B"
             },
             {
-              "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", replication_controller=\"$replication_controller\", dst_replication_controller=\"$outbound\", direction=\"outbound\"}[30s])) by (le, dst_replication_controller))",
+              "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", replicationcontroller=\"$replicationcontroller\", dst_replicationcontroller=\"$outbound\", direction=\"outbound\"}[30s])) by (le, dst_replicationcontroller))",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "P99 rc/{{dst_replication_controller}}",
+              "legendFormat": "P99 rc/{{dst_replicationcontroller}}",
               "refId": "C"
             }
           ],
@@ -1607,7 +1607,7 @@
         "multi": false,
         "name": "namespace",
         "options": [],
-        "query": "label_values(request_total{replication_controller!=\"\"}, namespace)",
+        "query": "label_values(request_total{replicationcontroller!=\"\"}, namespace)",
         "refresh": 2,
         "regex": "",
         "sort": 1,
@@ -1623,11 +1623,11 @@
         "datasource": "prometheus",
         "hide": 0,
         "includeAll": false,
-        "label": "Replication Controller",
+        "label": "ReplicationController",
         "multi": false,
-        "name": "replication_controller",
+        "name": "replicationcontroller",
         "options": [],
-        "query": "label_values(request_total{namespace=\"$namespace\"}, replication_controller)",
+        "query": "label_values(request_total{namespace=\"$namespace\"}, replicationcontroller)",
         "refresh": 2,
         "regex": "",
         "sort": 1,
@@ -1647,7 +1647,7 @@
         "multi": false,
         "name": "inbound",
         "options": [],
-        "query": "label_values(request_total{dst_namespace=\"$namespace\", dst_replication_controller=\"$replication_controller\"}, replication_controller)",
+        "query": "label_values(request_total{dst_namespace=\"$namespace\", dst_replicationcontroller=\"$replicationcontroller\"}, replicationcontroller)",
         "refresh": 2,
         "regex": "",
         "sort": 1,
@@ -1667,7 +1667,7 @@
         "multi": false,
         "name": "outbound",
         "options": [],
-        "query": "label_values(request_total{namespace=\"$namespace\", replication_controller=\"$replication_controller\"}, dst_replication_controller)",
+        "query": "label_values(request_total{namespace=\"$namespace\", replicationcontroller=\"$replicationcontroller\"}, dst_replicationcontroller)",
         "refresh": 2,
         "regex": "",
         "sort": 1,
@@ -1709,7 +1709,7 @@
     ]
   },
   "timezone": "",
-  "title": "Linkerd Replication Controller",
+  "title": "Linkerd ReplicationController",
   "uid": "eIYYYkGmz",
   "version": 1
 }

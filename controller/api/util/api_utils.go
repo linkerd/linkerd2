@@ -26,22 +26,22 @@ var (
 	// target resource on an outbound 'to' query
 	// destination resource on an outbound 'from' query
 	ValidTargets = []string{
-		k8s.Deployments,
-		k8s.Namespaces,
-		k8s.Pods,
-		k8s.ReplicationControllers,
-		k8s.Authorities,
+		k8s.Deployment,
+		k8s.Namespace,
+		k8s.Pod,
+		k8s.ReplicationController,
+		k8s.Authority,
 	}
 
 	// ValidDestinations specifies resource types allowed as a destination:
 	// destination resource on an outbound 'to' query
 	// target resource on an outbound 'from' query
 	ValidDestinations = []string{
-		k8s.Deployments,
-		k8s.Namespaces,
-		k8s.Pods,
-		k8s.ReplicationControllers,
-		k8s.Services,
+		k8s.Deployment,
+		k8s.Namespace,
+		k8s.Pod,
+		k8s.ReplicationController,
+		k8s.Service,
 	}
 )
 
@@ -183,7 +183,7 @@ func validateFromResourceType(resourceType string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if name == k8s.Authorities {
+	if name == k8s.Authority {
 		return "", errors.New("cannot query traffic --from an authority")
 	}
 	return name, nil
@@ -220,7 +220,7 @@ func buildResource(namespace string, resType string, name string) (pb.Resource, 
 	if err != nil {
 		return pb.Resource{}, err
 	}
-	if canonicalType == k8s.Namespaces {
+	if canonicalType == k8s.Namespace {
 		// ignore --namespace flags if type is namespace
 		namespace = ""
 	}

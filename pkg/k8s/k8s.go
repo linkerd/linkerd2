@@ -9,33 +9,22 @@ import (
 )
 
 const (
-	Deployments            = "deployments"
-	Namespaces             = "namespaces"
-	Pods                   = "pods"
-	ReplicationControllers = "replicationcontrollers"
-	Services               = "services"
-	All                    = "all"
-	Authorities            = "authorities"
+	All                   = "all"
+	Authority             = "authority"
+	Deployment            = "deployment"
+	Namespace             = "namespace"
+	Pod                   = "pod"
+	ReplicationController = "replicationcontroller"
+	Service               = "service"
 )
-
-// ResourceTypesToProxyLabels maps resource type names to keys
-// understood by the proxy, specifically Destination and Prometheus labels.
-var ResourceTypesToProxyLabels = map[string]string{
-	Deployments: "deployment",
-	Namespaces:  "namespace",
-	Pods:        "pod",
-	ReplicationControllers: "replication_controller",
-	Services:               "service",
-	Authorities:            "authority", // non k8s
-}
 
 // resources to query in StatSummary when Resource.Type is "all"
 var StatAllResourceTypes = []string{
-	Deployments,
-	ReplicationControllers,
-	Pods,
-	Services,
-	Authorities,
+	Deployment,
+	ReplicationController,
+	Pod,
+	Service,
+	Authority,
 }
 
 func generateKubernetesApiBaseUrlFor(schemeHostAndPort string, namespace string, extraPathStartingWithSlash string) (*url.URL, error) {
@@ -83,17 +72,17 @@ func getConfig(fpath string) (*rest.Config, error) {
 func CanonicalResourceNameFromFriendlyName(friendlyName string) (string, error) {
 	switch friendlyName {
 	case "deploy", "deployment", "deployments":
-		return Deployments, nil
+		return Deployment, nil
 	case "ns", "namespace", "namespaces":
-		return Namespaces, nil
+		return Namespace, nil
 	case "po", "pod", "pods":
-		return Pods, nil
+		return Pod, nil
 	case "rc", "replicationcontroller", "replicationcontrollers":
-		return ReplicationControllers, nil
+		return ReplicationController, nil
 	case "svc", "service", "services":
-		return Services, nil
+		return Service, nil
 	case "au", "authority", "authorities":
-		return Authorities, nil
+		return Authority, nil
 	case "all":
 		return All, nil
 	}
@@ -105,17 +94,17 @@ func CanonicalResourceNameFromFriendlyName(friendlyName string) (string, error) 
 // Essentially the reverse of CanonicalResourceNameFromFriendlyName
 func ShortNameFromCanonicalResourceName(canonicalName string) string {
 	switch canonicalName {
-	case Deployments:
+	case Deployment:
 		return "deploy"
-	case Namespaces:
+	case Namespace:
 		return "ns"
-	case Pods:
+	case Pod:
 		return "po"
-	case ReplicationControllers:
+	case ReplicationController:
 		return "rc"
-	case Services:
+	case Service:
 		return "svc"
-	case Authorities:
+	case Authority:
 		return "au"
 	default:
 		return ""

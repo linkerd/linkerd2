@@ -174,15 +174,15 @@ func (api *API) CM() coreinformers.ConfigMapInformer {
 // If name is an empty string, match all objects of the given type.
 func (api *API) GetObjects(namespace, restype, name string) ([]runtime.Object, error) {
 	switch restype {
-	case k8s.Namespaces:
+	case k8s.Namespace:
 		return api.getNamespaces(name)
-	case k8s.Deployments:
+	case k8s.Deployment:
 		return api.getDeployments(namespace, name)
-	case k8s.Pods:
+	case k8s.Pod:
 		return api.getPods(namespace, name)
-	case k8s.ReplicationControllers:
+	case k8s.ReplicationController:
 		return api.getRCs(namespace, name)
-	case k8s.Services:
+	case k8s.Service:
 		return api.getServices(namespace, name)
 	default:
 		// TODO: ReplicaSet

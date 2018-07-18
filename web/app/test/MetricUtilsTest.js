@@ -54,9 +54,9 @@ describe('MetricUtils', () => {
       let result = processMultiResourceRollup(multiResourceRollupFixtures);
       expect(_.size(result)).to.equal(2);
 
-      expect(result["deployments"]).to.have.length(1);
-      expect(result["pods"]).to.have.length(4);
-      expect(result["replicationcontrollers"]).to.be.undefined;
+      expect(result["deployment"]).to.have.length(1);
+      expect(result["pod"]).to.have.length(4);
+      expect(result["replicationcontroller"]).to.be.undefined;
     });
   });
 });

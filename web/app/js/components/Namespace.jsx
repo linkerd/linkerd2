@@ -123,8 +123,8 @@ class Namespaces extends React.Component {
 
   render() {
     const {metrics} = this.state;
-    let noMetrics = _.isEmpty(this.state.metrics.pods);
-    let deploymentsWithMetrics = _.filter(this.state.metrics.deployments, "requestRate");
+    let noMetrics = _.isEmpty(metrics.pod);
+    let deploymentsWithMetrics = _.filter(metrics.deployment, "requestRate");
 
     return (
       <div className="page-content">
@@ -134,11 +134,11 @@ class Namespaces extends React.Component {
             <PageHeader header={`Namespace: ${this.state.ns}`} />
             { noMetrics ? <div>No resources detected.</div> : null}
             { _.isEmpty(deploymentsWithMetrics) ? null :
-            <NetworkGraph namespace={this.state.ns} deployments={metrics.deployments} />}
-            {this.renderResourceSection("Deployment", metrics.deployments)}
-            {this.renderResourceSection("Replication Controller", metrics.replicationcontrollers)}
-            {this.renderResourceSection("Pod", metrics.pods)}
-            {this.renderResourceSection("Authority", metrics.authorities)}
+            <NetworkGraph namespace={this.state.ns} deployments={metrics.deployment} />}
+            {this.renderResourceSection("deployment", metrics.deployment)}
+            {this.renderResourceSection("replicationcontroller", metrics.replicationcontroller)}
+            {this.renderResourceSection("pod", metrics.pod)}
+            {this.renderResourceSection("authority", metrics.authority)}
           </div>
         )}
       </div>);

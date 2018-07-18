@@ -68,7 +68,7 @@ func TestGetObjects(t *testing.T) {
 			getObjectsExpected{
 				err:       nil,
 				namespace: "my-ns",
-				resType:   k8s.Pods,
+				resType:   k8s.Pod,
 				name:      "my-pod",
 				k8sResResults: []string{`
 apiVersion: v1
@@ -87,7 +87,7 @@ status:
 			getObjectsExpected{
 				err:           errors.New("pod \"my-pod\" not found"),
 				namespace:     "not-my-ns",
-				resType:       k8s.Pods,
+				resType:       k8s.Pod,
 				name:          "my-pod",
 				k8sResResults: []string{},
 				k8sResMisc: []string{`
@@ -101,7 +101,7 @@ metadata:
 			getObjectsExpected{
 				err:       nil,
 				namespace: "",
-				resType:   k8s.ReplicationControllers,
+				resType:   k8s.ReplicationController,
 				name:      "",
 				k8sResResults: []string{`
 apiVersion: v1
@@ -115,7 +115,7 @@ metadata:
 			getObjectsExpected{
 				err:       nil,
 				namespace: "my-ns",
-				resType:   k8s.Deployments,
+				resType:   k8s.Deployment,
 				name:      "",
 				k8sResResults: []string{`
 apiVersion: apps/v1beta2
@@ -161,7 +161,7 @@ metadata:
 				getObjectsExpected{
 					err:       nil,
 					namespace: "my-ns",
-					resType:   k8s.Pods,
+					resType:   k8s.Pod,
 					name:      "my-pod",
 					k8sResResults: []string{`
 apiVersion: v1
@@ -179,7 +179,7 @@ status:
 				getObjectsExpected{
 					err:       nil,
 					namespace: "my-ns",
-					resType:   k8s.Pods,
+					resType:   k8s.Pod,
 					name:      "my-pod",
 					k8sResResults: []string{`
 apiVersion: v1
@@ -218,7 +218,7 @@ status:
 				getObjectsExpected{
 					err:       nil,
 					namespace: "my-ns",
-					resType:   k8s.Pods,
+					resType:   k8s.Pod,
 					name:      "my-pod",
 					k8sResResults: []string{`
 apiVersion: v1
@@ -236,7 +236,7 @@ status:
 				getObjectsExpected{
 					err:       nil,
 					namespace: "my-ns",
-					resType:   k8s.Pods,
+					resType:   k8s.Pod,
 					name:      "my-pod",
 					k8sResResults: []string{`
 apiVersion: v1

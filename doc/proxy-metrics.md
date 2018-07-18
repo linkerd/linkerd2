@@ -64,11 +64,11 @@ The following labels are only applicable if `direction=outbound`.
 
 * `dst_deployment`: The deployment to which this request is being sent.
 * `dst_k8s_job`: The job to which this request is being sent.
-* `dst_replica_set`: The replica set to which this request is being sent.
-* `dst_daemon_set`: The daemon set to which this request is being sent.
-* `dst_stateful_set`: The stateful set to which this request is being sent.
-* `dst_replication_controller`: The replication controller to which this request
-                                is being sent.
+* `dst_replicaset`: The replica set to which this request is being sent.
+* `dst_daemonset`: The daemon set to which this request is being sent.
+* `dst_statefulset`: The stateful set to which this request is being sent.
+* `dst_replicationcontroller`: The replication controller to which this request
+                               is being sent.
 * `dst_namespace`: The namespace to which this request is being sent.
 * `dst_service`: The service to which this request is being sent.
 * `dst_pod_template_hash`: The [pod-template-hash][pod-template-hash] of the pod
@@ -103,13 +103,13 @@ Kubernetes labels prefixed with `linkerd.io/` are added to your application at
 `linkerd inject` time. More specifically, Kubernetes labels prefixed with
 `linkerd.io/proxy-*` will correspond to these Prometheus labels:
 
-* `daemon_set`: The daemon set that the pod belongs to (if applicable).
+* `daemonset`: The daemon set that the pod belongs to (if applicable).
 * `deployment`: The deployment that the pod belongs to (if applicable).
 * `k8s_job`: The job that the pod belongs to (if applicable).
-* `replica_set`: The replica set that the pod belongs to (if applicable).
-* `replication_controller`: The replication controller that the pod belongs to
-                            (if applicable).
-* `stateful_set`: The stateful set that the pod belongs to (if applicable).
+* `replicaset`: The replica set that the pod belongs to (if applicable).
+* `replicationcontroller`: The replication controller that the pod belongs to
+                           (if applicable).
+* `statefulset`: The stateful set that the pod belongs to (if applicable).
 
 ### Example
 

@@ -96,8 +96,12 @@ export const numericSort = (a, b) => (_.isNil(a) ? -1 : a) - (_.isNil(b) ? -1 : 
   Nicely readable names for the stat resources
 */
 export const friendlyTitle = resource => {
-  let titles = { singular: _.startCase(resource) };
-  if (resource.toLowerCase() === "authority") {
+  let singular = _.startCase(resource);
+  if (resource === "replicationcontroller") {
+    singular = _.startCase("replication controller");
+  }
+  let titles = { singular: singular };
+  if (resource === "authority") {
     titles.plural = "Authorities";
   } else {
     titles.plural = titles.singular + "s";

@@ -9,6 +9,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -19,7 +20,7 @@ type (
 )
 
 var (
-	defaultResourceType = "deployments"
+	defaultResourceType = k8s.Deployment
 	pbMarshaler         = jsonpb.Marshaler{EmitDefaults: true}
 )
 
