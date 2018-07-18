@@ -64,16 +64,17 @@ const withREST = (WrappedComponent, componentPromises, options={}) => {
 
     startServerPolling = props => {
       this.loadFromServer(props);
-      if (!localOptions.poll) {
-        return;
+      if (localOptions.poll) {
+        this.timerId = window.setInterval(
+          this.loadFromServer, this.state.pollingInterval, props);
       }
-      this.timerId = window.setInterval(
-        this.loadFromServer, this.state.pollingInterval, props);
     }
 
     stopServerPolling = () => {
-      window.clearInterval(this.timerId);
       this.api.cancelCurrentRequests();
+      if (localOptions.poll) {
+        window.clearInterval(this.timerId);
+      }
     }
 
     loadFromServer = props => {
