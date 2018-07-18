@@ -54,7 +54,7 @@ func main() {
 	go k8sAPI.Sync(ready)
 
 	go func() {
-		log.Info("starting distributor")
+		log.Info("starting CA")
 		controller.Run(ready, stopCh)
 	}()
 

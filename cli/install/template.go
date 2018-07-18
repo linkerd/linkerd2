@@ -660,15 +660,15 @@ subjects:
   name: linkerd-ca
   namespace: {{.Namespace}}
 
-### CA Distributor ###
+### CA ###
 ---
 kind: Deployment
 apiVersion: extensions/v1beta1
 metadata:
-  name: ca-bundle-distributor
+  name: ca
   namespace: {{.Namespace}}
   labels:
-    {{.ControllerComponentLabel}}: ca-bundle-distributor
+    {{.ControllerComponentLabel}}: ca
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
@@ -676,20 +676,20 @@ spec:
   template:
     metadata:
       labels:
-        {{.ControllerComponentLabel}}: ca-bundle-distributor
+        {{.ControllerComponentLabel}}: ca
       annotations:
         {{.CreatedByAnnotation}}: {{.CliVersion}}
     spec:
       serviceAccount: linkerd-ca
       containers:
-      - name: ca-distributor
+      - name: ca
         ports:
         - name: admin-http
           containerPort: 9997
         image: {{.ControllerImage}}
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
-        - "ca-distributor"
+        - "ca"
         - "-controller-namespace={{.Namespace}}"
         - "-log-level={{.ControllerLogLevel}}"
         - "-logtostderr=true"
