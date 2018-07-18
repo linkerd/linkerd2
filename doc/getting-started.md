@@ -335,7 +335,7 @@ ____
 For more information about Linkerd, check out the
 [overview doc](/docs) and the [roadmap doc](/roadmap), or hop into the #linkerd2
 channel on [the Linkerd Slack](https://slack.linkerd.io) or browse through the
-[Conduit forum](https://discourse.linkerd.io/c/conduit). You can also follow
+[Discourse forum](https://discourse.linkerd.io/c/conduit). You can also follow
 [@runconduit](https://twitter.com/runconduit) on Twitter.
 
 We’re just getting started building Linkerd, and we’re extremely interested in
