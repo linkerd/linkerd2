@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eu
+
 linkerd_namespace=$1
 
 if [ -z "$linkerd_namespace" ]; then
@@ -9,4 +11,6 @@ fi
 
 echo "cleaning up namespace [${linkerd_namespace}] and associated test namespaces"
 
-kubectl get ns | grep "^$linkerd_namespace-" | cut -f1 -d ' ' | xargs kubectl delete ns "$linkerd_namespace"
+# `kubectl delete ns` will fail if there are no matching matching namespaces,
+# causing this script to exit with an error status.
+kubectl get ns | cut -f1 -d ' ' | grep -E "^$linkerd_namespace(-|$)" | xargs kubectl delete ns
