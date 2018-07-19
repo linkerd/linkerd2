@@ -10,6 +10,7 @@ import ServiceMesh from './components/ServiceMesh.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import { BrowserRouter, Redirect, Route, Switch } from 'react-router-dom';
 import './../css/styles.css';
+import './../img/favicon.png'; // needs to be referenced somewhere so webpack bundles it
 
 let appMain = document.getElementById('main');
 let appData = !appMain ? {} : appMain.dataset;
