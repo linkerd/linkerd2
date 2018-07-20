@@ -15,3 +15,9 @@ button.ant-btn-primary {
     border-color: var(--siennared);
   }
 }
+
+button.tap-form-toggle {
+  padding-left: 0;
+  border: none;
+  color: rgba(52, 137, 206, 0.906);
+}
