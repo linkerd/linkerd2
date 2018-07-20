@@ -8,7 +8,12 @@ docpage = true
 As Linkerd's proxy layer is configured automatically by the control plane,
 detailed knowledge of the proxy's internals is not necessary to use and
 operate it. However, a basic understanding of the high-level level principles
-behind the proxy can be valuable for avoiding some pitfalls.
+behind the proxy can be valuable for avoiding some pitfalls. This document will
+highlight some of the core principles behind the proxy's operation, and discuss
+how they can interact with your application. Additionally, we'll shine some
+light on the design decisions behind why the proxy works the way it does.
+
+____
 
 ## Protocol Detection
 
@@ -17,6 +22,23 @@ at the level of application layer protocols (HTTP/1, HTTP/2, and gRPC), rather
 than forwarding raw TCP traffic at the transport layer. This protocol awareness
 unlocks functionality such as intelligent load balancing, protocol-level
 telemetry, and routing.
+
+> **Why is it important for a proxy to operate at the application layer, rather
+> than at the transport layer?**
+> A number of Linkerd 2's primary features inherently require a protocol-aware
+> proxy. For example:
+> + **Request/response telemetry**: In order to expose telemetry information
+>   about protocol level concepts (such as HTTP requests and responses, HTTP
+>   status codes, gRPC status codes, et cetera), the proxy must --- by
+>   definition --- be aware of these application layer protocol concepts.
+> + **Latency-aware load balancing**: Similarly, for the proxy to use load
+>   balancing algorithms that incorporate latency data, it must be aware of
+>   protocol-level requests and responses so that latencies can be measured.
+> + **Retries**: In order to determine whether requests can be retried, we
+>   need to be aware of protocol-level failure semantics. For example, some
+>   HTTP verbs are safe to retry, while others are not.
+
+### How it Works
 
 There are essentially two ways for a proxy to be made protocol-aware: either it
 can be configured with some prior knowledge describing what protocols to expect
@@ -44,3 +66,5 @@ on other ports, Linkerd has to be configured to disable its protocol detection.
 See the ["Adding Your Service"] section of the documentation for more information.
 
 ["Adding Your Service"]: /adding-your-service#server-speaks-first-protocols
+
+____
