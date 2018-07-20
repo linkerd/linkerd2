@@ -63,7 +63,9 @@ class Tap extends React.Component {
       messages: []
     });
 
-    let tapWebSocket = `ws://${window.location.host}${this.props.pathPrefix}/api/tap`;
+    let protocol = window.location.protocol === "https:" ? "wss" : "ws";
+    let tapWebSocket = `${protocol}://${window.location.host}${this.props.pathPrefix}/api/tap`;
+
     this.ws = new WebSocket(tapWebSocket);
     this.ws.onmessage = this.onWebsocketRecv;
     this.ws.onclose = this.onWebsocketClose;
