@@ -35,11 +35,6 @@ telemetry, and routing.
 >   protocol-level requests and responses so that latencies can be measured.
 >   Furthermore, the load balancer must be aware of the target origin of a
 >   request, in order to find servers that are capable of serving that request.
-> + **Retries**: In order to determine whether requests can be retried, we
->   need to be aware of protocol-level failure semantics. For example, some
->   HTTP verbs are safe to retry, while others are not. Although Linkerd 2 does
->   not currently implement retry policies, when this feature is added, it will
->   require protocol awareness.
 
 ### How it Works
 
@@ -62,7 +57,7 @@ it will fail to proxy data for these protocols.
 
 Among the most common server-speaks-first protocols are MySQL and SMTP.
 When using their default ports, Linkerd's protocol detection is disabled by
-default. For other server-speaks-first protocols, or MySQL or SMTP traffi
+default. For other server-speaks-first protocols, or MySQL or SMTP traffic
 on other ports, Linkerd has to be configured to disable its protocol detection.
 See the ["Adding Your Service"] section of the documentation for more information.
 
