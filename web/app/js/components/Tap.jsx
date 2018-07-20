@@ -14,22 +14,19 @@ class Tap extends React.Component {
 
   constructor(props) {
     super(props);
-    this.loadFromServer = this.loadFromServer.bind(this);
 
     this.state = {
       errors: "",
-      pollingInterval: 2000,
       resource: "",
       namespace: "",
       messages: [],
       maxLinesToDisplay: 40,
-      websocketRequestSent: false,
-      tapUnderway: false
+      webSocketRequestSent: false
     };
   }
 
   componentWillUnmount() {
-    this.stopTapPolling();
+    this.stopTapStreaming();
   }
 
   onWebsocketRecv = e => {
@@ -47,56 +44,48 @@ class Tap extends React.Component {
         errors: `Websocket [${e.code}] ${e.reason}`
       });
     }
-    this.stopTapPolling();
+    this.stopTapStreaming();
   }
 
-  startTapPolling() {
+  onWebsocketOpen = () => {
+    this.ws.send(JSON.stringify({
+      id: "tap-web",
+      resource: this.state.resource,
+      namespace: this.state.namespace
+    }));
     this.setState({
-      messages: [],
-      tapUnderway: true
+      webSocketRequestSent: true
+    });
+  }
+
+  startTapSteaming() {
+    this.setState({
+      messages: []
     });
 
     let tapWebSocket = `ws://${window.location.host}${this.props.pathPrefix}/api/tap`;
     this.ws = new WebSocket(tapWebSocket);
     this.ws.onmessage = this.onWebsocketRecv;
     this.ws.onclose = this.onWebsocketClose;
-
-    this.loadFromServer();
-    this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
+    this.ws.onopen = this.onWebsocketOpen;
   }
 
-  stopTapPolling() {
+  stopTapStreaming() {
     this.setState({
-      websocketRequestSent: false,
-      tapUnderway: false
+      webSocketRequestSent: false
     });
 
     this.ws.close();
     window.clearInterval(this.timerId);
   }
 
-  loadFromServer = () => {
-    if (this.state.websocketRequestSent) {
-      return;
-    }
-
-    if (this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({
-        id: "tap-web",
-        resource: this.state.resource,
-        namespace: this.state.namespace
-      }));
-      this.setState({ websocketRequestSent: true });
-    }
-  }
-
   handleTapStart = e => {
     e.preventDefault();
-    this.startTapPolling();
+    this.startTapSteaming();
   }
 
   handleTapStop = () => {
-    this.stopTapPolling();
+    this.stopTapStreaming();
   }
 
   handleFormChange = formVal => {
@@ -119,7 +108,7 @@ class Tap extends React.Component {
         </Form.Item>
 
         <Form.Item>
-          { this.state.tapUnderway ?
+          { this.state.webSocketRequestSent ?
             <Button type="primary" className="tap-stop" onClick={this.handleTapStop} disabled={false}>Stop</Button> :
             <Button type="primary" className="tap-start" onClick={this.handleTapStart} disabled={false}>Start</Button>
           }
@@ -138,7 +127,7 @@ class Tap extends React.Component {
 
         <div className="tap-display">
           <code>
-            { this.state.tapUnderway && _.size(this.state.messages) === 0 ?
+            { this.state.webSocketRequestSent && _.size(this.state.messages) === 0 ?
               <div><Icon type="loading" /> Starting tap on {this.state.resource} in namespace {this.state.namespace}</div> : null }
             { _.map(this.state.messages, (m, i) => <div key={`message-${i}`}>{m}</div>)}
           </code>
