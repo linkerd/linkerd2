@@ -27,28 +27,29 @@ telemetry, and routing.
 > than at the transport layer?**
 > A number of Linkerd 2's primary features inherently require a protocol-aware
 > proxy. For example:
-> + **Request/response telemetry**: In order to expose telemetry information
->   about protocol level concepts (such as HTTP requests and responses, HTTP
->   status codes, gRPC status codes, et cetera), the proxy must --- by
->   definition --- be aware of these application layer protocol concepts.
+> + **Request/response telemetry**: In order to expose protocol-specific
+>   telemetry (such as HTTP requests and responses, HTTP status codes, gRPC
+>   status codes, et cetera), the proxy must understand those protocols.
 > + **Latency-aware load balancing**: Similarly, for the proxy to use load
 >   balancing algorithms that incorporate latency data, it must be aware of
 >   protocol-level requests and responses so that latencies can be measured.
+>   Furthermore, the load balancer must be aware of the target origin of a
+>   request, in order to find servers that are capable of serving that request.
 > + **Retries**: In order to determine whether requests can be retried, we
 >   need to be aware of protocol-level failure semantics. For example, some
->   HTTP verbs are safe to retry, while others are not.
+>   HTTP verbs are safe to retry, while others are not. Although Linkerd 2 does
+>   not currently implement retry policies, when this feature is added, it will
+>   require protocol awareness.
 
 ### How it Works
 
-There are essentially two ways for a proxy to be made protocol-aware: either it
-can be configured with some prior knowledge describing what protocols to expect
-from what traffic (the approach used by Linkerd 1), or it can detect the protocol
-of incoming connections as they are accepted. Since Linkerd 2 is designed to
-require as little as possible configuration by the user, it automatically detects
-protocols. The proxy does this by peeking at the data received on an incoming
-connection until it finds a pattern of bytes that uniquely identifies a particular
-protocol. If no protocol was identified after peeking up to a set number of bytes,
-the connection is treated as raw TCP traffic.
+Since Linkerd 2 is designed to require as little configuration by the user as
+possible, it automatically detects protocols. The proxy does this by peeking at
+the data received on an incoming connection until it finds a pattern of bytes
+that uniquely identifies a particular protocol. For example, all HTTP/2
+messages begin with the bytes `PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n` If no protocol
+was identified after peeking up to a set number of bytes, the connection is
+treated as raw TCP traffic.
 
 ### What This Means
 
