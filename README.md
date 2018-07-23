@@ -35,36 +35,36 @@ Linkerd is hosted by the Cloud Native Computing Foundation ([CNCF][cncf]).
 
 ## Get involved
 
-* [conduit-users mailing list][conduit-users]: Linkerd2 user discussion mailing
+* [Users mailing list][linkerd-users]: Linkerd2 user discussion mailing
   list.
-* [conduit-dev mailing list][conduit-dev]: Linkerd2 development discussion
+* [Developers mailing list][linkerd-dev]: Linkerd2 development discussion
   mailing list.
-* [conduit-announce mailing list][conduit-announce]: Linkerd2 announcements only
+* [Announcements mailing list][linkerd-announce]: Linkerd2 announcements only
   (low volume).
-* Follow [@RunConduit][twitter] on Twitter.
+* Follow [@runconduit][twitter] on Twitter.
 * Join the #linkerd2 channel on the [Linkerd Slack][slack].
 
 ## Documentation
 
-View [Conduit docs][conduit-docs] for more a more comprehensive guide to getting
-started, or view the full [Conduit roadmap][roadmap].
+View [Linkerd2 docs][linkerd-docs] for more a more comprehensive guide to
+getting started, or view the full [Linkerd2 roadmap][roadmap].
 
-## Getting started with Conduit
+## Getting started with Linkerd2
 
-1. Install the Conduit CLI with `curl https://run.conduit.io/install | sh `.
+1. Install the Linkerd2 CLI with `curl https://run.conduit.io/install | sh `.
 
-1. Add `$HOME/.conduit/bin` to your `PATH`.
+1. Add `$HOME/.linkerd2/bin` to your `PATH`.
 
-1. Install Conduit into your Kubernetes cluster with `conduit install | kubectl
+1. Install Linkerd2 into your Kubernetes cluster with `linkerd install | kubectl
    apply -f -`.
 
-1. Verify that the installation succeeded with `conduit check`.
+1. Verify that the installation succeeded with `linkerd check`.
 
-1. Explore the Conduit controller with `conduit dashboard`.
+1. Explore the Linkerd2 controller dashboard with `linkerd dashboard`.
 
-1. Optionally, install a [demo application][conduit-demo] to run with Conduit.
+1. Optionally, install a [demo application][linkerd-demo] to run with Linkerd2.
 
-1. Add [your own service][conduit-inject] to the Conduit mesh!
+1. Add [your own service][linkerd-inject] to the Linkerd2 mesh!
 
 ## Working in this repo ##
 
@@ -107,13 +107,12 @@ specific language governing permissions and limitations under the License.
 [ci-badge]: https://travis-ci.org/linkerd/linkerd2.svg?branch=master
 [cncf]: https://www.cncf.io/
 [coc]: https://github.com/linkerd/linkerd/wiki/Linkerd-code-of-conduct
-[conduit-announce]: https://groups.google.com/forum/#!forum/conduit-announce
-[conduit-demo]: https://conduit.io/getting-started/#install-the-demo-app
-[conduit-dev]: https://groups.google.com/forum/#!forum/conduit-dev
-[conduit-inject]: https://conduit.io/adding-your-service/
-[conduit-docs]: https://conduit.io/docs/
-[conduit-users]: https://groups.google.com/forum/#!forum/conduit-users
-<!-- [examples]: https://github.com/runconduit/conduit-examples -->
+[linkerd-announce]: https://groups.google.com/forum/#!forum/conduit-announce
+[linkerd-demo]: https://conduit.io/getting-started/#install-the-demo-app
+[linkerd-dev]: https://groups.google.com/forum/#!forum/conduit-dev
+[linkerd-inject]: https://conduit.io/adding-your-service/
+[linkerd-docs]: https://conduit.io/docs/
+[linkerd-users]: https://groups.google.com/forum/#!forum/conduit-users
 [golang]: https://golang.org/
 [license-badge]: https://img.shields.io/github/license/linkerd/linkerd.svg
 [logo]: https://user-images.githubusercontent.com/9226/33582867-3e646e02-d90c-11e7-85a2-2e238737e859.png
