@@ -48,7 +48,7 @@ let applicationHtml = (
                   render={() => <ResourceList resource="deployment" />} />
                 <Route
                   path={`${pathPrefix}/replicationcontrollers`}
-                  render={() => <ResourceList resource="replication_controller" />} />
+                  render={() => <ResourceList resource="replicationcontroller" />} />
                 <Route
                   path={`${pathPrefix}/pods`}
                   render={() => <ResourceList resource="pod" />} />

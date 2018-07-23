@@ -14,16 +14,16 @@ describe('GrafanaLink', () => {
   it('makes a link', () => {
     let api = ApiHelpers('');
     let linkProps = {
-      resource: "Replication Controller",
+      resource: "replicationcontroller",
       name: "aldksf-3409823049823",
       namespace: "myns",
       PrefixedLink: api.PrefixedLink
     };
     let component = mount(routerWrap(GrafanaLink, linkProps));
 
-    let expectedDashboardNameStr = "/linkerd-replication-controller";
+    let expectedDashboardNameStr = "/linkerd-replicationcontroller";
     let expectedNsStr = "var-namespace=myns";
-    let expectedVarNameStr = "var-replication_controller=aldksf-3409823049823";
+    let expectedVarNameStr = "var-replicationcontroller=aldksf-3409823049823";
 
     expect(component.find("GrafanaLink")).to.have.length(1);
     expect(component.html()).to.contain(expectedDashboardNameStr);

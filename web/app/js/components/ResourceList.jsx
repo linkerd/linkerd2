@@ -47,7 +47,7 @@ export class ResourceListBase extends React.Component {
 
     return (
       <MetricsTable
-        resource={friendlyTitle(this.props.resource).singular}
+        resource={this.props.resource}
         metrics={processedMetrics} />
     );
   }

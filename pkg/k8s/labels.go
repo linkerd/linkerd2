@@ -7,11 +7,10 @@ package k8s
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/linkerd/linkerd2/pkg/version"
-	k8sV1 "k8s.io/api/apps/v1"
-	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	appsV1 "k8s.io/api/apps/v1"
+	coreV1 "k8s.io/api/core/v1"
 )
 
 const (
@@ -33,11 +32,11 @@ const (
 
 	// ProxyReplicationControllerLabel is injected into mesh-enabled apps,
 	// identifying the ReplicationController that this proxy belongs to.
-	ProxyReplicationControllerLabel = "linkerd.io/proxy-replication-controller"
+	ProxyReplicationControllerLabel = "linkerd.io/proxy-replicationcontroller"
 
 	// ProxyReplicaSetLabel is injected into mesh-enabled apps, identifying the
 	// ReplicaSet that this proxy belongs to.
-	ProxyReplicaSetLabel = "linkerd.io/proxy-replica-set"
+	ProxyReplicaSetLabel = "linkerd.io/proxy-replicaset"
 
 	// ProxyJobLabel is injected into mesh-enabled apps, identifying the Job that
 	// this proxy belongs to.
@@ -45,11 +44,11 @@ const (
 
 	// ProxyDaemonSetLabel is injected into mesh-enabled apps, identifying the
 	// DaemonSet that this proxy belongs to.
-	ProxyDaemonSetLabel = "linkerd.io/proxy-daemon-set"
+	ProxyDaemonSetLabel = "linkerd.io/proxy-daemonset"
 
 	// ProxyStatefulSetLabel is injected into mesh-enabled apps, identifying the
 	// StatefulSet that this proxy belongs to.
-	ProxyStatefulSetLabel = "linkerd.io/proxy-stateful-set"
+	ProxyStatefulSetLabel = "linkerd.io/proxy-statefulset"
 
 	/*
 	 * Annotations
@@ -79,51 +78,34 @@ const (
 	TLSPrivateKeyFileName = "private-key.p8"
 )
 
-var proxyLabels = []string{
-	ControllerNSLabel,
-	ProxyDeploymentLabel,
-	ProxyReplicationControllerLabel,
-	ProxyReplicaSetLabel,
-	ProxyJobLabel,
-	ProxyDaemonSetLabel,
-	ProxyStatefulSetLabel,
-	k8sV1.DefaultDeploymentUniqueLabelKey,
-}
-
 // CreatedByAnnotationValue returns the value associated with
 // CreatedByAnnotation.
 func CreatedByAnnotationValue() string {
 	return fmt.Sprintf("linkerd/cli %s", version.Version)
 }
 
-// GetOwnerLabels returns the set of prometheus owner labels that can be
-// extracted from the proxy labels that have been added to an injected
-// kubernetes resource
-func GetOwnerLabels(objectMeta meta.ObjectMeta) map[string]string {
-	labels := make(map[string]string)
-	for _, label := range proxyLabels {
-		if labelValue, ok := objectMeta.Labels[label]; ok {
-			labels[toOwnerLabel(label)] = labelValue
-		}
+// GetPodLabels returns the set of prometheus owner labels for a given pod
+func GetPodLabels(ownerKind, ownerName string, pod *coreV1.Pod) map[string]string {
+	labels := map[string]string{"pod": pod.Name}
+	if ownerKind == "job" {
+		labels["k8s_job"] = ownerName
+	} else {
+		labels[ownerKind] = ownerName
 	}
+
+	if controllerNS := GetControllerNs(pod); controllerNS != "" {
+		labels["linkerd_io_control_plane_ns"] = controllerNS
+	}
+
+	if pth := pod.Labels[appsV1.DefaultDeploymentUniqueLabelKey]; pth != "" {
+		labels["pod_template_hash"] = pth
+	}
+
 	return labels
 }
 
-func GetControllerNs(objectMeta meta.ObjectMeta) string {
-	return objectMeta.Labels[ControllerNSLabel]
-}
-
-// toOwnerLabel converts a proxy label to a prometheus label, following the
-// relabel conventions from the prometheus scrape config file
-func toOwnerLabel(proxyLabel string) string {
-	if proxyLabel == ControllerNSLabel {
-		return "linkerd_io_control_plane_ns"
-	}
-	stripped := strings.TrimPrefix(proxyLabel, "linkerd.io/proxy-")
-	if stripped == "job" {
-		return "k8s_job"
-	}
-	return strings.Replace(stripped, "-", "_", -1)
+func GetControllerNs(pod *coreV1.Pod) string {
+	return pod.Labels[ControllerNSLabel]
 }
 
 // TLSIdentity is the identity of a pod owner (Deployment, Pod,

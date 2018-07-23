@@ -7,6 +7,7 @@ import (
 
 	public "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
+	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 )
 
 type tapExpected struct {
@@ -44,7 +45,7 @@ status:
 					Target: &public.ResourceSelection{
 						Resource: &public.Resource{
 							Namespace: "emojivoto",
-							Type:      "pods",
+							Type:      pkgK8s.Pod,
 							Name:      "emojivoto-meshed",
 						},
 					},
@@ -88,14 +89,14 @@ status:
 					Target: &public.ResourceSelection{
 						Resource: &public.Resource{
 							Namespace: "emojivoto",
-							Type:      "pods",
+							Type:      pkgK8s.Pod,
 							Name:      "emojivoto-meshed-not-found",
 						},
 					},
 				},
 			},
 			tapExpected{
-				msg: "rpc error: code = NotFound desc = no pods found for ResourceSelection: {Resource:namespace:\"emojivoto\" type:\"pods\" name:\"emojivoto-meshed\"  LabelSelector:}",
+				msg: "rpc error: code = NotFound desc = no pods found for ResourceSelection: {Resource:namespace:\"emojivoto\" type:\"pod\" name:\"emojivoto-meshed\"  LabelSelector:}",
 				k8sRes: []string{`
 apiVersion: v1
 kind: Pod
@@ -114,7 +115,7 @@ status:
 					Target: &public.ResourceSelection{
 						Resource: &public.Resource{
 							Namespace: "emojivoto",
-							Type:      "pods",
+							Type:      pkgK8s.Pod,
 							Name:      "emojivoto-meshed",
 						},
 					},
@@ -143,7 +144,7 @@ status:
 					Target: &public.ResourceSelection{
 						Resource: &public.Resource{
 							Namespace: "emojivoto",
-							Type:      "pods",
+							Type:      pkgK8s.Pod,
 							Name:      "emojivoto-meshed",
 						},
 					},

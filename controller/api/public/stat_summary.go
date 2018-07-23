@@ -258,7 +258,7 @@ func (s *grpcServer) nonK8sResourceQuery(ctx context.Context, req *pb.StatSummar
 }
 
 func isNonK8sResourceQuery(resourceType string) bool {
-	return resourceType == k8s.Authorities
+	return resourceType == k8s.Authority
 }
 
 // get the list of objects for which we want to return results
@@ -289,7 +289,7 @@ func getResultKeys(
 func promGroupByLabelNames(resource *pb.Resource) model.LabelNames {
 	names := model.LabelNames{namespaceLabel}
 
-	if resource.Type != k8s.Namespaces {
+	if resource.Type != k8s.Namespace {
 		names = append(names, promResourceType(resource))
 	}
 	return names
@@ -302,7 +302,7 @@ func promDstGroupByLabelNames(resource *pb.Resource) model.LabelNames {
 
 	if isNonK8sResourceQuery(resource.GetType()) {
 		names = append(names, promResourceType(resource))
-	} else if resource.Type != k8s.Namespaces {
+	} else if resource.Type != k8s.Namespace {
 		names = append(names, "dst_"+promResourceType(resource))
 	}
 	return names
@@ -339,7 +339,7 @@ func promDstQueryLabels(resource *pb.Resource) model.LabelSet {
 
 // determine if we should add "namespace=<namespace>" to a named query
 func shouldAddNamespaceLabel(resource *pb.Resource) bool {
-	return resource.Type != k8s.Namespaces && resource.Namespace != ""
+	return resource.Type != k8s.Namespace && resource.Namespace != ""
 }
 
 // query for inbound or outbound requests
@@ -350,7 +350,7 @@ func promDirectionLabels(direction string) model.LabelSet {
 }
 
 func promResourceType(resource *pb.Resource) model.LabelName {
-	return model.LabelName(k8s.ResourceTypesToProxyLabels[resource.Type])
+	return model.LabelName(resource.Type)
 }
 
 func buildRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labelNames model.LabelNames) {
@@ -566,9 +566,9 @@ func isInMesh(pod *apiv1.Pod) bool {
 func isInvalidServiceRequest(req *pb.StatSummaryRequest) bool {
 	fromResource := req.GetFromResource()
 	if fromResource != nil {
-		return fromResource.Type == k8s.Services
+		return fromResource.Type == k8s.Service
 	} else {
-		return req.Selector.Resource.Type == k8s.Services
+		return req.Selector.Resource.Type == k8s.Service
 	}
 }
 

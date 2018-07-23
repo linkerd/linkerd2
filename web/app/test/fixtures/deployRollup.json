@@ -9,7 +9,7 @@
               "resource": {
                 "name": "voting",
                 "namespace": "emojivoto",
-                "type": "deployments"
+                "type": "deployment"
               },
               "stats": {
                 "failureCount": "15",

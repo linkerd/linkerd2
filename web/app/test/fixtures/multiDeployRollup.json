@@ -9,7 +9,7 @@
               "resource": {
                 "name": "voting",
                 "namespace": "emojivoto",
-                "type": "deployments"
+                "type": "deployment"
               },
               "stats": {
                 "failureCount": "10",
@@ -26,7 +26,7 @@
               "resource": {
                 "name": "emoji",
                 "namespace": "emojivoto",
-                "type": "deployments"
+                "type": "deployment"
               },
               "stats": {
                 "failureCount": "0",
@@ -43,7 +43,7 @@
               "resource": {
                 "name": "vote-bot",
                 "namespace": "emojivoto",
-                "type": "deployments"
+                "type": "deployment"
               },
               "stats": {
                 "failureCount": "0",
@@ -60,7 +60,7 @@
               "resource": {
                 "name": "web",
                 "namespace": "emojivoto",
-                "type": "deployments"
+                "type": "deployment"
               },
               "stats": {
                 "failureCount": "11",

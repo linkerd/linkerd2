@@ -40,12 +40,12 @@ func TestGRPCError(t *testing.T) {
 func TestBuildStatSummaryRequest(t *testing.T) {
 	t.Run("Maps Kubernetes friendly names to canonical names", func(t *testing.T) {
 		expectations := map[string]string{
-			"deployments": k8s.Deployments,
-			"deployment":  k8s.Deployments,
-			"deploy":      k8s.Deployments,
-			"pods":        k8s.Pods,
-			"pod":         k8s.Pods,
-			"po":          k8s.Pods,
+			"deployments": k8s.Deployment,
+			"deployment":  k8s.Deployment,
+			"deploy":      k8s.Deployment,
+			"pods":        k8s.Pod,
+			"pod":         k8s.Pod,
+			"po":          k8s.Pod,
 		}
 
 		for friendly, canonical := range expectations {
@@ -74,7 +74,7 @@ func TestBuildStatSummaryRequest(t *testing.T) {
 			statSummaryRequest, err := BuildStatSummaryRequest(
 				StatSummaryRequestParams{
 					TimeWindow:   timeWindow,
-					ResourceType: k8s.Deployments,
+					ResourceType: k8s.Deployment,
 				},
 			)
 			if err != nil {
@@ -143,7 +143,7 @@ func TestBuildResource(t *testing.T) {
 				args:      []string{"deployments"},
 				resource: pb.Resource{
 					Namespace: "test-ns",
-					Type:      k8s.Deployments,
+					Type:      k8s.Deployment,
 					Name:      "",
 				},
 			},
@@ -152,7 +152,7 @@ func TestBuildResource(t *testing.T) {
 				args:      []string{"deploy/foo"},
 				resource: pb.Resource{
 					Namespace: "",
-					Type:      k8s.Deployments,
+					Type:      k8s.Deployment,
 					Name:      "foo",
 				},
 			},
@@ -161,7 +161,7 @@ func TestBuildResource(t *testing.T) {
 				args:      []string{"po", "foo"},
 				resource: pb.Resource{
 					Namespace: "foo-ns",
-					Type:      k8s.Pods,
+					Type:      k8s.Pod,
 					Name:      "foo",
 				},
 			},
@@ -170,7 +170,7 @@ func TestBuildResource(t *testing.T) {
 				args:      []string{"ns", "foo-ns2"},
 				resource: pb.Resource{
 					Namespace: "",
-					Type:      k8s.Namespaces,
+					Type:      k8s.Namespace,
 					Name:      "foo-ns2",
 				},
 			},
@@ -179,7 +179,7 @@ func TestBuildResource(t *testing.T) {
 				args:      []string{"ns/foo-ns2"},
 				resource: pb.Resource{
 					Namespace: "",
-					Type:      k8s.Namespaces,
+					Type:      k8s.Namespace,
 					Name:      "foo-ns2",
 				},
 			},

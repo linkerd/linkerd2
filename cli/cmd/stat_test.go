@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/linkerd/linkerd2/controller/api/public"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 )
 
 func TestStat(t *testing.T) {
@@ -16,7 +17,7 @@ func TestStat(t *testing.T) {
 			FailedPods:  0,
 		}
 
-		response := public.GenStatSummaryResponse("emoji", "namespaces", "emojivoto", counts)
+		response := public.GenStatSummaryResponse("emoji", k8s.Namespace, "emojivoto", counts)
 
 		mockClient.StatSummaryResponseToReturn = &response
 

@@ -4,52 +4,37 @@ import (
 	"reflect"
 	"testing"
 
-	k8sV1 "k8s.io/api/apps/v1"
-	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	appsV1 "k8s.io/api/apps/v1"
+	coreV1 "k8s.io/api/core/v1"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestGetOwnerLabels(t *testing.T) {
+func TestGetPodLabels(t *testing.T) {
 	t.Run("Maps proxy labels to prometheus labels", func(t *testing.T) {
-		metadata := meta.ObjectMeta{
-			Labels: map[string]string{
-				ControllerNSLabel:                     "linkerd-namespace",
-				ProxyDeploymentLabel:                  "test-deployment",
-				ProxyReplicationControllerLabel:       "test-replication-controller",
-				ProxyReplicaSetLabel:                  "test-replica-set",
-				ProxyJobLabel:                         "test-job",
-				ProxyDaemonSetLabel:                   "test-daemon-set",
-				ProxyStatefulSetLabel:                 "test-stateful-set",
-				k8sV1.DefaultDeploymentUniqueLabelKey: "test-pth",
+		pod := &coreV1.Pod{
+			ObjectMeta: metaV1.ObjectMeta{
+				Name: "test-pod",
+				Labels: map[string]string{
+					ControllerNSLabel:                      "linkerd-namespace",
+					appsV1.DefaultDeploymentUniqueLabelKey: "test-pth",
+				},
 			},
 		}
+
+		ownerKind := "deployment"
+		ownerName := "test-deployment"
 
 		expectedLabels := map[string]string{
 			"linkerd_io_control_plane_ns": "linkerd-namespace",
 			"deployment":                  "test-deployment",
-			"replication_controller":      "test-replication-controller",
-			"replica_set":                 "test-replica-set",
-			"k8s_job":                     "test-job",
-			"daemon_set":                  "test-daemon-set",
-			"stateful_set":                "test-stateful-set",
+			"pod":                         "test-pod",
 			"pod_template_hash":           "test-pth",
 		}
 
-		ownerLabels := GetOwnerLabels(metadata)
+		podLabels := GetPodLabels(ownerKind, ownerName, pod)
 
-		if !reflect.DeepEqual(ownerLabels, expectedLabels) {
-			t.Fatalf("Expected owner labels [%v] but got [%v]", expectedLabels, ownerLabels)
-		}
-	})
-
-	t.Run("Ignores non-proxy labels", func(t *testing.T) {
-		metadata := meta.ObjectMeta{
-			Labels: map[string]string{"app": "foo"},
-		}
-
-		ownerLabels := GetOwnerLabels(metadata)
-
-		if len(ownerLabels) != 0 {
-			t.Fatalf("Expected no owner labels but got [%v]", ownerLabels)
+		if !reflect.DeepEqual(podLabels, expectedLabels) {
+			t.Fatalf("Expected pod labels [%v] but got [%v]", expectedLabels, podLabels)
 		}
 	})
 }

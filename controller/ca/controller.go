@@ -174,5 +174,5 @@ func (c *CertificateController) handlePodUpdate(oldObj, newObj interface{}) {
 }
 
 func (c *CertificateController) isInjectedPod(pod *v1.Pod) bool {
-	return pkgK8s.GetControllerNs(pod.ObjectMeta) == c.namespace
+	return pkgK8s.GetControllerNs(pod) == c.namespace
 }

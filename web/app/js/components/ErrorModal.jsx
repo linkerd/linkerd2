@@ -1,4 +1,5 @@
 import _ from 'lodash';
+import { friendlyTitle } from './util/Utils.js';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { Button, Icon, Modal, Switch } from 'antd';
@@ -131,7 +132,7 @@ export default class ErrorModal extends React.Component {
         <Icon type="warning" className="controller-error-icon" onClick={this.showModal} />
         <Modal
           className="controller-pod-error-modal"
-          title={`Errors in ${this.props.resourceType} ${this.props.resourceName}`}
+          title={`Errors in ${friendlyTitle(this.props.resourceType).singular} ${this.props.resourceName}`}
           visible={this.state.visible}
           onOk={this.handleOk}
           onCancel={this.handleCancel}

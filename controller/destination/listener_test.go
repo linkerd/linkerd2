@@ -148,18 +148,19 @@ func TestEndpointListener(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      expectedPodName,
 				Namespace: expectedNamespace,
-				Labels: map[string]string{
-					pkgK8s.ProxyReplicationControllerLabel: expectedReplicationControllerName,
-				},
 			},
 			Status: v1.PodStatus{
 				Phase: v1.PodRunning,
 			},
 		}
 
+		ownerKindAndName := func(pod *v1.Pod) (string, string) {
+			return "replicationcontroller", expectedReplicationControllerName
+		}
+
 		mockGetServer := &mockDestination_GetServer{updatesReceived: []*pb.Update{}}
 		listener := &endpointListener{
-			ownerKindAndName: defaultOwnerKindAndName,
+			ownerKindAndName: ownerKindAndName,
 			labels: map[string]string{
 				"service":   expectedServiceName,
 				"namespace": expectedNamespace,
@@ -181,7 +182,7 @@ func TestEndpointListener(t *testing.T) {
 		actualAddedAddress1MetricLabels := mockGetServer.updatesReceived[0].GetAdd().Addrs[0].MetricLabels
 		expectedAddedAddress1MetricLabels := map[string]string{
 			"pod": expectedPodName,
-			"replication_controller": expectedReplicationControllerName,
+			"replicationcontroller": expectedReplicationControllerName,
 		}
 		if !reflect.DeepEqual(actualAddedAddress1MetricLabels, expectedAddedAddress1MetricLabels) {
 			t.Fatalf("Expected global metric labels sent to be [%v] but was [%v]", expectedAddedAddress1MetricLabels, actualAddedAddress1MetricLabels)

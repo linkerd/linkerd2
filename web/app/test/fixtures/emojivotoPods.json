@@ -8,7 +8,7 @@
               {
                 "resource": {
                   "namespace": "emojivoto",
-                  "type": "deployments",
+                  "type": "deployment",
                   "name": "web"
                 },
                 "timeWindow": "1m",
@@ -51,7 +51,7 @@
               {
                 "resource": {
                   "namespace": "emojivoto",
-                  "type": "deployments",
+                  "type": "deployment",
                   "name": "web"
                 },
                 "timeWindow": "1m",
@@ -83,7 +83,7 @@
               {
                 "resource": {
                   "namespace": "emojivoto",
-                  "type": "deployments",
+                  "type": "deployment",
                   "name": "vote-bot"
                 },
                 "timeWindow": "1m",

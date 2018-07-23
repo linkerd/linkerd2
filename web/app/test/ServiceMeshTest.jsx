@@ -142,10 +142,10 @@ describe('ServiceMesh', () => {
     it("displays a message if >1 resource has not been added to the mesh", () => {
       let nsAllResourcesAdded = _.cloneDeep(nsFixtures);
       nsAllResourcesAdded.ok.statTables[0].podGroup.rows.push({
-        "resource":{
-          "namespace":"",
-          "type":"namespaces",
-          "name":"test-1"
+        "resource": {
+          "namespace": "",
+          "type": "namespace",
+          "name": "test-1"
         },
         "timeWindow": "1m",
         "meshedPodCount": "0",

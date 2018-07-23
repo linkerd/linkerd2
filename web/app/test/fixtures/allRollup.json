@@ -9,7 +9,7 @@
               "resource": {
                 "name": "voting",
                 "namespace": "emojivoto",
-                "type": "deployments"
+                "type": "deployment"
               },
               "stats": {
                 "failureCount": "15",
@@ -36,7 +36,7 @@
             {
               "resource": {
                 "namespace": "shiny-product",
-                "type": "pods",
+                "type": "pod",
                 "name": "web-5f97578cf6-597sr"
               },
               "timeWindow": "1m",
@@ -53,7 +53,7 @@
             {
               "resource": {
                 "namespace": "shiny-product-other",
-                "type": "pods",
+                "type": "pod",
                 "name": "controller-795dd8df6-tjdt6"
               },
               "timeWindow": "1m",
@@ -70,7 +70,7 @@
             {
               "resource": {
                 "namespace": "not-shiny-product",
-                "type": "pods",
+                "type": "pod",
                 "name": "prometheus-595785446-r7rlq"
               },
               "timeWindow": "1m",
@@ -81,7 +81,7 @@
             {
               "resource": {
                 "namespace": "shiny-product-other",
-                "type": "pods",
+                "type": "pod",
                 "name": "grafana-78cdb656bf-v8lsj"
               },
               "timeWindow": "1m",

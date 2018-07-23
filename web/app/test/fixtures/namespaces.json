@@ -7,7 +7,7 @@
             {
               "resource": {
                 "namespace": "",
-                "type": "namespaces",
+                "type": "namespace",
                 "name": "shiny-product"
               },
               "timeWindow": "1m",
@@ -24,7 +24,7 @@
             {
               "resource": {
                 "namespace": "",
-                "type": "namespaces",
+                "type": "namespace",
                 "name": "kube-system"
               },
               "timeWindow": "1m",
@@ -35,7 +35,7 @@
             {
               "resource": {
                 "namespace": "",
-                "type": "namespaces",
+                "type": "namespace",
                 "name": "default"
               },
               "timeWindow": "1m",
@@ -46,7 +46,7 @@
             {
               "resource": {
                 "namespace": "",
-                "type": "namespaces",
+                "type": "namespace",
                 "name": "kube-public"
               },
               "timeWindow": "1m",
