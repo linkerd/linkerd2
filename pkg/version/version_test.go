@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/linkerd/linkerd2/controller/api/public"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
@@ -15,13 +16,31 @@ func TestVersionCheck(t *testing.T) {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "{\"version\": \"v0.3.0\"}")
 	})
-	go http.ListenAndServe("localhost:8080", nil)
+	go http.ListenAndServe("localhost:23456", nil)
+
+	// wait for HTTP server to initialize
+	readyCh := make(chan struct{})
+	go func() {
+		for {
+			_, err := http.Head("http://localhost:23456/")
+			if err == nil {
+				close(readyCh)
+				break
+			}
+		}
+	}()
+
+	select {
+	case <-readyCh:
+	case <-time.After(5 * time.Second):
+		t.Fatalf("Failed to initialize HTTP server")
+	}
 
 	t.Run("Passes when versions are latest", func(t *testing.T) {
 		version.Version = "v0.3.0"
 		mockPublicApi := createMockPublicApi("v0.3.0")
 
-		versionStatusChecker := version.NewVersionStatusChecker("http://localhost:8080/", "", mockPublicApi)
+		versionStatusChecker := version.NewVersionStatusChecker("http://localhost:23456/", "", mockPublicApi)
 		checks := versionStatusChecker.SelfCheck()
 
 		expectedName := version.VersionSubsystemName
@@ -54,7 +73,7 @@ func TestVersionCheck(t *testing.T) {
 		version.Version = "v0.1.1"
 		mockPublicApi := createMockPublicApi("v0.3.0")
 
-		versionStatusChecker := version.NewVersionStatusChecker("http://localhost:8080/", "", mockPublicApi)
+		versionStatusChecker := version.NewVersionStatusChecker("http://localhost:23456/", "", mockPublicApi)
 		checks := versionStatusChecker.SelfCheck()
 
 		expectedStatus := healthcheckPb.CheckStatus_FAIL
@@ -72,7 +91,7 @@ func TestVersionCheck(t *testing.T) {
 		version.Version = "v0.3.0"
 		mockPublicApi := createMockPublicApi("v0.1.1")
 
-		versionStatusChecker := version.NewVersionStatusChecker("http://localhost:8080/", "", mockPublicApi)
+		versionStatusChecker := version.NewVersionStatusChecker("http://localhost:23456/", "", mockPublicApi)
 		checks := versionStatusChecker.SelfCheck()
 
 		expectedStatus := healthcheckPb.CheckStatus_FAIL
@@ -90,7 +109,7 @@ func TestVersionCheck(t *testing.T) {
 		version.Version = "customversion"
 		mockPublicApi := createMockPublicApi("customversion")
 
-		versionStatusChecker := version.NewVersionStatusChecker("http://localhost:8080/", "customversion", mockPublicApi)
+		versionStatusChecker := version.NewVersionStatusChecker("http://localhost:23456/", "customversion", mockPublicApi)
 		checks := versionStatusChecker.SelfCheck()
 
 		for _, check := range checks {
