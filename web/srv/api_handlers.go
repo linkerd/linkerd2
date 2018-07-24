@@ -2,10 +2,12 @@ package srv
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
+	"github.com/gorilla/websocket"
 	"github.com/julienschmidt/httprouter"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
@@ -22,6 +24,11 @@ type (
 var (
 	defaultResourceType = k8s.Deployment
 	pbMarshaler         = jsonpb.Marshaler{EmitDefaults: true}
+	maxMessageSize      = 2048
+	websocketUpgrader   = websocket.Upgrader{
+		ReadBufferSize:  maxMessageSize,
+		WriteBufferSize: maxMessageSize,
+	}
 )
 
 func renderJsonError(w http.ResponseWriter, err error, status int) {
@@ -109,4 +116,79 @@ func (h *handler) handleApiStat(w http.ResponseWriter, req *http.Request, p http
 		return
 	}
 	renderJsonPb(w, result)
+}
+
+func (h *handler) handleApiTap(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
+	ws, err := websocketUpgrader.Upgrade(w, req, nil)
+	if err != nil {
+		renderJsonError(w, err, http.StatusInternalServerError)
+		return
+	}
+	defer ws.Close()
+
+	messageType, message, err := ws.ReadMessage()
+	if err != nil {
+		ws.WriteMessage(websocket.CloseMessage, []byte(err.Error()))
+		return
+	}
+
+	if messageType != websocket.TextMessage {
+		ws.WriteMessage(websocket.CloseMessage, []byte("MessageType not supported"))
+		return
+	}
+
+	var requestParams util.TapRequestParams
+	err = json.Unmarshal(message, &requestParams)
+	if err != nil {
+		ws.WriteMessage(websocket.CloseMessage, []byte(err.Error()))
+		return
+	}
+
+	if requestParams.MaxRps == 0.0 {
+		requestParams.MaxRps = 1.0
+	}
+
+	tapReq, err := util.BuildTapByResourceRequest(requestParams)
+	if err != nil {
+		ws.WriteMessage(websocket.CloseMessage, []byte(err.Error()))
+		return
+	}
+
+	tapClient, err := h.apiClient.TapByResource(req.Context(), tapReq)
+	if err != nil {
+		ws.WriteMessage(websocket.CloseMessage, []byte(err.Error()))
+		return
+	}
+	defer tapClient.CloseSend()
+
+	go func() {
+		for {
+			rsp, err := tapClient.Recv()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				ws.WriteMessage(websocket.CloseMessage, []byte(err.Error()))
+				break
+			}
+
+			tapEvent := util.RenderTapEvent(rsp)
+			if err := ws.WriteMessage(websocket.TextMessage, []byte(tapEvent)); err != nil {
+				if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
+					log.Error(err)
+				}
+				break
+			}
+		}
+	}()
+
+	for {
+		_, _, err := ws.ReadMessage()
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
+				log.Errorf("Unexpected close error: %s", err)
+			}
+			return
+		}
+	}
 }

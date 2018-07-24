@@ -8,6 +8,7 @@ import ReactDOM from 'react-dom';
 import ResourceList from './components/ResourceList.jsx';
 import ServiceMesh from './components/ServiceMesh.jsx';
 import Sidebar from './components/Sidebar.jsx';
+import Tap from './components/Tap.jsx';
 import { BrowserRouter, Redirect, Route, Switch } from 'react-router-dom';
 import './../css/styles.css';
 import './../img/favicon.png'; // needs to be referenced somewhere so webpack bundles it
@@ -40,6 +41,7 @@ let applicationHtml = (
                 <Redirect exact from={`${pathPrefix}/`} to={`${pathPrefix}/servicemesh`} />
                 <Route path={`${pathPrefix}/servicemesh`} component={ServiceMesh} />
                 <Route path={`${pathPrefix}/namespaces/:namespace`} component={Namespace} />
+                <Route path={`${pathPrefix}/tap`} component={Tap} />
                 <Route
                   path={`${pathPrefix}/namespaces`}
                   render={() => <ResourceList resource="namespace" />} />
