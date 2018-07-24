@@ -125,16 +125,22 @@ func (h *handler) handleApiTap(w http.ResponseWriter, req *http.Request, p httpr
 	}
 	defer ws.Close()
 
-	var requestParams util.TapRequestParams
 	messageType, message, err := ws.ReadMessage()
-	if messageType == websocket.TextMessage {
-		err := json.Unmarshal(message, &requestParams)
-		if err != nil {
-			ws.WriteMessage(websocket.CloseMessage, []byte(err.Error()))
-			return
-		}
-	} else {
+	if err != nil {
+		ws.WriteMessage(websocket.CloseMessage, []byte(err.Error()))
+		return
+	}
+
+	if messageType != websocket.TextMessage {
 		ws.WriteMessage(websocket.CloseMessage, []byte("MessageType not supported"))
+		return
+	}
+
+	var requestParams util.TapRequestParams
+	err = json.Unmarshal(message, &requestParams)
+	if err != nil {
+		ws.WriteMessage(websocket.CloseMessage, []byte(err.Error()))
+		return
 	}
 
 	if requestParams.MaxRps == 0.0 {

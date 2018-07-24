@@ -31,18 +31,6 @@ class Tap extends React.Component {
     this.stopServerPolling();
   }
 
-  onWebsocketOpen = () => {
-    this.ws.send(JSON.stringify({
-      id: "tap-web",
-      resource: this.state.query.resource,
-      namespace: this.state.query.namespace,
-    }));
-    this.setState({
-      webSocketRequestSent: true,
-      errors: ""
-    });
-  }
-
   onWebsocketRecv = e => {
     this.setState({
       messages: _(this.state.messages)
@@ -68,7 +56,8 @@ class Tap extends React.Component {
       namespace: this.state.namespace
     }));
     this.setState({
-      webSocketRequestSent: true
+      webSocketRequestSent: true,
+      errors: ""
     });
   }
 
