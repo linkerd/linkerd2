@@ -26,7 +26,21 @@ class Tap extends React.Component {
   }
 
   componentWillUnmount() {
+    this.ws.close(1000);
     this.stopTapStreaming();
+    this.stopServerPolling();
+  }
+
+  onWebsocketOpen = () => {
+    this.ws.send(JSON.stringify({
+      id: "tap-web",
+      resource: this.state.query.resource,
+      namespace: this.state.query.namespace,
+    }));
+    this.setState({
+      webSocketRequestSent: true,
+      errors: ""
+    });
   }
 
   onWebsocketRecv = e => {
@@ -77,7 +91,6 @@ class Tap extends React.Component {
       webSocketRequestSent: false
     });
 
-    this.ws.close();
     window.clearInterval(this.timerId);
   }
 
@@ -87,7 +100,7 @@ class Tap extends React.Component {
   }
 
   handleTapStop = () => {
-    this.stopTapStreaming();
+    this.ws.close(1000);
   }
 
   handleFormChange = formVal => {

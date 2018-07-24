@@ -133,6 +133,8 @@ func (h *handler) handleApiTap(w http.ResponseWriter, req *http.Request, p httpr
 			ws.WriteMessage(websocket.CloseMessage, []byte(err.Error()))
 			return
 		}
+	} else {
+		ws.WriteMessage(websocket.CloseMessage, []byte("MessageType not supported"))
 	}
 
 	if requestParams.MaxRps == 0.0 {
@@ -165,20 +167,21 @@ func (h *handler) handleApiTap(w http.ResponseWriter, req *http.Request, p httpr
 
 			tapEvent := util.RenderTapEvent(rsp)
 			if err := ws.WriteMessage(websocket.TextMessage, []byte(tapEvent)); err != nil {
-				log.Error(err)
+				if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
+					log.Error(err)
+				}
 				break
 			}
 		}
 	}()
 
 	for {
-		messageType, _, err := ws.ReadMessage()
+		_, _, err := ws.ReadMessage()
 		if err != nil {
-			log.Error(err)
-			break
-		}
-		if messageType == websocket.CloseMessage {
-			break
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
+				log.Errorf("Unexpected close error: %s", err)
+			}
+			return
 		}
 	}
 }
