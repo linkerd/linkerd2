@@ -11,7 +11,11 @@ go_deps_sha() {
 }
 
 clean_head() {
-    git diff-index --quiet HEAD --
+    if [ -n "${CI_FORCE_CLEAN:-}" ]; then
+        true
+    else
+        git diff-index --quiet HEAD --
+    fi
 }
 
 named_tag() {

@@ -7,13 +7,14 @@ sudo: false
 branches:
   only:
     - master
+    - /^v\d+\.\d+\.[\w-]+$/ # build version tags
 
 stages:
   - name: test
   - name: docker-deploy
-    if: branch = master AND type != pull_request
+    if: type != pull_request
   - name: integration-test
-    if: branch = master AND type != pull_request
+    if: type != pull_request
 
 jobs:
   include:
@@ -144,7 +145,7 @@ jobs:
           (. bin/_gcp.sh ; get_k8s_ctx "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER")
         - |
           # Install linkerd cli.
-          version="git-$(git rev-parse --short=8 HEAD)"
+          version="$(CI_FORCE_CLEAN=1 bin/root-tag)"
           image="gcr.io/linkerd-io/cli-bin:$version"
           id=$(docker create $image)
           docker cp "$id:/out/linkerd-linux" "./linkerd"
