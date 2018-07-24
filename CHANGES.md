@@ -1,3 +1,22 @@
+## v18.7.2
+
+Linkerd2 v18.7.2 introduces new stability features as we work toward production
+readiness.
+
+* Control Plane
+  * **Breaking change** Injected pod labels have been renamed to be more
+    consistent with Kubernetes; previously injected pods must be re-injected
+    with new version of linkerd CLI in order to work with updated control plane
+  * The "ca-bundle-distributor" deployment has been renamed to "ca"
+* Proxy
+  * **Fixed** HTTP/1.1 connections were not properly reused, leading to
+    elevated latencies and CPU load
+  * **Fixed** The `process_cpu_seconds_total` was calculated incorrectly
+* Web UI
+  * **New** per-namespace application topology graph
+  * **Experimental** web-based Tap interface accessible at  `/tap`
+  * Updated favicon to the Linkerd logo
+
 ## v18.7.1
 
 Linkerd2 v18.7.1 is the first release of the Linkerd2 project, which was
