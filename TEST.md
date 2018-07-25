@@ -62,6 +62,7 @@ functionality via a series of end-to-end tests.
 The integration test suite operates on your currently configured Kubernetes
 cluster. Prior to running the test suite, verify that:
 
+- `kubectl version` reports that the client is version 1.11.1 or later.
 - The Linkerd docker images you're trying to test have been built and are
   accessible to the Kubernetes cluster to which you are deploying
 - The `kubectl` CLI has been configured to talk to that Kubernetes cluster
