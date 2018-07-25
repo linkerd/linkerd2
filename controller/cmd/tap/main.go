@@ -9,6 +9,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/controller/tap"
 	"github.com/linkerd/linkerd2/pkg/admin"
+	"github.com/linkerd/linkerd2/pkg/logging"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 )
@@ -18,17 +19,11 @@ func main() {
 	metricsAddr := flag.String("metrics-addr", ":9998", "address to serve scrapable metrics on")
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
 	tapPort := flag.Uint("tap-port", 4190, "proxy tap port to connect to")
-	logLevel := flag.String("log-level", log.InfoLevel.String(), "log level, must be one of: panic, fatal, error, warn, info, debug")
+	logLevel := logging.LogLevelFlag()
 	printVersion := version.VersionFlag()
 	flag.Parse()
 
-	// set global log level
-	level, err := log.ParseLevel(*logLevel)
-	if err != nil {
-		log.Fatalf("invalid log-level: %s", *logLevel)
-	}
-	log.SetLevel(level)
-
+	logging.SetLogLevel(*logLevel)
 	version.MaybePrintVersionAndExit(*printVersion)
 
 	stop := make(chan os.Signal, 1)

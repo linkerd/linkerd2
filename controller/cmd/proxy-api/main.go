@@ -9,6 +9,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/proxy"
 	"github.com/linkerd/linkerd2/controller/destination"
 	"github.com/linkerd/linkerd2/pkg/admin"
+	"github.com/linkerd/linkerd2/pkg/logging"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 )
@@ -17,17 +18,11 @@ func main() {
 	addr := flag.String("addr", ":8086", "address to serve on")
 	metricsAddr := flag.String("metrics-addr", ":9996", "address to serve scrapable metrics on")
 	destinationAddr := flag.String("destination-addr", "127.0.0.1:8089", "address of destination service")
-	logLevel := flag.String("log-level", log.InfoLevel.String(), "log level, must be one of: panic, fatal, error, warn, info, debug")
+	logLevel := logging.LogLevelFlag()
 	printVersion := version.VersionFlag()
 	flag.Parse()
 
-	// set global log level
-	level, err := log.ParseLevel(*logLevel)
-	if err != nil {
-		log.Fatalf("invalid log-level: %s", *logLevel)
-	}
-	log.SetLevel(level)
-
+	logging.SetLogLevel(*logLevel)
 	version.MaybePrintVersionAndExit(*printVersion)
 
 	stop := make(chan os.Signal, 1)

@@ -143,7 +143,6 @@ spec:
         - -prometheus-url=http://prometheus.linkerd.svc.cluster.local:9090
         - -controller-namespace=linkerd
         - -log-level=info
-        - -logtostderr=true
         image: gcr.io/linkerd-io/controller:undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -167,7 +166,6 @@ spec:
         - destination
         - -enable-tls=false
         - -log-level=info
-        - -logtostderr=true
         image: gcr.io/linkerd-io/controller:undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -191,7 +189,6 @@ spec:
         - proxy-api
         - -addr=:8086
         - -log-level=info
-        - -logtostderr=true
         image: gcr.io/linkerd-io/controller:undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -214,7 +211,6 @@ spec:
       - args:
         - tap
         - -log-level=info
-        - -logtostderr=true
         image: gcr.io/linkerd-io/controller:undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:

@@ -12,6 +12,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/controller/tap"
 	"github.com/linkerd/linkerd2/pkg/admin"
+	"github.com/linkerd/linkerd2/pkg/logging"
 	"github.com/linkerd/linkerd2/pkg/version"
 	promApi "github.com/prometheus/client_golang/api"
 	log "github.com/sirupsen/logrus"
@@ -25,17 +26,11 @@ func main() {
 	tapAddr := flag.String("tap-addr", "127.0.0.1:8088", "address of tap service")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	ignoredNamespaces := flag.String("ignore-namespaces", "kube-system", "comma separated list of namespaces to not list pods from")
-	logLevel := flag.String("log-level", log.InfoLevel.String(), "log level, must be one of: panic, fatal, error, warn, info, debug")
+	logLevel := logging.LogLevelFlag()
 	printVersion := version.VersionFlag()
 	flag.Parse()
 
-	// set global log level
-	level, err := log.ParseLevel(*logLevel)
-	if err != nil {
-		log.Fatalf("invalid log-level: %s", *logLevel)
-	}
-	log.SetLevel(level)
-
+	logging.SetLogLevel(*logLevel)
 	version.MaybePrintVersionAndExit(*printVersion)
 
 	stop := make(chan os.Signal, 1)

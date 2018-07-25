@@ -144,7 +144,6 @@ spec:
         - -prometheus-url=http://prometheus.Namespace.svc.cluster.local:9090
         - -controller-namespace=Namespace
         - -log-level=ControllerLogLevel
-        - -logtostderr=true
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -168,7 +167,6 @@ spec:
         - destination
         - -enable-tls=true
         - -log-level=ControllerLogLevel
-        - -logtostderr=true
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -192,7 +190,6 @@ spec:
         - proxy-api
         - -addr=:123
         - -log-level=ControllerLogLevel
-        - -logtostderr=true
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -215,7 +212,6 @@ spec:
       - args:
         - tap
         - -log-level=ControllerLogLevel
-        - -logtostderr=true
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -924,7 +920,6 @@ spec:
         - ca
         - -controller-namespace=Namespace
         - -log-level=ControllerLogLevel
-        - -logtostderr=true
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
