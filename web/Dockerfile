@@ -39,6 +39,6 @@ RUN mkdir -p ./dist
 COPY --from=webpack-bundle /go/src/github.com/linkerd/linkerd2/web/app/dist ./dist
 
 ARG LINKERD_VERSION
-ENV LINKERD_VERSION=${LINKERD_VERSION}
+ENV LINKERD_CONTAINER_VERSION_OVERRIDE=${LINKERD_VERSION}
 
 ENTRYPOINT ["./web"]

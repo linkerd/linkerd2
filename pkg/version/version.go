@@ -26,12 +26,13 @@ const (
 )
 
 func init() {
-	// Use `$LINKERD_VERSION` as the version only if the version wasn't set at
-	// link time to minimize the chance of using it unintentionally. This
-	// mechanism allows the version to be bound at container build time instead
-	// of at execurtable link time to improve incremental rebuild efficiency.
+	// Use `$LINKERD_CONTAINER_VERSION_OVERRIDE` as the version only if the
+	// version wasn't set at link time to minimize the chance of using it
+	// unintentionally. This mechanism allows the version to be bound at
+	// container build time instead of at execurtable link time to improve
+	// incremental rebuild efficiency.
 	if Version == undefinedVersion {
-		override := os.Getenv("LINKERD_VERSION")
+		override := os.Getenv("LINKERD_CONTAINER_VERSION_OVERRIDE")
 		if override != "" {
 			Version = override
 		}
