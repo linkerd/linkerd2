@@ -9,8 +9,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/proxy"
 	"github.com/linkerd/linkerd2/controller/destination"
 	"github.com/linkerd/linkerd2/pkg/admin"
-	"github.com/linkerd/linkerd2/pkg/logging"
-	"github.com/linkerd/linkerd2/pkg/version"
+	"github.com/linkerd/linkerd2/pkg/flags"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -18,12 +17,7 @@ func main() {
 	addr := flag.String("addr", ":8086", "address to serve on")
 	metricsAddr := flag.String("metrics-addr", ":9996", "address to serve scrapable metrics on")
 	destinationAddr := flag.String("destination-addr", "127.0.0.1:8089", "address of destination service")
-	logLevel := logging.LogLevelFlag()
-	printVersion := version.VersionFlag()
-	flag.Parse()
-
-	logging.SetLogLevel(*logLevel)
-	version.MaybePrintVersionAndExit(*printVersion)
+	flags.ConfigureAndParse()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)

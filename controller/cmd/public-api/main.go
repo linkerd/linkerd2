@@ -12,8 +12,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/controller/tap"
 	"github.com/linkerd/linkerd2/pkg/admin"
-	"github.com/linkerd/linkerd2/pkg/logging"
-	"github.com/linkerd/linkerd2/pkg/version"
+	"github.com/linkerd/linkerd2/pkg/flags"
 	promApi "github.com/prometheus/client_golang/api"
 	log "github.com/sirupsen/logrus"
 )
@@ -26,12 +25,7 @@ func main() {
 	tapAddr := flag.String("tap-addr", "127.0.0.1:8088", "address of tap service")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	ignoredNamespaces := flag.String("ignore-namespaces", "kube-system", "comma separated list of namespaces to not list pods from")
-	logLevel := logging.LogLevelFlag()
-	printVersion := version.VersionFlag()
-	flag.Parse()
-
-	logging.SetLogLevel(*logLevel)
-	version.MaybePrintVersionAndExit(*printVersion)
+	flags.ConfigureAndParse()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)

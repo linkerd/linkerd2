@@ -9,8 +9,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/ca"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/admin"
-	"github.com/linkerd/linkerd2/pkg/logging"
-	"github.com/linkerd/linkerd2/pkg/version"
+	"github.com/linkerd/linkerd2/pkg/flags"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -18,12 +17,7 @@ func main() {
 	metricsAddr := flag.String("metrics-addr", ":9997", "address to serve scrapable metrics on")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
-	logLevel := logging.LogLevelFlag()
-	printVersion := version.VersionFlag()
-	flag.Parse()
-
-	logging.SetLogLevel(*logLevel)
-	version.MaybePrintVersionAndExit(*printVersion)
+	flags.ConfigureAndParse()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)

@@ -9,8 +9,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/destination"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/admin"
-	"github.com/linkerd/linkerd2/pkg/logging"
-	"github.com/linkerd/linkerd2/pkg/version"
+	"github.com/linkerd/linkerd2/pkg/flags"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -20,12 +19,7 @@ func main() {
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
 	k8sDNSZone := flag.String("kubernetes-dns-zone", "", "The DNS suffix for the local Kubernetes zone.")
 	enableTLS := flag.Bool("enable-tls", false, "Enable TLS connections among pods in the service mesh")
-	logLevel := logging.LogLevelFlag()
-	printVersion := version.VersionFlag()
-	flag.Parse()
-
-	logging.SetLogLevel(*logLevel)
-	version.MaybePrintVersionAndExit(*printVersion)
+	flags.ConfigureAndParse()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)

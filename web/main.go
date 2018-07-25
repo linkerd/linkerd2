@@ -11,8 +11,7 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/api/public"
 	"github.com/linkerd/linkerd2/pkg/admin"
-	"github.com/linkerd/linkerd2/pkg/logging"
-	"github.com/linkerd/linkerd2/pkg/version"
+	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/web/srv"
 	log "github.com/sirupsen/logrus"
 )
@@ -27,12 +26,7 @@ func main() {
 	reload := flag.Bool("reload", true, "reloading set to true or false")
 	webpackDevServer := flag.String("webpack-dev-server", "", "use webpack to serve static assets; frontend will use this instead of static-dir")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
-	logLevel := logging.LogLevelFlag()
-	printVersion := version.VersionFlag()
-	flag.Parse()
-
-	logging.SetLogLevel(*logLevel)
-	version.MaybePrintVersionAndExit(*printVersion)
+	flags.ConfigureAndParse()
 
 	_, _, err := net.SplitHostPort(*kubernetesApiHost) // Verify kubernetesApiHost is of the form host:port.
 	if err != nil {
