@@ -11,7 +11,7 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/api/public"
 	"github.com/linkerd/linkerd2/pkg/admin"
-	"github.com/linkerd/linkerd2/pkg/version"
+	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/web/srv"
 	log "github.com/sirupsen/logrus"
 )
@@ -25,21 +25,10 @@ func main() {
 	uuid := flag.String("uuid", "", "unique linkerd install id")
 	reload := flag.Bool("reload", true, "reloading set to true or false")
 	webpackDevServer := flag.String("webpack-dev-server", "", "use webpack to serve static assets; frontend will use this instead of static-dir")
-	logLevel := flag.String("log-level", log.InfoLevel.String(), "log level, must be one of: panic, fatal, error, warn, info, debug")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
-	printVersion := version.VersionFlag()
-	flag.Parse()
+	flags.ConfigureAndParse()
 
-	// set global log level
-	level, err := log.ParseLevel(*logLevel)
-	if err != nil {
-		log.Fatalf("invalid log-level: %s", *logLevel)
-	}
-	log.SetLevel(level)
-
-	version.MaybePrintVersionAndExit(*printVersion)
-
-	_, _, err = net.SplitHostPort(*kubernetesApiHost) // Verify kubernetesApiHost is of the form host:port.
+	_, _, err := net.SplitHostPort(*kubernetesApiHost) // Verify kubernetesApiHost is of the form host:port.
 	if err != nil {
 		log.Fatalf("failed to parse API server address: %s", *kubernetesApiHost)
 	}

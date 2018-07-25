@@ -149,7 +149,6 @@ spec:
         - "-prometheus-url=http://prometheus.{{.Namespace}}.svc.cluster.local:9090"
         - "-controller-namespace={{.Namespace}}"
         - "-log-level={{.ControllerLogLevel}}"
-        - "-logtostderr=true"
         livenessProbe:
           httpGet:
             path: /ping
@@ -172,7 +171,6 @@ spec:
         - "destination"
         - "-enable-tls={{.EnableTLS}}"
         - "-log-level={{.ControllerLogLevel}}"
-        - "-logtostderr=true"
         livenessProbe:
           httpGet:
             path: /ping
@@ -195,7 +193,6 @@ spec:
         - "proxy-api"
         - "-addr=:{{.ProxyAPIPort}}"
         - "-log-level={{.ControllerLogLevel}}"
-        - "-logtostderr=true"
         livenessProbe:
           httpGet:
             path: /ping
@@ -217,7 +214,6 @@ spec:
         args:
         - "tap"
         - "-log-level={{.ControllerLogLevel}}"
-        - "-logtostderr=true"
         livenessProbe:
           httpGet:
             path: /ping
@@ -692,7 +688,6 @@ spec:
         - "ca"
         - "-controller-namespace={{.Namespace}}"
         - "-log-level={{.ControllerLogLevel}}"
-        - "-logtostderr=true"
         livenessProbe:
           httpGet:
             path: /ping

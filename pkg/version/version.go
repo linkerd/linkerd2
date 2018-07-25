@@ -3,17 +3,14 @@ package version
 import (
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"time"
 
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
-	log "github.com/sirupsen/logrus"
 )
 
 // DO NOT EDIT
@@ -25,18 +22,6 @@ const (
 	CliCheckDescription          = "cli is up-to-date"
 	ControlPlaneCheckDescription = "control plane is up-to-date"
 )
-
-func VersionFlag() *bool {
-	return flag.Bool("version", false, "print version and exit")
-}
-
-func MaybePrintVersionAndExit(printVersion bool) {
-	if printVersion {
-		fmt.Println(Version)
-		os.Exit(0)
-	}
-	log.Infof("running linkerd version %s", Version)
-}
 
 var httpClientTimeout = 10 * time.Second
 
