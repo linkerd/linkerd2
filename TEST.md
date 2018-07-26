@@ -64,7 +64,6 @@ cluster. Prior to running the test suite, verify that:
 
 - The Linkerd docker images you're trying to test have been built and are
   accessible to the Kubernetes cluster to which you are deploying
-- `kubectl version` reports the client version as v1.11.1 or later.
 - The `kubectl` CLI has been configured to talk to that Kubernetes cluster
 - The namespace where the tests will install Linkerd does not already exist;
   by default the namespace `linkerd` is used
