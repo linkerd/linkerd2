@@ -1,0 +1,43 @@
+#!/bin/bash
+
+# If the first argument to this script is "latest" or unset, it fetches the
+# latest proxy binary via build.l5d.io/linkerd2-proxy/latest.txt. If it's set to
+# a commit sha from the master branch of the linkerd2-proxy repo, it will fetch
+# the binary matching that sha instead.
+
+set -eu
+
+bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+rootdir="$( cd $bindir/.. && pwd )"
+builddir="$rootdir/target/proxy"
+
+version="${1:-latest}"
+latest_sha=""
+
+if [ "$version" == "latest" ]; then
+  out=$(curl -vsL https://build.l5d.io/linkerd2-proxy/latest.txt)
+  version=$(echo $out | awk '{print $2}' | sed 's/^linkerd2-proxy-//' | sed 's/\.tar\.gz//')
+  latest_sha=$(echo $out | awk '{print $1}')
+fi
+
+filename="linkerd2-proxy-${version}.tar.gz"
+archive="$builddir/$filename"
+
+if [ ! -f "$archive" ]; then
+  mkdir -p "$builddir"
+  curl -vsL "$builddir" "https://build.l5d.io/linkerd2-proxy/$filename" > "$archive"
+fi
+
+if [ -n "$latest_sha" ]; then
+  sha=$(sha256sum "$archive" | awk '{print $1}')
+  if [ "$sha" != "$latest_sha" ]; then
+    echo "sha mismatch" >&2
+    exit 1
+  fi
+fi
+
+tar -C "$builddir" -zxvf "$archive" >&2
+mv "$builddir/linkerd2-proxy-$version/bin/linkerd2-proxy" "$builddir"
+rm -r "$archive" "$builddir/linkerd2-proxy-$version"
+mv "$builddir/linkerd2-proxy" "$builddir/linkerd2-proxy-$version"
+echo "$builddir/linkerd2-proxy-$version"

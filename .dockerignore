@@ -8,6 +8,7 @@
 *.iml
 bin
 !bin/dep
+!bin/fetch-proxy
 !bin/web
 **/Dockerfile*
 Dockerfile*

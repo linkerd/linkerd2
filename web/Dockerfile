@@ -11,7 +11,7 @@ ENV ROOT $GOPATH/src/$PROJECT
 ENV PACKAGEDIR $GOPATH/src/$PACKAGE
 
 COPY web/app $PACKAGEDIR
-COPY bin $ROOT/bin
+COPY bin/web $ROOT/bin/web
 WORKDIR $PACKAGEDIR
 
 # node dependencies

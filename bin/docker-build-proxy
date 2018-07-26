@@ -13,4 +13,6 @@ rootdir="$( cd $bindir/.. && pwd )"
 . $bindir/_docker.sh
 . $bindir/_tag.sh
 
-docker_build proxy "$(head_root_tag)" $rootdir/Dockerfile-proxy
+PROXY_VERSION="${PROXY_VERSION:-latest}"
+
+docker_build proxy "$(head_root_tag)" $rootdir/Dockerfile-proxy --build-arg PROXY_VERSION=$PROXY_VERSION
