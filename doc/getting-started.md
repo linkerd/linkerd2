@@ -196,7 +196,7 @@ Finally, it’s time to install a demo application and add it to the service mes
 
 ### To install a local version of this demo locally and add it to Linkerd, run:
 
-#### `curl https://raw.githubusercontent.com/runconduit/conduit-examples/master/emojivoto/emojivoto.yml | linkerd inject - | kubectl apply -f -`
+#### `curl https://raw.githubusercontent.com/BuoyantIO/emojivoto/master/emojivoto.yml | linkerd inject - | kubectl apply -f -`
 
 ### Which should display:
 
