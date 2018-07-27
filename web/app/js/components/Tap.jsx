@@ -3,6 +3,7 @@ import ErrorBanner from './ErrorBanner.jsx';
 import PageHeader from './PageHeader.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
+import TapEventTable from './TapEventTable.jsx';
 import { withContext } from './util/AppContext.jsx';
 import {
   AutoComplete,
@@ -68,7 +69,9 @@ class Tap extends React.Component {
   }
 
   componentWillUnmount() {
-    this.ws.close(1000);
+    if (this.ws) {
+      this.ws.close(1000);
+    }
     this.stopTapStreaming();
     this.stopServerPolling();
   }
@@ -260,7 +263,7 @@ class Tap extends React.Component {
 
   renderTapForm = () => {
     return (
-      <Form>
+      <Form className="tap-form">
         <Row gutter={rowGutter}>
           <Col span={colSpan}>
             <Form.Item>
@@ -296,8 +299,15 @@ class Tap extends React.Component {
                   <Button type="primary" className="tap-stop" onClick={this.handleTapStop}>Stop</Button> :
                   <Button type="primary" className="tap-start" onClick={this.handleTapStart}>Start</Button>
               }
+              {
+                this.state.awaitingWebSocketConnection ?
+                  <Icon type="loading" style={{ paddingLeft: rowGutter, fontSize: 20, color: '#08c' }} /> : null
+              }
             </Form.Item>
+
           </Col>
+
+
         </Row>
 
         <Button
@@ -432,17 +442,7 @@ class Tap extends React.Component {
         <PageHeader header="Tap" />
         {this.renderTapForm()}
         {this.renderCurrentQuery()}
-
-        <div className="tap-display">
-          <code>
-            { this.state.awaitingWebSocketConnection ?
-              <div><Icon type="loading" /> Starting tap query...</div> : null }
-            { _.isEmpty(this.state.messages) && this.state.webSocketRequestSent
-              && !this.state.awaitingWebSocketConnection
-              ? <div>No messages to display</div> : null }
-            { _.map(this.state.messages, (m, i) => <div key={`message-${i}`}>{m}</div>)}
-          </code>
-        </div>
+        <TapEventTable data={this.state.messages} />
       </div>
     );
   }
