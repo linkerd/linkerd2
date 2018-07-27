@@ -1,3 +1,5 @@
+#!/bin/bash
+
 set -eu
 
 git_sha_head() {
