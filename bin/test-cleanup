@@ -13,4 +13,9 @@ echo "cleaning up namespace [${linkerd_namespace}] and associated test namespace
 
 # `kubectl delete ns` will fail if there are no matching matching namespaces,
 # causing this script to exit with an error status.
-kubectl get ns | cut -f1 -d ' ' | grep -E "^$linkerd_namespace(-|$)" | xargs kubectl delete ns
+if ! namespaces=$(kubectl get ns | cut -f1 -d ' ' | grep -E "^$linkerd_namespace(-|$)"); then
+  echo "no namespaces found for [$linkerd_namespace]" >&2
+  exit 1
+else
+  kubectl delete ns $namespaces
+fi
