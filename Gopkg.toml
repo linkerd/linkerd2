@@ -18,19 +18,19 @@ required = ["github.com/golang/protobuf/protoc-gen-go"]
 
 [[constraint]]
   name = "k8s.io/client-go"
-  version = "kubernetes-1.10.2"
+  version = "kubernetes-1.11.1"
 
 [[constraint]]
   name = "k8s.io/api"
-  version = "kubernetes-1.10.2"
+  version = "kubernetes-1.11.1"
 
 [[constraint]]
   name = "k8s.io/apimachinery"
-  version = "kubernetes-1.10.2"
+  version = "kubernetes-1.11.1"
 
 [[constraint]]
   name = "k8s.io/kubernetes"
-  version = "v1.10.2"
+  version = "v1.11.1"
 
 [[constraint]]
   name = "github.com/sirupsen/logrus"
@@ -67,3 +67,11 @@ required = ["github.com/golang/protobuf/protoc-gen-go"]
 [[override]]
 	name = "github.com/russross/blackfriday"
 	revision = "300106c228d52c8941d4b3de6054a6062a86dda3"
+
+[[override]]
+  name = "github.com/json-iterator/go"
+  revision = "f2b4162afba35581b6d4a50d3b8f34e33c144682"
+
+[[override]]
+  name = "github.com/Azure/go-autorest"
+  revision = "1ff28809256a84bb6966640ff3d0371af82ccba4"
