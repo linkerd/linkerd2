@@ -76,7 +76,7 @@ class Sidebar extends React.Component {
     }
     this.setState({ pendingRequests: true });
 
-    let versionUrl = `https://versioncheck.conduit.io/version.json?version=${this.props.releaseVersion}?uuid=${this.props.uuid}`;
+    let versionUrl = `https://versioncheck.linkerd.io/version.json?version=${this.props.releaseVersion}?uuid=${this.props.uuid}`;
     this.api.setCurrentRequests([
       ApiHelpers("").fetch(versionUrl),
       this.api.fetchMetrics(this.api.urlsForResource("namespace"))
@@ -203,7 +203,7 @@ class Sidebar extends React.Component {
             </Menu.SubMenu>
 
             <Menu.Item className="sidebar-menu-item" key="/docs">
-              <Link to="https://conduit.io/docs/" target="_blank">
+              <Link to="https://linkerd.io/2/overview/" target="_blank">
                 <Icon type="file-text" />
                 <span>Documentation</span>
               </Link>
@@ -211,7 +211,7 @@ class Sidebar extends React.Component {
 
             { this.state.isLatest ? null : (
               <Menu.Item className="sidebar-menu-item" key="/update">
-                <Link to="https://versioncheck.conduit.io/update" target="_blank">
+                <Link to="https://versioncheck.linkerd.io/update" target="_blank">
                   <Icon type="exclamation-circle-o" className="update" />
                   <span>Update {this.props.productName}</span>
                 </Link>

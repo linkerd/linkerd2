@@ -112,7 +112,7 @@ and run Linkerd2:
 
 This configuration builds all Linkerd2 components in Docker images, and deploys
 them onto Minikube. This setup most closely parallels our recommended production
-installation, documented at https://conduit.io/getting-started/.
+installation, documented at https://linkerd.io/2/getting-started/.
 
 These commands assume a working
 [Minikube](https://github.com/kubernetes/minikube) environment.

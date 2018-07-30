@@ -37,7 +37,7 @@ class Version extends React.Component {
       <div>
         A new version ({latestVersion}) is available<br />
         <Link
-          to="https://versioncheck.conduit.io/update"
+          to="https://versioncheck.linkerd.io/update"
           className="button primary"
           target="_blank">
           Update Now

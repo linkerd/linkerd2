@@ -20,7 +20,7 @@ const (
 	okStatus        = "[ok]"
 	failStatus      = "[FAIL]"
 	errorStatus     = "[ERROR]"
-	versionCheckURL = "https://versioncheck.conduit.io/version.json"
+	versionCheckURL = "https://versioncheck.linkerd.io/version.json"
 )
 
 type checkOptions struct {

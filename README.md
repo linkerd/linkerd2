@@ -6,12 +6,6 @@
 
 :balloon: Welcome to Linkerd2! :wave:
 
-Note: this project is currently in the middle of a migration from the old name
-(Conduit) to the new name (Linkerd2). While this transition is ongoing, there
-will be references to Conduit that don't make a lot of sense. Not to worry,
-we're working on it! For more information, check out the
-[announcement][announcement].
-
 Linkerd2 is an ultralight *service mesh*, designed to make modern applications
 safe and sane by transparently adding service discovery, load balancing, failure
 handling, instrumentation, and routing to all inter-service communication.
@@ -41,17 +35,17 @@ Linkerd is hosted by the Cloud Native Computing Foundation ([CNCF][cncf]).
   mailing list.
 * [Announcements mailing list][linkerd-announce]: Linkerd2 announcements only
   (low volume).
-* Follow [@runconduit][twitter] on Twitter.
+* Follow [@linkerd][twitter] on Twitter.
 * Join the #linkerd2 channel on the [Linkerd Slack][slack].
 
 ## Documentation
 
 View [Linkerd2 docs][linkerd-docs] for more a more comprehensive guide to
-getting started, or view the full [Linkerd2 roadmap][roadmap].
+getting started, or use the instructions below.
 
 ## Getting started with Linkerd2
 
-1. Install the Linkerd2 CLI with `curl https://run.conduit.io/install | sh `.
+1. Install the Linkerd2 CLI with `curl https://run.linkerd.io/install | sh`.
 
 1. Add `$HOME/.linkerd2/bin` to your `PATH`.
 
@@ -102,25 +96,22 @@ CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License.
 
 <!-- refs -->
-[announcement]: https://blog.conduit.io/2018/07/06/conduit-0-5-and-the-future/
 [ci]: https://travis-ci.org/linkerd/linkerd2
 [ci-badge]: https://travis-ci.org/linkerd/linkerd2.svg?branch=master
 [cncf]: https://www.cncf.io/
 [coc]: https://github.com/linkerd/linkerd/wiki/Linkerd-code-of-conduct
 [linkerd-announce]: https://groups.google.com/forum/#!forum/conduit-announce
-[linkerd-demo]: https://conduit.io/getting-started/#install-the-demo-app
+[linkerd-demo]: https://linkerd.io/2/getting-started/#step-3-install-the-demo-app
 [linkerd-dev]: https://groups.google.com/forum/#!forum/conduit-dev
-[linkerd-inject]: https://conduit.io/adding-your-service/
-[linkerd-docs]: https://conduit.io/docs/
+[linkerd-inject]: https://linkerd.io/2/adding-your-service/
+[linkerd-docs]: https://linkerd.io/2/overview/
 [linkerd-users]: https://groups.google.com/forum/#!forum/conduit-users
 [golang]: https://golang.org/
 [license-badge]: https://img.shields.io/github/license/linkerd/linkerd.svg
 [logo]: https://user-images.githubusercontent.com/9226/33582867-3e646e02-d90c-11e7-85a2-2e238737e859.png
 [proxy]: https://github.com/linkerd/linkerd2-proxy
 [proxy-api]: https://github.com/linkerd/linkerd2-proxy-api
-[roadmap]: https://conduit.io/roadmap
-[releases]: https://github.com/linkerd/linkerd2/releases
 [rust]: https://www.rust-lang.org/
 [slack-badge]: http://slack.linkerd.io/badge.svg
 [slack]: http://slack.linkerd.io
-[twitter]: https://twitter.com/runconduit/
+[twitter]: https://twitter.com/linkerd
