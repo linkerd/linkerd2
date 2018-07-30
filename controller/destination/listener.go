@@ -152,13 +152,14 @@ func (l *endpointListener) toWeightedAddrSet(addresses []*updateAddress) *pb.Wei
 }
 
 func (l *endpointListener) toWeightedAddr(address *updateAddress) *pb.WeightedAddr {
-	labels, tlsIdentity := l.getAddrMetadata(address.pod)
+	labels, hint, tlsIdentity := l.getAddrMetadata(address.pod)
 
 	return &pb.WeightedAddr{
 		Addr:         address.address,
 		Weight:       1,
 		MetricLabels: labels,
 		TlsIdentity:  tlsIdentity,
+		ProtocolHint: hint,
 	}
 }
 
@@ -170,13 +171,21 @@ func (l *endpointListener) toAddrSet(addresses []*updateAddress) *pb.AddrSet {
 	return &pb.AddrSet{Addrs: addrs}
 }
 
-func (l *endpointListener) getAddrMetadata(pod *coreV1.Pod) (map[string]string, *pb.TlsIdentity) {
+func (l *endpointListener) getAddrMetadata(pod *coreV1.Pod) (map[string]string, *pb.ProtocolHint, *pb.TlsIdentity) {
 	controllerNs := pkgK8s.GetControllerNs(pod)
 	ownerKind, ownerName := l.ownerKindAndName(pod)
 	labels := pkgK8s.GetPodLabels(ownerKind, ownerName, pod)
 
+	hint := &pb.ProtocolHint {}
+
+	if vers := pkgK8s.GetControllerVersion(pod); vers != "" {
+		hint.Protocol = &pb.ProtocolHint_H2_ {
+			H2: &pb.ProtocolHint_H2 {},
+		}
+	}
+
 	if !l.enableTLS {
-		return labels, nil
+		return labels, hint, nil
 	}
 
 	identity := pkgK8s.TLSIdentity{
@@ -186,7 +195,7 @@ func (l *endpointListener) getAddrMetadata(pod *coreV1.Pod) (map[string]string, 
 		ControllerNamespace: controllerNs,
 	}
 
-	return labels, &pb.TlsIdentity{
+	return labels, hint, &pb.TlsIdentity{
 		Strategy: &pb.TlsIdentity_K8SPodIdentity_{
 			K8SPodIdentity: &pb.TlsIdentity_K8SPodIdentity{
 				PodIdentity:  identity.ToDNSName(),

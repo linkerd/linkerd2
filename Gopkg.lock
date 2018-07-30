@@ -170,7 +170,7 @@
     "go/net",
     "go/tap"
   ]
-  revision = "6886fbf5f10ef0cf45978fe8463c7afb717cb467"
+  revision = "a9f0b9f267bd027be5648b87389fe46abc38c59e"
 
 [[projects]]
   name = "github.com/matttproud/golang_protobuf_extensions"

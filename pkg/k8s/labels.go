@@ -108,6 +108,10 @@ func GetControllerNs(pod *coreV1.Pod) string {
 	return pod.Labels[ControllerNSLabel]
 }
 
+func GetControllerVersion(pod *coreV1.Pod) string {
+	return pod.Labels[ProxyVersionAnnotation]
+}
+
 // TLSIdentity is the identity of a pod owner (Deployment, Pod,
 // ReplicationController, etc.).
 type TLSIdentity struct {
