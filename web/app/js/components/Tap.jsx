@@ -55,6 +55,7 @@ class Tap extends React.Component {
         toResource: [],
       },
       maxLinesToDisplay: 40,
+      awaitingWebSocketConnection: false,
       webSocketRequestSent: false,
       showAdvancedForm: false,
       pollingInterval: 10000,
@@ -82,6 +83,7 @@ class Tap extends React.Component {
     }));
     this.setState({
       webSocketRequestSent: true,
+      awaitingWebSocketConnection: false,
       error: ""
     });
   }
@@ -101,6 +103,14 @@ class Tap extends React.Component {
         error: `Websocket [${e.code}] ${e.reason}`
       });
     }
+
+    this.stopTapStreaming();
+  }
+
+  onWebsocketError = e => {
+    this.setState({
+      error: e.message
+    });
 
     this.stopTapStreaming();
   }
@@ -133,7 +143,8 @@ class Tap extends React.Component {
 
   startTapSteaming() {
     this.setState({
-      messages: []
+      messages: [],
+      awaitingWebSocketConnection: true
     });
 
     let protocol = window.location.protocol === "https:" ? "wss" : "ws";
@@ -143,11 +154,13 @@ class Tap extends React.Component {
     this.ws.onmessage = this.onWebsocketRecv;
     this.ws.onclose = this.onWebsocketClose;
     this.ws.onopen = this.onWebsocketOpen;
+    this.ws.onerror = this.onWebsocketError;
   }
 
   stopTapStreaming() {
     this.setState({
-      webSocketRequestSent: false
+      webSocketRequestSent: false,
+      awaitingWebSocketConnection: false
     });
   }
 
@@ -422,8 +435,11 @@ class Tap extends React.Component {
 
         <div className="tap-display">
           <code>
-            { this.state.webSocketRequestSent && _.size(this.state.messages) === 0 ?
+            { this.state.awaitingWebSocketConnection ?
               <div><Icon type="loading" /> Starting tap query...</div> : null }
+            { _.isEmpty(this.state.messages) && this.state.webSocketRequestSent
+              && !this.state.awaitingWebSocketConnection
+              ? <div>No messages to display</div> : null }
             { _.map(this.state.messages, (m, i) => <div key={`message-${i}`}>{m}</div>)}
           </code>
         </div>
