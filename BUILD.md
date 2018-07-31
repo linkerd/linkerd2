@@ -135,7 +135,7 @@ bin/linkerd check --expected-version $(bin/root-tag)
 bin/linkerd dashboard
 
 # install the demo app
-curl https://raw.githubusercontent.com/BuoyantIO/emojivoto/master/emojivoto.yml | bin/linkerd inject - | kubectl apply -f -
+curl https://run.linkerd.io/emojivoto.yml | bin/linkerd inject - | kubectl apply -f -
 
 # view demo app
 minikube -n emojivoto service web-svc
