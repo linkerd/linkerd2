@@ -112,7 +112,7 @@ and run Linkerd2:
 
 This configuration builds all Linkerd2 components in Docker images, and deploys
 them onto Minikube. This setup most closely parallels our recommended production
-installation, documented at https://conduit.io/getting-started/.
+installation, documented at https://linkerd.io/2/getting-started/.
 
 These commands assume a working
 [Minikube](https://github.com/kubernetes/minikube) environment.
@@ -135,7 +135,7 @@ bin/linkerd check --expected-version $(bin/root-tag)
 bin/linkerd dashboard
 
 # install the demo app
-curl https://raw.githubusercontent.com/BuoyantIO/emojivoto/master/emojivoto.yml | bin/linkerd inject - | kubectl apply -f -
+curl https://run.linkerd.io/emojivoto.yml | bin/linkerd inject - | kubectl apply -f -
 
 # view demo app
 minikube -n emojivoto service web-svc

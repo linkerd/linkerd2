@@ -45,7 +45,7 @@ export default class SocialLinks extends React.Component {
       <div className="social-links">
         <Link target="_blank" to="https://github.com/linkerd/linkerd2"><Github /></Link>
         <Link target="_blank" to="https://slack.linkerd.io/"><Slack /></Link>
-        <Link target="_blank" to="https://twitter.com/runconduit"><Twitter /></Link>
+        <Link target="_blank" to="https://twitter.com/linkerd"><Twitter /></Link>
       </div>
     );
   }

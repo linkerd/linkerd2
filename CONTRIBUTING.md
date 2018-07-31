@@ -97,6 +97,6 @@ Describe the modifications you've made.
 Describe the testing you've done to validate your change.  Performance-related
 changes should include before- and after- benchmark results.
 
-[discourse]: https://discourse.linkerd.io/c/conduit
+[discourse]: https://discourse.linkerd.io/c/linkerd2
 [issue]: https://github.com/linkerd/linkerd2/issues/new
 [slack]: http://slack.linkerd.io/
