@@ -211,9 +211,8 @@ func (s *grpcServer) TapByResource(req *pb.TapByResourceRequest, stream pb.Api_T
 	tapStream := stream.(tapServer)
 	tapClient, err := s.tapClient.TapByResource(tapStream.Context(), req)
 	if err != nil {
-		//TODO: why not return the error?
 		log.Errorf("Unexpected error tapping [%v]: %v", req, err)
-		return nil
+		return err
 	}
 	for {
 		select {

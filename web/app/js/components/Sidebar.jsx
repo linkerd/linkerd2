@@ -50,6 +50,7 @@ class Sidebar extends React.Component {
       pendingRequests: false
     };
   }
+
   componentDidMount() {
     this.startServerPolling();
   }

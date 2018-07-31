@@ -6,8 +6,13 @@ import { Col, Row } from 'antd';
 const defaultErrorMsg = "An error has occurred";
 
 class ErrorMessage extends React.Component {
+  static defaultProps = {
+    onHideMessage: _.noop
+  }
+
   static propTypes = {
     message: PropTypes.string.isRequired,
+    onHideMessage: PropTypes.func
   }
 
   constructor(props) {
@@ -25,6 +30,7 @@ class ErrorMessage extends React.Component {
   }
 
   hideMessage() {
+    this.props.onHideMessage();
     this.setState({
       visible: false
     });
