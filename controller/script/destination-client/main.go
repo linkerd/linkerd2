@@ -54,6 +54,12 @@ func main() {
 			for _, addr := range updateType.Add.Addrs {
 				log.Printf("- %s:%d", addrUtil.ProxyIPToString(addr.Addr.GetIp()), addr.Addr.Port)
 				log.Printf("  - labels: %v", addr.MetricLabels)
+				switch addr.GetProtocolHint().GetProtocol().(type) {
+				case *pb.ProtocolHint_H2_:
+					log.Printf("  - protocol hint: H2")
+				default:
+					log.Printf("  - protocol hint: UNKNOWN")
+				}
 				switch identityType := addr.GetTlsIdentity().GetStrategy().(type) {
 				case *pb.TlsIdentity_K8SPodIdentity_:
 					log.Printf("  - pod identity: %s", identityType.K8SPodIdentity.PodIdentity)
