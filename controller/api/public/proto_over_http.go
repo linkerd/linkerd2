@@ -119,11 +119,14 @@ func serializeAsPayload(messageContentsInBytes []byte) ([]byte, error) {
 
 func deserializePayloadFromReader(reader *bufio.Reader) ([]byte, error) {
 	messageLengthAsBytes := make([]byte, numBytesForMessageLength)
-	reader.Read(messageLengthAsBytes)
+	_, err := io.ReadFull(reader, messageLengthAsBytes)
+	if err != nil {
+		return nil, fmt.Errorf("error while reading message length: %v", err)
+	}
 	messageLength := int(binary.LittleEndian.Uint32(messageLengthAsBytes))
 
 	messageContentsAsBytes := make([]byte, messageLength)
-	_, err := io.ReadFull(reader, messageContentsAsBytes)
+	_, err = io.ReadFull(reader, messageContentsAsBytes)
 	if err != nil {
 		return nil, fmt.Errorf("error while reading bytes from message: %v", err)
 	}
