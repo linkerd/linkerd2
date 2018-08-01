@@ -115,6 +115,7 @@ const expandedRowRender = d => {
     </div>
   );
 };
+
 export default class TapEventTable extends BaseTable {
   constructor(props) {
     super(props);
