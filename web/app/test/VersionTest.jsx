@@ -122,7 +122,10 @@ describe('Version', () => {
 
     fetchStub.returnsPromise().resolves({
       ok: false,
-      statusText: errMsg
+      json: () => Promise.resolve({
+        error: errMsg
+      }),
+      statusText: errMsg,
     });
 
     component = mount(

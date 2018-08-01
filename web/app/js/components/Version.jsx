@@ -1,3 +1,4 @@
+import ApiHelpers from './util/ApiHelpers.jsx';
 import { Link } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import React from 'react';
@@ -12,7 +13,7 @@ class Version extends React.Component {
   }
 
   static propTypes = {
-    error: PropTypes.instanceOf(Error),
+    error: ApiHelpers("").apiErrorPropType,
     isLatest: PropTypes.bool.isRequired,
     latestVersion: PropTypes.string,
     productName: PropTypes.string,
@@ -26,7 +27,7 @@ class Version extends React.Component {
       return (
         <div>
           Version check failed
-          {error ? `: ${error}` : ''}
+          {error ? `: ${error.statusText}` : ''}
         </div>
       );
     }
