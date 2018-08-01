@@ -1,86 +1,55 @@
 +++
-title = "Conduit roadmap"
+title = "Linkerd2 roadmap"
 docpage = true
 [menu.docs]
   parent = "roadmap"
 +++
 
-This is the planned roadmap for Conduit. Of course, as with any software project
-(especially open source) even the best of plans change rapidly as development progresses.
+# [Friends and Family][fnf] - 8/6
 
-Our goal is to get Conduit to production-readiness as rapidly as possible with a minimal
-featureset, then to build functionality out from there. We’ll make alpha / beta / GA
-designations based on actual community usage, and generally will err on the side of being
-overly conservative.
+Stabilize the project, paying off previous tech debt and completing the
+migration.
 
+## Goals
 
-##### Status: alpha
-## [0.4.1: Rich, Kubernetes-aware debugging](https://github.com/linkerd/linkerd2/milestone/10)
-#### 2018-04-26
+- Complete the move of conduit over to linkerd.
 
-### Visibility
+- Promote installation of linkerd2 over linkerd1.
 
-- `conduit stat` works on many Kubernetes resources.
-  - Per-authority HTTP stats.
-  - TCP-level stats
-- `conduit tap` works on many Kubernetes resources, too.
-- Grafana dashboards for Kubernetes Pods, Services, & Replication Controllers.
+- Production readiness for specific use cases (observability, debugging).
 
-## [0.5: Stable, private communication](https://github.com/linkerd/linkerd2/milestone/7)
-#### Mid-May 2018
+## Features
 
-### Security
+- Scale over 100 pods
 
-- Self-bootstrapping Certificate Authority
-- Secured communication to and within the Conduit control plane
-- Automatically provide all meshed services with cryptographic identity
-- Automatically secure all meshed communication
+- Tap stability and polish
 
-### Reliability
+- Performance baseline
 
-- Stable Service Discovery semantics.
-- Latency-aware load balancing.
+# [Gibraltar][gibraltar] - 9/4
 
-### Visibility
+Surface existing backend functionality by providing UI tools that help with
+specific debugging tasks.
 
-- `conduit wtf`: what's the failure?
+## Goals
 
+- Provide an experience that is awesome for a single service owner operating in
+  a locked down environment (admin for a single namespace).
 
-## [0.6: Externally accessible](https://github.com/linkerd/linkerd2/milestone/8)
-#### Early June 2018
+- Build a comprehensive suite of tools that assist in debugging common issues
+  with services (status, latency, throughput).
 
-### Routing
+- Illustrate clearly what problems can be debugged and why Linkerd helps there.
 
-- Kubernetes `Ingress` support
+## Features
 
-### Security
+- `top` for real time feedback on what's happening with a service.
 
-- Explicitly configured TLS for ingress
-- Server Name Indication (SNI)
+- Topology graph to visualize the relationships between services.
 
-### Reliability
+- `tap` metadata and filters to assist on narrowing down possible issues.
 
-- Scales to many cores.
-- High-availability controller
-- Circuit-breaking.
+<!-- refs -->
 
-### Usability
-
-- Helm integration
-
-
-## And then...
-
-- Mutual authentication
-- Key rotation
-- Let's Encrypt Ingress support
-- Automatic alerting for latency & success objectives
-- Controllable retry policies
-- OpenTracing integration
-- Pluggable authorization policy
-- Failure injection
-- Speculative retries
-- Dark traffic
-- gRPC payload-aware `tap`
-- Automated red-line testing
-
+[fnf]: https://github.com/linkerd/linkerd2/milestone/11
+[gibraltar]: https://github.com/linkerd/linkerd2/milestone/8
