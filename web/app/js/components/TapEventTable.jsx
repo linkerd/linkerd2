@@ -118,67 +118,12 @@ const expandedRowRender = d => {
 export default class TapEventTable extends BaseTable {
   constructor(props) {
     super(props);
-    this.requestsById = {};
-  }
-
-  indexRequest = req => {
-    if (_.isNil(this.requestsById[req.id])) {
-      this.requestsById[req.id] = {};
-    }
-    this.requestsById[req.id][req.eventType] = req;
-    // assumption: requests of a given id all share the same high level metadata
-    this.requestsById[req.id]["base"] = req;
-  }
-
-  processRowData = data => {
-    // we could do more efficient things here, like not go through all
-    // the rows on the addition of each row
-    _.each(data, datum => {
-      let d = JSON.parse(datum);
-      let rowData = {
-        tls: "",
-        id: "",
-        eventType: ""
-      };
-
-      switch (d.proxyDirection) {
-        case "INBOUND":
-          rowData.tls = _.get(d, "sourceMeta.labels.tls", "");
-          break;
-        case "OUTBOUND":
-          rowData.tls = _.get(d, "destinationMeta.labels.tls", "");
-          break;
-        default:
-          // too old for TLS
-      }
-
-      if (_.isNil(d.http)) {
-        this.setState({ error: "Undefined request type"});
-      } else {
-        if (!_.isNil(d.http.requestInit)) {
-          rowData.eventType = "req";
-          rowData.id = `${_.get(d, "http.requestInit.id.base")}:${_.get(d, "http.requestInit.id.stream")} `;
-        } else if (!_.isNil(d.http.responseInit)) {
-          rowData.eventType = "rsp";
-          rowData.id = `${_.get(d, "http.responseInit.id.base")}:${_.get(d, "http.responseInit.id.stream")} `;
-        } else if (!_.isNil(d.http.responseEnd)) {
-          rowData.eventType = "end";
-          rowData.id = `${_.get(d, "http.responseEnd.id.base")}:${_.get(d, "http.responseEnd.id.stream")} `;
-        }
-      }
-
-      this.indexRequest(_.merge({}, d, rowData));
-    });
-
-    return _.reverse(_.values(this.requestsById));
   }
 
   render() {
-    let rows = this.processRowData(this.props.data);
-
     return (
       <BaseTable
-        dataSource={rows}
+        dataSource={this.props.data}
         columns={tapColumns}
         expandedRowRender={expandedRowRender}
         rowKey={r => r.base.id}
