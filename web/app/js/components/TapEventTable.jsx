@@ -1,8 +1,8 @@
 import _ from 'lodash';
 import BaseTable from './BaseTable.jsx';
-import { publicAddressToString } from './util/Utils.js';
 import React from 'react';
 import { Col, Icon, Row } from 'antd';
+import { formatLatency, publicAddressToString } from './util/Utils.js';
 
 let tapColumns = [
   {
@@ -69,7 +69,7 @@ let tapColumns = [
         title: "Latency",
         key: "rsp-latency",
         dataIndex: "rsp.http.responseInit",
-        render: d => !d ? <Icon type="loading" /> : d.sinceRequestInit
+        render: d => !d ? <Icon type="loading" /> : formatTapLatency(d.sinceRequestInit)
       },
     ]
   },
@@ -86,7 +86,7 @@ let tapColumns = [
         title: "Latency",
         key: "end-latency",
         dataIndex: "end.http.responseEnd",
-        render: d => !d ? <Icon type="loading" /> : d.sinceResponseInit
+        render: d => !d ? <Icon type="loading" /> : formatTapLatency(d.sinceResponseInit)
       },
       {
         title: "Response Length (B)",
@@ -98,6 +98,11 @@ let tapColumns = [
 
   }
 ];
+
+let formatTapLatency = str => {
+  let millis = parseFloat(str.replace("s", "")) * 1000;
+  return formatLatency(millis);
+};
 
 // hide verbose information
 const expandedRowRender = d => {

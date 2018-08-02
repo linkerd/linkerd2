@@ -14,7 +14,7 @@ const successRateFormatter = d3.format(".2%");
 const latencySecFormatter = d3.format(".3f");
 const latencyFormatter = d3.format(",");
 
-const formatLatency = m => {
+export const formatLatency = m => {
   if (_.isNil(m)) {
     return "---";
   } else if (m < 1000) {
