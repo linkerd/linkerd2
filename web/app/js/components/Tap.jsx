@@ -171,7 +171,7 @@ class Tap extends React.Component {
     if (_.isNil(resultIndex[d.id])) {
       // don't let tapResultsById grow unbounded
       if (_.size(resultIndex) > this.state.maxLinesToDisplay) {
-        resultIndex = {};
+        this.deleteOldestTapResult(resultIndex);
       }
 
       resultIndex[d.id] = {};
@@ -179,8 +179,23 @@ class Tap extends React.Component {
     resultIndex[d.id][d.eventType] = d;
     // assumption: requests of a given id all share the same high level metadata
     resultIndex[d.id]["base"] = d;
+    resultIndex[d.id].lastUpdated = Date.now();
 
     this.setState({ tapResultsById: resultIndex });
+  }
+
+  deleteOldestTapResult = resultIndex => {
+    let oldest = Date.now();
+    let oldestId = "";
+
+    _.each(resultIndex, (res, id) => {
+      if (res.lastUpdated < oldest) {
+        oldest = res.lastUpdated;
+        oldestId = id;
+      }
+    });
+
+    delete resultIndex[oldestId];
   }
 
   startServerPolling() {
@@ -479,6 +494,9 @@ class Tap extends React.Component {
   }
 
   render() {
+    let tableRows = _(this.state.tapResultsById)
+      .values().sortBy('lastUpdated').reverse().value();
+
     return (
       <div>
         {!this.state.error ? null :
@@ -487,7 +505,7 @@ class Tap extends React.Component {
         <PageHeader header="Tap" />
         {this.renderTapForm()}
         {this.renderCurrentQuery()}
-        <TapEventTable data={_.reverse(_.values(this.state.tapResultsById))} />
+        <TapEventTable data={tableRows} />
       </div>
     );
   }
