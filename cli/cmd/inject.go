@@ -245,6 +245,24 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 		},
 	}
 
+	// Special case if the caller specifies that
+	// LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY be set on the pod.
+	// We key off of any container image in the pod. Ideally we would instead key
+	// off of something at the top-level of the PodSpec, but there is nothing
+	// easily identifiable at that level.
+	// This is currently only used by the Prometheus pod in the control-plane.
+	for _, container := range t.Containers {
+		if capacity, ok := options.proxyOutboundCapacity[container.Image]; ok {
+			sidecar.Env = append(sidecar.Env,
+				v1.EnvVar{
+					Name:  "LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY",
+					Value: fmt.Sprintf("%d", capacity),
+				},
+			)
+			break
+		}
+	}
+
 	if options.enableTLS() {
 		yes := true
 

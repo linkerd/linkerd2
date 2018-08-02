@@ -42,6 +42,8 @@ type installOptions struct {
 	*proxyConfigOptions
 }
 
+const prometheusProxyOutboundCapacity = 10000
+
 func newInstallOptions() *installOptions {
 	return &installOptions{
 		controllerReplicas: 1,
@@ -64,6 +66,7 @@ func newCmdInstall() *cobra.Command {
 			if err != nil {
 				return err
 			}
+
 			return render(*config, os.Stdout, options)
 		},
 	}
@@ -124,6 +127,10 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 	}
 	injectOptions := newInjectOptions()
 	injectOptions.proxyConfigOptions = options.proxyConfigOptions
+
+	// Special case for conduit-proxy running in the Prometheus pod.
+	injectOptions.proxyOutboundCapacity[config.PrometheusImage] = prometheusProxyOutboundCapacity
+
 	return InjectYAML(buf, w, injectOptions)
 }
 
