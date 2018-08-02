@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -60,6 +61,8 @@ func newCmdInject() *cobra.Command {
 
 You can use a config file from stdin by using the '-' argument
 with 'linkerd inject'. e.g. curl http://url.to/yml | linkerd inject -
+Also works with a folder containing resource files and other
+sub-folder. e.g. linkerd inject <folder> | kubectl apply -f -
 	`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
@@ -71,16 +74,11 @@ with 'linkerd inject'. e.g. curl http://url.to/yml | linkerd inject -
 				return err
 			}
 
-			var in io.Reader
-			var err error
-
-			if args[0] == "-" {
-				in = os.Stdin
-			} else {
-				if in, err = os.Open(args[0]); err != nil {
-					return err
-				}
+			in, err := read(args[0])
+			if err != nil {
+				return err
 			}
+
 			exitCode := runInjectCmd(in, os.Stderr, os.Stdout, options)
 			os.Exit(exitCode)
 			return nil
@@ -96,18 +94,40 @@ with 'linkerd inject'. e.g. curl http://url.to/yml | linkerd inject -
 	return cmd
 }
 
-// Returns the integer representation of os.Exit code; 0 on success and 1 on failure.
-func runInjectCmd(input io.Reader, errWriter, outWriter io.Writer, options *injectOptions) int {
-	postInjectBuf := &bytes.Buffer{}
-	err := InjectYAML(input, postInjectBuf, options)
-	if err != nil {
-		fmt.Fprintf(errWriter, "Error injecting linkerd proxy: %v\n", err)
-		return 1
+// Read all the resource files found in path into a slice of readers.
+// path can be either a file, directory or stdin.
+func read(path string) ([]io.Reader, error) {
+	var (
+		in  []io.Reader
+		err error
+	)
+	if path == "-" {
+		in = append(in, os.Stdin)
+	} else {
+		in, err = walk(path)
+		if err != nil {
+			return nil, err
+		}
 	}
-	_, err = io.Copy(outWriter, postInjectBuf)
-	if err != nil {
-		fmt.Fprintf(errWriter, "Error printing YAML: %v\n", err)
-		return 1
+
+	return in, nil
+}
+
+// Returns the integer representation of os.Exit code; 0 on success and 1 on failure.
+func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, options *injectOptions) int {
+	postInjectBuf := &bytes.Buffer{}
+
+	for _, input := range inputs {
+		err := InjectYAML(input, postInjectBuf, options)
+		if err != nil {
+			fmt.Fprintf(errWriter, "Error injecting linkerd proxy: %v\n", err)
+			return 1
+		}
+		_, err = io.Copy(outWriter, postInjectBuf)
+		if err != nil {
+			fmt.Fprintf(errWriter, "Error printing YAML: %v\n", err)
+			return 1
+		}
 	}
 	return 0
 }
@@ -491,4 +511,47 @@ func injectResource(bytes []byte, options *injectOptions) ([]byte, error) {
 	}
 
 	return output, nil
+}
+
+// walk walks the file tree rooted at path. path may be a file or a directory.
+// Creates a reader for each file found.
+func walk(path string) ([]io.Reader, error) {
+	stat, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+
+	if !stat.IsDir() {
+		file, err := os.Open(path)
+		if err != nil {
+			return nil, err
+		}
+
+		return []io.Reader{file}, nil
+	}
+
+	var in []io.Reader
+	werr := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
+		file, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+
+		in = append(in, file)
+		return nil
+	})
+
+	if werr != nil {
+		return nil, werr
+	}
+
+	return in, nil
 }
