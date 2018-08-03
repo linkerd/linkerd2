@@ -6,7 +6,7 @@ required = ["github.com/golang/protobuf/protoc-gen-go"]
 
 [[constraint]]
   name = "github.com/linkerd/linkerd2-proxy-api"
-  revision = "a9f0b9f267bd027be5648b87389fe46abc38c59e" # not published yet
+  version = "v0.1.1"
 
 [[constraint]]
   name = "google.golang.org/grpc"
