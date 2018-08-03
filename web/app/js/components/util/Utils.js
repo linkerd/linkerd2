@@ -14,7 +14,7 @@ const successRateFormatter = d3.format(".2%");
 const latencySecFormatter = d3.format(".3f");
 const latencyFormatter = d3.format(",");
 
-const formatLatency = m => {
+export const formatLatency = m => {
   if (_.isNil(m)) {
     return "---";
   } else if (m < 1000) {
@@ -107,4 +107,25 @@ export const friendlyTitle = resource => {
     titles.plural = titles.singular + "s";
   }
   return titles;
+};
+
+/*
+  produce octets given an ip address
+*/
+const decodeIPToOctets = ip => {
+  ip = parseInt(ip, 10);
+  return [
+    ip >> 24 & 255,
+    ip >> 16 & 255,
+    ip >> 8 & 255,
+    ip & 255
+  ];
+};
+
+/*
+  converts an address to an ipv4 formatted host:port pair
+*/
+export const publicAddressToString = (ipv4, port) => {
+  let octets = decodeIPToOctets(ipv4);
+  return octets.join(".") + ":" + port;
 };

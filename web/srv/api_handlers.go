@@ -1,6 +1,7 @@
 package srv
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -172,8 +173,14 @@ func (h *handler) handleApiTap(w http.ResponseWriter, req *http.Request, p httpr
 				break
 			}
 
-			tapEvent := util.RenderTapEvent(rsp)
-			if err := ws.WriteMessage(websocket.TextMessage, []byte(tapEvent)); err != nil {
+			buf := new(bytes.Buffer)
+			err = pbMarshaler.Marshal(buf, rsp)
+			if err != nil {
+				ws.WriteMessage(websocket.CloseMessage, []byte(err.Error()))
+				break
+			}
+
+			if err := ws.WriteMessage(websocket.TextMessage, []byte(buf.String())); err != nil {
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
 					log.Error(err)
 				}

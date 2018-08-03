@@ -3,6 +3,7 @@ import ErrorBanner from './ErrorBanner.jsx';
 import PageHeader from './PageHeader.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
+import TapEventTable from './TapEventTable.jsx';
 import { withContext } from './util/AppContext.jsx';
 import {
   AutoComplete,
@@ -35,7 +36,7 @@ class Tap extends React.Component {
 
     this.state = {
       error: "",
-      messages: [],
+      tapResultsById: {},
       resourcesByNs: {},
       query: {
         resource: "",
@@ -68,7 +69,9 @@ class Tap extends React.Component {
   }
 
   componentWillUnmount() {
-    this.ws.close(1000);
+    if (this.ws) {
+      this.ws.close(1000);
+    }
     this.stopTapStreaming();
     this.stopServerPolling();
   }
@@ -89,12 +92,7 @@ class Tap extends React.Component {
   }
 
   onWebsocketRecv = e => {
-    this.setState({
-      messages: _(this.state.messages)
-        .push(e.data)
-        .takeRight(this.state.maxLinesToDisplay)
-        .value()
-    });
+    this.indexTapResult(e.data);
   }
 
   onWebsocketClose = e => {
@@ -131,6 +129,75 @@ class Tap extends React.Component {
     }, {});
   }
 
+  parseTapResult = data => {
+    let d = JSON.parse(data);
+
+    switch (d.proxyDirection) {
+      case "INBOUND":
+        d.tls = _.get(d, "sourceMeta.labels.tls", "");
+        break;
+      case "OUTBOUND":
+        d.tls = _.get(d, "destinationMeta.labels.tls", "");
+        break;
+      default:
+        // too old for TLS
+    }
+
+    if (_.isNil(d.http)) {
+      this.setState({ error: "Undefined request type"});
+    } else {
+      if (!_.isNil(d.http.requestInit)) {
+        d.eventType = "req";
+        d.id = `${_.get(d, "http.requestInit.id.base")}:${_.get(d, "http.requestInit.id.stream")} `;
+      } else if (!_.isNil(d.http.responseInit)) {
+        d.eventType = "rsp";
+        d.id = `${_.get(d, "http.responseInit.id.base")}:${_.get(d, "http.responseInit.id.stream")} `;
+      } else if (!_.isNil(d.http.responseEnd)) {
+        d.eventType = "end";
+        d.id = `${_.get(d, "http.responseEnd.id.base")}:${_.get(d, "http.responseEnd.id.stream")} `;
+      }
+    }
+
+    return d;
+  }
+
+  indexTapResult = data => {
+    // keep an index of tap request rows by id. this allows us to collate
+    // requestInit/responseInit/responseEnd into one single table row,
+    // as opposed to three separate rows as in the CLI
+    let resultIndex = this.state.tapResultsById;
+    let d = this.parseTapResult(data);
+
+    if (_.isNil(resultIndex[d.id])) {
+      // don't let tapResultsById grow unbounded
+      if (_.size(resultIndex) > this.state.maxLinesToDisplay) {
+        this.deleteOldestTapResult(resultIndex);
+      }
+
+      resultIndex[d.id] = {};
+    }
+    resultIndex[d.id][d.eventType] = d;
+    // assumption: requests of a given id all share the same high level metadata
+    resultIndex[d.id]["base"] = d;
+    resultIndex[d.id].lastUpdated = Date.now();
+
+    this.setState({ tapResultsById: resultIndex });
+  }
+
+  deleteOldestTapResult = resultIndex => {
+    let oldest = Date.now();
+    let oldestId = "";
+
+    _.each(resultIndex, (res, id) => {
+      if (res.lastUpdated < oldest) {
+        oldest = res.lastUpdated;
+        oldestId = id;
+      }
+    });
+
+    delete resultIndex[oldestId];
+  }
+
   startServerPolling() {
     this.loadFromServer();
     this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
@@ -143,7 +210,6 @@ class Tap extends React.Component {
 
   startTapSteaming() {
     this.setState({
-      messages: [],
       awaitingWebSocketConnection: true
     });
 
@@ -260,7 +326,7 @@ class Tap extends React.Component {
 
   renderTapForm = () => {
     return (
-      <Form>
+      <Form className="tap-form">
         <Row gutter={rowGutter}>
           <Col span={colSpan}>
             <Form.Item>
@@ -295,6 +361,10 @@ class Tap extends React.Component {
                 this.state.webSocketRequestSent ?
                   <Button type="primary" className="tap-stop" onClick={this.handleTapStop}>Stop</Button> :
                   <Button type="primary" className="tap-start" onClick={this.handleTapStart}>Start</Button>
+              }
+              {
+                this.state.awaitingWebSocketConnection ?
+                  <Icon type="loading" style={{ paddingLeft: rowGutter, fontSize: 20, color: '#08c' }} /> : null
               }
             </Form.Item>
           </Col>
@@ -424,6 +494,9 @@ class Tap extends React.Component {
   }
 
   render() {
+    let tableRows = _(this.state.tapResultsById)
+      .values().sortBy('lastUpdated').reverse().value();
+
     return (
       <div>
         {!this.state.error ? null :
@@ -432,17 +505,7 @@ class Tap extends React.Component {
         <PageHeader header="Tap" />
         {this.renderTapForm()}
         {this.renderCurrentQuery()}
-
-        <div className="tap-display">
-          <code>
-            { this.state.awaitingWebSocketConnection ?
-              <div><Icon type="loading" /> Starting tap query...</div> : null }
-            { _.isEmpty(this.state.messages) && this.state.webSocketRequestSent
-              && !this.state.awaitingWebSocketConnection
-              ? <div>No messages to display</div> : null }
-            { _.map(this.state.messages, (m, i) => <div key={`message-${i}`}>{m}</div>)}
-          </code>
-        </div>
+        <TapEventTable data={tableRows} />
       </div>
     );
   }

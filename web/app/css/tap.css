@@ -1,23 +1,20 @@
 @import 'styles.css';
 
-.tap-display {
-  font-size: 10px;
-  margin-top: calc(4 * var(--base-width));
-}
-
-button.ant-btn-primary {
-  &.tap-start {
-    background-color: var(--green);
-    border-color: var(--green);
+.tap-form {
+  & button.ant-btn-primary {
+    &.tap-start {
+      background-color: var(--green);
+      border-color: var(--green);
+    }
+    &.tap-stop {
+      background-color: var(--siennared);
+      border-color: var(--siennared);
+    }
   }
-  &.tap-stop {
-    background-color: var(--siennared);
-    border-color: var(--siennared);
-  }
-}
 
-button.tap-form-toggle {
-  padding-left: 0;
-  border: none;
-  color: rgba(52, 137, 206, 0.906);
+  & button.tap-form-toggle {
+    padding-left: 0;
+    border: none;
+    color: rgba(52, 137, 206, 0.906);
+  }
 }

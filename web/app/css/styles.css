@@ -58,7 +58,7 @@ h2, h3, h4, h5, h6 {
 }
 
 .main-content {
-  max-width: 1164px;
+  max-width: 100%;
   width: 100%;
   padding: 40px;
   float: left;
