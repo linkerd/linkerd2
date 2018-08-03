@@ -505,7 +505,7 @@ func (s *grpcServer) getPodStats(obj runtime.Object) (*podStats, error) {
 			meshCount.failed++
 		} else {
 			meshCount.total++
-			if isInMesh(pod) {
+			if k8s.IsMeshed(pod, s.controllerNamespace) {
 				meshCount.inMesh++
 			}
 		}
@@ -556,11 +556,6 @@ func checkContainerErrors(containerStatuses []apiv1.ContainerStatus, containerNa
 		}
 	}
 	return errors
-}
-
-func isInMesh(pod *apiv1.Pod) bool {
-	_, ok := pod.Annotations[k8s.ProxyVersionAnnotation]
-	return ok
 }
 
 func isInvalidServiceRequest(req *pb.StatSummaryRequest) bool {

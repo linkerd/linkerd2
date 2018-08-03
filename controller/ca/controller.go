@@ -158,7 +158,7 @@ func (c *CertificateController) syncSecret(key string) error {
 
 func (c *CertificateController) handlePodAdd(obj interface{}) {
 	pod := obj.(*v1.Pod)
-	if c.isInjectedPod(pod) {
+	if pkgK8s.IsMeshed(pod, c.namespace) {
 		log.Debugf("enqueuing update of CA bundle configmap in %s", pod.Namespace)
 		c.queue.Add(pod.Namespace)
 
@@ -171,8 +171,4 @@ func (c *CertificateController) handlePodAdd(obj interface{}) {
 
 func (c *CertificateController) handlePodUpdate(oldObj, newObj interface{}) {
 	c.handlePodAdd(newObj)
-}
-
-func (c *CertificateController) isInjectedPod(pod *v1.Pod) bool {
-	return pkgK8s.GetControllerNs(pod) == c.namespace
 }

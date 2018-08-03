@@ -93,7 +93,7 @@ func GetPodLabels(ownerKind, ownerName string, pod *coreV1.Pod) map[string]strin
 		labels[ownerKind] = ownerName
 	}
 
-	if controllerNS := GetControllerNs(pod); controllerNS != "" {
+	if controllerNS := pod.Labels[ControllerNSLabel]; controllerNS != "" {
 		labels["linkerd_io_control_plane_ns"] = controllerNS
 	}
 
@@ -104,8 +104,8 @@ func GetPodLabels(ownerKind, ownerName string, pod *coreV1.Pod) map[string]strin
 	return labels
 }
 
-func GetControllerNs(pod *coreV1.Pod) string {
-	return pod.Labels[ControllerNSLabel]
+func IsMeshed(pod *coreV1.Pod, controllerNS string) bool {
+	return pod.Labels[ControllerNSLabel] == controllerNS
 }
 
 // TLSIdentity is the identity of a pod owner (Deployment, Pod,

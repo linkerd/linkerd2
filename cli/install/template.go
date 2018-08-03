@@ -451,8 +451,9 @@ data:
       - source_labels:
         - __meta_kubernetes_pod_container_name
         - __meta_kubernetes_pod_container_port_name
+        - __meta_kubernetes_pod_label_linkerd_io_control_plane_ns
         action: keep
-        regex: ^linkerd-proxy;linkerd-metrics$
+        regex: ^linkerd-proxy;linkerd-metrics;{{.Namespace}}$
       - source_labels: [__meta_kubernetes_namespace]
         action: replace
         target_label: namespace
@@ -473,9 +474,6 @@ data:
       # drop all labels that we just made copies of in the previous labelmap
       - action: labeldrop
         regex: __meta_kubernetes_pod_label_linkerd_io_proxy_(.+)
-      # __meta_kubernetes_pod_label_foo=bar => foo=bar
-      - action: labelmap
-        regex: __meta_kubernetes_pod_label_(.+)
 
 ### Grafana ###
 ---
