@@ -170,7 +170,7 @@
     "go/net",
     "go/tap"
   ]
-  revision = "6886fbf5f10ef0cf45978fe8463c7afb717cb467"
+  revision = "a9f0b9f267bd027be5648b87389fe46abc38c59e"
 
 [[projects]]
   name = "github.com/matttproud/golang_protobuf_extensions"
@@ -689,6 +689,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "30488f9879a145eb09b63e0478b781c672883e08af8f37426da01d2e6e3f938b"
+  inputs-digest = "18912fda7c049e609c570f382dabd369045d7e10883353fda18f42d13e013a8f"
   solver-name = "gps-cdcl"
   solver-version = 1
