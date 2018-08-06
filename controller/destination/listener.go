@@ -172,14 +172,17 @@ func (l *endpointListener) toAddrSet(addresses []*updateAddress) *pb.AddrSet {
 }
 
 func (l *endpointListener) getAddrMetadata(pod *coreV1.Pod) (map[string]string, *pb.ProtocolHint, *pb.TlsIdentity) {
-	controllerNs := pkgK8s.GetControllerNs(pod)
+	controllerNs := pod.Labels[pkgK8s.ControllerNSLabel]
 	ownerKind, ownerName := l.ownerKindAndName(pod)
 	labels := pkgK8s.GetPodLabels(ownerKind, ownerName, pod)
 
 	var hint *pb.ProtocolHint
 
 	// If the pod is controlled by us, then it can be hinted that this destination
-	// knows H2 (and handles our orig-proto translation).
+	// knows H2 (and handles our orig-proto translation). Note that this check
+	// does not verify that the pod's control plane matches the control plane
+	// where the destination service is running; all pods injected for all control
+	// planes are considered valid for providing the H2 hint.
 	if controllerNs != "" {
 		hint = &pb.ProtocolHint{
 			Protocol: &pb.ProtocolHint_H2_{

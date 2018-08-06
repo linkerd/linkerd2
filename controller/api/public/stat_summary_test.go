@@ -180,8 +180,7 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
-  annotations:
-    linkerd.io/proxy-version: testinjectversion
+    linkerd.io/control-plane-ns: linkerd
 status:
   phase: Running
 `, `
@@ -202,8 +201,7 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
-  annotations:
-    linkerd.io/proxy-version: testinjectversion
+    linkerd.io/control-plane-ns: linkerd
 status:
   phase: Completed
 `,
@@ -241,8 +239,7 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
-  annotations:
-    linkerd.io/proxy-version: testinjectversion
+    linkerd.io/control-plane-ns: linkerd
 status:
   phase: Running
 `,
@@ -287,8 +284,7 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
-  annotations:
-    linkerd.io/proxy-version: testinjectversion
+    linkerd.io/control-plane-ns: linkerd
 status:
   phase: Running
 `,
@@ -336,8 +332,7 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
-  annotations:
-    linkerd.io/proxy-version: testinjectversion
+    linkerd.io/control-plane-ns: linkerd
 status:
   phase: Running
 `,
@@ -391,8 +386,7 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
-  annotations:
-    linkerd.io/proxy-version: testinjectversion
+    linkerd.io/control-plane-ns: linkerd
 status:
   phase: Running
 `,
@@ -446,8 +440,7 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
-  annotations:
-    linkerd.io/proxy-version: testinjectversion
+    linkerd.io/control-plane-ns: linkerd
 status:
   phase: Running
 `, `
@@ -458,8 +451,7 @@ metadata:
   namespace: totallydifferent
   labels:
     app: emoji-svc
-  annotations:
-    linkerd.io/proxy-version: testinjectversion
+    linkerd.io/control-plane-ns: linkerd
 status:
   phase: Running
 `,
@@ -513,8 +505,7 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
-  annotations:
-    linkerd.io/proxy-version: testinjectversion
+    linkerd.io/control-plane-ns: linkerd
 status:
   phase: Running
 `, `
@@ -525,8 +516,7 @@ metadata:
   namespace: totallydifferent
   labels:
     app: emoji-svc
-  annotations:
-    linkerd.io/proxy-version: testinjectversion
+    linkerd.io/control-plane-ns: linkerd
 status:
   phase: Running
 `,
@@ -605,8 +595,7 @@ metadata:
   namespace: not-right-emojivoto-namespace
   labels:
     app: emoji-svc
-  annotations:
-    linkerd.io/proxy-version: testinjectversion
+    linkerd.io/control-plane-ns: linkerd
 status:
   phase: Running
 `, `
@@ -617,8 +606,7 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
-  annotations:
-    linkerd.io/proxy-version: testinjectversion
+    linkerd.io/control-plane-ns: linkerd
 status:
   phase: Running
 `,
@@ -915,8 +903,7 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
-  annotations:
-    linkerd.io/proxy-version: testinjectversion
+    linkerd.io/control-plane-ns: linkerd
 status:
   phase: Succeeded
 `, `
@@ -927,8 +914,7 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
-  annotations:
-    linkerd.io/proxy-version: testinjectversion
+    linkerd.io/control-plane-ns: linkerd
 status:
   phase: Failed
 `},
@@ -976,8 +962,7 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
-  annotations:
-    linkerd.io/proxy-version: testinjectversion
+    linkerd.io/control-plane-ns: linkerd
 status:
   phase: Running
 `, `
@@ -998,8 +983,7 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
-  annotations:
-    linkerd.io/proxy-version: testinjectversion
+    linkerd.io/control-plane-ns: linkerd
 status:
   phase: Failed
 `, `
@@ -1010,8 +994,7 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
-  annotations:
-    linkerd.io/proxy-version: testinjectversion
+    linkerd.io/control-plane-ns: linkerd
 status:
   phase: Succeeded
 `},
@@ -1049,8 +1032,7 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
-  annotations:
-    linkerd.io/proxy-version: testinjectversion
+    linkerd.io/control-plane-ns: linkerd
 status:
   phase: Running
 `,
@@ -1092,8 +1074,7 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
-  annotations:
-    linkerd.io/proxy-version: testinjectversion
+    linkerd.io/control-plane-ns: linkerd
 status:
   phase: Running
 `,
@@ -1142,8 +1123,7 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
-  annotations:
-    linkerd.io/proxy-version: testinjectversion
+    linkerd.io/control-plane-ns: linkerd
 status:
   phase: Running
 `,
