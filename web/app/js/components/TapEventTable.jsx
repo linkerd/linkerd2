@@ -1,31 +1,69 @@
 import _ from 'lodash';
 import BaseTable from './BaseTable.jsx';
+import { formatLatency } from './util/Utils.js';
 import React from 'react';
 import { Col, Icon, Row } from 'antd';
-import { formatLatency, publicAddressToString } from './util/Utils.js';
 
-let tapColumns = [
+// https://godoc.org/google.golang.org/grpc/codes#Code
+const grpcStatusCodes = {
+  0: "OK",
+  1: "Canceled",
+  2: "Unknown",
+  3: "InvalidArgument",
+  4: "DeadlineExceeded",
+  5: "NotFound",
+  6: "AlreadyExists",
+  7: "PermissionDenied",
+  8: "ResourceExhausted",
+  9: "FailedPrecondition",
+  10: "Aborted",
+  11: "OutOfRange",
+  12: "Unimplemented",
+  13: "Internal",
+  14: "Unavailable",
+  15: "DataLoss",
+  16: "Unauthenticated"
+};
+
+const grpcStatusCodeFilters = _.map(grpcStatusCodes, (description, code) => {
+  return { text: `${code}: ${description}`, value: code };
+});
+
+const genFilterOptionList = options => _.map(options,  (_v, k) => {
+  return { text: k, value: k };
+});
+
+let tapColumns = filterOptions => [
   {
     title: "ID",
     dataIndex: "base.id"
   },
   {
     title: "Direction",
-    dataIndex: "base.proxyDirection"
+    dataIndex: "base.proxyDirection",
+    filters: [
+      { text: "Inbound", value: "INBOUND" },
+      { text: "Outbound", value: "OUTBOUND" }
+    ],
+    onFilter: (value, row) => _.get(row, "base.proxyDirection").includes(value)
   },
   {
     title: "Source",
-    dataIndex: "base.source",
-    render: d => !d ? null : <span>{publicAddressToString(_.get(d, "ip.ipv4"), d.port)}</span>
+    dataIndex: "base.source.str",
+    filters: genFilterOptionList(filterOptions.source),
+    onFilter: (value, row) => row.base.source.str === value
   },
   {
     title: "Destination",
-    dataIndex: "base.destination",
-    render: d => !d ? null : <span>{publicAddressToString(_.get(d, "ip.ipv4"), d.port)}</span>
+    dataIndex: "base.destination.str",
+    filters: genFilterOptionList(filterOptions.destination),
+    onFilter: (value, row) => row.base.destination.str === value
   },
   {
     title: "TLS",
-    dataIndex: "base.tls"
+    dataIndex: "base.tls",
+    filters: genFilterOptionList(filterOptions.tls),
+    onFilter: (value, row) => row.tls === value
   },
   {
     title: "Request Init",
@@ -34,24 +72,38 @@ let tapColumns = [
         title: "Authority",
         key: "authority",
         dataIndex: "req.http.requestInit",
+        filters: genFilterOptionList(filterOptions.authority),
+        onFilter: (value, row) =>
+          _.get(row, "req.http.requestInit.authority") === value,
         render: d => !d ? <Icon type="loading" /> : d.authority
       },
       {
         title: "Path",
         key: "path",
         dataIndex: "req.http.requestInit",
+        filters: genFilterOptionList(filterOptions.path),
+        onFilter: (value, row) =>
+          _.get(row, "req.http.requestInit.path") === value,
         render: d => !d ? <Icon type="loading" /> : d.path
       },
       {
         title: "Scheme",
         key: "scheme",
         dataIndex: "req.http.requestInit",
+        filters: genFilterOptionList(filterOptions.scheme),
+        onFilter: (value, row) =>
+          _.get(row, "req.http.requestInit.scheme.registered") === value,
         render: d => !d ? <Icon type="loading" /> : _.get(d, "scheme.registered")
       },
       {
         title: "Method",
         key: "method",
         dataIndex: "req.http.requestInit",
+        filters: _.map(filterOptions.httpMethod, d => {
+          return { text: d, value: d};
+        }),
+        onFilter: (value, row) =>
+          _.get(row, "req.http.requestInit.method.registered") === value,
         render: d => !d ? <Icon type="loading" /> : _.get(d, "method.registered")
       }
     ]
@@ -63,6 +115,9 @@ let tapColumns = [
         title: "HTTP status",
         key: "http-status",
         dataIndex: "rsp.http.responseInit",
+        filters: genFilterOptionList(filterOptions.httpStatus),
+        onFilter: (value, row) =>
+          _.get(row, "rsp.http.responseInit.httpStatus") + "" === value,
         render: d => !d ? <Icon type="loading" /> : d.httpStatus
       },
       {
@@ -80,6 +135,9 @@ let tapColumns = [
         title: "GRPC status",
         key: "grpc-status",
         dataIndex: "end.http.responseEnd",
+        filters: grpcStatusCodeFilters,
+        onFilter: (value, row) =>
+          (_.get(row, "end.http.responseEnd.eos.grpcStatusCode") + "") === value,
         render: d => !d ? <Icon type="loading" /> : _.get(d, "eos.grpcStatusCode")
       },
       {
@@ -122,15 +180,11 @@ const expandedRowRender = d => {
 };
 
 export default class TapEventTable extends BaseTable {
-  constructor(props) {
-    super(props);
-  }
-
   render() {
     return (
       <BaseTable
-        dataSource={this.props.data}
-        columns={tapColumns}
+        dataSource={this.props.tableRows}
+        columns={tapColumns(this.props.filterOptions)}
         expandedRowRender={expandedRowRender}
         rowKey={r => r.base.id}
         pagination={false}

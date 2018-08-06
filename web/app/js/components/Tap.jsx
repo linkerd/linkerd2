@@ -2,6 +2,7 @@ import _ from 'lodash';
 import ErrorBanner from './ErrorBanner.jsx';
 import PageHeader from './PageHeader.jsx';
 import PropTypes from 'prop-types';
+import { publicAddressToString } from './util/Utils.js';
 import React from 'react';
 import TapEventTable from './TapEventTable.jsx';
 import { withContext } from './util/AppContext.jsx';
@@ -21,6 +22,7 @@ const colSpan = 5;
 const rowGutter = 16;
 const httpMethods = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"];
 const defaultMaxRps = 1.0;
+const maxNumFilterOptions = 12;
 class Tap extends React.Component {
   static propTypes = {
     api: PropTypes.shape({
@@ -37,6 +39,7 @@ class Tap extends React.Component {
     this.state = {
       error: "",
       tapResultsById: {},
+      tapResultFilterOptions: this.getInitialTapFilterOptions(),
       resourcesByNs: {},
       query: {
         resource: "",
@@ -113,6 +116,19 @@ class Tap extends React.Component {
     this.stopTapStreaming();
   }
 
+  getInitialTapFilterOptions() {
+    return {
+      source: {},
+      destination: {},
+      path: {},
+      authority: {},
+      scheme: {},
+      httpStatus: {},
+      tls: {},
+      httpMethod: httpMethods
+    };
+  }
+
   getResourcesByNs(rsp) {
     let statTables = _.get(rsp, [0, "ok", "statTables"]);
     return _.reduce(statTables, (mem, table) => {
@@ -131,13 +147,23 @@ class Tap extends React.Component {
 
   parseTapResult = data => {
     let d = JSON.parse(data);
+    let filters = this.state.tapResultFilterOptions;
+
+    // keep track of unique values we encounter, to populate the table filters
+    let addFilter = this.genFilterAdder(filters, Date.now());
+    d.source.str = publicAddressToString(_.get(d, "source.ip.ipv4"), d.source.port);
+    addFilter("source", d.source.str);
+    d.destination.str = publicAddressToString(_.get(d, "destination.ip.ipv4"), d.destination.port);
+    addFilter("destination", d.destination.str);
 
     switch (d.proxyDirection) {
       case "INBOUND":
         d.tls = _.get(d, "sourceMeta.labels.tls", "");
+        addFilter("tls", d.tls);
         break;
       case "OUTBOUND":
         d.tls = _.get(d, "destinationMeta.labels.tls", "");
+        addFilter("tls", d.tls);
         break;
       default:
         // too old for TLS
@@ -149,16 +175,45 @@ class Tap extends React.Component {
       if (!_.isNil(d.http.requestInit)) {
         d.eventType = "req";
         d.id = `${_.get(d, "http.requestInit.id.base")}:${_.get(d, "http.requestInit.id.stream")} `;
+
+        addFilter("authority", d.http.requestInit.authority);
+        addFilter("path", d.http.requestInit.path);
+        addFilter("scheme", _.get(d, "http.requestInit.scheme.registered"));
       } else if (!_.isNil(d.http.responseInit)) {
         d.eventType = "rsp";
         d.id = `${_.get(d, "http.responseInit.id.base")}:${_.get(d, "http.responseInit.id.stream")} `;
+
+        addFilter("httpStatus", _.get(d, "http.responseInit.httpStatus"));
       } else if (!_.isNil(d.http.responseEnd)) {
         d.eventType = "end";
         d.id = `${_.get(d, "http.responseEnd.id.base")}:${_.get(d, "http.responseEnd.id.stream")} `;
       }
     }
 
-    return d;
+    return {
+      tapResult: d,
+      updatedFilters: filters
+    };
+  }
+
+  genFilterAdder(filterOptions, now) {
+    return (filterName, filterValue) => {
+      filterOptions[filterName][filterValue] = now;
+
+      if (_.size(filterOptions[filterName]) > maxNumFilterOptions) {
+        // reevaluate this if table updating gets too slow
+        let oldest = Date.now();
+        let oldestOption = "";
+        _.each(filterOptions[filterName], (timestamp, value) => {
+          if (timestamp < oldest) {
+            oldest = timestamp;
+            oldestOption = value;
+          }
+        });
+
+        delete filterOptions[filterName][oldestOption];
+      }
+    };
   }
 
   indexTapResult = data => {
@@ -166,7 +221,8 @@ class Tap extends React.Component {
     // requestInit/responseInit/responseEnd into one single table row,
     // as opposed to three separate rows as in the CLI
     let resultIndex = this.state.tapResultsById;
-    let d = this.parseTapResult(data);
+    let parsedResults = this.parseTapResult(data);
+    let d = parsedResults.tapResult;
 
     if (_.isNil(resultIndex[d.id])) {
       // don't let tapResultsById grow unbounded
@@ -181,7 +237,10 @@ class Tap extends React.Component {
     resultIndex[d.id]["base"] = d;
     resultIndex[d.id].lastUpdated = Date.now();
 
-    this.setState({ tapResultsById: resultIndex });
+    this.setState({
+      tapResultsById: resultIndex,
+      tapResultFilterOptions: parsedResults.updatedFilters
+    });
   }
 
   deleteOldestTapResult = resultIndex => {
@@ -210,8 +269,11 @@ class Tap extends React.Component {
 
   startTapSteaming() {
     this.setState({
-      awaitingWebSocketConnection: true
+      awaitingWebSocketConnection: true,
+      tapResultsById: {},
+      tapResultFilterOptions: this.getInitialTapFilterOptions()
     });
+
 
     let protocol = window.location.protocol === "https:" ? "wss" : "ws";
     let tapWebSocket = `${protocol}://${window.location.host}${this.props.pathPrefix}/api/tap`;
@@ -374,7 +436,7 @@ class Tap extends React.Component {
           className="tap-form-toggle"
           onClick={() => this.toggleAdvancedForm(!this.state.showAdvancedForm)}>
           { this.state.showAdvancedForm ?
-            "Hide filters" : "Show more filters" } <Icon type={this.state.showAdvancedForm ? 'up' : 'down'} />
+            "Hide filters" : "Show more request filters" } <Icon type={this.state.showAdvancedForm ? 'up' : 'down'} />
         </Button>
 
         { !this.state.showAdvancedForm ? null : this.renderAdvancedTapForm() }
@@ -505,7 +567,10 @@ class Tap extends React.Component {
         <PageHeader header="Tap" />
         {this.renderTapForm()}
         {this.renderCurrentQuery()}
-        <TapEventTable data={tableRows} />
+
+        <TapEventTable
+          tableRows={tableRows}
+          filterOptions={this.state.tapResultFilterOptions} />
       </div>
     );
   }
