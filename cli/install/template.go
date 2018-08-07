@@ -474,6 +474,10 @@ data:
       # drop all labels that we just made copies of in the previous labelmap
       - action: labeldrop
         regex: __meta_kubernetes_pod_label_linkerd_io_proxy_(.+)
+      # __meta_kubernetes_pod_label_linkerd_io_foo=bar =>
+      # foo=bar
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_linkerd_io_(.+)
 
 ### Grafana ###
 ---

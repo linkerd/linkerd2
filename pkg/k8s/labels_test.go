@@ -25,10 +25,10 @@ func TestGetPodLabels(t *testing.T) {
 		ownerName := "test-deployment"
 
 		expectedLabels := map[string]string{
-			"linkerd_io_control_plane_ns": "linkerd-namespace",
-			"deployment":                  "test-deployment",
-			"pod":                         "test-pod",
-			"pod_template_hash":           "test-pth",
+			"control_plane_ns":  "linkerd-namespace",
+			"deployment":        "test-deployment",
+			"pod":               "test-pod",
+			"pod_template_hash": "test-pth",
 		}
 
 		podLabels := GetPodLabels(ownerKind, ownerName, pod)

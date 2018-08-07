@@ -94,7 +94,7 @@ func GetPodLabels(ownerKind, ownerName string, pod *coreV1.Pod) map[string]strin
 	}
 
 	if controllerNS := pod.Labels[ControllerNSLabel]; controllerNS != "" {
-		labels["linkerd_io_control_plane_ns"] = controllerNS
+		labels["control_plane_ns"] = controllerNS
 	}
 
 	if pth := pod.Labels[appsV1.DefaultDeploymentUniqueLabelKey]; pth != "" {
