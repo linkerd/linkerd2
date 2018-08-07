@@ -15,6 +15,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 type statOptions struct {
@@ -36,6 +37,14 @@ func newStatOptions() *statOptions {
 		fromNamespace: "",
 		fromResource:  "",
 		allNamespaces: false,
+	}
+}
+
+func validateConflictingFlags(flags *pflag.FlagSet) error {
+	if flags.Lookup("to") != nil && flags.Lookup("from") != nil {
+		return fmt.Errorf("--to and --from flags are mutually exclusive")
+	} else {
+		return nil
 	}
 }
 
@@ -93,6 +102,13 @@ If no resource name is specified, displays stats about all resources of the spec
   linkerd stat services --from deploy/hello1 --from-namespace test --all-namespaces`,
 		Args:      cobra.RangeArgs(1, 2),
 		ValidArgs: util.ValidTargets,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			err := validateConflictingFlags(cmd.Flags())
+			if err != nil {
+				return err
+			}
+			return nil
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := newPublicAPIClient()
 			if err != nil {
