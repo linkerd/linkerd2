@@ -162,12 +162,12 @@ class Sidebar extends React.Component {
               </PrefixedLink>
             </Menu.Item>
 
-            {/* <Menu.Item className="sidebar-menu-item" key="/tap">
+            <Menu.Item className="sidebar-menu-item" key="/tap">
               <PrefixedLink to="/tap">
-                <Icon type="coffee" />
+                <Icon type="filter" />
                 <span>Tap</span>
               </PrefixedLink>
-            </Menu.Item> */}
+            </Menu.Item>
 
             {
               _.map(_.take(this.state.namespaces, this.state.maxNsItemsToShow), ns => {
