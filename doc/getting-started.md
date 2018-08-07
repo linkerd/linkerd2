@@ -59,7 +59,7 @@ local machine. You’ll then use this CLI to install Linkerd on a Kubernetes
 cluster.
 
 ### To install the CLI, run:
-#### `curl https://run.conduit.io/install | sh`
+#### `curl https://run.linkerd.io/install | sh`
 
 ### Which should display:
 
@@ -335,8 +335,8 @@ ____
 For more information about Linkerd, check out the
 [overview doc](/docs) and the [roadmap doc](/roadmap), or hop into the #linkerd2
 channel on [the Linkerd Slack](https://slack.linkerd.io) or browse through the
-[Discourse forum](https://discourse.linkerd.io/c/conduit). You can also follow
-[@runconduit](https://twitter.com/runconduit) on Twitter.
+[Discourse forum](https://discourse.linkerd.io/c/linkerd2). You can also follow
+[@linkerd](https://twitter.com/linkerd) on Twitter.
 
 We’re just getting started building Linkerd, and we’re extremely interested in
 your feedback!

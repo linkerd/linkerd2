@@ -128,7 +128,7 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 	injectOptions := newInjectOptions()
 	injectOptions.proxyConfigOptions = options.proxyConfigOptions
 
-	// Special case for conduit-proxy running in the Prometheus pod.
+	// Special case for linkerd-proxy running in the Prometheus pod.
 	injectOptions.proxyOutboundCapacity[config.PrometheusImage] = prometheusProxyOutboundCapacity
 
 	return InjectYAML(buf, w, injectOptions)
