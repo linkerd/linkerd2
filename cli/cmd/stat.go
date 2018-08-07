@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -15,7 +16,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 )
 
 type statOptions struct {
@@ -40,11 +40,44 @@ func newStatOptions() *statOptions {
 	}
 }
 
-func validateConflictingFlags(flags *pflag.FlagSet) error {
-	if flags.Lookup("to") != nil && flags.Lookup("from") != nil {
-		return fmt.Errorf("--to and --from flags are mutually exclusive")
+// Validate that the options do not contain mutually exclusive flags.
+func (s *statOptions) validateConflictingFlags() error {
+	if s.toResource != "" && s.fromResource != "" {
+		return errors.New("--to and --from flags are mutually exclusive")
+	}
+
+	if s.toNamespace != "" && s.fromNamespace != "" {
+		return errors.New("--to-namespace and --from-namespace flags are mutually exclusive")
+	}
+
+	return nil
+}
+
+// Special validation to be run if the target resource type is "namespace".
+func (s *statOptions) validateNamespaceFlags() error {
+	if s.toNamespace != "" {
+		return errors.New("--to-namespace flag is incompatible with namespace resource type")
+	}
+
+	if s.fromNamespace != "" {
+		return errors.New("--from-namespace flag is incompatible with namespace resource type")
+	}
+
+	// Note: technically, this allows you to say `stat ns --namespace default`, but that
+	// seems like an edge case.
+	if s.namespace != "default" {
+		return errors.New("--namespace flag is incompatible with namespace resource type")
+	}
+
+	return nil
+}
+
+func resourceType(from string) (string, error) {
+	elems := strings.Split(from, "/")
+	if len(elems) > 0 {
+		return k8s.CanonicalResourceNameFromFriendlyName(elems[0])
 	} else {
-		return nil
+		return "", errors.New("empty array did not contain a resource type")
 	}
 }
 
@@ -103,10 +136,23 @@ If no resource name is specified, displays stats about all resources of the spec
 		Args:      cobra.RangeArgs(1, 2),
 		ValidArgs: util.ValidTargets,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			err := validateConflictingFlags(cmd.Flags())
+			err := options.validateConflictingFlags()
 			if err != nil {
 				return err
 			}
+
+			canonical, err := resourceType(args[0])
+			if err != nil {
+				return err
+			}
+
+			if canonical == k8s.Namespace {
+				err := options.validateNamespaceFlags()
+				if err != nil {
+					return err
+				}
+			}
+
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
