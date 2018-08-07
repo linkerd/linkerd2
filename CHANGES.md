@@ -1,3 +1,18 @@
+## v18.8.1
+
+* Web UI
+  * **New** Tap UI makes it possible to query & inspect requests from the browser!
+* Proxy
+  * **New** Automatic, transparent HTTP/2 multiplexing of HTTP/1 traffic
+    reduces the cost of short-lived HTTP/1 connections
+* Control Plane
+  * **Improved** `linkerd inject` now supports injecting all resources in a folder
+  * **Fixed** `linkerd tap` no longer crashes when there are many pods
+  * **New** Prometheus now only scrapes proxies belonging to its own linkerd install
+  * **Fixed** Prometheus metrics collection for clusters with >100 pods
+
+Special thanks to @ihcsim for contributing the `inject` improvement!
+
 ## v18.7.3
 
 Linkerd2 v18.7.3 completes the rebranding from Conduit to Linkerd2, and improves
