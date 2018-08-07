@@ -141,12 +141,14 @@ class Tap extends React.Component {
           authoritiesByNs[row.resource.namespace] = [];
         }
 
-        if (row.resource.type.toLowerCase() !== "service") {
-          if (row.resource.type.toLowerCase() === "authority") {
+        switch (row.resource.type.toLowerCase()) {
+          case "service":
+            break;
+          case "authority":
             authoritiesByNs[row.resource.namespace].push(row.resource.name);
-          } else {
+            break;
+          default:
             mem[row.resource.namespace].push(`${row.resource.type}/${row.resource.name}`);
-          }
         }
       });
       return mem;
@@ -377,9 +379,7 @@ class Tap extends React.Component {
         let namespaces = _.sortBy(_.keys(resourcesByNs));
         let resourceNames  = this.getResourceList(resourcesByNs, this.state.query.namespace);
         let toResourceNames = this.getResourceList(resourcesByNs, this.state.query.toNamespace);
-
-        let authorities = authoritiesByNs[this.state.query.namespace] ||
-          _.uniq(_.flatten(_.values(authoritiesByNs)));
+        let authorities = this.getResourceList(authoritiesByNs, this.state.query.namespace);
 
         this.setState({
           resourcesByNs,
