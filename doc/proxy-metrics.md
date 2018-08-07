@@ -133,7 +133,7 @@ request_total{
   pod="vote-bot-5b7f5657f6-xbjjw",
   namespace="emojivoto",
   app="vote-bot",
-  linkerd_io_control_plane_ns="linkerd",
+  control_plane_ns="linkerd",
   deployment="vote-bot",
   pod_template_hash="3957278789",
   test="vote-bot-test",
