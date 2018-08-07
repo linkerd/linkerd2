@@ -86,7 +86,7 @@ func TestServer(t *testing.T) {
 			}
 		}()
 
-		client, err := NewInternalClient(listener.Addr().String())
+		client, err := NewInternalClient("linkerd", listener.Addr().String())
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -118,20 +118,7 @@ func TestServer(t *testing.T) {
 			functionCall: func() (proto.Message, error) { return client.Version(context.TODO(), versionReq) },
 		}
 
-		selfCheckReq := &healcheckPb.SelfCheckRequest{}
-		testSelfCheck := grpcCallTestCase{
-			expectedRequest: selfCheckReq,
-			expectedResponse: &healcheckPb.SelfCheckResponse{
-				Results: []*healcheckPb.CheckResult{
-					{
-						SubsystemName: "banana",
-					},
-				},
-			},
-			functionCall: func() (proto.Message, error) { return client.SelfCheck(context.TODO(), selfCheckReq) },
-		}
-
-		for _, testCase := range []grpcCallTestCase{testListPods, testStatSummary, testVersion, testSelfCheck} {
+		for _, testCase := range []grpcCallTestCase{testListPods, testStatSummary, testVersion} {
 			assertCallWasForwarded(t, mockGrpcServer, testCase.expectedRequest, testCase.expectedResponse, testCase.functionCall)
 		}
 	})
@@ -154,7 +141,7 @@ func TestServer(t *testing.T) {
 			}
 		}()
 
-		client, err := NewInternalClient(listener.Addr().String())
+		client, err := NewInternalClient("linkerd", listener.Addr().String())
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -214,7 +201,7 @@ func TestServer(t *testing.T) {
 			}
 		}()
 
-		client, err := NewInternalClient(listener.Addr().String())
+		client, err := NewInternalClient("linkerd", listener.Addr().String())
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}

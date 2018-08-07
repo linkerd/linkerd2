@@ -54,12 +54,8 @@ Only pod resources (aka pods, po) are supported.`,
 			if err != nil || resourceType != k8s.Pod {
 				return fmt.Errorf("invalid resource type %s, valid types: %s", friendlyName, k8s.Pod)
 			}
-			client, err := newPublicAPIClient()
-			if err != nil {
-				return err
-			}
 
-			podNames, err := getPods(client, options)
+			podNames, err := getPods(validatedPublicAPIClient(), options)
 			if err != nil {
 				return err
 			}

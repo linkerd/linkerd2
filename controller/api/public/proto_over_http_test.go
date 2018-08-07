@@ -436,15 +436,15 @@ func TestNewStreamingWriter(t *testing.T) {
 }
 
 func TestCheckIfResponseHasError(t *testing.T) {
-	t.Run("returns nil if response doesn't contain linkerd-error header", func(t *testing.T) {
+	t.Run("returns nil if response doesn't contain linkerd-error header and is 200", func(t *testing.T) {
 		response := &http.Response{
-			Header: make(http.Header),
+			Header:     make(http.Header),
+			StatusCode: http.StatusOK,
 		}
-		err := checkIfResponseHasErrorHeader(response)
+		err := checkIfResponseHasError(response)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
-
 	})
 
 	t.Run("returns error in body if response contains linkerd-error header", func(t *testing.T) {
@@ -460,12 +460,13 @@ func TestCheckIfResponseHasError(t *testing.T) {
 		}
 
 		response := &http.Response{
-			Header: make(http.Header),
-			Body:   ioutil.NopCloser(bytes.NewReader(message)),
+			Header:     make(http.Header),
+			Body:       ioutil.NopCloser(bytes.NewReader(message)),
+			StatusCode: http.StatusInternalServerError,
 		}
 		response.Header.Set(errorHeader, "error")
 
-		err = checkIfResponseHasErrorHeader(response)
+		err = checkIfResponseHasError(response)
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing")
 		}
@@ -488,14 +489,33 @@ func TestCheckIfResponseHasError(t *testing.T) {
 		}
 
 		response := &http.Response{
-			Header: make(http.Header),
-			Body:   ioutil.NopCloser(bytes.NewReader(message)),
+			Header:     make(http.Header),
+			Body:       ioutil.NopCloser(bytes.NewReader(message)),
+			StatusCode: http.StatusInternalServerError,
 		}
 		response.Header.Set(errorHeader, "error")
 
-		err = checkIfResponseHasErrorHeader(response)
+		err = checkIfResponseHasError(response)
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing")
+		}
+	})
+
+	t.Run("returns error if response is not a 200", func(t *testing.T) {
+		response := &http.Response{
+			StatusCode: http.StatusServiceUnavailable,
+			Status:     "503 Service Unavailable",
+		}
+
+		err := checkIfResponseHasError(response)
+		if err == nil {
+			t.Fatalf("Expecting error, got nothing")
+		}
+
+		expectedErrorMessage := "Unexpected API response: 503 Service Unavailable"
+		actualErrorMessage := err.Error()
+		if actualErrorMessage != expectedErrorMessage {
+			t.Fatalf("Expected error message to be [%s], but it was [%s]", expectedErrorMessage, actualErrorMessage)
 		}
 	})
 }
