@@ -8,7 +8,8 @@ docpage = true
 
 If you have an existing Prometheus cluster, it is very easy to export Linkerd's
 rich telemetry data to your cluster.  Simply add the following item to your
-`scrape_configs` in your Prometheus config file:
+`scrape_configs` in your Prometheus config file (replace `{{.Namespace}}` with
+the namespace where Linkerd is running):
 
 ```yaml
     - job_name: 'linkerd-controller'
@@ -35,7 +36,7 @@ rich telemetry data to your cluster.  Simply add the following item to your
         - __meta_kubernetes_pod_container_port_name
         - __meta_kubernetes_pod_label_linkerd_io_control_plane_ns
         action: keep
-        regex: ^linkerd-proxy;linkerd-metrics;linkerd$
+        regex: ^linkerd-proxy;linkerd-metrics;{{.Namespace}}$
       - source_labels: [__meta_kubernetes_namespace]
         action: replace
         target_label: namespace
