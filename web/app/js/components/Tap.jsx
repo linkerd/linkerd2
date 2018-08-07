@@ -41,6 +41,7 @@ class Tap extends React.Component {
       tapResultsById: {},
       tapResultFilterOptions: this.getInitialTapFilterOptions(),
       resourcesByNs: {},
+      authoritiesByNs: {},
       query: {
         resource: "",
         namespace: "",
@@ -57,6 +58,7 @@ class Tap extends React.Component {
         resource: [],
         toNamespace: [],
         toResource: [],
+        authority: []
       },
       maxLinesToDisplay: 40,
       awaitingWebSocketConnection: false,
@@ -131,18 +133,32 @@ class Tap extends React.Component {
 
   getResourcesByNs(rsp) {
     let statTables = _.get(rsp, [0, "ok", "statTables"]);
-    return _.reduce(statTables, (mem, table) => {
+    let authoritiesByNs = {};
+    let resourcesByNs = _.reduce(statTables, (mem, table) => {
       _.map(table.podGroup.rows, row => {
         if (!mem[row.resource.namespace]) {
           mem[row.resource.namespace] = [];
+          authoritiesByNs[row.resource.namespace] = [];
         }
 
         if (row.resource.type.toLowerCase() !== "service") {
-          mem[row.resource.namespace].push(`${row.resource.type}/${row.resource.name}`);
+          if (row.resource.type.toLowerCase() === "authority") {
+            authoritiesByNs[row.resource.namespace].push(row.resource.name);
+          } else {
+            mem[row.resource.namespace].push(`${row.resource.type}/${row.resource.name}`);
+          }
         }
       });
       return mem;
     }, {});
+    return {
+      authoritiesByNs,
+      resourcesByNs
+    };
+  }
+
+  getResourceList(resourcesByNs, ns) {
+    return resourcesByNs[ns] || _.uniq(_.flatten(_.values(resourcesByNs)));
   }
 
   parseTapResult = data => {
@@ -307,7 +323,7 @@ class Tap extends React.Component {
     this.ws.close(1000);
   }
 
-  handleFormChange = (name, scopeResource) => {
+  handleFormChange = (name, scopeResource, shouldScopeAuthority) => {
     let state = {
       query: this.state.query,
       autocomplete: this.state.autocomplete
@@ -318,6 +334,9 @@ class Tap extends React.Component {
       if (!_.isNil(scopeResource)) {
         // scope the available typeahead resources to the selected namespace
         state.autocomplete[scopeResource] = this.state.resourcesByNs[formVal];
+      }
+      if (shouldScopeAuthority) {
+        state.autocomplete.authority = this.state.authoritiesByNs[formVal];
       }
 
       this.setState(state);
@@ -354,20 +373,23 @@ class Tap extends React.Component {
     this.api.setCurrentRequests([this.api.fetchMetrics(url)]);
     this.serverPromise = Promise.all(this.api.getCurrentPromises())
       .then(rsp => {
-        let resourcesByNs = this.getResourcesByNs(rsp);
+        let { resourcesByNs, authoritiesByNs } = this.getResourcesByNs(rsp);
         let namespaces = _.sortBy(_.keys(resourcesByNs));
-        let resourceNames = resourcesByNs[this.state.query.namespace] ||
-          _.uniq(_.flatten(_.values(resourcesByNs)));
-        let toResourceNames = resourcesByNs[this.state.query.toNamespace] ||
-          _.uniq(_.flatten(_.values(resourcesByNs)));
+        let resourceNames  = this.getResourceList(resourcesByNs, this.state.query.namespace);
+        let toResourceNames = this.getResourceList(resourcesByNs, this.state.query.toNamespace);
+
+        let authorities = authoritiesByNs[this.state.query.namespace] ||
+          _.uniq(_.flatten(_.values(authoritiesByNs)));
 
         this.setState({
           resourcesByNs,
+          authoritiesByNs,
           autocomplete: {
             namespace: namespaces,
             resource: resourceNames,
             toNamespace: namespaces,
-            toResource: toResourceNames
+            toResource: toResourceNames,
+            authority: authorities
           },
           pendingRequests: false
         });
@@ -397,7 +419,7 @@ class Tap extends React.Component {
                 allowClear
                 placeholder="Namespace"
                 optionFilterProp="children"
-                onChange={this.handleFormChange("namespace", "resource")}>
+                onChange={this.handleFormChange("namespace", "resource", true)}>
                 {
                   _.map(this.state.autocomplete.namespace, (n, i) => (
                     <Select.Option key={`ns-dr-${i}`} value={n}>{n}</Select.Option>
@@ -480,7 +502,12 @@ class Tap extends React.Component {
           <Col span={2 * colSpan}>
             <Form.Item
               extra="Display requests with this :authority">
-              <Input placeholder="Authority" onChange={this.handleFormEvent("authority")} />
+
+              <AutoComplete
+                dataSource={this.autoCompleteData("authority")}
+                onSelect={this.handleFormChange("authority")}
+                onSearch={this.handleFormChange("authority")}
+                placeholder="Authority" />
             </Form.Item>
           </Col>
 
