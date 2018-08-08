@@ -18,6 +18,7 @@ type installConfig struct {
 	Namespace                   string
 	ControllerImage             string
 	WebImage                    string
+	SidecarInjectionImage		string
 	PrometheusImage             string
 	GrafanaImage                string
 	ControllerReplicas          uint
@@ -88,6 +89,7 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		Namespace:                   controlPlaneNamespace,
 		ControllerImage:             fmt.Sprintf("%s/controller:%s", options.dockerRegistry, options.linkerdVersion),
 		WebImage:                    fmt.Sprintf("%s/web:%s", options.dockerRegistry, options.linkerdVersion),
+		SidecarInjectionImage:       fmt.Sprintf("%s/sidecar-injection:%s", options.dockerRegistry, options.linkerdVersion),
 		PrometheusImage:             "prom/prometheus:v2.3.1",
 		GrafanaImage:                fmt.Sprintf("%s/grafana:%s", options.dockerRegistry, options.linkerdVersion),
 		ControllerReplicas:          options.controllerReplicas,
