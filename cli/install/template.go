@@ -61,7 +61,6 @@ rules:
 - apiGroups: [""]
   resources: ["nodes", "nodes/proxy", "pods"]
   verbs: ["get", "list", "watch"]
-
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -74,6 +73,42 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: linkerd-prometheus
+  namespace: {{.Namespace}}
+
+### Sidecar Service Account ####
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: linkerd-sidecar-injector
+  namespace: {{.Namespace}}
+
+### Sidecar RBAC ###
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: linkerd-{{.Namespace}}-sidecar-injector
+rules:
+- apiGroups: ["*"]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["admissionregistration.k8s.io"]
+  resources: ["mutatingwebhookconfigurations"]
+  verbs: ["get", "list", "watch", "patch"]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: linkerd-{{.Namespace}}-sidecar-injector
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: linkerd-{{.Namespace}}--sidecar-injector
+subjects:
+- kind: ServiceAccount
+  name: linkerd-sidecar-injector
   namespace: {{.Namespace}}
 
 ### Controller ###
@@ -607,6 +642,86 @@ data:
       options:
         path: /var/lib/grafana/dashboards
         homeDashboardId: linkerd-top-line
+
+
+### Sidecar injection ###
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-sidecar-injector
+  namespace: {{.Namespace}}
+  labels:
+    {{.ControllerComponentLabel}}: sidecar-injection
+  annotations:
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
+spec:
+  type: ClusterIP
+  selector:
+    {{.ControllerComponentLabel}}: sidecar-injection
+  ports:
+  - name: http
+    port: 8084
+    targetPort: 8084
+
+---
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: sidecar-injection
+  namespace: {{.Namespace}}
+  labels:
+    {{.ControllerComponentLabel}}: sidecar-injection
+  annotations:
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        {{.ControllerComponentLabel}}: sidecar-injection
+      annotations:
+        {{.CreatedByAnnotation}}: {{.CliVersion}}
+    spec:
+      serviceAccountName: linkerd-sidecar-injector
+      containers: 
+        - name: sidecar-injection
+          ports:
+          - name: http
+            containerPort: 8084
+          image: {{.SidecarInjectionImage}}
+          imagePullPolicy: {{.ImagePullPolicy}}
+      volumes:
+        - name: linkerd-secret
+          secretName: linkerd.linkerd-sidecar-injector
+
+---
+kind: MutatingWebhookConfiguration
+apiVersion: admissionregistration.k8s.io/v1beta1
+metadata:
+  name: linkerd-sidecar-injector
+  namespace: {{.Namespace}}
+  labels:
+    {{.ControllerComponentLabel}}: sidecar-injection
+  annotations:
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
+webhooks:
+  - name: sidecar-injector.linkerd.io
+    clientConfig:
+      service:
+        name: linkerd-sidecar-injector
+        namespace: {{.Namespace}}
+        path: "/inject"
+      caBundle: ""
+    rules:
+      - operations: [ "CREATE" ]
+        apiGroups: [""]
+        apiVersions: ["v1"]
+        resources: ["pods"]
+    failurePolicy: Fail
+    namespaceSelector:
+      matchLabels:
+        linkerd-inject: enabled
 `
 
 const TlsTemplate = `
