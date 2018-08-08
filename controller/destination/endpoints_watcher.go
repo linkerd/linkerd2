@@ -413,9 +413,19 @@ func (sp *servicePort) endpointsToAddresses(endpoints *v1.Endpoints, port intstr
 	outer:
 		for _, subset := range endpoints.Subsets {
 			for _, p := range subset.Ports {
-				if p.Name == port.StrVal {
+				switch p.Name {
+				case port.StrVal:
+					// Found the target port!
 					portNum = uint32(p.Port)
 					break outer
+				case "":
+					// The port is unnamed. That means there's only one port defined
+					// for this subset. If this is the only subset, then we can use
+					// that port.
+					if len(endpoints.Subsets) == 1 {
+						portNum = uint32(p.Port)
+						break outer
+					}
 				}
 			}
 		}
