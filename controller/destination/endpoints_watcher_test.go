@@ -95,6 +95,69 @@ status:
 			expectedNoEndpointsServiceExists: false,
 		},
 		{
+			// Test for the issue described in linkerd/linkerd2#1405.
+			serviceType: "local NodePort service with unnamed port",
+			k8sConfigs: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: name1
+  namespace: ns
+spec:
+  type: NodePort
+  ports:
+  - port: 8989
+    targetPort: port1`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: name1
+  namespace: ns
+subsets:
+- addresses:
+  - ip: 10.233.66.239
+    targetRef:
+      kind: Pod
+      name: name1-f748fb6b4-hpwpw
+      namespace: ns
+  - ip: 10.233.88.244
+    targetRef:
+      kind: Pod
+      name: name1-f748fb6b4-6vcmw
+      namespace: ns
+  ports:
+  - port: 8990
+    protocol: TCP`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name1-f748fb6b4-hpwpw
+  namespace: ns
+status:
+  podIp: 10.233.66.239
+  phase: Running`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name1-f748fb6b4-6vcmw
+  namespace: ns
+status:
+  podIp: 10.233.88.244
+  phase: Running`,
+			},
+			service: &serviceId{namespace: "ns", name: "name1"},
+			port:    uint32(8989),
+			expectedAddresses: []string{
+				"10.233.66.239:8990",
+				"10.233.88.244:8990",
+			},
+			expectedNoEndpoints:              false,
+			expectedNoEndpointsServiceExists: false,
+		},
+		{
 			serviceType: "local services with missing pods",
 			k8sConfigs: []string{`
 apiVersion: v1
