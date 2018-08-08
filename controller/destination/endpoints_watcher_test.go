@@ -117,13 +117,11 @@ metadata:
 subsets:
 - addresses:
   - ip: 10.233.66.239
-    nodeName: node3
     targetRef:
       kind: Pod
       name: name1-f748fb6b4-hpwpw
       namespace: ns
   - ip: 10.233.88.244
-    nodeName: worker19
     targetRef:
       kind: Pod
       name: name1-f748fb6b4-6vcmw
