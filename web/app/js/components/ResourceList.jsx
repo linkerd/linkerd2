@@ -1,5 +1,5 @@
 import _ from 'lodash';
-import ApiHelpers from './util/ApiHelpers.jsx';
+import { apiErrorPropType } from './util/ApiHelpers.jsx';
 import ErrorBanner from './ErrorBanner.jsx';
 import { friendlyTitle } from './util/Utils.js';
 import MetricsTable from './MetricsTable.jsx';
@@ -19,7 +19,7 @@ export class ResourceListBase extends React.Component {
 
   static propTypes = {
     data: PropTypes.arrayOf(metricsPropType.isRequired).isRequired,
-    error:  ApiHelpers("").apiErrorPropType,
+    error:  apiErrorPropType,
     loading: PropTypes.bool.isRequired,
     resource: PropTypes.string.isRequired,
   }

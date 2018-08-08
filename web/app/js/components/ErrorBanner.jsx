@@ -1,5 +1,5 @@
 import _ from 'lodash';
-import ApiHelpers from './util/ApiHelpers.jsx';
+import { apiErrorPropType } from './util/ApiHelpers.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { Col, Row } from 'antd';
@@ -16,7 +16,7 @@ class ErrorMessage extends React.Component {
   }
 
   static propTypes = {
-    message: ApiHelpers("").apiErrorPropType,
+    message: apiErrorPropType,
     onHideMessage: PropTypes.func
   }
 

@@ -1,4 +1,4 @@
-import ApiHelpers from './util/ApiHelpers.jsx';
+import { apiErrorPropType } from './util/ApiHelpers.jsx';
 import { Link } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import React from 'react';
@@ -13,7 +13,7 @@ class Version extends React.Component {
   }
 
   static propTypes = {
-    error: ApiHelpers("").apiErrorPropType,
+    error: apiErrorPropType,
     isLatest: PropTypes.bool.isRequired,
     latestVersion: PropTypes.string,
     productName: PropTypes.string,

@@ -43,16 +43,16 @@ const makeCancelable = (promise, onSuccess) => {
   };
 };
 
+export const apiErrorPropType =  PropTypes.shape({
+  status: PropTypes.number,
+  url: PropTypes.string,
+  statusText: PropTypes.string,
+  error: PropTypes.string
+});
+
 const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   let metricsWindow = defaultMetricsWindow;
   const podsPath = `/api/pods`;
-
-  const apiErrorPropType =  PropTypes.shape({
-    status: PropTypes.number,
-    url: PropTypes.string,
-    statusText: PropTypes.string,
-    error: PropTypes.string
-  });
 
   const validMetricsWindows = {
     "10s": "10 minutes",
@@ -148,7 +148,6 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   }
 
   return {
-    apiErrorPropType,
     fetch: apiFetch,
     fetchMetrics,
     fetchPods,
