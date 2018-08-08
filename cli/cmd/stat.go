@@ -99,8 +99,15 @@ If no resource name is specified, displays stats about all resources of the spec
   # Get all pods in all namespaces that call the hello1 service in the test namesapce.
   linkerd stat pods --to svc/hello1 --to-namespace test --all-namespaces
 
-  # Get all services in all namespaces that receive calls from hello1 deployment in the test namesapce.
-  linkerd stat services --from deploy/hello1 --from-namespace test --all-namespaces`,
+  # Get all services in all namespaces that receive calls from hello1 deployment in the test namespace.
+  linkerd stat services --from deploy/hello1 --from-namespace test --all-namespaces
+
+  # Get all namespaces that receive traffic from the default namespace.
+  linkerd stat namespaces --from ns/default
+
+  # Get all inbound stats to the test namespace.
+  linkerd stat ns/test
+  `,
 		Args:      cobra.RangeArgs(1, 2),
 		ValidArgs: util.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
