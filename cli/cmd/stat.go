@@ -3,7 +3,6 @@ package cmd
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -37,15 +36,6 @@ func newStatOptions() *statOptions {
 		fromNamespace: "",
 		fromResource:  "",
 		allNamespaces: false,
-	}
-}
-
-func resourceType(from string) (string, error) {
-	elems := strings.Split(from, "/")
-	if len(elems) > 0 {
-		return k8s.CanonicalResourceNameFromFriendlyName(elems[0])
-	} else {
-		return "", errors.New("empty array did not contain a resource type")
 	}
 }
 
@@ -412,8 +402,8 @@ func sortStatsKeys(stats map[string]*row) []string {
 	return sortedKeys
 }
 
-// Perform all validation on the command-line options, returning the first
-// error encountered, or `nil` if the options are valid.
+// validate performs all validation on the command-line options.
+// It returns the first error encountered, or `nil` if the options are valid.
 func (o *statOptions) validate(resourceType string) error {
 	err := o.validateConflictingFlags()
 	if err != nil {
@@ -430,33 +420,35 @@ func (o *statOptions) validate(resourceType string) error {
 	return nil
 }
 
-// Validate that the options do not contain mutually exclusive flags.
+// validateConflictingFlags validates that the options do not contain mutually
+// exclusive flags.
 func (o *statOptions) validateConflictingFlags() error {
 	if o.toResource != "" && o.fromResource != "" {
-		return errors.New("--to and --from flags are mutually exclusive")
+		return fmt.Errorf("--to and --from flags are mutually exclusive")
 	}
 
 	if o.toNamespace != "" && o.fromNamespace != "" {
-		return errors.New("--to-namespace and --from-namespace flags are mutually exclusive")
+		return fmt.Errorf("--to-namespace and --from-namespace flags are mutually exclusive")
 	}
 
 	return nil
 }
 
-// Special validation to be run if the target resource type is "namespace".
+// validateNamespaceFlags performs additional validation for options when the target
+// resource type is a namespace.
 func (o *statOptions) validateNamespaceFlags() error {
 	if o.toNamespace != "" {
-		return errors.New("--to-namespace flag is incompatible with namespace resource type")
+		return fmt.Errorf("--to-namespace flag is incompatible with namespace resource type")
 	}
 
 	if o.fromNamespace != "" {
-		return errors.New("--from-namespace flag is incompatible with namespace resource type")
+		return fmt.Errorf("--from-namespace flag is incompatible with namespace resource type")
 	}
 
 	// Note: technically, this allows you to say `stat ns --namespace default`, but that
 	// seems like an edge case.
 	if o.namespace != "default" {
-		return errors.New("--namespace flag is incompatible with namespace resource type")
+		return fmt.Errorf("--namespace flag is incompatible with namespace resource type")
 	}
 
 	return nil
