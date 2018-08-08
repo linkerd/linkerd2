@@ -103,9 +103,6 @@ If no resource name is specified, displays stats about all resources of the spec
   linkerd stat services --from deploy/hello1 --from-namespace test --all-namespaces`,
 		Args:      cobra.RangeArgs(1, 2),
 		ValidArgs: util.ValidTargets,
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			return options.validate(args)
-		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := newPublicAPIClient()
 			if err != nil {
@@ -334,6 +331,11 @@ func buildStatSummaryRequest(resource []string, options *statOptions) (*pb.StatS
 		return nil, err
 	}
 
+	err = options.validate(target.Type)
+	if err != nil {
+		return nil, err
+	}
+
 	var toRes, fromRes pb.Resource
 	if options.toResource != "" {
 		toRes, err = util.BuildResource(options.toNamespace, options.toResource)
@@ -405,18 +407,13 @@ func sortStatsKeys(stats map[string]*row) []string {
 
 // Perform all validation on the command-line options, returning the first
 // error encountered, or `nil` if the options are valid.
-func (o *statOptions) validate(args []string) error {
+func (o *statOptions) validate(resourceType string) error {
 	err := o.validateConflictingFlags()
 	if err != nil {
 		return err
 	}
 
-	resource, err := util.BuildResource(o.namespace, args...)
-	if err != nil {
-		return err
-	}
-
-	if resource.Type == k8s.Namespace {
+	if resourceType == k8s.Namespace {
 		err := o.validateNamespaceFlags()
 		if err != nil {
 			return err
