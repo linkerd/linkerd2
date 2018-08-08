@@ -40,38 +40,6 @@ func newStatOptions() *statOptions {
 	}
 }
 
-// Validate that the options do not contain mutually exclusive flags.
-func (s *statOptions) validateConflictingFlags() error {
-	if s.toResource != "" && s.fromResource != "" {
-		return errors.New("--to and --from flags are mutually exclusive")
-	}
-
-	if s.toNamespace != "" && s.fromNamespace != "" {
-		return errors.New("--to-namespace and --from-namespace flags are mutually exclusive")
-	}
-
-	return nil
-}
-
-// Special validation to be run if the target resource type is "namespace".
-func (s *statOptions) validateNamespaceFlags() error {
-	if s.toNamespace != "" {
-		return errors.New("--to-namespace flag is incompatible with namespace resource type")
-	}
-
-	if s.fromNamespace != "" {
-		return errors.New("--from-namespace flag is incompatible with namespace resource type")
-	}
-
-	// Note: technically, this allows you to say `stat ns --namespace default`, but that
-	// seems like an edge case.
-	if s.namespace != "default" {
-		return errors.New("--namespace flag is incompatible with namespace resource type")
-	}
-
-	return nil
-}
-
 func resourceType(from string) (string, error) {
 	elems := strings.Split(from, "/")
 	if len(elems) > 0 {
@@ -136,24 +104,7 @@ If no resource name is specified, displays stats about all resources of the spec
 		Args:      cobra.RangeArgs(1, 2),
 		ValidArgs: util.ValidTargets,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			err := options.validateConflictingFlags()
-			if err != nil {
-				return err
-			}
-
-			canonical, err := resourceType(args[0])
-			if err != nil {
-				return err
-			}
-
-			if canonical == k8s.Namespace {
-				err := options.validateNamespaceFlags()
-				if err != nil {
-					return err
-				}
-			}
-
-			return nil
+			return options.validate(args)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := newPublicAPIClient()
@@ -450,4 +401,59 @@ func sortStatsKeys(stats map[string]*row) []string {
 	}
 	sort.Strings(sortedKeys)
 	return sortedKeys
+}
+
+// Perform all validation on the command-line options, returning the first
+// error encountered, or `nil` if the options are valid.
+func (o *statOptions) validate(args []string) error {
+	err := o.validateConflictingFlags()
+	if err != nil {
+		return err
+	}
+
+	resource, err := util.BuildResource(o.namespace, args...)
+	if err != nil {
+		return err
+	}
+
+	if resource.Type == k8s.Namespace {
+		err := o.validateNamespaceFlags()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Validate that the options do not contain mutually exclusive flags.
+func (o *statOptions) validateConflictingFlags() error {
+	if o.toResource != "" && o.fromResource != "" {
+		return errors.New("--to and --from flags are mutually exclusive")
+	}
+
+	if o.toNamespace != "" && o.fromNamespace != "" {
+		return errors.New("--to-namespace and --from-namespace flags are mutually exclusive")
+	}
+
+	return nil
+}
+
+// Special validation to be run if the target resource type is "namespace".
+func (o *statOptions) validateNamespaceFlags() error {
+	if o.toNamespace != "" {
+		return errors.New("--to-namespace flag is incompatible with namespace resource type")
+	}
+
+	if o.fromNamespace != "" {
+		return errors.New("--from-namespace flag is incompatible with namespace resource type")
+	}
+
+	// Note: technically, this allows you to say `stat ns --namespace default`, but that
+	// seems like an edge case.
+	if o.namespace != "default" {
+		return errors.New("--namespace flag is incompatible with namespace resource type")
+	}
+
+	return nil
 }
