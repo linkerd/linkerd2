@@ -100,12 +100,12 @@ specific language governing permissions and limitations under the License.
 [ci-badge]: https://travis-ci.org/linkerd/linkerd2.svg?branch=master
 [cncf]: https://www.cncf.io/
 [coc]: https://github.com/linkerd/linkerd/wiki/Linkerd-code-of-conduct
-[linkerd-announce]: https://groups.google.com/forum/#!forum/conduit-announce
+[linkerd-announce]: https://groups.google.com/forum/#!forum/linkerd-announce
 [linkerd-demo]: https://linkerd.io/2/getting-started/#step-3-install-the-demo-app
-[linkerd-dev]: https://groups.google.com/forum/#!forum/conduit-dev
+[linkerd-dev]: https://groups.google.com/forum/#!forum/linkerd-dev
 [linkerd-inject]: https://linkerd.io/2/adding-your-service/
 [linkerd-docs]: https://linkerd.io/2/overview/
-[linkerd-users]: https://groups.google.com/forum/#!forum/conduit-users
+[linkerd-users]: https://groups.google.com/forum/#!forum/linkerd-users
 [golang]: https://golang.org/
 [license-badge]: https://img.shields.io/github/license/linkerd/linkerd.svg
 [logo]: https://user-images.githubusercontent.com/9226/33582867-3e646e02-d90c-11e7-85a2-2e238737e859.png
