@@ -89,8 +89,15 @@ If no resource name is specified, displays stats about all resources of the spec
   # Get all pods in all namespaces that call the hello1 service in the test namesapce.
   linkerd stat pods --to svc/hello1 --to-namespace test --all-namespaces
 
-  # Get all services in all namespaces that receive calls from hello1 deployment in the test namesapce.
-  linkerd stat services --from deploy/hello1 --from-namespace test --all-namespaces`,
+  # Get all services in all namespaces that receive calls from hello1 deployment in the test namespace.
+  linkerd stat services --from deploy/hello1 --from-namespace test --all-namespaces
+
+  # Get all namespaces that receive traffic from the default namespace.
+  linkerd stat namespaces --from ns/default
+
+  # Get all inbound stats to the test namespace.
+  linkerd stat ns/test
+  `,
 		Args:      cobra.RangeArgs(1, 2),
 		ValidArgs: util.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -321,6 +328,11 @@ func buildStatSummaryRequest(resource []string, options *statOptions) (*pb.StatS
 		return nil, err
 	}
 
+	err = options.validate(target.Type)
+	if err != nil {
+		return nil, err
+	}
+
 	var toRes, fromRes pb.Resource
 	if options.toResource != "" {
 		toRes, err = util.BuildResource(options.toNamespace, options.toResource)
@@ -388,4 +400,56 @@ func sortStatsKeys(stats map[string]*row) []string {
 	}
 	sort.Strings(sortedKeys)
 	return sortedKeys
+}
+
+// validate performs all validation on the command-line options.
+// It returns the first error encountered, or `nil` if the options are valid.
+func (o *statOptions) validate(resourceType string) error {
+	err := o.validateConflictingFlags()
+	if err != nil {
+		return err
+	}
+
+	if resourceType == k8s.Namespace {
+		err := o.validateNamespaceFlags()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// validateConflictingFlags validates that the options do not contain mutually
+// exclusive flags.
+func (o *statOptions) validateConflictingFlags() error {
+	if o.toResource != "" && o.fromResource != "" {
+		return fmt.Errorf("--to and --from flags are mutually exclusive")
+	}
+
+	if o.toNamespace != "" && o.fromNamespace != "" {
+		return fmt.Errorf("--to-namespace and --from-namespace flags are mutually exclusive")
+	}
+
+	return nil
+}
+
+// validateNamespaceFlags performs additional validation for options when the target
+// resource type is a namespace.
+func (o *statOptions) validateNamespaceFlags() error {
+	if o.toNamespace != "" {
+		return fmt.Errorf("--to-namespace flag is incompatible with namespace resource type")
+	}
+
+	if o.fromNamespace != "" {
+		return fmt.Errorf("--from-namespace flag is incompatible with namespace resource type")
+	}
+
+	// Note: technically, this allows you to say `stat ns --namespace default`, but that
+	// seems like an edge case.
+	if o.namespace != "default" {
+		return fmt.Errorf("--namespace flag is incompatible with namespace resource type")
+	}
+
+	return nil
 }
