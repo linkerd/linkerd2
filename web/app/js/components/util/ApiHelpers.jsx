@@ -5,7 +5,9 @@ import React from 'react';
 import 'whatwg-fetch';
 
 const checkFetchOk = resp => {
-  if (resp.ok) { return resp; }
+  if (resp.ok) {
+    return resp;
+  }
 
   return resp.json().then(error => {
     throw {
@@ -15,7 +17,6 @@ const checkFetchOk = resp => {
       error: error.error
     };
   });
-
 };
 
 // makeCancelable from @istarkov
@@ -43,7 +44,7 @@ const makeCancelable = (promise, onSuccess) => {
   };
 };
 
-export const apiErrorPropType =  PropTypes.shape({
+export const apiErrorPropType = PropTypes.shape({
   status: PropTypes.number,
   url: PropTypes.string,
   statusText: PropTypes.string,
@@ -114,7 +115,6 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
       promise.cancel();
     });
   };
-
 
   // prefix all links in the app with `pathPrefix`
   class PrefixedLink extends React.Component {
