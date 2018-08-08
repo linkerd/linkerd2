@@ -31,10 +31,14 @@ describe('ServiceMesh', () => {
   it("displays an error if the api call didn't go well", () => {
     let errorMsg = "Something went wrong!";
 
-    fetchStub.resolves({
+    fetchStub.returnsPromise().resolves({
       ok: false,
+      json: () => Promise.resolve({
+        error: errorMsg
+      }),
       statusText: errorMsg
     });
+
     component = mount(routerWrap(ServiceMesh));
 
     return withPromise(() => {

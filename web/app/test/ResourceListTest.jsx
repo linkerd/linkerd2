@@ -23,7 +23,7 @@ describe('Tests for <ResourceListBase>', () => {
       <ResourceListBase
         {...defaultProps}
         data={[]}
-        error={msg}
+        error={{ statusText: msg}}
         loading={false} />
     );
 
@@ -32,8 +32,7 @@ describe('Tests for <ResourceListBase>', () => {
     expect(component.find(PageHeader)).to.have.length(1);
     expect(component.find(Spin)).to.have.length(0);
     expect(component.find(MetricsTable)).to.have.length(1);
-
-    expect(err.props().message).to.equal(msg);
+    expect(err.props().message.statusText).to.equal(msg);
   });
 
   it('shows a loading spinner', () => {

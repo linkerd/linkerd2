@@ -1,17 +1,22 @@
 import _ from 'lodash';
+import { apiErrorPropType } from './util/ApiHelpers.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { Col, Row } from 'antd';
 
-const defaultErrorMsg = "An error has occurred";
-
 class ErrorMessage extends React.Component {
   static defaultProps = {
+    message: {
+      status: null,
+      statusText: "An error occured",
+      url: "",
+      error: ""
+    },
     onHideMessage: _.noop
   }
 
   static propTypes = {
-    message: PropTypes.string.isRequired,
+    message: apiErrorPropType,
     onHideMessage: PropTypes.func
   }
 
@@ -37,11 +42,15 @@ class ErrorMessage extends React.Component {
   }
 
   render() {
+    const { statusText, error, url, status } = this.props.message;
     return !this.state.visible ? null : (
       <Row gutter={0}>
         <div className="error-message-container">
           <Col span={20}>
-            {this.props.message || defaultErrorMsg}
+            <div><b>Error:</b> {status} {statusText}</div>
+            { !error ? null : <div><b>Message:</b> {error}</div> }
+            <div><b>URL:</b> {url}</div>
+
           </Col>
           <Col span={4}>
             <div className="dismiss" onClick={this.hideMessage} role="presentation">Dismiss X</div>

@@ -37,9 +37,9 @@ class Tap extends React.Component {
     this.loadFromServer = this.loadFromServer.bind(this);
 
     this.state = {
-      error: "",
       tapResultsById: {},
       tapResultFilterOptions: this.getInitialTapFilterOptions(),
+      error: null,
       resourcesByNs: {},
       authoritiesByNs: {},
       query: {
@@ -404,7 +404,7 @@ class Tap extends React.Component {
 
     this.setState({
       pendingRequests: false,
-      error: `Error getting data from server: ${e.message}`
+      error: e
     });
   }
 
