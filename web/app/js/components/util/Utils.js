@@ -24,6 +24,25 @@ export const formatLatency = m => {
   }
 };
 
+const niceLatency = l => latencyFormatter(Math.round(l));
+
+export const formatTapLatencySec = tapLatency => {
+  let s = parseFloat(tapLatency);
+  if (_.isNil(s)) {
+    return "---";
+  } else if (s === parseFloat(0.0)) {
+    return "0 s";
+  } else if (s < 0.000001) {
+    return `${niceLatency(s * 1000 * 1000 * 1000)} µs`;
+  } else if (s < 0.001) {
+    return `${niceLatency(s * 1000 * 1000)} ns`;
+  } else if (s < 1.0) {
+    return `${niceLatency(s * 1000)} ms`;
+  } else {
+    return `${niceLatency(s)} s`;
+  }
+};
+
 export const metricToFormatter = {
   "REQUEST_RATE": m => _.isNil(m) ? "---" : styleNum(m, " RPS", true),
   "SUCCESS_RATE": m => _.isNil(m) ? "---" : successRateFormatter(m),

@@ -1,5 +1,10 @@
 import { expect } from 'chai';
-import { metricToFormatter, styleNum, toClassName } from '../js/components/util/Utils.js';
+import {
+  formatTapLatencySec,
+  metricToFormatter,
+  styleNum,
+  toClassName
+} from '../js/components/util/Utils.js';
 
 // introduce some binary floating point rounding errors, like ya do
 function float(num) {
@@ -85,6 +90,15 @@ describe('Utils', () => {
       expect(metricToFormatter["SUCCESS_RATE"](0.1)).to.equal('10.00%');
       expect(metricToFormatter["SUCCESS_RATE"](0.9999)).to.equal('99.99%');
       expect(metricToFormatter["SUCCESS_RATE"](4)).to.equal('400.00%');
+    });
+
+    it('formats tap latencies', () => {
+      expect(formatTapLatencySec("0.002837700")).to.equal("3 ms");
+      expect(formatTapLatencySec("0.000")).to.equal("0 s");
+      expect(formatTapLatencySec("0.000000797")).to.equal("797 µs");
+      expect(formatTapLatencySec("0.000988600")).to.equal("989 ns");
+      expect(formatTapLatencySec("0.005598200")).to.equal("6 ms");
+      expect(formatTapLatencySec("3.029409200")).to.equal("3 s");
     });
   });
 
