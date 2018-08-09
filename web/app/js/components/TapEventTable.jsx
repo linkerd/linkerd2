@@ -1,6 +1,6 @@
 import _ from 'lodash';
 import BaseTable from './BaseTable.jsx';
-import { formatTapLatencySec } from './util/Utils.js';
+import { formatLatencySec } from './util/Utils.js';
 import React from 'react';
 import { Col, Icon, Row } from 'antd';
 
@@ -157,8 +157,8 @@ let tapColumns = filterOptions => [
   }
 ];
 
-let formatTapLatency = str => {
-  return formatTapLatencySec(str.replace("s", ""));
+const formatTapLatency = str => {
+  return formatLatencySec(str.replace("s", ""));
 };
 
 // hide verbose information
