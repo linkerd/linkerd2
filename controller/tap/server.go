@@ -23,6 +23,8 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 )
 
+const podIPIndex = "ip"
+
 type (
 	server struct {
 		tapPort uint
@@ -271,7 +273,7 @@ func (s *server) tapProxy(ctx context.Context, maxRps float32, match *proxy.Obse
 				log.Error(err)
 				return
 			}
-			events <- translateEvent(event)
+			events <- s.translateEvent(event)
 		}
 		if time.Now().Before(windowEnd) {
 			time.Sleep(time.Until(windowEnd))
@@ -279,7 +281,7 @@ func (s *server) tapProxy(ctx context.Context, maxRps float32, match *proxy.Obse
 	}
 }
 
-func translateEvent(orig *proxy.TapEvent) *public.TapEvent {
+func (s *server) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 	direction := func(orig proxy.TapEvent_ProxyDirection) public.TapEvent_ProxyDirection {
 		switch orig {
 		case proxy.TapEvent_INBOUND:
@@ -434,7 +436,7 @@ func translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 		}
 	}
 
-	return &public.TapEvent{
+	ev := &public.TapEvent{
 		Source: tcp(orig.GetSource()),
 		SourceMeta: &public.TapEvent_EndpointMeta{
 			Labels: orig.GetSourceMeta().GetLabels(),
@@ -446,6 +448,21 @@ func translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 		ProxyDirection: direction(orig.GetProxyDirection()),
 		Event:          event(orig.GetHttp()),
 	}
+
+	sourceIPMeta, err := s.hydrateIPMeta(ev.Source.Ip)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"src":   ev.Source,
+			"dst":   ev.Destination,
+			"proxy": ev.ProxyDirection,
+		}).Errorf("error hydrating source metadata: %s", err)
+	} else {
+		for k, v := range sourceIPMeta {
+			ev.SourceMeta.Labels[k] = v
+		}
+	}
+
+	return ev
 }
 
 // NewServer creates a new gRPC Tap server
@@ -468,4 +485,84 @@ func NewServer(
 	pb.RegisterTapServer(s, &srv)
 
 	return s, lis, nil
+}
+
+func indexPodByIP(obj interface{}) ([]string, error) {
+	if pod, ok := obj.(*apiv1.Pod); ok {
+		return []string{pod.Status.PodIP}, nil
+	}
+	return []string{""}, fmt.Errorf("object is not a pod")
+}
+
+func (s *server) hydrateIPMeta(ip *public.IPAddress) (map[string]string, error) {
+	pod, err := s.podForIP(ip)
+	if err != nil {
+		return nil, err
+	}
+	ownerKind, ownerName := s.k8sAPI.GetOwnerKindAndName(pod)
+	return pkgK8s.GetPodLabels(ownerKind, ownerName, pod), nil
+}
+
+func (s *server) podForIP(ip *public.IPAddress) (*apiv1.Pod, error) {
+	ipStr := ip.String()
+	objs, err := s.k8sAPI.Pod().Informer().GetIndexer().ByIndex(podIPIndex, ipStr)
+	if err != nil {
+		return nil, err
+	}
+
+	// If there's a currently-running pod with this IP, use that. Otherwise,
+	// we'll need to keep track of all the pods which _have_ had this IP, so
+	// that we can use the most recently stopped one.
+	var mostRecentlyStopped *apiv1.Pod
+	stopTime := int64(0)
+	for _, obj := range objs {
+		pod, ok := obj.(*apiv1.Pod)
+		if !ok {
+			log.Errorf("found something that wasn't a pod when indexing pods by IP")
+			continue
+		}
+		switch pod.Status.Phase {
+		case apiv1.PodRunning:
+			// Found a running pod with this IP --- it's that!
+			return pod, nil
+		case apiv1.PodFailed, apiv1.PodSucceeded:
+			// The pod has stopped. It may have sent the request before it
+			// stopped; so, see if it stopped more recently than any previously
+			// observed stopped pods.
+			if t := podStopTime(pod); t != nil && *t > stopTime {
+				mostRecentlyStopped = pod
+				stopTime = *t
+			}
+		default:
+			// Otherwise, the pod's status is either pending (in which case it
+			// can't have sent the request yet), or unknown. Skip it.
+			continue
+		}
+	}
+	// If we didn't find a running pod, choose the most recently stopped
+	// pod that has had that IP.
+	return mostRecentlyStopped, nil
+}
+
+func podStopTime(pod *apiv1.Pod) *int64 {
+	status := pod.Status
+	stopTime := int64(0)
+	switch status.Phase {
+	case apiv1.PodFailed, apiv1.PodSucceeded:
+		for _, containerStatus := range status.ContainerStatuses {
+			terminated := containerStatus.State.Terminated
+			if terminated == nil {
+				// A container in the pod has not stopped, so it
+				// has no stop time.
+				return nil
+			}
+			if t := terminated.FinishedAt.Unix(); t > stopTime {
+				stopTime = t
+			}
+		}
+	default:
+		// The pod is not in the stopped state.
+		return nil
+	}
+	return &stopTime
 }
