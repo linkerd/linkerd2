@@ -1,158 +1,63 @@
-/*
-Copyright 2017 The Kubernetes Authors.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
-// Note: the example only works with the code within the same release/branch.
 package main
 
 import (
-		"fmt"
-						// Uncomment the following line to load the gcp plugin (only required to authenticate against GKE clusters).
-	// _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-	"sync"
-	"time"
-	"net/http"
+	"context"
 	"crypto/tls"
-	"io/ioutil"
+	"flag"
+	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-	)
 
-// WaitSignal awaits for SIGINT or SIGTERM and closes the channel
-func WaitSignal(stop chan struct{}) {
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	<-sigs
-	close(stop)
-}
+	"github.com/golang/glog"
+)
 
 func main() {
-	wh, _ := NewWebhook(WebhookParameters{Port: 8084})
-	stop := make(chan struct{})
-	go wh.Run(stop)
-	WaitSignal(stop)
-}
+	var parameters WhSvrParameters
 
-// Webhook implements a mutating webhook for automatic proxy injection.
-type Webhook struct {
-	mu                     sync.RWMutex
-	sidecarTemplateVersion string
+	// get command line parameters
+	flag.IntVar(&parameters.port, "port", 443, "Webhook server port.")
+	flag.StringVar(&parameters.certFile, "tlsCertFile", "/etc/webhook/certs/cert.pem", "File containing the x509 Certificate for HTTPS.")
+	flag.StringVar(&parameters.keyFile, "tlsKeyFile", "/etc/webhook/certs/key.pem", "File containing the x509 private key to --tlsCertFile.")
+	flag.StringVar(&parameters.sidecarCfgFile, "sidecarCfgFile", "/etc/webhook/config/sidecarconfig.yaml", "File containing the mutation configuration.")
+	flag.Parse()
 
-	healthCheckInterval time.Duration
-	healthCheckFile     string
-
-	server     *http.Server
-	meshFile   string
-	configFile string
-	certFile   string
-	keyFile    string
-	cert       *tls.Certificate
-}
-
-
-// WebhookParameters configures parameters for the sidecar injection
-type WebhookParameters struct {
-	// ConfigFile is the path to the sidecar injection configuration file.
-	ConfigFile string
-
-	// MeshFile is the path to the mesh configuration file.
-	MeshFile string
-
-	// CertFile is the path to the x509 certificate for https.
-	CertFile string
-
-	// KeyFile is the path to the x509 private key matching `CertFile`.
-	KeyFile string
-
-	// Port is the webhook port, e.g. typically 443 for https.
-	Port int
-
-	// HealthCheckInterval configures how frequently the health check
-	// file is updated. Value of zero disables the health check
-	// update.
-	HealthCheckInterval time.Duration
-
-	// HealthCheckFile specifies the path to the health check file
-	// that is periodically updated.
-	HealthCheckFile string
-}
-
-// NewWebhook creates a new instance of a mutating webhook for automatic sidecar injection.
-func NewWebhook(p WebhookParameters) (*Webhook, error) {
-	duration, _ := time.ParseDuration("5s")
-	wh := &Webhook{
-		sidecarTemplateVersion: "",
-		healthCheckInterval:    duration,
-		healthCheckFile:        "",
-		server: &http.Server{
-			Addr: fmt.Sprintf(":%v", p.Port),
-		},
-		meshFile:   "",
-		configFile: "",
-		certFile:   "",
-		keyFile:    "",
-		cert:       nil,
+	sidecarConfig, err := loadConfig(parameters.sidecarCfgFile)
+	if err != nil {
+		glog.Errorf("Filed to load configuration: %v", err)
 	}
-	// mtls disabled because apiserver webhook cert usage is still TBD.
-	h := http.NewServeMux()
-	h.HandleFunc("/inject", wh.serveInject)
-	wh.server.Handler = h
 
-	return wh, nil
-}
+	pair, err := tls.LoadX509KeyPair(parameters.certFile, parameters.keyFile)
+	if err != nil {
+		glog.Errorf("Filed to load key pair: %v", err)
+	}
 
-// Run implements the webhook server
-func (wh *Webhook) Run(stop <-chan struct{}) {
+	whsvr := &WebhookServer{
+		sidecarConfig: sidecarConfig,
+		server: &http.Server{
+			Addr:      fmt.Sprintf(":%v", parameters.port),
+			TLSConfig: &tls.Config{Certificates: []tls.Certificate{pair}},
+		},
+	}
+
+	// define http server and server handler
+	mux := http.NewServeMux()
+	mux.HandleFunc("/mutate", whsvr.serve)
+	whsvr.server.Handler = mux
+
+	// start webhook server in new rountine
 	go func() {
-		if err := wh.server.ListenAndServe(); err != nil {
-			fmt.Println("ListenAndServe for admission webhook returned error: %v", err)
+		if err := whsvr.server.ListenAndServeTLS("", ""); err != nil {
+			glog.Errorf("Filed to listen and serve webhook server: %v", err)
 		}
 	}()
 
-	defer wh.server.Close()  // nolint: errcheck
+	// listening OS shutdown singal
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+	<-signalChan
 
-	for {
-		select {
-		case <-stop:
-			return
-		}
-	}
+	glog.Infof("Got OS shutdown signal, shutting down webhook server gracefully...")
+	whsvr.server.Shutdown(context.Background())
 }
-
-func (wh *Webhook) serveInject(w http.ResponseWriter, r *http.Request) {
-	var body []byte
-	if r.Body != nil {
-		if data, err := ioutil.ReadAll(r.Body); err == nil {
-			body = data
-		}
-	}
-	if len(body) == 0 {
-		fmt.Println("no body found")
-		http.Error(w, "no body found", http.StatusBadRequest)
-		return
-	}
-
-	// verify the content type is accurate
-	contentType := r.Header.Get("Content-Type")
-	if contentType != "application/json" {
-		fmt.Println("contentType=%s, expect application/json", contentType)
-		http.Error(w, "invalid Content-Type, want `application/json`", http.StatusUnsupportedMediaType)
-		return
-	}
-
-	fmt.Println("Webhook triggered!")
-}
-
