@@ -335,10 +335,16 @@ func contains(list []string, s string) bool {
 
 func RenderTapEvent(event *pb.TapEvent) string {
 	dstLabels := event.GetDestinationMeta().GetLabels()
+	srcLabels := event.GetSourceMeta().GetLabels()
 
 	dst := addr.PublicAddressToString(event.GetDestination())
 	if pod := dstLabels["pod"]; pod != "" {
 		dst = fmt.Sprintf("%s:%d", pod, event.GetDestination().GetPort())
+	}
+
+	src := addr.PublicAddressToString(event.GetSource())
+	if pod := srcLabels["pod"]; pod != "" {
+		src = fmt.Sprintf("%s:%d", pod, event.GetSource().GetPort())
 	}
 
 	proxy := "???"
@@ -346,7 +352,6 @@ func RenderTapEvent(event *pb.TapEvent) string {
 	switch event.GetProxyDirection() {
 	case pb.TapEvent_INBOUND:
 		proxy = "in " // A space is added so it aligns with `out`.
-		srcLabels := event.GetSourceMeta().GetLabels()
 		tls = srcLabels["tls"]
 	case pb.TapEvent_OUTBOUND:
 		proxy = "out"
@@ -357,7 +362,7 @@ func RenderTapEvent(event *pb.TapEvent) string {
 
 	flow := fmt.Sprintf("proxy=%s src=%s dst=%s tls=%s",
 		proxy,
-		addr.PublicAddressToString(event.GetSource()),
+		src,
 		dst,
 		tls,
 	)
