@@ -34,6 +34,7 @@ func main() {
 		k8s.Pod,
 		k8s.RC,
 		k8s.Svc,
+		k8s.RS,
 	)
 
 	server, lis, err := tap.NewServer(*addr, *tapPort, k8sAPI)

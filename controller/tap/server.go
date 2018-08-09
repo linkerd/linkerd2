@@ -14,6 +14,7 @@ import (
 	pb "github.com/linkerd/linkerd2/controller/gen/controller/tap"
 	public "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
+	"github.com/linkerd/linkerd2/pkg/addr"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -497,16 +498,22 @@ func indexPodByIP(obj interface{}) ([]string, error) {
 }
 
 func (s *server) hydrateIPMeta(ip *public.IPAddress) (map[string]string, error) {
+	logc := log.WithFields(log.Fields{"ip": addr.PublicIPToString(ip)})
 	pod, err := s.podForIP(ip)
 	if err != nil {
 		return nil, err
+	} else if pod == nil {
+		logc.Debugln("no pod for IP")
+		return make(map[string]string), nil
 	}
+
 	ownerKind, ownerName := s.k8sAPI.GetOwnerKindAndName(pod)
 	return pkgK8s.GetPodLabels(ownerKind, ownerName, pod), nil
 }
 
 func (s *server) podForIP(ip *public.IPAddress) (*apiv1.Pod, error) {
-	ipStr := ip.String()
+	ipStr := addr.PublicIPToString(ip)
+	logc := log.WithFields(log.Fields{"ip": ipStr})
 	objs, err := s.k8sAPI.Pod().Informer().GetIndexer().ByIndex(podIPIndex, ipStr)
 	if err != nil {
 		return nil, err
@@ -520,14 +527,16 @@ func (s *server) podForIP(ip *public.IPAddress) (*apiv1.Pod, error) {
 	for _, obj := range objs {
 		pod, ok := obj.(*apiv1.Pod)
 		if !ok {
-			log.Errorf("found something that wasn't a pod when indexing pods by IP")
+			logc.Errorf("found something that wasn't a pod when indexing pods by IP")
 			continue
 		}
 		switch pod.Status.Phase {
 		case apiv1.PodRunning:
 			// Found a running pod with this IP --- it's that!
+			logc.Debugf("found running pod")
 			return pod, nil
 		case apiv1.PodFailed, apiv1.PodSucceeded:
+			logc.Debugf("found stopped pod")
 			// The pod has stopped. It may have sent the request before it
 			// stopped; so, see if it stopped more recently than any previously
 			// observed stopped pods.
