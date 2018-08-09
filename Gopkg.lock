@@ -36,6 +36,14 @@
   version = "v3.1.0"
 
 [[projects]]
+  name = "github.com/docker/distribution"
+  packages = [
+    "digestset",
+    "reference"
+  ]
+  revision = "edc3ab29cdff8694dd6feb85cfeb4b5f1b38ed9c"
+
+[[projects]]
   name = "github.com/ghodss/yaml"
   packages = ["."]
   revision = "0ca9ea5df5451ffdf184b4428c902747c2c11cd7"
@@ -196,6 +204,12 @@
   name = "github.com/mxk/go-flowrate"
   packages = ["flowrate"]
   revision = "cca7078d478f8520f85629ad7c68962d31ed7682"
+
+[[projects]]
+  name = "github.com/opencontainers/go-digest"
+  packages = ["."]
+  revision = "279bed98673dd5bef374d3b6e4b09e2af76183bf"
+  version = "v1.0.0-rc1"
 
 [[projects]]
   branch = "master"
@@ -419,6 +433,7 @@
   branch = "release-1.11"
   name = "k8s.io/api"
   packages = [
+    "admission/v1beta1",
     "admissionregistration/v1alpha1",
     "admissionregistration/v1beta1",
     "apps/v1",
@@ -450,6 +465,12 @@
     "storage/v1beta1"
   ]
   revision = "2d6f90ab1293a1fb871cf149423ebb72aa7423aa"
+
+[[projects]]
+  branch = "master"
+  name = "k8s.io/apiextensions-apiserver"
+  packages = ["pkg/features"]
+  revision = "4d05e43ad98c1edcf2f52291685bd9bbc12fd2cd"
 
 [[projects]]
   branch = "release-1.11"
@@ -501,6 +522,15 @@
     "third_party/forked/golang/reflect"
   ]
   revision = "103fd098999dc9c0c88536f5c9ad2e5da39373ae"
+
+[[projects]]
+  branch = "master"
+  name = "k8s.io/apiserver"
+  packages = [
+    "pkg/features",
+    "pkg/util/feature"
+  ]
+  revision = "f26e5b1f0e9c0ddd9bbff06bf6facf000baffe8f"
 
 [[projects]]
   name = "k8s.io/client-go"
@@ -680,9 +710,17 @@
 [[projects]]
   name = "k8s.io/kubernetes"
   packages = [
+    "pkg/apis/autoscaling",
     "pkg/apis/core",
+    "pkg/apis/core/v1",
+    "pkg/apis/extensions",
+    "pkg/apis/networking",
+    "pkg/apis/policy",
+    "pkg/features",
     "pkg/kubectl/proxy",
-    "pkg/kubectl/util"
+    "pkg/kubectl/util",
+    "pkg/util/parsers",
+    "pkg/util/pointer"
   ]
   revision = "b1b29978270dc22fecc592ac55d903350454310a"
   version = "v1.11.1"
@@ -690,6 +728,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "771d4a9ac32fe84b400577444ceb014a105cc6ce0b5adbf85952a596026b5158"
+  inputs-digest = "d4c9e126f922a9fe0fcfbfe7e51333d838065944054eb88439d84428b00a41a2"
   solver-name = "gps-cdcl"
   solver-version = 1

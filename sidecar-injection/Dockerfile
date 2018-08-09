@@ -1,5 +1,5 @@
 ## compile sidecar-injection utility
-FROM gcr.io/linkerd-io/go-deps:5aeb9bf4 as golang
+FROM gcr.io/linkerd-io/go-deps:3bac64dd as golang
 WORKDIR /go/src/github.com/linkerd/linkerd2
 COPY ./sidecar-injection ./sidecar-injection
 RUN CGO_ENABLED=0 GOOS=linux go install -v ./sidecar-injection/

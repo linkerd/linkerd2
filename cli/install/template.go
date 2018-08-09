@@ -631,10 +631,33 @@ spec:
   selector:
     {{.ControllerComponentLabel}}: sidecar-injection
   ports:
-  - name: http
-    port: 8084
-    targetPort: 8084
+  - name: https
+    port: 443
+    targetPort: 443
 
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: linkerd-webhook-configmap
+  namespace: {{.Namespace}}
+  annotations:
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
+data:
+  sidecarconfig.yaml: |
+    containers:
+      - name: sidecar-nginx
+        image: nginx:1.12.2
+        imagePullPolicy: IfNotPresent
+        ports:
+          - containerPort: 80
+        volumeMounts:
+          - name: nginx-conf
+            mountPath: /etc/nginx
+    volumes:
+      - name: nginx-conf
+        configMap:
+          name: nginx-configmap
 ---
 kind: Deployment
 apiVersion: extensions/v1beta1
@@ -655,17 +678,34 @@ spec:
         {{.CreatedByAnnotation}}: {{.CliVersion}}
     spec:
       serviceAccountName: linkerd-sidecar-injector
-      containers: 
+      containers:
         - name: sidecar-injection
           ports:
           - name: http
             containerPort: 8084
           image: {{.SidecarInjectionImage}}
           imagePullPolicy: {{.ImagePullPolicy}}
-      volumes:
-        - name: linkerd-secret
-          secretName: linkerd.linkerd-sidecar-injector
+          args:
+            - -sidecarCfgFile=/etc/webhook/config/sidecarconfig.yaml
+            - -tlsCertFile=/etc/webhook/certs/cert.pem
+            - -tlsKeyFile=/etc/webhook/certs/key.pem
+            - -alsologtostderr
+            - -v=4
+            - 2>&1
+          volumeMounts:
+            - name: linkerd-webhook-certs
+              mountPath: /etc/webhook/certs
+              readOnly: true
+            - name: linkerd-webhook-config
+              mountPath: /etc/webhook/config
 
+      volumes:
+        - name: linkerd-webhook-certs
+          secret:
+            secretName: linkerd-webhook-certs
+        - name: linkerd-webhook-config
+          configMap:
+            name: linkerd-webhook-configmap
 ---
 kind: MutatingWebhookConfiguration
 apiVersion: admissionregistration.k8s.io/v1beta1
@@ -682,7 +722,7 @@ webhooks:
       service:
         name: linkerd-sidecar-injector
         namespace: {{.Namespace}}
-        path: "/inject"
+        path: "/mutate"
       caBundle: ""
     rules:
       - operations: [ "CREATE" ]
@@ -692,7 +732,7 @@ webhooks:
     failurePolicy: Fail
     namespaceSelector:
       matchLabels:
-        linkerd-inject: enabled
+        linkerd-injector: enabled
 `
 
 const TlsTemplate = `
