@@ -21,6 +21,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	apiv1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/cache"
 )
 
 const podIPIndex = "ip"
@@ -471,6 +472,7 @@ func NewServer(
 	tapPort uint,
 	k8sAPI *k8s.API,
 ) (*grpc.Server, net.Listener, error) {
+	k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{podIPIndex: indexPodByIP})
 
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
