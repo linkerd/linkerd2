@@ -91,7 +91,7 @@ func (kubeapi *kubernetesApi) checkApiAccess(client *http.Client) (*healthcheckP
 	endpointToCheck, err := url.Parse(kubeapi.Host + "/version")
 	if err != nil {
 		checkResult.Status = healthcheckPb.CheckStatus_ERROR
-		checkResult.FriendlyMessageToUser = fmt.Sprintf("Error querying Kubernetes API. Configured host is [%s], error message is [%s]", kubeapi.Host, err.Error())
+		checkResult.FriendlyMessageToUser = fmt.Sprintf("Error configuring the Kubernetes API host %s: %s", kubeapi.Host, err)
 		return checkResult, ""
 	}
 
@@ -102,7 +102,7 @@ func (kubeapi *kubernetesApi) checkApiAccess(client *http.Client) (*healthcheckP
 	resp, err := client.Do(req.WithContext(ctx))
 	if err != nil {
 		checkResult.Status = healthcheckPb.CheckStatus_ERROR
-		checkResult.FriendlyMessageToUser = fmt.Sprintf("HTTP GET request to endpoint [%s] resulted in error: [%s]", endpointToCheck, err.Error())
+		checkResult.FriendlyMessageToUser = fmt.Sprintf("Error calling the Kubernetes API: %s", err)
 		return checkResult, ""
 	}
 	defer resp.Body.Close()
@@ -110,15 +110,14 @@ func (kubeapi *kubernetesApi) checkApiAccess(client *http.Client) (*healthcheckP
 	bytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		checkResult.Status = healthcheckPb.CheckStatus_ERROR
-		checkResult.FriendlyMessageToUser = fmt.Sprintf("HTTP GET request to endpoint [%s] resulted in invalid response: [%v]", endpointToCheck, resp)
+		checkResult.FriendlyMessageToUser = fmt.Sprintf("Error reading Kubernetes API response body: %s", err)
 		return checkResult, ""
 	}
 	body := string(bytes)
 
-	statusCodeReturnedIsWithinSuccessRange := resp.StatusCode < 400
-	if !statusCodeReturnedIsWithinSuccessRange {
+	if resp.StatusCode != http.StatusOK {
 		checkResult.Status = healthcheckPb.CheckStatus_FAIL
-		checkResult.FriendlyMessageToUser = fmt.Sprintf("HTTP GET request to endpoint [%s] resulted in Status: [%s], body: [%s]", endpointToCheck, resp.Status, body)
+		checkResult.FriendlyMessageToUser = fmt.Sprintf("Unexpected Kubernetes API response: %s, body: %s", resp.Status, body)
 		return checkResult, ""
 	}
 

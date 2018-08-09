@@ -101,17 +101,12 @@ If no resource name is specified, displays stats about all resources of the spec
 		Args:      cobra.RangeArgs(1, 2),
 		ValidArgs: util.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := newPublicAPIClient()
-			if err != nil {
-				return fmt.Errorf("error creating api client while making stats request: %v", err)
-			}
-
 			req, err := buildStatSummaryRequest(args, options)
 			if err != nil {
 				return fmt.Errorf("error creating metrics request while making stats request: %v", err)
 			}
 
-			output, err := requestStatsFromAPI(client, req, options)
+			output, err := requestStatsFromAPI(validatedPublicAPIClient(), req, options)
 			if err != nil {
 				return err
 			}

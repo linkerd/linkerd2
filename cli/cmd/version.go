@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/linkerd/linkerd2/controller/api/public"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
 )
@@ -38,7 +40,7 @@ func newCmdVersion() *cobra.Command {
 				fmt.Printf("Client version: %s\n", clientVersion)
 			}
 
-			client, err := newPublicAPIClient()
+			client, err := newVersionClient()
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error connecting to server: %s\n", err)
 				os.Exit(1)
@@ -69,4 +71,16 @@ func getServerVersion(client pb.ApiClient) string {
 	}
 
 	return resp.GetReleaseVersion()
+}
+
+// This client does not do any validation
+func newVersionClient() (pb.ApiClient, error) {
+	if apiAddr != "" {
+		return public.NewInternalClient(controlPlaneNamespace, apiAddr)
+	}
+	kubeAPI, err := k8s.NewAPI(kubeconfigPath)
+	if err != nil {
+		return nil, err
+	}
+	return public.NewExternalClient(controlPlaneNamespace, kubeAPI)
 }

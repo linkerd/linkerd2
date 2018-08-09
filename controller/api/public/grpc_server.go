@@ -179,7 +179,7 @@ func (s *grpcServer) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckR
 	_, err := s.k8sAPI.Pod().Lister().List(labels.Everything())
 	if err != nil {
 		k8sClientCheck.Status = healthcheckPb.CheckStatus_ERROR
-		k8sClientCheck.FriendlyMessageToUser = fmt.Sprintf("Error talking to Kubernetes from control plane: %s", err.Error())
+		k8sClientCheck.FriendlyMessageToUser = fmt.Sprintf("Error calling the Kubernetes API: %s", err)
 	}
 
 	promClientCheck := &healthcheckPb.CheckResult{
@@ -190,7 +190,7 @@ func (s *grpcServer) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckR
 	_, err = s.queryProm(ctx, fmt.Sprintf(podQuery, ""))
 	if err != nil {
 		promClientCheck.Status = healthcheckPb.CheckStatus_ERROR
-		promClientCheck.FriendlyMessageToUser = fmt.Sprintf("Error talking to Prometheus from control plane: %s", err.Error())
+		promClientCheck.FriendlyMessageToUser = fmt.Sprintf("Error calling Prometheus from the control plane: %s", err)
 	}
 
 	response := &healthcheckPb.SelfCheckResponse{

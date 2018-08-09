@@ -90,12 +90,7 @@ func newCmdTap() *cobra.Command {
 				return err
 			}
 
-			client, err := newPublicAPIClient()
-			if err != nil {
-				return err
-			}
-
-			return requestTapByResourceFromAPI(os.Stdout, client, req)
+			return requestTapByResourceFromAPI(os.Stdout, validatedPublicAPIClient(), req)
 		},
 	}
 

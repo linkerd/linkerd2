@@ -134,7 +134,7 @@ func deserializePayloadFromReader(reader *bufio.Reader) ([]byte, error) {
 	return messageContentsAsBytes, nil
 }
 
-func checkIfResponseHasErrorHeader(rsp *http.Response) error {
+func checkIfResponseHasError(rsp *http.Response) error {
 	errorMsg := rsp.Header.Get(errorHeader)
 
 	if errorMsg != "" {
@@ -143,10 +143,14 @@ func checkIfResponseHasErrorHeader(rsp *http.Response) error {
 
 		err := fromByteStreamToProtocolBuffers(reader, &apiError)
 		if err != nil {
-			return fmt.Errorf("response has %s header [%s], but response body didn't contain protobuf error: %v", errorHeader, errorMsg, err)
+			return fmt.Errorf("Response has %s header [%s], but response body didn't contain protobuf error: %v", errorHeader, errorMsg, err)
 		}
 
 		return errors.New(apiError.Error)
+	}
+
+	if rsp.StatusCode != http.StatusOK {
+		return fmt.Errorf("Unexpected API response: %s", rsp.Status)
 	}
 
 	return nil

@@ -1,15 +1,11 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"os"
 
-	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/pkg/browser"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -71,22 +67,8 @@ func newCmdDashboard() *cobra.Command {
 				os.Exit(1)
 			}
 
-			client, err := newPublicAPIClient()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to initialize Linkerd API client: %+v\n", err)
-				os.Exit(1)
-			}
-
-			dashboardAvailable, err := isDashboardAvailable(client)
-			if err != nil {
-				log.Debugf("Error checking dashboard availability: %s", err)
-			}
-
-			if err != nil || !dashboardAvailable {
-				fmt.Fprintf(os.Stderr, "Linkerd is not running in the \"%s\" namespace\n", controlPlaneNamespace)
-				fmt.Fprintf(os.Stderr, "Install with: linkerd install --linkerd-namespace %s | kubectl apply -f -\n", controlPlaneNamespace)
-				os.Exit(1)
-			}
+			// ensure we can connect to the public API before starting the proxy
+			validatedPublicAPIClient()
 
 			fmt.Printf("Linkerd dashboard available at:\n%s\n", url.String())
 			fmt.Printf("Grafana dashboard available at:\n%s\n", grafanaUrl.String())
@@ -129,18 +111,4 @@ func newCmdDashboard() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&options.dashboardShow, "show", options.dashboardShow, "Open a dashboard in a browser or show URLs in the CLI (one of: linkerd, grafana, url)")
 
 	return cmd
-}
-
-func isDashboardAvailable(client pb.ApiClient) (bool, error) {
-	res, err := client.SelfCheck(context.Background(), &healthcheckPb.SelfCheckRequest{})
-	if err != nil {
-		return false, err
-	}
-
-	for _, result := range res.Results {
-		if result.Status != healthcheckPb.CheckStatus_OK {
-			return false, nil
-		}
-	}
-	return true, nil
 }
