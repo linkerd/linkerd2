@@ -503,7 +503,8 @@ func (s *server) hydrateIPMeta(ip *public.IPAddress) (map[string]string, error) 
 	pod, err := s.podForIP(ip)
 	if err != nil {
 		return nil, err
-	} else if pod == nil {
+	}
+	if pod == nil {
 		log.WithFields(log.Fields{"ip": addr.PublicIPToString(ip)}).Debugln("no pod for IP")
 		return make(map[string]string), nil
 	}
@@ -516,7 +517,7 @@ func (s *server) hydrateIPMeta(ip *public.IPAddress) (map[string]string, error) 
 //
 // If multiple pods exist with the same IP address, this may be because some
 // are terminating and the IP has been assigned to a new pod. In this case, this
-// function preferrentially selects the currently running pod, if there is one;
+// function preferentially selects the currently running pod, if there is one;
 // otherwise, it chooses the pod that terminated the most recently (based on the
 // assumption that it's most likely to have sent a request).
 //
@@ -536,11 +537,9 @@ func (s *server) podForIP(ip *public.IPAddress) (*apiv1.Pod, error) {
 	var mostRecentlyStopped *apiv1.Pod
 	stopTime := int64(0)
 	for _, obj := range objs {
-		pod, ok := obj.(*apiv1.Pod)
-		if !ok {
-			logc.Errorf("found something that wasn't a pod when indexing pods by IP")
-			continue
-		}
+		// It's safe to cast the object to a pod here, as otherwise, it would
+		// not have been indexed by the indexing func in the first place.
+		pod := obj.(*apiv1.Pod)
 		switch pod.Status.Phase {
 		case apiv1.PodRunning:
 			// Found a running pod with this IP --- it's that!
