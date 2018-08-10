@@ -453,11 +453,7 @@ func (s *server) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 
 	sourceIPMeta, err := s.hydrateIPMeta(ev.Source.Ip)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"src":   ev.Source,
-			"dst":   ev.Destination,
-			"proxy": ev.ProxyDirection,
-		}).Errorf("error hydrating source metadata: %s", err)
+		log.Errorf("error hydrating source metadata for %s: %s", ev.Source, err)
 	} else {
 		for k, v := range sourceIPMeta {
 			ev.SourceMeta.Labels[k] = v
@@ -505,7 +501,7 @@ func (s *server) hydrateIPMeta(ip *public.IPAddress) (map[string]string, error) 
 		return nil, err
 	}
 	if pod == nil {
-		log.WithFields(log.Fields{"ip": addr.PublicIPToString(ip)}).Debugln("no pod for IP")
+		log.Debugln("no pod for IP %s", addr.PublicAddressToString(ip))
 		return make(map[string]string), nil
 	}
 
@@ -516,16 +512,17 @@ func (s *server) hydrateIPMeta(ip *public.IPAddress) (map[string]string, error) 
 // podForIP returns the pod corresponding to a given IP address, if one exists.
 //
 // If multiple pods exist with the same IP address, this may be because some
-// are terminating and the IP has been assigned to a new pod. In this case, this
-// function preferentially selects the currently running pod, if there is one;
-// otherwise, it chooses the pod that terminated the most recently (based on the
-// assumption that it's most likely to have sent a request).
+// are terminating and the IP has been assigned to a new pod. In this case, we
+// select the running pod, if one currently exists. Otherwise, if there is a
+// single Terminating pod and one or more Pending/Unknown pods, it will return
+// the Terminating pods. Finally, if there are multiple Terminating pods, it
+// will return `nil`, as we don't know which of those pods originated the
+// request.
 //
 // If no pods were found for the provided IP address, it returns nil. Errors are
 // returned only in the event of an error indexing the pods list.
 func (s *server) podForIP(ip *public.IPAddress) (*apiv1.Pod, error) {
 	ipStr := addr.PublicIPToString(ip)
-	logc := log.WithFields(log.Fields{"ip": ipStr})
 	objs, err := s.k8sAPI.Pod().Informer().GetIndexer().ByIndex(podIPIndex, ipStr)
 	if err != nil {
 		return nil, err
@@ -539,12 +536,12 @@ func (s *server) podForIP(ip *public.IPAddress) (*apiv1.Pod, error) {
 		switch pod.Status.Phase {
 		case apiv1.PodRunning:
 			// Found a running pod with this IP --- it's that!
-			logc.Debugf("found running pod")
+			log.Debugf("found running pod at IP %s", ipStr)
 			return pod, nil
 		case apiv1.PodFailed, apiv1.PodSucceeded:
 			// The pod has stopped. If there's only one such pod, we'll
 			// return it instead.
-			logc.Debugf("found terminated pod")
+			log.Debugf("found terminated at IP %s", ipStr)
 			terminatedPods = append(terminatedPods, obj)
 		default:
 			// Otherwise, the pod's status is either pending (in which case it
