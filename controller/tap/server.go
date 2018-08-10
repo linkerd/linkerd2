@@ -497,13 +497,14 @@ func indexPodByIP(obj interface{}) ([]string, error) {
 	return []string{""}, fmt.Errorf("object is not a pod")
 }
 
+// hydrateIPMeta returns a map of expanded metadata labels for a given IP.
+// If no pod cound be found for that IP, it returns an empty map.
 func (s *server) hydrateIPMeta(ip *public.IPAddress) (map[string]string, error) {
-	logc := log.WithFields(log.Fields{"ip": addr.PublicIPToString(ip)})
 	pod, err := s.podForIP(ip)
 	if err != nil {
 		return nil, err
 	} else if pod == nil {
-		logc.Debugln("no pod for IP")
+		log.WithFields(log.Fields{"ip": addr.PublicIPToString(ip)}).Debugln("no pod for IP")
 		return make(map[string]string), nil
 	}
 
@@ -511,6 +512,16 @@ func (s *server) hydrateIPMeta(ip *public.IPAddress) (map[string]string, error) 
 	return pkgK8s.GetPodLabels(ownerKind, ownerName, pod), nil
 }
 
+// podForIP returns the pod corresponding to a given IP address, if one exists.
+//
+// If multiple pods exist with the same IP address, this may be because some
+// are terminating and the IP has been assigned to a new pod. In this case, this
+// function preferrentially selects the currently running pod, if there is one;
+// otherwise, it chooses the pod that terminated the most recently (based on the
+// assumption that it's most likely to have sent a request).
+//
+// If no pods were found for the provided IP address, it returns nil. Errors are
+// returned only in the event of an error indexing the pods list.
 func (s *server) podForIP(ip *public.IPAddress) (*apiv1.Pod, error) {
 	ipStr := addr.PublicIPToString(ip)
 	logc := log.WithFields(log.Fields{"ip": ipStr})
@@ -536,13 +547,13 @@ func (s *server) podForIP(ip *public.IPAddress) (*apiv1.Pod, error) {
 			logc.Debugf("found running pod")
 			return pod, nil
 		case apiv1.PodFailed, apiv1.PodSucceeded:
-			logc.Debugf("found stopped pod")
 			// The pod has stopped. It may have sent the request before it
 			// stopped; so, see if it stopped more recently than any previously
 			// observed stopped pods.
 			if t := podStopTime(pod); t != nil && *t > stopTime {
 				mostRecentlyStopped = pod
 				stopTime = *t
+				logc.WithFields(log.Fields{"stopTime": stopTime}).Debugf("found stopped pod")
 			}
 		default:
 			// Otherwise, the pod's status is either pending (in which case it
@@ -555,6 +566,9 @@ func (s *server) podForIP(ip *public.IPAddress) (*apiv1.Pod, error) {
 	return mostRecentlyStopped, nil
 }
 
+// podStopTime returns the Unix timestamp when the last container in a given
+// pod terminated, if all the containers in that pod have terminated.
+// Otherwise, it returns nil.
 func podStopTime(pod *apiv1.Pod) *int64 {
 	status := pod.Status
 	stopTime := int64(0)
