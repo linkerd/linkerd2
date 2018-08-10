@@ -174,6 +174,12 @@
   version = "v0.1.1"
 
 [[projects]]
+  name = "github.com/mattn/go-runewidth"
+  packages = ["."]
+  revision = "9e777a8366cce605130a531d2cd6363d07ad7317"
+  version = "v0.0.2"
+
+[[projects]]
   name = "github.com/matttproud/golang_protobuf_extensions"
   packages = ["pbutil"]
   revision = "3247c84500bff8d9fb6d579d800f20b3e091582c"
@@ -196,6 +202,12 @@
   name = "github.com/mxk/go-flowrate"
   packages = ["flowrate"]
   revision = "cca7078d478f8520f85629ad7c68962d31ed7682"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/nsf/termbox-go"
+  packages = ["."]
+  revision = "5c94acc5e6eb520f1bcd183974e01171cc4c23b3"
 
 [[projects]]
   branch = "master"
@@ -690,6 +702,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "771d4a9ac32fe84b400577444ceb014a105cc6ce0b5adbf85952a596026b5158"
+  inputs-digest = "8e8b77e1ff08aed42ae053bd51d3039f4f6fece9dd9848a85e9b980d898b4d27"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -62,6 +62,7 @@ func init() {
 	RootCmd.AddCommand(newCmdStat())
 	RootCmd.AddCommand(newCmdTap())
 	RootCmd.AddCommand(newCmdVersion())
+	RootCmd.AddCommand(newCmdTop())
 }
 
 func newPublicAPIClient() (pb.ApiClient, error) {
