@@ -501,7 +501,7 @@ func (s *server) hydrateIPMeta(ip *public.IPAddress) (map[string]string, error) 
 		return nil, err
 	}
 	if pod == nil {
-		log.Debugln("no pod for IP %s", addr.PublicAddressToString(ip))
+		log.Debugln("no pod for IP %s", addr.PublicIPToString(ip))
 		return make(map[string]string), nil
 	}
 
