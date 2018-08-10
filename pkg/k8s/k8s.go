@@ -15,6 +15,7 @@ const (
 	Namespace             = "namespace"
 	Pod                   = "pod"
 	ReplicationController = "replicationcontroller"
+	ReplicaSet            = "replicaset"
 	Service               = "service"
 )
 
@@ -102,6 +103,8 @@ func ShortNameFromCanonicalResourceName(canonicalName string) string {
 		return "po"
 	case ReplicationController:
 		return "rc"
+	case ReplicaSet:
+		return "rs"
 	case Service:
 		return "svc"
 	case Authority:

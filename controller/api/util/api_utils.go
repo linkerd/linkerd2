@@ -333,90 +333,156 @@ func contains(list []string, s string) bool {
 	return false
 }
 
-func formatPeer(peerAddr *pb.TcpAddress, labels map[string]string) string {
-	if pod := labels["pod"]; pod != "" {
-		return fmt.Sprintf("%s:%d", pod, peerAddr.GetPort())
+type peer struct {
+	address *pb.TcpAddress
+	labels  map[string]string
+	prefix  string
+}
+
+func (p *peer) format() string {
+	if pod, exists := p.labels["pod"]; exists {
+		return fmt.Sprintf("%s=%s:%d", p.prefix, pod, p.address.GetPort())
 	} else {
-		return addr.PublicAddressToString(peerAddr)
+		return fmt.Sprintf(
+			"%s=%s",
+			p.prefix,
+			addr.PublicAddressToString(p.address),
+		)
+	}
+}
+
+var owners = [...]string{k8s.Deployment, "statefulset", k8s.ReplicaSet, k8s.ReplicationController}
+
+func (p *peer) formatResource(orAuthority string) string {
+	for _, ownerKind := range owners {
+		if ownerName, exists := p.labels[ownerKind]; exists {
+			var kind string
+			if short := k8s.ShortNameFromCanonicalResourceName(ownerKind); short != "" {
+				kind = short
+			} else {
+				kind = ownerKind
+			}
+			s := fmt.Sprintf(
+				" %s_resource=%s/%s",
+				p.prefix,
+				kind,
+				ownerName,
+			)
+			return s
+		}
+	}
+	if orAuthority != "" {
+		return fmt.Sprintf(" %s_resource=au/%s", p.prefix, orAuthority)
+	} else {
+		return ""
+	}
+}
+
+func (p *peer) tlsStatus() string {
+	return p.labels["tls"]
+}
+
+func src(event *pb.TapEvent) peer {
+	return peer{
+		address: event.GetSource(),
+		labels:  event.GetSourceMeta().GetLabels(),
+		prefix:  "src",
+	}
+}
+
+func dst(event *pb.TapEvent) peer {
+	return peer{
+		address: event.GetDestination(),
+		labels:  event.GetDestinationMeta().GetLabels(),
+		prefix:  "dst",
 	}
 }
 
 func RenderTapEvent(event *pb.TapEvent) string {
-	srcLabels := event.GetSourceMeta().GetLabels()
-	dstLabels := event.GetDestinationMeta().GetLabels()
-
-	dst := formatPeer(event.GetDestination(), dstLabels)
-	src := formatPeer(event.GetSource(), srcLabels)
+	dst := dst(event)
+	src := src(event)
 
 	proxy := "???"
 	tls := ""
 	switch event.GetProxyDirection() {
 	case pb.TapEvent_INBOUND:
 		proxy = "in " // A space is added so it aligns with `out`.
-		tls = srcLabels["tls"]
+		tls = src.tlsStatus()
 	case pb.TapEvent_OUTBOUND:
 		proxy = "out"
-		tls = dstLabels["tls"]
+		tls = dst.tlsStatus()
 	default:
 		// Too old for TLS.
 	}
 
-	flow := fmt.Sprintf("proxy=%s src=%s dst=%s tls=%s",
+	flow := fmt.Sprintf("proxy=%s %s %s tls=%s",
 		proxy,
-		src,
-		dst,
+		src.format(),
+		dst.format(),
 		tls,
 	)
 
 	switch ev := event.GetHttp().GetEvent().(type) {
 	case *pb.TapEvent_Http_RequestInit_:
-		return fmt.Sprintf("req id=%d:%d %s :method=%s :authority=%s :path=%s",
+		return fmt.Sprintf("req id=%d:%d %s :method=%s :authority=%s :path=%s%s%s",
 			ev.RequestInit.GetId().GetBase(),
 			ev.RequestInit.GetId().GetStream(),
 			flow,
 			ev.RequestInit.GetMethod().GetRegistered().String(),
 			ev.RequestInit.GetAuthority(),
 			ev.RequestInit.GetPath(),
+			src.formatResource(""),
+			dst.formatResource(ev.RequestInit.GetAuthority()),
 		)
 
 	case *pb.TapEvent_Http_ResponseInit_:
-		return fmt.Sprintf("rsp id=%d:%d %s :status=%d latency=%dµs",
+		return fmt.Sprintf("rsp id=%d:%d %s :status=%d latency=%dµs%s%s",
 			ev.ResponseInit.GetId().GetBase(),
 			ev.ResponseInit.GetId().GetStream(),
 			flow,
 			ev.ResponseInit.GetHttpStatus(),
 			ev.ResponseInit.GetSinceRequestInit().GetNanos()/1000,
+			src.formatResource(""),
+			dst.formatResource(""),
 		)
 
 	case *pb.TapEvent_Http_ResponseEnd_:
 		switch eos := ev.ResponseEnd.GetEos().GetEnd().(type) {
 		case *pb.Eos_GrpcStatusCode:
-			return fmt.Sprintf("end id=%d:%d %s grpc-status=%s duration=%dµs response-length=%dB",
+			return fmt.Sprintf(
+				"end id=%d:%d %s grpc-status=%s duration=%dµs response-length=%dB%s%s",
 				ev.ResponseEnd.GetId().GetBase(),
 				ev.ResponseEnd.GetId().GetStream(),
 				flow,
 				codes.Code(eos.GrpcStatusCode),
 				ev.ResponseEnd.GetSinceResponseInit().GetNanos()/1000,
 				ev.ResponseEnd.GetResponseBytes(),
+				src.formatResource(""),
+				dst.formatResource(""),
 			)
 
 		case *pb.Eos_ResetErrorCode:
-			return fmt.Sprintf("end id=%d:%d %s reset-error=%+v duration=%dµs response-length=%dB",
+			return fmt.Sprintf(
+				"end id=%d:%d %s reset-error=%+v duration=%dµs response-length=%dB%s%s",
 				ev.ResponseEnd.GetId().GetBase(),
 				ev.ResponseEnd.GetId().GetStream(),
 				flow,
 				eos.ResetErrorCode,
 				ev.ResponseEnd.GetSinceResponseInit().GetNanos()/1000,
 				ev.ResponseEnd.GetResponseBytes(),
+				src.formatResource(""),
+				dst.formatResource(""),
 			)
 
 		default:
-			return fmt.Sprintf("end id=%d:%d %s duration=%dµs response-length=%dB",
+			return fmt.Sprintf("end id=%d:%d %s duration=%dµs response-length=%dB%s%s",
 				ev.ResponseEnd.GetId().GetBase(),
 				ev.ResponseEnd.GetId().GetStream(),
 				flow,
 				ev.ResponseEnd.GetSinceResponseInit().GetNanos()/1000,
 				ev.ResponseEnd.GetResponseBytes(),
+				src.formatResource(""),
+				dst.formatResource(""),
 			)
 		}
 
