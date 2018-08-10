@@ -47,9 +47,9 @@ class ErrorMessage extends React.Component {
       <Row gutter={0}>
         <div className="error-message-container">
           <Col span={20}>
-            <div><b>Error:</b> {status} {statusText}</div>
-            { !error ? null : <div><b>Message:</b> {error}</div> }
-            <div><b>URL:</b> {url}</div>
+            { !status && !statusText ? null : <div>{status} {statusText}</div> }
+            { !error ? null : <div>{error}</div> }
+            { !url ? null : <div>{url}</div> }
           </Col>
           <Col span={4}>
             <div className="dismiss" onClick={this.hideMessage} role="presentation">Dismiss X</div>

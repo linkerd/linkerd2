@@ -53,7 +53,7 @@ class Namespaces extends React.Component {
       metrics: {},
       pendingRequests: false,
       loaded: false,
-      error: ''
+      error: null
     };
   }
 
