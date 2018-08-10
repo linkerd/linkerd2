@@ -334,45 +334,86 @@ func contains(list []string, s string) bool {
 }
 
 type peer struct {
-	address *pb.TcpAddress
-	labels  map[string]string
-	prefix  string
+	address   *pb.TcpAddress
+	labels    map[string]string
+	direction string
 }
 
+// src returns the source peer of a `TapEvent`.
+func src(event *pb.TapEvent) peer {
+	return peer{
+		address:   event.GetSource(),
+		labels:    event.GetSourceMeta().GetLabels(),
+		direction: "src",
+	}
+}
+
+// dst returns the destination peer of a `TapEvent`.
+func dst(event *pb.TapEvent) peer {
+	return peer{
+		address:   event.GetDestination(),
+		labels:    event.GetDestinationMeta().GetLabels(),
+		direction: "dst",
+	}
+}
+
+// format formats the `src` or `dst` element in the tap output corresponding to
+// this peer. The returned label consists of the the peer's direction ("src" or
+// "dst"), pod name if it was labeled with one or IP address if not, and port.
 func (p *peer) format() string {
 	if pod, exists := p.labels["pod"]; exists {
-		return fmt.Sprintf("%s=%s:%d", p.prefix, pod, p.address.GetPort())
+		return fmt.Sprintf("%s=%s:%d", p.direction, pod, p.address.GetPort())
 	} else {
 		return fmt.Sprintf(
 			"%s=%s",
-			p.prefix,
+			p.direction,
 			addr.PublicAddressToString(p.address),
 		)
 	}
 }
 
-var owners = [...]string{k8s.Deployment, "statefulset", k8s.ReplicaSet, k8s.ReplicationController}
+// A list of Kubernetes resource types iterated over by `formatResource`.
+var resources = [...]string{
+	k8s.Deployment,
+	k8s.DaemonSet,
+	k8s.ReplicaSet,
+	k8s.ReplicationController,
+	k8s.Service,
+	k8s.StatefulSet,
+	// The ordering here actually matters somewhat: Since we already show the
+	// pod name of a `src`/`dst` instead of its IP address if it has a pod
+	// label, we should only use the pod name as the `src_resource` or
+	// `dst_resource` IFF it is not labeled as being part of any other
+	// resource. Therefore, the pod key should be the last key we try to look
+	// up in the labels map. To ensure that's the case, `k8s.Pod` should always
+	// be the last item in this array.
+	k8s.Pod,
+}
 
+// formatResource formats what Kubernetes resource a peer is part of, if there
+// is a label in the peer's metadata that identifies it as being part of a
+// resource. Otherwise, it falls back to the authority of the peer, if one
+// was passed in as `orAuthority`, or finally to returning an empty string.
 func (p *peer) formatResource(orAuthority string) string {
-	for _, ownerKind := range owners {
-		if ownerName, exists := p.labels[ownerKind]; exists {
+	for _, resourceKind := range resources {
+		if resourceName, exists := p.labels[resourceKind]; exists {
 			var kind string
-			if short := k8s.ShortNameFromCanonicalResourceName(ownerKind); short != "" {
+			if short := k8s.ShortNameFromCanonicalResourceName(resourceKind); short != "" {
 				kind = short
 			} else {
-				kind = ownerKind
+				kind = resourceKind
 			}
 			s := fmt.Sprintf(
 				" %s_resource=%s/%s",
-				p.prefix,
+				p.direction,
 				kind,
-				ownerName,
+				resourceName,
 			)
 			return s
 		}
 	}
 	if orAuthority != "" {
-		return fmt.Sprintf(" %s_resource=au/%s", p.prefix, orAuthority)
+		return fmt.Sprintf(" %s_resource=au/%s", p.direction, orAuthority)
 	} else {
 		return ""
 	}
@@ -380,22 +421,6 @@ func (p *peer) formatResource(orAuthority string) string {
 
 func (p *peer) tlsStatus() string {
 	return p.labels["tls"]
-}
-
-func src(event *pb.TapEvent) peer {
-	return peer{
-		address: event.GetSource(),
-		labels:  event.GetSourceMeta().GetLabels(),
-		prefix:  "src",
-	}
-}
-
-func dst(event *pb.TapEvent) peer {
-	return peer{
-		address: event.GetDestination(),
-		labels:  event.GetDestinationMeta().GetLabels(),
-		prefix:  "dst",
-	}
 }
 
 func RenderTapEvent(event *pb.TapEvent) string {
