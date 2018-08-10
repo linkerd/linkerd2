@@ -531,11 +531,7 @@ func (s *server) podForIP(ip *public.IPAddress) (*apiv1.Pod, error) {
 		return nil, err
 	}
 
-	// If there's a currently-running pod with this IP, use that. Otherwise,
-	// we'll need to keep track of all the pods which _have_ had this IP, so
-	// that we can use the most recently stopped one.
-	var mostRecentlyStopped *apiv1.Pod
-	stopTime := int64(0)
+	terminatedPods := objs[:0]
 	for _, obj := range objs {
 		// It's safe to cast the object to a pod here, as otherwise, it would
 		// not have been indexed by the indexing func in the first place.
@@ -546,47 +542,20 @@ func (s *server) podForIP(ip *public.IPAddress) (*apiv1.Pod, error) {
 			logc.Debugf("found running pod")
 			return pod, nil
 		case apiv1.PodFailed, apiv1.PodSucceeded:
-			// The pod has stopped. It may have sent the request before it
-			// stopped; so, see if it stopped more recently than any previously
-			// observed stopped pods.
-			if t := podStopTime(pod); t != nil && *t > stopTime {
-				mostRecentlyStopped = pod
-				stopTime = *t
-				logc.WithFields(log.Fields{"stopTime": stopTime}).Debugf("found stopped pod")
-			}
+			// The pod has stopped. If there's only one such pod, we'll
+			// return it instead.
+			logc.Debugf("found terminated pod")
+			terminatedPods = append(terminatedPods, obj)
 		default:
 			// Otherwise, the pod's status is either pending (in which case it
 			// can't have sent the request yet), or unknown. Skip it.
 			continue
 		}
 	}
-	// If we didn't find a running pod, choose the most recently stopped
-	// pod that has had that IP.
-	return mostRecentlyStopped, nil
-}
-
-// podStopTime returns the Unix timestamp when the last container in a given
-// pod terminated, if all the containers in that pod have terminated.
-// Otherwise, it returns nil.
-func podStopTime(pod *apiv1.Pod) *int64 {
-	status := pod.Status
-	stopTime := int64(0)
-	switch status.Phase {
-	case apiv1.PodFailed, apiv1.PodSucceeded:
-		for _, containerStatus := range status.ContainerStatuses {
-			terminated := containerStatus.State.Terminated
-			if terminated == nil {
-				// A container in the pod has not stopped, so it
-				// has no stop time.
-				return nil
-			}
-			if t := terminated.FinishedAt.Unix(); t > stopTime {
-				stopTime = t
-			}
-		}
-	default:
-		// The pod is not in the stopped state.
-		return nil
+	// If there was one terminated pod, and no running pods, return that instead.
+	if len(terminatedPods) == 1 {
+		return terminatedPods[0].(*apiv1.Pod), nil
 	}
-	return &stopTime
+
+	return nil, nil
 }
