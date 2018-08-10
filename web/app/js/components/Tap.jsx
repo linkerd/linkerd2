@@ -90,7 +90,6 @@ class Tap extends React.Component {
       ...query
     }));
     this.setState({
-      tapRequestInProgress: true,
       awaitingWebSocketConnection: false,
       error: ""
     });
