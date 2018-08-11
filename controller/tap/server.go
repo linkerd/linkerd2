@@ -460,6 +460,24 @@ func (s *server) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 		}
 	}
 
+	if ev.ProxyDirection == public.TapEvent_INBOUND {
+		// Events emitted by an inbound proxies don't have destination labels,
+		// since the inbound proxy _is_ the destination, and proxies don't know
+		// their own labels.
+		destIPMeta, err := s.hydrateIPMeta(ev.Destination.Ip)
+		if err != nil {
+			log.Errorf(
+				"error hydrating destination metadata for %s: %s",
+				ev.Destination,
+				err,
+			)
+		} else {
+			for k, v := range destIPMeta {
+				ev.DestinationMeta.Labels[k] = v
+			}
+		}
+	}
+
 	return ev
 }
 
