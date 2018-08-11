@@ -451,32 +451,7 @@ func (s *server) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 		Event:          event(orig.GetHttp()),
 	}
 
-	sourceIPMeta, err := s.hydrateIPMeta(ev.Source.Ip)
-	if err != nil {
-		log.Errorf("error hydrating source metadata for %s: %s", ev.Source, err)
-	} else {
-		for k, v := range sourceIPMeta {
-			ev.SourceMeta.Labels[k] = v
-		}
-	}
-
-	if ev.ProxyDirection == public.TapEvent_INBOUND {
-		// Events emitted by an inbound proxies don't have destination labels,
-		// since the inbound proxy _is_ the destination, and proxies don't know
-		// their own labels.
-		destIPMeta, err := s.hydrateIPMeta(ev.Destination.Ip)
-		if err != nil {
-			log.Errorf(
-				"error hydrating destination metadata for %s: %s",
-				ev.Destination,
-				err,
-			)
-		} else {
-			for k, v := range destIPMeta {
-				ev.DestinationMeta.Labels[k] = v
-			}
-		}
-	}
+	s.hydrateEventLabels(ev)
 
 	return ev
 }
@@ -511,20 +486,48 @@ func indexPodByIP(obj interface{}) ([]string, error) {
 	return []string{""}, fmt.Errorf("object is not a pod")
 }
 
-// hydrateIPMeta returns a map of expanded metadata labels for a given IP.
-// If no pod could be found for that IP, it returns an empty map.
-func (s *server) hydrateIPMeta(ip *public.IPAddress) (map[string]string, error) {
-	pod, err := s.podForIP(ip)
+// hydrateEventLabels attempts to hydrate the metadata labels for an event's
+// source and (if the event was reported by an inbound proxxy) destination,
+// and adds thhem to the event's `SourceMeta` and `DestinationMeta` fields.
+//
+// Since errors encountered while hydrating metadata are non-fatal and result
+// only in missing labels, any errors are logged at the WARN level.
+func (s *server) hydrateEventLabels(ev *public.TapEvent) {
+	err := s.hydrateIPLabels(ev.Source.Ip, ev.SourceMeta.Labels)
 	if err != nil {
-		return nil, err
-	}
-	if pod == nil {
-		log.Debugf("no pod for IP %s", addr.PublicIPToString(ip))
-		return make(map[string]string), nil
+		log.Warnf("error hydrating source labels: %s", err)
 	}
 
-	ownerKind, ownerName := s.k8sAPI.GetOwnerKindAndName(pod)
-	return pkgK8s.GetPodLabels(ownerKind, ownerName, pod), nil
+	if ev.ProxyDirection == public.TapEvent_INBOUND {
+		// Events emitted by an inbound proxies don't have destination labels,
+		// since the inbound proxy _is_ the destination, and proxies don't know
+		// their own labels.
+		err = s.hydrateIPLabels(ev.Destination.Ip, ev.DestinationMeta.Labels)
+		if err != nil {
+			log.Warnf("error hydrating destination labels: %s", err)
+		}
+	}
+
+}
+
+// hydrateIPMeta attempts to determine the metadata labels for `ip` and, if
+// successful, adds them to `labels`.
+func (s *server) hydrateIPLabels(ip *public.IPAddress, labels map[string]string) error {
+	pod, err := s.podForIP(ip)
+	switch {
+	case err != nil:
+		return err
+	case pod == nil:
+		log.Debugf("no pod for IP %s", addr.PublicIPToString(ip))
+		return nil
+	default:
+		ownerKind, ownerName := s.k8sAPI.GetOwnerKindAndName(pod)
+		podLabels := pkgK8s.GetPodLabels(ownerKind, ownerName, pod)
+		for key, value := range podLabels {
+			labels[key] = value
+		}
+		return nil
+	}
 }
 
 // podForIP returns the pod corresponding to a given IP address, if one exists.
@@ -562,7 +565,7 @@ func (s *server) podForIP(ip *public.IPAddress) (*apiv1.Pod, error) {
 		}
 	}
 
-	log.Debugf(
+	log.Warnf(
 		"could not uniquely identify pod at %s (found %d pods)",
 		ipStr,
 		len(objs),
