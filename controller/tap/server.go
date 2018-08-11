@@ -513,46 +513,40 @@ func (s *server) hydrateIPMeta(ip *public.IPAddress) (map[string]string, error) 
 //
 // If multiple pods exist with the same IP address, this may be because some
 // are terminating and the IP has been assigned to a new pod. In this case, we
-// select the running pod, if one currently exists. Otherwise, if there is a
-// single Terminating pod and one or more Pending/Unknown pods, it will return
-// the Terminating pods. Finally, if there are multiple Terminating pods, it
-// will return `nil`, as we don't know which of those pods originated the
-// request.
+// select the running pod, if one currently exists. If there is a single pod
+// which is not running, we return that pod. Otherwise we return `nil`, as we
+// cannot easily determine which pod sent a given request.
 //
 // If no pods were found for the provided IP address, it returns nil. Errors are
 // returned only in the event of an error indexing the pods list.
 func (s *server) podForIP(ip *public.IPAddress) (*apiv1.Pod, error) {
 	ipStr := addr.PublicIPToString(ip)
 	objs, err := s.k8sAPI.Pod().Informer().GetIndexer().ByIndex(podIPIndex, ipStr)
+
 	if err != nil {
 		return nil, err
 	}
 
-	terminatedPods := objs[:0]
+	if len(objs) == 1 {
+		log.Debugf("found one pod at IP %s", ipStr)
+		return objs[0].(*apiv1.Pod), nil
+	}
+
 	for _, obj := range objs {
 		// It's safe to cast the object to a pod here, as otherwise, it would
 		// not have been indexed by the indexing func in the first place.
 		pod := obj.(*apiv1.Pod)
-		switch pod.Status.Phase {
-		case apiv1.PodRunning:
+		if pod.Status.Phase == apiv1.PodRunning {
 			// Found a running pod with this IP --- it's that!
 			log.Debugf("found running pod at IP %s", ipStr)
 			return pod, nil
-		case apiv1.PodFailed, apiv1.PodSucceeded:
-			// The pod has stopped. If there's only one such pod, we'll
-			// return it instead.
-			log.Debugf("found terminated at IP %s", ipStr)
-			terminatedPods = append(terminatedPods, obj)
-		default:
-			// Otherwise, the pod's status is either pending (in which case it
-			// can't have sent the request yet), or unknown. Skip it.
-			continue
 		}
 	}
-	// If there was one terminated pod, and no running pods, return that instead.
-	if len(terminatedPods) == 1 {
-		return terminatedPods[0].(*apiv1.Pod), nil
-	}
 
+	log.Debugf(
+		"could not uniquely identify pod at %s (found %d pods)",
+		ipStr,
+		len(objs),
+	)
 	return nil, nil
 }
