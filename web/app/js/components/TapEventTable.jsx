@@ -2,7 +2,7 @@ import _ from 'lodash';
 import BaseTable from './BaseTable.jsx';
 import { formatLatencySec } from './util/Utils.js';
 import React from 'react';
-import { Col, Icon, Row } from 'antd';
+import { Col, Icon, Popover, Row, Table } from 'antd';
 
 // https://godoc.org/google.golang.org/grpc/codes#Code
 const grpcStatusCodes = {
@@ -49,15 +49,19 @@ let tapColumns = filterOptions => [
   },
   {
     title: "Source",
-    dataIndex: "base.source.str",
+    key: "source",
+    dataIndex: "base",
     filters: genFilterOptionList(filterOptions.source),
-    onFilter: (value, row) => row.base.source.str === value
+    onFilter: (value, row) => row.base.source.str === value,
+    render: d => srcDstColumn(_.get(d, "destination.str"), _.get(d, "sourceMeta.labels", {}))
   },
   {
     title: "Destination",
-    dataIndex: "base.destination.str",
+    key: "destination",
+    dataIndex: "base",
     filters: genFilterOptionList(filterOptions.destination),
-    onFilter: (value, row) => row.base.destination.str === value
+    onFilter: (value, row) => row.base.destination.str === value,
+    render: d => srcDstColumn(_.get(d, "source.str"), _.get(d, "destinationMeta.labels", {}))
   },
   {
     title: "TLS",
@@ -161,20 +165,58 @@ const formatTapLatency = str => {
   return formatLatencySec(str.replace("s", ""));
 };
 
+const srcDstColumn = (ipStr, labels) => {
+  let content = (
+    <React.Fragment>
+      <div>{ !labels.deployment ? null : "deploy/" + labels.deployment }</div>
+      <div>{ !labels.pod ? null : "po/" + labels.pod }</div>
+    </React.Fragment>
+  );
+  return (
+    <Popover content={content} title={ipStr}>{ !labels.pod ? ipStr : "po/" + labels.pod }</Popover>
+  );
+};
+
+const srcDstMetaColumns = [
+  {
+    title: "",
+    dataIndex: "labelName"
+  },
+  {
+    title: "",
+    dataIndex: "labelVal"
+  }
+];
+const renderMetaLabels = (title, labels) => {
+  let data = _.map(labels, (v, k) => {
+    return {
+      labelName: k,
+      labelVal: v
+    };
+  });
+  return (
+    <React.Fragment>
+      <div>{title}</div>
+      <Table
+        className="meta-table-nested"
+        columns={srcDstMetaColumns}
+        dataSource={data}
+        size="small"
+        rowKey="labelVal"
+        bordered={false}
+        showHeader={false}
+        pagination={false} />
+    </React.Fragment>
+  );
+};
+
 // hide verbose information
 const expandedRowRender = d => {
   return (
-    <div>
-      <p style={{ margin: 0 }}>Destination Meta</p>
-      {
-        _.map(_.get(d, "base.destinationMeta.labels", []), (v, k) => (
-          <Row key={k}>
-            <Col span={6}>{k}</Col>
-            <Col cpan={6}>{v}</Col>
-          </Row>
-        ))
-      }
-    </div>
+    <Row gutter={8}>
+      <Col span={12}>{ renderMetaLabels("Source Metadata", _.get(d, "base.sourceMeta.labels", {})) }</Col>
+      <Col span={12}>{ renderMetaLabels("Destination Metadata", _.get(d, "base.destinationMeta.labels", {})) }</Col>
+    </Row>
   );
 };
 
