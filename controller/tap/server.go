@@ -494,14 +494,14 @@ func indexPodByIP(obj interface{}) ([]string, error) {
 }
 
 // hydrateIPMeta returns a map of expanded metadata labels for a given IP.
-// If no pod cound be found for that IP, it returns an empty map.
+// If no pod could be found for that IP, it returns an empty map.
 func (s *server) hydrateIPMeta(ip *public.IPAddress) (map[string]string, error) {
 	pod, err := s.podForIP(ip)
 	if err != nil {
 		return nil, err
 	}
 	if pod == nil {
-		log.Debugln("no pod for IP %s", addr.PublicIPToString(ip))
+		log.Debugf("no pod for IP %s", addr.PublicIPToString(ip))
 		return make(map[string]string), nil
 	}
 
@@ -529,12 +529,13 @@ func (s *server) podForIP(ip *public.IPAddress) (*apiv1.Pod, error) {
 
 	if len(objs) == 1 {
 		log.Debugf("found one pod at IP %s", ipStr)
+		// It's safe to cast elements of `objs` to a `Pod`s here (and in the
+		// loop below). If the object wasn't a pod, it should never have been
+		// indexed by the indexing func in the first place.
 		return objs[0].(*apiv1.Pod), nil
 	}
 
 	for _, obj := range objs {
-		// It's safe to cast the object to a pod here, as otherwise, it would
-		// not have been indexed by the indexing func in the first place.
 		pod := obj.(*apiv1.Pod)
 		if pod.Status.Phase == apiv1.PodRunning {
 			// Found a running pod with this IP --- it's that!
