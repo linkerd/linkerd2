@@ -4,7 +4,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import { Button, Icon, Modal, Switch } from 'antd';
 
-// max characters we displaly for error messages before truncating them
+// max characters we display for error messages before truncating them
 const maxErrorLength = 500;
 
 export default class ErrorModal extends React.Component {

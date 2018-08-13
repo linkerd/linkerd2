@@ -91,7 +91,7 @@ class Tap extends React.Component {
     }));
     this.setState({
       awaitingWebSocketConnection: false,
-      error: ""
+      error: null
     });
   }
 
@@ -104,14 +104,16 @@ class Tap extends React.Component {
 
     if (!e.wasClean) {
       this.setState({
-        error: `Websocket [${e.code}] ${e.reason}`
+        error: {
+          error: `Websocket [${e.code}] ${e.reason}`
+        }
       });
     }
   }
 
   onWebsocketError = e => {
     this.setState({
-      error: e.message
+      error: { error: e.message }
     });
 
     this.stopTapStreaming();
@@ -588,7 +590,7 @@ class Tap extends React.Component {
     return (
       <div>
         {!this.state.error ? null :
-        <ErrorBanner message={this.state.error} onHideMessage={() => this.setState({ error: "" })} />}
+        <ErrorBanner message={this.state.error} onHideMessage={() => this.setState({ error: null })} />}
 
         <PageHeader header="Tap" />
         {this.renderTapForm()}
