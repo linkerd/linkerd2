@@ -11,12 +11,10 @@ import {
   Row,
   Select
 } from 'antd';
+import { defaultMaxRps, httpMethods, tapQueryPropType } from './util/TapUtils.js';
 
 const colSpan = 5;
 const rowGutter = 16;
-
-const httpMethods = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"];
-const defaultMaxRps = 1.0;
 
 const getResourceList = (resourcesByNs, ns) => {
   return resourcesByNs[ns] || _.uniq(_.flatten(_.values(resourcesByNs)));
@@ -26,17 +24,7 @@ export default class TapQueryForm extends React.Component {
     awaitingWebSocketConnection: PropTypes.bool.isRequired,
     handleTapStart: PropTypes.func.isRequired,
     handleTapStop: PropTypes.func.isRequired,
-    query: PropTypes.shape({
-      resource: PropTypes.string,
-      namespace: PropTypes.string,
-      toResource: PropTypes.string,
-      toNamespace: PropTypes.string,
-      method: PropTypes.string,
-      path: PropTypes.string,
-      scheme: PropTypes.string,
-      authority: PropTypes.string,
-      maxRps: PropTypes.number
-    }).isRequired,
+    query: tapQueryPropType.isRequired,
     tapRequestInProgress: PropTypes.bool.isRequired
   }
 
@@ -82,8 +70,6 @@ export default class TapQueryForm extends React.Component {
       return null;
     }
   }
-
-
 
   toggleAdvancedForm = show => {
     this.setState({

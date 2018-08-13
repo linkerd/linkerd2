@@ -5,12 +5,12 @@ import PropTypes from 'prop-types';
 import { publicAddressToString } from './util/Utils.js';
 import React from 'react';
 import TapEventTable from './TapEventTable.jsx';
+import TapQueryCliCmd from './TapQueryCliCmd.jsx';
 import TapQueryForm from './TapQueryForm.jsx';
 import { withContext } from './util/AppContext.jsx';
+import { defaultMaxRps, httpMethods } from './util/TapUtils.js';
 import './../../css/tap.css';
 
-const httpMethods = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"];
-const defaultMaxRps = 1.0;
 const maxNumFilterOptions = 12;
 class Tap extends React.Component {
   static propTypes = {
@@ -63,8 +63,8 @@ class Tap extends React.Component {
   }
 
   onWebsocketOpen = () => {
-    let query = this.state.query;
-    query.maxRps = parseFloat(query.maxRps) || defaultMaxRps;
+    let query = _.cloneDeep(this.state.query);
+    query.maxRps = parseFloat(query.maxRps);
 
     this.ws.send(JSON.stringify({
       id: "tap-web",
@@ -331,30 +331,6 @@ class Tap extends React.Component {
     });
   }
 
-  renderCurrentQuery = () => {
-    let emptyVals =  _.countBy(_.values(this.state.query), v => _.isEmpty(v));
-
-    return (
-      <div className="tap-query">
-        <code>
-          { !emptyVals.false || emptyVals.false === 1 ? null :
-          <div>
-            Current query:
-            {
-              _.map(this.state.query, (query, queryName) => {
-                if (query === "") {
-                  return null;
-                }
-                return <div key={queryName}>{queryName}: {query}</div>;
-              })
-            }
-          </div>
-          }
-        </code>
-      </div>
-    );
-  }
-
   render() {
     let tableRows = _(this.state.tapResultsById)
       .values().sortBy('lastUpdated').reverse().value();
@@ -373,7 +349,8 @@ class Tap extends React.Component {
           resourcesByNs={this.state.resourcesByNs}
           authoritiesByNs={this.state.authoritiesByNs}
           query={this.state.query} />
-        {this.renderCurrentQuery()}
+
+        <TapQueryCliCmd query={this.state.query} />
 
         <TapEventTable
           tableRows={tableRows}
