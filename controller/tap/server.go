@@ -487,8 +487,8 @@ func indexPodByIP(obj interface{}) ([]string, error) {
 }
 
 // hydrateEventLabels attempts to hydrate the metadata labels for an event's
-// source and (if the event was reported by an inbound proxxy) destination,
-// and adds thhem to the event's `SourceMeta` and `DestinationMeta` fields.
+// source and (if the event was reported by an inbound proxy) destination,
+// and adds them to the event's `SourceMeta` and `DestinationMeta` fields.
 //
 // Since errors encountered while hydrating metadata are non-fatal and result
 // only in missing labels, any errors are logged at the WARN level.
