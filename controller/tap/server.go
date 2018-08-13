@@ -14,6 +14,7 @@ import (
 	pb "github.com/linkerd/linkerd2/controller/gen/controller/tap"
 	public "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
+	"github.com/linkerd/linkerd2/pkg/addr"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -21,7 +22,10 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	apiv1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/cache"
 )
+
+const podIPIndex = "ip"
 
 type (
 	server struct {
@@ -271,7 +275,7 @@ func (s *server) tapProxy(ctx context.Context, maxRps float32, match *proxy.Obse
 				log.Error(err)
 				return
 			}
-			events <- translateEvent(event)
+			events <- s.translateEvent(event)
 		}
 		if time.Now().Before(windowEnd) {
 			time.Sleep(time.Until(windowEnd))
@@ -279,7 +283,7 @@ func (s *server) tapProxy(ctx context.Context, maxRps float32, match *proxy.Obse
 	}
 }
 
-func translateEvent(orig *proxy.TapEvent) *public.TapEvent {
+func (s *server) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 	direction := func(orig proxy.TapEvent_ProxyDirection) public.TapEvent_ProxyDirection {
 		switch orig {
 		case proxy.TapEvent_INBOUND:
@@ -434,7 +438,7 @@ func translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 		}
 	}
 
-	return &public.TapEvent{
+	ev := &public.TapEvent{
 		Source: tcp(orig.GetSource()),
 		SourceMeta: &public.TapEvent_EndpointMeta{
 			Labels: orig.GetSourceMeta().GetLabels(),
@@ -446,6 +450,17 @@ func translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 		ProxyDirection: direction(orig.GetProxyDirection()),
 		Event:          event(orig.GetHttp()),
 	}
+
+	sourceIPMeta, err := s.hydrateIPMeta(ev.Source.Ip)
+	if err != nil {
+		log.Errorf("error hydrating source metadata for %s: %s", ev.Source, err)
+	} else {
+		for k, v := range sourceIPMeta {
+			ev.SourceMeta.Labels[k] = v
+		}
+	}
+
+	return ev
 }
 
 // NewServer creates a new gRPC Tap server
@@ -454,6 +469,7 @@ func NewServer(
 	tapPort uint,
 	k8sAPI *k8s.API,
 ) (*grpc.Server, net.Listener, error) {
+	k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{podIPIndex: indexPodByIP})
 
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -468,4 +484,70 @@ func NewServer(
 	pb.RegisterTapServer(s, &srv)
 
 	return s, lis, nil
+}
+
+func indexPodByIP(obj interface{}) ([]string, error) {
+	if pod, ok := obj.(*apiv1.Pod); ok {
+		return []string{pod.Status.PodIP}, nil
+	}
+	return []string{""}, fmt.Errorf("object is not a pod")
+}
+
+// hydrateIPMeta returns a map of expanded metadata labels for a given IP.
+// If no pod could be found for that IP, it returns an empty map.
+func (s *server) hydrateIPMeta(ip *public.IPAddress) (map[string]string, error) {
+	pod, err := s.podForIP(ip)
+	if err != nil {
+		return nil, err
+	}
+	if pod == nil {
+		log.Debugf("no pod for IP %s", addr.PublicIPToString(ip))
+		return make(map[string]string), nil
+	}
+
+	ownerKind, ownerName := s.k8sAPI.GetOwnerKindAndName(pod)
+	return pkgK8s.GetPodLabels(ownerKind, ownerName, pod), nil
+}
+
+// podForIP returns the pod corresponding to a given IP address, if one exists.
+//
+// If multiple pods exist with the same IP address, this may be because some
+// are terminating and the IP has been assigned to a new pod. In this case, we
+// select the running pod, if one currently exists. If there is a single pod
+// which is not running, we return that pod. Otherwise we return `nil`, as we
+// cannot easily determine which pod sent a given request.
+//
+// If no pods were found for the provided IP address, it returns nil. Errors are
+// returned only in the event of an error indexing the pods list.
+func (s *server) podForIP(ip *public.IPAddress) (*apiv1.Pod, error) {
+	ipStr := addr.PublicIPToString(ip)
+	objs, err := s.k8sAPI.Pod().Informer().GetIndexer().ByIndex(podIPIndex, ipStr)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(objs) == 1 {
+		log.Debugf("found one pod at IP %s", ipStr)
+		// It's safe to cast elements of `objs` to a `Pod`s here (and in the
+		// loop below). If the object wasn't a pod, it should never have been
+		// indexed by the indexing func in the first place.
+		return objs[0].(*apiv1.Pod), nil
+	}
+
+	for _, obj := range objs {
+		pod := obj.(*apiv1.Pod)
+		if pod.Status.Phase == apiv1.PodRunning {
+			// Found a running pod with this IP --- it's that!
+			log.Debugf("found running pod at IP %s", ipStr)
+			return pod, nil
+		}
+	}
+
+	log.Debugf(
+		"could not uniquely identify pod at %s (found %d pods)",
+		ipStr,
+		len(objs),
+	)
+	return nil, nil
 }

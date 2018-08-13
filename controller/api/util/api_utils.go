@@ -333,20 +333,26 @@ func contains(list []string, s string) bool {
 	return false
 }
 
+func formatPeer(peerAddr *pb.TcpAddress, labels map[string]string) string {
+	if pod := labels["pod"]; pod != "" {
+		return fmt.Sprintf("%s:%d", pod, peerAddr.GetPort())
+	} else {
+		return addr.PublicAddressToString(peerAddr)
+	}
+}
+
 func RenderTapEvent(event *pb.TapEvent) string {
+	srcLabels := event.GetSourceMeta().GetLabels()
 	dstLabels := event.GetDestinationMeta().GetLabels()
 
-	dst := addr.PublicAddressToString(event.GetDestination())
-	if pod := dstLabels["pod"]; pod != "" {
-		dst = fmt.Sprintf("%s:%d", pod, event.GetDestination().GetPort())
-	}
+	dst := formatPeer(event.GetDestination(), dstLabels)
+	src := formatPeer(event.GetSource(), srcLabels)
 
 	proxy := "???"
 	tls := ""
 	switch event.GetProxyDirection() {
 	case pb.TapEvent_INBOUND:
 		proxy = "in " // A space is added so it aligns with `out`.
-		srcLabels := event.GetSourceMeta().GetLabels()
 		tls = srcLabels["tls"]
 	case pb.TapEvent_OUTBOUND:
 		proxy = "out"
@@ -357,7 +363,7 @@ func RenderTapEvent(event *pb.TapEvent) string {
 
 	flow := fmt.Sprintf("proxy=%s src=%s dst=%s tls=%s",
 		proxy,
-		addr.PublicAddressToString(event.GetSource()),
+		src,
 		dst,
 		tls,
 	)
