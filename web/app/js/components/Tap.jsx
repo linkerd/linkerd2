@@ -337,7 +337,7 @@ class Tap extends React.Component {
           updateQuery={this.updateQuery}
           query={this.state.query} />
 
-        <TapQueryCliCmd query={this.state.query} />
+        <TapQueryCliCmd cmdName="tap" query={this.state.query} />
 
         <TapEventTable
           tableRows={tableRows}

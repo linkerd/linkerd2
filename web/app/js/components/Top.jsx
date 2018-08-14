@@ -340,6 +340,7 @@ class Top extends React.Component {
 
         <PageHeader header="Top" />
         <TapQueryForm
+          enableAdvancedForm={false}
           tapRequestInProgress={this.state.tapRequestInProgress}
           awaitingWebSocketConnection={this.state.awaitingWebSocketConnection}
           handleTapStart={this.handleTapStart}
@@ -349,7 +350,7 @@ class Top extends React.Component {
           updateQuery={this.updateQuery}
           query={this.state.query} />
 
-        <TapQueryCliCmd query={this.state.query} />
+        <TapQueryCliCmd cmdName="top" query={this.state.query} />
 
         <TopEventTable tableRows={tableRows} />
       </div>
