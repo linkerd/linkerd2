@@ -25,7 +25,8 @@ export default class TapQueryForm extends React.Component {
     handleTapStart: PropTypes.func.isRequired,
     handleTapStop: PropTypes.func.isRequired,
     query: tapQueryPropType.isRequired,
-    tapRequestInProgress: PropTypes.bool.isRequired
+    tapRequestInProgress: PropTypes.bool.isRequired,
+    updateQuery: PropTypes.func.isRequired
   }
 
   constructor(props) {
@@ -94,6 +95,7 @@ export default class TapQueryForm extends React.Component {
       }
 
       this.setState(state);
+      this.props.updateQuery(state.query);
     };
   }
 
@@ -105,6 +107,7 @@ export default class TapQueryForm extends React.Component {
     return event => {
       state.query[name] = event.target.value;
       this.setState(state);
+      this.props.updateQuery(state.query);
     };
   }
 

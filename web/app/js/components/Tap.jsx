@@ -331,6 +331,12 @@ class Tap extends React.Component {
     });
   }
 
+  updateQuery = query => {
+    this.setState({
+      query
+    });
+  }
+
   render() {
     let tableRows = _(this.state.tapResultsById)
       .values().sortBy('lastUpdated').reverse().value();
@@ -348,6 +354,7 @@ class Tap extends React.Component {
           handleTapStop={this.handleTapStop}
           resourcesByNs={this.state.resourcesByNs}
           authoritiesByNs={this.state.authoritiesByNs}
+          updateQuery={this.updateQuery}
           query={this.state.query} />
 
         <TapQueryCliCmd query={this.state.query} />

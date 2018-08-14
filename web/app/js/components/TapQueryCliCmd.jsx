@@ -49,7 +49,7 @@ export default class TapQueryCliCmd extends React.Component {
           <React.Fragment>
             <div>Current Tap query:</div>
             <code>
-                  linkerd tap {resource}
+              linkerd tap {resource}
               { this.renderCliItem("--namespace", namespace) }
               { this.renderCliItem("--to", toResource) }
               { this.renderCliItem("--to-namespace", toNamespace) }
