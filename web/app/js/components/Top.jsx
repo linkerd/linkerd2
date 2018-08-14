@@ -1,15 +1,14 @@
 import _ from 'lodash';
-import { defaultMaxRps } from './util/TapUtils.js';
 import ErrorBanner from './ErrorBanner.jsx';
 import PageHeader from './PageHeader.jsx';
 import Percentage from './util/Percentage.js';
 import PropTypes from 'prop-types';
-import { publicAddressToString } from './util/Utils.js';
 import React from 'react';
 import TapQueryCliCmd from './TapQueryCliCmd.jsx';
 import TapQueryForm from './TapQueryForm.jsx';
 import TopEventTable from './TopEventTable.jsx';
 import { withContext } from './util/AppContext.jsx';
+import { defaultMaxRps, processTapEvent } from './util/TapUtils.js';
 import './../../css/tap.css';
 
 class Top extends React.Component {
@@ -129,37 +128,13 @@ class Top extends React.Component {
   }
 
   parseTapResult = data => {
-    let d = JSON.parse(data);
-    d.source.str = publicAddressToString(_.get(d, "source.ip.ipv4"), d.source.port);
-    d.destination.str = publicAddressToString(_.get(d, "destination.ip.ipv4"), d.destination.port);
+    let d = processTapEvent(data);
 
-    switch (d.proxyDirection) {
-      case "INBOUND":
-        d.tls = _.get(d, "sourceMeta.labels.tls", "");
-        break;
-      case "OUTBOUND":
-        d.tls = _.get(d, "destinationMeta.labels.tls", "");
-        break;
-      default:
-        // too old for TLS
-    }
-
-    if (_.isNil(d.http)) {
-      this.setState({ error: "Undefined request type"});
-    } else {
-      if (!_.isNil(d.http.requestInit)) {
-        d.eventType = "req";
-        d.id = `${_.get(d, "http.requestInit.id.base")}:${_.get(d, "http.requestInit.id.stream")} `;
-      } else if (!_.isNil(d.http.responseInit)) {
-        d.eventType = "rsp";
-        d.id = `${_.get(d, "http.responseInit.id.base")}:${_.get(d, "http.responseInit.id.stream")} `;
-        d.success = parseInt(d.http.responseInit.httpStatus, 10) < 500;
-      } else if (!_.isNil(d.http.responseEnd)) {
-        d.eventType = "end";
-        d.id = `${_.get(d, "http.responseEnd.id.base")}:${_.get(d, "http.responseEnd.id.stream")} `;
-        d.latency = parseFloat(d.http.responseEnd.sinceRequestInit.replace("s", ""));
-        d.completed = true;
-      }
+    if (d.eventType === "rsp") {
+      d.success = parseInt(d.http.responseInit.httpStatus, 10) < 500;
+    } else if (d.eventType === "end") {
+      d.latency = parseFloat(d.http.responseEnd.sinceRequestInit.replace("s", ""));
+      d.completed = true;
     }
 
     return d;

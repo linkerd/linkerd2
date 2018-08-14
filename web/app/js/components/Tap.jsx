@@ -2,13 +2,12 @@ import _ from 'lodash';
 import ErrorBanner from './ErrorBanner.jsx';
 import PageHeader from './PageHeader.jsx';
 import PropTypes from 'prop-types';
-import { publicAddressToString } from './util/Utils.js';
 import React from 'react';
 import TapEventTable from './TapEventTable.jsx';
 import TapQueryCliCmd from './TapQueryCliCmd.jsx';
 import TapQueryForm from './TapQueryForm.jsx';
 import { withContext } from './util/AppContext.jsx';
-import { defaultMaxRps, httpMethods } from './util/TapUtils.js';
+import { defaultMaxRps, httpMethods, processTapEvent } from './util/TapUtils.js';
 import './../../css/tap.css';
 
 const maxNumFilterOptions = 12;
@@ -141,54 +140,35 @@ class Tap extends React.Component {
     };
   }
 
-  parseTapResult = data => {
-    let d = JSON.parse(data);
+  getFilterOptions(d) {
     let filters = this.state.tapResultFilterOptions;
-
     // keep track of unique values we encounter, to populate the table filters
     let addFilter = this.genFilterAdder(filters, Date.now());
-    d.source.str = publicAddressToString(_.get(d, "source.ip.ipv4"), d.source.port);
     addFilter("source", d.source.str);
-    d.destination.str = publicAddressToString(_.get(d, "destination.ip.ipv4"), d.destination.port);
     addFilter("destination", d.destination.str);
-
-    switch (d.proxyDirection) {
-      case "INBOUND":
-        d.tls = _.get(d, "sourceMeta.labels.tls", "");
-        addFilter("tls", d.tls);
-        break;
-      case "OUTBOUND":
-        d.tls = _.get(d, "destinationMeta.labels.tls", "");
-        addFilter("tls", d.tls);
-        break;
-      default:
-        // too old for TLS
+    if (d.tls) {
+      addFilter("tls", d.tls);
     }
-
-    if (_.isNil(d.http)) {
-      this.setState({ error: "Undefined request type"});
-    } else {
-      if (!_.isNil(d.http.requestInit)) {
-        d.eventType = "req";
-        d.id = `${_.get(d, "http.requestInit.id.base")}:${_.get(d, "http.requestInit.id.stream")} `;
-
+    switch (d.eventType) {
+      case "req":
         addFilter("authority", d.http.requestInit.authority);
         addFilter("path", d.http.requestInit.path);
         addFilter("scheme", _.get(d, "http.requestInit.scheme.registered"));
-      } else if (!_.isNil(d.http.responseInit)) {
-        d.eventType = "rsp";
-        d.id = `${_.get(d, "http.responseInit.id.base")}:${_.get(d, "http.responseInit.id.stream")} `;
-
+        break;
+      case "rsp":
         addFilter("httpStatus", _.get(d, "http.responseInit.httpStatus"));
-      } else if (!_.isNil(d.http.responseEnd)) {
-        d.eventType = "end";
-        d.id = `${_.get(d, "http.responseEnd.id.base")}:${_.get(d, "http.responseEnd.id.stream")} `;
-      }
+        break;
     }
+
+    return filters;
+  }
+
+  parseTapResult = data => {
+    let d = processTapEvent(data);
 
     return {
       tapResult: d,
-      updatedFilters: filters
+      updatedFilters: this.getFilterOptions(d)
     };
   }
 
