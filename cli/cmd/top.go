@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes/duration"
-
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/addr"
