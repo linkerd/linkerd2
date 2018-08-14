@@ -54,7 +54,7 @@ problems were found.`,
 
 			var apiClient pb.ApiClient
 			if apiAddr != "" {
-				apiClient, err = public.NewInternalClient(apiAddr)
+				apiClient, err = public.NewInternalClient(controlPlaneNamespace, apiAddr)
 			} else {
 				apiClient, err = public.NewExternalClient(controlPlaneNamespace, kubeApi)
 			}
@@ -64,7 +64,7 @@ problems were found.`,
 				os.Exit(2)
 			}
 
-			grpcStatusChecker := healthcheck.NewGrpcStatusChecker(public.ApiSubsystemName, apiClient)
+			grpcStatusChecker := healthcheck.NewGrpcStatusChecker(apiClient)
 			versionStatusChecker := version.NewVersionStatusChecker(versionCheckURL, options.versionOverride, apiClient)
 
 			err = checkStatus(os.Stdout, kubeApi, grpcStatusChecker, versionStatusChecker)

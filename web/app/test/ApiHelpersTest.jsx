@@ -199,7 +199,9 @@ describe('ApiHelpers', () => {
       let errorMessage = "do or do not. there is no try.";
       fetchStub.returnsPromise().resolves({
         ok: false,
-        statusText: errorMessage
+        json: () => Promise.resolve({
+          error: errorMessage
+        }),
       });
 
       api = ApiHelpers('');
@@ -212,7 +214,7 @@ describe('ApiHelpers', () => {
           return Promise.reject('Expected method to reject.');
         }, errorHandler)
         .then(() => {
-          expect(errorHandler.args[0][0].message).to.equal(errorMessage);
+          expect(errorHandler.args[0][0].error).to.equal(errorMessage);
           expect(errorHandler.calledOnce).to.be.true;
         });
     });

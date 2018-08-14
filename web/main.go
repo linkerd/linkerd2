@@ -32,7 +32,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to parse API server address: %s", *kubernetesApiHost)
 	}
-	client, err := public.NewInternalClient(*kubernetesApiHost)
+	client, err := public.NewInternalClient(*controllerNamespace, *kubernetesApiHost)
 	if err != nil {
 		log.Fatalf("failed to construct client for API server URL %s", *kubernetesApiHost)
 	}

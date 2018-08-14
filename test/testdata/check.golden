@@ -1,7 +1,7 @@
 kubernetes-api: can initialize the client..................................[ok]
 kubernetes-api: can query the Kubernetes API...............................[ok]
 kubernetes-api: is running the minimum Kubernetes API version..............[ok]
-linkerd-api: can query the Linkerd API.....................................[ok]
+linkerd-api[namespace]: control plane namespace exists.....................[ok]
 linkerd-api[kubernetes]: control plane can talk to Kubernetes..............[ok]
 linkerd-api[prometheus]: control plane can talk to Prometheus..............[ok]
 linkerd-version: cli is up-to-date.........................................[ok]

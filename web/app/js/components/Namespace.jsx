@@ -53,7 +53,7 @@ class Namespaces extends React.Component {
       metrics: {},
       pendingRequests: false,
       loaded: false,
-      error: ''
+      error: null
     };
   }
 
@@ -89,20 +89,20 @@ class Namespaces extends React.Component {
           metrics: metrics,
           loaded: true,
           pendingRequests: false,
-          error: ''
+          error: null
         });
       })
       .catch(this.handleApiError);
   }
 
-  handleApiError(e) {
+  handleApiError = e => {
     if (e.isCanceled) {
       return;
     }
 
     this.setState({
       pendingRequests: false,
-      error: `Error getting data from server: ${e.message}`
+      error: e
     });
   }
 

@@ -37,7 +37,7 @@ const withREST = (WrappedComponent, componentPromises, options={}) => {
       data: [],
       pendingRequests: false,
       loading: true,
-      error: ''
+      error: null
     });
 
     componentDidMount() {
@@ -92,7 +92,7 @@ const withREST = (WrappedComponent, componentPromises, options={}) => {
             data: data,
             loading: false,
             pendingRequests: false,
-            error: '',
+            error: null,
           });
         })
         .catch(this.handleApiError);
@@ -103,7 +103,7 @@ const withREST = (WrappedComponent, componentPromises, options={}) => {
 
       this.setState({
         pendingRequests: false,
-        error: `Error getting data from server: ${e.message}`
+        error: e
       });
     }
 

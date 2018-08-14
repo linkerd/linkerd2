@@ -149,7 +149,7 @@ class ServiceMesh extends React.Component {
       components: [],
       pendingRequests: false,
       loaded: false,
-      error: ''
+      error: null
     };
   }
 
@@ -237,7 +237,7 @@ class ServiceMesh extends React.Component {
           nsStatuses: this.extractNsStatuses(nsStats),
           pendingRequests: false,
           loaded: true,
-          error: ''
+          error: null
         });
       })
       .catch(this.handleApiError);
@@ -250,7 +250,7 @@ class ServiceMesh extends React.Component {
 
     this.setState({
       pendingRequests: false,
-      error: `Error getting data from server: ${e.message}`
+      error: e
     });
   }
 

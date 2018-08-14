@@ -1,4 +1,5 @@
 import _ from 'lodash';
+import { apiErrorPropType } from './util/ApiHelpers.jsx';
 import ErrorBanner from './ErrorBanner.jsx';
 import { friendlyTitle } from './util/Utils.js';
 import MetricsTable from './MetricsTable.jsx';
@@ -13,12 +14,12 @@ import 'whatwg-fetch';
 
 export class ResourceListBase extends React.Component {
   static defaultProps = {
-    error: null,
+    error: null
   }
 
   static propTypes = {
     data: PropTypes.arrayOf(metricsPropType.isRequired).isRequired,
-    error: PropTypes.oneOfType([PropTypes.string, PropTypes.instanceOf(Error)]),
+    error:  apiErrorPropType,
     loading: PropTypes.bool.isRequired,
     resource: PropTypes.string.isRequired,
   }

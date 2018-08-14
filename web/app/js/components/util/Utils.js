@@ -11,23 +11,37 @@ export const rowGutter = 3 * baseWidth;
 * Number formatters
 */
 const successRateFormatter = d3.format(".2%");
-const latencySecFormatter = d3.format(".3f");
 const latencyFormatter = d3.format(",");
 
-export const formatLatency = m => {
+export const formatLatencyMs = m => {
   if (_.isNil(m)) {
     return "---";
-  } else if (m < 1000) {
-    return `${latencyFormatter(m)} ms`;
   } else {
-    return `${latencySecFormatter(m / 1000)} s`;
+    return `${formatLatencySec(m / 1000)}`;
+  }
+};
+
+const niceLatency = l => latencyFormatter(Math.round(l));
+
+export const formatLatencySec = latency => {
+  let s = parseFloat(latency);
+  if (_.isNil(s)) {
+    return "---";
+  } else if (s === parseFloat(0.0)) {
+    return "0 s";
+  } else if (s < 0.001) {
+    return `${niceLatency(s * 1000 * 1000)} µs`;
+  } else if (s < 1.0) {
+    return `${niceLatency(s * 1000)} ms`;
+  } else {
+    return `${niceLatency(s)} s`;
   }
 };
 
 export const metricToFormatter = {
   "REQUEST_RATE": m => _.isNil(m) ? "---" : styleNum(m, " RPS", true),
   "SUCCESS_RATE": m => _.isNil(m) ? "---" : successRateFormatter(m),
-  "LATENCY": formatLatency,
+  "LATENCY": formatLatencyMs,
   "UNTRUNCATED": m => styleNum(m, "", false)
 };
 

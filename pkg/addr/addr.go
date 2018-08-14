@@ -14,6 +14,11 @@ func PublicAddressToString(addr *public.TcpAddress) string {
 	return fmt.Sprintf("%d.%d.%d.%d:%d", octects[0], octects[1], octects[2], octects[3], addr.GetPort())
 }
 
+func PublicIPToString(ip *public.IPAddress) string {
+	octets := decodeIPToOctets(ip.GetIpv4())
+	return fmt.Sprintf("%d.%d.%d.%d", octets[0], octets[1], octets[2], octets[3])
+}
+
 func ProxyAddressToString(addr *pb.TcpAddress) string {
 	octects := decodeIPToOctets(addr.GetIp().GetIpv4())
 	return fmt.Sprintf("%d.%d.%d.%d:%d", octects[0], octects[1], octects[2], octects[3], addr.GetPort())

@@ -5,11 +5,18 @@ import React from 'react';
 import 'whatwg-fetch';
 
 const checkFetchOk = resp => {
-  if (!resp.ok) {
-    throw Error(resp.statusText);
-  } else {
+  if (resp.ok) {
     return resp;
   }
+
+  return resp.json().then(error => {
+    throw {
+      status: resp.status,
+      url: resp.url,
+      statusText:resp.statusText,
+      error: error.error
+    };
+  });
 };
 
 // makeCancelable from @istarkov
@@ -36,6 +43,13 @@ const makeCancelable = (promise, onSuccess) => {
     }
   };
 };
+
+export const apiErrorPropType = PropTypes.shape({
+  status: PropTypes.number,
+  url: PropTypes.string,
+  statusText: PropTypes.string,
+  error: PropTypes.string
+});
 
 const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   let metricsWindow = defaultMetricsWindow;

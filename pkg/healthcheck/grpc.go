@@ -9,45 +9,42 @@ import (
 	"google.golang.org/grpc"
 )
 
+const grpcApiSubsystemName = "linkerd-api"
+
 type grpcStatusChecker interface {
 	SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckRequest, opts ...grpc.CallOption) (*healthcheckPb.SelfCheckResponse, error)
 }
 
 type statusCheckerProxy struct {
 	delegate grpcStatusChecker
-	prefix   string
 }
 
 func (proxy *statusCheckerProxy) SelfCheck() []*healthcheckPb.CheckResult {
-	canConnectViaGrpcCheck := &healthcheckPb.CheckResult{
-		Status:           healthcheckPb.CheckStatus_OK,
-		SubsystemName:    proxy.prefix,
-		CheckDescription: "can query the Linkerd API",
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	selfCheckResponse, err := proxy.delegate.SelfCheck(ctx, &healthcheckPb.SelfCheckRequest{})
 	if err != nil {
-		canConnectViaGrpcCheck.Status = healthcheckPb.CheckStatus_ERROR
-		canConnectViaGrpcCheck.FriendlyMessageToUser = err.Error()
-		return []*healthcheckPb.CheckResult{canConnectViaGrpcCheck}
+		return []*healthcheckPb.CheckResult{
+			&healthcheckPb.CheckResult{
+				SubsystemName:         grpcApiSubsystemName,
+				CheckDescription:      "can query the Linkerd API",
+				Status:                healthcheckPb.CheckStatus_ERROR,
+				FriendlyMessageToUser: err.Error(),
+			},
+		}
 	}
 
 	for _, check := range selfCheckResponse.Results {
-		fullSubsystemName := fmt.Sprintf("%s[%s]", proxy.prefix, check.SubsystemName)
+		fullSubsystemName := fmt.Sprintf("%s[%s]", grpcApiSubsystemName, check.SubsystemName)
 		check.SubsystemName = fullSubsystemName
 	}
 
-	subsystemResults := []*healthcheckPb.CheckResult{canConnectViaGrpcCheck}
-	subsystemResults = append(subsystemResults, selfCheckResponse.Results...)
-	return subsystemResults
+	return selfCheckResponse.Results
 }
 
-func NewGrpcStatusChecker(name string, grpClient grpcStatusChecker) StatusChecker {
+func NewGrpcStatusChecker(grpClient grpcStatusChecker) StatusChecker {
 	return &statusCheckerProxy{
-		prefix:   name,
 		delegate: grpClient,
 	}
 }

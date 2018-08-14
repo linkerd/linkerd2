@@ -37,9 +37,9 @@ class Tap extends React.Component {
     this.loadFromServer = this.loadFromServer.bind(this);
 
     this.state = {
-      error: "",
       tapResultsById: {},
       tapResultFilterOptions: this.getInitialTapFilterOptions(),
+      error: null,
       resourcesByNs: {},
       authoritiesByNs: {},
       query: {
@@ -62,7 +62,7 @@ class Tap extends React.Component {
       },
       maxLinesToDisplay: 40,
       awaitingWebSocketConnection: false,
-      webSocketRequestSent: false,
+      tapRequestInProgress: false,
       showAdvancedForm: false,
       pollingInterval: 10000,
       pendingRequests: false
@@ -90,9 +90,8 @@ class Tap extends React.Component {
       ...query
     }));
     this.setState({
-      webSocketRequestSent: true,
       awaitingWebSocketConnection: false,
-      error: ""
+      error: null
     });
   }
 
@@ -101,18 +100,20 @@ class Tap extends React.Component {
   }
 
   onWebsocketClose = e => {
+    this.stopTapStreaming();
+
     if (!e.wasClean) {
       this.setState({
-        error: `Websocket [${e.code}] ${e.reason}`
+        error: {
+          error: `Websocket [${e.code}] ${e.reason}`
+        }
       });
     }
-
-    this.stopTapStreaming();
   }
 
   onWebsocketError = e => {
     this.setState({
-      error: e.message
+      error: { error: e.message }
     });
 
     this.stopTapStreaming();
@@ -288,10 +289,10 @@ class Tap extends React.Component {
   startTapSteaming() {
     this.setState({
       awaitingWebSocketConnection: true,
+      tapRequestInProgress: true,
       tapResultsById: {},
       tapResultFilterOptions: this.getInitialTapFilterOptions()
     });
-
 
     let protocol = window.location.protocol === "https:" ? "wss" : "ws";
     let tapWebSocket = `${protocol}://${window.location.host}${this.props.pathPrefix}/api/tap`;
@@ -305,7 +306,7 @@ class Tap extends React.Component {
 
   stopTapStreaming() {
     this.setState({
-      webSocketRequestSent: false,
+      tapRequestInProgress: false,
       awaitingWebSocketConnection: false
     });
   }
@@ -404,7 +405,7 @@ class Tap extends React.Component {
 
     this.setState({
       pendingRequests: false,
-      error: `Error getting data from server: ${e.message}`
+      error: e
     });
   }
 
@@ -442,7 +443,7 @@ class Tap extends React.Component {
           <Col span={colSpan}>
             <Form.Item>
               {
-                this.state.webSocketRequestSent ?
+                this.state.tapRequestInProgress ?
                   <Button type="primary" className="tap-stop" onClick={this.handleTapStop}>Stop</Button> :
                   <Button type="primary" className="tap-start" onClick={this.handleTapStart}>Start</Button>
               }
@@ -589,7 +590,7 @@ class Tap extends React.Component {
     return (
       <div>
         {!this.state.error ? null :
-        <ErrorBanner message={this.state.error} onHideMessage={() => this.setState({ error: "" })} />}
+        <ErrorBanner message={this.state.error} onHideMessage={() => this.setState({ error: null })} />}
 
         <PageHeader header="Tap" />
         {this.renderTapForm()}

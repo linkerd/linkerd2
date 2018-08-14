@@ -1,5 +1,10 @@
 import { expect } from 'chai';
-import { metricToFormatter, styleNum, toClassName } from '../js/components/util/Utils.js';
+import {
+  formatLatencySec,
+  metricToFormatter,
+  styleNum,
+  toClassName
+} from '../js/components/util/Utils.js';
 
 // introduce some binary floating point rounding errors, like ya do
 function float(num) {
@@ -74,9 +79,9 @@ describe('Utils', () => {
     });
 
     it('formats latency greater than 1s as s', () => {
-      expect(metricToFormatter["LATENCY"](1000)).to.equal('1.000 s');
-      expect(metricToFormatter["LATENCY"](9999)).to.equal('9.999 s');
-      expect(metricToFormatter["LATENCY"](99999)).to.equal('99.999 s');
+      expect(metricToFormatter["LATENCY"](1000)).to.equal('1 s');
+      expect(metricToFormatter["LATENCY"](9999)).to.equal('10 s');
+      expect(metricToFormatter["LATENCY"](99999)).to.equal('100 s');
     });
 
     it('formats success rate', () => {
@@ -85,6 +90,16 @@ describe('Utils', () => {
       expect(metricToFormatter["SUCCESS_RATE"](0.1)).to.equal('10.00%');
       expect(metricToFormatter["SUCCESS_RATE"](0.9999)).to.equal('99.99%');
       expect(metricToFormatter["SUCCESS_RATE"](4)).to.equal('400.00%');
+    });
+
+    it('formats latencies expressed as seconds into a more appropriate display unit', () => {
+      expect(formatLatencySec("0.002837700")).to.equal("3 ms");
+      expect(formatLatencySec("0.000")).to.equal("0 s");
+      expect(formatLatencySec("0.000000797")).to.equal("1 µs");
+      expect(formatLatencySec("0.000231910")).to.equal("232 µs");
+      expect(formatLatencySec("0.000988600")).to.equal("989 µs");
+      expect(formatLatencySec("0.005598200")).to.equal("6 ms");
+      expect(formatLatencySec("3.029409200")).to.equal("3 s");
     });
   });
 
