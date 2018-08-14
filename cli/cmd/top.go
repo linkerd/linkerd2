@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
-
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/addr"
@@ -250,7 +249,11 @@ func tableInsert(table *[]tableRow, req topRequest) {
 	if pod := req.event.DestinationMeta.Labels["pod"]; pod != "" {
 		destination = pod
 	}
-	latency, latencyErr := ptypes.Duration(req.rspEnd.GetSinceRequestInit())
+	latency, err := ptypes.Duration(req.rspEnd.GetSinceRequestInit())
+	if err != nil {
+		log.Errorf("error parsing duration %v: %s", req.rspEnd.GetSinceRequestInit(), err)
+		return
+	}
 	success := req.rspInit.GetHttpStatus() < 500
 	if success {
 		switch eos := req.rspEnd.GetEos().GetEnd().(type) {
@@ -266,22 +269,20 @@ func tableInsert(table *[]tableRow, req topRequest) {
 	for i, row := range *table {
 		if row.by == by && row.source == source && row.destination == destination {
 			(*table)[i].count++
-			if latencyErr == nil {
-				if latency.Nanoseconds() < row.best.Nanoseconds() {
-					(*table)[i].best = latency
-				}
-				if latency.Nanoseconds() > row.worst.Nanoseconds() {
-					(*table)[i].worst = latency
-				}
-				(*table)[i].last = latency
+			if latency.Nanoseconds() < row.best.Nanoseconds() {
+				(*table)[i].best = latency
 			}
-			if success {
-				(*table)[i].successes++
-			} else {
-				(*table)[i].failures++
+			if latency.Nanoseconds() > row.worst.Nanoseconds() {
+				(*table)[i].worst = latency
 			}
-			found = true
+			(*table)[i].last = latency
 		}
+		if success {
+			(*table)[i].successes++
+		} else {
+			(*table)[i].failures++
+		}
+		found = true
 	}
 
 	if !found {
