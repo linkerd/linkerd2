@@ -10,7 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/protobuf/ptypes/duration"
+	"github.com/golang/protobuf/ptypes"
+
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/addr"
@@ -31,7 +32,7 @@ type topOptions struct {
 	path        string
 }
 
-type request struct {
+type topRequest struct {
 	event   *pb.TapEvent
 	reqInit *pb.TapEvent_Http_RequestInit
 	rspInit *pb.TapEvent_Http_ResponseInit
@@ -43,9 +44,9 @@ type tableRow struct {
 	source      string
 	destination string
 	count       int
-	best        duration.Duration
-	worst       duration.Duration
-	last        duration.Duration
+	best        time.Duration
+	worst       time.Duration
+	last        time.Duration
 	successes   int
 	failures    int
 }
@@ -55,7 +56,6 @@ const headerHeight = 3
 var (
 	columnNames  = []string{"Source", "Destination", "Path", "Count", "Best", "Worst", "Last", "Success Rate"}
 	columnWidths = []int{23, 23, 55, 6, 6, 6, 6, 3}
-	done         = make(chan struct{})
 )
 
 func newTopOptions() *tapOptions {
@@ -120,12 +120,7 @@ func newCmdTop() *cobra.Command {
 				return err
 			}
 
-			client, err := newPublicAPIClient()
-			if err != nil {
-				return err
-			}
-
-			return getTrafficByResourceFromAPI(os.Stdout, client, req)
+			return getTrafficByResourceFromAPI(os.Stdout, validatedPublicAPIClient(), req)
 		},
 	}
 
@@ -162,27 +157,28 @@ func getTrafficByResourceFromAPI(w io.Writer, client pb.ApiClient, req *pb.TapBy
 	}
 	defer termbox.Close()
 
-	requestCh := make(chan request, 100)
+	requestCh := make(chan topRequest, 100)
+	done := make(chan struct{})
 
-	go recvEvents(rsp, requestCh)
-	go pollInput()
+	go recvEvents(rsp, requestCh, done)
+	go pollInput(done)
 
-	renderTable(requestCh)
+	renderTable(requestCh, done)
 
 	return nil
 }
 
-func recvEvents(tapClient pb.Api_TapByResourceClient, requestCh chan request) {
-	outstandingRequests := make(map[pb.TapEvent_Http_StreamId]request)
+func recvEvents(tapClient pb.Api_TapByResourceClient, requestCh chan<- topRequest, done chan<- struct{}) {
+	outstandingRequests := make(map[pb.TapEvent_Http_StreamId]topRequest)
 	for {
 		event, err := tapClient.Recv()
 		if err == io.EOF {
-			log.Error("Tap stream terminated")
+			fmt.Println("Tap stream terminated")
 			close(done)
 			return
 		}
 		if err != nil {
-			log.Error(err.Error())
+			fmt.Println(err.Error())
 			close(done)
 			return
 		}
@@ -190,7 +186,7 @@ func recvEvents(tapClient pb.Api_TapByResourceClient, requestCh chan request) {
 		switch ev := event.GetHttp().GetEvent().(type) {
 		case *pb.TapEvent_Http_RequestInit_:
 			id := *ev.RequestInit.GetId()
-			outstandingRequests[id] = request{
+			outstandingRequests[id] = topRequest{
 				event:   event,
 				reqInit: ev.RequestInit,
 			}
@@ -215,11 +211,11 @@ func recvEvents(tapClient pb.Api_TapByResourceClient, requestCh chan request) {
 	}
 }
 
-func pollInput() {
+func pollInput(done chan<- struct{}) {
 	for {
 		switch ev := termbox.PollEvent(); ev.Type {
 		case termbox.EventKey:
-			if ev.Ch == 'q' {
+			if ev.Ch == 'q' || ev.Key == termbox.KeyCtrlC {
 				close(done)
 				return
 			}
@@ -227,7 +223,7 @@ func pollInput() {
 	}
 }
 
-func renderTable(requestCh chan request) {
+func renderTable(requestCh <-chan topRequest, done <-chan struct{}) {
 	ticker := time.NewTicker(100 * time.Millisecond)
 	var table []tableRow
 
@@ -237,7 +233,7 @@ func renderTable(requestCh chan request) {
 			return
 		case req := <-requestCh:
 			tableInsert(&table, req)
-		case _ = <-ticker.C:
+		case <-ticker.C:
 			termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 			renderHeaders()
 			renderTableBody(table)
@@ -246,7 +242,7 @@ func renderTable(requestCh chan request) {
 	}
 }
 
-func tableInsert(table *[]tableRow, req request) {
+func tableInsert(table *[]tableRow, req topRequest) {
 
 	by := req.reqInit.GetPath()
 	source := stripPort(addr.PublicAddressToString(req.event.GetSource()))
@@ -254,7 +250,7 @@ func tableInsert(table *[]tableRow, req request) {
 	if pod := req.event.DestinationMeta.Labels["pod"]; pod != "" {
 		destination = pod
 	}
-	latency := *req.rspEnd.GetSinceRequestInit()
+	latency, latencyErr := ptypes.Duration(req.rspEnd.GetSinceRequestInit())
 	success := req.rspInit.GetHttpStatus() < 500
 	if success {
 		switch eos := req.rspEnd.GetEos().GetEnd().(type) {
@@ -270,13 +266,15 @@ func tableInsert(table *[]tableRow, req request) {
 	for i, row := range *table {
 		if row.by == by && row.source == source && row.destination == destination {
 			(*table)[i].count++
-			if latency.Nanos < row.best.Nanos {
-				(*table)[i].best = latency
+			if latencyErr == nil {
+				if latency.Nanoseconds() < row.best.Nanoseconds() {
+					(*table)[i].best = latency
+				}
+				if latency.Nanoseconds() > row.worst.Nanoseconds() {
+					(*table)[i].worst = latency
+				}
+				(*table)[i].last = latency
 			}
-			if latency.Nanos > row.worst.Nanos {
-				(*table)[i].worst = latency
-			}
-			(*table)[i].last = latency
 			if success {
 				(*table)[i].successes++
 			} else {
@@ -363,15 +361,12 @@ func tbprintBold(x, y int, msg string) {
 	}
 }
 
-func formatDuration(d duration.Duration) string {
-	if d.Nanos < 1000000 {
-		micros := d.Nanos / 1000
-		return fmt.Sprintf("%dµs", micros)
+func formatDuration(d time.Duration) string {
+	if d < time.Millisecond {
+		return d.Round(time.Microsecond).String()
 	}
-	if d.Nanos < 1000000000 {
-		millis := d.Nanos / 1000000
-		return fmt.Sprintf("%dms", millis)
+	if d < time.Second {
+		return d.Round(time.Millisecond).String()
 	}
-	secs := d.Nanos / 1000000000
-	return fmt.Sprintf("%ds", secs)
+	return d.Round(time.Second).String()
 }
