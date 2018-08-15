@@ -130,9 +130,9 @@ class Top extends React.Component {
   parseTapResult = data => {
     let d = processTapEvent(data);
 
-    if (d.eventType === "rsp") {
+    if (d.eventType === "responseInit") {
       d.success = parseInt(d.http.responseInit.httpStatus, 10) < 500;
-    } else if (d.eventType === "end") {
+    } else if (d.eventType === "responseEnd") {
       d.latency = parseFloat(d.http.responseEnd.sinceRequestInit.replace("s", ""));
       d.completed = true;
     }
@@ -147,15 +147,15 @@ class Top extends React.Component {
   initialTopResult(d, eventKey) {
     return {
       count: 1,
-      best: d.end.latency,
-      worst: d.end.latency,
-      last: d.end.latency,
-      success: !d.rsp.success ? 0 : 1,
-      failure: !d.rsp.success ? 1 : 0,
-      successRate: !d.rsp.success ? new Percentage(0, 1) : new Percentage(1, 1),
-      source: d.req.source.str,
-      destination: d.req.destination.str,
-      path: d.req.http.requestInit.path,
+      best: d.responseEnd.latency,
+      worst: d.responseEnd.latency,
+      last: d.responseEnd.latency,
+      success: !d.responseInit.success ? 0 : 1,
+      failure: !d.responseInit.success ? 1 : 0,
+      successRate: !d.responseInit.success ? new Percentage(0, 1) : new Percentage(1, 1),
+      source: d.requestInit.source.str,
+      destination: d.requestInit.destination.str,
+      path: d.requestInit.http.requestInit.path,
       key: eventKey,
       lastUpdated: Date.now()
     };
@@ -163,26 +163,26 @@ class Top extends React.Component {
 
   incrementTopResult(d, result) {
     result.count++;
-    if (!d.rsp.success) {
+    if (!d.responseInit.success) {
       result.failure++;
     } else {
       result.success++;
     }
     result.successRate = new Percentage(result.success, result.success + result.failure);
 
-    result.last = d.end.latency;
-    if (d.end.latency < result.best) {
-      result.best = d.end.latency;
+    result.last = d.responseEnd.latency;
+    if (d.responseEnd.latency < result.best) {
+      result.best = d.responseEnd.latency;
     }
-    if (d.end.latency > result.worst) {
-      result.worst = d.end.latency;
+    if (d.responseEnd.latency > result.worst) {
+      result.worst = d.responseEnd.latency;
     }
 
     result.lastUpdated = Date.now();
   }
 
   indexTopResult = (d, topResults) => {
-    let eventKey = this.topEventKey(d.req);
+    let eventKey = this.topEventKey(d.requestInit);
 
     if (!topResults[eventKey]) {
       topResults[eventKey] = this.initialTopResult(d, eventKey);

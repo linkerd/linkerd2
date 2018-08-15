@@ -21,6 +21,8 @@ export const processTapEvent = jsonString => {
   let d = JSON.parse(jsonString);
   d.source.str = publicAddressToString(_.get(d, "source.ip.ipv4"), d.source.port);
   d.destination.str = publicAddressToString(_.get(d, "destination.ip.ipv4"), d.destination.port);
+  d.source.pod = _.has(d, "sourceMeta.pod") ? "po/" + d.sourceMeta.pod : null;
+  d.destination.pod = _.has(d, "destinationMeta.pod") ? "po/" + d.destinationMeta.pod : null;
 
   switch (d.proxyDirection) {
     case "INBOUND":
@@ -37,18 +39,25 @@ export const processTapEvent = jsonString => {
     this.setState({ error: "Undefined request type"});
   } else {
     if (!_.isNil(d.http.requestInit)) {
-      d.eventType = "req";
-      d.id = `${_.get(d, "http.requestInit.id.base")}:${_.get(d, "http.requestInit.id.stream")} `;
+      d.eventType = "requestInit";
     } else if (!_.isNil(d.http.responseInit)) {
-      d.eventType = "rsp";
-      d.id = `${_.get(d, "http.responseInit.id.base")}:${_.get(d, "http.responseInit.id.stream")} `;
+      d.eventType = "responseInit";
     } else if (!_.isNil(d.http.responseEnd)) {
-      d.eventType = "end";
-      d.id = `${_.get(d, "http.responseEnd.id.base")}:${_.get(d, "http.responseEnd.id.stream")} `;
+      d.eventType = "responseEnd";
     }
+    d.id = tapEventKey(d, d.eventType);
   }
 
   return d;
+};
+
+/*
+  Use this key to associate the corresponding response with the request
+  so that we can have one single event with reqInit, rspInit and rspEnd
+  current key: (src, dst, stream)
+*/
+const tapEventKey = (d, eventType) => {
+  return `${d.source.str},${d.destination.str},${_.get(d, ["http", eventType, "id", "stream"])}`;
 };
 
 /*
