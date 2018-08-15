@@ -90,6 +90,7 @@ func NewServer(addr, templateDir, staticDir, uuid, controllerNamespace, webpackD
 	server.router.GET("/replicationcontrollers", handler.handleIndex)
 	server.router.GET("/pods", handler.handleIndex)
 	server.router.GET("/authorities", handler.handleIndex)
+	server.router.GET("/resource", handler.handleIndex)
 	server.router.GET("/tap", handler.handleIndex)
 	server.router.GET("/top", handler.handleIndex)
 	server.router.ServeFiles(

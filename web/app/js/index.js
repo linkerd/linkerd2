@@ -5,6 +5,7 @@ import Namespace from './components/Namespace.jsx';
 import NoMatch from './components/NoMatch.jsx';
 import React from 'react';
 import ReactDOM from 'react-dom';
+import ResourceDetail from './components/ResourceDetail.jsx';
 import ResourceList from './components/ResourceList.jsx';
 import ServiceMesh from './components/ServiceMesh.jsx';
 import Sidebar from './components/Sidebar.jsx';
@@ -42,6 +43,7 @@ let applicationHtml = (
                 <Redirect exact from={`${pathPrefix}/`} to={`${pathPrefix}/servicemesh`} />
                 <Route path={`${pathPrefix}/servicemesh`} component={ServiceMesh} />
                 <Route path={`${pathPrefix}/namespaces/:namespace`} component={Namespace} />
+                <Route path={`${pathPrefix}/resource`} component={ResourceDetail} />
                 <Route path={`${pathPrefix}/tap`} component={Tap} />
                 <Route path={`${pathPrefix}/top`} component={Top} />
                 <Route
