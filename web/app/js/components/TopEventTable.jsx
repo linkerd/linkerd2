@@ -6,12 +6,12 @@ const topColumns = [
   {
     title: "Source",
     dataIndex: "source",
-    sorter: (a, b) => a.source.localeCompare(b.source),
+    sorter: (a, b) => a.source.localeCompare(b.source)
   },
   {
     title: "Destination",
     dataIndex: "destination",
-    sorter: (a, b) => a.destination.localeCompare(b.destination),
+    sorter: (a, b) => a.destination.localeCompare(b.destination)
   },
   {
     title: "Path",

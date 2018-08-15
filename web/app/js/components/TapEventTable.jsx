@@ -53,7 +53,7 @@ let tapColumns = filterOptions => [
     dataIndex: "base",
     filters: genFilterOptionList(filterOptions.source),
     onFilter: (value, row) => row.base.source.str === value,
-    render: d => srcDstColumn(_.get(d, "destination.str"), _.get(d, "sourceMeta.labels", {}))
+    render: d => srcDstColumn(_.get(d, "destination"), _.get(d, "sourceMeta.labels", {}))
   },
   {
     title: "Destination",
@@ -61,7 +61,7 @@ let tapColumns = filterOptions => [
     dataIndex: "base",
     filters: genFilterOptionList(filterOptions.destination),
     onFilter: (value, row) => row.base.destination.str === value,
-    render: d => srcDstColumn(_.get(d, "source.str"), _.get(d, "destinationMeta.labels", {}))
+    render: d => srcDstColumn(_.get(d, "source"), _.get(d, "destinationMeta.labels", {}))
   },
   {
     title: "TLS",
@@ -165,15 +165,16 @@ const formatTapLatency = str => {
   return formatLatencySec(str.replace("s", ""));
 };
 
-const srcDstColumn = (ipStr, labels) => {
+const srcDstColumn = (display, labels) => {
   let content = (
     <React.Fragment>
       <div>{ !labels.deployment ? null : "deploy/" + labels.deployment }</div>
       <div>{ !labels.pod ? null : "po/" + labels.pod }</div>
     </React.Fragment>
   );
+
   return (
-    <Popover content={content} title={ipStr}>{ !labels.pod ? ipStr : "po/" + labels.pod }</Popover>
+    <Popover content={content} title={display.str}>{ display.pod || display.str }</Popover>
   );
 };
 

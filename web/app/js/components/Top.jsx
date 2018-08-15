@@ -153,8 +153,8 @@ class Top extends React.Component {
       success: !d.responseInit.success ? 0 : 1,
       failure: !d.responseInit.success ? 1 : 0,
       successRate: !d.responseInit.success ? new Percentage(0, 1) : new Percentage(1, 1),
-      source: d.requestInit.source.str,
-      destination: d.requestInit.destination.str,
+      source: d.requestInit.source.pod || d.requestInit.source.str,
+      destination: d.requestInit.destination.pod || d.requestInit.destination.str,
       path: d.requestInit.http.requestInit.path,
       key: eventKey,
       lastUpdated: Date.now()
