@@ -212,11 +212,7 @@ func recvEvents(tapClient pb.Api_TapByResourceClient, requestCh chan<- topReques
 			}
 
 		case *pb.TapEvent_Http_ResponseEnd_:
-			id := topRequestID{
-				addr.PublicAddressToString(event.GetSource()),
-				addr.PublicAddressToString(event.GetDestination()),
-				ev.ResponseEnd.GetId().Stream,
-			}
+			id.stream = ev.ResponseEnd.GetId().Stream
 			if req, ok := outstandingRequests[id]; ok {
 				req.rspEnd = ev.ResponseEnd
 				requestCh <- req
@@ -261,10 +257,14 @@ func renderTable(requestCh <-chan topRequest, done <-chan struct{}) {
 func tableInsert(table *[]tableRow, req topRequest) {
 	by := req.reqInit.GetPath()
 	source := stripPort(addr.PublicAddressToString(req.event.GetSource()))
+	if pod := req.event.SourceMeta.Labels["pod"]; pod != "" {
+		source = pod
+	}
 	destination := stripPort(addr.PublicAddressToString(req.event.GetDestination()))
 	if pod := req.event.DestinationMeta.Labels["pod"]; pod != "" {
 		destination = pod
 	}
+
 	latency, err := ptypes.Duration(req.rspEnd.GetSinceRequestInit())
 	if err != nil {
 		log.Errorf("error parsing duration %v: %s", req.rspEnd.GetSinceRequestInit(), err)
