@@ -66,7 +66,7 @@ class Top extends React.Component {
     query.maxRps = parseFloat(query.maxRps);
 
     this.ws.send(JSON.stringify({
-      id: "tap-web",
+      id: "top-web",
       ...query
     }));
     this.setState({
