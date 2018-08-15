@@ -130,9 +130,7 @@ class Top extends React.Component {
   parseTapResult = data => {
     let d = processTapEvent(data);
 
-    if (d.eventType === "responseInit") {
-      d.success = parseInt(d.http.responseInit.httpStatus, 10) < 500;
-    } else if (d.eventType === "responseEnd") {
+    if (d.eventType === "responseEnd") {
       d.latency = parseFloat(d.http.responseEnd.sinceRequestInit.replace("s", ""));
       d.completed = true;
     }
@@ -150,9 +148,9 @@ class Top extends React.Component {
       best: d.responseEnd.latency,
       worst: d.responseEnd.latency,
       last: d.responseEnd.latency,
-      success: !d.responseInit.success ? 0 : 1,
-      failure: !d.responseInit.success ? 1 : 0,
-      successRate: !d.responseInit.success ? new Percentage(0, 1) : new Percentage(1, 1),
+      success: !d.success ? 0 : 1,
+      failure: !d.success ? 1 : 0,
+      successRate: !d.success ? new Percentage(0, 1) : new Percentage(1, 1),
       source: d.requestInit.source,
       sourceLabels: d.requestInit.sourceMeta.labels,
       destination: d.requestInit.destination,
@@ -165,7 +163,7 @@ class Top extends React.Component {
 
   incrementTopResult(d, result) {
     result.count++;
-    if (!d.responseInit.success) {
+    if (!d.success) {
       result.failure++;
     } else {
       result.success++;
@@ -185,6 +183,7 @@ class Top extends React.Component {
 
   indexTopResult = (d, topResults) => {
     let eventKey = this.topEventKey(d.requestInit);
+    this.addSuccessRate(d);
 
     if (!topResults[eventKey]) {
       topResults[eventKey] = this.initialTopResult(d, eventKey);
@@ -217,7 +216,7 @@ class Top extends React.Component {
     resultIndex[d.id][d.eventType] = d;
 
     // assumption: requests of a given id all share the same high level metadata
-    resultIndex[d.id]["base"] = d;
+    resultIndex[d.id].base = d;
     resultIndex[d.id].lastUpdated = Date.now();
 
     let topIndex = this.state.topEventIndex;
@@ -232,6 +231,22 @@ class Top extends React.Component {
       tapResultsById: resultIndex,
       topEventIndex: topIndex
     });
+  }
+
+  addSuccessRate = d => {
+    // cope with the fact that gRPC failures are returned with HTTP status 200
+    // and correctly classify gRPC failures as failures
+    let success = parseInt(d.responseInit.http.responseInit.httpStatus, 10) < 500;
+    if (success) {
+      let grpcStatusCode = _.get(d, "responseEnd.http.responseEnd.eos.grpcStatusCode");
+      if (!_.isNil(grpcStatusCode)) {
+        success = grpcStatusCode === 0;
+      } else if (!_.isNil(_.get(d, "responseEnd.http.responseEnd.eos.resetErrorCode"))) {
+        success = false;
+      }
+    }
+
+    d.success = success;
   }
 
   deleteOldestIndexedResult = resultIndex => {
