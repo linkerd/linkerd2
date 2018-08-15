@@ -17,3 +17,4 @@ if [ -z "${LINKERD_SKIP_CLI_CONTAINER:-}" ]; then
 fi
 $bindir/docker-build-grafana
 $bindir/docker-build-proxy
+$bindir/docker-build-sidecar-injection
