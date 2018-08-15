@@ -59,6 +59,15 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
     }
   ];
 
+  let meshedColumn = {
+    title: formatTitle("M", "Meshed"),
+    dataIndex: "pods",
+    key: "pods",
+    className: "numeric",
+    sorter: (a, b) => numericSort(a.pods.running, b.pods.running),
+    render: p => p.meshed + "/" + p.running
+  };
+
   let columns = [
     {
       title: formatTitle(friendlyTitle(resource).singular),
@@ -141,6 +150,11 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
       render: d => _.isNil(d) || d.get() === -1 ? "---" : d.prettyRate()
     }
   ];
+
+  // don't add the meshed column on a Authority MetricsTable
+  if (resource !== "authority") {
+    columns.splice(1, 0, meshedColumn);
+  }
 
   if (!showNamespaceColumn) {
     return columns;
