@@ -53,16 +53,16 @@ let tapColumns = filterOptions => [
     key: "source",
     dataIndex: "base",
     filters: genFilterOptionList(filterOptions.source),
-    onFilter: (value, row) => row.base.source.str === value,
-    render: d => srcDstColumn(_.get(d, "destination"), _.get(d, "sourceMeta.labels", {}))
+    onFilter: (value, row) => row.base.source.pod === value || row.base.source.str === value,
+    render: d => srcDstColumn(_.get(d, "source"), _.get(d, "sourceMeta.labels", {}))
   },
   {
     title: "Destination",
     key: "destination",
     dataIndex: "base",
     filters: genFilterOptionList(filterOptions.destination),
-    onFilter: (value, row) => row.base.destination.str === value,
-    render: d => srcDstColumn(_.get(d, "source"), _.get(d, "destinationMeta.labels", {}))
+    onFilter: (value, row) => row.base.destination.pod === value || row.base.destination.str === value,
+    render: d => srcDstColumn(_.get(d, "destination"), _.get(d, "destinationMeta.labels", {}))
   },
   {
     title: "TLS",

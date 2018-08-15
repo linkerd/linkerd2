@@ -146,6 +146,13 @@ class Tap extends React.Component {
     let addFilter = this.genFilterAdder(filters, Date.now());
     addFilter("source", d.source.str);
     addFilter("destination", d.destination.str);
+    if (d.source.pod) {
+      addFilter("source", d.source.pod);
+    }
+    if (d.destination.pod) {
+      addFilter("destination", d.destination.pod);
+    }
+
     if (d.tls) {
       addFilter("tls", d.tls);
     }
