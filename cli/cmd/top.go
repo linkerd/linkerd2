@@ -44,6 +44,10 @@ type topRequestID struct {
 	stream uint64
 }
 
+func (id topRequestID) String() string {
+	return fmt.Sprintf("%s->%s(%d)", id.src, id.dst, id.stream)
+}
+
 type tableRow struct {
 	by          string
 	source      string
@@ -150,7 +154,6 @@ func newCmdTop() *cobra.Command {
 }
 
 func getTrafficByResourceFromAPI(w io.Writer, client pb.ApiClient, req *pb.TapByResourceRequest) error {
-
 	rsp, err := client.TapByResource(context.Background(), req)
 	if err != nil {
 		return err
@@ -187,31 +190,25 @@ func recvEvents(tapClient pb.Api_TapByResourceClient, requestCh chan<- topReques
 			close(done)
 			return
 		}
-
+		id := topRequestID{
+			src: addr.PublicAddressToString(event.GetSource()),
+			dst: addr.PublicAddressToString(event.GetDestination()),
+		}
 		switch ev := event.GetHttp().GetEvent().(type) {
 		case *pb.TapEvent_Http_RequestInit_:
-			id := topRequestID{
-				addr.PublicAddressToString(event.GetSource()),
-				addr.PublicAddressToString(event.GetDestination()),
-				ev.RequestInit.GetId().Stream,
-			}
-
+			id.stream = ev.RequestInit.GetId().Stream
 			outstandingRequests[id] = topRequest{
 				event:   event,
 				reqInit: ev.RequestInit,
 			}
 
 		case *pb.TapEvent_Http_ResponseInit_:
-			id := topRequestID{
-				addr.PublicAddressToString(event.GetSource()),
-				addr.PublicAddressToString(event.GetDestination()),
-				ev.ResponseInit.GetId().Stream,
-			}
+			id.stream = ev.ResponseInit.GetId().Stream
 			if req, ok := outstandingRequests[id]; ok {
 				req.rspInit = ev.ResponseInit
 				outstandingRequests[id] = req
 			} else {
-				log.Warnf("Got ResponseInit for unknown stream: %s->%s(%d)", id.src, id.dst, id.stream)
+				log.Warnf("Got ResponseInit for unknown stream: %s", id)
 			}
 
 		case *pb.TapEvent_Http_ResponseEnd_:
@@ -224,7 +221,7 @@ func recvEvents(tapClient pb.Api_TapByResourceClient, requestCh chan<- topReques
 				req.rspEnd = ev.ResponseEnd
 				requestCh <- req
 			} else {
-				log.Warnf("Got ResponseEnd for unknown stream: %s->%s(%d)", id.src, id.dst, id.stream)
+				log.Warnf("Got ResponseEnd for unknown stream: %s", id)
 			}
 		}
 	}
@@ -262,7 +259,6 @@ func renderTable(requestCh <-chan topRequest, done <-chan struct{}) {
 }
 
 func tableInsert(table *[]tableRow, req topRequest) {
-
 	by := req.reqInit.GetPath()
 	source := stripPort(addr.PublicAddressToString(req.event.GetSource()))
 	destination := stripPort(addr.PublicAddressToString(req.event.GetDestination()))
