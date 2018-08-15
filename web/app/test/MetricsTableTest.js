@@ -29,7 +29,7 @@ describe('Tests for <MetricsTableBase>', () => {
 
     expect(table).to.have.length(1);
     expect(table.props().dataSource).to.have.length(1);
-    expect(table.props().columns).to.have.length(8);
+    expect(table.props().columns).to.have.length(9);
   });
 
   it('omits the namespace column for the namespace resource', () => {
@@ -43,7 +43,7 @@ describe('Tests for <MetricsTableBase>', () => {
     const table = component.find(BaseTable);
 
     expect(table).to.have.length(1);
-    expect(table.props().columns).to.have.length(7);
+    expect(table.props().columns).to.have.length(8);
   });
 
   it('omits the namespace column when showNamespaceColumn is false', () => {
@@ -58,7 +58,21 @@ describe('Tests for <MetricsTableBase>', () => {
     const table = component.find(BaseTable);
 
     expect(table).to.have.length(1);
-    expect(table.props().columns).to.have.length(7);
+    expect(table.props().columns).to.have.length(8);
+  });
+
+  it('omits meshed column for authority resource', () => {
+    const component = shallow(
+      <MetricsTableBase
+        {...defaultProps}
+        metrics={[]}
+        resource="authority" />
+    );
+
+    const table = component.find(BaseTable);
+
+    expect(table).to.have.length(1);
+    expect(table.props().columns).to.have.length(8);
   });
 
 });
