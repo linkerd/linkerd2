@@ -150,12 +150,12 @@ class Tap extends React.Component {
       addFilter("tls", d.tls);
     }
     switch (d.eventType) {
-      case "req":
+      case "requestInit":
         addFilter("authority", d.http.requestInit.authority);
         addFilter("path", d.http.requestInit.path);
         addFilter("scheme", _.get(d, "http.requestInit.scheme.registered"));
         break;
-      case "rsp":
+      case "responseInit":
         addFilter("httpStatus", _.get(d, "http.responseInit.httpStatus"));
         break;
     }
