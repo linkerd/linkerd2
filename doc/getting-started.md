@@ -66,7 +66,7 @@ cluster.
 ```bash
 Downloading linkerd-{{% latestversion %}}-macos...
 Linkerd was successfully installed 🎉
-Copy $HOME/.linkerd/bin/linkerd into your PATH.  Then run
+Copy $HOME/.linkerd2/bin/linkerd into your PATH.  Then run
     linkerd install | kubectl apply -f -
 to deploy Linkerd to Kubernetes.  Once deployed, run
     linkerd dashboard
@@ -78,7 +78,7 @@ Visit linkerd.io for more information.
 [Linkerd releases page](https://github.com/linkerd/linkerd2/releases/v{{% latestversion %}}).
 
 ### Next, add linkerd to your path with:
-#### `export PATH=$PATH:$HOME/.linkerd/bin`
+#### `export PATH=$PATH:$HOME/.linkerd2/bin`
 
 ### Verify the CLI is installed and running correctly with:
 #### `linkerd version`
