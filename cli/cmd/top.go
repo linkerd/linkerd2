@@ -38,6 +38,12 @@ type topRequest struct {
 	rspEnd  *pb.TapEvent_Http_ResponseEnd
 }
 
+type topRequestID struct {
+	src    string
+	dst    string
+	stream uint64
+}
+
 type tableRow struct {
 	by          string
 	source      string
@@ -168,7 +174,7 @@ func getTrafficByResourceFromAPI(w io.Writer, client pb.ApiClient, req *pb.TapBy
 }
 
 func recvEvents(tapClient pb.Api_TapByResourceClient, requestCh chan<- topRequest, done chan<- struct{}) {
-	outstandingRequests := make(map[pb.TapEvent_Http_StreamId]topRequest)
+	outstandingRequests := make(map[topRequestID]topRequest)
 	for {
 		event, err := tapClient.Recv()
 		if err == io.EOF {
@@ -184,27 +190,41 @@ func recvEvents(tapClient pb.Api_TapByResourceClient, requestCh chan<- topReques
 
 		switch ev := event.GetHttp().GetEvent().(type) {
 		case *pb.TapEvent_Http_RequestInit_:
-			id := *ev.RequestInit.GetId()
+			id := topRequestID{
+				addr.PublicAddressToString(event.GetSource()),
+				addr.PublicAddressToString(event.GetDestination()),
+				ev.RequestInit.GetId().Stream,
+			}
+
 			outstandingRequests[id] = topRequest{
 				event:   event,
 				reqInit: ev.RequestInit,
 			}
 
 		case *pb.TapEvent_Http_ResponseInit_:
-			id := *ev.ResponseInit.GetId()
+			id := topRequestID{
+				addr.PublicAddressToString(event.GetSource()),
+				addr.PublicAddressToString(event.GetDestination()),
+				ev.ResponseInit.GetId().Stream,
+			}
 			if req, ok := outstandingRequests[id]; ok {
 				req.rspInit = ev.ResponseInit
+				outstandingRequests[id] = req
 			} else {
-				log.Warn("Got ResponseInit for unknown stream: %d:%d", id.GetBase(), id.GetStream())
+				log.Warnf("Got ResponseInit for unknown stream: %s->%s(%d)", id.src, id.dst, id.stream)
 			}
 
 		case *pb.TapEvent_Http_ResponseEnd_:
-			id := *ev.ResponseEnd.GetId()
+			id := topRequestID{
+				addr.PublicAddressToString(event.GetSource()),
+				addr.PublicAddressToString(event.GetDestination()),
+				ev.ResponseEnd.GetId().Stream,
+			}
 			if req, ok := outstandingRequests[id]; ok {
 				req.rspEnd = ev.ResponseEnd
 				requestCh <- req
 			} else {
-				log.Warn("Got ResponseEnd for unknown stream: %d:%d", id.GetBase(), id.GetStream())
+				log.Warnf("Got ResponseEnd for unknown stream: %s->%s(%d)", id.src, id.dst, id.stream)
 			}
 		}
 	}
@@ -235,7 +255,7 @@ func renderTable(requestCh <-chan topRequest, done <-chan struct{}) {
 		case <-ticker.C:
 			termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 			renderHeaders()
-			renderTableBody(table)
+			renderTableBody(&table)
 			termbox.Flush()
 		}
 	}
@@ -276,13 +296,13 @@ func tableInsert(table *[]tableRow, req topRequest) {
 				(*table)[i].worst = latency
 			}
 			(*table)[i].last = latency
+			if success {
+				(*table)[i].successes++
+			} else {
+				(*table)[i].failures++
+			}
+			found = true
 		}
-		if success {
-			(*table)[i].successes++
-		} else {
-			(*table)[i].failures++
-		}
-		found = true
 	}
 
 	if !found {
@@ -323,11 +343,11 @@ func renderHeaders() {
 	}
 }
 
-func renderTableBody(table []tableRow) {
-	sort.SliceStable(table, func(i, j int) bool {
-		return table[i].count > table[j].count
+func renderTableBody(table *[]tableRow) {
+	sort.SliceStable(*table, func(i, j int) bool {
+		return (*table)[i].count > (*table)[j].count
 	})
-	for i, row := range table {
+	for i, row := range *table {
 		x := 0
 		tbprint(x, i+headerHeight, row.source)
 		x += columnWidths[0] + 1
