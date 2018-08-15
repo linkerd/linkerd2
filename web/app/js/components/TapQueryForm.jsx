@@ -11,7 +11,7 @@ import {
   Row,
   Select
 } from 'antd';
-import { defaultMaxRps, httpMethods, tapQueryPropType } from './util/TapUtils.js';
+import { defaultMaxRps, httpMethods, tapQueryPropType } from './util/TapUtils.jsx';
 
 const colSpan = 5;
 const rowGutter = 16;

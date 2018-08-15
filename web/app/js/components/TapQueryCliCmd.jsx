@@ -1,7 +1,7 @@
 import _ from 'lodash';
 import PropTypes from 'prop-types';
 import React from 'react';
-import { tapQueryPropType } from './util/TapUtils.js';
+import { tapQueryPropType } from './util/TapUtils.jsx';
 
 /*
  prints a given tap query in an equivalent CLI format, such that it

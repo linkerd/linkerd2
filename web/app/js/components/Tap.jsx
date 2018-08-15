@@ -7,7 +7,7 @@ import TapEventTable from './TapEventTable.jsx';
 import TapQueryCliCmd from './TapQueryCliCmd.jsx';
 import TapQueryForm from './TapQueryForm.jsx';
 import { withContext } from './util/AppContext.jsx';
-import { defaultMaxRps, httpMethods, processTapEvent } from './util/TapUtils.js';
+import { defaultMaxRps, httpMethods, processTapEvent } from './util/TapUtils.jsx';
 import './../../css/tap.css';
 
 const maxNumFilterOptions = 12;

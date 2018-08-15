@@ -2,7 +2,8 @@ import _ from 'lodash';
 import BaseTable from './BaseTable.jsx';
 import { formatLatencySec } from './util/Utils.js';
 import React from 'react';
-import { Col, Icon, Popover, Row, Table } from 'antd';
+import { srcDstColumn } from './util/TapUtils.jsx';
+import { Col, Icon, Row, Table } from 'antd';
 
 // https://godoc.org/google.golang.org/grpc/codes#Code
 const grpcStatusCodes = {
@@ -163,19 +164,6 @@ let tapColumns = filterOptions => [
 
 const formatTapLatency = str => {
   return formatLatencySec(str.replace("s", ""));
-};
-
-const srcDstColumn = (display, labels) => {
-  let content = (
-    <React.Fragment>
-      <div>{ !labels.deployment ? null : "deploy/" + labels.deployment }</div>
-      <div>{ !labels.pod ? null : "po/" + labels.pod }</div>
-    </React.Fragment>
-  );
-
-  return (
-    <Popover content={content} title={display.str}>{ display.pod || display.str }</Popover>
-  );
 };
 
 const srcDstMetaColumns = [

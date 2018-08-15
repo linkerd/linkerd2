@@ -8,7 +8,7 @@ import TapQueryCliCmd from './TapQueryCliCmd.jsx';
 import TapQueryForm from './TapQueryForm.jsx';
 import TopEventTable from './TopEventTable.jsx';
 import { withContext } from './util/AppContext.jsx';
-import { defaultMaxRps, processTapEvent } from './util/TapUtils.js';
+import { defaultMaxRps, processTapEvent } from './util/TapUtils.jsx';
 import './../../css/tap.css';
 
 class Top extends React.Component {
@@ -153,8 +153,10 @@ class Top extends React.Component {
       success: !d.responseInit.success ? 0 : 1,
       failure: !d.responseInit.success ? 1 : 0,
       successRate: !d.responseInit.success ? new Percentage(0, 1) : new Percentage(1, 1),
-      source: d.requestInit.source.pod || d.requestInit.source.str,
-      destination: d.requestInit.destination.pod || d.requestInit.destination.str,
+      source: d.requestInit.source,
+      sourceLabels: d.requestInit.sourceMeta.labels,
+      destination: d.requestInit.destination,
+      destinationLabels: d.requestInit.destinationMeta.labels,
       path: d.requestInit.http.requestInit.path,
       key: eventKey,
       lastUpdated: Date.now()

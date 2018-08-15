@@ -1,5 +1,7 @@
 import _ from 'lodash';
+import { Popover } from 'antd';
 import PropTypes from 'prop-types';
+import React from 'react';
 
 export const httpMethods = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"];
 
@@ -80,4 +82,20 @@ const decodeIPToOctets = ip => {
 const publicAddressToString = (ipv4, port) => {
   let octets = decodeIPToOctets(ipv4);
   return octets.join(".") + ":" + port;
+};
+
+/*
+  display more human-readable information about source/destination
+*/
+export const srcDstColumn = (display, labels) => {
+  let content = (
+    <React.Fragment>
+      <div>{ !labels.deployment ? null : "deploy/" + labels.deployment }</div>
+      <div>{ !labels.pod ? null : "po/" + labels.pod }</div>
+    </React.Fragment>
+  );
+
+  return (
+    <Popover content={content} title={display.str}>{ display.pod || display.str }</Popover>
+  );
 };

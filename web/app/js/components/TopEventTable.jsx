@@ -1,17 +1,24 @@
 import BaseTable from './BaseTable.jsx';
 import React from 'react';
+import { srcDstColumn } from './util/TapUtils.jsx';
 import { formatLatencySec, numericSort } from './util/Utils.js';
+
+const srcDstSorter = key => {
+  return (a, b) => (a[key].pod || a[key].str).localeCompare(b[key].pod || b[key].str);
+};
 
 const topColumns = [
   {
     title: "Source",
-    dataIndex: "source",
-    sorter: (a, b) => a.source.localeCompare(b.source)
+    key: "source",
+    sorter: srcDstSorter("source"),
+    render: d => srcDstColumn(d.source, d.sourceLabels)
   },
   {
     title: "Destination",
-    dataIndex: "destination",
-    sorter: (a, b) => a.destination.localeCompare(b.destination)
+    key: "destination",
+    sorter: srcDstSorter("destination"),
+    render: d => srcDstColumn(d.destination, d.destinationLabels)
   },
   {
     title: "Path",
