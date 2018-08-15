@@ -21,8 +21,8 @@ export const tapQueryPropType = PropTypes.shape({
 
 export const processTapEvent = jsonString => {
   let d = JSON.parse(jsonString);
-  d.source.str = publicAddressToString(_.get(d, "source.ip.ipv4"), d.source.port);
-  d.destination.str = publicAddressToString(_.get(d, "destination.ip.ipv4"), d.destination.port);
+  d.source.str = publicAddressToString(_.get(d, "source.ip.ipv4"));
+  d.destination.str = publicAddressToString(_.get(d, "destination.ip.ipv4"));
 
   d.source.pod = _.has(d, "sourceMeta.labels.pod") ? "po/" + d.sourceMeta.labels.pod : null;
   d.destination.pod = _.has(d, "destinationMeta.labels.pod") ? "po/" + d.destinationMeta.labels.pod : null;
@@ -77,11 +77,11 @@ const decodeIPToOctets = ip => {
 };
 
 /*
-  converts an address to an ipv4 formatted host:port pair
+  converts an address to an ipv4 formatted host
 */
-const publicAddressToString = (ipv4, port) => {
+const publicAddressToString = ipv4 => {
   let octets = decodeIPToOctets(ipv4);
-  return octets.join(".") + ":" + port;
+  return octets.join(".");
 };
 
 /*
