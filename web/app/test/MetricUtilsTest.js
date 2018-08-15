@@ -26,7 +26,7 @@ describe('MetricUtils', () => {
             P95: 2,
             P99: 7
           },
-          pods: {running: "1", meshed: "1", percentage: new Percentage(1,1)},
+          pods: {totalPods: "1", meshedPods: "1", meshedPercentage: new Percentage(1,1)},
           added: true,
           errors: {}
         }

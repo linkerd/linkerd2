@@ -43,6 +43,15 @@ const formatTitle = (title, tooltipText) => {
 
 };
 
+const meshedColumn = {
+  title: formatTitle("Meshed"),
+  dataIndex: "pods",
+  key: "pods",
+  className: "numeric",
+  sorter: (a, b) => numericSort(a.pods.totalPods, b.pods.totalPods),
+  render: p => p.meshedPods + "/" + p.totalPods
+};
+
 const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceColumn, PrefixedLink, showGrafanaLink) => {
   let nsColumn = [
     {
@@ -58,15 +67,6 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
       }
     }
   ];
-
-  let meshedColumn = {
-    title: formatTitle("M", "Meshed"),
-    dataIndex: "pods",
-    key: "pods",
-    className: "numeric",
-    sorter: (a, b) => numericSort(a.pods.running, b.pods.running),
-    render: p => p.meshed + "/" + p.running
-  };
 
   let columns = [
     {

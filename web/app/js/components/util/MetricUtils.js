@@ -119,9 +119,9 @@ const processStatTable = table => {
       tlsRequestPercent: getTlsRequestPercentage(row),
       added: row.meshedPodCount === row.runningPodCount,
       pods: {
-        running: row.runningPodCount,
-        meshed: row.meshedPodCount,
-        percentage: new Percentage(parseInt(row.meshedPodCount, 10), parseInt(row.runningPodCount, 10))
+        totalPods: row.runningPodCount,
+        meshedPods: row.meshedPodCount,
+        meshedPercentage: new Percentage(parseInt(row.meshedPodCount, 10), parseInt(row.runningPodCount, 10))
       },
       errors: row.errorsByPod
     };
