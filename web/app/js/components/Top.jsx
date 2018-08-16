@@ -183,7 +183,7 @@ class Top extends React.Component {
 
   indexTopResult = (d, topResults) => {
     let eventKey = this.topEventKey(d.requestInit);
-    this.addSuccessRate(d);
+    this.addSuccessCount(d);
 
     if (!topResults[eventKey]) {
       topResults[eventKey] = this.initialTopResult(d, eventKey);
@@ -233,7 +233,7 @@ class Top extends React.Component {
     });
   }
 
-  addSuccessRate = d => {
+  addSuccessCount = d => {
     // cope with the fact that gRPC failures are returned with HTTP status 200
     // and correctly classify gRPC failures as failures
     let success = parseInt(d.responseInit.http.responseInit.httpStatus, 10) < 500;
