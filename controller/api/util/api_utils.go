@@ -357,73 +357,50 @@ func dst(event *pb.TapEvent) peer {
 	}
 }
 
-// format formats the `src` or `dst` element in the tap output corresponding to
-// this peer. The returned label consists of the the peer's direction ("src" or
-// "dst"), pod name if it was labeled with one or IP address if not, and port.
-func (p *peer) format() string {
-	if pod, exists := p.labels["pod"]; exists {
-		return fmt.Sprintf("%s=%s:%d", p.direction, pod, p.address.GetPort())
-	} else {
-		return fmt.Sprintf(
-			"%s=%s",
+// formatAddr formats the peer's TCP address for the `src` or `dst` element in
+// the tap output corresponding to this peer.
+func (p *peer) formatAddr() string {
+	return fmt.Sprintf(
+		"%s=%s",
+		p.direction,
+		addr.PublicAddressToString(p.address),
+	)
+}
+
+// formatResource a label describing what Kubernetes resources the peer belongs
+// to. If the peer belongs to a resource of kind `resourceKind`, it will return
+// a label for that resource; otherwise, it will fall back to the peer's pod
+// name. Additionally, if the resource is not of type `namespace`, it will also
+// add a label describing the peer's resource.
+func (p *peer) formatResource(resourceKind string) string {
+	var s string
+	if resourceName, exists := p.labels[resourceKind]; exists {
+		kind := resourceKind
+		if short := k8s.ShortNameFromCanonicalResourceName(resourceKind); short != "" {
+			kind = short
+		}
+		s = fmt.Sprintf(
+			" %s_res=%s/%s",
 			p.direction,
-			addr.PublicAddressToString(p.address),
+			kind,
+			resourceName,
 		)
+	} else if pod, hasPod := p.labels[k8s.Pod]; hasPod {
+		s = fmt.Sprintf(" %s_pod=%s", p.direction, pod)
 	}
-}
-
-// A list of Kubernetes resource types iterated over by `formatResource`.
-var resources = [...]string{
-	k8s.Deployment,
-	k8s.DaemonSet,
-	k8s.ReplicaSet,
-	k8s.ReplicationController,
-	k8s.Service,
-	k8s.StatefulSet,
-	// The ordering here actually matters somewhat: Since we already show the
-	// pod name of a `src`/`dst` instead of its IP address if it has a pod
-	// label, we should only use the pod name as the `src_resource` or
-	// `dst_resource` IFF it is not labeled as being part of any other
-	// resource. Therefore, the pod key should be the last key we try to look
-	// up in the labels map. To ensure that's the case, `k8s.Pod` should always
-	// be the last item in this array.
-	k8s.Pod,
-}
-
-// formatResource formats what Kubernetes resource a peer is part of, if there
-// is a label in the peer's metadata that identifies it as being part of a
-// resource. Otherwise, it falls back to the authority of the peer, if one
-// was passed in as `orAuthority`, or finally to returning an empty string.
-func (p *peer) formatResource(orAuthority string) string {
-	for _, resourceKind := range resources {
-		if resourceName, exists := p.labels[resourceKind]; exists {
-			var kind string
-			if short := k8s.ShortNameFromCanonicalResourceName(resourceKind); short != "" {
-				kind = short
-			} else {
-				kind = resourceKind
-			}
-			s := fmt.Sprintf(
-				" %s_resource=%s/%s",
-				p.direction,
-				kind,
-				resourceName,
-			)
-			return s
+	if resourceKind != k8s.Namespace {
+		if ns, hasNs := p.labels[k8s.Namespace]; hasNs {
+			s = fmt.Sprintf("%s %s_ns=%s", s, p.direction, ns)
 		}
 	}
-	if orAuthority != "" {
-		return fmt.Sprintf(" %s_resource=au/%s", p.direction, orAuthority)
-	} else {
-		return ""
-	}
+	return s
 }
 
 func (p *peer) tlsStatus() string {
 	return p.labels["tls"]
 }
 
-func RenderTapEvent(event *pb.TapEvent) string {
+func RenderTapEvent(event *pb.TapEvent, resource string) string {
 	dst := dst(event)
 	src := src(event)
 
@@ -442,72 +419,76 @@ func RenderTapEvent(event *pb.TapEvent) string {
 
 	flow := fmt.Sprintf("proxy=%s %s %s tls=%s",
 		proxy,
-		src.format(),
-		dst.format(),
+		src.formatAddr(),
+		dst.formatAddr(),
 		tls,
 	)
 
+	resources := ""
+	if resource != "" {
+		resources = fmt.Sprintf(
+			"%s%s",
+			src.formatResource(resource),
+			dst.formatResource(resource),
+		)
+	}
+
 	switch ev := event.GetHttp().GetEvent().(type) {
 	case *pb.TapEvent_Http_RequestInit_:
-		return fmt.Sprintf("req id=%d:%d %s :method=%s :authority=%s :path=%s%s%s",
+		return fmt.Sprintf("req id=%d:%d %s :method=%s :authority=%s :path=%s%s",
 			ev.RequestInit.GetId().GetBase(),
 			ev.RequestInit.GetId().GetStream(),
 			flow,
 			ev.RequestInit.GetMethod().GetRegistered().String(),
 			ev.RequestInit.GetAuthority(),
 			ev.RequestInit.GetPath(),
-			src.formatResource(""),
-			dst.formatResource(ev.RequestInit.GetAuthority()),
+			resources,
 		)
 
 	case *pb.TapEvent_Http_ResponseInit_:
-		return fmt.Sprintf("rsp id=%d:%d %s :status=%d latency=%dµs%s%s",
+		return fmt.Sprintf("rsp id=%d:%d %s :status=%d latency=%dµs%s",
 			ev.ResponseInit.GetId().GetBase(),
 			ev.ResponseInit.GetId().GetStream(),
 			flow,
 			ev.ResponseInit.GetHttpStatus(),
 			ev.ResponseInit.GetSinceRequestInit().GetNanos()/1000,
-			src.formatResource(""),
-			dst.formatResource(""),
+			resources,
 		)
 
 	case *pb.TapEvent_Http_ResponseEnd_:
 		switch eos := ev.ResponseEnd.GetEos().GetEnd().(type) {
 		case *pb.Eos_GrpcStatusCode:
 			return fmt.Sprintf(
-				"end id=%d:%d %s grpc-status=%s duration=%dµs response-length=%dB%s%s",
+				"end id=%d:%d %s grpc-status=%s duration=%dµs response-length=%dB%s",
 				ev.ResponseEnd.GetId().GetBase(),
 				ev.ResponseEnd.GetId().GetStream(),
 				flow,
 				codes.Code(eos.GrpcStatusCode),
 				ev.ResponseEnd.GetSinceResponseInit().GetNanos()/1000,
 				ev.ResponseEnd.GetResponseBytes(),
-				src.formatResource(""),
-				dst.formatResource(""),
+				resources,
 			)
 
 		case *pb.Eos_ResetErrorCode:
 			return fmt.Sprintf(
-				"end id=%d:%d %s reset-error=%+v duration=%dµs response-length=%dB%s%s",
+				"end id=%d:%d %s reset-error=%+v duration=%dµs response-length=%dB%s",
 				ev.ResponseEnd.GetId().GetBase(),
 				ev.ResponseEnd.GetId().GetStream(),
 				flow,
 				eos.ResetErrorCode,
 				ev.ResponseEnd.GetSinceResponseInit().GetNanos()/1000,
 				ev.ResponseEnd.GetResponseBytes(),
-				src.formatResource(""),
-				dst.formatResource(""),
+				resources,
 			)
 
 		default:
-			return fmt.Sprintf("end id=%d:%d %s duration=%dµs response-length=%dB%s%s",
+			return fmt.Sprintf("end id=%d:%d %s duration=%dµs response-length=%dB%s",
 				ev.ResponseEnd.GetId().GetBase(),
 				ev.ResponseEnd.GetId().GetStream(),
 				flow,
 				ev.ResponseEnd.GetSinceResponseInit().GetNanos()/1000,
 				ev.ResponseEnd.GetResponseBytes(),
-				src.formatResource(""),
-				dst.formatResource(""),
+				resources,
 			)
 		}
 
