@@ -1,6 +1,7 @@
 import _ from 'lodash';
+import PropTypes from 'prop-types';
 import React from 'react';
-import { tapQueryPropType } from './util/TapUtils.js';
+import { tapQueryPropType } from './util/TapUtils.jsx';
 
 /*
  prints a given tap query in an equivalent CLI format, such that it
@@ -8,6 +9,7 @@ import { tapQueryPropType } from './util/TapUtils.js';
 */
 export default class TapQueryCliCmd extends React.Component {
   static propTypes = {
+    cmdName: PropTypes.string.isRequired,
     query: tapQueryPropType
   }
 
@@ -47,9 +49,9 @@ export default class TapQueryCliCmd extends React.Component {
         {
           _.isEmpty(resource) ? null :
           <React.Fragment>
-            <div>Current Tap query:</div>
+            <div>Current {_.startCase(this.props.cmdName)} query:</div>
             <code>
-              linkerd tap {resource}
+              linkerd {this.props.cmdName} {resource}
               { this.renderCliItem("--namespace", namespace) }
               { this.renderCliItem("--to", toResource) }
               { this.renderCliItem("--to-namespace", toNamespace) }

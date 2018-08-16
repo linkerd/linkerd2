@@ -11,7 +11,7 @@ import {
   Row,
   Select
 } from 'antd';
-import { defaultMaxRps, httpMethods, tapQueryPropType } from './util/TapUtils.js';
+import { defaultMaxRps, httpMethods, tapQueryPropType } from './util/TapUtils.jsx';
 
 const colSpan = 5;
 const rowGutter = 16;
@@ -22,11 +22,16 @@ const getResourceList = (resourcesByNs, ns) => {
 export default class TapQueryForm extends React.Component {
   static propTypes = {
     awaitingWebSocketConnection: PropTypes.bool.isRequired,
+    enableAdvancedForm: PropTypes.bool,
     handleTapStart: PropTypes.func.isRequired,
     handleTapStop: PropTypes.func.isRequired,
     query: tapQueryPropType.isRequired,
     tapRequestInProgress: PropTypes.bool.isRequired,
     updateQuery: PropTypes.func.isRequired
+  }
+
+  static defaultProps = {
+    enableAdvancedForm: true
   }
 
   constructor(props) {
@@ -256,14 +261,19 @@ export default class TapQueryForm extends React.Component {
           </Col>
         </Row>
 
-        <Button
-          className="tap-form-toggle"
-          onClick={() => this.toggleAdvancedForm(!this.state.showAdvancedForm)}>
-          { this.state.showAdvancedForm ?
+        {
+          !this.props.enableAdvancedForm ? null :
+          <React.Fragment>
+            <Button
+              className="tap-form-toggle"
+              onClick={() => this.toggleAdvancedForm(!this.state.showAdvancedForm)}>
+              { this.state.showAdvancedForm ?
           "Hide filters" : "Show more request filters" } <Icon type={this.state.showAdvancedForm ? 'up' : 'down'} />
-        </Button>
+            </Button>
 
-        { !this.state.showAdvancedForm ? null : this.renderAdvancedTapForm() }
+            { !this.state.showAdvancedForm ? null : this.renderAdvancedTapForm() }
+          </React.Fragment>
+        }
       </Form>
     );
   }

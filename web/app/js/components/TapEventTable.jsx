@@ -2,7 +2,8 @@ import _ from 'lodash';
 import BaseTable from './BaseTable.jsx';
 import { formatLatencySec } from './util/Utils.js';
 import React from 'react';
-import { Col, Icon, Popover, Row, Table } from 'antd';
+import { srcDstColumn } from './util/TapUtils.jsx';
+import { Col, Icon, Row, Table } from 'antd';
 
 // https://godoc.org/google.golang.org/grpc/codes#Code
 const grpcStatusCodes = {
@@ -36,7 +37,7 @@ const genFilterOptionList = options => _.map(options,  (_v, k) => {
 let tapColumns = filterOptions => [
   {
     title: "ID",
-    dataIndex: "base.id"
+    dataIndex: "requestInit.http.requestInit.id.stream"
   },
   {
     title: "Direction",
@@ -52,16 +53,16 @@ let tapColumns = filterOptions => [
     key: "source",
     dataIndex: "base",
     filters: genFilterOptionList(filterOptions.source),
-    onFilter: (value, row) => row.base.source.str === value,
-    render: d => srcDstColumn(_.get(d, "destination.str"), _.get(d, "sourceMeta.labels", {}))
+    onFilter: (value, row) => row.base.source.pod === value || row.base.source.str === value,
+    render: d => srcDstColumn(_.get(d, "source"), _.get(d, "sourceMeta.labels", {}))
   },
   {
     title: "Destination",
     key: "destination",
     dataIndex: "base",
     filters: genFilterOptionList(filterOptions.destination),
-    onFilter: (value, row) => row.base.destination.str === value,
-    render: d => srcDstColumn(_.get(d, "source.str"), _.get(d, "destinationMeta.labels", {}))
+    onFilter: (value, row) => row.base.destination.pod === value || row.base.destination.str === value,
+    render: d => srcDstColumn(_.get(d, "destination"), _.get(d, "destinationMeta.labels", {}))
   },
   {
     title: "TLS",
@@ -75,39 +76,39 @@ let tapColumns = filterOptions => [
       {
         title: "Authority",
         key: "authority",
-        dataIndex: "req.http.requestInit",
+        dataIndex: "requestInit.http.requestInit",
         filters: genFilterOptionList(filterOptions.authority),
         onFilter: (value, row) =>
-          _.get(row, "req.http.requestInit.authority") === value,
+          _.get(row, "requestInit.http.requestInit.authority") === value,
         render: d => !d ? <Icon type="loading" /> : d.authority
       },
       {
         title: "Path",
         key: "path",
-        dataIndex: "req.http.requestInit",
+        dataIndex: "requestInit.http.requestInit",
         filters: genFilterOptionList(filterOptions.path),
         onFilter: (value, row) =>
-          _.get(row, "req.http.requestInit.path") === value,
+          _.get(row, "requestInit.http.requestInit.path") === value,
         render: d => !d ? <Icon type="loading" /> : d.path
       },
       {
         title: "Scheme",
         key: "scheme",
-        dataIndex: "req.http.requestInit",
+        dataIndex: "requestInit.http.requestInit",
         filters: genFilterOptionList(filterOptions.scheme),
         onFilter: (value, row) =>
-          _.get(row, "req.http.requestInit.scheme.registered") === value,
+          _.get(row, "requestInit.http.requestInit.scheme.registered") === value,
         render: d => !d ? <Icon type="loading" /> : _.get(d, "scheme.registered")
       },
       {
         title: "Method",
         key: "method",
-        dataIndex: "req.http.requestInit",
+        dataIndex: "requestInit.http.requestInit",
         filters: _.map(filterOptions.httpMethod, d => {
           return { text: d, value: d};
         }),
         onFilter: (value, row) =>
-          _.get(row, "req.http.requestInit.method.registered") === value,
+          _.get(row, "requestInit.http.requestInit.method.registered") === value,
         render: d => !d ? <Icon type="loading" /> : _.get(d, "method.registered")
       }
     ]
@@ -118,16 +119,16 @@ let tapColumns = filterOptions => [
       {
         title: "HTTP status",
         key: "http-status",
-        dataIndex: "rsp.http.responseInit",
+        dataIndex: "responseInit.http.responseInit",
         filters: genFilterOptionList(filterOptions.httpStatus),
         onFilter: (value, row) =>
-          _.get(row, "rsp.http.responseInit.httpStatus") + "" === value,
+          _.get(row, "responseInit.http.responseInit.httpStatus") + "" === value,
         render: d => !d ? <Icon type="loading" /> : d.httpStatus
       },
       {
         title: "Latency",
         key: "rsp-latency",
-        dataIndex: "rsp.http.responseInit",
+        dataIndex: "responseInit.http.responseInit",
         render: d => !d ? <Icon type="loading" /> : formatTapLatency(d.sinceRequestInit)
       },
     ]
@@ -138,22 +139,22 @@ let tapColumns = filterOptions => [
       {
         title: "GRPC status",
         key: "grpc-status",
-        dataIndex: "end.http.responseEnd",
+        dataIndex: "responseEnd.http.responseEnd",
         filters: grpcStatusCodeFilters,
         onFilter: (value, row) =>
-          (_.get(row, "end.http.responseEnd.eos.grpcStatusCode") + "") === value,
+          (_.get(row, "responseEnd.http.responseEnd.eos.grpcStatusCode") + "") === value,
         render: d => !d ? <Icon type="loading" /> : _.get(d, "eos.grpcStatusCode")
       },
       {
         title: "Latency",
         key: "end-latency",
-        dataIndex: "end.http.responseEnd",
+        dataIndex: "responseEnd.http.responseEnd",
         render: d => !d ? <Icon type="loading" /> : formatTapLatency(d.sinceResponseInit)
       },
       {
         title: "Response Length (B)",
         key: "rsp-length",
-        dataIndex: "end.http.responseEnd",
+        dataIndex: "responseEnd.http.responseEnd",
         render: d => !d ? <Icon type="loading" /> : d.responseBytes
       },
     ]
@@ -163,18 +164,6 @@ let tapColumns = filterOptions => [
 
 const formatTapLatency = str => {
   return formatLatencySec(str.replace("s", ""));
-};
-
-const srcDstColumn = (ipStr, labels) => {
-  let content = (
-    <React.Fragment>
-      <div>{ !labels.deployment ? null : "deploy/" + labels.deployment }</div>
-      <div>{ !labels.pod ? null : "po/" + labels.pod }</div>
-    </React.Fragment>
-  );
-  return (
-    <Popover content={content} title={ipStr}>{ !labels.pod ? ipStr : "po/" + labels.pod }</Popover>
-  );
 };
 
 const srcDstMetaColumns = [
