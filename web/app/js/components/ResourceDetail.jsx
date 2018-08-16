@@ -49,8 +49,8 @@ export class ResourceDetailBase extends React.Component {
     this.state = this.getInitialState(props.match, props.pathPrefix);
   }
 
-  getInitialState(match) {
-    let resource = getResourceFromUrl(match);
+  getInitialState(match, pathPrefix) {
+    let resource = getResourceFromUrl(match, pathPrefix);
     return {
       namespace: resource.namespace,
       resourceName: resource.name,
