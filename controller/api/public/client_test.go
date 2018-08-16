@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 )
 
@@ -150,54 +149,6 @@ func TestFromByteStreamToProtocolBuffers(t *testing.T) {
 		err := fromByteStreamToProtocolBuffers(reader, protobufMessageToBeFilledWithData)
 		if err == nil {
 			t.Fatal("Expecting error, got nothing")
-		}
-	})
-}
-
-func TestSelfCheck(t *testing.T) {
-	t.Run("Returns failed status check if namespace does not exist", func(t *testing.T) {
-		mockTransport := &mockTransport{}
-		mockTransport.responseToReturn = &http.Response{
-			StatusCode: 404,
-		}
-		mockHttpClient := &http.Client{
-			Transport: mockTransport,
-		}
-
-		apiURL := &url.URL{
-			Scheme: "http",
-			Host:   "some-hostname",
-			Path:   "/",
-		}
-		client, err := newClient(apiURL, mockHttpClient, "testnamespace")
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
-
-		rsp, err := client.SelfCheck(context.Background(), &healthcheckPb.SelfCheckRequest{})
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
-
-		expectedUrlRequested := "http://some-hostname/api/v1/namespaces/testnamespace"
-		actualUrlRequested := mockTransport.requestSent.URL.String()
-		if actualUrlRequested != expectedUrlRequested {
-			t.Fatalf("Expected request to URL [%v], but got [%v]", expectedUrlRequested, actualUrlRequested)
-		}
-
-		if len(rsp.Results) != 1 {
-			t.Fatalf("Expected one check result, got %v", rsp.Results)
-		}
-
-		expectedCheckResult := &healthcheckPb.CheckResult{
-			SubsystemName:         "namespace",
-			CheckDescription:      "control plane namespace exists",
-			Status:                healthcheckPb.CheckStatus_FAIL,
-			FriendlyMessageToUser: "The \"testnamespace\" namespace does not exist",
-		}
-
-		if !proto.Equal(rsp.Results[0], expectedCheckResult) {
-			t.Fatalf("Expected check result to be [%v], but got [%v]", expectedCheckResult, rsp.Results[0])
 		}
 	})
 }

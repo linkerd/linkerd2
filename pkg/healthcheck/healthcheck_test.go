@@ -1,125 +1,206 @@
 package healthcheck
 
 import (
+	"context"
+	"fmt"
 	"reflect"
 	"testing"
 
+	"github.com/linkerd/linkerd2/controller/api/public"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 )
 
-type mockSubsystem struct {
-	checksToReturn []*healthcheckPb.CheckResult
-}
+func TestHealthChecker(t *testing.T) {
+	nullObserver := func(_, _ string, _ error) {}
 
-func (m *mockSubsystem) SelfCheck() []*healthcheckPb.CheckResult {
-	return m.checksToReturn
-}
-
-func TestSelfChecker(t *testing.T) {
-	workingSubsystem1 := &mockSubsystem{
-		checksToReturn: []*healthcheckPb.CheckResult{
-			{SubsystemName: "w1", CheckDescription: "w1a", Status: healthcheckPb.CheckStatus_OK},
-			{SubsystemName: "w1", CheckDescription: "w1b", Status: healthcheckPb.CheckStatus_OK},
-		},
-	}
-	workingSubsystem2 := &mockSubsystem{
-		checksToReturn: []*healthcheckPb.CheckResult{
-			{SubsystemName: "w2", CheckDescription: "w2a", Status: healthcheckPb.CheckStatus_OK},
-			{SubsystemName: "w2", CheckDescription: "w2b", Status: healthcheckPb.CheckStatus_OK},
+	passingCheck1 := &checker{
+		category:    "cat1",
+		description: "desc1",
+		check: func() error {
+			return nil
 		},
 	}
 
-	failingSubsystem1 := &mockSubsystem{
-		checksToReturn: []*healthcheckPb.CheckResult{
-			{SubsystemName: "f1", CheckDescription: "fa", Status: healthcheckPb.CheckStatus_OK},
-			{SubsystemName: "f1", CheckDescription: "fb", Status: healthcheckPb.CheckStatus_FAIL},
+	passingCheck2 := &checker{
+		category:    "cat2",
+		description: "desc2",
+		check: func() error {
+			return nil
 		},
 	}
 
-	errorSubsystem1 := &mockSubsystem{
-		checksToReturn: []*healthcheckPb.CheckResult{
-			{SubsystemName: "e1", CheckDescription: "ea", Status: healthcheckPb.CheckStatus_ERROR},
-			{SubsystemName: "e1", CheckDescription: "eb", Status: healthcheckPb.CheckStatus_OK},
+	failingCheck := &checker{
+		category:    "cat3",
+		description: "desc3",
+		check: func() error {
+			return fmt.Errorf("error")
+		},
+	}
+
+	passingRPCClient := public.MockApiClient{
+		SelfCheckResponseToReturn: &healthcheckPb.SelfCheckResponse{
+			Results: []*healthcheckPb.CheckResult{
+				&healthcheckPb.CheckResult{
+					SubsystemName:    "rpc1",
+					CheckDescription: "rpc desc1",
+					Status:           healthcheckPb.CheckStatus_OK,
+				},
+			},
+		},
+	}
+
+	passingRPCCheck := &checker{
+		category:    "cat4",
+		description: "desc4",
+		checkRPC: func() (*healthcheckPb.SelfCheckResponse, error) {
+			return passingRPCClient.SelfCheck(context.Background(),
+				&healthcheckPb.SelfCheckRequest{})
+		},
+	}
+
+	failingRPCClient := public.MockApiClient{
+		SelfCheckResponseToReturn: &healthcheckPb.SelfCheckResponse{
+			Results: []*healthcheckPb.CheckResult{
+				&healthcheckPb.CheckResult{
+					SubsystemName:         "rpc2",
+					CheckDescription:      "rpc desc2",
+					Status:                healthcheckPb.CheckStatus_FAIL,
+					FriendlyMessageToUser: "rpc error",
+				},
+			},
+		},
+	}
+
+	failingRPCCheck := &checker{
+		category:    "cat5",
+		description: "desc5",
+		checkRPC: func() (*healthcheckPb.SelfCheckResponse, error) {
+			return failingRPCClient.SelfCheck(context.Background(),
+				&healthcheckPb.SelfCheckRequest{})
+		},
+	}
+
+	fatalCheck := &checker{
+		category:    "cat6",
+		description: "desc6",
+		fatal:       true,
+		check: func() error {
+			return fmt.Errorf("fatal")
 		},
 	}
 
 	t.Run("Notifies observer of all results", func(t *testing.T) {
-		healthChecker := MakeHealthChecker()
-
-		healthChecker.Add(workingSubsystem1)
-		healthChecker.Add(workingSubsystem2)
-		healthChecker.Add(failingSubsystem1)
-
-		observedResults := make([]*healthcheckPb.CheckResult, 0)
-		observer := func(r *healthcheckPb.CheckResult) {
-			observedResults = append(observedResults, r)
+		hc := HealthChecker{
+			checkers: []*checker{
+				passingCheck1,
+				passingCheck2,
+				failingCheck,
+				passingRPCCheck,
+				failingRPCCheck,
+			},
 		}
 
-		expectedResults := make([]*healthcheckPb.CheckResult, 0)
-		expectedResults = append(expectedResults, workingSubsystem1.checksToReturn...)
-		expectedResults = append(expectedResults, workingSubsystem2.checksToReturn...)
-		expectedResults = append(expectedResults, failingSubsystem1.checksToReturn...)
-
-		healthChecker.PerformCheck(observer)
-
-		observedLength := len(observedResults)
-		expectedLength := len(expectedResults)
-
-		if expectedLength != observedLength {
-			t.Fatalf("Expecting observed check to contain [%d] check, got [%d]", expectedLength, observedLength)
-		}
-
-		observedResultsSet := make(map[string]bool)
-		for _, result := range observedResults {
-			observedResultsSet[result.CheckDescription] = true
-		}
-
-		for _, expected := range expectedResults {
-			if !observedResultsSet[expected.CheckDescription] {
-				t.Fatalf("Expected observed results to contain [%v], but was: %v", expected,
-					reflect.ValueOf(observedResultsSet).MapKeys())
+		observedResults := make([]string, 0)
+		observer := func(category, description string, err error) {
+			res := fmt.Sprintf("%s %s", category, description)
+			if err != nil {
+				res += fmt.Sprintf(": %s", err)
 			}
+			observedResults = append(observedResults, res)
+		}
+
+		expectedResults := []string{
+			"cat1 desc1",
+			"cat2 desc2",
+			"cat3 desc3: error",
+			"cat4 desc4",
+			"cat4[rpc1] rpc desc1",
+			"cat5 desc5",
+			"cat5[rpc2] rpc desc2: rpc error",
+		}
+
+		hc.RunChecks(observer)
+
+		if !reflect.DeepEqual(observedResults, expectedResults) {
+			t.Fatalf("Expected results %v, but got %v", expectedResults, observedResults)
 		}
 	})
 
 	t.Run("Is successful if all checks were successful", func(t *testing.T) {
-		healthChecker := MakeHealthChecker()
+		hc := HealthChecker{
+			checkers: []*checker{
+				passingCheck1,
+				passingCheck2,
+				passingRPCCheck,
+			},
+		}
 
-		healthChecker.Add(workingSubsystem1)
-		healthChecker.Add(workingSubsystem2)
+		success := hc.RunChecks(nullObserver)
 
-		checkStatus := healthChecker.PerformCheck(nil)
-
-		if checkStatus != healthcheckPb.CheckStatus_OK {
-			t.Fatalf("Expecting check to be successful, but got [%s]", checkStatus)
+		if !success {
+			t.Fatalf("Expecting checks to be successful, but got [%t]", success)
 		}
 	})
 
-	t.Run("Is failure if even a single test failed and no errors", func(t *testing.T) {
-		healthChecker := MakeHealthChecker()
+	t.Run("Is not successful if one check fails", func(t *testing.T) {
+		hc := HealthChecker{
+			checkers: []*checker{
+				passingCheck1,
+				failingCheck,
+				passingCheck2,
+			},
+		}
 
-		healthChecker.Add(workingSubsystem1)
-		healthChecker.Add(failingSubsystem1)
-		healthChecker.Add(workingSubsystem2)
+		success := hc.RunChecks(nullObserver)
 
-		checkStatus := healthChecker.PerformCheck(nil)
-
-		if checkStatus != healthcheckPb.CheckStatus_FAIL {
-			t.Fatalf("Expecting check to be error, but got [%s]", checkStatus)
+		if success {
+			t.Fatalf("Expecting checks to not be successful, but got [%t]", success)
 		}
 	})
 
-	t.Run("Is error if even a single test errored", func(t *testing.T) {
-		healthChecker := MakeHealthChecker()
+	t.Run("Is not successful if one RPC check fails", func(t *testing.T) {
+		hc := HealthChecker{
+			checkers: []*checker{
+				passingCheck1,
+				failingRPCCheck,
+				passingCheck2,
+			},
+		}
 
-		healthChecker.Add(workingSubsystem1)
-		healthChecker.Add(failingSubsystem1)
-		healthChecker.Add(errorSubsystem1)
+		success := hc.RunChecks(nullObserver)
 
-		checkStatus := healthChecker.PerformCheck(nil)
+		if success {
+			t.Fatalf("Expecting checks to not be successful, but got [%t]", success)
+		}
+	})
 
-		if checkStatus != healthcheckPb.CheckStatus_ERROR {
-			t.Fatalf("Expecting check to be error, but got [%s]", checkStatus)
+	t.Run("Does not run remaining check if fatal check fails", func(t *testing.T) {
+		hc := HealthChecker{
+			checkers: []*checker{
+				passingCheck1,
+				fatalCheck,
+				passingCheck2,
+			},
+		}
+
+		observedResults := make([]string, 0)
+		observer := func(category, description string, err error) {
+			res := fmt.Sprintf("%s %s", category, description)
+			if err != nil {
+				res += fmt.Sprintf(": %s", err)
+			}
+			observedResults = append(observedResults, res)
+		}
+
+		expectedResults := []string{
+			"cat1 desc1",
+			"cat6 desc6: fatal",
+		}
+
+		hc.RunChecks(observer)
+
+		if !reflect.DeepEqual(observedResults, expectedResults) {
+			t.Fatalf("Expected results %v, but got %v", expectedResults, observedResults)
 		}
 	})
 }

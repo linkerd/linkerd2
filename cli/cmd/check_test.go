@@ -2,41 +2,27 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"testing"
 
-	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
-	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 )
 
 func TestCheckStatus(t *testing.T) {
 	t.Run("Prints expected output", func(t *testing.T) {
-		kubeApi := &k8s.MockKubeApi{}
-		kubeApi.SelfCheckResultsToReturn = []*healthcheckPb.CheckResult{
-			{
-				SubsystemName:         k8s.KubeapiSubsystemName,
-				CheckDescription:      k8s.KubeapiClientCheckDescription,
-				Status:                healthcheckPb.CheckStatus_FAIL,
-				FriendlyMessageToUser: "This should contain instructions for fail",
-			},
-			{
-				SubsystemName:         k8s.KubeapiSubsystemName,
-				CheckDescription:      k8s.KubeapiAccessCheckDescription,
-				Status:                healthcheckPb.CheckStatus_OK,
-				FriendlyMessageToUser: "This shouldn't be printed",
-			},
-			{
-				SubsystemName:         k8s.KubeapiSubsystemName,
-				CheckDescription:      k8s.KubeapiVersionCheckDescription,
-				Status:                healthcheckPb.CheckStatus_ERROR,
-				FriendlyMessageToUser: "This should contain instructions for err",
-			},
-		}
+		hc := healthcheck.NewHealthChecker()
+		hc.Add("category", "check1", func() error {
+			return nil
+		})
+		hc.Add("category", "check2", func() error {
+			return fmt.Errorf("This should contain instructions for fail")
+		})
 
 		output := bytes.NewBufferString("")
-		checkStatus(output, kubeApi)
+		runChecks(output, hc)
 
-		goldenFileBytes, err := ioutil.ReadFile("testdata/status_busy_output.golden")
+		goldenFileBytes, err := ioutil.ReadFile("testdata/check_output.golden")
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}

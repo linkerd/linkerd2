@@ -45,23 +45,9 @@ func (c *grpcOverHttpClient) Version(ctx context.Context, req *pb.Empty, _ ...gr
 }
 
 func (c *grpcOverHttpClient) SelfCheck(ctx context.Context, req *healthcheckPb.SelfCheckRequest, _ ...grpc.CallOption) (*healthcheckPb.SelfCheckResponse, error) {
-	checkResponse := &healthcheckPb.SelfCheckResponse{
-		Results: []*healthcheckPb.CheckResult{c.checkIfNamespaceExists()},
-	}
-
-	// If the namespace does not exist, abort before making the SelfCheck API call
-	if checkResponse.Results[0].Status != healthcheckPb.CheckStatus_OK {
-		return checkResponse, nil
-	}
-
 	var msg healthcheckPb.SelfCheckResponse
 	err := c.apiRequest(ctx, "SelfCheck", req, &msg)
-	if err != nil {
-		return checkResponse, err
-	}
-
-	checkResponse.Results = append(checkResponse.Results, msg.Results...)
-	return checkResponse, nil
+	return &msg, err
 }
 
 func (c *grpcOverHttpClient) ListPods(ctx context.Context, req *pb.ListPodsRequest, _ ...grpc.CallOption) (*pb.ListPodsResponse, error) {
@@ -143,39 +129,6 @@ func (c *grpcOverHttpClient) endpointNameToPublicApiUrl(endpoint string) *url.UR
 	return c.serverURL.ResolveReference(&url.URL{Path: endpoint})
 }
 
-func (c *grpcOverHttpClient) checkIfNamespaceExists() *healthcheckPb.CheckResult {
-	checkResult := &healthcheckPb.CheckResult{
-		SubsystemName:    "namespace",
-		CheckDescription: "control plane namespace exists",
-		Status:           healthcheckPb.CheckStatus_OK,
-	}
-
-	url := *c.serverURL
-	url.Path = fmt.Sprintf("/api/v1/namespaces/%s", c.controlPlaneNamespace)
-	log.Debugf("Making GET request to [%s]", url.String())
-
-	rsp, err := c.httpClient.Get(url.String())
-	if err != nil {
-		checkResult.Status = healthcheckPb.CheckStatus_ERROR
-		checkResult.FriendlyMessageToUser = fmt.Sprintf("Error calling the Kubernetes API: %s", err)
-		return checkResult
-	}
-
-	if rsp.StatusCode == http.StatusNotFound {
-		checkResult.Status = healthcheckPb.CheckStatus_FAIL
-		checkResult.FriendlyMessageToUser = fmt.Sprintf("The \"%s\" namespace does not exist", c.controlPlaneNamespace)
-		return checkResult
-	}
-
-	if rsp.StatusCode != http.StatusOK {
-		checkResult.Status = healthcheckPb.CheckStatus_ERROR
-		checkResult.FriendlyMessageToUser = fmt.Sprintf("Unexpected Kubernetes API response: %s", rsp.Status)
-		return checkResult
-	}
-
-	return checkResult
-}
-
 type tapClient struct {
 	ctx    context.Context
 	reader *bufio.Reader
@@ -225,8 +178,8 @@ func newClient(apiURL *url.URL, httpClientToUse *http.Client, controlPlaneNamesp
 	}, nil
 }
 
-func NewInternalClient(controlPlaneNamespace string, kubernetesApiHost string) (pb.ApiClient, error) {
-	apiURL, err := url.Parse(fmt.Sprintf("http://%s/", kubernetesApiHost))
+func NewInternalClient(controlPlaneNamespace string, kubeAPIHost string) (pb.ApiClient, error) {
+	apiURL, err := url.Parse(fmt.Sprintf("http://%s/", kubeAPIHost))
 	if err != nil {
 		return nil, err
 	}
@@ -234,13 +187,13 @@ func NewInternalClient(controlPlaneNamespace string, kubernetesApiHost string) (
 	return newClient(apiURL, http.DefaultClient, controlPlaneNamespace)
 }
 
-func NewExternalClient(controlPlaneNamespace string, kubeApi k8s.KubernetesApi) (pb.ApiClient, error) {
-	apiURL, err := kubeApi.UrlFor(controlPlaneNamespace, "/services/http:api:http/proxy/")
+func NewExternalClient(controlPlaneNamespace string, kubeAPI *k8s.KubernetesAPI) (pb.ApiClient, error) {
+	apiURL, err := kubeAPI.UrlFor(controlPlaneNamespace, "/services/http:api:http/proxy/")
 	if err != nil {
 		return nil, err
 	}
 
-	httpClientToUse, err := kubeApi.NewClient()
+	httpClientToUse, err := kubeAPI.NewClient()
 	if err != nil {
 		return nil, err
 	}
