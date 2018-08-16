@@ -12,11 +12,11 @@ import { metricsPropType, processSingleResourceRollup } from './util/MetricUtils
 import './../../css/list.css';
 import 'whatwg-fetch';
 
-const getResourceFromUrl = match => {
+const getResourceFromUrl = (match, pathPrefix) => {
   let resource = {
     namespace: match.params.namespace
   };
-  let regExp = RegExp(`/namespaces/${match.params.namespace}/(.+)/(.+)`);
+  let regExp = RegExp(`${pathPrefix || ""}/namespaces/${match.params.namespace}/([^/]+)/([^/]+)`);
   let urlParts = match.url.match(regExp);
 
   resource.type = singularResource(urlParts[1]);
@@ -26,7 +26,6 @@ const getResourceFromUrl = match => {
     console.error("Failed to extract resource from URL");
   }
   return resource;
-
 };
 
 export class ResourceDetailBase extends React.Component {
@@ -42,11 +41,12 @@ export class ResourceDetailBase extends React.Component {
     error:  apiErrorPropType,
     loading: PropTypes.bool.isRequired,
     match: PropTypes.shape({}).isRequired,
+    pathPrefix: PropTypes.string.isRequired
   }
 
   constructor(props) {
     super(props);
-    this.state = this.getInitialState(props.match);
+    this.state = this.getInitialState(props.match, props.pathPrefix);
   }
 
   getInitialState(match) {
@@ -110,8 +110,8 @@ export class ResourceDetailBase extends React.Component {
 
 export default withREST(
   ResourceDetailBase,
-  ({api, match}) => {
-    let resource = getResourceFromUrl(match);
+  ({api, match, pathPrefix}) => {
+    let resource = getResourceFromUrl(match, pathPrefix);
     return [api.fetchMetrics(api.urlsForResource(resource.type, resource.namespace) + "&resource_name=" + resource.name)];
   },
   {
