@@ -1,5 +1,5 @@
 import _ from 'lodash';
-import Percentage from './Percentage';
+import Percentage from './Percentage.js';
 import PropTypes from 'prop-types';
 
 const getPodCategorization = pod => {
@@ -118,6 +118,11 @@ const processStatTable = table => {
       latency: getLatency(row),
       tlsRequestPercent: getTlsRequestPercentage(row),
       added: row.meshedPodCount === row.runningPodCount,
+      pods: {
+        totalPods: row.runningPodCount,
+        meshedPods: row.meshedPodCount,
+        meshedPercentage: new Percentage(parseInt(row.meshedPodCount, 10), parseInt(row.runningPodCount, 10))
+      },
       errors: row.errorsByPod
     };
   })

@@ -43,6 +43,15 @@ const formatTitle = (title, tooltipText) => {
 
 };
 
+const meshedColumn = {
+  title: formatTitle("Meshed"),
+  dataIndex: "pods",
+  key: "pods",
+  className: "numeric",
+  sorter: (a, b) => numericSort(a.pods.totalPods, b.pods.totalPods),
+  render: p => p.meshedPods + "/" + p.totalPods
+};
+
 const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceColumn, PrefixedLink, showGrafanaLink) => {
   let nsColumn = [
     {
@@ -141,6 +150,11 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
       render: d => _.isNil(d) || d.get() === -1 ? "---" : d.prettyRate()
     }
   ];
+
+  // don't add the meshed column on a Authority MetricsTable
+  if (resource !== "authority") {
+    columns.splice(1, 0, meshedColumn);
+  }
 
   if (!showNamespaceColumn) {
     return columns;
