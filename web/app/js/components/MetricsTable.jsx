@@ -83,11 +83,16 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
         } else {
           if (showGrafanaLink) {
             nameContents = (
-              <GrafanaLink
-                name={row.name}
-                namespace={row.namespace}
-                resource={resource}
-                PrefixedLink={PrefixedLink} />
+              <React.Fragment>
+                <PrefixedLink to={"/namespaces/" + row.namespace + "/" + resource + "s/" + row.name}>
+                  {row.name}
+                </PrefixedLink>
+                <GrafanaLink
+                  name={row.name}
+                  namespace={row.namespace}
+                  resource={resource}
+                  PrefixedLink={PrefixedLink} />
+              </React.Fragment>
             );
           } else {
             nameContents = row.name;
