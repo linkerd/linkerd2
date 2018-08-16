@@ -4,13 +4,30 @@ import ErrorBanner from './ErrorBanner.jsx';
 import MetricsTable from './MetricsTable.jsx';
 import PageHeader from './PageHeader.jsx';
 import PropTypes from 'prop-types';
-import queryString from 'query-string';
 import React from 'react';
+import { singularResource } from './util/Utils.js';
 import { Spin } from 'antd';
 import withREST from './util/withREST.jsx';
 import { metricsPropType, processSingleResourceRollup } from './util/MetricUtils.js';
 import './../../css/list.css';
 import 'whatwg-fetch';
+
+const getResourceFromUrl = match => {
+  let resource = {
+    namespace: match.params.namespace
+  };
+  let regExp = RegExp(`/namespaces/${match.params.namespace}/(.+)/(.+)`);
+  let urlParts = match.url.match(regExp);
+
+  resource.type = singularResource(urlParts[1]);
+  resource.name = urlParts[2];
+
+  if (match.params[resource.type] !== resource.name) {
+    console.error("Failed to extract resource from URL");
+  }
+  return resource;
+
+};
 
 export class ResourceDetailBase extends React.Component {
   static defaultProps = {
@@ -24,24 +41,22 @@ export class ResourceDetailBase extends React.Component {
     data: PropTypes.arrayOf(metricsPropType.isRequired).isRequired,
     error:  apiErrorPropType,
     loading: PropTypes.bool.isRequired,
-    location: PropTypes.shape({ search: PropTypes.string }).isRequired,
+    match: PropTypes.shape({}).isRequired,
   }
 
   constructor(props) {
     super(props);
-    let query = queryString.parse(props.location.search);
-
-    this.state = this.getInitialState(query);
+    this.state = this.getInitialState(props.match);
   }
 
-  getInitialState(params) {
+  getInitialState(match) {
+    let resource = getResourceFromUrl(match);
     return {
-      namespace: params.namespace,
-      resourceName: params.resource_name,
-      resourceType: params.resource_type
+      namespace: resource.namespace,
+      resourceName: resource.name,
+      resourceType: resource.type
     };
   }
-
 
   banner = () => {
     const {error} = this.props;
@@ -54,9 +69,9 @@ export class ResourceDetailBase extends React.Component {
   }
 
   content = () => {
-    const {data, loading} = this.props;
+    const {data, loading, error} = this.props;
 
-    if (loading) {
+    if (loading && !error) {
       return <Spin size="large" />;
     }
 
@@ -95,10 +110,9 @@ export class ResourceDetailBase extends React.Component {
 
 export default withREST(
   ResourceDetailBase,
-  ({api, location}) => {
-    // TODO: handle cases where query is not complete
-    let query = queryString.parse(location.search);
-    return [api.fetchMetrics(api.urlsForResource(query.resource_type, query.namespace) + "&resource_name=" + query.resource_name)];
+  ({api, match}) => {
+    let resource = getResourceFromUrl(match);
+    return [api.fetchMetrics(api.urlsForResource(resource.type, resource.namespace) + "&resource_name=" + resource.name)];
   },
   {
     resetProps: ['resource'],

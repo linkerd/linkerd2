@@ -122,3 +122,33 @@ export const friendlyTitle = resource => {
   }
   return titles;
 };
+
+/*
+  Get a singular resource name from a plural resource
+*/
+export const singularResource = resource => {
+  if (resource === "authorities") {
+    return "authority";
+  } else {return resource.replace(/s$/, "");}
+};
+
+/*
+  produce octets given an ip address
+*/
+const decodeIPToOctets = ip => {
+  ip = parseInt(ip, 10);
+  return [
+    ip >> 24 & 255,
+    ip >> 16 & 255,
+    ip >> 8 & 255,
+    ip & 255
+  ];
+};
+
+/*
+  converts an address to an ipv4 formatted host:port pair
+*/
+export const publicAddressToString = (ipv4, port) => {
+  let octets = decodeIPToOctets(ipv4);
+  return octets.join(".") + ":" + port;
+};

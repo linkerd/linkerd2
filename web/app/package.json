@@ -21,7 +21,6 @@
     "moment": "^2.18.1",
     "path": "^0.12.7",
     "prop-types": "^15.6.1",
-    "query-string": "^6.1.0",
     "react": "^16.2.0",
     "react-dom": "^16.2.0",
     "react-router": "^4.2.0",

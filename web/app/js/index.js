@@ -42,8 +42,10 @@ let applicationHtml = (
               <Switch>
                 <Redirect exact from={`${pathPrefix}/`} to={`${pathPrefix}/servicemesh`} />
                 <Route path={`${pathPrefix}/servicemesh`} component={ServiceMesh} />
-                <Route path={`${pathPrefix}/namespaces/:namespace`} component={Namespace} />
-                <Route path={`${pathPrefix}/resource`} component={ResourceDetail} />
+                <Route exact path={`${pathPrefix}/namespaces/:namespace`} component={Namespace} />
+                <Route path={`${pathPrefix}/namespaces/:namespace/pods/:pod`} component={ResourceDetail} />
+                <Route path={`${pathPrefix}/namespaces/:namespace/deployments/:deployment`} component={ResourceDetail} />
+                <Route path={`${pathPrefix}/namespaces/:namespace/replicationcontrollers/:replicationcontroller`} component={ResourceDetail} />
                 <Route path={`${pathPrefix}/tap`} component={Tap} />
                 <Route path={`${pathPrefix}/top`} component={Top} />
                 <Route
