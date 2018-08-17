@@ -30,8 +30,8 @@
     "sinon": "^4.1.2",
     "sinon-chai": "^2.14.0",
     "sinon-stub-promise": "^4.0.0",
-    "webpack": "^4.1.12",
-    "webpack-dev-server": "^3.1.4",
+    "webpack": "^4.16.5",
+    "webpack-dev-server": "^3.1.5",
     "whatwg-fetch": "^2.0.3"
   },
   "devDependencies": {

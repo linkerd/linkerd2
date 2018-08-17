@@ -143,27 +143,6 @@ h2, h3, h4, h5, h6 {
   padding: 8px 0;
 }
 
-/* fancy borders */
-.border-container {
-  padding: var(--base-width);
-  background-repeat: space;
-  margin-bottom: calc(var(--base-width)*2);
-}
-.border-container-content {
-  overflow: hidden;
-  padding: var(--base-width);
-  background-color: white;
-}
-.border-container.border-bad {
-  background-image: url(./../img/red_check.png);
-}
-.border-container.border-good {
-  background-image: url(./../img/green_check.png);
-}
-.border-container.border-neutral {
-  background-image: url(./../img/grey_check.png);
-}
-
 .error-message-container {
   overflow: auto;
   width: 100%;

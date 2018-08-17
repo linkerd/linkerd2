@@ -1,15 +1,14 @@
 import _ from 'lodash';
 import ApiHelpers from './util/ApiHelpers.jsx';
 import { Link } from 'react-router-dom';
-import logo from './../../img/logo-only.svg';
 import PropTypes from 'prop-types';
 import React from 'react';
 import ReactRouterPropTypes from 'react-router-prop-types';
 import SocialLinks from './SocialLinks.jsx';
 import Version from './Version.jsx';
 import { withContext } from './util/AppContext.jsx';
-import wordLogo from './../../img/word-logo.svg';
 import { Icon, Layout, Menu } from 'antd';
+import { linkerdLogoOnly, linkerdWordLogo } from './util/SvgWrappers.jsx';
 import './../../css/sidebar.css';
 
 class Sidebar extends React.Component {
@@ -133,13 +132,7 @@ class Sidebar extends React.Component {
 
           <div className={`sidebar-menu-header ${this.state.collapsed ? "collapsed" : ""}`}>
             <PrefixedLink to="/servicemesh">
-              <img
-                alt="Linkerd logo"
-                src={this.state.collapsed ? logo : wordLogo}
-                onError={e => {
-                  // awful hack to deal with the fact that we don't serve assets off absolute paths
-                  e.target.src = e.target.src.replace(/(.*)(\/[a-zA-Z]*)(\/dist)(.*)/, "$1$3$4");
-                }} />
+              {this.state.collapsed ? linkerdLogoOnly : linkerdWordLogo}
             </PrefixedLink>
           </div>
 
