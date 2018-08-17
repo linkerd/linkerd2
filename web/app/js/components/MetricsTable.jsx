@@ -74,6 +74,7 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
     {
       title: formatTitle("Dash", "Grafana Dashboard"),
       key: "grafanaDashboard",
+      className: "numeric",
       render: row => !row.added ? null : (
         <GrafanaLink
           name={row.name}
