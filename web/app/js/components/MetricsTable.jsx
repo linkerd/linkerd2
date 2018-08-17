@@ -52,7 +52,9 @@ const meshedColumn = {
   render: p => p.meshedPods + "/" + p.totalPods
 };
 
-const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceColumn, PrefixedLink, showGrafanaLink) => {
+const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceColumn, PrefixedLink) => {
+  let isAuthorityTable = resource === "authority";
+
   let nsColumn = [
     {
       title: formatTitle("Namespace"),
@@ -68,6 +70,19 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
     }
   ];
 
+  let grafanaLinkColumn = [
+    {
+      title: formatTitle("Dash", "Grafana Dashboard"),
+      key: "grafanaDashboard",
+      render: row => !row.added ? null : (
+        <GrafanaLink
+          name={row.name}
+          namespace={row.namespace}
+          resource={resource}
+          PrefixedLink={PrefixedLink} />
+      )}
+  ];
+
   let columns = [
     {
       title: formatTitle(friendlyTitle(resource).singular),
@@ -78,25 +93,14 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
         let nameContents;
         if (resource === "namespace") {
           nameContents = <PrefixedLink to={"/namespaces/" + row.name}>{row.name}</PrefixedLink>;
-        } else if (!row.added) {
+        } else if (!row.added || isAuthorityTable) {
           nameContents = row.name;
         } else {
-          if (showGrafanaLink) {
-            nameContents = (
-              <React.Fragment>
-                <PrefixedLink to={"/namespaces/" + row.namespace + "/" + resource + "s/" + row.name}>
-                  {row.name}
-                </PrefixedLink>
-                <GrafanaLink
-                  name={row.name}
-                  namespace={row.namespace}
-                  resource={resource}
-                  PrefixedLink={PrefixedLink} />
-              </React.Fragment>
-            );
-          } else {
-            nameContents = row.name;
-          }
+          nameContents = (
+            <PrefixedLink to={"/namespaces/" + row.namespace + "/" + resource + "s/" + row.name}>
+              {row.name}
+            </PrefixedLink>
+          );
         }
         return (
           <React.Fragment>
@@ -157,8 +161,9 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
   ];
 
   // don't add the meshed column on a Authority MetricsTable
-  if (resource !== "authority") {
+  if (!isAuthorityTable) {
     columns.splice(1, 0, meshedColumn);
+    columns = _.concat(columns, grafanaLinkColumn);
   }
 
   if (!showNamespaceColumn) {
@@ -171,8 +176,7 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
 /** @extends React.Component */
 export class MetricsTableBase extends BaseTable {
   static defaultProps = {
-    showGrafanaLink: true,
-    showNamespaceColumn: true,
+    showNamespaceColumn: true
   }
 
   static propTypes = {
@@ -181,7 +185,6 @@ export class MetricsTableBase extends BaseTable {
     }).isRequired,
     metrics: PropTypes.arrayOf(processedMetricsPropType.isRequired).isRequired,
     resource: PropTypes.string.isRequired,
-    showGrafanaLink: PropTypes.bool,
     showNamespaceColumn: PropTypes.bool
   }
 
@@ -235,18 +238,12 @@ export class MetricsTableBase extends BaseTable {
       showNsColumn = false;
     }
 
-    let showGrafanaLink = this.props.showGrafanaLink;
-    if (resource === "authority") {
-      showGrafanaLink = false;
-    }
-
     let columns = _.compact(columnDefinitions(
       resource,
       namespaceFilterText,
       this.onFilterDropdownVisibleChange,
       showNsColumn,
-      this.api.PrefixedLink,
-      showGrafanaLink
+      this.api.PrefixedLink
     ));
 
     let locale = {
