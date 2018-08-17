@@ -12,5 +12,4 @@ web/app/dist
 web/app/yarn-error.log
 .protoc
 .gorun
-.dep
-.dep.exe
+.dep*
