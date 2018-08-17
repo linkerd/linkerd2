@@ -9,7 +9,6 @@ import { singularResource } from './util/Utils.js';
 import { Spin } from 'antd';
 import withREST from './util/withREST.jsx';
 import { metricsPropType, processSingleResourceRollup } from './util/MetricUtils.js';
-import './../../css/list.css';
 import 'whatwg-fetch';
 
 const getResourceFromUrl = (match, pathPrefix) => {

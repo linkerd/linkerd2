@@ -9,7 +9,6 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import { Spin } from 'antd';
 import { withContext } from './util/AppContext.jsx';
-import './../../css/list.css';
 import 'whatwg-fetch';
 
 class Namespaces extends React.Component {
