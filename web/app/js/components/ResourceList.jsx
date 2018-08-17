@@ -41,7 +41,7 @@ export class ResourceListBase extends React.Component {
     }
 
     let processedMetrics = [];
-    if (_.has(data, '[0].ok')) {
+    if (_.has(data, '[0]')) {
       processedMetrics = processSingleResourceRollup(data[0]);
     }
 
