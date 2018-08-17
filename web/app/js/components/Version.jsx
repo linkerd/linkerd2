@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { withContext } from './util/AppContext.jsx';
-import './../../css/version.css';
 
 class Version extends React.Component {
   static defaultProps = {
