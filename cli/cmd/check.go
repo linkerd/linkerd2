@@ -32,11 +32,11 @@ func newCmdCheck() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "check",
-		Short: "Check your Linkerd installation for potential problems",
-		Long: `Check your Linkerd installation for potential problems.
+		Short: "Check the Linkerd installation for potential problems",
+		Long: `Check the Linkerd installation for potential problems.
 
-The check command will perform various checks of your local system, the Linkerd
-control plane, and connectivity between them. If the command encounters a
+The check command will perform a series of checks to validate that the linkerd
+CLI and control plane are configured correctly. If the command encounters a
 failure it will print additional information about the failure and exit with a
 non-zero exit code.`,
 		Args: cobra.NoArgs,
