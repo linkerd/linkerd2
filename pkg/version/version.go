@@ -9,9 +9,7 @@ import (
 	"os"
 	"time"
 
-	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
-	"github.com/linkerd/linkerd2/pkg/healthcheck"
 )
 
 // DO NOT EDIT
@@ -19,10 +17,8 @@ import (
 var Version = undefinedVersion
 
 const (
-	undefinedVersion             = "undefined"
-	VersionSubsystemName         = "linkerd-version"
-	CliCheckDescription          = "cli is up-to-date"
-	ControlPlaneCheckDescription = "control plane is up-to-date"
+	undefinedVersion = "undefined"
+	versionCheckURL  = "https://versioncheck.linkerd.io/version.json"
 )
 
 func init() {
@@ -39,104 +35,61 @@ func init() {
 	}
 }
 
-var httpClientTimeout = 10 * time.Second
+func CheckClientVersion(latestVersion string) error {
+	if Version != latestVersion {
+		return fmt.Errorf("is running version %s but the latest version is %s",
+			Version, latestVersion)
+	}
 
-type versionStatusChecker struct {
-	version         string
-	versionCheckURL string
-	versionOverride string
-	publicApiClient pb.ApiClient
-	httpClient      http.Client
+	return nil
 }
 
-func (v versionStatusChecker) SelfCheck() []*healthcheckPb.CheckResult {
-	cliVersion := v.version
-	cliIsUpToDate := &healthcheckPb.CheckResult{
-		Status:           healthcheckPb.CheckStatus_OK,
-		SubsystemName:    VersionSubsystemName,
-		CheckDescription: CliCheckDescription,
-	}
-
-	latestVersion, err := v.getLatestVersion()
-	if err != nil {
-		cliIsUpToDate.Status = healthcheckPb.CheckStatus_ERROR
-		cliIsUpToDate.FriendlyMessageToUser = err.Error()
-		return []*healthcheckPb.CheckResult{cliIsUpToDate}
-	}
-	if cliVersion != latestVersion {
-		cliIsUpToDate.Status = healthcheckPb.CheckStatus_FAIL
-		cliIsUpToDate.FriendlyMessageToUser = fmt.Sprintf("is running version %s but the latest version is %s", cliVersion, latestVersion)
-	}
-
-	controlPlaneIsUpToDate := &healthcheckPb.CheckResult{
-		Status:           healthcheckPb.CheckStatus_OK,
-		SubsystemName:    VersionSubsystemName,
-		CheckDescription: ControlPlaneCheckDescription,
-	}
-
-	controlPlaneVersion, err := v.getServerVersion()
-	if err != nil {
-		controlPlaneIsUpToDate.Status = healthcheckPb.CheckStatus_ERROR
-		controlPlaneIsUpToDate.FriendlyMessageToUser = err.Error()
-		return []*healthcheckPb.CheckResult{controlPlaneIsUpToDate}
-	}
-	if controlPlaneVersion != latestVersion {
-		controlPlaneIsUpToDate.Status = healthcheckPb.CheckStatus_FAIL
-		controlPlaneIsUpToDate.FriendlyMessageToUser = fmt.Sprintf("is running version %s but the latest version is %s", controlPlaneVersion, latestVersion)
-	}
-
-	checks := []*healthcheckPb.CheckResult{cliIsUpToDate}
-	checks = append(checks, controlPlaneIsUpToDate)
-	return checks
-}
-
-func (v versionStatusChecker) getServerVersion() (string, error) {
+func CheckServerVersion(apiClient pb.ApiClient, latestVersion string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	resp, err := v.publicApiClient.Version(ctx, &pb.Empty{})
+	rsp, err := apiClient.Version(ctx, &pb.Empty{})
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	return resp.GetReleaseVersion(), nil
+	if rsp.GetReleaseVersion() != latestVersion {
+		return fmt.Errorf("is running version %s but the latest version is %s",
+			rsp.GetReleaseVersion(), latestVersion)
+	}
+
+	return nil
 }
 
-func (v versionStatusChecker) getLatestVersion() (string, error) {
-	if v.versionOverride != "" {
-		return v.versionOverride, nil
-	}
-
-	resp, err := v.httpClient.Get(v.versionCheckURL)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("got %d error from %s", resp.StatusCode, v.versionCheckURL)
-	}
-
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
+func GetLatestVersion() (string, error) {
+	req, err := http.NewRequest("GET", versionCheckURL, nil)
 	if err != nil {
 		return "", err
 	}
 
-	var l map[string]string
-	err = json.Unmarshal(bodyBytes, &l)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	rsp, err := http.DefaultClient.Do(req.WithContext(ctx))
+	if err != nil {
+		return "", err
+	}
+	defer rsp.Body.Close()
+
+	if rsp.StatusCode != 200 {
+		return "", fmt.Errorf("Unexpected versioncheck response: %s", rsp.Status)
+	}
+
+	bytes, err := ioutil.ReadAll(rsp.Body)
 	if err != nil {
 		return "", err
 	}
 
-	return l["version"], nil
-}
-
-func NewVersionStatusChecker(versionCheckURL, versionOverride string, client pb.ApiClient) healthcheck.StatusChecker {
-	return versionStatusChecker{
-		version:         Version,
-		versionCheckURL: versionCheckURL,
-		versionOverride: versionOverride,
-		publicApiClient: client,
-		httpClient:      http.Client{Timeout: httpClientTimeout},
+	var versionRsp map[string]string
+	err = json.Unmarshal(bytes, &versionRsp)
+	if err != nil {
+		return "", err
 	}
+
+	return versionRsp["version"], nil
 }

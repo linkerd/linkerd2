@@ -1,17 +1,14 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"regexp"
 	"strings"
 	"time"
 
-	"github.com/linkerd/linkerd2/controller/api/public"
-	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
-	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -74,69 +71,33 @@ func init() {
 // checks to determine if the client can successfully connect to the API. If the
 // checks fail, then CLI will print an error and exit.
 func validatedPublicAPIClient() pb.ApiClient {
-	client, err := newPublicAPIClient()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Cannot connect to Kubernetes: %s\n", err)
-		os.Exit(1)
-	}
+	hc := healthcheck.NewHealthChecker()
+	hc.AddKubernetesAPIChecks(kubeconfigPath)
+	hc.AddLinkerdAPIChecks(apiAddr, controlPlaneNamespace)
 
-	var selfCheckWithRetry func() error
-	selfCheckWithRetry = func() error {
-		res, err := client.SelfCheck(context.Background(), &healthcheckPb.SelfCheckRequest{})
+	exitOnError := func(category, description string, err error) {
 		if err != nil {
-			return err
-		}
-
-		for _, result := range res.Results {
-			if result.Status != healthcheckPb.CheckStatus_OK {
-				// If the control plane can't talk to Prometheus, that's likely a result
-				// of Prometheus not passing its readiness check yet on startup. In that
-				// case, print a waiting message and retry.
-				if result.SubsystemName == public.PromClientSubsystemName {
-					fmt.Fprintln(os.Stderr, "Waiting for controller to connect to Prometheus")
-					return selfCheckWithRetry()
-				}
-
-				return fmt.Errorf(result.FriendlyMessageToUser)
+			var msg string
+			switch category {
+			case healthcheck.KubernetesAPICategory:
+				msg = "Cannot connect to Kubernetes"
+			case healthcheck.LinkerdAPICategory:
+				msg = "Cannot connect to Linkerd"
 			}
-		}
+			fmt.Fprintf(os.Stderr, "%s: %s\n", msg, err)
 
-		return nil
-	}
+			checkCmd := "linkerd check"
+			if controlPlaneNamespace != defaultNamespace {
+				checkCmd += fmt.Sprintf(" --linkerd-namespace %s", controlPlaneNamespace)
+			}
+			fmt.Fprintf(os.Stderr, "Validate the install with: %s\n", checkCmd)
 
-	if err := selfCheckWithRetry(); err != nil {
-		fmt.Fprintf(os.Stderr, "Cannot connect to Linkerd: %s\n", err)
-		checkCmd := "linkerd check"
-		if controlPlaneNamespace != defaultNamespace {
-			checkCmd += fmt.Sprintf(" --linkerd-namespace %s", controlPlaneNamespace)
-		}
-		fmt.Fprintf(os.Stderr, "Validate the install with: %s\n", checkCmd)
-		os.Exit(1)
-	}
-
-	return client
-}
-
-// newPublicAPIClient executes status checks to determine if we can connect
-// to Kubernetes, and if so returns a new public API client. Otherwise it
-// returns an error.
-func newPublicAPIClient() (pb.ApiClient, error) {
-	if apiAddr != "" {
-		return public.NewInternalClient(controlPlaneNamespace, apiAddr)
-	}
-
-	kubeAPI, err := k8s.NewAPI(kubeconfigPath)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, result := range kubeAPI.SelfCheck() {
-		if result.Status != healthcheckPb.CheckStatus_OK {
-			return nil, fmt.Errorf(result.FriendlyMessageToUser)
+			os.Exit(1)
 		}
 	}
 
-	return public.NewExternalClient(controlPlaneNamespace, kubeAPI)
+	hc.RunChecks(exitOnError)
+	return hc.PublicAPIClient()
 }
 
 type proxyConfigOptions struct {
