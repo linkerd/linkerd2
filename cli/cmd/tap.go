@@ -92,12 +92,11 @@ func newCmdTap() *cobra.Command {
 				return err
 			}
 
-			var wide bool
+			wide := false
 			switch options.output {
 			// TODO: support more output formats?
 			case "":
 				// default output format.
-				wide := false
 			case "wide":
 				wide = true
 			default:
