@@ -367,11 +367,11 @@ func (p *peer) formatAddr() string {
 	)
 }
 
-// formatResource a label describing what Kubernetes resources the peer belongs
-// to. If the peer belongs to a resource of kind `resourceKind`, it will return
-// a label for that resource; otherwise, it will fall back to the peer's pod
-// name. Additionally, if the resource is not of type `namespace`, it will also
-// add a label describing the peer's resource.
+// formatResource returns a label describing what Kubernetes resources the peer
+// belongs to. If the peer belongs to a resource of kind `resourceKind`, it will
+// return a label for that resource; otherwise, it will fall back to the peer's
+// pod name. Additionally, if the resource is not of type `namespace`, it will
+// also add a label describing the peer's resource.
 func (p *peer) formatResource(resourceKind string) string {
 	var s string
 	if resourceName, exists := p.labels[resourceKind]; exists {
@@ -390,7 +390,7 @@ func (p *peer) formatResource(resourceKind string) string {
 	}
 	if resourceKind != k8s.Namespace {
 		if ns, hasNs := p.labels[k8s.Namespace]; hasNs {
-			s = fmt.Sprintf("%s %s_ns=%s", s, p.direction, ns)
+			s += fmt.Sprintf("%s_ns=%s", p.direction, ns)
 		}
 	}
 	return s

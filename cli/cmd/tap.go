@@ -36,6 +36,7 @@ func newTapOptions() *tapOptions {
 		method:      "",
 		authority:   "",
 		path:        "",
+		output:      "",
 	}
 }
 
@@ -94,10 +95,13 @@ func newCmdTap() *cobra.Command {
 			var wide bool
 			switch options.output {
 			// TODO: support more output formats?
+			case "":
+				// default output format.
+				wide := false
 			case "wide":
 				wide = true
 			default:
-				wide = false
+				return fmt.Errorf("output format \"%s\" not recognized", options.output)
 			}
 
 			return requestTapByResourceFromAPI(os.Stdout, validatedPublicAPIClient(), req, wide)

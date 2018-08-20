@@ -116,7 +116,7 @@ func ShortNameFromCanonicalResourceName(canonicalName string) string {
 	case Service:
 		return "svc"
 	case StatefulSet:
-		return "au"
+		return "sts"
 	case Authority:
 		return "au"
 	default:
