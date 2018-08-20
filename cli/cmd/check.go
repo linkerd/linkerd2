@@ -75,7 +75,7 @@ func runChecks(w io.Writer, hc *healthcheck.HealthChecker) bool {
 		}
 
 		if err != nil {
-			fmt.Fprintf(w, "%s%s%s  -- %s%s", checkLabel, filler, failStatus, err.Error(), lineBreak)
+			fmt.Fprintf(w, "%s%s%s -- %s%s", checkLabel, filler, failStatus, err.Error(), lineBreak)
 			return
 		}
 
