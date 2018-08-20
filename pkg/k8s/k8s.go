@@ -11,11 +11,14 @@ import (
 const (
 	All                   = "all"
 	Authority             = "authority"
+	DaemonSet             = "daemonset"
 	Deployment            = "deployment"
 	Namespace             = "namespace"
 	Pod                   = "pod"
 	ReplicationController = "replicationcontroller"
+	ReplicaSet            = "replicaset"
 	Service               = "service"
+	StatefulSet           = "statefulset"
 )
 
 // resources to query in StatSummary when Resource.Type is "all"
@@ -73,6 +76,8 @@ func CanonicalResourceNameFromFriendlyName(friendlyName string) (string, error) 
 	switch friendlyName {
 	case "deploy", "deployment", "deployments":
 		return Deployment, nil
+	case "ds", "daemonset", "daemonsets":
+		return DaemonSet, nil
 	case "ns", "namespace", "namespaces":
 		return Namespace, nil
 	case "po", "pod", "pods":
@@ -81,6 +86,8 @@ func CanonicalResourceNameFromFriendlyName(friendlyName string) (string, error) 
 		return ReplicationController, nil
 	case "svc", "service", "services":
 		return Service, nil
+	case "sts", "statefulset", "statefulsets":
+		return StatefulSet, nil
 	case "au", "authority", "authorities":
 		return Authority, nil
 	case "all":
@@ -96,14 +103,20 @@ func ShortNameFromCanonicalResourceName(canonicalName string) string {
 	switch canonicalName {
 	case Deployment:
 		return "deploy"
+	case DaemonSet:
+		return "ds"
 	case Namespace:
 		return "ns"
 	case Pod:
 		return "po"
 	case ReplicationController:
 		return "rc"
+	case ReplicaSet:
+		return "rs"
 	case Service:
 		return "svc"
+	case StatefulSet:
+		return "sts"
 	case Authority:
 		return "au"
 	default:

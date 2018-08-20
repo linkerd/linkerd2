@@ -16,82 +16,97 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
+func busyTest(t *testing.T, wide bool) {
+	resourceType := k8s.Pod
+	targetName := "pod-666"
+	params := util.TapRequestParams{
+		Resource:  resourceType + "/" + targetName,
+		Scheme:    "https",
+		Method:    "GET",
+		Authority: "localhost",
+		Path:      "/some/path",
+	}
+
+	req, err := util.BuildTapByResourceRequest(params)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	event1 := createEvent(
+		&pb.TapEvent_Http{
+			Event: &pb.TapEvent_Http_RequestInit_{
+				RequestInit: &pb.TapEvent_Http_RequestInit{
+					Id: &pb.TapEvent_Http_StreamId{
+						Base: 1,
+					},
+					Authority: params.Authority,
+					Path:      params.Path,
+				},
+			},
+		},
+		map[string]string{
+			"pod": "my-pod",
+			"tls": "true",
+		},
+	)
+	event2 := createEvent(
+		&pb.TapEvent_Http{
+			Event: &pb.TapEvent_Http_ResponseEnd_{
+				ResponseEnd: &pb.TapEvent_Http_ResponseEnd{
+					Id: &pb.TapEvent_Http_StreamId{
+						Base: 1,
+					},
+					Eos: &pb.Eos{
+						End: &pb.Eos_GrpcStatusCode{GrpcStatusCode: 666},
+					},
+					SinceRequestInit: &duration.Duration{
+						Seconds: 10,
+					},
+					SinceResponseInit: &duration.Duration{
+						Seconds: 100,
+					},
+					ResponseBytes: 1337,
+				},
+			},
+		},
+		map[string]string{},
+	)
+	mockApiClient := &public.MockApiClient{}
+	mockApiClient.Api_TapByResourceClientToReturn = &public.MockApi_TapByResourceClient{
+		TapEventsToReturn: []pb.TapEvent{event1, event2},
+	}
+
+	writer := bytes.NewBufferString("")
+	err = requestTapByResourceFromAPI(writer, mockApiClient, req, wide)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	var goldenFilePath string
+	if wide {
+		goldenFilePath = "testdata/tap_busy_output_wide.golden"
+	} else {
+		goldenFilePath = "testdata/tap_busy_output.golden"
+	}
+
+	goldenFileBytes, err := ioutil.ReadFile(goldenFilePath)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	expectedContent := string(goldenFileBytes)
+	output := writer.String()
+	if expectedContent != output {
+		t.Fatalf("Expected function to render:\n%s\bbut got:\n%s", expectedContent, output)
+	}
+}
+
 func TestRequestTapByResourceFromAPI(t *testing.T) {
 	t.Run("Should render busy response if everything went well", func(t *testing.T) {
-		resourceType := k8s.Pod
-		targetName := "pod-666"
-		params := util.TapRequestParams{
-			Resource:  resourceType + "/" + targetName,
-			Scheme:    "https",
-			Method:    "GET",
-			Authority: "localhost",
-			Path:      "/some/path",
-		}
+		busyTest(t, false)
+	})
 
-		req, err := util.BuildTapByResourceRequest(params)
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
-
-		event1 := createEvent(
-			&pb.TapEvent_Http{
-				Event: &pb.TapEvent_Http_RequestInit_{
-					RequestInit: &pb.TapEvent_Http_RequestInit{
-						Id: &pb.TapEvent_Http_StreamId{
-							Base: 1,
-						},
-						Authority: params.Authority,
-						Path:      params.Path,
-					},
-				},
-			},
-			map[string]string{
-				"pod": "my-pod",
-				"tls": "true",
-			},
-		)
-		event2 := createEvent(
-			&pb.TapEvent_Http{
-				Event: &pb.TapEvent_Http_ResponseEnd_{
-					ResponseEnd: &pb.TapEvent_Http_ResponseEnd{
-						Id: &pb.TapEvent_Http_StreamId{
-							Base: 1,
-						},
-						Eos: &pb.Eos{
-							End: &pb.Eos_GrpcStatusCode{GrpcStatusCode: 666},
-						},
-						SinceRequestInit: &duration.Duration{
-							Seconds: 10,
-						},
-						SinceResponseInit: &duration.Duration{
-							Seconds: 100,
-						},
-						ResponseBytes: 1337,
-					},
-				},
-			},
-			map[string]string{},
-		)
-		mockApiClient := &public.MockApiClient{}
-		mockApiClient.Api_TapByResourceClientToReturn = &public.MockApi_TapByResourceClient{
-			TapEventsToReturn: []pb.TapEvent{event1, event2},
-		}
-
-		writer := bytes.NewBufferString("")
-		err = requestTapByResourceFromAPI(writer, mockApiClient, req)
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
-
-		goldenFileBytes, err := ioutil.ReadFile("testdata/tap_busy_output.golden")
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
-		expectedContent := string(goldenFileBytes)
-		output := writer.String()
-		if expectedContent != output {
-			t.Fatalf("Expected function to render:\n%s\bbut got:\n%s", expectedContent, output)
-		}
+	t.Run("Should render wide busy response if everything went well", func(t *testing.T) {
+		busyTest(t, true)
 	})
 
 	t.Run("Should render empty response if no events returned", func(t *testing.T) {
@@ -116,7 +131,7 @@ func TestRequestTapByResourceFromAPI(t *testing.T) {
 		}
 
 		writer := bytes.NewBufferString("")
-		err = requestTapByResourceFromAPI(writer, mockApiClient, req)
+		err = requestTapByResourceFromAPI(writer, mockApiClient, req, false)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -155,7 +170,7 @@ func TestRequestTapByResourceFromAPI(t *testing.T) {
 		}
 
 		writer := bytes.NewBufferString("")
-		err = requestTapByResourceFromAPI(writer, mockApiClient, req)
+		err = requestTapByResourceFromAPI(writer, mockApiClient, req, false)
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing but output [%s]", writer.String())
 		}
@@ -213,7 +228,7 @@ func TestEventToString(t *testing.T) {
 		})
 
 		expectedOutput := "req id=7:8 proxy=out src=1.2.3.4:5555 dst=2.3.4.5:6666 tls= :method=POST :authority=hello.default:7777 :path=/hello.v1.HelloService/Hello"
-		output := util.RenderTapEvent(event)
+		output := util.RenderTapEvent(event, "")
 		if output != expectedOutput {
 			t.Fatalf("Expecting command output to be [%s], got [%s]", expectedOutput, output)
 		}
@@ -230,7 +245,7 @@ func TestEventToString(t *testing.T) {
 		})
 
 		expectedOutput := "rsp id=7:8 proxy=out src=1.2.3.4:5555 dst=2.3.4.5:6666 tls= :status=200 latency=999µs"
-		output := util.RenderTapEvent(event)
+		output := util.RenderTapEvent(event, "")
 		if output != expectedOutput {
 			t.Fatalf("Expecting command output to be [%s], got [%s]", expectedOutput, output)
 		}
@@ -251,7 +266,7 @@ func TestEventToString(t *testing.T) {
 		})
 
 		expectedOutput := "end id=7:8 proxy=out src=1.2.3.4:5555 dst=2.3.4.5:6666 tls= grpc-status=OK duration=888µs response-length=111B"
-		output := util.RenderTapEvent(event)
+		output := util.RenderTapEvent(event, "")
 		if output != expectedOutput {
 			t.Fatalf("Expecting command output to be [%s], got [%s]", expectedOutput, output)
 		}
@@ -272,7 +287,7 @@ func TestEventToString(t *testing.T) {
 		})
 
 		expectedOutput := "end id=7:8 proxy=out src=1.2.3.4:5555 dst=2.3.4.5:6666 tls= reset-error=123 duration=888µs response-length=111B"
-		output := util.RenderTapEvent(event)
+		output := util.RenderTapEvent(event, "")
 		if output != expectedOutput {
 			t.Fatalf("Expecting command output to be [%s], got [%s]", expectedOutput, output)
 		}
@@ -291,7 +306,7 @@ func TestEventToString(t *testing.T) {
 		})
 
 		expectedOutput := "end id=7:8 proxy=out src=1.2.3.4:5555 dst=2.3.4.5:6666 tls= duration=888µs response-length=111B"
-		output := util.RenderTapEvent(event)
+		output := util.RenderTapEvent(event, "")
 		if output != expectedOutput {
 			t.Fatalf("Expecting command output to be [%s], got [%s]", expectedOutput, output)
 		}
@@ -309,7 +324,7 @@ func TestEventToString(t *testing.T) {
 		})
 
 		expectedOutput := "end id=7:8 proxy=out src=1.2.3.4:5555 dst=2.3.4.5:6666 tls= duration=888µs response-length=111B"
-		output := util.RenderTapEvent(event)
+		output := util.RenderTapEvent(event, "")
 		if output != expectedOutput {
 			t.Fatalf("Expecting command output to be [%s], got [%s]", expectedOutput, output)
 		}
@@ -319,7 +334,7 @@ func TestEventToString(t *testing.T) {
 		event := toTapEvent(&pb.TapEvent_Http{})
 
 		expectedOutput := "unknown proxy=out src=1.2.3.4:5555 dst=2.3.4.5:6666 tls="
-		output := util.RenderTapEvent(event)
+		output := util.RenderTapEvent(event, "")
 		if output != expectedOutput {
 			t.Fatalf("Expecting command output to be [%s], got [%s]", expectedOutput, output)
 		}

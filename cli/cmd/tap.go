@@ -23,6 +23,7 @@ type tapOptions struct {
 	method      string
 	authority   string
 	path        string
+	output      string
 }
 
 func newTapOptions() *tapOptions {
@@ -35,6 +36,7 @@ func newTapOptions() *tapOptions {
 		method:      "",
 		authority:   "",
 		path:        "",
+		output:      "",
 	}
 }
 
@@ -90,7 +92,18 @@ func newCmdTap() *cobra.Command {
 				return err
 			}
 
-			return requestTapByResourceFromAPI(os.Stdout, validatedPublicAPIClient(), req)
+			wide := false
+			switch options.output {
+			// TODO: support more output formats?
+			case "":
+				// default output format.
+			case "wide":
+				wide = true
+			default:
+				return fmt.Errorf("output format \"%s\" not recognized", options.output)
+			}
+
+			return requestTapByResourceFromAPI(os.Stdout, validatedPublicAPIClient(), req, wide)
 		},
 	}
 
@@ -110,21 +123,28 @@ func newCmdTap() *cobra.Command {
 		"Display requests with this :authority")
 	cmd.PersistentFlags().StringVar(&options.path, "path", options.path,
 		"Display requests with paths that start with this prefix")
+	cmd.PersistentFlags().StringVarP(&options.output, "output", "o", options.output,
+		"Output format. One of: wide")
 
 	return cmd
 }
 
-func requestTapByResourceFromAPI(w io.Writer, client pb.ApiClient, req *pb.TapByResourceRequest) error {
+func requestTapByResourceFromAPI(w io.Writer, client pb.ApiClient, req *pb.TapByResourceRequest, wide bool) error {
+	var resource string
+	if wide {
+		resource = req.Target.Resource.GetType()
+	}
+
 	rsp, err := client.TapByResource(context.Background(), req)
 	if err != nil {
 		return err
 	}
-	return renderTap(w, rsp)
+	return renderTap(w, rsp, resource)
 }
 
-func renderTap(w io.Writer, tapClient pb.Api_TapByResourceClient) error {
+func renderTap(w io.Writer, tapClient pb.Api_TapByResourceClient, resource string) error {
 	tableWriter := tabwriter.NewWriter(w, 0, 0, 0, ' ', tabwriter.AlignRight)
-	err := writeTapEventsToBuffer(tapClient, tableWriter)
+	err := writeTapEventsToBuffer(tapClient, tableWriter, resource)
 	if err != nil {
 		return err
 	}
@@ -133,7 +153,7 @@ func renderTap(w io.Writer, tapClient pb.Api_TapByResourceClient) error {
 	return nil
 }
 
-func writeTapEventsToBuffer(tapClient pb.Api_TapByResourceClient, w *tabwriter.Writer) error {
+func writeTapEventsToBuffer(tapClient pb.Api_TapByResourceClient, w *tabwriter.Writer, resource string) error {
 	for {
 		log.Debug("Waiting for data...")
 		event, err := tapClient.Recv()
@@ -144,7 +164,7 @@ func writeTapEventsToBuffer(tapClient pb.Api_TapByResourceClient, w *tabwriter.W
 			fmt.Fprintln(os.Stderr, err)
 			break
 		}
-		_, err = fmt.Fprintln(w, util.RenderTapEvent(event))
+		_, err = fmt.Fprintln(w, util.RenderTapEvent(event, resource))
 		if err != nil {
 			return err
 		}
