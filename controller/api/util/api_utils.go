@@ -390,7 +390,7 @@ func (p *peer) formatResource(resourceKind string) string {
 	}
 	if resourceKind != k8s.Namespace {
 		if ns, hasNs := p.labels[k8s.Namespace]; hasNs {
-			s += fmt.Sprintf("%s_ns=%s", p.direction, ns)
+			s += fmt.Sprintf(" %s_ns=%s", p.direction, ns)
 		}
 	}
 	return s
