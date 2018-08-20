@@ -130,7 +130,7 @@ func (hc *HealthChecker) AddLinkerdAPIChecks(apiAddr, controlPlaneNamespace stri
 func (hc *HealthChecker) AddLinkerdVersionChecks(versionOverride string) {
 	hc.checkers = append(hc.checkers, &checker{
 		category:    LinkerdVersionCategory,
-		description: "can get the latest version",
+		description: "can determine the latest version",
 		fatal:       true,
 		check: func() (err error) {
 			if versionOverride != "" {
