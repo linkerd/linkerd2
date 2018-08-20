@@ -72,7 +72,7 @@ func init() {
 // checks fail, then CLI will print an error and exit.
 func validatedPublicAPIClient() pb.ApiClient {
 	hc := healthcheck.NewHealthChecker()
-	hc.AddKubernetesAPIChecks(kubeconfigPath)
+	hc.AddKubernetesAPIChecks(kubeconfigPath, false)
 	hc.AddLinkerdAPIChecks(apiAddr, controlPlaneNamespace)
 
 	exitOnError := func(category, description string, err error) {

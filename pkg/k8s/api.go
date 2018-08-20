@@ -81,15 +81,15 @@ func (kubeAPI *KubernetesAPI) CheckVersion(versionInfo *version.Info) error {
 	return nil
 }
 
-func (kubeAPI *KubernetesAPI) CheckNamespaceExists(client *http.Client, namespace string) error {
+func (kubeAPI *KubernetesAPI) NamespaceExists(client *http.Client, namespace string) (bool, error) {
 	endpoint, err := url.Parse(kubeAPI.Host + "/api/v1/namespaces/" + namespace)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	req, err := http.NewRequest("GET", endpoint.String(), nil)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -97,19 +97,15 @@ func (kubeAPI *KubernetesAPI) CheckNamespaceExists(client *http.Client, namespac
 
 	rsp, err := client.Do(req.WithContext(ctx))
 	if err != nil {
-		return err
+		return false, err
 	}
 	defer rsp.Body.Close()
 
-	if rsp.StatusCode == http.StatusNotFound {
-		return fmt.Errorf("The \"%s\" namespace does not exist", namespace)
+	if rsp.StatusCode != http.StatusOK && rsp.StatusCode != http.StatusNotFound {
+		return false, fmt.Errorf("Unexpected Kubernetes API response: %s", rsp.Status)
 	}
 
-	if rsp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Unexpected Kubernetes API response: %s", rsp.Status)
-	}
-
-	return nil
+	return rsp.StatusCode == http.StatusOK, nil
 }
 
 // UrlFor generates a URL based on the Kubernetes config.
