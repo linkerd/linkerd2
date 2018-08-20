@@ -239,3 +239,24 @@ a.button.primary:active {
     text-align: right;
   }
 }
+
+/* Colored dot for indicating statuses */
+div.status-dot {
+  width: calc(2 * var(--base-width));
+  height: calc(2 * var(--base-width));
+  min-width: calc(2 * var(--base-width));
+  border-radius: 50%;
+
+  &.status-dot-good {
+    background-color: var(--green);
+  }
+  &.status-dot-poor {
+    background-color: var(--siennared);
+  }
+  &.status-dot-neutral {
+    background-color: #E0E0E0;
+  }
+  &.status-dot-ok {
+    background-color: #ffd54f;
+  }
+}

@@ -1,6 +1,7 @@
 import _ from 'lodash';
 import ErrorBanner from './ErrorBanner.jsx';
 import MetricsTable from './MetricsTable.jsx';
+import Octopus from './Octopus.jsx';
 import PageHeader from './PageHeader.jsx';
 import { processSingleResourceRollup } from './util/MetricUtils.js';
 import PropTypes from 'prop-types';
@@ -94,12 +95,22 @@ export class ResourceDetailBase extends React.Component {
       this.api.fetchMetrics(
         `${this.api.urlsForResource("pod", resource.namespace)}`
       ),
+      // upstream resources of this resource (meshed traffic only)
+      this.api.fetchMetrics(
+        `${this.api.urlsForResource(resource.type, resource.namespace)}&to_name=${resource.name}`
+      ),
+      // downstream resources of this resource (meshed traffic only)
+      this.api.fetchMetrics(
+        `${this.api.urlsForResource(resource.type, resource.namespace)}&from_name=${resource.name}`
+      )
     ]);
 
     Promise.all(this.api.getCurrentPromises())
-      .then(([resourceRsp, podListRsp, podRsp]) => {
+      .then(([resourceRsp, podListRsp, podMetricsRsp, upstreamRsp, downstreamRsp]) => {
         let resourceMetrics = processSingleResourceRollup(resourceRsp);
-        let podMetrics = processSingleResourceRollup(podRsp);
+        let podMetrics = processSingleResourceRollup(podMetricsRsp);
+        let upstreamMetrics = processSingleResourceRollup(upstreamRsp);
+        let downstreamMetrics = processSingleResourceRollup(downstreamRsp);
 
         // INEFFICIENT: get metrics for all the pods belonging to this resource.
         // Do this by querying for metrics for all pods in this namespace and then filtering
@@ -118,6 +129,10 @@ export class ResourceDetailBase extends React.Component {
         this.setState({
           resourceMetrics,
           podMetrics: podMetricsForResource,
+          neighborMetrics: {
+            upstream: upstreamMetrics,
+            downstream: downstreamMetrics
+          },
           loaded: true,
           pendingRequests: false,
           error: null
@@ -154,9 +169,10 @@ export class ResourceDetailBase extends React.Component {
     return (
       <div>
         <div className="page-section">
-          <MetricsTable
-            resource={this.state.resource.type}
-            metrics={this.state.resourceMetrics} />
+          <Octopus
+            resource={this.state.resource.name}
+            metrics={this.state.resourceMetrics[0]}
+            neighbors={this.state.neighborMetrics} />
         </div>
 
         {
