@@ -109,6 +109,11 @@ export class ResourceDetailBase extends React.Component {
           if (_.get(pod, resource.type) === resource.namespace + "/" + resource.name) {
             mem[pod.name] = true;
           }
+
+          if (_.get(pod, "replicationController") === resource.namespace + "/" + resource.name) {
+            mem[pod.name] = true;
+          }
+
           return mem;
         }, {});
 
