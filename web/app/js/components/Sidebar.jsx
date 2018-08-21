@@ -8,8 +8,8 @@ import SocialLinks from './SocialLinks.jsx';
 import {friendlyTitle} from './util/Utils.js';
 import Version from './Version.jsx';
 import { withContext } from './util/AppContext.jsx';
-import { Icon, Layout, Menu, Select } from 'antd';
-import { linkerdLogoOnly, linkerdWordLogo } from './util/SvgWrappers.jsx';
+import { Form, Icon, Layout, Menu, Select } from 'antd';
+import { linkerdLogoOnly, linkerdWordLogo, meshChart } from './util/SvgWrappers.jsx';
 import './../../css/sidebar.css';
 
 class Sidebar extends React.Component {
@@ -219,7 +219,7 @@ class Sidebar extends React.Component {
                     {
                       _.map(namespaces, ns => {
                         return (
-                          <Select.Option value={ns.nsValue}>{ns.nsName}</Select.Option>
+                          <Select.Option key={ns.nsValue} value={ns.nsValue}>{ns.nsName}</Select.Option>
                         );
                       })
                     }
@@ -239,7 +239,10 @@ class Sidebar extends React.Component {
                       _.map(_.sortBy(sidebarComponents[resourceName], r => r.resource.name), ro => {
                         return (
                           <Menu.Item>
-                            {ro.resource.name}<span />
+                            <PrefixedLink to={`/namespaces/${ro.resource.namespace}/${resourceName}s/${ro.resource.name}`}>
+                              {ro.resource.name}
+                            </PrefixedLink>
+
                           </Menu.Item>
                         );
                       })
