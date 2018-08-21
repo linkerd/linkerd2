@@ -17,6 +17,7 @@ describe('MetricUtils', () => {
         {
           name: 'voting',
           namespace: 'emojivoto',
+          type: 'deployment',
           requestRate: 2.5,
           successRate: 0.9,
           totalRequests: 150,
