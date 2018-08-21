@@ -175,6 +175,26 @@ export class ResourceDetailBase extends React.Component {
             neighbors={this.state.neighborMetrics} />
         </div>
 
+        { _.isEmpty(this.state.neighborMetrics.upstream) ? null : (
+          <div className="page-section">
+            <h2 className="subsection-header">Upstreams</h2>
+            <MetricsTable
+              resource={this.state.resource.type}
+              metrics={this.state.neighborMetrics.upstream} />
+          </div>
+          )
+        }
+
+        { _.isEmpty(this.state.neighborMetrics.downstream) ? null : (
+          <div className="page-section">
+            <h2 className="subsection-header">Downstreams</h2>
+            <MetricsTable
+              resource={this.state.resource.type}
+              metrics={this.state.neighborMetrics.downstream} />
+          </div>
+          )
+        }
+
         {
           this.state.resource.type === "pod" ? null : (
             <div className="page-section">
@@ -183,7 +203,7 @@ export class ResourceDetailBase extends React.Component {
                 resource="pod"
                 metrics={this.state.podMetrics} />
             </div>
-        )
+          )
         }
       </div>
     );
