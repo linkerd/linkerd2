@@ -47,8 +47,8 @@ func NewHealthChecker() *HealthChecker {
 
 // AddKubernetesAPIChecks adds a series of checks to validate that the caller is
 // configured to interact with a working Kubernetes cluster and that the cluster
-// meets the minimum version requirement.
-func (hc *HealthChecker) AddKubernetesAPIChecks(kubeconfigPath string) {
+// meets the minimum version requirement, unless skipVersionCheck is specified.
+func (hc *HealthChecker) AddKubernetesAPIChecks(kubeconfigPath string, skipVersionCheck bool) {
 	hc.checkers = append(hc.checkers, &checker{
 		category:    KubernetesAPICategory,
 		description: "can initialize the client",
@@ -73,12 +73,36 @@ func (hc *HealthChecker) AddKubernetesAPIChecks(kubeconfigPath string) {
 		},
 	})
 
+	if !skipVersionCheck {
+		hc.checkers = append(hc.checkers, &checker{
+			category:    KubernetesAPICategory,
+			description: "is running the minimum Kubernetes API version",
+			fatal:       false,
+			check: func() error {
+				return hc.kubeAPI.CheckVersion(hc.kubeVersion)
+			},
+		})
+	}
+}
+
+// AddLinkerdPreInstallChecks adds a check to validate that the control plane
+// namespace does not already exist. This check only runs as part of the set of
+// pre-install checks. This check is dependent on the output of
+// AddKubernetesAPIChecks, so those checks must be added first.
+func (hc *HealthChecker) AddLinkerdPreInstallChecks(controlPlaneNamespace string) {
 	hc.checkers = append(hc.checkers, &checker{
-		category:    KubernetesAPICategory,
-		description: "is running the minimum Kubernetes API version",
+		category:    LinkerdAPICategory,
+		description: "control plane namespace does not already exist",
 		fatal:       false,
 		check: func() error {
-			return hc.kubeAPI.CheckVersion(hc.kubeVersion)
+			exists, err := hc.kubeAPI.NamespaceExists(hc.httpClient, controlPlaneNamespace)
+			if err != nil {
+				return err
+			}
+			if exists {
+				return fmt.Errorf("The \"%s\" namespace already exists", controlPlaneNamespace)
+			}
+			return nil
 		},
 	})
 }
@@ -93,7 +117,14 @@ func (hc *HealthChecker) AddLinkerdAPIChecks(apiAddr, controlPlaneNamespace stri
 		description: "control plane namespace exists",
 		fatal:       true,
 		check: func() error {
-			return hc.kubeAPI.CheckNamespaceExists(hc.httpClient, controlPlaneNamespace)
+			exists, err := hc.kubeAPI.NamespaceExists(hc.httpClient, controlPlaneNamespace)
+			if err != nil {
+				return err
+			}
+			if !exists {
+				return fmt.Errorf("The \"%s\" namespace does not exist", controlPlaneNamespace)
+			}
+			return nil
 		},
 	})
 
@@ -126,8 +157,8 @@ func (hc *HealthChecker) AddLinkerdAPIChecks(apiAddr, controlPlaneNamespace stri
 // AddLinkerdVersionChecks adds a series of checks to validate that the CLI and
 // control plane are running the latest available version. These checks are
 // dependent on the output of AddLinkerdAPIChecks, so those checks must be added
-// first.
-func (hc *HealthChecker) AddLinkerdVersionChecks(versionOverride string) {
+// first, unless clientOnly is specified.
+func (hc *HealthChecker) AddLinkerdVersionChecks(versionOverride string, clientOnly bool) {
 	hc.checkers = append(hc.checkers, &checker{
 		category:    LinkerdVersionCategory,
 		description: "can determine the latest version",
@@ -151,14 +182,16 @@ func (hc *HealthChecker) AddLinkerdVersionChecks(versionOverride string) {
 		},
 	})
 
-	hc.checkers = append(hc.checkers, &checker{
-		category:    LinkerdVersionCategory,
-		description: "control plane is up-to-date",
-		fatal:       false,
-		check: func() error {
-			return version.CheckServerVersion(hc.apiClient, hc.latestVersion)
-		},
-	})
+	if !clientOnly {
+		hc.checkers = append(hc.checkers, &checker{
+			category:    LinkerdVersionCategory,
+			description: "control plane is up-to-date",
+			fatal:       false,
+			check: func() error {
+				return version.CheckServerVersion(hc.apiClient, hc.latestVersion)
+			},
+		})
+	}
 }
 
 // Add adds an arbitrary checker. This should only be used for testing. For

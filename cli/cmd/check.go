@@ -17,11 +17,13 @@ const (
 
 type checkOptions struct {
 	versionOverride string
+	preInstallOnly  bool
 }
 
 func newCheckOptions() *checkOptions {
 	return &checkOptions{
 		versionOverride: "",
+		preInstallOnly:  false,
 	}
 }
 
@@ -30,10 +32,13 @@ func newCmdCheck() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "check",
-		Short: "Check your Linkerd installation for potential problems.",
-		Long: `Check your Linkerd installation for potential problems. The check command will perform various checks of your
-local system, the Linkerd control plane, and connectivity between those. The process will exit with non-zero check if
-problems were found.`,
+		Short: "Check the Linkerd installation for potential problems",
+		Long: `Check the Linkerd installation for potential problems.
+
+The check command will perform a series of checks to validate that the linkerd
+CLI and control plane are configured correctly. If the command encounters a
+failure it will print additional information about the failure and exit with a
+non-zero exit code.`,
 		Args: cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
 			configureAndRunChecks(options)
@@ -42,15 +47,20 @@ problems were found.`,
 
 	cmd.Args = cobra.NoArgs
 	cmd.PersistentFlags().StringVar(&options.versionOverride, "expected-version", options.versionOverride, "Overrides the version used when checking if Linkerd is running the latest version (mostly for testing)")
+	cmd.PersistentFlags().BoolVar(&options.preInstallOnly, "pre", options.preInstallOnly, "Only run pre-installation checks, to determine if the control plane can be installed")
 
 	return cmd
 }
 
 func configureAndRunChecks(options *checkOptions) {
 	hc := healthcheck.NewHealthChecker()
-	hc.AddKubernetesAPIChecks(kubeconfigPath)
-	hc.AddLinkerdAPIChecks(apiAddr, controlPlaneNamespace)
-	hc.AddLinkerdVersionChecks(options.versionOverride)
+	hc.AddKubernetesAPIChecks(kubeconfigPath, false)
+	if options.preInstallOnly {
+		hc.AddLinkerdPreInstallChecks(controlPlaneNamespace)
+	} else {
+		hc.AddLinkerdAPIChecks(apiAddr, controlPlaneNamespace)
+	}
+	hc.AddLinkerdVersionChecks(options.versionOverride, options.preInstallOnly)
 
 	success := runChecks(os.Stdout, hc)
 
