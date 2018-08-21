@@ -90,8 +90,7 @@ export class ResourceDetailBase extends React.Component {
       ),
       // list of all pods in this namespace (hack since we can't currently query for all pods in a resource)
       this.api.fetchPods(resource.namespace),
-      // pod metrics for outbound stats --to this resource
-      // only gets traffic originating within the mesh
+      // metrics for all pods in this namespace (hack, continued)
       this.api.fetchMetrics(
         `${this.api.urlsForResource("pod", resource.namespace)}`
       ),
