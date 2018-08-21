@@ -158,12 +158,14 @@ export class ResourceDetailBase extends React.Component {
             metrics={this.state.resourceMetrics} />
         </div>
 
-        <div className="page-section">
-          <h2 className="subsection-header">Pods</h2>
-          <MetricsTable
-            resource="pod"
-            metrics={this.state.podMetrics} />
-        </div>
+        {
+          this.state.resource.type === "pod" ? null : <div className="page-section">
+            <h2 className="subsection-header">Pods</h2>
+            <MetricsTable
+              resource="pod"
+              metrics={this.state.podMetrics} />
+          </div>
+        }
       </div>
     );
   }
