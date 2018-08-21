@@ -526,6 +526,7 @@ func (s *server) hydrateIPLabels(ip *public.IPAddress, labels map[string]string)
 		for key, value := range podLabels {
 			labels[key] = value
 		}
+		labels[pkgK8s.Namespace] = pod.Namespace
 		return nil
 	}
 }
