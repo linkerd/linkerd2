@@ -1,12 +1,6 @@
 import React from 'react';
 import './../../../css/svg-wrappers.css';
 
-export const meshChart = (
-  <svg width="26" height="26" className="chart">
-    <circle r="10" cx="13" cy="13  " className="pie" />
-  </svg>
-);
-
 export const grafanaIcon = (
   <svg
     version="1.1"

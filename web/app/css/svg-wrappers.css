@@ -126,22 +126,3 @@
   & .st106{display:inline;}
 }
 
-/* Cribbed from https://css-tricks.com/how-to-make-charts-with-svg/ */
-/* chart */
-.chart{
-  & svg {
-    margin: 0 auto;
-    transform: rotate(-90deg);
-    background: #ddd;
-    border-radius: 50%;
-    display: block;
-  }
-  & circle {
-  fill: #ddd;
-  stroke: #0074d9;
-  stroke-width: 50;
-  stroke-dasharray: 0 158;
-  transition: stroke-dasharray .3s ease;
-  }
-}
-
