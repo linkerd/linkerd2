@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/linkerd/linkerd2/controller/api/public"
@@ -11,6 +12,7 @@ import (
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
+	"k8s.io/api/core/v1"
 	k8sVersion "k8s.io/apimachinery/pkg/version"
 )
 
@@ -125,6 +127,19 @@ func (hc *HealthChecker) AddLinkerdAPIChecks(apiAddr, controlPlaneNamespace stri
 				return fmt.Errorf("The \"%s\" namespace does not exist", controlPlaneNamespace)
 			}
 			return nil
+		},
+	})
+
+	hc.checkers = append(hc.checkers, &checker{
+		category:    LinkerdAPICategory,
+		description: "control plane pods are ready",
+		fatal:       true,
+		check: func() error {
+			pods, err := hc.kubeAPI.GetPodsForNamespace(hc.httpClient, controlPlaneNamespace)
+			if err != nil {
+				return err
+			}
+			return validatePods(pods)
 		},
 	})
 
@@ -254,4 +269,38 @@ func (hc *HealthChecker) RunChecks(observer checkObserver) bool {
 // RunChecks functions have already been called.
 func (hc *HealthChecker) PublicAPIClient() pb.ApiClient {
 	return hc.apiClient
+}
+
+func validatePods(pods []v1.Pod) error {
+	statuses := make(map[string][]v1.ContainerStatus)
+
+	for _, pod := range pods {
+		if pod.Status.Phase == v1.PodRunning {
+			name := strings.Split(pod.Name, "-")[0]
+			if _, found := statuses[name]; !found {
+				statuses[name] = make([]v1.ContainerStatus, 0)
+			}
+			statuses[name] = append(statuses[name], pod.Status.ContainerStatuses...)
+		}
+	}
+
+	names := []string{"controller", "grafana", "prometheus", "web"}
+	if _, found := statuses["ca"]; found {
+		names = append(names, "ca")
+	}
+
+	for _, name := range names {
+		containers, found := statuses[name]
+		if !found {
+			return fmt.Errorf("No running pods for %s", name)
+		}
+		for _, container := range containers {
+			if !container.Ready {
+				return fmt.Errorf("The %s pod's %s container is not ready", name,
+					container.Name)
+			}
+		}
+	}
+
+	return nil
 }
