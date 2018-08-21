@@ -97,11 +97,11 @@ export class ResourceDetailBase extends React.Component {
       ),
       // upstream resources of this resource (meshed traffic only)
       this.api.fetchMetrics(
-        `${this.api.urlsForResource(resource.type, resource.namespace)}&to_name=${resource.name}`
+        `${this.api.urlsForResource(resource.type)}&to_name=${resource.name}&to_type=${resource.type}&to_namespace=${resource.namespace}`
       ),
       // downstream resources of this resource (meshed traffic only)
       this.api.fetchMetrics(
-        `${this.api.urlsForResource(resource.type, resource.namespace)}&from_name=${resource.name}`
+        `${this.api.urlsForResource(resource.type)}&from_name=${resource.name}&from_type=${resource.type}&from_namespace=${resource.namespace}`
       )
     ]);
 

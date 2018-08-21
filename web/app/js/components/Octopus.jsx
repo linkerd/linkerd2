@@ -82,10 +82,10 @@ export default class Octopus extends React.Component {
           <hr />
           <Row type="flex" justify="center">
             <Col span={12} className="octopus-upstreams">
-              {_.map(neighbors.upstream, n => <Neighbor neighbor={n} direction="in" key={n.name} />)}
+              {_.map(neighbors.upstream, n => <Neighbor neighbor={n} direction="in" key={n.namespace + "-" + n.name} />)}
             </Col>
             <Col span={12} className="octopus-downstreams">
-              {_.map(neighbors.downstream, n => <Neighbor neighbor={n} direction="out" key={n.name} />)}
+              {_.map(neighbors.downstream, n => <Neighbor neighbor={n} direction="out" key={n.namespace + "-" + n.name} />)}
             </Col>
           </Row>
         </div>
