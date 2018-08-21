@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/linkerd/linkerd2/controller/api/public"
@@ -11,6 +12,7 @@ import (
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
+	"k8s.io/api/core/v1"
 	k8sVersion "k8s.io/apimachinery/pkg/version"
 )
 
@@ -125,6 +127,19 @@ func (hc *HealthChecker) AddLinkerdAPIChecks(apiAddr, controlPlaneNamespace stri
 				return fmt.Errorf("The \"%s\" namespace does not exist", controlPlaneNamespace)
 			}
 			return nil
+		},
+	})
+
+	hc.checkers = append(hc.checkers, &checker{
+		category:    LinkerdAPICategory,
+		description: "control plane pods are ready",
+		fatal:       true,
+		check: func() error {
+			pods, err := hc.kubeAPI.GetPodsForNamespace(hc.httpClient, controlPlaneNamespace)
+			if err != nil {
+				return err
+			}
+			return validatePods(pods)
 		},
 	})
 
@@ -254,4 +269,36 @@ func (hc *HealthChecker) RunChecks(observer checkObserver) bool {
 // RunChecks functions have already been called.
 func (hc *HealthChecker) PublicAPIClient() pb.ApiClient {
 	return hc.apiClient
+}
+
+func validatePods(pods []v1.Pod) error {
+	statuses := make(map[string]map[string]bool)
+
+	for _, pod := range pods {
+		if pod.Status.Phase == v1.PodPending || pod.Status.Phase == v1.PodRunning {
+			shortName := strings.Split(pod.Name, "-")[0]
+			if _, found := statuses[shortName]; !found {
+				statuses[shortName] = make(map[string]bool)
+			}
+			for _, container := range pod.Status.ContainerStatuses {
+				statuses[shortName][container.Name] = container.Ready
+			}
+		}
+	}
+
+	for _, deployName := range []string{"controller", "grafana", "prometheus", "web"} {
+		if _, found := statuses[deployName]; !found {
+			return fmt.Errorf("No running pods for %s", deployName)
+		}
+	}
+
+	for deployName, containers := range statuses {
+		for containerName, ready := range containers {
+			if !ready {
+				return fmt.Errorf("The %s pod's %s container is not ready", deployName, containerName)
+			}
+		}
+	}
+
+	return nil
 }
