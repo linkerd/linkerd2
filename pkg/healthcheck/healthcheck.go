@@ -272,30 +272,32 @@ func (hc *HealthChecker) PublicAPIClient() pb.ApiClient {
 }
 
 func validatePods(pods []v1.Pod) error {
-	statuses := make(map[string]map[string]bool)
+	statuses := make(map[string][]v1.ContainerStatus)
 
 	for _, pod := range pods {
-		if pod.Status.Phase == v1.PodPending || pod.Status.Phase == v1.PodRunning {
-			shortName := strings.Split(pod.Name, "-")[0]
-			if _, found := statuses[shortName]; !found {
-				statuses[shortName] = make(map[string]bool)
+		if pod.Status.Phase == v1.PodRunning {
+			name := strings.Split(pod.Name, "-")[0]
+			if _, found := statuses[name]; !found {
+				statuses[name] = make([]v1.ContainerStatus, 0)
 			}
-			for _, container := range pod.Status.ContainerStatuses {
-				statuses[shortName][container.Name] = container.Ready
-			}
+			statuses[name] = append(statuses[name], pod.Status.ContainerStatuses...)
 		}
 	}
 
-	for _, deployName := range []string{"controller", "grafana", "prometheus", "web"} {
-		if _, found := statuses[deployName]; !found {
-			return fmt.Errorf("No running pods for %s", deployName)
-		}
+	names := []string{"controller", "grafana", "prometheus", "web"}
+	if _, found := statuses["ca"]; found {
+		names = append(names, "ca")
 	}
 
-	for deployName, containers := range statuses {
-		for containerName, ready := range containers {
-			if !ready {
-				return fmt.Errorf("The %s pod's %s container is not ready", deployName, containerName)
+	for _, name := range names {
+		containers, found := statuses[name]
+		if !found {
+			return fmt.Errorf("No running pods for %s", name)
+		}
+		for _, container := range containers {
+			if !container.Ready {
+				return fmt.Errorf("The %s pod's %s container is not ready", name,
+					container.Name)
 			}
 		}
 	}
