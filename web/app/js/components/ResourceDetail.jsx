@@ -1,3 +1,4 @@
+import _ from 'lodash';
 import ErrorBanner from './ErrorBanner.jsx';
 import MetricsTable from './MetricsTable.jsx';
 import PageHeader from './PageHeader.jsx';
@@ -51,7 +52,7 @@ export class ResourceDetailBase extends React.Component {
       resource,
       pollingInterval: 2000,
       resourceMetrics: [],
-      podMetrics: [],
+      podMetrics: [], // metrics for all pods whose owner is this resource
       pendingRequests: false,
       loaded: false,
       error: null
@@ -81,26 +82,42 @@ export class ResourceDetailBase extends React.Component {
     this.setState({ pendingRequests: true });
 
     let { resource } = this.state;
+
     this.api.setCurrentRequests([
       // inbound stats for this resource
       this.api.fetchMetrics(
         `${this.api.urlsForResource(resource.type, resource.namespace)}&resource_name=${resource.name}`
       ),
+      // list of all pods in this namespace (hack since we can't currently query for all pods in a resource)
+      this.api.fetchPods(resource.namespace),
       // pod metrics for outbound stats --to this resource
       // only gets traffic originating within the mesh
       this.api.fetchMetrics(
-        `${this.api.urlsForResource("pod", resource.namespace)}&to_name=${resource.name}&to_type=${resource.type}`
+        `${this.api.urlsForResource("pod", resource.namespace)}`
       ),
     ]);
 
     Promise.all(this.api.getCurrentPromises())
-      .then(([resourceRsp, podRsp]) => {
+      .then(([resourceRsp, podListRsp, podRsp]) => {
         let resourceMetrics = processSingleResourceRollup(resourceRsp);
         let podMetrics = processSingleResourceRollup(podRsp);
 
+        // INEFFICIENT: get metrics for all the pods belonging to this resource.
+        // Do this by querying for metrics for all pods in this namespace and then filtering
+        // out those pods whose owner is not this resource
+        // TODO: fix (#1467)
+        let podBelongsToResource = _.reduce(podListRsp.pods, (mem, pod) => {
+          if (_.get(pod, resource.type) === resource.namespace + "/" + resource.name) {
+            mem[pod.name] = true;
+          }
+          return mem;
+        }, {});
+
+        let podMetricsForResource = _.filter(podMetrics, pod => podBelongsToResource[pod.namespace + "/" + pod.name]);
+
         this.setState({
           resourceMetrics,
-          podMetrics,
+          podMetrics: podMetricsForResource,
           loaded: true,
           pendingRequests: false,
           error: null
