@@ -25,7 +25,7 @@ const Neighbor = ({neighbor, direction}) => {
         <div className="neighbor-row">
           <div>{direction === "in" ? "<" : ">"}</div>
           <div className={`status-dot ${getDotClassification(neighbor.successRate)}`} />
-          <div>{neighbor.name}</div>
+          <div>{displayName(neighbor)}</div>
         </div>
       </Popover>
     </div>
