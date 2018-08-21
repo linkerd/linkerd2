@@ -143,9 +143,24 @@ const camelCaseLookUp = {
   "daemonset": "daemonSet"
 };
 
-export const resourceTypeToCamelCase = resource => {
-  return camelCaseLookUp[resource] || resource;
+export const resourceTypeToCamelCase = resource => camelCaseLookUp[resource] || resource;
+
+/*
+  A simplified version of ShortNameFromCanonicalResourceName
+*/
+const shortNameLookup = {
+  "deployment": "deploy",
+  "daemonset": "ds",
+  "namespace": "ns",
+  "pod": "po",
+  "replicationcontroller": "rc",
+  "replicaset": "rs",
+  "service": "svc",
+  "statefulset": "sts",
+  "authority": "au"
 };
+
+export const toShortResourceName = name => shortNameLookup[name] || name;
 
 /*
   produce octets given an ip address

@@ -1,0 +1,40 @@
+@import 'styles.css';
+
+.octopus-container {
+  padding: 80px;
+}
+
+.octopus-graph {
+  background-color: #ffffff;
+  height: 100%;
+  width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 24px;
+  box-shadow: 2px 2px 2px var(--neutralgrey);
+
+  & .octopus-title, & .octopus-metric {
+    text-align: center;
+  }
+
+  & .octopus-upstreams .neighbor, & .octopus-downstreams .neighbor {
+    clear: both;
+
+    & .status-dot {
+      margin: 4px 4px 0 4px;
+    }
+  }
+
+  & .octopus-upstreams .neighbor > div div {
+    float: left;
+  }
+
+  & .octopus-downstreams .neighbor > div div {
+    float: right;
+  }
+}
+
+.octopus-metric-lg {
+  text-align: center;
+  line-height: 32px;
+}
