@@ -143,9 +143,7 @@ const camelCaseLookUp = {
   "daemonset": "daemonSet"
 };
 
-export const resourceTypeToCamelCase = resource => {
-  return camelCaseLookUp[resource] || resource;
-};
+export const resourceTypeToCamelCase = resource => camelCaseLookUp[resource] || resource;
 
 /*
   A simplified version of ShortNameFromCanonicalResourceName
