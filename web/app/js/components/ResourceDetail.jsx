@@ -5,9 +5,9 @@ import PageHeader from './PageHeader.jsx';
 import { processSingleResourceRollup } from './util/MetricUtils.js';
 import PropTypes from 'prop-types';
 import React from 'react';
-import { singularResource } from './util/Utils.js';
 import { Spin } from 'antd';
 import { withContext } from './util/AppContext.jsx';
+import { resourceTypeToCamelCase, singularResource } from './util/Utils.js';
 import 'whatwg-fetch';
 
 const getResourceFromUrl = (match, pathPrefix) => {
@@ -106,11 +106,7 @@ export class ResourceDetailBase extends React.Component {
         // out those pods whose owner is not this resource
         // TODO: fix (#1467)
         let podBelongsToResource = _.reduce(podListRsp.pods, (mem, pod) => {
-          if (_.get(pod, resource.type) === resource.namespace + "/" + resource.name) {
-            mem[pod.name] = true;
-          }
-
-          if (_.get(pod, "replicationController") === resource.namespace + "/" + resource.name) {
+          if (_.get(pod, resourceTypeToCamelCase(resource.type)) === resource.namespace + "/" + resource.name) {
             mem[pod.name] = true;
           }
 
@@ -164,12 +160,14 @@ export class ResourceDetailBase extends React.Component {
         </div>
 
         {
-          this.state.resource.type === "pod" ? null : <div className="page-section">
-            <h2 className="subsection-header">Pods</h2>
-            <MetricsTable
-              resource="pod"
-              metrics={this.state.podMetrics} />
-          </div>
+          this.state.resource.type === "pod" ? null : (
+            <div className="page-section">
+              <h2 className="subsection-header">Pods</h2>
+              <MetricsTable
+                resource="pod"
+                metrics={this.state.podMetrics} />
+            </div>
+        )
         }
       </div>
     );
