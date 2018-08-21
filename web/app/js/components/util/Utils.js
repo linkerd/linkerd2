@@ -133,6 +133,21 @@ export const singularResource = resource => {
 };
 
 /*
+  Get the resource type from the /pods response, whose json
+  is camelCased.
+*/
+const camelCaseLookUp = {
+  "replicaset": "replicaSet",
+  "replicationcontroller": "replicationController",
+  "statefulset": "statefulSet",
+  "daemonset": "daemonSet"
+};
+
+export const resourceTypeToCamelCase = resource => {
+  return camelCaseLookUp[resource] || resource;
+};
+
+/*
   produce octets given an ip address
 */
 const decodeIPToOctets = ip => {
