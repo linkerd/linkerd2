@@ -65,9 +65,13 @@ MetricSummaryRow.propTypes = {
 };
 
 export default class Octopus extends React.Component {
+  static defaultProps = {
+    metrics: {},
+    neighbors: {}
+  }
   static propTypes = {
-    metrics: PropTypes.shape({}).isRequired,
-    neighbors: PropTypes.shape({}).isRequired,
+    metrics: PropTypes.shape({}),
+    neighbors: PropTypes.shape({}),
     resource: PropTypes.shape({}).isRequired
   }
 
