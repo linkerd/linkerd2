@@ -1,40 +1,52 @@
 @import 'styles.css';
 
 .octopus-container {
-  padding: 80px;
+
+  padding: calc(var(--base-width) * 4);
 }
 
 .octopus-graph {
-  background-color: #ffffff;
-  height: 100%;
-  width: 600px;
-  margin-left: auto;
-  margin-right: auto;
-  padding: 24px;
-  box-shadow: 2px 2px 2px var(--neutralgrey);
-
-  & .octopus-title, & .octopus-metric {
-    text-align: center;
+  & .octopus-body {
+    background-color: white;
+    margin-bottom: calc(var(--base-width) * 3);
+    box-shadow: 2px 2px 2px var(--neutralgrey);
   }
 
-  & .octopus-upstreams .neighbor, & .octopus-downstreams .neighbor {
-    clear: both;
+  & .octopus-col {
+    text-align: center;
+  }
+  & .resource-col {
+    background-color: #FAFAFA;
+    padding: 32px;
+  }
 
-    & .status-dot {
-      margin: 4px 4px 0 4px;
+  & .octopus-title {
+    padding: 8px 0;
+
+    &.main {
+      font-size: 24px;
+      font-weight: var(--font-weight-extra-bold);
+    }
+    &.neighbor {
+      font-size: 16px;
+      font-weight: var(--font-weight-bold);
     }
   }
 
-  & .octopus-upstreams .neighbor > div div {
-    float: left;
-  }
+  & .octopus-metric {
+    line-height: 32px;
 
-  & .octopus-downstreams .neighbor > div div {
-    float: right;
+    &.status-good {
+      color: var(--green);
+    }
+    &.status-poor {
+      color: var(--siennared);
+    }
+    &.status-neutral {
+      color: #E0E0E0;
+    }
+    &.status-ok {
+      color: #FF8C00;
+    }
   }
-}
-
-.octopus-metric-lg {
-  text-align: center;
-  line-height: 32px;
 }
