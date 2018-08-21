@@ -1,9 +1,11 @@
 import _ from 'lodash';
-import { metricToFormatter } from './util/Utils.js';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { Col, Popover, Row } from 'antd';
+import { metricToFormatter, toShortResourceName } from './util/Utils.js';
 import './../../css/octopus.css';
+
+const displayName = resource => `${toShortResourceName(resource.type)}/${resource.name}`;
 
 const getDotClassification = sr => {
   if (sr < 0.9) {
@@ -17,7 +19,7 @@ const Neighbor = ({neighbor, direction}) => {
   return (
     <div className="neighbor">
       <Popover
-        title={neighbor.name}
+        title={displayName(neighbor)}
         content={<MetricSummaryRow resource={neighbor} metricClass="metric-sm" />}
         placement={direction ==="in" ? "left" : "right"}>
         <div className="neighbor-row">
@@ -66,7 +68,7 @@ export default class Octopus extends React.Component {
   static propTypes = {
     metrics: PropTypes.shape({}).isRequired,
     neighbors: PropTypes.shape({}).isRequired,
-    resource: PropTypes.string.isRequired
+    resource: PropTypes.shape({}).isRequired
   }
 
   render() {
@@ -75,7 +77,7 @@ export default class Octopus extends React.Component {
     return (
       <div className="octopus-container">
         <div className="octopus-graph">
-          <h1 className="octopus-title">{resource}</h1>
+          <h1 className="octopus-title">{displayName(resource)}</h1>
           <MetricSummaryRow resource={metrics} metricClass="metric-lg" />
           <hr />
           <Row type="flex" justify="center">

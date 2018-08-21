@@ -112,6 +112,7 @@ const processStatTable = table => {
     return {
       name: row.resource.name,
       namespace: row.resource.namespace,
+      type: row.resource.type,
       totalRequests: getTotalRequests(row),
       requestRate: getRequestRate(row),
       successRate: getSuccessRate(row),

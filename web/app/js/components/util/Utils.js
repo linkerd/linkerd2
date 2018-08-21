@@ -148,6 +148,23 @@ export const resourceTypeToCamelCase = resource => {
 };
 
 /*
+  A simplified version of ShortNameFromCanonicalResourceName
+*/
+const shortNameLookup = {
+  "deployment": "deploy",
+  "daemonset": "ds",
+  "namespace": "ns",
+  "pod": "po",
+  "replicationcontroller": "rc",
+  "replicaset": "rs",
+  "service": "svc",
+  "statefulset": "sts",
+  "authority": "au"
+};
+
+export const toShortResourceName = name => shortNameLookup[name] || name;
+
+/*
   produce octets given an ip address
 */
 const decodeIPToOctets = ip => {

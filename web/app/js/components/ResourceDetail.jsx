@@ -170,7 +170,7 @@ export class ResourceDetailBase extends React.Component {
       <div>
         <div className="page-section">
           <Octopus
-            resource={this.state.resource.name}
+            resource={this.state.resource}
             metrics={this.state.resourceMetrics[0]}
             neighbors={this.state.neighborMetrics} />
         </div>
