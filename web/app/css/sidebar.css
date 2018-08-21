@@ -32,6 +32,10 @@ ul.ant-menu.ant-menu-sub {
     & .update {
       color: var(--siennared);
     }
+
+    & .ant-select-selection {
+      width: 220px;
+    }
   }
 
   & .sidebar-submenu-item {
