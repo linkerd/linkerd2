@@ -1,7 +1,6 @@
 @import 'styles.css';
 
 .octopus-container {
-
   padding: calc(var(--base-width) * 4);
 }
 

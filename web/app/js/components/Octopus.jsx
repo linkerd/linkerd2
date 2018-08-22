@@ -30,26 +30,6 @@ Metric.propTypes = {
   value: PropTypes.string.isRequired
 };
 
-const ResourceSummary = ({resource, cn}) => {
-  return (
-    <div className={`octopus-body ${cn}`}>
-      <div className={`octopus-title ${cn} ${getSrClassification(resource.successRate)}`}>
-        {displayName(resource)}
-      </div>
-      <Metric
-        title="SR"
-        className={`${getSrClassification(resource.successRate)}`}
-        value={metricToFormatter["SUCCESS_RATE"](resource.successRate)} />
-      <Metric title="RPS" value={metricToFormatter["REQUEST_RATE"](resource.requestRate)} />
-      <Metric title="P99" value={metricToFormatter["LATENCY"](_.get(resource, "latency.P99"))} />
-    </div>
-  );
-};
-ResourceSummary.propTypes = {
-  cn: PropTypes.string.isRequired,
-  resource: PropTypes.shape({}).isRequired
-};
-
 const ArrowCol = ({showArrow}) => <Col span={2} className="octopus-col">{!showArrow ? " " : <Icon type="arrow-right" />}</Col>;
 ArrowCol.propTypes = PropTypes.bool.isRequired;
 export default class Octopus extends React.Component {
@@ -63,6 +43,24 @@ export default class Octopus extends React.Component {
     resource: PropTypes.shape({})
   }
 
+  renderResourceSummary(resource, cn) {
+    return (
+      <div key={resource.name} className={`octopus-body ${cn}`}>
+        <div className={`octopus-title ${cn} ${getSrClassification(resource.successRate)}`}>
+          <this.props.api.PrefixedLink to={`/namespaces/${resource.namespace}/${resource.type}s/${resource.name}`}>
+            {displayName(resource)}
+          </this.props.api.PrefixedLink>
+        </div>
+        <Metric
+          title="SR"
+          className={`${getSrClassification(resource.successRate)}`}
+          value={metricToFormatter["SUCCESS_RATE"](resource.successRate)} />
+        <Metric title="RPS" value={metricToFormatter["REQUEST_RATE"](resource.requestRate)} />
+        <Metric title="P99" value={metricToFormatter["LATENCY"](_.get(resource, "latency.P99"))} />
+      </div>
+    );
+  }
+
   render() {
     let { resource, neighbors } = this.props;
     let hasUpstreams = _.size(neighbors.upstream) > 0;
@@ -73,19 +71,19 @@ export default class Octopus extends React.Component {
         <div className="octopus-graph">
           <Row type="flex" justify="center" gutter={32} align="middle">
             <Col span={6} className={`octopus-col ${hasUpstreams ? "resource-col" : ""}`}>
-              {_.map(neighbors.upstream, n => <ResourceSummary key={n.name} resource={n} cn="neighbor" />)}
+              {_.map(neighbors.upstream, n => this.renderResourceSummary(n, "neighbor"))}
             </Col>
 
             <ArrowCol showArrow={hasUpstreams} />
 
             <Col span={8} className="octopus-col resource-col">
-              <ResourceSummary resource={resource} cn="main" />
+              {this.renderResourceSummary(resource, "main")}
             </Col>
 
             <ArrowCol showArrow={hasDownstreams} />
 
             <Col span={6} className={`octopus-col ${hasDownstreams ? "resource-col" : ""}`}>
-              {_.map(neighbors.downstream, n => <ResourceSummary key={n.name} resource={n} cn="neighbor" />)}
+              {_.map(neighbors.downstream, n => this.renderResourceSummary(n, "neighbor"))}
             </Col>
           </Row>
         </div>

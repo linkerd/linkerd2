@@ -175,7 +175,8 @@ export class ResourceDetailBase extends React.Component {
         <div className="page-section">
           <Octopus
             resource={this.state.resourceMetrics[0]}
-            neighbors={this.state.neighborMetrics} />
+            neighbors={this.state.neighborMetrics}
+            api={this.api} />
         </div>
 
         { _.isEmpty(this.state.neighborMetrics.upstream) ? null : (
