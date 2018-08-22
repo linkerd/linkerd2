@@ -24,12 +24,14 @@ const (
 type dashboardOptions struct {
 	dashboardProxyPort int
 	dashboardShow      string
+	wait               bool
 }
 
 func newDashboardOptions() *dashboardOptions {
 	return &dashboardOptions{
 		dashboardProxyPort: 0,
 		dashboardShow:      showLinkerd,
+		wait:               false,
 	}
 }
 
@@ -68,7 +70,7 @@ func newCmdDashboard() *cobra.Command {
 			}
 
 			// ensure we can connect to the public API before starting the proxy
-			validatedPublicAPIClient()
+			validatedPublicAPIClient(options.wait)
 
 			fmt.Printf("Linkerd dashboard available at:\n%s\n", url.String())
 			fmt.Printf("Grafana dashboard available at:\n%s\n", grafanaUrl.String())
@@ -109,6 +111,7 @@ func newCmdDashboard() *cobra.Command {
 	// This is identical to what `kubectl proxy --help` reports, `--port 0` indicates a random port.
 	cmd.PersistentFlags().IntVarP(&options.dashboardProxyPort, "port", "p", options.dashboardProxyPort, "The port on which to run the proxy (when set to 0, a random port will be used)")
 	cmd.PersistentFlags().StringVar(&options.dashboardShow, "show", options.dashboardShow, "Open a dashboard in a browser or show URLs in the CLI (one of: linkerd, grafana, url)")
+	cmd.PersistentFlags().BoolVar(&options.wait, "wait", false, "Wait for dashboard to become available if it's not available when the command is run")
 
 	return cmd
 }

@@ -206,6 +206,52 @@ func TestHealthChecker(t *testing.T) {
 			t.Fatalf("Expected results %v, but got %v", expectedResults, observedResults)
 		}
 	})
+
+	t.Run("Retries checks if retry is specified", func(t *testing.T) {
+		retryWindow = 0
+		returnError := true
+
+		retryCheck := &checker{
+			category:    "cat7",
+			description: "desc7",
+			retry:       true,
+			check: func() error {
+				if returnError {
+					returnError = false
+					return fmt.Errorf("retry")
+				}
+				return nil
+			},
+		}
+
+		hc := HealthChecker{
+			checkers: []*checker{
+				passingCheck1,
+				retryCheck,
+			},
+		}
+
+		observedResults := make([]string, 0)
+		observer := func(result *CheckResult) {
+			res := fmt.Sprintf("%s %s retry=%t", result.Category, result.Description, result.Retry)
+			if result.Err != nil {
+				res += fmt.Sprintf(": %s", result.Err)
+			}
+			observedResults = append(observedResults, res)
+		}
+
+		expectedResults := []string{
+			"cat1 desc1 retry=false",
+			"cat7 desc7 retry=true: retry",
+			"cat7 desc7 retry=false",
+		}
+
+		hc.RunChecks(observer)
+
+		if !reflect.DeepEqual(observedResults, expectedResults) {
+			t.Fatalf("Expected results %v, but got %v", expectedResults, observedResults)
+		}
+	})
 }
 
 func TestValidatePods(t *testing.T) {

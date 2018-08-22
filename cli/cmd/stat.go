@@ -106,7 +106,7 @@ If no resource name is specified, displays stats about all resources of the spec
 				return fmt.Errorf("error creating metrics request while making stats request: %v", err)
 			}
 
-			output, err := requestStatsFromAPI(validatedPublicAPIClient(), req, options)
+			output, err := requestStatsFromAPI(validatedPublicAPIClient(false), req, options)
 			if err != nil {
 				return err
 			}

@@ -69,20 +69,27 @@ func init() {
 
 // validatedPublicAPIClient builds a new public API client and executes status
 // checks to determine if the client can successfully connect to the API. If the
-// checks fail, then CLI will print an error and exit.
-func validatedPublicAPIClient() pb.ApiClient {
+// checks fail, then CLI will print an error and exit. If the shouldRetry param
+// is specified, then the CLI will print a message to stderr and retry.
+func validatedPublicAPIClient(shouldRetry bool) pb.ApiClient {
 	checks := []healthcheck.Checks{
 		healthcheck.KubernetesAPIChecks,
 		healthcheck.LinkerdAPIChecks,
 	}
 
 	hc := healthcheck.NewHealthChecker(checks, &healthcheck.HealthCheckOptions{
-		Namespace:  controlPlaneNamespace,
-		KubeConfig: kubeconfigPath,
-		APIAddr:    apiAddr,
+		Namespace:   controlPlaneNamespace,
+		KubeConfig:  kubeconfigPath,
+		APIAddr:     apiAddr,
+		ShouldRetry: shouldRetry,
 	})
 
 	exitOnError := func(result *healthcheck.CheckResult) {
+		if result.Retry {
+			fmt.Fprintln(os.Stderr, "Waiting for control plane to become available")
+			return
+		}
+
 		if result.Err != nil {
 			var msg string
 			switch result.Category {
