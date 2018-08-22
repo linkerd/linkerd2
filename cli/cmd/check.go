@@ -10,20 +10,23 @@ import (
 )
 
 const (
-	lineWidth  = 80
-	okStatus   = "[ok]"
-	failStatus = "[FAIL]"
+	lineWidth   = 80
+	okStatus    = "[ok]"
+	retryStatus = "[retry]"
+	failStatus  = "[FAIL]"
 )
 
 type checkOptions struct {
 	versionOverride string
 	preInstallOnly  bool
+	wait            bool
 }
 
 func newCheckOptions() *checkOptions {
 	return &checkOptions{
 		versionOverride: "",
 		preInstallOnly:  false,
+		wait:            false,
 	}
 }
 
@@ -48,6 +51,7 @@ non-zero exit code.`,
 	cmd.Args = cobra.NoArgs
 	cmd.PersistentFlags().StringVar(&options.versionOverride, "expected-version", options.versionOverride, "Overrides the version used when checking if Linkerd is running the latest version (mostly for testing)")
 	cmd.PersistentFlags().BoolVar(&options.preInstallOnly, "pre", options.preInstallOnly, "Only run pre-installation checks, to determine if the control plane can be installed")
+	cmd.PersistentFlags().BoolVar(&options.wait, "wait", false, "Retry and wait for some checks to succeed if they don't pass the first time")
 
 	return cmd
 }
@@ -66,6 +70,7 @@ func configureAndRunChecks(options *checkOptions) {
 		KubeConfig:                   kubeconfigPath,
 		APIAddr:                      apiAddr,
 		VersionOverride:              options.versionOverride,
+		ShouldRetry:                  options.wait,
 		ShouldCheckKubeVersion:       true,
 		ShouldCheckControllerVersion: !options.preInstallOnly,
 	})
@@ -90,6 +95,11 @@ func runChecks(w io.Writer, hc *healthcheck.HealthChecker) bool {
 		lineBreak := "\n"
 		for i := 0; i < lineWidth-len(checkLabel)-len(okStatus)-len(lineBreak); i++ {
 			filler = filler + "."
+		}
+
+		if result.Retry {
+			fmt.Fprintf(w, "%s%s%s -- %s%s", checkLabel, filler, retryStatus, result.Err, lineBreak)
+			return
 		}
 
 		if result.Err != nil {

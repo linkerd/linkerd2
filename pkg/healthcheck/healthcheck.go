@@ -49,10 +49,16 @@ const (
 	LinkerdVersionCategory    = "linkerd-version"
 )
 
+var (
+	maxRetries  = 10
+	retryWindow = 5 * time.Second
+)
+
 type checker struct {
 	category    string
 	description string
 	fatal       bool
+	retry       bool
 	check       func() error
 	checkRPC    func() (*healthcheckPb.SelfCheckResponse, error)
 }
@@ -60,6 +66,7 @@ type checker struct {
 type CheckResult struct {
 	Category    string
 	Description string
+	Retry       bool
 	Err         error
 }
 
@@ -70,6 +77,7 @@ type HealthCheckOptions struct {
 	KubeConfig                   string
 	APIAddr                      string
 	VersionOverride              string
+	ShouldRetry                  bool
 	ShouldCheckKubeVersion       bool
 	ShouldCheckControllerVersion bool
 }
@@ -183,6 +191,7 @@ func (hc *HealthChecker) addLinkerdAPIChecks() {
 	hc.checkers = append(hc.checkers, &checker{
 		category:    LinkerdAPICategory,
 		description: "control plane pods are ready",
+		retry:       hc.ShouldRetry,
 		fatal:       true,
 		check: func() error {
 			pods, err := hc.kubeAPI.GetPodsForNamespace(hc.httpClient, hc.Namespace)
@@ -297,13 +306,30 @@ func (hc *HealthChecker) RunChecks(observer checkObserver) bool {
 }
 
 func (hc *HealthChecker) runCheck(c *checker, observer checkObserver) bool {
-	err := c.check()
-	observer(&CheckResult{
-		Category:    c.category,
-		Description: c.description,
-		Err:         err,
-	})
-	return err == nil
+	var retries int
+	if c.retry {
+		retries = maxRetries
+	}
+
+	for {
+		err := c.check()
+		checkResult := &CheckResult{
+			Category:    c.category,
+			Description: c.description,
+			Err:         err,
+		}
+
+		if err != nil && retries > 0 {
+			retries--
+			checkResult.Retry = true
+			observer(checkResult)
+			time.Sleep(retryWindow)
+			continue
+		}
+
+		observer(checkResult)
+		return err == nil
+	}
 }
 
 func (hc *HealthChecker) runCheckRPC(c *checker, observer checkObserver) bool {
