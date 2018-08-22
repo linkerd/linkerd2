@@ -14,7 +14,7 @@ import (
 )
 
 func TestHealthChecker(t *testing.T) {
-	nullObserver := func(_, _ string, _ error) {}
+	nullObserver := func(_ *CheckResult) {}
 
 	passingCheck1 := &checker{
 		category:    "cat1",
@@ -104,10 +104,10 @@ func TestHealthChecker(t *testing.T) {
 		}
 
 		observedResults := make([]string, 0)
-		observer := func(category, description string, err error) {
-			res := fmt.Sprintf("%s %s", category, description)
-			if err != nil {
-				res += fmt.Sprintf(": %s", err)
+		observer := func(result *CheckResult) {
+			res := fmt.Sprintf("%s %s", result.Category, result.Description)
+			if result.Err != nil {
+				res += fmt.Sprintf(": %s", result.Err)
 			}
 			observedResults = append(observedResults, res)
 		}
@@ -187,10 +187,10 @@ func TestHealthChecker(t *testing.T) {
 		}
 
 		observedResults := make([]string, 0)
-		observer := func(category, description string, err error) {
-			res := fmt.Sprintf("%s %s", category, description)
-			if err != nil {
-				res += fmt.Sprintf(": %s", err)
+		observer := func(result *CheckResult) {
+			res := fmt.Sprintf("%s %s", result.Category, result.Description)
+			if result.Err != nil {
+				res += fmt.Sprintf(": %s", result.Err)
 			}
 			observedResults = append(observedResults, res)
 		}

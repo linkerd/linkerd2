@@ -53,6 +53,18 @@ func TestVersionPreInstall(t *testing.T) {
 	}
 }
 
+func TestCheckPreInstall(t *testing.T) {
+	out, err := TestHelper.LinkerdRun("check", "--pre", "--expected-version", TestHelper.GetVersion())
+	if err != nil {
+		t.Fatalf("Check command failed\n%s", out)
+	}
+
+	err = TestHelper.ValidateOutput(out, "check.pre.golden")
+	if err != nil {
+		t.Fatalf("Received unexpected output\n%s", err.Error())
+	}
+}
+
 func TestInstall(t *testing.T) {
 	cmd := []string{"install", "--linkerd-version", TestHelper.GetVersion()}
 	if TestHelper.TLS() {
@@ -115,7 +127,7 @@ func TestVersionPostInstall(t *testing.T) {
 	}
 }
 
-func TestCheck(t *testing.T) {
+func TestCheckPostInstall(t *testing.T) {
 	var out string
 	var err error
 	overallErr := TestHelper.RetryFor(30*time.Second, func() error {

@@ -53,14 +53,22 @@ non-zero exit code.`,
 }
 
 func configureAndRunChecks(options *checkOptions) {
-	hc := healthcheck.NewHealthChecker()
-	hc.AddKubernetesAPIChecks(kubeconfigPath, false)
+	checks := []healthcheck.Checks{healthcheck.KubernetesAPIChecks}
 	if options.preInstallOnly {
-		hc.AddLinkerdPreInstallChecks(controlPlaneNamespace)
+		checks = append(checks, healthcheck.LinkerdPreInstallChecks)
 	} else {
-		hc.AddLinkerdAPIChecks(apiAddr, controlPlaneNamespace)
+		checks = append(checks, healthcheck.LinkerdAPIChecks)
 	}
-	hc.AddLinkerdVersionChecks(options.versionOverride, options.preInstallOnly)
+	checks = append(checks, healthcheck.LinkerdVersionChecks)
+
+	hc := healthcheck.NewHealthChecker(checks, &healthcheck.HealthCheckOptions{
+		Namespace:                    controlPlaneNamespace,
+		KubeConfig:                   kubeconfigPath,
+		APIAddr:                      apiAddr,
+		VersionOverride:              options.versionOverride,
+		ShouldCheckKubeVersion:       true,
+		ShouldCheckControllerVersion: !options.preInstallOnly,
+	})
 
 	success := runChecks(os.Stdout, hc)
 
@@ -75,8 +83,8 @@ func configureAndRunChecks(options *checkOptions) {
 }
 
 func runChecks(w io.Writer, hc *healthcheck.HealthChecker) bool {
-	prettyPrintResults := func(category, description string, err error) {
-		checkLabel := fmt.Sprintf("%s: %s", category, description)
+	prettyPrintResults := func(result *healthcheck.CheckResult) {
+		checkLabel := fmt.Sprintf("%s: %s", result.Category, result.Description)
 
 		filler := ""
 		lineBreak := "\n"
@@ -84,8 +92,8 @@ func runChecks(w io.Writer, hc *healthcheck.HealthChecker) bool {
 			filler = filler + "."
 		}
 
-		if err != nil {
-			fmt.Fprintf(w, "%s%s%s -- %s%s", checkLabel, filler, failStatus, err.Error(), lineBreak)
+		if result.Err != nil {
+			fmt.Fprintf(w, "%s%s%s -- %s%s", checkLabel, filler, failStatus, result.Err, lineBreak)
 			return
 		}
 
