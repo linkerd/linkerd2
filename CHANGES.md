@@ -6,6 +6,8 @@
     `--pre` flag for running pre-install checks
   * `linkerd check` and `linkerd dashboard` now support a `--wait` flag that
     tells the CLI to wait for the control plane to become ready
+  * `linkerd tap` now supports a `--output` flag to display output in a wide
+    format that includes src and dst resources and namespaces
   * `linkerd stat` includes additional validation for command line inputs
   * All commands that talk to the Linkerd API now show better error messages
     when the control plane is unavailable
