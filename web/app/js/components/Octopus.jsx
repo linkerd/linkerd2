@@ -1,95 +1,89 @@
 import _ from 'lodash';
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Col, Popover, Row } from 'antd';
+import { Col, Icon, Row } from 'antd';
 import { metricToFormatter, toShortResourceName } from './util/Utils.js';
 import './../../css/octopus.css';
 
 const displayName = resource => `${toShortResourceName(resource.type)}/${resource.name}`;
 
-const getDotClassification = sr => {
+const getSrClassification = sr => {
   if (sr < 0.9) {
-    return "status-dot-poor";
+    return "status-poor";
   } else if (sr < 0.95) {
-    return "status-dot-ok";
-  } else {return "status-dot-good";}
+    return "status-ok";
+  } else {return "status-good";}
 };
 
-const Neighbor = ({neighbor, direction}) => {
+const Metric = ({title, value, className}) => {
   return (
-    <div className="neighbor">
-      <Popover
-        title={displayName(neighbor)}
-        content={<MetricSummaryRow resource={neighbor} metricClass="metric-sm" />}
-        placement={direction ==="in" ? "left" : "right"}>
-        <div className="neighbor-row">
-          <div>{direction === "in" ? "<" : ">"}</div>
-          <div className={`status-dot ${getDotClassification(neighbor.successRate)}`} />
-          <div>{displayName(neighbor)}</div>
-        </div>
-      </Popover>
-    </div>
-  );
-};
-Neighbor.propTypes = {
-  direction: PropTypes.string.isRequired,
-  neighbor: PropTypes.shape({}).isRequired
-};
-
-const Metric = ({title, value, metricClass}) => {
-  return (
-    <Row type="flex" justify="center" className={`octopus-${metricClass}`}>
+    <Row type="flex" justify="center" className={`octopus-metric ${className}`}>
       <Col span={12} className="octopus-metric-title"><div>{title}</div></Col>
       <Col span={12} className="octopus-metric-value"><div>{value}</div></Col>
     </Row>
   );
 };
+Metric.defaultProps = { className: "" };
 Metric.propTypes = {
-  metricClass: PropTypes.string.isRequired,
+  className: PropTypes.string,
   title: PropTypes.string.isRequired,
   value: PropTypes.string.isRequired
 };
 
-const MetricSummaryRow = ({resource, metricClass}) => {
-  return (
-    <React.Fragment>
-      <Metric title="Success Rate" value={metricToFormatter["SUCCESS_RATE"](resource.successRate)} metricClass={metricClass} />
-      <Metric title="Request Rate" value={metricToFormatter["REQUEST_RATE"](resource.requestRate)} metricClass={metricClass} />
-      <Metric title="P99 Latency" value={metricToFormatter["LATENCY"](_.get(resource, "latency.P99"))} metricClass={metricClass}  />
-    </React.Fragment>
-  );
-};
-MetricSummaryRow.propTypes = {
-  metricClass: PropTypes.string.isRequired,
-  resource: PropTypes.shape({}).isRequired
-};
-
+const ArrowCol = ({showArrow}) => <Col span={2} className="octopus-col">{!showArrow ? " " : <Icon type="arrow-right" />}</Col>;
+ArrowCol.propTypes = PropTypes.bool.isRequired;
 export default class Octopus extends React.Component {
   static defaultProps = {
-    metrics: {},
-    neighbors: {}
+    neighbors: {},
+    resource: {}
   }
+
   static propTypes = {
-    metrics: PropTypes.shape({}),
     neighbors: PropTypes.shape({}),
-    resource: PropTypes.shape({}).isRequired
+    resource: PropTypes.shape({})
+  }
+
+  renderResourceSummary(resource, cn) {
+    return (
+      <div key={resource.name} className={`octopus-body ${cn}`}>
+        <div className={`octopus-title ${cn} ${getSrClassification(resource.successRate)}`}>
+          <this.props.api.PrefixedLink to={`/namespaces/${resource.namespace}/${resource.type}s/${resource.name}`}>
+            {displayName(resource)}
+          </this.props.api.PrefixedLink>
+        </div>
+        <Metric
+          title="SR"
+          className={`${getSrClassification(resource.successRate)}`}
+          value={metricToFormatter["SUCCESS_RATE"](resource.successRate)} />
+        <Metric title="RPS" value={metricToFormatter["REQUEST_RATE"](resource.requestRate)} />
+        <Metric title="P99" value={metricToFormatter["LATENCY"](_.get(resource, "latency.P99"))} />
+      </div>
+    );
   }
 
   render() {
-    let { resource, metrics, neighbors } = this.props;
+    let { resource, neighbors } = this.props;
+    let hasUpstreams = _.size(neighbors.upstream) > 0;
+    let hasDownstreams = _.size(neighbors.downstream) > 0;
 
     return (
       <div className="octopus-container">
         <div className="octopus-graph">
-          <h1 className="octopus-title">{displayName(resource)}</h1>
-          <MetricSummaryRow resource={metrics} metricClass="metric-lg" />
-          <hr />
-          <Row type="flex" justify="center">
-            <Col span={12} className="octopus-upstreams">
-              {_.map(neighbors.upstream, n => <Neighbor neighbor={n} direction="in" key={n.namespace + "-" + n.name} />)}
+          <Row type="flex" justify="center" gutter={32} align="middle">
+            <Col span={6} className={`octopus-col ${hasUpstreams ? "resource-col" : ""}`}>
+              {_.map(neighbors.upstream, n => this.renderResourceSummary(n, "neighbor"))}
             </Col>
-            <Col span={12} className="octopus-downstreams">
-              {_.map(neighbors.downstream, n => <Neighbor neighbor={n} direction="out" key={n.namespace + "-" + n.name} />)}
+
+            <ArrowCol showArrow={hasUpstreams} />
+
+            <Col span={8} className="octopus-col resource-col">
+              {this.renderResourceSummary(resource, "main")}
+            </Col>
+
+            <ArrowCol showArrow={hasDownstreams} />
+
+            <Col span={6} className={`octopus-col ${hasDownstreams ? "resource-col" : ""}`}>
+              {_.map(neighbors.downstream, n => this.renderResourceSummary(n, "neighbor"))}
             </Col>
           </Row>
         </div>

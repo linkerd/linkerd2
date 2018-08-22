@@ -54,6 +54,10 @@ export class ResourceDetailBase extends React.Component {
       pollingInterval: 2000,
       resourceMetrics: [],
       podMetrics: [], // metrics for all pods whose owner is this resource
+      neighborMetrics: {
+        upstream: {},
+        downstream: {}
+      },
       pendingRequests: false,
       loaded: false,
       error: null
@@ -170,9 +174,9 @@ export class ResourceDetailBase extends React.Component {
       <div>
         <div className="page-section">
           <Octopus
-            resource={this.state.resource}
-            metrics={this.state.resourceMetrics[0]}
-            neighbors={this.state.neighborMetrics} />
+            resource={this.state.resourceMetrics[0]}
+            neighbors={this.state.neighborMetrics}
+            api={this.api} />
         </div>
 
         { _.isEmpty(this.state.neighborMetrics.upstream) ? null : (
