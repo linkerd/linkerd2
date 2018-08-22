@@ -7,6 +7,7 @@ import { processSingleResourceRollup } from './util/MetricUtils.js';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { Spin } from 'antd';
+import TopModule from './TopModule.jsx';
 import { withContext } from './util/AppContext.jsx';
 import { resourceTypeToCamelCase, singularResource } from './util/Utils.js';
 import 'whatwg-fetch';
@@ -170,6 +171,12 @@ export class ResourceDetailBase extends React.Component {
       return <Spin size="large" />;
     }
 
+    let topQuery = {
+      resource: this.state.resourceType + "/" + this.state.resourceName,
+      namespace: this.state.namespace,
+      maxRps: "1.0"
+    };
+
     return (
       <div>
         <div className="page-section">
@@ -177,6 +184,14 @@ export class ResourceDetailBase extends React.Component {
             resource={this.state.resourceMetrics[0]}
             neighbors={this.state.neighborMetrics}
             api={this.api} />
+        </div>
+
+        <div className="page-section">
+          <TopModule
+            pathPrefix={this.props.pathPrefix}
+            query={topQuery}
+            startTap={true}
+            maxRowsToDisplay={15} />
         </div>
 
         { _.isEmpty(this.state.neighborMetrics.upstream) ? null : (

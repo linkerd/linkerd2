@@ -42,7 +42,6 @@ class Tap extends React.Component {
         maxRps: defaultMaxRps
       },
       maxLinesToDisplay: 40,
-      awaitingWebSocketConnection: false,
       tapRequestInProgress: false,
       pollingInterval: 10000,
       pendingRequests: false
@@ -70,7 +69,6 @@ class Tap extends React.Component {
       ...query
     }));
     this.setState({
-      awaitingWebSocketConnection: false,
       error: null
     });
   }
@@ -250,9 +248,8 @@ class Tap extends React.Component {
     this.api.cancelCurrentRequests();
   }
 
-  startTapSteaming() {
+  startTapStreaming() {
     this.setState({
-      awaitingWebSocketConnection: true,
       tapRequestInProgress: true,
       tapResultsById: {},
       tapResultFilterOptions: this.getInitialTapFilterOptions()
@@ -270,14 +267,13 @@ class Tap extends React.Component {
 
   stopTapStreaming() {
     this.setState({
-      tapRequestInProgress: false,
-      awaitingWebSocketConnection: false
+      tapRequestInProgress: false
     });
   }
 
   handleTapStart = e => {
     e.preventDefault();
-    this.startTapSteaming();
+    this.startTapStreaming();
   }
 
   handleTapStop = () => {
@@ -336,7 +332,6 @@ class Tap extends React.Component {
         <PageHeader header="Tap" />
         <TapQueryForm
           tapRequestInProgress={this.state.tapRequestInProgress}
-          awaitingWebSocketConnection={this.state.awaitingWebSocketConnection}
           handleTapStart={this.handleTapStart}
           handleTapStop={this.handleTapStop}
           resourcesByNs={this.state.resourcesByNs}
