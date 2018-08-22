@@ -38,35 +38,6 @@ describe('Version', () => {
     window.fetch.restore();
   });
 
-  const expandSidebar = component => {
-    // click trigger to expand the sidebar
-    component.find(".ant-layout-sider-trigger").simulate('click');
-  };
-
-  it('is hidden when the sidebar is collapsed', () => {
-    fetchStub.returnsPromise().resolves({
-      ok: true,
-      json: () => Promise.resolve({ version: curVer })
-    });
-
-    component = mount(
-      <BrowserRouter>
-        <Sidebar
-          location={loc}
-          api={apiHelpers}
-          releaseVersion={curVer}
-          pathPrefix=""
-          uuid="fakeuuid" />
-      </BrowserRouter>
-    );
-
-    return withPromise(() => {
-      expect(component.html()).not.to.include("Linkerd is up to date");
-      expandSidebar(component);
-      expect(component.html()).to.include("Linkerd is up to date");
-    });
-  });
-
   it('renders up to date message when versions match', () => {
     fetchStub.returnsPromise().resolves({
       ok: true,
@@ -83,8 +54,6 @@ describe('Version', () => {
           uuid="fakeuuid" />
       </BrowserRouter>
     );
-
-    expandSidebar(component);
 
     return withPromise(() => {
       expect(component.html()).to.include("Linkerd is up to date");
@@ -108,7 +77,6 @@ describe('Version', () => {
       </BrowserRouter>
     );
 
-    expandSidebar(component);
 
     return withPromise(() => {
       expect(component.html()).to.include("A new version (");
@@ -138,8 +106,6 @@ describe('Version', () => {
           uuid="fakeuuid" />
       </BrowserRouter>
     );
-
-    expandSidebar(component);
 
     return withPromise(() => {
       expect(component.html()).to.include("Version check failed");

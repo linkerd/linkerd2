@@ -31,7 +31,6 @@ class Sidebar extends React.Component {
   constructor(props) {
     super(props);
     this.api = this.props.api;
-    this.toggleCollapse = this.toggleCollapse.bind(this);
     this.loadFromServer = this.loadFromServer.bind(this);
     this.handleApiError = this.handleApiError.bind(this);
     this.handleNamespaceSelector = this.handleNamespaceSelector.bind(this);
@@ -109,17 +108,6 @@ class Sidebar extends React.Component {
     });
   }
 
-  toggleCollapse() {
-    if (this.state.initialCollapse) {
-      // fix weird situation where toggleCollapsed is called on pageload,
-      // causing the toggle states to be inconsistent. Don't toggle on the
-      // very first call to toggleCollapse()
-      this.setState({ initialCollapse: false});
-    } else {
-      this.setState({ collapsed: !this.state.collapsed });
-    }
-  }
-
   handleNamespaceSelector(value) {
     this.setState({namespaceFilter: value});
   }
@@ -153,8 +141,7 @@ class Sidebar extends React.Component {
     return (
       <Layout.Sider
         width="260px"
-        breakpoint="lg"
-        onCollapse={this.toggleCollapse}>
+        breakpoint="lg">
 
         <div className="sidebar">
 
