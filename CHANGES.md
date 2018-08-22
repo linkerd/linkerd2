@@ -1,3 +1,32 @@
+## v18.8.2
+
+* CLI
+  * **New** `linkerd top` command has been added, displays live traffic stats
+  * `linkerd check` has been updated with additional checks, now supports a
+    `--pre` flag for running pre-install checks
+  * `linkerd check` and `linkerd dashboard` now support a `--wait` flag that
+    tells the CLI to wait for the control plane to become ready
+  * `linkerd tap` now supports a `--output` flag to display output in a wide
+    format that includes src and dst resources and namespaces
+  * `linkerd stat` includes additional validation for command line inputs
+  * All commands that talk to the Linkerd API now show better error messages
+    when the control plane is unavailable
+* Web UI
+  * **New** individual resources can now be viewed on a resource detail page,
+    which includes stats for the resource itself and its nearest neighbors
+  * **Experimental** web-based Top interface accessible at `/top`, aggregates
+    tap data in real time to display live traffic stats
+  * The `/tap` page has multiple improvements, including displaying additional
+    src/dst metadata, improved form controls, and better latency formatting
+  * All resource tables have been updated to display meshed pod counts, as well
+    as an icon linking to the resource's Grafana dashboard if it is meshed
+  * The UI now shows more useful information when server errors are encountered
+* Proxy
+  * The `h2` crate fixed a HTTP/2 window management bug
+  * The `rustls` crate fixed a bug that could improperly fail TLS streams
+* Control Plane
+  * The tap server now hydrates metadata for both sources and destinations
+
 ## v18.8.1
 
 * Web UI
