@@ -1,0 +1,8 @@
+kubernetes-api: can initialize the client..................................[ok]
+kubernetes-api: can query the Kubernetes API...............................[ok]
+kubernetes-api: is running the minimum Kubernetes API version..............[ok]
+linkerd-ns: control plane namespace does not already exist.................[ok]
+linkerd-version: can determine the latest version..........................[ok]
+linkerd-version: cli is up-to-date.........................................[ok]
+
+Status check results are [ok]

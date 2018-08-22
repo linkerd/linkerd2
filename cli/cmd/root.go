@@ -71,20 +71,27 @@ func init() {
 // checks to determine if the client can successfully connect to the API. If the
 // checks fail, then CLI will print an error and exit.
 func validatedPublicAPIClient() pb.ApiClient {
-	hc := healthcheck.NewHealthChecker()
-	hc.AddKubernetesAPIChecks(kubeconfigPath, false)
-	hc.AddLinkerdAPIChecks(apiAddr, controlPlaneNamespace)
+	checks := []healthcheck.Checks{
+		healthcheck.KubernetesAPIChecks,
+		healthcheck.LinkerdAPIChecks,
+	}
 
-	exitOnError := func(category, description string, err error) {
-		if err != nil {
+	hc := healthcheck.NewHealthChecker(checks, &healthcheck.HealthCheckOptions{
+		Namespace:  controlPlaneNamespace,
+		KubeConfig: kubeconfigPath,
+		APIAddr:    apiAddr,
+	})
+
+	exitOnError := func(result *healthcheck.CheckResult) {
+		if result.Err != nil {
 			var msg string
-			switch category {
+			switch result.Category {
 			case healthcheck.KubernetesAPICategory:
 				msg = "Cannot connect to Kubernetes"
 			case healthcheck.LinkerdAPICategory:
 				msg = "Cannot connect to Linkerd"
 			}
-			fmt.Fprintf(os.Stderr, "%s: %s\n", msg, err)
+			fmt.Fprintf(os.Stderr, "%s: %s\n", msg, result.Err)
 
 			checkCmd := "linkerd check"
 			if controlPlaneNamespace != defaultNamespace {
