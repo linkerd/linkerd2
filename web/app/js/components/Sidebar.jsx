@@ -1,11 +1,11 @@
 import _ from 'lodash';
 import ApiHelpers from './util/ApiHelpers.jsx';
-import { Link, withRouter } from 'react-router-dom';
+import { friendlyTitle } from './util/Utils.js';
+import { Link } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import React from 'react';
 import ReactRouterPropTypes from 'react-router-prop-types';
 import SocialLinks from './SocialLinks.jsx';
-import {friendlyTitle} from './util/Utils.js';
 import Version from './Version.jsx';
 import { withContext } from './util/AppContext.jsx';
 import { Form, Icon, Layout, Menu, Select } from 'antd';
@@ -124,9 +124,10 @@ class Sidebar extends React.Component {
     this.setState({namespaceFilter: value});
   }
 
+  // Filters resources retrieved from a stat query by namespaces. Does not include resources of type "authority"
   filterResourcesByNamespace(resources, namespace) {
     if (namespace === "all") {
-      return resources;
+      return _.omit(resources, ["authority"]);
     }
 
     let result = _.mapValues(resources, o => {
@@ -134,7 +135,11 @@ class Sidebar extends React.Component {
         .filter(r => r.resource.namespace === namespace)
         .value();
     });
-    return result;
+    return _.omit(result, ["authority"]);
+  }
+
+  generateResourceURL(r) {
+    return "/namespaces/" + r.resource.namespace + "/" + r.resource.type + "s/" + r.resource.name;
   }
 
   render() {
@@ -144,7 +149,6 @@ class Sidebar extends React.Component {
       return {nsValue: ns, nsName: ns};
     }));
     let sidebarComponents = this.filterResourcesByNamespace(this.state.resourceGroupings, this.state.namespaceFilter);
-    const SubMenu = withRouter(Menu.SubMenu);
 
     return (
       <Layout.Sider
@@ -231,24 +235,24 @@ class Sidebar extends React.Component {
             {
               _.map(_.keys(sidebarComponents).sort(), resourceName => {
                 return (
-                  <SubMenu
+                  <Menu.SubMenu
                     className="sidebar-menu-item"
                     key={resourceName}
+                    disabled={sidebarComponents[resourceName].length === 0}
                     title={<span>{friendlyTitle(resourceName).plural}</span>}>
                     {
                       _.map(_.sortBy(sidebarComponents[resourceName], r => r.resource.name), ro => {
                         return (
-                          <Menu.Item key={"/namespaces/" + ro.resource.namespace + "/" + ro.resource.type + "s/" + ro.resource.name}>
+                          <Menu.Item key={this.generateResourceURL(ro)}>
                             <PrefixedLink
-                              key={"/namespaces/" + ro.resource.namespace + "/" + ro.resource.type + "s/" + ro.resource.name}
-                              to={"/namespaces/" + ro.resource.namespace + "/" + ro.resource.type + "s/" + ro.resource.name}>
+                              to={this.generateResourceURL(ro)}>
                               <span>{ro.resource.name}</span>
                             </PrefixedLink>
                           </Menu.Item>
                         );
                       })
                     }
-                  </SubMenu>
+                  </Menu.SubMenu>
                 );
               })
             }
