@@ -170,6 +170,13 @@ const shortNameLookup = {
 
 export const toShortResourceName = name => shortNameLookup[name] || name;
 
+export const isResource = name => {
+  let singular = singularResource(name);
+  // If we end up getting the same resource name after running it through
+  // toShortResourceName, the resource is not in the shortNameLookup.
+  return toShortResourceName(singular) !== singular;
+};
+
 /*
   produce octets given an ip address
 */

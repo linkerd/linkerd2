@@ -260,19 +260,11 @@ export class ResourceDetailBase extends React.Component {
   }
 
   render() {
-    let resourceBreadcrumb = (
-      <React.Fragment>
-        <this.api.PrefixedLink to={"/namespaces/" + this.state.namespace}>
-          {this.state.namespace}
-        </this.api.PrefixedLink> &gt; {`${this.state.resource.type}/${this.state.resource.name}`}
-      </React.Fragment>
-    );
 
     return (
       <div className="page-content">
         <div>
           {this.banner()}
-          {resourceBreadcrumb}
           <PageHeader header={`${this.state.resource.type}/${this.state.resource.name}`} />
           {this.content()}
         </div>

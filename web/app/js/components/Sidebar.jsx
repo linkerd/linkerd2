@@ -1,12 +1,12 @@
 import _ from 'lodash';
-import {friendlyTitle} from './util/Utils.js';
-import {Link} from 'react-router-dom';
+import { friendlyTitle } from './util/Utils.js';
+import { Link } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import React from 'react';
 import ReactRouterPropTypes from 'react-router-prop-types';
 import Version from './Version.jsx';
-import {withContext} from './util/AppContext.jsx';
-import {Badge, Form, Icon, Layout, Menu, Select} from 'antd';
+import { withContext } from './util/AppContext.jsx';
+import { Badge, Form, Icon, Layout, Menu, Select } from 'antd';
 import {
   excludeResourcesFromRollup,
   getSuccessRateClassification,
@@ -237,7 +237,7 @@ class Sidebar extends React.Component {
                   <Form layout="inline">
                     <Form.Item>
                       <Select
-                        defaultValue="All Namespaces"
+                        defaultValue={this.state.namespaceFilter || "All Namespaces"}
                         dropdownMatchSelectWidth={true}
                         onChange={this.handleNamespaceSelector}>
                         {

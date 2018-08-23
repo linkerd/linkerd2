@@ -1,5 +1,6 @@
 import ApiHelpers from './components/util/ApiHelpers.jsx';
 import AppContext from './components/util/AppContext.jsx';
+import BreadcrumbHeader from './components/BreadcrumbHeader.jsx';
 import { Layout } from 'antd';
 import Namespace from './components/Namespace.jsx';
 import NamespaceLanding from './components/NamespaceLanding.jsx';
@@ -40,7 +41,8 @@ let applicationHtml = (
         <Layout>
           <Route component={Sidebar} />
           <Layout>
-            <Layout.Content style={{ margin: '0 0', padding: 0, background: '#fff' }}>
+            <Route component={BreadcrumbHeader}  />
+            <Layout.Content style={{ margin: '64px 0', padding: 0, background: '#fff' }}>
               <div className="main-content">
                 <Switch>
                   <Redirect exact from={`${pathPrefix}/`} to={`${pathPrefix}/overview`} />
