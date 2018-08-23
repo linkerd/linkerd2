@@ -1,4 +1,5 @@
 import _ from 'lodash';
+import ApiHelpers from './util/ApiHelpers.jsx';
 import ErrorBanner from './ErrorBanner.jsx';
 import PageHeader from './PageHeader.jsx';
 import Percentage from './util/Percentage.js';
@@ -315,7 +316,7 @@ class Top extends React.Component {
       pendingRequests: true
     });
 
-    let url = "/api/tps-reports?resource_type=all&all_namespaces=true";
+    let url = ApiHelpers("").urlsForResource("all");
     this.api.setCurrentRequests([this.api.fetchMetrics(url)]);
     this.serverPromise = Promise.all(this.api.getCurrentPromises())
       .then(rsp => {

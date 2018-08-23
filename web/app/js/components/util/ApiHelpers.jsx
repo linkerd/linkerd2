@@ -97,6 +97,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   };
 
   const urlsForResource = (type, namespace) => {
+    // Traffic Performance Summary. This retrieves stats for the given resource.
     let baseUrl = '/api/tps-reports?resource_type=' + type;
     return !namespace ? baseUrl + '&all_namespaces=true' : baseUrl + '&namespace=' + namespace;
   };
