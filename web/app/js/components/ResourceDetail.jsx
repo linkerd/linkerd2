@@ -191,7 +191,7 @@ export class ResourceDetailBase extends React.Component {
             pathPrefix={this.props.pathPrefix}
             query={topQuery}
             startTap={true}
-            maxRowsToDisplay={15} />
+            maxRowsToDisplay={10} />
         </div>
 
         { _.isEmpty(this.state.neighborMetrics.upstream) ? null : (
