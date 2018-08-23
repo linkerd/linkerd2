@@ -1,6 +1,5 @@
 import _ from 'lodash';
 import { defaultMaxRps } from './util/TapUtils.jsx';
-import ApiHelpers from './util/ApiHelpers.jsx';
 import ErrorBanner from './ErrorBanner.jsx';
 import PageHeader from './PageHeader.jsx';
 import PropTypes from 'prop-types';
@@ -99,7 +98,7 @@ class Top extends React.Component {
       pendingRequests: true
     });
 
-    let url = ApiHelpers("").urlsForResource("all");
+    let url = this.api.urlsForResource("all");
     this.api.setCurrentRequests([this.api.fetchMetrics(url)]);
     this.serverPromise = Promise.all(this.api.getCurrentPromises())
       .then(rsp => {
