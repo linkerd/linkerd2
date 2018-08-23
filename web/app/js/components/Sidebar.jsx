@@ -162,6 +162,13 @@ class Sidebar extends React.Component {
               </PrefixedLink>
             </Menu.Item>
 
+            <Menu.Item className="sidebar-menu-item" key="/top">
+              <PrefixedLink to="/top">
+                <Icon type="caret-up" />
+                <span>Top</span>
+              </PrefixedLink>
+            </Menu.Item>
+
             {
               _.map(_.take(this.state.namespaces, this.state.maxNsItemsToShow), ns => {
                 return (
