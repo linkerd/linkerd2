@@ -191,7 +191,7 @@ const renderMetaLabels = (title, labels) => {
         columns={srcDstMetaColumns}
         dataSource={data}
         size="small"
-        rowKey="labelVal"
+        rowKey={row => title.replace(" ", "_") + row.labelName + row.labelVal}
         bordered={false}
         showHeader={false}
         pagination={false} />
