@@ -27,24 +27,33 @@ const (
 
 	// LinkerdPreInstallChecks adds a check to validate that the control plane
 	// namespace does not already exist. This check only runs as part of the set
-	// of pre-install checks. This check is dependent on the output of
-	// KubernetesAPIChecks, so those checks must be added first.
+	// of pre-install checks.
+	// This check is dependent on the output of KubernetesAPIChecks, so those
+	// checks must be added first.
 	LinkerdPreInstallChecks
 
+	// LinkerdDataPlaneChecks adds a data plane check to validate that the proxy
+	// containers are in the ready state.
+	// This check is dependent on the output of KubernetesAPIChecks, so those
+	// checks must be added first.
+	LinkerdDataPlaneChecks
+
 	// LinkerdAPIChecks adds a series of checks to validate that the control plane
-	// namespace exists and that it's successfully serving the public API. These
-	// checks are dependent on the output of KubernetesAPIChecks, so those checks
-	// must be added first.
+	// namespace exists and that it's successfully serving the public API.
+	// These checks are dependent on the output of KubernetesAPIChecks, so those
+	// checks must be added first.
 	LinkerdAPIChecks
 
 	// LinkerdVersionChecks adds a series of checks to validate that the CLI and
-	// control plane are running the latest available version. These checks are
-	// dependent on the output of AddLinkerdAPIChecks, so those checks must be
-	// added first, unless the ShouldCheckControllerVersion option is false.
+	// control plane are running the latest available version.
+	// These checks are dependent on the output of AddLinkerdAPIChecks, so those
+	// checks must be added first, unless the ShouldCheckControllerVersion option
+	// is false.
 	LinkerdVersionChecks
 
 	KubernetesAPICategory     = "kubernetes-api"
 	LinkerdPreInstallCategory = "linkerd-ns"
+	LinkerdDataPlaneCategory  = "linkerd-data-plane"
 	LinkerdAPICategory        = "linkerd-api"
 	LinkerdVersionCategory    = "linkerd-version"
 )
@@ -106,6 +115,8 @@ func NewHealthChecker(checks []Checks, options *HealthCheckOptions) *HealthCheck
 			hc.addKubernetesAPIChecks()
 		case LinkerdPreInstallChecks:
 			hc.addLinkerdPreInstallChecks()
+		case LinkerdDataPlaneChecks:
+			hc.addLinkerdDataPlaneChecks()
 		case LinkerdAPIChecks:
 			hc.addLinkerdAPIChecks()
 		case LinkerdVersionChecks:
@@ -224,6 +235,18 @@ func (hc *HealthChecker) addLinkerdAPIChecks() {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 			return hc.apiClient.SelfCheck(ctx, &healthcheckPb.SelfCheckRequest{})
+		},
+	})
+}
+
+func (hc *HealthChecker) addLinkerdDataPlaneChecks() {
+	hc.checkers = append(hc.checkers, &checker{
+		category:    LinkerdDataPlaneCategory,
+		description: "[TODO] proxy containers are in ready state",
+		fatal:       true,
+		check: func() error {
+			// TODO: implement checks described in #1103.
+			return nil
 		},
 	})
 }

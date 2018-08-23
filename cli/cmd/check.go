@@ -19,6 +19,7 @@ const (
 type checkOptions struct {
 	versionOverride string
 	preInstallOnly  bool
+	dataPlaneOnly   bool
 	wait            bool
 }
 
@@ -26,6 +27,7 @@ func newCheckOptions() *checkOptions {
 	return &checkOptions{
 		versionOverride: "",
 		preInstallOnly:  false,
+		dataPlaneOnly:   false,
 		wait:            false,
 	}
 }
@@ -51,6 +53,7 @@ non-zero exit code.`,
 	cmd.Args = cobra.NoArgs
 	cmd.PersistentFlags().StringVar(&options.versionOverride, "expected-version", options.versionOverride, "Overrides the version used when checking if Linkerd is running the latest version (mostly for testing)")
 	cmd.PersistentFlags().BoolVar(&options.preInstallOnly, "pre", options.preInstallOnly, "Only run pre-installation checks, to determine if the control plane can be installed")
+	cmd.PersistentFlags().BoolVar(&options.dataPlaneOnly, "proxy", options.dataPlaneOnly, "Only run data-plane checks, to determine if the data plane is healthy")
 	cmd.PersistentFlags().BoolVar(&options.wait, "wait", false, "Retry and wait for some checks to succeed if they don't pass the first time")
 
 	return cmd
@@ -58,11 +61,17 @@ non-zero exit code.`,
 
 func configureAndRunChecks(options *checkOptions) {
 	checks := []healthcheck.Checks{healthcheck.KubernetesAPIChecks}
-	if options.preInstallOnly {
-		checks = append(checks, healthcheck.LinkerdPreInstallChecks)
+
+	if options.dataPlaneOnly {
+		checks = append(checks, healthcheck.LinkerdDataPlaneChecks)
 	} else {
-		checks = append(checks, healthcheck.LinkerdAPIChecks)
+		if options.preInstallOnly {
+			checks = append(checks, healthcheck.LinkerdPreInstallChecks)
+		} else {
+			checks = append(checks, healthcheck.LinkerdAPIChecks)
+		}
 	}
+
 	checks = append(checks, healthcheck.LinkerdVersionChecks)
 
 	hc := healthcheck.NewHealthChecker(checks, &healthcheck.HealthCheckOptions{
