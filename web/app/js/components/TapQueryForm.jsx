@@ -21,7 +21,6 @@ const getResourceList = (resourcesByNs, ns) => {
 };
 export default class TapQueryForm extends React.Component {
   static propTypes = {
-    awaitingWebSocketConnection: PropTypes.bool.isRequired,
     enableAdvancedForm: PropTypes.bool,
     handleTapStart: PropTypes.func.isRequired,
     handleTapStop: PropTypes.func.isRequired,
@@ -249,14 +248,10 @@ export default class TapQueryForm extends React.Component {
           <Col span={colSpan}>
             <Form.Item>
               {
-              this.props.tapRequestInProgress ?
-                <Button type="primary" className="tap-stop" onClick={this.props.handleTapStop}>Stop</Button> :
-                <Button type="primary" className="tap-start" onClick={this.props.handleTapStart}>Start</Button>
-            }
-              {
-              this.props.awaitingWebSocketConnection ?
-                <Icon type="loading" style={{ paddingLeft: rowGutter, fontSize: 20, color: '#08c' }} /> : null
-            }
+                this.props.tapRequestInProgress ?
+                  <Button type="primary" className="tap-stop" onClick={this.props.handleTapStop}>Stop</Button> :
+                  <Button type="primary" className="tap-start" onClick={this.props.handleTapStart}>Start</Button>
+              }
             </Form.Item>
           </Col>
         </Row>
@@ -267,8 +262,9 @@ export default class TapQueryForm extends React.Component {
             <Button
               className="tap-form-toggle"
               onClick={() => this.toggleAdvancedForm(!this.state.showAdvancedForm)}>
-              { this.state.showAdvancedForm ?
-          "Hide filters" : "Show more request filters" } <Icon type={this.state.showAdvancedForm ? 'up' : 'down'} />
+              {
+                this.state.showAdvancedForm ? "Hide filters" : "Show more request filters"
+              } <Icon type={this.state.showAdvancedForm ? 'up' : 'down'} />
             </Button>
 
             { !this.state.showAdvancedForm ? null : this.renderAdvancedTapForm() }
