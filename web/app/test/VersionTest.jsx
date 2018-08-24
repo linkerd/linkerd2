@@ -61,9 +61,9 @@ describe('Version', () => {
     );
 
     return withPromise(() => {
-      expect(component.html()).not.to.include("Linkerd is up to date");
-      expandSidebar(component);
       expect(component.html()).to.include("Linkerd is up to date");
+      expandSidebar(component);
+      expect(component.html()).not.to.include("Linkerd is up to date");
     });
   });
 
@@ -83,8 +83,6 @@ describe('Version', () => {
           uuid="fakeuuid" />
       </BrowserRouter>
     );
-
-    expandSidebar(component);
 
     return withPromise(() => {
       expect(component.html()).to.include("Linkerd is up to date");
@@ -107,8 +105,6 @@ describe('Version', () => {
           uuid="fakeuuid" />
       </BrowserRouter>
     );
-
-    expandSidebar(component);
 
     return withPromise(() => {
       expect(component.html()).to.include("A new version (");
@@ -138,8 +134,6 @@ describe('Version', () => {
           uuid="fakeuuid" />
       </BrowserRouter>
     );
-
-    expandSidebar(component);
 
     return withPromise(() => {
       expect(component.html()).to.include("Version check failed");

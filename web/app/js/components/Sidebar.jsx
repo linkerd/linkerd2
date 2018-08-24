@@ -2,7 +2,6 @@ import _ from 'lodash';
 import ApiHelpers from './util/ApiHelpers.jsx';
 import { friendlyTitle } from './util/Utils.js';
 import { Link } from 'react-router-dom';
-import { excludeResourcesFromRollup, processMultiResourceRollup, processSingleResourceRollup } from './util/MetricUtils.js';
 import PropTypes from 'prop-types';
 import React from 'react';
 import ReactRouterPropTypes from 'react-router-prop-types';
@@ -10,6 +9,7 @@ import SocialLinks from './SocialLinks.jsx';
 import Version from './Version.jsx';
 import { withContext } from './util/AppContext.jsx';
 import { Badge, Form, Icon, Layout, Menu, Select } from 'antd';
+import { excludeResourcesFromRollup, processMultiResourceRollup, processSingleResourceRollup } from './util/MetricUtils.js';
 import { linkerdLogoOnly, linkerdWordLogo } from './util/SvgWrappers.jsx';
 import './../../css/sidebar.css';
 
@@ -162,7 +162,6 @@ class Sidebar extends React.Component {
       return {value: ns, name: ns};
     }));
     let sidebarComponents = this.filterResourcesByNamespace(this.state.finalResourceGroups, this.state.namespaceFilter);
-    console.log(sidebarComponents);
     return (
       <Layout.Sider
         width="260px"
