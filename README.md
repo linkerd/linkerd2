@@ -40,8 +40,10 @@ Linkerd is hosted by the Cloud Native Computing Foundation ([CNCF][cncf]).
 
 ## Documentation
 
-View [Linkerd2 docs][linkerd-docs] for more a more comprehensive guide to
-getting started, or use the instructions below.
+View [Linkerd2 docs][linkerd-docs] for a more comprehensive guide to getting
+started, or use the instructions below.
+
+The doc source code is available in the [website][linkerd-website] repo.
 
 ## Getting started with Linkerd2
 
@@ -106,6 +108,7 @@ specific language governing permissions and limitations under the License.
 [linkerd-inject]: https://linkerd.io/2/adding-your-service/
 [linkerd-docs]: https://linkerd.io/2/overview/
 [linkerd-users]: https://groups.google.com/forum/#!forum/linkerd-users
+[linkerd-website]: https://github.com/linkerd/website
 [golang]: https://golang.org/
 [license-badge]: https://img.shields.io/github/license/linkerd/linkerd.svg
 [logo]: https://user-images.githubusercontent.com/9226/33582867-3e646e02-d90c-11e7-85a2-2e238737e859.png
