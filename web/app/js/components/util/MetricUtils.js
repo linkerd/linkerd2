@@ -162,6 +162,13 @@ export const processMultiResourceRollup = rawMetrics => {
   return metricsByResource;
 };
 
+export const excludeResourcesFromRollup = (rollupMetrics, resourceTypeList) => {
+  for (let i = 0; i < resourceTypeList.length; i++) {
+    delete rollupMetrics[resourceTypeList[i]];
+  }
+  return rollupMetrics;
+};
+
 export const metricsPropType = PropTypes.shape({
   ok: PropTypes.shape({
     statTables: PropTypes.arrayOf(PropTypes.shape({

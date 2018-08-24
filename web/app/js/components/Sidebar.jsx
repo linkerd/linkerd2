@@ -2,15 +2,24 @@ import _ from 'lodash';
 import ApiHelpers from './util/ApiHelpers.jsx';
 import { friendlyTitle } from './util/Utils.js';
 import { Link } from 'react-router-dom';
+import { excludeResourcesFromRollup, processMultiResourceRollup, processSingleResourceRollup } from './util/MetricUtils.js';
 import PropTypes from 'prop-types';
 import React from 'react';
 import ReactRouterPropTypes from 'react-router-prop-types';
 import SocialLinks from './SocialLinks.jsx';
 import Version from './Version.jsx';
 import { withContext } from './util/AppContext.jsx';
-import { Form, Icon, Layout, Menu, Select } from 'antd';
+import { Badge, Form, Icon, Layout, Menu, Select } from 'antd';
 import { linkerdLogoOnly, linkerdWordLogo } from './util/SvgWrappers.jsx';
 import './../../css/sidebar.css';
+
+const getSrClassification = sr => {
+  if (sr < 0.9) {
+    return "error";
+  } else if (sr < 0.95) {
+    return "warning";
+  } else {return "success";}
+};
 
 class Sidebar extends React.Component {
   static defaultProps = {
@@ -31,6 +40,7 @@ class Sidebar extends React.Component {
   constructor(props) {
     super(props);
     this.api = this.props.api;
+    this.toggleCollapse = this.toggleCollapse.bind(this);
     this.loadFromServer = this.loadFromServer.bind(this);
     this.handleApiError = this.handleApiError.bind(this);
     this.handleNamespaceSelector = this.handleNamespaceSelector.bind(this);
@@ -41,6 +51,8 @@ class Sidebar extends React.Component {
   getInitialState() {
     return {
       pollingInterval: 12000,
+      initialCollapse: false,
+      collapsed: true,
       error: null,
       latestVersion: '',
       isLatest: true,
@@ -85,16 +97,15 @@ class Sidebar extends React.Component {
     // expose serverPromise for testing
     this.serverPromise = Promise.all(this.api.getCurrentPromises())
       .then(([versionRsp, allRsp, nsRsp]) => {
-        let statTables = _.get(allRsp, ["ok", "statTables"], []);
-        let rows = _.flatMap(statTables, tb => tb.podGroup.rows);
-        let resourceGroupings = _.groupBy(rows, r => r.resource.type);
-        let nsStats = _.get(nsRsp, ["ok", "statTables", 0, "podGroup", "rows"], []);
-        let namespaces = _(nsStats).map(r => r.resource.name).sortBy().value();
+        let allResourceGroups = processMultiResourceRollup(allRsp);
+        let finalResourceGroups = excludeResourcesFromRollup(allResourceGroups, ["authority", "service"]);
+        let nsStats = processSingleResourceRollup(nsRsp);
+        let namespaces = _(nsStats).map('name').sortBy().value();
 
         this.setState({
           latestVersion: versionRsp.version,
           isLatest: versionRsp.version === this.props.releaseVersion,
-          resourceGroupings,
+          finalResourceGroups,
           namespaces,
           pendingRequests: false,
         });
@@ -108,6 +119,17 @@ class Sidebar extends React.Component {
     });
   }
 
+  toggleCollapse() {
+    if (this.state.initialCollapse) {
+      // fix weird situation where toggleCollapsed is called on pageload,
+      // causing the toggle states to be inconsistent. Don't toggle on the
+      // very first call to toggleCollapse()
+      this.setState({ initialCollapse: false});
+    } else {
+      this.setState({ collapsed: !this.state.collapsed });
+    }
+  }
+
   handleNamespaceSelector(value) {
     this.setState({namespaceFilter: value});
   }
@@ -115,34 +137,39 @@ class Sidebar extends React.Component {
   // Filters resources retrieved from a stat query by namespaces. Does not include resources of type "authority"
   filterResourcesByNamespace(resources, namespace) {
     if (namespace === "all") {
-      return _.omit(resources, ["authority"]);
+      return _.mapValues(resources, o => {
+        return _(o)
+          .filter(r => r.added)
+          .value();
+      });
     }
 
-    let result = _.mapValues(resources, o => {
+    return _.mapValues(resources, o => {
       return _(o)
-        .filter(r => r.resource.namespace === namespace)
+        .filter(r => r.namespace === namespace && r.added)
         .value();
     });
-    return _.omit(result, ["authority"]);
   }
 
   generateResourceURL(r) {
-    return "/namespaces/" + r.resource.namespace + "/" + r.resource.type + "s/" + r.resource.name;
+    return "/namespaces/" + r.namespace + "/" + r.type + "s/" + r.name;
   }
 
   render() {
     let normalizedPath = this.props.location.pathname.replace(this.props.pathPrefix, "");
     let PrefixedLink = this.api.PrefixedLink;
-    let namespaces = [{nsValue: "all", nsName: "All Namespaces"}].concat(_.map(this.state.namespaces, ns => {
-      return {nsValue: ns, nsName: ns};
+    let namespaces = [{value: "all", name: "All Namespaces"}].concat(_.map(this.state.namespaces, ns => {
+      return {value: ns, name: ns};
     }));
-    let sidebarComponents = this.filterResourcesByNamespace(this.state.resourceGroupings, this.state.namespaceFilter);
-
+    let sidebarComponents = this.filterResourcesByNamespace(this.state.finalResourceGroups, this.state.namespaceFilter);
+    console.log(sidebarComponents);
     return (
       <Layout.Sider
         width="260px"
-        breakpoint="lg">
-
+        breakpoint="lg"
+        collapsed={this.state.collapsed}
+        collapsible={true}
+        onCollapse={this.toggleCollapse}>
         <div className="sidebar">
 
           <div className={`sidebar-menu-header ${this.state.collapsed ? "collapsed" : ""}`}>
@@ -195,31 +222,34 @@ class Sidebar extends React.Component {
             <Menu.Divider />
           </Menu>
 
+
           <Menu
             className="sidebar-menu"
             theme="dark"
             mode="inline"
             selectedKeys={[normalizedPath]}>
-            <Menu.Item className="sidebar-menu-item" key="/namespace-selector">
-              <Form layout="inline">
-                <Form.Item>
-                  <Select
-                    defaultValue="All Namespaces"
-                    dropdownMatchSelectWidth={true}
-                    onChange={this.handleNamespaceSelector}>
-                    {
-                      _.map(namespaces, ns => {
+            { this.state.collapsed ? null : (
+              <Menu.Item className="sidebar-menu-item" key="/namespace-selector">
+                <Form layout="inline">
+                  <Form.Item>
+                    <Select
+                      defaultValue="All Namespaces"
+                      dropdownMatchSelectWidth={true}
+                      onChange={this.handleNamespaceSelector}>
+                      {
+                      _.map(namespaces, label => {
                         return (
-                          <Select.Option key={ns.nsValue} value={ns.nsValue}>{ns.nsName}</Select.Option>
+                          <Select.Option key={label.value} value={label.value}>{label.name}</Select.Option>
                         );
                       })
                     }
-                  </Select>
-                </Form.Item>
-              </Form>
-            </Menu.Item>
+                    </Select>
+                  </Form.Item>
+                </Form>
+              </Menu.Item>
+            )}
 
-            {
+            {this.state.collapsed ? null :
               _.map(_.keys(sidebarComponents).sort(), resourceName => {
                 return (
                   <Menu.SubMenu
@@ -228,15 +258,21 @@ class Sidebar extends React.Component {
                     disabled={sidebarComponents[resourceName].length === 0}
                     title={<span>{friendlyTitle(resourceName).plural}</span>}>
                     {
-                      _.map(_.sortBy(sidebarComponents[resourceName], r => r.resource.name), ro => {
-                        return (
-                          <Menu.Item key={this.generateResourceURL(ro)}>
-                            <PrefixedLink
-                              to={this.generateResourceURL(ro)}>
-                              <span>{ro.resource.name}</span>
-                            </PrefixedLink>
-                          </Menu.Item>
-                        );
+                      _.map(_.sortBy(sidebarComponents[resourceName], r => `${r.namespace}/${r.name}`), r => {
+                        // only display resources that have been meshed
+                        if (r.added) {
+                          return (
+                            <Menu.Item  className="sidebar-menu-item" key={this.generateResourceURL(r)}>
+                              <div>
+                                <PrefixedLink
+                                  to={this.generateResourceURL(r)}>
+                                  {`${r.namespace}/${r.name}`}
+                                </PrefixedLink>
+                                <Badge status={getSrClassification(r.successRate)} />
+                              </div>
+                            </Menu.Item>
+                          );
+                        }
                       })
                     }
                   </Menu.SubMenu>

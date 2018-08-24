@@ -10,8 +10,6 @@ import sinon from "sinon";
 import sinonStubPromise from "sinon-stub-promise";
 import Enzyme, { mount } from "enzyme";
 
-
-
 Enzyme.configure({adapter: new Adapter()});
 sinonStubPromise(sinon);
 

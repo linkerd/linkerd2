@@ -50,6 +50,23 @@ ul.ant-menu.ant-menu-sub {
     height: 36px;
   }
 
+  & .ant-menu-item {
+    & div {
+      & a {
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          display: inline-block;
+          width: 160px;
+      }
+
+     & span.ant-badge-status {
+        padding-left: 26px;
+        vertical-align: top;
+     }
+    }
+  }
+
   & .ant-menu-item:hover {
     background-color: #007EFF;
   }
@@ -72,7 +89,7 @@ ul.ant-menu.ant-menu-sub {
   }
 
   & .sidebar-menu-footer {
-    position: fixed;
+    margin-top: 24px;
     bottom: 120px;
     margin-left: calc(var(--base-width)*2);
 
