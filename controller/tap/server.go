@@ -35,7 +35,7 @@ type (
 )
 
 var (
-	tapInterval = 10 * time.Second
+	tapInterval = 1 * time.Second
 )
 
 func (s *server) Tap(req *public.TapRequest, stream pb.Tap_TapServer) error {
@@ -240,8 +240,8 @@ func destinationLabels(resource *public.Resource) map[string]string {
 // request is cancelled via the context.  Thus it should be called as a
 // go-routine.
 // To limit the rps to maxRps, this method calls Observe on the pod with a limit
-// of maxRps * 10s at most once per 10s window.  If this limit is reached in
-// less than 10s, we sleep until the end of the window before calling Observe
+// of maxRps * 1s at most once per 10s window.  If this limit is reached in
+// less than 1s, we sleep until the end of the window before calling Observe
 // again.
 func (s *server) tapProxy(ctx context.Context, maxRps float32, match *proxy.ObserveRequest_Match, addr string, events chan *public.TapEvent) {
 	tapAddr := fmt.Sprintf("%s:%d", addr, s.tapPort)
