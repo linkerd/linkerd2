@@ -251,12 +251,22 @@ spec:
               fieldPath: metadata.namespace
         image: gcr.io/linkerd-io/proxy:undefined
         imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /metrics
+            port: 4191
+          initialDelaySeconds: 10
         name: linkerd-proxy
         ports:
         - containerPort: 4143
           name: linkerd-proxy
         - containerPort: 4191
           name: linkerd-metrics
+        readinessProbe:
+          httpGet:
+            path: /metrics
+            port: 4191
+          initialDelaySeconds: 10
         resources: {}
         securityContext:
           runAsUser: 2102
@@ -335,7 +345,7 @@ spec:
         - -api-addr=api.linkerd.svc.cluster.local:8085
         - -static-dir=/dist
         - -template-dir=/templates
-        - -uuid=deaab91a-f4ab-448a-b7d1-c832a2fa0a60
+        - -uuid=3e5903bf-803b-4555-abc4-9de68d35c4e3
         - -controller-namespace=linkerd
         - -log-level=info
         image: gcr.io/linkerd-io/web:undefined
@@ -378,12 +388,22 @@ spec:
               fieldPath: metadata.namespace
         image: gcr.io/linkerd-io/proxy:undefined
         imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /metrics
+            port: 4191
+          initialDelaySeconds: 10
         name: linkerd-proxy
         ports:
         - containerPort: 4143
           name: linkerd-proxy
         - containerPort: 4191
           name: linkerd-metrics
+        readinessProbe:
+          httpGet:
+            path: /metrics
+            port: 4191
+          initialDelaySeconds: 10
         resources: {}
         securityContext:
           runAsUser: 2102
@@ -503,12 +523,22 @@ spec:
           value: "10000"
         image: gcr.io/linkerd-io/proxy:undefined
         imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /metrics
+            port: 4191
+          initialDelaySeconds: 10
         name: linkerd-proxy
         ports:
         - containerPort: 4143
           name: linkerd-proxy
         - containerPort: 4191
           name: linkerd-metrics
+        readinessProbe:
+          httpGet:
+            path: /metrics
+            port: 4191
+          initialDelaySeconds: 10
         resources: {}
         securityContext:
           runAsUser: 2102
@@ -712,12 +742,22 @@ spec:
               fieldPath: metadata.namespace
         image: gcr.io/linkerd-io/proxy:undefined
         imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /metrics
+            port: 4191
+          initialDelaySeconds: 10
         name: linkerd-proxy
         ports:
         - containerPort: 4143
           name: linkerd-proxy
         - containerPort: 4191
           name: linkerd-metrics
+        readinessProbe:
+          httpGet:
+            path: /metrics
+            port: 4191
+          initialDelaySeconds: 10
         resources: {}
         securityContext:
           runAsUser: 2102

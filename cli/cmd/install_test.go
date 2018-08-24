@@ -16,7 +16,7 @@ func TestRender(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error from validateAndBuildConfig(): %v", err)
 	}
-	defaultConfig.UUID = "deaab91a-f4ab-448a-b7d1-c832a2fa0a60"
+	defaultConfig.UUID = "3e5903bf-803b-4555-abc4-9de68d35c4e3"
 
 	// A configuration that shows that all config setting strings are honored
 	// by `render()`.
