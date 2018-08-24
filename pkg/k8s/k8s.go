@@ -9,16 +9,17 @@ import (
 )
 
 const (
-	All                   = "all"
-	Authority             = "authority"
-	DaemonSet             = "daemonset"
-	Deployment            = "deployment"
-	Namespace             = "namespace"
-	Pod                   = "pod"
-	ReplicationController = "replicationcontroller"
-	ReplicaSet            = "replicaset"
-	Service               = "service"
-	StatefulSet           = "statefulset"
+	All                          = "all"
+	Authority                    = "authority"
+	DaemonSet                    = "daemonset"
+	Deployment                   = "deployment"
+	Namespace                    = "namespace"
+	Pod                          = "pod"
+	ReplicationController        = "replicationcontroller"
+	ReplicaSet                   = "replicaset"
+	Service                      = "service"
+	StatefulSet                  = "statefulset"
+	MutatingWebhookConfiguration = "mutaitngwebhookconfiguration"
 )
 
 // resources to query in StatSummary when Resource.Type is "all"
@@ -90,6 +91,8 @@ func CanonicalResourceNameFromFriendlyName(friendlyName string) (string, error) 
 		return StatefulSet, nil
 	case "au", "authority", "authorities":
 		return Authority, nil
+	case "mwc", "mutatingwebhookconfiguration":
+		return MutatingWebhookConfiguration, nil
 	case "all":
 		return All, nil
 	}
@@ -119,6 +122,8 @@ func ShortNameFromCanonicalResourceName(canonicalName string) string {
 		return "sts"
 	case Authority:
 		return "au"
+	case MutatingWebhookConfiguration:
+		return "mwc"
 	default:
 		return ""
 	}

@@ -30,6 +30,7 @@ func main() {
 		k8sClient,
 		k8s.Pod,
 		k8s.RS,
+		k8s.MWC,
 	)
 
 	controller, err := ca.NewCertificateController(*controllerNamespace, k8sAPI)

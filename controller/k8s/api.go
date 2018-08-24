@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/informers"
+	arinformers "k8s.io/client-go/informers/admissionregistration/v1beta1"
 	appinformers "k8s.io/client-go/informers/apps/v1beta2"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -32,6 +33,7 @@ const (
 	RC
 	RS
 	Svc
+	MWC // mutating webhook configuration
 )
 
 // API provides shared informers for all Kubernetes objects
@@ -46,6 +48,7 @@ type API struct {
 	rc       coreinformers.ReplicationControllerInformer
 	rs       appinformers.ReplicaSetInformer
 	svc      coreinformers.ServiceInformer
+	mwc      arinformers.MutatingWebhookConfigurationInformer
 
 	syncChecks      []cache.InformerSynced
 	sharedInformers informers.SharedInformerFactory
@@ -87,6 +90,9 @@ func NewAPI(k8sClient kubernetes.Interface, resources ...ApiResource) *API {
 		case Svc:
 			api.svc = sharedInformers.Core().V1().Services()
 			api.syncChecks = append(api.syncChecks, api.svc.Informer().HasSynced)
+		case MWC:
+			api.mwc = sharedInformers.Admissionregistration().V1beta1().MutatingWebhookConfigurations()
+			api.syncChecks = append(api.syncChecks, api.mwc.Informer().HasSynced)
 		}
 	}
 
@@ -169,6 +175,13 @@ func (api *API) CM() coreinformers.ConfigMapInformer {
 	return api.cm
 }
 
+func (api *API) MWC() arinformers.MutatingWebhookConfigurationInformer {
+	if api.mwc == nil {
+		panic("MWC informer not configured")
+	}
+	return api.mwc
+}
+
 // GetObjects returns a list of Kubernetes objects, given a namespace, type, and name.
 // If namespace is an empty string, match objects in all namespaces.
 // If name is an empty string, match all objects of the given type.
@@ -184,6 +197,8 @@ func (api *API) GetObjects(namespace, restype, name string) ([]runtime.Object, e
 		return api.getRCs(namespace, name)
 	case k8s.Service:
 		return api.getServices(namespace, name)
+	case k8s.MutatingWebhookConfiguration:
+		return api.getMutatingWebhookConfigurations(name)
 	default:
 		// TODO: ReplicaSet
 		return nil, status.Errorf(codes.Unimplemented, "unimplemented resource type: %s", restype)
@@ -402,6 +417,29 @@ func (api *API) getServices(namespace, name string) ([]runtime.Object, error) {
 	}
 
 	return objects, nil
+}
+
+func (api *API) getMutatingWebhookConfigurations(name string) ([]runtime.Object, error) {
+	log.Infof(">>>>> calling getmuttingwebhookconfigurations with s%", name)
+	list := []runtime.Object{}
+	if name != "" {
+		mwc, err := api.MWC().Lister().Get(name)
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, mwc)
+	} else {
+		mwcs, err := api.MWC().Lister().List(labels.Everything())
+		if err != nil {
+			return nil, err
+		}
+
+		for _, mwc := range mwcs {
+			list = append(list, mwc)
+		}
+	}
+
+	return list, nil
 }
 
 func isPendingOrRunning(pod *apiv1.Pod) bool {

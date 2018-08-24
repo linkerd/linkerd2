@@ -39,6 +39,22 @@ func TestRender(t *testing.T) {
 		EnableTLS:                   true,
 		TLSTrustAnchorConfigMapName: "TLSTrustAnchorConfigMapName",
 		ProxyContainerName:          "ProxyContainerName",
+		TLSTrustAnchorFileName:      "TLSTrustAnchorFileName",
+		TLSCertFileName:             "TLSCertFileName",
+		TLSPrivateKeyFileName:       "TLSPrivateKeyFileName",
+		ProxyAutoInjectEnabled:      true,
+		ProxyAutoInjectLabel:        "ProxyAutoInjectLabel",
+		ProxyUID:                    2102,
+		InboundPort:                 4143,
+		OutboundPort:                4140,
+		ProxyControlPort:            4190,
+		ProxyMetricsPort:            4191,
+		ProxyInitImage:              "ProxyInitImage",
+		ProxyImage:                  "ProxyImage",
+		ProxyInjectorTLSSecret:      "ProxyInjectorTLSSecret",
+		ProxyInjectorSidecarConfig:  "ProxyInjectorSidecarConfig",
+		IgnoreInboundPorts:          []uint{1, 2, 3},
+		IgnoreOutboundPorts:         []uint{2, 3, 4},
 	}
 
 	testCases := []struct {

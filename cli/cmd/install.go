@@ -34,6 +34,22 @@ type installConfig struct {
 	EnableTLS                   bool
 	TLSTrustAnchorConfigMapName string
 	ProxyContainerName          string
+	TLSTrustAnchorFileName      string
+	TLSCertFileName             string
+	TLSPrivateKeyFileName       string
+	InboundPort                 uint
+	OutboundPort                uint
+	IgnoreInboundPorts          []uint
+	IgnoreOutboundPorts         []uint
+	ProxyAutoInjectEnabled      bool
+	ProxyAutoInjectLabel        string
+	ProxyUID                    int64
+	ProxyMetricsPort            uint
+	ProxyControlPort            uint
+	ProxyInjectorTLSSecret      string
+	ProxyInjectorSidecarConfig  string
+	ProxyInitImage              string
+	ProxyImage                  string
 }
 
 type installOptions struct {
@@ -41,6 +57,7 @@ type installOptions struct {
 	webReplicas        uint
 	prometheusReplicas uint
 	controllerLogLevel string
+	proxyAutoInject    bool
 	*proxyConfigOptions
 }
 
@@ -52,6 +69,7 @@ func newInstallOptions() *installOptions {
 		webReplicas:        1,
 		prometheusReplicas: 1,
 		controllerLogLevel: "info",
+		proxyAutoInject:    false,
 		proxyConfigOptions: newProxyConfigOptions(),
 	}
 }
@@ -78,6 +96,7 @@ func newCmdInstall() *cobra.Command {
 	cmd.PersistentFlags().UintVar(&options.webReplicas, "web-replicas", options.webReplicas, "Replicas of the web server to deploy")
 	cmd.PersistentFlags().UintVar(&options.prometheusReplicas, "prometheus-replicas", options.prometheusReplicas, "Replicas of prometheus to deploy")
 	cmd.PersistentFlags().StringVar(&options.controllerLogLevel, "controller-log-level", options.controllerLogLevel, "Log level for the controller and web components")
+	cmd.PersistentFlags().BoolVar(&options.proxyAutoInject, "proxy-auto-inject", options.proxyAutoInject, "Enable proxy sidecar auto-injection webhook; default to false")
 
 	return cmd
 }
@@ -105,6 +124,22 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		EnableTLS:                   options.enableTLS(),
 		TLSTrustAnchorConfigMapName: k8s.TLSTrustAnchorConfigMapName,
 		ProxyContainerName:          k8s.ProxyContainerName,
+		TLSTrustAnchorFileName:      k8s.TLSTrustAnchorFileName,
+		TLSCertFileName:             k8s.TLSCertFileName,
+		TLSPrivateKeyFileName:       k8s.TLSPrivateKeyFileName,
+		InboundPort:                 options.inboundPort,
+		OutboundPort:                options.outboundPort,
+		IgnoreInboundPorts:          options.ignoreInboundPorts,
+		IgnoreOutboundPorts:         options.ignoreOutboundPorts,
+		ProxyAutoInjectEnabled:      options.proxyAutoInject,
+		ProxyAutoInjectLabel:        k8s.ProxyAutoInjectLabel,
+		ProxyUID:                    options.proxyUID,
+		ProxyMetricsPort:            options.proxyMetricsPort,
+		ProxyControlPort:            options.proxyControlPort,
+		ProxyInjectorTLSSecret:      k8s.ProxyInjectorTLSSecret,
+		ProxyInjectorSidecarConfig:  k8s.ProxyInjectorSidecarConfig,
+		ProxyInitImage:              options.taggedProxyInitImage(),
+		ProxyImage:                  options.taggedProxyImage(),
 	}, nil
 }
 
@@ -127,7 +162,19 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 		if err != nil {
 			return err
 		}
+
+		if config.ProxyAutoInjectEnabled {
+			proxyInjectorTemplate, err := template.New("linkerd").Parse(install.ProxyInjectorTemplate)
+			if err != nil {
+				return err
+			}
+			err = proxyInjectorTemplate.Execute(buf, config)
+			if err != nil {
+				return err
+			}
+		}
 	}
+
 	injectOptions := newInjectOptions()
 	injectOptions.proxyConfigOptions = options.proxyConfigOptions
 

@@ -62,6 +62,12 @@ const (
 	// (e.g. v0.1.3).
 	ProxyVersionAnnotation = "linkerd.io/proxy-version"
 
+	// ProxyAutoInjectLabel indicates if sidecar auto-inject should be performed on the pod. Supported values are "enabled", "disabled" or "completed".
+	ProxyAutoInjectLabel     = "linkerd.io/auto-inject"
+	ProxyAutoInjectEnabled   = "enabled"
+	ProxyAutoInjectDisabled  = "disabled"
+	ProxyAutoInjectCompleted = "completed"
+
 	/*
 	 * Component Names
 	 */
@@ -71,6 +77,15 @@ const (
 
 	// ProxyContainerName is the name assigned to the injected proxy container.
 	ProxyContainerName = "linkerd-proxy"
+
+	// ProxyInjectorTLSSecret is the name assigned to the secret containing the TLS cert and key used by the proxy-injector webhook.
+	ProxyInjectorTLSSecret = "proxy-injector-service-tls-linkerd-io"
+
+	// ProxyInjectorWebhookConfig is the name of the mutating webhook configuration resource of the proxy-injector webhook.
+	ProxyInjectorWebhookConfig = "proxy-injector-webhook-config"
+
+	// ProxyInjectorSidecarConfig is the name of the config map resource that contains the specs of the proxy init container and sidecar container to be injected into a pod.
+	ProxyInjectorSidecarConfig = "proxy-injector-sidecar-config"
 
 	// TLSTrustAnchorConfigMapName is the name of the ConfigMap that holds the
 	// trust anchors (trusted root certificates).
@@ -133,6 +148,9 @@ type TLSIdentity struct {
 }
 
 func (i TLSIdentity) ToDNSName() string {
+	if i.Kind == Service {
+		return fmt.Sprintf("%s.%s.svc", i.Name, i.Namespace)
+	}
 	return fmt.Sprintf("%s.%s.%s.linkerd-managed.%s.svc.cluster.local", i.Name,
 		i.Kind, i.Namespace, i.ControllerNamespace)
 }

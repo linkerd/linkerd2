@@ -42,10 +42,6 @@ const (
 )
 
 type injectOptions struct {
-	inboundPort         uint
-	outboundPort        uint
-	ignoreInboundPorts  []uint
-	ignoreOutboundPorts []uint
 	*proxyConfigOptions
 }
 
@@ -64,11 +60,7 @@ type objMeta struct {
 
 func newInjectOptions() *injectOptions {
 	return &injectOptions{
-		inboundPort:         4143,
-		outboundPort:        4140,
-		ignoreInboundPorts:  nil,
-		ignoreOutboundPorts: nil,
-		proxyConfigOptions:  newProxyConfigOptions(),
+		proxyConfigOptions: newProxyConfigOptions(),
 	}
 }
 
@@ -107,10 +99,6 @@ sub-folder. e.g. linkerd inject <folder> | kubectl apply -f -
 	}
 
 	addProxyConfigFlags(cmd, options.proxyConfigOptions)
-	cmd.PersistentFlags().UintVar(&options.inboundPort, "inbound-port", options.inboundPort, "Proxy port to use for inbound traffic")
-	cmd.PersistentFlags().UintVar(&options.outboundPort, "outbound-port", options.outboundPort, "Proxy port to use for outbound traffic")
-	cmd.PersistentFlags().UintSliceVar(&options.ignoreInboundPorts, "skip-inbound-ports", options.ignoreInboundPorts, "Ports that should skip the proxy and send directly to the application")
-	cmd.PersistentFlags().UintSliceVar(&options.ignoreOutboundPorts, "skip-outbound-ports", options.ignoreOutboundPorts, "Outbound ports that should skip the proxy")
 	return cmd
 }
 
@@ -498,6 +486,13 @@ func injectResource(bytes []byte, options *injectOptions, report *injectReport) 
 		k8sLabels[k8s.ProxyDeploymentLabel] = deployment.Name
 		podSpec = &deployment.Spec.Template.Spec
 		objectMeta = &deployment.Spec.Template.ObjectMeta
+
+		if options.enableTLS() {
+			if deployment.ObjectMeta.Labels == nil {
+				deployment.ObjectMeta.Labels = map[string]string{}
+			}
+			deployment.ObjectMeta.Labels[k8s.ProxyAutoInjectLabel] = k8s.ProxyAutoInjectDisabled
+		}
 
 	case "ReplicationController":
 		var rc v1.ReplicationController

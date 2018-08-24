@@ -2,6 +2,8 @@ apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
   creationTimestamp: null
+  labels:
+    linkerd.io/auto-inject: disabled
   name: web
   namespace: emojivoto
 spec:
