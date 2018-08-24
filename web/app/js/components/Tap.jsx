@@ -288,7 +288,7 @@ class Tap extends React.Component {
       pendingRequests: true
     });
 
-    let url = "/api/tps-reports?resource_type=all&all_namespaces=true";
+    let url = this.api.urlsForResource("all");
     this.api.setCurrentRequests([this.api.fetchMetrics(url)]);
     this.serverPromise = Promise.all(this.api.getCurrentPromises())
       .then(rsp => {

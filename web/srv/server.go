@@ -101,6 +101,9 @@ func NewServer(addr, templateDir, staticDir, uuid, controllerNamespace, webpackD
 
 	// webapp api routes
 	server.router.GET("/api/version", handler.handleApiVersion)
+	// Traffic Performance Summary.  This route used to be called /api/stat
+	// but was renamed to avoid triggering ad blockers.
+	// See: https://github.com/linkerd/linkerd2/issues/970
 	server.router.GET("/api/tps-reports", handler.handleApiStat)
 	server.router.GET("/api/pods", handler.handleApiPods)
 	server.router.GET("/api/tap", handler.handleApiTap)
