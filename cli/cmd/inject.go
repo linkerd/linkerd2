@@ -20,6 +20,7 @@ import (
 	k8sMeta "k8s.io/apimachinery/pkg/api/meta"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 )
 
@@ -209,6 +210,19 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 		controlPlaneDNS = controlPlaneDNSNameOverride
 	}
 
+	metricsPort := intstr.IntOrString{
+		IntVal: int32(options.proxyMetricsPort),
+	}
+	proxyProbe := v1.Probe{
+		Handler: v1.Handler{
+			HTTPGet: &v1.HTTPGetAction{
+				Path: "/metrics",
+				Port: metricsPort,
+			},
+		},
+		InitialDelaySeconds: 10,
+	}
+
 	sidecar := v1.Container{
 		Name:                     "linkerd-proxy",
 		Image:                    options.taggedProxyImage(),
@@ -243,6 +257,8 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 				ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
 			},
 		},
+		ReadinessProbe: &proxyProbe,
+		LivenessProbe:  &proxyProbe,
 	}
 
 	// Special case if the caller specifies that
