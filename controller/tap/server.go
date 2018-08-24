@@ -240,7 +240,7 @@ func destinationLabels(resource *public.Resource) map[string]string {
 // request is cancelled via the context.  Thus it should be called as a
 // go-routine.
 // To limit the rps to maxRps, this method calls Observe on the pod with a limit
-// of maxRps * 1s at most once per 10s window.  If this limit is reached in
+// of maxRps * 1s at most once per 1s window.  If this limit is reached in
 // less than 1s, we sleep until the end of the window before calling Observe
 // again.
 func (s *server) tapProxy(ctx context.Context, maxRps float32, match *proxy.ObserveRequest_Match, addr string, events chan *public.TapEvent) {
