@@ -1,7 +1,7 @@
 import _ from 'lodash';
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Col, Icon, Row } from 'antd';
+import { Col, Icon, Progress, Row } from 'antd';
 import { metricToFormatter, toShortResourceName } from './util/Utils.js';
 import './../../css/octopus.css';
 
@@ -43,18 +43,23 @@ export default class Octopus extends React.Component {
     resource: PropTypes.shape({})
   }
 
-  renderResourceSummary(resource, cn) {
+  renderResourceSummary(resource, type) {
     return (
-      <div key={resource.name} className={`octopus-body ${cn}`}>
-        <div className={`octopus-title ${cn} ${getSrClassification(resource.successRate)}`}>
+      <div key={resource.name} className={`octopus-body ${type}`}>
+        <div className={`octopus-title ${type}`}>
           <this.props.api.PrefixedLink to={`/namespaces/${resource.namespace}/${resource.type}s/${resource.name}`}>
             {displayName(resource)}
           </this.props.api.PrefixedLink>
         </div>
-        <Metric
-          title="SR"
-          className={`${getSrClassification(resource.successRate)}`}
-          value={metricToFormatter["SUCCESS_RATE"](resource.successRate)} />
+        <div className="octopus-sr-gauge">
+          <Progress
+            className={getSrClassification(resource.successRate)}
+            type="dashboard"
+            format={() => metricToFormatter["SUCCESS_RATE"](resource.successRate)}
+            width={type === "main" ? 132 : 64}
+            percent={resource.successRate * 100}
+            gapDegree={180} />
+        </div>
         <Metric title="RPS" value={metricToFormatter["REQUEST_RATE"](resource.requestRate)} />
         <Metric title="P99" value={metricToFormatter["LATENCY"](_.get(resource, "latency.P99"))} />
       </div>
@@ -67,26 +72,24 @@ export default class Octopus extends React.Component {
     let hasDownstreams = _.size(neighbors.downstream) > 0;
 
     return (
-      <div className="octopus-container">
-        <div className="octopus-graph">
-          <Row type="flex" justify="center" gutter={32} align="middle">
-            <Col span={6} className={`octopus-col ${hasUpstreams ? "resource-col" : ""}`}>
-              {_.map(neighbors.upstream, n => this.renderResourceSummary(n, "neighbor"))}
-            </Col>
+      <div className="octopus-graph">
+        <Row type="flex" justify="center" gutter={32} align="middle">
+          <Col span={6} className={`octopus-col ${hasUpstreams ? "resource-col" : ""}`}>
+            {_.map(neighbors.upstream, n => this.renderResourceSummary(n, "neighbor"))}
+          </Col>
 
-            <ArrowCol showArrow={hasUpstreams} />
+          <ArrowCol showArrow={hasUpstreams} />
 
-            <Col span={8} className="octopus-col resource-col">
-              {this.renderResourceSummary(resource, "main")}
-            </Col>
+          <Col span={8} className="octopus-col resource-col">
+            {this.renderResourceSummary(resource, "main")}
+          </Col>
 
-            <ArrowCol showArrow={hasDownstreams} />
+          <ArrowCol showArrow={hasDownstreams} />
 
-            <Col span={6} className={`octopus-col ${hasDownstreams ? "resource-col" : ""}`}>
-              {_.map(neighbors.downstream, n => this.renderResourceSummary(n, "neighbor"))}
-            </Col>
-          </Row>
-        </div>
+          <Col span={6} className={`octopus-col ${hasDownstreams ? "resource-col" : ""}`}>
+            {_.map(neighbors.downstream, n => this.renderResourceSummary(n, "neighbor"))}
+          </Col>
+        </Row>
       </div>
     );
   }

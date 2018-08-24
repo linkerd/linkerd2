@@ -1,21 +1,19 @@
 @import 'styles.css';
 
-.octopus-container {
-  padding: calc(var(--base-width) * 4);
-}
-
 .octopus-graph {
+  padding: calc(var(--base-width) * 4);
+  background-color: #FAFAFA;
+
   & .octopus-body {
     background-color: white;
     margin-bottom: calc(var(--base-width) * 3);
-    box-shadow: 2px 2px 2px var(--neutralgrey);
+    border: 1px solid #F2F2F2;
   }
 
   & .octopus-col {
     text-align: center;
   }
   & .resource-col {
-    background-color: #FAFAFA;
     padding: 32px;
   }
 
@@ -32,6 +30,23 @@
     }
   }
 
+  & .octopus-sr-gauge {
+    padding-top: calc(var(--base-width) * 2);
+
+    & .ant-progress-text {
+      color: black;
+    }
+    & .status-good .ant-progress-circle-path {
+      stroke: var(--green);
+    }
+    & .status-ok .ant-progress-circle-path {
+      stroke: var(--orange)
+    }
+    & .status-poor .ant-progress-circle-path {
+      stroke: var(--siennared);
+    }
+  }
+
   & .octopus-metric {
     line-height: 32px;
 
@@ -45,7 +60,7 @@
       color: #E0E0E0;
     }
     &.status-ok {
-      color: #FF8C00;
+      color: var(--orange);
     }
   }
 }
