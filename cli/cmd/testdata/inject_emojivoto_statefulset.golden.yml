@@ -58,12 +58,22 @@ spec:
               fieldPath: metadata.namespace
         image: gcr.io/linkerd-io/proxy:testinjectversion
         imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /metrics
+            port: 4191
+          initialDelaySeconds: 10
         name: linkerd-proxy
         ports:
         - containerPort: 4143
           name: linkerd-proxy
         - containerPort: 4191
           name: linkerd-metrics
+        readinessProbe:
+          httpGet:
+            path: /metrics
+            port: 4191
+          initialDelaySeconds: 10
         resources: {}
         securityContext:
           runAsUser: 2102
