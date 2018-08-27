@@ -251,10 +251,11 @@ class Sidebar extends React.Component {
                     title={<span>{friendlyTitle(resourceName).plural}</span>}>
                     {
                       _.map(_.sortBy(sidebarComponents[resourceName], r => `${r.namespace}/${r.name}`), r => {
-                        // only display resources that have been meshed`
+                        // only display resources that have been meshed
                           return (
                             <Menu.Item
                               className="sidebar-submenu-item"
+                              title={`${r.namespace}/${r.name}`}
                               key={this.api.generateResourceURL(r)}>
                               <div>
                                 <PrefixedLink

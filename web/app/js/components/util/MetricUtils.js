@@ -18,7 +18,9 @@ export const getSuccessRateClassification = (rate, successRateLabels) => {
     return successRateLabels.bad;
   } else if (rate < 0.95) {
     return successRateLabels.neutral;
-  } else {return successRateLabels.good;}
+  } else {
+    return successRateLabels.good;
+  }
 };
 
 const getTotalRequests = row => {
