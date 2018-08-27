@@ -212,6 +212,7 @@ spec:
       - args:
         - tap
         - -log-level=ControllerLogLevel
+        - -controller-namespace=Namespace
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy
         livenessProbe:

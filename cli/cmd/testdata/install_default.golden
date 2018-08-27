@@ -211,6 +211,7 @@ spec:
       - args:
         - tap
         - -log-level=info
+        - -controller-namespace=linkerd
         image: gcr.io/linkerd-io/controller:undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
