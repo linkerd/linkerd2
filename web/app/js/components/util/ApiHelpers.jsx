@@ -117,6 +117,10 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     });
   };
 
+  const generateResourceURL = r => {
+    return "/namespaces/" + r.namespace + "/" + r.type + "s/" + r.name;
+  };
+
   // prefix all links in the app with `pathPrefix`
   class PrefixedLink extends React.Component {
     static defaultProps = {
@@ -160,6 +164,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     PrefixedLink,
     setCurrentRequests,
     getCurrentPromises,
+    generateResourceURL,
     cancelCurrentRequests,
     // DO NOT USE makeCancelable, use fetch, this is only exposed for testing
     makeCancelable
