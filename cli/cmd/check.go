@@ -62,17 +62,16 @@ non-zero exit code.`,
 func configureAndRunChecks(options *checkOptions) {
 	checks := []healthcheck.Checks{healthcheck.KubernetesAPIChecks}
 
-	if options.dataPlaneOnly {
+	if options.preInstallOnly {
+		checks = append(checks, healthcheck.LinkerdPreInstallChecks)
+		checks = append(checks, healthcheck.LinkerdVersionChecks)
+	} else if options.dataPlaneOnly {
+		checks = append(checks, healthcheck.LinkerdAPIChecks)
 		checks = append(checks, healthcheck.LinkerdDataPlaneChecks)
 	} else {
-		if options.preInstallOnly {
-			checks = append(checks, healthcheck.LinkerdPreInstallChecks)
-		} else {
-			checks = append(checks, healthcheck.LinkerdAPIChecks)
-		}
+		checks = append(checks, healthcheck.LinkerdAPIChecks)
+		checks = append(checks, healthcheck.LinkerdVersionChecks)
 	}
-
-	checks = append(checks, healthcheck.LinkerdVersionChecks)
 
 	hc := healthcheck.NewHealthChecker(checks, &healthcheck.HealthCheckOptions{
 		Namespace:                    controlPlaneNamespace,
