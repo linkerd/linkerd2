@@ -1,24 +1,27 @@
 import _ from 'lodash';
 import ApiHelpers from './util/ApiHelpers.jsx';
-import { friendlyTitle } from './util/Utils.js';
-import { Link } from 'react-router-dom';
+import {friendlyTitle} from './util/Utils.js';
+import {Link} from 'react-router-dom';
 import PropTypes from 'prop-types';
 import React from 'react';
 import ReactRouterPropTypes from 'react-router-prop-types';
 import SocialLinks from './SocialLinks.jsx';
 import Version from './Version.jsx';
-import { withContext } from './util/AppContext.jsx';
-import { Badge, Form, Icon, Layout, Menu, Select } from 'antd';
-import { excludeResourcesFromRollup, processMultiResourceRollup, processSingleResourceRollup } from './util/MetricUtils.js';
-import { linkerdLogoOnly, linkerdWordLogo } from './util/SvgWrappers.jsx';
+import {withContext} from './util/AppContext.jsx';
+import {Badge, Form, Icon, Layout, Menu, Select} from 'antd';
+import {
+  excludeResourcesFromRollup,
+  getSuccessRateClassification,
+  processMultiResourceRollup,
+  processSingleResourceRollup
+} from './util/MetricUtils.js';
+import {linkerdLogoOnly, linkerdWordLogo} from './util/SvgWrappers.jsx';
 import './../../css/sidebar.css';
 
-const getSrClassification = sr => {
-  if (sr < 0.9) {
-    return "error";
-  } else if (sr < 0.95) {
-    return "warning";
-  } else {return "success";}
+const classificationLabels = {
+  good: "success",
+  neutral: "warning",
+  bad: "error"
 };
 
 class Sidebar extends React.Component {
@@ -134,31 +137,21 @@ class Sidebar extends React.Component {
     this.setState({namespaceFilter: value});
   }
 
-  // Filters resources retrieved from a stat query by namespaces. Does not include resources of type "authority"
   filterResourcesByNamespace(resources, namespace) {
-    if (namespace === "all") {
-      return _.mapValues(resources, o => {
-        return _(o)
-          .filter(r => r.added)
-          .value();
-      });
-    }
+    let resourceFilter = namespace === "all" ? r => r.added :
+      r => r.namespace === namespace && r.added;
 
-    return _.mapValues(resources, o => {
-      return _(o)
-        .filter(r => r.namespace === namespace && r.added)
-        .value();
-    });
+    return _.mapValues(resources, o => _.filter(o, resourceFilter));
   }
 
-  generateResourceURL(r) {
-    return "/namespaces/" + r.namespace + "/" + r.type + "s/" + r.name;
-  }
+
 
   render() {
     let normalizedPath = this.props.location.pathname.replace(this.props.pathPrefix, "");
     let PrefixedLink = this.api.PrefixedLink;
-    let namespaces = [{value: "all", name: "All Namespaces"}].concat(_.map(this.state.namespaces, ns => {
+    let namespaces = [
+      {value: "all", name: "All Namespaces"}
+    ].concat(_.map(this.state.namespaces, ns => {
       return {value: ns, name: ns};
     }));
     let sidebarComponents = this.filterResourcesByNamespace(this.state.finalResourceGroups, this.state.namespaceFilter);
@@ -254,24 +247,24 @@ class Sidebar extends React.Component {
                   <Menu.SubMenu
                     className="sidebar-menu-item"
                     key={resourceName}
-                    disabled={sidebarComponents[resourceName].length === 0}
+                    disabled={_.isEmpty(sidebarComponents[resourceName])}
                     title={<span>{friendlyTitle(resourceName).plural}</span>}>
                     {
                       _.map(_.sortBy(sidebarComponents[resourceName], r => `${r.namespace}/${r.name}`), r => {
-                        // only display resources that have been meshed
-                        if (r.added) {
+                        // only display resources that have been meshed`
                           return (
-                            <Menu.Item  className="sidebar-menu-item" key={this.generateResourceURL(r)}>
+                            <Menu.Item
+                              className="sidebar-submenu-item"
+                              key={this.api.generateResourceURL(r)}>
                               <div>
                                 <PrefixedLink
-                                  to={this.generateResourceURL(r)}>
+                                  to={this.api.generateResourceURL(r)}>
                                   {`${r.namespace}/${r.name}`}
                                 </PrefixedLink>
-                                <Badge status={getSrClassification(r.successRate)} />
+                                <Badge status={getSuccessRateClassification(r.successRate, classificationLabels)} />
                               </div>
                             </Menu.Item>
                           );
-                        }
                       })
                     }
                   </Menu.SubMenu>

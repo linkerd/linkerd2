@@ -13,6 +13,14 @@ const getPodCategorization = pod => {
   return ""; // Terminating | Succeeded | Unknown
 };
 
+export const getSuccessRateClassification = (rate, successRateLabels) => {
+  if (rate < 0.9) {
+    return successRateLabels.bad;
+  } else if (rate < 0.95) {
+    return successRateLabels.neutral;
+  } else {return successRateLabels.good;}
+};
+
 const getTotalRequests = row => {
   let success = parseInt(_.get(row, ["stats", "successCount"], 0), 10);
   let failure = parseInt(_.get(row, ["stats", "failureCount"], 0), 10);
@@ -162,10 +170,10 @@ export const processMultiResourceRollup = rawMetrics => {
   return metricsByResource;
 };
 
-export const excludeResourcesFromRollup = (rollupMetrics, resourceTypeList) => {
-  for (let i = 0; i < resourceTypeList.length; i++) {
-    delete rollupMetrics[resourceTypeList[i]];
-  }
+export const excludeResourcesFromRollup = (rollupMetrics, resourcesToExclude) => {
+  _.each(resourcesToExclude, resource => {
+    delete rollupMetrics[resource];
+  });
   return rollupMetrics;
 };
 

@@ -13,6 +13,7 @@ ul.ant-menu.ant-menu-sub {
     & .ant-menu-submenu-title, & .anticon{
       /* override ant transition animation */
       transition: none;
+      font-size: 16px;
     }
   }
 
@@ -40,9 +41,10 @@ ul.ant-menu.ant-menu-sub {
 
   & .sidebar-submenu-item {
     font-size: 14px;
+    font-weight: 500;
 
     & a {
-      color: var(--silver);
+      color: var(--white);
     }
   }
 
