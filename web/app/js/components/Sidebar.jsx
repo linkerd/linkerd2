@@ -1,6 +1,5 @@
 import _ from 'lodash';
 import ApiHelpers from './util/ApiHelpers.jsx';
-import {friendlyTitle} from './util/Utils.js';
 import {Link} from 'react-router-dom';
 import PropTypes from 'prop-types';
 import React from 'react';
@@ -247,8 +246,7 @@ class Sidebar extends React.Component {
                   <Menu.SubMenu
                     className="sidebar-menu-item"
                     key={resourceName}
-                    disabled={_.isEmpty(sidebarComponents[resourceName])}
-                    title={<span>{friendlyTitle(resourceName).plural}</span>}>
+                    disabled={_.isEmpty(sidebarComponents[resourceName])}>
                     {
                       _.map(_.sortBy(sidebarComponents[resourceName], r => `${r.namespace}/${r.name}`), r => {
                         // only display resources that have been meshed
