@@ -29,8 +29,9 @@ const podIPIndex = "ip"
 
 type (
 	server struct {
-		tapPort uint
-		k8sAPI  *k8s.API
+		tapPort             uint
+		k8sAPI              *k8s.API
+		controllerNamespace string
 	}
 )
 
@@ -62,7 +63,11 @@ func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_T
 			return apiUtil.GRPCError(err)
 		}
 
-		pods = append(pods, podsFor...)
+		for _, pod := range podsFor {
+			if pkgK8s.IsMeshed(pod, s.controllerNamespace) {
+				pods = append(pods, pod)
+			}
+		}
 	}
 
 	if len(pods) == 0 {
@@ -460,6 +465,7 @@ func (s *server) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 func NewServer(
 	addr string,
 	tapPort uint,
+	controllerNamespace string,
 	k8sAPI *k8s.API,
 ) (*grpc.Server, net.Listener, error) {
 	k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{podIPIndex: indexPodByIP})
@@ -471,8 +477,9 @@ func NewServer(
 
 	s := prometheus.NewGrpcServer()
 	srv := server{
-		tapPort: tapPort,
-		k8sAPI:  k8sAPI,
+		tapPort:             tapPort,
+		k8sAPI:              k8sAPI,
+		controllerNamespace: controllerNamespace,
 	}
 	pb.RegisterTapServer(s, &srv)
 
