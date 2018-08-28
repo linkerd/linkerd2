@@ -35,6 +35,7 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
+    linkerd.io/control-plane-ns: controller-ns
   annotations:
     linkerd.io/proxy-version: testinjectversion
 status:
@@ -52,6 +53,30 @@ status:
 					Match: &public.TapByResourceRequest_Match{
 						Match: &public.TapByResourceRequest_Match_Any{
 							Any: &public.TapByResourceRequest_Match_Seq{},
+						},
+					},
+				},
+			},
+			tapExpected{
+				msg: "rpc error: code = NotFound desc = no pods found for ResourceSelection: {Resource:namespace:\"emojivoto\" type:\"pod\" name:\"emojivoto-not-meshed\"  LabelSelector:}",
+				k8sRes: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-not-meshed
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+status:
+  phase: Running
+`,
+				},
+				req: public.TapByResourceRequest{
+					Target: &public.ResourceSelection{
+						Resource: &public.Resource{
+							Namespace: "emojivoto",
+							Type:      pkgK8s.Pod,
+							Name:      "emojivoto-not-meshed",
 						},
 					},
 				},
@@ -134,6 +159,7 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
+    linkerd.io/control-plane-ns: controller-ns
   annotations:
     linkerd.io/proxy-version: testinjectversion
 status:
@@ -163,7 +189,7 @@ status:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			server, listener, err := NewServer("localhost:0", 0, k8sAPI)
+			server, listener, err := NewServer("localhost:0", 0, "controller-ns", k8sAPI)
 			if err != nil {
 				t.Fatalf("NewServer error: %s", err)
 			}
