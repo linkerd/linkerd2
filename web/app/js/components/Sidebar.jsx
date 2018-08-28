@@ -1,5 +1,4 @@
 import _ from 'lodash';
-import ApiHelpers from './util/ApiHelpers.jsx';
 import {friendlyTitle} from './util/Utils.js';
 import {Link} from 'react-router-dom';
 import PropTypes from 'prop-types';
@@ -65,6 +64,7 @@ class Sidebar extends React.Component {
   }
 
   componentDidMount() {
+    this.fetchVersion();
     this.startServerPolling();
   }
 
@@ -83,6 +83,15 @@ class Sidebar extends React.Component {
     this.api.cancelCurrentRequests();
   }
 
+  fetchVersion() {
+    let versionUrl = `https://versioncheck.linkerd.io/version.json?version=${this.props.releaseVersion}?uuid=${this.props.uuid}`;
+    this.api.fetch(versionUrl).promise.then(versionRsp => {
+      this.setState({
+        latestVersion: versionRsp.version,
+        isLatest: versionRsp.version === this.props.releaseVersion
+      });
+    }).catch(this.handleApiError);
+  }
 
   loadFromServer() {
     if (this.state.pendingRequests) {
@@ -90,24 +99,20 @@ class Sidebar extends React.Component {
     }
     this.setState({ pendingRequests: true });
 
-    let versionUrl = `https://versioncheck.linkerd.io/version.json?version=${this.props.releaseVersion}?uuid=${this.props.uuid}`;
     this.api.setCurrentRequests([
-      ApiHelpers("").fetch(versionUrl),
       this.api.fetchMetrics(this.api.urlsForResource("all")),
       this.api.fetchMetrics(this.api.urlsForResource("namespace"))
     ]);
 
     // expose serverPromise for testing
     this.serverPromise = Promise.all(this.api.getCurrentPromises())
-      .then(([versionRsp, allRsp, nsRsp]) => {
+      .then(([allRsp, nsRsp]) => {
         let allResourceGroups = processMultiResourceRollup(allRsp);
         let finalResourceGroups = excludeResourcesFromRollup(allResourceGroups, ["authority", "service"]);
         let nsStats = processSingleResourceRollup(nsRsp);
         let namespaces = _(nsStats).map('name').sortBy().value();
 
         this.setState({
-          latestVersion: versionRsp.version,
-          isLatest: versionRsp.version === this.props.releaseVersion,
           finalResourceGroups,
           namespaces,
           pendingRequests: false,
@@ -143,8 +148,6 @@ class Sidebar extends React.Component {
 
     return _.mapValues(resources, o => _.filter(o, resourceFilter));
   }
-
-
 
   render() {
     let normalizedPath = this.props.location.pathname.replace(this.props.pathPrefix, "");
