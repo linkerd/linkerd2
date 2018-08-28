@@ -1,9 +1,9 @@
 import _ from 'lodash';
 import BaseTable from './BaseTable.jsx';
-import { formatLatencySec, formatWithComma } from './util/Utils.js';
 import React from 'react';
 import { srcDstColumn } from './util/TapUtils.jsx';
 import { Col, Icon, Row, Table } from 'antd';
+import { formatLatencySec, formatWithComma } from './util/Utils.js';
 
 // https://godoc.org/google.golang.org/grpc/codes#Code
 const grpcStatusCodes = {
