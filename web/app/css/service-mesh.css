@@ -24,7 +24,12 @@
   font-size: 16;
   border-radius: calc(var(--base-width)/2);
   font-weight: var(--font-weight-extra-bold);
-  border-radius: var
+
+  & code {
+    color: #2f80ed;
+    background-color: white;
+    padding: 0.2em;
+  }
 }
 
 .service-mesh-table {
