@@ -17,6 +17,7 @@ func main() {
 	addr := flag.String("addr", "127.0.0.1:8088", "address to serve on")
 	metricsAddr := flag.String("metrics-addr", ":9998", "address to serve scrapable metrics on")
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
+	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	tapPort := flag.Uint("tap-port", 4190, "proxy tap port to connect to")
 	flags.ConfigureAndParse()
 
@@ -37,7 +38,7 @@ func main() {
 		k8s.RS,
 	)
 
-	server, lis, err := tap.NewServer(*addr, *tapPort, k8sAPI)
+	server, lis, err := tap.NewServer(*addr, *tapPort, *controllerNamespace, k8sAPI)
 	if err != nil {
 		log.Fatal(err.Error())
 	}

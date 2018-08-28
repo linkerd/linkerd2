@@ -214,6 +214,7 @@ spec:
         args:
         - "tap"
         - "-log-level={{.ControllerLogLevel}}"
+        - "-controller-namespace={{.Namespace}}"
         livenessProbe:
           httpGet:
             path: /ping

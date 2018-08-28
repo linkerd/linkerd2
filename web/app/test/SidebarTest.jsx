@@ -2,7 +2,7 @@ import Adapter from "enzyme-adapter-react-16";
 import ApiHelpers from "../js/components/util/ApiHelpers.jsx";
 import { BrowserRouter } from 'react-router-dom';
 import { expect } from 'chai';
-import multiResourceRollupFixtures from './fixtures/allRollup.json';
+import namespaceFixtures from './fixtures/namespaces.json';
 import React from "react";
 import { Select } from 'antd';
 import Sidebar from "../js/components/Sidebar.jsx";
@@ -46,7 +46,7 @@ describe('Sidebar', () => {
   it("namespace selector has options", () => {
     fetchStub.returnsPromise().resolves({
       ok: true,
-      json: () => Promise.resolve(multiResourceRollupFixtures)
+      json: () => Promise.resolve(namespaceFixtures)
     });
 
     component = mount(
@@ -62,9 +62,12 @@ describe('Sidebar', () => {
 
     return withPromise(() => {
       openNamespaceSelector(component);
-      expect(component.find(".ant-select-dropdown-menu-item")).to.have.length(2);
+
+      // number of namespaces in api result
+      expect(namespaceFixtures.ok.statTables[0].podGroup.rows).to.have.length(5);
+
+      // plus "All namespaces" option
+      expect(component.find(".ant-select-dropdown-menu-item")).to.have.length(6);
     });
   });
 });
-
-
