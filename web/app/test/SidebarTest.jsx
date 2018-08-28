@@ -62,6 +62,11 @@ describe('Sidebar', () => {
 
     return withPromise(() => {
       openNamespaceSelector(component);
+
+      // number of namespaces in api result
+      expect(namespaceFixtures.ok.statTables[0].podGroup.rows).to.have.length(5);
+
+      // plus "All namespaces" option
       expect(component.find(".ant-select-dropdown-menu-item")).to.have.length(6);
     });
   });
