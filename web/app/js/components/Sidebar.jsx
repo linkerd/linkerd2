@@ -1,5 +1,4 @@
 import _ from 'lodash';
-import ApiHelpers from './util/ApiHelpers.jsx';
 import {friendlyTitle} from './util/Utils.js';
 import {Link} from 'react-router-dom';
 import PropTypes from 'prop-types';
@@ -65,6 +64,7 @@ class Sidebar extends React.Component {
   }
 
   componentDidMount() {
+    this.fetchVersion();
     this.startServerPolling();
   }
 
@@ -83,6 +83,15 @@ class Sidebar extends React.Component {
     this.api.cancelCurrentRequests();
   }
 
+  fetchVersion() {
+    let versionUrl = `https://versioncheck.linkerd.io/version.json?version=${this.props.releaseVersion}?uuid=${this.props.uuid}`;
+    this.api.fetch(versionUrl).promise.then(versionRsp => {
+      this.setState({
+        latestVersion: versionRsp.version,
+        isLatest: versionRsp.version === this.props.releaseVersion
+      });
+    }).catch(this.handleApiError);
+  }
 
   loadFromServer() {
     if (this.state.pendingRequests) {
@@ -90,24 +99,20 @@ class Sidebar extends React.Component {
     }
     this.setState({ pendingRequests: true });
 
-    let versionUrl = `https://versioncheck.linkerd.io/version.json?version=${this.props.releaseVersion}?uuid=${this.props.uuid}`;
     this.api.setCurrentRequests([
-      ApiHelpers("").fetch(versionUrl),
       this.api.fetchMetrics(this.api.urlsForResource("all")),
       this.api.fetchMetrics(this.api.urlsForResource("namespace"))
     ]);
 
     // expose serverPromise for testing
     this.serverPromise = Promise.all(this.api.getCurrentPromises())
-      .then(([versionRsp, allRsp, nsRsp]) => {
+      .then(([allRsp, nsRsp]) => {
         let allResourceGroups = processMultiResourceRollup(allRsp);
         let finalResourceGroups = excludeResourcesFromRollup(allResourceGroups, ["authority", "service"]);
         let nsStats = processSingleResourceRollup(nsRsp);
         let namespaces = _(nsStats).map('name').sortBy().value();
 
         this.setState({
-          latestVersion: versionRsp.version,
-          isLatest: versionRsp.version === this.props.releaseVersion,
           finalResourceGroups,
           namespaces,
           pendingRequests: false,
@@ -134,7 +139,9 @@ class Sidebar extends React.Component {
   }
 
   handleNamespaceSelector(value) {
-    this.setState({namespaceFilter: value});
+    this.setState({
+      namespaceFilter: value
+    });
   }
 
   filterResourcesByNamespace(resources, namespace) {
@@ -143,8 +150,6 @@ class Sidebar extends React.Component {
 
     return _.mapValues(resources, o => _.filter(o, resourceFilter));
   }
-
-
 
   render() {
     let normalizedPath = this.props.location.pathname.replace(this.props.pathPrefix, "");
@@ -155,6 +160,7 @@ class Sidebar extends React.Component {
       return {value: ns, name: ns};
     }));
     let sidebarComponents = this.filterResourcesByNamespace(this.state.finalResourceGroups, this.state.namespaceFilter);
+
     return (
       <Layout.Sider
         width="260px"
@@ -220,28 +226,31 @@ class Sidebar extends React.Component {
             theme="dark"
             mode="inline"
             selectedKeys={[normalizedPath]}>
-            { this.state.collapsed ? null : (
-              <Menu.Item className="sidebar-menu-item" key="/namespace-selector">
-                <Form layout="inline">
-                  <Form.Item>
-                    <Select
-                      defaultValue="All Namespaces"
-                      dropdownMatchSelectWidth={true}
-                      onChange={this.handleNamespaceSelector}>
-                      {
+            {
+              this.state.collapsed ? null : (
+                <Menu.Item className="sidebar-menu-item" key="/namespace-selector">
+                  <Form layout="inline">
+                    <Form.Item>
+                      <Select
+                        defaultValue="All Namespaces"
+                        dropdownMatchSelectWidth={true}
+                        onChange={this.handleNamespaceSelector}>
+                        {
                       _.map(namespaces, label => {
                         return (
                           <Select.Option key={label.value} value={label.value}>{label.name}</Select.Option>
                         );
                       })
                     }
-                    </Select>
-                  </Form.Item>
-                </Form>
-              </Menu.Item>
-            )}
+                      </Select>
+                    </Form.Item>
+                  </Form>
+                </Menu.Item>
+              )
+            }
 
-            {this.state.collapsed ? null :
+            {
+              this.state.collapsed ? null :
               _.map(_.keys(sidebarComponents).sort(), resourceName => {
                 return (
                   <Menu.SubMenu
@@ -272,6 +281,7 @@ class Sidebar extends React.Component {
                 );
               })
             }
+
             <Menu.Item className="sidebar-menu-item" key="/docs">
               <Link to="https://linkerd.io/2/overview/" target="_blank">
                 <Icon type="file-text" />
@@ -279,27 +289,31 @@ class Sidebar extends React.Component {
               </Link>
             </Menu.Item>
 
-            { this.state.isLatest ? null : (
-              <Menu.Item className="sidebar-menu-item" key="/update">
-                <Link to="https://versioncheck.linkerd.io/update" target="_blank">
-                  <Icon type="exclamation-circle-o" className="update" />
-                  <span>Update {this.props.productName}</span>
-                </Link>
-              </Menu.Item>
-            )}
+            {
+              this.state.isLatest ? null : (
+                <Menu.Item className="sidebar-menu-item" key="/update">
+                  <Link to="https://versioncheck.linkerd.io/update" target="_blank">
+                    <Icon type="exclamation-circle-o" className="update" />
+                    <span>Update {this.props.productName}</span>
+                  </Link>
+                </Menu.Item>
+              )
+            }
           </Menu>
 
-          { this.state.collapsed ? null : (
-            <div className="sidebar-menu-footer">
-              <SocialLinks />
-              <Version
-                isLatest={this.state.isLatest}
-                latestVersion={this.state.latestVersion}
-                releaseVersion={this.props.releaseVersion}
-                error={this.state.error}
-                uuid={this.props.uuid} />
-            </div>
-          )}
+          {
+            this.state.collapsed ? null : (
+              <div className="sidebar-menu-footer">
+                <SocialLinks />
+                <Version
+                  isLatest={this.state.isLatest}
+                  latestVersion={this.state.latestVersion}
+                  releaseVersion={this.props.releaseVersion}
+                  error={this.state.error}
+                  uuid={this.props.uuid} />
+              </div>
+            )
+          }
         </div>
       </Layout.Sider>
     );
