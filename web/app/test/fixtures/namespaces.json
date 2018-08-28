@@ -25,6 +25,23 @@
               "resource": {
                 "namespace": "",
                 "type": "namespace",
+                "name": "shiny-product-other"
+              },
+              "timeWindow": "1m",
+              "meshedPodCount": "4",
+              "runningPodCount": "4",
+              "stats": {
+                "successCount": "30",
+                "failureCount": "0",
+                "latencyMsP50": "5",
+                "latencyMsP95": "10",
+                "latencyMsP99": "10"
+              }
+            },
+            {
+              "resource": {
+                "namespace": "",
+                "type": "namespace",
                 "name": "kube-system"
               },
               "timeWindow": "1m",
