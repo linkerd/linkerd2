@@ -1,3 +1,17 @@
+## v18.8.3
+
+* Web UI
+  * **Improved** Kubernetes resource navigation in the sidebar
+  * **Improved** resource detail pages:
+    * **New** live request view
+    * **New** success rate graphs
+* CLI
+  * `tap` and `top` have been improved to sample up to 100 RPS
+* Control plane
+  * Injected proxy containers now have readiness and liveness probes enabled
+
+Special thanks to @sourishkrout for contributing a web readibility fix!
+
 ## v18.8.2
 
 * CLI
