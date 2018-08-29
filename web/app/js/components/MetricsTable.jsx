@@ -75,13 +75,14 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
       title: formatTitle("Dash", "Grafana Dashboard"),
       key: "grafanaDashboard",
       className: "numeric",
-      render: row => !row.added ? null : (
+      render: row => !row.added || _.get(row, "pods.totalPods") === "0" ? null : (
         <GrafanaLink
           name={row.name}
           namespace={row.namespace}
           resource={resource}
           PrefixedLink={PrefixedLink} />
-      )}
+      )
+    }
   ];
 
   let columns = [

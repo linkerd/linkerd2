@@ -11,7 +11,15 @@ export const rowGutter = 3 * baseWidth;
 * Number formatters
 */
 const successRateFormatter = d3.format(".2%");
-const latencyFormatter = d3.format(",");
+const commaFormatter = d3.format(",");
+
+export const formatWithComma = m => {
+  if (_.isNil(m)) {
+    return "---";
+  } else {
+    return commaFormatter(m);
+  }
+};
 
 export const formatLatencyMs = m => {
   if (_.isNil(m)) {
@@ -21,7 +29,7 @@ export const formatLatencyMs = m => {
   }
 };
 
-const niceLatency = l => latencyFormatter(Math.round(l));
+const niceLatency = l => commaFormatter(Math.round(l));
 
 export const formatLatencySec = latency => {
   let s = parseFloat(latency);

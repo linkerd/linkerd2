@@ -56,7 +56,11 @@ class Top extends React.Component {
     let statTables = _.get(rsp, [0, "ok", "statTables"]);
     let authoritiesByNs = {};
     let resourcesByNs = _.reduce(statTables, (mem, table) => {
-      _.map(table.podGroup.rows, row => {
+      _.each(table.podGroup.rows, row => {
+        if (row.meshedPodCount === "0") {
+          return;
+        }
+
         if (!mem[row.resource.namespace]) {
           mem[row.resource.namespace] = [];
           authoritiesByNs[row.resource.namespace] = [];
