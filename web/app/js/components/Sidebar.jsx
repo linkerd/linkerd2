@@ -15,6 +15,7 @@ import {
 } from './util/MetricUtils.js';
 import {linkerdLogoOnly, linkerdWordLogo} from './util/SvgWrappers.jsx';
 import './../../css/sidebar.css';
+import 'whatwg-fetch';
 
 const classificationLabels = {
   good: "success",
@@ -84,12 +85,14 @@ class Sidebar extends React.Component {
 
   fetchVersion() {
     let versionUrl = `https://versioncheck.linkerd.io/version.json?version=${this.props.releaseVersion}?uuid=${this.props.uuid}`;
-    this.api.fetch(versionUrl).promise.then(versionRsp => {
-      this.setState({
-        latestVersion: versionRsp.version,
-        isLatest: versionRsp.version === this.props.releaseVersion
-      });
-    }).catch(this.handleApiError);
+    fetch(versionUrl)
+      .then(rsp => rsp.json())
+      .then(versionRsp =>
+        this.setState({
+          latestVersion: versionRsp.version,
+          isLatest: versionRsp.version === this.props.releaseVersion
+        })
+      ).catch(this.handleApiError);
   }
 
   loadFromServer() {
