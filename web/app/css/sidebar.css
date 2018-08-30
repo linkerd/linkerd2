@@ -90,34 +90,21 @@ ul.ant-menu.ant-menu-sub {
     }
   }
 
-  & .sidebar-menu-footer {
-    margin-top: 24px;
-    bottom: 120px;
-    margin-left: calc(var(--base-width)*2);
-
-    @media only screen and (max-height: 560px) {
-      display: none;
-    }
-
-    & .social-links {
-      padding: 0 0 0 9px;
-
-      & a {
-        margin-right: calc(var(--base-width)*2);
-      }
-    }
-
-    & .version {
-      padding: 0 0 0 9px;
-      font-size: 13px;
-      font-weight: var(--font-weight-bold);
-      line-height: 2;
-      height: 40px;
-    }
+  & .version {
+    padding: 0 0 0 16px;
+    font-size: 13px;
+    font-weight: var(--font-weight-bold);
+    line-height: 2;
+    min-height: 56px;
   }
 }
 
-.ant-layout .ant-layout-sider, .ant-layout .ant-layout-sider .ant-layout-sider-trigger {
+.ant-layout-sider {
+  /* override ant color */
+  background: var(--header-black);
+}
+
+.ant-layout .ant-layout-sider .ant-layout-sider-trigger {
   /* override ant color */
   background: var(--sider-black);
 }
