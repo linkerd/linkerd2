@@ -145,10 +145,6 @@ func (h *handler) handleApiTap(w http.ResponseWriter, req *http.Request, p httpr
 		return
 	}
 
-	if requestParams.MaxRps == 0.0 {
-		requestParams.MaxRps = 1.0
-	}
-
 	tapReq, err := util.BuildTapByResourceRequest(requestParams)
 	if err != nil {
 		ws.WriteMessage(websocket.CloseMessage, []byte(err.Error()))

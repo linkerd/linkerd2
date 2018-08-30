@@ -186,9 +186,8 @@ export default class TapQueryForm extends React.Component {
 
           <Col span={colSpan}>
             <Form.Item
-              extra="Maximum requests per second to tap">
+              extra={`Maximum requests per second to tap (default ${defaultMaxRps})`}>
               <Input
-                defaultValue={defaultMaxRps}
                 placeholder="Max RPS"
                 onChange={this.handleFormEvent("maxRps")} />
             </Form.Item>

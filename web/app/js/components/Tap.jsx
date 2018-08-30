@@ -7,7 +7,7 @@ import TapEventTable from './TapEventTable.jsx';
 import TapQueryCliCmd from './TapQueryCliCmd.jsx';
 import TapQueryForm from './TapQueryForm.jsx';
 import { withContext } from './util/AppContext.jsx';
-import { defaultMaxRps, httpMethods, processTapEvent } from './util/TapUtils.jsx';
+import { httpMethods, processTapEvent, setMaxRps } from './util/TapUtils.jsx';
 import './../../css/tap.css';
 
 const maxNumFilterOptions = 12;
@@ -39,7 +39,7 @@ class Tap extends React.Component {
         path: "",
         scheme: "",
         authority: "",
-        maxRps: defaultMaxRps
+        maxRps: ""
       },
       maxLinesToDisplay: 40,
       tapRequestInProgress: false,
@@ -62,7 +62,7 @@ class Tap extends React.Component {
 
   onWebsocketOpen = () => {
     let query = _.cloneDeep(this.state.query);
-    query.maxRps = parseFloat(query.maxRps);
+    setMaxRps(query);
 
     this.ws.send(JSON.stringify({
       id: "tap-web",
