@@ -223,6 +223,7 @@ export default class TapQueryForm extends React.Component {
       <Select
         showSearch
         allowClear
+        disabled={this.state.query[namespaceKey] === ""}
         placeholder={_.startCase(resourceKey)}
         optionFilterProp="children"
         onChange={this.handleFormChange(resourceKey)}>

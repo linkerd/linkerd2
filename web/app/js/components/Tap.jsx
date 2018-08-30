@@ -116,7 +116,7 @@ class Tap extends React.Component {
     let resourcesByNs = _.reduce(statTables, (mem, table) => {
       _.each(table.podGroup.rows, row => {
         // filter out resources that aren't meshed. note that authorities don't
-        // have pod counds and therefore can't be filtered out here
+        // have pod counts and therefore can't be filtered out here
         if (row.meshedPodCount === "0" && row.resource.type !== "authority") {
           return;
         }
