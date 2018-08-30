@@ -173,8 +173,7 @@ export class ResourceDetailBase extends React.Component {
 
     let topQuery = {
       resource: this.state.resourceType + "/" + this.state.resourceName,
-      namespace: this.state.namespace,
-      maxRps: "1.0"
+      namespace: this.state.namespace
     };
 
     return (

@@ -1,5 +1,4 @@
 import _ from 'lodash';
-import { defaultMaxRps } from './util/TapUtils.jsx';
 import ErrorBanner from './ErrorBanner.jsx';
 import PageHeader from './PageHeader.jsx';
 import PropTypes from 'prop-types';
@@ -36,7 +35,7 @@ class Top extends React.Component {
         path: "",
         scheme: "",
         authority: "",
-        maxRps: defaultMaxRps
+        maxRps: ""
       },
       pollingInterval: 10000,
       tapRequestInProgress: false,

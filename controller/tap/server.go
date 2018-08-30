@@ -26,6 +26,7 @@ import (
 )
 
 const podIPIndex = "ip"
+const defaultMaxRps = 100.0
 
 type (
 	server struct {
@@ -49,6 +50,9 @@ func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_T
 	}
 	if req.Target == nil {
 		return status.Errorf(codes.InvalidArgument, "TapByResource received nil target ResourceSelection: %+v", *req)
+	}
+	if req.MaxRps == 0.0 {
+		req.MaxRps = defaultMaxRps
 	}
 
 	objects, err := s.k8sAPI.GetObjects(req.Target.Resource.Namespace, req.Target.Resource.Type, req.Target.Resource.Name)

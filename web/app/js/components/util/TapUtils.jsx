@@ -5,7 +5,14 @@ import React from 'react';
 
 export const httpMethods = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"];
 
-export const defaultMaxRps = "1.0";
+export const defaultMaxRps = "100.0";
+export const setMaxRps = query => {
+  if (!_.isEmpty(query.maxRps)) {
+    query.maxRps = parseFloat(query.maxRps);
+  } else {
+    query.maxRps = 0; // golang unset value for maxRps
+  }
+};
 
 export const tapQueryPropType = PropTypes.shape({
   resource: PropTypes.string,

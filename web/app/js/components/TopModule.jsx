@@ -1,11 +1,11 @@
 import _ from 'lodash';
 import ErrorBanner from './ErrorBanner.jsx';
 import Percentage from './util/Percentage.js';
-import { processTapEvent } from './util/TapUtils.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import TopEventTable from './TopEventTable.jsx';
 import { withContext } from './util/AppContext.jsx';
+import { processTapEvent, setMaxRps } from './util/TapUtils.jsx';
 
 class TopModule extends React.Component {
   static propTypes = {
@@ -51,7 +51,7 @@ class TopModule extends React.Component {
 
   onWebsocketOpen = () => {
     let query = _.cloneDeep(this.props.query);
-    query.maxRps = parseFloat(query.maxRps);
+    setMaxRps(query);
 
     this.ws.send(JSON.stringify({
       id: "top-web",
