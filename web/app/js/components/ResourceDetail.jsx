@@ -1,4 +1,5 @@
 import _ from 'lodash';
+import AddResources from './AddResources.jsx';
 import ErrorBanner from './ErrorBanner.jsx';
 import MetricsTable from './MetricsTable.jsx';
 import Octopus from './Octopus.jsx';
@@ -130,9 +131,11 @@ export class ResourceDetailBase extends React.Component {
         }, {});
 
         let podMetricsForResource = _.filter(podMetrics, pod => podBelongsToResource[pod.namespace + "/" + pod.name]);
+        let resourceIsMeshed = _.get(this.state.resourceMetrics, '[0].pods.meshedPods') > 0;
 
         this.setState({
           resourceMetrics,
+          resourceIsMeshed,
           podMetrics: podMetricsForResource,
           neighborMetrics: {
             upstream: upstreamMetrics,
@@ -178,6 +181,15 @@ export class ResourceDetailBase extends React.Component {
 
     return (
       <div>
+        {
+          this.state.resourceIsMeshed ? null :
+          <div className="page-section">
+            <AddResources
+              resourceName={this.state.resourceName}
+              resourceType={this.state.resourceType} />
+          </div>
+        }
+
         <div className="page-section">
           <Octopus
             resource={this.state.resourceMetrics[0]}
@@ -185,13 +197,16 @@ export class ResourceDetailBase extends React.Component {
             api={this.api} />
         </div>
 
-        <div className="page-section">
-          <TopModule
-            pathPrefix={this.props.pathPrefix}
-            query={topQuery}
-            startTap={true}
-            maxRowsToDisplay={10} />
-        </div>
+        {
+          !this.state.resourceIsMeshed ? null :
+          <div className="page-section">
+            <TopModule
+              pathPrefix={this.props.pathPrefix}
+              query={topQuery}
+              startTap={true}
+              maxRowsToDisplay={10} />
+          </div>
+        }
 
         { _.isEmpty(this.state.neighborMetrics.upstream) ? null : (
           <div className="page-section">
