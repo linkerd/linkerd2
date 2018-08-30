@@ -1,3 +1,9 @@
+## v18.8.4
+
+* Web UI
+  * **Improved** Tap and Top now have a better sampling rate
+  * **Fixed** Missing sidebar headings now appear
+
 ## v18.8.3
 
 * Web UI
