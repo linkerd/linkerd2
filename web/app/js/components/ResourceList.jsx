@@ -34,9 +34,9 @@ export class ResourceListBase extends React.Component {
   }
 
   content = () => {
-    const {data, loading} = this.props;
+    const {data, loading, error} = this.props;
 
-    if (loading) {
+    if (loading && !error) {
       return <Spin size="large" />;
     }
 

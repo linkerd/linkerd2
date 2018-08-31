@@ -250,6 +250,7 @@ class ServiceMesh extends React.Component {
 
     this.setState({
       pendingRequests: false,
+      loaded: true,
       error: e
     });
   }
