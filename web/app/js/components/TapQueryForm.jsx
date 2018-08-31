@@ -93,7 +93,7 @@ export default class TapQueryForm extends React.Component {
       if (!_.isNil(scopeResource)) {
         // scope the available typeahead resources to the selected namespace
         state.autocomplete[scopeResource] = this.state.resourcesByNs[formVal];
-        if (_.isEmpty(state.query[scopeResource])) {
+        if (_.isEmpty(state.query[scopeResource]) || state.query[scopeResource].indexOf("namespace") !== -1) {
           state.query[scopeResource] = `namespace/${formVal}`;
         }
       }
@@ -224,6 +224,7 @@ export default class TapQueryForm extends React.Component {
         showSearch
         allowClear
         disabled={_.isNil(this.state.query[namespaceKey])}
+        value={_.isNil(this.state.query[namespaceKey]) ? _.startCase(resourceKey) : this.state.query[resourceKey]}
         placeholder={_.startCase(resourceKey)}
         optionFilterProp="children"
         onChange={this.handleFormChange(resourceKey)}>
