@@ -2,6 +2,7 @@ import _ from 'lodash';
 import BaseTable from './BaseTable.jsx';
 import React from 'react';
 import { srcDstColumn } from './util/TapUtils.jsx';
+import { withContext } from './util/AppContext.jsx';
 import { Col, Icon, Row, Table } from 'antd';
 import { formatLatencySec, formatWithComma } from './util/Utils.js';
 
@@ -34,7 +35,7 @@ const genFilterOptionList = options => _.map(options,  (_v, k) => {
   return { text: k, value: k };
 });
 
-let tapColumns = filterOptions => [
+let tapColumns = (filterOptions, ResourceLink) => [
   {
     title: "ID",
     dataIndex: "requestInit.http.requestInit.id.stream"
@@ -54,7 +55,7 @@ let tapColumns = filterOptions => [
     dataIndex: "base",
     filters: genFilterOptionList(filterOptions.source),
     onFilter: (value, row) => row.base.source.pod === value || row.base.source.str === value,
-    render: d => srcDstColumn(_.get(d, "source"), _.get(d, "sourceMeta.labels", {}))
+    render: d => srcDstColumn(_.get(d, "source"), _.get(d, "sourceMeta.labels", {}), ResourceLink)
   },
   {
     title: "Destination",
@@ -62,7 +63,7 @@ let tapColumns = filterOptions => [
     dataIndex: "base",
     filters: genFilterOptionList(filterOptions.destination),
     onFilter: (value, row) => row.base.destination.pod === value || row.base.destination.str === value,
-    render: d => srcDstColumn(_.get(d, "destination"), _.get(d, "destinationMeta.labels", {}))
+    render: d => srcDstColumn(_.get(d, "destination"), _.get(d, "destinationMeta.labels", {}), ResourceLink)
   },
   {
     title: "TLS",
@@ -209,12 +210,12 @@ const expandedRowRender = d => {
   );
 };
 
-export default class TapEventTable extends BaseTable {
+class TapEventTable extends BaseTable {
   render() {
     return (
       <BaseTable
         dataSource={this.props.tableRows}
-        columns={tapColumns(this.props.filterOptions)}
+        columns={tapColumns(this.props.filterOptions, this.props.api.ResourceLink)}
         expandedRowRender={expandedRowRender}
         rowKey={r => r.base.id}
         pagination={false}
@@ -223,3 +224,5 @@ export default class TapEventTable extends BaseTable {
     );
   }
 }
+
+export default withContext(TapEventTable);

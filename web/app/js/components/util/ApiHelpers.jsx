@@ -117,10 +117,6 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     });
   };
 
-  const generateResourceURL = r => {
-    return "/namespaces/" + r.namespace + "/" + r.type + "s/" + r.name;
-  };
-
   // prefix all links in the app with `pathPrefix`
   class PrefixedLink extends React.Component {
     static defaultProps = {
@@ -152,6 +148,31 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     }
   }
 
+  const generateResourceURL = r => {
+    return "/namespaces/" + r.namespace + "/" + r.type + "s/" + r.name;
+  };
+
+  // a prefixed link to a Resource Detail page
+  const ResourceLink = ({resource, linkText}) => {
+    return (
+      <PrefixedLink to={generateResourceURL(resource)}>
+        { linkText || resource.type + "/" + resource.name}
+      </PrefixedLink>
+    );
+  };
+  ResourceLink.propTypes = {
+    linkText: PropTypes.string,
+    resource: PropTypes.shape({
+      name: PropTypes.string,
+      namespace: PropTypes.string,
+      type: PropTypes.string,
+    })
+  };
+  ResourceLink.defaultProps = {
+    resource: {},
+    linkText: ""
+  };
+
   return {
     fetch: apiFetch,
     fetchMetrics,
@@ -162,6 +183,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     getMetricsWindowDisplayText,
     urlsForResource,
     PrefixedLink,
+    ResourceLink,
     setCurrentRequests,
     getCurrentPromises,
     generateResourceURL,

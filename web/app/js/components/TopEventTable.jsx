@@ -1,24 +1,25 @@
 import BaseTable from './BaseTable.jsx';
 import React from 'react';
 import { srcDstColumn } from './util/TapUtils.jsx';
+import { withContext } from './util/AppContext.jsx';
 import { formatLatencySec, numericSort } from './util/Utils.js';
 
 const srcDstSorter = key => {
   return (a, b) => (a[key].pod || a[key].str).localeCompare(b[key].pod || b[key].str);
 };
 
-const topColumns = [
+const topColumns = ResourceLink => [
   {
     title: "Source",
     key: "source",
     sorter: srcDstSorter("source"),
-    render: d => srcDstColumn(d.source, d.sourceLabels)
+    render: d => srcDstColumn(d.source, d.sourceLabels, ResourceLink)
   },
   {
     title: "Destination",
     key: "destination",
     sorter: srcDstSorter("destination"),
-    render: d => srcDstColumn(d.destination, d.destinationLabels)
+    render: d => srcDstColumn(d.destination, d.destinationLabels, ResourceLink)
   },
   {
     title: "Path",
@@ -57,12 +58,12 @@ const topColumns = [
   }
 ];
 
-export default class TopEventTable extends BaseTable {
+class TopEventTable extends BaseTable {
   render() {
     return (
       <BaseTable
         dataSource={this.props.tableRows}
-        columns={topColumns}
+        columns={topColumns(this.props.api.ResourceLink)}
         rowKey="key"
         pagination={false}
         className="top-event-table"
@@ -70,3 +71,5 @@ export default class TopEventTable extends BaseTable {
     );
   }
 }
+
+export default withContext(TopEventTable);
