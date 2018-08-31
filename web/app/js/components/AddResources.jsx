@@ -1,4 +1,3 @@
-import _ from 'lodash';
 import { friendlyTitle } from './util/Utils.js';
 import { incompleteMeshMessage } from './util/CopyUtils.jsx';
 import PropTypes from 'prop-types';
