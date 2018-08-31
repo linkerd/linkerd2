@@ -21,6 +21,7 @@ type checkOptions struct {
 	preInstallOnly  bool
 	dataPlaneOnly   bool
 	wait            bool
+	namespace       string
 }
 
 func newCheckOptions() *checkOptions {
@@ -29,6 +30,7 @@ func newCheckOptions() *checkOptions {
 		preInstallOnly:  false,
 		dataPlaneOnly:   false,
 		wait:            false,
+		namespace:       "",
 	}
 }
 
@@ -44,6 +46,14 @@ The check command will perform a series of checks to validate that the linkerd
 CLI and control plane are configured correctly. If the command encounters a
 failure it will print additional information about the failure and exit with a
 non-zero exit code.`,
+		Example: `  # Check that the Linkerd control plane is up and running
+  linkerd check
+
+  # Check that the Linkerd control plane can be installed in the "test" namespace
+  linkerd check --pre --linkerd-namespace test
+
+  # Check that the Linkerd data plane proxies in the "app" namespace are up and running
+  linkerd check --proxy --namespace app`,
 		Args: cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
 			configureAndRunChecks(options)
@@ -55,6 +65,7 @@ non-zero exit code.`,
 	cmd.PersistentFlags().BoolVar(&options.preInstallOnly, "pre", options.preInstallOnly, "Only run pre-installation checks, to determine if the control plane can be installed")
 	cmd.PersistentFlags().BoolVar(&options.dataPlaneOnly, "proxy", options.dataPlaneOnly, "Only run data-plane checks, to determine if the data plane is healthy")
 	cmd.PersistentFlags().BoolVar(&options.wait, "wait", false, "Retry and wait for some checks to succeed if they don't pass the first time")
+	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
 
 	return cmd
 }
@@ -74,7 +85,8 @@ func configureAndRunChecks(options *checkOptions) {
 	}
 
 	hc := healthcheck.NewHealthChecker(checks, &healthcheck.HealthCheckOptions{
-		Namespace:                    controlPlaneNamespace,
+		ControlPlaneNamespace:        controlPlaneNamespace,
+		DataPlaneNamespace:           options.namespace,
 		KubeConfig:                   kubeconfigPath,
 		APIAddr:                      apiAddr,
 		VersionOverride:              options.versionOverride,

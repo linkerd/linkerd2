@@ -1,0 +1,13 @@
+kubernetes-api: can initialize the client..................................[ok]
+kubernetes-api: can query the Kubernetes API...............................[ok]
+kubernetes-api: is running the minimum Kubernetes API version..............[ok]
+linkerd-api: control plane namespace exists................................[ok]
+linkerd-api: control plane pods are ready..................................[ok]
+linkerd-api: can initialize the client.....................................[ok]
+linkerd-api: can query the control plane API...............................[ok]
+linkerd-api[kubernetes]: control plane can talk to Kubernetes..............[ok]
+linkerd-api[prometheus]: control plane can talk to Prometheus..............[ok]
+linkerd-data-plane: data plane namespace exists............................[ok]
+linkerd-data-plane: data plane proxies are ready...........................[ok]
+
+Status check results are [ok]

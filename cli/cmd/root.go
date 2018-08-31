@@ -78,10 +78,10 @@ func validatedPublicAPIClient(shouldRetry bool) pb.ApiClient {
 	}
 
 	hc := healthcheck.NewHealthChecker(checks, &healthcheck.HealthCheckOptions{
-		Namespace:   controlPlaneNamespace,
-		KubeConfig:  kubeconfigPath,
-		APIAddr:     apiAddr,
-		ShouldRetry: shouldRetry,
+		ControlPlaneNamespace: controlPlaneNamespace,
+		KubeConfig:            kubeconfigPath,
+		APIAddr:               apiAddr,
+		ShouldRetry:           shouldRetry,
 	})
 
 	exitOnError := func(result *healthcheck.CheckResult) {
