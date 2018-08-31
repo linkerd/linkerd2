@@ -4,7 +4,6 @@ import {Link} from 'react-router-dom';
 import PropTypes from 'prop-types';
 import React from 'react';
 import ReactRouterPropTypes from 'react-router-prop-types';
-import SocialLinks from './SocialLinks.jsx';
 import Version from './Version.jsx';
 import {withContext} from './util/AppContext.jsx';
 import {Badge, Form, Icon, Layout, Menu, Select} from 'antd';
@@ -306,15 +305,12 @@ class Sidebar extends React.Component {
 
           {
             this.state.collapsed ? null : (
-              <div className="sidebar-menu-footer">
-                <SocialLinks />
-                <Version
-                  isLatest={this.state.isLatest}
-                  latestVersion={this.state.latestVersion}
-                  releaseVersion={this.props.releaseVersion}
-                  error={this.state.error}
-                  uuid={this.props.uuid} />
-              </div>
+              <Version
+                isLatest={this.state.isLatest}
+                latestVersion={this.state.latestVersion}
+                releaseVersion={this.props.releaseVersion}
+                error={this.state.error}
+                uuid={this.props.uuid} />
             )
           }
         </div>
