@@ -93,6 +93,9 @@ export default class TapQueryForm extends React.Component {
       if (!_.isNil(scopeResource)) {
         // scope the available typeahead resources to the selected namespace
         state.autocomplete[scopeResource] = this.state.resourcesByNs[formVal];
+        if (_.isEmpty(state.query[scopeResource]) || state.query[scopeResource].indexOf("namespace") !== -1) {
+          state.query[scopeResource] = `namespace/${formVal}`;
+        }
       }
       if (shouldScopeAuthority) {
         state.autocomplete.authority = this.state.authoritiesByNs[formVal];
@@ -145,11 +148,7 @@ export default class TapQueryForm extends React.Component {
 
           <Col span={colSpan}>
             <Form.Item>
-              <AutoComplete
-                dataSource={this.autoCompleteData("toResource")}
-                onSelect={this.handleFormChange("toResource")}
-                onSearch={this.handleFormChange("toResource")}
-                placeholder="To Resource" />
+              {this.renderResourceSelect("toResource", "toNamespace")}
             </Form.Item>
           </Col>
         </Row>
@@ -213,6 +212,37 @@ export default class TapQueryForm extends React.Component {
     );
   }
 
+  renderResourceSelect = (resourceKey, namespaceKey) => {
+    let selectedNs = this.state.query[namespaceKey];
+    let nsEmpty = _.isNil(selectedNs) || _.isEmpty(selectedNs);
+
+    let resourceOptions = _.concat(
+      this.state.autocomplete[resourceKey] || [],
+      nsEmpty ? [] : [`namespace/${selectedNs}`]
+    );
+
+    return (
+      <Select
+        showSearch
+        allowClear
+        disabled={nsEmpty}
+        value={nsEmpty ? _.startCase(resourceKey) : this.state.query[resourceKey]}
+        placeholder={_.startCase(resourceKey)}
+        optionFilterProp="children"
+        onChange={this.handleFormChange(resourceKey)}>
+        {
+        _.map(_.sortBy(resourceOptions), resource => (
+          <Select.Option
+            key={`${resourceKey}-${resource}`}
+            value={resource}>{resource}
+          </Select.Option>
+          )
+        )
+      }
+      </Select>
+    );
+  }
+
   render() {
     return (
       <Form className="tap-form">
@@ -236,11 +266,7 @@ export default class TapQueryForm extends React.Component {
 
           <Col span={colSpan}>
             <Form.Item>
-              <AutoComplete
-                dataSource={this.autoCompleteData("resource")}
-                onSelect={this.handleFormChange("resource")}
-                onSearch={this.handleFormChange("resource")}
-                placeholder="Resource" />
+              {this.renderResourceSelect("resource", "namespace")}
             </Form.Item>
           </Col>
 

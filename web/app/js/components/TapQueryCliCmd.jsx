@@ -52,9 +52,9 @@ export default class TapQueryCliCmd extends React.Component {
             <div>Current {_.startCase(this.props.cmdName)} query:</div>
             <code>
               linkerd {this.props.cmdName} {resource}
-              { this.renderCliItem("--namespace", namespace) }
+              { resource.indexOf("namespace") === 0 ? null : this.renderCliItem("--namespace", namespace) }
               { this.renderCliItem("--to", toResource) }
-              { this.renderCliItem("--to-namespace", toNamespace) }
+              { toResource.indexOf("namespace") === 0 ? null : this.renderCliItem("--to-namespace", toNamespace) }
               { this.renderCliItem("--method", method) }
               { this.renderCliItem("--scheme", scheme) }
               { this.renderCliItem("--authority", authority) }
