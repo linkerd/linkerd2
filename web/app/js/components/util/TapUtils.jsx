@@ -94,15 +94,35 @@ const publicAddressToString = ipv4 => {
 /*
   display more human-readable information about source/destination
 */
-export const srcDstColumn = (display, labels) => {
+export const srcDstColumn = (display, labels, ResourceLink) => {
+  let podLink = (
+    <ResourceLink
+      resource={{ type: "pod", name: labels.pod, namespace: labels.namespace }}
+      linkText={"po/" + labels.pod} />
+  );
+
   let content = (
     <React.Fragment>
-      <div>{ !labels.deployment ? null : "deploy/" + labels.deployment }</div>
-      <div>{ !labels.pod ? null : "po/" + labels.pod }</div>
+      <div>
+        {
+          !labels.deployment ? null :
+          <ResourceLink
+            resource={{ type: "deployment", name: labels.deployment, namespace: labels.namespace}}
+            linkText={"deploy/" + labels.deployment} />
+        }
+      </div>
+      <div>{ !labels.pod ? null : podLink }</div>
     </React.Fragment>
   );
 
   return (
-    <Popover content={content} title={display.str}>{ display.pod || display.str }</Popover>
+    <Popover
+      content={content}
+      trigger="hover"
+      title={display.str}>
+      <div className="src-dst-name">
+        { !_.isEmpty(display.pod) ? podLink : display.str }
+      </div>
+    </Popover>
   );
 };

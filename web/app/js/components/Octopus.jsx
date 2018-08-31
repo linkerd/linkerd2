@@ -47,9 +47,9 @@ export default class Octopus extends React.Component {
     return (
       <div key={resource.name} className={`octopus-body ${type}`}>
         <div className={`octopus-title ${type}`}>
-          <this.props.api.PrefixedLink to={`/namespaces/${resource.namespace}/${resource.type}s/${resource.name}`}>
-            {displayName(resource)}
-          </this.props.api.PrefixedLink>
+          <this.props.api.ResourceLink
+            resource={resource}
+            linkText={displayName(resource)} />
         </div>
         <div className="octopus-sr-gauge">
           <Progress
