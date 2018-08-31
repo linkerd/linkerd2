@@ -213,9 +213,9 @@ export default class TapQueryForm extends React.Component {
     );
   }
 
-  renderResourceSelect(resourceKey, namespaceKey) {
+  renderResourceSelect = (resourceKey, namespaceKey) => {
     let resourceOptions = _.concat(
-      this.state.autocomplete[resourceKey],
+      this.state.autocomplete[resourceKey] || [],
       _.isEmpty(this.state.query[namespaceKey]) ? [] : [`namespace/${this.state.query[namespaceKey]}`]
     );
 
@@ -223,7 +223,7 @@ export default class TapQueryForm extends React.Component {
       <Select
         showSearch
         allowClear
-        disabled={this.state.query[namespaceKey] === ""}
+        disabled={_.isNil(this.state.query[namespaceKey])}
         placeholder={_.startCase(resourceKey)}
         optionFilterProp="children"
         onChange={this.handleFormChange(resourceKey)}>
