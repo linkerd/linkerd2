@@ -60,6 +60,7 @@ export class ResourceDetailBase extends React.Component {
         upstream: {},
         downstream: {}
       },
+      resourceIsMeshed: true,
       pendingRequests: false,
       loaded: false,
       error: null
@@ -131,7 +132,10 @@ export class ResourceDetailBase extends React.Component {
         }, {});
 
         let podMetricsForResource = _.filter(podMetrics, pod => podBelongsToResource[pod.namespace + "/" + pod.name]);
-        let resourceIsMeshed = _.get(this.state.resourceMetrics, '[0].pods.meshedPods') > 0;
+        let resourceIsMeshed = true;
+        if (!_.isEmpty(this.state.resourceMetrics)) {
+          resourceIsMeshed = _.get(this.state.resourceMetrics, '[0].pods.meshedPods') > 0;
+        }
 
         this.setState({
           resourceMetrics,
