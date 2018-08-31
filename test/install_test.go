@@ -212,3 +212,23 @@ func TestInject(t *testing.T) {
 			expectedStringInPayload, output)
 	}
 }
+
+func TestCheckProxy(t *testing.T) {
+	prefixedNs := TestHelper.GetTestNamespace("smoke-test")
+	out, err := TestHelper.LinkerdRun(
+		"check",
+		"--proxy",
+		"--expected-version",
+		TestHelper.GetVersion(),
+		"--namespace",
+		prefixedNs,
+	)
+	if err != nil {
+		t.Fatalf("Check command failed\n%s", out)
+	}
+
+	err = TestHelper.ValidateOutput(out, "check.proxy.golden")
+	if err != nil {
+		t.Fatalf("Received unexpected output\n%s", err.Error())
+	}
+}

@@ -82,7 +82,8 @@ type CheckResult struct {
 type checkObserver func(*CheckResult)
 
 type HealthCheckOptions struct {
-	Namespace                    string
+	ControlPlaneNamespace        string
+	DataPlaneNamespace           string
 	KubeConfig                   string
 	APIAddr                      string
 	VersionOverride              string
@@ -170,12 +171,12 @@ func (hc *HealthChecker) addLinkerdPreInstallChecks() {
 		description: "control plane namespace does not already exist",
 		fatal:       false,
 		check: func() error {
-			exists, err := hc.kubeAPI.NamespaceExists(hc.httpClient, hc.Namespace)
+			exists, err := hc.kubeAPI.NamespaceExists(hc.httpClient, hc.ControlPlaneNamespace)
 			if err != nil {
 				return err
 			}
 			if exists {
-				return fmt.Errorf("The \"%s\" namespace already exists", hc.Namespace)
+				return fmt.Errorf("The \"%s\" namespace already exists", hc.ControlPlaneNamespace)
 			}
 			return nil
 		},
@@ -188,14 +189,7 @@ func (hc *HealthChecker) addLinkerdAPIChecks() {
 		description: "control plane namespace exists",
 		fatal:       true,
 		check: func() error {
-			exists, err := hc.kubeAPI.NamespaceExists(hc.httpClient, hc.Namespace)
-			if err != nil {
-				return err
-			}
-			if !exists {
-				return fmt.Errorf("The \"%s\" namespace does not exist", hc.Namespace)
-			}
-			return nil
+			return hc.checkNamespace(hc.ControlPlaneNamespace)
 		},
 	})
 
@@ -205,11 +199,11 @@ func (hc *HealthChecker) addLinkerdAPIChecks() {
 		retry:       hc.ShouldRetry,
 		fatal:       true,
 		check: func() error {
-			pods, err := hc.kubeAPI.GetPodsForNamespace(hc.httpClient, hc.Namespace)
+			pods, err := hc.kubeAPI.GetPodsByNamespace(hc.httpClient, hc.ControlPlaneNamespace)
 			if err != nil {
 				return err
 			}
-			return validatePods(pods)
+			return validateControlPlanePods(pods)
 		},
 	})
 
@@ -219,9 +213,9 @@ func (hc *HealthChecker) addLinkerdAPIChecks() {
 		fatal:       true,
 		check: func() (err error) {
 			if hc.APIAddr != "" {
-				hc.apiClient, err = public.NewInternalClient(hc.Namespace, hc.APIAddr)
+				hc.apiClient, err = public.NewInternalClient(hc.ControlPlaneNamespace, hc.APIAddr)
 			} else {
-				hc.apiClient, err = public.NewExternalClient(hc.Namespace, hc.kubeAPI)
+				hc.apiClient, err = public.NewExternalClient(hc.ControlPlaneNamespace, hc.kubeAPI)
 			}
 			return
 		},
@@ -240,13 +234,32 @@ func (hc *HealthChecker) addLinkerdAPIChecks() {
 }
 
 func (hc *HealthChecker) addLinkerdDataPlaneChecks() {
+	if hc.DataPlaneNamespace != "" {
+		hc.checkers = append(hc.checkers, &checker{
+			category:    LinkerdDataPlaneCategory,
+			description: "data plane namespace exists",
+			fatal:       true,
+			check: func() error {
+				return hc.checkNamespace(hc.DataPlaneNamespace)
+			},
+		})
+	}
+
 	hc.checkers = append(hc.checkers, &checker{
 		category:    LinkerdDataPlaneCategory,
-		description: "[TODO] proxy containers are in ready state",
+		description: "data plane proxies are ready",
+		retry:       hc.ShouldRetry,
 		fatal:       true,
 		check: func() error {
-			// TODO: implement checks described in #1103.
-			return nil
+			pods, err := hc.kubeAPI.GetPodsByControllerNamespace(
+				hc.httpClient,
+				hc.ControlPlaneNamespace,
+				hc.DataPlaneNamespace,
+			)
+			if err != nil {
+				return err
+			}
+			return validateDataPlanePods(pods, hc.DataPlaneNamespace)
 		},
 	})
 }
@@ -391,7 +404,18 @@ func (hc *HealthChecker) PublicAPIClient() pb.ApiClient {
 	return hc.apiClient
 }
 
-func validatePods(pods []v1.Pod) error {
+func (hc *HealthChecker) checkNamespace(namespace string) error {
+	exists, err := hc.kubeAPI.NamespaceExists(hc.httpClient, namespace)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return fmt.Errorf("The \"%s\" namespace does not exist", namespace)
+	}
+	return nil
+}
+
+func validateControlPlanePods(pods []v1.Pod) error {
 	statuses := make(map[string][]v1.ContainerStatus)
 
 	for _, pod := range pods {
@@ -412,13 +436,44 @@ func validatePods(pods []v1.Pod) error {
 	for _, name := range names {
 		containers, found := statuses[name]
 		if !found {
-			return fmt.Errorf("No running pods for %s", name)
+			return fmt.Errorf("No running pods for \"%s\"", name)
 		}
 		for _, container := range containers {
 			if !container.Ready {
-				return fmt.Errorf("The %s pod's %s container is not ready", name,
+				return fmt.Errorf("The \"%s\" pod's \"%s\" container is not ready", name,
 					container.Name)
 			}
+		}
+	}
+
+	return nil
+}
+
+func validateDataPlanePods(pods []v1.Pod, targetNamespace string) error {
+	if len(pods) == 0 {
+		msg := "No \"linkerd-proxy\" containers found"
+		if targetNamespace != "" {
+			msg += fmt.Sprintf(" in the \"%s\" namespace", targetNamespace)
+		}
+		return fmt.Errorf(msg)
+	}
+
+	for _, pod := range pods {
+		if pod.Status.Phase != v1.PodRunning {
+			return fmt.Errorf("The \"%s\" pod in the \"%s\" namespace is not running",
+				pod.Name, pod.Namespace)
+		}
+
+		var proxyReady bool
+		for _, container := range pod.Status.ContainerStatuses {
+			if container.Name == "linkerd-proxy" {
+				proxyReady = container.Ready
+			}
+		}
+
+		if !proxyReady {
+			return fmt.Errorf("The \"linkerd-proxy\" container in the \"%s\" pod in the \"%s\" namespace is not ready",
+				pod.Name, pod.Namespace)
 		}
 	}
 

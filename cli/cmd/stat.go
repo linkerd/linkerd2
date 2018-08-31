@@ -96,8 +96,7 @@ If no resource name is specified, displays stats about all resources of the spec
   linkerd stat namespaces --from ns/default
 
   # Get all inbound stats to the test namespace.
-  linkerd stat ns/test
-  `,
+  linkerd stat ns/test`,
 		Args:      cobra.RangeArgs(1, 2),
 		ValidArgs: util.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {

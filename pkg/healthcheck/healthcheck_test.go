@@ -254,7 +254,7 @@ func TestHealthChecker(t *testing.T) {
 	})
 }
 
-func TestValidatePods(t *testing.T) {
+func TestValidateControlPlanePods(t *testing.T) {
 	pod := func(name string, phase v1.PodPhase, ready bool) v1.Pod {
 		return v1.Pod{
 			ObjectMeta: meta.ObjectMeta{Name: name},
@@ -278,11 +278,11 @@ func TestValidatePods(t *testing.T) {
 			pod("web-98c9ddbcd-7b5lh", v1.PodRunning, true),
 		}
 
-		err := validatePods(pods)
+		err := validateControlPlanePods(pods)
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
-		if err.Error() != "No running pods for prometheus" {
+		if err.Error() != "No running pods for \"prometheus\"" {
 			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
 	})
@@ -295,11 +295,11 @@ func TestValidatePods(t *testing.T) {
 			pod("web-98c9ddbcd-7b5lh", v1.PodRunning, true),
 		}
 
-		err := validatePods(pods)
+		err := validateControlPlanePods(pods)
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
-		if err.Error() != "The grafana pod's grafana container is not ready" {
+		if err.Error() != "The \"grafana\" pod's \"grafana\" container is not ready" {
 			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
 	})
@@ -312,7 +312,82 @@ func TestValidatePods(t *testing.T) {
 			pod("web-98c9ddbcd-7b5lh", v1.PodRunning, true),
 		}
 
-		err := validatePods(pods)
+		err := validateControlPlanePods(pods)
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err)
+		}
+	})
+}
+
+func TestValidateDataPlanePods(t *testing.T) {
+	pod := func(name string, phase v1.PodPhase, ready bool) v1.Pod {
+		return v1.Pod{
+			ObjectMeta: meta.ObjectMeta{Name: name, Namespace: "emojivoto"},
+			Status: v1.PodStatus{
+				Phase: phase,
+				ContainerStatuses: []v1.ContainerStatus{
+					v1.ContainerStatus{
+						Name:  "linkerd-proxy",
+						Ready: ready,
+					},
+				},
+			},
+		}
+	}
+
+	t.Run("Returns an error if no inject pods were found", func(t *testing.T) {
+		err := validateDataPlanePods([]v1.Pod{}, "emojivoto")
+		if err == nil {
+			t.Fatal("Expected error, got nothing")
+		}
+		if err.Error() != "No \"linkerd-proxy\" containers found in the \"emojivoto\" namespace" {
+			t.Fatalf("Unexpected error message: %s", err.Error())
+		}
+	})
+
+	t.Run("Returns an error if not all pods are running", func(t *testing.T) {
+		pods := []v1.Pod{
+			pod("emoji-d9c7866bb-7v74n", v1.PodRunning, true),
+			pod("vote-bot-644b8cb6b4-g8nlr", v1.PodRunning, true),
+			pod("voting-65b9fffd77-rlwsd", v1.PodFailed, false),
+			pod("web-6cfbccc48-5g8px", v1.PodRunning, true),
+		}
+
+		err := validateDataPlanePods(pods, "emojivoto")
+		if err == nil {
+			t.Fatal("Expected error, got nothing")
+		}
+		if err.Error() != "The \"voting-65b9fffd77-rlwsd\" pod in the \"emojivoto\" namespace is not running" {
+			t.Fatalf("Unexpected error message: %s", err.Error())
+		}
+	})
+
+	t.Run("Returns an error if the linkerd-proxy container is not ready", func(t *testing.T) {
+		pods := []v1.Pod{
+			pod("emoji-d9c7866bb-7v74n", v1.PodRunning, true),
+			pod("vote-bot-644b8cb6b4-g8nlr", v1.PodRunning, false),
+			pod("voting-65b9fffd77-rlwsd", v1.PodRunning, true),
+			pod("web-6cfbccc48-5g8px", v1.PodRunning, true),
+		}
+
+		err := validateDataPlanePods(pods, "emojivoto")
+		if err == nil {
+			t.Fatal("Expected error, got nothing")
+		}
+		if err.Error() != "The \"linkerd-proxy\" container in the \"vote-bot-644b8cb6b4-g8nlr\" pod in the \"emojivoto\" namespace is not ready" {
+			t.Fatalf("Unexpected error message: %s", err.Error())
+		}
+	})
+
+	t.Run("Returns nil if all pods are running and all linkerd-proxy containers are ready", func(t *testing.T) {
+		pods := []v1.Pod{
+			pod("emoji-d9c7866bb-7v74n", v1.PodRunning, true),
+			pod("vote-bot-644b8cb6b4-g8nlr", v1.PodRunning, true),
+			pod("voting-65b9fffd77-rlwsd", v1.PodRunning, true),
+			pod("web-6cfbccc48-5g8px", v1.PodRunning, true),
+		}
+
+		err := validateDataPlanePods(pods, "emojivoto")
 		if err != nil {
 			t.Fatalf("Unexpected error: %s", err)
 		}
