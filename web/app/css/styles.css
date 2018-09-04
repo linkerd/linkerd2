@@ -261,3 +261,8 @@ div.status-dot {
     background-color: #ffd54f;
   }
 }
+
+div.ant-layout-has-sider {
+  height: 100vh;
+  overflow: hidden;
+}
