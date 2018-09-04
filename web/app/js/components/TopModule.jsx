@@ -12,11 +12,13 @@ class TopModule extends React.Component {
     maxRowsToDisplay: PropTypes.number,
     pathPrefix: PropTypes.string.isRequired,
     query: PropTypes.shape({}).isRequired,
-    startTap: PropTypes.bool.isRequired
+    startTap: PropTypes.bool.isRequired,
+    updateNeighbors: PropTypes.func
   }
 
   static defaultProps = {
-    maxRowsToDisplay: 40 // max aggregated top rows to index and display in table
+    maxRowsToDisplay: 40, // max aggregated top rows to index and display in table
+    updateNeighbors: _.noop
   }
 
   constructor(props) {
@@ -67,6 +69,7 @@ class TopModule extends React.Component {
 
   onWebsocketRecv = e => {
     this.indexTapResult(e.data);
+    this.props.updateNeighbors(e.data);
     this.debouncedWebsocketRecvHandler();
   }
 

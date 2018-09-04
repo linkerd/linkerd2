@@ -4,6 +4,7 @@ import ErrorBanner from './ErrorBanner.jsx';
 import MetricsTable from './MetricsTable.jsx';
 import Octopus from './Octopus.jsx';
 import PageHeader from './PageHeader.jsx';
+import { processNeighborData } from './util/TapUtils.jsx';
 import { processSingleResourceRollup } from './util/MetricUtils.js';
 import PropTypes from 'prop-types';
 import React from 'react';
@@ -60,6 +61,7 @@ export class ResourceDetailBase extends React.Component {
         upstream: {},
         downstream: {}
       },
+      unmeshedSources: {},
       resourceIsMeshed: true,
       pendingRequests: false,
       loaded: false,
@@ -165,6 +167,13 @@ export class ResourceDetailBase extends React.Component {
     });
   }
 
+  updateNeighborsFromTapData = d => {
+    let n = processNeighborData(d, this.state.unmeshedSources, this.state.resource.type);
+    this.setState({
+      unmeshedSources: n
+    });
+  }
+
   banner = () => {
     if (!this.state.error) {
       return;
@@ -198,6 +207,7 @@ export class ResourceDetailBase extends React.Component {
           <Octopus
             resource={this.state.resourceMetrics[0]}
             neighbors={this.state.neighborMetrics}
+            unmeshedSources={_.values(this.state.unmeshedSources)}
             api={this.api} />
         </div>
 
@@ -208,6 +218,7 @@ export class ResourceDetailBase extends React.Component {
               pathPrefix={this.props.pathPrefix}
               query={topQuery}
               startTap={true}
+              updateNeighbors={this.updateNeighborsFromTapData}
               maxRowsToDisplay={10} />
           </div>
         }

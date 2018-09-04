@@ -28,6 +28,50 @@ export const tapQueryProps = {
 
 export const tapQueryPropType = PropTypes.shape(tapQueryProps);
 
+
+/*
+  Use tap data to figure out a resource's unmeshed upstreams/downstreams
+*/
+export const processNeighborData = (jsonString, resourceAgg, resourceType) => {
+  let d = JSON.parse(jsonString);
+
+  if (d.proxyDirection === "INBOUND") {
+    if (_.isEmpty(d.sourceMeta) || _.isEmpty(d.sourceMeta.labels) ||
+      _.has(d.sourceMeta.labels, "control_plane_ns")) {
+      return resourceAgg;
+    }
+
+    let neighb = getNeighbData(d, "source", "sourceMeta", resourceType);
+    resourceAgg[neighb.type + "/" + neighb.name] = neighb;
+  }
+
+  return resourceAgg;
+};
+
+/*
+  Extract the neighbor's data for display
+*/
+const getNeighbData = (d, label, metaLabel, resourceType) => {
+  let neighb = {
+    type: "ip",
+    name: publicAddressToString(_.get(d, [label, "ip.ipv4"]))
+  };
+  if (_.has(d, [metaLabel, "labels", resourceType])) {
+    neighb = {
+      type: resourceType,
+      name: d[metaLabel].labels[resourceType],
+      namespace: d[metaLabel].labels.namespace
+    };
+  } else if (_.has(d, [metaLabel, "labels.pod"])) {
+    neighb = {
+      type: "pod",
+      name: d[metaLabel].labels.pod,
+      namespace: d[metaLabel].labels.namespace
+    };
+  }
+  return neighb;
+};
+
 export const processTapEvent = jsonString => {
   let d = JSON.parse(jsonString);
   d.source.str = publicAddressToString(_.get(d, "source.ip.ipv4"));
