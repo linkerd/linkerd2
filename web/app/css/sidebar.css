@@ -1,5 +1,9 @@
 @import 'styles.css';
 
+.ant-layout-sider-children{
+ overflow-y: scroll;
+}
+
 ul.ant-menu.ant-menu-sub {
   background: var(--sider-black);
 }
@@ -7,8 +11,6 @@ ul.ant-menu.ant-menu-sub {
 .sidebar {
   background: var(--header-black);
   color: white;
-  height: 100vh;
-  overflow-y: scroll;
 
   & .ant-menu-submenu {
     & .ant-menu-submenu-title, & .anticon{
