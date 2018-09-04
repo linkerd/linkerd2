@@ -193,7 +193,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 	}
 
 	initContainer := v1.Container{
-		Name:                     "linkerd-init",
+		Name:                     k8s.InitContainerName,
 		Image:                    options.taggedProxyInitImage(),
 		ImagePullPolicy:          v1.PullPolicy(options.imagePullPolicy),
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
@@ -224,7 +224,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 	}
 
 	sidecar := v1.Container{
-		Name:                     "linkerd-proxy",
+		Name:                     k8s.ProxyContainerName,
 		Image:                    options.taggedProxyImage(),
 		ImagePullPolicy:          v1.PullPolicy(options.imagePullPolicy),
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,

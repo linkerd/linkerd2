@@ -510,8 +510,8 @@ func (s *grpcServer) getPodStats(obj runtime.Object) (*podStats, error) {
 			}
 		}
 
-		errors := checkContainerErrors(pod.Status.ContainerStatuses, "linkerd-proxy")
-		errors = append(errors, checkContainerErrors(pod.Status.InitContainerStatuses, "linkerd-init")...)
+		errors := checkContainerErrors(pod.Status.ContainerStatuses, k8s.ProxyContainerName)
+		errors = append(errors, checkContainerErrors(pod.Status.InitContainerStatuses, k8s.InitContainerName)...)
 
 		if len(errors) > 0 {
 			podErrors[pod.Name] = &pb.PodErrors{Errors: errors}

@@ -66,6 +66,12 @@ const (
 	 * Component Names
 	 */
 
+	// InitContainerName is the name assigned to the injected init container.
+	InitContainerName = "linkerd-init"
+
+	// ProxyContainerName is the name assigned to the injected proxy container.
+	ProxyContainerName = "linkerd-proxy"
+
 	// TLSTrustAnchorConfigMapName is the name of the ConfigMap that holds the
 	// trust anchors (trusted root certificates).
 	TLSTrustAnchorConfigMapName = "linkerd-ca-bundle"
