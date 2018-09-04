@@ -9,6 +9,7 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/api/public"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	"k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -327,7 +328,7 @@ func TestValidateDataPlanePods(t *testing.T) {
 				Phase: phase,
 				ContainerStatuses: []v1.ContainerStatus{
 					v1.ContainerStatus{
-						Name:  "linkerd-proxy",
+						Name:  k8s.ProxyContainerName,
 						Ready: ready,
 					},
 				},
@@ -362,7 +363,7 @@ func TestValidateDataPlanePods(t *testing.T) {
 		}
 	})
 
-	t.Run("Returns an error if the linkerd-proxy container is not ready", func(t *testing.T) {
+	t.Run("Returns an error if the proxy container is not ready", func(t *testing.T) {
 		pods := []v1.Pod{
 			pod("emoji-d9c7866bb-7v74n", v1.PodRunning, true),
 			pod("vote-bot-644b8cb6b4-g8nlr", v1.PodRunning, false),
@@ -379,7 +380,7 @@ func TestValidateDataPlanePods(t *testing.T) {
 		}
 	})
 
-	t.Run("Returns nil if all pods are running and all linkerd-proxy containers are ready", func(t *testing.T) {
+	t.Run("Returns nil if all pods are running and all proxy containers are ready", func(t *testing.T) {
 		pods := []v1.Pod{
 			pod("emoji-d9c7866bb-7v74n", v1.PodRunning, true),
 			pod("vote-bot-644b8cb6b4-g8nlr", v1.PodRunning, true),

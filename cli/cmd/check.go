@@ -75,24 +75,25 @@ func configureAndRunChecks(options *checkOptions) {
 
 	if options.preInstallOnly {
 		checks = append(checks, healthcheck.LinkerdPreInstallChecks)
-		checks = append(checks, healthcheck.LinkerdVersionChecks)
 	} else if options.dataPlaneOnly {
 		checks = append(checks, healthcheck.LinkerdAPIChecks)
 		checks = append(checks, healthcheck.LinkerdDataPlaneChecks)
 	} else {
 		checks = append(checks, healthcheck.LinkerdAPIChecks)
-		checks = append(checks, healthcheck.LinkerdVersionChecks)
 	}
 
+	checks = append(checks, healthcheck.LinkerdVersionChecks)
+
 	hc := healthcheck.NewHealthChecker(checks, &healthcheck.HealthCheckOptions{
-		ControlPlaneNamespace:        controlPlaneNamespace,
-		DataPlaneNamespace:           options.namespace,
-		KubeConfig:                   kubeconfigPath,
-		APIAddr:                      apiAddr,
-		VersionOverride:              options.versionOverride,
-		ShouldRetry:                  options.wait,
-		ShouldCheckKubeVersion:       true,
-		ShouldCheckControllerVersion: !options.preInstallOnly,
+		ControlPlaneNamespace:          controlPlaneNamespace,
+		DataPlaneNamespace:             options.namespace,
+		KubeConfig:                     kubeconfigPath,
+		APIAddr:                        apiAddr,
+		VersionOverride:                options.versionOverride,
+		ShouldRetry:                    options.wait,
+		ShouldCheckKubeVersion:         true,
+		ShouldCheckControlPlaneVersion: !(options.preInstallOnly || options.dataPlaneOnly),
+		ShouldCheckDataPlaneVersion:    options.dataPlaneOnly,
 	})
 
 	success := runChecks(os.Stdout, hc)

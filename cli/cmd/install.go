@@ -32,6 +32,7 @@ type installConfig struct {
 	ProxyAPIPort                uint
 	EnableTLS                   bool
 	TLSTrustAnchorConfigMapName string
+	ProxyContainerName          string
 }
 
 type installOptions struct {
@@ -102,6 +103,7 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		ProxyAPIPort:                options.proxyAPIPort,
 		EnableTLS:                   options.enableTLS(),
 		TLSTrustAnchorConfigMapName: k8s.TLSTrustAnchorConfigMapName,
+		ProxyContainerName:          k8s.ProxyContainerName,
 	}, nil
 }
 

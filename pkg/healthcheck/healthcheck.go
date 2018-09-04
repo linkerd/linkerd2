@@ -44,11 +44,11 @@ const (
 	// checks must be added first.
 	LinkerdAPIChecks
 
-	// LinkerdVersionChecks adds a series of checks to validate that the CLI and
-	// control plane are running the latest available version.
+	// LinkerdVersionChecks adds a series of checks to validate that the CLI,
+	// control plane, and data plane are running the latest available version.
 	// These checks are dependent on the output of AddLinkerdAPIChecks, so those
-	// checks must be added first, unless the ShouldCheckControllerVersion option
-	// is false.
+	// checks must be added first, unless the the ShouldCheckControlPlaneVersion
+	// and ShouldCheckDataPlaneVersion options are false.
 	LinkerdVersionChecks
 
 	KubernetesAPICategory     = "kubernetes-api"
@@ -82,14 +82,15 @@ type CheckResult struct {
 type checkObserver func(*CheckResult)
 
 type HealthCheckOptions struct {
-	ControlPlaneNamespace        string
-	DataPlaneNamespace           string
-	KubeConfig                   string
-	APIAddr                      string
-	VersionOverride              string
-	ShouldRetry                  bool
-	ShouldCheckKubeVersion       bool
-	ShouldCheckControllerVersion bool
+	ControlPlaneNamespace          string
+	DataPlaneNamespace             string
+	KubeConfig                     string
+	APIAddr                        string
+	VersionOverride                string
+	ShouldRetry                    bool
+	ShouldCheckKubeVersion         bool
+	ShouldCheckControlPlaneVersion bool
+	ShouldCheckDataPlaneVersion    bool
 }
 
 type HealthChecker struct {
@@ -288,13 +289,32 @@ func (hc *HealthChecker) addLinkerdVersionChecks() {
 		},
 	})
 
-	if hc.ShouldCheckControllerVersion {
+	if hc.ShouldCheckControlPlaneVersion {
 		hc.checkers = append(hc.checkers, &checker{
 			category:    LinkerdVersionCategory,
 			description: "control plane is up-to-date",
 			fatal:       false,
 			check: func() error {
 				return version.CheckServerVersion(hc.apiClient, hc.latestVersion)
+			},
+		})
+	}
+
+	if hc.ShouldCheckDataPlaneVersion {
+		hc.checkers = append(hc.checkers, &checker{
+			category:    LinkerdVersionCategory,
+			description: "data plane is up-to-date",
+			fatal:       false,
+			check: func() error {
+				pods, err := hc.kubeAPI.GetPodsByControllerNamespace(
+					hc.httpClient,
+					hc.ControlPlaneNamespace,
+					hc.DataPlaneNamespace,
+				)
+				if err != nil {
+					return err
+				}
+				return hc.kubeAPI.CheckProxyVersion(pods, hc.latestVersion)
 			},
 		})
 	}
@@ -451,7 +471,7 @@ func validateControlPlanePods(pods []v1.Pod) error {
 
 func validateDataPlanePods(pods []v1.Pod, targetNamespace string) error {
 	if len(pods) == 0 {
-		msg := "No \"linkerd-proxy\" containers found"
+		msg := fmt.Sprintf("No \"%s\" containers found", k8s.ProxyContainerName)
 		if targetNamespace != "" {
 			msg += fmt.Sprintf(" in the \"%s\" namespace", targetNamespace)
 		}
@@ -466,14 +486,14 @@ func validateDataPlanePods(pods []v1.Pod, targetNamespace string) error {
 
 		var proxyReady bool
 		for _, container := range pod.Status.ContainerStatuses {
-			if container.Name == "linkerd-proxy" {
+			if container.Name == k8s.ProxyContainerName {
 				proxyReady = container.Ready
 			}
 		}
 
 		if !proxyReady {
-			return fmt.Errorf("The \"linkerd-proxy\" container in the \"%s\" pod in the \"%s\" namespace is not ready",
-				pod.Name, pod.Namespace)
+			return fmt.Errorf("The \"%s\" container in the \"%s\" pod in the \"%s\" namespace is not ready",
+				k8s.ProxyContainerName, pod.Name, pod.Namespace)
 		}
 	}
 

@@ -38,6 +38,7 @@ func TestRender(t *testing.T) {
 		ProxyAPIPort:                123,
 		EnableTLS:                   true,
 		TLSTrustAnchorConfigMapName: "TLSTrustAnchorConfigMapName",
+		ProxyContainerName:          "ProxyContainerName",
 	}
 
 	testCases := []struct {
